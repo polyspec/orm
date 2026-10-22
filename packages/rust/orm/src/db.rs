@@ -201,13 +201,14 @@ fn decoded_path(raw: &str, scheme: &str) -> Result<String> {
     if out.contains(&0) {
         return Err(Error::Config(format!("{scheme} DSN path must not contain a NUL byte")));
     }
-    String::from_utf8(out).map_err(|_| Error::Config(format!("{scheme} DSN path must be UTF-8 after percent-decoding")))
+    String::from_utf8(out).map_err(|error| Error::Config(format!("{scheme} DSN path must be UTF-8 after percent-decoding: {error}")))
 }
 
 /// Parses a DSN URI.
 pub fn parse_dsn(dsn: &str) -> Result<ParsedDsn> {
     let bad = |msg: String| Error::Config(msg);
-    let url = url::Url::parse(dsn).map_err(|_| bad("dsn must be a URI using mysql://, postgres://, sqlite://, or markdown://".into()))?;
+    let url = url::Url::parse(dsn)
+        .map_err(|error| bad(format!("dsn must be a URI using mysql://, postgres://, sqlite://, or markdown://: {error}")))?;
     let mut zone_text = None;
     let mut pragmas = Vec::new();
     let mut rest = url.clone();
@@ -263,7 +264,7 @@ pub fn parse_dsn(dsn: &str) -> Result<ParsedDsn> {
                 let (name, value) =
                     p.strip_suffix(')').and_then(|x| x.split_once('(')).ok_or_else(|| bad(format!("sqlite DSN _pragma {p:?} must be name(value)")))?;
                 o = if name == "busy_timeout" {
-                    let ms: u64 = value.parse().map_err(|_| bad(format!("sqlite busy_timeout {value:?}")))?;
+                    let ms: u64 = value.parse().map_err(|error| bad(format!("sqlite busy_timeout {value:?}: {error}")))?;
                     o.busy_timeout(std::time::Duration::from_millis(ms))
                 } else {
                     o.pragma(name.to_owned(), value.to_owned())
@@ -491,9 +492,18 @@ impl Db {
                 let o = if timeout > 0 { o.busy_timeout(std::time::Duration::from_millis(timeout as u64)) } else { o };
                 let pool = pool_options::<sqlx::Sqlite>(pool_size, idle, cfg.pool_lifetime_ms, &owner).connect_with(o.statement_cache_capacity(cache)).await?;
                 // The version of the SQLite library bundled by sqlx. No statement asking for it is sent.
-                let version = libsqlite3_sys::SQLITE_VERSION.to_str().map_err(|_| Error::internal("the SQLite library version is not UTF-8"))?;
-                let mut parts = version.split('.').map(|p| p.parse::<u32>().unwrap_or(0));
-                let (major, minor) = (parts.next().unwrap_or(0), parts.next().unwrap_or(0));
+                let version = libsqlite3_sys::SQLITE_VERSION
+                    .to_str()
+                    .map_err(|error| Error::internal(format!("the SQLite library version is not UTF-8: {error}")))?;
+                let mut parts = version.split('.');
+                let mut number = |what: &str| -> Result<u32> {
+                    let Some(part) = parts.next() else {
+                        return Err(Error::internal(format!("the SQLite library version {version} has no {what} number")));
+                    };
+                    part.parse::<u32>()
+                        .map_err(|error| Error::internal(format!("the SQLite library version {version} has a {what} number {part:?} that is not a number: {error}")))
+                };
+                let (major, minor) = (number("major")?, number("minor")?);
                 if major < 3 || (major == 3 && minor < 46) {
                     return Err(Error::Engine { code: codes::CAPABILITY_UNSUPPORTED.into(), msg: format!("SQLite {version} is older than 3.46") });
                 }
@@ -525,7 +535,9 @@ impl Db {
             }),
             hook: None,
         };
-        let _ = owner.set(Arc::downgrade(&db.inner));
+        if owner.set(Arc::downgrade(&db.inner)).is_err() {
+            return Err(Error::internal("the owner of a new database was already set"));
+        }
         Ok(db)
     }
 
@@ -669,10 +681,14 @@ impl Db {
                         v = time_value(v, b.precision)?;
                     }
                     if b.col_type == "decimal" {
-                        let precision = u8::try_from(b.precision)
-                            .map_err(|_| Error::Engine { code: codes::SCHEMA_INVALID.into(), msg: format!("invalid decimal precision {}", b.precision) })?;
-                        let scale = u8::try_from(b.scale)
-                            .map_err(|_| Error::Engine { code: codes::SCHEMA_INVALID.into(), msg: format!("invalid decimal scale {}", b.scale) })?;
+                        let precision = u8::try_from(b.precision).map_err(|error| Error::Engine {
+                            code: codes::SCHEMA_INVALID.into(),
+                            msg: format!("invalid decimal precision {}: {error}", b.precision),
+                        })?;
+                        let scale = u8::try_from(b.scale).map_err(|error| Error::Engine {
+                            code: codes::SCHEMA_INVALID.into(),
+                            msg: format!("invalid decimal scale {}: {error}", b.scale),
+                        })?;
                         v = match v {
                             Param::Null => Param::Null,
                             Param::Str(text) if sqlite => Param::I64(crate::decimal::scaled(&text, precision, scale)?),
@@ -708,7 +724,7 @@ impl Db {
                 "now" => {
                     // One statement reads the clock once, so its clock columns are equal.
                     let text = clock.get_or_insert_with(|| self.now_text()).clone();
-                    out.push(Param::Str(clock_digits(&text, b.precision)));
+                    out.push(Param::Str(clock_digits(&text, b.precision)?));
                 }
                 // The audit slot is the primary key of the audit record the transaction inserted. If there is no audit, or the audit table
                 // records audit for another entity, it is CONFIG.
@@ -802,12 +818,18 @@ impl Db {
             }
         });
         let result = self.statement_done(Sent::bare(KIND_UTILITY, &tables, transaction, insert), start, result);
-        if let Some(previous) = previous {
-            // A failure of the statement that reverts the wait does not change the result of the lock request.
-            let restore = format!("PRAGMA busy_timeout={previous}");
-            let _ = crate::events::raw(self, &mut **tx, Sent::bare(KIND_UTILITY, &[], transaction, &restore)).await;
+        let restore_failure = match previous {
+            Some(previous) => {
+                let restore = format!("PRAGMA busy_timeout={previous}");
+                crate::events::raw(self, &mut **tx, Sent::bare(KIND_UTILITY, &[], transaction, &restore)).await.err()
+            }
+            None => None,
+        };
+        match (result, restore_failure) {
+            (result, None) => result,
+            (Ok(_), Some(restore)) => Err(restore),
+            (Err(lock), Some(restore)) => Err(with_restore_failure(lock, restore)),
         }
-        result
     }
 
     pub(crate) async fn run_query(
@@ -1058,7 +1080,7 @@ pub(crate) fn bound_time_value(v: Param, col_type: &str, precision: i64, zone: &
         }
         Param::DateTime(t) => datetime_digits(&t.format(SQLITE_DATETIME).to_string(), precision).map(Param::Str),
         Param::Str(text) => {
-            let full = sqlite_datetime_text(&text, zone).ok_or_else(|| invalid_time_text(&text, col_type))?;
+            let full = sqlite_datetime_text(&text, zone)?.ok_or_else(|| invalid_time_text(&text, col_type))?;
             datetime_digits(&full, precision).map(Param::Str)
         }
         other => Ok(other),
@@ -1078,14 +1100,16 @@ fn sqlite_date_text(text: &str) -> bool {
 
 /// `YYYY-MM-DD[ T]HH:MM:SS[.f{1,6}][Z|±HH:MM]` as stored SQLite text in the
 /// connection time zone, or None when the text has another form.
-fn sqlite_datetime_text(text: &str, zone: &Zone) -> Option<String> {
+fn sqlite_datetime_text(text: &str, zone: &Zone) -> Result<Option<String>> {
     let (body, offset) = if let Some(body) = text.strip_suffix('Z') {
         (body, Some(0))
     } else {
         let b = text.as_bytes();
         let n = b.len();
         if n >= 6 && (b[n - 6] == b'+' || b[n - 6] == b'-') && b[n - 3] == b':' && digits(&b[n - 5..n - 3]) && digits(&b[n - 2..]) {
-            let minutes = (text[n - 5..n - 3].parse::<i32>().ok()? * 60 + text[n - 2..].parse::<i32>().ok()?) * if b[n - 6] == b'-' { -1 } else { 1 };
+            // Both fields passed `digits` above, so each is two ASCII digits and the sum is read without a parse that could fail.
+            let field = |range: std::ops::Range<usize>| b[range].iter().fold(0, |value, d| value * 10 + i32::from(d - b'0'));
+            let minutes = (field(n - 5..n - 3) * 60 + field(n - 2..n)) * if b[n - 6] == b'-' { -1 } else { 1 };
             (&text[..n - 6], Some(minutes))
         } else {
             (text, None)
@@ -1093,23 +1117,26 @@ fn sqlite_datetime_text(text: &str, zone: &Zone) -> Option<String> {
     };
     let b = body.as_bytes();
     if b.len() < 19 || !sqlite_date_text(&body[..10]) || !(b[10] == b' ' || b[10] == b'T') {
-        return None;
+        return Ok(None);
     }
     if !(digits(&b[11..13]) && b[13] == b':' && digits(&b[14..16]) && b[16] == b':' && digits(&b[17..19])) {
-        return None;
+        return Ok(None);
     }
     let fraction = match &b[19..] {
         [] => "",
         [b'.', rest @ ..] if (1..=6).contains(&rest.len()) && digits(rest) => &body[20..],
-        _ => return None,
+        _ => return Ok(None),
     };
     let wall = format!("{} {}.{:0<6}", &body[..10], &body[11..19], fraction);
-    let t = NaiveDateTime::parse_from_str(&wall, "%Y-%m-%d %H:%M:%S%.6f").ok()?;
+    let t = NaiveDateTime::parse_from_str(&wall, "%Y-%m-%d %H:%M:%S%.6f").map_err(|error| Error::internal(format!("{wall:?} is not a datetime: {error}")))?;
     match offset {
-        None => Some(wall),
+        None => Ok(Some(wall)),
         Some(minutes) => {
-            let instant = t.checked_sub_signed(chrono::Duration::minutes(i64::from(minutes)))?.and_utc();
-            Some(format!("{}.{:0<6}", zone.local(instant).format("%Y-%m-%d %H:%M:%S"), fraction))
+            let instant = t
+                .checked_sub_signed(chrono::Duration::minutes(i64::from(minutes)))
+                .ok_or_else(|| Error::internal(format!("{wall:?} with its offset is out of the datetime range")))?
+                .and_utc();
+            Ok(Some(format!("{}.{:0<6}", zone.local(instant).format("%Y-%m-%d %H:%M:%S"), fraction)))
         }
     }
 }
@@ -1142,7 +1169,7 @@ pub(crate) fn message_time_text(text: &str, col_type: &str, zone: &Zone) -> Resu
                 _ => Err(Error::Engine { code: codes::CODEC_ENCODE.into(), msg: format!("time value {text:?} is not HH:MM:SS[.ffffff]") }),
             }
         }
-        _ => sqlite_datetime_text(text, zone).ok_or_else(|| invalid_time_text(text, col_type)),
+        _ => sqlite_datetime_text(text, zone)?.ok_or_else(|| invalid_time_text(text, col_type)),
     }
 }
 
@@ -1152,7 +1179,7 @@ fn datetime_digits(text: &str, precision: i64) -> Result<String> {
     let Some((whole, fraction)) = text.split_once('.') else {
         return Ok(text.to_owned());
     };
-    let p = usize::try_from(precision).unwrap_or(0).min(fraction.len());
+    let p = precision_count(precision)?.min(fraction.len());
     if fraction[p..].bytes().any(|b| b != b'0') {
         return Err(Error::Engine { code: codes::CODEC_ENCODE.into(), msg: format!("datetime value {text:?} has more than {p} fraction digits") });
     }
@@ -1160,15 +1187,28 @@ fn datetime_digits(text: &str, precision: i64) -> Result<String> {
 }
 
 /// Truncates the six-digit fractional text of the executor clock to the p fractional digits of a `datetime(p)` column.
-fn clock_digits(text: &str, precision: i64) -> String {
+fn clock_digits(text: &str, precision: i64) -> Result<String> {
     let Some((whole, fraction)) = text.split_once('.') else {
-        return text.to_owned();
+        return Ok(text.to_owned());
     };
-    let p = usize::try_from(precision).unwrap_or(0).min(fraction.len());
-    if p == 0 {
-        whole.to_owned()
-    } else {
-        format!("{whole}.{}", &fraction[..p])
+    let p = precision_count(precision)?.min(fraction.len());
+    Ok(if p == 0 { whole.to_owned() } else { format!("{whole}.{}", &fraction[..p]) })
+}
+
+/// The number of fractional digits a precision names, which is a count and so cannot be negative.
+fn precision_count(precision: i64) -> Result<usize> {
+    usize::try_from(precision).map_err(|error| Error::Engine {
+        code: codes::SCHEMA_INVALID.into(),
+        msg: format!("precision {precision} is not a count of fractional digits: {error}"),
+    })
+}
+
+/// Joins a lock-request failure with the failure of the busy_timeout restore that follows it, so both reach the caller.
+fn with_restore_failure(lock: Error, restore: Error) -> Error {
+    match lock {
+        Error::Engine { code, msg } => Error::Engine { code, msg: format!("{msg}; restoring busy_timeout also failed: {restore}") },
+        Error::Config(msg) => Error::Config(format!("{msg}; restoring busy_timeout also failed: {restore}")),
+        other => Error::Rollback { callback: Box::new(other), rollback: Box::new(restore) },
     }
 }
 
@@ -1182,7 +1222,7 @@ pub(crate) fn time_value(v: Param, precision: i64) -> Result<Param> {
     };
     let full = message_time_text(&text, "time", &Zone)?;
     let (whole, fraction) = full.split_at(8);
-    let p = usize::try_from(precision).unwrap_or(0).min(6);
+    let p = precision_count(precision)?.min(6);
     if fraction[1 + p..].bytes().any(|b| b != b'0') {
         return Err(Error::Engine { code: codes::CODEC_ENCODE.into(), msg: format!("time value {text:?} has more than {p} fraction digits") });
     }
