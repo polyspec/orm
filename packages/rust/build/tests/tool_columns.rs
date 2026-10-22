@@ -1,6 +1,7 @@
 use polyspec_orm_build::tool_db::{self, QueryLimits, Val};
 
 #[tokio::test]
+// Requirements: INT-135.
 async fn physical_query_columns_preserve_empty_results_and_duplicate_aliases() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(30), check()).await.expect("column test deadline");

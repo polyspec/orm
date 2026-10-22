@@ -9075,6 +9075,9 @@
     {
       "id": "rust-physical-query-columns-preserve-empty-results-and-duplicate-aliases",
       "kind": "feature",
+      "requirements": [
+        "INT-135"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -9100,6 +9103,9 @@
     {
       "id": "rust-tool-sqlite-file-name-is-the-path",
       "kind": "feature",
+      "requirements": [
+        "CFG-11"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -9223,6 +9229,9 @@
     {
       "id": "rust-catalog-disposal-tests-aborted-read-only-connections-are-not-returned-to-the-pool",
       "kind": "feature",
+      "requirements": [
+        "INT-137"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -9234,6 +9243,9 @@
     {
       "id": "rust-catalog-read-only-policy-validates-nested-read-shapes-and-rejects-writes",
       "kind": "feature",
+      "requirements": [
+        "INT-136"
+      ],
       "bindings": [
         {
           "implementation": "rust",

@@ -1,6 +1,7 @@
 use super::{CatalogConnection, Conn};
 
 #[tokio::test]
+// Requirements: INT-137.
 async fn aborted_read_only_connections_are_not_returned_to_the_pool() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(30), check()).await.expect("read-only disposal deadline");

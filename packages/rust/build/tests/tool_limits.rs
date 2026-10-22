@@ -47,6 +47,7 @@ async fn check_databases() {
     std::fs::remove_file(path).expect("remove owner SQLite fixture");
 }
 
+// Requirements: CFG-11.
 // A SQLite DSN with a query creates the file from the path alone (docs/spec/dialects.md "Probe environment").
 #[tokio::test]
 async fn tool_sqlite_file_name_is_the_path() {
