@@ -624,7 +624,8 @@ static bool header_name_char(char c)
 static void lex_line(parser *p, bool recover)
 {
     str s = p->text;
-    p->t = (tokens){0};
+    /* The buffer of the line is reused: a line keeps no pointer into it past its own reading, and the arena keeps no copy of it. */
+    p->t.n = 0;
     p->lex_failed = false;
     zend_long column = 1;
     size_t i = 0;
@@ -1150,18 +1151,32 @@ static ctype *read_type(parser *p, size_t i, size_t *next)
 
 /* If a preceding table or a table in the document being written already uses the same renderer name, reports it at the later position (docs/spec/dbspec.md "Names"). */
 /* If the table of the document being written, or a preceding table, already wrote this renderer name, reports both sources at the later position (docs/spec/dbspec.md "Names"). */
-static void record_generated(parser *p, str name, str source)
+/* The source of a generated name: the format of its message and the table (and column) it names. The text is made only for a
+ * diagnostic, so a column that claims its generated name keeps no formatted text. */
+typedef struct {
+    const char *form;
+    str table, column;
+} gsource;
+
+#define GSRC(form, table, column) ((gsource){(form), (table), (column)})
+
+static str gsource_text(const gsource *g)
 {
-    str *own = dbs_alloc(sizeof *own);
+    return fmt(g->form, g->table, g->column);
+}
+
+static void record_generated(parser *p, str name, gsource source)
+{
+    gsource *own = dbs_alloc(sizeof *own);
     *own = source;
     smap_set(&p->generated_names, name, own);
 }
 
-static void claim_generated(parser *p, zend_long line, zend_long column, str name, str source)
+static void claim_generated(parser *p, zend_long line, zend_long column, str name, gsource source)
 {
-    str *first = smap_get(&p->generated_names, name);
+    gsource *first = smap_get(&p->generated_names, name);
     if (first != NULL) {
-        error(p, "name.duplicate", line, column, fmt("generated name `%S` of %S repeats the generated name of %S", name, source, *first));
+        error(p, "name.duplicate", line, column, fmt("generated name `%S` of %S repeats the generated name of %S", name, gsource_text(&source), gsource_text(first)));
         return;
     }
     record_generated(p, name, source);
@@ -1175,7 +1190,7 @@ static void claim_used_generated(parser *p, table *definition)
         if (c->identity || c->type == NULL || str_eqc(c->type->name, "text") || str_eqc(c->type->name, "bytes")) {
             continue;
         }
-        record_generated(p, dbs_renderer_name(definition->name, c->name), fmt("used table %S", definition->name));
+        record_generated(p, dbs_renderer_name(definition->name, c->name), GSRC("used table %S", definition->name, SNULL));
     }
     if (definition->settings == NULL) {
         return;
@@ -1195,7 +1210,7 @@ static void claim_used_generated(parser *p, table *definition)
             count = 3;
         }
         for (size_t e = 0; e < count; e++) {
-            record_generated(p, dbs_renderer_name(definition->name, str_c(events[e])), fmt("used table %S", definition->name));
+            record_generated(p, dbs_renderer_name(definition->name, str_c(events[e])), GSRC("used table %S", definition->name, SNULL));
         }
     }
 }
@@ -1293,7 +1308,7 @@ static void column_line(parser *p)
     if (identity == NULL && type != NULL && !str_eqc(type->name, "text") && !str_eqc(type->name, "bytes") && well_formed
         && dbs_valid_name(p->table->name)) {
         claim_generated(p, p->line, name->column, dbs_renderer_name(p->table->name, name->text),
-            fmt("table %S column %S", p->table->name, name->text));
+            GSRC("table %S column %S", p->table->name, name->text));
     }
     if (smap_has(p->columns, name->text)) {
         error(p, "name.duplicate", p->line, name->column, fmt("column `%S` is already defined", name->text));
@@ -3000,8 +3015,8 @@ static void check_settings(parser *p, bool changed_by_foreign_keys)
             if (changed_by_foreign_keys) {
                 error(p, "setting", line, at, SL("setting `immutable` is rejected on a child of a cascade or set_null foreign key"));
             }
-            claim_generated(p, line, at, dbs_renderer_name(p->table->name, SL("immutable_update")), fmt("table %S setting immutable", p->table->name));
-            claim_generated(p, line, at, dbs_renderer_name(p->table->name, SL("immutable_delete")), fmt("table %S setting immutable", p->table->name));
+            claim_generated(p, line, at, dbs_renderer_name(p->table->name, SL("immutable_update")), GSRC("table %S setting immutable", p->table->name, SNULL));
+            claim_generated(p, line, at, dbs_renderer_name(p->table->name, SL("immutable_delete")), GSRC("table %S setting immutable", p->table->name, SNULL));
         } else if (str_eqc(kind, "audit")) {
             if (changed_by_foreign_keys) {
                 error(p, "setting", line, at, SL("setting `audit` is rejected on a child of a cascade or set_null foreign key"));
@@ -3017,9 +3032,9 @@ static void check_settings(parser *p, bool changed_by_foreign_keys)
             if (dbs_valid_name(a->v[0].text) && dbs_valid_name(a->v[3].text) && dbs_valid_name(a->v[4].text)) {
                 PUSH(p->deferred_audits, ((daudit_rec){p->table, p->columns, *a, audit != NULL ? audit->type : NULL, line, recorded}));
             }
-            claim_generated(p, line, at, dbs_renderer_name(p->table->name, SL("audit_insert")), fmt("table %S setting audit", p->table->name));
-            claim_generated(p, line, at, dbs_renderer_name(p->table->name, SL("audit_update")), fmt("table %S setting audit", p->table->name));
-            claim_generated(p, line, at, dbs_renderer_name(p->table->name, SL("audit_delete")), fmt("table %S setting audit", p->table->name));
+            claim_generated(p, line, at, dbs_renderer_name(p->table->name, SL("audit_insert")), GSRC("table %S setting audit", p->table->name, SNULL));
+            claim_generated(p, line, at, dbs_renderer_name(p->table->name, SL("audit_update")), GSRC("table %S setting audit", p->table->name, SNULL));
+            claim_generated(p, line, at, dbs_renderer_name(p->table->name, SL("audit_delete")), GSRC("table %S setting audit", p->table->name, SNULL));
         }
     }
     state_machine_check(p);

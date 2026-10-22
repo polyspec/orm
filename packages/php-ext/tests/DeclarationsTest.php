@@ -243,6 +243,32 @@ final class DeclarationsTest extends TestCase
         );
     }
 
+    // The limit/columns document (121 tables of 1000 columns; the 120001st column trips the limit) is parsed with the extension
+    // under the memory the test sets: its peak over the memory before the parse stays under 96 MB, so the case runs within
+    // PHPUnit's 128 MB limit with room for the process. T182-0-2-1.
+    public function testLimitColumnsPeak(): void
+    {
+        ini_set('memory_limit', '256M');
+        $text = "dbspec 1 shop\n";
+        for ($t = 0; $t < 121; $t++) {
+            $text .= "\ntable t$t {\n";
+            for ($i = 0; $i < 1000; $i++) {
+                $text .= "  c$i i64\n";
+            }
+            $text .= "  primary key (c0)\n}\n";
+        }
+        $before = memory_get_usage();
+        memory_reset_peak_usage();
+        $result = \Polyspec\Orm\Dbspec\Dbspec::parse($text, []);
+        $peak = memory_get_peak_usage() - $before;
+        Assert::assertNull($result->document, 'the limit document returned a document');
+        Assert::assertLessThan(
+            96_000_000,
+            $peak,
+            sprintf('the limit/columns case peaks at %.1f MB, above its bound of 96 MB', $peak / 1e6)
+        );
+    }
+
     // PIE builds the extension from composer.json's php-ext: the name is the extension's name that was loaded, and
     // config.m4 is in build-path.
     // INT-95: the package is of type php-ext, names polyspec_orm, and its build-path holds the config.m4 that builds
