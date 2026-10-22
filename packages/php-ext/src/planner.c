@@ -2963,6 +2963,19 @@ static bool render_sets(pctx *c, pbinds *b, HashTable *ent, HashTable *set, zval
     return true;
 }
 
+/* The main step of an UPDATE of ent: its table, the assignments of sets and the condition where. */
+static pstep *update_main(pctx *c, pbinds *b, HashTable *ent, zval *sets, zend_string *where)
+{
+    zend_string *tbl = b_table(c, b, ent);
+    OKP(tbl);
+    zend_string *sql = fmt(c, "UPDATE %s SET %s WHERE %s", ZSTR_VAL(tbl), ZSTR_VAL(implode(c, ", ", Z_ARRVAL_P(sets))),
+        ZSTR_VAL(where));
+    zval *slots = copy_list(c, Z_ARRVAL_P(b->slots));
+    zval *tables = b_tables(c, b);
+    OKP(tables);
+    return step_new(c, "main", sql, ZSTR_EMPTY_ALLOC(), slots, tables);
+}
+
 /* The statement of an update (Planner::updateStep). */
 static pstep *update_step(pctx *c, HashTable *r)
 {
@@ -3031,14 +3044,7 @@ static pstep *update_step(pctx *c, HashTable *r)
         OKP(sq);
         where = fmt(c, "%s AND %s IS NULL", ZSTR_VAL(where), ZSTR_VAL(sq));
     }
-    zend_string *tbl = b_table(c, b, ent);
-    OKP(tbl);
-    zend_string *sql = fmt(c, "UPDATE %s SET %s WHERE %s", ZSTR_VAL(tbl), ZSTR_VAL(implode(c, ", ", Z_ARRVAL_P(sets))),
-        ZSTR_VAL(where));
-    zval *slots = copy_list(c, Z_ARRVAL_P(b->slots));
-    zval *tables = b_tables(c, b);
-    OKP(tables);
-    return step_new(c, "main", sql, ZSTR_EMPTY_ALLOC(), slots, tables);
+    return update_main(c, b, ent, sets, where);
 }
 
 /* The statement of a delete, a soft delete or an update of the deleted time (Planner::deleteStep). */
@@ -3136,14 +3142,7 @@ static pstep *restore_step(pctx *c, HashTable *r)
     zend_string *sq = qcol(c, root, soft);
     OKP(sq);
     where = fmt(c, "%s AND %s IS NOT NULL", ZSTR_VAL(where), ZSTR_VAL(sq));
-    zend_string *tbl = b_table(c, b, ent);
-    OKP(tbl);
-    zend_string *sql = fmt(c, "UPDATE %s SET %s WHERE %s", ZSTR_VAL(tbl), ZSTR_VAL(implode(c, ", ", Z_ARRVAL_P(sets))),
-        ZSTR_VAL(where));
-    zval *slots = copy_list(c, Z_ARRVAL_P(b->slots));
-    zval *tables = b_tables(c, b);
-    OKP(tables);
-    return step_new(c, "main", sql, ZSTR_EMPTY_ALLOC(), slots, tables);
+    return update_main(c, b, ent, sets, where);
 }
 
 /* The statement that restarts the identity after the largest key (Planner::restartIdentityStep). */
