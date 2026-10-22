@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 58846ac9627ea97dbf0933519a707df4820efc5d64e2dfb484bd65d28f3504a2 -->
+<!-- source-sha256: 308307e5be9bbf6c35f0fa08d1ef9202c4d581602483a95748ffcc5577e6712a -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -148,7 +148,7 @@
 | KSTD-10 | scripts/repo/check.test.mts는 main에서 통과한다. 실패하는 20개 case를 고치고, make land가 그 파일을 실행한다(KSTD-10). 원인: scripts/repo/check.test.mts의 case 20개가 main에서 실패하는데 make land는 그것을 실행하지 않아, 깨진 저장소 검사가 실패하는 gate 없이 land된다. 근거: main에서 그 파일을 실행하면 case 20개가 실패한다. 완료 기준: 파일의 모든 case가 main에서 통과하고, scripts/repo 변경이 선택하는 gate가 그 파일을 실행한다. 현재 빨간 상태: main에서 scripts/repo/check.test.mts를 실행하면 case 20개가 실패한다. | `scripts/repo/check.test.mts`, `scripts/repo/check.mts` | `node node_modules/@polyspec/kit/dist/run-tests.mjs node -- scripts/repo/check.test.mts` | [ ] |
 | KSTD-10-1 | group-rows-db 대상이 CI group에 있어 CHECK_TARGETS의 모든 target이 CI에서 한 번씩 실행된다(KSTD-10 하위, KSTD-5-11). Cause: 일곱 group-rows-db 대상이 어떤 CI_TARGETS group에도 없다 | Makefile | `var/tools/bin/node --test --test-name-pattern='the CI workflow runs every target of CHECK_TARGETS once\|the CI groups run every target' scripts/repo/check.test.mts` | [o] |
 | KSTD-10-2 | group-rows-db-typescript가 읽는 TypeScript build 출력을 보유한다(KSTD-10 하위). Cause: READ_TYPESCRIPT 없이 실행 | Makefile | `var/tools/bin/node --test --test-name-pattern='a target that runs code using the TypeScript build output holds it' scripts/repo/check.test.mts` | [o] |
-| KSTD-10-3 | group-rows-db-go가 go-test.mts를 거쳐 시한 없이 실행한다(KSTD-10 하위). Cause: go test를 직접 실행, 기본 10분 timeout | Makefile | `var/tools/bin/node --test --test-name-pattern='every go test runs through go-test.mts or run-long\|no check puts a deadline on a long operation' scripts/repo/check.test.mts` | [ ] |
+| KSTD-10-3 | group-rows-db-go가 go-test.mts를 거쳐 시한 없이 실행한다(KSTD-10 하위). Cause: go test를 직접 실행, 기본 10분 timeout | Makefile | `var/tools/bin/node --test --test-name-pattern='every go test runs through go-test.mts or run-long\|no check puts a deadline on a long operation' scripts/repo/check.test.mts` | [o] |
 | KSTD-10-4 | group_rows_db.mjs가 tests/testcase.mts로 사례를 보고한다(KSTD-10 하위). Cause: caseTest 없이 실행 | packages/ts/tests/group_rows_db.mjs | `var/tools/bin/node --test --test-name-pattern='every PHP and TypeScript test that a check runs reports its cases' scripts/repo/check.test.mts` | [ ] |
 | KSTD-10-5 | scripts/php/vendor-autoload-check.test.mjs가 caseTest로 테스트를 선언한다(KSTD-10 하위). Cause: node:test 직접 사용 | scripts/php/vendor-autoload-check.test.mjs | `var/tools/bin/node --test --test-name-pattern='every JavaScript test declares its cases with caseTest' scripts/repo/check.test.mts` | [ ] |
 | KSTD-10-6 | packages/rust/orm의 mysql_lock_wait_timeout_is_canceled test가 testcase package로 case를 시작한다(KSTD-10 하위, KSTD-5-22). Cause: polyspec_orm_testcase 미사용 | packages/rust/orm/src/lib.rs | `var/tools/bin/node --test --test-name-pattern='every Rust test starts its case with the shared testcase package' scripts/repo/check.test.mts` | [ ] |

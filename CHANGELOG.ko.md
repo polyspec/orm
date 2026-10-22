@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: aeb87fb7a80997d1f2fc793b53a179cfefb54b273e4ea2c24f8f133671a935e2 -->
+<!-- source-sha256: 8d3f810f958d59c2141d62606d2a7117d50f319498953551af08e3f638737cd0 -->
 # 변경 이력
 
 ## Unreleased
+- `group-rows-db-go`는 Go test를 `GO_TEST`(`-timeout 0`인 go-test wrapper)로 실행해 run 줄을 얻고 기본 10분 deadline을 받지 않는다(KSTD-10-3). red: 사례가 recipe가 `go test`를 직접 실행하는 것을 찾았다.
 - `group-rows-db-typescript`는 recipe를 `$(READ_TYPESCRIPT)`로 시작해 읽는 TypeScript build 출력을 보유한다(KSTD-10-2). red: 사례가 lease 없는 recipe를 찾았다.
 - group-rows-db 대상(Go, TypeScript, Python, PHP, PHP extension, Rust)은 CI group에서 실행되고, generated-lint-check는 static group에서 실행되어 CHECK_TARGETS의 모든 target이 한 번씩 실행된다(KSTD-10-1). red: CI group 사례가 group-rows-db 대상 일곱 개와 generated-lint-check를 어느 group에도 없는 것으로 찾았다.
 - T230 comment 변경 후에도 php-ext arginfo 헤더가 stub과 일치하므로 main 빌드가 다시 통과한다 (T230-1). red: `make build-php-ext`가 `the stub hash is e52e7311624b7ffc7855b911a2d9eaa5565b147c, the stub's is 3d0af81494eb1e68a766385d1d89b7ae170fd26b`로 실패했다.

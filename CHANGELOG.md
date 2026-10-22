@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- `group-rows-db-go` runs its Go test through `GO_TEST`, the go-test wrapper with `-timeout 0`, so the test gets a run line and no default 10 minute deadline (KSTD-10-3). Red: the case found the recipe running `go test` directly.
 - `group-rows-db-typescript` starts its recipe with `$(READ_TYPESCRIPT)`, so it holds the TypeScript build output it reads (KSTD-10-2). Red: the case found its recipe without the lease.
 - The group-rows-db targets (Go, TypeScript, Python, PHP, PHP extension and Rust) run in the CI groups, and generated-lint-check runs in the static group, so every target of CHECK_TARGETS runs once (KSTD-10-1). Red: the CI group case found seven group-rows-db targets and generated-lint-check in no group.
 - The php-ext arginfo header matches its stub after the T230 comment change, so the build of main passes again (T230-1). Red: `make build-php-ext` failed with `the stub hash is e52e7311624b7ffc7855b911a2d9eaa5565b147c, the stub's is 3d0af81494eb1e68a766385d1d89b7ae170fd26b`.
