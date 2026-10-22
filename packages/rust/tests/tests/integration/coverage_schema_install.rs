@@ -127,7 +127,7 @@ async fn coverage_schema_install_external_documents() {
         let drifted = external_schema(&EXTERNAL_USER.replace("  name varchar(191)\n", "  name varchar(191)\n  coverage_missing varchar(8) null\n"));
         let want = "the tables that the set uses from external documents differ from the database: column user.coverage_missing does not exist";
         let config = |r: polyspec_orm::Result<()>| match r {
-            Err(e) if e.code() == polyspec_orm::codes::CONFIG && e.to_string().contains(want) => {}
+            Err(e) if e.code() == polyspec_orm::codes::CONFIG && e.to_string().contains(want) => assert_eq!(e.code(), polyspec_orm::codes::CONFIG, "{e}"),
             other => panic!("{other:?}, want CONFIG with {want:?}"),
         };
         polyspec_orm::Db::connect_schema(&dsn, drifted, 2, polyspec_orm::Config::default())

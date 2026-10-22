@@ -534,7 +534,7 @@ async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
                 })
                 .await;
             match ended {
-                Err(error) if is_stop(&error) => {}
+                Err(error) if is_stop(&error) => assert!(is_stop(&error), "{error:?}"),
                 other => return Err(Error::Config(format!("the transaction ended with {other:?}, not its callback's error"))),
             }
             json!(Logs::new().connect(db).get_count().await?)
