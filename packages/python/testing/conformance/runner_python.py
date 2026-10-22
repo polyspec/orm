@@ -987,7 +987,7 @@ def main():
         def failure(fn):
             try:
                 fn()
-            except Exception as error:  # noqa: BLE001
+            except Exception as error:  # noqa: BLE001 - every library error is the result of the vector
                 return {"error": code_of(error), "message": str(error)}
             return None
 
@@ -1513,7 +1513,7 @@ def main():
             UpsertCell().connect(db).set_label("none").duplication(
                 UpsertCell().set_label("second")
             ).create()
-        except Exception as error:  # noqa: BLE001
+        except Exception as error:  # noqa: BLE001 - every library error is the result of the vector
             unassigned = {"error": code_of(error), "message": str(error)}
         updated.delete()
         return {
