@@ -6,6 +6,8 @@
 declare(strict_types=1);
 
 use Polyspec\Orm\Catalog;
+use Polyspec\Orm\CatalogGridCell;
+use Polyspec\Orm\OrmException;
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
 
@@ -79,5 +81,87 @@ final class CoverageCatalogConnectionTest extends TestCase
         self::assertCount(1, $updated->rows);
         self::assertSame(1, $this->catalog->deleteRow($find('catalog-updated')));
         self::assertSame(0, $tenantRows());
+    }
+
+    /**
+     * The grid cells of one row per dialect (docs/spec/interfaces.md, "Rust native grid query specification"): float cells hold
+     * their IEEE-754 bits in hexadecimal, UNSIGNED integers are exact decimal digits, and date, time and datetime cells hold
+     * dbspec text. Each refused value fails with CATALOG_VALUE.
+     */
+    public function test_grid_cells(): void
+    {
+        [$sql, $expected, $refused] = match ($this->driver) {
+            'mysql' => [
+                "SELECT CAST(1.5 AS FLOAT) AS f, CAST(1.5 AS DOUBLE) AS d, "
+                . "CAST(1.50 AS DECIMAL(10,2)) AS dv, CAST(NULL AS DATE) AS n, "
+                . "CAST('2024-02-29' AS DATE) AS dt, CAST('12:34:56.5' AS TIME(6)) AS tm, "
+                . "CAST('2024-02-29 01:02:03.5' AS DATETIME(6)) AS dtm",
+                [
+                    new CatalogGridCell('float32', '3fc00000'),
+                    new CatalogGridCell('float64', '3ff8000000000000'),
+                    new CatalogGridCell('decimal', '1.50'),
+                    new CatalogGridCell('null'),
+                    new CatalogGridCell('date', '2024-02-29'),
+                    new CatalogGridCell('time', '12:34:56.500000'),
+                    new CatalogGridCell('datetime', '2024-02-29 01:02:03.500000'),
+                ],
+                [
+                    "SELECT CAST('-01:00:00' AS TIME(6)) AS t",
+                    // PDO reports no UNSIGNED flag for an integer expression, so its signedness is not known: refused.
+                    "SELECT CAST(-7 AS SIGNED) AS i",
+                    "SELECT CAST(18446744073709551615 AS UNSIGNED) AS u",
+                    "SELECT CAST('ab' AS BINARY) AS b",
+                ],
+            ],
+            'postgres' => [
+                "SELECT 1.5::real AS f, 1.5::double precision AS d, 'NaN'::double precision AS nan, 'NaN'::real AS nanf, "
+                . "9223372036854775807::bigint AS i, 2.50::numeric(10,2) AS dec, '\\x6162'::bytea AS b, NULL::date AS n, "
+                . "'2024-02-29'::date AS dt, '12:34:56.5'::time AS tm, '2024-02-29 01:02:03.5'::timestamp AS dtm",
+                [
+                    new CatalogGridCell('float32', '3fc00000'),
+                    new CatalogGridCell('float64', '3ff8000000000000'),
+                    new CatalogGridCell('float64', '7ff8000000000000'),
+                    new CatalogGridCell('float32', '7fc00000'),
+                    new CatalogGridCell('integer', 9223372036854775807),
+                    new CatalogGridCell('decimal', '2.50'),
+                    new CatalogGridCell('binary', 'ab'),
+                    new CatalogGridCell('null'),
+                    new CatalogGridCell('date', '2024-02-29'),
+                    new CatalogGridCell('time', '12:34:56.500000'),
+                    new CatalogGridCell('datetime', '2024-02-29 01:02:03.500000'),
+                ],
+                [
+                    "SELECT '2024-01-01 00:00:00+00'::timestamptz AS t",
+                    "SELECT '00:00:00+00'::timetz AS t",
+                    "SELECT '24:00:00'::time AS t",
+                    "SELECT 'infinity'::date AS t",
+                ],
+            ],
+            default => [
+                "SELECT 1.5 AS d, 7 AS i, 'x' AS t, X'6162' AS b, NULL AS n",
+                [
+                    new CatalogGridCell('float64', '3ff8000000000000'),
+                    new CatalogGridCell('integer', 7),
+                    new CatalogGridCell('text', 'x'),
+                    new CatalogGridCell('binary', 'ab'),
+                    new CatalogGridCell('null'),
+                ],
+                [],
+            ],
+        };
+        $result = $this->catalog->readOnlyGridQuery($sql, []);
+        self::assertCount(1, $result->rows);
+        self::assertEquals($expected, $result->rows[0]);
+        // A table column takes its type from its definition: the integer of user.seq is an integer cell on every database.
+        $seq = $this->catalog->readOnlyGridQuery('SELECT seq FROM ' . $this->quote('user') . ' ORDER BY seq LIMIT 1', []);
+        self::assertSame('integer', $seq->rows[0][0]->kind);
+        foreach ($refused as $query) {
+            try {
+                $this->catalog->readOnlyGridQuery($query, []);
+                self::fail("a grid value of $query was not refused");
+            } catch (OrmException $e) {
+                self::assertStringContainsString('CATALOG_VALUE', $e->getMessage());
+            }
+        }
     }
 }
