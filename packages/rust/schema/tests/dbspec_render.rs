@@ -1,21 +1,14 @@
 //! The vectors of tests/dbspec/ddl.json through `dbspec::render`: every case
 //! renders the statements listed for MySQL, PostgreSQL and SQLite.
 
-use polyspec_orm_schema::dbspec::{self, Dialect, Document};
+use polyspec_orm_schema::dbspec::{self, Document};
 use polyspec_orm_testcase::Trial;
 use serde_json::Value;
-use std::collections::BTreeMap;
-use std::time::Duration;
 
-// DEADLINE is the CPU time limit of the test; the wall-clock deadline that ends a hung test is ten times that.
-// (polyspec_orm_testcase::wall_for_cpu).
-const DEADLINE: Duration = Duration::from_secs(10);
+#[path = "common/dbspec_values.rs"]
+mod dbspec_values;
 
-const DIALECTS: [(&str, Dialect); 3] = [("mysql", Dialect::MySql), ("postgres", Dialect::Postgres), ("sqlite", Dialect::Sqlite)];
-
-fn text(lines: &Value) -> String {
-    lines.as_array().unwrap().iter().map(|l| format!("{}\n", l.as_str().unwrap())).collect()
-}
+use dbspec_values::{DEADLINE, DIALECTS};
 
 fn strings(value: &Value) -> Vec<String> {
     value.as_array().unwrap().iter().map(|s| s.as_str().unwrap().to_owned()).collect()
@@ -39,14 +32,7 @@ fn render_vectors() -> Vec<Trial> {
 
 fn render_vectors_case(case: &Value) {
     let id = case["id"].as_str().unwrap();
-    let documents_value = case["documents"].as_object().unwrap();
-    let documents: Vec<Document> = documents_value
-        .iter()
-        .map(|(name, lines)| {
-            let set: BTreeMap<String, String> = documents_value.iter().filter(|(other, _)| *other != name).map(|(other, l)| (other.clone(), text(l))).collect();
-            dbspec::parse(&text(lines), &set).map(|parsed| parsed.document).unwrap_or_else(|errors| panic!("{id}: {errors:?}"))
-        })
-        .collect();
+    let documents = dbspec_values::case_documents(id, case);
     let mut refs: Vec<&Document> = documents.iter().collect();
     for (dialect_name, dialect) in DIALECTS {
         let want = strings(&case["statements"][dialect_name]);

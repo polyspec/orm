@@ -3,24 +3,18 @@
 //! `dbspec::manifest` and `dbspec::render`.
 
 use polyspec_orm_case_clock::CaseClock;
-use polyspec_orm_schema::dbspec::{self, Diagnostic, Dialect, Document};
+use polyspec_orm_schema::dbspec::{self, Diagnostic, Document};
 use polyspec_orm_testcase::Trial;
 use serde_json::Value;
 use std::collections::BTreeMap;
-use std::time::Duration;
 
 #[path = "common/dbspec_cases.rs"]
 mod dbspec_cases;
 
-// DEADLINE is the CPU time limit of the test; the wall-clock deadline that ends a hung test is ten times that.
-// (polyspec_orm_testcase::wall_for_cpu).
-const DEADLINE: Duration = Duration::from_secs(10);
+#[path = "common/dbspec_values.rs"]
+mod dbspec_values;
 
-const DIALECTS: [(&str, Dialect); 3] = [("mysql", Dialect::MySql), ("postgres", Dialect::Postgres), ("sqlite", Dialect::Sqlite)];
-
-fn text(lines: &Value) -> String {
-    lines.as_array().unwrap().iter().map(|l| format!("{}\n", l.as_str().unwrap())).collect()
-}
+use dbspec_values::{text, DEADLINE, DIALECTS};
 
 /// Joins the lines with LF. With no lines, the text is empty.
 fn lines_text(lines: &Value) -> String {
@@ -78,14 +72,7 @@ fn manifest_vectors() -> Vec<Trial> {
 
 fn manifest_vectors_case(case: &Value) {
     let id = case["id"].as_str().unwrap();
-    let documents_value = case["documents"].as_object().unwrap();
-    let documents: Vec<Document> = documents_value
-        .iter()
-        .map(|(name, lines)| {
-            let set = documents_value.iter().filter(|(other, _)| *other != name).map(|(other, l)| (other.clone(), text(l))).collect();
-            parsed(id, &text(lines), &set)
-        })
-        .collect();
+    let documents = dbspec_values::case_documents(id, case);
     let mut refs: Vec<&Document> = documents.iter().collect();
     expect(case, &refs);
     // The set is ordered by document name, not by the order given.
