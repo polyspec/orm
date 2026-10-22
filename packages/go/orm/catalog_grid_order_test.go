@@ -52,7 +52,7 @@ func TestCoverageCatalogGridOrder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer c.Close()
+	defer testcase.Close(t, c)
 
 	// The plan of the wrapper that ReadOnlyGridQuery runs: flattened, the plan reads grid_order directly.
 	plan, err := c.db.sql.QueryContext(context.Background(), "EXPLAIN QUERY PLAN "+catalogSQLiteRawQuery(query, 2))

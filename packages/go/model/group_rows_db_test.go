@@ -7,6 +7,7 @@ import (
 
 	"github.com/polyspec/orm/packages/go/model"
 	"github.com/polyspec/orm/packages/go/orm"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // TestGroupRowsDatabase reads the grouped counts of the seeded bench database (BENCH_SQLITE_DSN, from make run-databases)
@@ -19,7 +20,7 @@ func TestGroupRowsDatabase(t *testing.T) {
 		t.Fatal("BENCH_SQLITE_DSN is required; run it through make run-databases")
 	}
 	db := must(model.Connect(dsn, orm.Config{AESKey: "bench-salt", BlindIndexKey: "bench-blind-index"}))
-	defer db.Close()
+	defer testcase.Close(t, db)
 	groups := must(model.Author().Connect(db).GroupByIsClose().OrderByIsCloseAsc().GetsCount())
 	if groups.Len() != 2 {
 		t.Fatalf("getsCount returned %d rows, want 2", groups.Len())

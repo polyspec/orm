@@ -49,7 +49,7 @@ func TestCoverageCatalogRead(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	ctx := context.Background()
 	driver, c := catalogConnect(t)
-	defer c.Close()
+	defer testcase.Close(t, c)
 
 	namespace, err := c.CurrentNamespace(ctx)
 	if err != nil {
@@ -100,7 +100,7 @@ func TestCoverageCatalogRowMutation(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	ctx := context.Background()
 	driver, c := catalogConnect(t)
-	defer c.Close()
+	defer testcase.Close(t, c)
 
 	account := catalogQuote("composite_account", driver)
 	countSQL := "SELECT COUNT(*) FROM " + account + " WHERE tenant_id = 990005"
@@ -259,7 +259,7 @@ func TestCoverageCatalogGridCells(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	ctx := context.Background()
 	driver, c := catalogConnect(t)
-	defer c.Close()
+	defer testcase.Close(t, c)
 
 	sql, want := catalogGridCells(driver)
 	result, err := c.ReadOnlyGridQuery(ctx, sql, nil, orm.CatalogQueryLimits{})
@@ -311,7 +311,7 @@ func TestCoverageCatalogGridDeclared(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	ctx := context.Background()
 	driver, c := catalogConnect(t)
-	defer c.Close()
+	defer testcase.Close(t, c)
 	if driver != "sqlite" {
 		t.Skip("the declared-type cases of the grid are the SQLite storage-class cases")
 	}
@@ -356,7 +356,7 @@ func TestCoverageCatalogGridTimestamp(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	ctx := context.Background()
 	driver, c := catalogConnect(t)
-	defer c.Close()
+	defer testcase.Close(t, c)
 	_, dsn := featureDatabase(t)
 
 	var refused []string
@@ -437,7 +437,7 @@ func TestCoverageCatalogClosed(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%s: reopen: %v", driver, err)
 	}
-	defer reopened.Close()
+	defer testcase.Close(t, reopened)
 	after, err := reopened.TablePage(ctx, author, 1, 0)
 	if err != nil || len(after.Result.Rows) != 1 || !reflect.DeepEqual(after.Result.Rows[0][0], page.Result.Rows[0][0]) {
 		t.Fatalf("%s: the first author row changed or is gone after DeleteRow on a closed connection: %v", driver, err)

@@ -132,7 +132,9 @@ func (s *Subscription) Receive() (Notification, error) {
 	if err != nil {
 		mapped := mapDriverErr(err)
 		if ErrorCode(mapped) == CodeCanceled {
-			_ = s.Close()
+			if closeErr := s.Close(); closeErr != nil {
+				mapped = errors.Join(mapped, closeErr)
+			}
 		}
 		return Notification{}, mapped
 	}

@@ -2,6 +2,7 @@ package orm
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"regexp"
@@ -93,13 +94,17 @@ func (c *CatalogConnection) ReadOnlyGridQuery(ctx context.Context, query string,
 
 // columnNames returns the column names of a query as the driver reports them for the query itself, without reading a row.
 // A CTE would rename a duplicate name, so the names of the grid come from the query.
-func (s *catalogSession) columnNames(query string, args []any) ([]string, error) {
+func (s *catalogSession) columnNames(query string, args []any) (names []string, err error) {
 	rows, err := s.conn.QueryContext(s.ctx, query, args...)
 	if err != nil {
 		return nil, mapDriverErr(err)
 	}
-	defer rows.Close()
-	names, err := rows.Columns()
+	defer func() {
+		if closeErr := rows.Close(); closeErr != nil {
+			names, err = nil, errors.Join(err, mapDriverErr(closeErr))
+		}
+	}()
+	names, err = rows.Columns()
 	if err != nil {
 		return nil, mapDriverErr(err)
 	}
@@ -336,9 +341,18 @@ func catalogGridDateText(text string) (string, error) {
 	if match == nil {
 		return "", fmt.Errorf("date text %q", text)
 	}
-	year, _ := strconv.Atoi(match[1])
-	month, _ := strconv.Atoi(match[2])
-	day, _ := strconv.Atoi(match[3])
+	year, err := strconv.Atoi(match[1])
+	if err != nil {
+		return "", err
+	}
+	month, err := strconv.Atoi(match[2])
+	if err != nil {
+		return "", err
+	}
+	day, err := strconv.Atoi(match[3])
+	if err != nil {
+		return "", err
+	}
 	return catalogGridDate(year, month, day)
 }
 
@@ -349,9 +363,18 @@ func catalogGridClock(text string) (string, error) {
 	if match == nil {
 		return "", fmt.Errorf("time text %q", text)
 	}
-	hour, _ := strconv.Atoi(match[1])
-	minute, _ := strconv.Atoi(match[2])
-	second, _ := strconv.Atoi(match[3])
+	hour, err := strconv.Atoi(match[1])
+	if err != nil {
+		return "", err
+	}
+	minute, err := strconv.Atoi(match[2])
+	if err != nil {
+		return "", err
+	}
+	second, err := strconv.Atoi(match[3])
+	if err != nil {
+		return "", err
+	}
 	if hour > 23 || minute > 59 || second > 59 {
 		return "", fmt.Errorf("time outside 00:00:00 to 23:59:59.999999")
 	}

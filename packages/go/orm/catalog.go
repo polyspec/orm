@@ -157,8 +157,11 @@ func catalogBegin(dialect string, readOnly bool) string {
 
 // discard closes the connection of the session instead of returning it to the pool, and returns err.
 func (s *catalogSession) discard(err error) error {
-	// database/sql closes a connection whose Raw callback reports driver.ErrBadConn; the error is the expected result.
-	_ = s.conn.Raw(func(any) error { return driver.ErrBadConn })
+	// database/sql closes a connection whose Raw callback reports driver.ErrBadConn, and Raw returns that error: it is the
+	// expected result, so only any other error is joined.
+	if rawErr := s.conn.Raw(func(any) error { return driver.ErrBadConn }); rawErr != nil && !errors.Is(rawErr, driver.ErrBadConn) {
+		err = errors.Join(err, mapDriverErr(rawErr))
+	}
 	return err
 }
 
@@ -255,12 +258,16 @@ type catalogRaw struct {
 }
 
 // queryRaw reads a bounded result. It fails when the result has more than maxRows rows or more than maxBytes of values.
-func (s *catalogSession) queryRaw(query string, args []any, maxRows int, maxBytes int) (catalogRaw, error) {
+func (s *catalogSession) queryRaw(query string, args []any, maxRows int, maxBytes int) (raw catalogRaw, err error) {
 	rows, err := s.conn.QueryContext(s.ctx, query, args...)
 	if err != nil {
 		return catalogRaw{}, mapDriverErr(err)
 	}
-	defer rows.Close()
+	defer func() {
+		if closeErr := rows.Close(); closeErr != nil {
+			raw, err = catalogRaw{}, errors.Join(err, mapDriverErr(closeErr))
+		}
+	}()
 	names, err := rows.Columns()
 	if err != nil {
 		return catalogRaw{}, mapDriverErr(err)
@@ -269,7 +276,7 @@ func (s *catalogSession) queryRaw(query string, args []any, maxRows int, maxByte
 	if err != nil {
 		return catalogRaw{}, mapDriverErr(err)
 	}
-	raw := catalogRaw{names: names, types: make([]string, len(columnTypes))}
+	raw = catalogRaw{names: names, types: make([]string, len(columnTypes))}
 	for i, columnType := range columnTypes {
 		raw.types[i] = columnType.DatabaseTypeName()
 	}
