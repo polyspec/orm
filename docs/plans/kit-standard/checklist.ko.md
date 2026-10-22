@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 616bdc6a64db960f0afb86f83af5a8e3ea00174ad470e4745ff9114130e1f7f0 -->
+<!-- source-sha256: 55de329b57d341ddee6ff66a964ba256b06acee31821d9589e04accc2bf5d47e -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -150,6 +150,7 @@
 | KSTD-5-51 | Python test_schema_install이 main에서 통과한다: set이 쓰는 외부 document의 table을 set이 요구하는 대로 설치하거나 검사하며, 실패하던 세 test가 assertion을 약화하지 않고 통과한다 | packages/python/tests/test_schema_install.py or the fixture it reads, packages/python/src | `node node_modules/@polyspec/kit/dist/run-tests.mjs python --venv packages/python/.venv --module packages.python.tests.testcase -- packages.python.tests.test_schema_install` | [o] |
 | KSTD-5-48-1 | contracts/check-inputs.json이 docs-site-check와 docs-site-parse-check의 scope를 선언하여, main에서 make feature-unit-check/owners가 통과한다 | contracts/check-inputs.json, with the scopes of docs-site-check and docs-site-parse-check | `make feature-unit-check/owners` | [o] |
 | KSTD-5-49 | Rust planner가 source가 없을 때 잘못된 column에서 blind index를 계산함 | packages/rust/orm/src/engine/planner.rs and its unit test | `make rust-check` | [ ] |
+| KSTD-5-50 | TypeScript split query가 key가 NULL인 row를 버림 | packages/ts/src/database.ts, the same split merge in Go, Rust, PHP and Python | `make ts-check` | [ ] |
 | KSTD-6 | link rebuild는 repository layout을 읽고 자기 paths를 두지 않는다 (kit K286). Cause: kit은 link된 checkout을 layout으로 rebuild하며 link 선언의 paths key는 없어진다 | kit.json, the link declaration | `make rebuild-check` | [o] |
 | KSTD-7 | main에서 feature-unit-check가 통과한다. Cause: docs/features.md가 그것이 그리는 coverage와 맞지 않고, scripts/features/coverage.test.mts의 8개 case가 "no package implements the client language php-extension"으로 실패한다 | docs/features.md, scripts/features | `make feature-unit-check` | [o] |
 | KSTD-7-1 | PHP extension이 the features schema_install, model_generation and interface_contract를 구현하고 PHP library의 test가 extension으로 이를 돌리며, 그 partial 상태를 지운다 (KSTD-7, T182-0 후속). Cause: S6와 S10은 partial feature를 받지 않고, kit K315는 contracts/features.json의 partial과 unsupported를 실패시킨다 | packages/php-ext, contracts/features.json | `make feature-unit-check` | [ ] |
