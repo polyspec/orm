@@ -116,6 +116,7 @@ async fn aes_write_uses_key_of_current_version() {
 // Requirements: COD-44.
 #[test]
 fn aes_read_version_codes_match_the_other_clients() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     use polyspec_orm::plan::{Assemble, OutCol};
     let asm = Assemble {
         entity: "secret_config".to_owned(),
@@ -148,6 +149,7 @@ fn aes_read_version_codes_match_the_other_clients() {
 // Requirements: COD-44.
 #[test]
 fn aes_read_plan_without_version_column_is_internal() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     use polyspec_orm::plan::{Assemble, OutCol};
     let asm = Assemble {
         entity: "secret_config".to_owned(),
@@ -174,6 +176,7 @@ fn aes_read_plan_without_version_column_is_internal() {
 // Requirements: COD-44.
 #[test]
 fn aes_read_keyring_lacks_stored_version_is_config() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let asm = aes_read_assemble();
     let keys = keys(&[(1, "old-key"), (2, "new-key")]);
     let mut data = vec![vec![Val::Str("00".into()), Val::I64(9)]];
@@ -187,6 +190,7 @@ fn aes_read_keyring_lacks_stored_version_is_config() {
 // Requirements: COD-44.
 #[test]
 fn aes_read_null_version_with_aes_value_is_codec_decode() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let asm = aes_read_assemble();
     let keys = keys(&[(1, "old-key"), (2, "new-key")]);
     let mut data = vec![vec![Val::Str("00".into()), Val::Null]];
@@ -200,6 +204,7 @@ fn aes_read_null_version_with_aes_value_is_codec_decode() {
 // Requirements: COD-44.
 #[test]
 fn aes_read_null_aes_with_null_version_stays_null() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let asm = aes_read_assemble();
     let keys = keys(&[(1, "old-key"), (2, "new-key")]);
     let mut data = vec![vec![Val::Null, Val::Null]];

@@ -34,6 +34,7 @@ mod external_member {
 /// entity, which the member set generates, and a row without a related row reads no error and no model.
 #[test]
 fn external_relation_getter_returns_the_external_entity_model() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let row = external_member::ExtPost::new();
     let audit: polyspec_orm::Result<Option<&external_member::ExtAudit>> = row.get_ext_audit_model();
     assert!(audit.expect("a row without a related row reads no error").is_none());

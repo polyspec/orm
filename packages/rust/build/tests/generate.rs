@@ -696,6 +696,7 @@ fn a_name_is_typed_by_its_binding_in_its_own_scope() {
 
 #[test]
 fn a_restore_or_create_call_is_a_fixed_method() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     // restore_or_create is a method of every generated model (fixed.rs.txt), so a scanned call to it is accepted and the
     // model keeps its own method, not a generated one.
     let text = generate("async fn main() { let _ = ZoneEvent::new().restore_or_create().await; }").unwrap();

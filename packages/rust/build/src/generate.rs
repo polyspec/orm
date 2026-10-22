@@ -1093,6 +1093,7 @@ mod fixed_method_tests {
 
     #[test]
     fn fixed_list_names_the_public_methods_of_the_fixed_impl() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         let listed: BTreeSet<String> = FIXED.iter().map(|s| s.to_string()).collect();
         assert_eq!(listed, impl_methods(), "FIXED differs from the public methods of the fixed impl in fixed.rs.txt");
     }
