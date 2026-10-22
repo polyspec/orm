@@ -163,7 +163,7 @@ fn entry(db: &Db, values: &[(&str, Param)]) -> HookEntry {
 
 /// The text value of column in row.
 fn text_of<M: Model>(row: &M, column: &str) -> String {
-    row.value(column).or_panic(|| format!("{column}")).as_string().or_panic(|e| format!("{column}: {e}"))
+    row.value(column).unwrap_or_else(|| panic!("column {column} has no value")).as_string().or_panic(|e| format!("{column}: {e}"))
 }
 
 /// The id value of row.
