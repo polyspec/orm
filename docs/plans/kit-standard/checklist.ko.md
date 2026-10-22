@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: fed3b8f1d7b5fd9749000c06d3b636a2c8f2b204490f701a498203a691404cf4 -->
+<!-- source-sha256: 949690fb211c7b98315366a36c4cec81e2f4ecbbcff01fa8d6e0b67c69796e01 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -158,6 +158,7 @@
 | KSTD-5-56 | main의 Rust clippy가 통과한다: packages/rust/build/tests/lock_probe_order.rs가 쓰지 않는 AtomicU8을 import하여 -D warnings 아래 clippy가 unused_imports로 거부하므로 main의 make rust-check가 실패한다 | packages/rust/build/tests/lock_probe_order.rs | `make rust-check` | [ ] |
 | KSTD-5-57 | make lint-rust가 main에서 통과한다: 금지된 unwrap_or_else와 must_use let을 고친다 | benchmarks/rust/src/driver_compare.rs, benchmarks/rust/src/native.rs, packages/rust/testcase/src/lib.rs | `make lint-rust` exits 0 with no finding | [ ] |
 | KSTD-5-57-1 | 벤치마크와 testcase crate의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | benchmarks/rust/src/driver_compare.rs, benchmarks/rust/src/native.rs, packages/rust/testcase/src/lib.rs | `make lint-rust` reports no finding in these files | [ ] |
+| KSTD-5-57-2 | schema introspection crate의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/schema/src/dbspec/introspect/mysql.rs, postgres.rs, sqlite.rs | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-6 | link rebuild는 repository layout을 읽고 자기 paths를 두지 않는다 (kit K286). Cause: kit은 link된 checkout을 layout으로 rebuild하며 link 선언의 paths key는 없어진다 | kit.json, the link declaration | `make rebuild-check` | [o] |
 | KSTD-7 | main에서 feature-unit-check가 통과한다. Cause: docs/features.md가 그것이 그리는 coverage와 맞지 않고, scripts/features/coverage.test.mts의 8개 case가 "no package implements the client language php-extension"으로 실패한다 | docs/features.md, scripts/features | `make feature-unit-check` | [o] |
 | KSTD-7-1 | PHP extension이 the features schema_install, model_generation and interface_contract를 구현하고 PHP library의 test가 extension으로 이를 돌리며, 그 partial 상태를 지운다 (KSTD-7, T182-0 후속). Cause: S6와 S10은 partial feature를 받지 않고, kit K315는 contracts/features.json의 partial과 unsupported를 실패시킨다 | packages/php-ext, contracts/features.json | `make feature-unit-check` | [ ] |
