@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 878f01167e422fb030f090ec8ddf0893f1526fe78d1ffc9701563b351ce3a679 -->
+<!-- source-sha256: 11667f96b5508d1d130bbda99e326e0ac94a2916917538ba313af65cf3ebf0fe -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -171,6 +171,7 @@
 | KSTD-5-57-12 | orm 테스트 파일 listen_notify, register, clock, was_inserted의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests listen_notify, register, clock, was_inserted | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-13 | orm 테스트 파일 statement_fault, request_hook, audit_rows의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests statement_fault, request_hook, common/audit_rows | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-14 | 나머지 orm 테스트 파일의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests install, dbspec_apply, dbspec_plan_apply, common/sqlite_case, markdown, collection_identity, aes_json, coverage_interface_contract, and the rest the gate reports | `make lint-rust` reports no finding in these files | [ ] |
+| KSTD-5-57-15 | orm tx.rs 테스트 모듈의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/src/tx.rs test module | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-6 | link rebuild는 repository layout을 읽고 자기 paths를 두지 않는다 (kit K286). Cause: kit은 link된 checkout을 layout으로 rebuild하며 link 선언의 paths key는 없어진다 | kit.json, the link declaration | `make rebuild-check` | [o] |
 | KSTD-7 | main에서 feature-unit-check가 통과한다. Cause: docs/features.md가 그것이 그리는 coverage와 맞지 않고, scripts/features/coverage.test.mts의 8개 case가 "no package implements the client language php-extension"으로 실패한다 | docs/features.md, scripts/features | `make feature-unit-check` | [o] |
 | KSTD-7-1 | PHP extension이 the features schema_install, model_generation and interface_contract를 구현하고 PHP library의 test가 extension으로 이를 돌리며, 그 partial 상태를 지운다 (KSTD-7, T182-0 후속). Cause: S6와 S10은 partial feature를 받지 않고, kit K315는 contracts/features.json의 partial과 unsupported를 실패시킨다 | packages/php-ext, contracts/features.json | `make feature-unit-check` | [ ] |
