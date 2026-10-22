@@ -2726,6 +2726,15 @@ static bool push_aes_version(pctx *c, pbinds *b, HashTable *ent, HashTable *set,
 }
 
 
+/* The main step of a statement sql: its bind slots and tables are those of b. */
+static pstep *main_step(pctx *c, pbinds *b, zend_string *sql)
+{
+    zval *slots = copy_list(c, Z_ARRVAL_P(b->slots));
+    zval *tables = b_tables(c, b);
+    OKP(tables);
+    return step_new(c, "main", sql, ZSTR_EMPTY_ALLOC(), slots, tables);
+}
+
 /* The statement of an insert, with its rows and upsert (Planner::insertStep). */
 static pstep *insert_step(pctx *c, HashTable *r)
 {
@@ -2947,10 +2956,7 @@ static pstep *insert_step(pctx *c, HashTable *r)
         OKP(qi);
         sql = fmt(c, "%s RETURNING %s", ZSTR_VAL(sql), ZSTR_VAL(qi));
     }
-    zval *slots = copy_list(c, Z_ARRVAL_P(b->slots));
-    zval *tables = b_tables(c, b);
-    OKP(tables);
-    return step_new(c, "main", sql, ZSTR_EMPTY_ALLOC(), slots, tables);
+    return main_step(c, b, sql);
 }
 
 /* Renders each assignment of set as `column = value` onto sets, binding the values into b; false when a column is unknown or a value fails. */
@@ -2984,10 +2990,7 @@ static pstep *update_main(pctx *c, pbinds *b, HashTable *ent, zval *sets, zend_s
     OKP(tbl);
     zend_string *sql = fmt(c, "UPDATE %s SET %s WHERE %s", ZSTR_VAL(tbl), ZSTR_VAL(implode(c, ", ", Z_ARRVAL_P(sets))),
         ZSTR_VAL(where));
-    zval *slots = copy_list(c, Z_ARRVAL_P(b->slots));
-    zval *tables = b_tables(c, b);
-    OKP(tables);
-    return step_new(c, "main", sql, ZSTR_EMPTY_ALLOC(), slots, tables);
+    return main_step(c, b, sql);
 }
 
 /* The statement of an update (Planner::updateStep). */
@@ -3095,10 +3098,7 @@ static pstep *delete_step(pctx *c, HashTable *r)
         OKP(tbl);
         sql = fmt(c, "DELETE FROM %s WHERE %s", ZSTR_VAL(tbl), ZSTR_VAL(where));
     }
-    zval *slots = copy_list(c, Z_ARRVAL_P(b->slots));
-    zval *tables = b_tables(c, b);
-    OKP(tables);
-    return step_new(c, "main", sql, ZSTR_EMPTY_ALLOC(), slots, tables);
+    return main_step(c, b, sql);
 }
 
 /* The restore of one soft-deleted row (Planner::restoreStep); the key comes from Validator::restoreKey. */
