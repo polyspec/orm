@@ -74,7 +74,7 @@ async fn register_case(driver: &str, dsn: &str) {
     schema.register(member).or_panic(|e| format!("{driver}: register: {e}"));
     schema.register(member).or_panic(|e| format!("{driver}: second register: {e}"));
     match schema.register(edited) {
-        Err(e) if e.code() == polyspec_orm::codes::CONFIG => {}
+        Err(e) => assert!(e.code() == polyspec_orm::codes::CONFIG, "{driver}: register of a text that does not hash to its declared hash: {e:?}, want CONFIG"),
         other => panic!("{driver}: register of a text that does not hash to its declared hash: {other:?}, want CONFIG"),
     }
     let sent = SENT.load(Ordering::SeqCst) - before;
