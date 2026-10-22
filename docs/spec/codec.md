@@ -15,7 +15,7 @@
 
 - **COD-5** `aes` writes `ORM-AES2\0 || nonce || ciphertext || tag`. The nonce is 12 random bytes, the tag is the AES-256-GCM authentication tag, and the associated data is `ORM-AES2\0`. The AES key is SHA-256(`polyspec/orm/aes-256-gcm/v2\0` || configured key bytes). `aes_hex` applies AES first and uppercase hex second.
 
-- **COD-6** Every AES column has a non-null integer `aes_key_version` column in the same entity. New writes use `secrets.aes_version`. Reads use the stored row version to select `secrets.aes_keys[version]`. Missing versions and authentication failures stop the operation; the codes of these failures are set by COD-44. The runtime does not decode the previous ECB format.
+- **COD-6** Every AES column has a non-null integer `aes_key_version` column in the same entity. New writes use `secrets.aes_version`. Reads use the stored row version to select `secrets.aes_keys[version]`. Missing versions and authentication failures stop the operation; the codes of these failures are set by COD-44 and COD-47 to COD-60. The runtime does not decode the previous ECB format.
 
 ### Encrypted JSON value
 
@@ -102,6 +102,20 @@ table service_config {
 - **COD-41** Read: the executor decodes each cell immediately after reading positional rows according to `assemble.columns[].styles`.
 - **COD-42** Write: `set<Col>(v)` uses the declared style, calls runtime `setStyled`, and binds the encoded bytes.
 - **COD-43** Styled-column predicates are limited to `isNull` and `isNotNull` (`ir.OpAllowed`).
-- **COD-44** AES key-version and column failures answer the same code in every client (Go, PHP, the PHP extension, TypeScript, Python, Rust). An undeclared, empty or otherwise invalid key version, of a stored row or of the current version, is `CONFIG`, a missing secret of the connection. A stored version that is not an integer, or lies outside the i32 range, is `CODEC_DECODE` on the read path and on the rotation path alike; it is never coerced to 0 or NaN. A rotation row or a read row that lacks an AES column the client itself selected is `INTERNAL`, a broken invariant of the client, not stored bytes. `CODEC_DECODE` stays for bytes that are present and do not decode. A plan whose AES column has no version column fails with `INTERNAL`, and no version is assumed. A NULL AES value is a NULL value: no version is read or checked, on the read path and the rotation path alike, and a rotation leaves a NULL AES cell unchanged whatever its version holds, since there are no stored bytes to re-encrypt. The `CODEC_DECODE` clause of this rule applies to the stored version of a non-NULL AES value.
+- **COD-44** The read path answers the same code in every client (Go, PHP, the PHP extension, Python, Rust) for a key version and a stored version: an undeclared, empty or otherwise invalid key version is `CONFIG`, and a stored version that is not a positive i32 integer is `CODEC_DECODE`, never coerced to 0 or NaN.
 - **COD-45** A derived integer is a JavaScript number only when it is an integer whose magnitude is at most 2^53, so that it is exact; a string or a bigint is converted under the same bound. A fraction, a non-finite number, a boolean, null, an empty or non-numeric string, and a larger value are refused as an invalid derived integer.
 - **COD-46** A conformance vector that fails reports its error with the original error as its cause, and a write vector runs its body inside the transaction that the runner gives it.
+- **COD-47** The rotation path answers the same code in every client (PHP, the PHP extension, Python) for a key version and a stored version; the codes are those of COD-44.
+- **COD-48** A read row that lacks its version cell is `INTERNAL`, a broken invariant of the client, not stored bytes.
+- **COD-49** A stored version written as text that is not an integer is `CODEC_DECODE` on the read path, and it is never coerced.
+- **COD-50** A stored version of zero is `CODEC_DECODE` on the read path; zero is not a key version.
+- **COD-51** A stored version above the i32 range is `CODEC_DECODE` on the read path; the accepted stored versions are the positive i32 integers.
+- **COD-52** A stored version that is an undeclared integer is `CONFIG`, a missing secret of the connection.
+- **COD-53** A stored version written as text that is a positive integer decodes to that version.
+- **COD-54** On the rotation path a stored version of zero is `CODEC_DECODE`, as on the read path.
+- **COD-55** A rotation row that lacks an AES column the client selected is `INTERNAL`, a broken invariant of the client.
+- **COD-56** A read plan whose AES column has no version column fails with `INTERNAL`; no version is assumed.
+- **COD-57** A keyring that lacks the stored version is `CONFIG`, not the single key.
+- **COD-58** A NULL stored version of a non-NULL AES value is `CODEC_DECODE`.
+- **COD-59** A NULL AES value with a NULL version is NULL on the read path: its version is neither read nor checked, and no error is raised.
+- **COD-60** A rotation leaves a NULL AES cell unchanged whatever its version holds, since there are no stored bytes to re-encrypt.

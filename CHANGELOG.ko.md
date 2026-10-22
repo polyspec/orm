@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 424f1c90feafc96b4ec4a2f12292be7cd31ea81a5d74f6239a59344e3ea3d6f8 -->
+<!-- source-sha256: 7bf86a923adcb2b990f0947b634a43790fe5e02da5c641eef6ee75200615e23b -->
 # 변경 이력
 
 ## Unreleased
 
+- parity declaration check는 unit마다 implementation을 한 번씩만 binding한다. aes-version-codes와 dbspec-introspect-query-count unit을 behaviour별 unit으로 나누며, 각 unit은 자기 requirement(COD-44, COD-47부터 COD-60, DIA-133, DIA-154부터 DIA-156)를 가진다. dbspec의 오래된 Go support glob도 제거한다(KSTD-2-7). red: parity-declarations-check가 158 finding을 냈고, 그중 44개는 R12 duplicate-binding, 1개는 오래된 glob이었다. green: 113 finding이며, 모두 php-extension declares no symbols다.
 - Python 코드가 `make lint-python`을 통과한다. ruff check, ruff format, vulture 모두 finding이 없다. catalog의 blind except는 session 종료에 넘긴 error를 다시 raise하고, 실패를 모으거나 아무 거부든 기대 실패로 받는 test loop는 이유를 줄 안에 적으며, 쓰이지 않는 catalog metadata 필드는 삭제하고, orm-gen이 모든 client에 쓰는 error code는 이유와 함께 whitelist에 넣는다(KSTD-5-43). red: main의 `make lint-python`은 ruff check 이슈 13개, 포맷할 파일 13개, vulture finding 10개를 보고했다.
 - lint-php가 PHP 소스에서 통과한다. packages/php-ext/tests/silent_paths.php의 긴 줄을 감쌌고, packages/php/tests의 Coverage test 3개 파일은 entry class 검사를 파일 로드 시점이 아니라 method 안에 둔다(KSTD-5-45). red: phpcs가 6개 finding을 보고했다.
 - 저장소의 TypeScript lint가 통과한다: lint-ts 단계가 oxlint 발견 사항과 사용되지 않는 export를 보고하지 않는다. 오류는 cause를 유지하고, DSN을 가리는 재throw는 catch 밖에서 수행하며, 사용되지 않는 byteSize를 제거하고 quoteIdent의 export를 해제한다 (KSTD-5-44). red: make lint-ts가 oxlint 발견 사항 34건과 knip의 사용되지 않는 export 1건을 보고한다.

@@ -1,5 +1,5 @@
 <!-- doc-id: codec -->
-<!-- source-sha256: 0dfafb0f0430bd31ffb280642745f786b41bc44b617f0eb28e21244545ceedb5 -->
+<!-- source-sha256: 48f401a00107c62dd392b9b628ce5035ef42755bf429e91f112bcba388d69edd -->
 # 코덱 — 컬럼 스타일의 읽기/쓰기 (S2)
 
 - **COD-1** Go 데이터베이스 값 변환은 잘못된 형식, null, 범위 초과, 유한하지 않은 값, 지원하지 않는 값에 `CODEC_DECODE`를 반환한다. Host 인코딩은 단계가 없거나 텍스트·바이트가 아닌 값에 `CODEC_ENCODE`를 반환한다. 생성 모델 대입은 컬럼 이름을 붙여 변환 오류를 보고한다. 행 조립은 오류를 호출자에게 반환하고 insert는 쓰기 전에 대입 필드를 검증한다. 빈 바이트 배열은 SQL NULL과 구분한다. scalar 집계 변환은 유효한 십진수를 가장 가까운 유한 binary64 값으로 받는다.
@@ -17,7 +17,7 @@
 
 - **COD-5** `aes`는 `ORM-AES2\0 || nonce || ciphertext || tag`를 저장한다. nonce는 12바이트 random 값이고 tag는 AES-256-GCM 인증 tag다. associated data는 `ORM-AES2\0`이다. AES key는 SHA-256(`polyspec/orm/aes-256-gcm/v2\0`와 설정 key bytes의 결합)이다. `aes_hex`는 AES 처리 후 uppercase hex를 적용한다.
 
-- **COD-6** 모든 AES column은 같은 entity의 non-null integer `aes_key_version` column을 가진다. 새 write는 `secrets.aes_version`을 사용한다. read는 row에 저장된 version으로 `secrets.aes_keys[version]`을 선택한다. version이 없거나 인증에 실패하면 작업을 중단하며, 이 실패의 코드는 COD-44가 정한다. runtime은 이전 ECB 형식을 decode하지 않는다.
+- **COD-6** 모든 AES column은 같은 entity의 non-null integer `aes_key_version` column을 가진다. 새 write는 `secrets.aes_version`을 사용한다. read는 row에 저장된 version으로 `secrets.aes_keys[version]`을 선택한다. version이 없거나 인증에 실패하면 작업을 중단하며, 이 실패의 코드는 COD-44와 COD-47부터 COD-60까지가 정한다. runtime은 이전 ECB 형식을 decode하지 않는다.
 
 ### 암호화한 JSON 값 {#encrypted-json-value}
 
@@ -106,6 +106,20 @@ table service_config {
 - **COD-41** 읽기: 실행기가 위치형 행을 읽은 직후 `assemble.columns[].styles`에 따라 각 셀을 디코드한다.
 - **COD-42** 쓰기: `set<Col>(v)`는 선언된 스타일을 사용해 런타임 `setStyled`를 호출하고 인코딩된 바이트를 바인드한다.
 - **COD-43** 스타일 컬럼의 술어는 `isNull`과 `isNotNull`로 제한한다(`ir.OpAllowed`).
-- **COD-44** 모든 client(Go, PHP, PHP extension, TypeScript, Python, Rust)는 AES key version과 column 실패에 같은 코드를 준다. 선언되지 않았거나, 비었거나, 그 밖에 잘못된 key version(저장된 row의 version이든 현재 version이든)은 연결의 비밀이 없는 경우이므로 `CONFIG`다. 정수가 아니거나 i32 범위를 벗어난 저장 version은 read 경로와 rotation 경로 모두에서 `CODEC_DECODE`다. 0이나 NaN으로 강제 변환하지 않는다. client가 직접 select한 AES column이 없는 rotation row나 read row는 저장된 바이트가 아니라 client 불변식이 깨진 것이므로 `INTERNAL`이다. `CODEC_DECODE`는 바이트가 존재하는데 decode되지 않는 경우에만 쓴다. version column이 없는 AES column을 가진 plan은 `INTERNAL`로 실패하며, version을 가정하지 않는다. NULL AES 값은 NULL 값이다. 저장된 바이트가 없으므로 read 경로와 rotation 경로 모두에서 version을 읽거나 검사하지 않으며, rotation은 재암호화할 것이 없으므로 version이 무엇이든 NULL AES cell을 그대로 둔다. 이 규칙의 `CODEC_DECODE` 조항은 NULL이 아닌 AES 값의 저장된 version에 적용된다.
+- **COD-44** read 경로는 key version과 stored version에 대해 모든 client(Go, PHP, PHP extension, Python, Rust)가 같은 코드를 준다. 선언되지 않았거나, 비었거나, 잘못된 key version은 `CONFIG`이고, 양의 i32 정수가 아닌 stored version은 `CODEC_DECODE`이며, 0이나 NaN으로 강제 변환하지 않는다.
 - **COD-45** derived integer는 크기가 2^53 이하인 정수일 때에만 JavaScript number이며, 그래야 정확하다; 문자열과 bigint는 같은 한계로 변환된다. 소수, 유한하지 않은 number, boolean, null, 빈 문자열이나 숫자가 아닌 문자열, 그리고 더 큰 값은 잘못된 derived integer로 거부된다.
 - **COD-46** 실패한 conformance vector는 원래 error를 cause로 담아 그 error를 보고하며, write vector는 runner가 주는 transaction 안에서 그 본문을 실행한다.
+- **COD-47** rotation 경로는 key version과 stored version에 대해 모든 client(PHP, PHP extension, Python)가 같은 코드를 준다. 코드는 COD-44의 것과 같다.
+- **COD-48** version cell이 없는 read row는 `INTERNAL`이다. 저장된 바이트가 아니라 client 불변식이 깨진 것이다.
+- **COD-49** 정수가 아닌 text인 stored version은 read 경로에서 `CODEC_DECODE`이며, 강제 변환하지 않는다.
+- **COD-50** 0인 stored version은 read 경로에서 `CODEC_DECODE`다. 0은 key version이 아니다.
+- **COD-51** i32 범위를 넘는 stored version은 read 경로에서 `CODEC_DECODE`다. 받아들이는 stored version은 양의 i32 정수다.
+- **COD-52** 선언되지 않은 정수인 stored version은 `CONFIG`이며, 연결의 비밀이 없는 경우다.
+- **COD-53** 양의 정수인 text로 쓰인 stored version은 그 version으로 decode된다.
+- **COD-54** rotation 경로에서 0인 stored version은 `CODEC_DECODE`다. read 경로와 같다.
+- **COD-55** client가 선택한 AES column이 없는 rotation row는 `INTERNAL`이다. client 불변식이 깨진 것이다.
+- **COD-56** AES column에 version column이 없는 read plan은 `INTERNAL`로 실패하며, version을 가정하지 않는다.
+- **COD-57** stored version이 keyring에 없으면 `CONFIG`이며, 단일 key로 대신하지 않는다.
+- **COD-58** NULL이 아닌 AES 값의 NULL stored version은 `CODEC_DECODE`다.
+- **COD-59** NULL AES 값과 NULL version은 read 경로에서 NULL이다. version을 읽지도 검사하지도 않으며, 오류가 없다.
+- **COD-60** rotation은 NULL AES cell을 그대로 둔다. version이 무엇이든 재암호화할 저장 바이트가 없기 때문이다.
