@@ -2424,33 +2424,21 @@ static bool is_enc(pctx *c, HashTable *col, bool *yes)
 }
 
 /* Whether the entity has an AES column (Planner::hasAes). */
-static bool has_aes(pctx *c, HashTable *ent, bool *out)
+/* Whether an encrypted column is among the columns of ent (set NULL) or among the columns that the assignments of set name.
+ * out is set to the answer. */
+static bool any_enc(pctx *c, HashTable *ent, HashTable *set, bool *out)
 {
-    zval *col;
-    ZEND_HASH_FOREACH_VAL(lst(ent, "columns"), col) {
-        ZVAL_DEREF(col);
-        bool e = false;
-        if (!is_enc(c, Z_ARRVAL_P(col), &e)) {
-            return false;
-        }
-        if (e) {
-            *out = true;
-            return true;
-        }
-    } ZEND_HASH_FOREACH_END();
-    *out = false;
-    return true;
-}
-
-/* Whether the set assigns an AES column (Planner::assignsAes). */
-static bool assigns_aes(pctx *c, HashTable *ent, HashTable *set, bool *out)
-{
-    zval *a;
-    ZEND_HASH_FOREACH_VAL(set, a) {
-        ZVAL_DEREF(a);
+    HashTable *list = set != NULL ? set : lst(ent, "columns");
+    zval *item;
+    ZEND_HASH_FOREACH_VAL(list, item) {
+        ZVAL_DEREF(item);
         HashTable *col = NULL;
-        if (!col_of(c, ent, gs(c, Z_ARRVAL_P(a), "column"), &col)) {
-            return false;
+        if (set != NULL) {
+            if (!col_of(c, ent, gs(c, Z_ARRVAL_P(item), "column"), &col)) {
+                return false;
+            }
+        } else {
+            col = Z_ARRVAL_P(item);
         }
         bool e = false;
         if (!is_enc(c, col, &e)) {
@@ -2463,6 +2451,17 @@ static bool assigns_aes(pctx *c, HashTable *ent, HashTable *set, bool *out)
     } ZEND_HASH_FOREACH_END();
     *out = false;
     return true;
+}
+
+static bool has_aes(pctx *c, HashTable *ent, bool *out)
+{
+    return any_enc(c, ent, NULL, out);
+}
+
+/* Whether the set assigns an AES column (Planner::assignsAes). */
+static bool assigns_aes(pctx *c, HashTable *ent, HashTable *set, bool *out)
+{
+    return any_enc(c, ent, set, out);
 }
 
 /* Whether the set assigns a column (Planner::assigned). */
