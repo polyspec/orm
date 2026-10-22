@@ -16,6 +16,8 @@ final class Transform
                 return self::esc($s) . '%';
             case 'like_ends':
                 return '%' . self::esc($s);
+            case 'fulltext_boolean':
+                return self::fulltextBoolean($s);
         }
         return $s;
     }
@@ -32,7 +34,31 @@ final class Transform
         if (!is_string($v)) {
             throw new OrmException(Code::CODEC_ENCODE, "$kind requires a string value");
         }
+        if ($kind === 'fulltext_boolean' && self::fulltextBoolean($v) === '') {
+            throw new OrmException(Code::IR_INVALID, 'fulltext search text has no term');
+        }
         return self::apply($kind, $v);
+    }
+
+    /**
+     * The transform fulltext_boolean (DIA-6): the search text of a MySQL boolean-mode match. It splits the value on
+     * whitespace, removes the boolean operator characters from each term, drops the terms that are empty, prefixes every
+     * term with +, suffixes the last term with *, and joins the terms with single spaces. A value with no term is ''.
+     */
+    public static function fulltextBoolean(string $s): string
+    {
+        $terms = [];
+        foreach (preg_split('/\s+/u', trim($s), -1, PREG_SPLIT_NO_EMPTY) ?: [] as $word) {
+            $term = str_replace(['+', '-', '<', '>', '(', ')', '~', '*', '"', '@'], '', $word);
+            if ($term !== '') {
+                $terms[] = '+' . $term;
+            }
+        }
+        if ($terms === []) {
+            return '';
+        }
+        $terms[count($terms) - 1] .= '*';
+        return implode(' ', $terms);
     }
 
     private static function esc(string $s): string

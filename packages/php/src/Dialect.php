@@ -159,6 +159,22 @@ final class Dialect
         };
     }
 
+    /**
+     * @param list<string> $cols
+     * @param \Closure(string): string $value a placeholder whose value gets the transform
+     */
+    public function fulltext(array $cols, \Closure $value, bool $boolean): ?string
+    {
+        return match ($this->name) {
+            'mysql' => 'MATCH (' . implode(', ', $cols) . ') AGAINST (' . ($boolean
+                ? $value('fulltext_boolean') . ' IN BOOLEAN MODE'
+                : $value('') . ' IN NATURAL LANGUAGE MODE') . ')',
+            'postgres' => "to_tsvector('simple', " . implode(" || ' ' || ", array_map(static fn(string $c): string => "coalesce($c, '')", $cols))
+                . ') @@ ' . ($boolean ? 'websearch_to_tsquery' : 'plainto_tsquery') . "('simple', " . $value('') . ')',
+            default => null,
+        };
+    }
+
     /** @param list<string> $conflict */
     public function upsert(array $conflict, string $assigns): string
     {

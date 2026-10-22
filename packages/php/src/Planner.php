@@ -525,6 +525,11 @@ final class Planner
             }
             return $this->d->tupleIn($this->qualified($s, $p['cols']), $rows, $op === 'tuple_not_in');
         }
+        if ($op === 'fulltext' || $op === 'fulltext_boolean') {
+            $sql = $this->d->fulltext($this->qualified($s, $p['cols']),
+                static fn(string $transform): string => $b->param($p['p'], 'text', $transform), $op === 'fulltext_boolean');
+            return $sql ?? throw self::err(Code::OPERATOR_NOT_ALLOWED, $op . ' on ' . $s->ent['entity']);
+        }
         $col = RuntimeModel::column($s->ent, $p['column']);
         $lhs = $this->qcol($s, $p['column']);
         if (isset($p['sub'])) {

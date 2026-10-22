@@ -431,6 +431,12 @@ final class Validator
             }
             return;
         }
+        if ($p['op'] === 'fulltext' || $p['op'] === 'fulltext_boolean') {
+            if (isset($p['p'])) {
+                self::addUse($out, $p['p'], 'text', null);
+            }
+            return;
+        }
         $col = RuntimeModel::column($ent, $p['column'] ?? '');
         foreach ($p['value']['ps'] ?? [] as $i) {
             // The interval of a relative time function: seconds take a fraction, and other units take an integer.
@@ -945,6 +951,19 @@ final class Validator
             if (count($ps) % count($cols) !== 0) {
                 throw self::err(Code::IR_INVALID,
                     sprintf('%s: %d values for %d columns', $op, count($ps), count($cols)));
+            }
+            return;
+        }
+        if ($op === 'fulltext' || $op === 'fulltext_boolean') {
+            $cols = $p['cols'] ?? [];
+            if ($cols === [] || !isset($p['p']) || $column !== '' || ($p['ps'] ?? []) !== [] || isset($p['sub']) || isset($p['fn']) || isset($p['value']) || isset($p['ref'])) {
+                throw self::err(Code::IR_INVALID, "$op takes cols and p only");
+            }
+            foreach ($cols as $c) {
+                $col = RuntimeModel::column($ent, $c) ?? throw self::err(Code::COLUMN_UNKNOWN, "$name.$c");
+                if (!in_array($col['type'], ['varchar', 'text'], true) || $col['codec'] !== []) {
+                    throw self::err(Code::OPERATOR_NOT_ALLOWED, "$op on $name.$c");
+                }
             }
             return;
         }
