@@ -11,7 +11,8 @@ declare(strict_types=1);
 // through ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN; the test fails when either
 // is unset.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/AesJsonTest.php
-// [--filter <case>] The bench model is not read: this test uses only the model of its own document set.
+// [--filter <case>]
+// The bench model is not read: this test uses only the model of its own document set.
 
 use Polyspec\Orm\Tests\AesJson\SecretConfig;
 use Polyspec\Orm\AesKeyring;
@@ -22,13 +23,12 @@ use Polyspec\Orm\Orm;
 use Polyspec\Orm\RuntimeModel;
 use Polyspec\Orm\StyledValue;
 use Polyspec\OrderedJson\Value;
-
-use function Polyspec\OrderedJson\parse;
-use function Polyspec\OrderedJson\stringify;
-
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
+
+use function Polyspec\OrderedJson\parse;
+use function Polyspec\OrderedJson\stringify;
 
 #[Medium]
 final class AesJsonTest extends TestCase

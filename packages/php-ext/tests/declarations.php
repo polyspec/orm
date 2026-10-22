@@ -14,8 +14,7 @@ declare(strict_types=1);
 // their public declarations are kept. Each prints its map as JSON. DeclarationsTest.php reads the classes of the loaded
 // extension in its own process with declarations() and compares them with both.
 
-/** The namespace and the class outside it that the extension registers, which are those of the PHP client. */
-
+// The namespace and the class outside it that the extension registers, which are those of the PHP client.
 const EXTENSION_NAMESPACE = 'Polyspec\\Orm\\Dbspec\\';
 const CLIENT_CLASSES = [
     'Polyspec\\Orm\\Code',

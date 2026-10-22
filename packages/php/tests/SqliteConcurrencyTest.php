@@ -6,8 +6,8 @@ declare(strict_types=1);
 // transaction retries, a second connection reads while a write transaction is open, and a write
 // that waits longer than busy_timeout returns CANCELED.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist
-// packages/php/tests/SqliteConcurrencyTest.php [--filter <case>] The writer processes run sqlite_concurrency_writer.php
-// <dsn> <name> <count>.
+// packages/php/tests/SqliteConcurrencyTest.php [--filter <case>]
+// The writer processes run sqlite_concurrency_writer.php <dsn> <name> <count>.
 
 use Polyspec\Orm\Tests\Model\Service;
 use Polyspec\Orm\Code;

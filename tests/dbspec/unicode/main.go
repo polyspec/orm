@@ -176,7 +176,7 @@ func renderPython(version string, spans []span) []byte {
 // renderPHP writes the UnicodeWord class of the PHP client. contains finds a code point in the table by binary search.
 func renderPHP(version string, spans []span) []byte {
 	var b strings.Builder
-	b.WriteString("<?php\n")
+	b.WriteString("<?php\n\n")
 	b.WriteString(comment("// ", version))
 	b.WriteString("declare(strict_types=1);\n\nnamespace Polyspec\\Orm\\Dbspec;\n\n")
 	b.WriteString("/**\n * The word rune table that Go's unicode table holds. This file is generated and not edited directly.\n * @internal\n */\n")

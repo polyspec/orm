@@ -20,12 +20,11 @@ use Polyspec\Orm\OrmException;
 use Polyspec\Orm\Tests\MarkdownModel\Logs;
 use Polyspec\Orm\Tests\MarkdownModel\People;
 use Polyspec\Orm\Tests\MarkdownModel\Tasks;
-
-use function Polyspec\Orm\Tests\MarkdownModel\connect;
-
 use PHPUnit\Framework\Attributes\Large;
 use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
+
+use function Polyspec\Orm\Tests\MarkdownModel\connect;
 
 /** The flowmark server the test started, and its corpus. */
 final class Served

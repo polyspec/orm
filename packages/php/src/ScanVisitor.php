@@ -117,12 +117,16 @@ final class ScanVisitor extends NodeVisitorAbstract
                             $props[$prop->name->toString()] = $value;
                         }
                     }
-                } elseif ($stmt instanceof Node\Stmt\ClassMethod
-                    && strtolower($stmt->name->toString()) === '__construct') {
+                } elseif (
+                    $stmt instanceof Node\Stmt\ClassMethod
+                    && strtolower($stmt->name->toString()) === '__construct'
+                ) {
                     foreach ($stmt->params as $param) {
                         $value = $this->typeValue($param->type);
-                        if ($value !== null && $param->flags !== 0 && $param->var instanceof Node\Expr\Variable
-                            && is_string($param->var->name)) {
+                        if (
+                            $value !== null && $param->flags !== 0 && $param->var instanceof Node\Expr\Variable
+                            && is_string($param->var->name)
+                        ) {
                             $props[$param->var->name] = $value;
                         }
                     }
@@ -154,8 +158,10 @@ final class ScanVisitor extends NodeVisitorAbstract
                 $this->scopes[count($this->scopes) - 1][$param->var->name] = $value;
             }
         }
-        if ($node instanceof Node\Stmt\While_ || $node instanceof Node\Stmt\Do_ || $node instanceof Node\Stmt\For_
-            || $node instanceof Node\Stmt\Foreach_) {
+        if (
+            $node instanceof Node\Stmt\While_ || $node instanceof Node\Stmt\Do_ || $node instanceof Node\Stmt\For_
+            || $node instanceof Node\Stmt\Foreach_
+        ) {
             // Before the loop runs, the scope before it is kept, and each name it assigns may hold the values
             // of its assignments.
             $this->enterLoop($node);
@@ -228,8 +234,10 @@ final class ScanVisitor extends NodeVisitorAbstract
             $this->ifs[$i]['finally'] = true;
             $this->ifs[$i]['pending'] = false;
         }
-        if ($node instanceof Node\Stmt\Catch_ && $node->var instanceof Node\Expr\Variable
-            && is_string($node->var->name)) {
+        if (
+            $node instanceof Node\Stmt\Catch_ && $node->var instanceof Node\Expr\Variable
+            && is_string($node->var->name)
+        ) {
             $this->bind($node->var->name, null);
         }
         if ($node instanceof Node\Stmt\Static_) {
@@ -264,13 +272,17 @@ final class ScanVisitor extends NodeVisitorAbstract
         if ($node instanceof Node\Stmt\Class_ || $node instanceof Node\Stmt\Trait_) {
             array_pop($this->properties);
         }
-        if ($node instanceof Node\Stmt\While_ || $node instanceof Node\Stmt\Do_ || $node instanceof Node\Stmt\For_
-            || $node instanceof Node\Stmt\Foreach_) {
+        if (
+            $node instanceof Node\Stmt\While_ || $node instanceof Node\Stmt\Do_ || $node instanceof Node\Stmt\For_
+            || $node instanceof Node\Stmt\Foreach_
+        ) {
             // A loop may run zero times, so the scope after it joins the scope before it.
             $this->setTop(self::mergeScopes([array_pop($this->loopBefore), $this->top()]));
         }
-        if ($node instanceof Node\Stmt\If_ || $node instanceof Node\Stmt\Switch_
-            || $node instanceof Node\Stmt\TryCatch) {
+        if (
+            $node instanceof Node\Stmt\If_ || $node instanceof Node\Stmt\Switch_
+            || $node instanceof Node\Stmt\TryCatch
+        ) {
             $frame = array_pop($this->ifs);
             $states = $frame['states'];
             if ($node instanceof Node\Stmt\TryCatch) {
@@ -297,23 +309,31 @@ final class ScanVisitor extends NodeVisitorAbstract
                 array_pop($this->barriers);
             }
         }
-        if ($node instanceof Node\Expr\Assign && $node->var instanceof Node\Expr\Variable
-            && is_string($node->var->name)) {
+        if (
+            $node instanceof Node\Expr\Assign && $node->var instanceof Node\Expr\Variable
+            && is_string($node->var->name)
+        ) {
             $this->bind($node->var->name, $this->valueOf($node->expr));
-        } elseif ($node instanceof Node\Expr\Assign
-            && ($node->var instanceof Node\Expr\Array_ || $node->var instanceof Node\Expr\List_)) {
+        } elseif (
+            $node instanceof Node\Expr\Assign
+            && ($node->var instanceof Node\Expr\Array_ || $node->var instanceof Node\Expr\List_)
+        ) {
             // A destructuring assignment binds each variable to a value the scan does not type.
             $this->forget($node->var);
-        } elseif ($node instanceof Node\Expr\AssignRef && $node->var instanceof Node\Expr\Variable
-            && is_string($node->var->name)) {
+        } elseif (
+            $node instanceof Node\Expr\AssignRef && $node->var instanceof Node\Expr\Variable
+            && is_string($node->var->name)
+        ) {
             // A reference makes both names one variable, whose class the scan does not follow: both are
             // forgotten.
             $this->bind($node->var->name, null);
             if ($node->expr instanceof Node\Expr\Variable && is_string($node->expr->name)) {
                 $this->bind($node->expr->name, null);
             }
-        } elseif ($node instanceof Node\Expr\AssignOp && $node->var instanceof Node\Expr\Variable
-            && is_string($node->var->name)) {
+        } elseif (
+            $node instanceof Node\Expr\AssignOp && $node->var instanceof Node\Expr\Variable
+            && is_string($node->var->name)
+        ) {
             // A compound or coalescing assignment (??=, .=) does not give the variable a model it can be typed
             // with.
             $this->bind($node->var->name, null);
@@ -409,19 +429,24 @@ final class ScanVisitor extends NodeVisitorAbstract
             $count++;
         }
         // A name that may hold several models gets the call on each of them.
-        $receivers = array_values(array_filter(self::members($this->valueOf($node->var)),
-            static fn(array $m): bool => !$m['many']));
+        $receivers = array_values(array_filter(
+            self::members($this->valueOf($node->var)),
+            static fn(array $m): bool => !$m['many']
+        ));
         foreach ($receivers as $receiver) {
             $this->out[$receiver['cls']][$name][] = $count;
         }
         if ($receivers !== []) {
             $this->sites[] = ['name' => $name, 'classes' => array_values(array_unique(array_map(
-                static fn(array $r): string => $r['cls'], $receivers
+                static fn(array $r): string => $r['cls'],
+                $receivers
             ))), 'count' => $count];
         }
         $first = $node->args[0] ?? null;
-        if (count($receivers) === 1 && Scan::modelCallback($name) && $first instanceof Node\Arg
-            && ($first->value instanceof Node\Expr\Closure || $first->value instanceof Node\Expr\ArrowFunction)) {
+        if (
+            count($receivers) === 1 && Scan::modelCallback($name) && $first instanceof Node\Arg
+            && ($first->value instanceof Node\Expr\Closure || $first->value instanceof Node\Expr\ArrowFunction)
+        ) {
             $this->given[$first->value] = $receivers[0]['cls'];
         }
     }
@@ -460,8 +485,10 @@ final class ScanVisitor extends NodeVisitorAbstract
             return $this->valueOf($e->name);
         }
         if ($e instanceof Node\Expr\PropertyFetch || $e instanceof Node\Expr\NullsafePropertyFetch) {
-            if ($e->var instanceof Node\Expr\Variable && $e->var->name === 'this'
-                && $e->name instanceof Node\Identifier && $this->properties !== []) {
+            if (
+                $e->var instanceof Node\Expr\Variable && $e->var->name === 'this'
+                && $e->name instanceof Node\Identifier && $this->properties !== []
+            ) {
                 return $this->properties[count($this->properties) - 1][$e->name->toString()] ?? null;
             }
             return null;
@@ -469,15 +496,19 @@ final class ScanVisitor extends NodeVisitorAbstract
         if ($e instanceof Node\Expr\ArrayDimFetch) {
             return self::elementOf($this->valueOf($e->var));
         }
-        if (($e instanceof Node\Expr\MethodCall || $e instanceof Node\Expr\NullsafeMethodCall)
-            && $e->name instanceof Node\Identifier) {
+        if (
+            ($e instanceof Node\Expr\MethodCall || $e instanceof Node\Expr\NullsafeMethodCall)
+            && $e->name instanceof Node\Identifier
+        ) {
             $receiver = $this->valueOf($e->var);
             if ($receiver === null) {
                 return null;
             }
             $name = $e->name->toString();
-            return self::unionOf(array_map(static fn(array $m): ?array => self::callValue($m, $name),
-                self::members($receiver)));
+            return self::unionOf(array_map(
+                static fn(array $m): ?array => self::callValue($m, $name),
+                self::members($receiver)
+            ));
         }
         return null;
     }
@@ -596,15 +627,17 @@ final class ScanVisitor extends NodeVisitorAbstract
             if ($assign->var instanceof Node\Expr\Variable && is_string($assign->var->name)) {
                 $values[$assign->var->name][] = $value;
             } elseif ($assign->var instanceof Node\Expr\Array_ || $assign->var instanceof Node\Expr\List_) {
-                foreach ((new \PhpParser\NodeFinder())->findInstanceOf($assign->var, Node\Expr\Variable::class)
-                    as $variable) {
+                $variables = (new \PhpParser\NodeFinder())->findInstanceOf($assign->var, Node\Expr\Variable::class);
+                foreach ($variables as $variable) {
                     if (is_string($variable->name)) {
                         $values[$variable->name][] = null;
                     }
                 }
             }
-            if ($assign instanceof Node\Expr\AssignRef && $assign->expr instanceof Node\Expr\Variable
-                && is_string($assign->expr->name)) {
+            if (
+                $assign instanceof Node\Expr\AssignRef && $assign->expr instanceof Node\Expr\Variable
+                && is_string($assign->expr->name)
+            ) {
                 $values[$assign->expr->name][] = null;
             }
         }

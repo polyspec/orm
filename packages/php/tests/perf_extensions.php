@@ -5,8 +5,7 @@
 // baseline by different amounts, so the gate refuses to measure with one loaded.
 declare(strict_types=1);
 
-/** The extensions that change the measured ratio when loaded. */
-
+// The extensions that change the measured ratio when loaded.
 const PERF_GATE_REFUSED_EXTENSIONS = ['xdebug', 'pcov'];
 
 /**

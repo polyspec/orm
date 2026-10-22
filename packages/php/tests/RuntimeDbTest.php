@@ -14,7 +14,8 @@ declare(strict_types=1);
 // through ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN; the test fails when either
 // is unset.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RuntimeDbTest.php
-// [--filter <case>] The bench model is not read: this test uses only the model of its own document set.
+// [--filter <case>]
+// The bench model is not read: this test uses only the model of its own document set.
 
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
