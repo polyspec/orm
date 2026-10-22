@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 80b65026634a18d3c800d7e4ddb8801c2a50d436133df3fd95eabf07e7ac3325 -->
+<!-- source-sha256: 74be7facfc297564e57abb47c817743aeb2aa6be3b3b5b0f4cde491d7706557d -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -138,6 +138,7 @@
 | KSTD-5-47 | 변경된 경로의 언어에 맞는 lint target을 owner 선택이 고르도록 하여 land가 이를 실행하게 한다 (KSTD-5에 이어짐). 원인: config/owner-checks.json이 모든 변경 경로를 feature-owner-check에 넘기고, 이 target은 lint-go, lint-rust, lint-python, lint-php, lint-ts, duplication-check를 고르지 않아 land는 lint를 실행하지 않으며 finding을 추가한 branch도 land된다 | config/owner-checks.json: a rule per language that selects its lint target for the paths of that language | `make land BRANCH=fix/lint-owner-KSTD-5-47` refuses a branch with a Go errcheck finding at lint-go | [ ] |
 | KSTD-5-44 | TypeScript lint가 통과한다: oxlint와 knip이 발견 사항을 보고하지 않는다 (KSTD-5 하위) | the TypeScript sources that oxlint and knip name, with the unused export quoteIdent of listen.ts removed when nothing uses it | `make lint-ts` | [o] |
 | KSTD-5-45 | orm의 PHP 소스가 make lint-php를 통과한다 (phpcs: 줄 길이와 PSR-1 부작용). Red today: phpcs가 6개 finding을 보고한다: packages/php-ext/tests/silent_paths.php의 긴 줄 3개와 packages/php/tests의 Coverage 테스트 3개 파일의 PSR-1 부작용 | packages/php-ext/tests/silent_paths.php, packages/php/tests/CoverageConformanceVerificationTest.php, packages/php/tests/CoverageModelQueriesTest.php, packages/php/tests/CoverageModelWritesTest.php | `make lint-php` exits 0, with no suppression comment that states no reason | [o] |
+| KSTD-5-43 | checkout의 Python 코드가 ruff check, ruff format, vulture 어느 것에서도 finding 없이 make lint-python을 통과한다 | the Python sources of packages/python that the lint reports, with no suppression that has no stated reason | `make lint-python` | [o] |
 | KSTD-6 | link rebuild는 repository layout을 읽고 자기 paths를 두지 않는다 (kit K286). Cause: kit은 link된 checkout을 layout으로 rebuild하며 link 선언의 paths key는 없어진다 | kit.json, the link declaration | `make rebuild-check` | [o] |
 | KSTD-7 | main에서 feature-unit-check가 통과한다. Cause: docs/features.md가 그것이 그리는 coverage와 맞지 않고, scripts/features/coverage.test.mts의 8개 case가 "no package implements the client language php-extension"으로 실패한다 | docs/features.md, scripts/features | `make feature-unit-check` | [o] |
 | KSTD-7-1 | PHP extension이 the features schema_install, model_generation and interface_contract를 구현하고 PHP library의 test가 extension으로 이를 돌리며, 그 partial 상태를 지운다 (KSTD-7, T182-0 후속). Cause: S6와 S10은 partial feature를 받지 않고, kit K315는 contracts/features.json의 partial과 unsupported를 실패시킨다 | packages/php-ext, contracts/features.json | `make feature-unit-check` | [ ] |

@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The Python code passes `make lint-python`: ruff check and ruff format and vulture report no finding. The blind excepts of the catalog re-raise the error they hand to the session end, the test loops that collect failures or accept any refusal state their reason inline, the unused catalog metadata fields are deleted, and the error codes that orm-gen writes for every client are whitelisted with their reason (KSTD-5-43). Red: `make lint-python` on main reported 13 ruff check issues, 13 files to reformat and 10 vulture findings.
 - lint-php passes on the PHP sources: the long lines of packages/php-ext/tests/silent_paths.php are wrapped, and the three Coverage test files of packages/php/tests keep their PSR-1 entry check inside a method, not at file load (KSTD-5-45). Red: phpcs reported 6 findings.
 - The TypeScript lint of the repository passes: the lint-ts steps report no oxlint finding and no unused export. The errors keep their cause, the redacted rethrows leave their catch blocks, and the unused byteSize and the unused export quoteIdent are removed or unexported (KSTD-5-44). Red: make lint-ts reports 34 oxlint findings and one knip unused export.
 - The VitePress temporary folder `docs/.vitepress/.temp/` is ignored by git, so a build that leaves it no longer blocks a land (KSTD-5-39). Red: the probe of `git check-ignore` fails before the line is added.

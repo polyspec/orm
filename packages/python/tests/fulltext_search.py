@@ -23,7 +23,7 @@ class FulltextSearchTest(unittest.TestCase):
             assert fulltext_boolean(text) == want, text
 
         with self.assertRaises(OrmError) as refused:
-                transform_param("fulltext_boolean", "  ")
+            transform_param("fulltext_boolean", "  ")
         self.assertEqual(refused.exception.code, codes.IR_INVALID)
 
         def value(transform):
@@ -34,11 +34,23 @@ class FulltextSearchTest(unittest.TestCase):
         postgres = dialect_of("postgres")()
         sqlite = dialect_of("sqlite")()
 
-        assert mysql.fulltext(cols, value, True) == "MATCH (p.name, p.description) AGAINST ($[fulltext_boolean] IN BOOLEAN MODE)"
-        assert mysql.fulltext(cols, value, False) == "MATCH (p.name, p.description) AGAINST ($[] IN NATURAL LANGUAGE MODE)"
+        assert (
+            mysql.fulltext(cols, value, True)
+            == "MATCH (p.name, p.description) AGAINST ($[fulltext_boolean] IN BOOLEAN MODE)"
+        )
+        assert (
+            mysql.fulltext(cols, value, False)
+            == "MATCH (p.name, p.description) AGAINST ($[] IN NATURAL LANGUAGE MODE)"
+        )
         doc = "to_tsvector('simple', coalesce(p.name, '') || ' ' || coalesce(p.description, ''))"
-        assert postgres.fulltext(cols, value, False) == f"{doc} @@ plainto_tsquery('simple', $[])"
-        assert postgres.fulltext(cols, value, True) == f"{doc} @@ websearch_to_tsquery('simple', $[])"
+        assert (
+            postgres.fulltext(cols, value, False)
+            == f"{doc} @@ plainto_tsquery('simple', $[])"
+        )
+        assert (
+            postgres.fulltext(cols, value, True)
+            == f"{doc} @@ websearch_to_tsquery('simple', $[])"
+        )
         assert sqlite.fulltext(cols, value, True) is None
 
 

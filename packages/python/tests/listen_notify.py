@@ -22,7 +22,9 @@ class ListenNotifyTest(unittest.TestCase):
                     subscription = db.listen("t229_events")
                     db.transaction(lambda: db.notify("t229_events", "committed"))
                     first = subscription.receive()
-                    self.assertEqual(("t229_events", "committed"), (first.channel, first.payload))
+                    self.assertEqual(
+                        ("t229_events", "committed"), (first.channel, first.payload)
+                    )
 
                     def fail_after_notify() -> None:
                         db.notify("t229_events", "rolled back")
@@ -32,7 +34,11 @@ class ListenNotifyTest(unittest.TestCase):
                         db.transaction(fail_after_notify)
                     db.notify("t229_events", "outside")
                     second = subscription.receive()
-                    self.assertEqual("outside", second.payload, "the rolled back notification must not arrive")
+                    self.assertEqual(
+                        "outside",
+                        second.payload,
+                        "the rolled back notification must not arrive",
+                    )
 
                     subscription.unlisten("t229_events")
                     db.notify("t229_events", "after unlisten")
@@ -52,9 +58,13 @@ class ListenNotifyTest(unittest.TestCase):
                     try:
                         with self.assertRaises(OrmError) as notify:
                             db.notify("t229_events", "x")
-                        self.assertEqual("CAPABILITY_UNSUPPORTED", notify.exception.code, dialect)
+                        self.assertEqual(
+                            "CAPABILITY_UNSUPPORTED", notify.exception.code, dialect
+                        )
                         with self.assertRaises(OrmError) as listen:
                             db.listen("t229_events")
-                        self.assertEqual("CAPABILITY_UNSUPPORTED", listen.exception.code, dialect)
+                        self.assertEqual(
+                            "CAPABILITY_UNSUPPORTED", listen.exception.code, dialect
+                        )
                     finally:
                         db.close()

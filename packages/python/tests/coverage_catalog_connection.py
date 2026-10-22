@@ -80,9 +80,17 @@ def quote(name, driver):
 class CatalogConnectionCoverageTest(unittest.TestCase):
     def setUp(self):
         self.driver = os.environ.get("ORM_FEATURE_DATABASE", "")
-        self.assertIn(self.driver, ("mysql", "postgres", "sqlite"), "ORM_FEATURE_DATABASE is required; run it through make feature-check")
+        self.assertIn(
+            self.driver,
+            ("mysql", "postgres", "sqlite"),
+            "ORM_FEATURE_DATABASE is required; run it through make feature-check",
+        )
         self.catalog = connect_catalog(os.environ["ORM_FEATURE_DSN"])
-        self.assertEqual(self.catalog.dialect, self.driver, "ORM_FEATURE_DSN selects another database")
+        self.assertEqual(
+            self.catalog.dialect,
+            self.driver,
+            "ORM_FEATURE_DSN selects another database",
+        )
 
     def tearDown(self):
         self.catalog.close()
@@ -99,10 +107,14 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
         self.assertEqual(page.order_by, ["seq"])
         self.assertTrue(page.has_more)
         self.assertEqual(len(page.result.rows), 3)
-        count = self.catalog.read_only_query(f"SELECT COUNT(*) FROM {quote('user', driver)}", [])
+        count = self.catalog.read_only_query(
+            f"SELECT COUNT(*) FROM {quote('user', driver)}", []
+        )
         self.assertEqual(int(count.rows[0][0]), 5000)
         with self.assertRaisesRegex(Exception, "QUERY_READ_ONLY"):
-            self.catalog.read_only_query(f"UPDATE {quote('user', driver)} SET name = name WHERE seq = 1", [])
+            self.catalog.read_only_query(
+                f"UPDATE {quote('user', driver)} SET name = name WHERE seq = 1", []
+            )
 
     def test_row_mutation(self):
         driver = self.driver
@@ -113,21 +125,32 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
             return int(self.catalog.read_only_query(count_sql, []).rows[0][0])
 
         self.assertEqual(tenant_rows(), 0)
-        table = {"namespace": self.catalog.current_namespace(), "name": "composite_account"}
+        table = {
+            "namespace": self.catalog.current_namespace(),
+            "name": "composite_account",
+        }
         meta = self.catalog.describe_table(table)
-        inserted = self.catalog.insert_row(meta, [("tenant_id", TENANT), ("account_id", 1), ("name", "catalog")])
+        inserted = self.catalog.insert_row(
+            meta, [("tenant_id", TENANT), ("account_id", 1), ("name", "catalog")]
+        )
         self.assertEqual(len(inserted.rows), 1)
 
         def find(want):
             page = self.catalog.table_page(table, 1000, 0)
             self.assertFalse(page.has_more)
             index = page.column_index("tenant_id")
-            found = [i for i, row in enumerate(page.result.rows) if row[index] == TENANT]
+            found = [
+                i for i, row in enumerate(page.result.rows) if row[index] == TENANT
+            ]
             self.assertEqual(len(found), 1)
-            self.assertEqual(page.result.rows[found[0]][page.column_index("name")], want)
+            self.assertEqual(
+                page.result.rows[found[0]][page.column_index("name")], want
+            )
             return self.catalog.row_snapshot_from_page(page, found[0])
 
-        updated = self.catalog.update_row(find("catalog"), [("name", "catalog-updated")])
+        updated = self.catalog.update_row(
+            find("catalog"), [("name", "catalog-updated")]
+        )
         self.assertEqual(len(updated.rows), 1)
         self.assertEqual(self.catalog.delete_row(find("catalog-updated")), 1)
         self.assertEqual(tenant_rows(), 0)
@@ -161,7 +184,9 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
                 cursor.execute(f"DROP TABLE IF EXISTS `{table}`")
                 cursor.execute(f"CREATE TABLE `{table}` (`ts` TIMESTAMP NULL)")
                 # A NULL TIMESTAMP reads as a null cell; a value is what the grid refuses.
-                cursor.execute(f"INSERT INTO `{table}` (`ts`) VALUES ('2024-01-01 00:00:00')")
+                cursor.execute(
+                    f"INSERT INTO `{table}` (`ts`) VALUES ('2024-01-01 00:00:00')"
+                )
             with self.assertRaisesRegex(Exception, "CATALOG_VALUE"):
                 self.catalog.read_only_grid_query(f"SELECT `ts` FROM `{table}`", [])
         finally:

@@ -8,15 +8,14 @@ import json
 import os
 import tempfile
 import unittest
-from pathlib import Path
 
 from . import testcase
 from .dbspec_introspect import CONNECTION_RULES, ROOT, case_database
 from .runner_connect import Adapter
 
-from polyspec.orm.dbspec import parse_dbspec  # noqa: E402
-from polyspec.orm.dbspec.introspect import introspect_dbspec  # noqa: E402
-from polyspec.orm.dbspec.render import render_dbspec  # noqa: E402
+from polyspec.orm.dbspec import parse_dbspec
+from polyspec.orm.dbspec.introspect import introspect_dbspec
+from polyspec.orm.dbspec.render import render_dbspec
 
 # The counts that the TypeScript round-trip test asserts for each dialect (QUERY_COUNTS there).
 QUERY_COUNTS = {"mysql": 9, "postgres": 7, "sqlite": 3}
@@ -91,14 +90,18 @@ class DbspecIntrospectQueryCountTest(unittest.TestCase):
     def test_mysql(self):
         dsn = os.environ.get("ORM_TEST_MYSQL_DSN")
         if not dsn:
-            raise SystemExit("ORM_TEST_MYSQL_DSN is required; run make dbspec-introspect-python-check, which passes TEST_ENV")
+            raise SystemExit(
+                "ORM_TEST_MYSQL_DSN is required; run make dbspec-introspect-python-check, which passes TEST_ENV"
+            )
         self._check("mysql", dsn)
 
     # Requirements: DIA-133.
     def test_postgres(self):
         dsn = os.environ.get("ORM_TEST_POSTGRES_DSN")
         if not dsn:
-            raise SystemExit("ORM_TEST_POSTGRES_DSN is required; run make dbspec-introspect-python-check, which passes TEST_ENV")
+            raise SystemExit(
+                "ORM_TEST_POSTGRES_DSN is required; run make dbspec-introspect-python-check, which passes TEST_ENV"
+            )
         self._check("postgres", dsn)
 
 

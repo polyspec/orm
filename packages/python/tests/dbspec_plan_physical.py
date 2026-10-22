@@ -45,11 +45,13 @@ def run_steps(session, dialect, steps):
             continue
         if "query" in step:
             got = first_value(session, step["query"])
-            assert got == step["want"], f"{step['query']}: {got!r}, want {step['want']!r}"
+            assert got == step["want"], (
+                f"{step['query']}: {got!r}, want {step['want']!r}"
+            )
         elif step.get("fails"):
             try:
                 session.execute(step["sql"])
-            except Exception:
+            except Exception:  # noqa: BLE001, S112 - each driver raises its own refusal class; any refusal is the expected failure
                 continue
             raise AssertionError(f"{step['sql']}: succeeded; want an error")
         else:
@@ -93,9 +95,16 @@ def check_plan_case(case, dialect, dsns, sqlite_dir, index):
             for s in steps:
                 if s["finalize"]:
                     break
-                session.execute(s["restore"] if restore and s["restore"] != "" else s["statement"])
+                session.execute(
+                    s["restore"] if restore and s["restore"] != "" else s["statement"]
+                )
             if dialect == "sqlite":
-                assert first_value(session, "SELECT COUNT(*) FROM pragma_foreign_key_check") == "0", "foreign key check"
+                assert (
+                    first_value(
+                        session, "SELECT COUNT(*) FROM pragma_foreign_key_check"
+                    )
+                    == "0"
+                ), "foreign key check"
 
         for sql in [*CONNECTION_RULES[dialect], *setup]:
             session.execute(sql)
@@ -110,9 +119,18 @@ def check_plan_case(case, dialect, dsns, sqlite_dir, index):
             # A rollback that reverts all the way recreates the old table with the hidden added column.
             for s in reversed(steps):
                 if not s["finalize"]:
-                    session.execute(s["rollback_restore"] if s["rollback_restore"] != "" else s["rollback"])
+                    session.execute(
+                        s["rollback_restore"]
+                        if s["rollback_restore"] != ""
+                        else s["rollback"]
+                    )
             if dialect == "sqlite":
-                assert first_value(session, "SELECT COUNT(*) FROM pragma_foreign_key_check") == "0", "foreign key check after rollback"
+                assert (
+                    first_value(
+                        session, "SELECT COUNT(*) FROM pragma_foreign_key_check"
+                    )
+                    == "0"
+                ), "foreign key check after rollback"
             schema_is("rolled back", source_text)
             forward(True)
             schema_is("applied again", target_text)
@@ -128,7 +146,9 @@ def check_plan_case(case, dialect, dsns, sqlite_dir, index):
         if dialect == "sqlite":
             session.execute("PRAGMA foreign_keys = ON")
         schema_is("finalized", target_text)
-        assert first_value(session, HIDDEN[dialect]) == "0", "hidden tables and columns after finalize"
+        assert first_value(session, HIDDEN[dialect]) == "0", (
+            "hidden tables and columns after finalize"
+        )
 
 
 class DbspecPlanPhysicalTest(unittest.TestCase):
@@ -164,9 +184,11 @@ class DbspecPlanPhysicalTest(unittest.TestCase):
                 try:
                     check_plan_case(case, dialect, dsns, self.sqlite_dir.name, index)
                     runs += 1
-                except Exception as error:  # one failed run does not stop the others
+                except Exception as error:  # noqa: BLE001 - one failed run does not stop the others; each is reported below
                     failures.append(f"{dialect}.plan.{case['id']}: {error}")
-        self.assertEqual([], failures, f"{len(failures)} of {len(cases) * len(DIALECTS)} runs failed")
+        self.assertEqual(
+            [], failures, f"{len(failures)} of {len(cases) * len(DIALECTS)} runs failed"
+        )
         self.assertEqual(len(cases) * len(DIALECTS), runs)
 
 

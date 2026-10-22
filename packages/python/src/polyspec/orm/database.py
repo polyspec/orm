@@ -1283,11 +1283,11 @@ class Subscription:
         except Exception as error:
             if not _is_driver_error("postgres", error):
                 raise
-            _raise_driver_error("postgres", error, bool(self._connection.connection.closed))
+            _raise_driver_error(
+                "postgres", error, bool(self._connection.connection.closed)
+            )
         self.close()
-        raise OrmError(
-            codes.CANCELED, "the receive of the LISTEN subscription expired"
-        )
+        raise OrmError(codes.CANCELED, "the receive of the LISTEN subscription expired")
 
     def unlisten(self, channel: str) -> None:
         """Stops delivery of channel on the subscription (DIA-195)."""
@@ -2119,7 +2119,11 @@ class Db:
 
     def _savepoint(self, frame: TxFrame, callback):
         # A savepoint that does not release undoes an audit record inserted inside it.
-        audit_before, inserted_before, kept = frame.audit, {e: set(k) for e, k in frame.inserted.items()}, False
+        audit_before, inserted_before, kept = (
+            frame.audit,
+            {e: set(k) for e, k in frame.inserted.items()},
+            False,
+        )
         frame.savepoints += 1
         name = f"orm_sp_{frame.savepoints}"
 
@@ -2658,7 +2662,9 @@ def _record_inserted(ex: Executor, request: dict, key) -> None:
         return
     if not isinstance(key, int) or isinstance(key, bool) or key <= 0:
         return
-    entity = ex.db.engines[request["manifest_hash"]].model.entities.get(request["entity"])
+    entity = ex.db.engines[request["manifest_hash"]].model.entities.get(
+        request["entity"]
+    )
     if entity is None or not entity.identity:
         return
     frame.inserted.setdefault(request["entity"], set()).add(key)

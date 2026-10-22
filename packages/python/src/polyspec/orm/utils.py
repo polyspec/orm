@@ -120,8 +120,15 @@ class Utils:
     def was_inserted(self, entity: str, sequence: int) -> bool:
         """Whether a generated insert of entity with the identity key sequence succeeded in the active transaction (INT-52)."""
         frame = _active(self.db, "wasInserted")
-        if entity == "" or isinstance(sequence, bool) or not isinstance(sequence, int) or sequence <= 0:
-            raise OrmError(codes.CONFIG, "inserted entity and positive key are required")
+        if (
+            entity == ""
+            or isinstance(sequence, bool)
+            or not isinstance(sequence, int)
+            or sequence <= 0
+        ):
+            raise OrmError(
+                codes.CONFIG, "inserted entity and positive key are required"
+            )
         return sequence in frame.inserted.get(entity, ())
 
     def backend_waiting_for_lock(self) -> bool:

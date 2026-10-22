@@ -466,7 +466,13 @@ class _Validator:
             return
         if op in ("fulltext", "fulltext_boolean"):
             cols = p.get("cols") or []
-            if not cols or p.get("p") is None or p.get("column") or ps or any(p.get(k) for k in ("ref", "fn", "value", "sub")):
+            if (
+                not cols
+                or p.get("p") is None
+                or p.get("column")
+                or ps
+                or any(p.get(k) for k in ("ref", "fn", "value", "sub"))
+            ):
                 _fail(codes.IR_INVALID, f"{op} takes cols and p only")
             for name in cols:
                 c = field_of(ent, name)

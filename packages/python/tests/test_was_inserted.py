@@ -14,8 +14,8 @@ from .case_database import case_database
 from .test_markdown import FakeServer
 from .test_sqlite import generate_document
 
-from polyspec.orm.database import Db  # noqa: E402
-from polyspec.orm.errors import OrmError  # noqa: E402
+from polyspec.orm.database import Db
+from polyspec.orm.errors import OrmError
 
 ROOT = Path(__file__).resolve().parents[3]
 CLOCK = ROOT / "contracts" / "fixtures" / "clock.dbs"
@@ -52,22 +52,43 @@ class WasInsertedTest(unittest.TestCase):
             inserted = []
 
             def insert(label):
-                return self.models.ClockEvent().connect(db).set_label(label).create().get_seq()
+                return (
+                    self.models.ClockEvent()
+                    .connect(db)
+                    .set_label(label)
+                    .create()
+                    .get_seq()
+                )
 
             def outer():
                 outer_seq = insert("outer")
-                self.assertTrue(utils.was_inserted("clock_event", outer_seq), "the outer insert is recorded")
-                self.assertFalse(utils.was_inserted("clock_event", outer_seq + 1000), "a key never inserted is not recorded")
+                self.assertTrue(
+                    utils.was_inserted("clock_event", outer_seq),
+                    "the outer insert is recorded",
+                )
+                self.assertFalse(
+                    utils.was_inserted("clock_event", outer_seq + 1000),
+                    "a key never inserted is not recorded",
+                )
 
                 def nested():
                     inserted.append(insert("nested"))
-                    self.assertTrue(utils.was_inserted("clock_event", inserted[0]), "the nested insert is recorded")
+                    self.assertTrue(
+                        utils.was_inserted("clock_event", inserted[0]),
+                        "the nested insert is recorded",
+                    )
                     raise RuntimeError("roll back the nested savepoint")
 
                 with self.assertRaises(RuntimeError):
                     db.transaction(nested, {"retry": 0})
-                self.assertFalse(utils.was_inserted("clock_event", inserted[0]), "a rolled back insert leaves the write set")
-                self.assertTrue(utils.was_inserted("clock_event", outer_seq), "the outer insert survives a nested rollback")
+                self.assertFalse(
+                    utils.was_inserted("clock_event", inserted[0]),
+                    "a rolled back insert leaves the write set",
+                )
+                self.assertTrue(
+                    utils.was_inserted("clock_event", outer_seq),
+                    "the outer insert survives a nested rollback",
+                )
 
             db.transaction(outer, {"retry": 0})
 
@@ -78,12 +99,28 @@ class WasInsertedTest(unittest.TestCase):
     def test_was_inserted_needs_a_transaction_and_valid_arguments(self):
         def body(db, dsn):
             utils = db.utils()
-            self.assertEqual(self.code(lambda: utils.was_inserted("clock_event", 1)), "CONFIG", "outside a transaction")
+            self.assertEqual(
+                self.code(lambda: utils.was_inserted("clock_event", 1)),
+                "CONFIG",
+                "outside a transaction",
+            )
 
             def inside():
-                self.assertEqual(self.code(lambda: utils.was_inserted("", 1)), "CONFIG", "an empty entity")
-                self.assertEqual(self.code(lambda: utils.was_inserted("clock_event", 0)), "CONFIG", "a zero key")
-                self.assertEqual(self.code(lambda: utils.was_inserted("clock_event", -1)), "CONFIG", "a negative key")
+                self.assertEqual(
+                    self.code(lambda: utils.was_inserted("", 1)),
+                    "CONFIG",
+                    "an empty entity",
+                )
+                self.assertEqual(
+                    self.code(lambda: utils.was_inserted("clock_event", 0)),
+                    "CONFIG",
+                    "a zero key",
+                )
+                self.assertEqual(
+                    self.code(lambda: utils.was_inserted("clock_event", -1)),
+                    "CONFIG",
+                    "a negative key",
+                )
 
             db.transaction(inside, {"retry": 0})
 
@@ -93,7 +130,9 @@ class WasInsertedTest(unittest.TestCase):
 
     def test_backend_waiting_for_lock_is_false_without_a_waiter(self):
         def body(db, dsn):
-            self.assertFalse(db.utils().backend_waiting_for_lock(), "no backend waits for a lock")
+            self.assertFalse(
+                db.utils().backend_waiting_for_lock(), "no backend waits for a lock"
+            )
 
         for dialect in DIALECTS:
             with self.subTest(dialect=dialect):
@@ -105,22 +144,35 @@ class WasInsertedTest(unittest.TestCase):
             held = []
 
             def hold_insert():
-                held.append(self.models.ClockEvent().connect(db).set_label("held").create().get_seq())
+                held.append(
+                    self.models.ClockEvent()
+                    .connect(db)
+                    .set_label("held")
+                    .create()
+                    .get_seq()
+                )
 
             db.transaction(hold_insert, {"retry": 0})
 
             def parent():
-                self.models.ClockEvent().connect(db).set_seq(held[0]).set_label("parent").update()
+                self.models.ClockEvent().connect(db).set_seq(held[0]).set_label(
+                    "parent"
+                ).update()
                 child = subprocess.Popen(
                     [sys.executable, str(CHILD), dsn, str(held[0])],
-                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
                 )
                 waiting = False
                 deadline = time.monotonic() + 10
                 while not waiting and time.monotonic() < deadline:
                     waiting = utils.backend_waiting_for_lock()
                     time.sleep(0.02)
-                self.assertTrue(waiting, "the child backend waits for the row lock the transaction holds")
+                self.assertTrue(
+                    waiting,
+                    "the child backend waits for the row lock the transaction holds",
+                )
                 return child
 
             child = db.transaction(parent, {"retry": 0})

@@ -113,7 +113,9 @@ class _Builder:
 
     def transformed(self, i: int, transform: str) -> str:
         """The value Params[i] bound through the value transform kind, with the text type of a full-text search."""
-        return self._typed(_Slot("param", param=i, transform=transform, col_type="text"))
+        return self._typed(
+            _Slot("param", param=i, transform=transform, col_type="text")
+        )
 
     def col_param(self, i: int, col: Field, transform: str = "") -> str:
         slot = _Slot("param", param=i, transform=transform, col_type=col.type)

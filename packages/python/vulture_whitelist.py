@@ -95,3 +95,13 @@ _.row_factory
 # constant. The catalog keeps every code of each client, which the parity of the codes compares.
 RELATION_UNKNOWN
 WRITE_CONFLICT
+
+# The codes of the Rust catalog tool and of the grid temporal values, which orm-gen writes from docs/spec/errors.yaml with
+# every other code: this client raises none of them, and the catalog keeps every code of each client, which the parity of
+# the codes compares (KSTD-2-11-1).
+TOOL_BIND_INVALID
+TOOL_BIND_LIMIT
+TOOL_QUERY_COLUMNS
+TOOL_QUERY_STATEMENT
+GRID_TEMPORAL_VALUE
+GRID_TEMPORAL_PRECISION
