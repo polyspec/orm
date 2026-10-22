@@ -35,6 +35,16 @@ func TestMapMySQLErrClassifiesNowaitLock(t *testing.T) {
 	}
 }
 
+// TestMapMySQLErrClassifiesLockWaitTimeout checks that a MySQL lock wait timeout (1205, innodb_lock_wait_timeout) is CANCELED,
+// the expiry of the write bound of CFG-6, and not DRIVER.
+func TestMapMySQLErrClassifiesLockWaitTimeout(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	err := mapMySQLErr(&mysql.MySQLError{Number: 1205, Message: "Lock wait timeout exceeded; try restarting transaction"})
+	if got := ErrorCode(err); got != CodeCanceled {
+		t.Fatalf("mapped MySQL lock wait timeout 1205 = %q, want %q: %v", got, CodeCanceled, err)
+	}
+}
+
 func TestMapMySQLErrClassifiesReadOnly(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	for _, number := range []uint16{1290, 1792} {

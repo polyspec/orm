@@ -271,6 +271,12 @@ class ServerDriverErrorTest(unittest.TestCase):
             "CANCELED",
         ),
         (
+            pymysql.err.OperationalError,
+            1205,
+            "Lock wait timeout exceeded; try restarting transaction",
+            "CANCELED",
+        ),
+        (
             pymysql.err.InternalError,
             1290,
             "The MySQL server is running with the --read-only option",

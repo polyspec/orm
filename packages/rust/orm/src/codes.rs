@@ -59,7 +59,7 @@ pub const CODEC_ENCODE: &str = "CODEC_ENCODE";
 pub const CODEC_UNSUPPORTED: &str = "CODEC_UNSUPPORTED";
 /// executor: missing secret, bad DSN/paths, transaction misuse
 pub const CONFIG: &str = "CONFIG";
-/// executor: the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs, SQLite busy_timeout); a lock wait of the markdown executor that ends is CANCELED too
+/// executor: the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs, SQLite busy_timeout); a lock wait of the markdown executor that ends is CANCELED too, and so is a MySQL lock wait timeout (1205, innodb_lock_wait_timeout)
 pub const CANCELED: &str = "CANCELED";
 /// executor: a transaction or savepoint callback failed and its rollback failed too; the error keeps both errors
 pub const ROLLBACK: &str = "ROLLBACK";

@@ -7221,6 +7221,41 @@
       ]
     },
     {
+      "id": "mysql-lock-wait-canceled",
+      "kind": "feature",
+      "requirements": [
+        "CFG-6"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/driver_error_test.go",
+          "id": "TestMapMySQLErrClassifiesLockWaitTimeout"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/OrmExceptionLockWaitTest.php",
+          "id": "OrmExceptionLockWaitTest::test_mysql_lock_wait_timeout_is_canceled"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/OrmExceptionLockWaitTest.php",
+          "id": "OrmExceptionLockWaitTest::test_mysql_lock_wait_timeout_is_canceled"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/driver-error-lock-wait.mjs",
+          "id": "driver-error/lock-wait-timeout/mysql"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_driver_errors.py",
+          "id": "test_mysql_errors_have_the_codes_of_the_catalog"
+        }
+      ]
+    }
+,
+    {
       "id": "go-internal-packages-go-orm-driver-error",
       "kind": "feature",
       "bindings": [

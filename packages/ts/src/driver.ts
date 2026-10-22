@@ -166,7 +166,7 @@ function connectionLost(name: DriverName, source: { code: string | undefined; er
   return name === 'postgres' && typeof source.code === 'string' && (source.code.startsWith('08') || source.code === '57P01' || source.code === '57P02' || source.code === '57P05');
 }
 
-function driverError(name: DriverName, error: unknown): OrmError {
+export function driverError(name: DriverName, error: unknown): OrmError {
   if (error instanceof OrmError) return error;
   const driverCode = property(error, 'code');
   const errcode = property(error, 'errcode');
@@ -181,10 +181,10 @@ function driverError(name: DriverName, error: unknown): OrmError {
   const message = typeof text === 'string' ? text : errorText(error);
   if (connectionLost(name, source)) return new OrmError(codes.CONNECTION_LOST, `${name}: ${message}`, error);
   const lockNotAvailable = source.code === 'ER_LOCK_NOWAIT' || source.errcode === 3572 || source.code === '55P03';
-  // MySQL 1317/3024, PostgreSQL 57014, and SQLite 9 all report a statement
-  // that was stopped before it finished; SQLite BUSY reports a lock that
+  // MySQL 1205 (a lock wait timeout) is the expiry of the write bound of CFG-6, and MySQL 1317/3024, PostgreSQL 57014,
+  // and SQLite 9 all report a statement that was stopped before it finished; SQLite BUSY reports a lock that
   // another connection still held when busy_timeout ended.
-  if (source.code === 'ER_QUERY_INTERRUPTED' || source.code === 'ER_QUERY_TIMEOUT' || source.code === '57014' || source.errcode === 9 || sqliteBusy(name, error)) {
+  if (source.code === 'ER_LOCK_WAIT_TIMEOUT' || source.code === 'ER_QUERY_INTERRUPTED' || source.code === 'ER_QUERY_TIMEOUT' || source.code === '57014' || source.errcode === 9 || sqliteBusy(name, error)) {
     return new OrmError(codes.CANCELED, `${name}: ${message}`, error);
   }
   const duplicate = source.code === 'ER_DUP_ENTRY' || source.code === '23505' || source.errcode === 2067 || source.errcode === 1555;

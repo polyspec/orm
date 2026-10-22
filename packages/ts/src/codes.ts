@@ -59,7 +59,7 @@ export const CODEC_ENCODE = 'CODEC_ENCODE';
 export const CODEC_UNSUPPORTED = 'CODEC_UNSUPPORTED';
 // executor: missing secret, bad DSN/paths, transaction misuse
 export const CONFIG = 'CONFIG';
-// executor: the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs, SQLite busy_timeout); a lock wait of the markdown executor that ends is CANCELED too
+// executor: the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs, SQLite busy_timeout); a lock wait of the markdown executor that ends is CANCELED too, and so is a MySQL lock wait timeout (1205, innodb_lock_wait_timeout)
 export const CANCELED = 'CANCELED';
 // executor: a transaction or savepoint callback failed and its rollback failed too; the error keeps both errors
 export const ROLLBACK = 'ROLLBACK';

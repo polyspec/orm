@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 95e0cf85074fda995fbaf3b6a8c63bf5ffe55c9f64b5dc27793a99d63835f390 -->
+<!-- source-sha256: 1aa0964f18d0aa3e66cd83721b2ffbbf82fedda7d18c3b7e0091f31416a0b418 -->
 # 변경 이력
 
 ## Unreleased
@@ -7,6 +7,7 @@
 - 모든 Rust test가 `polyspec_orm_testcase::case!`로 case를 시작한다. packages/rust/build의 고정 목록 test, restore-or-create와 외부 관계 test, AES 키 읽기 test다(KSTD-5-22). red: 규칙이 generate.rs와 case가 없는 Rust test 일곱 개를 보고했다.
 - `make feature-unit-check`가 main에서 다시 통과한다: contracts/check-inputs.json이 generator 소스를 고르는 generated-lint-check를 선언하고, CHECK_TARGETS가 파일이 선언한 여섯 group-rows-db target을 가진다 (KSTD-7-9-1). red: main에서 scripts/features/owners.test.mts의 CHECK_TARGETS와 generator 소스 테스트가 실패했다.
 - comments check는 Python을 `scripts/comments/tokens/python-comments.mts`로 읽는다. tokenize와 ast 읽기기의 TypeScript 포팅이며, 저장소는 더 이상 Python 도구를 갖지 않는다. 출력은 추적되는 Python 파일 224개 모두에서 이전 읽기기와 같다(KSTD-5-21). red: `every tool of the repository is written in Go, PHP, Rust or TypeScript` 사례가 python-comments.py에서 실패했다.
+- MySQL 잠금 대기 시간 초과(1205)는 모든 client에서 CANCELED다. CFG-6의 쓰기 한계이기 때문이며, `errors.yaml`과 CFG-6에 적혀 있고 Go, PHP, PHP 확장, TypeScript, Python, Rust client가 매핑한다 (T230). red: Go, PHP, TypeScript, Python, Rust 사례가 1205에 대해 DRIVER 또는 값 없음을 반환했다.
 - KSTD-5-20 완료: 이 commit은 그 완료 상태를 기록하고, 행 commit이 남긴 체크리스트의 한국어 stamp를 갱신한다(KSTD-5-20).
 - repo check의 workflow 규칙 사례는 kit 복사본 두 개, release.yml과 gates.yml을 기대하며 규칙은 둘 다 건너뛴다(KSTD-5-20). red: 사례가 release.yml만 기대했으나 gates.yml이 두 번째 kit 복사본으로 발견되었다.
 - repo check의 Node 사례는 `.github/workflows`의 모든 workflow(gates.yml 포함)를 나열하고 각각이 mise.toml의 Node로 실행되는지 확인한다. kit 복사본 gates.yml은 이 규칙을 통과한다(KSTD-5-19). red: 사례가 workflow 4개를 기대했으나 gates.yml이 다섯 번째로 발견되었다.

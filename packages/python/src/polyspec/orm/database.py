@@ -572,6 +572,7 @@ _MYSQL_CODES = {
     2013: codes.CONNECTION_LOST,
     4031: codes.CONNECTION_LOST,
     3572: codes.LOCK_NOT_AVAILABLE,
+    1205: codes.CANCELED,
     1317: codes.CANCELED,
     3024: codes.CANCELED,
     1062: codes.DUPLICATE_KEY,

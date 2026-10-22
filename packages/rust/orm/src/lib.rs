@@ -96,6 +96,33 @@ impl std::error::Error for Error {
     }
 }
 
+/// The catalog code of a MySQL error number that the catalog names (docs/spec/errors.yaml), or None for any other number.
+/// MySQL 1205 (a lock wait timeout) is the expiry of the write bound of CFG-6, so it is CANCELED like 1317 and 3024.
+fn mysql_code(number: u16) -> Option<&'static str> {
+    Some(match number {
+        3572 => codes::LOCK_NOT_AVAILABLE,
+        1213 => codes::DEADLOCK,
+        1062 => codes::DUPLICATE_KEY,
+        1451 | 1452 => codes::FOREIGN_KEY,
+        1205 | 1317 | 3024 => codes::CANCELED,
+        1290 | 1792 => codes::READ_ONLY,
+        3819 | 4025 => codes::CONSTRAINT,
+        // ER_CLIENT_INTERACTION_TIMEOUT: the server ended an idle connection.
+        4031 => codes::CONNECTION_LOST,
+        _ => return None,
+    })
+}
+
+#[cfg(test)]
+mod mysql_code_tests {
+    use super::*;
+
+    #[test]
+    fn mysql_lock_wait_timeout_is_canceled() {
+        assert_eq!(mysql_code(1205), Some(codes::CANCELED));
+    }
+}
+
 /// Driver errors: the codes the catalog names (docs/spec/errors.yaml, origin driver) map to a
 /// shared code keeping the driver's message — MySQL 1213 / SQLSTATE 40001 → DEADLOCK, 1062 →
 /// DUPLICATE_KEY; PostgreSQL 40P01 / 40001 → DEADLOCK, 23505 → DUPLICATE_KEY, 23503 → FOREIGN_KEY; SQLite LOCKED
@@ -116,21 +143,16 @@ impl From<sqlx::Error> for Error {
             // (shared code, the driver's message — with the SQLSTATE on PostgreSQL, whose
             // message text is localized, the way pgx renders it)
             let mapped = if let Some(m) = d.try_downcast_ref::<sqlx::mysql::MySqlDatabaseError>() {
-                match (m.number(), m.code()) {
-                    (3572, _) | (_, Some("ER_LOCK_NOWAIT")) => Some((codes::LOCK_NOT_AVAILABLE, m.message().to_owned())),
-                    (1213, _) | (_, Some("40001")) => Some((codes::DEADLOCK, m.message().to_owned())),
-                    (1062, _) => Some((codes::DUPLICATE_KEY, m.message().to_owned())),
-                    (1317, _) | (3024, _) => Some((codes::CANCELED, m.message().to_owned())),
-                    (1451, _) | (1452, _) => Some((codes::FOREIGN_KEY, m.message().to_owned())),
-                    (1290, _) | (1792, _) => Some((codes::READ_ONLY, m.message().to_owned())),
-                    (3819, _) | (4025, _) => Some((codes::CONSTRAINT, m.message().to_owned())),
-                    // ER_CLIENT_INTERACTION_TIMEOUT: the server ended an idle connection.
-                    (4031, _) => Some((codes::CONNECTION_LOST, m.message().to_owned())),
-                    (1298, _) => {
-                        return Error::Config(format!("dsn timezone: {}; a named zone needs the MySQL time zone tables (mysql_tzinfo_to_sql)", m.message()))
-                    }
-                    _ => None,
+                if m.number() == 1298 {
+                    return Error::Config(format!("dsn timezone: {}; a named zone needs the MySQL time zone tables (mysql_tzinfo_to_sql)", m.message()));
                 }
+                // The sqlx code names the two errors that the number does not (ER_LOCK_NOWAIT, and SQLSTATE 40001 of a deadlock).
+                let by_name = match m.code() {
+                    Some("ER_LOCK_NOWAIT") => Some(codes::LOCK_NOT_AVAILABLE),
+                    Some("40001") => Some(codes::DEADLOCK),
+                    _ => None,
+                };
+                mysql_code(m.number()).or(by_name).map(|code| (code, m.message().to_owned()))
             } else if let Some(p) = d.try_downcast_ref::<sqlx::postgres::PgDatabaseError>() {
                 let msg = || format!("{} (SQLSTATE {})", p.message(), p.code());
                 match p.code() {

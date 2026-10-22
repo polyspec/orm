@@ -74,7 +74,7 @@ final class OrmException extends \RuntimeException
                 $num === 1213 || $state === '40001' => Code::DEADLOCK,
                 $num === 1062 || ($num === null && $state === '23000') => Code::DUPLICATE_KEY,
                 $num === 1451 || $num === 1452 => Code::FOREIGN_KEY,
-                $num === 1317 || $num === 3024 => Code::CANCELED,
+                $num === 1205 || $num === 1317 || $num === 3024 => Code::CANCELED,
                 $num === 1290 || $num === 1792 => Code::READ_ONLY,
                 $num === 3819 || $num === 4025 => Code::CONSTRAINT,
                 // 2006 (server has gone away) and 2013 (lost connection during query) mean the client lost the

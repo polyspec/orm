@@ -622,7 +622,7 @@ func mapMySQLErr(err error) error {
 		return &ir.Error{Code: CodeConstraint, Msg: me.Error()}
 	case me.Number == 1290 || me.Number == 1792: // read-only server / READ ONLY transaction
 		return &ir.Error{Code: CodeReadOnly, Msg: me.Error()}
-	case me.Number == 3024 || me.Number == 1317: // query timeout / interrupted
+	case me.Number == 1205 || me.Number == 3024 || me.Number == 1317: // lock wait timeout / query timeout / interrupted
 		return &ir.Error{Code: CodeCanceled, Msg: me.Error()}
 	case me.Number == 4031: // ER_CLIENT_INTERACTION_TIMEOUT: the server ended an idle connection
 		return &ir.Error{Code: CodeConnectionLost, Msg: me.Error()}

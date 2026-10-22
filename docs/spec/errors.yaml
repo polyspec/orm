@@ -67,7 +67,7 @@ codes:
     origin: executor
   - code: CONFIG                  # missing secret, bad DSN/paths, transaction misuse
     origin: executor
-  - code: CANCELED                # the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs, SQLite busy_timeout); a lock wait of the markdown executor that ends is CANCELED too
+  - code: CANCELED                # the statement stopped before it finished: its context or abort signal was cancelled, or a timeout bound expired (statement timeout, transaction timeoutMs, SQLite busy_timeout); a lock wait of the markdown executor that ends is CANCELED too, and so is a MySQL lock wait timeout (1205, innodb_lock_wait_timeout), and so is a MySQL lock wait timeout (1205, innodb_lock_wait_timeout)
     origin: executor
   - code: ROLLBACK                # a transaction or savepoint callback failed and its rollback failed too; the error keeps both errors
     origin: executor
