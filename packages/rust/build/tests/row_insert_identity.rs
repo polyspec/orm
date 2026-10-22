@@ -13,6 +13,7 @@ mod expression;
 mod lock_probe;
 
 #[tokio::test]
+// Requirements: DBS-113, INT-34.
 async fn generated_keys_return_the_inserted_row_on_each_database() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(30), check()).await.expect("generated identity deadline");

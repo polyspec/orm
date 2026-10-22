@@ -119,18 +119,21 @@ async fn bounded(driver: &str, case: &str) {
 }
 
 #[tokio::test]
+// Requirements: DBS-84.
 async fn trigger_refused_sqlite() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("sqlite", "trigger").await;
 }
 
 #[tokio::test]
+// Requirements: DBS-84.
 async fn trigger_refused_mysql() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("mysql", "trigger").await;
 }
 
 #[tokio::test]
+// Requirements: DBS-84.
 async fn trigger_refused_postgres() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("postgres", "trigger").await;

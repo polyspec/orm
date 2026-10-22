@@ -85,6 +85,7 @@ mod tests {
     use super::{fraction, precision};
 
     #[test]
+    // Requirements: DIA-54, DIA-137.
     fn precision_follows_the_native_type_and_dialect_default() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         assert_eq!(precision("datetime(6)", "mysql"), Ok(6));
@@ -96,6 +97,7 @@ mod tests {
     }
 
     #[test]
+    // Requirements: DBS-121.
     fn temporal_text_follows_the_dbspec_forms() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         use crate::tool_db::is_temporal;
@@ -119,6 +121,7 @@ mod tests {
     }
 
     #[test]
+    // Requirements: DIA-24.
     fn fraction_keeps_exactly_p_digits_and_rejects_dropped_digits() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         assert_eq!(fraction("2026-01-02 03:04:05.120000", 3, "c"), Ok("2026-01-02 03:04:05.120".into()));

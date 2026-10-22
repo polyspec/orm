@@ -78,6 +78,7 @@ fn record(db: &Db) -> SoftRecord {
 }
 
 #[tokio::test]
+// Requirements: DBS-67.
 async fn soft_delete_filters_reads_and_rewrites_deletes() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let path = std::env::temp_dir().join(format!("orm-rust-soft-delete-{}.sqlite", std::process::id()));

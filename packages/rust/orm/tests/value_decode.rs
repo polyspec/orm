@@ -11,6 +11,7 @@ fn required_dsn(name: &str) -> String {
 }
 
 #[tokio::test]
+// Requirements: COD-37, PRT-36.
 async fn invalid_database_cells_return_decode_errors() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(20), async {

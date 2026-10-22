@@ -99,6 +99,7 @@ fn code<T>(r: polyspec_orm::Result<T>) -> String {
 }
 
 #[tokio::test]
+// Requirements: DIA-27, DBS-68.
 async fn runtime_value_types() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let uuid = "0f0e0d0c-0b0a-4908-8706-050403020100";

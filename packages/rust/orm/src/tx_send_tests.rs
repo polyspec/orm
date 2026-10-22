@@ -110,16 +110,19 @@ async fn check(driver: &str, key: &str) {
     polyspec_orm_testcase::step(format_args!("send_savepoint {driver} {:?}", started.elapsed()));
 }
 #[tokio::test]
+// Requirements: DSL-119.
 async fn mysql_send_savepoint() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     check("mysql", "ORM_TEST_MYSQL_DSN").await;
 }
 #[tokio::test]
+// Requirements: DSL-119.
 async fn postgres_send_savepoint() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     check("postgres", "ORM_TEST_POSTGRES_DSN").await;
 }
 #[tokio::test]
+// Requirements: DSL-119.
 async fn sqlite_send_savepoint() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     check("sqlite", "ORM_SEND_SQLITE_DSN").await;

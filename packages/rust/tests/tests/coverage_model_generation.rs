@@ -18,6 +18,7 @@ fn generate(out: &Path) -> (String, String, String) {
 }
 
 #[test]
+// Requirements: DBS-120.
 fn coverage_model_generation_check() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     // The generator includes the output directory as a canonical path, so the paths compared are also made canonical.

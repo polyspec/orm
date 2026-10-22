@@ -9,6 +9,7 @@ mod restore_rows;
 use polyspec_orm_case_database::CaseDatabase;
 
 #[tokio::test]
+// Requirements: INT-38.
 async fn restore_soft_deleted_row() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     for driver in ["sqlite", "mysql", "postgres"] {

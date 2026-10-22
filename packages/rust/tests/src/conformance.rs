@@ -190,6 +190,7 @@ fn int(v: Option<Value>) -> i64 {
 }
 
 #[test]
+// Requirements: SCH-4.
 fn invalid_derived_integers_cannot_be_reported_as_zero() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     for value in [None, Some(json!("bad")), Some(json!(1.5)), Some(json!(9_223_372_036_854_775_808.0))] {

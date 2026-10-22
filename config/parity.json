@@ -8026,6 +8026,9 @@
     {
       "id": "rust-catalog-temporal-fraction-keeps-exactly-p-digits-and-rejects-dropped-digits",
       "kind": "feature",
+      "requirements": [
+        "DIA-24"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -8037,6 +8040,10 @@
     {
       "id": "rust-catalog-temporal-precision-follows-the-native-type-and-dialect-default",
       "kind": "feature",
+      "requirements": [
+        "DIA-54",
+        "DIA-137"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -8048,6 +8055,9 @@
     {
       "id": "rust-catalog-temporal-temporal-text-follows-the-dbspec-forms",
       "kind": "feature",
+      "requirements": [
+        "DBS-121"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -8768,6 +8778,9 @@
     {
       "id": "rust-binary-grid-values-remain-distinct-from-text-and-null",
       "kind": "feature",
+      "requirements": [
+        "SCH-3"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -8779,6 +8792,9 @@
     {
       "id": "rust-finite-grid-decimals-preserve-precision-and-scale",
       "kind": "feature",
+      "requirements": [
+        "SCH-3"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -8834,6 +8850,10 @@
     {
       "id": "rust-generated-keys-return-the-inserted-row-on-each-database",
       "kind": "feature",
+      "requirements": [
+        "DBS-113",
+        "INT-34"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -9383,6 +9403,9 @@
     {
       "id": "rust-tx-send-tests-mysql-send-savepoint",
       "kind": "feature",
+      "requirements": [
+        "DSL-119"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -9394,6 +9417,9 @@
     {
       "id": "rust-tx-send-tests-postgres-send-savepoint",
       "kind": "feature",
+      "requirements": [
+        "DSL-119"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -9405,6 +9431,9 @@
     {
       "id": "rust-tx-send-tests-sqlite-send-savepoint",
       "kind": "feature",
+      "requirements": [
+        "DSL-119"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -9715,6 +9744,9 @@
     {
       "id": "rust-audit-record-transaction",
       "kind": "feature",
+      "requirements": [
+        "INT-44"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -9726,6 +9758,9 @@
     {
       "id": "rust-audit-transaction-entry-points",
       "kind": "feature",
+      "requirements": [
+        "INT-44"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -10112,6 +10147,9 @@
     {
       "id": "rust-trigger-refused-mysql",
       "kind": "feature",
+      "requirements": [
+        "DBS-84"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -10123,6 +10161,9 @@
     {
       "id": "rust-trigger-refused-postgres",
       "kind": "feature",
+      "requirements": [
+        "DBS-84"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -10134,6 +10175,9 @@
     {
       "id": "rust-trigger-refused-sqlite",
       "kind": "feature",
+      "requirements": [
+        "DBS-84"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -10523,6 +10567,9 @@
     {
       "id": "rust-restore-soft-deleted-row",
       "kind": "feature",
+      "requirements": [
+        "INT-38"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -10694,6 +10741,9 @@
     {
       "id": "rust-soft-delete-filters-reads-and-rewrites-deletes",
       "kind": "feature",
+      "requirements": [
+        "DBS-67"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -10845,6 +10895,10 @@
     {
       "id": "rust-invalid-database-cells-return-decode-errors",
       "kind": "feature",
+      "requirements": [
+        "COD-37",
+        "PRT-36"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -10856,6 +10910,10 @@
     {
       "id": "rust-runtime-value-types",
       "kind": "feature",
+      "requirements": [
+        "DIA-27",
+        "DBS-68"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -11304,6 +11362,9 @@
     {
       "id": "rust-coverage-model-generation-check",
       "kind": "feature",
+      "requirements": [
+        "DBS-120"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -11347,6 +11408,9 @@
     {
       "id": "rust-conformance-invalid-derived-integers-cannot-be-reported-as-zero",
       "kind": "feature",
+      "requirements": [
+        "SCH-4"
+      ],
       "bindings": [
         {
           "implementation": "rust",
