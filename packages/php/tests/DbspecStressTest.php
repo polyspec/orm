@@ -5,7 +5,6 @@ declare(strict_types=1);
 // The shared 2000-table, 60000-column, 10000-foreign-key document from
 // tests/dbspec/stress.mts: parse and emit times, emit(parse(doc)) === doc and
 // two identical emissions, under the configured memory_limit.
-require_once __DIR__ . '/case_clock.php';
 
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\Group;

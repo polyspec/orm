@@ -14,7 +14,6 @@ declare(strict_types=1);
 // is missing, the test fails.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist
 // packages/php/tests/AddTablesAndColumnsTest.php [--filter <case>]
-require_once __DIR__ . '/case_database.php';
 
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;

@@ -11,7 +11,6 @@ declare(strict_types=1);
  *
  * Usage: FLOWMARK=<flowmark> vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --stop-on-defect packages/php/tests/MarkdownConformanceTest.php
  */
-require_once dirname(__DIR__) . '/markdownmodel/bootstrap.php';
 
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;

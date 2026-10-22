@@ -5,7 +5,6 @@ declare(strict_types=1);
 // The PHP behaviours of the dbspec interface that the shared vectors do not fix (dbspec_behaviour.php), each case
 // against the outcome recorded from the PHP library in fixtures/dbspec-behaviour.json. The same file checks the PHP
 // library and, run with the extension loaded, the extension.
-require_once __DIR__ . '/dbspec_behaviour.php';
 
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\DataProvider;

@@ -8,7 +8,6 @@
 // [--filter <case>]
 declare(strict_types=1);
 
-require_once __DIR__ . '/request_hook_cases.php';
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Medium;

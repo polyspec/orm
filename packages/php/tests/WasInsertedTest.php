@@ -8,8 +8,6 @@ declare(strict_types=1);
 // PostgreSQL need ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN, and the test fails when either is unset.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/WasInsertedTest.php
 // [--filter <case>]
-require_once __DIR__ . '/case_database.php';
-require_once __DIR__ . '/MarkdownTest.php';
 
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;

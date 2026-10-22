@@ -7,7 +7,6 @@ declare(strict_types=1);
 // is not created: the install of a document set fails with CONFIG and creates no missing tables. The install of a set
 // that uses external documents checks the external tables in the database, and registration does not read the database.
 
-require_once __DIR__ . '/coverage_cases.php';
 
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;

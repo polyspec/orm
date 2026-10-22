@@ -2,8 +2,6 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/coverage_cases.php';
-require_once __DIR__ . '/dbspec_plan_cases.php';
 // Applies the plans.json chains through Polyspec\Orm\Dbspec\Dbspec::apply, ::recover,
 // ::rollback and ::finalize on MySQL, PostgreSQL and SQLite (docs/spec/plans.md
 // "Apply"): the chain of create-from-empty and rename-table-and-column with

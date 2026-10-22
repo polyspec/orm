@@ -6,9 +6,6 @@
 // (scripts/features/check.mts compares it with the case list in features.json).
 declare(strict_types=1);
 
-require_once __DIR__ . '/request_hook_cases.php';
-require_once __DIR__ . '/case_database.php';
-require_once __DIR__ . '/coverage_cases.php';
 
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;

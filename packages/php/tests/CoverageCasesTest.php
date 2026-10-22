@@ -6,7 +6,6 @@
 // orm-check.
 declare(strict_types=1);
 
-require_once __DIR__ . '/coverage_cases.php';
 
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;

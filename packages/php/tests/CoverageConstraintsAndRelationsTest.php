@@ -6,7 +6,6 @@ declare(strict_types=1);
 // and unique duplicates fail with FOREIGN_KEY, CONSTRAINT, and DUPLICATE_KEY respectively, and no row
 // is changed.
 
-require_once __DIR__ . '/coverage_cases.php';
 
 use Polyspec\Orm\Tests\Model\Author;
 use Polyspec\Orm\Tests\Model\User;

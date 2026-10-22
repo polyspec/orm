@@ -19,7 +19,6 @@ declare(strict_types=1);
 // variable is unset.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/SchemaSetTest.php
 // [--filter <case>]
-require_once __DIR__ . '/case_database.php';
 
 use Polyspec\Orm\Tests\Model\User;
 use Polyspec\Orm\Code;

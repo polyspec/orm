@@ -11,7 +11,6 @@ declare(strict_types=1);
 // The document's model is created in a temporary directory: one process holds one document set's
 // model only.
 
-require_once __DIR__ . '/coverage_cases.php';
 
 use Polyspec\Orm\Tests\CoverageAuditColumns\Card;
 use Polyspec\Orm\Tests\CoverageAuditColumns\Tag;

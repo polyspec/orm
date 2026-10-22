@@ -9,8 +9,6 @@ declare(strict_types=1);
  *
  * Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/IrAnswersTest.php
  */
-require_once __DIR__ . '/MarkdownTest.php';
-require_once __DIR__ . '/MarkdownConformanceTest.php';
 
 use Polyspec\Orm\Config;
 use Polyspec\Orm\OrmException;

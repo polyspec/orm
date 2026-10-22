@@ -9,7 +9,6 @@ declare(strict_types=1);
 // outside the plan, an effect query that returns no row, and a result that
 // cannot be closed.
 
-require_once __DIR__ . '/dbspec_plan_cases.php';
 
 use Polyspec\Orm\Dbspec\ApplyCleanupError;
 use Polyspec\Orm\Dbspec\ApplyError;

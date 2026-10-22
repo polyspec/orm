@@ -5,8 +5,6 @@
 // and compares with the expected events (statement_events_run.php). Does not read or write the bench database.
 declare(strict_types=1);
 
-require_once __DIR__ . '/statement_events_run.php';
-require_once __DIR__ . '/coverage_cases.php';
 
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;

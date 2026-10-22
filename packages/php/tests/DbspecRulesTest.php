@@ -5,8 +5,6 @@ declare(strict_types=1);
 // Focused dbspec rules that tests/dbspec/cases.json does not cover yet. An
 // expected error names its rule, its line and a needle: the column is the
 // first occurrence of the needle in that line (in characters), or an integer.
-require_once __DIR__ . '/case_clock.php';
-require_once __DIR__ . '/dbspec_cases.php';
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Large;

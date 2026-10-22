@@ -10,7 +10,6 @@ declare(strict_types=1);
  * Instead of the flowmark server, markdown_fake_server.php records the messages of one connection and writes the chosen answers.
  */
 
-require_once dirname(__DIR__) . '/markdownmodel/bootstrap.php';
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Large;

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 // The set parse Dbspec::parseSet (docs/spec/dbspec.md "Parsing a set") through the shared vectors
 // tests/dbspec/set-parse.json; each parsed text equals one Dbspec::parse of it with the other named texts.
-require_once __DIR__ . '/dbspec_set_parse_cases.php';
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Small;

@@ -12,7 +12,6 @@ declare(strict_types=1);
 // is unset.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/AesJsonTest.php
 // [--filter <case>] The bench model is not read: this test uses only the model of its own document set.
-require_once __DIR__ . '/case_database.php';
 
 use Polyspec\Orm\Tests\AesJson\SecretConfig;
 use Polyspec\Orm\AesKeyring;

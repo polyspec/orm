@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/coverage_cases.php';
 // Model integration test on SQLite, MySQL and PostgreSQL. A case that installs
 // the schema runs in a case database of its own (case_database.php) created
 // through ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN; the cases that only
@@ -10,7 +9,6 @@ require_once __DIR__ . '/coverage_cases.php';
 // either is unset.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ModelTest.php
 // [--filter <case>]
-require_once __DIR__ . '/case_database.php';
 
 use Polyspec\Orm\Tests\Model\Account;
 use Polyspec\Orm\Tests\Model\Author;

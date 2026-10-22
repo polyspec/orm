@@ -7,7 +7,6 @@
 // packages/php/tests/UnselectedColumnDbTest.php
 declare(strict_types=1);
 
-require_once __DIR__ . '/coverage_cases.php';
 
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;

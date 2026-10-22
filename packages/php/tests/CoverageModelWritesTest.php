@@ -7,7 +7,6 @@ declare(strict_types=1);
 // and removes all those rows. composite_account has no identity column, so
 // the database state is left the same as before the run.
 
-require_once __DIR__ . '/coverage_cases.php';
 
 use Polyspec\Orm\Tests\Model\CompositeAccount;
 use Polyspec\Orm\Code;

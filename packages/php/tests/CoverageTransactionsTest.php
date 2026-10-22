@@ -6,7 +6,6 @@ declare(strict_types=1);
 // rolls back the rows written, and a failure in a nested transaction reverts only the savepoint.
 // Writes only rows of composite_account for tenant 990003, and removes them all.
 
-require_once __DIR__ . '/coverage_cases.php';
 
 use Polyspec\Orm\Tests\Model\CompositeAccount;
 use Polyspec\Orm\Db;

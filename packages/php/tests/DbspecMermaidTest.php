@@ -9,7 +9,6 @@ declare(strict_types=1);
 // must equal the case, and a round trip gets back the tables, columns,
 // primary keys and foreign keys of its document. Each case is a data set
 // named by its section and id.
-require_once __DIR__ . '/case_clock.php';
 
 use Polyspec\Orm\Dbspec\Dbspec;
 use Polyspec\Orm\Dbspec\Diagnostic;

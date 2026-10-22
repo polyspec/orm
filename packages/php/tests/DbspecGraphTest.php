@@ -5,8 +5,6 @@ declare(strict_types=1);
 // A document, document set, plan list or unsupported list whose array holds another type is a TypeError
 // "<what> holds <value>, not <type>" at the first such element (Polyspec\Orm\Dbspec\Graph), one case per checked array;
 // a document whose arrays hold their types is read as before.
-require_once __DIR__ . '/case_clock.php';
-require_once __DIR__ . '/dbspec_plan_cases.php';
 
 use Polyspec\Orm\Dbspec\Dbspec;
 use Polyspec\Orm\Dbspec\Document;

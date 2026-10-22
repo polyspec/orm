@@ -12,7 +12,6 @@ declare(strict_types=1);
 // ORM_TEST_POSTGRES_DSN; the test fails when either is unset.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/DriverErrorTest.php
 // [--filter <case>]
-require_once __DIR__ . '/case_database.php';
 
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;

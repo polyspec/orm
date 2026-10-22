@@ -7,7 +7,6 @@ declare(strict_types=1);
 // into this test's output; on failure it goes into the error. ORM_BENCH_MYSQL_DSN is the seeded shared bench
 // database, and the gate only reads it.
 
-require_once __DIR__ . '/coverage_cases.php';
 
 use PHPUnit\Framework\Attributes\Large;
 use PHPUnit\Framework\TestCase;

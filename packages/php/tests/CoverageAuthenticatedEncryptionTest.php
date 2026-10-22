@@ -6,7 +6,6 @@ declare(strict_types=1);
 // runs with the PHP client's AES envelope (Codec::hostEncode, the Codec::hostDecode
 // `aes` stage) and the blind index (Codec::blindIndex).
 
-require_once __DIR__ . '/coverage_cases.php';
 
 use Polyspec\Orm\Bytes;
 use Polyspec\Orm\Codec;

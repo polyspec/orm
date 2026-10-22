@@ -9,7 +9,6 @@ declare(strict_types=1);
 // (tenant_id, account_id) in key order. Account 2 must also exist in another tenant,
 // so that a relation linked only by the account_id part is exposed.
 
-require_once __DIR__ . '/coverage_cases.php';
 
 use Polyspec\Orm\Tests\Model\CompositeAccount;
 use Polyspec\Orm\Tests\Model\CompositeMembership;

@@ -6,7 +6,6 @@ declare(strict_types=1);
 // running the orm-gen check mode reports that packages/php/gen is the same as the generator output,
 // and reports that a copy with one byte changed is different.
 
-require_once __DIR__ . '/coverage_cases.php';
 
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\Large;

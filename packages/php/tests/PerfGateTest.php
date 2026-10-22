@@ -10,9 +10,7 @@
 // ORM_PERF_CPU_LOAD=1 runs the gate beside one busy process per CPU.
 declare(strict_types=1);
 
-require_once __DIR__ . '/coverage_cases.php';
 
-require_once __DIR__ . '/perf_extensions.php';
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\DoesNotPerformAssertions;

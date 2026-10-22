@@ -9,7 +9,6 @@ declare(strict_types=1);
 // testConformanceVector is the feature coverage (contracts/features.json): it runs the read-only vectors
 // conditions_values and relations on the database that ORM_FEATURE_DATABASE and ORM_FEATURE_DSN select.
 
-require_once __DIR__ . '/coverage_cases.php';
 
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\DataProvider;

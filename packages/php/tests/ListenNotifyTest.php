@@ -8,7 +8,6 @@ declare(strict_types=1);
 // CAPABILITY_UNSUPPORTED before any statement runs. Each case runs in a case database of its own (case_database.php),
 // created through ORM_TEST_POSTGRES_DSN or ORM_TEST_MYSQL_DSN; the test fails when either is unset.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ListenNotifyTest.php
-require_once __DIR__ . '/case_database.php';
 
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Code;

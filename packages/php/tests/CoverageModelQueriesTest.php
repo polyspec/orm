@@ -6,7 +6,6 @@ declare(strict_types=1);
 // (scripts/bench-db.sh). author seq i is user_seq i%5000+1,
 // service_seq i%100+1, read_count i%1000, and the name of user seq n is user-n.
 
-require_once __DIR__ . '/coverage_cases.php';
 
 use Polyspec\Orm\Tests\Model\Author;
 use Polyspec\Orm\Tests\Model\User;

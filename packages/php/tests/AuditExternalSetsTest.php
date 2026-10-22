@@ -12,7 +12,6 @@ declare(strict_types=1);
 // test in a separate process (RunTestsInSeparateProcesses). Each test uses a case database of its own
 // (case_database.php); the test fails when ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN is unset.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/AuditExternalSetsTest.php
-require_once __DIR__ . '/case_database.php';
 
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Generator;

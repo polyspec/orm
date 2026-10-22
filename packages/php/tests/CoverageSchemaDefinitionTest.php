@@ -9,7 +9,6 @@ declare(strict_types=1);
 // The same file runs these cases on the PHP extension polyspec_orm, loaded in its own process (make
 // dbspec-php-extension-check), whose classes take the place of the client's.
 
-require_once __DIR__ . '/coverage_cases.php';
 
 use Polyspec\Orm\Dbspec\Dbspec;
 use Polyspec\Orm\Dbspec\Document;

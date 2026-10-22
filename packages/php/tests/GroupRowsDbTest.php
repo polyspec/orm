@@ -6,7 +6,6 @@
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/GroupRowsDbTest.php
 declare(strict_types=1);
 
-require_once __DIR__ . '/coverage_cases.php';
 
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;

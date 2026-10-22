@@ -5,9 +5,6 @@ declare(strict_types=1);
 // The hashes cases of tests/dbspec/cases.json and the repeated document name
 // rule through Polyspec\Orm\Dbspec\Dbspec::manifest, and the sets cases through
 // Dbspec::manifest and Dbspec::render in every dialect.
-require_once __DIR__ . '/case_clock.php';
-require_once dirname(__DIR__, 3) . '/tests/dbspec/cases.php';
-require_once __DIR__ . '/dbspec_sets_cases.php';
 
 use Polyspec\Orm\Dbspec\Dbspec;
 use Polyspec\Orm\Dbspec\Document;

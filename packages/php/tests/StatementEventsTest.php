@@ -10,7 +10,6 @@
 // packages/php/tests/StatementEventsTest.php [--filter <method or data set>]
 declare(strict_types=1);
 
-require_once __DIR__ . '/statement_events_run.php';
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Medium;

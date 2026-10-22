@@ -9,8 +9,6 @@ declare(strict_types=1);
 // rule, line, column and the message of a `plan` diagnostic, every
 // comparison's differences or `compare` diagnostics, and the unknown dialect
 // rule.
-require_once __DIR__ . '/case_clock.php';
-require_once __DIR__ . '/dbspec_plan_cases.php';
 
 use Polyspec\Orm\Dbspec\Change;
 use Polyspec\Orm\Dbspec\Dbspec;

@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/coverage_cases.php';
 // A transaction or savepoint whose callback fails and whose rollback fails
 // too, on SQLite, MySQL and PostgreSQL. The client reports one
 // OrmException with the code ROLLBACK that keeps the callback error as its
@@ -21,7 +20,6 @@ require_once __DIR__ . '/coverage_cases.php';
 // and is sent once.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RollbackTest.php
 // [--filter <case>]
-require_once __DIR__ . '/case_database.php';
 
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;

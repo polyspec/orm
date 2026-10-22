@@ -7,7 +7,6 @@ declare(strict_types=1);
 // and the statement's role, sql, bind slots (source, param number, type), or error
 // code are compared with the fixture.
 
-require_once __DIR__ . '/coverage_cases.php';
 
 use Polyspec\Orm\Engine;
 use Polyspec\Orm\OrmException;

@@ -2,8 +2,6 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/coverage_cases.php';
-require_once __DIR__ . '/dbspec_plan_cases.php';
 // Applies every case of tests/dbspec/plans.json to MySQL, PostgreSQL and
 // SQLite through Polyspec\Orm\Dbspec\Dbspec (docs/spec/plans.md "Verification"): a fresh
 // database, schema or file per run renders and applies the source, runs the

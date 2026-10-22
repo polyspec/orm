@@ -12,3 +12,26 @@ declare(strict_types=1);
 // (its autoload-dev files would fail before the models exist).
 require_once __DIR__ . '/bench.php';
 require_once dirname(__DIR__) . '/gen/bootstrap.php';
+// The helpers that the test classes use, required once here: a test file then declares its class and causes no side
+// effect (PSR-1).
+require_once __DIR__ . '/case_database.php';
+require_once dirname(__DIR__) . '/testing/conformance/result_php_helpers.php';
+require_once __DIR__ . '/coverage_cases.php';
+require_once __DIR__ . '/restore_case.php';
+require_once __DIR__ . '/audit_case.php';
+require_once __DIR__ . '/request_hook_cases.php';
+require_once __DIR__ . '/statement_events_run.php';
+require_once __DIR__ . '/case_clock.php';
+require_once __DIR__ . '/dbspec_cases.php';
+require_once __DIR__ . '/dbspec_analysis_cases.php';
+require_once __DIR__ . '/dbspec_syntax_vectors.php';
+require_once __DIR__ . '/dbspec_plan_cases.php';
+require_once __DIR__ . '/dbspec_behaviour.php';
+require_once dirname(__DIR__, 3) . '/tests/dbspec/cases.php';
+require_once __DIR__ . '/dbspec_sets_cases.php';
+require_once __DIR__ . '/dbspec_set_parse_cases.php';
+require_once __DIR__ . '/dbspec_set_cases.php';
+require_once __DIR__ . '/MarkdownTest.php';
+require_once __DIR__ . '/MarkdownConformanceTest.php';
+require_once dirname(__DIR__) . '/markdownmodel/bootstrap.php';
+require_once __DIR__ . '/perf_extensions.php';

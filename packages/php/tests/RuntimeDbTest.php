@@ -15,9 +15,6 @@ declare(strict_types=1);
 // is unset.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RuntimeDbTest.php
 // [--filter <case>] The bench model is not read: this test uses only the model of its own document set.
-require_once __DIR__ . '/case_database.php';
-require_once __DIR__ . '/restore_case.php';
-require_once __DIR__ . '/audit_case.php';
 
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;

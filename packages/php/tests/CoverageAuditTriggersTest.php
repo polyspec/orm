@@ -8,9 +8,6 @@ declare(strict_types=1);
 // function. soft_delete_restore does the same with contracts/fixtures/restore.dbs. The fixture's model
 // is created per fixture in a temporary directory under its own namespace, and the bench model is not read.
 
-require_once __DIR__ . '/coverage_cases.php';
-require_once __DIR__ . '/restore_case.php';
-require_once __DIR__ . '/audit_case.php';
 
 use Polyspec\Orm\Tests\CoverageAudit\Item;
 use Polyspec\Orm\Code;

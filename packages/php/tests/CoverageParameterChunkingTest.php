@@ -6,7 +6,6 @@ declare(strict_types=1);
 // is run in parts, duplicate values are read only once, and combining a split list with limit
 // gives IR_INVALID.
 
-require_once __DIR__ . '/coverage_cases.php';
 
 use Polyspec\Orm\Tests\Model\Author;
 use Polyspec\Orm\Code;
