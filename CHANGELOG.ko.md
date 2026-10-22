@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 5a8097e76ea89092be77e60a768248235b95efd0c1bdffe8742fec6e5c52ab95 -->
+<!-- source-sha256: 2be194783ca494870477b4103dec929c43a31ad8c3d63e928122de010871906a -->
 # 변경 이력
 
 ## Unreleased
@@ -7,6 +7,7 @@
 - KSTD-5-20 완료: 이 commit은 그 완료 상태를 기록하고, 행 commit이 남긴 체크리스트의 한국어 stamp를 갱신한다(KSTD-5-20).
 - repo check의 workflow 규칙 사례는 kit 복사본 두 개, release.yml과 gates.yml을 기대하며 규칙은 둘 다 건너뛴다(KSTD-5-20). red: 사례가 release.yml만 기대했으나 gates.yml이 두 번째 kit 복사본으로 발견되었다.
 - repo check의 Node 사례는 `.github/workflows`의 모든 workflow(gates.yml 포함)를 나열하고 각각이 mise.toml의 Node로 실행되는지 확인한다. kit 복사본 gates.yml은 이 규칙을 통과한다(KSTD-5-19). red: 사례가 workflow 4개를 기대했으나 gates.yml이 다섯 번째로 발견되었다.
+- PHP 확장이 codec을 구현한다: 모든 논리 타입의 encode와 decode, blind index를 포함한 AES, host 스타일 decode가 확장에서 codec, codec-aes, codec-decode id로 실행된다 (T182-2). red: 4837ba2dc^에서 확장의 선언에 `Polyspec\Orm\Codec`의 메서드가 하나도 없었다(encode, decode, blindIndex, hostEncode, hostDecode, decodeRows, isHostStyle).
 - PHP 확장은 PHP 클라이언트의 클래스 이름을 쓴다: `Native` 네임스페이스 대신 `Polyspec\Orm\Dbspec\*`와 `Polyspec\Orm\Code`를 등록하므로, 사용자 코드는 확장 유무와 관계없이 같고, 확장이 있는 프로세스는 그 클래스들의 PHP 클라이언트 파일을 읽지 않는다 (T182-0). red: 선언 테스트가 `Polyspec\Orm\Native\Code is outside Polyspec\Orm\Dbspec\ and Polyspec\Orm\Code`로 실패했다.
 - 빌드 출력에 대한 저장소 검사는 따옴표 안의 텍스트를 텍스트로 읽는다. "WORKTREE=<path>" 같은 사용법 메시지를 stderr로 출력하는 recipe를 더는 파일로의 리다이렉트로 보고하지 않고, `sh -c "…"`의 명령 문자열은 계속 검사한다(KSTD-5-26). Red: 검사가 Makefile:883(`echo "usage: … WORKTREE=<path>" >&2`)을 제자리 리다이렉트로 보고했다. Green: Makefile에서 검사가 통과하고, `sh -c` 안의 따옴표 친 리다이렉트는 여전히 찾는다.
 - docs/spec/dialects.md의 Markdown IR executor 표가 고정된 버전의 flowmark 능력 표를 반영하고, `make markdown-table-check`가 통과한다(KSTD-5-18). red: 제목 아래 표가 없었다.
