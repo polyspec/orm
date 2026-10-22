@@ -8455,6 +8455,238 @@
                 }
               ]
             }
+          },
+          "go": {
+            "part": "packages/go/orm",
+            "tests": [
+              "packages/go/orm/coverage_catalog_connection_test.go"
+            ],
+            "inputs": [
+              "contracts/fixtures/bench/bench.dbs"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "go",
+                  "test": "packages/go/orm/coverage_catalog_connection_test.go",
+                  "cases": [
+                    "catalog_read",
+                    "catalog_row_mutation"
+                  ],
+                  "symbols": {
+                    "catalog_read": "TestCoverageCatalogRead",
+                    "catalog_row_mutation": "TestCoverageCatalogRowMutation"
+                  },
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "go",
+                  "test": "packages/go/orm/coverage_catalog_connection_test.go",
+                  "cases": [
+                    "catalog_read",
+                    "catalog_row_mutation"
+                  ],
+                  "symbols": {
+                    "catalog_read": "TestCoverageCatalogRead",
+                    "catalog_row_mutation": "TestCoverageCatalogRowMutation"
+                  },
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "go",
+                  "test": "packages/go/orm/coverage_catalog_connection_test.go",
+                  "cases": [
+                    "catalog_read",
+                    "catalog_row_mutation"
+                  ],
+                  "symbols": {
+                    "catalog_read": "TestCoverageCatalogRead",
+                    "catalog_row_mutation": "TestCoverageCatalogRowMutation"
+                  },
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "typescript": {
+            "part": "packages/ts/tests",
+            "tests": [
+              "packages/ts/tests/coverage_catalog_connection.mjs"
+            ],
+            "inputs": [
+              "contracts/fixtures/bench/bench.dbs"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+                  "cases": [
+                    "catalog_read",
+                    "catalog_row_mutation"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+                  "cases": [
+                    "catalog_read",
+                    "catalog_row_mutation"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+                  "cases": [
+                    "catalog_read",
+                    "catalog_row_mutation"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "python": {
+            "part": "packages/python/tests",
+            "tests": [
+              "packages/python/tests/coverage_catalog_connection.py"
+            ],
+            "inputs": [
+              "contracts/fixtures/bench/bench.dbs"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_catalog_connection.py",
+                  "cases": [
+                    "catalog_read",
+                    "catalog_row_mutation"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_catalog_connection.py",
+                  "cases": [
+                    "catalog_read",
+                    "catalog_row_mutation"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_catalog_connection.py",
+                  "cases": [
+                    "catalog_read",
+                    "catalog_row_mutation"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "php": {
+            "part": "packages/php/tests",
+            "tests": [
+              "packages/php/tests/CoverageCatalogConnectionTest.php"
+            ],
+            "inputs": [
+              "contracts/fixtures/bench/bench.dbs"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
+                  "cases": [
+                    "catalog_read",
+                    "catalog_row_mutation"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
+                  "cases": [
+                    "catalog_read",
+                    "catalog_row_mutation"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
+                  "cases": [
+                    "catalog_read",
+                    "catalog_row_mutation"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "php-extension": {
+            "part": "packages/php/tests",
+            "tests": [
+              "packages/php/tests/CoverageCatalogConnectionTest.php"
+            ],
+            "inputs": [
+              "contracts/fixtures/bench/bench.dbs"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
+                  "cases": [
+                    "catalog_read",
+                    "catalog_row_mutation"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
+                  "cases": [
+                    "catalog_read",
+                    "catalog_row_mutation"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
+                  "cases": [
+                    "catalog_read",
+                    "catalog_row_mutation"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
           }
         },
         "dependents": []

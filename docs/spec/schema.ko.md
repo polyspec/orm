@@ -1,5 +1,5 @@
 <!-- doc-id: schema -->
-<!-- source-sha256: 6af43a45753db6189f590248fcbc71c97c4154be3ba8e65ffad862dd1500778b -->
+<!-- source-sha256: de923559abba78d5b1d1f84125c76bf75044222f2675b022dd82c6f05954b2df -->
 # 스키마
 
 스키마 source는 dbspec document(`.dbs`)의 집합이다. [dbspec.md](dbspec.md)가 언어, 검증 규칙, manifest text와 두 hash를 정의한다. `contracts/fixtures/bench/bench.dbs`는 테스트와 벤치마크의 스키마다. 다른 스키마 파일은 없으며 모든 generator, runtime, 스키마 작업이 document set을 읽는다.
@@ -47,6 +47,8 @@
 - **SCH-5** `live-db` 기능은 `polyspec_orm_build::catalog::CatalogConnection::connect(dsn)`을 노출한다. 별도 driver 인자 없이 DSN이 DB를 선택한다. 카탈로그 연결은 SQLite 외래키 설정을 보존한다. 카탈로그 연결은 테이블 메타데이터와 페이지를 읽고 행을 바꾼다. 데이터베이스의 스키마는 `polyspec_orm::dbspec::introspect`가 읽는다.
 
 - **SCH-6** SQLite 카탈로그 연결은 기존 일반 DB 파일을 요구하고 파일 자동 생성을 끈다. `close(self)`는 예약 연결을 해제한 뒤 풀을 닫는다. 임의 SQL/데이터 접근을 활성화하기 전에 네이티브 디코딩 한계를 소유 코드에서 수정해야 한다.
+
+- **SCH-6a** 카탈로그 연결은 모든 client(Go, TypeScript, Rust, Python, PHP와 PHP 확장)에서 하나의 중립 규칙이다. `connect(dsn)`(Go `orm.ConnectCatalog(dsn)`, TypeScript `connectCatalog(dsn)`, Python `connect_catalog(dsn)`, PHP `Polyspec\Orm\Catalog::connect($dsn)`, Rust `CatalogConnection::connect(dsn)`)은 DSN만으로 데이터베이스를 고르고 markdown DSN을 거부한다. SQLite는 기존 일반 파일을 요구하며 파일을 만들지 않는다. client는 `current_namespace`, `describe_table`, `table_page`, `read_only_query`, `read_only_grid_query`, `insert_row`, `update_row`, `delete_row`를 제공하며, 의미는 [인터페이스](interfaces.md)의 Rust 기준("Qualified native Rust table metadata" 절과 그 뒤의 절들)과 같고, 이름은 각 언어의 규칙을 따르며, 오류 코드(`CONFIG`, `QUERY_READ_ONLY`, `GRID_TEMPORAL_VALUE` 등 기준이 정한 코드)는 같다. 모든 client는 MySQL, PostgreSQL, SQLite에서 같은 카탈로그 conformance case를 통과한다. 이 연산 중 하나라도 없는 client는 카탈로그 연결을 구현하지 않은 것이며 feature는 partial로 남는다.
 
 ## 4. 스키마 설치 {#_4-schema-installation}
 
