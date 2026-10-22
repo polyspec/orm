@@ -19,7 +19,7 @@ use Polyspec\Orm\Dbspec\Dbspec;
 final class DbspecIntrospectStressTest extends TestCase
 {
     // Requirements: DBS-102.
-    public function test_introspect_stress(): void
+    public function testIntrospectStress(): void
     {
         // The case builds a document of 2000 tables (one node process), applies it to a SQLite file, and introspects
         // it. The introspection of 2000 tables needs more than the default 128M; kit's runner runs php without a memory

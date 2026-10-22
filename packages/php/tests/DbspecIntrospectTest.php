@@ -240,7 +240,7 @@ final class DbspecIntrospectTest extends TestCase
     // The documents of a schema set are read here with Dbspec::readFile: the provider names their paths.
     // Requirements: DIA-133.
     #[DataProvider('roundTripCases')]
-    public function test_round_trip(string $dialect, string $setId, array $texts): void
+    public function testRoundTrip(string $dialect, string $setId, array $texts): void
     {
         if (str_starts_with($setId, 'schema_')) {
             foreach ($texts as $name => $path) {
@@ -284,7 +284,7 @@ final class DbspecIntrospectTest extends TestCase
     }
 
     #[DataProvider('unsupportedCases')]
-    public function test_unsupported(array $case): void
+    public function testUnsupported(array $case): void
     {
         $id = "introspect/{$case['dialect']}/{$case['id']}";
         $documents = parse_set($id, array_map(lines_text(...), $case['documents']));
@@ -308,7 +308,7 @@ final class DbspecIntrospectTest extends TestCase
         }
     }
 
-    public function test_unknown_dialect(): void
+    public function testUnknownDialect(): void
     {
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('oracle');
@@ -323,7 +323,7 @@ final class DbspecIntrospectTest extends TestCase
 
     // A query failure is an error regardless of the connection's error mode.
     #[DataProvider('queryFailureModes')]
-    public function test_query_failure(int $mode): void
+    public function testQueryFailure(int $mode): void
     {
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('information_schema');

@@ -74,7 +74,7 @@ final class AddTablesAndColumnsTest extends TestCase
     }
 
     /** Reads the count the query returns through the connection's PDO. */
-    private static function count_of(Db $db, string $sql): int
+    private static function rowCount(Db $db, string $sql): int
     {
         return (int) $db->pdo()->query($sql)->fetchColumn();
     }
@@ -107,17 +107,17 @@ final class AddTablesAndColumnsTest extends TestCase
             $added = $db->utils()->schema()->addTablesAndColumns(self::fixture('v2'));
             self::check($added === self::ADDED, 'addTablesAndColumns = ' . json_encode($added));
             // The rows are unchanged, and the new columns are NULL or default.
-            $items = self::count_of(
+            $items = self::rowCount(
                 $db,
                 "SELECT COUNT(*) FROM addcol_item WHERE ref = 'item-1' AND label = 'first' AND note IS NULL AND priority = 3 AND archived = false AND status = 'new'"
             );
             self::check($items === 1, "items with their values and the new defaults $items");
             self::check(
-                self::count_of($db, 'SELECT COUNT(*) FROM addcol_tag WHERE color IS NULL') === 2,
+                self::rowCount($db, 'SELECT COUNT(*) FROM addcol_tag WHERE color IS NULL') === 2,
                 'tags with a null color'
             );
             self::check(
-                self::count_of($db, "SELECT COUNT(*) FROM addcol_log_entry WHERE message = 'kept'") === 1,
+                self::rowCount($db, "SELECT COUNT(*) FROM addcol_log_entry WHERE message = 'kept'") === 1,
                 'log entries'
             );
             // SQLite turns foreign keys off and recreates the table. Checks that the connection turned them back on.
@@ -131,7 +131,7 @@ final class AddTablesAndColumnsTest extends TestCase
             // The audit trigger records the new column.
             $db->pdo()->exec("INSERT INTO audit (actor) VALUES ('update')");
             $db->pdo()->exec("UPDATE addcol_item SET note = 'later', priority = 4, audit_seq = 2 WHERE id = 1");
-            $history = self::count_of(
+            $history = self::rowCount(
                 $db,
                 "SELECT COUNT(*) FROM addcol_item_history WHERE history_action = 'update' AND previous_audit_seq = 1 AND audit_seq = 2 AND note = 'later' AND priority = 4 AND status = 'new'"
             );
@@ -139,7 +139,7 @@ final class AddTablesAndColumnsTest extends TestCase
             // The new table was created with its index, foreign key, check, and audit trigger.
             $db->pdo()->exec("INSERT INTO audit (actor) VALUES ('extra')");
             $db->pdo()->exec("INSERT INTO addcol_extra (item_id, label, audit_seq) VALUES (1, 'extra', 3)");
-            $inserted = self::count_of(
+            $inserted = self::rowCount(
                 $db,
                 "SELECT COUNT(*) FROM addcol_extra_history WHERE history_action = 'insert' AND previous_audit_seq IS NULL AND audit_seq = 3 AND item_id = 1 AND label = 'extra'"
             );
@@ -160,7 +160,7 @@ final class AddTablesAndColumnsTest extends TestCase
                 }
                 self::check($refused !== null, "the $what of the created table accepted $statement");
             }
-            self::check(self::count_of($db, 'SELECT COUNT(*) FROM addcol_extra') === 1, 'rows of the created table');
+            self::check(self::rowCount($db, 'SELECT COUNT(*) FROM addcol_extra') === 1, 'rows of the created table');
             $again = $db->utils()->schema()->addTablesAndColumns(self::fixture('v2'));
             self::check($again === [], 'repeated addTablesAndColumns = ' . json_encode($again));
             // Every table exists, so install changes nothing (docs/spec/schema.md "Schema installation").
@@ -281,7 +281,7 @@ final class AddTablesAndColumnsTest extends TestCase
 
     // Requirements: SCH-8, SCH-10.
     #[DataProvider('drivers')]
-    public function test_add_tables_and_columns(string $driver): void
+    public function testAddTablesAndColumns(string $driver): void
     {
         // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
         with_case_database($driver, static function (string $step): void {
@@ -290,7 +290,7 @@ final class AddTablesAndColumnsTest extends TestCase
 
     // Requirements: SCH-9.
     #[DataProvider('drivers')]
-    public function test_add_tables_and_columns_differs(string $driver): void
+    public function testAddTablesAndColumnsDiffers(string $driver): void
     {
         // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
         with_case_database($driver, static function (string $step): void {
@@ -299,7 +299,7 @@ final class AddTablesAndColumnsTest extends TestCase
 
     // Requirements: SCH-8, SCH-9.
     #[DataProvider('drivers')]
-    public function test_add_tables_and_columns_index(string $driver): void
+    public function testAddTablesAndColumnsIndex(string $driver): void
     {
         // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
         with_case_database($driver, static function (string $step): void {
@@ -308,7 +308,7 @@ final class AddTablesAndColumnsTest extends TestCase
 
     // Requirements: SCH-8.
     #[DataProvider('drivers')]
-    public function test_add_tables_and_columns_transaction(string $driver): void
+    public function testAddTablesAndColumnsTransaction(string $driver): void
     {
         // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
         with_case_database($driver, static function (string $step): void {
@@ -317,7 +317,7 @@ final class AddTablesAndColumnsTest extends TestCase
 
     // Requirements: SCH-8.
     #[DataProvider('drivers')]
-    public function test_add_tables_and_columns_edited_manifest(string $driver): void
+    public function testAddTablesAndColumnsEditedManifest(string $driver): void
     {
         // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
         with_case_database($driver, static function (string $step): void {

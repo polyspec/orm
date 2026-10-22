@@ -120,7 +120,7 @@ final class DbspecShowCreateIntrospectTest extends TestCase
 
     // Requirements: DIA-84.
     #[DataProvider('showCreateCases')]
-    public function test_introspect(array $case): void
+    public function testIntrospect(array $case): void
     {
         $catalog = self::data()['catalog'];
         $table = $catalog['table'];

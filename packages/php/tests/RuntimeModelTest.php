@@ -41,7 +41,7 @@ final class RuntimeModelTest extends TestCase
     }
 
     // Requirements: DBS-111.
-    public function test_entities_in_document_order(): void
+    public function testEntitiesInDocumentOrder(): void
     {
         $bench = self::bench();
         $want = [
@@ -91,7 +91,7 @@ final class RuntimeModelTest extends TestCase
 
     // Requirements: DBS-68, DBS-114.
     // Requirements: PRT-9.
-    public function test_default_select_set_excludes_only_select_explicit(): void
+    public function testDefaultSelectSetExcludesOnlySelectExplicit(): void
     {
         $bench = self::bench();
         $selected = [];
@@ -117,7 +117,7 @@ final class RuntimeModelTest extends TestCase
     }
 
     // Requirements: DBS-103, DBS-104, DBS-120.
-    public function test_generated_models_carry_the_manifest_hash_and_the_model(): void
+    public function testGeneratedModelsCarryTheManifestHashAndTheModel(): void
     {
         $root = dirname(__DIR__, 3);
         $bench = self::bench();
@@ -132,7 +132,7 @@ final class RuntimeModelTest extends TestCase
         );
     }
 
-    public function test_a_generated_model_agrees_with_its_manifest_whatever_its_key_order(): void
+    public function testAGeneratedModelAgreesWithItsManifestWhateverItsKeyOrder(): void
     {
         // The unique keys and indexes are declared out of name order; the manifest text sorts them by name.
         $source = "dbspec 1 order\n\ntable item {\n  id i64 identity\n  b i32\n  a i32\n  primary key (id)\n  unique uq_b (b)\n  unique uq_a (a)\n  index ix_b (b)\n  index ix_a (a)\n}\n";
@@ -156,7 +156,7 @@ final class RuntimeModelTest extends TestCase
     }
 
     // Requirements: DBS-120.
-    public function test_a_generated_model_that_its_manifest_contradicts_is_refused(): void
+    public function testAGeneratedModelThatItsManifestContradictsIsRefused(): void
     {
         // A model generated before orm-gen wrote the varchar length: its meta() lacks columns.name.length.
         $stale = new class extends \Polyspec\Orm\Model {
@@ -195,7 +195,7 @@ final class RuntimeModelTest extends TestCase
         );
     }
 
-    public function test_generated_files_are_current(): void
+    public function testGeneratedFilesAreCurrent(): void
     {
         $root = dirname(__DIR__, 3);
         $bench = self::bench();
@@ -204,7 +204,7 @@ final class RuntimeModelTest extends TestCase
     }
 
     // Requirements: DBS-116.
-    public function test_codec_value_types(): void
+    public function testCodecValueTypes(): void
     {
         $type = static fn(string $method): string => (string) (
             new ReflectionMethod(Author::class, $method)
@@ -220,7 +220,7 @@ final class RuntimeModelTest extends TestCase
     }
 
     // Requirements: DBS-112.
-    public function test_i16_field(): void
+    public function testI16Field(): void
     {
         $root = dirname(__DIR__, 3);
         $doc = "dbspec 1 small\n\ntable small_value {\n  seq i64 identity\n  level i16\n  rank i16 null\n  primary key (seq)\n}\n";
@@ -249,7 +249,7 @@ final class RuntimeModelTest extends TestCase
         );
     }
 
-    public function test_a_column_whose_condition_method_is_a_model_method_is_refused(): void
+    public function testAColumnWhoseConditionMethodIsAModelMethodIsRefused(): void
     {
         // jsonText is a public static method of Model. A column json_text would generate an instance method of that
         // name, which PHP refuses when the model class loads, so generation refuses the column instead.
@@ -273,7 +273,7 @@ final class RuntimeModelTest extends TestCase
     }
 
     // Requirements: DBS-115.
-    public function test_insert_binds_the_clock_of_an_omitted_default_now_column_except_on_MySQL(): void
+    public function testInsertBindsTheClockOfAnOmittedDefaultNowColumnExceptOnMySQL(): void
     {
         // The test of DIA-24 (docs/spec).
         $doc = "dbspec 1 clocked\n\ntable note {\n  id i64 identity\n  rank i16\n  body text\n  created_at datetime(6) default now\n  primary key (id)\n}\n";
@@ -332,7 +332,7 @@ final class RuntimeModelTest extends TestCase
     }
 
     // Requirements: DBS-119.
-    public function test_configuration_without_a_schema_path(): void
+    public function testConfigurationWithoutASchemaPath(): void
     {
         $config = new Config(aesKey: 'k');
         self::assertTrue($config->aesKey === 'k', 'config');
@@ -341,7 +341,7 @@ final class RuntimeModelTest extends TestCase
     }
 
     // Requirements: DBS-104.
-    public function test_requests_carry_the_manifest_hash(): void
+    public function testRequestsCarryTheManifestHash(): void
     {
         $bench = self::bench();
         $engine = new Engine($bench, 'sqlite', 4);

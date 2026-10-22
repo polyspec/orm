@@ -15,7 +15,7 @@ use PHPUnit\Framework\TestCase;
 #[Large]
 final class CoveragePerformanceGateTest extends TestCase
 {
-    public function test_hot_path_gate(): void
+    public function testHotPathGate(): void
     {
         $dsn = getenv('ORM_BENCH_MYSQL_DSN');
         if (!is_string($dsn) || $dsn === '') {

@@ -41,7 +41,7 @@ final class DecimalModelTest extends TestCase
      * @param array<string, mixed> $column
      */
     #[DataProvider('cases')]
-    public function test_decimal_model(array $case, array $column): void
+    public function testDecimalModel(array $case, array $column): void
     {
         try {
             $actual = Decimal::normalize($case['input'], $column['precision'], $column['scale']);
@@ -62,7 +62,7 @@ final class DecimalModelTest extends TestCase
         }
     }
 
-    public function test_generated_decimal_type(): void
+    public function testGeneratedDecimalType(): void
     {
         $getter = (new ReflectionMethod(Author::class, 'getPrice'))->getReturnType();
         $setter = (new ReflectionMethod(Author::class, 'setPrice'))->getParameters()[0]->getType();

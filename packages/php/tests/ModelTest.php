@@ -215,7 +215,7 @@ final class ModelTest extends TestCase
         return implode(',', array_map(static fn(Author $b): string => $b->getName(), $c->all()));
     }
 
-    private static function case_conditions(Db $db, string $dsn): void
+    private static function caseConditions(Db $db, string $dsn): void
     {
         $f = self::seed($db);
         $svc = $f['service']->getSeq();
@@ -283,7 +283,7 @@ final class ModelTest extends TestCase
         self::check(self::code(fn() => (new Author())->name('alpha')->gets()) === Code::CONFIG, 'no connection');
     }
 
-    private static function case_joins_and_relations(Db $db, string $dsn): void
+    private static function caseJoinsAndRelations(Db $db, string $dsn): void
     {
         $f = self::seed($db);
         $author = (new User())->on(fn(User $u) => $u->neName('nobody'))->name('kim');
@@ -330,7 +330,7 @@ final class ModelTest extends TestCase
         self::check(($json['writer']['name'] ?? null) === 'kim', 'json');
     }
 
-    private static function case_columns_and_subqueries(Db $db, string $dsn): void
+    private static function caseColumnsAndSubqueries(Db $db, string $dsn): void
     {
         $f = self::seed($db);
         $users = (new User())($db)
@@ -376,7 +376,7 @@ final class ModelTest extends TestCase
         self::check($fetched->fetchedValues() === ['ALPHA', 'BETA', 'GAMMA', 'DELTA'], 'fetchValue');
     }
 
-    private static function case_writes(Db $db, string $dsn): void
+    private static function caseWrites(Db $db, string $dsn): void
     {
         $f = self::seed($db);
         $b = (new Author())($db)->getBySeq($f['authors'][0]->getSeq());
@@ -428,7 +428,7 @@ final class ModelTest extends TestCase
         );
     }
 
-    private static function case_styled_value_states(Db $db, string $dsn): void
+    private static function caseStyledValueStates(Db $db, string $dsn): void
     {
         $fixture = json_decode(
             file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/styled_column_states.json'),
@@ -547,7 +547,7 @@ final class ModelTest extends TestCase
     }
 
     // ip, gz, and base64 codec columns store the value and read it back, and the ip column is found by equality.
-    private static function case_codec_columns(Db $db, string $dsn): void
+    private static function caseCodecColumns(Db $db, string $dsn): void
     {
         $f = self::seed($db);
         $seq = $f['authors'][0]->getSeq();
@@ -569,7 +569,7 @@ final class ModelTest extends TestCase
         self::check($stored === base64_encode('plain'), 'base64 storage');
     }
 
-    private static function case_transactions(Db $db, string $dsn): void
+    private static function caseTransactions(Db $db, string $dsn): void
     {
         // A transaction runs only through transaction(): Db has no public method that begins, commits or rolls one
         // back. The test of DSL-124 (docs/spec/dsl.md "Transactions").
@@ -638,7 +638,7 @@ final class ModelTest extends TestCase
         self::check($db->stats() == $db->utils()->stats(), 'Db stats are the utility stats');
     }
 
-    private static function case_utilities(Db $db, string $dsn): void
+    private static function caseUtilities(Db $db, string $dsn): void
     {
         $schema = $db->utils()->schema();
         $broken = "dbspec 1 broken\n\ntable t {\n}\n";
@@ -703,7 +703,7 @@ final class ModelTest extends TestCase
         }
     }
 
-    private static function case_deadlock_retry(Db $db, string $dsn): void
+    private static function caseDeadlockRetry(Db $db, string $dsn): void
     {
         $f = self::seed($db);
         [$a, $b] = [$f['authors'][0]->getSeq(), $f['authors'][1]->getSeq()];
@@ -735,7 +735,7 @@ final class ModelTest extends TestCase
         self::check($runs === [1, 2], 'closure runs: ' . implode(',', $runs));
     }
 
-    private static function case_aes_rotation(Db $db, string $dsn): void
+    private static function caseAesRotation(Db $db, string $dsn): void
     {
         $f = self::seed($db);
         $b = (new Author())($db)->getBySeq($f['authors'][0]->getSeq());
@@ -775,7 +775,7 @@ final class ModelTest extends TestCase
     // Inserts and reads more values than SQLite binds in one statement: the inserts
     // and the root IN list are split, duplicate IN values are read once, and a shape
     // that a merge would change is rejected.
-    private static function case_bind_limit_splitting(Db $db, string $dsn): void
+    private static function caseBindLimitSplitting(Db $db, string $dsn): void
     {
         $n = 1200;
         $rows = [];
@@ -804,7 +804,7 @@ final class ModelTest extends TestCase
     // contracts/fixtures/insert_parts.json run in InsertPartsTest.php): each batch is one insert statement, a batch
     // that is not positive is CONFIG and one over the bind limit is BATCH_TOO_LARGE before any statement, the rows keep
     // their order, and a failing batch leaves no row of the call.
-    private static function case_insert_parts(Db $db): void
+    private static function caseInsertParts(Db $db): void
     {
         $inserts = [];
         $unsubscribe = $db->subscribe(static function (\Polyspec\Orm\StatementEvent $e) use (&$inserts): void {
@@ -1069,14 +1069,14 @@ final class ModelTest extends TestCase
     }
 
     #[DataProvider('drivers')]
-    public function test_schema_empty(string $driver): void
+    public function testSchemaEmpty(string $driver): void
     {
         self::schemaEmpty($driver, self::caseDsn($driver));
     }
 
     #[DataProvider('drivers')]
     // Requirements: CFG-4, CFG-5.
-    public function test_pool_options(string $driver): void
+    public function testPoolOptions(string $driver): void
     {
         $dsn = self::$targets[$driver];
         // A Db holds one connection. The PHP client has no pool and refuses the pool options.
@@ -1107,7 +1107,7 @@ final class ModelTest extends TestCase
 
     #[DataProvider('drivers')]
     // Requirements: CFG-6.
-    public function test_statement_timeout(string $driver): void
+    public function testStatementTimeout(string $driver): void
     {
         $dsn = self::$targets[$driver];
         self::check(
@@ -1147,7 +1147,7 @@ final class ModelTest extends TestCase
     // database. So this case creates only one table named after itself (case_name()) in that database, and removes only
     // that table at the end (even on failure). The table's model is generated from the dbspec document made during the
     // run. Requirements: CFG-27, CFG-29.
-    public function test_statement_timeout_through_a_pooler(): void
+    public function testStatementTimeoutThroughAPooler(): void
     {
         $probeSetup = null;
         $probeTable = null;
@@ -1222,7 +1222,7 @@ final class ModelTest extends TestCase
     }
 
     // Requirements: SCH-7.
-    public function test_install_inside_a_transaction(): void
+    public function testInstallInsideATransaction(): void
     {
         $db = self::database('mysql', self::caseDsn('mysql'));
         $inside = null;
@@ -1238,7 +1238,7 @@ final class ModelTest extends TestCase
 
     #[DataProvider('zones')]
     // Requirements: CFG-2, CFG-7.
-    public function test_connection_time_zone(string $zoneName, string $driver): void
+    public function testConnectionTimeZone(string $zoneName, string $driver): void
     {
         // The test of DSL-141, DIA-57 (docs/spec).
         $base = self::$targets[$driver];
@@ -1264,7 +1264,7 @@ final class ModelTest extends TestCase
     // without a connection inside a transaction uses the transaction.
     #[DataProvider('serverDrivers')]
     // Requirements: CFG-21, CFG-22.
-    public function test_primary_and_replica(string $driver): void
+    public function testPrimaryAndReplica(string $driver): void
     {
         $env = strtoupper($driver);
         $replica = requiredDsn("ORM_TEST_{$env}_REPLICA_DSN");
@@ -1321,7 +1321,7 @@ final class ModelTest extends TestCase
     // A connection to a SQLite database file that the process may only read:
     // SQLite opens it read-only, reads succeed, and a write returns READ_ONLY.
     // Requirements: CFG-24.
-    public function test_read_only(): void
+    public function testReadOnly(): void
     {
         $path = self::$work . "/read-only.sqlite";
         $writable = self::database('sqlite', "sqlite://$path");
@@ -1346,7 +1346,7 @@ final class ModelTest extends TestCase
     // If the MySQL local value reset at the end of the transaction fails, commit and rollback report that error.
     // A MySQL user variable remains after COMMIT and ROLLBACK.
     // (mysql.context.user_variable_session_scope).
-    public function test_failed_local_reset(): void
+    public function testFailedLocalReset(): void
     {
         [, $pdoDsn, $user, $password] = Orm::parseDsn(self::$targets['mysql']);
         $pdo = new ModelTestFailingPdo($pdoDsn, $user, $password);
@@ -1371,7 +1371,7 @@ final class ModelTest extends TestCase
 
     // If the MySQL RELEASE_LOCK at the end of the transaction fails, or does not release the lock, commit and
     // rollback report that error. A named lock that is not released remains on the connection.
-    public function test_failed_lock_release(): void
+    public function testFailedLockRelease(): void
     {
         [, $pdoDsn, $user, $password] = Orm::parseDsn(self::$targets['mysql']);
         $pdo = new ModelTestFailingPdo($pdoDsn, $user, $password);
@@ -1404,7 +1404,7 @@ final class ModelTest extends TestCase
 
     // If the native rollback, the SQLite mode restore, or the rollback after begin fails, the transaction
     // reports that error together with its cause.
-    public function test_failed_rollback(): void
+    public function testFailedRollback(): void
     {
         $pdo = new ModelTestFailingPdo("sqlite:" . self::$work . "/transaction-end.sqlite");
         $failing = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
@@ -1438,7 +1438,7 @@ final class ModelTest extends TestCase
     // If the ROLLBACK TO SAVEPOINT or RELEASE SAVEPOINT that ends a nested transaction's savepoint fails,
     // it reports the callback error together with that error, and a callback that succeeded reports the failure of
     // RELEASE SAVEPOINT.
-    public function test_failed_savepoint_end(): void
+    public function testFailedSavepointEnd(): void
     {
         $pdo = new ModelTestFailingPdo("sqlite:" . self::$work . "/savepoint-end.sqlite");
         $failing = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
@@ -1476,119 +1476,119 @@ final class ModelTest extends TestCase
     // conditions
     // Requirements: PLN-6, PLN-7, PLN-16, PLN-23, PLN-28, PLN-29, PLN-36, PLN-37, PLN-38, PLN-39.
     #[DataProvider('drivers')]
-    public function test_conditions(string $driver): void
+    public function testConditions(string $driver): void
     {
         $dsn = self::caseDsn($driver);
         $db = self::database($driver, $dsn);
-        self::case_conditions($db, $dsn);
+        self::caseConditions($db, $dsn);
     }
 
     // joins and relations
     // Requirements: DBS-118, CPX-1.
     // Requirements: PLN-10, PLN-41, PLN-42, PLN-43.
     #[DataProvider('drivers')]
-    public function test_joins_and_relations(string $driver): void
+    public function testJoinsAndRelations(string $driver): void
     {
         $dsn = self::caseDsn($driver);
         $db = self::database($driver, $dsn);
-        self::case_joins_and_relations($db, $dsn);
+        self::caseJoinsAndRelations($db, $dsn);
     }
 
     // columns and subqueries
     // Requirements: PLN-8, PLN-9, PLN-14.
     #[DataProvider('drivers')]
-    public function test_columns_and_subqueries(string $driver): void
+    public function testColumnsAndSubqueries(string $driver): void
     {
         $dsn = self::caseDsn($driver);
         $db = self::database($driver, $dsn);
-        self::case_columns_and_subqueries($db, $dsn);
+        self::caseColumnsAndSubqueries($db, $dsn);
     }
 
     // writes
     // Requirements: PLN-12, PLN-27.
     #[DataProvider('drivers')]
-    public function test_writes(string $driver): void
+    public function testWrites(string $driver): void
     {
         // The test of DSL-107, DSL-116 (docs/spec).
         $dsn = self::caseDsn($driver);
         $db = self::database($driver, $dsn);
-        self::case_writes($db, $dsn);
+        self::caseWrites($db, $dsn);
     }
 
     // styled value states
     #[DataProvider('drivers')]
-    public function test_styled_value_states(string $driver): void
+    public function testStyledValueStates(string $driver): void
     {
         $dsn = self::caseDsn($driver);
         $db = self::database($driver, $dsn);
-        self::case_styled_value_states($db, $dsn);
+        self::caseStyledValueStates($db, $dsn);
     }
 
     // codec columns
     #[DataProvider('drivers')]
-    public function test_codec_columns(string $driver): void
+    public function testCodecColumns(string $driver): void
     {
         $dsn = self::caseDsn($driver);
         $db = self::database($driver, $dsn);
-        self::case_codec_columns($db, $dsn);
+        self::caseCodecColumns($db, $dsn);
     }
 
     // transactions
     // Requirements: PLN-13, PLN-16, PLN-17, PLN-20, PLN-21.
     #[DataProvider('drivers')]
-    public function test_transactions(string $driver): void
+    public function testTransactions(string $driver): void
     {
         // The test of DSL-118, DSL-119, DSL-123, DSL-125, DSL-126 (docs/spec).
         $dsn = self::caseDsn($driver);
         $db = self::database($driver, $dsn);
-        self::case_transactions($db, $dsn);
+        self::caseTransactions($db, $dsn);
     }
 
     // utilities
     #[DataProvider('drivers')]
-    public function test_utilities(string $driver): void
+    public function testUtilities(string $driver): void
     {
         $dsn = self::caseDsn($driver);
         $db = self::database($driver, $dsn);
-        self::case_utilities($db, $dsn);
+        self::caseUtilities($db, $dsn);
     }
 
     // deadlock retry, on the server drivers: SQLite has one writer, so two transactions cannot hold row locks at the
     // same time and no deadlock can arise.
     // Requirements: PLN-24.
     #[DataProvider('serverDrivers')]
-    public function test_deadlock_retry(string $driver): void
+    public function testDeadlockRetry(string $driver): void
     {
         $dsn = self::caseDsn($driver);
         $db = self::database($driver, $dsn);
-        self::case_deadlock_retry($db, $dsn);
+        self::caseDeadlockRetry($db, $dsn);
     }
 
     // aes rotation
     #[DataProvider('drivers')]
-    public function test_aes_rotation(string $driver): void
+    public function testAesRotation(string $driver): void
     {
         // The test of COD-8 (docs/spec).
         $dsn = self::caseDsn($driver);
         $db = self::database($driver, $dsn);
-        self::case_aes_rotation($db, $dsn);
+        self::caseAesRotation($db, $dsn);
     }
 
     // bind limit splitting
     #[DataProvider('drivers')]
-    public function test_bind_limit_splitting(string $driver): void
+    public function testBindLimitSplitting(string $driver): void
     {
         $dsn = self::caseDsn($driver);
         $db = self::database($driver, $dsn);
-        self::case_bind_limit_splitting($db, $dsn);
+        self::caseBindLimitSplitting($db, $dsn);
     }
 
     // insert parts
     #[DataProvider('drivers')]
-    public function test_insert_parts(string $driver): void
+    public function testInsertParts(string $driver): void
     {
         $dsn = self::caseDsn($driver);
         $db = self::database($driver, $dsn);
-        self::case_insert_parts($db, $dsn);
+        self::caseInsertParts($db, $dsn);
     }
 }

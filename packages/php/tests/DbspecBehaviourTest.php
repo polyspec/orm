@@ -24,7 +24,7 @@ final class DbspecBehaviourTest extends TestCase
 
     // Requirements: DBS-2, DBS-99, DBS-171.
     #[DataProvider('cases')]
-    public function test_case(string $name): void
+    public function testCase(string $name): void
     {
         $recorded = dbspec_behaviour_recorded();
         Assert::assertArrayHasKey(
@@ -43,7 +43,7 @@ final class DbspecBehaviourTest extends TestCase
     }
 
     // Every recorded case is still a case, so a removed case does not leave its record behind.
-    public function test_records_are_cases(): void
+    public function testRecordsAreCases(): void
     {
         Assert::assertSame(
             [],

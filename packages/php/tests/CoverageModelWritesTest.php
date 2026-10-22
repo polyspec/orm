@@ -29,7 +29,7 @@ const WRITE_TENANT = 990002;
 final class CoverageModelWritesTest extends TestCase
 {
     // Requirements: DSL-56, DSL-57, DSL-58, DSL-60, DSL-103, DSL-104, DSL-105, DSL-106, DSL-110.
-    public function test_model_write_cycle(): void
+    public function testModelWriteCycle(): void
     {
         foreach (coverageItemsOf(__FILE__) as $item) {
             selectCoverageItem($item);

@@ -72,7 +72,7 @@ final class OrmGenScanParityTest extends TestCase
     }
 
     #[DataProvider('vectors')]
-    public function test_the_node_and_the_php_scan_agree(array $case): void
+    public function testTheNodeAndThePhpScanAgree(array $case): void
     {
         $dir = self::$work . '/' . $case['id'];
         @mkdir("$dir/src", 0o700, true);

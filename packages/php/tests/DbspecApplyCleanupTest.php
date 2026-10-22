@@ -200,7 +200,7 @@ final class DbspecApplyCleanupTest extends TestCase
 
     // apply/cleanup-errors/release
     // Requirements: PLN-98.
-    public function test_cleanup_errors_release(): void
+    public function testCleanupErrorsRelease(): void
     {
         $plans = self::$plans;
         $now = self::now();
@@ -220,7 +220,7 @@ final class DbspecApplyCleanupTest extends TestCase
     }
 
     // apply/cleanup-errors/begin-restore
-    public function test_cleanup_errors_begin_restore(): void
+    public function testCleanupErrorsBeginRestore(): void
     {
         $plans = self::$plans;
         $now = self::now();
@@ -237,7 +237,7 @@ final class DbspecApplyCleanupTest extends TestCase
     }
 
     // apply/rollback-step-outside
-    public function test_rollback_step_outside(): void
+    public function testRollbackStepOutside(): void
     {
         $plans = self::$plans;
         $now = self::now();
@@ -251,7 +251,7 @@ final class DbspecApplyCleanupTest extends TestCase
     }
 
     // apply/effect-row
-    public function test_effect_row(): void
+    public function testEffectRow(): void
     {
         $effect = self::effect(...);
         $tablesQuery = self::tablesQuery();
@@ -260,7 +260,7 @@ final class DbspecApplyCleanupTest extends TestCase
     }
 
     // apply/effect-close
-    public function test_effect_close(): void
+    public function testEffectClose(): void
     {
         $effect = self::effect(...);
         $tablesQuery = self::tablesQuery();

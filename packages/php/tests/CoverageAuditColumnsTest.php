@@ -145,7 +145,7 @@ function auditColumnsCase(string $dsn, string $document, string $work): void
 final class CoverageAuditColumnsTest extends TestCase
 {
     // Requirements: DBS-85, DBS-88, DBS-93, DBS-94, DBS-96.
-    public function test_audit_selected_columns(): void
+    public function testAuditSelectedColumns(): void
     {
         foreach (coverageItemsOf(__FILE__) as $item) {
             selectCoverageItem($item);

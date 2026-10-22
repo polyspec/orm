@@ -33,7 +33,7 @@ final class DbspecSetTest extends TestCase
     }
 
     #[DataProvider('setCases')]
-    public function test_set(array $case): void
+    public function testSet(array $case): void
     {
         dbspec_set_check($case, static fn(string $path): object => Dbspec::readSet($path));
     }
@@ -44,12 +44,12 @@ final class DbspecSetTest extends TestCase
     }
 
     #[DataProvider('focusedCases')]
-    public function test_focused(array $case): void
+    public function testFocused(array $case): void
     {
-        $this->test_set($case);
+        $this->testSet($case);
     }
 
-    public function test_a_set_path_without_a_directory_reads_from_the_working_directory(): void
+    public function testASetPathWithoutADirectoryReadsFromTheWorkingDirectory(): void
     {
         mkdir("{$this->work}/cwd", 0o700, true);
         file_put_contents("{$this->work}/cwd/shop.dbs", "dbspec 1 shop\n");
@@ -67,7 +67,7 @@ final class DbspecSetTest extends TestCase
         );
     }
 
-    public function test_a_set_path_with_a_NUL_byte_is_a_set_file_error(): void
+    public function testASetPathWithANULByteIsASetFileError(): void
     {
         $path = "{$this->work}/a\0b/dbspec-set.json";
         $result = Dbspec::readSet($path);

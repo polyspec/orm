@@ -59,7 +59,7 @@ final class MarkdownConformanceTest extends TestCase
     private const FLOWMARK_MODULE = 'github.com/polyspec/flowmark';
 
     /** @return list<array{id: string, expect: mixed}> */
-    private static function load_cases(): array
+    private static function loadCases(): array
     {
         $doc = json_decode(
             (string) file_get_contents(self::MARKDOWN_CONFORMANCE_DIR . '/cases.json'),
@@ -82,7 +82,7 @@ final class MarkdownConformanceTest extends TestCase
      * The flowmark binary that FLOWMARK points at. Fails unless the build information that `go version -m` reads is the
      * flowmark module's flowmark.version pin.
      */
-    private static function pinned_flowmark(): string
+    private static function pinnedFlowmark(): string
     {
         $pin = trim((string) file_get_contents(self::MARKDOWN_CONFORMANCE_DIR . '/flowmark.version'));
         $bin = (string) getenv('FLOWMARK');
@@ -91,7 +91,7 @@ final class MarkdownConformanceTest extends TestCase
                 "FLOWMARK is not set; run make markdown-conformance-check, which passes the path of the flowmark $pin pinned in tests/markdown/flowmark.version"
             );
         }
-        [$code, $out, $err] = self::run_process(['go', 'version', '-m', $bin]);
+        [$code, $out, $err] = self::runProcess(['go', 'version', '-m', $bin]);
         $main = null;
         foreach (explode("\n", $out) as $line) {
             $fields = preg_split('/\t/', trim($line, "\r"));
@@ -125,7 +125,7 @@ final class MarkdownConformanceTest extends TestCase
      * @param list<string> $command
      * @return array{0: int, 1: string, 2: string} exit code, stdout, stderr
      */
-    private static function run_process(array $command): array
+    private static function runProcess(array $command): array
     {
         $process = proc_open($command, [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
         if ($process === false) {
@@ -139,7 +139,7 @@ final class MarkdownConformanceTest extends TestCase
     }
 
     /** Removes $path and everything under it. */
-    private static function remove_tree(string $path): void
+    private static function removeTree(string $path): void
     {
         if (!file_exists($path) && !is_link($path)) {
             return;
@@ -147,7 +147,7 @@ final class MarkdownConformanceTest extends TestCase
         if (is_dir($path) && !is_link($path)) {
             foreach (scandir($path) ?: [] as $entry) {
                 if ($entry !== '.' && $entry !== '..') {
-                    self::remove_tree("$path/$entry");
+                    self::removeTree("$path/$entry");
                 }
             }
             rmdir($path);
@@ -157,7 +157,7 @@ final class MarkdownConformanceTest extends TestCase
     }
 
     /**
-     * Installs corpus/ as a new corpus, starts that server, and connects to it. stop_serving closes the connection
+     * Installs corpus/ as a new corpus, starts that server, and connects to it. stopServing closes the connection
      * and waits for the server to stop, then removes the directory.
      */
     private static function serve(Served $s, string $bin, callable $step): void
@@ -177,7 +177,7 @@ final class MarkdownConformanceTest extends TestCase
             throw new RuntimeException('cannot copy the corpus catalog');
         }
         $step("flowmark install {$s->dir}");
-        [$code, $out, $err] = self::run_process([$bin, 'install', $s->dir]);
+        [$code, $out, $err] = self::runProcess([$bin, 'install', $s->dir]);
         if ($code !== 0) {
             throw new RuntimeException("flowmark install exited $code:\n$out$err");
         }
@@ -224,7 +224,7 @@ final class MarkdownConformanceTest extends TestCase
     }
 
     /** Closes the connection, stops the server, waits for it to finish, and removes the corpus directory. */
-    private static function stop_serving(Served $s): void
+    private static function stopServing(Served $s): void
     {
         try {
             $s->db?->close();
@@ -235,7 +235,7 @@ final class MarkdownConformanceTest extends TestCase
                 $s->process = null;
             }
             if ($s->root !== '') {
-                self::remove_tree($s->root);
+                self::removeTree($s->root);
             }
         }
     }
@@ -254,7 +254,7 @@ final class MarkdownConformanceTest extends TestCase
      *
      * @return array<string, Closure(Served): mixed>
      */
-    public static function conformance_cases(): array
+    public static function conformanceCases(): array
     {
         return [
             'insert_one' => static function (Served $s): mixed {
@@ -525,7 +525,7 @@ final class MarkdownConformanceTest extends TestCase
             // The key t3 equals T3 without regard to case: a plain insert is DUPLICATE_KEY, and an on_duplicate insert
             // meets T3, which keeps its key (DIA-164).
             'primary_key_case' => static function (Served $s): mixed {
-                $duplicate = self::code_of(
+                $duplicate = self::codeOf(
                     static fn () => (new Tasks())->connect($s->db)
                         ->setId('t3')
                         ->setOwner('P2')
@@ -598,7 +598,7 @@ final class MarkdownConformanceTest extends TestCase
                 ) {
                     $first[] = [$m->getId(), $m->getFirstTask()];
                 }
-                $unlimited = self::code_of(static fn () => (new People())->connect($s->db)->removeAllColumns()
+                $unlimited = self::codeOf(static fn () => (new People())->connect($s->db)->removeAllColumns()
                     ->addColumnFirstTask(
                         static fn (People $p) => (new Tasks())->removeAllColumns()
                             ->addColumnTitle()
@@ -615,7 +615,7 @@ final class MarkdownConformanceTest extends TestCase
                 $q = new People();
                 return [
                     'meet' => $meet,
-                    'refused' => self::code_of(
+                    'refused' => self::codeOf(
                         static fn () => (new Tasks())->connect($s->db)
                             ->joinOwnerWithId($q)
                             ->pointsEqName($q)
@@ -701,17 +701,17 @@ final class MarkdownConformanceTest extends TestCase
             },
             // A catalog with an aes column is a schema error on a corpus (DIA-178).
             'install_refuses_aes' => static function (Served $s): mixed {
-                return self::refused_install($s, 'aes');
+                return self::refusedInstall($s, 'aes');
             },
             // A catalog with an audit setting is a schema error on a corpus (DIA-179).
             'install_refuses_audit' => static function (Served $s): mixed {
-                return self::refused_install($s, 'audit');
+                return self::refusedInstall($s, 'audit');
             },
         ];
     }
 
     /** The orm code of the error that $f throws, or null when it returns. */
-    private static function code_of(callable $f): ?string
+    private static function codeOf(callable $f): ?string
     {
         try {
             $f();
@@ -727,7 +727,7 @@ final class MarkdownConformanceTest extends TestCase
      *
      * @return array{error: ?string}
      */
-    private static function refused_install(Served $s, string $name): array
+    private static function refusedInstall(Served $s, string $name): array
     {
         $root = sys_get_temp_dir() . '/markdown-refused-' . getmypid() . '-' . bin2hex(random_bytes(4));
         $dir = "$root/$name";
@@ -790,7 +790,7 @@ final class MarkdownConformanceTest extends TestCase
         );
     }
 
-    public static function json_text(mixed $v): string
+    public static function jsonText(mixed $v): string
     {
         return json_encode($v, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     }
@@ -806,17 +806,17 @@ final class MarkdownConformanceTest extends TestCase
      */
     public static function cases(): iterable
     {
-        $cases = self::load_cases();
+        $cases = self::loadCases();
         $ids = array_column($cases, 'id');
-        $funcs = self::conformance_cases();
+        $funcs = self::conformanceCases();
         $missing = array_values(array_diff($ids, array_keys($funcs)));
         $extra = array_values(array_diff(array_keys($funcs), $ids));
         sort($extra, SORT_STRING);
         if ($missing !== [] || $extra !== []) {
             throw new RuntimeException(
-                'cases.json and the PHP cases differ: missing in PHP ' . self::json_text(
+                'cases.json and the PHP cases differ: missing in PHP ' . self::jsonText(
                     $missing
-                ) . ', not in cases.json ' . self::json_text($extra)
+                ) . ', not in cases.json ' . self::jsonText($extra)
             );
         }
         foreach ($cases as $case) {
@@ -827,14 +827,14 @@ final class MarkdownConformanceTest extends TestCase
     public static function setUpBeforeClass(): void
     {
         self::$served = new Served();
-        self::serve(self::$served, self::pinned_flowmark(), static function (string $step): void {
+        self::serve(self::$served, self::pinnedFlowmark(), static function (string $step): void {
         });
     }
 
     public static function tearDownAfterClass(): void
     {
         if (self::$served !== null) {
-            self::stop_serving(self::$served);
+            self::stopServing(self::$served);
         }
     }
 
@@ -845,11 +845,11 @@ final class MarkdownConformanceTest extends TestCase
      * @param array{id: string, expect: mixed} $case
      */
     #[DataProvider('cases')]
-    public function test_markdown_conformance(array $case): void
+    public function testMarkdownConformance(array $case): void
     {
         $error = null;
         try {
-            $got = self::conformance_cases()[$case['id']](self::$served);
+            $got = self::conformanceCases()[$case['id']](self::$served);
         } catch (OrmException $e) {
             $error = $e;
             $got = ['error' => $e->code_];
@@ -860,7 +860,7 @@ final class MarkdownConformanceTest extends TestCase
         self::assertSame(
             $expect,
             $actual,
-            "{$case['id']}: got " . self::json_text($actual) . ', want ' . self::json_text($expect) . $detail
+            "{$case['id']}: got " . self::jsonText($actual) . ', want ' . self::jsonText($expect) . $detail
         );
     }
 }

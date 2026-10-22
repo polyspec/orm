@@ -1,6 +1,6 @@
 <?php
 
-// The waiting side of WasInsertedTest::test_postgres_reports_a_backend_waiting_for_lock. It updates the row that the
+// The waiting side of WasInsertedTest::testPostgresReportsABackendWaitingForLock. It updates the row that the
 // parent transaction holds, so it blocks until the parent ends its transaction, then prints "done".
 // Usage: php was_inserted_child.php <postgres dsn> <seq>
 declare(strict_types=1);

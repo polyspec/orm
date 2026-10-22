@@ -29,7 +29,7 @@ final class AggregateNumericTest extends TestCase
 
     /** @param array<string, mixed> $case */
     #[DataProvider('cases')]
-    public function test_aggregate_numeric(array $case): void
+    public function testAggregateNumeric(array $case): void
     {
         $convert = new ReflectionMethod(Model::class, 'aggregateNumber');
         $input = match ($case['input_type']) {

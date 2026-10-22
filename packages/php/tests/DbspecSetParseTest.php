@@ -20,7 +20,7 @@ final class DbspecSetParseTest extends TestCase
     }
 
     #[DataProvider('setParseCases')]
-    public function test_set_parse(array $case): void
+    public function testSetParse(array $case): void
     {
         dbspec_set_parse_check($case, static fn(
             array $owned,

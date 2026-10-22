@@ -29,7 +29,7 @@ final class CodecAesVectorsTest extends TestCase
     }
 
     #[DataProvider('vectors')]
-    public function test_vector(array $vector): void
+    public function testVector(array $vector): void
     {
         if (isset($vector['error'])) {
             // An error vector names the code of its op (encode, decode or blind_index) with an empty or wrong key.

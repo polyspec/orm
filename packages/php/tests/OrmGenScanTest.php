@@ -124,7 +124,7 @@ final class OrmGenScanTest extends TestCase
     }
 
     #[DataProvider('vectors')]
-    public function test_vector(array $case): void
+    public function testVector(array $case): void
     {
         // The test of DSL-42 (docs/spec).
         $args = fn(int $n): string => implode(', ', array_fill(0, $n, '1'));
@@ -148,7 +148,7 @@ final class OrmGenScanTest extends TestCase
         self::assertSame($case['expected']['declared'], $declared, $case['id']);
     }
 
-    public function test_the_receiver_is_resolved_from_the_source(): void
+    public function testTheReceiverIsResolvedFromTheSource(): void
     {
         // The test of DSL-42 (docs/spec).
         $ns = self::NS;
@@ -226,7 +226,7 @@ PHP;
         self::assertSame(['ltSeq'], self::tags($dir, 'Service'), 'Service');
     }
 
-    public function test_an_alias_named_match_declares_its_getter(): void
+    public function testAnAliasNamedMatchDeclaresItsGetter(): void
     {
         // The test of DSL-44 (docs/spec).
         $ns = self::NS;
@@ -248,7 +248,7 @@ PHP;
     }
 
     // Requirements: DBS-118.
-    public function test_a_nested_relation_alias_declares_its_getter_on_the_model_it_aliases_on(): void
+    public function testANestedRelationAliasDeclaresItsGetterOnTheModelItAliasesOn(): void
     {
         // The test of DSL-44 (docs/spec).
         $ns = self::NS;
@@ -273,7 +273,7 @@ PHP;
         self::assertContains('getMatch', self::tags($dir, 'User'));
     }
 
-    public function test_a_getter_call_that_nothing_attaches_stops_generation(): void
+    public function testAGetterCallThatNothingAttachesStopsGeneration(): void
     {
         // The test of DSL-44 (docs/spec).
         $ns = self::NS;
@@ -298,7 +298,7 @@ PHP;
         self::assertFileDoesNotExist("$dir/model/User.php", 'a refused generation writes nothing');
     }
 
-    public function test_a_call_on_a_class_of_another_set_is_not_this_sets_call(): void
+    public function testACallOnAClassOfAnotherSetIsNotThisSetsCall(): void
     {
         // Requirements: DSL-151.
         // Another set's output shares the class name Author: a call on it, through a use import or a qualified name,
@@ -321,7 +321,7 @@ PHP;
         self::assertContains('neName', self::tags($dir, 'User'));
     }
 
-    public function test_a_receiver_held_in_a_reassigned_variable_resolves_to_its_class(): void
+    public function testAReceiverHeldInAReassignedVariableResolvesToItsClass(): void
     {
         // Requirements: DSL-151.
         // A variable initialized from a chain on an imported class and reassigned from its own chain in a conditional
@@ -355,7 +355,7 @@ PHP;
         }
     }
 
-    public function test_a_relation_to_an_entity_of_a_used_document_attaches_its_getter(): void
+    public function testARelationToAnEntityOfAUsedDocumentAttachesItsGetter(): void
     {
         // ext_post of member.dbs uses ext_audit of core.dbs, an external document: the relation to ExtAudit attaches
         // getExtAuditModel as it does for a local entity.
@@ -376,7 +376,7 @@ PHP;
     }
 
     // Requirements: DBS-173.
-    public function test_a_used_external_table_that_no_source_calls_keeps_its_model(): void
+    public function testAUsedExternalTableThatNoSourceCallsKeepsItsModel(): void
     {
         // note.dbs uses ext_session of core.dbs, and its own table ext_note has no foreign key to it; the source calls
         // ExtNote only, so the model of ExtSession is written anyway.
@@ -395,7 +395,7 @@ PHP;
         self::assertFileExists("$dir/model/ExtSession.php");
     }
 
-    public function test_a_name_is_typed_by_its_binding_in_its_own_scope(): void
+    public function testANameIsTypedByItsBindingInItsOwnScope(): void
     {
         // The outer row is a ServiceMember. A destructuring assignment and an if with differing branches leave row with
         // a class the scan cannot type, so their setIsClose calls are not the outer ServiceMember's; the call on an
@@ -431,7 +431,7 @@ PHP;
         self::assertSame(0, $code, $err);
     }
 
-    public function test_a_name_that_may_hold_two_models_gets_the_call_on_each(): void
+    public function testANameThatMayHoldTwoModelsGetsTheCallOnEach(): void
     {
         // Each branch binds row to another model, so the call after the if is on either: each class declares the
         // method.
@@ -493,7 +493,7 @@ PHP;
         }
     }
 
-    public function test_a_reference_forgets_both_names(): void
+    public function testAReferenceForgetsBothNames(): void
     {
         // $alias and $row are one variable after the reference, so the call on $row is not attributed to Author.
         $ns = self::NS;
@@ -519,7 +519,7 @@ PHP;
      * A getter on a name that may hold two models is refused only when no possible class has it: Author has is_close,
      * User does not.
      */
-    public function test_a_possible_class_with_the_getter_accepts_the_call_after_an_if(): void
+    public function testAPossibleClassWithTheGetterAcceptsTheCallAfterAnIf(): void
     {
         $ns = self::NS;
         $source = <<<PHP
@@ -545,7 +545,7 @@ PHP;
         self::assertSame(0, $code, $err);
     }
 
-    public function test_a_possible_class_with_the_getter_accepts_the_call_in_a_loop(): void
+    public function testAPossibleClassWithTheGetterAcceptsTheCallInALoop(): void
     {
         $ns = self::NS;
         $source = <<<PHP
@@ -573,7 +573,7 @@ PHP;
         self::assertSame(0, $code, $err);
     }
 
-    public function test_a_branch_that_returns_contributes_nothing(): void
+    public function testABranchThatReturnsContributesNothing(): void
     {
         $ns = self::NS;
         $source = <<<PHP
@@ -597,7 +597,7 @@ PHP;
         self::assertSame(0, $code, $err);
     }
 
-    public function test_a_loop_that_may_run_zero_times_keeps_the_class_before_it(): void
+    public function testALoopThatMayRunZeroTimesKeepsTheClassBeforeIt(): void
     {
         $ns = self::NS;
         $source = <<<PHP
@@ -623,7 +623,7 @@ PHP;
         self::assertSame(0, $code, $err);
     }
 
-    public function test_a_null_assignment_contributes_nothing(): void
+    public function testANullAssignmentContributesNothing(): void
     {
         $ns = self::NS;
         $source = <<<PHP
@@ -647,7 +647,7 @@ PHP;
         self::assertStringContainsString('User.getIsClose is called', $err);
     }
 
-    public function test_a_reference_in_a_loop_forgets_both_names_at_its_entry(): void
+    public function testAReferenceInALoopForgetsBothNamesAtItsEntry(): void
     {
         $ns = self::NS;
         $source = <<<PHP
@@ -676,7 +676,7 @@ PHP;
     /**
      * A model method is refused only when no possible class declares it: Author has is_close, ServiceMember does not.
      */
-    public function test_a_method_is_refused_only_when_no_possible_class_declares_it(): void
+    public function testAMethodIsRefusedOnlyWhenNoPossibleClassDeclaresIt(): void
     {
         $ns = self::NS;
         $branch = <<<PHP
@@ -742,7 +742,7 @@ PHP;
     }
 
     /** A try that assigns the name on every path leaves no outcome with the value from before the try. */
-    public function test_a_try_leaves_no_outcome_with_the_value_before_it(): void
+    public function testATryLeavesNoOutcomeWithTheValueBeforeIt(): void
     {
         $ns = self::NS;
         $source = <<<PHP
@@ -800,7 +800,7 @@ PHP;
      * An argument count is accepted when one class that may hold the name accepts it, and refused when no possible
      * class does.
      */
-    public function test_an_argument_count_is_refused_only_when_no_possible_class_accepts_it(): void
+    public function testAnArgumentCountIsRefusedOnlyWhenNoPossibleClassAcceptsIt(): void
     {
         $ns = self::NS;
         $source = <<<PHP
@@ -834,7 +834,7 @@ PHP;
     }
 
     /** A zero-iteration foreach keeps the value the name had before the loop, so the call is on Author or User. */
-    public function test_a_zero_iteration_foreach_keeps_the_value_before_it(): void
+    public function testAZeroIterationForeachKeepsTheValueBeforeIt(): void
     {
         $ns = self::NS;
         $source = <<<PHP
@@ -858,7 +858,7 @@ PHP;
     }
 
     /** A typed, variadic or arrow-function parameter named like an outer model variable is not that model. */
-    public function test_a_parameter_named_like_an_outer_model_is_not_that_model(): void
+    public function testAParameterNamedLikeAnOuterModelIsNotThatModel(): void
     {
         $ns = self::NS;
         $source = <<<PHP
@@ -882,7 +882,7 @@ PHP;
         self::assertSame(0, $code, $err);
     }
 
-    public function test_a_restore_or_create_call_is_a_model_method(): void
+    public function testARestoreOrCreateCallIsAModelMethod(): void
     {
         // restoreOrCreate is a public method of Model, so a scanned call to it is accepted.
         $ns = self::NS;
@@ -896,7 +896,7 @@ PHP;
         self::assertSame(0, $code, $err);
     }
 
-    public function test_a_directory_is_scanned_and_a_file_that_does_not_parse_fails_the_scan(): void
+    public function testADirectoryIsScannedAndAFileThatDoesNotParseFailsTheScan(): void
     {
         // The test of DSL-42 (docs/spec).
         $dir = self::$work . '/directory';
@@ -933,7 +933,7 @@ PHP;
         self::assertStringContainsString('broken.php', $err);
     }
 
-    public function test_a_file_that_does_not_parse_stops_the_generation_and_names_its_position(): void
+    public function testAFileThatDoesNotParseStopsTheGenerationAndNamesItsPosition(): void
     {
         // Requirements: DSL-152.
         $dir = self::$work . '/unparsable';
@@ -964,7 +964,7 @@ PHP;
         self::assertDirectoryDoesNotExist("$dir/model");
     }
 
-    public function test_a_scanned_directory_skips_its_dependencies_and_refuses_a_symlink(): void
+    public function testAScannedDirectorySkipsItsDependenciesAndRefusesASymlink(): void
     {
         // The test of DSL-42 (docs/spec).
         $dir = self::$work . '/links';
@@ -1006,7 +1006,7 @@ PHP;
         self::assertStringContainsString("$dir/src/linked is a symlink", $err);
     }
 
-    public function test_check_compares_the_models_with_the_scan(): void
+    public function testCheckComparesTheModelsWithTheScan(): void
     {
         $source = "<?php\n\$a = new " . self::NS . "\\Author();\n\$a->ltSeq(1);\n";
         [$code, $err, $dir] = self::generate('check', ['usage.php' => $source]);
@@ -1033,7 +1033,7 @@ PHP;
         self::assertSame("differs: $dir/model/Author.php\n", (string) ob_get_clean());
     }
 
-    public function test_phpstan_finds_every_scanned_chain_method(): void
+    public function testPhpstanFindsEveryScannedChainMethod(): void
     {
         // The test of DSL-42 (docs/spec).
         $root = dirname(__DIR__, 3);

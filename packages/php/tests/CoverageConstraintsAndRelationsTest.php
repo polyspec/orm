@@ -18,7 +18,7 @@ use PHPUnit\Framework\TestCase;
 #[Medium]
 final class CoverageConstraintsAndRelationsTest extends TestCase
 {
-    public function test_constraint_errors(): void
+    public function testConstraintErrors(): void
     {
         foreach (coverageItemsOf(__FILE__) as $item) {
             selectCoverageItem($item);

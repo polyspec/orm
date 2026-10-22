@@ -32,7 +32,7 @@ final class StyledValueTest extends TestCase
         }
     }
 
-    public function test_class_exists(): void
+    public function testClassExists(): void
     {
         self::assertTrue(
             class_exists(StyledValue::class),
@@ -42,13 +42,13 @@ final class StyledValueTest extends TestCase
 
     /** @param array<string, mixed> $case */
     #[DataProvider('cases')]
-    public function test_styled_value(array $case): void
+    public function testStyledValue(array $case): void
     {
         $id = $case['id'];
         // The Mermaid style name json and jsons of the fixture are both the dbspec codec stage ordered_json.
         $styles = [in_array($case['style'], ['json', 'jsons'], true) ? 'ordered_json' : $case['style']];
         if (!array_key_exists('stored_text', $case) && !array_key_exists('write_text', $case)) {
-            // The case that test_model_states reads.
+            // The case that testModelStates reads.
             self::assertContains($id, ['unselected', 'nonnull_sql_null'], "$id: fixture case has no codec operation");
             return;
         }
@@ -78,7 +78,7 @@ final class StyledValueTest extends TestCase
         }
     }
 
-    public function test_model_states(): void
+    public function testModelStates(): void
     {
         $cases = array_column(self::fixture()['cases'], null, 'id');
         $probe = new class extends Model {

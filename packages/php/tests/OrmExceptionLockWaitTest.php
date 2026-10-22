@@ -17,7 +17,7 @@ use PHPUnit\Framework\TestCase;
 final class OrmExceptionLockWaitTest extends TestCase
 {
     // Requirements: CFG-6.
-    public function test_mysql_lock_wait_timeout_is_canceled(): void
+    public function testMysqlLockWaitTimeoutIsCanceled(): void
     {
         $message = 'Lock wait timeout exceeded; try restarting transaction';
         $driverError = new PDOException($message);

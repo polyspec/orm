@@ -93,7 +93,7 @@ final class DecimalModelDbTest extends TestCase
 
     /** The generator writes the model of the fixture; the generated files are removed again. */
     #[DataProvider('dialects')]
-    public function test_generate(string $dialect): void
+    public function testGenerate(string $dialect): void
     {
         self::dsn($dialect);
         $generated = self::generate();
@@ -106,7 +106,7 @@ final class DecimalModelDbTest extends TestCase
     }
 
     #[DataProvider('dialects')]
-    public function test_setters(string $dialect): void
+    public function testSetters(string $dialect): void
     {
         // The test of COD-2 (docs/spec).
         self::dsn($dialect);
@@ -151,7 +151,7 @@ final class DecimalModelDbTest extends TestCase
 
     /** A row written and read back in a transaction that rolls back. */
     #[DataProvider('dialects')]
-    public function test_round_trip(string $dialect): void
+    public function testRoundTrip(string $dialect): void
     {
         // The test of COD-2 (docs/spec).
         $dsn = self::dsn($dialect);

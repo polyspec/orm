@@ -143,7 +143,7 @@ final class DriverErrorTest extends TestCase
     }
 
     #[DataProvider('drivers')]
-    public function test_trigger_refused(string $driver): void
+    public function testTriggerRefused(string $driver): void
     {
         // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
         with_case_database($driver, static function (string $step): void {
@@ -151,7 +151,7 @@ final class DriverErrorTest extends TestCase
     }
 
     #[DataProvider('drivers')]
-    public function test_check_refused(string $driver): void
+    public function testCheckRefused(string $driver): void
     {
         // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
         with_case_database($driver, static function (string $step): void {

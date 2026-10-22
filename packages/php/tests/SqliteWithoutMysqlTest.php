@@ -47,7 +47,7 @@ final class SqliteWithoutMysqlTest extends TestCase
         echo $read->getName();
         PHP;
 
-    public function test_sqlite_path_loads_no_mysql_dialect_class(): void
+    public function testSqlitePathLoadsNoMysqlDialectClass(): void
     {
         $root = dirname(__DIR__, 3);
         $manifest = json_decode(

@@ -69,7 +69,7 @@ final class CodecVectorsTest extends TestCase
     // Decodes and encodes the vector in memory.
     /** @param array<string, mixed> $v */
     #[DataProvider('vectors')]
-    public function test_php_vector(array $v): void
+    public function testPhpVector(array $v): void
     {
         $styles = self::styles($v);
         if (isset($v['encode_error'])) {
@@ -103,7 +103,7 @@ final class CodecVectorsTest extends TestCase
 
     // The value comparison above encodes both sides as JSON, which writes the float 777.0 as 777, so the
     // core int of yaml_core/leading_zero_int (YAML 1.2.2, 10.3.2: [-+]?[0-9]+) is also compared by its PHP type.
-    public function test_yaml_core_leading_zero_int_is_an_int(): void
+    public function testYamlCoreLeadingZeroIntIsAnInt(): void
     {
         self::assertSame(777, Codec::decode(['yaml'], '0777')->payload());
     }
@@ -136,7 +136,7 @@ final class CodecVectorsTest extends TestCase
     }
 
     #[DataProvider('errors')]
-    public function test_php_error(Closure $operation, string $code): void
+    public function testPhpError(Closure $operation, string $code): void
     {
         try {
             $operation();
@@ -147,7 +147,7 @@ final class CodecVectorsTest extends TestCase
         self::fail("expected $code");
     }
 
-    public function test_php_yaml_integer_map_key(): void
+    public function testPhpYamlIntegerMapKey(): void
     {
         self::assertSame(
             '{"1":"value"}',
@@ -193,28 +193,28 @@ final class CodecVectorsTest extends TestCase
 
     /** @param array<string, mixed> $v */
     #[DataProvider('vectors')]
-    public function test_go_output(array $v): void
+    public function testGoOutput(array $v): void
     {
         self::assertOutput('go', $v);
     }
 
     /** @param array<string, mixed> $v */
     #[DataProvider('vectors')]
-    public function test_rust_output(array $v): void
+    public function testRustOutput(array $v): void
     {
         self::assertOutput('rust', $v);
     }
 
     /** @param array<string, mixed> $v */
     #[DataProvider('vectors')]
-    public function test_typescript_output(array $v): void
+    public function testTypescriptOutput(array $v): void
     {
         self::assertOutput('typescript', $v);
     }
 
     /** @param array<string, mixed> $v */
     #[DataProvider('vectors')]
-    public function test_python_output(array $v): void
+    public function testPythonOutput(array $v): void
     {
         self::assertOutput('python', $v);
     }

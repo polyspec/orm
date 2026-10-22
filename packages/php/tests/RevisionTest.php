@@ -72,7 +72,7 @@ final class RevisionTest extends TestCase
         return 'no error';
     }
 
-    public function test_update_match_bumps_the_revision(): void
+    public function testUpdateMatchBumpsTheRevision(): void
     {
         // The test of DSL-108, DSL-114 (docs/spec).
         $seq = $this->seed('update-match');
@@ -81,7 +81,7 @@ final class RevisionTest extends TestCase
         self::assertSame(['second', 4], [$row->getLabel(), $row->getRevision()]);
     }
 
-    public function test_update_mismatch_changes_nothing(): void
+    public function testUpdateMismatchChangesNothing(): void
     {
         // The test of DSL-108, DSL-114 (docs/spec).
         $seq = $this->seed('update-mismatch');
@@ -98,7 +98,7 @@ final class RevisionTest extends TestCase
         self::assertSame(['first', 3], [$row->getLabel(), $row->getRevision()]);
     }
 
-    public function test_delete_match_deletes(): void
+    public function testDeleteMatchDeletes(): void
     {
         // The test of DSL-108, DSL-114 (docs/spec).
         $seq = $this->seed('delete-match');
@@ -106,7 +106,7 @@ final class RevisionTest extends TestCase
         self::assertNull((new Note())($this->db)->seq($seq)->get());
     }
 
-    public function test_delete_mismatch_changes_nothing(): void
+    public function testDeleteMismatchChangesNothing(): void
     {
         // The test of DSL-108, DSL-114 (docs/spec).
         $seq = $this->seed('delete-mismatch');

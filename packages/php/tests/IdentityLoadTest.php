@@ -171,7 +171,7 @@ final class IdentityLoadTest extends TestCase
 
     /** @param array<string, mixed> $case */
     #[DataProvider('cases')]
-    public function test_identity_load(array $case): void
+    public function testIdentityLoad(array $case): void
     {
         $root = dirname(__DIR__, 3);
         $doc = self::doc();

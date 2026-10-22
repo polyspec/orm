@@ -244,7 +244,7 @@ final class StatementFaultTest extends TestCase
      * database is removed when the run ends, also when it fails.
      */
     #[DataProvider('fixtureCases')]
-    public function test_statement_fault(string $case): void
+    public function testStatementFault(string $case): void
     {
         foreach (['sqlite', 'mysql', 'postgres'] as $driver) {
             with_case_database($driver, static function (string $step): void {

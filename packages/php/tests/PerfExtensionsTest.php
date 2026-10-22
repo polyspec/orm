@@ -11,7 +11,7 @@ use PHPUnit\Framework\TestCase;
 #[Small]
 final class PerfExtensionsTest extends TestCase
 {
-    public function test_refused(): void
+    public function testRefused(): void
     {
         foreach (
             [
@@ -27,7 +27,7 @@ final class PerfExtensionsTest extends TestCase
         }
     }
 
-    public function test_this_PHP(): void
+    public function testThisPHP(): void
     {
         $got = perfGateRefusedExtensions(fn (string $name): bool => extension_loaded($name));
         self::assertSame(array_values(array_filter(['xdebug', 'pcov'], 'extension_loaded')), $got);

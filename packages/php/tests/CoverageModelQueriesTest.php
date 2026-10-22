@@ -26,7 +26,7 @@ if (extension_loaded('polyspec_orm')) {
 final class CoverageModelQueriesTest extends TestCase
 {
     // Requirements: DSL-57, DSL-58, DSL-60, DSL-62, DSL-80, DSL-82, DSL-99, PLN-11.
-    public function test_model_query_rows(): void
+    public function testModelQueryRows(): void
     {
         foreach (coverageItemsOf(__FILE__) as $item) {
             selectCoverageItem($item);

@@ -202,7 +202,7 @@ final class DbspecGraphTest extends TestCase
 
     // Every entry point that reads a document refuses the changed document with the same TypeError.
     #[DataProvider('documentCases')]
-    public function test_document(Closure $change, string $message): void
+    public function testDocument(Closure $change, string $message): void
     {
         $id = $this->name();
         $entries = [
@@ -289,13 +289,13 @@ final class DbspecGraphTest extends TestCase
     }
 
     #[DataProvider('listCases')]
-    public function test_list(Closure $call, string $message): void
+    public function testList(Closure $call, string $message): void
     {
         Assert::assertSame($message, graph_type_error($call), $this->name());
     }
 
     // The first wrong element in reading order is the one reported: trailing comments come before the tables.
-    public function test_first_element(): void
+    public function testFirstElement(): void
     {
         $document = graph_document();
         $document->tables[0]->columns[] = 'id';
@@ -307,7 +307,7 @@ final class DbspecGraphTest extends TestCase
     }
 
     // A document whose arrays hold their types reads as before.
-    public function test_valid(): void
+    public function testValid(): void
     {
         $document = graph_document();
         Assert::assertSame(GRAPH_TEXT, Dbspec::emit($document));

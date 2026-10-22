@@ -60,7 +60,7 @@ final class DbspecRenderTest extends TestCase
 
     // Each vector renders one document in memory in three dialects.
     #[DataProvider('ddlCases')]
-    public function test_ddl(array $case): void
+    public function testDdl(array $case): void
     {
         $documents = [];
         foreach ($case['documents'] as $name => $lines) {
@@ -96,7 +96,7 @@ final class DbspecRenderTest extends TestCase
         }
     }
 
-    public function test_unknown_dialect(): void
+    public function testUnknownDialect(): void
     {
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('oracle');

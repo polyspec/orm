@@ -115,7 +115,7 @@ final class DbspecPlanTest extends TestCase
     }
 
     #[DataProvider('casesCases')]
-    public function test_case(array $case): void
+    public function testCase(array $case): void
     {
         $caseStarted = cpuCaseBegin(PLAN_CASE_CPU_SECONDS);
         $id = "plan/{$case['id']}";
@@ -171,7 +171,7 @@ final class DbspecPlanTest extends TestCase
     }
 
     #[DataProvider('invalidCases')]
-    public function test_invalid(array $case): void
+    public function testInvalid(array $case): void
     {
         $caseStarted = cpuCaseBegin(PLAN_CASE_CPU_SECONDS);
         $id = "plan/invalid/{$case['id']}";
@@ -206,7 +206,7 @@ final class DbspecPlanTest extends TestCase
     }
 
     #[DataProvider('chainsCases')]
-    public function test_chain(array $case): void
+    public function testChain(array $case): void
     {
         $caseStarted = cpuCaseBegin(PLAN_CASE_CPU_SECONDS);
         $id = "plan/chain/{$case['id']}";
@@ -236,7 +236,7 @@ final class DbspecPlanTest extends TestCase
     }
 
     #[DataProvider('parseCases')]
-    public function test_parse(array $case): void
+    public function testParse(array $case): void
     {
         $caseStarted = cpuCaseBegin(PLAN_CASE_CPU_SECONDS);
         $id = "plan/parse/{$case['id']}";
@@ -269,7 +269,7 @@ final class DbspecPlanTest extends TestCase
     }
 
     #[DataProvider('comparisonsCases')]
-    public function test_comparison(array $case): void
+    public function testComparison(array $case): void
     {
         $caseStarted = cpuCaseBegin(PLAN_CASE_CPU_SECONDS);
         $id = "plan/comparison/{$case['id']}";
@@ -298,7 +298,7 @@ final class DbspecPlanTest extends TestCase
         cpuCaseEnd($id, $caseStarted);
     }
 
-    public function test_unknown_dialect(): void
+    public function testUnknownDialect(): void
     {
         $plan = plan_of('plan/unknown-dialect', plan_vectors()['cases'][0]['plan']);
         $this->expectException(InvalidArgumentException::class);

@@ -45,14 +45,14 @@ final class StatementEventsTest extends TestCase
      * @param array<string, mixed> $case
      */
     #[DataProvider('cases')]
-    public function test_case(array $case): void
+    public function testCase(array $case): void
     {
         foreach (['sqlite', 'mysql', 'postgres'] as $driver) {
             self::runOn($driver, $case);
         }
     }
 
-    public function test_server_transactions(): void
+    public function testServerTransactions(): void
     {
         $vector = statementEventsVector();
         $cases = array_column($vector['cases'], null, 'id');

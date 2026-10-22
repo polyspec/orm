@@ -15,7 +15,7 @@ use PHPUnit\Framework\TestCase;
 final class CoverageInterfaceContractTest extends TestCase
 {
     // Requirements: INT-17, INT-18, INT-19, INT-57, INT-61, INT-64.
-    public function test_interface_symbols(): void
+    public function testInterfaceSymbols(): void
     {
         [$status, $stdout, $stderr] = coverageProcess(
             ['node', 'tests/interfaces/check/main.mts', '-language', 'php'],

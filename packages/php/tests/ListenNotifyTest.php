@@ -20,7 +20,7 @@ use PHPUnit\Framework\TestCase;
 #[Medium]
 final class ListenNotifyTest extends TestCase
 {
-    public function test_listen_notify(): void
+    public function testListenNotify(): void
     {
         with_case_database('postgres', static function (string $message): void {
         }, static function (string $dsn): void {

@@ -34,7 +34,7 @@ final class CodeCatalogTest extends TestCase
     }
 
     // Requirements: INT-65.
-    public function test_catalog_matches_errors_yaml(): void
+    public function testCatalogMatchesErrorsYaml(): void
     {
         $source = (string) file_get_contents(__DIR__ . '/../src/Code.php');
         $codes = self::catalog();

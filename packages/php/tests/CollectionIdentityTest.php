@@ -42,7 +42,7 @@ final class CollectionIdentityTest extends TestCase
     }
 
     // Requirements: PRT-35.
-    public function test_every_fixture_key_has_its_own_stable_identity(): void
+    public function testEveryFixtureKeyHasItsOwnStableIdentity(): void
     {
         $seen = [];
         foreach (self::fixture()['keys'] as $entry) {
@@ -72,7 +72,7 @@ final class CollectionIdentityTest extends TestCase
     }
 
     // Requirements: PRT-35.
-    public function test_a_null_key_is_codec_decode(): void
+    public function testANullKeyIsCodecDecode(): void
     {
         $expected = self::fixture()['null'];
         try {

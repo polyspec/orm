@@ -22,7 +22,7 @@ final class AutoloadTest extends TestCase
         'Polyspec\\Orm\\Dbspec\\Dbspec'
     ];
 
-    public function test_bootstrap(): void
+    public function testBootstrap(): void
     {
         foreach (self::CLASSES as $class) {
             self::assertTrue(class_exists($class), "$class is not found");
@@ -31,7 +31,7 @@ final class AutoloadTest extends TestCase
         self::assertFalse(class_exists('Polyspec\\Orm\\NoSuchClass'), 'Polyspec\\Orm\\NoSuchClass is found');
     }
 
-    public function test_autoload(): void
+    public function testAutoload(): void
     {
         $code = 'require $argv[1]; foreach (array_slice($argv, 2) as $class) { echo $class, " ", class_exists($class) ? "found" : "missing", "\n"; }';
         $process = proc_open(

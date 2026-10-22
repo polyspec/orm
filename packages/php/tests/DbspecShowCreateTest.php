@@ -28,7 +28,7 @@ final class DbspecShowCreateTest extends TestCase
     }
 
     #[DataProvider('showCreateCases')]
-    public function test_show_create(array $case): void
+    public function testShowCreate(array $case): void
     {
         $checks = (
             new ReflectionMethod(MysqlCatalog::class, 'createChecks')

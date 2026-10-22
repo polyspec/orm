@@ -22,7 +22,7 @@ final class UnselectedColumnTest extends TestCase
         self::fail("unselected $column returned a value");
     }
 
-    public function test_owner(): void
+    public function testOwner(): void
     {
         $model = new Author();
         self::assertUnselected(static fn() => $model->getSeq(), 'integer');

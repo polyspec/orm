@@ -26,7 +26,7 @@ final class AesVersionCodesTest extends TestCase
         return '';
     }
 
-    public function test_read_path_codes(): void
+    public function testReadPathCodes(): void
     {
         $config = new Config('', '', 2, [1 => 'old-key', 2 => 'new-key']);
         $cipher = Codec::hostEncode('value', ['aes', 'hex'], 'old-key');
@@ -48,7 +48,7 @@ final class AesVersionCodesTest extends TestCase
         }
     }
 
-    public function test_read_row_without_its_version_cell_is_internal(): void
+    public function testReadRowWithoutItsVersionCellIsInternal(): void
     {
         $config = new Config('', '', 2, [1 => 'old-key', 2 => 'new-key']);
         $rows = [[Codec::hostEncode('value', ['aes', 'hex'], 'old-key')]];
@@ -58,7 +58,7 @@ final class AesVersionCodesTest extends TestCase
         $this->assertSame('INTERNAL', $got);
     }
 
-    public function test_read_plan_without_version_column_is_internal(): void
+    public function testReadPlanWithoutVersionColumnIsInternal(): void
     {
         $config = new Config('', '', 2, [1 => 'old-key', 2 => 'new-key']);
         $rows = [[Codec::hostEncode('value', ['aes', 'hex'], 'old-key'), 1]];
@@ -68,7 +68,7 @@ final class AesVersionCodesTest extends TestCase
         $this->assertSame('INTERNAL', $got);
     }
 
-    public function test_read_keyring_lacks_stored_version_is_config(): void
+    public function testReadKeyringLacksStoredVersionIsConfig(): void
     {
         // The single key is new-key: a fallback to it would decrypt the value, so the CONFIG shows the keyring is used.
         $config = new Config('', 'new-key', 2, [1 => 'old-key', 2 => 'new-key']);
@@ -79,7 +79,7 @@ final class AesVersionCodesTest extends TestCase
         $this->assertSame('CONFIG', $got);
     }
 
-    public function test_read_null_version_with_aes_value_is_codec_decode(): void
+    public function testReadNullVersionWithAesValueIsCodecDecode(): void
     {
         $config = new Config('', '', 2, [1 => 'old-key', 2 => 'new-key']);
         $rows = [[Codec::hostEncode('value', ['aes', 'hex'], 'old-key'), null]];
@@ -89,7 +89,7 @@ final class AesVersionCodesTest extends TestCase
         $this->assertSame('CODEC_DECODE', $got);
     }
 
-    public function test_read_null_aes_with_null_version_stays_null(): void
+    public function testReadNullAesWithNullVersionStaysNull(): void
     {
         $config = new Config('', '', 2, [1 => 'old-key', 2 => 'new-key']);
         $rows = [[null, null]];
@@ -100,7 +100,7 @@ final class AesVersionCodesTest extends TestCase
         $this->assertNull($rows[0][0]);
     }
 
-    public function test_rotation_null_aes_is_left_unchanged(): void
+    public function testRotationNullAesIsLeftUnchanged(): void
     {
         $keyring = new AesKeyring([1 => 'old-key', 2 => 'new-key'], 2);
         $column = ['name' => 'email', 'styles' => ['aes', 'hex']];
@@ -109,7 +109,7 @@ final class AesVersionCodesTest extends TestCase
         }
     }
 
-    public function test_rotation_codes(): void
+    public function testRotationCodes(): void
     {
         $keyring = new AesKeyring([1 => 'old-key', 2 => 'new-key'], 2);
         $column = ['name' => 'email', 'styles' => ['aes', 'hex']];

@@ -51,13 +51,13 @@ function decryptCase(array $fixture, string $id): void
 #[Small]
 final class CoverageAuthenticatedEncryptionTest extends TestCase
 {
-    public function test_aes_envelope_decrypt(): void
+    public function testAesEnvelopeDecrypt(): void
     {
         $fixture = coverageJson(dirname(__DIR__, 3) . '/contracts/fixtures/authenticated_encryption.json');
         decryptCase($fixture, 'aes_envelope_decrypt');
     }
 
-    public function test_aes_round_trip(): void
+    public function testAesRoundTrip(): void
     {
         $fixture = coverageJson(dirname(__DIR__, 3) . '/contracts/fixtures/authenticated_encryption.json');
         $case = encryptionCase($fixture, 'aes_round_trip', 'aes_encrypt_decrypt');
@@ -78,19 +78,19 @@ final class CoverageAuthenticatedEncryptionTest extends TestCase
         Assert::assertTrue($plain === $case['expected']['plain'], 'round trip ' . var_export($plain, true));
     }
 
-    public function test_aes_tamper_rejected(): void
+    public function testAesTamperRejected(): void
     {
         $fixture = coverageJson(dirname(__DIR__, 3) . '/contracts/fixtures/authenticated_encryption.json');
         decryptCase($fixture, 'aes_tamper_rejected');
     }
 
-    public function test_aes_wrong_key_rejected(): void
+    public function testAesWrongKeyRejected(): void
     {
         $fixture = coverageJson(dirname(__DIR__, 3) . '/contracts/fixtures/authenticated_encryption.json');
         decryptCase($fixture, 'aes_wrong_key_rejected');
     }
 
-    public function test_blind_index_vector(): void
+    public function testBlindIndexVector(): void
     {
         $fixture = coverageJson(dirname(__DIR__, 3) . '/contracts/fixtures/authenticated_encryption.json');
         $case = encryptionCase($fixture, 'blind_index_vector', 'blind_index');

@@ -18,7 +18,7 @@ use Polyspec\Orm\Model;
 #[Small]
 final class ConformanceResultTest extends TestCase
 {
-    public function test_conformance_result_php(): void
+    public function testConformanceResultPhp(): void
     {
         $result = [
             'exact' => Polyspec\OrderedJson\parse('9007199254740993'),
@@ -72,12 +72,12 @@ final class ConformanceResultTest extends TestCase
     }
 
     #[DataProvider('vectorNames')]
-    public function test_runner_declares_vector(string $name): void
+    public function testRunnerDeclaresVector(string $name): void
     {
         self::assertContains($name, declaredVectors(), "the PHP runner does not declare vector $name");
     }
 
-    public function test_binding_reports_every_vector(): void
+    public function testBindingReportsEveryVector(): void
     {
         $expected = vectorNamesOf(conformanceRoot() . '/tests/conformance/vectors.json');
         $reported = declaredVectors();
@@ -96,7 +96,7 @@ final class ConformanceResultTest extends TestCase
         );
     }
 
-    public function test_expectation_files_name_the_same_vectors(): void
+    public function testExpectationFilesNameTheSameVectors(): void
     {
         $base = vectorNamesOf(conformanceRoot() . '/tests/conformance/vectors.json');
         foreach (['vectors.postgres.json', 'vectors.sqlite.json'] as $file) {

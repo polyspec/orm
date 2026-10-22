@@ -12,7 +12,7 @@ use Polyspec\Orm\OrmException;
 #[Small]
 final class GroupRowsTest extends TestCase
 {
-    public function test_owner(): void
+    public function testOwner(): void
     {
         $row = new GroupRow([['is_close', false], ['row_count', 3]]);
         self::assertSame(3, $row->count(), 'group result lost its count');
@@ -52,7 +52,7 @@ final class GroupRowsTest extends TestCase
     }
 
     // Requirements: INT-90.
-    public function test_negative_count_is_codec_decode(): void
+    public function testNegativeCountIsCodecDecode(): void
     {
         foreach ([-1, '-1', -1.5] as $count) {
             try {

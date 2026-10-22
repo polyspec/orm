@@ -166,7 +166,7 @@ final class DbspecPlanApplyTest extends TestCase
 
     // Requirements: PLN-102.
     #[DataProvider('planCases')]
-    public function test_plan(array $case, string $dialect): void
+    public function testPlan(array $case, string $dialect): void
     {
         $parsed = Dbspec::parsePlan(plan_lines($case['plan']));
         $plan = $parsed->plan ?? plan_failure($case['id'], $parsed->diagnostics);

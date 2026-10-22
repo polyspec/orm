@@ -83,7 +83,7 @@ final class ModelMethodsTest extends TestCase
         exec('rm -rf ' . escapeshellarg(self::$work));
     }
 
-    public function test_phpstan_finds_every_query_method_of_a_generated_model(): void
+    public function testPhpstanFindsEveryQueryMethodOfAGeneratedModel(): void
     {
         $root = dirname(__DIR__, 3);
         $work = self::$work;
@@ -109,7 +109,7 @@ final class ModelMethodsTest extends TestCase
         );
     }
 
-    public function test_a_declared_method_builds_the_query_of_its_chain(): void
+    public function testADeclaredMethodBuildsTheQueryOfItsChain(): void
     {
         $work = self::$work;
         require_once "$work/models.php";
@@ -158,7 +158,7 @@ final class ModelMethodsTest extends TestCase
 
     // Requirements: DBS-121.
     /** A date, time or datetime setter takes the text form, never a native value (T189). */
-    public function test_a_time_setter_takes_the_text_form(): void
+    public function testATimeSetterTakesTheTextForm(): void
     {
         $cases = [
             [\Polyspec\Orm\Tests\Model\TimeCell::class, 'setAt', 'string'],

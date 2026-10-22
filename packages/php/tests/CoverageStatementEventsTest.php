@@ -14,7 +14,7 @@ use PHPUnit\Framework\TestCase;
 #[Medium]
 final class CoverageStatementEventsTest extends TestCase
 {
-    public function test_statement_events(): void
+    public function testStatementEvents(): void
     {
         foreach (coverageItemsOf(__FILE__) as $item) {
             selectCoverageItem($item);

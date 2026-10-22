@@ -98,7 +98,7 @@ final class DbspecMermaidTest extends TestCase
     }
 
     #[DataProvider('exportCases')]
-    public function test_export(array $case): void
+    public function testExport(array $case): void
     {
         $clock = cpuCaseBegin(MERMAID_CASE_CPU_SECONDS);
         $parsed = Dbspec::parse(mermaid_join($case['document']), array_map(mermaid_join(...), $case['documents']));
@@ -117,7 +117,7 @@ final class DbspecMermaidTest extends TestCase
     }
 
     #[DataProvider('importCases')]
-    public function test_import(array $case): void
+    public function testImport(array $case): void
     {
         $clock = cpuCaseBegin(MERMAID_CASE_CPU_SECONDS);
         $result = Dbspec::importMermaid(mermaid_join($case['mermaid']), 'imported');
@@ -139,7 +139,7 @@ final class DbspecMermaidTest extends TestCase
     }
 
     #[DataProvider('invalidCases')]
-    public function test_invalid(array $case): void
+    public function testInvalid(array $case): void
     {
         $clock = cpuCaseBegin(MERMAID_CASE_CPU_SECONDS);
         $result = Dbspec::importMermaid(mermaid_join($case['mermaid']), 'imported');
@@ -157,7 +157,7 @@ final class DbspecMermaidTest extends TestCase
     }
 
     #[DataProvider('roundtripCases')]
-    public function test_round_trip(array $case): void
+    public function testRoundTrip(array $case): void
     {
         $clock = cpuCaseBegin(MERMAID_CASE_CPU_SECONDS);
         $read = Dbspec::readFile(dirname(__DIR__, 3) . '/' . $case['path']);

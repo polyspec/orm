@@ -6,7 +6,7 @@ declare(strict_types=1);
 // database of that dialect (BENCH_MYSQL_DSN, BENCH_POSTGRES_DSN, BENCH_SQLITE_DSN, which make run-databases and
 // make orm-check create), and each vector is one data set, named by the vector, whose output must equal the recorded
 // expect as a JSON value (tests/conformance/vectors.json for MySQL, vectors.<dialect>.json for the others).
-// test_conformance_vector is the feature coverage (contracts/features.json): it runs the read-only vectors
+// testConformanceVector is the feature coverage (contracts/features.json): it runs the read-only vectors
 // conditions_values and relations on the database that ORM_FEATURE_DATABASE and ORM_FEATURE_DSN select.
 
 require_once __DIR__ . '/coverage_cases.php';
@@ -133,24 +133,24 @@ final class CoverageConformanceVerificationTest extends TestCase
     }
 
     #[DataProvider('mysqlVectors')]
-    public function test_mysql(string $name, mixed $expect): void
+    public function testMysql(string $name, mixed $expect): void
     {
         self::check('mysql', $name, $expect);
     }
 
     #[DataProvider('postgresVectors')]
-    public function test_postgres(string $name, mixed $expect): void
+    public function testPostgres(string $name, mixed $expect): void
     {
         self::check('postgres', $name, $expect);
     }
 
     #[DataProvider('sqliteVectors')]
-    public function test_sqlite(string $name, mixed $expect): void
+    public function testSqlite(string $name, mixed $expect): void
     {
         self::check('sqlite', $name, $expect);
     }
 
-    public function test_conformance_vector(): void
+    public function testConformanceVector(): void
     {
         foreach (coverageItemsOf(__FILE__) as $item) {
             selectCoverageItem($item);

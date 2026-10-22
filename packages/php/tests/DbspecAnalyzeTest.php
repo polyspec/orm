@@ -34,7 +34,7 @@ final class DbspecAnalyzeTest extends TestCase
     }
 
     #[DataProvider('focusedCases')]
-    public function test_focused(string $text, array $want): void
+    public function testFocused(string $text, array $want): void
     {
         $id = (string) $this->dataName();
         $clock = cpuCaseBegin(2.0);
@@ -43,7 +43,7 @@ final class DbspecAnalyzeTest extends TestCase
     }
 
     // R22: a limit stop gives no tokens, whatever was marked before it.
-    public function test_limit_no_tokens(): void
+    public function testLimitNoTokens(): void
     {
         $clock = cpuCaseBegin(2.0);
         $lines = [];
@@ -79,7 +79,7 @@ final class DbspecAnalyzeTest extends TestCase
     // The shared cases: analyze returns the parse result unchanged, and format of each canonical or normalize case
     // gives its canonical text; an invalid case is refused with its diagnostics (docs/spec/dbspec.md "Formatting").
     #[DataProvider('sharedCases')]
-    public function test_shared(string $kind, array $case): void
+    public function testShared(string $kind, array $case): void
     {
         $id = "$kind/" . $case['id'];
         $clock = cpuCaseBegin(2.0);
@@ -143,13 +143,13 @@ final class DbspecAnalyzeTest extends TestCase
 
     // The shared syntax vectors: the tokens of every case of tests/dbspec/syntax.json, exactly.
     #[DataProvider('syntaxCases')]
-    public function test_syntax(?array $want, string $text, array $documents): void
+    public function testSyntax(?array $want, string $text, array $documents): void
     {
         $this->assertNotNull($want, $this->dataName() . ': syntax.json has no tokens for this case');
         $this->assertSame($want, self::tokens($text, $documents), $this->dataName() . ': tokens differ');
     }
 
-    public function test_syntax_cases_are_produced(): void
+    public function testSyntaxCasesAreProduced(): void
     {
         $this->assertSame(
             [],

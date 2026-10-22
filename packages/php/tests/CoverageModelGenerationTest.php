@@ -36,7 +36,7 @@ function generationCheck(string $root, string $out): array
 #[Large]
 final class CoverageModelGenerationTest extends TestCase
 {
-    public function test_model_generation_check(): void
+    public function testModelGenerationCheck(): void
     {
         $root = dirname(__DIR__, 3);
         [$status, $output] = generationCheck($root, 'packages/php/gen');

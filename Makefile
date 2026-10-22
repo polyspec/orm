@@ -782,7 +782,7 @@ dbspec-php-extension-check/set: php-vendor-check dbspec-php-extension-check/prep
 # to its value and encodes as the file says, with the YAML and error cases of the test). The outputs of the other languages are read by
 # codec-check/compare, which runs them; this target does not read them.
 dbspec-php-extension-check/codec: php-vendor-check dbspec-php-extension-check/prepare
-	$(PHP_EXTENSION_TESTS) packages/php/tests/CodecVectorsTest.php --filter 'test_php_vector|test_yaml_core|test_php_error|test_php_yaml_integer_map_key'
+	$(PHP_EXTENSION_TESTS) packages/php/tests/CodecVectorsTest.php --filter 'testPhpVector|test_yaml_core|testPhpError|testPhpYamlIntegerMapKey'
 # dbspec-php-extension-check/code-catalog runs CodeCatalogTest with the extension: the codes of docs/spec/errors.yaml against Code.php, and the
 # class that the extension registers as Polyspec\Orm\Code, which must hold the same codes.
 dbspec-php-extension-check/code-catalog: php-vendor-check dbspec-php-extension-check/prepare
@@ -798,11 +798,11 @@ dbspec-php-extension-check/hostcodec: php-vendor-check dbspec-php-extension-chec
 # dbspec-php-extension-check/decode runs the codec-decode suite (tests/codec/decode-vectors.json) with the extension: the test_decode_vector
 # data sets of HostcodecTest, which decode each stored cell through Codec::hostDecode (hex, ip) or Codec::decode.
 dbspec-php-extension-check/decode: php-vendor-check dbspec-php-extension-check/prepare
-	$(PHP_EXTENSION_TESTS) packages/php/tests/HostcodecTest.php --filter test_decode_vector
-# dbspec-php-extension-check/ir runs EngineTest::test_validate with the extension: each case of tests/ir/validate.json is given to
+	$(PHP_EXTENSION_TESTS) packages/php/tests/HostcodecTest.php --filter testDecodeVector
+# dbspec-php-extension-check/ir runs EngineTest::testValidate with the extension: each case of tests/ir/validate.json is given to
 # Polyspec\Orm\Validator, which the extension implements, and checks its result (valid, or the error code the case names).
 dbspec-php-extension-check/ir: php-vendor-check dbspec-php-extension-check/prepare
-	$(PHP_EXTENSION_TESTS) packages/php/tests/EngineTest.php --filter test_validate
+	$(PHP_EXTENSION_TESTS) packages/php/tests/EngineTest.php --filter testValidate
 # dbspec-php-extension-check/set-parse runs DbspecSetParseTest with the extension: Dbspec::parseSet on every case of tests/dbspec/set-parse.json.
 dbspec-php-extension-check/set-parse: php-vendor-check dbspec-php-extension-check/prepare
 	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecSetParseTest.php
@@ -822,15 +822,15 @@ dbspec-php-extension-check/planner/ir-answers: php-vendor-check dbspec-php-exten
 	$(PHP_EXTENSION_TESTS) packages/php/tests/IrAnswersTest.php
 
 # dbspec-php-extension-check/executor runs the suites of the connection, the statement path and the transactions with the extension
-# loaded: StatementEventsTest (statement-events), StatementFaultTest (statement-fault), DsnTest::test_sqlite_path (sqlite-paths) and
-# MysqlTlsTest::test_session_sql_mode (mysql-session). It first checks that the extension registers Polyspec\Orm\Db: its class is
+# loaded: StatementEventsTest (statement-events), StatementFaultTest (statement-fault), DsnTest::testSqlitePath (sqlite-paths) and
+# MysqlTlsTest::testSessionSqlMode (mysql-session). It first checks that the extension registers Polyspec\Orm\Db: its class is
 # internal, so the connection the suites open is C. The database suites need make orm-test-servers first (WITH_TEST_ENV).
 dbspec-php-extension-check/executor: php-vendor-check dbspec-php-extension-check/prepare
 	php -d extension=$(PHP_EXTENSION_LIBRARY) -r 'require "vendor-php/autoload.php"; exit((new ReflectionClass("Polyspec\\Orm\\Db"))->isInternal() ? 0 : 1);'
 	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/StatementEventsTest.php
 	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/StatementFaultTest.php
-	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/DsnTest.php --filter test_sqlite_path
-	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/MysqlTlsTest.php --filter test_session_sql_mode
+	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/DsnTest.php --filter testSqlitePath
+	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/MysqlTlsTest.php --filter testSessionSqlMode
 	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/ModelTest.php --filter 'test_(transactions|statement_timeout)'
 
 # repo-check checks that the paths that the root npm script uses are tracked files or

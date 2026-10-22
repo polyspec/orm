@@ -15,7 +15,7 @@ use Polyspec\Orm\OrmException;
 #[Small]
 final class DsnTest extends TestCase
 {
-    public function test_parse(): void
+    public function testParse(): void
     {
         [$driver, $pdo, $user, $password] = Orm::parseDsn('mysql://orm:p%40ss@db.local:3307/orm_example?timezone=UTC');
         self::assertSame('mysql', $driver);
@@ -44,7 +44,7 @@ final class DsnTest extends TestCase
     }
 
     #[DataProvider('invalidDsns')]
-    public function test_parse_rejects(string $dsn): void
+    public function testParseRejects(string $dsn): void
     {
         try {
             Orm::parseDsn($dsn);
@@ -56,7 +56,7 @@ final class DsnTest extends TestCase
 
     // A SQLite DSN with a query makes the file from the path only. The query is not put in the file name.
     // The opener makes a file like `named.sqlite?_pragma=…` (docs/spec/dialects.md "Probe environment").
-    public function test_sqlite_file_name(): void
+    public function testSqliteFileName(): void
     {
         $directory = sys_get_temp_dir() . '/orm-php-sqlite-name-' . getmypid();
         self::assertFalse(file_exists($directory), "temporary directory $directory exists");
@@ -100,7 +100,7 @@ final class DsnTest extends TestCase
     // CONFIG (docs/spec/config.md "Runtime connection").
     /** @param array<string, mixed> $case */
     #[DataProvider('sqlitePaths')]
-    public function test_sqlite_path(array $case): void
+    public function testSqlitePath(array $case): void
     {
         $directory = sys_get_temp_dir() . "/orm-php-sqlite-path-" . getmypid() . "-{$case['id']}";
         self::assertFalse(file_exists($directory), "temporary directory $directory exists");

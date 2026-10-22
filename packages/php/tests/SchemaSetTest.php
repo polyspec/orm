@@ -579,7 +579,7 @@ final class SchemaSetTest extends TestCase
     // when it fails. The unit binds this method, so the decimal document is its only data set.
     // Requirements: SCH-7, DBS-108.
     #[DataProvider('decimalDocumentCase')]
-    public function test_decimal_document(string $document): void
+    public function testDecimalDocument(string $document): void
     {
         self::check($document === 'decimal_schema.dbs', "decimal document $document");
         foreach (['sqlite', 'mysql', 'postgres'] as $driver) {
@@ -589,7 +589,7 @@ final class SchemaSetTest extends TestCase
     }
 
     #[DataProvider('drivers')]
-    public function test_several_schemas(string $driver): void
+    public function testSeveralSchemas(string $driver): void
     {
         // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
         with_case_database($driver, static function (string $step): void {
@@ -597,7 +597,7 @@ final class SchemaSetTest extends TestCase
     }
 
     #[DataProvider('drivers')]
-    public function test_unregistered_schema(string $driver): void
+    public function testUnregisteredSchema(string $driver): void
     {
         // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
         with_case_database($driver, static function (string $step): void {
@@ -605,7 +605,7 @@ final class SchemaSetTest extends TestCase
     }
 
     #[DataProvider('drivers')]
-    public function test_edited_manifest(string $driver): void
+    public function testEditedManifest(string $driver): void
     {
         // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
         with_case_database($driver, static function (string $step): void {
@@ -613,7 +613,7 @@ final class SchemaSetTest extends TestCase
     }
 
     #[DataProvider('drivers')]
-    public function test_external_documents(string $driver): void
+    public function testExternalDocuments(string $driver): void
     {
         // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
         with_case_database($driver, static function (string $step): void {
@@ -622,7 +622,7 @@ final class SchemaSetTest extends TestCase
 
     // Requirements: INT-54.
     #[DataProvider('drivers')]
-    public function test_register_sends_no_statement(string $driver): void
+    public function testRegisterSendsNoStatement(string $driver): void
     {
         // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
         with_case_database($driver, static function (string $step): void {
@@ -640,7 +640,7 @@ final class SchemaSetTest extends TestCase
     // Each case of changed_database.json runs on every driver, in a case database of its own per driver, removed when
     // it ends, also when it fails.
     #[DataProvider('changedDatabaseCases')]
-    public function test_install_verifies_the_database(array $case): void
+    public function testInstallVerifiesTheDatabase(array $case): void
     {
         foreach (['sqlite', 'mysql', 'postgres'] as $driver) {
             with_case_database($driver, static function (string $step): void {

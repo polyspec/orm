@@ -91,7 +91,7 @@ function markdown_received(array $server): array
 final class MarkdownTest extends TestCase
 {
     // Requirements: PRT-63.
-    public function test_parse_dsn(): void
+    public function testParseDsn(): void
     {
         $got = Orm::parseMarkdownDsn('markdown://127.0.0.1:4100/tracker?token=' . MARKDOWN_TOKEN);
         self::assertFalse(
@@ -128,7 +128,7 @@ final class MarkdownTest extends TestCase
     }
 
     // Requirements: PRT-64.
-    public function test_session_messages(): void
+    public function testSessionMessages(): void
     {
         $server = markdown_fake_server([
             '{"ok":true}',
@@ -165,7 +165,7 @@ final class MarkdownTest extends TestCase
     }
 
     // Requirements: PRT-64.
-    public function test_connect_refused(): void
+    public function testConnectRefused(): void
     {
         $server = markdown_fake_server(
             ['{"error":{"code":"CONFIG","message":"connect: the token is not the corpus\'s token"}}']
@@ -181,7 +181,7 @@ final class MarkdownTest extends TestCase
         );
     }
 
-    public function test_rejected_surfaces(): void
+    public function testRejectedSurfaces(): void
     {
         $server = markdown_fake_server(['{"ok":true}']);
         $db = Orm::connect($server[2], new Config());
@@ -215,7 +215,7 @@ final class MarkdownTest extends TestCase
     }
 
     // Requirements: PRT-66.
-    public function test_request_message(): void
+    public function testRequestMessage(): void
     {
         // The request message writes parameters in the slot form: the time compared with a date column is YYYY-MM-DD. A
         // row that is absent group count is an empty result.
@@ -240,7 +240,7 @@ final class MarkdownTest extends TestCase
     }
 
     // Requirements: PRT-67.
-    public function test_bind_message_vectors(): void
+    public function testBindMessageVectors(): void
     {
         // Message case of tests/bind/vectors.json: the runtime value model JSON of an IR executor message parameter
         // (docs/spec/protocol.md §5 "Parameters"). It is the same case as Go's TestBindMessageVectors.
@@ -282,7 +282,7 @@ final class MarkdownTest extends TestCase
         markdown_received($server);
     }
 
-    public function test_bind_vectors(): void
+    public function testBindVectors(): void
     {
         // Bind case of tests/bind/vectors.json: checks the parameter value against the logical type of its slot
         // (docs/spec/protocol.md §5 "Parameters"). It is the same case as Go's TestBindVectors.
@@ -343,7 +343,7 @@ final class MarkdownTest extends TestCase
         }
     }
 
-    public function test_param_uses(): void
+    public function testParamUses(): void
     {
         $model = RuntimeModel::build(RuntimeModel::parse(['params.dbs' => 'dbspec 1 params
 
@@ -441,7 +441,7 @@ final class MarkdownTest extends TestCase
         }
     }
 
-    public function test_bind_offsetless_datetime_uses_the_connection_zone_under_dst(): void
+    public function testBindOffsetlessDatetimeUsesTheConnectionZoneUnderDst(): void
     {
         // An offset-less datetime is a wall clock in the connection zone (docs/spec/protocol.md §5). The process
         // date.timezone has daylight saving, and 2026-03-08 02:30 does not exist in America/New_York: the

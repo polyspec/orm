@@ -45,7 +45,7 @@ function accountExists(Db $db, int $accountId): bool
 final class CoverageTransactionsTest extends TestCase
 {
     // Requirements: DSL-118, INT-45, PLN-13, PLN-20.
-    public function test_transaction_rollback(): void
+    public function testTransactionRollback(): void
     {
         foreach (coverageItemsOf(__FILE__) as $item) {
             selectCoverageItem($item);
@@ -73,7 +73,7 @@ final class CoverageTransactionsTest extends TestCase
     }
 
     // Requirements: DSL-119, INT-45, INT-46, PLN-17.
-    public function test_transaction_savepoint(): void
+    public function testTransactionSavepoint(): void
     {
         foreach (coverageItemsOf(__FILE__) as $item) {
             selectCoverageItem($item);

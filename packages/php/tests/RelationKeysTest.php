@@ -12,7 +12,7 @@ use Polyspec\Orm\Tests\Model\Author;
 #[Small]
 final class RelationKeysTest extends TestCase
 {
-    public function test_relation_keys(): void
+    public function testRelationKeys(): void
     {
         $refs = [['column' => 'tenant_id', 'index' => 0], ['column' => 'account_id', 'index' => 1]];
         $first = Db::rowKey(['1', '23'], $refs);

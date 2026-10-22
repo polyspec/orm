@@ -627,12 +627,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/ListenNotifyTest.php",
-          "id": "ListenNotifyTest::test_listen_notify"
+          "id": "ListenNotifyTest::testListenNotify"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/ListenNotifyTest.php",
-          "id": "ListenNotifyTest::test_listen_notify"
+          "id": "ListenNotifyTest::testListenNotify"
         },
         {
           "implementation": "typescript",
@@ -784,32 +784,32 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/AesVersionCodesTest.php",
-          "id": "AesVersionCodesTest::test_read_path_codes"
+          "id": "AesVersionCodesTest::testReadPathCodes"
         },
         {
           "implementation": "php",
           "test": "packages/php/tests/AesVersionCodesTest.php",
-          "id": "AesVersionCodesTest::test_read_row_without_its_version_cell_is_internal"
+          "id": "AesVersionCodesTest::testReadRowWithoutItsVersionCellIsInternal"
         },
         {
           "implementation": "php",
           "test": "packages/php/tests/AesVersionCodesTest.php",
-          "id": "AesVersionCodesTest::test_rotation_codes"
+          "id": "AesVersionCodesTest::testRotationCodes"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/AesVersionCodesTest.php",
-          "id": "AesVersionCodesTest::test_read_path_codes"
+          "id": "AesVersionCodesTest::testReadPathCodes"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/AesVersionCodesTest.php",
-          "id": "AesVersionCodesTest::test_read_row_without_its_version_cell_is_internal"
+          "id": "AesVersionCodesTest::testReadRowWithoutItsVersionCellIsInternal"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/AesVersionCodesTest.php",
-          "id": "AesVersionCodesTest::test_rotation_codes"
+          "id": "AesVersionCodesTest::testRotationCodes"
         },
         {
           "implementation": "typescript",
@@ -874,12 +874,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/AesVersionCodesTest.php",
-          "id": "AesVersionCodesTest::test_read_plan_without_version_column_is_internal"
+          "id": "AesVersionCodesTest::testReadPlanWithoutVersionColumnIsInternal"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/AesVersionCodesTest.php",
-          "id": "AesVersionCodesTest::test_read_plan_without_version_column_is_internal"
+          "id": "AesVersionCodesTest::testReadPlanWithoutVersionColumnIsInternal"
         },
         {
           "implementation": "typescript",
@@ -914,12 +914,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/AesVersionCodesTest.php",
-          "id": "AesVersionCodesTest::test_read_keyring_lacks_stored_version_is_config"
+          "id": "AesVersionCodesTest::testReadKeyringLacksStoredVersionIsConfig"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/AesVersionCodesTest.php",
-          "id": "AesVersionCodesTest::test_read_keyring_lacks_stored_version_is_config"
+          "id": "AesVersionCodesTest::testReadKeyringLacksStoredVersionIsConfig"
         },
         {
           "implementation": "rust",
@@ -944,12 +944,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/AesVersionCodesTest.php",
-          "id": "AesVersionCodesTest::test_read_null_version_with_aes_value_is_codec_decode"
+          "id": "AesVersionCodesTest::testReadNullVersionWithAesValueIsCodecDecode"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/AesVersionCodesTest.php",
-          "id": "AesVersionCodesTest::test_read_null_version_with_aes_value_is_codec_decode"
+          "id": "AesVersionCodesTest::testReadNullVersionWithAesValueIsCodecDecode"
         },
         {
           "implementation": "rust",
@@ -974,12 +974,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/AesVersionCodesTest.php",
-          "id": "AesVersionCodesTest::test_read_null_aes_with_null_version_stays_null"
+          "id": "AesVersionCodesTest::testReadNullAesWithNullVersionStaysNull"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/AesVersionCodesTest.php",
-          "id": "AesVersionCodesTest::test_read_null_aes_with_null_version_stays_null"
+          "id": "AesVersionCodesTest::testReadNullAesWithNullVersionStaysNull"
         },
         {
           "implementation": "rust",
@@ -1004,12 +1004,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/AesVersionCodesTest.php",
-          "id": "AesVersionCodesTest::test_rotation_null_aes_is_left_unchanged"
+          "id": "AesVersionCodesTest::testRotationNullAesIsLeftUnchanged"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/AesVersionCodesTest.php",
-          "id": "AesVersionCodesTest::test_rotation_null_aes_is_left_unchanged"
+          "id": "AesVersionCodesTest::testRotationNullAesIsLeftUnchanged"
         },
         {
           "implementation": "rust",
@@ -1100,12 +1100,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecApplyCleanupTest.php",
-          "id": "DbspecApplyCleanupTest::test_cleanup_errors_release"
+          "id": "DbspecApplyCleanupTest::testCleanupErrorsRelease"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecApplyCleanupTest.php",
-          "id": "DbspecApplyCleanupTest::test_cleanup_errors_release",
+          "id": "DbspecApplyCleanupTest::testCleanupErrorsRelease",
           "command": [
             "make",
             "-s",
@@ -1133,12 +1133,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecApplyTest.php",
-          "id": "DbspecApplyTest::test_scenario"
+          "id": "DbspecApplyTest::testScenario"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecApplyTest.php",
-          "id": "DbspecApplyTest::test_scenario"
+          "id": "DbspecApplyTest::testScenario"
         },
         {
           "implementation": "typescript",
@@ -1184,12 +1184,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecIntrospectTest.php",
-          "id": "DbspecIntrospectTest::test_round_trip"
+          "id": "DbspecIntrospectTest::testRoundTrip"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecIntrospectTest.php",
-          "id": "DbspecIntrospectTest::test_round_trip",
+          "id": "DbspecIntrospectTest::testRoundTrip",
           "command": [
             "make",
             "-s",
@@ -1256,12 +1256,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecPlanApplyTest.php",
-          "id": "DbspecPlanApplyTest::test_plan"
+          "id": "DbspecPlanApplyTest::testPlan"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecPlanApplyTest.php",
-          "id": "DbspecPlanApplyTest::test_plan",
+          "id": "DbspecPlanApplyTest::testPlan",
           "command": [
             "make",
             "-s",
@@ -1442,7 +1442,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageAuditTriggersTest.php",
-          "id": "CoverageAuditTriggersTest::test_audit_history"
+          "id": "CoverageAuditTriggersTest::testAuditHistory"
         },
         {
           "implementation": "python",
@@ -1491,7 +1491,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageAuditColumnsTest.php",
-          "id": "CoverageAuditColumnsTest::test_audit_selected_columns"
+          "id": "CoverageAuditColumnsTest::testAuditSelectedColumns"
         },
         {
           "implementation": "python",
@@ -1540,7 +1540,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageAuditTriggersTest.php",
-          "id": "CoverageAuditTriggersTest::test_audit_transaction_entry_points"
+          "id": "CoverageAuditTriggersTest::testAuditTransactionEntryPoints"
         },
         {
           "implementation": "python",
@@ -1592,7 +1592,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageAuditTriggersTest.php",
-          "id": "CoverageAuditTriggersTest::test_soft_delete_restore"
+          "id": "CoverageAuditTriggersTest::testSoftDeleteRestore"
         },
         {
           "implementation": "python",
@@ -1679,7 +1679,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageDsnTest.php",
-          "id": "CoverageDsnTest::test_dsn_connection"
+          "id": "CoverageDsnTest::testDsnConnection"
         },
         {
           "implementation": "typescript",
@@ -1821,7 +1821,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageModelQueriesTest.php",
-          "id": "CoverageModelQueriesTest::test_model_query_rows"
+          "id": "CoverageModelQueriesTest::testModelQueryRows"
         },
         {
           "implementation": "php-extension",
@@ -1891,7 +1891,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageModelWritesTest.php",
-          "id": "CoverageModelWritesTest::test_model_write_cycle"
+          "id": "CoverageModelWritesTest::testModelWriteCycle"
         },
         {
           "implementation": "php-extension",
@@ -1967,7 +1967,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::test_without_hook"
+          "id": "CoverageRequestHookTest::testWithoutHook"
         },
         {
           "implementation": "typescript",
@@ -2013,7 +2013,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::test_read_filter"
+          "id": "CoverageRequestHookTest::testReadFilter"
         },
         {
           "implementation": "typescript",
@@ -2060,7 +2060,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::test_insert_assign"
+          "id": "CoverageRequestHookTest::testInsertAssign"
         },
         {
           "implementation": "typescript",
@@ -2108,7 +2108,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::test_loaded_row_writes"
+          "id": "CoverageRequestHookTest::testLoadedRowWrites"
         },
         {
           "implementation": "typescript",
@@ -2153,7 +2153,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::test_invalid_param"
+          "id": "CoverageRequestHookTest::testInvalidParam"
         },
         {
           "implementation": "typescript",
@@ -2198,7 +2198,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::test_restore_key"
+          "id": "CoverageRequestHookTest::testRestoreKey"
         },
         {
           "implementation": "typescript",
@@ -2244,7 +2244,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::test_restore_condition"
+          "id": "CoverageRequestHookTest::testRestoreCondition"
         },
         {
           "implementation": "typescript",
@@ -2289,7 +2289,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::test_restore_no_key"
+          "id": "CoverageRequestHookTest::testRestoreNoKey"
         },
         {
           "implementation": "typescript",
@@ -2334,7 +2334,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::test_restore_rewritten_key"
+          "id": "CoverageRequestHookTest::testRestoreRewrittenKey"
         },
         {
           "implementation": "typescript",
@@ -2379,7 +2379,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::test_restore_hook_set_key"
+          "id": "CoverageRequestHookTest::testRestoreHookSetKey"
         },
         {
           "implementation": "typescript",
@@ -2424,7 +2424,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::test_restore_rewritten_key_set_scope"
+          "id": "CoverageRequestHookTest::testRestoreRewrittenKeySetScope"
         },
         {
           "implementation": "typescript",
@@ -2487,7 +2487,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageTransactionsTest.php",
-          "id": "CoverageTransactionsTest::test_transaction_rollback"
+          "id": "CoverageTransactionsTest::testTransactionRollback"
         },
         {
           "implementation": "python",
@@ -2547,7 +2547,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageTransactionsTest.php",
-          "id": "CoverageTransactionsTest::test_transaction_savepoint"
+          "id": "CoverageTransactionsTest::testTransactionSavepoint"
         },
         {
           "implementation": "python",
@@ -2663,12 +2663,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CodeCatalogTest.php",
-          "id": "CodeCatalogTest::test_catalog_matches_errors_yaml"
+          "id": "CodeCatalogTest::testCatalogMatchesErrorsYaml"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/CodeCatalogTest.php",
-          "id": "CodeCatalogTest::test_catalog_matches_errors_yaml"
+          "id": "CodeCatalogTest::testCatalogMatchesErrorsYaml"
         },
         {
           "implementation": "typescript",
@@ -2871,7 +2871,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/RevisionTest.php",
-          "id": "RevisionTest::test_update_match_bumps_the_revision"
+          "id": "RevisionTest::testUpdateMatchBumpsTheRevision"
         }
       ]
     },
@@ -2946,7 +2946,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/RevisionTest.php",
-          "id": "RevisionTest::test_update_mismatch_changes_nothing"
+          "id": "RevisionTest::testUpdateMismatchChangesNothing"
         }
       ]
     },
@@ -3021,7 +3021,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/RevisionTest.php",
-          "id": "RevisionTest::test_delete_match_deletes"
+          "id": "RevisionTest::testDeleteMatchDeletes"
         }
       ]
     },
@@ -3096,7 +3096,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/RevisionTest.php",
-          "id": "RevisionTest::test_delete_mismatch_changes_nothing"
+          "id": "RevisionTest::testDeleteMismatchChangesNothing"
         }
       ]
     },
@@ -3506,7 +3506,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/AggregateNumericTest.php",
-          "symbol": "AggregateNumericTest::test_aggregate_numeric"
+          "symbol": "AggregateNumericTest::testAggregateNumeric"
         },
         {
           "implementation": "typescript",
@@ -3583,7 +3583,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DecimalModelTest.php",
-          "symbol": "DecimalModelTest::test_decimal_model"
+          "symbol": "DecimalModelTest::testDecimalModel"
         },
         {
           "implementation": "typescript",
@@ -3624,7 +3624,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/IdentityLoadTest.php",
-          "symbol": "IdentityLoadTest::test_identity_load"
+          "symbol": "IdentityLoadTest::testIdentityLoad"
         },
         {
           "implementation": "typescript",
@@ -3788,7 +3788,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/StyledValueTest.php",
-          "symbol": "StyledValueTest::test_styled_value"
+          "symbol": "StyledValueTest::testStyledValue"
         },
         {
           "implementation": "typescript",
@@ -3824,7 +3824,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/SchemaSetTest.php",
-          "symbol": "SchemaSetTest::test_install_verifies_the_database"
+          "symbol": "SchemaSetTest::testInstallVerifiesTheDatabase"
         },
         {
           "implementation": "typescript",
@@ -3872,12 +3872,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CodecVectorsTest.php",
-          "symbol": "CodecVectorsTest::test_php_vector"
+          "symbol": "CodecVectorsTest::testPhpVector"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/CodecVectorsTest.php",
-          "symbol": "CodecVectorsTest::test_php_vector"
+          "symbol": "CodecVectorsTest::testPhpVector"
         },
         {
           "implementation": "typescript",
@@ -3913,12 +3913,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CodecAesVectorsTest.php",
-          "symbol": "CodecAesVectorsTest::test_vector"
+          "symbol": "CodecAesVectorsTest::testVector"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/CodecAesVectorsTest.php",
-          "symbol": "CodecAesVectorsTest::test_vector"
+          "symbol": "CodecAesVectorsTest::testVector"
         },
         {
           "implementation": "rust",
@@ -3957,12 +3957,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/HostcodecTest.php",
-          "symbol": "HostcodecTest::test_decode_vector"
+          "symbol": "HostcodecTest::testDecodeVector"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/HostcodecTest.php",
-          "symbol": "HostcodecTest::test_decode_vector"
+          "symbol": "HostcodecTest::testDecodeVector"
         },
         {
           "implementation": "typescript",
@@ -4010,12 +4010,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/EngineTest.php",
-          "symbol": "EngineTest::test_validate"
+          "symbol": "EngineTest::testValidate"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/EngineTest.php",
-          "symbol": "EngineTest::test_validate"
+          "symbol": "EngineTest::testValidate"
         },
         {
           "implementation": "typescript",
@@ -4212,7 +4212,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
-          "symbol": "CoverageConformanceVerificationTest::test_mysql"
+          "symbol": "CoverageConformanceVerificationTest::testMysql"
         },
         {
           "implementation": "typescript",
@@ -4409,7 +4409,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
-          "symbol": "CoverageConformanceVerificationTest::test_postgres"
+          "symbol": "CoverageConformanceVerificationTest::testPostgres"
         },
         {
           "implementation": "typescript",
@@ -4606,7 +4606,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
-          "symbol": "CoverageConformanceVerificationTest::test_sqlite"
+          "symbol": "CoverageConformanceVerificationTest::testSqlite"
         },
         {
           "implementation": "typescript",
@@ -4695,12 +4695,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecTest.php",
-          "symbol": "DbspecTest::test_canonical"
+          "symbol": "DbspecTest::testCanonical"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecTest.php",
-          "symbol": "DbspecTest::test_canonical"
+          "symbol": "DbspecTest::testCanonical"
         },
         {
           "implementation": "typescript",
@@ -4749,12 +4749,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecTest.php",
-          "symbol": "DbspecTest::test_normalize"
+          "symbol": "DbspecTest::testNormalize"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecTest.php",
-          "symbol": "DbspecTest::test_normalize"
+          "symbol": "DbspecTest::testNormalize"
         },
         {
           "implementation": "typescript",
@@ -4859,12 +4859,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecTest.php",
-          "symbol": "DbspecTest::test_invalid"
+          "symbol": "DbspecTest::testInvalid"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecTest.php",
-          "symbol": "DbspecTest::test_invalid"
+          "symbol": "DbspecTest::testInvalid"
         },
         {
           "implementation": "typescript",
@@ -4905,12 +4905,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecManifestTest.php",
-          "symbol": "DbspecManifestTest::test_hashes"
+          "symbol": "DbspecManifestTest::testHashes"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecManifestTest.php",
-          "symbol": "DbspecManifestTest::test_hashes"
+          "symbol": "DbspecManifestTest::testHashes"
         },
         {
           "implementation": "typescript",
@@ -4944,7 +4944,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecManifestTest.php",
-          "symbol": "DbspecManifestTest::test_sets"
+          "symbol": "DbspecManifestTest::testSets"
         },
         {
           "implementation": "go",
@@ -4954,7 +4954,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecManifestTest.php",
-          "symbol": "DbspecManifestTest::test_sets"
+          "symbol": "DbspecManifestTest::testSets"
         },
         {
           "implementation": "typescript",
@@ -4990,12 +4990,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecTest.php",
-          "symbol": "DbspecTest::test_files"
+          "symbol": "DbspecTest::testFiles"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecTest.php",
-          "symbol": "DbspecTest::test_files"
+          "symbol": "DbspecTest::testFiles"
         },
         {
           "implementation": "typescript",
@@ -5046,12 +5046,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecTest.php",
-          "symbol": "DbspecTest::test_positions"
+          "symbol": "DbspecTest::testPositions"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecTest.php",
-          "symbol": "DbspecTest::test_positions"
+          "symbol": "DbspecTest::testPositions"
         },
         {
           "implementation": "typescript",
@@ -5114,12 +5114,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecSetTest.php",
-          "symbol": "DbspecSetTest::test_set"
+          "symbol": "DbspecSetTest::testSet"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecSetTest.php",
-          "symbol": "DbspecSetTest::test_set"
+          "symbol": "DbspecSetTest::testSet"
         },
         {
           "implementation": "typescript",
@@ -5168,12 +5168,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecAnalyzeTest.php",
-          "symbol": "DbspecAnalyzeTest::test_syntax"
+          "symbol": "DbspecAnalyzeTest::testSyntax"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecAnalyzeTest.php",
-          "symbol": "DbspecAnalyzeTest::test_syntax"
+          "symbol": "DbspecAnalyzeTest::testSyntax"
         },
         {
           "implementation": "typescript",
@@ -5239,12 +5239,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecRenderTest.php",
-          "symbol": "DbspecRenderTest::test_ddl"
+          "symbol": "DbspecRenderTest::testDdl"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecRenderTest.php",
-          "symbol": "DbspecRenderTest::test_ddl"
+          "symbol": "DbspecRenderTest::testDdl"
         },
         {
           "implementation": "typescript",
@@ -5310,12 +5310,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecIntrospectTest.php",
-          "symbol": "DbspecIntrospectTest::test_unsupported"
+          "symbol": "DbspecIntrospectTest::testUnsupported"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecIntrospectTest.php",
-          "symbol": "DbspecIntrospectTest::test_unsupported"
+          "symbol": "DbspecIntrospectTest::testUnsupported"
         },
         {
           "implementation": "typescript",
@@ -5349,12 +5349,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecShowCreateTest.php",
-          "symbol": "DbspecShowCreateTest::test_show_create"
+          "symbol": "DbspecShowCreateTest::testShowCreate"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecShowCreateIntrospectTest.php",
-          "symbol": "DbspecShowCreateIntrospectTest::test_introspect"
+          "symbol": "DbspecShowCreateIntrospectTest::testIntrospect"
         },
         {
           "implementation": "typescript",
@@ -5393,12 +5393,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecMermaidTest.php",
-          "symbol": "DbspecMermaidTest::test_export"
+          "symbol": "DbspecMermaidTest::testExport"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecMermaidTest.php",
-          "symbol": "DbspecMermaidTest::test_export"
+          "symbol": "DbspecMermaidTest::testExport"
         },
         {
           "implementation": "typescript",
@@ -5438,12 +5438,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecMermaidTest.php",
-          "symbol": "DbspecMermaidTest::test_import"
+          "symbol": "DbspecMermaidTest::testImport"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecMermaidTest.php",
-          "symbol": "DbspecMermaidTest::test_import"
+          "symbol": "DbspecMermaidTest::testImport"
         },
         {
           "implementation": "typescript",
@@ -5477,12 +5477,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecMermaidTest.php",
-          "symbol": "DbspecMermaidTest::test_invalid"
+          "symbol": "DbspecMermaidTest::testInvalid"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecMermaidTest.php",
-          "symbol": "DbspecMermaidTest::test_invalid"
+          "symbol": "DbspecMermaidTest::testInvalid"
         },
         {
           "implementation": "typescript",
@@ -5516,12 +5516,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecMermaidTest.php",
-          "symbol": "DbspecMermaidTest::test_round_trip"
+          "symbol": "DbspecMermaidTest::testRoundTrip"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecMermaidTest.php",
-          "symbol": "DbspecMermaidTest::test_round_trip"
+          "symbol": "DbspecMermaidTest::testRoundTrip"
         },
         {
           "implementation": "typescript",
@@ -5587,12 +5587,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecPlanTest.php",
-          "symbol": "DbspecPlanTest::test_case"
+          "symbol": "DbspecPlanTest::testCase"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecPlanTest.php",
-          "symbol": "DbspecPlanTest::test_case"
+          "symbol": "DbspecPlanTest::testCase"
         },
         {
           "implementation": "typescript",
@@ -5658,12 +5658,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecPlanTest.php",
-          "symbol": "DbspecPlanTest::test_invalid"
+          "symbol": "DbspecPlanTest::testInvalid"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecPlanTest.php",
-          "symbol": "DbspecPlanTest::test_invalid"
+          "symbol": "DbspecPlanTest::testInvalid"
         },
         {
           "implementation": "typescript",
@@ -5729,12 +5729,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecPlanTest.php",
-          "symbol": "DbspecPlanTest::test_chain"
+          "symbol": "DbspecPlanTest::testChain"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecPlanTest.php",
-          "symbol": "DbspecPlanTest::test_chain"
+          "symbol": "DbspecPlanTest::testChain"
         },
         {
           "implementation": "typescript",
@@ -5801,12 +5801,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecPlanTest.php",
-          "symbol": "DbspecPlanTest::test_parse"
+          "symbol": "DbspecPlanTest::testParse"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecPlanTest.php",
-          "symbol": "DbspecPlanTest::test_parse"
+          "symbol": "DbspecPlanTest::testParse"
         },
         {
           "implementation": "typescript",
@@ -5872,12 +5872,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecPlanTest.php",
-          "symbol": "DbspecPlanTest::test_comparison"
+          "symbol": "DbspecPlanTest::testComparison"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecPlanTest.php",
-          "symbol": "DbspecPlanTest::test_comparison"
+          "symbol": "DbspecPlanTest::testComparison"
         },
         {
           "implementation": "typescript",
@@ -5911,12 +5911,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DsnTest.php",
-          "symbol": "DsnTest::test_sqlite_path"
+          "symbol": "DsnTest::testSqlitePath"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DsnTest.php",
-          "symbol": "DsnTest::test_sqlite_path"
+          "symbol": "DsnTest::testSqlitePath"
         },
         {
           "implementation": "typescript",
@@ -5950,12 +5950,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/StatementEventsTest.php",
-          "symbol": "StatementEventsTest::test_case"
+          "symbol": "StatementEventsTest::testCase"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/StatementEventsTest.php",
-          "symbol": "StatementEventsTest::test_case"
+          "symbol": "StatementEventsTest::testCase"
         },
         {
           "implementation": "typescript",
@@ -5993,12 +5993,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/StatementFaultTest.php",
-          "symbol": "StatementFaultTest::test_statement_fault"
+          "symbol": "StatementFaultTest::testStatementFault"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/StatementFaultTest.php",
-          "symbol": "StatementFaultTest::test_statement_fault"
+          "symbol": "StatementFaultTest::testStatementFault"
         },
         {
           "implementation": "typescript",
@@ -6072,7 +6072,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/MarkdownConformanceTest.php",
-          "symbol": "MarkdownConformanceTest::test_markdown_conformance"
+          "symbol": "MarkdownConformanceTest::testMarkdownConformance"
         },
         {
           "implementation": "python",
@@ -6106,12 +6106,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/InsertPartsTest.php",
-          "symbol": "InsertPartsTest::test_case"
+          "symbol": "InsertPartsTest::testCase"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/InsertPartsTest.php",
-          "symbol": "InsertPartsTest::test_case"
+          "symbol": "InsertPartsTest::testCase"
         },
         {
           "implementation": "typescript",
@@ -6152,12 +6152,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecSetParseTest.php",
-          "symbol": "DbspecSetParseTest::test_set_parse"
+          "symbol": "DbspecSetParseTest::testSetParse"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecSetParseTest.php",
-          "symbol": "DbspecSetParseTest::test_set_parse"
+          "symbol": "DbspecSetParseTest::testSetParse"
         },
         {
           "implementation": "typescript",
@@ -6285,12 +6285,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecShowCreateIntrospectTest.php",
-          "id": "DbspecShowCreateIntrospectTest::test_introspect"
+          "id": "DbspecShowCreateIntrospectTest::testIntrospect"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecShowCreateIntrospectTest.php",
-          "id": "DbspecShowCreateIntrospectTest::test_introspect",
+          "id": "DbspecShowCreateIntrospectTest::testIntrospect",
           "command": [
             "make",
             "-s",
@@ -7308,12 +7308,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/OrmExceptionLockWaitTest.php",
-          "id": "OrmExceptionLockWaitTest::test_mysql_lock_wait_timeout_is_canceled"
+          "id": "OrmExceptionLockWaitTest::testMysqlLockWaitTimeoutIsCanceled"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/OrmExceptionLockWaitTest.php",
-          "id": "OrmExceptionLockWaitTest::test_mysql_lock_wait_timeout_is_canceled"
+          "id": "OrmExceptionLockWaitTest::testMysqlLockWaitTimeoutIsCanceled"
         },
         {
           "implementation": "typescript",
@@ -10054,12 +10054,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecApplyTest.php",
-          "id": "DbspecApplyTest::test_pooler"
+          "id": "DbspecApplyTest::testPooler"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecApplyTest.php",
-          "id": "DbspecApplyTest::test_pooler"
+          "id": "DbspecApplyTest::testPooler"
         }
       ]
     },
@@ -13566,7 +13566,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/SchemaSetTest.php",
-          "id": "SchemaSetTest::test_register_sends_no_statement"
+          "id": "SchemaSetTest::testRegisterSendsNoStatement"
         },
         {
           "implementation": "typescript",
@@ -13809,7 +13809,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecIntrospectStressTest.php",
-          "id": "DbspecIntrospectStressTest::test_introspect_stress"
+          "id": "DbspecIntrospectStressTest::testIntrospectStress"
         }
       ]
     },
@@ -13842,7 +13842,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecRulesTest.php",
-          "id": "DbspecRulesTest::test_rule"
+          "id": "DbspecRulesTest::testRule"
         }
       ]
     },
@@ -13858,7 +13858,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecRulesTest.php",
-          "id": "DbspecRulesTest::test_limit"
+          "id": "DbspecRulesTest::testLimit"
         }
       ]
     },
@@ -13872,7 +13872,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecStressTest.php",
-          "id": "DbspecStressTest::test_stress"
+          "id": "DbspecStressTest::testStress"
         }
       ]
     },
@@ -13890,12 +13890,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecBehaviourTest.php",
-          "id": "DbspecBehaviourTest::test_case"
+          "id": "DbspecBehaviourTest::testCase"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecBehaviourTest.php",
-          "id": "DbspecBehaviourTest::test_case"
+          "id": "DbspecBehaviourTest::testCase"
         }
       ]
     },
@@ -13909,7 +13909,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/GroupRowsTest.php",
-          "id": "GroupRowsTest::test_owner"
+          "id": "GroupRowsTest::testOwner"
         }
       ]
     },
@@ -13920,7 +13920,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/IrAnswersTest.php",
-          "id": "IrAnswersTest::test_ir_answer"
+          "id": "IrAnswersTest::testIrAnswer"
         }
       ]
     },
@@ -13934,7 +13934,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/MarkdownTest.php",
-          "id": "MarkdownTest::test_parse_dsn"
+          "id": "MarkdownTest::testParseDsn"
         }
       ]
     },
@@ -13948,7 +13948,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/MarkdownTest.php",
-          "id": "MarkdownTest::test_session_messages"
+          "id": "MarkdownTest::testSessionMessages"
         }
       ]
     },
@@ -13962,7 +13962,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/MarkdownTest.php",
-          "id": "MarkdownTest::test_connect_refused"
+          "id": "MarkdownTest::testConnectRefused"
         }
       ]
     },
@@ -13979,7 +13979,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/MarkdownTest.php",
-          "id": "MarkdownTest::test_rejected_surfaces"
+          "id": "MarkdownTest::testRejectedSurfaces"
         }
       ]
     },
@@ -13993,7 +13993,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/MarkdownTest.php",
-          "id": "MarkdownTest::test_request_message"
+          "id": "MarkdownTest::testRequestMessage"
         }
       ]
     },
@@ -14007,7 +14007,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/MarkdownTest.php",
-          "id": "MarkdownTest::test_bind_message_vectors"
+          "id": "MarkdownTest::testBindMessageVectors"
         }
       ]
     },
@@ -14024,7 +14024,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/MarkdownTest.php",
-          "id": "MarkdownTest::test_bind_vectors"
+          "id": "MarkdownTest::testBindVectors"
         }
       ]
     },
@@ -14041,7 +14041,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/MarkdownTest.php",
-          "id": "MarkdownTest::test_param_uses"
+          "id": "MarkdownTest::testParamUses"
         }
       ]
     },
@@ -14058,7 +14058,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/MarkdownTest.php",
-          "id": "MarkdownTest::test_bind_offsetless_datetime_uses_the_connection_zone_under_dst"
+          "id": "MarkdownTest::testBindOffsetlessDatetimeUsesTheConnectionZoneUnderDst"
         }
       ]
     },
@@ -14072,7 +14072,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/ModelMethodsTest.php",
-          "id": "ModelMethodsTest::test_phpstan_finds_every_query_method_of_a_generated_model"
+          "id": "ModelMethodsTest::testPhpstanFindsEveryQueryMethodOfAGeneratedModel"
         }
       ]
     },
@@ -14086,7 +14086,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/ModelMethodsTest.php",
-          "id": "ModelMethodsTest::test_a_declared_method_builds_the_query_of_its_chain"
+          "id": "ModelMethodsTest::testADeclaredMethodBuildsTheQueryOfItsChain"
         }
       ]
     },
@@ -14100,7 +14100,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/ModelMethodsTest.php",
-          "id": "ModelMethodsTest::test_a_time_setter_takes_the_text_form"
+          "id": "ModelMethodsTest::testATimeSetterTakesTheTextForm"
         }
       ]
     },
@@ -14114,7 +14114,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/OrmGenScanTest.php",
-          "id": "OrmGenScanTest::test_vector"
+          "id": "OrmGenScanTest::testVector"
         }
       ]
     },
@@ -14128,7 +14128,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/OrmGenScanTest.php",
-          "id": "OrmGenScanTest::test_the_receiver_is_resolved_from_the_source"
+          "id": "OrmGenScanTest::testTheReceiverIsResolvedFromTheSource"
         }
       ]
     },
@@ -14142,7 +14142,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/OrmGenScanTest.php",
-          "id": "OrmGenScanTest::test_an_alias_named_match_declares_its_getter"
+          "id": "OrmGenScanTest::testAnAliasNamedMatchDeclaresItsGetter"
         }
       ]
     },
@@ -14157,7 +14157,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/OrmGenScanTest.php",
-          "id": "OrmGenScanTest::test_a_nested_relation_alias_declares_its_getter_on_the_model_it_aliases_on"
+          "id": "OrmGenScanTest::testANestedRelationAliasDeclaresItsGetterOnTheModelItAliasesOn"
         }
       ]
     },
@@ -14171,7 +14171,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/OrmGenScanTest.php",
-          "id": "OrmGenScanTest::test_a_getter_call_that_nothing_attaches_stops_generation"
+          "id": "OrmGenScanTest::testAGetterCallThatNothingAttachesStopsGeneration"
         }
       ]
     },
@@ -14185,7 +14185,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/OrmGenScanTest.php",
-          "id": "OrmGenScanTest::test_a_call_on_a_class_of_another_set_is_not_this_sets_call"
+          "id": "OrmGenScanTest::testACallOnAClassOfAnotherSetIsNotThisSetsCall"
         }
       ]
     },
@@ -14199,7 +14199,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/OrmGenScanTest.php",
-          "id": "OrmGenScanTest::test_a_receiver_held_in_a_reassigned_variable_resolves_to_its_class"
+          "id": "OrmGenScanTest::testAReceiverHeldInAReassignedVariableResolvesToItsClass"
         }
       ]
     },
@@ -14213,7 +14213,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/OrmGenScanTest.php",
-          "id": "OrmGenScanTest::test_a_file_that_does_not_parse_stops_the_generation_and_names_its_position"
+          "id": "OrmGenScanTest::testAFileThatDoesNotParseStopsTheGenerationAndNamesItsPosition"
         }
       ]
     },
@@ -14227,7 +14227,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/OrmGenScanTest.php",
-          "id": "OrmGenScanTest::test_a_directory_is_scanned_and_a_file_that_does_not_parse_fails_the_scan"
+          "id": "OrmGenScanTest::testADirectoryIsScannedAndAFileThatDoesNotParseFailsTheScan"
         }
       ]
     },
@@ -14241,7 +14241,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/OrmGenScanTest.php",
-          "id": "OrmGenScanTest::test_a_scanned_directory_skips_its_dependencies_and_refuses_a_symlink"
+          "id": "OrmGenScanTest::testAScannedDirectorySkipsItsDependenciesAndRefusesASymlink"
         }
       ]
     },
@@ -14261,7 +14261,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/OrmGenScanTest.php",
-          "id": "OrmGenScanTest::test_check_compares_the_models_with_the_scan"
+          "id": "OrmGenScanTest::testCheckComparesTheModelsWithTheScan"
         }
       ]
     },
@@ -14275,7 +14275,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/OrmGenScanTest.php",
-          "id": "OrmGenScanTest::test_phpstan_finds_every_scanned_chain_method"
+          "id": "OrmGenScanTest::testPhpstanFindsEveryScannedChainMethod"
         }
       ]
     },
@@ -14303,7 +14303,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/OrmGenTest.php",
-          "id": "OrmGenTest::test_gen___check_compares_the_models_without_writing"
+          "id": "OrmGenTest::testGenCheckComparesTheModelsWithoutWriting"
         }
       ]
     },
@@ -14319,7 +14319,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/OrmGenTest.php",
-          "id": "OrmGenTest::test_gen_rejects_a_file_without_the_dbspec_signature"
+          "id": "OrmGenTest::testGenRejectsAFileWithoutTheDbspecSignature"
         }
       ]
     },
@@ -14337,7 +14337,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/OrmGenTest.php",
-          "id": "OrmGenTest::test_gen_prints_every_error_of_the_set_file_and_writes_nothing"
+          "id": "OrmGenTest::testGenPrintsEveryErrorOfTheSetFileAndWritesNothing"
         }
       ]
     },
@@ -14354,7 +14354,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/OrmGenTest.php",
-          "id": "OrmGenTest::test_gen_takes_the_documents_only_from_the_set_file"
+          "id": "OrmGenTest::testGenTakesTheDocumentsOnlyFromTheSetFile"
         }
       ]
     },
@@ -14369,7 +14369,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/OrmGenTest.php",
-          "id": "OrmGenTest::test_gen_rejects_a_column_named_after_a_model_method"
+          "id": "OrmGenTest::testGenRejectsAColumnNamedAfterAModelMethod"
         }
       ]
     },
@@ -14385,7 +14385,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/OrmGenTest.php",
-          "id": "OrmGenTest::test_gen_generates_the_owned_and_the_used_external_tables_of_a_set"
+          "id": "OrmGenTest::testGenGeneratesTheOwnedAndTheUsedExternalTablesOfASet"
         }
       ]
     },
@@ -14399,7 +14399,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/OrmGenScanTest.php",
-          "id": "OrmGenScanTest::test_a_used_external_table_that_no_source_calls_keeps_its_model"
+          "id": "OrmGenScanTest::testAUsedExternalTableThatNoSourceCallsKeepsItsModel"
         }
       ]
     },
@@ -14427,7 +14427,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/OrmGenTest.php",
-          "id": "OrmGenTest::test_gen_writes_the_same_models_however_the_paths_are_written"
+          "id": "OrmGenTest::testGenWritesTheSameModelsHoweverThePathsAreWritten"
         }
       ]
     },
@@ -14455,7 +14455,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/OrmGenTest.php",
-          "id": "OrmGenTest::test_gen_is_the_only_command"
+          "id": "OrmGenTest::testGenIsTheOnlyCommand"
         }
       ]
     },
@@ -14483,7 +14483,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/OrmGenTest.php",
-          "id": "OrmGenTest::test_the_bin_Composer_installs_loads_the_autoloader"
+          "id": "OrmGenTest::testTheBinComposerInstallsLoadsTheAutoloader"
         }
       ]
     },
@@ -14511,7 +14511,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/OrmGenTest.php",
-          "id": "OrmGenTest::test_the_bin_outside_Composer_names_the_missing_autoloader"
+          "id": "OrmGenTest::testTheBinOutsideComposerNamesTheMissingAutoloader"
         }
       ]
     },
@@ -14525,7 +14525,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/RuntimeModelTest.php",
-          "id": "RuntimeModelTest::test_entities_in_document_order"
+          "id": "RuntimeModelTest::testEntitiesInDocumentOrder"
         }
       ]
     },
@@ -14541,7 +14541,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/RuntimeModelTest.php",
-          "id": "RuntimeModelTest::test_default_select_set_excludes_only_select_explicit"
+          "id": "RuntimeModelTest::testDefaultSelectSetExcludesOnlySelectExplicit"
         }
       ]
     },
@@ -14557,7 +14557,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/RuntimeModelTest.php",
-          "id": "RuntimeModelTest::test_generated_models_carry_the_manifest_hash_and_the_model"
+          "id": "RuntimeModelTest::testGeneratedModelsCarryTheManifestHashAndTheModel"
         }
       ]
     },
@@ -14571,7 +14571,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/RuntimeModelTest.php",
-          "id": "RuntimeModelTest::test_a_generated_model_that_its_manifest_contradicts_is_refused"
+          "id": "RuntimeModelTest::testAGeneratedModelThatItsManifestContradictsIsRefused"
         }
       ]
     },
@@ -14596,7 +14596,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/RuntimeModelTest.php",
-          "id": "RuntimeModelTest::test_generated_files_are_current"
+          "id": "RuntimeModelTest::testGeneratedFilesAreCurrent"
         }
       ]
     },
@@ -14610,7 +14610,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/RuntimeModelTest.php",
-          "id": "RuntimeModelTest::test_codec_value_types"
+          "id": "RuntimeModelTest::testCodecValueTypes"
         }
       ]
     },
@@ -14624,7 +14624,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/RuntimeModelTest.php",
-          "id": "RuntimeModelTest::test_i16_field"
+          "id": "RuntimeModelTest::testI16Field"
         }
       ]
     },
@@ -14639,7 +14639,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/RuntimeModelTest.php",
-          "id": "RuntimeModelTest::test_insert_binds_the_clock_of_an_omitted_default_now_column_except_on_MySQL"
+          "id": "RuntimeModelTest::testInsertBindsTheClockOfAnOmittedDefaultNowColumnExceptOnMySQL"
         }
       ]
     },
@@ -14653,7 +14653,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/RuntimeModelTest.php",
-          "id": "RuntimeModelTest::test_configuration_without_a_schema_path"
+          "id": "RuntimeModelTest::testConfigurationWithoutASchemaPath"
         }
       ]
     },
@@ -14667,7 +14667,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/RuntimeModelTest.php",
-          "id": "RuntimeModelTest::test_requests_carry_the_manifest_hash"
+          "id": "RuntimeModelTest::testRequestsCarryTheManifestHash"
         }
       ]
     },
@@ -14682,7 +14682,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/SqliteConcurrencyTest.php",
-          "id": "SqliteConcurrencyTest::test_writers_in_several_processes"
+          "id": "SqliteConcurrencyTest::testWritersInSeveralProcesses"
         }
       ]
     },
@@ -14696,7 +14696,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/SqliteConcurrencyTest.php",
-          "id": "SqliteConcurrencyTest::test_reads_during_a_write"
+          "id": "SqliteConcurrencyTest::testReadsDuringAWrite"
         }
       ]
     },
@@ -14710,7 +14710,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/SqliteConcurrencyTest.php",
-          "id": "SqliteConcurrencyTest::test_lock_wait_expires"
+          "id": "SqliteConcurrencyTest::testLockWaitExpires"
         }
       ]
     },
@@ -14725,7 +14725,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/AddTablesAndColumnsTest.php",
-          "id": "AddTablesAndColumnsTest::test_add_tables_and_columns"
+          "id": "AddTablesAndColumnsTest::testAddTablesAndColumns"
         }
       ]
     },
@@ -14739,7 +14739,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/AddTablesAndColumnsTest.php",
-          "id": "AddTablesAndColumnsTest::test_add_tables_and_columns_differs"
+          "id": "AddTablesAndColumnsTest::testAddTablesAndColumnsDiffers"
         }
       ]
     },
@@ -14754,7 +14754,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/AddTablesAndColumnsTest.php",
-          "id": "AddTablesAndColumnsTest::test_add_tables_and_columns_index"
+          "id": "AddTablesAndColumnsTest::testAddTablesAndColumnsIndex"
         }
       ]
     },
@@ -14768,7 +14768,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/AddTablesAndColumnsTest.php",
-          "id": "AddTablesAndColumnsTest::test_add_tables_and_columns_transaction"
+          "id": "AddTablesAndColumnsTest::testAddTablesAndColumnsTransaction"
         }
       ]
     },
@@ -14782,7 +14782,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/AddTablesAndColumnsTest.php",
-          "id": "AddTablesAndColumnsTest::test_add_tables_and_columns_edited_manifest"
+          "id": "AddTablesAndColumnsTest::testAddTablesAndColumnsEditedManifest"
         }
       ]
     },
@@ -14797,7 +14797,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/AesJsonTest.php",
-          "id": "AesJsonTest::test_aes_json_column"
+          "id": "AesJsonTest::testAesJsonColumn"
         }
       ]
     },
@@ -14813,7 +14813,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/AuditExternalSetsTest.php",
-          "id": "AuditExternalSetsTest::test_generated_after_values"
+          "id": "AuditExternalSetsTest::testGeneratedAfterValues"
         }
       ]
     },
@@ -14829,7 +14829,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/AuditExternalSetsTest.php",
-          "id": "AuditExternalSetsTest::test_member_by_value_first"
+          "id": "AuditExternalSetsTest::testMemberByValueFirst"
         }
       ]
     },
@@ -14843,7 +14843,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/ClockTest.php",
-          "id": "ClockTest::test_clock_microseconds"
+          "id": "ClockTest::testClockMicroseconds"
         }
       ]
     },
@@ -14857,7 +14857,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/ClockTest.php",
-          "id": "ClockTest::test_clock_soft_delete_microseconds"
+          "id": "ClockTest::testClockSoftDeleteMicroseconds"
         }
       ]
     },
@@ -14872,7 +14872,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/ClockTest.php",
-          "id": "ClockTest::test_clock_now_condition"
+          "id": "ClockTest::testClockNowCondition"
         }
       ]
     },
@@ -14886,7 +14886,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageCompositeKeysTest.php",
-          "id": "CoverageCompositeKeysTest::test_composite_key_rows"
+          "id": "CoverageCompositeKeysTest::testCompositeKeyRows"
         }
       ]
     },
@@ -14905,7 +14905,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageInterfaceContractTest.php",
-          "id": "CoverageInterfaceContractTest::test_interface_symbols"
+          "id": "CoverageInterfaceContractTest::testInterfaceSymbols"
         }
       ]
     },
@@ -14920,7 +14920,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageSchemaInstallTest.php",
-          "id": "CoverageSchemaInstallTest::test_schema_install_existing"
+          "id": "CoverageSchemaInstallTest::testSchemaInstallExisting"
         }
       ]
     },
@@ -14935,7 +14935,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageSchemaInstallTest.php",
-          "id": "CoverageSchemaInstallTest::test_schema_install_partial"
+          "id": "CoverageSchemaInstallTest::testSchemaInstallPartial"
         }
       ]
     },
@@ -14950,7 +14950,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageSchemaInstallTest.php",
-          "id": "CoverageSchemaInstallTest::test_schema_install_external_documents"
+          "id": "CoverageSchemaInstallTest::testSchemaInstallExternalDocuments"
         }
       ]
     },
@@ -14967,12 +14967,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DbspecApplyTest.php",
-          "id": "DbspecApplyTest::test_runs"
+          "id": "DbspecApplyTest::testRuns"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/DbspecApplyTest.php",
-          "id": "DbspecApplyTest::test_runs"
+          "id": "DbspecApplyTest::testRuns"
         }
       ]
     },
@@ -14986,7 +14986,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DecimalModelDbTest.php",
-          "id": "DecimalModelDbTest::test_generate"
+          "id": "DecimalModelDbTest::testGenerate"
         }
       ]
     },
@@ -15000,7 +15000,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DecimalModelDbTest.php",
-          "id": "DecimalModelDbTest::test_setters"
+          "id": "DecimalModelDbTest::testSetters"
         }
       ]
     },
@@ -15014,7 +15014,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/DecimalModelDbTest.php",
-          "id": "DecimalModelDbTest::test_round_trip"
+          "id": "DecimalModelDbTest::testRoundTrip"
         }
       ]
     },
@@ -15028,7 +15028,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/GroupRowsDbTest.php",
-          "id": "GroupRowsDbTest::test_group_rows"
+          "id": "GroupRowsDbTest::testGroupRows"
         }
       ]
     },
@@ -15091,7 +15091,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::test_schema_empty"
+          "id": "ModelTest::testSchemaEmpty"
         }
       ]
     },
@@ -15106,7 +15106,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::test_pool_options"
+          "id": "ModelTest::testPoolOptions"
         }
       ]
     },
@@ -15120,7 +15120,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::test_statement_timeout"
+          "id": "ModelTest::testStatementTimeout"
         }
       ]
     },
@@ -15135,7 +15135,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::test_statement_timeout_through_a_pooler"
+          "id": "ModelTest::testStatementTimeoutThroughAPooler"
         }
       ]
     },
@@ -15149,7 +15149,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::test_install_inside_a_transaction"
+          "id": "ModelTest::testInstallInsideATransaction"
         }
       ]
     },
@@ -15166,7 +15166,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::test_connection_time_zone"
+          "id": "ModelTest::testConnectionTimeZone"
         }
       ]
     },
@@ -15181,7 +15181,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::test_primary_and_replica"
+          "id": "ModelTest::testPrimaryAndReplica"
         }
       ]
     },
@@ -15195,7 +15195,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::test_read_only"
+          "id": "ModelTest::testReadOnly"
         }
       ]
     },
@@ -15258,7 +15258,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::test_failed_local_reset"
+          "id": "ModelTest::testFailedLocalReset"
         }
       ]
     },
@@ -15321,7 +15321,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::test_failed_lock_release"
+          "id": "ModelTest::testFailedLockRelease"
         }
       ]
     },
@@ -15384,7 +15384,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::test_failed_rollback"
+          "id": "ModelTest::testFailedRollback"
         }
       ]
     },
@@ -15447,7 +15447,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::test_failed_savepoint_end"
+          "id": "ModelTest::testFailedSavepointEnd"
         }
       ]
     },
@@ -15472,7 +15472,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::test_conditions"
+          "id": "ModelTest::testConditions"
         }
       ]
     },
@@ -15491,7 +15491,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::test_joins_and_relations"
+          "id": "ModelTest::testJoinsAndRelations"
         }
       ]
     },
@@ -15507,7 +15507,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::test_columns_and_subqueries"
+          "id": "ModelTest::testColumnsAndSubqueries"
         }
       ]
     },
@@ -15524,7 +15524,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::test_writes"
+          "id": "ModelTest::testWrites"
         }
       ]
     },
@@ -15587,7 +15587,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::test_styled_value_states"
+          "id": "ModelTest::testStyledValueStates"
         }
       ]
     },
@@ -15650,7 +15650,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::test_codec_columns"
+          "id": "ModelTest::testCodecColumns"
         }
       ]
     },
@@ -15674,7 +15674,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::test_transactions"
+          "id": "ModelTest::testTransactions"
         }
       ]
     },
@@ -15737,7 +15737,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::test_utilities"
+          "id": "ModelTest::testUtilities"
         }
       ]
     },
@@ -15751,7 +15751,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::test_deadlock_retry"
+          "id": "ModelTest::testDeadlockRetry"
         }
       ]
     },
@@ -15765,7 +15765,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::test_aes_rotation"
+          "id": "ModelTest::testAesRotation"
         }
       ]
     },
@@ -15828,7 +15828,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::test_bind_limit_splitting"
+          "id": "ModelTest::testBindLimitSplitting"
         }
       ]
     },
@@ -15891,7 +15891,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::test_insert_parts"
+          "id": "ModelTest::testInsertParts"
         }
       ]
     },
@@ -15907,7 +15907,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/MysqlTlsTest.php",
-          "id": "MysqlTlsTest::test_parameters"
+          "id": "MysqlTlsTest::testParameters"
         }
       ]
     },
@@ -15921,7 +15921,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/MysqlTlsTest.php",
-          "id": "MysqlTlsTest::test_connections"
+          "id": "MysqlTlsTest::testConnections"
         }
       ]
     },
@@ -15935,7 +15935,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/MysqlTlsTest.php",
-          "id": "MysqlTlsTest::test_session_sql_mode"
+          "id": "MysqlTlsTest::testSessionSqlMode"
         }
       ]
     },
@@ -15952,7 +15952,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/RollbackTest.php",
-          "id": "RollbackTest::test_rollback_failed"
+          "id": "RollbackTest::testRollbackFailed"
         }
       ]
     },
@@ -15969,7 +15969,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/RollbackTest.php",
-          "id": "RollbackTest::test_savepoint_rollback_failed"
+          "id": "RollbackTest::testSavepointRollbackFailed"
         }
       ]
     },
@@ -15985,7 +15985,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/RollbackTest.php",
-          "id": "RollbackTest::test_rollback_fault"
+          "id": "RollbackTest::testRollbackFault"
         }
       ]
     },
@@ -15999,7 +15999,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/RollbackTest.php",
-          "id": "RollbackTest::test_first_statement_lost"
+          "id": "RollbackTest::testFirstStatementLost"
         }
       ]
     },
@@ -16014,7 +16014,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/RuntimeDbTest.php",
-          "id": "RuntimeDbTest::test_install_renders_the_document_set"
+          "id": "RuntimeDbTest::testInstallRendersTheDocumentSet"
         }
       ]
     },
@@ -16029,7 +16029,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/RuntimeDbTest.php",
-          "id": "RuntimeDbTest::test_i16_values_and_defaults"
+          "id": "RuntimeDbTest::testI16ValuesAndDefaults"
         }
       ]
     },
@@ -16044,7 +16044,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/RuntimeDbTest.php",
-          "id": "RuntimeDbTest::test_audit_record_of_a_transaction"
+          "id": "RuntimeDbTest::testAuditRecordOfATransaction"
         }
       ]
     },
@@ -16059,7 +16059,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/RuntimeDbTest.php",
-          "id": "RuntimeDbTest::test_restore_of_soft_deleted_rows"
+          "id": "RuntimeDbTest::testRestoreOfSoftDeletedRows"
         }
       ]
     },
@@ -16087,7 +16087,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/SchemaSetTest.php",
-          "id": "SchemaSetTest::test_register_sends_no_statement"
+          "id": "SchemaSetTest::testRegisterSendsNoStatement"
         }
       ]
     },
@@ -16101,7 +16101,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/EngineTest.php",
-          "id": "EngineTest::test_engine"
+          "id": "EngineTest::testEngine"
         }
       ]
     },
@@ -16115,7 +16115,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/DeclarationsTest.php",
-          "id": "DeclarationsTest::test_required_modules"
+          "id": "DeclarationsTest::testRequiredModules"
         }
       ]
     },
@@ -16129,7 +16129,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/DeclarationsTest.php",
-          "id": "DeclarationsTest::test_declarations"
+          "id": "DeclarationsTest::testDeclarations"
         }
       ]
     },
@@ -16143,7 +16143,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/DeclarationsTest.php",
-          "id": "DeclarationsTest::test_client"
+          "id": "DeclarationsTest::testClient"
         }
       ]
     },
@@ -16157,7 +16157,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/DeclarationsTest.php",
-          "id": "DeclarationsTest::test_package"
+          "id": "DeclarationsTest::testPackage"
         }
       ]
     },
@@ -16180,12 +16180,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/IrAnswersTest.php",
-          "symbol": "IrAnswersTest::test_ir_answer"
+          "symbol": "IrAnswersTest::testIrAnswer"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/IrAnswersTest.php",
-          "symbol": "IrAnswersTest::test_ir_answer"
+          "symbol": "IrAnswersTest::testIrAnswer"
         },
         {
           "implementation": "typescript",
@@ -16219,12 +16219,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/MysqlTlsTest.php",
-          "symbol": "MysqlTlsTest::test_session_sql_mode"
+          "symbol": "MysqlTlsTest::testSessionSqlMode"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/MysqlTlsTest.php",
-          "symbol": "MysqlTlsTest::test_session_sql_mode"
+          "symbol": "MysqlTlsTest::testSessionSqlMode"
         },
         {
           "implementation": "typescript",
@@ -16254,7 +16254,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/SchemaSetTest.php",
-          "symbol": "SchemaSetTest::test_decimal_document"
+          "symbol": "SchemaSetTest::testDecimalDocument"
         },
         {
           "implementation": "typescript",
@@ -19785,12 +19785,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CollectionIdentityTest.php",
-          "id": "CollectionIdentityTest::test_every_fixture_key_has_its_own_stable_identity"
+          "id": "CollectionIdentityTest::testEveryFixtureKeyHasItsOwnStableIdentity"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/CollectionIdentityTest.php",
-          "id": "CollectionIdentityTest::test_every_fixture_key_has_its_own_stable_identity"
+          "id": "CollectionIdentityTest::testEveryFixtureKeyHasItsOwnStableIdentity"
         },
         {
           "implementation": "typescript",
@@ -19824,12 +19824,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CollectionIdentityTest.php",
-          "id": "CollectionIdentityTest::test_a_null_key_is_codec_decode"
+          "id": "CollectionIdentityTest::testANullKeyIsCodecDecode"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/CollectionIdentityTest.php",
-          "id": "CollectionIdentityTest::test_a_null_key_is_codec_decode"
+          "id": "CollectionIdentityTest::testANullKeyIsCodecDecode"
         },
         {
           "implementation": "typescript",
@@ -19863,12 +19863,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/GroupRowsTest.php",
-          "id": "GroupRowsTest::test_negative_count_is_codec_decode"
+          "id": "GroupRowsTest::testNegativeCountIsCodecDecode"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/GroupRowsTest.php",
-          "id": "GroupRowsTest::test_negative_count_is_codec_decode"
+          "id": "GroupRowsTest::testNegativeCountIsCodecDecode"
         },
         {
           "implementation": "typescript",
@@ -19902,12 +19902,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/GroupRowsTest.php",
-          "id": "GroupRowsTest::test_owner"
+          "id": "GroupRowsTest::testOwner"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php/tests/GroupRowsTest.php",
-          "id": "GroupRowsTest::test_owner"
+          "id": "GroupRowsTest::testOwner"
         },
         {
           "implementation": "typescript",

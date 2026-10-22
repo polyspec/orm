@@ -14,7 +14,7 @@ final class DbspecUnicodeTest extends TestCase
 {
     private const LAST_CODE_POINT = 0x10FFFF;
 
-    public function test_every_code_point(): void
+    public function testEveryCodePoint(): void
     {
         // listed[cp] is '1' if cp falls in one range of the table.
         $listed = str_repeat('0', self::LAST_CODE_POINT + 1);

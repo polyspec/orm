@@ -26,7 +26,7 @@ final class RequestHookTest extends TestCase
     }
 
     #[DataProvider('cases')]
-    public function test_request_hook(string $case): void
+    public function testRequestHook(string $case): void
     {
         $work = sys_get_temp_dir() . '/orm-php-request-hook-test-' . getmypid() . '-' . $case;
         if (!mkdir($work, 0o700, true)) {

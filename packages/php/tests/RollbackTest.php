@@ -357,7 +357,7 @@ final class RollbackTest extends TestCase
     }
 
     #[DataProvider('drivers')]
-    public function test_rollback_failed(string $driver): void
+    public function testRollbackFailed(string $driver): void
     {
         // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
         with_case_database($driver, static function (string $step): void {
@@ -365,7 +365,7 @@ final class RollbackTest extends TestCase
     }
 
     #[DataProvider('drivers')]
-    public function test_savepoint_rollback_failed(string $driver): void
+    public function testSavepointRollbackFailed(string $driver): void
     {
         // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
         with_case_database($driver, static function (string $step): void {
@@ -373,7 +373,7 @@ final class RollbackTest extends TestCase
     }
 
     #[DataProvider('drivers')]
-    public function test_rollback_fault(string $driver): void
+    public function testRollbackFault(string $driver): void
     {
         // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
         with_case_database($driver, static function (string $step): void {
@@ -382,7 +382,7 @@ final class RollbackTest extends TestCase
 
     #[DataProvider('serverDrivers')]
     // Requirements: CFG-15.
-    public function test_first_statement_lost(string $driver): void
+    public function testFirstStatementLost(string $driver): void
     {
         // The case installs its documents in a case database of its own, removed when it ends, also when it fails.
         with_case_database($driver, static function (string $step): void {

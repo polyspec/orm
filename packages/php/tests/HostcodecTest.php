@@ -27,7 +27,7 @@ final class HostcodecTest extends TestCase
         self::fail("$what: no error");
     }
 
-    public function test_hostcodec(): void
+    public function testHostcodec(): void
     {
         $fixed = '4F524D2D414553320000112233445566778899AABB651DA9F08BE2FA7CD7B2DF5C04D91B32189DCD854A70762F99271A2BEBA64A248E24';
         self::assertSame(
@@ -128,7 +128,7 @@ final class HostcodecTest extends TestCase
     // by decode.
     /** @param array<string, mixed> $v */
     #[DataProvider('decodeVectors')]
-    public function test_decode_vector(array $v): void
+    public function testDecodeVector(array $v): void
     {
         $raw = array_key_exists('stored', $v) ? $v['stored'] : (string) hex2bin($v['stored_hex']);
         $host = array_diff($v['styles'], ['hex', 'ip']) === [];

@@ -79,7 +79,7 @@ final class PerfGateTest extends TestCase
     /** The gate measures and reports; it asserts nothing, since a slow ratio is a warning. */
     #[DataProvider('gates')]
     #[DoesNotPerformAssertions]
-    public function test_perf_gate(string $name, float $bound): void
+    public function testPerfGate(string $name, float $bound): void
     {
         $native = self::native(self::$db, self::query($name));
         [$clientNs, $nativeNs, $ratio] = self::pairedRatio(static fn() => self::query($name)->gets(), $native);

@@ -60,7 +60,7 @@ final class OrmGenTest extends TestCase
         return [proc_close($process), $out, $err];
     }
 
-    public function test_gen___check_compares_the_models_without_writing(): void
+    public function testGenCheckComparesTheModelsWithoutWriting(): void
     {
         $work = self::$work;
         $dir = "$work/gen-check";
@@ -104,7 +104,7 @@ final class OrmGenTest extends TestCase
     }
 
     // Requirements: DBS-4, DBS-27, DBS-155.
-    public function test_gen_rejects_a_file_without_the_dbspec_signature(): void
+    public function testGenRejectsAFileWithoutTheDbspecSignature(): void
     {
         $work = self::$work;
         // The byte check rejects the DbSchema project XML and the empty file before the parse, and every
@@ -124,7 +124,7 @@ final class OrmGenTest extends TestCase
     }
 
     // Requirements: DBS-19, DBS-25, DBS-27, SCH-1, ORES-36.
-    public function test_gen_prints_every_error_of_the_set_file_and_writes_nothing(): void
+    public function testGenPrintsEveryErrorOfTheSetFileAndWritesNothing(): void
     {
         $work = self::$work;
         $dir = "$work/set-errors";
@@ -139,7 +139,7 @@ final class OrmGenTest extends TestCase
     }
 
     // Requirements: DBS-5, DBS-98, SCH-1, ORES-21.
-    public function test_gen_takes_the_documents_only_from_the_set_file(): void
+    public function testGenTakesTheDocumentsOnlyFromTheSetFile(): void
     {
         $work = self::$work;
         $dir = "$work/positional";
@@ -171,7 +171,7 @@ final class OrmGenTest extends TestCase
     }
 
     // Requirements: PLN-22.
-    public function test_gen_rejects_a_column_named_after_a_model_method(): void
+    public function testGenRejectsAColumnNamedAfterAModelMethod(): void
     {
         // The test of DSL-127 (docs/spec).
         $work = self::$work;
@@ -195,7 +195,7 @@ final class OrmGenTest extends TestCase
     }
 
     // Requirements: DBS-104, DBS-105, DBS-110.
-    public function test_gen_generates_the_owned_and_the_used_external_tables_of_a_set(): void
+    public function testGenGeneratesTheOwnedAndTheUsedExternalTablesOfASet(): void
     {
         $work = self::$work;
         // member.dbs uses ext_account and ext_audit of core.dbs, an external document of the set: each used external
@@ -241,7 +241,7 @@ final class OrmGenTest extends TestCase
         self::assertTrue($code === 0 && $out === '', "gen --check with external documents: $code $out");
     }
 
-    public function test_gen_writes_the_same_models_however_the_paths_are_written(): void
+    public function testGenWritesTheSameModelsHoweverThePathsAreWritten(): void
     {
         $work = self::$work;
         // The PHP generator scans no source, so only the set and output paths are written relative, absolute,
@@ -283,7 +283,7 @@ final class OrmGenTest extends TestCase
         }
     }
 
-    public function test_gen_is_the_only_command(): void
+    public function testGenIsTheOnlyCommand(): void
     {
         foreach (['build', 'ddl', 'diff', 'validate', 'migrate', 'import'] as $command) {
             [$code, $out, $err] = self::tool([$command]);
@@ -297,7 +297,7 @@ final class OrmGenTest extends TestCase
         }
     }
 
-    public function test_the_bin_Composer_installs_loads_the_autoloader(): void
+    public function testTheBinComposerInstallsLoadsTheAutoloader(): void
     {
         [$code, $out, $err] = self::process([PHP_BINARY, 'vendor-php/bin/orm-gen']);
         self::assertTrue(
@@ -306,7 +306,7 @@ final class OrmGenTest extends TestCase
         );
     }
 
-    public function test_the_bin_outside_Composer_names_the_missing_autoloader(): void
+    public function testTheBinOutsideComposerNamesTheMissingAutoloader(): void
     {
         // packages/php has its own vendor (its PHPUnit), so the bin runs from a copy of the package's bin folder
         // beside no vendor folder.

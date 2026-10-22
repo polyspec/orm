@@ -109,567 +109,567 @@ function paramUsesCase(string $root, array $fixture, string $id): void
 #[Small]
 final class CoveragePlannerTest extends TestCase
 {
-    public function test_planner_statement(): void
+    public function testPlannerStatement(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_statement');
     }
 
-    public function test_planner_count(): void
+    public function testPlannerCount(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_count');
     }
 
-    public function test_planner_contains_binary_collation(): void
+    public function testPlannerContainsBinaryCollation(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_contains_binary_collation');
     }
 
-    public function test_planner_contains_ascii_fold(): void
+    public function testPlannerContainsAsciiFold(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_contains_ascii_fold');
     }
 
-    public function test_planner_rejects_unknown_column(): void
+    public function testPlannerRejectsUnknownColumn(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_rejects_unknown_column');
     }
 
-    public function test_planner_restore(): void
+    public function testPlannerRestore(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_restore');
     }
 
-    public function test_planner_tables(): void
+    public function testPlannerTables(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_tables');
     }
 
-    public function test_planner_restore_rejects_non_key(): void
+    public function testPlannerRestoreRejectsNonKey(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_restore_rejects_non_key');
     }
 
-    public function test_planner_restore_key_from_set(): void
+    public function testPlannerRestoreKeyFromSet(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_restore_key_from_set');
     }
 
-    public function test_planner_restore_extra_condition(): void
+    public function testPlannerRestoreExtraCondition(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_restore_extra_condition');
     }
 
-    public function test_planner_restore_primary_key_first(): void
+    public function testPlannerRestorePrimaryKeyFirst(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_restore_primary_key_first');
     }
 
-    public function test_planner_restore_first_unique_by_name(): void
+    public function testPlannerRestoreFirstUniqueByName(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_restore_first_unique_by_name');
     }
 
-    public function test_planner_bind_types_select(): void
+    public function testPlannerBindTypesSelect(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_bind_types_select');
     }
 
-    public function test_planner_bind_types_update(): void
+    public function testPlannerBindTypesUpdate(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_bind_types_update');
     }
 
-    public function test_planner_bind_types_insert(): void
+    public function testPlannerBindTypesInsert(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_bind_types_insert');
     }
 
-    public function test_planner_time_select(): void
+    public function testPlannerTimeSelect(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_time_select');
     }
 
-    public function test_planner_time_insert(): void
+    public function testPlannerTimeInsert(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_time_insert');
     }
 
-    public function test_planner_uuid_select(): void
+    public function testPlannerUuidSelect(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_uuid_select');
     }
 
-    public function test_planner_uuid_insert(): void
+    public function testPlannerUuidInsert(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_uuid_insert');
     }
 
-    public function test_planner_clock_compare(): void
+    public function testPlannerClockCompare(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_clock_compare');
     }
 
-    public function test_planner_clock_insert(): void
+    public function testPlannerClockInsert(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_clock_insert');
     }
 
-    public function test_planner_parent_key_types(): void
+    public function testPlannerParentKeyTypes(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_parent_key_types');
     }
 
-    public function test_planner_not_group(): void
+    public function testPlannerNotGroup(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_not_group');
     }
 
-    public function test_planner_rejects_top_not(): void
+    public function testPlannerRejectsTopNot(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_rejects_top_not');
     }
 
-    public function test_planner_rejects_top_group_conn(): void
+    public function testPlannerRejectsTopGroupConn(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_rejects_top_group_conn');
     }
 
-    public function test_planner_rejects_first_item_conn(): void
+    public function testPlannerRejectsFirstItemConn(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_rejects_first_item_conn');
     }
 
-    public function test_planner_column_refs(): void
+    public function testPlannerColumnRefs(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_column_refs');
     }
 
-    public function test_planner_rejects_ref_unknown_column(): void
+    public function testPlannerRejectsRefUnknownColumn(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_rejects_ref_unknown_column');
     }
 
-    public function test_planner_rejects_outer_ref_outside_subquery(): void
+    public function testPlannerRejectsOuterRefOutsideSubquery(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_rejects_outer_ref_outside_subquery');
     }
 
-    public function test_planner_rejects_unjoined_ref(): void
+    public function testPlannerRejectsUnjoinedRef(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_rejects_unjoined_ref');
     }
 
-    public function test_planner_ref_path_absent(): void
+    public function testPlannerRefPathAbsent(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_ref_path_absent');
     }
 
-    public function test_planner_group_by_count(): void
+    public function testPlannerGroupByCount(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_group_by_count');
     }
 
-    public function test_planner_group_count_order_column(): void
+    public function testPlannerGroupCountOrderColumn(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_group_count_order_column');
     }
 
-    public function test_planner_group_count_order_column_function(): void
+    public function testPlannerGroupCountOrderColumnFunction(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_group_count_order_column_function');
     }
 
-    public function test_planner_group_count_order_random(): void
+    public function testPlannerGroupCountOrderRandom(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_group_count_order_random');
     }
 
-    public function test_planner_rejects_group_by_all(): void
+    public function testPlannerRejectsGroupByAll(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_rejects_group_by_all');
     }
 
-    public function test_planner_rejects_group_by_sum(): void
+    public function testPlannerRejectsGroupBySum(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_rejects_group_by_sum');
     }
 
-    public function test_planner_rejects_group_by_join(): void
+    public function testPlannerRejectsGroupByJoin(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_rejects_group_by_join');
     }
 
-    public function test_planner_rejects_group_by_subquery(): void
+    public function testPlannerRejectsGroupBySubquery(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_rejects_group_by_subquery');
     }
 
-    public function test_planner_rejects_group_order_non_group_column(): void
+    public function testPlannerRejectsGroupOrderNonGroupColumn(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_rejects_group_order_non_group_column');
     }
 
-    public function test_planner_rejects_nullable_key_by(): void
+    public function testPlannerRejectsNullableKeyBy(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_rejects_nullable_key_by');
     }
 
-    public function test_planner_key_by_empty_is_absent(): void
+    public function testPlannerKeyByEmptyIsAbsent(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_key_by_empty_is_absent');
     }
 
-    public function test_planner_insert_by_value(): void
+    public function testPlannerInsertByValue(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_insert_by_value');
     }
 
-    public function test_planner_insert_on_duplicate_plus(): void
+    public function testPlannerInsertOnDuplicatePlus(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_insert_on_duplicate_plus');
     }
 
-    public function test_planner_rejects_insert_set_plus(): void
+    public function testPlannerRejectsInsertSetPlus(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_rejects_insert_set_plus');
     }
 
-    public function test_planner_rejects_insert_set_minus(): void
+    public function testPlannerRejectsInsertSetMinus(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_rejects_insert_set_minus');
     }
 
-    public function test_planner_ip_eq_col_ip(): void
+    public function testPlannerIpEqColIp(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_ip_eq_col_ip');
     }
 
-    public function test_planner_rejects_bool_gt_col(): void
+    public function testPlannerRejectsBoolGtCol(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_rejects_bool_gt_col');
     }
 
-    public function test_planner_rejects_ip_gt_col(): void
+    public function testPlannerRejectsIpGtCol(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_rejects_ip_gt_col');
     }
 
-    public function test_planner_rejects_aes_eq_col(): void
+    public function testPlannerRejectsAesEqCol(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_rejects_aes_eq_col');
     }
 
-    public function test_planner_col_pair_integers(): void
+    public function testPlannerColPairIntegers(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_col_pair_integers');
     }
 
-    public function test_planner_rejects_col_pair_integer_varchar(): void
+    public function testPlannerRejectsColPairIntegerVarchar(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_rejects_col_pair_integer_varchar');
     }
 
-    public function test_planner_rejects_in_subquery_integer_varchar(): void
+    public function testPlannerRejectsInSubqueryIntegerVarchar(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_rejects_in_subquery_integer_varchar');
     }
 
-    public function test_planner_rejects_join_integer_varchar(): void
+    public function testPlannerRejectsJoinIntegerVarchar(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_rejects_join_integer_varchar');
     }
 
-    public function test_planner_rejects_relation_integer_varchar(): void
+    public function testPlannerRejectsRelationIntegerVarchar(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_rejects_relation_integer_varchar');
     }
 
-    public function test_planner_rejects_upsert_primary_and_unique_key(): void
+    public function testPlannerRejectsUpsertPrimaryAndUniqueKey(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_rejects_upsert_primary_and_unique_key');
     }
 
-    public function test_planner_rejects_upsert_unique_key_not_assigned(): void
+    public function testPlannerRejectsUpsertUniqueKeyNotAssigned(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_rejects_upsert_unique_key_not_assigned');
     }
 
-    public function test_planner_rejects_upsert_without_a_key(): void
+    public function testPlannerRejectsUpsertWithoutAKey(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_rejects_upsert_without_a_key');
     }
 
-    public function test_planner_order_nullable_column(): void
+    public function testPlannerOrderNullableColumn(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_order_nullable_column');
     }
 
-    public function test_planner_order_not_null_column(): void
+    public function testPlannerOrderNotNullColumn(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_order_not_null_column');
     }
 
-    public function test_planner_order_nullable_column_function(): void
+    public function testPlannerOrderNullableColumnFunction(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_order_nullable_column_function');
     }
 
-    public function test_planner_order_nullable_group_count(): void
+    public function testPlannerOrderNullableGroupCount(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_order_nullable_group_count');
     }
 
-    public function test_planner_order_nullable_limit_per_parent(): void
+    public function testPlannerOrderNullableLimitPerParent(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_order_nullable_limit_per_parent');
     }
 
-    public function test_planner_scalar_column_subquery(): void
+    public function testPlannerScalarColumnSubquery(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_scalar_column_subquery');
     }
 
-    public function test_planner_rejects_scalar_column_subquery_without_limit(): void
+    public function testPlannerRejectsScalarColumnSubqueryWithoutLimit(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_rejects_scalar_column_subquery_without_limit');
     }
 
-    public function test_planner_rejects_scalar_column_subquery_without_key_order(): void
+    public function testPlannerRejectsScalarColumnSubqueryWithoutKeyOrder(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_rejects_scalar_column_subquery_without_key_order');
     }
 
-    public function test_planner_rejects_in_subquery_limit(): void
+    public function testPlannerRejectsInSubqueryLimit(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_rejects_in_subquery_limit');
     }
 
-    public function test_param_uses_column_function(): void
+    public function testParamUsesColumnFunction(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         paramUsesCase($root, $fixture, 'param_uses_column_function');
     }
 
-    public function test_param_uses_interval(): void
+    public function testParamUsesInterval(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         paramUsesCase($root, $fixture, 'param_uses_interval');
     }
 
-    public function test_param_uses_contains(): void
+    public function testParamUsesContains(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         paramUsesCase($root, $fixture, 'param_uses_contains');
     }
 
-    public function test_param_uses_if_parent(): void
+    public function testParamUsesIfParent(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         paramUsesCase($root, $fixture, 'param_uses_if_parent');
     }
 
-    public function test_param_uses_optimistic(): void
+    public function testParamUsesOptimistic(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         paramUsesCase($root, $fixture, 'param_uses_optimistic');
     }
 
-    public function test_planner_join_inner_soft_delete(): void
+    public function testPlannerJoinInnerSoftDelete(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_join_inner_soft_delete');
     }
 
-    public function test_planner_join_left_soft_delete(): void
+    public function testPlannerJoinLeftSoftDelete(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_join_left_soft_delete');
     }
 
-    public function test_planner_join_on_soft_delete(): void
+    public function testPlannerJoinOnSoftDelete(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_join_on_soft_delete');
     }
 
-    public function test_planner_force_index(): void
+    public function testPlannerForceIndex(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_force_index');
     }
 
-    public function test_planner_value_function_today(): void
+    public function testPlannerValueFunctionToday(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_value_function_today');
     }
 
-    public function test_planner_column_function_date(): void
+    public function testPlannerColumnFunctionDate(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_column_function_date');
     }
 
-    public function test_planner_rejects_column_function_on_varchar(): void
+    public function testPlannerRejectsColumnFunctionOnVarchar(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_rejects_column_function_on_varchar');
     }
 
-    public function test_planner_rejects_styled_column_equality(): void
+    public function testPlannerRejectsStyledColumnEquality(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_rejects_styled_column_equality');
     }
 
-    public function test_planner_styled_column_is_null(): void
+    public function testPlannerStyledColumnIsNull(): void
     {
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");

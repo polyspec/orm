@@ -27,7 +27,7 @@ final class InsertPartsTest extends TestCase
     }
 
     #[DataProvider('cases')]
-    public function test_case(array $case): void
+    public function testCase(array $case): void
     {
         self::assertSame('insert_parts', $case['operation'], 'operation');
         self::assertSame($case['expected'], Db::insertParts($case['input']['rows'], $case['input']['batch']));

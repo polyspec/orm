@@ -81,7 +81,7 @@ final class ClientGenericsTest extends TestCase
         exec('rm -rf ' . escapeshellarg(self::$work));
     }
 
-    public function test_phpstan_types_the_transaction_result_and_the_rows_of_a_model(): void
+    public function testPhpstanTypesTheTransactionResultAndTheRowsOfAModel(): void
     {
         $root = dirname(__DIR__, 3);
         $work = self::$work;

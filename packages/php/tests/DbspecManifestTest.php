@@ -73,7 +73,7 @@ final class DbspecManifestTest extends TestCase
 
     // Each case makes the manifest and hash of one document set in memory.
     #[DataProvider('hashesCases')]
-    public function test_hashes(array $case): void
+    public function testHashes(array $case): void
     {
         $names = array_keys($case['documents']);
         sort($names, SORT_STRING);
@@ -100,12 +100,12 @@ final class DbspecManifestTest extends TestCase
     }
 
     #[DataProvider('setsCases')]
-    public function test_sets(array $case): void
+    public function testSets(array $case): void
     {
         dbspec_sets_check(Dbspec::class, $case);
     }
 
-    public function test_repeated_name(): void
+    public function testRepeatedName(): void
     {
         $text = ['dbspec 1 shop', '', 'table users {', '  id i64 identity', '  primary key (id)', '}'];
         $result = Dbspec::manifest([manifest_parsed('repeated', $text, []), manifest_parsed('repeated', $text, [])]);

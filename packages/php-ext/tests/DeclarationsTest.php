@@ -114,7 +114,7 @@ final class DeclarationsTest extends TestCase
     // (pdo in the CI runner's PHP package). It builds the argument that loads that module from extension_dir, and
     // checks that it adds no argument when all are present.
     // INT-94: the extension declares pdo as its required module, so PHP loads it only with pdo present.
-    public function test_required_modules(): void
+    public function testRequiredModules(): void
     {
         $required = requiredModules();
         Assert::assertTrue(
@@ -151,12 +151,12 @@ final class DeclarationsTest extends TestCase
     }
 
     // DBS-172: the extension registers the PHP client's own class names, properties, constants and methods.
-    public function test_declarations(): void
+    public function testDeclarations(): void
     {
         $native = registered();
         $stub = declared('stub');
         // gen_stub cannot write array constants, so the stub declares none and src/polyspec_orm.c registers these;
-        // test_client compares their values with the PHP client.
+        // testClient compares their values with the PHP client.
         $differences = [];
         foreach (ARRAY_CONSTANTS as $key) {
             if (!str_starts_with($native[$key] ?? '', 'public const = ') || isset($stub[$key])) {
@@ -184,7 +184,7 @@ final class DeclarationsTest extends TestCase
     // The extension has the same public declarations (name, parent, constants, order and types of properties, methods)
     // for each class that is not PHP client's @internal, and the only other classes are those the stub marks @internal.
     // DBS-172: the extension registers the PHP client's own class names, properties, constants and methods.
-    public function test_client(): void
+    public function testClient(): void
     {
         $native = registered();
         $client = declared('client');
@@ -245,7 +245,7 @@ final class DeclarationsTest extends TestCase
     // config.m4 is in build-path.
     // INT-95: the package is of type php-ext, names polyspec_orm, and its build-path holds the config.m4 that builds
     // it.
-    public function test_package(): void
+    public function testPackage(): void
     {
         $package = json_decode(file_get_contents(dirname(__DIR__) . '/composer.json'), true, 512, JSON_THROW_ON_ERROR);
         $name = $package['php-ext']['extension-name'] ?? null;

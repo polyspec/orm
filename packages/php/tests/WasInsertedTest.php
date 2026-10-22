@@ -100,7 +100,7 @@ final class WasInsertedTest extends TestCase
      * rollback removes its key only.
      */
     #[DataProvider('drivers')]
-    public function test_was_inserted_tracks_generated_rows(string $driver): void
+    public function testWasInsertedTracksGeneratedRows(string $driver): void
     {
         self::onCase($driver, static function (Polyspec\Orm\Db $db): void {
             $outer = 0;
@@ -142,7 +142,7 @@ final class WasInsertedTest extends TestCase
 
     /** The utility needs an active transaction and a valid entity and key; each violation is CONFIG. */
     #[DataProvider('drivers')]
-    public function test_was_inserted_needs_a_transaction_and_valid_arguments(string $driver): void
+    public function testWasInsertedNeedsATransactionAndValidArguments(string $driver): void
     {
         self::onCase($driver, static function (Polyspec\Orm\Db $db): void {
             self::assertSame(
@@ -175,7 +175,7 @@ final class WasInsertedTest extends TestCase
      * PostgreSQL waits for no one.
      */
     #[DataProvider('drivers')]
-    public function test_backend_waiting_for_lock_is_false_without_a_waiter(string $driver): void
+    public function testBackendWaitingForLockIsFalseWithoutAWaiter(string $driver): void
     {
         self::onCase($driver, static function (Polyspec\Orm\Db $db): void {
             self::assertFalse($db->utils()->backendWaitingForLock(), 'no backend waits for a lock');
@@ -187,7 +187,7 @@ final class WasInsertedTest extends TestCase
      * process updates the same row and blocks. The parent checks the state the database reports, bounded to ten
      * seconds, before it commits and lets the child finish.
      */
-    public function test_postgres_reports_a_backend_waiting_for_lock(): void
+    public function testPostgresReportsABackendWaitingForLock(): void
     {
         self::onCase('postgres', static function (Polyspec\Orm\Db $db, string $dsn): void {
             $seq = 0;
@@ -228,7 +228,7 @@ final class WasInsertedTest extends TestCase
      * The flowmark server has no backend view: INT-53 is CAPABILITY_UNSUPPORTED on the markdown driver, after the
      * connection.
      */
-    public function test_markdown_has_no_backend_lock_view(): void
+    public function testMarkdownHasNoBackendLockView(): void
     {
         $server = markdown_fake_server(['{"ok":true}']);
         $db = Orm::connect($server[2], new Config());

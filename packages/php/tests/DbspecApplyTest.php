@@ -640,7 +640,7 @@ final class DbspecApplyTest extends TestCase
 
     // Requirements: PLN-93, PLN-95, PLN-96.
     #[DataProvider('scenarioCases')]
-    public function test_scenario(string $name, string $db): void
+    public function testScenario(string $name, string $db): void
     {
         // An interrupt scenario is made once per dialect under one name: the run takes the one of its dialect.
         $matching = array_values(
@@ -668,7 +668,7 @@ final class DbspecApplyTest extends TestCase
     }
 
     // 25 scenario runs and, in every dialect, one interrupt run per step of the representative plan.
-    public function test_runs(): void
+    public function testRuns(): void
     {
         $runs = 0;
         foreach (apply_scenarios()['scenarios'] as [, $dbs]) {
@@ -686,7 +686,7 @@ final class DbspecApplyTest extends TestCase
 
     // Requirements: PLN-105.
     #[DataProvider('poolerCases')]
-    public function test_pooler(string $name): void
+    public function testPooler(string $name): void
     {
         $scenario = apply_scenarios()['pooler'][$name];
         $serverDsn = requiredDsn('ORM_TEST_POSTGRES_SERVER_DSN');

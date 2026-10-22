@@ -12,7 +12,7 @@ use PHPUnit\Framework\TestCase;
 #[Small]
 final class DbspecPlanReaderTest extends TestCase
 {
-    public function test_one_file_opens_plans_json(): void
+    public function testOneFileOpensPlansJson(): void
     {
         $opener = 'file_get_contents(';
         $target = 'plans' . '.json';

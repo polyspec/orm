@@ -17,7 +17,7 @@ use Polyspec\Orm\Orm;
 final class CoverageDsnTest extends TestCase
 {
     // Requirements: CFG-1.
-    public function test_dsn_connection(): void
+    public function testDsnConnection(): void
     {
         foreach (coverageItemsOf(__FILE__) as $item) {
             selectCoverageItem($item);

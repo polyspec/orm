@@ -24,7 +24,7 @@ const COMPOSITE_OTHER_TENANT = 990006;
 final class CoverageCompositeKeysTest extends TestCase
 {
     // Requirements: PRT-12.
-    public function test_composite_key_rows(): void
+    public function testCompositeKeyRows(): void
     {
         foreach (coverageItemsOf(__FILE__) as $item) {
             selectCoverageItem($item);

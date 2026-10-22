@@ -29,7 +29,7 @@ final class EngineTest extends TestCase
 
     // manifest check, request validation, and statement form.
     // Requirements: PRT-1.
-    public function test_engine(): void
+    public function testEngine(): void
     {
         $root = dirname(__DIR__, 3);
         $model = RuntimeModel::build(RuntimeModel::files(["$root/contracts/fixtures/bench/bench.dbs"]));
@@ -578,7 +578,7 @@ final class EngineTest extends TestCase
     // only to the validator, and checks whether it is accepted or fails with the expected error code.
     /** @param array<string, mixed> $case */
     #[DataProvider('validateCases')]
-    public function test_validate(array $case): void
+    public function testValidate(array $case): void
     {
         $model = RuntimeModel::build(
             RuntimeModel::files([dirname(__DIR__, 3) . '/contracts/fixtures/bench/bench.dbs'])

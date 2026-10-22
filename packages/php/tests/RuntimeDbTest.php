@@ -103,7 +103,7 @@ final class RuntimeDbTest extends TestCase
         return $db;
     }
 
-    private static function case_install_renders_the_document_set(Db $db): void
+    private static function caseInstallRendersTheDocumentSet(Db $db): void
     {
         $count = static fn(string $table): int => (int) $db->pdo()->query("SELECT COUNT(*) FROM $table")->fetchColumn();
         self::want($count('item') === 0 && $count('item_history') === 0 && $count('sample') === 0, 'installed tables');
@@ -111,7 +111,7 @@ final class RuntimeDbTest extends TestCase
         self::want($count('sample') === 0, 'a repeated install');
     }
 
-    private static function case_i16_values_and_defaults(Db $db): void
+    private static function caseI16ValuesAndDefaults(Db $db): void
     {
         $low = (new Sample())($db)->setLevel(-32768)->create();
         $high = (new Sample())($db)->setLevel(32767)->setNote('n')->setToken('0f8fad5b-d9cb-469f-a165-70867728950e')
@@ -149,7 +149,7 @@ final class RuntimeDbTest extends TestCase
     }
 
     // An audit transaction inserts one audit record, and the write to the audit table writes its key (audit_case.php).
-    private static function case_audit_record_of_a_transaction(Db $db, string $dsn): void
+    private static function caseAuditRecordOfATransaction(Db $db, string $dsn): void
     {
         auditCase($db, $dsn, 'Polyspec\\Orm\\Tests\\RuntimeDb');
         $assigned = self::errorCode(
@@ -160,7 +160,7 @@ final class RuntimeDbTest extends TestCase
     }
 
     // restore returns a soft-deleted row by its primary key or unique key (restore_case.php).
-    private static function case_restore_of_soft_deleted_rows(Db $db): void
+    private static function caseRestoreOfSoftDeletedRows(Db $db): void
     {
         restoreCase($db, 'Polyspec\\Orm\\Tests\\RuntimeRestore');
     }
@@ -197,26 +197,26 @@ final class RuntimeDbTest extends TestCase
 
     // Requirements: DBS-108, SCH-7.
     #[DataProvider('drivers')]
-    public function test_install_renders_the_document_set(string $driver): void
+    public function testInstallRendersTheDocumentSet(string $driver): void
     {
-        self::runCase($driver, 'Polyspec\\Orm\\Tests\\RuntimeDb', self::case_install_renders_the_document_set(...));
+        self::runCase($driver, 'Polyspec\\Orm\\Tests\\RuntimeDb', self::caseInstallRendersTheDocumentSet(...));
     }
 
     #[DataProvider('drivers')]
-    public function test_i16_values_and_defaults(string $driver): void
+    public function testI16ValuesAndDefaults(string $driver): void
     {
-        self::runCase($driver, 'Polyspec\\Orm\\Tests\\RuntimeDb', self::case_i16_values_and_defaults(...));
+        self::runCase($driver, 'Polyspec\\Orm\\Tests\\RuntimeDb', self::caseI16ValuesAndDefaults(...));
     }
 
     #[DataProvider('drivers')]
-    public function test_audit_record_of_a_transaction(string $driver): void
+    public function testAuditRecordOfATransaction(string $driver): void
     {
-        self::runCase($driver, 'Polyspec\\Orm\\Tests\\RuntimeDb', self::case_audit_record_of_a_transaction(...));
+        self::runCase($driver, 'Polyspec\\Orm\\Tests\\RuntimeDb', self::caseAuditRecordOfATransaction(...));
     }
 
     #[DataProvider('drivers')]
-    public function test_restore_of_soft_deleted_rows(string $driver): void
+    public function testRestoreOfSoftDeletedRows(string $driver): void
     {
-        self::runCase($driver, 'Polyspec\\Orm\\Tests\\RuntimeRestore', self::case_restore_of_soft_deleted_rows(...));
+        self::runCase($driver, 'Polyspec\\Orm\\Tests\\RuntimeRestore', self::caseRestoreOfSoftDeletedRows(...));
     }
 }

@@ -67,7 +67,7 @@ final class SqliteConcurrencyTest extends TestCase
         return $dsn;
     }
 
-    private static function case_writers_in_several_processes(): void
+    private static function caseWritersInSeveralProcesses(): void
     {
         $dsn = self::database('processes');
         $children = [];
@@ -88,7 +88,7 @@ final class SqliteConcurrencyTest extends TestCase
         self::check($count === 240, "services: $count, want 240");
     }
 
-    private static function case_reads_during_a_write(): void
+    private static function caseReadsDuringAWrite(): void
     {
         $dsn = self::database('reads');
         $writer = self::connect($dsn);
@@ -104,7 +104,7 @@ final class SqliteConcurrencyTest extends TestCase
         self::check($count === 1, "read after the write: $count services, want 1");
     }
 
-    private static function case_lock_wait_expires(): void
+    private static function caseLockWaitExpires(): void
     {
         $dsn = self::database('expiry');
         $holder = self::connect($dsn);
@@ -129,20 +129,20 @@ final class SqliteConcurrencyTest extends TestCase
         self::fixture();
     }
 
-    public function test_writers_in_several_processes(): void
+    public function testWritersInSeveralProcesses(): void
     {
-        self::case_writers_in_several_processes();
+        self::caseWritersInSeveralProcesses();
     }
 
     // Requirements: CFG-13.
-    public function test_reads_during_a_write(): void
+    public function testReadsDuringAWrite(): void
     {
-        self::case_reads_during_a_write();
+        self::caseReadsDuringAWrite();
     }
 
     // Requirements: CFG-12.
-    public function test_lock_wait_expires(): void
+    public function testLockWaitExpires(): void
     {
-        self::case_lock_wait_expires();
+        self::caseLockWaitExpires();
     }
 }

@@ -21,7 +21,7 @@ use Polyspec\Orm\Tests\Model\Author;
 final class GroupRowsDbTest extends TestCase
 {
     // Requirements: INT-31.
-    public function test_group_rows(): void
+    public function testGroupRows(): void
     {
         foreach (
             [

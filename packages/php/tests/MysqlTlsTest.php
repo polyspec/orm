@@ -36,7 +36,7 @@ final class MysqlTlsTest extends TestCase
     }
 
     // Requirements: CFG-17, CFG-18, CFG-19.
-    public function test_parameters(): void
+    public function testParameters(): void
     {
         self::refused('mysql://root@db.local/orm_example?charset=latin1', 'unknown parameter charset');
         self::refused('mysql://root@db.local/orm_example?sslmode=disable', 'unknown parameter sslmode');
@@ -78,7 +78,7 @@ final class MysqlTlsTest extends TestCase
     }
 
     // Requirements: CFG-16.
-    public function test_connections(): void
+    public function testConnections(): void
     {
         $config = new Config();
         $sslVersion = static function (string $dsn) use ($config): string {
@@ -129,7 +129,7 @@ final class MysqlTlsTest extends TestCase
      * tests/dsn/mysql-session.json, not the server default (docs/spec/config.md "Runtime connection").
      */
     // Requirements: CFG-7.
-    public function test_session_sql_mode(): void
+    public function testSessionSqlMode(): void
     {
         $dsn = requiredDsn('ORM_TEST_MYSQL_DSN');
         if (!is_string($dsn) || $dsn === '') {

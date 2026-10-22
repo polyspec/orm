@@ -37,9 +37,9 @@ final class IrAnswersTest extends TestCase
 
     /** @param array{id: string, chain: string, answer: mixed, expect: mixed} $case */
     #[DataProvider('cases')]
-    public function test_ir_answer(array $case): void
+    public function testIrAnswer(array $case): void
     {
-        $chain = MarkdownConformanceTest::conformance_cases()[$case['chain']] ?? null;
+        $chain = MarkdownConformanceTest::conformanceCases()[$case['chain']] ?? null;
         self::assertNotNull($chain, "chain {$case['chain']} is no markdown conformance case");
         $flags = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION | JSON_THROW_ON_ERROR;
         $server = isset($case['answers'])
@@ -63,9 +63,9 @@ final class IrAnswersTest extends TestCase
         self::assertSame(
             $expect,
             $actual,
-            "{$case['id']}: got " . MarkdownConformanceTest::json_text(
+            "{$case['id']}: got " . MarkdownConformanceTest::jsonText(
                 $actual
-            ) . ', want ' . MarkdownConformanceTest::json_text($expect) . $detail
+            ) . ', want ' . MarkdownConformanceTest::jsonText($expect) . $detail
         );
     }
 }

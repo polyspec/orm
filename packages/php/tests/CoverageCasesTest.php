@@ -16,7 +16,7 @@ use Polyspec\Orm\OrmException;
 #[Small]
 final class CoverageCasesTest extends TestCase
 {
-    public function test_reports_error_codes_and_restore_failures(): void
+    public function testReportsErrorCodesAndRestoreFailures(): void
     {
         $this->assertSame(Code::CONFIG, coverageCode(static function (): void {
             throw new OrmException(Code::CONFIG, 'bad');
@@ -41,7 +41,7 @@ final class CoverageCasesTest extends TestCase
         );
     }
 
-    public function test_requires_the_selected_database(): void
+    public function testRequiresTheSelectedDatabase(): void
     {
         $GLOBALS['orm_coverage_item'] = null;
         try {
@@ -55,7 +55,7 @@ final class CoverageCasesTest extends TestCase
         $GLOBALS['orm_coverage_item'] = null;
     }
 
-    public function test_runs_a_child_process(): void
+    public function testRunsAChildProcess(): void
     {
         [$status, $stdout, $stderr] = coverageProcess(
             [PHP_BINARY, '-r', 'echo "out"; fwrite(STDERR, "err"); exit(3);'],

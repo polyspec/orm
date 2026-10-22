@@ -57,19 +57,19 @@ final class DbspecTest extends TestCase
     }
 
     #[DataProvider('canonicalCases')]
-    public function test_canonical(string $kind, array $case): void
+    public function testCanonical(string $kind, array $case): void
     {
         dbspec_check_case($kind, $case, 2.0);
     }
 
     #[DataProvider('normalizeCases')]
-    public function test_normalize(string $kind, array $case): void
+    public function testNormalize(string $kind, array $case): void
     {
         dbspec_check_case($kind, $case, 2.0);
     }
 
     #[DataProvider('invalidCases')]
-    public function test_invalid(string $kind, array $case): void
+    public function testInvalid(string $kind, array $case): void
     {
         dbspec_check_case($kind, $case, 2.0);
     }
@@ -82,7 +82,7 @@ final class DbspecTest extends TestCase
     }
 
     #[DataProvider('positionCases')]
-    public function test_positions(array $case): void
+    public function testPositions(array $case): void
     {
         dbspec_check_position_case($case, 2.0);
     }
@@ -99,7 +99,7 @@ final class DbspecTest extends TestCase
     }
 
     #[DataProvider('fileCases')]
-    public function test_files(array $case): void
+    public function testFiles(array $case): void
     {
         foreach (['file', 'bytes'] as $kind) {
             $this->checkFile($case, $kind);
@@ -195,7 +195,7 @@ final class DbspecTest extends TestCase
     }
 
     #[DataProvider('strictReaderCases')]
-    public function test_strict_reader(string $location, string $problem, Closure $change): void
+    public function testStrictReader(string $location, string $problem, Closure $change): void
     {
         $text = (string) file_get_contents(dirname(__DIR__, 3) . '/tests/dbspec/cases.json');
         $value = json_decode($text, false, 512, JSON_THROW_ON_ERROR);

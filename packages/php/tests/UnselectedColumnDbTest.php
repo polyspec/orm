@@ -30,7 +30,7 @@ final class UnselectedColumnDbTest extends TestCase
         self::fail("unselected $column returned a value");
     }
 
-    public function test_unselected_column(): void
+    public function testUnselectedColumn(): void
     {
         foreach (
             [

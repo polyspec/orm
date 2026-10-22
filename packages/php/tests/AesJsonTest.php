@@ -201,7 +201,7 @@ final class AesJsonTest extends TestCase
     }
 
     #[DataProvider('drivers')]
-    public function test_aes_json_column(string $driver): void
+    public function testAesJsonColumn(string $driver): void
     {
         // The test of DSL-8, COD-7 (docs/spec).
         // The case makes an AES JSON column table in a case database of its own and writes and reads a few rows.
