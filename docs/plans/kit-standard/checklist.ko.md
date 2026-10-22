@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 73faab427f694559eae95e1aba345b09ec02c61a5aeb3b2347e5d61fa8e96056 -->
+<!-- source-sha256: f9fbc98925e7600862228768f0b9276d07fbd3c8d4741b8e31eaf2958946e022 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -149,7 +149,7 @@
 | KSTD-5-40 | 모든 suppression은 이유를 적는다(KSTD-5 하위). 원인: suppression-check가 main에서 이유 없는 suppression 95개를 보고하고(Python 테스트 71, dbspec 소스 15, orm 패키지 6, 적합성 코드 2, Rust allow 1), 그래서 CI가 P8로 실패한다. | packages/python, packages/rust/orm (the suppressed lines) | `make suppression-check` | [o] |
 | KSTD-5-51 | Python test_schema_install이 main에서 통과한다: set이 쓰는 외부 document의 table을 set이 요구하는 대로 설치하거나 검사하며, 실패하던 세 test가 assertion을 약화하지 않고 통과한다 | packages/python/tests/test_schema_install.py or the fixture it reads, packages/python/src | `node node_modules/@polyspec/kit/dist/run-tests.mjs python --venv packages/python/.venv --module packages.python.tests.testcase -- packages.python.tests.test_schema_install` | [o] |
 | KSTD-5-48-1 | contracts/check-inputs.json이 docs-site-check와 docs-site-parse-check의 scope를 선언하여, main에서 make feature-unit-check/owners가 통과한다 | contracts/check-inputs.json, with the scopes of docs-site-check and docs-site-parse-check | `make feature-unit-check/owners` | [o] |
-| KSTD-5-49 | Rust planner가 source가 없을 때 잘못된 column에서 blind index를 계산함 | packages/rust/orm/src/engine/planner.rs and its unit test | `make rust-check` | [ ] |
+| KSTD-5-49 | Rust planner가 source가 없을 때 잘못된 column에서 blind index를 계산함 | packages/rust/orm/src/engine/planner.rs and its unit test | `make rust-check` | [-] 원인: 유효한 IR에서 도달할 수 없다: 파생된 blind index의 AES 원본은 항상 set에 있으며, 명시적 index assign은 fallback에 도달하지 않는다. 재현: bench.dbs의 author 두 row insert를 compile하면 각 row가 자기 AES 값에 묶인다. main에서 green. |
 | KSTD-5-50 | TypeScript split query가 key가 NULL인 row를 버림 | packages/ts/src/database.ts, the same split merge in Go, Rust, PHP and Python | `make ts-check` | [ ] |
 | KSTD-5-52 | PHP 모델 getter가 대상 타입을 반환한다: 관계와 alias는 mixed가 아닌 대상 타입의 선언된 getter를 얻고, alias 없는 관계도 선언된 getter를 얻는다 | `packages/php/src/ChainDeclare.php` | `make php-model-check`, `vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenScanTest.php` | [o] |
 | KSTD-5-53 | PHP GroupRows의 반복이 mixed가 아닌 GroupRow로 타입되어 호출부가 타입된 행을 본다 | `packages/php/src/GroupRows.php` | `make group-rows-phpstan-check` | [o] |
