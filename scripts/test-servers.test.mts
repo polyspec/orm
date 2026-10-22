@@ -398,3 +398,28 @@ caseTest('test server sockets stay within the Unix socket path limit for a long 
   assert.equal(paths(root).sockets.mysql, sockets[0]);
   assert.notEqual(paths(`${root}x`).sockets.mysql, sockets[0]);
 });
+
+// startLogged waits for its ready line in the log and never waits forever: a ready line that does not come fails the start with
+// the step name and the log path, and a line that is already written when the server starts is seen.
+caseTest('startLogged fails loudly with its step and log path when the ready line never comes', COMPUTE, async () => {
+  const dir = realpathSync(mkdtempSync(join(tmpdir(), 'orm-startlogged-')));
+  const log = join(dir, 'silent.log');
+  try {
+    await assert.rejects(
+      startLogged(dir, 'silent', 'line-never-printed', process.execPath, ['-e', 'setInterval(() => {}, 1000)']),
+      (error: Error) => error.message.includes('silent') && error.message.includes(log) && error.message.includes('line-never-printed'),
+    );
+  } finally {
+    const pid = Number(readFileSync(join(dir, 'silent.pid'), 'utf8'));
+    process.kill(pid, 'SIGKILL');
+  }
+});
+
+caseTest('startLogged resolves when the ready line is written at once, before its watcher is attached', COMPUTE, async () => {
+  const dir = realpathSync(mkdtempSync(join(tmpdir(), 'orm-startlogged-')));
+  try {
+    await startLogged(dir, 'early', 'ready-at-once', process.execPath, ['-e', "console.log('ready-at-once'); setInterval(() => {}, 1000)"]);
+  } finally {
+    process.kill(Number(readFileSync(join(dir, 'early.pid'), 'utf8')), 'SIGKILL');
+  }
+});
