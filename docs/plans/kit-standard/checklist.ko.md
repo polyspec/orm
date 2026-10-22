@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 90ae0e1092173b9ff16744f56c9d48546ba0367f5b9ae121dbc638383fa4cddf -->
+<!-- source-sha256: b52555002694298be1457dbae0d09dfecf865879a328380644b33fee783dfc20 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -222,3 +222,4 @@
 | KSTD-5-57-19 | orm 테스트 파일 zone.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests/zone.rs | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-58 | DbspecRulesTest::testLimitColumnsPeak가 limit과 columns 문서의 peak 메모리를 안정적으로 잰다: 그 bound는 앞서 실행된 test의 프로세스 상태에 따라 달라지지 않는다 | packages/php/tests/DbspecRulesTest.php | `vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter testLimitColumnsPeak packages/php/tests/DbspecRulesTest.php` | [o] |
 | KSTD-5-59 | NOWAIT 행 잠금 뒤 busy_timeout 복원 오류를 잠금 오류와 합친다(모든 언어) | packages/rust/orm/src/db.rs:808; packages/ts/src/database.ts:1134; packages/php/src/Db.php:1670; packages/python/src/polyspec/orm/database.py:1978 | `make rust-check` | [ ] |
+| KSTD-5-60 | dbspec apply의 BEGIN EXCLUSIVE 실패 중 SQLITE_BUSY와 SQLITE_LOCKED만 locked로 분류한다 | packages/go/engine/dbspec/apply.go:514; packages/rust/orm/src/dbspec/apply.rs:579; packages/ts/src/dbspec/apply.ts:372; packages/php/src/Dbspec/PlanApply.php:386; packages/python/src/polyspec/orm/dbspec/apply.py:380 | `make rust-check` | [ ] |
