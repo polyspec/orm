@@ -65,7 +65,9 @@ async fn fake_server(answers: &[&str]) -> FakeServer {
                 }
             }
         }
-        let _ = sent.send(got);
+        if sent.send(got).is_err() {
+            panic!("the fake server's receiver was dropped before the requests were sent");
+        }
     });
     FakeServer { port, received }
 }

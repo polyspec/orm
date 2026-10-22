@@ -11,6 +11,10 @@
 //! null check of a dropped required column; and finalize. A test fails when
 //! ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN is unset.
 
+#[path = "common/or_panic.rs"]
+mod or_panic;
+use or_panic::OrPanic;
+
 #[path = "common/dbspec_probe.rs"]
 mod dbspec_probe;
 
@@ -57,7 +61,7 @@ fn apply_chain() -> Vec<Plan> {
         .expect("plan cases")
         .iter()
         .filter(|c| matches!(c["id"].as_str(), Some("create-from-empty" | "rename-table-and-column")))
-        .map(|c| parse_plan(&lines(&c["plan"])).unwrap_or_else(|e| panic!("{}: {e:?}", c["id"])))
+        .map(|c| parse_plan(&lines(&c["plan"])).or_panic(|e| format!("{}: {e:?}", c["id"])))
         .collect();
     assert!(plans.len() == 2 && plans[1].from() == Some(plans[0].to()), "plans.json does not chain create-from-empty and rename-table-and-column");
     plans
@@ -298,7 +302,7 @@ fn counts(chain: &[Plan]) -> Counts {
                 .enumerate()
                 .map(|(i, p)| {
                     let source = (i > 0).then(|| chain[i - 1].schema());
-                    let steps = plan_steps(source, p, dialect).unwrap_or_else(|e| panic!("{}: {e:?}", p.name()));
+                    let steps = plan_steps(source, p, dialect).or_panic(|e| format!("{}: {e:?}", p.name()));
                     (steps.len(), steps.iter().position(|s| s.finalize).unwrap_or(steps.len()))
                 })
                 .collect();
@@ -312,8 +316,8 @@ fn case_chain(id: &str) -> Vec<Plan> {
     let path = repository().join("tests/dbspec/plans.json");
     let vectors: Value = serde_json::from_str(&std::fs::read_to_string(path).expect("plans.json")).expect("plans.json");
     let case = vectors["cases"].as_array().expect("plan cases").iter().find(|c| c["id"] == id).unwrap_or_else(|| panic!("plans.json has no case {id}"));
-    let base = parse_plan(&format!("dbplan 1 base\nfrom empty\n\n{}", lines(&case["source"]))).unwrap_or_else(|e| panic!("{id} base: {e:?}"));
-    let plan = parse_plan(&lines(&case["plan"])).unwrap_or_else(|e| panic!("{id}: {e:?}"));
+    let base = parse_plan(&format!("dbplan 1 base\nfrom empty\n\n{}", lines(&case["source"]))).or_panic(|e| format!("{id} base: {e:?}"));
+    let plan = parse_plan(&lines(&case["plan"])).or_panic(|e| format!("{id}: {e:?}"));
     assert_eq!(plan.from(), Some(base.to()), "the source of {id} does not start its plan");
     vec![base, plan]
 }
@@ -715,7 +719,7 @@ async fn apply_through_a_transaction_pooler() {
                     .map_err(|e| Box::new(e) as EventError)
                 };
                 let result = apply(&mut apply_conn, Dialect::Postgres, &plans, &fixed_now, &mut hold).await;
-                let _ = sqlx::raw_sql("ROLLBACK").execute(&mut *other.lock().await).await;
+                sqlx::raw_sql("ROLLBACK").execute(&mut *other.lock().await).await.or_panic(|e| format!("ROLLBACK of the other connection: {e}"));
                 result
             }
         };

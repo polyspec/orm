@@ -7,6 +7,10 @@
 //! (polyspec-orm-case-database). The test fails when ORM_TEST_MYSQL_DSN or
 //! ORM_TEST_POSTGRES_DSN is unset.
 
+#[path = "common/or_panic.rs"]
+mod or_panic;
+use or_panic::OrPanic;
+
 use std::time::Duration;
 
 use polyspec_orm::{Core, Db, Entity, Model, Param, Schema, Val};
@@ -64,8 +68,8 @@ fn connected(db: &Db) -> RefusedRow {
 }
 
 async fn installed(driver: &str, dsn: &str) -> Db {
-    let db = Db::connect(dsn, 2, polyspec_orm::Config::default()).await.unwrap_or_else(|e| panic!("{driver}: {e}"));
-    db.utils().schema().install(&REFUSAL_SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
+    let db = Db::connect(dsn, 2, polyspec_orm::Config::default()).await.or_panic(|e| format!("{driver}: {e}"));
+    db.utils().schema().install(&REFUSAL_SCHEMA).await.or_panic(|e| format!("{driver}: install: {e}"));
     db
 }
 
@@ -75,7 +79,7 @@ async fn trigger_refused(driver: &str, dsn: &str) {
     let db = installed(driver, dsn).await;
     let mut row = connected(&db);
     row.core_mut().set("amount", Param::I64(1));
-    let created = polyspec_orm::model::create(&mut row).await.unwrap_or_else(|e| panic!("{driver}: create: {e}"));
+    let created = polyspec_orm::model::create(&mut row).await.or_panic(|e| format!("{driver}: create: {e}"));
     let seq = created.value("seq").expect("generated seq").as_i64().unwrap();
     let mut changed = connected(&db);
     changed.core_mut().set("seq", Param::I64(seq));
@@ -86,7 +90,7 @@ async fn trigger_refused(driver: &str, dsn: &str) {
     assert!(std::error::Error::source(&error).is_some(), "{driver}: refused update keeps the driver error");
     let mut q = connected(&db);
     q.core_mut().add_all_columns();
-    let rows = polyspec_orm::model::gets(&q).await.unwrap_or_else(|e| panic!("{driver}: gets: {e}")).into_vec();
+    let rows = polyspec_orm::model::gets(&q).await.or_panic(|e| format!("{driver}: gets: {e}")).into_vec();
     assert_eq!(rows.len(), 1, "{driver}: rows");
     assert_eq!(rows[0].values["amount"].as_i64().unwrap(), 1, "{driver}: refused update keeps the row");
     db.close().await;
@@ -114,7 +118,7 @@ async fn bounded(driver: &str, case: &str) {
             _ => check_refused(driver, database.dsn()).await,
         }
     };
-    tokio::time::timeout(CASE_DEADLINE, run).await.unwrap_or_else(|_| panic!("{driver}: {case}: timeout after {CASE_DEADLINE:?}"));
+    tokio::time::timeout(CASE_DEADLINE, run).await.or_panic(|elapsed| format!("{driver}: {case}: timeout after {CASE_DEADLINE:?}: {elapsed}"));
     database.drop().await;
 }
 

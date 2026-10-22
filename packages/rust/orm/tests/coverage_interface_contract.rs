@@ -1,5 +1,9 @@
 //! interface_contract: runs `node tests/interfaces/check/main.mts -language rust` from the repository root
 //! and requires exit 0.
+#[path = "common/or_panic.rs"]
+mod or_panic;
+use or_panic::OrPanic;
+
 use std::io::Read;
 use std::process::{Command, Stdio};
 use std::sync::mpsc;
@@ -22,7 +26,7 @@ fn coverage_interface_symbols() {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .unwrap_or_else(|e| panic!("node tests/interfaces/check/main.mts: {e}"));
+        .or_panic(|e| format!("node tests/interfaces/check/main.mts: {e}"));
     let (closed, events) = mpsc::channel();
     let pipes: [Box<dyn Read + Send>; 2] = [Box::new(child.stdout.take().expect("piped stdout")), Box::new(child.stderr.take().expect("piped stderr"))];
     for mut pipe in pipes {
@@ -40,7 +44,7 @@ fn coverage_interface_symbols() {
     let mut output = String::new();
     for _ in 0..2 {
         match events.recv_timeout(DEADLINE.saturating_sub(started.elapsed())) {
-            Ok(read) => output.push_str(&read.unwrap_or_else(|e| panic!("interface check output: {e}"))),
+            Ok(read) => output.push_str(&read.or_panic(|e| format!("interface check output: {e}"))),
             Err(_) => {
                 let killed = child.kill();
                 let waited = child.wait();
@@ -48,6 +52,6 @@ fn coverage_interface_symbols() {
             }
         }
     }
-    let status = child.wait().unwrap_or_else(|e| panic!("interface check: {e}"));
+    let status = child.wait().or_panic(|e| format!("interface check: {e}"));
     assert!(status.success(), "interface check failed with {status}:\n{output}");
 }

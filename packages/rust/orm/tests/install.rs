@@ -3,6 +3,10 @@
 //! if the database is changed outside the ORM with statements, install of the same set is CONFIG (the dialect's message), and the remaining query
 //! reads the changed database. It fails if ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN is missing.
 
+#[path = "common/or_panic.rs"]
+mod or_panic;
+use or_panic::OrPanic;
+
 use std::collections::BTreeMap;
 
 use polyspec_orm::db::Pool;
@@ -24,18 +28,18 @@ async fn exec(db: &Db, statement: &str) {
         Pool::Sqlite(p) => sql.execute(p).await.map(|_| ()),
         Pool::Markdown(_) => unreachable!("these cases run on SQL databases"),
     }
-    .unwrap_or_else(|e| panic!("{statement}: {e}"))
+    .or_panic(|e| format!("{statement}: {e}"))
 }
 
 async fn install_case(driver: &str, dsn: &str, vector: &Value) {
     let path = format!("{}/contracts/fixtures/{}", root(), vector["document"].as_str().unwrap());
-    let text = dbspec::read_file(std::path::Path::new(&path)).unwrap_or_else(|e| panic!("{path}: {e:?}"));
-    let document: Document = dbspec::parse(&text, &BTreeMap::new()).map(|parsed| parsed.document).unwrap_or_else(|e| panic!("{e:?}"));
-    let manifest = dbspec::manifest(&[&document]).unwrap_or_else(|e| panic!("{e:?}"));
+    let text = dbspec::read_file(std::path::Path::new(&path)).or_panic(|e| format!("{path}: {e:?}"));
+    let document: Document = dbspec::parse(&text, &BTreeMap::new()).map(|parsed| parsed.document).or_panic(|e| format!("{e:?}"));
+    let manifest = dbspec::manifest(&[&document]).or_panic(|e| format!("{e:?}"));
     let leak = |s: String| -> &'static str { Box::leak(s.into_boxed_str()) };
     let schema: &'static Schema = Box::leak(Box::new(Schema::with_external(leak(manifest.manifest_text), "", leak(manifest.manifest_hash))));
-    let db = Db::connect(dsn, 2, Config::default()).await.unwrap_or_else(|e| panic!("{driver}: connect: {e}"));
-    db.utils().schema().install(schema).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
+    let db = Db::connect(dsn, 2, Config::default()).await.or_panic(|e| format!("{driver}: connect: {e}"));
+    db.utils().schema().install(schema).await.or_panic(|e| format!("{driver}: install: {e}"));
     exec(&db, vector["statement"].as_str().unwrap()).await;
     let code = vector["expected"]["code"].as_str().unwrap();
     let want = format!("{code}: {}", vector["expected"]["message"][driver].as_str().unwrap());
@@ -50,7 +54,7 @@ async fn install_case(driver: &str, dsn: &str, vector: &Value) {
 /// Each case of the fixture is the trial `install_verifies_the_database::<id>` on the three databases.
 fn install_verifies_the_database() -> Vec<Trial> {
     let path = format!("{}/contracts/fixtures/install/changed_database.json", root());
-    let fixture: Value = polyspec_orm::serde_json::from_str(&std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{path}: {e}"))).unwrap();
+    let fixture: Value = polyspec_orm::serde_json::from_str(&std::fs::read_to_string(&path).or_panic(|e| format!("{path}: {e}"))).unwrap();
     let cases = fixture["cases"].as_array().unwrap_or_else(|| panic!("{path} has no cases"));
     assert!(!cases.is_empty(), "{path} has no cases");
     cases

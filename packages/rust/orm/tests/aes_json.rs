@@ -3,6 +3,10 @@
 //! MySQL and PostgreSQL, each in a case database of its own (polyspec-orm-case-database).
 //! The test fails when ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN is unset.
 
+#[path = "common/or_panic.rs"]
+mod or_panic;
+use or_panic::OrPanic;
+
 use std::collections::BTreeMap;
 
 use polyspec_orm::db::Pool;
@@ -62,7 +66,7 @@ fn connected(db: &Db) -> Secret {
 async fn open(dsn: &str, keys: &[(i32, &str)], version: i32) -> Db {
     let keys: BTreeMap<i32, String> = keys.iter().map(|(v, k)| (*v, (*k).to_owned())).collect();
     let config = polyspec_orm::Config { aes_key: keys[&version].clone(), aes_version: version, aes_keys: keys, ..Default::default() };
-    Db::connect_schema(dsn, &SCHEMA, 2, config).await.unwrap_or_else(|e| panic!("{dsn}: {e}"))
+    Db::connect_schema(dsn, &SCHEMA, 2, config).await.or_panic(|e| format!("{dsn}: {e}"))
 }
 
 /// The config value of the single row, as its compact ordered-json text.
@@ -110,12 +114,12 @@ async fn aes_json_column() {
         let database = CaseDatabase::create(driver).await;
         let dsn = database.dsn();
         let first = open(dsn, one, 1).await;
-        first.utils().schema().install(&SCHEMA).await.unwrap_or_else(|e| panic!("{driver}: install: {e}"));
+        first.utils().schema().install(&SCHEMA).await.or_panic(|e| format!("{driver}: install: {e}"));
         let mut row = connected(&first);
         row.core_mut().set_ordered("config", polyspec_orm::ordered_json::parse(text).unwrap());
         let seq = polyspec_orm::model::create(&mut row)
             .await
-            .unwrap_or_else(|e| panic!("{driver}: create: {e}"))
+            .or_panic(|e| format!("{driver}: create: {e}"))
             .value("seq")
             .expect("generated seq")
             .as_i64()
@@ -136,7 +140,7 @@ async fn aes_json_column() {
         let mut changed = connected(&again);
         changed.core_mut().set("seq", Param::I64(seq));
         changed.core_mut().set_ordered("config", polyspec_orm::ordered_json::parse(updated).unwrap());
-        polyspec_orm::model::update(&mut changed, false).await.unwrap_or_else(|e| panic!("{driver}: update: {e}"));
+        polyspec_orm::model::update(&mut changed, false).await.or_panic(|e| format!("{driver}: update: {e}"));
         assert_eq!(stored(&again).await.1, 1, "{driver}: updated version");
         assert_eq!(read(&again).await, updated, "{driver}: updated read");
         for db in [first, second, rotated, again] {
