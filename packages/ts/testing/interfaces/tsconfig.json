@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "target": "ES2022",
+    "strict": true,
+    "noEmit": true,
+    "types": ["node"],
+    "paths": {
+      "typescript": ["./typescript/node_modules/typescript/lib/typescript.d.ts"]
+    }
+  },
+  "include": ["typescript.mts"]
+}

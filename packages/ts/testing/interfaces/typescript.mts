@@ -2,14 +2,16 @@ import { readFile, readdir } from 'node:fs/promises';
 import { relative, resolve } from 'node:path';
 
 // typescript is a dependency of the packages/ts/testing/interfaces/typescript project (TypeScript 6.0.3, an exception in config/toolchain.json): it is found from that project.
-// make orm-install-interfaces-typescript installs it; the import of its file gives the compiler API with its declarations.
-const ts = (await import('./typescript/node_modules/typescript/lib/typescript.js')).default;
-type Node = import('./typescript/node_modules/typescript/lib/typescript.js').Node;
-type SourceFile = import('./typescript/node_modules/typescript/lib/typescript.js').SourceFile;
-type TypeNode = import('./typescript/node_modules/typescript/lib/typescript.js').TypeNode;
-type MethodLike = import('./typescript/node_modules/typescript/lib/typescript.js').MethodDeclaration | import('./typescript/node_modules/typescript/lib/typescript.js').MethodSignature;
-type FunctionDeclaration = import('./typescript/node_modules/typescript/lib/typescript.js').FunctionDeclaration;
-type Declaration = import('./typescript/node_modules/typescript/lib/typescript.js').Declaration;
+// make orm-install-interfaces-typescript installs it; the import gives the compiler API with its declarations.
+type Node = import('typescript').Node;
+type SourceFile = import('typescript').SourceFile;
+type TypeNode = import('typescript').TypeNode;
+type MethodLike = import('typescript').MethodDeclaration | import('typescript').MethodSignature;
+type ConstructorDeclaration = import('typescript').ConstructorDeclaration;
+type FunctionDeclaration = import('typescript').FunctionDeclaration;
+type Declaration = import('typescript').Declaration;
+type CompilerApi = typeof import('typescript');
+const ts: CompilerApi = (await import('./typescript/node_modules/typescript/lib/typescript.js')).default;
 // isDeclaration is a node whose modifiers the compiler combines: a declaration statement, a class element, or a variable,
 // parameter, enum member, type parameter or binding element.
 const isDeclaration = (node: Node): node is Declaration => ts.isDeclarationStatement(node) || ts.isClassElement(node) || ts.isVariableDeclaration(node) || ts.isParameter(node) || ts.isEnumMember(node) || ts.isTypeParameterDeclaration(node) || ts.isBindingElement(node);
@@ -44,6 +46,10 @@ function methodSignature(node: MethodLike, source: SourceFile): string {
     : node;
   return compact(printer.printNode(ts.EmitHint.Unspecified, copy, source).replace(/;$/, ''));
 }
+function constructorSignature(node: ConstructorDeclaration, source: SourceFile): string {
+  const copy = ts.factory.updateConstructorDeclaration(node, node.modifiers, node.parameters, undefined);
+  return compact(printer.printNode(ts.EmitHint.Unspecified, copy, source).replace(/;$/, ''));
+}
 function functionSignature(node: FunctionDeclaration, source: SourceFile): string {
   const copy = ts.factory.updateFunctionDeclaration(node, node.modifiers, node.asteriskToken, node.name, node.typeParameters, node.parameters, node.type, undefined);
   return compact(printer.printNode(ts.EmitHint.Unspecified, copy, source).replace(/;$/, ''));
@@ -73,7 +79,14 @@ for (const file of files) {
     const name = node.name.text;
     const key = `${path}::${name}`;
     const exported = hasExport(node);
-    put(key, `${ts.isClassDeclaration(node) ? 'class' : 'interface'} ${name}`, exported);
+    const constructors = ts.isClassDeclaration(node) ? node.members.filter(ts.isConstructorDeclaration) : [];
+    // Keep private and protected access visible so a restriction change alters the class symbol signature.
+    // When overload signatures exist, the implementation is not part of the constructor contract.
+    const overloads = constructors.filter(member => member.body === undefined);
+    const selectedConstructors = overloads.length > 0 ? overloads : constructors;
+    const constructorSignatures = selectedConstructors.map(member => constructorSignature(member, source));
+    const classSignature = `${ts.isClassDeclaration(node) ? 'class' : 'interface'} ${name}${constructorSignatures.length > 0 ? ` { ${constructorSignatures.join('; ')}; }` : ''}`;
+    put(key, classSignature, exported);
     const wire: Record<string, string> = {};
     if (ts.isInterfaceDeclaration(node) && node.heritageClauses?.length) {
       const base = node.heritageClauses.flatMap(clause => clause.types).map(type => type.expression.getText(source));

@@ -1,7 +1,7 @@
 {
   "packages/ts/src/aes.ts::AesKeyring": {
     "exported": true,
-    "signature": "class AesKeyring"
+    "signature": "class AesKeyring { public constructor(keys: ReadonlyMap\u003cnumber, string\u003e, public readonly currentVersion: number); }"
   },
   "packages/ts/src/aes.ts::AesKeyring#field.currentVersion": {
     "exported": true,
@@ -117,7 +117,7 @@
   },
   "packages/ts/src/codec.ts::CodecError": {
     "exported": true,
-    "signature": "class CodecError"
+    "signature": "class CodecError { public constructor(public readonly code: typeof codes.CONFIG | typeof codes.CODEC_DECODE | typeof codes.CODEC_ENCODE | typeof codes.CODEC_UNSUPPORTED, message: string, options?: ErrorOptions); }"
   },
   "packages/ts/src/codec.ts::CodecError#field.code": {
     "exported": true,
@@ -125,7 +125,7 @@
   },
   "packages/ts/src/codec.ts::PhpParser": {
     "exported": false,
-    "signature": "class PhpParser"
+    "signature": "class PhpParser { public constructor(private readonly input: Uint8Array); }"
   },
   "packages/ts/src/codec.ts::PhpParser#field.index": {
     "exported": false,
@@ -253,7 +253,7 @@
   },
   "packages/ts/src/core.ts::BuiltRequest": {
     "exported": true,
-    "signature": "class BuiltRequest"
+    "signature": "class BuiltRequest { public constructor(kind: QueryKind, hash: string); }"
   },
   "packages/ts/src/core.ts::BuiltRequest#field.error": {
     "exported": true,
@@ -345,7 +345,7 @@
   },
   "packages/ts/src/core.ts::CondGroup": {
     "exported": false,
-    "signature": "class CondGroup"
+    "signature": "class CondGroup { public constructor(items: CondNode[] = [], not = false); }"
   },
   "packages/ts/src/core.ts::CondGroup#field.items": {
     "exported": false,
@@ -389,7 +389,7 @@
   },
   "packages/ts/src/core.ts::Core": {
     "exported": true,
-    "signature": "class Core"
+    "signature": "class Core { public constructor(public readonly ent: EntityDef); }"
   },
   "packages/ts/src/core.ts::Core#field.agg": {
     "exported": true,
@@ -681,7 +681,7 @@
   },
   "packages/ts/src/core.ts::Frame": {
     "exported": false,
-    "signature": "class Frame"
+    "signature": "class Frame { public constructor(public readonly root: Core, public readonly outer: Core | undefined); }"
   },
   "packages/ts/src/core.ts::Frame#field.outer": {
     "exported": false,
@@ -1065,7 +1065,7 @@
   },
   "packages/ts/src/database.ts::Db": {
     "exported": true,
-    "signature": "class Db"
+    "signature": "class Db { private constructor(private readonly connection: DriverPool | MarkdownPool, public readonly zone: string, options: ConnectOptions); }"
   },
   "packages/ts/src/database.ts::Db#field.aesKey": {
     "exported": true,
@@ -1381,7 +1381,7 @@
   },
   "packages/ts/src/database.ts::TxFrame": {
     "exported": true,
-    "signature": "class TxFrame"
+    "signature": "class TxFrame { public constructor(public readonly db: Db, private readonly connection: DriverSession | MarkdownSession, public readonly number: number, public readonly options: BeginOptions); }"
   },
   "packages/ts/src/database.ts::TxFrame#field.audit": {
     "exported": true,
@@ -1705,7 +1705,7 @@
   },
   "packages/ts/src/dbspec/apply.ts::Applier": {
     "exported": false,
-    "signature": "class Applier"
+    "signature": "class Applier { constructor(readonly connection: unknown, readonly dialect: DbspecDialect, readonly chain: readonly DbspecPlan[], readonly now: () =\u003e number, readonly events: DbspecApplyHandler | null); }"
   },
   "packages/ts/src/dbspec/apply.ts::Applier#field.chain": {
     "exported": false,
@@ -1857,7 +1857,7 @@
   },
   "packages/ts/src/dbspec/apply.ts::DbspecApplyError": {
     "exported": true,
-    "signature": "class DbspecApplyError"
+    "signature": "class DbspecApplyError { constructor(code: DbspecApplyErrorCode, plan: string, step: number, detail: string, cause?: unknown); }"
   },
   "packages/ts/src/dbspec/apply.ts::DbspecApplyError#field.code": {
     "exported": true,
@@ -2417,7 +2417,7 @@
   },
   "packages/ts/src/dbspec/introspect_catalog.ts::CatalogRow": {
     "exported": true,
-    "signature": "class CatalogRow"
+    "signature": "class CatalogRow { constructor(private readonly query: string, private readonly values: readonly unknown[]); }"
   },
   "packages/ts/src/dbspec/introspect_catalog.ts::CatalogRow#field.query": {
     "exported": false,
@@ -2657,7 +2657,7 @@
   },
   "packages/ts/src/dbspec/introspect_check.ts::CheckDecoder": {
     "exported": false,
-    "signature": "class CheckDecoder"
+    "signature": "class CheckDecoder { constructor(readonly tokens: readonly Token[], private readonly columns: ReadonlyMap\u003cstring, DbspecType\u003e, private readonly dialect: DbspecDialect); }"
   },
   "packages/ts/src/dbspec/introspect_check.ts::CheckDecoder#field.columns": {
     "exported": false,
@@ -3481,7 +3481,7 @@
   },
   "packages/ts/src/dbspec/parse.ts::DocumentParser": {
     "exported": false,
-    "signature": "class DocumentParser"
+    "signature": "class DocumentParser { constructor(private readonly lines: string[], private readonly context: ParseContext, private readonly parents: readonly string[], private readonly encoding: RawDiagnostic | null); }"
   },
   "packages/ts/src/dbspec/parse.ts::DocumentParser#field.abandoned": {
     "exported": false,
@@ -3789,7 +3789,7 @@
   },
   "packages/ts/src/dbspec/parse.ts::ExpressionSyntax": {
     "exported": false,
-    "signature": "class ExpressionSyntax"
+    "signature": "class ExpressionSyntax { constructor(readonly at: Tk | null); }"
   },
   "packages/ts/src/dbspec/parse.ts::ExpressionSyntax#field.at": {
     "exported": false,
@@ -4985,7 +4985,7 @@
   },
   "packages/ts/src/dbspec/plan_steps.ts::PlanWriter": {
     "exported": false,
-    "signature": "class PlanWriter"
+    "signature": "class PlanWriter { constructor(private readonly d: PlanDiff, private readonly r: Renderer, private readonly holdPrefix: string); }"
   },
   "packages/ts/src/dbspec/plan_steps.ts::PlanWriter#field.d": {
     "exported": false,
@@ -5173,7 +5173,7 @@
   },
   "packages/ts/src/dbspec/render.ts::Renderer": {
     "exported": true,
-    "signature": "class Renderer"
+    "signature": "class Renderer { constructor(readonly d: DbspecDialect); }"
   },
   "packages/ts/src/dbspec/render.ts::Renderer#field.d": {
     "exported": true,
@@ -5605,7 +5605,7 @@
   },
   "packages/ts/src/driver.ts::MySqlPoolDriver": {
     "exported": false,
-    "signature": "class MySqlPoolDriver"
+    "signature": "class MySqlPoolDriver { public constructor(private readonly pool: MySqlPool, private readonly setup: SessionSetup, private readonly maxOpen: number); }"
   },
   "packages/ts/src/driver.ts::MySqlPoolDriver#field.maxOpen": {
     "exported": false,
@@ -5645,7 +5645,7 @@
   },
   "packages/ts/src/driver.ts::MySqlSession": {
     "exported": false,
-    "signature": "class MySqlSession"
+    "signature": "class MySqlSession { public constructor(private readonly connection: MySqlConnection, private readonly pool: MySqlPool); }"
   },
   "packages/ts/src/driver.ts::MySqlSession#field.connection": {
     "exported": false,
@@ -5717,7 +5717,7 @@
   },
   "packages/ts/src/driver.ts::PostgresPoolDriver": {
     "exported": false,
-    "signature": "class PostgresPoolDriver"
+    "signature": "class PostgresPoolDriver { public constructor(private readonly pool: pg.Pool, private readonly cacheSize: number, private readonly maxOpen: number, private readonly idleSize: number, private readonly config: pg.PoolConfig); }"
   },
   "packages/ts/src/driver.ts::PostgresPoolDriver#field.cacheSize": {
     "exported": false,
@@ -5765,7 +5765,7 @@
   },
   "packages/ts/src/driver.ts::PostgresSession": {
     "exported": false,
-    "signature": "class PostgresSession"
+    "signature": "class PostgresSession { public constructor(private readonly client: pg.PoolClient, private readonly cacheSize: number, private readonly config: pg.PoolConfig, private readonly done: (failed: boolean) =\u003e void); }"
   },
   "packages/ts/src/driver.ts::PostgresSession#field.cacheSize": {
     "exported": false,
@@ -5841,7 +5841,7 @@
   },
   "packages/ts/src/driver.ts::SqlitePoolDriver": {
     "exported": false,
-    "signature": "class SqlitePoolDriver"
+    "signature": "class SqlitePoolDriver { public constructor(db: DatabaseSync, cacheSize: number); }"
   },
   "packages/ts/src/driver.ts::SqlitePoolDriver#field.name": {
     "exported": false,
@@ -5881,7 +5881,7 @@
   },
   "packages/ts/src/driver.ts::SqliteSession": {
     "exported": false,
-    "signature": "class SqliteSession"
+    "signature": "class SqliteSession { public constructor(private readonly state: SqliteState, private readonly done: () =\u003e void); }"
   },
   "packages/ts/src/driver.ts::SqliteSession#field.done": {
     "exported": false,
@@ -5917,7 +5917,7 @@
   },
   "packages/ts/src/driver.ts::SqliteState": {
     "exported": false,
-    "signature": "class SqliteState"
+    "signature": "class SqliteState { public constructor(public readonly db: DatabaseSync, private readonly cacheSize: number); }"
   },
   "packages/ts/src/driver.ts::SqliteState#field.busy": {
     "exported": false,
@@ -5941,7 +5941,7 @@
   },
   "packages/ts/src/driver.ts::StatementNames": {
     "exported": false,
-    "signature": "class StatementNames"
+    "signature": "class StatementNames { public constructor(private readonly limit: number); }"
   },
   "packages/ts/src/driver.ts::StatementNames#field.limit": {
     "exported": false,
@@ -6081,7 +6081,7 @@
   },
   "packages/ts/src/engine/canonical.ts::Canonicalizer": {
     "exported": false,
-    "signature": "class Canonicalizer"
+    "signature": "class Canonicalizer { public constructor(private readonly params: readonly unknown[]); }"
   },
   "packages/ts/src/engine/canonical.ts::Canonicalizer#field.out": {
     "exported": false,
@@ -6293,7 +6293,7 @@
   },
   "packages/ts/src/engine/index.ts::Engine": {
     "exported": true,
-    "signature": "class Engine"
+    "signature": "class Engine { public constructor(public readonly model: RuntimeModel, public readonly dialect: string); }"
   },
   "packages/ts/src/engine/index.ts::Engine#field.dialect": {
     "exported": true,
@@ -6529,7 +6529,7 @@
   },
   "packages/ts/src/engine/params.ts::ParamUses": {
     "exported": false,
-    "signature": "class ParamUses"
+    "signature": "class ParamUses { public constructor(private readonly m: RuntimeModel, n: number); }"
   },
   "packages/ts/src/engine/params.ts::ParamUses#field.m": {
     "exported": false,
@@ -6581,7 +6581,7 @@
   },
   "packages/ts/src/engine/planner.ts::Builder": {
     "exported": false,
-    "signature": "class Builder"
+    "signature": "class Builder { public constructor(private readonly d: Dialect); }"
   },
   "packages/ts/src/engine/planner.ts::Builder#field.binds": {
     "exported": false,
@@ -6673,7 +6673,7 @@
   },
   "packages/ts/src/engine/planner.ts::Planner": {
     "exported": true,
-    "signature": "class Planner"
+    "signature": "class Planner { public constructor(public readonly m: RuntimeModel, public readonly d: Dialect); }"
   },
   "packages/ts/src/engine/planner.ts::Planner#field.d": {
     "exported": true,
@@ -7025,7 +7025,7 @@
   },
   "packages/ts/src/engine/validate.ts::Validator": {
     "exported": false,
-    "signature": "class Validator"
+    "signature": "class Validator { public constructor(private readonly m: RuntimeModel, private readonly n: number, private readonly root: RequestQuery); }"
   },
   "packages/ts/src/engine/validate.ts::Validator#field.m": {
     "exported": false,
@@ -7325,7 +7325,7 @@
   },
   "packages/ts/src/generate/scan.ts::Scanner": {
     "exported": false,
-    "signature": "class Scanner"
+    "signature": "class Scanner { public constructor(private readonly models: ReadonlySet\u003cstring\u003e, private readonly out: Map\u003cstring, Set\u003cstring\u003e\u003e, private readonly sites: ScanSite[], private readonly file: string, private readonly set: SetModule); }"
   },
   "packages/ts/src/generate/scan.ts::Scanner#field.classes": {
     "exported": false,
@@ -7537,7 +7537,7 @@
   },
   "packages/ts/src/generate/typescript.ts::Generator": {
     "exported": false,
-    "signature": "class Generator"
+    "signature": "class Generator { public constructor(private readonly m: Manifest); }"
   },
   "packages/ts/src/generate/typescript.ts::Generator#field.getters": {
     "exported": false,
@@ -7637,7 +7637,7 @@
   },
   "packages/ts/src/group_rows.ts::GroupRow": {
     "exported": true,
-    "signature": "class GroupRow"
+    "signature": "class GroupRow { public constructor(entries: readonly (readonly [ string, unknown ])[]); }"
   },
   "packages/ts/src/group_rows.ts::GroupRow#field.count": {
     "exported": true,
@@ -7661,7 +7661,7 @@
   },
   "packages/ts/src/group_rows.ts::GroupRows": {
     "exported": true,
-    "signature": "class GroupRows"
+    "signature": "class GroupRows { public constructor(rows: readonly GroupRow[]); }"
   },
   "packages/ts/src/group_rows.ts::GroupRows#field.rows": {
     "exported": false,
@@ -8513,7 +8513,7 @@
   },
   "packages/ts/src/markdown.ts::MarkdownNode": {
     "exported": false,
-    "signature": "class MarkdownNode"
+    "signature": "class MarkdownNode { public constructor(private readonly m: RuntimeModel, private readonly q: RequestQuery, private readonly groups: boolean, private readonly db: Db); }"
   },
   "packages/ts/src/markdown.ts::MarkdownNode#field.asm": {
     "exported": false,
@@ -8577,7 +8577,7 @@
   },
   "packages/ts/src/markdown.ts::MarkdownPool": {
     "exported": true,
-    "signature": "class MarkdownPool"
+    "signature": "class MarkdownPool { public constructor(private readonly dsn: MarkdownDsn, private readonly bounds: PoolBounds); }"
   },
   "packages/ts/src/markdown.ts::MarkdownPool#field.bounds": {
     "exported": false,
@@ -8633,7 +8633,7 @@
   },
   "packages/ts/src/markdown.ts::MarkdownSession": {
     "exported": true,
-    "signature": "class MarkdownSession"
+    "signature": "class MarkdownSession { private constructor(private readonly socket: Socket); }"
   },
   "packages/ts/src/markdown.ts::MarkdownSession#field.broken": {
     "exported": true,
@@ -8761,7 +8761,7 @@
   },
   "packages/ts/src/model.ts::Assembler": {
     "exported": false,
-    "signature": "class Assembler"
+    "signature": "class Assembler { public constructor(private readonly result: Result, private readonly db: Db, private readonly conn: Db | undefined); }"
   },
   "packages/ts/src/model.ts::Assembler#field.conn": {
     "exported": false,
@@ -8861,7 +8861,7 @@
   },
   "packages/ts/src/model.ts::Model": {
     "exported": true,
-    "signature": "class Model"
+    "signature": "class Model { public constructor(core?: Core); }"
   },
   "packages/ts/src/model.ts::Model#field.[CORE]": {
     "exported": true,
@@ -16861,7 +16861,7 @@
   },
   "packages/ts/src/runtime_error.ts::OrmError": {
     "exported": true,
-    "signature": "class OrmError"
+    "signature": "class OrmError { public constructor(public readonly code: string, message: string, public readonly cause?: unknown, rollback?: unknown); }"
   },
   "packages/ts/src/runtime_error.ts::OrmError#field.cause": {
     "exported": true,
@@ -16889,7 +16889,7 @@
   },
   "packages/ts/src/styled_value.ts::StyledValue": {
     "exported": true,
-    "signature": "class StyledValue"
+    "signature": "class StyledValue { private constructor(public readonly kind: 'sql-null' | 'value', private readonly stored?: T); }"
   },
   "packages/ts/src/styled_value.ts::StyledValue#field.kind": {
     "exported": true,
@@ -17049,7 +17049,7 @@
   },
   "packages/ts/src/utils.ts::AesUtils": {
     "exported": true,
-    "signature": "class AesUtils"
+    "signature": "class AesUtils { public constructor(private readonly u: Utils); }"
   },
   "packages/ts/src/utils.ts::AesUtils#field.u": {
     "exported": false,
@@ -17069,7 +17069,7 @@
   },
   "packages/ts/src/utils.ts::PrivilegeUtils": {
     "exported": true,
-    "signature": "class PrivilegeUtils"
+    "signature": "class PrivilegeUtils { public constructor(private readonly u: Utils); }"
   },
   "packages/ts/src/utils.ts::PrivilegeUtils#field.u": {
     "exported": false,
@@ -17097,7 +17097,7 @@
   },
   "packages/ts/src/utils.ts::SchemaUtils": {
     "exported": true,
-    "signature": "class SchemaUtils"
+    "signature": "class SchemaUtils { public constructor(private readonly u: Utils); }"
   },
   "packages/ts/src/utils.ts::SchemaUtils#field.u": {
     "exported": false,
@@ -17161,7 +17161,7 @@
   },
   "packages/ts/src/utils.ts::Utils": {
     "exported": true,
-    "signature": "class Utils"
+    "signature": "class Utils { public constructor(db: Db); }"
   },
   "packages/ts/src/utils.ts::Utils#field.db": {
     "exported": true,
@@ -17269,7 +17269,7 @@
   },
   "packages/ts/src/values.ts::FunctionValue": {
     "exported": false,
-    "signature": "class FunctionValue"
+    "signature": "class FunctionValue { public constructor(public readonly name: string, public readonly args: readonly unknown[]); }"
   },
   "packages/ts/src/values.ts::FunctionValue#field.args": {
     "exported": false,

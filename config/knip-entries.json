@@ -4,11 +4,12 @@
   "entries": {
     "docs/.vitepress/config.mts": "the VitePress configuration of the site under docs/, which make docs-build runs with vitepress build docs",
     "docs/.vitepress/theme/index.ts": "the VitePress theme of the site under docs/, which VitePress loads by its path",
+    "examples/thin-slice/ts/main.mts": "the TypeScript thin-slice demo, which the usage guide runs with node and the thin-slice checks run",
+    "packages/go/testing/feature-json.mts": "the Go feature runner, which the feature-go-unit target of make runs with node (Makefile)",
     "tests/dbspec/compare/check.mts": "the dbspec comparison check, which make runs with node",
     "tests/dbspec/stress.mts": "the writer of the stress documents, which make runs with node",
     "tests/go-run.mts": "the Go test runner, which the repository checks and the CI spawn",
-    "examples/thin-slice/ts/main.mts": "the TypeScript thin-slice demo, which the usage guide runs with node and the thin-slice checks run",
-    "packages/go/testing/feature-json.mts": "the Go feature runner, which the feature-go-unit target of make runs with node (Makefile)"
+    "tests/interfaces/check/fixtures/typescript-constructor.ts": "constructor declarations passed by the native interface-extractor test to its spawned TypeScript compiler"
   },
   "workspaces": {
     "packages/ts": {
