@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 83e3b054bbfae37ea1a2b93d4c700c18c0729b331ae8f0eec8ad525cb63e069d -->
+<!-- source-sha256: bb44fb9f229de8e1e694deec749780aaee62a0aaaeac777a1c65f03cf6e9ea7d -->
 # 변경 이력
 
 ## Unreleased
 
+- orm test add_tables_and_columns, dbspec_plan_apply, collection_identity의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-14b).
 - 나머지 orm test file의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-14).
 - orm test statement_fault, request_hook, common/audit_rows의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-13).
 - orm test listen_notify, register, clock, was_inserted의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-12).
