@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The lint findings in the tests crate files coverage_schema_install.rs and markdown_conformance.rs are fixed, so `make lint-rust` reports no finding in them (KSTD-5-57-18e).
 - The lint findings in the build test file lock_probe_order.rs are fixed, so `make lint-rust` reports no finding in them (KSTD-5-57-18d).
 - The lint findings in the orm test file sqlite_concurrency.rs are fixed, so `make lint-rust` reports no finding in them (KSTD-5-57-18c).
 - The lint findings in the build test file read_only_query.rs are fixed, so `make lint-rust` reports no finding in them (KSTD-5-57-18b).
