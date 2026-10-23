@@ -280,6 +280,22 @@ final class Generator
                 }
             }
         }
+        foreach ($declared as $cls => $getters) {
+            foreach ($getters as $name => $entries) {
+                if (isset($calls[$cls][$name])) {
+                    continue;
+                }
+                $relations = array_values(array_filter(
+                    $entries,
+                    static fn(array $entry): bool => in_array($entry['call'], ['relation', 'relations'], true)
+                        || str_starts_with($entry['call'], 'alias')
+                ));
+                $types = array_values(array_unique(array_column($relations, 'type')));
+                if (count($types) > 1) {
+                    $problems[] = self::relationAliasConflict($cls, $name, $relations);
+                }
+            }
+        }
         $used = [];
         foreach ($calls as $names) {
             foreach (array_keys($names) as $name) {
@@ -376,11 +392,12 @@ final class Generator
 
     /**
      * The PHP type of the getter $name of the model $class. A relation getter has its target model: ?Target for
-     * get<Target>Model and list<Target> for get<Target>Models. Any other getter has the type its scanned calls declare
+     * get<Target>Model and \Polyspec\Orm\Collection<Target> for get<Target>Models. Any other getter has the type
+     * its scanned calls declare
      * (new, addColumn and alias); when a call declares none, or the calls declare different types, the generator
      * refuses the model with a CONFIG problem that names the call, and the getter is not declared.
      * @param list<array> $metas
-     * @param list<array{call: string, type: ?string}> $calls the calls that declare the getter
+     * @param list<array{call: string, type: ?string, line?: int}> $calls the calls that declare the getter
      * @param list<string> $problems
      */
     private static function getterType(
@@ -390,13 +407,30 @@ final class Generator
         array $calls,
         array &$problems,
     ): ?string {
+        // Relation declarations (including default entity names) are checked before the canonical-name fallback.
+        $relations = array_values(array_filter(
+            $calls,
+            static fn(array $entry): bool => in_array($entry['call'], ['relation', 'relations'], true)
+                || str_starts_with($entry['call'], 'alias')
+        ));
+        if ($relations !== []) {
+            if (in_array(null, array_column($relations, 'type'), true)) {
+                return null;
+            }
+            $relationTypes = array_values(array_unique(array_column($relations, 'type')));
+            if (count($relationTypes) !== 1) {
+                $problems[] = self::relationAliasConflict($class, $name, $relations);
+                return null;
+            }
+            return $relationTypes[0];
+        }
         foreach ($metas as $meta) {
             $target = self::pascal($meta['entity']);
             if ($name === "get{$target}Model") {
                 return "?$target";
             }
             if ($name === "get{$target}Models") {
-                return "list<$target>";
+                return "\\Polyspec\\Orm\\Collection<$target>";
             }
         }
         // A call without a type is reported with every call of the model, so the getter itself adds no problem.
@@ -413,6 +447,17 @@ final class Generator
             return null;
         }
         return $types[0];
+    }
+
+    /** @param list<array{call: string, type: ?string, line?: int}> $relations */
+    private static function relationAliasConflict(string $class, string $name, array $relations): string
+    {
+        $sources = [];
+        foreach ($relations as $relation) {
+            $sources[$relation['call'] . ' at line ' . ($relation['line'] ?? '?') . ' => '
+                . ($relation['type'] ?? 'no type')] = true;
+        }
+        return "$class.$name: relation declarations conflict: " . implode(', ', array_keys($sources));
     }
 
     /**

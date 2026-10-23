@@ -55,7 +55,7 @@ final class ScanVisitor extends NodeVisitorAbstract
     /**
      * @param array<string, string> $models lowercase fully qualified class name => class name
      * @param array<string, array<string, list<int|null>>> $out
-     * @param array<string, array<string, list<array{call: string, type: ?string}>>> $types per model class, the
+     * @param array<string, array<string, list<array{call: string, type: ?string, line?: int}>>> $types per model class, the
      *     declared types of the getters that the calls of new, addColumn and alias name, with the call that declares
      *     each
      */
@@ -507,7 +507,8 @@ final class ScanVisitor extends NodeVisitorAbstract
     /**
      * Records the declared types of the getters that a call names. new<Attr>(value) declares get<Attr> with the type of
      * the value; addColumn<Name>(fn): T declares get<Name> with the return type T; and a get or gets that ends a chain
-     * with alias<Name> declares get<Name> with the chain's result, ?Model for get and list<Model> for gets. A call
+     * with alias<Name> declares get<Name> with the chain's result, ?Model for get and
+     * \Polyspec\Orm\Collection<Model> for gets. A call
      * without a type is recorded with a null type, which the generator refuses.
      */
     private function declaredTypes(
@@ -538,37 +539,47 @@ final class ScanVisitor extends NodeVisitorAbstract
                 $this->types[$cls]['get' . $key][] = ['call' => $name, 'type' => $type];
             }
         }
-        if (($name === 'get' || $name === 'gets') && count($classes) === 1) {
-            $this->recordAliases($node->var, $name, $classes[0], $classes[0]);
-        }
     }
 
     /**
-     * Records the declared type of each alias in a chain that ends with the get or gets $terminal of the entity
-     * $entity.
-     * An alias of the chain names a result of the entity: its getter belongs to the entity and has the entity's model,
-     * ?Model for get and list<Model> for gets. An alias inside a relation argument names the result of that relation,
-     * which belongs to the class that owns the relation, and has the model of the argument's own chain. $entity is null
-     * for such an argument, whose alias takes the entity of its own chain.
+     * Records the model type declared by a relation child's effective alias. The relation edge owns the getter and
+     * determines its cardinality; the child's terminal get()/gets() call is unrelated to the attached value.
      */
-    private function recordAliases(Node $chain, string $terminal, string $owner, ?string $entity): void
+    private function recordRelationAlias(
+        Node\Expr\MethodCall|Node\Expr\NullsafeMethodCall $node,
+        string $name,
+        array $owners,
+    ): void
     {
-        for ($cur = $chain; self::isCall($cur); $cur = $cur->var) {
-            $name = $cur->name instanceof Node\Identifier ? $cur->name->toString() : '';
-            if (str_starts_with($name, 'alias') && strlen($name) > 5) {
-                $model = $entity ?? (($this->valueOf($cur->var)['cls'] ?? null));
-                if ($model !== null) {
-                    $type = $terminal === 'gets' ? "list<$model>" : "?$model";
-                    $this->types[$owner]['get' . substr($name, 5)][] = ['call' => $name, 'type' => $type];
+        $many = strtolower($name) === 'relations';
+        foreach ($node->args as $arg) {
+            if (!$arg instanceof Node\Arg) {
+                continue;
+            }
+            $child = $this->valueOf($arg->value)['cls'] ?? null;
+            if ($child === null) {
+                continue;
+            }
+            // Walking receiver links from the relation call inward sees the last alias() first.
+            $effectiveAlias = '';
+            $aliasLine = $node->getStartLine();
+            for ($cur = $arg->value; self::isCall($cur); $cur = $cur->var) {
+                $alias = $cur->name instanceof Node\Identifier ? $cur->name->toString() : '';
+                if (str_starts_with($alias, 'alias') && strlen($alias) > 5) {
+                    $effectiveAlias = $alias;
+                    $aliasLine = $cur->getStartLine();
+                    break;
                 }
             }
-            if (strtolower($name) === 'relation') {
-                $relationOwner = $this->valueOf($cur->var)['cls'] ?? null;
-                foreach ($cur->args as $arg) {
-                    if ($relationOwner !== null && $arg instanceof Node\Arg) {
-                        $this->recordAliases($arg->value, $terminal, $relationOwner, null);
-                    }
-                }
+            $type = $many ? "\\Polyspec\\Orm\\Collection<$child>" : "?$child";
+            $getter = $effectiveAlias === '' ? 'get' . $child . ($many ? 'Models' : 'Model')
+                : 'get' . substr($effectiveAlias, 5);
+            foreach ($owners as $owner) {
+                $this->types[$owner['cls']][$getter][] = [
+                    'call' => $effectiveAlias === '' ? $name : $effectiveAlias,
+                    'type' => $type,
+                    'line' => $aliasLine,
+                ];
             }
         }
     }
@@ -594,6 +605,9 @@ final class ScanVisitor extends NodeVisitorAbstract
         ));
         foreach ($receivers as $receiver) {
             $this->out[$receiver['cls']][$name][] = $count;
+        }
+        if (in_array(strtolower($name), ['relation', 'relations'], true)) {
+            $this->recordRelationAlias($node, $name, $receivers);
         }
         $this->declaredTypes($node, $name, $receivers, $count);
         if ($receivers !== []) {

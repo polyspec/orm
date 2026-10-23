@@ -263,6 +263,124 @@ PHP;
         self::assertContains('getMatch', $author);
     }
 
+    public function testRelationAliasTypesFollowRelationEdgesAndExplicitAliases(): void
+    {
+        $ns = self::NS;
+        $source = <<<PHP
+<?php
+namespace App;
+
+use $ns\\Author;
+use $ns\\ServiceMember;
+use $ns\\User;
+
+\$author = new Author();
+\$author->relation((new User())->matchUserSeqWithSeq()->aliasOldWriter()->aliasWriter())->gets();
+\$author->getWriter();
+\$author->relation((new User())->matchUserSeqWithSeq()->aliasWriter())->get();
+\$author->relations((new ServiceMember())->matchServiceSeqWithServiceSeq()->aliasMembers())->get();
+\$author->getMembers();
+\$author->relation((new User())->matchUserSeqWithSeq()->aliasNestedWriter()
+    ->relation((new Author())->matchSeqWithUserSeq()->aliasMatch()))->gets();
+\$author->getNestedWriter();
+\$user = new User();
+\$user->getMatch();
+\$author->getUserModel();
+\$author->relations((new ServiceMember())->matchServiceSeqWithServiceSeq()->aliasUserModel())->gets();
+\$author->getUserModel();
+PHP;
+        [$code, $err, $dir] = self::generate('relation-alias-types', ['usage.php' => $source]);
+        self::assertSame(0, $code, $err);
+        self::assertSame('?User', self::tagType($dir, 'Author', 'getWriter'));
+        self::assertSame('\\Polyspec\\Orm\\Collection<ServiceMember>', self::tagType($dir, 'Author', 'getMembers'));
+        self::assertSame('?User', self::tagType($dir, 'Author', 'getNestedWriter'));
+        self::assertSame('\\Polyspec\\Orm\\Collection<ServiceMember>', self::tagType($dir, 'Author', 'getUserModel'));
+        self::assertNotContains('getOldWriter', self::tags($dir, 'Author'));
+        self::assertSame('?Author', self::tagType($dir, 'User', 'getMatch'));
+    }
+
+    public function testSupersededRelationAliasDoesNotDeclareItsGetterType(): void
+    {
+        $ns = self::NS;
+        $source = <<<PHP
+<?php
+use $ns\\Author;
+use $ns\\User;
+
+\$author = new Author();
+\$author->relation((new User())->matchUserSeqWithSeq()->aliasOldWriter()->aliasWriter())->gets();
+\$author->getOldWriter();
+PHP;
+        [$code, $err] = self::generate('superseded-relation-alias', ['usage.php' => $source]);
+        self::assertSame(1, $code, 'status');
+        self::assertStringContainsString('Author.getOldWriter: no get or gets reads the alias', $err);
+    }
+
+    public function testDifferentRelationAliasTypesAreRejected(): void
+    {
+        $ns = self::NS;
+        $source = <<<PHP
+<?php
+use $ns\\Author;
+use $ns\\ServiceMember;
+use $ns\\User;
+
+\$author = new Author();
+\$author->relation((new User())->matchUserSeqWithSeq()->aliasShared());
+\$author->relations((new User())->matchUserSeqWithSeq()->aliasShared());
+\$author->relation((new ServiceMember())->matchServiceSeqWithServiceSeq()->aliasShared());
+\$author->getShared();
+PHP;
+        [$code, $err, $dir] = self::generate('relation-alias-conflict', ['usage.php' => $source]);
+        self::assertSame(1, $code, 'status');
+        self::assertStringContainsString('Author.getShared: relation declarations conflict', $err);
+        self::assertMatchesRegularExpression('/aliasShared at line \\d+ => \\?User/', $err);
+        self::assertMatchesRegularExpression(
+            '/aliasShared at line \\d+ => \\\\Polyspec\\\\Orm\\\\Collection<User>/',
+            $err
+        );
+        self::assertMatchesRegularExpression('/aliasShared at line \\d+ => \\?ServiceMember/', $err);
+        self::assertFileDoesNotExist("$dir/model/Author.php", 'a rejected generation writes nothing');
+    }
+
+    public function testImplicitRelationAndExplicitAliasCannotAttachDifferentTypesToOneGetter(): void
+    {
+        $ns = self::NS;
+        $source = <<<PHP
+<?php
+use $ns\\Author;
+use $ns\\ServiceMember;
+use $ns\\User;
+
+\$author = new Author();
+\$author->relation((new User())->matchUserSeqWithSeq());
+\$author->relations((new ServiceMember())->matchServiceSeqWithServiceSeq()->aliasUserModel());
+PHP;
+        [$code, $err] = self::generate('implicit-explicit-relation-alias-conflict', ['usage.php' => $source]);
+        self::assertSame(1, $code, 'status');
+        self::assertStringContainsString('Author.getUserModel: relation declarations conflict', $err);
+        self::assertMatchesRegularExpression('/relation at line \\d+ => \\?User/', $err);
+        self::assertMatchesRegularExpression(
+            '/aliasUserModel at line \\d+ => \\\\Polyspec\\\\Orm\\\\Collection<ServiceMember>/',
+            $err
+        );
+    }
+
+    public function testUnusedRelationAliasDoesNotGenerateAGetter(): void
+    {
+        $ns = self::NS;
+        $source = <<<PHP
+<?php
+use $ns\\Author;
+use $ns\\User;
+
+(new Author())->relation((new User())->matchUserSeqWithSeq()->aliasUnused())->get();
+PHP;
+        [$code, $err, $dir] = self::generate('unused-relation-alias', ['usage.php' => $source]);
+        self::assertSame(0, $code, $err);
+        self::assertNotContains('getUnused', self::tags($dir, 'Author'));
+    }
+
     // Requirements: DBS-118.
     public function testANestedRelationAliasDeclaresItsGetterOnTheModelItAliasesOn(): void
     {
@@ -1061,6 +1179,7 @@ PHP;
 declare(strict_types=1);
 
 use $ns\\Author;
+use $ns\\ServiceMember;
 use $ns\\User;
 
 function calls(Author \$a, User \$u, Polyspec\\Orm\\Db \$db): Author
@@ -1070,6 +1189,10 @@ function calls(Author \$a, User \$u, Polyspec\\Orm\\Db \$db): Author
     \$a->getsBySeqAndIsClose(1, false);
     \$a->orderBySeqDescAndNameAsc()->joinUserSeqWithSeq(\$u)->tupleUserSeqWithServiceSeq([[1, 2]]);
     \$a->aliasMine()->newExtra(1)->possibleSeq(1);
+    \$a->getServiceMemberModels();
+    \$a->getUserModel();
+    \$a->relations((new ServiceMember())->matchServiceSeqWithServiceSeq()->aliasMembers())->get()?->getMembers();
+    \$a->relation((new User())->matchUserSeqWithSeq()->aliasWriter())->gets()->first()?->getWriter();
     (new Author())->gtSeq(1)->andLeReadCount(2);
     (new Author())(\$db)->andLtEndDt(new DateTimeImmutable())->orderBySeqAsc();
     \$u->neName('x');
@@ -1143,11 +1266,43 @@ PHP;
             }
             return [$findings, $out . $err, $status];
         };
+        $consumer = <<<PHP
+<?php
+declare(strict_types=1);
+
+use {$ns}\\Author;
+use {$ns}\\ServiceMember;
+use {$ns}\\User;
+
+function canonicalMember(Author \$author): ServiceMember
+{
+    return \$author->getServiceMemberModels()->get(1) ?? throw new RuntimeException();
+}
+
+function aliasedMember(Author \$author): ServiceMember
+{
+    return \$author->getMembers()->get(1) ?? throw new RuntimeException();
+}
+
+function nullableCanonicalUser(Author \$author): ?User
+{
+    return \$author->getUserModel();
+}
+
+function nullableAliasedUser(Author \$author): ?User
+{
+    return \$author->getWriter();
+}
+PHP;
+        file_put_contents("$dir/relation-consumer.php", $consumer);
         [$findings, $raw] = $analyse("$dir/src/usage.php");
         $notFound = array_values(
             array_filter($findings, static fn(string $line): bool => str_ends_with($line, '[method.notFound]'))
         );
         self::assertSame([], $notFound, "method.notFound:\n" . implode("\n", $notFound) . "\n$raw");
+        [$relationFindings, $relationRaw, $relationStatus] = $analyse("$dir/relation-consumer.php");
+        self::assertSame(0, $relationStatus, "relation getter types:\n$relationRaw");
+        self::assertSame([], $relationFindings, "relation getter types:\n$relationRaw");
         [$control, $controlRaw, $controlStatus] = $analyse("$dir/control.php");
         self::assertSame(1, $controlStatus, "the control call is declared:\n$controlRaw");
         self::assertNotSame(
