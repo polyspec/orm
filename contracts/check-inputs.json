@@ -51,6 +51,7 @@
     "client-unit-check": {"scope": "owner", "needs": ["php", "composer", "node-modules"], "inputs": ["packages/php/tests/InsertPartsTest.php", "packages/ts/tests/insert-parts.mjs", "packages/php/tests/DsnTest.php", "packages/php/tests/MarkdownTest.php", "packages/php/tests/markdown_fake_server.php", "packages/php/tests/RelationKeysTest.php", "packages/php/tests/HostcodecTest.php", "packages/php/tests/CodecAesVectorsTest.php", "tests/codec/aes-vectors.json", "tests/codec/decode-vectors.json", "packages/php/tests/EngineTest.php", "tests/ir/validate.json", "packages/php/tests/RuntimeModelTest.php", "packages/php/tests/OrmGenTest.php", "packages/php/tests/PerfExtensionsTest.php"]},
     "php-min-check": {"scope": "owner", "needs": ["php-min", "composer"], "inputs": ["scripts/php/php-min.mts"]},
     "ts-check": {"scope": "suite", "needs": ["go", "node-modules", "databases"]},
+    "ts-save-key-check": {"scope": "owner", "needs": ["go", "node-modules"], "inputs": ["packages/ts/src/model.ts", "packages/ts/tests/save-key-errors.test.mjs"]},
     "ts-min-check": {"scope": "owner", "needs": ["go", "node-modules", "databases"], "inputs": ["scripts/typescript/node-min.mts"]},
     "group-rows-db-go": {"scope": "owner", "needs": ["go", "databases"], "inputs": ["packages/go/model/group_rows_db_test.go"]},
     "group-rows-db-python": {"scope": "owner", "needs": ["python", "databases"], "inputs": ["packages/python/tests/test_group_rows_db.py","packages/python/src/polyspec/orm/**"]},

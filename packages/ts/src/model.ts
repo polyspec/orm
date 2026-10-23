@@ -759,12 +759,16 @@ export function insertParts(rows: number, batch: number): number[] {
   return parts;
 }
 
+class MissingKey extends OrmError {
+  public constructor(message: string) { super(codes.CONFIG, message); }
+}
+
 function keyValues(c: Core, schema: Entity): Map<string, unknown> {
   const keys = new Map<string, unknown>();
   for (const pk of schema.primaryKey) {
     if (c.row?.loaded) { keys.set(pk, c.row.original.get(pk)); continue; }
     const s = c.sets.find(s => s.column === pk && !s.plus && !s.minus && !s.null);
-    if (!s) throw configError(`${schema.name} requires a loaded row or set primary key ${pk}`);
+    if (!s) throw new MissingKey(`${schema.name} requires a loaded row or set primary key ${pk}`);
     keys.set(pk, s.value);
   }
   return keys;
@@ -845,7 +849,10 @@ async function update(c: Core, optimistic: boolean): Promise<void> {
 async function save(c: Core): Promise<Model> {
   terminal(c);
   let known = true;
-  try { keyValues(c, c.ent.entity); } catch { known = false; }
+  try { keyValues(c, c.ent.entity); } catch (error) {
+    if (!(error instanceof MissingKey)) throw error;
+    known = false;
+  }
   if (known) {
     await update(c, false);
     return asModel(c.self);
