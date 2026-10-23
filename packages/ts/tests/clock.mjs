@@ -10,8 +10,9 @@
 //
 // Usage: node packages/ts/tests/clock.mjs [case ...] (after npm run typescript:build)
 import { readFile } from 'node:fs/promises';
+import { models } from './registered_models.mjs';
 import { DatabaseSync } from 'node:sqlite';
-import { CORE, Db, Model, dbspecManifest, orm, parseDbspec, registerModel } from '../dist/index.js';
+import { CORE, Db, Model, dbspecManifest, orm, parseDbspec } from '../dist/index.js';
 import { wallMicros } from '../dist/clock.js';
 import { caseTest } from '../../../tests/testcase.mts';
 import { mysqlConnection, postgresClient, withCaseDatabase } from './case-database.mjs';
@@ -32,20 +33,6 @@ function check(cond, message) {
   if (!cond) { failures++; console.error(`FAIL ${current}: ${message}`); }
 }
 
-/** Registers the model of a document set as generated code does and returns a model class per entity. */
-function models(text) {
-  const parsed = parseDbspec(text, {});
-  if (parsed.document === null) throw new Error(JSON.stringify(parsed.diagnostics));
-  const { manifest } = dbspecManifest([parsed.document]);
-  const model = registerModel(manifest.manifestText, manifest.manifestHash);
-  const out = {};
-  for (const entity of model.entities.values()) {
-    const cls = class extends Model {};
-    cls.entity = { model, entity, create: core => new cls(core) };
-    out[entity.name] = cls;
-  }
-  return out;
-}
 const { clock_event: ClockEvent } = models(clockText);
 const { clock_mark: ClockMark } = models(markText);
 

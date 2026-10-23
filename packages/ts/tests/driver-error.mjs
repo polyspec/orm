@@ -10,7 +10,8 @@
 //
 // Usage: node packages/ts/tests/driver-error.mjs [case ...] (after npm run typescript:build)
 import { readFile } from 'node:fs/promises';
-import { CORE, Db, Model, OrmError, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
+import { models } from './registered_models.mjs';
+import { CORE, Db, OrmError, dbspecManifest, parseDbspec } from '../dist/index.js';
 import { caseTest } from '../../../tests/testcase.mts';
 import { withCaseDatabase } from './case-database.mjs';
 
@@ -32,20 +33,6 @@ async function raised(run) {
   try { await run(); return undefined; } catch (error) { return error; }
 }
 
-/** Registers the model of a document set as generated code does and returns a model class per entity. */
-function models(text) {
-  const parsed = parseDbspec(text, {});
-  if (parsed.document === null) throw new Error(JSON.stringify(parsed.diagnostics));
-  const { manifest } = dbspecManifest([parsed.document]);
-  const model = registerModel(manifest.manifestText, manifest.manifestHash);
-  const out = {};
-  for (const entity of model.entities.values()) {
-    const cls = class extends Model {};
-    cls.entity = { model, entity, create: core => new cls(core) };
-    out[entity.name] = cls;
-  }
-  return out;
-}
 const { refused_row: RefusedRow } = models(refusalText);
 const row = (db, amount) => { const m = new RefusedRow().connect(db); m[CORE].setValue('amount', amount); return m; };
 

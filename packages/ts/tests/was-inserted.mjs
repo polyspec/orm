@@ -4,9 +4,10 @@
 //
 // Usage: node --test packages/ts/tests/was-inserted.mjs (after npm run typescript:build)
 import { readFile } from 'node:fs/promises';
+import { models } from './registered_models.mjs';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { CORE, Db, Model, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
+import { CORE, Db, dbspecManifest, parseDbspec } from '../dist/index.js';
 import { caseTest } from '../../../tests/testcase.mts';
 import { withCaseDatabase } from './case-database.mjs';
 
@@ -19,20 +20,6 @@ function schemaOf(text) {
   return { manifestText: manifest.manifestText, manifestHash: manifest.manifestHash };
 }
 
-/** Registers the model of a document set as generated code does and returns a model class per entity. */
-function models(text) {
-  const parsed = parseDbspec(text, {});
-  if (parsed.document === null) throw new Error(JSON.stringify(parsed.diagnostics));
-  const { manifest } = dbspecManifest([parsed.document]);
-  const model = registerModel(manifest.manifestText, manifest.manifestHash);
-  const out = {};
-  for (const entity of model.entities.values()) {
-    const cls = class extends Model {};
-    cls.entity = { model, entity, create: core => new cls(core) };
-    out[entity.name] = cls;
-  }
-  return out;
-}
 const { clock_event: ClockEvent } = models(clockText);
 
 /** The error code that call throws, or 'none'. */
