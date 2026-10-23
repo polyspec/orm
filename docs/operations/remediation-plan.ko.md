@@ -1,5 +1,5 @@
 <!-- doc-id: remediation-plan -->
-<!-- source-sha256: ba708fba4218dab4509c06e3a82e5df24aff909ed49cd288144cf18c176c2d8e -->
+<!-- source-sha256: 9c3f9bfd607e68ef4dc72c2518bcb5bff0dd96487c71149d785acd4cb9414eab -->
 # 남은 작업의 진단과 해결 방안
 
 [English](remediation-plan.md)
@@ -127,7 +127,7 @@
 | KSTD-5-69 | Rust `packages/rust/build/src/catalog/mutation_finish.rs:40`, pinned Tokio 1.53.1: 고정 Tokio 1.53.1에서 Rust `JoinError`는 이미 panic payload를 출력한다. string, `String`, non-string, abort 분류를 기존 동작으로 검사한다. opaque debug 출력이나 production 변경을 꾸미지 않는다. |
 | KSTD-5-70 | Rust build library `packages/rust/build/src/lib.rs:142`: 상대 입력은 `OUT_DIR`로 해석하고 cwd fallback을 하지 않는다. 절대 입력은 env 없이 허용한다. build library의 load 경로에서 상대/절대 경로와 env 유무 및 해결 가능한 오류를 검사한다. 이는 KSTD-5-65와 별개다. 빈 env나 상대 입력에 대한 새 정책을 추가하지 않는다. |
 | KSTD-5-71 | Rust codec/driver/Markdown/tool/catalog 오류 매핑은 57-6/7/10에서 원래 cause message를 보존한다. typed cause/source chain을 약속하지 않는다. 각 단계 malformed 값을 증명하고 public typed error API를 추가하지 않는다. |
-| KSTD-5-72 | Go `packages/go/generator/gen_go.go:457,495`, `packages/go/orm/core.go:30`, `packages/go/orm/model.go:122`: `Entity.Value(any,bool)`는 error 반환형이 아니다. 생성 Go가 presence를 버리며 `Model.__get`은 없다. 잘못된 전제다. 공개 API를 바꾸지 않는다. missing column과 SQL NULL 구분 결함이 있으면 좁은 새 항목으로 증명한다. |
+| KSTD-5-72 | 독립 소스 감사(`var/parallel/KSTD-5-72/audit.md`)에서 체크리스트 전제가 틀렸음을 확인했다. `Entity.Value`는 error가 아니라 `(any, bool)`을 반환하고, 생성 접근자는 알려진 nullable 필드에 `nil, true`, 알 수 없는 이름에 `nil, false`를 반환한다. `Core.value`는 존재 여부를 무시하지만, 정상 경로의 결과를 바꾸는 호출처는 감사에서 입증되지 않았다. 인용된 저장 호출은 로드된 암호화 필드 이름을 사용한다. 공개 API는 유지하고 `[-]`로 닫는다. 빌드와 테스트는 실행하지 않았다. missing column과 SQL NULL 구분 결함은 별도 근거 항목으로 제시해야 한다. |
 | KSTD-5-73 | TS `packages/ts/src/codec.ts` AES catch는 `decipher.final()`만 감싼다. 고정 Node/OpenSSL bad tag는 구조화 code가 없고 정확한 메시지는 `Unsupported state or unable to authenticate data`다. 첫 final 호출의 새 오류에 이 메시지와 code 부재가 모두 맞을 때만 매핑한다. 그 외에는 동일 오류 객체를 유지한다. phase 경계와 인증 전 평문 부재 검사. |
 | KSTD-5-74 | TS `packages/ts/src/model.ts` save/keyValues: save는 private non-exported `MissingKey extends OrmError(CONFIG)`만 잡는다. 이는 명시적 key 누락에서만 발생한다. 다른 getter CONFIG 오류는 동일 객체를 유지한다. loaded update, missing create, valid zero, 다른 오류에서 plan/write 없음 검사. |
 | KSTD-5-75 | TS `packages/ts/src/codec.ts`: codec 재포장은 identity를 잃고 prefix를 중복한다. 기존 CodecError는 동일 객체, 외부 parser는 cause와 함께 DECODE. 2인자와 code union을 유지하며 optional ErrorOptions를 추가한다. UTF8/JSON/YAML/policy/anchor/native cause/null 검사. |
