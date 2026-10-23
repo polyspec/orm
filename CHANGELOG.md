@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The lint findings in the orm test files statement_fault, request_hook and common/audit_rows are fixed, so `make lint-rust` reports no finding in them (KSTD-5-57-13).
 - The lint findings in the orm test files listen_notify, register, clock and was_inserted are fixed, so `make lint-rust` reports no finding in them (KSTD-5-57-12).
 - The lint findings in the orm test files revision.rs and statement_events.rs are fixed, so `make lint-rust` reports no finding in them (KSTD-5-57-11).
 - The lint findings in the other build sources tool_db, catalog and lib are fixed, so `make lint-rust` reports no finding in them (KSTD-5-57-10).
