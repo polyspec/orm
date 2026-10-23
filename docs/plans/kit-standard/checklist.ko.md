@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: df2d4c4ca3a06c61bbc2a9da2bf8204c32e0b0cf6b79b60fca367c68c7de126f -->
+<!-- source-sha256: c863009a043e2ba4392bd69cd0f28922537d92fa0138347343d5c044cf742f3f -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -210,7 +210,7 @@
 | KSTD-15 | TypeScript build cache packages/ts/tsconfig.build.tsbuildinfo와 형제 *.tsbuildinfo는 Git이 무시하고 생성 경로로 선언한다(AGENTS.md의 generated-files 규칙). 원인: 이 캐시는 build마다 main checkout에 추적되지 않은 채 다시 나타나 generated-files 규칙을 어긴다. 인수 조건: .gitignore가 어느 깊이의 *.tsbuildinfo든 무시하고, config/generated.json이 **/*.tsbuildinfo를 선언하며, build 뒤 git status에 tsbuildinfo가 없다. 현재 빨간 상태: git check-ignore가 packages/ts/tsconfig.build.tsbuildinfo의 규칙을 찾지 못하고, make build 뒤 git status가 그 파일을 보고한다. | .gitignore, config/generated.json | `sh -c "git check-ignore -q packages/ts/tsconfig.build.tsbuildinfo && git check-ignore -q packages/ts/sibling.tsbuildinfo"` | [o] |
 | KSTD-5-57-14b | add_tables_and_columns, dbspec_plan_apply, collection_identity의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests add_tables_and_columns, dbspec_plan_apply, collection_identity | `make lint-rust` reports no finding in these files | [o] |
 | KSTD-5-57-18b | build 테스트 read_only_query.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/build/tests/read_only_query.rs | `make lint-rust` reports no finding in this file | [ ] |
-| KSTD-5-57-14c | orm 테스트 dbspec_introspect.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests/dbspec_introspect.rs | `make lint-rust` reports no finding in this file | [ ] |
+| KSTD-5-57-14c | orm 테스트 dbspec_introspect.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests/dbspec_introspect.rs | `make lint-rust` reports no finding in this file | [o] |
 | KSTD-5-57-18c | sqlite_concurrency.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests/sqlite_concurrency.rs | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-18d | lock_probe_order.rs의 미사용 import를 고친다 (KSTD-5-57 하위) | packages/rust/build/tests/lock_probe_order.rs | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-18e | packages/rust/tests의 catch-check 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/tests/tests/integration/coverage_schema_install.rs, packages/rust/tests/tests/markdown_conformance.rs | `make lint-rust` reports no finding in these files | [ ] |

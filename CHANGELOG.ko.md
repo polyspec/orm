@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: bb44fb9f229de8e1e694deec749780aaee62a0aaaeac777a1c65f03cf6e9ea7d -->
+<!-- source-sha256: a5c87c2e96751eedee4e3a60a0228ae1197b228fc0bee5d55e39399995de053d -->
 # 변경 이력
 
 ## Unreleased
 
+- orm test dbspec_introspect.rs의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-14c).
 - orm test add_tables_and_columns, dbspec_plan_apply, collection_identity의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-14b).
 - 나머지 orm test file의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-14).
 - orm test statement_fault, request_hook, common/audit_rows의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-13).
