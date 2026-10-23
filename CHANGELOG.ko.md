@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 441280e9c1196a05beba66455f841a647ae180bd39299a7505664e7a8b32958f -->
+<!-- source-sha256: 3b3d33d8c12436e5bd0d05d3ecbc5a68cf70c552816ae78f9184252eb1d8524d -->
 # 변경 이력
 
 ## Unreleased
 
+- TypeScript `save()`는 키 누락 `OrmError`에 대해서만 insert로 전환한다. set key를 읽을 때 발생한 다른 `CONFIG` 오류는 caller에게 전달한다. `make ts-save-key-check`가 생성/수정 정상 경로 세 개와 sentinel 오류 case를 통과한다(KSTD-5-74). Red: 기존 구현은 정상 경로는 통과했지만 sentinel을 삼켜 `Missing expected rejection`으로 실패했다.
 - ORM이 `WORKTREE_STOP = orm-test-servers-stop`을 선언해 kit worktree 정리 과정에서 제거 전에 서버를 멈춘다. `node --test scripts/repo/worktree-stop.test.mts`가 Makefile-origin reader, 제거 전 stop, stop 실패 시 보존 case를 통과한다(T237). Red: c5755a5ddc46에서 같은 test는 `stopTargetOf()`가 `undefined`를 반환해 실패했다.
 - PHP Collection의 get()과 first()가 nullable 반환값에서 호출자의 model type을 유지한다. static CI group에서 generic model parameter로 두 조회를 검사하며 type argument 없는 collection 반복의 기존 동작도 유지한다 (KSTD-5-82).
 - Rust lint gate의 workspace clippy 실행 3개와 Rust catch check가 suppression 없이 모두 통과한다. f5f9b5993 이전 코드에서 마지막 catch-check 실패를 재현했고 복원한 tree는 4단계를 모두 통과한다 (KSTD-5-57).
