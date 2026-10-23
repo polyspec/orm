@@ -40,3 +40,13 @@ export class ParameterPropertyConstructor {
 export class ConstructorWithoutOptionalParameter {
   constructor(_message: string) {}
 }
+
+export class ConstructorBase {
+  constructor(value: string, options?: ErrorOptions) {
+    void value;
+    void options;
+  }
+}
+
+export class ImplicitConstructor {}
+export class InheritedConstructor extends ConstructorBase {}

@@ -57,6 +57,8 @@ caseTest('the TypeScript extractor records public constructor signatures without
   assert.deepEqual(symbols['typescript-constructor.ts::ParameterPropertyConstructor#field.label'], { signature: 'string', exported: false });
 
   assert.equal(get('ConstructorWithoutOptionalParameter').signature, 'class ConstructorWithoutOptionalParameter { constructor(_message: string); }');
+  assert.equal(get('ImplicitConstructor').signature, 'class ImplicitConstructor');
+  assert.equal(get('InheritedConstructor').signature, 'class InheritedConstructor');
   assert.ok(!JSON.stringify(symbols).includes('bodyOnly'), 'a constructor body leaked into the public signature');
   assert.ok(!JSON.stringify(symbols).includes('implementationOnly'), 'an overload implementation leaked into the public signature');
 
