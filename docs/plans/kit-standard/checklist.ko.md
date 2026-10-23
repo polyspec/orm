@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 70e94b01ab880e176b80054edb58b76460847addde997efa3cd68954283c7906 -->
+<!-- source-sha256: 4ffa6596ea64815b4914333e2ba310f671350ef911fa966ab80ad55b099f5e0a -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -157,7 +157,7 @@
 | KSTD-5-54 | 생성된 gets()는 모델로 매개변수화된 Collection을 반환하고, 한 행 get()은 문서화된 null 계약(Model\|null)을 유지한다 | `packages/php/src/Collection.php`, `packages/php/src/ChainDeclare.php` | `make collection-raw-phpstan-check` | [o] |
 | KSTD-5-55 | main의 Rust clippy가 통과한다: orm/src/lib.rs가 mysql_code_tests 테스트 모듈을 impl 항목 앞에 두어 -D warnings 아래 clippy가 items_after_test_module로 거부하므로 main의 make rust-check가 실패한다 | packages/rust/orm/src/lib.rs | `make rust-check` | [o] |
 | KSTD-5-56 | main의 Rust clippy가 통과한다: packages/rust/build/tests/lock_probe_order.rs가 쓰지 않는 AtomicU8을 import하여 -D warnings 아래 clippy가 unused_imports로 거부하므로 main의 make rust-check가 실패한다 | packages/rust/build/tests/lock_probe_order.rs | `make rust-check` | [o] |
-| KSTD-5-57 | make lint-rust가 main에서 통과한다: 금지된 unwrap_or_else와 must_use let을 고친다 | benchmarks/rust/src/driver_compare.rs, benchmarks/rust/src/native.rs, packages/rust/testcase/src/lib.rs | `make lint-rust` exits 0 with no finding | [ ] |
+| KSTD-5-57 | make lint-rust가 main에서 통과한다: 금지된 unwrap_or_else와 must_use let을 고친다 | benchmarks/rust/src/driver_compare.rs, benchmarks/rust/src/native.rs, packages/rust/testcase/src/lib.rs | `make lint-rust` exits 0 with no finding. 근거 (2026-10-23): make item-red ID=KSTD-5-57 BEFORE=f5f9b5993^가 packages/rust/orm/tests/zone.rs:26의 catch-check 거부를 재현한다(make lint-rust 종료 2). 복원 후 make item-test ID=KSTD-5-57은 suppression 없이 lint 4단계를 모두 통과한다. main tree에서도 4단계가 모두 통과한다. mysql_code_tests::mysql_lock_wait_timeout_is_canceled와 lock_probe_order 단위 실행은 각각 1개 case를 통과했고, scripts/version/check.test.mts는 5개 case, make docs-check는 Markdown case 5개와 문서 쌍 50개 및 checklist 2개를 통과했다. | [o] |
 | KSTD-5-57-1 | 벤치마크와 testcase crate의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | benchmarks/rust/src/driver_compare.rs, benchmarks/rust/src/native.rs, packages/rust/testcase/src/lib.rs | `make lint-rust` reports no finding in these files | [o] |
 | KSTD-5-57-2 | schema introspection crate의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/schema/src/dbspec/introspect/mysql.rs, postgres.rs, sqlite.rs | `make lint-rust` reports no finding in these files | [o] |
 | KSTD-5-57-3 | schema parser와 interface-symbols bin의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/schema/src/dbspec/parser.rs, literal.rs, set.rs, mermaid.rs, the interface-symbols binary | `make lint-rust` reports no finding in these files | [o] |
