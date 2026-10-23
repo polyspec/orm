@@ -118,6 +118,14 @@ async function observed<T>(name: DriverName, sql: string, done: StatementDone, o
 /** Milliseconds a SQLite connection waits for a lock when the DSN sets no _pragma=busy_timeout(ms). */
 const SQLITE_BUSY_TIMEOUT_MS = 5000;
 
+/** Checks the SQLite library version. @internal */
+function checkSqliteVersion(version: string): void {
+  const [major = 0, minor = 0] = version.split('.').map(Number);
+  if (major < 3 || (major === 3 && minor < 46)) {
+    throw new OrmError(codes.CAPABILITY_UNSUPPORTED, `SQLite ${version} is older than 3.46`);
+  }
+}
+
 /**
  * `value` as a parameter of a statement; a value that no driver binds is a CODEC_ENCODE error that names `what`.
  *
@@ -970,10 +978,11 @@ export function openDriver(dsn: string, parsed: SqlDsn, bounds: PoolBounds, stat
       const db = new DatabaseSync(sqlitePath(url), { timeout: busyTimeout ? Number(busyTimeout[1]) : SQLITE_BUSY_TIMEOUT_MS });
       // The version of the SQLite library that node:sqlite links. The connection does not send a statement that asks for it.
       const version = process.versions.sqlite ?? '';
-      const [major = 0, minor = 0] = version.split('.').map(Number);
-      if (major < 3 || (major === 3 && minor < 46)) {
+      try {
+        checkSqliteVersion(version);
+      } catch (error) {
         db.close();
-        throw new OrmError(codes.CAPABILITY_UNSUPPORTED, `SQLite ${version} is older than 3.46`);
+        throw error;
       }
       db.exec('PRAGMA foreign_keys = ON');
       for (const [name, value] of pragmas) db.exec(`PRAGMA ${name} = ${value}`);

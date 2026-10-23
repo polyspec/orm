@@ -388,6 +388,22 @@ fn pool_options<DB: sqlx::Database>(size: u32, idle: u32, lifetime_ms: u32, owne
     options
 }
 
+fn check_sqlite_version(version: &str) -> Result<()> {
+    let mut parts = version.split('.');
+    let mut number = |what: &str| -> Result<u32> {
+        let Some(part) = parts.next() else {
+            return Err(Error::internal(format!("the SQLite library version {version} has no {what} number")));
+        };
+        part.parse::<u32>()
+            .map_err(|error| Error::internal(format!("the SQLite library version {version} has a {what} number {part:?} that is not a number: {error}")))
+    };
+    let (major, minor) = (number("major")?, number("minor")?);
+    if major < 3 || (major == 3 && minor < 46) {
+        return Err(Error::Engine { code: codes::CAPABILITY_UNSUPPORTED.into(), msg: format!("SQLite {version} is older than 3.46") });
+    }
+    Ok(())
+}
+
 impl Db {
     /// Connects to the database selected by the DSN URI and registers the set
     /// of a generated schema on the connection, as `utils().schema().register`
@@ -495,18 +511,7 @@ impl Db {
                 let version = libsqlite3_sys::SQLITE_VERSION
                     .to_str()
                     .map_err(|error| Error::internal(format!("the SQLite library version is not UTF-8: {error}")))?;
-                let mut parts = version.split('.');
-                let mut number = |what: &str| -> Result<u32> {
-                    let Some(part) = parts.next() else {
-                        return Err(Error::internal(format!("the SQLite library version {version} has no {what} number")));
-                    };
-                    part.parse::<u32>()
-                        .map_err(|error| Error::internal(format!("the SQLite library version {version} has a {what} number {part:?} that is not a number: {error}")))
-                };
-                let (major, minor) = (number("major")?, number("minor")?);
-                if major < 3 || (major == 3 && minor < 46) {
-                    return Err(Error::Engine { code: codes::CAPABILITY_UNSUPPORTED.into(), msg: format!("SQLite {version} is older than 3.46") });
-                }
+                check_sqlite_version(version)?;
                 Pool::Sqlite(pool)
             }
         };
