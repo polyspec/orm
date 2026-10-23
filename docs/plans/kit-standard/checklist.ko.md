@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 3c16dbaa495f2ad5bf7866bb6b041a2ee57e0e0b920da4e8dfa2aaaa5acaffd9 -->
+<!-- source-sha256: f9013a8793741e3164ea9bc68d74102599c87c0f7eba9e1105163247eebf29d5 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -158,7 +158,7 @@
 | KSTD-5-55 | main의 Rust clippy가 통과한다: orm/src/lib.rs가 mysql_code_tests 테스트 모듈을 impl 항목 앞에 두어 -D warnings 아래 clippy가 items_after_test_module로 거부하므로 main의 make rust-check가 실패한다 | packages/rust/orm/src/lib.rs | `make rust-check` | [ ] |
 | KSTD-5-56 | main의 Rust clippy가 통과한다: packages/rust/build/tests/lock_probe_order.rs가 쓰지 않는 AtomicU8을 import하여 -D warnings 아래 clippy가 unused_imports로 거부하므로 main의 make rust-check가 실패한다 | packages/rust/build/tests/lock_probe_order.rs | `make rust-check` | [ ] |
 | KSTD-5-57 | make lint-rust가 main에서 통과한다: 금지된 unwrap_or_else와 must_use let을 고친다 | benchmarks/rust/src/driver_compare.rs, benchmarks/rust/src/native.rs, packages/rust/testcase/src/lib.rs | `make lint-rust` exits 0 with no finding | [ ] |
-| KSTD-5-57-1 | 벤치마크와 testcase crate의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | benchmarks/rust/src/driver_compare.rs, benchmarks/rust/src/native.rs, packages/rust/testcase/src/lib.rs | `make lint-rust` reports no finding in these files | [ ] |
+| KSTD-5-57-1 | 벤치마크와 testcase crate의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | benchmarks/rust/src/driver_compare.rs, benchmarks/rust/src/native.rs, packages/rust/testcase/src/lib.rs | `make lint-rust` reports no finding in these files | [o] |
 | KSTD-5-57-2 | schema introspection crate의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/schema/src/dbspec/introspect/mysql.rs, postgres.rs, sqlite.rs | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-3 | schema parser와 interface-symbols bin의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/schema/src/dbspec/parser.rs, literal.rs, set.rs, mermaid.rs, the interface-symbols binary | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-4 | schema 테스트 target의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/schema/tests dbspec_mermaid, dbspec_set_parse, dbspec_show_create, dbspec_render, common/dbspec_values | `make lint-rust` reports no finding in these files | [ ] |

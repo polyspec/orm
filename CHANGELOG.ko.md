@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 7c578af643d185fb0a5f3dc16dfbbdf11890373862a803f98375301622ae7b82 -->
+<!-- source-sha256: cb8876d629093886fdbab70549977b2977c91e1eb4ee82600cbafabd04cec4d0 -->
 # 변경 이력
 
 ## Unreleased
 
+- benchmarks의 driver_compare.rs와 native.rs, testcase의 lib.rs의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-1).
 - `packages/rust/orm/tests/zone.rs`의 디렉터리 helper에 Err 분기의 문장을 준다. 없는 디렉터리는 무시하고 다른 error는 원인과 함께 panic하므로 catch check(K537)가 통과한다(KSTD-5-57-19). red: catch check가 zone.rs:26의 문장 없는 Err 분기를 보고했다.
 - extension의 paramUses는 다중 row insert의 각 row에 그 row 자신의 위치의 column을 준다. 그래서 모든 row의 parameter가 자기 column을 받으며, PHP 경로와 같다(KSTD-5-80). red: MarkdownTest::testParamUses가 row를 owner, owner, owner와 title, title, title로 보고했다.
 - `testLimitColumnsPeak`는 limit/columns 문서를 PHP 기본 memory limit의 별도 process에서 parse하므로, 그 bound가 test run이 앞서 잡고 있는 메모리에 따라 달라지지 않는다(KSTD-5-58). red: parse 앞에서 88 MB를 잡고 있으면 bound가 음수가 되어 실패했다(`testLimitColumnsPeakAfterHeldMemory`).
