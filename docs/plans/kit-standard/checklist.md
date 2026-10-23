@@ -242,3 +242,4 @@
 | KSTD-5-78 | Treat only ESRCH as a gone process group in the step and test-server scripts | scripts/check/step.mts:63; scripts/test-servers.mts:203, :341 | `make scripts-typecheck` | [ ] |
 | KSTD-5-79 | Only ENOENT means no owners when a fixture cannot be read | scripts/features/owners.mts:60; scripts/check/databases.mts:85-99 | `make scripts-typecheck` | [ ] |
 | KSTD-5-80 | The extension gives a multi-row insert's second row the first row's columns in its parameter uses (MarkdownTest::testParamUses) | packages/php-ext/src/planner.c; packages/php/tests/MarkdownTest.php | `make dbspec-php-extension-check/markdown` | [o] |
+| KSTD-5-81 | The TypeScript package's ./testing export is nested under an orm-test key, so @polyspec/orm/testing does not resolve (rollback.mjs and statement_fault.mjs fail with ERR_PACKAGE_PATH_NOT_EXPORTED) | packages/ts/package.json | `node packages/ts/tests/rollback.mjs`, `node packages/ts/tests/statement_fault.mjs` | [ ] |
