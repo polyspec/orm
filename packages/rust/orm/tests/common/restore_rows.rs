@@ -23,39 +23,7 @@ macro_rules! row_model {
         static $entity: Entity =
             Entity { name: $entity_name, schema: &SCHEMA, new: polyspec_orm::model::new_boxed::<$name>, collect: polyspec_orm::model::collect_boxed::<$name> };
 
-        #[derive(Clone)]
-        pub struct $name {
-            core: Core,
-            pub values: BTreeMap<String, Val>,
-        }
-
-        impl Model for $name {
-            fn entity() -> &'static Entity {
-                &$entity
-            }
-            fn core(&self) -> &Core {
-                &self.core
-            }
-            fn core_mut(&mut self) -> &mut Core {
-                &mut self.core
-            }
-            fn from_core(core: Core) -> Self {
-                $name { core, values: BTreeMap::new() }
-            }
-            fn into_core(self) -> Core {
-                self.core
-            }
-            fn assign(&mut self, name: &str, v: Val) -> polyspec_orm::Result<bool> {
-                if !$columns.contains(&name) {
-                    return Ok(false);
-                }
-                self.values.insert(name.to_owned(), v);
-                Ok(true)
-            }
-            fn value(&self, name: &str) -> Option<Val> {
-                self.values.get(name).cloned()
-            }
-        }
+        model_row!($name, $entity, $columns);
     };
 }
 

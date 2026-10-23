@@ -1,9 +1,9 @@
 //! The row of a test model: a struct with its core and its column values, and the `Model` impl that reads and writes
 //! the values by the column names of the entity (KSTD-5-46).
 
-/// Defines the row `$row` of the entity `$entity`, whose column names are the constant `$columns`, with its `Model` impl.
+/// Defines the row `$row` of the entity `$entity`, whose column names are the columns `$columns`, with its `Model` impl.
 macro_rules! model_row {
-    ($row:ident, $entity:ident, $columns:ident) => {
+    ($row:ident, $entity:ident, $columns:expr) => {
         #[derive(Clone)]
         pub struct $row {
             pub core: polyspec_orm::Core,

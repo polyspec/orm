@@ -4,6 +4,9 @@
 //! MySQL, and PostgreSQL, each database runs in its own case database (polyspec-orm-case-database),
 //! and it fails if ORM_TEST_MYSQL_DSN or ORM_TEST_POSTGRES_DSN is missing.
 
+#[macro_use]
+#[path = "common/model_row.rs"]
+mod model_row;
 #[path = "common/audit_rows.rs"]
 mod audit_rows;
 

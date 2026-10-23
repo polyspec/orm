@@ -6,6 +6,9 @@
 mod or_panic;
 use or_panic::OrPanic;
 
+#[macro_use]
+#[path = "common/model_row.rs"]
+mod model_row;
 #[path = "common/audit_rows.rs"]
 mod audit_rows;
 #[path = "common/restore_rows.rs"]
@@ -13,9 +16,8 @@ mod restore_rows;
 
 use audit_rows::drop_tables;
 use polyspec_orm::db::Pool;
-use polyspec_orm::{Core, Db, Entity, Model, Param, Schema, Val};
+use polyspec_orm::{Core, Db, Entity, Model, Param, Schema};
 use sqlx::Row;
-use std::collections::BTreeMap;
 use std::time::Duration;
 
 /// The case deadline. It is wall-clock time, since it bounds what the database does.
@@ -103,39 +105,7 @@ macro_rules! columns_model {
             collect: polyspec_orm::model::collect_boxed::<$name>,
         };
 
-        #[derive(Clone)]
-        struct $name {
-            core: Core,
-            values: BTreeMap<String, Val>,
-        }
-
-        impl Model for $name {
-            fn entity() -> &'static Entity {
-                &$entity
-            }
-            fn core(&self) -> &Core {
-                &self.core
-            }
-            fn core_mut(&mut self) -> &mut Core {
-                &mut self.core
-            }
-            fn from_core(core: Core) -> Self {
-                $name { core, values: BTreeMap::new() }
-            }
-            fn into_core(self) -> Core {
-                self.core
-            }
-            fn assign(&mut self, name: &str, v: Val) -> polyspec_orm::Result<bool> {
-                if !$columns.contains(&name) {
-                    return Ok(false);
-                }
-                self.values.insert(name.to_owned(), v);
-                Ok(true)
-            }
-            fn value(&self, name: &str) -> Option<Val> {
-                self.values.get(name).cloned()
-            }
-        }
+        model_row!($name, $entity, $columns);
     };
 }
 
