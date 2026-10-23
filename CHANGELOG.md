@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- The PHP extension now implements the complete runtime Model surface and its native helper classes in C. On committed implementation `24a1e7e`, `make item-test ID=T182-6-14` passes 47 native tests (654 assertions), 3 declaration tests (8 assertions), and 10 PHP source comparison tests (68 assertions) on PHP 8.4.26 (T182-6-14).
+
 - The TypeScript interface extractor now records explicit constructor signatures, including access restrictions, overloads and optional ErrorOptions, without losing class keys or parameter-property fields. On committed implementation `35dae79ed`, `make interface-typescript-extractor-check` passes its compiler check and native case (1/1); the old extractor failed the ErrorOptions assertion (KSTD-5-86).
 
 - PHP relation declaration collection is now case-insensitive like PHP method calls, so uppercase `RELATIONS` retains relation-edge cardinality and CONFIG conflict checks. The focused regression fails before normalization and passes in `b4546a29d` with the relation cases and scan vectors (KSTD-5-84).

@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 62e9530eade1c9225cd04e021db5a2bd90398101ac8654c7a129b52de1b68602 -->
+<!-- source-sha256: 9c4df43c1966594181d13ebcd61efed165b870fa38c109d82baf227c76527479 -->
 # 변경 이력
 
 ## Unreleased
+
+- PHP extension이 runtime Model 전체 API와 native 보조 클래스를 C로 구현한다. PHP 8.4.26에서 커밋된 구현 `24a1e7e`의 `make item-test ID=T182-6-14`가 native test 47개(654 assertions), declaration test 3개(8 assertions), PHP source 비교 test 10개(68 assertions)를 통과한다(T182-6-14).
 
 - TypeScript 인터페이스 extractor가 접근 제한, overload, optional ErrorOptions를 포함한 명시적 생성자 signature를 기록하면서 class key와 parameter-property 필드를 보존한다. 구현 커밋 `35dae79ed`에서 `make interface-typescript-extractor-check`의 compiler 검사와 native case (1/1)가 통과했고, 기존 extractor는 ErrorOptions assertion에 실패했다 (KSTD-5-86).
 
