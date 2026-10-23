@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The lint findings in the orm test files restore_rows, coverage_audit_triggers and the others outside 13 to 16 are fixed, so `make lint-rust` reports no finding in them (KSTD-5-57-18).
 - The lint findings in the build test file generate.rs are fixed, so `make lint-rust` reports no finding in them (KSTD-5-57-17).
 - The lint findings in the orm test files external_documents, rollback, codec_vectors, ir_request and coverage_authenticated_encryption are fixed, so `make lint-rust` reports no finding in them (KSTD-5-57-16).
 - The lint findings in the test module of the orm tx.rs are fixed, so `make lint-rust` reports no finding in them (KSTD-5-57-15).

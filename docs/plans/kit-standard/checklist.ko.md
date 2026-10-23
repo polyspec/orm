@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: a6c2c783f4ab486e5755493b8ea0135a2892c2c7823a91ed2e7fbc015043269d -->
+<!-- source-sha256: 543b77bd9cdcb1c3ec614a4a957d79c21cd2891a8b1a8df704534c4a577dc1d1 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -175,7 +175,7 @@
 | KSTD-5-57-15 | orm tx.rs 테스트 모듈의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/src/tx.rs test module | `make lint-rust` reports no finding in these files | [o] |
 | KSTD-5-57-16 | external_documents, rollback, codec_vectors, ir_request, coverage_authenticated_encryption의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests external_documents, rollback, codec_vectors, unit/ir_request, coverage_authenticated_encryption | `make lint-rust` reports no finding in these files | [o] |
 | KSTD-5-57-17 | build 테스트 generate.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/build/tests/generate.rs | `make lint-rust` reports no finding in these files | [o] |
-| KSTD-5-57-18 | restore_rows, coverage_audit_triggers 및 13~16에 없는 orm 테스트 파일의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests common/restore_rows, coverage_audit_triggers, and other files not in 13 to 16 | `make lint-rust` reports no finding in these files | [ ] |
+| KSTD-5-57-18 | restore_rows, coverage_audit_triggers 및 13~16에 없는 orm 테스트 파일의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests common/restore_rows, coverage_audit_triggers, and other files not in 13 to 16 | `make lint-rust` reports no finding in these files | [o] |
 | KSTD-6 | link rebuild는 repository layout을 읽고 자기 paths를 두지 않는다 (kit K286). Cause: kit은 link된 checkout을 layout으로 rebuild하며 link 선언의 paths key는 없어진다 | kit.json, the link declaration | `make rebuild-check` | [o] |
 | KSTD-7 | main에서 feature-unit-check가 통과한다. Cause: docs/features.md가 그것이 그리는 coverage와 맞지 않고, scripts/features/coverage.test.mts의 8개 case가 "no package implements the client language php-extension"으로 실패한다 | docs/features.md, scripts/features | `make feature-unit-check` | [o] |
 | KSTD-7-1 | PHP extension이 the features schema_install, model_generation and interface_contract를 구현하고 PHP library의 test가 extension으로 이를 돌리며, 그 partial 상태를 지운다 (KSTD-7, T182-0 후속). Cause: S6와 S10은 partial feature를 받지 않고, kit K315는 contracts/features.json의 partial과 unsupported를 실패시킨다 | packages/php-ext, contracts/features.json | `make feature-unit-check` | [ ] |
