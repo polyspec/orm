@@ -2,19 +2,38 @@
 // their paths as STOP_PROCESS and LEASE.
 import assert from 'node:assert/strict';
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, watch, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createServer } from 'node:net';
 import { isolatedEnvironment } from '../tests/environment.mts';
-import { caseTest, COMPUTE, DATABASE } from '../tests/testcase.mts';
-import { environment, MYSQLD_BINLOG, mysqldArguments, paths, POSTGRES_LOCALE, postgresBaseBackupArguments, postgresEnvironment, startLogged, stopEarlierStart, stopPid } from './test-servers.mts';
+import { caseTest, COMPUTE, DATABASE, PROCESS } from '../tests/testcase.mts';
+import { environment, MYSQLD_BINLOG, mysqldArguments, paths, POSTGRES_LOCALE, postgresBaseBackupArguments, postgresEnvironment, startLogged, stopEarlierStart, stopPid, TestServerError } from './test-servers.mts';
 
 // processState is the state that ps reports for a process, empty when it is gone. exited is whether it has ended: an ended
 // process is gone, or a zombie (state Z) until the process that adopted it reaps it, and kill(pid, 0) still succeeds on a
 // zombie, so the state is read.
 const processState = (pid: number): string => spawnSync('ps', ['-o', 'stat=', '-p', String(pid)], { encoding: 'utf8' }).stdout.trim();
 const exited = (pid: number): boolean => { const state = processState(pid); return state === '' || state.startsWith('Z'); };
+
+function killAndWait(pid: number): void {
+  const stop = process.env.STOP_PROCESS;
+  assert.ok(stop, 'STOP_PROCESS is unset; run make orm-test-servers-check, which builds it');
+  const result = spawnSync(stop, ['KILL', String(pid)], { encoding: 'utf8', env: isolatedEnvironment() });
+  assert.equal(result.status, 0, result.stderr);
+}
+
+function cleanupStartedChild(dir: string, name: string): void {
+  try {
+    const file = join(dir, `${name}.pid`);
+    if (existsSync(file)) {
+      const pid = Number(readFileSync(file, 'utf8'));
+      if (!exited(pid)) killAndWait(pid);
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
 
 // The PostgreSQL locale cases. A PostgreSQL server with no locale in its environment fails at start with postmaster became
 // multithreaded during startup, so the tool sets LC_ALL for initdb and the server it starts, whatever the caller set.
@@ -76,7 +95,7 @@ caseTest('stopPid waits for the exit event of the server, with no polling', COMP
       const server = spawnSync('sh', ['-c', `mkfifo ${ready}
 sh -c 'trap "sleep ${delay}; kill \\$child; exit 0" TERM; sleep 30 & child=$!; echo ready > ${ready}; wait' >/dev/null 2>&1 &
 echo $! > ${pidFile}
-read state < ${ready}`], { timeout: 10_000 });
+read state < ${ready}`], { timeout: 10_000, env: isolatedEnvironment() });
       assert.equal(server.status, 0, String(server.stderr));
       const pid = Number(readFileSync(pidFile, 'utf8').trim());
       const started = Date.now();
@@ -104,7 +123,7 @@ caseTest('a start first stops the server an earlier start left on its datadir, b
     const server = spawnSync('sh', ['-c', `mkfifo ${ready}
 sh -c 'trap "kill \\$child; exit 0" TERM; sleep 30 & child=$!; echo ready > ${ready}; wait' >/dev/null 2>&1 &
 echo $! > ${p.proxysqlPid}
-read state < ${ready}`], { timeout: 10_000 });
+read state < ${ready}`], { timeout: 10_000, env: isolatedEnvironment() });
     assert.equal(server.status, 0, String(server.stderr));
     const pid = Number(readFileSync(p.proxysqlPid, 'utf8').trim());
     stopEarlierStart(p);
@@ -112,6 +131,97 @@ read state < ${ready}`], { timeout: 10_000 });
     assert.ok(!existsSync(p.dir), `${p.dir} is kept`);
   } finally {
     rmSync(root, { recursive: true, force: true });
+  }
+});
+
+caseTest('only ESRCH means a server is gone and other kill errors keep its data directory', COMPUTE, () => {
+  for (const code of ['EPERM', 'EINVAL']) {
+    const root = realpathSync(mkdtempSync(join(tmpdir(), 'orm-kill-error-')));
+    const p = paths(root, join(root, 'sockets'));
+    const failures = [Object.assign(new Error(`kill ${code}`), { code }), Object.assign(new Error('kill EINVAL'), { code: 'EINVAL' })];
+    const calls: number[] = [];
+    const originalKill = process.kill.bind(process);
+    try {
+      mkdirSync(p.dir, { recursive: true });
+      writeFileSync(p.pgbouncerPid, '51001\n');
+      writeFileSync(p.proxysqlPid, '51002\n');
+      process.kill = (pid: number) => {
+        calls.push(pid);
+        throw pid === 51001 ? failures[0] : failures[1];
+      };
+      assert.throws(() => stopEarlierStart(p), error => {
+        assert.ok(error instanceof TestServerError);
+        assert.ok(error.cause instanceof AggregateError);
+        assert.deepEqual(error.cause.errors, failures);
+        return true;
+      });
+      assert.deepEqual(calls, [51001, 51002]);
+      assert.ok(existsSync(p.dir), 'data directory was removed after a denied kill');
+    } finally {
+      process.kill = originalKill;
+      rmSync(root, { recursive: true, force: true });
+    }
+  }
+
+  const root = realpathSync(mkdtempSync(join(tmpdir(), 'orm-kill-gone-')));
+  const p = paths(root, join(root, 'sockets'));
+  const gone = Object.assign(new Error('already gone'), { code: 'ESRCH' });
+  const originalKill = process.kill.bind(process);
+  try {
+    mkdirSync(p.dir, { recursive: true });
+    writeFileSync(p.pgbouncerPid, '51003\n');
+    process.kill = () => { throw gone; };
+    stopEarlierStart(p);
+    assert.ok(!existsSync(p.dir), 'data directory remains for an absent process');
+  } finally {
+    process.kill = originalKill;
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+caseTest('a PID-file read failure is preserved before any kill check', COMPUTE, () => {
+  const root = realpathSync(mkdtempSync(join(tmpdir(), 'orm-pid-read-')));
+  const p = paths(root, join(root, 'sockets'));
+  const originalKill = process.kill.bind(process);
+  let called = false;
+  try {
+    mkdirSync(p.dir, { recursive: true });
+    mkdirSync(p.pgbouncerPid);
+    process.kill = () => { called = true; return true; };
+    assert.throws(() => stopEarlierStart(p), (error: TestServerError) => {
+      assert.ok(error.cause instanceof Error);
+      return (error.cause as NodeJS.ErrnoException).code === 'EISDIR';
+    });
+    assert.equal(called, false, 'kill ran after the PID-file read failed');
+    assert.ok(existsSync(p.dir), 'data directory was removed after a PID-file read failure');
+  } finally {
+    process.kill = originalKill;
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+caseTest('invalid PID-file values never signal unrelated processes or remove server data', COMPUTE, () => {
+  for (const value of ['0', '-1', 'NaN', '9007199254740992']) {
+    const root = realpathSync(mkdtempSync(join(tmpdir(), 'orm-pid-invalid-')));
+    const p = paths(root, join(root, 'sockets'));
+    const originalKill = process.kill.bind(process);
+    let called = false;
+    try {
+      mkdirSync(p.dir, { recursive: true });
+      writeFileSync(p.pgbouncerPid, `${value}\n`);
+      process.kill = () => { called = true; throw Object.assign(new Error('invalid PID probe'), { code: 'EPERM' }); };
+      assert.throws(() => stopEarlierStart(p), (error: TestServerError) => {
+        assert.match(error.message, /invalid PID file/);
+        assert.match(error.message, /run make orm-test-servers-check/);
+        assert.ok(error.cause instanceof Error);
+        return true;
+      });
+      assert.equal(called, false, `kill ran for invalid PID '${value}'`);
+      assert.ok(existsSync(p.dir), `data directory was removed for invalid PID '${value}'`);
+    } finally {
+      process.kill = originalKill;
+      rmSync(root, { recursive: true, force: true });
+    }
   }
 });
 
@@ -406,20 +516,63 @@ caseTest('startLogged fails loudly with its step and log path when the ready lin
   const log = join(dir, 'silent.log');
   try {
     await assert.rejects(
-      startLogged(dir, 'silent', 'line-never-printed', process.execPath, ['-e', 'setInterval(() => {}, 1000)'], undefined, 500),
+      startLogged(dir, 'silent', 'line-never-printed', process.execPath, ['-e', 'setInterval(() => {}, 1000)'], isolatedEnvironment(), 500),
       (error: Error) => error.message.includes('silent') && error.message.includes(log) && error.message.includes('line-never-printed'),
     );
   } finally {
-    const pid = Number(readFileSync(join(dir, 'silent.pid'), 'utf8'));
-    process.kill(pid, 'SIGKILL');
+    cleanupStartedChild(dir, 'silent');
+  }
+});
+
+caseTest('startLogged preserves its timeout and cleanup errors after closing the log watcher', PROCESS, async () => {
+  const dir = realpathSync(mkdtempSync(join(tmpdir(), 'orm-startlogged-cleanup-')));
+  const originalKill = process.kill.bind(process);
+  const originalWrite = process.stderr.write.bind(process.stderr);
+  const denied = Object.assign(new Error('process group is not signalable'), { code: 'EPERM' });
+  const forwarded: string[] = [];
+  let pid = 0;
+  let closeLateWatcher: (() => void) | undefined;
+  try {
+    process.kill = (target: number, signal?: NodeJS.Signals | number) => {
+      if (target < 0 && signal === 'SIGKILL') { pid = -target; throw denied; }
+      return originalKill(target, signal);
+    };
+    process.stderr.write = (chunk: string | Uint8Array) => { forwarded.push(String(chunk)); return true; };
+    await assert.rejects(startLogged(dir, 'blocked', 'never-ready', process.execPath, ['-e', 'setInterval(() => console.log("heartbeat"), 25)'], isolatedEnvironment(), 100), error => {
+      assert.ok(error instanceof TestServerError);
+      assert.match(error.message, /did not log 'never-ready'/);
+      assert.match(error.message, /cleanup of process group/);
+      const cause = error.cause;
+      assert.ok(cause instanceof AggregateError);
+      assert.ok(cause.errors[0] instanceof Error);
+      assert.match(cause.errors[0].message, /did not log 'never-ready'/);
+      assert.strictEqual(cause.errors[1], denied);
+      return true;
+    });
+    assert.ok(pid > 0, 'timeout did not attempt to kill the fake process group');
+    const countAtSettle = forwarded.length;
+    const offset = statSync(join(dir, 'blocked.log')).size;
+    await new Promise<void>(resolveLate => {
+      const late = watch(join(dir, 'blocked.log'), () => {
+        if (statSync(join(dir, 'blocked.log')).size > offset) { late.close(); closeLateWatcher = undefined; resolveLate(); }
+      });
+      closeLateWatcher = () => late.close();
+      if (statSync(join(dir, 'blocked.log')).size > offset) { late.close(); closeLateWatcher = undefined; resolveLate(); }
+    });
+    assert.equal(forwarded.length, countAtSettle, 'the log watcher forwarded output after timeout settlement');
+  } finally {
+    closeLateWatcher?.();
+    process.stderr.write = originalWrite;
+    process.kill = originalKill;
+    cleanupStartedChild(dir, 'blocked');
   }
 });
 
 caseTest('startLogged resolves when the ready line is written at once, before its watcher is attached', COMPUTE, async () => {
   const dir = realpathSync(mkdtempSync(join(tmpdir(), 'orm-startlogged-')));
   try {
-    await startLogged(dir, 'early', 'ready-at-once', process.execPath, ['-e', "console.log('ready-at-once'); setInterval(() => {}, 1000)"], undefined, 10_000);
+    await startLogged(dir, 'early', 'ready-at-once', process.execPath, ['-e', "console.log('ready-at-once'); setInterval(() => {}, 1000)"], isolatedEnvironment(), 10_000);
   } finally {
-    process.kill(Number(readFileSync(join(dir, 'early.pid'), 'utf8')), 'SIGKILL');
+    cleanupStartedChild(dir, 'early');
   }
 });

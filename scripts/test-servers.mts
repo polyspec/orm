@@ -30,13 +30,19 @@ import { closeSync, existsSync, mkdirSync, openSync, readFileSync, readSync, ren
 import { createHash } from 'node:crypto';
 import { join, resolve } from 'node:path';
 import { userInfo } from 'node:os';
+import { errorCode, errorMessage } from '../tests/errors.mts';
 
 const ROOT = resolve(import.meta.dirname, '..');
 
 /** TestServerError is a failure of the servers script; its message is the whole report, and main prints it. */
 export class TestServerError extends Error {
   readonly status: number;
-  constructor(message: string, status = 1) { super(message); this.status = status; }
+  constructor(message: string, status = 1, options?: ErrorOptions) { super(message, options); this.status = status; }
+}
+
+function shutdownError(message: string, errors: unknown[]): TestServerError {
+  const cause = errors.length === 1 ? errors[0] : new AggregateError(errors, message);
+  return new TestServerError(`${message}: ${errors.map(errorMessage).join('; ')}`, 1, { cause });
 }
 
 /** The paths of the servers of a checkout. */
@@ -198,9 +204,23 @@ function holdExclusive(p: Paths): void {
   if (held.status !== 0) throw new TestServerError('', held.status ?? 1);
 }
 
+function readPid(file: string): number {
+  const contents = readFileSync(file, 'utf8');
+  const value = contents.split('\n')[0] ?? '';
+  const pid = Number(value);
+  if (!/^[1-9]\d*$/.test(value) || !Number.isSafeInteger(pid)) {
+    const cause = new Error(`invalid positive process ID '${value}'`);
+    throw new TestServerError(`test-servers: invalid PID file ${file}: ${cause.message}; run make orm-test-servers-check, which writes server PID files`, 1, { cause });
+  }
+  return pid;
+}
+
 const pidRunning = (file: string): boolean => {
-  if (!existsSync(file)) return false;
-  try { process.kill(Number(readFileSync(file, 'utf8').split('\n')[0]), 0); return true; } catch { return false; }
+  let pid: number;
+  try { pid = readPid(file); }
+  catch (error) { if (errorCode(error) === 'ENOENT') return false; throw error; }
+  try { process.kill(pid, 0); return true; }
+  catch (error) { if (errorCode(error) === 'ESRCH') return false; throw error; }
 };
 const postgresRunning = (data: string): boolean =>
   existsSync(join(data, 'postmaster.pid')) && spawnSync('pg_ctl', ['-D', data, 'status'], { stdio: 'ignore' }).status === 0;
@@ -209,32 +229,42 @@ const postgresRunning = (data: string): boolean =>
 // operating system reports that the process has exited, through STOP_PROCESS (kqueue NOTE_EXIT on macOS, a pidfd on
 // Linux). Stopping is a long operation with no deadline, and the wait is that event, not polling.
 export function stopPid(file: string, signal = 'TERM'): void {
-  run(program('STOP_PROCESS'), [signal, readFileSync(file, 'utf8').split('\n')[0] ?? '']);
+  run(program('STOP_PROCESS'), [signal, String(readPid(file))]);
 }
 
 function stopMysql(p: Paths): void {
   // Through the server socket, shutdown returns after the server removes its pid file; through TCP it returns at once.
+  const errors: unknown[] = [];
   for (const [pid, socket, name] of [[p.mysqlReplicaPid, p.sockets.mysqlReplica, 'the MySQL replica'], [p.mysqlPid, p.sockets.mysql, 'MySQL']] as const) {
-    if (!pidRunning(pid)) continue;
-    run('mysqladmin', ['--no-defaults', `--socket=${socket}`, '-u', 'root', 'shutdown']);
-    console.log(`test-servers: stopped ${name}`);
+    try {
+      if (!pidRunning(pid)) continue;
+      run('mysqladmin', ['--no-defaults', `--socket=${socket}`, '-u', 'root', 'shutdown']);
+      console.log(`test-servers: stopped ${name}`);
+    } catch (error) { errors.push(error); }
   }
+  if (errors.length) throw shutdownError('test-servers: MySQL shutdown failed', errors);
 }
 
 function stopServers(p: Paths): void {
+  const errors: unknown[] = [];
   for (const [pid, name] of [[p.pgbouncerPid, 'PgBouncer'], [p.proxysqlPid, 'ProxySQL']] as const) {
-    if (!pidRunning(pid)) continue;
-    stopPid(pid);
-    console.log(`test-servers: stopped ${name}`);
+    try {
+      if (!pidRunning(pid)) continue;
+      stopPid(pid);
+      console.log(`test-servers: stopped ${name}`);
+    } catch (error) { errors.push(error); }
   }
-  stopMysql(p);
+  try { stopMysql(p); } catch (error) { errors.push(error); }
   // INT is the fast shutdown of PostgreSQL. `pg_ctl stop -w` would wait at most 60 s (PGCTLTIMEOUT) and has no setting
   // without a limit.
   for (const [data, name] of [[p.postgresReplicaData, 'the PostgreSQL replica'], [p.postgresData, 'PostgreSQL']] as const) {
-    if (!postgresRunning(data)) continue;
-    stopPid(join(data, 'postmaster.pid'), 'INT');
-    console.log(`test-servers: stopped ${name}`);
+    try {
+      if (!postgresRunning(data)) continue;
+      stopPid(join(data, 'postmaster.pid'), 'INT');
+      console.log(`test-servers: stopped ${name}`);
+    } catch (error) { errors.push(error); }
   }
+  if (errors.length) throw shutdownError('test-servers: shutdown failed', errors);
 }
 
 // stopEarlierStart stops the servers that an earlier start left on the data directories of <p> and removes them, so a
@@ -311,6 +341,7 @@ export function startLogged(dir: string, name: string, line: string, command: st
   closeSync(fd);
   return new Promise((resolveStart, rejectStart) => {
     const reader = openSync(log, 'r');
+    let timingOut = false;
     const finish = (error?: TestServerError) => {
       if (done) return;
       done = true;
@@ -322,13 +353,13 @@ export function startLogged(dir: string, name: string, line: string, command: st
       if (error) rejectStart(error); else resolveStart();
     };
     const read = () => {
-      if (done) return;
+      if (done || timingOut) return;
       const chunk = Buffer.alloc(65536);
       for (let n; (n = readSync(reader, chunk, 0, chunk.length, offset)) > 0; offset += n) pending += chunk.subarray(0, n).toString('utf8');
       const lines = pending.split('\n');
       pending = lines.pop() ?? '';
       for (const text of lines) {
-        if (done) return;
+        if (done || timingOut) return;
         process.stderr.write(`test-servers: ${name}: ${text}\n`);
         if (text.includes(line)) finish();
       }
@@ -337,14 +368,28 @@ export function startLogged(dir: string, name: string, line: string, command: st
     // The watcher can miss an event, so the log is also read on a timer: a ready line already written is then never waited for.
     const backstop = setInterval(read, 500);
     // A start that does not log its ready line in time fails here, with the step and the log, and its server is stopped.
-    const deadline = setTimeout(() => {
-      if (child.pid !== undefined) { try { process.kill(-child.pid, 'SIGKILL'); } catch { /* the server already ended */ } }
-      finish(new TestServerError(`test-servers: ${name} did not log '${line}' within ${timeoutMs / 1000}s; its log is ${log}`));
-    }, timeoutMs);
-    child.on('error', error => finish(new TestServerError(`test-servers: ${name}: ${error.message}`)));
+    const timeout = async () => {
+      if (done || timingOut) return;
+      timingOut = true;
+      const primary = new TestServerError(`test-servers: ${name} did not log '${line}' within ${timeoutMs / 1000}s; its log is ${log}`);
+      let cleanup: unknown;
+      if (child.pid !== undefined) {
+        const exited = child.exitCode !== null || child.signalCode !== null ? undefined : new Promise<void>(resolveExit => child.once('exit', () => resolveExit()));
+        try { process.kill(-child.pid, 'SIGKILL'); }
+        catch (error) { if (errorCode(error) !== 'ESRCH') cleanup = error; }
+        if (cleanup === undefined && exited) await exited;
+      }
+      if (cleanup === undefined) finish(primary);
+      else {
+        const message = `${primary.message}; cleanup of process group ${child.pid} failed: ${errorMessage(cleanup)}`;
+        finish(new TestServerError(message, 1, { cause: new AggregateError([primary, cleanup], message) }));
+      }
+    };
+    const deadline = setTimeout(() => { void timeout(); }, timeoutMs);
+    child.on('error', error => { if (!timingOut) finish(new TestServerError(`test-servers: ${name}: ${error.message}`)); });
     child.on('spawn', () => { writeFileSync(join(dir, `${name}.pid`), `${child.pid}\n`); read(); });
     child.on('exit', () => {
-      if (done) return;
+      if (done || timingOut) return;
       read();
       if (pending !== '') { const last = pending; pending = ''; process.stderr.write(`test-servers: ${name}: ${last}\n`); if (last.includes(line)) finish(); }
       const tail = readFileSync(log, 'utf8').split('\n').filter((text, index, all) => index < all.length - 1 || text !== '').slice(-20).join('\n');
@@ -528,7 +573,11 @@ async function start(p: Paths): Promise<void> {
     writeEnvironment(p, ports);
   } catch (error) {
     console.error(`test-servers: start failed; logs are in ${p.dir}`);
-    stopServers(p);
+    try { stopServers(p); }
+    catch (cleanup) {
+      const message = `test-servers: start failed: ${errorMessage(error)}; cleanup failed: ${errorMessage(cleanup)}`;
+      throw new TestServerError(message, 1, { cause: new AggregateError([error, cleanup], message) });
+    }
     throw error;
   }
   console.log(`test-servers: started; environment ${p.env}`);

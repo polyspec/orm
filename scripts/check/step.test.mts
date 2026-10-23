@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
 import { isolatedEnvironment } from '../../tests/environment.mts';
 import { command } from './run.mts';
-import { endGroup, runStep } from './step.mts';
+import { endGroup, runStep, signalGroup, processGroupOf } from './step.mts';
 import { spawn } from 'node:child_process';
 
 const repo = resolve(fileURLToPath(new URL('../..', import.meta.url)));
@@ -107,7 +107,7 @@ caseTest("npm's compile cache stays in the system temporary directory and is not
 });
 
 caseTest('endGroup names and ends what a process of its own group left behind', PROCESS, async () => {
-  const child = spawn('sh', ['-c', 'sleep 39 >/dev/null 2>&1 & echo $!'], { detached: true, stdio: ['ignore', 'pipe', 'ignore'] });
+  const child = spawn('sh', ['-c', 'sleep 39 >/dev/null 2>&1 & echo $!'], { detached: true, stdio: ['ignore', 'pipe', 'ignore'], env: isolatedEnvironment() });
   let out = '';
   child.stdout.on('data', chunk => { out += chunk; });
   await new Promise(resolve => child.on('close', resolve));
@@ -118,6 +118,82 @@ caseTest('endGroup names and ends what a process of its own group left behind', 
     assert.deepEqual(await endGroup(child.pid), []);
   } finally {
     if (alive(pid)) process.kill(pid, 'SIGKILL');
+  }
+});
+
+caseTest('signalGroup treats only ESRCH as absent and preserves other native kill errors', COMPUTE, () => {
+  const originalKill = process.kill.bind(process);
+  const own = processGroupOf(process.pid);
+  const group = Math.max(process.pid + 1000, (own ?? 0) + 1000);
+  try {
+    for (const code of ['ESRCH', 'EPERM', 'EINVAL']) {
+      const failure = Object.assign(new Error(`kill ${code}`), { code });
+      process.kill = () => { throw failure; };
+      if (code === 'ESRCH') assert.equal(signalGroup(group, 'SIGTERM'), false);
+      else assert.throws(() => signalGroup(group, 'SIGTERM'), error => error === failure);
+    }
+  } finally {
+    process.kill = originalKill;
+  }
+});
+
+caseTest('process group cleanup attempts SIGKILL after SIGTERM fails and retains both causes', PROCESS, async () => {
+  const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { detached: true, stdio: 'ignore', env: isolatedEnvironment() });
+  const originalKill = process.kill.bind(process);
+  const term = Object.assign(new Error('TERM denied'), { code: 'EPERM' });
+  const kill = Object.assign(new Error('KILL invalid'), { code: 'EINVAL' });
+  const sent: (NodeJS.Signals | number | undefined)[] = [];
+  try {
+    await new Promise<void>((resolveSpawn, rejectSpawn) => {
+      child.once('spawn', resolveSpawn);
+      child.once('error', rejectSpawn);
+    });
+    process.kill = (_pid: number, signal?: NodeJS.Signals | number) => {
+      sent.push(signal);
+      throw signal === 'SIGTERM' ? term : kill;
+    };
+    await assert.rejects(endGroup(child.pid), error => {
+      assert.ok(error instanceof AggregateError);
+      assert.deepEqual(error.errors, [term, kill]);
+      return true;
+    });
+    assert.deepEqual(sent, ['SIGTERM', 'SIGKILL']);
+  } finally {
+    process.kill = originalKill;
+    if (child.pid && child.exitCode === null && child.signalCode === null) {
+      originalKill(-child.pid, 'SIGKILL');
+      await new Promise<void>(resolveExit => child.once('exit', () => resolveExit()));
+    }
+  }
+});
+
+caseTest('failed group cleanup stays tracked and makes an otherwise successful runner exit nonzero', PROCESS, async () => {
+  const root = mkdtempSync(join(tmpdir(), 'orm-step-cleanup-status-'));
+  const pidFile = join(root, 'pid');
+  const modulePath = new URL('./step.mts', import.meta.url).pathname;
+  let child: ReturnType<typeof spawn> | undefined;
+  const originalKill = process.kill.bind(process);
+  try {
+    const runner = spawn(process.execPath, ['--input-type=module', '-e', `
+      import { runStep } from ${JSON.stringify(modulePath)};
+      const originalKill = process.kill;
+      process.kill = ((target, signal) => { if (target < 0) throw Object.assign(new Error('cleanup denied'), { code: 'EPERM' }); return originalKill(target, signal); });
+      try { await runStep('sh', ['-c', 'sleep 900 >/dev/null 2>&1 & echo $! > ${pidFile}; exit 0'], { cwd: ${JSON.stringify(root)}, env: { PATH: process.env.PATH }, step: () => {}, label: 'fake' }); } catch {}
+    `], { stdio: ['ignore', 'ignore', 'pipe'], env: isolatedEnvironment() });
+    child = runner;
+    let stderr = '';
+    assert.ok(runner.stderr);
+    runner.stderr.on('data', chunk => { stderr += String(chunk); });
+    const result = await new Promise<{ code: number | null; signal: NodeJS.Signals | null }>(resolveExit => runner.once('close', (code, signal) => resolveExit({ code, signal })));
+    assert.equal(result.signal, null, stderr);
+    assert.equal(result.code, 1, `cleanup failure left successful exit status: ${stderr}`);
+    assert.match(stderr, /could not send SIGKILL to process group/);
+    const pid = Number(readFileSync(pidFile, 'utf8'));
+    assert.ok(pid > 0);
+    originalKill(pid, 'SIGKILL');
+  } finally {
+    if (child?.pid && alive(child.pid)) originalKill(child.pid, 'SIGKILL');
+    rmSync(root, { recursive: true, force: true });
   }
 });
 

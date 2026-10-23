@@ -18,20 +18,32 @@ import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import type { Readable } from 'node:stream';
 import { stepLines, type Step } from '../../tests/testcase.mts';
+import { errorCode, errorMessage } from '../../tests/errors.mts';
 
 // active is the process group id of the in-progress step. It ends the remaining group when the runner finishes.
 const active = new Set<number>();
 let installed = false;
+function signalActiveGroups(signal: NodeJS.Signals): unknown[] {
+  const errors: unknown[] = [];
+  for (const group of active) {
+    try { signalGroup(group, signal); }
+    catch (error) {
+      errors.push(error);
+      console.error(`check: could not send ${signal} to process group ${group}: ${errorMessage(error)}`);
+    }
+  }
+  return errors;
+}
 function install() {
   if (installed) return;
   installed = true;
   process.on('exit', () => {
-    for (const group of active) signalGroup(group, 'SIGKILL');
+    if (signalActiveGroups('SIGKILL').length && (process.exitCode === undefined || process.exitCode === 0)) process.exitCode = 1;
   });
   for (const [signal, number] of [['SIGINT', 2], ['SIGTERM', 15], ['SIGHUP', 1]] as const)
     process.on(signal, () => {
-      for (const group of active) signalGroup(group, 'SIGKILL');
-      process.exit(128 + number);
+      signalActiveGroups('SIGKILL');
+      process.exit(process.exitCode === undefined || process.exitCode === 0 ? 128 + number : process.exitCode);
     });
 }
 
@@ -60,9 +72,9 @@ export function signalGroup(group: number, signal: NodeJS.Signals): boolean {
   try {
     process.kill(-group, signal);
     return true;
-  } catch {
-    // The group has no processes.
-    return false;
+  } catch (error) {
+    if (errorCode(error) === 'ESRCH') return false;
+    throw error;
   }
 }
 
@@ -78,14 +90,20 @@ export function groupProcesses(group: number): { pid: number; command: string }[
   return found;
 }
 
-// stopGroup sends SIGTERM to the group's processes and sends SIGKILL if they have not ended within 3 seconds.
+// stopGroup sends SIGTERM, observes the group once, and sends SIGKILL after the existing three-second grace period if members remain.
 async function stopGroup(group: number): Promise<void> {
-  signalGroup(group, 'SIGTERM');
-  for (let waited = 0; waited < 3000; waited += 100) {
-    if (groupProcesses(group).length === 0) return;
-    await new Promise(resolve => setTimeout(resolve, 100));
+  const errors: unknown[] = [];
+  let termSent = false;
+  try { termSent = signalGroup(group, 'SIGTERM'); } catch (error) { errors.push(error); }
+  // ESRCH means the group was already absent; don't delay cleanup for it.
+  if (!termSent && errors.length === 0) return;
+  let remaining = true;
+  try { remaining = groupProcesses(group).length > 0; } catch (error) { errors.push(error); }
+  if (remaining && errors.length === 0) await new Promise(resolve => setTimeout(resolve, 3000));
+  if (remaining || errors.length) {
+    try { signalGroup(group, 'SIGKILL'); } catch (error) { errors.push(error); }
   }
-  signalGroup(group, 'SIGKILL');
+  if (errors.length) throw new AggregateError(errors, `check: cleanup of process group ${group} failed: ${errors.map(errorMessage).join('; ')}`);
 }
 
 // endGroup records the processes left in the group after a process started in its own process group (detached spawn)
@@ -93,7 +111,13 @@ async function stopGroup(group: number): Promise<void> {
 // is checked by the code that made it, and anything left behind is treated as a failure (`make repo-check` requires that).
 export async function endGroup(group: number | null | undefined): Promise<string[]> {
   if (!group) return [];
-  const processes = groupProcesses(group);
+  let processes: { pid: number; command: string }[];
+  try { processes = groupProcesses(group); }
+  catch (error) {
+    try { await stopGroup(group); }
+    catch (cleanup) { throw new AggregateError([error, cleanup], `check: could not list or stop process group ${group}: ${errorMessage(error)}; ${errorMessage(cleanup)}`, { cause: cleanup }); }
+    throw error;
+  }
   if (processes.length) await stopGroup(group);
   return processes.map(({ pid, command }) => `${pid} ${command}`);
 }
@@ -145,6 +169,7 @@ export function runStep(program: string, args: string[], { cwd, env, step, label
     child.stderr.on('data', chunk => lines.write(String(chunk)));
     const closed = new Promise<void>(resolve => child.on('close', () => resolve()));
     let settled = false;
+    const cleanupErrors: unknown[] = [];
     child.on('error', error => {
       if (settled) return;
       settled = true;
@@ -159,10 +184,9 @@ export function runStep(program: string, args: string[], { cwd, env, step, label
       const problems: string[] = [];
       try {
         // The remaining processes are recorded first and then ended. If such a process holds the output pipe, close does not arrive.
-        const processes = group ? groupProcesses(group) : [];
+        const processes = group ? await endGroup(group) : [];
         if (group && processes.length) {
-          problems.push(`check: ${label} left ${processes.length} processes: ${processes.map(({ pid, command }) => `${pid} ${command}`).join(', ')}`);
-          await stopGroup(group);
+          problems.push(`check: ${label} left ${processes.length} processes: ${processes.join(', ')}`);
         }
         if (group) active.delete(group);
         await closed;
@@ -175,6 +199,7 @@ export function runStep(program: string, args: string[], { cwd, env, step, label
             try {
               keep(temporary);
             } catch (error) {
+              cleanupErrors.push(error);
               problems.push(`check: ${label}: its temporary entries could not be kept: ${error instanceof Error ? error.message : String(error)}`);
             }
           }
@@ -188,15 +213,23 @@ export function runStep(program: string, args: string[], { cwd, env, step, label
           rmSync(join(runs, entry), { recursive: true, force: true });
         }
       } catch (error) {
+        cleanupErrors.push(error);
         problems.push(`check: ${label}: its leftovers could not be checked: ${error instanceof Error ? error.message : String(error)}`);
       } finally {
-        if (group) active.delete(group);
-        rmSync(temporary, { recursive: true, force: true }); rmSync(stepRun, { recursive: true, force: true });
+        for (const path of [temporary, stepRun]) {
+          try { rmSync(path, { recursive: true, force: true }); } catch (error) { cleanupErrors.push(error); }
+        }
       }
       for (const problem of problems) step(problem);
-      if (exited.code === 0 && problems.length === 0) finish();
-      else if (exited.code === 0) fail(new Error(problems.join('\n')));
-      else fail(new Error(`${program} ${args.join(' ')} exited with ${exited.code ?? `signal ${exited.signal}`}`));
+      const primary = exited.code === 0
+        ? (problems.length ? new Error(problems.join('\n')) : undefined)
+        : new Error(`${program} ${args.join(' ')} exited with ${exited.code ?? `signal ${exited.signal}`}`);
+      if (primary === undefined && cleanupErrors.length === 0) finish();
+      else if (cleanupErrors.length) {
+        const causes = primary === undefined ? cleanupErrors : [primary, ...cleanupErrors];
+        const message = [primary?.message, `cleanup failed: ${cleanupErrors.map(errorMessage).join('; ')}`].filter(Boolean).join('; ');
+        fail(new AggregateError(causes, message, primary === undefined ? undefined : { cause: primary }));
+      } else fail(primary);
     });
   });
 }
