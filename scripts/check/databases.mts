@@ -186,20 +186,31 @@ if (import.meta.main) {
     console.error(`databases: invalid name ${name}`);
     process.exit(2);
   }
+  if (action !== 'create' && action !== 'drop' && action !== 'drop-dead') {
+    console.error(USAGE);
+    process.exit(2);
+  }
   let servers: Record<string, string>;
   try {
     servers = environmentFile(readFileSync(serversPath, 'utf8'));
   } catch (error) {
-    console.error(`databases: ${serversPath}: ${errorMessage(error)}`);
+    console.error(`databases: ${action}: ${serversPath}: ${errorMessage(error)}; run make orm-test-servers to rewrite it`);
     process.exit(2);
   }
   // The servers file is sourced: its variables are the environment of every command of this run.
   const env: NodeJS.ProcessEnv = { ...process.env, ...servers };
-  const runMysql = servers['ORM_RUN_MYSQL_DSN'];
-  if (!runMysql) {
-    console.error(`databases: ${serversPath} names no ORM_RUN_MYSQL_DSN; run make orm-test-servers to rewrite it`);
-    process.exit(1);
+  const needed = action === 'drop'
+    ? ['ORM_RUN_MYSQL_DSN', 'ORM_RUN_POSTGRES_DSN', 'ORM_TEST_MYSQL_REPLICA_DSN']
+    : action === 'create' || action === 'drop-dead'
+      ? ['ORM_RUN_MYSQL_DSN', 'ORM_RUN_POSTGRES_DSN'] : [];
+  for (const variable of needed) {
+    const value = variable === 'ORM_TEST_MYSQL_REPLICA_DSN' ? env[variable] : servers[variable];
+    if (!value) {
+      console.error(`databases: ${action}: ${serversPath} names no ${variable}; run make orm-test-servers to rewrite it`);
+      process.exit(1);
+    }
   }
+  const runMysql = servers['ORM_RUN_MYSQL_DSN'] ?? '';
   const mysqlBench = withDatabase(runMysql, `${name}_bench`);
   const postgresBench = withDatabase(servers['ORM_RUN_POSTGRES_DSN'] ?? '', `${name}_bench`);
   const sqliteBench = `sqlite://${dir}/bench.sqlite?${servers['ORM_RUN_SQLITE_QUERY'] ?? ''}`;

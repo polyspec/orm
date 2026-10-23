@@ -15,15 +15,20 @@ const repo = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 // fake logs each program's arguments, and provides a fake program that prints one line and exits with 3 when an argument contains failing.
 function fake(programs: string[], failing: string) {
   const base = realpathSync(mkdtempSync(join(tmpdir(), 'continue-')));
-  mkdirSync(join(base, 'bin'));
-  const log = join(base, 'ran.log');
-  for (const program of programs)
-    writeFileSync(join(base, 'bin', program), `#!/bin/sh\necho "${program} $*" >> ${log}\ncase "$*" in *'${failing}'*) echo 'FAIL ${failing}: expected 1 row, actual 0'; exit 3;; esac\n`, { mode: 0o755 });
-  return {
-    base,
-    run: (args: string[], env = {}) => spawnSync(args[0]?.endsWith('.mts') ? process.execPath : 'sh', args, { cwd: repo, encoding: 'utf8', env: isolatedEnvironment({ PATH: `${join(base, 'bin')}:${process.env.PATH}`, ...env }) }),
-    ran: () => readFileSync(log, 'utf8').trim().split('\n'),
-  };
+  try {
+    mkdirSync(join(base, 'bin'));
+    const log = join(base, 'ran.log');
+    for (const program of programs)
+      writeFileSync(join(base, 'bin', program), `#!/bin/sh\necho "${program} $*" >> ${log}\ncase "$*" in *'${failing}'*) echo 'FAIL ${failing}: expected 1 row, actual 0'; exit 3;; esac\n`, { mode: 0o755 });
+    return {
+      base,
+      run: (args: string[], env = {}) => spawnSync(args[0]?.endsWith('.mts') ? process.execPath : 'sh', args, { cwd: repo, encoding: 'utf8', env: isolatedEnvironment({ PATH: `${join(base, 'bin')}:${process.env.PATH}`, ...env }) }),
+      ran: () => readFileSync(log, 'utf8').trim().split('\n'),
+    };
+  } catch (error) {
+    rmSync(base, { recursive: true, force: true });
+    throw error;
+  }
 }
 
 // declared reads the commands the script runs from COMMANDS (scripts/check/commands.mts), which the script exports. The expected commands and
@@ -109,18 +114,46 @@ caseTest('the package checks run every package after a failed one and name the f
   }
 });
 
+caseTest('database commands report unreadable server configuration before calling MySQL or PostgreSQL', PROCESS, () => {
+  const f = fake(['mysql', 'psql'], 'never');
+  try {
+    const dir = join(f.base, 'databases');
+    mkdirSync(dir);
+    let index = 0;
+    const run = (action: string, servers: string, expected: RegExp, status = 1) => {
+      const path = join(f.base, `${action}-${index++}.env`);
+      if (servers !== 'DIRECTORY' && servers !== 'MISSING') writeFileSync(path, servers === 'INVALID' ? 'BROKEN=yes\n' : servers);
+      if (servers === 'DIRECTORY') mkdirSync(path);
+      const result = f.run(['scripts/check/databases.mts', action, path, dir, 'orm_x']);
+      assert.equal(result.status, status, result.stdout + result.stderr);
+      assert.match(result.stderr, expected);
+      assert.match(result.stderr, /run make orm-test-servers to rewrite it/);
+      assert.ok(!existsSync(join(f.base, 'ran.log')), 'a database client ran before configuration was rejected');
+    };
+    run('create', '', /create: .* names no ORM_RUN_MYSQL_DSN/);
+    run('drop-dead', "export ORM_RUN_MYSQL_DSN='mysql://root@127.0.0.1:1/run'\n", /drop-dead: .* names no ORM_RUN_POSTGRES_DSN/);
+    run('drop', "export ORM_RUN_MYSQL_DSN='mysql://root@127.0.0.1:1/run'\nexport ORM_RUN_POSTGRES_DSN='postgres://root@127.0.0.1:2/run'\n", /drop: .* names no ORM_TEST_MYSQL_REPLICA_DSN/);
+    run('create', "export ORM_RUN_MYSQL_DSN='mysql://root@127.0.0.1:1/run'\nexport ORM_RUN_POSTGRES_DSN='postgres://root@127.0.0.1:2/run'\nexport BROKEN=yes\n", /create: .* unexpected environment line: export BROKEN=yes/, 2);
+    run('create', 'MISSING', /create: .* ENOENT/, 2);
+    run('create', 'DIRECTORY', /create: .* EISDIR/, 2);
+    run('create', 'INVALID', /create: .* unexpected environment line/, 2);
+  } finally {
+    rmSync(f.base, { recursive: true, force: true });
+  }
+});
+
 // The drop case (G5.53) checks whether the PostgreSQL database and the run directory are still removed when the MySQL database cannot be dropped.
 caseTest('dropping the run databases removes every part after a failed one and names the failures', PROCESS, () => {
   const f = fake(['mysql', 'psql'], 'DROP DATABASE IF EXISTS `orm_x_bench`');
   try {
     const servers = join(f.base, 'servers.env');
-    writeFileSync(servers, "export ORM_RUN_MYSQL_DSN='mysql://root@127.0.0.1:1/orm_run'\nexport ORM_RUN_POSTGRES_DSN='postgres://orm@127.0.0.1:2/orm_run'\nexport ORM_RUN_SQLITE_QUERY=''\n");
+    writeFileSync(servers, "export ORM_RUN_MYSQL_DSN='mysql://root@127.0.0.1:1/orm_run'\nexport ORM_RUN_POSTGRES_DSN='postgres://orm@127.0.0.1:2/orm_run'\nexport ORM_TEST_MYSQL_REPLICA_DSN='mysql://root@127.0.0.1:3/orm_test'\nexport ORM_RUN_SQLITE_QUERY=''\n");
     const dir = join(f.base, 'databases');
     mkdirSync(dir);
-    // This case's servers file has no replica, and it does not use a replica supplied by the environment of the outer run.
-    const result = f.run(['scripts/check/databases.mts', 'drop', servers, dir, 'orm_x'], { ORM_TEST_MYSQL_REPLICA_DSN: '' });
+    // The server file supplies the replica needed to purge its binary logs.
+    const result = f.run(['scripts/check/databases.mts', 'drop', servers, dir, 'orm_x']);
     assert.notEqual(result.status, 0, result.stdout + result.stderr);
-    assert.deepEqual(f.ran().map(line => line.split(' ')[0]), ['mysql', 'psql']);
+    assert.deepEqual(f.ran().map(line => line.split(' ')[0]), ['mysql', 'psql', 'mysql', 'mysql']);
     assert.ok(!existsSync(dir), 'the run directory is left');
     assert.match(result.stderr, /databases: drop failed:\n {2}mysql /);
     assert.match(result.stderr, /\n {2}purge the binary logs \(exit 1\)/);

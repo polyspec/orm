@@ -18,6 +18,7 @@ import { spawn, spawnSync, execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { existsSync, readFileSync } from 'node:fs';
+import { errorCode } from '../../tests/errors.mts';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
@@ -57,7 +58,8 @@ const pathPattern = /(?:contracts|tests|schema|packages|engine)\/[A-Za-z0-9_./-]
 // namedPaths is the repository paths that a declared fixture file writes. Paths that do not exist are discarded.
 async function namedPaths(root: string, fixture: string): Promise<string[]> {
   let text: string;
-  try { text = await readFile(resolve(root, fixture), 'utf8'); } catch { return []; }
+  try { text = await readFile(resolve(root, fixture), 'utf8'); }
+  catch (error) { if (errorCode(error) === 'ENOENT') return []; throw error; }
   return [...new Set(text.match(pathPattern) ?? [])].filter(p => p !== fixture && existsSync(resolve(root, p)));
 }
 

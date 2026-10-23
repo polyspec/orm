@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 3323c08f08f8efe20c8e801b4535f0d01dae3f73cc46b56216cb6ed6ae4fa210 -->
+<!-- source-sha256: 566291dafae94901aef6a66f85838f72804e69ed0a57cc74791514fa950a3798 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -241,7 +241,7 @@
 | KSTD-5-76 | PHP set reader의 stat 또는 scandir 실패를 없음이 아닌 오류로 보고한다 | packages/php/src/Dbspec/SetReader.php; packages/php/tests/SetReaderDiagnosticsTest.php; Makefile; contracts/check-inputs.json | `make dbspec-php-check/set` | [o] |
 | KSTD-5-77 | PHP와 C에서 YAML 파서의 예외 클래스만 잡고 원인을 잇는다 | packages/php/src/Codec.php:96,149,104,156; packages/php/src/Model.php:2360; packages/php-ext/src/codec.c:194-203 | `make lint-php` | [ ] |
 | KSTD-5-78 | step과 test-server 스크립트에서 ESRCH만 종료된 process group으로 본다 | scripts/check/step.mts:63; scripts/test-servers.mts:203, :341 | `make scripts-typecheck` | [ ] |
-| KSTD-5-79 | fixture를 읽을 수 없을 때 ENOENT만 owner 없음으로 본다 | scripts/features/owners.mts:60; scripts/check/databases.mts:85-99 | `make scripts-typecheck` | [ ] |
+| KSTD-5-79 | 누락 fixture에서 ENOENT만 선택 항목으로 취급하고, 다른 읽기 오류를 전파하며 client 실행 전에 database DSN을 검증한다 | scripts/features/owners.mts; scripts/features/owners.test.mts; scripts/check/databases.mts; scripts/check/continue.test.mts | `make feature-unit-check/owners`; `node --test --test-name-pattern="database commands report unreadable server configuration before calling MySQL or PostgreSQL" scripts/check/continue.test.mts` | [~] |
 | KSTD-5-80 | extension이 다중 row insert의 두 번째 row에 첫 row의 column을 parameter uses로 준다(MarkdownTest::testParamUses) | packages/php-ext/src/planner.c; packages/php/tests/MarkdownTest.php | `make dbspec-php-extension-check/markdown` | [o] |
 | KSTD-5-81 | TypeScript package의 ./testing export가 orm-test 키 아래 중첩되어 @polyspec/orm/testing이 resolve되지 않는다(rollback.mjs와 statement_fault.mjs가 ERR_PACKAGE_PATH_NOT_EXPORTED로 실패한다) | packages/ts/package.json | `node packages/ts/tests/rollback.mjs`, `node packages/ts/tests/statement_fault.mjs` | [-] 원인: 결함이 아니다: ./testing export는 설계상 orm-test condition 아래 중첩된다. rollback.mjs와 statement_fault.mjs는 --conditions=orm-test로 main에서 통과한다(9와 4). 결함 전제인 조건 없는 실행의 ERR_PACKAGE_PATH_NOT_EXPORTED는 의도된 거부다. |
 | KSTD-5-85 | worktree의 Rust 테스트 빌드는 debug line table을 빼고, main은 line-tables-only를 유지한다. | Makefile (CARGO_PROFILE_DEV_DEBUG, print-CARGO_PROFILE_DEV_DEBUG) | `test "$(make -s print-CARGO_PROFILE_DEV_DEBUG)" = 0` | [o] |

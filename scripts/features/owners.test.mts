@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { minimatch } from 'minimatch';
 import { caseTest } from '../../tests/testcase.mts';
 import * as ownerSelection from './owners.mts';
@@ -91,6 +94,29 @@ caseTest('a fixture selects the units whose declared data names it', 5000, async
   // contracts/symbols/rust.json records the symbols of the Rust source, so that source selects the Rust coverage unit, and that file
   // also selects the command of the test it contains (transaction-end-rust).
   assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/rust/orm/src/tx_send_tests.rs'])), ['transactions/transaction-end-rust', 'interface_contract/coverage/owner/rust']);
+});
+
+caseTest('a missing named fixture is optional and a directory named as a fixture keeps its read error', 5000, async () => {
+  const base = mkdtempSync(join(tmpdir(), 'owners-reader-'));
+  try {
+    const fixture = 'fixture.json';
+    const unit = { features: [{ id: 'fixture_reader', verification: [{ id: 'read', command: 'node', inputs: [fixture] }] }] };
+    const changed = ['packages/ts/src/unlisted.ts'];
+    assert.deepEqual(await selectOwners(unit, base, changed), []);
+    mkdirSync(join(base, fixture));
+    await assert.rejects(selectOwners(unit, base, changed), error => {
+      assert(error instanceof Error);
+      assert('code' in error);
+      assert('path' in error);
+      assert('syscall' in error);
+      assert.equal(error.code, 'EISDIR');
+      assert.equal(error.path, join(base, fixture));
+      assert.equal(error.syscall, 'read');
+      return true;
+    });
+  } finally {
+    rmSync(base, { recursive: true, force: true });
+  }
 });
 
 caseTest('a path that no unit declares selects nothing', 5000, async () => {
