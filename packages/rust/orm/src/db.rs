@@ -388,17 +388,30 @@ fn pool_options<DB: sqlx::Database>(size: u32, idle: u32, lifetime_ms: u32, owne
     options
 }
 
+#[cfg(test)]
+#[path = "db/sqlite_version_tests.rs"]
+mod sqlite_version_tests;
+
+fn parse_sqlite_version(version: &str) -> Result<(u32, u32, u32)> {
+    let parts: Vec<&str> = version.split('.').collect();
+    if parts.len() != 3 && parts.len() != 4 {
+        return Err(Error::internal(format!("SQLite library version {version:?} must have three or four decimal components")));
+    }
+    let mut numbers = Vec::with_capacity(parts.len());
+    for part in parts {
+        if part.is_empty() || !part.bytes().all(|byte| byte.is_ascii_digit()) {
+            return Err(Error::internal(format!("SQLite library version {version:?} has invalid component {part:?}")));
+        }
+        numbers.push(
+            part.parse::<u32>().map_err(|error| Error::internal(format!("SQLite library version {version:?} has component {part:?} outside u32: {error}")))?,
+        );
+    }
+    Ok((numbers[0], numbers[1], numbers[2]))
+}
+
 fn check_sqlite_version(version: &str) -> Result<()> {
-    let mut parts = version.split('.');
-    let mut number = |what: &str| -> Result<u32> {
-        let Some(part) = parts.next() else {
-            return Err(Error::internal(format!("the SQLite library version {version} has no {what} number")));
-        };
-        part.parse::<u32>()
-            .map_err(|error| Error::internal(format!("the SQLite library version {version} has a {what} number {part:?} that is not a number: {error}")))
-    };
-    let (major, minor) = (number("major")?, number("minor")?);
-    if major < 3 || (major == 3 && minor < 46) {
+    let parsed = parse_sqlite_version(version)?;
+    if parsed < (3, 46, 0) {
         return Err(Error::Engine { code: codes::CAPABILITY_UNSUPPORTED.into(), msg: format!("SQLite {version} is older than 3.46") });
     }
     Ok(())
@@ -506,12 +519,13 @@ impl Db {
             }
             ConnectOptions::Sqlite(o) => {
                 let o = if timeout > 0 { o.busy_timeout(std::time::Duration::from_millis(timeout as u64)) } else { o };
-                let pool = pool_options::<sqlx::Sqlite>(pool_size, idle, cfg.pool_lifetime_ms, &owner).connect_with(o.statement_cache_capacity(cache)).await?;
                 // The version of the SQLite library bundled by sqlx. No statement asking for it is sent.
-                let version = libsqlite3_sys::SQLITE_VERSION
+                let raw_version = libsqlite3_sys::SQLITE_VERSION;
+                let version = raw_version
                     .to_str()
-                    .map_err(|error| Error::internal(format!("the SQLite library version is not UTF-8: {error}")))?;
+                    .map_err(|error| Error::internal(format!("SQLite library version bytes {:?} are not UTF-8: {error}", raw_version.to_bytes())))?;
                 check_sqlite_version(version)?;
+                let pool = pool_options::<sqlx::Sqlite>(pool_size, idle, cfg.pool_lifetime_ms, &owner).connect_with(o.statement_cache_capacity(cache)).await?;
                 Pool::Sqlite(pool)
             }
         };

@@ -6031,6 +6031,10 @@
     "exported": false,
     "signature": "async function observed\u003cT\u003e(name: DriverName, sql: string, done: StatementDone, origin: SentOrigin, work: () =\u003e Promise\u003cT\u003e | T): Promise\u003cT\u003e"
   },
+  "packages/ts/src/driver.ts::checkSqliteVersion": {
+    "exported": true,
+    "signature": "export function checkSqliteVersion(version: string): void"
+  },
   "packages/ts/src/driver.ts::openDriver": {
     "exported": true,
     "signature": "export function openDriver(dsn: string, parsed: SqlDsn, bounds: PoolBounds, statementCacheSize: number, statementTimeoutMs = 0): DriverPool"

@@ -635,6 +635,22 @@
         "packages/ts/tests/codec-errors.test.mjs"
       ]
     },
+    "sqlite-version-ts-check": {
+      "scope": "owner",
+      "needs": ["go", "node-modules"],
+      "inputs": [
+        "packages/ts/src/driver.ts",
+        "packages/ts/tests/sqlite-version.test.mjs"
+      ]
+    },
+    "sqlite-version-rust-check": {
+      "scope": "owner",
+      "needs": ["go", "rust", "node-modules"],
+      "inputs": [
+        "packages/rust/orm/src/db.rs",
+        "packages/rust/orm/src/db/sqlite_version_tests.rs"
+      ]
+    },
     "interface-typescript-extractor-check": {
       "scope": "owner",
       "needs": [

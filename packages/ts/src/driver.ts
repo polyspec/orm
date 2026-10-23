@@ -119,8 +119,16 @@ async function observed<T>(name: DriverName, sql: string, done: StatementDone, o
 const SQLITE_BUSY_TIMEOUT_MS = 5000;
 
 /** Checks the SQLite library version. @internal */
-function checkSqliteVersion(version: string): void {
-  const [major = 0, minor = 0] = version.split('.').map(Number);
+export function checkSqliteVersion(version: string): void {
+  const parts = version.split('.');
+  if ((parts.length !== 3 && parts.length !== 4) || parts.some(part => part.length === 0 || !/^[0-9]+$/.test(part))) {
+    throw new OrmError(codes.INTERNAL, `SQLite library version ${JSON.stringify(version)} is invalid; expected three or four decimal components`);
+  }
+  const numbers = parts.map(Number);
+  if (numbers.some(number => !Number.isInteger(number) || number > 0xffff_ffff)) {
+    throw new OrmError(codes.INTERNAL, `SQLite library version ${JSON.stringify(version)} is invalid; each component must fit u32`);
+  }
+  const [major = 0, minor = 0] = numbers;
   if (major < 3 || (major === 3 && minor < 46)) {
     throw new OrmError(codes.CAPABILITY_UNSUPPORTED, `SQLite ${version} is older than 3.46`);
   }
@@ -975,15 +983,10 @@ export function openDriver(dsn: string, parsed: SqlDsn, bounds: PoolBounds, stat
       });
       // The connection waits for a lock up to busy_timeout from its first statement.
       const busyTimeout = pragmas.find(([name]) => name === 'busy_timeout');
-      const db = new DatabaseSync(sqlitePath(url), { timeout: busyTimeout ? Number(busyTimeout[1]) : SQLITE_BUSY_TIMEOUT_MS });
       // The version of the SQLite library that node:sqlite links. The connection does not send a statement that asks for it.
       const version = process.versions.sqlite ?? '';
-      try {
-        checkSqliteVersion(version);
-      } catch (error) {
-        db.close();
-        throw error;
-      }
+      checkSqliteVersion(version);
+      const db = new DatabaseSync(sqlitePath(url), { timeout: busyTimeout ? Number(busyTimeout[1]) : SQLITE_BUSY_TIMEOUT_MS });
       db.exec('PRAGMA foreign_keys = ON');
       for (const [name, value] of pragmas) db.exec(`PRAGMA ${name} = ${value}`);
       return new SqlitePoolDriver(db, statementCacheSize);
