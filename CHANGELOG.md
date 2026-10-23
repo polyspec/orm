@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The lint findings in the tests crate files bench_set.rs and client_bench.rs are fixed, so `make lint-rust` reports no finding in them (KSTD-5-57-21).
 - The lint findings in the orm test files value_decode.rs, param_uses.rs and coverage_planner.rs are fixed, so `make lint-rust` reports no finding in them (KSTD-5-57-20).
 - The lint findings in the tests crate files coverage_schema_install.rs and markdown_conformance.rs are fixed, so `make lint-rust` reports no finding in them (KSTD-5-57-18e).
 - The lint findings in the build test file lock_probe_order.rs are fixed, so `make lint-rust` reports no finding in them (KSTD-5-57-18d).

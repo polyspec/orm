@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: dd1c721022384e0d21d09f9acb112f6be47f83fcbe6e3ce2555e4f21473e5fd1 -->
+<!-- source-sha256: b069ab8b3875f89f5fe2d67582fc7e6635729e15dde3a88e2d9f447b076abcb3 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -217,7 +217,7 @@
 | KSTD-5-57-24 | tests crate의 conformance.rs, integration.rs, decimal_physical.rs, coverage_schema_install.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/tests src conformance.rs, integration.rs; tests decimal_physical.rs, integration/coverage_schema_install.rs | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-23 | build 테스트 table_page.rs와 orm identity_load, soft_delete, dbspec_probe의 catch-check 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/build/tests table_page.rs; packages/rust/orm/tests identity_load.rs, soft_delete.rs, common/dbspec_probe.rs | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-22 | tests crate의 coverage 파일들과 common/mod.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/tests/tests common/mod.rs, coverage_catalog_connection.rs, coverage_conformance_verification.rs, coverage_model_generation.rs, coverage_performance_gate.rs, integration/coverage_env.rs | `make lint-rust` reports no finding in these files | [ ] |
-| KSTD-5-57-21 | tests crate의 bench_set.rs, client_bench.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/tests/src bench_set.rs, client_bench.rs | `make lint-rust` reports no finding in these files | [ ] |
+| KSTD-5-57-21 | tests crate의 bench_set.rs, client_bench.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/tests/src bench_set.rs, client_bench.rs | `make lint-rust` reports no finding in these files | [o] |
 | KSTD-5-57-20 | orm 테스트 파일 value_decode.rs와 unit 파일 param_uses.rs, coverage_planner.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests value_decode.rs, unit/param_uses.rs, unit/coverage_planner.rs | `make lint-rust` reports no finding in these files | [o] |
 | KSTD-5-57-19 | orm 테스트 파일 zone.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests/zone.rs | `make lint-rust` reports no finding in these files | [o] |
 | KSTD-5-58 | DbspecRulesTest::testLimitColumnsPeak가 limit과 columns 문서의 peak 메모리를 안정적으로 잰다: 그 bound는 앞서 실행된 test의 프로세스 상태에 따라 달라지지 않는다 | packages/php/tests/DbspecRulesTest.php | `vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter testLimitColumnsPeak packages/php/tests/DbspecRulesTest.php` | [o] |
