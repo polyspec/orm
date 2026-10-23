@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The lint findings in the orm test files revision.rs and statement_events.rs are fixed, so `make lint-rust` reports no finding in them (KSTD-5-57-11).
 - The lint findings in the other build sources tool_db, catalog and lib are fixed, so `make lint-rust` reports no finding in them (KSTD-5-57-10).
 - The lint findings in the build generate.rs are fixed, so `make lint-rust` reports no finding in them (KSTD-5-57-9).
 - The lint findings in the case-database lib.rs are fixed, so `make lint-rust` reports no finding in them (KSTD-5-57-8).
