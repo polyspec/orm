@@ -232,15 +232,13 @@ final class DeclarationsTest extends TestCase
             file_get_contents(dirname(__DIR__) . '/src/polyspec_orm.stub.php'),
             $internal
         );
+        $internalClasses = array_merge(
+            array_map(static fn(string $name): string => EXTENSION_NAMESPACE . $name, $internal[1]),
+            array_map(static fn(string $name): string => 'Polyspec\\Orm\\' . $name, $internal[1])
+        );
         foreach (array_keys($native) as $key) {
             $class = explode('::', $key)[0];
-            if (
-                !isset($classes[$class]) && !in_array(
-                    substr($class, strlen(EXTENSION_NAMESPACE)),
-                    $internal[1],
-                    true
-                )
-            ) {
+            if (!isset($classes[$class]) && !in_array($class, $internalClasses, true)) {
                 $differences[] = "$class is neither a class of the PHP client nor @internal in the stub";
                 $classes[$class] = true;
             }

@@ -1084,3 +1084,58 @@ final readonly class StatementEvent
 
     public function __construct(string $sql, array $binds, string $kind, array $tables, float $elapsed, ?int $transaction, ?OrmException $error) {}
 }
+
+/**
+ * An ordered set of models keyed by a typed key. The extension implements the collection in C.
+ *
+ * @template TModel
+ * @implements \IteratorAggregate<int|string|bool|Bytes|\DateTimeInterface, TModel>
+ */
+final class Collection implements \IteratorAggregate, \Countable, \JsonSerializable
+{
+    /** @var array<string, array{0: int|string|bool|Bytes|\DateTimeInterface, 1: TModel}> */
+    private array $items = [];
+    /** @var array<string, mixed> */
+    private array $fetched = [];
+
+    public static function keyOf(mixed $key): int|string|bool|Bytes|\DateTimeInterface {}
+    public static function identityOf(mixed $key): string {}
+    public function put(int|string|bool|Bytes|\DateTimeInterface $key, Model $model): void {}
+    public function get(int|string|bool|Bytes|\DateTimeInterface $key): ?Model {}
+    public function has(int|string|bool|Bytes|\DateTimeInterface $key): bool {}
+    public function first(): ?Model {}
+    public function keys(): array {}
+    public function all(): array {}
+    public function entries(): array {}
+    public function count(): int {}
+    public function getIterator(): \Traversable {}
+    public function fetchValues(\Closure $fn): void {}
+    public function fetchedValue(int|string|bool|Bytes|\DateTimeInterface $key): mixed {}
+    public function fetchedValues(): array {}
+    public function connect(Db $db): Collection {}
+    public function __invoke(Db $db): Collection {}
+    public function delete(bool $recursive = false): void {}
+    public function toArray(): array {}
+    public function toJson(): string {}
+    public function jsonSerialize(): array {}
+}
+
+/**
+ * @internal
+ */
+final class CollectionIterator implements \Iterator
+{
+    public function current(): mixed {}
+    public function key(): mixed {}
+    public function next(): void {}
+    public function rewind(): void {}
+    public function valid(): bool {}
+}
+
+/**
+ * @internal
+ */
+final class CollectionDeleteCallback
+{
+    public function __invoke(): void {}
+}

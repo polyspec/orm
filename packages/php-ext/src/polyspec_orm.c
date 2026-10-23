@@ -7,6 +7,7 @@
 #include "ext/pdo/php_pdo_driver.h"
 #include "php_ini.h"
 #include "ext/standard/info.h"
+#include "ext/json/php_json.h"
 #include "ext/spl/spl_exceptions.h"
 #include "Zend/zend_exceptions.h"
 #include "Zend/zend_interfaces.h"
@@ -14,6 +15,7 @@
 #include "codec.h"
 #include "validator.h"
 #include "planner.h"
+#include "collection.h"
 #include "polyspec_orm_arginfo.h"
 
 /* Holds one method's arena. */
@@ -2443,6 +2445,11 @@ static PHP_MINIT_FUNCTION(polyspec_orm)
     register_class_Polyspec_Orm_Validator();
     register_class_Polyspec_Orm_Planner();
     register_class_Polyspec_Orm_StatementEvent();
+    collection_init(
+        register_class_Polyspec_Orm_Collection(zend_ce_aggregate, zend_ce_countable, php_json_serializable_ce),
+        register_class_Polyspec_Orm_CollectionIterator(zend_ce_iterator),
+        register_class_Polyspec_Orm_CollectionDeleteCallback()
+    );
     /* Db::DRIVERS, the array constant gen_stub cannot write (db.c implements the class). */
     static const char *const drivers[] = {"mysql", "postgres", "sqlite"};
     array_constant(register_class_Polyspec_Orm_Db(), "DRIVERS", drivers, NULL, COUNT(drivers));

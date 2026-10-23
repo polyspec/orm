@@ -10,11 +10,11 @@ namespace Polyspec\Orm;
  * the text "7" are different keys.
  *
  * @template TModel
- * @implements \IteratorAggregate<int|string, TModel>
+ * @implements \IteratorAggregate<int|string|bool|Bytes|\DateTimeInterface, TModel>
  */
 final class Collection implements \IteratorAggregate, \Countable, \JsonSerializable
 {
-    /** @var array<string, array{0: int|string, 1: TModel}> */
+    /** @var array<string, array{0: int|string|bool|Bytes|\DateTimeInterface, 1: TModel}> */
     private array $items = [];
     /** @var array<string, mixed> */
     private array $fetched = [];
@@ -109,8 +109,8 @@ final class Collection implements \IteratorAggregate, \Countable, \JsonSerializa
         return count($this->items);
     }
 
-    /** @return \Generator<int|string|bool|Bytes|\DateTimeInterface, TModel, mixed, void> */
-    public function getIterator(): \Generator
+    /** @return \Traversable<int|string|bool|Bytes|\DateTimeInterface, TModel> */
+    public function getIterator(): \Traversable
     {
         foreach ($this->items as [$key, $m]) {
             yield $key => $m;
@@ -144,9 +144,9 @@ final class Collection implements \IteratorAggregate, \Countable, \JsonSerializa
     /**
      * Sets the connection of every row.
      *
-     * @return self<TModel>
+     * @return Collection<TModel>
      */
-    public function connect(Db $db): self
+    public function connect(Db $db): Collection
     {
         foreach ($this->items as [, $m]) {
             $m->connect($db);
@@ -157,9 +157,9 @@ final class Collection implements \IteratorAggregate, \Countable, \JsonSerializa
     /**
      * Short form of connect.
      *
-     * @return self<TModel>
+     * @return Collection<TModel>
      */
-    public function __invoke(Db $db): self
+    public function __invoke(Db $db): Collection
     {
         return $this->connect($db);
     }

@@ -13,7 +13,13 @@ const CLIENT_CLASSES = [
     'Polyspec\\Orm\\Validator',
     'Polyspec\\Orm\\Planner',
     'Polyspec\\Orm\\Db',
-    'Polyspec\\Orm\\StatementEvent'
+    'Polyspec\\Orm\\StatementEvent',
+    'Polyspec\\Orm\\Collection'
+];
+
+const INTERNAL_CLASSES = [
+    'Polyspec\\Orm\\CollectionIterator',
+    'Polyspec\\Orm\\CollectionDeleteCallback'
 ];
 
 /**
@@ -28,7 +34,11 @@ function declarations(array $classes, bool $public): array
     $out = [];
     sort($classes);
     foreach ($classes as $name) {
-        if (!str_starts_with($name, EXTENSION_NAMESPACE) && !in_array($name, CLIENT_CLASSES, true)) {
+        if (
+            !str_starts_with($name, EXTENSION_NAMESPACE)
+            && !in_array($name, CLIENT_CLASSES, true)
+            && !in_array($name, INTERNAL_CLASSES, true)
+        ) {
             throw new RuntimeException(
                 "$name is outside " . EXTENSION_NAMESPACE . ' and ' . implode(', ', CLIENT_CLASSES)
             );
