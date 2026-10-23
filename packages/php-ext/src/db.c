@@ -4965,7 +4965,8 @@ static bool audit_for(zval *self, zval *frame, bool guard, bool *settle)
     *settle = false;
     zval *audit = rd(frame, "audit");
     zval *pending = rd(frame, "pendingAudit");
-    if (audit != NULL || pending == NULL) {
+    /* The frame's audit is null until its audit record is written: a null value is no record (Db::auditFor checks !== null). */
+    if ((audit != NULL && Z_TYPE_P(audit) != IS_NULL) || pending == NULL) {
         return true;
     }
     zval pend;

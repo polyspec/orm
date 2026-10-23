@@ -1303,6 +1303,7 @@
         "packages/php/tests/ModelTypesSourceTest.php",
         "packages/php/tests/model-types-weak-caller.php",
         "packages/php-ext/tests/ModelNativeTest.php",
+        "packages/php-ext/tests/AuditLazyFakePdoTest.php",
         "packages/php-ext/tests/ModelDslNativeTest.php",
         "packages/php-ext/tests/ModelReadNativeTest.php",
         "packages/php-ext/tests/ModelStreamReadTest.php",

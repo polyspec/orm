@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a1c02e086b398f41de530742c0ca29c45d5aca9ac692d1d39f8db3339bf8cc6f -->
+<!-- source-sha256: feace193de9ba055383cdefe3d0dd9f801916f33ac2caa44ac73bb73899699a7 -->
 # 변경 이력
 
 ## Unreleased
+
+- native PHP extension은 null transaction audit을 pending으로 처리해 첫 audited write에서 audit record를 insert한다. focused fake-PDO regression은 기존 guard에서 준비된 SQL이 하나도 실행되기 전에 실패하고, PHP 8.4.26에서 `make item-test ID=KSTD-7-5-1-1`은 통과한다(native test 1개, 11 assertions; declaration test 3개, 8 assertions; PHP source 비교 test 10개, 68 assertions) (KSTD-7-5-1-1).
 
 - Rust build generation은 상대 `set`, `scan`, 명시적 출력 경로를 `CARGO_MANIFEST_DIR` 기준으로 해석한다. 해당 변수가 필요한데 없거나 상대 경로이면 해결 방법을 포함한 오류를 반환하며, 절대 경로는 변수 없이 사용할 수 있고 암묵적 `OUT_DIR` 동작은 유지한다. Focused native environment unit은 격리된 subprocess 시나리오 8개를 포함해 1개 test를 통과한다(KSTD-5-70).
 
