@@ -2262,14 +2262,14 @@ bool validator_param_uses(zval *self, HashTable *r, zval *ret)
         }
     }
     ZEND_HASH_FOREACH_END();
-    zend_ulong j = 0;
     zval *row;
     ZEND_HASH_FOREACH_VAL(arr_or_empty(ha(get(r, "rows"))), row)
     {
+        zend_ulong j;
         zval *iv;
-        ZEND_HASH_FOREACH_VAL(arr_or_empty(ha(row)), iv)
+        ZEND_HASH_FOREACH_NUM_KEY_VAL(arr_or_empty(ha(row)), j, iv)
         {
-            zval *setitem = zend_hash_index_find(arr_or_empty(ha(get(r, "set"))), j);
+            zval *setitem = zend_hash_index_find(arr_or_empty(ha(get(r, "set"))), (zend_long)j);
             HashTable *col = NULL;
             ok = col_of(&c, ent, str(&c, ha(setitem), "column", ""), &col);
             if (!ok) {
@@ -2280,7 +2280,6 @@ bool validator_param_uses(zval *self, HashTable *r, zval *ret)
             }
         }
         ZEND_HASH_FOREACH_END();
-        j++;
     }
     ZEND_HASH_FOREACH_END();
     if (has(r, "optimistic")) {

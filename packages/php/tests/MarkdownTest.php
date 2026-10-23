@@ -427,7 +427,8 @@ final class MarkdownTest extends TestCase
                     ['column' => 'title', 'p' => 1],
                     ['column' => 'at', 'p' => 2]
                 ],
-                'rows' => [[3, 4, 5]], 'n_params' => 6], [
+                'rows' => [[3, 4, 5], [6, 7, 8]], 'n_params' => 9], [
+                [['varchar', 'owner']], [['varchar', 'title']], [['datetime', 'at']],
                 [['varchar', 'owner']], [['varchar', 'title']], [['datetime', 'at']],
                 [['varchar', 'owner']], [['varchar', 'title']], [['datetime', 'at']],
             ]],

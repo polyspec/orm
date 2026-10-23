@@ -1855,7 +1855,6 @@ group-rows-phpstan-check:
 collection-raw-phpstan-check:
 	cd packages/php && $(PHPSTAN) analyse --no-progress --error-format=raw --memory-limit=-1 --level=5 --configuration=$(KIT_PACKAGE)/phpstan.dist.neon --autoload-file=../../vendor-php/autoload.php tests/phpstan/RawCollection.php
 
-# php-extension-markdown-check runs MarkdownTest with the extension loaded: the markdown IR uses of KSTD-5-80.
-.PHONY: php-extension-markdown-check
-php-extension-markdown-check: php-vendor-check dbspec-php-extension-check/prepare
+# dbspec-php-extension-check/markdown runs MarkdownTest with the extension loaded: the markdown IR uses of KSTD-5-80.
+dbspec-php-extension-check/markdown: php-vendor-check dbspec-php-extension-check/prepare
 	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension $(PHP_EXTENSION_LIBRARY) -- --configuration packages/php/phpunit.xml.dist packages/php/tests/MarkdownTest.php
