@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 221ac7eede7067bf0f2632cf1edc68d1187c48c692f5fc9e7b406bb65cd9ba7e -->
+<!-- source-sha256: a3cfa16aa80b69b90d01b9bd4675db324decbba0225c000269166707ca9e1701 -->
 # 변경 이력
 
 ## Unreleased
 
+- 나머지 build source tool_db, catalog, lib의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-10).
 - build의 generate.rs의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-9).
 - case-database의 lib.rs의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-8).
 - 나머지 orm source의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-7).

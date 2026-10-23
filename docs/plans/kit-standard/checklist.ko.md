@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: b3f5d168471062fc5982ea3ecb42636ad641d051f8cb545412effc636c355c80 -->
+<!-- source-sha256: 957be0b23c0db46000602695b78969819bc8079e5936e6cf45be134ec3f15e55 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -167,7 +167,7 @@
 | KSTD-5-57-7 | 나머지 orm 소스의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/src markdown, row, dbspec/apply, tx, lib, bind_check, engine validate and planner, model | `make lint-rust` reports no finding in these files | [o] |
 | KSTD-5-57-8 | case-database crate의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/case-database/src/lib.rs | `make lint-rust` reports no finding in these files | [o] |
 | KSTD-5-57-9 | build generate.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/build/src/generate.rs | `make lint-rust` reports no finding in these files | [o] |
-| KSTD-5-57-10 | 나머지 build 소스의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/build/src tool_db, catalog, lib | `make lint-rust` reports no finding in these files | [ ] |
+| KSTD-5-57-10 | 나머지 build 소스의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/build/src tool_db, catalog, lib | `make lint-rust` reports no finding in these files | [o] |
 | KSTD-5-57-11 | orm 테스트 target revision, statement_events의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests revision.rs, statement_events.rs | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-12 | orm 테스트 파일 listen_notify, register, clock, was_inserted의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests listen_notify, register, clock, was_inserted | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-13 | orm 테스트 파일 statement_fault, request_hook, audit_rows의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests statement_fault, request_hook, common/audit_rows | `make lint-rust` reports no finding in these files | [ ] |
