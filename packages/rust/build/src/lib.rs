@@ -82,7 +82,7 @@ impl Builder {
 
     /// Generates the models and returns the generated file.
     pub fn try_generate(self) -> Result<PathBuf, String> {
-        let set_path = Self::absolute(&self.set);
+        let set_path = Self::absolute(&self.set)?;
         let out_dir = self.output_dir()?;
         let loaded = self.load(&set_path)?;
         std::fs::create_dir_all(&out_dir).map_err(|e| format!("{}: {e}", out_dir.display()))?;
@@ -110,7 +110,7 @@ impl Builder {
     /// generated file names, since the output directory of a build can hold other files. A failure of generation is
     /// returned as its error, as in [`Builder::try_generate`], and the directory is not created.
     pub fn check(self) -> Result<Vec<String>, String> {
-        let set_path = Self::absolute(&self.set);
+        let set_path = Self::absolute(&self.set)?;
         let out_dir = self.output_dir()?;
         let loaded = self.load(&set_path)?;
         // A directory that does not exist yet holds no file; the generated source then names it as given.
@@ -139,17 +139,23 @@ impl Builder {
     }
 
     /// The absolute form of `path`, relative to the package directory (`CARGO_MANIFEST_DIR`).
-    fn absolute(path: &Path) -> PathBuf {
+    fn absolute(path: &Path) -> Result<PathBuf, String> {
         if path.is_absolute() {
-            return path.to_path_buf();
+            return Ok(path.to_path_buf());
         }
-        std::env::var_os("CARGO_MANIFEST_DIR").map(PathBuf::from).unwrap_or_default().join(path)
+        let manifest_dir = std::env::var_os("CARGO_MANIFEST_DIR")
+            .ok_or("CARGO_MANIFEST_DIR is not set; run the generator from Cargo or use absolute paths for set, scan, and out_dir")?;
+        let manifest_dir = PathBuf::from(manifest_dir);
+        if !manifest_dir.is_absolute() {
+            return Err("CARGO_MANIFEST_DIR is not an absolute path; run the generator from Cargo or use absolute paths for set, scan, and out_dir".into());
+        }
+        Ok(manifest_dir.join(path))
     }
 
     /// The output directory: the one that `out_dir` names, else `OUT_DIR`.
     fn output_dir(&self) -> Result<PathBuf, String> {
         match &self.out_dir {
-            Some(d) => Ok(Self::absolute(d)),
+            Some(d) => Self::absolute(d),
             None => Ok(PathBuf::from(std::env::var_os("OUT_DIR").ok_or("OUT_DIR is not set; call the generator from build.rs or set out_dir")?)),
         }
     }
@@ -161,7 +167,7 @@ impl Builder {
         let files = dbspec::read_set(set_path).map_err(|errors| errors.iter().map(ToString::to_string).collect::<Vec<_>>().join("\n"))?;
         let set = manifest::load_set(&files)?;
         let models: HashSet<String> = set.model.entities.iter().map(|e| names::pascal(&e.name)).collect();
-        let paths: Vec<PathBuf> = self.scan.iter().map(|p| Self::absolute(p)).collect();
+        let paths: Vec<PathBuf> = self.scan.iter().map(|p| Self::absolute(p)).collect::<Result<_, _>>()?;
         let fallible_setters = generate::fallible_setters(&set.model);
         let scanned = scan::scan(&paths, &models, &fallible_setters, &self.output_dir()?.join(MODEL_FILE))?;
         let inputs = set_inputs(set_path, &files).into_iter().map(Path::to_path_buf).chain(paths).chain(scanned.files.iter().cloned()).collect();
@@ -199,6 +205,9 @@ fn write_if_changed(path: &Path, content: &[u8]) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[path = "build_environment.rs"]
+    mod build_environment;
 
     // cargo reruns the build script when the set file or any listed document changes.
     #[test]

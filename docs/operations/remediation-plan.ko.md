@@ -1,5 +1,5 @@
 <!-- doc-id: remediation-plan -->
-<!-- source-sha256: edebf49c11abc10c37bce6914a8d7ba12f541c424ed792d6d4f6fd0dc15cb363 -->
+<!-- source-sha256: 8a7c024d6bf88bb216217c12e383e9810d82a0711327cfd14aff69be829d230c -->
 # 남은 작업의 진단과 해결 방안
 
 [English](remediation-plan.md)
@@ -125,7 +125,7 @@
 | KSTD-5-67 | Rust `packages/rust/orm/src/driver.rs` parameter expansion: numbered/positional parameter 확장은 query 전에 parent slot이 정확히 하나인지 검사하고 아니면 step명을 포함한 IR_INVALID을 반환한다. composite padding/reorder, 단일 값, 중복 parent 검사. parser 117은 이미 수정됐다. |
 | KSTD-5-68 | Rust `packages/rust/orm/src/db.rs` precision parser/bind check: precision은 null/dotless 입력도 0..6이어야 하며 bind check를 지나도 SCHEMA_INVALID이다. 초과 nonzero 분수는 CODEC, trailing zero 허용, clock truncation은 의도다. MySQL/Postgres의 precision 7 허용은 별도 후속. |
 | KSTD-5-69 | Rust `packages/rust/build/src/catalog/mutation_finish.rs:40`, pinned Tokio 1.53.1: 고정 Tokio 1.53.1에서 Rust `JoinError`는 이미 panic payload를 출력한다. string, `String`, non-string, abort 분류를 기존 동작으로 검사한다. opaque debug 출력이나 production 변경을 꾸미지 않는다. |
-| KSTD-5-70 | Rust build library `packages/rust/build/src/lib.rs:142`: 상대 입력은 `OUT_DIR`로 해석하고 cwd fallback을 하지 않는다. 절대 입력은 env 없이 허용한다. build library의 load 경로에서 상대/절대 경로와 env 유무 및 해결 가능한 오류를 검사한다. 이는 KSTD-5-65와 별개다. 빈 env나 상대 입력에 대한 새 정책을 추가하지 않는다. |
+| KSTD-5-70 | Rust build library `packages/rust/build/src/lib.rs`: 상대 `set`, `scan`, 명시적 `out_dir` 경로는 cwd가 아니라 `CARGO_MANIFEST_DIR` 기준으로 해석한다. 절대 경로는 변수가 없어도 허용한다. 상대 경로에 변수가 필요한데 설정되지 않았다면 변수명과 해결 방법을 담은 오류를 반환한다. `var_os` 경로 지원을 유지하고 암묵적 `OUT_DIR` 동작은 바꾸지 않는다. 상대/절대 경로의 public `check` 경로, 기본 `OUT_DIR` 경로, env 유무와 의미 있는 실패를 검사한다. |
 | KSTD-5-71 | Rust codec/driver/Markdown/tool/catalog 오류 매핑은 57-6/7/10에서 원래 cause message를 보존한다. typed cause/source chain을 약속하지 않는다. 각 단계 malformed 값을 증명하고 public typed error API를 추가하지 않는다. |
 | KSTD-5-72 | 독립 소스 감사(`var/parallel/KSTD-5-72/audit.md`)에서 체크리스트 전제가 틀렸음을 확인했다. `Entity.Value`는 error가 아니라 `(any, bool)`을 반환하고, 생성 접근자는 알려진 nullable 필드에 `nil, true`, 알 수 없는 이름에 `nil, false`를 반환한다. `Core.value`는 존재 여부를 무시하지만, 정상 경로의 결과를 바꾸는 호출처는 감사에서 입증되지 않았다. 인용된 저장 호출은 로드된 암호화 필드 이름을 사용한다. 공개 API는 유지하고 `[-]`로 닫는다. 빌드와 테스트는 실행하지 않았다. missing column과 SQL NULL 구분 결함은 별도 근거 항목으로 제시해야 한다. |
 | KSTD-5-73 | TS `packages/ts/src/codec.ts` AES catch는 `decipher.final()`만 감싼다. 고정 Node/OpenSSL bad tag는 구조화 code가 없고 정확한 메시지는 `Unsupported state or unable to authenticate data`다. 첫 final 호출의 새 오류에 이 메시지와 code 부재가 모두 맞을 때만 매핑한다. 그 외에는 동일 오류 객체를 유지한다. phase 경계와 인증 전 평문 부재 검사. |

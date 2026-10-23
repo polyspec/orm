@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 79e43e847812b46a2e3c251ee097cb2bb93ed53c85875bb9bb87f610598ca22e -->
+<!-- source-sha256: 44328a11d75c7b8d908b58aadb65338d391bcd31659d7b931fc58a6c96733879 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -233,7 +233,7 @@
 | KSTD-5-67 | relation step의 parent bind slot이 없으면 실패한다 | packages/rust/orm/src/driver.rs:102, :117 | `make rust-check` | [ ] |
 | KSTD-5-68 | 음수 또는 범위를 벗어난 소수 정밀도를 거부한다 | packages/rust/orm/src/db.rs:1155,1167,1185 | `make rust-check` | [ ] |
 | KSTD-5-69 | commit task의 panic payload를 포함한다 | packages/rust/build/src/catalog/mutation_finish.rs:40 | `make rust-check` | [-] 원인: 현재 코드는 Tokio 1.53.1 JoinError를 직접 format하며 Display는 static str와 String panic payload를 포함하고 취소를 분류한다. 불투명한 비문자열 payload를 노출하라는 요구는 없다. 런타임: 실행하지 않음. 근거: var/evidence/KSTD-5-69/audit.md. |
-| KSTD-5-70 | CARGO_MANIFEST_DIR이 없을 때 현재 디렉터리 대신 변수 이름을 밝히는 오류를 낸다 | packages/rust/build/src/lib.rs:146 | `make rust-check` | [ ] |
+| KSTD-5-70 | CARGO_MANIFEST_DIR을 기준으로 상대 build 경로를 해석한다 | packages/rust/build/src/lib.rs:146 | `make rust-build-environment-check` | [~] |
 | KSTD-5-71 | Rust codec, driver, markdown와 build 파일의 map_err(\|_\|) 클로저가 원인을 유지하게 한다 | packages/rust/orm/src/codec.rs; packages/rust/orm/src/driver.rs (bad()); packages/rust/orm/src/markdown.rs:573,579; packages/rust/build/src/catalog/*; packages/rust/build/src/tool_db/* | `make rust-check` | [ ] |
 | KSTD-5-72 | Go Entity.Value 계약은 (any, bool)을 반환하므로 무시된 오류가 없다 | packages/go/orm/core.go:30; packages/go/generator/gen_go.go:457,493-502; packages/go/orm/model.go:122 | Independent source audit; no tests run (var/parallel/KSTD-5-72/audit.md) | [-] 원인: Entity.Value는 오류가 아니라 (any, bool)을 반환하며, 독립 감사에서 무시된 존재 여부 값으로 인한 동작 결함을 입증하지 못했다. |
 | KSTD-5-73 | TypeScript decipher에서 AES 인증 실패만 잡는다 | packages/ts/src/codec.ts; packages/ts/tests/codec-aes-errors.test.mjs; Makefile; contracts/check-inputs.json | `make ts-aes-auth-check` | [o] |

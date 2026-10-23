@@ -817,6 +817,15 @@
         "scripts/check-rust-150.mts"
       ]
     },
+    "rust-build-environment-check": {
+      "scope": "owner",
+      "needs": ["go", "rust", "node-modules"],
+      "inputs": [
+        "Makefile",
+        "packages/rust/build/src/lib.rs",
+        "packages/rust/build/src/tests/build_environment.rs"
+      ]
+    },
     "rust-driver-check": {
       "scope": "owner",
       "needs": [
