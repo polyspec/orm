@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 09c93ab091a59b7dc007aa0adf87f049b1418fe1d45f8864ada47963e20c9f08 -->
+<!-- source-sha256: a58322ba85d8ab5b5bf565b8ed761c29f0b8fae3606a1d7c892db148c3a91903 -->
 # 변경 이력
 
 ## Unreleased
 
+- owner 선택은 named fixture가 없는 `ENOENT`만 선택 항목으로 처리하고 다른 읽기 오류는 전달한다. Database 설정은 client 실행 전에 action별 필수 DSN을 확인하고 action과 복구 명령을 오류에 표시한다. 커밋된 구현 `78329bd0f`에서 `make item-test ID=KSTD-5-79`는 owner case 26개와 focused database 설정 case 1개를 통과한다. 이전 구현은 EISDIR fixture case에서 실패했고 누락 DSN 오류에 action 정보가 없었다(KSTD-5-79).
 - TypeScript codec의 JSON, YAML, UTF-8 실패는 원래 원인을 보존하고 기존 `CodecError` 인스턴스는 같은 객체로 다시 던진다. 커밋된 구현 `08dbf4cce`에서 `make ts-codec-errors-check`가 native 6개 case를 모두 통과한다. 이전 구현은 정상 값 제어 case만 통과하고 원인 및 identity 5개 case에서 실패했다(KSTD-5-75).
 - TypeScript AES decode는 native final 인증 실패만 `CODEC_DECODE`로 변환하고 설정, update 및 관련 없는 final 오류는 보존한다. `make ts-aes-auth-check`가 구현 커밋에서 native 테스트 이벤트 9개를 통과했다. 수정 전에는 정상 제어 3개가 통과하고 오류 보존 그룹과 5개 오류 발생 지점 사례가 실패했다(KSTD-5-73).
 - PHP `SetReader`가 set 오류에 최신 `lstat`, `stat`, `scandir` 경고를 보존하며 cached listing 실패도 같은 원인을 전달한다. `make dbspec-php-check/set`이 기존 set case 72개와 library reader 진단 case 7개를 통과한다. 이전 구현의 RED에서는 기존 72개와 이름 없음 대조군만 통과하고 filesystem 실패 6개에는 경고가 없어 실패했다(KSTD-5-76).
