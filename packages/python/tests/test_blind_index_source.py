@@ -35,6 +35,14 @@ def assignment(column, parameter):
     return {"column": column, "p": parameter}
 
 
+def blind_index_params(plan):
+    return [
+        slot["param"]
+        for slot in plan["steps"][0]["bind_slots"]
+        if "blind_index" in slot.get("host_styles", [])
+    ]
+
+
 class BlindIndexSourceTest(unittest.TestCase):
     deadline = testcase.COMPUTE
 
@@ -149,6 +157,7 @@ class BlindIndexSourceTest(unittest.TestCase):
             }
         )
         self.assertEqual(plan["steps"][0]["sql"].count("`hash`"), 1)
+        self.assertEqual(blind_index_params(plan), [4])
 
     def test_on_duplicate_rejects_two_sources_independently(self):
         runtime = model()
@@ -205,6 +214,7 @@ class BlindIndexSourceTest(unittest.TestCase):
             }
         )
         self.assertEqual(plan["steps"][0]["sql"].count("`hash`"), 1)
+        self.assertEqual(blind_index_params(plan), [4])
 
 
 if __name__ == "__main__":

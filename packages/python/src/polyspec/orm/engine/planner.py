@@ -233,28 +233,29 @@ def _validate_required_assignments(ent: Entity, assignments) -> None:
 
 def _add_blind_index_assignments(ent: Entity, assignments) -> list:
     assignments = list(assignments)
+    explicit = {a["column"] for a in assignments}
     sources: dict[str, str] = {}
-    for a in list(assignments):
+    derived = []
+    for a in assignments:
         col = field_of(ent, a["column"])
-        if (
-            col is None
-            or col.blind_index == ""
-            or _assigned(assignments, col.blind_index)
-        ):
+        if col is None or col.blind_index == "" or col.blind_index in explicit:
             continue
-        previous = sources.setdefault(col.blind_index, col.name)
-        if previous != col.name:
+        previous = sources.get(col.blind_index)
+        if previous is not None and previous != col.name:
             _fail(
                 codes.IR_INVALID,
                 f"blind index {col.blind_index} is derived from both {previous} and {col.name}",
             )
+        if previous is not None:
+            continue
+        sources[col.blind_index] = col.name
         extra = {"column": col.blind_index}
         if "p" in a:
             extra["p"] = a["p"]
         if a.get("null"):
             extra["null"] = True
-        assignments.append(extra)
-    return assignments
+        derived.append(extra)
+    return assignments + derived
 
 
 def _blind_index_source(ent: Entity, target: str) -> Field | None:
