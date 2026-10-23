@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- PHP relation getters now use the runtime `Collection<Target>` type for plural relations and preserve the target model type. Alias getter types follow the owning relation edge and its cardinality, independently of the terminal read. Committed implementation `23d83be1a` passes the focused PHPStan consumer, six relation regression cases and two scan vectors; the original consumer case failed against baseline (KSTD-5-83).
+
 - Process cleanup in the step and test-server scripts now treats only ESRCH as gone, preserves cleanup and timeout causes, keeps failed groups tracked, validates PID files before signaling, and stops all servers before deleting their data. On `f718563f3`, `make scripts-typecheck`, `var/tools/bin/node --test scripts/check/step.test.mts` (12/12), and the selected fake-process/FS cases (4/4) pass; before the fix, three step cases and all four selected server cases failed (KSTD-5-78).
 - The PHP extension now implements Collection in C and returns a native Iterator from `getIterator()`. `make collection-php-extension-check` passes 19 native tests (212 assertions), three declaration tests (8 assertions), and three PHP library identity tests (82 assertions) on the committed implementation `1d20505db` (T182-6-12).
 - Owner selection now treats only a missing named fixture (`ENOENT`) as optional and propagates other read errors. Database setup validates each action's required DSNs before launching clients and reports the action and repair command. On committed implementation `78329bd0f`, `make item-test ID=KSTD-5-79` passes 26 owner cases and the focused database-configuration case (1/1); the old implementation failed the EISDIR fixture case and omitted action context for missing DSNs (KSTD-5-79).

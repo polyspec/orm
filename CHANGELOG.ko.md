@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 88e0d931d50fec23d689d327846621d684084f885829ee335c51f8bbfb35b80e -->
+<!-- source-sha256: de862925888abb713e32c222a061737dce888c29bf37c6f9af6a702c8331def7 -->
 # 변경 이력
 
 ## Unreleased
+
+- PHP relation getter가 복수 관계에서 runtime `Collection<Target>` 타입을 사용하고 target model 타입을 보존한다. Alias getter 타입은 terminal read와 무관하게 소유 relation edge와 cardinality를 따른다. 구현 커밋 `23d83be1a`에서 focused PHPStan consumer, relation 회귀 6개와 scan vector 2개가 통과했고, 원래 consumer case는 baseline에서 실패했다(KSTD-5-83).
 
 - step과 test-server 스크립트의 process cleanup은 이제 ESRCH만 종료 상태로 처리하고, cleanup 및 timeout 원인을 보존하며, 정리에 실패한 group을 계속 추적한다. 신호 전에 PID 파일을 검증하고 모든 서버 종료가 성공한 뒤 data를 삭제한다. 커밋 `f718563f3`에서 `make scripts-typecheck`, `var/tools/bin/node --test scripts/check/step.test.mts` (12/12), 선택한 fake-process/FS cases (4/4)가 통과한다. 수정 전에는 step case 세 개와 선택한 server case 네 개가 모두 실패했다(KSTD-5-78).
 - PHP extension이 Collection을 C로 구현하고 `getIterator()`에서 native Iterator를 반환한다. 커밋된 구현 `1d20505db`에서 `make collection-php-extension-check`는 native 19개 test(212 assertions), declaration 3개 test(8 assertions), PHP library identity 3개 test(82 assertions)를 통과한다(T182-6-12).
