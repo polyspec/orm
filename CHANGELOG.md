@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- PHP Collection get() and first() preserve the caller's model type in their nullable results. The static CI group checks both lookups with a generic model parameter; unparameterized collection iteration keeps its existing behavior (KSTD-5-82).
 - The Rust lint gate now passes all three workspace clippy runs and the Rust catch check, without a suppression. The final catch-check failure is reproduced on the code before f5f9b5993 and the restored tree passes all four steps (KSTD-5-57).
 - The unused `AtomicU8` import of `build/tests/lock_probe_order.rs` is dropped, so the clippy gate of `make rust-check` no longer reports `unused_imports` on main (KSTD-5-56). Red: `make rust-check` on 19c5dd83c failed in clippy with `unused_imports` at `build/tests/lock_probe_order.rs:3`.
 - Rust clippy passes on main: the `mysql_code_tests` module of `orm/src/lib.rs` is the last item of the file, and the unused `AtomicU8` import of `build/tests/lock_probe_order.rs` is dropped, so `make rust-check` passes (KSTD-5-55) (KSTD-5-56). Red: `make rust-check` on 19c5dd83c failed in clippy with `items_after_test_module` at `orm/src/lib.rs:118` and `unused_imports` at `build/tests/lock_probe_order.rs:3`.
