@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The PHP extension now implements Collection in C and returns a native Iterator from `getIterator()`. `make collection-php-extension-check` passes 19 native tests (212 assertions), three declaration tests (8 assertions), and three PHP library identity tests (82 assertions) on the committed implementation `1d20505db` (T182-6-12).
 - Owner selection now treats only a missing named fixture (`ENOENT`) as optional and propagates other read errors. Database setup validates each action's required DSNs before launching clients and reports the action and repair command. On committed implementation `78329bd0f`, `make item-test ID=KSTD-5-79` passes 26 owner cases and the focused database-configuration case (1/1); the old implementation failed the EISDIR fixture case and omitted action context for missing DSNs (KSTD-5-79).
 - TypeScript codec JSON, YAML and UTF-8 failures retain their original causes, while existing `CodecError` instances keep their identity. `make ts-codec-errors-check` passes all six native cases on committed implementation `08dbf4cce`; the old implementation passed the valid-value control and failed the five cause and identity cases (KSTD-5-75).
 - TypeScript AES decoding converts only the native final authentication failure to `CODEC_DECODE` and preserves setup, update and unrelated final errors. `make ts-aes-auth-check` passes nine native test events on the committed implementation; before the fix, three passed and the error-preservation group plus five error-origin cases failed (KSTD-5-73).

@@ -5385,7 +5385,7 @@
   },
   "packages/php/src/Collection.php::Polyspec\\Orm\\Collection::getIterator": {
     "exported": true,
-    "signature": "public function getIterator(): Generator"
+    "signature": "public function getIterator(): Traversable"
   },
   "packages/php/src/Collection.php::Polyspec\\Orm\\Collection::has": {
     "exported": true,
