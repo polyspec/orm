@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a54354c4218349e84fceefebdeda44b36b3cf541d91fc8ec8328230d0fb728c7 -->
+<!-- source-sha256: 9da969d65ef9f184aa2ff7c3ca7814e4d0ea8047e531103678b9fabbf619c5d4 -->
 # 변경 이력
 
 ## Unreleased
 
+- TypeScript AES decode는 native final 인증 실패만 `CODEC_DECODE`로 변환하고 설정, update 및 관련 없는 final 오류는 보존한다. `make ts-aes-auth-check`가 구현 커밋에서 native 테스트 이벤트 9개를 통과했다. 수정 전에는 정상 제어 3개가 통과하고 오류 보존 그룹과 5개 오류 발생 지점 사례가 실패했다(KSTD-5-73).
 - PHP `SetReader`가 set 오류에 최신 `lstat`, `stat`, `scandir` 경고를 보존하며 cached listing 실패도 같은 원인을 전달한다. `make dbspec-php-check/set`이 기존 set case 72개와 library reader 진단 case 7개를 통과한다. 이전 구현의 RED에서는 기존 72개와 이름 없음 대조군만 통과하고 filesystem 실패 6개에는 경고가 없어 실패했다(KSTD-5-76).
 - TypeScript `save()`는 키 누락 `OrmError`에 대해서만 insert로 전환한다. set key를 읽을 때 발생한 다른 `CONFIG` 오류는 caller에게 전달한다. `make ts-save-key-check`가 생성/수정 정상 경로 세 개와 sentinel 오류 case를 통과한다(KSTD-5-74). Red: 기존 구현은 정상 경로는 통과했지만 sentinel을 삼켜 `Missing expected rejection`으로 실패했다.
 - ORM이 `WORKTREE_STOP = orm-test-servers-stop`을 선언해 kit worktree 정리 과정에서 제거 전에 서버를 멈춘다. `node --test scripts/repo/worktree-stop.test.mts`가 Makefile-origin reader, 제거 전 stop, stop 실패 시 보존 case를 통과한다(T237). Red: c5755a5ddc46에서 같은 test는 `stopTargetOf()`가 `undefined`를 반환해 실패했다.

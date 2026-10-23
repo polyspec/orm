@@ -234,7 +234,7 @@
 | KSTD-5-70 | Name the missing CARGO_MANIFEST_DIR instead of resolving against the current directory | packages/rust/build/src/lib.rs:146 | `make rust-check` | [ ] |
 | KSTD-5-71 | Keep the cause in the map_err(\|_\|) closures of the Rust codec, driver, markdown and build files | packages/rust/orm/src/codec.rs; packages/rust/orm/src/driver.rs (bad()); packages/rust/orm/src/markdown.rs:573,579; packages/rust/build/src/catalog/*; packages/rust/build/src/tool_db/* | `make rust-check` | [ ] |
 | KSTD-5-72 | Return the error of the generated Go Value accessor instead of nil | packages/go/orm/model.go:122 (read at model.go:1298) | `make go-vet-check` | [ ] |
-| KSTD-5-73 | Catch only the AES authentication failure in the TypeScript decipher | packages/ts/src/codec.ts:77 | `make ts-check` | [ ] |
+| KSTD-5-73 | Catch only the AES authentication failure in the TypeScript decipher | packages/ts/src/codec.ts; packages/ts/tests/codec-aes-errors.test.mjs; Makefile; contracts/check-inputs.json | `make ts-aes-auth-check` | [o] |
 | KSTD-5-74 | Catch only the missing-key OrmError in TypeScript save | packages/ts/src/model.ts; packages/ts/tests/save-key-errors.test.mjs; Makefile; contracts/check-inputs.json | `var/tools/bin/node --test packages/ts/tests/save-key-errors.test.mjs` | [o] |
 | KSTD-5-75 | Rethrow CodecError in the TypeScript codec catch blocks, with the cause | packages/ts/src/codec.ts:197,361 | `make ts-check` | [ ] |
 | KSTD-5-76 | Report a stat or scandir failure in the PHP set reader as an error, not as a missing entry | packages/php/src/Dbspec/SetReader.php; packages/php/tests/SetReaderDiagnosticsTest.php; Makefile; contracts/check-inputs.json | `make dbspec-php-check/set` | [o] |

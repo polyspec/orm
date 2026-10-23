@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 2dbf224e2f4f27217e3d610a2a7bc6afe671eb94efd422354d1c18540c68785e -->
+<!-- source-sha256: f280ef0ccdc87d83e49688e6b84a4260ae4cf2058248111495a6fd480f37c711 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -235,7 +235,7 @@
 | KSTD-5-70 | CARGO_MANIFEST_DIR이 없을 때 현재 디렉터리 대신 변수 이름을 밝히는 오류를 낸다 | packages/rust/build/src/lib.rs:146 | `make rust-check` | [ ] |
 | KSTD-5-71 | Rust codec, driver, markdown와 build 파일의 map_err(\|_\|) 클로저가 원인을 유지하게 한다 | packages/rust/orm/src/codec.rs; packages/rust/orm/src/driver.rs (bad()); packages/rust/orm/src/markdown.rs:573,579; packages/rust/build/src/catalog/*; packages/rust/build/src/tool_db/* | `make rust-check` | [ ] |
 | KSTD-5-72 | 생성된 Go Value 접근자의 오류를 nil 대신 반환한다 | packages/go/orm/model.go:122 (read at model.go:1298) | `make go-vet-check` | [ ] |
-| KSTD-5-73 | TypeScript decipher에서 AES 인증 실패만 잡는다 | packages/ts/src/codec.ts:77 | `make ts-check` | [ ] |
+| KSTD-5-73 | TypeScript decipher에서 AES 인증 실패만 잡는다 | packages/ts/src/codec.ts; packages/ts/tests/codec-aes-errors.test.mjs; Makefile; contracts/check-inputs.json | `make ts-aes-auth-check` | [o] |
 | KSTD-5-74 | TypeScript save에서 키 없음 OrmError만 잡는다 | packages/ts/src/model.ts; packages/ts/tests/save-key-errors.test.mjs; Makefile; contracts/check-inputs.json | `var/tools/bin/node --test packages/ts/tests/save-key-errors.test.mjs` | [o] |
 | KSTD-5-75 | TypeScript codec catch 블록이 CodecError를 원인과 함께 다시 던지게 한다 | packages/ts/src/codec.ts:197,361 | `make ts-check` | [ ] |
 | KSTD-5-76 | PHP set reader의 stat 또는 scandir 실패를 없음이 아닌 오류로 보고한다 | packages/php/src/Dbspec/SetReader.php; packages/php/tests/SetReaderDiagnosticsTest.php; Makefile; contracts/check-inputs.json | `make dbspec-php-check/set` | [o] |

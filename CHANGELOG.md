@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- TypeScript AES decoding converts only the native final authentication failure to `CODEC_DECODE` and preserves setup, update and unrelated final errors. `make ts-aes-auth-check` passes nine native test events on the committed implementation; before the fix, three passed and the error-preservation group plus five error-origin cases failed (KSTD-5-73).
 - PHP `SetReader` now preserves fresh `lstat`, `stat` and `scandir` warnings in set errors, including cached listing failures. `make dbspec-php-check/set` passes 72 existing set cases and seven library-reader diagnostics cases; RED on the prior implementation passed the 72 controls and only the missing-name diagnostic, while six filesystem-failure cases lacked the warning (KSTD-5-76).
 - TypeScript `save()` falls back to insert only for its missing-key `OrmError`; an unrelated `CONFIG` thrown while reading a set key reaches the caller. `make ts-save-key-check` passes the three create/update controls and the sentinel error case (KSTD-5-74). Red: the old implementation passed the controls but swallowed the sentinel, failing with `Missing expected rejection`.
 - ORM declares `WORKTREE_STOP = orm-test-servers-stop`, so kit worktree cleanup stops its servers before removal. `node --test scripts/repo/worktree-stop.test.mts` passes the Makefile-origin reader, stop-before-removal, and failed-stop preservation cases (T237). Red: the same test on c5755a5ddc46 failed because `stopTargetOf()` returned `undefined`.
