@@ -21,6 +21,9 @@ fn rejects_malformed_components_as_internal_with_the_raw_value() {
         " 3.46.0",
         "3.46.0 ",
         "3.46.0\n",
+        "3.46.0\r",
+        "3.46.0\u{2028}",
+        "3.46.0\u{2029}",
         "3.46.0.",
         "+3.46.0",
         "3.46.0-rc1",
@@ -30,7 +33,7 @@ fn rejects_malformed_components_as_internal_with_the_raw_value() {
     ] {
         let error = check_sqlite_version(version).expect_err(version);
         assert_eq!(error.code(), codes::INTERNAL, "{version:?}: {error}");
-        assert!(error.to_string().contains(version), "{version:?}: {error}");
+        assert!(error.to_string().contains(&format!("{version:?}")), "{version:?}: {error}");
     }
 }
 

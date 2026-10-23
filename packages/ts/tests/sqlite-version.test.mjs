@@ -9,7 +9,7 @@ caseTest('SQLite version parser accepts three or four decimal u32 components', C
 });
 
 caseTest('SQLite version parser rejects malformed values as INTERNAL with the raw input', COMPUTE, () => {
-  for (const version of ['', '3.46', '3.46.0.0.0', '3..0', '.46.0', ' 3.46.0', '3.46.0 ', '3.46.0\n', '+3.46.0', '3.46.0-rc1', '3.4294967296.0', '3.46.0.4294967296', '3.46.0.', '٣.46.0']) {
+  for (const version of ['', '3.46', '3.46.0.0.0', '3..0', '.46.0', ' 3.46.0', '3.46.0 ', '3.46.0\n', '3.46.0\r', '3.46.0\u2028', '3.46.0\u2029', '+3.46.0', '3.46.0-rc1', '3.4294967296.0', '3.46.0.4294967296', '3.46.0.', '٣.46.0']) {
     assert.throws(
       () => checkSqliteVersion(version),
       error => error.code === 'INTERNAL' && error.message.includes(JSON.stringify(version)),
