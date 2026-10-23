@@ -68,13 +68,21 @@ export function hostDecode(raw: string | Uint8Array | null, styles: readonly str
         const prefix = Buffer.from('ORM-AES2\0');
         if (!current.subarray(0, prefix.length).equals(prefix)) throw new CodecError(codes.CODEC_DECODE, 'aes: unsupported ciphertext format');
         if (current.length < prefix.length + 12 + 16) throw new CodecError(codes.CODEC_DECODE, 'aes: truncated v2 envelope');
+        const nonce = current.subarray(prefix.length, prefix.length + 12);
+        const decipher = createDecipheriv('aes-256-gcm', aesV2Key(aesKey), nonce);
+        decipher.setAAD(prefix);
+        decipher.setAuthTag(current.subarray(-16));
+        const partial = decipher.update(current.subarray(prefix.length + 12, -16));
+        let final: Buffer;
         try {
-          const nonce = current.subarray(prefix.length, prefix.length + 12);
-          const decipher = createDecipheriv('aes-256-gcm', aesV2Key(aesKey), nonce);
-          decipher.setAAD(prefix);
-          decipher.setAuthTag(current.subarray(-16));
-          current = Buffer.concat([decipher.update(current.subarray(prefix.length + 12, -16)), decipher.final()]);
-        } catch { throw new CodecError(codes.CODEC_DECODE, 'aes: authentication failed'); }
+          final = decipher.final();
+        } catch (error) {
+          if (error instanceof Error && error.message === 'Unsupported state or unable to authenticate data' && !('code' in error)) {
+            throw new CodecError(codes.CODEC_DECODE, 'aes: authentication failed');
+          }
+          throw error;
+        }
+        current = Buffer.concat([partial, final]);
         break;
       }
       case 'ip': return unpackIp(current);
