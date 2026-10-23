@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 77cb66dc221f1ff2b24172bbc1de08d9109c3bf3ef778b6a722f5219ea856200 -->
+<!-- source-sha256: 60634ceff303338392c18de2ca064527557973eea6fd2ec72c12eee2e8f7faf3 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -169,7 +169,7 @@
 | KSTD-5-57-9 | build generate.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/build/src/generate.rs | `make lint-rust` reports no finding in these files | [o] |
 | KSTD-5-57-10 | 나머지 build 소스의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/build/src tool_db, catalog, lib | `make lint-rust` reports no finding in these files | [o] |
 | KSTD-5-57-11 | orm 테스트 target revision, statement_events의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests revision.rs, statement_events.rs | `make lint-rust` reports no finding in these files | [o] |
-| KSTD-5-57-12 | orm 테스트 파일 listen_notify, register, clock, was_inserted의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests listen_notify, register, clock, was_inserted | `make lint-rust` reports no finding in these files | [ ] |
+| KSTD-5-57-12 | orm 테스트 파일 listen_notify, register, clock, was_inserted의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests listen_notify, register, clock, was_inserted | `make lint-rust` reports no finding in these files | [o] |
 | KSTD-5-57-13 | orm 테스트 파일 statement_fault, request_hook, audit_rows의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests statement_fault, request_hook, common/audit_rows | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-14 | 나머지 orm 테스트 파일의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests install, dbspec_apply, dbspec_plan_apply, common/sqlite_case, markdown, collection_identity, aes_json, coverage_interface_contract, and the rest the gate reports | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-15 | orm tx.rs 테스트 모듈의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/src/tx.rs test module | `make lint-rust` reports no finding in these files | [ ] |

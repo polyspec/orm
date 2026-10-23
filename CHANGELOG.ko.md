@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c42f2d24efecd9bb0b755b9a4d74b8f4c3eb460a9caaa6f90e3360a60adbf56a -->
+<!-- source-sha256: 0d682ef889b5606d4bd5eb152976a4418339dc4e6ebbead422c847fe0b79ef9b -->
 # 변경 이력
 
 ## Unreleased
 
+- orm test listen_notify, register, clock, was_inserted의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-12).
 - orm test revision.rs와 statement_events.rs의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-11).
 - 나머지 build source tool_db, catalog, lib의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-10).
 - build의 generate.rs의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-9).
