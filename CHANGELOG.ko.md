@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: ad44da97bda71556e747428e95681ec4843ca84f6a4e9a5ce8fe1807f8999643 -->
+<!-- source-sha256: d56e77bc6442fba0eba00c850c673ea4482ec0e95796fbd418e015006338fb34 -->
 # 변경 이력
 
 ## Unreleased
 
+- build table_page.rs와 orm identity_load.rs, soft_delete.rs, dbspec_probe.rs의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-23).
 - tests crate의 common/mod.rs와 coverage file의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-22).
 - tests crate의 bench_set.rs와 client_bench.rs의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-21).
 - orm test value_decode.rs, unit param_uses.rs, coverage_planner.rs의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-20).
