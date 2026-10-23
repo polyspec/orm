@@ -1,5 +1,5 @@
 <!-- doc-id: remediation-plan -->
-<!-- source-sha256: a30d196fe817497fe44bed821679c400200c081c20c55095c63d816f0e1ce27c -->
+<!-- source-sha256: ba708fba4218dab4509c06e3a82e5df24aff909ed49cd288144cf18c176c2d8e -->
 # 남은 작업의 진단과 해결 방안
 
 [English](remediation-plan.md)
@@ -12,6 +12,7 @@
 2. 확장 parity를 주장하기 전에 PHP 확장의 실제 native Model과 Collection 표면을 구현한다. T182-6은 실제 C 구현과 전용 실행 대상에 의존하며 PHP 사용자 영역 바인딩이나 Reflection만으로는 증거가 되지 않는다. 공개 `Collection::getIterator(): Generator` 계약과 기존 키 union을 유지한다. typed key/order/object identity, lazy start, 첫 yield 전후 변경, snapshot과 live 동작, restart/rewind/send/throw/getReturn, generator를 유지한 early break, 객체 해제/GC cycle, 오류 회귀 case를 기록한다. 제너레이터 의존 작업에는 별도의 지원되는 Zend 제너레이터 생성 API 증명이 선행되어야 한다. PHP 8.4의 resume/close/frame API만으로 지원되는 생성 팩토리가 입증되지는 않았다. 지원 API 문서 또는 upstream 사용 사례와 실제 prototype으로 검증한다. `Traversable`로 바꾸거나 PHP를 compile/eval하거나 VM frame을 조작하거나 core handler를 교체하지 않는다.
 3. 소유 패키지에 native 테스트를 추가하고 연결한다. 단위 수용 기준은 정확히 선택된 테스트 이름이 실행되어 통과하는 것이다. 데이터베이스 기준은 여섯 클라이언트의 실제 출력과 상태가 MySQL, PostgreSQL, SQLite에서 요구된 결과를 내며, coverage 계약이 요구하는 곳에서는 결과와 상태가 두 번 동일해야 한다. 정적 선언 수, 코드 읽기, 과거 로그, 미실행 테스트는 진단 자료일 뿐이다. DB, 교차 클라이언트, 전체 빌드, feature-owner 및 전체 묶음 작업은 CI에서 검증한다. 이 계획 수행 중 로컬 DB나 넓은 테스트 묶음을 실행하지 않는다.
 4. 독립 작업을 확장 의존성, parity, release gate보다 먼저 끝낸다. root가 할당/조정/검토하며 GPT-6-luna 작업자는 한 번에 한 명만 활성화한다. 불가능성 제안은 상태를 바꾸기 전에 독립된 순차 감사를 거친다. 개발 중에는 선언에 따라 선택된 단위 case만 실행하며 `make owner-check`, 전체 client, 로컬 DB 검사는 실행하지 않는다. 체크리스트 상태를 바꾸기 전에 `make docs-check`를 실행한다. 변경 파일명을 읽는 test/script reader를 검색하고 정확한 명령과 수를 기록한다. 통과한 단위 근거와 영/한 changelog를 같은 커밋에 기록한다. 현재 release 묶음과 maintainer 전용 tag 규칙을 지킨다. 새 release를 제안하기 전에 원격 CI와 editor 산출물을 확인한다. 자동으로 release하거나 tag를 이동하지 않는다.
+5. T237은 ORM worktree 종료 선언 누락을 기록한다. `make land`는 Makefile-origin 변수의 `WORKTREE_STOP`만 읽으므로 환경 변수나 command-line override는 종료 target을 등록하지 않는다. ORM Makefile에 `WORKTREE_STOP = orm-test-servers-stop`을 선언하고, Makefile에서 읽힌 값과 worktree 제거 전 stop target 실행, stop 실패 시 worktree와 data directory 보존을 focused fixture로 검증한다. KSTD-5-82 통합에서는 kit `make land`가 branch와 main 양쪽에서 `make build`를 자동 실행했고 둘 다 통과했다. 이는 저장소의 로컬 unit-only workflow를 넘으며 unit 근거가 아니다. `make land`를 unit-only라고 설명하지 않는다. full build를 피하면서 명시적 서버 종료, fast-forward 통합, 사용자 권한 범위의 정리를 보존하는 검증된 경로를 사용하거나 main에서 구현한다.
 
 ## 남은 항목 지도
 
@@ -84,7 +85,7 @@
 | ID | 근거와 진단 | 구체적 수정 | 완료 기준과 선행 조건 |
 |---|---|---|---|
 | KSTD-5-82 | `f2968adaf` branch는 Collection `get`/`first`와 PHPStan fixture를 추가한다. 과거 전용 테스트는 반환 타입 오류 2건 red 뒤 통과했다. | branch 전체를 통합하고 `Collection::getIterator(): Generator`와 키 union을 보존한다. | consumer PHPStan이 typed model/null 결과를 증명하고 전용 test 통과. |
-| KSTD-5-83 | PHP `packages/php/src/Generator.php` getter type이 명명된 Collection을 raw 타입으로 출력한다. | fully qualified `Collection<Child>` PHPDoc 생성. single relation `?Child`는 유지. | 메서드 존재만이 아니라 PHPStan consumer가 Child 타입을 추론. |
+| KSTD-5-83 | `packages/php/src/Generator.php`는 현재 `get<Entity>Models()`를 `list<Target>`로 선언한다 (`getterType`). 실제 relation 값은 `Collection<Target>`이다. 앞선 raw Collection 진단은 틀렸다. | target model type과 single relation `?Target`을 유지하면서 fully qualified `\Polyspec\Orm\Collection<Target>` PHPDoc을 생성한다. | focused PHPStan consumer가 plural getter의 collection target model과 lookup result의 model type을 확인한다. |
 | KSTD-5-84 | `ScanVisitor::declaredTypes`는 relation AST의 소유자를 따라야 한다. | 끝단 get/gets가 아니라 `on(relation(child))`/`relations(child)`에서 유도한다. direct chain의 마지막 유효 alias를 사용하고 nested AST는 자체 owner로 방문한다. 같은 entity/cardinality는 합치고 충돌은 CONFIG. model-name fallback보다 explicit alias를 먼저 검증한다. | get/gets, nesting, owner/root alias, 충돌, 마지막 alias, reserved-looking explicit alias 테스트. |
 | KSTD-5-49-1 | 유효한 schema에서 두 AES source가 blind target을 공유할 수 있고 현재 선택이 잘못된 row index를 bind할 수 있다. | 실제 source-target 연결과 column 위치를 보존한다. 명시 assignment가 우선이고 미지정 target만 derive한다. 서로 다른 두 source가 같은 target을 derive하면 값이 같거나 NULL이어도 거부한다. source 하나인 공유 schema와 explicit target+두 source는 허용한다. insert와 on_duplicate를 각각 처리한다. | 공통 COD rule과 여섯 client case. 의미 있는 private planner test와 낡은 주석 보존/수정. |
 
