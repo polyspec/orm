@@ -15,6 +15,7 @@ require_once dirname(__DIR__) . '/gen/bootstrap.php';
 // The helper classes of the tests, one class per file, and the helpers that the test classes use, required once here:
 // a test file then declares its one class and causes no side effect (PSR-1).
 require_once __DIR__ . '/CallbackFailed.php';
+require_once __DIR__ . '/three_drivers.php';
 require_once __DIR__ . '/CannedCatalogPdo.php';
 require_once __DIR__ . '/CountingPdo.php';
 require_once __DIR__ . '/FailingPdo.php';

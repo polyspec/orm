@@ -42,6 +42,8 @@ use PHPUnit\Framework\Attributes\DataProvider;
 #[Medium]
 final class SchemaSetTest extends TestCase
 {
+    use ThreeDrivers;
+
     private static mixed $work = null;
     private static mixed $decimalDocuments = null;
     private static mixed $decimalModel = null;
@@ -525,14 +527,6 @@ final class SchemaSetTest extends TestCase
     public static function setUpBeforeClass(): void
     {
         self::fixture();
-    }
-
-    /** @return iterable<string, array{string}> the drivers of the case, each a data set */
-    public static function drivers(): iterable
-    {
-        foreach (['sqlite', 'mysql', 'postgres'] as $driver) {
-            yield $driver => [$driver];
-        }
     }
 
     /**

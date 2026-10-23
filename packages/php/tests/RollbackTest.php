@@ -42,6 +42,8 @@ use PHPUnit\Framework\Attributes\DataProvider;
 #[Medium]
 final class RollbackTest extends TestCase
 {
+    use ThreeDrivers;
+
     private static mixed $documents = null;
     private static mixed $faultsAutoloaded = null;
 
@@ -352,14 +354,6 @@ final class RollbackTest extends TestCase
     public static function setUpBeforeClass(): void
     {
         self::fixture();
-    }
-
-    /** @return iterable<string, array{string}> the drivers of the case, each a data set */
-    public static function drivers(): iterable
-    {
-        foreach (['sqlite', 'mysql', 'postgres'] as $driver) {
-            yield $driver => [$driver];
-        }
     }
 
     #[DataProvider('drivers')]

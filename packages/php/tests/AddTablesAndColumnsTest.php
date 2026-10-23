@@ -35,6 +35,8 @@ use PHPUnit\Framework\Attributes\DataProvider;
 #[Medium]
 final class AddTablesAndColumnsTest extends TestCase
 {
+    use ThreeDrivers;
+
     private const ADDED = [
         'addcol_extra', 'addcol_extra_history',
         'addcol_item.note', 'addcol_item.priority', 'addcol_item.archived', 'addcol_item.status',
@@ -280,14 +282,6 @@ final class AddTablesAndColumnsTest extends TestCase
             );
         } finally {
             $db->close();
-        }
-    }
-
-    /** @return iterable<string, array{string}> the drivers of the case, each a data set */
-    public static function drivers(): iterable
-    {
-        foreach (['sqlite', 'mysql', 'postgres'] as $driver) {
-            yield $driver => [$driver];
         }
     }
 
