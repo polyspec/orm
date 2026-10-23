@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: bb147560332a912f5b2749de8f3043f3aa9350fab5192b1deff9d5414c8b9d6e -->
+<!-- source-sha256: 6c0ed0841789d117ad9a37c9289dc11c0d10d719a60354d197381369bc2cd1c9 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -244,4 +244,4 @@
 | KSTD-5-79 | fixture를 읽을 수 없을 때 ENOENT만 owner 없음으로 본다 | scripts/features/owners.mts:60; scripts/check/databases.mts:85-99 | `make scripts-typecheck` | [ ] |
 | KSTD-5-80 | extension이 다중 row insert의 두 번째 row에 첫 row의 column을 parameter uses로 준다(MarkdownTest::testParamUses) | packages/php-ext/src/planner.c; packages/php/tests/MarkdownTest.php | `make dbspec-php-extension-check/markdown` | [o] |
 | KSTD-5-81 | TypeScript package의 ./testing export가 orm-test 키 아래 중첩되어 @polyspec/orm/testing이 resolve되지 않는다(rollback.mjs와 statement_fault.mjs가 ERR_PACKAGE_PATH_NOT_EXPORTED로 실패한다) | packages/ts/package.json | `node packages/ts/tests/rollback.mjs`, `node packages/ts/tests/statement_fault.mjs` | [-] 원인: 결함이 아니다: ./testing export는 설계상 orm-test condition 아래 중첩된다. rollback.mjs와 statement_fault.mjs는 --conditions=orm-test로 main에서 통과한다(9와 4). 결함 전제인 조건 없는 실행의 ERR_PACKAGE_PATH_NOT_EXPORTED는 의도된 거부다. |
-| KSTD-5-85 | worktree의 Rust 테스트 빌드는 debug line table을 빼고, main은 line-tables-only를 유지한다. | Makefile (CARGO_PROFILE_DEV_DEBUG, print-CARGO_PROFILE_DEV_DEBUG) | `make -s print-CARGO_PROFILE_DEV_DEBUG` prints 0 in a worktree | [~] |
+| KSTD-5-85 | worktree의 Rust 테스트 빌드는 debug line table을 빼고, main은 line-tables-only를 유지한다. | Makefile (CARGO_PROFILE_DEV_DEBUG, print-CARGO_PROFILE_DEV_DEBUG) | `test "$(make -s print-CARGO_PROFILE_DEV_DEBUG)" = 0` | [~] |

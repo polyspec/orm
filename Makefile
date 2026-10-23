@@ -45,7 +45,10 @@ ifeq ($(filter $(abspath .)/%,$(abspath $(CARGO_TARGET_DIR))),)
 $(error CARGO_TARGET_DIR=$(CARGO_TARGET_DIR) is outside this checkout $(abspath .); each checkout builds Rust into its own target directory (AGENTS.md), because cargo would reuse what another checkout built as fresh)
 endif
 export CARGO_INCREMENTAL := 0
-export CARGO_PROFILE_DEV_DEBUG := line-tables-only
+# A worktree builds its Rust tests with debug = 0: the line tables are dropped, which makes the test build about 27% smaller (4.5 GB
+# to 3.3 GB), while panic and assertion locations keep file:line. The value is recursive, so it expands after kit's include sets
+# KIT_WORKTREE. Main keeps line-tables-only; its packages/rust/target is regenerable, so a worktree does not share it.
+export CARGO_PROFILE_DEV_DEBUG = $(if $(KIT_WORKTREE),0,line-tables-only)
 # ORM_RUST_TEST_FEATURES is the feature used by Rust tests. All cargo test commands (client DB tests,
 # feature coverage and verification commands, dbspec Rust check) use `--workspace --features
 # $(ORM_RUST_TEST_FEATURES)` to fix the dependency features the same way, share one test build, and run only their own tests with `--test` and a
@@ -271,7 +274,7 @@ testcase-check: testcase-check/go testcase-check/node testcase-check/runners tes
 testcase-check/go:
 	$(GO_TEST) ./packages/go/testcase -count=1
 testcase-check/node:
-	$(NODE) --test scripts/harness/testcase.test.mts
+	$(NODE) --test scripts/harness/testcase.test.mts scripts/harness/debug-mode.test.mts
 testcase-check/runners:
 	$(NODE) --test scripts/harness/go-test.test.mts scripts/harness/cargo-test.test.mts
 testcase-check/rust: cargo-downloads-check
