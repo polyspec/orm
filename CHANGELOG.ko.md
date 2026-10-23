@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 2954471a15f90d3aec5e9c0181969719d2b0ce6a3c1d8d1b6d85d69d6cad63d7 -->
+<!-- source-sha256: f26d3ef68ce9cc7c50d1a22527457a90e77b40bb584a1626faf9f13a14a3a13e -->
 # 변경 이력
 
 ## Unreleased
 
+- PHP Collection의 get()과 first()가 nullable 반환값에서 호출자의 model type을 유지한다. PHPStan 회귀 fixture를 static CI group에서 실행한다 (KSTD-5-82).
 - Rust lint gate의 workspace clippy 실행 3개와 Rust catch check가 suppression 없이 모두 통과한다. f5f9b5993 이전 코드에서 마지막 catch-check 실패를 재현했고 복원한 tree는 4단계를 모두 통과한다 (KSTD-5-57).
 - `build/tests/lock_probe_order.rs`의 쓰지 않는 `AtomicU8` import를 뺀다. 그래서 `make rust-check`의 clippy gate가 main에서 `unused_imports`를 더 보고하지 않는다(KSTD-5-56). red: 19c5dd83c의 `make rust-check`가 clippy에서 `build/tests/lock_probe_order.rs:3`의 `unused_imports`로 실패했다.
 - main의 Rust clippy가 통과한다: `orm/src/lib.rs`의 `mysql_code_tests` module을 파일의 마지막 항목으로 옮기고, `build/tests/lock_probe_order.rs`의 쓰지 않는 `AtomicU8` import를 뺀다. 그래서 `make rust-check`가 통과한다(KSTD-5-55) (KSTD-5-56). red: 19c5dd83c의 `make rust-check`가 clippy에서 `orm/src/lib.rs:118`의 `items_after_test_module`과 `build/tests/lock_probe_order.rs:3`의 `unused_imports`로 실패했다.
