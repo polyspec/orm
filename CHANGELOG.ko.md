@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 007dd1f7edbee3d095f34b3635a668adc21a672b856af38bfd4ce93b6310dbb3 -->
+<!-- source-sha256: 7c578af643d185fb0a5f3dc16dfbbdf11890373862a803f98375301622ae7b82 -->
 # 변경 이력
 
 ## Unreleased
 
+- `packages/rust/orm/tests/zone.rs`의 디렉터리 helper에 Err 분기의 문장을 준다. 없는 디렉터리는 무시하고 다른 error는 원인과 함께 panic하므로 catch check(K537)가 통과한다(KSTD-5-57-19). red: catch check가 zone.rs:26의 문장 없는 Err 분기를 보고했다.
 - extension의 paramUses는 다중 row insert의 각 row에 그 row 자신의 위치의 column을 준다. 그래서 모든 row의 parameter가 자기 column을 받으며, PHP 경로와 같다(KSTD-5-80). red: MarkdownTest::testParamUses가 row를 owner, owner, owner와 title, title, title로 보고했다.
 - `testLimitColumnsPeak`는 limit/columns 문서를 PHP 기본 memory limit의 별도 process에서 parse하므로, 그 bound가 test run이 앞서 잡고 있는 메모리에 따라 달라지지 않는다(KSTD-5-58). red: parse 앞에서 88 MB를 잡고 있으면 bound가 음수가 되어 실패했다(`testLimitColumnsPeakAfterHeldMemory`).
 - `Collection` template이 base `Model`을 기본 bound로 갖지 않으므로, raw `Collection` 매개변수의 row에서 PHPStan이 거짓 `method.notFound`를 보고하지 않는다. 타입이 있는 `gets(): Collection<Model>` 경로는 그대로다. `make collection-raw-phpstan-check`는 그 fixture를 level 5 PHPStan으로 검사한다(KSTD-5-54). red: fixture가 `Call to an undefined method Polyspec\Orm\Model::getSeq()`를 보고했다.

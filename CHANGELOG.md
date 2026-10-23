@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The lint of `packages/rust/orm/tests/zone.rs` gives the Err branch of the directory helper a statement: a missing directory is ignored and any other error panics with its cause, so the catch check (K537) passes (KSTD-5-57-19). Red: the catch check reported zone.rs:26 as an Err branch with no statement.
 - The extension's paramUses gives each row of a multi-row insert the columns at its own positions, so every row's parameters take their own columns, as the PHP path does (KSTD-5-80). Red: MarkdownTest::testParamUses reported the rows as owner, owner, owner and title, title, title.
 - `testLimitColumnsPeak` parses the limit/columns document in a process of its own with PHP's default memory limit, so its bound no longer depends on the memory that the test run holds before it (KSTD-5-58). Red: holding 88 MB before the same parse gave a negative bound and failed (`testLimitColumnsPeakAfterHeldMemory`).
 - The `Collection` template has no default bound to the base `Model`, so a raw `Collection` parameter no longer makes PHPStan report a false `method.notFound` on its rows; the typed `gets(): Collection<Model>` path is unchanged. `make collection-raw-phpstan-check` runs PHPStan at level 5 over that fixture (KSTD-5-54). Red: the fixture reported `Call to an undefined method Polyspec\Orm\Model::getSeq()`.
