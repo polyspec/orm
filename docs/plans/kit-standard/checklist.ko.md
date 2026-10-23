@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 44e90acc8d52449963aecc46dad602eb17f50a6e00e334db03659717de1717c8 -->
+<!-- source-sha256: 2dbf224e2f4f27217e3d610a2a7bc6afe671eb94efd422354d1c18540c68785e -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -238,7 +238,7 @@
 | KSTD-5-73 | TypeScript decipher에서 AES 인증 실패만 잡는다 | packages/ts/src/codec.ts:77 | `make ts-check` | [ ] |
 | KSTD-5-74 | TypeScript save에서 키 없음 OrmError만 잡는다 | packages/ts/src/model.ts; packages/ts/tests/save-key-errors.test.mjs; Makefile; contracts/check-inputs.json | `var/tools/bin/node --test packages/ts/tests/save-key-errors.test.mjs` | [o] |
 | KSTD-5-75 | TypeScript codec catch 블록이 CodecError를 원인과 함께 다시 던지게 한다 | packages/ts/src/codec.ts:197,361 | `make ts-check` | [ ] |
-| KSTD-5-76 | PHP set reader의 stat 또는 scandir 실패를 없음이 아닌 오류로 보고한다 | packages/php/src/Dbspec/SetReader.php:165,186 | `make lint-php` | [ ] |
+| KSTD-5-76 | PHP set reader의 stat 또는 scandir 실패를 없음이 아닌 오류로 보고한다 | packages/php/src/Dbspec/SetReader.php; packages/php/tests/SetReaderDiagnosticsTest.php; Makefile; contracts/check-inputs.json | `make dbspec-php-check/set` | [o] |
 | KSTD-5-77 | PHP와 C에서 YAML 파서의 예외 클래스만 잡고 원인을 잇는다 | packages/php/src/Codec.php:96,149,104,156; packages/php/src/Model.php:2360; packages/php-ext/src/codec.c:194-203 | `make lint-php` | [ ] |
 | KSTD-5-78 | step과 test-server 스크립트에서 ESRCH만 종료된 process group으로 본다 | scripts/check/step.mts:63; scripts/test-servers.mts:203, :341 | `make scripts-typecheck` | [ ] |
 | KSTD-5-79 | fixture를 읽을 수 없을 때 ENOENT만 owner 없음으로 본다 | scripts/features/owners.mts:60; scripts/check/databases.mts:85-99 | `make scripts-typecheck` | [ ] |
