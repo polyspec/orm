@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 9c4df43c1966594181d13ebcd61efed165b870fa38c109d82baf227c76527479 -->
+<!-- source-sha256: 84aac8d3321b541ec6719b18e59557103051a53b7fad710ad3fd7dddb3beb2e6 -->
 # 변경 이력
 
 ## Unreleased
+
+- 공유 blind-index target은 명시적으로 할당된 target을 우선 사용하고, target이 없을 때 서로 다른 AES source가 할당되어 있으면 거부한다. insert와 on-duplicate 할당은 각각 검사하며 원래 row parameter offset을 보존한다. commit `3c3243761`에서 `make item-test ID=KSTD-5-49-1`가 Go (6 tests), PHP (7/26), PHP extension (7/26), TypeScript (125), Python (7), Rust (7)를 모두 통과한다. Python 회귀는 `4b164670`에서 실패했다 (`var/plan/KSTD-5-49-1.json`) (KSTD-5-49-1).
 
 - PHP extension이 runtime Model 전체 API와 native 보조 클래스를 C로 구현한다. PHP 8.4.26에서 커밋된 구현 `24a1e7e`의 `make item-test ID=T182-6-14`가 native test 47개(654 assertions), declaration test 3개(8 assertions), PHP source 비교 test 10개(68 assertions)를 통과한다(T182-6-14).
 
