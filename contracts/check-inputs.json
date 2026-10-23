@@ -1214,6 +1214,11 @@
         "contracts/fixtures/schema_definition.json"
       ]
     },
+    "model-types-php-extension-check": {
+      "scope": "owner",
+      "needs": ["php", "composer", "php-extension-tools"],
+      "inputs": ["packages/php-ext/tests/ModelTypesSurfaceTest.php", "packages/php-ext/tests/DeclarationsTest.php", "packages/php-ext/tests/declarations_functions.php", "packages/php/tests/ModelTypesSourceTest.php", "packages/php/tests/model-types-weak-caller.php", "packages/php-ext/src/**"]
+    },
     "dbspec-apply-php-extension-check": {
       "scope": "owner",
       "needs": [

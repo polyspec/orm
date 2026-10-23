@@ -1139,3 +1139,77 @@ final class CollectionDeleteCallback
 {
     public function __invoke(): void {}
 }
+
+
+/**
+ * @internal
+ */
+final class Request
+{
+    public array $ir;
+    /** @var list<mixed> */
+    public array $params = [];
+    /** @var array<string, bool> */
+    public array $names = [];
+    /** @var array<int, list<array>> */
+    public array $external = [];
+    public bool $canonical = false;
+
+    public function __construct(string $kind, string $manifestHash) {}
+    public function param(mixed $v): int {}
+    public static function padIn(array $values): array {}
+    public function canonicalize(): void {}
+    public function shape(): array {}
+}
+
+/** A selected styled column value, including the SQL NULL state. */
+final readonly class StyledValue implements \JsonSerializable
+{
+    public string $kind;
+    private mixed $payload;
+
+    private function __construct(string $kind, mixed $payload = null) {}
+    public static function sqlNull(): StyledValue {}
+    public static function value(mixed $value): StyledValue {}
+    public function payload(): mixed {}
+    public function jsonSerialize(): array {}
+}
+
+/** One page of rows. @template TModel of Model */
+final readonly class Page
+{
+    /** @var Collection<TModel> */
+    public Collection $items;
+    public int $totalCount;
+    public int $totalPages;
+    public int $page;
+    public int $perPage;
+
+    /** @param Collection $items */
+    public function __construct(Collection $items, int $totalCount, int $totalPages, int $page, int $perPage) {}
+}
+
+/** An ORM function expression passed to the native planner. */
+final readonly class Func
+{
+    public string $name;
+    /** @var list<int> */
+    public array $args;
+    public bool $column;
+
+    /** @param array $args */
+    public function __construct(string $name, array $args, bool $column) {}
+    /** @param callable $param */
+    public function ir(callable $param): array {}
+}
+
+/**
+ * @internal
+ */
+final class PendingTime
+{
+    public readonly string $text;
+    public readonly \DateTimeZone $zone;
+
+    public function __construct(string $text, \DateTimeZone $zone) {}
+}

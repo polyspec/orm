@@ -17,6 +17,7 @@
 #include "planner.h"
 #include "collection.h"
 #include "polyspec_orm_arginfo.h"
+#include "model_types.h"
 
 /* Holds one method's arena. */
 #define ENTER() dbs_arena arena_; dbs_arena *saved_; dbs_enter(&arena_, &saved_)
@@ -2450,6 +2451,14 @@ static PHP_MINIT_FUNCTION(polyspec_orm)
         register_class_Polyspec_Orm_CollectionIterator(zend_ce_iterator),
         register_class_Polyspec_Orm_CollectionDeleteCallback()
     );
+    polyspec_request_ce = register_class_Polyspec_Orm_Request();
+    polyspec_styled_value_ce = register_class_Polyspec_Orm_StyledValue(php_json_serializable_ce);
+    polyspec_page_ce = register_class_Polyspec_Orm_Page();
+    polyspec_func_ce = register_class_Polyspec_Orm_Func();
+    polyspec_pending_time_ce = register_class_Polyspec_Orm_PendingTime();
+    polyspec_styled_value_ce->ce_flags |= ZEND_ACC_NO_DYNAMIC_PROPERTIES;
+    polyspec_page_ce->ce_flags |= ZEND_ACC_NO_DYNAMIC_PROPERTIES;
+    polyspec_func_ce->ce_flags |= ZEND_ACC_NO_DYNAMIC_PROPERTIES;
     /* Db::DRIVERS, the array constant gen_stub cannot write (db.c implements the class). */
     static const char *const drivers[] = {"mysql", "postgres", "sqlite"};
     array_constant(register_class_Polyspec_Orm_Db(), "DRIVERS", drivers, NULL, COUNT(drivers));

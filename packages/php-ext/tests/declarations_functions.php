@@ -14,12 +14,17 @@ const CLIENT_CLASSES = [
     'Polyspec\\Orm\\Planner',
     'Polyspec\\Orm\\Db',
     'Polyspec\\Orm\\StatementEvent',
-    'Polyspec\\Orm\\Collection'
+    'Polyspec\\Orm\\Collection',
+    'Polyspec\\Orm\\StyledValue',
+    'Polyspec\\Orm\\Page',
+    'Polyspec\\Orm\\Func'
 ];
 
 const INTERNAL_CLASSES = [
     'Polyspec\\Orm\\CollectionIterator',
-    'Polyspec\\Orm\\CollectionDeleteCallback'
+    'Polyspec\\Orm\\CollectionDeleteCallback',
+    'Polyspec\\Orm\\Request',
+    'Polyspec\\Orm\\PendingTime'
 ];
 
 /**

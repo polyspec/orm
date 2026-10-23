@@ -35,6 +35,130 @@
     "exported": true,
     "signature": "public static function isHostStyle(string $style): bool"
   },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Collection": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\Collection extends  implements Countable,IteratorAggregate,JsonSerializable,Traversable uses "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Collection::$fetched": {
+    "exported": false,
+    "signature": "private array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Collection::$items": {
+    "exported": false,
+    "signature": "private array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Collection::__invoke": {
+    "exported": true,
+    "signature": "public function __invoke(Polyspec\\Orm\\Db $db): Polyspec\\Orm\\Collection"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Collection::all": {
+    "exported": true,
+    "signature": "public function all(): array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Collection::connect": {
+    "exported": true,
+    "signature": "public function connect(Polyspec\\Orm\\Db $db): Polyspec\\Orm\\Collection"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Collection::count": {
+    "exported": true,
+    "signature": "public function count(): int"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Collection::delete": {
+    "exported": true,
+    "signature": "public function delete(bool $recursive=false): void"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Collection::entries": {
+    "exported": true,
+    "signature": "public function entries(): array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Collection::fetchValues": {
+    "exported": true,
+    "signature": "public function fetchValues(Closure $fn): void"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Collection::fetchedValue": {
+    "exported": true,
+    "signature": "public function fetchedValue(Polyspec\\Orm\\Bytes|DateTimeInterface|string|int|bool $key): mixed"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Collection::fetchedValues": {
+    "exported": true,
+    "signature": "public function fetchedValues(): array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Collection::first": {
+    "exported": true,
+    "signature": "public function first(): ?Polyspec\\Orm\\Model"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Collection::get": {
+    "exported": true,
+    "signature": "public function get(Polyspec\\Orm\\Bytes|DateTimeInterface|string|int|bool $key): ?Polyspec\\Orm\\Model"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Collection::getIterator": {
+    "exported": true,
+    "signature": "public function getIterator(): Traversable"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Collection::has": {
+    "exported": true,
+    "signature": "public function has(Polyspec\\Orm\\Bytes|DateTimeInterface|string|int|bool $key): bool"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Collection::identityOf": {
+    "exported": true,
+    "signature": "public static function identityOf(mixed $key): string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Collection::jsonSerialize": {
+    "exported": true,
+    "signature": "public function jsonSerialize(): array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Collection::keyOf": {
+    "exported": true,
+    "signature": "public static function keyOf(mixed $key): Polyspec\\Orm\\Bytes|DateTimeInterface|string|int|bool"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Collection::keys": {
+    "exported": true,
+    "signature": "public function keys(): array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Collection::put": {
+    "exported": true,
+    "signature": "public function put(Polyspec\\Orm\\Bytes|DateTimeInterface|string|int|bool $key, Polyspec\\Orm\\Model $model): void"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Collection::toArray": {
+    "exported": true,
+    "signature": "public function toArray(): array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Collection::toJson": {
+    "exported": true,
+    "signature": "public function toJson(): string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\CollectionDeleteCallback": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\CollectionDeleteCallback extends  implements  uses "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\CollectionDeleteCallback::__invoke": {
+    "exported": true,
+    "signature": "public function __invoke(): void"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\CollectionIterator": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\CollectionIterator extends  implements Iterator,Traversable uses "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\CollectionIterator::current": {
+    "exported": true,
+    "signature": "public function current(): mixed"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\CollectionIterator::key": {
+    "exported": true,
+    "signature": "public function key(): mixed"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\CollectionIterator::next": {
+    "exported": true,
+    "signature": "public function next(): void"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\CollectionIterator::rewind": {
+    "exported": true,
+    "signature": "public function rewind(): void"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\CollectionIterator::valid": {
+    "exported": true,
+    "signature": "public function valid(): bool"
+  },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Db": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Db extends  implements  uses "
@@ -1631,6 +1755,74 @@
     "exported": true,
     "signature": "public function __construct(string $document, array $tables, array $comments=[]): "
   },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Func": {
+    "exported": true,
+    "signature": "final readonly class Polyspec\\Orm\\Func extends  implements  uses "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Func::$args": {
+    "exported": true,
+    "signature": "public readonly array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Func::$column": {
+    "exported": true,
+    "signature": "public readonly bool"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Func::$name": {
+    "exported": true,
+    "signature": "public readonly string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Func::__construct": {
+    "exported": true,
+    "signature": "public function __construct(string $name, array $args, bool $column): "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Func::ir": {
+    "exported": true,
+    "signature": "public function ir(callable $param): array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Page": {
+    "exported": true,
+    "signature": "final readonly class Polyspec\\Orm\\Page extends  implements  uses "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Page::$items": {
+    "exported": true,
+    "signature": "public readonly Polyspec\\Orm\\Collection"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Page::$page": {
+    "exported": true,
+    "signature": "public readonly int"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Page::$perPage": {
+    "exported": true,
+    "signature": "public readonly int"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Page::$totalCount": {
+    "exported": true,
+    "signature": "public readonly int"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Page::$totalPages": {
+    "exported": true,
+    "signature": "public readonly int"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Page::__construct": {
+    "exported": true,
+    "signature": "public function __construct(Polyspec\\Orm\\Collection $items, int $totalCount, int $totalPages, int $page, int $perPage): "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\PendingTime": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\PendingTime extends  implements  uses "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\PendingTime::$text": {
+    "exported": true,
+    "signature": "public readonly string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\PendingTime::$zone": {
+    "exported": true,
+    "signature": "public readonly DateTimeZone"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\PendingTime::__construct": {
+    "exported": true,
+    "signature": "public function __construct(string $text, DateTimeZone $zone): "
+  },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Planner": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Planner extends  implements  uses "
@@ -1650,6 +1842,50 @@
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Planner::compile": {
     "exported": true,
     "signature": "public function compile(array $r): array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Request": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\Request extends  implements  uses "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Request::$canonical": {
+    "exported": true,
+    "signature": "public bool"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Request::$external": {
+    "exported": true,
+    "signature": "public array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Request::$ir": {
+    "exported": true,
+    "signature": "public array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Request::$names": {
+    "exported": true,
+    "signature": "public array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Request::$params": {
+    "exported": true,
+    "signature": "public array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Request::__construct": {
+    "exported": true,
+    "signature": "public function __construct(string $kind, string $manifestHash): "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Request::canonicalize": {
+    "exported": true,
+    "signature": "public function canonicalize(): void"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Request::padIn": {
+    "exported": true,
+    "signature": "public static function padIn(array $values): array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Request::param": {
+    "exported": true,
+    "signature": "public function param(mixed $v): int"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Request::shape": {
+    "exported": true,
+    "signature": "public function shape(): array"
   },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\StatementEvent": {
     "exported": true,
@@ -1686,6 +1922,38 @@
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\StatementEvent::__construct": {
     "exported": true,
     "signature": "public function __construct(string $sql, array $binds, string $kind, array $tables, float $elapsed, ?int $transaction, ?Polyspec\\Orm\\OrmException $error): "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\StyledValue": {
+    "exported": true,
+    "signature": "final readonly class Polyspec\\Orm\\StyledValue extends  implements JsonSerializable uses "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\StyledValue::$kind": {
+    "exported": true,
+    "signature": "public readonly string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\StyledValue::$payload": {
+    "exported": false,
+    "signature": "private readonly mixed"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\StyledValue::__construct": {
+    "exported": false,
+    "signature": "private function __construct(string $kind, mixed $payload=null): "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\StyledValue::jsonSerialize": {
+    "exported": true,
+    "signature": "public function jsonSerialize(): array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\StyledValue::payload": {
+    "exported": true,
+    "signature": "public function payload(): mixed"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\StyledValue::sqlNull": {
+    "exported": true,
+    "signature": "public static function sqlNull(): Polyspec\\Orm\\StyledValue"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\StyledValue::value": {
+    "exported": true,
+    "signature": "public static function value(mixed $value): Polyspec\\Orm\\StyledValue"
   },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Validator": {
     "exported": true,

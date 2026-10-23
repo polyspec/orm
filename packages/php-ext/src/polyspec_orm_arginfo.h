@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: 4722291c897515b99ce70e9fae7407cfaa9fbe3b */
+ * Stub hash: ef2cf0e75b9de9bc0945674030dab54d02e2a5a6 */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Diagnostic___construct, 0, 0, 4)
 	ZEND_ARG_TYPE_INFO(0, rule, IS_STRING, 0)
@@ -941,6 +941,62 @@ ZEND_END_ARG_INFO()
 
 #define arginfo_class_Polyspec_Orm_CollectionDeleteCallback___invoke arginfo_class_Polyspec_Orm_Db_close
 
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Request___construct, 0, 0, 2)
+	ZEND_ARG_TYPE_INFO(0, kind, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, manifestHash, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Request_param, 0, 1, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, v, IS_MIXED, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Request_padIn, 0, 1, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, values, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Polyspec_Orm_Request_canonicalize arginfo_class_Polyspec_Orm_Db_close
+
+#define arginfo_class_Polyspec_Orm_Request_shape arginfo_class_Polyspec_Orm_Collection_keys
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_StyledValue___construct, 0, 0, 1)
+	ZEND_ARG_TYPE_INFO(0, kind, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, payload, IS_MIXED, 0, "null")
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_StyledValue_sqlNull, 0, 0, Polyspec\\Orm\\StyledValue, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_StyledValue_value, 0, 1, Polyspec\\Orm\\StyledValue, 0)
+	ZEND_ARG_TYPE_INFO(0, value, IS_MIXED, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Polyspec_Orm_StyledValue_payload arginfo_class_Polyspec_Orm_CollectionIterator_current
+
+#define arginfo_class_Polyspec_Orm_StyledValue_jsonSerialize arginfo_class_Polyspec_Orm_Collection_keys
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Page___construct, 0, 0, 5)
+	ZEND_ARG_OBJ_INFO(0, items, Polyspec\\Orm\\Collection, 0)
+	ZEND_ARG_TYPE_INFO(0, totalCount, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, totalPages, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, page, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, perPage, IS_LONG, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Func___construct, 0, 0, 3)
+	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, args, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, column, _IS_BOOL, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Func_ir, 0, 1, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, param, IS_CALLABLE, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_PendingTime___construct, 0, 0, 2)
+	ZEND_ARG_TYPE_INFO(0, text, IS_STRING, 0)
+	ZEND_ARG_OBJ_INFO(0, zone, DateTimeZone, 0)
+ZEND_END_ARG_INFO()
+
 ZEND_METHOD(Polyspec_Orm_Dbspec_Diagnostic, __construct);
 ZEND_METHOD(Polyspec_Orm_Dbspec_Position, __construct);
 ZEND_METHOD(Polyspec_Orm_Dbspec_Document, __construct);
@@ -1144,6 +1200,20 @@ ZEND_METHOD(Polyspec_Orm_CollectionIterator, next);
 ZEND_METHOD(Polyspec_Orm_CollectionIterator, rewind);
 ZEND_METHOD(Polyspec_Orm_CollectionIterator, valid);
 ZEND_METHOD(Polyspec_Orm_CollectionDeleteCallback, __invoke);
+ZEND_METHOD(Polyspec_Orm_Request, __construct);
+ZEND_METHOD(Polyspec_Orm_Request, param);
+ZEND_METHOD(Polyspec_Orm_Request, padIn);
+ZEND_METHOD(Polyspec_Orm_Request, canonicalize);
+ZEND_METHOD(Polyspec_Orm_Request, shape);
+ZEND_METHOD(Polyspec_Orm_StyledValue, __construct);
+ZEND_METHOD(Polyspec_Orm_StyledValue, sqlNull);
+ZEND_METHOD(Polyspec_Orm_StyledValue, value);
+ZEND_METHOD(Polyspec_Orm_StyledValue, payload);
+ZEND_METHOD(Polyspec_Orm_StyledValue, jsonSerialize);
+ZEND_METHOD(Polyspec_Orm_Page, __construct);
+ZEND_METHOD(Polyspec_Orm_Func, __construct);
+ZEND_METHOD(Polyspec_Orm_Func, ir);
+ZEND_METHOD(Polyspec_Orm_PendingTime, __construct);
 
 static const zend_function_entry class_Polyspec_Orm_Dbspec_Diagnostic_methods[] = {
 	ZEND_ME(Polyspec_Orm_Dbspec_Diagnostic, __construct, arginfo_class_Polyspec_Orm_Dbspec_Diagnostic___construct, ZEND_ACC_PUBLIC)
@@ -1589,6 +1659,40 @@ static const zend_function_entry class_Polyspec_Orm_CollectionIterator_methods[]
 
 static const zend_function_entry class_Polyspec_Orm_CollectionDeleteCallback_methods[] = {
 	ZEND_ME(Polyspec_Orm_CollectionDeleteCallback, __invoke, arginfo_class_Polyspec_Orm_CollectionDeleteCallback___invoke, ZEND_ACC_PUBLIC)
+	ZEND_FE_END
+};
+
+static const zend_function_entry class_Polyspec_Orm_Request_methods[] = {
+	ZEND_ME(Polyspec_Orm_Request, __construct, arginfo_class_Polyspec_Orm_Request___construct, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Request, param, arginfo_class_Polyspec_Orm_Request_param, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Request, padIn, arginfo_class_Polyspec_Orm_Request_padIn, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Request, canonicalize, arginfo_class_Polyspec_Orm_Request_canonicalize, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Request, shape, arginfo_class_Polyspec_Orm_Request_shape, ZEND_ACC_PUBLIC)
+	ZEND_FE_END
+};
+
+static const zend_function_entry class_Polyspec_Orm_StyledValue_methods[] = {
+	ZEND_ME(Polyspec_Orm_StyledValue, __construct, arginfo_class_Polyspec_Orm_StyledValue___construct, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_StyledValue, sqlNull, arginfo_class_Polyspec_Orm_StyledValue_sqlNull, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_StyledValue, value, arginfo_class_Polyspec_Orm_StyledValue_value, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_StyledValue, payload, arginfo_class_Polyspec_Orm_StyledValue_payload, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_StyledValue, jsonSerialize, arginfo_class_Polyspec_Orm_StyledValue_jsonSerialize, ZEND_ACC_PUBLIC)
+	ZEND_FE_END
+};
+
+static const zend_function_entry class_Polyspec_Orm_Page_methods[] = {
+	ZEND_ME(Polyspec_Orm_Page, __construct, arginfo_class_Polyspec_Orm_Page___construct, ZEND_ACC_PUBLIC)
+	ZEND_FE_END
+};
+
+static const zend_function_entry class_Polyspec_Orm_Func_methods[] = {
+	ZEND_ME(Polyspec_Orm_Func, __construct, arginfo_class_Polyspec_Orm_Func___construct, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Func, ir, arginfo_class_Polyspec_Orm_Func_ir, ZEND_ACC_PUBLIC)
+	ZEND_FE_END
+};
+
+static const zend_function_entry class_Polyspec_Orm_PendingTime_methods[] = {
+	ZEND_ME(Polyspec_Orm_PendingTime, __construct, arginfo_class_Polyspec_Orm_PendingTime___construct, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
@@ -4076,6 +4180,161 @@ static zend_class_entry *register_class_Polyspec_Orm_CollectionDeleteCallback(vo
 
 	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm", "CollectionDeleteCallback", class_Polyspec_Orm_CollectionDeleteCallback_methods);
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL);
+
+	return class_entry;
+}
+
+static zend_class_entry *register_class_Polyspec_Orm_Request(void)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm", "Request", class_Polyspec_Orm_Request_methods);
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL);
+
+	zval property_ir_default_value;
+	ZVAL_UNDEF(&property_ir_default_value);
+	zend_string *property_ir_name = zend_string_init("ir", sizeof("ir") - 1, 1);
+	zend_declare_typed_property(class_entry, property_ir_name, &property_ir_default_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string_release(property_ir_name);
+
+	zval property_params_default_value;
+	ZVAL_EMPTY_ARRAY(&property_params_default_value);
+	zend_string *property_params_name = zend_string_init("params", sizeof("params") - 1, 1);
+	zend_declare_typed_property(class_entry, property_params_name, &property_params_default_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string_release(property_params_name);
+
+	zval property_names_default_value;
+	ZVAL_EMPTY_ARRAY(&property_names_default_value);
+	zend_string *property_names_name = zend_string_init("names", sizeof("names") - 1, 1);
+	zend_declare_typed_property(class_entry, property_names_name, &property_names_default_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string_release(property_names_name);
+
+	zval property_external_default_value;
+	ZVAL_EMPTY_ARRAY(&property_external_default_value);
+	zend_string *property_external_name = zend_string_init("external", sizeof("external") - 1, 1);
+	zend_declare_typed_property(class_entry, property_external_name, &property_external_default_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string_release(property_external_name);
+
+	zval property_canonical_default_value;
+	ZVAL_FALSE(&property_canonical_default_value);
+	zend_string *property_canonical_name = zend_string_init("canonical", sizeof("canonical") - 1, 1);
+	zend_declare_typed_property(class_entry, property_canonical_name, &property_canonical_default_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_BOOL));
+	zend_string_release(property_canonical_name);
+
+	return class_entry;
+}
+
+static zend_class_entry *register_class_Polyspec_Orm_StyledValue(zend_class_entry *class_entry_JsonSerializable)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm", "StyledValue", class_Polyspec_Orm_StyledValue_methods);
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
+	zend_class_implements(class_entry, 1, class_entry_JsonSerializable);
+
+	zval property_kind_default_value;
+	ZVAL_UNDEF(&property_kind_default_value);
+	zend_string *property_kind_name = zend_string_init("kind", sizeof("kind") - 1, 1);
+	zend_declare_typed_property(class_entry, property_kind_name, &property_kind_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(property_kind_name);
+
+	zval property_payload_default_value;
+	ZVAL_UNDEF(&property_payload_default_value);
+	zend_string *property_payload_name = zend_string_init("payload", sizeof("payload") - 1, 1);
+	zend_declare_typed_property(class_entry, property_payload_name, &property_payload_default_value, ZEND_ACC_PRIVATE|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ANY));
+	zend_string_release(property_payload_name);
+
+	return class_entry;
+}
+
+static zend_class_entry *register_class_Polyspec_Orm_Page(void)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm", "Page", class_Polyspec_Orm_Page_methods);
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
+
+	zval property_items_default_value;
+	ZVAL_UNDEF(&property_items_default_value);
+	zend_string *property_items_name = zend_string_init("items", sizeof("items") - 1, 1);
+	zend_string *property_items_class_Polyspec_Orm_Collection = zend_string_init("Polyspec\\Orm\\Collection", sizeof("Polyspec\\Orm\\Collection")-1, 1);
+	zend_declare_typed_property(class_entry, property_items_name, &property_items_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_items_class_Polyspec_Orm_Collection, 0, 0));
+	zend_string_release(property_items_name);
+
+	zval property_totalCount_default_value;
+	ZVAL_UNDEF(&property_totalCount_default_value);
+	zend_string *property_totalCount_name = zend_string_init("totalCount", sizeof("totalCount") - 1, 1);
+	zend_declare_typed_property(class_entry, property_totalCount_name, &property_totalCount_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_LONG));
+	zend_string_release(property_totalCount_name);
+
+	zval property_totalPages_default_value;
+	ZVAL_UNDEF(&property_totalPages_default_value);
+	zend_string *property_totalPages_name = zend_string_init("totalPages", sizeof("totalPages") - 1, 1);
+	zend_declare_typed_property(class_entry, property_totalPages_name, &property_totalPages_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_LONG));
+	zend_string_release(property_totalPages_name);
+
+	zval property_page_default_value;
+	ZVAL_UNDEF(&property_page_default_value);
+	zend_string *property_page_name = zend_string_init("page", sizeof("page") - 1, 1);
+	zend_declare_typed_property(class_entry, property_page_name, &property_page_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_LONG));
+	zend_string_release(property_page_name);
+
+	zval property_perPage_default_value;
+	ZVAL_UNDEF(&property_perPage_default_value);
+	zend_string *property_perPage_name = zend_string_init("perPage", sizeof("perPage") - 1, 1);
+	zend_declare_typed_property(class_entry, property_perPage_name, &property_perPage_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_LONG));
+	zend_string_release(property_perPage_name);
+
+	return class_entry;
+}
+
+static zend_class_entry *register_class_Polyspec_Orm_Func(void)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm", "Func", class_Polyspec_Orm_Func_methods);
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
+
+	zval property_name_default_value;
+	ZVAL_UNDEF(&property_name_default_value);
+	zend_string *property_name_name = zend_string_init("name", sizeof("name") - 1, 1);
+	zend_declare_typed_property(class_entry, property_name_name, &property_name_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(property_name_name);
+
+	zval property_args_default_value;
+	ZVAL_UNDEF(&property_args_default_value);
+	zend_string *property_args_name = zend_string_init("args", sizeof("args") - 1, 1);
+	zend_declare_typed_property(class_entry, property_args_name, &property_args_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string_release(property_args_name);
+
+	zval property_column_default_value;
+	ZVAL_UNDEF(&property_column_default_value);
+	zend_string *property_column_name = zend_string_init("column", sizeof("column") - 1, 1);
+	zend_declare_typed_property(class_entry, property_column_name, &property_column_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_BOOL));
+	zend_string_release(property_column_name);
+
+	return class_entry;
+}
+
+static zend_class_entry *register_class_Polyspec_Orm_PendingTime(void)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm", "PendingTime", class_Polyspec_Orm_PendingTime_methods);
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL);
+
+	zval property_text_default_value;
+	ZVAL_UNDEF(&property_text_default_value);
+	zend_string *property_text_name = zend_string_init("text", sizeof("text") - 1, 1);
+	zend_declare_typed_property(class_entry, property_text_name, &property_text_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(property_text_name);
+
+	zval property_zone_default_value;
+	ZVAL_UNDEF(&property_zone_default_value);
+	zend_string *property_zone_name = zend_string_init("zone", sizeof("zone") - 1, 1);
+	zend_string *property_zone_class_DateTimeZone = zend_string_init("DateTimeZone", sizeof("DateTimeZone")-1, 1);
+	zend_declare_typed_property(class_entry, property_zone_name, &property_zone_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_zone_class_DateTimeZone, 0, 0));
+	zend_string_release(property_zone_name);
 
 	return class_entry;
 }
