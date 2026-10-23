@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The lint findings in the tests crate files conformance.rs, integration.rs, decimal_physical.rs and coverage_schema_install.rs are fixed, so `make lint-rust` reports no finding in them (KSTD-5-57-24).
 - The lint findings in the build table_page.rs and the orm identity_load.rs, soft_delete.rs and dbspec_probe.rs are fixed, so `make lint-rust` reports no finding in them (KSTD-5-57-23).
 - The lint findings in the tests crate common/mod.rs and the coverage files are fixed, so `make lint-rust` reports no finding in them (KSTD-5-57-22).
 - The lint findings in the tests crate files bench_set.rs and client_bench.rs are fixed, so `make lint-rust` reports no finding in them (KSTD-5-57-21).
