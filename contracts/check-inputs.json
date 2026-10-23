@@ -53,6 +53,7 @@
     "ts-check": {"scope": "suite", "needs": ["go", "node-modules", "databases"]},
     "ts-save-key-check": {"scope": "owner", "needs": ["go", "node-modules"], "inputs": ["packages/ts/src/model.ts", "packages/ts/tests/save-key-errors.test.mjs"]},
     "ts-aes-auth-check": {"scope": "owner", "needs": ["go", "node-modules"], "inputs": ["packages/ts/src/codec.ts", "packages/ts/tests/codec-aes-errors.test.mjs"]},
+    "ts-codec-errors-check": {"scope": "owner", "needs": ["go", "node-modules"], "inputs": ["packages/ts/src/codec.ts", "packages/ts/tests/codec-errors.test.mjs"]},
     "ts-min-check": {"scope": "owner", "needs": ["go", "node-modules", "databases"], "inputs": ["scripts/typescript/node-min.mts"]},
     "group-rows-db-go": {"scope": "owner", "needs": ["go", "databases"], "inputs": ["packages/go/model/group_rows_db_test.go"]},
     "group-rows-db-python": {"scope": "owner", "needs": ["python", "databases"], "inputs": ["packages/python/tests/test_group_rows_db.py","packages/python/src/polyspec/orm/**"]},

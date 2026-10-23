@@ -134,8 +134,8 @@ function unpackIp(value: Buffer): string {
 }
 
 export class CodecError extends Error {
-  public constructor(public readonly code: typeof codes.CONFIG | typeof codes.CODEC_DECODE | typeof codes.CODEC_ENCODE | typeof codes.CODEC_UNSUPPORTED, message: string) {
-    super(`${code}: ${message}`);
+  public constructor(public readonly code: typeof codes.CONFIG | typeof codes.CODEC_DECODE | typeof codes.CODEC_ENCODE | typeof codes.CODEC_UNSUPPORTED, message: string, options?: ErrorOptions) {
+    super(`${code}: ${message}`, options);
   }
 }
 
@@ -150,7 +150,8 @@ function string(value: Uint8Array, operation: 'decode' | 'encode'): string {
   try {
     return text.decode(value);
   } catch (error) {
-    throw new CodecError(operation === 'decode' ? codes.CODEC_DECODE : codes.CODEC_ENCODE, `invalid UTF-8: ${String(error)}`);
+    if (error instanceof CodecError) throw error;
+    throw new CodecError(operation === 'decode' ? codes.CODEC_DECODE : codes.CODEC_ENCODE, `invalid UTF-8: ${String(error)}`, { cause: error });
   }
 }
 
@@ -203,7 +204,8 @@ export function decode(styles: readonly string[], raw: string | Uint8Array | nul
         try {
           value = orderedJsonParse(string(current, 'decode'));
         } catch (error) {
-          throw new CodecError(codes.CODEC_DECODE, `json: ${String(error)}`);
+          if (error instanceof CodecError) throw error;
+          throw new CodecError(codes.CODEC_DECODE, `json: ${String(error)}`, { cause: error });
         }
         break;
       default:
@@ -367,7 +369,8 @@ function decodeYaml(current: Uint8Array): CodecValue {
     });
     return validateCodecValue(document.toJS({ maxAliasCount: 0 }), 'yaml decode');
   } catch (error) {
-    throw new CodecError(codes.CODEC_DECODE, `yaml: ${String(error)}`);
+    if (error instanceof CodecError) throw error;
+    throw new CodecError(codes.CODEC_DECODE, `yaml: ${String(error)}`, { cause: error });
   }
 }
 

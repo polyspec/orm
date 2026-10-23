@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 46cf5719eeb6536c71f27f9f2e7da8d65cb6e0144d2579a69b57abdc9ebd0695 -->
+<!-- source-sha256: b11b665ff1623fbeb88c8f87f177133a2a266e120cfb55bb8cefff9173f2f3d1 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -237,7 +237,7 @@
 | KSTD-5-72 | Go Entity.Value 계약은 (any, bool)을 반환하므로 무시된 오류가 없다 | packages/go/orm/core.go:30; packages/go/generator/gen_go.go:457,493-502; packages/go/orm/model.go:122 | Independent source audit; no tests run (var/parallel/KSTD-5-72/audit.md) | [-] 원인: Entity.Value는 오류가 아니라 (any, bool)을 반환하며, 독립 감사에서 무시된 존재 여부 값으로 인한 동작 결함을 입증하지 못했다. |
 | KSTD-5-73 | TypeScript decipher에서 AES 인증 실패만 잡는다 | packages/ts/src/codec.ts; packages/ts/tests/codec-aes-errors.test.mjs; Makefile; contracts/check-inputs.json | `make ts-aes-auth-check` | [o] |
 | KSTD-5-74 | TypeScript save에서 키 없음 OrmError만 잡는다 | packages/ts/src/model.ts; packages/ts/tests/save-key-errors.test.mjs; Makefile; contracts/check-inputs.json | `var/tools/bin/node --test packages/ts/tests/save-key-errors.test.mjs` | [o] |
-| KSTD-5-75 | TypeScript codec catch 블록이 CodecError를 원인과 함께 다시 던지게 한다 | packages/ts/src/codec.ts:197,361 | `make ts-check` | [ ] |
+| KSTD-5-75 | TypeScript codec catch 블록이 CodecError를 원인과 함께 다시 던지게 한다 | packages/ts/src/codec.ts; packages/ts/tests/codec-errors.test.mjs; Makefile; contracts/check-inputs.json | `make ts-codec-errors-check` | [~] |
 | KSTD-5-76 | PHP set reader의 stat 또는 scandir 실패를 없음이 아닌 오류로 보고한다 | packages/php/src/Dbspec/SetReader.php; packages/php/tests/SetReaderDiagnosticsTest.php; Makefile; contracts/check-inputs.json | `make dbspec-php-check/set` | [o] |
 | KSTD-5-77 | PHP와 C에서 YAML 파서의 예외 클래스만 잡고 원인을 잇는다 | packages/php/src/Codec.php:96,149,104,156; packages/php/src/Model.php:2360; packages/php-ext/src/codec.c:194-203 | `make lint-php` | [ ] |
 | KSTD-5-78 | step과 test-server 스크립트에서 ESRCH만 종료된 process group으로 본다 | scripts/check/step.mts:63; scripts/test-servers.mts:203, :341 | `make scripts-typecheck` | [ ] |
