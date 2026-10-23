@@ -163,7 +163,7 @@
 | KSTD-5-57-4 | Fix the lint findings of the schema test targets (follows KSTD-5-57) | packages/rust/schema/tests dbspec_mermaid, dbspec_set_parse, dbspec_show_create, dbspec_render, common/dbspec_values | `make lint-rust` reports no finding in these files | [o] |
 | KSTD-5-57-5 | Fix the lint findings of the orm db source (follows KSTD-5-57) | packages/rust/orm/src/db.rs | `make lint-rust` reports no finding in these files | [o] |
 | KSTD-5-57-6 | Fix the lint findings of the orm codec, value and driver sources (follows KSTD-5-57) | packages/rust/orm/src/codec.rs, value.rs, driver.rs | `make lint-rust` reports no finding in these files | [o] |
-| KSTD-5-57-7 | Fix the lint findings of the other orm sources (follows KSTD-5-57) | packages/rust/orm/src markdown, row, dbspec/apply, tx, lib, bind_check, engine validate and planner, model | `make lint-rust` reports no finding in these files | [ ] |
+| KSTD-5-57-7 | Fix the lint findings of the other orm sources (follows KSTD-5-57) | packages/rust/orm/src markdown, row, dbspec/apply, tx, lib, bind_check, engine validate and planner, model | `make lint-rust` reports no finding in these files | [o] |
 | KSTD-5-57-8 | Fix the lint findings of the case-database crate (follows KSTD-5-57) | packages/rust/case-database/src/lib.rs | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-9 | Fix the lint findings of build generate.rs (follows KSTD-5-57) | packages/rust/build/src/generate.rs | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-10 | Fix the lint findings of the other build sources (follows KSTD-5-57) | packages/rust/build/src tool_db, catalog, lib | `make lint-rust` reports no finding in these files | [ ] |

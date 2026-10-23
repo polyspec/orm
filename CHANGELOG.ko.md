@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 37a9169b1bd686c85d512e644e6fa35656f8168722ba1ab65c4fb273b3dabad6 -->
+<!-- source-sha256: f56032fe7b64f5bcb26cb59d1cf802ef68d69eb102d2303d55fa25f687df6849 -->
 # 변경 이력
 
 ## Unreleased
 
+- 나머지 orm source의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-7).
 - orm의 codec.rs, value.rs, driver.rs의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-6).
 - orm의 db.rs의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-5).
 - schema test target dbspec_mermaid, dbspec_set_parse, dbspec_show_create, dbspec_render, common/dbspec_values의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-4).

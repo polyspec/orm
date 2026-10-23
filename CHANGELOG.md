@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The lint findings in the other orm sources are fixed, so `make lint-rust` reports no finding in them (KSTD-5-57-7).
 - The lint findings in the orm codec.rs, value.rs and driver.rs are fixed, so `make lint-rust` reports no finding in them (KSTD-5-57-6).
 - The lint findings in the orm db.rs are fixed, so `make lint-rust` reports no finding in them (KSTD-5-57-5).
 - The lint findings in the schema test targets dbspec_mermaid, dbspec_set_parse, dbspec_show_create, dbspec_render and common/dbspec_values are fixed, so `make lint-rust` reports no finding in them (KSTD-5-57-4).
