@@ -1858,3 +1858,9 @@ collection-raw-phpstan-check:
 # dbspec-php-extension-check/markdown runs MarkdownTest with the extension loaded: the markdown IR uses of KSTD-5-80.
 dbspec-php-extension-check/markdown: php-vendor-check dbspec-php-extension-check/prepare
 	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension $(PHP_EXTENSION_LIBRARY) -- --configuration packages/php/phpunit.xml.dist packages/php/tests/MarkdownTest.php
+
+# print-CARGO_PROFILE_DEV_DEBUG prints the debug setting of the Rust test build of this checkout (KSTD-5-85). It sits at the end so that
+# it never becomes the default goal of the Makefile.
+.PHONY: print-CARGO_PROFILE_DEV_DEBUG
+print-CARGO_PROFILE_DEV_DEBUG:
+	@echo $(CARGO_PROFILE_DEV_DEBUG)
