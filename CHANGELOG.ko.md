@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 0ca0952de46e0365bf9148bd1092cb3a2cfff1af37ae9ee5621cc997e43a7a32 -->
+<!-- source-sha256: c7692d50c9a0fe9231da8b9674c65f14260e0a018e02b77e3a9362d90622fe57 -->
 # 변경 이력
 
 ## Unreleased
+
+- TypeScript와 Rust는 native SQLite version을 ASCII decimal u32 component 세 개 또는 네 개로 검증하고, 3.46.0과 수치 비교하며, SQLite를 열기 전에 잘못된 raw version을 INTERNAL로 보고한다. 커밋된 focused target은 각각 unit case 세 개를 통과한다. 수정 전 2100937d4에서는 빈 입력이 잘못 분류되고 Rust가 3.46을 허용했다(KSTD-5-64).
 
 - Rust row mapping 결함을 KSTD-5-49-1의 여섯 client 공통 blind-index source 처리로 수정했고, 집중 Rust planner 검사가 통과한다 (KSTD-5-49).
 

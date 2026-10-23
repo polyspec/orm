@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 21cf8e52f912a6281fcc0fe61c361589cf0892dae86a5582535fb1d06151200f -->
+<!-- source-sha256: 79e43e847812b46a2e3c251ee097cb2bb93ed53c85875bb9bb87f610598ca22e -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -227,7 +227,7 @@
 | KSTD-5-61 | verify의 introspection 또는 driver 오류를 drift가 아닌 자기 오류로 보고한다 | packages/go/engine/dbspec/apply.go:249,652; packages/rust/orm/src/dbspec/apply.rs:691,838,845; packages/ts/src/dbspec/apply.ts:461,803; packages/php/src/Dbspec/PlanApply.php:200,573; packages/python/src/polyspec/orm/dbspec/apply.py:501,916 | `make rust-check` | [ ] |
 | KSTD-5-62 | catalog의 문서 생성 불가 오류만 mermaid 진단으로 바꾸고 나머지는 전파한다 | packages/ts/src/dbspec/mermaid.ts:336; packages/python/src/polyspec/orm/dbspec/mermaid.py:464; packages/php/src/Dbspec/Mermaid.php:416; packages/php-ext/src/mermaid.c:893-900; packages/go mermaid import | `make ts-check` | [ ] |
 | KSTD-5-63 | 존재하지 않는 column의 scalar subquery에 대해 임의 타입 대신 내부 오류를 반환한다 | packages/rust/orm/src/engine/planner.rs:1060; packages/rust/orm/src/markdown.rs:532; packages/rust/orm/src/engine/params.rs:159; packages/ts/src/engine/planner.ts:734; packages/ts/src/markdown.ts:348 | `make rust-check` | [ ] |
-| KSTD-5-64 | 파싱할 수 없는 SQLite library version을 그 텍스트를 밝히는 오류로 보고한다 | Makefile; contracts/check-inputs.json; contracts/symbols/typescript.json; packages/rust/orm/src/db.rs; packages/rust/orm/src/db/sqlite_version_tests.rs; packages/ts/src/driver.ts; packages/ts/tests/sqlite-version.test.mjs | `make sqlite-version-ts-check`; `make sqlite-version-rust-check` | [~] |
+| KSTD-5-64 | 파싱할 수 없는 SQLite library version을 그 텍스트를 밝히는 오류로 보고한다 | Makefile; contracts/check-inputs.json; contracts/symbols/typescript.json; packages/rust/orm/src/db.rs; packages/rust/orm/src/db/sqlite_version_tests.rs; packages/ts/src/driver.ts; packages/ts/tests/sqlite-version.test.mjs | `make sqlite-version-ts-check`; `make sqlite-version-rust-check` | [o] |
 | KSTD-5-65 | build scan에서 OUT_DIR이 없다는 오류를 전파한다 | packages/rust/build/src/lib.rs:166 | `make rust-check` | [ ] |
 | KSTD-5-66 | upsert planner의 conflict-key 오류를 전파한다 | packages/rust/orm/src/engine/planner.rs:313 | `make rust-check` | [ ] |
 | KSTD-5-67 | relation step의 parent bind slot이 없으면 실패한다 | packages/rust/orm/src/driver.rs:102, :117 | `make rust-check` | [ ] |
