@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 012151ffa5a95ed2a895697561f9d99bc851d9539378828b9563f55ea79a8ff3 -->
+<!-- source-sha256: 7d20ca6dc1319322b35977842ed76736f13c237e7f6c35f38e40deef628b3387 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -160,7 +160,7 @@
 | KSTD-5-57 | make lint-rust가 main에서 통과한다: 금지된 unwrap_or_else와 must_use let을 고친다 | benchmarks/rust/src/driver_compare.rs, benchmarks/rust/src/native.rs, packages/rust/testcase/src/lib.rs | `make lint-rust` exits 0 with no finding | [ ] |
 | KSTD-5-57-1 | 벤치마크와 testcase crate의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | benchmarks/rust/src/driver_compare.rs, benchmarks/rust/src/native.rs, packages/rust/testcase/src/lib.rs | `make lint-rust` reports no finding in these files | [o] |
 | KSTD-5-57-2 | schema introspection crate의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/schema/src/dbspec/introspect/mysql.rs, postgres.rs, sqlite.rs | `make lint-rust` reports no finding in these files | [o] |
-| KSTD-5-57-3 | schema parser와 interface-symbols bin의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/schema/src/dbspec/parser.rs, literal.rs, set.rs, mermaid.rs, the interface-symbols binary | `make lint-rust` reports no finding in these files | [ ] |
+| KSTD-5-57-3 | schema parser와 interface-symbols bin의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/schema/src/dbspec/parser.rs, literal.rs, set.rs, mermaid.rs, the interface-symbols binary | `make lint-rust` reports no finding in these files | [o] |
 | KSTD-5-57-4 | schema 테스트 target의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/schema/tests dbspec_mermaid, dbspec_set_parse, dbspec_show_create, dbspec_render, common/dbspec_values | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-5 | orm db 소스의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/src/db.rs | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-6 | orm codec, value, driver 소스의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/src/codec.rs, value.rs, driver.rs | `make lint-rust` reports no finding in these files | [ ] |
