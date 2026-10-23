@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: ab67aa53c07354ab6d2908947a90579e9b86391f9a88f688ddf88c0741d8677b -->
+<!-- source-sha256: f877e7557293f7c953186b447a289f0bb7a785837caccb3bf948a8cda1351917 -->
 # 변경 이력
 
 ## Unreleased
+
+- TypeScript 인터페이스 extractor가 접근 제한, overload, optional ErrorOptions를 포함한 명시적 생성자 signature를 기록하면서 class key와 parameter-property 필드를 보존한다. 구현 커밋 `35dae79ed`에서 `make interface-typescript-extractor-check`의 compiler 검사와 native case (1/1)가 통과했고, 기존 extractor는 ErrorOptions assertion에 실패했다 (KSTD-5-86).
 
 - PHP relation 선언 수집이 PHP method 호출과 같이 대소문자를 구분하지 않아 uppercase `RELATIONS`에서도 relation-edge cardinality와 CONFIG 충돌 검사를 유지한다. focused 회귀는 정규화 전 실패하고 `b4546a29d`에서 relation cases 및 scan vector와 함께 통과한다(KSTD-5-84).
 

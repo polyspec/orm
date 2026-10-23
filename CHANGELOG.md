@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- The TypeScript interface extractor now records explicit constructor signatures, including access restrictions, overloads and optional ErrorOptions, without losing class keys or parameter-property fields. On committed implementation `35dae79ed`, `make interface-typescript-extractor-check` passes its compiler check and native case (1/1); the old extractor failed the ErrorOptions assertion (KSTD-5-86).
+
 - PHP relation declaration collection is now case-insensitive like PHP method calls, so uppercase `RELATIONS` retains relation-edge cardinality and CONFIG conflict checks. The focused regression fails before normalization and passes in `b4546a29d` with the relation cases and scan vectors (KSTD-5-84).
 
 - PHP relation getters now use the runtime `Collection<Target>` type for plural relations and preserve the target model type. Alias getter types follow the owning relation edge and its cardinality, independently of the terminal read. Committed implementation `23d83be1a` passes the focused PHPStan consumer, six relation regression cases and two scan vectors; the original consumer case failed against baseline (KSTD-5-83).
