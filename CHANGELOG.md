@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- TypeScript codec JSON, YAML and UTF-8 failures retain their original causes, while existing `CodecError` instances keep their identity. `make ts-codec-errors-check` passes all six native cases on committed implementation `08dbf4cce`; the old implementation passed the valid-value control and failed the five cause and identity cases (KSTD-5-75).
 - TypeScript AES decoding converts only the native final authentication failure to `CODEC_DECODE` and preserves setup, update and unrelated final errors. `make ts-aes-auth-check` passes nine native test events on the committed implementation; before the fix, three passed and the error-preservation group plus five error-origin cases failed (KSTD-5-73).
 - PHP `SetReader` now preserves fresh `lstat`, `stat` and `scandir` warnings in set errors, including cached listing failures. `make dbspec-php-check/set` passes 72 existing set cases and seven library-reader diagnostics cases; RED on the prior implementation passed the 72 controls and only the missing-name diagnostic, while six filesystem-failure cases lacked the warning (KSTD-5-76).
 - TypeScript `save()` falls back to insert only for its missing-key `OrmError`; an unrelated `CONFIG` thrown while reading a set key reaches the caller. `make ts-save-key-check` passes the three create/update controls and the sentinel error case (KSTD-5-74). Red: the old implementation passed the controls but swallowed the sentinel, failing with `Missing expected rejection`.
