@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: e66d921bf223a5de49e8b15006991ede186550ebfe199ca2e687b4767b41723d -->
+<!-- source-sha256: 99489b69d3640e3ef6251b7e6ab650a972789ae5cdb9ac1c80f6a9a273393235 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -212,7 +212,7 @@
 | KSTD-5-57-18b | build 테스트 read_only_query.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/build/tests/read_only_query.rs | `make lint-rust` reports no finding in this file | [o] |
 | KSTD-5-57-14c | orm 테스트 dbspec_introspect.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests/dbspec_introspect.rs | `make lint-rust` reports no finding in this file | [o] |
 | KSTD-5-57-18c | sqlite_concurrency.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests/sqlite_concurrency.rs | `make lint-rust` reports no finding in these files | [o] |
-| KSTD-5-57-18d | lock_probe_order.rs의 미사용 import를 고친다 (KSTD-5-57 하위) | packages/rust/build/tests/lock_probe_order.rs | `make lint-rust` reports no finding in these files | [ ] |
+| KSTD-5-57-18d | lock_probe_order.rs의 미사용 import를 고친다 (KSTD-5-57 하위) | packages/rust/build/tests/lock_probe_order.rs | `make lint-rust` reports no finding in these files | [o] |
 | KSTD-5-57-18e | packages/rust/tests의 catch-check 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/tests/tests/integration/coverage_schema_install.rs, packages/rust/tests/tests/markdown_conformance.rs | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-24 | tests crate의 conformance.rs, integration.rs, decimal_physical.rs, coverage_schema_install.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/tests src conformance.rs, integration.rs; tests decimal_physical.rs, integration/coverage_schema_install.rs | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-23 | build 테스트 table_page.rs와 orm identity_load, soft_delete, dbspec_probe의 catch-check 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/build/tests table_page.rs; packages/rust/orm/tests identity_load.rs, soft_delete.rs, common/dbspec_probe.rs | `make lint-rust` reports no finding in these files | [ ] |

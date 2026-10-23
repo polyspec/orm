@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: be8ff323cb8f718492f6b9d9474ee3e5867314e85d8b685b0c83c8838bd5d170 -->
+<!-- source-sha256: 70806076f61d23d8f8b03c73ab81096599c05f83d09e96b44d5f6644cdb72e88 -->
 # 변경 이력
 
 ## Unreleased
 
+- build test lock_probe_order.rs의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-18d).
 - orm test sqlite_concurrency.rs의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-18c).
 - build test read_only_query.rs의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-18b).
 - orm test restore_rows, coverage_audit_triggers와 13~16 밖의 나머지 file의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-18).
