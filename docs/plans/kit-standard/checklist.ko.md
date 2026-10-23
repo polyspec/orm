@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 24def32e8c9f2e90f345d8f84e21ad2041ed134dd07ee09b6913a2145ceae3b2 -->
+<!-- source-sha256: e66d921bf223a5de49e8b15006991ede186550ebfe199ca2e687b4767b41723d -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -211,7 +211,7 @@
 | KSTD-5-57-14b | add_tables_and_columns, dbspec_plan_apply, collection_identity의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests add_tables_and_columns, dbspec_plan_apply, collection_identity | `make lint-rust` reports no finding in these files | [o] |
 | KSTD-5-57-18b | build 테스트 read_only_query.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/build/tests/read_only_query.rs | `make lint-rust` reports no finding in this file | [o] |
 | KSTD-5-57-14c | orm 테스트 dbspec_introspect.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests/dbspec_introspect.rs | `make lint-rust` reports no finding in this file | [o] |
-| KSTD-5-57-18c | sqlite_concurrency.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests/sqlite_concurrency.rs | `make lint-rust` reports no finding in these files | [ ] |
+| KSTD-5-57-18c | sqlite_concurrency.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests/sqlite_concurrency.rs | `make lint-rust` reports no finding in these files | [o] |
 | KSTD-5-57-18d | lock_probe_order.rs의 미사용 import를 고친다 (KSTD-5-57 하위) | packages/rust/build/tests/lock_probe_order.rs | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-18e | packages/rust/tests의 catch-check 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/tests/tests/integration/coverage_schema_install.rs, packages/rust/tests/tests/markdown_conformance.rs | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-24 | tests crate의 conformance.rs, integration.rs, decimal_physical.rs, coverage_schema_install.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/tests src conformance.rs, integration.rs; tests decimal_physical.rs, integration/coverage_schema_install.rs | `make lint-rust` reports no finding in these files | [ ] |
