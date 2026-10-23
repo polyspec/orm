@@ -1,5 +1,5 @@
 <!-- doc-id: remediation-plan -->
-<!-- source-sha256: 9c3f9bfd607e68ef4dc72c2518bcb5bff0dd96487c71149d785acd4cb9414eab -->
+<!-- source-sha256: bf544ef4788d00c0f393a06315b4de3f5fe5454ee12f36abaae9d2870b5997c3 -->
 # 남은 작업의 진단과 해결 방안
 
 [English](remediation-plan.md)
@@ -102,7 +102,7 @@
 | KSTD-2-11-2 | CFG5가 pool idle/lifetime을 이미 다룬다. 여섯 native client 검사는 KSTD-2-11-13에 속한다. 별도 기능이 아니다. |
 | KSTD-5-5-2 | tracked pycache 주장은 오독이었다. `git ls-files`/tree에 없고 ignore/generated 규칙이 있다. tracked path 발견 시에만 다시 연다. |
 | KSTD-5-46-2 | 활성 KSTD-5-46 중복이다. Rust 공통/dbspec values helper는 이미 공유된다. 별도 작업 없음. |
-| KSTD-5-49 | “도달 불가” 주장은 유효 IR이 있으므로 틀렸다. KSTD-5-49-1에서 계속하고 기술적으로 불가능하다고 하지 않는다. |
+| KSTD-5-49 | 독립 제외 감사(`var/evidence/excluded-items-audit/audit.md`)에서 기존 “도달 불가” 근거를 기각했다. 유효한 multi-row IR의 `aes_a -> idx`, `aes_b -> idx`, `name`과 `r.set=[name,aes_b]`에서 파생 `idx`는 `aes_b`를 사용하지만 target lookup은 없는 `aes_a`를 골라 row slot 0(`name`)으로 fallback한다. KSTD-5-49를 열어 두고 KSTD-5-49-1에서 source-to-row mapping을 구현/검증한다. 이 문서 정정에서는 구현이나 테스트를 실행하지 않았다. |
 | KSTD-5-50 | 정상 schema SQL에서는 NULL primary key가 나오지 않지만 malformed driver 결과는 PRT35에 따라 KSTD-5-50-1 경계에서 방어한다. |
 | KSTD-7-8 | PHP in-process pool 부재와 nonzero option의 CONFIG는 CFG4/5 의도다. 기능 누락이 아니다. |
 | KSTD-10-7, KSTD-10-8 | kit 소유 workflow 정책은 KSTD-5-24/25로 완료됐다. 저장소 workflow 검사가 kit 사본을 제외하는 것은 맞다. 사본 수정 금지. |

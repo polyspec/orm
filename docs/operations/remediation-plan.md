@@ -104,7 +104,7 @@ These dispositions explain why an audit row is excluded from the active remedy m
 | KSTD-2-11-2 | CFG5 already covers pool idle/lifetime; native six-client coverage belongs in KSTD-2-11-13. No separate new feature. |
 | KSTD-5-5-2 | Tracked pycache claim was mistaken: `git ls-files`/tree are empty there and ignore/generated rules exist. Reopen only with a tracked-path finding. |
 | KSTD-5-46-2 | Duplicate of active KSTD-5-46; Rust common/dbspec values helper is already shared. No extra item. |
-| KSTD-5-49 | “Unreachable” claim is false because valid IR exists. Continue under KSTD-5-49-1; do not call technically impossible. |
+| KSTD-5-49 | The independent excluded-items audit (`var/evidence/excluded-items-audit/audit.md`) rejects the prior “unreachable” rationale. In valid multi-row IR with `aes_a -> idx`, `aes_b -> idx`, `name` and `r.set=[name,aes_b]`, the derived `idx` uses `aes_b` but target lookup chooses absent `aes_a` and falls back to row slot 0 (`name`). Keep KSTD-5-49 open and implement/test the source-to-row mapping under KSTD-5-49-1; no implementation or test was run for this correction. |
 | KSTD-5-50 | NULL primary key is unreachable for normal schema SQL, but malformed driver output still needs boundary defense under KSTD-5-50-1 / PRT35. |
 | KSTD-7-8 | PHP has no in-process pool and nonzero options are CONFIG by CFG4/5 design. Not a missing feature. |
 | KSTD-10-7, KSTD-10-8 | Kit-owned workflow policy is completed by KSTD-5-24/25. Repository workflow tests correctly exclude copied kit workflows. Do not edit copies. |
