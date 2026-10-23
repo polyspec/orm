@@ -165,7 +165,7 @@
 | KSTD-5-57-6 | Fix the lint findings of the orm codec, value and driver sources (follows KSTD-5-57) | packages/rust/orm/src/codec.rs, value.rs, driver.rs | `make lint-rust` reports no finding in these files | [o] |
 | KSTD-5-57-7 | Fix the lint findings of the other orm sources (follows KSTD-5-57) | packages/rust/orm/src markdown, row, dbspec/apply, tx, lib, bind_check, engine validate and planner, model | `make lint-rust` reports no finding in these files | [o] |
 | KSTD-5-57-8 | Fix the lint findings of the case-database crate (follows KSTD-5-57) | packages/rust/case-database/src/lib.rs | `make lint-rust` reports no finding in these files | [o] |
-| KSTD-5-57-9 | Fix the lint findings of build generate.rs (follows KSTD-5-57) | packages/rust/build/src/generate.rs | `make lint-rust` reports no finding in these files | [ ] |
+| KSTD-5-57-9 | Fix the lint findings of build generate.rs (follows KSTD-5-57) | packages/rust/build/src/generate.rs | `make lint-rust` reports no finding in these files | [o] |
 | KSTD-5-57-10 | Fix the lint findings of the other build sources (follows KSTD-5-57) | packages/rust/build/src tool_db, catalog, lib | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-11 | Fix the lint findings of the orm test targets revision and statement_events (follows KSTD-5-57) | packages/rust/orm/tests revision.rs, statement_events.rs | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-12 | Fix the lint findings of the orm test files listen_notify, register, clock, was_inserted (follows KSTD-5-57) | packages/rust/orm/tests listen_notify, register, clock, was_inserted | `make lint-rust` reports no finding in these files | [ ] |

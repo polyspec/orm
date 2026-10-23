@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The lint findings in the build generate.rs are fixed, so `make lint-rust` reports no finding in them (KSTD-5-57-9).
 - The lint findings in the case-database lib.rs are fixed, so `make lint-rust` reports no finding in them (KSTD-5-57-8).
 - The lint findings in the other orm sources are fixed, so `make lint-rust` reports no finding in them (KSTD-5-57-7).
 - The lint findings in the orm codec.rs, value.rs and driver.rs are fixed, so `make lint-rust` reports no finding in them (KSTD-5-57-6).

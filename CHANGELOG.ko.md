@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 885932545810d56b4854fecf45aab1a497409ce8aa0b8636af6b92463cfe336c -->
+<!-- source-sha256: 221ac7eede7067bf0f2632cf1edc68d1187c48c692f5fc9e7b406bb65cd9ba7e -->
 # 변경 이력
 
 ## Unreleased
 
+- build의 generate.rs의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-9).
 - case-database의 lib.rs의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-8).
 - 나머지 orm source의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-7).
 - orm의 codec.rs, value.rs, driver.rs의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-6).
