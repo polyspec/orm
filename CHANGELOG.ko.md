@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: f877e7557293f7c953186b447a289f0bb7a785837caccb3bf948a8cda1351917 -->
+<!-- source-sha256: 62e9530eade1c9225cd04e021db5a2bd90398101ac8654c7a129b52de1b68602 -->
 # 변경 이력
 
 ## Unreleased
@@ -12,6 +12,7 @@
 
 - step과 test-server 스크립트의 process cleanup은 이제 ESRCH만 종료 상태로 처리하고, cleanup 및 timeout 원인을 보존하며, 정리에 실패한 group을 계속 추적한다. 신호 전에 PID 파일을 검증하고 모든 서버 종료가 성공한 뒤 data를 삭제한다. 커밋 `f718563f3`에서 `make scripts-typecheck`, `var/tools/bin/node --test scripts/check/step.test.mts` (12/12), 선택한 fake-process/FS cases (4/4)가 통과한다. 수정 전에는 step case 세 개와 선택한 server case 네 개가 모두 실패했다(KSTD-5-78).
 - PHP extension이 Collection을 C로 구현하고 `getIterator()`에서 native Iterator를 반환한다. 커밋된 구현 `1d20505db`에서 `make collection-php-extension-check`는 native 19개 test(212 assertions), declaration 3개 test(8 assertions), PHP library identity 3개 test(82 assertions)를 통과한다(T182-6-12).
+- PHP extension이 Request, StyledValue, Page, Func, PendingTime Model 보조 타입을 native로 소유한다. PHP 8.4.26에서 focused verification이 native surface test 12개(119 assertions), declaration test 5개(12 assertions), PHP source test 2개(21 assertions)를 통과한다(T182-6-13).
 - owner 선택은 named fixture가 없는 `ENOENT`만 선택 항목으로 처리하고 다른 읽기 오류는 전달한다. Database 설정은 client 실행 전에 action별 필수 DSN을 확인하고 action과 복구 명령을 오류에 표시한다. 커밋된 구현 `78329bd0f`에서 `make item-test ID=KSTD-5-79`는 owner case 26개와 focused database 설정 case 1개를 통과한다. 이전 구현은 EISDIR fixture case에서 실패했고 누락 DSN 오류에 action 정보가 없었다(KSTD-5-79).
 - TypeScript codec의 JSON, YAML, UTF-8 실패는 원래 원인을 보존하고 기존 `CodecError` 인스턴스는 같은 객체로 다시 던진다. 커밋된 구현 `08dbf4cce`에서 `make ts-codec-errors-check`가 native 6개 case를 모두 통과한다. 이전 구현은 정상 값 제어 case만 통과하고 원인 및 identity 5개 case에서 실패했다(KSTD-5-75).
 - TypeScript AES decode는 native final 인증 실패만 `CODEC_DECODE`로 변환하고 설정, update 및 관련 없는 final 오류는 보존한다. `make ts-aes-auth-check`가 구현 커밋에서 native 테스트 이벤트 9개를 통과했다. 수정 전에는 정상 제어 3개가 통과하고 오류 보존 그룹과 5개 오류 발생 지점 사례가 실패했다(KSTD-5-73).
