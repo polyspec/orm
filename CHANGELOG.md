@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- Rust build generation now resolves relative set, scan, and explicit output paths from `CARGO_MANIFEST_DIR`. It reports an actionable error when that variable is required but missing or relative, while absolute paths remain usable without it and implicit `OUT_DIR` behavior is unchanged. The focused native environment unit passes 1 test across 8 isolated subprocess scenarios (KSTD-5-70).
+
 - TypeScript and Rust now require three or four ASCII decimal u32 components for the native SQLite version, compare numerically against 3.46.0, and report malformed raw values as INTERNAL before opening SQLite. The committed focused targets pass three unit cases each; on pre-fix 2100937d4, empty input was misclassified and Rust accepted 3.46 (KSTD-5-64).
 
 - The Rust row mapping defect is fixed by the six-client shared blind-index source handling in KSTD-5-49-1; its focused Rust planner check passes (KSTD-5-49).

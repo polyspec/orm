@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c7692d50c9a0fe9231da8b9674c65f14260e0a018e02b77e3a9362d90622fe57 -->
+<!-- source-sha256: a1c02e086b398f41de530742c0ca29c45d5aca9ac692d1d39f8db3339bf8cc6f -->
 # 변경 이력
 
 ## Unreleased
+
+- Rust build generation은 상대 `set`, `scan`, 명시적 출력 경로를 `CARGO_MANIFEST_DIR` 기준으로 해석한다. 해당 변수가 필요한데 없거나 상대 경로이면 해결 방법을 포함한 오류를 반환하며, 절대 경로는 변수 없이 사용할 수 있고 암묵적 `OUT_DIR` 동작은 유지한다. Focused native environment unit은 격리된 subprocess 시나리오 8개를 포함해 1개 test를 통과한다(KSTD-5-70).
 
 - TypeScript와 Rust는 native SQLite version을 ASCII decimal u32 component 세 개 또는 네 개로 검증하고, 3.46.0과 수치 비교하며, SQLite를 열기 전에 잘못된 raw version을 INTERNAL로 보고한다. 커밋된 focused target은 각각 unit case 세 개를 통과한다. 수정 전 2100937d4에서는 빈 입력이 잘못 분류되고 Rust가 3.46을 허용했다(KSTD-5-64).
 
