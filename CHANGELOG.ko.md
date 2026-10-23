@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: cb8876d629093886fdbab70549977b2977c91e1eb4ee82600cbafabd04cec4d0 -->
+<!-- source-sha256: e51b9d07aca4276ab277e51fa7ce62a9b847c49c0d3cfab03f00f3b0760096c7 -->
 # 변경 이력
 
 ## Unreleased
 
+- schema introspection의 mysql.rs, postgres.rs, sqlite.rs의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-2).
 - benchmarks의 driver_compare.rs와 native.rs, testcase의 lib.rs의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-1).
 - `packages/rust/orm/tests/zone.rs`의 디렉터리 helper에 Err 분기의 문장을 준다. 없는 디렉터리는 무시하고 다른 error는 원인과 함께 panic하므로 catch check(K537)가 통과한다(KSTD-5-57-19). red: catch check가 zone.rs:26의 문장 없는 Err 분기를 보고했다.
 - extension의 paramUses는 다중 row insert의 각 row에 그 row 자신의 위치의 column을 준다. 그래서 모든 row의 parameter가 자기 column을 받으며, PHP 경로와 같다(KSTD-5-80). red: MarkdownTest::testParamUses가 row를 owner, owner, owner와 title, title, title로 보고했다.

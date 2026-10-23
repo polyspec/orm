@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The lint findings in the schema introspection mysql.rs, postgres.rs and sqlite.rs are fixed, so `make lint-rust` reports no finding in them (KSTD-5-57-2).
 - The lint findings in benchmarks driver_compare.rs and native.rs, and the testcase lib.rs are fixed, so `make lint-rust` reports no finding in them (KSTD-5-57-1).
 - The lint of `packages/rust/orm/tests/zone.rs` gives the Err branch of the directory helper a statement: a missing directory is ignored and any other error panics with its cause, so the catch check (K537) passes (KSTD-5-57-19). Red: the catch check reported zone.rs:26 as an Err branch with no statement.
 - The extension's paramUses gives each row of a multi-row insert the columns at its own positions, so every row's parameters take their own columns, as the PHP path does (KSTD-5-80). Red: MarkdownTest::testParamUses reported the rows as owner, owner, owner and title, title, title.
