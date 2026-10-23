@@ -508,8 +508,9 @@ final class ScanVisitor extends NodeVisitorAbstract
      * Records the declared types of the getters that a call names. new<Attr>(value) declares get<Attr> with the type of
      * the value; addColumn<Name>(fn): T declares get<Name> with the return type T; and a get or gets that ends a chain
      * with alias<Name> declares get<Name> with the chain's result, ?Model for get and
-     * \Polyspec\Orm\Collection<Model> for gets. A call
-     * without a type is recorded with a null type, which the generator refuses.
+     * \Polyspec\Orm\Collection<Model> for gets. A relation getter's type is recorded from the owning relation(child)
+     * or relations(child) AST edge, independently of this terminal read. A call without a type is recorded with a null
+     * type, which the generator refuses.
      */
     private function declaredTypes(
         Node\Expr\MethodCall|Node\Expr\NullsafeMethodCall $node,
@@ -576,7 +577,7 @@ final class ScanVisitor extends NodeVisitorAbstract
                 : 'get' . substr($effectiveAlias, 5);
             foreach ($owners as $owner) {
                 $this->types[$owner['cls']][$getter][] = [
-                    'call' => $effectiveAlias === '' ? $name : $effectiveAlias,
+                    'call' => $effectiveAlias === '' ? strtolower($name) : $effectiveAlias,
                     'type' => $type,
                     'line' => $aliasLine,
                 ];

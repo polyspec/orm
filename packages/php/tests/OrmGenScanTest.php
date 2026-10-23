@@ -366,6 +366,27 @@ PHP;
         );
     }
 
+    public function testRelationKeywordCaseDoesNotChangeRelationTypeConflict(): void
+    {
+        $ns = self::NS;
+        $source = <<<PHP
+<?php
+use $ns\Author;
+use $ns\ServiceMember;
+use $ns\User;
+
+\$author = new Author();
+\$author->RELATIONS((new ServiceMember())->matchServiceSeqWithServiceSeq());
+\$author->relation((new User())->matchUserSeqWithSeq()->aliasServiceMemberModels());
+\$author->getServiceMemberModels();
+PHP;
+        [$code, $err] = self::generate('relation-keyword-case-conflict', ['usage.php' => $source]);
+        self::assertSame(1, $code, 'status');
+        self::assertStringContainsString('Author.getServiceMemberModels: relation declarations conflict', $err);
+        self::assertMatchesRegularExpression('/relations at line \d+ => \\\\Polyspec\\\\Orm\\\\Collection<ServiceMember>/', $err);
+        self::assertMatchesRegularExpression('/aliasServiceMemberModels at line \d+ => \?User/', $err);
+    }
+
     public function testUnusedRelationAliasDoesNotGenerateAGetter(): void
     {
         $ns = self::NS;
