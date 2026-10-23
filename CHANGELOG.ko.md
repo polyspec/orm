@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: befe8e629a728248fb65666f9251d4a100ea1c86085539386d55cadcefd63d7f -->
+<!-- source-sha256: f951de63bd55314bd41ff959a532514a146e48614adbef3c89c4177f5608af20 -->
 # 변경 이력
 
 ## Unreleased
 
+- build test generate.rs의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-17).
 - orm test external_documents, rollback, codec_vectors, ir_request, coverage_authenticated_encryption의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-16).
 - orm tx.rs의 test module의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-15).
 - orm test dbspec_introspect.rs의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-14c).
