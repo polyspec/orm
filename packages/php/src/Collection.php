@@ -63,7 +63,7 @@ final class Collection implements \IteratorAggregate, \Countable, \JsonSerializa
         $this->items[self::identityOf($key)] = [$key, $model];
     }
 
-    /** @return TModel|null */
+    /** @return (TModel&Model)|null */
     public function get(int|string|bool|Bytes|\DateTimeInterface $key): ?Model
     {
         return $this->items[self::identityOf($key)][1] ?? null;
@@ -74,7 +74,7 @@ final class Collection implements \IteratorAggregate, \Countable, \JsonSerializa
         return isset($this->items[self::identityOf($key)]);
     }
 
-    /** @return TModel|null */
+    /** @return (TModel&Model)|null */
     public function first(): ?Model
     {
         foreach ($this->items as [, $m]) {
