@@ -23,6 +23,12 @@ final class SetReader
     /** @var array<string, list<string>|false> the listing of each directory during one read */
     private array $listings = [];
 
+    /** @var array<string, string> the warning from a failed cached directory listing */
+    private array $listingFailures = [];
+
+    /** The cause of the immediately preceding failed stat or listing operation. */
+    private ?string $failure = null;
+
     private function __construct(private readonly bool $windows)
     {
     }
@@ -51,7 +57,7 @@ final class SetReader
         }
         $kind = $this->kind($this->trimmed($root));
         if ($kind === null) {
-            return $fail('set.file', "$path: the root $root cannot be examined");
+            return $fail('set.file', "$path: " . $this->failure);
         }
         if ($kind === 'link') {
             return $fail('set.symlink', "$path: the root $root is a symbolic link");
@@ -61,14 +67,14 @@ final class SetReader
         }
         $listed = $this->lists($root, self::NAME);
         if ($listed === null) {
-            return $fail('set.file', "$path: the directory $root cannot be listed");
+            return $fail('set.file', "$path: " . $this->failure);
         }
         if (!$listed) {
             return $fail('set.file', "$path: " . self::NAME . " is not a name that $root lists");
         }
         $kind = $this->kind($path);
         if ($kind === null) {
-            return $fail('set.file', "$path: the set file cannot be examined");
+            return $fail('set.file', "$path: " . $this->failure);
         }
         if ($kind === 'link') {
             return $fail('set.symlink', "$path: the set file is a symbolic link");
@@ -161,11 +167,15 @@ final class SetReader
      */
     private function kind(string $path, bool $follow = false): ?string
     {
+        $operation = $follow ? 'stat' : 'lstat';
+        error_clear_last();
         // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged -- a missing path returns false, which means no entry
         $stat = $follow ? @stat($path) : @lstat($path);
         if ($stat === false) {
+            $this->failure = self::operationFailure($operation, $path);
             return null;
         }
+        $this->failure = null;
         return match ($stat['mode'] & 0o170000) {
             0o120000 => 'link',
             0o040000 => 'dir',
@@ -182,11 +192,23 @@ final class SetReader
     private function lists(string $dir, string $name): ?bool
     {
         if (!array_key_exists($dir, $this->listings)) {
+            error_clear_last();
             // phpcs:ignore Generic.PHP.NoSilencedErrors.Discouraged -- an unreadable folder returns false, which means no listing
             $this->listings[$dir] = @scandir($dir, SCANDIR_SORT_NONE);
+            if ($this->listings[$dir] === false) {
+                $this->listingFailures[$dir] = self::operationFailure('scandir', $dir);
+            }
         }
         $listing = $this->listings[$dir];
+        $this->failure = $listing === false ? $this->listingFailures[$dir] : null;
         return $listing === false ? null : in_array($name, $listing, true);
+    }
+
+    /** The operation's warning, read immediately after its failure and never from an earlier operation. */
+    private static function operationFailure(string $operation, string $path): string
+    {
+        $warning = error_get_last();
+        return "$operation $path failed" . ($warning === null ? '' : ': ' . $warning['message']);
     }
 
     /**
@@ -432,7 +454,7 @@ final class SetReader
             if ($segment !== '..') {
                 $listed = $this->lists($directory, $segment);
                 if ($listed === null) {
-                    return new SetError('set.file', $joined, "$joined: the directory $directory cannot be listed");
+                    return new SetError('set.file', $joined, "$joined: " . $this->failure);
                 }
                 if (!$listed) {
                     return new SetError('set.file', $joined, "$joined: $segment is not a name that $directory lists");
@@ -443,7 +465,7 @@ final class SetReader
                 $kind = $this->kind($component, true);
             }
             if ($kind === null) {
-                return new SetError('set.file', $joined, "$joined: $component cannot be examined");
+                return new SetError('set.file', $joined, "$joined: " . $this->failure);
             }
             if ($kind === 'link') {
                 return new SetError('set.symlink', $joined, "$joined: $component is a symbolic link");
