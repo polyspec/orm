@@ -3,7 +3,7 @@
 
 [한국어](plan.ko.md)
 
-The project checklist of the 0.0.1 completion: every item of the project and its state, from the dbspec schema language to the markdown IR executor. The items are in [the execution checklist](checklist.md), one table in the order of the project. The sections below name the first and the last item of each section of the project.
+The project checklist of the 0.0.1 completion: every item of the project and its state, from the dbspec schema language to the markdown IR executor. The items are in [the execution checklist](checklist.md), one table in the order of the project. The sections below name the first and the last item of each section of the project. The diagnosis and remedy map for remaining work is in [the remediation plan](../../operations/remediation-plan.md); the checklist remains the sole state and evidence ledger.
 
 | Section | First item | Last item | Items |
 |---|---|---|---|
