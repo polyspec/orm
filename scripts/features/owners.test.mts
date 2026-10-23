@@ -143,6 +143,7 @@ caseTest('every target of CHECK_TARGETS declares inputs that match tracked files
   const declaredTargets = /^CHECK_TARGETS = (.*)$/m.exec(makefile)?.[1];
   assert.ok(declaredTargets, 'the Makefile declares CHECK_TARGETS');
   const checkTargets = declaredTargets.trim().split(/\s+/);
+  assert.ok(checkTargets.includes('group-rows-db-php-extension'), 'CHECK_TARGETS keeps the PHP extension database target');
   const tracked = (await import('node:child_process')).execFileSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' }).split('\n').filter(Boolean);
   assert.deepEqual(checkInputErrors(inputs, checkTargets, tracked), []);
   assert.deepEqual(checkInputErrors({ a: { scope: 'owner', needs: [], inputs: ['docs/**'] }, b: { scope: 'owner', needs: [], inputs: ['nothing/**'] } }, ['a', 'c'], ['docs/x.md']), [
