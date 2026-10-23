@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- ORM declares `WORKTREE_STOP = orm-test-servers-stop`, so kit worktree cleanup stops its servers before removal. `node --test scripts/repo/worktree-stop.test.mts` passes the Makefile-origin reader, stop-before-removal, and failed-stop preservation cases (T237). Red: the same test on c5755a5ddc46 failed because `stopTargetOf()` returned `undefined`.
 - PHP Collection get() and first() preserve the caller's model type in their nullable results. The static CI group checks both lookups with a generic model parameter; unparameterized collection iteration keeps its existing behavior (KSTD-5-82).
 - The Rust lint gate now passes all three workspace clippy runs and the Rust catch check, without a suppression. The final catch-check failure is reproduced on the code before f5f9b5993 and the restored tree passes all four steps (KSTD-5-57).
 - The unused `AtomicU8` import of `build/tests/lock_probe_order.rs` is dropped, so the clippy gate of `make rust-check` no longer reports `unused_imports` on main (KSTD-5-56). Red: `make rust-check` on 19c5dd83c failed in clippy with `unused_imports` at `build/tests/lock_probe_order.rs:3`.
