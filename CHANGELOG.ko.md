@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 5baa9c0981a3e2d0fa49bbf5ebc336fce3d6cac9a01a621ecb907c80a526a635 -->
+<!-- source-sha256: 4644e3d537d843977e1e837ae53bdec398c8bb92cd98a7175259b6a002997b00 -->
 # 변경 이력
 
 ## Unreleased
 
+- schema test target dbspec_mermaid, dbspec_set_parse, dbspec_show_create, dbspec_render, common/dbspec_values의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-4).
 - worktree의 Rust test build는 debug line table을 빼서(`debug = 0`) 약 27% 작아진다(4.5 GB에서 3.3 GB). panic과 assertion 위치는 file:line을 유지하며, main은 line-tables-only를 유지한다(KSTD-5-85). red: worktree에서 `make -s print-CARGO_PROFILE_DEV_DEBUG`가 line-tables-only를 출력했다.
 - schema의 parser.rs, literal.rs, set.rs, mermaid.rs와 interface-symbols binary의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-3).
 - schema introspection의 mysql.rs, postgres.rs, sqlite.rs의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-2).

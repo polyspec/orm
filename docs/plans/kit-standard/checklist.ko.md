@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 9436c74cb789f8d42de51e9d1ee008ca42b71c54ae44eceba43a6048c9b8fad8 -->
+<!-- source-sha256: c5f428e0be7c14fac8f109904e5e5737c78543afcf1ec8c3c1f14c61024f2518 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -161,7 +161,7 @@
 | KSTD-5-57-1 | 벤치마크와 testcase crate의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | benchmarks/rust/src/driver_compare.rs, benchmarks/rust/src/native.rs, packages/rust/testcase/src/lib.rs | `make lint-rust` reports no finding in these files | [o] |
 | KSTD-5-57-2 | schema introspection crate의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/schema/src/dbspec/introspect/mysql.rs, postgres.rs, sqlite.rs | `make lint-rust` reports no finding in these files | [o] |
 | KSTD-5-57-3 | schema parser와 interface-symbols bin의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/schema/src/dbspec/parser.rs, literal.rs, set.rs, mermaid.rs, the interface-symbols binary | `make lint-rust` reports no finding in these files | [o] |
-| KSTD-5-57-4 | schema 테스트 target의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/schema/tests dbspec_mermaid, dbspec_set_parse, dbspec_show_create, dbspec_render, common/dbspec_values | `make lint-rust` reports no finding in these files | [ ] |
+| KSTD-5-57-4 | schema 테스트 target의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/schema/tests dbspec_mermaid, dbspec_set_parse, dbspec_show_create, dbspec_render, common/dbspec_values | `make lint-rust` reports no finding in these files | [o] |
 | KSTD-5-57-5 | orm db 소스의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/src/db.rs | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-6 | orm codec, value, driver 소스의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/src/codec.rs, value.rs, driver.rs | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-7 | 나머지 orm 소스의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/src markdown, row, dbspec/apply, tx, lib, bind_check, engine validate and planner, model | `make lint-rust` reports no finding in these files | [ ] |

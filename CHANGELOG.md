@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The lint findings in the schema test targets dbspec_mermaid, dbspec_set_parse, dbspec_show_create, dbspec_render and common/dbspec_values are fixed, so `make lint-rust` reports no finding in them (KSTD-5-57-4).
 - The Rust test build of a worktree drops its debug line tables (`debug = 0`), so it is about 27% smaller (4.5 GB to 3.3 GB), while panic and assertion locations keep file:line; main keeps line-tables-only (KSTD-5-85). Red: `make -s print-CARGO_PROFILE_DEV_DEBUG` printed line-tables-only in a worktree.
 - The lint findings in the schema parser.rs, literal.rs, set.rs and mermaid.rs, and the interface-symbols binary are fixed, so `make lint-rust` reports no finding in them (KSTD-5-57-3).
 - The lint findings in the schema introspection mysql.rs, postgres.rs and sqlite.rs are fixed, so `make lint-rust` reports no finding in them (KSTD-5-57-2).
