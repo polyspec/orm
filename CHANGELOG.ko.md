@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: aa89c14032052c6b719b2fcb48915583497cdf10981999e418fd631d6be5e0c2 -->
+<!-- source-sha256: 37a9169b1bd686c85d512e644e6fa35656f8168722ba1ab65c4fb273b3dabad6 -->
 # 변경 이력
 
 ## Unreleased
 
+- orm의 codec.rs, value.rs, driver.rs의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-6).
 - orm의 db.rs의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-5).
 - schema test target dbspec_mermaid, dbspec_set_parse, dbspec_show_create, dbspec_render, common/dbspec_values의 lint finding을 고쳐 그 파일에서 `make lint-rust`가 finding을 보고하지 않는다(KSTD-5-57-4).
 - worktree의 Rust test build는 debug line table을 빼서(`debug = 0`) 약 27% 작아진다(4.5 GB에서 3.3 GB). panic과 assertion 위치는 file:line을 유지하며, main은 line-tables-only를 유지한다(KSTD-5-85). red: worktree에서 `make -s print-CARGO_PROFILE_DEV_DEBUG`가 line-tables-only를 출력했다.

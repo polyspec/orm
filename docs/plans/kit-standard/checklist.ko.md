@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 5e1dddbe4aeb76be020810d5a855bb6fde0977b14332a5052630dd97ed5b61d0 -->
+<!-- source-sha256: 64cd39baf1e32031e94172974b440a7f16494d6c2443a64f8aaea46594d19228 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -163,7 +163,7 @@
 | KSTD-5-57-3 | schema parser와 interface-symbols bin의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/schema/src/dbspec/parser.rs, literal.rs, set.rs, mermaid.rs, the interface-symbols binary | `make lint-rust` reports no finding in these files | [o] |
 | KSTD-5-57-4 | schema 테스트 target의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/schema/tests dbspec_mermaid, dbspec_set_parse, dbspec_show_create, dbspec_render, common/dbspec_values | `make lint-rust` reports no finding in these files | [o] |
 | KSTD-5-57-5 | orm db 소스의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/src/db.rs | `make lint-rust` reports no finding in these files | [o] |
-| KSTD-5-57-6 | orm codec, value, driver 소스의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/src/codec.rs, value.rs, driver.rs | `make lint-rust` reports no finding in these files | [ ] |
+| KSTD-5-57-6 | orm codec, value, driver 소스의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/src/codec.rs, value.rs, driver.rs | `make lint-rust` reports no finding in these files | [o] |
 | KSTD-5-57-7 | 나머지 orm 소스의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/src markdown, row, dbspec/apply, tx, lib, bind_check, engine validate and planner, model | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-8 | case-database crate의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/case-database/src/lib.rs | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-9 | build generate.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/build/src/generate.rs | `make lint-rust` reports no finding in these files | [ ] |
