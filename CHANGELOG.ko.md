@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: de862925888abb713e32c222a061737dce888c29bf37c6f9af6a702c8331def7 -->
+<!-- source-sha256: ab67aa53c07354ab6d2908947a90579e9b86391f9a88f688ddf88c0741d8677b -->
 # 변경 이력
 
 ## Unreleased
+
+- PHP relation 선언 수집이 PHP method 호출과 같이 대소문자를 구분하지 않아 uppercase `RELATIONS`에서도 relation-edge cardinality와 CONFIG 충돌 검사를 유지한다. focused 회귀는 정규화 전 실패하고 `b4546a29d`에서 relation cases 및 scan vector와 함께 통과한다(KSTD-5-84).
 
 - PHP relation getter가 복수 관계에서 runtime `Collection<Target>` 타입을 사용하고 target model 타입을 보존한다. Alias getter 타입은 terminal read와 무관하게 소유 relation edge와 cardinality를 따른다. 구현 커밋 `23d83be1a`에서 focused PHPStan consumer, relation 회귀 6개와 scan vector 2개가 통과했고, 원래 consumer case는 baseline에서 실패했다(KSTD-5-83).
 

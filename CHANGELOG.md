@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- PHP relation declaration collection is now case-insensitive like PHP method calls, so uppercase `RELATIONS` retains relation-edge cardinality and CONFIG conflict checks. The focused regression fails before normalization and passes in `b4546a29d` with the relation cases and scan vectors (KSTD-5-84).
+
 - PHP relation getters now use the runtime `Collection<Target>` type for plural relations and preserve the target model type. Alias getter types follow the owning relation edge and its cardinality, independently of the terminal read. Committed implementation `23d83be1a` passes the focused PHPStan consumer, six relation regression cases and two scan vectors; the original consumer case failed against baseline (KSTD-5-83).
 
 - Process cleanup in the step and test-server scripts now treats only ESRCH as gone, preserves cleanup and timeout causes, keeps failed groups tracked, validates PID files before signaling, and stops all servers before deleting their data. On `f718563f3`, `make scripts-typecheck`, `var/tools/bin/node --test scripts/check/step.test.mts` (12/12), and the selected fake-process/FS cases (4/4) pass; before the fix, three step cases and all four selected server cases failed (KSTD-5-78).
