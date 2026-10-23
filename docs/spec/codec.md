@@ -9,7 +9,7 @@
 
 ### Blind index
 
-- **COD-4** `%% blind_index <table> <aes_column> <index_column>` declares the equality-search column for an AES column. The target must be nullable-matched, declared as a single-column index, and use `char(64)`/`string` or `bytes` storage. On insert and update, the runtime writes lowercase HMAC-SHA256(plaintext, `secrets.blind_index`) to the target. Equality and `IN` predicates on the AES column use that target and never compare ciphertext. The blind-index key is independent from AES key versions and is required when the schema declares this directive.
+- **COD-4** `%% blind_index <table> <aes_column> <index_column>` declares the equality-search column for an AES column. The target must be nullable-matched, declared as a single-column index, and use `char(64)`/`string` or `bytes` storage. Multiple AES columns may declare the same target. When a request assigns the target explicitly, that assignment supplies it; otherwise, exactly one assigned AES source may derive it, and assigning distinct sources that derive the same target is `IR_INVALID`, regardless of their values. The rule applies independently to insert `set` and `on_duplicate`. On insert and update, the runtime writes lowercase HMAC-SHA256(plaintext, `secrets.blind_index`) to the target. Equality and `IN` predicates on the AES column use that target and never compare ciphertext. The blind-index key is independent from AES key versions and is required when the schema declares this directive.
 
 ### AES v2
 

@@ -2561,6 +2561,8 @@ static bool check_required_assignments(pctx *c, HashTable *ent, HashTable *set)
 }
 
 /* The set with the derived blind-index assignments added (Planner::withBlindIndexes). */
+static HashTable *block_index_source(pctx *c, HashTable *ent, zend_string *target, HashTable *assignments);
+
 static zval *with_blind_indexes(pctx *c, HashTable *ent, HashTable *set)
 {
     zval *out = newlist(c);
@@ -2580,7 +2582,15 @@ static zval *with_blind_indexes(pctx *c, HashTable *ent, HashTable *set)
             return NULL;
         }
         zend_string *target = gs(c, col, "blind_index");
-        if (e && ZSTR_LEN(target) > 0 && !assigned(c, Z_ARRVAL_P(out), target)) {
+        if (e && ZSTR_LEN(target) > 0 && !assigned(c, set, target)) {
+            HashTable *source = block_index_source(c, ent, target, set);
+            if (source != NULL && !zend_string_equals(gs(c, source, "name"), gs(c, col, "name"))) {
+                return fail("IR_INVALID", "blind index %s is derived from both %s and %s", ZSTR_VAL(target),
+                    ZSTR_VAL(gs(c, source, "name")), ZSTR_VAL(gs(c, col, "name")));
+            }
+            if (assigned(c, Z_ARRVAL_P(out), target)) {
+                continue;
+            }
             zval *derived = newlist(c);
             puts_(derived, "column", target);
             if (isset_(ah, "p")) {
@@ -2595,13 +2605,15 @@ static zval *with_blind_indexes(pctx *c, HashTable *ent, HashTable *set)
     return out;
 }
 
-/* The AES source column of a blind index (Planner::blindIndexSource), NULL when there is none. */
-static HashTable *block_index_source(pctx *c, HashTable *ent, zend_string *target)
+/* The AES source column of a blind index, optionally restricted to the given assignments. */
+static HashTable *block_index_source(pctx *c, HashTable *ent, zend_string *target, HashTable *assignments)
 {
     zval *cv;
     ZEND_HASH_FOREACH_VAL(lst(ent, "columns"), cv) {
         ZVAL_DEREF(cv);
-        if (zend_string_equals(gs(c, Z_ARRVAL_P(cv), "blind_index"), target)) {
+        HashTable *column = Z_ARRVAL_P(cv);
+        if (zend_string_equals(gs(c, column, "blind_index"), target)
+            && (assignments == NULL || assigned(c, assignments, gs(c, column, "name")))) {
             return Z_ARRVAL_P(cv);
         }
     } ZEND_HASH_FOREACH_END();
@@ -2645,7 +2657,7 @@ static zend_string *mark_assigned(pctx *c, pbinds *b, zend_long start, HashTable
 /* Planner::renderAssign: one assignment of a column, its value in SQL. */
 static zend_string *render_assign(pctx *c, pbinds *b, HashTable *ent, HashTable *col, HashTable *a)
 {
-    if (block_index_source(c, ent, gs(c, col, "name")) != NULL) {
+    if (block_index_source(c, ent, gs(c, col, "name"), NULL) != NULL) {
         if (isset_(a, "plus_p") || isset_(a, "minus_p")) {
             return fail("IR_INVALID", "blind index assignment must use its AES source value");
         }
@@ -2825,26 +2837,30 @@ static pstep *insert_step(pctx *c, HashTable *r)
         HashTable *rset = lst(r, "set");
         zval *given = column_of(c, rset, "column");
         zend_long n = count_of(set);
-        zend_long *src = emalloc(sizeof(zend_long) * (n > 0 ? n : 1));
+        zend_long *src = arena(c, sizeof(zend_long) * (n > 0 ? n : 1));
         for (zend_long i = 0; i < n; i++) {
             zval *av = at(set, i);
             HashTable *ah = Z_ARRVAL_P(av);
             if (i < count_of(rset)) {
                 src[i] = i;
             } else {
-                HashTable *bsrc = block_index_source(c, ent, gs(c, ah, "column"));
-                src[i] = 0;
-                if (bsrc != NULL) {
-                    zend_string *nm = gs(c, bsrc, "name");
-                    zval *gv;
-                    zend_long gi = 0;
-                    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(given), gv) {
-                        if (Z_TYPE_P(gv) == IS_STRING && zend_string_equals(Z_STR_P(gv), nm)) {
-                            src[i] = gi;
-                            break;
-                        }
-                        gi++;
-                    } ZEND_HASH_FOREACH_END();
+                HashTable *bsrc = block_index_source(c, ent, gs(c, ah, "column"), rset);
+                if (bsrc == NULL) {
+                    return fail("IR_INVALID", "no assigned AES source for blind index %s", ZSTR_VAL(gs(c, ah, "column")));
+                }
+                zend_string *nm = gs(c, bsrc, "name");
+                zval *gv;
+                zend_long gi = 0;
+                src[i] = -1;
+                ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(given), gv) {
+                    if (Z_TYPE_P(gv) == IS_STRING && zend_string_equals(Z_STR_P(gv), nm)) {
+                        src[i] = gi;
+                        break;
+                    }
+                    gi++;
+                } ZEND_HASH_FOREACH_END();
+                if (src[i] < 0) {
+                    return fail("IR_INVALID", "assigned AES source %s is missing from insert set", ZSTR_VAL(nm));
                 }
             }
         }
@@ -2858,7 +2874,6 @@ static pstep *insert_step(pctx *c, HashTable *r)
                 HashTable *ah = Z_ARRVAL_P(av);
                 HashTable *col = NULL;
                 if (!col_of(c, ent, gs(c, ah, "column"), &col)) {
-                    efree(src);
                     return NULL;
                 }
                 zval *tmp = newlist(c);
@@ -2869,7 +2884,6 @@ static pstep *insert_step(pctx *c, HashTable *r)
                 }
                 zend_string *v = render_assign(c, b, ent, col, Z_ARRVAL_P(tmp));
                 if (v == NULL) {
-                    efree(src);
                     return NULL;
                 }
                 lpushs(more, v);
@@ -2893,7 +2907,6 @@ static pstep *insert_step(pctx *c, HashTable *r)
             } ZEND_HASH_FOREACH_END();
             sql = fmt(c, "%s, (%s)", ZSTR_VAL(sql), ZSTR_VAL(implode(c, ", ", Z_ARRVAL_P(more))));
         } ZEND_HASH_FOREACH_END();
-        efree(src);
         zval *slots = copy_list(c, Z_ARRVAL_P(b->slots));
         zval *tables = b_tables(c, b);
         OKP(tables);

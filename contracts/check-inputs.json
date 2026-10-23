@@ -534,6 +534,56 @@
         "packages/php/tests/PerfExtensionsTest.php"
       ]
     },
+    "blind-index-source-go-check": {
+      "scope": "owner",
+      "needs": ["go"],
+      "inputs": [
+        "packages/go/engine/planner/planner.go",
+        "packages/go/engine/planner/blind_index_source_test.go"
+      ]
+    },
+    "blind-index-source-php-check": {
+      "scope": "owner",
+      "needs": ["php", "composer", "node-modules"],
+      "inputs": [
+        "packages/php/src/Planner.php",
+        "packages/php/tests/BlindIndexSourcePlannerTest.php"
+      ]
+    },
+    "blind-index-source-php-extension-check": {
+      "scope": "owner",
+      "needs": ["php", "composer", "node-modules", "php-extension-tools"],
+      "inputs": [
+        "Makefile",
+        "packages/php-ext/src/planner.c",
+        "packages/php/tests/BlindIndexSourcePlannerTest.php"
+      ]
+    },
+    "blind-index-source-ts-check": {
+      "scope": "owner",
+      "needs": ["node-modules"],
+      "inputs": [
+        "packages/ts/src/engine/planner.ts",
+        "packages/ts/tests/engine.mjs"
+      ]
+    },
+    "blind-index-source-python-check": {
+      "scope": "owner",
+      "needs": ["python", "node-modules"],
+      "inputs": [
+        "packages/python/src/polyspec/orm/engine/planner.py",
+        "packages/python/tests/test_blind_index_source.py"
+      ]
+    },
+    "blind-index-source-rust-check": {
+      "scope": "owner",
+      "needs": ["rust", "node-modules"],
+      "inputs": [
+        "packages/rust/orm/src/engine/planner.rs",
+        "packages/rust/orm/src/engine/mod.rs",
+        "packages/rust/orm/tests/unit/blind_index_source.rs"
+      ]
+    },
     "php-min-check": {
       "scope": "owner",
       "needs": [

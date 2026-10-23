@@ -233,6 +233,7 @@ def _validate_required_assignments(ent: Entity, assignments) -> None:
 
 def _add_blind_index_assignments(ent: Entity, assignments) -> list:
     assignments = list(assignments)
+    sources: dict[str, str] = {}
     for a in list(assignments):
         col = field_of(ent, a["column"])
         if (
@@ -241,6 +242,12 @@ def _add_blind_index_assignments(ent: Entity, assignments) -> list:
             or _assigned(assignments, col.blind_index)
         ):
             continue
+        previous = sources.setdefault(col.blind_index, col.name)
+        if previous != col.name:
+            _fail(
+                codes.IR_INVALID,
+                f"blind index {col.blind_index} is derived from both {previous} and {col.name}",
+            )
         extra = {"column": col.blind_index}
         if "p" in a:
             extra["p"] = a["p"]
@@ -252,6 +259,17 @@ def _add_blind_index_assignments(ent: Entity, assignments) -> list:
 
 def _blind_index_source(ent: Entity, target: str) -> Field | None:
     return next((c for c in ent.fields if c.blind_index == target), None)
+
+
+def _assigned_blind_index_source(ent: Entity, target: str, assignments) -> Field | None:
+    return next(
+        (
+            field
+            for field in ent.fields
+            if field.blind_index == target and _assigned(assignments, field.name)
+        ),
+        None,
+    )
 
 
 def _conflict_target(ent: Entity, assignments) -> list:
@@ -1120,7 +1138,12 @@ class Planner:
                 if i < len(input_set):
                     source.append(i)
                 else:
-                    origin = _blind_index_source(ent, a["column"])
+                    origin = _assigned_blind_index_source(ent, a["column"], input_set)
+                    if origin is None:
+                        _fail(
+                            codes.IR_INVALID,
+                            f"no assigned AES source for blind index {a['column']}",
+                        )
                     source.append(
                         next(
                             j

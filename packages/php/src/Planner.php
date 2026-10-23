@@ -791,28 +791,42 @@ final class Planner
 
     private static function withBlindIndexes(array $ent, array $set): array
     {
+        $derived = [];
         foreach ($set as $a) {
             $col = RuntimeModel::column($ent, $a['column']);
             $target = $col['blind_index'];
             if (!RuntimeModel::encrypted($col) || $target === '' || self::assigned($set, $target)) {
                 continue;
             }
-            $derived = ['column' => $target];
+            if (isset($derived[$target]) && $derived[$target]['source'] !== $col['name']) {
+                throw self::err(
+                    Code::IR_INVALID,
+                    "blind index $target is derived from both {$derived[$target]['source']} and {$col['name']}"
+                );
+            }
+            if (isset($derived[$target])) {
+                continue;
+            }
+            $assignment = ['column' => $target];
             if (isset($a['p'])) {
-                $derived['p'] = $a['p'];
+                $assignment['p'] = $a['p'];
             }
             if (!empty($a['null'])) {
-                $derived['null'] = true;
+                $assignment['null'] = true;
             }
-            $set[] = $derived;
+            $derived[$target] = ['source' => $col['name'], 'assignment' => $assignment];
+        }
+        foreach ($derived as $item) {
+            $set[] = $item['assignment'];
         }
         return $set;
     }
 
-    private static function blindIndexSource(array $ent, string $target): ?array
+    private static function blindIndexSource(array $ent, string $target, ?array $assignments = null): ?array
     {
         foreach ($ent['columns'] as $c) {
-            if ($c['blind_index'] === $target) {
+            if ($c['blind_index'] === $target
+                && ($assignments === null || self::assigned($assignments, $c['name']))) {
                 return $c;
             }
         }
@@ -929,8 +943,19 @@ final class Planner
             $given = array_column($r['set'], 'column');
             $source = [];
             foreach ($set as $i => $a) {
-                $source[$i] = $i < count($r['set']) ? $i
-                    : array_search(self::blindIndexSource($ent, $a['column'])['name'], $given, true);
+                if ($i < count($r['set'])) {
+                    $source[$i] = $i;
+                    continue;
+                }
+                $origin = self::blindIndexSource($ent, $a['column'], $r['set']);
+                if ($origin === null) {
+                    throw self::err(Code::IR_INVALID, 'no assigned AES source for blind index ' . $a['column']);
+                }
+                $originIndex = array_search($origin['name'], $given, true);
+                if ($originIndex === false) {
+                    throw self::err(Code::IR_INVALID, 'assigned AES source ' . $origin['name'] . ' is missing from insert set');
+                }
+                $source[$i] = $originIndex;
             }
             foreach ($rows as $row) {
                 $more = [];

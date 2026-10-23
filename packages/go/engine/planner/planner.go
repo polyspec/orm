@@ -1070,8 +1070,10 @@ func (p *Planner) resolvePath(s *scope, path string) (*scope, error) {
 func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
 	b := &builder{p: p}
 	ent := p.M.Entities[r.Entity]
-	set := slices.Clone(r.Set)
-	set = addBlindIndexAssignments(ent, set)
+	set, source, err := addBlindIndexAssignments(ent, slices.Clone(r.Set))
+	if err != nil {
+		return nil, err
+	}
 	if err := validateAESAssignments(ent, set, false); err != nil {
 		return nil, err
 	}
@@ -1106,16 +1108,8 @@ func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
 	}
 	sql := "INSERT INTO " + b.table(ent) + " (" + strings.Join(cols, ", ") + ") VALUES (" + strings.Join(vals, ", ") + ")"
 	if len(r.Rows) > 0 {
-		// source maps each rendered column to its value in r.Set; derived
-		// blind-index columns take the value of their AES source column.
-		source := make([]int, len(set))
-		for i, a := range set {
-			source[i] = i
-			if i >= len(r.Set) {
-				src := blindIndexSource(ent, a.Column)
-				source[i] = slices.IndexFunc(r.Set, func(x ir.Assign) bool { return x.Column == src.Name })
-			}
-		}
+		// source maps each rendered column to its value in r.Set; derived blind-index columns
+		// retain the assignment position of the AES source that derived them.
 		for _, row := range r.Rows {
 			more := make([]string, len(set))
 			for i := range set {
@@ -1138,7 +1132,10 @@ func (p *Planner) insertStep(r *ir.Request) (*plan.Step, error) {
 		return &plan.Step{Role: "main", SQL: sql, Tables: b.tableList(), BindSlots: b.binds}, nil
 	}
 	if len(r.OnDuplicate) > 0 {
-		duplicate := addBlindIndexAssignments(ent, slices.Clone(r.OnDuplicate))
+		duplicate, _, err := addBlindIndexAssignments(ent, slices.Clone(r.OnDuplicate))
+		if err != nil {
+			return nil, err
+		}
 		if err := validateAESAssignments(ent, duplicate, true); err != nil {
 			return nil, err
 		}
@@ -1251,24 +1248,39 @@ func validateRequiredAssignments(ent *runtimemodel.Entity, set []ir.Assign) erro
 	return nil
 }
 
-func addBlindIndexAssignments(ent *runtimemodel.Entity, set []ir.Assign) []ir.Assign {
-	for _, assign := range slices.Clone(set) {
+func addBlindIndexAssignments(ent *runtimemodel.Entity, set []ir.Assign) ([]ir.Assign, []int, error) {
+	source := make([]int, len(set))
+	explicit := make(map[string]bool, len(set))
+	for i, assign := range set {
+		source[i] = i
+		explicit[assign.Column] = true
+	}
+	derivedSource := make(map[string]string)
+	for i, assign := range slices.Clone(set) {
 		col := ent.Field(assign.Column)
-		if col == nil || !col.Encrypted() || col.BlindIndex == "" || assigned(set, col.BlindIndex) {
+		if col == nil || !col.Encrypted() || col.BlindIndex == "" || explicit[col.BlindIndex] {
 			continue
 		}
+		if previous, ok := derivedSource[col.BlindIndex]; ok {
+			if previous != assign.Column {
+				return nil, nil, &ir.Error{Code: "IR_INVALID", Msg: "blind index " + col.BlindIndex + " is derived from both " + previous + " and " + assign.Column}
+			}
+			continue
+		}
+		derivedSource[col.BlindIndex] = assign.Column
 		set = append(set, ir.Assign{Column: col.BlindIndex, P: assign.P, Null: assign.Null})
+		source = append(source, i)
 	}
-	return set
+	return set, source, nil
 }
 
-func blindIndexSource(ent *runtimemodel.Entity, target string) *runtimemodel.Field {
+func isBlindIndexTarget(ent *runtimemodel.Entity, target string) bool {
 	for _, col := range ent.Fields {
 		if col.BlindIndex == target {
-			return col
+			return true
 		}
 	}
-	return nil
+	return false
 }
 
 func assigned(set []ir.Assign, col string) bool {
@@ -1290,7 +1302,7 @@ func conflictTarget(ent *runtimemodel.Entity, set []ir.Assign) ([]string, error)
 }
 
 func (p *Planner) renderAssign(b *builder, ent *runtimemodel.Entity, col *runtimemodel.Field, a *ir.Assign) (string, error) {
-	if source := blindIndexSource(ent, col.Name); source != nil {
+	if isBlindIndexTarget(ent, col.Name) {
 		if a.PlusP != nil || a.MinusP != nil {
 			return "", &ir.Error{Code: "IR_INVALID", Msg: "blind index assignment must use its AES source value"}
 		}
@@ -1343,7 +1355,10 @@ func (b *builder) mainStep(sql string) (*plan.Step, error) {
 func (p *Planner) updateStep(r *ir.Request) (*plan.Step, error) {
 	b := &builder{p: p}
 	ent := p.M.Entities[r.Entity]
-	set := addBlindIndexAssignments(ent, slices.Clone(r.Set))
+	set, _, err := addBlindIndexAssignments(ent, slices.Clone(r.Set))
+	if err != nil {
+		return nil, err
+	}
 	if err := validateAESAssignments(ent, set, true); err != nil {
 		return nil, err
 	}
@@ -1426,7 +1441,10 @@ func (p *Planner) restoreStep(r *ir.Request) (*plan.Step, error) {
 	if err != nil {
 		return nil, err
 	}
-	set := addBlindIndexAssignments(ent, parts.Set)
+	set, _, err := addBlindIndexAssignments(ent, parts.Set)
+	if err != nil {
+		return nil, err
+	}
 	if err := validateAESAssignments(ent, set, true); err != nil {
 		return nil, err
 	}

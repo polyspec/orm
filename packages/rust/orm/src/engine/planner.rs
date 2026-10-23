@@ -292,16 +292,39 @@ fn validate_required_assignments(ent: &Entity, set: &[ir::Assign]) -> Result<()>
     Ok(())
 }
 
-fn add_blind_index_assignments(ent: &Entity, mut set: Vec<ir::Assign>) -> Vec<ir::Assign> {
-    for a in set.clone() {
+fn add_blind_index_assignments(ent: &Entity, mut set: Vec<ir::Assign>) -> Result<Vec<ir::Assign>> {
+    let mut sources = std::collections::BTreeMap::<String, String>::new();
+    for a in &set {
         let Some(col) = ent.field(&a.column) else { continue };
         let Some(index) = col.blind_index.as_ref().filter(|_| col.aes()) else { continue };
         if assigned(&set, index) {
             continue;
         }
-        set.push(ir::Assign { column: index.clone(), p: a.p, null: a.null, ..Default::default() });
+        if let Some(previous) = sources.insert(index.clone(), col.name.clone()) {
+            if previous != col.name {
+                return Err(err(
+                    codes::IR_INVALID,
+                    format!("blind index {index} is derived from both {previous} and {}", col.name),
+                ));
+            }
+        }
     }
-    set
+    let derived: Vec<_> = set
+        .iter()
+        .filter_map(|a| {
+            let col = ent.field(&a.column)?;
+            let index = col.blind_index.as_ref().filter(|_| col.aes())?;
+            (!assigned(&set, index)).then(|| ir::Assign { column: index.clone(), p: a.p, null: a.null, ..Default::default() })
+        })
+        .collect();
+    set.extend(derived);
+    Ok(set)
+}
+
+fn assigned_blind_index_source<'e>(ent: &'e Entity, target: &str, assignments: &[ir::Assign]) -> Option<&'e Field> {
+    ent.fields.iter().find(|field| {
+        field.aes() && field.blind_index.as_deref() == Some(target) && assigned(assignments, &field.name)
+    })
 }
 
 fn blind_index_source<'e>(ent: &'e Entity, target: &str) -> Option<&'e Field> {
@@ -1107,7 +1130,7 @@ impl<'m> Planner<'m> {
     fn insert_step(&self, r: &ir::Request) -> Result<Step> {
         let mut b = Builder::new(self.d);
         let ent = self.entity(&r.query.entity)?;
-        let set = add_blind_index_assignments(ent, r.set.clone());
+        let set = add_blind_index_assignments(ent, r.set.clone())?;
         validate_aes_assignments(ent, &set, false)?;
         validate_audit_assignment(ent, &set)?;
         validate_required_assignments(ent, &set)?;
@@ -1144,8 +1167,12 @@ impl<'m> Planner<'m> {
                 if i < r.set.len() {
                     source.push(i);
                 } else {
-                    let src = blind_index_source(ent, &a.column).map(|c| c.name.as_str()).unwrap_or("");
-                    source.push(r.set.iter().position(|x| x.column == src).unwrap_or(0));
+                    let src = assigned_blind_index_source(ent, &a.column, &r.set)
+                        .ok_or_else(|| err(codes::IR_INVALID, format!("no assigned AES source for blind index {}", a.column)))?;
+                    let source_index = r.set.iter().position(|x| x.column == src.name).ok_or_else(|| {
+                        err(codes::IR_INVALID, format!("assigned AES source {} is missing from insert set", src.name))
+                    })?;
+                    source.push(source_index);
                 }
             }
             for row in &r.rows {
@@ -1163,7 +1190,7 @@ impl<'m> Planner<'m> {
             return Ok(Step { role: "main".into(), sql, tables: b.tables(), bind_slots: b.binds, ..Default::default() });
         }
         if !r.on_duplicate.is_empty() {
-            let duplicate = add_blind_index_assignments(ent, r.on_duplicate.clone());
+            let duplicate = add_blind_index_assignments(ent, r.on_duplicate.clone())?;
             validate_aes_assignments(ent, &duplicate, true)?;
             validate_audit_assignment(ent, &duplicate)?;
             let mut sets = Vec::new();
@@ -1229,7 +1256,7 @@ impl<'m> Planner<'m> {
     fn update_step(&self, r: &ir::Request) -> Result<Step> {
         let mut b = Builder::new(self.d);
         let ent = self.entity(&r.query.entity)?;
-        let set = add_blind_index_assignments(ent, r.set.clone());
+        let set = add_blind_index_assignments(ent, r.set.clone())?;
         validate_aes_assignments(ent, &set, true)?;
         validate_audit_assignment(ent, &set)?;
         let root = self.table_scope(ent, &r.query)?;
@@ -1303,7 +1330,7 @@ impl<'m> Planner<'m> {
         let ent = self.entity(&r.query.entity)?;
         let parts = super::validate::restore_key(ent, r)?;
         let soft_delete = &parts.soft_delete;
-        let set = add_blind_index_assignments(ent, parts.set);
+        let set = add_blind_index_assignments(ent, parts.set)?;
         validate_aes_assignments(ent, &set, true)?;
         validate_audit_assignment(ent, &set)?;
         let mut b = Builder::new(self.d);

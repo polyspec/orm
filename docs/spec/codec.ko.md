@@ -1,5 +1,5 @@
 <!-- doc-id: codec -->
-<!-- source-sha256: 48f401a00107c62dd392b9b628ce5035ef42755bf429e91f112bcba388d69edd -->
+<!-- source-sha256: 0533db648f541ff66fac218911403e16b95d405bbdfc95be516d1255357d69b1 -->
 # 코덱 — 컬럼 스타일의 읽기/쓰기 (S2)
 
 - **COD-1** Go 데이터베이스 값 변환은 잘못된 형식, null, 범위 초과, 유한하지 않은 값, 지원하지 않는 값에 `CODEC_DECODE`를 반환한다. Host 인코딩은 단계가 없거나 텍스트·바이트가 아닌 값에 `CODEC_ENCODE`를 반환한다. 생성 모델 대입은 컬럼 이름을 붙여 변환 오류를 보고한다. 행 조립은 오류를 호출자에게 반환하고 insert는 쓰기 전에 대입 필드를 검증한다. 빈 바이트 배열은 SQL NULL과 구분한다. scalar 집계 변환은 유효한 십진수를 가장 가까운 유한 binary64 값으로 받는다.
@@ -11,7 +11,7 @@
 
 ### Blind index
 
-- **COD-4** `%% blind_index <table> <aes_column> <index_column>`은 AES column의 equality search column을 선언한다. 대상은 nullable 상태가 일치하고 single-column index로 선언된 `char(64)`/`string` 또는 `bytes` column이어야 한다. insert와 update에서 runtime은 `secrets.blind_index`를 key로 사용한 lowercase HMAC-SHA256(plaintext)을 대상에 저장한다. AES column의 equality와 `IN` predicate는 대상 column을 사용하며 ciphertext를 비교하지 않는다. blind-index key는 AES key version과 분리되며 이 directive가 있으면 필수다.
+- **COD-4** `%% blind_index <table> <aes_column> <index_column>`은 AES column의 equality search column을 선언한다. 대상은 nullable 상태가 일치하고 single-column index로 선언된 `char(64)`/`string` 또는 `bytes` column이어야 한다. 여러 AES column이 같은 대상을 선언할 수 있다. request가 대상을 직접 할당하면 그 할당을 사용한다. 직접 할당하지 않은 대상은 할당된 AES source 하나만 계산할 수 있으며, 같은 대상을 계산하는 서로 다른 source를 할당하면 값과 관계없이 `IR_INVALID`이다. 이 규칙은 insert의 `set`과 `on_duplicate`에 각각 적용한다. insert와 update에서 runtime은 `secrets.blind_index`를 key로 사용한 lowercase HMAC-SHA256(plaintext)을 대상에 저장한다. AES column의 equality와 `IN` predicate는 대상 column을 사용하며 ciphertext를 비교하지 않는다. blind-index key는 AES key version과 분리되며 이 directive가 있으면 필수다.
 
 ### AES v2
 

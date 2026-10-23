@@ -51,6 +51,94 @@ await run.run('engine', COMPUTE, async () => {
   const engine = new Engine(model, 'postgres');
   const base = { ir_version: 1, manifest_hash: MANIFEST_HASH, entity: 'author' };
   const compileCode = request => code(() => engine.compile(request));
+  const sharedBlindIndexText = `dbspec 1 shared_blind_index
+
+table record {
+  id i64 identity
+  version i32
+  name varchar(191)
+  aes_a bytes null
+  aes_b bytes null
+  idx varchar(64) null
+  primary key (id)
+  unique uq_record_idx (idx)
+  settings {
+    codec aes_a aes
+    codec aes_b aes
+    aes_version version
+    blind_index aes_a idx
+    blind_index aes_b idx
+  }
+}
+`;
+  const sharedBlindIndexDocument = parseDbspec(sharedBlindIndexText, {}).document;
+  const { manifest: sharedBlindIndexManifest, diagnostics: sharedBlindIndexDiagnostics } = dbspecManifest([sharedBlindIndexDocument]);
+  check(sharedBlindIndexDiagnostics.length === 0 && sharedBlindIndexManifest !== null, `shared blind-index schema: ${JSON.stringify(sharedBlindIndexDiagnostics)}`);
+  if (sharedBlindIndexManifest !== null) {
+    const sharedBlindIndexModel = registerModel(sharedBlindIndexManifest.manifestText, sharedBlindIndexManifest.manifestHash);
+    const sharedBlindIndexEngine = new Engine(sharedBlindIndexModel, 'mysql');
+    const sharedRequest = (set, extra = {}) => ({
+      ir_version: 1,
+      manifest_hash: sharedBlindIndexManifest.manifestHash,
+      entity: 'record',
+      kind: 'insert',
+      set,
+      n_params: 0,
+      ...extra,
+    });
+    const blindParams = plan => plan.steps.flatMap(step => step.bind_slots)
+      .filter(slot => (slot.host_styles ?? []).includes('blind_index')).map(slot => slot.param);
+    const errorText = fn => {
+      try { fn(); return ''; } catch (error) { return `${error.code ?? ''}: ${error.message}`; }
+    };
+
+    const multi = sharedBlindIndexEngine.compile(sharedRequest(
+      [{ column: 'name', p: 0 }, { column: 'aes_b', p: 1 }],
+      { n_params: 6, rows: [[2, 3], [4, 5]] },
+    ));
+    check(blindParams(multi).join(',') === '1,3,5', `shared target follows assigned source and row offsets: ${blindParams(multi)}`);
+
+    for (const [name, set, n_params] of [
+      ['distinct params', [{ column: 'name', p: 0 }, { column: 'aes_a', p: 1 }, { column: 'aes_b', p: 2 }], 3],
+      ['equal params', [{ column: 'name', p: 0 }, { column: 'aes_a', p: 1 }, { column: 'aes_b', p: 1 }], 2],
+      ['null values', [{ column: 'name', p: 0 }, { column: 'aes_a', null: true }, { column: 'aes_b', null: true }], 1],
+    ]) {
+      const error = errorText(() => sharedBlindIndexEngine.compile(sharedRequest(set, { n_params })));
+      check(error.startsWith('IR_INVALID:') && error.includes('idx') && error.includes('aes_a') && error.includes('aes_b'), `shared target ${name} conflict: ${error}`);
+    }
+
+    const explicit = sharedBlindIndexEngine.compile(sharedRequest([
+      { column: 'name', p: 0 }, { column: 'aes_a', p: 1 }, { column: 'aes_b', p: 2 }, { column: 'idx', p: 3 },
+    ], { n_params: 4 }));
+    check(blindParams(explicit).join(',') === '3', `explicit index wins with two sources: ${blindParams(explicit)}`);
+
+    const independent = sharedBlindIndexEngine.compile(sharedRequest(
+      [{ column: 'name', p: 0 }, { column: 'aes_a', p: 1 }],
+      { n_params: 3, on_duplicate: [{ column: 'name', p: 2 }] },
+    ));
+    check(blindParams(independent).join(',') === '1', `on_duplicate does not reuse insert derivation: ${blindParams(independent)}`);
+
+    const duplicateExplicit = sharedBlindIndexEngine.compile(sharedRequest(
+      [{ column: 'name', p: 0 }, { column: 'idx', p: 1 }],
+      { n_params: 5, on_duplicate: [{ column: 'aes_a', p: 2 }, { column: 'aes_b', p: 3 }, { column: 'idx', p: 4 }] },
+    ));
+    check(blindParams(duplicateExplicit).join(',') === '1,4', `explicit on_duplicate index wins: ${blindParams(duplicateExplicit)}`);
+
+    for (const [name, on_duplicate, n_params] of [
+      ['distinct params', [{ column: 'aes_a', p: 2 }, { column: 'aes_b', p: 3 }], 4],
+      ['equal params', [{ column: 'aes_a', p: 2 }, { column: 'aes_b', p: 2 }], 3],
+      ['null values', [{ column: 'aes_a', null: true }, { column: 'aes_b', null: true }], 2],
+    ]) {
+      const error = errorText(() => sharedBlindIndexEngine.compile(sharedRequest(
+        [{ column: 'name', p: 0 }, { column: 'idx', p: 1 }],
+        { n_params, on_duplicate },
+      )));
+      check(error.startsWith('IR_INVALID:') && error.includes('idx') && error.includes('aes_a') && error.includes('aes_b'), `on_duplicate rejects ${name} source conflict: ${error}`);
+    }
+
+    const ordinary = sharedBlindIndexEngine.compile(sharedRequest([{ column: 'name', p: 0 }], { n_params: 1 }));
+    check(blindParams(ordinary).length === 0, 'ordinary insert has no blind-index bind');
+  }
   check(compileCode({ ...base, kind: 'all', n_params: 0, where: { items: [{ pred: { column: 'nope', op: 'eq', p: 0 } }] } }) === 'IR_INVALID', 'parameter out of range');
   check(compileCode({ ...base, kind: 'all', n_params: 1, where: { items: [{ pred: { column: 'nope', op: 'eq', p: 0 } }] } }) === 'COLUMN_UNKNOWN', 'unknown column');
   check(compileCode({ ...base, kind: 'all', n_params: 1, where: { items: [{ pred: { conn: 'or', column: 'seq', op: 'eq', p: 0 } }] } }) === 'OR_AT_GROUP_START', 'or at group start');

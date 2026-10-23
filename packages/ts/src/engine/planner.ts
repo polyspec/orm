@@ -176,20 +176,31 @@ function validateRequiredAssignments(ent: Entity, set: readonly Assignment[]): v
   }
 }
 
-function addBlindIndexAssignments(ent: Entity, set: Assignment[]): Assignment[] {
-  for (const a of set.slice()) {
+function addBlindIndexAssignments(ent: Entity, input: Assignment[]): { assignments: Assignment[]; sourceIndices: number[] } {
+  const assignments = input.slice();
+  const sourceIndices = input.map((_, i) => i);
+  const explicit = new Set(input.map(a => a.column));
+  const derivedSources = new Map<string, string>();
+  input.forEach((a, i) => {
     const col = columnOf(ent, a.column);
-    if (!col || col.blindIndex === '' || assigned(set, col.blindIndex)) continue;
+    if (!col || col.blindIndex === '' || explicit.has(col.blindIndex)) return;
+    const previous = derivedSources.get(col.blindIndex);
+    if (previous !== undefined) {
+      if (previous !== a.column) fail(codes.IR_INVALID, `blind index ${col.blindIndex} is derived from both ${previous} and ${a.column}`);
+      return;
+    }
+    derivedSources.set(col.blindIndex, a.column);
     const derived: Assignment = { column: col.blindIndex };
     if (a.p !== undefined) derived.p = a.p;
     if (a.null !== undefined) derived.null = a.null;
-    set.push(derived);
-  }
-  return set;
+    assignments.push(derived);
+    sourceIndices.push(i);
+  });
+  return { assignments, sourceIndices };
 }
 
-function blindIndexSource(ent: Entity, target: string): Column | undefined {
-  return ent.fields.find(c => c.blindIndex === target);
+function isBlindIndexTarget(ent: Entity, target: string): boolean {
+  return ent.fields.some(c => c.blindIndex === target);
 }
 
 /** The columns of the one key an upsert conflicts on, which the validator has checked. */
@@ -735,7 +746,7 @@ export class Planner {
   }
 
   private renderAssign(b: Builder, ent: Entity, col: Column, a: Assignment): string {
-    if (blindIndexSource(ent, col.name)) {
+    if (isBlindIndexTarget(ent, col.name)) {
       if (a.plus_p !== undefined || a.minus_p !== undefined) fail(codes.IR_INVALID, 'blind index assignment must use its AES source value');
       if (a.null) return 'NULL';
       const start = b.binds.length;
@@ -791,7 +802,7 @@ export class Planner {
     const b = new Builder(this.d);
     const ent = this.entity(r.entity);
     const input = r.set ?? [];
-    const set = addBlindIndexAssignments(ent, [...input]);
+    const { assignments: set, sourceIndices } = addBlindIndexAssignments(ent, input);
     validateAESAssignments(ent, set, false);
     validateRequiredAssignments(ent, set);
     // load writes the row with its stored key as it is, so it takes and requires the identity column's value.
@@ -818,17 +829,16 @@ export class Planner {
     let sql = `INSERT INTO ${b.table(ent)} (${cols.join(', ')}) VALUES (${vals.join(', ')})`;
     const rows = r.rows ?? [];
     if (rows.length > 0) {
-      // Derived blind-index columns take the value of their AES source column.
-      const source = set.map((a, i) => i < input.length ? i : input.findIndex(x => x.column === present(blindIndexSource(ent, a.column), `the AES source of ${a.column}`).name));
+      // Each derived target carries the input position of its source for every additional row.
       for (const row of rows) {
-        const more = set.map((a, i) => this.renderAssign(b, ent, present(columnOf(ent, a.column), `column ${a.column}`), { column: a.column, p: present(row[present(source[i], `the source of ${a.column}`)], `the parameter of ${a.column} in a row`) }));
+        const more = set.map((a, i) => this.renderAssign(b, ent, present(columnOf(ent, a.column), `column ${a.column}`), { column: a.column, p: present(row[present(sourceIndices[i], `the source of ${a.column}`)], `the parameter of ${a.column} in a row`) }));
         for (const c of managed) more.push(c.value(b));
         sql += `, (${more.join(', ')})`;
       }
       return { role: 'main', sql, tables: b.tables(), bind_slots: b.binds };
     }
     if ((r.on_duplicate ?? []).length > 0) {
-      const duplicate = addBlindIndexAssignments(ent, (r.on_duplicate ?? []).slice());
+      const { assignments: duplicate } = addBlindIndexAssignments(ent, (r.on_duplicate ?? []).slice());
       validateAESAssignments(ent, duplicate, true);
       const sets = duplicate.map(a => `${this.d.quote(a.column)} = ${this.renderAssign(b, ent, columnIn(ent, a.column), a)}`);
       if (version !== '' && assignsAES(ent, duplicate) && !assigned(duplicate, version)) sets.push(`${this.d.quote(version)} = ${b.config('aes_version', columnIn(ent, version).type)}`);
@@ -847,7 +857,7 @@ export class Planner {
   private updateStep(r: Request): Omit<PlanStep, 'id'> {
     const b = new Builder(this.d);
     const ent = this.entity(r.entity);
-    const set = addBlindIndexAssignments(ent, [...r.set ?? []]);
+    const { assignments: set } = addBlindIndexAssignments(ent, [...r.set ?? []]);
     validateAESAssignments(ent, set, true);
     const root = this.buildScopes(r, ent.table, undefined);
     const sets: string[] = [];
@@ -892,7 +902,7 @@ export class Planner {
   private restoreStep(r: Request): Omit<PlanStep, 'id'> {
     const ent = this.entity(r.entity);
     const parts = restoreKey(ent, r);
-    const set = addBlindIndexAssignments(ent, [...parts.set]);
+    const { assignments: set } = addBlindIndexAssignments(ent, [...parts.set]);
     validateAESAssignments(ent, set, true);
     const b = new Builder(this.d);
     const root = this.buildScopes(r, ent.table, undefined);

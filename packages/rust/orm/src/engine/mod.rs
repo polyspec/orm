@@ -42,6 +42,10 @@ use crate::or_panic::OrPanic;
 mod coverage_planner;
 
 #[cfg(test)]
+#[path = "../../tests/unit/blind_index_source.rs"]
+mod blind_index_source;
+
+#[cfg(test)]
 #[path = "../../tests/unit/param_uses.rs"]
 mod param_uses_tests;
 
