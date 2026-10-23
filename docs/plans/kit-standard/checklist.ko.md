@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 543b77bd9cdcb1c3ec614a4a957d79c21cd2891a8b1a8df704534c4a577dc1d1 -->
+<!-- source-sha256: 24def32e8c9f2e90f345d8f84e21ad2041ed134dd07ee09b6913a2145ceae3b2 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -209,7 +209,7 @@
 | KSTD-14 | orm이 @codemirror/view를 최신 안정 릴리스 6.43.15로 올리고 리뷰 기록에 목표를 적는다. 원인: 잠금은 6.43.14이고 기록에 목표 항목이 없다. | packages/dbspec-codemirror/package.json, package-lock.json, config/dependency-review.json | `make dependency-policy-check` | [-] 원인: 사용자 2026-10-22: 버전 고정 작업 없음 |
 | KSTD-15 | TypeScript build cache packages/ts/tsconfig.build.tsbuildinfo와 형제 *.tsbuildinfo는 Git이 무시하고 생성 경로로 선언한다(AGENTS.md의 generated-files 규칙). 원인: 이 캐시는 build마다 main checkout에 추적되지 않은 채 다시 나타나 generated-files 규칙을 어긴다. 인수 조건: .gitignore가 어느 깊이의 *.tsbuildinfo든 무시하고, config/generated.json이 **/*.tsbuildinfo를 선언하며, build 뒤 git status에 tsbuildinfo가 없다. 현재 빨간 상태: git check-ignore가 packages/ts/tsconfig.build.tsbuildinfo의 규칙을 찾지 못하고, make build 뒤 git status가 그 파일을 보고한다. | .gitignore, config/generated.json | `sh -c "git check-ignore -q packages/ts/tsconfig.build.tsbuildinfo && git check-ignore -q packages/ts/sibling.tsbuildinfo"` | [o] |
 | KSTD-5-57-14b | add_tables_and_columns, dbspec_plan_apply, collection_identity의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests add_tables_and_columns, dbspec_plan_apply, collection_identity | `make lint-rust` reports no finding in these files | [o] |
-| KSTD-5-57-18b | build 테스트 read_only_query.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/build/tests/read_only_query.rs | `make lint-rust` reports no finding in this file | [ ] |
+| KSTD-5-57-18b | build 테스트 read_only_query.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/build/tests/read_only_query.rs | `make lint-rust` reports no finding in this file | [o] |
 | KSTD-5-57-14c | orm 테스트 dbspec_introspect.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests/dbspec_introspect.rs | `make lint-rust` reports no finding in this file | [o] |
 | KSTD-5-57-18c | sqlite_concurrency.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests/sqlite_concurrency.rs | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-18d | lock_probe_order.rs의 미사용 import를 고친다 (KSTD-5-57 하위) | packages/rust/build/tests/lock_probe_order.rs | `make lint-rust` reports no finding in these files | [ ] |
