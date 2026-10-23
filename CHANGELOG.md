@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The lint findings in the orm test files external_documents, rollback, codec_vectors, ir_request and coverage_authenticated_encryption are fixed, so `make lint-rust` reports no finding in them (KSTD-5-57-16).
 - The lint findings in the test module of the orm tx.rs are fixed, so `make lint-rust` reports no finding in them (KSTD-5-57-15).
 - The lint findings in the orm test file dbspec_introspect.rs are fixed, so `make lint-rust` reports no finding in them (KSTD-5-57-14c).
 - The lint findings in the orm test files add_tables_and_columns, dbspec_plan_apply and collection_identity are fixed, so `make lint-rust` reports no finding in them (KSTD-5-57-14b).

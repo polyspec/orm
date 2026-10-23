@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 348e73da2924c3c0428f595d790a290256f909bcf02db48a06f3b7a1b1430b12 -->
+<!-- source-sha256: dc42a67a1c754ee20ce7f2ff5e6860267d487e5fcf25f0a82c86f783d3bade36 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -173,7 +173,7 @@
 | KSTD-5-57-13 | orm 테스트 파일 statement_fault, request_hook, audit_rows의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests statement_fault, request_hook, common/audit_rows | `make lint-rust` reports no finding in these files | [o] |
 | KSTD-5-57-14 | 나머지 orm 테스트 파일의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests install, dbspec_apply, dbspec_plan_apply, common/sqlite_case, markdown, collection_identity, aes_json, coverage_interface_contract, and the rest the gate reports | `make lint-rust` reports no finding in these files | [o] |
 | KSTD-5-57-15 | orm tx.rs 테스트 모듈의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/src/tx.rs test module | `make lint-rust` reports no finding in these files | [o] |
-| KSTD-5-57-16 | external_documents, rollback, codec_vectors, ir_request, coverage_authenticated_encryption의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests external_documents, rollback, codec_vectors, unit/ir_request, coverage_authenticated_encryption | `make lint-rust` reports no finding in these files | [ ] |
+| KSTD-5-57-16 | external_documents, rollback, codec_vectors, ir_request, coverage_authenticated_encryption의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests external_documents, rollback, codec_vectors, unit/ir_request, coverage_authenticated_encryption | `make lint-rust` reports no finding in these files | [o] |
 | KSTD-5-57-17 | build 테스트 generate.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/build/tests/generate.rs | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-18 | restore_rows, coverage_audit_triggers 및 13~16에 없는 orm 테스트 파일의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests common/restore_rows, coverage_audit_triggers, and other files not in 13 to 16 | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-6 | link rebuild는 repository layout을 읽고 자기 paths를 두지 않는다 (kit K286). Cause: kit은 link된 checkout을 layout으로 rebuild하며 link 선언의 paths key는 없어진다 | kit.json, the link declaration | `make rebuild-check` | [o] |
