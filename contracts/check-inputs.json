@@ -1219,6 +1219,30 @@
       "needs": ["php", "composer", "php-extension-tools"],
       "inputs": ["packages/php-ext/tests/ModelTypesSurfaceTest.php", "packages/php-ext/tests/DeclarationsTest.php", "packages/php-ext/tests/declarations_functions.php", "packages/php/tests/ModelTypesSourceTest.php", "packages/php/tests/model-types-weak-caller.php", "packages/php-ext/src/**"]
     },
+    "model-native-php-extension-check": {
+      "scope": "owner",
+      "needs": ["php", "composer", "php-extension-tools"],
+      "inputs": [
+        "packages/php/src/Model.php",
+        "packages/php/tests/ModelMethodsTest.php",
+        "packages/php/tests/ModelTypesSourceTest.php",
+        "packages/php/tests/model-types-weak-caller.php",
+        "packages/php-ext/tests/ModelNativeTest.php",
+        "packages/php-ext/tests/ModelDslNativeTest.php",
+        "packages/php-ext/tests/ModelReadNativeTest.php",
+        "packages/php-ext/tests/ModelStreamReadTest.php",
+        "packages/php-ext/tests/ModelWriteSurfaceTest.php",
+        "packages/php-ext/tests/ModelAssemblyTest.php",
+        "packages/php-ext/tests/RuntimeModelTest.php",
+        "packages/php-ext/tests/ChainNativeSurfaceTest.php",
+        "packages/php-ext/tests/RegistrySchemaNativeTest.php",
+        "packages/php-ext/tests/model-weak-caller.php",
+        "packages/php-ext/tests/DeclarationsTest.php",
+        "packages/php-ext/tests/declarations_functions.php",
+        "packages/php-ext/src/**",
+        "Makefile"
+      ]
+    },
     "dbspec-apply-php-extension-check": {
       "scope": "owner",
       "needs": [

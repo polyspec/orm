@@ -32,8 +32,12 @@ if (PHP_SAPI === 'cli' && realpath($argv[0] ?? '') === __FILE__) {
     }
     if ($mode === 'stub') {
         $before = get_declared_classes();
+        $interfacesBefore = get_declared_interfaces();
         require dirname(__DIR__) . '/src/polyspec_orm.stub.php';
-        $classes = array_values(array_diff(get_declared_classes(), $before));
+        $classes = array_values(array_merge(
+            array_diff(get_declared_classes(), $before),
+            array_diff(get_declared_interfaces(), $interfacesBefore)
+        ));
     } else {
         require dirname(__DIR__, 3) . '/vendor-php/autoload.php';
         $classes = CLIENT_CLASSES;

@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: ef2cf0e75b9de9bc0945674030dab54d02e2a5a6 */
+ * Stub hash: 62b64f52b0ebdf01a21faa9fcee4c85e6c2632dd */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Diagnostic___construct, 0, 0, 4)
 	ZEND_ARG_TYPE_INFO(0, rule, IS_STRING, 0)
@@ -997,6 +997,683 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_PendingTime___construct, 0, 0,
 	ZEND_ARG_OBJ_INFO(0, zone, DateTimeZone, 0)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Chain_words, 0, 1, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Chain_pascal, 0, 1, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, snake, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Chain_snake, 0, 1, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, pascal, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Chain_functionColumn, 0, 1, _IS_BOOL, 0)
+	ZEND_ARG_TYPE_INFO(0, col, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Chain_parse, 0, 2, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, class, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Chain_parseMeta, 0, 3, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, meta, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, schema, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Polyspec_Orm_Chain_order arginfo_class_Polyspec_Orm_Chain_parse
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Chain_orderMeta, 0, 2, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, meta, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Chain_pair, 0, 3, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, left, IS_ARRAY, 1)
+	ZEND_ARG_TYPE_INFO(0, right, IS_ARRAY, 1)
+	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Chain_pairMeta, 0, 4, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, left, IS_ARRAY, 1)
+	ZEND_ARG_TYPE_INFO(0, right, IS_ARRAY, 1)
+	ZEND_ARG_TYPE_INFO(0, schema, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Chain_columnName, 0, 2, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, meta, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, pascal, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Chain_schemaColumnName, 0, 2, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, hash, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, pascal, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Registry_generated, 0, 2, IS_VOID, 0)
+	ZEND_ARG_TYPE_INFO(0, hash, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, text, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, external, IS_STRING, 0, "\'\'")
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Polyspec_Orm_Registry_schema arginfo_class_Polyspec_Orm_Db_registerSet
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Registry_register, 0, 1, IS_VOID, 0)
+	ZEND_ARG_TYPE_INFO(0, class, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Registry_loaded, 0, 1, _IS_BOOL, 0)
+	ZEND_ARG_TYPE_INFO(0, hash, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Registry_manifestText, 0, 1, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, hash, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Polyspec_Orm_Registry_model arginfo_class_Polyspec_Orm_Db_registeredModel
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Registry_models, 0, 1, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, hash, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Registry_unloaded, 0, 1, Polyspec\\Orm\\OrmException, 0)
+	ZEND_ARG_TYPE_INFO(0, hash, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Schema___construct, 0, 0, 2)
+	ZEND_ARG_TYPE_INFO(0, manifestText, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, manifestHash, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, externalText, IS_STRING, 0, "\'\'")
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Polyspec_Orm_Schema_verify arginfo_class_Polyspec_Orm_Db_close
+
+#define arginfo_class_Polyspec_Orm_Schema_documents arginfo_class_Polyspec_Orm_Collection_keys
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_RuntimeModel___construct, 0, 0, 3)
+	ZEND_ARG_TYPE_INFO(0, manifestHash, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, manifestText, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, entities, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, externalText, IS_STRING, 0, "\'\'")
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_RuntimeModel_parse, 0, 1, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, texts, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Polyspec_Orm_RuntimeModel_parseSet arginfo_class_Polyspec_Orm_Dbspec_Dbspec_parseSet
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_RuntimeModel_loadSet, 0, 2, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, manifestText, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, externalText, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_RuntimeModel_splitManifest, 0, 1, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, text, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_RuntimeModel_set, 0, 1, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, path, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_RuntimeModel_files, 0, 1, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, paths, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, external, IS_ARRAY, 0, "[]")
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_RuntimeModel_build, 0, 1, Polyspec\\Orm\\RuntimeModel, 0)
+	ZEND_ARG_TYPE_INFO(0, documents, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_RuntimeModel_fromModels, 0, 3, Polyspec\\Orm\\RuntimeModel, 0)
+	ZEND_ARG_TYPE_INFO(0, manifestHash, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, manifestText, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, classes, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, externalText, IS_STRING, 0, "\'\'")
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_RuntimeModel_entity, 0, 1, IS_ARRAY, 1)
+	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_RuntimeModel_column, 0, 2, IS_ARRAY, 1)
+	ZEND_ARG_TYPE_INFO(0, entity, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_RuntimeModel_styled, 0, 1, _IS_BOOL, 0)
+	ZEND_ARG_TYPE_INFO(0, column, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Polyspec_Orm_RuntimeModel_encrypted arginfo_class_Polyspec_Orm_RuntimeModel_styled
+
+#define arginfo_class_Polyspec_Orm_RuntimeModel_numeric arginfo_class_Polyspec_Orm_RuntimeModel_styled
+
+#define arginfo_class_Polyspec_Orm_ModelMetadata_meta arginfo_class_Polyspec_Orm_Collection_keys
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_connect, 0, 1, IS_STATIC, 0)
+	ZEND_ARG_OBJ_INFO(0, db, Polyspec\\Orm\\Db, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Polyspec_Orm_Model___invoke arginfo_class_Polyspec_Orm_Model_connect
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_fail, 0, 1, IS_VOID, 0)
+	ZEND_ARG_TYPE_INFO(0, message, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, code, IS_STRING, 0, "\"CONFIG\"")
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Model_subject, 0, 0, Polyspec\\Orm\\Model, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_addItem, 0, 2, IS_VOID, 0)
+	ZEND_ARG_TYPE_INFO(0, conn, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, node, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_and, 0, 0, IS_STATIC, 0)
+	ZEND_ARG_VARIADIC_TYPE_INFO(0, args, IS_MIXED, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Polyspec_Orm_Model_or arginfo_class_Polyspec_Orm_Model_and
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_not, 0, 1, IS_STATIC, 0)
+	ZEND_ARG_OBJ_INFO(0, fn, Closure, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Polyspec_Orm_Model_andNot arginfo_class_Polyspec_Orm_Model_not
+
+#define arginfo_class_Polyspec_Orm_Model_orNot arginfo_class_Polyspec_Orm_Model_not
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_negated, 0, 2, IS_STATIC, 0)
+	ZEND_ARG_TYPE_INFO(0, conn, IS_STRING, 0)
+	ZEND_ARG_OBJ_INFO(0, fn, Closure, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_connector, 0, 2, IS_STATIC, 0)
+	ZEND_ARG_TYPE_INFO(0, conn, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, args, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Polyspec_Orm_Model_on arginfo_class_Polyspec_Orm_Model_not
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_relation, 0, 1, IS_STATIC, 0)
+	ZEND_ARG_OBJ_INFO(0, child, Polyspec\\Orm\\Model, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Polyspec_Orm_Model_relations arginfo_class_Polyspec_Orm_Model_relation
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_addRelation, 0, 2, IS_STATIC, 0)
+	ZEND_ARG_TYPE_INFO(0, many, _IS_BOOL, 0)
+	ZEND_ARG_OBJ_INFO(0, child, Polyspec\\Orm\\Model, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_limit, 0, 2, IS_STATIC, 0)
+	ZEND_ARG_TYPE_INFO(0, offset, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, count, IS_LONG, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_orderByRandom, 0, 0, IS_STATIC, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Polyspec_Orm_Model_removeAllColumns arginfo_class_Polyspec_Orm_Model_orderByRandom
+
+#define arginfo_class_Polyspec_Orm_Model_addAllColumns arginfo_class_Polyspec_Orm_Model_orderByRandom
+
+#define arginfo_class_Polyspec_Orm_Model_parentNode arginfo_class_Polyspec_Orm_Model_orderByRandom
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_groupLimit, 0, 1, IS_STATIC, 0)
+	ZEND_ARG_TYPE_INFO(0, count, IS_LONG, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_expectRevision, 0, 2, IS_STATIC, 0)
+	ZEND_ARG_TYPE_INFO(0, column, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, revision, IS_LONG, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_revisionGuard, 0, 3, IS_STRING, 1)
+	ZEND_ARG_OBJ_INFO(0, r, Polyspec\\Orm\\Request, 0)
+	ZEND_ARG_TYPE_INFO(0, update, _IS_BOOL, 0)
+	ZEND_ARG_TYPE_INFO(0, optimistic, _IS_BOOL, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Polyspec_Orm_Model_deleteLock arginfo_class_Polyspec_Orm_Model_orderByRandom
+
+#define arginfo_class_Polyspec_Orm_Model_fetchKey arginfo_class_Polyspec_Orm_Model_not
+
+#define arginfo_class_Polyspec_Orm_Model_fetchValue arginfo_class_Polyspec_Orm_Model_not
+
+#define arginfo_class_Polyspec_Orm_Model_forUpdate arginfo_class_Polyspec_Orm_Model_orderByRandom
+
+#define arginfo_class_Polyspec_Orm_Model_forShare arginfo_class_Polyspec_Orm_Model_orderByRandom
+
+#define arginfo_class_Polyspec_Orm_Model_forUpdateNoWait arginfo_class_Polyspec_Orm_Model_orderByRandom
+
+#define arginfo_class_Polyspec_Orm_Model_forShareNoWait arginfo_class_Polyspec_Orm_Model_orderByRandom
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_duplication, 0, 1, IS_STATIC, 0)
+	ZEND_ARG_OBJ_INFO(0, model, Polyspec\\Orm\\Model, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_readColumn, 0, 1, IS_MIXED, 0)
+	ZEND_ARG_TYPE_INFO(0, column, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_writeColumn, 0, 2, IS_STATIC, 0)
+	ZEND_ARG_TYPE_INFO(0, column, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, value, IS_MIXED, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Polyspec_Orm_Model_value arginfo_class_Polyspec_Orm_Model_readColumn
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_resolved, 0, 1, IS_MIXED, 0)
+	ZEND_ARG_TYPE_INFO(0, v, IS_MIXED, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_putSet, 0, 2, IS_VOID, 0)
+	ZEND_ARG_TYPE_INFO(0, column, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, spec, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_columnValue, 0, 3, IS_MIXED, 0)
+	ZEND_ARG_TYPE_INFO(0, col, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, v, IS_MIXED, 0)
+	ZEND_ARG_OBJ_INFO(0, zone, DateTimeZone, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Model_timeValue, 0, 2, DateTimeImmutable, 0)
+	ZEND_ARG_TYPE_INFO(0, v, IS_MIXED, 0)
+	ZEND_ARG_OBJ_INFO(0, zone, DateTimeZone, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model___call, 0, 2, IS_MIXED, 0)
+	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, args, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_prefixed, 0, 2, _IS_BOOL, 0)
+	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, prefix, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_arity, 0, 3, IS_VOID, 0)
+	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, args, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, count, IS_LONG, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Polyspec_Orm_Model_outputName arginfo_class_Polyspec_Orm_Chain_snake
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_addColumnCall, 0, 3, IS_STATIC, 0)
+	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, rest, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, args, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_addJoin, 0, 4, IS_STATIC, 0)
+	ZEND_ARG_TYPE_INFO(0, kind, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, left, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, right, IS_STRING, 0)
+	ZEND_ARG_OBJ_INFO(0, child, Polyspec\\Orm\\Model, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_named, 0, 2, IS_MIXED, 0)
+	ZEND_ARG_TYPE_INFO(0, key, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, method, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_whereChain, 0, 3, IS_VOID, 0)
+	ZEND_ARG_TYPE_INFO(0, conn, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, keys, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, args, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_predicate, 0, 4, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, key, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, value, IS_MIXED, 0)
+	ZEND_ARG_TYPE_INFO(0, rest, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, single, _IS_BOOL, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_by, 0, 2, IS_STATIC, 0)
+	ZEND_ARG_TYPE_INFO(0, keys, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, args, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Polyspec_Orm_Model_executor arginfo_class_Polyspec_Orm_Collection_keys
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Model_build, 0, 2, Polyspec\\Orm\\Request, 0)
+	ZEND_ARG_TYPE_INFO(0, kind, IS_STRING, 0)
+	ZEND_ARG_OBJ_INFO(0, db, Polyspec\\Orm\\Db, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_resultName, 0, 1, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, many, _IS_BOOL, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_query, 0, 2, IS_ARRAY, 0)
+	ZEND_ARG_OBJ_INFO(0, r, Polyspec\\Orm\\Request, 0)
+	ZEND_ARG_OBJ_INFO(0, f, Polyspec\\Orm\\Frame, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_relationIr, 0, 2, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, many, _IS_BOOL, 0)
+	ZEND_ARG_OBJ_INFO(0, r, Polyspec\\Orm\\Request, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_columnsIr, 0, 1, IS_ARRAY, 1)
+	ZEND_ARG_OBJ_INFO(0, r, Polyspec\\Orm\\Request, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_subqueryIr, 0, 3, IS_ARRAY, 0)
+	ZEND_ARG_OBJ_INFO(0, r, Polyspec\\Orm\\Request, 0)
+	ZEND_ARG_OBJ_INFO(0, outer, Polyspec\\Orm\\Model, 0)
+	ZEND_ARG_TYPE_INFO(0, scalar, _IS_BOOL, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_groupIr, 0, 3, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, items, IS_ARRAY, 0)
+	ZEND_ARG_OBJ_INFO(0, r, Polyspec\\Orm\\Request, 0)
+	ZEND_ARG_OBJ_INFO(0, f, Polyspec\\Orm\\Frame, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_predIr, 0, 3, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, p, IS_ARRAY, 0)
+	ZEND_ARG_OBJ_INFO(0, r, Polyspec\\Orm\\Request, 0)
+	ZEND_ARG_OBJ_INFO(0, f, Polyspec\\Orm\\Frame, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_registerJoins, 0, 2, IS_VOID, 0)
+	ZEND_ARG_OBJ_INFO(0, f, Polyspec\\Orm\\Frame, 0)
+	ZEND_ARG_TYPE_INFO(0, prefix, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_newRow, 0, 1, IS_STATIC, 0)
+	ZEND_ARG_OBJ_INFO(0, conn, Polyspec\\Orm\\Db, 1)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_rowShape, 0, 1, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, asm, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_assembleRow, 0, 3, IS_STATIC, 0)
+	ZEND_ARG_OBJ_INFO(0, a, Polyspec\\Orm\\Assembly, 0)
+	ZEND_ARG_TYPE_INFO(0, asm, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, vals, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Model_joinChild, 0, 1, Polyspec\\Orm\\Model, 0)
+	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Polyspec_Orm_Model_relationChild arginfo_class_Polyspec_Orm_Chain_words
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_TYPE_MASK_EX(arginfo_class_Polyspec_Orm_Model_collectionKey, 0, 3, Polyspec\\Orm\\Bytes|DateTimeInterface, MAY_BE_LONG|MAY_BE_STRING|MAY_BE_BOOL)
+	ZEND_ARG_OBJ_INFO(0, m, Polyspec\\Orm\\Model, 0)
+	ZEND_ARG_TYPE_INFO(0, asm, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, vals, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Model_assemble, 0, 4, Polyspec\\Orm\\Collection, 0)
+	ZEND_ARG_OBJ_INFO(0, db, Polyspec\\Orm\\Db, 0)
+	ZEND_ARG_OBJ_INFO(0, r, Polyspec\\Orm\\Request, 0)
+	ZEND_ARG_TYPE_INFO(0, plan, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, result, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_matchValues, 0, 2, IS_ARRAY, 1)
+	ZEND_ARG_OBJ_INFO(0, m, Polyspec\\Orm\\Model, 0)
+	ZEND_ARG_TYPE_INFO(0, side, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_matchKey, 0, 1, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, values, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_attachExternal, 0, 2, IS_VOID, 0)
+	ZEND_ARG_TYPE_INFO(0, parents, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, many, _IS_BOOL, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_columnOrExtra, 0, 1, IS_MIXED, 0)
+	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Model_load, 0, 1, Polyspec\\Orm\\Collection, 0)
+	ZEND_ARG_TYPE_INFO(0, kind, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_get, 0, 0, IS_STATIC, 1)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Model_gets, 0, 0, Polyspec\\Orm\\Collection, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Model_getsCount, 0, 0, Polyspec\\Orm\\GroupRows, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_groupValue, 0, 3, IS_MIXED, 0)
+	ZEND_ARG_OBJ_INFO(0, db, Polyspec\\Orm\\Db, 0)
+	ZEND_ARG_TYPE_INFO(0, column, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, raw, IS_MIXED, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_groupInteger, 0, 3, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, raw, IS_MIXED, 0)
+	ZEND_ARG_TYPE_INFO(0, type, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_groupFloat, 0, 2, IS_DOUBLE, 0)
+	ZEND_ARG_TYPE_INFO(0, raw, IS_MIXED, 0)
+	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Polyspec_Orm_Model_getCount arginfo_class_Polyspec_Orm_Db_nextTransaction
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_getSum, 0, 0, IS_DOUBLE, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_getAvg, 0, 0, IS_DOUBLE, 1)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_aggregate, 0, 1, IS_DOUBLE, 1)
+	ZEND_ARG_TYPE_INFO(0, fn, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_aggregateNumber, 0, 1, IS_DOUBLE, 0)
+	ZEND_ARG_TYPE_INFO(0, value, IS_MIXED, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Model_getsPage, 0, 2, Polyspec\\Orm\\Page, 0)
+	ZEND_ARG_TYPE_INFO(0, page, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, perPage, IS_LONG, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Polyspec_Orm_Model_getQuery arginfo_class_Polyspec_Orm_Collection_keys
+
+#define arginfo_class_Polyspec_Orm_Model_manifestHash arginfo_class_Polyspec_Orm_Dbspec_ColumnType_text
+
+#define arginfo_class_Polyspec_Orm_Model_writeRequest arginfo_class_Polyspec_Orm_Model_build
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_assignIr, 0, 3, IS_ARRAY, 0)
+	ZEND_ARG_OBJ_INFO(0, r, Polyspec\\Orm\\Request, 0)
+	ZEND_ARG_TYPE_INFO(0, column, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, spec, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_encodeValue, 0, 2, IS_MIXED, 0)
+	ZEND_ARG_TYPE_INFO(0, col, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, v, IS_MIXED, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Polyspec_Orm_Model_create arginfo_class_Polyspec_Orm_Model_orderByRandom
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_creates, 0, 2, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, rows, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, batch, IS_LONG, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Polyspec_Orm_Model_keyValues arginfo_class_Polyspec_Orm_Collection_keys
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_keyWhere, 0, 2, IS_VOID, 0)
+	ZEND_ARG_OBJ_INFO(0, r, Polyspec\\Orm\\Request, 0)
+	ZEND_ARG_TYPE_INFO(0, keys, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Polyspec_Orm_Model_withAesColumns arginfo_class_Polyspec_Orm_Collection_keys
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_update, 0, 0, IS_STATIC, 0)
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, optimistic, _IS_BOOL, 0, "false")
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Polyspec_Orm_Model_save arginfo_class_Polyspec_Orm_Model_orderByRandom
+
+#define arginfo_class_Polyspec_Orm_Model_delete arginfo_class_Polyspec_Orm_Collection_delete
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_deleteRow, 0, 1, IS_VOID, 0)
+	ZEND_ARG_TYPE_INFO(0, recursive, _IS_BOOL, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Polyspec_Orm_Model_restore arginfo_class_Polyspec_Orm_Model_orderByRandom
+
+#define arginfo_class_Polyspec_Orm_Model_restoreOrCreate arginfo_class_Polyspec_Orm_Model_orderByRandom
+
+#define arginfo_class_Polyspec_Orm_Model_restoreStep arginfo_class_Polyspec_Orm_Collection_keys
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_restoreKeyValue, 0, 3, IS_MIXED, 0)
+	ZEND_ARG_OBJ_INFO(0, r, Polyspec\\Orm\\Request, 0)
+	ZEND_ARG_TYPE_INFO(0, own, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, column, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Model_connection, 0, 0, Polyspec\\Orm\\Db, 1)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Polyspec_Orm_Model_pairs arginfo_class_Polyspec_Orm_Collection_keys
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_columnArrayValue, 0, 2, IS_MIXED, 0)
+	ZEND_ARG_TYPE_INFO(0, type, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, v, IS_MIXED, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_sixFractionDigits, 0, 1, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, text, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Polyspec_Orm_Model_arrayValue arginfo_class_Polyspec_Orm_Model_resolved
+
+#define arginfo_class_Polyspec_Orm_Model_toArray arginfo_class_Polyspec_Orm_Collection_keys
+
+#define arginfo_class_Polyspec_Orm_Model_toJson arginfo_class_Polyspec_Orm_Dbspec_ColumnType_text
+
+#define arginfo_class_Polyspec_Orm_Model_jsonText arginfo_class_Polyspec_Orm_Db_scalarText
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Model_holdsOrderedJson, 0, 1, _IS_BOOL, 0)
+	ZEND_ARG_TYPE_INFO(0, v, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Polyspec_Orm_Model_jsonSerialize arginfo_class_Polyspec_Orm_CollectionIterator_current
+
+#define arginfo_class_Polyspec_Orm_Model___clone arginfo_class_Polyspec_Orm_Dbspec_PlanApply___construct
+
+#define arginfo_class_Polyspec_Orm_ModelCreatesCallback___invoke arginfo_class_Polyspec_Orm_Db_close
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_ModelRestoreHook___invoke, 0, 1, IS_VOID, 0)
+	ZEND_ARG_OBJ_INFO(0, hooked, Polyspec\\Orm\\Request, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Polyspec_Orm_ModelRestoreOrCreateCallback___invoke arginfo_class_Polyspec_Orm_Db_close
+
+#define arginfo_class_Polyspec_Orm_ModelDeleteCallback___invoke arginfo_class_Polyspec_Orm_Db_close
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Frame___construct, 0, 0, 2)
+	ZEND_ARG_OBJ_INFO(0, root, Polyspec\\Orm\\Model, 0)
+	ZEND_ARG_OBJ_INFO(0, outer, Polyspec\\Orm\\Model, 1)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Frame_add, 0, 3, IS_VOID, 0)
+	ZEND_ARG_OBJ_INFO(0, child, Polyspec\\Orm\\Model, 0)
+	ZEND_ARG_TYPE_INFO(0, path, IS_STRING, 0)
+	ZEND_ARG_OBJ_INFO(0, parent, Polyspec\\Orm\\Model, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Frame_path, 0, 1, IS_STRING, 0)
+	ZEND_ARG_OBJ_INFO(0, m, Polyspec\\Orm\\Model, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Frame_joined, 0, 1, _IS_BOOL, 0)
+	ZEND_ARG_OBJ_INFO(0, m, Polyspec\\Orm\\Model, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Polyspec_Orm_Frame_parentOf, 0, 1, Polyspec\\Orm\\Model, 1)
+	ZEND_ARG_OBJ_INFO(0, m, Polyspec\\Orm\\Model, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Polyspec_Orm_Frame_place arginfo_class_Polyspec_Orm_Frame_joined
+
+#define arginfo_class_Polyspec_Orm_Frame_pathOf arginfo_class_Polyspec_Orm_Frame_path
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Assembly___construct, 0, 0, 3)
+	ZEND_ARG_OBJ_INFO(0, db, Polyspec\\Orm\\Db, 0)
+	ZEND_ARG_OBJ_INFO(0, conn, Polyspec\\Orm\\Db, 1)
+	ZEND_ARG_TYPE_INFO(0, result, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, track, _IS_BOOL, 0, "false")
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Assembly_joinRow, 0, 2, IS_ARRAY, 1)
+	ZEND_ARG_TYPE_INFO(0, ch, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, parent, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Assembly_relationAssemble, 0, 1, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, ch, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Assembly_related, 0, 2, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, ch, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, parent, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_GroupRow___construct, 0, 0, 1)
+	ZEND_ARG_TYPE_INFO(0, entries, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Polyspec_Orm_GroupRow_count arginfo_class_Polyspec_Orm_Db_nextTransaction
+
+#define arginfo_class_Polyspec_Orm_GroupRow_value arginfo_class_Polyspec_Orm_Model_columnOrExtra
+
+#define arginfo_class_Polyspec_Orm_GroupRow_toArray arginfo_class_Polyspec_Orm_Collection_keys
+
+#define arginfo_class_Polyspec_Orm_GroupRow_jsonSerialize arginfo_class_Polyspec_Orm_Collection_keys
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_GroupRows___construct, 0, 0, 1)
+	ZEND_ARG_TYPE_INFO(0, rows, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Polyspec_Orm_GroupRows_count arginfo_class_Polyspec_Orm_Db_nextTransaction
+
+#define arginfo_class_Polyspec_Orm_GroupRows_all arginfo_class_Polyspec_Orm_Collection_keys
+
+#define arginfo_class_Polyspec_Orm_GroupRows_getIterator arginfo_class_Polyspec_Orm_Collection_getIterator
+
+#define arginfo_class_Polyspec_Orm_GroupRows_toArray arginfo_class_Polyspec_Orm_Collection_keys
+
+#define arginfo_class_Polyspec_Orm_GroupRows_jsonSerialize arginfo_class_Polyspec_Orm_Collection_keys
+
+#define arginfo_class_Polyspec_Orm_GroupRowsIterator_current arginfo_class_Polyspec_Orm_CollectionIterator_current
+
+#define arginfo_class_Polyspec_Orm_GroupRowsIterator_key arginfo_class_Polyspec_Orm_CollectionIterator_current
+
+#define arginfo_class_Polyspec_Orm_GroupRowsIterator_next arginfo_class_Polyspec_Orm_Db_close
+
+#define arginfo_class_Polyspec_Orm_GroupRowsIterator_rewind arginfo_class_Polyspec_Orm_Db_close
+
+#define arginfo_class_Polyspec_Orm_GroupRowsIterator_valid arginfo_class_Polyspec_Orm_Dbspec_ColumnType_isInteger
+
 ZEND_METHOD(Polyspec_Orm_Dbspec_Diagnostic, __construct);
 ZEND_METHOD(Polyspec_Orm_Dbspec_Position, __construct);
 ZEND_METHOD(Polyspec_Orm_Dbspec_Document, __construct);
@@ -1214,6 +1891,186 @@ ZEND_METHOD(Polyspec_Orm_Page, __construct);
 ZEND_METHOD(Polyspec_Orm_Func, __construct);
 ZEND_METHOD(Polyspec_Orm_Func, ir);
 ZEND_METHOD(Polyspec_Orm_PendingTime, __construct);
+ZEND_METHOD(Polyspec_Orm_Chain, words);
+ZEND_METHOD(Polyspec_Orm_Chain, pascal);
+ZEND_METHOD(Polyspec_Orm_Chain, snake);
+ZEND_METHOD(Polyspec_Orm_Chain, functionColumn);
+ZEND_METHOD(Polyspec_Orm_Chain, parse);
+ZEND_METHOD(Polyspec_Orm_Chain, parseMeta);
+ZEND_METHOD(Polyspec_Orm_Chain, order);
+ZEND_METHOD(Polyspec_Orm_Chain, orderMeta);
+ZEND_METHOD(Polyspec_Orm_Chain, pair);
+ZEND_METHOD(Polyspec_Orm_Chain, pairMeta);
+ZEND_METHOD(Polyspec_Orm_Chain, columnName);
+ZEND_METHOD(Polyspec_Orm_Chain, schemaColumnName);
+ZEND_METHOD(Polyspec_Orm_Registry, generated);
+ZEND_METHOD(Polyspec_Orm_Registry, schema);
+ZEND_METHOD(Polyspec_Orm_Registry, register);
+ZEND_METHOD(Polyspec_Orm_Registry, loaded);
+ZEND_METHOD(Polyspec_Orm_Registry, manifestText);
+ZEND_METHOD(Polyspec_Orm_Registry, model);
+ZEND_METHOD(Polyspec_Orm_Registry, models);
+ZEND_METHOD(Polyspec_Orm_Registry, unloaded);
+ZEND_METHOD(Polyspec_Orm_Schema, __construct);
+ZEND_METHOD(Polyspec_Orm_Schema, verify);
+ZEND_METHOD(Polyspec_Orm_Schema, documents);
+ZEND_METHOD(Polyspec_Orm_RuntimeModel, __construct);
+ZEND_METHOD(Polyspec_Orm_RuntimeModel, parse);
+ZEND_METHOD(Polyspec_Orm_RuntimeModel, parseSet);
+ZEND_METHOD(Polyspec_Orm_RuntimeModel, loadSet);
+ZEND_METHOD(Polyspec_Orm_RuntimeModel, splitManifest);
+ZEND_METHOD(Polyspec_Orm_RuntimeModel, set);
+ZEND_METHOD(Polyspec_Orm_RuntimeModel, files);
+ZEND_METHOD(Polyspec_Orm_RuntimeModel, build);
+ZEND_METHOD(Polyspec_Orm_RuntimeModel, fromModels);
+ZEND_METHOD(Polyspec_Orm_RuntimeModel, entity);
+ZEND_METHOD(Polyspec_Orm_RuntimeModel, column);
+ZEND_METHOD(Polyspec_Orm_RuntimeModel, styled);
+ZEND_METHOD(Polyspec_Orm_RuntimeModel, encrypted);
+ZEND_METHOD(Polyspec_Orm_RuntimeModel, numeric);
+ZEND_METHOD(Polyspec_Orm_Model, connect);
+ZEND_METHOD(Polyspec_Orm_Model, __invoke);
+ZEND_METHOD(Polyspec_Orm_Model, fail);
+ZEND_METHOD(Polyspec_Orm_Model, subject);
+ZEND_METHOD(Polyspec_Orm_Model, addItem);
+ZEND_METHOD(Polyspec_Orm_Model, and);
+ZEND_METHOD(Polyspec_Orm_Model, or);
+ZEND_METHOD(Polyspec_Orm_Model, not);
+ZEND_METHOD(Polyspec_Orm_Model, andNot);
+ZEND_METHOD(Polyspec_Orm_Model, orNot);
+ZEND_METHOD(Polyspec_Orm_Model, negated);
+ZEND_METHOD(Polyspec_Orm_Model, connector);
+ZEND_METHOD(Polyspec_Orm_Model, on);
+ZEND_METHOD(Polyspec_Orm_Model, relation);
+ZEND_METHOD(Polyspec_Orm_Model, relations);
+ZEND_METHOD(Polyspec_Orm_Model, addRelation);
+ZEND_METHOD(Polyspec_Orm_Model, limit);
+ZEND_METHOD(Polyspec_Orm_Model, orderByRandom);
+ZEND_METHOD(Polyspec_Orm_Model, removeAllColumns);
+ZEND_METHOD(Polyspec_Orm_Model, addAllColumns);
+ZEND_METHOD(Polyspec_Orm_Model, parentNode);
+ZEND_METHOD(Polyspec_Orm_Model, groupLimit);
+ZEND_METHOD(Polyspec_Orm_Model, expectRevision);
+ZEND_METHOD(Polyspec_Orm_Model, revisionGuard);
+ZEND_METHOD(Polyspec_Orm_Model, deleteLock);
+ZEND_METHOD(Polyspec_Orm_Model, fetchKey);
+ZEND_METHOD(Polyspec_Orm_Model, fetchValue);
+ZEND_METHOD(Polyspec_Orm_Model, forUpdate);
+ZEND_METHOD(Polyspec_Orm_Model, forShare);
+ZEND_METHOD(Polyspec_Orm_Model, forUpdateNoWait);
+ZEND_METHOD(Polyspec_Orm_Model, forShareNoWait);
+ZEND_METHOD(Polyspec_Orm_Model, duplication);
+ZEND_METHOD(Polyspec_Orm_Model, readColumn);
+ZEND_METHOD(Polyspec_Orm_Model, writeColumn);
+ZEND_METHOD(Polyspec_Orm_Model, value);
+ZEND_METHOD(Polyspec_Orm_Model, resolved);
+ZEND_METHOD(Polyspec_Orm_Model, putSet);
+ZEND_METHOD(Polyspec_Orm_Model, columnValue);
+ZEND_METHOD(Polyspec_Orm_Model, timeValue);
+ZEND_METHOD(Polyspec_Orm_Model, __call);
+ZEND_METHOD(Polyspec_Orm_Model, prefixed);
+ZEND_METHOD(Polyspec_Orm_Model, arity);
+ZEND_METHOD(Polyspec_Orm_Model, outputName);
+ZEND_METHOD(Polyspec_Orm_Model, addColumnCall);
+ZEND_METHOD(Polyspec_Orm_Model, addJoin);
+ZEND_METHOD(Polyspec_Orm_Model, named);
+ZEND_METHOD(Polyspec_Orm_Model, whereChain);
+ZEND_METHOD(Polyspec_Orm_Model, predicate);
+ZEND_METHOD(Polyspec_Orm_Model, by);
+ZEND_METHOD(Polyspec_Orm_Model, executor);
+ZEND_METHOD(Polyspec_Orm_Model, build);
+ZEND_METHOD(Polyspec_Orm_Model, resultName);
+ZEND_METHOD(Polyspec_Orm_Model, query);
+ZEND_METHOD(Polyspec_Orm_Model, relationIr);
+ZEND_METHOD(Polyspec_Orm_Model, columnsIr);
+ZEND_METHOD(Polyspec_Orm_Model, subqueryIr);
+ZEND_METHOD(Polyspec_Orm_Model, groupIr);
+ZEND_METHOD(Polyspec_Orm_Model, predIr);
+ZEND_METHOD(Polyspec_Orm_Model, registerJoins);
+ZEND_METHOD(Polyspec_Orm_Model, newRow);
+ZEND_METHOD(Polyspec_Orm_Model, rowShape);
+ZEND_METHOD(Polyspec_Orm_Model, assembleRow);
+ZEND_METHOD(Polyspec_Orm_Model, joinChild);
+ZEND_METHOD(Polyspec_Orm_Model, relationChild);
+ZEND_METHOD(Polyspec_Orm_Model, collectionKey);
+ZEND_METHOD(Polyspec_Orm_Model, assemble);
+ZEND_METHOD(Polyspec_Orm_Model, matchValues);
+ZEND_METHOD(Polyspec_Orm_Model, matchKey);
+ZEND_METHOD(Polyspec_Orm_Model, attachExternal);
+ZEND_METHOD(Polyspec_Orm_Model, columnOrExtra);
+ZEND_METHOD(Polyspec_Orm_Model, load);
+ZEND_METHOD(Polyspec_Orm_Model, get);
+ZEND_METHOD(Polyspec_Orm_Model, gets);
+ZEND_METHOD(Polyspec_Orm_Model, getsCount);
+ZEND_METHOD(Polyspec_Orm_Model, groupValue);
+ZEND_METHOD(Polyspec_Orm_Model, groupInteger);
+ZEND_METHOD(Polyspec_Orm_Model, groupFloat);
+ZEND_METHOD(Polyspec_Orm_Model, getCount);
+ZEND_METHOD(Polyspec_Orm_Model, getSum);
+ZEND_METHOD(Polyspec_Orm_Model, getAvg);
+ZEND_METHOD(Polyspec_Orm_Model, aggregate);
+ZEND_METHOD(Polyspec_Orm_Model, aggregateNumber);
+ZEND_METHOD(Polyspec_Orm_Model, getsPage);
+ZEND_METHOD(Polyspec_Orm_Model, getQuery);
+ZEND_METHOD(Polyspec_Orm_Model, manifestHash);
+ZEND_METHOD(Polyspec_Orm_Model, writeRequest);
+ZEND_METHOD(Polyspec_Orm_Model, assignIr);
+ZEND_METHOD(Polyspec_Orm_Model, encodeValue);
+ZEND_METHOD(Polyspec_Orm_Model, create);
+ZEND_METHOD(Polyspec_Orm_Model, creates);
+ZEND_METHOD(Polyspec_Orm_Model, keyValues);
+ZEND_METHOD(Polyspec_Orm_Model, keyWhere);
+ZEND_METHOD(Polyspec_Orm_Model, withAesColumns);
+ZEND_METHOD(Polyspec_Orm_Model, update);
+ZEND_METHOD(Polyspec_Orm_Model, save);
+ZEND_METHOD(Polyspec_Orm_Model, delete);
+ZEND_METHOD(Polyspec_Orm_Model, deleteRow);
+ZEND_METHOD(Polyspec_Orm_Model, restore);
+ZEND_METHOD(Polyspec_Orm_Model, restoreOrCreate);
+ZEND_METHOD(Polyspec_Orm_Model, restoreStep);
+ZEND_METHOD(Polyspec_Orm_Model, restoreKeyValue);
+ZEND_METHOD(Polyspec_Orm_Model, connection);
+ZEND_METHOD(Polyspec_Orm_Model, pairs);
+ZEND_METHOD(Polyspec_Orm_Model, columnArrayValue);
+ZEND_METHOD(Polyspec_Orm_Model, sixFractionDigits);
+ZEND_METHOD(Polyspec_Orm_Model, arrayValue);
+ZEND_METHOD(Polyspec_Orm_Model, toArray);
+ZEND_METHOD(Polyspec_Orm_Model, toJson);
+ZEND_METHOD(Polyspec_Orm_Model, jsonText);
+ZEND_METHOD(Polyspec_Orm_Model, holdsOrderedJson);
+ZEND_METHOD(Polyspec_Orm_Model, jsonSerialize);
+ZEND_METHOD(Polyspec_Orm_Model, __clone);
+ZEND_METHOD(Polyspec_Orm_ModelCreatesCallback, __invoke);
+ZEND_METHOD(Polyspec_Orm_ModelRestoreHook, __invoke);
+ZEND_METHOD(Polyspec_Orm_ModelRestoreOrCreateCallback, __invoke);
+ZEND_METHOD(Polyspec_Orm_ModelDeleteCallback, __invoke);
+ZEND_METHOD(Polyspec_Orm_Frame, __construct);
+ZEND_METHOD(Polyspec_Orm_Frame, add);
+ZEND_METHOD(Polyspec_Orm_Frame, path);
+ZEND_METHOD(Polyspec_Orm_Frame, joined);
+ZEND_METHOD(Polyspec_Orm_Frame, parentOf);
+ZEND_METHOD(Polyspec_Orm_Frame, place);
+ZEND_METHOD(Polyspec_Orm_Frame, pathOf);
+ZEND_METHOD(Polyspec_Orm_Assembly, __construct);
+ZEND_METHOD(Polyspec_Orm_Assembly, joinRow);
+ZEND_METHOD(Polyspec_Orm_Assembly, relationAssemble);
+ZEND_METHOD(Polyspec_Orm_Assembly, related);
+ZEND_METHOD(Polyspec_Orm_GroupRow, __construct);
+ZEND_METHOD(Polyspec_Orm_GroupRow, count);
+ZEND_METHOD(Polyspec_Orm_GroupRow, value);
+ZEND_METHOD(Polyspec_Orm_GroupRow, toArray);
+ZEND_METHOD(Polyspec_Orm_GroupRow, jsonSerialize);
+ZEND_METHOD(Polyspec_Orm_GroupRows, __construct);
+ZEND_METHOD(Polyspec_Orm_GroupRows, count);
+ZEND_METHOD(Polyspec_Orm_GroupRows, all);
+ZEND_METHOD(Polyspec_Orm_GroupRows, getIterator);
+ZEND_METHOD(Polyspec_Orm_GroupRows, toArray);
+ZEND_METHOD(Polyspec_Orm_GroupRows, jsonSerialize);
+ZEND_METHOD(Polyspec_Orm_GroupRowsIterator, current);
+ZEND_METHOD(Polyspec_Orm_GroupRowsIterator, key);
+ZEND_METHOD(Polyspec_Orm_GroupRowsIterator, next);
+ZEND_METHOD(Polyspec_Orm_GroupRowsIterator, rewind);
+ZEND_METHOD(Polyspec_Orm_GroupRowsIterator, valid);
 
 static const zend_function_entry class_Polyspec_Orm_Dbspec_Diagnostic_methods[] = {
 	ZEND_ME(Polyspec_Orm_Dbspec_Diagnostic, __construct, arginfo_class_Polyspec_Orm_Dbspec_Diagnostic___construct, ZEND_ACC_PUBLIC)
@@ -1693,6 +2550,247 @@ static const zend_function_entry class_Polyspec_Orm_Func_methods[] = {
 
 static const zend_function_entry class_Polyspec_Orm_PendingTime_methods[] = {
 	ZEND_ME(Polyspec_Orm_PendingTime, __construct, arginfo_class_Polyspec_Orm_PendingTime___construct, ZEND_ACC_PUBLIC)
+	ZEND_FE_END
+};
+
+static const zend_function_entry class_Polyspec_Orm_Chain_methods[] = {
+	ZEND_ME(Polyspec_Orm_Chain, words, arginfo_class_Polyspec_Orm_Chain_words, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Chain, pascal, arginfo_class_Polyspec_Orm_Chain_pascal, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Chain, snake, arginfo_class_Polyspec_Orm_Chain_snake, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Chain, functionColumn, arginfo_class_Polyspec_Orm_Chain_functionColumn, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Chain, parse, arginfo_class_Polyspec_Orm_Chain_parse, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Chain, parseMeta, arginfo_class_Polyspec_Orm_Chain_parseMeta, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Chain, order, arginfo_class_Polyspec_Orm_Chain_order, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Chain, orderMeta, arginfo_class_Polyspec_Orm_Chain_orderMeta, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Chain, pair, arginfo_class_Polyspec_Orm_Chain_pair, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Chain, pairMeta, arginfo_class_Polyspec_Orm_Chain_pairMeta, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Chain, columnName, arginfo_class_Polyspec_Orm_Chain_columnName, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Chain, schemaColumnName, arginfo_class_Polyspec_Orm_Chain_schemaColumnName, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_FE_END
+};
+
+static const zend_function_entry class_Polyspec_Orm_Registry_methods[] = {
+	ZEND_ME(Polyspec_Orm_Registry, generated, arginfo_class_Polyspec_Orm_Registry_generated, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Registry, schema, arginfo_class_Polyspec_Orm_Registry_schema, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Registry, register, arginfo_class_Polyspec_Orm_Registry_register, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Registry, loaded, arginfo_class_Polyspec_Orm_Registry_loaded, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Registry, manifestText, arginfo_class_Polyspec_Orm_Registry_manifestText, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Registry, model, arginfo_class_Polyspec_Orm_Registry_model, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Registry, models, arginfo_class_Polyspec_Orm_Registry_models, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Registry, unloaded, arginfo_class_Polyspec_Orm_Registry_unloaded, ZEND_ACC_PRIVATE|ZEND_ACC_STATIC)
+	ZEND_FE_END
+};
+
+static const zend_function_entry class_Polyspec_Orm_Schema_methods[] = {
+	ZEND_ME(Polyspec_Orm_Schema, __construct, arginfo_class_Polyspec_Orm_Schema___construct, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Schema, verify, arginfo_class_Polyspec_Orm_Schema_verify, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Schema, documents, arginfo_class_Polyspec_Orm_Schema_documents, ZEND_ACC_PUBLIC)
+	ZEND_FE_END
+};
+
+static const zend_function_entry class_Polyspec_Orm_RuntimeModel_methods[] = {
+	ZEND_ME(Polyspec_Orm_RuntimeModel, __construct, arginfo_class_Polyspec_Orm_RuntimeModel___construct, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_RuntimeModel, parse, arginfo_class_Polyspec_Orm_RuntimeModel_parse, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_RuntimeModel, parseSet, arginfo_class_Polyspec_Orm_RuntimeModel_parseSet, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_RuntimeModel, loadSet, arginfo_class_Polyspec_Orm_RuntimeModel_loadSet, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_RuntimeModel, splitManifest, arginfo_class_Polyspec_Orm_RuntimeModel_splitManifest, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_RuntimeModel, set, arginfo_class_Polyspec_Orm_RuntimeModel_set, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_RuntimeModel, files, arginfo_class_Polyspec_Orm_RuntimeModel_files, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_RuntimeModel, build, arginfo_class_Polyspec_Orm_RuntimeModel_build, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_RuntimeModel, fromModels, arginfo_class_Polyspec_Orm_RuntimeModel_fromModels, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_RuntimeModel, entity, arginfo_class_Polyspec_Orm_RuntimeModel_entity, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_RuntimeModel, column, arginfo_class_Polyspec_Orm_RuntimeModel_column, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_RuntimeModel, styled, arginfo_class_Polyspec_Orm_RuntimeModel_styled, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_RuntimeModel, encrypted, arginfo_class_Polyspec_Orm_RuntimeModel_encrypted, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_RuntimeModel, numeric, arginfo_class_Polyspec_Orm_RuntimeModel_numeric, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_FE_END
+};
+
+static const zend_function_entry class_Polyspec_Orm_ModelMetadata_methods[] = {
+	ZEND_RAW_FENTRY("meta", NULL, arginfo_class_Polyspec_Orm_ModelMetadata_meta, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC|ZEND_ACC_ABSTRACT, NULL, NULL)
+	ZEND_FE_END
+};
+
+static const zend_function_entry class_Polyspec_Orm_Model_methods[] = {
+	ZEND_ME(Polyspec_Orm_Model, connect, arginfo_class_Polyspec_Orm_Model_connect, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, __invoke, arginfo_class_Polyspec_Orm_Model___invoke, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, fail, arginfo_class_Polyspec_Orm_Model_fail, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Model, subject, arginfo_class_Polyspec_Orm_Model_subject, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Model, addItem, arginfo_class_Polyspec_Orm_Model_addItem, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Model, and, arginfo_class_Polyspec_Orm_Model_and, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, or, arginfo_class_Polyspec_Orm_Model_or, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, not, arginfo_class_Polyspec_Orm_Model_not, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, andNot, arginfo_class_Polyspec_Orm_Model_andNot, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, orNot, arginfo_class_Polyspec_Orm_Model_orNot, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, negated, arginfo_class_Polyspec_Orm_Model_negated, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Model, connector, arginfo_class_Polyspec_Orm_Model_connector, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Model, on, arginfo_class_Polyspec_Orm_Model_on, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, relation, arginfo_class_Polyspec_Orm_Model_relation, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, relations, arginfo_class_Polyspec_Orm_Model_relations, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, addRelation, arginfo_class_Polyspec_Orm_Model_addRelation, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Model, limit, arginfo_class_Polyspec_Orm_Model_limit, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, orderByRandom, arginfo_class_Polyspec_Orm_Model_orderByRandom, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, removeAllColumns, arginfo_class_Polyspec_Orm_Model_removeAllColumns, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, addAllColumns, arginfo_class_Polyspec_Orm_Model_addAllColumns, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, parentNode, arginfo_class_Polyspec_Orm_Model_parentNode, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, groupLimit, arginfo_class_Polyspec_Orm_Model_groupLimit, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, expectRevision, arginfo_class_Polyspec_Orm_Model_expectRevision, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, revisionGuard, arginfo_class_Polyspec_Orm_Model_revisionGuard, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Model, deleteLock, arginfo_class_Polyspec_Orm_Model_deleteLock, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, fetchKey, arginfo_class_Polyspec_Orm_Model_fetchKey, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, fetchValue, arginfo_class_Polyspec_Orm_Model_fetchValue, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, forUpdate, arginfo_class_Polyspec_Orm_Model_forUpdate, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, forShare, arginfo_class_Polyspec_Orm_Model_forShare, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, forUpdateNoWait, arginfo_class_Polyspec_Orm_Model_forUpdateNoWait, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, forShareNoWait, arginfo_class_Polyspec_Orm_Model_forShareNoWait, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, duplication, arginfo_class_Polyspec_Orm_Model_duplication, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, readColumn, arginfo_class_Polyspec_Orm_Model_readColumn, ZEND_ACC_PROTECTED)
+	ZEND_ME(Polyspec_Orm_Model, writeColumn, arginfo_class_Polyspec_Orm_Model_writeColumn, ZEND_ACC_PROTECTED)
+	ZEND_ME(Polyspec_Orm_Model, value, arginfo_class_Polyspec_Orm_Model_value, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Model, resolved, arginfo_class_Polyspec_Orm_Model_resolved, ZEND_ACC_PRIVATE|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Model, putSet, arginfo_class_Polyspec_Orm_Model_putSet, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Model, columnValue, arginfo_class_Polyspec_Orm_Model_columnValue, ZEND_ACC_PRIVATE|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Model, timeValue, arginfo_class_Polyspec_Orm_Model_timeValue, ZEND_ACC_PRIVATE|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Model, __call, arginfo_class_Polyspec_Orm_Model___call, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, prefixed, arginfo_class_Polyspec_Orm_Model_prefixed, ZEND_ACC_PRIVATE|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Model, arity, arginfo_class_Polyspec_Orm_Model_arity, ZEND_ACC_PRIVATE|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Model, outputName, arginfo_class_Polyspec_Orm_Model_outputName, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Model, addColumnCall, arginfo_class_Polyspec_Orm_Model_addColumnCall, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Model, addJoin, arginfo_class_Polyspec_Orm_Model_addJoin, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Model, named, arginfo_class_Polyspec_Orm_Model_named, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Model, whereChain, arginfo_class_Polyspec_Orm_Model_whereChain, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Model, predicate, arginfo_class_Polyspec_Orm_Model_predicate, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Model, by, arginfo_class_Polyspec_Orm_Model_by, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Model, executor, arginfo_class_Polyspec_Orm_Model_executor, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Model, build, arginfo_class_Polyspec_Orm_Model_build, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Model, resultName, arginfo_class_Polyspec_Orm_Model_resultName, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Model, query, arginfo_class_Polyspec_Orm_Model_query, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Model, relationIr, arginfo_class_Polyspec_Orm_Model_relationIr, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Model, columnsIr, arginfo_class_Polyspec_Orm_Model_columnsIr, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Model, subqueryIr, arginfo_class_Polyspec_Orm_Model_subqueryIr, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Model, groupIr, arginfo_class_Polyspec_Orm_Model_groupIr, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Model, predIr, arginfo_class_Polyspec_Orm_Model_predIr, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Model, registerJoins, arginfo_class_Polyspec_Orm_Model_registerJoins, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, newRow, arginfo_class_Polyspec_Orm_Model_newRow, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Model, rowShape, arginfo_class_Polyspec_Orm_Model_rowShape, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Model, assembleRow, arginfo_class_Polyspec_Orm_Model_assembleRow, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Model, joinChild, arginfo_class_Polyspec_Orm_Model_joinChild, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Model, relationChild, arginfo_class_Polyspec_Orm_Model_relationChild, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Model, collectionKey, arginfo_class_Polyspec_Orm_Model_collectionKey, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Model, assemble, arginfo_class_Polyspec_Orm_Model_assemble, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Model, matchValues, arginfo_class_Polyspec_Orm_Model_matchValues, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Model, matchKey, arginfo_class_Polyspec_Orm_Model_matchKey, ZEND_ACC_PRIVATE|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Model, attachExternal, arginfo_class_Polyspec_Orm_Model_attachExternal, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Model, columnOrExtra, arginfo_class_Polyspec_Orm_Model_columnOrExtra, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Model, load, arginfo_class_Polyspec_Orm_Model_load, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Model, get, arginfo_class_Polyspec_Orm_Model_get, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, gets, arginfo_class_Polyspec_Orm_Model_gets, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, getsCount, arginfo_class_Polyspec_Orm_Model_getsCount, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, groupValue, arginfo_class_Polyspec_Orm_Model_groupValue, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Model, groupInteger, arginfo_class_Polyspec_Orm_Model_groupInteger, ZEND_ACC_PRIVATE|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Model, groupFloat, arginfo_class_Polyspec_Orm_Model_groupFloat, ZEND_ACC_PRIVATE|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Model, getCount, arginfo_class_Polyspec_Orm_Model_getCount, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, getSum, arginfo_class_Polyspec_Orm_Model_getSum, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, getAvg, arginfo_class_Polyspec_Orm_Model_getAvg, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, aggregate, arginfo_class_Polyspec_Orm_Model_aggregate, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Model, aggregateNumber, arginfo_class_Polyspec_Orm_Model_aggregateNumber, ZEND_ACC_PRIVATE|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Model, getsPage, arginfo_class_Polyspec_Orm_Model_getsPage, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, getQuery, arginfo_class_Polyspec_Orm_Model_getQuery, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, manifestHash, arginfo_class_Polyspec_Orm_Model_manifestHash, ZEND_ACC_PRIVATE|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Model, writeRequest, arginfo_class_Polyspec_Orm_Model_writeRequest, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Model, assignIr, arginfo_class_Polyspec_Orm_Model_assignIr, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Model, encodeValue, arginfo_class_Polyspec_Orm_Model_encodeValue, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Model, create, arginfo_class_Polyspec_Orm_Model_create, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, creates, arginfo_class_Polyspec_Orm_Model_creates, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, keyValues, arginfo_class_Polyspec_Orm_Model_keyValues, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Model, keyWhere, arginfo_class_Polyspec_Orm_Model_keyWhere, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Model, withAesColumns, arginfo_class_Polyspec_Orm_Model_withAesColumns, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Model, update, arginfo_class_Polyspec_Orm_Model_update, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, save, arginfo_class_Polyspec_Orm_Model_save, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, delete, arginfo_class_Polyspec_Orm_Model_delete, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, deleteRow, arginfo_class_Polyspec_Orm_Model_deleteRow, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, restore, arginfo_class_Polyspec_Orm_Model_restore, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, restoreOrCreate, arginfo_class_Polyspec_Orm_Model_restoreOrCreate, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, restoreStep, arginfo_class_Polyspec_Orm_Model_restoreStep, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Model, restoreKeyValue, arginfo_class_Polyspec_Orm_Model_restoreKeyValue, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Model, connection, arginfo_class_Polyspec_Orm_Model_connection, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, pairs, arginfo_class_Polyspec_Orm_Model_pairs, ZEND_ACC_PRIVATE)
+	ZEND_ME(Polyspec_Orm_Model, columnArrayValue, arginfo_class_Polyspec_Orm_Model_columnArrayValue, ZEND_ACC_PRIVATE|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Model, sixFractionDigits, arginfo_class_Polyspec_Orm_Model_sixFractionDigits, ZEND_ACC_PRIVATE|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Model, arrayValue, arginfo_class_Polyspec_Orm_Model_arrayValue, ZEND_ACC_PRIVATE|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Model, toArray, arginfo_class_Polyspec_Orm_Model_toArray, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, toJson, arginfo_class_Polyspec_Orm_Model_toJson, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, jsonText, arginfo_class_Polyspec_Orm_Model_jsonText, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Model, holdsOrderedJson, arginfo_class_Polyspec_Orm_Model_holdsOrderedJson, ZEND_ACC_PRIVATE|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Model, jsonSerialize, arginfo_class_Polyspec_Orm_Model_jsonSerialize, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Model, __clone, arginfo_class_Polyspec_Orm_Model___clone, ZEND_ACC_PUBLIC)
+	ZEND_FE_END
+};
+
+static const zend_function_entry class_Polyspec_Orm_ModelCreatesCallback_methods[] = {
+	ZEND_ME(Polyspec_Orm_ModelCreatesCallback, __invoke, arginfo_class_Polyspec_Orm_ModelCreatesCallback___invoke, ZEND_ACC_PUBLIC)
+	ZEND_FE_END
+};
+
+static const zend_function_entry class_Polyspec_Orm_ModelRestoreHook_methods[] = {
+	ZEND_ME(Polyspec_Orm_ModelRestoreHook, __invoke, arginfo_class_Polyspec_Orm_ModelRestoreHook___invoke, ZEND_ACC_PUBLIC)
+	ZEND_FE_END
+};
+
+static const zend_function_entry class_Polyspec_Orm_ModelRestoreOrCreateCallback_methods[] = {
+	ZEND_ME(Polyspec_Orm_ModelRestoreOrCreateCallback, __invoke, arginfo_class_Polyspec_Orm_ModelRestoreOrCreateCallback___invoke, ZEND_ACC_PUBLIC)
+	ZEND_FE_END
+};
+
+static const zend_function_entry class_Polyspec_Orm_ModelDeleteCallback_methods[] = {
+	ZEND_ME(Polyspec_Orm_ModelDeleteCallback, __invoke, arginfo_class_Polyspec_Orm_ModelDeleteCallback___invoke, ZEND_ACC_PUBLIC)
+	ZEND_FE_END
+};
+
+static const zend_function_entry class_Polyspec_Orm_Frame_methods[] = {
+	ZEND_ME(Polyspec_Orm_Frame, __construct, arginfo_class_Polyspec_Orm_Frame___construct, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Frame, add, arginfo_class_Polyspec_Orm_Frame_add, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Frame, path, arginfo_class_Polyspec_Orm_Frame_path, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Frame, joined, arginfo_class_Polyspec_Orm_Frame_joined, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Frame, parentOf, arginfo_class_Polyspec_Orm_Frame_parentOf, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Frame, place, arginfo_class_Polyspec_Orm_Frame_place, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Frame, pathOf, arginfo_class_Polyspec_Orm_Frame_pathOf, ZEND_ACC_PUBLIC)
+	ZEND_FE_END
+};
+
+static const zend_function_entry class_Polyspec_Orm_Assembly_methods[] = {
+	ZEND_ME(Polyspec_Orm_Assembly, __construct, arginfo_class_Polyspec_Orm_Assembly___construct, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Assembly, joinRow, arginfo_class_Polyspec_Orm_Assembly_joinRow, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Assembly, relationAssemble, arginfo_class_Polyspec_Orm_Assembly_relationAssemble, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_Assembly, related, arginfo_class_Polyspec_Orm_Assembly_related, ZEND_ACC_PUBLIC)
+	ZEND_FE_END
+};
+
+static const zend_function_entry class_Polyspec_Orm_GroupRow_methods[] = {
+	ZEND_ME(Polyspec_Orm_GroupRow, __construct, arginfo_class_Polyspec_Orm_GroupRow___construct, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_GroupRow, count, arginfo_class_Polyspec_Orm_GroupRow_count, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_GroupRow, value, arginfo_class_Polyspec_Orm_GroupRow_value, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_GroupRow, toArray, arginfo_class_Polyspec_Orm_GroupRow_toArray, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_GroupRow, jsonSerialize, arginfo_class_Polyspec_Orm_GroupRow_jsonSerialize, ZEND_ACC_PUBLIC)
+	ZEND_FE_END
+};
+
+static const zend_function_entry class_Polyspec_Orm_GroupRows_methods[] = {
+	ZEND_ME(Polyspec_Orm_GroupRows, __construct, arginfo_class_Polyspec_Orm_GroupRows___construct, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_GroupRows, count, arginfo_class_Polyspec_Orm_GroupRows_count, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_GroupRows, all, arginfo_class_Polyspec_Orm_GroupRows_all, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_GroupRows, getIterator, arginfo_class_Polyspec_Orm_GroupRows_getIterator, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_GroupRows, toArray, arginfo_class_Polyspec_Orm_GroupRows_toArray, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_GroupRows, jsonSerialize, arginfo_class_Polyspec_Orm_GroupRows_jsonSerialize, ZEND_ACC_PUBLIC)
+	ZEND_FE_END
+};
+
+static const zend_function_entry class_Polyspec_Orm_GroupRowsIterator_methods[] = {
+	ZEND_ME(Polyspec_Orm_GroupRowsIterator, current, arginfo_class_Polyspec_Orm_GroupRowsIterator_current, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_GroupRowsIterator, key, arginfo_class_Polyspec_Orm_GroupRowsIterator_key, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_GroupRowsIterator, next, arginfo_class_Polyspec_Orm_GroupRowsIterator_next, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_GroupRowsIterator, rewind, arginfo_class_Polyspec_Orm_GroupRowsIterator_rewind, ZEND_ACC_PUBLIC)
+	ZEND_ME(Polyspec_Orm_GroupRowsIterator, valid, arginfo_class_Polyspec_Orm_GroupRowsIterator_valid, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
@@ -4335,6 +5433,626 @@ static zend_class_entry *register_class_Polyspec_Orm_PendingTime(void)
 	zend_string *property_zone_class_DateTimeZone = zend_string_init("DateTimeZone", sizeof("DateTimeZone")-1, 1);
 	zend_declare_typed_property(class_entry, property_zone_name, &property_zone_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_zone_class_DateTimeZone, 0, 0));
 	zend_string_release(property_zone_name);
+
+	return class_entry;
+}
+
+static zend_class_entry *register_class_Polyspec_Orm_Chain(void)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm", "Chain", class_Polyspec_Orm_Chain_methods);
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL);
+
+	return class_entry;
+}
+
+static zend_class_entry *register_class_Polyspec_Orm_Registry(void)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm", "Registry", class_Polyspec_Orm_Registry_methods);
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL);
+
+	zval property_texts_default_value;
+	ZVAL_EMPTY_ARRAY(&property_texts_default_value);
+	zend_string *property_texts_name = zend_string_init("texts", sizeof("texts") - 1, 1);
+	zend_declare_typed_property(class_entry, property_texts_name, &property_texts_default_value, ZEND_ACC_PRIVATE|ZEND_ACC_STATIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string_release(property_texts_name);
+
+	zval property_externals_default_value;
+	ZVAL_EMPTY_ARRAY(&property_externals_default_value);
+	zend_string *property_externals_name = zend_string_init("externals", sizeof("externals") - 1, 1);
+	zend_declare_typed_property(class_entry, property_externals_name, &property_externals_default_value, ZEND_ACC_PRIVATE|ZEND_ACC_STATIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string_release(property_externals_name);
+
+	zval property_models_default_value;
+	ZVAL_EMPTY_ARRAY(&property_models_default_value);
+	zend_string *property_models_name = zend_string_init("models", sizeof("models") - 1, 1);
+	zend_declare_typed_property(class_entry, property_models_name, &property_models_default_value, ZEND_ACC_PRIVATE|ZEND_ACC_STATIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string_release(property_models_name);
+
+	zval property_runtime_default_value;
+	ZVAL_EMPTY_ARRAY(&property_runtime_default_value);
+	zend_string *property_runtime_name = zend_string_init("runtime", sizeof("runtime") - 1, 1);
+	zend_declare_typed_property(class_entry, property_runtime_name, &property_runtime_default_value, ZEND_ACC_PRIVATE|ZEND_ACC_STATIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string_release(property_runtime_name);
+
+	return class_entry;
+}
+
+static zend_class_entry *register_class_Polyspec_Orm_Schema(void)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm", "Schema", class_Polyspec_Orm_Schema_methods);
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL);
+
+	zval property_manifestText_default_value;
+	ZVAL_UNDEF(&property_manifestText_default_value);
+	zend_string *property_manifestText_name = zend_string_init("manifestText", sizeof("manifestText") - 1, 1);
+	zend_declare_typed_property(class_entry, property_manifestText_name, &property_manifestText_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(property_manifestText_name);
+
+	zval property_manifestHash_default_value;
+	ZVAL_UNDEF(&property_manifestHash_default_value);
+	zend_string *property_manifestHash_name = zend_string_init("manifestHash", sizeof("manifestHash") - 1, 1);
+	zend_declare_typed_property(class_entry, property_manifestHash_name, &property_manifestHash_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(property_manifestHash_name);
+
+	zval property_externalText_default_value;
+	ZVAL_UNDEF(&property_externalText_default_value);
+	zend_string *property_externalText_name = zend_string_init("externalText", sizeof("externalText") - 1, 1);
+	zend_declare_typed_property(class_entry, property_externalText_name, &property_externalText_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(property_externalText_name);
+
+	return class_entry;
+}
+
+static zend_class_entry *register_class_Polyspec_Orm_RuntimeModel(void)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm", "RuntimeModel", class_Polyspec_Orm_RuntimeModel_methods);
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL);
+
+	zval property_manifestHash_default_value;
+	ZVAL_UNDEF(&property_manifestHash_default_value);
+	zend_string *property_manifestHash_name = zend_string_init("manifestHash", sizeof("manifestHash") - 1, 1);
+	zend_declare_typed_property(class_entry, property_manifestHash_name, &property_manifestHash_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(property_manifestHash_name);
+
+	zval property_manifestText_default_value;
+	ZVAL_UNDEF(&property_manifestText_default_value);
+	zend_string *property_manifestText_name = zend_string_init("manifestText", sizeof("manifestText") - 1, 1);
+	zend_declare_typed_property(class_entry, property_manifestText_name, &property_manifestText_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(property_manifestText_name);
+
+	zval property_entities_default_value;
+	ZVAL_UNDEF(&property_entities_default_value);
+	zend_string *property_entities_name = zend_string_init("entities", sizeof("entities") - 1, 1);
+	zend_declare_typed_property(class_entry, property_entities_name, &property_entities_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string_release(property_entities_name);
+
+	zval property_externalText_default_value;
+	ZVAL_UNDEF(&property_externalText_default_value);
+	zend_string *property_externalText_name = zend_string_init("externalText", sizeof("externalText") - 1, 1);
+	zend_declare_typed_property(class_entry, property_externalText_name, &property_externalText_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(property_externalText_name);
+
+	return class_entry;
+}
+
+static zend_class_entry *register_class_Polyspec_Orm_ModelMetadata(void)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm", "ModelMetadata", class_Polyspec_Orm_ModelMetadata_methods);
+	class_entry = zend_register_internal_interface(&ce);
+
+	return class_entry;
+}
+
+static zend_class_entry *register_class_Polyspec_Orm_Model(zend_class_entry *class_entry_JsonSerializable, zend_class_entry *class_entry_Polyspec_Orm_ModelMetadata)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm", "Model", class_Polyspec_Orm_Model_methods);
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_ABSTRACT);
+	zend_class_implements(class_entry, 2, class_entry_JsonSerializable, class_entry_Polyspec_Orm_ModelMetadata);
+
+	zval const_JSON_FLAGS_value;
+	ZVAL_LONG(&const_JSON_FLAGS_value, 4195648);
+	zend_string *const_JSON_FLAGS_name = zend_string_init_interned("JSON_FLAGS", sizeof("JSON_FLAGS") - 1, 1);
+	zend_declare_class_constant_ex(class_entry, const_JSON_FLAGS_name, &const_JSON_FLAGS_value, ZEND_ACC_PUBLIC, NULL);
+	zend_string_release(const_JSON_FLAGS_name);
+
+	zval property_conn_default_value;
+	ZVAL_NULL(&property_conn_default_value);
+	zend_string *property_conn_name = zend_string_init("conn", sizeof("conn") - 1, 1);
+	zend_string *property_conn_class_Polyspec_Orm_Db = zend_string_init("Polyspec\\Orm\\Db", sizeof("Polyspec\\Orm\\Db")-1, 1);
+	zend_declare_typed_property(class_entry, property_conn_name, &property_conn_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_conn_class_Polyspec_Orm_Db, 0, MAY_BE_NULL));
+	zend_string_release(property_conn_name);
+
+	zval property_groupOf_default_value;
+	ZVAL_NULL(&property_groupOf_default_value);
+	zend_string *property_groupOf_name = zend_string_init("groupOf", sizeof("groupOf") - 1, 1);
+	zend_string *property_groupOf_class_Polyspec_Orm_Model = zend_string_init("Polyspec\\Orm\\Model", sizeof("Polyspec\\Orm\\Model")-1, 1);
+	zend_declare_typed_property(class_entry, property_groupOf_name, &property_groupOf_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_groupOf_class_Polyspec_Orm_Model, 0, MAY_BE_NULL));
+	zend_string_release(property_groupOf_name);
+
+	zval property_error_default_value;
+	ZVAL_NULL(&property_error_default_value);
+	zend_string *property_error_name = zend_string_init("error", sizeof("error") - 1, 1);
+	zend_string *property_error_class_Throwable = zend_string_init("Throwable", sizeof("Throwable")-1, 1);
+	zend_declare_typed_property(class_entry, property_error_name, &property_error_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_error_class_Throwable, 0, MAY_BE_NULL));
+	zend_string_release(property_error_name);
+
+	zval property_where_default_value;
+	ZVAL_UNDEF(&property_where_default_value);
+	zend_string *property_where_name = zend_string_init("where", sizeof("where") - 1, 1);
+	zend_declare_typed_property(class_entry, property_where_name, &property_where_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string_release(property_where_name);
+
+	zval property_on_default_value;
+	ZVAL_NULL(&property_on_default_value);
+	zend_string *property_on_name = zend_string_init("on", sizeof("on") - 1, 1);
+	zend_declare_typed_property(class_entry, property_on_name, &property_on_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY|MAY_BE_NULL));
+	zend_string_release(property_on_name);
+
+	zval property_joins_default_value;
+	ZVAL_EMPTY_ARRAY(&property_joins_default_value);
+	zend_string *property_joins_name = zend_string_init("joins", sizeof("joins") - 1, 1);
+	zend_declare_typed_property(class_entry, property_joins_name, &property_joins_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string_release(property_joins_name);
+
+	zval property_relations_default_value;
+	ZVAL_EMPTY_ARRAY(&property_relations_default_value);
+	zend_string *property_relations_name = zend_string_init("relations", sizeof("relations") - 1, 1);
+	zend_declare_typed_property(class_entry, property_relations_name, &property_relations_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string_release(property_relations_name);
+
+	zval property_columnMode_default_value;
+	ZVAL_EMPTY_STRING(&property_columnMode_default_value);
+	zend_string *property_columnMode_name = zend_string_init("columnMode", sizeof("columnMode") - 1, 1);
+	zend_declare_typed_property(class_entry, property_columnMode_name, &property_columnMode_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(property_columnMode_name);
+
+	zval property_addColumns_default_value;
+	ZVAL_EMPTY_ARRAY(&property_addColumns_default_value);
+	zend_string *property_addColumns_name = zend_string_init("addColumns", sizeof("addColumns") - 1, 1);
+	zend_declare_typed_property(class_entry, property_addColumns_name, &property_addColumns_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string_release(property_addColumns_name);
+
+	zval property_removeColumns_default_value;
+	ZVAL_EMPTY_ARRAY(&property_removeColumns_default_value);
+	zend_string *property_removeColumns_name = zend_string_init("removeColumns", sizeof("removeColumns") - 1, 1);
+	zend_declare_typed_property(class_entry, property_removeColumns_name, &property_removeColumns_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string_release(property_removeColumns_name);
+
+	zval property_outputs_default_value;
+	ZVAL_EMPTY_ARRAY(&property_outputs_default_value);
+	zend_string *property_outputs_name = zend_string_init("outputs", sizeof("outputs") - 1, 1);
+	zend_declare_typed_property(class_entry, property_outputs_name, &property_outputs_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string_release(property_outputs_name);
+
+	zval property_order_default_value;
+	ZVAL_EMPTY_ARRAY(&property_order_default_value);
+	zend_string *property_order_name = zend_string_init("order", sizeof("order") - 1, 1);
+	zend_declare_typed_property(class_entry, property_order_name, &property_order_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string_release(property_order_name);
+
+	zval property_groupBy_default_value;
+	ZVAL_EMPTY_ARRAY(&property_groupBy_default_value);
+	zend_string *property_groupBy_name = zend_string_init("groupBy", sizeof("groupBy") - 1, 1);
+	zend_declare_typed_property(class_entry, property_groupBy_name, &property_groupBy_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string_release(property_groupBy_name);
+
+	zval property_limit_default_value;
+	ZVAL_NULL(&property_limit_default_value);
+	zend_string *property_limit_name = zend_string_init("limit", sizeof("limit") - 1, 1);
+	zend_declare_typed_property(class_entry, property_limit_name, &property_limit_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY|MAY_BE_NULL));
+	zend_string_release(property_limit_name);
+
+	zval property_index_default_value;
+	ZVAL_EMPTY_STRING(&property_index_default_value);
+	zend_string *property_index_name = zend_string_init("index", sizeof("index") - 1, 1);
+	zend_declare_typed_property(class_entry, property_index_name, &property_index_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(property_index_name);
+
+	zval property_lock_default_value;
+	ZVAL_EMPTY_STRING(&property_lock_default_value);
+	zend_string *property_lock_name = zend_string_init("lock", sizeof("lock") - 1, 1);
+	zend_declare_typed_property(class_entry, property_lock_name, &property_lock_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(property_lock_name);
+
+	zval property_aggFn_default_value;
+	ZVAL_EMPTY_STRING(&property_aggFn_default_value);
+	zend_string *property_aggFn_name = zend_string_init("aggFn", sizeof("aggFn") - 1, 1);
+	zend_declare_typed_property(class_entry, property_aggFn_name, &property_aggFn_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(property_aggFn_name);
+
+	zval property_agg_default_value;
+	ZVAL_EMPTY_STRING(&property_agg_default_value);
+	zend_string *property_agg_name = zend_string_init("agg", sizeof("agg") - 1, 1);
+	zend_declare_typed_property(class_entry, property_agg_name, &property_agg_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(property_agg_name);
+
+	zval property_matches_default_value;
+	ZVAL_EMPTY_ARRAY(&property_matches_default_value);
+	zend_string *property_matches_name = zend_string_init("matches", sizeof("matches") - 1, 1);
+	zend_declare_typed_property(class_entry, property_matches_name, &property_matches_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string_release(property_matches_name);
+
+	zval property_alias_default_value;
+	ZVAL_EMPTY_STRING(&property_alias_default_value);
+	zend_string *property_alias_name = zend_string_init("alias", sizeof("alias") - 1, 1);
+	zend_declare_typed_property(class_entry, property_alias_name, &property_alias_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(property_alias_name);
+
+	zval property_parentNode_default_value;
+	ZVAL_FALSE(&property_parentNode_default_value);
+	zend_string *property_parentNode_name = zend_string_init("parentNode", sizeof("parentNode") - 1, 1);
+	zend_declare_typed_property(class_entry, property_parentNode_name, &property_parentNode_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_BOOL));
+	zend_string_release(property_parentNode_name);
+
+	zval property_possible_default_value;
+	ZVAL_NULL(&property_possible_default_value);
+	zend_string *property_possible_name = zend_string_init("possible", sizeof("possible") - 1, 1);
+	zend_declare_typed_property(class_entry, property_possible_name, &property_possible_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY|MAY_BE_NULL));
+	zend_string_release(property_possible_name);
+
+	zval property_groupLimit_default_value;
+	ZVAL_LONG(&property_groupLimit_default_value, 0);
+	zend_string *property_groupLimit_name = zend_string_init("groupLimit", sizeof("groupLimit") - 1, 1);
+	zend_declare_typed_property(class_entry, property_groupLimit_name, &property_groupLimit_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_LONG));
+	zend_string_release(property_groupLimit_name);
+
+	zval property_deleteLock_default_value;
+	ZVAL_FALSE(&property_deleteLock_default_value);
+	zend_string *property_deleteLock_name = zend_string_init("deleteLock", sizeof("deleteLock") - 1, 1);
+	zend_declare_typed_property(class_entry, property_deleteLock_name, &property_deleteLock_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_BOOL));
+	zend_string_release(property_deleteLock_name);
+
+	zval property_expectedRevision_default_value;
+	ZVAL_NULL(&property_expectedRevision_default_value);
+	zend_string *property_expectedRevision_name = zend_string_init("expectedRevision", sizeof("expectedRevision") - 1, 1);
+	zend_declare_typed_property(class_entry, property_expectedRevision_name, &property_expectedRevision_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY|MAY_BE_NULL));
+	zend_string_release(property_expectedRevision_name);
+
+	zval property_keyName_default_value;
+	ZVAL_EMPTY_STRING(&property_keyName_default_value);
+	zend_string *property_keyName_name = zend_string_init("keyName", sizeof("keyName") - 1, 1);
+	zend_declare_typed_property(class_entry, property_keyName_name, &property_keyName_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(property_keyName_name);
+
+	zval property_fetchKey_default_value;
+	ZVAL_NULL(&property_fetchKey_default_value);
+	zend_string *property_fetchKey_name = zend_string_init("fetchKey", sizeof("fetchKey") - 1, 1);
+	zend_string *property_fetchKey_class_Closure = zend_string_init("Closure", sizeof("Closure")-1, 1);
+	zend_declare_typed_property(class_entry, property_fetchKey_name, &property_fetchKey_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_fetchKey_class_Closure, 0, MAY_BE_NULL));
+	zend_string_release(property_fetchKey_name);
+
+	zval property_fetchValue_default_value;
+	ZVAL_NULL(&property_fetchValue_default_value);
+	zend_string *property_fetchValue_name = zend_string_init("fetchValue", sizeof("fetchValue") - 1, 1);
+	zend_string *property_fetchValue_class_Closure = zend_string_init("Closure", sizeof("Closure")-1, 1);
+	zend_declare_typed_property(class_entry, property_fetchValue_name, &property_fetchValue_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_fetchValue_class_Closure, 0, MAY_BE_NULL));
+	zend_string_release(property_fetchValue_name);
+
+	zval property_sets_default_value;
+	ZVAL_EMPTY_ARRAY(&property_sets_default_value);
+	zend_string *property_sets_name = zend_string_init("sets", sizeof("sets") - 1, 1);
+	zend_declare_typed_property(class_entry, property_sets_name, &property_sets_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string_release(property_sets_name);
+
+	zval property_news_default_value;
+	ZVAL_EMPTY_ARRAY(&property_news_default_value);
+	zend_string *property_news_name = zend_string_init("news", sizeof("news") - 1, 1);
+	zend_declare_typed_property(class_entry, property_news_name, &property_news_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string_release(property_news_name);
+
+	zval property_duplication_default_value;
+	ZVAL_NULL(&property_duplication_default_value);
+	zend_string *property_duplication_name = zend_string_init("duplication", sizeof("duplication") - 1, 1);
+	zend_string *property_duplication_class_Polyspec_Orm_Model = zend_string_init("Polyspec\\Orm\\Model", sizeof("Polyspec\\Orm\\Model")-1, 1);
+	zend_declare_typed_property(class_entry, property_duplication_name, &property_duplication_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_duplication_class_Polyspec_Orm_Model, 0, MAY_BE_NULL));
+	zend_string_release(property_duplication_name);
+
+	zval property_values_default_value;
+	ZVAL_EMPTY_ARRAY(&property_values_default_value);
+	zend_string *property_values_name = zend_string_init("values", sizeof("values") - 1, 1);
+	zend_declare_typed_property(class_entry, property_values_name, &property_values_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string_release(property_values_name);
+
+	zval property_row_default_value;
+	ZVAL_NULL(&property_row_default_value);
+	zend_string *property_row_name = zend_string_init("row", sizeof("row") - 1, 1);
+	zend_declare_typed_property(class_entry, property_row_name, &property_row_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY|MAY_BE_NULL));
+	zend_string_release(property_row_name);
+
+	return class_entry;
+}
+
+static zend_class_entry *register_class_Polyspec_Orm_ModelCreatesCallback(void)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm", "ModelCreatesCallback", class_Polyspec_Orm_ModelCreatesCallback_methods);
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL);
+
+	zval property_model_default_value;
+	ZVAL_UNDEF(&property_model_default_value);
+	zend_string *property_model_name = zend_string_init("model", sizeof("model") - 1, 1);
+	zend_string *property_model_class_Polyspec_Orm_Model = zend_string_init("Polyspec\\Orm\\Model", sizeof("Polyspec\\Orm\\Model")-1, 1);
+	zend_declare_typed_property(class_entry, property_model_name, &property_model_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_model_class_Polyspec_Orm_Model, 0, 0));
+	zend_string_release(property_model_name);
+
+	zval property_rows_default_value;
+	ZVAL_UNDEF(&property_rows_default_value);
+	zend_string *property_rows_name = zend_string_init("rows", sizeof("rows") - 1, 1);
+	zend_declare_typed_property(class_entry, property_rows_name, &property_rows_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string_release(property_rows_name);
+
+	zval property_columns_default_value;
+	ZVAL_UNDEF(&property_columns_default_value);
+	zend_string *property_columns_name = zend_string_init("columns", sizeof("columns") - 1, 1);
+	zend_declare_typed_property(class_entry, property_columns_name, &property_columns_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string_release(property_columns_name);
+
+	zval property_meta_default_value;
+	ZVAL_UNDEF(&property_meta_default_value);
+	zend_string *property_meta_name = zend_string_init("meta", sizeof("meta") - 1, 1);
+	zend_declare_typed_property(class_entry, property_meta_name, &property_meta_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string_release(property_meta_name);
+
+	zval property_parts_default_value;
+	ZVAL_UNDEF(&property_parts_default_value);
+	zend_string *property_parts_name = zend_string_init("parts", sizeof("parts") - 1, 1);
+	zend_declare_typed_property(class_entry, property_parts_name, &property_parts_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string_release(property_parts_name);
+
+	zval property_offset_default_value;
+	ZVAL_LONG(&property_offset_default_value, 0);
+	zend_string *property_offset_name = zend_string_init("offset", sizeof("offset") - 1, 1);
+	zend_declare_typed_property(class_entry, property_offset_name, &property_offset_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_LONG));
+	zend_string_release(property_offset_name);
+
+	zval property_total_default_value;
+	ZVAL_LONG(&property_total_default_value, 0);
+	zend_string *property_total_name = zend_string_init("total", sizeof("total") - 1, 1);
+	zend_declare_typed_property(class_entry, property_total_name, &property_total_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_LONG));
+	zend_string_release(property_total_name);
+
+	return class_entry;
+}
+
+static zend_class_entry *register_class_Polyspec_Orm_ModelRestoreHook(void)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm", "ModelRestoreHook", class_Polyspec_Orm_ModelRestoreHook_methods);
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL);
+
+	zval property_model_default_value;
+	ZVAL_UNDEF(&property_model_default_value);
+	zend_string *property_model_name = zend_string_init("model", sizeof("model") - 1, 1);
+	zend_string *property_model_class_Polyspec_Orm_Model = zend_string_init("Polyspec\\Orm\\Model", sizeof("Polyspec\\Orm\\Model")-1, 1);
+	zend_declare_typed_property(class_entry, property_model_name, &property_model_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_model_class_Polyspec_Orm_Model, 0, 0));
+	zend_string_release(property_model_name);
+
+	zval property_own_default_value;
+	ZVAL_UNDEF(&property_own_default_value);
+	zend_string *property_own_name = zend_string_init("own", sizeof("own") - 1, 1);
+	zend_declare_typed_property(class_entry, property_own_name, &property_own_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string_release(property_own_name);
+
+	zval property_keys_default_value;
+	ZVAL_EMPTY_ARRAY(&property_keys_default_value);
+	zend_string *property_keys_name = zend_string_init("keys", sizeof("keys") - 1, 1);
+	zend_declare_typed_property(class_entry, property_keys_name, &property_keys_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string_release(property_keys_name);
+
+	zval property_args_default_value;
+	ZVAL_EMPTY_ARRAY(&property_args_default_value);
+	zend_string *property_args_name = zend_string_init("args", sizeof("args") - 1, 1);
+	zend_declare_typed_property(class_entry, property_args_name, &property_args_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string_release(property_args_name);
+
+	return class_entry;
+}
+
+static zend_class_entry *register_class_Polyspec_Orm_ModelRestoreOrCreateCallback(void)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm", "ModelRestoreOrCreateCallback", class_Polyspec_Orm_ModelRestoreOrCreateCallback_methods);
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL);
+
+	zval property_model_default_value;
+	ZVAL_UNDEF(&property_model_default_value);
+	zend_string *property_model_name = zend_string_init("model", sizeof("model") - 1, 1);
+	zend_string *property_model_class_Polyspec_Orm_Model = zend_string_init("Polyspec\\Orm\\Model", sizeof("Polyspec\\Orm\\Model")-1, 1);
+	zend_declare_typed_property(class_entry, property_model_name, &property_model_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_model_class_Polyspec_Orm_Model, 0, 0));
+	zend_string_release(property_model_name);
+
+	zval property_row_default_value;
+	ZVAL_NULL(&property_row_default_value);
+	zend_string *property_row_name = zend_string_init("row", sizeof("row") - 1, 1);
+	zend_string *property_row_class_Polyspec_Orm_Model = zend_string_init("Polyspec\\Orm\\Model", sizeof("Polyspec\\Orm\\Model")-1, 1);
+	zend_declare_typed_property(class_entry, property_row_name, &property_row_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_row_class_Polyspec_Orm_Model, 0, MAY_BE_NULL));
+	zend_string_release(property_row_name);
+
+	return class_entry;
+}
+
+static zend_class_entry *register_class_Polyspec_Orm_ModelDeleteCallback(void)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm", "ModelDeleteCallback", class_Polyspec_Orm_ModelDeleteCallback_methods);
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL);
+
+	zval property_model_default_value;
+	ZVAL_UNDEF(&property_model_default_value);
+	zend_string *property_model_name = zend_string_init("model", sizeof("model") - 1, 1);
+	zend_string *property_model_class_Polyspec_Orm_Model = zend_string_init("Polyspec\\Orm\\Model", sizeof("Polyspec\\Orm\\Model")-1, 1);
+	zend_declare_typed_property(class_entry, property_model_name, &property_model_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_model_class_Polyspec_Orm_Model, 0, 0));
+	zend_string_release(property_model_name);
+
+	return class_entry;
+}
+
+static zend_class_entry *register_class_Polyspec_Orm_Frame(void)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm", "Frame", class_Polyspec_Orm_Frame_methods);
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL);
+
+	zval property_paths_default_value;
+	ZVAL_EMPTY_ARRAY(&property_paths_default_value);
+	zend_string *property_paths_name = zend_string_init("paths", sizeof("paths") - 1, 1);
+	zend_declare_typed_property(class_entry, property_paths_name, &property_paths_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string_release(property_paths_name);
+
+	zval property_parents_default_value;
+	ZVAL_EMPTY_ARRAY(&property_parents_default_value);
+	zend_string *property_parents_name = zend_string_init("parents", sizeof("parents") - 1, 1);
+	zend_declare_typed_property(class_entry, property_parents_name, &property_parents_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string_release(property_parents_name);
+
+	zval property_placed_default_value;
+	ZVAL_EMPTY_ARRAY(&property_placed_default_value);
+	zend_string *property_placed_name = zend_string_init("placed", sizeof("placed") - 1, 1);
+	zend_declare_typed_property(class_entry, property_placed_name, &property_placed_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string_release(property_placed_name);
+
+	zval property_rootId_default_value;
+	ZVAL_UNDEF(&property_rootId_default_value);
+	zend_string *property_rootId_name = zend_string_init("rootId", sizeof("rootId") - 1, 1);
+	zend_declare_typed_property(class_entry, property_rootId_name, &property_rootId_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_LONG));
+	zend_string_release(property_rootId_name);
+
+	zval property_root_default_value;
+	ZVAL_UNDEF(&property_root_default_value);
+	zend_string *property_root_name = zend_string_init("root", sizeof("root") - 1, 1);
+	zend_string *property_root_class_Polyspec_Orm_Model = zend_string_init("Polyspec\\Orm\\Model", sizeof("Polyspec\\Orm\\Model")-1, 1);
+	zend_declare_typed_property(class_entry, property_root_name, &property_root_default_value, ZEND_ACC_PRIVATE|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_root_class_Polyspec_Orm_Model, 0, 0));
+	zend_string_release(property_root_name);
+
+	zval property_outer_default_value;
+	ZVAL_UNDEF(&property_outer_default_value);
+	zend_string *property_outer_name = zend_string_init("outer", sizeof("outer") - 1, 1);
+	zend_string *property_outer_class_Polyspec_Orm_Model = zend_string_init("Polyspec\\Orm\\Model", sizeof("Polyspec\\Orm\\Model")-1, 1);
+	zend_declare_typed_property(class_entry, property_outer_name, &property_outer_default_value, ZEND_ACC_PRIVATE|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_outer_class_Polyspec_Orm_Model, 0, MAY_BE_NULL));
+	zend_string_release(property_outer_name);
+
+	return class_entry;
+}
+
+static zend_class_entry *register_class_Polyspec_Orm_Assembly(void)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm", "Assembly", class_Polyspec_Orm_Assembly_methods);
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL);
+
+	zval property_made_default_value;
+	ZVAL_EMPTY_ARRAY(&property_made_default_value);
+	zend_string *property_made_name = zend_string_init("made", sizeof("made") - 1, 1);
+	zend_declare_typed_property(class_entry, property_made_name, &property_made_default_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string_release(property_made_name);
+
+	zval property_zone_default_value;
+	ZVAL_UNDEF(&property_zone_default_value);
+	zend_string *property_zone_name = zend_string_init("zone", sizeof("zone") - 1, 1);
+	zend_string *property_zone_class_DateTimeZone = zend_string_init("DateTimeZone", sizeof("DateTimeZone")-1, 1);
+	zend_declare_typed_property(class_entry, property_zone_name, &property_zone_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_zone_class_DateTimeZone, 0, 0));
+	zend_string_release(property_zone_name);
+
+	zval property_markdown_default_value;
+	ZVAL_UNDEF(&property_markdown_default_value);
+	zend_string *property_markdown_name = zend_string_init("markdown", sizeof("markdown") - 1, 1);
+	zend_declare_typed_property(class_entry, property_markdown_name, &property_markdown_default_value, ZEND_ACC_PRIVATE|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_BOOL));
+	zend_string_release(property_markdown_name);
+
+	zval property_db_default_value;
+	ZVAL_UNDEF(&property_db_default_value);
+	zend_string *property_db_name = zend_string_init("db", sizeof("db") - 1, 1);
+	zend_string *property_db_class_Polyspec_Orm_Db = zend_string_init("Polyspec\\Orm\\Db", sizeof("Polyspec\\Orm\\Db")-1, 1);
+	zend_declare_typed_property(class_entry, property_db_name, &property_db_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_db_class_Polyspec_Orm_Db, 0, 0));
+	zend_string_release(property_db_name);
+
+	zval property_conn_default_value;
+	ZVAL_UNDEF(&property_conn_default_value);
+	zend_string *property_conn_name = zend_string_init("conn", sizeof("conn") - 1, 1);
+	zend_string *property_conn_class_Polyspec_Orm_Db = zend_string_init("Polyspec\\Orm\\Db", sizeof("Polyspec\\Orm\\Db")-1, 1);
+	zend_declare_typed_property(class_entry, property_conn_name, &property_conn_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_conn_class_Polyspec_Orm_Db, 0, MAY_BE_NULL));
+	zend_string_release(property_conn_name);
+
+	zval property_result_default_value;
+	ZVAL_UNDEF(&property_result_default_value);
+	zend_string *property_result_name = zend_string_init("result", sizeof("result") - 1, 1);
+	zend_declare_typed_property(class_entry, property_result_name, &property_result_default_value, ZEND_ACC_PRIVATE|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string_release(property_result_name);
+
+	zval property_track_default_value;
+	ZVAL_UNDEF(&property_track_default_value);
+	zend_string *property_track_name = zend_string_init("track", sizeof("track") - 1, 1);
+	zend_declare_typed_property(class_entry, property_track_name, &property_track_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_BOOL));
+	zend_string_release(property_track_name);
+
+	return class_entry;
+}
+
+static zend_class_entry *register_class_Polyspec_Orm_GroupRow(zend_class_entry *class_entry_JsonSerializable)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm", "GroupRow", class_Polyspec_Orm_GroupRow_methods);
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
+	zend_class_implements(class_entry, 1, class_entry_JsonSerializable);
+
+	zval property_values_default_value;
+	ZVAL_UNDEF(&property_values_default_value);
+	zend_string *property_values_name = zend_string_init("values", sizeof("values") - 1, 1);
+	zend_declare_typed_property(class_entry, property_values_name, &property_values_default_value, ZEND_ACC_PRIVATE|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string_release(property_values_name);
+
+	zval property_count_default_value;
+	ZVAL_UNDEF(&property_count_default_value);
+	zend_string *property_count_name = zend_string_init("count", sizeof("count") - 1, 1);
+	zend_declare_typed_property(class_entry, property_count_name, &property_count_default_value, ZEND_ACC_PRIVATE|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_LONG));
+	zend_string_release(property_count_name);
+
+	return class_entry;
+}
+
+static zend_class_entry *register_class_Polyspec_Orm_GroupRows(zend_class_entry *class_entry_Countable, zend_class_entry *class_entry_IteratorAggregate, zend_class_entry *class_entry_JsonSerializable)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm", "GroupRows", class_Polyspec_Orm_GroupRows_methods);
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
+	zend_class_implements(class_entry, 3, class_entry_Countable, class_entry_IteratorAggregate, class_entry_JsonSerializable);
+
+	zval property_rows_default_value;
+	ZVAL_UNDEF(&property_rows_default_value);
+	zend_string *property_rows_name = zend_string_init("rows", sizeof("rows") - 1, 1);
+	zend_declare_typed_property(class_entry, property_rows_name, &property_rows_default_value, ZEND_ACC_PRIVATE|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string_release(property_rows_name);
+
+	return class_entry;
+}
+
+static zend_class_entry *register_class_Polyspec_Orm_GroupRowsIterator(zend_class_entry *class_entry_Iterator)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Polyspec\\Orm", "GroupRowsIterator", class_Polyspec_Orm_GroupRowsIterator_methods);
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL);
+	zend_class_implements(class_entry, 1, class_entry_Iterator);
 
 	return class_entry;
 }

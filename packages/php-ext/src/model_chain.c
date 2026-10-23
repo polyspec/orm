@@ -1,51 +1,55 @@
-/*
- * The condition chain of a Polyspec\Orm\Model in C (T182-6, group 2); see model_chain.h.
- */
+/* Model query-chain state helpers backed by declared private Model properties. */
 #include "model_chain.h"
 
-/* The pending connector of the where state, as its string value; the state is never null (model_state_init sets it). */
-static zend_string *where_pending(model_state *s)
+static zval *where_items(model_state *object)
 {
-    zval *pending = zend_hash_str_find(Z_ARRVAL(s->where), "pending", sizeof("pending") - 1);
-    return Z_STR_P(pending);
+    zval *where = model_state_property(object, "where");
+    if (where == NULL || Z_TYPE_P(where) != IS_ARRAY) return NULL;
+    return zend_hash_str_find(Z_ARRVAL_P(where), "items", sizeof("items") - 1);
 }
 
-static HashTable *where_items_table(model_state *s)
+static zval *where_pending(model_state *object)
 {
-    zval *items = zend_hash_str_find(Z_ARRVAL(s->where), "items", sizeof("items") - 1);
-    return Z_ARRVAL_P(items);
+    zval *where = model_state_property(object, "where");
+    if (where == NULL || Z_TYPE_P(where) != IS_ARRAY) return NULL;
+    return zend_hash_str_find(Z_ARRVAL_P(where), "pending", sizeof("pending") - 1);
 }
 
-/* Sets the pending connector of the where state to `conn`, which is '' for none. */
-static void set_pending(model_state *s, const char *conn, size_t conn_len)
+static void set_pending(model_state *object, const char *value, size_t length)
 {
-    zval *pending = zend_hash_str_find(Z_ARRVAL(s->where), "pending", sizeof("pending") - 1);
-    zval_ptr_dtor(pending);
-    ZVAL_STRINGL(pending, conn, conn_len);
+    zval *where = model_state_property(object, "where");
+    if (where == NULL || Z_TYPE_P(where) != IS_ARRAY) return;
+    SEPARATE_ARRAY(where);
+    zval replacement;
+    ZVAL_STRINGL(&replacement, value, length);
+    zend_hash_str_update(Z_ARRVAL_P(where), "pending", sizeof("pending") - 1, &replacement);
 }
 
-bool model_chain_add_item(model_state *s, const char *conn, size_t conn_len, zval *node, const char **error)
+bool model_chain_add_item(model_state *object, const char *conn, size_t conn_len, zval *node, const char **error)
 {
-    zend_string *pending = where_pending(s);
-    HashTable *items = where_items_table(s);
+    zval *pending = where_pending(object);
+    zval *items = where_items(object);
+    if (pending == NULL || Z_TYPE_P(pending) != IS_STRING || items == NULL || Z_TYPE_P(items) != IS_ARRAY) {
+        *error = "where state has an invalid shape";
+        return false;
+    }
     const char *use = conn;
     size_t use_len = conn_len;
-
-    if (ZSTR_LEN(pending) != 0 && conn_len != 0) {
+    if (Z_STRLEN_P(pending) != 0 && conn_len != 0) {
         *error = "connector follows connector";
         return false;
     }
-    if (ZSTR_LEN(pending) != 0) {
-        use = ZSTR_VAL(pending);
-        use_len = ZSTR_LEN(pending);
-        set_pending(s, "", 0);
+    if (Z_STRLEN_P(pending) != 0) {
+        use = Z_STRVAL_P(pending);
+        use_len = Z_STRLEN_P(pending);
+        set_pending(object, "", 0);
+        items = where_items(object);
     }
-    /* A connector at the start has nothing to join, so it is dropped: the first condition or group carries no AND or OR. */
-    if (zend_hash_num_elements(items) == 0) {
+    if (zend_hash_num_elements(Z_ARRVAL_P(items)) == 0) {
         use = "";
         use_len = 0;
     }
-    if (zend_hash_num_elements(items) != 0 && use_len == 0) {
+    if (zend_hash_num_elements(Z_ARRVAL_P(items)) != 0 && use_len == 0) {
         *error = "condition without and/or after another condition";
         return false;
     }
@@ -53,26 +57,34 @@ bool model_chain_add_item(model_state *s, const char *conn, size_t conn_len, zva
         *error = "a chain item is an array";
         return false;
     }
+    zval *where = model_state_property(object, "where");
+    SEPARATE_ARRAY(where);
+    items = where_items(object);
+    SEPARATE_ARRAY(items);
     add_assoc_stringl(node, "conn", use, use_len);
-    if (zend_hash_next_index_insert(items, node) == NULL) {
+    if (zend_hash_next_index_insert(Z_ARRVAL_P(items), node) == NULL) {
         *error = "the where items are full";
         return false;
     }
     return true;
 }
 
-bool model_chain_pending(model_state *s, const char *conn, size_t conn_len, const char **error)
+bool model_chain_pending(model_state *object, const char *conn, size_t conn_len, const char **error)
 {
-    if (ZSTR_LEN(where_pending(s)) != 0) {
+    zval *pending = where_pending(object);
+    if (pending == NULL || Z_TYPE_P(pending) != IS_STRING) {
+        *error = "where pending state has an invalid shape";
+        return false;
+    }
+    if (Z_STRLEN_P(pending) != 0) {
         *error = "connector follows connector";
         return false;
     }
-    set_pending(s, conn, conn_len);
-    return true;
+    set_pending(object, conn, conn_len);
+    return EG(exception) == NULL;
 }
 
-/* Model::limit: keeps the offset and the count, and fails unless the offset is not negative and the count is positive. */
-bool model_chain_limit(model_state *s, zend_long offset, zend_long count, const char **error)
+bool model_chain_limit(model_state *object, zend_long offset, zend_long count, const char **error)
 {
     if (offset < 0 || count < 1) {
         *error = "limit requires a non-negative offset and a positive count";
@@ -82,77 +94,90 @@ bool model_chain_limit(model_state *s, zend_long offset, zend_long count, const 
     array_init(&limit);
     add_assoc_long(&limit, "offset", offset);
     add_assoc_long(&limit, "count", count);
-    model_state_free_limit(s);
-    ZVAL_COPY_VALUE(&s->limit, &limit);
-    return true;
+    model_state_property_set(object, "limit", &limit);
+    zval_ptr_dtor(&limit);
+    return EG(exception) == NULL;
 }
 
-/* Model::orderByRandom: appends the random ordering to the order list. */
-void model_chain_order_random(model_state *s)
+static void append_to_array(model_state *object, const char *field, zval *value)
+{
+    zval *array = model_state_property(object, field);
+    if (array == NULL || Z_TYPE_P(array) != IS_ARRAY) return;
+    SEPARATE_ARRAY(array);
+    zend_hash_next_index_insert(Z_ARRVAL_P(array), value);
+}
+
+void model_chain_order_random(model_state *object)
 {
     zval random;
     array_init(&random);
     add_assoc_bool(&random, "random", true);
-    zend_hash_next_index_insert(Z_ARRVAL(s->order), &random);
+    append_to_array(object, "order", &random);
 }
 
-/* Model::addAllColumns and Model::removeAllColumns: set the column mode, 'all' or 'none'. */
-void model_chain_column_mode(model_state *s, const char *mode, size_t mode_len)
+void model_chain_column_mode(model_state *object, const char *mode, size_t mode_len)
 {
-    model_state_free_column_mode(s);
-    s->column_mode = zend_string_init(mode, mode_len, 0);
+    zval value;
+    ZVAL_STRINGL(&value, mode, mode_len);
+    model_state_property_set(object, "column_mode", &value);
+    zval_ptr_dtor(&value);
 }
 
-void model_chain_parent_node(model_state *s)
+void model_chain_parent_node(model_state *object)
 {
-    s->parent_node = true;
+    zval value;
+    ZVAL_TRUE(&value);
+    model_state_property_set(object, "parent_node", &value);
 }
 
-bool model_chain_group_limit(model_state *s, zend_long count, const char **error)
+bool model_chain_group_limit(model_state *object, zend_long count, const char **error)
 {
     if (count < 1) {
         *error = "groupLimit requires a positive count";
         return false;
     }
-    s->group_limit = count;
-    return true;
+    zval value;
+    ZVAL_LONG(&value, count);
+    model_state_property_set(object, "group_limit", &value);
+    return EG(exception) == NULL;
 }
 
-void model_chain_expect_revision(model_state *s, const char *column, size_t column_len, zend_long revision)
+void model_chain_expect_revision(model_state *object, const char *column, size_t column_len, zend_long revision)
 {
     zval pair;
     array_init(&pair);
     add_next_index_stringl(&pair, column, column_len);
     add_next_index_long(&pair, revision);
-    model_state_free_expected_revision(s);
-    ZVAL_COPY_VALUE(&s->expected_revision, &pair);
+    model_state_property_set(object, "expected_revision", &pair);
+    zval_ptr_dtor(&pair);
 }
 
-void model_chain_delete_lock(model_state *s)
+void model_chain_delete_lock(model_state *object)
 {
-    s->delete_lock = true;
+    zval value;
+    ZVAL_TRUE(&value);
+    model_state_property_set(object, "delete_lock", &value);
 }
 
-void model_chain_lock(model_state *s, const char *mode, size_t mode_len)
+void model_chain_lock(model_state *object, const char *mode, size_t mode_len)
 {
-    model_state_free_lock(s);
-    s->lock = zend_string_init(mode, mode_len, 0);
+    zval value;
+    ZVAL_STRINGL(&value, mode, mode_len);
+    model_state_property_set(object, "lock", &value);
+    zval_ptr_dtor(&value);
 }
 
-void model_chain_fetch_key(model_state *s, zval *fn)
+void model_chain_fetch_key(model_state *object, zval *fn)
 {
-    model_state_free_fetch_key(s);
-    ZVAL_COPY(&s->fetch_key, fn);
+    model_state_property_set(object, "fetch_key", fn);
 }
 
-void model_chain_fetch_value(model_state *s, zval *fn)
+void model_chain_fetch_value(model_state *object, zval *fn)
 {
-    model_state_free_fetch_value(s);
-    ZVAL_COPY(&s->fetch_value, fn);
+    model_state_property_set(object, "fetch_value", fn);
 }
 
-void model_chain_duplication(model_state *s, zval *model)
+void model_chain_duplication(model_state *object, zval *model)
 {
-    model_state_free_duplication(s);
-    ZVAL_COPY(&s->duplication, model);
+    model_state_property_set(object, "duplication", model);
 }

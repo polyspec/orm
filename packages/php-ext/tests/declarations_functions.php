@@ -17,12 +17,27 @@ const CLIENT_CLASSES = [
     'Polyspec\\Orm\\Collection',
     'Polyspec\\Orm\\StyledValue',
     'Polyspec\\Orm\\Page',
-    'Polyspec\\Orm\\Func'
+    'Polyspec\\Orm\\Func',
+    'Polyspec\\Orm\\Model',
+    'Polyspec\\Orm\\Chain',
+    'Polyspec\\Orm\\Registry',
+    'Polyspec\\Orm\\Schema',
+    'Polyspec\\Orm\\RuntimeModel',
+    'Polyspec\\Orm\\GroupRow',
+    'Polyspec\\Orm\\GroupRows'
 ];
 
 const INTERNAL_CLASSES = [
     'Polyspec\\Orm\\CollectionIterator',
     'Polyspec\\Orm\\CollectionDeleteCallback',
+    'Polyspec\\Orm\\ModelMetadata',
+    'Polyspec\\Orm\\ModelCreatesCallback',
+    'Polyspec\\Orm\\ModelRestoreHook',
+    'Polyspec\\Orm\\ModelRestoreOrCreateCallback',
+    'Polyspec\\Orm\\ModelDeleteCallback',
+    'Polyspec\\Orm\\Frame',
+    'Polyspec\\Orm\\Assembly',
+    'Polyspec\\Orm\\GroupRowsIterator',
     'Polyspec\\Orm\\Request',
     'Polyspec\\Orm\\PendingTime'
 ];

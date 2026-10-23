@@ -18,6 +18,16 @@
 #include "collection.h"
 #include "polyspec_orm_arginfo.h"
 #include "model_types.h"
+#include "model_native_methods.h"
+#include "model_output.h"
+#include "model_query.h"
+#include "model_dsl.h"
+#include "model_read.h"
+#include "model_write.h"
+#include "model_assembly.h"
+#include "runtime_model.h"
+#include "chain_native.h"
+#include "registry_native.h"
 
 /* Holds one method's arena. */
 #define ENTER() dbs_arena arena_; dbs_arena *saved_; dbs_enter(&arena_, &saved_)
@@ -2437,6 +2447,64 @@ static void array_constant(zend_class_entry *ce, const char *name, const char *c
     zend_declare_typed_class_constant(ce, cname, &value, ZEND_ACC_PUBLIC, NULL, (zend_type)ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
 }
 
+static void string_map_constant(zend_class_entry *ce, const char *name, const char *const *keys,
+    const char *const *values, size_t n, uint32_t flags)
+{
+    HashTable *ht = pemalloc(sizeof(HashTable), 1);
+    zend_hash_init(ht, (uint32_t)n, NULL, NULL, 1);
+    for (size_t i = 0; i < n; i++) {
+        zval value;
+        ZVAL_INTERNED_STR(&value, zend_string_init_interned(values[i], strlen(values[i]), 1));
+        zend_hash_add_new(ht, zend_string_init_interned(keys[i], strlen(keys[i]), 1), &value);
+    }
+    GC_ADD_FLAGS(ht, IS_ARRAY_IMMUTABLE);
+    zval value;
+    ZVAL_ARR(&value, ht);
+    Z_TYPE_FLAGS(value) = 0;
+    zend_string *constant_name = zend_string_init_interned(name, strlen(name), 1);
+    zend_declare_typed_class_constant(ce, constant_name, &value, flags, NULL,
+        (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+}
+
+static void model_where_default(zend_class_entry *ce)
+{
+    uint32_t index = (uint32_t)ce->default_properties_count;
+    for (uint32_t i = 0; i < (uint32_t)ce->default_properties_count; i++) {
+        zend_property_info *info = ce->properties_info_table[i];
+        const char *class_name, *property_name;
+        if (info != NULL && info->ce == ce &&
+            zend_unmangle_property_name(info->name, &class_name, &property_name) == SUCCESS &&
+            strcmp(property_name, "where") == 0) {
+            index = i;
+            break;
+        }
+    }
+    if (index == (uint32_t)ce->default_properties_count) {
+        zend_error(E_CORE_ERROR, "Polyspec\\Orm\\Model::$where property metadata is missing");
+        return;
+    }
+    if (ce->default_properties_table == NULL) {
+        zend_error(E_CORE_ERROR, "Polyspec\\Orm\\Model default property table is missing");
+        return;
+    }
+    HashTable *items = pemalloc(sizeof(HashTable), 1);
+    zend_hash_init(items, 0, NULL, NULL, 1);
+    GC_ADD_FLAGS(items, IS_ARRAY_IMMUTABLE);
+    zval items_value;
+    ZVAL_ARR(&items_value, items);
+    Z_TYPE_FLAGS(items_value) = 0;
+
+    HashTable *where = pemalloc(sizeof(HashTable), 1);
+    zend_hash_init(where, 2, NULL, NULL, 1);
+    zend_hash_add_new(where, zend_string_init_interned("items", sizeof("items") - 1, 1), &items_value);
+    zval pending;
+    ZVAL_EMPTY_STRING(&pending);
+    zend_hash_add_new(where, zend_string_init_interned("pending", sizeof("pending") - 1, 1), &pending);
+    GC_ADD_FLAGS(where, IS_ARRAY_IMMUTABLE);
+    ZVAL_ARR(&ce->default_properties_table[index], where);
+    Z_TYPE_FLAGS(ce->default_properties_table[index]) = 0;
+}
+
 #define COUNT(a) (sizeof(a) / sizeof((a)[0]))
 
 static PHP_MINIT_FUNCTION(polyspec_orm)
@@ -2456,6 +2524,44 @@ static PHP_MINIT_FUNCTION(polyspec_orm)
     polyspec_page_ce = register_class_Polyspec_Orm_Page();
     polyspec_func_ce = register_class_Polyspec_Orm_Func();
     polyspec_pending_time_ce = register_class_Polyspec_Orm_PendingTime();
+    zend_class_entry *runtime_model_ce = register_class_Polyspec_Orm_RuntimeModel();
+    static const char *const styled_stages[] = {"ordered_json", "serialize", "yaml", "gz", "base64"};
+    static const char *const host_stages[] = {"aes", "hex", "ip"};
+    array_constant(runtime_model_ce, "STYLED_STAGES", styled_stages, NULL, COUNT(styled_stages));
+    array_constant(runtime_model_ce, "HOST_STAGES", host_stages, NULL, COUNT(host_stages));
+    polyspec_runtime_model_register(runtime_model_ce);
+    zend_class_entry *registry_ce = register_class_Polyspec_Orm_Registry();
+    zend_class_entry *schema_ce = register_class_Polyspec_Orm_Schema();
+    polyspec_registry_schema_register(registry_ce, schema_ce);
+    zend_class_entry *model_metadata_ce = register_class_Polyspec_Orm_ModelMetadata();
+    zend_class_entry *model_ce = register_class_Polyspec_Orm_Model(php_json_serializable_ce, model_metadata_ce);
+    model_where_default(model_ce);
+    model_native_init(model_ce);
+    zend_class_entry *chain_ce = register_class_Polyspec_Orm_Chain();
+    static const char *const leading_keys[] = {"Ne", "Eq", "Gt", "Lt", "Ge", "Le", "Lk", "Lb", "Between"};
+    static const char *const leading_values[] = {"ne", "", "gt", "lt", "ge", "le", "lk", "lb", "between"};
+    static const char *const compare_keys[] = {"Eq", "Ne", "Gt", "Lt", "Ge", "Le"};
+    static const char *const compare_values[] = {"", "ne", "gt", "lt", "ge", "le"};
+    static const char *const engine_keys[] = {"", "ne", "gt", "lt", "ge", "le", "lk", "lb", "between"};
+    static const char *const engine_values[] = {"eq", "not_eq", "gt", "lt", "gte", "lte", "contains", "contains_binary", "between"};
+    string_map_constant(chain_ce, "LEADING", leading_keys, leading_values, COUNT(leading_keys), ZEND_ACC_PRIVATE);
+    string_map_constant(chain_ce, "COMPARE", compare_keys, compare_values, COUNT(compare_keys), ZEND_ACC_PRIVATE);
+    string_map_constant(chain_ce, "ENGINE_OP", engine_keys, engine_values, COUNT(engine_keys), ZEND_ACC_PUBLIC);
+    polyspec_chain_register(chain_ce);
+    static const char *const operator_keys[] = {"", "ne", "gt", "lt", "ge", "le", "lk", "lb"};
+    static const char *const operator_values[] = {"eq", "not_eq", "gt", "lt", "gte", "lte", "contains", "contains_binary"};
+    string_map_constant(model_ce, "OPERATORS", operator_keys, operator_values, COUNT(operator_keys), ZEND_ACC_PRIVATE);
+    zend_class_entry *creates_ce = register_class_Polyspec_Orm_ModelCreatesCallback();
+    zend_class_entry *restore_ce = register_class_Polyspec_Orm_ModelRestoreHook();
+    zend_class_entry *restore_or_create_ce = register_class_Polyspec_Orm_ModelRestoreOrCreateCallback();
+    zend_class_entry *delete_ce = register_class_Polyspec_Orm_ModelDeleteCallback();
+    model_write_init(creates_ce, restore_ce, restore_or_create_ce, delete_ce);
+    zend_class_entry *frame_ce = register_class_Polyspec_Orm_Frame();
+    zend_class_entry *assembly_ce = register_class_Polyspec_Orm_Assembly();
+    zend_class_entry *group_row_ce = register_class_Polyspec_Orm_GroupRow(php_json_serializable_ce);
+    zend_class_entry *group_rows_ce = register_class_Polyspec_Orm_GroupRows(zend_ce_countable, zend_ce_aggregate, php_json_serializable_ce);
+    zend_class_entry *group_rows_iterator_ce = register_class_Polyspec_Orm_GroupRowsIterator(zend_ce_iterator);
+    polyspec_model_assembly_register(frame_ce, assembly_ce, group_row_ce, group_rows_ce, group_rows_iterator_ce);
     polyspec_styled_value_ce->ce_flags |= ZEND_ACC_NO_DYNAMIC_PROPERTIES;
     polyspec_page_ce->ce_flags |= ZEND_ACC_NO_DYNAMIC_PROPERTIES;
     polyspec_func_ce->ce_flags |= ZEND_ACC_NO_DYNAMIC_PROPERTIES;

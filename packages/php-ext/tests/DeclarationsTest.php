@@ -123,6 +123,21 @@ const ARRAY_CONSTANTS = [
     'Polyspec\\Orm\\Dbspec\\Setting::STORE_ARGUMENTS',
     'Polyspec\\Orm\\Dbspec\\PlanApply::EFFECT_QUERIES',
     'Polyspec\\Orm\\Db::DRIVERS',
+    'Polyspec\\Orm\\Chain::ENGINE_OP',
+    'Polyspec\\Orm\\RuntimeModel::STYLED_STAGES',
+    'Polyspec\\Orm\\RuntimeModel::HOST_STAGES',
+];
+
+const NATIVE_PRIVATE_CONSTANTS = [
+    'Polyspec\\Orm\\Chain::LEADING' => [
+        'Ne' => 'ne', 'Eq' => '', 'Gt' => 'gt', 'Lt' => 'lt', 'Ge' => 'ge', 'Le' => 'le', 'Lk' => 'lk',
+        'Lb' => 'lb', 'Between' => 'between',
+    ],
+    'Polyspec\\Orm\\Chain::COMPARE' => ['Eq' => '', 'Ne' => 'ne', 'Gt' => 'gt', 'Lt' => 'lt', 'Ge' => 'ge', 'Le' => 'le'],
+    'Polyspec\\Orm\\Model::OPERATORS' => [
+        '' => 'eq', 'ne' => 'not_eq', 'gt' => 'gt', 'lt' => 'lt', 'ge' => 'gte', 'le' => 'lte',
+        'lk' => 'contains', 'lb' => 'contains_binary',
+    ],
 ];
 
 // Each case runs child PHP processes.
@@ -178,6 +193,21 @@ final class DeclarationsTest extends TestCase
             }
             $stub[$key] = $native[$key] ?? '(not declared)';
         }
+        foreach (NATIVE_PRIVATE_CONSTANTS as $key => $value) {
+            $expected = 'private const = ' . json_encode($value, JSON_THROW_ON_ERROR);
+            if (($native[$key] ?? '(not declared)') !== $expected || isset($stub[$key])) {
+                $differences[] = "$key: expected source private constant $expected, extension "
+                    . ($native[$key] ?? '(not declared)') . ', stub ' . ($stub[$key] ?? '(not declared)');
+            }
+            $stub[$key] = $expected;
+        }
+        $where = 'Polyspec\\Orm\\Model::$where';
+        $whereDefault = 'private array = ' . json_encode(['items' => [], 'pending' => ''], JSON_THROW_ON_ERROR);
+        if (($native[$where] ?? '(not declared)') !== $whereDefault || ($stub[$where] ?? '(not declared)') !== 'private array') {
+            $differences[] = "$where: expected native-only source default $whereDefault, extension "
+                . ($native[$where] ?? '(not declared)') . ', stub ' . ($stub[$where] ?? '(not declared)');
+        }
+        $stub[$where] = $whereDefault;
         foreach (array_unique([...array_keys($native), ...array_keys($stub)]) as $key) {
             $want = $stub[$key] ?? '(not declared)';
             $got = $native[$key] ?? '(not declared)';
@@ -228,7 +258,7 @@ final class DeclarationsTest extends TestCase
             ) . '; extension ' . implode(', ', $nativeOrder);
         }
         preg_match_all(
-            '/@internal\n \*\/\n(?:final |abstract )?(?:readonly )?class (\w+)/',
+            '/\/\*\*(?:(?!\*\/)[\s\S])*@internal(?:(?!\*\/)[\s\S])*\*\/\s*(?:final |abstract )?(?:readonly )?(?:class|interface) (\w+)/',
             file_get_contents(dirname(__DIR__) . '/src/polyspec_orm.stub.php'),
             $internal
         );

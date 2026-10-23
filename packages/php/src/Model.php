@@ -4,12 +4,18 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm;
 
+/** @internal The abstract static metadata contract implemented by generated models. */
+interface ModelMetadata
+{
+    public static function meta(): array;
+}
+
 /**
  * A model is both the query under construction and a loaded row. Generated
  * classes add typed column getters and setters and the model metadata; every
  * other method name is resolved at call time with the grammar of docs/spec/dsl.md.
  */
-abstract class Model implements \JsonSerializable
+abstract class Model implements \JsonSerializable, ModelMetadata
 {
     private ?Db $conn = null;
     /** the model a group callback stands for */

@@ -1213,3 +1213,370 @@ final class PendingTime
 
     public function __construct(string $text, \DateTimeZone $zone) {}
 }
+
+namespace Polyspec\Orm;
+
+/** Parses model condition, order and relation chains. */
+final class Chain
+{
+    public static function words(string $name): array {}
+    public static function pascal(string $snake): string {}
+    public static function snake(string $pascal): string {}
+    public static function functionColumn(array $col): bool {}
+    public static function parse(string $class, string $name): array {}
+    public static function parseMeta(array $meta, array $schema, string $name): array {}
+    public static function order(string $class, string $name): array {}
+    public static function orderMeta(array $meta, string $name): array {}
+    public static function pair(?array $left, ?array $right, string $name): array {}
+    public static function pairMeta(?array $left, ?array $right, array $schema, string $name): array {}
+    public static function columnName(array $meta, string $pascal): string {}
+    public static function schemaColumnName(string $hash, string $pascal): string {}
+}
+
+final class Registry
+{
+    private static array $texts = [];
+    private static array $externals = [];
+    private static array $models = [];
+    private static array $runtime = [];
+    public static function generated(string $hash, string $text, string $external = ''): void {}
+    public static function schema(Schema $schema): void {}
+    public static function register(string $class): void {}
+    public static function loaded(string $hash): bool {}
+    public static function manifestText(string $hash): string {}
+    public static function model(string $hash): RuntimeModel {}
+    public static function models(string $hash): array {}
+    private static function unloaded(string $hash): OrmException {}
+}
+
+final class Schema
+{
+    public readonly string $manifestText;
+    public readonly string $manifestHash;
+    public readonly string $externalText;
+    public function __construct(string $manifestText, string $manifestHash, string $externalText = '') {}
+    public function verify(): void {}
+    public function documents(): array {}
+}
+/** The native runtime model of the canonical dbspec document set. */
+final class RuntimeModel
+{
+    public readonly string $manifestHash;
+    public readonly string $manifestText;
+    public readonly array $entities;
+    public readonly string $externalText;
+
+    public function __construct(string $manifestHash, string $manifestText, array $entities, string $externalText = '') {}
+
+    /**
+     * @param array $texts
+     * @return array
+     */
+    public static function parse(array $texts): array {}
+    /**
+     * @param array $owned
+     * @param array $external
+     * @return array
+     */
+    public static function parseSet(array $owned, array $external): array {}
+    /** @return list<Dbspec\Document> */
+    public static function loadSet(string $manifestText, string $externalText): array {}
+    /** @return array<string, string> */
+    public static function splitManifest(string $text): array {}
+    /** @return list<Dbspec\Document> */
+    public static function set(string $path): array {}
+    /**
+     * @param array $paths
+     * @param array $external
+     * @return array
+     */
+    public static function files(array $paths, array $external = []): array {}
+    /** @param array $documents */
+    public static function build(array $documents): RuntimeModel {}
+    /** @param array $classes */
+    public static function fromModels(string $manifestHash, string $manifestText, array $classes, string $externalText = ''): RuntimeModel {}
+    public function entity(string $name): ?array {}
+    public static function column(array $entity, string $name): ?array {}
+    public static function styled(array $column): bool {}
+    public static function encrypted(array $column): bool {}
+    public static function numeric(array $column): bool {}
+}
+namespace Polyspec\Orm;
+
+/** Integration reference for the complete extension-owned Model surface. */
+/** @internal The native abstract static metadata contract implemented by generated models. */
+interface ModelMetadata
+{
+    public static function meta(): array;
+}
+
+abstract class Model implements \JsonSerializable, ModelMetadata
+{
+    /** @var int */
+    public const JSON_FLAGS = 4195648;
+
+    private ?Db $conn = null;
+    private ?Model $groupOf = null;
+    private ?\Throwable $error = null;
+
+    private array $where;
+    private ?array $on = null;
+    private array $joins = [];
+    private array $relations = [];
+    private string $columnMode = '';
+    private array $addColumns = [];
+    private array $removeColumns = [];
+    private array $outputs = [];
+    private array $order = [];
+    private array $groupBy = [];
+    private ?array $limit = null;
+    private string $index = '';
+    private string $lock = '';
+    private string $aggFn = '';
+    private string $agg = '';
+
+    private array $matches = [];
+    private string $alias = '';
+    private bool $parentNode = false;
+    private ?array $possible = null;
+    private int $groupLimit = 0;
+    private bool $deleteLock = false;
+    private ?array $expectedRevision = null;
+    private string $keyName = '';
+    private ?\Closure $fetchKey = null;
+    private ?\Closure $fetchValue = null;
+
+    private array $sets = [];
+    private array $news = [];
+    private ?Model $duplication = null;
+
+    private array $values = [];
+    private ?array $row = null;
+
+    public function connect(Db $db): static {}
+    public function __invoke(Db $db): static {}
+    private function fail(string $message, string $code = "CONFIG"): void {}
+    private function subject(): Model {}
+    private function addItem(string $conn, array $node): void {}
+    public function and(mixed ...$args): static {}
+    public function or(mixed ...$args): static {}
+    public function not(\Closure $fn): static {}
+    public function andNot(\Closure $fn): static {}
+    public function orNot(\Closure $fn): static {}
+    private function negated(string $conn, \Closure $fn): static {}
+    private function connector(string $conn, array $args): static {}
+    public function on(\Closure $fn): static {}
+    public function relation(Model $child): static {}
+    public function relations(Model $child): static {}
+    private function addRelation(bool $many, Model $child): static {}
+    public function limit(int $offset, int $count): static {}
+    public function orderByRandom(): static {}
+    public function removeAllColumns(): static {}
+    public function addAllColumns(): static {}
+    public function parentNode(): static {}
+    public function groupLimit(int $count): static {}
+    public function expectRevision(string $column, int $revision): static {}
+    private function revisionGuard(Request $r, bool $update, bool $optimistic): ?string {}
+    public function deleteLock(): static {}
+    public function fetchKey(\Closure $fn): static {}
+    public function fetchValue(\Closure $fn): static {}
+    public function forUpdate(): static {}
+    public function forShare(): static {}
+    public function forUpdateNoWait(): static {}
+    public function forShareNoWait(): static {}
+    public function duplication(Model $model): static {}
+    protected function readColumn(string $column): mixed {}
+    protected function writeColumn(string $column, mixed $value): static {}
+    private function value(string $column): mixed {}
+    private static function resolved(mixed $v): mixed {}
+    private function putSet(string $column, array $spec): void {}
+    private static function columnValue(array $col, mixed $v, \DateTimeZone $zone): mixed {}
+    private static function timeValue(mixed $v, \DateTimeZone $zone): \DateTimeImmutable {}
+    public function __call(string $name, array $args): mixed {}
+    private static function prefixed(string $name, string $prefix): bool {}
+    private static function arity(string $name, array $args, int $count): void {}
+    private function outputName(string $pascal): string {}
+    private function addColumnCall(string $name, string $rest, array $args): static {}
+    private function addJoin(string $kind, string $left, string $right, Model $child): static {}
+    private function named(string $key, string $method): mixed {}
+    private function whereChain(string $conn, array $keys, array $args): void {}
+    private function predicate(array $key, mixed $value, array $rest, bool $single): array {}
+    private function by(array $keys, array $args): static {}
+    private function executor(): array {}
+    private function build(string $kind, Db $db): Request {}
+    private function resultName(bool $many): string {}
+    private function query(Request $r, Frame $f): array {}
+    private function relationIr(bool $many, Request $r): array {}
+    private function columnsIr(Request $r): ?array {}
+    private function subqueryIr(Request $r, Model $outer, bool $scalar): array {}
+    private function groupIr(array $items, Request $r, Frame $f): array {}
+    private function predIr(array $p, Request $r, Frame $f): array {}
+    public function registerJoins(Frame $f, string $prefix): void {}
+    private function newRow(?Db $conn): static {}
+    private function rowShape(array $asm): array {}
+    private function assembleRow(Assembly $a, array $asm, array $vals): static {}
+    private function joinChild(string $name): Model {}
+    private function relationChild(string $name): array {}
+    private function collectionKey(Model $m, array $asm, array $vals): int|string|bool|Bytes|\DateTimeInterface {}
+    private function assemble(Db $db, Request $r, array $plan, array $result): Collection {}
+    private function matchValues(Model $m, string $side): ?array {}
+    private static function matchKey(array $values): string {}
+    private function attachExternal(array $parents, bool $many): void {}
+    private function columnOrExtra(string $name): mixed {}
+    private function load(string $kind): Collection {}
+    public function get(): ?static {}
+    public function gets(): Collection {}
+    public function getsCount(): GroupRows {}
+    private function groupValue(Db $db, array $column, mixed $raw): mixed {}
+    private static function groupInteger(mixed $raw, string $type, string $name): int {}
+    private static function groupFloat(mixed $raw, string $name): float {}
+    public function getCount(): int {}
+    public function getSum(): float {}
+    public function getAvg(): ?float {}
+    private function aggregate(string $fn): ?float {}
+    private static function aggregateNumber(mixed $value): float {}
+    public function getsPage(int $page, int $perPage): Page {}
+    public function getQuery(): array {}
+    private static function manifestHash(): string {}
+    private function writeRequest(string $kind, Db $db): Request {}
+    private function assignIr(Request $r, string $column, array $spec): array {}
+    public static function encodeValue(array $col, mixed $v): mixed {}
+    public function create(): static {}
+    public function creates(array $rows, int $batch): int {}
+    private function keyValues(): array {}
+    private function keyWhere(Request $r, array $keys): void {}
+    private function withAesColumns(): array {}
+    public function update(bool $optimistic = false): static {}
+    public function save(): static {}
+    public function delete(bool $recursive = false): void {}
+    public function deleteRow(bool $recursive): void {}
+    public function restore(): static {}
+    public function restoreOrCreate(): static {}
+    private function restoreStep(): array {}
+    private function restoreKeyValue(Request $r, array $own, string $column): mixed {}
+    public function connection(): ?Db {}
+    private function pairs(): array {}
+    private static function columnArrayValue(string $type, mixed $v): mixed {}
+    private static function sixFractionDigits(string $text): string {}
+    private static function arrayValue(mixed $v): mixed {}
+    public function toArray(): array {}
+    public function toJson(): string {}
+    public static function jsonText(mixed $v): string {}
+    private static function holdsOrderedJson(array $v): bool {}
+    public function jsonSerialize(): mixed {}
+    /** @return void */
+    public function __clone() {}
+
+}
+
+/** @internal Native transaction callback used by Model::creates(). */
+final class ModelCreatesCallback
+{
+    private Model $model;
+    private array $rows;
+    private array $columns;
+    private array $meta;
+    private array $parts;
+    private int $offset = 0;
+    private int $total = 0;
+
+    public function __invoke(): void {}
+}
+
+/** @internal Native write hook used by Model::restoreStep(). */
+final class ModelRestoreHook
+{
+    private Model $model;
+    private array $own;
+    private array $keys = [];
+    private array $args = [];
+
+    public function __invoke(Request $hooked): void {}
+}
+
+/** @internal Native transaction callback used by Model::restoreOrCreate(). */
+final class ModelRestoreOrCreateCallback
+{
+    private Model $model;
+    private ?Model $row = null;
+
+    public function __invoke(): void {}
+}
+
+/** @internal Native transaction callback used by recursive Model::delete(). */
+final class ModelDeleteCallback
+{
+    private Model $model;
+
+    public function __invoke(): void {}
+}
+/** @internal The join paths of one statement and its nested models. */
+final class Frame
+{
+    private array $paths = [];
+    private array $parents = [];
+    private array $placed = [];
+    private int $rootId;
+
+    private readonly Model $root;
+    private readonly ?Model $outer;
+    public function __construct(Model $root, ?Model $outer) {}
+    public function add(Model $child, string $path, Model $parent): void {}
+    public function path(Model $m): string {}
+    public function joined(Model $m): bool {}
+    public function parentOf(Model $m): ?Model {}
+    public function place(Model $m): bool {}
+    public function pathOf(Model $m): string {}
+}
+
+
+/** @internal Assembles rows from a plan result. */
+final class Assembly
+{
+    public array $made = [];
+    public readonly \DateTimeZone $zone;
+    private readonly bool $markdown;
+    public readonly Db $db;
+    public readonly ?Db $conn;
+    private readonly array $result;
+    public readonly bool $track;
+
+    public function __construct(Db $db, ?Db $conn, array $result, bool $track = false) {}
+    public function joinRow(array $ch, array $parent): ?array {}
+    public function relationAssemble(array $ch): array {}
+    public function related(array $ch, array $parent): array {}
+}
+
+/** One grouped result row with selected values and a checked row count. */
+final readonly class GroupRow implements \JsonSerializable
+{
+    private array $values;
+    private int $count;
+    public function __construct(array $entries) {}
+    public function count(): int {}
+    public function value(string $name): mixed {}
+    public function toArray(): array {}
+    public function jsonSerialize(): array {}
+}
+
+/** Grouped values in result order, without partial model rows. */
+final readonly class GroupRows implements \Countable, \IteratorAggregate, \JsonSerializable
+{
+    private array $rows;
+    public function __construct(array $rows) {}
+    public function count(): int {}
+    public function all(): array {}
+    public function getIterator(): \Traversable {}
+    public function toArray(): array {}
+    public function jsonSerialize(): array {}
+}
+
+/** @internal The deferred snapshot iterator used by GroupRows. */
+final class GroupRowsIterator implements \Iterator
+{
+    public function current(): mixed {}
+    public function key(): mixed {}
+    public function next(): void {}
+    public function rewind(): void {}
+    public function valid(): bool {}
+}
