@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 0150915f7d25a805f24177f99cfc2a1da6ca884d4f2e0aaef8db798c19ade801 -->
+<!-- source-sha256: 11b5fc5e23b95b86587f5ccd39d4ce09d23a41c5e09d4c1efcf7d49649a9f64c -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -171,7 +171,7 @@
 | KSTD-5-57-11 | orm 테스트 target revision, statement_events의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests revision.rs, statement_events.rs | `make lint-rust` reports no finding in these files | [o] |
 | KSTD-5-57-12 | orm 테스트 파일 listen_notify, register, clock, was_inserted의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests listen_notify, register, clock, was_inserted | `make lint-rust` reports no finding in these files | [o] |
 | KSTD-5-57-13 | orm 테스트 파일 statement_fault, request_hook, audit_rows의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests statement_fault, request_hook, common/audit_rows | `make lint-rust` reports no finding in these files | [o] |
-| KSTD-5-57-14 | 나머지 orm 테스트 파일의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests install, dbspec_apply, dbspec_plan_apply, common/sqlite_case, markdown, collection_identity, aes_json, coverage_interface_contract, and the rest the gate reports | `make lint-rust` reports no finding in these files | [ ] |
+| KSTD-5-57-14 | 나머지 orm 테스트 파일의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests install, dbspec_apply, dbspec_plan_apply, common/sqlite_case, markdown, collection_identity, aes_json, coverage_interface_contract, and the rest the gate reports | `make lint-rust` reports no finding in these files | [o] |
 | KSTD-5-57-15 | orm tx.rs 테스트 모듈의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/src/tx.rs test module | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-16 | external_documents, rollback, codec_vectors, ir_request, coverage_authenticated_encryption의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests external_documents, rollback, codec_vectors, unit/ir_request, coverage_authenticated_encryption | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-17 | build 테스트 generate.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/build/tests/generate.rs | `make lint-rust` reports no finding in these files | [ ] |
