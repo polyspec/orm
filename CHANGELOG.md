@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- The Rust row mapping defect is fixed by the six-client shared blind-index source handling in KSTD-5-49-1; its focused Rust planner check passes (KSTD-5-49).
+
 - Shared blind-index targets now honor an explicit target assignment and reject distinct assigned AES sources when deriving an absent target. Insert and on-duplicate assignments are checked independently, preserving original row parameter offsets. The committed `3c3243761` passes `make item-test ID=KSTD-5-49-1` across Go (6 tests), PHP (7/26), PHP extension (7/26), TypeScript (125), Python (7) and Rust (7); Python regression cases failed on `4b164670` (`var/plan/KSTD-5-49-1.json`) (KSTD-5-49-1).
 
 - The PHP extension now implements the complete runtime Model surface and its native helper classes in C. On committed implementation `24a1e7e`, `make item-test ID=T182-6-14` passes 47 native tests (654 assertions), 3 declaration tests (8 assertions), and 10 PHP source comparison tests (68 assertions) on PHP 8.4.26 (T182-6-14).
