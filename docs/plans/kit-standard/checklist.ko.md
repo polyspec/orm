@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: b069ab8b3875f89f5fe2d67582fc7e6635729e15dde3a88e2d9f447b076abcb3 -->
+<!-- source-sha256: 28983cea7c78dd04e7195079acf0dd9a5a77c6565ba36cc985e882c20d56de2c -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -216,7 +216,7 @@
 | KSTD-5-57-18e | packages/rust/tests의 catch-check 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/tests/tests/integration/coverage_schema_install.rs, packages/rust/tests/tests/markdown_conformance.rs | `make lint-rust` reports no finding in these files | [o] |
 | KSTD-5-57-24 | tests crate의 conformance.rs, integration.rs, decimal_physical.rs, coverage_schema_install.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/tests src conformance.rs, integration.rs; tests decimal_physical.rs, integration/coverage_schema_install.rs | `make lint-rust` reports no finding in these files | [ ] |
 | KSTD-5-57-23 | build 테스트 table_page.rs와 orm identity_load, soft_delete, dbspec_probe의 catch-check 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/build/tests table_page.rs; packages/rust/orm/tests identity_load.rs, soft_delete.rs, common/dbspec_probe.rs | `make lint-rust` reports no finding in these files | [ ] |
-| KSTD-5-57-22 | tests crate의 coverage 파일들과 common/mod.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/tests/tests common/mod.rs, coverage_catalog_connection.rs, coverage_conformance_verification.rs, coverage_model_generation.rs, coverage_performance_gate.rs, integration/coverage_env.rs | `make lint-rust` reports no finding in these files | [ ] |
+| KSTD-5-57-22 | tests crate의 coverage 파일들과 common/mod.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/tests/tests common/mod.rs, coverage_catalog_connection.rs, coverage_conformance_verification.rs, coverage_model_generation.rs, coverage_performance_gate.rs, integration/coverage_env.rs | `make lint-rust` reports no finding in these files | [o] |
 | KSTD-5-57-21 | tests crate의 bench_set.rs, client_bench.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/tests/src bench_set.rs, client_bench.rs | `make lint-rust` reports no finding in these files | [o] |
 | KSTD-5-57-20 | orm 테스트 파일 value_decode.rs와 unit 파일 param_uses.rs, coverage_planner.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests value_decode.rs, unit/param_uses.rs, unit/coverage_planner.rs | `make lint-rust` reports no finding in these files | [o] |
 | KSTD-5-57-19 | orm 테스트 파일 zone.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests/zone.rs | `make lint-rust` reports no finding in these files | [o] |
