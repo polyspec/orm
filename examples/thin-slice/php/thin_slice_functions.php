@@ -7,20 +7,7 @@ const ITERATIONS = 500;
 
 const AES_KEY = 'bench-salt';
 
-/** ORM_BENCH_MYSQL_DSN points to the seeded bench database. If it is missing or empty, it ends without connecting. */
-function dsn(): string
-{
-    $dsn = getenv('ORM_BENCH_MYSQL_DSN');
-    if ($dsn === false || $dsn === '') {
-        fwrite(
-            STDERR,
-            "ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database; run it through make orm-check or "
-            . "make run-databases TARGETS=<target>, which create the bench database of the run\n"
-        );
-        exit(1);
-    }
-    return $dsn;
-}
+require_once dirname(__DIR__, 2) . '/php/bench_dsn.php';
 
 function p50(Closure $f): int
 {
