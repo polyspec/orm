@@ -17,6 +17,7 @@ async function withDatabase(name, run) {
   }
 }
 
+// Requirements: INT-72, DIA-180.
 caseTest('transaction-failure/rollback-primary-and-cleanup', DATABASE, async () => {
   await withDatabase('rollback.sqlite', async db => {
     const state = db.pool.state;
@@ -41,6 +42,7 @@ caseTest('transaction-failure/rollback-primary-and-cleanup', DATABASE, async () 
   });
 });
 
+// Requirements: DIA-181, PLN-17.
 caseTest('transaction-failure/savepoint-end-attempts-both', DATABASE, async () => {
   const scenarios = [
     { name: 'rollback-only', rejected: ['ROLLBACK TO SAVEPOINT '], count: 1 },

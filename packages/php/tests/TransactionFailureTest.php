@@ -12,6 +12,7 @@ use Polyspec\Orm\Db;
 use Polyspec\Orm\OrmException;
 use PHPUnit\Framework\TestCase;
 
+// Requirements: INT-72, DIA-180, DIA-181, PLN-17.
 final class TransactionFailureTest extends TestCase
 {
     use TransactionFailureCases;

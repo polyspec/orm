@@ -145,8 +145,8 @@ void db_throw_orm(const char *code, const char *fmt, ...)
 /* Takes the pending exception out of EG(exception); the caller owns the zval. */
 static void take_exception(zval *out)
 {
-    ZVAL_OBJ(out, EG(exception));
-    EG(exception) = NULL;
+    ZVAL_OBJ_COPY(out, EG(exception));
+    zend_clear_exception();
 }
 
 /* Sets an owned exception as the pending one. */
@@ -3567,24 +3567,34 @@ ZEND_METHOD(Polyspec_Orm_Db, pdo)
     RETURN_COPY_VALUE(&p);
 }
 
+/* Maps a PDO error using this connection's driver and handle for both the public method and transaction cleanup. */
+static bool map_driver_error(zval *self, zval *error, zval *out)
+{
+    zval pdo, args[3];
+    ZVAL_UNDEF(out);
+    if (!handle_pdo(self, &pdo)) {
+        return false;
+    }
+    ZVAL_COPY(&args[0], error);
+    ZVAL_COPY(&args[1], rd(self, "driver"));
+    ZVAL_COPY(&args[2], &pdo);
+    bool ok = scall("Polyspec\\Orm\\OrmException::fromDriver", out, 3, args);
+    for (int i = 0; i < 3; i++) {
+        zval_ptr_dtor(&args[i]);
+    }
+    zval_ptr_dtor(&pdo);
+    return ok;
+}
+
 ZEND_METHOD(Polyspec_Orm_Db, driverError)
 {
     zval *e;
     ZEND_PARSE_PARAMETERS_START(1, 1)
         Z_PARAM_OBJECT(e)
     ZEND_PARSE_PARAMETERS_END();
-    zval pdo, args[3], err;
-    if (!handle_pdo(ZEND_THIS, &pdo)) {
-        RETURN_THROWS();
-    }
-    ZVAL_COPY(&args[0], e);
-    ZVAL_COPY(&args[1], rd(ZEND_THIS, "driver"));
-    ZVAL_COPY_VALUE(&args[2], &pdo);
-    bool ok = scall("Polyspec\\Orm\\OrmException::fromDriver", &err, 3, args);
-    zval_ptr_dtor(&args[0]);
-    zval_ptr_dtor(&args[1]);
-    zval_ptr_dtor(&args[2]);
-    if (!ok) {
+    zval err;
+    ZVAL_UNDEF(&err);
+    if (!map_driver_error(ZEND_THIS, e, &err)) {
         RETURN_THROWS();
     }
     RETURN_COPY_VALUE(&err);
@@ -4564,12 +4574,9 @@ static bool finish_tx(zval *self, zval *frame, bool commit)
 
 static void driver_error(zval *self, zval *ex, zval *out)
 {
-    zval arg;
-    ZVAL_COPY(&arg, ex);
-    if (!mcall(self, "driverError", out, 1, &arg)) {
+    if (!map_driver_error(self, ex, out)) {
         ZVAL_NULL(out);
     }
-    zval_ptr_dtor(&arg);
 }
 
 /* Db::begin: opens the transaction on the connection. out is the frame; false with the error pending when it failed. */

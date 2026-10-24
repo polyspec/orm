@@ -1686,6 +1686,7 @@ mod tests {
     // If the native rollback, the SQLite mode restore, or begin's PRAGMA fails, the transaction reports that error along with its cause
     // , and the connection of an unfinished transaction is closed so that the next transaction starts fresh.
     #[tokio::test]
+    // Requirements: INT-72, DIA-180.
     async fn sqlite_transaction_end_failures_are_reported() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
         let _denial = SQLITE_DENIAL.lock().await;
@@ -1731,6 +1732,7 @@ mod tests {
     // error, panic, and nested calls of transaction_send and transaction_once report that error together, and a successful
     // callback returns the failed RELEASE SAVEPOINT.
     #[tokio::test]
+    // Requirements: DIA-181, PLN-17.
     async fn savepoint_end_failures_are_reported() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
         let _denial = SQLITE_DENIAL.lock().await;

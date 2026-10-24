@@ -2488,6 +2488,7 @@ transaction-failure-php-extension-check: php-vendor-check php-models orm-install
 	mkdir -p "$$run_dir/php-extension"; \
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh "$$run_dir/php-extension/polyspec_orm.so"; \
 	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist $(if $(TRANSACTION_FAILURE_TEST_FILTER),--filter '$(TRANSACTION_FAILURE_TEST_FILTER)',) packages/php-ext/tests/TransactionFailureNativeTest.php
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist $(if $(TRANSACTION_FAILURE_PHP_EXTENSION_TEST_FILTER),--filter '$(TRANSACTION_FAILURE_PHP_EXTENSION_TEST_FILTER)',) packages/php-ext/tests/TransactionFailureNativeTest.php
 # dbspec-php-extension-check/declarations runs the extension's own checks (packages/php-ext/tests): its declarations against the stub and the
 # PHP client, its required modules and its PIE package.
 # dbspec-php-extension-check/silent-paths runs silent_paths.php with the extension alone (php -n, no library class): a call that must fail with an OrmException must throw, not return silently (T182-2-4).

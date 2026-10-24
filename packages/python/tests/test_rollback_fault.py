@@ -167,6 +167,7 @@ class RollbackFaultTest(unittest.TestCase):
         self.check_rollback(error, "transaction")
         self.assertEqual(error.rollback.code, "FAULT")
 
+    # Requirements: INT-72, DIA-180.
     def test_a_failed_rollback_reports_the_callback_error_and_the_rollback_error(self):
         with sqlite3.connect(self.path) as conn:
             conn.execute(
@@ -190,6 +191,7 @@ class RollbackFaultTest(unittest.TestCase):
             "the trigger rolled the transaction back and the connection serves later requests",
         )
 
+    # Requirements: DIA-181, PLN-17.
     def test_a_failed_savepoint_rollback_and_transaction_rollback_report_both(self):
         raw = self.db._shared.pool._idle[0].connection
         self.addCleanup(raw.set_authorizer, None)
