@@ -115,9 +115,7 @@ final class AuditExternalSetsTest extends TestCase
     /** @return iterable<string, array{string}> */
     public static function drivers(): iterable
     {
-        foreach (['sqlite', 'mysql', 'postgres'] as $driver) {
-            yield $driver => [$driver];
-        }
+        return coverageDatabaseDrivers();
     }
 
     /** Runs the order on a case database of the driver with a work directory of its own, removed on every path. */

@@ -17,6 +17,15 @@ use Polyspec\Orm\OrmException;
 #[Small]
 final class CoverageCasesTest extends TestCase
 {
+    public function testEnumeratesTheSupportedCoverageDatabases(): void
+    {
+        $this->assertSame(
+            ['sqlite' => ['sqlite'], 'mysql' => ['mysql'], 'postgres' => ['postgres']],
+            iterator_to_array(coverageDatabaseDrivers()),
+            'coverage database cases'
+        );
+    }
+
     public function testReportsErrorCodesAndRestoreFailures(): void
     {
         $this->assertSame(Code::CONFIG, coverageCode(static function (): void {

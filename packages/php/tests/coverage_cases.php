@@ -9,6 +9,14 @@ use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;
 use Polyspec\Orm\OrmException;
 
+/** @return iterable<string, array{string}> */
+function coverageDatabaseDrivers(): iterable
+{
+    foreach (['sqlite', 'mysql', 'postgres'] as $driver) {
+        yield $driver => [$driver];
+    }
+}
+
 /**
  * The coverage items of a test file from the feature resolver (scripts/features/coverage.mts --items, the form the
  * Python readers use): one [database, dsn] for each database the manifest lists for the file. A DSN variable that is
