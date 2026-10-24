@@ -1366,6 +1366,13 @@ static void declared_set_build(zval *documents, smap *set)
     } ZEND_HASH_FOREACH_END();
 }
 
+static document *declared_parse(str text, zval *documents, diags *found, dposv *positions)
+{
+    smap set = {0};
+    declared_set_build(documents, &set);
+    return dbs_parse(text, &set, found, positions);
+}
+
 ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, analyze)
 {
     zend_string *text;
@@ -1415,11 +1422,9 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, format)
         RETURN_THROWS();
     }
     ENTER();
-    smap set = {0};
-    declared_set_build(documents, &set);
     diags found = {0};
     dposv decls = {0};
-    document *d = dbs_parse(zs(text), &set, &found, &decls);
+    document *d = declared_parse(zs(text), documents, &found, &decls);
     zval dl;
     zv_diags(&dl, &found);
     obj_new(return_value, dbs_ce_FormatResult);
@@ -1442,11 +1447,9 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, parse)
     ZEND_PARSE_PARAMETERS_END();
     if (!declared_set_valid(documents)) RETURN_THROWS();
     ENTER();
-    smap set = {0};
-    declared_set_build(documents, &set);
     diags found = {0};
     dposv decls = {0};
-    document *d = dbs_parse(zs(text), &set, &found, &decls);
+    document *d = declared_parse(zs(text), documents, &found, &decls);
     zval dl;
     zv_diags(&dl, &found);
     if (d != NULL) {
