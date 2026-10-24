@@ -3088,8 +3088,9 @@ static bool write_of_impl(zval *self, zval *frame, zval *r, zval *after, zval *o
         zval *affected = aidx(&res, 1);
         zend_long n = as_long(affected);
         zval first;
-        if (keys != NULL) {
-            ZVAL_COPY(&first, keys);
+        zval *first_key = keys != NULL && Z_TYPE_P(keys) == IS_ARRAY ? aidx(keys, 0) : NULL;
+        if (first_key != NULL) {
+            ZVAL_COPY(&first, first_key);
         } else {
             ZVAL_NULL(&first);
         }

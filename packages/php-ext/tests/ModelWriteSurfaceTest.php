@@ -6,7 +6,9 @@ namespace Polyspec\Orm\Extension\Tests;
 
 use Polyspec\Orm\Model;
 use Polyspec\Orm\Code;
+use Polyspec\Orm\Config;
 use Polyspec\Orm\OrmException;
+use Polyspec\Orm\Request;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 
@@ -41,6 +43,30 @@ final class ModelWriteAesFixture extends Model
 #[Small]
 final class ModelWriteSurfaceTest extends TestCase
 {
+    public function testNativeMarkdownWriteReturnsFirstKeyOrNullWhenNoKeysWereAnswered(): void
+    {
+        $manifestHash = \Polyspec\Orm\Tests\MarkdownModel\People::meta()['manifest_hash'];
+        foreach ([
+            ['{"affected":1,"keys":["P1","P2"]}', ['P1', 1]],
+            ['{"affected":0,"keys":[]}', [null, 0]],
+        ] as [$answer, $expected]) {
+            $server = \Polyspec\Orm\Tests\markdown_fake_server(['{"ok":true}', $answer]);
+            $db = \Polyspec\Orm\Tests\MarkdownModel\connect($server[2], new Config());
+            try {
+                $request = new Request('insert', $manifestHash);
+                $request->ir['entity'] = 'people';
+                $request->ir['set'][] = ['column' => 'name', 'p' => $request->param('Ann')];
+                self::assertSame($expected, $db->writeOf(null, $request));
+            } finally {
+                $db->close();
+            }
+            $messages = \Polyspec\Orm\Tests\markdown_received($server);
+            self::assertCount(2, $messages);
+            self::assertSame(\Polyspec\Orm\Tests\MARKDOWN_CONNECT_LINE, $messages[0]);
+            self::assertStringContainsString('"request"', $messages[1]);
+        }
+    }
+
     public function testNativeWriteHelpersAreInternalAndCallbacksOwnStandardPrivateState(): void
     {
         $model = new \ReflectionClass(Model::class);
