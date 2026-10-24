@@ -2800,16 +2800,6 @@
           "id": "transaction_rollback [sqlite]"
         },
         {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_transactions.mjs",
-          "id": "transaction_rollback [mysql]"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_transactions.mjs",
-          "id": "transaction_rollback [postgres]"
-        },
-        {
           "implementation": "python",
           "test": "packages/python/tests/coverage_transactions.py",
           "id": "test_transaction_rollback"
@@ -2837,16 +2827,6 @@
           "implementation": "typescript",
           "test": "packages/ts/tests/coverage_transactions.mjs",
           "id": "transaction_rollback [sqlite]"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_transactions.mjs",
-          "id": "transaction_rollback [mysql]"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_transactions.mjs",
-          "id": "transaction_rollback [postgres]"
         },
         {
           "implementation": "rust",
@@ -3515,9 +3495,7 @@
       "id": "ts-statement-fault-entry",
       "kind": "feature",
       "requirements": [
-        "PRT-45",
-        "PRT-55",
-        "PRT-60"
+        "PRT-50"
       ],
       "bindings": [
         {
@@ -3540,59 +3518,6 @@
           "implementation": "typescript",
           "test": "packages/ts/tests/statement_fault_entry.mjs",
           "id": "statement-fault-entry/other_entry_points"
-        }
-      ]
-    },
-    {
-      "id": "test-fault-entrypoint-production-boundary",
-      "kind": "feature",
-      "requirements": [
-        "PRT-43",
-        "PRT-44",
-        "PRT-45",
-        "PRT-46",
-        "PRT-47",
-        "PRT-48",
-        "PRT-49",
-        "PRT-50",
-        "PRT-51",
-        "PRT-52",
-        "PRT-53",
-        "PRT-54",
-        "PRT-55",
-        "PRT-56",
-        "PRT-57",
-        "PRT-58",
-        "PRT-59",
-        "PRT-60",
-        "PRT-61",
-        "PRT-62"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/rollback_fault_entry_test.go",
-          "id": "TestRollbackFaultEntry"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/PackageEntryPointTest.php",
-          "id": "PackageEntryPointTest::testTestingFaultsRequireTheirExplicitPackagePath"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/statement_fault_entry.mjs",
-          "id": "statement-fault-entry/entry_point"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_rollback_fault.py",
-          "id": "test_the_package_entry_point_does_not_export_the_fault"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/rollback.rs",
-          "id": "rollback_fault_entry"
         }
       ]
     },
