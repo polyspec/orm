@@ -950,13 +950,14 @@ model-types-php-extension-check: php-vendor-check
 
 # Exercises native model query assembly and write round trips on an owned SQLite in-memory database.
 .PHONY: model-query-write-php-extension-unit-check
+MODEL_QUERY_WRITE_TEST_FILTER ?= testNativeModel|testConformanceChildLoadsTheNativeModelEntrypoint
 model-query-write-php-extension-unit-check: php-vendor-check php-model-check
 	@set -eu; \
 	run_dir="$(abspath .runtime/run)/model-query-write-php-extension-unit-check-$$PPID"; \
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh "$$run_dir/php-extension/polyspec_orm.so"; \
-	env ORM_PHP_MODE=extension POLYSPEC_ORM_EXTENSION="$$run_dir/php-extension/polyspec_orm.so" $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ModelQueriesWritesNativeTest.php packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php --filter 'testNativeModel|testConformanceChildLoadsTheNativeModelEntrypoint'
+	env ORM_PHP_MODE=extension POLYSPEC_ORM_EXTENSION="$$run_dir/php-extension/polyspec_orm.so" $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ModelQueriesWritesNativeTest.php packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php --filter '$(MODEL_QUERY_WRITE_TEST_FILTER)'
 
 # Runs the complete native Model surface and its native helper classes against a fresh extension; generated PHP models use their normal bootstrap.
 .PHONY: model-native-php-extension-check

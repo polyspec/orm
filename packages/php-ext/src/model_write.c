@@ -1665,6 +1665,11 @@ static bool model_delete_row(zval *model, bool recursive)
                 } else if (instanceof_function(Z_OBJCE_P(child), collection_ce)) {
                     zval iterator;
                     if (!dynamic_call(child, "getIterator", &iterator, 0, NULL)) { call_result_dtor(&iterator); goto failed; }
+                    zval rewind;
+                    if (!dynamic_call(&iterator, "rewind", &rewind, 0, NULL)) {
+                        call_result_dtor(&iterator); call_result_dtor(&rewind); goto failed;
+                    }
+                    call_result_dtor(&rewind);
                     for (;;) {
                         zval valid;
                         if (!dynamic_call(&iterator, "valid", &valid, 0, NULL)) { call_result_dtor(&iterator); call_result_dtor(&valid); goto failed; }
