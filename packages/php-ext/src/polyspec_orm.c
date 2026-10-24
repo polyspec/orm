@@ -266,7 +266,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_PrimaryKey, __construct)
 }
 
 /* UniqueKey, Index, and Check have the shape (string, array|string, array = []). */
-ZEND_METHOD(Polyspec_Orm_Dbspec_UniqueKey, __construct)
+static void dbspec_named_columns_construct(INTERNAL_FUNCTION_PARAMETERS)
 {
     zend_string *name;
     zval *columns, *comments = NULL;
@@ -281,19 +281,14 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_UniqueKey, __construct)
     init_array(ZEND_THIS, "comments", comments);
 }
 
+ZEND_METHOD(Polyspec_Orm_Dbspec_UniqueKey, __construct)
+{
+    dbspec_named_columns_construct(INTERNAL_FUNCTION_PARAM_PASSTHRU);
+}
+
 ZEND_METHOD(Polyspec_Orm_Dbspec_Index, __construct)
 {
-    zend_string *name;
-    zval *columns, *comments = NULL;
-    ZEND_PARSE_PARAMETERS_START(2, 3)
-        Z_PARAM_STR(name)
-        Z_PARAM_ARRAY(columns)
-        Z_PARAM_OPTIONAL
-        Z_PARAM_ARRAY(comments)
-    ZEND_PARSE_PARAMETERS_END();
-    init_str(ZEND_THIS, "name", name);
-    init_array(ZEND_THIS, "columns", columns);
-    init_array(ZEND_THIS, "comments", comments);
+    dbspec_named_columns_construct(INTERNAL_FUNCTION_PARAM_PASSTHRU);
 }
 
 ZEND_METHOD(Polyspec_Orm_Dbspec_IndexColumn, __construct)
