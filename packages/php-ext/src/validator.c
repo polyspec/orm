@@ -264,6 +264,34 @@ static bool meets(vctx *c, HashTable *a, HashTable *b, bool *yes)
     return true;
 }
 
+/* Join and relation key pairs must resolve on both entities and have matching kinds. */
+static bool validate_pair_columns(vctx *c, HashTable *source, HashTable *target, const char *source_name,
+    const char *target_name, const char *kind, const char *label, const char *left, const char *right)
+{
+    HashTable *lc, *rc;
+    if (!col_of(c, source, left, &lc)) {
+        return false;
+    }
+    if (lc == NULL) {
+        return fail("COLUMN_UNKNOWN", "%s.%s", source_name, left);
+    }
+    if (!col_of(c, target, right, &rc)) {
+        return false;
+    }
+    if (rc == NULL) {
+        return fail("COLUMN_UNKNOWN", "%s.%s", target_name, right);
+    }
+    bool yes;
+    if (!meets(c, lc, rc, &yes)) {
+        return false;
+    }
+    if (!yes) {
+        return fail("OPERATOR_NOT_ALLOWED", "%s %s: %s.%s does not meet %s.%s", kind, label, source_name, left,
+            target_name, right);
+    }
+    return true;
+}
+
 /* Dialect::isValueFunction($name). */
 static bool is_value_function(vctx *c, const char *name, bool *yes)
 {
@@ -1528,20 +1556,8 @@ static bool query(vctx *c, HashTable *q, const vat *at, bool is_join, bool is_re
         if (target == NULL) {
             return fail("ENTITY_UNKNOWN", "%s", tname);
         }
-        HashTable *lc, *rc;
-        TRY(col_of(c, ent, left, &lc));
-        if (lc == NULL) {
-            return fail("COLUMN_UNKNOWN", "%s.%s", ent_name, left);
-        }
-        TRY(col_of(c, target, right, &rc));
-        if (rc == NULL) {
-            return fail("COLUMN_UNKNOWN", "%s.%s", str(c, target, "entity", ""), right);
-        }
-        bool yes;
-        TRY(meets(c, lc, rc, &yes));
-        if (!yes) {
-            return fail("OPERATOR_NOT_ALLOWED", "join %s: %s.%s does not meet %s.%s", rel, ent_name, left, str(c, target, "entity", ""), right);
-        }
+        TRY(validate_pair_columns(c, ent, target, ent_name, str(c, target, "entity", ""), "join", rel, left,
+            right));
         zval jcp;
         ZVAL_COPY(&jcp, jv);
         zend_symtable_str_update(joined, rel, strlen(rel), &jcp);
@@ -1616,20 +1632,8 @@ static bool query(vctx *c, HashTable *q, const vat *at, bool is_join, bool is_re
             if (*left == '\0' || *right == '\0') {
                 return fail(IR_INVALID, "relation %s: every key needs left and right", rel);
             }
-            HashTable *lc, *rc;
-            TRY(col_of(c, ent, left, &lc));
-            if (lc == NULL) {
-                return fail("COLUMN_UNKNOWN", "%s.%s", entity, left);
-            }
-            TRY(col_of(c, target, right, &rc));
-            if (rc == NULL) {
-                return fail("COLUMN_UNKNOWN", "%s.%s", str(c, target, "entity", ""), right);
-            }
-            bool yes;
-            TRY(meets(c, lc, rc, &yes));
-            if (!yes) {
-                return fail("OPERATOR_NOT_ALLOWED", "relation %s: %s.%s does not meet %s.%s", rel, entity, left, str(c, target, "entity", ""), right);
-            }
+            TRY(validate_pair_columns(c, ent, target, entity, str(c, target, "entity", ""), "relation", rel,
+                left, right));
             if (set_has(lefts, left) || set_has(rights, right)) {
                 return fail(IR_INVALID, "relation %s: key column %s or %s is used twice", rel, left, right);
             }
