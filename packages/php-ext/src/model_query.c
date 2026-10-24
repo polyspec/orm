@@ -790,14 +790,19 @@ ZEND_METHOD(Polyspec_Orm_Model, predIr)
     zval *op = zend_hash_str_find(Z_ARRVAL_P(predicate), "op", sizeof("op") - 1);
     if (kind == NULL || Z_TYPE_P(kind) != IS_STRING || op == NULL || Z_TYPE_P(op) != IS_STRING) { zend_throw_error(NULL, "predicate has invalid native shape"); RETURN_THROWS(); }
     array_init(return_value);
-    if (!zend_string_equals_literal(Z_STR_P(kind), "tuple")) {
+    if (!zend_string_equals_literal(Z_STR_P(kind), "tuple") && !zend_string_equals_literal(Z_STR_P(kind), "fulltext")) {
         zval *column = zend_hash_str_find(Z_ARRVAL_P(predicate), "column", sizeof("column") - 1);
         if (column == NULL) { zval_ptr_dtor(return_value); ZVAL_UNDEF(return_value); zend_throw_error(NULL, "predicate column is missing"); RETURN_THROWS(); }
         zval copy; ZVAL_COPY(&copy, column); add_assoc_zval(return_value, "column", &copy);
     }
     zval op_copy; ZVAL_COPY(&op_copy, op); add_assoc_zval(return_value, "op", &op_copy);
     zval *value = zend_hash_str_find(Z_ARRVAL_P(predicate), "value", sizeof("value") - 1);
-    if (zend_string_equals_literal(Z_STR_P(kind), "tuple")) {
+    if (zend_string_equals_literal(Z_STR_P(kind), "fulltext")) {
+        zval *cols = zend_hash_str_find(Z_ARRVAL_P(predicate), "cols", sizeof("cols") - 1);
+        if (cols == NULL || Z_TYPE_P(cols) != IS_ARRAY || zend_hash_num_elements(Z_ARRVAL_P(cols)) == 0 || value == NULL) goto invalid_pred;
+        zval copy; ZVAL_COPY(&copy, cols); add_assoc_zval(return_value, "cols", &copy);
+        zval p; if (!query_param(request, value, &p)) goto exception_pred; add_assoc_zval(return_value, "p", &p);
+    } else if (zend_string_equals_literal(Z_STR_P(kind), "tuple")) {
         zval *cols = zend_hash_str_find(Z_ARRVAL_P(predicate), "cols", sizeof("cols") - 1);
         if (cols == NULL || value == NULL || Z_TYPE_P(value) != IS_ARRAY) goto invalid_pred;
         zval copy; ZVAL_COPY(&copy, cols); add_assoc_zval(return_value, "cols", &copy);

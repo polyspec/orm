@@ -20,9 +20,14 @@ final class Planner
         $steps = new PlanSteps();
         switch ($r['kind']) {
             case 'paginate':
-                // main (with its relation steps), then the count step found by role
-                $this->selectStep($steps, $r, 'all', '', null);
+                // The parent page comes first, then its count, then the relation reads.
+                $main = $this->selectStep($steps, $r, 'all', '', null, true);
                 $this->selectStep($steps, $r, 'count', '', null);
+                $root = $this->scopes($r, 'a', null);
+                if ($main->assemble === null) {
+                    throw self::err(Code::INTERNAL, 'paginate main step has no assembly');
+                }
+                $this->relationSteps($steps, $root, $main->assemble, $main->id);
                 break;
             case 'insert':
                 $steps->add($this->insertStep($r));
@@ -73,8 +78,14 @@ final class Planner
         return array_map(fn(string $c): string => $this->qcol($s, $c), $cols);
     }
 
-    private function selectStep(PlanSteps $steps, array $q, string $kind, string $agg, ?PlanRelation $rc): PlanStep
-    {
+    private function selectStep(
+        PlanSteps $steps,
+        array $q,
+        string $kind,
+        string $agg,
+        ?PlanRelation $rc,
+        bool $deferRelations = false
+    ): PlanStep {
         $b = new PlanBinds($this->d);
         $root = $this->scopes($q, 'a', null);
         if ($rc !== null) {
@@ -212,7 +223,7 @@ final class Planner
             $st->assemble = $asm;
         }
         $id = $steps->add($st);
-        if ($st->assemble !== null) {
+        if ($st->assemble !== null && !$deferRelations) {
             $this->relationSteps($steps, $root, $asm, $id);
         }
         return $st;

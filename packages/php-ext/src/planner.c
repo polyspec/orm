@@ -1051,7 +1051,7 @@ static zend_string *sub_select(pctx *c, pbinds *b, pscope *outer, HashTable *sub
 static zend_string *value_function_sql(pctx *c, pbinds *b, zend_string *fn, zend_long ps0);
 static zend_string *contains_binary_sql(pctx *c, pbinds *b, zend_string *lhs, HashTable *col, zend_long p);
 static zend_string *fulltext_sql(pctx *c, pbinds *b, pscope *s, HashTable *p, const char *ops);
-static pstep *select_step(pctx *c, zval *steps, HashTable *q, const char *kind, zend_string *agg, prel *rc);
+static pstep *select_step(pctx *c, zval *steps, HashTable *q, const char *kind, zend_string *agg, prel *rc, bool defer_relations);
 static bool relation_steps(pctx *c, zval *steps, pscope *s, passm *ast, zend_long stepId);
 static zend_string *select_list(pctx *c, pbinds *b, pscope *s, passm *ast, zend_long *idx, zval *outNames);
 static zval *projection(pctx *c, pscope *s);
@@ -2138,7 +2138,7 @@ static zend_string *sub_type(pctx *c, HashTable *sub)
 }
 
 /* Planner::selectStep: the statement of a select, count, sum or avg, with its relation steps. */
-static pstep *select_step(pctx *c, zval *steps, HashTable *q, const char *kind, zend_string *agg, prel *rc)
+static pstep *select_step(pctx *c, zval *steps, HashTable *q, const char *kind, zend_string *agg, prel *rc, bool defer_relations)
 {
     pbinds *b = binds_new(c);
     pscope *root = scopes(c, q, fmt(c, "a"), NULL);
@@ -2369,7 +2369,7 @@ static pstep *select_step(pctx *c, zval *steps, HashTable *q, const char *kind, 
         st->assemble = ast;
     }
     steps_add(c, steps, st);
-    if (st->assemble != NULL && !relation_steps(c, steps, root, ast, st->id)) {
+    if (st->assemble != NULL && !defer_relations && !relation_steps(c, steps, root, ast, st->id)) {
         return NULL;
     }
     return st;
@@ -2390,7 +2390,7 @@ static bool relation_steps(pctx *c, zval *steps, pscope *s, passm *ast, zend_lon
         rc->kind = gs(c, rh, "kind");
         HashTable *query = ga(rh, "query");
         HashTable *target = entity(c, gs(c, query, "entity"));
-        pstep *st = select_step(c, steps, query, "all", ZSTR_EMPTY_ALLOC(), rc);
+        pstep *st = select_step(c, steps, query, "all", ZSTR_EMPTY_ALLOC(), rc, false);
         if (st == NULL) {
             return false;
         }
@@ -3222,8 +3222,15 @@ static bool compile_body(pctx *c, HashTable *r, zval *ret)
     const char *k = ZSTR_VAL(kind);
     pstep *st = NULL;
     if (strcmp(k, "paginate") == 0) {
-        OKB(select_step(c, steps, r, "all", ZSTR_EMPTY_ALLOC(), NULL));
-        OKB(select_step(c, steps, r, "count", ZSTR_EMPTY_ALLOC(), NULL));
+        pstep *main = select_step(c, steps, r, "all", ZSTR_EMPTY_ALLOC(), NULL, true);
+        OKB(main);
+        OKB(select_step(c, steps, r, "count", ZSTR_EMPTY_ALLOC(), NULL, false));
+        pscope *root = scopes(c, r, fmt(c, "a"), NULL);
+        OKP(root);
+        if (main->assemble == NULL || !relation_steps(c, steps, root, main->assemble, main->id)) {
+            if (EG(exception) == NULL) return fail("INTERNAL", "paginate main step has no assembly");
+            return false;
+        }
     } else if (strcmp(k, "insert") == 0) {
         st = insert_step(c, r);
         OKB(st);
@@ -3245,7 +3252,7 @@ static bool compile_body(pctx *c, HashTable *r, zval *ret)
         OKB(st);
         steps_add(c, steps, st);
     } else {
-        OKB(select_step(c, steps, r, k, gs(c, r, "agg"), NULL));
+        OKB(select_step(c, steps, r, k, gs(c, r, "agg"), NULL, false));
     }
     array_init(ret);
     zval mh_rv;

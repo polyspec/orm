@@ -797,6 +797,9 @@ abstract class Model implements \JsonSerializable, ModelMetadata
     /** @return array{0: array, 1: int} */
     private function predicate(array $key, mixed $value, array $rest, bool $single): array
     {
+        if ($key['op'] === 'fulltext' || $key['op'] === 'fulltext_boolean') {
+            return [['op' => $key['op'], 'cols' => $key['columns'], 'value' => $value, 'kind' => 'fulltext'], 0];
+        }
         $meta = static::meta();
         $column = $key['column'];
         $p = ['column' => $column];
@@ -1117,7 +1120,7 @@ abstract class Model implements \JsonSerializable, ModelMetadata
     private function predIr(array $p, Request $r, Frame $f): array
     {
         $out = [];
-        if ($p['kind'] !== 'tuple') {
+        if (!in_array($p['kind'], ['tuple', 'fulltext'], true)) {
             $out['column'] = $p['column'];
         }
         $out['op'] = $p['op'];
@@ -1129,6 +1132,10 @@ abstract class Model implements \JsonSerializable, ModelMetadata
                         $out['ps'][] = $r->param($v);
                     }
                 }
+                break;
+            case 'fulltext':
+                $out['cols'] = $p['cols'];
+                $out['p'] = $r->param($p['value']);
                 break;
             case 'between':
                 foreach ($p['value'] as $v) {

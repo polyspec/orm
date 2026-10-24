@@ -9,8 +9,11 @@ namespace Polyspec\Orm\Tests;
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/FulltextSearchTest.php
 
 use Polyspec\Orm\Code;
+use Polyspec\Orm\Chain;
+use Polyspec\Orm\Config;
 use Polyspec\Orm\Dialect;
 use Polyspec\Orm\Engine;
+use Polyspec\Orm\Model;
 use Polyspec\Orm\OrmException;
 use Polyspec\Orm\Planner;
 use Polyspec\Orm\RuntimeModel;
@@ -19,6 +22,136 @@ use PHPUnit\Framework\TestCase;
 
 final class FulltextSearchTest extends TestCase
 {
+    public function testModelBuilderParsesTheDocumentedFulltextNames(): void
+    {
+        if (getenv('ORM_PHP_MODE') === 'extension') {
+            self::assertTrue((new \ReflectionClass(Model::class))->isInternal());
+            self::assertTrue((new \ReflectionClass(Chain::class))->isInternal());
+        }
+        $metadata = [
+            'entity' => 'product_lang',
+            'manifest_hash' => 'sha256:test',
+            'columns' => [
+                'name' => ['type' => 'text', 'codec' => []],
+                'short_description' => ['type' => 'varchar', 'codec' => []],
+                'content' => ['type' => 'text', 'codec' => []],
+            ],
+        ];
+        $schema = [$metadata];
+
+        self::assertSame([
+            [
+                'conn' => '', 'op' => 'fulltext_boolean', 'column' => '',
+                'columns' => ['name', 'short_description', 'content'], 'compare' => '',
+            ],
+        ], Chain::parseMeta($metadata, $schema, 'FulltextBooleanNameWithShortDescriptionWithContent'));
+        self::assertSame([
+            [
+                'conn' => '', 'op' => 'fulltext', 'column' => '', 'columns' => ['name', 'content'], 'compare' => '',
+            ],
+        ], Chain::parseMeta($metadata, $schema, 'FulltextNameWithContent'));
+
+        $user = (new \Polyspec\Orm\Tests\Model\User())->fulltextBooleanName('alpha beta');
+        $where = (new \ReflectionProperty(Model::class, 'where'))->getValue($user);
+        self::assertSame('fulltext_boolean', $where['items'][0]['pred']['op']);
+        self::assertSame(['name'], $where['items'][0]['pred']['cols']);
+        self::assertSame('alpha beta', $where['items'][0]['pred']['value']);
+
+        $path = tempnam(sys_get_temp_dir(), 'orm-fulltext-');
+        self::assertIsString($path);
+        $db = null;
+        try {
+            $db = \Polyspec\Orm\Tests\Model\connect("sqlite://$path", new Config());
+            $query = (new \Polyspec\Orm\Tests\Model\User())->connect($db)->fulltextBooleanName('alpha beta');
+            try {
+                $query->getQuery();
+                self::fail('SQLite must refuse the documented full-text model chain');
+            } catch (OrmException $e) {
+                self::assertSame(Code::OPERATOR_NOT_ALLOWED, $e->code_);
+            }
+        } finally {
+            if ($db !== null) {
+                $db->close();
+            }
+            foreach (['', '-journal', '-wal', '-shm'] as $suffix) {
+                if (file_exists($path . $suffix)) {
+                    self::assertTrue(unlink($path . $suffix), "remove SQLite test file $path$suffix");
+                }
+            }
+        }
+    }
+
+    public function testPaginateRunsRootThenCountThenItsSixRelations(): void
+    {
+        if (getenv('ORM_PHP_MODE') === 'extension') {
+            self::assertTrue((new \ReflectionClass(\Polyspec\Orm\Db::class))->isInternal());
+        }
+        $path = tempnam(sys_get_temp_dir(), 'orm-cpx2-');
+        self::assertIsString($path);
+        $db = null;
+        try {
+            $db = \Polyspec\Orm\Tests\Model\connect("sqlite://$path", new Config());
+            \Polyspec\Orm\Tests\installBench($db);
+            $service = (new \Polyspec\Orm\Tests\Model\Service())->connect($db)
+                ->setName('service')
+                ->create();
+            (new \Polyspec\Orm\Tests\Model\ServiceRegion())->connect($db)
+                ->setServiceSeq($service->getSeq())
+                ->setName('region')
+                ->create();
+
+            $selects = [];
+            $db->subscribe(static function (object $event) use (&$selects): void {
+                if ($event->kind === 'select') {
+                    $selects[] = $event->sql;
+                }
+            });
+
+            $query = (new \Polyspec\Orm\Tests\Model\Service())->connect($db);
+            foreach (['One', 'Two', 'Three', 'Four', 'Five', 'Six'] as $name) {
+                $query = $query->relations(
+                    (new \Polyspec\Orm\Tests\Model\ServiceRegion())
+                        ->matchSeqWithServiceSeq()
+                        ->{'aliasRegion' . $name}()
+                );
+            }
+            $build = new \ReflectionMethod(Model::class, 'build');
+            $request = $build->invoke($query, 'paginate', $db);
+            $root = dirname(__DIR__, 3);
+            $runtime = RuntimeModel::build(RuntimeModel::files(
+                [
+                    "$root/contracts/fixtures/bench/bench.dbs",
+                    "$root/contracts/fixtures/bench/bench_reader.dbs",
+                ],
+                ["$root/contracts/fixtures/bench/bench_shared.dbs"]
+            ));
+            $compiled = (new Engine($runtime, 'sqlite', 8))->compile($request->shape());
+            self::assertSame(
+                ['main', 'count', 'relation', 'relation', 'relation', 'relation', 'relation', 'relation'],
+                array_column($compiled['steps'], 'role')
+            );
+            $page = $query->getsPage(1, 10);
+
+            self::assertSame(1, $page->totalCount);
+            self::assertCount(1, $page->items);
+            self::assertCount(8, $selects);
+            self::assertStringContainsString(' FROM "service" ', $selects[0]);
+            self::assertStringContainsString('COUNT(*)', $selects[1]);
+            foreach (array_slice($selects, 2) as $sql) {
+                self::assertStringContainsString('service_region', $sql);
+            }
+        } finally {
+            if ($db !== null) {
+                $db->close();
+            }
+            foreach (['', '-journal', '-wal', '-shm'] as $suffix) {
+                if (file_exists($path . $suffix)) {
+                    self::assertTrue(unlink($path . $suffix), "remove SQLite test file $path$suffix");
+                }
+            }
+        }
+    }
+
     public function testFulltextSearch(): void
     {
         $cases = [

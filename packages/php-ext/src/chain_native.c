@@ -258,6 +258,41 @@ static bool tuple_candidate(zval *meta, zval *words, uint32_t from, uint32_t end
     add_next_index_zval(candidates, &key); return true;
 }
 
+static bool fulltext_candidate(zval *meta, zval *words, uint32_t from, uint32_t end, const char *op, zval *candidates, zval *errors)
+{
+    zval columns; array_init(&columns); uint32_t part = from; bool valid = true;
+    for (uint32_t i = from; i <= end; i++) {
+        if (i < end && !word_eq(words, i, "With")) continue;
+        zend_string *pascal = word_concat(words, part, i);
+        zend_string *column = column_for(meta, pascal); zend_string_release(pascal);
+        if (!ZSTR_LEN(column)) { zend_string_release(column); valid = false; }
+        else add_next_index_str(&columns, column);
+        part = i + 1;
+    }
+    zval *entity = field(meta, "entity");
+    const char *entity_name = entity && Z_TYPE_P(entity) == IS_STRING ? Z_STRVAL_P(entity) : "";
+    if (!valid || zend_hash_num_elements(Z_ARRVAL(columns)) == 0) {
+        zval_ptr_dtor(&columns);
+        add_next_index_str(errors, strpprintf(0, "CONFIG: a full-text key needs known columns joined by With"));
+        return false;
+    }
+    zval *name; ZEND_HASH_FOREACH_VAL(Z_ARRVAL(columns), name) {
+        zval *column = column_metadata(meta, Z_STR_P(name));
+        zval *type = column ? field(column, "type") : NULL;
+        zval *codec = column ? field(column, "codec") : NULL;
+        bool text = type && Z_TYPE_P(type) == IS_STRING
+            && (zend_string_equals_literal(Z_STR_P(type), "varchar") || zend_string_equals_literal(Z_STR_P(type), "text"));
+        bool unencoded = codec && Z_TYPE_P(codec) == IS_ARRAY && zend_hash_num_elements(Z_ARRVAL_P(codec)) == 0;
+        if (!text || !unencoded) {
+            add_next_index_str(errors, strpprintf(0, "CONFIG: %s.%s does not accept the fulltext operator", entity_name, Z_STRVAL_P(name)));
+            zval_ptr_dtor(&columns);
+            return false;
+        }
+    } ZEND_HASH_FOREACH_END();
+    zval key; result_key(&key, "", op, NULL, &columns, NULL);
+    add_next_index_zval(candidates, &key); return true;
+}
+
 static bool parse_key(zval *meta, zval *schema, zval *words, uint32_t start, uint32_t end, zval *out)
 {
     if (start == end) { fail_text("a condition key is empty"); return false; }
@@ -286,6 +321,15 @@ static bool parse_key(zval *meta, zval *schema, zval *words, uint32_t start, uin
         }
     }
     if (word_eq(words, start, "Tuple")) tuple_candidate(meta, words, start + 1, end, "tuple", &candidates, &errors);
+    if (word_eq(words, start, "Fulltext")) {
+        bool boolean = word_eq(words, start + 1, "Boolean");
+        uint32_t column_start = start + (boolean ? 2 : 1);
+        if (column_start < end) {
+            fulltext_candidate(meta, words, column_start, end, boolean ? "fulltext_boolean" : "fulltext", &candidates, &errors);
+        } else {
+            add_next_index_str(&errors, strpprintf(0, "CONFIG: a full-text key needs known columns joined by With"));
+        }
+    }
 
     static const struct { const char *word; const char *op; } compare_ops[] = {
         {"Eq", ""}, {"Ne", "ne"}, {"Gt", "gt"}, {"Lt", "lt"}, {"Ge", "ge"}, {"Le", "le"}

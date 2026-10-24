@@ -2990,45 +2990,46 @@ static bool paginate_impl(zval *self, zval *frame, zval *r, zval *out)
     if (!plan_of(self, r, &plan)) {
         return false;
     }
-    zval main, res;
+    zval main, res, total;
+    ZVAL_UNDEF(&total);
     bool ok = query_rows(self, aidx(aget(&plan, "steps"), 0), rd(r, "params"), NULL, NULL, &main);
     if (ok) {
-        ok = relations_of(self, &plan, rd(r, "params"), &main, &res);
+        zval *steps = aget(&plan, "steps");
+        zval *st;
+        bool found = false;
+        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(steps), st)
+        {
+            ZVAL_DEREF(st);
+            if (is_str(aget(st, "role"), "count")) {
+                ok = scalar_of_step(self, st, rd(r, "params"), &total);
+                found = true;
+                break;
+            }
+        }
+        ZEND_HASH_FOREACH_END();
+        if (ok && !found) {
+            db_throw_orm("INTERNAL", "paginate plan has no count step");
+            ok = false;
+        }
+        if (ok) {
+            ok = relations_of(self, &plan, rd(r, "params"), &main, &res);
+        }
     }
     zval_ptr_dtor(&main);
     if (!ok) {
+        if (!Z_ISUNDEF(total)) zval_ptr_dtor(&total);
         zval_ptr_dtor(&plan);
         return false;
     }
-    zval *steps = aget(&plan, "steps");
-    zval *st;
-    bool found = false;
-    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(steps), st)
-    {
-        ZVAL_DEREF(st);
-        if (is_str(aget(st, "role"), "count")) {
-            zval count;
-            ok = scalar_of_step(self, st, rd(r, "params"), &count);
-            if (ok) {
-                array_init(out);
-                push(out, &plan);
-                push(out, &res);
-                zval n;
-                ZVAL_LONG(&n, zval_get_long(&count));
-                zend_hash_next_index_insert(Z_ARRVAL_P(out), &n);
-                zval_ptr_dtor(&count);
-            }
-            found = true;
-            break;
-        }
-    }
-    ZEND_HASH_FOREACH_END();
+    array_init(out);
+    push(out, &plan);
+    push(out, &res);
+    zval n;
+    ZVAL_LONG(&n, zval_get_long(&total));
+    zend_hash_next_index_insert(Z_ARRVAL_P(out), &n);
+    zval_ptr_dtor(&total);
     zval_ptr_dtor(&res);
     zval_ptr_dtor(&plan);
-    if (!found) {
-        db_throw_orm("INTERNAL", "paginate plan has no count step");
-        return false;
-    }
     return ok;
 }
 

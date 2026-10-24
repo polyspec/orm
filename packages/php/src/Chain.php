@@ -221,6 +221,23 @@ final class Chain
         if ($ws[0] === 'Tuple') {
             $try(fn() => self::tupleKey($meta, $ix, array_slice($ws, 1), 'tuple'));
         }
+        if ($ws[0] === 'Fulltext') {
+            $boolean = ($ws[1] ?? '') === 'Boolean';
+            $columns = self::splitWith($ix, array_slice($ws, $boolean ? 2 : 1));
+            if ($columns === null || $columns === []) {
+                $errors[] = "$text: a full-text key needs known columns joined by With";
+            } else {
+                $try(static function () use ($meta, $columns, $key, $boolean): array {
+                    foreach ($columns as $column) {
+                        $definition = $meta['columns'][$column];
+                        if (!in_array($definition['type'], ['varchar', 'text'], true) || $definition['codec'] !== []) {
+                            self::fail("{$meta['entity']}.$column does not accept the fulltext operator");
+                        }
+                    }
+                    return $key($boolean ? 'fulltext_boolean' : 'fulltext', '', $columns);
+                });
+            }
+        }
         for ($i = 1; $i < count($ws) - 1; $i++) {
             if (!array_key_exists($ws[$i], self::COMPARE)) {
                 continue;

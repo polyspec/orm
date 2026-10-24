@@ -147,6 +147,14 @@ static bool predicate_build(zval *model, zval *key, zval *value, zval *rest, boo
     zval *op=at(key,"op"),*column_name=at(key,"column"),*compare=at(key,"compare");
     zend_string *column=column_name&&Z_TYPE_P(column_name)==IS_STRING?Z_STR_P(column_name):ZSTR_EMPTY_ALLOC();
     *extra=0; array_init(out);
+    if(is_str(op,"fulltext")||is_str(op,"fulltext_boolean")) {
+        zval *columns=at(key,"columns");
+        if(!columns||Z_TYPE_P(columns)!=IS_ARRAY||zend_hash_num_elements(Z_ARRVAL_P(columns))==0){throw_orm("CONFIG","a full-text key needs columns");goto fail;}
+        add_assoc_str(out,"op",zend_string_copy(Z_STR_P(op)));
+        Z_TRY_ADDREF_P(columns);add_assoc_zval(out,"cols",columns);
+        Z_TRY_ADDREF_P(value);add_assoc_zval(out,"value",value);
+        add_assoc_string(out,"kind","fulltext");return true;
+    }
     if(is_str(op,"tuple")||is_str(op,"ne_tuple")) {
         zval *cols=at(key,"columns");uint32_t width=cols&&Z_TYPE_P(cols)==IS_ARRAY?zend_hash_num_elements(Z_ARRVAL_P(cols)):0;
         if(Z_TYPE_P(value)!=IS_ARRAY||!zend_array_is_list(Z_ARRVAL_P(value))){throw_orm("CONFIG","tuple values must be a list");goto fail;}

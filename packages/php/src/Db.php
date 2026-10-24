@@ -1157,13 +1157,18 @@ final class Db
         }
         $plan = $this->plan($r);
         $main = $this->query($plan['steps'][0], $r->params);
-        $result = $this->relations($plan, $r->params, $main);
+        $total = null;
         foreach ($plan['steps'] as $st) {
             if (($st['role'] ?? '') === 'count') {
-                return [$plan, $result, (int) $this->scalar($st, $r->params)];
+                $total = (int) $this->scalar($st, $r->params);
+                break;
             }
         }
-        throw new OrmException(Code::INTERNAL, 'paginate plan has no count step');
+        if ($total === null) {
+            throw new OrmException(Code::INTERNAL, 'paginate plan has no count step');
+        }
+        $result = $this->relations($plan, $r->params, $main);
+        return [$plan, $result, $total];
     }
 
     /**
