@@ -7,8 +7,9 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync,
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { caseTest, PROCESS } from '../../tests/testcase.mts';
+import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
 import { isolatedEnvironment } from '../../tests/environment.mts';
+import { complexQueryDatabaseEnvironment, complexQueryDatabasePlan, complexQuerySeedSql, dropComplexQueryFixtures, environmentFile } from './databases.mts';
 
 const repo = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 
@@ -30,6 +31,50 @@ function fake(programs: string[], failing: string) {
     throw error;
   }
 }
+
+caseTest('complex-query fixture setup maps every owner DSN and tears down every database', COMPUTE, () => {
+  const plan = complexQueryDatabasePlan('orm_check_2147483647_ffffffff', '/tmp/complex-query-run', {
+    ORM_RUN_MYSQL_DSN: 'mysql://runner@127.0.0.1:3306/orm_run?timezone=UTC',
+    ORM_RUN_POSTGRES_DSN: 'postgres://runner@127.0.0.1:5432/orm_run?sslmode=disable',
+    ORM_RUN_SQLITE_QUERY: '_pragma=busy_timeout(5000)&timezone=%2B00:00',
+  });
+  assert.equal(plan.length, 18);
+  assert.equal(new Set(plan.map(item => item.database)).size, 18);
+  assert.ok(plan.every(item => item.database.length <= 63));
+  const environment = complexQueryDatabaseEnvironment(plan);
+  assert.equal(Object.keys(environment).length, 18);
+  const read = environmentFile(Object.entries(environment).map(([key, value]) => `export ${key}='${value}'`).join('\n'));
+  assert.deepEqual(read, environment);
+  assert.equal(environment['COMPLEX_QUERY_PHP_EXTENSION_POSTGRES_DSN'], plan.find(item => item.runtime === 'php_extension' && item.dialect === 'postgres')?.dsn);
+  assert.equal(environment['COMPLEX_QUERY_TYPESCRIPT_SQLITE_DSN'], plan.find(item => item.runtime === 'typescript' && item.dialect === 'sqlite')?.dsn);
+  const fixture = JSON.parse(readFileSync(join(repo, 'contracts/fixtures/complex_query/complex_query.json'), 'utf8'));
+  const sqliteSeed = complexQuerySeedSql(fixture, 'sqlite');
+  const expectedRows = Object.values(fixture.seed as Record<string, unknown[]>).reduce((total, rows) => total + rows.length, 0);
+  assert.equal((sqliteSeed.match(/INSERT INTO /g) ?? []).length, expectedRows);
+  assert.match(sqliteSeed, /"product_lang" \("seq", "product_seq", "lang_id"/);
+  assert.match(sqliteSeed, /'widget-1002-ko'/);
+
+  const removed: string[] = [];
+  const complete = dropComplexQueryFixtures(plan, {
+    mysql: database => { removed.push(`mysql:${database}`); return true; },
+    postgres: database => { removed.push(`postgres:${database}`); return true; },
+    sqlite: file => { removed.push(`sqlite:${file}`); return true; },
+  });
+  assert.equal(complete, true);
+  assert.equal(removed.length, 18);
+  assert.equal(removed.filter(value => value.startsWith('mysql:')).length, 6);
+  assert.equal(removed.filter(value => value.startsWith('postgres:')).length, 6);
+  assert.equal(removed.filter(value => value.startsWith('sqlite:')).length, 6);
+
+  let attempted = 0;
+  const partialFailure = dropComplexQueryFixtures(plan, {
+    mysql: () => { attempted++; return attempted !== 1; },
+    postgres: () => { attempted++; return true; },
+    sqlite: () => { attempted++; return true; },
+  });
+  assert.equal(partialFailure, false);
+  assert.equal(attempted, 18, 'teardown attempts independent databases after a drop fails');
+});
 
 // declared reads the commands the script runs from COMMANDS (scripts/check/commands.mts), which the script exports. The expected commands and
 // their count are not hand-written, so the case still matches when test files are added to or removed from a lane. It returns the commands that start with a program, in run order.

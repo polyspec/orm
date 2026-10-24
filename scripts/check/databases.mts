@@ -1,6 +1,6 @@
 // The databases of one run (make orm-check, make owner-check, make run-databases): created for the run and dropped at its end.
-// No bench or decimal database is shared: one that another run or session uses and changes would make the results depend
-// on it, so each run creates, seeds and drops a bench and a decimal database of its own name. The environment file of the
+// No bench, decimal, or complex-query fixture database is shared: one that another run or session uses and changes would make the results depend
+// on it, so each run creates, seeds and drops its own databases. The environment file of the
 // servers names no such database; it gives the DSNs to rename (ORM_RUN_*).
 //
 //   databases.mts create <servers env> <directory> <name>
@@ -8,8 +8,8 @@
 //   databases.mts drop-dead <servers env> <directory> <name>
 //
 // create makes, on the servers of <servers env> (the file that make orm-test-servers writes), the MySQL and PostgreSQL databases
-// <name>_bench and <name>_decimal and the SQLite files of <directory>, installs them with scripts/bench-db.mts and the
-// TypeScript decimal model (createDecimal; make databases-create builds it first), and writes <directory>/env (<servers env> with the BENCH_*, ORM_BENCH_MYSQL_DSN and the
+// <name>_bench and <name>_decimal, 12 owner-specific MySQL/PostgreSQL complex-query databases, and the SQLite files of <directory>;
+// it installs and seeds them from their canonical fixtures, and writes <directory>/env (<servers env> with the BENCH_*, ORM_BENCH_MYSQL_DSN and the
 // send-savepoint SQLite file ORM_SEND_SQLITE_DSN of this run) and <directory>/decimal-env. create first drops the databases
 // that ended runs left (drop-dead). drop drops them and purges the binary logs of the two MySQL servers up to what the
 // replica applied (purgeBinlogs); drop is the last step of a run and runs even when an earlier step failed, so the binary
@@ -41,6 +41,68 @@ export function withDatabase(dsn: string, database: string): string {
   return url.href;
 }
 
+const COMPLEX_QUERY_RUNTIMES = ['go', 'php', 'php_extension', 'typescript', 'python', 'rust'] as const;
+const COMPLEX_QUERY_DIALECTS = ['mysql', 'postgres', 'sqlite'] as const;
+const COMPLEX_QUERY_RUNTIME_CODES: Record<(typeof COMPLEX_QUERY_RUNTIMES)[number], string> = {
+  go: 'g', php: 'p', php_extension: 'pe', typescript: 'ts', python: 'py', rust: 'rs',
+};
+const COMPLEX_QUERY_DIALECT_CODES: Record<(typeof COMPLEX_QUERY_DIALECTS)[number], string> = { mysql: 'm', postgres: 'p', sqlite: 's' };
+type ComplexQueryRuntime = (typeof COMPLEX_QUERY_RUNTIMES)[number];
+type ComplexQueryDialect = (typeof COMPLEX_QUERY_DIALECTS)[number];
+export type ComplexQueryDatabase = {
+  runtime: ComplexQueryRuntime;
+  dialect: ComplexQueryDialect;
+  database: string;
+  file: string;
+  dsn: string;
+  dsnEnv: string;
+};
+
+/** The run-owned, seeded database of one owner and dialect; coverage reads this exact DSN before and after its case. */
+export function complexQueryDatabasePlan(name: string, directory: string, servers: Record<string, string>): ComplexQueryDatabase[] {
+  const mysql = servers['ORM_RUN_MYSQL_DSN'] ?? '';
+  const postgres = servers['ORM_RUN_POSTGRES_DSN'] ?? '';
+  const sqliteQuery = servers['ORM_RUN_SQLITE_QUERY'] ?? '';
+  return COMPLEX_QUERY_RUNTIMES.flatMap(runtime => COMPLEX_QUERY_DIALECTS.map(dialect => {
+    // The compact suffix keeps even the longest run name below PostgreSQL's 63-byte and MySQL's 64-byte identifier limits.
+    const database = `${name}_cq_${COMPLEX_QUERY_RUNTIME_CODES[runtime]}_${COMPLEX_QUERY_DIALECT_CODES[dialect]}`;
+    const file = join(directory, 'complex-query', `${runtime}.sqlite`);
+    const dsn = dialect === 'mysql' ? withDatabase(mysql, database)
+      : dialect === 'postgres' ? withDatabase(postgres, database)
+        : `sqlite://${file}?${sqliteQuery}`;
+    const dsnEnv = `COMPLEX_QUERY_${runtime.toUpperCase()}_${dialect.toUpperCase()}_DSN`;
+    return { runtime, dialect, database, file, dsn, dsnEnv };
+  }));
+}
+
+/** Explicit environment names consumed by the six owner parts of complex_query_product_search. */
+export function complexQueryDatabaseEnvironment(plan: readonly ComplexQueryDatabase[]): Record<string, string> {
+  for (const item of plan) if (!item.dsn) throw new Error(`${item.dsnEnv} is missing; run ${COMPLEX_QUERY_SETUP}`);
+  return Object.fromEntries(plan.map(item => [item.dsnEnv, item.dsn]));
+}
+
+/** Drops every owner database even after one drop fails; SQLite files are removed independently. */
+export function dropComplexQueryFixtures(plan: readonly ComplexQueryDatabase[], operations: {
+  mysql: (database: string) => boolean;
+  postgres: (database: string) => boolean;
+  sqlite: (file: string) => boolean;
+}, failure: (item: ComplexQueryDatabase) => void = () => {}): boolean {
+  let succeeded = true;
+  for (const item of plan) {
+    let dropped = false;
+    try { dropped = operations[item.dialect](item.dialect === 'sqlite' ? item.file : item.database); }
+    catch { dropped = false; }
+    if (!dropped) {
+      succeeded = false;
+      failure(item);
+    }
+  }
+  return succeeded;
+}
+
+/** A fixture database setup step, used by the runner's databases/create phase. */
+export const COMPLEX_QUERY_SETUP = 'make databases-create, which provisions the 18 run-owned complex-query fixture databases';
+
 /** The commands of the setup that create runs, for make repo-check. */
 const benchSetup: Command = { program: 'node', args: [join(root, 'scripts/bench-db.mts')], cwd: root };
 export const COMMANDS = [benchSetup].map(command => render(command, root));
@@ -71,7 +133,7 @@ const postgresServer = (dsn: string): string => {
 // is a process of this host.
 export function deadRuns(names: string[], alive: (pid: number) => boolean): { database: string; pid: number }[] {
   return names.flatMap(database => {
-    const match = /^orm_(?:owner|check)_(\d+)_.*_(?:bench|decimal)$/.exec(database);
+    const match = /^orm_(?:owner|check)_(\d+)_.*_(?:bench|decimal|cq_(?:g|p|pe|ts|py|rs)_(?:m|p))$/.exec(database);
     if (!match) return [];
     const pid = Number(match[1]);
     return alive(pid) ? [] : [{ database, pid }];
@@ -176,6 +238,107 @@ async function createDecimal(mysqlBench: string, postgresBench: string, decimal:
   return true;
 }
 
+type ComplexQueryFixture = {
+  schema: string;
+  mysql_setup: string[];
+  seed_order: string[];
+  seed_columns: Record<string, string[]>;
+  seed: Record<string, Record<string, unknown>[]>;
+};
+
+function sqlIdentifier(name: string, dialect: ComplexQueryDialect): string {
+  return dialect === 'mysql' ? `\`${name}\`` : `"${name}"`;
+}
+
+function sqlLiteral(value: unknown, dialect: ComplexQueryDialect): string {
+  if (value === null) return 'NULL';
+  if (typeof value === 'boolean') return dialect === 'sqlite' ? (value ? '1' : '0') : (value ? 'TRUE' : 'FALSE');
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  if (typeof value === 'string') return `'${value.replaceAll("'", "''")}'`;
+  throw new Error(`complex query fixture has unsupported SQL value ${String(value)}`);
+}
+
+/** Generates seed statements directly from the shared canonical fixture. */
+export function complexQuerySeedSql(fixture: ComplexQueryFixture, dialect: ComplexQueryDialect): string {
+  const statements: string[] = [];
+  for (const table of fixture.seed_order) {
+    const columns = fixture.seed_columns[table];
+    const rows = fixture.seed[table];
+    if (!columns || !rows) throw new Error(`complex query fixture omits seed metadata for ${table}`);
+    for (const row of rows) {
+      const values = columns.map(column => {
+        if (!Object.hasOwn(row, column)) throw new Error(`complex query fixture seed ${table} omits ${column}`);
+        return sqlLiteral(row[column], dialect);
+      });
+      statements.push(`INSERT INTO ${sqlIdentifier(table, dialect)} (${columns.map(column => sqlIdentifier(column, dialect)).join(', ')}) VALUES (${values.join(', ')})`);
+    }
+  }
+  return statements.join(';\n') + ';\n';
+}
+
+function runComplexQuerySql(item: ComplexQueryDatabase, sql: string, env: NodeJS.ProcessEnv): boolean {
+  switch (item.dialect) {
+    case 'mysql':
+      return mysqlAt(item.dsn, ['-D', item.database, '-e', sql], env).status === 0;
+    case 'postgres':
+      return result('psql', ['-X', '-q', '-v', 'ON_ERROR_STOP=1', item.dsn, '-c', sql], { ...env, PGTZ: 'UTC' }).status === 0;
+    case 'sqlite':
+      return result('sqlite3', ['-bail', item.file], env, sql).status === 0;
+  }
+}
+
+async function createComplexQueryFixtures(name: string, directory: string, servers: Record<string, string>, env: NodeJS.ProcessEnv): Promise<boolean> {
+  const plan = complexQueryDatabasePlan(name, resolve(directory), servers);
+  mkdirSync(join(directory, 'complex-query'), { recursive: true });
+  const mysqlServer = servers['ORM_RUN_MYSQL_DSN'] ?? '';
+  const postgresMaintenance = postgresServer(servers['ORM_RUN_POSTGRES_DSN'] ?? '');
+  for (const item of plan) {
+    if (item.dialect === 'mysql' && mysqlAt(mysqlServer, ['-e', `CREATE DATABASE \`${item.database}\``], env).status !== 0) {
+      console.error(`databases: cannot create the complex-query MySQL fixture database ${item.database}`);
+      return false;
+    }
+    if (item.dialect === 'postgres' && result('psql', ['-X', '-q', '-v', 'ON_ERROR_STOP=1', postgresMaintenance, '-c', `CREATE DATABASE "${item.database}"`], env).status !== 0) {
+      console.error(`databases: cannot create the complex-query PostgreSQL fixture database ${item.database}`);
+      return false;
+    }
+  }
+
+  const { Db, dbspecManifest, parseDbspec } = await import('../../packages/ts/dist/index.js');
+  const fixture = JSON.parse(readFileSync(join(root, 'contracts/fixtures/complex_query/complex_query.json'), 'utf8')) as ComplexQueryFixture;
+  const parsed = parseDbspec(readFileSync(join(root, fixture.schema), 'utf8'), {});
+  if (parsed.document === null) {
+    console.error('databases: contracts/fixtures/complex_query/complex_query.dbs is invalid');
+    return false;
+  }
+  const manifestResult = dbspecManifest([parsed.document]);
+  if (manifestResult.manifest === null) {
+    console.error('databases: cannot build the complex-query fixture manifest');
+    return false;
+  }
+  const schema = { manifestText: manifestResult.manifest.manifestText, manifestHash: manifestResult.manifest.manifestHash };
+  for (const item of plan) {
+    let setup;
+    try {
+      setup = await Db.connectSchema(item.dsn, schema);
+      await setup.utils().schema().install(schema);
+    } catch (error) {
+      console.error(`databases: cannot install the complex-query fixture schema on ${item.runtime}/${item.dialect}: ${errorMessage(error)}`);
+      return false;
+    } finally {
+      if (setup) await setup.close();
+    }
+    const setupSql = item.dialect === 'mysql' ? `${fixture.mysql_setup.join(';\n')};\n` : '';
+    const seedSql = complexQuerySeedSql(fixture, item.dialect);
+    const transaction = item.dialect === 'sqlite' ? 'BEGIN IMMEDIATE;\n' : item.dialect === 'postgres' ? 'BEGIN;\n' : 'START TRANSACTION;\n';
+    if (!runComplexQuerySql(item, `${setupSql}${transaction}${seedSql}COMMIT;\n`, env)) {
+      console.error(`databases: cannot seed the complex-query fixture for ${item.runtime}/${item.dialect}`);
+      return false;
+    }
+  }
+  console.log('databases: all 18 owner-specific complex-query fixture databases were installed and seeded');
+  return true;
+}
+
 if (import.meta.main) {
   const [action, serversPath, dir, name, ...rest] = process.argv.slice(2);
   if (action === undefined || serversPath === undefined || dir === undefined || name === undefined || rest.length > 0) {
@@ -225,14 +388,17 @@ if (import.meta.main) {
       const bench = spawnSync('node', [join(root, 'scripts/bench-db.mts')], { cwd: root, env: benchEnv, stdio: 'inherit' });
       if (bench.status !== 0) process.exit(bench.status ?? 1);
       if (!await createDecimal(mysqlBench, postgresBench, `${name}_decimal`, resolve(dir), env)) process.exit(1);
+      if (!await createComplexQueryFixtures(name, resolve(dir), servers, env)) process.exit(1);
+      const complexQueryEnv = complexQueryDatabaseEnvironment(complexQueryDatabasePlan(name, resolve(dir), servers));
       const lines = [readFileSync(serversPath, 'utf8').replace(/\n?$/, '\n'),
         `export ORM_BENCH_MYSQL_DSN='${ormBench}'\n`, `export BENCH_MYSQL_DSN='${mysqlBench}'\n`, `export BENCH_POSTGRES_DSN='${postgresBench}'\n`,
         `export BENCH_SQLITE_DSN='${sqliteBench}'\n`,
+        ...Object.entries(complexQueryEnv).map(([key, value]) => `export ${key}='${value}'\n`),
         // The SQLite file of rust-send-savepoint and of the Rust test of client-db-check (tx::send_tests) is of this run too.
         `export ORM_SEND_SQLITE_DSN='sqlite://${dir}/send-savepoint.sqlite'\n`];
       writeFileSync(join(dir, 'env.tmp'), lines.join(''));
       renameSync(join(dir, 'env.tmp'), join(dir, 'env'));
-      console.log(`databases: ${name}_bench and ${name}_decimal created and seeded`);
+      console.log(`databases: ${name}_bench, ${name}_decimal, and 18 complex-query fixture databases created and seeded`);
       break;
     }
     case 'drop': {
@@ -240,6 +406,16 @@ if (import.meta.main) {
       // stop the rest, and every failure is named at the end. A failure names its step only, since the commands hold DSNs.
       const failed: string[] = [];
       const keep = (label: string, done: () => boolean) => { if (!done()) failed.push(`${label} (exit 1)`); };
+      const complexQueryPlan = complexQueryDatabasePlan(name, resolve(dir), servers);
+      keep('drop the 18 owner-specific complex-query fixture databases and files', () => dropComplexQueryFixtures(complexQueryPlan, {
+        mysql: database => mysqlAt(runMysql, ['-e', `DROP DATABASE IF EXISTS \`${database}\``], env).status === 0,
+        postgres: database => result('psql', ['-X', '-q', '-v', 'ON_ERROR_STOP=1', postgresServer(servers['ORM_RUN_POSTGRES_DSN'] ?? ''),
+          '-c', `DROP DATABASE IF EXISTS "${database}" WITH (FORCE)`], env).status === 0,
+        sqlite: file => {
+          for (const path of [file, `${file}-wal`, `${file}-shm`]) rmSync(path, { force: true });
+          return true;
+        },
+      }, item => console.error(`databases: cannot drop ${item.runtime}/${item.dialect} fixture ${item.dialect === 'sqlite' ? item.file : item.database}; check server access in ${serversPath} and run make orm-test-servers`)));
       keep(`mysql DROP DATABASE ${name}_bench, ${name}_decimal`, () => mysqlAt(runMysql, ['-e', `DROP DATABASE IF EXISTS \`${name}_bench\`; DROP DATABASE IF EXISTS \`${name}_decimal\``], env).status === 0);
       const server = postgresServer(servers['ORM_RUN_POSTGRES_DSN'] ?? '');
       keep(`psql DROP DATABASE ${name}_bench, ${name}_decimal`, () => result('psql', ['-X', '-q', '-v', 'ON_ERROR_STOP=1', server,
@@ -250,7 +426,7 @@ if (import.meta.main) {
         console.error(`databases: drop failed:${failed.map(line => `\n  ${line}`).join('')}`);
         process.exit(1);
       }
-      console.log(`databases: ${name}_bench and ${name}_decimal dropped`);
+      console.log(`databases: ${name}_bench, ${name}_decimal, and complex-query fixture databases dropped`);
       break;
     }
     case 'drop-dead':

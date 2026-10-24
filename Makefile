@@ -257,8 +257,8 @@ CI_TARGETS_stress_pg_sqlite = feature-stress-pg-sqlite-check
 # the server environment of TEST_ENV has no such database. The runner does not pass MAKEFLAGS, so the VECTOR and RECORD of conformance-check
 # are passed as environment variables.
 # databases-create is the setup step databases/create of the runner (scripts/check/run.mts) and of make owner-check: it
-# builds the TypeScript client, whose decimal model installs the decimal database, and holds its shared lease while
-# scripts/check/databases.mts reads it.
+# builds the TypeScript client, creates the run-owned bench and decimal databases and all 18 owner-specific complex-query fixture databases,
+# and writes every DSN to the run environment before coverage reads database state.
 databases-create: typescript-build
 	$(READ_TYPESCRIPT)
 	$(NODE) scripts/check/databases.mts create '$(SERVERS)' '$(DIRECTORY)' '$(NAME)'
