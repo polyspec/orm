@@ -671,6 +671,26 @@
         "packages/php-ext/tests/ModelAssemblyTest.php"
       ]
     },
+    "collection-composite-key-check": {
+      "scope": "owner",
+      "needs": ["go", "rust", "php", "composer", "python", "node-modules", "php-extension-tools"],
+      "inputs": [
+        "Makefile",
+        "tests/collection/keys.json",
+        "packages/go/orm/collection.go",
+        "packages/go/orm/collection_identity_test.go",
+        "packages/php/src/Db.php",
+        "packages/php/tests/CollectionIdentityTest.php",
+        "packages/php-ext/src/db.c",
+        "packages/php-ext/tests/ModelAssemblyTest.php",
+        "packages/ts/src/database.ts",
+        "packages/ts/tests/collection_identity.mjs",
+        "packages/python/src/polyspec/orm/database.py",
+        "packages/python/tests/test_collection_identity.py",
+        "packages/rust/orm/src/collection.rs",
+        "packages/rust/orm/tests/collection_identity.rs"
+      ]
+    },
     "interface-typescript-extractor-check": {
       "scope": "owner",
       "needs": [

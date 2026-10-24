@@ -12,6 +12,7 @@ use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Bytes;
 use Polyspec\Orm\Collection;
+use Polyspec\Orm\Db;
 use Polyspec\Orm\Model;
 use Polyspec\Orm\OrmException;
 
@@ -20,7 +21,7 @@ require_once __DIR__ . '/collection-weak-caller.php';
 #[Small]
 final class CollectionIdentityTest extends TestCase
 {
-    /** @return array{null: array{code: string, message: string}, keys: list<array<string, mixed>>} */
+    /** @return array<string, mixed> */
     private static function fixture(): array
     {
         $src = file_get_contents(__DIR__ . '/../../../tests/collection/keys.json');
@@ -41,8 +42,20 @@ final class CollectionIdentityTest extends TestCase
             'bool' => $entry['value'],
             'int' => $entry['value'],
             'bytes' => new Bytes(hex2bin($entry['hex'])),
-            'datetime' => new \DateTimeImmutable($entry['value']),
+            'datetime' => new \DateTime($entry['value']),
             default => self::fail("fixture {$entry['name']} has unknown type {$entry['type']}"),
+        };
+    }
+
+    /** The PHP value of a composite key component. */
+    private static function compositeValueOf(array $entry): mixed
+    {
+        return match ($entry['type']) {
+            'text', 'bool', 'int' => $entry['value'],
+            'bytes' => new Bytes(hex2bin($entry['hex'])),
+            'datetime' => new \DateTimeImmutable($entry['value']),
+            'null' => null,
+            default => self::fail("unknown composite component type {$entry['type']}"),
         };
     }
 
@@ -87,6 +100,67 @@ final class CollectionIdentityTest extends TestCase
             self::assertSame($expected['code'], $e->code_);
             self::assertSame($expected['code'] . ': ' . $expected['message'], $e->getMessage());
         }
+    }
+
+    public function testCompositeComponentsPreserveTypedIdentityAndSharedEncoding(): void
+    {
+        $seen = [];
+        foreach (self::fixture()['composites'] as $entry) {
+            $row = array_map(self::compositeValueOf(...), $entry['values']);
+            $refs = array_map(
+                static fn(int $index): array => ['column' => "k$index", 'index' => $index],
+                array_keys($row),
+            );
+            $dates = array_map(
+                static fn(mixed $value): ?string => $value instanceof \DateTimeInterface ? $value->format('c.u') : null,
+                $row,
+            );
+            $key = Db::rowKey($row, $refs);
+            self::assertSame($entry['encoded'], $key, $entry['name']);
+            self::assertSame($key, Db::rowKey($row, $refs), "{$entry['name']} changed on repeated creation");
+            foreach ($row as $index => $value) {
+                if ($dates[$index] !== null) {
+                    self::assertSame(
+                        $dates[$index],
+                        $value->format('c.u'),
+                        "{$entry['name']} mutated its datetime input",
+                    );
+                }
+            }
+            $identity = Collection::identityOf($key);
+            if (isset($entry['same_as'])) {
+                self::assertSame($seen[$entry['same_as']], $identity, $entry['name']);
+                continue;
+            }
+            foreach ($seen as $other => $otherIdentity) {
+                self::assertNotSame($otherIdentity, $identity, "keys $other and {$entry['name']} collide");
+            }
+            $seen[$entry['name']] = $identity;
+        }
+    }
+
+    public function testCompositeDateTimeMicrosecondsTrimTrailingZeroes(): void
+    {
+        foreach (self::fixture()['datetime_microseconds'] as $entry) {
+            $date = new \DateTime($entry['value']);
+            $before = $date->format('c.u');
+            $row = [$date, ''];
+            $refs = [
+                ['column' => 'date', 'index' => 0],
+                ['column' => 'text', 'index' => 1],
+            ];
+            $key = Db::rowKey($row, $refs);
+            self::assertSame($entry['encoded'], $key, $entry['name']);
+            self::assertSame($key, Db::rowKey($row, $refs), "{$entry['name']} changed on repeated creation");
+            self::assertSame($before, $date->format('c.u'), "{$entry['name']} mutated its datetime input");
+        }
+    }
+
+    public function testNullCompositeRowHasNoCollectionKey(): void
+    {
+        $row = array_map(self::compositeValueOf(...), self::fixture()['nullable_composite']);
+        $refs = [['column' => 'first', 'index' => 0], ['column' => 'second', 'index' => 1]];
+        self::assertNull(Db::rowKey($row, $refs));
     }
 
     // Requirements: T182-6-12.

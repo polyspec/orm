@@ -3,7 +3,7 @@
 use std::any::Any;
 use std::collections::HashMap;
 
-use chrono::NaiveDateTime;
+use chrono::{DateTime, NaiveDateTime, Utc};
 
 use crate::model::{AnyModel, Model};
 use crate::value::{Param, Val};
@@ -60,12 +60,44 @@ impl Key {
         }
         let mut out = String::new();
         for value in values {
-            let part = match value {
+            let (tag, part) = match value {
                 Val::Null => return Err(null_key()),
-                Val::Bool(b) => (*b as i64).to_string(),
-                other => other.as_string()?,
+                Val::I64(number) => ('i', number.to_string()),
+                Val::Str(text) => ('s', text.clone()),
+                Val::Bool(value) => ('t', if *value { "1" } else { "0" }.into()),
+                Val::Bytes(bytes) => {
+                    const HEX: &[u8; 16] = b"0123456789abcdef";
+                    let mut encoded = String::with_capacity(bytes.len() * 2);
+                    for byte in bytes {
+                        encoded.push(HEX[(byte >> 4) as usize] as char);
+                        encoded.push(HEX[(byte & 0x0f) as usize] as char);
+                    }
+                    ('b', encoded)
+                }
+                Val::DateTime(datetime) => {
+                    let instant = DateTime::<Utc>::from_naive_utc_and_offset(*datetime, Utc);
+                    let base = instant.format("%Y-%m-%dT%H:%M:%S");
+                    let nanos = instant.timestamp_subsec_nanos();
+                    let payload = if nanos == 0 {
+                        format!("{base}Z")
+                    } else {
+                        let fraction = format!("{nanos:09}");
+                        format!("{base}.{}Z", fraction.trim_end_matches('0'))
+                    };
+                    ('d', payload)
+                }
+                other => {
+                    let legacy = other.as_string()?;
+                    out.push_str(&legacy.len().to_string());
+                    out.push(':');
+                    out.push_str(&legacy);
+                    continue;
+                }
             };
-            out.push_str(&format!("{}:{}", part.len(), part));
+            out.push(tag);
+            out.push_str(&part.len().to_string());
+            out.push(':');
+            out.push_str(&part);
         }
         Ok(Key::S(out))
     }

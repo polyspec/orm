@@ -451,7 +451,32 @@ def _split_row_key(row, refs) -> str:
 def key_of_values(values) -> str:
     if len(values) == 1:
         return key_text(values[0])
-    return "".join(f"{len(part)}:{part}" for part in (scalar_key(v) for v in values))
+    return "".join(_composite_key_part(value) for value in values)
+
+
+def _composite_key_part(value) -> str:
+    if isinstance(value, bool):
+        tag, payload = "t", "1" if value else "0"
+    elif isinstance(value, int):
+        tag, payload = "i", str(value)
+    elif isinstance(value, str):
+        tag, payload = "s", value
+    elif isinstance(value, bytes):
+        tag, payload = "b", value.hex()
+    elif isinstance(value, datetime.datetime):
+        instant = (
+            value.astimezone(datetime.UTC)
+            if value.tzinfo is not None
+            else value.replace(tzinfo=datetime.UTC)
+        )
+        text = instant.replace(tzinfo=None).isoformat(timespec="microseconds")
+        base, fraction = text[:19], text[20:].rstrip("0")
+        payload = base + (f".{fraction}" if fraction else "") + "Z"
+        tag = "d"
+    else:
+        legacy = scalar_key(value)
+        return f"{len(legacy.encode('utf-8'))}:{legacy}"
+    return f"{tag}{len(payload.encode('utf-8'))}:{payload}"
 
 
 def key_value(value):

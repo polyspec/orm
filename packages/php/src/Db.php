@@ -1950,10 +1950,34 @@ final class Db
             if ($v === null) {
                 return null;
             }
-            $part = self::scalarText($v);
-            $out .= strlen($part) . ':' . $part;
+            [$tag, $part] = self::compositeKeyPart($v);
+            $out .= $tag === '' ? $part : $tag . strlen($part) . ':' . $part;
         }
         return $out;
+    }
+
+    /** @return array{string,string} */
+    private static function compositeKeyPart(mixed $value): array
+    {
+        if (is_bool($value)) {
+            return ['t', $value ? '1' : '0'];
+        }
+        if (is_int($value)) {
+            return ['i', (string) $value];
+        }
+        if (is_string($value)) {
+            return ['s', $value];
+        }
+        if ($value instanceof Bytes) {
+            return ['b', bin2hex($value->bytes)];
+        }
+        if ($value instanceof \DateTimeInterface) {
+            $instant = \DateTimeImmutable::createFromInterface($value)->setTimezone(new \DateTimeZone('UTC'));
+            $fraction = rtrim($instant->format('u'), '0');
+            return ['d', $instant->format('Y-m-d\TH:i:s') . ($fraction === '' ? '' : '.' . $fraction) . 'Z'];
+        }
+        $legacy = self::scalarText($value);
+        return ['', strlen($legacy) . ':' . $legacy];
     }
 
     /**

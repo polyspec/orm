@@ -7,6 +7,7 @@ mod or_panic;
 use or_panic::OrPanic;
 
 use polyspec_orm::chrono::DateTime;
+use polyspec_orm::plan::KeyRef;
 use polyspec_orm::{Error, Key, Val};
 use serde_json::Value as Json;
 
@@ -28,6 +29,21 @@ fn value_of(entry: &Json) -> Val {
             Val::DateTime(instant.naive_utc())
         }
         other => panic!("fixture {name} has unknown type {other:?}"),
+    }
+}
+
+fn composite_value_of(entry: &Json) -> Val {
+    match entry["type"].as_str() {
+        Some("text") => Val::Str(entry["value"].as_str().expect("text value").to_owned()),
+        Some("bool") => Val::Bool(entry["value"].as_bool().expect("bool value")),
+        Some("int") => Val::I64(entry["value"].as_i64().expect("int value")),
+        Some("bytes") => Val::Bytes(hex_decode(entry["hex"].as_str().expect("bytes hex"))),
+        Some("datetime") => {
+            let instant = DateTime::parse_from_rfc3339(entry["value"].as_str().expect("datetime value")).expect("datetime value");
+            Val::DateTime(instant.naive_utc())
+        }
+        Some("null") => Val::Null,
+        other => panic!("unknown composite component type {other:?}"),
     }
 }
 
@@ -71,4 +87,49 @@ fn a_null_key_is_codec_decode() {
         }
         other => panic!("a NULL collection key gave {other:?}"),
     }
+}
+
+#[test]
+fn composite_components_preserve_typed_identity_and_shared_encoding() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let fixture = fixture();
+    let entries = fixture["composites"].as_array().expect("composites");
+    let mut seen: Vec<(String, Key)> = Vec::new();
+    for entry in entries {
+        let name = entry["name"].as_str().expect("name").to_owned();
+        let values: Vec<Val> = entry["values"].as_array().expect("values").iter().map(composite_value_of).collect();
+        let key = Key::of_values(&values).or_panic(|e| format!("key {name}: {e}"));
+        assert_eq!(key, Key::S(entry["encoded"].as_str().expect("encoded").to_owned()), "key {name}");
+        assert_eq!(Key::of_values(&values).expect("key again"), key, "key {name} changed on repeated creation");
+        if let Some(same_as) = entry["same_as"].as_str() {
+            let target = &seen.iter().find(|(n, _)| n == same_as).expect("same_as names an earlier key").1;
+            assert_eq!(&key, target, "key {name} differs from {same_as}");
+            continue;
+        }
+        for (other, other_key) in &seen {
+            assert_ne!(other_key, &key, "keys {other} and {name} have the same identity");
+        }
+        seen.push((name, key));
+    }
+}
+
+#[test]
+fn composite_datetime_microseconds_trim_trailing_zeroes() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    for entry in fixture()["datetime_microseconds"].as_array().expect("datetime_microseconds") {
+        let name = entry["name"].as_str().expect("name");
+        let instant = DateTime::parse_from_rfc3339(entry["value"].as_str().expect("value")).or_panic(|e| format!("fixture {name}: {e}"));
+        let values = vec![Val::DateTime(instant.naive_utc()), Val::Str(String::new())];
+        let key = Key::of_values(&values).or_panic(|e| format!("key {name}: {e}"));
+        assert_eq!(key, Key::S(entry["encoded"].as_str().expect("encoded").to_owned()), "key {name}");
+        assert_eq!(Key::of_values(&values).expect("key again"), key, "key {name} changed on repeated creation");
+    }
+}
+
+#[test]
+fn a_null_composite_row_has_no_key() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let values: Vec<Val> = fixture()["nullable_composite"].as_array().expect("nullable_composite").iter().map(composite_value_of).collect();
+    let refs = vec![KeyRef { column: "first".into(), index: 0 }, KeyRef { column: "second".into(), index: 1 }];
+    assert!(Key::of_row(&values, &refs).expect("nullable row result").is_none());
 }

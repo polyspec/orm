@@ -391,7 +391,36 @@ export type Key = number | bigint | string | boolean | Uint8Array | Date;
 
 export function keyOfValues(values: readonly unknown[]): string {
   if (values.length === 1) return keyText(values[0]);
-  return values.map(v => { const part = scalarKey(v); return `${part.length}:${part}`; }).join('');
+  return values.map(compositeKeyPart).join('');
+}
+
+function compositeKeyPart(value: unknown): string {
+  let tag: string;
+  let payload: string;
+  if (typeof value === 'boolean') {
+    tag = 't';
+    payload = value ? '1' : '0';
+  } else if (typeof value === 'bigint' || (typeof value === 'number' && Number.isInteger(value))) {
+    tag = 'i';
+    payload = String(value);
+  } else if (typeof value === 'string') {
+    tag = 's';
+    payload = value;
+  } else if (value instanceof Uint8Array) {
+    tag = 'b';
+    payload = Buffer.from(value).toString('hex');
+  } else if (value instanceof Date) {
+    tag = 'd';
+    payload = value.toISOString().replace(/\.(\d{3})Z$/, (_, fraction: string) => {
+      const trimmed = fraction.replace(/0+$/, '');
+      return trimmed === '' ? 'Z' : `.${trimmed}Z`;
+    });
+  } else {
+    // Keep the prior framing for values outside the five common typed component kinds.
+    const legacy = scalarKey(value);
+    return `${Buffer.byteLength(legacy, 'utf8')}:${legacy}`;
+  }
+  return `${tag}${Buffer.byteLength(payload, 'utf8')}:${payload}`;
 }
 
 /** The identity of a collection key; SQL NULL has none and is CODEC_DECODE. */

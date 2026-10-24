@@ -4,8 +4,10 @@ import unittest
 from datetime import datetime
 from pathlib import Path
 
+from polyspec.orm.database import key_of_values, row_key
 from polyspec.orm.errors import OrmError
 from polyspec.orm.model import Collection
+
 from . import testcase
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -25,8 +27,21 @@ def value_of(entry):
     if kind == "bytes":
         return bytes.fromhex(entry["hex"])
     if kind == "datetime":
-        return datetime.fromisoformat(entry["value"].replace("Z", "+00:00"))
+        return datetime.fromisoformat(entry["value"])
     raise AssertionError(f"fixture {entry['name']} has unknown type {kind}")
+
+
+def composite_value_of(entry):
+    kind = entry["type"]
+    if kind in ("text", "bool", "int"):
+        return entry["value"]
+    if kind == "bytes":
+        return bytes.fromhex(entry["hex"])
+    if kind == "datetime":
+        return datetime.fromisoformat(entry["value"])
+    if kind == "null":
+        return None
+    raise AssertionError(f"composite fixture has unknown type {kind}")
 
 
 class CollectionIdentityTest(unittest.TestCase):
@@ -57,6 +72,48 @@ class CollectionIdentityTest(unittest.TestCase):
         self.assertEqual(
             str(raised.exception), f"{expected['code']}: {expected['message']}"
         )
+
+    def test_composite_components_preserve_typed_identity_and_shared_encoding(self):
+        # Requirements: PRT-35.
+        fixture = load_fixture()
+        seen = {}
+        for entry in fixture["composites"]:
+            values = [composite_value_of(value) for value in entry["values"]]
+            key = key_of_values(values)
+            self.assertEqual(key, entry["encoded"], entry["name"])
+            self.assertEqual(
+                key_of_values(values),
+                key,
+                f"{entry['name']} changed on repeated creation",
+            )
+            if "same_as" in entry:
+                self.assertEqual(key, seen[entry["same_as"]], entry["name"])
+                continue
+            for other, other_key in seen.items():
+                self.assertNotEqual(
+                    key, other_key, f"keys {other} and {entry['name']} collide"
+                )
+            seen[entry["name"]] = key
+
+    def test_composite_datetime_microseconds_trim_trailing_zeroes(self):
+        fixture = load_fixture()
+        for entry in fixture["datetime_microseconds"]:
+            date = datetime.fromisoformat(entry["value"])
+            values = [date, ""]
+            key = key_of_values(values)
+            self.assertEqual(key, entry["encoded"], entry["name"])
+            self.assertEqual(
+                key_of_values(values),
+                key,
+                f"{entry['name']} changed on repeated creation",
+            )
+
+    def test_a_null_composite_row_has_no_collection_key(self):
+        # Requirements: PRT-35.
+        row = [
+            composite_value_of(value) for value in load_fixture()["nullable_composite"]
+        ]
+        self.assertIsNone(row_key(row, [{"index": 0}, {"index": 1}]))
 
 
 if __name__ == "__main__":

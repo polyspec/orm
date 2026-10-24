@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "comment": "The collection key identity that every implementation shares. Each entry of keys is one value of one type; two entries have the same key only when their type and value are equal, except an entry that names the entry it equals in same_as (the same instant in another zone). A NULL key component is an error in every implementation. Read by the unit tests of each client, not by the conformance runners.",
+  "comment": "The collection key identity that every implementation shares. Each entry of keys is one value of one type; two entries have the same key only when their type and value are equal, except an entry that names the entry it equals in same_as (the same instant in another zone). A composite component is encoded as its type tag, the byte length of its canonical payload, a colon, then the payload; tags are i integer, t boolean, s text, b bytes and d datetime. Composite bytes use lowercase hex, datetime payloads are UTC RFC3339 with trailing fractional zeroes trimmed, and text length is UTF-8 bytes. Common datetime vectors use millisecond precision representable by JavaScript Date; datetime_microseconds adds host-precision cases for Go, PHP, the PHP extension, Python and Rust. A NULL key component is an error in every implementation. Other value types retain their existing client behavior and are outside this typed-composite contract. Read by the unit tests of each client, not by the conformance runners.",
   "null": {
     "code": "CODEC_DECODE",
     "message": "collection row identity contains SQL NULL"
@@ -18,5 +18,28 @@
     {"name": "datetime", "type": "datetime", "value": "2026-10-18T09:30:00.123456Z"},
     {"name": "text of the datetime", "type": "text", "value": "2026-10-18 09:30:00.123456"},
     {"name": "datetime in another zone", "type": "datetime", "value": "2026-10-18T18:30:00.123456+09:00", "same_as": "datetime"}
-  ]
+  ],
+  "composites": [
+    {"name": "false and empty text", "values": [{"type": "bool", "value": false}, {"type": "text", "value": ""}], "encoded": "t1:0s0:"},
+    {"name": "integer zero and empty text", "values": [{"type": "int", "value": 0}, {"type": "text", "value": ""}], "encoded": "i1:0s0:"},
+    {"name": "text one then twenty three", "values": [{"type": "text", "value": "1"}, {"type": "text", "value": "23"}], "encoded": "s1:1s2:23"},
+    {"name": "text twelve then three", "values": [{"type": "text", "value": "12"}, {"type": "text", "value": "3"}], "encoded": "s2:12s1:3"},
+    {"name": "true then integer one", "values": [{"type": "bool", "value": true}, {"type": "int", "value": 1}], "encoded": "t1:1i1:1"},
+    {"name": "integer one then true", "values": [{"type": "int", "value": 1}, {"type": "bool", "value": true}], "encoded": "i1:1t1:1"},
+    {"name": "bytes abc then text abc", "values": [{"type": "bytes", "hex": "616263"}, {"type": "text", "value": "abc"}], "encoded": "b6:616263s3:abc"},
+    {"name": "text abc then bytes abc", "values": [{"type": "text", "value": "abc"}, {"type": "bytes", "hex": "616263"}], "encoded": "s3:abcb6:616263"},
+    {"name": "datetime then its text", "values": [{"type": "datetime", "value": "2026-10-18T09:30:00.123Z"}, {"type": "text", "value": "2026-10-18T09:30:00.123Z"}], "encoded": "d24:2026-10-18T09:30:00.123Zs24:2026-10-18T09:30:00.123Z"},
+    {"name": "datetime same instant in another zone", "values": [{"type": "datetime", "value": "2026-10-18T18:30:00.123+09:00"}, {"type": "text", "value": "2026-10-18T09:30:00.123Z"}], "encoded": "d24:2026-10-18T09:30:00.123Zs24:2026-10-18T09:30:00.123Z", "same_as": "datetime then its text"},
+    {"name": "datetime millisecond fraction trims one zero", "values": [{"type": "datetime", "value": "2026-10-18T09:30:00.120Z"}, {"type": "text", "value": ""}], "encoded": "d23:2026-10-18T09:30:00.12Zs0:"},
+    {"name": "datetime millisecond fraction trims two zeroes", "values": [{"type": "datetime", "value": "2026-10-18T09:30:00.010Z"}, {"type": "text", "value": ""}], "encoded": "d23:2026-10-18T09:30:00.01Zs0:"},
+    {"name": "datetime zero fraction is omitted", "values": [{"type": "datetime", "value": "2026-10-18T09:30:00.000Z"}, {"type": "text", "value": ""}], "encoded": "d20:2026-10-18T09:30:00Zs0:"},
+    {"name": "multibyte text and false", "values": [{"type": "text", "value": "é"}, {"type": "bool", "value": false}], "encoded": "s2:ét1:0"},
+    {"name": "embedded NUL text and empty text", "values": [{"type": "text", "value": "a\u0000b"}, {"type": "text", "value": ""}], "encoded": "s3:a\u0000bs0:"},
+    {"name": "high byte bytes then empty text", "values": [{"type": "bytes", "hex": "00ff"}, {"type": "text", "value": ""}], "encoded": "b4:00ffs0:"}
+  ],
+  "datetime_microseconds": [
+    {"name": "microseconds with trailing zeroes", "value": "2026-10-18T09:30:00.123400Z", "encoded": "d25:2026-10-18T09:30:00.1234Zs0:"},
+    {"name": "microseconds with leading and trailing zeroes", "value": "2026-10-18T09:30:00.000010Z", "encoded": "d26:2026-10-18T09:30:00.00001Zs0:"}
+  ],
+  "nullable_composite": [{"type": "null"}, {"type": "text", "value": ""}]
 }

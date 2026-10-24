@@ -1170,6 +1170,92 @@ static bool same_scalar(zval *a, zval *b)
     return same;
 }
 
+/* A composite-key component in the shared typed format. Unsupported legacy values retain their old untyped framing. */
+static bool composite_key_part(zval *v, char *tag, zend_string **out)
+{
+    if (Z_TYPE_P(v) == IS_TRUE || Z_TYPE_P(v) == IS_FALSE) {
+        *tag = 't';
+        *out = zend_string_init(Z_TYPE_P(v) == IS_TRUE ? "1" : "0", 1, 0);
+        return true;
+    }
+    if (Z_TYPE_P(v) == IS_LONG) {
+        *tag = 'i';
+        *out = zend_long_to_str(Z_LVAL_P(v));
+        return true;
+    }
+    if (Z_TYPE_P(v) == IS_STRING) {
+        *tag = 's';
+        *out = zend_string_copy(Z_STR_P(v));
+        return true;
+    }
+    if (is_instance(v, BYTES_CLASS)) {
+        zval *raw = rd(v, "bytes");
+        if (raw == NULL || Z_TYPE_P(raw) != IS_STRING) {
+            throw_orm("CODEC_DECODE", "Bytes key component has no byte string");
+            return false;
+        }
+        static const char digits[] = "0123456789abcdef";
+        size_t length = Z_STRLEN_P(raw);
+        zend_string *hex = zend_string_alloc(length * 2, 0);
+        const unsigned char *bytes = (const unsigned char *) Z_STRVAL_P(raw);
+        for (size_t i = 0; i < length; i++) {
+            ZSTR_VAL(hex)[2 * i] = digits[bytes[i] >> 4];
+            ZSTR_VAL(hex)[2 * i + 1] = digits[bytes[i] & 0x0f];
+        }
+        ZSTR_VAL(hex)[length * 2] = '\0';
+        *tag = 'b';
+        *out = hex;
+        return true;
+    }
+    if (is_instance(v, "DateTimeInterface")) {
+        zval immutable, zone_name, zone, utc;
+        ZVAL_STRING(&zone_name, "UTC");
+        bool ok = newobj("DateTimeZone", &zone, 1, &zone_name);
+        zval_ptr_dtor(&zone_name);
+        if (!ok) {
+            return false;
+        }
+        ok = scall("DateTimeImmutable::createFromInterface", &immutable, 1, v);
+        if (!ok) {
+            zval_ptr_dtor(&zone);
+            return false;
+        }
+        ok = mcall(&immutable, "setTimezone", &utc, 1, &zone);
+        zval_ptr_dtor(&immutable);
+        zval_ptr_dtor(&zone);
+        if (!ok) {
+            return false;
+        }
+        zend_string *full = format_of(&utc, "Y-m-d\\TH:i:s.u\\Z");
+        zval_ptr_dtor(&utc);
+        if (full == NULL) {
+            return false;
+        }
+        size_t length = ZSTR_LEN(full);
+        size_t end = length - 1;
+        while (end > 20 && ZSTR_VAL(full)[end - 1] == '0') {
+            end--;
+        }
+        size_t payload_length = end == 20 ? 19 : end;
+        zend_string *payload = zend_string_alloc(payload_length + 1, 0);
+        memcpy(ZSTR_VAL(payload), ZSTR_VAL(full), payload_length);
+        ZSTR_VAL(payload)[payload_length] = 'Z';
+        ZSTR_VAL(payload)[payload_length + 1] = '\0';
+        zend_string_release(full);
+        *tag = 'd';
+        *out = payload;
+        return true;
+    }
+    zend_string *legacy = NULL;
+    if (!scalar_text(v, &legacy)) {
+        return false;
+    }
+    *tag = '\0';
+    *out = zend_strpprintf(0, "%zu:%.*s", ZSTR_LEN(legacy), (int) ZSTR_LEN(legacy), ZSTR_VAL(legacy));
+    zend_string_release(legacy);
+    return true;
+}
+
 /* The collection key of a row's key columns (Db::rowKey): out is NULL when a column is SQL NULL. */
 static bool row_key(zval *row, zval *refs, zval *out)
 {
@@ -1192,12 +1278,27 @@ static bool row_key(zval *row, zval *refs, zval *out)
             ZVAL_NULL(out);
             return true;
         }
+        char tag = '\0';
         zend_string *part = NULL;
-        if (!scalar_text(v, &part)) {
+        if (!composite_key_part(v, &tag, &part)) {
             zend_string_release(acc);
             return false;
         }
-        zend_string *piece = zend_strpprintf(0, "%s%zu:%.*s", ZSTR_VAL(acc), ZSTR_LEN(part), (int)ZSTR_LEN(part), ZSTR_VAL(part));
+        zend_string *length = tag == '\0' ? NULL : zend_long_to_str((zend_long) ZSTR_LEN(part));
+        size_t piece_length = tag == '\0' ? ZSTR_LEN(part) : 1 + ZSTR_LEN(length) + 1 + ZSTR_LEN(part);
+        size_t prefix_length = ZSTR_LEN(acc);
+        zend_string *piece = zend_string_alloc(prefix_length + piece_length, 0);
+        memcpy(ZSTR_VAL(piece), ZSTR_VAL(acc), prefix_length);
+        size_t position = prefix_length;
+        if (tag != '\0') {
+            ZSTR_VAL(piece)[position++] = tag;
+            memcpy(ZSTR_VAL(piece) + position, ZSTR_VAL(length), ZSTR_LEN(length));
+            position += ZSTR_LEN(length);
+            ZSTR_VAL(piece)[position++] = ':';
+            zend_string_release(length);
+        }
+        memcpy(ZSTR_VAL(piece) + position, ZSTR_VAL(part), ZSTR_LEN(part));
+        ZSTR_VAL(piece)[position + ZSTR_LEN(part)] = '\0';
         zend_string_release(part);
         zend_string_release(acc);
         acc = piece;

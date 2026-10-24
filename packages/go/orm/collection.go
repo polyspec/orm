@@ -2,6 +2,7 @@ package orm
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"math"
 	"strconv"
@@ -126,6 +127,11 @@ func keyFromValues(values []any) (Key, error) {
 		part, err := KeyOf(value)
 		if err != nil {
 			return Key{}, err
+		}
+		if part.tag == 'b' {
+			encoded := make([]byte, hex.EncodedLen(len(part.data)))
+			hex.Encode(encoded, []byte(part.data))
+			part.data = string(encoded)
 		}
 		b.WriteByte(part.tag)
 		b.WriteString(strconv.Itoa(len(part.data)))

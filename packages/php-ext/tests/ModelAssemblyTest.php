@@ -8,9 +8,11 @@ use DateTimeZone;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Assembly;
+use Polyspec\Orm\Bytes;
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;
+use Polyspec\Orm\Collection;
 use Polyspec\Orm\Frame;
 use Polyspec\Orm\GroupRow;
 use Polyspec\Orm\GroupRows;
@@ -29,6 +31,83 @@ final class ModelAssemblyFixture extends Model
 #[Small]
 final class ModelAssemblyTest extends TestCase
 {
+    private static function collectionFixture(): array
+    {
+        $path = __DIR__ . '/../../../tests/collection/keys.json';
+        $source = file_get_contents($path);
+        self::assertIsString($source, "cannot read $path");
+        return json_decode($source, true, 512, JSON_THROW_ON_ERROR);
+    }
+
+    private static function compositeValue(array $entry): mixed
+    {
+        return match ($entry['type']) {
+            'text', 'bool', 'int' => $entry['value'],
+            'bytes' => new Bytes(hex2bin($entry['hex'])),
+            'datetime' => new \DateTime($entry['value']),
+            'null' => null,
+            default => self::fail("unknown composite component type {$entry['type']}"),
+        };
+    }
+
+    public function testCompositeComponentsPreserveTypedIdentityAndSharedEncoding(): void
+    {
+        $seen = [];
+        foreach (self::collectionFixture()['composites'] as $entry) {
+            $row = array_map(self::compositeValue(...), $entry['values']);
+            $refs = array_map(
+                static fn(int $index): array => ['column' => "k$index", 'index' => $index],
+                array_keys($row),
+            );
+            $dates = array_map(
+                static fn(mixed $value): ?string => $value instanceof \DateTimeInterface ? $value->format('c.u') : null,
+                $row,
+            );
+            $key = Db::rowKey($row, $refs);
+            self::assertSame($entry['encoded'], $key, $entry['name']);
+            self::assertSame($key, Db::rowKey($row, $refs), "{$entry['name']} changed on repeated creation");
+            foreach ($row as $index => $value) {
+                if ($dates[$index] !== null) {
+                    self::assertSame(
+                        $dates[$index],
+                        $value->format('c.u'),
+                        "{$entry['name']} mutated its datetime input",
+                    );
+                }
+            }
+            $identity = Collection::identityOf($key);
+            if (isset($entry['same_as'])) {
+                self::assertSame($seen[$entry['same_as']], $identity, $entry['name']);
+                continue;
+            }
+            foreach ($seen as $other => $otherIdentity) {
+                self::assertNotSame($otherIdentity, $identity, "keys $other and {$entry['name']} collide");
+            }
+            $seen[$entry['name']] = $identity;
+        }
+    }
+
+    public function testCompositeDateTimeMicrosecondsTrimTrailingZeroes(): void
+    {
+        foreach (self::collectionFixture()['datetime_microseconds'] as $entry) {
+            $date = new \DateTime($entry['value']);
+            $before = $date->format('c.u');
+            $row = [$date, ''];
+            $refs = [['column' => 'date', 'index' => 0], ['column' => 'text', 'index' => 1]];
+            $key = Db::rowKey($row, $refs);
+            self::assertSame($entry['encoded'], $key, $entry['name']);
+            self::assertSame($key, Db::rowKey($row, $refs), "{$entry['name']} changed on repeated creation");
+            self::assertSame($before, $date->format('c.u'), "{$entry['name']} mutated its datetime input");
+        }
+    }
+
+    public function testNullCompositeRowHasNoCollectionKey(): void
+    {
+        $row = array_map(self::compositeValue(...), self::collectionFixture()['nullable_composite']);
+        $refs = [['column' => 'first', 'index' => 0], ['column' => 'second', 'index' => 1]];
+        self::assertNull(Db::rowKey($row, $refs));
+    }
+
     public function testSplitRootMergeRejectsSqlNullIdentity(): void
     {
         $refs = [['column' => 'id', 'index' => 0]];
