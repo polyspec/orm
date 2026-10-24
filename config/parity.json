@@ -2174,6 +2174,11 @@
           "id": "CoverageDsnTest::testDsnConnection"
         },
         {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageDsnConnectionExtensionTest.php",
+          "id": "CoverageDsnConnectionExtensionTest::testDsnConnection"
+        },
+        {
           "implementation": "typescript",
           "test": "packages/ts/tests/coverage_dsn.mjs",
           "id": "dsn_connection [sqlite]"
@@ -3112,8 +3117,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/AuditLazyFakePdoTest.php",
-          "id": "AuditLazyFakePdoTest::test_lazy_audit_precedes_writes_is_reused_and_write_failure_propagates"
+          "test": "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
+          "id": "CoverageTransactionsExtensionTest::testTransactionRollback"
         },
         {
           "implementation": "python",
@@ -3257,6 +3262,11 @@
           "implementation": "php",
           "test": "packages/php/tests/CoverageTransactionsTest.php",
           "id": "CoverageTransactionsTest::testTransactionSavepoint"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
+          "id": "CoverageTransactionsExtensionTest::testTransactionSavepoint"
         },
         {
           "implementation": "python",

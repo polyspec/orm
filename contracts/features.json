@@ -518,6 +518,41 @@
               ]
             }
           },
+          "php-extension": {
+            "part": "packages/php-ext/tests",
+            "tests": [
+              "packages/php-ext/tests/CoverageDsnConnectionExtensionTest.php"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageDsnConnectionExtensionTest.php",
+                  "cases": ["dsn_connection"],
+                  "symbols": {"dsn_connection": "testDsnConnection"},
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageDsnConnectionExtensionTest.php",
+                  "cases": ["dsn_connection"],
+                  "symbols": {"dsn_connection": "testDsnConnection"},
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageDsnConnectionExtensionTest.php",
+                  "cases": ["dsn_connection"],
+                  "symbols": {"dsn_connection": "testDsnConnection"},
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
           "rust": {
             "part": "packages/rust/orm",
             "tests": [

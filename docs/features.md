@@ -5,7 +5,7 @@ The executable source is the repository feature manifest. Read the manifest, the
 
 | ID | Feature | Status | Languages |
 |---|---|---|---|
-| dsn_connection | DSN URI connection | partial | go, php, typescript, python, rust |
+| dsn_connection | DSN URI connection | partial | go, php, php-extension, typescript, python, rust |
 | model_queries | Model queries | implemented | go, php, php-extension, typescript, python, rust |
 | model_writes | Model writes | implemented | go, php, php-extension, typescript, python, rust |
 | transactions | Transactions | partial | go, php, php-extension, typescript, python, rust |
@@ -21,7 +21,7 @@ The executable source is the repository feature manifest. Read the manifest, the
 | audit_triggers | Audit triggers | partial | go, php, php-extension, typescript, python, rust |
 | interface_contract | Common interface verification | implemented | go, php, php-extension, typescript, python, rust |
 | performance_gate | Hot-path performance standard | partial |  |
-| conformance_verification | Conformance verification | partial | go, php, typescript, python, rust |
+| conformance_verification | Conformance verification | partial | go, php, php-extension, typescript, python, rust |
 | catalog_connection | Catalog connection | implemented | go, php, php-extension, typescript, python, rust |
 | request_hook | Request hook | partial | go, php, php-extension, typescript, python, rust |
 
