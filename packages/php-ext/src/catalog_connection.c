@@ -1619,7 +1619,9 @@ static bool cat_grid_pdo(zval *db, const char *dialect, zval *pdo, zval *sql, zv
     zval_ptr_dtor(&st);
     return true;
 fail_natives:
-    for (zend_long i = 0; i < ncols; i++) zend_string_release(natives[i]);
+    for (zend_long i = 0; i < ncols; i++) {
+        if (natives[i] != NULL) zend_string_release(natives[i]);
+    }
     efree(natives);
     zval_ptr_dtor(&count);
 fail_st:
@@ -1752,7 +1754,7 @@ static bool cat_grid_mysqli(zval *link, zval *sql, zval *args, zend_long max_row
     zval_ptr_dtor(&stmt);
     zval_ptr_dtor(&ret);
     if (!pdo_call(link, "commit", &ret, 0, NULL, NULL)) {
-        cat_mysqli_error();
+        cat_mysqli_abort(link);
         zval_ptr_dtor(names);
         zval_ptr_dtor(rows);
         return false;

@@ -9,6 +9,7 @@ namespace Polyspec\Orm\Tests;
 use DateTimeZone;
 use Error;
 use PDO;
+use PDOException;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Catalog;
@@ -25,6 +26,132 @@ use ReflectionClass;
 use ReflectionProperty;
 use RuntimeException;
 use mysqli;
+
+final class CatalogMetadataFailurePdo extends PDO
+{
+    /** @var list<string> */
+    public array $statements = [];
+
+    public function __construct()
+    {
+    }
+
+    public function setAttribute(int $attribute, mixed $value): bool
+    {
+        return true;
+    }
+
+    public function exec(string $statement): int|false
+    {
+        $this->statements[] = $statement;
+        return 0;
+    }
+
+    public function prepare(string $query, array $options = []): \PDOStatement|false
+    {
+        return new CatalogMetadataFailureStatement();
+    }
+}
+
+final class CatalogMetadataFailureStatement extends \PDOStatement
+{
+    public static ?PDOException $failure = null;
+
+    public function __construct()
+    {
+    }
+
+    public function execute(?array $params = null): bool
+    {
+        return true;
+    }
+
+    public function columnCount(): int
+    {
+        return 3;
+    }
+
+    public function getColumnMeta(int $column): array|false
+    {
+        if ($column === 1) {
+            throw self::$failure ?? new PDOException('column metadata failed');
+        }
+        return ['name' => "column_$column", 'native_type' => 'INTEGER'];
+    }
+}
+
+final class CatalogCommitFailureLink extends \mysqli
+{
+    public int $rollbackCalls = 0;
+
+    public function __construct(private readonly bool $failRollback)
+    {
+    }
+
+    public function begin_transaction(int $flags = MYSQLI_TRANS_START_READ_WRITE, ?string $name = null): bool
+    {
+        return true;
+    }
+
+    public function prepare(string $query): \mysqli_stmt|false
+    {
+        return new CatalogCommitFailureStatement();
+    }
+
+    public function commit(int $flags = 0, ?string $name = null): bool
+    {
+        throw new \mysqli_sql_exception('grid commit failed');
+    }
+
+    public function rollback(int $flags = 0, ?string $name = null): bool
+    {
+        $this->rollbackCalls++;
+        if ($this->failRollback) {
+            throw new \mysqli_sql_exception('grid rollback failed');
+        }
+        return true;
+    }
+}
+
+final class CatalogCommitFailureStatement extends \mysqli_stmt
+{
+    public function __construct()
+    {
+    }
+
+    public function execute(?array $params = null): bool
+    {
+        return true;
+    }
+
+    public function get_result(): \mysqli_result|false
+    {
+        return new CatalogCommitFailureResult();
+    }
+}
+
+final class CatalogCommitFailureResult extends \mysqli_result
+{
+    private bool $fetched = false;
+
+    public function __construct()
+    {
+    }
+
+    public function fetch_fields(): array
+    {
+        return [(object) ['name' => 'value', 'type' => MYSQLI_TYPE_LONG, 'flags' => 0, 'charsetnr' => 63]];
+    }
+
+    public function fetch_row(): array|null|false
+    {
+        if ($this->fetched) {
+            return null;
+        }
+        $this->fetched = true;
+        return [1];
+    }
+}
 
 #[Small]
 final class CatalogConnectionSurfaceTest extends TestCase
@@ -85,6 +212,57 @@ final class CatalogConnectionSurfaceTest extends TestCase
         } catch (OrmException $error) {
             self::assertSame(Code::CONFIG, $error->code_);
         }
+    }
+
+    public function testNativeGridMetadataFailureReleasesOnlyInitializedColumnTypes(): void
+    {
+        $failure = new PDOException('column metadata failed');
+        CatalogMetadataFailureStatement::$failure = $failure;
+        $pdo = new CatalogMetadataFailurePdo();
+        $db = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
+        $catalog = self::catalogWith($db, 'sqlite');
+
+        try {
+            $catalog->readOnlyGridQuery('SELECT 1 AS first, 2 AS second, 3 AS third');
+            self::fail('a failed column metadata read returned a grid');
+        } catch (OrmException $error) {
+            self::assertSame(Code::DRIVER, $error->code_);
+            self::assertSame('DRIVER: column metadata failed', $error->getMessage());
+            self::assertSame($failure, $error->getPrevious());
+        } finally {
+            CatalogMetadataFailureStatement::$failure = null;
+        }
+        self::assertContains('ROLLBACK', $pdo->statements);
+    }
+
+    public function testNativeGridCommitFailureRollsBackAndComposesRollbackFailure(): void
+    {
+        $link = new CatalogCommitFailureLink(true);
+        $db = new Db(new CatalogMetadataFailurePdo(), 'mysql', new Config(), new DateTimeZone('UTC'));
+        $catalog = self::catalogWith($db, 'mysql');
+        (new ReflectionProperty(Catalog::class, 'gridLink'))->setValue($catalog, $link);
+
+        try {
+            $catalog->readOnlyGridQuery('SELECT 1 AS value');
+            self::fail('a failed grid commit returned a result');
+        } catch (OrmException $error) {
+            self::assertSame(Code::ROLLBACK, $error->code_);
+            self::assertSame(1, $link->rollbackCalls);
+            self::assertInstanceOf(OrmException::class, $error->getPrevious());
+            self::assertSame(Code::DRIVER, $error->getPrevious()->code_);
+            self::assertInstanceOf(\mysqli_sql_exception::class, $error->getPrevious()->getPrevious());
+            self::assertInstanceOf(OrmException::class, $error->rollback);
+            self::assertSame(Code::DRIVER, $error->rollback->code_);
+            self::assertInstanceOf(\mysqli_sql_exception::class, $error->rollback->getPrevious());
+        }
+    }
+
+    private static function catalogWith(Db $db, string $dialect): Catalog
+    {
+        $catalog = (new ReflectionClass(Catalog::class))->newInstanceWithoutConstructor();
+        (new ReflectionProperty(Catalog::class, 'db'))->setValue($catalog, $db);
+        (new ReflectionProperty(Catalog::class, 'dialect'))->setValue($catalog, $dialect);
+        return $catalog;
     }
 
     public function testNativeCatalogReadsAndMutatesAnOwnedSqliteDatabase(): void
