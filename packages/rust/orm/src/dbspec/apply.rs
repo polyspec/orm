@@ -6,7 +6,7 @@
 //! its recorded one; [`rollback`] undoes the last plan with its rollback
 //! statements; [`finalize`] drops what the applied plans hid.
 
-use super::{chain, introspect, manifest, plan_steps, CatalogQuerier, CatalogValue, Dialect, Effect, IntrospectError, Plan, PlanStep};
+use super::{CatalogQuerier, CatalogValue, Dialect, Effect, IntrospectError, Plan, PlanStep, chain, introspect, manifest, plan_steps};
 use chrono::{DateTime, Utc};
 use sqlx::{AssertSqlSafe, MySqlConnection, PgConnection, SqliteConnection};
 use std::future::Future;
@@ -167,9 +167,7 @@ impl std::fmt::Display for ApplyError {
 impl std::error::Error for ApplyError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            ApplyError::Locked { source: Some(e), .. }
-            | ApplyError::Failed { source: e, .. }
-            | ApplyError::Database(e) => Some(e),
+            ApplyError::Locked { source: Some(e), .. } | ApplyError::Failed { source: e, .. } | ApplyError::Database(e) => Some(e),
             ApplyError::Verify { source: Some(e), .. } => Some(e),
             ApplyError::Event(e) => Some(e.as_ref()),
             ApplyError::Cleanup { error, .. } => Some(error.as_ref()),
@@ -262,7 +260,9 @@ pub fn effect_query(dialect: Dialect, kind: &str) -> Option<&'static str> {
         (Dialect::MySql, "trigger") => {
             "SELECT COUNT(*) FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() AND EVENT_OBJECT_TABLE = ? AND TRIGGER_NAME = ?"
         }
-        (Dialect::Postgres, "table") => "SELECT COUNT(*) FROM pg_class WHERE relnamespace = current_schema()::regnamespace AND relkind IN ('r', 'p') AND relname = $1",
+        (Dialect::Postgres, "table") => {
+            "SELECT COUNT(*) FROM pg_class WHERE relnamespace = current_schema()::regnamespace AND relkind IN ('r', 'p') AND relname = $1"
+        }
         (Dialect::Postgres, "column") => {
             "SELECT COUNT(*) FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid WHERE c.relnamespace = current_schema()::regnamespace AND c.relname = $1 AND a.attname = $2 AND a.attnum > 0 AND NOT a.attisdropped"
         }
@@ -548,7 +548,7 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
                 match got {
                     CatalogValue::Int(1) => {}
                     CatalogValue::Int(0) => {
-                        return Err(ApplyError::Locked { message: format!("another session holds the {HISTORY_TABLE} lock of this database"), source: None })
+                        return Err(ApplyError::Locked { message: format!("another session holds the {HISTORY_TABLE} lock of this database"), source: None });
                     }
                     other => return Err(ApplyError::Database(protocol(format!("GET_LOCK returned {other:?}; want 1 or 0")))),
                 }
@@ -580,7 +580,7 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
                         return Err(ApplyError::Locked {
                             message: format!("another session holds the {HISTORY_TABLE} advisory lock of this schema"),
                             source: None,
-                        })
+                        });
                     }
                     other => return Err(ApplyError::Database(protocol(format!("pg_try_advisory_lock returned {other:?}")))),
                 }
@@ -799,21 +799,14 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
     async fn read_history(&mut self) -> Result<(), ApplyError> {
         self.create_history().await?;
         let columns = self.history_columns();
-        let query = format!(
-            "SELECT {}, {}, {}, {}, {} FROM {}",
-            columns[0],
-            columns[1],
-            columns[2],
-            columns[3],
-            columns[4],
-            self.q(HISTORY_TABLE)
-        );
+        let query = format!("SELECT {}, {}, {}, {}, {} FROM {}", columns[0], columns[1], columns[2], columns[3], columns[4], self.q(HISTORY_TABLE));
         let rows = self.c.query_bound(&query, &[]).await?;
         self.history = rows
             .into_iter()
             .map(|row| match <[CatalogValue; 5]>::try_from(row) {
                 Ok([CatalogValue::Text(name), CatalogValue::Text(from), CatalogValue::Text(to), CatalogValue::Text(state), CatalogValue::Int(step)]) => {
-                    let step = usize::try_from(step).map_err(|error| ApplyError::Database(protocol(format!("{HISTORY_TABLE} row {name} has the step {step}: {error}"))))?;
+                    let step = usize::try_from(step)
+                        .map_err(|error| ApplyError::Database(protocol(format!("{HISTORY_TABLE} row {name} has the step {step}: {error}"))))?;
                     Ok(HistoryRow { name, from, to, state, step })
                 }
                 Ok(other) => Err(ApplyError::Database(protocol(format!("{HISTORY_TABLE} has the row {other:?}")))),
@@ -891,7 +884,8 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
         let got = if introspection.document.tables.is_empty() {
             None
         } else {
-            let m = manifest(&[&introspection.document]).map_err(|diagnostics| VerifyError::Mismatch(format!("the introspected schema is invalid: {diagnostics:?}")))?;
+            let m = manifest(&[&introspection.document])
+                .map_err(|diagnostics| VerifyError::Mismatch(format!("the introspected schema is invalid: {diagnostics:?}")))?;
             Some(m.schema_hash)
         };
         if got.as_deref() != want {
@@ -939,12 +933,7 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
         if !self.history.iter().any(|r| r.name == p.name()) {
             let placeholders: Vec<String> = (1..=7).map(|n| self.placeholder(n)).collect();
             let columns = self.history_columns();
-            let insert = format!(
-                "INSERT INTO {} ({}) VALUES ({})",
-                self.q(HISTORY_TABLE),
-                columns.join(", "),
-                placeholders.join(", ")
-            );
+            let insert = format!("INSERT INTO {} ({}) VALUES ({})", self.q(HISTORY_TABLE), columns.join(", "), placeholders.join(", "));
             // applied_at is the tool clock's UTC time truncated to six fractional digits, as text (docs/spec/plans.md "Apply").
             let applied_at = (self.now)().format("%Y-%m-%dT%H:%M:%S%.6fZ").to_string();
             let args = [
@@ -1102,10 +1091,7 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
 }
 
 fn sqlite_lock_result(error: &sqlx::Error) -> bool {
-    let Some(code) = error
-        .as_database_error()
-        .and_then(|database| database.code())
-    else {
+    let Some(code) = error.as_database_error().and_then(|database| database.code()) else {
         return false;
     };
     match code.parse::<i32>() {
@@ -1178,13 +1164,10 @@ impl_apply_connection!(SqliteConnection, sqlx::Sqlite, super::sqlite_value);
 
 #[cfg(test)]
 mod sqlite_lock_result_tests {
-    use super::{
-        Applier, ApplyClock, ApplyConnection, ApplyError, ApplyEvents, CatalogQuerier,
-        CatalogValue, Dialect,
-    };
+    use super::{Applier, ApplyClock, ApplyConnection, ApplyError, ApplyEvents, CatalogQuerier, CatalogValue, Dialect};
+    use crate::test_support::impl_database_error;
     use chrono::Utc;
-    use sqlx::error::{DatabaseError, ErrorKind};
-    use std::{borrow::Cow, error::Error as StdError, fmt};
+    use std::fmt;
 
     #[derive(Debug)]
     struct ResultError(i32);
@@ -1194,27 +1177,8 @@ mod sqlite_lock_result_tests {
             write!(f, "SQLite result {}", self.0)
         }
     }
-    impl StdError for ResultError {}
-    impl DatabaseError for ResultError {
-        fn message(&self) -> &str {
-            "synthetic SQLite result"
-        }
-        fn code(&self) -> Option<Cow<'_, str>> {
-            Some(Cow::Owned(self.0.to_string()))
-        }
-        fn as_error(&self) -> &(dyn StdError + Send + Sync + 'static) {
-            self
-        }
-        fn as_error_mut(&mut self) -> &mut (dyn StdError + Send + Sync + 'static) {
-            self
-        }
-        fn into_error(self: Box<Self>) -> Box<dyn StdError + Send + Sync + 'static> {
-            self
-        }
-        fn kind(&self) -> ErrorKind {
-            ErrorKind::Other
-        }
-    }
+    impl std::error::Error for ResultError {}
+    impl_database_error!(ResultError, self, { "synthetic SQLite result" }, { Some(std::borrow::Cow::Owned(self.0.to_string())) });
 
     struct FailingBegin {
         code: i32,
@@ -1226,24 +1190,12 @@ mod sqlite_lock_result_tests {
     }
     impl ApplyConnection for FailingBegin {
         async fn execute(&mut self, statement: &str) -> Result<(), sqlx::Error> {
-            if statement == "BEGIN EXCLUSIVE" {
-                Err(sqlx::Error::Database(Box::new(ResultError(self.code))))
-            } else {
-                Ok(())
-            }
+            if statement == "BEGIN EXCLUSIVE" { Err(sqlx::Error::Database(Box::new(ResultError(self.code)))) } else { Ok(()) }
         }
-        async fn execute_bound(
-            &mut self,
-            _statement: &str,
-            _args: &[CatalogValue],
-        ) -> Result<(), sqlx::Error> {
+        async fn execute_bound(&mut self, _statement: &str, _args: &[CatalogValue]) -> Result<(), sqlx::Error> {
             Ok(())
         }
-        async fn query_bound(
-            &mut self,
-            query: &str,
-            _args: &[CatalogValue],
-        ) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
+        async fn query_bound(&mut self, query: &str, _args: &[CatalogValue]) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
             let value = match query {
                 "PRAGMA foreign_keys" | "PRAGMA busy_timeout" => CatalogValue::Int(1),
                 "PRAGMA legacy_alter_table" => CatalogValue::Int(0),
@@ -1262,8 +1214,12 @@ mod sqlite_lock_result_tests {
         }
     }
     impl ApplyConnection for FailingPostgresSetup {
-        async fn execute(&mut self, _statement: &str) -> Result<(), sqlx::Error> { Ok(()) }
-        async fn execute_bound(&mut self, _statement: &str, _args: &[CatalogValue]) -> Result<(), sqlx::Error> { Ok(()) }
+        async fn execute(&mut self, _statement: &str) -> Result<(), sqlx::Error> {
+            Ok(())
+        }
+        async fn execute_bound(&mut self, _statement: &str, _args: &[CatalogValue]) -> Result<(), sqlx::Error> {
+            Ok(())
+        }
         async fn query_bound(&mut self, query: &str, _args: &[CatalogValue]) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
             if query.contains("pg_locks") {
                 Ok(vec![vec![CatalogValue::Int(7), CatalogValue::Bool(false)]])
@@ -1320,37 +1276,18 @@ mod sqlite_lock_result_tests {
             let mut connection = FailingBegin { code };
             let clock: &ApplyClock<'_> = &|| Utc::now();
             let events: &mut ApplyEvents<'_> = &mut |_| Ok(());
-            let mut applier = Applier::new(&mut connection, Dialect::Sqlite, &[], clock, events)
-                .expect("empty plan chain");
+            let mut applier = Applier::new(&mut connection, Dialect::Sqlite, &[], clock, events).expect("empty plan chain");
             let error = match applier.open().await {
                 Err(error) => error,
                 Ok(_) => panic!("BEGIN EXCLUSIVE unexpectedly succeeded for result {code}"),
             };
             match (code & 0xff, error) {
-                (
-                    5 | 6,
-                    ApplyError::Locked {
-                        source: Some(source),
-                        ..
-                    },
-                ) => {
-                    assert_eq!(
-                        source
-                            .as_database_error()
-                            .and_then(|error| error.code())
-                            .as_deref(),
-                        Some(code.to_string().as_str())
-                    );
+                (5 | 6, ApplyError::Locked { source: Some(source), .. }) => {
+                    assert_eq!(source.as_database_error().and_then(|error| error.code()).as_deref(), Some(code.to_string().as_str()));
                 }
                 (5 | 6, other) => panic!("SQLite result {code} mapped to {other:?}, want Locked"),
                 (_, ApplyError::Database(source)) => {
-                    assert_eq!(
-                        source
-                            .as_database_error()
-                            .and_then(|error| error.code())
-                            .as_deref(),
-                        Some(code.to_string().as_str())
-                    );
+                    assert_eq!(source.as_database_error().and_then(|error| error.code()).as_deref(), Some(code.to_string().as_str()));
                 }
                 (_, other) => panic!("SQLite result {code} mapped to {other:?}, want Database"),
             }

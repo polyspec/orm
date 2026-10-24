@@ -22,6 +22,8 @@ pub mod plan;
 mod request;
 pub mod row;
 pub mod schema;
+#[cfg(test)]
+mod test_support;
 #[cfg(feature = "test-faults")]
 pub mod testing;
 pub mod tx;
@@ -29,8 +31,8 @@ pub mod utils;
 pub mod value;
 
 pub use args::{
-    date, day_of_week, days_ago, days_later, hours_ago, hours_later, minutes_ago, minutes_later, month, months_ago, months_later, now, seconds_ago,
-    seconds_later, today, year, Func, GroupArg, IntoNullable, Null,
+    Func, GroupArg, IntoNullable, Null, date, day_of_week, days_ago, days_later, hours_ago, hours_later, minutes_ago, minutes_later, month, months_ago,
+    months_later, now, seconds_ago, seconds_later, today, year,
 };
 pub use chrono;
 pub use collection::{Collection, GroupRow, GroupRows, Key, Page};
@@ -43,7 +45,7 @@ pub use ordered_json;
 pub use schema::{Manifest, Schema};
 pub use serde;
 pub use serde_json;
-pub use tx::{transaction_conflict, Isolation, SendTransaction, Transaction, TransactionOnce, TransactionOnceError, TransactionOnceFuture};
+pub use tx::{Isolation, SendTransaction, Transaction, TransactionOnce, TransactionOnceError, TransactionOnceFuture, transaction_conflict};
 pub use utils::{AesKeyring, AesRotationStatus, TablePrivileges, Utils};
 pub use value::{Param, StyledValue, Val};
 
@@ -78,7 +80,9 @@ impl std::fmt::Display for Error {
             Error::OptimisticLock => write!(f, "{}: row changed since it was read", codes::OPTIMISTIC_LOCK),
             Error::Config(m) => write!(f, "{}: {m}", codes::CONFIG),
             Error::Rollback { callback, rollback } => write!(f, "{}: {}", codes::ROLLBACK, rollback_message(callback, rollback)),
-            Error::Cleanup { primary, cleanup } => write!(f, "{} (cleanup failed: {})", primary, cleanup.iter().map(ToString::to_string).collect::<Vec<_>>().join("; ")),
+            Error::Cleanup { primary, cleanup } => {
+                write!(f, "{} (cleanup failed: {})", primary, cleanup.iter().map(ToString::to_string).collect::<Vec<_>>().join("; "))
+            }
             Error::Subscriber { msg, .. } => write!(f, "{}: {msg}", codes::SUBSCRIBER),
         }
     }
@@ -173,15 +177,10 @@ impl From<sqlx::Error> for Error {
                             return Error::Engine {
                                 code: codes::DRIVER.into(),
                                 msg: format!("sqlite reported extended result code {text:?}, which is not a number: {error}; {}", s.message()),
-                            }
+                            };
                         }
                     },
-                    None => {
-                        return Error::Engine {
-                            code: codes::DRIVER.into(),
-                            msg: format!("sqlite reported no extended result code: {}", s.message()),
-                        }
-                    }
+                    None => return Error::Engine { code: codes::DRIVER.into(), msg: format!("sqlite reported no extended result code: {}", s.message()) },
                 };
                 match (n & 0xff, n) {
                     (6, _) => Some((codes::DEADLOCK, s.message().to_owned())),
@@ -252,9 +251,10 @@ pub(crate) fn sqlite_busy(e: &sqlx::Error) -> Result<bool> {
     let Some(text) = e.as_database_error().and_then(|d| d.try_downcast_ref::<sqlx::sqlite::SqliteError>()).and_then(|s| s.code()) else {
         return Ok(false);
     };
-    let n: i64 = text
-        .parse()
-        .map_err(|error| Error::Engine { code: codes::DRIVER.into(), msg: format!("sqlite reported extended result code {text:?}, which is not a number: {error}") })?;
+    let n: i64 = text.parse().map_err(|error| Error::Engine {
+        code: codes::DRIVER.into(),
+        msg: format!("sqlite reported extended result code {text:?}, which is not a number: {error}"),
+    })?;
     Ok(n & 0xff == 5)
 }
 
@@ -292,7 +292,7 @@ mod mysql_code_tests {
 #[cfg(test)]
 mod driver_error_tests {
     use super::*;
-    use std::borrow::Cow;
+    use crate::test_support::impl_database_error;
     use std::error::Error as StdError;
     use std::fmt::{Display, Formatter};
 
@@ -309,38 +309,12 @@ mod driver_error_tests {
 
     impl StdError for NativeError {}
 
-    impl sqlx::error::DatabaseError for NativeError {
-        fn message(&self) -> &str {
-            &self.message
-        }
-
-        fn code(&self) -> Option<Cow<'_, str>> {
-            None
-        }
-
-        fn as_error(&self) -> &(dyn StdError + Send + Sync + 'static) {
-            self
-        }
-
-        fn as_error_mut(&mut self) -> &mut (dyn StdError + Send + Sync + 'static) {
-            self
-        }
-
-        fn into_error(self: Box<Self>) -> Box<dyn StdError + Send + Sync + 'static> {
-            self
-        }
-
-        fn kind(&self) -> sqlx::error::ErrorKind {
-            sqlx::error::ErrorKind::Other
-        }
-    }
+    impl_database_error!(NativeError, self, { &self.message }, { None });
 
     #[test]
     fn unknown_database_error_keeps_the_native_source_chain() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        let mapped = Error::from(sqlx::Error::Database(Box::new(NativeError {
-            message: "trigger refused the write".into(),
-        })));
+        let mapped = Error::from(sqlx::Error::Database(Box::new(NativeError { message: "trigger refused the write".into() })));
         assert_eq!(mapped.code(), codes::DRIVER);
         assert!(mapped.to_string().contains("trigger refused the write"));
         let sqlx_source = StdError::source(&mapped).expect("mapped error keeps sqlx error");
