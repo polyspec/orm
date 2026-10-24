@@ -9627,6 +9627,16 @@
       "command": "make --no-print-directory typescript-internal-column-error-helper-check"
     },
     {
+      "id": "typescript-dbspec-plan-fixture",
+      "paths": [
+        "packages/ts/tests/dbspec-plan-fixture.mjs"
+      ],
+      "tests": [
+        "packages/ts/tests/dbspec-plan-fixture.test.mjs"
+      ],
+      "command": "make --no-print-directory typescript-dbspec-plan-fixture-check"
+    },
+    {
       "id": "javascript-vector-case-registrar",
       "paths": [
         "tests/vector-registrar.mjs"

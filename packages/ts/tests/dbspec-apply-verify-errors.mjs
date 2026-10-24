@@ -1,22 +1,15 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { caseTest } from '../../../tests/testcase.mts';
-import { DbspecApplyError, applyPlans, parsePlan, rollbackPlans } from '../dist/dbspec/index.js';
+import { DbspecApplyError, applyPlans, rollbackPlans } from '../dist/dbspec/index.js';
+import { createFromEmptyPlans } from './dbspec-plan-fixture.mjs';
 
 const root = new URL('../../../', import.meta.url);
 const TIMEOUT = 20000;
 const fixedNow = () => Date.UTC(2026, 9, 1, 0, 0, 0) * 1000 + 123456;
 const masterQuery = `SELECT type, name, tbl_name, IFNULL(sql, '') FROM sqlite_master
 WHERE name NOT LIKE 'sqlite_%' AND tbl_name NOT LIKE 'dbspec$%' ORDER BY type, name`;
-const plans = JSON.parse(readFileSync(new URL('tests/dbspec/plans.json', root), 'utf8'))
-  .cases.filter(c => c.id === 'create-from-empty')
-  .map(c => {
-    const parsed = parsePlan(c.plan.join('\n') + '\n');
-    assert.deepEqual(parsed.diagnostics, [], `${c.id} diagnostics`);
-    return parsed.plan;
-  });
-assert.equal(plans.length, 1, 'plans.json has no create-from-empty case');
+const plans = createFromEmptyPlans(root);
 
 function failingSqlite() {
   const db = new DatabaseSync(':memory:');

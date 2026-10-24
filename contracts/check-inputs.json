@@ -1710,6 +1710,17 @@
         "packages/ts/tests/markdown-read-db.test.mjs"
       ]
     },
+    "typescript-dbspec-plan-fixture-check": {
+      "scope": "owner",
+      "needs": [
+        "node-modules"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/ts/tests/dbspec-plan-fixture.mjs",
+        "packages/ts/tests/dbspec-plan-fixture.test.mjs"
+      ]
+    },
     "catalog-mutation-helper-python-check": {
       "scope": "owner",
       "needs": [

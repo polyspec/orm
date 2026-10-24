@@ -8,10 +8,10 @@
 // Usage: node --test packages/ts/tests/dbspec-apply-cleanup.mjs (after the build)
 import { caseTest } from '../../../tests/testcase.mts';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
-import { DbspecApplyError, applyPlans, parsePlan, rollbackPlans } from '../dist/dbspec/index.js';
+import { DbspecApplyError, applyPlans, rollbackPlans } from '../dist/dbspec/index.js';
 import { EFFECT_QUERIES, dbspecEffectHolds } from '../dist/dbspec/apply.js';
+import { createFromEmptyPlans } from './dbspec-plan-fixture.mjs';
 
 const root = new URL('../../../', import.meta.url);
 // TIMEOUT is the deadline (ms) of one case. One apply cleanup error case applies one plan to one in-memory SQLite database.
@@ -19,14 +19,7 @@ const TIMEOUT = 20000;
 // tool clock: 2026-10-01T00:00:00.123456789Z truncated to microseconds (microseconds since the epoch).
 const fixedNow = () => Date.UTC(2026, 9, 1, 0, 0, 0) * 1000 + 123456;
 
-const plans = JSON.parse(readFileSync(new URL('tests/dbspec/plans.json', root), 'utf8'))
-  .cases.filter(c => c.id === 'create-from-empty')
-  .map(c => {
-    const parsed = parsePlan(c.plan.join('\n') + '\n');
-    assert.deepEqual(parsed.diagnostics, [], `${c.id} diagnostics`);
-    return parsed.plan;
-  });
-assert.equal(plans.length, 1, 'plans.json has no create-from-empty case');
+const plans = createFromEmptyPlans(root);
 
 // vector runs one case with its own deadline and reports its start, result
 // and elapsed time.
