@@ -46,6 +46,12 @@ def blind_index_params(plan):
 class BlindIndexSourceTest(unittest.TestCase):
     deadline = testcase.COMPUTE
 
+    def assert_invalid_shared_source(self, error):
+        self.assertEqual(error.code, "IR_INVALID")
+        self.assertIn("hash", str(error))
+        self.assertIn("email_a", str(error))
+        self.assertIn("email_b", str(error))
+
     def test_multi_row_index_binds_the_assigned_source_column_position(self):
         runtime = model()
         plan = Engine(runtime, "mysql").compile(
@@ -110,10 +116,7 @@ class BlindIndexSourceTest(unittest.TestCase):
                     ],
                 }
             )
-        self.assertEqual(raised.exception.code, "IR_INVALID")
-        self.assertIn("hash", str(raised.exception))
-        self.assertIn("email_a", str(raised.exception))
-        self.assertIn("email_b", str(raised.exception))
+        self.assert_invalid_shared_source(raised.exception)
 
     def test_two_sources_with_equal_parameter_are_invalid(self):
         runtime = model()
@@ -133,10 +136,7 @@ class BlindIndexSourceTest(unittest.TestCase):
                     ],
                 }
             )
-        self.assertEqual(raised.exception.code, "IR_INVALID")
-        self.assertIn("hash", str(raised.exception))
-        self.assertIn("email_a", str(raised.exception))
-        self.assertIn("email_b", str(raised.exception))
+        self.assert_invalid_shared_source(raised.exception)
 
     def test_explicit_target_assignment_wins_for_shared_schema(self):
         runtime = model()
@@ -191,10 +191,7 @@ class BlindIndexSourceTest(unittest.TestCase):
                             "on_duplicate": on_duplicate,
                         }
                     )
-                self.assertEqual(raised.exception.code, "IR_INVALID")
-                self.assertIn("hash", str(raised.exception))
-                self.assertIn("email_a", str(raised.exception))
-                self.assertIn("email_b", str(raised.exception))
+                self.assert_invalid_shared_source(raised.exception)
 
     def test_explicit_target_wins_in_on_duplicate(self):
         runtime = model()

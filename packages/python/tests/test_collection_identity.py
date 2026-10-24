@@ -19,7 +19,7 @@ def load_fixture():
     )
 
 
-def value_of(entry):
+def value_of(entry, fixture_kind="fixture"):
     """The Python value of one fixture entry, with the type that the client reads from a column."""
     kind = entry["type"]
     if kind in ("text", "bool", "int"):
@@ -28,20 +28,14 @@ def value_of(entry):
         return bytes.fromhex(entry["hex"])
     if kind == "datetime":
         return datetime.fromisoformat(entry["value"])
-    raise AssertionError(f"fixture {entry['name']} has unknown type {kind}")
+    if kind == "null" and fixture_kind == "composite fixture":
+        return None
+    description = f"fixture {entry['name']}" if fixture_kind == "fixture" else fixture_kind
+    raise AssertionError(f"{description} has unknown type {kind}")
 
 
 def composite_value_of(entry):
-    kind = entry["type"]
-    if kind in ("text", "bool", "int"):
-        return entry["value"]
-    if kind == "bytes":
-        return bytes.fromhex(entry["hex"])
-    if kind == "datetime":
-        return datetime.fromisoformat(entry["value"])
-    if kind == "null":
-        return None
-    raise AssertionError(f"composite fixture has unknown type {kind}")
+    return value_of(entry, "composite fixture")
 
 
 class CollectionIdentityTest(unittest.TestCase):
