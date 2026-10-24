@@ -118,12 +118,7 @@ func TestSqliteSessionClassifiesBeginErrorAndRestoresState(t *testing.T) {
 	}{{5, true}, {10, false}} {
 		statements := []string{}
 		db := sql.OpenDB(&sqliteLockConnector{code: test.code, statements: &statements})
-		t.Cleanup(func() { testcase.Close(t, db) })
-		conn, err := db.Conn(context.Background())
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Cleanup(func() { testcase.Close(t, conn) })
+		conn := testSQLConn(t, db)
 		cause := sqliteResultError(test.code)
 		applier := &applier{ctx: context.Background(), c: conn, r: renderer{d: DialectSQLite}}
 		got := applier.sqliteSession(func() error { return nil })

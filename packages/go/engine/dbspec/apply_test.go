@@ -119,6 +119,11 @@ func applyTestConn(t *testing.T) *sql.Conn {
 	if err != nil {
 		t.Fatal(err)
 	}
+	return testSQLConn(t, db)
+}
+
+func testSQLConn(t *testing.T, db *sql.DB) *sql.Conn {
+	t.Helper()
 	t.Cleanup(func() { testcase.Close(t, db) })
 	conn, err := db.Conn(context.Background())
 	if err != nil {
