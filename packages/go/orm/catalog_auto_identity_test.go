@@ -14,42 +14,8 @@ import (
 
 func TestCatalogInsertReturnsSQLiteAutomaticPrimaryKey(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	path := filepath.Join(t.TempDir(), "catalog-auto-key.sqlite")
-	file, err := os.Create(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := file.Close(); err != nil {
-		t.Fatal(err)
-	}
-	raw, err := sql.Open("sqlite", path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if err := raw.Close(); err != nil {
-			t.Errorf("close raw sqlite connection: %v", err)
-		}
-	})
-	if _, err := raw.Exec(`CREATE TABLE sample (id INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL)`); err != nil {
-		t.Fatal(err)
-	}
-
-	catalog, err := ConnectCatalog("sqlite://" + path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if err := catalog.Close(); err != nil {
-			t.Errorf("close catalog: %v", err)
-		}
-	})
+	catalog, metadata := openCatalogSQLiteDefaultFixture(t, "sample", "CREATE TABLE sample (id INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL)")
 	ctx := context.Background()
-	table := CatalogTableRef{Namespace: "main", Name: "sample"}
-	metadata, err := catalog.DescribeTable(ctx, table)
-	if err != nil {
-		t.Fatal(err)
-	}
 	if !reflect.DeepEqual(metadata.PrimaryKey, []string{"id"}) || len(metadata.Columns) != 2 {
 		t.Fatalf("table metadata = %+v, want sole primary key id and two columns", metadata)
 	}
@@ -75,14 +41,8 @@ func TestCatalogInsertReturnsSQLiteAutomaticPrimaryKey(t *testing.T) {
 	if err != nil || len(explicit.Rows) != 1 || !reflect.DeepEqual(explicit.Rows[0], []any{int64(20), "explicit"}) {
 		t.Fatalf("InsertRow with explicit primary key = %+v, err %v", explicit, err)
 	}
-	rows, err := catalog.ReadOnlyQuery(ctx, `SELECT id,payload FROM sample ORDER BY id`, nil, CatalogQueryLimits{})
-	if err != nil {
-		t.Fatal(err)
-	}
 	want := [][]any{{int64(1), "generated"}, {int64(2), "second"}, {int64(20), "explicit"}}
-	if !reflect.DeepEqual(rows.Rows, want) {
-		t.Fatalf("stored rows = %#v, want %#v", rows.Rows, want)
-	}
+	requireCatalogRows(t, catalog, `SELECT id,payload FROM sample ORDER BY id`, nil, want)
 }
 
 func openCatalogSQLiteDefaultFixture(t *testing.T, name, ddl string) (*CatalogConnection, CatalogTableMetadata) {
@@ -123,6 +83,24 @@ func openCatalogSQLiteDefaultFixture(t *testing.T, name, ddl string) (*CatalogCo
 	return catalog, metadata
 }
 
+func requireCatalogRows(t *testing.T, catalog *CatalogConnection, query string, args []any, want [][]any) {
+	t.Helper()
+	result, err := catalog.ReadOnlyQuery(context.Background(), query, args, CatalogQueryLimits{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(result.Rows, want) {
+		t.Fatalf("stored rows = %#v, want %#v", result.Rows, want)
+	}
+}
+
+func requireCatalogInsertedRow(t *testing.T, result CatalogMutationResult, want []any) {
+	t.Helper()
+	if len(result.Rows) != 1 || !reflect.DeepEqual(result.Rows[0], want) {
+		t.Fatalf("inserted row = %+v, want %v", result.Rows, want)
+	}
+}
+
 func TestCatalogInsertRequiresIdentityWithoutDatabaseGeneration(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	catalog, metadata := openCatalogSQLiteDefaultFixture(t, "required_identity", "CREATE TABLE required_identity (id TEXT NOT NULL PRIMARY KEY, payload TEXT NOT NULL)")
@@ -152,16 +130,8 @@ func TestCatalogInsertReturnsSQLiteLiteralDefaultCompositePrimaryKey(t *testing.
 		t.Fatalf("InsertRow with omitted literal-default key: %v", err)
 	}
 	want := []any{int64(2), "generated", int64(50)}
-	if len(inserted.Rows) != 1 || !reflect.DeepEqual(inserted.Rows[0], want) {
-		t.Fatalf("inserted row = %+v, want %v", inserted.Rows, want)
-	}
-	stored, err := catalog.ReadOnlyQuery(ctx, "SELECT tenant,seq,n FROM generated_default WHERE tenant=?", []any{int64(2)}, CatalogQueryLimits{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !reflect.DeepEqual(stored.Rows, [][]any{want}) {
-		t.Fatalf("stored rows = %#v, want %#v", stored.Rows, [][]any{want})
-	}
+	requireCatalogInsertedRow(t, inserted, want)
+	requireCatalogRows(t, catalog, "SELECT tenant,seq,n FROM generated_default WHERE tenant=?", []any{int64(2)}, [][]any{want})
 	duplicate, err := catalog.InsertRow(ctx, metadata, []CatalogAssignment{{Name: "tenant", Value: int64(2)}, {Name: "n", Value: int64(51)}})
 	if err == nil || ErrorCode(err) != CodeDuplicateKey {
 		t.Fatalf("repeated default primary key error = %v, want %s", err, CodeDuplicateKey)
@@ -230,9 +200,7 @@ func TestCatalogInsertReturnsSQLiteDefaultOnlyCompositePrimaryKey(t *testing.T) 
 		t.Fatalf("InsertRow with database-only defaults: %v", err)
 	}
 	want := []any{int64(2), "generated", int64(50)}
-	if len(inserted.Rows) != 1 || !reflect.DeepEqual(inserted.Rows[0], want) {
-		t.Fatalf("inserted row = %+v, want %v", inserted.Rows, want)
-	}
+	requireCatalogInsertedRow(t, inserted, want)
 	stored, err := catalog.ReadOnlyQuery(context.Background(), "SELECT tenant,seq,n FROM generated_defaults_only", nil, CatalogQueryLimits{})
 	if err != nil {
 		t.Fatal(err)

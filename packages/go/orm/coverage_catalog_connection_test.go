@@ -39,6 +39,27 @@ func catalogConnect(t *testing.T) (string, *orm.CatalogConnection) {
 	return driver, c
 }
 
+func catalogCurrentTable(
+	t *testing.T,
+	ctx context.Context,
+	driver string,
+	c *orm.CatalogConnection,
+	name string,
+	describeFailure string,
+) (orm.CatalogTableRef, orm.CatalogTableMetadata) {
+	t.Helper()
+	namespace, err := c.CurrentNamespace(ctx)
+	if err != nil {
+		t.Fatalf("%s: current namespace: %v", driver, err)
+	}
+	table := orm.CatalogTableRef{Namespace: namespace, Name: name}
+	metadata, err := c.DescribeTable(ctx, table)
+	if err != nil {
+		t.Fatalf("%s: %s: %v", driver, describeFailure, err)
+	}
+	return table, metadata
+}
+
 func catalogQuote(name, driver string) string {
 	if driver == "mysql" {
 		return "`" + name + "`"
@@ -53,15 +74,7 @@ func TestCoverageCatalogRead(t *testing.T) {
 	driver, c := catalogConnect(t)
 	defer testcase.Close(t, c)
 
-	namespace, err := c.CurrentNamespace(ctx)
-	if err != nil {
-		t.Fatalf("%s: current namespace: %v", driver, err)
-	}
-	author := orm.CatalogTableRef{Namespace: namespace, Name: "author"}
-	meta, err := c.DescribeTable(ctx, author)
-	if err != nil {
-		t.Fatalf("%s: author metadata: %v", driver, err)
-	}
+	author, meta := catalogCurrentTable(t, ctx, driver, c, "author", "author metadata")
 	if !slices.Equal(meta.PrimaryKey, []string{"seq"}) || !meta.ReliableRowIdentity {
 		t.Fatalf("%s: author key %v reliable %v", driver, meta.PrimaryKey, meta.ReliableRowIdentity)
 	}
@@ -351,35 +364,25 @@ func catalogGridCells(driver string) (string, []orm.CatalogGridCell) {
 				"CAST(-7 AS SIGNED) AS i, CAST(1.50 AS DECIMAL(10,2)) AS dv, CAST('ab' AS BINARY) AS b, CAST(NULL AS DATE) AS n, " +
 				"CAST('2024-02-29' AS DATE) AS dt, CAST('12:34:56.5' AS TIME(6)) AS tm, " +
 				"CAST('2024-02-29 01:02:03.5' AS DATETIME(6)) AS dtm",
-			[]orm.CatalogGridCell{
+			append([]orm.CatalogGridCell{
 				cell(orm.CatalogGridFloat32, uint32(0x3FC00000)),
 				cell(orm.CatalogGridFloat64, uint64(0x3FF8000000000000)),
 				cell(orm.CatalogGridUnsigned, uint64(1<<64-1)),
 				cell(orm.CatalogGridInteger, int64(-7)),
 				cell(orm.CatalogGridDecimal, "1.50"),
-				cell(orm.CatalogGridBinary, []byte("ab")),
-				cell(orm.CatalogGridNull, nil),
-				cell(orm.CatalogGridDate, "2024-02-29"),
-				cell(orm.CatalogGridTime, "12:34:56.500000"),
-				cell(orm.CatalogGridDateTime, "2024-02-29 01:02:03.500000"),
-			}
+			}, catalogGridSharedTailCells()...)
 	case "postgres":
 		return "SELECT 1.5::real AS f, 1.5::double precision AS d, 'NaN'::double precision AS nan, 'NaN'::real AS nanf, " +
 				"9223372036854775807::bigint AS i, 2.50::numeric(10,2) AS dec, '\\x6162'::bytea AS b, NULL::date AS n, " +
 				"'2024-02-29'::date AS dt, '12:34:56.5'::time AS tm, '2024-02-29 01:02:03.5'::timestamp AS dtm",
-			[]orm.CatalogGridCell{
+			append([]orm.CatalogGridCell{
 				cell(orm.CatalogGridFloat32, uint32(0x3FC00000)),
 				cell(orm.CatalogGridFloat64, uint64(0x3FF8000000000000)),
 				cell(orm.CatalogGridFloat64, uint64(0x7FF8000000000000)),
 				cell(orm.CatalogGridFloat32, uint32(0x7FC00000)),
 				cell(orm.CatalogGridInteger, int64(9223372036854775807)),
 				cell(orm.CatalogGridDecimal, "2.50"),
-				cell(orm.CatalogGridBinary, []byte("ab")),
-				cell(orm.CatalogGridNull, nil),
-				cell(orm.CatalogGridDate, "2024-02-29"),
-				cell(orm.CatalogGridTime, "12:34:56.500000"),
-				cell(orm.CatalogGridDateTime, "2024-02-29 01:02:03.500000"),
-			}
+			}, catalogGridSharedTailCells()...)
 	default:
 		return "SELECT 1.5 AS d, 7 AS i, 'x' AS t, X'6162' AS b, NULL AS n",
 			[]orm.CatalogGridCell{
@@ -389,6 +392,16 @@ func catalogGridCells(driver string) (string, []orm.CatalogGridCell) {
 				cell(orm.CatalogGridBinary, []byte("ab")),
 				cell(orm.CatalogGridNull, nil),
 			}
+	}
+}
+
+func catalogGridSharedTailCells() []orm.CatalogGridCell {
+	return []orm.CatalogGridCell{
+		{Kind: orm.CatalogGridBinary, Value: []byte("ab")},
+		{Kind: orm.CatalogGridNull, Value: nil},
+		{Kind: orm.CatalogGridDate, Value: "2024-02-29"},
+		{Kind: orm.CatalogGridTime, Value: "12:34:56.500000"},
+		{Kind: orm.CatalogGridDateTime, Value: "2024-02-29 01:02:03.500000"},
 	}
 }
 
@@ -552,15 +565,7 @@ func TestCoverageCatalogClosed(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	ctx := context.Background()
 	driver, c := catalogConnect(t)
-	namespace, err := c.CurrentNamespace(ctx)
-	if err != nil {
-		t.Fatalf("%s: current namespace: %v", driver, err)
-	}
-	author := orm.CatalogTableRef{Namespace: namespace, Name: "author"}
-	meta, err := c.DescribeTable(ctx, author)
-	if err != nil {
-		t.Fatalf("%s: describe author: %v", driver, err)
-	}
+	author, meta := catalogCurrentTable(t, ctx, driver, c, "author", "describe author")
 	page, err := c.TablePage(ctx, author, 1, 0)
 	if err != nil {
 		t.Fatalf("%s: author page: %v", driver, err)
