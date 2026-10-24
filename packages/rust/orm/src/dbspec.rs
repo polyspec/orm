@@ -66,6 +66,10 @@ fn decode_error(message: String) -> sqlx::Error {
     sqlx::Error::Decode(message.into())
 }
 
+fn catalog_rows<R: Row>(rows: &[R], mut value: impl FnMut(&R, usize) -> Result<CatalogValue, sqlx::Error>) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
+    rows.iter().map(|row| (0..row.len()).map(|i| value(row, i)).collect()).collect()
+}
+
 /// Chooses the CatalogValue by the MySQL value's type name. A string with binary collation
 /// is UTF-8 text.
 fn mysql_value(row: &MySqlRow, i: usize) -> Result<CatalogValue, sqlx::Error> {
@@ -135,7 +139,7 @@ impl CatalogFetch for MySqlConnection {
         sqlx::query(AssertSqlSafe(query.to_owned())).fetch_all(self).await
     }
     fn values(rows: &[MySqlRow]) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
-        rows.iter().map(|row| (0..row.len()).map(|i| mysql_value(row, i)).collect()).collect()
+        catalog_rows(rows, mysql_value)
     }
 }
 
@@ -145,7 +149,7 @@ impl CatalogFetch for PgConnection {
         sqlx::query(AssertSqlSafe(query.to_owned())).fetch_all(self).await
     }
     fn values(rows: &[PgRow]) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
-        rows.iter().map(|row| (0..row.len()).map(|i| postgres_value(row, i)).collect()).collect()
+        catalog_rows(rows, postgres_value)
     }
 }
 
@@ -155,7 +159,7 @@ impl CatalogFetch for SqliteConnection {
         sqlx::query(AssertSqlSafe(query.to_owned())).fetch_all(self).await
     }
     fn values(rows: &[SqliteRow]) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
-        rows.iter().map(|row| (0..row.len()).map(|i| sqlite_value(row, i)).collect()).collect()
+        catalog_rows(rows, sqlite_value)
     }
 }
 
