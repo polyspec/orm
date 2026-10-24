@@ -152,8 +152,7 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
         }
         $q = self::INDEXES;
         foreach (CatalogRows::read($connection, $q) as $row) {
-            $table = CatalogRows::text($row, 0, $q);
-            $name = CatalogRows::text($row, 1, $q);
+            [$table, $name] = CatalogRows::texts($row, [0, 1], $q);
             $unique = CatalogRows::integer($row, 2, $q);
             $origin = CatalogRows::text($row, 3, $q);
             $partial = CatalogRows::integer($row, 4, $q);

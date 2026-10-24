@@ -197,8 +197,7 @@ WHERE NOT t.tgisinternal AND c.relnamespace = current_schema()::regnamespace ORD
         }
         $q = self::INDEXES;
         foreach (CatalogRows::read($connection, $q) as $row) {
-            $table = CatalogRows::text($row, 0, $q);
-            $name = CatalogRows::text($row, 1, $q);
+            [$table, $name] = CatalogRows::texts($row, [0, 1], $q);
             [$unique, $partial, $expression, $include] = array_map(
                 static fn(int $i): bool => CatalogRows::flag($row, $i, $q),
                 [2, 3, 4, 5]
