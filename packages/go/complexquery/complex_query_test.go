@@ -209,7 +209,11 @@ func inputFromFixture(f complexFixture) Input {
 func seedComplexFixture(t *testing.T, driver, dsn string, fixture complexFixture) {
 	t.Helper()
 	db := testdb.Open(t, driver, dsn)
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("close fixture database: %v", err)
+		}
+	}()
 	for _, table := range fixture.SeedOrder {
 		columns := fixture.SeedColumns[table]
 		for _, row := range fixture.Seed[table] {
@@ -258,7 +262,11 @@ func joinStrings(values []string) string {
 func execFixtureSQL(t *testing.T, driver, dsn string, statements []string) error {
 	t.Helper()
 	db := testdb.Open(t, driver, dsn)
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("close fixture database: %v", err)
+		}
+	}()
 	for _, statement := range statements {
 		if _, err := db.Exec(statement); err != nil {
 			return err
