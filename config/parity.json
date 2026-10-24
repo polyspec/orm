@@ -12019,12 +12019,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
-          "id": "CoverageCatalogConnectionTest::test_catalog_read"
+          "id": "CoverageCatalogConnectionTest::testCatalogRead"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
-          "id": "CoverageCatalogConnectionTest::test_catalog_read"
+          "id": "CoverageCatalogConnectionTest::testCatalogRead"
         },
         {
           "implementation": "typescript",
@@ -12060,12 +12060,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
-          "id": "CoverageCatalogConnectionTest::test_catalog_row_mutation"
+          "id": "CoverageCatalogConnectionTest::testCatalogRowMutation"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
-          "id": "CoverageCatalogConnectionTest::test_catalog_row_mutation"
+          "id": "CoverageCatalogConnectionTest::testCatalogRowMutation"
         },
         {
           "implementation": "typescript",

@@ -59,7 +59,18 @@ struct SqliteFixture(std::path::PathBuf);
 
 impl Drop for SqliteFixture {
     fn drop(&mut self) {
-        let _ = std::fs::remove_file(&self.0);
+        match std::fs::remove_file(&self.0) {
+            Ok(()) => {}
+            Err(error) => {
+                if error.kind() != std::io::ErrorKind::NotFound {
+                    if std::thread::panicking() {
+                        eprintln!("remove the database file {}: {error}", self.0.display());
+                    } else {
+                        panic!("remove the database file {}: {error}", self.0.display());
+                    }
+                }
+            }
+        }
     }
 }
 

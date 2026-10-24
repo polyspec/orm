@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 // DB-free native tests for the Catalog DTOs and the extension's public connection boundary.
 
 use PHPUnit\Framework\TestCase;
@@ -20,7 +22,7 @@ use Polyspec\Orm\OrmException;
 #[Small]
 final class CatalogConnectionSurfaceTest extends TestCase
 {
-    public function test_native_grid_cells_preserve_declared_values(): void
+    public function testNativeGridCellsPreserveDeclaredValues(): void
     {
         $values = [
             ['null', null],
@@ -43,7 +45,7 @@ final class CatalogConnectionSurfaceTest extends TestCase
         }
     }
 
-    public function test_native_table_page_indexes_columns_and_reports_unknown_name(): void
+    public function testNativeTablePageIndexesColumnsAndReportsUnknownName(): void
     {
         $columns = [
             new CatalogColumn('id', 'BIGINT', false, false, true, null, false),
@@ -67,7 +69,7 @@ final class CatalogConnectionSurfaceTest extends TestCase
         }
     }
 
-    public function test_native_connect_rejects_non_database_dsn(): void
+    public function testNativeConnectRejectsNonDatabaseDsn(): void
     {
         self::assertTrue((new \ReflectionClass(Catalog::class))->isInternal());
         try {
@@ -220,7 +222,7 @@ final class CatalogConnectionSurfaceTest extends TestCase
         }
     }
 
-    public function test_native_close_attempts_both_steps_and_keeps_primary_and_cleanup_causes(): void
+    public function testNativeCloseAttemptsBothStepsAndKeepsPrimaryAndCleanupCauses(): void
     {
         $db = new Db(null, 'sqlite', new Config(), new DateTimeZone('UTC'));
         $state = (new ReflectionProperty(Db::class, 'state'))->getValue($db);

@@ -10,8 +10,6 @@ use Polyspec\Orm\Catalog;
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
 
-require_once __DIR__ . '/CatalogConnectionCoverageCases.php';
-
 #[Medium]
 final class CoverageCatalogConnectionTest extends TestCase
 {

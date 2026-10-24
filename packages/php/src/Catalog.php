@@ -194,15 +194,17 @@ final class Catalog
                     }
                     $flags = MYSQLI_CLIENT_SSL;
                 }
-                if (!$link->real_connect(
-                    $target['host'] ?? 'localhost',
-                    $target['user'],
-                    $target['password'],
-                    $target['database'],
-                    (int) $target['port'],
-                    $target['socket'] ?? null,
-                    $flags
-                )) {
+                if (
+                    !$link->real_connect(
+                        $target['host'] ?? 'localhost',
+                        $target['user'],
+                        $target['password'],
+                        $target['database'],
+                        (int) $target['port'],
+                        $target['socket'] ?? null,
+                        $flags
+                    )
+                ) {
                     throw new \mysqli_sql_exception($link->connect_error ?? 'MySQL grid connection failed');
                 }
                 $link->set_charset('utf8mb4');

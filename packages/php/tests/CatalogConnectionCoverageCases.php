@@ -45,7 +45,7 @@ trait CatalogConnectionCoverageCases
         return $this->driver === 'mysql' ? "`{$name}`" : "\"{$name}\"";
     }
 
-    public function test_catalog_read(): void
+    public function testCatalogRead(): void
     {
         $namespace = $this->catalog->currentNamespace();
         $author = ['namespace' => $namespace, 'name' => 'author'];
@@ -78,7 +78,7 @@ trait CatalogConnectionCoverageCases
         }
     }
 
-    public function test_catalog_row_mutation(): void
+    public function testCatalogRowMutation(): void
     {
         $account = $this->quote('composite_account');
         $countSql = "SELECT COUNT(*) FROM {$account} WHERE tenant_id = " . self::TENANT;

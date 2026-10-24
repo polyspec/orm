@@ -2,27 +2,30 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 use Polyspec\Orm\Catalog;
+use Polyspec\Orm\Code;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 
 #[Small]
 final class CatalogConnectionCoverageSurfaceTest extends TestCase
 {
-    public function test_native_catalog_is_internal_and_owns_shared_cases(): void
+    public function testNativeCatalogIsInternalAndOwnsSharedCases(): void
     {
         self::assertTrue((new ReflectionClass(Catalog::class))->isInternal());
-        self::assertSame(Polyspec\Orm\Code::ROW_INSERT_IDENTITY_REQUIRED, 'ROW_INSERT_IDENTITY_REQUIRED');
-        self::assertSame(Polyspec\Orm\Code::ROW_INSERT_UNSUPPORTED, 'ROW_INSERT_UNSUPPORTED');
+        self::assertSame(Code::ROW_INSERT_IDENTITY_REQUIRED, 'ROW_INSERT_IDENTITY_REQUIRED');
+        self::assertSame(Code::ROW_INSERT_UNSUPPORTED, 'ROW_INSERT_UNSUPPORTED');
         $catalogCases = array_map(
             static fn(ReflectionMethod $method): string => $method->getName(),
-            (new ReflectionClass(Polyspec\Orm\Tests\CatalogConnectionCoverageCases::class))->getMethods(),
+            (new \ReflectionClass(CatalogConnectionCoverageCases::class))->getMethods(),
         );
-        self::assertContains('test_catalog_read', $catalogCases);
-        self::assertContains('test_catalog_row_mutation', $catalogCases);
+        self::assertContains('testCatalogRead', $catalogCases);
+        self::assertContains('testCatalogRowMutation', $catalogCases);
         $eventCases = array_map(
             static fn(ReflectionMethod $method): string => $method->getName(),
-            (new ReflectionClass(Polyspec\Orm\Tests\StatementEventsCoverageCases::class))->getMethods(),
+            (new \ReflectionClass(StatementEventsCoverageCases::class))->getMethods(),
         );
         self::assertContains('test_statement_events', $eventCases);
         self::assertFileExists(__DIR__ . '/CoverageCatalogConnectionTest.php');
