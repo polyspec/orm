@@ -14,8 +14,8 @@ mod result;
 pub(crate) use grid::is_temporal;
 pub use grid::{GridCell, GridQueryResult};
 pub use limits::QueryLimits;
-pub use params::{P, ParamType};
 pub(crate) use params::decimal_valid;
+pub use params::{P, ParamType};
 pub use result::{QueryColumn, QueryResult};
 
 pub(crate) fn validate_params(values: &[P], dialect: &str) -> Result<(), sqlx::Error> {
@@ -117,11 +117,7 @@ macro_rules! cell_common {
 macro_rules! cell {
     ($row:expr, $i:expr) => {{
         let (row, i) = ($row, $i);
-        if row.columns()[i].type_info().name().ends_with(" UNSIGNED") {
-            cell_extra!(row, i)
-        } else {
-            cell_common!(row, i, cell_extra)
-        }
+        if row.columns()[i].type_info().name().ends_with(" UNSIGNED") { cell_extra!(row, i) } else { cell_common!(row, i, cell_extra) }
     }};
 }
 
@@ -327,14 +323,18 @@ impl Conn {
         Ok(self.query_result_bounded(sql, params, limits).await?.rows)
     }
 
-    /// Ordered prepared columns and bounded checked rows, including empty results.
-    pub async fn query_result_bounded(&mut self, sql: &str, params: &[P], limits: QueryLimits) -> Result<QueryResult, sqlx::Error> {
+    fn bounded_query(&self, sql: &str, params: &[P], limits: QueryLimits) -> Result<(AssertSqlSafe<String>, limits::Budget), sqlx::Error> {
         self.validate_params(params)?;
-        let mut budget = limits::Budget::new(limits)?;
+        let budget = limits::Budget::new(limits)?;
         if polyspec_orm_schema::sql::split_sql(sql).len() != 1 {
             return Err(sqlx::Error::Decode("TOOL_QUERY_STATEMENT: expected one statement".into()));
         }
-        let sql = AssertSqlSafe(sql.to_owned());
+        Ok((AssertSqlSafe(sql.to_owned()), budget))
+    }
+
+    /// Ordered prepared columns and bounded checked rows, including empty results.
+    pub async fn query_result_bounded(&mut self, sql: &str, params: &[P], limits: QueryLimits) -> Result<QueryResult, sqlx::Error> {
+        let (sql, mut budget) = self.bounded_query(sql, params, limits)?;
         match self {
             Conn::MySql(c) => fetch_result!(c, sql, params, budget, cell, QueryResult, mysql),
             Conn::Postgres(c) => fetch_result!(c, sql, params, budget, cell_pg, QueryResult, postgres),
@@ -344,12 +344,7 @@ impl Conn {
 
     /// Typed SQL grid rows using the same streaming and metadata budgets.
     pub async fn grid_query_bounded(&mut self, sql: &str, params: &[P], limits: QueryLimits) -> Result<GridQueryResult, sqlx::Error> {
-        self.validate_params(params)?;
-        let mut budget = limits::Budget::new(limits)?;
-        if polyspec_orm_schema::sql::split_sql(sql).len() != 1 {
-            return Err(sqlx::Error::Decode("TOOL_QUERY_STATEMENT: expected one statement".into()));
-        }
-        let sql = AssertSqlSafe(sql.to_owned());
+        let (sql, mut budget) = self.bounded_query(sql, params, limits)?;
         match self {
             Conn::MySql(c) => fetch_result!(c, sql, params, budget, grid_mysql, GridQueryResult, mysql),
             Conn::Postgres(c) => fetch_result!(c, sql, params, budget, grid_pg, GridQueryResult, postgres),
@@ -432,6 +427,20 @@ mod cause_message_tests {
         let message = error.to_string();
         assert!(message.contains("Invalid tool integer: invalid digit found in string"), "{message}");
         assert!(!message.contains("private-invalid-number"), "{message}");
+    }
+
+    #[tokio::test]
+    async fn query_shapes_share_bounded_statement_preflight() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let pool = sqlx::SqlitePool::connect("sqlite::memory:").await.expect("in-memory SQLite pool");
+        let mut connection = super::Conn::Sqlite(pool.acquire().await.expect("in-memory SQLite connection"));
+        let query_error = connection.query_result_bounded("SELECT 1; SELECT 2", &[], super::QueryLimits::default()).await.unwrap_err().to_string();
+        assert!(query_error.contains("TOOL_QUERY_STATEMENT: expected one statement"), "{query_error}");
+
+        let grid_error = connection.grid_query_bounded("SELECT 1; SELECT 2", &[], super::QueryLimits::default()).await.unwrap_err().to_string();
+        assert!(grid_error.contains("TOOL_QUERY_STATEMENT: expected one statement"), "{grid_error}");
+        drop(connection);
+        pool.close().await;
     }
 
     #[test]
