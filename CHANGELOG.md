@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- PHP and native C Codec now wrap only expected YAML/JSON codec failures and preserve the exact cause object; unexpected RuntimeException, TypeError and Error propagate unchanged. On PHP 8.4.26, committed main `9af48c4ab` passes `make php-codec-causes-check`: 8 focused tests (102 assertions) across source and native extension. Before the fix at `382a7754552a`, the focused target failed because YAML/JSON wrappers dropped causes and YAML probes changed unexpected throwable identity (KSTD-5-77).
+
 - SQLite `BEGIN EXCLUSIVE` failures are classified as `locked` only for primary result codes `SQLITE_BUSY` (5) and `SQLITE_LOCKED` (6), including extended codes. Other driver errors retain their original causes. On main fix commit `e8c2fef66128`, the focused database-free targets pass Go (2), PHP (2 tests, 23 assertions), PHP extension (2 tests, 23 assertions), Python (2), Rust (1), and TypeScript (2). The canonical six-target RED on actual pre-fix main `4af40c9a20df` failed on non-lock results; the Go fake driver also verifies original error propagation and state restoration (KSTD-5-60).
 
 - Documentation now aligns the enumerated implementations with `config/parity.json` while keeping PHP extension capability claims within verified scope. The selector's four unit cases pass, the focused rule reports no findings across 50 English and 50 Korean documents, and `make docs-check` passes. The focused source RED on pre-fix main `0898f6f1` reported 75 findings: 50 count statements, 17 enumerated sets, 6 table headers and 2 protocol rows. PHP extension catalog gaps remain under KSTD-7-7 (KSTD-2-2).
