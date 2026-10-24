@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 0fe0b6a59dd332f9dc9490151c2b4311b73d020fdd554d1f35120c4f29327b56 -->
+<!-- source-sha256: cd0c319a04410c6fb37a5606998a7a6fac2e6bc3a1d25c6049910d64f29c1fc2 -->
 # 변경 이력
 
 ## Unreleased
 
+- repository 전체에서 Go lint가 통과한다. 실제 수정 전 canonical 실행은 `b45468a36e63`에서 errcheck 11건과 deadcode 1건을 보고했고, 현재 checker는 build tag별 도달성을 합집합으로 판정한다. DB 없는 catalog session case는 primary 및 rollback driver cause를 `errors.Is`로 찾을 수 있음을 검증한다 (KSTD-5-42).
 - case-database crate가 clippy에서 발견한 여섯 실패를 suppression 없이 `Result`로 전파한다. canonical strict clippy target은 실제 수정 전 source `e9617f4f967f`에서 실패하고 커밋된 수정 source에서 통과한다 (KSTD-5-41-1).
 - PHP extension은 임시 build copy에서 arginfo를 offline 생성하고 native readonly `Stats` 클래스를 선언한다. 수정 전 공식 실행인 `336699563b61`에서는 extension의 `Stats` 선언 누락으로 focused declaration 검증이 실패했다. 커밋된 source에서는 arginfo/build 검증 42개 테스트(589 assertions), declaration 검증 8개 테스트(22 assertions)가 통과한다(T182-6-15).
 - Kit Standard checklist는 `<gate>`, `min-0-max <max@blue.tools>`, `Collection<X>`를 HTML로 파싱하지 않고 문자 그대로 렌더링한다. Focused Markdown renderer case는 두 checklist와 `Refines <id>:` 예시를 확인한다(KSTD-5-87).
