@@ -8506,8 +8506,8 @@
       "title": "Hot-path performance standard",
       "title_ko": "hot-path \uc131\ub2a5 \uae30\uc900",
       "status": "partial",
-      "description": "The PHP client measures hot-path latency as a ratio to the raw driver on the seeded MySQL bench database, and make perf-check prints each ratio and warns when a workload exceeds its recorded reference; a measurement never fails it. The Rust bench harness measures without a reference, and the TypeScript standard is not built.",
-      "description_ko": "PHP \ud074\ub77c\uc774\uc5b8\ud2b8\ub294 seed\ud55c MySQL \ubca4\uce58 \ub370\uc774\ud130\ubca0\uc774\uc2a4\uc5d0\uc11c hot-path \uc9c0\uc5f0 \uc2dc\uac04\uc744 \uc21c\uc218 \ub4dc\ub77c\uc774\ubc84\uc640\uc758 \ube44\uc728\ub85c \uc7ac\uba70, make perf-check\ub294 \ube44\uc728\uc744 \ucd9c\ub825\ud558\uace0 \uc791\uc5c5\ub7c9\uc774 \uae30\ub85d\ud55c \uae30\uc900\uac12\uc744 \ub118\uc73c\uba74 \uacbd\uace0\ud55c\ub2e4. \uce21\uc815\uc740 \uadf8\uac83\uc744 \uc2e4\ud328\uc2dc\ud0a4\uc9c0 \uc54a\ub294\ub2e4. Rust \ubca4\uce58 \ub3c4\uad6c\ub294 \uae30\uc900\uac12 \uc5c6\uc774 \uce21\uc815\ub9cc \ud558\uace0 TypeScript \uae30\uc900\uc740 \ub9cc\ub4e4\uc9c0 \uc54a\uc558\ub2e4.",
+      "description": "Coverage declares the same PK and descending 100-row native comparison for all six clients on MySQL, PostgreSQL, and SQLite. Each database-specific case uses the exact ORM_FEATURE_DSN that the state reader checks. These feature measurements are diagnostic; their database executions and fixed references remain pending. The separate make perf-check retains its recorded Go and PHP MySQL bounds.",
+      "description_ko": "Coverage\ub294 \uc5ec\uc12f \ud074\ub77c\uc774\uc5b8\ud2b8 \ubaa8\ub450\uc5d0 \ub300\ud574 MySQL, PostgreSQL, SQLite\uc5d0\uc11c \uac19\uc740 PK \ubc0f \ub0b4\ub9bc\ucc28\uc21c 100\ud589 native \ube44\uad50\ub97c \uc120\uc5b8\ud55c\ub2e4. \uac01 \ub370\uc774\ud130\ubca0\uc774\uc2a4\ubcc4 \uc0ac\ub840\ub294 state reader\uac00 \ud655\uc778\ud558\ub294 \uac83\uacfc \uc815\ud655\ud788 \uac19\uc740 ORM_FEATURE_DSN\uc744 \uc0ac\uc6a9\ud55c\ub2e4. \uc774 feature \uce21\uc815\uc740 \uc9c4\ub2e8\uc6a9\uc774\uba70 \ub370\uc774\ud130\ubca0\uc774\uc2a4 \uc2e4\ud589 \uadfc\uac70\uc640 \uace0\uc815 \uae30\uc900\uac12\uc740 \uc544\uc9c1 \uc5c6\ub2e4. \ubcc4\ub3c4 make perf-check\uc758 Go \ubc0f PHP MySQL \uae30\uc900\uac12\uc740 \uc720\uc9c0\ud55c\ub2e4.",
       "inputs": {
         "type": "BenchmarkDatabase",
         "fields": [
@@ -8525,7 +8525,7 @@
       "state": [
         "seed the bench database",
         "alternate native and client pairs",
-        "compare each ratio with its recorded bound"
+        "report ratios and compare with fixed references only where one is recorded"
       ],
       "errors": [
         {
@@ -8534,7 +8534,7 @@
         }
       ],
       "parity": [
-        "rust-coverage-hot-path-gate"
+        "hot-path-read-correctness"
       ],
       "fixtures": [
         "docs/operations/perf-raw-go-native.txt",
@@ -8557,8 +8557,34 @@
         "packages/go/bench/coverage_performance_gate_test.go",
         "packages/php/tests/CoveragePerformanceGateTest.php",
         "packages/rust/tests/tests/coverage_performance_gate.rs",
+        "packages/rust/tests/tests/coverage_hot_path_read_correctness.rs",
         "packages/go/bench/statements_test.go",
-        "tests/timing/preempted.test.mts"
+        "tests/timing/preempted.test.mts",
+        "packages/go/bench/coverage_performance_gate_postgres_test.go",
+        "packages/go/bench/coverage_performance_gate_sqlite_test.go",
+        "packages/go/bench/coverage_performance_gate_shared_test.go",
+        "packages/go/bench/coverage_process_cpu_unix_test.go",
+        "packages/go/bench/coverage_process_cpu_windows_test.go",
+        "packages/go/orm/coverage_hot_path_read_correctness_test.go",
+        "packages/php/tests/CoveragePerformanceGatePostgresTest.php",
+        "packages/php/tests/CoveragePerformanceGateSqliteTest.php",
+        "packages/php/tests/PerformanceGateCoverageCase.php",
+        "packages/php/tests/CoverageHotPathReadCorrectnessTest.php",
+        "packages/php/tests/hot_path_read_correctness.php",
+        "packages/php-ext/tests/CoveragePerformanceGateExtensionPostgresTest.php",
+        "packages/php-ext/tests/CoveragePerformanceGateExtensionSqliteTest.php",
+        "packages/php-ext/tests/CoverageHotPathReadCorrectnessExtensionTest.php",
+        "packages/python/tests/coverage_performance_gate_mysql.py",
+        "packages/python/tests/coverage_performance_gate_postgres.py",
+        "packages/python/tests/coverage_performance_gate_sqlite.py",
+        "packages/python/tests/coverage_performance_gate.py",
+        "packages/python/tests/coverage_hot_path_read_correctness.py",
+        "packages/ts/tests/coverage_performance_gate_mysql.mjs",
+        "packages/ts/tests/coverage_performance_gate_postgres.mjs",
+        "packages/ts/tests/coverage_performance_gate_sqlite.mjs",
+        "packages/ts/tests/coverage_performance_gate.mjs",
+        "packages/ts/tests/coverage_hot_path_read_correctness.mjs",
+        "packages/php-ext/tests/CoveragePerformanceGateExtensionTest.php"
       ],
       "docs": [
         "docs/operations/perf.md"
@@ -8606,43 +8632,305 @@
         }
       ],
       "coverage": {
-        "kind": "independent",
+        "kind": "database",
         "cases": [
           "hot_path_gate"
         ],
         "owners": {
+          "go": {
+            "part": "packages/go/bench",
+            "tests": [
+              "packages/go/bench/coverage_performance_gate_test.go",
+              "packages/go/bench/coverage_performance_gate_postgres_test.go",
+              "packages/go/bench/coverage_performance_gate_sqlite_test.go"
+            ],
+            "inputs": [
+              "packages/go/bench/coverage_performance_gate_shared_test.go",
+              "packages/go/bench/coverage_process_cpu_unix_test.go",
+              "packages/go/bench/coverage_process_cpu_windows_test.go"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "go",
+                  "test": "packages/go/bench/coverage_performance_gate_test.go",
+                  "cases": [
+                    "hot_path_gate"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN",
+                  "symbols": {
+                    "hot_path_gate": "TestCoveragePerformanceGate"
+                  }
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "go",
+                  "test": "packages/go/bench/coverage_performance_gate_postgres_test.go",
+                  "cases": [
+                    "hot_path_gate"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN",
+                  "symbols": {
+                    "hot_path_gate": "TestCoveragePerformanceGatePostgres"
+                  }
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "go",
+                  "test": "packages/go/bench/coverage_performance_gate_sqlite_test.go",
+                  "cases": [
+                    "hot_path_gate"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN",
+                  "symbols": {
+                    "hot_path_gate": "TestCoveragePerformanceGateSQLite"
+                  }
+                }
+              ]
+            }
+          },
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/CoveragePerformanceGateTest.php"
+              "packages/php/tests/CoveragePerformanceGateTest.php",
+              "packages/php/tests/CoveragePerformanceGatePostgresTest.php",
+              "packages/php/tests/CoveragePerformanceGateSqliteTest.php"
+            ],
+            "inputs": [
+              "packages/php/tests/PerformanceGateCoverageCase.php",
+              "packages/php/tests/PerfGateTest.php"
             ],
             "commands": {
-              "none": [
+              "mysql": [
                 {
                   "runner": "php",
                   "test": "packages/php/tests/CoveragePerformanceGateTest.php",
                   "cases": [
                     "hot_path_gate"
-                  ]
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN",
+                  "symbols": {
+                    "hot_path_gate": "testHotPathGate"
+                  }
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/CoveragePerformanceGatePostgresTest.php",
+                  "cases": [
+                    "hot_path_gate"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN",
+                  "symbols": {
+                    "hot_path_gate": "testHotPathGate"
+                  }
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/CoveragePerformanceGateSqliteTest.php",
+                  "cases": [
+                    "hot_path_gate"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN",
+                  "symbols": {
+                    "hot_path_gate": "testHotPathGate"
+                  }
+                }
+              ]
+            }
+          },
+          "php-extension": {
+            "part": "packages/php-ext/tests",
+            "tests": [
+              "packages/php-ext/tests/CoveragePerformanceGateExtensionTest.php",
+              "packages/php-ext/tests/CoveragePerformanceGateExtensionPostgresTest.php",
+              "packages/php-ext/tests/CoveragePerformanceGateExtensionSqliteTest.php"
+            ],
+            "inputs": [
+              "packages/php-ext/tests/bootstrap.php",
+              "packages/php/tests/PerformanceGateCoverageCase.php",
+              "packages/php/tests/PerfGateTest.php"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoveragePerformanceGateExtensionTest.php",
+                  "cases": [
+                    "hot_path_gate"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN",
+                  "symbols": {
+                    "hot_path_gate": "testHotPathGate"
+                  }
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoveragePerformanceGateExtensionPostgresTest.php",
+                  "cases": [
+                    "hot_path_gate"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN",
+                  "symbols": {
+                    "hot_path_gate": "testHotPathGate"
+                  }
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoveragePerformanceGateExtensionSqliteTest.php",
+                  "cases": [
+                    "hot_path_gate"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN",
+                  "symbols": {
+                    "hot_path_gate": "testHotPathGate"
+                  }
+                }
+              ]
+            }
+          },
+          "typescript": {
+            "part": "packages/ts/tests",
+            "tests": [
+              "packages/ts/tests/coverage_performance_gate_mysql.mjs",
+              "packages/ts/tests/coverage_performance_gate_postgres.mjs",
+              "packages/ts/tests/coverage_performance_gate_sqlite.mjs"
+            ],
+            "inputs": [
+              "packages/ts/tests/coverage_performance_gate.mjs",
+              "packages/ts/tests/coverage_case.mjs"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/coverage_performance_gate_mysql.mjs",
+                  "cases": [
+                    "hot_path_gate"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/coverage_performance_gate_postgres.mjs",
+                  "cases": [
+                    "hot_path_gate"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/coverage_performance_gate_sqlite.mjs",
+                  "cases": [
+                    "hot_path_gate"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "python": {
+            "part": "packages/python/tests",
+            "tests": [
+              "packages/python/tests/coverage_performance_gate_mysql.py",
+              "packages/python/tests/coverage_performance_gate_postgres.py",
+              "packages/python/tests/coverage_performance_gate_sqlite.py"
+            ],
+            "inputs": [
+              "packages/python/tests/coverage_performance_gate.py",
+              "packages/python/tests/coverage_case.py"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_performance_gate_mysql.py",
+                  "cases": [
+                    "hot_path_gate"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_performance_gate_postgres.py",
+                  "cases": [
+                    "hot_path_gate"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_performance_gate_sqlite.py",
+                  "cases": [
+                    "hot_path_gate"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
             }
           },
           "rust": {
-            "part": "packages/rust/tests",
+            "part": "packages/rust/tests/tests",
             "tests": [
               "packages/rust/tests/tests/coverage_performance_gate.rs"
             ],
+            "inputs": [
+              "packages/rust/tests/tests/common/mod.rs"
+            ],
             "commands": {
-              "none": [
+              "mysql": [
                 {
                   "runner": "cargo",
                   "test": "packages/rust/tests/tests/coverage_performance_gate.rs",
                   "cases": [
                     "hot_path_gate"
                   ],
+                  "dsn_env": "BENCH_MYSQL_DSN",
                   "symbols": {
-                    "hot_path_gate": "coverage_hot_path_gate"
+                    "hot_path_gate": "coverage_hot_path_gate_mysql"
+                  }
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "cargo",
+                  "test": "packages/rust/tests/tests/coverage_performance_gate.rs",
+                  "cases": [
+                    "hot_path_gate"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN",
+                  "symbols": {
+                    "hot_path_gate": "coverage_hot_path_gate_postgres"
+                  }
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "cargo",
+                  "test": "packages/rust/tests/tests/coverage_performance_gate.rs",
+                  "cases": [
+                    "hot_path_gate"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN",
+                  "symbols": {
+                    "hot_path_gate": "coverage_hot_path_gate_sqlite"
                   }
                 }
               ]
