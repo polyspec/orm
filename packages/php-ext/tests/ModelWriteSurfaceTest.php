@@ -200,6 +200,24 @@ final class ModelWriteSurfaceTest extends TestCase
         }
     }
 
+    public function testBuildAndWriteRequestRejectNullableKinds(): void
+    {
+        $model = new ModelWriteCallbackFixture();
+        $build = new \ReflectionMethod(Model::class, 'build');
+        $writeRequest = new \ReflectionMethod(Model::class, 'writeRequest');
+        foreach ([
+            static fn() => $build->invoke($model, null, new \stdClass()),
+            static fn() => $writeRequest->invoke($model, null, new \stdClass()),
+        ] as $call) {
+            try {
+                $call();
+                self::fail('build and writeRequest require a non-null kind');
+            } catch (\TypeError) {
+                self::assertTrue(true);
+            }
+        }
+    }
+
     public function testAesExpansionKeepsTheModelSetsArrayUnchanged(): void
     {
         $model = new ModelWriteAesFixture();

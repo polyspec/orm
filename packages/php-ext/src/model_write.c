@@ -4,6 +4,7 @@
 #include "model_native_methods.h"
 #include "object_method_lookup.h"
 #include "model_dsl.h"
+#include "model_kind_db_args.h"
 #include "runtime_model.h"
 #include "Zend/zend_exceptions.h"
 #include "Zend/zend_closures.h"
@@ -443,14 +444,7 @@ static bool assign_ir(zval *model, zval *request, zend_string *column, zval *spe
 
 ZEND_METHOD(Polyspec_Orm_Model, writeRequest)
 {
-    static const char *const scalar_types[] = {"string", NULL};
-    if (!model_reject_null_scalar_args(execute_data, scalar_types, 2)) RETURN_THROWS();
-    zend_string *kind;
-    zval *db;
-    ZEND_PARSE_PARAMETERS_START(2, 2)
-        Z_PARAM_STR(kind)
-        Z_PARAM_OBJECT(db)
-    ZEND_PARSE_PARAMETERS_END();
+    MODEL_PARSE_KIND_AND_DB();
     if (!write_request(ZEND_THIS, ZSTR_VAL(kind), db, return_value))
         RETURN_THROWS();
 }

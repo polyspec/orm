@@ -2,6 +2,7 @@
 #include "model_query.h"
 #include "model_state.h"
 #include "model_native_methods.h"
+#include "model_kind_db_args.h"
 #include "Zend/zend_exceptions.h"
 #include "Zend/zend_interfaces.h"
 #include "Zend/zend_smart_str.h"
@@ -33,6 +34,18 @@ static bool query_meta(zend_object *model, zval *meta)
         return false;
     }
     return true;
+}
+
+static zval *query_meta_entity(zend_object *model, zval *meta)
+{
+    if (!query_meta(model, meta)) return NULL;
+    zval *entity = zend_hash_str_find(Z_ARRVAL_P(meta), "entity", sizeof("entity") - 1);
+    if (entity == NULL) {
+        zval_ptr_dtor(meta);
+        zend_throw_error(NULL, "Model::meta() must contain entity");
+        return NULL;
+    }
+    return entity;
 }
 
 static void query_throw_orm(const char *code_name, zend_string *message)
@@ -149,13 +162,8 @@ ZEND_METHOD(Polyspec_Orm_Model, resultName)
     zval *alias = model_state_property(state, "alias");
     if (alias != NULL && Z_TYPE_P(alias) == IS_STRING && Z_STRLEN_P(alias) != 0) RETURN_COPY(alias);
     zval meta;
-    if (!query_meta(Z_OBJ_P(ZEND_THIS), &meta)) RETURN_THROWS();
-    zval *entity = zend_hash_str_find(Z_ARRVAL(meta), "entity", sizeof("entity") - 1);
-    if (entity == NULL) {
-        zval_ptr_dtor(&meta);
-        zend_throw_error(NULL, "Model::meta() must contain entity");
-        RETURN_THROWS();
-    }
+    zval *entity = query_meta_entity(Z_OBJ_P(ZEND_THIS), &meta);
+    if (entity == NULL) RETURN_THROWS();
     zend_string *name = zval_get_string(entity);
     zval_ptr_dtor(&meta);
     if (EG(exception) != NULL) { zend_string_release(name); RETURN_THROWS(); }
@@ -166,14 +174,7 @@ ZEND_METHOD(Polyspec_Orm_Model, resultName)
 
 ZEND_METHOD(Polyspec_Orm_Model, build)
 {
-    static const char *const scalar_types[] = {"string", NULL};
-    if (!model_reject_null_scalar_args(execute_data, scalar_types, 2)) RETURN_THROWS();
-    zend_string *kind;
-    zval *db;
-    ZEND_PARSE_PARAMETERS_START(2, 2)
-        Z_PARAM_STR(kind)
-        Z_PARAM_OBJECT(db)
-    ZEND_PARSE_PARAMETERS_END();
+    MODEL_PARSE_KIND_AND_DB();
     zend_class_entry *db_ce = query_class("Polyspec\\Orm\\Db");
     if (db_ce == NULL || !instanceof_function(Z_OBJCE_P(db), db_ce)) {
         zend_argument_type_error(2, "must be of type Polyspec\\Orm\\Db, %s given", zend_zval_value_name(db));
@@ -962,9 +963,9 @@ ZEND_METHOD(Polyspec_Orm_Model, query)
     if (pending != NULL && Z_TYPE_P(pending) == IS_STRING && Z_STRLEN_P(pending) > 0) {
         zend_string *message = strpprintf(0, "connector %s without a following condition", Z_STRVAL_P(pending)); query_throw_orm("CONFIG", message); zend_string_release(message); RETURN_THROWS();
     }
-    zval meta; if (!query_meta(Z_OBJ_P(ZEND_THIS), &meta)) RETURN_THROWS();
-    zval *entity = zend_hash_str_find(Z_ARRVAL(meta), "entity", sizeof("entity") - 1);
-    if (entity == NULL) { zval_ptr_dtor(&meta); zend_throw_error(NULL, "Model::meta() must contain entity"); RETURN_THROWS(); }
+    zval meta;
+    zval *entity = query_meta_entity(Z_OBJ_P(ZEND_THIS), &meta);
+    if (entity == NULL) RETURN_THROWS();
     array_init(return_value); zval entity_copy; ZVAL_COPY(&entity_copy, entity); add_assoc_zval(return_value, "entity", &entity_copy); zval_ptr_dtor(&meta);
     zval args[1], columns; ZVAL_COPY(&args[0], request);
     if (!query_invoke(ZEND_THIS, "columnsIr", args, 1, &columns)) { zval_ptr_dtor(&args[0]); zval_ptr_dtor(return_value); ZVAL_UNDEF(return_value); if (Z_TYPE(columns)!=IS_UNDEF) zval_ptr_dtor(&columns); RETURN_THROWS(); }
