@@ -4,12 +4,49 @@ import sqlite3
 import tempfile
 import unittest
 
+from polyspec.orm.codec import host_encode
 from polyspec.orm.models import models
 
 from .coverage_case import coverage_main
+from .coverage_performance_gate import typed_native_values
 
 
 def hot_path_read_correctness():
+    row = (
+        42,
+        "bench-author",
+        "2026-06-01 00:00:00",
+        "2026-06-01 00:00:00",
+        0,
+        1,
+        None,
+        None,
+        0,
+        2,
+        1,
+        3,
+        4,
+        None,
+        10,
+        7,
+        2,
+        11,
+        "2026-06-01 00:00:00",
+        "2026-12-31 00:00:00",
+        None,
+        0,
+        5,
+        host_encode("bench-email@example.com", ["aes", "hex"], "bench-salt"),
+        host_encode("+15550101010", ["aes", "hex"], "bench-salt"),
+        "12.500",
+        1,
+    )
+    typed = typed_native_values(row)
+    assert_equal(typed[0:2], (42, "bench-author"), "native typed row identity")
+    assert_equal(typed[23], "bench-email@example.com", "native AES2 email decode")
+    assert_equal(typed[24], "+15550101010", "native AES2 phone decode")
+    assert_equal(str(typed[25]), "12.500", "native decimal exactness")
+
     with tempfile.TemporaryDirectory(prefix="orm-hot-path-") as directory:
         path = f"{directory}/read.sqlite"
         native = sqlite3.connect(path)

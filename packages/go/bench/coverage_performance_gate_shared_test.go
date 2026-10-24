@@ -87,6 +87,18 @@ func coverageHotPathGate(t *testing.T, expected string) {
 				t.Fatal(err)
 			}
 			defer rows.Close()
+			columns, err := rows.Columns()
+			if err != nil {
+				t.Fatal(err)
+			}
+			wantColumns := []string{"a__seq", "a__name", "a__created_ts", "a__updated_ts", "a__is_close", "a__is_display",
+				"a__display_start_dt", "a__display_end_dt", "a__is_allday", "a__target_club_reader_count", "a__success_count",
+				"a__reader_count", "a__read_count", "a__photo_url", "a__user_seq", "a__service_seq", "a__service_region_seq",
+				"a__service_member_seq", "a__start_dt", "a__end_dt", "a__uuid", "a__is_single_work", "a__like_count",
+				"a__aes_hex_email", "a__aes_hex_phone", "a__price", "a__aes_key_version"}
+			if !reflect.DeepEqual(columns, wantColumns) {
+				t.Fatalf("native author projection = %v, want %v", columns, wantColumns)
+			}
 			values := make([][2]any, 0, workload.rows)
 			for rows.Next() {
 				var author author

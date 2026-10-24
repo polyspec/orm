@@ -9,6 +9,14 @@ import { Author, connect, hostDecode } from '../dist/index.js';
 const require = createRequire(new URL('../package.json', import.meta.url));
 const WARMUP = 100;
 const PAIRS = 1000;
+const NATIVE_AUTHOR_COLUMNS = [
+  'a__seq', 'a__name', 'a__created_ts', 'a__updated_ts', 'a__is_close', 'a__is_display',
+  'a__display_start_dt', 'a__display_end_dt', 'a__is_allday', 'a__target_club_reader_count',
+  'a__success_count', 'a__reader_count', 'a__read_count', 'a__photo_url', 'a__user_seq',
+  'a__service_seq', 'a__service_region_seq', 'a__service_member_seq', 'a__start_dt', 'a__end_dt',
+  'a__uuid', 'a__is_single_work', 'a__like_count', 'a__aes_hex_email', 'a__aes_hex_phone',
+  'a__price', 'a__aes_key_version',
+];
 
 function featureItem(item) {
   const dsn = process.env.ORM_FEATURE_DSN;
@@ -103,17 +111,34 @@ async function openNative(database, uri) {
   return { query: async (sql, binds) => (await db.query(sql, binds)).rows, close: () => db.end() };
 }
 
-function typedNativeRow(row) {
+export function typedNativeValues(row) {
+  if (Object.keys(row).length !== NATIVE_AUTHOR_COLUMNS.length ||
+      NATIVE_AUTHOR_COLUMNS.some((column) => !Object.hasOwn(row, column))) {
+    throw new Error(`native author row does not match the ${NATIVE_AUTHOR_COLUMNS.length}-column default projection`);
+  }
+  const bool = (value, name) => {
+    if (value === true || value === 1) return true;
+    if (value === false || value === 0) return false;
+    throw new Error(`native ${name} is not a boolean cell`);
+  };
+  const date = (value, name, nullable = false) => {
+    if (value === null && nullable) return null;
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) throw new Error(`native ${name} is not a datetime cell`);
+    return parsed;
+  };
+  const aesVersion = Number(row.a__aes_key_version);
+  if (aesVersion !== 1) throw new Error(`native AES key version ${aesVersion} differs from benchmark key version 1`);
   const values = [
     Number(row.a__seq),
     String(row.a__name),
-    row.a__created_ts === null ? null : new Date(row.a__created_ts),
-    row.a__updated_ts === null ? null : new Date(row.a__updated_ts),
-    Boolean(row.a__is_close),
-    Boolean(row.a__is_display),
-    row.a__display_start_dt === null ? null : new Date(row.a__display_start_dt),
-    row.a__display_end_dt === null ? null : new Date(row.a__display_end_dt),
-    Boolean(row.a__is_allday),
+    date(row.a__created_ts, 'created_ts'),
+    date(row.a__updated_ts, 'updated_ts'),
+    bool(row.a__is_close, 'is_close'),
+    bool(row.a__is_display, 'is_display'),
+    date(row.a__display_start_dt, 'display_start_dt', true),
+    date(row.a__display_end_dt, 'display_end_dt', true),
+    bool(row.a__is_allday, 'is_allday'),
     Number(row.a__target_club_reader_count),
     Number(row.a__success_count),
     Number(row.a__reader_count),
@@ -123,17 +148,22 @@ function typedNativeRow(row) {
     Number(row.a__service_seq),
     Number(row.a__service_region_seq),
     Number(row.a__service_member_seq),
-    new Date(row.a__start_dt),
-    new Date(row.a__end_dt),
+    date(row.a__start_dt, 'start_dt'),
+    date(row.a__end_dt, 'end_dt'),
     row.a__uuid === null ? null : String(row.a__uuid),
-    Boolean(row.a__is_single_work),
+    bool(row.a__is_single_work, 'is_single_work'),
     Number(row.a__like_count),
     hostDecode(row.a__aes_hex_email, ['aes', 'hex'], 'bench-salt'),
     hostDecode(row.a__aes_hex_phone, ['aes', 'hex'], 'bench-salt'),
     row.a__price === null ? null : String(row.a__price),
-    Number(row.a__aes_key_version),
+    aesVersion,
   ];
   if (values.length !== 27) throw new Error(`native author row has ${values.length} typed values`);
+  return values;
+}
+
+function typedNativeRow(row) {
+  const values = typedNativeValues(row);
   return [values[0], values[1]];
 }
 

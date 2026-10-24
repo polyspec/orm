@@ -2,7 +2,7 @@
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use polyspec_orm::{Param, Val};
-use sqlx::{MySqlPool, PgPool, Row, SqlitePool};
+use sqlx::{Column, MySqlPool, PgPool, Row, SqlitePool};
 
 polyspec_orm::models!();
 use model::Author;
@@ -94,6 +94,18 @@ fn decode_aes_cell(raw: Option<String>) {
 
 macro_rules! typed_native_row {
     ($row:expr) => {{
+        const COLUMNS: [&str; 27] = [
+            "a__seq", "a__name", "a__created_ts", "a__updated_ts", "a__is_close", "a__is_display",
+            "a__display_start_dt", "a__display_end_dt", "a__is_allday", "a__target_club_reader_count",
+            "a__success_count", "a__reader_count", "a__read_count", "a__photo_url", "a__user_seq",
+            "a__service_seq", "a__service_region_seq", "a__service_member_seq", "a__start_dt", "a__end_dt",
+            "a__uuid", "a__is_single_work", "a__like_count", "a__aes_hex_email", "a__aes_hex_phone",
+            "a__price", "a__aes_key_version",
+        ];
+        assert_eq!($row.columns().len(), COLUMNS.len(), "native author projection width");
+        for (column, expected) in $row.columns().iter().zip(COLUMNS) {
+            assert_eq!(column.name(), expected, "native author projection order");
+        }
         let seq: i64 = $row.try_get(0).expect("native seq i64");
         let name: String = $row.try_get(1).expect("native name string");
         let _: chrono::NaiveDateTime = $row.try_get(2).expect("native created_ts");
@@ -120,7 +132,8 @@ macro_rules! typed_native_row {
         decode_aes_cell($row.try_get(23).expect("native aes_hex_email"));
         decode_aes_cell($row.try_get(24).expect("native aes_hex_phone"));
         let _: Option<sqlx::types::Decimal> = $row.try_get(25).expect("native price");
-        let _: i32 = $row.try_get(26).expect("native aes_key_version");
+        let aes_version: i32 = $row.try_get(26).expect("native aes_key_version");
+        assert_eq!(aes_version, 1, "native AES key version must match the benchmark key");
         (seq, name)
     }};
 }

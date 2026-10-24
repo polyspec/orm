@@ -9,6 +9,7 @@ import statistics
 import sys
 import time
 from datetime import datetime
+from decimal import Decimal
 from urllib.parse import parse_qs, unquote, urlsplit
 
 from polyspec.orm.codec import host_decode
@@ -17,6 +18,35 @@ from polyspec.orm.models import models
 
 WARMUP = 100
 PAIRS = 1000
+NATIVE_AUTHOR_COLUMNS = (
+    "a__seq",
+    "a__name",
+    "a__created_ts",
+    "a__updated_ts",
+    "a__is_close",
+    "a__is_display",
+    "a__display_start_dt",
+    "a__display_end_dt",
+    "a__is_allday",
+    "a__target_club_reader_count",
+    "a__success_count",
+    "a__reader_count",
+    "a__read_count",
+    "a__photo_url",
+    "a__user_seq",
+    "a__service_seq",
+    "a__service_region_seq",
+    "a__service_member_seq",
+    "a__start_dt",
+    "a__end_dt",
+    "a__uuid",
+    "a__is_single_work",
+    "a__like_count",
+    "a__aes_hex_email",
+    "a__aes_hex_phone",
+    "a__price",
+    "a__aes_key_version",
+)
 
 
 def feature_item(item):
@@ -73,13 +103,18 @@ def native_for(database, connection, query):
     def run():
         with connection.cursor() as cursor:
             cursor.execute(sql, binds)
+            columns = tuple(column[0] for column in cursor.description or ())
+            if columns != NATIVE_AUTHOR_COLUMNS:
+                raise AssertionError(
+                    f"native author projection is {columns!r}, want {NATIVE_AUTHOR_COLUMNS!r}"
+                )
             rows = cursor.fetchall()
             return [typed_native_row(row) for row in rows]
 
     return run
 
 
-def typed_native_row(row):
+def typed_native_values(row):
     if len(row) != 27:
         raise AssertionError(f"native author row has {len(row)} columns, want 27")
 
@@ -88,16 +123,29 @@ def typed_native_row(row):
             return value
         return datetime.fromisoformat(str(value).replace(" ", "T"))
 
+    def native_bool(value, name):
+        if value is True or value == 1:
+            return True
+        if value is False or value == 0:
+            return False
+        raise AssertionError(f"native {name} is not a boolean cell: {value!r}")
+
+    aes_version = int(row[26])
+    if aes_version != 1:
+        raise AssertionError(
+            f"native AES key version {aes_version} differs from benchmark key version 1"
+        )
+
     values = (
         int(row[0]),
         str(row[1]),
         native_datetime(row[2]),
         native_datetime(row[3]),
-        bool(row[4]),
-        bool(row[5]),
+        native_bool(row[4], "is_close"),
+        native_bool(row[5], "is_display"),
         native_datetime(row[6]),
         native_datetime(row[7]),
-        bool(row[8]),
+        native_bool(row[8], "is_allday"),
         int(row[9]),
         int(row[10]),
         int(row[11]),
@@ -110,13 +158,18 @@ def typed_native_row(row):
         native_datetime(row[18]),
         native_datetime(row[19]),
         None if row[20] is None else str(row[20]),
-        bool(row[21]),
+        native_bool(row[21], "is_single_work"),
         int(row[22]),
         host_decode(row[23], ["aes", "hex"], "bench-salt"),
         host_decode(row[24], ["aes", "hex"], "bench-salt"),
-        row[25],
-        int(row[26]),
+        None if row[25] is None else Decimal(row[25]),
+        aes_version,
     )
+    return values
+
+
+def typed_native_row(row):
+    values = typed_native_values(row)
     return values[0], values[1]
 
 

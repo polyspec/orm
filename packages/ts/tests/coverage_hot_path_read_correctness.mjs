@@ -3,10 +3,47 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { Author, connect } from '../dist/index.js';
+import { Author, connect, hostEncode } from '../dist/index.js';
+import { typedNativeValues } from './coverage_performance_gate.mjs';
 import { runCases } from './coverage_case.mjs';
 
 async function hotPathReadCorrectness() {
+  const emailCell = hostEncode('bench-email@example.com', ['aes', 'hex'], 'bench-salt');
+  const phoneCell = hostEncode('+15550101010', ['aes', 'hex'], 'bench-salt');
+  const typed = typedNativeValues({
+    a__seq: 42,
+    a__name: 'bench-author',
+    a__created_ts: '2026-06-01 00:00:00',
+    a__updated_ts: '2026-06-01 00:00:00',
+    a__is_close: 0,
+    a__is_display: 1,
+    a__display_start_dt: null,
+    a__display_end_dt: null,
+    a__is_allday: 0,
+    a__target_club_reader_count: 2,
+    a__success_count: 1,
+    a__reader_count: 3,
+    a__read_count: 4,
+    a__photo_url: null,
+    a__user_seq: 10,
+    a__service_seq: 7,
+    a__service_region_seq: 2,
+    a__service_member_seq: 11,
+    a__start_dt: '2026-06-01 00:00:00',
+    a__end_dt: '2026-12-31 00:00:00',
+    a__uuid: null,
+    a__is_single_work: 0,
+    a__like_count: 5,
+    a__aes_hex_email: emailCell,
+    a__aes_hex_phone: phoneCell,
+    a__price: '12.500',
+    a__aes_key_version: 1,
+  });
+  assert.deepEqual(typed.slice(0, 2), [42, 'bench-author']);
+  assert.equal(typed[23], 'bench-email@example.com', 'native AES2 email decode');
+  assert.equal(typed[24], '+15550101010', 'native AES2 phone decode');
+  assert.equal(typed[25], '12.500', 'native decimal stays exact');
+
   const directory = await mkdtemp(path.join(os.tmpdir(), 'orm-hot-path-'));
   const file = path.join(directory, 'read.sqlite');
   const dsn = `sqlite://${file}`;
