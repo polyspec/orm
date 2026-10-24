@@ -9727,6 +9727,16 @@
       "command": "node --test tests/module-graph.test.mjs"
     },
     {
+      "id": "typescript-catalog-mutation-lock",
+      "paths": [
+        "packages/ts/src/catalog.ts"
+      ],
+      "tests": [
+        "packages/ts/tests/catalog-mutation-helper.test.mjs"
+      ],
+      "command": "make --no-print-directory catalog-mutation-helper-ts-check"
+    },
+    {
       "id": "physical-steps",
       "paths": [
         "scripts/physical.mts"

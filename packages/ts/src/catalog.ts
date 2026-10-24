@@ -1346,11 +1346,7 @@ export class CatalogConnection {
     const keys = original.keys();
     const keyIndexes = original.keyIndexList();
     return this.write(async session => {
-      const current = await session.lookup(original.metadata, keys, true);
-      const descriptor = await session.describe(original.metadata.table);
-      if (!sameDescriptor(descriptor, original.metadata)) throw err(CODE_SCHEMA, 'original descriptor changed');
-      checkCurrent(current, original.originalCells());
-      if (this.dialect === 'mysql') await session.mysqlSafety(descriptor);
+      const descriptor = await this.lockOriginal(session, original, keys);
       const sets = changes.map((change, index) => `${quoteIdent(descriptor.columns[change.index]?.name ?? '', this.dialect)}=${placeholder(index + 1, this.dialect)}`);
       const args: DriverValue[] = [...changes.map(change => change.value), ...keys.map(key => key ?? null)];
       const predicate = descriptor.primaryKey
@@ -1379,11 +1375,7 @@ export class CatalogConnection {
     original.valid();
     const keys = original.keys();
     return this.write(async session => {
-      const current = await session.lookup(original.metadata, keys, true);
-      const descriptor = await session.describe(original.metadata.table);
-      if (!sameDescriptor(descriptor, original.metadata)) throw err(CODE_SCHEMA, 'original descriptor changed');
-      checkCurrent(current, original.originalCells());
-      if (this.dialect === 'mysql') await session.mysqlSafety(descriptor);
+      const descriptor = await this.lockOriginal(session, original, keys);
       const predicate = descriptor.primaryKey.map((name, index) => `${quoteIdent(name, this.dialect)}=${placeholder(index + 1, this.dialect)}`).join(' AND ');
       const affected = await session.exec(`DELETE FROM ${qualified(descriptor.table, this.dialect)} WHERE ${predicate}`, keys);
       if (affected !== 1) throw err(CODE_WRITE, `expected exactly one deleted row, got ${affected}`);
@@ -1393,6 +1385,19 @@ export class CatalogConnection {
       if (!sameDescriptor(afterDescriptor, descriptor)) throw err(CODE_SCHEMA, 'original descriptor changed');
       return affected;
     });
+  }
+
+  private async lockOriginal(
+    session: Session,
+    original: CatalogRowSnapshot,
+    keys: readonly CatalogValue[],
+  ): Promise<CatalogTableMetadata> {
+    const current = await session.lookup(original.metadata, keys, true);
+    const descriptor = await session.describe(original.metadata.table);
+    if (!sameDescriptor(descriptor, original.metadata)) throw err(CODE_SCHEMA, 'original descriptor changed');
+    checkCurrent(current, original.originalCells());
+    if (this.dialect === 'mysql') await session.mysqlSafety(descriptor);
+    return descriptor;
   }
 }
 

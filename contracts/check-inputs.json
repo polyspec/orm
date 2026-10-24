@@ -1686,6 +1686,17 @@
         "packages/python/tests/test_dbspec_introspect_support.py"
       ]
     },
+    "catalog-mutation-helper-ts-check": {
+      "scope": "owner",
+      "needs": [
+        "node-modules"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/ts/src/catalog.ts",
+        "packages/ts/tests/catalog-mutation-helper.test.mjs"
+      ]
+    },
     "dbspec-introspect-compare-check": {
       "scope": "owner",
       "needs": [
