@@ -97,6 +97,46 @@ final class CatalogQueryBoundsTest extends TestCase
         self::assertSame([['beta']], $this->catalog->readOnlyQuery('SELECT value FROM values_table ORDER BY id')->rows);
     }
 
+    public function testGeneratedKeyInsertVerifiesItsReturnedRow(): void
+    {
+        $metadata = $this->catalog->describeTable([
+            'namespace' => $this->catalog->currentNamespace(),
+            'name' => 'values_table',
+        ]);
+        $inserted = $this->catalog->insertRow($metadata, ['value' => 'gamma']);
+        self::assertSame([[3, 'gamma']], $inserted->rows);
+
+        $verify = new \ReflectionMethod(Catalog::class, 'verifyInsertedRow');
+        foreach (
+            [
+                [Code::ROW_IDENTITY_AMBIGUOUS, 'expected exactly one inserted locator row'],
+                [Code::ROW_WRITE_MISMATCH, 'expected one generated-key row'],
+            ] as [$code, $message]
+        ) {
+            try {
+                $verify->invoke(null, [], [], $code, $message, 'unused');
+                self::fail('a missing generated-key row was accepted');
+            } catch (OrmException $error) {
+                self::assertSame($code, $error->code_);
+                self::assertSame($code . ': ' . $message, $error->getMessage());
+            }
+        }
+        try {
+            $verify->invoke(
+                null,
+                [[1, 'actual']],
+                [[1, 'requested']],
+                Code::ROW_WRITE_MISMATCH,
+                'unused',
+                'inserted values differ'
+            );
+            self::fail('a returned generated-key row with changed values was accepted');
+        } catch (OrmException $error) {
+            self::assertSame(Code::ROW_WRITE_MISMATCH, $error->code_);
+            self::assertSame('ROW_WRITE_MISMATCH: inserted values differ', $error->getMessage());
+        }
+    }
+
     private function assertLimit(\Closure $query, string $message): void
     {
         try {

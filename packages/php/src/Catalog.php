@@ -538,21 +538,14 @@ final class Catalog
                             $returned = $this->query($pdo, $mysqlLocatorSql, $mysqlLocatorArgs, 2, self::PAGE_BYTES);
                             self::sameNames($returned['names'], $descriptor, Code::TABLE_PAGE_METADATA_CHANGED);
                             $returnedRows = self::convertRows($returned, self::nativeTypes($descriptor));
-                            if (count($returnedRows) !== 1) {
-                                throw new OrmException(
-                                    Code::ROW_IDENTITY_AMBIGUOUS,
-                                    'expected exactly one inserted locator row'
-                                );
-                            }
-                            foreach ($changes as [$index, $value]) {
-                                if (self::cellKey($returnedRows[0][$index]) !== self::cellKey($value)) {
-                                    throw new OrmException(
-                                        Code::ROW_WRITE_MISMATCH,
-                                        'locator values differ from requested values'
-                                    );
-                                }
-                            }
-                            $keys = array_map(static fn (int $index): mixed => $returnedRows[0][$index], $keyIndexes);
+                            $returnedRow = self::verifyInsertedRow(
+                                $returnedRows,
+                                $changes,
+                                Code::ROW_IDENTITY_AMBIGUOUS,
+                                'expected exactly one inserted locator row',
+                                'locator values differ from requested values'
+                            );
+                            $keys = array_map(static fn (int $index): mixed => $returnedRow[$index], $keyIndexes);
                         } else {
                             $identity = null;
                             foreach ($generatedKeyIndexes as $index) {
@@ -607,15 +600,14 @@ final class Catalog
                             );
                             self::sameNames($returned['names'], $descriptor, Code::TABLE_PAGE_METADATA_CHANGED);
                             $returnedRows = self::convertRows($returned, self::nativeTypes($descriptor));
-                            if (count($returnedRows) !== 1) {
-                                throw new OrmException(Code::ROW_WRITE_MISMATCH, 'expected one generated-key row');
-                            }
-                            foreach ($changes as [$index, $value]) {
-                                if (self::cellKey($returnedRows[0][$index]) !== self::cellKey($value)) {
-                                    throw new OrmException(Code::ROW_WRITE_MISMATCH, 'inserted values differ');
-                                }
-                            }
-                            $keys = array_map(static fn (int $index): mixed => $returnedRows[0][$index], $keyIndexes);
+                            $returnedRow = self::verifyInsertedRow(
+                                $returnedRows,
+                                $changes,
+                                Code::ROW_WRITE_MISMATCH,
+                                'expected one generated-key row',
+                                'inserted values differ'
+                            );
+                            $keys = array_map(static fn (int $index): mixed => $returnedRow[$index], $keyIndexes);
                         }
                     }
                 }
@@ -1337,6 +1329,29 @@ final class Catalog
         $statement = $pdo->prepare($sql);
         $statement->execute($args);
         return $statement;
+    }
+
+    /**
+     * @param list<list<mixed>> $rows
+     * @param list<array{int, mixed}> $changes
+     * @return list<mixed>
+     */
+    private static function verifyInsertedRow(
+        array $rows,
+        array $changes,
+        string $countCode,
+        string $countMessage,
+        string $valueMessage
+    ): array {
+        if (count($rows) !== 1) {
+            throw new OrmException($countCode, $countMessage);
+        }
+        foreach ($changes as [$index, $value]) {
+            if (self::cellKey($rows[0][$index]) !== self::cellKey($value)) {
+                throw new OrmException(Code::ROW_WRITE_MISMATCH, $valueMessage);
+            }
+        }
+        return $rows[0];
     }
 
     /**
