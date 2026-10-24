@@ -522,8 +522,7 @@ final class Catalog
                     if (count($returned['rows']) !== 1) {
                         throw new OrmException(Code::ROW_WRITE_MISMATCH, 'expected one returned insert row');
                     }
-                    self::sameNames($returned['names'], $descriptor, Code::TABLE_PAGE_METADATA_CHANGED);
-                    $returnedRows = self::convertRows($returned, self::nativeTypes($descriptor));
+                    $returnedRows = self::rowsForDescriptor($returned, $descriptor);
                     $keys = array_map(static fn (int $index): mixed => $returnedRows[0][$index], $keyIndexes);
                 } else {
                     $affected = $this->exec($pdo, $sql, $args);
@@ -536,8 +535,7 @@ final class Catalog
                     if ($hasGeneratedKeys) {
                         if ($mysqlLocatorSql !== null) {
                             $returned = $this->query($pdo, $mysqlLocatorSql, $mysqlLocatorArgs, 2, self::PAGE_BYTES);
-                            self::sameNames($returned['names'], $descriptor, Code::TABLE_PAGE_METADATA_CHANGED);
-                            $returnedRows = self::convertRows($returned, self::nativeTypes($descriptor));
+                            $returnedRows = self::rowsForDescriptor($returned, $descriptor);
                             $returnedRow = self::verifyInsertedRow(
                                 $returnedRows,
                                 $changes,
@@ -598,8 +596,7 @@ final class Catalog
                                 2,
                                 self::PAGE_BYTES
                             );
-                            self::sameNames($returned['names'], $descriptor, Code::TABLE_PAGE_METADATA_CHANGED);
-                            $returnedRows = self::convertRows($returned, self::nativeTypes($descriptor));
+                            $returnedRows = self::rowsForDescriptor($returned, $descriptor);
                             $returnedRow = self::verifyInsertedRow(
                                 $returnedRows,
                                 $changes,
@@ -1352,6 +1349,16 @@ final class Catalog
             }
         }
         return $rows[0];
+    }
+
+    /**
+     * @param array{names: list<string>, types: list<string>, rows: list<list<mixed>>} $result
+     * @return list<list<mixed>>
+     */
+    private static function rowsForDescriptor(array $result, CatalogTableMetadata $descriptor): array
+    {
+        self::sameNames($result['names'], $descriptor, Code::TABLE_PAGE_METADATA_CHANGED);
+        return self::convertRows($result, self::nativeTypes($descriptor));
     }
 
     /**
