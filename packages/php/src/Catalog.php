@@ -815,24 +815,18 @@ final class Catalog
         }
         $fields = $result->fetch_fields();
         $names = array_map(static fn (object $field): string => $field->name, $fields);
-        $rows = [];
-        $budget = 0;
-        while (($row = $result->fetch_row()) !== null) {
-            if (count($rows) === $maxRows) {
-                throw new OrmException(Code::CATALOG_LIMIT, "result has more than $maxRows rows");
+        $rows = $this->boundedRows(
+            static fn (): array|false => $result->fetch_row() ?? false,
+            $maxRows,
+            $maxBytes,
+            static function (array $row) use ($fields): array {
+                $cells = [];
+                foreach ($row as $i => $value) {
+                    $cells[] = self::mysqlGridCell($value, $fields[$i]);
+                }
+                return $cells;
             }
-            foreach ($row as $value) {
-                $budget += is_string($value) ? strlen($value) : 8;
-            }
-            if ($budget > $maxBytes) {
-                throw new OrmException(Code::CATALOG_LIMIT, "result has more than $maxBytes bytes of values");
-            }
-            $cells = [];
-            foreach ($row as $i => $value) {
-                $cells[] = self::mysqlGridCell($value, $fields[$i]);
-            }
-            $rows[] = $cells;
-        }
+        );
         $result->free();
         return new CatalogResult($names, $rows);
     }
@@ -922,7 +916,7 @@ final class Catalog
                 $columns[] = [$native, $unsigned, $binary];
             }
             $rows = $this->boundedRows(
-                $st,
+                static fn (): array|false => $st->fetch(\PDO::FETCH_NUM),
                 $maxRows,
                 $maxBytes,
                 function (array $row) use ($st, $columns): array {
@@ -1314,18 +1308,21 @@ final class Catalog
      * Fetches rows within the shared row and byte budgets. The transform runs after both limits are checked for the
      * current row, in fetch order, so grid conversion errors keep their original precedence.
      *
+     * @param \Closure(): (list<mixed>|false) $fetch
+     * @param int $maxRows
+     * @param int $maxBytes
      * @param (\Closure(list<mixed>): list<mixed>)|null $transform
      * @return list<list<mixed>>
      */
     private function boundedRows(
-        \PDOStatement $st,
+        \Closure $fetch,
         int $maxRows,
         int $maxBytes,
         ?\Closure $transform = null
     ): array {
         $rows = [];
         $budget = 0;
-        while (($row = $st->fetch(\PDO::FETCH_NUM)) !== false) {
+        while (($row = $fetch()) !== false) {
             if (count($rows) === $maxRows) {
                 throw new OrmException(Code::CATALOG_LIMIT, "result has more than $maxRows rows");
             }
@@ -1358,7 +1355,11 @@ final class Catalog
                 $names[] = (string) ($meta['name'] ?? '');
                 $types[] = strtoupper((string) ($meta['native_type'] ?? ''));
             }
-            $rows = $this->boundedRows($st, $maxRows, $maxBytes);
+            $rows = $this->boundedRows(
+                static fn (): array|false => $st->fetch(\PDO::FETCH_NUM),
+                $maxRows,
+                $maxBytes
+            );
             return ['names' => $names, 'types' => $types, 'rows' => $rows];
         } catch (\PDOException $e) {
             throw $this->db->driverError($e);
