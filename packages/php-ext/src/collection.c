@@ -9,6 +9,7 @@
 #include "Zend/zend_execute.h"
 #include "ext/spl/spl_exceptions.h"
 #include "ext/date/php_date.h"
+#include "object_zval_pair.h"
 
 typedef struct {
     zend_object std;
@@ -145,17 +146,14 @@ static zend_object *delete_callback_clone(zend_object *old_object)
 static void delete_callback_free(zend_object *obj)
 {
     collection_delete_callback *o = DCOBJ(obj);
-    if (!Z_ISUNDEF(o->owner)) zval_ptr_dtor(&o->owner);
-    if (!Z_ISUNDEF(o->snapshot)) zval_ptr_dtor(&o->snapshot);
+    object_zval_pair_destroy(&o->owner, &o->snapshot);
     zend_object_std_dtor(obj);
 }
 
 static HashTable *delete_callback_gc(zend_object *obj, zval **table, int *n)
 {
     collection_delete_callback *o = DCOBJ(obj);
-    *table = &o->owner;
-    *n = 2;
-    return zend_std_get_properties(obj);
+    return object_zval_pair_get_gc(obj, &o->owner, table, n);
 }
 
 static zend_object *iterator_clone(zend_object *old_object)
@@ -172,8 +170,7 @@ static zend_object *iterator_clone(zend_object *old_object)
 static void iterator_free(zend_object *obj)
 {
     collection_iterator *o = IOBJ(obj);
-    if (!Z_ISUNDEF(o->owner)) zval_ptr_dtor(&o->owner);
-    if (!Z_ISUNDEF(o->snapshot)) zval_ptr_dtor(&o->snapshot);
+    object_zval_pair_destroy(&o->owner, &o->snapshot);
     zend_object_std_dtor(obj);
 }
 
@@ -261,9 +258,7 @@ static zend_object_iterator *collection_iterator_get_iterator(zend_class_entry *
 static HashTable *iterator_gc(zend_object *obj, zval **table, int *n)
 {
     collection_iterator *o = IOBJ(obj);
-    *table = &o->owner;
-    *n = 2;
-    return zend_std_get_properties(obj);
+    return object_zval_pair_get_gc(obj, &o->owner, table, n);
 }
 
 static zend_string *typed_string_identity(char kind, const char *bytes, size_t length)

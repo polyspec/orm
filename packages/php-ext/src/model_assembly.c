@@ -4,6 +4,7 @@
 #include "Zend/zend_exceptions.h"
 #include "Zend/zend_smart_str.h"
 #include "Zend/zend_objects_API.h"
+#include "object_zval_pair.h"
 #include "ext/json/php_json.h"
 #include "ext/spl/spl_exceptions.h"
 #include <stdarg.h>
@@ -432,17 +433,14 @@ static zend_object *group_rows_iterator_create(zend_class_entry *ce)
 static void group_rows_iterator_free(zend_object *obj)
 {
     group_rows_iterator *it = GRI(obj);
-    if (!Z_ISUNDEF(it->owner)) zval_ptr_dtor(&it->owner);
-    if (!Z_ISUNDEF(it->snapshot)) zval_ptr_dtor(&it->snapshot);
+    object_zval_pair_destroy(&it->owner, &it->snapshot);
     zend_object_std_dtor(obj);
 }
 
 static HashTable *group_rows_iterator_gc(zend_object *obj, zval **table, int *n)
 {
     group_rows_iterator *it = GRI(obj);
-    *table = &it->owner;
-    *n = 2;
-    return zend_std_get_properties(obj);
+    return object_zval_pair_get_gc(obj, &it->owner, table, n);
 }
 
 static zval *group_rows_iterator_current(group_rows_iterator *it)

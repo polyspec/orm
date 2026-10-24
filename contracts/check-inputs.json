@@ -14,6 +14,7 @@
         "packages/php/tests/collection-weak-caller.php",
         "packages/php-ext/src/collection.c",
         "packages/php-ext/src/collection.h",
+        "packages/php-ext/src/object_zval_pair.h",
         "packages/php-ext/src/polyspec_orm.c",
         "packages/php-ext/src/polyspec_orm.stub.php",
         "packages/php-ext/src/config.m4",
