@@ -4,6 +4,7 @@
  * subclasses' overridden methods and the meaning of PDOException are the same as in the PHP client.
  */
 #include "dbspec.h"
+#include "literal_match.h"
 
 static DBS_TLS catalog_observer_scope *catalog_observer_current;
 
@@ -1109,12 +1110,7 @@ static bool quoted_name(str s, size_t *i, str *out)
 
 static bool slit(str s, size_t *i, const char *text)
 {
-    size_t n = strlen(text);
-    if (*i + n > s.n || memcmp(s.s + *i, text, n) != 0) {
-        return false;
-    }
-    *i += n;
-    return true;
+    return dbs_match_literal(s, i, text);
 }
 
 /* AUDIT_INSERT: `^INSERT INTO [`"]([a-z0-9_]+)[`"] \(([^)]*)\) VALUES ` */

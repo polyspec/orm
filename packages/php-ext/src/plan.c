@@ -5,6 +5,7 @@
  */
 #include "dbspec.h"
 #include "plandiff.h"
+#include "literal_match.h"
 #include "quoted_string_length.h"
 
 static diag plan_diag(zend_long line, str message)
@@ -44,12 +45,7 @@ static bool read_name(str s, size_t *i, str *out)
 
 static bool lit(str s, size_t *i, const char *text)
 {
-    size_t n = strlen(text);
-    if (*i + n > s.n || memcmp(s.s + *i, text, n) != 0) {
-        return false;
-    }
-    *i += n;
-    return true;
+    return dbs_match_literal(s, i, text);
 }
 
 /* Reads whether the whole line is names (separated by sep) after a prefix. seps[k] is the separator before the k-th name. */

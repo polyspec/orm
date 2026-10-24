@@ -6,6 +6,7 @@
 #include "dbspec.h"
 #include "compare_by_field.h"
 #include "ext/spl/spl_exceptions.h"
+#include "literal_match.h"
 
 #ifdef POLYSPEC_ORM_MERMAID_TEST
 document *mermaid_test_catalog_document(catalog *c, str name, unsupportedv *out);
@@ -406,12 +407,7 @@ typedef struct {
 
 static bool lit(str s, size_t *i, const char *text)
 {
-    size_t n = strlen(text);
-    if (*i + n > s.n || memcmp(s.s + *i, text, n) != 0) {
-        return false;
-    }
-    *i += n;
-    return true;
+    return dbs_match_literal(s, i, text);
 }
 
 /* RELATION: `^NAME WS+ (|o|\|\||}o|}\|)(--|\.\.)(o\||\|\||o{|\|{) WS+ NAME WS* : WS* ("[^"]*"|[^\t\n\f\r "]+)$` */
