@@ -8,19 +8,16 @@
 //
 // statement-events.mjs and coverage_statement_events.mjs use this runner.
 import { readFile } from 'node:fs/promises';
-import { CORE, Db, Model, OrmError, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
+import { CORE, Db, OrmError } from '../dist/index.js';
+import { manifestOf, models } from './registered_models.mjs';
 
 export const vectors = JSON.parse(await readFile(new URL('../../../tests/events/vectors.json', import.meta.url), 'utf8'));
 const fixtureText = await readFile(new URL(`../../../${vectors.fixture}`, import.meta.url), 'utf8');
 
-const parsed = parseDbspec(fixtureText, {});
-if (parsed.document === null) throw new Error(JSON.stringify(parsed.diagnostics));
-const { manifest } = dbspecManifest([parsed.document]);
-const schema = { manifestText: manifest.manifestText, manifestHash: manifest.manifestHash };
-const runtime = registerModel(manifest.manifestText, manifest.manifestHash);
-const entity = [...runtime.entities.values()].find(e => e.table === 'event_probe');
-const EventProbe = class extends Model {};
-EventProbe.entity = { model: runtime, entity, create: core => new EventProbe(core) };
+const { manifestText, manifestHash } = manifestOf(fixtureText);
+const schema = { manifestText, manifestHash };
+const { event_probe: EventProbe } = models(fixtureText);
+if (EventProbe === undefined) throw new Error('the statement events fixture declares no event_probe table');
 
 /** The error that a failing transaction callback throws. */
 const callbackError = new Error('callback failed');

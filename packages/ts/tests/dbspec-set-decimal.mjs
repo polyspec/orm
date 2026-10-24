@@ -8,9 +8,10 @@
 // Requirements: SCH-7, DBS-108.
 // Usage: node packages/ts/tests/dbspec-set-decimal.mjs (after npm run typescript:build)
 import { readFile } from 'node:fs/promises';
-import { CORE, Db, Model, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
+import { CORE, Db } from '../dist/index.js';
 import { caseTest } from '../../../tests/testcase.mts';
 import { withCaseDatabase } from './case-database.mjs';
+import { manifestOf, models } from './registered_models.mjs';
 
 // CASE_DEADLINE_MS is the deadline of one database: the case installs the set and stores two rows.
 const CASE_DEADLINE_MS = 60_000;
@@ -24,17 +25,10 @@ for (const env of ['ORM_TEST_MYSQL_DSN', 'ORM_TEST_POSTGRES_DSN']) {
 }
 
 const decimalText = await readFile(new URL('../../../contracts/fixtures/decimal_schema.dbs', import.meta.url), 'utf8');
-const parsed = parseDbspec(decimalText, {});
-if (parsed.document === null) throw new Error(JSON.stringify(parsed.diagnostics));
-const { manifest } = dbspecManifest([parsed.document]);
-const schema = { manifestText: manifest.manifestText, manifestHash: manifest.manifestHash };
-
-// The generated model of the set: a class for its decimal table, as generated code declares it.
-const model = registerModel(manifest.manifestText, manifest.manifestHash);
-const entity = [...model.entities.values()].find(candidate => candidate.name === 'decimal_case');
-if (entity === undefined) throw new Error('the decimal set declares no decimal_case table');
-const DecimalCase = class extends Model {};
-DecimalCase.entity = { model, entity, create: core => new DecimalCase(core) };
+const { manifestText, manifestHash } = manifestOf(decimalText);
+const schema = { manifestText, manifestHash };
+const { decimal_case: DecimalCase } = models(decimalText);
+if (DecimalCase === undefined) throw new Error('the decimal set declares no decimal_case table');
 
 const row = (db, seq, amount) => { const m = new DecimalCase().connect(db); m[CORE].setValue('seq', seq); m[CORE].setValue('amount', amount); return m; };
 const amountOf = async (db, seq) => (await new DecimalCase().connect(db).seq(seq).get())[CORE].column('amount');
