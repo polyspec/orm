@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- SQLite NOWAIT locking now restores the prior `busy_timeout` after setup, lock-table, or lock failures. Only lock-acquisition `SQLITE_BUSY` maps to `LOCK_NOT_AVAILABLE`; cleanup failures preserve the primary error code and both causes, while single failures retain their original error. The actual pre-fix main RED at `68f414329ab9` failed the focused six-client target. Committed `make item-test ID=KSTD-5-59` passes Go (2 tests), TypeScript (1), PHP (1 test, 18 assertions), PHP extension (1 test, 18 assertions), Python (2, including `BaseException` restoration), and Rust (2). The PHP extension uses the userland `OrmException::withCleanup` contract (KSTD-5-59).
+
 - Scalar-subquery planner and markdown result assembly now report `INTERNAL` with the missing entity or column instead of inventing a result type. The canonical native owner target failed on the actual pre-fix sources at `0898f6f16287` and passes on the fix: Go (2 tests), Rust planner and markdown (4 tests), TypeScript selected cases, PHP (2 tests), Python (1 test with 4 dialect subcases), and PHP extension (2 tests). Count remains `i64`, avg remains `f64` (KSTD-5-63).
 
 - PHP and native C Codec now wrap only expected YAML/JSON codec failures and preserve the exact cause object; unexpected RuntimeException, TypeError and Error propagate unchanged. On PHP 8.4.26, committed main `9af48c4ab` passes `make php-codec-causes-check`: 8 focused tests (102 assertions) across source and native extension. Before the fix at `382a7754552a`, the focused target failed because YAML/JSON wrappers dropped causes and YAML probes changed unexpected throwable identity (KSTD-5-77).

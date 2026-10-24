@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d887932c0b4a190acdc921e79df181d13648806832f648792c289dd489e57c64 -->
+<!-- source-sha256: dc1effd2eb8614192d9157f15ef128560a3347323ee4ddba08170acb31caa9b1 -->
 # 변경 이력
 
 ## Unreleased
+
+- SQLite NOWAIT 잠금은 setup, 잠금 테이블 설정 또는 잠금 획득 실패 뒤에도 기존 `busy_timeout`을 복원한다. 잠금 획득의 `SQLITE_BUSY`만 `LOCK_NOT_AVAILABLE`로 바꾸며, cleanup도 실패하면 primary 오류 코드와 두 원인을 보존하고 실패가 하나면 원래 오류를 유지한다. 실제 수정 전 main `68f414329ab9`의 focused 6개 client target은 실패했다. 커밋된 `make item-test ID=KSTD-5-59`는 Go (2 tests), TypeScript (1), PHP (1 test, 18 assertions), PHP extension (1 test, 18 assertions), Python (2, `BaseException` 복원 포함), Rust (2)를 통과한다. PHP extension은 userland `OrmException::withCleanup` 계약을 사용한다(KSTD-5-59).
 
 - Scalar-subquery planner와 markdown 결과 조립은 존재하지 않는 entity나 column에 임의 결과 타입을 만들지 않고 이름을 포함한 `INTERNAL`을 반환한다. canonical native owner target은 수정 전 실제 source `0898f6f16287`에서 실패했고 수정 후 통과한다: Go (2 tests), Rust planner/markdown (4 tests), TypeScript 선택 case, PHP (2 tests), Python (4 dialect subcase를 포함한 1 test), PHP extension (2 tests). count는 `i64`, avg는 `f64`로 유지한다(KSTD-5-63).
 
