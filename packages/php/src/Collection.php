@@ -9,7 +9,7 @@ namespace Polyspec\Orm;
  * A later row with the same key replaces the earlier one. The integer 7 and
  * the text "7" are different keys.
  *
- * @template TModel
+ * @template TModel of Model
  * @implements \IteratorAggregate<int|string|bool|Bytes|\DateTimeInterface, TModel>
  */
 final class Collection implements \IteratorAggregate, \Countable, \JsonSerializable
@@ -181,7 +181,7 @@ final class Collection implements \IteratorAggregate, \Countable, \JsonSerializa
     /** @return list<array<string, mixed>> */
     public function toArray(): array
     {
-        return array_map(static fn(Model $m): array => $m->toArray(), $this->all());
+        return ArrayValueRows::rows($this->all());
     }
 
     /** The models as a JSON array of Model::toJson texts. */

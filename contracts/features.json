@@ -928,7 +928,9 @@
           "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/GroupRowsTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/GroupRowsTest.php"
+            "packages/php/tests/GroupRowsTest.php",
+            "packages/php/src/GroupRows.php",
+            "packages/php/src/GroupRow.php"
           ]
         },
         {
@@ -1235,7 +1237,10 @@
           "shard": "other",
           "inputs": [
             "packages/php/tests/CollectionIdentityTest.php",
-            "tests/collection/keys.json"
+            "tests/collection/keys.json",
+            "packages/php/src/Collection.php",
+            "packages/php/src/Model.php",
+            "packages/php/src/ModelMetadata.php"
           ]
         },
         {
@@ -9940,6 +9945,17 @@
         "packages/python/tests/test_install_lock.py"
       ],
       "command": "make --no-print-directory python-unit-check"
+    },
+    {
+      "id": "php-array-value-rows",
+      "paths": [
+        "packages/php/src/ArrayValue.php",
+        "packages/php/src/ArrayValueRows.php"
+      ],
+      "tests": [
+        "packages/php/tests/ArrayValueRowsTest.php"
+      ],
+      "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ArrayValueRowsTest.php"
     }
   ]
 }

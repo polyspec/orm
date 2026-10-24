@@ -37,7 +37,7 @@ final readonly class GroupRows implements \Countable, \IteratorAggregate, \JsonS
     /** @return list<array<string, mixed>> */
     public function toArray(): array
     {
-        return array_map(static fn(GroupRow $row): array => $row->toArray(), $this->rows);
+        return ArrayValueRows::rows($this->rows);
     }
 
     public function jsonSerialize(): array

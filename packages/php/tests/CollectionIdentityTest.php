@@ -89,6 +89,37 @@ final class CollectionIdentityTest extends TestCase
         }
     }
 
+    public function testToArrayPreservesCollectionModelOrder(): void
+    {
+        $first = new class extends Model {
+            public static function meta(): array
+            {
+                return ['entity' => 'first'];
+            }
+
+            public function toArray(): array
+            {
+                return ['entity' => 'first'];
+            }
+        };
+        $second = new class extends Model {
+            public static function meta(): array
+            {
+                return ['entity' => 'second'];
+            }
+
+            public function toArray(): array
+            {
+                return ['entity' => 'second'];
+            }
+        };
+        $collection = new Collection();
+        $collection->put('first', $first);
+        $collection->put('second', $second);
+
+        self::assertSame([['entity' => 'first'], ['entity' => 'second']], $collection->toArray());
+    }
+
     // Requirements: PRT-35.
     public function testANullKeyIsCodecDecode(): void
     {
@@ -168,7 +199,10 @@ final class CollectionIdentityTest extends TestCase
     {
         $collection = new Collection();
         $model = new class extends Model {
-            public static function meta(): array { return []; }
+            public static function meta(): array
+            {
+                return [];
+            }
         };
 
         collectionWeakPut($collection, 2.0, $model);
@@ -192,7 +226,10 @@ final class CollectionIdentityTest extends TestCase
         self::assertStringContainsString('Implicit conversion from float 3.5 to int loses precision', $deprecations[0]);
 
         $stringable = new class implements \Stringable {
-            public function __toString(): string { return 'weak-stringable'; }
+            public function __toString(): string
+            {
+                return 'weak-stringable';
+            }
         };
         collectionWeakPut($collection, $stringable, $model);
         self::assertSame('weak-stringable', $collection->keys()[2]);
