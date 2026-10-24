@@ -73,6 +73,12 @@ final class CatalogRows
         return $rows;
     }
 
+    /** @param list<mixed> $row @param list<int> $indexes @return list<string> */
+    public static function texts(array $row, array $indexes, string $query): array
+    {
+        return array_map(static fn(int $i): string => self::text($row, $i, $query), $indexes);
+    }
+
     /** @param array<int, mixed> $info */
     private static function failure(string $query, array $info): string
     {

@@ -12,6 +12,7 @@ use stdClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
+use Polyspec\Orm\Dbspec\CatalogRows;
 use Polyspec\Orm\Dbspec\Dbspec;
 use Polyspec\Orm\Dbspec\Diagnostic;
 use Polyspec\Orm\Dbspec\ReadResult;
@@ -60,6 +61,22 @@ final class DbspecTest extends TestCase
     public function testInvalid(string $kind, array $case): void
     {
         dbspec_check_case($kind, $case, 2.0);
+    }
+
+    public function testCatalogTextSelectionPreservesOrderAndQueryDiagnostics(): void
+    {
+        $query = "SELECT first, value, last\nFROM catalog";
+        self::assertSame(['first', 'last'], CatalogRows::texts(['first', 2, 'last'], [0, 2], $query));
+
+        try {
+            CatalogRows::texts(['first', 2, 'last'], [1], $query);
+            self::fail('a non-text catalog value was accepted');
+        } catch (\UnexpectedValueException $error) {
+            self::assertSame(
+                'Catalog value 1 is int, not a string, in SELECT first, value, last',
+                $error->getMessage()
+            );
+        }
     }
 
     public static function positionCases(): iterable

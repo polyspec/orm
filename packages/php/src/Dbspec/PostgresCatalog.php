@@ -82,16 +82,10 @@ WHERE NOT t.tgisinternal AND c.relnamespace = current_schema()::regnamespace ORD
         $pending = [];
         $q = self::COLUMNS;
         foreach (CatalogRows::read($connection, $q) as $row) {
-            [$table, $name, $quotedName, $formatted] = array_map(
-                static fn(int $i): string => CatalogRows::text($row, $i, $q),
-                [0, 1, 2, 3]
-            );
+            [$table, $name, $quotedName, $formatted] = CatalogRows::texts($row, [0, 1, 2, 3], $q);
             $notNull = CatalogRows::flag($row, 4, $q);
             $default = CatalogRows::nullableText($row, 5, $q);
-            [$identity, $generated, $collation] = array_map(
-                static fn(int $i): string => CatalogRows::text($row, $i, $q),
-                [6, 7, 8]
-            );
+            [$identity, $generated, $collation] = CatalogRows::texts($row, [6, 7, 8], $q);
             $t = $c->table($table);
             if ($t === null) {
                 continue;
@@ -130,10 +124,7 @@ WHERE NOT t.tgisinternal AND c.relnamespace = current_schema()::regnamespace ORD
         $checked = [];
         $q = self::CONSTRAINTS;
         foreach (CatalogRows::read($connection, $q) as $row) {
-            [$table, $name, $kind, $definition] = array_map(
-                static fn(int $i): string => CatalogRows::text($row, $i, $q),
-                [0, 1, 2, 3]
-            );
+            [$table, $name, $kind, $definition] = CatalogRows::texts($row, [0, 1, 2, 3], $q);
             $deferrable = CatalogRows::flag($row, 4, $q);
             $validated = CatalogRows::flag($row, 5, $q);
             [$match, $onDelete, $onUpdate, $refTable, $columns, $refs] = array_map(
@@ -212,10 +203,7 @@ WHERE NOT t.tgisinternal AND c.relnamespace = current_schema()::regnamespace ORD
                 static fn(int $i): bool => CatalogRows::flag($row, $i, $q),
                 [2, 3, 4, 5]
             );
-            [$method, $columns, $options] = array_map(
-                static fn(int $i): string => CatalogRows::text($row, $i, $q),
-                [6, 7, 8]
-            );
+            [$method, $columns, $options] = CatalogRows::texts($row, [6, 7, 8], $q);
             $t = $c->table($table);
             if ($t === null) {
                 continue;

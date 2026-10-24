@@ -44,10 +44,7 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
         $triggers = [];
         $q = self::MASTER;
         foreach (CatalogRows::read($connection, $q) as $row) {
-            [$kind, $name, $table, $text] = array_map(
-                static fn(int $i): string => CatalogRows::text($row, $i, $q),
-                [0, 1, 2, 3]
-            );
+            [$kind, $name, $table, $text] = CatalogRows::texts($row, [0, 1, 2, 3], $q);
             if ($kind === 'table') {
                 if (str_starts_with($text, 'CREATE VIRTUAL TABLE') || str_ends_with($text, 'WITHOUT ROWID')) {
                     $c->report('table', $name, $name, 'a virtual or WITHOUT ROWID table has no dbspec definition');
@@ -74,10 +71,7 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
         }
         $q = self::COLUMNS;
         foreach (CatalogRows::read($connection, $q) as $row) {
-            [$table, $name, $declared] = array_map(
-                static fn(int $i): string => CatalogRows::text($row, $i, $q),
-                [0, 1, 2]
-            );
+            [$table, $name, $declared] = CatalogRows::texts($row, [0, 1, 2], $q);
             $notNull = CatalogRows::integer($row, 3, $q);
             $default = CatalogRows::nullableText($row, 4, $q);
             // pk is not used: primary key and identity are decided by the CREATE text.
