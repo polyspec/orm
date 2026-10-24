@@ -291,6 +291,7 @@ static bool group_row_checked_count(zval *value, zend_long *out)
     ZVAL_DEREF(value);
     if (Z_TYPE_P(value) == IS_LONG) {
         if (Z_LVAL_P(value) < 0) return orm_fail("CODEC_DECODE", zend_string_init(ZEND_STRL("group result row_count is negative"), 0));
+        if (Z_LVAL_P(value) > 9007199254740991LL) return orm_fail("CODEC_DECODE", zend_string_init(ZEND_STRL("group result row_count is outside the exact integer range"), 0));
         *out = Z_LVAL_P(value);
         return true;
     }
@@ -302,6 +303,10 @@ static bool group_row_checked_count(zval *value, zend_long *out)
         for (size_t i = 0; valid && i < n; i++) valid = p[i] >= '0' && p[i] <= '9';
         char maxbuf[64];
         int maxlen = snprintf(maxbuf, sizeof(maxbuf), ZEND_LONG_FMT, ZEND_LONG_MAX);
+        if (maxlen > 16 || (maxlen == 16 && memcmp(maxbuf, "9007199254740991", 16) > 0)) {
+            memcpy(maxbuf, "9007199254740991", 17);
+            maxlen = 16;
+        }
         if (valid && (n > (size_t)maxlen || (n == (size_t)maxlen && memcmp(p, maxbuf, n) > 0))) valid = false;
         if (valid) {
             zend_long count = 0;

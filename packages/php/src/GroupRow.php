@@ -36,16 +36,18 @@ final readonly class GroupRow implements \JsonSerializable
 
     private static function checkedCount(mixed $value): int
     {
+        $maxSafe = min(PHP_INT_MAX, 9007199254740991);
         if (is_int($value)) {
-            if ($value < 0) {
-                throw new OrmException(Code::CODEC_DECODE, 'group result row_count is negative');
+            if ($value < 0 || $value > $maxSafe) {
+                throw new OrmException(Code::CODEC_DECODE, 'group result row_count is outside the exact integer range');
             }
             return $value;
         }
+        $maxSafeText = (string) $maxSafe;
         if (
             !is_string($value) || preg_match('/^(0|[1-9][0-9]*)$/D', $value) !== 1 ||
-            strlen($value) > strlen((string) PHP_INT_MAX) ||
-            (strlen($value) === strlen((string) PHP_INT_MAX) && strcmp($value, (string) PHP_INT_MAX) > 0)
+            strlen($value) > strlen($maxSafeText) ||
+            (strlen($value) === strlen($maxSafeText) && strcmp($value, $maxSafeText) > 0)
         ) {
             throw new OrmException(Code::CODEC_DECODE, 'group result row_count is not an exact integer');
         }

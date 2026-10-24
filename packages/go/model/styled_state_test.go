@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	orderedjson "github.com/polyspec/ordered-json/packages/go"
 	"github.com/polyspec/orm/packages/go/model"
 	"github.com/polyspec/orm/packages/go/orm"
 	"github.com/polyspec/orm/packages/go/testcase"
@@ -66,6 +67,27 @@ func TestGeneratedStyledGetterAndSetterStates(t *testing.T) {
 	}
 	if _, err := orm.NormalizeStyled([]string{"ordered_json"}, false, orm.Value(nil)); err != nil {
 		t.Fatalf("non-null encoded null rejected: %v", err)
+	}
+}
+
+// TestModelOrderedJSONOutputPreservesExactText exercises the production Model MarshalJSON path.
+func TestModelOrderedJSONOutputPreservesExactText(t *testing.T) {
+	const stored = `{"z":9007199254740993,"b":1.50,"a":1e2}`
+	value, err := orderedjson.Parse(stored)
+	if err != nil {
+		t.Fatal(err)
+	}
+	row, err := model.Author().SetJsonSetting(orm.Value(value))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := json.Marshal(row)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `{"json_setting":{"kind":"value","value":{"z":9007199254740993,"b":1.50,"a":1e2}}}`
+	if string(got) != want {
+		t.Fatalf("Model.MarshalJSON() = %s; want %s", got, want)
 	}
 }
 

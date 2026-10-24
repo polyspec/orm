@@ -396,4 +396,35 @@ mod declared_boolean_tests {
         let mut invalid = vec![vec![Val::I64(2), Val::I64(3), Val::I64(1)]];
         assert_eq!(decode_boolean_columns(&assemble, &mut invalid).unwrap_err().code(), "CODEC_DECODE");
     }
+
+    // PRT-36: invalid stored boolean values fail decoding instead of coercing.
+    #[test]
+    fn invalid_stored_boolean_is_codec_decode() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let assemble = Assemble { columns: vec![OutCol { index: 0, name: "active".into(), typ: "bool".into(), ..Default::default() }], ..Default::default() };
+        let mut rows = vec![vec![Val::F64(1.0)]];
+        let error = decode_boolean_columns(&assemble, &mut rows).unwrap_err();
+        assert_eq!(error.code(), "CODEC_DECODE");
+        assert!(error.to_string().contains("expected boolean"), "{error}");
+        assert!(error.to_string().contains("F64(1.0)"), "{error}");
+    }
+}
+
+#[cfg(test)]
+mod exact_i64_tests {
+    use super::{Cells, Src};
+    use crate::collection::GroupRow;
+    use crate::value::Val;
+
+    #[test]
+    fn grouped_result_preserves_exact_i64_value() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let want = 9_007_199_254_740_991_i64;
+        let mut cells = Cells::Pos(vec![Val::I64(want)]);
+        let decoded = cells.i64(0).unwrap();
+        assert_eq!(decoded, want);
+        let row = GroupRow::new(vec![("exact_value".into(), Val::I64(decoded)), ("row_count".into(), Val::I64(1))]).unwrap();
+        assert_eq!(row.value("exact_value").unwrap(), &Val::I64(want));
+        assert_eq!(row.to_json().unwrap(), r#"{"exact_value":9007199254740991,"row_count":1}"#);
+    }
 }

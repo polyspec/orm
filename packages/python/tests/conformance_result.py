@@ -24,6 +24,14 @@ class EncodeTest(unittest.TestCase):
         self.assertEqual(runner.go_float(12.0), "12")
         self.assertEqual(runner.go_float(1e21), "1e+21")
 
+    def test_non_finite_result_numbers_are_rejected(self):
+        for value in (float("nan"), float("inf"), float("-inf")):
+            with (
+                self.subTest(value=value),
+                self.assertRaisesRegex(ValueError, "non-finite conformance result"),
+            ):
+                runner.encode(value)
+
     def test_escapes_html_characters_as_go_does(self):
         self.assertEqual(runner.go_escape("<a&b>"), "\\u003ca\\u0026b\\u003e")
 

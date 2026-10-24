@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: dfc967345b984d6c554198ccb2acb2258a92743cdc12acba7e42d4ec0cf001aa -->
+<!-- source-sha256: 093345b50c711767061e8f13e69ad36742fd2c9e82f867687fff078b38fb5b68 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -62,7 +62,7 @@
 | KSTD-2-11-11 | transaction, rollback, savepoint 실패 unit은 여섯 구현 unit이다 (KSTD-2-11 후속). Cause: 약 30개 unit이 DIA-63, DIA-180, DIA-181, PLN-17, CFG-13의 실패 보고를 구현마다 나눈다 | config/parity.json, tests of every implementation | `make parity-declarations-check` | [ ] |
 | KSTD-2-11-12 | request hook, audit, soft delete, restore unit은 여섯 구현 unit이다 (KSTD-2-11 후속). Cause: unit 25개가 DIA-161, DIA-18, DIA-22, DIA-108, DIA-129, DBS-85, DBS-87을 구현마다 나눈다 | config/parity.json, tests of every implementation | `make parity-declarations-check` | [ ] |
 | KSTD-2-11-13 | connection, pool, TLS, DSN, timeout unit은 CFG를 인용하는 여섯 구현 unit이다 (KSTD-2-11 후속, KSTD-2-11-2). Cause: unit 60개가 한 동작을 구현마다 나눈다 | config/parity.json, tests of every implementation | `make parity-declarations-check` | [ ] |
-| KSTD-2-11-14 | result 형태 unit은 모든 구현에서 그 PRT 규칙을 인용한다 (KSTD-2-11 후속). Cause: ts-conformance-result와 rust-conformance-invalid unit(5개)은 한 구현의 result 형태만 검사한다 | config/parity.json, tests of every implementation | `make parity-declarations-check` | [ ] |
+| KSTD-2-11-14 | result 형태 unit은 여섯 client의 중립 제품 동작을 묶는다 (KSTD-2-11 후속). 현재 `ts-conformance-result-*` binding 5개는 host 전용 COD/helper 검사로 유지하고, 과거 Rust invalid-result binding 2개는 conformance helper를 검사했으므로 제거 상태를 유지한다. 중립 제품 근거는 styled column 상태, 잘못 저장된 grouped boolean, 정확한 grouped i64 값, 정확한 grouped row count, ordered-json Model 출력 텍스트를 다룬다. | config/parity.json, Makefile, contracts/check-inputs.json, native Model output and result tests | `node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run ^TestGroupRowCountEnforcesExactness$ -count=1`, `packages/python/.venv/bin/python -m packages.python.tests.test_group_rows GroupBooleanValueTest.test_group_boolean_rejects_non_boolean_float` | [~] |
 | KSTD-2-11-15 | generator unit은 생성 code 규칙의 각 언어 native 형식에 묶인다 (KSTD-2-11 후속, KSTD-2-11-3). Cause: generator 출력 unit 50개가 각각 한 구현만 검사한다 | config/parity.json, the generators of every implementation | `make parity-declarations-check` | [ ] |
 | KSTD-2-11-16 | handle 폐기 unit은 각 언어의 폐기 형식에 묶인다 (KSTD-2-11 후속, KSTD-2-11-4). Cause: 약 18개 Rust drop unit에 다른 구현의 unit이 없다 | config/parity.json, tests of every implementation | `make parity-declarations-check` | [ ] |
 | KSTD-2-11-17 | driver error, native cell, markdown connect unit은 중립 unit이며 각 구현이 native 형식으로 묶인다 (KSTD-2-11 후속). Cause: unit 33개가 각각 한 driver만 검사한다 | config/parity.json, tests of every implementation | `make parity-declarations-check` | [ ] |

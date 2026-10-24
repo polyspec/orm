@@ -7,8 +7,10 @@ namespace Polyspec\Orm\Tests;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Code;
+use Polyspec\Orm\Db;
 use Polyspec\Orm\GroupRow;
 use Polyspec\Orm\GroupRows;
+use Polyspec\Orm\Model;
 use Polyspec\Orm\OrmException;
 
 #[Small]
@@ -53,6 +55,44 @@ final class GroupRowsTest extends TestCase
         }
     }
 
+    // PRT-36: the production group result decoder rejects an invalid stored boolean.
+    public function testGroupBooleanRejectsInvalidStoredValue(): void
+    {
+        $model = new class extends Model {
+            public static function meta(): array
+            {
+                return ['entity' => 'group_boolean_fixture'];
+            }
+        };
+        $db = (new \ReflectionClass(Db::class))->newInstanceWithoutConstructor();
+        $groupValue = new \ReflectionMethod(Model::class, 'groupValue');
+        try {
+            $groupValue->invoke($model, $db, ['name' => 'active', 'column' => '', 'type' => 'bool'], 'invalid');
+            self::fail('invalid boolean group value was accepted');
+        } catch (OrmException $error) {
+            self::assertSame(Code::CODEC_DECODE, $error->code_);
+            self::assertSame('CODEC_DECODE: group column active is not boolean', $error->getMessage());
+        }
+    }
+
+    public function testGroupResultPreservesExactI64Value(): void
+    {
+        $model = new class extends Model {
+            public static function meta(): array
+            {
+                return ['entity' => 'group_i64_fixture'];
+            }
+        };
+        $db = (new \ReflectionClass(Db::class))->newInstanceWithoutConstructor();
+        $groupValue = new \ReflectionMethod(Model::class, 'groupValue');
+        $want = 9007199254740991;
+        $value = $groupValue->invoke($model, $db, ['name' => 'exact_value', 'column' => '', 'type' => 'i64'], $want);
+        self::assertSame($want, $value);
+        $row = new GroupRow([['exact_value', $value], ['row_count', 1]]);
+        self::assertSame($want, $row->value('exact_value'));
+        self::assertSame(['exact_value' => $want, 'row_count' => 1], $row->toArray());
+    }
+
     // Requirements: INT-90.
     public function testNegativeCountIsCodecDecode(): void
     {
@@ -63,6 +103,30 @@ final class GroupRowsTest extends TestCase
             } catch (OrmException $error) {
                 self::assertSame(Code::CODEC_DECODE, $error->code_);
             }
+        }
+    }
+
+    public function testGroupRowCountEnforcesExactness(): void
+    {
+        foreach ([true, 1.5, -1, 9007199254740992, 9007199254740992.0, '9007199254740992'] as $invalid) {
+            try {
+                new GroupRow([['row_count', $invalid]]);
+                self::fail('invalid row_count was accepted: ' . var_export($invalid, true));
+            } catch (OrmException $error) {
+                self::assertSame(Code::CODEC_DECODE, $error->code_);
+            }
+        }
+        try {
+            new GroupRow([['selected', 'x']]);
+            self::fail('missing row_count was accepted');
+        } catch (OrmException $error) {
+            self::assertSame(Code::INTERNAL, $error->code_);
+        }
+        $validCounts = [[0, 0], ['0', 0], [9007199254740991, 9007199254740991], ['9007199254740991', 9007199254740991]];
+        foreach ($validCounts as [$input, $want]) {
+            $row = new GroupRow([['row_count', $input]]);
+            self::assertSame($want, $row->count());
+            self::assertSame($want, $row->toArray()['row_count']);
         }
     }
 }

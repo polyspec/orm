@@ -3,7 +3,6 @@
 //! such as the number 1e400, returns CODEC_ENCODE instead of stopping the
 //! process.
 
-
 use polyspec_orm::{Core, Model, Val};
 
 #[macro_use]
@@ -36,7 +35,7 @@ fn array_output_of_an_unrepresentable_number_is_an_error() {
 // The test of COD-16, COD-26 (docs/spec).
 fn json_output_keeps_the_ordered_json_text() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    for text in [r#"{"b":1,"a":[],"c":{},"n":1.50}"#, r#"{"n":1e400}"#] {
+    for text in [r#"{"b":1,"a":[],"c":{},"n":1.50}"#, r#"{"z":9007199254740993,"b":1.50,"a":1e2}"#, r#"{"n":1e400}"#] {
         let value = polyspec_orm::ordered_json::parse(text).unwrap();
         let mut row = Secret::from_core(Core::new(&SECRET));
         row.core_mut().set_ordered("config", value.clone());

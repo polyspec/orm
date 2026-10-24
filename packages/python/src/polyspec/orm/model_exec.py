@@ -945,9 +945,13 @@ def _group_value(db, column: dict, raw, schema: Entity):
             )
         return raw
     if type_ == "bool":
-        if raw in (True, 1, "1", "t", "true"):
+        if raw is True or (type(raw) is int and raw == 1) or raw in ("1", "t", "true"):
             return True
-        if raw in (False, 0, "0", "f", "false"):
+        if (
+            raw is False
+            or (type(raw) is int and raw == 0)
+            or raw in ("0", "f", "false")
+        ):
             return False
         raise OrmError(
             codes.CODEC_DECODE, f"group column {column['name']} is not boolean"

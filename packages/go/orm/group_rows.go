@@ -41,7 +41,7 @@ func newGroupRow(values []groupValue) (GroupRow, error) {
 	seen := make(map[string]bool, len(values))
 	var count int64
 	countFound := false
-	for _, item := range values {
+	for index, item := range values {
 		if seen[item.name] {
 			return GroupRow{}, configErr("group result repeats column %s", item.name)
 		}
@@ -58,6 +58,10 @@ func newGroupRow(values []groupValue) (GroupRow, error) {
 			if count < 0 {
 				return GroupRow{}, codecErr(CodeCodecDecode, "group result row_count is negative")
 			}
+			if count > 9007199254740991 {
+				return GroupRow{}, codecErr(CodeCodecDecode, "group result row_count is outside the exact integer range")
+			}
+			values[index].value = count
 			countFound = true
 		}
 	}

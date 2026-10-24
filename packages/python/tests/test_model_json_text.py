@@ -83,6 +83,16 @@ class ModelJsonTextTest(unittest.TestCase):
         self.assertEqual(text, ROW_TEXT)
         self.assertEqual(list(json.loads(text)), list(row.to_array()))
 
+    def test_model_output_preserves_ordered_json_number_text(self):
+        stored = '{"z":9007199254740993,"b":1.50,"a":1e2}'
+        row = self.models.Author().set_json_setting(
+            StyledValue.value(parse_json(stored))
+        )
+        self.assertEqual(
+            row.to_json_text(),
+            '{"json_setting":{"kind":"value","value":' + stored + "}}",
+        )
+
     def test_a_key_that_javascript_reorders_keeps_its_place(self):
         row = self.author().get_by_seq(1)
         row.set_json_setting(StyledValue.value(parse_json('{"b":1,"1":2}')))

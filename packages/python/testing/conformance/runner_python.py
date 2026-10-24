@@ -11,6 +11,7 @@
 # Each --vector selects one vector by name; without one every vector runs.
 import datetime
 import json
+import math
 import os
 import sys
 import types
@@ -254,8 +255,12 @@ def encode(value, indent=0):
     if isinstance(value, int):
         return str(value)
     if isinstance(value, float):
+        if not math.isfinite(value):
+            raise ValueError("non-finite conformance result")
         return go_float(value)
     if isinstance(value, Decimal):
+        if not value.is_finite():
+            raise ValueError("non-finite conformance result")
         return go_float(float(value))
     return json.dumps(value, ensure_ascii=False)
 

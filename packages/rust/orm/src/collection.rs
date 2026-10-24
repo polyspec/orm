@@ -321,17 +321,16 @@ pub struct GroupRow {
 }
 
 impl GroupRow {
-    pub(crate) fn new(values: Vec<(String, Val)>) -> Result<Self> {
+    pub(crate) fn new(mut values: Vec<(String, Val)>) -> Result<Self> {
         let mut names = std::collections::HashSet::new();
         for (name, _) in &values {
             if !names.insert(name) {
                 return Err(crate::Error::Config(format!("group result repeats column {name}")));
             }
         }
-        let count = values.iter().find(|(name, _)| name == "row_count").ok_or_else(|| crate::Error::internal("group result has no row_count"))?.1.as_i64()?;
-        if count < 0 {
-            return Err(crate::Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: "group result row_count is negative".into() });
-        }
+        let count_index = values.iter().position(|(name, _)| name == "row_count").ok_or_else(|| crate::Error::internal("group result has no row_count"))?;
+        let count = checked_group_row_count(&values[count_index].1)?;
+        values[count_index].1 = Val::I64(count);
         Ok(Self { values, count })
     }
 
@@ -366,6 +365,24 @@ impl GroupRow {
         }
         Ok(format!("{{{}}}", parts.join(",")))
     }
+}
+
+fn checked_group_row_count(value: &Val) -> Result<i64> {
+    const MAX_SAFE: i64 = 9_007_199_254_740_991;
+    let invalid = || Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: "group result row_count is not an exact integer".into() };
+    let count = match value {
+        Val::I64(count) => *count,
+        Val::F64(count) if count.is_finite() && count.fract() == 0.0 && *count >= 0.0 && *count <= MAX_SAFE as f64 => *count as i64,
+        Val::Str(text) => text.parse::<i64>().map_err(|_parse_error| invalid())?,
+        _ => return Err(invalid()),
+    };
+    if count < 0 {
+        return Err(Error::Engine { code: crate::codes::CODEC_DECODE.into(), msg: "group result row_count is negative".into() });
+    }
+    if count > MAX_SAFE {
+        return Err(invalid());
+    }
+    Ok(count)
 }
 
 /// Grouped results contain grouping values and row counts, never partial models.
@@ -426,5 +443,38 @@ mod group_tests {
         assert_eq!(GroupRow::new(vec![("row_count".into(), Val::I64(-1))]).err().unwrap().code(), "CODEC_DECODE");
         assert_eq!(GroupRow::new(vec![("row_count".into(), Val::Str("invalid".into()))]).err().unwrap().code(), "CODEC_DECODE");
         assert_eq!(GroupRow::new(vec![("row_count".into(), Val::I64(1)), ("row_count".into(), Val::I64(2))]).err().unwrap().code(), "CONFIG");
+    }
+}
+
+#[cfg(test)]
+mod group_count_exactness_tests {
+    use super::{GroupRow, Val};
+
+    #[test]
+    fn count_exactness_matches_the_safe_integer_contract() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        for invalid in [
+            Val::Bool(true),
+            Val::F64(1.5),
+            Val::F64(9_007_199_254_740_992.0),
+            Val::I64(-1),
+            Val::I64(9_007_199_254_740_992),
+            Val::Str("9007199254740992".into()),
+        ] {
+            assert_eq!(GroupRow::new(vec![("row_count".into(), invalid)]).err().unwrap().code(), "CODEC_DECODE");
+        }
+        assert_eq!(GroupRow::new(vec![("selected".into(), Val::Str("x".into()))]).err().unwrap().code(), "INTERNAL");
+        for (input, count) in [
+            (Val::I64(0), 0),
+            (Val::Str("0".into()), 0),
+            (Val::F64(0.0), 0),
+            (Val::I64(9_007_199_254_740_991), 9_007_199_254_740_991),
+            (Val::Str("9007199254740991".into()), 9_007_199_254_740_991),
+            (Val::F64(9_007_199_254_740_991.0), 9_007_199_254_740_991),
+        ] {
+            let row = GroupRow::new(vec![("row_count".into(), input)]).unwrap();
+            assert_eq!(row.count(), count);
+            assert_eq!(row.to_json().unwrap(), format!(r#"{{"row_count":{count}}}"#));
+        }
     }
 }

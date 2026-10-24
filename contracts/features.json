@@ -797,6 +797,8 @@
         "packages/php/tests/InsertPartsTest.php",
         "packages/php/tests/ClientGenericsTest.php",
         "packages/php/tests/GroupRowsTest.php",
+        "packages/php-ext/tests/ModelAssemblyTest.php",
+        "packages/php-ext/tests/ModelNativeTest.php",
         "packages/php/tests/GroupRowsDbTest.php",
         "packages/php/tests/AggregateNumericTest.php",
         "packages/ts/tests/model.mjs",
@@ -866,7 +868,9 @@
         "packages/php/tests/CollectionIdentityTest.php",
         "packages/rust/orm/tests/collection_identity.rs",
         "packages/ts/tests/collection_identity.mjs",
-        "packages/python/tests/test_collection_identity.py"
+        "packages/python/tests/test_collection_identity.py",
+        "packages/python/tests/test_group_rows.py",
+        "packages/rust/orm/src/row.rs"
       ],
       "docs": [
         "docs/spec/dsl.md",
@@ -874,6 +878,15 @@
         "docs/spec/protocol.md"
       ],
       "verification": [
+        {
+          "id": "styled-column-states-php-extension-unit",
+          "command": "make model-native-php-extension-check MODEL_NATIVE_TEST_FILTER=testStyledColumnDistinguishesUnselectedSqlNullAndEncodedNull",
+          "shard": "other",
+          "inputs": [
+            "Makefile",
+            "packages/php-ext/tests/ModelNativeTest.php"
+          ]
+        },
         {
           "id": "aggregate-go",
           "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestAggregateNumericFixture$' -count=1",
@@ -919,6 +932,15 @@
           ]
         },
         {
+          "id": "group-rows-php-extension-unit",
+          "command": "make group-count-boolean-php-extension-unit-check",
+          "shard": "other",
+          "inputs": [
+            "Makefile",
+            "packages/php-ext/tests/ModelAssemblyTest.php"
+          ]
+        },
+        {
           "id": "aggregate-php",
           "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/AggregateNumericTest.php",
           "shard": "other",
@@ -949,7 +971,26 @@
           "command": "node packages/ts/tests/group_rows.mjs",
           "shard": "other",
           "inputs": [
+            "packages/ts/src/model.ts",
             "packages/ts/tests/group_rows.mjs"
+          ]
+        },
+        {
+          "id": "group-rows-python-unit",
+          "command": "packages/python/.venv/bin/python -m packages.python.tests.test_group_rows GroupBooleanValueTest.test_group_boolean_rejects_non_boolean_float",
+          "shard": "other",
+          "inputs": [
+            "packages/python/src/polyspec/orm/model_exec.py",
+            "packages/python/tests/test_group_rows.py"
+          ]
+        },
+        {
+          "id": "group-rows-rust-unit",
+          "command": "make group-count-boolean-rust-unit-check",
+          "shard": "rust",
+          "inputs": [
+            "Makefile",
+            "packages/rust/orm/src/row.rs"
           ]
         },
         {
@@ -1075,7 +1116,7 @@
         },
         {
           "id": "queries-orm-go",
-          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestCollectionLookupRejectsUnsupportedKey|TestCompositeTypedKeyPreservesBoundaries|TestDecimalModelFixture|TestGroupColumnDeclarationRejectsMissingAndDuplicateCount|TestGroupColumnValueChecksDeclaredType|TestGroupRowsRejectInvalidCountsAndPreserveSelectedValues|TestInsertPartsFixture|TestJoinedByteColumnsAndInvalidValues|TestJsonTextOrderPreservation|TestKeyValuesPreserveTheirTypes|TestModelCollectionKeyRejectsInvalidCallbackAndMissingColumn|TestRelatedAsReportsMismatch|TestRelationKeyCollectionPropagatesInvalidValue|TestRuntimeValueTypes|TestScalarComparisonPreservesTypesAndRejectsInvalidValues|TestSelectedByteKeyPreservesByteType|TestShapeCoversEveryField|TestShapeIgnoresParamValues|TestSplitQueryPropagatesInvalidKey|TestSplitQueryRetainsDistinctTypedValues|TestStyledColumnStateFixture|TestStyledFixturePhysicalCells|TestTypedKeyValuesCannotCollide|TestUnknownStyleRejectsSQLNull|TestUnsupportedKeyIsAnError)$' -count=1",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^(TestCollectionLookupRejectsUnsupportedKey|TestCompositeTypedKeyPreservesBoundaries|TestDecimalModelFixture|TestGroupColumnDeclarationRejectsMissingAndDuplicateCount|TestGroupColumnValueChecksDeclaredType|TestGroupCountRejectsInvalidStoredBoolean|TestGroupRowsRejectInvalidCountsAndPreserveSelectedValues|TestInsertPartsFixture|TestJoinedByteColumnsAndInvalidValues|TestJsonTextOrderPreservation|TestKeyValuesPreserveTheirTypes|TestModelCollectionKeyRejectsInvalidCallbackAndMissingColumn|TestRelatedAsReportsMismatch|TestRelationKeyCollectionPropagatesInvalidValue|TestRuntimeValueTypes|TestScalarComparisonPreservesTypesAndRejectsInvalidValues|TestSelectedByteKeyPreservesByteType|TestShapeCoversEveryField|TestShapeIgnoresParamValues|TestSplitQueryPropagatesInvalidKey|TestSplitQueryRetainsDistinctTypedValues|TestStyledColumnStateFixture|TestStyledFixturePhysicalCells|TestTypedKeyValuesCannotCollide|TestUnknownStyleRejectsSQLNull|TestUnsupportedKeyIsAnError)$' -count=1",
           "shard": "other",
           "inputs": [
             "packages/go/orm/collection_key_test.go",

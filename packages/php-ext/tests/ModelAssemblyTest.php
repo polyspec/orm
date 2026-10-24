@@ -217,6 +217,69 @@ final class ModelAssemblyTest extends TestCase
         }
     }
 
+    // PRT-36: exercise the extension's native Model::groupValue method.
+    public function testGroupValueRejectsInvalidStoredBoolean(): void
+    {
+        $groupValue = new \ReflectionMethod(Model::class, 'groupValue');
+        self::assertTrue($groupValue->isInternal(), 'the test did not reach the extension method');
+        $db = (new \ReflectionClass(Db::class))->newInstanceWithoutConstructor();
+        try {
+            $groupValue->invoke(
+                new ModelAssemblyFixture(),
+                $db,
+                ['name' => 'active', 'column' => '', 'type' => 'bool'],
+                'invalid',
+            );
+            self::fail('invalid boolean group value was accepted');
+        } catch (OrmException $error) {
+            self::assertSame(Code::CODEC_DECODE, $error->code_);
+            self::assertSame('CODEC_DECODE: group column active is not boolean', $error->getMessage());
+        }
+    }
+
+    public function testGroupValuePreservesExactI64(): void
+    {
+        $groupValue = new \ReflectionMethod(Model::class, 'groupValue');
+        self::assertTrue($groupValue->isInternal(), 'the test did not reach the extension method');
+        $db = (new \ReflectionClass(Db::class))->newInstanceWithoutConstructor();
+        $want = 9007199254740991;
+        $value = $groupValue->invoke(
+            new ModelAssemblyFixture(),
+            $db,
+            ['name' => 'exact_value', 'column' => '', 'type' => 'i64'],
+            $want,
+        );
+        self::assertSame($want, $value);
+        $row = new GroupRow([['exact_value', $value], ['row_count', 1]]);
+        self::assertSame($want, $row->value('exact_value'));
+        self::assertSame(['exact_value' => $want, 'row_count' => 1], $row->toArray());
+    }
+
+    public function testGroupRowCountEnforcesExactness(): void
+    {
+        self::assertTrue((new \ReflectionClass(GroupRow::class))->isInternal());
+        foreach ([true, 1.5, -1, 9007199254740992, 9007199254740992.0, '9007199254740992'] as $invalid) {
+            try {
+                new GroupRow([['row_count', $invalid]]);
+                self::fail('invalid row_count was accepted: ' . var_export($invalid, true));
+            } catch (OrmException $error) {
+                self::assertSame(Code::CODEC_DECODE, $error->code_);
+            }
+        }
+        try {
+            new GroupRow([['selected', 'x']]);
+            self::fail('missing row_count was accepted');
+        } catch (OrmException $error) {
+            self::assertSame(Code::INTERNAL, $error->code_);
+        }
+        $validCounts = [[0, 0], ['0', 0], [9007199254740991, 9007199254740991], ['9007199254740991', 9007199254740991]];
+        foreach ($validCounts as [$input, $want]) {
+            $row = new GroupRow([['row_count', $input]]);
+            self::assertSame($want, $row->count());
+            self::assertSame($want, $row->toArray()['row_count']);
+        }
+    }
+
     public function testGroupRowsUseAKeyPreservingSnapshotIterator(): void
     {
         $first = new GroupRow([['name', 'one'], ['row_count', 1]]);

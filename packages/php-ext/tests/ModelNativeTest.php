@@ -23,6 +23,7 @@ final class NativeModelFixture extends Model
             'columns' => [
                 'id' => ['type' => 'i64', 'codec' => [], 'nullable' => false],
                 'label' => ['type' => 'text', 'codec' => [], 'nullable' => true],
+                'payload' => ['type' => 'text', 'codec' => ['ordered_json'], 'nullable' => true],
                 'amount' => ['type' => 'decimal', 'precision' => 8, 'scale' => 2, 'codec' => [], 'nullable' => true],
                 'happened' => ['type' => 'datetime', 'codec' => [], 'nullable' => true],
             ],
@@ -37,6 +38,16 @@ final class NativeModelFixture extends Model
     public function label(): mixed
     {
         return $this->readColumn('label');
+    }
+
+    public function setPayload(\Polyspec\Orm\StyledValue $value): static
+    {
+        return $this->writeColumn('payload', $value);
+    }
+
+    public function payload(): \Polyspec\Orm\StyledValue
+    {
+        return $this->readColumn('payload');
     }
 
     public function setAmount(mixed $value): static
@@ -149,6 +160,23 @@ final class ModelNativeTest extends TestCase
         }
     }
 
+    public function testStyledColumnDistinguishesUnselectedSqlNullAndEncodedNull(): void
+    {
+        $model = new NativeModelFixture();
+        try {
+            $model->payload();
+            self::fail('An unselected styled column must fail.');
+        } catch (OrmException $error) {
+            self::assertSame('COLUMN_UNSELECTED', $error->code_);
+        }
+
+        $model->setPayload(\Polyspec\Orm\StyledValue::sqlNull());
+        self::assertSame(['kind' => 'sql-null'], $model->payload()->jsonSerialize());
+
+        $model->setPayload(\Polyspec\Orm\StyledValue::value(null));
+        self::assertSame(['kind' => 'value', 'value' => null], $model->payload()->jsonSerialize());
+    }
+
     public function testDecimalNormalizationAndDatetimeUsesTheConnectionZone(): void
     {
         $model = new NativeModelFixture();
@@ -208,6 +236,18 @@ final class ModelNativeTest extends TestCase
         self::assertSame(['label' => 'sample', 'amount' => '2.50'], $model->toArray());
         self::assertSame('{"label":"sample","amount":"2.50"}', $model->toJson());
         self::assertEquals((object) ['label' => 'sample', 'amount' => '2.50'], $model->jsonSerialize());
+    }
+
+    public function testNativeModelJsonPreservesOrderedJsonNumberText(): void
+    {
+        $stored = '{"z":9007199254740993,"b":1.50,"a":1e2}';
+        $model = (new NativeModelFixture())->setPayload(
+            \Polyspec\Orm\StyledValue::value(\Polyspec\OrderedJson\parse($stored))
+        );
+        self::assertSame(
+            '{"payload":{"kind":"value","value":' . $stored . '}}',
+            $model->toJson(),
+        );
     }
 
     public function testQueryTracksFullJoinPathsAndRejectsDuplicateResultNames(): void

@@ -411,7 +411,7 @@ async function load(c: Core, kind: 'one' | 'all'): Promise<Collection> {
   return assemble(c, ex, r.external, result);
 }
 
-function groupValue(db: Db, column: Assemble['columns'][number], raw: unknown, schema: Entity): unknown {
+export function groupValue(db: Db, column: Assemble['columns'][number], raw: unknown, schema: Entity): unknown {
   const declared = column.column === column.name ? fieldOf(schema, column.name) : undefined;
   if (raw === undefined) throw new OrmError(codes.INTERNAL, `group result column ${column.name} is missing`);
   if (column.name === 'row_count') return raw;

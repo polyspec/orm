@@ -1717,7 +1717,77 @@
         "docs/features.md",
         "docs/features.ko.md",
         "tests/testcase.mts",
-        "Makefile"
+        "Makefile",
+        "packages/go/orm/group_rows_test.go",
+        "packages/php/tests/GroupRowsTest.php",
+        "packages/php-ext/tests/ModelAssemblyTest.php",
+        "packages/php-ext/tests/ModelNativeTest.php",
+        "packages/python/src/polyspec/orm/model_exec.py",
+        "packages/python/tests/test_group_rows.py",
+        "packages/rust/orm/src/row.rs",
+        "packages/ts/src/model.ts",
+        "packages/ts/tests/group_rows.mjs"
+      ]
+    },
+    "group-count-boolean-unit-check": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "rust",
+        "php",
+        "composer",
+        "python",
+        "node-modules",
+        "php-extension-tools"
+      ],
+      "inputs": [
+        "Makefile",
+        "config/parity.json",
+        "contracts/features.json",
+        "contracts/check-inputs.json",
+        "packages/go/orm/group_rows.go",
+        "packages/go/orm/group_rows_test.go",
+        "packages/php/src/GroupRow.php",
+        "packages/php/tests/GroupRowsTest.php",
+        "packages/php-ext/src/model_assembly.c",
+        "packages/php-ext/tests/ModelAssemblyTest.php",
+        "packages/python/src/polyspec/orm/group_rows.py",
+        "packages/python/src/polyspec/orm/model_exec.py",
+        "packages/python/tests/test_group_rows.py",
+        "packages/rust/orm/src/collection.rs",
+        "packages/rust/orm/src/row.rs",
+        "packages/ts/src/group_rows.ts",
+        "packages/ts/src/model.ts",
+        "packages/ts/tests/group_rows.mjs"
+      ]
+    },
+    "model-json-ordered-number-text-unit-check": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "rust",
+        "php",
+        "composer",
+        "python",
+        "node-modules",
+        "php-extension-tools"
+      ],
+      "inputs": [
+        "Makefile",
+        "config/parity.json",
+        "contracts/check-inputs.json",
+        "packages/go/model/styled_state_test.go",
+        "packages/go/orm/model.go",
+        "packages/php/src/Model.php",
+        "packages/php/tests/ModelJsonTextTest.php",
+        "packages/php-ext/src/model_output.c",
+        "packages/php-ext/tests/ModelNativeTest.php",
+        "packages/python/src/polyspec/orm/model.py",
+        "packages/python/tests/test_model_json_text.py",
+        "packages/rust/orm/src/model.rs",
+        "packages/rust/orm/tests/model_output.rs",
+        "packages/ts/src/model.ts",
+        "packages/ts/tests/model_json_output.test.mts"
       ]
     },
     "feature-coverage": {
@@ -1900,6 +1970,48 @@
         "Makefile",
         "packages/php-ext/scripts/build.sh",
         "tests/php-ext/build-logs.test.mts"
+      ]
+    },
+    "styled-column-states-unit-check": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "rust",
+        "php",
+        "composer",
+        "python",
+        "node-modules",
+        "php-extension-tools"
+      ],
+      "inputs": [
+        "Makefile",
+        "config/parity.json",
+        "contracts/check-inputs.json",
+        "contracts/fixtures/styled_column_states.json",
+        "packages/go/orm/codec.go",
+        "packages/go/orm/styled_value.go",
+        "packages/go/orm/model.go",
+        "packages/go/orm/styled_state_test.go",
+        "packages/php/src/StyledValue.php",
+        "packages/php/src/Codec.php",
+        "packages/php/src/Model.php",
+        "packages/php/tests/StyledValueTest.php",
+        "packages/php-ext/src/codec.c",
+        "packages/php-ext/src/model_state.c",
+        "packages/php-ext/src/model_native_methods.c",
+        "packages/php-ext/src/model_read.c",
+        "packages/php-ext/tests/ModelNativeTest.php",
+        "packages/ts/src/styled_value.ts",
+        "packages/ts/src/codec.ts",
+        "packages/ts/src/model.ts",
+        "packages/ts/tests/styled-value.mjs",
+        "packages/python/src/polyspec/orm/styled_value.py",
+        "packages/python/src/polyspec/orm/codec.py",
+        "packages/python/src/polyspec/orm/model.py",
+        "packages/python/tests/test_styled_column_states.py",
+        "packages/rust/orm/src/codec.rs",
+        "packages/rust/orm/src/model.rs",
+        "packages/rust/orm/tests/codec_vectors.rs"
       ]
     }
   },

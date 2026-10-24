@@ -3951,6 +3951,11 @@
       "cases": "$.cases[*].id",
       "bindings": [
         {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelNativeTest.php",
+          "symbol": "ModelNativeTest::testStyledColumnDistinguishesUnselectedSqlNullAndEncodedNull"
+        },
+        {
           "implementation": "go",
           "test": "packages/go/orm/styled_state_test.go",
           "symbol": "TestStyledColumnStateFixture"
@@ -9673,6 +9678,125 @@
       ]
     },
     {
+      "id": "group-count-boolean-decode",
+      "kind": "feature",
+      "requirements": [
+        "PRT-36"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/group_rows_test.go",
+          "id": "TestGroupCountRejectsInvalidStoredBoolean"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/GroupRowsTest.php",
+          "id": "GroupRowsTest::testGroupBooleanRejectsInvalidStoredValue"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelAssemblyTest.php",
+          "id": "ModelAssemblyTest::testGroupValueRejectsInvalidStoredBoolean"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/group_rows.mjs",
+          "id": "group_rows/boolean_invalid_stored_value"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_group_rows.py",
+          "id": "test_group_boolean_rejects_non_boolean_float"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/row.rs",
+          "id": "row::declared_boolean_tests::invalid_stored_boolean_is_codec_decode"
+        }
+      ]
+    },
+    {
+      "id": "group-result-exact-i64",
+      "kind": "feature",
+      "requirements": [
+        "PRT-69",
+        "INT-1"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/group_rows_test.go",
+          "id": "TestGroupCountPreservesExactI64Value"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/GroupRowsTest.php",
+          "id": "GroupRowsTest::testGroupResultPreservesExactI64Value"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelAssemblyTest.php",
+          "id": "ModelAssemblyTest::testGroupValuePreservesExactI64"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/group_rows.mjs",
+          "id": "group_rows/exact_i64_preserved"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_group_rows.py",
+          "id": "test_group_result_preserves_exact_i64_value"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/row.rs",
+          "id": "row::exact_i64_tests::grouped_result_preserves_exact_i64_value"
+        }
+      ]
+    },
+    {
+      "id": "group-row-count-exactness",
+      "kind": "feature",
+      "requirements": [
+        "PRT-69",
+        "INT-90"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/group_rows_test.go",
+          "id": "TestGroupRowCountEnforcesExactness"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/GroupRowsTest.php",
+          "id": "GroupRowsTest::testGroupRowCountEnforcesExactness"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelAssemblyTest.php",
+          "id": "ModelAssemblyTest::testGroupRowCountEnforcesExactness"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/group_rows.mjs",
+          "id": "group_rows/count_exactness"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_group_rows.py",
+          "id": "GroupRowCountTest.test_count_exactness"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/collection.rs",
+          "id": "collection::group_count_exactness_tests::count_exactness_matches_the_safe_integer_contract"
+        }
+      ]
+    },
+    {
       "id": "rust-schema-manifest-hash-mismatch-is-reported",
       "kind": "feature",
       "requirements": [
@@ -10342,13 +10466,37 @@
       ]
     },
     {
-      "id": "rust-json-output-keeps-the-ordered-json-text",
+      "id": "model-ordered-json-output-text",
       "kind": "feature",
       "requirements": [
-        "COD-16",
-        "COD-26"
+        "COD-16"
       ],
       "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/styled_state_test.go",
+          "id": "TestModelOrderedJSONOutputPreservesExactText"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelJsonTextTest.php",
+          "id": "ModelJsonTextTest::testModelJsonTextPreservesOrderedJsonNumberText"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelNativeTest.php",
+          "id": "ModelNativeTest::testNativeModelJsonPreservesOrderedJsonNumberText"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model_json_output.test.mts",
+          "id": "model/ordered-json-output-text"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_model_json_text.py",
+          "id": "test_model_output_preserves_ordered_json_number_text"
+        },
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/model_output.rs",
