@@ -2795,7 +2795,7 @@ typedef struct {
 } pwrite_inputs;
 
 /* Initializes the shared write context and its assignments after blind-index expansion. */
-static bool write_inputs(pctx *c, HashTable *request, pwrite_inputs *out)
+static bool write_inputs(pctx *c, HashTable *request, bool complete, pwrite_inputs *out)
 {
     out->binds = binds_new(c);
     out->entity = entity(c, gs(c, request, "entity"));
@@ -2804,6 +2804,12 @@ static bool write_inputs(pctx *c, HashTable *request, pwrite_inputs *out)
         return false;
     }
     out->assignments = Z_ARRVAL_P(expanded);
+    if (!check_aes_assignments(c, out->entity, out->assignments, complete)) {
+        return false;
+    }
+    if (!complete && !check_required_assignments(c, out->entity, out->assignments)) {
+        return false;
+    }
     return true;
 }
 
@@ -2811,15 +2817,12 @@ static bool write_inputs(pctx *c, HashTable *request, pwrite_inputs *out)
 static pstep *insert_step(pctx *c, HashTable *r)
 {
     pwrite_inputs input;
-    if (!write_inputs(c, r, &input)) {
+    if (!write_inputs(c, r, false, &input)) {
         return NULL;
     }
     pbinds *b = input.binds;
     HashTable *ent = input.entity;
     HashTable *set = input.assignments;
-    if (!check_aes_assignments(c, ent, set, false) || !check_required_assignments(c, ent, set)) {
-        return NULL;
-    }
     bool versioned = false;
     if (!has_aes(c, ent, &versioned)) {
         return NULL;
@@ -3059,15 +3062,12 @@ static pstep *update_main(pctx *c, pbinds *b, HashTable *ent, zval *sets, zend_s
 static pstep *update_step(pctx *c, HashTable *r)
 {
     pwrite_inputs input;
-    if (!write_inputs(c, r, &input)) {
+    if (!write_inputs(c, r, true, &input)) {
         return NULL;
     }
     pbinds *b = input.binds;
     HashTable *ent = input.entity;
     HashTable *set = input.assignments;
-    if (!check_aes_assignments(c, ent, set, true)) {
-        return NULL;
-    }
     pscope *root = scopes(c, r, gs(c, ent, "table"), NULL);
     OKP(root);
     zval *sets = newlist(c);
