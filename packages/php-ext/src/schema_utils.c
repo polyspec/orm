@@ -151,6 +151,17 @@ static void schema_utils_add_found_names(zval *found, zval *entries, const char 
     } ZEND_HASH_FOREACH_END();
 }
 
+static void schema_utils_release_install_values(zval *driver, zval *documents, zval *render, zval *target, zval *pdo,
+    zval *statements)
+{
+    if (!Z_ISUNDEF_P(driver)) zval_ptr_dtor(driver);
+    if (!Z_ISUNDEF_P(documents)) zval_ptr_dtor(documents);
+    if (!Z_ISUNDEF_P(render)) zval_ptr_dtor(render);
+    if (!Z_ISUNDEF_P(target)) zval_ptr_dtor(target);
+    if (!Z_ISUNDEF_P(pdo)) zval_ptr_dtor(pdo);
+    if (!Z_ISUNDEF_P(statements)) zval_ptr_dtor(statements);
+}
+
 static bool schema_utils_differences(zval *live, zval *unsupported, zval *documents, zval *target, const char *method,
     const char *code)
 {
@@ -667,20 +678,10 @@ ZEND_METHOD(Polyspec_Orm_SchemaUtils, install)
     zval_ptr_dtor(&register_args[0]);
     if (!Z_ISUNDEF(registered)) zval_ptr_dtor(&registered);
     if (!ok) goto failed;
-    if (!Z_ISUNDEF(driver)) zval_ptr_dtor(&driver);
-    if (!Z_ISUNDEF(documents)) zval_ptr_dtor(&documents);
-    if (!Z_ISUNDEF(render)) zval_ptr_dtor(&render);
-    if (!Z_ISUNDEF(target)) zval_ptr_dtor(&target);
-    if (!Z_ISUNDEF(pdo)) zval_ptr_dtor(&pdo);
-    if (!Z_ISUNDEF(statements)) zval_ptr_dtor(&statements);
+    schema_utils_release_install_values(&driver, &documents, &render, &target, &pdo, &statements);
     RETURN_NULL();
 failed:
-    if (!Z_ISUNDEF(driver)) zval_ptr_dtor(&driver);
-    if (!Z_ISUNDEF(documents)) zval_ptr_dtor(&documents);
-    if (!Z_ISUNDEF(render)) zval_ptr_dtor(&render);
-    if (!Z_ISUNDEF(target)) zval_ptr_dtor(&target);
-    if (!Z_ISUNDEF(pdo)) zval_ptr_dtor(&pdo);
-    if (!Z_ISUNDEF(statements)) zval_ptr_dtor(&statements);
+    schema_utils_release_install_values(&driver, &documents, &render, &target, &pdo, &statements);
     RETURN_THROWS();
 }
 
