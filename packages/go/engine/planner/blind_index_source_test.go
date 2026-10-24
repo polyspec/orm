@@ -55,6 +55,39 @@ func blindIndexParams(p *plan.Plan) []int {
 	return params
 }
 
+type blindIndexConflictCase struct {
+	name   string
+	set    []ir.Assign
+	nParam int
+}
+
+func blindIndexConflictCases(firstParam int) []blindIndexConflictCase {
+	return []blindIndexConflictCase{
+		{
+			name:   "different params",
+			set:    []ir.Assign{{Column: "aes_a", P: intp(firstParam)}, {Column: "aes_b", P: intp(firstParam + 1)}},
+			nParam: firstParam + 2,
+		},
+		{
+			name:   "same param",
+			set:    []ir.Assign{{Column: "aes_a", P: intp(firstParam)}, {Column: "aes_b", P: intp(firstParam)}},
+			nParam: firstParam + 1,
+		},
+		{
+			name:   "both null",
+			set:    []ir.Assign{{Column: "aes_a", Null: true}, {Column: "aes_b", Null: true}},
+			nParam: firstParam,
+		},
+	}
+}
+
+func requireBlindIndexConflict(t *testing.T, p *plan.Plan, err error, context string) {
+	t.Helper()
+	if err == nil || p != nil || !strings.Contains(err.Error(), "IR_INVALID") || !strings.Contains(err.Error(), "idx") || !strings.Contains(err.Error(), "aes_a") || !strings.Contains(err.Error(), "aes_b") {
+		t.Fatalf("%s compile = (%v, %v), want IR_INVALID naming idx, aes_a and aes_b", context, p, err)
+	}
+}
+
 func TestMultiRowBlindIndexUsesAssignedSourceAndOriginalRowOffsets(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	p, err := compileSharedBlindIndex(t, &ir.Request{
@@ -72,35 +105,13 @@ func TestMultiRowBlindIndexUsesAssignedSourceAndOriginalRowOffsets(t *testing.T)
 
 func TestBlindIndexDerivationRejectsDistinctSourcesRegardlessOfValues(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	cases := []struct {
-		name   string
-		set    []ir.Assign
-		nParam int
-	}{
-		{
-			name:   "different params",
-			set:    []ir.Assign{{Column: "name", P: intp(0)}, {Column: "aes_a", P: intp(1)}, {Column: "aes_b", P: intp(2)}},
-			nParam: 3,
-		},
-		{
-			name:   "same param",
-			set:    []ir.Assign{{Column: "name", P: intp(0)}, {Column: "aes_a", P: intp(1)}, {Column: "aes_b", P: intp(1)}},
-			nParam: 2,
-		},
-		{
-			name:   "both null",
-			set:    []ir.Assign{{Column: "name", P: intp(0)}, {Column: "aes_a", Null: true}, {Column: "aes_b", Null: true}},
-			nParam: 1,
-		},
-	}
-	for _, tc := range cases {
+	for _, tc := range blindIndexConflictCases(1) {
 		t.Run(tc.name, func(t *testing.T) {
 			p, err := compileSharedBlindIndex(t, &ir.Request{
-				Kind: "insert", Query: ir.Query{Entity: "record"}, Set: tc.set, NParams: tc.nParam,
+				Kind: "insert", Query: ir.Query{Entity: "record"},
+				Set: append([]ir.Assign{{Column: "name", P: intp(0)}}, tc.set...), NParams: tc.nParam,
 			})
-			if err == nil || p != nil || !strings.Contains(err.Error(), "IR_INVALID") || !strings.Contains(err.Error(), "idx") || !strings.Contains(err.Error(), "aes_a") || !strings.Contains(err.Error(), "aes_b") {
-				t.Fatalf("compile = (%v, %v), want IR_INVALID naming idx, aes_a and aes_b", p, err)
-			}
+			requireBlindIndexConflict(t, p, err, "insert")
 		})
 	}
 }
@@ -151,37 +162,14 @@ func TestInsertAndOnDuplicateBlindIndexAssignmentsAreIndependent(t *testing.T) {
 
 func TestOnDuplicateRejectsDistinctSourcesWithoutExplicitTarget(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	cases := []struct {
-		name   string
-		set    []ir.Assign
-		nParam int
-	}{
-		{
-			name:   "different params",
-			set:    []ir.Assign{{Column: "aes_a", P: intp(2)}, {Column: "aes_b", P: intp(3)}},
-			nParam: 4,
-		},
-		{
-			name:   "same param",
-			set:    []ir.Assign{{Column: "aes_a", P: intp(2)}, {Column: "aes_b", P: intp(2)}},
-			nParam: 3,
-		},
-		{
-			name:   "both null",
-			set:    []ir.Assign{{Column: "aes_a", Null: true}, {Column: "aes_b", Null: true}},
-			nParam: 2,
-		},
-	}
-	for _, tc := range cases {
+	for _, tc := range blindIndexConflictCases(2) {
 		t.Run(tc.name, func(t *testing.T) {
 			p, err := compileSharedBlindIndex(t, &ir.Request{
 				Kind: "insert", Query: ir.Query{Entity: "record"},
 				Set:         []ir.Assign{{Column: "name", P: intp(0)}, {Column: "idx", P: intp(1)}},
 				OnDuplicate: tc.set, NParams: tc.nParam,
 			})
-			if err == nil || p != nil || !strings.Contains(err.Error(), "IR_INVALID") || !strings.Contains(err.Error(), "idx") || !strings.Contains(err.Error(), "aes_a") || !strings.Contains(err.Error(), "aes_b") {
-				t.Fatalf("compile = (%v, %v), want IR_INVALID naming idx, aes_a and aes_b in the on_duplicate derivation conflict", p, err)
-			}
+			requireBlindIndexConflict(t, p, err, "on_duplicate")
 		})
 	}
 }
