@@ -2859,6 +2859,16 @@
         "databases"
       ]
     },
+    "connection-sqlite-concurrent-writers-python-check": {
+      "scope": "owner",
+      "needs": [
+        "python"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/python/tests/connection_pool.py"
+      ]
+    },
     "python-check": {
       "scope": "owner",
       "needs": [

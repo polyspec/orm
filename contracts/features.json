@@ -435,6 +435,15 @@
             "packages/python/tests/connection_pool.py",
             "packages/python/src/polyspec/orm/database.py"
           ]
+        },
+        {
+          "id": "connection-sqlite-concurrent-writers-python",
+          "command": "make connection-sqlite-concurrent-writers-python-check",
+          "shard": "other",
+          "inputs": [
+            "Makefile",
+            "packages/python/tests/connection_pool.py"
+          ]
         }
       ],
       "coverage": {

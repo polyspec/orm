@@ -157,6 +157,42 @@ class ConnectionPoolTest(unittest.TestCase):
 
         self.each(body)
 
+    # Requirements: CFG-12. Each connection commits every write while writers share one SQLite file.
+    def test_sqlite_concurrent_writers_commit_every_row(self):
+        with tempfile.TemporaryDirectory(prefix="orm-sqlite-writers-") as directory:
+            dsn = f"sqlite://{directory}/writers.sqlite3"
+            setup = models.connect(dsn)
+            install_bench(setup)
+            setup.close()
+            dbs = [models.connect(dsn) for _ in range(8)]
+            failures = []
+
+            def write(db, name):
+                try:
+                    for index in range(10):
+                        def body():
+                            models.Service().connect(db).get_count()
+                            models.Service().connect(db).set_name(f"{name}-{index}").create()
+
+                        db.transaction(body, {"retry": 0})
+                except Exception as error:
+                    failures.append(error)
+
+            threads = [
+                threading.Thread(target=write, args=(db, f"connection-{index}"))
+                for index, db in enumerate(dbs)
+            ]
+            try:
+                for thread in threads:
+                    thread.start()
+                for thread in threads:
+                    thread.join()
+                self.assertEqual(failures, [], "every writer transaction succeeds without retries")
+                self.assertEqual(models.Service().connect(dbs[0]).get_count(), 80)
+            finally:
+                for db in dbs:
+                    db.close()
+
     def test_idle_size_and_lifetime(self):
         def body(dialect, dsn):
             db = models.connect(dsn, poolSize=3, poolIdleSize=1)

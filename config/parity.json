@@ -3527,7 +3527,6 @@
         }
       ]
     },
-
     {
       "id": "ts-package-declarations",
       "kind": "feature",
@@ -3886,22 +3885,6 @@
           "implementation": "typescript",
           "test": "packages/ts/tests/rollback.mjs",
           "id": "rollback/rollback_failed/sqlite"
-        }
-      ]
-    },
-    {
-      "id": "ts-sqlite-concurrency",
-      "kind": "feature",
-      "requirements": [
-        "CFG-12",
-        "CFG-13",
-        "CFG-14"
-      ],
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/sqlite-concurrency.mjs",
-          "id": "sqlite-concurrency/writersInSeveralProcesses"
         }
       ]
     },
@@ -7828,21 +7811,6 @@
       ]
     },
     {
-      "id": "go-internal-packages-go-model-sqlite-concurrency",
-      "kind": "feature",
-      "requirements": [
-        "CFG-12",
-        "CFG-13"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/sqlite_concurrency_test.go",
-          "id": "TestSQLiteWritersOnSeveralConnections"
-        }
-      ]
-    },
-    {
       "id": "go-internal-packages-go-model-styled-state",
       "kind": "feature",
       "requirements": [
@@ -8981,7 +8949,6 @@
         }
       ]
     },
-
     {
       "id": "go-internal-packages-go-orm-register",
       "kind": "feature",
@@ -9483,7 +9450,9 @@
     {
       "id": "generated-code-no-lint-suppressions",
       "kind": "feature",
-      "requirements": ["INT-66"],
+      "requirements": [
+        "INT-66"
+      ],
       "bindings": [
         {
           "implementation": "go",
@@ -11504,7 +11473,9 @@
     {
       "id": "rust-session-sql-mode-is-the-declared-one",
       "kind": "feature",
-      "requirements": ["CFG-3"],
+      "requirements": [
+        "CFG-3"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -12201,38 +12172,6 @@
       ]
     },
     {
-      "id": "rust-writers-in-several-processes",
-      "kind": "feature",
-      "requirements": [
-        "CFG-12",
-        "CFG-13",
-        "CFG-19"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/sqlite_concurrency.rs",
-          "id": "writers_in_several_processes"
-        }
-      ]
-    },
-    {
-      "id": "rust-writers-on-several-connections",
-      "kind": "feature",
-      "requirements": [
-        "CFG-12",
-        "CFG-13",
-        "CFG-19"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/sqlite_concurrency.rs",
-          "id": "writers_on_several_connections"
-        }
-      ]
-    },
-    {
       "id": "rust-markdown-bind-message-tests-control-vectors",
       "kind": "feature",
       "requirements": [
@@ -12380,10 +12319,6 @@
         }
       ]
     },
-
-
-
-
     {
       "id": "rust-postgres-float-round-trip",
       "kind": "feature",
@@ -12398,7 +12333,6 @@
         }
       ]
     },
-
     {
       "id": "rust-dbspec-set-nested-json-rules",
       "kind": "feature",
@@ -13357,9 +13291,6 @@
         }
       ]
     },
-
-
-
     {
       "id": "py-dbspec-cases",
       "kind": "feature",
@@ -13402,7 +13333,6 @@
         }
       ]
     },
-
     {
       "id": "py-replica",
       "kind": "feature",
@@ -15380,21 +15310,6 @@
       ]
     },
     {
-      "id": "php-internal-sqlite-concurrency-writers-in-several-processes",
-      "kind": "feature",
-      "requirements": [
-        "CFG-12",
-        "CFG-13"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/SqliteConcurrencyTest.php",
-          "id": "SqliteConcurrencyTest::testWritersInSeveralProcesses"
-        }
-      ]
-    },
-    {
       "id": "php-internal-sqlite-concurrency-reads-during-a-write",
       "kind": "feature",
       "requirements": [
@@ -15408,7 +15323,6 @@
         }
       ]
     },
-
     {
       "id": "php-internal-add-tables-and-columns-add-tables-and-columns",
       "kind": "feature",
@@ -15727,8 +15641,6 @@
         }
       ]
     },
-
-
     {
       "id": "php-internal-model-install-inside-a-transaction",
       "kind": "feature",
@@ -16342,8 +16254,7 @@
         }
       ]
     },
-
-        {
+    {
       "id": "php-internal-rollback-rollback-failed",
       "kind": "feature",
       "requirements": [
@@ -21807,33 +21718,115 @@
         "DIA-180"
       ],
       "bindings": [
-        {"implementation": "go", "test": "packages/go/orm/coverage_transaction_failure_test.go", "id": "TestTransactionFailureRollback"},
-        {"implementation": "php", "test": "packages/php/tests/TransactionFailureTest.php", "id": "TransactionFailureTest::testTransactionKeepsCallbackAndFailedRollbackErrors"},
-        {"implementation": "php-extension", "test": "packages/php-ext/tests/TransactionFailureNativeTest.php", "id": "TransactionFailureNativeTest::testTransactionKeepsCallbackAndFailedRollbackErrors"},
-        {"implementation": "typescript", "test": "packages/ts/tests/transaction-failure.mjs", "id": "transaction-failure/rollback-primary-and-cleanup"},
-        {"implementation": "python", "test": "packages/python/tests/test_rollback_fault.py", "id": "test_a_failed_rollback_reports_the_callback_error_and_the_rollback_error"},
-        {"implementation": "rust", "test": "packages/rust/orm/src/tx.rs", "id": "tx::tests::sqlite_transaction_end_failures_are_reported"}
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_transaction_failure_test.go",
+          "id": "TestTransactionFailureRollback"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/TransactionFailureTest.php",
+          "id": "TransactionFailureTest::testTransactionKeepsCallbackAndFailedRollbackErrors"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/TransactionFailureNativeTest.php",
+          "id": "TransactionFailureNativeTest::testTransactionKeepsCallbackAndFailedRollbackErrors"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/transaction-failure.mjs",
+          "id": "transaction-failure/rollback-primary-and-cleanup"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_rollback_fault.py",
+          "id": "test_a_failed_rollback_reports_the_callback_error_and_the_rollback_error"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/tx.rs",
+          "id": "tx::tests::sqlite_transaction_end_failures_are_reported"
+        }
       ]
     },
     {
       "id": "transaction-failure-rollback-fault",
       "kind": "feature",
-      "requirements": ["INT-72"],
+      "requirements": [
+        "INT-72"
+      ],
       "bindings": [
-        {"implementation": "go", "test": "packages/go/orm/rollback_fault_test.go", "id": "TestRollbackFaultSQLite"},
-        {"implementation": "go", "test": "packages/go/orm/rollback_fault_test.go", "id": "TestRollbackFaultMySQL"},
-        {"implementation": "go", "test": "packages/go/orm/rollback_fault_test.go", "id": "TestRollbackFaultPostgres"},
-        {"implementation": "php", "test": "packages/php/tests/TransactionFailureTest.php", "id": "TransactionFailureTest::testRollbackFaultIsConsumedAfterTransactionRollback"},
-        {"implementation": "php", "test": "packages/php/tests/RollbackTest.php", "id": "RollbackTest::testRollbackFault"},
-        {"implementation": "php-extension", "test": "packages/php-ext/tests/TransactionFailureNativeTest.php", "id": "TransactionFailureNativeTest::testRollbackFaultIsConsumedAfterTransactionRollback"},
-        {"implementation": "typescript", "test": "packages/ts/tests/transaction-failure.mjs", "id": "transaction-failure/rollback-fault-consumption"},
-        {"implementation": "typescript", "test": "packages/ts/tests/rollback.mjs", "id": "rollback/rollback_fault/sqlite"},
-        {"implementation": "typescript", "test": "packages/ts/tests/rollback.mjs", "id": "rollback/rollback_fault/mysql"},
-        {"implementation": "typescript", "test": "packages/ts/tests/rollback.mjs", "id": "rollback/rollback_fault/postgres"},
-        {"implementation": "python", "test": "packages/python/tests/test_rollback_fault.py", "id": "test_the_fault_reports_the_next_failed_rollback"},
-        {"implementation": "rust", "test": "packages/rust/orm/tests/rollback.rs", "id": "rollback_fault_sqlite"},
-        {"implementation": "rust", "test": "packages/rust/orm/tests/rollback.rs", "id": "rollback_fault_mysql"},
-        {"implementation": "rust", "test": "packages/rust/orm/tests/rollback.rs", "id": "rollback_fault_postgres"}
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/rollback_fault_test.go",
+          "id": "TestRollbackFaultSQLite"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/rollback_fault_test.go",
+          "id": "TestRollbackFaultMySQL"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/rollback_fault_test.go",
+          "id": "TestRollbackFaultPostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/TransactionFailureTest.php",
+          "id": "TransactionFailureTest::testRollbackFaultIsConsumedAfterTransactionRollback"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RollbackTest.php",
+          "id": "RollbackTest::testRollbackFault"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/TransactionFailureNativeTest.php",
+          "id": "TransactionFailureNativeTest::testRollbackFaultIsConsumedAfterTransactionRollback"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/transaction-failure.mjs",
+          "id": "transaction-failure/rollback-fault-consumption"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/rollback.mjs",
+          "id": "rollback/rollback_fault/sqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/rollback.mjs",
+          "id": "rollback/rollback_fault/mysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/rollback.mjs",
+          "id": "rollback/rollback_fault/postgres"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_rollback_fault.py",
+          "id": "test_the_fault_reports_the_next_failed_rollback"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/rollback.rs",
+          "id": "rollback_fault_sqlite"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/rollback.rs",
+          "id": "rollback_fault_mysql"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/rollback.rs",
+          "id": "rollback_fault_postgres"
+        }
       ]
     },
     {
@@ -21844,13 +21837,41 @@
         "PLN-17"
       ],
       "bindings": [
-        {"implementation": "go", "test": "packages/go/orm/coverage_transaction_failure_test.go", "id": "TestTransactionFailureSavepointEnd"},
-        {"implementation": "go", "test": "packages/go/orm/transaction_end_test.go", "id": "TestSavepointReportsFailedEnd"},
-        {"implementation": "php", "test": "packages/php/tests/TransactionFailureTest.php", "id": "TransactionFailureTest::testSavepointAttemptsBothEndStepsAndKeepsTheCallbackError"},
-        {"implementation": "php-extension", "test": "packages/php-ext/tests/TransactionFailureNativeTest.php", "id": "TransactionFailureNativeTest::testSavepointAttemptsBothEndStepsAndKeepsTheCallbackError"},
-        {"implementation": "typescript", "test": "packages/ts/tests/transaction-failure.mjs", "id": "transaction-failure/savepoint-end-attempts-both"},
-        {"implementation": "python", "test": "packages/python/tests/test_rollback_fault.py", "id": "test_a_failed_savepoint_rollback_and_transaction_rollback_report_both"},
-        {"implementation": "rust", "test": "packages/rust/orm/src/tx.rs", "id": "tx::tests::savepoint_end_failures_are_reported"}
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_transaction_failure_test.go",
+          "id": "TestTransactionFailureSavepointEnd"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/transaction_end_test.go",
+          "id": "TestSavepointReportsFailedEnd"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/TransactionFailureTest.php",
+          "id": "TransactionFailureTest::testSavepointAttemptsBothEndStepsAndKeepsTheCallbackError"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/TransactionFailureNativeTest.php",
+          "id": "TransactionFailureNativeTest::testSavepointAttemptsBothEndStepsAndKeepsTheCallbackError"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/transaction-failure.mjs",
+          "id": "transaction-failure/savepoint-end-attempts-both"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_rollback_fault.py",
+          "id": "test_a_failed_savepoint_rollback_and_transaction_rollback_report_both"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/tx.rs",
+          "id": "tx::tests::savepoint_end_failures_are_reported"
+        }
       ]
     },
     {
@@ -22042,7 +22063,7 @@
         }
       ]
     },
-        {
+    {
       "id": "generated-typed-getter-public-column-api",
       "kind": "feature",
       "requirements": [
@@ -22251,43 +22272,82 @@
       ]
     },
     {
-          "id": "complex-query-product-search",
-          "kind": "feature",
-          "requirements": [
-                "CPX-2"
-          ],
-          "bindings": [
-                {
-                      "implementation": "go",
-                      "test": "packages/go/complexquery/coverage_complex_query_test.go",
-                      "id": "TestCoverageComplexQueryProductSearch"
-                },
-                {
-                      "implementation": "php",
-                      "test": "packages/php/tests/ComplexQueryDbTest.php",
-                      "id": "ComplexQueryDbTest::testFeatureProductSearchPage"
-                },
-                {
-                      "implementation": "php-extension",
-                      "test": "packages/php-ext/tests/ComplexQueryNativeTest.php",
-                      "id": "ComplexQueryNativeTest::testFeatureProductSearchPageUsesNativePlannerAndModels"
-                },
-                {
-                      "implementation": "typescript",
-                      "test": "packages/ts/tests/coverage_complex_query.mjs",
-                      "id": "complex_query_product_search"
-                },
-                {
-                      "implementation": "python",
-                      "test": "packages/python/tests/coverage_complex_query.py",
-                      "id": "test_complex_query_product_search"
-                },
-                {
-                      "implementation": "rust",
-                      "test": "packages/rust/tests/tests/integration/coverage_complex_query.rs",
-                      "id": "coverage_complex_query::coverage_complex_query_product_search"
-                }
-          ]
+      "id": "complex-query-product-search",
+      "kind": "feature",
+      "requirements": [
+        "CPX-2"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/complexquery/coverage_complex_query_test.go",
+          "id": "TestCoverageComplexQueryProductSearch"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ComplexQueryDbTest.php",
+          "id": "ComplexQueryDbTest::testFeatureProductSearchPage"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ComplexQueryNativeTest.php",
+          "id": "ComplexQueryNativeTest::testFeatureProductSearchPageUsesNativePlannerAndModels"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_complex_query.mjs",
+          "id": "complex_query_product_search"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_complex_query.py",
+          "id": "test_complex_query_product_search"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/integration/coverage_complex_query.rs",
+          "id": "coverage_complex_query::coverage_complex_query_product_search"
+        }
+      ]
+    },
+    {
+      "id": "connection-sqlite-concurrent-writers",
+      "kind": "feature",
+      "requirements": [
+        "CFG-12"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/sqlite_concurrency_test.go",
+          "id": "TestSQLiteWritersOnSeveralConnections"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/SqliteConcurrencyTest.php",
+          "id": "SqliteConcurrencyTest::testWritersInSeveralProcesses"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConnectionBusyTimeoutNativeTest.php",
+          "id": "ConnectionBusyTimeoutNativeTest::testNativeConnectionsCommitConcurrentSqliteWriters"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/sqlite-concurrency.mjs",
+          "id": "sqlite-concurrency/writersInSeveralProcesses"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/connection_pool.py",
+          "id": "test_sqlite_concurrent_writers_commit_every_row"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/sqlite_concurrency.rs",
+          "id": "writers_on_several_connections"
+        }
+      ]
     }
   ],
   "errors": {
@@ -22312,8 +22372,8 @@
       "clients",
       "planners",
       "runners",
-      "\uc5b8\uc5b4",
-      "\uad6c\ud604",
+      "언어",
+      "구현",
       "client",
       "planner",
       "runner"
