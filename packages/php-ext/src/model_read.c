@@ -14,6 +14,7 @@
 #include <string.h>
 
 static bool read_aggregate(zval *model, const char *fn, zval *return_value);
+static zval *read_array(zval *array, const char *key);
 
 static zend_class_entry *read_lookup_class(const char *name)
 {
@@ -89,6 +90,31 @@ static bool read_model_static_call(zval *model, const char *name, zval *result, 
     ZVAL_UNDEF(result);
     zend_call_known_function(fn, NULL, Z_OBJCE_P(model), result, argc, args, NULL);
     return EG(exception) == NULL;
+}
+
+static bool read_child_result(zval *items, zend_string *name, bool relation, zval **child_out, zval **many_out)
+{
+    *child_out = NULL;
+    if (many_out != NULL) *many_out = NULL;
+    if (items == NULL || Z_TYPE_P(items) != IS_ARRAY) return true;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(items), zval *item) {
+        zval *child = read_array(item, "child");
+        zval *many = relation ? read_array(item, "many") : NULL;
+        if (child == NULL || Z_TYPE_P(child) != IS_OBJECT || (relation && many == NULL)) continue;
+        zval result, argument;
+        if (relation) ZVAL_COPY(&argument, many); else ZVAL_FALSE(&argument);
+        bool ok = read_model_call(child, "resultName", &result, 1, &argument);
+        if (relation) zval_ptr_dtor(&argument);
+        if (!ok) return false;
+        bool same = Z_TYPE(result) == IS_STRING && zend_string_equals(Z_STR(result), name);
+        zval_ptr_dtor(&result);
+        if (same) {
+            *child_out = child;
+            if (many_out != NULL) *many_out = many;
+            return true;
+        }
+    } ZEND_HASH_FOREACH_END();
+    return true;
 }
 
 ZEND_METHOD(Polyspec_Orm_Model, newRow)
@@ -357,17 +383,9 @@ ZEND_METHOD(Polyspec_Orm_Model, joinChild)
     zend_string *name;
     ZEND_PARSE_PARAMETERS_START(1, 1) Z_PARAM_STR(name) ZEND_PARSE_PARAMETERS_END();
     zval *joins = model_state_property(model_state_of(Z_OBJ_P(ZEND_THIS)), "joins");
-    if (joins != NULL && Z_TYPE_P(joins) == IS_ARRAY) {
-        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(joins), zval *join) {
-            zval *child = read_array(join, "child");
-            if (child == NULL || Z_TYPE_P(child) != IS_OBJECT) continue;
-            zval result, args[1]; ZVAL_FALSE(&args[0]);
-            if (!read_model_call(child, "resultName", &result, 1, args)) RETURN_THROWS();
-            bool same = Z_TYPE(result) == IS_STRING && zend_string_equals(Z_STR(result), name);
-            zval_ptr_dtor(&result);
-            if (same) RETURN_COPY(child);
-        } ZEND_HASH_FOREACH_END();
-    }
+    zval *child;
+    if (!read_child_result(joins, name, false, &child, NULL)) RETURN_THROWS();
+    if (child != NULL) RETURN_COPY(child);
     zend_string *message = strpprintf(0, "join result %s without a model", ZSTR_VAL(name));
     read_throw("INTERNAL", ZSTR_VAL(message)); zend_string_release(message); RETURN_THROWS();
 }
@@ -379,21 +397,12 @@ ZEND_METHOD(Polyspec_Orm_Model, relationChild)
     zend_string *name;
     ZEND_PARSE_PARAMETERS_START(1, 1) Z_PARAM_STR(name) ZEND_PARSE_PARAMETERS_END();
     zval *relations = model_state_property(model_state_of(Z_OBJ_P(ZEND_THIS)), "relations");
-    if (relations != NULL && Z_TYPE_P(relations) == IS_ARRAY) {
-        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(relations), zval *relation) {
-            zval *child = read_array(relation, "child"), *many = read_array(relation, "many");
-            if (child == NULL || Z_TYPE_P(child) != IS_OBJECT || many == NULL) continue;
-            zval result, arg; ZVAL_COPY(&arg, many);
-            if (!read_model_call(child, "resultName", &result, 1, &arg)) { zval_ptr_dtor(&arg); RETURN_THROWS(); }
-            zval_ptr_dtor(&arg);
-            bool same = Z_TYPE(result) == IS_STRING && zend_string_equals(Z_STR(result), name);
-            zval_ptr_dtor(&result);
-            if (same) {
-                array_init_size(return_value, 2); zval child_copy, many_copy;
-                ZVAL_COPY(&child_copy, child); ZVAL_COPY(&many_copy, many);
-                add_next_index_zval(return_value, &child_copy); add_next_index_zval(return_value, &many_copy); return;
-            }
-        } ZEND_HASH_FOREACH_END();
+    zval *child, *many;
+    if (!read_child_result(relations, name, true, &child, &many)) RETURN_THROWS();
+    if (child != NULL) {
+        array_init_size(return_value, 2); zval child_copy, many_copy;
+        ZVAL_COPY(&child_copy, child); ZVAL_COPY(&many_copy, many);
+        add_next_index_zval(return_value, &child_copy); add_next_index_zval(return_value, &many_copy); return;
     }
     zend_string *message = strpprintf(0, "relation result %s without a model", ZSTR_VAL(name));
     read_throw("INTERNAL", ZSTR_VAL(message)); zend_string_release(message); RETURN_THROWS();
