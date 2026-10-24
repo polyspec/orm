@@ -1,5 +1,5 @@
 <!-- doc-id: schema -->
-<!-- source-sha256: 3b6b0a0db3c8a11621a2475bb0114a8bea6abdb6b2e6e6d810bc84e6c5a2bc6f -->
+<!-- source-sha256: 3945a56a6f647ea963405c95316d227412f058a21488b752a17102c15f2d2f79 -->
 # 스키마
 
 스키마 source는 dbspec document(`.dbs`)의 집합이다. [dbspec.md](dbspec.md)가 언어, 검증 규칙, manifest text와 두 hash를 정의한다. `contracts/fixtures/bench/bench.dbs`는 테스트와 벤치마크의 스키마다. 다른 스키마 파일은 없으며 모든 generator, runtime, 스키마 작업이 document set을 읽는다.
@@ -24,19 +24,23 @@
 
 스키마 작업은 각 클라이언트 라이브러리의 함수다. 함수는 parse한 document와 dialect(`mysql`, `postgres`, `sqlite`)를 받아 statement나 위치가 있는 diagnostic을 돌려준다.
 
-| 작업 | Go `packages/go/engine/dbspec` | PHP `Polyspec\Orm\Dbspec\Dbspec` | TypeScript | Rust | Python |
+| 작업 | Go `packages/go/engine/dbspec` | PHP `Polyspec\Orm\Dbspec\Dbspec` | PHP extension | TypeScript | Rust | Python |
 |---|---|---|---|---|---|
-| document set의 statement 렌더링([방언](dialects.md#rendered-statements)) | `Render` | `render` | `renderDbspec` | `polyspec_orm_schema::dbspec::render` | `polyspec.orm.dbspec.render.render_dbspec` |
-| 데이터베이스를 document로 introspect([방언](dialects.md#introspection)) | `Introspect` | `introspect` | `introspectDbspec` | `polyspec_orm::dbspec::introspect` | `polyspec.orm.dbspec.introspect.introspect_dbspec` |
-| plan과 source의 diff([plans](plans.md)) | `Diff` | `diff` | `diffPlan` | `polyspec_orm_schema::dbspec::diff` | `polyspec.orm.dbspec.plan_diff.diff_plan` |
-| 데이터베이스를 document set과 비교([설치](#_4-schema-installation)) | `InstalledDifferences` | `installedDifferences` | `installedDifferences` | `polyspec_orm_schema::dbspec::installed_differences` | `polyspec.orm.dbspec.installed.installed_differences` |
-| plan의 step과 rollback statement 작성([plans](plans.md#steps)) | `PlanSteps` | `planSteps` | `planSteps` | `polyspec_orm_schema::dbspec::plan_steps` | `polyspec.orm.dbspec.plan_steps.plan_steps` |
-| plan chain 적용([plans](plans.md#apply)) | `Apply` | `apply` | `applyPlans` | `polyspec_orm::dbspec::apply` | `polyspec.orm.dbspec.apply.apply_plans` |
-| 중단된 plan 이어 가기([plans](plans.md#apply)) | `Recover` | `recover` | `recoverPlans` | `polyspec_orm::dbspec::recover` | `polyspec.orm.dbspec.apply.recover_plans` |
-| 마지막 plan rollback([plans](plans.md#apply)) | `Rollback` | `rollback` | `rollbackPlans` | `polyspec_orm::dbspec::rollback` | `polyspec.orm.dbspec.apply.rollback_plans` |
-| 적용한 plan finalize([plans](plans.md#apply)) | `Finalize` | `finalize` | `finalizePlans` | `polyspec_orm::dbspec::finalize` | `polyspec.orm.dbspec.apply.finalize_plans` |
+| document set의 statement 렌더링([방언](dialects.md#rendered-statements)) | `Render` | `render` | `Dbspec::render` | `renderDbspec` | `polyspec_orm_schema::dbspec::render` | `polyspec.orm.dbspec.render.render_dbspec` |
+| 데이터베이스를 document로 introspect([방언](dialects.md#introspection)) | `Introspect` | `introspect` | `Dbspec::introspect` | `introspectDbspec` | `polyspec_orm::dbspec::introspect` | `polyspec.orm.dbspec.introspect.introspect_dbspec` |
+| plan과 source의 diff([plans](plans.md)) | `Diff` | `diff` | `Dbspec::diff` | `diffPlan` | `polyspec_orm_schema::dbspec::diff` | `polyspec.orm.dbspec.plan_diff.diff_plan` |
+| 데이터베이스를 document set과 비교([설치](#_4-schema-installation)) | `InstalledDifferences` | `installedDifferences` | `Dbspec::installedDifferences` | `installedDifferences` | `polyspec_orm_schema::dbspec::installed_differences` | `polyspec.orm.dbspec.installed.installed_differences` |
+| plan의 step과 rollback statement 작성([plans](plans.md#steps)) | `PlanSteps` | `planSteps` | `Dbspec::planSteps` | `planSteps` | `polyspec_orm_schema::dbspec::plan_steps` | `polyspec.orm.dbspec.plan_steps.plan_steps` |
+| plan chain 적용([plans](plans.md#apply)) | `Apply` | `apply` | `Dbspec::apply` | `applyPlans` | `polyspec_orm::dbspec::apply` | `polyspec.orm.dbspec.apply.apply_plans` |
+| 중단된 plan 이어 가기([plans](plans.md#apply)) | `Recover` | `recover` | `Dbspec::recover` | `recoverPlans` | `polyspec_orm::dbspec::recover` | `polyspec.orm.dbspec.apply.recover_plans` |
+| 마지막 plan rollback([plans](plans.md#apply)) | `Rollback` | `rollback` | `Dbspec::rollback` | `rollbackPlans` | `polyspec_orm::dbspec::rollback` | `polyspec.orm.dbspec.apply.rollback_plans` |
+| 적용한 plan finalize([plans](plans.md#apply)) | `Finalize` | `finalize` | `Dbspec::finalize` | `finalizePlans` | `polyspec_orm::dbspec::finalize` | `polyspec.orm.dbspec.apply.finalize_plans` |
+
+PHP extension 선언은 PHP API의 `Dbspec` parse/render/introspection 표면을 노출한다. ORM schema 관리와 catalog 연결은 extension에서 미완료다.
 
 [mermaid.md](mermaid.md)는 document를 Mermaid `erDiagram`으로 내보내는 방법과 diagram을 document로 가져오는 방법을 정한다.
+
+PHP extension은 extension 선언을 통해 PHP API의 `Dbspec` parse/render/introspection 표면을 노출한다. ORM schema 관리와 catalog 연결은 별도 기능이며 extension에서는 미완료다.
 
 ## 3. Rust 카탈로그 연결 {#_3-rust-catalog-connections}
 
@@ -48,7 +52,7 @@
 
 - **SCH-6** SQLite 카탈로그 연결은 기존 일반 DB 파일을 요구하고 파일 자동 생성을 끈다. `close(self)`는 예약 연결을 해제한 뒤 풀을 닫는다. 임의 SQL/데이터 접근을 활성화하기 전에 네이티브 디코딩 한계를 소유 코드에서 수정해야 한다.
 
-- **SCH-6a** 카탈로그 연결은 모든 client(Go, TypeScript, Rust, Python, PHP와 PHP 확장)에서 하나의 중립 규칙이다. `connect(dsn)`(Go `orm.ConnectCatalog(dsn)`, TypeScript `connectCatalog(dsn)`, Python `connect_catalog(dsn)`, PHP `Polyspec\Orm\Catalog::connect($dsn)`, Rust `CatalogConnection::connect(dsn)`)은 DSN만으로 데이터베이스를 고르고 markdown DSN을 거부한다. SQLite는 기존 일반 파일을 요구하며 파일을 만들지 않는다. client는 `current_namespace`, `describe_table`, `table_page`, `read_only_query`, `read_only_grid_query`, `insert_row`, `update_row`, `delete_row`를 제공하며, 의미는 [인터페이스](interfaces.md)의 Rust 기준("Qualified native Rust table metadata" 절과 그 뒤의 절들)과 같고, 이름은 각 언어의 규칙을 따르며, 오류 코드(`CONFIG`, `QUERY_READ_ONLY`, `GRID_TEMPORAL_VALUE` 등 기준이 정한 코드)는 같다. 모든 client는 MySQL, PostgreSQL, SQLite에서 같은 카탈로그 conformance case를 통과한다. 이 연산 중 하나라도 없는 client는 카탈로그 연결을 구현하지 않은 것이며 feature는 partial로 남는다. close 이후 카탈로그 연결의 연산은 Go, TypeScript, Python에서 `CATALOG_CLOSED`로 실패하며 어떤 문장도 데이터베이스로 보내지 않는다. Rust: `close(self)`가 연결을 소비하므로 close 이후의 연산은 컴파일되지 않고, Rust에서는 `CATALOG_CLOSED`가 발생하지 않는다. 소비하는 close를 유지하며 이 경우의 런타임 코드는 정의하지 않는다. `read_only_grid_query`의 grid cell은 PHP에서 다음과 같이 바인딩되며, PHP client와 PHP 확장은 이 바인딩을 정확히 따른다: float32와 float64 cell은 IEEE-754 비트를 소문자 16진수로 담으며 float32는 8자리, float64는 16자리이므로 부호 있는 0과 nonfinite 값이 보존된다. unsigned cell은 전체 unsigned 64비트 범위에서 정확한 10진수 문자열이다. integer cell은 네이티브 정수다. boolean은 boolean이다. text, binary, decimal은 문자열이며 binary는 바이트다. date, time, datetime은 dbspec 텍스트다. SQL NULL은 null이다. driver가 UNSIGNED 플래그나 binary charset을 보고하지 않는 MySQL 정수, 텍스트, binary 컬럼은 현재 데이터베이스의 컬럼 정의에서 타입을 얻으며, 그런 타입의 표현식은 `CATALOG_VALUE`로 실패한다. client는 이를 추측하지 않는다.
+- **SCH-6a** 카탈로그 연결은 설정된 여섯 구현(Go, PHP, PHP extension, TypeScript, Python, Rust)의 공통 요구이며 Rust에만 해당하는 contract가 아니다. 필수 API는 `connect(dsn)`과 `current_namespace`, `describe_table`, `table_page`, `read_only_query`, `read_only_grid_query`, `insert_row`, `update_row`, `delete_row`이며 의미와 오류 코드는 [인터페이스](interfaces.md)에 있다. 현재 main에서는 Rust만 catalog 연결을 노출한다. 나머지 구현과 MySQL, PostgreSQL, SQLite의 공통 실행 증거는 KSTD-7-7에서 미완료 상태다. 빠진 연산이 있으면 feature는 partial이며 공통 요구를 낮추지 않는다. Rust는 DSN에서 DB를 선택하고 markdown DSN을 거부하며 기존 SQLite 파일을 요구한다. `close(self)`는 연결을 소비한다. PHP library의 grid binding 규칙은 계속 공통 값 contract로 요구되며 PHP extension의 native catalog 구현 완료를 뜻하지 않는다.
 
 ## 4. 스키마 설치 {#_4-schema-installation}
 

@@ -1,5 +1,5 @@
 <!-- doc-id: codec -->
-<!-- source-sha256: 0533db648f541ff66fac218911403e16b95d405bbdfc95be516d1255357d69b1 -->
+<!-- source-sha256: 80cc2cc80f9e9c13e9216888804bc5deadd2393afb493a928b01e8a2e6d67165 -->
 # 코덱 — 컬럼 스타일의 읽기/쓰기 (S2)
 
 - **COD-1** Go 데이터베이스 값 변환은 잘못된 형식, null, 범위 초과, 유한하지 않은 값, 지원하지 않는 값에 `CODEC_DECODE`를 반환한다. Host 인코딩은 단계가 없거나 텍스트·바이트가 아닌 값에 `CODEC_ENCODE`를 반환한다. 생성 모델 대입은 컬럼 이름을 붙여 변환 오류를 보고한다. 행 조립은 오류를 호출자에게 반환하고 insert는 쓰기 전에 대입 필드를 검증한다. 빈 바이트 배열은 SQL NULL과 구분한다. scalar 집계 변환은 유효한 십진수를 가장 가까운 유한 binary64 값으로 받는다.
@@ -61,7 +61,7 @@ table service_config {
 
 - **COD-19** Python codec의 `decode`는 `polyspec.orm.StyledValue`를 반환한다. `kind`는 `sql-null` 또는 `value`이며, `StyledValue.sql_null()`과 `StyledValue.value(v)`가 두 변형을 만든다. `payload()`는 저장 값을 반환하고 SQL NULL에서는 `CODEC_DECODE`로 실패한다. `to_json()`은 TypeScript와 같은 tagged 형태를 쓴다.
 
-- **COD-20** 값 스타일 컬럼(`ordered_json`, `serialize`, `yaml`)은 SQL NULL과 저장된 null 값을 구분한다. SQL NULL에는 인코딩된 값이 없다. JSON 리터럴 null은 `null`, PHP 직렬화 null은 `N;`, YAML null은 YAML null 문서를 저장한다. 모든 값 스타일 컬럼의 setter는 `StyledValue<T>`를 받고 getter도 `StyledValue<T>`를 반환한다. `SqlNull`은 SQL NULL을 쓰거나 반환하고, `Value(v)`는 null 값을 포함해 인코딩된 값을 쓰거나 반환한다. nullable 컬럼은 두 변형을 모두 허용하며 NULL을 허용하지 않는 컬럼은 `SqlNull`을 `CODEC_ENCODE`로 거부한다. 언어의 일반 null 값은 값 스타일 컬럼 setter의 입력이 아니다. 읽기는 nullable 값 스타일 컬럼의 SQL NULL을 root 행, join 행, relation 행에서 모두 `SqlNull`로 반환하므로, 행에서 읽은 값은 같은 상태를 다시 쓰는 setter 입력이다. Python에서 두 변형은 `polyspec.orm`의 `StyledValue.sql_null()`과 `StyledValue.value(v)`이다. 거부된 setter는 호출 시 실패한다. Go setter는 `(*Model, error)`를, getter는 `(orm.StyledValue, error)`를 반환하고, Rust setter는 `Result<Self>`를, getter는 `Result<StyledValue<T>>`를 반환하며, PHP, Python, TypeScript는 코드가 있는 오류를 던진다. 행에서 조회하지 않은 컬럼에는 어느 값도 없으며 이를 요청하면 `COLUMN_UNSELECTED`를 반환한다. 빈 JSON 저장 텍스트는 유효하지 않으므로 `CODEC_DECODE`를 반환한다. 모델 JSON 출력과 행 배열 출력은 조회한 값 스타일 컬럼을 모두 감싼다. SQL NULL은 `{"kind":"sql-null"}`, 인코딩된 값은 `{"kind":"value","value":<디코딩된 값>}`이다. 이 바깥 표현은 문서 내용과 분리되므로 `{"kind":"sql-null"}` JSON 문서는 `{"kind":"value","value":{"kind":"sql-null"}}`이 된다. 조회하지 않은 컬럼을 요청하면 출력값을 만들지 않는다. `contracts/fixtures/styled_column_states.json`이 다섯 클라이언트와 세 데이터베이스의 setter 입력, getter 결과, 저장 셀, 행 배열 출력, 모델 JSON 출력, 오류를 정의한다.
+- **COD-20** 값 스타일 컬럼(`ordered_json`, `serialize`, `yaml`)은 SQL NULL과 저장된 null 값을 구분한다. SQL NULL에는 인코딩된 값이 없다. JSON 리터럴 null은 `null`, PHP 직렬화 null은 `N;`, YAML null은 YAML null 문서를 저장한다. 모든 값 스타일 컬럼의 setter는 `StyledValue<T>`를 받고 getter도 `StyledValue<T>`를 반환한다. `SqlNull`은 SQL NULL을 쓰거나 반환하고, `Value(v)`는 null 값을 포함해 인코딩된 값을 쓰거나 반환한다. nullable 컬럼은 두 변형을 모두 허용하며 NULL을 허용하지 않는 컬럼은 `SqlNull`을 `CODEC_ENCODE`로 거부한다. 언어의 일반 null 값은 값 스타일 컬럼 setter의 입력이 아니다. 읽기는 nullable 값 스타일 컬럼의 SQL NULL을 root 행, join 행, relation 행에서 모두 `SqlNull`로 반환하므로, 행에서 읽은 값은 같은 상태를 다시 쓰는 setter 입력이다. Python에서 두 변형은 `polyspec.orm`의 `StyledValue.sql_null()`과 `StyledValue.value(v)`이다. 거부된 setter는 호출 시 실패한다. Go setter는 `(*Model, error)`를, getter는 `(orm.StyledValue, error)`를 반환하고, Rust setter는 `Result<Self>`를, getter는 `Result<StyledValue<T>>`를 반환하며, PHP, Python, TypeScript는 코드가 있는 오류를 던진다. 행에서 조회하지 않은 컬럼에는 어느 값도 없으며 이를 요청하면 `COLUMN_UNSELECTED`를 반환한다. 빈 JSON 저장 텍스트는 유효하지 않으므로 `CODEC_DECODE`를 반환한다. 모델 JSON 출력과 행 배열 출력은 조회한 값 스타일 컬럼을 모두 감싼다. SQL NULL은 `{"kind":"sql-null"}`, 인코딩된 값은 `{"kind":"value","value":<디코딩된 값>}`이다. 이 바깥 표현은 문서 내용과 분리되므로 `{"kind":"sql-null"}` JSON 문서는 `{"kind":"value","value":{"kind":"sql-null"}}`이 된다. 조회하지 않은 컬럼을 요청하면 출력값을 만들지 않는다. `contracts/fixtures/styled_column_states.json`은 세 database에서 Go, PHP, PHP extension, TypeScript, Python, Rust의 contract 입력, 결과, 저장 값, 출력, 오류를 정의한다. 이 표는 native codec coverage가 완료됐다는 뜻이 아니다.
 
 - **COD-21** TypeScript는 setter가 모델을 바꾸기 전과 인코딩·출력을 위해 값을 읽을 때 값 스타일 값을 검사한다.
   정의되지 않은 멤버, 빠진 배열 위치, 유한하지 않은 수, JSON에서 생략될 객체 멤버는
@@ -106,10 +106,10 @@ table service_config {
 - **COD-41** 읽기: 실행기가 위치형 행을 읽은 직후 `assemble.columns[].styles`에 따라 각 셀을 디코드한다.
 - **COD-42** 쓰기: `set<Col>(v)`는 선언된 스타일을 사용해 런타임 `setStyled`를 호출하고 인코딩된 바이트를 바인드한다.
 - **COD-43** 스타일 컬럼의 술어는 `isNull`과 `isNotNull`로 제한한다(`ir.OpAllowed`).
-- **COD-44** read 경로는 key version과 stored version에 대해 모든 client(Go, PHP, PHP extension, Python, Rust)가 같은 코드를 준다. 선언되지 않았거나, 비었거나, 잘못된 key version은 `CONFIG`이고, 양의 i32 정수가 아닌 stored version은 `CODEC_DECODE`이며, 0이나 NaN으로 강제 변환하지 않는다.
+- **COD-44** Go, PHP, PHP extension, TypeScript, Python, Rust 여섯 declared implementation의 read 경로는 key version과 stored version에 대해 하나의 오류 contract를 따른다. 선언되지 않았거나, 비었거나, 잘못된 key version은 `CONFIG`이고, 양의 i32 정수가 아닌 stored version은 `CODEC_DECODE`이며, 0이나 NaN으로 강제 변환하지 않는다. 이 규칙은 PHP extension native codec coverage가 완료됐다고 주장하지 않는다.
 - **COD-45** derived integer는 크기가 2^53 이하인 정수일 때에만 JavaScript number이며, 그래야 정확하다; 문자열과 bigint는 같은 한계로 변환된다. 소수, 유한하지 않은 number, boolean, null, 빈 문자열이나 숫자가 아닌 문자열, 그리고 더 큰 값은 잘못된 derived integer로 거부된다.
 - **COD-46** 실패한 conformance vector는 원래 error를 cause로 담아 그 error를 보고하며, write vector는 runner가 주는 transaction 안에서 그 본문을 실행한다.
-- **COD-47** rotation 경로는 key version과 stored version에 대해 모든 client(PHP, PHP extension, Python)가 같은 코드를 준다. 코드는 COD-44의 것과 같다.
+- **COD-47** 구현된 rotation 경로는 COD-44의 key-version 및 stored-version 오류 코드를 사용한다. 이 규칙은 현재 모든 implementation이 rotation을 제공한다고 주장하지 않는다.
 - **COD-48** version cell이 없는 read row는 `INTERNAL`이다. 저장된 바이트가 아니라 client 불변식이 깨진 것이다.
 - **COD-49** 정수가 아닌 text인 stored version은 read 경로에서 `CODEC_DECODE`이며, 강제 변환하지 않는다.
 - **COD-50** 0인 stored version은 read 경로에서 `CODEC_DECODE`다. 0은 key version이 아니다.

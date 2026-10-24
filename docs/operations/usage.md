@@ -1,7 +1,7 @@
 <!-- doc-id: usage -->
 # Usage
 
-Generate Go, PHP, Rust, TypeScript, and Python clients from one dbspec document set and execute the same statement as the same SQL in each client.
+Generate language clients from one dbspec document set. `config/parity.json` declares Go, PHP, PHP extension, TypeScript, Python and Rust as the six implementations; the PHP extension shares the PHP-facing API surface and its unfinished native scope is tracked separately.
 Supported databases are MySQL 8 by default, PostgreSQL 12+, and SQLite 3.46+.
 
 A query starts with a generated model and receives an opened database connection through `connect`. Inside a transaction callback, a model without `connect` uses the active transaction.
@@ -559,7 +559,7 @@ make orm-test-servers                                        # MySQL, PostgreSQL
 go test ./packages/go/... ./tests/... ./examples/...    # engine, generator, Go client, Go runners and examples
 npm run typescript:test                                  # TypeScript client
 (cd packages/rust && cargo test --workspace)              # Rust client
-node tests/conformance/check/main.mts run --out "$(mktemp -d)/out" --dsn "$BENCH_MYSQL_DSN"   # five clients, identical results on MySQL
+node tests/conformance/check/main.mts run --out "$(mktemp -d)/out" --dsn "$BENCH_MYSQL_DSN"   # configured implementations, identical results on MySQL
 node tests/conformance/check/main.mts run --out "$(mktemp -d)/out" --driver postgres --dsn "$BENCH_POSTGRES_DSN"
 ```
 

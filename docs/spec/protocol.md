@@ -237,12 +237,13 @@ A test reads the write result of a connection through the test entry point of it
 
 ## 4. Planning in the client
 
-Every client validates and plans requests in the calling process. No compiler service, daemon, or extension is involved.
+The shared contract requires each configured implementation to validate and plan requests in the calling process. The PHP extension native planner remains incomplete; it does not change this requirement. No compiler service or daemon is involved.
 
 | Client | Validation, planning, dialects, and DDL |
 |---|---|
 | Go | `packages/go/engine/ir`, `packages/go/engine/planner`, `packages/go/engine/dialect`, `packages/go/engine/dbspec` DDL |
 | PHP | `packages/php/src/Validator.php`, `Planner.php`, `Dialect.php`, `Dbspec/Renderer.php` DDL |
+| PHP extension | Shared contract applies; native ORM validation/planning is incomplete and remains tracked under T182 and KSTD-2-3 |
 | Rust | `packages/rust/orm/src/engine/`, `packages/rust/schema/src/dbspec/` DDL |
 | TypeScript | `packages/ts/src/engine/`, `packages/ts/src/dbspec/` DDL |
 | Python | `packages/python/src/polyspec/orm/engine/`, `packages/python/src/polyspec/orm/dbspec/` DDL |
@@ -251,7 +252,7 @@ Generated code carries the manifest text of its document set and its `manifestHa
 
 A process can load the generated code of several document sets, and one connection can serve several of them. A connection plans a request only with a set registered on that connection, because what a request can run against is decided by the database the connection uses, not by the code the process loaded. A set is registered on a connection in three ways. `utils().schema().register(schema)` registers the set on the connection. The connect helper of generated code (Go `model.Connect(dsn, config)`, PHP `Polyspec\Orm\Tests\Model\connect($dsn, $config)`, Rust `model::connect(dsn, pool_size, config)`, TypeScript `connect(dsn, options)` of the generated module, Python `connect(dsn, **options)` of the generated module) opens the connection and registers its own set the same way through `connectSchema` (Go `orm.ConnectSchema`, PHP `Orm::connectSchema`, Rust `Db::connect_schema`, TypeScript `Db.connectSchema`, Python `Db.connect_schema`). `utils().schema().install(schema)` creates the tables of the set, verifies the database and registers the set on the same connection. All three take the generated schema value, the manifest text with its declared `manifestHash` (Go `model.Schema`, PHP `Polyspec\Orm\Tests\Model\schema()`, Rust `model::SCHEMA`, TypeScript `SCHEMA`, Python `SCHEMA`), and fail with `CONFIG` before any statement when the text does not hash to the declared hash. Registering reads and writes nothing in the database, for sets with external documents too: the database is verified when the set is installed or upgraded (`install`, `addTablesAndColumns`), not on each connection, so a connection opened per request registers its sets without a statement ([schema](schema.md#_6-schema-registration)). A raw connection (`connect(dsn, …)` of the client) registers no set, and loading generated code registers nothing on a connection. A request whose manifest is not registered on its connection fails with `SCHEMA_HASH_MISMATCH` before execution, also when a plan of the same shape is cached, and so does a request of generated code whose manifest text does not hash to its declared `manifestHash`. No other registration call exists. Every client follows this rule.
 
-The five planners produce the same SQL and bind slots for the same request. `tests/conformance` runs the same vectors in the five clients on MySQL, PostgreSQL, and SQLite and compares the statements, binds, and results with the recorded expectations.
+The shared planning contract requires all six configured implementations (Go, PHP, PHP extension, TypeScript, Python and Rust) to produce the same SQL and bind slots for the same request. `tests/conformance` runs the declared vectors and compares outputs; missing PHP extension behavior or database evidence remains incomplete, not an exception to the contract.
 
 ## 5. IR executors
 

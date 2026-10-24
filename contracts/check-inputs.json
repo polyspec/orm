@@ -353,6 +353,20 @@
         "**/*.md"
       ]
     },
+    "docs-implementation-count-check": {
+      "scope": "owner",
+      "needs": [
+        "node-modules"
+      ],
+      "inputs": [
+        "Makefile",
+        "contracts/rules.json",
+        "scripts/docs/**"
+      ],
+      "lints": [
+        "**/*.md"
+      ]
+    },
     "orm-install-cli-check": {
       "scope": "owner",
       "needs": [

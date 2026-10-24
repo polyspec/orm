@@ -1,5 +1,5 @@
 <!-- doc-id: config -->
-<!-- source-sha256: c95ae341cb15f6153c7145622289a4899c73b5f32417216b6d096ed379e34297 -->
+<!-- source-sha256: e1d6f12ae3e79e06c1b7e8ab2fe3e181f6b91167c1f0ba5c4bea7b0fbbbcb3e4 -->
 # 런타임 연결
 
 클라이언트는 연결 값을 인자로 받으며 환경 변수나 비밀 저장소를 스스로 읽지 않는다. 클라이언트는 설정 파일을 읽지 않는다.
@@ -26,7 +26,7 @@ markdown://127.0.0.1:4100/tracker?token=0123456789abcdef0123456789abcdef
 - **CFG-9** 흐름은 자기 언어의 취소 수단을 연결 핸들에 적용해 문을 취소한다. Go의 `db.WithContext(ctx)`와 TypeScript의 `db.withSignal(signal)`은 같은 연결을 가리키는 핸들이다. 모델은 연결에 연결하듯 핸들에 연결하고, 핸들에서 시작한 트랜잭션도 같은 취소를 따르며, 컨텍스트나 시그널을 취소하면 실행 중인 문이 `CANCELED`로 끝나고 연결은 계속 쓸 수 있다. Rust는 문의 future를 버리면 문이 취소되고 풀로 돌아가기 전에 대여한 연결을 닫는다. PostgreSQL은 실행 중인 문을 취소하고 MySQL은 실행 중인 질의를 종료하며, TypeScript의 SQLite 드라이버는 문 하나를 중간에 양보하지 않고 실행하므로 시그널은 실행 중인 문이 아니라 다음 문에 적용된다. PHP 취소는 아직 구현하지 않았다. 체인에는 취소 연산이 없고 연결 핸들이 그 역할을 맡는다. 핸들은 별도의 값이므로 Go의 `db.Root()`와 TypeScript의 `db.root()`는 파생의 기준이 된 연결을 돌려주며, 한 연결에서 파생한 핸들들은 같은 연결로 비교된다.
 - **CFG-10** MySQL `socket` 매개변수는 Unix 소켓으로 연결한다. 클라이언트는 낙관적 갱신에 필요한 found-rows 개수를 켠다.
 - **CFG-11** SQLite 경로는 절대 경로여야 한다. 클라이언트는 파일을 열기 전에 경로를 UTF-8로 percent-decode한다: `sqlite:///var/lib/my%20data.sqlite`는 `/var/lib/my data.sqlite`를 열고, `%25`, `%23`, `%3F`는 글자 그대로의 `%`, `#`, `?`가 된다. 뒤에 hexadecimal 두 자리가 없는 `%`, decode한 NUL byte, UTF-8이 아닌 decode 결과는 `CONFIG`를 반환한다. `tests/dsn/sqlite-paths.json`이 공유 case를 담으며 모든 클라이언트가 자기 DSN 테스트에서 실행한다. 클라이언트는 외래 키를 켠다. 쓰기 트랜잭션은 `BEGIN IMMEDIATE`로 시작해 시작 시점부터 데이터베이스의 쓰기 잠금을 가진다. 따라서 두 쓰기 트랜잭션은 차례로 실행되고, 읽은 뒤에 쓰는 트랜잭션도 실패하지 않는다. `readOnly` 옵션을 쓴 트랜잭션은 `BEGIN`으로 시작하고 쓰기 잠금을 얻지 않는다. 시작 문은 클라이언트가 정하며, `_txlock`이 있는 DSN은 `CONFIG`를 반환한다.
-- **CFG-12** SQLite 연결은 다른 연결이 가진 잠금을 최대 5000밀리초 기다린다. Go·PHP·TypeScript·Rust·Python 클라이언트에서 DSN 매개변수 `_pragma=busy_timeout(ms)`로 다른 시간을 정한다. 예를 들어 `sqlite:///var/lib/orm_example.sqlite?_pragma=busy_timeout(10000)`이며, `busy_timeout(0)`은 기다리지 않는다. 대기가 끝날 때까지 다른 연결이 잠금을 놓지 않으면 `CANCELED`를 반환한다. `DEADLOCK`만 재시도하므로 이 트랜잭션은 다시 실행하지 않는다. 모든 `_pragma=name(value)` 매개변수는 연결에서 `PRAGMA name = value`를 실행한다.
+- **CFG-12** SQLite 연결은 다른 연결이 가진 잠금을 최대 5000밀리초 기다린다. Go, PHP, PHP extension, TypeScript, Python, Rust 여섯 configured implementation은 DSN 매개변수 `_pragma=busy_timeout(ms)`로 다른 시간을 정한다. 예를 들어 `sqlite:///var/lib/orm_example.sqlite?_pragma=busy_timeout(10000)`이며, `busy_timeout(0)`은 기다리지 않는다. 대기가 끝날 때까지 다른 연결이 잠금을 놓지 않으면 `CANCELED`를 반환한다. `DEADLOCK`만 재시도하므로 이 트랜잭션은 다시 실행하지 않는다. 모든 `_pragma=name(value)` 매개변수는 연결에서 `PRAGMA name = value`를 실행한다.
 - **CFG-13** SQLite 읽기는 다른 연결이 쓰기 트랜잭션을 연 동안에도 실행되며, 그 전에 커밋된 행을 반환한다. 클라이언트는 데이터베이스 파일의 저널 모드를 그대로 두며 WAL을 요구하지 않는다. 기본 롤백 저널에서는 쓰기의 커밋 중에 시작한 읽기가 `busy_timeout` 안에서 커밋을 기다린다. `_pragma=journal_mode(WAL)`은 파일을 WAL로 바꾸며, WAL에서는 읽기가 커밋을 기다리지 않는다. 이 모드는 파일에 남는다.
 - **CFG-14** TypeScript SQLite 드라이버는 잠금을 동기적으로 기다리므로 기다리는 동안 이벤트 루프가 멈춘다. 따라서 TypeScript 프로세스는 SQLite 파일 하나에 `Db` 하나를 연다. 그 `Db`의 트랜잭션은 차례로 실행되고, 여러 프로세스는 잠금 대기로 파일을 함께 쓴다.
 
@@ -71,11 +71,11 @@ ORM은 문을 서버 사이에서 분배하지 않는다. replica에서 읽을 �
 - **CFG-25** 스키마 도구와 `utils().schema().install`은 primary에서 실행하고, replica는 복제로 스키마를 적용한다.
 - **CFG-26** SQLite는 단일 노드 전용이다. SQLite 데이터베이스는 절대 경로로 지정한 로컬 파일이며, ORM은 SQLite replica를 지원하지 않는다.
 
-`make orm-test-servers`는 MySQL primary의 replica와 PostgreSQL primary의 standby를 시작하고, 다섯 클라이언트의 데이터베이스 테스트는 두 데이터베이스에서 이 규칙을 검사한다. PostgreSQL standby는 physical replication slot `orm_replica`로 stream하므로, standby가 멈춘 동안에도 primary는 standby가 아직 받지 않은 WAL을 보존한다.
+`make orm-test-servers`는 MySQL primary의 replica와 PostgreSQL primary의 standby를 시작한다. 이 규칙은 Go, PHP, PHP extension, TypeScript, Python, Rust 여섯 configured implementation에 적용되며 PHP extension의 전체 database verification은 아직 남아 있다. PostgreSQL standby는 physical replication slot `orm_replica`로 stream하므로, standby가 멈춘 동안에도 primary는 standby가 아직 받지 않은 WAL을 보존한다.
 
 ## 연결 pooler {#connection-poolers}
 
-연결 pooler는 클라이언트와 데이터베이스 서버 하나 사이에서 적은 수의 서버 연결을 많은 클라이언트 연결이 나누어 쓰게 한다. 클라이언트는 PostgreSQL에서 transaction 모드의 PgBouncer, MySQL에서 ProxySQL을 통해 동작하며, 둘은 pooler로만 쓴다. 클라이언트는 그 서버의 DSN으로 pooler에 연결하고, pooler는 어떤 문도 다른 서버로 보내지 않는다. `make client-pooler-check`는 다섯 클라이언트의 데이터베이스 테스트를 두 pooler를 통해 실행한다.
+연결 pooler는 클라이언트와 데이터베이스 서버 하나 사이에서 적은 수의 서버 연결을 많은 클라이언트 연결이 나누어 쓰게 한다. Go, PHP, PHP extension, TypeScript, Python, Rust 여섯 configured implementation에 공통 pooler 규칙이 적용된다. 클라이언트는 PostgreSQL에서 transaction 모드의 PgBouncer, MySQL에서 ProxySQL을 통해 동작하며, 둘은 pooler로만 쓴다. 클라이언트는 해당 서버의 DSN으로 pooler에 연결하고, pooler는 어떤 문도 다른 서버로 보내지 않는다. `make client-pooler-check`는 선언된 database case를 실행하며, PHP extension database coverage가 완료됐음을 뜻하지 않는다.
 
 PgBouncer 설정:
 

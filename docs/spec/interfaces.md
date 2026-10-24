@@ -199,7 +199,7 @@ Utilities that change data open a transaction when none is active and join the a
 
 ## 7. Planning and assembly — IF-18 to IF-20
 
-`Request` contains the schema hash, IR version, entity, predicate tree, relation requests, projection, and parameter count. Parameter values are stored separately from the request shape. The client planner produces an immutable plan with dialect-specific SQL and positional assembly metadata. The five planners produce the same SQL for the same request; the conformance vectors check this.
+`Request` contains the schema hash, IR version, entity, predicate tree, relation requests, projection, and parameter count. Parameter values are stored separately from the request shape. The client planner produces an immutable plan with dialect-specific SQL and positional assembly metadata. The shared contract requires all six configured implementations (Go, PHP, PHP extension, TypeScript, Python and Rust) to produce the same SQL for the same request; conformance vectors check executable behavior separately.
 
 Assembly uses `{alias, column, output_name, index}`. Join aliases remain separate from the root namespace. Duplicate output names return `COLUMN_ALIAS_CONFLICT`. A schema hash mismatch returns `SCHEMA_HASH_MISMATCH` before execution.
 

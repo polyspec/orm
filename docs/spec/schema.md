@@ -5,7 +5,7 @@ The schema source is a set of dbspec documents (`.dbs`). [dbspec.md](dbspec.md) 
 
 ## 1. Model generation
 
-Each language generates its models from the document set with its own tool ([usage](../operations/usage.md#_3-code-generation)):
+The ORM client packages generate models from the document set with their own tools ([usage](../operations/usage.md#_3-code-generation)). The six configured implementations are Go, PHP, PHP extension, TypeScript, Python and Rust. The PHP extension exposes Dbspec operations but does not generate ORM models:
 
 | Language | Tool |
 |---|---|
@@ -23,17 +23,19 @@ Each language generates its models from the document set with its own tool ([usa
 
 The schema operations are functions of each client library. They take parsed documents and a dialect (`mysql`, `postgres` or `sqlite`) and return statements or located diagnostics.
 
-| Operation | Go `packages/go/engine/dbspec` | PHP `Polyspec\Orm\Dbspec\Dbspec` | TypeScript | Rust | Python |
+| Operation | Go `packages/go/engine/dbspec` | PHP `Polyspec\Orm\Dbspec\Dbspec` | PHP extension | TypeScript | Rust | Python |
 |---|---|---|---|---|---|
-| Render the statements of a document set ([dialects](dialects.md#rendered-statements)) | `Render` | `render` | `renderDbspec` | `polyspec_orm_schema::dbspec::render` | `polyspec.orm.dbspec.render.render_dbspec` |
-| Introspect a database into a document ([dialects](dialects.md#introspection)) | `Introspect` | `introspect` | `introspectDbspec` | `polyspec_orm::dbspec::introspect` | `polyspec.orm.dbspec.introspect.introspect_dbspec` |
-| Diff a plan against its source ([plans](plans.md)) | `Diff` | `diff` | `diffPlan` | `polyspec_orm_schema::dbspec::diff` | `polyspec.orm.dbspec.plan_diff.diff_plan` |
-| Compare a database with a document set ([installation](#_4-schema-installation)) | `InstalledDifferences` | `installedDifferences` | `installedDifferences` | `polyspec_orm_schema::dbspec::installed_differences` | `polyspec.orm.dbspec.installed.installed_differences` |
-| Write the steps of a plan with their rollback statements ([plans](plans.md#steps)) | `PlanSteps` | `planSteps` | `planSteps` | `polyspec_orm_schema::dbspec::plan_steps` | `polyspec.orm.dbspec.plan_steps.plan_steps` |
-| Apply a plan chain ([plans](plans.md#apply)) | `Apply` | `apply` | `applyPlans` | `polyspec_orm::dbspec::apply` | `polyspec.orm.dbspec.apply.apply_plans` |
-| Continue an interrupted plan ([plans](plans.md#apply)) | `Recover` | `recover` | `recoverPlans` | `polyspec_orm::dbspec::recover` | `polyspec.orm.dbspec.apply.recover_plans` |
-| Roll back the last plan ([plans](plans.md#apply)) | `Rollback` | `rollback` | `rollbackPlans` | `polyspec_orm::dbspec::rollback` | `polyspec.orm.dbspec.apply.rollback_plans` |
-| Finalize the applied plans ([plans](plans.md#apply)) | `Finalize` | `finalize` | `finalizePlans` | `polyspec_orm::dbspec::finalize` | `polyspec.orm.dbspec.apply.finalize_plans` |
+| Render the statements of a document set ([dialects](dialects.md#rendered-statements)) | `Render` | `render` | `Dbspec::render` | `renderDbspec` | `polyspec_orm_schema::dbspec::render` | `polyspec.orm.dbspec.render.render_dbspec` |
+| Introspect a database into a document ([dialects](dialects.md#introspection)) | `Introspect` | `introspect` | `Dbspec::introspect` | `introspectDbspec` | `polyspec_orm::dbspec::introspect` | `polyspec.orm.dbspec.introspect.introspect_dbspec` |
+| Diff a plan against its source ([plans](plans.md)) | `Diff` | `diff` | `Dbspec::diff` | `diffPlan` | `polyspec_orm_schema::dbspec::diff` | `polyspec.orm.dbspec.plan_diff.diff_plan` |
+| Compare a database with a document set ([installation](#_4-schema-installation)) | `InstalledDifferences` | `installedDifferences` | `Dbspec::installedDifferences` | `installedDifferences` | `polyspec_orm_schema::dbspec::installed_differences` | `polyspec.orm.dbspec.installed.installed_differences` |
+| Write the steps of a plan with their rollback statements ([plans](plans.md#steps)) | `PlanSteps` | `planSteps` | `Dbspec::planSteps` | `planSteps` | `polyspec_orm_schema::dbspec::plan_steps` | `polyspec.orm.dbspec.plan_steps.plan_steps` |
+| Apply a plan chain ([plans](plans.md#apply)) | `Apply` | `apply` | `Dbspec::apply` | `applyPlans` | `polyspec_orm::dbspec::apply` | `polyspec.orm.dbspec.apply.apply_plans` |
+| Continue an interrupted plan ([plans](plans.md#apply)) | `Recover` | `recover` | `Dbspec::recover` | `recoverPlans` | `polyspec_orm::dbspec::recover` | `polyspec.orm.dbspec.apply.recover_plans` |
+| Roll back the last plan ([plans](plans.md#apply)) | `Rollback` | `rollback` | `Dbspec::rollback` | `rollbackPlans` | `polyspec_orm::dbspec::rollback` | `polyspec.orm.dbspec.apply.rollback_plans` |
+| Finalize the applied plans ([plans](plans.md#apply)) | `Finalize` | `finalize` | `Dbspec::finalize` | `finalizePlans` | `polyspec_orm::dbspec::finalize` | `polyspec.orm.dbspec.apply.finalize_plans` |
+
+The PHP extension declarations expose the PHP-facing `Dbspec` parse/render/introspection surface; ORM schema management and catalog connection behavior remain incomplete in the extension.
 
 [mermaid.md](mermaid.md) specifies the export of a document to a Mermaid `erDiagram` and the import of a diagram into a document.
 
@@ -47,7 +49,7 @@ The schema operations are functions of each client library. They take parsed doc
 
 - **SCH-6** SQLite catalog connections require an existing regular database file and disable automatic file creation. `close(self)` releases the reserved connection before closing its pool. Native decoding limitations require owning corrections before arbitrary SQL/data access is enabled.
 
-- **SCH-6a** The catalog connection is one neutral rule in every client (Go, TypeScript, Rust, Python, PHP and the PHP extension). `connect(dsn)` (Go `orm.ConnectCatalog(dsn)`, TypeScript `connectCatalog(dsn)`, Python `connect_catalog(dsn)`, PHP `Polyspec\Orm\Catalog::connect($dsn)`, Rust `CatalogConnection::connect(dsn)`) selects the database from the DSN alone and refuses a markdown DSN; SQLite requires an existing regular file and creates none. The client exposes `current_namespace`, `describe_table`, `table_page`, `read_only_query`, `read_only_grid_query`, `insert_row`, `update_row` and `delete_row` with the semantics of the Rust reference in [interfaces](interfaces.md) (section "Qualified native Rust table metadata" and the sections after it), under the naming of its own language and the same error codes (`CONFIG`, `QUERY_READ_ONLY`, `GRID_TEMPORAL_VALUE` and the others the reference names). Every client passes the same catalog conformance cases on MySQL, PostgreSQL and SQLite. A client that lacks one of these operations does not implement the catalog connection, and the feature stays partial. An operation on a catalog connection after its close fails with `CATALOG_CLOSED` and sends no statement in Go, TypeScript and Python. Rust: `close(self)` consumes the connection, so an operation after close cannot compile and `CATALOG_CLOSED` cannot occur there; the rule is kept as a consuming close and no runtime code is defined for it. The grid cells of `read_only_grid_query` are bound by PHP as follows, and the PHP client and the PHP extension follow this binding exactly: a float32 or float64 cell is its IEEE-754 bits as lowercase hexadecimal, eight digits for float32 and sixteen for float64, so signed zero and nonfinite values are kept; an unsigned cell is its decimal digits as text, exact over the whole unsigned 64-bit range; an integer cell is a native integer; a boolean is a boolean; text, binary and decimal are strings, binary as its bytes; date, time and datetime are the dbspec text; SQL NULL is null. A MySQL integer, text or binary column whose UNSIGNED flag or binary charset the driver does not report is typed from its column definition in the current database, and an expression of such a type fails with `CATALOG_VALUE`; a client does not guess it.
+- **SCH-6a** The catalog connection is a shared requirement of all six configured implementations (Go, PHP, PHP extension, TypeScript, Python and Rust), not a Rust-only contract. Its required API is `connect(dsn)` plus `current_namespace`, `describe_table`, `table_page`, `read_only_query`, `read_only_grid_query`, `insert_row`, `update_row` and `delete_row`, with the semantics and error codes in [interfaces](interfaces.md). Currently only Rust exposes the catalog connection on `main`; the other implementations and the common MySQL, PostgreSQL and SQLite execution evidence remain open under KSTD-7-7. Missing operations keep the feature partial and do not weaken the shared requirement. Rust selects the database from its DSN, refuses a markdown DSN and requires an existing SQLite file. Its `close(self)` consumes the connection. The PHP library grid binding rules remain a shared required value contract; they do not assert that the PHP extension has completed native catalog support.
 
 ## 4. Schema installation
 

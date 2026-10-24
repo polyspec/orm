@@ -1,8 +1,8 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: 1605c5f7027d9a36f8bb22fa78e0abcd247e26db0af8a381b3281311a92bb9e9 -->
+<!-- source-sha256: 5cdd73eff468b00367242add34d733e10da9699f910422922e0570ac827ae685 -->
 # 사용법
 
-하나의 dbspec document set에서 Go·PHP·Rust·TypeScript·Python 클라이언트를 생성하고, 각 클라이언트에서 같은 문장을 같은 SQL로 실행한다.
+하나의 dbspec document set에서 language client를 생성한다. 공통 contract는 Go, PHP, PHP extension, TypeScript, Python, Rust 여섯 구현에 적용되며 확장의 미완료 native 범위는 별도로 추적한다.
 대상 DB는 MySQL 8(기본), PostgreSQL 12+, SQLite 3.46+.
 
 쿼리는 생성된 모델에서 시작하고 `connect`로 열린 데이터베이스 연결을 받는다. 트랜잭션 콜백 안에서 `connect`를 호출하지 않은 모델은 활성 트랜잭션을 사용한다.
@@ -560,7 +560,7 @@ make orm-test-servers                                        # MySQL, PostgreSQL
 go test ./packages/go/... ./tests/... ./examples/...    # engine, generator, Go client, Go runners and examples
 npm run typescript:test                                  # TypeScript client
 (cd packages/rust && cargo test --workspace)              # Rust client
-node tests/conformance/check/main.mts run --out "$(mktemp -d)/out" --dsn "$BENCH_MYSQL_DSN"   # five clients, identical results on MySQL
+node tests/conformance/check/main.mts run --out "$(mktemp -d)/out" --dsn "$BENCH_MYSQL_DSN"   # configured implementations, identical results on MySQL
 node tests/conformance/check/main.mts run --out "$(mktemp -d)/out" --driver postgres --dsn "$BENCH_POSTGRES_DSN"
 ```
 

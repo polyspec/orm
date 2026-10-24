@@ -9,7 +9,7 @@ Measurement environment for the driver results: Apple M3 Pro, macOS, MySQL 8.4.1
 
 Prepared statements are reused on one connection. The values measure the drivers without the ORM.
 
-| Workload | Go database/sql | Rust sqlx | PHP PDO | TypeScript | Python |
+| Workload | Go database/sql | Rust sqlx | PHP PDO | PHP extension | TypeScript | Python |
 |---|---:|---:|---:|---:|---:|
 | Single row by PK (25 columns, AES 2) | 38.0µs | 81.4µs | 30.5µs | not measured | not measured |
 | 100-row list | 448µs | 472µs | 446µs | not measured | not measured |

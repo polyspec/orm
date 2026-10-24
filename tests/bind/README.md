@@ -3,7 +3,7 @@
 
 `vectors.json` holds the shared cases of the client bind paths. Each implementation runs them from
 a test in its own package, and every case must give the same answer in all of them. `make bind-check`
-runs the five runners.
+runs the currently configured bind runners; PHP extension-native bind coverage remains open and is required before parity is complete.
 
 `bind` cases check one parameter against the logical type of its slot before any statement
 (docs/spec/protocol.md §5 "Parameters"): a `slot` with its `type` and, where the type has them, its

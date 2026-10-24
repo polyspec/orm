@@ -1,5 +1,5 @@
 <!-- doc-id: readme -->
-<!-- source-sha256: 01c440f9cdb46cd9675de6440d1205e86155eccdb4681309d5dbd794ac5c4888 -->
+<!-- source-sha256: 1f34be4e601ef425b437761eade1d7248b11b1cd2a39f8628d9689c4bcb8a128 -->
 # orm
 
 **Go, PHP, Python, Rust, TypeScript**를 위한 스키마 기반 모델 query grammar다. 목표 문법은 [docs/spec/dsl.ko.md](docs/spec/dsl.ko.md), 작업 순서는 [docs/spec/plan.ko.md](docs/spec/plan.ko.md)에 명시되어 있다.
@@ -37,7 +37,7 @@ authors = (
     .gets()
 )
 ```
-다섯 chain은 같은 SQL, bind, 결과를 만든다. `tests/conformance`는 MySQL, PostgreSQL, SQLite에서 공통 벡터를 검사한다.
+공통 contract는 Go, PHP, PHP extension, TypeScript, Python, Rust 여섯 구현에 적용된다. `tests/conformance`는 MySQL, PostgreSQL, SQLite에서 공통 벡터를 검사하며 확장 실행 증거가 없으면 완료가 아니다.
 
 조회 메서드는 `By` 뒤에 모든 컬럼 체인을 받는다.
 
@@ -64,7 +64,7 @@ authors = Author().connect(slave1).gets_by_service_seq_and_is_close(7, False)
 - **Runtime**: 클라이언트 라이브러리는 담긴 manifest로 만든 runtime model로 각 문장 구조를 검증하고, 호출한 프로세스 안에서 SQL을 조립하고, plan을 캐시하고, 각 언어의 native driver로 실행한다. 호출한 프로세스 옆에서 실행되는 서비스나 데몬은 없다.
 - **Databases**: MySQL 8, PostgreSQL 12+, SQLite 3.46+는 같은 request와 result 규칙을 사용한다(`docs/spec/dialects.md`).
 - **Python**: Python client는 CI가 test하는 Python 3.14(CPython)를 지원한다. 그 release는 `mise.toml`의 Python이며 `requires-python`이 이를 적는다(`docs/operations/packaging.ko.md`).
-- **Equality**: `tests/conformance`는 다섯 클라이언트에서 같은 벡터를 실행하고 SQL, bind, 결과를 비교한다.
+- **Equality**: `tests/conformance`는 설정된 여섯 구현에서 같은 벡터를 실행하고 SQL, bind, 결과를 비교한다. PHP extension 실행 증거가 없으면 검증은 미완료다.
 
 ## 빠른 시작 (MySQL 8.4와 PostgreSQL 17)
 ```sh
@@ -78,7 +78,7 @@ make python-check                                                     # Python c
 go test ./packages/go/... ./tests/... ./examples/...
 npm run typescript:test
 (cd packages/rust && cargo test --workspace)
-node tests/conformance/check/main.mts run --out "$(mktemp -d)/out" --dsn "$BENCH_MYSQL_DSN"   # compares the five clients
+node tests/conformance/check/main.mts run --out "$(mktemp -d)/out" --dsn "$BENCH_MYSQL_DSN"   # compares the configured implementations
 ```
 
 ## 문서

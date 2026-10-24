@@ -63,7 +63,7 @@ authors = Author().connect(slave1).gets_by_service_seq_and_is_close(7, False)
 - **Runtime**: the client library validates each statement shape against the runtime model it builds from the embedded manifest, assembles the SQL in the calling process, caches the plan, and executes it through the language-native driver. No service or daemon runs beside the calling process.
 - **Databases**: MySQL 8, PostgreSQL 12+, and SQLite 3.46+ use the same request and result rules (`docs/spec/dialects.md`).
 - **Python**: the Python client supports Python 3.14 (CPython), the release of `mise.toml` that CI tests; `requires-python` states it (`docs/operations/packaging.md`).
-- **Equality**: `tests/conformance` runs the same vectors in the five clients and compares the SQL, binds, and results.
+- **Equality**: `config/parity.json` declares Go, PHP, PHP extension, TypeScript, Python and Rust; `tests/conformance` compares the configured implementations against shared vectors, with missing extension execution treated as incomplete evidence.
 
 ## Quick start (MySQL 8.4 and PostgreSQL 17)
 ```sh
@@ -77,7 +77,7 @@ make python-check                                                     # Python c
 go test ./packages/go/... ./tests/... ./examples/...
 npm run typescript:test
 (cd packages/rust && cargo test --workspace)
-node tests/conformance/check/main.mts run --out "$(mktemp -d)/out" --dsn "$BENCH_MYSQL_DSN"   # compares the five clients
+node tests/conformance/check/main.mts run --out "$(mktemp -d)/out" --dsn "$BENCH_MYSQL_DSN"   # compares the configured implementations
 ```
 
 ## Documents

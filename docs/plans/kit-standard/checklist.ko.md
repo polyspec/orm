@@ -1,12 +1,12 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 02da6f87cad12fd24e8079971635a9f96bcbbb0a718465e8ea51b6bfdc2bcf95 -->
+<!-- source-sha256: 02e6fedd333d5bd961d0edb25d579e453d3a6b0dc8f53eefbd21c2e1559d166d -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
 |---|---|---|---|---|
 | KSTD | 이 저장소는 kit 표준 0.0.54를 따른다 | the layout, plans, pins and lint fixes of the rollout | `make layout-check`, `make lint-ts` | [!] 원인: 이 계획의 parity, 문서, Go lint 항목은 CI 실행을 기다린다; 재시도: 이 계획의 항목이 차례로 끝난 뒤 |
 | KSTD-2 | config/parity.json의 모든 unit은 모든 구현에서 성립하고, test가 이름으로 적은 spec requirement를 인용한다 (kit K273, K275, K276) | config/parity.json, docs/spec, the tests of every implementation | `make parity-declarations-check` | [~] |
-| KSTD-2-2 | 문서가 PHP extension을 구현으로 세고 나열한다(KSTD-2에 이어). 원인: config/parity.json의 구현을 언어 집합으로 삼자 docs-rules-check가 docs.implementation-count 69건을 보고한다: client N개를 세는 문장 43, PHP extension 열이 없는 표 13, 나열된 집합 11, PHP extension 행이 없는 protocol.md와 protocol.ko.md 4절 | docs/spec, docs/operations and their Korean twins | `make docs-rules-check` | [ ] |
+| KSTD-2-2 | 문서가 PHP extension을 구현으로 세고 나열한다(KSTD-2에 이어). 원인: config/parity.json의 구현을 언어 집합으로 삼자 docs-rules-check가 docs.implementation-count 69건을 보고한다: client N개를 세는 문장 43, PHP extension 열이 없는 표 13, 나열된 집합 11, PHP extension 행이 없는 protocol.md와 protocol.ko.md 4절 | docs/spec, docs/operations and their Korean twins | `make docs-rules-check` | [~] |
 | KSTD-2-3 | logical contract가 모든 rule에 php-extension native를 둔다(KSTD-2에 이어). 원인: S10에 따라 extension이 PHP library 전체를 구현하는데 tests/interfaces/contracts/validate.go와 contracts/interfaces.json의 native contract 표에 php-extension 항목이 없어 TestLogicalContractRejectsNativeDrift가 Model.connect missing php-extension으로 실패한다 | contracts/interfaces.json, tests/interfaces/contracts/validate.go, packages/php-ext | `go test ./tests/interfaces/contracts/ -run TestLogicalContractRejectsNativeDrift` | [ ] |
 | KSTD-2-4 | 모든 error-code unit이 php-extension symbol을 둔다(KSTD-2에 이어). 원인: php-extension이 errors catalog 파일을 선언하지 않고 unit에 php-extension symbol이 없어, API check가 error-code-version-mismatch 등을 선언된 구현과 다른 구현을 말한다고 보고한다 | config/parity.json, packages/php-ext/stubs/code.stub.php | `node --test tests/interfaces/check/api.test.mts` | [ ] |
 | KSTD-2-1 | spec의 시험 가능한 규칙마다 requirement id가 있다(KSTD-2에 이어). 원인: config/parity.json은 unit마다 그 test가 이름하는 requirement id를 인용해야 하는데 orm의 spec에는 id가 없다. id는 행동, 거부, 출력 형태를 말하는 bullet 첫머리에 **PFX-n**으로 쓰고, 파일마다 1부터 문서 순서로 매기며, 다시 쓰거나 번호를 바꾸지 않고, 한국어 쌍의 같은 bullet에 같은 id를 둔다. prefix는 DBS dbspec, DSL dsl, DIA dialects, PRT protocol, COD codec, CFG config, CPX complex-query, INT interfaces, MER mermaid, SCH schema, PLN plan과 plans, ORE editor, ORES editor-stack, PAR parity, FCV feature-coverage이고 pattern은 [A-Z]+-[0-9]+다 | docs/spec and their Korean twins | `make docs-check`, `make parity-declarations-check` | [o] |

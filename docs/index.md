@@ -25,7 +25,7 @@ features:
 ---
 <!-- doc-id: index -->
 
-## One query in five clients
+## One query under the shared client contract
 
 ### Go
 
@@ -63,6 +63,6 @@ Go `model.Author()` returns `*model.AuthorModel`. Rust and TypeScript use asynch
 
 ## Implementation status
 
-The implemented clients are **Go, PHP, Rust, TypeScript, and Python**. All five clients generate their models with their own build tool, plan statements in the calling process, and execute them through the native database driver. No service runs beside the calling process. See the [implementation matrix](operations/interface-implementation.md) and the [checklist](plans/execution/checklist.md) for verification scope and remaining work.
+`config/parity.json` declares six implementations: **Go, PHP, PHP extension, Rust, TypeScript, and Python**. The examples above show the Go, PHP, Rust, TypeScript, and Python library APIs. The PHP extension is part of the common implementation set, while its unfinished native behavior and database evidence remain in the [checklist](plans/execution/checklist.md). The shared protocol runs planning in the calling process; see the [implementation matrix](operations/interface-implementation.md) for the verified scope.
 
 [DSL](spec/dsl.md) · [Schema](spec/schema.md) · [IR / Plan](spec/protocol.md) · [Complex query example](spec/complex-query.md) · [Documentation build and deployment](operations/docs-development.md) · [한국어 문서](index.ko.md)

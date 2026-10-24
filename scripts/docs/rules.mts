@@ -7,6 +7,7 @@ import { COMPUTE, sections } from '../../tests/testcase.mts';
 import { kitCopies } from '../repo/kit-copies.mts';
 import { readJsonFile } from '../json/schema.mts';
 import { errorCode } from '../../tests/errors.mts';
+import { filterRuleFailures, onlyRuleFromArgs } from './rules-filter.mts';
 
 // rules check is one case that reads the documentation files and checks pairs and style.
 const log = sections();
@@ -213,9 +214,11 @@ for (const file of [...sources, ...translations.values()]) {
   }
 }
 
-if (failures.length) {
-  console.error(failures.join('\n'));
+const selectedRule = onlyRuleFromArgs(process.argv.slice(2));
+const reportedFailures = filterRuleFailures(failures, selectedRule);
+if (reportedFailures.length) {
+  console.error(reportedFailures.join('\n'));
   process.exit(1);
 }
-console.log(`rules: ${sources.length} English documents, ${translations.size} Korean translations passed`);
+console.log(`rules: ${sources.length} English documents, ${translations.size} Korean translations passed${selectedRule ? ` (${selectedRule})` : ''}`);
 log.end();

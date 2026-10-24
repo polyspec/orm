@@ -1,17 +1,17 @@
 <!-- doc-id: packaging -->
-<!-- source-sha256: 4cd141df2366bc407946bff2649edd2f0b7011e925debc0acf3d6c861c70e68c -->
+<!-- source-sha256: 813156d6c075b103e130ee907ef1c0e230ff8388f2c3890a1ac9f1a4088165d8 -->
 # 패키징 결정
 
 | 결정 | 선택 | 이유 | 변경 조건 |
 |---|---|---|---|
 | 문장 계획 | 호출한 프로세스 안의 클라이언트 라이브러리. 실행기는 네이티브 드라이버를 사용한다 | ORM 도입에 라이브러리만 필요하며 배포하고 운영할 서비스나 데몬이 없다 | 없음 |
 | 모델 생성 | 언어마다 생성기 하나: Go `orm-gen gen --lang go`, PHP `vendor/bin/orm-gen`, TypeScript `orm-gen` npm bin, Rust `build.rs`의 `polyspec-orm-build` crate, Python package의 `orm-gen` script. 각 생성기는 document set을 set 파일 `dbspec-set.json`으로만 받는다([문서 집합](../spec/dbspec.ko.md#document-sets)) | 각 언어가 자기 빌드 도구로 빌드하고, set 파일 하나가 모두에게 set을 선언한다 | 없음 |
-| 언어 간 동일성 | MySQL, PostgreSQL, SQLite에서 `tests/conformance` 벡터 실행 | 다섯 플래너가 같은 SQL, bind, 결과를 만들어야 한다 | 없음 |
+| 언어 간 동일성 | MySQL, PostgreSQL, SQLite에서 `tests/conformance` 벡터 실행 | Go, PHP, PHP extension, TypeScript, Python, Rust의 여섯 declared implementation은 SQL, bind, 결과의 공통 contract를 따른다. 완료된 실행 coverage는 따로 기록한다 | 없음 |
 | artifacts | `orm-gen-<version>-<os>-<arch>`, `SHA256SUMS` | Go `orm-gen`은 빌드 시점에 실행한다. 스키마 작업은 클라이언트 라이브러리 함수다 | version은 VERSION 파일에서 오며 `latest` symlink를 사용하지 않는다 |
 | distribution | Go: module path; PHP: `bin/orm-gen`을 포함한 composer package `polyspec/orm`; TypeScript: `orm-gen` bin을 포함한 npm package `@polyspec/orm`; Rust: `polyspec-orm`과 `polyspec-orm-build` crate | — | registry 게시가 필요하면 별도 결정으로 처리한다 |
 | configuration | DSN과 secret은 연결 호출의 인자다. 스키마 경로는 연결 옵션(Go, PHP, TypeScript)이거나, 생성된 스키마가 `Db.connect_schema`의 인자이거나(Python), 빌드가 포함한다(Rust) | — | — |
 | drivers | Go `go-sql-driver/mysql`, `pgx`, `modernc.org/sqlite`; Rust `sqlx`; PHP `pdo_mysql`, `pdo_pgsql`, `pdo_sqlite`; TypeScript `mysql2`, `pg`, `node:sqlite` | [perf.md](perf.md) §4 | 다른 드라이버가 hot path에서 2배 빠르다는 측정 |
-| YAML 코덱 | Go `github.com/goccy/go-yaml`(읽기, U+0085를 내용으로 읽는다)와 `go.yaml.in/yaml/v3`(쓰기), Python `rapidyaml`(읽기)와 `ruamel.yaml`(쓰기), PHP `purrphp/yaml`(읽기)와 `symfony/yaml`(쓰기), Rust `saphyr-parser`(읽기)와 `serde-saphyr`(쓰기), TypeScript `yaml`; lock 파일을 커밋한다 | 다섯 클라이언트에서 같은 벡터 80개와 잘못된 입력 사례를 실행한다 | 공통 벡터와 오류 사례가 유지되는 경우에만 라이브러리를 교체한다 |
+| YAML 코덱 | Go `github.com/goccy/go-yaml`(읽기, U+0085를 내용으로 읽는다)와 `go.yaml.in/yaml/v3`(쓰기), Python `rapidyaml`(읽기)와 `ruamel.yaml`(쓰기), PHP `purrphp/yaml`(읽기)와 `symfony/yaml`(쓰기), Rust `saphyr-parser`(읽기)와 `serde-saphyr`(쓰기), TypeScript `yaml`; lock 파일을 커밋한다. PHP extension은 현재 PHP library 호출로 YAML에 접근하며 native codec 이전은 T182-2에서 열려 있다. | 80개 vector와 잘못된 입력 사례는 Go, PHP, PHP extension, TypeScript, Python, Rust의 공통 기대값이다. 이는 contract이며 native codec coverage가 완료됐다는 뜻은 아니다. | 공통 벡터와 오류 사례가 유지되는 경우에만 라이브러리를 교체한다 |
 
 ## release asset에서 설치
 

@@ -1,5 +1,5 @@
 <!-- doc-id: perf -->
-<!-- source-sha256: 6b037f85eaf610e9f72967e9f5f0cd8f04c31d22fe14a655b47d6aa3e1836e3c -->
+<!-- source-sha256: 3c3ed69d6368cdb6917ffa55c0330daa5ad10357062a4b52f06079f30919cc30 -->
 # 성능
 
 모든 클라이언트는 호출한 프로세스 안에서 문장을 계획하고 네이티브 드라이버로 실행한다. 현재 클라이언트 오버헤드 기준은 아래 Go·PHP 실행 경로를 `make perf-check`로 측정하며 필수 데이터베이스 환경이 없으면 명령이 실패한다.
@@ -10,7 +10,7 @@
 
 하나의 연결에서 prepared statement를 재사용한다. 이 값은 ORM 없이 드라이버만 측정한 결과다.
 
-| 작업 | Go database/sql | Rust sqlx | PHP PDO | TypeScript | Python |
+| 작업 | Go database/sql | Rust sqlx | PHP PDO | PHP extension | TypeScript | Python |
 |---|---:|---:|---:|---:|---:|
 | PK 단일 행 (25컬럼, AES 2) | 38.0µs | 81.4µs | 30.5µs | 측정하지 않음 | 측정하지 않음 |
 | 100행 목록 | 448µs | 472µs | 446µs | 측정하지 않음 | 측정하지 않음 |

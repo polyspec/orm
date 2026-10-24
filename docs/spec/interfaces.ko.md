@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: ded2893e8420b680474d976603cc61b15c297542f7beacf0e4b791974baec364 -->
+<!-- source-sha256: e043909940211371e3ee9343f0f2e58764f3ca092f9671e231a774b53a15f6ab -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -200,7 +200,7 @@ classDiagram
 
 ## 7. 계획과 조립 — IF-18 ~ IF-20
 
-`Request`는 schema hash, IR version, entity, predicate tree, relation request, projection, parameter count를 포함한다. parameter 값은 request shape와 분리한다. 클라이언트 플래너는 dialect SQL과 위치 기반 조립 정보를 포함한 immutable plan을 만든다. 다섯 플래너는 같은 요청에서 같은 SQL을 만들며, conformance 벡터가 이를 검사한다.
+`Request`는 schema hash, IR version, entity, predicate tree, relation request, projection, parameter count를 포함한다. parameter 값은 request shape와 분리한다. 클라이언트 플래너는 dialect SQL과 위치 기반 조립 정보를 포함한 immutable plan을 만든다. 공통 contract는 설정된 여섯 구현(Go, PHP, PHP extension, TypeScript, Python, Rust)이 같은 요청에서 같은 SQL을 만들도록 요구하며, conformance 벡터는 실행 동작을 검증한다.
 
 조립은 `{alias, column, output_name, index}`를 사용한다. join alias는 root namespace와 분리한다. 출력 이름이 중복되면 `COLUMN_ALIAS_CONFLICT`다. schema hash가 다르면 실행 전에 `SCHEMA_HASH_MISMATCH`다.
 
