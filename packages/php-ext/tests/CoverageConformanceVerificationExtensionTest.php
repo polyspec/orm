@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Extension\Tests;
 
-require_once dirname(__DIR__, 2) . '/php/tests/CoverageConformanceVerificationTest.php';
-
 use Polyspec\Orm\Model;
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\Large;
@@ -19,7 +17,9 @@ final class CoverageConformanceVerificationExtensionTest extends TestCase
     {
         $path = getenv('POLYSPEC_ORM_EXTENSION');
         if (!is_string($path) || $path === '') {
-            throw new \RuntimeException('POLYSPEC_ORM_EXTENSION is required to run the PHP extension conformance child');
+            throw new \RuntimeException(
+                'POLYSPEC_ORM_EXTENSION is required to run the PHP extension conformance child'
+            );
         }
         return $path;
     }
@@ -41,13 +41,19 @@ final class CoverageConformanceVerificationExtensionTest extends TestCase
         return $environment;
     }
 
-    public function test_conformance_child_loads_the_native_model_entrypoint(): void
+    public function testConformanceChildLoadsTheNativeModelEntrypoint(): void
     {
         Assert::assertTrue((new ReflectionClass(Model::class))->isInternal());
         $root = dirname(__DIR__, 3);
         [$status, $stdout, $stderr] = coverageProcess(
-            [PHP_BINARY, '-d', 'extension=' . self::extensionPath(), '-r',
-                'exit(extension_loaded("polyspec_orm") && (new ReflectionClass("Polyspec\\Orm\\Model"))->isInternal() ? 0 : 1);'],
+            [
+                PHP_BINARY,
+                '-d',
+                'extension=' . self::extensionPath(),
+                '-r',
+                'exit(extension_loaded("polyspec_orm") && ' .
+                    '(new ReflectionClass("Polyspec\\Orm\\Model"))->isInternal() ? 0 : 1);',
+            ],
             $root,
             self::childEnvironment(),
         );
@@ -61,14 +67,15 @@ final class CoverageConformanceVerificationExtensionTest extends TestCase
     // Requirements: DSL-64, DSL-65, DSL-67, DSL-68, DSL-69, DSL-70, DSL-71, DSL-72, DSL-73, DSL-74, DSL-75, DSL-76.
     // Requirements: DSL-77, DSL-79, DSL-80, DSL-81, DSL-82, DSL-83, DSL-84, DSL-85, DSL-86, DSL-87, DSL-88, DSL-89.
     // Requirements: DSL-90, DSL-91, DSL-92, DSL-93, DSL-94, DSL-95, DSL-96, DSL-97, DSL-98, DSL-99, DSL-100, DSL-101.
-    // Requirements: DSL-102, DSL-103, DSL-104, DSL-105, DSL-106, DSL-107, DSL-108, DSL-109, DSL-110, DSL-111, DSL-112, DSL-114.
-    // Requirements: DSL-115, DSL-118, DSL-119, DSL-123, DSL-131, DSL-132, DSL-133, DSL-134, DSL-135, DSL-136, DSL-137, DSL-139.
+    // Requirements: DSL-102, DSL-103, DSL-104, DSL-105, DSL-106, DSL-107, DSL-108, DSL-109, DSL-110, DSL-111, DSL-112.
+    // Requirements: DSL-114, DSL-115, DSL-118, DSL-119, DSL-123, DSL-131, DSL-132, DSL-133, DSL-134, DSL-135, DSL-136.
+    // Requirements: DSL-137, DSL-139.
     // Requirements: DSL-140, DSL-143, DSL-144, DSL-145, DSL-146, DIA-1, DIA-2, DIA-3, DIA-4, DIA-5, DIA-8, DIA-9.
     // Requirements: DIA-10, DIA-11, DIA-13, DIA-14, DIA-15, DIA-16, DIA-18, DIA-19, DIA-22, DIA-23, DIA-24, DIA-26.
     // Requirements: DIA-27, DIA-29, DIA-35, DIA-36, DIA-37, DIA-41, DIA-43, DIA-46, DIA-48, DIA-54, COD-6, COD-15.
     // Requirements: COD-41, COD-42, PRT-5, PRT-8, PRT-9, PRT-11, PRT-15, PRT-19, PRT-36, PRT-38, PRT-39, PRT-40.
     // Requirements: PRT-42, PRT-67, PRT-70, DIA-108, DBS-59, DBS-87, DBS-113, DBS-117, CPX-3.
-    public function test_conformance_vector(): void
+    public function testConformanceVector(): void
     {
         Assert::assertTrue((new ReflectionClass(Model::class))->isInternal());
         foreach (coverageItemsOf(__FILE__) as $item) {

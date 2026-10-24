@@ -4,9 +4,6 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Extension\Tests;
 
-require_once dirname(__DIR__, 2) . '/php/gen/bootstrap.php';
-require_once dirname(__DIR__, 2) . '/php/tests/bench.php';
-
 use Polyspec\Orm\Collection;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Model;

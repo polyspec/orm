@@ -472,6 +472,7 @@
                   "cases": [
                     "dsn_connection"
                   ],
+                  "symbols": {"dsn_connection": "testDsnConnection"},
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
               ],
@@ -482,6 +483,7 @@
                   "cases": [
                     "dsn_connection"
                   ],
+                  "symbols": {"dsn_connection": "testDsnConnection"},
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
@@ -492,6 +494,7 @@
                   "cases": [
                     "dsn_connection"
                   ],
+                  "symbols": {"dsn_connection": "testDsnConnection"},
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
@@ -636,6 +639,7 @@
                   "cases": [
                     "dsn_connection"
                   ],
+                  "symbols": {"dsn_connection": "testDsnConnection"},
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
               ],
@@ -646,6 +650,7 @@
                   "cases": [
                     "dsn_connection"
                   ],
+                  "symbols": {"dsn_connection": "testDsnConnection"},
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
@@ -656,6 +661,7 @@
                   "cases": [
                     "dsn_connection"
                   ],
+                  "symbols": {"dsn_connection": "testDsnConnection"},
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
@@ -1385,6 +1391,7 @@
                   "cases": [
                     "model_query_rows"
                   ],
+                  "symbols": {"model_query_rows": "testModelQueryRows"},
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
               ],
@@ -1395,6 +1402,7 @@
                   "cases": [
                     "model_query_rows"
                   ],
+                  "symbols": {"model_query_rows": "testModelQueryRows"},
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
@@ -1405,6 +1413,7 @@
                   "cases": [
                     "model_query_rows"
                   ],
+                  "symbols": {"model_query_rows": "testModelQueryRows"},
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
@@ -1548,6 +1557,7 @@
                   "runner": "php",
                   "test": "packages/php-ext/tests/CoverageModelQueriesExtensionTest.php",
                   "cases": ["model_query_rows"],
+                  "symbols": {"model_query_rows": "testModelQueryRows"},
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
               ],
@@ -1556,6 +1566,7 @@
                   "runner": "php",
                   "test": "packages/php-ext/tests/CoverageModelQueriesExtensionTest.php",
                   "cases": ["model_query_rows"],
+                  "symbols": {"model_query_rows": "testModelQueryRows"},
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
@@ -1564,6 +1575,7 @@
                   "runner": "php",
                   "test": "packages/php-ext/tests/CoverageModelQueriesExtensionTest.php",
                   "cases": ["model_query_rows"],
+                  "symbols": {"model_query_rows": "testModelQueryRows"},
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
@@ -2030,6 +2042,7 @@
                   "cases": [
                     "model_write_cycle"
                   ],
+                  "symbols": {"model_write_cycle": "testModelWriteCycle"},
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
               ],
@@ -2040,6 +2053,7 @@
                   "cases": [
                     "model_write_cycle"
                   ],
+                  "symbols": {"model_write_cycle": "testModelWriteCycle"},
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
@@ -2050,6 +2064,7 @@
                   "cases": [
                     "model_write_cycle"
                   ],
+                  "symbols": {"model_write_cycle": "testModelWriteCycle"},
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
@@ -2193,6 +2208,7 @@
                   "runner": "php",
                   "test": "packages/php-ext/tests/CoverageModelWritesExtensionTest.php",
                   "cases": ["model_write_cycle"],
+                  "symbols": {"model_write_cycle": "testModelWriteCycle"},
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
               ],
@@ -2201,6 +2217,7 @@
                   "runner": "php",
                   "test": "packages/php-ext/tests/CoverageModelWritesExtensionTest.php",
                   "cases": ["model_write_cycle"],
+                  "symbols": {"model_write_cycle": "testModelWriteCycle"},
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
@@ -2209,6 +2226,7 @@
                   "runner": "php",
                   "test": "packages/php-ext/tests/CoverageModelWritesExtensionTest.php",
                   "cases": ["model_write_cycle"],
+                  "symbols": {"model_write_cycle": "testModelWriteCycle"},
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
@@ -2663,6 +2681,10 @@
                     "transaction_rollback",
                     "transaction_savepoint"
                   ],
+                  "symbols": {
+                    "transaction_rollback": "testTransactionRollback",
+                    "transaction_savepoint": "testTransactionSavepoint"
+                  },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
               ],
@@ -2674,6 +2696,10 @@
                     "transaction_rollback",
                     "transaction_savepoint"
                   ],
+                  "symbols": {
+                    "transaction_rollback": "testTransactionRollback",
+                    "transaction_savepoint": "testTransactionSavepoint"
+                  },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
@@ -2685,6 +2711,10 @@
                     "transaction_rollback",
                     "transaction_savepoint"
                   ],
+                  "symbols": {
+                    "transaction_rollback": "testTransactionRollback",
+                    "transaction_savepoint": "testTransactionSavepoint"
+                  },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
@@ -2842,6 +2872,10 @@
                     "transaction_rollback",
                     "transaction_savepoint"
                   ],
+                  "symbols": {
+                    "transaction_rollback": "testTransactionRollback",
+                    "transaction_savepoint": "testTransactionSavepoint"
+                  },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
               ],
@@ -2853,6 +2887,10 @@
                     "transaction_rollback",
                     "transaction_savepoint"
                   ],
+                  "symbols": {
+                    "transaction_rollback": "testTransactionRollback",
+                    "transaction_savepoint": "testTransactionSavepoint"
+                  },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
@@ -2864,6 +2902,10 @@
                     "transaction_rollback",
                     "transaction_savepoint"
                   ],
+                  "symbols": {
+                    "transaction_rollback": "testTransactionRollback",
+                    "transaction_savepoint": "testTransactionSavepoint"
+                  },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
@@ -3112,6 +3154,7 @@
                   "cases": [
                     "statement_events"
                   ],
+                  "symbols": {"statement_events": "test_statement_events"},
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
               ],
@@ -3122,6 +3165,7 @@
                   "cases": [
                     "statement_events"
                   ],
+                  "symbols": {"statement_events": "test_statement_events"},
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
@@ -3132,6 +3176,7 @@
                   "cases": [
                     "statement_events"
                   ],
+                  "symbols": {"statement_events": "test_statement_events"},
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
@@ -3158,6 +3203,7 @@
                   "cases": [
                     "statement_events"
                   ],
+                  "symbols": {"statement_events": "test_statement_events"},
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
               ],
@@ -3168,6 +3214,7 @@
                   "cases": [
                     "statement_events"
                   ],
+                  "symbols": {"statement_events": "test_statement_events"},
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
@@ -3178,6 +3225,7 @@
                   "cases": [
                     "statement_events"
                   ],
+                  "symbols": {"statement_events": "test_statement_events"},
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
@@ -7395,6 +7443,7 @@
                   "cases": [
                     "constraint_errors"
                   ],
+                  "symbols": {"constraint_errors": "testConstraintErrors"},
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
               ],
@@ -7405,6 +7454,7 @@
                   "cases": [
                     "constraint_errors"
                   ],
+                  "symbols": {"constraint_errors": "testConstraintErrors"},
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
@@ -7415,6 +7465,7 @@
                   "cases": [
                     "constraint_errors"
                   ],
+                  "symbols": {"constraint_errors": "testConstraintErrors"},
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
@@ -7559,6 +7610,7 @@
                   "cases": [
                     "constraint_errors"
                   ],
+                  "symbols": {"constraint_errors": "testConstraintErrors"},
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
               ],
@@ -7569,6 +7621,7 @@
                   "cases": [
                     "constraint_errors"
                   ],
+                  "symbols": {"constraint_errors": "testConstraintErrors"},
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
@@ -7579,6 +7632,7 @@
                   "cases": [
                     "constraint_errors"
                   ],
+                  "symbols": {"constraint_errors": "testConstraintErrors"},
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
@@ -8840,6 +8894,7 @@
                   "cases": [
                     "conformance_vector"
                   ],
+                  "symbols": {"conformance_vector": "testConformanceVector"},
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
               ],
@@ -8850,6 +8905,7 @@
                   "cases": [
                     "conformance_vector"
                   ],
+                  "symbols": {"conformance_vector": "testConformanceVector"},
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
@@ -8860,6 +8916,7 @@
                   "cases": [
                     "conformance_vector"
                   ],
+                  "symbols": {"conformance_vector": "testConformanceVector"},
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
@@ -8882,6 +8939,7 @@
                   "runner": "php",
                   "test": "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
                   "cases": ["conformance_vector"],
+                  "symbols": {"conformance_vector": "testConformanceVector"},
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
               ],
@@ -8890,6 +8948,7 @@
                   "runner": "php",
                   "test": "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
                   "cases": ["conformance_vector"],
+                  "symbols": {"conformance_vector": "testConformanceVector"},
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
@@ -8898,6 +8957,7 @@
                   "runner": "php",
                   "test": "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
                   "cases": ["conformance_vector"],
+                  "symbols": {"conformance_vector": "testConformanceVector"},
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]

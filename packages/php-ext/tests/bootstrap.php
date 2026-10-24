@@ -20,4 +20,8 @@ require_once dirname(__DIR__, 2) . '/php/tests/FailingStatement.php';
 require_once dirname(__DIR__, 2) . '/php/tests/FailingPdo.php';
 require_once dirname(__DIR__, 2) . '/php/tests/ModelTestFailingPdo.php';
 require_once dirname(__DIR__, 2) . '/php/tests/TransactionFailureCases.php';
+require_once dirname(__DIR__, 2) . '/php/tests/CoverageConformanceVerificationTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/CoverageConstraintsAndRelationsTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/CoverageDsnTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/CoverageTransactionsTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/dbspec_verify_errors_case.php';

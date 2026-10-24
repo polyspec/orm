@@ -13,17 +13,15 @@ use DateTimeZone;
 use PDO;
 use ReflectionMethod;
 
-require_once dirname(__DIR__, 2) . '/php/tests/CoverageTransactionsTest.php';
-
 #[Medium]
 final class CoverageTransactionsExtensionTest extends CoverageTransactionsTest
 {
-    public function test_native_methods_are_internal(): void
+    public function testNativeMethodsAreInternal(): void
     {
         Assert::assertTrue((new ReflectionMethod(Db::class, 'transaction'))->isInternal());
     }
 
-    public function test_native_sqlite_transaction_commits_and_publishes_one_transaction_id(): void
+    public function testNativeSqliteTransactionCommitsAndPublishesOneTransactionId(): void
     {
         $pdo = new PDO('sqlite::memory:');
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -46,8 +44,12 @@ final class CoverageTransactionsExtensionTest extends CoverageTransactionsTest
                 );
                 Assert::assertSame(
                     [['committed']],
-                    $db->fetch(StatementEvent::SELECT, ['lifecycle_rows'], $transaction,
-                        'SELECT value FROM lifecycle_rows')
+                    $db->fetch(
+                        StatementEvent::SELECT,
+                        ['lifecycle_rows'],
+                        $transaction,
+                        'SELECT value FROM lifecycle_rows',
+                    ),
                 );
                 return $transaction;
             }, retry: 0);
@@ -62,8 +64,10 @@ final class CoverageTransactionsExtensionTest extends CoverageTransactionsTest
                     StatementEvent::INSERT, StatementEvent::SELECT, StatementEvent::COMMIT],
                 array_map(static fn(StatementEvent $event): string => $event->kind, $events)
             );
-            self::assertSame('CREATE TABLE IF NOT EXISTS "orm__row_lock" ("id" INTEGER PRIMARY KEY CHECK ("id" = 1))',
-                $events[1]->sql);
+            self::assertSame(
+                'CREATE TABLE IF NOT EXISTS "orm__row_lock" ("id" INTEGER PRIMARY KEY CHECK ("id" = 1))',
+                $events[1]->sql,
+            );
             self::assertSame(['orm__row_lock'], $events[1]->tables);
             self::assertNull($events[1]->transaction);
             $transactionEvents = array_values(array_filter(
@@ -84,7 +88,7 @@ final class CoverageTransactionsExtensionTest extends CoverageTransactionsTest
         }
     }
 
-    public function test_native_sqlite_rollback_statement_discards_rows_and_publishes_event(): void
+    public function testNativeSqliteRollbackStatementDiscardsRowsAndPublishesEvent(): void
     {
         $pdo = new PDO('sqlite::memory:');
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -106,8 +110,15 @@ final class CoverageTransactionsExtensionTest extends CoverageTransactionsTest
             );
             $db->run(StatementEvent::ROLLBACK, [], null, 'ROLLBACK', true);
 
-            self::assertSame([], $db->fetch(StatementEvent::SELECT, ['lifecycle_rows'], null,
-                'SELECT value FROM lifecycle_rows'));
+            self::assertSame(
+                [],
+                $db->fetch(
+                    StatementEvent::SELECT,
+                    ['lifecycle_rows'],
+                    null,
+                    'SELECT value FROM lifecycle_rows',
+                ),
+            );
             self::assertSame(
                 [StatementEvent::SCHEMA, StatementEvent::BEGIN, StatementEvent::INSERT,
                     StatementEvent::ROLLBACK, StatementEvent::SELECT],

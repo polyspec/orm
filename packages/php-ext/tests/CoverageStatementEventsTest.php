@@ -15,7 +15,7 @@ final class CoverageStatementEventsTest extends TestCase
 {
     use StatementEventsCoverageCases;
 
-    public function test_statement_event_entry_points_are_native(): void
+    public function testStatementEventEntryPointsAreNative(): void
     {
         foreach (['publish', 'observed', 'run', 'fetch'] as $method) {
             Assert::assertTrue(

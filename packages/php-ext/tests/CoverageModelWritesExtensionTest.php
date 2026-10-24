@@ -15,7 +15,7 @@ use ReflectionMethod;
 final class CoverageModelWritesExtensionTest extends TestCase
 {
     // Requirements: DSL-56, DSL-57, DSL-58, DSL-60, DSL-103, DSL-104, DSL-105, DSL-106, DSL-110.
-    public function test_model_write_cycle(): void
+    public function testModelWriteCycle(): void
     {
         foreach (['create', 'creates', 'update', 'delete', 'getCount'] as $method) {
             Assert::assertTrue((new ReflectionMethod(Model::class, $method))->isInternal(), "Model::$method is native");

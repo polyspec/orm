@@ -9,12 +9,10 @@ use PHPUnit\Framework\Attributes\Medium;
 use Polyspec\Orm\Model;
 use ReflectionMethod;
 
-require_once dirname(__DIR__, 2) . '/php/tests/CoverageConstraintsAndRelationsTest.php';
-
 #[Medium]
 final class CoverageConstraintsAndRelationsExtensionTest extends CoverageConstraintsAndRelationsTest
 {
-    public function test_native_methods_are_internal(): void
+    public function testNativeMethodsAreInternal(): void
     {
         foreach (['get', 'update', 'delete'] as $method) {
             Assert::assertTrue(

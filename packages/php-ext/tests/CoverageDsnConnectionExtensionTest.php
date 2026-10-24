@@ -13,8 +13,6 @@ use Polyspec\Orm\OrmException;
 use Polyspec\Orm\Orm;
 use ReflectionMethod;
 
-require_once dirname(__DIR__, 2) . '/php/tests/CoverageDsnTest.php';
-
 #[Medium]
 final class CoverageDsnConnectionExtensionTest extends CoverageDsnTest
 {
@@ -23,13 +21,13 @@ final class CoverageDsnConnectionExtensionTest extends CoverageDsnTest
         return __FILE__;
     }
 
-    public function test_native_methods_are_internal(): void
+    public function testNativeMethodsAreInternal(): void
     {
         Assert::assertTrue((new ReflectionMethod(Orm::class, 'parseDsn'))->isInternal());
         Assert::assertTrue((new ReflectionMethod(Orm::class, 'connect'))->isInternal());
     }
 
-    public function test_native_sqlite_connection_queries_and_closes(): void
+    public function testNativeSqliteConnectionQueriesAndCloses(): void
     {
         $path = tempnam(sys_get_temp_dir(), 'orm-lifecycle-dsn-');
         self::assertNotFalse($path);
