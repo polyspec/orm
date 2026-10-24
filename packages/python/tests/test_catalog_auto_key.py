@@ -101,7 +101,29 @@ def _mysql_metadata(columns, primary_key, table_name):
     )
 
 
+def _mysql_expression_default_catalog(preexisting=False):
+    metadata = _mysql_metadata(
+        [
+            CatalogColumn("seq", "varchar(36)", False, False, False, "UUID()", True),
+            CatalogColumn("n", "bigint", False, False),
+            CatalogColumn("label", "varchar(20)", True, False),
+        ],
+        ["seq"],
+        "expression_key",
+    )
+    row = ["a" * 36, 1, None]
+    session = _FakeMysqlSession(
+        metadata, row, preexisting=preexisting, uses_preflight=True
+    )
+    return metadata, row, session, _FakeMysqlCatalog(metadata, session)
+
+
 class CatalogAutoKeyTest(unittest.TestCase):
+    def _insert_literal_default_composite(self, metadata, catalog, session):
+        result = catalog.insert_row(metadata, [("tenant", 2), ("n", 50)])
+        self.assertEqual(result.rows, [[2, "generated", 50]])
+        return [call[1] for call in session.calls if call[0] == "run"]
+
     def test_sqlite_automatic_primary_key_insert_returns_stored_row(self):
         with tempfile.TemporaryDirectory(prefix="orm-catalog-auto-key-") as directory:
             path = os.path.join(directory, "catalog.sqlite3")
@@ -218,10 +240,7 @@ class CatalogAutoKeyTest(unittest.TestCase):
         session = _FakeMysqlSession(metadata, [2, "generated", 50])
         catalog = _FakeMysqlCatalog(metadata, session)
 
-        result = catalog.insert_row(metadata, [("tenant", 2), ("n", 50)])
-
-        self.assertEqual(result.rows, [[2, "generated", 50]])
-        statements = [call[1] for call in session.calls if call[0] == "run"]
+        statements = self._insert_literal_default_composite(metadata, catalog, session)
         self.assertTrue(statements[0].startswith("SELECT 1 FROM"))
         self.assertIn("DEFAULT(`seq`)", statements[-1])
         describe_index = next(
@@ -234,6 +253,30 @@ class CatalogAutoKeyTest(unittest.TestCase):
                 if call[0] == "run" and call[1].startswith("SELECT 1 FROM")
             ),
             describe_index,
+        )
+
+    def test_mysql_literal_default_composite_rejects_mismatched_stored_value(self):
+        metadata = _mysql_metadata(
+            [
+                CatalogColumn("tenant", "bigint", False, False),
+                CatalogColumn(
+                    "seq", "varchar(30)", False, False, False, "'generated'", False
+                ),
+                CatalogColumn("n", "bigint", False, False),
+            ],
+            ["tenant", "seq"],
+            "literal_key",
+        )
+        session = _FakeMysqlSession(metadata, [2, "generated", 51])
+        catalog = _FakeMysqlCatalog(metadata, session)
+
+        with self.assertRaises(OrmError) as raised:
+            catalog.insert_row(metadata, [("tenant", 2), ("n", 50)])
+
+        self.assertEqual(raised.exception.code, "ROW_WRITE_MISMATCH")
+        self.assertEqual(
+            str(raised.exception),
+            "ROW_WRITE_MISMATCH: stored inserted values differ",
         )
 
     def test_mysql_automatic_key_uses_insert_acknowledgement(self):
@@ -256,20 +299,7 @@ class CatalogAutoKeyTest(unittest.TestCase):
         self.assertIn("`id`=?", statements[2])
 
     def test_mysql_expression_default_uses_bounded_input_locator(self):
-        metadata = _mysql_metadata(
-            [
-                CatalogColumn(
-                    "seq", "varchar(36)", False, False, False, "UUID()", True
-                ),
-                CatalogColumn("n", "bigint", False, False),
-                CatalogColumn("label", "varchar(20)", True, False),
-            ],
-            ["seq"],
-            "expression_key",
-        )
-        row = ["a" * 36, 1, None]
-        session = _FakeMysqlSession(metadata, row, uses_preflight=True)
-        catalog = _FakeMysqlCatalog(metadata, session)
+        metadata, row, session, catalog = _mysql_expression_default_catalog()
 
         result = catalog.insert_row(metadata, [("n", 1), ("label", None)])
 
@@ -296,22 +326,23 @@ class CatalogAutoKeyTest(unittest.TestCase):
             insert_index,
         )
 
+    def test_mysql_expression_locator_rejects_mismatched_stored_value(self):
+        metadata, _, session, catalog = _mysql_expression_default_catalog()
+        session.row = ["a" * 36, 2, None]
+
+        with self.assertRaises(OrmError) as raised:
+            catalog.insert_row(metadata, [("n", 1), ("label", None)])
+
+        self.assertEqual(raised.exception.code, "ROW_WRITE_MISMATCH")
+        self.assertEqual(
+            str(raised.exception),
+            "ROW_WRITE_MISMATCH: locator values differ from requested values",
+        )
+
     def test_mysql_expression_locator_rejects_existing_match_before_insert(self):
-        metadata = _mysql_metadata(
-            [
-                CatalogColumn(
-                    "seq", "varchar(36)", False, False, False, "UUID()", True
-                ),
-                CatalogColumn("n", "bigint", False, False),
-                CatalogColumn("label", "varchar(20)", True, False),
-            ],
-            ["seq"],
-            "expression_key",
+        metadata, _, session, catalog = _mysql_expression_default_catalog(
+            preexisting=True
         )
-        session = _FakeMysqlSession(
-            metadata, ["a" * 36, 1, None], preexisting=True, uses_preflight=True
-        )
-        catalog = _FakeMysqlCatalog(metadata, session)
 
         with self.assertRaises(OrmError) as raised:
             catalog.insert_row(metadata, [("n", 1), ("label", None)])
@@ -339,10 +370,7 @@ class CatalogAutoKeyTest(unittest.TestCase):
         session = _FakePostgresSession(metadata, [2, "generated", 50])
         catalog = _FakePostgresCatalog(metadata, session)
 
-        result = catalog.insert_row(metadata, [("tenant", 2), ("n", 50)])
-
-        self.assertEqual(result.rows, [[2, "generated", 50]])
-        statements = [call[1] for call in session.calls if call[0] == "run"]
+        statements = self._insert_literal_default_composite(metadata, catalog, session)
         self.assertTrue(statements[0].startswith("LOCK TABLE"))
         self.assertIn("RETURNING", statements[1])
 

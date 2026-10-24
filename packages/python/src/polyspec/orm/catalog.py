@@ -520,6 +520,16 @@ def _revision(metadata: CatalogTableMetadata, cells: list) -> str:
     return hashlib.sha256(encoded.encode()).hexdigest()
 
 
+def _validate_inserted_locator_row(
+    metadata: CatalogTableMetadata, cells: list, changes, mismatch_message: str
+) -> None:
+    _check_cells(metadata, cells)
+    _revision(metadata, cells)
+    for index, value in changes:
+        if not _same_row([cells[index]], [value]):
+            raise _error(codes.ROW_WRITE_MISMATCH, mismatch_message)
+
+
 def _changes(metadata: CatalogTableMetadata, values, code: str) -> list:
     """Checks named assignments against a descriptor and returns (column index, normalized value) in the order given."""
     values = list(values)
@@ -1353,14 +1363,12 @@ class CatalogConnection:
                             "expected exactly one inserted locator row",
                         )
                     returned = located.rows[0]
-                    _check_cells(descriptor, returned)
-                    _revision(descriptor, returned)
-                    for index, value in changes:
-                        if not _same_row([returned[index]], [value]):
-                            raise _error(
-                                codes.ROW_WRITE_MISMATCH,
-                                "locator values differ from requested values",
-                            )
+                    _validate_inserted_locator_row(
+                        descriptor,
+                        returned,
+                        changes,
+                        "locator values differ from requested values",
+                    )
                     keys = [returned[index] for index in key_indexes]
                 elif self._dialect == "mysql":
                     inserted = session.run(query, args)
@@ -1408,14 +1416,9 @@ class CatalogConnection:
                             "expected exactly one inserted default-key row",
                         )
                     returned = located.rows[0]
-                    _check_cells(descriptor, returned)
-                    _revision(descriptor, returned)
-                    for index, value in changes:
-                        if not _same_row([returned[index]], [value]):
-                            raise _error(
-                                codes.ROW_WRITE_MISMATCH,
-                                "stored inserted values differ",
-                            )
+                    _validate_inserted_locator_row(
+                        descriptor, returned, changes, "stored inserted values differ"
+                    )
                     keys = [returned[index] for index in key_indexes]
                 else:
                     returning = _quote_list(
