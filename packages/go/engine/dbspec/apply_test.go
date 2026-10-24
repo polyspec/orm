@@ -17,9 +17,12 @@ import (
 // failing wraps a real SQLite connection, injects an error into a chosen statement, and
 // replaces a chosen query with another query.
 type failing struct {
-	conn    *sql.Conn
-	fail    map[string]error
-	replace map[string]string
+	conn          *sql.Conn
+	fail          map[string]error
+	queryFail     map[string]error
+	queryFailCall map[string]int
+	queryCalls    map[string]int
+	replace       map[string]string
 }
 
 func (f *failing) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
@@ -30,10 +33,84 @@ func (f *failing) ExecContext(ctx context.Context, query string, args ...any) (s
 }
 
 func (f *failing) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
+	if err, ok := f.queryFail[query]; ok {
+		if f.queryCalls == nil {
+			f.queryCalls = map[string]int{}
+		}
+		f.queryCalls[query]++
+		if call := f.queryFailCall[query]; call == 0 || call == f.queryCalls[query] {
+			return nil, err
+		}
+	}
 	if q, ok := f.replace[query]; ok {
 		return f.conn.QueryContext(ctx, q)
 	}
 	return f.conn.QueryContext(ctx, query, args...)
+}
+
+// TestSettledVerifyPreservesIntrospectionErrors distinguishes a catalog read failure from real schema drift.
+func TestSettledVerifyPreservesIntrospectionErrors(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	start := time.Now()
+	t.Log("RUN apply/settled-introspection-error deadline=20s")
+	now, plans, ctx := applyTestSetup(t)
+	sentinel := errors.New("catalog read failed")
+	c := &failing{conn: applyTestConn(t), queryFail: map[string]error{sqliteMasterQuery: sentinel}}
+	result, err := Apply(ctx, c, DialectSQLite, plans, now, nil)
+	if err != nil || result.Failure == nil || result.Failure.Code != "verify" || !errors.Is(result.Failure, sentinel) {
+		t.Errorf("apply with a catalog read failure: result=%+v error=%v, want verify preserving the original error", result, err)
+	}
+
+	conn := applyTestConn(t)
+	if _, err := conn.ExecContext(ctx, `CREATE TABLE unrelated (id INTEGER)`); err != nil {
+		t.Fatal(err)
+	}
+	result, err = Apply(ctx, conn, DialectSQLite, plans, now, nil)
+	if err != nil || result.Failure == nil || result.Failure.Code != "drift" {
+		t.Errorf("apply with a real schema mismatch: result=%+v error=%v, want drift", result, err)
+	}
+
+	rollbackConn := applyTestConn(t)
+	applyOK(t, ctx, rollbackConn, plans, now)
+	rollbackCause := errors.New("rollback catalog read failed")
+	rollbackFailing := &failing{conn: rollbackConn, queryFail: map[string]error{sqliteMasterQuery: rollbackCause}}
+	err = Rollback(ctx, rollbackFailing, DialectSQLite, plans, now, nil)
+	applyErr := (*ApplyError)(nil)
+	if !errors.As(err, &applyErr) || applyErr.Code != "verify" || !errors.Is(err, rollbackCause) {
+		t.Errorf("rollback with a catalog read failure: %v, want verify preserving the original error", err)
+	}
+
+	driftConn := applyTestConn(t)
+	applyOK(t, ctx, driftConn, plans, now)
+	if _, err := driftConn.ExecContext(ctx, `CREATE TABLE unrelated (id INTEGER)`); err != nil {
+		t.Fatal(err)
+	}
+	err = Rollback(ctx, driftConn, DialectSQLite, plans, now, nil)
+	if !errors.As(err, &applyErr) || applyErr.Code != "drift" {
+		t.Errorf("rollback with a real schema mismatch: %v, want drift", err)
+	}
+
+	postForwardConn := &failing{
+		conn:          applyTestConn(t),
+		queryFail:     map[string]error{sqliteMasterQuery: sentinel},
+		queryFailCall: map[string]int{sqliteMasterQuery: 2},
+	}
+	var kinds []string
+	result, err = Apply(ctx, postForwardConn, DialectSQLite, plans, now, func(event ApplyEvent) error {
+		kinds = append(kinds, event.Kind)
+		return nil
+	})
+	if err != nil || result.Failure == nil || result.Failure.Code != "verify" || !errors.Is(result.Failure, sentinel) {
+		t.Errorf("apply with a post-forward catalog read failure: result=%+v error=%v, want verify preserving the original error", result, err)
+	}
+	var state string
+	if err := postForwardConn.conn.QueryRowContext(ctx, `SELECT state FROM "dbspec$plans"`).Scan(&state); err != nil {
+		t.Fatal(err)
+	}
+	if state != stateApplying || strings.Contains(strings.Join(kinds, ","), "verified") || strings.Contains(strings.Join(kinds, ","), "done") {
+		t.Errorf("post-forward verification failure reports success: history state=%q events=%s", state, strings.Join(kinds, ","))
+	}
+	logResult(t, "apply/settled-introspection-error", start)
 }
 
 func applyTestConn(t *testing.T) *sql.Conn {

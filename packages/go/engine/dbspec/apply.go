@@ -120,6 +120,12 @@ type historyRow struct {
 	step            int
 }
 
+// schemaMismatchError marks an introspection result that differs from the requested schema.
+// Errors from reading or parsing the catalog remain their original errors.
+type schemaMismatchError struct{ message string }
+
+func (e *schemaMismatchError) Error() string { return e.message }
+
 func newApplier(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) (*applier, error) {
 	switch dialect {
 	case DialectMySQL, DialectPostgres, DialectSQLite:
@@ -246,7 +252,11 @@ func Rollback(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now
 				return &ApplyError{Code: "chain", Plan: p.Name, Message: fmt.Sprintf("the recorded step %d is outside the plan's %d steps", k, len(steps))}
 			}
 			if err := a.verify(p.To); err != nil {
-				return &ApplyError{Code: "drift", Plan: p.Name, Message: err.Error()}
+				var mismatch *schemaMismatchError
+				if errors.As(err, &mismatch) {
+					return &ApplyError{Code: "drift", Plan: p.Name, Message: mismatch.Error()}
+				}
+				return &ApplyError{Code: "verify", Plan: p.Name, Err: err}
 			}
 		} else if k, err = a.resolve(p, row, steps, false); err != nil {
 			return err
@@ -662,7 +672,11 @@ func (a *applier) settled() (int, error) {
 		want = p.To
 	}
 	if err := a.verify(want); err != nil {
-		return 0, &ApplyError{Code: "drift", Message: err.Error()}
+		var mismatch *schemaMismatchError
+		if errors.As(err, &mismatch) {
+			return 0, &ApplyError{Code: "drift", Message: mismatch.Error()}
+		}
+		return 0, &ApplyError{Code: "verify", Err: err}
 	}
 	return position, nil
 }
@@ -685,18 +699,18 @@ func (a *applier) verify(want string) error {
 	}
 	if len(unsupported) > 0 {
 		u := unsupported[0]
-		return fmt.Errorf("the database has %d objects that dbspec cannot express, first %s %s %s: %s", len(unsupported), u.Kind, u.Table, u.Name, u.Reason)
+		return &schemaMismatchError{message: fmt.Sprintf("the database has %d objects that dbspec cannot express, first %s %s %s: %s", len(unsupported), u.Kind, u.Table, u.Name, u.Reason)}
 	}
 	got := ""
 	if len(document.Tables) > 0 {
 		manifest, diagnostics := ManifestOf([]*Document{document})
 		if len(diagnostics) > 0 {
-			return fmt.Errorf("the introspected schema is invalid: %v", diagnostics)
+			return &schemaMismatchError{message: fmt.Sprintf("the introspected schema is invalid: %v", diagnostics)}
 		}
 		got = manifest.SchemaHash
 	}
 	if got != want {
-		return fmt.Errorf("the database is at %s, not %s", hashOrEmpty(got), hashOrEmpty(want))
+		return &schemaMismatchError{message: fmt.Sprintf("the database is at %s, not %s", hashOrEmpty(got), hashOrEmpty(want))}
 	}
 	return nil
 }

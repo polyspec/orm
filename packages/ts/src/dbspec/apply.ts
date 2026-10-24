@@ -74,6 +74,8 @@ export class DbspecApplyError extends Error {
   }
 }
 
+class SchemaMismatchError extends Error {}
+
 // The history table records the applied plans. A dbspec name has no $, so
 // it does not overlap a user table, and introspection reads without the tables that start with dbspec$.
 const HISTORY_TABLE = 'dbspec$plans';
@@ -462,7 +464,8 @@ class Applier {
     try {
       await this.verify(want);
     } catch (error) {
-      throw new DbspecApplyError('drift', '', 0, messageOf(error));
+      if (error instanceof SchemaMismatchError) throw new DbspecApplyError('drift', '', 0, error.message);
+      throw new DbspecApplyError('verify', '', 0, '', error);
     }
     return position;
   }
@@ -472,15 +475,15 @@ class Applier {
     const { document, unsupported } = await introspectCatalog(async sql => (await this.s.rows(sql)).map(values => new CatalogRow(sql, values)), this.dialect, 'schema');
     if (unsupported.length > 0) {
       const u = present(unsupported[0], 'unsupported[0]');
-      throw new Error(`the database has ${unsupported.length} objects that dbspec cannot express, first ${u.kind} ${u.table} ${u.name}: ${u.reason}`);
+      throw new SchemaMismatchError(`the database has ${unsupported.length} objects that dbspec cannot express, first ${u.kind} ${u.table} ${u.name}: ${u.reason}`);
     }
     let got = '';
     if (document.tables.length > 0) {
       const { manifest, diagnostics } = dbspecManifest([document]);
-      if (manifest === null) throw new Error(`the introspected schema is invalid: ${diagnostics.map(d => `${d.line}:${d.column} ${d.rule} ${d.message}`).join('; ')}`);
+      if (manifest === null) throw new SchemaMismatchError(`the introspected schema is invalid: ${diagnostics.map(d => `${d.line}:${d.column} ${d.rule} ${d.message}`).join('; ')}`);
       got = manifest.schemaHash;
     }
-    if (got !== want) throw new Error(`the database is at ${hashOrEmpty(got)}, not ${hashOrEmpty(want)}`);
+    if (got !== want) throw new SchemaMismatchError(`the database is at ${hashOrEmpty(got)}, not ${hashOrEmpty(want)}`);
   }
 
   /** In the chain, writes the step with the plan's previous plan target as source. */
@@ -810,7 +813,8 @@ export async function rollbackPlans(connection: Connection, dialect: DbspecDiale
       try {
         await a.verify(p.to);
       } catch (error) {
-        throw new DbspecApplyError('drift', p.name, 0, messageOf(error));
+        if (error instanceof SchemaMismatchError) throw new DbspecApplyError('drift', p.name, 0, error.message);
+        throw new DbspecApplyError('verify', p.name, 0, '', error);
       }
     } else {
       k = await a.resolve(p, row, steps, false);

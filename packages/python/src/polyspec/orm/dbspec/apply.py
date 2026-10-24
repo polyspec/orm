@@ -150,6 +150,10 @@ class DbspecApplyError(Exception):
         self.cause = cause
 
 
+class _SchemaMismatchError(Exception):
+    """An introspected schema differs from the requested schema."""
+
+
 def _message_of(error) -> str:
     return str(error)
 
@@ -500,10 +504,10 @@ class _Applier:
             want = p["to"]
         try:
             self.verify(want)
-        except DbspecApplyError:
-            raise
-        except Exception as error:  # noqa: BLE001 - any error of the verify after the settled state is reported as drift
+        except _SchemaMismatchError as error:
             raise DbspecApplyError("drift", "", 0, _message_of(error)) from None
+        except Exception as error:  # noqa: BLE001 - introspection errors retain their identity as a verify cause
+            raise DbspecApplyError("verify", "", 0, "", error) from None
         return position
 
     def verify(self, want: str) -> None:
@@ -513,7 +517,7 @@ class _Applier:
         unsupported = introspected["unsupported"]
         if unsupported:
             u = unsupported[0]
-            raise ValueError(
+            raise _SchemaMismatchError(
                 f"the database has {len(unsupported)} objects that "
                 f"dbspec cannot express, first {u['kind']} "
                 f"{u['table']} {u['name']}: {u['reason']}"
@@ -523,7 +527,7 @@ class _Applier:
         if document.tables:
             manifest, diagnostics = dbspec_manifest([document])
             if manifest is None:
-                raise ValueError(
+                raise _SchemaMismatchError(
                     "the introspected schema is invalid: "
                     + "; ".join(
                         f"{d.line}:{d.column} {d.rule} {d.message}" for d in diagnostics
@@ -531,7 +535,7 @@ class _Applier:
                 )
             got = manifest.schema_hash
         if got != want:
-            raise ValueError(
+            raise _SchemaMismatchError(
                 f"the database is at {_hash_or_empty(got)}, not {_hash_or_empty(want)}"
             )
 
@@ -922,12 +926,12 @@ def rollback_plans(
                 )
             try:
                 a.verify(p["to"])
-            except DbspecApplyError:
-                raise
-            except Exception as error:  # noqa: BLE001 - any error of the verify of the last plan is reported as drift
+            except _SchemaMismatchError as error:
                 raise DbspecApplyError(
                     "drift", p["name"], 0, _message_of(error)
                 ) from None
+            except Exception as error:  # noqa: BLE001 - catalog failures are verify errors, not drift
+                raise DbspecApplyError("verify", p["name"], 0, "", error) from None
         else:
             k = a.resolve(p, row, steps, False)
         if k > 0 and steps[k - 1]["rollback"] == "":
@@ -948,8 +952,8 @@ def rollback_plans(
         a._foreign_key_check(p)
         try:
             a.verify(p["from"] or "")
-        except DbspecApplyError:
-            raise
+        except _SchemaMismatchError as error:
+            raise DbspecApplyError("verify", p["name"], 0, "", error) from None
         except Exception as error:  # noqa: BLE001 - any error of the verify of the plan is reported as its verify error
             raise DbspecApplyError("verify", p["name"], 0, "", error) from None
         a._emit("verified", p["name"], 0, len(steps), "")

@@ -62,10 +62,21 @@ fn quiet(_: &ApplyEvent) -> Result<(), EventError> {
 struct Failing {
     inner: SqliteConnection,
     fail: HashMap<&'static str, &'static str>,
+    catalog_failure: Option<&'static str>,
+    catalog_failure_call: usize,
+    catalog_reads: usize,
 }
 
 impl CatalogQuerier for Failing {
     async fn rows(&mut self, query: &str) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
+        if query.starts_with("SELECT type, name, tbl_name") {
+            self.catalog_reads += 1;
+            if let Some(message) = self.catalog_failure {
+                if self.catalog_reads == self.catalog_failure_call {
+                    return Err(sqlx::Error::Protocol(message.to_owned()));
+                }
+            }
+        }
         self.inner.rows(query).await
     }
 }
@@ -89,7 +100,7 @@ impl ApplyConnection for Failing {
 
 async fn failing(fail: &[(&'static str, &'static str)]) -> Result<Failing, String> {
     let inner = SqliteConnection::connect("sqlite::memory:").await.map_err(|e| format!("sqlite: {e}"))?;
-    Ok(Failing { inner, fail: fail.iter().copied().collect() })
+    Ok(Failing { inner, fail: fail.iter().copied().collect(), catalog_failure: None, catalog_failure_call: 1, catalog_reads: 0 })
 }
 
 /// A MySQL connection that returns the set rows for each query it reads. Statements outside the set
@@ -183,6 +194,71 @@ async fn rollback_step_outside(plans: Vec<Plan>) -> Result<String, String> {
     }
 }
 
+async fn settled_introspection_error(plans: Vec<Plan>) -> Result<String, String> {
+    let mut c = failing(&[]).await?;
+    c.catalog_failure = Some("catalog read failed");
+    match apply(&mut c, Dialect::Sqlite, &plans, &fixed_now, &mut quiet).await {
+        Err(ApplyError::Verify { source: Some(polyspec_orm::dbspec::IntrospectError::Query(sqlx::Error::Protocol(message))), .. })
+            if message == "catalog read failed" =>
+        {
+            Ok("verify preserves the catalog driver error".to_owned())
+        }
+        result => Err(format!("{result:?}; want verify with the original catalog driver error")),
+    }
+}
+
+async fn settled_schema_drift(plans: Vec<Plan>) -> Result<String, String> {
+    let mut c = failing(&[]).await?;
+    c.execute("CREATE TABLE unrelated (id INTEGER)").await.map_err(|e| format!("create unrelated table: {e}"))?;
+    match apply(&mut c, Dialect::Sqlite, &plans, &fixed_now, &mut quiet).await {
+        Err(ApplyError::Drift { message }) => Ok(message),
+        result => Err(format!("{result:?}; want drift for a real schema mismatch")),
+    }
+}
+
+async fn rollback_introspection_error(plans: Vec<Plan>) -> Result<String, String> {
+    let mut c = failing(&[]).await?;
+    apply(&mut c, Dialect::Sqlite, &plans, &fixed_now, &mut quiet).await.map_err(|e| format!("apply: {e}"))?;
+    c.catalog_failure = Some("catalog read failed");
+    c.catalog_failure_call = c.catalog_reads + 1;
+    match rollback(&mut c, Dialect::Sqlite, &plans, &fixed_now, &mut quiet).await {
+        Err(ApplyError::Verify { source: Some(polyspec_orm::dbspec::IntrospectError::Query(sqlx::Error::Protocol(message))), .. })
+            if message == "catalog read failed" =>
+        {
+            Ok("verify preserves the catalog driver error".to_owned())
+        }
+        result => Err(format!("{result:?}; want verify with the original catalog driver error")),
+    }
+}
+
+async fn post_forward_introspection_error(plans: Vec<Plan>) -> Result<String, String> {
+    let mut c = failing(&[]).await?;
+    c.catalog_failure = Some("post-forward catalog read failed");
+    c.catalog_failure_call = 2;
+    let mut kinds = Vec::new();
+    let mut events = |event: &ApplyEvent| {
+        kinds.push(event.kind.as_str().to_owned());
+        Ok(())
+    };
+    let verify_message = match apply(&mut c, Dialect::Sqlite, &plans, &fixed_now, &mut events).await {
+        Err(ApplyError::Verify { source: Some(polyspec_orm::dbspec::IntrospectError::Query(sqlx::Error::Protocol(message))), .. })
+            if message == "post-forward catalog read failed" =>
+        {
+            message
+        }
+        result => return Err(format!("{result:?}; want verify with the original post-forward catalog error")),
+    };
+    let history = c.query_bound("SELECT state FROM \"dbspec$plans\"", &[]).await.map_err(|e| format!("read history: {e}"))?;
+    let state = match history.first().and_then(|row| row.first()) {
+        Some(CatalogValue::Text(state)) => state,
+        value => return Err(format!("history state row is {value:?}; want applying")),
+    };
+    if state != "applying" || kinds.iter().any(|kind| kind == "verified" || kind == "done") {
+        return Err(format!("failed post-forward verify reported success: state={state}, events={kinds:?}"));
+    }
+    Ok(format!("post-forward failure preserves {verify_message:?}, applying history, and no success events"))
+}
+
 async fn effect_row() -> Result<String, String> {
     let tables = effect_query(Dialect::MySql, "table").ok_or("no MySQL table effect query")?;
     let mut c = Scripted { executes: vec![], queries: HashMap::from([(tables.to_owned(), vec![])]) };
@@ -220,6 +296,20 @@ async fn apply_reports_cleanup_errors() {
         case("apply/cleanup-errors/begin-restore", begin_restore(plans.clone())).await,
         case("apply/rollback-step-outside", rollback_step_outside(plans.clone())).await,
         case("apply/effect-row", effect_row()).await,
+    ];
+    let failures: Vec<&String> = results.iter().filter_map(|r| r.as_ref().err()).collect();
+    assert!(failures.is_empty(), "{} of {} cases failed: {failures:?}", failures.len(), results.len());
+}
+
+#[tokio::test]
+async fn apply_reports_verify_errors_separately_from_drift() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let plans = create_from_empty();
+    let results = [
+        case("apply/settled-introspection-error", settled_introspection_error(plans.clone())).await,
+        case("apply/settled-schema-drift", settled_schema_drift(plans.clone())).await,
+        case("apply/rollback-introspection-error", rollback_introspection_error(plans.clone())).await,
+        case("apply/post-forward-introspection-error", post_forward_introspection_error(plans)).await,
     ];
     let failures: Vec<&String> = results.iter().filter_map(|r| r.as_ref().err()).collect();
     assert!(failures.is_empty(), "{} of {} cases failed: {failures:?}", failures.len(), results.len());

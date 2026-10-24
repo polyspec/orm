@@ -4,6 +4,11 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Dbspec;
 
+/** Marks a successfully introspected schema that differs from the requested plan. */
+final class PlanSchemaMismatch extends \RuntimeException
+{
+}
+
 /**
  * Applies a plan chain to one connection, one step at a time; resumes or undoes an interrupted plan,
  * and finalizes an applied plan (docs/spec/plans.md "Apply"). One object is the state of one command
@@ -197,8 +202,10 @@ final class PlanApply
                 }
                 try {
                     $a->verify($plan->to);
-                } catch (\RuntimeException $e) {
+                } catch (PlanSchemaMismatch $e) {
                     throw new ApplyError('drift', $plan->name, 0, $e->getMessage());
+                } catch (\RuntimeException $e) {
+                    throw new ApplyError('verify', $plan->name, 0, '', $e);
                 }
             } else {
                 $k = $a->resolve($plan, $row, $steps, false);
@@ -583,8 +590,10 @@ final class PlanApply
         }
         try {
             $this->verify($want);
+            } catch (PlanSchemaMismatch $e) {
+                throw new ApplyError('drift', '', 0, $e->getMessage());
         } catch (\RuntimeException $e) {
-            throw new ApplyError('drift', '', 0, $e->getMessage());
+                throw new ApplyError('verify', '', 0, '', $e);
         }
         return $position;
     }
@@ -598,7 +607,7 @@ final class PlanApply
         $result = Dbspec::introspect($this->c, $this->r->dialect, 'schema');
         if ($result->unsupported !== []) {
             $u = $result->unsupported[0];
-            throw new \RuntimeException(sprintf(
+            throw new PlanSchemaMismatch(sprintf(
                 'the database has %d objects that dbspec cannot express, first %s %s %s: %s',
                 count($result->unsupported),
                 $u->kind,
@@ -611,7 +620,7 @@ final class PlanApply
         if ($result->document->tables !== []) {
             $manifest = Dbspec::manifest([$result->document]);
             if ($manifest->manifest === null) {
-                throw new \RuntimeException('the introspected schema is invalid: ' . json_encode(array_map(
+                throw new PlanSchemaMismatch('the introspected schema is invalid: ' . json_encode(array_map(
                     static fn(Diagnostic $d): array => [$d->rule, $d->line, $d->column, $d->message],
                     $manifest->diagnostics
                 )));
@@ -619,7 +628,7 @@ final class PlanApply
             $got = $manifest->manifest->schemaHash;
         }
         if ($got !== $want) {
-            throw new \RuntimeException(sprintf(
+            throw new PlanSchemaMismatch(sprintf(
                 'the database is at %s, not %s',
                 $got === '' ? 'empty' : $got,
                 $want === '' ? 'empty' : $want

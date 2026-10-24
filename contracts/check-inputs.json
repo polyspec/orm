@@ -1529,6 +1529,34 @@
         "packages/rust/orm/tests/dbspec_apply.rs"
       ]
     },
+    "dbspec-verify-errors-check": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "rust",
+        "php",
+        "composer",
+        "php-extension-tools",
+        "python",
+        "node-modules"
+      ],
+      "inputs": [
+        "Makefile",
+        "contracts/check-inputs.json",
+        "packages/go/engine/dbspec/apply.go",
+        "packages/go/engine/dbspec/apply_test.go",
+        "packages/php-ext/src/apply.c",
+        "packages/php/src/Dbspec/PlanApply.php",
+        "packages/php/tests/DbspecApplyCleanupTest.php",
+        "packages/php/tests/FailingPdo.php",
+        "packages/python/src/polyspec/orm/dbspec/apply.py",
+        "packages/python/tests/test_dbspec_verify_errors.py",
+        "packages/rust/orm/src/dbspec/apply.rs",
+        "packages/rust/orm/tests/dbspec_apply_cleanup.rs",
+        "packages/ts/src/dbspec/apply.ts",
+        "packages/ts/tests/dbspec-apply-verify-errors.mjs"
+      ]
+    },
     "dbspec-apply-ts-check": {
       "scope": "owner",
       "needs": [

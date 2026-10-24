@@ -6,7 +6,7 @@
 //! its recorded one; [`rollback`] undoes the last plan with its rollback
 //! statements; [`finalize`] drops what the applied plans hid.
 
-use super::{chain, introspect, manifest, plan_steps, CatalogQuerier, CatalogValue, Dialect, Effect, Plan, PlanStep};
+use super::{chain, introspect, manifest, plan_steps, CatalogQuerier, CatalogValue, Dialect, Effect, IntrospectError, Plan, PlanStep};
 use chrono::{DateTime, Utc};
 use sqlx::{AssertSqlSafe, MySqlConnection, PgConnection, SqliteConnection};
 use std::future::Future;
@@ -100,7 +100,7 @@ pub enum ApplyError {
     /// could not be read.
     Failed { plan: String, step: usize, statement: String, source: sqlx::Error },
     /// The applied or rolled back database is not the plan's schema.
-    Verify { plan: String, message: String },
+    Verify { plan: String, message: String, source: Option<IntrospectError> },
     /// Step `step` has no rollback statement; the rollback stopped before it.
     Irreversible { plan: String, step: usize, message: String },
     /// A column that the rollback of step `step` makes non-null has NULL rows
@@ -153,7 +153,7 @@ impl std::fmt::Display for ApplyError {
             ApplyError::Chain { plan: Some(plan), message } => write!(f, "chain {plan}: {message}"),
             ApplyError::Failed { plan, step, statement, source } if statement.is_empty() => write!(f, "failed {plan} at step {step}: {source}"),
             ApplyError::Failed { plan, step, statement, source } => write!(f, "failed {plan} at step {step}: {statement}: {source}"),
-            ApplyError::Verify { plan, message } => write!(f, "verify {plan}: {message}"),
+            ApplyError::Verify { plan, message, .. } => write!(f, "verify {plan}: {message}"),
             ApplyError::Irreversible { plan, step, message } => write!(f, "irreversible {plan} at step {step}: {message}"),
             ApplyError::Nulls { plan, step, message } => write!(f, "nulls {plan} at step {step}: {message}"),
             ApplyError::Database(e) => write!(f, "{e}"),
@@ -167,11 +167,34 @@ impl std::fmt::Display for ApplyError {
 impl std::error::Error for ApplyError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            ApplyError::Locked { source: Some(e), .. } | ApplyError::Failed { source: e, .. } | ApplyError::Database(e) => Some(e),
+            ApplyError::Locked { source: Some(e), .. }
+            | ApplyError::Failed { source: e, .. }
+            | ApplyError::Database(e) => Some(e),
+            ApplyError::Verify { source: Some(e), .. } => Some(e),
             ApplyError::Event(e) => Some(e.as_ref()),
             ApplyError::Cleanup { error, .. } => Some(error.as_ref()),
             _ => None,
         }
+    }
+}
+
+#[derive(Debug)]
+enum VerifyError {
+    Mismatch(String),
+    Introspection(IntrospectError),
+}
+
+fn verification_error(plan: String, error: VerifyError) -> ApplyError {
+    match error {
+        VerifyError::Mismatch(message) => ApplyError::Verify { plan, message, source: None },
+        VerifyError::Introspection(source) => ApplyError::Verify { plan, message: source.to_string(), source: Some(source) },
+    }
+}
+
+fn drift_or_verification_error(plan: Option<String>, error: VerifyError) -> ApplyError {
+    match error {
+        VerifyError::Mismatch(message) => ApplyError::Drift { message },
+        other => verification_error(plan.unwrap_or_default(), other),
     }
 }
 
@@ -691,7 +714,7 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
                     message: format!("the recorded step {step} is outside the plan's {} steps", steps.len()),
                 });
             }
-            self.verify(Some(p.to())).await.map_err(|message| ApplyError::Drift { message })?;
+            self.verify(Some(p.to())).await.map_err(|error| drift_or_verification_error(Some(p.name().to_owned()), error))?;
             step
         } else {
             self.resolve(p, &state, step, &steps, false).await?
@@ -717,7 +740,7 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
             self.set_step(p, i).await?;
         }
         self.foreign_key_check(p).await?;
-        self.verify(p.from()).await.map_err(|message| ApplyError::Verify { plan: p.name().to_owned(), message })?;
+        self.verify(p.from()).await.map_err(|error| verification_error(p.name().to_owned(), error))?;
         self.emit(ApplyEventKind::Verified, p, 0, steps.len(), "")?;
         let delete = format!("DELETE FROM {} WHERE {} = {}", self.q(HISTORY_TABLE), self.q("name"), self.placeholder(1));
         self.c.execute_bound(&delete, &[CatalogValue::Text(p.name().to_owned())]).await?;
@@ -838,32 +861,32 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
             }
             want = Some(p.to());
         }
-        self.verify(want).await.map_err(|message| ApplyError::Drift { message })?;
+        self.verify(want).await.map_err(|error| drift_or_verification_error(None, error))?;
         Ok(position)
     }
 
     /// The database's introspection has the `want` schemaHash (None means an empty database), and
     /// there are no unsupported objects. If it differs, returns that difference.
-    async fn verify(&mut self, want: Option<&str>) -> Result<(), String> {
-        let introspection = introspect(&mut *self.c, self.d, "schema").await.map_err(|e| e.to_string())?;
+    async fn verify(&mut self, want: Option<&str>) -> Result<(), VerifyError> {
+        let introspection = introspect(&mut *self.c, self.d, "schema").await.map_err(VerifyError::Introspection)?;
         if let Some(u) = introspection.unsupported.first() {
-            return Err(format!(
+            return Err(VerifyError::Mismatch(format!(
                 "the database has {} objects that dbspec cannot express, first {} {} {}: {}",
                 introspection.unsupported.len(),
                 u.kind,
                 u.table,
                 u.name,
                 u.reason
-            ));
+            )));
         }
         let got = if introspection.document.tables.is_empty() {
             None
         } else {
-            let m = manifest(&[&introspection.document]).map_err(|diagnostics| format!("the introspected schema is invalid: {diagnostics:?}"))?;
+            let m = manifest(&[&introspection.document]).map_err(|diagnostics| VerifyError::Mismatch(format!("the introspected schema is invalid: {diagnostics:?}")))?;
             Some(m.schema_hash)
         };
         if got.as_deref() != want {
-            return Err(format!("the database is at {}, not {}", hash_or_empty(got.as_deref()), hash_or_empty(want)));
+            return Err(VerifyError::Mismatch(format!("the database is at {}, not {}", hash_or_empty(got.as_deref()), hash_or_empty(want))));
         }
         Ok(())
     }
@@ -985,7 +1008,7 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
             self.set_step(p, i + 1).await?;
         }
         self.foreign_key_check(p).await?;
-        self.verify(Some(p.to())).await.map_err(|message| ApplyError::Verify { plan: p.name().to_owned(), message })?;
+        self.verify(Some(p.to())).await.map_err(|error| verification_error(p.name().to_owned(), error))?;
         self.emit(ApplyEventKind::Verified, p, 0, steps.len(), "")?;
         self.record(p, APPLIED, end, steps.len()).await?;
         self.emit(ApplyEventKind::Done, p, 0, steps.len(), "")
@@ -1036,7 +1059,7 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
         }
         match self.integer("SELECT COUNT(*) FROM pragma_foreign_key_check").await? {
             0 => Ok(()),
-            broken => Err(ApplyError::Verify { plan: p.name().to_owned(), message: format!("{broken} rows break a foreign key") }),
+            broken => Err(ApplyError::Verify { plan: p.name().to_owned(), message: format!("{broken} rows break a foreign key"), source: None }),
         }
     }
 

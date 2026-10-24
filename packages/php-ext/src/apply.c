@@ -551,17 +551,24 @@ static str json(zval *value)
     return out;
 }
 
-/* Checks that the introspection of the database has want schemaHash (empty means an empty database) and that there are no unsupported objects. Otherwise it is a RuntimeException. */
-static bool verify(applier *a, str want)
+typedef enum {
+    VERIFY_OK,
+    VERIFY_MISMATCH,
+    VERIFY_ERROR,
+} verify_result;
+
+/* A successful catalog read can differ from the requested schema; database exceptions remain pending as VERIFY_ERROR. */
+static verify_result verify(applier *a, str want, str *message)
 {
     unsupportedv skipped = {0};
     document *d = dbs_introspect(a->c, a->r.d, SL("schema"), &skipped);
     if (d == NULL || dbs_failed()) {
-        return false;
+        return VERIFY_ERROR;
     }
     if (skipped.n > 0) {
         const unsupported *u = &skipped.v[0];
-        return runtime_error(fmt("the database has %u objects that dbspec cannot express, first %S %S %S: %S", skipped.n, u->kind, u->table, u->name, u->reason));
+        *message = fmt("the database has %u objects that dbspec cannot express, first %S %S %S: %S", skipped.n, u->kind, u->table, u->name, u->reason);
+        return VERIFY_MISMATCH;
     }
     str got = SL("");
     if (d->tables.n > 0) {
@@ -571,7 +578,7 @@ static bool verify(applier *a, str want)
         diags found = {0};
         if (!dbs_manifest(&set, &m, &found)) {
             if (dbs_failed()) {
-                return false;
+                return VERIFY_ERROR;
             }
             zval list;
             array_init(&list);
@@ -586,14 +593,16 @@ static bool verify(applier *a, str want)
             }
             str text = json(&list);
             zval_ptr_dtor(&list);
-            return runtime_error(fmt("the introspected schema is invalid: %S", text));
+            *message = fmt("the introspected schema is invalid: %S", text);
+            return VERIFY_MISMATCH;
         }
         got = m.schema_hash;
     }
     if (!str_eq(got, want)) {
-        return runtime_error(fmt("the database is at %S, not %S", got.n == 0 ? SL("empty") : got, want.n == 0 ? SL("empty") : want));
+        *message = fmt("the database is at %S, not %S", got.n == 0 ? SL("empty") : got, want.n == 0 ? SL("empty") : want);
+        return VERIFY_MISMATCH;
     }
-    return true;
+    return VERIFY_OK;
 }
 
 /* When there is no interrupted plan and the catalog's recorded schema matches, returns the number of recorded plans. */
@@ -612,14 +621,17 @@ static bool settled(applier *a, size_t *out)
         }
         want = p->to;
     }
-    if (!verify(a, want)) {
+    str detail = SL("");
+    verify_result result = verify(a, want, &detail);
+    if (result == VERIFY_ERROR) {
         if (!pending(spl_ce_RuntimeException)) {
             return false;
         }
         zend_object *e = take_exception();
-        str message = exception_message(e);
-        OBJ_RELEASE(e);
-        return apply_error("drift", SL(""), 0, message, NULL);
+        return apply_error("verify", SL(""), 0, SL(""), e);
+    }
+    if (result == VERIFY_MISMATCH) {
+        return apply_error("drift", SL(""), 0, detail, NULL);
     }
     *out = pos;
     return true;
@@ -905,19 +917,19 @@ static bool irreversible(const plan *p, const planstepv *steps, zend_long i)
 /* Converts verify's RuntimeException into an ApplyError with code: verify is kept as the previous exception, and drift is kept as the message. */
 static bool verify_as(applier *a, const plan *p, str want, const char *code)
 {
-    if (verify(a, want)) {
+    str detail = SL("");
+    verify_result result = verify(a, want, &detail);
+    if (result == VERIFY_OK) {
         return true;
     }
-    if (!pending(spl_ce_RuntimeException)) {
+    if (result == VERIFY_ERROR && !pending(spl_ce_RuntimeException)) {
         return false;
     }
-    zend_object *e = take_exception();
-    if (strcmp(code, "verify") == 0) {
-        return apply_error("verify", p->name, 0, SL(""), e);
+    if (result == VERIFY_MISMATCH) {
+        return apply_error(code, p->name, 0, detail, NULL);
     }
-    str message = exception_message(e);
-    OBJ_RELEASE(e);
-    return apply_error(code, p->name, 0, message, NULL);
+    zend_object *e = take_exception();
+    return apply_error("verify", p->name, 0, SL(""), e);
 }
 
 /* Runs from step start up to the finalize step, verifies, then sets the row to applied. */
