@@ -119,7 +119,8 @@ final class OrmExceptionNativeTest extends TestCase
             Assert::fail('unsupported TLS modes must be rejected');
         } catch (OrmException $error) {
             Assert::assertSame(
-                'CONFIG: mysql DSN ssl-mode "disabled" is not supported; the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca',
+                'CONFIG: mysql DSN ssl-mode "disabled" is not supported; '
+                . 'the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca',
                 $error->getMessage()
             );
         }
@@ -274,7 +275,11 @@ echo base64_encode($request), "\n";
 fclose($server);
 PHP;
         $pipes = [];
-        $process = proc_open([PHP_BINARY, '-r', $serverCode], [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+        $process = proc_open(
+            [PHP_BINARY, '-r', $serverCode],
+            [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+            $pipes
+        );
         Assert::assertIsResource($process);
         try {
             $port = trim((string) fgets($pipes[1]));
