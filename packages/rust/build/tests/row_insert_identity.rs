@@ -3,14 +3,65 @@ use polyspec_orm_build::{
     tool_db::{self, GridCell, P},
 };
 use std::sync::{
-    atomic::{AtomicBool, Ordering},
     Arc,
+    atomic::{AtomicBool, Ordering},
 };
 
 #[path = "row_insert_identity/expression.rs"]
 mod expression;
 #[path = "lock_probe/mod.rs"]
 mod lock_probe;
+
+#[tokio::test]
+// Requirements: INT-123.
+async fn sqlite_automatic_primary_key_returns_and_stores_the_inserted_row() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let path = std::env::temp_dir().join(format!("orm-catalog-auto-key-{}.sqlite", std::process::id()));
+    assert!(!path.exists(), "SQLite fixture path must be unowned before this run");
+    let _fixture = SqliteFixture(path.clone());
+    let dsn = format!("sqlite://{}", path.display());
+    let (database, mut seed, _) = tool_db::open(&dsn).await.expect("SQLite fixture connection");
+    seed.exec("CREATE TABLE generated (id INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL)", &[]).await.expect("create automatic-key table");
+    let mut catalog = CatalogConnection::connect(&dsn).await.expect("catalog connection");
+    let table = TableRef { namespace: catalog.current_namespace().await.expect("namespace"), name: "generated".into() };
+    let metadata = catalog.describe_table(&table).await.expect("automatic-key metadata");
+    assert_eq!(metadata.columns.len(), 2);
+    assert_eq!(metadata.columns[0].name, "id");
+    assert_eq!(metadata.columns[0].native_type, "INTEGER");
+    assert!(!metadata.columns[0].nullable);
+    assert!(!metadata.columns[0].generated);
+    assert!(metadata.columns[0].automatic_key);
+    assert_eq!(metadata.columns[0].default_expression, None);
+    assert!(!metadata.columns[0].expression_default);
+    assert_eq!(metadata.columns[1].name, "payload");
+    assert_eq!(metadata.columns[1].native_type, "TEXT");
+    assert!(!metadata.columns[1].nullable);
+    let result = catalog
+        .insert_row(
+            &metadata,
+            &[("payload".into(), P::S("generated".into()))],
+            Arc::new(AtomicBool::new(false)),
+            Arc::new(|_| {}),
+            std::sync::Arc::new(|| Ok(())),
+        )
+        .await
+        .expect("insert with database-owned key");
+    assert_eq!(result.rows, vec![vec![GridCell::Integer(1), GridCell::Text("generated".into())]]);
+    let stored = catalog.table_page(&table, 2, 0).await.expect("stored row");
+    assert_eq!(stored.result.rows, result.rows);
+    catalog.close().await;
+    seed.exec("DROP TABLE generated", &[]).await.expect("remove owned table");
+    drop(seed);
+    database.close().await;
+}
+
+struct SqliteFixture(std::path::PathBuf);
+
+impl Drop for SqliteFixture {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_file(&self.0);
+    }
+}
 
 #[tokio::test]
 // Requirements: DBS-113, INT-34.
