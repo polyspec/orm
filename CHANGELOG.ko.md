@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 2cb78539dc87ebcd2c722662d47bdfd8cef57353f8f77dbebe733bc12d1b378b -->
+<!-- source-sha256: 10ac0540edce16e1d8318430e6d718efbdfd1cf2e82cd44de6335c8a3132d686 -->
 # 변경 이력
 
 ## Unreleased
+
+- 문서의 구현 열거를 `config/parity.json`에 맞추고 PHP extension의 지원 주장은 확인된 범위로 제한한다. 선택자 unit 네 개가 통과했고 전용 규칙은 영어 문서 50개와 한국어 문서 50개에서 지적이 없으며 `make docs-check`도 통과한다. 수정 전 main `0898f6f1`에서 실행한 focused source RED는 75건을 보고했다: 개수 문장 50개, 열거 집합 17개, 표 머리글 6개, protocol 행 2개. PHP extension catalog 미지원은 KSTD-7-7에 남는다(KSTD-2-2).
 
 - Rust upsert planner는 빈 conflict target을 출력하는 대신 conflict-key validation 오류를 전파한다. Direct native `Planner::compile` case는 `ENTITY_UNKNOWN`, key 없음 및 모호한 primary-plus-unique의 `IR_INVALID` 오류를 검증하고, 모든 column을 할당한 복합 primary key는 선언 순서 SQL target과 bind를 만든다. canonical target은 수정 전 source인 `351422f365d5`에서 오류 누락 case 두 개가 실패했고(2/4 통과), main commit `534b426c603f`에서 네 case 모두 통과한다(KSTD-5-66).
 
