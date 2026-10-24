@@ -16,7 +16,7 @@ final class TransactionFailureTest extends TestCase
 {
     use TransactionFailureCases;
 
-    public function test_statement_failureKeepsItsDriverCause(): void
+    public function testStatementFailureKeepsItsDriverCause(): void
     {
         $pdo = new ModelTestFailingPdo('sqlite::memory:');
         $pdo->exec('CREATE TABLE statement_failure (value INTEGER)');

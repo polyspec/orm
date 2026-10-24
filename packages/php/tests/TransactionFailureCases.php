@@ -14,7 +14,7 @@ use RuntimeException;
 
 trait TransactionFailureCases
 {
-    public function test_transaction_maps_driver_callback_error(): void
+    public function testTransactionMapsDriverCallbackError(): void
     {
         $pdo = new ModelTestFailingPdo('sqlite::memory:');
         $db = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
@@ -35,7 +35,7 @@ trait TransactionFailureCases
         }
     }
 
-    public function test_savepoint_maps_driver_callback_error(): void
+    public function testSavepointMapsDriverCallbackError(): void
     {
         $pdo = new ModelTestFailingPdo('sqlite::memory:');
         $db = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));

@@ -22,5 +22,4 @@ final class Table
     public ?Settings $settings = null;
     /** @var list<string> Comment lines before the closing brace. */
     public array $closingComments = [];
-
 }
