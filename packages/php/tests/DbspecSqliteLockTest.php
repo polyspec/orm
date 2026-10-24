@@ -61,42 +61,52 @@ final class FailingSqliteLockPdo extends PDO
 
 final class DbspecSqliteLockTest extends TestCase
 {
+    private static function driverFailure(int $code): PDOException
+    {
+        $error = new PDOException("SQLite result $code");
+        $error->errorInfo = ['HY000', $code, 'synthetic driver result'];
+        return $error;
+    }
+
+    private static function applyFailure(PDOException $error): \Throwable
+    {
+        try {
+            PlanApply::apply(
+                new FailingSqliteLockPdo($error),
+                'sqlite',
+                [],
+                static fn() => new \DateTimeImmutable(),
+                null
+            );
+        } catch (\Throwable $caught) {
+            return $caught;
+        }
+        throw new \RuntimeException('SQLite apply did not fail');
+    }
+
     public function testOnlySqliteBusyAndLockedErrorInfoCodesAreClassifiedAsLocks(): void
     {
         foreach ([5, 6, 261, 517, 773, 262, 518] as $code) {
-            $error = new PDOException("SQLite result $code");
-            $error->errorInfo = ['HY000', $code, 'synthetic driver result'];
-            try {
-                PlanApply::apply(new FailingSqliteLockPdo($error), 'sqlite', [], static fn() => new \DateTimeImmutable(), null);
-                self::fail("result code $code did not fail");
-            } catch (\Polyspec\Orm\Dbspec\ApplyError $caught) {
-                self::assertSame('locked', $caught->code_);
-                self::assertSame($error, $caught->getPrevious());
+            $error = self::driverFailure($code);
+            $caught = self::applyFailure($error);
+            if (!$caught instanceof \Polyspec\Orm\Dbspec\ApplyError) {
+                self::fail('SQLite busy or locked result did not produce ApplyError');
             }
+            self::assertSame('locked', $caught->code_);
+            self::assertSame($error, $caught->getPrevious());
         }
     }
 
     public function testNonLockAndMissingPdoCodesPreserveTheOriginalException(): void
     {
         foreach ([10, 8, 14, 23, 1] as $code) {
-            $error = new PDOException("SQLite result $code");
-            $error->errorInfo = ['HY000', $code, 'synthetic driver result'];
-            try {
-                PlanApply::apply(new FailingSqliteLockPdo($error), 'sqlite', [], static fn() => new \DateTimeImmutable(), null);
-                self::fail("result code $code did not fail");
-            } catch (PDOException $caught) {
-                self::assertSame($error, $caught);
-            }
+            $error = self::driverFailure($code);
+            self::assertSame($error, self::applyFailure($error));
         }
         foreach ([[], ['HY000', null, 'missing'], ['HY000', '5', 'non-integer'], ['HY000', 'HY000', 'state']] as $info) {
             $error = new PDOException('synthetic PDO exception');
             $error->errorInfo = $info;
-            try {
-                PlanApply::apply(new FailingSqliteLockPdo($error), 'sqlite', [], static fn() => new \DateTimeImmutable(), null);
-                self::fail('a missing or non-integer driver code did not fail');
-            } catch (PDOException $caught) {
-                self::assertSame($error, $caught);
-            }
+            self::assertSame($error, self::applyFailure($error));
         }
     }
 }
