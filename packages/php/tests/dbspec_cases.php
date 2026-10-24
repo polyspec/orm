@@ -51,6 +51,16 @@ function dbspec_value(PDO $pdo, string $query, bool $nullAsText = false): string
     };
 }
 
+/** Removes a SQLite test database and every sidecar file it can leave. */
+function dbspec_remove_sqlite_files(string $path): void
+{
+    foreach (['', '-journal', '-wal', '-shm'] as $suffix) {
+        if (file_exists($path . $suffix) && !unlink($path . $suffix)) {
+            throw new RuntimeException("$path$suffix cannot be removed");
+        }
+    }
+}
+
 // Checks dbspec cases in the shape of tests/dbspec/cases.json with the PHPUnit
 // assertions; the test classes run each case as one data set named by its id.
 

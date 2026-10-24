@@ -399,4 +399,28 @@ final class DbspecPlanTest extends TestCase
             self::assertSame('SELECT 1.5: value of type float has no text form here', $error->getMessage());
         }
     }
+
+    public function testSqliteTestDatabaseCleanupRemovesEverySidecar(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'dbspec-cleanup-');
+        if ($path === false) {
+            self::fail('could not create the test database fixture');
+        }
+        $files = array_map(static fn(string $suffix): string => $path . $suffix, ['', '-journal', '-wal', '-shm']);
+        try {
+            foreach ($files as $file) {
+                self::assertNotFalse(file_put_contents($file, 'fixture'), "$file fixture");
+            }
+            dbspec_remove_sqlite_files($path);
+            foreach ($files as $file) {
+                self::assertFileDoesNotExist($file);
+            }
+        } finally {
+            foreach ($files as $file) {
+                if (file_exists($file)) {
+                    unlink($file);
+                }
+            }
+        }
+    }
 }

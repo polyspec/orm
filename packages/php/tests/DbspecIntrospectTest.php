@@ -61,11 +61,7 @@ function open_database(string $dialect): array
         $pdo = new CountingPdo("sqlite:$path", null, null, $options);
         return [$pdo, static function () use (&$pdo, $path): void {
             $pdo = null;
-            foreach (['', '-journal', '-wal', '-shm'] as $suffix) {
-                if (file_exists($path . $suffix) && !unlink($path . $suffix)) {
-                    throw new RuntimeException("$path$suffix cannot be removed");
-                }
-            }
+            dbspec_remove_sqlite_files($path);
         }, $name];
     }
     [, $pdoDsn, $user, $password] = Orm::parseDsn($dsns[$dialect]);
