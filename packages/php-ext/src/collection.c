@@ -704,8 +704,7 @@ PHP_METHOD(Polyspec_Orm_Collection, getIterator)
  * taken here rather than in getIterator(), matching a generator's deferred start behavior. */
 static zval *iterator_entry(collection_iterator *it)
 {
-    if (Z_ISUNDEF(it->snapshot) || Z_TYPE(it->snapshot) != IS_ARRAY) return NULL;
-    return zend_hash_get_current_data_ex(Z_ARRVAL(it->snapshot), &it->position);
+    return object_array_iterator_current(&it->snapshot, &it->position);
 }
 
 static void iterator_start(collection_iterator *it)

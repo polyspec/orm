@@ -434,8 +434,7 @@ static HashTable *group_rows_iterator_gc(zend_object *obj, zval **table, int *n)
 
 static zval *group_rows_iterator_current(group_rows_iterator *it)
 {
-    if (Z_ISUNDEF(it->snapshot) || Z_TYPE(it->snapshot) != IS_ARRAY) return NULL;
-    return zend_hash_get_current_data_ex(Z_ARRVAL(it->snapshot), &it->position);
+    return object_array_iterator_current(&it->snapshot, &it->position);
 }
 
 static void group_rows_iterator_adapter_dtor(zend_object_iterator *iterator)

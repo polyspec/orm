@@ -16,4 +16,10 @@ static inline HashTable *object_zval_pair_get_gc(zend_object *object, zval *firs
     return zend_std_get_properties(object);
 }
 
+static inline zval *object_array_iterator_current(zval *snapshot, HashPosition *position)
+{
+    if (Z_ISUNDEF_P(snapshot) || Z_TYPE_P(snapshot) != IS_ARRAY) return NULL;
+    return zend_hash_get_current_data_ex(Z_ARRVAL_P(snapshot), position);
+}
+
 #endif
