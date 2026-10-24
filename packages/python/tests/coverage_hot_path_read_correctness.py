@@ -112,6 +112,7 @@ def assert_equal(got, want, what):
 
 
 class CorrectnessTest(unittest.TestCase):
+    # Requirements: PRT-2, PRT-34.
     def test_hot_path_read_correctness(self):
         hot_path_read_correctness()
         print("CASE hot_path_read_correctness PASS", flush=True)

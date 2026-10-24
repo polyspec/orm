@@ -12,6 +12,7 @@ final class CoverageHotPathReadCorrectnessTest extends TestCase
 {
     public function testHotPathReadCorrectness(): void
     {
+        // Requirements: PRT-2, PRT-34.
         hotPathReadCorrectness();
     }
 }

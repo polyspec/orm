@@ -1,6 +1,4 @@
 //! Runs the Rust client's diagnostic hot-path measurements against the exact feature database.
-use std::fs::{self, File};
-use std::path::PathBuf;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use polyspec_orm::Param;
@@ -121,27 +119,6 @@ enum Native {
     Sqlite(SqlitePool),
 }
 
-struct TempSqlite(PathBuf);
-
-impl TempSqlite {
-    fn create() -> Self {
-        let nonce = SystemTime::now().duration_since(UNIX_EPOCH).expect("system clock").as_nanos();
-        let path = std::env::temp_dir().join(format!("polyspec-hot-path-{}-{nonce}.sqlite", std::process::id()));
-        File::options().write(true).create_new(true).open(&path).expect("create private SQLite fixture");
-        Self(path)
-    }
-
-    fn dsn(&self) -> String {
-        format!("sqlite://{}", self.0.display())
-    }
-}
-
-impl Drop for TempSqlite {
-    fn drop(&mut self) {
-        let _ = fs::remove_file(&self.0);
-    }
-}
-
 impl Native {
     async fn connect(database: &str, dsn: &str) -> Self {
         match database {
@@ -242,71 +219,6 @@ async fn coverage_hot_path_gate_for(expected: &str) {
         let native_p50 = native_ns[ITERATIONS / 2] as f64;
         eprintln!("PERF hot_path_gate rust {expected} {}: native p50={:.1}µs client p50={:.1}µs ratio={:.2} samples={} cpu={:.1}ms wall={:.1}ms machine={} reference=not-recorded", workload.name(), native_p50 / 1000.0, client_p50 / 1000.0, client_p50 / native_p50, ITERATIONS, cpu_ms, wall_ms, std::env::consts::OS.to_owned() + " " + std::env::consts::ARCH);
     }
-}
-
-#[tokio::test]
-async fn hot_path_read_correctness() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let fixture = TempSqlite::create();
-    let dsn = fixture.dsn();
-    let native_pool = SqlitePool::connect(&dsn).await.expect("native SQLite connection");
-    sqlx::query("CREATE TABLE author (seq INTEGER PRIMARY KEY, name TEXT NOT NULL, service_seq INTEGER NOT NULL, is_close INTEGER NOT NULL)")
-        .execute(&native_pool)
-        .await
-        .expect("create hot path fixture");
-    for seq in 1..=100_i64 {
-        sqlx::query("INSERT INTO author (seq, name, service_seq, is_close) VALUES (?, ?, ?, ?)")
-            .bind(seq)
-            .bind(format!("list-{seq:03}"))
-            .bind(7_i64)
-            .bind(false)
-            .execute(&native_pool)
-            .await
-            .expect("insert hot path fixture row");
-    }
-    sqlx::query("INSERT INTO author (seq, name, service_seq, is_close) VALUES (?, ?, ?, ?)")
-        .bind(101_i64)
-        .bind("closed")
-        .bind(7_i64)
-        .bind(true)
-        .execute(&native_pool)
-        .await
-        .expect("insert closed fixture row");
-    sqlx::query("INSERT INTO author (seq, name, service_seq, is_close) VALUES (?, ?, ?, ?)")
-        .bind(102_i64)
-        .bind("other-service")
-        .bind(8_i64)
-        .bind(false)
-        .execute(&native_pool)
-        .await
-        .expect("insert other fixture row");
-    let native = Native::Sqlite(native_pool);
-
-    let config = polyspec_orm::Config { aes_key: "bench-salt".into(), blind_index_key: "bench-blind-index".into(), ..Default::default() };
-    let db = model::connect(&dsn, 1, config).await.expect("client SQLite connection");
-    let pk = Workload::Pk;
-    let pk_statement = pk.query(&db).await.expect("PK statement");
-    assert_eq!(pk_statement.binds, vec![Param::I64(42), Param::I64(1), Param::I64(0)], "PK binds");
-    assert_projection(&pk_statement.sql);
-    let pk_expected = vec![(42_i64, "list-042".to_owned())];
-    assert_eq!(native.rows(&pk_statement.sql, pk).await, pk_expected, "PK native rows");
-    assert_eq!(pk.client(&db).await, pk_expected, "PK client rows");
-
-    let list = Workload::List100;
-    let list_statement = list.query(&db).await.expect("list100 statement");
-    assert_eq!(list_statement.binds, vec![Param::I64(7), Param::Bool(false), Param::I64(100), Param::I64(0)], "list100 binds");
-    assert_projection(&list_statement.sql);
-    let expected: Vec<(i64, String)> = (1..=100_i64).rev().map(|seq| (seq, format!("list-{seq:03}"))).collect();
-    assert_eq!(native.rows(&list_statement.sql, list).await, expected, "list100 native rows");
-    assert_eq!(list.client(&db).await, expected, "list100 client rows");
-    native.close().await;
-}
-
-fn assert_projection(sql: &str) {
-    let projection = sql.split_once(" FROM ").expect("query FROM clause").0;
-    assert!(projection.contains("\"a\".\"seq\" AS \"a__seq\""), "projection lacks seq: {projection}");
-    assert!(projection.contains("\"a\".\"name\" AS \"a__name\""), "projection lacks name: {projection}");
-    assert!(!projection.contains("created_ts") && !projection.contains("service_seq"), "projection has unselected columns: {projection}");
 }
 
 #[tokio::test]

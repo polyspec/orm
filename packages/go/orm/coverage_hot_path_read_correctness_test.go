@@ -1,6 +1,6 @@
 //go:build featurecoverage
 
-package bench
+package orm_test
 
 import (
 	"database/sql"
@@ -16,6 +16,7 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
+// Requirements: PRT-2, PRT-34.
 func TestHotPathReadCorrectness(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	path := filepath.Join(t.TempDir(), "hot-path.sqlite")

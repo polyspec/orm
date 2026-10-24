@@ -15,6 +15,7 @@ final class CoverageHotPathReadCorrectnessExtensionTest extends TestCase
 {
     public function testHotPathReadCorrectness(): void
     {
+        // Requirements: PRT-2, PRT-34.
         Assert::assertTrue((new ReflectionMethod(Model::class, 'gets'))->isInternal());
         hotPathReadCorrectness();
     }

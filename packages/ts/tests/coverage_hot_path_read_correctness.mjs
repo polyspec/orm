@@ -64,5 +64,6 @@ function clientRows(rows) {
 }
 
 await runCases('coverage_hot_path_read_correctness.mjs', {
+  // hot_path_read_correctness: Requirements: PRT-2, PRT-34.
   hot_path_read_correctness: hotPathReadCorrectness,
 }, 60_000);
