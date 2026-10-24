@@ -4278,7 +4278,7 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/CoverageAuthenticatedEncryptionTest.php"
+          "test": "packages/php-ext/tests/CoverageAuthenticatedEncryptionExtensionTest.php"
         },
         {
           "implementation": "typescript",

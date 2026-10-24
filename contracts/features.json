@@ -3046,7 +3046,6 @@
         }
       ],
       "parity": [
-        "py-cov-statement-events-statement-events",
         "statement-events"
       ],
       "fixtures": [
@@ -6601,12 +6600,7 @@
         }
       ],
       "parity": [
-        "authenticated-encryption",
-        "py-cov-authenticated-encryption-aes-envelope-decrypt",
-        "py-cov-authenticated-encryption-aes-round-trip",
-        "py-cov-authenticated-encryption-aes-tamper-rejected",
-        "py-cov-authenticated-encryption-aes-wrong-key-rejected",
-        "py-cov-authenticated-encryption-blind-index-vector"
+        "authenticated-encryption"
       ],
       "fixtures": [
         "tests/codec/aes-vectors.json",
@@ -6639,6 +6633,7 @@
         "packages/rust/tests/src/integration.rs",
         "packages/go/orm/coverage_authenticated_encryption_test.go",
         "packages/php/tests/CoverageAuthenticatedEncryptionTest.php",
+        "packages/php-ext/tests/CoverageAuthenticatedEncryptionExtensionTest.php",
         "packages/rust/orm/tests/coverage_authenticated_encryption.rs",
         "packages/ts/tests/coverage_authenticated_encryption.mjs",
         "contracts/fixtures/secret_config.dbs",
@@ -6937,6 +6932,37 @@
                     "aes_wrong_key_rejected",
                     "blind_index_vector"
                   ]
+                }
+              ]
+            }
+          },
+          "php-extension": {
+            "part": "packages/php-ext/tests",
+            "tests": [
+              "packages/php-ext/tests/CoverageAuthenticatedEncryptionExtensionTest.php"
+            ],
+            "inputs": [
+              "contracts/fixtures/authenticated_encryption.json"
+            ],
+            "commands": {
+              "none": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageAuthenticatedEncryptionExtensionTest.php",
+                  "cases": [
+                    "aes_envelope_decrypt",
+                    "aes_round_trip",
+                    "aes_tamper_rejected",
+                    "aes_wrong_key_rejected",
+                    "blind_index_vector"
+                  ],
+                  "symbols": {
+                    "aes_envelope_decrypt": "CoverageAuthenticatedEncryptionExtensionTest::testAesEnvelopeDecrypt",
+                    "aes_round_trip": "CoverageAuthenticatedEncryptionExtensionTest::testAesRoundTrip",
+                    "aes_tamper_rejected": "CoverageAuthenticatedEncryptionExtensionTest::testAesTamperRejected",
+                    "aes_wrong_key_rejected": "CoverageAuthenticatedEncryptionExtensionTest::testAesWrongKeyRejected",
+                    "blind_index_vector": "CoverageAuthenticatedEncryptionExtensionTest::testBlindIndexVector"
+                  }
                 }
               ]
             }
@@ -9036,9 +9062,7 @@
       "parity": [
         "conformance-mysql",
         "conformance-postgres",
-        "conformance-sqlite",
-        "py-cov-conformance-verification-conformance-vector",
-        "ts-coverage_conformance_verification"
+        "conformance-sqlite"
       ],
       "fixtures": [
         "tests/conformance/vectors.json",
