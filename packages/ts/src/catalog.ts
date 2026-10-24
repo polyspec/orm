@@ -5,7 +5,7 @@
 import { createHash } from 'node:crypto';
 import { lstatSync } from 'node:fs';
 import * as codes from './codes.js';
-import { driverError, openDriver, parseDsn, sqlitePath, type DriverColumn, type DriverName, type DriverPool, type DriverSession, type DriverValue, type RowSink } from './driver.js';
+import { driverError, openDriver, parseDsn, sqlitePath, type DriverColumn, type DriverName, type DriverPool, type DriverResult, type DriverSession, type DriverValue, type RowSink } from './driver.js';
 import { OrmError } from './runtime_error.js';
 
 /** Budgets of the catalog connection (docs/spec/interfaces.md). A result over its budget is refused, never truncated. */
@@ -912,6 +912,14 @@ class Session {
     return result.affected;
   }
 
+  /** Runs one statement and retains driver-owned metadata such as an AUTO_INCREMENT acknowledgement. */
+  public async executeResult(sql: string, params: readonly unknown[]): Promise<DriverResult> {
+    const bound = checkParams(params, CODE_PARAM);
+    return bound.length === 0
+      ? this.session.control(sql, [], noop)
+      : this.session.execute(sql, bound, undefined, noop);
+  }
+
   public async control(sql: string): Promise<void> {
     await this.session.control(sql, [], noop);
   }
@@ -1290,13 +1298,19 @@ export class CatalogConnection {
     return new CatalogRowSnapshot(page.metadata, cells, keyIndexes, revisionOf(page.metadata, cells));
   }
 
-  /** Inserts one row with explicit primary-key values. It rejects an existing key, requires exactly one affected row and re-reads the row before it commits. */
+  /** Inserts one row with explicit or database-generated primary-key values and returns the stored row before it commits. */
   public async insertRow(declared: CatalogTableMetadata, values: readonly CatalogAssignment[]): Promise<CatalogMutationResult> {
     const keyIndexes = descriptorKeys(declared);
     const changes = checkChanges(declared, values, CODE_INSERT_INVALID);
     const provided = new Map(changes.map(change => [change.index, change.value] as const));
+    const generatedKeys = keyIndexes.filter(index => !provided.has(index) && declared.columns[index]?.automaticKey === true);
+    if (generatedKeys.length > 1) throw err(CODE_UNSUPPORTED, 'multiple generated primary keys are not supported');
+    const generatedKey = generatedKeys[0];
     const keys = keyIndexes.map(index => {
-      if (!provided.has(index)) throw err(CODE_INSERT_INVALID, `explicit primary-key value of "${declared.columns[index]?.name ?? ''}" is required`);
+      if (!provided.has(index)) {
+        if (index === generatedKey) return null;
+        throw err(CODE_INSERT_INVALID, `explicit primary-key value of "${declared.columns[index]?.name ?? ''}" is required`);
+      }
       return provided.get(index) ?? null;
     });
     return this.write(async session => {
@@ -1304,19 +1318,41 @@ export class CatalogConnection {
         // The lock an INSERT takes, held before the schema check so that no DDL changes the table in between.
         await session.control(`LOCK TABLE ${qualified(declared.table, this.dialect)} IN ROW EXCLUSIVE MODE`);
       }
-      const existing = await session.lookup(declared, keys, true);
-      if (existing.length !== 0) throw err(CODE_CONFLICT, 'insertion key already exists');
+      if (generatedKey === undefined) {
+        const existing = await session.lookup(declared, keys, true);
+        if (existing.length !== 0) throw err(CODE_CONFLICT, 'insertion key already exists');
+      }
       const descriptor = await session.describe(declared.table);
       if (!sameDescriptor(descriptor, declared)) throw err(CODE_SCHEMA, 'insertion descriptor changed');
       if (this.dialect === 'mysql') await session.mysqlSafety(descriptor);
       const names = changes.map(change => quoteIdent(descriptor.columns[change.index]?.name ?? '', this.dialect));
       const marks = changes.map((_, index) => placeholder(index + 1, this.dialect));
-      const affected = await session.exec(
-        `INSERT INTO ${qualified(descriptor.table, this.dialect)} (${names.join(',')}) VALUES (${marks.join(',')})`,
-        changes.map(change => change.value),
-      );
-      if (affected !== 1) throw err(CODE_WRITE, `expected exactly one inserted row, got ${affected}`);
-      const after = await session.lookup(descriptor, keys, false);
+      const insert = `INSERT INTO ${qualified(descriptor.table, this.dialect)} (${names.join(',')}) VALUES (${marks.join(',')})`;
+      let after: CatalogValue[][];
+      if (generatedKey !== undefined && this.dialect !== 'mysql') {
+        const returning = quoteList(descriptor.columns.map(column => column.name), this.dialect);
+        const result = await session.collect<CatalogValue>(
+          `${insert} RETURNING ${returning}`,
+          changes.map(change => change.value),
+          2,
+          PAGE_BYTES,
+          (value, column, index) => describedCell(value, column, descriptor.columns[index], this.dialect),
+        );
+        if (result.rows.length !== 1) throw err(CODE_WRITE, `expected exactly one inserted row, got ${result.rows.length}`);
+        after = result.rows;
+      } else {
+        const result = await session.executeResult(insert, changes.map(change => change.value));
+        const affected = result.affected;
+        if (affected !== 1) throw err(CODE_WRITE, `expected exactly one inserted row, got ${affected}`);
+        if (generatedKey !== undefined) {
+          const keyColumn = descriptor.columns[generatedKey];
+          if (result.insertId === null || result.insertId === 0 || result.insertId === 0n || keyColumn === undefined) throw err(CODE_WRITE, 'insert acknowledgement has no generated primary key');
+          const keyPosition = keyIndexes.indexOf(generatedKey);
+          if (keyPosition < 0) throw err(CODE_WRITE, 'generated primary-key descriptor changed');
+          keys[keyPosition] = plainValue(result.insertId, { name: keyColumn.name, type: keyColumn.nativeType });
+        }
+        after = await session.lookup(descriptor, keys, false);
+      }
       if (after.length !== 1) throw err(CODE_WRITE, 'expected exactly one inserted row');
       const afterDescriptor = await session.describe(declared.table);
       if (!sameDescriptor(afterDescriptor, descriptor)) throw err(CODE_SCHEMA, 'insertion descriptor changed');
