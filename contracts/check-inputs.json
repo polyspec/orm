@@ -1787,6 +1787,15 @@
         "packages/php-ext/tests/MermaidErrorBoundaryTest.php",
         "Makefile"
       ]
+    },
+    "php-extension-build-logs-check": {
+      "scope": "owner",
+      "needs": ["node-modules"],
+      "inputs": [
+        "Makefile",
+        "packages/php-ext/scripts/build.sh",
+        "tests/php-ext/build-logs.test.mts"
+      ]
     }
   },
   "paths": {

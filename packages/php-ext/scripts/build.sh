@@ -31,7 +31,7 @@ phpize >phpize.log 2>&1 || { cat phpize.log >&2; exit 1; }
 echo "build.sh: configure"
 ./configure $configure_args >configure.log 2>&1 || { tail -n 40 configure.log >&2; exit 1; }
 echo "build.sh: make"
-make >make.log 2>&1 || { grep -E 'error|warning' make.log >&2 || tail -n 60 make.log >&2; exit 1; }
+make >make.log 2>&1 || { cat make.log >&2; exit 1; }
 # Warnings only look at the compiler's source warnings (macOS libtool linker warnings are not from this extension).
 if grep -E '\.[ch]:[0-9]+:[0-9]+: warning:' make.log >&2; then
   echo "build.sh: the build has compiler warnings" >&2
