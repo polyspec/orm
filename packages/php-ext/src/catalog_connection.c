@@ -1484,6 +1484,26 @@ static bool cat_grid_mysql_cell(zval *v, zend_long type, zend_long flags, zend_l
 }
 
 
+/* Applies the same row and byte budget to every Catalog grid driver before converting its row. */
+static bool cat_grid_budget(zval *rows, zval *row, zend_long max_rows, zend_long max_bytes, zend_long *budget)
+{
+    if (zend_hash_num_elements(Z_ARRVAL_P(rows)) == (uint32_t)max_rows) {
+        zval_ptr_dtor(row);
+        db_throw_orm("CATALOG_LIMIT", "result has more than %ld rows", (long)max_rows);
+        return false;
+    }
+    zval *value;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(row), value) {
+        *budget += Z_TYPE_P(value) == IS_STRING ? (zend_long)Z_STRLEN_P(value) : 8;
+    } ZEND_HASH_FOREACH_END();
+    if (*budget > max_bytes) {
+        zval_ptr_dtor(row);
+        db_throw_orm("CATALOG_LIMIT", "result has more than %ld bytes of values", (long)max_bytes);
+        return false;
+    }
+    return true;
+}
+
 /* The PDO grid query of PostgreSQL and SQLite: one bounded statement, each cell typed by its column or by its value. */
 static bool cat_grid_pdo(zval *db, const char *dialect, zval *pdo, zval *sql, zval *args, zend_long max_rows, zend_long max_bytes,
                          zval *names, zval *rows)
@@ -1531,20 +1551,7 @@ static bool cat_grid_pdo(zval *db, const char *dialect, zval *pdo, zval *sql, zv
             goto fail_natives;
         }
         if (Z_TYPE(row) == IS_FALSE) break;
-        if (zend_hash_num_elements(Z_ARRVAL(*rows)) == (uint32_t)max_rows) {
-            zval_ptr_dtor(&row);
-            db_throw_orm("CATALOG_LIMIT", "result has more than %ld rows", (long)max_rows);
-            goto fail_natives;
-        }
-        zval *v;
-        ZEND_HASH_FOREACH_VAL(Z_ARRVAL(row), v) {
-            budget += Z_TYPE_P(v) == IS_STRING ? (zend_long)Z_STRLEN_P(v) : 8;
-        } ZEND_HASH_FOREACH_END();
-        if (budget > max_bytes) {
-            zval_ptr_dtor(&row);
-            db_throw_orm("CATALOG_LIMIT", "result has more than %ld bytes of values", (long)max_bytes);
-            goto fail_natives;
-        }
+        if (!cat_grid_budget(rows, &row, max_rows, max_bytes, &budget)) goto fail_natives;
         zval cells;
         array_init(&cells);
         for (zend_ulong i = 0; i < zend_hash_num_elements(Z_ARRVAL(row)); i++) {
@@ -1700,15 +1707,12 @@ static bool cat_grid_mysqli(zval *link, zval *sql, zval *args, zend_long max_row
         zval rv, *name = catalog_prop(field, "name", &rv);
         add_next_index_str(names, zend_string_copy(Z_STR_P(name)));
     }
+    zend_long budget = 0;
     for (;;) {
         zval row;
         if (!pdo_call(&result, "fetch_row", &row, 0, NULL, NULL)) goto abort_fields;
         if (Z_TYPE(row) == IS_NULL) break;
-        if (zend_hash_num_elements(Z_ARRVAL(*rows)) == (uint32_t)max_rows) {
-            zval_ptr_dtor(&row);
-            db_throw_orm("CATALOG_LIMIT", "result has more than %ld rows", (long)max_rows);
-            goto abort_fields;
-        }
+        if (!cat_grid_budget(rows, &row, max_rows, max_bytes, &budget)) goto abort_fields;
         zval cells;
         array_init(&cells);
         zend_ulong i = 0;
