@@ -55,7 +55,7 @@ func TestCatalogInsertReturnsSQLiteAutomaticPrimaryKey(t *testing.T) {
 		t.Fatalf("id metadata = %+v, want SQLite automatic rowid key with no default expression", id)
 	}
 
-	for i, payload := range []string{"first", "second"} {
+	for i, payload := range []string{"generated", "second"} {
 		inserted, err := catalog.InsertRow(ctx, metadata, []CatalogAssignment{{Name: "payload", Value: payload}})
 		if err != nil {
 			t.Fatalf("InsertRow(%q) without the automatic key: %v", payload, err)
@@ -76,7 +76,7 @@ func TestCatalogInsertReturnsSQLiteAutomaticPrimaryKey(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := [][]any{{int64(1), "first"}, {int64(2), "second"}, {int64(20), "explicit"}}
+	want := [][]any{{int64(1), "generated"}, {int64(2), "second"}, {int64(20), "explicit"}}
 	if !reflect.DeepEqual(rows.Rows, want) {
 		t.Fatalf("stored rows = %#v, want %#v", rows.Rows, want)
 	}
