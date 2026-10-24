@@ -2200,7 +2200,8 @@
       "needs": [
         "php",
         "composer",
-        "php-extension-tools"
+        "php-extension-tools",
+        "databases"
       ],
       "inputs": [
         "packages/php-ext/tests/TransactionFailureNativeTest.php",
