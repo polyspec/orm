@@ -5,6 +5,7 @@
  */
 #include "dbspec.h"
 #include "plandiff.h"
+#include "quoted_string_length.h"
 
 static diag plan_diag(zend_long line, str message)
 {
@@ -521,25 +522,7 @@ static const char *const check_keywords[] = {"and", "or", "not", "in", "between"
 /* Length that `'(?:[^']|'')*'` matches at i (backtracking repetition); 0 if none. */
 size_t quoted_length(str s, size_t i)
 {
-    size_t j = i + 1;
-    ssize_t last_pair = -1;
-    for (;;) {
-        if (j < s.n && s.s[j] != '\'') {
-            j++;
-        } else if (j + 1 < s.n && s.s[j] == '\'' && s.s[j + 1] == '\'') {
-            last_pair = (ssize_t)j;
-            j += 2;
-        } else {
-            break;
-        }
-    }
-    if (j < s.n) {
-        return j + 1 - i;
-    }
-    if (last_pair >= 0) {
-        return (size_t)last_pair + 1 - i;
-    }
-    return 0;
+    return dbs_quoted_string_length(s, i);
 }
 
 static bool is_check_column(str t)

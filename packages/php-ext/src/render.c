@@ -3,6 +3,7 @@
  * statements"). A failure is an InvalidArgumentException, and the caller discards any computed result after a failure.
  */
 #include "dbspec.h"
+#include "quoted_string_length.h"
 #include "ext/spl/spl_exceptions.h"
 
 const char *const dbs_dialect_names[3] = {"mysql", "postgres", "sqlite"};
@@ -275,26 +276,7 @@ static size_t check_token(str s, size_t i)
 {
     char c = s.s[i];
     if (c == '\'') {
-        /* A backtracking repetition: if the repetition runs to the end without a closing quote, it closes at the first quote of the last '' pair. */
-        size_t j = i + 1;
-        ssize_t last_pair = -1;
-        for (;;) {
-            if (j < s.n && s.s[j] != '\'') {
-                j++;
-            } else if (j + 1 < s.n && s.s[j] == '\'' && s.s[j + 1] == '\'') {
-                last_pair = (ssize_t)j;
-                j += 2;
-            } else {
-                break;
-            }
-        }
-        if (j < s.n) {
-            return j + 1 - i;
-        }
-        if (last_pair >= 0) {
-            return (size_t)last_pair + 1 - i;
-        }
-        return 0;
+        return dbs_quoted_string_length(s, i);
     }
     if (i + 1 < s.n && ((c == '<' && s.s[i + 1] == '>') || (c == '<' && s.s[i + 1] == '=') || (c == '>' && s.s[i + 1] == '='))) {
         return 2;
