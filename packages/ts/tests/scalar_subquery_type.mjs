@@ -7,6 +7,7 @@ import { markdownRead } from '../dist/markdown.js';
 import { validate } from '../dist/engine/validate.js';
 import { repositoryRoot } from './coverage_case.mjs';
 import { isInternalColumnError } from './internal-column-error.mjs';
+import { markdownReadDatabase } from './markdown-read-db.mjs';
 
 const plannerFixture = JSON.parse(await readFile(join(repositoryRoot, 'contracts/fixtures/planner.json'), 'utf8'));
 const scalar = plannerFixture.cases.find(({ id }) => id === 'planner_scalar_column_subquery');
@@ -37,24 +38,12 @@ for (const [agg, column, expected] of [['count', '', 'i64'], ['avg', 'read_count
 }
 
 const markdownRequest = { ...structuredClone(scalar.input), manifest_hash: manifest.manifestHash };
-let poolSession;
-const db = {
-  markdownModel: () => model,
-  zone: undefined,
-  signal: undefined,
-  clockMicros: () => 0,
-  now: () => '2026-01-01 00:00:00.000000',
-  md: {
-    acquire: async () => poolSession,
-    release: () => {},
-  },
-};
-poolSession = {
+const db = markdownReadDatabase(model, {
   call: async () => {
     markdownRequest.columns.sub.first_author.column = 'missing_column';
     return parse('{"rows":[{"seq":1,"name":"u","first_author":"author"}]}');
   },
-};
+});
 await assert.rejects(
   markdownRead({ db, frame: undefined }, markdownRequest, []),
   error => isInternalColumnError(error, 'author', 'missing_column'),

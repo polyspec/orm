@@ -9617,6 +9617,16 @@
       "command": "node --test packages/ts/tests/internal-column-error.test.mjs"
     },
     {
+      "id": "typescript-markdown-read-db",
+      "paths": [
+        "packages/ts/tests/markdown-read-db.mjs"
+      ],
+      "tests": [
+        "packages/ts/tests/markdown-read-db.test.mjs"
+      ],
+      "command": "make --no-print-directory typescript-internal-column-error-helper-check"
+    },
+    {
       "id": "javascript-vector-case-registrar",
       "paths": [
         "tests/vector-registrar.mjs"

@@ -410,7 +410,7 @@ catalog-mutation-helper-ts-check: typescript-build
 	$(RUN_TESTS) node -- --test packages/ts/tests/catalog-mutation-helper.test.mjs
 
 typescript-internal-column-error-helper-check:
-	$(RUN_TESTS) node -- --test packages/ts/tests/internal-column-error.test.mjs
+	$(RUN_TESTS) node -- --test packages/ts/tests/internal-column-error.test.mjs packages/ts/tests/markdown-read-db.test.mjs
 
 # dbspec-plan-check applies the steps of every case of tests/dbspec/plans.json to MySQL, PostgreSQL, and SQLite,
 # and requires the plan's target, the source via rollback statements, the target after applying again, and the target after finalize, and

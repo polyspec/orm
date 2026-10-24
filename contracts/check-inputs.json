@@ -1705,7 +1705,9 @@
       "inputs": [
         "Makefile",
         "packages/ts/tests/internal-column-error.mjs",
-        "packages/ts/tests/internal-column-error.test.mjs"
+        "packages/ts/tests/internal-column-error.test.mjs",
+        "packages/ts/tests/markdown-read-db.mjs",
+        "packages/ts/tests/markdown-read-db.test.mjs"
       ]
     },
     "catalog-mutation-helper-python-check": {

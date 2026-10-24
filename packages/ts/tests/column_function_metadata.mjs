@@ -9,6 +9,7 @@ import { paramUses } from '../dist/engine/params.js';
 import { validate } from '../dist/engine/validate.js';
 import { repositoryRoot } from './coverage_case.mjs';
 import { isInternalColumnError } from './internal-column-error.mjs';
+import { markdownReadDatabase } from './markdown-read-db.mjs';
 
 const fixtures = JSON.parse(await readFile(join(repositoryRoot, 'contracts/fixtures/planner.json'), 'utf8'));
 const predicateCase = fixtures.cases.find(({ id }) => id === 'planner_column_function_date');
@@ -59,21 +60,12 @@ test('planner output projection rejects missing post-validation function field',
 
 test('markdown output assembly rejects missing post-validation function field', async () => {
   const request = selectedRequest();
-  let poolSession;
-  const db = {
-    markdownModel: () => model,
-    zone: undefined,
-    signal: undefined,
-    clockMicros: () => 0,
-    now: () => '2026-01-01 00:00:00.000000',
-    md: { acquire: async () => poolSession, release: () => {} },
-  };
-  poolSession = {
+  const db = markdownReadDatabase(model, {
     call: async () => {
       request.columns.fn.selected_year.column = 'missing_column';
       return parse('{"rows":[{"seq":1,"selected_year":2026}]}');
     },
-  };
+  });
   await assert.rejects(
     markdownRead({ db, frame: undefined }, request, []),
     error => isInternalColumnError(error, 'author', 'missing_column'),
