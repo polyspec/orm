@@ -1,10 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d4bd166592bd6b05ee0603563512c214a2de6b6720227ad22804e32ec9f7c646 -->
+<!-- source-sha256: 079704ead63f1ff5b2b96d2e1c3ec5464c8ad7566175040c17f76c68098a8101 -->
 # 변경 이력
 
 ## Unreleased
 
 - Root page는 cached plan을 재사용하기 전에 잘못되었거나 안전 범위를 벗어난 offset/count 값을 거부한다(T236).
+
+- Column-function caller는 검증 후 source field가 없으면 해당 entity와 column을 명시한 `INTERNAL`을 반환한다. 공개 validation의 `COLUMN_UNKNOWN`과 유효한 함수 결과 타입 및 parameter use 동작은 유지한다. 실제 수정 전 main `cca1851d37ec`에서 predicate와 selection planner case가 모두 실패했다. source commit `1f2def8c6919`의 `make item-test ID=KSTD-5-63-1`은 Go planner와 IR(각 1개), Rust(3개), TypeScript(4개), PHP(3 tests, 17 assertions), Python(2개), PHP extension mode(PHP 3 tests, 17 assertions; native 3 tests, 29 assertions)를 통과한다(KSTD-5-63-1).
 
 - PHP extension 선언 검사는 `CatalogDocumentBuildException`을 내부 catalog 작성 helper로 제외하고 PHP 전용 public `Catalog` 연결을 유지한다. 수정 전 main source `27716799b`의 실제 client 선언 map에는 helper가 포함되어 있었다. source commit `ba06f0adb`에서 extension 선언 검사는 6개 테스트(15 assertions), native Mermaid 경계 대조 검사는 2개 테스트(4 assertions)를 통과한다(KSTD-5-62-1).
 

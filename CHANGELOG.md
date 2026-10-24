@@ -5,6 +5,8 @@
 
 - Root pages reject malformed or unsafe offset/count values before reusing a cached plan (T236).
 
+- Column-function callers now return `INTERNAL` naming the missing source field after validation; public validation still returns `COLUMN_UNKNOWN`, and valid function result types and parameter uses are preserved. The actual pre-fix main regression at `cca1851d37ec` failed both predicate and selection planner cases. On source commit `1f2def8c6919`, `make item-test ID=KSTD-5-63-1` passes Go planner and IR (1 each), Rust (3), TypeScript (4), PHP (3 tests, 17 assertions), Python (2), and PHP extension mode (3 PHP tests, 17 assertions; 3 native tests, 29 assertions) (KSTD-5-63-1).
+
 - The PHP extension declaration checks now exclude `CatalogDocumentBuildException` as an internal catalog-building helper while keeping the public PHP `Catalog` connection available. The actual pre-fix client declaration map included the helper at main source `27716799b`. On source commit `ba06f0adb`, extension declarations pass (6 tests, 15 assertions) and the native Mermaid boundary controls pass (2 tests, 4 assertions) (KSTD-5-62-1).
 
 - Dbspec verification now distinguishes a real schema mismatch from catalog or driver failures across Go, PHP, the PHP extension, Python, Rust and TypeScript. Verification failures retain their original cause; a failed post-forward verification does not mark apply history successful. The focused database-free fake-driver target covers settled and rollback verification failures, post-forward failure state, and a genuine mismatch across all six implementations. On main source `fc50349c19be`, the exact Go regression failed on original source `67aee14d481e` in both settled and rollback paths (KSTD-5-61).
