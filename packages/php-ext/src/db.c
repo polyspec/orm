@@ -2670,13 +2670,21 @@ static bool ensure_row_lock_table(zval *self)
     return ok;
 }
 
-static bool acquire_row_lock(zval *self, zval *mode)
+static zval *active_for(zval *db);
+
+static bool acquire_row_lock(zval *self, zval *mode, zval *frame)
 {
     if (Z_TYPE_P(mode) != IS_STRING || Z_STRLEN_P(mode) == 0 || !is_str(rd(self, "driver"), "sqlite")) {
         return true;
     }
     zval tx, no_tables;
-    ZVAL_NULL(&tx);
+    zval *active = frame != NULL ? frame : active_for(self);
+    zval *number = active == NULL ? NULL : rd(active, "number");
+    if (number == NULL) {
+        ZVAL_NULL(&tx);
+    } else {
+        ZVAL_COPY(&tx, number);
+    }
     array_init(&no_tables);
     size_t n = Z_STRLEN_P(mode);
     bool nowait = n >= 7 && strcmp(Z_STRVAL_P(mode) + n - 7, "_nowait") == 0;
@@ -2695,6 +2703,8 @@ static bool acquire_row_lock(zval *self, zval *mode)
         zval_ptr_dtor(&sql);
         zval_ptr_dtor(&args);
         if (!ok) {
+            zval_ptr_dtor(&tx);
+            zval_ptr_dtor(&no_tables);
             return false;
         }
         zval *first = aidx(aidx(&rows, 0), 0);
@@ -2784,6 +2794,8 @@ static bool acquire_row_lock(zval *self, zval *mode)
     if (has_pending) {
         put_exception(&pending);
     }
+    zval_ptr_dtor(&tx);
+    zval_ptr_dtor(&no_tables);
     return ok;
 }
 
@@ -2833,7 +2845,7 @@ static bool select_impl(zval *self, zval *frame, zval *r, zval *out)
     } else {
         ZVAL_EMPTY_STRING(&lock);
     }
-    bool ok = acquire_row_lock(self, &lock);
+    bool ok = acquire_row_lock(self, &lock, frame);
     zval_ptr_dtor(&lock);
     zval parts, main;
     /* query_rows leaves its out unset on failure, so main is NULL until a rows array replaces it. */
@@ -4067,7 +4079,7 @@ ZEND_METHOD(Polyspec_Orm_Db, acquireSQLiteRowLock)
     ZEND_PARSE_PARAMETERS_END();
     zval m;
     ZVAL_STR_COPY(&m, mode);
-    bool ok = acquire_row_lock(ZEND_THIS, &m);
+    bool ok = acquire_row_lock(ZEND_THIS, &m, active_for(ZEND_THIS));
     zval_ptr_dtor(&m);
     if (!ok) {
         RETURN_THROWS();
