@@ -25,10 +25,12 @@ func TestCatalogInsertReturnsSQLiteAutomaticPrimaryKey(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() {
+		if err := raw.Close(); err != nil {
+			t.Errorf("close raw sqlite connection: %v", err)
+		}
+	})
 	if _, err := raw.Exec(`CREATE TABLE sample (id INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL)`); err != nil {
-		t.Fatal(err)
-	}
-	if err := raw.Close(); err != nil {
 		t.Fatal(err)
 	}
 
