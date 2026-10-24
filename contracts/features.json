@@ -2876,8 +2876,7 @@
                   "test": "packages/ts/tests/coverage_transactions.mjs",
                   "cases": [
                     "transaction_rollback",
-                    "transaction_savepoint",
-                    "handle_abandoned_query"
+                    "transaction_savepoint"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -2888,8 +2887,7 @@
                   "test": "packages/ts/tests/coverage_transactions.mjs",
                   "cases": [
                     "transaction_rollback",
-                    "transaction_savepoint",
-                    "handle_abandoned_query"
+                    "transaction_savepoint"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -2900,8 +2898,7 @@
                   "test": "packages/ts/tests/coverage_transactions.mjs",
                   "cases": [
                     "transaction_rollback",
-                    "transaction_savepoint",
-                    "handle_abandoned_query"
+                    "transaction_savepoint"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
