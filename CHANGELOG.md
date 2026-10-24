@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- SQLite `BEGIN EXCLUSIVE` failures are classified as `locked` only for primary result codes `SQLITE_BUSY` (5) and `SQLITE_LOCKED` (6), including extended codes. Other driver errors retain their original causes. On main fix commit `e8c2fef66128`, the focused database-free targets pass Go (2), PHP (2 tests, 23 assertions), PHP extension (2 tests, 23 assertions), Python (2), Rust (1), and TypeScript (2). The canonical six-target RED on actual pre-fix main `4af40c9a20df` failed on non-lock results; the Go fake driver also verifies original error propagation and state restoration (KSTD-5-60).
+
 - Documentation now aligns the enumerated implementations with `config/parity.json` while keeping PHP extension capability claims within verified scope. The selector's four unit cases pass, the focused rule reports no findings across 50 English and 50 Korean documents, and `make docs-check` passes. The focused source RED on pre-fix main `0898f6f1` reported 75 findings: 50 count statements, 17 enumerated sets, 6 table headers and 2 protocol rows. PHP extension catalog gaps remain under KSTD-7-7 (KSTD-2-2).
 
 - Rust upsert planning now propagates conflict-key validation errors instead of rendering an empty conflict target. Direct native `Planner::compile` cases verify `ENTITY_UNKNOWN`, missing-key and ambiguous primary-plus-unique `IR_INVALID` errors, while a fully assigned composite primary key produces its ordered SQL target and binds. The canonical target failed the two swallowed-error cases on pre-fix source at `351422f365d5` (2/4 passed) and passes all four cases on committed main `534b426c603f` (KSTD-5-66).

@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 10ac0540edce16e1d8318430e6d718efbdfd1cf2e82cd44de6335c8a3132d686 -->
+<!-- source-sha256: 4e200c457764897564e66a681fcc524b630641d9aaebd157be473af2987f988a -->
 # 변경 이력
 
 ## Unreleased
+
+- SQLite `BEGIN EXCLUSIVE` 실패는 primary result code가 `SQLITE_BUSY` (5) 또는 `SQLITE_LOCKED` (6)일 때만 확장 코드를 포함해 `locked`로 분류한다. 그 외 driver 오류는 원인을 보존한다. main fix commit `e8c2fef66128`에서 DB 없는 focused target은 Go (2), PHP (test 2개, assertion 23개), PHP extension (test 2개, assertion 23개), Python (2개), Rust (1개), TypeScript (2개)에서 통과한다. 실제 수정 전 main `4af40c9a20df`에서 canonical 6개 target은 비잠금 result 때문에 실패했고, Go fake driver는 원래 오류 전달과 state 복원도 검증한다(KSTD-5-60).
 
 - 문서의 구현 열거를 `config/parity.json`에 맞추고 PHP extension의 지원 주장은 확인된 범위로 제한한다. 선택자 unit 네 개가 통과했고 전용 규칙은 영어 문서 50개와 한국어 문서 50개에서 지적이 없으며 `make docs-check`도 통과한다. 수정 전 main `0898f6f1`에서 실행한 focused source RED는 75건을 보고했다: 개수 문장 50개, 열거 집합 17개, 표 머리글 6개, protocol 행 2개. PHP extension catalog 미지원은 KSTD-7-7에 남는다(KSTD-2-2).
 
