@@ -1695,6 +1695,64 @@
         "node-modules",
         "databases"
       ]
+    },
+    "mermaid-error-ts-check": {
+      "scope": "owner",
+      "needs": [
+        "node-modules"
+      ],
+      "inputs": [
+        "packages/ts/src/dbspec/introspect_catalog.ts",
+        "packages/ts/src/dbspec/mermaid.ts",
+        "packages/ts/tests/dbspec-mermaid-errors.mjs",
+        "Makefile"
+      ]
+    },
+    "mermaid-error-python-check": {
+      "scope": "owner",
+      "needs": [
+        "python"
+      ],
+      "inputs": [
+        "packages/python/src/polyspec/orm/dbspec/introspect_catalog.py",
+        "packages/python/src/polyspec/orm/dbspec/mermaid.py",
+        "packages/python/tests/mermaid_error_boundary.py",
+        "Makefile"
+      ]
+    },
+    "mermaid-error-php-check": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer"
+      ],
+      "inputs": [
+        "packages/php/src/Dbspec/Catalog.php",
+        "packages/php/src/Dbspec/CatalogDocumentBuildException.php",
+        "packages/php/src/Dbspec/Mermaid.php",
+        "packages/php/tests/DbspecMermaidErrorBoundaryTest.php",
+        "Makefile"
+      ]
+    },
+    "mermaid-error-php-extension-check": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools"
+      ],
+      "inputs": [
+        "packages/php-ext/src/catalog.c",
+        "packages/php-ext/src/mermaid.c",
+        "packages/php-ext/src/polyspec_orm.c",
+        "packages/php-ext/src/util.c",
+        "packages/php-ext/src/dbspec.h",
+        "packages/php-ext/src/config.m4",
+        "packages/php-ext/scripts/build.sh",
+        "packages/php-ext/testing/mermaid/module.c",
+        "packages/php-ext/tests/MermaidErrorBoundaryTest.php",
+        "Makefile"
+      ]
     }
   },
   "paths": {

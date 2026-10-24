@@ -73,7 +73,7 @@ final class Catalog
                         static fn(Diagnostic $x): string => "{$x->line}:{$x->column} {$x->rule} {$x->message}",
                         $result->diagnostics
                     ));
-                    throw new \RuntimeException("Introspected document does not parse:\n$found\n$text");
+                    throw new CatalogDocumentBuildException("Introspected document does not parse:\n$found\n$text");
                 }
                 $object = explode("\0", $packed);
                 if ($object[0] === 'table') {

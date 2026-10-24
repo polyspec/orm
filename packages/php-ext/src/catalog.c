@@ -282,7 +282,7 @@ document *catalog_document(catalog *c, str name, unsupportedv *out)
                     }
                     sb_fmt(&all, "%d:%d %S %S", found.v[k].line, found.v[k].column, found.v[k].rule, found.v[k].message);
                 }
-                dbs_throw(spl_ce_RuntimeException, fmt("Introspected document does not parse:\n%S\n%S", sb_str(&all), text));
+                dbs_throw_code(spl_ce_RuntimeException, fmt("Introspected document does not parse:\n%S\n%S", sb_str(&all), text), DBS_CATALOG_DOCUMENT_BUILD_CODE);
                 return NULL;
             }
             object o = w.objects.v[line];

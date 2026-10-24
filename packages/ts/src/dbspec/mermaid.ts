@@ -3,7 +3,7 @@
 // the same bytes as Go. Regex whitespace is written as Go's \s([\t\n\f\r ]).
 import { present } from '../present.js';
 import { typeText } from './emit.js';
-import { byteOrder, Catalog, type DbspecUnsupported, type ITable } from './introspect_catalog.js';
+import { byteOrder, Catalog, CatalogDocumentBuildError, type DbspecUnsupported, type ITable } from './introspect_catalog.js';
 import type { DbspecDiagnostic, DbspecDocument, DbspecSettings, DbspecTable, DbspecType } from './model.js';
 import { validName } from './parse.js';
 import { sortedBy } from './sort.js';
@@ -334,6 +334,7 @@ export function importMermaid(text: string, name: string): DbspecMermaidImport {
   try {
     result = c.document(name);
   } catch (error) {
+    if (!(error instanceof CatalogDocumentBuildError)) throw error;
     // If the catalog cannot make a document (for example, when the document name is not a dbspec name), it is a one-line diagnostic, as in Go.
     return fail(1, error instanceof Error ? error.message : String(error));
   }

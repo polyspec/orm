@@ -18,6 +18,9 @@ export interface DbspecUnsupported {
   readonly reason: string;
 }
 
+/** An expected failure while converting catalog data into a dbspec document. */
+export class CatalogDocumentBuildError extends Error {}
+
 export interface IColumn {
   name: string;
   type: DbspecType;
@@ -119,7 +122,7 @@ export class Catalog {
       for (const d of parsed.diagnostics) {
         const o = objects.get(d.line);
         if (o === undefined) {
-          throw new Error(`introspected document does not parse: ${JSON.stringify(parsed.diagnostics)}\n${text}`);
+          throw new CatalogDocumentBuildError(`introspected document does not parse: ${JSON.stringify(parsed.diagnostics)}\n${text}`);
         }
         if (o.kind === 'table') rejected.add(o.table);
       }

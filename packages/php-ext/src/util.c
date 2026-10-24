@@ -737,12 +737,17 @@ str dbs_renderer_name(str table, str suffix)
 
 bool dbs_throw(zend_class_entry *ce, str message)
 {
+    return dbs_throw_code(ce, message, 0);
+}
+
+bool dbs_throw_code(zend_class_entry *ce, str message, zend_long code)
+{
     /* Throws only the first exception: an operation keeps computing to the end after an exception and discards the result, so later failures do not hide the first exception. */
     if (EG(exception) != NULL) {
         return false;
     }
     /* message can contain NUL, so it is written as a property rather than passed as a C string. */
-    zend_object *e = zend_throw_exception(ce, "", 0);
+    zend_object *e = zend_throw_exception(ce, "", code);
     zval m;
     ZVAL_STR(&m, str_zend(message));
     zend_update_property_ex(instanceof_function(ce, zend_ce_error) ? zend_ce_error : zend_ce_exception, e, ZSTR_KNOWN(ZEND_STR_MESSAGE), &m);

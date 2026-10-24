@@ -411,12 +411,21 @@ final class Mermaid
                 }
             }
         }
-        try {
-            $result = $c->document($name);
-        } catch (\RuntimeException $e) {
-            return MermaidImportResult::invalid([new Diagnostic(self::RULE, 1, 1, $e->getMessage())]);
+        $result = self::buildCatalogDocument(static fn(): IntrospectResult => $c->document($name));
+        if ($result instanceof MermaidImportResult) {
+            return $result;
         }
         return MermaidImportResult::valid($result->document, $result->unsupported);
+    }
+
+    /** Runs the catalog's document boundary. Only its expected build failure becomes a line-1 diagnostic. */
+    private static function buildCatalogDocument(\Closure $build): IntrospectResult|MermaidImportResult
+    {
+        try {
+            return $build();
+        } catch (CatalogDocumentBuildException $e) {
+            return MermaidImportResult::invalid([new Diagnostic(self::RULE, 1, 1, $e->getMessage())]);
+        }
     }
 
     /** @return list<string> */

@@ -2,9 +2,10 @@
 # Builds the extension polyspec_orm with phpize, configure and make, and publishes its library to $1 by rename. The build is done
 # in a temporary copy of the package beside $1, its composer.json beside src/ as in the package (config.m4 reads the version
 # from it), and removed when finished. The phpize and php-config on PATH decide which PHP is built.
-# Usage: sh packages/php-ext/scripts/build.sh <published polyspec_orm.so>
+# Usage: sh packages/php-ext/scripts/build.sh <published polyspec_orm.so> [release|mermaid-test]
 set -eu
 out=${1:?usage: sh packages/php-ext/scripts/build.sh <published polyspec_orm.so>}
+mode=${2:-release}
 package=$(cd "$(dirname "$0")/.." && pwd)
 command -v phpize >/dev/null || { echo "build.sh: phpize is not on PATH; install the PHP development files of .php-version (setup-php gives them in CI)" >&2; exit 1; }
 command -v php-config >/dev/null || { echo "build.sh: php-config is not on PATH; install the PHP development files of .php-version" >&2; exit 1; }
@@ -17,11 +18,18 @@ trap 'rm -rf "$work"' EXIT
 mkdir "$work" "$work/src"
 cp "$package"/composer.json "$work"/
 cp "$package"/src/config.m4 "$package"/src/*.c "$package"/src/*.h "$work"/src/
+case "$mode" in
+  release) configure_args="--enable-polyspec-orm" ;;
+  mermaid-test)
+    cp "$package"/testing/mermaid/module.c "$work"/src/mermaid_test.c
+    configure_args="--enable-polyspec-orm --enable-polyspec-orm-mermaid-test" ;;
+  *) echo "build.sh: unknown build mode $mode (expected release or mermaid-test)" >&2; exit 2 ;;
+esac
 cd "$work/src"
 echo "build.sh: phpize ($(php-config --version))"
 phpize >phpize.log 2>&1 || { cat phpize.log >&2; exit 1; }
 echo "build.sh: configure"
-./configure --enable-polyspec-orm >configure.log 2>&1 || { tail -n 40 configure.log >&2; exit 1; }
+./configure $configure_args >configure.log 2>&1 || { tail -n 40 configure.log >&2; exit 1; }
 echo "build.sh: make"
 make >make.log 2>&1 || { grep -E 'error|warning' make.log >&2 || tail -n 60 make.log >&2; exit 1; }
 # Warnings only look at the compiler's source warnings (macOS libtool linker warnings are not from this extension).

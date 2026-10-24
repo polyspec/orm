@@ -6,6 +6,13 @@
 #include "dbspec.h"
 #include "ext/spl/spl_exceptions.h"
 
+#ifdef POLYSPEC_ORM_MERMAID_TEST
+document *mermaid_test_catalog_document(catalog *c, str name, unsupportedv *out);
+#define MERMAID_CATALOG_DOCUMENT(c, name, out) mermaid_test_catalog_document(c, name, out)
+#else
+#define MERMAID_CATALOG_DOCUMENT(c, name, out) catalog_document(c, name, out)
+#endif
+
 static void report(unsupportedv *l, const char *kind, str table, str name, str reason)
 {
     PUSH(*l, ((unsupported){str_c(kind), table, name, reason}));
@@ -889,17 +896,30 @@ document *mermaid_import(str text, str name, unsupportedv *dropped, diags *out)
             }
         }
     }
-    document *d = catalog_document(c, name, dropped);
+    document *d = MERMAID_CATALOG_DOCUMENT(c, name, dropped);
     if (d == NULL && EG(exception) != NULL && instanceof_function(EG(exception)->ce, spl_ce_RuntimeException)) {
         /* If the catalog cannot build a document, it is the mermaid diagnostic of the import. */
         zval rv;
-        zval *message = zend_read_property_ex(zend_ce_exception, EG(exception), ZSTR_KNOWN(ZEND_STR_MESSAGE), true, &rv);
-        zend_string *text_of = zval_get_string(message);
-        str m = str_z(text_of);
-        zend_string_release(text_of);
-        zend_clear_exception();
-        PUSH(*out, mkdiag(SL("mermaid"), 1, 1, m));
-        return NULL;
+        ZVAL_UNDEF(&rv);
+        zval *code = zend_read_property_ex(zend_ce_exception, EG(exception), ZSTR_KNOWN(ZEND_STR_CODE), true, &rv);
+        bool expected = Z_TYPE_P(code) == IS_LONG && Z_LVAL_P(code) == DBS_CATALOG_DOCUMENT_BUILD_CODE;
+        if (Z_TYPE(rv) != IS_UNDEF) {
+            zval_ptr_dtor(&rv);
+        }
+        if (expected) {
+            zval message_rv;
+            ZVAL_UNDEF(&message_rv);
+            zval *message = zend_read_property_ex(zend_ce_exception, EG(exception), ZSTR_KNOWN(ZEND_STR_MESSAGE), true, &message_rv);
+            zend_string *text_of = zval_get_string(message);
+            str m = str_z(text_of);
+            zend_string_release(text_of);
+            if (Z_TYPE(message_rv) != IS_UNDEF) {
+                zval_ptr_dtor(&message_rv);
+            }
+            zend_clear_exception();
+            PUSH(*out, mkdiag(SL("mermaid"), 1, 1, m));
+            return NULL;
+        }
     }
     return d;
 }

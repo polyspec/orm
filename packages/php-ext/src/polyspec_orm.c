@@ -2509,6 +2509,12 @@ static void model_where_default(zend_class_entry *ce)
 
 static PHP_MINIT_FUNCTION(polyspec_orm)
 {
+#ifdef POLYSPEC_ORM_MERMAID_TEST
+    extern const zend_function_entry mermaid_test_functions[];
+    if (zend_register_functions(NULL, mermaid_test_functions, NULL, MODULE_PERSISTENT) != SUCCESS) {
+        return FAILURE;
+    }
+#endif
     register_class_Polyspec_Orm_Code();
     register_class_Polyspec_Orm_Codec();
     register_class_Polyspec_Orm_Validator();

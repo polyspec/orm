@@ -16,6 +16,9 @@
 #include <stdint.h>
 #include <string.h>
 
+/* Private exception code used only when a catalog cannot parse its own generated document. */
+#define DBS_CATALOG_DOCUMENT_BUILD_CODE ((zend_long)-62062)
+
 /* ------------------------------------------------------------------ arena */
 
 typedef struct dbs_block {
@@ -670,6 +673,7 @@ void out_unsupported(const unsupportedv *list, zval *out);
 
 /* Throws a PHP exception. The caller stops the operation by returning false. */
 bool dbs_throw(zend_class_entry *ce, str message);
+bool dbs_throw_code(zend_class_entry *ce, str message, zend_long code);
 #define dbs_failed() (EG(exception) != NULL)
 
 #endif

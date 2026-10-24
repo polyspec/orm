@@ -7,7 +7,7 @@ import json
 import re
 
 from polyspec.orm.dbspec.emit import type_text
-from polyspec.orm.dbspec.introspect_catalog import Catalog
+from polyspec.orm.dbspec.introspect_catalog import Catalog, _CatalogDocumentBuildError
 from polyspec.orm.dbspec.model import DbspecDiagnostic, DbspecDocument, DbspecType
 from polyspec.orm.dbspec.parse import valid_name
 from polyspec.orm.dbspec.plan import sorted_by
@@ -461,7 +461,7 @@ def import_mermaid(text: str, name: str) -> dict:
                 )
     try:
         result = c.document(name)
-    except Exception as error:  # noqa: BLE001 - a catalog failure of any type becomes the line-1 diagnostic the comment below describes
+    except _CatalogDocumentBuildError as error:
         # If the catalog cannot build a document (for example, when the document name is not a dbspec name),
         # the diagnostic is at line 1.
         return fail(1, _message_of(error))

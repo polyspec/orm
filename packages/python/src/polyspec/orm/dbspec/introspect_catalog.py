@@ -4,6 +4,11 @@
 from polyspec.orm.dbspec.emit import type_text
 from polyspec.orm.dbspec.parse import parse_document
 
+
+class _CatalogDocumentBuildError(ValueError):
+    """An expected failure while converting catalog data into a dbspec document."""
+
+
 __all__ = ["Catalog", "CatalogRow", "action_name", "quote", "table_types"]
 
 
@@ -141,7 +146,7 @@ class Catalog:
             for d in diagnostics:
                 o = objects.get(d.line)
                 if o is None:
-                    raise ValueError(
+                    raise _CatalogDocumentBuildError(
                         f"introspected document does not parse: {diagnostics}"
                     )
                 if o["kind"] == "table":
