@@ -16,10 +16,11 @@
 //
 // Usage: node packages/ts/tests/schema-set.mjs [case ...] (after npm run typescript:build)
 import { readFile } from 'node:fs/promises';
-import { CORE, Db, Model, OrmError, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
+import { CORE, Db, OrmError, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
 import { caseTest } from '../../../tests/testcase.mts';
 import { withCaseDatabase } from './case-database.mjs';
 import { nativeQuery } from './coverage_case.mjs';
+import { classesFromModel } from './registered_models.mjs';
 
 const benchText = await readFile(new URL('../../../contracts/fixtures/bench/bench.dbs', import.meta.url), 'utf8');
 const decimalText = await readFile(new URL('../../../contracts/fixtures/decimal_schema.dbs', import.meta.url), 'utf8');
@@ -41,26 +42,15 @@ function manifestOf(text) {
   return dbspecManifest([parsed.document]).manifest;
 }
 
-/** A model class per entity of a runtime model, as generated code declares them. */
-function classes(model) {
-  const out = {};
-  for (const entity of model.entities.values()) {
-    const cls = class extends Model {};
-    cls.entity = { model, entity, create: core => new cls(core) };
-    out[entity.name] = cls;
-  }
-  return out;
-}
-
 // Registers models with the manifest text and manifestHash of each set, as generated code does.
 const bench = manifestOf(benchText);
 const decimal = manifestOf(decimalText);
 // The schema value that generated code exports: the manifest text and the declared manifestHash.
 const benchSchema = { manifestText: bench.manifestText, manifestHash: bench.manifestHash };
 const decimalSchema = { manifestText: decimal.manifestText, manifestHash: decimal.manifestHash };
-const { user: User } = classes(registerModel(bench.manifestText, bench.manifestHash));
+const { user: User } = classesFromModel(registerModel(bench.manifestText, bench.manifestHash));
 const decimalModel = registerModel(decimal.manifestText, decimal.manifestHash);
-const { decimal_case: DecimalCase } = classes(decimalModel);
+const { decimal_case: DecimalCase } = classesFromModel(decimalModel);
 const user = (db, name) => { const m = new User().connect(db); m[CORE].setValue('name', name); return m; };
 const decimalRow = (db, seq, amount) => { const m = new DecimalCase().connect(db); m[CORE].setValue('seq', seq); m[CORE].setValue('amount', amount); return m; };
 const decimalAmount = async (db, seq) => (await new DecimalCase().connect(db).seq(seq).get())[CORE].column('amount');
@@ -213,7 +203,7 @@ async function externalDocuments(dsn, driver) {
     const connected = await Db.connectSchema(dsn, member, options);
     await connected.close();
 
-    const { ext_post: Post } = classes(registerModel(member.manifestText, member.manifestHash, member.externalText));
+    const { ext_post: Post } = classesFromModel(registerModel(member.manifestText, member.manifestHash, member.externalText));
     await db.transaction(async () => {
       const post = new Post();
       post[CORE].setValue('account_seq', 1);

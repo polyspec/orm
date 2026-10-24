@@ -2,9 +2,8 @@
 // that run a document set on their own model classes.
 import { Model, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
 
-/** Registers each manifest entity as a model class, as generated code does. */
-export function classesFromManifest(manifest) {
-  const model = registerModel(manifest.manifestText, manifest.manifestHash);
+/** Creates a model class for each entity of a registered model. */
+export function classesFromModel(model) {
   const out = {};
   for (const entity of model.entities.values()) {
     const cls = class extends Model {};
@@ -12,6 +11,11 @@ export function classesFromManifest(manifest) {
     out[entity.name] = cls;
   }
   return out;
+}
+
+/** Registers each manifest entity as a model class, as generated code does. */
+export function classesFromManifest(manifest) {
+  return classesFromModel(registerModel(manifest.manifestText, manifest.manifestHash));
 }
 
 /** Registers the model of a document set as generated code does and returns a model class per entity. */

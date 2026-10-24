@@ -4,9 +4,10 @@
 // results. The owner test (dbspec_runtime_db.mjs) and the coverage case (coverage_audit_triggers.mjs) both use it.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { CORE, Db, Model, OrmError, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
+import { CORE, Db, OrmError, dbspecManifest, parseDbspec } from '../dist/index.js';
 import { nativeQuery } from './coverage_case.mjs';
 import { codeOf } from './error_code.mjs';
+import { classesFromManifest } from './registered_models.mjs';
 
 export const restoreText = await readFile(new URL('../../../contracts/fixtures/restore.dbs', import.meta.url), 'utf8');
 export const auditText = await readFile(new URL('../../../contracts/fixtures/audit.dbs', import.meta.url), 'utf8');
@@ -31,14 +32,7 @@ function modelsOf(text) {
   const parsed = parseDbspec(text, {});
   assert.deepEqual(parsed.diagnostics, [], 'the fixture parses');
   const { manifest } = dbspecManifest([parsed.document]);
-  const model = registerModel(manifest.manifestText, manifest.manifestHash);
-  const out = {};
-  for (const entity of model.entities.values()) {
-    const cls = class extends Model {};
-    cls.entity = { model, entity, create: core => new cls(core) };
-    out[entity.name] = cls;
-  }
-  return out;
+  return classesFromManifest(manifest);
 }
 
 /** An audit source that gives the actor as the audit value. Used as the connection option auditSource. */
