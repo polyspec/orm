@@ -84,6 +84,18 @@ final class MysqlTlsTest extends TestCase
         self::refused('mysql://root@db.local/orm_example?ssl-mode=VERIFY_IDENTITY', 'ssl-ca');
         self::refused('mysql://root@db.local/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=ca.pem', 'absolute');
         self::refused('mysql://root@db.local/orm_example?ssl-ca=/tmp/ca.pem', 'ssl-mode');
+
+        $ca = sys_get_temp_dir() . '/orm-missing-ca-' . bin2hex(random_bytes(8)) . '.pem';
+        $db = null;
+        try {
+            $db = Orm::connect('mysql://root@localhost/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=' . rawurlencode($ca), new Config());
+            self::fail('a missing TLS CA file must be CONFIG');
+        } catch (OrmException $error) {
+            self::assertSame(Code::CONFIG, $error->code_);
+            self::assertStringContainsString('not a readable file', $error->getMessage());
+        } finally {
+            $db?->close();
+        }
     }
 
     // Requirements: CFG-16.

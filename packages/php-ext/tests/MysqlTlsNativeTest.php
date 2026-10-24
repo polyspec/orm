@@ -38,6 +38,22 @@ final class MysqlTlsNativeTest extends TestCase
                 self::assertStringContainsString($expected, $error->getMessage(), $dsn);
             }
         }
+
+        self::assertTrue((new ReflectionMethod(Orm::class, 'connect'))->isInternal());
+        $ca = sys_get_temp_dir() . '/orm-missing-ca-' . bin2hex(random_bytes(8)) . '.pem';
+        $db = null;
+        try {
+            $db = Orm::connect(
+                'mysql://orm@localhost/app?ssl-mode=VERIFY_IDENTITY&ssl-ca=' . rawurlencode($ca),
+                new Config()
+            );
+            self::fail('a missing native TLS CA file must be CONFIG');
+        } catch (OrmException $error) {
+            self::assertSame(Code::CONFIG, $error->code_);
+            self::assertStringContainsString('not a readable file', $error->getMessage());
+        } finally {
+            $db?->close();
+        }
     }
 
     // Requirements: CFG-16.

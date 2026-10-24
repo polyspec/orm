@@ -3,6 +3,7 @@ package orm
 import (
 	"context"
 	"encoding/json"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -56,6 +57,11 @@ func TestParseDSNMySQLTLSRejectsUnsupportedOptions(t *testing.T) {
 				t.Fatalf("parseDSN() error = %v; want CONFIG with %q", err, wanted)
 			}
 		})
+	}
+	ca := url.QueryEscape(filepath.Join(t.TempDir(), "missing-ca.pem"))
+	_, err := Connect("mysql://root@localhost/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca="+ca, Config{})
+	if err == nil || ErrorCode(err) != CodeConfig || !strings.Contains(err.Error(), "cannot be read") {
+		t.Fatalf("unreadable TLS CA: got %v, want CONFIG before connecting", err)
 	}
 }
 

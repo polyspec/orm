@@ -5,6 +5,9 @@
 // are required, and the test fails if any of them is missing.
 // Usage: node packages/ts/tests/mysql_tls.mjs
 import { readFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { Db } from '../dist/index.js';
 import { parseDsn } from '../dist/driver.js';
 import { caseTest, COMPUTE, DATABASE } from '../../../tests/testcase.mts';
@@ -43,7 +46,7 @@ caseTest('mysql_tls/parameters', COMPUTE, () => {
 });
 
 // CFG-18: incomplete, unsupported and relative TLS options are rejected without opening a connection.
-caseTest('mysql_tls/unsupported-parameters', COMPUTE, () => {
+caseTest('mysql_tls/unsupported-parameters', COMPUTE, async () => {
   const failures = [];
   const refused = (dsn, wanted) => {
     try {
@@ -59,6 +62,18 @@ caseTest('mysql_tls/unsupported-parameters', COMPUTE, () => {
   refused('mysql://root@db.local/orm_example?ssl-mode=VERIFY_IDENTITY', 'ssl-ca');
   refused('mysql://root@db.local/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=ca.pem', 'absolute');
   refused('mysql://root@db.local/orm_example?ssl-ca=/tmp/ca.pem', 'ssl-mode');
+  const ca = join(tmpdir(), `orm-missing-ca-${randomUUID()}.pem`);
+  let db;
+  try {
+    db = await Db.connect(`mysql://root@localhost/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=${encodeURIComponent(ca)}`);
+    failures.push('a missing TLS CA file was accepted');
+  } catch (error) {
+    if (error?.code !== 'CONFIG' || !String(error.message).includes('cannot be read')) {
+      failures.push(`an unreadable TLS CA: ${error?.code} ${error?.message}, expected CONFIG before connecting`);
+    }
+  } finally {
+    if (db) await db.close();
+  }
   check(failures);
 });
 

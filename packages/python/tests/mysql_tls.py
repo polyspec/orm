@@ -6,7 +6,9 @@
 # Usage: python -m packages.python.tests.mysql_tls
 import os
 import re
+import tempfile
 import unittest
+import uuid
 
 from polyspec.orm.database import Db, parse_dsn
 from polyspec.orm.errors import OrmError
@@ -86,6 +88,19 @@ class MysqlTlsParametersTest(unittest.TestCase):
             "absolute",
         )
         self.refused("mysql://root@db.local/orm_example?ssl-ca=/tmp/ca.pem", "ssl-mode")
+        ca = os.path.join(tempfile.gettempdir(), f"orm-missing-ca-{uuid.uuid4().hex}.pem")
+        db = None
+        try:
+            db = Db.connect(
+                f"mysql://root@localhost/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca={ca}"
+            )
+            self.fail("a missing TLS CA file must be CONFIG")
+        except OrmError as error:
+            self.assertEqual(error.code, "CONFIG")
+            self.assertIn("not a readable file", str(error))
+        finally:
+            if db is not None:
+                db.close()
 
 
 def ssl_version(dsn: str) -> str:
