@@ -1705,6 +1705,17 @@ static bool catalog_record_renderer_check(catalog *c, smap *checked, str table, 
     return true;
 }
 
+static void catalog_decode_check(catalog *c, itable *table, dialect d, str name, str expression)
+{
+    smap types = itable_types(table);
+    str predicate, failure;
+    if (check_decode(d, expression, &types, &predicate, &failure)) {
+        PUSH(table->checks, ((icheck){name, predicate}));
+    } else {
+        catalog_report(c, SL("check"), table->name, name, failure);
+    }
+}
+
 /* Collects column rows for each foreign key. An unsupported key is reported for each column row. */
 static bool mysql_foreign_keys(zval *pdo, catalog *c)
 {
@@ -1921,13 +1932,7 @@ static catalog *mysql_read(zval *pdo)
                 }
                 continue;
             }
-            smap types = itable_types(t);
-            str predicate, failure;
-            if (check_decode(D_MYSQL, *clause, &types, &predicate, &failure)) {
-                PUSH(t->checks, ((icheck){name, predicate}));
-            } else {
-                catalog_report(c, SL("check"), table, name, failure);
-            }
+            catalog_decode_check(c, t, D_MYSQL, name, *clause);
         } ZEND_HASH_FOREACH_END();
     }
     zval_ptr_dtor(&rows);
@@ -2341,13 +2346,7 @@ static catalog *pg_read(zval *pdo)
                     }
                     continue;
                 }
-                smap types = itable_types(t);
-                str predicate, failure;
-                if (check_decode(D_POSTGRES, definition, &types, &predicate, &failure)) {
-                    PUSH(t->checks, ((icheck){name, predicate}));
-                } else {
-                    catalog_report(c, SL("check"), table, name, failure);
-                }
+                catalog_decode_check(c, t, D_POSTGRES, name, definition);
             } else {
                 catalog_report(c, pg_kind(kind), table, name, fmt("a constraint of kind %S has no dbspec definition", kind));
             }
