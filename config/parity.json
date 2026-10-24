@@ -21249,8 +21249,8 @@
       "requirements": ["INT-72"],
       "bindings": [
         {"implementation": "go", "test": "packages/go/orm/coverage_transaction_failure_test.go", "id": "TestTransactionFailureRollback"},
-        {"implementation": "php", "test": "packages/php/tests/TransactionFailureTest.php", "id": "TransactionFailureTest::test_transaction_keeps_callback_and_failed_rollback_errors"},
-        {"implementation": "php-extension", "test": "packages/php-ext/tests/TransactionFailureNativeTest.php", "id": "TransactionFailureNativeTest::test_transaction_keeps_callback_and_failed_rollback_errors"},
+        {"implementation": "php", "test": "packages/php/tests/TransactionFailureTest.php", "id": "TransactionFailureTest::testTransactionKeepsCallbackAndFailedRollbackErrors"},
+        {"implementation": "php-extension", "test": "packages/php-ext/tests/TransactionFailureNativeTest.php", "id": "TransactionFailureNativeTest::testTransactionKeepsCallbackAndFailedRollbackErrors"},
         {"implementation": "typescript", "test": "packages/ts/tests/transaction-failure.mjs", "id": "transaction-failure/rollback-primary-and-cleanup"},
         {"implementation": "python", "test": "packages/python/tests/test_rollback_fault.py", "id": "test_a_failed_rollback_reports_the_callback_error_and_the_rollback_error"},
         {"implementation": "rust", "test": "packages/rust/orm/src/tx.rs", "id": "tx::tests::sqlite_transaction_end_failures_are_reported"}
@@ -21264,9 +21264,9 @@
         {"implementation": "go", "test": "packages/go/orm/rollback_fault_test.go", "id": "TestRollbackFaultSQLite"},
         {"implementation": "go", "test": "packages/go/orm/rollback_fault_test.go", "id": "TestRollbackFaultMySQL"},
         {"implementation": "go", "test": "packages/go/orm/rollback_fault_test.go", "id": "TestRollbackFaultPostgres"},
-        {"implementation": "php", "test": "packages/php/tests/TransactionFailureTest.php", "id": "TransactionFailureTest::test_rollback_fault_is_consumed_after_transaction_rollback"},
+        {"implementation": "php", "test": "packages/php/tests/TransactionFailureTest.php", "id": "TransactionFailureTest::testRollbackFaultIsConsumedAfterTransactionRollback"},
         {"implementation": "php", "test": "packages/php/tests/RollbackTest.php", "id": "RollbackTest::testRollbackFault"},
-        {"implementation": "php-extension", "test": "packages/php-ext/tests/TransactionFailureNativeTest.php", "id": "TransactionFailureNativeTest::test_rollback_fault_is_consumed_after_transaction_rollback"},
+        {"implementation": "php-extension", "test": "packages/php-ext/tests/TransactionFailureNativeTest.php", "id": "TransactionFailureNativeTest::testRollbackFaultIsConsumedAfterTransactionRollback"},
         {"implementation": "typescript", "test": "packages/ts/tests/transaction-failure.mjs", "id": "transaction-failure/rollback-fault-consumption"},
         {"implementation": "typescript", "test": "packages/ts/tests/rollback.mjs", "id": "rollback/rollback_fault/sqlite"},
         {"implementation": "typescript", "test": "packages/ts/tests/rollback.mjs", "id": "rollback/rollback_fault/mysql"},
@@ -21283,8 +21283,8 @@
       "requirements": ["DIA-181", "PLN-17"],
       "bindings": [
         {"implementation": "go", "test": "packages/go/orm/coverage_transaction_failure_test.go", "id": "TestTransactionFailureSavepointEnd"},
-        {"implementation": "php", "test": "packages/php/tests/TransactionFailureTest.php", "id": "TransactionFailureTest::test_savepoint_attempts_both_end_steps_and_keeps_the_callback_error"},
-        {"implementation": "php-extension", "test": "packages/php-ext/tests/TransactionFailureNativeTest.php", "id": "TransactionFailureNativeTest::test_savepoint_attempts_both_end_steps_and_keeps_the_callback_error"},
+        {"implementation": "php", "test": "packages/php/tests/TransactionFailureTest.php", "id": "TransactionFailureTest::testSavepointAttemptsBothEndStepsAndKeepsTheCallbackError"},
+        {"implementation": "php-extension", "test": "packages/php-ext/tests/TransactionFailureNativeTest.php", "id": "TransactionFailureNativeTest::testSavepointAttemptsBothEndStepsAndKeepsTheCallbackError"},
         {"implementation": "typescript", "test": "packages/ts/tests/transaction-failure.mjs", "id": "transaction-failure/savepoint-end-attempts-both"},
         {"implementation": "python", "test": "packages/python/tests/test_rollback_fault.py", "id": "test_a_failed_savepoint_rollback_and_transaction_rollback_report_both"},
         {"implementation": "rust", "test": "packages/rust/orm/src/tx.rs", "id": "tx::tests::savepoint_end_failures_are_reported"}
