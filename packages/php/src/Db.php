@@ -1312,13 +1312,11 @@ final class Db
         $args = $this->args($step, $params, [], $frame);
         $this->send(function () use ($step, $args): void {
             $st = $this->stmt($step['sql']);
-            try {
+            $this->withStatement($st, function (\PDOStatement $st) use ($args): void {
                 $this->exec($st, $args);
                 // The result of a statement that returns rows, such as RETURNING or PostgreSQL setval, is not read.
                 $st->closeCursor();
-            } catch (\PDOException $e) {
-                throw self::failed($st, $e);
-            }
+            });
         }, fn(int $start, ?OrmException $error) => $this->modelDone($step, $step['sql'], $args, $start, $error));
     }
 
@@ -1584,6 +1582,16 @@ final class Db
         $st->execute();
     }
 
+    /** @template T @param \Closure(\PDOStatement): T $operation @return T */
+    private function withStatement(\PDOStatement $statement, \Closure $operation): mixed
+    {
+        try {
+            return $operation($statement);
+        } catch (\PDOException $e) {
+            throw self::failed($statement, $e);
+        }
+    }
+
     /** Closes the cursor of a failed statement and returns its driver error. */
     private static function failed(\PDOStatement $st, \PDOException $e): \PDOException
     {
@@ -1699,14 +1707,12 @@ final class Db
         $args = $this->args($step, $params, $parentVals);
         $rows = $this->send(function () use ($sql, $args): array {
             $st = $this->stmt($sql);
-            try {
+            return $this->withStatement($st, function (\PDOStatement $st) use ($args): array {
                 $this->exec($st, $args);
                 $rows = $st->fetchAll(\PDO::FETCH_NUM);
                 $st->closeCursor();
                 return $rows;
-            } catch (\PDOException $e) {
-                throw self::failed($st, $e);
-            }
+            });
         }, fn(int $start, ?OrmException $error) => $this->modelDone($step, $sql, $args, $start, $error));
         // An error from failing to free a row that was read is not the statement's error, so it is thrown
         // after the event.
@@ -1721,14 +1727,12 @@ final class Db
         $args = $this->args($step, $params);
         $v = $this->send(function () use ($step, $args): mixed {
             $st = $this->stmt($step['sql']);
-            try {
+            return $this->withStatement($st, function (\PDOStatement $st) use ($args): mixed {
                 $this->exec($st, $args);
                 $v = $st->fetchColumn();
                 $st->closeCursor();
                 return $v;
-            } catch (\PDOException $e) {
-                throw self::failed($st, $e);
-            }
+            });
         }, fn(int $start, ?OrmException $error) => $this->modelDone($step, $step['sql'], $args, $start, $error));
         return $v === false ? null : $v;
     }
