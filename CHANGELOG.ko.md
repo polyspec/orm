@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 2d6468c0f1116920998f0b2cb920c2a40ffb27ad9255b876909194c1dd5d5c3a -->
+<!-- source-sha256: 2cb78539dc87ebcd2c722662d47bdfd8cef57353f8f77dbebe733bc12d1b378b -->
 # 변경 이력
 
 ## Unreleased
+
+- Rust upsert planner는 빈 conflict target을 출력하는 대신 conflict-key validation 오류를 전파한다. Direct native `Planner::compile` case는 `ENTITY_UNKNOWN`, key 없음 및 모호한 primary-plus-unique의 `IR_INVALID` 오류를 검증하고, 모든 column을 할당한 복합 primary key는 선언 순서 SQL target과 bind를 만든다. canonical target은 수정 전 source인 `351422f365d5`에서 오류 누락 case 두 개가 실패했고(2/4 통과), main commit `534b426c603f`에서 네 case 모두 통과한다(KSTD-5-66).
 
 - Composite collection key는 integer, boolean, text, byte, datetime component type을 byte-length framing으로 인코딩한다. byte payload는 소문자 hex를 사용하고 datetime payload는 UTC RFC3339에서 끝의 fractional zero를 host precision에 맞춰 제거한다. Scalar key와 nullable-row 처리는 바뀌지 않는다. 커밋된 main `c28c72d52`에서 `make item-test ID=T77-6-4`가 통과한다: TypeScript 2개, Go 3개, PHP 3개(156 assertions), PHP extension 3개(153 assertions), Python 3개, Rust 3개. 실제 pre-fix main 실행에서는 TypeScript, PHP, PHP extension, Python, Rust의 false/text 충돌, Go의 raw-byte 사례 3개, 그리고 PHP, PHP extension, Python, Rust의 `.123400` 포맷이 실패했다. 공유 millisecond vector는 `.120`, `.010`, `.000`, multibyte 및 embedded-NUL text를 다루며 microsecond 검사는 host precision을 보존한다(T77-6-4).
 

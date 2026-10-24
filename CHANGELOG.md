@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- Rust upsert planning now propagates conflict-key validation errors instead of rendering an empty conflict target. Direct native `Planner::compile` cases verify `ENTITY_UNKNOWN`, missing-key and ambiguous primary-plus-unique `IR_INVALID` errors, while a fully assigned composite primary key produces its ordered SQL target and binds. The canonical target failed the two swallowed-error cases on pre-fix source at `351422f365d5` (2/4 passed) and passes all four cases on committed main `534b426c603f` (KSTD-5-66).
+
 - Composite collection keys now encode integer, boolean, text, byte and datetime component types with byte-length framing; byte payloads use lowercase hex, and datetime payloads use UTC RFC3339 with trailing fractional zeroes trimmed at host precision. Scalar keys and nullable-row handling are unchanged. On committed main `c28c72d52`, `make item-test ID=T77-6-4` passes TypeScript 2, Go 3, PHP 3 (156 assertions), PHP extension 3 (153 assertions), Python 3 and Rust 3. The actual pre-fix main run failed the false/text collision in TypeScript, PHP, PHP extension, Python and Rust; three raw-byte cases in Go; and `.123400` formatting in PHP, PHP extension, Python and Rust. Shared millisecond vectors cover `.120`, `.010`, `.000`, multibyte and embedded-NUL text, while microsecond checks preserve host precision (T77-6-4).
 
 - Rust rejects temporal precision outside 0..6 as `SCHEMA_INVALID` before binding values, including NULL and dotless input. Excess nonzero fraction digits remain `CODEC_ENCODE`, trailing zeroes are accepted, and valid executor clock truncation is unchanged. The focused native test failed on pre-fix `aca190bfb927` and passes 3/3 with `make item-test ID=KSTD-5-68` on `d84a4547407d` (KSTD-5-68).

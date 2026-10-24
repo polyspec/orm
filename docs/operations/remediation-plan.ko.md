@@ -1,5 +1,5 @@
 <!-- doc-id: remediation-plan -->
-<!-- source-sha256: b209d8bd59439e02b9a531ef06397e02ea01e5cfbcb1adc3b6d4077b6c1390e9 -->
+<!-- source-sha256: 3b48083a7433e5e43d2db053c1f433dc22b9a6c7f70739c2e344dd88ce1815f3 -->
 # 남은 작업의 진단과 해결 방안
 
 [English](remediation-plan.md)
@@ -122,7 +122,7 @@
 | KSTD-5-63 | Go `packages/go/engine/planner/planner.go`, TS `packages/ts/src/engine/planner.ts`, PHP `packages/php/src/Planner.php`, Python `packages/python/src/polyspec/orm/engine/planner.py`, Rust `packages/rust/orm/src/engine/planner.rs`, `packages/php-ext/src/planner.c`: 여섯 planner의 missing-column fallback은 검증 후 private INTERNAL이며 이름을 포함해야 한다. public validator unknown-column/entity code는 유지한다. count i64, avg f64 유지. `params::function_type` fallback은 별도 후속 항목. |
 | KSTD-5-64 | Rust `packages/rust/orm/src/db.rs:498`와 TS `packages/ts/src/driver.ts` (line 973): Rust는 patch를 무시하고 TS는 NaN을 통과시킬 수 있다. ASCII u32 component 3개 또는 4개를 정확히 parse하고 whitespace/sign/suffix/overflow를 거부한다. leading zero 허용. 잘못된 입력은 원문을 포함한 INTERNAL. 3.46 미만은 CAPABILITY_UNSUPPORTED, 비교는 숫자로(3.100.0, 4.0.0). native probe가 있으면 DB open 전 검사하고, 없으면 열린 resource를 실패 때 닫는다. |
 | KSTD-5-65 | Rust build loader `packages/rust/build/src/lib.rs:159`의 OUT_DIR 수정은 `0f813e`에 이미 있다. 자식 프로세스에서 OUT_DIR 없이 private `load`를 직접 호출하는 native 내부 unit을 추가한다. 공개 `try_generate` 검증은 그대로 둔다. 정상 output과 명시 override control도 둔다. 새로운 red를 꾸미거나 공개 결과를 바꾸지 않는다. |
-| KSTD-5-66 | Rust `packages/rust/orm/src/engine/planner.rs`: `conflict_target`의 오류 누락은 `886c`에서 수정됐다. 알 수 없는 entity, 가능한 conflict key 없음, primary와 unique conflict 후보의 모호성, 모든 column을 할당한 복합 primary key에 대해 private planner 직접 검사를 추가한다. “Multi-PK”는 여러 후보 key의 모호성을 뜻하며 여러 column인 primary key를 뜻하지 않는다. 모든 column을 할당한 복합 primary key는 유효하다. 공개 validation만으로는 부족하다. |
+| KSTD-5-66 | Rust `packages/rust/orm/src/engine/planner.rs`: `conflict_target`의 오류 누락은 `886c`에서 수정됐다. 알 수 없는 entity, 가능한 conflict key 없음, primary와 unique conflict 후보의 모호성, 모든 column을 할당한 복합 primary key에 대해 private planner 직접 검사를 추가한다. “Multi-PK”는 여러 후보 key의 모호성을 뜻하며 여러 column인 primary key를 뜻하지 않는다. 모든 column을 할당한 복합 primary key는 유효하다. 공개 validation만으로는 부족하다. 근거: canonical target은 수정 전 planner source인 historical 351422f365d5d4e6b4458a11e20b92adb5877feb에서 오류 누락 case 두 개가 실패했다(2/4 통과). main commit 534b426c는 direct planner case 네 개를 모두 통과한다. |
 | KSTD-5-67 | Rust `packages/rust/orm/src/driver.rs` parameter expansion: numbered/positional parameter 확장은 query 전에 parent slot이 정확히 하나인지 검사하고 아니면 step명을 포함한 IR_INVALID을 반환한다. composite padding/reorder, 단일 값, 중복 parent 검사. parser 117은 이미 수정됐다. |
 | KSTD-5-68 | Rust `packages/rust/orm/src/db.rs` precision parser/bind check: precision은 null/dotless 입력도 0..6이어야 하며 bind check를 지나도 SCHEMA_INVALID이다. 초과 nonzero 분수는 CODEC, trailing zero 허용, clock truncation은 의도다. MySQL/Postgres의 precision 7 허용은 별도 후속. |
 | KSTD-5-69 | Rust `packages/rust/build/src/catalog/mutation_finish.rs:40`, pinned Tokio 1.53.1: 고정 Tokio 1.53.1에서 Rust `JoinError`는 이미 panic payload를 출력한다. string, `String`, non-string, abort 분류를 기존 동작으로 검사한다. opaque debug 출력이나 production 변경을 꾸미지 않는다. |
