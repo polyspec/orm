@@ -182,7 +182,7 @@ func TestApplyReportsCleanupErrors(t *testing.T) {
 		t.Errorf("apply stopped by an event with a failing lock release: %v, want both errors", err)
 	}
 
-	begin := errors.New("begin failed")
+	begin := sqliteResultError(5)
 	restore := errors.New("restore failed")
 	c = &failing{conn: applyTestConn(t), fail: map[string]error{"BEGIN EXCLUSIVE": begin, "PRAGMA foreign_keys = 0": restore}}
 	_, err = Apply(ctx, c, DialectSQLite, plans, now, nil)
