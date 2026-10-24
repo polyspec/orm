@@ -3,10 +3,23 @@
 //
 // Usage: node --test tests/docs/tables.test.mts
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
+import path from 'node:path';
 import { caseTest } from '../testcase.mts';
 import { tableUnder, tablesIn } from '../../scripts/docs/tables.mts';
 
 const TIMEOUT = 30_000;
+const require = createRequire(import.meta.url);
+
+function method(value: unknown, name: string): Function {
+  if ((typeof value !== 'object' || value === null) && typeof value !== 'function') {
+    throw new Error(`VitePress module has no ${name} method`);
+  }
+  const candidate: unknown = Reflect.get(value, name);
+  if (typeof candidate !== 'function') throw new Error(`VitePress module has no ${name} method`);
+  return candidate;
+}
 
 caseTest('an escaped pipe and a code span keep their source text in the cell', TIMEOUT, () => {
   const [table] = tablesIn('| a | b |\n|---|---|\n| `x` \\| `y` | z \\| w |\n');
@@ -28,4 +41,30 @@ caseTest('tableUnder reads the table of its heading and not one below a later he
   assert.deepEqual(under?.header, ['a']);
   const after = tableUnder('## Target\n\ntext\n\n## Other\n\n| b |\n|---|\n| 2 |\n', heading => heading.depth === 2 && heading.children[0]?.type === 'text' && heading.children[0].value === 'Target');
   assert.equal(after, undefined);
+});
+
+
+caseTest('angle-bracket examples in both Kit Standard checklists render as text', TIMEOUT, async () => {
+  const docs = path.resolve('docs');
+  const vitepress: unknown = require('vitepress');
+  const createMarkdownRenderer = method(vitepress, 'createMarkdownRenderer');
+  const disposeMdItInstance = method(vitepress, 'disposeMdItInstance');
+  const markdown: unknown = await Reflect.apply(createMarkdownRenderer, vitepress, [docs]);
+  const render = method(markdown, 'render');
+  try {
+    for (const relativePath of [
+      'plans/kit-standard/checklist.md',
+      'plans/kit-standard/checklist.ko.md',
+    ]) {
+      const source = await readFile(path.join(docs, relativePath), 'utf8');
+      const rendered: unknown = Reflect.apply(render, markdown, [source, { relativePath, path: path.join(docs, relativePath) }]);
+      if (typeof rendered !== 'string') throw new Error(`${relativePath} did not render to HTML text`);
+      assert.match(rendered, /&lt;gate&gt;/, `${relativePath} renders the gate placeholder literally`);
+      assert.match(rendered, /&lt;max@blue\.tools&gt;/, `${relativePath} renders the commit identity literally`);
+      assert.match(rendered, /&lt;X&gt;/, `${relativePath} renders the generic type literally`);
+      assert.match(rendered, /Refines &lt;id&gt;:/, `${relativePath} preserves the refinement prefix`);
+    }
+  } finally {
+    Reflect.apply(disposeMdItInstance, vitepress, []);
+  }
 });
