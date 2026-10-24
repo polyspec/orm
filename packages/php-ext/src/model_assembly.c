@@ -666,10 +666,13 @@ static void assembly_markdown_relation(zval *child, zval *parent, const char *fi
     if (rel != NULL) zend_string_release(key);
 }
 
+#define ASSEMBLY_PARSE_CHILD_PARENT() \
+    zval *child, *parent; \
+    ZEND_PARSE_PARAMETERS_START(2, 2) Z_PARAM_ARRAY(child) Z_PARAM_ARRAY(parent) ZEND_PARSE_PARAMETERS_END()
+
 ZEND_METHOD(Polyspec_Orm_Assembly, joinRow)
 {
-    zval *child, *parent;
-    ZEND_PARSE_PARAMETERS_START(2, 2) Z_PARAM_ARRAY(child) Z_PARAM_ARRAY(parent) ZEND_PARSE_PARAMETERS_END();
+    ASSEMBLY_PARSE_CHILD_PARENT();
     zval *markdown = read_prop_scope(polyspec_assembly_ce, Z_OBJ_P(ZEND_THIS), "markdown");
     if (zend_is_true(markdown)) {
         zval row;
@@ -710,8 +713,7 @@ ZEND_METHOD(Polyspec_Orm_Assembly, relationAssemble)
 
 ZEND_METHOD(Polyspec_Orm_Assembly, related)
 {
-    zval *child, *parent;
-    ZEND_PARSE_PARAMETERS_START(2, 2) Z_PARAM_ARRAY(child) Z_PARAM_ARRAY(parent) ZEND_PARSE_PARAMETERS_END();
+    ASSEMBLY_PARSE_CHILD_PARENT();
     zval *markdown = read_prop_scope(polyspec_assembly_ce, Z_OBJ_P(ZEND_THIS), "markdown");
     if (zend_is_true(markdown)) {
         zval rows;
@@ -770,6 +772,8 @@ ZEND_METHOD(Polyspec_Orm_Assembly, related)
     }
     zval_ptr_dtor(&slot);
 }
+
+#undef ASSEMBLY_PARSE_CHILD_PARENT
 
 void polyspec_model_assembly_register(zend_class_entry *frame_ce, zend_class_entry *assembly_ce,
     zend_class_entry *group_row_ce, zend_class_entry *group_rows_ce, zend_class_entry *group_rows_iterator_ce)
