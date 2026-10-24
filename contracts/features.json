@@ -3204,7 +3204,7 @@
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageStatementEventsTest.php",
+                  "test": "packages/php/tests/CoverageStatementEventsTest.php",
                   "cases": [
                     "statement_events"
                   ],
@@ -3215,7 +3215,7 @@
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageStatementEventsTest.php",
+                  "test": "packages/php/tests/CoverageStatementEventsTest.php",
                   "cases": [
                     "statement_events"
                   ],
@@ -3226,7 +3226,7 @@
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php-ext/tests/CoverageStatementEventsTest.php",
+                  "test": "packages/php/tests/CoverageStatementEventsTest.php",
                   "cases": [
                     "statement_events"
                   ],
@@ -9188,7 +9188,9 @@
       ],
       "parity": [
         "catalog-connection-read",
-        "catalog-connection-row-mutation"
+        "catalog-connection-row-mutation",
+        "rust-coverage-catalog-read",
+        "rust-coverage-catalog-row-mutation"
       ],
       "fixtures": [
         "packages/rust/tests/tests/common/mod.rs"

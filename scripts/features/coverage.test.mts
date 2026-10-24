@@ -73,6 +73,47 @@ caseTest('PHP extension coverage tests reside in the owning package', 1000, () =
   assert.match(checkCoverage(manifest, reports).join('\n'), /sample\/owner\/php-extension: missing owning client part/);
 });
 
+caseTest('PHP extension catalog, schema and statement event coverage use native tests', 1000, () => {
+  const manifest = readFeatures(new URL('../..', import.meta.url).pathname);
+  for (const id of ['catalog_connection', 'schema_definition', 'statement_events']) {
+    const feature = manifest.features.find(item => item.id === id);
+    assert.ok(feature?.coverage?.owners, `${id} has no coverage owners`);
+    const owner = feature.coverage.owners['php-extension'];
+    assert.ok(owner, `${id} has no PHP extension owner`);
+    assert.equal(owner.part, 'packages/php-ext/tests', `${id} runs outside the extension package`);
+    assert.ok(owner.tests.length > 0, `${id} has no PHP extension tests`);
+    for (const test of owner.tests)
+      assert.ok(test.startsWith('packages/php-ext/tests/'), `${id} declares non-extension test ${test}`);
+    for (const [database, commands] of Object.entries(owner.commands)) {
+      assert.ok(commands.length > 0, `${id}/${database} has no native command`);
+      for (const command of commands) {
+        assert.ok(owner.tests.includes(command.test), `${id}/${database} runs undeclared test ${command.test}`);
+        assert.ok(command.test.startsWith('packages/php-ext/tests/'),
+          `${id}/${database} runs outside the extension package: ${command.test}`);
+      }
+    }
+  }
+  const statementEvents = manifest.features.find(item => item.id === 'statement_events');
+  assert.ok(statementEvents?.coverage?.owners);
+  const phpOwner = statementEvents.coverage.owners.php;
+  assert.ok(phpOwner);
+  assert.equal(phpOwner.part, 'packages/php/tests');
+  for (const command of Object.values(phpOwner.commands).flat()) {
+    assert.ok(phpOwner.tests.includes(command.test), `PHP statement_events runs undeclared test ${command.test}`);
+    assert.ok(command.test.startsWith('packages/php/tests/'),
+      `PHP statement_events runs outside the PHP package: ${command.test}`);
+  }
+  const catalog = manifest.features.find(item => item.id === 'catalog_connection');
+  assert.ok(catalog);
+  for (const id of ['catalog-connection-read', 'catalog-connection-row-mutation']) {
+    assert.ok(catalog.parity.includes(id), `catalog_connection omits ${id}`);
+    const unit = parityUnits.find(item => item.id === id);
+    assert.ok(unit, `config/parity.json omits ${id}`);
+    assert.deepEqual(unit.requirements, ['SCH-6a']);
+    assert.deepEqual(unit.bindings.map(binding => binding.implementation).toSorted(), [...languages].toSorted());
+  }
+});
+
 caseTest('one feature can run without declaring unrelated coverage complete', 1000, () => {
   const manifest = { features: [{ id: 'one' }, { id: 'two' }] };
   assert.deepEqual(selectFeatures(manifest, 'one').features, [{ id: 'one' }]);

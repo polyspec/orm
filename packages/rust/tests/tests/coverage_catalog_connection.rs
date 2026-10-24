@@ -1,4 +1,4 @@
-//! catalog_connection: orm-build's live-db catalog reads the table metadata of the seeded bench database,
+//! SCH-6a catalog_connection: orm-build's live-db catalog reads the table metadata of the seeded bench database,
 //! the author table page, and a read-only query, and inserts, updates, and deletes a row in composite_account, which has no identity column.
 //! The database ends in the state it started in.
 //! Requirements: SCH-5, SCH-6a, INT-109, INT-113, INT-114, INT-123.

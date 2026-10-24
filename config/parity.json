@@ -9234,6 +9234,84 @@
       ]
     },
     {
+      "id": "catalog-connection-read",
+      "kind": "feature",
+      "requirements": [
+        "SCH-6a"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_catalog_connection_test.go",
+          "id": "TestCoverageCatalogRead"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::test_catalog_read"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::test_catalog_read"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+          "id": "catalog_read"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_catalog_connection.py",
+          "id": "catalog_read"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/coverage_catalog_connection.rs",
+          "id": "coverage_catalog_read"
+        }
+      ]
+    },
+    {
+      "id": "catalog-connection-row-mutation",
+      "kind": "feature",
+      "requirements": [
+        "SCH-6a"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_catalog_connection_test.go",
+          "id": "TestCoverageCatalogRowMutation"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::test_catalog_row_mutation"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::test_catalog_row_mutation"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+          "id": "catalog_row_mutation"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_catalog_connection.py",
+          "id": "catalog_row_mutation"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/coverage_catalog_connection.rs",
+          "id": "coverage_catalog_row_mutation"
+        }
+      ]
+    },
+    {
       "id": "rust-catalog-connection-does-not-create-a-missing-sqlite-database",
       "kind": "feature",
       "requirements": [
