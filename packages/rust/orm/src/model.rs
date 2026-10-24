@@ -1885,7 +1885,7 @@ mod page_order_tests {
         fn drop(&mut self) {
             match std::fs::remove_file(&self.0) {
                 Ok(()) => {}
-                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => drop(error),
                 Err(error) => {
                     let message = format!(
                         "failed to remove temporary SQLite database {}: {error}",
