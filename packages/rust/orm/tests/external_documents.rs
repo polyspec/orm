@@ -15,39 +15,16 @@
 mod or_panic;
 use or_panic::OrPanic;
 
+#[path = "common/external_schema.rs"]
+mod external_schema;
+use external_schema::set_schema;
+
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use polyspec_orm::db::Pool;
-use polyspec_orm::dbspec::{self, Document};
 use polyspec_orm::{Config, Core, Db, Entity, Model, Param, Schema, Val};
 use polyspec_orm_case_database::CaseDatabase;
-
-/// The text of contracts/fixtures/<name>.dbs.
-fn fixture(name: &str) -> String {
-    let path = format!("{}/../../../contracts/fixtures/{name}.dbs", polyspec_orm_testcase::manifest_dir().display());
-    dbspec::read_file(std::path::Path::new(&path)).or_panic(|e| format!("{path}: {e:?}"))
-}
-
-/// The schema values of the owned document and the external document. Like generated code, they hold the manifest text, external text, and
-/// their manifestHash.
-fn set_schema(owned: &[&str], external: &[&str]) -> &'static Schema {
-    let texts: Vec<(String, bool)> = owned.iter().map(|n| (fixture(n), false)).chain(external.iter().map(|n| (fixture(n), true))).collect();
-    let name = |text: &str| text.lines().next().unwrap().trim_start_matches("dbspec 1 ").to_owned();
-    let documents: Vec<Document> = texts
-        .iter()
-        .map(|(text, is_external)| {
-            let set: BTreeMap<String, String> = texts.iter().filter(|(other, _)| other != text).map(|(other, _)| (name(other), other.clone())).collect();
-            let mut document = dbspec::parse(text, &set).map(|parsed| parsed.document).or_panic(|e| format!("{e:?}"));
-            document.external = *is_external;
-            document
-        })
-        .collect();
-    let refs: Vec<&Document> = documents.iter().collect();
-    let manifest = dbspec::manifest(&refs).or_panic(|e| format!("{e:?}"));
-    let leak = |s: String| -> &'static str { Box::leak(s.into_boxed_str()) };
-    Box::leak(Box::new(Schema::with_external(leak(manifest.manifest_text), leak(manifest.external_text), leak(manifest.manifest_hash))))
-}
 
 /// The manifest text, external text, and manifestHash of the member set. Like generated code, they are constants. external_case
 /// checks that they match the values made by set_schema.

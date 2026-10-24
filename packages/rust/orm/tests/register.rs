@@ -12,10 +12,12 @@
 mod or_panic;
 use or_panic::OrPanic;
 
-use std::collections::BTreeMap;
+#[path = "common/external_schema.rs"]
+mod external_schema;
+use external_schema::set_schema;
+
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use polyspec_orm::dbspec::{self, Document};
 use polyspec_orm::{Config, Db, Schema};
 use polyspec_orm_case_database::CaseDatabase;
 
@@ -37,30 +39,6 @@ impl log::Log for StatementCounter {
 }
 
 static COUNTER: StatementCounter = StatementCounter;
-
-/// A schema value made from contracts/fixtures/<name>.dbs. Like generated code, it has the manifest text, external text, and
-/// their manifestHash.
-fn set_schema(owned: &[&str], external: &[&str]) -> &'static Schema {
-    let fixture = |name: &str| {
-        let path = format!("{}/../../../contracts/fixtures/{name}.dbs", polyspec_orm_testcase::manifest_dir().display());
-        dbspec::read_file(std::path::Path::new(&path)).or_panic(|e| format!("{path}: {e:?}"))
-    };
-    let texts: Vec<(String, bool)> = owned.iter().map(|n| (fixture(n), false)).chain(external.iter().map(|n| (fixture(n), true))).collect();
-    let name = |text: &str| text.lines().next().unwrap().trim_start_matches("dbspec 1 ").to_owned();
-    let documents: Vec<Document> = texts
-        .iter()
-        .map(|(text, is_external)| {
-            let set: BTreeMap<String, String> = texts.iter().filter(|(other, _)| other != text).map(|(other, _)| (name(other), other.clone())).collect();
-            let mut document = dbspec::parse(text, &set).map(|parsed| parsed.document).or_panic(|e| format!("{e:?}"));
-            document.external = *is_external;
-            document
-        })
-        .collect();
-    let refs: Vec<&Document> = documents.iter().collect();
-    let manifest = dbspec::manifest(&refs).or_panic(|e| format!("{e:?}"));
-    let leak = |s: String| -> &'static str { Box::leak(s.into_boxed_str()) };
-    Box::leak(Box::new(Schema::with_external(leak(manifest.manifest_text), leak(manifest.external_text), leak(manifest.manifest_hash))))
-}
 
 async fn register_case(driver: &str, dsn: &str) {
     let member = set_schema(&["external/member"], &["external/core"]);
