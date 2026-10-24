@@ -35,6 +35,18 @@ final class DsnTest extends TestCase
         self::assertSame([['busy_timeout', '250'], ['journal_mode', 'WAL']], $pragmas, 'sqlite pragmas');
     }
 
+    // Requirements: CFG-6.
+    public function testNegativeStatementTimeoutIsRejectedBeforeConnecting(): void
+    {
+        try {
+            Orm::connect('sqlite:///tmp/orm-negative-statement-timeout.sqlite', new Config(statementTimeoutMs: -1));
+            self::fail('a negative statement timeout must be CONFIG');
+        } catch (OrmException $error) {
+            self::assertSame(Code::CONFIG, $error->code_);
+            self::assertStringContainsString('statement timeout', $error->getMessage());
+        }
+    }
+
     /** @return iterable<string, array{string}> */
     public static function invalidDsns(): iterable
     {

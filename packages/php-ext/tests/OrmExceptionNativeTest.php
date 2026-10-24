@@ -136,16 +136,6 @@ final class OrmExceptionNativeTest extends TestCase
                 $error->getMessage()
             );
         }
-        try {
-            Orm::parseDsn('mysql://db.example/app?ssl-mode=disabled&ssl-ca=%2Ftmp%2Fca.pem');
-            Assert::fail('unsupported TLS modes must be rejected');
-        } catch (OrmException $error) {
-            Assert::assertSame(
-                'CONFIG: mysql DSN ssl-mode "disabled" is not supported; '
-                . 'the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca',
-                $error->getMessage()
-            );
-        }
     }
 
     public function testNativeOrmParsesMarkdownDsnAndCreatesFunctionValues(): void

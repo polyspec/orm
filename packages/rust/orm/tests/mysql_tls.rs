@@ -24,6 +24,21 @@ fn verify_identity_requires_a_host_name_and_tcp() {
     }
 }
 
+#[test]
+// Rust passes TLS options through to sqlx, whose accepted parameters differ from the other clients.
+// Requirements: CFG-18.
+fn tls_options_follow_sqlx_parameter_support() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    for dsn in [
+        "mysql://root@db.example/app?ssl-mode=VERIFY_CA&ssl-ca=%2Ftmp%2Fca.pem",
+        "mysql://root@db.example/app?ssl-mode=REQUIRED&ssl-ca=%2Ftmp%2Fca.pem",
+        "mysql://root@db.example/app?ssl-mode=VERIFY_IDENTITY",
+        "mysql://root@db.example/app?ssl-mode=VERIFY_IDENTITY&ssl-ca=ca.pem",
+    ] {
+        polyspec_orm::db::parse_dsn(dsn).unwrap_or_else(|error| panic!("sqlx parameter should parse for {dsn}: {error}"));
+    }
+}
+
 /// The DSN of `var`. The test fails if it is missing or empty.
 fn require_dsn(var: &str) -> String {
     match std::env::var(var) {

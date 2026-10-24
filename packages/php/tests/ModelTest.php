@@ -1085,13 +1085,6 @@ final class ModelTest extends TestCase
     // Requirements: CFG-6.
     public function testStatementTimeout(string $driver): void
     {
-        $dsn = self::$targets[$driver];
-        self::check(
-            self::code(
-                fn() => \Polyspec\Orm\Tests\Model\connect($dsn, new Config(statementTimeoutMs: -1))
-            ) === Code::CONFIG,
-            'negative statement timeout'
-        );
         // MySQL bounds SELECT statements with max_execution_time, PostgreSQL
         // bounds every statement, and SQLite has no session timeout. The bounded
         // statement is a locking read of a row that another connection holds, so

@@ -36,7 +36,7 @@ final class MysqlTlsTest extends TestCase
         }
     }
 
-    // Requirements: CFG-17, CFG-18, CFG-19.
+    // Requirements: CFG-17, CFG-19.
     public function testParameters(): void
     {
         self::refused('mysql://root@db.local/orm_example?charset=latin1', 'unknown parameter charset');
@@ -47,12 +47,6 @@ final class MysqlTlsTest extends TestCase
         );
         self::refused('postgres://root@db.local/orm_example?ssl-mode=VERIFY_IDENTITY', 'unknown parameter ssl-mode');
         self::refused('sqlite:///tmp/orm-tls.sqlite?cache=shared', 'unknown parameter cache');
-        foreach (['VERIFY_CA', 'REQUIRED', 'PREFERRED', 'DISABLED', 'verify_identity', ''] as $mode) {
-            self::refused("mysql://root@db.local/orm_example?ssl-mode=$mode&ssl-ca=/tmp/ca.pem", 'ssl-mode');
-        }
-        self::refused('mysql://root@db.local/orm_example?ssl-mode=VERIFY_IDENTITY', 'ssl-ca');
-        self::refused('mysql://root@db.local/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=ca.pem', 'absolute');
-        self::refused('mysql://root@db.local/orm_example?ssl-ca=/tmp/ca.pem', 'ssl-mode');
         foreach (['127.0.0.1', '[::1]'] as $host) {
             self::refused("mysql://root@$host/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem", 'host name');
         }
@@ -79,6 +73,17 @@ final class MysqlTlsTest extends TestCase
             }
             self::assertNull($refused, "refused $dsn: $refused");
         }
+    }
+
+    // Requirements: CFG-18.
+    public function testUnsupportedTlsOptions(): void
+    {
+        foreach (['VERIFY_CA', 'REQUIRED', 'PREFERRED', 'DISABLED', 'verify_identity', ''] as $mode) {
+            self::refused("mysql://root@db.local/orm_example?ssl-mode=$mode&ssl-ca=/tmp/ca.pem", 'ssl-mode');
+        }
+        self::refused('mysql://root@db.local/orm_example?ssl-mode=VERIFY_IDENTITY', 'ssl-ca');
+        self::refused('mysql://root@db.local/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=ca.pem', 'absolute');
+        self::refused('mysql://root@db.local/orm_example?ssl-ca=/tmp/ca.pem', 'ssl-mode');
     }
 
     // Requirements: CFG-16.

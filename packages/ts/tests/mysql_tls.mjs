@@ -15,7 +15,7 @@ function check(failures) {
 }
 
 // A parameter case is a parse in memory.
-// Requirements: CFG-16, CFG-17, CFG-18, CFG-19.
+// Requirements: CFG-17, CFG-19.
 caseTest('mysql_tls/parameters', COMPUTE, () => {
   const failures = [];
   const refused = (dsn, wanted) => {
@@ -31,12 +31,6 @@ caseTest('mysql_tls/parameters', COMPUTE, () => {
   refused('postgres://root@127.0.0.1/orm_example?application_name=orm', 'unknown parameter application_name');
   refused('postgres://root@127.0.0.1/orm_example?ssl-mode=VERIFY_IDENTITY', 'unknown parameter ssl-mode');
   refused('sqlite:///tmp/orm-tls.sqlite?cache=shared', 'unknown parameter cache');
-  for (const mode of ['VERIFY_CA', 'REQUIRED', 'PREFERRED', 'DISABLED', 'verify_identity', '']) {
-    refused(`mysql://root@db.local/orm_example?ssl-mode=${mode}&ssl-ca=/tmp/ca.pem`, 'ssl-mode');
-  }
-  refused('mysql://root@db.local/orm_example?ssl-mode=VERIFY_IDENTITY', 'ssl-ca');
-  refused('mysql://root@db.local/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=ca.pem', 'absolute');
-  refused('mysql://root@db.local/orm_example?ssl-ca=/tmp/ca.pem', 'ssl-mode');
   for (const host of ['127.0.0.1', '[::1]']) refused(`mysql://root@${host}/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem`, 'host name');
   refused('mysql://root@localhost/orm_example?socket=/tmp/mysql.sock&ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem', 'socket');
   const parsed = parseDsn('mysql://root@db.local/orm_example?timezone=UTC&ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem');
@@ -45,6 +39,26 @@ caseTest('mysql_tls/parameters', COMPUTE, () => {
     'mysql://root@localhost/orm_example?socket=/tmp/mysql.sock&timezone=UTC']) {
     try { parseDsn(dsn); } catch (error) { failures.push(`refused ${dsn}: ${error?.message}`); }
   }
+  check(failures);
+});
+
+// CFG-18: incomplete, unsupported and relative TLS options are rejected without opening a connection.
+caseTest('mysql_tls/unsupported-parameters', COMPUTE, () => {
+  const failures = [];
+  const refused = (dsn, wanted) => {
+    try {
+      parseDsn(dsn);
+      failures.push(`accepted ${dsn}`);
+    } catch (error) {
+      if (error?.code !== 'CONFIG' || !String(error.message).includes(wanted)) failures.push(`${dsn}: ${error?.code} ${error?.message}, expected CONFIG with ${wanted}`);
+    }
+  };
+  for (const mode of ['VERIFY_CA', 'REQUIRED', 'PREFERRED', 'DISABLED', 'verify_identity', '']) {
+    refused(`mysql://root@db.local/orm_example?ssl-mode=${mode}&ssl-ca=/tmp/ca.pem`, 'ssl-mode');
+  }
+  refused('mysql://root@db.local/orm_example?ssl-mode=VERIFY_IDENTITY', 'ssl-ca');
+  refused('mysql://root@db.local/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=ca.pem', 'absolute');
+  refused('mysql://root@db.local/orm_example?ssl-ca=/tmp/ca.pem', 'ssl-mode');
   check(failures);
 });
 

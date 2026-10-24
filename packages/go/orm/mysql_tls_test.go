@@ -14,11 +14,8 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// TestParseDSNMySQLTLS checks the MySQL TLS parameters of docs/spec/config.md:
-// ssl-mode=VERIFY_IDENTITY with an absolute ssl-ca path and a host name is the only TLS
-// mode; other ssl-mode values, an ssl-ca that is missing or relative, sockets, and an address host
-// are CONFIG.
-// Requirements: CFG-17, CFG-18.
+// TestParseDSNMySQLTLS checks that TLS identity verification requires a host name and TCP.
+// Requirements: CFG-17.
 func TestParseDSNMySQLTLS(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	parsed, err := parseDSN("mysql://root@db.local:3306/orm_example?timezone=UTC&ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem", 0)
@@ -26,17 +23,32 @@ func TestParseDSNMySQLTLS(t *testing.T) {
 		t.Fatalf("parseDSN() = %+v, %v; want the CA /tmp/ca.pem for db.local and no ssl parameter in the native DSN", parsed, err)
 	}
 	for input, wanted := range map[string]string{
-		"mysql://root@db.local/orm_example?ssl-mode=VERIFY_CA&ssl-ca=/tmp/ca.pem":                               "ssl-mode",
-		"mysql://root@db.local/orm_example?ssl-mode=REQUIRED&ssl-ca=/tmp/ca.pem":                                "ssl-mode",
-		"mysql://root@db.local/orm_example?ssl-mode=DISABLED&ssl-ca=/tmp/ca.pem":                                "ssl-mode",
-		"mysql://root@db.local/orm_example?ssl-mode=verify_identity&ssl-ca=/tmp/ca.pem":                         "ssl-mode",
-		"mysql://root@db.local/orm_example?ssl-mode=&ssl-ca=/tmp/ca.pem":                                        "ssl-mode",
-		"mysql://root@db.local/orm_example?ssl-mode=VERIFY_IDENTITY":                                            "ssl-ca",
-		"mysql://root@db.local/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=ca.pem":                              "absolute",
-		"mysql://root@db.local/orm_example?ssl-ca=/tmp/ca.pem":                                                  "ssl-mode",
 		"mysql://root@127.0.0.1/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem":                        "host name",
 		"mysql://root@[::1]:3306/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem":                       "host name",
 		"mysql://root@localhost/orm_example?socket=/tmp/mysql.sock&ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem": "socket",
+	} {
+		t.Run(input, func(t *testing.T) {
+			_, err := parseDSN(input, 0)
+			if err == nil || ErrorCode(err) != CodeConfig || !strings.Contains(err.Error(), wanted) {
+				t.Fatalf("parseDSN() error = %v; want CONFIG with %q", err, wanted)
+			}
+		})
+	}
+}
+
+// TestParseDSNMySQLTLSRejectsUnsupportedOptions checks the TLS parameter restrictions.
+// Requirements: CFG-18.
+func TestParseDSNMySQLTLSRejectsUnsupportedOptions(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	for input, wanted := range map[string]string{
+		"mysql://root@db.local/orm_example?ssl-mode=VERIFY_CA&ssl-ca=/tmp/ca.pem":       "ssl-mode",
+		"mysql://root@db.local/orm_example?ssl-mode=REQUIRED&ssl-ca=/tmp/ca.pem":        "ssl-mode",
+		"mysql://root@db.local/orm_example?ssl-mode=DISABLED&ssl-ca=/tmp/ca.pem":        "ssl-mode",
+		"mysql://root@db.local/orm_example?ssl-mode=verify_identity&ssl-ca=/tmp/ca.pem": "ssl-mode",
+		"mysql://root@db.local/orm_example?ssl-mode=&ssl-ca=/tmp/ca.pem":                "ssl-mode",
+		"mysql://root@db.local/orm_example?ssl-mode=VERIFY_IDENTITY":                    "ssl-ca",
+		"mysql://root@db.local/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=ca.pem":      "absolute",
+		"mysql://root@db.local/orm_example?ssl-ca=/tmp/ca.pem":                          "ssl-mode",
 	} {
 		t.Run(input, func(t *testing.T) {
 			_, err := parseDSN(input, 0)

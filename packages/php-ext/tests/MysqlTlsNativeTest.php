@@ -14,6 +14,32 @@ use RuntimeException;
 
 final class MysqlTlsNativeTest extends TestCase
 {
+    // Requirements: CFG-18.
+    public function testNativeOrmRejectsUnsupportedTlsOptions(): void
+    {
+        self::assertTrue((new ReflectionMethod(Orm::class, 'parseDsn'))->isInternal());
+        $cases = [
+            'mysql://orm@db.local/app?ssl-mode=VERIFY_CA&ssl-ca=%2Ftmp%2Fca.pem' => 'ssl-mode',
+            'mysql://orm@db.local/app?ssl-mode=REQUIRED&ssl-ca=%2Ftmp%2Fca.pem' => 'ssl-mode',
+            'mysql://orm@db.local/app?ssl-mode=PREFERRED&ssl-ca=%2Ftmp%2Fca.pem' => 'ssl-mode',
+            'mysql://orm@db.local/app?ssl-mode=DISABLED&ssl-ca=%2Ftmp%2Fca.pem' => 'ssl-mode',
+            'mysql://orm@db.local/app?ssl-mode=verify_identity&ssl-ca=%2Ftmp%2Fca.pem' => 'ssl-mode',
+            'mysql://orm@db.local/app?ssl-mode=&ssl-ca=%2Ftmp%2Fca.pem' => 'ssl-mode',
+            'mysql://orm@db.local/app?ssl-mode=VERIFY_IDENTITY' => 'ssl-ca',
+            'mysql://orm@db.local/app?ssl-mode=VERIFY_IDENTITY&ssl-ca=ca.pem' => 'absolute',
+            'mysql://orm@db.local/app?ssl-ca=%2Ftmp%2Fca.pem' => 'ssl-mode',
+        ];
+        foreach ($cases as $dsn => $expected) {
+            try {
+                Orm::parseDsn($dsn);
+                self::fail("accepted unsupported TLS options in $dsn");
+            } catch (OrmException $error) {
+                self::assertSame(Code::CONFIG, $error->code_, "$dsn: {$error->getMessage()}");
+                self::assertStringContainsString($expected, $error->getMessage(), $dsn);
+            }
+        }
+    }
+
     // Requirements: CFG-16.
     public function testNativeOrmConnectsWithTlsIdentity(): void
     {

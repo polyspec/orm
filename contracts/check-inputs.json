@@ -2443,6 +2443,22 @@
         "packages/php/src/OrmException.php"
       ]
     },
+    "connection-statement-timeout-php-extension-check": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools",
+        "databases"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/php-ext/scripts/build.sh",
+        "packages/php-ext/src/db.c",
+        "packages/php-ext/tests/ConnectionStatementTimeoutNativeTest.php",
+        "packages/php/src/OrmException.php"
+      ]
+    },
     "connection-statement-timeout-typescript-check": {
       "scope": "owner",
       "needs": [

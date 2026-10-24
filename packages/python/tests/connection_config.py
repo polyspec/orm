@@ -95,11 +95,6 @@ class ConnectionConfigTest(unittest.TestCase):
         models, model = probe_models(TEMP["dir"].name, table)
         for dialect in DIALECTS:
             with case_database(dialect, TEMP["dir"].name, "orm_timeout") as dsn:
-                self.assertEqual(
-                    code_of(lambda: models.connect(dsn, statementTimeoutMs=-1)),
-                    "CONFIG",
-                    f"{dialect}: negative",
-                )
                 # MySQL bounds SELECT statements with max_execution_time, PostgreSQL bounds every statement, and
                 # SQLite has no session timeout. The bounded statement is a locking read of a row that another
                 # connection holds, so it waits past the bound.
@@ -128,7 +123,6 @@ class ConnectionConfigTest(unittest.TestCase):
                     )
                 finally:
                     bounded.close()
-
     # A pooler in transaction mode hands one server session to every client in turn. Through
     # ORM_TEST_PGBOUNCER_SINGLE_DSN every client shares one server connection, so the statement timeout of one
     # connection must bound only the statements of that connection. The pool of that DSN is bound to the database of
@@ -190,6 +184,25 @@ class ConnectionConfigTest(unittest.TestCase):
         finally:
             setup._connection.execute(f'DROP TABLE IF EXISTS "{table}"', [])
             setup.close()
+
+
+class ConnectionConfigComputeTest(unittest.TestCase):
+    deadline = testcase.COMPUTE
+
+    # Requirements: CFG-6.
+    def test_statement_timeout_negative_refused(self):
+        models, _ = probe_models(TEMP["dir"].name, "timeout_negative")
+        dsns = {
+            "sqlite": "sqlite:///tmp/orm-negative-statement-timeout.sqlite",
+            "mysql": "mysql://orm@127.0.0.1/orm_example",
+            "postgres": "postgres://orm@127.0.0.1/orm_example",
+        }
+        for dialect, dsn in dsns.items():
+            self.assertEqual(
+                code_of(lambda: models.connect(dsn, statementTimeoutMs=-1)),
+                "CONFIG",
+                f"{dialect}: negative",
+            )
 
 
 if __name__ == "__main__":

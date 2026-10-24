@@ -96,6 +96,7 @@
         "packages/go/orm/mysql_tls_test.go",
         "packages/php/tests/MysqlTlsTest.php",
         "packages/php-ext/tests/MysqlTlsNativeTest.php",
+        "packages/php-ext/tests/ConnectionStatementTimeoutNativeTest.php",
         "packages/php-ext/tests/OrmExceptionNativeTest.php",
         "packages/rust/orm/tests/mysql_tls.rs",
         "packages/ts/tests/mysql_tls.mjs",

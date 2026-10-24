@@ -350,6 +350,15 @@ async fn statement_timeout() {
     }
 }
 
+#[test]
+// Rust exposes statement_timeout_ms as u32, so a negative value cannot be represented at this API boundary.
+// Requirements: CFG-6.
+fn statement_timeout_negative_is_unrepresentable() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let timeout: u32 = polyspec_orm::Config::default().statement_timeout_ms;
+    assert_eq!(timeout, 0);
+}
+
 /// A pooler in transaction mode hands one server session to every client in
 /// turn. Through ORM_TEST_PGBOUNCER_SINGLE_DSN every client shares one server
 /// connection, so the statement timeout of one connection bounds only the

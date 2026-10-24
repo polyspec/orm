@@ -308,10 +308,17 @@ func TestStatementTimeout(t *testing.T) {
 			if count, err := after.GetCount(); err != nil || count != 1 {
 				t.Fatalf("a connection after its statement timeout: count %d, err %v", count, err)
 			}
-			if _, err := orm.ConnectSchema(dsn, s, orm.Config{StatementTimeoutMs: -1}); err == nil || orm.ErrorCode(err) != orm.CodeConfig {
-				t.Fatalf("negative statement timeout: %v", err)
-			}
 		})
+	}
+}
+
+// TestStatementTimeoutRejectsNegative refuses a negative bound before opening a connection.
+// Requirements: CFG-6.
+func TestStatementTimeoutRejectsNegative(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	_, err := orm.Connect("sqlite:///tmp/orm-negative-statement-timeout.sqlite", orm.Config{StatementTimeoutMs: -1})
+	if err == nil || orm.ErrorCode(err) != orm.CodeConfig {
+		t.Fatalf("negative statement timeout: %v", err)
 	}
 }
 

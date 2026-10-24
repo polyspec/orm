@@ -22,7 +22,7 @@ class MysqlTlsParametersTest(unittest.TestCase):
         self.assertEqual(raised.exception.code, "CONFIG", f"{dsn}: {raised.exception}")
         self.assertIn(wanted, str(raised.exception), dsn)
 
-    # Requirements: CFG-17, CFG-18, CFG-19.
+    # Requirements: CFG-17, CFG-19.
     def test_parameters(self):
         self.refused(
             "mysql://root@db.local/orm_example?charset=latin1",
@@ -43,26 +43,6 @@ class MysqlTlsParametersTest(unittest.TestCase):
         self.refused(
             "sqlite:///tmp/orm-tls.sqlite?cache=shared", "unknown parameter cache"
         )
-        for mode in (
-            "VERIFY_CA",
-            "REQUIRED",
-            "PREFERRED",
-            "DISABLED",
-            "verify_identity",
-            "",
-        ):
-            self.refused(
-                f"mysql://root@db.local/orm_example?ssl-mode={mode}&ssl-ca=/tmp/ca.pem",
-                "ssl-mode",
-            )
-        self.refused(
-            "mysql://root@db.local/orm_example?ssl-mode=VERIFY_IDENTITY", "ssl-ca"
-        )
-        self.refused(
-            "mysql://root@db.local/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=ca.pem",
-            "absolute",
-        )
-        self.refused("mysql://root@db.local/orm_example?ssl-ca=/tmp/ca.pem", "ssl-mode")
         for host in ("127.0.0.1", "[::1]"):
             self.refused(
                 f"mysql://root@{host}/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem",
@@ -83,6 +63,29 @@ class MysqlTlsParametersTest(unittest.TestCase):
             "mysql://root@localhost/orm_example?socket=/tmp/mysql.sock&timezone=UTC",
         ):
             parse_dsn(dsn)
+
+    # Requirements: CFG-18.
+    def test_unsupported_tls_options(self):
+        for mode in (
+            "VERIFY_CA",
+            "REQUIRED",
+            "PREFERRED",
+            "DISABLED",
+            "verify_identity",
+            "",
+        ):
+            self.refused(
+                f"mysql://root@db.local/orm_example?ssl-mode={mode}&ssl-ca=/tmp/ca.pem",
+                "ssl-mode",
+            )
+        self.refused(
+            "mysql://root@db.local/orm_example?ssl-mode=VERIFY_IDENTITY", "ssl-ca"
+        )
+        self.refused(
+            "mysql://root@db.local/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=ca.pem",
+            "absolute",
+        )
+        self.refused("mysql://root@db.local/orm_example?ssl-ca=/tmp/ca.pem", "ssl-mode")
 
 
 def ssl_version(dsn: str) -> str:

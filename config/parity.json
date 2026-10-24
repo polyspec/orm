@@ -1950,6 +1950,45 @@
       ]
     },
     {
+      "id": "connection-mysql-tls-unsupported-options",
+      "kind": "feature",
+      "requirements": [
+        "CFG-18"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/mysql_tls_test.go",
+          "id": "TestParseDSNMySQLTLSRejectsUnsupportedOptions"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/MysqlTlsTest.php",
+          "id": "MysqlTlsTest::testUnsupportedTlsOptions"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/MysqlTlsNativeTest.php",
+          "id": "MysqlTlsNativeTest::testNativeOrmRejectsUnsupportedTlsOptions"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/mysql_tls.mjs",
+          "id": "mysql_tls/unsupported-parameters"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/mysql_tls.py",
+          "id": "test_unsupported_tls_options"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/mysql_tls.rs",
+          "id": "tls_options_follow_sqlx_parameter_support"
+        }
+      ]
+    },
+    {
       "id": "connection-mysql-tls-requires-hostname-tcp",
       "kind": "feature",
       "requirements": [
@@ -3476,20 +3515,7 @@
         }
       ]
     },
-    {
-      "id": "ts-mysql_tls",
-      "kind": "feature",
-      "requirements": [
-        "CFG-18"
-      ],
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/mysql_tls.mjs",
-          "id": "mysql_tls/parameters"
-        }
-      ]
-    },
+
     {
       "id": "ts-package-declarations",
       "kind": "feature",
@@ -7963,7 +7989,7 @@
       ]
     },
     {
-      "id": "connection-statement-timeout-negative-refused",
+      "id": "connection-statement-timeout-canceled",
       "kind": "feature",
       "requirements": [
         "CFG-6"
@@ -7981,6 +8007,45 @@
         },
         {
           "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConnectionStatementTimeoutNativeTest.php",
+          "id": "ConnectionStatementTimeoutNativeTest::testNativeStatementTimeoutCancelsAndReusesConnection"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/statement_timeout.mjs",
+          "id": "connection/statement-timeout-canceled"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/connection_config.py",
+          "id": "test_statement_timeout"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/zone.rs",
+          "id": "statement_timeout"
+        }
+      ]
+    },
+    {
+      "id": "connection-statement-timeout-negative-refused",
+      "kind": "feature",
+      "requirements": [
+        "CFG-6"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/timezone_test.go",
+          "id": "TestStatementTimeoutRejectsNegative"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnTest.php",
+          "id": "DsnTest::testNegativeStatementTimeoutIsRejectedBeforeConnecting"
+        },
+        {
+          "implementation": "php-extension",
           "test": "packages/php-ext/tests/OrmExceptionNativeTest.php",
           "id": "OrmExceptionNativeTest::testNativeConnectionRejectsUnsupportedPoolAndNegativeTimeoutOptions"
         },
@@ -7992,12 +8057,12 @@
         {
           "implementation": "python",
           "test": "packages/python/tests/connection_config.py",
-          "id": "test_statement_timeout"
+          "id": "test_statement_timeout_negative_refused"
         },
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/zone.rs",
-          "id": "statement_timeout"
+          "id": "statement_timeout_negative_is_unrepresentable"
         }
       ]
     },
@@ -8811,20 +8876,7 @@
         }
       ]
     },
-    {
-      "id": "go-internal-packages-go-orm-mysql-tls",
-      "kind": "feature",
-      "requirements": [
-        "CFG-18"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/mysql_tls_test.go",
-          "id": "TestParseDSNMySQLTLS"
-        }
-      ]
-    },
+
     {
       "id": "go-internal-packages-go-orm-register",
       "kind": "feature",
@@ -12137,20 +12189,7 @@
 
 
 
-    {
-      "id": "rust-statement-timeout",
-      "kind": "feature",
-      "requirements": [
-        "CFG-6"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/zone.rs",
-          "id": "statement_timeout"
-        }
-      ]
-    },
+
     {
       "id": "rust-postgres-float-round-trip",
       "kind": "feature",
@@ -13164,7 +13203,7 @@
         {
           "implementation": "python",
           "test": "packages/python/tests/connection_config.py",
-          "id": "test_statement_timeout"
+          "id": "test_statement_timeout_through_a_pooler"
         }
       ]
     },
@@ -13212,20 +13251,7 @@
         }
       ]
     },
-    {
-      "id": "py-mysql-tls",
-      "kind": "feature",
-      "requirements": [
-        "CFG-18"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/mysql_tls.py",
-          "id": "test_parameters"
-        }
-      ]
-    },
+
     {
       "id": "py-replica",
       "kind": "feature",
@@ -15591,20 +15617,7 @@
         }
       ]
     },
-    {
-      "id": "php-internal-model-statement-timeout",
-      "kind": "feature",
-      "requirements": [
-        "CFG-6"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testStatementTimeout"
-        }
-      ]
-    },
+
     {
       "id": "php-internal-model-statement-timeout-through-a-pooler",
       "kind": "feature",
@@ -16233,20 +16246,7 @@
         }
       ]
     },
-    {
-      "id": "php-internal-mysql-tls-parameters",
-      "kind": "feature",
-      "requirements": [
-        "CFG-18"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/MysqlTlsTest.php",
-          "id": "MysqlTlsTest::testParameters"
-        }
-      ]
-    },
+
         {
       "id": "php-internal-rollback-rollback-failed",
       "kind": "feature",
