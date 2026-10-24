@@ -144,12 +144,12 @@ final class PlanApply
     public static function recover(\PDO $c, string $dialect, array $plans, \Closure $now, ?\Closure $events): void
     {
         self::inSession($c, $dialect, $plans, $now, $events, static function (self $a): void {
-            $position = $a->position();
-            if ($position === 0) {
+            $last = $a->lastPlan();
+            if ($last === null) {
                 return;
             }
-            $plan = $a->chain[$position - 1];
-            $row = $a->history[$plan->name];
+            $plan = $last['plan'];
+            $row = $last['row'];
             if ($row['state'] === self::APPLIED || $row['state'] === self::DONE) {
                 return;
             }
@@ -174,12 +174,12 @@ final class PlanApply
     public static function rollback(\PDO $c, string $dialect, array $plans, \Closure $now, ?\Closure $events): void
     {
         self::inSession($c, $dialect, $plans, $now, $events, static function (self $a): void {
-            $position = $a->position();
-            if ($position === 0) {
+            $last = $a->lastPlan();
+            if ($last === null) {
                 return;
             }
-            $plan = $a->chain[$position - 1];
-            $row = $a->history[$plan->name];
+            $plan = $last['plan'];
+            $row = $last['row'];
             $steps = $a->steps($plan);
             $k = $row['step'];
             $applied = $row['state'] === self::APPLIED || $row['state'] === self::DONE;
@@ -609,6 +609,17 @@ final class PlanApply
             throw new ApplyError('verify', '', 0, '', $e);
         }
         return $position;
+    }
+
+    /** @return array{plan: Plan, row: array{from: string, to: string, state: string, step: int}}|null */
+    private function lastPlan(): ?array
+    {
+        $position = $this->position();
+        if ($position === 0) {
+            return null;
+        }
+        $plan = $this->chain[$position - 1];
+        return ['plan' => $plan, 'row' => $this->history[$plan->name]];
     }
 
     /**
