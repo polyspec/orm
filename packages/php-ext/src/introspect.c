@@ -327,6 +327,16 @@ bool row_text(zval *row, zend_long i, str query, str *out)
     return true;
 }
 
+static bool row_texts(zval *row, size_t count, str query, str *out)
+{
+    for (size_t i = 0; i < count; i++) {
+        if (!row_text(row, (zend_long)i, query, &out[i])) {
+            return false;
+        }
+    }
+    return true;
+}
+
 bool row_nullable_text(zval *row, zend_long i, str query, bool *null, str *out)
 {
     zval *v = row_value(row, i);
@@ -1683,10 +1693,8 @@ static bool mysql_foreign_keys(zval *pdo, catalog *c)
     bool ok = true;
     EACH_ROW(rows, row) {
         str v[8];
-        for (int k = 0; k < 8 && ok; k++) {
-            ok = row_text(row, k, q, &v[k]);
-        }
-        if (!ok) {
+        if (!row_texts(row, 8, q, v)) {
+            ok = false;
             break;
         }
         str table = v[0], name = v[1];
@@ -1916,10 +1924,8 @@ static catalog *mysql_read(zval *pdo)
     if (ok) {
         EACH_ROW(rows, row) {
             str v[5];
-            for (int k = 0; k < 5 && ok; k++) {
-                ok = row_text(row, k, q, &v[k]);
-            }
-            if (!ok) {
+            if (!row_texts(row, 5, q, v)) {
+                ok = false;
                 break;
             }
             strs statements = {0};
@@ -2383,10 +2389,8 @@ static catalog *pg_read(zval *pdo)
     if (ok) {
         EACH_ROW(rows, row) {
             str v[6];
-            for (int k = 0; k < 6 && ok; k++) {
-                ok = row_text(row, k, q, &v[k]);
-            }
-            if (!ok) {
+            if (!row_texts(row, 6, q, v)) {
+                ok = false;
                 break;
             }
             str table = v[0], name = v[1], definition = v[2], function = v[3], source = v[4], language = v[5];
