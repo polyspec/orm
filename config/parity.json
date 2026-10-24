@@ -2026,6 +2026,85 @@
       ]
     },
     {
+      "id": "connection-utc-runtime",
+      "kind": "feature",
+      "requirements": [
+        "CFG-2"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/timezone_test.go",
+          "id": "TestConnectionsUseUTC"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testConnectionTimeZone"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConnectionUtcNativeTest.php",
+          "id": "ConnectionUtcNativeTest::testNativeConnectionsUseUtc"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/connection_utc.mjs",
+          "id": "connection/utc-runtime/sqlite/default"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/connection_utc.mjs",
+          "id": "connection/utc-runtime/sqlite/utc"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/connection_utc.mjs",
+          "id": "connection/utc-runtime/sqlite/offset"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/connection_utc.mjs",
+          "id": "connection/utc-runtime/mysql/default"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/connection_utc.mjs",
+          "id": "connection/utc-runtime/mysql/utc"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/connection_utc.mjs",
+          "id": "connection/utc-runtime/mysql/offset"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/connection_utc.mjs",
+          "id": "connection/utc-runtime/postgres/default"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/connection_utc.mjs",
+          "id": "connection/utc-runtime/postgres/utc"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/connection_utc.mjs",
+          "id": "connection/utc-runtime/postgres/offset"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/connection_utc.py",
+          "id": "test_connections_use_utc"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/zone.rs",
+          "id": "connections_use_utc"
+        }
+      ]
+    },
+    {
       "id": "connection-dsn-utc",
       "kind": "feature",
       "requirements": [
@@ -8709,22 +8788,6 @@
       ]
     },
     {
-      "id": "go-internal-packages-go-orm-timezone",
-      "kind": "feature",
-      "requirements": [
-        "DSL-141",
-        "DIA-57",
-        "CFG-2"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/timezone_test.go",
-          "id": "TestConnectionsUseUTC"
-        }
-      ]
-    },
-    {
       "id": "dbspec-apply-cross-client",
       "kind": "feature",
       "requirements": [
@@ -11865,22 +11928,6 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/value_types.rs",
           "id": "runtime_value_types"
-        }
-      ]
-    },
-    {
-      "id": "rust-connections-use-utc",
-      "kind": "feature",
-      "requirements": [
-        "DSL-141",
-        "DIA-57",
-        "CFG-2"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/zone.rs",
-          "id": "connections_use_utc"
         }
       ]
     },
@@ -15443,23 +15490,6 @@
           "implementation": "php",
           "test": "packages/php/tests/ModelTest.php",
           "id": "ModelTest::testInstallInsideATransaction"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-model-connection-time-zone",
-      "kind": "feature",
-      "requirements": [
-        "DSL-141",
-        "DIA-57",
-        "CFG-2",
-        "CFG-7"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testConnectionTimeZone"
         }
       ]
     },
