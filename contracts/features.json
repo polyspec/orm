@@ -9587,6 +9587,16 @@
       "command": "node --test tests/dbspec/join.test.mjs"
     },
     {
+      "id": "dbspec-introspect-case-rendering-python",
+      "paths": [
+        "packages/python/tests/dbspec_introspect.py"
+      ],
+      "tests": [
+        "packages/python/tests/test_dbspec_introspect_support.py"
+      ],
+      "command": "make --no-print-directory dbspec-introspect-python-helper-check"
+    },
+    {
       "id": "dbspec-set-fixture-tree",
       "paths": [
         "tests/dbspec/set-tree.mjs"

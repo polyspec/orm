@@ -1676,6 +1676,16 @@
         "tests/dbspec/introspect.json"
       ]
     },
+    "dbspec-introspect-python-helper-check": {
+      "scope": "owner",
+      "needs": [
+        "python"
+      ],
+      "inputs": [
+        "packages/python/tests/dbspec_introspect.py",
+        "packages/python/tests/test_dbspec_introspect_support.py"
+      ]
+    },
     "dbspec-introspect-compare-check": {
       "scope": "owner",
       "needs": [

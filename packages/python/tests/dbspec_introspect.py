@@ -30,6 +30,15 @@ CONNECTION_RULES = {
 }
 
 
+def rendered_case_statements(case, dialect):
+    texts = {name: "\n".join(lines) for name, lines in case["documents"].items()}
+    documents = [
+        parse_dbspec(text, {key: value for key, value in texts.items() if key != name})[0]
+        for name, text in texts.items()
+    ]
+    return render_dbspec(documents, dialect)["statements"]
+
+
 @contextlib.contextmanager
 def case_database(dialect, name, dsn, sqlite_dir):
     """Creates the case's empty database, schema or file and gives its connection. Fails if anything remains after the drop."""
@@ -85,12 +94,7 @@ def case_database(dialect, name, dsn, sqlite_dir):
 
 def check_case(case, index, dsns, sqlite_dir):
     dialect, case_id = case["dialect"], case["id"]
-    texts = {name: "\n".join(lines) for name, lines in case["documents"].items()}
-    documents = [
-        parse_dbspec(text, {k: v for k, v in texts.items() if k != name})[0]
-        for name, text in texts.items()
-    ]
-    statements = render_dbspec(documents, dialect)["statements"]
+    statements = rendered_case_statements(case, dialect)
     name = f"dbspec_py_{os.getpid()}_{index}"
     schema = "main" if dialect == "sqlite" else name
     with case_database(dialect, name, dsns.get(dialect), sqlite_dir) as connection:

@@ -10,12 +10,10 @@ import tempfile
 import unittest
 
 from . import testcase
-from .dbspec_introspect import CONNECTION_RULES, ROOT, case_database
+from .dbspec_introspect import CONNECTION_RULES, ROOT, case_database, rendered_case_statements
 from .runner_connect import Adapter
 
-from polyspec.orm.dbspec import parse_dbspec
 from polyspec.orm.dbspec.introspect import introspect_dbspec
-from polyspec.orm.dbspec.render import render_dbspec
 
 # The counts that the TypeScript round-trip test asserts for each dialect (QUERY_COUNTS there).
 QUERY_COUNTS = {"mysql": 9, "postgres": 7, "sqlite": 3}
@@ -44,12 +42,7 @@ def first_case(dialect):
 
 def count_queries(dialect, dsn, sqlite_dir, index):
     case = first_case(dialect)
-    texts = {name: "\n".join(lines) for name, lines in case["documents"].items()}
-    documents = [
-        parse_dbspec(text, {k: v for k, v in texts.items() if k != name})[0]
-        for name, text in texts.items()
-    ]
-    statements = render_dbspec(documents, dialect)["statements"]
+    statements = rendered_case_statements(case, dialect)
     name = f"dbspec_pyq_{os.getpid()}_{index}"
     schema = "main" if dialect == "sqlite" else name
     with case_database(dialect, name, dsn, sqlite_dir) as connection:
