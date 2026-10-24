@@ -48,12 +48,10 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
     "SELECT EVENT_NAME FROM information_schema.EVENTS WHERE EVENT_SCHEMA = DATABASE() ORDER BY EVENT_NAME",
 ];
 
-static TYPE_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
-    super::compile_pattern(
-        r"^(smallint|int|bigint|tinyint\(1\)|double|longtext|longblob|date|char\(36\)|time|datetime)(?:\((\d+)\))?$|^(decimal)\((\d+),(\d+)\)$|^(varchar)\((\d+)\)$",
-        "MySQL type pattern",
-    )
-});
+static TYPE_PATTERN: LazyLock<Regex> = super::lazy_pattern!(
+    r"^(smallint|int|bigint|tinyint\(1\)|double|longtext|longblob|date|char\(36\)|time|datetime)(?:\((\d+)\))?$|^(decimal)\((\d+),(\d+)\)$|^(varchar)\((\d+)\)$",
+    "MySQL type pattern"
+);
 
 pub(super) fn read(results: &Results) -> Result<Catalog, String> {
     let mut c = Catalog::default();

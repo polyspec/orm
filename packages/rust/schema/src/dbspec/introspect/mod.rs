@@ -4,6 +4,13 @@
 //! connection runs [`catalog_queries`] in order, then the [`catalog_followups`]
 //! of their rows, and passes all rows to [`read_catalog`].
 
+macro_rules! lazy_pattern {
+    ($pattern:literal, $label:literal) => {
+        std::sync::LazyLock::new(|| super::compile_pattern($pattern, $label))
+    };
+}
+pub(super) use lazy_pattern;
+
 mod check;
 mod mysql;
 mod postgres;
