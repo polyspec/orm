@@ -90,11 +90,9 @@ mod catalog_row_tests {
 /// Chooses the CatalogValue by the MySQL value's type name. A string with binary collation
 /// is UTF-8 text.
 fn mysql_value(row: &MySqlRow, i: usize) -> Result<CatalogValue, sqlx::Error> {
-    let raw = row.try_get_raw(i)?;
-    if raw.is_null() {
+    let Some(type_name) = catalog_type_name(row, i)? else {
         return Ok(CatalogValue::Null);
-    }
-    let type_name = raw.type_info().name().to_owned();
+    };
     Ok(match type_name.as_str() {
         "TINYINT" | "SMALLINT" | "MEDIUMINT" | "INT" | "BIGINT" => CatalogValue::Int(row.try_get(i)?),
         "TINYINT UNSIGNED" | "SMALLINT UNSIGNED" | "MEDIUMINT UNSIGNED" | "INT UNSIGNED" | "BIGINT UNSIGNED" => {
@@ -111,11 +109,9 @@ fn mysql_value(row: &MySqlRow, i: usize) -> Result<CatalogValue, sqlx::Error> {
 }
 
 fn postgres_value(row: &PgRow, i: usize) -> Result<CatalogValue, sqlx::Error> {
-    let raw = row.try_get_raw(i)?;
-    if raw.is_null() {
+    let Some(type_name) = catalog_type_name(row, i)? else {
         return Ok(CatalogValue::Null);
-    }
-    let type_name = raw.type_info().name().to_owned();
+    };
     Ok(match type_name.as_str() {
         "BOOL" => CatalogValue::Bool(row.try_get(i)?),
         "INT2" => CatalogValue::Int(i64::from(row.try_get::<i16, _>(i)?)),
@@ -127,16 +123,22 @@ fn postgres_value(row: &PgRow, i: usize) -> Result<CatalogValue, sqlx::Error> {
 
 /// Chooses the CatalogValue by the storage class of the SQLite value.
 fn sqlite_value(row: &SqliteRow, i: usize) -> Result<CatalogValue, sqlx::Error> {
-    let raw = row.try_get_raw(i)?;
-    if raw.is_null() {
+    let Some(type_name) = catalog_type_name(row, i)? else {
         return Ok(CatalogValue::Null);
-    }
-    let type_name = raw.type_info().name().to_owned();
+    };
     Ok(match type_name.as_str() {
         "INTEGER" => CatalogValue::Int(row.try_get(i)?),
         "TEXT" => CatalogValue::Text(row.try_get(i)?),
         other => return Err(decode_error(format!("catalog value {i} has the SQLite type {other}"))),
     })
+}
+
+fn catalog_type_name<R: Row>(row: &R, i: usize) -> Result<Option<String>, sqlx::Error>
+where
+    usize: sqlx::ColumnIndex<R>,
+{
+    let raw = row.try_get_raw(i)?;
+    Ok((!raw.is_null()).then(|| raw.type_info().name().to_owned()))
 }
 
 /// A connection that runs catalog queries: reading rows and converting rows to [`CatalogValue`] are separate steps.
