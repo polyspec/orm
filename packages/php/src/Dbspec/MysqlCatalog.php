@@ -47,9 +47,7 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
     public static function read(\PDO $connection): Catalog
     {
         $c = new Catalog();
-        foreach (CatalogRows::read($connection, self::TABLES) as $row) {
-            $name = CatalogRows::text($row, 0, self::TABLES);
-            $kind = CatalogRows::text($row, 1, self::TABLES);
+        foreach (CatalogRows::namedRows($connection, self::TABLES) as [$name, $kind, $row]) {
             $options = CatalogRows::text($row, 2, self::TABLES);
             if ($kind !== 'BASE TABLE') {
                 $c->report('view', $name, $name, 'a ' . strtolower($kind) . ' has no dbspec definition');

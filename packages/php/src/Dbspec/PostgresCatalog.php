@@ -63,9 +63,7 @@ WHERE NOT t.tgisinternal AND c.relnamespace = current_schema()::regnamespace ORD
     public static function read(\PDO $connection): Catalog
     {
         $c = new Catalog();
-        foreach (CatalogRows::read($connection, self::TABLES) as $row) {
-            $name = CatalogRows::text($row, 0, self::TABLES);
-            $kind = CatalogRows::text($row, 1, self::TABLES);
+        foreach (CatalogRows::namedRows($connection, self::TABLES) as [$name, $kind, $row]) {
             if ($kind === 'p' || CatalogRows::flag($row, 2, self::TABLES)) {
                 $c->report('partition', $name, $name, 'a partitioned table or a partition has no dbspec definition');
             } elseif ($kind === 'r') {

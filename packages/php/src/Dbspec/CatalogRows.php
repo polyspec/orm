@@ -73,6 +73,17 @@ final class CatalogRows
         return $rows;
     }
 
+    /**
+     * @return iterable<array{string, string, list<mixed>}>
+     */
+    public static function namedRows(\PDO $connection, string $query): iterable
+    {
+        foreach (self::read($connection, $query) as $row) {
+            [$name, $kind] = self::texts($row, [0, 1], $query);
+            yield [$name, $kind, $row];
+        }
+    }
+
     /** @param list<mixed> $row @param list<int> $indexes @return list<string> */
     public static function texts(array $row, array $indexes, string $query): array
     {

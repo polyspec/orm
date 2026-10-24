@@ -79,6 +79,17 @@ final class DbspecTest extends TestCase
         }
     }
 
+    public function testCatalogNamedRowsPreserveRawValues(): void
+    {
+        $connection = new \PDO('sqlite::memory:', null, null, [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION]);
+        $rows = CatalogRows::namedRows($connection, "SELECT 'users', 'BASE TABLE', 'partitioned'");
+
+        self::assertSame(
+            [['users', 'BASE TABLE', ['users', 'BASE TABLE', 'partitioned']]],
+            iterator_to_array($rows, false)
+        );
+    }
+
     public static function positionCases(): iterable
     {
         foreach (dbspec_read_cases()['positions'] as $case) {
