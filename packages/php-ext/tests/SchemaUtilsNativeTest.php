@@ -20,52 +20,14 @@ final class SchemaUtilsNativeTest extends TestCase
 {
     public function testAddTablesAndColumnsRejectsExternalDriftWithoutChangingDatabase(): void
     {
-        $path = tempnam(sys_get_temp_dir(), 'orm-schema-external-');
-        self::assertIsString($path);
-        try {
-            $db = Orm::connect('sqlite:///' . $path, new Config());
-            $pdo = $db->pdo();
-            $pdo->exec('CREATE TABLE shared (id BIGINT NOT NULL PRIMARY KEY)');
-            $events = [];
-            $unsubscribe = subscribeToNativeTestEvents($db, $events);
-            $before = $pdo->query(
-                "SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' "
-                . 'ORDER BY type, name'
-            )->fetchAll(\PDO::FETCH_ASSOC);
-            $foreignKeysBefore = $pdo->query('PRAGMA foreign_keys')->fetchColumn();
-            $external = "dbspec 1 core\n\ntable shared {\n  id i32\n  primary key (id)\n}\n";
-            $owned = "dbspec 1 app\n\nuse core { shared }\n\ntable local {\n  id i64\n  primary key (id)\n}\n";
-            $model = RuntimeModel::build(RuntimeModel::parseSet(['app.dbs' => $owned], ['core.dbs' => $external]));
-            $schema = new Schema($model->manifestText, $model->manifestHash, $model->externalText);
-
-            for ($attempt = 0; $attempt < 2; $attempt++) {
-                try {
-                    $db->utils()->schema()->addTablesAndColumns($schema);
-                    self::fail('external schema drift was accepted');
-                } catch (OrmException $error) {
-                    self::assertSame(Code::CONFIG, $error->code_);
-                }
-                self::assertSame($before, $pdo->query(
-                    "SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' "
-                    . 'ORDER BY type, name'
-                )->fetchAll(\PDO::FETCH_ASSOC));
-                self::assertSame($foreignKeysBefore, $pdo->query('PRAGMA foreign_keys')->fetchColumn());
-            }
-            $controls = array_values(array_filter(
-                array_map(static fn($event): string => $event->kind, $events),
-                static fn(string $kind): bool => in_array($kind, ['utility', 'begin', 'rollback'], true)
-            ));
-            self::assertSame(
-                ['utility', 'begin', 'rollback', 'utility', 'utility', 'begin', 'rollback', 'utility'],
-                $controls
-            );
-            $unsubscribe();
-            $db->close();
-        } finally {
-            if (is_file($path)) {
-                unlink($path);
-            }
-        }
+        $this->assertSchemaMutationRejected(
+            'external',
+            'CREATE TABLE shared (id BIGINT NOT NULL PRIMARY KEY)',
+            "dbspec 1 app\n\nuse core { shared }\n\ntable local {\n  id i64\n  primary key (id)\n}\n",
+            ['core.dbs' => "dbspec 1 core\n\ntable shared {\n  id i32\n  primary key (id)\n}\n"],
+            Code::CONFIG,
+            'external schema drift was accepted'
+        );
     }
 
     public function testExistsEscapesUnderscoreInSqliteSchemaName(): void
@@ -99,53 +61,14 @@ final class SchemaUtilsNativeTest extends TestCase
 
     public function testAddTablesAndColumnsRollsBackWithoutCreatingInternalLockTable(): void
     {
-        $path = tempnam(sys_get_temp_dir(), 'orm-schema-rollback-');
-        self::assertIsString($path);
-        try {
-            $db = Orm::connect('sqlite:///' . $path, new Config());
-            $pdo = $db->pdo();
-            $pdo->exec('CREATE TABLE owned (id TEXT NOT NULL PRIMARY KEY)');
-            $events = [];
-            $unsubscribe = $db->subscribe(static function ($event) use (&$events): void {
-                $events[] = $event;
-            });
-            $before = $pdo->query(
-                "SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' "
-                . 'ORDER BY type, name'
-            )->fetchAll(\PDO::FETCH_ASSOC);
-            $foreignKeysBefore = $pdo->query('PRAGMA foreign_keys')->fetchColumn();
-            $owned = "dbspec 1 app\n\ntable owned {\n  id i64\n  primary key (id)\n}\n";
-            $model = RuntimeModel::build(RuntimeModel::parseSet(['app.dbs' => $owned], []));
-            $schema = new Schema($model->manifestText, $model->manifestHash, $model->externalText);
-
-            for ($attempt = 0; $attempt < 2; $attempt++) {
-                try {
-                    $db->utils()->schema()->addTablesAndColumns($schema);
-                    self::fail('an incompatible owned table was accepted');
-                } catch (OrmException $error) {
-                    self::assertSame(Code::SCHEMA_DIFFERS, $error->code_);
-                }
-                self::assertSame($before, $pdo->query(
-                    "SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' "
-                    . 'ORDER BY type, name'
-                )->fetchAll(\PDO::FETCH_ASSOC));
-                self::assertSame($foreignKeysBefore, $pdo->query('PRAGMA foreign_keys')->fetchColumn());
-            }
-            $controls = array_values(array_filter(
-                array_map(static fn($event): string => $event->kind, $events),
-                static fn(string $kind): bool => in_array($kind, ['utility', 'begin', 'rollback'], true)
-            ));
-            self::assertSame(
-                ['utility', 'begin', 'rollback', 'utility', 'utility', 'begin', 'rollback', 'utility'],
-                $controls
-            );
-            $unsubscribe();
-            $db->close();
-        } finally {
-            if (is_file($path)) {
-                unlink($path);
-            }
-        }
+        $this->assertSchemaMutationRejected(
+            'rollback',
+            'CREATE TABLE owned (id TEXT NOT NULL PRIMARY KEY)',
+            "dbspec 1 app\n\ntable owned {\n  id i64\n  primary key (id)\n}\n",
+            [],
+            Code::SCHEMA_DIFFERS,
+            'an incompatible owned table was accepted'
+        );
     }
 
     public function testBeginSubscriberFailureRollsBackAnOpenedSqliteTransaction(): void
@@ -160,15 +83,12 @@ final class SchemaUtilsNativeTest extends TestCase
 
     private function assertSchemaBeginFailure(bool $failRollback): void
     {
-        $path = tempnam(sys_get_temp_dir(), 'orm-schema-rollback-failure-');
-        self::assertIsString($path);
+        $path = '';
         try {
-            $db = Orm::connect('sqlite:///' . $path, new Config());
-            $pdo = $db->pdo();
-            $before = $pdo->query(
-                "SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name"
-            )->fetchAll(\PDO::FETCH_ASSOC);
-            $events = [];
+            [$db, $pdo, $before, $events] = self::openSqliteSchemaFailureFixture(
+                'orm-schema-rollback-failure-',
+                $path
+            );
             $unsubscribe = $db->subscribe(static function ($event) use (&$events, $failRollback): void {
                 $events[] = $event->kind . ':' . $event->sql;
                 if ($event->kind === 'begin' && $event->sql === 'BEGIN IMMEDIATE') {
@@ -188,9 +108,8 @@ final class SchemaUtilsNativeTest extends TestCase
                 if ($failRollback) {
                     self::assertSame(Code::ROLLBACK, $error->code_);
                     self::assertSame(
-                        'ROLLBACK: transaction failed (SUBSCRIBER: statement event subscriber failed: '
-                        . 'begin observer failed) and rollback failed (SUBSCRIBER: statement event subscriber failed: '
-                        . 'rollback observer failed)',
+                        'ROLLBACK: transaction failed (SUBSCRIBER: statement event subscriber failed: begin observer failed) '
+                        . 'and rollback failed (SUBSCRIBER: statement event subscriber failed: rollback observer failed)',
                         $error->getMessage()
                     );
                     self::assertSame(
@@ -209,17 +128,7 @@ final class SchemaUtilsNativeTest extends TestCase
                 }
             }
 
-            self::assertFalse($pdo->inTransaction());
-            self::assertSame(1, (int) $pdo->query('PRAGMA foreign_keys')->fetchColumn());
-            self::assertSame($before, $pdo->query(
-                "SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name"
-            )->fetchAll(\PDO::FETCH_ASSOC));
-            self::assertSame([
-                'utility:PRAGMA foreign_keys = OFF',
-                'begin:BEGIN IMMEDIATE',
-                'rollback:ROLLBACK',
-                'utility:PRAGMA foreign_keys = ON',
-            ], $events);
+            self::assertSqliteCleanupState($pdo, $before, $events, true);
             $unsubscribe();
             $db->close();
         } finally {
@@ -231,15 +140,12 @@ final class SchemaUtilsNativeTest extends TestCase
 
     public function testSqliteRestoreFailureKeepsThePrimaryFailureAsPrevious(): void
     {
-        $path = tempnam(sys_get_temp_dir(), 'orm-schema-restore-failure-');
-        self::assertIsString($path);
+        $path = '';
         try {
-            $db = Orm::connect('sqlite:///' . $path, new Config());
-            $pdo = $db->pdo();
-            $before = $pdo->query(
-                "SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name"
-            )->fetchAll(\PDO::FETCH_ASSOC);
-            $events = [];
+            [$db, $pdo, $before, $events] = self::openSqliteSchemaFailureFixture(
+                'orm-schema-restore-failure-',
+                $path
+            );
             $unsubscribe = $db->subscribe(static function ($event) use (&$events): void {
                 $events[] = $event->kind . ':' . $event->sql;
                 if ($event->kind === 'begin' && $event->sql === 'BEGIN IMMEDIATE') {
@@ -269,16 +175,7 @@ final class SchemaUtilsNativeTest extends TestCase
                 ], $chain);
             }
 
-            self::assertFalse($pdo->inTransaction());
-            self::assertSame($before, $pdo->query(
-                "SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name"
-            )->fetchAll(\PDO::FETCH_ASSOC));
-            self::assertSame([
-                'utility:PRAGMA foreign_keys = OFF',
-                'begin:BEGIN IMMEDIATE',
-                'rollback:ROLLBACK',
-                'utility:PRAGMA foreign_keys = ON',
-            ], $events);
+            self::assertSqliteCleanupState($pdo, $before, $events, false);
             $unsubscribe();
             $db->close();
         } finally {
@@ -309,9 +206,7 @@ final class SchemaUtilsNativeTest extends TestCase
             $pdo->exec('PRAGMA foreign_keys = ON');
             $state = (new \ReflectionProperty(\Polyspec\Orm\Db::class, 'state'))->getValue($db);
             $state->pdo = $pdo;
-            $before = $pdo->query(
-                "SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name"
-            )->fetchAll(\PDO::FETCH_ASSOC);
+            $before = self::sqliteSchemaSnapshot($pdo);
             $events = [];
             $unsubscribe = $db->subscribe(static function ($event) use (&$events, $pdo): void {
                 $events[] = $event->kind . ':' . $event->sql;
@@ -333,9 +228,7 @@ final class SchemaUtilsNativeTest extends TestCase
             $pdo->failInspection = false;
             self::assertTrue($pdo->inTransaction());
             self::assertSame(0, (int) $pdo->query('PRAGMA foreign_keys')->fetchColumn());
-            self::assertSame($before, $pdo->query(
-                "SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name"
-            )->fetchAll(\PDO::FETCH_ASSOC));
+            self::assertSame($before, self::sqliteSchemaSnapshot($pdo));
             self::assertSame([
                 'utility:PRAGMA foreign_keys = OFF',
                 'begin:BEGIN IMMEDIATE',
@@ -362,13 +255,8 @@ final class SchemaUtilsNativeTest extends TestCase
             $pdo = $db->pdo();
             $schema = $db->utils()->schema();
             $events = [];
-            $unsubscribe = $db->subscribe(static function ($event) use (&$events): void {
-                $events[] = $event;
-            });
-            $before = $pdo->query(
-                "SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' "
-                . 'ORDER BY type, name'
-            )->fetchAll(\PDO::FETCH_ASSOC);
+            $unsubscribe = self::collectEvents($db, $events);
+            $before = self::sqliteSchemaSnapshot($pdo);
 
             foreach (['register', 'install', 'addTablesAndColumns'] as $method) {
                 for ($attempt = 0; $attempt < 2; $attempt++) {
@@ -379,10 +267,7 @@ final class SchemaUtilsNativeTest extends TestCase
                         self::assertStringContainsString('Schema', $error->getMessage());
                     }
                     self::assertSame([], $events);
-                    self::assertSame($before, $pdo->query(
-                        "SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' "
-                        . 'ORDER BY type, name'
-                    )->fetchAll(\PDO::FETCH_ASSOC));
+                    self::assertSame($before, self::sqliteSchemaSnapshot($pdo));
                 }
             }
             $unsubscribe();
@@ -431,9 +316,7 @@ final class SchemaUtilsNativeTest extends TestCase
             self::assertFalse($schema->installed('bench', 'author'));
             self::assertFalse($schema->empty());
             $schema->register(\Polyspec\Orm\Tests\Model\schema());
-            $unsubscribe = $db->subscribe(static function ($event) use (&$events): void {
-                $events[] = $event;
-            });
+            $unsubscribe = self::collectEvents($db, $events);
             self::assertSame([], $schema->addTablesAndColumns(\Polyspec\Orm\Tests\Model\schema()));
             self::assertNotEmpty(array_filter($events, static fn($event): bool => $event->kind === 'schema'));
             $unsubscribe();
@@ -483,9 +366,7 @@ final class SchemaUtilsNativeTest extends TestCase
         try {
             $db = Orm::connect('sqlite:///' . $path, new Config());
             $events = [];
-            $unsubscribe = $db->subscribe(static function ($event) use (&$events): void {
-                $events[] = $event;
-            });
+            $unsubscribe = self::collectEvents($db, $events);
             try {
                 $db->utils()->schema()->exists('bad-name');
                 self::fail('an invalid schema identifier was accepted');
@@ -495,16 +376,110 @@ final class SchemaUtilsNativeTest extends TestCase
             }
             self::assertSame([], $events);
         } finally {
-            if ($unsubscribe !== null) {
-                $unsubscribe();
+            if ($unsubscribe !== null) $unsubscribe();
+            if ($db !== null) $db->close();
+            if (is_file($path)) unlink($path);
+        }
+    }
+
+    /**
+     * @param array<string, string> $externalFiles
+     */
+    private function assertSchemaMutationRejected(
+        string $scenario,
+        string $createTable,
+        string $ownedText,
+        array $externalFiles,
+        string $errorCode,
+        string $failureMessage
+    ): void {
+        $path = tempnam(sys_get_temp_dir(), "orm-schema-$scenario-");
+        self::assertIsString($path);
+        try {
+            $db = Orm::connect('sqlite:///' . $path, new Config());
+            $pdo = $db->pdo();
+            $pdo->exec($createTable);
+            $events = [];
+            $unsubscribe = self::collectEvents($db, $events);
+            $before = self::sqliteSchemaSnapshot($pdo);
+            $foreignKeysBefore = $pdo->query('PRAGMA foreign_keys')->fetchColumn();
+            $model = RuntimeModel::build(RuntimeModel::parseSet(['app.dbs' => $ownedText], $externalFiles));
+            $schema = new Schema($model->manifestText, $model->manifestHash, $model->externalText);
+
+            for ($attempt = 0; $attempt < 2; $attempt++) {
+                try {
+                    $db->utils()->schema()->addTablesAndColumns($schema);
+                    self::fail($failureMessage);
+                } catch (OrmException $error) {
+                    self::assertSame($errorCode, $error->code_);
+                }
+                self::assertSame($before, self::sqliteSchemaSnapshot($pdo));
+                self::assertSame($foreignKeysBefore, $pdo->query('PRAGMA foreign_keys')->fetchColumn());
             }
-            if ($db !== null) {
-                $db->close();
-            }
+            $controls = array_values(array_filter(
+                array_map(static fn($event): string => $event->kind, $events),
+                static fn(string $kind): bool => in_array($kind, ['utility', 'begin', 'rollback'], true)
+            ));
+            self::assertSame(
+                ['utility', 'begin', 'rollback', 'utility', 'utility', 'begin', 'rollback', 'utility'],
+                $controls
+            );
+            $unsubscribe();
+            $db->close();
+        } finally {
             if (is_file($path)) {
-                self::assertTrue(unlink($path), 'the temporary schema database could not be removed');
+                unlink($path);
             }
         }
+    }
+
+    /**
+     * @param-out string $path
+     * @return array{\Polyspec\Orm\Db, \PDO, list<array{type: string, name: string, sql: ?string}>, list<string>}
+     */
+    private static function openSqliteSchemaFailureFixture(string $prefix, string &$path): array
+    {
+        $path = tempnam(sys_get_temp_dir(), $prefix);
+        self::assertIsString($path);
+        $db = Orm::connect('sqlite:///' . $path, new Config());
+        return [$db, $db->pdo(), self::sqliteSchemaSnapshot($db->pdo()), []];
+    }
+
+    /**
+     * @param list<array{type: string, name: string, sql: ?string}> $before
+     * @param list<string> $events
+     */
+    private static function assertSqliteCleanupState(\PDO $pdo, array $before, array $events, bool $assertForeignKeys): void
+    {
+        self::assertFalse($pdo->inTransaction());
+        if ($assertForeignKeys) {
+            self::assertSame(1, (int) $pdo->query('PRAGMA foreign_keys')->fetchColumn());
+        }
+        self::assertSame($before, self::sqliteSchemaSnapshot($pdo));
+        self::assertSame([
+            'utility:PRAGMA foreign_keys = OFF',
+            'begin:BEGIN IMMEDIATE',
+            'rollback:ROLLBACK',
+            'utility:PRAGMA foreign_keys = ON',
+        ], $events);
+    }
+
+    /**
+     * @param list<object> $events
+     */
+    private static function collectEvents(\Polyspec\Orm\Db $db, array &$events): \Closure
+    {
+        return $db->subscribe(static function ($event) use (&$events): void {
+            $events[] = $event;
+        });
+    }
+
+    /** @return list<array{type: string, name: string, sql: ?string}> */
+    private static function sqliteSchemaSnapshot(\PDO $pdo): array
+    {
+        return $pdo->query(
+            "SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name"
+        )->fetchAll(\PDO::FETCH_ASSOC);
     }
 
     private static function benchSharedSchema(): Schema
