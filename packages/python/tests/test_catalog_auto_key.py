@@ -68,6 +68,29 @@ class _FakeMysqlCatalog(CatalogConnection):
         return work(self.session)
 
 
+class _FakePostgresSession(_FakeMysqlSession):
+    def run(self, sql, params=(), max_rows=None, max_bytes=None):
+        self.calls.append(("run", sql, list(params)))
+        if sql.startswith("LOCK TABLE"):
+            return _Raw([], [], 0)
+        if "RETURNING" in sql:
+            return _Raw(
+                [column.name for column in self.metadata.columns],
+                [self.row],
+                1,
+            )
+        raise AssertionError(f"unexpected SQL: {sql}")
+
+
+class _FakePostgresCatalog(CatalogConnection):
+    def __init__(self, metadata, session):
+        super().__init__(parse_dsn("postgres://user:password@localhost/catalog"))
+        self.session = session
+
+    def _write(self, work):
+        return work(self.session)
+
+
 def _mysql_metadata(columns, primary_key, table_name):
     return CatalogTableMetadata(
         table={"namespace": "catalog", "name": table_name},
@@ -300,6 +323,65 @@ class CatalogAutoKeyTest(unittest.TestCase):
                 for call in session.calls
             )
         )
+
+    def test_postgres_default_composite_key_uses_insert_returning(self):
+        metadata = _mysql_metadata(
+            [
+                CatalogColumn("tenant", "bigint", False, False),
+                CatalogColumn(
+                    "seq", "varchar(30)", False, False, False, "'generated'", True
+                ),
+                CatalogColumn("n", "bigint", False, False),
+            ],
+            ["tenant", "seq"],
+            "literal_key",
+        )
+        session = _FakePostgresSession(metadata, [2, "generated", 50])
+        catalog = _FakePostgresCatalog(metadata, session)
+
+        result = catalog.insert_row(metadata, [("tenant", 2), ("n", 50)])
+
+        self.assertEqual(result.rows, [[2, "generated", 50]])
+        statements = [call[1] for call in session.calls if call[0] == "run"]
+        self.assertTrue(statements[0].startswith("LOCK TABLE"))
+        self.assertIn("RETURNING", statements[1])
+
+    def test_missing_primary_key_without_generator_has_shared_error(self):
+        metadata = _mysql_metadata(
+            [
+                CatalogColumn("id", "varchar(30)", False, False),
+                CatalogColumn("payload", "text", False, False),
+            ],
+            ["id"],
+            "required_key",
+        )
+        session = _FakeMysqlSession(metadata, ["unused", "generated"])
+        catalog = _FakeMysqlCatalog(metadata, session)
+
+        with self.assertRaises(OrmError) as raised:
+            catalog.insert_row(metadata, [("payload", "generated")])
+
+        self.assertEqual(raised.exception.code, "ROW_INSERT_IDENTITY_REQUIRED")
+        self.assertEqual(session.calls, [])
+
+    def test_mysql_rejects_multiple_omitted_automatic_keys(self):
+        metadata = _mysql_metadata(
+            [
+                CatalogColumn("first_id", "bigint", False, False, True),
+                CatalogColumn("second_id", "bigint", False, False, True),
+                CatalogColumn("payload", "text", False, False),
+            ],
+            ["first_id", "second_id"],
+            "multiple_auto_keys",
+        )
+        session = _FakeMysqlSession(metadata, [1, 2, "generated"])
+        catalog = _FakeMysqlCatalog(metadata, session)
+
+        with self.assertRaises(OrmError) as raised:
+            catalog.insert_row(metadata, [("payload", "generated")])
+
+        self.assertEqual(raised.exception.code, "ROW_INSERT_UNSUPPORTED")
+        self.assertEqual(session.calls, [])
 
 
 if __name__ == "__main__":

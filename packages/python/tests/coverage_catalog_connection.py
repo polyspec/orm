@@ -2,6 +2,7 @@
 # feature check selected (ORM_FEATURE_DATABASE, ORM_FEATURE_DSN) through connect_catalog. The read case only reads; the
 # mutation case inserts, updates and deletes one row of composite_account in tenant 990005 and ends in the state it started in.
 # Requirements: SCH-5, SCH-6a, INT-109, INT-113, INT-114, INT-123.
+# Its SQLite path also checks generated primary keys in a temporary file, outside the bench database.
 import io
 import os
 import sqlite3
@@ -164,10 +165,19 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
                 prefix="orm-catalog-auto-key-"
             ) as directory:
                 path = os.path.join(directory, "catalog.sqlite3")
-                with sqlite3.connect(path) as raw:
+                raw = sqlite3.connect(path)
+                try:
                     raw.execute(
                         "CREATE TABLE sample (id INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL)"
                     )
+                    raw.execute(
+                        "CREATE TABLE literal_key (tenant BIGINT NOT NULL, seq VARCHAR(30) NOT NULL DEFAULT 'generated', n BIGINT NOT NULL, PRIMARY KEY (tenant, seq))"
+                    )
+                    raw.execute(
+                        "CREATE TABLE expression_key (seq TEXT NOT NULL DEFAULT (lower(hex(randomblob(16)))) PRIMARY KEY, n BIGINT NOT NULL UNIQUE, label TEXT NULL)"
+                    )
+                finally:
+                    raw.close()
                 catalog = connect_catalog(f"sqlite://{path}")
                 try:
                     metadata = catalog.describe_table(
@@ -182,6 +192,34 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
                         'SELECT "id", "payload" FROM "sample"', []
                     )
                     self.assertEqual(stored.rows, [[1, "generated"]])
+
+                    literal_table = {"namespace": "main", "name": "literal_key"}
+                    literal_metadata = catalog.describe_table(literal_table)
+                    literal = catalog.insert_row(
+                        literal_metadata, [("tenant", 2), ("n", 50)]
+                    )
+                    literal_stored = catalog.read_only_query(
+                        'SELECT "tenant", "seq", "n" FROM "literal_key"', []
+                    )
+                    self.assertEqual(literal.rows, [[2, "generated", 50]])
+                    self.assertEqual(literal.rows, literal_stored.rows)
+
+                    expression_table = {
+                        "namespace": "main",
+                        "name": "expression_key",
+                    }
+                    expression_metadata = catalog.describe_table(expression_table)
+                    expression = catalog.insert_row(
+                        expression_metadata, [("n", 1), ("label", None)]
+                    )
+                    expression_stored = catalog.read_only_query(
+                        'SELECT "seq", "n", "label" FROM "expression_key"', []
+                    )
+                    self.assertRegex(expression.rows[0][0], r"[0-9a-f]{32}")
+                    self.assertEqual(
+                        expression.rows, [[expression.rows[0][0], 1, None]]
+                    )
+                    self.assertEqual(expression.rows, expression_stored.rows)
                 finally:
                     catalog.close()
 
