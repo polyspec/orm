@@ -16,7 +16,6 @@
         "packages/php-ext/src/collection.h",
         "packages/php-ext/src/polyspec_orm.c",
         "packages/php-ext/src/polyspec_orm.stub.php",
-        "packages/php-ext/src/polyspec_orm_arginfo.h",
         "packages/php-ext/src/config.m4",
         "packages/php-ext/tests/CollectionTest.php",
         "packages/php-ext/tests/DeclarationsTest.php",
@@ -802,7 +801,6 @@
         "packages/ts/tests/split-null.test.mjs",
         "packages/php-ext/src/db.c",
         "packages/php-ext/src/polyspec_orm.stub.php",
-        "packages/php-ext/src/polyspec_orm_arginfo.h",
         "packages/php-ext/tests/ModelAssemblyTest.php"
       ]
     },
@@ -2483,7 +2481,6 @@
         "packages/php-ext/src/db.c",
         "packages/php-ext/src/model_read.c",
         "packages/php-ext/src/polyspec_orm.stub.php",
-        "packages/php-ext/src/polyspec_orm_arginfo.h",
         "packages/php-ext/tests/RequestHookNativeTest.php"
       ]
     },
