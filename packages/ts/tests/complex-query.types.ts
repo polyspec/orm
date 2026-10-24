@@ -4,9 +4,10 @@ export function fulltextChains(product: Product, brand: ProductBrandLang, langua
   product.fulltextBooleanNameWithShortDescriptionWithContent(keyword);
   brand.fulltextBooleanNameWithDescription(keyword);
   language.fulltextBooleanNameWithShortDescriptionWithContent(keyword);
-  // @ts-expect-error the full-text chain rejects a non-text column
-  product.fulltextBooleanServiceSeq(keyword);
 }
+
+type Assert<T extends true> = T;
+export type ProductFulltextRejectsInteger = Assert<'fulltextBooleanServiceSeq' extends keyof Product ? false : true>;
 
 export function complexQuerySubqueries(keyword: string): void {
   const category = new ProductMatchCategory().removeAllColumns().addColumnProductSeq().serviceRegionCategoryItemSeq([11, 12]);

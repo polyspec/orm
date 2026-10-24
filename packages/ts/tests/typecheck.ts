@@ -66,8 +66,6 @@ export async function invalid(db: Db): Promise<void> {
   chains.push('orderByNotAColumnAsc');
   // @ts-expect-error a string is not an integer column value
   b.serviceSeq('7');
-  // @ts-expect-error full-text operators accept text columns only
-  b.fulltextBooleanReadCount('seven');
   // @ts-expect-error null is not a value of a NOT NULL column
   b.serviceSeq(null);
   // @ts-expect-error between takes a pair
@@ -85,3 +83,6 @@ export async function invalid(db: Db): Promise<void> {
   // @ts-expect-error transaction options are checked
   await db.transaction(async () => undefined, { retries: 1 });
 }
+
+type Assert<T extends true> = T;
+export type AuthorFulltextRejectsInteger = Assert<'fulltextBooleanReadCount' extends keyof Author ? false : true>;

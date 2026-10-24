@@ -29,7 +29,7 @@ async function holdPoolerRows(dsn, table) {
     const cleanupErrors = [];
     try { await client.query('ROLLBACK'); } catch (cleanup) { cleanupErrors.push(cleanup); }
     try { await client.end(); } catch (cleanup) { cleanupErrors.push(cleanup); }
-    if (cleanupErrors.length) throw new AggregateError([error, ...cleanupErrors], 'locking rows and cleaning up failed');
+    if (cleanupErrors.length) throw new AggregateError([error, ...cleanupErrors], 'locking rows and cleaning up failed', { cause: error });
     throw error;
   }
   let released = false;
@@ -85,7 +85,7 @@ async function holdRows(dialect, dsn) {
       const cleanupErrors = [];
       try { await connection.query('ROLLBACK'); } catch (cleanup) { cleanupErrors.push(cleanup); }
       try { await connection.end(); } catch (cleanup) { cleanupErrors.push(cleanup); }
-      if (cleanupErrors.length) throw new AggregateError([error, ...cleanupErrors], 'locking rows and cleaning up failed');
+      if (cleanupErrors.length) throw new AggregateError([error, ...cleanupErrors], 'locking rows and cleaning up failed', { cause: error });
       throw error;
     }
     let released = false;
@@ -108,7 +108,7 @@ async function holdRows(dialect, dsn) {
     const cleanupErrors = [];
     try { await client.query('ROLLBACK'); } catch (cleanup) { cleanupErrors.push(cleanup); }
     try { await client.end(); } catch (cleanup) { cleanupErrors.push(cleanup); }
-    if (cleanupErrors.length) throw new AggregateError([error, ...cleanupErrors], 'locking rows and cleaning up failed');
+    if (cleanupErrors.length) throw new AggregateError([error, ...cleanupErrors], 'locking rows and cleaning up failed', { cause: error });
     throw error;
   }
   let released = false;
@@ -127,6 +127,7 @@ async function verifyDialect(dialect, database, step) {
   let bounded;
   let release;
   let primaryFailure;
+  const cleanupErrors = [];
   try {
     await installBench(db);
     await seed(db);
@@ -150,15 +151,12 @@ async function verifyDialect(dialect, database, step) {
   } catch (error) {
     primaryFailure = error;
   } finally {
-    const cleanupErrors = [];
     if (release) try { await release(); } catch (error) { cleanupErrors.push(error); }
     if (bounded) try { await bounded.close(); } catch (error) { cleanupErrors.push(error); }
     try { await db.close(); } catch (error) { cleanupErrors.push(error); }
-    if (cleanupErrors.length) {
-      if (primaryFailure) throw new AggregateError([primaryFailure, ...cleanupErrors], `${dialect}: timeout test and cleanup failed`);
-      throw new AggregateError(cleanupErrors, `${dialect}: timeout test cleanup failed`);
-    }
   }
+  if (cleanupErrors.length && primaryFailure) throw new AggregateError([primaryFailure, ...cleanupErrors], `${dialect}: timeout test and cleanup failed`, { cause: primaryFailure });
+  if (cleanupErrors.length) throw new AggregateError(cleanupErrors, `${dialect}: timeout test cleanup failed`, { cause: cleanupErrors[0] });
   if (primaryFailure) throw primaryFailure;
 }
 
@@ -198,6 +196,7 @@ caseTest('connection/statement-timeout-through-pooler', DATABASE, async ({ step 
   let plain;
   let release;
   let primaryFailure;
+  const cleanupErrors = [];
   try {
     setup = await Db.connect(single);
     await setup.utils().schema().install(schema);
@@ -231,14 +230,20 @@ caseTest('connection/statement-timeout-through-pooler', DATABASE, async ({ step 
     };
     const held = setTimeout(() => { releaseOnce().catch(error => { releaseFailure = error; }); }, 400);
     const started = Date.now();
+    let waitFailure;
     try {
       await lockedReadModel(plain, Probe);
       if (Date.now() - started < 200) throw new Error('the plain client did not wait past the bounded client timeout');
-    } finally {
-      clearTimeout(held);
-      await releaseOnce();
-      release = undefined;
+    } catch (error) {
+      waitFailure = error;
     }
+    clearTimeout(held);
+    try { await releaseOnce(); } catch (error) {
+      if (waitFailure) throw new AggregateError([waitFailure, error], 'the plain client wait and row-lock release failed', { cause: error });
+      throw error;
+    }
+    release = undefined;
+    if (waitFailure) throw waitFailure;
     if (releaseFailure) throw releaseFailure;
     step('the unbounded client waited past the bounded client timeout');
 
@@ -254,16 +259,13 @@ caseTest('connection/statement-timeout-through-pooler', DATABASE, async ({ step 
   } catch (error) {
     primaryFailure = error;
   } finally {
-    const cleanupErrors = [];
     if (release) try { await release(); } catch (error) { cleanupErrors.push(error); }
     if (bounded) try { await bounded.close(); } catch (error) { cleanupErrors.push(error); }
     if (plain) try { await plain.close(); } catch (error) { cleanupErrors.push(error); }
     if (setup) try { await setup.close(); } catch (error) { cleanupErrors.push(error); }
     try { await dropPoolerTable(single, table); step(`table ${table} dropped`); } catch (error) { cleanupErrors.push(error); }
-    if (cleanupErrors.length) {
-      if (primaryFailure) throw new AggregateError([primaryFailure, ...cleanupErrors], 'pooler timeout test and cleanup failed');
-      throw new AggregateError(cleanupErrors, 'pooler timeout test cleanup failed');
-    }
   }
+  if (cleanupErrors.length && primaryFailure) throw new AggregateError([primaryFailure, ...cleanupErrors], 'pooler timeout test and cleanup failed', { cause: primaryFailure });
+  if (cleanupErrors.length) throw new AggregateError(cleanupErrors, 'pooler timeout test cleanup failed', { cause: cleanupErrors[0] });
   if (primaryFailure) throw primaryFailure;
 });

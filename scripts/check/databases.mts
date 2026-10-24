@@ -238,24 +238,68 @@ async function createDecimal(mysqlBench: string, postgresBench: string, decimal:
   return true;
 }
 
+type ComplexQueryScalar = string | number | boolean | null;
+
 type ComplexQueryFixture = {
   schema: string;
   mysql_setup: string[];
   seed_order: string[];
   seed_columns: Record<string, string[]>;
-  seed: Record<string, Record<string, unknown>[]>;
+  seed: Record<string, Record<string, ComplexQueryScalar>[]>;
 };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function stringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every(item => typeof item === 'string');
+}
+
+/** Reads the canonical fixture only after validating every field used to set up and seed databases. */
+export function parseComplexQueryFixture(value: unknown): ComplexQueryFixture {
+  if (!isRecord(value) || typeof value.schema !== 'string' || !stringArray(value.mysql_setup) || !stringArray(value.seed_order)
+      || !isRecord(value.seed_columns) || !isRecord(value.seed)) {
+    throw new Error('complex query fixture has an invalid top-level shape');
+  }
+
+  const seedColumns: Record<string, string[]> = {};
+  for (const [table, columns] of Object.entries(value.seed_columns)) {
+    if (!stringArray(columns)) throw new Error(`complex query fixture has invalid seed columns for ${table}`);
+    seedColumns[table] = columns;
+  }
+
+  const seed: Record<string, Record<string, ComplexQueryScalar>[]> = {};
+  for (const [table, rows] of Object.entries(value.seed)) {
+    if (!Array.isArray(rows)) throw new Error(`complex query fixture has invalid seed rows for ${table}`);
+    seed[table] = rows.map((row, index) => {
+      if (!isRecord(row)) throw new Error(`complex query fixture seed ${table}[${index}] is not an object`);
+      const scalarRow: Record<string, ComplexQueryScalar> = {};
+      for (const [column, cell] of Object.entries(row)) {
+        if (cell === null || typeof cell === 'string' || typeof cell === 'boolean'
+            || (typeof cell === 'number' && Number.isFinite(cell))) {
+          scalarRow[column] = cell;
+        } else {
+          throw new Error(`complex query fixture seed ${table}[${index}].${column} is not a supported SQL scalar`);
+        }
+      }
+      return scalarRow;
+    });
+  }
+
+  return { schema: value.schema, mysql_setup: value.mysql_setup, seed_order: value.seed_order, seed_columns: seedColumns, seed };
+}
 
 function sqlIdentifier(name: string, dialect: ComplexQueryDialect): string {
   return dialect === 'mysql' ? `\`${name}\`` : `"${name}"`;
 }
 
-function sqlLiteral(value: unknown, dialect: ComplexQueryDialect): string {
+function sqlLiteral(value: ComplexQueryScalar, dialect: ComplexQueryDialect): string {
   if (value === null) return 'NULL';
   if (typeof value === 'boolean') return dialect === 'sqlite' ? (value ? '1' : '0') : (value ? 'TRUE' : 'FALSE');
   if (typeof value === 'number' && Number.isFinite(value)) return String(value);
   if (typeof value === 'string') return `'${value.replaceAll("'", "''")}'`;
-  throw new Error(`complex query fixture has unsupported SQL value ${String(value)}`);
+  throw new Error('complex query fixture has unsupported SQL scalar');
 }
 
 /** Generates seed statements directly from the shared canonical fixture. */
@@ -268,7 +312,9 @@ export function complexQuerySeedSql(fixture: ComplexQueryFixture, dialect: Compl
     for (const row of rows) {
       const values = columns.map(column => {
         if (!Object.hasOwn(row, column)) throw new Error(`complex query fixture seed ${table} omits ${column}`);
-        return sqlLiteral(row[column], dialect);
+        const value = row[column];
+        if (value === undefined) throw new Error(`complex query fixture seed ${table}.${column} is undefined`);
+        return sqlLiteral(value, dialect);
       });
       statements.push(`INSERT INTO ${sqlIdentifier(table, dialect)} (${columns.map(column => sqlIdentifier(column, dialect)).join(', ')}) VALUES (${values.join(', ')})`);
     }
@@ -304,7 +350,7 @@ async function createComplexQueryFixtures(name: string, directory: string, serve
   }
 
   const { Db, dbspecManifest, parseDbspec } = await import('../../packages/ts/dist/index.js');
-  const fixture = JSON.parse(readFileSync(join(root, 'contracts/fixtures/complex_query/complex_query.json'), 'utf8')) as ComplexQueryFixture;
+  const fixture = parseComplexQueryFixture(JSON.parse(readFileSync(join(root, 'contracts/fixtures/complex_query/complex_query.json'), 'utf8')));
   const parsed = parseDbspec(readFileSync(join(root, fixture.schema), 'utf8'), {});
   if (parsed.document === null) {
     console.error('databases: contracts/fixtures/complex_query/complex_query.dbs is invalid');

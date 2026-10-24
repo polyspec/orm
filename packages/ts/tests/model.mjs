@@ -211,9 +211,6 @@ async function holdRows(dialect, dsn, table) {
   return async () => { if (released) return; released = true; await client.query('ROLLBACK'); await client.end(); };
 }
 
-/** Reads the Model's rows with FOR UPDATE in a connection's transaction. Waits if another connection holds those rows. */
-const lockedRead = (db, Model) => db.transaction(async () => { await new Model().forUpdate().get(); }, { retry: 0 });
-
 async function conditions(db) {
   const f = await seed(db);
   const svc = f.service.getSeq();

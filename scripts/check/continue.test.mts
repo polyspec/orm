@@ -9,7 +9,7 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
 import { isolatedEnvironment } from '../../tests/environment.mts';
-import { complexQueryDatabaseEnvironment, complexQueryDatabasePlan, complexQuerySeedSql, dropComplexQueryFixtures, environmentFile } from './databases.mts';
+import { complexQueryDatabaseEnvironment, complexQueryDatabasePlan, complexQuerySeedSql, dropComplexQueryFixtures, environmentFile, parseComplexQueryFixture } from './databases.mts';
 
 const repo = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 
@@ -47,9 +47,12 @@ caseTest('complex-query fixture setup maps every owner DSN and tears down every 
   assert.deepEqual(read, environment);
   assert.equal(environment['COMPLEX_QUERY_PHP_EXTENSION_POSTGRES_DSN'], plan.find(item => item.runtime === 'php_extension' && item.dialect === 'postgres')?.dsn);
   assert.equal(environment['COMPLEX_QUERY_TYPESCRIPT_SQLITE_DSN'], plan.find(item => item.runtime === 'typescript' && item.dialect === 'sqlite')?.dsn);
-  const fixture = JSON.parse(readFileSync(join(repo, 'contracts/fixtures/complex_query/complex_query.json'), 'utf8'));
+  const fixture = parseComplexQueryFixture(JSON.parse(readFileSync(join(repo, 'contracts/fixtures/complex_query/complex_query.json'), 'utf8')));
+  assert.throws(() => parseComplexQueryFixture({
+    schema: '', mysql_setup: [], seed_order: ['t'], seed_columns: { t: ['value'] }, seed: { t: [{ value: { unsupported: true } }] },
+  }), /is not a supported SQL scalar/);
   const sqliteSeed = complexQuerySeedSql(fixture, 'sqlite');
-  const expectedRows = Object.values(fixture.seed as Record<string, unknown[]>).reduce((total, rows) => total + rows.length, 0);
+  const expectedRows = Object.values(fixture.seed).reduce((total, rows) => total + rows.length, 0);
   assert.equal((sqliteSeed.match(/INSERT INTO /g) ?? []).length, expectedRows);
   assert.match(sqliteSeed, /"product_lang" \("seq", "product_seq", "lang_id"/);
   assert.match(sqliteSeed, /'widget-1002-ko'/);
