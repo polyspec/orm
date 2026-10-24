@@ -15,6 +15,11 @@ final class ComplexQueryDbTest extends TestCase
         ComplexQueryDbCase::assertFulltextChains(false);
     }
 
+    public function testProductSearchPublicRequestCompilesAcrossDialects(): void
+    {
+        ComplexQueryDbCase::assertPublicRequestCompiles(false);
+    }
+
     public function testFeatureProductSearchPage(): void
     {
         ComplexQueryDbCase::runFeature(false);

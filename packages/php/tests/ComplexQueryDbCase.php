@@ -133,16 +133,16 @@ final class ComplexQueryDbCase
         return json_decode($text, true, 512, JSON_THROW_ON_ERROR);
     }
 
-    private static function query(\Polyspec\Orm\Db $db, array $input): Product
+    private static function query(?\Polyspec\Orm\Db $db, array $input): Product
     {
-        $category = (new ProductMatchCategory())->removeAllColumns()
+        $category = (new ProductMatchCategory())->removeAllColumns()->addColumnProductSeq()
             ->serviceRegionCategoryItemSeq($input['category_seqs']);
-        $brandLang = (new ProductBrandLang())->removeAllColumns()
+        $brandLang = (new ProductBrandLang())->removeAllColumns()->addColumnProductBrandSeq()
             ->fulltextBooleanNameWithDescription($input['keyword']);
-        $lang = (new ProductLang())->removeAllColumns()
+        $lang = (new ProductLang())->removeAllColumns()->addColumnProductSeq()
             ->fulltextBooleanNameWithShortDescriptionWithContent($input['keyword']);
 
-        return (new Product())->connect($db)
+        $query = (new Product())
             ->relation((new ProductLang())->matchSeqWithProductSeq()->langId($input['lang_id'])->parentNode())
             ->relation((new ProductBrand())->matchProductBrandSeqWithSeq()->aliasBrand()
                 ->relation(
@@ -155,18 +155,55 @@ final class ComplexQueryDbCase
                     ->removeAllColumns()->addColumnName()->addColumnProfileUrl()))
             ->relation((new OrderProductItem())->matchSeqWithProductSeq()->aliasMyOrderItem()
                 ->serviceMemberSeq($input['member_seq'])->andIsClose(false)->orderBySeqDesc()->groupLimit(1))
-            ->joinSeqWithProductSeq($category)
-            ->leftJoinProductBrandSeqWithProductBrandSeq($brandLang)
-            ->leftJoinSeqWithProductSeq($lang)
             ->serviceSeq($input['service_seq'])->andIsClose(false)->andIsDisplay(true)
             ->and(static fn(Product $query): Product => $query
                 ->isAllday(true)->or(static fn(Product $nested): Product => $nested
                     ->isAllday(false)->andLeDisplayStartDt(\Polyspec\Orm\Orm::now())
                     ->andGeDisplayEndDt(\Polyspec\Orm\Orm::now())))
+            ->andSeq($category)
             ->and(static fn(Product $query): Product => $query
                 ->fulltextBooleanNameWithShortDescriptionWithContent($input['keyword'])
-                ->or($brandLang)->or($lang))
-            ->groupBySeq()->orderByLikeCountDescAndSeqDesc();
+                ->or(static fn(Product $nested): Product => $nested->productBrandSeq($brandLang))
+                ->or(static fn(Product $nested): Product => $nested->seq($lang)))
+            ->orderByLikeCountDescAndSeqDesc();
+        return $db === null ? $query : $query->connect($db);
+    }
+
+    public static function assertPublicRequestCompiles(bool $native): void
+    {
+        if ($native) {
+            self::assertNativeClasses();
+        }
+        $fixture = self::fixture();
+        $root = dirname(__DIR__, 3);
+        $model = RuntimeModel::build(RuntimeModel::files(["$root/{$fixture['schema']}"]));
+        $pdo = new PDO('sqlite::memory:');
+        $db = new \Polyspec\Orm\Db($pdo, 'sqlite', new Config(), new \DateTimeZone('UTC'));
+        try {
+            $query = self::query($db, $fixture['input']);
+            $build = new \ReflectionMethod(\Polyspec\Orm\Model::class, 'build');
+            $request = $build->invoke($query, 'paginate', $db);
+            foreach (['mysql', 'postgres'] as $driver) {
+                $plan = (new Engine($model, $driver, 8))->compile($request->shape());
+                $steps = array_map(static fn(array $step): array => [
+                    'role' => $step['role'],
+                    'tables' => $step['tables'],
+                ], $plan['steps']);
+                Assert::assertSame(
+                    $fixture['expected_plan_steps'][$driver],
+                    $steps,
+                    "$driver compiled public request"
+                );
+            }
+            try {
+                (new Engine($model, 'sqlite', 8))->compile($request->shape());
+                Assert::fail('SQLite must reject the full-text public request');
+            } catch (OrmException $error) {
+                Assert::assertSame(Code::OPERATOR_NOT_ALLOWED, $error->code_);
+            }
+        } finally {
+            $db->close();
+        }
     }
 
     private static function assertPlan(\Polyspec\Orm\Db $db, string $driver, array $input, array $fixture): void

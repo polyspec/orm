@@ -61,8 +61,12 @@ bool model_chain_add_item(model_state *object, const char *conn, size_t conn_len
     model_state_array_separate(where);
     items = where_items(object);
     model_state_array_separate(items);
-    add_assoc_stringl(node, "conn", use, use_len);
-    if (zend_hash_next_index_insert(Z_ARRVAL_P(items), node) == NULL) {
+    zval stored;
+    ZVAL_COPY(&stored, node);
+    SEPARATE_ARRAY(&stored);
+    add_assoc_stringl(&stored, "conn", use, use_len);
+    if (zend_hash_next_index_insert(Z_ARRVAL_P(items), &stored) == NULL) {
+        zval_ptr_dtor(&stored);
         *error = "the where items are full";
         return false;
     }

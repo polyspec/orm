@@ -15,6 +15,11 @@ final class ComplexQueryNativeTest extends TestCase
         ComplexQueryDbCase::assertFulltextChains(true);
     }
 
+    public function testProductSearchPublicRequestCompilesAcrossDialects(): void
+    {
+        ComplexQueryDbCase::assertPublicRequestCompiles(true);
+    }
+
     public function testFeatureProductSearchPageUsesNativePlannerAndModels(): void
     {
         ComplexQueryDbCase::runFeature(true);
