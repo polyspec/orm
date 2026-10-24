@@ -126,7 +126,11 @@ final class DbspecPlanTest extends TestCase
             'ob_start();',
             '$rejected = dbspec_parse_plan(Polyspec\\Orm\\Dbspec\\Dbspec::class, [\'not a plan\']);',
             '$invalidOutput = ob_get_clean();',
-            'echo json_encode([$plan?->name, $validOutput, $rejected === null, $invalidOutput], JSON_THROW_ON_ERROR);'
+            'ob_start();',
+            '$casePlan = dbspec_case_plan(Polyspec\\Orm\\Dbspec\\Dbspec::class, $plans[\'cases\'][0]);',
+            '$caseOutput = ob_get_clean();',
+            'echo json_encode([$plan?->name, $validOutput, $rejected === null, $invalidOutput, '
+                . '$casePlan !== false, $casePlan[1]->name ?? null, $caseOutput], JSON_THROW_ON_ERROR);'
         ]);
         [$status, $stdout, $stderr] = coverageProcess([PHP_BINARY, '-r', $program], $root);
         self::assertSame(0, $status, $stderr);
@@ -135,6 +139,9 @@ final class DbspecPlanTest extends TestCase
         self::assertSame('', $result[1], 'valid plan has no diagnostic output');
         self::assertTrue($result[2], 'invalid plan is rejected');
         self::assertStringStartsWith('! plan ', $result[3], 'invalid plan diagnostics are written');
+        self::assertTrue($result[4], 'case plan input is returned');
+        self::assertSame($result[0], $result[5], 'case helper returns the same plan');
+        self::assertSame('', $result[6], 'valid case input has no diagnostic output');
     }
 
     public static function casesCases(): iterable

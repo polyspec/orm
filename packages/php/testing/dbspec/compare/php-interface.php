@@ -500,14 +500,11 @@ function dbspec_write_plans(string $dbspec, string $plansPath): void
     $plans = dbspec_read_vectors($plansPath, 'plans');
     foreach ($plans['cases'] as $case) {
         echo "plans/cases/{$case['id']}\n";
-        $source = dbspec_plan_source($dbspec, $case['source']);
-        if ($source === false) {
+        $input = dbspec_case_plan($dbspec, $case);
+        if ($input === false) {
             continue;
         }
-        $plan = dbspec_parse_plan($dbspec, $case['plan']);
-        if ($plan === null) {
-            continue;
-        }
+        [$source, $plan] = $input;
         dbspec_emitted_plan($dbspec, $plan);
         echo "plans/cases/{$case['id']}/changes\n";
         $diff = $dbspec::diff($source, $plan);
@@ -524,14 +521,11 @@ function dbspec_write_plans(string $dbspec, string $plansPath): void
     }
     foreach ($plans['invalid'] as $case) {
         echo "plans/invalid/{$case['id']}\n";
-        $source = dbspec_plan_source($dbspec, $case['source']);
-        if ($source === false) {
+        $input = dbspec_case_plan($dbspec, $case);
+        if ($input === false) {
             continue;
         }
-        $plan = dbspec_parse_plan($dbspec, $case['plan']);
-        if ($plan === null) {
-            continue;
-        }
+        [$source, $plan] = $input;
         $diff = $dbspec::diff($source, $plan);
         dbspec_plan_diagnostics($diff->diagnostics);
         dbspec_changes($diff->changes ?? []);
@@ -582,6 +576,17 @@ function dbspec_parse_plan(string $dbspec, array $lines): ?object
     $result = $dbspec::parsePlan(dbspec_join($lines, false, false));
     dbspec_plan_diagnostics($result->diagnostics);
     return $result->plan;
+}
+
+/** @return array{object|null, object}|false */
+function dbspec_case_plan(string $dbspec, array $case): array|false
+{
+    $source = dbspec_plan_source($dbspec, $case['source']);
+    if ($source === false) {
+        return false;
+    }
+    $plan = dbspec_parse_plan($dbspec, $case['plan']);
+    return $plan === null ? false : [$source, $plan];
 }
 
 /**
