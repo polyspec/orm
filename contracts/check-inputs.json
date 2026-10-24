@@ -885,6 +885,15 @@
         "packages/rust/orm/tests/unit/time_precision.rs"
       ]
     },
+    "rust-upsert-conflict-check": {
+      "scope": "owner",
+      "needs": ["go", "rust", "node-modules"],
+      "inputs": [
+        "Makefile",
+        "packages/rust/orm/src/engine/planner.rs",
+        "packages/rust/orm/tests/unit/upsert_conflict.rs"
+      ]
+    },
     "relation-parent-bind-rust-check": {
       "scope": "owner",
       "needs": ["go", "rust", "node-modules"],

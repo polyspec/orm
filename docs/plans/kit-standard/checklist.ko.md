@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 0ae69f75ac42b9c0cab0089c7b29d6391b5187a63aba0bfe1566e40f5382aa96 -->
+<!-- source-sha256: 52e1eb8acbe133b4bc030d850bea1f76ceb89e4be5e9016759ddb137a68fbd73 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -231,7 +231,7 @@
 | KSTD-5-63 | 존재하지 않는 column의 scalar subquery에 대해 임의 타입 대신 내부 오류를 반환한다 | packages/rust/orm/src/engine/planner.rs:1060; packages/rust/orm/src/markdown.rs:532; packages/rust/orm/src/engine/params.rs:159; packages/ts/src/engine/planner.ts:734; packages/ts/src/markdown.ts:348 | `make rust-check` | [ ] |
 | KSTD-5-64 | 파싱할 수 없는 SQLite library version을 그 텍스트를 밝히는 오류로 보고한다 | Makefile; contracts/check-inputs.json; contracts/symbols/typescript.json; packages/rust/orm/src/db.rs; packages/rust/orm/src/db/sqlite_version_tests.rs; packages/ts/src/driver.ts; packages/ts/tests/sqlite-version.test.mjs | `make sqlite-version-ts-check`; `make sqlite-version-rust-check` | [o] |
 | KSTD-5-65 | build scan이 OUT_DIR이 없다는 오류를 전파한다 | packages/rust/build/src/lib.rs; packages/rust/build/src/tests/out_dir.rs; Makefile; contracts/check-inputs.json | `make rust-build-outdir-check` | [o] |
-| KSTD-5-66 | upsert planner의 conflict-key 오류를 전파한다 | packages/rust/orm/src/engine/planner.rs:313 | `make rust-check` | [ ] |
+| KSTD-5-66 | 유효한 복합 primary key는 거부하지 않고 upsert conflict-key 오류를 전파한다 | packages/rust/orm/src/engine/planner.rs; packages/rust/orm/tests/unit/upsert_conflict.rs; Makefile; contracts/check-inputs.json; docs/operations/remediation-plan.md | `make rust-upsert-conflict-check` | [~] |
 | KSTD-5-67 | relation step에는 parent bind slot이 정확히 하나 있어야 한다 | Makefile; contracts/check-inputs.json; packages/rust/orm/src/driver.rs; packages/rust/orm/src/driver/tests.rs; RED: make relation-parent-bind-rust-check exit 2 at abd38b77eae57fc108311dce4a615fccd6392161 (4 behavioral assertions failed); committed GREEN e0fe5ae77b451ed5ee38e9b84f270a658810c7b2: 5/5 | `make relation-parent-bind-rust-check` | [o] |
 | KSTD-5-68 | 값 바인딩 전에 0..6 범위를 벗어난 시간 정밀도를 거부한다 | packages/rust/orm/src/db.rs; packages/rust/orm/src/bind_check.rs; packages/rust/orm/tests/unit/time_precision.rs; Makefile; contracts/check-inputs.json | `make rust-time-precision-check` | [o] |
 | KSTD-5-69 | commit task의 panic payload를 포함한다 | packages/rust/build/src/catalog/mutation_finish.rs:40 | `make rust-check` | [-] 원인: 현재 코드는 Tokio 1.53.1 JoinError를 직접 format하며 Display는 static str와 String panic payload를 포함하고 취소를 분류한다. 불투명한 비문자열 payload를 노출하라는 요구는 없다. 런타임: 실행하지 않음. 근거: var/evidence/KSTD-5-69/audit.md. |

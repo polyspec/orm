@@ -336,6 +336,10 @@ fn conflict_target(ent: &Entity, set: &[ir::Assign]) -> Result<Vec<String>> {
     super::validate::conflict_key(ent, set)
 }
 
+#[cfg(test)]
+#[path = "../../tests/unit/upsert_conflict.rs"]
+mod upsert_conflict_tests;
+
 /// The precision and scale a column value slot carries: decimal(p,s), time(p), datetime(p).
 fn col_digits(col: &Field) -> (i64, i64) {
     match col.ty {
