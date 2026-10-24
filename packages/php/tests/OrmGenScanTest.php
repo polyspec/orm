@@ -56,28 +56,31 @@ final class OrmGenScanTest extends TestCase
         return $scan;
     }
 
-    /** @return array{int, string} */
-    private static function runScanDirectory(string $dir, string $out): array
+    /** @param list<string> $args @return array{int, string} */
+    private static function runGenerator(array $args): array
     {
         $stderr = fopen('php://memory', 'w+');
         ob_start();
-        $code = OrmGen::run(
-            [
-                'gen',
-                '--set',
-                dirname(__DIR__, 3) . '/contracts/fixtures/bench/dbspec-set.json',
-                '--out',
-                $out,
-                '--namespace',
-                self::NS,
-                '--scan',
-                "$dir/src"
-            ],
-            $stderr
-        );
+        $code = OrmGen::run($args, $stderr);
         ob_end_clean();
         rewind($stderr);
         return [$code, (string) stream_get_contents($stderr)];
+    }
+
+    /** @return array{int, string} */
+    private static function runScanDirectory(string $dir, string $out): array
+    {
+        return self::runGenerator([
+            'gen',
+            '--set',
+            dirname(__DIR__, 3) . '/contracts/fixtures/bench/dbspec-set.json',
+            '--out',
+            $out,
+            '--namespace',
+            self::NS,
+            '--scan',
+            "$dir/src"
+        ]);
     }
 
     /**
@@ -88,25 +91,18 @@ final class OrmGenScanTest extends TestCase
     {
         $dir = self::$work . '/' . $name;
         $scan = self::scanArguments($dir, $sources);
-        $stderr = fopen('php://memory', 'w+');
-        ob_start();
-        $code = OrmGen::run(
-            [
-                'gen',
-                '--set',
-                dirname(__DIR__, 3) . '/contracts/fixtures/bench/dbspec-set.json',
-                '--out',
-                "$dir/model",
-                '--namespace',
-                self::NS,
-                ...$scan,
-                ...$extra
-            ],
-            $stderr
-        );
-        ob_end_clean();
-        rewind($stderr);
-        return [$code, (string) stream_get_contents($stderr), $dir];
+        [$code, $stderr] = self::runGenerator([
+            'gen',
+            '--set',
+            dirname(__DIR__, 3) . '/contracts/fixtures/bench/dbspec-set.json',
+            '--out',
+            "$dir/model",
+            '--namespace',
+            self::NS,
+            ...$scan,
+            ...$extra
+        ]);
+        return [$code, $stderr, $dir];
     }
 
     /**
@@ -135,12 +131,17 @@ final class OrmGenScanTest extends TestCase
             )
         );
         $scan = self::scanArguments($dir, $sources);
-        $stderr = fopen('php://memory', 'w+');
-        ob_start();
-        $code = OrmGen::run(['gen', '--set', $set, '--out', "$dir/model", '--namespace', self::NS, ...$scan], $stderr);
-        ob_end_clean();
-        rewind($stderr);
-        return [$code, (string) stream_get_contents($stderr), $dir];
+        [$code, $stderr] = self::runGenerator([
+            'gen',
+            '--set',
+            $set,
+            '--out',
+            "$dir/model",
+            '--namespace',
+            self::NS,
+            ...$scan
+        ]);
+        return [$code, $stderr, $dir];
     }
 
     /** @return list<string> the methods the class comment of a model declares with @method, in file order */
@@ -967,15 +968,10 @@ PHP;
         $set = "$dir/set/dbspec-set.json";
         file_put_contents($set, json_encode(['schema' => 1, 'documents' => ['shapes.dbs']], JSON_UNESCAPED_SLASHES));
         file_put_contents("$dir/src/usage.php", $source);
-        $stderr = fopen('php://memory', 'w+');
-        ob_start();
-        $code = OrmGen::run(
+        [$code, $stderr] = self::runGenerator(
             ['gen', '--set', $set, '--out', "$dir/model", '--namespace', self::NS, '--scan', "$dir/src/usage.php"],
-            $stderr
         );
-        ob_end_clean();
-        rewind($stderr);
-        return [$code, (string) stream_get_contents($stderr), $dir];
+        return [$code, $stderr, $dir];
     }
 
     /**
