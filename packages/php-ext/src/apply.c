@@ -1012,17 +1012,33 @@ static bool op_apply(applier *a)
     return true;
 }
 
-static bool op_recover(applier *a)
+/* Selects the last plan known to the chain operations, or reports an empty chain. */
+static bool current_plan(applier *a, plan **out_plan, hrow **out_row)
 {
     size_t pos;
     if (!position(a, &pos)) {
         return false;
     }
     if (pos == 0) {
+        *out_plan = NULL;
+        *out_row = NULL;
         return true;
     }
-    plan *p = a->chain.v[pos - 1];
-    hrow *row = smap_get(&a->history, p->name);
+    *out_plan = a->chain.v[pos - 1];
+    *out_row = smap_get(&a->history, (*out_plan)->name);
+    return true;
+}
+
+static bool op_recover(applier *a)
+{
+    plan *p;
+    hrow *row;
+    if (!current_plan(a, &p, &row)) {
+        return false;
+    }
+    if (p == NULL) {
+        return true;
+    }
     if (is_state(row->state, "applied", "done")) {
         return true;
     }
@@ -1040,15 +1056,14 @@ static bool op_recover(applier *a)
 
 static bool op_rollback(applier *a)
 {
-    size_t pos;
-    if (!position(a, &pos)) {
+    plan *p;
+    hrow *row;
+    if (!current_plan(a, &p, &row)) {
         return false;
     }
-    if (pos == 0) {
+    if (p == NULL) {
         return true;
     }
-    plan *p = a->chain.v[pos - 1];
-    hrow *row = smap_get(&a->history, p->name);
     planstepv steps;
     if (!steps_of(a, p, &steps)) {
         return false;

@@ -113,6 +113,19 @@ final class DbspecApplyCleanupTest extends TestCase
         );
     }
 
+    public function testRecoverDoneChain(): void
+    {
+        $plans = self::$plans;
+        $now = self::now();
+        $pdo = failing_pdo([]);
+        Dbspec::apply($pdo, 'sqlite', $plans, $now, null);
+        $events = [];
+        Dbspec::recover($pdo, 'sqlite', $plans, $now, static function (ApplyEvent $event) use (&$events): void {
+            $events[] = $event->kind;
+        });
+        Assert::assertSame([], $events, 'recover leaves an already completed chain alone');
+    }
+
     // apply/cleanup-errors/begin-restore
     public function testCleanupErrorsBeginRestore(): void
     {
