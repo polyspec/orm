@@ -67,7 +67,7 @@ vector('apply/cleanup-errors/release', async () => {
 });
 
 vector('apply/cleanup-errors/begin-restore', async () => {
-  const begin = new Error('begin failed');
+  const begin = Object.assign(new Error('begin failed'), { errcode: 5 });
   const restore = new Error('restore failed');
   // node:sqlite opens with foreign keys turned on.
   const db = failingSqlite(new Map([['BEGIN EXCLUSIVE', begin], ['PRAGMA foreign_keys = 1', restore]]));
