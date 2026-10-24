@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 264d20bf6643dfd03cdc02055688e569d54eedc715cb59a3ffa0ccd017c3a97d -->
+<!-- source-sha256: 65bd7f913690ccab15d18a18791017fab7146d35d9b926f90cefad092ffd24b7 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -142,7 +142,7 @@
 | KSTD-5-42 | repository의 Go 코드가 `make lint-go`를 통과하고 모든 error를 처리한다 (KSTD-5-7 후속). 실제 수정 전 lint 실행은 errcheck 11건과 deadcode 1건을 보고했다. deadcode는 build tag별 도달성을 합집합으로 판정한다. Catalog rollback 경로는 mapped driver error를 `errors.Is` 체인에 보존한다. | packages/go/orm/catalog.go, catalog_grid.go, listen.go, packages/go/model/group_rows_db_test.go, catalog_session_error_test.go, and the coverage and grid-order tests of packages/go/orm | `make lint-go`; `make go-catalog-session-error-check` | [o] |
 | KSTD-5-46 | duplication-check 통과: 6줄 이상 clone 0개 (KSTD-5 하위) | the files that make duplication-check names in its clone list (426 clones in rust, php, c, javascript, go, python, typescript), with the shared logic extracted into one module per group | `make duplication-check` exits 0 with zero clones | [ ] |
 | KSTD-5-46-2 | schema crate의 manifest와 render 테스트 helper 중복을 공유한다 (KSTD-5-46 하위) | packages/rust/schema/tests/dbspec_manifest.rs, packages/rust/schema/tests/dbspec_render.rs, and the shared helper module they both use | `make dbspec-rust-check` passes, and make duplication-check lists no clone between dbspec_manifest.rs and dbspec_render.rs | [-] 원인: KSTD-5-46에 병합됨 |
-| KSTD-5-41 | orm의 Rust 소스가 make lint-rust(-D warnings 아래 clippy)를 통과한다 | The 40 clippy errors of benchmarks/rust, packages/rust, testcase, schema and the interface tools are fixed in the code, with no suppression | `make lint-rust` | [ ] |
+| KSTD-5-41 | orm의 Rust 소스가 make lint-rust(-D warnings 아래 clippy)를 통과한다 | The 40 clippy errors of benchmarks/rust, packages/rust, testcase, schema and the interface tools are fixed in the code, with no suppression | `make lint-rust` | [o] |
 | KSTD-5-41-0 | orm에 패키지별 clippy 대상 `make clippy-crate CRATE=polyspec-orm-schema`가 lint-rust와 같은 플래그로 있다 | A clippy-crate target in the Makefile that runs cargo clippy --all-targets for CRATE with the lint-rust flags and CLIPPY_CONF_DIR of kit | `make -n clippy-crate CRATE=polyspec-orm-schema` | [o] |
 | KSTD-5-41-1 | case-database 패키지가 lint-rust 플래그의 clippy를 통과한다, `make clippy-crate CRATE=polyspec-orm-case-database` | The six clippy sites of packages/rust/case-database/src/lib.rs are propagated through their Result, with no suppression | `make clippy-crate CRATE=polyspec-orm-case-database` | [o] |
 | KSTD-5-48 | docs-check는 Markdown 검사만 실행하고, 사이트 build는 docs-site-check에서 실행한다 | docs-check runs only the Markdown checks; the VitePress site build and the built-site readers run in docs-site-check, which the owner rules select for docs/ changes and the VitePress config | `node --test tests/docs/split.test.mts` fails on the current docs-check, which runs the site build, and passes after the split | [o] |
