@@ -46,3 +46,28 @@ async fn bind_validation_checks_exact_bounds_before_driver_encoding() {
     .await
     .expect("typed bind validation deadline");
 }
+
+#[test]
+fn parameter_kind_is_shared_by_validation_and_postgres_type_selection() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let values = [
+        (P::S("text".into()), ParamType::Text),
+        (P::I(1), ParamType::Integer),
+        (P::Unsigned(1), ParamType::Unsigned),
+        (P::Float32(1.0f32.to_bits()), ParamType::Float32),
+        (P::Float64(1.0f64.to_bits()), ParamType::Float64),
+        (P::Decimal("1.0".into()), ParamType::Decimal),
+        (P::Boolean(true), ParamType::Boolean),
+        (P::Binary(vec![1]), ParamType::Binary),
+        (P::Date("2026-10-24".into()), ParamType::Date),
+        (P::Time("12:34:56".into()), ParamType::Time),
+        (P::DateTime("2026-10-24 12:34:56".into()), ParamType::DateTime),
+        (P::Null(ParamType::Unsigned), ParamType::Unsigned),
+    ];
+    for (value, expected) in &values {
+        assert_eq!(value.param_type(), *expected);
+    }
+    assert!(crate::tool_db::binds::postgres_types(&values.iter().map(|(value, _)| value.clone()).collect::<Vec<_>>()).is_err(), "PostgreSQL rejects unsigned values");
+    let postgres_values: Vec<_> = values.iter().filter(|(_, kind)| *kind != ParamType::Unsigned).map(|(value, _)| value.clone()).collect();
+    assert_eq!(crate::tool_db::binds::postgres_types(&postgres_values).unwrap().len(), postgres_values.len());
+}

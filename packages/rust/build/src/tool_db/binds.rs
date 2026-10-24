@@ -7,20 +7,7 @@ pub(super) fn postgres_types(values: &[P]) -> Result<Vec<sqlx::postgres::PgTypeI
     values
         .iter()
         .map(|value| {
-            let kind = match value {
-                P::S(_) => ParamType::Text,
-                P::I(_) => ParamType::Integer,
-                P::Unsigned(_) => ParamType::Unsigned,
-                P::Float32(_) => ParamType::Float32,
-                P::Float64(_) => ParamType::Float64,
-                P::Decimal(_) => ParamType::Decimal,
-                P::Boolean(_) => ParamType::Boolean,
-                P::Binary(_) => ParamType::Binary,
-                P::Date(_) => ParamType::Date,
-                P::Time(_) => ParamType::Time,
-                P::DateTime(_) => ParamType::DateTime,
-                P::Null(kind) => *kind,
-            };
+            let kind = value.param_type();
             Ok(match kind {
                 ParamType::Text => <String as Type<Postgres>>::type_info(),
                 ParamType::Integer => <i64 as Type<Postgres>>::type_info(),

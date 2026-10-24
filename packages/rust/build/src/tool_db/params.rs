@@ -30,6 +30,25 @@ pub enum P {
     DateTime(String),
     Null(ParamType),
 }
+
+impl P {
+    pub(super) fn param_type(&self) -> ParamType {
+        match self {
+            Self::S(_) => ParamType::Text,
+            Self::I(_) => ParamType::Integer,
+            Self::Unsigned(_) => ParamType::Unsigned,
+            Self::Float32(_) => ParamType::Float32,
+            Self::Float64(_) => ParamType::Float64,
+            Self::Decimal(_) => ParamType::Decimal,
+            Self::Boolean(_) => ParamType::Boolean,
+            Self::Binary(_) => ParamType::Binary,
+            Self::Date(_) => ParamType::Date,
+            Self::Time(_) => ParamType::Time,
+            Self::DateTime(_) => ParamType::DateTime,
+            Self::Null(kind) => *kind,
+        }
+    }
+}
 pub(super) fn invalid() -> sqlx::Error {
     sqlx::Error::Encode("TOOL_BIND_INVALID: unsupported or invalid native bind".into())
 }
@@ -52,20 +71,7 @@ pub(super) fn validate_refs<'a>(values: impl Iterator<Item = &'a P>, dialect: &s
         if index >= 65535 {
             return Err(limit());
         }
-        let kind = match value {
-            P::S(_) => ParamType::Text,
-            P::I(_) => ParamType::Integer,
-            P::Unsigned(_) => ParamType::Unsigned,
-            P::Float32(_) => ParamType::Float32,
-            P::Float64(_) => ParamType::Float64,
-            P::Decimal(_) => ParamType::Decimal,
-            P::Boolean(_) => ParamType::Boolean,
-            P::Binary(_) => ParamType::Binary,
-            P::Date(_) => ParamType::Date,
-            P::Time(_) => ParamType::Time,
-            P::DateTime(_) => ParamType::DateTime,
-            P::Null(kind) => *kind,
-        };
+        let kind = value.param_type();
         if (kind == ParamType::Unsigned && dialect != "mysql") || (dialect == "sqlite" && matches!(kind, ParamType::Float32 | ParamType::Decimal)) {
             return Err(invalid());
         }
