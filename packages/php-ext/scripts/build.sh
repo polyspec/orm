@@ -19,7 +19,7 @@ mkdir "$work" "$work/src"
 cp "$package"/composer.json "$work"/
 cp "$package"/src/config.m4 "$package"/src/*.c "$package"/src/*.h "$work"/src/
 case "$mode" in
-  release) configure_args="--enable-polyspec-orm" ;;
+  release) configure_args="--enable-polyspec-orm --disable-polyspec-orm-mermaid-test" ;;
   mermaid-test)
     cp "$package"/testing/mermaid/module.c "$work"/src/mermaid_test.c
     configure_args="--enable-polyspec-orm --enable-polyspec-orm-mermaid-test" ;;

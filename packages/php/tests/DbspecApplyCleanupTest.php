@@ -184,6 +184,7 @@ final class DbspecApplyCleanupTest extends TestCase
         if (getenv('ORM_PHP_MODE') === 'extension') {
             Assert::assertTrue(extension_loaded('polyspec_orm'));
             Assert::assertTrue((new \ReflectionClass(Dbspec::class))->isInternal());
+            Assert::assertFalse(function_exists('mermaid_test_import'), 'release extension omits private Mermaid test hooks');
         }
         $master = 'SELECT type, name, tbl_name, IFNULL(sql, \'\') FROM sqlite_master' . "\n"
             . 'WHERE name NOT LIKE \'sqlite_%\' AND tbl_name NOT LIKE \'dbspec$%\' ORDER BY type, name';

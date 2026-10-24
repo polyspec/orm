@@ -1546,6 +1546,8 @@
         "packages/go/engine/dbspec/apply.go",
         "packages/go/engine/dbspec/apply_test.go",
         "packages/php-ext/src/apply.c",
+        "packages/php-ext/src/config.m4",
+        "packages/php-ext/scripts/build.sh",
         "packages/php/src/Dbspec/PlanApply.php",
         "packages/php/tests/DbspecApplyCleanupTest.php",
         "packages/php/tests/FailingPdo.php",

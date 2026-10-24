@@ -3,7 +3,7 @@ dnl in this directory, the php-ext.build-path of composer.json.
 PHP_ARG_ENABLE([polyspec-orm], [whether to enable polyspec_orm],
   [AS_HELP_STRING([--enable-polyspec-orm], [Enable polyspec_orm, the dbspec interface of orm])], [yes])
 PHP_ARG_ENABLE([polyspec-orm-mermaid-test], [whether to enable the private Mermaid boundary test module],
-  [AS_HELP_STRING([--enable-polyspec-orm-mermaid-test], [Enable test-only Mermaid fault injection])], [no])
+  [AS_HELP_STRING([--enable-polyspec-orm-mermaid-test], [Enable test-only Mermaid fault injection])], [no], [no])
 
 if test "$PHP_POLYSPEC_ORM" != "no"; then
   dnl The version of the extension is the version of its package: composer.json lies beside src/, in the package and in the build of kit.
