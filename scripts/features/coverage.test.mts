@@ -9,7 +9,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { testDirectoryOf } from './packages.mts';
 import { checkCoverage, databases, executeCoverage, observedCases, languages, NATIVE_DEADLINE, selectFeatures, type Coverage, type Dependent, type Feature, type Manifest, type Owner, type Report } from './coverage.mts';
 import { readFeatures } from './manifest.mts';
-import { readParityConfig } from '../json/formats.mts';
+import { readParityConfig, type ParityConfig } from '../json/formats.mts';
 
 const parityUnits = readParityConfig(new URL('../../config/parity.json', import.meta.url).pathname).units;
 // parityOf names one parity unit that binds only each language, so the feature claims exactly those languages.
@@ -107,9 +107,10 @@ caseTest('PHP extension catalog, schema and statement event coverage use native 
   assert.ok(catalog);
   for (const id of ['catalog-connection-read', 'catalog-connection-row-mutation']) {
     assert.ok(catalog.parity.includes(id), `catalog_connection omits ${id}`);
-    const unit = parityUnits.find(item => item.id === id);
+    const unit: ParityConfig['units'][number] | undefined = parityUnits.find(item => item.id === id);
     assert.ok(unit, `config/parity.json omits ${id}`);
     assert.deepEqual(unit.requirements, ['SCH-6a']);
+    assert.ok(unit.bindings, `config/parity.json omits bindings for ${id}`);
     assert.deepEqual(unit.bindings.map(binding => binding.implementation).toSorted(), [...languages].toSorted());
   }
 });
