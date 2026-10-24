@@ -30,6 +30,7 @@ final class OrmExceptionLockWaitTest extends TestCase
         self::assertSame(Code::CANCELED, $error->code_, "MySQL 1205 maps to {$error->code_}");
     }
 
+    // Requirements: PRT-79.
     public function testUnlistedMysqlDriverErrorKeepsItsCause(): void
     {
         $message = 'trigger refused the write';

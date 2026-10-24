@@ -13,6 +13,7 @@ use Polyspec\Orm\DbState;
 
 final class DriverErrorTest extends TestCase
 {
+    // Requirements: PRT-79.
     public function testNativeDbMapperKeepsTheDriverErrorAsPrevious(): void
     {
         self::assertTrue((new \ReflectionMethod(Db::class, 'driverError'))->isInternal());

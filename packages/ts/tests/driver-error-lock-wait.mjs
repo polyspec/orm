@@ -11,6 +11,7 @@ caseTest('driver-error/lock-wait-timeout/mysql', COMPUTE, () => {
   assert.equal(driverError('mysql', error).code, 'CANCELED');
 });
 
+// Requirements: PRT-79.
 caseTest('driver-error/native-cause/mysql', COMPUTE, () => {
   const source = Object.assign(new Error('trigger refused the write'), { code: 'ER_SIGNAL_EXCEPTION', errno: 1644 });
   const mapped = driverError('mysql', source);

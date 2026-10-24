@@ -56,6 +56,7 @@ func TestMapMySQLErrClassifiesReadOnly(t *testing.T) {
 	}
 }
 
+// Requirements: PRT-79.
 func TestMapDriverErrorPreservesNativeCause(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	driverErr := &mysql.MySQLError{Number: 1644, Message: "trigger refused the write"}

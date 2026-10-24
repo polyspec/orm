@@ -363,7 +363,7 @@ class ServerDriverErrorTest(unittest.TestCase):
             connection.execute('INSERT INTO "parent" ("name") VALUES ($1)', ["a"])
         return caught.exception
 
-    # Requirements: CFG-6.
+    # Requirements: CFG-6, PRT-79.
     def test_mysql_errors_have_the_codes_of_the_catalog(self):
         for cls, number, message, code in self.MYSQL:
             with self.subTest(number=number):

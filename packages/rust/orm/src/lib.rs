@@ -312,6 +312,7 @@ mod driver_error_tests {
 
     impl_database_error!(NativeError, self, { &self.message }, { None });
 
+    // Requirements: PRT-79.
     #[test]
     fn unknown_database_error_keeps_the_native_source_chain() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
