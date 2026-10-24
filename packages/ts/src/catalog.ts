@@ -649,6 +649,21 @@ function qualified(ref: CatalogTableRef, dialect: DriverName): string {
   return `${quoteIdent(ref.namespace, dialect)}.${quoteIdent(ref.name, dialect)}`;
 }
 
+/** Locates a MySQL insert by its explicit input only; generated expressions are never evaluated by the client. */
+function mysqlInputLocatorSql(metadata: CatalogTableMetadata, changes: readonly { index: number; value: DriverValue }[], dialect: DriverName): string {
+  const predicates = changes.map(change => {
+    const column = metadata.columns[change.index];
+    if (column === undefined) throw err(CODE_SCHEMA, 'insertion descriptor changed');
+    const quoted = quoteIdent(column.name, dialect);
+    return change.value === null ? `${quoted} IS NULL` : `${quoted}=?`;
+  });
+  return `SELECT ${quoteList(metadata.columns.map(column => column.name), dialect)} FROM ${qualified(metadata.table, dialect)} WHERE ${predicates.join(' AND ')} LIMIT 2 FOR UPDATE`;
+}
+
+function mysqlInputLocatorParams(changes: readonly { index: number; value: DriverValue }[]): DriverValue[] {
+  return changes.filter(change => change.value !== null).map(change => change.value);
+}
+
 function placeholder(index: number, dialect: DriverName): string {
   return dialect === 'postgres' ? `$${index}` : '?';
 }
@@ -1303,33 +1318,52 @@ export class CatalogConnection {
     const keyIndexes = descriptorKeys(declared);
     const changes = checkChanges(declared, values, CODE_INSERT_INVALID);
     const provided = new Map(changes.map(change => [change.index, change.value] as const));
-    const generatedKeys = keyIndexes.filter(index => !provided.has(index) && declared.columns[index]?.automaticKey === true);
-    if (generatedKeys.length > 1) throw err(CODE_UNSUPPORTED, 'multiple generated primary keys are not supported');
-    const generatedKey = generatedKeys[0];
+    const omittedKeys = keyIndexes.filter(index => {
+      const column = declared.columns[index];
+      return !provided.has(index) && column !== undefined && (column.automaticKey || column.defaultExpression !== null);
+    });
+    if (this.dialect === 'mysql' && omittedKeys.filter(index => declared.columns[index]?.automaticKey === true).length > 1) {
+      throw err(CODE_UNSUPPORTED, 'multiple generated primary keys are not supported');
+    }
     const keys = keyIndexes.map(index => {
       if (!provided.has(index)) {
-        if (index === generatedKey) return null;
+        if (omittedKeys.includes(index)) return null;
         throw err(CODE_INSERT_INVALID, `explicit primary-key value of "${declared.columns[index]?.name ?? ''}" is required`);
       }
       return provided.get(index) ?? null;
     });
     return this.write(async session => {
+      if (this.dialect === 'mysql' && omittedKeys.length > 0) {
+        // Retain the table metadata lock from its own row until the schema check and generated-key recovery complete.
+        await session.control(`SELECT 1 FROM ${qualified(declared.table, this.dialect)} LIMIT 0 FOR UPDATE`);
+      }
       if (this.dialect === 'postgres') {
         // The lock an INSERT takes, held before the schema check so that no DDL changes the table in between.
         await session.control(`LOCK TABLE ${qualified(declared.table, this.dialect)} IN ROW EXCLUSIVE MODE`);
       }
-      if (generatedKey === undefined) {
+      if (omittedKeys.length === 0) {
         const existing = await session.lookup(declared, keys, true);
         if (existing.length !== 0) throw err(CODE_CONFLICT, 'insertion key already exists');
       }
       const descriptor = await session.describe(declared.table);
       if (!sameDescriptor(descriptor, declared)) throw err(CODE_SCHEMA, 'insertion descriptor changed');
       if (this.dialect === 'mysql') await session.mysqlSafety(descriptor);
+      const expressionLocator = this.dialect === 'mysql' && omittedKeys.some(index => descriptor.columns[index]?.expressionDefault === true);
+      if (expressionLocator) {
+        const before = await session.collect<CatalogValue>(
+          mysqlInputLocatorSql(descriptor, changes, this.dialect),
+          mysqlInputLocatorParams(changes),
+          2,
+          PAGE_BYTES,
+          (value, column, index) => describedCell(value, column, descriptor.columns[index], this.dialect),
+        );
+        if (before.rows.length !== 0) throw err(CODE_AMBIGUOUS, 'generated identity locator already matches rows');
+      }
       const names = changes.map(change => quoteIdent(descriptor.columns[change.index]?.name ?? '', this.dialect));
       const marks = changes.map((_, index) => placeholder(index + 1, this.dialect));
       const insert = `INSERT INTO ${qualified(descriptor.table, this.dialect)} (${names.join(',')}) VALUES (${marks.join(',')})`;
       let after: CatalogValue[][];
-      if (generatedKey !== undefined && this.dialect !== 'mysql') {
+      if (omittedKeys.length > 0 && this.dialect !== 'mysql') {
         const returning = quoteList(descriptor.columns.map(column => column.name), this.dialect);
         const result = await session.collect<CatalogValue>(
           `${insert} RETURNING ${returning}`,
@@ -1338,20 +1372,64 @@ export class CatalogConnection {
           PAGE_BYTES,
           (value, column, index) => describedCell(value, column, descriptor.columns[index], this.dialect),
         );
+        if (result.columns.length !== descriptor.columns.length || result.columns.some((column, index) => column.name !== descriptor.columns[index]?.name)) {
+          throw err(CODE_WRITE, 'returned insert projection differs from descriptor');
+        }
         if (result.rows.length !== 1) throw err(CODE_WRITE, `expected exactly one inserted row, got ${result.rows.length}`);
+        checkCells(descriptor, result.rows[0] ?? []);
+        after = result.rows;
+      } else if (expressionLocator) {
+        const affected = await session.exec(insert, changes.map(change => change.value));
+        if (affected !== 1) throw err(CODE_WRITE, `expected exactly one inserted row, got ${affected}`);
+        const result = await session.collect<CatalogValue>(
+          mysqlInputLocatorSql(descriptor, changes, this.dialect),
+          mysqlInputLocatorParams(changes),
+          2,
+          PAGE_BYTES,
+          (value, column, index) => describedCell(value, column, descriptor.columns[index], this.dialect),
+        );
+        if (result.columns.length !== descriptor.columns.length || result.columns.some((column, index) => column.name !== descriptor.columns[index]?.name)) {
+          throw err(CODE_WRITE, 'generated insert locator projection differs from descriptor');
+        }
+        if (result.rows.length !== 1) throw err(CODE_AMBIGUOUS, 'expected exactly one inserted locator row');
+        checkCells(descriptor, result.rows[0] ?? []);
         after = result.rows;
       } else {
         const result = await session.executeResult(insert, changes.map(change => change.value));
         const affected = result.affected;
         if (affected !== 1) throw err(CODE_WRITE, `expected exactly one inserted row, got ${affected}`);
-        if (generatedKey !== undefined) {
-          const keyColumn = descriptor.columns[generatedKey];
-          if (result.insertId === null || result.insertId === 0 || result.insertId === 0n || keyColumn === undefined) throw err(CODE_WRITE, 'insert acknowledgement has no generated primary key');
-          const keyPosition = keyIndexes.indexOf(generatedKey);
-          if (keyPosition < 0) throw err(CODE_WRITE, 'generated primary-key descriptor changed');
-          keys[keyPosition] = plainValue(result.insertId, { name: keyColumn.name, type: keyColumn.nativeType });
+        const autoKeys = omittedKeys.filter(index => descriptor.columns[index]?.automaticKey === true);
+        if (autoKeys.length > 0 && (result.insertId === null || result.insertId === 0 || result.insertId === 0n)) {
+          throw err(CODE_WRITE, 'insert acknowledgement has no generated primary key');
         }
-        after = await session.lookup(descriptor, keys, false);
+        const predicates: string[] = [];
+        const bound: DriverValue[] = [];
+        for (const index of keyIndexes) {
+          const column = descriptor.columns[index];
+          if (column === undefined) throw err(CODE_SCHEMA, 'insertion key descriptor changed');
+          const quoted = quoteIdent(column.name, this.dialect);
+          if (provided.has(index)) {
+            predicates.push(`${quoted}=?`);
+            bound.push(provided.get(index) ?? null);
+          } else if (column.automaticKey) {
+            if (result.insertId === null) throw err(CODE_WRITE, 'insert acknowledgement has no generated primary key');
+            predicates.push(`${quoted}=?`);
+            bound.push(plainValue(result.insertId, { name: column.name, type: column.nativeType }));
+          } else if (column.defaultExpression !== null && !column.expressionDefault) {
+            predicates.push(`${quoted}=DEFAULT(${quoted})`);
+          } else {
+            throw err(CODE_AMBIGUOUS, `no safe generated-key locator for "${column.name}"`);
+          }
+        }
+        const query = `SELECT ${quoteList(descriptor.columns.map(column => column.name), this.dialect)} FROM ${qualified(descriptor.table, this.dialect)} WHERE ${predicates.join(' AND ')} LIMIT 2 FOR UPDATE`;
+        const resultRows = await session.collect<CatalogValue>(query, bound, 2, PAGE_BYTES,
+          (value, column, index) => describedCell(value, column, descriptor.columns[index], this.dialect));
+        if (resultRows.columns.length !== descriptor.columns.length || resultRows.columns.some((column, index) => column.name !== descriptor.columns[index]?.name)) {
+          throw err(CODE_WRITE, 'generated key lookup projection differs from descriptor');
+        }
+        if (resultRows.rows.length !== 1) throw err(CODE_WRITE, 'expected exactly one inserted row');
+        checkCells(descriptor, resultRows.rows[0] ?? []);
+        after = resultRows.rows;
       }
       if (after.length !== 1) throw err(CODE_WRITE, 'expected exactly one inserted row');
       const afterDescriptor = await session.describe(declared.table);
