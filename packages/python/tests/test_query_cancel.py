@@ -2,11 +2,19 @@
 
 import asyncio
 import os
+import sys
 import tempfile
 import threading
 import unittest
+from types import SimpleNamespace
+from unittest.mock import patch
 
-from polyspec.orm.database import Db, _ActiveStatement, _FutureCancellation
+from polyspec.orm.database import (
+    Db,
+    _ActiveStatement,
+    _FutureCancellation,
+    _MysqlConnection,
+)
 from polyspec.orm.errors import OrmError
 
 from . import testcase
@@ -40,6 +48,92 @@ class QueryCancelTest(unittest.IsolatedAsyncioTestCase):
         finish_future.cancel()
         self.assertTrue(cancellation.finish(operation))
         self.assertTrue(connection.requested.is_set())
+
+    async def test_worker_observes_future_only_on_its_owner_loop(self):
+        loop = asyncio.get_running_loop()
+        owner_thread = threading.get_ident()
+
+        class OwnerLoopFuture(asyncio.Future):
+            def cancelled(self):
+                if threading.get_ident() != owner_thread:
+                    raise AssertionError("Future state was read outside its loop thread")
+                return super().cancelled()
+
+        future = OwnerLoopFuture(loop=loop)
+        cancellation = _FutureCancellation(future)
+        future.cancel()
+        with self.assertRaises(OrmError) as rejected:
+            await asyncio.to_thread(cancellation.start, object())
+        self.assertEqual(rejected.exception.code, "CANCELED")
+
+        finish_future = OwnerLoopFuture(loop=loop)
+        finishing = _FutureCancellation(finish_future)
+
+        class CancellationConnection:
+            def __init__(self):
+                self.requested = threading.Event()
+
+            def cancel_query(self):
+                self.requested.set()
+
+        connection = CancellationConnection()
+        operation = _ActiveStatement(connection)
+        with finishing._lock:
+            finishing._active.add(operation)
+        finish_future.cancel()
+        self.assertTrue(await asyncio.to_thread(finishing.finish, operation))
+        self.assertTrue(connection.requested.is_set())
+
+    async def test_mysql_cancellation_uses_bounded_control_socket_timeouts(self):
+        calls = []
+        statements = []
+
+        class ControlCursor:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def execute(self, sql):
+                statements.append(sql)
+
+        class ControlConnection:
+            closed = False
+
+            def cursor(self):
+                return ControlCursor()
+
+            def close(self):
+                self.closed = True
+
+        control = ControlConnection()
+
+        def connect(**options):
+            calls.append(options)
+            return control
+
+        class MysqlConnection:
+            def thread_id(self):
+                return 73
+
+        mysql = object.__new__(_MysqlConnection)
+        mysql._connect_options = {"host": "db.test", "user": "orm"}
+        mysql.connection = MysqlConnection()
+        with patch.dict(sys.modules, {"pymysql": SimpleNamespace(connect=connect)}):
+            mysql.cancel_query()
+
+        self.assertEqual(calls, [
+            {
+                "host": "db.test",
+                "user": "orm",
+                "connect_timeout": 10,
+                "read_timeout": 10,
+                "write_timeout": 10,
+            }
+        ])
+        self.assertEqual(statements, ["KILL QUERY 73"])
+        self.assertTrue(control.closed)
 
     async def test_cancel_interrupts_active_statement_and_root_is_reusable(self):
         with tempfile.TemporaryDirectory(prefix="orm-query-cancel-") as directory:

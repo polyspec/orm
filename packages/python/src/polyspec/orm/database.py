@@ -904,7 +904,9 @@ class _MysqlConnection:
     def cancel_query(self) -> None:
         import pymysql
 
-        control = pymysql.connect(**self._connect_options)
+        options = dict(self._connect_options)
+        options.update(connect_timeout=10, read_timeout=10, write_timeout=10)
+        control = pymysql.connect(**options)
         try:
             with control.cursor() as cursor:
                 cursor.execute(f"KILL QUERY {int(self.connection.thread_id())}")
@@ -1048,6 +1050,7 @@ class _FutureCancellation:
     def __init__(self, future: asyncio.Future):
         self._lock = threading.Lock()
         self._future = future
+        self._loop = future.get_loop()
         self._cancelled = future.cancelled()
         self._active: set[_ActiveStatement] = set()
         future.add_done_callback(self._future_done)
@@ -1055,6 +1058,9 @@ class _FutureCancellation:
     def _future_done(self, future: asyncio.Future) -> None:
         if not future.cancelled():
             return
+        self._mark_cancelled()
+
+    def _mark_cancelled(self) -> None:
         with self._lock:
             self._cancelled = True
             active = tuple(self._active)
@@ -1063,23 +1069,49 @@ class _FutureCancellation:
             for operation in active:
                 operation.cancel()
 
+    def _observe_future(self, done: threading.Event | None = None) -> None:
+        try:
+            if self._future.cancelled():
+                self._mark_cancelled()
+        finally:
+            if done is not None:
+                done.set()
+
+    def _refresh_from_loop(self) -> None:
+        try:
+            current_loop = asyncio.get_running_loop()
+        except RuntimeError:
+            current_loop = None
+        if current_loop is self._loop:
+            self._observe_future()
+            return
+        done = threading.Event()
+        try:
+            self._loop.call_soon_threadsafe(self._observe_future, done)
+        except RuntimeError as error:
+            # A closed owner loop can no longer observe the Future safely. Fail closed and
+            # interrupt any active operation so an uncertain connection is discarded.
+            with self._lock:
+                self._cancelled = True
+                active = tuple(self._active)
+                for operation in active:
+                    operation.error = error
+                    operation.cancel()
+            return
+        done.wait()
+
     def start(self, connection) -> _ActiveStatement:
         operation = _ActiveStatement(connection)
+        self._refresh_from_loop()
         with self._lock:
-            if self._future.cancelled():
-                self._cancelled = True
             if self._cancelled:
                 raise OrmError(codes.CANCELED, "statement cancelled")
             self._active.add(operation)
         return operation
 
     def finish(self, operation: _ActiveStatement) -> bool:
+        self._refresh_from_loop()
         with self._lock:
-            if self._future.cancelled():
-                self._cancelled = True
-                # Observe cancellation before removing the operation: its result and connection
-                # cannot escape while the Future's scheduled callback is still pending.
-                operation.cancel()
             self._active.discard(operation)
             cancelled = self._cancelled
         operation.wait()
