@@ -180,10 +180,6 @@
           "reason": "external: an internal package test of the go module that runs against a database or driver of an external service, not a helper the contract names (K313)"
         },
         {
-          "glob": "packages/go/orm/transaction_end_test.go",
-          "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
-        },
-        {
           "glob": "packages/go/orm/value_types_test.go",
           "reason": "external: an internal package test of the go module that runs against a database or driver of an external service, not a helper the contract names (K313)"
         },
@@ -21350,6 +21346,7 @@
       "requirements": ["DIA-181", "PLN-17"],
       "bindings": [
         {"implementation": "go", "test": "packages/go/orm/coverage_transaction_failure_test.go", "id": "TestTransactionFailureSavepointEnd"},
+        {"implementation": "go", "test": "packages/go/orm/transaction_end_test.go", "id": "TestSavepointReportsFailedEnd"},
         {"implementation": "php", "test": "packages/php/tests/TransactionFailureTest.php", "id": "TransactionFailureTest::testSavepointAttemptsBothEndStepsAndKeepsTheCallbackError"},
         {"implementation": "php-extension", "test": "packages/php-ext/tests/TransactionFailureNativeTest.php", "id": "TransactionFailureNativeTest::testSavepointAttemptsBothEndStepsAndKeepsTheCallbackError"},
         {"implementation": "typescript", "test": "packages/ts/tests/transaction-failure.mjs", "id": "transaction-failure/savepoint-end-attempts-both"},
