@@ -762,11 +762,11 @@ add_failed:
 typedef enum {
     SCHEMA_UTILS_SCHEMA_EXISTS,
     SCHEMA_UTILS_TABLE_INSTALLED
-} schema_utils_catalog_lookup;
+} schema_utils_catalog_lookup_kind;
 
 /* Builds a dialect-specific catalog lookup and its bindings for both existence methods. */
 static zend_string *schema_utils_catalog_lookup_sql(zend_string *driver, zend_string *schema, zend_string *table,
-                                                    schema_utils_catalog_lookup lookup, zval *args)
+                                                    schema_utils_catalog_lookup_kind lookup, zval *args)
 {
     if (zend_string_equals_literal(driver, "postgres")) {
         if (lookup == SCHEMA_UTILS_SCHEMA_EXISTS) {
@@ -805,6 +805,18 @@ static zend_string *schema_utils_catalog_lookup_sql(zend_string *driver, zend_st
                             sizeof("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name = ?)") - 1, 0);
 }
 
+static bool schema_utils_catalog_lookup(zval *object, zend_string *schema, zend_string *table,
+                                        schema_utils_catalog_lookup_kind lookup, zval *result)
+{
+    zval driver;
+    if (!schema_utils_call(schema_utils_db(object), "driver", &driver, 0, NULL)) return false;
+    zval args;
+    array_init(&args);
+    zend_string *sql = schema_utils_catalog_lookup_sql(Z_STR(driver), schema, table, lookup, &args);
+    zval_ptr_dtor(&driver);
+    return schema_utils_bool_query(schema_utils_db(object), sql, &args, result);
+}
+
 ZEND_METHOD(Polyspec_Orm_SchemaUtils, exists)
 {
     zend_string *schema;
@@ -815,13 +827,7 @@ ZEND_METHOD(Polyspec_Orm_SchemaUtils, exists)
         db_throw_orm("CONFIG", "identifier %s is invalid", ZSTR_VAL(schema));
         RETURN_THROWS();
     }
-    zval driver;
-    if (!schema_utils_call(schema_utils_db(ZEND_THIS), "driver", &driver, 0, NULL)) RETURN_THROWS();
-    zval args;
-    array_init(&args);
-    zend_string *sql = schema_utils_catalog_lookup_sql(Z_STR(driver), schema, NULL, SCHEMA_UTILS_SCHEMA_EXISTS, &args);
-    zval_ptr_dtor(&driver);
-    bool ok = schema_utils_bool_query(schema_utils_db(ZEND_THIS), sql, &args, return_value);
+    bool ok = schema_utils_catalog_lookup(ZEND_THIS, schema, NULL, SCHEMA_UTILS_SCHEMA_EXISTS, return_value);
     if (!ok) RETURN_THROWS();
 }
 
@@ -836,13 +842,7 @@ ZEND_METHOD(Polyspec_Orm_SchemaUtils, installed)
         db_throw_orm("CONFIG", "schema or table identifier is invalid");
         RETURN_THROWS();
     }
-    zval driver;
-    if (!schema_utils_call(schema_utils_db(ZEND_THIS), "driver", &driver, 0, NULL)) RETURN_THROWS();
-    zval args;
-    array_init(&args);
-    zend_string *sql = schema_utils_catalog_lookup_sql(Z_STR(driver), schema, table, SCHEMA_UTILS_TABLE_INSTALLED, &args);
-    zval_ptr_dtor(&driver);
-    bool ok = schema_utils_bool_query(schema_utils_db(ZEND_THIS), sql, &args, return_value);
+    bool ok = schema_utils_catalog_lookup(ZEND_THIS, schema, table, SCHEMA_UTILS_TABLE_INSTALLED, return_value);
     if (!ok) RETURN_THROWS();
 }
 
