@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 055782def460ae865ac709168a5560150c0cc694f67cf0287678828bc344a3bc -->
+<!-- source-sha256: 1e5eab6783804025d3804f6002db8d097cd0ccfad12d36380c64756822777313 -->
 # 변경 이력
 
 ## Unreleased
+
+- Go, PHP, PHP extension, Python, Rust, TypeScript의 dbspec verification은 실제 schema 불일치와 catalog 또는 driver 실패를 구분한다. Verification 실패는 원래 cause를 보존하고, forward 이후 실패가 apply history를 성공으로 기록하지 않는다. DB 서버 없이 실행하는 fake-driver target은 여섯 구현에서 settled/rollback verification 실패, forward 이후 실패 상태, 실제 schema 불일치를 다룬다. main source `fc50349c19be`에서 통과한 정확한 Go 회귀는 원래 source `67aee14d481e`의 settled와 rollback 경로에서 실패했다(KSTD-5-61).
 
 - Mermaid import는 catalog의 generated-document 생성 오류만 line-1 diagnostic으로 바꾸며, 다른 catalog 예외는 원래 객체 그대로 전파한다. commit `6dabce876bf8`에서 focused target은 TypeScript 2개, Python 2개, PHP 2개와 native PHP extension 2개 case를 통과한다. Extension case는 실제 Mermaid 경계를 호출하는 test-only module을 빌드한다. 수정 전 `48b4f552b028`의 canonical 실행에서는 예상 밖 오류 identity 확인으로 네 target 모두 실패했다(KSTD-5-62).
 
