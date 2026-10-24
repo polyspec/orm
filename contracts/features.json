@@ -6148,11 +6148,7 @@
         }
       ],
       "parity": [
-        "go-internal-packages-go-model-coverage-composite-keys",
-        "php-internal-coverage-composite-keys-composite-key-rows",
-        "py-cov-composite-keys-composite-key-rows",
-        "rust-integration-coverage-composite-keys-coverage-composite-key-rows",
-        "ts-coverage_composite_keys"
+        "coverage-composite-keys-composite-key-rows"
       ],
       "fixtures": [
         "tests/conformance/vectors.json",
@@ -6876,13 +6872,7 @@
         }
       ],
       "parity": [
-        "py-cov-parameter-chunking-root-in-chunking",
-        "php-coverage-parameter-chunking-root-in-chunking",
-        "rust-integration-coverage-parameter-chunking-coverage-root-in-chunking",
-        "ts-coverage_parameter_chunking",
-        "go-internal-packages-go-model-coverage-parameter-chunking-root-in-chunking",
-        "go-internal-packages-go-model-coverage-parameter-chunking-root-in-chunking-postgres",
-        "go-internal-packages-go-model-coverage-parameter-chunking-root-in-chunking-sqlite"
+        "coverage-parameter-chunking-root-in-chunking"
       ],
       "fixtures": [
         "packages/go/model/coverage_helpers_test.go",

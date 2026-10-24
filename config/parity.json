@@ -1784,20 +1784,6 @@
       ]
     },
     {
-      "id": "ts-coverage_composite_keys",
-      "kind": "feature",
-      "requirements": [
-        "PRT-12"
-      ],
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_composite_keys.mjs",
-          "id": "composite_key_rows [sqlite]"
-        }
-      ]
-    },
-    {
       "id": "ts-coverage_conformance_verification",
       "kind": "feature",
       "requirements": [
@@ -2096,20 +2082,6 @@
             "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=coverage_model_writes::coverage_model_write_cycle"
           ]
-        }
-      ]
-    },
-    {
-      "id": "ts-coverage_parameter_chunking",
-      "kind": "feature",
-      "requirements": [
-        "PRT-76"
-      ],
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_parameter_chunking.mjs",
-          "id": "root_in_chunking [sqlite]"
         }
       ]
     },
@@ -6976,81 +6948,6 @@
           "implementation": "go",
           "test": "packages/go/markdownmodel/ir_answers_test.go",
           "id": "TestIRAnswers"
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-model-coverage-composite-keys",
-      "kind": "feature",
-      "requirements": [
-        "PRT-12"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_composite_keys_test.go",
-          "id": "TestCoverageCompositeKeyRows",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=mysql",
-            "FEATURE_DSN_ENV=BENCH_MYSQL_DSN",
-            "FEATURE_TEST=TestCoverageCompositeKeyRows",
-            "FEATURE_PACKAGE=./model"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-model-coverage-composite-keys-postgres",
-      "kind": "feature",
-      "requirements": [
-        "PRT-12"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_composite_keys_test.go",
-          "id": "TestCoverageCompositeKeyRows",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=postgres",
-            "FEATURE_DSN_ENV=BENCH_POSTGRES_DSN",
-            "FEATURE_TEST=TestCoverageCompositeKeyRows",
-            "FEATURE_PACKAGE=./model"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-model-coverage-composite-keys-sqlite",
-      "kind": "feature",
-      "requirements": [
-        "PRT-12"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_composite_keys_test.go",
-          "id": "TestCoverageCompositeKeyRows",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageCompositeKeyRows",
-            "FEATURE_PACKAGE=./model"
-          ]
         }
       ]
     },
@@ -12369,84 +12266,6 @@
       ]
     },
     {
-      "id": "rust-integration-coverage-composite-keys-coverage-composite-key-rows",
-      "kind": "feature",
-      "requirements": [
-        "PRT-12"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_composite_keys.rs",
-          "id": "coverage_composite_keys::coverage_composite_key_rows",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=mysql",
-            "FEATURE_DSN_ENV=BENCH_MYSQL_DSN",
-            "FEATURE_TEST=coverage_composite_keys::coverage_composite_key_rows"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "rust-integration-coverage-composite-keys-coverage-composite-key-rows-postgres",
-      "kind": "feature",
-      "requirements": [
-        "PRT-12"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_composite_keys.rs",
-          "id": "coverage_composite_keys::coverage_composite_key_rows",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=postgres",
-            "FEATURE_DSN_ENV=BENCH_POSTGRES_DSN",
-            "FEATURE_TEST=coverage_composite_keys::coverage_composite_key_rows"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "rust-integration-coverage-composite-keys-coverage-composite-key-rows-sqlite",
-      "kind": "feature",
-      "requirements": [
-        "PRT-12"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_composite_keys.rs",
-          "id": "coverage_composite_keys::coverage_composite_key_rows",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_composite_keys::coverage_composite_key_rows"
-          ]
-        }
-      ]
-    },
-    {
       "id": "rust-integration-coverage-constraints-and-relations-coverage-constraint-errors",
       "kind": "feature",
       "requirements": [
@@ -12654,84 +12473,6 @@
             "FEATURE_DATABASE=sqlite",
             "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=coverage_model_writes::coverage_model_write_cycle"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "rust-integration-coverage-parameter-chunking-coverage-root-in-chunking",
-      "kind": "feature",
-      "requirements": [
-        "PRT-76"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_parameter_chunking.rs",
-          "id": "coverage_parameter_chunking::coverage_root_in_chunking",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=mysql",
-            "FEATURE_DSN_ENV=BENCH_MYSQL_DSN",
-            "FEATURE_TEST=coverage_parameter_chunking::coverage_root_in_chunking"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "rust-integration-coverage-parameter-chunking-coverage-root-in-chunking-postgres",
-      "kind": "feature",
-      "requirements": [
-        "PRT-76"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_parameter_chunking.rs",
-          "id": "coverage_parameter_chunking::coverage_root_in_chunking",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=postgres",
-            "FEATURE_DSN_ENV=BENCH_POSTGRES_DSN",
-            "FEATURE_TEST=coverage_parameter_chunking::coverage_root_in_chunking"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "rust-integration-coverage-parameter-chunking-coverage-root-in-chunking-sqlite",
-      "kind": "feature",
-      "requirements": [
-        "PRT-76"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_parameter_chunking.rs",
-          "id": "coverage_parameter_chunking::coverage_root_in_chunking",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_parameter_chunking::coverage_root_in_chunking"
           ]
         }
       ]
@@ -13810,20 +13551,6 @@
       ]
     },
     {
-      "id": "py-cov-composite-keys-composite-key-rows",
-      "kind": "feature",
-      "requirements": [
-        "PRT-12"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_composite_keys.py",
-          "id": "test_composite_key_rows"
-        }
-      ]
-    },
-    {
       "id": "py-cov-conformance-verification-conformance-vector",
       "kind": "feature",
       "requirements": [
@@ -13848,20 +13575,6 @@
           "implementation": "python",
           "test": "packages/python/tests/coverage_constraints_and_relations.py",
           "id": "test_constraint_errors"
-        }
-      ]
-    },
-    {
-      "id": "py-cov-parameter-chunking-root-in-chunking",
-      "kind": "feature",
-      "requirements": [
-        "PRT-40"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_parameter_chunking.py",
-          "id": "test_root_in_chunking"
         }
       ]
     },
@@ -15338,25 +15051,6 @@
           "implementation": "php",
           "test": "packages/php/tests/ClockTest.php",
           "id": "ClockTest::testClockNowCondition"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-coverage-composite-keys-composite-key-rows",
-      "kind": "feature",
-      "requirements": [
-        "PRT-12"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageCompositeKeysTest.php",
-          "id": "CoverageCompositeKeysTest::testCompositeKeyRows"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageCompositeKeysExtensionTest.php",
-          "id": "CoverageCompositeKeysExtensionTest::test_composite_key_rows"
         }
       ]
     },
@@ -21915,6 +21609,130 @@
           "implementation": "typescript",
           "test": "packages/ts/tests/coverage_interface_contract.mjs",
           "id": "interface_symbols"
+        }
+      ]
+    },
+    {
+      "id": "coverage-composite-keys-composite-key-rows",
+      "kind": "feature",
+      "requirements": [
+        "PRT-12"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/coverage_composite_keys_test.go",
+          "id": "TestCoverageCompositeKeyRows",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-go-unit",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=TestCoverageCompositeKeyRows",
+            "FEATURE_PACKAGE=./model"
+          ]
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageCompositeKeysTest.php",
+          "id": "CoverageCompositeKeysTest::testCompositeKeyRows"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageCompositeKeysExtensionTest.php",
+          "id": "CoverageCompositeKeysExtensionTest::test_composite_key_rows"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_composite_keys.mjs",
+          "id": "composite_key_rows [sqlite]"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_composite_keys.py",
+          "id": "test_composite_key_rows"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/integration/coverage_composite_keys.rs",
+          "id": "coverage_composite_keys::coverage_composite_key_rows",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-rust-database",
+            "FEATURE_CRATE=packages/rust/tests",
+            "FEATURE_CARGO_TARGET=--test integration",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=coverage_composite_keys::coverage_composite_key_rows"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coverage-parameter-chunking-root-in-chunking",
+      "kind": "feature",
+      "requirements": [
+        "PRT-76"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/coverage_parameter_chunking_test.go",
+          "id": "TestCoverageRootInChunking",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-go-unit",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=TestCoverageRootInChunking",
+            "FEATURE_PACKAGE=./model"
+          ]
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageParameterChunkingTest.php",
+          "id": "CoverageParameterChunkingTest::testRootInChunking"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageParameterChunkingExtensionTest.php",
+          "id": "CoverageParameterChunkingExtensionTest::test_root_in_chunking"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_parameter_chunking.mjs",
+          "id": "root_in_chunking [sqlite]"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_parameter_chunking.py",
+          "id": "test_root_in_chunking"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/integration/coverage_parameter_chunking.rs",
+          "id": "coverage_parameter_chunking::coverage_root_in_chunking",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-rust-database",
+            "FEATURE_CRATE=packages/rust/tests",
+            "FEATURE_CARGO_TARGET=--test integration",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=coverage_parameter_chunking::coverage_root_in_chunking"
+          ]
         }
       ]
     }
