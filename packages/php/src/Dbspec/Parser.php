@@ -2684,12 +2684,8 @@ final class Parser
     {
         foreach ($this->deferredAudits as [$audited, $columns, $arguments, $auditType, $line, $recorded]) {
             [$historyToken, , , $actionToken, $previousToken] = $arguments;
-            $entry = $this->tables[$historyToken[0]] ?? null;
-            if ($entry === null && isset($this->failedTables[$historyToken[0]])) {
-                continue;
-            }
+            $entry = $this->settingTable($historyToken, $line, 'audit history table', 'is unknown');
             if ($entry === null) {
-                $this->error('setting', $line, $historyToken[1], "audit history table `{$historyToken[0]}` is unknown");
                 continue;
             }
             if ($entry['table'] === null) {
@@ -3431,7 +3427,12 @@ final class Parser
     }
 
     /** @return ?array{table: ?Table, columns: array, headerFailed?: bool} */
-    private function settingTable(array $token, int $line, string $role): ?array
+    private function settingTable(
+        array $token,
+        int $line,
+        string $role,
+        string $missing = 'is not a table of this document or a used table'
+    ): ?array
     {
         $name = $token[0];
         $entry = $this->tables[$name] ?? null;
@@ -3445,7 +3446,7 @@ final class Parser
             'setting',
             $line,
             $token[1],
-            "$role `$name` is not a table of this document or a used table"
+            "$role `$name` $missing"
         );
         return null;
     }
