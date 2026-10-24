@@ -1228,12 +1228,41 @@ mod tests {
     async fn transaction_variants_share_the_retryable_execution_path() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
         let scratch = Scratch::new("orm-transaction-shared-runner");
-        let db =
-            Db::connect(&format!("sqlite://{}", scratch.join("transaction.sqlite").display()), 1, crate::Config::default()).await.expect("connect to SQLite");
-        let standard = db.transaction(async || Ok::<_, Error>(17)).retry(0).await.expect("standard transaction");
-        let send = db.transaction_send(|| async { Ok::<_, Error>(23) }).retry(0).await.expect("Send transaction");
+        let db = Db::connect(&format!("sqlite://{}", scratch.join("transaction.sqlite").display()), 1, crate::Config::default()).await.expect("connect to SQLite");
+
+        let standard_attempts = std::sync::atomic::AtomicUsize::new(0);
+        let standard = db
+            .transaction(async || {
+                if standard_attempts.fetch_add(1, std::sync::atomic::Ordering::SeqCst) == 0 {
+                    Err(transaction_conflict("retry standard callback"))
+                } else {
+                    Ok(17)
+                }
+            })
+            .retry(1)
+            .await
+            .expect("standard transaction retries a deadlock");
         assert_eq!(standard, 17);
+        assert_eq!(standard_attempts.load(std::sync::atomic::Ordering::SeqCst), 2);
+
+        let send_attempts = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let callback_attempts = send_attempts.clone();
+        let send = db
+            .transaction_send(move || {
+                let attempts = callback_attempts.clone();
+                async move {
+                    if attempts.fetch_add(1, std::sync::atomic::Ordering::SeqCst) == 0 {
+                        Err(transaction_conflict("retry Send callback"))
+                    } else {
+                        Ok(23)
+                    }
+                }
+            })
+            .retry(1)
+            .await
+            .expect("Send transaction retries a deadlock");
         assert_eq!(send, 23);
+        assert_eq!(send_attempts.load(std::sync::atomic::Ordering::SeqCst), 2);
         db.close().await;
     }
 
