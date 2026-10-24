@@ -30,6 +30,7 @@
 #include "registry_native.h"
 #include "aes_keyring.h"
 #include "aes_utils.h"
+#include "privilege_utils.h"
 
 /* Holds one method's arena. */
 #define ENTER() dbs_arena arena_; dbs_arena *saved_; dbs_enter(&arena_, &saved_)
@@ -2681,6 +2682,7 @@ static PHP_MINIT_FUNCTION(polyspec_orm)
     aes_keyring_set_class(register_class_Polyspec_Orm_AesKeyring());
     aes_rotation_status_set_class(register_class_Polyspec_Orm_AesRotationStatus());
     aes_utils_set_class(register_class_Polyspec_Orm_AesUtils());
+    privilege_utils_set_class(register_class_Polyspec_Orm_PrivilegeUtils());
     register_class_Polyspec_Orm_Codec();
     register_class_Polyspec_Orm_Validator();
     register_class_Polyspec_Orm_Planner();

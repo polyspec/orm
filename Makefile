@@ -2472,7 +2472,7 @@ native-arginfo-php-extension-check: php-vendor-check php-models
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh "$$run_dir/php-extension/polyspec_orm.so"; \
-	env ORM_PHP_MODE=extension ORM_PHP_DYNAMIC_MODULES='$(ORM_PHP_DYNAMIC_MODULES)' $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ArginfoBuildTest.php packages/php-ext/tests/DeclarationsTest.php packages/php-ext/tests/ModelNativeTest.php packages/php-ext/tests/CollectionTest.php packages/php-ext/tests/OrmExceptionNativeTest.php packages/php-ext/tests/AesUtilsNativeTest.php
+	env ORM_PHP_MODE=extension ORM_PHP_DYNAMIC_MODULES='$(ORM_PHP_DYNAMIC_MODULES)' $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ArginfoBuildTest.php packages/php-ext/tests/DeclarationsTest.php packages/php-ext/tests/ModelNativeTest.php packages/php-ext/tests/CollectionTest.php packages/php-ext/tests/OrmExceptionNativeTest.php packages/php-ext/tests/AesUtilsNativeTest.php packages/php-ext/tests/PrivilegeUtilsNativeTest.php
 
 # dbspec-php-extension-check/declarations runs the extension's own checks (packages/php-ext/tests): its declarations against the stub and the
 # PHP client, its required modules and its PIE package.

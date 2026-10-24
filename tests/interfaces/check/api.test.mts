@@ -88,6 +88,23 @@ caseTest('the native connection factory API is bound by the PHP extension', COMP
   );
 });
 
+caseTest('the native privilege utilities API is bound by the PHP extension', COMPUTE, () => {
+  const units = new Map((readParity(root).units ?? []).map(unit => [unit.id, unit]));
+  for (const [id, symbol] of [
+    ['client-privilege-utils', 'Polyspec\\Orm\\PrivilegeUtils'],
+    ['client-privilege-utils-grant-table', 'Polyspec\\Orm\\PrivilegeUtils::grantTable'],
+    ['client-privilege-utils-inspect-table', 'Polyspec\\Orm\\PrivilegeUtils::inspectTable'],
+    ['client-privilege-utils-revoke-table', 'Polyspec\\Orm\\PrivilegeUtils::revokeTable'],
+  ]) {
+    const unit = units.get(id);
+    assert.ok(unit, `${id} API unit is missing`);
+    assert.ok(
+      unit.symbols?.some(entry => entry.implementation === 'php-extension' && entry.symbol === symbol),
+      `${id} does not bind the native ${symbol} symbol`,
+    );
+  }
+});
+
 caseTest('the API units of the error catalog cover every code of errors.yaml once', COMPUTE, () => {
   const parity = readParity(root);
   const codes = readErrorCatalog(root);

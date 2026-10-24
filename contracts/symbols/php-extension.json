@@ -3219,6 +3219,34 @@
     "exported": true,
     "signature": "public function compile(array $r): array"
   },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\PrivilegeUtils": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\PrivilegeUtils extends  implements  uses "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\PrivilegeUtils::$db": {
+    "exported": false,
+    "signature": "private readonly Polyspec\\Orm\\Db"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\PrivilegeUtils::$u": {
+    "exported": false,
+    "signature": "private readonly Polyspec\\Orm\\Utils"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\PrivilegeUtils::__construct": {
+    "exported": true,
+    "signature": "public function __construct(Polyspec\\Orm\\Db $db, Polyspec\\Orm\\Utils $u): "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\PrivilegeUtils::grantTable": {
+    "exported": true,
+    "signature": "public function grantTable(string $table, string $role): void"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\PrivilegeUtils::inspectTable": {
+    "exported": true,
+    "signature": "public function inspectTable(string $table): array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\PrivilegeUtils::revokeTable": {
+    "exported": true,
+    "signature": "public function revokeTable(string $table, string $privilege, string $role): void"
+  },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Registry": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Registry extends  implements  uses "

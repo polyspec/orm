@@ -19228,6 +19228,10 @@
           "symbol": "Polyspec\\Orm\\PrivilegeUtils::grantTable"
         },
         {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\PrivilegeUtils::grantTable"
+        },
+        {
           "implementation": "typescript",
           "symbol": "@polyspec/orm!PrivilegeUtils#grantTable:member(1)"
         },
@@ -19257,6 +19261,10 @@
           "symbol": "Polyspec\\Orm\\PrivilegeUtils::inspectTable"
         },
         {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\PrivilegeUtils::inspectTable"
+        },
+        {
           "implementation": "typescript",
           "symbol": "@polyspec/orm!PrivilegeUtils#inspectTable:member(1)"
         },
@@ -19283,6 +19291,10 @@
         },
         {
           "implementation": "php",
+          "symbol": "Polyspec\\Orm\\PrivilegeUtils::revokeTable"
+        },
+        {
+          "implementation": "php-extension",
           "symbol": "Polyspec\\Orm\\PrivilegeUtils::revokeTable"
         },
         {
@@ -19799,6 +19811,10 @@
         },
         {
           "implementation": "php",
+          "symbol": "Polyspec\\Orm\\PrivilegeUtils"
+        },
+        {
+          "implementation": "php-extension",
           "symbol": "Polyspec\\Orm\\PrivilegeUtils"
         },
         {

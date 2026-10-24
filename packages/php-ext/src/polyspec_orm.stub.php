@@ -1008,6 +1008,22 @@ final class AesUtils
     public function rotate(Model $model, AesKeyring $keyring): int {}
 }
 
+/** Native PostgreSQL table privilege operations. */
+final class PrivilegeUtils
+{
+    private readonly Db $db;
+    private readonly Utils $u;
+
+    public function __construct(Db $db, Utils $u) {}
+
+    public function grantTable(string $table, string $role): void {}
+
+    public function revokeTable(string $table, string $privilege, string $role): void {}
+
+    /** @return array{insert: bool, select: bool, update: bool, delete: bool, truncate: bool} */
+    public function inspectTable(string $table): array {}
+}
+
 namespace Polyspec\Orm;
 
 /**
