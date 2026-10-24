@@ -2027,6 +2027,21 @@ static zend_string *with_where(pctx *c, pbinds *b, pscope *root, HashTable *q, b
     return sql;
 }
 
+/* Adds the soft-delete predicate shared by ordinary and scalar-subquery selects. */
+static bool add_soft_delete_filter(pctx *c, pscope *root, zval *where)
+{
+    zend_string *soft = gs(c, root->ent, "soft_delete");
+    if (ZSTR_LEN(soft) == 0) {
+        return true;
+    }
+    zend_string *column = qcol(c, root, soft);
+    if (column == NULL) {
+        return false;
+    }
+    lpushs(where, fmt(c, "%s IS NULL", ZSTR_VAL(column)));
+    return true;
+}
+
 /* Planner::subSelect: a subquery for an IN list or a scalar column; ^ references resolve against outer. */
 static zend_string *sub_select(pctx *c, pbinds *b, pscope *outer, HashTable *sub)
 {
@@ -2062,12 +2077,7 @@ static zend_string *sub_select(pctx *c, pbinds *b, pscope *outer, HashTable *sub
     OKP(joins);
     sql = fmt(c, "%s%s", ZSTR_VAL(sql), ZSTR_VAL(joins));
     zval *where = newlist(c);
-    zend_string *soft = gs(c, root->ent, "soft_delete");
-    if (ZSTR_LEN(soft) > 0) {
-        zend_string *sq = qcol(c, root, soft);
-        OKP(sq);
-        lpushs(where, fmt(c, "%s IS NULL", ZSTR_VAL(sq)));
-    }
+    if (!add_soft_delete_filter(c, root, where)) return NULL;
     sql = with_where(c, b, root, q, true, where, sql);
     if (sql == NULL) {
         return NULL;
@@ -2220,12 +2230,7 @@ static pstep *select_step(pctx *c, zval *steps, HashTable *q, const char *kind, 
             lpushs(where, fmt(c, "(%s) IN ((%s))", ZSTR_VAL(implode(c, ", ", Z_ARRVAL_P(pq))), ZSTR_VAL(ph)));
         }
     }
-    zend_string *soft = gs(c, root->ent, "soft_delete");
-    if (ZSTR_LEN(soft) > 0) {
-        zend_string *sq = qcol(c, root, soft);
-        OKP(sq);
-        lpushs(where, fmt(c, "%s IS NULL", ZSTR_VAL(sq)));
-    }
+    if (!add_soft_delete_filter(c, root, where)) return NULL;
     sql = with_where(c, b, root, q, rc == NULL, where, sql);
     if (sql == NULL) {
         return NULL;
