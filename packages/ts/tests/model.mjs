@@ -18,17 +18,8 @@ import {
 import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
 import { DATABASE, sections } from '../../../tests/testcase.mts';
 import { installBench } from './bench-set.mjs';
-import { caseName, mysqlConnection, postgresClient, relatedDsn, withCaseDatabase } from './case-database.mjs';
+import { mysqlConnection, postgresClient, relatedDsn, withCaseDatabase } from './case-database.mjs';
 import { schemaOf } from './schema_of.mjs';
-
-/** Drops the table of a case through the pooler's single database; a failure names the table. */
-async function dropPoolerTable(dsn, table) {
-  const client = postgresClient(dsn);
-  await client.connect();
-  try { await client.query(`DROP TABLE IF EXISTS "${table}"`); } catch (error) {
-    throw new Error(`drop table ${table}: ${error.message}`, { cause: error });
-  } finally { await client.end(); }
-}
 const root = new URL('../../..', import.meta.url).pathname;
 const args = process.argv.slice(2);
 if (args.length !== 0 && (args.length !== 4 || args[0] !== '--case' || args[1] !== 'styledStates' || args[2] !== '--dialect' || !['sqlite', 'mysql', 'postgres'].includes(args[3]))) {
@@ -698,59 +689,6 @@ try {
     }
   }
   if (selectedCase === undefined) {
-  {
-    // A pooler in transaction mode hands one server session to every client
-    // in turn. Through ORM_TEST_PGBOUNCER_SINGLE_DSN every client shares one
-    // server connection, so the statement timeout of one connection must
-    // bound only the statements of that connection.
-    // PgBouncer's orm_test_single reaches only one fixed database, so it cannot use a new case database.
-    // Instead, the case creates one table named after itself (orm_case_<pid>_<counter>) in that database, and when it ends,
-    // even after a failure, it drops only that table.
-    begin('postgres/statementTimeoutThroughAPooler');
-    try {
-      const single = process.env.ORM_TEST_PGBOUNCER_SINGLE_DSN;
-      if (!single) throw new Error('ORM_TEST_PGBOUNCER_SINGLE_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers');
-      const table = caseName();
-      const probeText = `dbspec 1 pooler_probe\n\ntable ${table} {\n  seq i64 identity\n  label varchar(32)\n  primary key (seq)\n}\n`;
-      const { [table]: Probe } = documentModels(probeText);
-      const probe = schemaOf(probeText);
-      const setup = await Db.connect(single);
-      try {
-        await setup.utils().schema().install(probe);
-        caseLog.step(`table ${table} created`);
-        for (let i = 0; i < 4; i++) {
-          const row = new Probe().connect(setup);
-          row[CORE].setValue('label', `row-${i}`);
-          await row.create();
-        }
-        const bounded = await Db.connect(single, { statementTimeoutMs: 200 });
-        const plain = await Db.connect(single, {});
-        // A direct connection holds the rows, so a locking read through the pooler waits for the lock.
-        const base = process.env.ORM_TEST_POSTGRES_DSN;
-        let release = await holdRows('postgres', base, table);
-        try {
-          await bounded.utils().schema().install(probe);
-          await plain.utils().schema().install(probe);
-          check(await code(lockedRead(bounded, Probe)) === 'CANCELED', 'the bounded connection through the pooler');
-          // The holder keeps the rows for a declared 400 ms, past the 200 ms bound of the other
-          // connection, so the plain read waits that long and then succeeds.
-          const held = setTimeout(() => { release(); }, 400);
-          const started = Date.now();
-          try {
-            await lockedRead(plain, Probe);
-            check(Date.now() - started >= 200, 'a connection without a timeout after the bounded one waits past the bound');
-          } catch (error) { check(false, `a connection without a timeout after the bounded one: ${error.message}`); } finally { clearTimeout(held); await release(); }
-          release = await holdRows('postgres', base, table);
-          check(await code(lockedRead(bounded, Probe)) === 'CANCELED', 'the bounded connection after the plain one');
-        } finally { await release(); await bounded.close(); await plain.close(); }
-      } finally {
-        await setup.close();
-        await dropPoolerTable(single, table);
-        caseLog.step(`table ${table} dropped`);
-      }
-    } catch (error) { failures++; console.error(`FAIL ${current}:`, error); }
-    end();
-  }
   for (const dialect of dialects) {
     begin(`${dialect}/cancellation`);
     await inCaseDatabase(dialect, async dsn => {

@@ -8028,6 +8028,46 @@
       ]
     },
     {
+      "id": "connection-statement-timeout-through-pooler",
+      "kind": "feature",
+      "requirements": [
+        "CFG-27",
+        "CFG-29"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/timezone_test.go",
+          "id": "TestStatementTimeoutThroughAPooler"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testStatementTimeoutThroughAPooler"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConnectionStatementTimeoutNativeTest.php",
+          "id": "ConnectionStatementTimeoutNativeTest::testNativeStatementTimeoutIsIsolatedByTransactionPooler"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/statement_timeout.mjs",
+          "id": "connection/statement-timeout-through-pooler"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/connection_config.py",
+          "id": "test_statement_timeout_through_a_pooler"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/zone.rs",
+          "id": "statement_timeout_through_a_pooler"
+        }
+      ]
+    },
+    {
       "id": "connection-statement-timeout-negative-refused",
       "kind": "feature",
       "requirements": [
@@ -12204,21 +12244,7 @@
         }
       ]
     },
-    {
-      "id": "rust-statement-timeout-through-a-pooler",
-      "kind": "feature",
-      "requirements": [
-        "CFG-27",
-        "CFG-29"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/zone.rs",
-          "id": "statement_timeout_through_a_pooler"
-        }
-      ]
-    },
+
     {
       "id": "rust-dbspec-set-nested-json-rules",
       "kind": "feature",
@@ -13191,22 +13217,7 @@
         }
       ]
     },
-    {
-      "id": "py-connection-config",
-      "kind": "feature",
-      "requirements": [
-        "CFG-6",
-        "CFG-27",
-        "CFG-29"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/connection_config.py",
-          "id": "test_statement_timeout_through_a_pooler"
-        }
-      ]
-    },
+
 
 
     {
@@ -15618,21 +15629,7 @@
       ]
     },
 
-    {
-      "id": "php-internal-model-statement-timeout-through-a-pooler",
-      "kind": "feature",
-      "requirements": [
-        "CFG-27",
-        "CFG-29"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testStatementTimeoutThroughAPooler"
-        }
-      ]
-    },
+
     {
       "id": "php-internal-model-install-inside-a-transaction",
       "kind": "feature",

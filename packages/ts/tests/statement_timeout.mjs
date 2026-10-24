@@ -1,10 +1,61 @@
 // CFG-6: MySQL and PostgreSQL cancel statements that exceed their configured
 // connection timeout, then keep the connection usable. Each case owns and
 // removes a fresh database through case-database.mjs.
-import { Author, Service, ServiceMember, ServiceRegion, User, connect } from '../dist/index.js';
+import {
+  Author, CORE, Db, Model, Service, ServiceMember, ServiceRegion, User, connect,
+  dbspecManifest, parseDbspec, registerModel,
+} from '../dist/index.js';
 import { caseTest, COMPUTE, DATABASE } from '../../../tests/testcase.mts';
 import { installBench } from './bench-set.mjs';
-import { mysqlConnection, postgresClient, withCaseDatabase } from './case-database.mjs';
+import { caseName, mysqlConnection, postgresClient, withCaseDatabase } from './case-database.mjs';
+import { schemaOf } from './schema_of.mjs';
+
+function documentModel(text) {
+  const { manifest } = dbspecManifest([parseDbspec(text, {}).document]);
+  const model = registerModel(manifest.manifestText, manifest.manifestHash);
+  const [entity] = model.entities.values();
+  const Probe = class extends Model {};
+  Probe.entity = { model, entity, create: core => new Probe(core) };
+  return Probe;
+}
+
+async function holdPoolerRows(dsn, table) {
+  const client = postgresClient(dsn);
+  await client.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query(`UPDATE "${table}" SET "seq" = "seq"`);
+  } catch (error) {
+    const cleanupErrors = [];
+    try { await client.query('ROLLBACK'); } catch (cleanup) { cleanupErrors.push(cleanup); }
+    try { await client.end(); } catch (cleanup) { cleanupErrors.push(cleanup); }
+    if (cleanupErrors.length) throw new AggregateError([error, ...cleanupErrors], 'locking rows and cleaning up failed');
+    throw error;
+  }
+  let released = false;
+  return async () => {
+    if (released) return;
+    released = true;
+    const failures = [];
+    try { await client.query('ROLLBACK'); } catch (error) { failures.push(error); }
+    try { await client.end(); } catch (error) { failures.push(error); }
+    if (failures.length) throw new AggregateError(failures, 'rolling back and closing the PostgreSQL lock connection failed');
+  };
+}
+
+async function dropPoolerTable(dsn, table) {
+  const client = postgresClient(dsn);
+  await client.connect();
+  try {
+    await client.query(`DROP TABLE IF EXISTS "${table}"`);
+  } finally {
+    await client.end();
+  }
+}
+
+async function lockedReadModel(db, ModelClass) {
+  await db.transaction(async () => { await new ModelClass().forUpdate().get(); }, { retry: 0 });
+}
 
 async function seed(db) {
   const service = await new Service().connect(db).setName('timeout-service').create();
@@ -129,4 +180,90 @@ caseTest('connection/statement-timeout-canceled', DATABASE, async ({ step }) => 
   for (const dialect of ['mysql', 'postgres']) {
     await withCaseDatabase(dialect, step, database => verifyDialect(dialect, database, step));
   }
+});
+
+// Requirements: CFG-27, CFG-29. This verifies the pooler applies the tracked timeout
+// to the bounded client, while a client without a timeout keeps the server default.
+caseTest('connection/statement-timeout-through-pooler', DATABASE, async ({ step }) => {
+  const single = process.env.ORM_TEST_PGBOUNCER_SINGLE_DSN;
+  const base = process.env.ORM_TEST_POSTGRES_DSN;
+  if (!single) throw new Error('ORM_TEST_PGBOUNCER_SINGLE_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers');
+  if (!base) throw new Error('ORM_TEST_POSTGRES_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers');
+  const table = caseName();
+  const probeText = `dbspec 1 pooler_probe\n\ntable ${table} {\n  seq i64 identity\n  label varchar(32)\n  primary key (seq)\n}\n`;
+  const Probe = documentModel(probeText);
+  const schema = schemaOf(probeText);
+  let setup;
+  let bounded;
+  let plain;
+  let release;
+  let primaryFailure;
+  try {
+    setup = await Db.connect(single);
+    await setup.utils().schema().install(schema);
+    for (let i = 0; i < 4; i++) {
+      const row = new Probe().connect(setup);
+      row[CORE].setValue('label', `probe-${i}`);
+      await row.create();
+    }
+    step(`table ${table} created`);
+    bounded = await Db.connectSchema(single, schema, { statementTimeoutMs: 200 });
+    plain = await Db.connectSchema(single, schema);
+    release = await holdPoolerRows(base, table);
+    try {
+      await lockedReadModel(bounded, Probe);
+      throw new Error('the bounded connection through the pooler completed its locked read');
+    } catch (error) {
+      if (error?.code !== 'CANCELED') throw error;
+    }
+    await release();
+    release = undefined;
+    const count = await new Probe().connect(bounded).getCount();
+    if (count !== 4) throw new Error(`the bounded connection returned ${count} rows after its timed out statement, expected 4`);
+    step('the bounded client timed out and reused its connection');
+
+    release = await holdPoolerRows(base, table);
+    let releasePromise;
+    let releaseFailure;
+    const releaseOnce = () => {
+      releasePromise ??= release();
+      return releasePromise;
+    };
+    const held = setTimeout(() => { releaseOnce().catch(error => { releaseFailure = error; }); }, 400);
+    const started = Date.now();
+    try {
+      await lockedReadModel(plain, Probe);
+      if (Date.now() - started < 200) throw new Error('the plain client did not wait past the bounded client timeout');
+    } finally {
+      clearTimeout(held);
+      await releaseOnce();
+      release = undefined;
+    }
+    if (releaseFailure) throw releaseFailure;
+    step('the unbounded client waited past the bounded client timeout');
+
+    release = await holdPoolerRows(base, table);
+    try {
+      await lockedReadModel(bounded, Probe);
+      throw new Error('the bounded client stopped enforcing its timeout after the plain client');
+    } catch (error) {
+      if (error?.code !== 'CANCELED') throw error;
+    }
+    await release();
+    release = undefined;
+  } catch (error) {
+    primaryFailure = error;
+  } finally {
+    const cleanupErrors = [];
+    if (release) try { await release(); } catch (error) { cleanupErrors.push(error); }
+    if (bounded) try { await bounded.close(); } catch (error) { cleanupErrors.push(error); }
+    if (plain) try { await plain.close(); } catch (error) { cleanupErrors.push(error); }
+    if (setup) try { await setup.close(); } catch (error) { cleanupErrors.push(error); }
+    try { await dropPoolerTable(single, table); step(`table ${table} dropped`); } catch (error) { cleanupErrors.push(error); }
+    if (cleanupErrors.length) {
+      if (primaryFailure) throw new AggregateError([primaryFailure, ...cleanupErrors], 'pooler timeout test and cleanup failed');
+      throw new AggregateError(cleanupErrors, 'pooler timeout test cleanup failed');
+    }
+  }
+  if (primaryFailure) throw primaryFailure;
 });
