@@ -328,4 +328,13 @@ final class DbspecPlanTest extends TestCase
         $this->expectExceptionMessage('oracle');
         Dbspec::planSteps(null, $plan, 'oracle');
     }
+
+    public function testFreshConnectionRulesCoverEveryDatabase(): void
+    {
+        self::assertSame([
+            'mysql' => ["SET time_zone = '+00:00'"],
+            'postgres' => ["SET TimeZone = 'UTC'"],
+            'sqlite' => ['PRAGMA foreign_keys = ON'],
+        ], dbspec_connection_rules());
+    }
 }

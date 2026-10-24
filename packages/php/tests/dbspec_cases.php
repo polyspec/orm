@@ -4,6 +4,16 @@ declare(strict_types=1);
 
 use PHPUnit\Framework\Assert;
 
+/** The statements that each dbspec test runs on a fresh connection to its selected database. */
+function dbspec_connection_rules(): array
+{
+    return [
+        'mysql' => ["SET time_zone = '+00:00'"],
+        'postgres' => ["SET TimeZone = 'UTC'"],
+        'sqlite' => ['PRAGMA foreign_keys = ON'],
+    ];
+}
+
 // Checks dbspec cases in the shape of tests/dbspec/cases.json with the PHPUnit
 // assertions; the test classes run each case as one data set named by its id.
 

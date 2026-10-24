@@ -28,13 +28,6 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
 
-// The statement that every client runs on a new connection.
-const PLAN_CONNECTION_RULES = [
-    'mysql' => ["SET time_zone = '+00:00'"],
-    'postgres' => ["SET TimeZone = 'UTC'"],
-    'sqlite' => ['PRAGMA foreign_keys = ON']
-];
-
 /** The DSNs of the servers; the test fails when either is unset. */
 function plan_dsns(): array
 {
@@ -228,7 +221,7 @@ final class DbspecPlanApplyTest extends TestCase
             }
         };
         try {
-            foreach ([...PLAN_CONNECTION_RULES[$dialect], ...$setup] as $statement) {
+            foreach ([...dbspec_connection_rules()[$dialect], ...$setup] as $statement) {
                 $pdo->exec($statement);
             }
             plan_steps($pdo, $dialect, $case['before'] ?? []);

@@ -31,13 +31,6 @@ use PHPUnit\Framework\TestCase;
 
 // The number of catalog queries per dialect, independent of the table count (docs/spec/dialects.md "Introspection").
 const QUERY_COUNTS = ['mysql' => 9, 'postgres' => 7, 'sqlite' => 3];
-// The statement that every client runs on a new connection.
-const INTROSPECT_CONNECTION_RULES = [
-    'mysql' => ["SET time_zone = '+00:00'"],
-    'postgres' => ["SET TimeZone = 'UTC'"],
-    'sqlite' => ['PRAGMA foreign_keys = ON']
-];
-
 /** The DSNs of the servers; the test fails when either is unset. */
 function introspect_dsns(): array
 {
@@ -173,7 +166,7 @@ function introspect_applied(string $dialect, array $statements): array
 {
     [$pdo, $drop, $name] = open_database($dialect);
     try {
-        foreach ([...INTROSPECT_CONNECTION_RULES[$dialect], ...$statements] as $statement) {
+        foreach ([...dbspec_connection_rules()[$dialect], ...$statements] as $statement) {
             $pdo->exec(str_replace('{schema}', $name, $statement));
         }
         $pdo->queries = 0;
