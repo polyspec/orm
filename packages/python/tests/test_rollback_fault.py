@@ -108,7 +108,7 @@ class RollbackFaultTest(unittest.TestCase):
             f"ROLLBACK: transaction failed ({error.cause}) and rollback failed ({error.rollback})",
         )
 
-    # Requirements: INT-72, DIA-180.
+    # Requirements: INT-72.
     def test_the_fault_reports_the_next_failed_rollback(self):
         fail_next_rollback(self.db)
         committed = self.raised(
@@ -168,7 +168,7 @@ class RollbackFaultTest(unittest.TestCase):
         self.check_rollback(error, "transaction")
         self.assertEqual(error.rollback.code, "FAULT")
 
-    # Requirements: INT-72, DIA-180.
+    # Requirements: INT-72.
     def test_a_failed_rollback_reports_the_callback_error_and_the_rollback_error(self):
         with sqlite3.connect(self.path) as conn:
             conn.execute(

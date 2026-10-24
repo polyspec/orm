@@ -2494,7 +2494,7 @@ transaction-failure-php-extension-check: php-vendor-check php-models orm-install
 # dbspec-php-extension-check/silent-paths runs silent_paths.php with the extension alone (php -n, no library class): a call that must fail with an OrmException must throw, not return silently (T182-2-4).
 
 transaction-failure-go-check:
-	$(NODE) tests/go-test.mts -v -timeout 0 -tags=ormtest ./packages/go/orm $(if $(TRANSACTION_FAILURE_GO_TEST_FILTER),-run '$(TRANSACTION_FAILURE_GO_TEST_FILTER)',-run '^TestTransactionFailure(Rollback|SavepointEnd)$$|^TestTransactionFailureRollbackFault$$') -count=1
+	$(NODE) tests/go-test.mts -v -timeout 0 -tags=ormtest ./packages/go/orm $(if $(TRANSACTION_FAILURE_GO_TEST_FILTER),-run '$(TRANSACTION_FAILURE_GO_TEST_FILTER)',-run '^TestTransactionFailure(Rollback|SavepointEnd)$$|^TestRollbackFaultSQLite$$') -count=1
 
 # Runs the TypeScript transaction and savepoint cleanup failure cases against a temporary SQLite database.
 

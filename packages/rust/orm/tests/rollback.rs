@@ -303,7 +303,7 @@ async fn savepoint_rollback_failed_postgres() {
 }
 
 #[tokio::test]
-// Requirements: INT-72, DIA-180.
+// Requirements: INT-72.
 async fn rollback_fault_sqlite() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("sqlite", "rollback_fault").await;

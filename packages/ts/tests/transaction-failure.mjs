@@ -18,7 +18,7 @@ async function withDatabase(name, run) {
   }
 }
 
-// Requirements: INT-72, DIA-180.
+// Requirements: INT-72.
 caseTest('transaction-failure/rollback-primary-and-cleanup', DATABASE, async () => {
   await withDatabase('rollback.sqlite', async db => {
     const state = db.pool.state;
@@ -43,7 +43,7 @@ caseTest('transaction-failure/rollback-primary-and-cleanup', DATABASE, async () 
   });
 });
 
-// Requirements: INT-72, DIA-180.
+// Requirements: INT-72.
 caseTest('transaction-failure/rollback-fault-consumption', DATABASE, async () => {
   await withDatabase('rollback-fault.sqlite', async db => {
     const state = db.pool.state;

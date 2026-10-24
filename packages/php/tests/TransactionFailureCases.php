@@ -51,7 +51,7 @@ trait TransactionFailureCases
         );
     }
 
-    // Requirements: INT-72, DIA-180.
+    // Requirements: INT-72.
     public function testRollbackFaultIsConsumedAfterTransactionRollback(): void
     {
         require_once dirname(__DIR__) . '/testing/Faults.php';

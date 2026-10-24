@@ -12,7 +12,7 @@ use Polyspec\Orm\Db;
 use Polyspec\Orm\Tests\TransactionFailureCases;
 use ReflectionClass;
 
-// Requirements: INT-72, DIA-180, DIA-181, PLN-17.
+// Requirements: INT-72, DIA-181, PLN-17.
 final class TransactionFailureNativeTest extends TestCase
 {
     use TransactionFailureCases;

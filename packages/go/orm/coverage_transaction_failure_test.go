@@ -9,7 +9,7 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// Requirements: INT-72, DIA-180.
+// Requirements: INT-72.
 func TestTransactionFailureRollback(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	useFailingDriver(t, "sqlite")

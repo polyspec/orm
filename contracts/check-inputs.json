@@ -2190,7 +2190,6 @@
         "packages/go/orm/coverage_fixture_test.go",
         "packages/go/orm/schema_helpers_test.go",
         "packages/go/orm/rollback_fault_test.go",
-        "packages/go/orm/rollback_fault_behavior_test.go",
         "Makefile"
       ]
     },

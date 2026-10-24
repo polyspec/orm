@@ -164,10 +164,6 @@
           "reason": "fixture: an internal package test of the go module that reads the fixtures of the contract data, not a helper the contract names (K313)"
         },
         {
-          "glob": "packages/go/orm/rollback_fault_test.go",
-          "reason": "harness: an internal package test of the go module that checks the test harness of the owner, not a behaviour of the contract (K313)"
-        },
-        {
           "glob": "packages/go/orm/sqlite/sqlite_test.go",
           "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
@@ -21284,7 +21280,7 @@
     {
       "id": "transaction-failure-rollback",
       "kind": "feature",
-      "requirements": ["INT-72", "DIA-180"],
+      "requirements": ["INT-72"],
       "bindings": [
         {"implementation": "go", "test": "packages/go/orm/coverage_transaction_failure_test.go", "id": "TestTransactionFailureRollback"},
         {"implementation": "php", "test": "packages/php/tests/TransactionFailureTest.php", "id": "TransactionFailureTest::test_transaction_keeps_callback_and_failed_rollback_errors"},
@@ -21297,15 +21293,41 @@
     {
       "id": "transaction-failure-rollback-fault",
       "kind": "feature",
-      "requirements": ["INT-72", "DIA-180"],
+      "requirements": ["INT-72"],
       "bindings": [
-        {"implementation": "go", "test": "packages/go/orm/rollback_fault_behavior_test.go", "id": "TestTransactionFailureRollbackFault"},
+        {"implementation": "go", "test": "packages/go/orm/rollback_fault_test.go", "id": "TestRollbackFaultSQLite"},
         {"implementation": "php", "test": "packages/php/tests/TransactionFailureTest.php", "id": "TransactionFailureTest::test_rollback_fault_is_consumed_after_transaction_rollback"},
         {"implementation": "php-extension", "test": "packages/php-ext/tests/TransactionFailureNativeTest.php", "id": "TransactionFailureNativeTest::test_rollback_fault_is_consumed_after_transaction_rollback"},
         {"implementation": "typescript", "test": "packages/ts/tests/transaction-failure.mjs", "id": "transaction-failure/rollback-fault-consumption"},
         {"implementation": "python", "test": "packages/python/tests/test_rollback_fault.py", "id": "test_the_fault_reports_the_next_failed_rollback"},
         {"implementation": "rust", "test": "packages/rust/orm/tests/rollback.rs", "id": "rollback_fault_sqlite"}
       ]
+    },
+    {
+      "id": "go-rollback-fault-mysql",
+      "kind": "feature",
+      "requirements": ["PRT-43"],
+      "bindings": [
+        {"implementation": "go", "test": "packages/go/orm/rollback_fault_test.go", "id": "TestRollbackFaultMySQL"}
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "go-module",
+        "package": "github.com/polyspec/orm/packages/go"
+      }
+    },
+    {
+      "id": "go-rollback-fault-postgres",
+      "kind": "feature",
+      "requirements": ["PRT-43"],
+      "bindings": [
+        {"implementation": "go", "test": "packages/go/orm/rollback_fault_test.go", "id": "TestRollbackFaultPostgres"}
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "go-module",
+        "package": "github.com/polyspec/orm/packages/go"
+      }
     },
     {
       "id": "transaction-failure-savepoint-end",
