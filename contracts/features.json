@@ -8938,7 +8938,7 @@
                   "cases": [
                     "conformance_vector"
                   ],
-                  "symbols": {"conformance_vector": "testConformanceVector"},
+                  "symbols": {"conformance_vector": "testMysql"},
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
               ],
@@ -8949,7 +8949,7 @@
                   "cases": [
                     "conformance_vector"
                   ],
-                  "symbols": {"conformance_vector": "testConformanceVector"},
+                  "symbols": {"conformance_vector": "testPostgres"},
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
@@ -8960,7 +8960,7 @@
                   "cases": [
                     "conformance_vector"
                   ],
-                  "symbols": {"conformance_vector": "testConformanceVector"},
+                  "symbols": {"conformance_vector": "testSqlite"},
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]

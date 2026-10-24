@@ -43,6 +43,67 @@ final class CoverageConformanceVerificationExtensionTest extends TestCase
         return $environment;
     }
 
+    // Requirements: DSL-87.
+    public function testMysql(): void
+    {
+        $this->assertNativeConformanceVectors('mysql');
+    }
+
+    // Requirements: DSL-87.
+    public function testPostgres(): void
+    {
+        $this->assertNativeConformanceVectors('postgres');
+    }
+
+    // Requirements: DSL-87.
+    public function testSqlite(): void
+    {
+        $this->assertNativeConformanceVectors('sqlite');
+    }
+
+    private function assertNativeConformanceVectors(string $driver): void
+    {
+        Assert::assertTrue((new ReflectionClass(Model::class))->isInternal());
+        $variable = 'BENCH_' . strtoupper($driver) . '_DSN';
+        $dsn = getenv('ORM_FEATURE_DSN') ?: getenv($variable);
+        if (!is_string($dsn) || $dsn === '') {
+            throw new \RuntimeException(
+                "ORM_FEATURE_DSN or $variable is required to run the native conformance vectors"
+            );
+        }
+
+        $root = dirname(__DIR__, 3);
+        $file = $driver === 'mysql' ? 'vectors.json' : "vectors.$driver.json";
+        $recorded = coverageJson("$root/tests/conformance/$file", false);
+        $expected = [];
+        foreach ($recorded->vectors as $vector) {
+            if (isset($expected[$vector->name]) || $vector->expect === null) {
+                throw new \RuntimeException("$file: vector {$vector->name} is repeated or has no expectation");
+            }
+            $expected[$vector->name] = $vector->expect;
+        }
+
+        [$status, $stdout, $stderr] = coverageProcess(
+            self::childCommand("$root/packages/php/testing/conformance/runner.php", '--dsn', $dsn),
+            $root,
+            self::childEnvironment(),
+        );
+        if ($status !== 0) {
+            throw new \RuntimeException(
+                str_replace($dsn, '[dsn]', "native conformance child exited $status: $stderr$stdout")
+            );
+        }
+
+        $actual = json_decode($stdout, false, 512, JSON_THROW_ON_ERROR);
+        Assert::assertSame(array_keys($expected), array_keys(get_object_vars($actual)), "native {$driver} vector set");
+        foreach ($expected as $name => $expect) {
+            Assert::assertTrue(
+                \Polyspec\Orm\Tests\sameJson($actual->$name, $expect),
+                "native extension vector $name differs from $file",
+            );
+        }
+    }
+
     public function testConformanceChildLoadsTheNativeModelEntrypoint(): void
     {
         Assert::assertTrue((new ReflectionClass(Model::class))->isInternal());
