@@ -67,7 +67,37 @@ fn parameter_kind_is_shared_by_validation_and_postgres_type_selection() {
     for (value, expected) in &values {
         assert_eq!(value.param_type(), *expected);
     }
-    assert!(crate::tool_db::binds::postgres_types(&values.iter().map(|(value, _)| value.clone()).collect::<Vec<_>>()).is_err(), "PostgreSQL rejects unsigned values");
+    assert!(
+        crate::tool_db::binds::postgres_types(&values.iter().map(|(value, _)| value.clone()).collect::<Vec<_>>()).is_err(),
+        "PostgreSQL rejects unsigned values"
+    );
     let postgres_values: Vec<_> = values.iter().filter(|(_, kind)| *kind != ParamType::Unsigned).map(|(value, _)| value.clone()).collect();
     assert_eq!(crate::tool_db::binds::postgres_types(&postgres_values).unwrap().len(), postgres_values.len());
+}
+
+#[test]
+fn mysql_and_postgres_share_typed_binding_with_unsigned_policy() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    use sqlx::{Arguments, Execute};
+
+    let values = [P::S("value".into()), P::I(7), P::Unsigned(9), P::Null(ParamType::Unsigned)];
+    let mut mysql = crate::tool_db::binds::mysql(sqlx::query("SELECT ?, ?, ?, ?"), &values).unwrap();
+    let arguments = mysql.take_arguments().unwrap().unwrap();
+    assert_eq!(arguments.len(), 4);
+
+    let error = match crate::tool_db::binds::postgres(sqlx::query("SELECT $1, $2, $3"), &values) {
+        Ok(_) => panic!("PostgreSQL must reject unsigned values"),
+        Err(error) => error.to_string(),
+    };
+    assert!(error.contains("TOOL_BIND_INVALID"), "{error}");
+    assert!(!error.contains("9"), "{error}");
+    let null_unsigned_error = match crate::tool_db::binds::postgres(sqlx::query("SELECT $1"), &[P::Null(ParamType::Unsigned)]) {
+        Ok(_) => panic!("PostgreSQL must reject null unsigned values"),
+        Err(error) => error.to_string(),
+    };
+    assert!(null_unsigned_error.contains("TOOL_BIND_INVALID"), "{null_unsigned_error}");
+
+    let valid = [P::S("value".into()), P::I(7)];
+    let mut postgres = crate::tool_db::binds::postgres(sqlx::query("SELECT $1, $2"), &valid).unwrap();
+    assert_eq!(postgres.take_arguments().unwrap().unwrap().len(), 2);
 }

@@ -1,6 +1,6 @@
-use super::{params, ParamType, P};
+use super::{P, ParamType, params};
 use polyspec_orm::chrono::{NaiveDate, NaiveDateTime, NaiveTime};
-use sqlx::{mysql::MySqlArguments, postgres::PgArguments, query::Query, sqlite::SqliteArguments, MySql, Postgres, Sqlite};
+use sqlx::{MySql, Postgres, Sqlite, mysql::MySqlArguments, postgres::PgArguments, query::Query, sqlite::SqliteArguments};
 
 pub(super) fn postgres_types(values: &[P]) -> Result<Vec<sqlx::postgres::PgTypeInfo>, sqlx::Error> {
     use sqlx::Type;
@@ -25,67 +25,49 @@ pub(super) fn postgres_types(values: &[P]) -> Result<Vec<sqlx::postgres::PgTypeI
         .collect()
 }
 
-pub(super) fn mysql<'q>(mut q: Query<'q, MySql, MySqlArguments>, values: &[P]) -> Result<Query<'q, MySql, MySqlArguments>, sqlx::Error> {
-    for value in values {
-        q = match value {
-            P::S(v) => q.bind(v.clone()),
-            P::I(v) => q.bind(*v),
-            P::Unsigned(v) => q.bind(*v),
-            P::Float32(v) => q.bind(f32::from_bits(*v)),
-            P::Float64(v) => q.bind(f64::from_bits(*v)),
-            P::Decimal(v) => q.bind(params::decimal(v)?),
-            P::Boolean(v) => q.bind(*v),
-            P::Binary(v) => q.bind(v.clone()),
-            P::Date(v) => q.bind(params::date(v)?),
-            P::Time(v) => q.bind(params::time(v)?),
-            P::DateTime(v) => q.bind(params::datetime(v)?),
+macro_rules! bind_values {
+    (@unsigned mysql $q:ident $value:ident) => { $q.bind(*$value) };
+    (@unsigned postgres $q:ident $value:ident) => {{ let _ = $value; return Err(params::invalid()) }};
+    (@null_unsigned mysql $q:ident) => { $q.bind(None::<u64>) };
+    (@null_unsigned postgres $q:ident) => { return Err(params::invalid()) };
+    ($kind:ident, $q:ident, $values:expr) => {{
+    for value in $values {
+        $q = match value {
+            P::S(v) => $q.bind(v.clone()),
+            P::I(v) => $q.bind(*v),
+            P::Unsigned(v) => bind_values!(@unsigned $kind $q v),
+            P::Float32(v) => $q.bind(f32::from_bits(*v)),
+            P::Float64(v) => $q.bind(f64::from_bits(*v)),
+            P::Decimal(v) => $q.bind(params::decimal(v)?),
+            P::Boolean(v) => $q.bind(*v),
+            P::Binary(v) => $q.bind(v.clone()),
+            P::Date(v) => $q.bind(params::date(v)?),
+            P::Time(v) => $q.bind(params::time(v)?),
+            P::DateTime(v) => $q.bind(params::datetime(v)?),
             P::Null(kind) => match kind {
-                ParamType::Date => q.bind(None::<NaiveDate>),
-                ParamType::Time => q.bind(None::<NaiveTime>),
-                ParamType::DateTime => q.bind(None::<NaiveDateTime>),
-                ParamType::Text => q.bind(None::<String>),
-                ParamType::Integer => q.bind(None::<i64>),
-                ParamType::Unsigned => q.bind(None::<u64>),
-                ParamType::Float32 => q.bind(None::<f32>),
-                ParamType::Float64 => q.bind(None::<f64>),
-                ParamType::Decimal => q.bind(None::<bigdecimal::BigDecimal>),
-                ParamType::Boolean => q.bind(None::<bool>),
-                ParamType::Binary => q.bind(None::<Vec<u8>>),
+                ParamType::Date => $q.bind(None::<NaiveDate>),
+                ParamType::Time => $q.bind(None::<NaiveTime>),
+                ParamType::DateTime => $q.bind(None::<NaiveDateTime>),
+                ParamType::Text => $q.bind(None::<String>),
+                ParamType::Integer => $q.bind(None::<i64>),
+                ParamType::Unsigned => bind_values!(@null_unsigned $kind $q),
+                ParamType::Float32 => $q.bind(None::<f32>),
+                ParamType::Float64 => $q.bind(None::<f64>),
+                ParamType::Decimal => $q.bind(None::<bigdecimal::BigDecimal>),
+                ParamType::Boolean => $q.bind(None::<bool>),
+                ParamType::Binary => $q.bind(None::<Vec<u8>>),
             },
         };
     }
-    Ok(q)
+    Ok($q)
+    }};
+}
+
+pub(super) fn mysql<'q>(mut q: Query<'q, MySql, MySqlArguments>, values: &[P]) -> Result<Query<'q, MySql, MySqlArguments>, sqlx::Error> {
+    bind_values!(mysql, q, values)
 }
 pub(super) fn postgres<'q>(mut q: Query<'q, Postgres, PgArguments>, values: &[P]) -> Result<Query<'q, Postgres, PgArguments>, sqlx::Error> {
-    for value in values {
-        q = match value {
-            P::S(v) => q.bind(v.clone()),
-            P::I(v) => q.bind(*v),
-            P::Unsigned(_) => return Err(params::invalid()),
-            P::Float32(v) => q.bind(f32::from_bits(*v)),
-            P::Float64(v) => q.bind(f64::from_bits(*v)),
-            P::Decimal(v) => q.bind(params::decimal(v)?),
-            P::Boolean(v) => q.bind(*v),
-            P::Binary(v) => q.bind(v.clone()),
-            P::Date(v) => q.bind(params::date(v)?),
-            P::Time(v) => q.bind(params::time(v)?),
-            P::DateTime(v) => q.bind(params::datetime(v)?),
-            P::Null(kind) => match kind {
-                ParamType::Date => q.bind(None::<NaiveDate>),
-                ParamType::Time => q.bind(None::<NaiveTime>),
-                ParamType::DateTime => q.bind(None::<NaiveDateTime>),
-                ParamType::Text => q.bind(None::<String>),
-                ParamType::Integer => q.bind(None::<i64>),
-                ParamType::Unsigned => return Err(params::invalid()),
-                ParamType::Float32 => q.bind(None::<f32>),
-                ParamType::Float64 => q.bind(None::<f64>),
-                ParamType::Decimal => q.bind(None::<bigdecimal::BigDecimal>),
-                ParamType::Boolean => q.bind(None::<bool>),
-                ParamType::Binary => q.bind(None::<Vec<u8>>),
-            },
-        };
-    }
-    Ok(q)
+    bind_values!(postgres, q, values)
 }
 pub(super) fn sqlite<'q>(mut q: Query<'q, Sqlite, SqliteArguments>, values: &[P]) -> Result<Query<'q, Sqlite, SqliteArguments>, sqlx::Error> {
     for value in values {
