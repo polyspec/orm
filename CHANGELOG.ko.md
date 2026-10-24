@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 079704ead63f1ff5b2b96d2e1c3ec5464c8ad7566175040c17f76c68098a8101 -->
+<!-- source-sha256: 2ee607fc76140448068eb2301dae597874362b6e26cc47140a21c1b86d94f69d -->
 # 변경 이력
 
 ## Unreleased
+
+- result 형태 coverage가 여섯 client의 중립 제품 동작 다섯 가지를 묶는다: unselected, SQL NULL, encoded null을 구분하는 styled column 상태, `CODEC_DECODE`를 반환하는 잘못 저장된 grouped boolean, 정확한 grouped i64 값, 정확한 nonnegative row count (잘못된 값은 `CODEC_DECODE`, 빠진 `row_count`는 `INTERNAL`), key 순서와 저장된 숫자 표기를 보존하는 ordered-json Model 출력 텍스트다. TypeScript conformance-result 검사 5개는 host 전용 COD/helper 검사로 유지하고, 과거 Rust invalid-result conformance-helper binding 2개는 제거 상태를 유지한다. 집중 result target은 다섯 동작을 검증하고 Python conformance encoder helper는 별도 self-test로 확인한다. (KSTD-2-11-14)
 
 - Root page는 cached plan을 재사용하기 전에 잘못되었거나 안전 범위를 벗어난 offset/count 값을 거부한다(T236).
 

@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- Result-shape coverage binds five neutral product behaviors across all six clients: styled-column states including unselected, SQL NULL and encoded null; invalid stored grouped booleans (`CODEC_DECODE`); exact grouped i64 values; exact nonnegative row counts (`CODEC_DECODE`, with missing `row_count` as `INTERNAL`); and ordered-json Model output text preserving key order and stored number spelling. The five TypeScript conformance-result checks remain host-specific COD/helper tests, and two historical Rust invalid-result conformance-helper bindings remain removed. The focused result targets cover the five behaviors; the Python conformance encoder helper has a separate self-test. (KSTD-2-11-14)
+
 - Root pages reject malformed or unsafe offset/count values before reusing a cached plan (T236).
 
 - Column-function callers now return `INTERNAL` naming the missing source field after validation; public validation still returns `COLUMN_UNKNOWN`, and valid function result types and parameter uses are preserved. The actual pre-fix main regression at `cca1851d37ec` failed both predicate and selection planner cases. On source commit `1f2def8c6919`, `make item-test ID=KSTD-5-63-1` passes Go planner and IR (1 each), Rust (3), TypeScript (4), PHP (3 tests, 17 assertions), Python (2), and PHP extension mode (3 PHP tests, 17 assertions; 3 native tests, 29 assertions) (KSTD-5-63-1).
