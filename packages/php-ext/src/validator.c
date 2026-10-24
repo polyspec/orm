@@ -203,6 +203,24 @@ static bool col_of(vctx *c, HashTable *ent, const char *name, HashTable **out)
     return orm_runtime_column_lookup(c, runtime_column_resolve, ent, name, out);
 }
 
+/* Validate and register one projected column name shared by function and subquery outputs. */
+static bool add_projected_name(vctx *c, HashTable *ent, HashTable *outputs, zend_ulong idx, zend_string *key,
+    const char *entity, char nb[32], const char **out)
+{
+    const char *name = key != NULL ? ZSTR_VAL(key) : (snprintf(nb, 32, "%lu", (unsigned long)idx), nb);
+    name = kstrl(c, name, strlen(name));
+    HashTable *column;
+    if (!col_of(c, ent, name, &column)) {
+        return false;
+    }
+    if (column != NULL || set_has(outputs, name)) {
+        return fail("COLUMN_ALIAS_CONFLICT", "%s.%s is already a row name", entity, name);
+    }
+    set_add(outputs, name);
+    *out = name;
+    return true;
+}
+
 /* RuntimeModel::numeric($column). */
 static bool numeric(vctx *c, HashTable *col, bool *yes)
 {
@@ -1462,14 +1480,8 @@ static bool query(vctx *c, HashTable *q, const vat *at, bool is_join, bool is_re
         ZEND_HASH_FOREACH_KEY_VAL(arr_or_empty(ha(get(cols, "fn"))), idx, key, cf)
         {
             char nb[32];
-            const char *out = key != NULL ? ZSTR_VAL(key) : (snprintf(nb, sizeof(nb), "%lu", (unsigned long)idx), nb);
-            out = kstrl(c, out, strlen(out));
-            HashTable *x;
-            TRY(col_of(c, ent, out, &x));
-            if (x != NULL || set_has(outputs, out)) {
-                return fail("COLUMN_ALIAS_CONFLICT", "%s.%s is already a row name", entity, out);
-            }
-            set_add(outputs, out);
+            const char *out;
+            TRY(add_projected_name(c, ent, outputs, idx, key, entity, nb, &out));
             const char *ccol = str(c, ha(cf), "column", "");
             HashTable *col;
             TRY(col_of(c, ent, ccol, &col));
@@ -1483,14 +1495,8 @@ static bool query(vctx *c, HashTable *q, const vat *at, bool is_join, bool is_re
         ZEND_HASH_FOREACH_KEY_VAL(arr_or_empty(ha(get(cols, "sub"))), idx, key, cf)
         {
             char nb[32];
-            const char *out = key != NULL ? ZSTR_VAL(key) : (snprintf(nb, sizeof(nb), "%lu", (unsigned long)idx), nb);
-            out = kstrl(c, out, strlen(out));
-            HashTable *x;
-            TRY(col_of(c, ent, out, &x));
-            if (x != NULL || set_has(outputs, out)) {
-                return fail("COLUMN_ALIAS_CONFLICT", "%s.%s is already a row name", entity, out);
-            }
-            set_add(outputs, out);
+            const char *out;
+            TRY(add_projected_name(c, ent, outputs, idx, key, entity, nb, &out));
             TRY(sub(c, ha(cf), true, at->node));
         }
         ZEND_HASH_FOREACH_END();
