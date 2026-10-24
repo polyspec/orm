@@ -443,7 +443,9 @@ def row_key(row, refs):
 def _split_row_key(row, refs) -> str:
     """Identity for split-root merging; SQL NULL is not a valid merge key."""
     key = row_key(row, refs)
-    return key or ""
+    if key is None:
+        raise OrmError(codes.CODEC_DECODE, "split query row identity contains SQL NULL")
+    return key
 
 
 def key_of_values(values) -> str:

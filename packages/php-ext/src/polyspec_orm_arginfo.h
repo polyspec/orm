@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: 48d8240a07b001996ad07c2625bac52a04cefda4 */
+ * Stub hash: 320f2b3ea4bb8f9f4acbfa4c431c73f024445b9e */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Diagnostic___construct, 0, 0, 4)
 	ZEND_ARG_TYPE_INFO(0, rule, IS_STRING, 0)
@@ -847,7 +847,10 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Db_rowSlot, 0
 	ZEND_ARG_TYPE_INFO(0, refs, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
-#define arginfo_class_Polyspec_Orm_Db_splitRowSlot arginfo_class_Polyspec_Orm_Db_rowSlot
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Db_splitRowSlot, 0, 2, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, row, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO(0, refs, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Db_sameScalar, 0, 2, _IS_BOOL, 0)
 	ZEND_ARG_TYPE_INFO(0, a, IS_MIXED, 0)

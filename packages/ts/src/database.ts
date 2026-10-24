@@ -382,7 +382,8 @@ export function rowKey(row: readonly unknown[], refs: readonly KeyReference[]): 
 /** @internal The identity used only while merging split root queries. */
 export function splitRowKey(row: readonly unknown[], refs: readonly KeyReference[]): string {
   const key = rowKey(row, refs);
-  return key ?? '';
+  if (key === undefined) throw new OrmError(codes.CODEC_DECODE, 'split query row identity contains SQL NULL');
+  return key;
 }
 
 /** A collection key: an integer, a string, a boolean, bytes or a date; keys of different types never share an identity. */

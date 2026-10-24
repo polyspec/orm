@@ -42,6 +42,15 @@ final class ModelAssemblyTest extends TestCase
         }
         self::assertNotSame($splitRowSlot->invoke(null, [0], $refs), $splitRowSlot->invoke(null, [''], $refs));
         self::assertNotSame($splitRowSlot->invoke(null, [false], $refs), $splitRowSlot->invoke(null, [0], $refs));
+        $compositeRefs = [['column' => 'tenant_id', 'index' => 0], ['column' => 'enabled', 'index' => 1], ['column' => 'label', 'index' => 2]];
+        try {
+            $splitRowSlot->invoke(null, [0, null, ''], $compositeRefs);
+            self::fail('split root merge accepted SQL NULL in a composite identity');
+        } catch (OrmException $error) {
+            self::assertSame(Code::CODEC_DECODE, $error->code_);
+            self::assertSame('CODEC_DECODE: split query row identity contains SQL NULL', $error->getMessage());
+        }
+        self::assertNotSame($splitRowSlot->invoke(null, [0, false, ''], $compositeRefs), $splitRowSlot->invoke(null, [0, true, ''], $compositeRefs));
     }
 
     public function testFrameOwnsTheNativeJoinMapAndOuterPath(): void

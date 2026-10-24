@@ -440,8 +440,11 @@ async fn select(ex: &Executor, conn: &Option<Db>, req: &mut Req) -> Result<Query
     Ok(out)
 }
 
-fn split_row_key(row: &[Val], refs: &[crate::plan::KeyRef]) -> Result<Option<Key>> {
-    Key::of_row(row, refs)
+fn split_row_key(row: &[Val], refs: &[crate::plan::KeyRef]) -> Result<Key> {
+    Key::of_row(row, refs)?.ok_or_else(|| Error::Engine {
+        code: codes::CODEC_DECODE.into(),
+        msg: "split query row identity contains SQL NULL".into(),
+    })
 }
 
 // ---- assembly ----
@@ -1855,5 +1858,26 @@ mod related_tests {
         assert_ne!(zero, false_value);
         assert_ne!(zero, empty);
         assert_ne!(false_value, empty);
+
+        let composite_refs = [
+            crate::plan::KeyRef { column: "tenant_id".into(), index: 0 },
+            crate::plan::KeyRef { column: "enabled".into(), index: 1 },
+            crate::plan::KeyRef { column: "label".into(), index: 2 },
+        ];
+        let composite_error = match super::split_row_key(&[Val::I64(0), Val::Null, Val::Str(String::new())], &composite_refs) {
+            Err(error) => error,
+            Ok(_) => panic!("split root merge accepted SQL NULL in a composite identity"),
+        };
+        assert_eq!(composite_error.code(), codes::CODEC_DECODE);
+        assert!(composite_error.to_string().contains("split query row identity contains SQL NULL"));
+        let composite_false = super::split_row_key(
+            &[Val::I64(0), Val::Bool(false), Val::Str(String::new())],
+            &composite_refs,
+        ).unwrap();
+        let composite_true = super::split_row_key(
+            &[Val::I64(0), Val::Bool(true), Val::Str(String::new())],
+            &composite_refs,
+        ).unwrap();
+        assert_ne!(composite_false, composite_true);
     }
 }

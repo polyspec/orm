@@ -1972,7 +1972,10 @@ final class Db
     private static function splitRowSlot(array $row, array $refs): string
     {
         $key = self::rowSlot($row, $refs);
-        return $key ?? '';
+        if ($key === null) {
+            throw new OrmException(Code::CODEC_DECODE, 'split query row identity contains SQL NULL');
+        }
+        return $key;
     }
 
     public static function sameScalar(mixed $a, mixed $b): bool

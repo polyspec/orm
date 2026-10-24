@@ -1226,7 +1226,15 @@ static bool row_slot(zval *row, zval *refs, zval *out)
 
 static bool split_row_slot(zval *row, zval *refs, zval *out)
 {
-    return row_slot(row, refs, out);
+    if (!row_slot(row, refs, out)) {
+        return false;
+    }
+    if (Z_TYPE_P(out) == IS_NULL) {
+        zval_ptr_dtor(out);
+        throw_orm("CODEC_DECODE", "split query row identity contains SQL NULL");
+        return false;
+    }
+    return true;
 }
 
 /* ---- the connection: registration, the request hook, the statement entry checks ---- */
@@ -2690,16 +2698,14 @@ static bool select_impl(zval *self, zval *frame, zval *r, zval *out)
                     ok = false;
                     break;
                 }
-                zend_string *ks = Z_TYPE(key) == IS_NULL ? ZSTR_EMPTY_ALLOC() : zval_get_string(&key);
+                zend_string *ks = zval_get_string(&key);
                 if (zend_symtable_find(Z_ARRVAL(seen), ks) == NULL) {
                     zval t;
                     ZVAL_TRUE(&t);
                     zend_symtable_update(Z_ARRVAL(seen), ks, &t);
                     push(&main, row);
                 }
-                if (Z_TYPE(key) != IS_NULL) {
-                    zend_string_release(ks);
-                }
+                zend_string_release(ks);
                 zval_ptr_dtor(&key);
             }
             ZEND_HASH_FOREACH_END();

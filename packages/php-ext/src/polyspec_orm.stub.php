@@ -1053,7 +1053,7 @@ final class Db
     /** @internal */
     public static function rowSlot(array $row, array $refs): ?string {}
     /** @internal */
-    private static function splitRowSlot(array $row, array $refs): ?string {}
+    private static function splitRowSlot(array $row, array $refs): string {}
     /** @internal */
     public static function sameScalar(mixed $a, mixed $b): bool {}
     /** @internal */
