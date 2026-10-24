@@ -1788,6 +1788,17 @@
         "packages/ts/tests/database-case-tests.test.mjs"
       ]
     },
+    "dbspec-physical-database-helper-check": {
+      "scope": "owner",
+      "needs": [
+        "node-modules"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/ts/tests/dbspec-physical-database.mjs",
+        "packages/ts/tests/dbspec-physical-database.test.mjs"
+      ]
+    },
     "catalog-mutation-helper-python-check": {
       "scope": "owner",
       "needs": [

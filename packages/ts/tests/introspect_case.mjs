@@ -3,15 +3,10 @@
 // file and checks that nothing remains after it.
 import { caseTest } from '../../../tests/testcase.mts';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, readdirSync, rmSync, existsSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { DatabaseSync } from 'node:sqlite';
-import mysql from 'mysql2/promise';
-import pg from 'pg';
+import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dbspecManifest, parseDbspec, readDbspecFile } from '../dist/dbspec/index.js';
-import { mysqlTestOptions } from './mysql-test-options.mjs';
+import { createDbspecPhysicalDatabaseRunner } from './dbspec-physical-database.mjs';
 
 export const root = new URL('../../../', import.meta.url);
 // TIMEOUT is the deadline (ms) of one case. One round trip applies one document set to one database, introspects it, then drops it.
@@ -92,80 +87,15 @@ export function expectedSchemaText(documents) {
   return result.manifest.schemaText;
 }
 
-const run = `ts${process.pid}`;
-const sqliteDirectory = mkdtempSync(join(tmpdir(), `dbspec-introspect-${run}-`));
-process.on('exit', () => rmSync(sqliteDirectory, { recursive: true, force: true }));
-let probes = 0;
+const runPhysicalDatabase = createDbspecPhysicalDatabaseRunner({
+  namePrefix: 'dbspec', filePrefix: 'introspect', mysqlDSN, postgresDSN, postgresSiblingSchema: true,
+});
 
 // withDatabase creates an empty database, schema or file named after the
 // language, the pid and the probe, gives a connection to it, an exec function
 // and its name to body, and drops it and checks that nothing remains.
-export async function withDatabase(dialect, body) {
-  const name = `dbspec_${run}_${String(probes++).padStart(3, '0')}`;
-  switch (dialect) {
-    case 'mysql': {
-      const admin = await mysql.createConnection(mysqlTestOptions(mysqlDSN, undefined));
-      try {
-        await admin.query(`CREATE DATABASE \`${name}\``);
-        try {
-          const connection = await mysql.createConnection(mysqlTestOptions(mysqlDSN, name));
-          try {
-            await body(connection, (connection, sql) => connection.query(sql), name);
-          } finally {
-            await connection.end();
-          }
-        } finally {
-          await admin.query(`DROP DATABASE \`${name}\``);
-          const [rows] = await admin.query('SELECT COUNT(*) AS n FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?', [name]);
-          assert.equal(Number(rows[0].n), 0, `database ${name} remains after cleanup`);
-        }
-      } finally {
-        await admin.end();
-      }
-      return;
-    }
-    case 'postgres': {
-      const admin = new pg.Client({ connectionString: postgresDSN });
-      await admin.connect();
-      try {
-        await admin.query(`CREATE SCHEMA "${name}"`);
-        try {
-          const client = new pg.Client({ connectionString: postgresDSN });
-          await client.connect();
-          try {
-            await client.query('SET client_min_messages = warning');
-            await client.query(`SET search_path TO "${name}"`);
-            await body(client, (client, sql) => client.query(sql), name);
-          } finally {
-            await client.end();
-          }
-        } finally {
-          // A case that needs a second schema creates it as <schema>_b.
-          await admin.query(`DROP SCHEMA IF EXISTS "${name}_b" CASCADE`);
-          await admin.query(`DROP SCHEMA "${name}" CASCADE`);
-          const { rows } = await admin.query('SELECT COUNT(*)::int AS n FROM pg_namespace WHERE nspname IN ($1, $2)', [name, `${name}_b`]);
-          assert.equal(rows[0].n, 0, `schema ${name} remains after cleanup`);
-        }
-      } finally {
-        await admin.end();
-      }
-      return;
-    }
-    case 'sqlite': {
-      const path = join(sqliteDirectory, `${name}.sqlite`);
-      assert(!existsSync(path), `SQLite file ${path} already exists`);
-      const db = new DatabaseSync(path);
-      try {
-        await body(db, (db, sql) => db.exec(sql), name);
-      } finally {
-        db.close();
-        for (const suffix of ['', '-journal', '-wal', '-shm']) rmSync(path + suffix, { force: true });
-        assert(!existsSync(path), `${path} remains after cleanup`);
-      }
-      return;
-    }
-  }
-  throw new Error(`unknown dialect ${dialect}`);
+export function withDatabase(dialect, body) {
+  return runPhysicalDatabase(dialect, (session, _open, name) => body(session.connection, session.execute, name));
 }
 
 // counting wraps a connection so that every catalog query the introspection

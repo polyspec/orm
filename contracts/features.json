@@ -9687,6 +9687,16 @@
       "command": "make --no-print-directory database-case-tests-helper-check"
     },
     {
+      "id": "typescript-dbspec-physical-database",
+      "paths": [
+        "packages/ts/tests/dbspec-physical-database.mjs"
+      ],
+      "tests": [
+        "packages/ts/tests/dbspec-physical-database.test.mjs"
+      ],
+      "command": "make --no-print-directory dbspec-physical-database-helper-check"
+    },
+    {
       "id": "physical-command-output",
       "paths": [
         "scripts/physical-command-case.mts"

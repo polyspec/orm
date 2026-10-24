@@ -14,14 +14,9 @@
 // Usage: ORM_TEST_MYSQL_SERVER_DSN=... ORM_TEST_POSTGRES_SERVER_DSN=... ORM_TEST_PGBOUNCER_DSN=... node --test packages/ts/tests/dbspec-apply-physical.mjs (after the build)
 import { caseTest } from '../../../tests/testcase.mts';
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { DatabaseSync } from 'node:sqlite';
-import mysql from 'mysql2/promise';
-import pg from 'pg';
+import { readFileSync } from 'node:fs';
 import { DbspecApplyError, applyPlans, dbspecManifest, finalizePlans, introspectDbspec, parsePlan, planSteps, recoverPlans, rollbackPlans } from '../dist/dbspec/index.js';
-import { mysqlTestOptions } from './mysql-test-options.mjs';
+import { createDbspecPhysicalDatabaseRunner } from './dbspec-physical-database.mjs';
 
 const root = new URL('../../../', import.meta.url);
 // TIMEOUT is the deadline (ms) of one case. One apply scenario creates one database, applies, stops, recovers, and rolls back the plan chain, then drops it.
@@ -87,117 +82,7 @@ function vector(name, body) {
   caseTest(name, TIMEOUT, body);
 }
 
-const run = `ts${process.pid}`;
-const sqliteDirectory = mkdtempSync(join(tmpdir(), `dbspec-apply-${run}-`));
-process.on('exit', () => rmSync(sqliteDirectory, { recursive: true, force: true }));
-let probes = 0;
-
-// session is a connection that runs a statement and reads the first value of a query as text.
-function mysqlSession(connection) {
-  return {
-    connection,
-    exec: sql => connection.query(sql),
-    rows: async sql => (await connection.query({ sql, rowsAsArray: true }))[0],
-    close: () => connection.end(),
-  };
-}
-
-function postgresSession(client) {
-  return {
-    connection: client,
-    exec: sql => client.query(sql),
-    rows: async sql => (await client.query({ text: sql, rowMode: 'array' })).rows,
-    close: () => client.end(),
-  };
-}
-
-function sqliteSession(db) {
-  return {
-    connection: db,
-    exec: async sql => db.exec(sql),
-    rows: async sql => {
-      const statement = db.prepare(sql);
-      statement.setReturnArrays(true);
-      return statement.all();
-    },
-    close: async () => db.close(),
-  };
-}
-
-// withDatabase creates an empty database, schema or file named after the
-// language, the pid and the run, gives body a session on it and a function
-// that opens another session on the same database, and drops the database
-// and checks that nothing remains.
-async function withDatabase(dialect, body) {
-  const name = `apply_${run}_${String(probes++).padStart(3, '0')}`;
-  switch (dialect) {
-    case 'mysql': {
-      const admin = await mysql.createConnection(mysqlTestOptions(mysqlDSN, undefined));
-      try {
-        await admin.query(`CREATE DATABASE \`${name}\``);
-        try {
-          const open = async () => mysqlSession(await mysql.createConnection(mysqlTestOptions(mysqlDSN, name)));
-          const session = await open();
-          try {
-            await body(session, open);
-          } finally {
-            await session.close();
-          }
-        } finally {
-          await admin.query(`DROP DATABASE \`${name}\``);
-          const [rows] = await admin.query('SELECT COUNT(*) AS n FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?', [name]);
-          assert.equal(Number(rows[0].n), 0, `database ${name} remains after cleanup`);
-        }
-      } finally {
-        await admin.end();
-      }
-      return;
-    }
-    case 'postgres': {
-      const admin = new pg.Client({ connectionString: postgresDSN });
-      await admin.connect();
-      try {
-        await admin.query(`CREATE SCHEMA "${name}"`);
-        try {
-          const open = async () => {
-            const client = new pg.Client({ connectionString: postgresDSN });
-            await client.connect();
-            await client.query('SET client_min_messages = warning');
-            await client.query(`SET search_path TO "${name}"`);
-            return postgresSession(client);
-          };
-          const session = await open();
-          try {
-            await body(session, open);
-          } finally {
-            await session.close();
-          }
-        } finally {
-          await admin.query(`DROP SCHEMA "${name}" CASCADE`);
-          const { rows } = await admin.query('SELECT COUNT(*)::int AS n FROM pg_namespace WHERE nspname = $1', [name]);
-          assert.equal(rows[0].n, 0, `schema ${name} remains after cleanup`);
-        }
-      } finally {
-        await admin.end();
-      }
-      return;
-    }
-    case 'sqlite': {
-      const path = join(sqliteDirectory, `${name}.sqlite`);
-      assert(!existsSync(path), `SQLite file ${path} already exists`);
-      const session = sqliteSession(new DatabaseSync(path));
-      try {
-        await body(session, async () => sqliteSession(new DatabaseSync(path)));
-      } finally {
-        await session.close();
-        for (const suffix of ['', '-journal', '-wal', '-shm']) rmSync(path + suffix, { force: true });
-        assert(!existsSync(path), `${path} remains after cleanup`);
-      }
-      return;
-    }
-  }
-  throw new Error(`unknown dialect ${dialect}`);
-}
+const withDatabase = createDbspecPhysicalDatabaseRunner({ namePrefix: 'apply', mysqlDSN, postgresDSN });
 
 // firstValue gives the first column of the first row as text.
 async function firstValue(session, sql) {
