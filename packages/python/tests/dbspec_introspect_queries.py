@@ -10,7 +10,12 @@ import tempfile
 import unittest
 
 from . import testcase
-from .dbspec_introspect import CONNECTION_RULES, ROOT, case_database, rendered_case_statements
+from .dbspec_introspect import (
+    CONNECTION_RULES,
+    ROOT,
+    case_database,
+    rendered_case_statements,
+)
 from .runner_connect import Adapter
 
 from polyspec.orm.dbspec.introspect import introspect_dbspec

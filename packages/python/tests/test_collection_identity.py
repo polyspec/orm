@@ -30,7 +30,9 @@ def value_of(entry, fixture_kind="fixture"):
         return datetime.fromisoformat(entry["value"])
     if kind == "null" and fixture_kind == "composite fixture":
         return None
-    description = f"fixture {entry['name']}" if fixture_kind == "fixture" else fixture_kind
+    description = (
+        f"fixture {entry['name']}" if fixture_kind == "fixture" else fixture_kind
+    )
     raise AssertionError(f"{description} has unknown type {kind}")
 
 

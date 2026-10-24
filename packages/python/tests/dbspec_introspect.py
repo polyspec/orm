@@ -33,7 +33,9 @@ CONNECTION_RULES = {
 def rendered_case_statements(case, dialect):
     texts = {name: "\n".join(lines) for name, lines in case["documents"].items()}
     documents = [
-        parse_dbspec(text, {key: value for key, value in texts.items() if key != name})[0]
+        parse_dbspec(text, {key: value for key, value in texts.items() if key != name})[
+            0
+        ]
         for name, text in texts.items()
     ]
     return render_dbspec(documents, dialect)["statements"]
