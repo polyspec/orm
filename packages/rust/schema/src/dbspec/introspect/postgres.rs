@@ -56,8 +56,10 @@ WHERE NOT t.tgisinternal AND c.relnamespace = current_schema()::regnamespace ORD
 ];
 
 static TYPE_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^(smallint|integer|bigint|boolean|double precision|text|bytea|uuid|date)$|^numeric\((\d+),(\d+)\)$|^character varying\((\d+)\)$|^(time|timestamp)\((\d)\) without time zone$")
-        .expect("PostgreSQL type pattern")
+    super::compile_pattern(
+        r"^(smallint|integer|bigint|boolean|double precision|text|bytea|uuid|date)$|^numeric\((\d+),(\d+)\)$|^character varying\((\d+)\)$|^(time|timestamp)\((\d)\) without time zone$",
+        "PostgreSQL type pattern",
+    )
 });
 static LITERAL_PATTERN: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^'((?:[^']|'')*)'::([a-z ]+)$").expect("PostgreSQL literal pattern"));
 static NUMBER_PATTERN: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^-?\d+(\.\d+)?$").expect("PostgreSQL number pattern"));

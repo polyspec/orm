@@ -12,6 +12,7 @@ mod trigger;
 
 use super::model::{Document, Type};
 use super::render::Dialect;
+use regex::Regex;
 use std::collections::BTreeMap;
 use std::fmt;
 
@@ -99,6 +100,10 @@ pub fn read_catalog(dialect: Dialect, results: &[Vec<Vec<CatalogValue>>], name: 
 /// Parses a nullable catalog default while retaining the original text for an unsupported-value diagnostic.
 fn parse_column_default(text: Option<String>, parse: impl FnOnce(&str) -> Option<String>) -> std::result::Result<Option<String>, String> {
     text.map(|value| parse(&value).ok_or(value)).transpose()
+}
+
+pub(super) fn compile_pattern(pattern: &'static str, label: &'static str) -> Regex {
+    Regex::new(pattern).expect(label)
 }
 
 fn apply_column_default(

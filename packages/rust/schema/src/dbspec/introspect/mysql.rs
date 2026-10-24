@@ -49,8 +49,10 @@ FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() ORDER BY EVEN
 ];
 
 static TYPE_PATTERN: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"^(smallint|int|bigint|tinyint\(1\)|double|longtext|longblob|date|char\(36\)|time|datetime)(?:\((\d+)\))?$|^(decimal)\((\d+),(\d+)\)$|^(varchar)\((\d+)\)$")
-        .expect("MySQL type pattern")
+    super::compile_pattern(
+        r"^(smallint|int|bigint|tinyint\(1\)|double|longtext|longblob|date|char\(36\)|time|datetime)(?:\((\d+)\))?$|^(decimal)\((\d+),(\d+)\)$|^(varchar)\((\d+)\)$",
+        "MySQL type pattern",
+    )
 });
 
 pub(super) fn read(results: &Results) -> Result<Catalog, String> {
