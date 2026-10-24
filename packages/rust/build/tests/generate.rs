@@ -1,6 +1,7 @@
 //! Generation from scanned source: the methods the source calls are
 //! generated, and a call the schema does not allow fails with its position.
 
+use polyspec_orm_testcase::OrPanic;
 use std::path::{Path, PathBuf};
 
 fn schema() -> PathBuf {
@@ -707,20 +708,6 @@ fn remove_test_dir(path: &std::path::Path) {
     if let Err(error) = std::fs::remove_dir_all(path) {
         if error.kind() != std::io::ErrorKind::NotFound {
             panic!("remove {}: {error}", path.display());
-        }
-    }
-}
-
-/// Returns the value of an Ok, and panics with the message the error gives otherwise.
-trait OrPanic<T, E> {
-    fn or_panic(self, report: impl FnOnce(E) -> String) -> T;
-}
-
-impl<T, E> OrPanic<T, E> for Result<T, E> {
-    fn or_panic(self, report: impl FnOnce(E) -> String) -> T {
-        match self {
-            Ok(value) => value,
-            Err(error) => panic!("{}", report(error)),
         }
     }
 }
