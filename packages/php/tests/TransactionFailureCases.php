@@ -58,7 +58,7 @@ trait TransactionFailureCases
         }
     }
 
-    public function test_transaction_keeps_callback_and_failed_rollback_errors(): void
+    public function testTransactionKeepsCallbackAndFailedRollbackErrors(): void
     {
         $pdo = new ModelTestFailingPdo('sqlite::memory:');
         $pdo->rejectRollback = true;
@@ -75,9 +75,13 @@ trait TransactionFailureCases
                 self::assertSame(Code::ROLLBACK, $error->code_);
                 self::assertSame($callback, $error->getPrevious());
                 self::assertSame('DRIVER', $error->rollback?->code_);
-                self::assertSame('rollback rejected by the test driver', $error->rollback?->getPrevious()?->getMessage());
                 self::assertSame(
-                    'ROLLBACK: transaction failed (transaction callback failed) and rollback failed (DRIVER: rollback rejected by the test driver)',
+                    'rollback rejected by the test driver',
+                    $error->rollback?->getPrevious()?->getMessage()
+                );
+                self::assertSame(
+                    'ROLLBACK: transaction failed (transaction callback failed) and rollback failed'
+                    . ' (DRIVER: rollback rejected by the test driver)',
                     $error->getMessage()
                 );
             }
@@ -86,7 +90,7 @@ trait TransactionFailureCases
         }
     }
 
-    public function test_savepoint_attempts_both_end_steps_and_keeps_the_callback_error(): void
+    public function testSavepointAttemptsBothEndStepsAndKeepsTheCallbackError(): void
     {
         $scenarios = [
             'rollback-only' => ['ROLLBACK TO SAVEPOINT '],

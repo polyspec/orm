@@ -4,11 +4,6 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Dbspec;
 
-/** Marks a successfully introspected schema that differs from the requested plan. */
-final class PlanSchemaMismatch extends \RuntimeException
-{
-}
-
 /**
  * Applies a plan chain to one connection, one step at a time; resumes or undoes an interrupted plan,
  * and finalizes an applied plan (docs/spec/plans.md "Apply"). One object is the state of one command
@@ -608,10 +603,10 @@ final class PlanApply
         }
         try {
             $this->verify($want);
-            } catch (PlanSchemaMismatch $e) {
-                throw new ApplyError('drift', '', 0, $e->getMessage());
+        } catch (PlanSchemaMismatch $e) {
+            throw new ApplyError('drift', '', 0, $e->getMessage());
         } catch (\RuntimeException $e) {
-                throw new ApplyError('verify', '', 0, '', $e);
+            throw new ApplyError('verify', '', 0, '', $e);
         }
         return $position;
     }
