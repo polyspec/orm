@@ -229,14 +229,21 @@ static bool request_param(zval *request, zval *value, zval *index)
     return dynamic_call(request, "param", index, 1, value);
 }
 
-static bool request_append(zval *request, const char *key, zval *value)
+static zval *request_ir(zval *request)
 {
     zval *ir = object_property(request, "ir");
     if (ir == NULL || Z_TYPE_P(ir) != IS_ARRAY) {
         zend_throw_error(NULL, "Request::ir must be an array");
-        return false;
+        return NULL;
     }
     SEPARATE_ARRAY(ir);
+    return ir;
+}
+
+static bool request_append(zval *request, const char *key, zval *value)
+{
+    zval *ir = request_ir(request);
+    if (ir == NULL) return false;
     zval *list = zend_hash_str_find(Z_ARRVAL_P(ir), key, strlen(key));
     if (list == NULL) {
         zval empty;
@@ -251,12 +258,8 @@ static bool request_append(zval *request, const char *key, zval *value)
 
 static bool request_set_ir_value(zval *request, const char *key, zval *value)
 {
-    zval *ir = object_property(request, "ir");
-    if (ir == NULL || Z_TYPE_P(ir) != IS_ARRAY) {
-        zend_throw_error(NULL, "Request::ir must be an array");
-        return false;
-    }
-    SEPARATE_ARRAY(ir);
+    zval *ir = request_ir(request);
+    if (ir == NULL) return false;
     Z_TRY_ADDREF_P(value);
     zend_hash_str_update(Z_ARRVAL_P(ir), key, strlen(key), value);
     return true;
@@ -389,6 +392,19 @@ static bool encode_value(zval *column, zval *value, zval *result)
     return ok;
 }
 
+static bool assign_param(zval *request, zval *meta, zval *result, zval *value, const char *key)
+{
+    zval index;
+    if (!request_param(request, value, &index)) {
+        zval_ptr_dtor(result); ZVAL_UNDEF(result);
+        zval_ptr_dtor(meta);
+        call_result_dtor(&index);
+        return false;
+    }
+    add_assoc_zval(result, key, &index);
+    return true;
+}
+
 static bool assign_ir(zval *model, zval *request, zend_string *column, zval *spec, zval *result)
 {
     zval meta;
@@ -409,23 +425,9 @@ static bool assign_ir(zval *model, zval *request, zend_string *column, zval *spe
     if ((value = array_key(spec, "null")) != NULL && Z_TYPE_P(value) != IS_NULL) {
         add_assoc_bool(result, "null", true);
     } else if ((value = array_key(spec, "plus")) != NULL) {
-        zval index;
-        if (!request_param(request, value, &index)) {
-            zval_ptr_dtor(result); ZVAL_UNDEF(result);
-            zval_ptr_dtor(&meta);
-            call_result_dtor(&index);
-            return false;
-        }
-        add_assoc_zval(result, "plus_p", &index);
+        if (!assign_param(request, &meta, result, value, "plus_p")) return false;
     } else if ((value = array_key(spec, "minus")) != NULL) {
-        zval index;
-        if (!request_param(request, value, &index)) {
-            zval_ptr_dtor(result); ZVAL_UNDEF(result);
-            zval_ptr_dtor(&meta);
-            call_result_dtor(&index);
-            return false;
-        }
-        add_assoc_zval(result, "minus_p", &index);
+        if (!assign_param(request, &meta, result, value, "minus_p")) return false;
     } else {
         value = array_key(spec, "value");
         if (value == NULL) {
@@ -906,6 +908,21 @@ ZEND_METHOD(Polyspec_Orm_Model, keyWhere)
     RETURN_NULL();
 }
 
+static bool runtime_column_encrypted(zval *column, bool *encrypted)
+{
+    zval argument, result;
+    ZVAL_COPY(&argument, column);
+    if (!named_call("Polyspec\\Orm\\RuntimeModel::encrypted", &result, 1, &argument)) {
+        zval_ptr_dtor(&argument);
+        call_result_dtor(&result);
+        return false;
+    }
+    zval_ptr_dtor(&argument);
+    *encrypted = zend_is_true(&result);
+    zval_ptr_dtor(&result);
+    return true;
+}
+
 ZEND_METHOD(Polyspec_Orm_Model, withAesColumns)
 {
     ZEND_PARSE_PARAMETERS_NONE();
@@ -939,18 +956,13 @@ ZEND_METHOD(Polyspec_Orm_Model, withAesColumns)
             zend_throw_error(NULL, "Model set references missing column metadata");
             RETURN_THROWS();
         }
-        zval arg, encrypted;
-        ZVAL_COPY(&arg, column);
-        if (!named_call("Polyspec\\Orm\\RuntimeModel::encrypted", &encrypted, 1, &arg)) {
-            zval_ptr_dtor(&arg);
+        bool encrypted;
+        if (!runtime_column_encrypted(column, &encrypted)) {
             zval_ptr_dtor(return_value); ZVAL_UNDEF(return_value);
             zval_ptr_dtor(&meta);
-            call_result_dtor(&encrypted);
             RETURN_THROWS();
         }
-        zval_ptr_dtor(&arg);
-        changed |= zend_is_true(&encrypted);
-        zval_ptr_dtor(&encrypted);
+        changed |= encrypted;
     } ZEND_HASH_FOREACH_END();
     if (changed) {
         zval *row = model_field(ZEND_THIS, "row");
@@ -958,18 +970,12 @@ ZEND_METHOD(Polyspec_Orm_Model, withAesColumns)
         zend_string *name;
         zval *column;
         ZEND_HASH_FOREACH_STR_KEY_VAL(Z_ARRVAL_P(columns), name, column) {
-            zval arg, encrypted;
-            ZVAL_COPY(&arg, column);
-            if (!named_call("Polyspec\\Orm\\RuntimeModel::encrypted", &encrypted, 1, &arg)) {
-                zval_ptr_dtor(&arg);
+            bool is_encrypted;
+            if (!runtime_column_encrypted(column, &is_encrypted)) {
                 zval_ptr_dtor(return_value); ZVAL_UNDEF(return_value);
                 zval_ptr_dtor(&meta);
-                call_result_dtor(&encrypted);
                 RETURN_THROWS();
             }
-            zval_ptr_dtor(&arg);
-            bool is_encrypted = zend_is_true(&encrypted);
-            zval_ptr_dtor(&encrypted);
             if (!is_encrypted || name == NULL || zend_hash_exists(Z_ARRVAL_P(return_value), name))
                 continue;
             bool loaded = false;
