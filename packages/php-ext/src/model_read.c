@@ -129,8 +129,11 @@ static bool read_static_meta(zval *model, zval *meta)
 
 static zval *read_array(zval *array, const char *key)
 {
+    ZVAL_DEREF(array);
     if (Z_TYPE_P(array) != IS_ARRAY) return NULL;
-    return zend_hash_str_find(Z_ARRVAL_P(array), key, strlen(key));
+    zval *value = zend_hash_str_find(Z_ARRVAL_P(array), key, strlen(key));
+    if (value != NULL) ZVAL_DEREF(value);
+    return value;
 }
 
 static bool read_is_true(zval *array, const char *key)
@@ -548,10 +551,15 @@ ZEND_METHOD(Polyspec_Orm_Model, matchValues)
     zval *model; zend_string *side;
     ZEND_PARSE_PARAMETERS_START(2, 2) Z_PARAM_OBJECT(model) Z_PARAM_STR(side) ZEND_PARSE_PARAMETERS_END();
     zval *matches = model_state_property(model_state_of(Z_OBJ_P(ZEND_THIS)), "matches");
+    if (matches != NULL) ZVAL_DEREF(matches);
     array_init(return_value);
     if (matches == NULL || Z_TYPE_P(matches) != IS_ARRAY) return;
     ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(matches), zval *match) {
-        zval *column = zend_hash_find(Z_ARRVAL_P(match), side);
+        ZVAL_DEREF(match);
+        zval *column = Z_TYPE_P(match) == IS_ARRAY
+            ? zend_hash_index_find(Z_ARRVAL_P(match), zend_string_equals_literal(side, "left") ? 0 : 1)
+            : NULL;
+        if (column != NULL) ZVAL_DEREF(column);
         if (column == NULL || Z_TYPE_P(column) != IS_STRING) { zval_ptr_dtor(return_value); ZVAL_UNDEF(return_value); read_throw("INTERNAL", "relation match has no column"); RETURN_THROWS(); }
         zval args[1], value; ZVAL_COPY(&args[0], column);
         if (!read_model_call(model, "columnOrExtra", &value, 1, args)) { zval_ptr_dtor(&args[0]); zval_ptr_dtor(return_value); ZVAL_UNDEF(return_value); RETURN_THROWS(); }
@@ -636,7 +644,8 @@ ZEND_METHOD(Polyspec_Orm_Model, attachExternal)
         zval empty; array_init(&empty); model_state_property_set(model_state_of(Z_OBJ(clone)), "matches", &empty); zval_ptr_dtor(&empty);
         zval alias; ZVAL_EMPTY_STRING(&alias); model_state_property_set(model_state_of(Z_OBJ(clone)), "alias", &alias); zval_ptr_dtor(&alias);
         zval *matches = model_state_property(model_state_of(Z_OBJ_P(ZEND_THIS)), "matches"); zval rights; array_init(&rights);
-        if (matches != NULL && Z_TYPE_P(matches) == IS_ARRAY) ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(matches), zval *match) { zval *right=read_array(match,"right"); if(right!=NULL){zval c;ZVAL_COPY(&c,right);add_next_index_zval(&rights,&c);} } ZEND_HASH_FOREACH_END();
+        if (matches != NULL) ZVAL_DEREF(matches);
+        if (matches != NULL && Z_TYPE_P(matches) == IS_ARRAY) ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(matches), zval *match) { ZVAL_DEREF(match); zval *right=Z_TYPE_P(match)==IS_ARRAY?zend_hash_index_find(Z_ARRVAL_P(match),1):NULL; if(right!=NULL){ZVAL_DEREF(right);zval c;ZVAL_COPY(&c,right);add_next_index_zval(&rights,&c);} } ZEND_HASH_FOREACH_END();
         zval predicate;
         if (zend_hash_num_elements(Z_ARRVAL(rights)) == 1) {
             zval pred; array_init(&pred); zval *col=zend_hash_index_find(Z_ARRVAL(rights),0); zval c; ZVAL_COPY(&c,col); add_assoc_zval(&pred,"column",&c); add_assoc_string(&pred,"op","in"); ZVAL_COPY(&c,&values); add_assoc_zval(&pred,"value",&c); add_assoc_string(&pred,"kind","list");
@@ -647,7 +656,7 @@ ZEND_METHOD(Polyspec_Orm_Model, attachExternal)
         }
         zval *where=model_state_property(model_state_of(Z_OBJ(clone)),"where");
         if(where!=NULL&&Z_TYPE_P(where)==IS_ARRAY){
-            SEPARATE_ARRAY(where); zval *items=zend_hash_str_find(Z_ARRVAL_P(where),"items",5);
+            model_state_array_separate(where); zval *items=zend_hash_str_find(Z_ARRVAL_P(where),"items",5);
             if(items!=NULL&&Z_TYPE_P(items)==IS_ARRAY&&zend_hash_num_elements(Z_ARRVAL_P(items))>0){
                 zval group; array_init(&group); add_assoc_string(&group,"conn",""); zval copied; ZVAL_COPY(&copied,items); add_assoc_zval(&group,"group",&copied);
                 zval *conn=zend_hash_str_find(Z_ARRVAL(predicate),"conn",4); if(conn==NULL)add_assoc_string(&predicate,"conn","and");

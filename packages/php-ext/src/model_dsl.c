@@ -123,7 +123,9 @@ static bool add_item(model_state *s,zend_string *conn,zval *node)
     if(zend_hash_num_elements(Z_ARRVAL_P(items))==0)used=ZSTR_EMPTY_ALLOC();
     else if(!ZSTR_LEN(used)){model_native_fail(s,"condition without and/or after another condition");return false;}
     zend_string *used_copy=zend_string_copy(used);
-    SEPARATE_ARRAY(where);items=at(where,"items");pending=at(where,"pending");
+    model_state_array_separate(where);items=at(where,"items");pending=at(where,"pending");
+    model_state_array_separate(items);
+    items=at(where,"items");
     if(Z_STRLEN_P(pending)){zval_ptr_dtor(pending);ZVAL_EMPTY_STRING(pending);}
     add_assoc_str(node,"conn",used_copy);
     return zend_hash_next_index_insert(Z_ARRVAL_P(items),node)!=NULL;

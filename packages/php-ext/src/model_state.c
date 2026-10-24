@@ -57,7 +57,7 @@ void model_state_property_separate(model_state *object, const char *field)
         if (EG(exception) == NULL) zend_throw_error(NULL, "Polyspec\\Orm\\Model property %s must be an array", field);
         return;
     }
-    SEPARATE_ARRAY(value);
+    model_state_array_separate(value);
 }
 
 void model_state_reset(model_state *object, const char *field)

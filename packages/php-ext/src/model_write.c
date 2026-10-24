@@ -168,27 +168,39 @@ static bool model_meta(zval *model, zval *meta)
 
 static zval *array_key(zval *array, const char *name)
 {
+    if (array == NULL)
+        return NULL;
+    ZVAL_DEREF(array);
     if (Z_TYPE_P(array) != IS_ARRAY)
         return NULL;
-    return zend_hash_str_find(Z_ARRVAL_P(array), name, strlen(name));
+    zval *value = zend_hash_str_find(Z_ARRVAL_P(array), name, strlen(name));
+    if (value != NULL) ZVAL_DEREF(value);
+    return value;
 }
 
 static zval *array_at(zval *array, zend_ulong index)
 {
+    if (array == NULL)
+        return NULL;
+    ZVAL_DEREF(array);
     if (Z_TYPE_P(array) != IS_ARRAY)
         return NULL;
-    return zend_hash_index_find(Z_ARRVAL_P(array), index);
+    zval *value = zend_hash_index_find(Z_ARRVAL_P(array), index);
+    if (value != NULL) ZVAL_DEREF(value);
+    return value;
 }
 
 static zval *array_at_position(zval *array, zend_ulong position)
 {
+    if (array == NULL) return NULL;
+    ZVAL_DEREF(array);
     if (Z_TYPE_P(array) != IS_ARRAY) return NULL;
     HashPosition cursor;
     zend_hash_internal_pointer_reset_ex(Z_ARRVAL_P(array), &cursor);
     for (zend_ulong i = 0; i <= position; i++) {
         zval *value = zend_hash_get_current_data_ex(Z_ARRVAL_P(array), &cursor);
         if (value == NULL) return NULL;
-        if (i == position) return value;
+        if (i == position) { ZVAL_DEREF(value); return value; }
         zend_hash_move_forward_ex(Z_ARRVAL_P(array), &cursor);
     }
     return NULL;
@@ -1138,7 +1150,7 @@ static bool model_update(zval *model, bool optimistic, zval *result)
         throw_model_error("REVISION_CHANGED", ZSTR_VAL(text)); zend_string_release(text);
         goto failed;
     }
-    model_state_reset(model_state_of(Z_OBJ_P(model)), "expectedRevision");
+    model_state_reset(model_state_of(Z_OBJ_P(model)), "expected_revision");
     if (loaded) {
         SEPARATE_ARRAY(row);
         row = model_field(model, "row");
@@ -1717,7 +1729,7 @@ static bool model_delete_row(zval *model, bool recursive)
             smart_str_appends(&message, "the row's revision is not the expected value");
         zend_string *text = smart_str_extract(&message); throw_model_error("REVISION_CHANGED", ZSTR_VAL(text)); zend_string_release(text); goto failed;
     }
-    model_state_reset(model_state_of(Z_OBJ_P(model)), "expectedRevision");
+    model_state_reset(model_state_of(Z_OBJ_P(model)), "expected_revision");
     call_result_dtor(&db); call_result_dtor(&frame); call_result_dtor(&meta); call_result_dtor(&request); call_result_dtor(&keys); call_result_dtor(&revision); call_result_dtor(&written);
     return true;
 failed:

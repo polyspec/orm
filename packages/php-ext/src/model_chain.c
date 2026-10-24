@@ -19,7 +19,7 @@ static void set_pending(model_state *object, const char *value, size_t length)
 {
     zval *where = model_state_property(object, "where");
     if (where == NULL || Z_TYPE_P(where) != IS_ARRAY) return;
-    SEPARATE_ARRAY(where);
+    model_state_array_separate(where);
     zval replacement;
     ZVAL_STRINGL(&replacement, value, length);
     zend_hash_str_update(Z_ARRVAL_P(where), "pending", sizeof("pending") - 1, &replacement);
@@ -58,9 +58,9 @@ bool model_chain_add_item(model_state *object, const char *conn, size_t conn_len
         return false;
     }
     zval *where = model_state_property(object, "where");
-    SEPARATE_ARRAY(where);
+    model_state_array_separate(where);
     items = where_items(object);
-    SEPARATE_ARRAY(items);
+    model_state_array_separate(items);
     add_assoc_stringl(node, "conn", use, use_len);
     if (zend_hash_next_index_insert(Z_ARRVAL_P(items), node) == NULL) {
         *error = "the where items are full";

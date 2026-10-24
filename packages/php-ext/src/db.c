@@ -189,7 +189,11 @@ static zend_long constant_long(const char *qualified)
 /* $a[$k] with ?? semantics: NULL when $a is not an array, the key is missing, or the value is null. */
 static zval *aget(zval *a, const char *k)
 {
-    if (a == NULL || Z_TYPE_P(a) != IS_ARRAY) {
+    if (a == NULL) {
+        return NULL;
+    }
+    ZVAL_DEREF(a);
+    if (Z_TYPE_P(a) != IS_ARRAY) {
         return NULL;
     }
     zval *v = zend_symtable_str_find(Z_ARRVAL_P(a), k, strlen(k));
@@ -202,7 +206,11 @@ static zval *aget(zval *a, const char *k)
 
 static zval *aidx(zval *a, zend_long i)
 {
-    if (a == NULL || Z_TYPE_P(a) != IS_ARRAY) {
+    if (a == NULL) {
+        return NULL;
+    }
+    ZVAL_DEREF(a);
+    if (Z_TYPE_P(a) != IS_ARRAY) {
         return NULL;
     }
     zval *v = zend_hash_index_find(Z_ARRVAL_P(a), (zend_ulong)i);
