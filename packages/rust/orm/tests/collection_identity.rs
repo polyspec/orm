@@ -19,11 +19,10 @@ fn fixture() -> Json {
 
 fn value_of(entry: &Json) -> Val {
     let name = entry["name"].as_str().unwrap_or("?");
+    if let Some(value) = primitive_value_of(entry) {
+        return value;
+    }
     match entry["type"].as_str() {
-        Some("text") => Val::Str(entry["value"].as_str().expect("text value").to_owned()),
-        Some("bool") => Val::Bool(entry["value"].as_bool().expect("bool value")),
-        Some("int") => Val::I64(entry["value"].as_i64().expect("int value")),
-        Some("bytes") => Val::Bytes(hex_decode(entry["hex"].as_str().expect("bytes hex"))),
         Some("datetime") => {
             let instant = DateTime::parse_from_rfc3339(entry["value"].as_str().expect("datetime value")).or_panic(|e| format!("fixture {name}: {e}"));
             Val::DateTime(instant.naive_utc())
@@ -33,17 +32,26 @@ fn value_of(entry: &Json) -> Val {
 }
 
 fn composite_value_of(entry: &Json) -> Val {
+    if let Some(value) = primitive_value_of(entry) {
+        return value;
+    }
     match entry["type"].as_str() {
-        Some("text") => Val::Str(entry["value"].as_str().expect("text value").to_owned()),
-        Some("bool") => Val::Bool(entry["value"].as_bool().expect("bool value")),
-        Some("int") => Val::I64(entry["value"].as_i64().expect("int value")),
-        Some("bytes") => Val::Bytes(hex_decode(entry["hex"].as_str().expect("bytes hex"))),
         Some("datetime") => {
             let instant = DateTime::parse_from_rfc3339(entry["value"].as_str().expect("datetime value")).expect("datetime value");
             Val::DateTime(instant.naive_utc())
         }
         Some("null") => Val::Null,
         other => panic!("unknown composite component type {other:?}"),
+    }
+}
+
+fn primitive_value_of(entry: &Json) -> Option<Val> {
+    match entry["type"].as_str() {
+        Some("text") => Some(Val::Str(entry["value"].as_str().expect("text value").to_owned())),
+        Some("bool") => Some(Val::Bool(entry["value"].as_bool().expect("bool value"))),
+        Some("int") => Some(Val::I64(entry["value"].as_i64().expect("int value"))),
+        Some("bytes") => Some(Val::Bytes(hex_decode(entry["hex"].as_str().expect("bytes hex")))),
+        _ => None,
     }
 }
 
