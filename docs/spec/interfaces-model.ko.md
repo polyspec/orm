@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces-model -->
-<!-- source-sha256: c26e9616ac8c8ad2ce90a9bbba6c189321332d8c580a72a9e76bec15dcb76dfd -->
+<!-- source-sha256: 6ac6c936560fdcfebb19d9d9b0c0dbb99b0155a55f17f31e022394fc56b91ef5 -->
 # 공통 구성요소
 
 <!-- contracts/interfaces.json에서 생성됨. 직접 수정하지 않는다. -->
@@ -119,6 +119,7 @@ classDiagram
         subscribe()
         execute()
         withRequestHook()
+        withFuture()
     }
     class TransactionFlow {
         <<internal>>

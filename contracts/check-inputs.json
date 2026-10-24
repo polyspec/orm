@@ -707,6 +707,8 @@
         "packages/php/src/Config.php",
         "packages/php/src/OrmException.php",
         "packages/php/tests/SqliteRowLockRestoreTest.php",
+        "packages/php/tests/UninitializedRecordingPdo.php",
+        "packages/php/tests/bootstrap.php",
         "packages/php-ext/src/db.c",
         "packages/python/src/polyspec/orm/database.py",
         "packages/python/tests/test_sqlite_row_lock_restore.py",
@@ -2465,6 +2467,21 @@
         "packages/php/src/OrmException.php"
       ]
     },
+    "connection-busy-timeout-php-extension-check": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/php-ext/scripts/build.sh",
+        "packages/php-ext/src/db.c",
+        "packages/php-ext/tests/ConnectionBusyTimeoutNativeTest.php",
+        "packages/php/src/OrmException.php"
+      ]
+    },
     "connection-statement-timeout-typescript-check": {
       "scope": "owner",
       "needs": [
@@ -2844,6 +2861,40 @@
         "databases"
       ]
     },
+    "connection-sqlite-concurrent-writers-python-check": {
+      "scope": "owner",
+      "needs": [
+        "python"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/python/tests/connection_pool.py"
+      ]
+    },
+    "connection-sqlite-read-during-write-python-check": {
+      "scope": "owner",
+      "needs": [
+        "python"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/python/tests/connection_pool.py"
+      ]
+    },
+    "connection-sqlite-read-during-write-php-extension-check": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/php-ext/scripts/build.sh",
+        "packages/php-ext/src/db.c",
+        "packages/php-ext/tests/ConnectionBusyTimeoutNativeTest.php"
+      ]
+    },
     "python-check": {
       "scope": "owner",
       "needs": [
@@ -3174,6 +3225,27 @@
         "packages/php/tests/CoverageTransactionsTest.php",
         "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
         "packages/php/models.txt"
+      ]
+    },
+    "audit-native-method-assertions-helper-check": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools"
+      ],
+      "inputs": [
+        "Makefile",
+        "contracts/features.json",
+        "packages/php/models.txt",
+        "packages/php-ext/scripts/build.sh",
+        "packages/php-ext/tests/bootstrap.php",
+        "packages/php-ext/tests/NativeMethodAssertions.php",
+        "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
+        "packages/php-ext/tests/CoverageAuditColumnsExtensionTest.php",
+        "packages/php/tests/bootstrap.php",
+        "packages/php/tests/CoverageAuditTriggersTest.php",
+        "packages/php/tests/CoverageAuditColumnsTest.php"
       ]
     },
     "request-hook-audit-native-binding-check": {

@@ -110,10 +110,6 @@
           "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/go/model/coverage_constraints_and_relations_test.go",
-          "reason": "external: an internal package test of the go module that runs against a database or driver of an external service, not a helper the contract names (K313)"
-        },
-        {
           "glob": "packages/go/model/coverage_model_generation_test.go",
           "reason": "generated: an internal package test of the go module that checks the output of a generator of the owner, not a behaviour of the contract (K313)"
         },
@@ -242,10 +238,6 @@
           "reason": "harness: an internal test of the PHP package that checks the test harness of the owner, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
-          "reason": "external: an internal test of the PHP package that runs against a database or driver of an external service, not a helper the contract names (K313)"
-        },
-        {
           "glob": "packages/php/tests/CoverageModelGenerationTest.php",
           "reason": "generated: an internal test of the PHP package that checks the output of a generator of the owner, not a behaviour of the contract (K313)"
         },
@@ -308,7 +300,8 @@
       "errors": {
         "file": "packages/php-ext/src/polyspec_orm.stub.php",
         "pattern": "^    public const (?:string )?(\\w+) = '\\1';$"
-      }
+      },
+      "internal": []
     },
     {
       "name": "typescript",
@@ -1317,7 +1310,8 @@
       "id": "dbspec-introspect-round-trip",
       "kind": "feature",
       "requirements": [
-        "DIA-133"
+        "DIA-133",
+        "DIA-198"
       ],
       "bindings": [
         {
@@ -1365,87 +1359,29 @@
             "${ORM_CHECKOUT}",
             "dbspec-introspect-python-check"
           ]
-        }
-      ]
-    },
-    {
-      "id": "dbspec-introspect-query-count",
-      "kind": "feature",
-      "requirements": [
-        "DIA-198"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/engine/dbspec/introspect_query_count_test.go",
-          "id": "TestQueryCountIsIndependentOfSQLiteTableCount"
         },
         {
-          "implementation": "go",
-          "test": "packages/go/internal/dialects/introspect_physical_test.go",
-          "id": "TestIntrospectRoundTrip",
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec-introspect-round-trip.mjs",
+          "id": "mysql.introspect.ddl_types_and_defaults",
           "command": [
             "make",
             "-s",
             "-C",
             "${ORM_CHECKOUT}",
-            "dbspec-introspect-check"
-          ]
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/DbspecIntrospectQueryCountTest.php",
-          "id": "DbspecIntrospectQueryCountTest::testSQLiteMemoryCountIndependentOfTableCount"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/DbspecIntrospectTest.php",
-          "id": "DbspecIntrospectTest::testRoundTrip"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecIntrospectNativeTest.php",
-          "id": "DbspecIntrospectNativeTest::testSQLiteMemoryCountIndependentOfTableCount",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "dbspec-introspect-php-extension-query-count-check"
-          ]
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php/tests/DbspecIntrospectTest.php",
-          "id": "DbspecIntrospectTest::testRoundTrip",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "dbspec-introspect-php-extension-check"
+            "dbspec-introspect-ts-check"
           ]
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-introspect-query-count.mjs",
-          "id": "SQLite memory catalog query count is independent of table count"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_introspect_query_count.py",
-          "id": "test_sqlite_memory_count_independent_of_table_count"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/dbspec_introspect_queries.py",
-          "id": "test_sqlite",
+          "test": "packages/ts/tests/dbspec-introspect-round-trip.mjs",
+          "id": "introspection query count per dialect",
           "command": [
             "make",
             "-s",
             "-C",
             "${ORM_CHECKOUT}",
-            "dbspec-introspect-python-check"
+            "dbspec-introspect-ts-check"
           ]
         },
         {
@@ -1471,23 +1407,52 @@
             "${ORM_CHECKOUT}",
             "dbspec-introspect-python-check"
           ]
+        }
+      ]
+    },
+    {
+      "id": "dbspec-introspect-query-count",
+      "kind": "feature",
+      "requirements": [
+        "DIA-198"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/engine/dbspec/introspect_query_count_test.go",
+          "id": "TestQueryCountIsIndependentOfSQLiteTableCount"
         },
         {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/dbspec_introspect_query_count.rs",
-          "id": "sqlite_memory_query_count_is_independent_of_table_count"
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecIntrospectQueryCountTest.php",
+          "id": "DbspecIntrospectQueryCountTest::testSQLiteMemoryCountIndependentOfTableCount"
         },
         {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/dbspec_introspect.rs",
-          "id": "introspect_round_trip",
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecIntrospectNativeTest.php",
+          "id": "DbspecIntrospectNativeTest::testSQLiteMemoryCountIndependentOfTableCount",
           "command": [
             "make",
             "-s",
             "-C",
             "${ORM_CHECKOUT}",
-            "dbspec-introspect-rust-check"
+            "dbspec-introspect-php-extension-query-count-check"
           ]
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec-introspect-query-count.mjs",
+          "id": "SQLite memory catalog query count is independent of table count"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_introspect_query_count.py",
+          "id": "test_sqlite_memory_count_independent_of_table_count"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/dbspec_introspect_query_count.rs",
+          "id": "sqlite_memory_query_count_is_independent_of_table_count"
         }
       ]
     },
@@ -1598,20 +1563,6 @@
           "implementation": "typescript",
           "test": "packages/ts/tests/dbspec-set-edges.mjs",
           "id": "set-files parseSet takes a Uint8Array and a string"
-        }
-      ]
-    },
-    {
-      "id": "ts-dbspec-stress",
-      "kind": "feature",
-      "requirements": [
-        "DBS-123"
-      ],
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-stress.mjs",
-          "id": "dbspec stress document parses and emits canonically"
         }
       ]
     },
@@ -1879,34 +1830,6 @@
           "implementation": "typescript",
           "test": "packages/ts/tests/coverage_audit_triggers.mjs",
           "id": "soft_delete_restore [sqlite]"
-        }
-      ]
-    },
-    {
-      "id": "ts-coverage_conformance_verification",
-      "kind": "feature",
-      "requirements": [
-        "DIA-37"
-      ],
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_conformance_verification.mjs",
-          "id": "conformance_vector [sqlite]"
-        }
-      ]
-    },
-    {
-      "id": "ts-coverage_constraints_and_relations",
-      "kind": "feature",
-      "requirements": [
-        "CFG-33"
-      ],
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_constraints_and_relations.mjs",
-          "id": "constraint_errors [sqlite]"
         }
       ]
     },
@@ -2270,48 +2193,6 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/coverage_dsn.rs",
           "id": "coverage_dsn_connection"
-        }
-      ]
-    },
-    {
-      "id": "coverage-generated-model-connection",
-      "kind": "feature",
-      "requirements": [
-        "CFG-1"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_dsn_test.go",
-          "id": "TestCoverageGeneratedModelConnection",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageGeneratedModelConnection",
-            "FEATURE_PACKAGE=./model"
-          ]
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/src/integration.rs",
-          "id": "coverage_generated_model_connection",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--bin integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_generated_model_connection"
-          ]
         }
       ]
     },
@@ -3306,17 +3187,17 @@
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/coverage_transactions.mjs",
-          "id": "transaction_rollback [sqlite]"
+          "id": "handle_abandoned_query [sqlite]"
         },
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/coverage_transactions.mjs",
-          "id": "transaction_rollback [mysql]"
+          "id": "handle_abandoned_query [mysql]"
         },
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/coverage_transactions.mjs",
-          "id": "transaction_rollback [postgres]"
+          "id": "handle_abandoned_query [postgres]"
         },
         {
           "implementation": "rust",
@@ -3569,7 +3450,6 @@
         }
       ]
     },
-
     {
       "id": "ts-package-declarations",
       "kind": "feature",
@@ -3928,36 +3808,6 @@
           "implementation": "typescript",
           "test": "packages/ts/tests/rollback.mjs",
           "id": "rollback/rollback_failed/sqlite"
-        }
-      ]
-    },
-    {
-      "id": "ts-sqlite-concurrency",
-      "kind": "feature",
-      "requirements": [
-        "CFG-12",
-        "CFG-13",
-        "CFG-14"
-      ],
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/sqlite-concurrency.mjs",
-          "id": "sqlite-concurrency/writersInSeveralProcesses"
-        }
-      ]
-    },
-    {
-      "id": "ts-statement-events",
-      "kind": "feature",
-      "requirements": [
-        "INT-91"
-      ],
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/statement-events.mjs",
-          "id": "statement_events/model_statements/sqlite"
         }
       ]
     },
@@ -4407,7 +4257,7 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/CoverageAuthenticatedEncryptionTest.php"
+          "test": "packages/php-ext/tests/CoverageAuthenticatedEncryptionExtensionTest.php"
         },
         {
           "implementation": "typescript",
@@ -4668,6 +4518,46 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/codec_vectors.rs",
           "symbol": "styled_column_state_fixture"
+        }
+      ]
+    },
+    {
+      "id": "hot-path-read-correctness",
+      "kind": "feature",
+      "requirements": [
+        "PRT-2",
+        "PRT-34"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_hot_path_read_correctness_test.go",
+          "id": "TestHotPathReadCorrectness"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageHotPathReadCorrectnessTest.php",
+          "id": "CoverageHotPathReadCorrectnessTest::testHotPathReadCorrectness"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageHotPathReadCorrectnessExtensionTest.php",
+          "id": "CoverageHotPathReadCorrectnessExtensionTest::testHotPathReadCorrectness"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_hot_path_read_correctness.mjs",
+          "id": "hot_path_read_correctness"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_hot_path_read_correctness.py",
+          "id": "test_hot_path_read_correctness"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/coverage_hot_path_read_correctness.rs",
+          "id": "hot_path_read_correctness"
         }
       ]
     },
@@ -7198,20 +7088,6 @@
       ]
     },
     {
-      "id": "go-internal-packages-go-engine-dbspec-stress",
-      "kind": "feature",
-      "requirements": [
-        "DBS-123"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/engine/dbspec/stress_test.go",
-          "id": "TestStressDocument"
-        }
-      ]
-    },
-    {
       "id": "go-internal-packages-go-engine-engine",
       "kind": "feature",
       "requirements": [
@@ -7492,238 +7368,6 @@
       ]
     },
     {
-      "id": "go-internal-packages-go-model-coverage-dsn-postgres",
-      "kind": "feature",
-      "requirements": [
-        "CFG-1"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_dsn_test.go",
-          "id": "TestCoverageGeneratedModelConnection",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=postgres",
-            "FEATURE_DSN_ENV=BENCH_POSTGRES_DSN",
-            "FEATURE_TEST=TestCoverageGeneratedModelConnection",
-            "FEATURE_PACKAGE=./model"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-model-coverage-dsn-sqlite",
-      "kind": "feature",
-      "requirements": [
-        "CFG-1"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_dsn_test.go",
-          "id": "TestCoverageGeneratedModelConnection",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageGeneratedModelConnection",
-            "FEATURE_PACKAGE=./model"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-model-coverage-model-queries-postgres",
-      "kind": "feature",
-      "requirements": [
-        "DSL-57",
-        "DSL-58",
-        "DSL-60",
-        "DSL-62",
-        "DSL-80",
-        "DSL-82",
-        "DSL-99",
-        "PLN-11"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_model_queries_test.go",
-          "id": "TestCoverageModelQueryRows",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=postgres",
-            "FEATURE_DSN_ENV=BENCH_POSTGRES_DSN",
-            "FEATURE_TEST=TestCoverageModelQueryRows",
-            "FEATURE_PACKAGE=./model"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-model-coverage-model-queries-sqlite",
-      "kind": "feature",
-      "requirements": [
-        "DSL-57",
-        "DSL-58",
-        "DSL-60",
-        "DSL-62",
-        "DSL-80",
-        "DSL-82",
-        "DSL-99",
-        "PLN-11"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_model_queries_test.go",
-          "id": "TestCoverageModelQueryRows",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageModelQueryRows",
-            "FEATURE_PACKAGE=./model"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-model-coverage-model-writes-postgres",
-      "kind": "feature",
-      "requirements": [
-        "DSL-56",
-        "DSL-57",
-        "DSL-58",
-        "DSL-60",
-        "DSL-103",
-        "DSL-104",
-        "DSL-105",
-        "DSL-106",
-        "DSL-110"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_model_writes_test.go",
-          "id": "TestCoverageModelWriteCycle",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=postgres",
-            "FEATURE_DSN_ENV=BENCH_POSTGRES_DSN",
-            "FEATURE_TEST=TestCoverageModelWriteCycle",
-            "FEATURE_PACKAGE=./model"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-model-coverage-model-writes-sqlite",
-      "kind": "feature",
-      "requirements": [
-        "DSL-56",
-        "DSL-57",
-        "DSL-58",
-        "DSL-60",
-        "DSL-103",
-        "DSL-104",
-        "DSL-105",
-        "DSL-106",
-        "DSL-110"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_model_writes_test.go",
-          "id": "TestCoverageModelWriteCycle",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageModelWriteCycle",
-            "FEATURE_PACKAGE=./model"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-model-coverage-schema-install-postgres",
-      "kind": "feature",
-      "requirements": [
-        "DBS-108",
-        "SCH-7"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_schema_install_test.go",
-          "id": "TestCoverageSchemaInstallExisting",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=postgres",
-            "FEATURE_DSN_ENV=BENCH_POSTGRES_DSN",
-            "FEATURE_TEST=TestCoverageSchemaInstallExisting",
-            "FEATURE_PACKAGE=./model"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-model-coverage-schema-install-sqlite",
-      "kind": "feature",
-      "requirements": [
-        "DBS-108",
-        "SCH-7"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_schema_install_test.go",
-          "id": "TestCoverageSchemaInstallExisting",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageSchemaInstallExisting",
-            "FEATURE_PACKAGE=./model"
-          ]
-        }
-      ]
-    },
-    {
       "id": "go-internal-packages-go-model-decimal-field",
       "kind": "feature",
       "requirements": [
@@ -7840,21 +7484,6 @@
           "implementation": "go",
           "test": "packages/go/model/replica_test.go",
           "id": "TestPrimaryAndReplica"
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-model-sqlite-concurrency",
-      "kind": "feature",
-      "requirements": [
-        "CFG-12",
-        "CFG-13"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/sqlite_concurrency_test.go",
-          "id": "TestSQLiteWritersOnSeveralConnections"
         }
       ]
     },
@@ -8016,56 +7645,6 @@
           "implementation": "go",
           "test": "packages/go/orm/collection_key_test.go",
           "id": "TestTypedKeyValuesCannotCollide"
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-orm-coverage-dsn-postgres",
-      "kind": "feature",
-      "requirements": [
-        "CFG-1"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/coverage_dsn_test.go",
-          "id": "TestCoverageDSNConnection",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=postgres",
-            "FEATURE_DSN_ENV=BENCH_POSTGRES_DSN",
-            "FEATURE_TEST=TestCoverageDSNConnection",
-            "FEATURE_PACKAGE=./orm"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-orm-coverage-dsn-sqlite",
-      "kind": "feature",
-      "requirements": [
-        "CFG-1"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/coverage_dsn_test.go",
-          "id": "TestCoverageDSNConnection",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageDSNConnection",
-            "FEATURE_PACKAGE=./orm"
-          ]
         }
       ]
     },
@@ -8997,7 +8576,6 @@
         }
       ]
     },
-
     {
       "id": "go-internal-packages-go-orm-register",
       "kind": "feature",
@@ -9258,20 +8836,6 @@
       ]
     },
     {
-      "id": "rust-generate-field-type-tests-generated-field-types-follow-the-runtime-model",
-      "kind": "feature",
-      "requirements": [
-        "DBS-112"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/src/generate.rs",
-          "id": "generate::field_type_tests::generated_field_types_follow_the_runtime_model"
-        }
-      ]
-    },
-    {
       "id": "rust-manifest-reserved-method-names-are-not-columns",
       "kind": "feature",
       "requirements": [
@@ -9499,7 +9063,9 @@
     {
       "id": "generated-code-no-lint-suppressions",
       "kind": "feature",
-      "requirements": ["INT-66"],
+      "requirements": [
+        "INT-66"
+      ],
       "bindings": [
         {
           "implementation": "go",
@@ -11520,7 +11086,9 @@
     {
       "id": "rust-session-sql-mode-is-the-declared-one",
       "kind": "feature",
-      "requirements": ["CFG-3"],
+      "requirements": [
+        "CFG-3"
+      ],
       "bindings": [
         {
           "implementation": "rust",
@@ -12148,30 +11716,41 @@
       ]
     },
     {
-      "id": "rust-lock-wait-expires",
+      "id": "connection-sqlite-busy-timeout-canceled",
       "kind": "feature",
       "requirements": [
         "CFG-12"
       ],
       "bindings": [
         {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/sqlite_concurrency.rs",
-          "id": "lock_wait_expires"
-        }
-      ]
-    },
-    {
-      "id": "rust-reads-during-write",
-      "kind": "feature",
-      "requirements": [
-        "CFG-13"
-      ],
-      "bindings": [
+          "implementation": "go",
+          "test": "packages/go/model/sqlite_concurrency_test.go",
+          "id": "TestSQLiteLockWaitExpires"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/SqliteConcurrencyTest.php",
+          "id": "SqliteConcurrencyTest::testLockWaitExpires"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConnectionBusyTimeoutNativeTest.php",
+          "id": "ConnectionBusyTimeoutNativeTest::testNativeSqliteBusyTimeoutCancelsWrite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/sqlite-concurrency.mjs",
+          "id": "sqlite-concurrency/lockWaitExpires"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_driver_errors.py",
+          "id": "SqliteDriverErrorTest.test_a_lock_held_past_busy_timeout_is_canceled"
+        },
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/sqlite_concurrency.rs",
-          "id": "reads_during_write"
+          "id": "lock_wait_expires"
         }
       ]
     },
@@ -12188,38 +11767,6 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/sqlite_concurrency.rs",
           "id": "statement_timeout_bounds_sqlite_lock_wait"
-        }
-      ]
-    },
-    {
-      "id": "rust-writers-in-several-processes",
-      "kind": "feature",
-      "requirements": [
-        "CFG-12",
-        "CFG-13",
-        "CFG-19"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/sqlite_concurrency.rs",
-          "id": "writers_in_several_processes"
-        }
-      ]
-    },
-    {
-      "id": "rust-writers-on-several-connections",
-      "kind": "feature",
-      "requirements": [
-        "CFG-12",
-        "CFG-13",
-        "CFG-19"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/sqlite_concurrency.rs",
-          "id": "writers_on_several_connections"
         }
       ]
     },
@@ -12371,10 +11918,6 @@
         }
       ]
     },
-
-
-
-
     {
       "id": "rust-postgres-float-round-trip",
       "kind": "feature",
@@ -12389,7 +11932,6 @@
         }
       ]
     },
-
     {
       "id": "rust-dbspec-set-nested-json-rules",
       "kind": "feature",
@@ -12701,62 +12243,6 @@
       ]
     },
     {
-      "id": "rust-integration-coverage-generated-model-connection-postgres",
-      "kind": "feature",
-      "requirements": [
-        "CFG-1",
-        "COD-20",
-        "DBS-114"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/src/integration.rs",
-          "id": "coverage_generated_model_connection",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--bin integration",
-            "FEATURE_DATABASE=postgres",
-            "FEATURE_DSN_ENV=BENCH_POSTGRES_DSN",
-            "FEATURE_TEST=coverage_generated_model_connection"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "rust-integration-coverage-generated-model-connection-sqlite",
-      "kind": "feature",
-      "requirements": [
-        "CFG-1",
-        "COD-20",
-        "DBS-114"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/src/integration.rs",
-          "id": "coverage_generated_model_connection",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--bin integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_generated_model_connection"
-          ]
-        }
-      ]
-    },
-    {
       "id": "rust-decimal-physical-decimal-mysql",
       "kind": "feature",
       "requirements": [
@@ -12934,382 +12420,6 @@
       ]
     },
     {
-      "id": "rust-integration-coverage-constraints-and-relations-coverage-constraint-errors",
-      "kind": "feature",
-      "requirements": [
-        "CFG-33"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_constraints_and_relations.rs",
-          "id": "coverage_constraints_and_relations::coverage_constraint_errors",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=mysql",
-            "FEATURE_DSN_ENV=BENCH_MYSQL_DSN",
-            "FEATURE_TEST=coverage_constraints_and_relations::coverage_constraint_errors"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "rust-integration-coverage-constraints-and-relations-coverage-constraint-errors-postgres",
-      "kind": "feature",
-      "requirements": [
-        "CFG-33"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_constraints_and_relations.rs",
-          "id": "coverage_constraints_and_relations::coverage_constraint_errors",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=postgres",
-            "FEATURE_DSN_ENV=BENCH_POSTGRES_DSN",
-            "FEATURE_TEST=coverage_constraints_and_relations::coverage_constraint_errors"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "rust-integration-coverage-constraints-and-relations-coverage-constraint-errors-sqlite",
-      "kind": "feature",
-      "requirements": [
-        "CFG-33"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_constraints_and_relations.rs",
-          "id": "coverage_constraints_and_relations::coverage_constraint_errors",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_constraints_and_relations::coverage_constraint_errors"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "rust-integration-coverage-model-queries-coverage-model-query-rows-postgres",
-      "kind": "feature",
-      "requirements": [
-        "DSL-57",
-        "DSL-58",
-        "DSL-60",
-        "DSL-62",
-        "DSL-80",
-        "DSL-82",
-        "DSL-99",
-        "PLN-11"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_model_queries.rs",
-          "id": "coverage_model_queries::coverage_model_query_rows",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=postgres",
-            "FEATURE_DSN_ENV=BENCH_POSTGRES_DSN",
-            "FEATURE_TEST=coverage_model_queries::coverage_model_query_rows"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "rust-integration-coverage-model-queries-coverage-model-query-rows-sqlite",
-      "kind": "feature",
-      "requirements": [
-        "DSL-57",
-        "DSL-58",
-        "DSL-60",
-        "DSL-62",
-        "DSL-80",
-        "DSL-82",
-        "DSL-99",
-        "PLN-11"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_model_queries.rs",
-          "id": "coverage_model_queries::coverage_model_query_rows",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_model_queries::coverage_model_query_rows"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "rust-integration-coverage-model-writes-coverage-model-write-cycle-postgres",
-      "kind": "feature",
-      "requirements": [
-        "DSL-56",
-        "DSL-57",
-        "DSL-58",
-        "DSL-60",
-        "DSL-103",
-        "DSL-104",
-        "DSL-105",
-        "DSL-106",
-        "DSL-110"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_model_writes.rs",
-          "id": "coverage_model_writes::coverage_model_write_cycle",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=postgres",
-            "FEATURE_DSN_ENV=BENCH_POSTGRES_DSN",
-            "FEATURE_TEST=coverage_model_writes::coverage_model_write_cycle"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "rust-integration-coverage-model-writes-coverage-model-write-cycle-sqlite",
-      "kind": "feature",
-      "requirements": [
-        "DSL-56",
-        "DSL-57",
-        "DSL-58",
-        "DSL-60",
-        "DSL-103",
-        "DSL-104",
-        "DSL-105",
-        "DSL-106",
-        "DSL-110"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_model_writes.rs",
-          "id": "coverage_model_writes::coverage_model_write_cycle",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_model_writes::coverage_model_write_cycle"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "rust-integration-coverage-schema-install-coverage-schema-install-existing-postgres",
-      "kind": "feature",
-      "requirements": [
-        "DBS-108",
-        "SCH-7"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_schema_install.rs",
-          "id": "coverage_schema_install::coverage_schema_install_existing",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=postgres",
-            "FEATURE_DSN_ENV=BENCH_POSTGRES_DSN",
-            "FEATURE_TEST=coverage_schema_install::coverage_schema_install_existing"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "rust-integration-coverage-schema-install-coverage-schema-install-existing-sqlite",
-      "kind": "feature",
-      "requirements": [
-        "DBS-108",
-        "SCH-7"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_schema_install.rs",
-          "id": "coverage_schema_install::coverage_schema_install_existing",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_schema_install::coverage_schema_install_existing"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "rust-integration-coverage-schema-install-coverage-schema-install-partial-postgres",
-      "kind": "feature",
-      "requirements": [
-        "DBS-108",
-        "SCH-10"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_schema_install.rs",
-          "id": "coverage_schema_install::coverage_schema_install_partial",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=postgres",
-            "FEATURE_DSN_ENV=BENCH_POSTGRES_DSN",
-            "FEATURE_TEST=coverage_schema_install::coverage_schema_install_partial"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "rust-integration-coverage-schema-install-coverage-schema-install-partial-sqlite",
-      "kind": "feature",
-      "requirements": [
-        "DBS-108",
-        "SCH-10"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_schema_install.rs",
-          "id": "coverage_schema_install::coverage_schema_install_partial",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_schema_install::coverage_schema_install_partial"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "rust-integration-coverage-schema-install-coverage-schema-install-external-documents-postgres",
-      "kind": "feature",
-      "requirements": [
-        "DBS-107",
-        "SCH-7",
-        "SCH-11"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_schema_install.rs",
-          "id": "coverage_schema_install::coverage_schema_install_external_documents",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=postgres",
-            "FEATURE_DSN_ENV=BENCH_POSTGRES_DSN",
-            "FEATURE_TEST=coverage_schema_install::coverage_schema_install_external_documents"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "rust-integration-coverage-schema-install-coverage-schema-install-external-documents-sqlite",
-      "kind": "feature",
-      "requirements": [
-        "DBS-107",
-        "SCH-7",
-        "SCH-11"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_schema_install.rs",
-          "id": "coverage_schema_install::coverage_schema_install_external_documents",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_schema_install::coverage_schema_install_external_documents"
-          ]
-        }
-      ]
-    },
-    {
       "id": "rust-integration-result-chains-generated-model-result-chains-preserve-assigned-values",
       "kind": "feature",
       "requirements": [
@@ -13348,9 +12458,6 @@
         }
       ]
     },
-
-
-
     {
       "id": "py-dbspec-cases",
       "kind": "feature",
@@ -13393,7 +12500,6 @@
         }
       ]
     },
-
     {
       "id": "py-replica",
       "kind": "feature",
@@ -14044,118 +13150,6 @@
       ]
     },
     {
-      "id": "py-cov-authenticated-encryption-aes-envelope-decrypt",
-      "kind": "feature",
-      "requirements": [
-        "COD-5"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_authenticated_encryption.py",
-          "id": "test_aes_envelope_decrypt"
-        }
-      ]
-    },
-    {
-      "id": "py-cov-authenticated-encryption-aes-round-trip",
-      "kind": "feature",
-      "requirements": [
-        "COD-5"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_authenticated_encryption.py",
-          "id": "test_aes_round_trip"
-        }
-      ]
-    },
-    {
-      "id": "py-cov-authenticated-encryption-aes-tamper-rejected",
-      "kind": "feature",
-      "requirements": [
-        "COD-6"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_authenticated_encryption.py",
-          "id": "test_aes_tamper_rejected"
-        }
-      ]
-    },
-    {
-      "id": "py-cov-authenticated-encryption-aes-wrong-key-rejected",
-      "kind": "feature",
-      "requirements": [
-        "COD-6"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_authenticated_encryption.py",
-          "id": "test_aes_wrong_key_rejected"
-        }
-      ]
-    },
-    {
-      "id": "py-cov-authenticated-encryption-blind-index-vector",
-      "kind": "feature",
-      "requirements": [
-        "COD-4"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_authenticated_encryption.py",
-          "id": "test_blind_index_vector"
-        }
-      ]
-    },
-    {
-      "id": "py-cov-conformance-verification-conformance-vector",
-      "kind": "feature",
-      "requirements": [
-        "DIA-37"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_conformance_verification.py",
-          "id": "test_conformance_vector"
-        }
-      ]
-    },
-    {
-      "id": "py-cov-constraints-and-relations-constraint-errors",
-      "kind": "feature",
-      "requirements": [
-        "CFG-33"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_constraints_and_relations.py",
-          "id": "test_constraint_errors"
-        }
-      ]
-    },
-    {
-      "id": "py-cov-statement-events-statement-events",
-      "kind": "feature",
-      "requirements": [
-        "INT-91"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_statement_events.py",
-          "id": "test_statement_events"
-        }
-      ]
-    },
-    {
       "id": "ts-engine",
       "kind": "feature",
       "requirements": [
@@ -14581,20 +13575,6 @@
           "implementation": "php",
           "test": "packages/php/tests/DbspecRulesTest.php",
           "id": "DbspecRulesTest::testLimit"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-dbspec-stress-stress",
-      "kind": "feature",
-      "requirements": [
-        "DBS-123"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/DbspecStressTest.php",
-          "id": "DbspecStressTest::testStress"
         }
       ]
     },
@@ -15385,49 +14365,6 @@
       ]
     },
     {
-      "id": "php-internal-sqlite-concurrency-writers-in-several-processes",
-      "kind": "feature",
-      "requirements": [
-        "CFG-12",
-        "CFG-13"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/SqliteConcurrencyTest.php",
-          "id": "SqliteConcurrencyTest::testWritersInSeveralProcesses"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-sqlite-concurrency-reads-during-a-write",
-      "kind": "feature",
-      "requirements": [
-        "CFG-13"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/SqliteConcurrencyTest.php",
-          "id": "SqliteConcurrencyTest::testReadsDuringAWrite"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-sqlite-concurrency-lock-wait-expires",
-      "kind": "feature",
-      "requirements": [
-        "CFG-12"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/SqliteConcurrencyTest.php",
-          "id": "SqliteConcurrencyTest::testLockWaitExpires"
-        }
-      ]
-    },
-    {
       "id": "php-internal-add-tables-and-columns-add-tables-and-columns",
       "kind": "feature",
       "requirements": [
@@ -15745,8 +14682,6 @@
         }
       ]
     },
-
-
     {
       "id": "php-internal-model-install-inside-a-transaction",
       "kind": "feature",
@@ -16360,8 +15295,7 @@
         }
       ]
     },
-
-        {
+    {
       "id": "php-internal-rollback-rollback-failed",
       "kind": "feature",
       "requirements": [
@@ -21825,33 +20759,115 @@
         "DIA-180"
       ],
       "bindings": [
-        {"implementation": "go", "test": "packages/go/orm/coverage_transaction_failure_test.go", "id": "TestTransactionFailureRollback"},
-        {"implementation": "php", "test": "packages/php/tests/TransactionFailureTest.php", "id": "TransactionFailureTest::testTransactionKeepsCallbackAndFailedRollbackErrors"},
-        {"implementation": "php-extension", "test": "packages/php-ext/tests/TransactionFailureNativeTest.php", "id": "TransactionFailureNativeTest::testTransactionKeepsCallbackAndFailedRollbackErrors"},
-        {"implementation": "typescript", "test": "packages/ts/tests/transaction-failure.mjs", "id": "transaction-failure/rollback-primary-and-cleanup"},
-        {"implementation": "python", "test": "packages/python/tests/test_rollback_fault.py", "id": "test_a_failed_rollback_reports_the_callback_error_and_the_rollback_error"},
-        {"implementation": "rust", "test": "packages/rust/orm/src/tx.rs", "id": "tx::tests::sqlite_transaction_end_failures_are_reported"}
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_transaction_failure_test.go",
+          "id": "TestTransactionFailureRollback"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/TransactionFailureTest.php",
+          "id": "TransactionFailureTest::testTransactionKeepsCallbackAndFailedRollbackErrors"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/TransactionFailureNativeTest.php",
+          "id": "TransactionFailureNativeTest::testTransactionKeepsCallbackAndFailedRollbackErrors"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/transaction-failure.mjs",
+          "id": "transaction-failure/rollback-primary-and-cleanup"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_rollback_fault.py",
+          "id": "test_a_failed_rollback_reports_the_callback_error_and_the_rollback_error"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/tx.rs",
+          "id": "tx::tests::sqlite_transaction_end_failures_are_reported"
+        }
       ]
     },
     {
       "id": "transaction-failure-rollback-fault",
       "kind": "feature",
-      "requirements": ["INT-72"],
+      "requirements": [
+        "INT-72"
+      ],
       "bindings": [
-        {"implementation": "go", "test": "packages/go/orm/rollback_fault_test.go", "id": "TestRollbackFaultSQLite"},
-        {"implementation": "go", "test": "packages/go/orm/rollback_fault_test.go", "id": "TestRollbackFaultMySQL"},
-        {"implementation": "go", "test": "packages/go/orm/rollback_fault_test.go", "id": "TestRollbackFaultPostgres"},
-        {"implementation": "php", "test": "packages/php/tests/TransactionFailureTest.php", "id": "TransactionFailureTest::testRollbackFaultIsConsumedAfterTransactionRollback"},
-        {"implementation": "php", "test": "packages/php/tests/RollbackTest.php", "id": "RollbackTest::testRollbackFault"},
-        {"implementation": "php-extension", "test": "packages/php-ext/tests/TransactionFailureNativeTest.php", "id": "TransactionFailureNativeTest::testRollbackFaultIsConsumedAfterTransactionRollback"},
-        {"implementation": "typescript", "test": "packages/ts/tests/transaction-failure.mjs", "id": "transaction-failure/rollback-fault-consumption"},
-        {"implementation": "typescript", "test": "packages/ts/tests/rollback.mjs", "id": "rollback/rollback_fault/sqlite"},
-        {"implementation": "typescript", "test": "packages/ts/tests/rollback.mjs", "id": "rollback/rollback_fault/mysql"},
-        {"implementation": "typescript", "test": "packages/ts/tests/rollback.mjs", "id": "rollback/rollback_fault/postgres"},
-        {"implementation": "python", "test": "packages/python/tests/test_rollback_fault.py", "id": "test_the_fault_reports_the_next_failed_rollback"},
-        {"implementation": "rust", "test": "packages/rust/orm/tests/rollback.rs", "id": "rollback_fault_sqlite"},
-        {"implementation": "rust", "test": "packages/rust/orm/tests/rollback.rs", "id": "rollback_fault_mysql"},
-        {"implementation": "rust", "test": "packages/rust/orm/tests/rollback.rs", "id": "rollback_fault_postgres"}
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/rollback_fault_test.go",
+          "id": "TestRollbackFaultSQLite"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/rollback_fault_test.go",
+          "id": "TestRollbackFaultMySQL"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/rollback_fault_test.go",
+          "id": "TestRollbackFaultPostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/TransactionFailureTest.php",
+          "id": "TransactionFailureTest::testRollbackFaultIsConsumedAfterTransactionRollback"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RollbackTest.php",
+          "id": "RollbackTest::testRollbackFault"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/TransactionFailureNativeTest.php",
+          "id": "TransactionFailureNativeTest::testRollbackFaultIsConsumedAfterTransactionRollback"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/transaction-failure.mjs",
+          "id": "transaction-failure/rollback-fault-consumption"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/rollback.mjs",
+          "id": "rollback/rollback_fault/sqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/rollback.mjs",
+          "id": "rollback/rollback_fault/mysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/rollback.mjs",
+          "id": "rollback/rollback_fault/postgres"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_rollback_fault.py",
+          "id": "test_the_fault_reports_the_next_failed_rollback"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/rollback.rs",
+          "id": "rollback_fault_sqlite"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/rollback.rs",
+          "id": "rollback_fault_mysql"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/rollback.rs",
+          "id": "rollback_fault_postgres"
+        }
       ]
     },
     {
@@ -21862,13 +20878,41 @@
         "PLN-17"
       ],
       "bindings": [
-        {"implementation": "go", "test": "packages/go/orm/coverage_transaction_failure_test.go", "id": "TestTransactionFailureSavepointEnd"},
-        {"implementation": "go", "test": "packages/go/orm/transaction_end_test.go", "id": "TestSavepointReportsFailedEnd"},
-        {"implementation": "php", "test": "packages/php/tests/TransactionFailureTest.php", "id": "TransactionFailureTest::testSavepointAttemptsBothEndStepsAndKeepsTheCallbackError"},
-        {"implementation": "php-extension", "test": "packages/php-ext/tests/TransactionFailureNativeTest.php", "id": "TransactionFailureNativeTest::testSavepointAttemptsBothEndStepsAndKeepsTheCallbackError"},
-        {"implementation": "typescript", "test": "packages/ts/tests/transaction-failure.mjs", "id": "transaction-failure/savepoint-end-attempts-both"},
-        {"implementation": "python", "test": "packages/python/tests/test_rollback_fault.py", "id": "test_a_failed_savepoint_rollback_and_transaction_rollback_report_both"},
-        {"implementation": "rust", "test": "packages/rust/orm/src/tx.rs", "id": "tx::tests::savepoint_end_failures_are_reported"}
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_transaction_failure_test.go",
+          "id": "TestTransactionFailureSavepointEnd"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/transaction_end_test.go",
+          "id": "TestSavepointReportsFailedEnd"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/TransactionFailureTest.php",
+          "id": "TransactionFailureTest::testSavepointAttemptsBothEndStepsAndKeepsTheCallbackError"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/TransactionFailureNativeTest.php",
+          "id": "TransactionFailureNativeTest::testSavepointAttemptsBothEndStepsAndKeepsTheCallbackError"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/transaction-failure.mjs",
+          "id": "transaction-failure/savepoint-end-attempts-both"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_rollback_fault.py",
+          "id": "test_a_failed_savepoint_rollback_and_transaction_rollback_report_both"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/tx.rs",
+          "id": "tx::tests::savepoint_end_failures_are_reported"
+        }
       ]
     },
     {
@@ -22060,17 +21104,18 @@
         }
       ]
     },
-        {
+    {
       "id": "generated-typed-getter-public-column-api",
       "kind": "feature",
       "requirements": [
-        "DBS-112"
+        "DBS-112",
+        "DBS-114"
       ],
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/decimal_field_test.go",
-          "id": "TestGeneratedDecimalFieldUsesExactText"
+          "test": "packages/go/generator/gen_go_scan_test.go",
+          "id": "TestGoGeneratedScalarGetterRejectsUnselectedRead"
         },
         {
           "implementation": "php",
@@ -22079,8 +21124,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageModelGenerationNativeTest.php",
-          "id": "CoverageModelGenerationNativeTest::testModelGenerationCheck"
+          "test": "packages/php-ext/tests/ModelNativeTest.php",
+          "id": "ModelNativeTest::testPhpGeneratedTypedGetterUsesInternalModelStorage"
         },
         {
           "implementation": "python",
@@ -22089,8 +21134,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/build/tests/generate.rs",
-          "id": "generated_field_types_follow_the_runtime_model"
+          "test": "packages/rust/tests/src/integration.rs",
+          "id": "generated_typed_getter_is_a_checked_public_consumer_api"
         },
         {
           "implementation": "typescript",
@@ -22268,43 +21313,245 @@
       ]
     },
     {
-          "id": "complex-query-product-search",
-          "kind": "feature",
-          "requirements": [
-                "CPX-2"
-          ],
-          "bindings": [
-                {
-                      "implementation": "go",
-                      "test": "packages/go/complexquery/coverage_complex_query_test.go",
-                      "id": "TestCoverageComplexQueryProductSearch"
-                },
-                {
-                      "implementation": "php",
-                      "test": "packages/php/tests/ComplexQueryDbTest.php",
-                      "id": "ComplexQueryDbTest::testFeatureProductSearchPage"
-                },
-                {
-                      "implementation": "php-extension",
-                      "test": "packages/php-ext/tests/ComplexQueryNativeTest.php",
-                      "id": "ComplexQueryNativeTest::testFeatureProductSearchPageUsesNativePlannerAndModels"
-                },
-                {
-                      "implementation": "typescript",
-                      "test": "packages/ts/tests/coverage_complex_query.mjs",
-                      "id": "complex_query_product_search"
-                },
-                {
-                      "implementation": "python",
-                      "test": "packages/python/tests/coverage_complex_query.py",
-                      "id": "test_complex_query_product_search"
-                },
-                {
-                      "implementation": "rust",
-                      "test": "packages/rust/tests/tests/integration/coverage_complex_query.rs",
-                      "id": "coverage_complex_query::coverage_complex_query_product_search"
-                }
+      "id": "complex-query-product-search",
+      "kind": "feature",
+      "requirements": [
+        "CPX-2"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/complexquery/coverage_complex_query_test.go",
+          "id": "TestCoverageComplexQueryProductSearch"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ComplexQueryDbTest.php",
+          "id": "ComplexQueryDbTest::testFeatureProductSearchPage"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ComplexQueryNativeTest.php",
+          "id": "ComplexQueryNativeTest::testFeatureProductSearchPageUsesNativePlannerAndModels"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_complex_query.mjs",
+          "id": "complex_query_product_search"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_complex_query.py",
+          "id": "test_complex_query_product_search"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/integration/coverage_complex_query.rs",
+          "id": "coverage_complex_query::coverage_complex_query_product_search"
+        }
+      ]
+    },
+    {
+      "id": "connection-sqlite-concurrent-writers",
+      "kind": "feature",
+      "requirements": [
+        "CFG-12"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/sqlite_concurrency_test.go",
+          "id": "TestSQLiteWritersOnSeveralConnections"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/SqliteConcurrencyTest.php",
+          "id": "SqliteConcurrencyTest::testWritersInSeveralProcesses"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConnectionBusyTimeoutNativeTest.php",
+          "id": "ConnectionBusyTimeoutNativeTest::testNativeConnectionsCommitConcurrentSqliteWriters"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/sqlite-concurrency.mjs",
+          "id": "sqlite-concurrency/writersInSeveralProcesses"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/connection_pool.py",
+          "id": "test_sqlite_concurrent_writers_commit_every_row"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/sqlite_concurrency.rs",
+          "id": "writers_on_several_connections"
+        }
+      ]
+    },
+    {
+      "id": "connection-sqlite-read-during-write",
+      "kind": "feature",
+      "requirements": [
+        "CFG-13"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/sqlite_concurrency_test.go",
+          "id": "TestSQLiteReadsDuringWrite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/SqliteConcurrencyTest.php",
+          "id": "SqliteConcurrencyTest::testReadsDuringAWrite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConnectionBusyTimeoutNativeTest.php",
+          "id": "ConnectionBusyTimeoutNativeTest::testNativeSqliteReadDuringWriteSeesOnlyCommittedRows"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/sqlite-concurrency.mjs",
+          "id": "sqlite-concurrency/readsDuringWrite"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/connection_pool.py",
+          "id": "test_sqlite_read_during_write_sees_only_committed_rows"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/sqlite_concurrency.rs",
+          "id": "reads_during_write"
+        }
+      ]
+    },
+    {
+      "id": "coverage-constraints-and-relations-constraint-errors",
+      "kind": "feature",
+      "requirements": [
+        "CFG-33"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/coverage_constraints_and_relations_test.go",
+          "id": "TestCoverageConstraintErrors",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-go-unit",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=TestCoverageConstraintErrors",
+            "FEATURE_PACKAGE=./model"
           ]
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
+          "id": "CoverageConstraintsAndRelationsTest::testConstraintErrors"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageConstraintsAndRelationsExtensionTest.php",
+          "id": "CoverageConstraintsAndRelationsExtensionTest::testConstraintErrors"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_constraints_and_relations.mjs",
+          "id": "constraint_errors [sqlite]"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_constraints_and_relations.py",
+          "id": "test_constraint_errors"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/integration/coverage_constraints_and_relations.rs",
+          "id": "coverage_constraints_and_relations::coverage_constraint_errors",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-rust-database",
+            "FEATURE_CRATE=packages/rust/tests",
+            "FEATURE_CARGO_TARGET=--test integration",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=coverage_constraints_and_relations::coverage_constraint_errors"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coverage-constraints-and-relations-immutable-write",
+      "kind": "feature",
+      "requirements": [
+        "DBS-84"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/coverage_constraints_and_relations_test.go",
+          "id": "TestCoverageImmutableWrite",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-go-unit",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=TestCoverageImmutableWrite",
+            "FEATURE_PACKAGE=./model"
+          ]
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
+          "id": "CoverageConstraintsAndRelationsTest::testImmutableWrite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageConstraintsAndRelationsExtensionTest.php",
+          "id": "CoverageConstraintsAndRelationsExtensionTest::testImmutableWrite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_constraints_and_relations.mjs",
+          "id": "immutable_write [sqlite]"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_constraints_and_relations.py",
+          "id": "test_immutable_write"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/integration/coverage_constraints_and_relations.rs",
+          "id": "coverage_constraints_and_relations::coverage_immutable_write",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-rust-database",
+            "FEATURE_CRATE=packages/rust/tests",
+            "FEATURE_CARGO_TARGET=--test integration",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=coverage_constraints_and_relations::coverage_immutable_write"
+          ]
+        }
+      ]
     }
   ],
   "errors": {
@@ -22329,8 +21576,8 @@
       "clients",
       "planners",
       "runners",
-      "\uc5b8\uc5b4",
-      "\uad6c\ud604",
+      "언어",
+      "구현",
       "client",
       "planner",
       "runner"

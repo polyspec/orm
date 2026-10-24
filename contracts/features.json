@@ -56,7 +56,6 @@
       ],
       "parity": [
         "coverage-dsn-connection",
-        "coverage-generated-model-connection",
         "generated-fields-require-selection-or-assignment",
         "generated-nonnull-styled-setter-rejects-sql-null"
       ],
@@ -97,6 +96,7 @@
         "packages/php/tests/MysqlTlsTest.php",
         "packages/php-ext/tests/MysqlTlsNativeTest.php",
         "packages/php-ext/tests/ConnectionStatementTimeoutNativeTest.php",
+        "packages/php-ext/tests/ConnectionBusyTimeoutNativeTest.php",
         "packages/php-ext/tests/OrmExceptionNativeTest.php",
         "packages/rust/orm/tests/mysql_tls.rs",
         "packages/ts/tests/mysql_tls.mjs",
@@ -306,6 +306,17 @@
           ]
         },
         {
+          "id": "connection-sqlite-busy-timeout-php-extension",
+          "command": "make connection-busy-timeout-php-extension-check",
+          "shard": "other",
+          "inputs": [
+            "Makefile",
+            "packages/php-ext/tests/ConnectionBusyTimeoutNativeTest.php",
+            "packages/php-ext/src/db.c",
+            "packages/php/src/OrmException.php"
+          ]
+        },
+        {
           "id": "dsn-mysql-tls-typescript",
           "command": "node packages/ts/tests/mysql_tls.mjs",
           "shard": "other",
@@ -422,6 +433,35 @@
           "inputs": [
             "packages/python/tests/connection_pool.py",
             "packages/python/src/polyspec/orm/database.py"
+          ]
+        },
+        {
+          "id": "connection-sqlite-concurrent-writers-python",
+          "command": "make connection-sqlite-concurrent-writers-python-check",
+          "shard": "other",
+          "inputs": [
+            "Makefile",
+            "packages/python/tests/connection_pool.py"
+          ]
+        },
+        {
+          "id": "connection-sqlite-read-during-write-python",
+          "command": "make connection-sqlite-read-during-write-python-check",
+          "shard": "other",
+          "inputs": [
+            "Makefile",
+            "packages/python/tests/connection_pool.py"
+          ]
+        },
+        {
+          "id": "connection-sqlite-read-during-write-php-extension",
+          "command": "make connection-sqlite-read-during-write-php-extension-check",
+          "shard": "other",
+          "inputs": [
+            "Makefile",
+            "packages/php-ext/scripts/build.sh",
+            "packages/php-ext/src/db.c",
+            "packages/php-ext/tests/ConnectionBusyTimeoutNativeTest.php"
           ]
         }
       ],
@@ -3006,7 +3046,6 @@
         }
       ],
       "parity": [
-        "py-cov-statement-events-statement-events",
         "statement-events"
       ],
       "fixtures": [
@@ -5329,6 +5368,8 @@
         "cases": [
           "planner_statement",
           "planner_count",
+          "planner_contains_ascii_fold",
+          "planner_contains_binary_collation",
           "planner_rejects_unknown_column",
           "planner_restore",
           "planner_tables",
@@ -5425,6 +5466,8 @@
                   "cases": [
                     "planner_statement",
                     "planner_count",
+                    "planner_contains_ascii_fold",
+                    "planner_contains_binary_collation",
                     "planner_rejects_unknown_column",
                     "planner_restore",
                     "planner_tables",
@@ -5506,6 +5549,8 @@
                   "symbols": {
                     "planner_statement": "TestCoveragePlannerStatement",
                     "planner_count": "TestCoveragePlannerCount",
+                    "planner_contains_ascii_fold": "TestCoveragePlannerContainsAsciiFold",
+                    "planner_contains_binary_collation": "TestCoveragePlannerContainsBinaryCollation",
                     "planner_rejects_unknown_column": "TestCoveragePlannerRejectsUnknownColumn",
                     "planner_restore": "TestCoveragePlannerRestore",
                     "planner_restore_rejects_non_key": "TestCoveragePlannerRestoreRejectsNonKey",
@@ -5605,6 +5650,8 @@
                   "cases": [
                     "planner_statement",
                     "planner_count",
+                    "planner_contains_ascii_fold",
+                    "planner_contains_binary_collation",
                     "planner_rejects_unknown_column",
                     "planner_restore",
                     "planner_tables",
@@ -5704,6 +5751,8 @@
                   "cases": [
                     "planner_statement",
                     "planner_count",
+                    "planner_contains_ascii_fold",
+                    "planner_contains_binary_collation",
                     "planner_rejects_unknown_column",
                     "planner_restore",
                     "planner_tables",
@@ -5785,6 +5834,8 @@
                   "symbols": {
                     "planner_statement": "engine::coverage_planner::planner::planner_statement",
                     "planner_count": "engine::coverage_planner::planner::planner_count",
+                    "planner_contains_ascii_fold": "engine::coverage_planner::planner::planner_contains_ascii_fold",
+                    "planner_contains_binary_collation": "engine::coverage_planner::planner::planner_contains_binary_collation",
                     "planner_rejects_unknown_column": "engine::coverage_planner::planner::planner_rejects_unknown_column",
                     "planner_restore": "engine::coverage_planner::planner::planner_restore",
                     "planner_restore_rejects_non_key": "engine::coverage_planner::planner::planner_restore_rejects_non_key",
@@ -5884,6 +5935,8 @@
                   "cases": [
                     "planner_statement",
                     "planner_count",
+                    "planner_contains_ascii_fold",
+                    "planner_contains_binary_collation",
                     "planner_rejects_unknown_column",
                     "planner_restore",
                     "planner_tables",
@@ -5983,6 +6036,8 @@
                   "cases": [
                     "planner_statement",
                     "planner_count",
+                    "planner_contains_ascii_fold",
+                    "planner_contains_binary_collation",
                     "planner_rejects_unknown_column",
                     "planner_restore",
                     "planner_tables",
@@ -6078,6 +6133,8 @@
                   "cases": [
                     "planner_statement",
                     "planner_count",
+                    "planner_contains_ascii_fold",
+                    "planner_contains_binary_collation",
                     "planner_rejects_unknown_column",
                     "planner_restore",
                     "planner_tables",
@@ -6543,12 +6600,7 @@
         }
       ],
       "parity": [
-        "authenticated-encryption",
-        "py-cov-authenticated-encryption-aes-envelope-decrypt",
-        "py-cov-authenticated-encryption-aes-round-trip",
-        "py-cov-authenticated-encryption-aes-tamper-rejected",
-        "py-cov-authenticated-encryption-aes-wrong-key-rejected",
-        "py-cov-authenticated-encryption-blind-index-vector"
+        "authenticated-encryption"
       ],
       "fixtures": [
         "tests/codec/aes-vectors.json",
@@ -6581,6 +6633,7 @@
         "packages/rust/tests/src/integration.rs",
         "packages/go/orm/coverage_authenticated_encryption_test.go",
         "packages/php/tests/CoverageAuthenticatedEncryptionTest.php",
+        "packages/php-ext/tests/CoverageAuthenticatedEncryptionExtensionTest.php",
         "packages/rust/orm/tests/coverage_authenticated_encryption.rs",
         "packages/ts/tests/coverage_authenticated_encryption.mjs",
         "contracts/fixtures/secret_config.dbs",
@@ -6879,6 +6932,37 @@
                     "aes_wrong_key_rejected",
                     "blind_index_vector"
                   ]
+                }
+              ]
+            }
+          },
+          "php-extension": {
+            "part": "packages/php-ext/tests",
+            "tests": [
+              "packages/php-ext/tests/CoverageAuthenticatedEncryptionExtensionTest.php"
+            ],
+            "inputs": [
+              "contracts/fixtures/authenticated_encryption.json"
+            ],
+            "commands": {
+              "none": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageAuthenticatedEncryptionExtensionTest.php",
+                  "cases": [
+                    "aes_envelope_decrypt",
+                    "aes_round_trip",
+                    "aes_tamper_rejected",
+                    "aes_wrong_key_rejected",
+                    "blind_index_vector"
+                  ],
+                  "symbols": {
+                    "aes_envelope_decrypt": "CoverageAuthenticatedEncryptionExtensionTest::testAesEnvelopeDecrypt",
+                    "aes_round_trip": "CoverageAuthenticatedEncryptionExtensionTest::testAesRoundTrip",
+                    "aes_tamper_rejected": "CoverageAuthenticatedEncryptionExtensionTest::testAesTamperRejected",
+                    "aes_wrong_key_rejected": "CoverageAuthenticatedEncryptionExtensionTest::testAesWrongKeyRejected",
+                    "blind_index_vector": "CoverageAuthenticatedEncryptionExtensionTest::testBlindIndexVector"
+                  }
                 }
               ]
             }
@@ -7269,8 +7353,8 @@
       "title": "Constraints and relations",
       "title_ko": "\uc81c\uc57d\uacfc \uad00\uacc4",
       "status": "partial",
-      "description": "Keep CHECK constraints, indexes, internal and external foreign keys, soft delete, immutable tables, and relation delete actions in the planner and the migration system.",
-      "description_ko": "CHECK \uc81c\uc57d, index, \ub0b4\ubd80\uc640 \uc678\ubd80 foreign key, soft delete, \ubcc0\uacbd \ubd88\uac00 \ud14c\uc774\ube14, \uad00\uacc4 \uc0ad\uc81c \ub3d9\uc791\uc744 planner\uc640 migration \uc2dc\uc2a4\ud15c\uc5d0\uc11c \uc720\uc9c0\ud55c\ub2e4.",
+      "description": "Keep CHECK constraints, indexes, internal and external foreign keys, external-document relation traversal, soft delete, immutable tables, and relation delete actions in the planner and migration system; refused immutable writes preserve the row and driver cause.",
+      "description_ko": "CHECK \uc81c\uc57d, index, \ub0b4\ubd80\u00b7\uc678\ubd80 foreign key, \uc678\ubd80 \ubb38\uc11c \uad00\uacc4 \uc870\ud68c, soft delete, \ubcc0\uacbd \ubd88\uac00 \ud14c\uc774\ube14\uacfc \uad00\uacc4 \uc0ad\uc81c \ub3d9\uc791\uc744 planner\uc640 migration \uc2dc\uc2a4\ud15c\uc5d0\uc11c \uc720\uc9c0\ud55c\ub2e4. \ubcc0\uacbd \ubd88\uac00 \uc4f0\uae30\uac00 \uac70\ubd80\ub418\uba74 \ud589\uacfc driver \uc6d0\uc778\uc744 \ubcf4\uc874\ud55c\ub2e4.",
       "inputs": {
         "type": "DbspecDocumentSet",
         "fields": [
@@ -7308,9 +7392,11 @@
         }
       ],
       "parity": [
-        "py-cov-constraints-and-relations-constraint-errors",
-        "rust-integration-coverage-constraints-and-relations-coverage-constraint-errors",
-        "ts-coverage_constraints_and_relations"
+        "coverage-audit-triggers-soft-delete-restore",
+        "client-query-relation",
+        "coverage-composite-keys-composite-key-rows",
+        "coverage-constraints-and-relations-immutable-write",
+        "coverage-constraints-and-relations-constraint-errors"
       ],
       "fixtures": [
         "contracts/fixtures/bench/bench.dbs",
@@ -7424,13 +7510,19 @@
       "coverage": {
         "kind": "database",
         "cases": [
-          "constraint_errors"
+          "constraint_errors",
+          "composite_key_rows",
+          "soft_delete_restore",
+          "external_relation",
+          "immutable_write"
         ],
         "owners": {
           "go": {
-            "part": "packages/go/model",
+            "part": "packages/go",
             "tests": [
-              "packages/go/model/coverage_constraints_and_relations_test.go"
+              "packages/go/model/coverage_constraints_and_relations_test.go",
+              "packages/go/model/coverage_composite_keys_test.go",
+              "packages/go/orm/coverage_audit_triggers_test.go"
             ],
             "commands": {
               "mysql": [
@@ -7438,10 +7530,36 @@
                   "runner": "go",
                   "test": "packages/go/model/coverage_constraints_and_relations_test.go",
                   "cases": [
-                    "constraint_errors"
+                    "constraint_errors",
+                    "external_relation",
+                    "immutable_write"
                   ],
                   "symbols": {
-                    "constraint_errors": "TestCoverageConstraintErrors"
+                    "constraint_errors": "TestCoverageConstraintErrors",
+                    "external_relation": "TestCoverageExternalRelation",
+                    "immutable_write": "TestCoverageImmutableWrite"
+                  },
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                },
+                {
+                  "runner": "go",
+                  "test": "packages/go/model/coverage_composite_keys_test.go",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "symbols": {
+                    "composite_key_rows": "TestCoverageCompositeKeyRows"
+                  },
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                },
+                {
+                  "runner": "go",
+                  "test": "packages/go/orm/coverage_audit_triggers_test.go",
+                  "cases": [
+                    "soft_delete_restore"
+                  ],
+                  "symbols": {
+                    "soft_delete_restore": "TestCoverageSoftDeleteRestore"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -7451,10 +7569,36 @@
                   "runner": "go",
                   "test": "packages/go/model/coverage_constraints_and_relations_test.go",
                   "cases": [
-                    "constraint_errors"
+                    "constraint_errors",
+                    "external_relation",
+                    "immutable_write"
                   ],
                   "symbols": {
-                    "constraint_errors": "TestCoverageConstraintErrors"
+                    "constraint_errors": "TestCoverageConstraintErrors",
+                    "external_relation": "TestCoverageExternalRelation",
+                    "immutable_write": "TestCoverageImmutableWrite"
+                  },
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                },
+                {
+                  "runner": "go",
+                  "test": "packages/go/model/coverage_composite_keys_test.go",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "symbols": {
+                    "composite_key_rows": "TestCoverageCompositeKeyRows"
+                  },
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                },
+                {
+                  "runner": "go",
+                  "test": "packages/go/orm/coverage_audit_triggers_test.go",
+                  "cases": [
+                    "soft_delete_restore"
+                  ],
+                  "symbols": {
+                    "soft_delete_restore": "TestCoverageSoftDeleteRestore"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -7464,20 +7608,53 @@
                   "runner": "go",
                   "test": "packages/go/model/coverage_constraints_and_relations_test.go",
                   "cases": [
-                    "constraint_errors"
+                    "constraint_errors",
+                    "external_relation",
+                    "immutable_write"
                   ],
                   "symbols": {
-                    "constraint_errors": "TestCoverageConstraintErrors"
+                    "constraint_errors": "TestCoverageConstraintErrors",
+                    "external_relation": "TestCoverageExternalRelation",
+                    "immutable_write": "TestCoverageImmutableWrite"
+                  },
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                },
+                {
+                  "runner": "go",
+                  "test": "packages/go/model/coverage_composite_keys_test.go",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "symbols": {
+                    "composite_key_rows": "TestCoverageCompositeKeyRows"
+                  },
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                },
+                {
+                  "runner": "go",
+                  "test": "packages/go/orm/coverage_audit_triggers_test.go",
+                  "cases": [
+                    "soft_delete_restore"
+                  ],
+                  "symbols": {
+                    "soft_delete_restore": "TestCoverageSoftDeleteRestore"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
-            }
+            },
+            "inputs": [
+              "contracts/fixtures/audit.dbs",
+              "contracts/fixtures/audit_columns.dbs",
+              "contracts/fixtures/refusal.dbs"
+            ]
           },
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/CoverageConstraintsAndRelationsTest.php"
+              "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
+              "packages/php/tests/CoverageCompositeKeysTest.php",
+              "packages/php/tests/CoverageAuditTriggersTest.php"
             ],
             "commands": {
               "mysql": [
@@ -7485,9 +7662,31 @@
                   "runner": "php",
                   "test": "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
                   "cases": [
-                    "constraint_errors"
+                    "constraint_errors",
+                    "external_relation",
+                    "immutable_write"
                   ],
-                  "symbols": {"constraint_errors": "testConstraintErrors"},
+                  "symbols": {
+                    "constraint_errors": "testConstraintErrors",
+                    "external_relation": "testExternalRelation",
+                    "immutable_write": "testImmutableWrite"
+                  },
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/CoverageCompositeKeysTest.php",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/CoverageAuditTriggersTest.php",
+                  "cases": [
+                    "soft_delete_restore"
+                  ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
               ],
@@ -7496,9 +7695,31 @@
                   "runner": "php",
                   "test": "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
                   "cases": [
-                    "constraint_errors"
+                    "constraint_errors",
+                    "external_relation",
+                    "immutable_write"
                   ],
-                  "symbols": {"constraint_errors": "testConstraintErrors"},
+                  "symbols": {
+                    "constraint_errors": "testConstraintErrors",
+                    "external_relation": "testExternalRelation",
+                    "immutable_write": "testImmutableWrite"
+                  },
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/CoverageCompositeKeysTest.php",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/CoverageAuditTriggersTest.php",
+                  "cases": [
+                    "soft_delete_restore"
+                  ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
@@ -7507,18 +7728,50 @@
                   "runner": "php",
                   "test": "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
                   "cases": [
-                    "constraint_errors"
+                    "constraint_errors",
+                    "external_relation",
+                    "immutable_write"
                   ],
-                  "symbols": {"constraint_errors": "testConstraintErrors"},
+                  "symbols": {
+                    "constraint_errors": "testConstraintErrors",
+                    "external_relation": "testExternalRelation",
+                    "immutable_write": "testImmutableWrite"
+                  },
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/CoverageCompositeKeysTest.php",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/CoverageAuditTriggersTest.php",
+                  "cases": [
+                    "soft_delete_restore"
+                  ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
-            }
+            },
+            "inputs": [
+              "packages/php/tests/restore_case.php",
+              "packages/php/tests/audit_case.php",
+              "contracts/fixtures/audit.dbs",
+              "contracts/fixtures/audit_columns.dbs",
+              "contracts/fixtures/restore.dbs",
+              "contracts/fixtures/refusal.dbs"
+            ]
           },
           "rust": {
-            "part": "packages/rust/tests",
+            "part": "packages/rust",
             "tests": [
-              "packages/rust/tests/tests/integration/coverage_constraints_and_relations.rs"
+              "packages/rust/tests/tests/integration/coverage_constraints_and_relations.rs",
+              "packages/rust/tests/tests/integration/coverage_composite_keys.rs",
+              "packages/rust/orm/tests/coverage_audit_triggers.rs"
             ],
             "commands": {
               "mysql": [
@@ -7526,10 +7779,36 @@
                   "runner": "cargo",
                   "test": "packages/rust/tests/tests/integration/coverage_constraints_and_relations.rs",
                   "cases": [
-                    "constraint_errors"
+                    "constraint_errors",
+                    "external_relation",
+                    "immutable_write"
                   ],
                   "symbols": {
-                    "constraint_errors": "coverage_constraints_and_relations::coverage_constraint_errors"
+                    "constraint_errors": "coverage_constraints_and_relations::coverage_constraint_errors",
+                    "external_relation": "coverage_constraints_and_relations::coverage_external_relation",
+                    "immutable_write": "coverage_constraints_and_relations::coverage_immutable_write"
+                  },
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                },
+                {
+                  "runner": "cargo",
+                  "test": "packages/rust/tests/tests/integration/coverage_composite_keys.rs",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "symbols": {
+                    "composite_key_rows": "coverage_composite_keys::coverage_composite_key_rows"
+                  },
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                },
+                {
+                  "runner": "cargo",
+                  "test": "packages/rust/orm/tests/coverage_audit_triggers.rs",
+                  "cases": [
+                    "soft_delete_restore"
+                  ],
+                  "symbols": {
+                    "soft_delete_restore": "coverage_soft_delete_restore"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -7539,10 +7818,36 @@
                   "runner": "cargo",
                   "test": "packages/rust/tests/tests/integration/coverage_constraints_and_relations.rs",
                   "cases": [
-                    "constraint_errors"
+                    "constraint_errors",
+                    "external_relation",
+                    "immutable_write"
                   ],
                   "symbols": {
-                    "constraint_errors": "coverage_constraints_and_relations::coverage_constraint_errors"
+                    "constraint_errors": "coverage_constraints_and_relations::coverage_constraint_errors",
+                    "external_relation": "coverage_constraints_and_relations::coverage_external_relation",
+                    "immutable_write": "coverage_constraints_and_relations::coverage_immutable_write"
+                  },
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                },
+                {
+                  "runner": "cargo",
+                  "test": "packages/rust/tests/tests/integration/coverage_composite_keys.rs",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "symbols": {
+                    "composite_key_rows": "coverage_composite_keys::coverage_composite_key_rows"
+                  },
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                },
+                {
+                  "runner": "cargo",
+                  "test": "packages/rust/orm/tests/coverage_audit_triggers.rs",
+                  "cases": [
+                    "soft_delete_restore"
+                  ],
+                  "symbols": {
+                    "soft_delete_restore": "coverage_soft_delete_restore"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -7552,20 +7857,54 @@
                   "runner": "cargo",
                   "test": "packages/rust/tests/tests/integration/coverage_constraints_and_relations.rs",
                   "cases": [
-                    "constraint_errors"
+                    "constraint_errors",
+                    "external_relation",
+                    "immutable_write"
                   ],
                   "symbols": {
-                    "constraint_errors": "coverage_constraints_and_relations::coverage_constraint_errors"
+                    "constraint_errors": "coverage_constraints_and_relations::coverage_constraint_errors",
+                    "external_relation": "coverage_constraints_and_relations::coverage_external_relation",
+                    "immutable_write": "coverage_constraints_and_relations::coverage_immutable_write"
+                  },
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                },
+                {
+                  "runner": "cargo",
+                  "test": "packages/rust/tests/tests/integration/coverage_composite_keys.rs",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "symbols": {
+                    "composite_key_rows": "coverage_composite_keys::coverage_composite_key_rows"
+                  },
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                },
+                {
+                  "runner": "cargo",
+                  "test": "packages/rust/orm/tests/coverage_audit_triggers.rs",
+                  "cases": [
+                    "soft_delete_restore"
+                  ],
+                  "symbols": {
+                    "soft_delete_restore": "coverage_soft_delete_restore"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
-            }
+            },
+            "inputs": [
+              "contracts/fixtures/audit.dbs",
+              "contracts/fixtures/audit_columns.dbs",
+              "contracts/fixtures/restore.dbs",
+              "contracts/fixtures/refusal.dbs"
+            ]
           },
           "typescript": {
             "part": "packages/ts/tests",
             "tests": [
-              "packages/ts/tests/coverage_constraints_and_relations.mjs"
+              "packages/ts/tests/coverage_constraints_and_relations.mjs",
+              "packages/ts/tests/coverage_composite_keys.mjs",
+              "packages/ts/tests/coverage_audit_triggers.mjs"
             ],
             "commands": {
               "mysql": [
@@ -7573,7 +7912,25 @@
                   "runner": "node",
                   "test": "packages/ts/tests/coverage_constraints_and_relations.mjs",
                   "cases": [
-                    "constraint_errors"
+                    "constraint_errors",
+                    "external_relation",
+                    "immutable_write"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                },
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/coverage_composite_keys.mjs",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                },
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/coverage_audit_triggers.mjs",
+                  "cases": [
+                    "soft_delete_restore"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -7583,7 +7940,25 @@
                   "runner": "node",
                   "test": "packages/ts/tests/coverage_constraints_and_relations.mjs",
                   "cases": [
-                    "constraint_errors"
+                    "constraint_errors",
+                    "external_relation",
+                    "immutable_write"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                },
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/coverage_composite_keys.mjs",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                },
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/coverage_audit_triggers.mjs",
+                  "cases": [
+                    "soft_delete_restore"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -7593,17 +7968,44 @@
                   "runner": "node",
                   "test": "packages/ts/tests/coverage_constraints_and_relations.mjs",
                   "cases": [
-                    "constraint_errors"
+                    "constraint_errors",
+                    "external_relation",
+                    "immutable_write"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                },
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/coverage_composite_keys.mjs",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                },
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/coverage_audit_triggers.mjs",
+                  "cases": [
+                    "soft_delete_restore"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
-            }
+            },
+            "inputs": [
+              "packages/ts/tests/restore_case.mjs",
+              "contracts/fixtures/audit.dbs",
+              "contracts/fixtures/audit_columns.dbs",
+              "contracts/fixtures/restore.dbs",
+              "contracts/fixtures/refusal.dbs"
+            ]
           },
           "python": {
             "part": "packages/python/tests",
             "tests": [
-              "packages/python/tests/coverage_constraints_and_relations.py"
+              "packages/python/tests/coverage_constraints_and_relations.py",
+              "packages/python/tests/coverage_composite_keys.py",
+              "packages/python/tests/coverage_audit_triggers.py"
             ],
             "commands": {
               "mysql": [
@@ -7611,7 +8013,25 @@
                   "runner": "python",
                   "test": "packages/python/tests/coverage_constraints_and_relations.py",
                   "cases": [
-                    "constraint_errors"
+                    "constraint_errors",
+                    "external_relation",
+                    "immutable_write"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                },
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_composite_keys.py",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                },
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_audit_triggers.py",
+                  "cases": [
+                    "soft_delete_restore"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -7621,7 +8041,25 @@
                   "runner": "python",
                   "test": "packages/python/tests/coverage_constraints_and_relations.py",
                   "cases": [
-                    "constraint_errors"
+                    "constraint_errors",
+                    "external_relation",
+                    "immutable_write"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                },
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_composite_keys.py",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                },
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_audit_triggers.py",
+                  "cases": [
+                    "soft_delete_restore"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -7631,20 +8069,55 @@
                   "runner": "python",
                   "test": "packages/python/tests/coverage_constraints_and_relations.py",
                   "cases": [
-                    "constraint_errors"
+                    "constraint_errors",
+                    "external_relation",
+                    "immutable_write"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                },
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_composite_keys.py",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                },
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_audit_triggers.py",
+                  "cases": [
+                    "soft_delete_restore"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
-            }
+            },
+            "inputs": [
+              "packages/python/tests/test_sqlite.py",
+              "contracts/fixtures/audit.dbs",
+              "contracts/fixtures/audit_columns.dbs",
+              "contracts/fixtures/restore.dbs",
+              "contracts/fixtures/refusal.dbs"
+            ]
           },
           "php-extension": {
             "part": "packages/php-ext/tests",
             "tests": [
-              "packages/php-ext/tests/CoverageConstraintsAndRelationsExtensionTest.php"
+              "packages/php-ext/tests/CoverageConstraintsAndRelationsExtensionTest.php",
+              "packages/php-ext/tests/CoverageCompositeKeysExtensionTest.php",
+              "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php"
             ],
             "inputs": [
-              "packages/php/tests/CoverageConstraintsAndRelationsTest.php"
+              "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
+              "packages/php/tests/restore_case.php",
+              "packages/php/tests/audit_case.php",
+              "contracts/fixtures/audit.dbs",
+              "contracts/fixtures/audit_columns.dbs",
+              "contracts/fixtures/restore.dbs",
+              "packages/php/tests/CoverageAuditTriggersTest.php",
+              "packages/php/tests/CoverageAuditColumnsTest.php",
+              "contracts/fixtures/refusal.dbs"
             ],
             "commands": {
               "mysql": [
@@ -7652,9 +8125,31 @@
                   "runner": "php",
                   "test": "packages/php-ext/tests/CoverageConstraintsAndRelationsExtensionTest.php",
                   "cases": [
-                    "constraint_errors"
+                    "constraint_errors",
+                    "external_relation",
+                    "immutable_write"
                   ],
-                  "symbols": {"constraint_errors": "testConstraintErrors"},
+                  "symbols": {
+                    "constraint_errors": "testConstraintErrors",
+                    "external_relation": "testExternalRelation",
+                    "immutable_write": "testImmutableWrite"
+                  },
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageCompositeKeysExtensionTest.php",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
+                  "cases": [
+                    "soft_delete_restore"
+                  ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
               ],
@@ -7663,9 +8158,31 @@
                   "runner": "php",
                   "test": "packages/php-ext/tests/CoverageConstraintsAndRelationsExtensionTest.php",
                   "cases": [
-                    "constraint_errors"
+                    "constraint_errors",
+                    "external_relation",
+                    "immutable_write"
                   ],
-                  "symbols": {"constraint_errors": "testConstraintErrors"},
+                  "symbols": {
+                    "constraint_errors": "testConstraintErrors",
+                    "external_relation": "testExternalRelation",
+                    "immutable_write": "testImmutableWrite"
+                  },
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageCompositeKeysExtensionTest.php",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
+                  "cases": [
+                    "soft_delete_restore"
+                  ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
@@ -7674,9 +8191,31 @@
                   "runner": "php",
                   "test": "packages/php-ext/tests/CoverageConstraintsAndRelationsExtensionTest.php",
                   "cases": [
-                    "constraint_errors"
+                    "constraint_errors",
+                    "external_relation",
+                    "immutable_write"
                   ],
-                  "symbols": {"constraint_errors": "testConstraintErrors"},
+                  "symbols": {
+                    "constraint_errors": "testConstraintErrors",
+                    "external_relation": "testExternalRelation",
+                    "immutable_write": "testImmutableWrite"
+                  },
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageCompositeKeysExtensionTest.php",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
+                  "cases": [
+                    "soft_delete_restore"
+                  ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
@@ -8506,8 +9045,8 @@
       "title": "Hot-path performance standard",
       "title_ko": "hot-path \uc131\ub2a5 \uae30\uc900",
       "status": "partial",
-      "description": "The PHP client measures hot-path latency as a ratio to the raw driver on the seeded MySQL bench database, and make perf-check prints each ratio and warns when a workload exceeds its recorded reference; a measurement never fails it. The Rust bench harness measures without a reference, and the TypeScript standard is not built.",
-      "description_ko": "PHP \ud074\ub77c\uc774\uc5b8\ud2b8\ub294 seed\ud55c MySQL \ubca4\uce58 \ub370\uc774\ud130\ubca0\uc774\uc2a4\uc5d0\uc11c hot-path \uc9c0\uc5f0 \uc2dc\uac04\uc744 \uc21c\uc218 \ub4dc\ub77c\uc774\ubc84\uc640\uc758 \ube44\uc728\ub85c \uc7ac\uba70, make perf-check\ub294 \ube44\uc728\uc744 \ucd9c\ub825\ud558\uace0 \uc791\uc5c5\ub7c9\uc774 \uae30\ub85d\ud55c \uae30\uc900\uac12\uc744 \ub118\uc73c\uba74 \uacbd\uace0\ud55c\ub2e4. \uce21\uc815\uc740 \uadf8\uac83\uc744 \uc2e4\ud328\uc2dc\ud0a4\uc9c0 \uc54a\ub294\ub2e4. Rust \ubca4\uce58 \ub3c4\uad6c\ub294 \uae30\uc900\uac12 \uc5c6\uc774 \uce21\uc815\ub9cc \ud558\uace0 TypeScript \uae30\uc900\uc740 \ub9cc\ub4e4\uc9c0 \uc54a\uc558\ub2e4.",
+      "description": "Coverage declares the same PK and descending 100-row native comparison for all six clients on MySQL, PostgreSQL, and SQLite. Each database-specific case uses the exact ORM_FEATURE_DSN that the state reader checks. These feature measurements are diagnostic; their database executions and fixed references remain pending. The separate make perf-check retains its recorded Go and PHP MySQL bounds.",
+      "description_ko": "Coverage\ub294 \uc5ec\uc12f \ud074\ub77c\uc774\uc5b8\ud2b8 \ubaa8\ub450\uc5d0 \ub300\ud574 MySQL, PostgreSQL, SQLite\uc5d0\uc11c \uac19\uc740 PK \ubc0f \ub0b4\ub9bc\ucc28\uc21c 100\ud589 native \ube44\uad50\ub97c \uc120\uc5b8\ud55c\ub2e4. \uac01 \ub370\uc774\ud130\ubca0\uc774\uc2a4\ubcc4 \uc0ac\ub840\ub294 state reader\uac00 \ud655\uc778\ud558\ub294 \uac83\uacfc \uc815\ud655\ud788 \uac19\uc740 ORM_FEATURE_DSN\uc744 \uc0ac\uc6a9\ud55c\ub2e4. \uc774 feature \uce21\uc815\uc740 \uc9c4\ub2e8\uc6a9\uc774\uba70 \ub370\uc774\ud130\ubca0\uc774\uc2a4 \uc2e4\ud589 \uadfc\uac70\uc640 \uace0\uc815 \uae30\uc900\uac12\uc740 \uc544\uc9c1 \uc5c6\ub2e4. \ubcc4\ub3c4 make perf-check\uc758 Go \ubc0f PHP MySQL \uae30\uc900\uac12\uc740 \uc720\uc9c0\ud55c\ub2e4.",
       "inputs": {
         "type": "BenchmarkDatabase",
         "fields": [
@@ -8525,7 +9064,7 @@
       "state": [
         "seed the bench database",
         "alternate native and client pairs",
-        "compare each ratio with its recorded bound"
+        "report ratios and compare with fixed references only where one is recorded"
       ],
       "errors": [
         {
@@ -8534,7 +9073,7 @@
         }
       ],
       "parity": [
-        "rust-coverage-hot-path-gate"
+        "hot-path-read-correctness"
       ],
       "fixtures": [
         "docs/operations/perf-raw-go-native.txt",
@@ -8557,8 +9096,34 @@
         "packages/go/bench/coverage_performance_gate_test.go",
         "packages/php/tests/CoveragePerformanceGateTest.php",
         "packages/rust/tests/tests/coverage_performance_gate.rs",
+        "packages/rust/tests/tests/coverage_hot_path_read_correctness.rs",
         "packages/go/bench/statements_test.go",
-        "tests/timing/preempted.test.mts"
+        "tests/timing/preempted.test.mts",
+        "packages/go/bench/coverage_performance_gate_postgres_test.go",
+        "packages/go/bench/coverage_performance_gate_sqlite_test.go",
+        "packages/go/bench/coverage_performance_gate_shared_test.go",
+        "packages/go/bench/coverage_process_cpu_unix_test.go",
+        "packages/go/bench/coverage_process_cpu_windows_test.go",
+        "packages/go/orm/coverage_hot_path_read_correctness_test.go",
+        "packages/php/tests/CoveragePerformanceGatePostgresTest.php",
+        "packages/php/tests/CoveragePerformanceGateSqliteTest.php",
+        "packages/php/tests/PerformanceGateCoverageCase.php",
+        "packages/php/tests/CoverageHotPathReadCorrectnessTest.php",
+        "packages/php/tests/hot_path_read_correctness.php",
+        "packages/php-ext/tests/CoveragePerformanceGateExtensionPostgresTest.php",
+        "packages/php-ext/tests/CoveragePerformanceGateExtensionSqliteTest.php",
+        "packages/php-ext/tests/CoverageHotPathReadCorrectnessExtensionTest.php",
+        "packages/python/tests/coverage_performance_gate_mysql.py",
+        "packages/python/tests/coverage_performance_gate_postgres.py",
+        "packages/python/tests/coverage_performance_gate_sqlite.py",
+        "packages/python/tests/coverage_performance_gate.py",
+        "packages/python/tests/coverage_hot_path_read_correctness.py",
+        "packages/ts/tests/coverage_performance_gate_mysql.mjs",
+        "packages/ts/tests/coverage_performance_gate_postgres.mjs",
+        "packages/ts/tests/coverage_performance_gate_sqlite.mjs",
+        "packages/ts/tests/coverage_performance_gate.mjs",
+        "packages/ts/tests/coverage_hot_path_read_correctness.mjs",
+        "packages/php-ext/tests/CoveragePerformanceGateExtensionTest.php"
       ],
       "docs": [
         "docs/operations/perf.md"
@@ -8606,43 +9171,305 @@
         }
       ],
       "coverage": {
-        "kind": "independent",
+        "kind": "database",
         "cases": [
           "hot_path_gate"
         ],
         "owners": {
+          "go": {
+            "part": "packages/go/bench",
+            "tests": [
+              "packages/go/bench/coverage_performance_gate_test.go",
+              "packages/go/bench/coverage_performance_gate_postgres_test.go",
+              "packages/go/bench/coverage_performance_gate_sqlite_test.go"
+            ],
+            "inputs": [
+              "packages/go/bench/coverage_performance_gate_shared_test.go",
+              "packages/go/bench/coverage_process_cpu_unix_test.go",
+              "packages/go/bench/coverage_process_cpu_windows_test.go"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "go",
+                  "test": "packages/go/bench/coverage_performance_gate_test.go",
+                  "cases": [
+                    "hot_path_gate"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN",
+                  "symbols": {
+                    "hot_path_gate": "TestCoveragePerformanceGate"
+                  }
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "go",
+                  "test": "packages/go/bench/coverage_performance_gate_postgres_test.go",
+                  "cases": [
+                    "hot_path_gate"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN",
+                  "symbols": {
+                    "hot_path_gate": "TestCoveragePerformanceGatePostgres"
+                  }
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "go",
+                  "test": "packages/go/bench/coverage_performance_gate_sqlite_test.go",
+                  "cases": [
+                    "hot_path_gate"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN",
+                  "symbols": {
+                    "hot_path_gate": "TestCoveragePerformanceGateSQLite"
+                  }
+                }
+              ]
+            }
+          },
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/CoveragePerformanceGateTest.php"
+              "packages/php/tests/CoveragePerformanceGateTest.php",
+              "packages/php/tests/CoveragePerformanceGatePostgresTest.php",
+              "packages/php/tests/CoveragePerformanceGateSqliteTest.php"
+            ],
+            "inputs": [
+              "packages/php/tests/PerformanceGateCoverageCase.php",
+              "packages/php/tests/PerfGateTest.php"
             ],
             "commands": {
-              "none": [
+              "mysql": [
                 {
                   "runner": "php",
                   "test": "packages/php/tests/CoveragePerformanceGateTest.php",
                   "cases": [
                     "hot_path_gate"
-                  ]
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN",
+                  "symbols": {
+                    "hot_path_gate": "testHotPathGate"
+                  }
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/CoveragePerformanceGatePostgresTest.php",
+                  "cases": [
+                    "hot_path_gate"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN",
+                  "symbols": {
+                    "hot_path_gate": "testHotPathGate"
+                  }
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/CoveragePerformanceGateSqliteTest.php",
+                  "cases": [
+                    "hot_path_gate"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN",
+                  "symbols": {
+                    "hot_path_gate": "testHotPathGate"
+                  }
+                }
+              ]
+            }
+          },
+          "php-extension": {
+            "part": "packages/php-ext/tests",
+            "tests": [
+              "packages/php-ext/tests/CoveragePerformanceGateExtensionTest.php",
+              "packages/php-ext/tests/CoveragePerformanceGateExtensionPostgresTest.php",
+              "packages/php-ext/tests/CoveragePerformanceGateExtensionSqliteTest.php"
+            ],
+            "inputs": [
+              "packages/php-ext/tests/bootstrap.php",
+              "packages/php/tests/PerformanceGateCoverageCase.php",
+              "packages/php/tests/PerfGateTest.php"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoveragePerformanceGateExtensionTest.php",
+                  "cases": [
+                    "hot_path_gate"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN",
+                  "symbols": {
+                    "hot_path_gate": "testHotPathGate"
+                  }
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoveragePerformanceGateExtensionPostgresTest.php",
+                  "cases": [
+                    "hot_path_gate"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN",
+                  "symbols": {
+                    "hot_path_gate": "testHotPathGate"
+                  }
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoveragePerformanceGateExtensionSqliteTest.php",
+                  "cases": [
+                    "hot_path_gate"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN",
+                  "symbols": {
+                    "hot_path_gate": "testHotPathGate"
+                  }
+                }
+              ]
+            }
+          },
+          "typescript": {
+            "part": "packages/ts/tests",
+            "tests": [
+              "packages/ts/tests/coverage_performance_gate_mysql.mjs",
+              "packages/ts/tests/coverage_performance_gate_postgres.mjs",
+              "packages/ts/tests/coverage_performance_gate_sqlite.mjs"
+            ],
+            "inputs": [
+              "packages/ts/tests/coverage_performance_gate.mjs",
+              "packages/ts/tests/coverage_case.mjs"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/coverage_performance_gate_mysql.mjs",
+                  "cases": [
+                    "hot_path_gate"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/coverage_performance_gate_postgres.mjs",
+                  "cases": [
+                    "hot_path_gate"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/coverage_performance_gate_sqlite.mjs",
+                  "cases": [
+                    "hot_path_gate"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "python": {
+            "part": "packages/python/tests",
+            "tests": [
+              "packages/python/tests/coverage_performance_gate_mysql.py",
+              "packages/python/tests/coverage_performance_gate_postgres.py",
+              "packages/python/tests/coverage_performance_gate_sqlite.py"
+            ],
+            "inputs": [
+              "packages/python/tests/coverage_performance_gate.py",
+              "packages/python/tests/coverage_case.py"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_performance_gate_mysql.py",
+                  "cases": [
+                    "hot_path_gate"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_performance_gate_postgres.py",
+                  "cases": [
+                    "hot_path_gate"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_performance_gate_sqlite.py",
+                  "cases": [
+                    "hot_path_gate"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
             }
           },
           "rust": {
-            "part": "packages/rust/tests",
+            "part": "packages/rust/tests/tests",
             "tests": [
               "packages/rust/tests/tests/coverage_performance_gate.rs"
             ],
+            "inputs": [
+              "packages/rust/tests/tests/common/mod.rs"
+            ],
             "commands": {
-              "none": [
+              "mysql": [
                 {
                   "runner": "cargo",
                   "test": "packages/rust/tests/tests/coverage_performance_gate.rs",
                   "cases": [
                     "hot_path_gate"
                   ],
+                  "dsn_env": "BENCH_MYSQL_DSN",
                   "symbols": {
-                    "hot_path_gate": "coverage_hot_path_gate"
+                    "hot_path_gate": "coverage_hot_path_gate_mysql"
+                  }
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "cargo",
+                  "test": "packages/rust/tests/tests/coverage_performance_gate.rs",
+                  "cases": [
+                    "hot_path_gate"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN",
+                  "symbols": {
+                    "hot_path_gate": "coverage_hot_path_gate_postgres"
+                  }
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "cargo",
+                  "test": "packages/rust/tests/tests/coverage_performance_gate.rs",
+                  "cases": [
+                    "hot_path_gate"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN",
+                  "symbols": {
+                    "hot_path_gate": "coverage_hot_path_gate_sqlite"
                   }
                 }
               ]
@@ -8690,9 +9517,7 @@
       "parity": [
         "conformance-mysql",
         "conformance-postgres",
-        "conformance-sqlite",
-        "py-cov-conformance-verification-conformance-vector",
-        "ts-coverage_conformance_verification"
+        "conformance-sqlite"
       ],
       "fixtures": [
         "tests/conformance/vectors.json",
@@ -10447,6 +11272,50 @@
         "docs/spec/complex-query.md",
         "docs/spec/complex-query.ko.md"
       ],
+      "verification": [
+        {
+          "id": "complex-query-go-plan",
+          "command": "make complex-query-go-plan-check",
+          "shard": "other",
+          "inputs": ["packages/go/complexquery/public_plan_test.go"]
+        },
+        {
+          "id": "complex-query-php-owner",
+          "command": "make complex-query-php-db-check",
+          "shard": "other",
+          "inputs": ["packages/php/tests/ComplexQueryDbTest.php", "packages/php/tests/ComplexQueryDbCase.php"]
+        },
+        {
+          "id": "complex-query-php-extension-owner",
+          "command": "make complex-query-php-extension-db-check",
+          "shard": "other",
+          "inputs": ["packages/php-ext/tests/ComplexQueryNativeTest.php", "packages/php/tests/ComplexQueryDbCase.php"]
+        },
+        {
+          "id": "complex-query-typescript-unit",
+          "command": "make complex-query-typescript-unit-check",
+          "shard": "other",
+          "inputs": ["packages/ts/tests/fulltext-search.mjs", "packages/ts/tests/fulltext-chain-types.mjs", "packages/ts/tests/paginate-order.mjs"]
+        },
+        {
+          "id": "complex-query-typescript-request",
+          "command": "make complex-query-typescript-request-check",
+          "shard": "other",
+          "inputs": ["packages/ts/tests/complex-query-request.mjs", "packages/ts/tests/complex-query-request-types.mjs"]
+        },
+        {
+          "id": "complex-query-python-unit",
+          "command": "make python-complex-query-check",
+          "shard": "other",
+          "inputs": ["packages/python/tests/test_complex_query.py"]
+        },
+        {
+          "id": "complex-query-rust-plan",
+          "command": "make complex-query-rust-plan-check",
+          "shard": "rust",
+          "inputs": ["packages/rust/tests/tests/integration/coverage_complex_query.rs"]
+        }
+      ],
       "coverage": {
         "kind": "database",
         "cases": [
@@ -11275,6 +12144,17 @@
         "packages/php-ext/tests/CompositeKeysNativeTest.php"
       ],
       "command": "make model-chunk-composite-native-php-extension-check"
-    }
+    },
+  {
+    "id": "audit-native-method-assertions",
+    "paths": [
+      "packages/php-ext/tests/NativeMethodAssertions.php"
+    ],
+    "tests": [
+      "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
+      "packages/php-ext/tests/CoverageAuditColumnsExtensionTest.php"
+    ],
+    "command": "make --no-print-directory audit-native-method-assertions-helper-check"
+  }
   ]
 }

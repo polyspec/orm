@@ -12,13 +12,11 @@ from pathlib import Path
 
 import psycopg
 import pymysql
-
-from .test_sqlite import generate_document, installed_sqlite
-
-
 from polyspec.orm.database import Db, _MysqlConnection, _PostgresConnection
 from polyspec.orm.errors import OrmError
+
 from . import testcase
+from .test_sqlite import generate_document, installed_sqlite
 
 DOCUMENT = """dbspec 1 refusal
 
@@ -123,6 +121,7 @@ class SqliteDriverErrorTest(unittest.TestCase):
             lambda: self.parent("refused").create(), "DRIVER", "parent refused"
         )
 
+    # Requirements: CFG-12.
     def test_a_lock_held_past_busy_timeout_is_canceled(self):
         self.db.close()
         self.db = Db.connect_schema(
@@ -220,7 +219,7 @@ def postgres_error(sqlstate: str, message: str):
 class ServerDriverErrorTest(unittest.TestCase):
     """The statement path of the MySQL and PostgreSQL connections maps driver errors to the same table."""
 
-    MYSQL = [
+    MYSQL = (
         (
             pymysql.err.IntegrityError,
             1062,
@@ -313,8 +312,8 @@ class ServerDriverErrorTest(unittest.TestCase):
             "You have an error in your SQL syntax",
             "DRIVER",
         ),
-    ]
-    POSTGRES = [
+    )
+    POSTGRES = (
         (
             "23505",
             'duplicate key value violates unique constraint "uq_parent_name"',
@@ -347,7 +346,7 @@ class ServerDriverErrorTest(unittest.TestCase):
         ("08006", "connection failure", "CONNECTION_LOST"),
         ("P0001", "immutable row", "DRIVER"),
         ("42601", 'syntax error at or near "SELEC"', "DRIVER"),
-    ]
+    )
 
     def run_mysql(self, error):
         connection = _MysqlConnection.__new__(_MysqlConnection)

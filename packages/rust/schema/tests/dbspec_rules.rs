@@ -68,6 +68,8 @@ fn run(case: &Case) {
 
 const USERS: &[&str] =
     &["dbspec 1 core", "", "table users {", "  id i64 identity", "  code varchar(8)", "  primary key (id)", "  unique uq_users_code (code)", "}"];
+const USED_USERS_AND_TEAMS: &[&str] =
+    &["dbspec 1 core", "table users {", "  id i64 identity", "  primary key (id)", "}", "table teams {", "  id i64 identity", "  primary key (id)", "}"];
 
 const CASES: &[Case] = &[
     // encoding, header and limits
@@ -980,17 +982,7 @@ const CASES: &[Case] = &[
         id: "constraint-named-like-used-table",
         documents: &[
             &["dbspec 1 shop", "use core { users }", "table orders {", "  id i64 identity", "  primary key (id)", "  check users (id > 0)", "}"],
-            &[
-                "dbspec 1 core",
-                "table users {",
-                "  id i64 identity",
-                "  primary key (id)",
-                "}",
-                "table teams {",
-                "  id i64 identity",
-                "  primary key (id)",
-                "}",
-            ],
+            USED_USERS_AND_TEAMS,
         ],
         expect: Expect::Errors(&[("name.duplicate", 6, 9)]),
     },
@@ -998,17 +990,7 @@ const CASES: &[Case] = &[
         id: "constraint-named-like-unlisted-used-table",
         documents: &[
             &["dbspec 1 shop", "use core { users }", "table orders {", "  id i64 identity", "  primary key (id)", "  check teams (id > 0)", "}"],
-            &[
-                "dbspec 1 core",
-                "table users {",
-                "  id i64 identity",
-                "  primary key (id)",
-                "}",
-                "table teams {",
-                "  id i64 identity",
-                "  primary key (id)",
-                "}",
-            ],
+            USED_USERS_AND_TEAMS,
         ],
         expect: Expect::Errors(&[("name.duplicate", 6, 9)]),
     },

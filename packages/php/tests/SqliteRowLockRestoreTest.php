@@ -65,7 +65,7 @@ final class SqliteRowLockRestoreTest extends TestCase
     }
 }
 
-final class SqliteRowLockPdo extends PDO
+final class SqliteRowLockPdo extends UninitializedRecordingPdo
 {
     public array $calls = [];
 
@@ -75,11 +75,9 @@ final class SqliteRowLockPdo extends PDO
         private readonly ?\Throwable $failSetup = null
     ) {}
 
-    public function setAttribute(int $attribute, mixed $value): bool { return true; }
-
     public function exec(string $statement): int|false
     {
-        $this->calls[] = $statement;
+        $this->recordStatement($statement);
         if ($statement === 'PRAGMA busy_timeout=0' && $this->failSetup !== null) throw $this->failSetup;
         if ($statement === 'PRAGMA busy_timeout=375' && $this->failRestore !== null) throw $this->failRestore;
         if (str_starts_with($statement, 'INSERT') && $this->failPrimary) {
@@ -92,8 +90,13 @@ final class SqliteRowLockPdo extends PDO
 
     public function prepare(string $query, array $options = []): PDOStatement|false
     {
-        $this->calls[] = $query;
+        $this->recordStatement($query);
         return new SqliteRowLockStatement($query);
+    }
+
+    protected function recordStatement(string $statement): void
+    {
+        $this->calls[] = $statement;
     }
 }
 

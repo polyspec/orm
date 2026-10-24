@@ -9,15 +9,9 @@
 package bench
 
 import (
-	"context"
-	"fmt"
 	"sort"
 	"testing"
 	"time"
-
-	"github.com/polyspec/orm/packages/go/model"
-	"github.com/polyspec/orm/packages/go/orm"
-	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // The ratio is comparable across machines. A Unix socket emphasizes fixed
@@ -67,56 +61,4 @@ func pairedRatio(tb testing.TB, native, client func()) (time.Duration, time.Dura
 	sort.Slice(c, func(i, j int) bool { return c[i] < c[j] })
 	sort.Float64s(ratios)
 	return n[len(n)/2], c[len(c)/2], ratios[len(ratios)/2]
-}
-
-// hotPathGate measures every workload and warns when a ratio exceeds its bound; a measurement never fails t.
-func hotPathGate(t *testing.T) {
-	t.Helper()
-	sqlDB := open(t)
-	ctx := context.Background()
-	db, err := model.Connect(dsn(t), orm.Config{AESKey: "bench-salt", BlindIndexKey: "bench-blind-index"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer testcase.Close(t, db)
-
-	for _, c := range []struct {
-		name           string
-		native, client func()
-		bound          float64
-	}{
-		{
-			name:   "pk",
-			native: func() { mustNoErr(t, func() error { _, err := pkGet(ctx, sqlDB, 42); return err }) },
-			client: func() {
-				mustNoErr(t, func() error { _, err := model.Author().Connect(db).GetBySeq(42); return err })
-			},
-			bound: pkBound,
-		},
-		{
-			name:   "list100",
-			native: func() { mustNoErr(t, func() error { _, err := list100(ctx, sqlDB, 7); return err }) },
-			client: func() {
-				mustNoErr(t, func() error {
-					_, err := model.Author().Connect(db).ServiceSeq(7).AndIsClose(false).OrderBySeqDesc().Limit(0, 100).Gets()
-					return err
-				})
-			},
-			bound: listBound,
-		},
-	} {
-		na, cl, ratio := pairedRatio(t, c.native, c.client)
-		fmt.Printf("%-8s native %6.1fµs  client %6.1fµs  ratio %.2f (bound %.2f)\n",
-			c.name, float64(na.Microseconds()), float64(cl.Microseconds()), ratio, c.bound)
-		if ratio > c.bound {
-			testcase.Warn("%s: client/native ratio %.2f is above its reference %.2f (docs/operations/perf.md)", c.name, ratio, c.bound)
-		}
-	}
-}
-
-func mustNoErr(tb testing.TB, f func() error) {
-	tb.Helper()
-	if err := f(); err != nil {
-		tb.Fatal(err)
-	}
 }

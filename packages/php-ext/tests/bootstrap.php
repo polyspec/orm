@@ -25,4 +25,7 @@ require_once dirname(__DIR__, 2) . '/php/tests/CoverageConformanceVerificationTe
 require_once dirname(__DIR__, 2) . '/php/tests/CoverageConstraintsAndRelationsTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/CoverageDsnTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/CoverageTransactionsTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/CoverageAuditTriggersTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/CoverageAuditColumnsTest.php';
+require_once __DIR__ . '/NativeMethodAssertions.php';
 require_once dirname(__DIR__, 2) . '/php/tests/dbspec_verify_errors_case.php';

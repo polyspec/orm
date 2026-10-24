@@ -71,20 +71,7 @@ function fixtureModels(string $fixture, string $namespace): void
         throw new RuntimeException("cannot create $work");
     }
     $generated[$fixture] = $work;
-    register_shutdown_function(static function () use ($work): void {
-        exec('rm -rf ' . escapeshellarg($work), $output, $status);
-        if ($status !== 0) {
-            fwrite(STDERR, "cannot remove $work\n");
-            exit(1);
-        }
-    });
-    Generator::generate(
-        RuntimeModel::build(RuntimeModel::parse(["$fixture.dbs" => $document])),
-        "$work/gen",
-        $namespace
-    );
-    requireGeneratedClasses("$work/gen");
-    require_once "$work/gen/bootstrap.php";
+    coverageGenerateFixtureModels("$fixture.dbs", $document, $work, $namespace);
 }
 
 /** Creates the model of the audit document in CoverageAudit\Orm. */

@@ -4,9 +4,10 @@
 # Usage: python packages/python/tests/coverage_case_test.py
 import contextlib
 import io
+import os
 import sys
 import unittest
-
+from unittest.mock import patch
 
 from . import coverage_case, testcase
 from .coverage_case import REPOSITORY_ROOT, run_cases
@@ -74,6 +75,28 @@ class CoverageCaseTest(unittest.TestCase):
 
     def test_repository_root_holds_the_feature_manifest(self):
         self.assertTrue((REPOSITORY_ROOT / "contracts" / "features.json").is_file())
+
+    def test_feature_items_selects_the_runner_database_only_when_set(self):
+        listed = '[{"database":"sqlite","dsn":"sqlite:///selected.sqlite"}]'
+        with patch("subprocess.run") as run:
+            run.return_value.returncode = 0
+            run.return_value.stdout = listed
+            run.return_value.stderr = ""
+            with patch.dict(os.environ):
+                os.environ.pop("ORM_FEATURE_DATABASE", None)
+                coverage_case.feature_items(
+                    "packages/python/tests/coverage_constraints_and_relations.py"
+                )
+                default_arguments = run.call_args.args[0]
+                self.assertNotIn("--database", default_arguments)
+
+            with patch.dict(os.environ, {"ORM_FEATURE_DATABASE": "sqlite"}):
+                items = coverage_case.feature_items(
+                    "packages/python/tests/coverage_constraints_and_relations.py"
+                )
+                selected_arguments = run.call_args.args[0]
+                self.assertEqual(selected_arguments[-2:], ["--database", "sqlite"])
+                self.assertEqual(items, [("sqlite", "sqlite:///selected.sqlite")])
 
 
 if __name__ == "__main__":

@@ -67,7 +67,9 @@ const checkerRoot = resolve(new URL('../..', import.meta.url).pathname);
 const stateReader = resolve(checkerRoot, 'tests/conformance/check/main.mts');
 
 function requirements(feature: Feature, coverage: Coverage, errors: string[]): Item[] {
-  const required = coverage.kind === 'database' ? databases : ['none'];
+  const selectedDatabase = selectedDatabases.get(feature);
+  const selectedCases = selectedCasesByFeature.get(feature);
+  const required = coverage.kind === 'database' ? (selectedDatabase ? [selectedDatabase] : databases) : ['none'];
   const items: Item[] = [];
   const claimed = claimedLanguages(feature);
   if (!coverage.owners || typeof coverage.owners !== 'object' || Array.isArray(coverage.owners))
@@ -92,9 +94,13 @@ function requirements(feature: Feature, coverage: Coverage, errors: string[]): I
       errors.push(`${feature.id}/owner/${language}: tests must reside in owning part`);
       continue;
     }
-    for (const database of required) items.push({ key: `${feature.id}/owner/${language}/${database}`,
-      role: 'owner', language, database, part: owner.part, tests: owner.tests, cases: coverage.cases,
-      command: owner.commands?.[database] });
+    const ownerCases = selectedCases ? coverage.cases.filter(id => selectedCases.has(id)) : coverage.cases;
+    for (const database of required) {
+      const command = selectCommandCases(owner.commands?.[database], selectedCases);
+      const tests = selectedCases ? (command ?? []).map(entry => entry.test) : owner.tests;
+      items.push({ key: `${feature.id}/owner/${language}/${database}`,
+        role: 'owner', language, database, part: owner.part, tests, cases: ownerCases, command });
+    }
   }
   const dependentIds = new Set<string>();
   for (const dependent of Array.isArray(coverage.dependents) ? coverage.dependents : []) {
@@ -115,9 +121,12 @@ function requirements(feature: Feature, coverage: Coverage, errors: string[]): I
       errors.push(`${feature.id}/dependent/${dependent.id}: invalid dependent part, tests, or cases`);
       continue;
     }
+    if (selectedCases && !dependent.cases.some(id => selectedCases.has(id))) continue;
     for (const database of required) items.push({ key: `${feature.id}/dependent/${dependent.id}/${dependent.language}/${database}`,
       role: 'dependent', dependent: dependent.id, language: dependent.language, database,
-      part: dependent.part, tests: dependent.tests, cases: dependent.cases, command: dependent.commands?.[database] });
+      part: dependent.part, tests: dependent.tests,
+      cases: selectedCases ? dependent.cases.filter(id => selectedCases.has(id)) : dependent.cases,
+      command: selectCommandCases(dependent.commands?.[database], selectedCases) });
   }
   // When selectFeatures chose a coverage unit (--part), only the items of that unit are required and run.
   const selected = selectedParts.get(feature);
@@ -130,6 +139,22 @@ function requirements(feature: Feature, coverage: Coverage, errors: string[]): I
 const itemPart = (item: Item): string => item.role === 'owner' ? `owner/${item.language}` : `dependent/${item.dependent}`;
 // selectedParts is the unit chosen for each feature item made by selectFeatures. It does not change the feature items in the manifest.
 const selectedParts = new WeakMap<Feature, Set<string>>();
+const selectedDatabases = new WeakMap<Feature, string>();
+const selectedCasesByFeature = new WeakMap<Feature, Set<string>>();
+
+function selectCommandCases(command: NativeCommand[] | undefined, selectedCases: Set<string> | undefined): NativeCommand[] | undefined {
+  if (!command || !selectedCases) return command;
+  return command.map(entry => {
+    const cases = entry.cases.filter(id => selectedCases.has(id));
+    if (!entry.symbols) return { ...entry, cases };
+    const symbols: Record<string, string> = {};
+    for (const id of cases) {
+      const symbol = entry.symbols[id];
+      if (symbol) symbols[id] = symbol;
+    }
+    return { ...entry, cases, symbols };
+  }).filter(entry => entry.cases.length > 0);
+}
 
 /** One database item of a test file: the database, its DSN variable and the DSN the variable holds (null without a database). */
 export type FileItem = { database: string; dsn_env?: string; dsn: string | null };
@@ -156,11 +181,14 @@ export function featureEnvironment(base: NodeJS.ProcessEnv, database: string, ds
   return env;
 }
 
-// coverageItems is the resolver of a test file: every database item the manifest lists for the file (its owner or dependent
-// commands on each database), with the DSN its variable holds in env. A test file calls it at startup and runs its cases once
-// per item; it never reads the database from the environment of the checker. A file without a database gives one item
-// 'none'. A listed DSN variable that is unset fails with its name.
-export function coverageItems(manifest: Manifest, file: string, env: NodeJS.ProcessEnv = process.env): FileItem[] {
+// coverageItems resolves every database item listed by the manifest by default. A native owner can instead request the exact
+// database assigned by the feature runner, without resolving other DSNs. Unset selected DSNs still fail by name.
+export function coverageItems(
+  manifest: Manifest,
+  file: string,
+  env: NodeJS.ProcessEnv = process.env,
+  selectedDatabase?: string,
+): FileItem[] {
   const found = new Map<string, { database: string; dsn_env?: string }>();
   const visit = (commands: Record<string, NativeCommand[]> | undefined) => {
     for (const [database, entries] of Object.entries(commands ?? {})) {
@@ -176,7 +204,18 @@ export function coverageItems(manifest: Manifest, file: string, env: NodeJS.Proc
     for (const owner of Object.values(feature.coverage?.owners ?? {})) visit(owner.commands);
     for (const dependent of feature.coverage?.dependents ?? []) visit(dependent.commands);
   }
-  return [...found.values()].map(item => {
+  let selected: { database: string; dsn_env?: string }[];
+  if (selectedDatabase !== undefined) {
+    if (!databases.includes(selectedDatabase))
+      throw new Error(`unknown coverage database ${selectedDatabase}; valid databases: ${databases.join(', ')}`);
+    const item = found.get(selectedDatabase);
+    if (item === undefined)
+      throw new Error(`${file} has no coverage item for ${selectedDatabase}`);
+    selected = [item];
+  } else {
+    selected = [...found.values()];
+  }
+  return selected.map(item => {
     if (item.database === 'none') return { database: 'none', dsn: null };
     return { database: item.database, ...(item.dsn_env === undefined ? {} : { dsn_env: item.dsn_env }), dsn: databaseDsn(env, item) };
   });
@@ -407,6 +446,10 @@ export function observedCases(format: Spec['format'], output: string, requested:
   if (format === 'case') {
     for (const line of output.split(/\r?\n/)) {
       if (!line) continue;
+      // Performance owners may report nondeterministic measurements on stderr. The case runner
+      // keeps those lines in its diagnostic step log; they are deliberately excluded from the
+      // deterministic coverage result, which records only the CASE event below.
+      if (/^PERF hot_path_gate (?:typescript|python) (?:mysql|postgres|sqlite) (?:pk|list100): native p50=\d+\.\dµs client p50=\d+\.\dµs ratio=\d+\.\d{2} samples=1000 cpu=\d+\.\dms wall=\d+\.\dms machine=.+ reference=not-recorded$/.test(line)) continue;
       const named = /^CASE ([A-Za-z0-9_.-]+) \[([a-z]+)\] PASS$/.exec(line);
       const plain = /^CASE ([A-Za-z0-9_.-]+) PASS$/.exec(line);
       if (database === 'none') {
@@ -845,48 +888,83 @@ function groupUnits(plans: Plan[]): Plan[][] {
 // selectFeatures keeps only the one feature whose featureId (the id in contracts/features.json, as with check.mts --feature)
 // manifest. If parts (`owner/<language>` or `dependent/<id>`) are given, only that coverage unit is run and checked.
 // An unknown id or unit is an error listing the values that can be chosen, not an empty run.
-export function selectFeatures(manifest: Manifest, featureId: string | undefined, parts: string[] = []): Manifest & { features: Feature[] } {
+export function selectFeatures(
+  manifest: Manifest,
+  featureId: string | undefined,
+  parts: string[] = [],
+  selectedDatabase?: string,
+  selectedCases: string[] = [],
+): Manifest & { features: Feature[] } {
   if (featureId === undefined) {
     if (parts.length) throw new Error('--part needs --feature');
+    if (selectedDatabase !== undefined || selectedCases.length) throw new Error('--database and --case need --feature');
     return { ...manifest, features: manifest.features ?? [] };
   }
   const feature = manifest.features?.find(item => item.id === featureId);
   if (!feature)
     throw new Error(`unknown feature ${featureId}; valid features: ${(manifest.features ?? []).map(item => item.id).join(', ')}`);
-  if (parts.length === 0) return { ...manifest, features: [feature] };
+  if (selectedDatabase !== undefined) {
+    if (!databases.includes(selectedDatabase))
+      throw new Error(`unknown coverage database ${selectedDatabase}; valid databases: ${databases.join(', ')}`);
+    if (feature.coverage?.kind !== 'database')
+      throw new Error(`${featureId} has no database coverage to select`);
+  }
+  if (selectedCases.length) {
+    if (new Set(selectedCases).size !== selectedCases.length)
+      throw new Error('--case must not be repeated');
+    const validCases = feature.coverage?.cases ?? [];
+    const unknown = selectedCases.filter(id => !validCases.includes(id));
+    if (unknown.length) throw new Error(`unknown coverage case ${unknown.join(', ')} of ${featureId}; valid cases: ${validCases.join(', ')}`);
+  }
+  if (parts.length === 0 && selectedDatabase === undefined && selectedCases.length === 0)
+    return { ...manifest, features: [feature] };
   const valid = [...Object.keys(feature.coverage?.owners ?? {}).map(language => `owner/${language}`),
     ...(feature.coverage?.dependents ?? []).map(dependent => `dependent/${dependent.id}`)];
   const unknown = parts.filter(part => !valid.includes(part));
   if (unknown.length) throw new Error(`unknown coverage part ${unknown.join(', ')} of ${featureId}; valid parts: ${valid.join(', ')}`);
   const copy = { ...feature };
-  selectedParts.set(copy, new Set(parts));
+  if (parts.length) selectedParts.set(copy, new Set(parts));
+  if (selectedDatabase !== undefined) selectedDatabases.set(copy, selectedDatabase);
+  if (selectedCases.length) {
+    if (!feature.coverage) throw new Error(`${featureId} has no coverage cases to select`);
+    copy.coverage = { ...feature.coverage, cases: selectedCases };
+    selectedCasesByFeature.set(copy, new Set(selectedCases));
+  }
   return { ...manifest, features: [copy] };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const args = process.argv.slice(2);
-  // `--items <test file>` prints the coverage items of the file as JSON (coverageItems); the Python test files call it.
-  if (args[0] === '--items' && args.length === 2) {
+  // `--items <test file>` prints every coverage item of the file; a native owner may select the one database
+  // the feature runner assigned it with `--database <db>`. The default remains every declared database.
+  if (args[0] === '--items') {
+    if (args.length !== 2 && !(args.length === 4 && args[2] === '--database' && args[3]))
+      throw new Error('usage: coverage.mts --items <test file> [--database <mysql|postgres|sqlite>]');
     const root = resolve(new URL('../..', import.meta.url).pathname);
-    console.log(JSON.stringify(coverageItems(readFeatures(root), args[1] ?? '')));
+    console.log(JSON.stringify(coverageItems(readFeatures(root), args[1] ?? '', process.env, args[3])));
     process.exit(0);
   }
   const pairs: [string | undefined, string | undefined][] = [];
   for (let index = 0; index < args.length; index += 2) pairs.push([args[index], args[index + 1]]);
-  if (pairs.some(([flag, value]) => !['--feature', '--part'].includes(flag ?? '') || !value) || pairs.filter(([flag]) => flag === '--feature').length > 1)
-    throw new Error('usage: coverage.mts [--feature <id> [--part owner/<language>|dependent/<id>]...]');
+  if (pairs.some(([flag, value]) => !['--feature', '--part', '--database', '--case'].includes(flag ?? '') || !value) ||
+      pairs.filter(([flag]) => flag === '--feature').length > 1 || pairs.filter(([flag]) => flag === '--database').length > 1)
+    throw new Error('usage: coverage.mts [--feature <id> [--part owner/<language>|dependent/<id>] [--database <db>] [--case <id>]...]');
   const featureId = pairs.find(([flag]) => flag === '--feature')?.[1];
   const parts = pairs.filter(([flag]) => flag === '--part').map(([, value]) => value ?? '');
+  const database = pairs.find(([flag]) => flag === '--database')?.[1];
+  const cases = pairs.filter(([flag]) => flag === '--case').map(([, value]) => value ?? '');
   const root = resolve(new URL('../..', import.meta.url).pathname);
   const manifest: Manifest = readFeatures(root);
   let selected: Manifest & { features: Feature[] };
-  try { selected = selectFeatures(manifest, featureId, parts); }
+  try { selected = selectFeatures(manifest, featureId, parts, database, cases); }
   catch (error) {
     console.error(`feature coverage: ${error instanceof Error ? error.message : String(error)}`);
     process.exit(2);
   }
+  const selection = [featureId, ...parts, database, ...cases].filter(Boolean).join(' ');
+  if (selection) console.log(`feature coverage: selected ${selection}`);
   const errors = await executeCoverage(selected, root);
   for (const error of errors) console.error(`feature coverage: ${error}`);
   if (errors.length) process.exitCode = 1;
-  else console.log(`feature coverage: ${selected.features.length} contracts executed`);
+  else console.log(`feature coverage: ${selected.features.length} selected contracts executed`);
 }

@@ -77,6 +77,17 @@ final class CollectionTest extends TestCase
         return new CollectionFixtureModel($label);
     }
 
+    /** @return array{Collection, Model, Model} */
+    private static function collectionWithTwoModels(): array
+    {
+        $collection = new Collection();
+        $first = self::model('first');
+        $second = self::model('second');
+        $collection->put(1, $first);
+        $collection->put(2, $second);
+        return [$collection, $first, $second];
+    }
+
     /** @return list<array<string, mixed>> */
     private static function identityCases(): array
     {
@@ -359,11 +370,7 @@ final class CollectionTest extends TestCase
 
     public function testIteratorClonePreservesItsSnapshotAndPosition(): void
     {
-        $collection = new Collection();
-        $first = self::model('first');
-        $second = self::model('second');
-        $collection->put(1, $first);
-        $collection->put(2, $second);
+        [$collection, $first, $second] = self::collectionWithTwoModels();
         $iterator = $collection->getIterator();
         $iterator->rewind();
         self::assertSame($first, $iterator->current());
@@ -419,11 +426,7 @@ final class CollectionTest extends TestCase
 
     public function testConnectAndInvokeReachEachModelAndReturnTheCollection(): void
     {
-        $collection = new Collection();
-        $first = self::model('first');
-        $second = self::model('second');
-        $collection->put(1, $first);
-        $collection->put(2, $second);
+        [$collection, $first, $second] = self::collectionWithTwoModels();
         $db = new Db(null, 'mysql', new Config(), new DateTimeZone('UTC'));
 
         self::assertSame($collection, $collection->connect($db));

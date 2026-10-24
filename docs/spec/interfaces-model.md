@@ -118,6 +118,7 @@ classDiagram
         subscribe()
         execute()
         withRequestHook()
+        withFuture()
     }
     class TransactionFlow {
         <<internal>>

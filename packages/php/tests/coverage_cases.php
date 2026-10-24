@@ -43,10 +43,28 @@ function coverageDatabaseDrivers(): iterable
     }
 }
 
+/** Generates and loads models for one coverage fixture, and removes its temporary directory when the process ends. */
+function coverageGenerateFixtureModels(string $fixture, string $document, string $work, string $namespace): void
+{
+    register_shutdown_function(static function () use ($work): void {
+        exec('rm -rf ' . escapeshellarg($work), $output, $status);
+        if ($status !== 0) {
+            fwrite(STDERR, "cannot remove $work\n");
+            exit(1);
+        }
+    });
+    \Polyspec\Orm\Generator::generate(
+        \Polyspec\Orm\RuntimeModel::build(\Polyspec\Orm\RuntimeModel::parse([$fixture => $document])),
+        "$work/gen",
+        $namespace
+    );
+    requireGeneratedClasses("$work/gen");
+    require_once "$work/gen/bootstrap.php";
+}
+
 /**
- * The coverage items of a test file from the feature resolver (scripts/features/coverage.mts --items, the form the
- * Python readers use): one [database, dsn] for each database the manifest lists for the file. A DSN variable that is
- * unset fails with its name, from the resolver.
+ * The coverage items of a test file from the feature resolver: one [database, dsn] per declared database by default,
+ * or the exact ORM_FEATURE_DATABASE assigned to this owner run. A selected database uses its declared DSN variable.
  *
  * @return list<array{string, ?string}>
  */
@@ -54,8 +72,14 @@ function coverageItemsOf(string $testFile): array
 {
     $root = realpath(dirname(__DIR__, 3));
     $relative = substr((string) realpath($testFile), strlen((string) $root) + 1);
+    $command = ['node', "$root/scripts/features/coverage.mts", '--items', $relative];
+    $selectedDatabase = getenv('ORM_FEATURE_DATABASE');
+    if (is_string($selectedDatabase) && $selectedDatabase !== '') {
+        $command[] = '--database';
+        $command[] = $selectedDatabase;
+    }
     $process = proc_open(
-        ['node', "$root/scripts/features/coverage.mts", '--items', $relative],
+        $command,
         [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
         $pipes,
         $root

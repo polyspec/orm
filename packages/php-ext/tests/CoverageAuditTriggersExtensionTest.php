@@ -6,28 +6,21 @@ namespace Polyspec\Orm\Tests;
 
 // Requirements: INT-44.
 
-use Polyspec\Orm\Db;
-use Polyspec\Orm\Model;
-use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\Medium;
-use ReflectionMethod;
-
-require_once dirname(__DIR__, 2) . '/php/tests/CoverageAuditTriggersTest.php';
 
 #[Medium]
 final class CoverageAuditTriggersExtensionTest extends CoverageAuditTriggersTest
 {
+    use NativeMethodAssertions;
+
     protected static function coverageTestFile(): string
     {
         return __FILE__;
     }
 
+    // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- the owner target filters this exact test symbol.
     public function test_native_methods_are_internal(): void
     {
-        Assert::assertTrue((new ReflectionMethod(Db::class, 'transaction'))->isInternal());
-        Assert::assertTrue((new ReflectionMethod(Model::class, 'get'))->isInternal());
-        Assert::assertTrue((new ReflectionMethod(Model::class, 'update'))->isInternal());
-        Assert::assertTrue((new ReflectionMethod(Model::class, 'delete'))->isInternal());
-        Assert::assertTrue((new ReflectionMethod(Model::class, 'restore'))->isInternal());
+        $this->assertAuditMethodsAreInternal();
     }
 }

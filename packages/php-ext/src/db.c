@@ -809,6 +809,41 @@ static bool exec_stmt(zval *self, zval *st, zval *args)
     return true;
 }
 
+/* Db::exec; a failed driver statement closes its cursor before the cached statement is released. */
+static bool execute_prepared_stmt(zval *self, zval *st, zval *args)
+{
+    if (!exec_stmt(self, st, args)) {
+        if (pdo_exception_pending()) {
+            failed_cursor(st);
+        }
+        zval_ptr_dtor(st);
+        return false;
+    }
+    return true;
+}
+
+/* Fetch one statement result, close its cursor, and transfer the fetched value to the caller. */
+static bool fetch_stmt_result(zval *st, const char *method, uint32_t argc, zval *argv, zval *out)
+{
+    zval fetched, closed;
+    if (!mcall(st, method, &fetched, argc, argv)) {
+        if (pdo_exception_pending()) {
+            failed_cursor(st);
+        }
+        zval_ptr_dtor(st);
+        return false;
+    }
+    bool ok = mcall(st, "closeCursor", &closed, 0, NULL);
+    zval_ptr_dtor(st);
+    if (!ok) {
+        zval_ptr_dtor(&fetched);
+        return false;
+    }
+    zval_ptr_dtor(&closed);
+    ZVAL_COPY_VALUE(out, &fetched);
+    return true;
+}
+
 /* ---- time values (Db::timeValue) ---- */
 
 static bool is_digit_run(const char *s, size_t n)
@@ -926,13 +961,17 @@ static void invalid_time_text(const char *v, size_t vlen, const char *col)
 
 static bool datetime_in_zone(zval *value, zval *zone, zval *out)
 {
-    zval immutable;
+    zval immutable, zoned;
     if (!scall("DateTimeImmutable::createFromInterface", &immutable, 1, value)) {
         return false;
     }
-    bool ok = mcall(&immutable, "setTimezone", out, 1, zone);
+    bool ok = mcall(&immutable, "setTimezone", &zoned, 1, zone);
     zval_ptr_dtor(&immutable);
-    return ok;
+    if (!ok) {
+        return false;
+    }
+    ZVAL_COPY_VALUE(out, &zoned);
+    return true;
 }
 
 /* Db::timeValue. Dates and times are text with no offset; a datetime is converted to the connection zone. out is the value. */
@@ -1722,14 +1761,6 @@ typedef struct qctx {
     zval *args;
 } qctx;
 
-static void failed_statement(zval *st)
-{
-    if (pdo_exception_pending()) {
-        failed_cursor(st);
-    }
-    zval_ptr_dtor(st);
-}
-
 static bool close_statement(zval *st)
 {
     zval result;
@@ -1745,48 +1776,28 @@ static bool close_statement(zval *st)
 static bool op_query(zval *self, void *ctx, zval *ret)
 {
     qctx *c = ctx;
-    zval st, mode, rows;
+    zval st, mode;
     if (!stmt_of(self, c->sql, &st)) {
         return false;
     }
-    if (!exec_stmt(self, &st, c->args)) {
-        failed_statement(&st);
+    if (!execute_prepared_stmt(self, &st, c->args)) {
         return false;
     }
     ZVAL_LONG(&mode, FETCH_NUM);
-    if (!mcall(&st, "fetchAll", &rows, 1, &mode)) {
-        failed_statement(&st);
-        return false;
-    }
-    if (!close_statement(&st)) {
-        zval_ptr_dtor(&rows);
-        return false;
-    }
-    ZVAL_COPY_VALUE(ret, &rows);
-    return true;
+    return fetch_stmt_result(&st, "fetchAll", 1, &mode, ret);
 }
 
 static bool op_scalar(zval *self, void *ctx, zval *ret)
 {
     qctx *c = ctx;
-    zval st, v;
+    zval st;
     if (!stmt_of(self, c->sql, &st)) {
         return false;
     }
-    if (!exec_stmt(self, &st, c->args)) {
-        failed_statement(&st);
+    if (!execute_prepared_stmt(self, &st, c->args)) {
         return false;
     }
-    if (!mcall(&st, "fetchColumn", &v, 0, NULL)) {
-        failed_statement(&st);
-        return false;
-    }
-    if (!close_statement(&st)) {
-        zval_ptr_dtor(&v);
-        return false;
-    }
-    ZVAL_COPY_VALUE(ret, &v);
-    return true;
+    return fetch_stmt_result(&st, "fetchColumn", 0, NULL, ret);
 }
 
 /* Db::query and Db::scalar: the statement of the step with its args, published as a model statement. */
@@ -1922,20 +1933,22 @@ static bool parent_values(zval *pr, zval *parents, zval *params, zval *out)
     return true;
 }
 
-static void append_parent_placeholders(smart_str *out, zend_long tuples, zend_long width, const char *sep,
-    char marker, zend_long first)
+static void append_repeated_placeholders(smart_str *sql, const char *separator, zend_long count, zend_long width,
+    bool numbered, zend_long first)
 {
-    for (zend_long tuple = 0; tuple < tuples; tuple++) {
+    for (zend_long tuple = 0; tuple < count; tuple++) {
         if (tuple > 0) {
-            smart_str_appends(out, sep);
+            smart_str_appends(sql, separator);
         }
-        for (zend_long column = 0; column < width; column++) {
-            if (column > 0) {
-                smart_str_appends(out, ", ");
+        for (zend_long part = 0; part < width; part++) {
+            if (part > 0) {
+                smart_str_appends(sql, ", ");
             }
-            smart_str_appendc(out, marker);
-            if (marker == '$') {
-                smart_str_append_long(out, first + tuple * width + column);
+            if (numbered) {
+                smart_str_appendc(sql, '$');
+                smart_str_append_long(sql, first + tuple * width + part);
+            } else {
+                smart_str_appendc(sql, '?');
             }
         }
     }
@@ -2003,7 +2016,7 @@ static bool expand_in(zval *step, zval *vals, zval *sql_out, zval *vals_out)
                 q++;
             }
             if (k == parent) {
-                append_parent_placeholders(&b, n, width, sep, '$', k);
+                append_repeated_placeholders(&b, sep, n, width, true, k);
             } else if (k > parent) {
                 smart_str_appendc(&b, '$');
                 smart_str_append_long(&b, k + n * width - 1);
@@ -2022,7 +2035,7 @@ static bool expand_in(zval *step, zval *vals, zval *sql_out, zval *vals_out)
             zval *from = aidx(bs, slot);
             zval *fv = from != NULL ? aget(from, "from") : NULL;
             if (is_str(fv, "parent")) {
-                append_parent_placeholders(&b, n, width, sep, '?', 0);
+                append_repeated_placeholders(&b, sep, n, width, false, 0);
             } else {
                 smart_str_appendc(&b, '?');
             }
@@ -3228,11 +3241,7 @@ static bool op_write(zval *self, void *ctx, zval *ret)
     }
     zval *ir = rd(c->r, "ir");
     bool insert = is_str(aget(ir, "kind"), "insert");
-    if (!exec_stmt(self, &st, c->args)) {
-        if (pdo_exception_pending()) {
-            failed_cursor(&st);
-        }
-        zval_ptr_dtor(&st);
+    if (!execute_prepared_stmt(self, &st, c->args)) {
         return false;
     }
     if (insert && strstr(Z_STRVAL_P(sql), " RETURNING ") != NULL) {
@@ -3903,8 +3912,7 @@ static bool op_execute(zval *self, void *ctx, zval *ret)
     if (!stmt_of(self, aget(c->step, "sql"), &st)) {
         return false;
     }
-    if (!exec_stmt(self, &st, c->args)) {
-        failed_statement(&st);
+    if (!execute_prepared_stmt(self, &st, c->args)) {
         return false;
     }
     if (!close_statement(&st)) {
@@ -4342,6 +4350,25 @@ static void end_savepoint(zval *self, zval *frame, const char *kind, const char 
     ZVAL_COPY_VALUE(out, &ex);
 }
 
+/* Attempts both rollback and release, returning the failures in statement order. */
+static void rollback_release_savepoint(zval *self, zval *frame, const char *name, zval *out)
+{
+    zval rollback, release, errors;
+    end_savepoint(self, frame, "rollback_to", name, &rollback);
+    end_savepoint(self, frame, "release", name, &release);
+    array_init(&errors);
+    if (Z_TYPE(rollback) != IS_NULL) {
+        push(&errors, &rollback);
+    }
+    if (Z_TYPE(release) != IS_NULL) {
+        push(&errors, &release);
+    }
+    zval_ptr_dtor(&rollback);
+    zval_ptr_dtor(&release);
+    joined(&errors, out);
+    zval_ptr_dtor(&errors);
+}
+
 static void savepoint_control(zval *self, zval *frame, const char *kind, const char *name, bool *ok)
 {
     const char *op = "savepoint";
@@ -4610,6 +4637,16 @@ static void driver_error(zval *self, zval *ex, zval *out)
     }
 }
 
+/* Maps a callback PDO failure through the active driver and preserves other throwable values unchanged. */
+static void transaction_callback_error(zval *self, zval *error, zval *out)
+{
+    if (is_instance(error, "PDOException")) {
+        driver_error(self, error, out);
+    } else {
+        ZVAL_COPY(out, error);
+    }
+}
+
 /* Db::begin: opens the transaction on the connection. out is the frame; false with the error pending when it failed. */
 static bool begin_tx(zval *self, const char *isolation, bool read_only, zend_long timeout, zval *out);
 
@@ -4619,19 +4656,6 @@ static bool invoke_transaction_callback(zval *self, zval *fn, dbs_transaction_ca
     if (callback != NULL) return callback(self, context, out) && EG(exception) == NULL;
     ZVAL_UNDEF(out);
     return call_user_function(NULL, NULL, fn, out, 0, NULL) == SUCCESS && EG(exception) == NULL;
-}
-
-static void take_callback_failure(zval *self, zval *failure)
-{
-    zval ex;
-    take_exception(&ex);
-    frames_pop();
-    if (is_instance(&ex, "PDOException")) {
-        driver_error(self, &ex, failure);
-    } else {
-        ZVAL_COPY(failure, &ex);
-    }
-    zval_ptr_dtor(&ex);
 }
 
 static bool savepoint_tx(zval *self, zval *frame, zval *fn, dbs_transaction_callback callback, void *context, zval *out)
@@ -4660,13 +4684,12 @@ static bool savepoint_tx(zval *self, zval *frame, zval *fn, dbs_transaction_call
         ZVAL_UNDEF(&ret);
         bool ok = invoke_transaction_callback(self, fn, callback, context, &ret);
         if (!ok) {
-            zval failure, e1, e2, ended;
-            take_callback_failure(self, &failure);
-            end_savepoint(self, frame, "rollback_to", name, &e1);
-            end_savepoint(self, frame, "release", name, &e2);
-            joined_pair(&e1, &e2, &ended);
-            zval_ptr_dtor(&e1);
-            zval_ptr_dtor(&e2);
+            zval ex, failure, ended;
+            take_exception(&ex);
+            frames_pop();
+            transaction_callback_error(self, &ex, &failure);
+            zval_ptr_dtor(&ex);
+            rollback_release_savepoint(self, frame, name, &ended);
             if (Z_TYPE(ended) == IS_NULL) {
                 ZVAL_COPY_VALUE(&pending, &failure);
             } else {
@@ -5272,12 +5295,7 @@ static void settle_audit(zval *self, zval *frame, zend_long affected, zval *out)
     zval nul;
     ZVAL_NULL(&nul);
     wr(frame, "audit", &nul);
-    zval e1, e2;
-    end_savepoint(self, frame, "rollback_to", "orm_audit", &e1);
-    end_savepoint(self, frame, "release", "orm_audit", &e2);
-    joined_pair(&e1, &e2, out);
-    zval_ptr_dtor(&e1);
-    zval_ptr_dtor(&e2);
+    rollback_release_savepoint(self, frame, "orm_audit", out);
 }
 
 /* Db::runTransaction: the callback runs in the frame; an error rolls the frame back, and its own failure is reported with the
@@ -5297,8 +5315,11 @@ static bool run_transaction(zval *self, zval *fn, dbs_transaction_callback callb
     ZVAL_UNDEF(&v);
     bool ok = invoke_transaction_callback(self, fn, callback, context, &v);
     if (!ok) {
-        zval failure, cleanup;
-        take_callback_failure(self, &failure);
+        zval ex, failure, cleanup;
+        take_exception(&ex);
+        frames_pop();
+        transaction_callback_error(self, &ex, &failure);
+        zval_ptr_dtor(&ex);
         if (!finish_tx(self, &frame, false)) {
             take_exception(&cleanup);
             throw_rollback(&failure, &cleanup);
