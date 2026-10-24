@@ -170,11 +170,49 @@ final class DbspecApplyCleanupTest extends TestCase
     public function testRecoverAndRollbackWithNoRecordedPlan(): void
     {
         $pdo = dbspec_failing_pdo('apply_cleanup_php', []);
+        Dbspec::apply($pdo, 'sqlite', [], self::now(), null);
         Dbspec::recover($pdo, 'sqlite', [], self::now(), null);
         Dbspec::rollback($pdo, 'sqlite', [], self::now(), null);
+        Dbspec::finalize($pdo, 'sqlite', [], self::now(), null);
 
         $rows = $pdo->query('SELECT COUNT(*) FROM "dbspec$plans"')->fetchColumn();
         Assert::assertSame(0, (int) $rows);
+    }
+
+    public function testFinalizeAppliedPlanThroughSessionOperation(): void
+    {
+        $case = null;
+        foreach (plan_vectors()['cases'] as $candidate) {
+            if ($candidate['id'] === 'add-and-drop') {
+                $case = $candidate;
+                break;
+            }
+        }
+        Assert::assertNotNull($case, 'the add-and-drop plan vector exists');
+        $sourceResult = Dbspec::parse(dbspec_plan_text($case['source']), []);
+        $source = $sourceResult->document ?? throw new RuntimeException('add-and-drop source did not parse');
+        $planResult = Dbspec::parsePlan(dbspec_plan_text($case['plan']));
+        $plan = $planResult->plan ?? throw new RuntimeException('add-and-drop plan did not parse');
+        $bootstrapResult = Dbspec::parsePlan("dbplan 1 bootstrap\nfrom empty\n\n" . Dbspec::emit($source));
+        $bootstrap = $bootstrapResult->plan ?? throw new RuntimeException('the source bootstrap plan did not parse');
+        $plans = [$bootstrap, $plan];
+        $chain = Dbspec::chain($plans);
+        Assert::assertNotNull($chain->plans, 'the source bootstrap and add-and-drop plans form a chain');
+        $stepsResult = Dbspec::planSteps($source, $plan, 'sqlite');
+        $steps = $stepsResult->steps ?? throw new RuntimeException('add-and-drop plan steps are invalid');
+        Assert::assertContains(true, array_map(static fn($step): bool => $step->finalize, $steps));
+
+        $pdo = dbspec_failing_pdo('apply_finalize_operation_php', []);
+        $pdo->exec('PRAGMA foreign_keys = ON');
+        Dbspec::apply($pdo, 'sqlite', $plans, self::now(), null);
+        Dbspec::finalize($pdo, 'sqlite', $plans, self::now(), null);
+        Dbspec::finalize($pdo, 'sqlite', $plans, self::now(), null);
+
+        $history = $pdo->prepare('SELECT state FROM "dbspec$plans" WHERE name = ?');
+        foreach ($plans as $plan) {
+            $history->execute([$plan->name]);
+            Assert::assertSame('done', $history->fetchColumn(), 'the finalize callback completes the applied plan');
+        }
     }
 
     // apply/effect-row

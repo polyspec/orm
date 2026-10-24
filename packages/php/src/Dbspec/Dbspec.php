@@ -4,7 +4,13 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Dbspec;
 
-/** Parses, validates and canonically emits dbspec documents (docs/spec/dbspec.md). */
+/**
+ * Parses, validates and canonically emits dbspec documents (docs/spec/dbspec.md).
+ *
+ * @phpstan-type PlanList list<Plan>
+ * @phpstan-type PlanClock \Closure(): \DateTimeInterface
+ * @phpstan-type PlanEventHandler \Closure(ApplyEvent): void
+ */
 final class Dbspec
 {
     /**
@@ -774,9 +780,9 @@ final class Dbspec
      * PDO::ERRMODE_EXCEPTION, is an InvalidArgumentException. A database that
      * has applied the whole chain stays unchanged.
      *
-     * @param list<Plan> $plans
-     * @param \Closure(): \DateTimeInterface $now
-     * @param ?\Closure(ApplyEvent): void $events
+     * @param PlanList $plans
+     * @param PlanClock $now
+     * @param PlanEventHandler|null $events
      */
     public static function apply(
         \PDO $connection,
@@ -795,9 +801,9 @@ final class Dbspec
      * "Apply"). Without an interrupted plan nothing changes. Failures and
      * arguments are as for apply.
      *
-     * @param list<Plan> $plans
-     * @param \Closure(): \DateTimeInterface $now
-     * @param ?\Closure(ApplyEvent): void $events
+     * @param PlanList $plans
+     * @param PlanClock $now
+     * @param PlanEventHandler|null $events
      */
     public static function recover(
         \PDO $connection,
@@ -816,9 +822,9 @@ final class Dbspec
      * rollback stops it with an `irreversible` ApplyError. Without a row
      * nothing changes. Failures and arguments are as for apply.
      *
-     * @param list<Plan> $plans
-     * @param \Closure(): \DateTimeInterface $now
-     * @param ?\Closure(ApplyEvent): void $events
+     * @param PlanList $plans
+     * @param PlanClock $now
+     * @param PlanEventHandler|null $events
      */
     public static function rollback(
         \PDO $connection,
@@ -835,9 +841,9 @@ final class Dbspec
      * the hidden tables and columns, and records the plans `done`
      * (docs/spec/plans.md "Apply"). Failures and arguments are as for apply.
      *
-     * @param list<Plan> $plans
-     * @param \Closure(): \DateTimeInterface $now
-     * @param ?\Closure(ApplyEvent): void $events
+     * @param PlanList $plans
+     * @param PlanClock $now
+     * @param PlanEventHandler|null $events
      */
     public static function finalize(
         \PDO $connection,
