@@ -2995,6 +2995,98 @@
     "exported": true,
     "signature": "public function __invoke(): void"
   },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Orm": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\Orm extends  implements  uses "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Orm::connect": {
+    "exported": true,
+    "signature": "public static function connect(string $dsn, Polyspec\\Orm\\Config $config): Polyspec\\Orm\\Db"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Orm::connectSchema": {
+    "exported": true,
+    "signature": "public static function connectSchema(string $dsn, Polyspec\\Orm\\Schema $schema, Polyspec\\Orm\\Config $config): Polyspec\\Orm\\Db"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Orm::date": {
+    "exported": true,
+    "signature": "public static function date(): Polyspec\\Orm\\Func"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Orm::dayOfWeek": {
+    "exported": true,
+    "signature": "public static function dayOfWeek(): Polyspec\\Orm\\Func"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Orm::daysAgo": {
+    "exported": true,
+    "signature": "public static function daysAgo(int $n): Polyspec\\Orm\\Func"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Orm::daysLater": {
+    "exported": true,
+    "signature": "public static function daysLater(int $n): Polyspec\\Orm\\Func"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Orm::hoursAgo": {
+    "exported": true,
+    "signature": "public static function hoursAgo(int $n): Polyspec\\Orm\\Func"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Orm::hoursLater": {
+    "exported": true,
+    "signature": "public static function hoursLater(int $n): Polyspec\\Orm\\Func"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Orm::minutesAgo": {
+    "exported": true,
+    "signature": "public static function minutesAgo(int $n): Polyspec\\Orm\\Func"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Orm::minutesLater": {
+    "exported": true,
+    "signature": "public static function minutesLater(int $n): Polyspec\\Orm\\Func"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Orm::month": {
+    "exported": true,
+    "signature": "public static function month(): Polyspec\\Orm\\Func"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Orm::monthsAgo": {
+    "exported": true,
+    "signature": "public static function monthsAgo(int $n): Polyspec\\Orm\\Func"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Orm::monthsLater": {
+    "exported": true,
+    "signature": "public static function monthsLater(int $n): Polyspec\\Orm\\Func"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Orm::mysqlTlsOptions": {
+    "exported": true,
+    "signature": "public static function mysqlTlsOptions(?string $sslCa): array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Orm::now": {
+    "exported": true,
+    "signature": "public static function now(): Polyspec\\Orm\\Func"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Orm::parseDsn": {
+    "exported": true,
+    "signature": "public static function parseDsn(string $dsn): array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Orm::parseMarkdownDsn": {
+    "exported": true,
+    "signature": "public static function parseMarkdownDsn(string $dsn): array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Orm::secondsAgo": {
+    "exported": true,
+    "signature": "public static function secondsAgo(int $n): Polyspec\\Orm\\Func"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Orm::secondsLater": {
+    "exported": true,
+    "signature": "public static function secondsLater(int $n): Polyspec\\Orm\\Func"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Orm::today": {
+    "exported": true,
+    "signature": "public static function today(): Polyspec\\Orm\\Func"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Orm::transactionConflict": {
+    "exported": true,
+    "signature": "public static function transactionConflict(string $message): Polyspec\\Orm\\OrmException"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Orm::year": {
+    "exported": true,
+    "signature": "public static function year(): Polyspec\\Orm\\Func"
+  },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\OrmException": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\OrmException extends RuntimeException implements Stringable,Throwable uses "

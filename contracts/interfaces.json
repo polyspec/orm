@@ -47,13 +47,13 @@
   },
   "extensions": {
     "php-extension": {
-      "description": "The PHP extension polyspec_orm (packages/php-ext) implements the dbspec surface and error codes of the PHP client in C under the client's own names, and registers native Stats, OrmException, AesKeyring and AesRotationStatus classes. Its declarations are read from its stub with the PHP parser; make dbspec-php-extension-check checks that the loaded extension declares the same.",
+      "description": "The PHP extension polyspec_orm (packages/php-ext) implements the dbspec surface and error codes of the PHP client in C under the client's own names, and registers native Orm, Stats, OrmException, AesKeyring and AesRotationStatus classes. Its declarations are read from its stub with the PHP parser; make dbspec-php-extension-check checks that the loaded extension declares the same.",
       "syntax": "php",
       "roots": [
         "packages/php-ext/src"
       ],
       "symbols": "contracts/symbols/php-extension.json",
-      "symbol_hash": "sha256:56f2b09f0bf00f0f214880ed0e7a89a74979831935df76d5ea3d9d521ec0070a",
+      "symbol_hash": "sha256:eb6ff0e07a40e58bb8e6d0000ebfcb1e18ae79c56d2fda143d3acfeb6d9f0804",
       "rules": [
         "Dbspec.readFile",
         "Dbspec.readBytes",

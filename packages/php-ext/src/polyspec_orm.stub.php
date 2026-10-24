@@ -749,6 +749,33 @@ final class PlanApply
 
 namespace Polyspec\Orm;
 
+/** Opens a database selected by a DSN and constructs SQL function values. */
+final class Orm
+{
+    public static function connectSchema(string $dsn, Schema $schema, Config $config): Db {}
+    public static function connect(string $dsn, Config $config): Db {}
+    public static function parseMarkdownDsn(string $dsn): array {}
+    public static function parseDsn(string $dsn): array {}
+    public static function mysqlTlsOptions(?string $sslCa): array {}
+    public static function transactionConflict(string $message): OrmException {}
+    public static function now(): Func {}
+    public static function today(): Func {}
+    public static function secondsAgo(int $n): Func {}
+    public static function minutesAgo(int $n): Func {}
+    public static function hoursAgo(int $n): Func {}
+    public static function daysAgo(int $n): Func {}
+    public static function monthsAgo(int $n): Func {}
+    public static function secondsLater(int $n): Func {}
+    public static function minutesLater(int $n): Func {}
+    public static function hoursLater(int $n): Func {}
+    public static function daysLater(int $n): Func {}
+    public static function monthsLater(int $n): Func {}
+    public static function dayOfWeek(): Func {}
+    public static function year(): Func {}
+    public static function month(): Func {}
+    public static function date(): Func {}
+}
+
 /** Error codes shared by the engine and every executor (docs/spec/errors.yaml). */
 final class Code
 {

@@ -2676,6 +2676,7 @@ static PHP_MINIT_FUNCTION(polyspec_orm)
 #endif
     register_class_Polyspec_Orm_Code();
     register_class_Polyspec_Orm_OrmException(spl_ce_RuntimeException);
+    register_class_Polyspec_Orm_Orm();
     aes_keyring_set_class(register_class_Polyspec_Orm_AesKeyring());
     aes_rotation_status_set_class(register_class_Polyspec_Orm_AesRotationStatus());
     register_class_Polyspec_Orm_Codec();

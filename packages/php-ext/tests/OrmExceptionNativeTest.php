@@ -8,6 +8,9 @@ use Polyspec\Orm\Code;
 use Polyspec\Orm\OrmException;
 use Polyspec\Orm\AesKeyring;
 use Polyspec\Orm\AesRotationStatus;
+use Polyspec\Orm\Config;
+use Polyspec\Orm\Schema;
+use Polyspec\Orm\Orm;
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
@@ -15,6 +18,287 @@ use RuntimeException;
 
 final class OrmExceptionNativeTest extends TestCase
 {
+    public function testOrmConnectionFactoryIsProvidedByTheExtension(): void
+    {
+        $class = new ReflectionClass(Orm::class);
+        Assert::assertTrue($class->isInternal());
+        Assert::assertSame('polyspec_orm', $class->getExtensionName());
+    }
+
+    public function testOrmConnectionFactoryRejectsAnInvalidDsnBeforeOpeningTransport(): void
+    {
+        try {
+            Orm::connect('not a DSN', new Config());
+            Assert::fail('a non-URI DSN must be rejected before transport setup');
+        } catch (OrmException $error) {
+            Assert::assertSame(Code::CONFIG, $error->code_);
+        }
+    }
+
+    public function testNativeOrmParsesMysqlDsn(): void
+    {
+        Assert::assertSame(
+            ['mysql', 'mysql:host=db.example;port=3307;dbname=app;charset=utf8mb4', 'user', 'p@ss', [], null],
+            Orm::parseDsn('mysql://user:p%40ss@db.example:3307/app?timezone=UTC')
+        );
+    }
+
+    public function testNativeOrmParsesPostgresDsn(): void
+    {
+        Assert::assertSame(
+            ['postgres', 'pgsql:host=pool.example;port=5432;dbname=app;sslmode=require', 'user', 'secret', [], null],
+            Orm::parseDsn('postgres://user:secret@db.example/app?host=pool.example&sslmode=require')
+        );
+    }
+
+    public function testNativeOrmParsesSqlitePragmas(): void
+    {
+        Assert::assertSame(
+            ['sqlite', 'sqlite:/tmp/app db.sqlite', null, null, [['journal_mode', 'WAL']], null],
+            Orm::parseDsn('sqlite:///tmp/app%20db.sqlite?_pragma=journal_mode(WAL)')
+        );
+    }
+
+    public function testNativeOrmRejectsMalformedAndUnsupportedDsnParameters(): void
+    {
+        foreach (
+            [
+            'mysqlx://localhost/app',
+            'relative/path',
+            'sqlite://relative.sqlite',
+            'mysql://localhost/',
+            'postgres://localhost/app?timezone=Nowhere',
+            'sqlite:///tmp/app.sqlite?_txlock=immediate',
+            'sqlite:///tmp/app.sqlite?_pragma=busy_timeout',
+            'sqlite:///tmp/app%2.sqlite',
+            'sqlite:///tmp/app%FF.sqlite',
+            'mysql://localhost/app?ssl-mode=VERIFY_IDENTITY&ssl-ca=ca.pem',
+            'mysql://localhost/app?charset=utf8',
+            'postgres://localhost/app?application_name=orm',
+            'mysql://localhost/app?ssl-mode%5B%5D=VERIFY_IDENTITY',
+            ] as $dsn
+        ) {
+            try {
+                Orm::parseDsn($dsn);
+                Assert::fail("invalid DSN was accepted: $dsn");
+            } catch (OrmException $error) {
+                Assert::assertSame(Code::CONFIG, $error->code_, "wrong error for $dsn");
+            }
+        }
+    }
+
+    public function testNativeMysqlTlsRejectsAddressLiteralsForIdentityVerification(): void
+    {
+        foreach (['127.0.0.1', '[::1]'] as $host) {
+            try {
+                Orm::parseDsn("mysql://$host/app?ssl-mode=VERIFY_IDENTITY&ssl-ca=%2Ftmp%2Fca.pem");
+                Assert::fail("TLS identity verification must reject address literal $host");
+            } catch (OrmException $error) {
+                Assert::assertSame(Code::CONFIG, $error->code_);
+                Assert::assertStringContainsString('needs a host name, not the address', $error->getMessage());
+            }
+        }
+        Assert::assertSame('/tmp/ca.pem', Orm::parseDsn(
+            'mysql://db.example/app?ssl-mode=VERIFY_IDENTITY&ssl-ca=%2Ftmp%2Fca.pem'
+        )[5]);
+    }
+
+    public function testNativeDsnErrorsPreserveTheirSupportedParameterDetails(): void
+    {
+        try {
+            Orm::parseDsn('mysql://db.example/app?extra=value');
+            Assert::fail('unknown query parameters must be rejected');
+        } catch (OrmException $error) {
+            Assert::assertSame(
+                'CONFIG: mysql DSN has the unknown parameter extra; it accepts timezone, socket, ssl-mode, ssl-ca',
+                $error->getMessage()
+            );
+        }
+        try {
+            Orm::parseDsn('mysql://db.example/app?ssl-mode=disabled&ssl-ca=%2Ftmp%2Fca.pem');
+            Assert::fail('unsupported TLS modes must be rejected');
+        } catch (OrmException $error) {
+            Assert::assertSame(
+                'CONFIG: mysql DSN ssl-mode "disabled" is not supported; the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca',
+                $error->getMessage()
+            );
+        }
+    }
+
+    public function testNativeOrmParsesMarkdownDsnAndCreatesFunctionValues(): void
+    {
+        Assert::assertSame(
+            ['127.0.0.1:49152', 'corpus', 'a token'],
+            Orm::parseMarkdownDsn('markdown://127.0.0.1:49152/corpus?token=a+token')
+        );
+        $cases = [
+            ['now', [], Orm::now()],
+            ['today', [], Orm::today()],
+            ['seconds_ago', [3], Orm::secondsAgo(3)],
+            ['minutes_ago', [3], Orm::minutesAgo(3)],
+            ['hours_ago', [3], Orm::hoursAgo(3)],
+            ['days_ago', [3], Orm::daysAgo(3)],
+            ['months_ago', [3], Orm::monthsAgo(3)],
+            ['seconds_later', [3], Orm::secondsLater(3)],
+            ['minutes_later', [3], Orm::minutesLater(3)],
+            ['hours_later', [3], Orm::hoursLater(3)],
+            ['days_later', [3], Orm::daysLater(3)],
+            ['months_later', [3], Orm::monthsLater(3)],
+            ['day_of_week', [], Orm::dayOfWeek()],
+            ['year', [], Orm::year()],
+            ['month', [], Orm::month()],
+            ['date', [], Orm::date()],
+        ];
+        foreach ($cases as [$name, $args, $function]) {
+            Assert::assertSame($name, $function->name);
+            Assert::assertSame($args, $function->args);
+            Assert::assertFalse($function->column);
+        }
+        $conflict = Orm::transactionConflict('retry');
+        Assert::assertSame(Code::DEADLOCK, $conflict->code_);
+        Assert::assertSame('DEADLOCK: retry', $conflict->getMessage());
+    }
+
+    public function testNativeMysqlTlsOptionsRequireAReadableCaFile(): void
+    {
+        Assert::assertSame([], Orm::mysqlTlsOptions(null));
+        $path = tempnam(sys_get_temp_dir(), 'orm-native-ca-');
+        Assert::assertNotFalse($path);
+        try {
+            $options = Orm::mysqlTlsOptions($path);
+            Assert::assertSame($path, $options[\Pdo\Mysql::ATTR_SSL_CA]);
+            Assert::assertTrue($options[\Pdo\Mysql::ATTR_SSL_VERIFY_SERVER_CERT]);
+        } finally {
+            if (is_file($path)) {
+                unlink($path);
+            }
+        }
+    }
+
+    public function testNativeMarkdownConnectionRejectsTimeoutBeforeOpeningTransport(): void
+    {
+        try {
+            Orm::connect('markdown://127.0.0.1:1/corpus?token=secret', new Config(statementTimeoutMs: 1));
+            Assert::fail('markdown must reject statement timeouts before opening its socket');
+        } catch (OrmException $error) {
+            Assert::assertSame(Code::CAPABILITY_UNSUPPORTED, $error->code_);
+        }
+    }
+
+    public function testNativeConnectionRejectsUnsupportedPoolAndNegativeTimeoutOptions(): void
+    {
+        foreach (
+            [
+            [new Config(poolSize: 1), 'poolSize, poolIdleSize and poolLifetimeMs configure a connection pool'],
+            [new Config(statementTimeoutMs: -1), 'statement timeout must not be negative'],
+            ] as [$config, $message]
+        ) {
+            try {
+                Orm::connect('sqlite:///tmp/native-config-check.sqlite', $config);
+                Assert::fail('unsupported connection options must fail before opening a database');
+            } catch (OrmException $error) {
+                Assert::assertSame(Code::CONFIG, $error->code_);
+                Assert::assertStringContainsString($message, $error->getMessage());
+            }
+        }
+    }
+
+    public function testNativeMarkdownConnectionUsesTheLoopbackTransport(): void
+    {
+        try {
+            Orm::connect('markdown://127.0.0.1:1/corpus?token=secret', new Config());
+            Assert::fail('a refused flowmark endpoint must fail');
+        } catch (OrmException $error) {
+            Assert::assertSame(Code::DRIVER, $error->code_);
+            Assert::assertStringContainsString('connecting to the flowmark server 127.0.0.1:1', $error->getMessage());
+        }
+    }
+
+    public function testConnectSchemaVerifiesBeforeConnecting(): void
+    {
+        $schema = new Schema('', 'not a hash');
+        try {
+            Orm::connectSchema('not a DSN', $schema, new Config());
+            Assert::fail('a schema with an invalid hash must fail before connecting');
+        } catch (OrmException $error) {
+            Assert::assertSame(Code::CONFIG, $error->code_);
+        }
+    }
+
+    public function testNativeSqliteConnectionReturnsAWorkingNativeDb(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'orm-native-connect-');
+        Assert::assertNotFalse($path);
+        try {
+            $db = Orm::connect('sqlite://' . $path, new Config());
+            Assert::assertSame('sqlite', $db->driver());
+            $pdo = $db->pdo();
+            $pdo->exec('CREATE TABLE native_connect_probe (value TEXT NOT NULL)');
+            $pdo->exec("INSERT INTO native_connect_probe VALUES ('connected')");
+            Assert::assertSame('connected', $pdo->query('SELECT value FROM native_connect_probe')->fetchColumn());
+            $db->close();
+        } finally {
+            if (is_file($path)) {
+                unlink($path);
+            }
+        }
+    }
+
+    public function testNativeSqliteConnectionFailurePreservesThePdoCause(): void
+    {
+        $path = sys_get_temp_dir() . '/orm-native-connect-missing-' . bin2hex(random_bytes(6)) . '/db.sqlite';
+        try {
+            Orm::connect('sqlite://' . $path, new Config());
+            Assert::fail('a database under a nonexistent directory must fail to connect');
+        } catch (OrmException $error) {
+            Assert::assertSame(Code::CONFIG, $error->code_);
+            Assert::assertInstanceOf(\PDOException::class, $error->getPrevious());
+        }
+    }
+
+    public function testNativeMarkdownConnectionSendsTheConnectHandshake(): void
+    {
+        $serverCode = <<<'PHP'
+$server = stream_socket_server('tcp://127.0.0.1:0', $errno, $error);
+if ($server === false) { fwrite(STDERR, $error); exit(2); }
+$address = stream_socket_get_name($server, false);
+echo substr($address, strrpos($address, ':') + 1), "\n";
+flush();
+$client = stream_socket_accept($server, 10);
+if ($client === false) { exit(3); }
+$request = fgets($client);
+if ($request === false) { exit(4); }
+fwrite($client, "{}\n");
+fclose($client);
+echo base64_encode($request), "\n";
+fclose($server);
+PHP;
+        $pipes = [];
+        $process = proc_open([PHP_BINARY, '-r', $serverCode], [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+        Assert::assertIsResource($process);
+        try {
+            $port = trim((string) fgets($pipes[1]));
+            Assert::assertMatchesRegularExpression('/^[1-9][0-9]*$/', $port);
+            $db = Orm::connect("markdown://127.0.0.1:$port/corpus?token=test-token", new Config());
+            Assert::assertSame('markdown', $db->driver());
+            $encoded = trim((string) fgets($pipes[1]), "\r\n");
+            $request = json_decode((string) base64_decode($encoded, true), true, 512, JSON_THROW_ON_ERROR);
+            Assert::assertSame(['op' => 'connect', 'corpus' => 'corpus', 'token' => 'test-token'], $request);
+            $db->close();
+        } finally {
+            foreach ($pipes as $pipe) {
+                if (is_resource($pipe)) {
+                    fclose($pipe);
+                }
+            }
+            $status = proc_get_status($process);
+            if ($status['running']) {
+                proc_terminate($process);
+            }
+            proc_close($process);
+        }
+    }
+
     public function testAesKeyringIsProvidedByTheExtension(): void
     {
         $class = new ReflectionClass(AesKeyring::class);

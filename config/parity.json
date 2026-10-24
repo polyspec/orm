@@ -18787,6 +18787,10 @@
           "symbol": "Polyspec\\Orm\\Orm::connect"
         },
         {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Orm::connect"
+        },
+        {
           "implementation": "typescript",
           "symbol": "@polyspec/orm!Db.connect:member(1)"
         },
@@ -18811,6 +18815,10 @@
         },
         {
           "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Orm::connectSchema"
+        },
+        {
+          "implementation": "php-extension",
           "symbol": "Polyspec\\Orm\\Orm::connectSchema"
         },
         {
