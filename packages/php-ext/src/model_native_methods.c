@@ -2,6 +2,7 @@
 #include "model_native_methods.h"
 #include "model_state.h"
 #include "model_chain.h"
+#include "pending_time_parts.h"
 #include "Zend/zend_exceptions.h"
 #include "Zend/zend_interfaces.h"
 #include "Zend/zend_closures.h"
@@ -1005,12 +1006,8 @@ ZEND_METHOD(Polyspec_Orm_Model, readColumn)
     zend_string_release(pending_name);
     if (pending_ce != NULL && Z_TYPE_P(value) == IS_OBJECT && instanceof_function(Z_OBJCE_P(value), pending_ce)) {
         zval text_rv, zone_rv;
-        zval *text = zend_read_property(pending_ce, Z_OBJ_P(value), "text", sizeof("text") - 1, 1, &text_rv);
-        zval *zone = zend_read_property(pending_ce, Z_OBJ_P(value), "zone", sizeof("zone") - 1, 1, &zone_rv);
-        if (Z_TYPE_P(text) != IS_STRING || Z_TYPE_P(zone) != IS_OBJECT) {
-            zend_throw_error(NULL, "PendingTime has an invalid native value");
-            RETURN_THROWS();
-        }
+        zval *text, *zone;
+        if (!pending_time_parts(pending_ce, value, &text_rv, &zone_rv, &text, &zone)) RETURN_THROWS();
         zval converted;
         ZVAL_UNDEF(&converted);
         if (!model_time_value_in_zone(text, zone, &converted)) {

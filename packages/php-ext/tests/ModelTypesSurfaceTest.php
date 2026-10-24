@@ -10,6 +10,7 @@ use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\CanonicalRequest;
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Func;
+use Polyspec\Orm\Model;
 use Polyspec\Orm\OrmException;
 use Polyspec\Orm\Page;
 use Polyspec\Orm\PendingTime;
@@ -19,6 +20,14 @@ use function Polyspec\Orm\Tests\modelTypesWeakFunc;
 use function Polyspec\Orm\Tests\modelTypesWeakPage;
 use function Polyspec\Orm\Tests\modelTypesWeakPendingTime;
 use function Polyspec\Orm\Tests\modelTypesWeakRequest;
+
+final class ModelTypesPendingFixture extends Model
+{
+    public static function meta(): array
+    {
+        return [];
+    }
+}
 
 final class ModelTypesSurfaceTest extends TestCase
 {
@@ -351,5 +360,22 @@ final class ModelTypesSurfaceTest extends TestCase
             self::assertSame('2031-06-07 08:09:10.123456', $time->text);
         }
         self::assertEquals($time, unserialize(serialize($time), ['allowed_classes' => true]));
+    }
+
+    public function testNativeModelResolvesPendingTimeValues(): void
+    {
+        $resolve = new \ReflectionMethod(Model::class, 'resolved');
+        $model = new ModelTypesPendingFixture();
+        $zone = new \DateTimeZone('UTC');
+        $resolved = $resolve->invoke($model, new PendingTime('2031-06-07 08:09:10', $zone));
+        self::assertInstanceOf(\DateTimeImmutable::class, $resolved);
+        self::assertSame('2031-06-07T08:09:10+00:00', $resolved->format('Y-m-d\TH:i:sP'));
+
+        try {
+            $resolve->invoke($model, new PendingTime('not a date', $zone));
+            self::fail('an invalid pending time must be rejected');
+        } catch (OrmException $error) {
+            self::assertSame(Code::CODEC_DECODE, $error->code_);
+        }
     }
 }

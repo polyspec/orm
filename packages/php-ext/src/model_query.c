@@ -3,6 +3,7 @@
 #include "model_state.h"
 #include "model_native_methods.h"
 #include "model_kind_db_args.h"
+#include "pending_time_parts.h"
 #include "Zend/zend_exceptions.h"
 #include "Zend/zend_interfaces.h"
 #include "Zend/zend_smart_str.h"
@@ -259,12 +260,8 @@ ZEND_METHOD(Polyspec_Orm_Model, resolved)
     if (!query_instance(value, "Polyspec\\Orm\\PendingTime")) RETURN_COPY(value);
     zend_class_entry *pending_ce = query_class("Polyspec\\Orm\\PendingTime");
     zval text_rv, zone_rv;
-    zval *text = zend_read_property(pending_ce, Z_OBJ_P(value), "text", sizeof("text") - 1, 1, &text_rv);
-    zval *zone = zend_read_property(pending_ce, Z_OBJ_P(value), "zone", sizeof("zone") - 1, 1, &zone_rv);
-    if (Z_TYPE_P(text) != IS_STRING || Z_TYPE_P(zone) != IS_OBJECT) {
-        zend_throw_error(NULL, "PendingTime has an invalid native value");
-        RETURN_THROWS();
-    }
+    zval *text, *zone;
+    if (!pending_time_parts(pending_ce, value, &text_rv, &zone_rv, &text, &zone)) RETURN_THROWS();
     if (!model_time_value_in_zone(text, zone, return_value)) {
         if (EG(exception) != NULL) RETURN_THROWS();
         zend_string *message = strpprintf(0, "invalid date value %s", Z_STRVAL_P(text));
