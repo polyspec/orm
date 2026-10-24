@@ -132,16 +132,7 @@ func TestAESReadWithoutVersionColumnIsInternal(t *testing.T) {
 // Requirements: COD-44.
 func TestAESReadKeyringLacksStoredVersionIsConfig(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	enc, err := HostEncode("email@example.test", []string{"aes", "hex"}, "single-key")
-	if err != nil {
-		t.Fatal(err)
-	}
-	keys, err := NewAESKeyring(map[int32]string{1: "old-key", 2: "new-key"}, 2)
-	if err != nil {
-		t.Fatal(err)
-	}
-	step, si := aesReadStep()
-	err = decodeSelectedRow([]any{enc, int32(9)}, si, step, keys)
+	err := readAESWithStoredVersion(t, "single-key", map[int32]string{1: "old-key", 2: "new-key"}, 2, int32(9))
 	if got := ErrorCode(err); got != CodeConfig {
 		t.Fatalf("stored version missing from the keyring: code = %q, want %s (err %v)", got, CodeConfig, err)
 	}
@@ -150,16 +141,7 @@ func TestAESReadKeyringLacksStoredVersionIsConfig(t *testing.T) {
 // Requirements: COD-44.
 func TestAESReadNullVersionWithAESValueIsCodecDecode(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	enc, err := HostEncode("email@example.test", []string{"aes", "hex"}, "new-key")
-	if err != nil {
-		t.Fatal(err)
-	}
-	keys, err := NewAESKeyring(map[int32]string{1: "old-key", 2: "new-key"}, 2)
-	if err != nil {
-		t.Fatal(err)
-	}
-	step, si := aesReadStep()
-	err = decodeSelectedRow([]any{enc, nil}, si, step, keys)
+	err := readAESWithStoredVersion(t, "new-key", map[int32]string{1: "old-key", 2: "new-key"}, 2, nil)
 	if got := ErrorCode(err); got != CodeCodecDecode {
 		t.Fatalf("NULL stored version with an AES value: code = %q, want %s (err %v)", got, CodeCodecDecode, err)
 	}
@@ -191,6 +173,20 @@ func aesReadStep() (*plan.Step, *scanInfo) {
 	}}}
 	si := &scanInfo{styled: []styledScanCol{{index: 0, name: "aes_hex_email", host: []string{"aes", "hex"}}}}
 	return step, si
+}
+
+func readAESWithStoredVersion(t *testing.T, writeKey string, keys map[int32]string, current int32, version any) error {
+	t.Helper()
+	enc, err := HostEncode("email@example.test", []string{"aes", "hex"}, writeKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	keyring, err := NewAESKeyring(keys, current)
+	if err != nil {
+		t.Fatal(err)
+	}
+	step, scan := aesReadStep()
+	return decodeSelectedRow([]any{enc, version}, scan, step, keyring)
 }
 
 // Requirements: COD-44.
