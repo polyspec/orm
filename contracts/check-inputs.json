@@ -3225,6 +3225,27 @@
         "packages/php/models.txt"
       ]
     },
+    "audit-native-method-assertions-helper-check": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools"
+      ],
+      "inputs": [
+        "Makefile",
+        "contracts/features.json",
+        "packages/php/models.txt",
+        "packages/php-ext/scripts/build.sh",
+        "packages/php-ext/tests/bootstrap.php",
+        "packages/php-ext/tests/NativeMethodAssertions.php",
+        "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
+        "packages/php-ext/tests/CoverageAuditColumnsExtensionTest.php",
+        "packages/php/tests/bootstrap.php",
+        "packages/php/tests/CoverageAuditTriggersTest.php",
+        "packages/php/tests/CoverageAuditColumnsTest.php"
+      ]
+    },
     "request-hook-audit-native-binding-check": {
       "scope": "owner",
       "needs": [

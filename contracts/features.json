@@ -11689,6 +11689,17 @@
         "packages/php-ext/tests/CompositeKeysNativeTest.php"
       ],
       "command": "make model-chunk-composite-native-php-extension-check"
-    }
+    },
+  {
+    "id": "audit-native-method-assertions",
+    "paths": [
+      "packages/php-ext/tests/NativeMethodAssertions.php"
+    ],
+    "tests": [
+      "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
+      "packages/php-ext/tests/CoverageAuditColumnsExtensionTest.php"
+    ],
+    "command": "make --no-print-directory audit-native-method-assertions-helper-check"
+  }
   ]
 }
