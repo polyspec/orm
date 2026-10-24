@@ -7882,6 +7882,11 @@
           "implementation": "python",
           "test": "packages/python/tests/test_driver_errors.py",
           "id": "test_mysql_errors_have_the_codes_of_the_catalog"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/lib.rs",
+          "id": "mysql_code_tests::mysql_lock_wait_timeout_is_canceled"
         }
       ]
     },
