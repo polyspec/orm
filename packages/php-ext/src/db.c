@@ -924,20 +924,29 @@ static void invalid_time_text(const char *v, size_t vlen, const char *col)
     db_throw_orm("CODEC_ENCODE", "%s value \"%.*s\" is not %s", col, (int)vlen, v, form);
 }
 
+static bool datetime_in_zone(zval *value, zval *zone, zval *out)
+{
+    zval immutable;
+    if (!scall("DateTimeImmutable::createFromInterface", &immutable, 1, value)) {
+        return false;
+    }
+    bool ok = mcall(&immutable, "setTimezone", out, 1, zone);
+    zval_ptr_dtor(&immutable);
+    return ok;
+}
+
 /* Db::timeValue. Dates and times are text with no offset; a datetime is converted to the connection zone. out is the value. */
 static bool time_value(zval *v, const char *col, zend_long prec, zval *zone, zval *out)
 {
     zval cur;
     ZVAL_COPY(&cur, v);
     if (strcmp(col, "time") == 0 && is_instance(&cur, "DateTimeInterface")) {
-        zval imm, tz;
-        bool ok = scall("DateTimeImmutable::createFromInterface", &imm, 1, &cur)
-            && mcall(&imm, "setTimezone", &tz, 1, zone);
+        zval tz;
+        bool ok = datetime_in_zone(&cur, zone, &tz);
         zval_ptr_dtor(&cur);
         if (!ok) {
             return false;
         }
-        zval_ptr_dtor(&imm);
         zend_string *s = format_of(&tz, "H:i:s.u");
         zval_ptr_dtor(&tz);
         if (s == NULL) {
@@ -993,14 +1002,12 @@ static bool time_value(zval *v, const char *col, zend_long prec, zval *zone, zva
             ZVAL_STR(out, d);
             return true;
         }
-        zval imm, tz;
-        bool ok = scall("DateTimeImmutable::createFromInterface", &imm, 1, &cur)
-            && mcall(&imm, "setTimezone", &tz, 1, zone);
+        zval tz;
+        bool ok = datetime_in_zone(&cur, zone, &tz);
         zval_ptr_dtor(&cur);
         if (!ok) {
             return false;
         }
-        zval_ptr_dtor(&imm);
         zend_string *b = NULL;
         ok = bound_time_text(&tz, prec, col, &b);
         zval_ptr_dtor(&tz);
@@ -2822,23 +2829,30 @@ static int md_call(zval *self, zval *r, const char *m, zval *out)
     return ok ? 1 : 0;
 }
 
+/* Returns 1 when Markdown handled the read, 0 when a native plan is ready, and -1 on failure. */
+static int prepare_read(zval *self, zval *frame, zval *r, const char *method, zval *out, zval *plan)
+{
+    if (!apply_hook(self, r) || !enter(self, frame, rd(r, "ir"))) {
+        return -1;
+    }
+    int handled = md_call(self, r, method, out);
+    if (handled >= 0) {
+        return handled == 1 ? 1 : -1;
+    }
+    return plan_of(self, r, plan) ? 0 : -1;
+}
+
 static bool select_impl(zval *self, zval *frame, zval *r, zval *out)
 {
-    if (!apply_hook(self, r)) {
+    zval plan;
+    int prepared = prepare_read(self, frame, r, "read", out, &plan);
+    if (prepared < 0) {
         return false;
+    }
+    if (prepared > 0) {
+        return true;
     }
     zval *ir = rd(r, "ir");
-    if (!enter(self, frame, ir)) {
-        return false;
-    }
-    int handled = md_call(self, r, "read", out);
-    if (handled >= 0) {
-        return handled == 1;
-    }
-    zval plan;
-    if (!plan_of(self, r, &plan)) {
-        return false;
-    }
     zval *step0 = aidx(aget(&plan, "steps"), 0);
     zval lock;
     zval *lk = aget(ir, "lock");
@@ -2922,19 +2936,13 @@ static bool select_impl(zval *self, zval *frame, zval *r, zval *out)
 
 static bool scalar_of_impl(zval *self, zval *frame, zval *r, zval *out)
 {
-    if (!apply_hook(self, r)) {
-        return false;
-    }
-    if (!enter(self, frame, rd(r, "ir"))) {
-        return false;
-    }
-    int handled = md_call(self, r, "scalar", out);
-    if (handled >= 0) {
-        return handled == 1;
-    }
     zval plan;
-    if (!plan_of(self, r, &plan)) {
+    int prepared = prepare_read(self, frame, r, "scalar", out, &plan);
+    if (prepared < 0) {
         return false;
+    }
+    if (prepared > 0) {
+        return true;
     }
     zval *step0 = aidx(aget(&plan, "steps"), 0);
     zval parts;
@@ -2978,19 +2986,13 @@ static bool scalar_of_impl(zval *self, zval *frame, zval *r, zval *out)
 
 static bool paginate_impl(zval *self, zval *frame, zval *r, zval *out)
 {
-    if (!apply_hook(self, r)) {
-        return false;
-    }
-    if (!enter(self, frame, rd(r, "ir"))) {
-        return false;
-    }
-    int handled = md_call(self, r, "read", out);
-    if (handled >= 0) {
-        return handled == 1;
-    }
     zval plan;
-    if (!plan_of(self, r, &plan)) {
+    int prepared = prepare_read(self, frame, r, "read", out, &plan);
+    if (prepared < 0) {
         return false;
+    }
+    if (prepared > 0) {
+        return true;
     }
     zval main, res, total;
     ZVAL_UNDEF(&total);
@@ -4282,6 +4284,20 @@ static void joined(zval *errors, zval *out)
     zval_ptr_dtor(&args[2]);
 }
 
+static void joined_pair(zval *first, zval *second, zval *out)
+{
+    zval errors;
+    array_init(&errors);
+    if (Z_TYPE_P(first) != IS_NULL) {
+        push(&errors, first);
+    }
+    if (Z_TYPE_P(second) != IS_NULL) {
+        push(&errors, second);
+    }
+    joined(&errors, out);
+    zval_ptr_dtor(&errors);
+}
+
 /* A statement of the connection that is not a model statement, in the transaction (Db::control): it cannot be blocked by a fault. */
 static bool control_stmt(zval *self, const char *kind, zval *tx, const char *sql)
 {
@@ -4605,6 +4621,19 @@ static bool invoke_transaction_callback(zval *self, zval *fn, dbs_transaction_ca
     return call_user_function(NULL, NULL, fn, out, 0, NULL) == SUCCESS && EG(exception) == NULL;
 }
 
+static void take_callback_failure(zval *self, zval *failure)
+{
+    zval ex;
+    take_exception(&ex);
+    frames_pop();
+    if (is_instance(&ex, "PDOException")) {
+        driver_error(self, &ex, failure);
+    } else {
+        ZVAL_COPY(failure, &ex);
+    }
+    zval_ptr_dtor(&ex);
+}
+
 static bool savepoint_tx(zval *self, zval *frame, zval *fn, dbs_transaction_callback callback, void *context, zval *out)
 {
     zend_long sp = as_long(rd(frame, "savepoints")) + 1;
@@ -4631,28 +4660,13 @@ static bool savepoint_tx(zval *self, zval *frame, zval *fn, dbs_transaction_call
         ZVAL_UNDEF(&ret);
         bool ok = invoke_transaction_callback(self, fn, callback, context, &ret);
         if (!ok) {
-            zval ex, failure, e1, e2, list, ended;
-            take_exception(&ex);
-            frames_pop();
-            if (is_instance(&ex, "PDOException")) {
-                driver_error(self, &ex, &failure);
-            } else {
-                ZVAL_COPY(&failure, &ex);
-            }
-            zval_ptr_dtor(&ex);
+            zval failure, e1, e2, ended;
+            take_callback_failure(self, &failure);
             end_savepoint(self, frame, "rollback_to", name, &e1);
             end_savepoint(self, frame, "release", name, &e2);
-            array_init(&list);
-            if (Z_TYPE(e1) != IS_NULL) {
-                push(&list, &e1);
-            }
-            if (Z_TYPE(e2) != IS_NULL) {
-                push(&list, &e2);
-            }
+            joined_pair(&e1, &e2, &ended);
             zval_ptr_dtor(&e1);
             zval_ptr_dtor(&e2);
-            joined(&list, &ended);
-            zval_ptr_dtor(&list);
             if (Z_TYPE(ended) == IS_NULL) {
                 ZVAL_COPY_VALUE(&pending, &failure);
             } else {
@@ -5223,21 +5237,13 @@ static bool audit_for(zval *self, zval *frame, bool guard, bool *settle)
         return false;
     }
     if (!insert_audit(self, frame, &pend, &rec)) {
-        zval e, ended, ended1, ended2, list;
+        zval e, ended, ended1, ended2;
         take_exception(&e);
         end_savepoint(self, frame, "rollback_to", "orm_audit", &ended1);
         end_savepoint(self, frame, "release", "orm_audit", &ended2);
-        array_init(&list);
-        if (Z_TYPE(ended1) != IS_NULL) {
-            push(&list, &ended1);
-        }
-        if (Z_TYPE(ended2) != IS_NULL) {
-            push(&list, &ended2);
-        }
+        joined_pair(&ended1, &ended2, &ended);
         zval_ptr_dtor(&ended1);
         zval_ptr_dtor(&ended2);
-        joined(&list, &ended);
-        zval_ptr_dtor(&list);
         zval_ptr_dtor(&pend);
         if (Z_TYPE(ended) == IS_NULL) {
             put_exception(&e);
@@ -5266,20 +5272,12 @@ static void settle_audit(zval *self, zval *frame, zend_long affected, zval *out)
     zval nul;
     ZVAL_NULL(&nul);
     wr(frame, "audit", &nul);
-    zval e1, e2, list;
+    zval e1, e2;
     end_savepoint(self, frame, "rollback_to", "orm_audit", &e1);
     end_savepoint(self, frame, "release", "orm_audit", &e2);
-    array_init(&list);
-    if (Z_TYPE(e1) != IS_NULL) {
-        push(&list, &e1);
-    }
-    if (Z_TYPE(e2) != IS_NULL) {
-        push(&list, &e2);
-    }
+    joined_pair(&e1, &e2, out);
     zval_ptr_dtor(&e1);
     zval_ptr_dtor(&e2);
-    joined(&list, out);
-    zval_ptr_dtor(&list);
 }
 
 /* Db::runTransaction: the callback runs in the frame; an error rolls the frame back, and its own failure is reported with the
@@ -5299,15 +5297,8 @@ static bool run_transaction(zval *self, zval *fn, dbs_transaction_callback callb
     ZVAL_UNDEF(&v);
     bool ok = invoke_transaction_callback(self, fn, callback, context, &v);
     if (!ok) {
-        zval ex, failure, cleanup;
-        take_exception(&ex);
-        frames_pop();
-        if (is_instance(&ex, "PDOException")) {
-            driver_error(self, &ex, &failure);
-        } else {
-            ZVAL_COPY(&failure, &ex);
-        }
-        zval_ptr_dtor(&ex);
+        zval failure, cleanup;
+        take_callback_failure(self, &failure);
         if (!finish_tx(self, &frame, false)) {
             take_exception(&cleanup);
             throw_rollback(&failure, &cleanup);
