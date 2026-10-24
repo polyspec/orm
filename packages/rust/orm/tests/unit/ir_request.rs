@@ -204,18 +204,7 @@ fn group(value: &Value, at: &str) -> ir::Group {
                         };
                         ir::ColRef { path, column: text(object, &at, "column") }
                     }),
-                    sub: pred.get("sub").map(|sub| {
-                        let at = format!("{at}.sub");
-                        let object = members(sub, &at, &["query", "column", "agg"]);
-                        ir::Sub {
-                            query: Box::new(query(
-                                object.get("query").unwrap_or_else(|| panic!("{REJECTED}{at}.query: expected a query")),
-                                &format!("{at}.query"),
-                            )),
-                            column: object.get("column").map(|_| string(object, &at, "column")).unwrap_or_default(),
-                            agg: object.get("agg").map(|_| string(object, &at, "agg")).unwrap_or_default(),
-                        }
-                    }),
+                    sub: pred.get("sub").map(|sub| parse_sub(sub, &format!("{at}.sub"))),
                     ..Default::default()
                 }),
             }
@@ -250,16 +239,7 @@ fn query(value: &Value, at: &str) -> ir::Query {
                         .iter()
                         .map(|(name, sub)| {
                             let at = format!("{at}.{name}");
-                            let object = members(sub, &at, &["query", "column", "agg"]);
-                            let sub = ir::Sub {
-                                query: Box::new(query(
-                                    object.get("query").unwrap_or_else(|| panic!("{REJECTED}{at}.query: expected a query")),
-                                    &format!("{at}.query"),
-                                )),
-                                column: object.get("column").map(|_| string(object, &at, "column")).unwrap_or_default(),
-                                agg: object.get("agg").map(|_| string(object, &at, "agg")).unwrap_or_default(),
-                            };
-                            (name.clone(), sub)
+                            (name.clone(), parse_sub(sub, &at))
                         })
                         .collect()
                 })
@@ -377,6 +357,15 @@ fn query(value: &Value, at: &str) -> ir::Query {
             }
         }),
         ..Default::default()
+    }
+}
+
+fn parse_sub(value: &Value, at: &str) -> ir::Sub {
+    let object = members(value, at, &["query", "column", "agg"]);
+    ir::Sub {
+        query: Box::new(query(object.get("query").unwrap_or_else(|| panic!("{REJECTED}{at}.query: expected a query")), &format!("{at}.query"))),
+        column: object.get("column").map(|_| string(object, at, "column")).unwrap_or_default(),
+        agg: object.get("agg").map(|_| string(object, at, "agg")).unwrap_or_default(),
     }
 }
 
