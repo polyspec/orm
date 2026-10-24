@@ -9,6 +9,10 @@ namespace Polyspec\Orm\Dbspec;
  * and finalizes an applied plan (docs/spec/plans.md "Apply"). One object is the state of one command
  * per command.
  *
+ * @phpstan-import-type PlanList from Dbspec
+ * @phpstan-import-type PlanClock from Dbspec
+ * @phpstan-import-type PlanEventHandler from Dbspec
+ * @phpstan-type PlanSessionOperation \Closure(PlanApply): void
  * @internal
  */
 final class PlanApply
@@ -98,9 +102,9 @@ final class PlanApply
     private int $serverSession = 0;
 
     /**
-     * @param list<Plan> $plans
-     * @param \Closure(): \DateTimeInterface $now
-     * @param ?\Closure(ApplyEvent): void $events
+     * @param PlanList $plans
+     * @param PlanClock $now
+     * @param PlanEventHandler|null $events
      */
     private function __construct(
         private readonly \PDO $c,
@@ -122,132 +126,144 @@ final class PlanApply
     }
 
     /**
-     * @param list<Plan> $plans
-     * @param \Closure(): \DateTimeInterface $now
-     * @param ?\Closure(ApplyEvent): void $events
+     * @param PlanList $plans
+     * @param PlanClock $now
+     * @param PlanEventHandler|null $events
      */
     public static function apply(\PDO $c, string $dialect, array $plans, \Closure $now, ?\Closure $events): void
     {
-        self::inSession($c, $dialect, $plans, $now, $events, static function (self $a): void {
-            $position = $a->settled();
-            foreach (array_slice($a->chain, $position) as $plan) {
-                $a->applyPlan($plan);
-            }
-        });
+        self::inSession($c, $dialect, $plans, $now, $events, self::applyRemaining(...));
     }
 
     /**
-     * @param list<Plan> $plans
-     * @param \Closure(): \DateTimeInterface $now
-     * @param ?\Closure(ApplyEvent): void $events
+     * @param PlanList $plans
+     * @param PlanClock $now
+     * @param PlanEventHandler|null $events
      */
     public static function recover(\PDO $c, string $dialect, array $plans, \Closure $now, ?\Closure $events): void
     {
-        self::inSession($c, $dialect, $plans, $now, $events, static function (self $a): void {
-            $a->withLastPlan(static function (Plan $plan, array $row) use ($a): void {
-                if ($row['state'] === self::APPLIED || $row['state'] === self::DONE) {
-                    return;
-                }
-                $steps = $a->steps($plan);
-                $k = $a->resolve($plan, $row, $steps, true);
-                if ($row['state'] === self::FINALIZING) {
-                    $a->emit(new ApplyEvent('finalize', $plan->name, 0, count($steps), ''));
-                    $a->finalizeFrom($plan, $steps, $k);
-                    return;
-                }
-                $a->emit(new ApplyEvent('plan', $plan->name, 0, count($steps), ''));
-                $a->record($plan, self::APPLYING, $k);
-                $a->forward($plan, $steps, $k);
-            });
-        });
+        self::inSession($c, $dialect, $plans, $now, $events, self::recoverLastPlan(...));
     }
 
     /**
-     * @param list<Plan> $plans
-     * @param \Closure(): \DateTimeInterface $now
-     * @param ?\Closure(ApplyEvent): void $events
+     * @param PlanList $plans
+     * @param PlanClock $now
+     * @param PlanEventHandler|null $events
      */
     public static function rollback(\PDO $c, string $dialect, array $plans, \Closure $now, ?\Closure $events): void
     {
-        self::inSession($c, $dialect, $plans, $now, $events, static function (self $a): void {
-            $a->withLastPlan(static function (Plan $plan, array $row) use ($a): void {
-                $steps = $a->steps($plan);
-                $k = $row['step'];
-                $applied = $row['state'] === self::APPLIED || $row['state'] === self::DONE;
-                if ($applied) {
-                    if ($k < 0 || $k > count($steps)) {
-                        throw new ApplyError(
-                            'chain',
-                            $plan->name,
-                            0,
-                            sprintf("the recorded step %d is outside the plan's %d steps", $k, count($steps))
-                        );
-                    }
-                    try {
-                        $a->verify($plan->to);
-                    } catch (PlanSchemaMismatch $e) {
-                        throw new ApplyError('drift', $plan->name, 0, $e->getMessage());
-                    } catch (\RuntimeException $e) {
-                        throw new ApplyError('verify', $plan->name, 0, '', $e);
-                    }
-                } else {
-                    $k = $a->resolve($plan, $row, $steps, false);
-                }
-                if ($k > 0 && $steps[$k - 1]->rollback === '') {
-                    throw $a->irreversible($plan, $steps, $k - 1);
-                }
-                if ($applied) {
-                    $a->nullChecks($plan, array_slice($steps, 0, $k));
-                }
-                $a->emit(new ApplyEvent('rollback', $plan->name, 0, count($steps), ''));
-                $a->record($plan, self::ROLLING_BACK, $k);
-                for ($i = $k - 1; $i >= 0; $i--) {
-                    $step = $steps[$i];
-                    if ($step->rollback === '') {
-                        throw $a->irreversible($plan, $steps, $i);
-                    }
-                    $statement = $step->rollback;
-                    if ($step->rollbackRestore !== '' && $a->effect($plan, $i, $step->restoreIf)) {
-                        $statement = $step->rollbackRestore;
-                    }
-                    $a->run($plan, $steps, $i, $statement);
-                    $a->setStep($plan, $i);
-                }
-                $a->foreignKeyCheck($plan);
-                try {
-                    $a->verify($plan->from ?? '');
-                } catch (\RuntimeException $e) {
-                    throw new ApplyError('verify', $plan->name, 0, '', $e);
-                }
-                $a->emit(new ApplyEvent('verified', $plan->name, 0, count($steps), ''));
-                $q = $a->r->q(...);
-                $a->c->prepare('DELETE FROM ' . $q(self::HISTORY) . ' WHERE ' . $q('name') . ' = ?')
-                    ->execute([$plan->name]);
-                $a->emit(new ApplyEvent('done', $plan->name, 0, count($steps), ''));
-            });
-        });
+        self::inSession($c, $dialect, $plans, $now, $events, self::rollbackLastPlan(...));
     }
 
     /**
-     * @param list<Plan> $plans
-     * @param \Closure(): \DateTimeInterface $now
-     * @param ?\Closure(ApplyEvent): void $events
+     * @param PlanList $plans
+     * @param PlanClock $now
+     * @param PlanEventHandler|null $events
      */
     public static function finalize(\PDO $c, string $dialect, array $plans, \Closure $now, ?\Closure $events): void
     {
-        self::inSession($c, $dialect, $plans, $now, $events, static function (self $a): void {
-            $position = $a->settled();
-            foreach (array_slice($a->chain, 0, $position) as $plan) {
-                if ($a->history[$plan->name]['state'] !== self::APPLIED) {
-                    continue;
-                }
-                $steps = $a->steps($plan);
-                $a->emit(new ApplyEvent('finalize', $plan->name, 0, count($steps), ''));
-                $start = self::finalizeStart($steps);
-                $a->record($plan, self::FINALIZING, $start);
-                $a->finalizeFrom($plan, $steps, $start);
+        self::inSession($c, $dialect, $plans, $now, $events, self::finalizeApplied(...));
+    }
+
+    private static function applyRemaining(self $a): void
+    {
+        $position = $a->settled();
+        foreach (array_slice($a->chain, $position) as $plan) {
+            $a->applyPlan($plan);
+        }
+    }
+
+    private static function recoverLastPlan(self $a): void
+    {
+        $a->withLastPlan(static function (Plan $plan, array $row) use ($a): void {
+            if ($row['state'] === self::APPLIED || $row['state'] === self::DONE) {
+                return;
             }
+            $steps = $a->steps($plan);
+            $k = $a->resolve($plan, $row, $steps, true);
+            if ($row['state'] === self::FINALIZING) {
+                $a->emit(new ApplyEvent('finalize', $plan->name, 0, count($steps), ''));
+                $a->finalizeFrom($plan, $steps, $k);
+                return;
+            }
+            $a->emit(new ApplyEvent('plan', $plan->name, 0, count($steps), ''));
+            $a->record($plan, self::APPLYING, $k);
+            $a->forward($plan, $steps, $k);
         });
+    }
+
+    private static function rollbackLastPlan(self $a): void
+    {
+        $a->withLastPlan(static function (Plan $plan, array $row) use ($a): void {
+            $steps = $a->steps($plan);
+            $k = $row['step'];
+            $applied = $row['state'] === self::APPLIED || $row['state'] === self::DONE;
+            if ($applied) {
+                if ($k < 0 || $k > count($steps)) {
+                    throw new ApplyError(
+                        'chain',
+                        $plan->name,
+                        0,
+                        sprintf("the recorded step %d is outside the plan's %d steps", $k, count($steps))
+                    );
+                }
+                try {
+                    $a->verify($plan->to);
+                } catch (PlanSchemaMismatch $e) {
+                    throw new ApplyError('drift', $plan->name, 0, $e->getMessage());
+                } catch (\RuntimeException $e) {
+                    throw new ApplyError('verify', $plan->name, 0, '', $e);
+                }
+            } else {
+                $k = $a->resolve($plan, $row, $steps, false);
+            }
+            if ($k > 0 && $steps[$k - 1]->rollback === '') {
+                throw $a->irreversible($plan, $steps, $k - 1);
+            }
+            if ($applied) {
+                $a->nullChecks($plan, array_slice($steps, 0, $k));
+            }
+            $a->emit(new ApplyEvent('rollback', $plan->name, 0, count($steps), ''));
+            $a->record($plan, self::ROLLING_BACK, $k);
+            for ($i = $k - 1; $i >= 0; $i--) {
+                $step = $steps[$i];
+                if ($step->rollback === '') {
+                    throw $a->irreversible($plan, $steps, $i);
+                }
+                $statement = $step->rollback;
+                if ($step->rollbackRestore !== '' && $a->effect($plan, $i, $step->restoreIf)) {
+                    $statement = $step->rollbackRestore;
+                }
+                $a->run($plan, $steps, $i, $statement);
+                $a->setStep($plan, $i);
+            }
+            $a->foreignKeyCheck($plan);
+            try {
+                $a->verify($plan->from ?? '');
+            } catch (\RuntimeException $e) {
+                throw new ApplyError('verify', $plan->name, 0, '', $e);
+            }
+            $a->emit(new ApplyEvent('verified', $plan->name, 0, count($steps), ''));
+            $q = $a->r->q(...);
+            $a->c->prepare('DELETE FROM ' . $q(self::HISTORY) . ' WHERE ' . $q('name') . ' = ?')
+                ->execute([$plan->name]);
+            $a->emit(new ApplyEvent('done', $plan->name, 0, count($steps), ''));
+        });
+    }
+
+    private static function finalizeApplied(self $a): void
+    {
+        $position = $a->settled();
+        foreach (array_slice($a->chain, 0, $position) as $plan) {
+            if ($a->history[$plan->name]['state'] !== self::APPLIED) {
+                continue;
+            }
+            $steps = $a->steps($plan);
+            $a->emit(new ApplyEvent('finalize', $plan->name, 0, count($steps), ''));
+            $start = self::finalizeStart($steps);
+            $a->record($plan, self::FINALIZING, $start);
+            $a->finalizeFrom($plan, $steps, $start);
+        }
     }
 
     /**
@@ -256,7 +272,7 @@ final class PlanApply
      * @param list<Plan> $plans
      * @param \Closure(): \DateTimeInterface $now
      * @param ?\Closure(ApplyEvent): void $events
-     * @param \Closure(self): void $operation
+     * @param PlanSessionOperation $operation
      */
     private static function inSession(
         \PDO $c,
