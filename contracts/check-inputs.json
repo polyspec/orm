@@ -2195,6 +2195,20 @@
         "Makefile"
       ]
     },
+    "mysql-tls-php-extension-check": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools",
+        "databases"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/php-ext/tests/MysqlTlsNativeTest.php",
+        "packages/php-ext/tests/bootstrap.php"
+      ]
+    },
     "transaction-failure-php-extension-check": {
       "scope": "owner",
       "needs": [

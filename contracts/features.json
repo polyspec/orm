@@ -88,6 +88,7 @@
         "packages/php/tests/SqliteWithoutMysqlTest.php",
         "packages/go/orm/mysql_tls_test.go",
         "packages/php/tests/MysqlTlsTest.php",
+        "packages/php-ext/tests/MysqlTlsNativeTest.php",
         "packages/rust/orm/tests/mysql_tls.rs",
         "packages/ts/tests/mysql_tls.mjs",
         "tests/dsn/sqlite-paths.json",
@@ -284,6 +285,15 @@
           "inputs": [
             "packages/php/tests/MysqlTlsTest.php",
             "tests/dsn/mysql-session.json"
+          ]
+        },
+        {
+          "id": "dsn-mysql-tls-php-extension",
+          "command": "make mysql-tls-php-extension-check",
+          "shard": "other",
+          "inputs": [
+            "Makefile",
+            "packages/php-ext/tests/MysqlTlsNativeTest.php"
           ]
         },
         {

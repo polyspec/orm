@@ -1888,8 +1888,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/TransactionFailureNativeTest.php",
-          "id": "TransactionFailureNativeTest::testNativeOrmConnectsWithTlsIdentity"
+          "test": "packages/php-ext/tests/MysqlTlsNativeTest.php",
+          "id": "MysqlTlsNativeTest::testNativeOrmConnectsWithTlsIdentity"
         },
         {
           "implementation": "typescript",
@@ -1927,8 +1927,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/TransactionFailureNativeTest.php",
-          "id": "TransactionFailureNativeTest::testNativeOrmRejectsUntrustedTlsIdentity"
+          "test": "packages/php-ext/tests/MysqlTlsNativeTest.php",
+          "id": "MysqlTlsNativeTest::testNativeOrmRejectsUntrustedTlsIdentity"
         },
         {
           "implementation": "typescript",
