@@ -2,18 +2,18 @@
 # Complex query example — product search list
 
 This example uses the syntax in [dsl.md](dsl.md). It combines several relation and condition patterns:
-- Root `product` with service and display conditions, a **display schedule OR group**, and a **keyword OR search across the root and two joined tables**
-- Category filter with an **INNER JOIN** and `groupBySeq` (M:N filter pattern)
+- Root `product` with service and display conditions, a **display schedule OR group**, and a **keyword OR search across root, brand-language, and product-language rows**
+- Category, brand-language, and product-language filters use `IN (SELECT …)` semijoins, so matching rows cannot multiply products before pagination. Search includes matching rows from every language; relation loaders still select the requested `langId`.
 - Relations: `product_lang` (1:1, merged with `parentNode`), `product_brand` (1:1) with a nested merged `product_brand_lang`, `product_review` (1:N, **three per parent**) with a 1:1 `user`, and `order_product_item` for the signed-in member (1:1, **one per parent**)
 - Two-key ordering and page listing
 
-- **CPX-1** Relation keys are selected with `match<L>With<R>()`, where `L` is the parent column and `R` is the child column. Join children are configured before they are passed to the join method.
+- **CPX-1** Relation keys are selected with `match<L>With<R>()`, where `L` is the parent column and `R` is the child column. The three root filters use one-column `IN (SELECT …)` models; they do not join filter rows into the paginated root query.
 
 ## PHP
 ```php
-$category = (new ProductMatchCategory)->removeAllColumns()->serviceRegionCategoryItemSeq($categorySeqs);
-$brandLang = (new ProductBrandLang)->removeAllColumns()->fulltextBooleanNameWithDescription($keyword);
-$lang = (new ProductLang)->removeAllColumns()->fulltextBooleanNameWithShortDescriptionWithContent($keyword);
+$category = (new ProductMatchCategory)->removeAllColumns()->addColumnProductSeq()->serviceRegionCategoryItemSeq($categorySeqs);
+$brandLang = (new ProductBrandLang)->removeAllColumns()->addColumnProductBrandSeq()->fulltextBooleanNameWithDescription($keyword);
+$lang = (new ProductLang)->removeAllColumns()->addColumnProductSeq()->fulltextBooleanNameWithShortDescriptionWithContent($keyword);
 
 $page = (new Product)->connect($slave1)
     ->relation((new ProductLang)->matchSeqWithProductSeq()->langId($langId)->parentNode())
@@ -25,18 +25,15 @@ $page = (new Product)->connect($slave1)
             ->removeAllColumns()->addColumnName()->addColumnProfileUrl()))
     ->relation((new OrderProductItem)->matchSeqWithProductSeq()->aliasMyOrderItem()
         ->serviceMemberSeq($memberSeq)->andIsClose(0)->orderBySeqDesc()->groupLimit(1))
-    ->joinSeqWithProductSeq($category)
-    ->leftJoinProductBrandSeqWithProductBrandSeq($brandLang)
-    ->leftJoinSeqWithProductSeq($lang)
-    ->serviceSeq($serviceSeq)->andIsClose(0)->andIsDisplay(1)
+    ->seq($category)
+    ->and()->serviceSeq($serviceSeq)->andIsClose(0)->andIsDisplay(1)
     ->and(fn (Product $q) => $q
         ->isAllday(1)
         ->or(fn (Product $q) => $q->isAllday(0)->andLeDisplayStartDt(Orm::now())->andGeDisplayEndDt(Orm::now())))
     ->and(fn (Product $q) => $q
         ->fulltextBooleanNameWithShortDescriptionWithContent($keyword)
-        ->or($brandLang)
-        ->or($lang))
-    ->groupBySeq()
+        ->or(fn (Product $q) => $q->productBrandSeq($brandLang))
+        ->or(fn (Product $q) => $q->seq($lang)))
     ->orderByLikeCountDescAndSeqDesc()
     ->getsPage($pageNo, 20);
 
@@ -51,33 +48,32 @@ $page->totalCount; $page->totalPages;
 
 ## Go
 ```go
-category := model.ProductMatchCategory().RemoveAllColumns().ServiceRegionCategoryItemSeq(categorySeqs)
-brandLang := model.ProductBrandLang().RemoveAllColumns().FulltextBooleanNameWithDescription(keyword)
-lang := model.ProductLang().RemoveAllColumns().FulltextBooleanNameWithShortDescriptionWithContent(keyword)
+category := model.ProductMatchCategory().RemoveAllColumns().AddColumnProductSeq().ServiceRegionCategoryItemSeq(categorySeqs)
+brandLang := model.ProductBrandLang().RemoveAllColumns().AddColumnProductBrandSeq().FulltextBooleanNameWithDescription(keyword)
+lang := model.ProductLang().RemoveAllColumns().AddColumnProductSeq().FulltextBooleanNameWithShortDescriptionWithContent(keyword)
 
 page, err := model.Product().Connect(slave1).
     Relation(model.ProductLang().MatchSeqWithProductSeq().LangId(langId).ParentNode()).
     Relation(model.ProductBrand().MatchProductBrandSeqWithSeq().AliasBrand().
         Relation(model.ProductBrandLang().MatchSeqWithProductBrandSeq().LangId(langId).ParentNode())).
     Relations(model.ProductReview().MatchSeqWithProductSeq().AliasReviews().
-        IsClose(0).OrderBySeqDesc().GroupLimit(3).KeyNameSeq().
+        IsClose(false).OrderBySeqDesc().GroupLimit(3).KeyNameSeq().
         Relation(model.User().MatchUserSeqWithSeq().AliasUser().
             RemoveAllColumns().AddColumnName().AddColumnProfileUrl())).
     Relation(model.OrderProductItem().MatchSeqWithProductSeq().AliasMyOrderItem().
-        ServiceMemberSeq(memberSeq).AndIsClose(0).OrderBySeqDesc().GroupLimit(1)).
-    JoinSeqWithProductSeq(category).
-    LeftJoinProductBrandSeqWithProductBrandSeq(brandLang).
-    LeftJoinSeqWithProductSeq(lang).
-    ServiceSeq(serviceSeq).AndIsClose(0).AndIsDisplay(1).
+        ServiceMemberSeq(memberSeq).AndIsClose(false).OrderBySeqDesc().GroupLimit(1)).
+    Seq(category).
+    And().ServiceSeq(serviceSeq).AndIsClose(false).AndIsDisplay(true).
     And(func(q *model.ProductModel) {
-        q.IsAllday(1).Or(func(q *model.ProductModel) {
-            q.IsAllday(0).AndLeDisplayStartDt(orm.Now()).AndGeDisplayEndDt(orm.Now())
+        q.IsAllday(true).Or(func(q *model.ProductModel) {
+            q.IsAllday(false).AndLeDisplayStartDt(orm.Now()).AndGeDisplayEndDt(orm.Now())
         })
     }).
     And(func(q *model.ProductModel) {
-        q.FulltextBooleanNameWithShortDescriptionWithContent(keyword).Or(brandLang).Or(lang)
+        q.FulltextBooleanNameWithShortDescriptionWithContent(keyword)
+        q.Or(func(q *model.ProductModel) { q.ProductBrandSeq(brandLang) })
+        q.Or(func(q *model.ProductModel) { q.Seq(lang) })
     }).
-    GroupBySeq().
     OrderByLikeCountDescAndSeqDesc().
     GetsPage(pageNo, 20)
 
@@ -123,32 +119,29 @@ _ = page.TotalCount; _ = page.TotalPages
 
 ## Rust
 ```rust
-let category = ProductMatchCategory::new().remove_all_columns().service_region_category_item_seq(category_seqs);
-let brand_lang = ProductBrandLang::new().remove_all_columns().fulltext_boolean_name_with_description(&keyword);
-let lang = ProductLang::new().remove_all_columns().fulltext_boolean_name_with_short_description_with_content(&keyword);
+let category = ProductMatchCategory::new().remove_all_columns().add_column_product_seq().service_region_category_item_seq(category_seqs);
+let brand_lang = ProductBrandLang::new().remove_all_columns().add_column_product_brand_seq().fulltext_boolean_name_with_description(&keyword);
+let lang = ProductLang::new().remove_all_columns().add_column_product_seq().fulltext_boolean_name_with_short_description_with_content(&keyword);
 
 let page = Product::new().connect(&slave1)
     .relation(ProductLang::new().match_seq_with_product_seq().lang_id(lang_id).parent_node())
     .relation(ProductBrand::new().match_product_brand_seq_with_seq().alias_brand()
         .relation(ProductBrandLang::new().match_seq_with_product_brand_seq().lang_id(lang_id).parent_node()))
     .relations(ProductReview::new().match_seq_with_product_seq().alias_reviews()
-        .is_close(0).order_by_seq_desc().group_limit(3).key_name_seq()
+        .is_close(false).order_by_seq_desc().group_limit(3).key_name_seq()
         .relation(User::new().match_user_seq_with_seq().alias_user()
             .remove_all_columns().add_column_name().add_column_profile_url()))
     .relation(OrderProductItem::new().match_seq_with_product_seq().alias_my_order_item()
-        .service_member_seq(member_seq).and_is_close(0).order_by_seq_desc().group_limit(1))
-    .join_seq_with_product_seq(&category)
-    .left_join_product_brand_seq_with_product_brand_seq(&brand_lang)
-    .left_join_seq_with_product_seq(&lang)
-    .service_seq(service_seq).and_is_close(0).and_is_display(1)
+        .service_member_seq(member_seq).and_is_close(false).order_by_seq_desc().group_limit(1))
+    .seq(&category)
+    .and().service_seq(service_seq).and_is_close(false).and_is_display(true)
     .and(|q| q
-        .is_allday(1)
-        .or(|q| q.is_allday(0).and_le_display_start_dt(polyspec_orm::now()).and_ge_display_end_dt(polyspec_orm::now())))
+        .is_allday(true)
+        .or(|q| q.is_allday(false).and_le_display_start_dt(polyspec_orm::now()).and_ge_display_end_dt(polyspec_orm::now())))
     .and(|q| q
         .fulltext_boolean_name_with_short_description_with_content(&keyword)
-        .or(&brand_lang)
-        .or(&lang))
-    .group_by_seq()
+        .or(|q| q.product_brand_seq(&brand_lang))
+        .or(|q| q.seq(&lang)))
     .order_by_like_count_desc_and_seq_desc()
     .gets_page(page_no, 20).await?;
 
@@ -166,25 +159,24 @@ The three blocks correspond line by line. The remaining differences are language
 ## Plan produced by the engine (MySQL dialect)
 
 ```
-step 0  query   (root + joins)
-  SELECT a.seq, a.name, …(default product columns)   -- join children keep only PK/FK columns
+step 0  query   (root with three IN subqueries; no filter joins or grouping)
+  SELECT a.seq, a.name, …(default product columns)
   FROM `product` AS `a`
-  INNER JOIN `product_match_category` AS `b` ON `a`.`seq` = `b`.`product_seq`
-  LEFT  JOIN `product_brand_lang` AS `c` ON `a`.`product_brand_seq` = `c`.`product_brand_seq`
-  LEFT  JOIN `product_lang` AS `d` ON `a`.`seq` = `d`.`product_seq`
-  WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ? AND `a`.`is_display` = ?
+  WHERE `a`.`seq` IN (SELECT `s1`.`product_seq` FROM `product_match_category` AS `s1`
+                      WHERE `s1`.`service_region_category_item_seq` IN (?, ?, ?, ?))
+    AND `a`.`service_seq` = ? AND `a`.`is_close` = ? AND `a`.`is_display` = ?
     AND (`a`.`is_allday` = ? OR (`a`.`is_allday` = ? AND `a`.`display_start_dt` <= NOW(6) AND `a`.`display_end_dt` >= NOW(6)))
     AND (MATCH(`a`.`name`, `a`.`short_description`, `a`.`content`) AGAINST (? IN BOOLEAN MODE)
-         OR (MATCH(`c`.`name`, `c`.`description`) AGAINST (? IN BOOLEAN MODE))
-         OR (MATCH(`d`.`name`, `d`.`short_description`, `d`.`content`) AGAINST (? IN BOOLEAN MODE)))
-    AND `b`.`service_region_category_item_seq` IN (?, ?, ?)       -- category child conditions not passed to a group
-  GROUP BY `a`.`seq`
+         OR `a`.`product_brand_seq` IN (SELECT `s2`.`product_brand_seq` FROM `product_brand_lang` AS `s2`
+                                        WHERE MATCH(`s2`.`name`, `s2`.`description`) AGAINST (? IN BOOLEAN MODE))
+         OR `a`.`seq` IN (SELECT `s3`.`product_seq` FROM `product_lang` AS `s3`
+                          WHERE MATCH(`s3`.`name`, `s3`.`short_description`, `s3`.`content`) AGAINST (? IN BOOLEAN MODE)))
   ORDER BY `a`.`like_count` DESC, `a`.`seq` DESC
   LIMIT ?, ?
-  binds: [service_seq, 0, 1, 1, 0, kw', kw', kw', cat1, cat2, cat3, offset, 20]
+  binds: [cat1, cat2, cat3, cat3, service_seq, 0, 1, 1, 0, kw', kw', kw', offset, 20]
          (kw' = keyword converted by the boolean full-text rule to "+w1 +w2*")
 
-step 0c count  SELECT COUNT(DISTINCT `a`.`seq`) FROM … same JOIN/WHERE (without ORDER/LIMIT), requested by getsPage
+step 0c count  SELECT COUNT(*) FROM `product` AS `a` WHERE … same conditions (without ORDER/LIMIT), requested by getsPage
 
 step 1  query   product_lang (ONE, parent_node)    bind_from: step0.seq (dedup)
   SELECT `a`.`seq`, `a`.`product_seq`, `a`.`name`, … FROM `product_lang` AS `a`
@@ -221,7 +213,7 @@ step 6  query   my_order_item (ONE, group_limit 1)  bind_from: step0.seq
   link: {kind: one, parent_column: seq, child_column: product_seq}
 ```
 
-- **CPX-2** Eight statements: the page row query, the page count query, and one query per relation. The public API excludes `multi_statement`; tests verify the ordered steps and exact statement count.
+- **CPX-2** Eight statements: the page row query, the page count query, and one query per relation. The row and count queries use the same semijoin filters. The public API excludes `multi_statement`; tests verify the ordered steps and exact statement count.
 - **CPX-3** Steps 1 through 6 do not run when the parent has zero rows. Empty IN lists are prohibited.
 - **CPX-4** This plan has a fixed shape independent of values and is cached. User `IN` list lengths are padded to power-of-two buckets, so each bucket has one shape; relation-stage IN uses a `LIST_EXPAND` slot and remains a cache hit regardless of parent row count.
 - **CPX-5** Two relations of one child entity in one query without an alias have the same result name, and the query is refused with `CONFIG`. The message names that result `<x>_model` (or `<x>_models` for a many relation) and the alias call `alias<Name>()`, in every implementation. Example: `relation user_model is used twice; call alias<Name>() on one of them, such as aliasWriter()`.

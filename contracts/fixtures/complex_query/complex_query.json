@@ -48,7 +48,8 @@
     ],
     "product_brand_lang": [
       {"seq": 601, "product_brand_seq": 501, "lang_id": 1, "name": "brand-501-en", "description": "ordinary maker"},
-      {"seq": 602, "product_brand_seq": 502, "lang_id": 1, "name": "brand-502-en", "description": "alpha beta maker"}
+      {"seq": 602, "product_brand_seq": 502, "lang_id": 1, "name": "brand-502-en", "description": "alpha beta maker"},
+      {"seq": 603, "product_brand_seq": 501, "lang_id": 2, "name": "brand-501-ko", "description": "alpha beta maker translated"}
     ],
     "product": [
       {"seq": 1001, "name": "alpha beta widget", "short_description": "direct match", "content": "root text", "service_seq": 7, "is_close": false, "is_display": true, "is_allday": true, "display_start_dt": null, "display_end_dt": null, "product_brand_seq": 501, "like_count": 90},
@@ -66,7 +67,8 @@
     "product_lang": [
       {"seq": 2001, "product_seq": 1001, "lang_id": 1, "name": "widget-1001-en", "short_description": "localized ordinary", "content": "localized text"},
       {"seq": 2002, "product_seq": 1002, "lang_id": 1, "name": "widget-1002-en", "short_description": "localized ordinary", "content": "localized text"},
-      {"seq": 2003, "product_seq": 1003, "lang_id": 1, "name": "widget-1003-en", "short_description": "localized ordinary", "content": "alpha beta localized content"}
+      {"seq": 2003, "product_seq": 1003, "lang_id": 1, "name": "widget-1003-en", "short_description": "localized ordinary", "content": "alpha beta localized content"},
+      {"seq": 2004, "product_seq": 1002, "lang_id": 2, "name": "widget-1002-ko", "short_description": "alpha beta translated", "content": "translated content"}
     ],
     "product_review": [
       {"seq": 3001, "product_seq": 1001, "user_seq": 41, "is_close": false, "content": "oldest"},

@@ -19,9 +19,13 @@ type Input struct {
 
 // Search builds and executes the public product search API from docs/spec/complex-query.md.
 func Search(db *orm.DB, input Input) (*orm.Page[*complexmodel.ProductModel], error) {
-	category := complexmodel.ProductMatchCategory().RemoveAllColumns().ServiceRegionCategoryItemSeq(input.CategorySeqs)
-	brandLang := complexmodel.ProductBrandLang().RemoveAllColumns().FulltextBooleanNameWithDescription(input.Keyword)
-	lang := complexmodel.ProductLang().RemoveAllColumns().FulltextBooleanNameWithShortDescriptionWithContent(input.Keyword)
+	return searchModel(db, input).GetsPage(input.Page, input.PerPage)
+}
+
+func searchModel(db *orm.DB, input Input) *complexmodel.ProductModel {
+	category := complexmodel.ProductMatchCategory().RemoveAllColumns().AddColumnProductSeq().ServiceRegionCategoryItemSeq(input.CategorySeqs)
+	brandLang := complexmodel.ProductBrandLang().RemoveAllColumns().AddColumnProductBrandSeq().FulltextBooleanNameWithDescription(input.Keyword)
+	lang := complexmodel.ProductLang().RemoveAllColumns().AddColumnProductSeq().FulltextBooleanNameWithShortDescriptionWithContent(input.Keyword)
 
 	return complexmodel.Product().Connect(db).
 		Relation(complexmodel.ProductLang().MatchSeqWithProductSeq().LangId(input.LangID).ParentNode()).
@@ -33,19 +37,17 @@ func Search(db *orm.DB, input Input) (*orm.Page[*complexmodel.ProductModel], err
 				RemoveAllColumns().AddColumnName().AddColumnProfileUrl())).
 		Relation(complexmodel.OrderProductItem().MatchSeqWithProductSeq().AliasMyOrderItem().
 			ServiceMemberSeq(input.MemberSeq).AndIsClose(false).OrderBySeqDesc().GroupLimit(1)).
-		JoinSeqWithProductSeq(category).
-		LeftJoinProductBrandSeqWithProductBrandSeq(brandLang).
-		LeftJoinSeqWithProductSeq(lang).
-		ServiceSeq(input.ServiceSeq).AndIsClose(false).AndIsDisplay(true).
+		Seq(category).
+		And().ServiceSeq(input.ServiceSeq).AndIsClose(false).AndIsDisplay(true).
 		And(func(q *complexmodel.ProductModel) {
 			q.IsAllday(true).Or(func(q *complexmodel.ProductModel) {
 				q.IsAllday(false).AndLeDisplayStartDt(orm.Now()).AndGeDisplayEndDt(orm.Now())
 			})
 		}).
 		And(func(q *complexmodel.ProductModel) {
-			q.FulltextBooleanNameWithShortDescriptionWithContent(input.Keyword).Or(brandLang).Or(lang)
+			q.FulltextBooleanNameWithShortDescriptionWithContent(input.Keyword)
+			q.Or(func(q *complexmodel.ProductModel) { q.ProductBrandSeq(brandLang) })
+			q.Or(func(q *complexmodel.ProductModel) { q.Seq(lang) })
 		}).
-		GroupBySeq().
-		OrderByLikeCountDescAndSeqDesc().
-		GetsPage(input.Page, input.PerPage)
+		OrderByLikeCountDescAndSeqDesc()
 }

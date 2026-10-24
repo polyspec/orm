@@ -1,5 +1,5 @@
 <!-- doc-id: dsl -->
-<!-- source-sha256: 1498b5c3cfab6fdae6041af4ba219e7546ad0ab9fd833f99943edd84010b90f3 -->
+<!-- source-sha256: a785668b522f22d1bbe81f8e61a8bcba38b627d34273f9ab1ee5a13e46d0ab96 -->
 # DSL
 
 이 문서는 [설계 계획](plan.md)이 정한 쿼리 문법을 정의한다. 클라이언트 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록하며, 이 문서와 일치하지 않는 클라이언트는 미완료 상태다.
@@ -144,7 +144,7 @@ Key   = [Operator] Column
 - **DSL-65** `getQuery()` — 결과: 실행하지 않은 `gets()`의 SQL 문장과 바인드 값
 
 - **DSL-66** `getSum()`과 `getAvg()`는 데이터베이스의 숫자 스칼라를 가장 가까운 유한 IEEE 754 binary64 값으로 변환하며 정확히 중간인 값은 짝수 쪽으로 반올림한다. SQL `SUM`과 `AVG`는 null 값을 건너뛰고, 남은 값이 없으면 일치하는 행이 없든 모든 값이 null이든 null scalar를 준다. 그러면 `getSum()`은 값이 없는 합인 0을, `getAvg()`는 null을 반환한다. 값이 없는 평균은 정의되지 않으며 0은 지어낸 평균이기 때문이다. 숫자가 아닌 값, 유한하지 않은 값, 범위 초과 값은 `CODEC_DECODE`를 반환한다. 행 컬럼 디코딩에는 무손실 변환 규칙을 유지한다.
-- **DSL-67** `getsPage`는 같은 조건과 조인으로 행 개수를 계산한다. 그룹 모델은 서로 다른 그룹 키 개수를 계산한다. `page`와 `perPage`는 양수여야 하며 `limit`를 지정한 모델은 `CONFIG`를 반환한다. 마지막 페이지 이후를 요청하면 빈 컬렉션을 반환한다. orm은 화면 출력, 요청 값 읽기, redirect를 하지 않는다.
+- **DSL-67** `getsPage`는 페이지 쿼리와 같은 조건 및 조인으로 행 개수를 계산한다. `page`와 `perPage`는 양수여야 하며 `limit`를 지정한 모델은 `CONFIG`를 반환한다. 마지막 페이지 이후를 요청하면 빈 컬렉션을 반환한다. orm은 화면 출력, 요청 값 읽기, redirect를 하지 않는다. 그룹 모델은 `getsPage`에 사용할 수 없다. DSL-99를 참조한다.
 - **DSL-68** 방언이 SQL 문장을 정하므로 `getQuery`는 연결한 모델이나 활성 트랜잭션에서만 사용할 수 있으며 아니면 `CONFIG`를 반환한다. 비밀 값은 `$SECRET`로 표시한다.
 - **DSL-69** 종단 작업은 체인 값 외의 인자를 받지 않는다. 종단 작업은 모델을 바꾸지 않으므로 두 번째 종단 작업도 같은 SQL 문장을 만든다.
 - **DSL-70** `keyName<Col>()`은 컬렉션 키 컬럼을 정한다. `fetchKey(fn)`은 컬렉션 키를 계산한다. `fetchValue(fn)`은 조회한 각 행 값을 콜백 결과로 바꾼다.

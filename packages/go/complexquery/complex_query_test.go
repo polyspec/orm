@@ -68,19 +68,7 @@ func TestComplexQuery(t *testing.T) {
 				t.Fatal(err)
 			}
 			if driver == "sqlite" {
-				var events []orm.StatementEvent
-				unsubscribe, err := db.Subscribe(func(event orm.StatementEvent) error {
-					events = append(events, event)
-					return nil
-				})
-				if err != nil {
-					t.Fatal(err)
-				}
-				_, err = Search(db, inputFromFixture(fixture))
-				unsubscribe()
-				if orm.ErrorCode(err) != orm.CodeOperatorNotAllowed || len(events) != 0 {
-					t.Fatalf("SQLite full-text request = %v with %d events, want OPERATOR_NOT_ALLOWED before statements", err, len(events))
-				}
+				assertComplexSearch(t, db, driver, fixture)
 				return
 			}
 			seedComplexFixture(t, driver, dsn, fixture)
@@ -93,91 +81,98 @@ func TestComplexQuery(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			var events []orm.StatementEvent
-			unsubscribe, err := db.Subscribe(func(event orm.StatementEvent) error {
-				events = append(events, event)
-				return nil
-			})
-			if err != nil {
-				t.Fatal(err)
+			assertComplexSearch(t, db, driver, fixture)
+		})
+	}
+}
+
+func assertComplexSearch(t *testing.T, db *orm.DB, driver string, fixture complexFixture) {
+	t.Helper()
+	var events []orm.StatementEvent
+	unsubscribe, err := db.Subscribe(func(event orm.StatementEvent) error {
+		events = append(events, event)
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	page, err := Search(db, inputFromFixture(fixture))
+	unsubscribe()
+	if driver == "sqlite" {
+		if orm.ErrorCode(err) != orm.CodeOperatorNotAllowed || len(events) != 0 {
+			t.Fatalf("SQLite full-text request = %v with %d events, want OPERATOR_NOT_ALLOWED before statements", err, len(events))
+		}
+		return
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	if page.TotalCount != fixture.Expected.TotalCount || page.TotalPages != fixture.Expected.TotalPages {
+		t.Fatalf("page total = %d/%d, want %d/%d", page.TotalCount, page.TotalPages, fixture.Expected.TotalCount, fixture.Expected.TotalPages)
+	}
+	var got []int64
+	for _, product := range page.Items.Slice() {
+		got = append(got, mustSeq(t, product.GetSeq))
+	}
+	if !slices.Equal(got, fixture.Expected.RowSeqs) {
+		t.Fatalf("page product sequences = %v, want %v", got, fixture.Expected.RowSeqs)
+	}
+	for _, product := range page.Items.Slice() {
+		productSeq := mustSeq(t, product.GetSeq)
+		key := strconv.FormatInt(productSeq, 10)
+		if want, ok := fixture.Expected.ProductLangSeqs[key]; ok {
+			localized, err := product.GetProductLangModel()
+			if err != nil || localized == nil || mustSeq(t, localized.GetSeq) != want {
+				t.Fatalf("product %d language relation does not have sequence %d: %v", productSeq, want, err)
 			}
-			page, err := Search(db, inputFromFixture(fixture))
-			unsubscribe()
-			if err != nil {
-				t.Fatal(err)
+		}
+		if want, ok := fixture.Expected.BrandSeqs[key]; ok {
+			brand, err := product.GetBrand()
+			if err != nil || brand == nil || mustSeq(t, brand.GetSeq) != want {
+				t.Fatalf("product %d brand relation does not have sequence %d: %v", productSeq, want, err)
 			}
-			if page.TotalCount != fixture.Expected.TotalCount || page.TotalPages != fixture.Expected.TotalPages {
-				t.Fatalf("page total = %d/%d, want %d/%d", page.TotalCount, page.TotalPages, fixture.Expected.TotalCount, fixture.Expected.TotalPages)
+			if langWant, ok := fixture.Expected.BrandLangSeqs[strconv.FormatInt(want, 10)]; ok {
+				lang, err := brand.GetProductBrandLangModel()
+				if err != nil || lang == nil || mustSeq(t, lang.GetSeq) != langWant {
+					t.Fatalf("brand %d language relation does not have sequence %d: %v", want, langWant, err)
+				}
+			}
+		}
+		if want, ok := fixture.Expected.ReviewSeqs[key]; ok {
+			reviews, err := product.GetReviews()
+			if err != nil || reviews == nil {
+				t.Fatalf("product %d review relation: %v", productSeq, err)
 			}
 			var got []int64
-			for _, product := range page.Items.Slice() {
-				seq, err := product.GetSeq()
-				if err != nil {
-					t.Fatal(err)
-				}
-				got = append(got, seq)
-			}
-			if !slices.Equal(got, fixture.Expected.RowSeqs) {
-				t.Fatalf("page product sequences = %v, want %v", got, fixture.Expected.RowSeqs)
-			}
-			for _, product := range page.Items.Slice() {
-				productSeq := mustSeq(t, product.GetSeq)
-				key := strconv.FormatInt(productSeq, 10)
-				if want, ok := fixture.Expected.ProductLangSeqs[key]; ok {
-					localized, err := product.GetProductLangModel()
-					if err != nil || localized == nil || mustSeq(t, localized.GetSeq) != want {
-						t.Fatalf("product %d language relation does not have sequence %d: %v", productSeq, want, err)
-					}
-				}
-				if want, ok := fixture.Expected.BrandSeqs[key]; ok {
-					brand, err := product.GetBrand()
-					if err != nil || brand == nil || mustSeq(t, brand.GetSeq) != want {
-						t.Fatalf("product %d brand relation does not have sequence %d: %v", productSeq, want, err)
-					}
-					if langWant, ok := fixture.Expected.BrandLangSeqs[strconv.FormatInt(want, 10)]; ok {
-						lang, err := brand.GetProductBrandLangModel()
-						if err != nil || lang == nil || mustSeq(t, lang.GetSeq) != langWant {
-							t.Fatalf("brand %d language relation does not have sequence %d: %v", want, langWant, err)
-						}
-					}
-				}
-				if want, ok := fixture.Expected.ReviewSeqs[key]; ok {
-					reviews, err := product.GetReviews()
-					if err != nil || reviews == nil {
-						t.Fatalf("product %d review relation: %v", productSeq, err)
-					}
-					var got []int64
-					for _, review := range reviews.Slice() {
-						reviewSeq := mustSeq(t, review.GetSeq)
-						got = append(got, reviewSeq)
-						if userWant, ok := fixture.Expected.ReviewUserSeqs[strconv.FormatInt(reviewSeq, 10)]; ok {
-							user, err := review.GetUser()
-							if err != nil || user == nil || mustSeq(t, user.GetSeq) != userWant {
-								t.Fatalf("review %d user relation does not have sequence %d: %v", reviewSeq, userWant, err)
-							}
-						}
-					}
-					if !slices.Equal(got, want) {
-						t.Fatalf("product %d review sequences = %v, want %v", productSeq, got, want)
-					}
-				}
-				if want, ok := fixture.Expected.OrderProductItemSeqs[key]; ok {
-					item, err := product.GetMyOrderItem()
-					if err != nil || item == nil || mustSeq(t, item.GetSeq) != want {
-						t.Fatalf("product %d order item relation does not have sequence %d: %v", productSeq, want, err)
+			for _, review := range reviews.Slice() {
+				reviewSeq := mustSeq(t, review.GetSeq)
+				got = append(got, reviewSeq)
+				if userWant, ok := fixture.Expected.ReviewUserSeqs[strconv.FormatInt(reviewSeq, 10)]; ok {
+					user, err := review.GetUser()
+					if err != nil || user == nil || mustSeq(t, user.GetSeq) != userWant {
+						t.Fatalf("review %d user relation does not have sequence %d: %v", reviewSeq, userWant, err)
 					}
 				}
 			}
-			wantEvents := fixture.ExpectedEvents[driver]
-			if len(events) != len(wantEvents) {
-				t.Fatalf("statement events = %d, want %d", len(events), len(wantEvents))
+			if !slices.Equal(got, want) {
+				t.Fatalf("product %d review sequences = %v, want %v", productSeq, got, want)
 			}
-			for i, want := range wantEvents {
-				if events[i].Kind != want.Kind || !slices.Equal(events[i].Tables, want.Tables) {
-					t.Errorf("statement event %d = %s %v, want %s %v", i, events[i].Kind, events[i].Tables, want.Kind, want.Tables)
-				}
+		}
+		if want, ok := fixture.Expected.OrderProductItemSeqs[key]; ok {
+			item, err := product.GetMyOrderItem()
+			if err != nil || item == nil || mustSeq(t, item.GetSeq) != want {
+				t.Fatalf("product %d order item relation does not have sequence %d: %v", productSeq, want, err)
 			}
-		})
+		}
+	}
+	wantEvents := fixture.ExpectedEvents[driver]
+	if len(events) != len(wantEvents) {
+		t.Fatalf("statement events = %d, want %d", len(events), len(wantEvents))
+	}
+	for i, want := range wantEvents {
+		if events[i].Kind != want.Kind || !slices.Equal(events[i].Tables, want.Tables) {
+			t.Errorf("statement event %d = %s %v, want %s %v", i, events[i].Kind, events[i].Tables, want.Kind, want.Tables)
+		}
 	}
 }
 
