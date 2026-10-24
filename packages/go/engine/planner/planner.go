@@ -1296,6 +1296,22 @@ func addBlindIndexAssignments(ent *runtimemodel.Entity, set []ir.Assign) ([]ir.A
 	return set, source, nil
 }
 
+// prepareWriteAssignments applies the shared validation sequence for update-like writes.
+// It clones the caller's assignments because blind-index expansion may append entries.
+func prepareWriteAssignments(ent *runtimemodel.Entity, assignments []ir.Assign) ([]ir.Assign, error) {
+	set, _, err := addBlindIndexAssignments(ent, slices.Clone(assignments))
+	if err != nil {
+		return nil, err
+	}
+	if err := validateAESAssignments(ent, set, true); err != nil {
+		return nil, err
+	}
+	if err := validateAuditAssignments(ent, set); err != nil {
+		return nil, err
+	}
+	return set, nil
+}
+
 func isBlindIndexTarget(ent *runtimemodel.Entity, target string) bool {
 	for _, col := range ent.Fields {
 		if col.BlindIndex == target {
@@ -1377,14 +1393,8 @@ func (b *builder) mainStep(sql string) (*plan.Step, error) {
 func (p *Planner) updateStep(r *ir.Request) (*plan.Step, error) {
 	b := &builder{p: p}
 	ent := p.M.Entities[r.Entity]
-	set, _, err := addBlindIndexAssignments(ent, slices.Clone(r.Set))
+	set, err := prepareWriteAssignments(ent, r.Set)
 	if err != nil {
-		return nil, err
-	}
-	if err := validateAESAssignments(ent, set, true); err != nil {
-		return nil, err
-	}
-	if err := validateAuditAssignments(ent, set); err != nil {
 		return nil, err
 	}
 	root := p.buildScopes(&r.Query, ent.Table, nil)
@@ -1463,14 +1473,8 @@ func (p *Planner) restoreStep(r *ir.Request) (*plan.Step, error) {
 	if err != nil {
 		return nil, err
 	}
-	set, _, err := addBlindIndexAssignments(ent, parts.Set)
+	set, err := prepareWriteAssignments(ent, parts.Set)
 	if err != nil {
-		return nil, err
-	}
-	if err := validateAESAssignments(ent, set, true); err != nil {
-		return nil, err
-	}
-	if err := validateAuditAssignments(ent, set); err != nil {
 		return nil, err
 	}
 	b := &builder{p: p}
