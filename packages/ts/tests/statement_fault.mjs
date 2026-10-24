@@ -15,9 +15,10 @@
 import { readFile } from 'node:fs/promises';
 import { caseTest } from '../../../tests/testcase.mts';
 import { withCaseDatabase } from './case-database.mjs';
-import { Db, OrmError, dbspecManifest, parseDbspec, CORE } from '../dist/index.js';
+import { Db, OrmError, CORE } from '../dist/index.js';
 import * as testing from '@polyspec/orm/testing';
 import { models } from './registered_models.mjs';
+import { schemaOf } from './schema_of.mjs';
 
 const fixture = JSON.parse(await readFile(new URL('../../../contracts/fixtures/statement_fault.json', import.meta.url), 'utf8'));
 const rollbackText = await readFile(new URL('../../../contracts/fixtures/rollback.dbs', import.meta.url), 'utf8');
@@ -45,12 +46,6 @@ async function raised(run) {
 }
 function raisedSync(run) {
   try { run(); return undefined; } catch (error) { return error; }
-}
-
-/** A document text's generated schema value: its manifest text and manifestHash. */
-function schemaOf(text) {
-  const { manifest } = dbspecManifest([parseDbspec(text, {}).document]);
-  return { manifestText: manifest.manifestText, manifestHash: manifest.manifestHash };
 }
 
 const { rollback_probe: RollbackProbe } = models(rollbackText);

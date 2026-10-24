@@ -7,18 +7,13 @@ import { readFile } from 'node:fs/promises';
 import { models } from './registered_models.mjs';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { CORE, Db, dbspecManifest, parseDbspec } from '../dist/index.js';
+import { CORE, Db } from '../dist/index.js';
 import { caseTest } from '../../../tests/testcase.mts';
 import { withCaseDatabase } from './case-database.mjs';
+import { schemaOf } from './schema_of.mjs';
 
 const clockText = await readFile(new URL('../../../contracts/fixtures/clock.dbs', import.meta.url), 'utf8');
 const CASE_DEADLINE_MS = 30_000;
-
-/** A document text's generated schema value: its manifest text and manifestHash. */
-function schemaOf(text) {
-  const { manifest } = dbspecManifest([parseDbspec(text, {}).document]);
-  return { manifestText: manifest.manifestText, manifestHash: manifest.manifestHash };
-}
 
 const { clock_event: ClockEvent } = models(clockText);
 

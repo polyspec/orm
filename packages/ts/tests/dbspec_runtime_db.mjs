@@ -13,9 +13,10 @@ import { after } from 'node:test';
 import { caseTest } from '../../../tests/testcase.mts';
 import { createCaseDatabase } from './case-database.mjs';
 import { auditCase, auditSource, restoreCase, restoreSchema } from './restore_case.mjs';
-import { CORE, Db, OrmError, StyledValue, dbspecManifest, parseDbspec } from '../dist/index.js';
+import { CORE, Db, OrmError, StyledValue } from '../dist/index.js';
 import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
 import { models } from './registered_models.mjs';
+import { schemaOf } from './schema_of.mjs';
 
 const root = new URL('../../..', import.meta.url).pathname;
 
@@ -45,12 +46,6 @@ table probe {
 }
 `;
 const auditText = await readFile(join(root, 'contracts/fixtures/audit.dbs'), 'utf8');
-
-/** A document text's generated schema value: its manifest text and manifestHash. */
-function schemaOf(text) {
-  const { manifest } = dbspecManifest([parseDbspec(text, {}).document]);
-  return { manifestText: manifest.manifestText, manifestHash: manifest.manifestHash };
-}
 
 const { probe: Probe } = models(probeText);
 const { item: Item } = models(auditText);

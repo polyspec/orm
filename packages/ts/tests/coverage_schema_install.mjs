@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import { Author, Db, SCHEMA, connect, dbspecManifest, parseDbspec } from '../dist/index.js';
 import { runCases, tableExists } from './coverage_case.mjs';
+import { schemaOf } from './schema_of.mjs';
 
 const partial = `dbspec 1 partial
 
@@ -48,12 +49,6 @@ function externalSchema(external) {
   const user = Object.freeze({ ...parseDbspec(external, { coverage_external: externalMember }).document, external: true });
   const { manifest } = dbspecManifest([member, user]);
   return { manifestText: manifest.manifestText, manifestHash: manifest.manifestHash, externalText: manifest.externalText };
-}
-
-/** A document text's generated schema value: its manifest text and manifestHash. */
-function schemaOf(text) {
-  const { manifest } = dbspecManifest([parseDbspec(text, {}).document]);
-  return { manifestText: manifest.manifestText, manifestHash: manifest.manifestHash };
 }
 
 /** Opens the selected database and runs the case on it. */

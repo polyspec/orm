@@ -10,6 +10,7 @@ import { errorCode, nativeQuery, repositoryRoot, runCases, tableExists, withClea
 import { auditCase, auditSchema, auditSource, auditText, restoreCase, restoreSchema, restoreTables } from './restore_case.mjs';
 import { classesFromManifest } from './registered_models.mjs';
 import { auditHistoryRows } from './audit-history-rows.mjs';
+import { schemaOf } from './schema_of.mjs';
 
 const auditColumnsText = await readFile(join(repositoryRoot, 'contracts/fixtures/audit_columns.dbs'), 'utf8');
 
@@ -17,12 +18,6 @@ const auditColumnsText = await readFile(join(repositoryRoot, 'contracts/fixtures
 const auditTables = ['audit', 'item', 'item_history'];
 /** The tables that contracts/fixtures/audit_columns.dbs creates. */
 const auditColumnsTables = ['audit', 'card', 'card_history', 'tag', 'tag_history'];
-
-/** A document text's generated schema value: its manifest text and manifestHash. */
-function schemaOf(text) {
-  const { manifest } = dbspecManifest([parseDbspec(text, {}).document]);
-  return { manifestText: manifest.manifestText, manifestHash: manifest.manifestHash };
-}
 
 /** Registers the model of an audit document and returns a model class per entity. */
 function auditModels(text = auditText) {

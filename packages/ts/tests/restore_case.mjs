@@ -9,18 +9,13 @@ import { nativeQuery } from './coverage_case.mjs';
 import { codeOf } from './error_code.mjs';
 import { classesFromManifest } from './registered_models.mjs';
 import { auditHistoryRows } from './audit-history-rows.mjs';
+import { schemaOf } from './schema_of.mjs';
 
 export const restoreText = await readFile(new URL('../../../contracts/fixtures/restore.dbs', import.meta.url), 'utf8');
 export const auditText = await readFile(new URL('../../../contracts/fixtures/audit.dbs', import.meta.url), 'utf8');
 
 /** The tables that contracts/fixtures/restore.dbs creates. */
 export const restoreTables = ['audit', 'label', 'membership', 'membership_history'];
-
-/** The generated schema value of a document text: its manifest text and manifestHash. */
-function schemaOf(text) {
-  const { manifest } = dbspecManifest([parseDbspec(text, {}).document]);
-  return { manifestText: manifest.manifestText, manifestHash: manifest.manifestHash };
-}
 
 /** The generated schema value of the restore fixture. */
 export function restoreSchema() { return schemaOf(restoreText); }
