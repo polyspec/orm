@@ -744,6 +744,7 @@
         "packages/ts/src/engine/planner.ts",
         "packages/ts/src/engine/validate.ts",
         "packages/ts/tests/complex-query.mjs",
+        "packages/ts/tests/complex-query-support.mjs",
         "packages/ts/tests/complex-query.types.ts",
         "packages/ts/tests/fulltext-search.mjs",
         "packages/ts/tests/fulltext-chain-types.mjs",
@@ -773,6 +774,7 @@
         "packages/ts/src/generate/names.ts",
         "packages/ts/src/generate/typescript.ts",
         "packages/ts/tests/complex-query.mjs",
+        "packages/ts/tests/complex-query-support.mjs",
         "packages/ts/tests/case-database.mjs",
         "tests/testcase.mts"
       ]
