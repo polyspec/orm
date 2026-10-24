@@ -147,6 +147,17 @@ static bool aes_utils_driver(zval *db, bool *mysql, bool *postgres)
     return true;
 }
 
+static bool aes_utils_spec_driver(zval *db, zval *model, zval *spec, bool *mysql, bool *postgres)
+{
+    ZVAL_UNDEF(spec);
+    if (!aes_utils_spec(db, model, spec)) return false;
+    if (!aes_utils_driver(db, mysql, postgres)) {
+        zval_ptr_dtor(spec);
+        return false;
+    }
+    return true;
+}
+
 static bool aes_utils_require_model_keyring(zval *model, zval *keyring, const char *method)
 {
     if (aes_model_ce == NULL) aes_model_ce = aes_utils_class("Polyspec\\Orm\\Model");
@@ -204,11 +215,8 @@ ZEND_METHOD(Polyspec_Orm_AesUtils, status)
     zval *version_value = zend_read_property(aes_keyring_ce, Z_OBJ_P(keyring), "currentVersion", sizeof("currentVersion") - 1, true, &rv_version);
     zend_long current = zval_get_long(version_value);
     zval spec;
-    ZVAL_UNDEF(&spec);
-    if (!aes_utils_spec(db, model, &spec)) RETURN_THROWS();
-
     bool mysql, postgres;
-    if (!aes_utils_driver(db, &mysql, &postgres)) { zval_ptr_dtor(&spec); RETURN_THROWS(); }
+    if (!aes_utils_spec_driver(db, model, &spec, &mysql, &postgres)) RETURN_THROWS();
     zval *table = aes_utils_value(&spec, "table"), *version = aes_utils_value(&spec, "version");
     smart_str sql = {0};
     smart_str_appends(&sql, "SELECT ");
@@ -527,10 +535,8 @@ ZEND_METHOD(Polyspec_Orm_AesUtils, rotate)
     if (!aes_utils_require_model_keyring(model, keyring, "rotate")) RETURN_THROWS();
     zval rv_db, spec;
     zval *db = zend_read_property(aes_utils_ce, Z_OBJ_P(ZEND_THIS), "db", sizeof("db") - 1, true, &rv_db);
-    ZVAL_UNDEF(&spec);
-    if (!aes_utils_spec(db, model, &spec)) RETURN_THROWS();
     bool mysql, postgres;
-    if (!aes_utils_driver(db, &mysql, &postgres)) { zval_ptr_dtor(&spec); RETURN_THROWS(); }
+    if (!aes_utils_spec_driver(db, model, &spec, &mysql, &postgres)) RETURN_THROWS();
     zval rv_current;
     zval *current_value = zend_read_property(aes_keyring_ce, Z_OBJ_P(keyring), "currentVersion", sizeof("currentVersion") - 1, true, &rv_current);
     zend_long current = zval_get_long(current_value);
