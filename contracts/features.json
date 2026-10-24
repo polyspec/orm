@@ -10562,6 +10562,7 @@
       "paths": [
         "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/rust/tests/tests/common/mod.rs",
+        "packages/rust/orm/src/test_support.rs",
         "packages/rust/orm/tests/common/*.rs",
         "packages/rust/tests/tests/integration/main.rs"
       ],
