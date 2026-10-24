@@ -855,6 +855,15 @@
         "packages/rust/build/src/tests/out_dir.rs"
       ]
     },
+    "relation-parent-bind-rust-check": {
+      "scope": "owner",
+      "needs": ["go", "rust", "node-modules"],
+      "inputs": [
+        "Makefile",
+        "packages/rust/orm/src/driver.rs",
+        "packages/rust/orm/src/driver/tests.rs"
+      ]
+    },
     "rust-driver-check": {
       "scope": "owner",
       "needs": [

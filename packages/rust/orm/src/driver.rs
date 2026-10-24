@@ -85,7 +85,7 @@ pub(crate) fn parent_values<'a>(pr: &ParentRef, parents: impl Iterator<Item = &'
 /// statement cache holds one statement per size class. On PostgreSQL the plan has one
 /// `$k` per slot in slot order: the parent slot becomes n placeholders and every later
 /// number shifts by n-1 (docs/spec/dialects.md).
-pub(crate) fn expand_in(st: &Step, mut vals: Vec<Param>, numbered: bool) -> Result<(String, Vec<Param>)> {
+pub(crate) fn expand_in(st: &Step, mut vals: Vec<Param>, numbered: bool, parent_slot: usize) -> Result<(String, Vec<Param>)> {
     let width = st.parent.as_ref().map(|p| p.keys.len()).unwrap_or(0);
     assert!(width > 0 && vals.len().is_multiple_of(width), "invalid relation parent key values");
     let tuples = vals.len() / width;
@@ -99,7 +99,7 @@ pub(crate) fn expand_in(st: &Step, mut vals: Vec<Param>, numbered: bool) -> Resu
     }
     let mut sql = String::with_capacity(st.sql.len() + 4 * n);
     if numbered {
-        let parent = st.bind_slots.iter().position(|b| b.from == "parent").map(|i| i + 1).unwrap_or(0);
+        let parent = parent_slot + 1;
         let bytes = st.sql.as_bytes();
         let mut i = 0;
         while i < bytes.len() {
@@ -513,11 +513,34 @@ pub(crate) async fn exec_sqlite_pool(sql: &str, args: &[Param], pool: &SqlitePoo
 /// The statement text of a step: the plan's SQL as is, or with its `parent` placeholder expanded.
 pub(crate) fn statement(st: &Step, parent_vals: Vec<Param>, numbered: bool) -> Result<(Cow<'_, str>, Vec<Param>)> {
     if parent_vals.is_empty() {
+        if st.role == "relation" || st.parent.is_some() {
+            parent_bind_slot(st)?;
+        }
         Ok((Cow::Borrowed(st.sql.as_str()), parent_vals))
     } else {
-        let (sql, vals) = expand_in(st, parent_vals, numbered)?;
+        let parent_slot = parent_bind_slot(st)?;
+        let (sql, vals) = expand_in(st, parent_vals, numbered, parent_slot)?;
         Ok((Cow::Owned(sql), vals))
     }
+}
+
+/// The relation step's single parent bind slot, in zero-based bind-slot order.
+fn parent_bind_slot(st: &Step) -> Result<usize> {
+    let mut parent_slot = None;
+    let mut count = 0;
+    for (index, bind) in st.bind_slots.iter().enumerate() {
+        if bind.from == "parent" {
+            parent_slot = Some(index);
+            count += 1;
+        }
+    }
+    if count != 1 {
+        return Err(Error::Engine {
+            code: crate::codes::IR_INVALID.into(),
+            msg: format!("relation {} requires exactly one parent bind slot, found {count}", st.id),
+        });
+    }
+    Ok(parent_slot.expect("a single parent bind slot has an index"))
 }
 
 pub(crate) fn relation_chunks(st: &Step, vals: Vec<Param>, driver: &str) -> Result<Vec<Vec<Param>>> {
@@ -546,6 +569,9 @@ pub(crate) fn relation_chunks(st: &Step, vals: Vec<Param>, driver: &str) -> Resu
     }
     Ok(chunks)
 }
+
+#[cfg(test)]
+mod tests;
 
 /// The first cell of the first row (Null when there is no row).
 pub(crate) fn first_cell(rows: &[DriverRow], zone: Zone) -> Result<Val> {
