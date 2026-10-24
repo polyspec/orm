@@ -1,6 +1,7 @@
 // plan_case.mjs holds the dbspec schema plan vectors (tests/dbspec/plans.json, docs/spec/plans.md) for the TypeScript
 // client: the helpers and one function per section of plans.json; each dbspec-plan-<section>.mjs calls one.
 import { caseTest } from '../../../tests/testcase.mts';
+import { vectorRegistrar } from '../../../tests/vector-registrar.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { chainPlans, compareSchemas, diffPlan, effectText, emitPlan, parseDbspec, parsePlan, planSteps } from '../dist/dbspec/index.js';
@@ -26,9 +27,7 @@ function stepFields(s) {
 
 // vector runs one case with its own deadline and reports its start, result
 // and elapsed time.
-export function vector(name, body) {
-  caseTest(name, TIMEOUT, body);
-}
+export const vector = vectorRegistrar(caseTest, TIMEOUT);
 
 export const text = lines => lines.join('\n') + '\n';
 

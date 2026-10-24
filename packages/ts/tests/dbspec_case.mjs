@@ -5,6 +5,7 @@ import { caseTest } from '../../../tests/testcase.mts';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { join } from '../../../tests/dbspec/join.mjs';
 import { dbspecManifest, emitDbspec, parseDbspec, parseDbspecSet, readDbspecBytes, readDbspecFile, renderDbspec } from '../dist/dbspec/index.js';
 import { readCases } from '../../../tests/dbspec/cases.mts';
 
@@ -20,13 +21,7 @@ export function vector(name, body) {
   caseTest(name, TIMEOUT, body);
 }
 
-// join writes the lines with LF, with CRLF when crlf is true, or with
-// alternating CRLF and LF and no final line end when mixed is true.
-export function join(lines, crlf, mixed = false) {
-  if (mixed) return lines.map((line, i) => (i === lines.length - 1 ? line : line + (i % 2 === 0 ? '\r\n' : '\n'))).join('');
-  const end = crlf ? '\r\n' : '\n';
-  return lines.join(end) + end;
-}
+export { join };
 
 function documentSet(c) {
   const set = {};

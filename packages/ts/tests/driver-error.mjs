@@ -11,20 +11,16 @@
 // Usage: node packages/ts/tests/driver-error.mjs [case ...] (after npm run typescript:build)
 import { readFile } from 'node:fs/promises';
 import { models } from './registered_models.mjs';
-import { CORE, Db, OrmError, dbspecManifest, parseDbspec } from '../dist/index.js';
+import { CORE, Db, OrmError } from '../dist/index.js';
 import { caseTest } from '../../../tests/testcase.mts';
 import { withCaseDatabase } from './case-database.mjs';
+import { schemaOf } from './schema_of.mjs';
 
 const refusalText = await readFile(new URL('../../../contracts/fixtures/refusal.dbs', import.meta.url), 'utf8');
 // CASE_DEADLINE_MS is the deadline of one case. A case creates a case database, installs the refusal document, runs a few writes that are rejected, then drops the database.
 const CASE_DEADLINE_MS = 30_000;
 let failures = 0;
 let current = '';
-/** A document text's generated schema value: its manifest text and manifestHash. */
-function schemaOf(text) {
-  const { manifest } = dbspecManifest([parseDbspec(text, {}).document]);
-  return { manifestText: manifest.manifestText, manifestHash: manifest.manifestHash };
-}
 
 function check(cond, message) {
   if (!cond) { failures++; console.error(`FAIL ${current}: ${message}`); }

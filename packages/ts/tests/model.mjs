@@ -19,6 +19,7 @@ import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } fr
 import { DATABASE, sections } from '../../../tests/testcase.mts';
 import { installBench } from './bench-set.mjs';
 import { caseName, mysqlConnection, postgresClient, relatedDsn, withCaseDatabase } from './case-database.mjs';
+import { schemaOf } from './schema_of.mjs';
 
 /** Drops the table of a case through the pooler's single database; a failure names the table. */
 async function dropPoolerTable(dsn, table) {
@@ -37,12 +38,6 @@ const selectedCase = args.length === 0 ? undefined : args[1];
 const work = await mkdtemp(join(tmpdir(), 'orm-ts-model-'));
 
 let failures = 0;
-/** A document text's generated schema value: its manifest text and manifestHash. */
-function schemaOf(text) {
-  const { manifest } = dbspecManifest([parseDbspec(text, {}).document]);
-  return { manifestText: manifest.manifestText, manifestHash: manifest.manifestHash };
-}
-
 function check(cond, message) {
   if (!cond) { failures++; console.error(`FAIL ${current}: ${message}`); }
 }

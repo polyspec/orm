@@ -9,6 +9,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { caseTest, DATABASE } from '../../../tests/testcase.mts';
 import { CORE, Db, Model, OrmError, codes, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
+import { codeOf } from './error_code.mjs';
 
 const parsed = parseDbspec('dbspec 1 revision\n\ntable note {\n  seq i64 identity\n  label varchar(32)\n  revision i64\n  primary key (seq)\n}\n', {});
 assert.deepEqual(parsed.diagnostics, [], 'the document parses');
@@ -22,10 +23,6 @@ function note(values) {
   const m = new Note();
   for (const [column, value] of Object.entries(values)) m[CORE].setValue(column, value);
   return m;
-}
-
-async function codeOf(promise) {
-  try { await promise; return null; } catch (error) { return error instanceof OrmError ? error.code : String(error); }
 }
 
 /** The [label, revision] of every stored note. */
@@ -55,7 +52,7 @@ caseTest('revision/update-match', DATABASE, () => withNote(async (db, seq) => {
 
 // The test of DSL-108, DSL-114 (docs/spec).
 caseTest('revision/update-mismatch', DATABASE, () => withNote(async (db, seq) => {
-  assert.equal(await codeOf(note({ seq, label: 'stale' }).connect(db).expectRevision('revision', 2).update()), codes.REVISION_CHANGED);
+  assert.equal(await codeOf(note({ seq, label: 'stale' }).connect(db).expectRevision('revision', 2).update(), OrmError), codes.REVISION_CHANGED);
   assert.deepEqual(await stored(db), [['first', 3]]);
 }));
 
@@ -67,6 +64,6 @@ caseTest('revision/delete-match', DATABASE, () => withNote(async (db, seq) => {
 
 // The test of DSL-108, DSL-114 (docs/spec).
 caseTest('revision/delete-mismatch', DATABASE, () => withNote(async (db, seq) => {
-  assert.equal(await codeOf(note({ seq }).connect(db).expectRevision('revision', 4).delete()), codes.REVISION_CHANGED);
+  assert.equal(await codeOf(note({ seq }).connect(db).expectRevision('revision', 4).delete(), OrmError), codes.REVISION_CHANGED);
   assert.deepEqual(await stored(db), [['first', 3]]);
 }));

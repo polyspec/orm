@@ -1,6 +1,7 @@
 // Shared helpers of the language service tests: the vectors of tests/dbspec, the line model of the parser and the
 // UTF-16 offsets of a code point index. They are test code only; the service never imports them.
 import { readFileSync } from 'node:fs';
+import { join } from '../../../tests/dbspec/join.mjs';
 
 /** The repository root. */
 export const repo = new URL('../../../', import.meta.url);
@@ -10,15 +11,7 @@ export function vectorsFile(name) {
   return JSON.parse(readFileSync(new URL(`tests/dbspec/${name}`, repo), 'utf8'));
 }
 
-/**
- * Joins the lines of a vector the way the vectors do: with LF, with CRLF when crlf is true, or alternating CRLF and
- * LF with no final line end when mixed is true.
- */
-export function join(lines, crlf, mixed = false) {
-  if (mixed) return lines.map((line, i) => (i === lines.length - 1 ? line : line + (i % 2 === 0 ? '\r\n' : '\n'))).join('');
-  const end = crlf ? '\r\n' : '\n';
-  return lines.join(end) + end;
-}
+export { join };
 
 /**
  * The lines of a text as the tokens of the parser read them: split at LF, and one CR before an LF is part of the

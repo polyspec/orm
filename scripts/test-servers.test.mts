@@ -9,6 +9,7 @@ import { createServer } from 'node:net';
 import { isolatedEnvironment } from '../tests/environment.mts';
 import { caseTest, COMPUTE, DATABASE, PROCESS } from '../tests/testcase.mts';
 import { environment, MYSQLD_BINLOG, mysqldArguments, paths, POSTGRES_LOCALE, postgresBaseBackupArguments, postgresEnvironment, startLogged, stopEarlierStart, stopPid, TestServerError } from './test-servers.mts';
+import { withPidFixture } from './test-servers-fixture.mts';
 
 // processState is the state that ps reports for a process, empty when it is gone. exited is whether it has ended: an ended
 // process is gone, or a zombie (state Z) until the process that adopted it reaps it, and kill(pid, 0) still succeeds on a
@@ -180,11 +181,8 @@ caseTest('only ESRCH means a server is gone and other kill errors keep its data 
 });
 
 caseTest('a PID-file read failure is preserved before any kill check', COMPUTE, () => {
-  const root = realpathSync(mkdtempSync(join(tmpdir(), 'orm-pid-read-')));
-  const p = paths(root, join(root, 'sockets'));
-  const originalKill = process.kill.bind(process);
   let called = false;
-  try {
+  withPidFixture(({ paths: p }) => {
     mkdirSync(p.dir, { recursive: true });
     mkdirSync(p.pgbouncerPid);
     process.kill = () => { called = true; return true; };
@@ -194,19 +192,13 @@ caseTest('a PID-file read failure is preserved before any kill check', COMPUTE, 
     });
     assert.equal(called, false, 'kill ran after the PID-file read failed');
     assert.ok(existsSync(p.dir), 'data directory was removed after a PID-file read failure');
-  } finally {
-    process.kill = originalKill;
-    rmSync(root, { recursive: true, force: true });
-  }
+  });
 });
 
 caseTest('invalid PID-file values never signal unrelated processes or remove server data', COMPUTE, () => {
   for (const value of ['0', '-1', 'NaN', '9007199254740992']) {
-    const root = realpathSync(mkdtempSync(join(tmpdir(), 'orm-pid-invalid-')));
-    const p = paths(root, join(root, 'sockets'));
-    const originalKill = process.kill.bind(process);
     let called = false;
-    try {
+    withPidFixture(({ paths: p }) => {
       mkdirSync(p.dir, { recursive: true });
       writeFileSync(p.pgbouncerPid, `${value}\n`);
       process.kill = () => { called = true; throw Object.assign(new Error('invalid PID probe'), { code: 'EPERM' }); };
@@ -218,10 +210,7 @@ caseTest('invalid PID-file values never signal unrelated processes or remove ser
       });
       assert.equal(called, false, `kill ran for invalid PID '${value}'`);
       assert.ok(existsSync(p.dir), `data directory was removed for invalid PID '${value}'`);
-    } finally {
-      process.kill = originalKill;
-      rmSync(root, { recursive: true, force: true });
-    }
+    });
   }
 });
 

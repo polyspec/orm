@@ -25,19 +25,16 @@ import { DatabaseSync } from 'node:sqlite';
 import * as packageEntry from '../dist/index.js';
 import { caseTest } from '../../../tests/testcase.mts';
 import { mysqlConnection, postgresClient, relatedDsn, withCaseDatabase } from './case-database.mjs';
-import { CORE, Db, Model, OrmError, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
+import { CORE, Db, OrmError } from '../dist/index.js';
 import { failNextRollback } from '@polyspec/orm/testing';
+import { schemaOf } from './schema_of.mjs';
+import { models } from './registered_models.mjs';
 
 const rollbackText = await readFile(new URL('../../../contracts/fixtures/rollback.dbs', import.meta.url), 'utf8');
 // CASE_DEADLINE_MS is the deadline of one case. A case creates a case database, installs the rollback document, runs a few failing transactions, then drops the database.
 const CASE_DEADLINE_MS = 30_000;
 let failures = 0;
 let current = '';
-/** A document text's generated schema value: its manifest text and manifestHash. */
-function schemaOf(text) {
-  const { manifest } = dbspecManifest([parseDbspec(text, {}).document]);
-  return { manifestText: manifest.manifestText, manifestHash: manifest.manifestHash };
-}
 
 function check(cond, message) {
   if (!cond) { failures++; console.error(`FAIL ${current}: ${message}`); }
@@ -46,20 +43,6 @@ async function raised(run) {
   try { await run(); return undefined; } catch (error) { return error; }
 }
 
-/** Registers the model of a document set as generated code does and returns a model class per entity. */
-function models(text) {
-  const parsed = parseDbspec(text, {});
-  if (parsed.document === null) throw new Error(JSON.stringify(parsed.diagnostics));
-  const { manifest } = dbspecManifest([parsed.document]);
-  const model = registerModel(manifest.manifestText, manifest.manifestHash);
-  const out = {};
-  for (const entity of model.entities.values()) {
-    const cls = class extends Model {};
-    cls.entity = { model, entity, create: core => new cls(core) };
-    out[entity.name] = cls;
-  }
-  return out;
-}
 const { rollback_probe: RollbackProbe } = models(rollbackText);
 const probe = (db, label) => { const m = new RollbackProbe().connect(db); m[CORE].setValue('label', label); return m; };
 

@@ -12,10 +12,11 @@
 import { readFile } from 'node:fs/promises';
 import { models } from './registered_models.mjs';
 import { DatabaseSync } from 'node:sqlite';
-import { CORE, Db, Model, dbspecManifest, orm, parseDbspec } from '../dist/index.js';
+import { CORE, Db, orm } from '../dist/index.js';
 import { wallMicros } from '../dist/clock.js';
 import { caseTest } from '../../../tests/testcase.mts';
 import { mysqlConnection, postgresClient, withCaseDatabase } from './case-database.mjs';
+import { schemaOf } from './schema_of.mjs';
 
 const clockText = await readFile(new URL('../../../contracts/fixtures/clock.dbs', import.meta.url), 'utf8');
 const markText = await readFile(new URL('../../../contracts/fixtures/clock_mark.dbs', import.meta.url), 'utf8');
@@ -23,11 +24,6 @@ const markText = await readFile(new URL('../../../contracts/fixtures/clock_mark.
 const CASE_DEADLINE_MS = 30_000;
 let failures = 0;
 let current = '';
-/** A document text's generated schema value: its manifest text and manifestHash. */
-function schemaOf(text) {
-  const { manifest } = dbspecManifest([parseDbspec(text, {}).document]);
-  return { manifestText: manifest.manifestText, manifestHash: manifest.manifestHash };
-}
 
 function check(cond, message) {
   if (!cond) { failures++; console.error(`FAIL ${current}: ${message}`); }

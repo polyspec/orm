@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { CORE, Db, Model, OrmError, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
 import { nativeQuery } from './coverage_case.mjs';
+import { codeOf } from './error_code.mjs';
 
 export const restoreText = await readFile(new URL('../../../contracts/fixtures/restore.dbs', import.meta.url), 'utf8');
 export const auditText = await readFile(new URL('../../../contracts/fixtures/audit.dbs', import.meta.url), 'utf8');
@@ -40,10 +41,6 @@ function modelsOf(text) {
   return out;
 }
 
-async function codeOf(promise) {
-  try { await promise; return null; } catch (error) { return error instanceof OrmError ? error.code : String(error); }
-}
-
 /** An audit source that gives the actor as the audit value. Used as the connection option auditSource. */
 export function auditSource(actor) {
   return () => ({ actor });
@@ -72,11 +69,11 @@ function modelWith(cls, values) {
 export async function auditCase(db, driver, dsn) {
   const { item: Item, item_history: ItemHistory, audit: Audit } = modelsOf(auditText);
   const item = values => modelWith(Item, values).connect(db);
-  assert.equal(await codeOf(item({ title: 'outside' }).create()), 'CONFIG', 'insert without an audit');
+  assert.equal(await codeOf(item({ title: 'outside' }).create(), OrmError), 'CONFIG', 'insert without an audit');
   for (const [name, options] of [['without an audit source', {}], ['with a source value that is no column', { auditSource: () => ({ reason: 'x' }) }]]) {
     const other = await Db.connectSchema(dsn, auditSchema(), options);
     try {
-      assert.equal(await codeOf(other.transaction(async () => {}, { audit: { actor: 'x' } })), 'CONFIG', `an audit transaction of a connection ${name}`);
+      assert.equal(await codeOf(other.transaction(async () => {}, { audit: { actor: 'x' } }), OrmError), 'CONFIG', `an audit transaction of a connection ${name}`);
     } finally { await other.close(); }
   }
   const unavailable = new Error('no request');
@@ -85,15 +82,15 @@ export async function auditCase(db, driver, dsn) {
   try { await failing.transaction(async () => {}, { audit: {} }); } catch (error) { sourceError = error; } finally { await failing.close(); }
   assert.equal(sourceError, unavailable, 'an audit transaction whose source fails returns the source error');
   const adb = db;
-  assert.equal(await codeOf(adb.transaction(async () => {}, { audit: { reason: 'x' } })), 'CONFIG', 'an audit value that is no column');
+  assert.equal(await codeOf(adb.transaction(async () => {}, { audit: { reason: 'x' } }), OrmError), 'CONFIG', 'an audit value that is no column');
   let seq;
   await adb.transaction(async () => {
     seq = (await item({ title: 'first' }).create())[CORE].column('seq');
-    assert.equal(await codeOf(adb.transaction(async () => {}, { audit: { actor: 'nested' } })), 'CONFIG', 'a nested transaction with an audit');
+    assert.equal(await codeOf(adb.transaction(async () => {}, { audit: { actor: 'nested' } }), OrmError), 'CONFIG', 'a nested transaction with an audit');
     // A nested transaction writes the outer audit.
     await db.transaction(async () => { await item({ seq, title: 'second' }).update(); }, { retry: 0 });
   }, { audit: { actor: 'create' }, retry: 0 });
-  assert.equal(await codeOf(item({ seq, title: 'third' }).update()), 'CONFIG', 'update without an audit');
+  assert.equal(await codeOf(item({ seq, title: 'third' }).update(), OrmError), 'CONFIG', 'update without an audit');
   // An audit transaction with no values records only the defaults.
   await adb.transaction(async () => { await item({ seq }).delete(); }, { audit: {}, retry: 0 });
   const failed = new Error('callback failed');
@@ -151,10 +148,10 @@ export async function restoreCase(db) {
     await make(Label, { id }).delete();
   }, { audit: { actor: 'delete' }, retry: 0 });
 
-  assert.equal(await codeOf(adb.transaction(async () => { await make(Membership, { team_id: 1, member_id: 2 }).create(); }, { audit: { actor: 'duplicate' }, retry: 0 })),
+  assert.equal(await codeOf(adb.transaction(async () => { await make(Membership, { team_id: 1, member_id: 2 }).create(); }, { audit: { actor: 'duplicate' }, retry: 0 }), OrmError),
     'DUPLICATE_KEY', 'insert of the key of a soft-deleted row');
   assert.equal(await new Label().connect(db).name('red').get(), null, 'default read of a soft-deleted row');
-  assert.equal(await codeOf(make(Membership, { team_id: 1, member_id: 2 }).restore()), 'CONFIG', 'restore of an audited row without an audit');
+  assert.equal(await codeOf(make(Membership, { team_id: 1, member_id: 2 }).restore(), OrmError), 'CONFIG', 'restore of an audited row without an audit');
 
   // A set value outside the key is a new value written together into the restored row.
   const restored = await adb.transaction(() => make(Membership, { team_id: 1, member_id: 2, note: 'n2' }).restore(), { audit: { actor: 'restore' }, retry: 0 });
@@ -164,9 +161,9 @@ export async function restoreCase(db) {
 
   const label = await make(Label, { name: 'red', color: 'y' }).restore();
   assert.deepEqual(columns(label, ['id', 'name', 'color', 'deleted_at']), { id, name: 'red', color: 'y', deleted_at: null }, 'restored label');
-  assert.equal(await codeOf(make(Label, { name: 'blue' }).restore()), 'NO_ROWS', 'restore of an absent row');
-  assert.equal(await codeOf(make(Label, { color: 'x' }).restore()), 'IR_INVALID', 'restore without the values of a key');
-  assert.equal(await codeOf(make(Label, {}).restore()), 'IR_INVALID', 'restore without key values');
+  assert.equal(await codeOf(make(Label, { name: 'blue' }).restore(), OrmError), 'NO_ROWS', 'restore of an absent row');
+  assert.equal(await codeOf(make(Label, { color: 'x' }).restore(), OrmError), 'IR_INVALID', 'restore without the values of a key');
+  assert.equal(await codeOf(make(Label, {}).restore(), OrmError), 'IR_INVALID', 'restore without key values');
 
   const [create, remove, restore] = [await auditSeq('create'), await auditSeq('delete'), await auditSeq('restore')];
   const history = await new MembershipHistory().connect(db).addAllColumns().orderByHistoryIdAsc().gets();

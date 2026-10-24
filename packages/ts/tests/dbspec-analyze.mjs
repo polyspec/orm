@@ -4,6 +4,7 @@
 //
 // Usage: node --test packages/ts/tests/dbspec-analyze.mjs (after the build)
 import { caseTest } from '../../../tests/testcase.mts';
+import { vectorRegistrar } from '../../../tests/vector-registrar.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { analyzeDbspec, formatDbspec } from '../dist/dbspec/index.js';
@@ -14,9 +15,7 @@ const root = new URL('../../../', import.meta.url);
 const cases = readCases();
 const TIMEOUT = 15000;
 
-function vector(name, body) {
-  caseTest(name, TIMEOUT, body);
-}
+const vector = vectorRegistrar(caseTest, TIMEOUT);
 
 // The first red of this item: the header line gives its keyword, number and name tokens.
 // Requirements: DBS-134, DBS-135.

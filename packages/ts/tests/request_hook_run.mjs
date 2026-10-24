@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { CORE, Db, Model, OrmError, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
+import { codeOf } from './error_code.mjs';
 
 const fixtureText = await readFile(new URL('../../../contracts/fixtures/request_hook.dbs', import.meta.url), 'utf8');
 
@@ -71,10 +72,6 @@ function item(values) {
   const m = new Item();
   for (const [column, value] of Object.entries(values)) m[CORE].setValue(column, value);
   return m;
-}
-
-async function codeOf(promise) {
-  try { await promise; return null; } catch (error) { return error instanceof OrmError ? error.code : String(error); }
 }
 
 /** The [part, label] list in label order. */
@@ -187,7 +184,7 @@ export const cases = {
         andWhere(request, { column: 'part', op: 'eq', p: request.n_params + 5 });
         return request;
       });
-      assert.equal(await codeOf(new Item().connect(hooked).getCount()), 'IR_INVALID', 'a parameter index outside the parameters');
+      assert.equal(await codeOf(new Item().connect(hooked).getCount(), OrmError), 'IR_INVALID', 'a parameter index outside the parameters');
       assert.equal(events.length, 0, `no statement runs: ${events.map(e => e.sql)}`);
     } finally { unsubscribe(); }
   },
@@ -204,7 +201,7 @@ export const cases = {
   /** The set names the primary key; the hook's condition narrows the restore to the rows of its part. */
   async restore_condition(db) {
     const ids = await seedDeletedEntries(db);
-    assert.equal(await codeOf(entry({ id: ids.ay, note: 'n2' }).connect(db.withRequestHook(partScope('b'))).restore()), 'NO_ROWS', 'the restore outside the hook condition');
+    assert.equal(await codeOf(entry({ id: ids.ay, note: 'n2' }).connect(db.withRequestHook(partScope('b'))).restore(), OrmError), 'NO_ROWS', 'the restore outside the hook condition');
     assert.deepEqual(await entryRows(db), [], 'the restore outside the hook condition restores no row');
     const values = (await entry({ id: ids.ay, note: 'n2' }).connect(db.withRequestHook(partScope('a'))).restore()).toArray();
     assert.deepEqual([values.id, values.label, values.note], [ids.ay, 'y', 'n2'], 'the restore inside the hook condition returns (a, y) with note n2');
@@ -216,7 +213,7 @@ export const cases = {
     const events = [];
     const unsubscribe = db.subscribe(event => events.push(event));
     try {
-      assert.equal(await codeOf(entry({ note: 'n3' }).connect(db.withRequestHook(partScope('a'))).restore()), 'IR_INVALID', 'a restore without a key');
+      assert.equal(await codeOf(entry({ note: 'n3' }).connect(db.withRequestHook(partScope('a'))).restore(), OrmError), 'IR_INVALID', 'a restore without a key');
       assert.equal(events.length, 0, `no statement runs: ${events.map(e => e.sql)}`);
     } finally { unsubscribe(); }
   },

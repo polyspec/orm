@@ -156,10 +156,14 @@ async function main() {
     const out: unknown[] = [];
     for (const locked of [false, true]) {
       const user = await new User().connect(db).setName('delete-lock').create();
-      const uSeq = user.toArray().seq as number;
+      const uSeqValue = user.toArray().seq;
+      if (typeof uSeqValue !== 'number') throw new Error('delete_lock user seq is not a number');
+      const uSeq = uSeqValue;
       const author = await new Author().connect(db).setName('delete-lock').setUserSeq(uSeq).setServiceSeq(7)
         .setServiceRegionSeq(7).setServiceMemberSeq(7).setStartDt('2026-01-01 00:00:00').setEndDt('2026-12-31 00:00:00').create();
-      const aSeq = author.toArray().seq as number;
+      const aSeqValue = author.toArray().seq;
+      if (typeof aSeqValue !== 'number') throw new Error('delete_lock author seq is not a number');
+      const aSeq = aSeqValue;
       const rel = new Author().matchSeqWithUserSeq();
       if (locked) rel.deleteLock();
       const loaded = await new User().connect(db).seq(uSeq).relations(rel).gets();

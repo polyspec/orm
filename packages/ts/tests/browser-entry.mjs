@@ -9,10 +9,11 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { builtinModules, createRequire } from 'node:module';
-import { dirname, relative, resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseSync, visitorKeys } from 'oxc-parser';
 import { caseTest } from '../../../tests/testcase.mts';
+import { scanModule } from '../../../tests/module-scan.mjs';
+import { walkModules } from '../../../tests/module-graph.mjs';
 
 // The deadline of one case; each case runs through caseTest so it reports its RUN, PASS or FAIL line.
 const TIMEOUT = 15000;
@@ -24,71 +25,21 @@ const start = resolve(pkgRoot, subpath.import);
 
 // Node globals that the entry must not read. A use is an identifier in expression position; a property name such
 // as `x.process` or an object key is not a use.
-const FORBIDDEN_GLOBALS = new Set(['Buffer', 'process', '__dirname', 'require']);
 // The packages that the entry may import: each is written for browsers and Node alike, and its modules are followed
 // and checked like the entry's own. @noble/hashes gives the synchronous SHA-256 of the renderer names (names.ts).
 const BROWSER_PACKAGES = new Set(['@noble/hashes']);
 // Every Node builtin root name, with and without the node: prefix, so `fs/promises` is caught through `fs`.
 const BUILTIN_ROOTS = new Set(builtinModules.map(m => m.replace(/^node:/, '').split('/')[0]));
 
-/** Whether the identifier is a reference to a binding rather than the name of a property or a member. */
-function isReference(node, parent) {
-  if (parent.type === 'MemberExpression' && !parent.computed && parent.property === node) return false;
-  if (parent.type === 'Property' && !parent.computed && !parent.shorthand && parent.key === node) return false;
-  if ((parent.type === 'MethodDefinition' || parent.type === 'PropertyDefinition' || parent.type === 'AccessorProperty') && !parent.computed && parent.key === node) return false;
-  return true;
-}
-
-/** The literal text of a module specifier: a string literal or a template literal without substitutions. */
-function literal(node) {
-  if (node.type === 'Literal' && typeof node.value === 'string') return node.value;
-  if (node.type === 'TemplateLiteral' && node.expressions.length === 0) return node.quasis[0].value.cooked;
-  return undefined;
-}
-
-/** The import specifiers, dynamic imports with no literal specifier and forbidden identifier uses of one module. */
-function scan(file) {
-  const text = readFileSync(file, 'utf8');
-  const parsed = parseSync(file, text);
-  assert.deepEqual(parsed.errors.map(error => error.message), [], `${relative(pkgRoot, file)} parses`);
-  const where = node => {
-    const before = text.slice(0, node.start).split('\n');
-    return `${relative(pkgRoot, file)}:${before.length}:${before.at(-1).length + 1}`;
-  };
-  const imports = [];
-  const violations = [];
-  const visit = (node, parent) => {
-    if ((node.type === 'ImportDeclaration' || node.type === 'ExportNamedDeclaration' || node.type === 'ExportAllDeclaration') && node.source) {
-      imports.push({ specifier: node.source.value, at: where(node) });
-    } else if (node.type === 'ImportExpression') {
-      const specifier = literal(node.source);
-      if (specifier !== undefined) imports.push({ specifier, at: where(node) });
-      else violations.push(`${where(node)} dynamic import with no literal specifier cannot be followed`);
-    } else if (node.type === 'Identifier' && FORBIDDEN_GLOBALS.has(node.name) && isReference(node, parent)) {
-      violations.push(`${where(node)} uses the Node global ${node.name}`);
-    }
-    for (const key of visitorKeys[node.type] ?? []) {
-      for (const child of [node[key]].flat()) if (child) visit(child, node);
-    }
-  };
-  visit(parsed.program, undefined);
-  return { imports, violations };
-}
 
 /** Every module reachable from the subpath's module, with the violations found in each. */
 function graph() {
-  const seen = new Set();
-  const violations = [];
-  const queue = [start];
-  while (queue.length > 0) {
-    const file = queue.shift();
-    if (seen.has(file)) continue;
-    seen.add(file);
-    const { imports, violations: local } = scan(file);
-    violations.push(...local);
+  const { modules, violations } = walkModules(start, file => {
+    const { imports, violations: local } = scanModule(file, pkgRoot);
+    const targets = [];
     for (const { specifier, at } of imports) {
       if (specifier.startsWith('node:')) {
-        violations.push(`${at} imports "${specifier}"`);
+        local.push(`${at} imports "${specifier}"`);
         continue;
       }
       let target;
@@ -97,7 +48,7 @@ function graph() {
         const name = specifier.startsWith('@') ? parts.slice(0, 2).join('/') : parts[0];
         if (!BROWSER_PACKAGES.has(name)) {
           const kind = BUILTIN_ROOTS.has(parts[0]) ? 'a Node builtin' : 'a bare module (a package such as a driver)';
-          violations.push(`${at} imports "${specifier}", ${kind}`);
+          local.push(`${at} imports "${specifier}", ${kind}`);
           continue;
         }
         target = createRequire(file).resolve(specifier);
@@ -105,13 +56,14 @@ function graph() {
         target = resolve(dirname(file), specifier);
       }
       if (!target.endsWith('.js')) {
-        violations.push(`${at} imports "${specifier}", which is not a built .js module`);
+        local.push(`${at} imports "${specifier}", which is not a built .js module`);
         continue;
       }
-      queue.push(target);
+      targets.push(target);
     }
-  }
-  return { modules: seen, violations };
+    return { targets, violations: local };
+  });
+  return { modules, violations };
 }
 
 // Requirements: ORE-6, ORES-53, ORES-54, ORES-55.

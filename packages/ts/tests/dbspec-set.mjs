@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { caseTest } from '../../../tests/testcase.mts';
 import { parseSet, readDbspecSet } from '../dist/dbspec/index.js';
 import { parseSet as browserParseSet } from '../dist/dbspec/entry.js';
+import { exactKeys } from './assertions.mjs';
 
 // The deadline of one case: it writes a tree of a few files and reads it.
 const TIMEOUT = 15000;
@@ -23,12 +24,6 @@ const SET_NAME = 'dbspec-set.json';
 
 const vectorPath = fileURLToPath(new URL('../../../tests/dbspec/set-files.json', import.meta.url));
 const vectors = JSON.parse(readFileSync(vectorPath, 'utf8'));
-
-/** Asserts that `value` is a plain object with exactly the keys `keys`. */
-function exactKeys(value, keys, where) {
-  assert.ok(value !== null && typeof value === 'object' && !Array.isArray(value), `${where} is an object`);
-  assert.deepEqual(Object.keys(value).sort(), [...keys].sort(), `${where} has exactly the keys ${keys.join(', ')}`);
-}
 
 function stringList(value, where) {
   assert.ok(Array.isArray(value) && value.every(v => typeof v === 'string'), `${where} is a list of strings`);
@@ -107,7 +102,10 @@ function build(tree) {
     else {
       // Windows needs the kind of the target; POSIX ignores it.
       let type = 'file';
-      try { if (statSync(join(dirname(target), entry.symlink)).isDirectory()) type = 'dir'; } catch { /* a missing target is a file link */ }
+      try { if (statSync(join(dirname(target), entry.symlink)).isDirectory()) type = 'dir'; } catch (error) {
+        if (error?.code !== 'ENOENT') throw error;
+        // A missing target is a file link.
+      }
       symlinkSync(entry.symlink, target, type);
     }
   }

@@ -10,15 +10,10 @@ import { fileURLToPath } from 'node:url';
 import { COMPUTE, caseTest } from '../../../tests/testcase.mts';
 import { parseDbspecSet } from '../dist/index.js';
 import { parseDbspecSet as browserParseDbspecSet } from '../dist/dbspec/entry.js';
+import { exactKeys } from './assertions.mjs';
 
 const vectorPath = fileURLToPath(new URL('../../../tests/dbspec/set-parse.json', import.meta.url));
 const vectors = JSON.parse(readFileSync(vectorPath, 'utf8'));
-
-/** Asserts that `value` is a plain object with exactly the keys `keys`. */
-function exactKeys(value, keys, where) {
-  assert.ok(value !== null && typeof value === 'object' && !Array.isArray(value), `${where} is an object`);
-  assert.deepEqual(Object.keys(value).sort(), [...keys].sort(), `${where} has exactly the keys ${keys.join(', ')}`);
-}
 
 /** Reads a wanted diagnostic: its rule, line and column, and its message when the vector states one. */
 function wantDiagnostic(d, where) {

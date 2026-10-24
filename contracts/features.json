@@ -9335,6 +9335,136 @@
   ],
   "helpers": [
     {
+      "id": "dbspec-vector-line-join",
+      "paths": [
+        "tests/dbspec/join.mjs"
+      ],
+      "tests": [
+        "tests/dbspec/join.test.mjs"
+      ],
+      "command": "node --test tests/dbspec/join.test.mjs"
+    },
+    {
+      "id": "javascript-vector-case-registrar",
+      "paths": [
+        "tests/vector-registrar.mjs"
+      ],
+      "tests": [
+        "tests/vector-registrar.test.mjs"
+      ],
+      "command": "node --test tests/vector-registrar.test.mjs"
+    },
+    {
+      "id": "test-server-pid-fixture",
+      "paths": [
+        "scripts/test-servers-fixture.mts"
+      ],
+      "tests": [
+        "scripts/test-servers-fixture.test.mts"
+      ],
+      "command": "node --test scripts/test-servers-fixture.test.mts"
+    },
+    {
+      "id": "typescript-test-error-code",
+      "paths": [
+        "packages/ts/tests/error_code.mjs"
+      ],
+      "tests": [
+        "packages/ts/tests/error_code.test.mjs"
+      ],
+      "command": "node --test packages/ts/tests/error_code.test.mjs"
+    },
+    {
+      "id": "typescript-dbspec-schema-value",
+      "paths": [
+        "packages/ts/tests/schema_of.mjs"
+      ],
+      "tests": [
+        "packages/ts/tests/schema_of.test.mjs"
+      ],
+      "command": "node --test packages/ts/tests/schema_of.test.mjs"
+    },
+    {
+      "id": "typescript-test-exact-keys",
+      "paths": [
+        "packages/ts/tests/assertions.mjs"
+      ],
+      "tests": [
+        "packages/ts/tests/assertions.test.mjs"
+      ],
+      "command": "node --test packages/ts/tests/assertions.test.mjs"
+    },
+    {
+      "id": "typescript-dbspec-document-parser",
+      "paths": [
+        "packages/ts/tests/parse_documents.mjs"
+      ],
+      "tests": [
+        "packages/ts/tests/parse_documents.test.mjs"
+      ],
+      "command": "node --test packages/ts/tests/parse_documents.test.mjs"
+    },
+    {
+      "id": "typescript-markdown-listener",
+      "paths": [
+        "packages/ts/tests/markdown_server.mjs"
+      ],
+      "tests": [
+        "packages/ts/tests/markdown_server.test.mjs"
+      ],
+      "command": "node --test packages/ts/tests/markdown_server.test.mjs"
+    },
+    {
+      "id": "typescript-generated-model-output",
+      "paths": [
+        "packages/ts/tests/generated_model_output.mjs"
+      ],
+      "tests": [
+        "packages/ts/tests/generated_model_output.test.mjs"
+      ],
+      "command": "node --test packages/ts/tests/generated_model_output.test.mjs"
+    },
+    {
+      "id": "typescript-generator-scan-runner",
+      "paths": [
+        "packages/ts/tests/generator_scan.mjs"
+      ],
+      "tests": [
+        "packages/ts/tests/generator_scan.test.mjs"
+      ],
+      "command": "node --test packages/ts/tests/generator_scan.test.mjs"
+    },
+    {
+      "id": "typescript-registered-models",
+      "paths": [
+        "packages/ts/tests/registered_models.mjs"
+      ],
+      "tests": [
+        "packages/ts/tests/registered_models.test.mjs"
+      ],
+      "command": "node --test packages/ts/tests/registered_models.test.mjs"
+    },
+    {
+      "id": "javascript-module-scan",
+      "paths": [
+        "tests/module-scan.mjs"
+      ],
+      "tests": [
+        "tests/module-scan.test.mjs"
+      ],
+      "command": "node --test tests/module-scan.test.mjs"
+    },
+    {
+      "id": "javascript-module-graph-walk",
+      "paths": [
+        "tests/module-graph.mjs"
+      ],
+      "tests": [
+        "tests/module-graph.test.mjs"
+      ],
+      "command": "node --test tests/module-graph.test.mjs"
+    },
+    {
       "id": "physical-steps",
       "paths": [
         "scripts/physical.mts"

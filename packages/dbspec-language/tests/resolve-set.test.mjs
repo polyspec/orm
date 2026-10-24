@@ -36,7 +36,10 @@ function build(tree) {
     else {
       // Windows needs the kind of the target; POSIX ignores it.
       let type = 'file';
-      try { if (statSync(join(dirname(target), entry.symlink)).isDirectory()) type = 'dir'; } catch { /* a missing target is a file link */ }
+      try { if (statSync(join(dirname(target), entry.symlink)).isDirectory()) type = 'dir'; } catch (error) {
+        if (error?.code !== 'ENOENT') throw error;
+        // A missing target is a file link.
+      }
       symlinkSync(entry.symlink, target, type);
     }
   }

@@ -11,6 +11,7 @@ import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
 import { OrmError } from '../dist/index.js';
 import { connect } from '../dist/models/markdown_fixture/models.js';
 import { conformanceCases, normalize } from './markdown_cases.mjs';
+import { listenMarkdownServer } from './markdown_server.mjs';
 
 /**
  * A listener that answers connect with {"ok":true} and every later message with the answer of answers keyed by the op
@@ -38,9 +39,7 @@ async function keyedServer(answers) {
     });
     socket.on('error', () => {});
   });
-  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-  const { port } = server.address();
-  return { dsn: `markdown://127.0.0.1:${port}/conformance?token=0123456789abcdef0123456789abcdef`, close: () => new Promise(resolve => server.close(resolve)) };
+  return listenMarkdownServer(server);
 }
 
 async function answeringServer(answer) {
@@ -51,9 +50,7 @@ async function answeringServer(answer) {
     });
     socket.on('error', () => {});
   });
-  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
-  const { port } = server.address();
-  return { dsn: `markdown://127.0.0.1:${port}/conformance?token=0123456789abcdef0123456789abcdef`, close: () => new Promise(resolve => server.close(resolve)) };
+  return listenMarkdownServer(server);
 }
 
 // Each case of the fixture is one test named by its id, the name that the suite of the fixture holds.

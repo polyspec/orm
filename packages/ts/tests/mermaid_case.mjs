@@ -2,6 +2,7 @@
 // client: the helpers and one function per section; each dbspec-mermaid-<section>.mjs calls one. After the cases of a
 // section ran, the section checks that every one of its cases ran.
 import { caseTest } from '../../../tests/testcase.mts';
+import { vectorRegistrar } from '../../../tests/vector-registrar.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { after } from 'node:test';
@@ -15,9 +16,7 @@ const TIMEOUT = 5000;
 
 // vector runs one case with its own deadline and reports its start, result
 // and elapsed time.
-export function vector(name, body) {
-  caseTest(name, TIMEOUT, body);
-}
+export const vector = vectorRegistrar(caseTest, TIMEOUT);
 
 const text = lines => lines.join('\n') + '\n';
 const drops = dropped => dropped.map(u => [u.kind, u.table, u.name]);

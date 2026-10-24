@@ -4,6 +4,7 @@
 //
 // Usage: node --test packages/ts/tests/dbspec-syntax.mjs (after the build)
 import { caseTest } from '../../../tests/testcase.mts';
+import { vectorRegistrar } from '../../../tests/vector-registrar.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { analyzeDbspec, parseDbspec } from '../dist/dbspec/index.js';
@@ -15,9 +16,7 @@ const cases = readCases();
 const TIMEOUT = 15000;
 const CLASSES = new Set(['keyword', 'type', 'name', 'setting', 'number', 'string', 'operator', 'punctuation', 'comment', 'word']);
 
-function vector(name, body) {
-  caseTest(name, TIMEOUT, body);
-}
+const vector = vectorRegistrar(caseTest, TIMEOUT);
 
 // The shared vectors are read strictly: the file has exactly the fields of the format, and it is the generator's output.
 const syntaxText = readFileSync(new URL('tests/dbspec/syntax.json', root), 'utf8');
