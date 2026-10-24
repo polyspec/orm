@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 543d76fd99c8724f56486557c06a3e6812f95895622621eb7783be9339e1b527 -->
+<!-- source-sha256: d887932c0b4a190acdc921e79df181d13648806832f648792c289dd489e57c64 -->
 # 변경 이력
 
 ## Unreleased
+
+- Scalar-subquery planner와 markdown 결과 조립은 존재하지 않는 entity나 column에 임의 결과 타입을 만들지 않고 이름을 포함한 `INTERNAL`을 반환한다. canonical native owner target은 수정 전 실제 source `0898f6f16287`에서 실패했고 수정 후 통과한다: Go (2 tests), Rust planner/markdown (4 tests), TypeScript 선택 case, PHP (2 tests), Python (4 dialect subcase를 포함한 1 test), PHP extension (2 tests). count는 `i64`, avg는 `f64`로 유지한다(KSTD-5-63).
 
 - PHP 및 native C Codec은 예상된 YAML/JSON codec 오류만 감싸고 동일한 cause 객체를 보존하며, 예상 밖 RuntimeException, TypeError, Error는 그대로 전파한다. PHP 8.4.26에서 main commit `9af48c4ab`의 `make php-codec-causes-check`는 source와 native extension의 focused 테스트 8개(102 assertions)를 통과한다. 수정 전 `382a7754552a`에서 같은 target은 YAML/JSON wrapper가 원인을 버리고 YAML probe가 예상 밖 throwable identity를 바꾸어 실패했다(KSTD-5-77).
 
