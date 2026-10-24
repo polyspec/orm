@@ -84,24 +84,9 @@ impl std::io::Write for Fnv {
 /// `<table>_model` or `<table>_models`.
 pub(crate) fn result_name(c: &Core, many: bool) -> String {
     if !c.alias.is_empty() {
-        return snake(&c.alias);
+        return polyspec_orm_schema::names::snake_case(&c.alias);
     }
     format!("{}_{}", c.ent.name, if many { "models" } else { "model" })
-}
-
-pub(crate) fn snake(s: &str) -> String {
-    let mut out = String::new();
-    for (i, ch) in s.chars().enumerate() {
-        if ch.is_ascii_uppercase() {
-            if i > 0 {
-                out.push('_');
-            }
-            out.push(ch.to_ascii_lowercase());
-        } else {
-            out.push(ch);
-        }
-    }
-    out
 }
 
 /// One statement being built: its models and their join paths.

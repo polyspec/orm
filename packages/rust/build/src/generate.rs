@@ -95,20 +95,7 @@ fn has_trait(column: &str) -> String {
 }
 
 fn index_method(name: &str) -> String {
-    // snake(pascal(name))
-    let p = pascal(name);
-    let mut out = String::new();
-    for (i, ch) in p.chars().enumerate() {
-        if ch.is_ascii_uppercase() {
-            if i > 0 {
-                out.push('_');
-            }
-            out.push(ch.to_ascii_lowercase());
-        } else {
-            out.push(ch);
-        }
-    }
-    out
+    polyspec_orm_schema::names::snake_case(&pascal(name))
 }
 
 /// The Rust value type of a column without null (docs/spec/dbspec.md, "Runtime model"). If the column has a codec
