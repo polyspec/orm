@@ -19,11 +19,12 @@ func compact(s string) string {
 	}, s)
 }
 
-// languages is the declared implementations of config/parity.json, the one language set; this package is in tests/interfaces/contracts.
+// languages is the client language set; extension implementations are validated separately below.
 var languages = implementationLanguages()
 
 func implementationLanguages() []string {
-	return testcase.ParityImplementations(filepath.Join("..", "..", ".."))
+	languages := testcase.ParityImplementations(filepath.Join("..", "..", ".."))
+	return slices.DeleteFunc(languages, func(language string) bool { return language == "php-extension" })
 }
 
 // outputs maps a common result to the native return type of each language and
@@ -78,6 +79,7 @@ var outputs = map[string]map[string]string{
 	"DbspecAddedSteps":           {"go": "(added[]string,steps[]PlanStep,differences[]string)", "php": "array", "rust": "AddTablesAndColumnsSteps", "typescript": "DbspecAddTablesAndColumnsSteps", "php-extension": "array", "python": "dict"},
 	"DbspecPlanStepsResult":      {"go": "([]PlanStep,[]Diagnostic)", "php": "Polyspec\\Orm\\Dbspec\\PlanStepsResult", "rust": "Result<Vec<PlanStep>,Vec<Diagnostic>>", "typescript": "DbspecPlanStepsResult", "php-extension": "Polyspec\\Orm\\Dbspec\\Native\\PlanStepsResult", "python": "dict"},
 	"DbspecApplied":              {"go": "error", "php": "void", "rust": "Result<(),ApplyError>", "typescript": "Promise<void>", "php-extension": "void", "python": "None"},
+	"DbspecApplyResult":          {"go": "(ApplyResult,error)", "php": "void", "rust": "Result<(),ApplyError>", "typescript": "Promise<void>", "python": "None"},
 	"DbspecMermaidExport":        {"go": "(string,[]Unsupported)", "php": "Polyspec\\Orm\\Dbspec\\MermaidExportResult", "rust": "(String,Vec<Unsupported>)", "typescript": "DbspecMermaidExport", "php-extension": "Polyspec\\Orm\\Dbspec\\Native\\MermaidExportResult", "python": "dict"},
 	"DbspecMermaidImport":        {"go": "(*Document,[]Unsupported,[]Diagnostic)", "php": "Polyspec\\Orm\\Dbspec\\MermaidImportResult", "rust": "Result<(Document,Vec<Unsupported>),Vec<Diagnostic>>", "typescript": "DbspecMermaidImport", "php-extension": "Polyspec\\Orm\\Dbspec\\Native\\MermaidImportResult", "python": "dict"},
 	"AddedTablesAndColumns":      {"go": "([]string,error)", "php": "array", "rust": "Result<Vec<String>>", "typescript": "Promise<string[]>", "python": "list[str]"},
@@ -99,9 +101,21 @@ var outputs = map[string]map[string]string{
 	"Stats":          {"go": "DBStats", "php": "Polyspec\\Orm\\Stats", "rust": "DbStats", "typescript": "PoolStats", "python": "DbStats"},
 	"PrivilegeUtils": {"go": "*PrivilegeUtils", "php": "Polyspec\\Orm\\PrivilegeUtils", "rust": "PrivilegeUtils<'_>", "typescript": "PrivilegeUtils", "python": "PrivilegeUtils"},
 	// A schema inspection reads the database and reports one boolean.
-	"Inspected": {"go": "(bool,error)", "php": "bool", "rust": "Result<bool>", "typescript": "Promise<boolean>", "python": "bool"},
+	"Inspected":       {"go": "(bool,error)", "php": "bool", "rust": "Result<bool>", "typescript": "Promise<boolean>", "python": "bool"},
+	"LocalInspection": {"go": "(bool,error)", "php": "bool", "rust": "Result<bool>", "typescript": "boolean", "python": "bool"},
 	// A keyring lists the versions it declares, in ascending order.
 	"KeyVersions": {"go": "[]int32", "php": "array", "rust": "Vec<i32>", "typescript": "number[]", "python": "list"},
+}
+
+// The extension exposes the PHP library's logical API and types. Its native
+// declarations are checked against these PHP contract types just like the
+// other implementations' declarations are checked against their own types.
+func init() {
+	for _, contracts := range []map[string]map[string]string{outputs, inputs} {
+		for _, nativeTypes := range contracts {
+			nativeTypes["php-extension"] = nativeTypes["php"]
+		}
+	}
 }
 
 // inputs maps a common argument list to the native parameters of each
@@ -154,6 +168,7 @@ var inputs = map[string]map[string]string{
 	"LocalKeyValue":          {"go": "key,valuestring", "php": "string$key,string$value", "rust": "key:&str,value:&str", "typescript": "key:string,value:string", "python": "key:str,value:str"},
 	"SchemaName":             {"go": "namestring", "php": "string$schema", "rust": "name:&str", "typescript": "name:string", "python": "name:str"},
 	"SchemaTable":            {"go": "name,tablestring", "php": "string$schema,string$table", "rust": "name:&str,table:&str", "typescript": "name:string,table:string", "python": "name:str,table:str"},
+	"EntityName,SequenceKey": {"go": "entitystring,keyint64", "php": "string$entity,int$sequence", "rust": "entity:&str,sequence:i64", "typescript": "entity:string,sequence:number", "python": "entity:str,sequence:int"},
 }
 
 // validateRules checks every native adapter against the common inputs and
@@ -193,7 +208,14 @@ func validateRules(d document) error {
 			}
 			got, ret := sig[begin+1:end], sig[end+1:]
 			switch lang {
-			case "php", "typescript":
+			case "go":
+				// A context used only to cancel or scope a call is not a logical input.
+				// Contracts that expose it name it explicitly; otherwise omit the Go context.
+				if !strings.HasPrefix(args[lang], "ctxcontext.Context") {
+					got = strings.TrimPrefix(got, "ctxcontext.Context,")
+					got = strings.TrimPrefix(got, "ctxcontext.Context")
+				}
+			case "php", "php-extension", "typescript":
 				ret = strings.TrimPrefix(ret, ":")
 			case "python":
 				got, ret = pythonParts(got, ret)
@@ -210,7 +232,7 @@ func validateRules(d document) error {
 				// builder, and registration returns a synchronous result without a database. Subscription also does not touch the database, and its errors
 				// are only the markdown connection's rejection, which sends no statement.
 				// local reads the value that setLocal left in the transaction and never reaches the database.
-				if len(r.Errors) > 0 && r.Output != "TransactionResult" && r.Output != "Registered" && r.Output != "Unsubscribe" && r.Output != "LocalValue" && !strings.Contains(sig, "asyncfn") {
+				if len(r.Errors) > 0 && r.Output != "TransactionResult" && r.Output != "Registered" && r.Output != "Unsubscribe" && r.Output != "LocalValue" && r.Output != "LocalInspection" && !strings.Contains(sig, "asyncfn") {
 					return fmt.Errorf("%s Rust execution must be async", r.ID)
 				}
 			}

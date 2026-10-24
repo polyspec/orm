@@ -47,7 +47,7 @@
   },
   "extensions": {
     "php-extension": {
-      "description": "The PHP extension polyspec_orm (packages/php-ext) implements the dbspec surface and error codes of the PHP client in C under the client's own names, and registers native Orm, Stats, OrmException, AesKeyring and AesRotationStatus classes. Its declarations are read from its stub with the PHP parser; make dbspec-php-extension-check checks that the loaded extension declares the same.",
+      "description": "The PHP extension polyspec_orm (packages/php-ext) implements the PHP logical interface rules declared here and the dbspec surface and error codes in C under the client's own names. Its declarations are read from its stub with the PHP parser; make dbspec-php-extension-check checks that the loaded extension declares the same.",
       "syntax": "php",
       "roots": [
         "packages/php-ext/src"
@@ -55,6 +55,63 @@
       "symbols": "contracts/symbols/php-extension.json",
       "symbol_hash": "sha256:2f22093907a6b5e11dc2ef2f57093346f2c5f56177971de83a763c58e0319e0f",
       "rules": [
+        "Model.connect",
+        "Model.and",
+        "Model.or",
+        "Model.relation",
+        "Model.relations",
+        "Model.limit",
+        "Model.expectRevision",
+        "Model.duplication",
+        "Model.get",
+        "Model.gets",
+        "Model.getsCount",
+        "Model.getCount",
+        "Model.getSum",
+        "Model.getAvg",
+        "Model.getsPage",
+        "Model.getQuery",
+        "Model.create",
+        "Model.creates",
+        "Model.update",
+        "Model.save",
+        "Model.delete",
+        "Model.restore",
+        "Model.restoreOrCreate",
+        "Model.toArray",
+        "Collection.get",
+        "Collection.first",
+        "Collection.keys",
+        "Collection.connect",
+        "Collection.delete",
+        "Collection.toArray",
+        "Db.connect",
+        "Db.connectSchema",
+        "Db.transaction",
+        "Db.utils",
+        "Db.subscribe",
+        "Db.execute",
+        "Db.withRequestHook",
+        "Db.close",
+        "Db.stats",
+        "Utils.lock",
+        "Utils.setLocal",
+        "Utils.local",
+        "Utils.wasInserted",
+        "Utils.backendWaitingForLock",
+        "Utils.schema",
+        "SchemaUtils.register",
+        "SchemaUtils.install",
+        "SchemaUtils.addTablesAndColumns",
+        "SchemaUtils.exists",
+        "SchemaUtils.installed",
+        "SchemaUtils.empty",
+        "Utils.aes",
+        "Utils.privileges",
+        "Utils.stats",
+        "AesUtils.status",
+        "AesUtils.rotate",
+        "AESKeyring.versions",
         "Dbspec.readFile",
         "Dbspec.readBytes",
         "Dbspec.readSet",
@@ -506,6 +563,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/model.py::Model.connect",
           "signature": "def connect(self, db: Db) -> Self"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::connect",
+          "signature": "public function connect(Polyspec\\Orm\\Db $db): static"
         }
       }
     },
@@ -538,6 +599,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/model.py::Model.and_",
           "signature": "def and_(self, *args) -> Self"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::and",
+          "signature": "public function and(mixed ...$args): static"
         }
       }
     },
@@ -570,6 +635,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/model.py::Model.or_",
           "signature": "def or_(self, *args) -> Self"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::or",
+          "signature": "public function or(mixed ...$args): static"
         }
       }
     },
@@ -602,6 +671,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/model.py::Model.relation",
           "signature": "def relation(self, child: Model) -> Self"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::relation",
+          "signature": "public function relation(Polyspec\\Orm\\Model $child): static"
         }
       }
     },
@@ -634,6 +707,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/model.py::Model.relations",
           "signature": "def relations(self, child: Model) -> Self"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::relations",
+          "signature": "public function relations(Polyspec\\Orm\\Model $child): static"
         }
       }
     },
@@ -666,6 +743,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/model.py::Model.limit",
           "signature": "def limit(self, offset: int, count: int) -> Self"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::limit",
+          "signature": "public function limit(int $offset, int $count): static"
         }
       }
     },
@@ -698,6 +779,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/model.py::Model.expect_revision",
           "signature": "def expect_revision(self, column: str, revision: int) -> Self"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::expectRevision",
+          "signature": "public function expectRevision(string $column, int $revision): static"
         }
       }
     },
@@ -730,6 +815,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/model.py::Model.duplication",
           "signature": "def duplication(self, model: Self) -> Self"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::duplication",
+          "signature": "public function duplication(Polyspec\\Orm\\Model $model): static"
         }
       }
     },
@@ -764,6 +853,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/model.py::Model.get",
           "signature": "def get(self) -> Self | None"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::get",
+          "signature": "public function get(): ?static"
         }
       }
     },
@@ -798,6 +891,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/model.py::Model.gets",
           "signature": "def gets(self) -> Collection[Self]"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::gets",
+          "signature": "public function gets(): Polyspec\\Orm\\Collection"
         }
       }
     },
@@ -832,6 +929,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/model.py::Model.gets_count",
           "signature": "def gets_count(self) -> GroupRows"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::getsCount",
+          "signature": "public function getsCount(): Polyspec\\Orm\\GroupRows"
         }
       }
     },
@@ -866,6 +967,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/model.py::Model.get_count",
           "signature": "def get_count(self) -> int"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::getCount",
+          "signature": "public function getCount(): int"
         }
       }
     },
@@ -900,6 +1005,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/model.py::Model.get_sum",
           "signature": "def get_sum(self) -> float"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::getSum",
+          "signature": "public function getSum(): float"
         }
       }
     },
@@ -934,6 +1043,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/model.py::Model.get_avg",
           "signature": "def get_avg(self) -> float | None"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::getAvg",
+          "signature": "public function getAvg(): ?float"
         }
       }
     },
@@ -970,6 +1083,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/model.py::Model.gets_page",
           "signature": "def gets_page(self, page: int, per_page: int) -> Page[Self]"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::getsPage",
+          "signature": "public function getsPage(int $page, int $perPage): Polyspec\\Orm\\Page"
         }
       }
     },
@@ -1004,6 +1121,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/model.py::Model.get_query",
           "signature": "def get_query(self) -> dict"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::getQuery",
+          "signature": "public function getQuery(): array"
         }
       }
     },
@@ -1040,6 +1161,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/model.py::Model.create",
           "signature": "def create(self) -> Self"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::create",
+          "signature": "public function create(): static"
         }
       }
     },
@@ -1080,6 +1205,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/model.py::Model.creates",
           "signature": "def creates(self, rows: list[Self], batch: int) -> int"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::creates",
+          "signature": "public function creates(array $rows, int $batch): int"
         }
       }
     },
@@ -1118,6 +1247,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/model.py::Model.update",
           "signature": "def update(self, optimistic: bool=False) -> Self"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::update",
+          "signature": "public function update(bool $optimistic=false): static"
         }
       }
     },
@@ -1154,6 +1287,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/model.py::Model.save",
           "signature": "def save(self) -> Self"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::save",
+          "signature": "public function save(): static"
         }
       }
     },
@@ -1192,6 +1329,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/model.py::Model.delete",
           "signature": "def delete(self, recursive: bool=False) -> None"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::delete",
+          "signature": "public function delete(bool $recursive=false): void"
         }
       }
     },
@@ -1227,6 +1368,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/model.py::Model.restore",
           "signature": "def restore(self) -> Self"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::restore",
+          "signature": "public function restore(): static"
         }
       }
     },
@@ -1263,6 +1408,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/model.py::Model.restore_or_create",
           "signature": "def restore_or_create(self) -> Self"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::restoreOrCreate",
+          "signature": "public function restoreOrCreate(): static"
         }
       }
     },
@@ -1293,6 +1442,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/model.py::Model.to_array",
           "signature": "def to_array(self) -> dict"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model::toArray",
+          "signature": "public function toArray(): array"
         }
       }
     },
@@ -1325,6 +1478,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/model.py::Collection.get",
           "signature": "def get(self, key) -> Model | None"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Collection::get",
+          "signature": "public function get(Polyspec\\Orm\\Bytes|DateTimeInterface|string|int|bool $key): ?Polyspec\\Orm\\Model"
         }
       }
     },
@@ -1355,6 +1512,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/model.py::Collection.first",
           "signature": "def first(self) -> Model | None"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Collection::first",
+          "signature": "public function first(): ?Polyspec\\Orm\\Model"
         }
       }
     },
@@ -1385,6 +1546,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/model.py::Collection.keys",
           "signature": "def keys(self) -> list"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Collection::keys",
+          "signature": "public function keys(): array"
         }
       }
     },
@@ -1417,6 +1582,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/model.py::Collection.connect",
           "signature": "def connect(self, db: Db) -> Self"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Collection::connect",
+          "signature": "public function connect(Polyspec\\Orm\\Db $db): Polyspec\\Orm\\Collection"
         }
       }
     },
@@ -1454,6 +1623,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/model.py::Collection.delete",
           "signature": "def delete(self, recursive: bool=False) -> None"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Collection::delete",
+          "signature": "public function delete(bool $recursive=false): void"
         }
       }
     },
@@ -1484,6 +1657,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/model.py::Collection.to_array",
           "signature": "def to_array(self) -> list"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Collection::toArray",
+          "signature": "public function toArray(): array"
         }
       }
     },
@@ -1520,6 +1697,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/database.py::Db.connect",
           "signature": "@staticmethod def connect(dsn: str, options: dict | None=None) -> Db"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Orm::connect",
+          "signature": "public static function connect(string $dsn, Polyspec\\Orm\\Config $config): Polyspec\\Orm\\Db"
         }
       }
     },
@@ -1555,6 +1736,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/database.py::Db.connect_schema",
           "signature": "@staticmethod def connect_schema(dsn: str, schema: Schema, options: dict | None=None) -> Db"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Orm::connectSchema",
+          "signature": "public static function connectSchema(string $dsn, Polyspec\\Orm\\Schema $schema, Polyspec\\Orm\\Config $config): Polyspec\\Orm\\Db"
         }
       }
     },
@@ -1591,6 +1776,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/database.py::Db.transaction",
           "signature": "def transaction(self, callback: Callable[[], T], options: dict | None=None) -> T"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Db::transaction",
+          "signature": "public function transaction(Closure $fn, string $isolation=\"\", bool $readOnly=false, int $timeoutMs=0, int $retry=3, ?array $audit=null): mixed"
         }
       }
     },
@@ -1621,6 +1810,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/database.py::Db.utils",
           "signature": "def utils(self) -> Utils"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Db::utils",
+          "signature": "public function utils(): Polyspec\\Orm\\Utils"
         }
       }
     },
@@ -1655,6 +1848,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/database.py::Db.subscribe",
           "signature": "def subscribe(self, subscriber: Callable[[StatementEvent], None]) -> Callable[[], None]"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Db::subscribe",
+          "signature": "public function subscribe(Closure $subscriber): Closure"
         }
       }
     },
@@ -1691,6 +1888,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/database.py::Db.execute",
           "signature": "def execute(self, step: dict, params: list) -> None"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Db::execute",
+          "signature": "public function execute(array $step, array $params): void"
         }
       }
     },
@@ -1723,6 +1924,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/database.py::Db.with_request_hook",
           "signature": "def with_request_hook(self, hook: RequestHook) -> Db"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Db::withRequestHook",
+          "signature": "public function withRequestHook(Closure $hook): Polyspec\\Orm\\Db"
         }
       }
     },
@@ -1753,6 +1958,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/database.py::Db.close",
           "signature": "def close(self) -> None"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Db::close",
+          "signature": "public function close(): void"
         }
       }
     },
@@ -1783,6 +1992,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/database.py::Db.stats",
           "signature": "def stats(self) -> DbStats"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Db::stats",
+          "signature": "public function stats(): Polyspec\\Orm\\Stats"
         }
       }
     },
@@ -1818,6 +2031,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/utils.py::Utils.lock",
           "signature": "def lock(self, key: str) -> None"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Utils::lock",
+          "signature": "public function lock(string $key): void"
         }
       }
     },
@@ -1854,6 +2071,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/utils.py::Utils.set_local",
           "signature": "def set_local(self, key: str, value: str) -> None"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Utils::setLocal",
+          "signature": "public function setLocal(string $key, string $value): void"
         }
       }
     },
@@ -1890,15 +2111,24 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/utils.py::Utils.local",
           "signature": "def local(self, key: str) -> str"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Utils::local",
+          "signature": "public function local(string $key): string"
         }
       }
     },
     {
       "id": "Utils.wasInserted",
       "for": "once",
-      "inputs": ["EntityName", "SequenceKey"],
-      "output": "Inspected",
-      "errors": ["CONFIG"],
+      "inputs": [
+        "EntityName",
+        "SequenceKey"
+      ],
+      "output": "LocalInspection",
+      "errors": [
+        "CONFIG"
+      ],
       "state": "Reports whether a generated insert of the entity for the identity key succeeded in the active transaction; the fact is restored across savepoint rollback. It needs an active transaction; an empty entity or a key that is not positive is CONFIG",
       "native": {
         "go": {
@@ -1920,6 +2150,10 @@
         "rust": {
           "symbol": "packages/rust/orm/src/utils.rs::Utils < 'a >::was_inserted",
           "signature": "pub fn was_inserted(&self, entity: &str, sequence: i64) -> Result<bool>"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Utils::wasInserted",
+          "signature": "public function wasInserted(string $entity, int $sequence): bool"
         }
       }
     },
@@ -1928,7 +2162,9 @@
       "for": "once",
       "inputs": [],
       "output": "Inspected",
-      "errors": ["CAPABILITY_UNSUPPORTED"],
+      "errors": [
+        "CAPABILITY_UNSUPPORTED"
+      ],
       "state": "Reports whether another backend of the PostgreSQL connection waits for a lock; MySQL and SQLite return false without a statement, and a markdown connection is CAPABILITY_UNSUPPORTED",
       "native": {
         "go": {
@@ -1950,6 +2186,10 @@
         "rust": {
           "symbol": "packages/rust/orm/src/utils.rs::Utils < 'a >::backend_waiting_for_lock",
           "signature": "pub async fn backend_waiting_for_lock(&self) -> Result<bool>"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Utils::backendWaitingForLock",
+          "signature": "public function backendWaitingForLock(): bool"
         }
       }
     },
@@ -1980,6 +2220,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/utils.py::Utils.schema",
           "signature": "def schema(self) -> SchemaUtils"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Utils::schema",
+          "signature": "public function schema(): Polyspec\\Orm\\SchemaUtils"
         }
       }
     },
@@ -2015,6 +2259,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/utils.py::SchemaUtils.register",
           "signature": "def register(self, schema: Schema) -> None"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\SchemaUtils::register",
+          "signature": "public function register(Polyspec\\Orm\\Schema $schema): void"
         }
       }
     },
@@ -2051,6 +2299,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/utils.py::SchemaUtils.install",
           "signature": "def install(self, schema: Schema) -> None"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\SchemaUtils::install",
+          "signature": "public function install(Polyspec\\Orm\\Schema $schema): void"
         }
       }
     },
@@ -2088,6 +2340,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/utils.py::SchemaUtils.add_tables_and_columns",
           "signature": "def add_tables_and_columns(self, schema: Schema) -> list[str]"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\SchemaUtils::addTablesAndColumns",
+          "signature": "public function addTablesAndColumns(Polyspec\\Orm\\Schema $schema): array"
         }
       }
     },
@@ -2124,6 +2380,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/utils.py::SchemaUtils.exists",
           "signature": "def exists(self, name: str) -> bool"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\SchemaUtils::exists",
+          "signature": "public function exists(string $schema): bool"
         }
       }
     },
@@ -2160,6 +2420,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/utils.py::SchemaUtils.installed",
           "signature": "def installed(self, name: str, table: str) -> bool"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\SchemaUtils::installed",
+          "signature": "public function installed(string $schema, string $table): bool"
         }
       }
     },
@@ -2193,6 +2457,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/utils.py::SchemaUtils.empty",
           "signature": "def empty(self) -> bool"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\SchemaUtils::empty",
+          "signature": "public function empty(): bool"
         }
       }
     },
@@ -2223,6 +2491,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/utils.py::Utils.aes",
           "signature": "def aes(self) -> AesUtils"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Utils::aes",
+          "signature": "public function aes(): Polyspec\\Orm\\AesUtils"
         }
       }
     },
@@ -2253,6 +2525,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/utils.py::Utils.privileges",
           "signature": "def privileges(self) -> PrivilegeUtils"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Utils::privileges",
+          "signature": "public function privileges(): Polyspec\\Orm\\PrivilegeUtils"
         }
       }
     },
@@ -2283,6 +2559,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/utils.py::Utils.stats",
           "signature": "def stats(self) -> DbStats"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Utils::stats",
+          "signature": "public function stats(): Polyspec\\Orm\\Stats"
         }
       }
     },
@@ -2318,6 +2598,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/utils.py::AesUtils.status",
           "signature": "def status(self, model: Model, keyring: AesKeyring) -> AesRotationStatus"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\AesUtils::status",
+          "signature": "public function status(Polyspec\\Orm\\Model $model, Polyspec\\Orm\\AesKeyring $keyring): Polyspec\\Orm\\AesRotationStatus"
         }
       }
     },
@@ -2353,6 +2637,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/utils.py::AesUtils.rotate",
           "signature": "def rotate(self, model: Model, keyring: AesKeyring) -> int"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\AesUtils::rotate",
+          "signature": "public function rotate(Polyspec\\Orm\\Model $model, Polyspec\\Orm\\AesKeyring $keyring): int"
         }
       }
     },
@@ -2383,6 +2671,10 @@
         "python": {
           "symbol": "packages/python/src/polyspec/orm/aes.py::AesKeyring.versions",
           "signature": "def versions(self) -> list"
+        },
+        "php-extension": {
+          "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\AesKeyring::versions",
+          "signature": "public function versions(): array"
         }
       }
     },
@@ -3076,7 +3368,7 @@
       "inputs": [
         "DbspecApplySource"
       ],
-      "output": "DbspecApplied",
+      "output": "DbspecApplyResult",
       "errors": [],
       "state": "Applies the plans of the chain that the database has not applied, step by step up to their finalize steps, under the lock and the history table, with the events of docs/spec/plans.md Apply; a database that applied the whole chain stays unchanged",
       "native": {
@@ -4013,7 +4305,12 @@
         "offset_p": "integer",
         "count_p": "integer"
       },
-      "optional": ["offset", "count", "offset_p", "count_p"]
+      "optional": [
+        "offset",
+        "count",
+        "offset_p",
+        "count_p"
+      ]
     },
     {
       "id": "IRIfParent",
