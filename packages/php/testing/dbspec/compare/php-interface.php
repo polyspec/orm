@@ -114,22 +114,9 @@ function dbspec_diagnostics(array $diagnostics): void
 /** Writes the hash and text of the case document set, or the diagnostics of a document or the set. */
 function dbspec_write_manifest(string $dbspec, array $case): void
 {
-    $names = array_keys($case['documents']);
-    sort($names, SORT_STRING);
-    $documents = [];
-    foreach ($names as $name) {
-        $set = [];
-        foreach ($case['documents'] as $other => $lines) {
-            if ($other !== $name) {
-                $set[$other] = dbspec_join($lines, false, false);
-            }
-        }
-        $result = $dbspec::parse(dbspec_join($case['documents'][$name], false, false), $set);
-        if ($result->document === null) {
-            dbspec_diagnostics($result->diagnostics);
-            return;
-        }
-        $documents[] = $result->document;
+    $documents = dbspec_parse_document_set($dbspec, $case);
+    if ($documents === null) {
+        return;
     }
     $result = $dbspec::manifest($documents);
     if ($result->manifest === null) {
@@ -150,6 +137,28 @@ function dbspec_write_manifest(string $dbspec, array $case): void
 /** Writes the statements of the case document set for each dialect, or the diagnostics of a document or the set. */
 function dbspec_write_render(string $dbspec, array $case): void
 {
+    $documents = dbspec_parse_document_set($dbspec, $case, "render/{$case['id']}\n");
+    if ($documents === null) {
+        return;
+    }
+    foreach (['mysql', 'postgres', 'sqlite'] as $dialect) {
+        echo "render/{$case['id']}/$dialect\n";
+        $result = $dbspec::render($documents, $dialect);
+        dbspec_diagnostics($result->diagnostics);
+        foreach ($result->statements ?? [] as $statement) {
+            echo "| $statement\n";
+        }
+    }
+}
+
+/**
+ * Parses the documents of a case in name order, each with the other documents available as a set.
+ *
+ * @param array<string, mixed> $case
+ * @return ?list<object>
+ */
+function dbspec_parse_document_set(string $dbspec, array $case, string $failurePrefix = ''): ?array
+{
     $names = array_keys($case['documents']);
     sort($names, SORT_STRING);
     $documents = [];
@@ -162,20 +171,13 @@ function dbspec_write_render(string $dbspec, array $case): void
         }
         $result = $dbspec::parse(dbspec_join($case['documents'][$name], false, false), $set);
         if ($result->document === null) {
-            echo "render/{$case['id']}\n";
+            echo $failurePrefix;
             dbspec_diagnostics($result->diagnostics);
-            return;
+            return null;
         }
         $documents[] = $result->document;
     }
-    foreach (['mysql', 'postgres', 'sqlite'] as $dialect) {
-        echo "render/{$case['id']}/$dialect\n";
-        $result = $dbspec::render($documents, $dialect);
-        dbspec_diagnostics($result->diagnostics);
-        foreach ($result->statements ?? [] as $statement) {
-            echo "| $statement\n";
-        }
-    }
+    return $documents;
 }
 
 /**

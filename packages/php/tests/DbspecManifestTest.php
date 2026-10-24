@@ -70,6 +70,38 @@ final class DbspecManifestTest extends TestCase
         }
     }
 
+    public function testComparisonHarnessParsesDocumentSetsWithMatchingFailureOutput(): void
+    {
+        $root = dirname(__DIR__, 3);
+        $program = implode("\n", [
+            'require ' . var_export("$root/vendor-php/autoload.php", true) . ';',
+            'require ' . var_export("$root/tests/dbspec/vectors.php", true) . ';',
+            'require ' . var_export("$root/tests/dbspec/cases.php", true) . ';',
+            'require ' . var_export("$root/packages/php/testing/dbspec/compare/php-interface.php", true) . ';',
+            '$cases = json_decode(file_get_contents(' . var_export("$root/tests/dbspec/cases.json", true)
+                . '), true, 512, JSON_THROW_ON_ERROR);',
+            '$valid = $cases[\'hashes\'][0];',
+            'ob_start();',
+            '$documents = dbspec_parse_document_set(Polyspec\\Orm\\Dbspec\\Dbspec::class, $valid);',
+            '$validOutput = ob_get_clean();',
+            '$invalid = $cases[\'invalid\'][0];',
+            'ob_start();',
+            '$rejected = dbspec_parse_document_set('
+                . 'Polyspec\\Orm\\Dbspec\\Dbspec::class, $invalid, "render/{$invalid[\'id\']}\\n");',
+            '$invalidOutput = ob_get_clean();',
+            'echo json_encode([array_map(static fn($document) => $document->name, $documents ?? []), $validOutput, '
+                . '$rejected === null, $invalidOutput], JSON_THROW_ON_ERROR);'
+        ]);
+        [$status, $stdout, $stderr] = coverageProcess([PHP_BINARY, '-r', $program], $root);
+        self::assertSame(0, $status, $stderr);
+        self::assertSame([
+            ['shop'],
+            '',
+            true,
+            "render/missing-header\n! header 1 1\n"
+        ], json_decode($stdout, true, 512, JSON_THROW_ON_ERROR));
+    }
+
     // Each case makes the manifest and hash of one document set in memory.
     #[DataProvider('hashesCases')]
     public function testHashes(array $case): void
