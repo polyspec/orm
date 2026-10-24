@@ -412,6 +412,11 @@ async fn select(ex: &Executor, conn: &Option<Db>, req: &mut Req) -> Result<Query
     }
     let mut out = QueryResult { plan: plan.clone(), main, steps: HashMap::new(), params: req.params.clone(), markdown: None, count: None };
     for st in plan.steps.iter().skip(1) {
+        if st.role == "count" && req.ir.kind == "paginate" {
+            let raw = ex.query(st, &req.params, Vec::new()).await?;
+            out.count = Some(first_cell(&raw, db.inner.zone)?.as_i64()?);
+            continue;
+        }
         if st.role != "relation" {
             continue;
         }
@@ -821,15 +826,8 @@ pub async fn gets_page<M: Model>(m: &M, page: u32, per_page: u32) -> Result<Page
     q.limit = Some((offset, per_page));
     let mut req = build(&q, "paginate");
     let res = select(&ex, &q.conn, &mut req).await?;
-    // A markdown reply also states the total row count, and a SQL plan counts it with a count step.
-    let total = match res.count {
-        Some(total) => total,
-        None => {
-            let count = res.plan.steps.iter().find(|s| s.role == "count").ok_or_else(|| Error::internal("paginate plan has no count step"))?.clone();
-            let rows = ex.query(&count, &req.params, Vec::new()).await?;
-            first_cell(&rows, ex.db().inner.zone)?.as_i64()?
-        }
-    };
+    // Markdown replies carry a count; a SQL select reads its count step in plan order.
+    let total = res.count.ok_or_else(|| Error::internal("paginate plan has no count result"))?;
     if total < 0 {
         return Err(Error::internal("negative row count"));
     }
@@ -1871,5 +1869,133 @@ mod related_tests {
         let composite_false = super::split_row_key(&[Val::I64(0), Val::Bool(false), Val::Str(String::new())], &composite_refs).unwrap();
         let composite_true = super::split_row_key(&[Val::I64(0), Val::Bool(true), Val::Str(String::new())], &composite_refs).unwrap();
         assert_ne!(composite_false, composite_true);
+    }
+}
+
+#[cfg(test)]
+mod page_order_tests {
+    use super::*;
+    use std::sync::{Arc, Mutex, OnceLock};
+
+    const DOCUMENT: &str = "dbspec 1 page_order\ntable page_parent {\n  seq i64 identity\n  label varchar(32)\n  primary key (seq)\n}\ntable page_child {\n  seq i64 identity\n  parent_seq i64\n  label varchar(32)\n  primary key (seq)\n  index ix_page_child_parent (parent_seq)\n  foreign key fk_page_child_parent (parent_seq) references page_parent (seq) on delete restrict on update restrict\n}\n";
+
+    struct TempSqlite(std::path::PathBuf);
+
+    impl Drop for TempSqlite {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_file(&self.0);
+        }
+    }
+
+    fn schema() -> &'static Schema {
+        static SCHEMA: OnceLock<&'static Schema> = OnceLock::new();
+        SCHEMA.get_or_init(|| {
+            let parsed = dbspec::parse(DOCUMENT, &Default::default()).expect("page-order schema");
+            let manifest = dbspec::manifest(&[&parsed.document]).expect("page-order manifest");
+            let text = Box::leak(manifest.manifest_text.into_boxed_str());
+            let hash = Box::leak(manifest.manifest_hash.into_boxed_str());
+            Box::leak(Box::new(Schema::new(text, hash)))
+        })
+    }
+
+    #[derive(Clone)]
+    struct ParentRow {
+        core: Core,
+        values: HashMap<String, Val>,
+    }
+
+    #[derive(Clone)]
+    struct ChildRow {
+        core: Core,
+        values: HashMap<String, Val>,
+    }
+
+    macro_rules! row_model {
+        ($row:ident, $entity:ident, $columns:expr) => {
+            impl Model for $row {
+                fn entity() -> &'static Entity {
+                    $entity()
+                }
+                fn core(&self) -> &Core {
+                    &self.core
+                }
+                fn core_mut(&mut self) -> &mut Core {
+                    &mut self.core
+                }
+                fn from_core(core: Core) -> Self {
+                    Self { core, values: HashMap::new() }
+                }
+                fn into_core(self) -> Core {
+                    self.core
+                }
+                fn assign(&mut self, name: &str, value: Val) -> Result<bool> {
+                    if $columns.contains(&name) {
+                        self.values.insert(name.to_owned(), value);
+                        Ok(true)
+                    } else {
+                        Ok(false)
+                    }
+                }
+                fn value(&self, name: &str) -> Option<Val> {
+                    self.values.get(name).cloned()
+                }
+            }
+        };
+    }
+
+    fn parent_entity() -> &'static Entity {
+        static ENTITY: OnceLock<&'static Entity> = OnceLock::new();
+        ENTITY.get_or_init(|| {
+            Box::leak(Box::new(Entity { name: "page_parent", schema: schema(), new: new_boxed::<ParentRow>, collect: collect_boxed::<ParentRow> }))
+        })
+    }
+
+    fn child_entity() -> &'static Entity {
+        static ENTITY: OnceLock<&'static Entity> = OnceLock::new();
+        ENTITY.get_or_init(|| {
+            Box::leak(Box::new(Entity { name: "page_child", schema: schema(), new: new_boxed::<ChildRow>, collect: collect_boxed::<ChildRow> }))
+        })
+    }
+
+    row_model!(ParentRow, parent_entity, &["seq", "label"]);
+    row_model!(ChildRow, child_entity, &["seq", "parent_seq", "label"]);
+
+    #[tokio::test]
+    // Requirements: CPX-2.
+    async fn gets_page_emits_root_count_then_relation_statement_events() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+        let schema = schema();
+        let path = std::env::temp_dir().join(format!("orm-page-order-{}.sqlite", std::process::id()));
+        let _temporary = TempSqlite(path.clone());
+        let dsn = format!("sqlite://{}", path.display());
+        let db = Db::connect_schema(&dsn, schema, 1, crate::Config::default()).await.unwrap();
+        db.utils().schema().install(schema).await.unwrap();
+        let crate::db::Pool::Sqlite(pool) = &db.inner.pool else { panic!("expected SQLite pool") };
+        sqlx::query("INSERT INTO page_parent (label) VALUES (?)").bind("parent").execute(pool).await.unwrap();
+        sqlx::query("INSERT INTO page_child (parent_seq, label) VALUES (?, ?)").bind(1i64).bind("child").execute(pool).await.unwrap();
+
+        let records = Arc::new(Mutex::new(Vec::new()));
+        let observed = records.clone();
+        let _subscription = db
+            .subscribe(move |event| {
+                observed.lock().unwrap().push(event.sql.to_owned());
+                Ok(())
+            })
+            .unwrap();
+
+        let mut core = Core::new(parent_entity());
+        core.connect(&db);
+        let mut child = Core::new(child_entity());
+        child.add_match("seq", "parent_seq");
+        core.relation(false, child);
+        let page = gets_page(&ParentRow::from_core(core), 1, 10).await.unwrap();
+        assert_eq!(page.total_count, 1);
+        assert_eq!(page.items.len(), 1);
+
+        let records = records.lock().unwrap();
+        assert_eq!(records.len(), 3, "{records:?}");
+        assert!(records[0].contains("FROM \"page_parent\""), "root query: {}", records[0]);
+        assert!(records[1].contains("COUNT(*)") && records[1].contains("page_parent"), "count query: {}", records[1]);
+        assert!(records[2].contains("FROM \"page_child\""), "relation query: {}", records[2]);
     }
 }

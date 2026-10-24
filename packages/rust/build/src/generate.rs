@@ -446,6 +446,10 @@ impl<'m> Gen<'m> {
         for (i, k) in keys.iter().enumerate() {
             let p = format!("v{i}");
             match k.op {
+                "fulltext" | "fulltext_boolean" => {
+                    params.push(format!("{p}: impl Into<String>"));
+                    call.push(format!("polyspec_orm::core::Arg::Value(polyspec_orm::args::Value::One(polyspec_orm::Param::from({p}.into())))"));
+                }
                 "tuple" | "ne_tuple" => {
                     let cols: Vec<&Field> = k.columns.iter().filter_map(|c| e.field(c)).collect();
                     let types: Vec<&str> = cols.iter().map(|c| base(c)).collect();

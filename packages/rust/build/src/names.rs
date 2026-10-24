@@ -143,6 +143,11 @@ fn parse_key(m: &RuntimeModel, e: &Entity, ws: &[&str]) -> Result<ChainKey, Stri
         Ok(k) => candidates.push(k),
         Err(e) => errs.push(e),
     };
+    if ws[0] == "Fulltext" && ws.get(1) == Some(&"Boolean") {
+        try_key(fulltext_key(e, &ws[2..], "fulltext_boolean"));
+    } else if ws[0] == "Fulltext" {
+        try_key(fulltext_key(e, &ws[1..], "fulltext"));
+    }
     if let Some(c) = column_of(e, ws) {
         try_key(check_op(e, c, ChainKey { column: c.name.clone(), ..Default::default() }));
     }
@@ -171,6 +176,12 @@ fn parse_key(m: &RuntimeModel, e: &Entity, ws: &[&str]) -> Result<ChainKey, Stri
         0 => Err(format!("{text} is not a column of {}", e.name)),
         _ => Err(format!("{text} has more than one meaning")),
     }
+}
+
+fn fulltext_key(e: &Entity, ws: &[&str], op: &'static str) -> Result<ChainKey, String> {
+    let columns =
+        split_with(e, ws).filter(|columns| !columns.is_empty()).ok_or_else(|| format!("{op} needs one or more columns of {} joined by With", e.name))?;
+    Ok(ChainKey { op, columns: columns.iter().map(|column| column.name.clone()).collect(), ..Default::default() })
 }
 
 fn check_op(e: &Entity, c: &Field, k: ChainKey) -> Result<ChainKey, String> {

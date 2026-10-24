@@ -83,6 +83,52 @@ mod tests {
         assert!(!asm.columns[at].hidden);
     }
 
+    #[test]
+    // Requirements: CPX-2.
+    fn paginate_plan_places_count_before_relation_steps() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let (set, manifest) = bench_fixture();
+        let relation = |rel: &str, entity: &str, left: &str, right: &str, relations: Vec<ir::Relation>| ir::Relation {
+            rel: rel.into(),
+            kind: "one".into(),
+            keys: vec![ir::KeyPair { left: left.into(), right: right.into() }],
+            query: Box::new(ir::Query { entity: entity.into(), relations, ..Default::default() }),
+        };
+        let request = ir::Request {
+            ir_version: 1,
+            manifest_hash: set.manifest_hash.clone(),
+            kind: "paginate".into(),
+            query: ir::Query {
+                entity: "author".into(),
+                relations: vec![
+                    relation("user_model", "user", "user_seq", "seq", vec![]),
+                    relation("service_model", "service", "service_seq", "seq", vec![]),
+                    relation(
+                        "region_model",
+                        "service_region",
+                        "service_region_seq",
+                        "seq",
+                        vec![relation("region_service_model", "service", "service_seq", "seq", vec![])],
+                    ),
+                    relation(
+                        "member_model",
+                        "service_member",
+                        "service_member_seq",
+                        "seq",
+                        vec![relation("member_user_model", "user", "user_seq", "seq", vec![])],
+                    ),
+                ],
+                limit: Some(ir::Limit::Literal { offset: 0, count: 10 }),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let plan = compile(&manifest, Dialect::MySql, &request).unwrap();
+        let roles: Vec<&str> = plan.steps.iter().map(|step| step.role.as_str()).collect();
+        assert_eq!(roles, ["main", "count", "relation", "relation", "relation", "relation", "relation", "relation"]);
+        assert_eq!(plan.steps.len(), 8, "the page root, count and six relations");
+    }
+
     // A relation links all components of the foreign key in key order, and a malformed key list is rejected.
     #[test]
     fn composite_relation_keys() {

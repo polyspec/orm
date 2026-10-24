@@ -50,6 +50,17 @@ fn generate_with_schema(schema: PathBuf, source: &str) -> Result<String, String>
     generate_with_set(dir, source, set)
 }
 
+fn generate_with_document(document: &str, source: &str) -> Result<String, String> {
+    let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let dir = std::env::temp_dir().join(format!("orm-build-fulltext-{}-{n}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("fulltext.dbs");
+    std::fs::write(&path, document).unwrap();
+    let result = generate_with_schema(path, source);
+    remove_test_dir(&dir);
+    result
+}
+
 fn generate_with_set(dir: PathBuf, source: &str, set: PathBuf) -> Result<String, String> {
     let src = dir.join("src");
     std::fs::create_dir_all(&src).unwrap();
@@ -89,6 +100,22 @@ fn generates_called_methods() {
         assert!(text.contains(want), "missing {want}");
     }
     assert!(!text.contains("pub fn and_seq("), "a method that is not called was generated");
+}
+
+#[test]
+// Requirements: DSL-33, PRT-75.
+fn generates_fulltext_boolean_methods_for_multiple_columns() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let text = generate_with_document(
+        "dbspec 1 fulltext\ntable article {\n  seq i64 identity\n  name varchar(255)\n  description text\n  short_description text\n  content text\n  primary key (seq)\n}\n",
+        "fn main() {\n    Article::new().fulltext_name_with_description(\"keyword\");\n    Article::new().fulltext_boolean_name_with_description(\"keyword\");\n    Article::new().fulltext_boolean_name_with_short_description_with_content(String::from(\"keyword\"));\n}\n",
+    )
+    .unwrap();
+    assert!(text.contains("pub fn fulltext_boolean_name_with_description(mut self, v0: impl Into<String>) -> Self"), "{text}");
+    assert!(text.contains("pub fn fulltext_boolean_name_with_short_description_with_content(mut self, v0: impl Into<String>) -> Self"), "{text}");
+    assert!(text.contains("op: \"fulltext\", column: \"\", columns: &[\"name\", \"description\"]"), "{text}");
+    assert!(text.contains("op: \"fulltext_boolean\", column: \"\", columns: &[\"name\", \"description\"]"), "{text}");
+    assert!(text.contains("op: \"fulltext_boolean\", column: \"\", columns: &[\"name\", \"short_description\", \"content\"]"), "{text}");
 }
 
 #[test]

@@ -410,11 +410,10 @@ impl<'m> Planner<'m> {
         let mut steps = Vec::new();
         match r.kind.as_str() {
             "one" | "all" | "count" | "group_count" | "sum" | "avg" => {
-                self.select_step(&mut steps, &r.query, &r.kind, &r.agg, None)?;
+                self.select_step(&mut steps, &r.query, &r.kind, &r.agg, None, false)?;
             }
             "paginate" => {
-                self.select_step(&mut steps, &r.query, "all", "", None)?;
-                self.select_step(&mut steps, &r.query, "count", "", None)?;
+                self.select_step(&mut steps, &r.query, "all", "", None, true)?;
             }
             "insert" => steps.push(self.insert_step(r)?),
             "update" => steps.push(self.update_step(r)?),
@@ -464,7 +463,7 @@ impl<'m> Planner<'m> {
         styles.iter().filter(|s| !self.d.decodes_style(s)).cloned().collect()
     }
 
-    fn select_step(&self, steps: &mut Vec<Step>, q: &ir::Query, kind: &str, agg: &str, rc: Option<&RelCtx>) -> Result<usize> {
+    fn select_step(&self, steps: &mut Vec<Step>, q: &ir::Query, kind: &str, agg: &str, rc: Option<&RelCtx>, count_before_relations: bool) -> Result<usize> {
         let mut b = Builder::new(self.d);
         let mut root = self.scopes(q, "a".into(), false)?;
         if let Some(rc) = rc {
@@ -581,6 +580,9 @@ impl<'m> Planner<'m> {
         let id = steps.len();
         steps.push(st);
         if rows {
+            if count_before_relations {
+                self.select_step(steps, q, "count", "", None, false)?;
+            }
             self.relation_steps(steps, root, &mut asm, id)?;
             steps[id].assemble = Some(Arc::new(asm.finish()));
         }
@@ -599,7 +601,7 @@ impl<'m> Planner<'m> {
                 None => None,
             };
             let rc = RelCtx { parent_step: step_id, parent_keys: asm.key_refs(&parent_keys)?, if_parent, child_keys: child_keys.clone(), kind: kind.clone() };
-            let id = self.select_step(steps, &r.query, "all", "", Some(&rc))?;
+            let id = self.select_step(steps, &r.query, "all", "", Some(&rc), false)?;
             let child_asm = steps[id].assemble.clone().ok_or_else(|| err(codes::INTERNAL, "relation step without assembly"))?;
             let key = if !r.query.key_by.is_empty() {
                 key_refs_of(&child_asm, std::slice::from_ref(&r.query.key_by))?

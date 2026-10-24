@@ -23,7 +23,7 @@ fn next_id() -> u64 {
 pub struct ChainKey {
     /// Connector before this key; empty for the first key.
     pub conn: &'static str,
-    /// "", ne, gt, lt, ge, le, lk, lb, between, tuple, ne_tuple.
+    /// "", ne, gt, lt, ge, le, lk, lb, between, fulltext, fulltext_boolean, tuple, ne_tuple.
     pub op: &'static str,
     pub column: &'static str,
     pub columns: &'static [&'static str],
@@ -79,6 +79,7 @@ pub(crate) enum PredValue {
     List(Vec<Param>),
     Pair(Param, Param),
     Tuples(Vec<&'static str>, Vec<Vec<Param>>),
+    Fulltext(Vec<String>, Param),
     Ref(u64, &'static str),
     Sub(Box<Core>),
     ColumnFn(Func, Param),
@@ -658,6 +659,16 @@ fn predicate(key: &ChainKey, arg: Arg, single: bool) -> crate::Result<PredSpec> 
     let op_of = |op: &str| polyspec_orm_schema::dbspec::comparison_operator(op).unwrap_or("eq");
     let pred = |op: &'static str, value: PredValue| PredSpec { column: key.column.to_owned(), op, value };
     match key.op {
+        "fulltext" | "fulltext_boolean" => {
+            let Arg::Value(Value::One(Param::Str(text))) = arg else {
+                return Err(config("fulltext search text must be a string"));
+            };
+            return Ok(PredSpec {
+                column: String::new(),
+                op: key.op,
+                value: PredValue::Fulltext(key.columns.iter().map(|c| (*c).to_owned()).collect(), Param::Str(text)),
+            });
+        }
         "tuple" | "ne_tuple" => {
             let Arg::Tuples(rows) = arg else {
                 return Err(config("tuple values must be a list of value groups"));
