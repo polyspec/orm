@@ -114,7 +114,7 @@ caseTest('the named client API units cite their bilingual interface requirements
     ['INT', ['docs/spec/interfaces.md', 'docs/spec/interfaces.ko.md']],
     ['COD', ['docs/spec/codec.md', 'docs/spec/codec.ko.md']],
   ]);
-  const documents = new Map([...specifications].flatMap(([prefix, paths]) =>
+  const documents = new Map([...specifications].flatMap(([, paths]) =>
     paths.map(path => [path, readFileSync(resolve(root, path), 'utf8')] as const),
   ));
 
