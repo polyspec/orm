@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- The PHP `Validator::functionType` declaration again matches the native two-argument contract. Planner, Markdown, and parameter-use callers keep the entity.column `INTERNAL` check before typing, while public unknown-column validation remains `COLUMN_UNKNOWN`. The actual-main declaration regression found the four-versus-two mismatch before the PHP fix (KSTD-5-63-1-1).
+
 - Result-shape coverage binds five neutral product behaviors across all six clients: styled-column states including unselected, SQL NULL and encoded null; invalid stored grouped booleans (`CODEC_DECODE`); exact grouped i64 values; exact nonnegative row counts (`CODEC_DECODE`, with missing `row_count` as `INTERNAL`); and ordered-json Model output text preserving key order and stored number spelling. The five TypeScript conformance-result checks remain host-specific COD/helper tests, and two historical Rust invalid-result conformance-helper bindings remain removed. The focused result targets cover the five behaviors; the Python conformance encoder helper has a separate self-test. (KSTD-2-11-14)
 
 - Root pages reject malformed or unsafe offset/count values before reusing a cached plan (T236).

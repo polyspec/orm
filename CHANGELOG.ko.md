@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 2ee607fc76140448068eb2301dae597874362b6e26cc47140a21c1b86d94f69d -->
+<!-- source-sha256: 7482c2bdc70b1d848cd0a9ab16dc0df87fb609071ba6da5f15024648e4232ef3 -->
 # 변경 이력
 
 ## Unreleased
+
+- PHP `Validator::functionType` 선언을 native 2개 인자 계약과 다시 맞췄다. Planner, Markdown, parameter-use caller는 타입 계산 전에 entity.column `INTERNAL` 검사를 유지하고, 공개 unknown-column validation은 `COLUMN_UNKNOWN`을 유지한다. 실제 main declaration 회귀는 PHP 수정 전에 4개와 2개 인자 불일치를 확인했다(KSTD-5-63-1-1).
 
 - result 형태 coverage가 여섯 client의 중립 제품 동작 다섯 가지를 묶는다: unselected, SQL NULL, encoded null을 구분하는 styled column 상태, `CODEC_DECODE`를 반환하는 잘못 저장된 grouped boolean, 정확한 grouped i64 값, 정확한 nonnegative row count (잘못된 값은 `CODEC_DECODE`, 빠진 `row_count`는 `INTERNAL`), key 순서와 저장된 숫자 표기를 보존하는 ordered-json Model 출력 텍스트다. TypeScript conformance-result 검사 5개는 host 전용 COD/helper 검사로 유지하고, 과거 Rust invalid-result conformance-helper binding 2개는 제거 상태를 유지한다. 집중 result target은 다섯 동작을 검증하고 Python conformance encoder helper는 별도 self-test로 확인한다. (KSTD-2-11-14)
 
