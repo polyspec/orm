@@ -939,13 +939,17 @@ static void invalid_time_text(const char *v, size_t vlen, const char *col)
 
 static bool datetime_in_zone(zval *value, zval *zone, zval *out)
 {
-    zval immutable;
+    zval immutable, zoned;
     if (!scall("DateTimeImmutable::createFromInterface", &immutable, 1, value)) {
         return false;
     }
-    bool ok = mcall(&immutable, "setTimezone", out, 1, zone);
+    bool ok = mcall(&immutable, "setTimezone", &zoned, 1, zone);
     zval_ptr_dtor(&immutable);
-    return ok;
+    if (!ok) {
+        return false;
+    }
+    ZVAL_COPY_VALUE(out, &zoned);
+    return true;
 }
 
 /* Db::timeValue. Dates and times are text with no offset; a datetime is converted to the connection zone. out is the value. */
