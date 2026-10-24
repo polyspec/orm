@@ -138,6 +138,19 @@ static void schema_utils_append_differences(smart_str *message, zval *difference
     } ZEND_HASH_FOREACH_END();
 }
 
+static void schema_utils_add_found_names(zval *found, zval *entries, const char *property)
+{
+    zval *entry;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(entries), entry) {
+        zval *name = zend_read_property(Z_OBJCE_P(entry), Z_OBJ_P(entry), property, strlen(property), true, NULL);
+        if (Z_TYPE_P(name) == IS_STRING) {
+            zval present_flag;
+            ZVAL_TRUE(&present_flag);
+            zend_hash_update(Z_ARRVAL_P(found), Z_STR_P(name), &present_flag);
+        }
+    } ZEND_HASH_FOREACH_END();
+}
+
 static bool schema_utils_differences(zval *live, zval *unsupported, zval *documents, zval *target, const char *method,
     const char *code)
 {
@@ -459,22 +472,8 @@ static bool schema_utils_install_body(zval *db, void *opaque, zval *result)
     zval *tables = zend_read_property(Z_OBJCE_P(context->target), Z_OBJ_P(context->target), "tables", sizeof("tables") - 1, true, NULL);
     zval *table;
     zval *live_tables = zend_read_property(Z_OBJCE_P(live_document), Z_OBJ_P(live_document), "tables", sizeof("tables") - 1, true, NULL);
-    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(live_tables), table) {
-        zval *name = zend_read_property(Z_OBJCE_P(table), Z_OBJ_P(table), "name", sizeof("name") - 1, true, NULL);
-        if (Z_TYPE_P(name) == IS_STRING) {
-            zval present_flag;
-            ZVAL_TRUE(&present_flag);
-            zend_hash_update(Z_ARRVAL(found), Z_STR_P(name), &present_flag);
-        }
-    } ZEND_HASH_FOREACH_END();
-    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(unsupported), table) {
-        zval *name = zend_read_property(Z_OBJCE_P(table), Z_OBJ_P(table), "table", sizeof("table") - 1, true, NULL);
-        if (Z_TYPE_P(name) == IS_STRING) {
-            zval present_flag;
-            ZVAL_TRUE(&present_flag);
-            zend_hash_update(Z_ARRVAL(found), Z_STR_P(name), &present_flag);
-        }
-    } ZEND_HASH_FOREACH_END();
+    schema_utils_add_found_names(&found, live_tables, "name");
+    schema_utils_add_found_names(&found, unsupported, "table");
     bool any_present = false, any_missing = false;
     ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(tables), table) {
         zval *name = zend_read_property(Z_OBJCE_P(table), Z_OBJ_P(table), "name", sizeof("name") - 1, true, NULL);
