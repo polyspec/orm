@@ -23,11 +23,7 @@ static bool schema_utils_require_schema(zval *schema, const char *method)
 static bool schema_utils_call(zval *object, const char *method, zval *result, uint32_t argc, zval *argv)
 {
     ZVAL_UNDEF(result);
-    zval function;
-    ZVAL_STRING(&function, method);
-    zend_result status = call_user_function(NULL, object, &function, result, argc, argv);
-    zval_ptr_dtor(&function);
-    return status == SUCCESS && EG(exception) == NULL;
+    return dbs_call_method(object, method, result, argc, argv);
 }
 
 static zval *schema_utils_db(zval *object)

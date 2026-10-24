@@ -8,16 +8,21 @@ int dbs_cmp_table_name(const void *a, const void *b, void *ctx)
     return str_cmp((*(table *const *)a)->name, (*(table *const *)b)->name);
 }
 
-static zend_class_entry *utils_ce;
-
-static bool utils_call(zval *object, const char *method, zval *result, uint32_t argc, zval *argv)
+bool dbs_call_method(zval *object, const char *method, zval *result, uint32_t argc, zval *argv)
 {
-    ZVAL_UNDEF(result);
     zval function;
     ZVAL_STRING(&function, method);
     zend_result status = call_user_function(NULL, object, &function, result, argc, argv);
     zval_ptr_dtor(&function);
     return status == SUCCESS && EG(exception) == NULL;
+}
+
+static zend_class_entry *utils_ce;
+
+static bool utils_call(zval *object, const char *method, zval *result, uint32_t argc, zval *argv)
+{
+    ZVAL_UNDEF(result);
+    return dbs_call_method(object, method, result, argc, argv);
 }
 
 static zval *utils_db(zval *object)

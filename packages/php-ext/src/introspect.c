@@ -12,11 +12,7 @@ static DBS_TLS catalog_observer_scope *catalog_observer_current;
 static bool catalog_method(zval *object, const char *method, zval *result, uint32_t argc, zval *argv)
 {
     ZVAL_UNDEF(result);
-    zval function;
-    ZVAL_STRING(&function, method);
-    zend_result status = call_user_function(NULL, object, &function, result, argc, argv);
-    zval_ptr_dtor(&function);
-    return status == SUCCESS && EG(exception) == NULL;
+    return dbs_call_method(object, method, result, argc, argv);
 }
 
 static void catalog_string(zval *value, str text)

@@ -129,6 +129,7 @@ void strs_sort(strs *l);                    /* Byte order, stable */
 /* Stable merge sort. */
 void dbs_sort(void *base, size_t n, size_t size, int (*cmp)(const void *, const void *, void *), void *ctx);
 int dbs_cmp_table_name(const void *a, const void *b, void *ctx);
+bool dbs_call_method(zval *object, const char *method, zval *result, uint32_t argc, zval *argv);
 
 /* ------------------------------------------------------------------- maps */
 

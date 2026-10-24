@@ -7,11 +7,7 @@ static zend_class_entry *privilege_utils_ce;
 static bool privilege_utils_method(zval *object, const char *method, zval *result, uint32_t argc, zval *argv)
 {
     ZVAL_UNDEF(result);
-    zval function;
-    ZVAL_STRING(&function, method);
-    zend_result status = call_user_function(NULL, object, &function, result, argc, argv);
-    zval_ptr_dtor(&function);
-    return status == SUCCESS && EG(exception) == NULL;
+    return dbs_call_method(object, method, result, argc, argv);
 }
 
 static zval *privilege_utils_db(zval *object)
