@@ -2802,6 +2802,35 @@
         "databases"
       ]
     },
+    "complex-query-go-plan-check": {
+      "scope": "owner",
+      "needs": ["go"],
+      "inputs": [
+        "Makefile",
+        "packages/go/complexquery/public_plan_test.go",
+        "packages/go/complexquery/complex_query_test.go",
+        "packages/go/complexquery/query.go",
+        "packages/go/models.txt",
+        "contracts/fixtures/complex_query/complex_query.dbs",
+        "contracts/fixtures/complex_query/complex_query.json",
+        "contracts/fixtures/complex_query/dbspec-set.json"
+      ]
+    },
+    "complex-query-rust-plan-check": {
+      "scope": "owner",
+      "needs": ["rust"],
+      "inputs": [
+        "Makefile",
+        "packages/rust/tests/tests/integration/coverage_complex_query.rs",
+        "packages/rust/tests/tests/integration/main.rs",
+        "packages/rust/tests/Cargo.toml",
+        "packages/rust/tests/build.rs",
+        "packages/rust/Cargo.toml",
+        "contracts/fixtures/complex_query/complex_query.dbs",
+        "contracts/fixtures/complex_query/complex_query.json",
+        "contracts/fixtures/complex_query/dbspec-set.json"
+      ]
+    },
     "go-test-check": {
       "scope": "suite",
       "needs": [
