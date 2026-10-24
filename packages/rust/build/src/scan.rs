@@ -501,7 +501,13 @@ impl Scanner<'_> {
         format!("{}:{}:{}", self.file, at.line, at.column + 1)
     }
 
-    fn visit_function_scope(&mut self, params: &[Pat], visit: impl FnOnce(&mut Self)) {
+    fn visit_function_scope<'ast>(&mut self, inputs: impl Iterator<Item = &'ast FnArg>, visit: impl FnOnce(&mut Self)) {
+        let params: Vec<Pat> = inputs
+            .filter_map(|argument| match argument {
+                FnArg::Typed(typed) => Some(Pat::Type(typed.clone())),
+                FnArg::Receiver(_) => None,
+            })
+            .collect();
         let outer = std::mem::take(&mut self.scopes);
         self.scopes.push(HashMap::new());
         self.bind_params(params.iter());
@@ -585,29 +591,11 @@ impl<'ast> Visit<'ast> for Scanner<'_> {
 
     fn visit_item_fn(&mut self, f: &'ast syn::ItemFn) {
         // A function item sees no local of the function that contains it.
-        let pats: Vec<Pat> = f
-            .sig
-            .inputs
-            .iter()
-            .filter_map(|a| match a {
-                FnArg::Typed(t) => Some(Pat::Type(t.clone())),
-                FnArg::Receiver(_) => None,
-            })
-            .collect();
-        self.visit_function_scope(&pats, |this| visit::visit_item_fn(this, f));
+        self.visit_function_scope(f.sig.inputs.iter(), |this| visit::visit_item_fn(this, f));
     }
 
     fn visit_impl_item_fn(&mut self, f: &'ast syn::ImplItemFn) {
-        let pats: Vec<Pat> = f
-            .sig
-            .inputs
-            .iter()
-            .filter_map(|a| match a {
-                FnArg::Typed(t) => Some(Pat::Type(t.clone())),
-                FnArg::Receiver(_) => None,
-            })
-            .collect();
-        self.visit_function_scope(&pats, |this| visit::visit_impl_item_fn(this, f));
+        self.visit_function_scope(f.sig.inputs.iter(), |this| visit::visit_impl_item_fn(this, f));
     }
 
     fn visit_block(&mut self, b: &'ast syn::Block) {
