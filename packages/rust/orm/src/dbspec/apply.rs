@@ -308,65 +308,57 @@ pub async fn effect_holds<C: ApplyConnection + ?Sized>(connection: &mut C, diale
     Ok((n > 0) == effect.present)
 }
 
-/// Applies, step by step, the plans of the chain of `plans` that the database
-/// of `connection` has not applied, up to their finalize steps; on a database
-/// that has applied the whole chain it changes nothing. `dialect` must be the
-/// database of the connection, `now` gives `applied_at` and `events` receives
-/// every event; an error it returns stops the command at that point. When
-/// restoring the session settings or SQLite foreign keys, or releasing the
-/// lock, fails after a failure, the result is [`ApplyError::Cleanup`] with
-/// both.
-pub async fn apply<C: ApplyConnection + ?Sized>(
-    connection: &mut C,
-    dialect: Dialect,
-    plans: &[Plan],
-    now: &ApplyClock<'_>,
-    events: &mut ApplyEvents<'_>,
-) -> Result<(), ApplyError> {
-    run_command(connection, dialect, plans, now, events, Command::Apply).await
+macro_rules! apply_entrypoint {
+    ($(#[$doc:meta])* $name:ident, $command:ident) => {
+        $(#[$doc])*
+        pub async fn $name<C: ApplyConnection + ?Sized>(
+            connection: &mut C,
+            dialect: Dialect,
+            plans: &[Plan],
+            now: &ApplyClock<'_>,
+            events: &mut ApplyEvents<'_>,
+        ) -> Result<(), ApplyError> {
+            run_command(connection, dialect, plans, now, events, Command::$command).await
+        }
+    };
 }
 
-/// Continues the interrupted plan forward from the catalog effect of the step
-/// after its recorded one, up to `applied`, or to `done` for a finalizing
-/// plan. Without an interrupted plan it changes nothing. Failures are
-/// reported as for [`apply`].
-pub async fn recover<C: ApplyConnection + ?Sized>(
-    connection: &mut C,
-    dialect: Dialect,
-    plans: &[Plan],
-    now: &ApplyClock<'_>,
-    events: &mut ApplyEvents<'_>,
-) -> Result<(), ApplyError> {
-    run_command(connection, dialect, plans, now, events, Command::Recover).await
-}
-
-/// Undoes the last plan of the history with its rollback statements down to
-/// its first step and deletes its row. An applied plan is checked for drift
-/// and NULL rows first; a step without rollback stops it with
-/// [`ApplyError::Irreversible`]. Without a row it changes nothing. Failures
-/// are reported as for [`apply`].
-pub async fn rollback<C: ApplyConnection + ?Sized>(
-    connection: &mut C,
-    dialect: Dialect,
-    plans: &[Plan],
-    now: &ApplyClock<'_>,
-    events: &mut ApplyEvents<'_>,
-) -> Result<(), ApplyError> {
-    run_command(connection, dialect, plans, now, events, Command::Rollback).await
-}
-
-/// Runs the finalize steps of every applied plan in chain order, dropping the
-/// hidden tables and columns, and records the plans `done`. Failures are
-/// reported as for [`apply`].
-pub async fn finalize<C: ApplyConnection + ?Sized>(
-    connection: &mut C,
-    dialect: Dialect,
-    plans: &[Plan],
-    now: &ApplyClock<'_>,
-    events: &mut ApplyEvents<'_>,
-) -> Result<(), ApplyError> {
-    run_command(connection, dialect, plans, now, events, Command::Finalize).await
-}
+apply_entrypoint!(
+    /// Applies, step by step, the plans of the chain of `plans` that the database
+    /// of `connection` has not applied, up to their finalize steps; on a database
+    /// that has applied the whole chain it changes nothing. `dialect` must be the
+    /// database of the connection, `now` gives `applied_at` and `events` receives
+    /// every event; an error it returns stops the command at that point. When
+    /// restoring the session settings or SQLite foreign keys, or releasing the
+    /// lock, fails after a failure, the result is [`ApplyError::Cleanup`] with
+    /// both.
+    apply,
+    Apply
+);
+apply_entrypoint!(
+    /// Continues the interrupted plan forward from the catalog effect of the step
+    /// after its recorded one, up to `applied`, or to `done` for a finalizing
+    /// plan. Without an interrupted plan it changes nothing. Failures are
+    /// reported as for [`apply`].
+    recover,
+    Recover
+);
+apply_entrypoint!(
+    /// Undoes the last plan of the history with its rollback statements down to
+    /// its first step and deletes its row. An applied plan is checked for drift
+    /// and NULL rows first; a step without rollback stops it with
+    /// [`ApplyError::Irreversible`]. Without a row it changes nothing. Failures
+    /// are reported as for [`apply`].
+    rollback,
+    Rollback
+);
+apply_entrypoint!(
+    /// Runs the finalize steps of every applied plan in chain order, dropping the
+    /// hidden tables and columns, and records the plans `done`. Failures are
+    /// reported as for [`apply`].
+    finalize,
+    Finalize
+);
 
 #[derive(Clone, Copy)]
 enum Command {
