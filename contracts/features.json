@@ -887,6 +887,7 @@
           "inputs": [
             "Makefile",
             "packages/php-ext/tests/ModelQueriesWritesNativeTest.php",
+            "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
             "packages/php-ext/src/model_read.c",
             "packages/php-ext/src/model_assembly.c",
             "packages/php-ext/src/model_query.c"
@@ -1658,6 +1659,7 @@
           "inputs": [
             "Makefile",
             "packages/php-ext/tests/ModelQueriesWritesNativeTest.php",
+            "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
             "packages/php-ext/src/model_write.c",
             "packages/php-ext/src/model_read.c",
             "packages/php-ext/src/model_query.c"
@@ -8388,6 +8390,7 @@
         "packages/rust/tests/src/conformance.rs",
         "packages/go/model/coverage_conformance_verification_test.go",
         "packages/php/tests/CoverageConformanceVerificationTest.php",
+        "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
         "packages/rust/tests/tests/coverage_conformance_verification.rs",
         "packages/ts/tests/coverage_conformance_verification.mjs",
         "packages/ts/tests/coverage_conformance_mysql.mjs",
@@ -8616,6 +8619,44 @@
                   "cases": [
                     "conformance_vector"
                   ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "php-extension": {
+            "part": "packages/php-ext/tests",
+            "tests": [
+              "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php"
+            ],
+            "inputs": [
+              "tests/conformance/vectors.json",
+              "tests/conformance/vectors.postgres.json",
+              "tests/conformance/vectors.sqlite.json",
+              "packages/php/testing/conformance/runner.php"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
+                  "cases": ["conformance_vector"],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
+                  "cases": ["conformance_vector"],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
+                  "cases": ["conformance_vector"],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]

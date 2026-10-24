@@ -4620,6 +4620,11 @@
           "symbol": "CoverageConformanceVerificationTest::testMysql"
         },
         {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
+          "symbol": "CoverageConformanceVerificationExtensionTest::test_conformance_vector"
+        },
+        {
           "implementation": "typescript",
           "test": "packages/ts/tests/coverage_conformance_mysql.mjs"
         },
@@ -4817,6 +4822,11 @@
           "symbol": "CoverageConformanceVerificationTest::testPostgres"
         },
         {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
+          "symbol": "CoverageConformanceVerificationExtensionTest::test_conformance_vector"
+        },
+        {
           "implementation": "typescript",
           "test": "packages/ts/tests/coverage_conformance_postgres.mjs"
         },
@@ -5012,6 +5022,11 @@
           "implementation": "php",
           "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
           "symbol": "CoverageConformanceVerificationTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
+          "symbol": "CoverageConformanceVerificationExtensionTest::test_conformance_vector"
         },
         {
           "implementation": "typescript",
