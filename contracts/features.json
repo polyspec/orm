@@ -9737,6 +9737,16 @@
       "command": "make --no-print-directory catalog-mutation-helper-ts-check"
     },
     {
+      "id": "python-catalog-mutation-lock",
+      "paths": [
+        "packages/python/src/polyspec/orm/catalog.py"
+      ],
+      "tests": [
+        "packages/python/tests/test_catalog_mutation_helper.py"
+      ],
+      "command": "make --no-print-directory catalog-mutation-helper-python-check"
+    },
+    {
       "id": "physical-steps",
       "paths": [
         "scripts/physical.mts"

@@ -566,6 +566,17 @@ def _check_current(current: list, original: list) -> None:
         raise _error(codes.ROW_CONFLICT, "original values changed")
 
 
+def _lock_original_row(session, original: CatalogRowSnapshot, dialect: str):
+    current = session.lookup(original.metadata, original.keys(), lock=True)
+    descriptor = session.describe(original.metadata.table)
+    if descriptor != original.metadata:
+        raise _error(codes.ROW_SCHEMA_CHANGED, "original descriptor changed")
+    _check_current(current, original.cells)
+    if dialect == "mysql":
+        session.mysql_safety(descriptor)
+    return descriptor
+
+
 @dataclass(frozen=True)
 class GridCell:
     """One typed cell of a grid query (docs/spec/interfaces.md, "Rust native grid query specification"). kind is one of
@@ -1314,13 +1325,7 @@ class CatalogConnection:
         keys = original.keys()
 
         def work(session: _Session) -> CatalogMutationResult:
-            current = session.lookup(original.metadata, keys, lock=True)
-            descriptor = session.describe(original.metadata.table)
-            if descriptor != original.metadata:
-                raise _error(codes.ROW_SCHEMA_CHANGED, "original descriptor changed")
-            _check_current(current, original.cells)
-            if self._dialect == "mysql":
-                session.mysql_safety(descriptor)
+            descriptor = _lock_original_row(session, original, self._dialect)
             sets = [
                 f"{_quote(descriptor.columns[index].name, self._dialect)}={_placeholder(i + 1, self._dialect)}"
                 for i, (index, _) in enumerate(changes)
@@ -1367,13 +1372,7 @@ class CatalogConnection:
         keys = original.keys()
 
         def work(session: _Session) -> int:
-            current = session.lookup(original.metadata, keys, lock=True)
-            descriptor = session.describe(original.metadata.table)
-            if descriptor != original.metadata:
-                raise _error(codes.ROW_SCHEMA_CHANGED, "original descriptor changed")
-            _check_current(current, original.cells)
-            if self._dialect == "mysql":
-                session.mysql_safety(descriptor)
+            descriptor = _lock_original_row(session, original, self._dialect)
             query = f"DELETE FROM {_qualified(descriptor.table, self._dialect)} WHERE {_key_predicate(descriptor, self._dialect, 1)}"
             affected = session.run(query, keys).affected
             if affected != 1:

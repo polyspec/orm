@@ -1697,6 +1697,17 @@
         "packages/ts/tests/catalog-mutation-helper.test.mjs"
       ]
     },
+    "catalog-mutation-helper-python-check": {
+      "scope": "owner",
+      "needs": [
+        "python"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/python/src/polyspec/orm/catalog.py",
+        "packages/python/tests/test_catalog_mutation_helper.py"
+      ]
+    },
     "dbspec-introspect-compare-check": {
       "scope": "owner",
       "needs": [
