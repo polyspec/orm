@@ -3187,17 +3187,17 @@
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/coverage_transactions.mjs",
-          "id": "transaction_rollback [sqlite]"
+          "id": "handle_abandoned_query [sqlite]"
         },
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/coverage_transactions.mjs",
-          "id": "transaction_rollback [mysql]"
+          "id": "handle_abandoned_query [mysql]"
         },
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/coverage_transactions.mjs",
-          "id": "transaction_rollback [postgres]"
+          "id": "handle_abandoned_query [postgres]"
         },
         {
           "implementation": "rust",
