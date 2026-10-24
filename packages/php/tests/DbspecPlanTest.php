@@ -61,12 +61,6 @@ function step_fields(PlanStep $s): array
     return $out;
 }
 
-/** @param list<string> $lines */
-function plan_text(array $lines): string
-{
-    return implode("\n", $lines) . "\n";
-}
-
 /** @param list<Diagnostic> $diagnostics */
 function plan_diagnostics(array $diagnostics): string
 {
@@ -81,7 +75,7 @@ function plan_source(string $id, ?array $lines): ?Document
     if ($lines === null) {
         return null;
     }
-    $result = Dbspec::parse(plan_text($lines), []);
+    $result = Dbspec::parse(dbspec_plan_text($lines), []);
     return $result->document ?? throw new RuntimeException(
         "$id: source diagnostics " . plan_diagnostics($result->diagnostics)
     );
@@ -89,7 +83,7 @@ function plan_source(string $id, ?array $lines): ?Document
 
 function plan_of(string $id, array $lines): Plan
 {
-    $result = Dbspec::parsePlan(plan_text($lines));
+    $result = Dbspec::parsePlan(dbspec_plan_text($lines));
     return $result->plan ?? throw new RuntimeException(
         "$id: plan diagnostics " . plan_diagnostics($result->diagnostics)
     );
@@ -161,9 +155,9 @@ final class DbspecPlanTest extends TestCase
         $plan = plan_of($id, $case['plan']);
         $emitted = Dbspec::emitPlan($plan);
         Assert::assertSame(
-            plan_text($case['plan']),
+            dbspec_plan_text($case['plan']),
             $emitted,
-            "$id: emitPlan differs\n--- want\n" . plan_text($case['plan']) . "--- got\n$emitted"
+            "$id: emitPlan differs\n--- want\n" . dbspec_plan_text($case['plan']) . "--- got\n$emitted"
         );
         $diff = Dbspec::diff($source, $plan);
         $changes = $diff->changes ?? throw new RuntimeException(
@@ -214,7 +208,7 @@ final class DbspecPlanTest extends TestCase
         $id = "plan/invalid/{$case['id']}";
 
         $source = plan_source($id, $case['source'] ?? null);
-        $parsed = Dbspec::parsePlan(plan_text($case['plan']));
+        $parsed = Dbspec::parsePlan(dbspec_plan_text($case['plan']));
         $diagnostics = $parsed->plan === null ? $parsed
             ->diagnostics : Dbspec::diff($source, $parsed->plan)
             ->diagnostics;
@@ -278,7 +272,7 @@ final class DbspecPlanTest extends TestCase
         $caseStarted = cpuCaseBegin(PLAN_CASE_CPU_SECONDS);
         $id = "plan/parse/{$case['id']}";
 
-        $parsed = Dbspec::parsePlan(plan_text($case['plan']));
+        $parsed = Dbspec::parsePlan(dbspec_plan_text($case['plan']));
         // Compares the plan diagnostic down to its message, and the target diagnostic down to its rule, line, and
         // column.
         $got = array_map(

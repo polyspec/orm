@@ -31,3 +31,9 @@ function plan_vectors(): array
     }
     return $vectors;
 }
+
+/** @param list<string> $lines */
+function dbspec_plan_text(array $lines): string
+{
+    return implode("\n", $lines) . "\n";
+}

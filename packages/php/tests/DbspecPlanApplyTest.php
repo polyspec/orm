@@ -94,12 +94,6 @@ function open_plan_database(string $dialect): array
     }];
 }
 
-/** @param list<string> $lines */
-function plan_lines(array $lines): string
-{
-    return implode("\n", $lines) . "\n";
-}
-
 /** @param list<Diagnostic> $diagnostics */
 function plan_failure(string $id, array $diagnostics): never
 {
@@ -171,13 +165,13 @@ final class DbspecPlanApplyTest extends TestCase
     #[DataProvider('planCases')]
     public function testPlan(array $case, string $dialect): void
     {
-        $parsed = Dbspec::parsePlan(plan_lines($case['plan']));
+        $parsed = Dbspec::parsePlan(dbspec_plan_text($case['plan']));
         $plan = $parsed->plan ?? plan_failure($case['id'], $parsed->diagnostics);
         $target = Dbspec::manifest([$plan->schema]);
         $want = $target->manifest?->schemaText ?? plan_failure($case['id'], $target->diagnostics);
         $source = null;
         if (isset($case['source'])) {
-            $sourceParse = Dbspec::parse(plan_lines($case['source']), []);
+            $sourceParse = Dbspec::parse(dbspec_plan_text($case['source']), []);
             $source = $sourceParse->document ?? plan_failure($case['id'], $sourceParse->diagnostics);
         }
         $id = "plan/$dialect/{$case['id']}";
