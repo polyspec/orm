@@ -12,5 +12,5 @@ import (
 // It fails if the DSN is missing.
 func TestCoveragePerformanceGate(t *testing.T) {
 	testcase.Start(t, gateDeadline)
-	hotPathGate(t)
+	coverageHotPathGate(t, "mysql")
 }

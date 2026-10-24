@@ -32,6 +32,8 @@ use Polyspec\Orm\PendingTime;
 final class PerfGateTest extends TestCase
 {
     private static ?Db $db = null;
+    private static string $driver = '';
+    private static bool $featureCase = false;
 
     public static function setUpBeforeClass(): void
     {
@@ -46,18 +48,20 @@ final class PerfGateTest extends TestCase
                     . 'none)'
             );
         }
-        $benchDsn = requiredDsn('ORM_BENCH_MYSQL_DSN');
-        if ($benchDsn === false || $benchDsn === '') {
-            throw new RuntimeException(
-                'ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database, and the gate never skips; run '
-                . 'it through make orm-check or make run-databases TARGETS=<target>, which create the bench database '
-                . 'of the run'
-            );
+        $featureDatabase = getenv('ORM_FEATURE_DATABASE');
+        self::$featureCase = is_string($featureDatabase) && $featureDatabase !== '';
+        if (self::$featureCase) {
+            $dsn = requiredDsn('ORM_FEATURE_DSN');
+            self::$driver = $featureDatabase;
+        } else {
+            $dsn = requiredDsn('ORM_BENCH_MYSQL_DSN');
+            self::$driver = 'mysql';
         }
-        self::$db = \Polyspec\Orm\Tests\Model\connect($benchDsn, new Config(
+        self::$db = \Polyspec\Orm\Tests\Model\connect($dsn, new Config(
             aesKey: 'bench-salt',
             blindIndexKey: 'bench-blind-index',
         ));
+        self::assertSame(self::$driver, self::$db->driver(), 'the ORM connection driver');
         self::cpuLoad();
     }
 
@@ -70,16 +74,27 @@ final class PerfGateTest extends TestCase
     public static function gates(): iterable
     {
         $suffix = getenv('ORM_PERF_CPU_LOAD') === '1' ? '/under-load' : '';
-        // The native extension has no recorded reference yet. It still reports its real
-        // measurement, but only the library client uses the published PHP bounds.
-        $pkBound = extension_loaded('polyspec_orm') ? null : 1.35;
-        $listBound = extension_loaded('polyspec_orm') ? null : 1.25;
+        // The legacy PHP library perf-check uses its recorded MySQL references. Feature
+        // coverage cases report measurements without a fixed reference; the native wrapper
+        // independently proves whether the extension is loaded.
+        $hasReference = !self::$featureCase;
+        $pkBound = $hasReference ? 1.35 : null;
+        $listBound = $hasReference ? 1.25 : null;
         yield "pk$suffix" => ['pk', $pkBound];
         yield "list100$suffix" => ['list100', $listBound];
     }
 
     private static function query(string $name): Author
     {
+        if (self::$featureCase) {
+            return match ($name) {
+                'pk' => (new Author())(self::$db)->removeAllColumns()->removeColumnUserSeq()->removeColumnServiceSeq()
+                    ->removeColumnServiceRegionSeq()->removeColumnServiceMemberSeq()->seq(42)->addColumnSeq()->addColumnName()->limit(0, 1),
+                'list100' => (new Author())(self::$db)->removeAllColumns()->removeColumnUserSeq()->removeColumnServiceSeq()
+                    ->removeColumnServiceRegionSeq()->removeColumnServiceMemberSeq()->serviceSeq(7)->andIsClose(false)
+                    ->orderBySeqDesc()->limit(0, 100)->addColumnSeq()->addColumnName(),
+            };
+        }
         return match ($name) {
             'pk' => (new Author())(self::$db)->seq(42),
             'list100' => (new Author())(self::$db)->serviceSeq(7)->andIsClose(false)->orderBySeqDesc()->limit(0, 100),
@@ -91,7 +106,11 @@ final class PerfGateTest extends TestCase
     #[DoesNotPerformAssertions]
     public function testPerfGate(string $name, ?float $bound): void
     {
-        $native = self::native(self::$db, self::query($name));
+        $query = self::query($name);
+        $native = self::native(self::$db, $query);
+        if (self::$featureCase) {
+            self::assertSame(self::clientRows($query), $native(), "$name: client and native rows");
+        }
         $wallStarted = hrtime(true);
         $usageStarted = getrusage();
         [$clientNs, $nativeNs, $ratio] = self::pairedRatio(static fn() => self::query($name)->gets(), $native);
@@ -125,6 +144,15 @@ final class PerfGateTest extends TestCase
                 )
             );
         }
+    }
+
+    /** @return list<array{int, string}> */
+    private static function clientRows(Author $query): array
+    {
+        return array_map(
+            static fn(Author $row): array => [$row->getSeq(), $row->getName()],
+            $query->gets()->all(),
+        );
     }
 
     /** @param array<string, int> $usage */
@@ -242,7 +270,7 @@ final class PerfGateTest extends TestCase
         }
         $zone = $db->zone();
         $st = $db->pdo()->prepare($q['sql']);
-        return static function () use ($st, $binds, $cells, $db, $groups, $zone): void {
+        return static function () use ($st, $binds, $cells, $db, $groups, $zone): array {
             $st->execute($binds);
             $rows = $st->fetchAll(PDO::FETCH_NUM);
             Codec::decodeRows($rows, $cells, $db->config());
@@ -276,6 +304,7 @@ final class PerfGateTest extends TestCase
                 }
                 $out[] = $values;
             }
+            return array_map(static fn(array $values): array => [$values['seq'], $values['name']], $out);
         };
     }
 }

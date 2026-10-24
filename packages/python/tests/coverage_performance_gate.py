@@ -1,4 +1,4 @@
-"""Measure Python hot-path reads against the same SQL through PyMySQL.
+"""Measure Python hot-path reads against the same SQL through the feature's native driver.
 
 No fixed reference is recorded for Python yet, so the measurement is diagnostic only.
 """
@@ -10,29 +10,48 @@ import sys
 import time
 from urllib.parse import parse_qs, unquote, urlsplit
 
-import pymysql
-import pymysql.cursors
 from polyspec.orm.models import models
 
-from .coverage_case import CoverageCase, coverage_main
 
 WARMUP = 100
 PAIRS = 1000
 
 
-def required_dsn():
-    dsn = os.environ.get("ORM_BENCH_MYSQL_DSN")
-    if not dsn:
+def feature_item(item):
+    dsn = os.environ.get("ORM_FEATURE_DSN")
+    database = os.environ.get("ORM_FEATURE_DATABASE")
+    if not dsn or not database:
         raise RuntimeError(
-            "ORM_BENCH_MYSQL_DSN is required; run this case with the seeded MySQL bench database"
+            "ORM_FEATURE_DSN and ORM_FEATURE_DATABASE are required; run this case through make feature-check"
         )
+    if item is None or item != (database, dsn):
+        raise RuntimeError(
+            "the coverage item differs from ORM_FEATURE_DSN or ORM_FEATURE_DATABASE"
+        )
+    expected_scheme = {
+        "mysql": "mysql",
+        "postgres": "postgres",
+        "sqlite": "sqlite",
+    }.get(database)
     url = urlsplit(dsn)
-    if url.scheme != "mysql":
-        raise RuntimeError(f"ORM_BENCH_MYSQL_DSN must use mysql:, got {url.scheme!r}")
-    return url
+    if expected_scheme is None or url.scheme != expected_scheme:
+        raise RuntimeError(
+            f"ORM_FEATURE_DSN scheme {url.scheme!r} does not match {database}"
+        )
+    return database, dsn, url
 
 
-def native_connection(url):
+def native_connection(database, dsn, url):
+    if database == "sqlite":
+        import sqlite3
+
+        return sqlite3.connect(unquote(url.path), isolation_level=None)
+    if database == "postgres":
+        import psycopg
+
+        return psycopg.connect(dsn, autocommit=True)
+    import pymysql
+
     query = parse_qs(url.query)
     return pymysql.connect(
         host=url.hostname or "localhost",
@@ -42,21 +61,18 @@ def native_connection(url):
         password=unquote(url.password or ""),
         database=unquote(url.path.lstrip("/")),
         autocommit=True,
-        cursorclass=pymysql.cursors.DictCursor,
     )
 
 
-def native_for(connection, query):
+def native_for(database, connection, query):
     statement = query.get_query()
     sql, binds = statement["sql"], statement["binds"]
 
     def run():
         with connection.cursor() as cursor:
             cursor.execute(sql, binds)
-            return [
-                (int(values[0]), values[1])
-                for values in (tuple(row.values()) for row in cursor.fetchall())
-            ]
+            rows = cursor.fetchall()
+            return [(int(row[0]), row[1]) for row in rows]
 
     return run
 
@@ -65,7 +81,7 @@ def client_rows(query):
     return [(row.get_seq(), row.get_name()) for row in query.gets().values()]
 
 
-def measure(name, client, native, expected_rows):
+def measure(database, name, client, native, expected_rows):
     client_result = client()
     native_result = native()
     if client_result != native_result:
@@ -107,7 +123,7 @@ def measure(name, client, native, expected_rows):
     client_p50 = statistics.median(client_ns)
     ratio = statistics.median(ratios)
     print(
-        f"PERF hot_path_gate python {name}: native p50={native_p50 / 1000:.1f}µs "
+        f"PERF hot_path_gate python {database} {name}: native p50={native_p50 / 1000:.1f}µs "
         f"client p50={client_p50 / 1000:.1f}µs ratio={ratio:.2f} "
         f"samples={PAIRS} cpu={cpu_ms:.1f}ms wall={wall_ms:.1f}ms "
         f"machine={platform.platform()} reference=not-recorded",
@@ -116,17 +132,24 @@ def measure(name, client, native, expected_rows):
     )
 
 
-def hot_path_gate():
-    url = required_dsn()
-    dsn = url.geturl()
+def hot_path_gate(item):
+    database, dsn, url = feature_item(item)
     db = models.connect(dsn, aesKey="bench-salt", blindIndexKey="bench-blind-index")
-    native = native_connection(url)
+    if db.driver != database:
+        db.close()
+        raise RuntimeError(f"client opened {db.driver}, want {database}")
+    native = native_connection(database, dsn, url)
     try:
 
         def pk():
             return (
                 models.Author()
                 .connect(db)
+                .remove_all_columns()
+                .remove_column_user_seq()
+                .remove_column_service_seq()
+                .remove_column_service_region_seq()
+                .remove_column_service_member_seq()
                 .seq(42)
                 .add_column_seq()
                 .add_column_name()
@@ -137,6 +160,11 @@ def hot_path_gate():
             return (
                 models.Author()
                 .connect(db)
+                .remove_all_columns()
+                .remove_column_user_seq()
+                .remove_column_service_seq()
+                .remove_column_service_region_seq()
+                .remove_column_service_member_seq()
                 .service_seq(7)
                 .and_is_close(False)
                 .order_by_seq_desc()
@@ -145,11 +173,18 @@ def hot_path_gate():
                 .add_column_name()
             )
 
-        measure("pk", lambda: client_rows(pk()), native_for(native, pk()), 1)
         measure(
+            database,
+            "pk",
+            lambda: client_rows(pk()),
+            native_for(database, native, pk()),
+            1,
+        )
+        measure(
+            database,
             "list100",
             lambda: client_rows(list100()),
-            native_for(native, list100()),
+            native_for(database, native, list100()),
             100,
         )
     finally:
@@ -157,10 +192,7 @@ def hot_path_gate():
         db.close()
 
 
-class CoverageTest(CoverageCase):
-    def test_hot_path_gate(self):
-        self.each_item("hot_path_gate", lambda _item: hot_path_gate())
-
-
-if __name__ == "__main__":
-    coverage_main(CoverageTest)
+def feature_hot_path_gate():
+    database = os.environ.get("ORM_FEATURE_DATABASE")
+    dsn = os.environ.get("ORM_FEATURE_DSN")
+    return hot_path_gate((database, dsn))
