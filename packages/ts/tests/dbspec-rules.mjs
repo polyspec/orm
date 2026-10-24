@@ -22,12 +22,18 @@ function invalid(name, lines, errors, documents = {}) {
   rule(`invalid ${name}`, () => {
     const result = parseDbspec(typeof lines === 'string' ? lines : text(lines), documents);
     assert.equal(result.document, null);
+    const coordinates = errors.map(([rule, line, column]) => [rule, line, column]);
     assert.deepEqual(
       result.diagnostics.map(d => [d.rule, d.line, d.column]),
-      errors,
-      result.diagnostics.map(d => `${d.rule} ${d.line}:${d.column} ${d.message}`).join('\n'),
+      coordinates,
+      `${result.diagnostics.map(d => `${d.rule} ${d.line}:${d.column} ${d.message}`).join('\n')}\nExpected:\n${errors.map(([rule, line, column, reason]) => `${rule} ${line}:${column}${reason === undefined ? '' : ` ${reason}`}`).join('\n')}`,
     );
   });
+}
+
+// Several independent rule failures can share one source coordinate; keep every reason and its exact expected count.
+function diagnosticsAt(rule, line, column, reasons) {
+  return reasons.map(reason => [rule, line, column, reason]);
 }
 
 function normalize(name, lines, canonical, documents = {}) {
@@ -473,13 +479,15 @@ invalid('audit', audited, [
   ['setting', 8, 73], // action is varchar(16)
   ['setting', 8, 89], // previous is not null
   ['setting', 20, 17], // soft_delete on an i64 column
-  ['setting', 21, 16], // service is audited itself
-  ['setting', 21, 16], // no history_id copy
-  ['setting', 21, 16], // no change copy
-  ['setting', 21, 16], // no previous_audit_seq copy
-  ['setting', 21, 16], // name varchar(191) differs
-  ['setting', 21, 16], // no extra copy
-  ['setting', 21, 16], // audit_seq is not a copied column
+  ...diagnosticsAt('setting', 21, 16, [
+    'service is audited itself',
+    'no history_id copy',
+    'no change copy',
+    'no previous_audit_seq copy',
+    'name varchar(191) differs',
+    'no extra copy',
+    'audit_seq is not a copied column',
+  ]),
   ['setting', 21, 45], // the audit record table is the table itself
   ['setting', 21, 68], // action is varchar(191)
   ['setting', 21, 82], // previous is not null
