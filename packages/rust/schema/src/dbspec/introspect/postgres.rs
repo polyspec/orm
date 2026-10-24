@@ -110,12 +110,13 @@ pub(super) fn read(results: &Results) -> Result<Catalog, String> {
             }
             _ => {}
         }
-        if let Some(text) = dflt {
-            let Some(value) = postgres_default(&text, typ) else {
+        match super::parse_column_default(dflt, |text| postgres_default(text, typ)) {
+            Ok(Some(value)) => col.dflt = value,
+            Ok(None) => {}
+            Err(text) => {
                 c.report("column", &table, &name, format!("default {text} is not a dbspec default"));
                 continue;
-            };
-            col.dflt = value;
+            }
         }
         c.table(&table).expect("table read above").columns.push(col);
         quoted.entry(table.clone()).or_default().insert(name.clone(), quoted_name);

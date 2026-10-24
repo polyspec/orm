@@ -96,6 +96,66 @@ pub fn read_catalog(dialect: Dialect, results: &[Vec<Vec<CatalogValue>>], name: 
     catalog.document(name)
 }
 
+/// Parses a nullable catalog default while retaining the original text for an unsupported-value diagnostic.
+fn parse_column_default(text: Option<String>, parse: impl FnOnce(&str) -> Option<String>) -> std::result::Result<Option<String>, String> {
+    text.map(|value| parse(&value).ok_or(value)).transpose()
+}
+
+#[cfg(test)]
+mod default_tests {
+    use super::{parse_column_default, read_catalog, CatalogValue, Dialect};
+    use crate::dbspec::model::{DefaultValue, Type};
+
+    #[test]
+    fn column_default_keeps_absent_accepted_and_rejected_states_distinct() {
+        assert_eq!(parse_column_default(None, |_| Some("unused".into())), Ok(None));
+        assert_eq!(parse_column_default(Some("7".into()), |text| Some(text.into())), Ok(Some("7".into())));
+        assert_eq!(parse_column_default(Some("unsupported()".into()), |_| None), Err("unsupported()".into()));
+    }
+
+    #[test]
+    fn postgres_and_sqlite_catalog_readers_keep_their_default_parsers() {
+        let mut postgres = vec![Vec::new(); super::postgres::QUERIES.len()];
+        postgres[0].push(vec![CatalogValue::Text("sample".into()), CatalogValue::Text("r".into()), CatalogValue::Bool(false)]);
+        postgres[2].push(vec![
+            CatalogValue::Text("sample".into()),
+            CatalogValue::Text("value".into()),
+            CatalogValue::Text("value".into()),
+            CatalogValue::Text("integer".into()),
+            CatalogValue::Bool(false),
+            CatalogValue::Text("7".into()),
+            CatalogValue::Text(String::new()),
+            CatalogValue::Text(String::new()),
+            CatalogValue::Text(String::new()),
+        ]);
+        let postgres = read_catalog(Dialect::Postgres, &postgres, "sample").expect("read PostgreSQL default");
+        let postgres_column = postgres.document.tables[0].column("value").expect("PostgreSQL column");
+        assert_eq!(postgres_column.ty, Type::I32);
+        assert_eq!(postgres_column.default, Some(DefaultValue::Literal("7".into())));
+
+        let mut sqlite = vec![Vec::new(); super::sqlite::QUERIES.len()];
+        sqlite[0].push(vec![
+            CatalogValue::Text("table".into()),
+            CatalogValue::Text("sample".into()),
+            CatalogValue::Text("sample".into()),
+            CatalogValue::Text("CREATE TABLE \"sample\" (\"value\" INTEGER DEFAULT 7)".into()),
+        ]);
+        sqlite[1].push(vec![
+            CatalogValue::Text("sample".into()),
+            CatalogValue::Text("value".into()),
+            CatalogValue::Text("INTEGER".into()),
+            CatalogValue::Int(0),
+            CatalogValue::Text("7".into()),
+            CatalogValue::Int(0),
+            CatalogValue::Int(0),
+        ]);
+        let sqlite = read_catalog(Dialect::Sqlite, &sqlite, "sample").expect("read SQLite default");
+        let sqlite_column = sqlite.document.tables[0].column("value").expect("SQLite column");
+        assert_eq!(sqlite_column.ty, Type::I32);
+        assert_eq!(sqlite_column.default, Some(DefaultValue::Literal("7".into())));
+    }
+}
+
 /// Catalog results received in query order.
 struct Results<'r> {
     results: &'r [Vec<Vec<CatalogValue>>],

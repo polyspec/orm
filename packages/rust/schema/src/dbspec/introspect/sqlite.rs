@@ -3,9 +3,9 @@
 
 use super::super::model::{Column, Name, Type};
 use super::super::names::renderer_name;
-use super::number;
 use super::super::render::{Dialect, Renderer};
 use super::check::{decode_check, unscaled_decimal};
+use super::number;
 use super::trigger::ITrigger;
 use super::{action_name, group, Catalog, ICheck, IColumn, IForeignKey, IKey, ITable, Results, Unsupported};
 use regex::Regex;
@@ -122,12 +122,13 @@ pub(super) fn read(results: &Results) -> Result<Catalog, String> {
             col.typ = typ;
         }
         st.checks.remove(&check_name);
-        if let Some(text) = dflt {
-            let Some(value) = sqlite_default(&r, &text, col.typ) else {
+        match super::parse_column_default(dflt, |text| sqlite_default(&r, text, col.typ)) {
+            Ok(Some(value)) => col.dflt = value,
+            Ok(None) => {}
+            Err(text) => {
                 c.report("column", &table, &name, format!("default {text} is not a dbspec default"));
                 continue;
-            };
-            col.dflt = value;
+            }
         }
         c.table(&table).expect("table read above").columns.push(col);
     }
