@@ -59,6 +59,7 @@ async function sslVersion(dsn) {
 }
 
 // A connection case connects to the TLS server three times.
+// Requirements: CFG-16.
 caseTest('mysql_tls/connections', DATABASE, async ({ step }) => {
   const failures = [];
   const dsns = ['ORM_TEST_MYSQL_TLS_DSN', 'ORM_TEST_MYSQL_TLS_OTHER_CA_DSN', 'ORM_TEST_MYSQL_TLS_MISMATCH_DSN'].map(name => {

@@ -57,6 +57,7 @@ final class DsnTest extends TestCase
     }
 
     #[DataProvider('invalidDsns')]
+    // Requirements: CFG-2.
     public function testParseRejects(string $dsn): void
     {
         try {

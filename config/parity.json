@@ -622,7 +622,14 @@
     {
       "id": "postgres-listen-notify",
       "kind": "feature",
-      "requirements": ["DIA-192", "DIA-193", "DIA-194", "DIA-195", "DIA-196", "PRT-74"],
+      "requirements": [
+        "DIA-192",
+        "DIA-193",
+        "DIA-194",
+        "DIA-195",
+        "DIA-196",
+        "PRT-74"
+      ],
       "bindings": [
         {
           "implementation": "go",
@@ -1863,6 +1870,162 @@
       ]
     },
     {
+      "id": "connection-mysql-tls-verifies-server-identity",
+      "kind": "feature",
+      "requirements": [
+        "CFG-16"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/mysql_tls_test.go",
+          "id": "TestMySQLTLSConnection"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/MysqlTlsTest.php",
+          "id": "MysqlTlsTest::testConnections"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/MysqlTlsTest.php",
+          "id": "MysqlTlsTest::testConnections"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/mysql_tls.mjs",
+          "id": "mysql_tls/connections"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/mysql_tls.py",
+          "id": "test_connections"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/mysql_tls.rs",
+          "id": "verify_identity_connects_with_tls"
+        }
+      ]
+    },
+    {
+      "id": "connection-mysql-tls-requires-hostname-tcp",
+      "kind": "feature",
+      "requirements": [
+        "CFG-17"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/mysql_tls_test.go",
+          "id": "TestParseDSNMySQLTLS"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/MysqlTlsTest.php",
+          "id": "MysqlTlsTest::testParameters"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/OrmExceptionNativeTest.php",
+          "id": "OrmExceptionNativeTest::testNativeMysqlTlsRejectsAddressLiteralsForIdentityVerification"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/mysql_tls.mjs",
+          "id": "mysql_tls/parameters"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/mysql_tls.py",
+          "id": "test_parameters"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/mysql_tls.rs",
+          "id": "verify_identity_requires_a_host_name_and_tcp"
+        }
+      ]
+    },
+    {
+      "id": "connection-dsn-supported-parameters",
+      "kind": "feature",
+      "requirements": [
+        "CFG-19"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/dsn_test.go",
+          "id": "TestParseDSN"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/MysqlTlsTest.php",
+          "id": "MysqlTlsTest::testParameters"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/OrmExceptionNativeTest.php",
+          "id": "OrmExceptionNativeTest::testNativeOrmRejectsMalformedAndUnsupportedDsnParameters"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/mysql_tls.mjs",
+          "id": "mysql_tls/parameters"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/mysql_tls.py",
+          "id": "test_parameters"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/zone.rs",
+          "id": "driver_parameters_reach_sqlx"
+        }
+      ]
+    },
+    {
+      "id": "connection-dsn-utc",
+      "kind": "feature",
+      "requirements": [
+        "CFG-2"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/dsn_test.go",
+          "id": "TestParseDSNRejectsInvalidInput"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnTest.php",
+          "id": "DsnTest::testParseRejects"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/OrmExceptionNativeTest.php",
+          "id": "OrmExceptionNativeTest::testNativeOrmRejectsMalformedAndUnsupportedDsnParameters"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn.mjs",
+          "id": "dsn/timezone"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/connection_utc.py",
+          "id": "test_dsn_rejects_non_utc_timezones"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/zone.rs",
+          "id": "non_utc_time_zones_are_rejected"
+        }
+      ]
+    },
+    {
       "id": "coverage-dsn-connection",
       "kind": "feature",
       "requirements": [
@@ -3099,9 +3262,7 @@
       "kind": "feature",
       "requirements": [
         "CFG-16",
-        "CFG-17",
-        "CFG-18",
-        "CFG-19"
+        "CFG-18"
       ],
       "bindings": [
         {
@@ -4484,7 +4645,8 @@
         "DSL-83",
         "DSL-84",
         "DSL-85",
-        "DSL-86", "DSL-87",
+        "DSL-86",
+        "DSL-87",
         "DSL-88",
         "DSL-89",
         "DSL-90",
@@ -4686,7 +4848,8 @@
         "DSL-83",
         "DSL-84",
         "DSL-85",
-        "DSL-86", "DSL-87",
+        "DSL-86",
+        "DSL-87",
         "DSL-88",
         "DSL-89",
         "DSL-90",
@@ -4888,7 +5051,8 @@
         "DSL-83",
         "DSL-84",
         "DSL-85",
-        "DSL-86", "DSL-87",
+        "DSL-86",
+        "DSL-87",
         "DSL-88",
         "DSL-89",
         "DSL-90",
@@ -7682,8 +7846,7 @@
           "id": "test_mysql_errors_have_the_codes_of_the_catalog"
         }
       ]
-    }
-,
+    },
     {
       "id": "native-row-cell-bytes",
       "kind": "feature",
@@ -7795,8 +7958,7 @@
           "id": "driver_error_tests::unknown_database_error_keeps_the_native_source_chain"
         }
       ]
-    }
-    ,
+    },
     {
       "id": "go-internal-packages-go-orm-driver-error",
       "kind": "feature",
@@ -7816,10 +7978,8 @@
       "kind": "feature",
       "requirements": [
         "CFG-1",
-        "CFG-2",
         "CFG-10",
         "CFG-12",
-        "CFG-19",
         "CFG-20"
       ],
       "bindings": [
@@ -8290,7 +8450,6 @@
       "kind": "feature",
       "requirements": [
         "CFG-16",
-        "CFG-17",
         "CFG-18"
       ],
       "bindings": [
@@ -8384,12 +8543,7 @@
       "requirements": [
         "DSL-141",
         "DIA-57",
-        "CFG-2",
-        "CFG-4",
-        "CFG-5",
-        "CFG-6",
-        "CFG-27",
-        "CFG-29"
+        "CFG-2"
       ],
       "bindings": [
         {
@@ -10780,20 +10934,6 @@
       ]
     },
     {
-      "id": "rust-verify-identity-connects-with-tls",
-      "kind": "feature",
-      "requirements": [
-        "CFG-16"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/mysql_tls.rs",
-          "id": "verify_identity_connects_with_tls"
-        }
-      ]
-    },
-    {
       "id": "rust-verify-identity-refuses-another-ca-and-another-host",
       "kind": "feature",
       "requirements": [
@@ -11666,30 +11806,6 @@
       ]
     },
     {
-      "id": "rust-non-utc-time-zones-are-rejected",
-      "kind": "feature",
-      "requirements": [
-        "CFG-2",
-        "CFG-4",
-        "CFG-5",
-        "CFG-6",
-        "CFG-9",
-        "CFG-20",
-        "CFG-27",
-        "CFG-29",
-        "CFG-32",
-        "DIA-57",
-        "DSL-141"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/zone.rs",
-          "id": "non_utc_time_zones_are_rejected"
-        }
-      ]
-    },
-    {
       "id": "rust-pool-idle-size-and-lifetime",
       "kind": "feature",
       "requirements": [
@@ -11732,20 +11848,6 @@
       ]
     },
     {
-      "id": "rust-postgres-float-round-trip",
-      "kind": "feature",
-      "requirements": [
-        "CFG-32"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/zone.rs",
-          "id": "postgres_float_round_trip"
-        }
-      ]
-    },
-    {
       "id": "rust-statement-timeout",
       "kind": "feature",
       "requirements": [
@@ -11756,6 +11858,20 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/zone.rs",
           "id": "statement_timeout"
+        }
+      ]
+    },
+    {
+      "id": "rust-postgres-float-round-trip",
+      "kind": "feature",
+      "requirements": [
+        "CFG-32"
+      ],
+      "bindings": [
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/zone.rs",
+          "id": "postgres_float_round_trip"
         }
       ]
     },
@@ -12841,9 +12957,7 @@
       "kind": "feature",
       "requirements": [
         "CFG-16",
-        "CFG-17",
-        "CFG-18",
-        "CFG-19"
+        "CFG-18"
       ],
       "bindings": [
         {
@@ -15926,9 +16040,7 @@
       "id": "php-internal-mysql-tls-parameters",
       "kind": "feature",
       "requirements": [
-        "CFG-17",
-        "CFG-18",
-        "CFG-19"
+        "CFG-18"
       ],
       "bindings": [
         {
@@ -17745,7 +17857,10 @@
     {
       "id": "aes-keyring",
       "kind": "api",
-      "requirements": ["INT-130","INT-60"],
+      "requirements": [
+        "INT-130",
+        "INT-60"
+      ],
       "symbols": [
         {
           "implementation": "go",
@@ -17842,7 +17957,10 @@
     {
       "id": "aes-utils",
       "kind": "api",
-      "requirements": ["INT-131","INT-60"],
+      "requirements": [
+        "INT-131",
+        "INT-60"
+      ],
       "symbols": [
         {
           "implementation": "go",
@@ -18404,7 +18522,10 @@
     {
       "id": "client-db-connectschema",
       "kind": "api",
-      "requirements": ["INT-132","INT-54"],
+      "requirements": [
+        "INT-132",
+        "INT-54"
+      ],
       "symbols": [
         {
           "implementation": "go",
@@ -19366,7 +19487,9 @@
     {
       "id": "client-schema",
       "kind": "api",
-      "requirements": ["INT-133"],
+      "requirements": [
+        "INT-133"
+      ],
       "symbols": [
         {
           "implementation": "go",
@@ -19539,7 +19662,10 @@
     {
       "id": "client-utils",
       "kind": "api",
-      "requirements": ["INT-134","INT-73"],
+      "requirements": [
+        "INT-134",
+        "INT-73"
+      ],
       "symbols": [
         {
           "implementation": "go",
@@ -19714,7 +19840,13 @@
     {
       "id": "collection-group-row",
       "kind": "api",
-      "requirements": ["INT-68","INT-69","INT-70","INT-71","INT-90"],
+      "requirements": [
+        "INT-68",
+        "INT-69",
+        "INT-70",
+        "INT-71",
+        "INT-90"
+      ],
       "symbols": [
         {
           "implementation": "go",
@@ -21419,7 +21551,10 @@
     {
       "id": "transaction-failure-rollback",
       "kind": "feature",
-      "requirements": ["INT-72"],
+      "requirements": [
+        "INT-72",
+        "DIA-180"
+      ],
       "bindings": [
         {"implementation": "go", "test": "packages/go/orm/coverage_transaction_failure_test.go", "id": "TestTransactionFailureRollback"},
         {"implementation": "php", "test": "packages/php/tests/TransactionFailureTest.php", "id": "TransactionFailureTest::testTransactionKeepsCallbackAndFailedRollbackErrors"},
@@ -21453,7 +21588,10 @@
     {
       "id": "transaction-failure-savepoint-end",
       "kind": "feature",
-      "requirements": ["DIA-181", "PLN-17"],
+      "requirements": [
+        "DIA-181",
+        "PLN-17"
+      ],
       "bindings": [
         {"implementation": "go", "test": "packages/go/orm/coverage_transaction_failure_test.go", "id": "TestTransactionFailureSavepointEnd"},
         {"implementation": "go", "test": "packages/go/orm/transaction_end_test.go", "id": "TestSavepointReportsFailedEnd"},
@@ -21883,8 +22021,8 @@
       "clients",
       "planners",
       "runners",
-      "언어",
-      "구현",
+      "\uc5b8\uc5b4",
+      "\uad6c\ud604",
       "client",
       "planner",
       "runner"

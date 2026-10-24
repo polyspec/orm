@@ -236,6 +236,18 @@ pub fn parse_dsn(dsn: &str) -> Result<ParsedDsn> {
             if url.host_str().unwrap_or("").is_empty() || url.path().trim_matches('/').is_empty() {
                 return Err(bad("mysql DSN must include host and database".into()));
             }
+            if pairs.iter().any(|(key, _)| key == "ssl-mode") {
+                if url
+                    .host_str()
+                    .and_then(|host| host.trim_start_matches('[').trim_end_matches(']').parse::<std::net::IpAddr>().ok())
+                    .is_some()
+                {
+                    return Err(bad("mysql DSN ssl-mode requires a host name, not an IP address".into()));
+                }
+                if pairs.iter().any(|(key, _)| key == "socket") {
+                    return Err(bad("mysql DSN ssl-mode requires TCP and does not accept socket".into()));
+                }
+            }
             ConnectOptions::MySql(MySqlConnectOptions::from_str(rest.as_str()).map_err(sqlx_err)?.timezone(Some("+00:00".to_owned())))
         }
         "postgres" => {

@@ -15,6 +15,7 @@ await run.run('dsn/invalid', COMPUTE, async () => {
   }
 });
 // Every connection reads and writes datetime as UTC, so the timezone accepts only UTC and +00:00.
+// Requirements: CFG-2.
 await run.run('dsn/timezone', COMPUTE, () => {
   for (const dsn of ['mysql://root@localhost/orm_example?timezone=%2B09:00', 'postgres://root@localhost/orm_example?timezone=Asia/Seoul', 'sqlite:///tmp/x.sqlite?timezone=Asia%2FSeoul']) {
     let failed = false;

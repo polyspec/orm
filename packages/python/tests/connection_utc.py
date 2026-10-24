@@ -10,11 +10,9 @@ import datetime
 import tempfile
 import unittest
 
+from polyspec.orm.database import parse_dsn
 from polyspec.orm.errors import OrmError
-from polyspec.orm.models import models
 from . import testcase
-from .bench_set import install_bench
-from .case_database import case_database
 
 DIALECTS = ("sqlite", "mysql", "postgres")
 TEMP = {}
@@ -42,10 +40,36 @@ def with_zone(dsn: str, zone: str) -> str:
     return dsn + ("&" if "?" in dsn else "?") + "timezone=" + zone.replace("+", "%2B")
 
 
+class DsnTimezoneTest(unittest.TestCase):
+    deadline = testcase.COMPUTE
+
+    # Every client rejects a DSN timezone other than UTC before opening a connection (CFG-2).
+    def test_dsn_rejects_non_utc_timezones(self):
+        for dsn in (
+            "mysql://root@localhost/orm_example?timezone=%2B09:00",
+            "postgres://root@localhost/orm_example?timezone=Asia/Seoul",
+            "sqlite:///tmp/orm_example.sqlite?timezone=Asia%2FSeoul",
+        ):
+            with self.subTest(dsn=dsn):
+                with self.assertRaises(OrmError, msg=f"accepted {dsn}") as raised:
+                    parse_dsn(dsn)
+                self.assertEqual(raised.exception.code, "CONFIG", dsn)
+        for dsn in (
+            "mysql://root@localhost/orm_example",
+            "postgres://root@localhost/orm_example?timezone=UTC",
+            "sqlite:///tmp/orm_example.sqlite?timezone=%2B00:00",
+        ):
+            with self.subTest(dsn=dsn):
+                self.assertEqual(parse_dsn(dsn).zone, "+00:00", dsn)
+
+
 class ConnectionUtcTest(unittest.TestCase):
     deadline = testcase.DATABASE
 
     def connections_use_utc(self, dialect: str, db) -> None:
+        from polyspec.orm.models import models
+        from .bench_set import install_bench
+
         install_bench(db)
         user = models.User().connect(db).set_name("zone-user").create()
         service = models.Service().connect(db).set_name("zone-service").create()
@@ -125,6 +149,9 @@ class ConnectionUtcTest(unittest.TestCase):
     # The test of DSL-141, DIA-57 (docs/spec).
     # Requirements: CFG-2, CFG-7.
     def test_connections_use_utc(self):
+        from polyspec.orm.models import models
+        from .case_database import case_database
+
         for dialect in DIALECTS:
             for zone in ("", "UTC", "+00:00"):
                 with self.subTest(dialect=dialect, zone=zone):
@@ -140,6 +167,9 @@ class ConnectionUtcTest(unittest.TestCase):
                             db.close()
 
     def test_other_zone_refused(self):
+        from polyspec.orm.models import models
+        from .case_database import case_database
+
         for dialect in DIALECTS:
             with case_database(dialect, TEMP["dir"].name, "orm_utc") as dsn:
                 for zone in ("Asia/Seoul", "+09:00", "SYSTEM"):

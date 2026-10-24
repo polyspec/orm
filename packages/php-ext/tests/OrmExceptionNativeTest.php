@@ -79,6 +79,7 @@ final class OrmExceptionNativeTest extends TestCase
         );
     }
 
+    // Requirements: CFG-2, CFG-19.
     public function testNativeOrmRejectsMalformedAndUnsupportedDsnParameters(): void
     {
         foreach (
@@ -107,6 +108,7 @@ final class OrmExceptionNativeTest extends TestCase
         }
     }
 
+    // Requirements: CFG-17.
     public function testNativeMysqlTlsRejectsAddressLiteralsForIdentityVerification(): void
     {
         foreach (['127.0.0.1', '[::1]'] as $host) {

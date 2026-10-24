@@ -119,8 +119,9 @@ async fn connections_use_utc() {
 
 /// A timezone parameter that is not UTC fails as CONFIG.
 #[test]
+// Requirements: CFG-2.
 fn non_utc_time_zones_are_rejected() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     for dsn in [
         "mysql://root@localhost/orm_example?timezone=%2B09:00",
         "postgres://root@localhost/orm_example?timezone=Asia/Seoul",
@@ -138,7 +139,7 @@ fn non_utc_time_zones_are_rejected() {
 
 /// A parameter other than `timezone` reaches sqlx, which reads it as its own connect option.
 #[test]
-// Requirements: CFG-20.
+// Requirements: CFG-19, CFG-20.
 fn driver_parameters_reach_sqlx() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let parsed = polyspec_orm::db::parse_dsn("postgres://orm@db.local/orm_example?application_name=orm&timezone=UTC").expect("postgres DSN");
