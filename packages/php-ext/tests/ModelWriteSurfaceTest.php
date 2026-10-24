@@ -180,6 +180,26 @@ final class ModelWriteSurfaceTest extends TestCase
         }
     }
 
+    public function testTransactionalWriteCallbacksPreserveMissingConnectionError(): void
+    {
+        $model = new ModelWriteCallbackFixture();
+        foreach ([
+            static fn() => $model->restoreOrCreate(),
+            static fn() => $model->delete(true),
+        ] as $call) {
+            try {
+                $call();
+                self::fail('transactional callback without a connection must throw');
+            } catch (OrmException $error) {
+                self::assertSame(Code::CONFIG, $error->code_);
+                self::assertSame(
+                    'CONFIG: the model has no connection; use connect or run it inside a transaction',
+                    $error->getMessage(),
+                );
+            }
+        }
+    }
+
     public function testAesExpansionKeepsTheModelSetsArrayUnchanged(): void
     {
         $model = new ModelWriteAesFixture();

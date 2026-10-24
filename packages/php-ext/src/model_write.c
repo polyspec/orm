@@ -1631,20 +1631,29 @@ ZEND_METHOD(Polyspec_Orm_ModelRestoreOrCreateCallback, __invoke)
     callback_property(ZEND_THIS, "row", &row); zval_ptr_dtor(&row);
 }
 
+static bool model_callback_in_transaction(zval *model, zend_class_entry *callback_ce, zval *row_out)
+{
+    zval callback, closure;
+    ZVAL_UNDEF(&callback); ZVAL_UNDEF(&closure);
+    object_init_ex(&callback, callback_ce);
+    callback_property(&callback, "model", model);
+    if (EG(exception) != NULL || !make_native_closure(&callback, &closure)) {
+        zval_ptr_dtor(&callback); call_result_dtor(&closure); return false;
+    }
+    zval *conn = model_field(model, "conn");
+    zval args[2], result; ZVAL_COPY(&args[0], conn); ZVAL_COPY(&args[1], &closure);
+    bool ok = named_call("Polyspec\\Orm\\Db::inTransaction", &result, 2, args);
+    zval_ptr_dtor(&args[0]); zval_ptr_dtor(&args[1]); call_result_dtor(&result); zval_ptr_dtor(&closure);
+    if (row_out != NULL && ok && EG(exception) == NULL) ZVAL_COPY(row_out, callback_field(&callback, "row"));
+    zval_ptr_dtor(&callback);
+    return ok && EG(exception) == NULL;
+}
+
 ZEND_METHOD(Polyspec_Orm_Model, restoreOrCreate)
 {
     ZEND_PARSE_PARAMETERS_NONE();
     if (restore_or_create_callback_ce == NULL) { zend_throw_error(NULL, "ModelRestoreOrCreateCallback is not registered"); RETURN_THROWS(); }
-    zval callback, closure; object_init_ex(&callback, restore_or_create_callback_ce);
-    callback_property(&callback, "model", ZEND_THIS);
-    if (EG(exception) != NULL || !make_native_closure(&callback, &closure)) { zval_ptr_dtor(&callback); call_result_dtor(&closure); RETURN_THROWS(); }
-    zval *conn = model_field(ZEND_THIS, "conn");
-    zval args[2], result; ZVAL_COPY(&args[0], conn); ZVAL_COPY(&args[1], &closure);
-    bool ok = named_call("Polyspec\\Orm\\Db::inTransaction", &result, 2, args);
-    zval_ptr_dtor(&args[0]); zval_ptr_dtor(&args[1]); call_result_dtor(&result); zval_ptr_dtor(&closure);
-    if (ok && EG(exception) == NULL) ZVAL_COPY(return_value, callback_field(&callback, "row"));
-    zval_ptr_dtor(&callback);
-    if (!ok || EG(exception) != NULL) RETURN_THROWS();
+    if (!model_callback_in_transaction(ZEND_THIS, restore_or_create_callback_ce, return_value)) RETURN_THROWS();
 }
 
 ZEND_METHOD(Polyspec_Orm_ModelDeleteCallback, __invoke)
@@ -1753,11 +1762,5 @@ ZEND_METHOD(Polyspec_Orm_Model, delete)
         call_result_dtor(&result); return;
     }
     if (delete_callback_ce == NULL) { zend_throw_error(NULL, "ModelDeleteCallback is not registered"); RETURN_THROWS(); }
-    zval callback, closure; object_init_ex(&callback, delete_callback_ce); callback_property(&callback, "model", ZEND_THIS);
-    if (EG(exception) != NULL || !make_native_closure(&callback, &closure)) { zval_ptr_dtor(&callback); call_result_dtor(&closure); RETURN_THROWS(); }
-    zval *conn = model_field(ZEND_THIS, "conn"); zval args[2], result;
-    ZVAL_COPY(&args[0], conn); ZVAL_COPY(&args[1], &closure);
-    bool ok = named_call("Polyspec\\Orm\\Db::inTransaction", &result, 2, args);
-    zval_ptr_dtor(&args[0]); zval_ptr_dtor(&args[1]); call_result_dtor(&result); zval_ptr_dtor(&closure); zval_ptr_dtor(&callback);
-    if (!ok || EG(exception) != NULL) RETURN_THROWS();
+    if (!model_callback_in_transaction(ZEND_THIS, delete_callback_ce, NULL)) RETURN_THROWS();
 }
