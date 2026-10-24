@@ -393,6 +393,10 @@ fn pool_options<DB: sqlx::Database>(size: u32, idle: u32, lifetime_ms: u32, owne
 mod sqlite_version_tests;
 
 #[cfg(test)]
+#[path = "db/sqlite_row_lock_restore_tests.rs"]
+mod sqlite_row_lock_restore_tests;
+
+#[cfg(test)]
 #[path = "../tests/unit/time_precision.rs"]
 mod time_precision_tests;
 
@@ -428,22 +432,16 @@ trait SqliteRowLockSequenceOps {
 }
 
 async fn run_sqlite_row_lock_sequence(ops: &mut impl SqliteRowLockSequenceOps) -> Result<()> {
-    ops.set_nowait().await?;
-    let primary = ops.take_row_lock().await;
+    let primary = match ops.set_nowait().await {
+        Ok(()) => ops.take_row_lock().await,
+        Err(error) => Err(error),
+    };
     let restore = ops.restore_timeout().await;
     match (primary, restore) {
         (Ok(()), Ok(())) => Ok(()),
         (Err(primary), Ok(())) => Err(primary),
         (Ok(()), Err(restore)) => Err(restore),
-        (Err(primary), Err(restore)) => Err(with_restore_failure(primary, restore)),
-    }
-}
-
-fn with_restore_failure(primary: Error, restore: Error) -> Error {
-    match primary {
-        Error::Engine { code, msg } => Error::Engine { code, msg: format!("{msg}; restoring busy_timeout also failed: {restore}") },
-        Error::Config(msg) => Error::Config(format!("{msg}; restoring busy_timeout also failed: {restore}")),
-        other => Error::Rollback { callback: Box::new(other), rollback: Box::new(restore) },
+        (Err(primary), Err(restore)) => Err(Error::Cleanup { primary: Box::new(primary), cleanup: vec![restore] }),
     }
 }
 

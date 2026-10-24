@@ -1995,18 +1995,46 @@ class Db:
         previous = 0
         if no_wait:
             previous = int((run("PRAGMA busy_timeout")["rows"] or [[0]])[0][0])
+        taking_lock = False
         try:
             if no_wait:
                 run("PRAGMA busy_timeout=0")
+            taking_lock = True
             run(ROW_LOCK_TAKE, tables=ROW_LOCK_TABLES)
-        except OrmError as error:
+        except BaseException as original:
+            primary = original
             # SQLITE_BUSY from a NOWAIT request is LOCK_NOT_AVAILABLE, not CANCELED.
-            if no_wait and _sqlite_busy(error.cause):
-                raise OrmError(
-                    codes.LOCK_NOT_AVAILABLE, str(error), error.cause
-                ) from None
-            raise
-        finally:
+            if (
+                no_wait
+                and taking_lock
+                and isinstance(primary, OrmError)
+                and _sqlite_busy(primary.cause)
+            ):
+                primary = OrmError(
+                    codes.LOCK_NOT_AVAILABLE, str(primary), primary.cause
+                )
+            if no_wait:
+                try:
+                    run(f"PRAGMA busy_timeout={previous}")
+                except BaseException as restore_error:
+                    combined = BaseExceptionGroup(
+                        "SQLite busy_timeout restoration also failed",
+                        [primary, restore_error],
+                    )
+                    if isinstance(primary, Exception):
+                        primary_code = (
+                            primary.code
+                            if isinstance(primary, OrmError)
+                            else codes.DRIVER
+                        )
+                        raise OrmError(
+                            primary_code, str(primary), combined
+                        ) from restore_error
+                    raise combined from restore_error
+            if primary is original:
+                raise
+            raise primary from None
+        else:
             if no_wait:
                 run(f"PRAGMA busy_timeout={previous}")
 

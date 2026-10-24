@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: f4fe3aa0754e8b7e9b342b1ce426858dd3d4bec7c2de7f302b606a6f26b02535 -->
+<!-- source-sha256: 1475f4299345b9fee24625d870e1246c9f1347fdc594dc3c4006326e9a619876 -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `packages/go/engine/ir/ir.go`와 `packages/go/engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -184,7 +184,7 @@ PostgreSQL identity는 명시한 key를 지나 나아가지 않으므로 다시 
 
 ## 3. 오류
 
-오류는 [errors.yaml](errors.yaml)의 코드와 메시지를 가진다. 예를 들어 `IR_INVALID`, `SCHEMA_HASH_MISMATCH`, `COLUMN_UNKNOWN`, `OPERATOR_NOT_ALLOWED`, `FUNCTION_UNKNOWN`, `EMPTY_IN`, `LIMIT_IN_RELATION`, `COLUMN_ALIAS_CONFLICT`가 있다. 실행기는 `CONFIG`, `OPTIMISTIC_LOCK`, `LOCK_NOT_AVAILABLE`, `DEADLOCK`, `DUPLICATE_KEY`, `FOREIGN_KEY`, `CONSTRAINT`, `READ_ONLY`, `CONNECTION_LOST`, `DRIVER`를 추가한다. 클라이언트는 모든 드라이버 오류를 ORM 오류로 반환한다. catalog에 있는 조건은 그 코드를, 그 밖의 드라이버 오류는 `DRIVER`를 가지며, 모두 드라이버 메시지와 원인인 드라이버 오류를 유지한다. 서버가 끝냈거나 끊긴 연결은 모든 클라이언트에서 `CONNECTION_LOST`다. 어떤 클라이언트도 그 판단에 메시지 text를 비교하지 않는다([설정](config.ko.md#lost-connections)). `audit`이나 `immutable` trigger가 거부한 쓰기는 `DRIVER`다. 트랜잭션이나 savepoint의 callback이 실패하고 rollback도 실패하면 클라이언트는 code `ROLLBACK`을 가진 오류 하나를 반환한다. 그 메시지는 두 오류를 적고, 오류는 callback 오류와 rollback 오류를 유지한다(PHP: previous exception과 `rollback`, TypeScript: `cause`와 `rollback`, Go: 두 오류를 이 순서로 담은 `errors.Join`, Rust: `Error::Rollback { callback, rollback }`, Python: `cause`와 `rollback`). `ROLLBACK` 오류는 재시도하지 않는다. NOWAIT lock 실패는 항상 `LOCK_NOT_AVAILABLE`이며 transaction conflict로 재시도하지 않는다.
+오류는 [errors.yaml](errors.yaml)의 코드와 메시지를 가진다. 예를 들어 `IR_INVALID`, `SCHEMA_HASH_MISMATCH`, `COLUMN_UNKNOWN`, `OPERATOR_NOT_ALLOWED`, `FUNCTION_UNKNOWN`, `EMPTY_IN`, `LIMIT_IN_RELATION`, `COLUMN_ALIAS_CONFLICT`가 있다. 실행기는 `CONFIG`, `OPTIMISTIC_LOCK`, `LOCK_NOT_AVAILABLE`, `DEADLOCK`, `DUPLICATE_KEY`, `FOREIGN_KEY`, `CONSTRAINT`, `READ_ONLY`, `CONNECTION_LOST`, `DRIVER`를 추가한다. 클라이언트는 모든 드라이버 오류를 ORM 오류로 반환한다. catalog에 있는 조건은 그 코드를, 그 밖의 드라이버 오류는 `DRIVER`를 가지며, 모두 드라이버 메시지와 원인인 드라이버 오류를 유지한다. 서버가 끝냈거나 끊긴 연결은 모든 클라이언트에서 `CONNECTION_LOST`다. 어떤 클라이언트도 그 판단에 메시지 text를 비교하지 않는다([설정](config.ko.md#lost-connections)). `audit`이나 `immutable` trigger가 거부한 쓰기는 `DRIVER`다. 트랜잭션이나 savepoint의 callback이 실패하고 rollback도 실패하면 클라이언트는 code `ROLLBACK`을 가진 오류 하나를 반환한다. 그 메시지는 두 오류를 적고, 오류는 callback 오류와 rollback 오류를 유지한다(PHP: previous exception과 `rollback`, TypeScript: `cause`와 `rollback`, Go: 두 오류를 이 순서로 담은 `errors.Join`, Rust: `Error::Rollback { callback, rollback }`, Python: `cause`와 `rollback`). `ROLLBACK` 오류는 재시도하지 않는다. SQLite NOWAIT 작업과 `busy_timeout` 복원이 모두 실패하면 primary 잠금 오류의 코드를 유지하고 두 오류 객체를 순서대로 보존한다(PHP: `previous`와 `cleanup`, TypeScript: `cause`의 `AggregateError`, Go: `errors.Join`, Rust: `Error::Cleanup { primary, cleanup }`, Python: `cause`의 `ExceptionGroup`). 하나만 실패하면 그 오류를 그대로 반환한다. NOWAIT 설정, 테이블 설정 또는 잠금 작업이 실패한 뒤에도 `busy_timeout` 복원을 시도한다. NOWAIT 잠금 실패는 `LOCK_NOT_AVAILABLE`이며 transaction conflict로 재시도하지 않는다.
 
 ### 3.1 Test faults
 

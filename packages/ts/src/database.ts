@@ -1160,15 +1160,30 @@ export class Db {
     if (this.driver !== 'sqlite' || mode === '') return;
     const noWait = mode.endsWith('_nowait');
     const previous = noWait ? Number((await frame.run('utility', [], 'PRAGMA busy_timeout')).rows[0]?.[0]) : 0;
+    let failure: unknown;
+    let failed = false;
+    let takingLock = false;
     try {
       if (noWait) await frame.run('utility', [], 'PRAGMA busy_timeout=0');
+      takingLock = true;
       await frame.run('utility', ROW_LOCK_TABLES, 'INSERT INTO "orm__row_lock" ("id") VALUES (1) ON CONFLICT ("id") DO UPDATE SET "id"=excluded."id"');
     } catch (error) {
-      if (noWait && error instanceof OrmError && sqliteBusy('sqlite', error.cause)) throw new OrmError(codes.LOCK_NOT_AVAILABLE, error.message, error.cause);
-      throw error;
-    } finally {
-      if (noWait) await frame.run('utility', [], `PRAGMA busy_timeout=${previous}`);
+      failed = true;
+      failure = noWait && takingLock && error instanceof OrmError && sqliteBusy('sqlite', error.cause)
+        ? new OrmError(codes.LOCK_NOT_AVAILABLE, error.message, error.cause)
+        : error;
     }
+    if (noWait) {
+      try {
+        await frame.run('utility', [], `PRAGMA busy_timeout=${previous}`);
+      } catch (restoreError) {
+        if (!failed) throw restoreError;
+        const primaryCode = failure instanceof OrmError ? failure.code : codes.DRIVER;
+        const primaryMessage = failure instanceof Error ? failure.message : String(failure);
+        throw new OrmError(primaryCode, primaryMessage, new AggregateError([failure, restoreError], 'SQLite busy_timeout restoration also failed'));
+      }
+    }
+    if (failed) throw failure;
   }
 
   public async plan(request: Request): Promise<Cached> {

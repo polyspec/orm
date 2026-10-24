@@ -2653,14 +2653,21 @@ static bool acquire_row_lock(zval *self, zval *mode)
         zval *first = aidx(aidx(&rows, 0), 0);
         previous = as_long(first);
         zval_ptr_dtor(&rows);
-        if (!run_stmt(self, "utility", &no_tables, &tx, "PRAGMA busy_timeout=0", true)) {
-            return false;
-        }
     }
     zval pending;
     bool has_pending = false;
-    bool ok = ensure_row_lock_table(self);
+    bool ok = true;
+    bool taking_lock = false;
+    if (nowait && !run_stmt(self, "utility", &no_tables, &tx, "PRAGMA busy_timeout=0", true)) {
+        ok = false;
+        if (EG(exception) != NULL) {
+            take_exception(&pending);
+            has_pending = true;
+        }
+    }
+    if (ok) ok = ensure_row_lock_table(self);
     if (ok) {
+        taking_lock = true;
         zval tables;
         array_init(&tables);
         zval name;
@@ -2674,7 +2681,7 @@ static bool acquire_row_lock(zval *self, zval *mode)
         if (EG(exception) != NULL) {
             take_exception(&pending);
             has_pending = true;
-            if (nowait && is_instance(&pending, ORM_EXCEPTION)) {
+            if (nowait && taking_lock && is_instance(&pending, ORM_EXCEPTION)) {
                 zval prev;
                 ZVAL_UNDEF(&prev);
                 mcall(&pending, "getPrevious", &prev, 0, NULL);
@@ -2706,10 +2713,25 @@ static bool acquire_row_lock(zval *self, zval *mode)
         char buf[32];
         snprintf(buf, sizeof(buf), "PRAGMA busy_timeout=%ld", (long)previous);
         if (!run_stmt(self, "utility", &no_tables, &tx, buf, true)) {
-            if (has_pending) {
+            if (has_pending && EG(exception) != NULL) {
+                zval restore;
+                take_exception(&restore);
+                zval args[2], aggregate;
+                ZVAL_COPY(&args[0], &pending);
+                ZVAL_COPY(&args[1], &restore);
+                if (scall("Polyspec\\Orm\\OrmException::withCleanup", &aggregate, 2, args)) {
+                    zval_ptr_dtor(&pending);
+                    ZVAL_COPY_VALUE(&pending, &aggregate);
+                }
+                zval_ptr_dtor(&args[0]);
+                zval_ptr_dtor(&args[1]);
+                zval_ptr_dtor(&restore);
+            } else if (has_pending) {
                 zval_ptr_dtor(&pending);
+                return false;
+            } else {
+                return false;
             }
-            return false;
         }
     }
     if (has_pending) {

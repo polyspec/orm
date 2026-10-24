@@ -598,6 +598,31 @@
         "packages/rust/orm/tests/unit/blind_index_source.rs"
       ]
     },
+    "nowait-restore-check": {
+      "scope": "owner",
+      "needs": ["go", "rust", "php", "composer", "node-modules", "python", "php-extension-tools"],
+      "inputs": [
+        "Makefile",
+        "packages/go/orm/sqlite_lock.go",
+        "packages/go/orm/sqlite_lock_restore_test.go",
+        "packages/ts/src/database.ts",
+        "packages/ts/tests/sqlite-row-lock-restore.mjs",
+        "packages/php/src/Db.php",
+        "packages/php/src/OrmException.php",
+        "packages/php/tests/SqliteRowLockRestoreTest.php",
+        "packages/php-ext/src/db.c",
+        "packages/python/src/polyspec/orm/database.py",
+        "packages/python/tests/test_sqlite_row_lock_restore.py",
+        "packages/rust/orm/src/db.rs",
+        "packages/rust/orm/src/db/sqlite_row_lock_restore_tests.rs",
+        "packages/rust/orm/src/lib.rs",
+        "docs/spec/protocol.md",
+        "docs/spec/protocol.ko.md",
+        "packages/rust/README.md",
+        "contracts/symbols/php.json",
+        "contracts/symbols/rust.json"
+      ]
+    },
     "php-min-check": {
       "scope": "owner",
       "needs": [

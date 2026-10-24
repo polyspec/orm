@@ -34,22 +34,25 @@ func acquireSQLiteRowLock(ctx context.Context, ex executor, mode string) (err er
 		if err := tx.machinery().scan(ctx, KindUtility, nil, "PRAGMA busy_timeout", nil, &previousBusyTimeout); err != nil {
 			return err
 		}
-		if _, err := tx.machinery().exec(ctx, KindUtility, nil, "PRAGMA busy_timeout=0"); err != nil {
-			return err
-		}
 		defer func() {
-			// The restore runs after the lock attempt, so its error is joined with the result of that attempt.
 			if _, restoreErr := tx.machinery().exec(context.Background(), KindUtility, nil, fmt.Sprintf("PRAGMA busy_timeout=%d", previousBusyTimeout)); restoreErr != nil {
-				err = errors.Join(err, restoreErr)
+				if err == nil {
+					err = restoreErr
+				} else {
+					err = errors.Join(err, restoreErr)
+				}
 			}
 		}()
+		if _, err = tx.machinery().exec(ctx, KindUtility, nil, "PRAGMA busy_timeout=0"); err != nil {
+			return err
+		}
 	}
 	if err := ensureSQLiteRowLock(ctx, tx.db); err != nil {
 		return err
 	}
 	if _, err := tx.machinery().exec(ctx, KindUtility, rowLockTables, `INSERT INTO "orm__row_lock" ("id") VALUES (1) ON CONFLICT ("id") DO UPDATE SET "id"=excluded."id"`); err != nil {
 		if nowait && sqliteBusy(err) {
-			return &ir.Error{Code: CodeLockNotAvailable, Msg: err.Error()}
+			return &ir.Error{Code: CodeLockNotAvailable, Msg: err.Error(), Cause: err}
 		}
 		return err
 	}

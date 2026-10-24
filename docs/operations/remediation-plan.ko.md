@@ -1,5 +1,5 @@
 <!-- doc-id: remediation-plan -->
-<!-- source-sha256: 4719e9a2f28c79dca4d599db84612dc05b5c91872f0814372cde9680bb560f47 -->
+<!-- source-sha256: 770a7abca6d47ff38ce399fd1a41dea1c03de42ecf253d3ac5da5b6a748ea74b -->
 # 남은 작업의 진단과 해결 방안
 
 [English](remediation-plan.md)
@@ -115,7 +115,7 @@
 
 | ID | 필요한 수정과 완료 범위 |
 |---|---|
-| KSTD-5-59 | TS `packages/ts/src/database.ts:1122`, PHP `packages/php/src/Db.php:1630`, Python `packages/python/src/polyspec/orm/database.py:1950`, C `packages/php-ext/src/db.c:2512`, Rust database restore 경로. 정리가 NOWAIT/busy-timeout 오류를 가릴 수 있고 Rust restore는 부분 실패할 수 있다. 정리를 항상 시도하고 기존 aggregation으로 primary code/cause와 restore cause를 보존한다. 네 가지 fake 결과 조합을 검사한다. 로컬 DB 금지. |
+| KSTD-5-59 | Go `packages/go/orm/sqlite_lock.go`, TypeScript `packages/ts/src/database.ts`, PHP `packages/php/src/Db.php`와 `OrmException.php`, extension `packages/php-ext/src/db.c`, Python `packages/python/src/polyspec/orm/database.py`, Rust `packages/rust/orm/src/db.rs`: 이전 timeout을 읽은 뒤 NOWAIT 설정, 잠금 테이블 설정, 잠금 획득이 실패해도 복원한다. SQLITE_BUSY는 잠금 획득에서만 `LOCK_NOT_AVAILABLE`로 바꾸고 설정 오류의 코드와 원인을 유지한다. 잠금과 복원이 모두 실패하면 primary 코드와 두 오류 객체를 보존한다(Go `errors.Join`, TypeScript `AggregateError`, userland와 native Db 경로가 호출하는 PHP `OrmException::withCleanup`, Python `ExceptionGroup`, Rust `Error::Cleanup`). 모든 네 결과 조합과 NOWAIT 설정 실패를 fake driver/frame/PDO로 실제 caller sequence에서 검사한다. 로컬 DB 금지. |
 | KSTD-5-60 | Go `packages/go/engine/dbspec/apply.go`, PHP `packages/php/src/Dbspec/PlanApply.php`, TS `packages/ts/src/dbspec/apply.ts`, Python `packages/python/src/polyspec/orm/dbspec/apply.py`, Rust `packages/rust/orm/src/dbspec/apply.rs:579`, C `packages/php-ext/src/apply.c`: 여섯 경로가 BEGIN EXCLUSIVE 오류를 전부 locked로 바꾼다. SQLite primary code의 `& 0xff`만 검사해 5/6만 locked로 처리한다. Go `Code() int`, `errors.As` 사용, driver import 금지. 261/517/773/262/518 및 비잠금 IOERR/READONLY/CANTOPEN/AUTH와 primary 5/6 검사. |
 | KSTD-5-61 | Go `packages/go/engine/dbspec/apply.go`, PHP `packages/php/src/Dbspec/PlanApply.php`, TS `packages/ts/src/dbspec/apply.ts`, Python `packages/python/src/polyspec/orm/dbspec/apply.py`, Rust `packages/rust/orm/src/dbspec/apply.rs:579`, C `packages/php-ext/src/apply.c`: private mismatch와 introspection 실행 실패를 분리한다. 실제 mismatch는 기존 drift 결과, query/read/parse 실패는 원래 cause/code를 보존한다. settled/rollback/pre/post-forward 실패와 정상 mismatch를 검사한다. 실패한 verification이 history 성공을 보고하면 안 된다. |
 | KSTD-5-62 | Go `packages/go/engine/dbspec/mermaid.go`, Rust `packages/rust/schema/src/dbspec/mermaid.rs`, TS `packages/ts/src/dbspec/mermaid.ts`, Python `packages/python/src/polyspec/orm/dbspec/mermaid.py`, PHP `packages/php/src/Dbspec/Mermaid.php`, C `packages/php-ext/src/mermaid.c`: Go/Rust는 이미 typed Mermaid 오류를 보존한다. TS/Python/PHP/C catch-all은 예기치 못한 오류를 숨긴다. private invalid-catalog-document만 cannot-build 결과가 되며 그 외는 동일 객체를 보존한다. C는 실제 `mermaid.c`와 document double을 이용하고 공개 test API를 등록하지 않는 test-only module이 필요하다. 실제 native owner에 연결한다. |

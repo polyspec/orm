@@ -1644,10 +1644,15 @@ final class Db
                 [],
                 true
             )[0][0] ?? 0);
-            $this->run(StatementEvent::UTILITY, [], $tx, 'PRAGMA busy_timeout=0', true);
         }
+        $failure = null;
+        $takingLock = false;
         try {
+            if ($noWait) {
+                $this->run(StatementEvent::UTILITY, [], $tx, 'PRAGMA busy_timeout=0', true);
+            }
             $this->ensureRowLockTable();
+            $takingLock = true;
             $this->run(
                 StatementEvent::UTILITY,
                 [self::ROW_LOCK_TABLE],
@@ -1656,19 +1661,29 @@ final class Db
                 . 'ON CONFLICT ("id") DO UPDATE SET "id"=excluded."id"',
                 true
             );
-        } catch (OrmException $e) {
-            $driverError = $e->getPrevious();
+        } catch (\Throwable $e) {
+            $driverError = $e instanceof OrmException ? $e->getPrevious() : null;
             if (
-                $noWait && $driverError instanceof \PDOException
+                $noWait && $takingLock && $e instanceof OrmException && $driverError instanceof \PDOException
                 && (((int) ($driverError->errorInfo[1] ?? 0)) & 0xff) === 5
             ) {
-                throw new OrmException(Code::LOCK_NOT_AVAILABLE, $driverError->getMessage(), $driverError);
+                $failure = new OrmException(Code::LOCK_NOT_AVAILABLE, $driverError->getMessage(), $driverError);
+            } else {
+                $failure = $e;
             }
-            throw $e;
-        } finally {
-            if ($noWait) {
+        }
+        if ($noWait) {
+            try {
                 $this->run(StatementEvent::UTILITY, [], $tx, 'PRAGMA busy_timeout=' . $previous, true);
+            } catch (\Throwable $restore) {
+                if ($failure === null) {
+                    throw $restore;
+                }
+                throw OrmException::withCleanup($failure, $restore);
             }
+        }
+        if ($failure !== null) {
+            throw $failure;
         }
     }
 
