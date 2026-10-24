@@ -270,6 +270,14 @@ pub(crate) fn active_for(db: &Db) -> Option<Arc<TxShared>> {
     frames().into_iter().rev().find(|t| t.db.id() == db.id())
 }
 
+fn nested_transaction(db: &Db, options_set: bool) -> Result<Option<Arc<TxShared>>> {
+    let Some(outer) = active_for(db) else { return Ok(None) };
+    if options_set {
+        return Err(Error::Config("a nested transaction of the same connection accepts only the retry option".into()));
+    }
+    Ok(Some(outer))
+}
+
 /// Selects where a model runs: the active transaction of its connection, the
 /// connection, or the innermost active transaction when it has none.
 pub(crate) fn resolve(conn: &Option<Db>) -> Result<Executor> {
@@ -733,10 +741,7 @@ where
 {
     async fn run(self) -> Result<T> {
         let Self { db, f, isolation, read_only, timeout_ms, retry, audit, set } = self;
-        if let Some(outer) = active_for(db) {
-            if set {
-                return Err(Error::Config("a nested transaction of the same connection accepts only the retry option".into()));
-            }
+        if let Some(outer) = nested_transaction(db, set)? {
             return savepoint_send(outer, f.as_ref()).await;
         }
         run_transaction!(db, f(), isolation, read_only, timeout_ms, retry, audit).await
@@ -753,10 +758,7 @@ impl<'a, F> Transaction<'a, F> {
         F: AsyncFn() -> Result<T>,
     {
         let Self { db, f, isolation, read_only, timeout_ms, retry, audit, set } = self;
-        if let Some(outer) = active_for(db) {
-            if set {
-                return Err(Error::Config("a nested transaction of the same connection accepts only the retry option".into()));
-            }
+        if let Some(outer) = nested_transaction(db, set)? {
             return savepoint(outer, &f).await;
         }
         run_transaction!(db, f(), isolation, read_only, timeout_ms, retry, audit).await
@@ -1219,6 +1221,30 @@ mod tests {
             .expect("Send transaction retries a deadlock");
         assert_eq!(send, 23);
         assert_eq!(send_attempts.load(std::sync::atomic::Ordering::SeqCst), 2);
+        db.close().await;
+    }
+
+    #[tokio::test]
+    async fn nested_standard_and_send_transactions_share_option_validation() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+        let scratch = Scratch::new("orm-nested-option-validation");
+        let db = Db::connect(&format!("sqlite://{}", scratch.join("nested.sqlite").display()), 1, crate::Config::default()).await.expect("connect to SQLite");
+        let expected = "CONFIG: a nested transaction of the same connection accepts only the retry option";
+
+        let standard = db
+            .transaction(async || db.transaction(async || Ok::<_, Error>(())).read_only().await)
+            .retry(0)
+            .await
+            .expect_err("nested standard transaction rejects read_only");
+        assert_eq!(standard.to_string(), expected);
+
+        let nested_db = db.clone();
+        let send = db
+            .transaction(async move || nested_db.transaction_send(|| async { Ok::<_, Error>(()) }).read_only().await)
+            .retry(0)
+            .await
+            .expect_err("nested Send transaction rejects read_only");
+        assert_eq!(send.to_string(), expected);
         db.close().await;
     }
 
