@@ -164,41 +164,60 @@ static zval *orm_query_value(zval *query, const char *key)
     return v != NULL && Z_TYPE_P(v) != IS_NULL ? v : NULL;
 }
 
+typedef struct {
+    const char *key;
+    size_t key_length;
+    const char *value;
+    size_t value_length;
+} orm_query_parameter;
+
+static bool orm_query_next(const char *query, size_t length, size_t *position, orm_query_parameter *parameter)
+{
+    while (*position < length) {
+        size_t start = *position, end = start;
+        while (end < length && query[end] != '&') end++;
+        *position = end < length ? end + 1 : length;
+        if (end == start) continue;
+        const char *equals = memchr(query + start, '=', end - start);
+        parameter->key = query + start;
+        parameter->key_length = equals == NULL ? end - start : (size_t)(equals - parameter->key);
+        parameter->value = equals == NULL ? query + end : equals + 1;
+        parameter->value_length = equals == NULL ? 0 : (size_t)(query + end - parameter->value);
+        return true;
+    }
+    return false;
+}
+
 static bool orm_query_allowed(zval *parts, const char *driver, const char *const *allowed, size_t n)
 {
     zval *raw = orm_part(parts, "query");
     if (raw == NULL || Z_TYPE_P(raw) != IS_STRING) return true;
     const char *p = Z_STRVAL_P(raw);
-    size_t len = Z_STRLEN_P(raw), start = 0;
-    for (size_t i = 0; i <= len; i++) {
-        if (i < len && p[i] != '&') continue;
-        if (i > start) {
-            const char *eq = memchr(p + start, '=', i - start);
-            size_t key_len = eq == NULL ? i - start : (size_t)(eq - (p + start));
-            zval encoded, decoded;
-            ZVAL_STRINGL(&encoded, p + start, key_len);
-            if (!orm_decoded(&encoded, false, &decoded)) { zval_ptr_dtor(&encoded); return false; }
-            zval_ptr_dtor(&encoded);
-            bool found = false;
-            for (size_t k = 0; k < n; k++) {
-                if (Z_STRLEN(decoded) == strlen(allowed[k]) && memcmp(Z_STRVAL(decoded), allowed[k], Z_STRLEN(decoded)) == 0) found = true;
-            }
-            if (!found) {
-                smart_str accepted = {0};
-                for (size_t k = 0; k < n; k++) {
-                    if (k != 0) smart_str_appends(&accepted, ", ");
-                    smart_str_appends(&accepted, allowed[k]);
-                }
-                smart_str_0(&accepted);
-                db_throw_orm("CONFIG", "%s DSN has the unknown parameter %s; it accepts %s",
-                    driver, Z_STRVAL(decoded), ZSTR_VAL(accepted.s));
-                smart_str_free(&accepted);
-                zval_ptr_dtor(&decoded);
-                return false;
-            }
-            zval_ptr_dtor(&decoded);
+    size_t position = 0;
+    orm_query_parameter parameter;
+    while (orm_query_next(p, Z_STRLEN_P(raw), &position, &parameter)) {
+        zval encoded, decoded;
+        ZVAL_STRINGL(&encoded, parameter.key, parameter.key_length);
+        if (!orm_decoded(&encoded, false, &decoded)) { zval_ptr_dtor(&encoded); return false; }
+        zval_ptr_dtor(&encoded);
+        bool found = false;
+        for (size_t k = 0; k < n; k++) {
+            if (Z_STRLEN(decoded) == strlen(allowed[k]) && memcmp(Z_STRVAL(decoded), allowed[k], Z_STRLEN(decoded)) == 0) found = true;
         }
-        start = i + 1;
+        if (!found) {
+            smart_str accepted = {0};
+            for (size_t k = 0; k < n; k++) {
+                if (k != 0) smart_str_appends(&accepted, ", ");
+                smart_str_appends(&accepted, allowed[k]);
+            }
+            smart_str_0(&accepted);
+            db_throw_orm("CONFIG", "%s DSN has the unknown parameter %s; it accepts %s",
+                driver, Z_STRVAL(decoded), ZSTR_VAL(accepted.s));
+            smart_str_free(&accepted);
+            zval_ptr_dtor(&decoded);
+            return false;
+        }
+        zval_ptr_dtor(&decoded);
     }
     return true;
 }
@@ -217,48 +236,41 @@ static bool orm_sqlite_pragmas(zval *parts, zval *out)
     zval *raw = orm_part(parts, "query");
     if (raw == NULL || Z_TYPE_P(raw) != IS_STRING) return true;
     const char *p = Z_STRVAL_P(raw);
-    size_t n = Z_STRLEN_P(raw), start = 0;
-    for (size_t i = 0; i <= n; i++) {
-        if (i < n && p[i] != '&') continue;
-        if (i > start) {
-            const char *eq = memchr(p + start, '=', i - start);
-            size_t kn = eq == NULL ? i - start : (size_t)(eq - (p + start));
-            zval key_raw, key;
-            ZVAL_STRINGL(&key_raw, p + start, kn);
-            if (!orm_decoded(&key_raw, false, &key)) { zval_ptr_dtor(&key_raw); return false; }
-            zval_ptr_dtor(&key_raw);
-            if (zend_string_equals_literal(Z_STR(key), "_pragma")) {
-                const char *v = eq == NULL ? "" : eq + 1;
-                size_t vn = eq == NULL ? 0 : i - (size_t)(eq - p) - 1;
-                zval value_raw, value;
-                ZVAL_STRINGL(&value_raw, v, vn);
-                if (!orm_decoded(&value_raw, false, &value)) { zval_ptr_dtor(&value_raw); zval_ptr_dtor(&key); return false; }
-                zval_ptr_dtor(&value_raw);
-                const char *text = Z_STRVAL(value);
-                size_t len = Z_STRLEN(value), open = 0;
-                while (open < len && ((text[open] >= 'a' && text[open] <= 'z') || text[open] == '_')) open++;
-                bool valid = open > 0 && open + 2 < len && text[open] == '(' && text[len - 1] == ')';
-                for (size_t j = open + 1; valid && j + 1 < len; j++) {
-                    if (!((text[j] >= 'A' && text[j] <= 'Z') || (text[j] >= 'a' && text[j] <= 'z')
-                          || (text[j] >= '0' && text[j] <= '9') || text[j] == '_')) valid = false;
-                }
-                if (!valid) {
-                    zend_string *bad = zend_string_copy(Z_STR(value));
-                    zval_ptr_dtor(&value); zval_ptr_dtor(&key);
-                    db_throw_orm("CONFIG", "sqlite DSN _pragma %s is invalid", ZSTR_VAL(bad));
-                    zend_string_release(bad);
-                    return false;
-                }
-                zval pair;
-                array_init(&pair);
-                add_next_index_stringl(&pair, text, open);
-                add_next_index_stringl(&pair, text + open + 1, len - open - 2);
-                add_next_index_zval(out, &pair);
-                zval_ptr_dtor(&value);
+    size_t position = 0;
+    orm_query_parameter parameter;
+    while (orm_query_next(p, Z_STRLEN_P(raw), &position, &parameter)) {
+        zval key_raw, key;
+        ZVAL_STRINGL(&key_raw, parameter.key, parameter.key_length);
+        if (!orm_decoded(&key_raw, false, &key)) { zval_ptr_dtor(&key_raw); return false; }
+        zval_ptr_dtor(&key_raw);
+        if (zend_string_equals_literal(Z_STR(key), "_pragma")) {
+            zval value_raw, value;
+            ZVAL_STRINGL(&value_raw, parameter.value, parameter.value_length);
+            if (!orm_decoded(&value_raw, false, &value)) { zval_ptr_dtor(&value_raw); zval_ptr_dtor(&key); return false; }
+            zval_ptr_dtor(&value_raw);
+            const char *text = Z_STRVAL(value);
+            size_t len = Z_STRLEN(value), open = 0;
+            while (open < len && ((text[open] >= 'a' && text[open] <= 'z') || text[open] == '_')) open++;
+            bool valid = open > 0 && open + 2 < len && text[open] == '(' && text[len - 1] == ')';
+            for (size_t j = open + 1; valid && j + 1 < len; j++) {
+                if (!((text[j] >= 'A' && text[j] <= 'Z') || (text[j] >= 'a' && text[j] <= 'z')
+                      || (text[j] >= '0' && text[j] <= '9') || text[j] == '_')) valid = false;
             }
-            zval_ptr_dtor(&key);
+            if (!valid) {
+                zend_string *bad = zend_string_copy(Z_STR(value));
+                zval_ptr_dtor(&value); zval_ptr_dtor(&key);
+                db_throw_orm("CONFIG", "sqlite DSN _pragma %s is invalid", ZSTR_VAL(bad));
+                zend_string_release(bad);
+                return false;
+            }
+            zval pair;
+            array_init(&pair);
+            add_next_index_stringl(&pair, text, open);
+            add_next_index_stringl(&pair, text + open + 1, len - open - 2);
+            add_next_index_zval(out, &pair);
+            zval_ptr_dtor(&value);
         }
-        start = i + 1;
+        zval_ptr_dtor(&key);
     }
     return true;
 }
@@ -536,39 +548,32 @@ ZEND_METHOD(Polyspec_Orm_Orm, parseMarkdownDsn)
     size_t found = 0;
     if (raw_query != NULL && Z_TYPE_P(raw_query) == IS_STRING) {
         const char *p = Z_STRVAL_P(raw_query);
-        size_t n = Z_STRLEN_P(raw_query), start = 0;
-        for (size_t i = 0; i <= n; i++) {
-            if (i < n && p[i] != '&') continue;
-            if (i > start) {
-                const char *eq = memchr(p + start, '=', i - start);
-                size_t kn = eq == NULL ? i - start : (size_t)(eq - (p + start));
-                zval key_raw, key;
-                ZVAL_STRINGL(&key_raw, p + start, kn);
-                if (!orm_decoded(&key_raw, false, &key)) {
-                    zval_ptr_dtor(&key_raw); zval_ptr_dtor(&corpus); zval_ptr_dtor(&parts); RETURN_THROWS();
-                }
-                zval_ptr_dtor(&key_raw);
-                if (!zend_string_equals_literal(Z_STR(key), "token")) {
-                    zend_string *key_copy = zend_string_copy(Z_STR(key));
-                    zval_ptr_dtor(&key); zval_ptr_dtor(&corpus); zval_ptr_dtor(&parts);
-                    db_throw_orm("CONFIG", "markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>; it does not accept %s", ZSTR_VAL(key_copy));
-                    zend_string_release(key_copy); RETURN_THROWS();
-                }
-                zval_ptr_dtor(&key);
-                zval value_raw, value;
-                const char *v = eq == NULL ? "" : eq + 1;
-                size_t vn = eq == NULL ? 0 : i - (size_t)(eq - p) - 1;
-                ZVAL_STRINGL(&value_raw, v, vn);
-                if (!orm_decoded(&value_raw, false, &value)) {
-                    zval_ptr_dtor(&value_raw); zval_ptr_dtor(&corpus); zval_ptr_dtor(&parts); RETURN_THROWS();
-                }
-                zval_ptr_dtor(&value_raw);
-                found++;
-                if (token != NULL) zend_string_release(token);
-                token = zend_string_copy(Z_STR(value));
-                zval_ptr_dtor(&value);
+        size_t position = 0;
+        orm_query_parameter parameter;
+        while (orm_query_next(p, Z_STRLEN_P(raw_query), &position, &parameter)) {
+            zval key_raw, key;
+            ZVAL_STRINGL(&key_raw, parameter.key, parameter.key_length);
+            if (!orm_decoded(&key_raw, false, &key)) {
+                zval_ptr_dtor(&key_raw); zval_ptr_dtor(&corpus); zval_ptr_dtor(&parts); RETURN_THROWS();
             }
-            start = i + 1;
+            zval_ptr_dtor(&key_raw);
+            if (!zend_string_equals_literal(Z_STR(key), "token")) {
+                zend_string *key_copy = zend_string_copy(Z_STR(key));
+                zval_ptr_dtor(&key); zval_ptr_dtor(&corpus); zval_ptr_dtor(&parts);
+                db_throw_orm("CONFIG", "markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>; it does not accept %s", ZSTR_VAL(key_copy));
+                zend_string_release(key_copy); RETURN_THROWS();
+            }
+            zval_ptr_dtor(&key);
+            zval value_raw, value;
+            ZVAL_STRINGL(&value_raw, parameter.value, parameter.value_length);
+            if (!orm_decoded(&value_raw, false, &value)) {
+                zval_ptr_dtor(&value_raw); zval_ptr_dtor(&corpus); zval_ptr_dtor(&parts); RETURN_THROWS();
+            }
+            zval_ptr_dtor(&value_raw);
+            found++;
+            if (token != NULL) zend_string_release(token);
+            token = zend_string_copy(Z_STR(value));
+            zval_ptr_dtor(&value);
         }
     }
     if (found != 1 || token == NULL || ZSTR_LEN(token) == 0) {

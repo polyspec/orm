@@ -77,6 +77,10 @@ final class OrmExceptionNativeTest extends TestCase
             ['sqlite', 'sqlite:/tmp/app db.sqlite', null, null, [['journal_mode', 'WAL']], null],
             Orm::parseDsn('sqlite:///tmp/app%20db.sqlite?_pragma=journal_mode(WAL)')
         );
+        Assert::assertSame(
+            ['sqlite', 'sqlite:/tmp/app.sqlite', null, null, [['busy_timeout', '200'], ['journal_mode', 'WAL']], null],
+            Orm::parseDsn('sqlite:///tmp/app.sqlite?&_pragma=busy_timeout(200)&&_pragma=journal_mode(WAL)&')
+        );
     }
 
     // Requirements: CFG-2, CFG-19.
@@ -133,6 +137,34 @@ final class OrmExceptionNativeTest extends TestCase
         } catch (OrmException $error) {
             Assert::assertSame(
                 'CONFIG: mysql DSN has the unknown parameter extra; it accepts timezone, socket, ssl-mode, ssl-ca',
+                $error->getMessage()
+            );
+        }
+        try {
+            Orm::parseDsn('mysql://db.example/app?ssl-mode=disabled&ssl-ca=%2Ftmp%2Fca.pem');
+            Assert::fail('unsupported TLS modes must be rejected');
+        } catch (OrmException $error) {
+            Assert::assertSame(
+                'CONFIG: mysql DSN ssl-mode "disabled" is not supported; '
+                . 'the TLS mode is ssl-mode=VERIFY_IDENTITY with ssl-ca',
+                $error->getMessage()
+            );
+        }
+        try {
+            Orm::parseDsn('mysql://db.example/app?extra=%ZZ');
+            Assert::fail('an unknown parameter must be rejected before decoding its value');
+        } catch (OrmException $error) {
+            Assert::assertSame(
+                'CONFIG: mysql DSN has the unknown parameter extra; it accepts timezone, socket, ssl-mode, ssl-ca',
+                $error->getMessage()
+            );
+        }
+        try {
+            Orm::parseMarkdownDsn('markdown://127.0.0.1:49152/corpus?extra=%ZZ');
+            Assert::fail('an unknown markdown parameter must be rejected before decoding its value');
+        } catch (OrmException $error) {
+            Assert::assertSame(
+                'CONFIG: markdown DSN is markdown://127.0.0.1:<port>/<corpus>?token=<token>; it does not accept extra',
                 $error->getMessage()
             );
         }
