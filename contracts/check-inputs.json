@@ -1733,6 +1733,17 @@
         "tests/errors.mts"
       ]
     },
+    "typescript-audit-history-rows-helper-check": {
+      "scope": "owner",
+      "needs": [
+        "node-modules"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/ts/tests/audit-history-rows.mjs",
+        "packages/ts/tests/audit-history-rows.test.mjs"
+      ]
+    },
     "catalog-mutation-helper-python-check": {
       "scope": "owner",
       "needs": [

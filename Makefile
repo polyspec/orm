@@ -227,6 +227,7 @@ CI_TARGETS_conformance = ts-check scripts-typecheck ts-min-check conformance-che
 CI_TARGETS_conformance += typescript-internal-column-error-helper-check
 CI_TARGETS_dbspec_apply += typescript-dbspec-plan-fixture-check
 CI_TARGETS_static += physical-command-case-helper-check
+CI_TARGETS_conformance += typescript-audit-history-rows-helper-check
 CI_TARGETS_feature_helpers = feature-helper-check
 CI_TARGETS_python = python-check group-rows-db-python mermaid-error-python-check generator-consumer-check dbspec-introspect-python-helper-check catalog-mutation-helper-python-check
 CI_TARGETS_dbspec = dbspec-go-check/engine dbspec-php-check/set case-database-check dbspec-ddl-check dbspec-introspect-check dbspec-introspect-ts-check dbspec-introspect-php-check dbspec-introspect-php-extension-check dbspec-introspect-rust-check dbspec-introspect-python-check dbspec-introspect-compare-check dbspec-plan-check dbspec-plan-ts-check dbspec-plan-rust-check dbspec-plan-php-check dbspec-php-extension-check mermaid-error-php-check mermaid-error-php-extension-check
@@ -419,6 +420,9 @@ typescript-dbspec-plan-fixture-check: typescript-build
 
 physical-command-case-helper-check:
 	$(RUN_TESTS) node -- --test scripts/physical-command-case.test.mts
+
+typescript-audit-history-rows-helper-check:
+	$(RUN_TESTS) node -- --test packages/ts/tests/audit-history-rows.test.mjs
 
 # dbspec-plan-check applies the steps of every case of tests/dbspec/plans.json to MySQL, PostgreSQL, and SQLite,
 # and requires the plan's target, the source via rollback statements, the target after applying again, and the target after finalize, and

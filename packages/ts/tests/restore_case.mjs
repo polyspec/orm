@@ -8,6 +8,7 @@ import { CORE, Db, OrmError, dbspecManifest, parseDbspec } from '../dist/index.j
 import { nativeQuery } from './coverage_case.mjs';
 import { codeOf } from './error_code.mjs';
 import { classesFromManifest } from './registered_models.mjs';
+import { auditHistoryRows } from './audit-history-rows.mjs';
 
 export const restoreText = await readFile(new URL('../../../contracts/fixtures/restore.dbs', import.meta.url), 'utf8');
 export const auditText = await readFile(new URL('../../../contracts/fixtures/audit.dbs', import.meta.url), 'utf8');
@@ -98,10 +99,7 @@ export async function auditCase(db, driver, dsn) {
   const audits = await new Audit().connect(db).orderBySeqAsc().gets();
   assert.deepEqual(audits.values().map(a => [a[CORE].column('seq'), a[CORE].column('actor')]), [[1, 'create'], [2, 'default']], 'audit records');
   const history = await new ItemHistory().connect(db).addAllColumns().orderByHistoryIdAsc().gets();
-  assert.deepEqual(history.values().map(h => [
-    h[CORE].column('change'), h[CORE].column('previous_audit_seq'), h[CORE].column('seq'), h[CORE].column('title'),
-    h[CORE].column('audit_seq'), h[CORE].column('deleted_at') !== null,
-  ]), [
+  assert.deepEqual(auditHistoryRows(history.values(), CORE), [
     ['insert', null, seq, 'first', 1, false],
     ['update', 1, seq, 'second', 1, false],
     ['update', 1, seq, 'second', 2, true],

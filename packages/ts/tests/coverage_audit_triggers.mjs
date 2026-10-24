@@ -9,6 +9,7 @@ import { CORE, Db, dbspecManifest, parseDbspec } from '../dist/index.js';
 import { errorCode, nativeQuery, repositoryRoot, runCases, tableExists, withCleanup } from './coverage_case.mjs';
 import { auditCase, auditSchema, auditSource, auditText, restoreCase, restoreSchema, restoreTables } from './restore_case.mjs';
 import { classesFromManifest } from './registered_models.mjs';
+import { auditHistoryRows } from './audit-history-rows.mjs';
 
 const auditColumnsText = await readFile(join(repositoryRoot, 'contracts/fixtures/audit_columns.dbs'), 'utf8');
 
@@ -102,10 +103,7 @@ await runCases('coverage_audit_triggers.mjs', {
       const nested = adb.transaction(async () => { await adb.transaction(async () => {}, { audit: { actor: 'nested' } }); }, { audit: {}, retry: 0 });
       assert.equal(await errorCode(nested), 'CONFIG', 'a nested transaction with an audit');
       const history = await new ItemHistory().connect(db).addAllColumns().orderByHistoryIdAsc().gets();
-      assert.deepEqual(history.values().map(h => [
-        h[CORE].column('change'), h[CORE].column('previous_audit_seq'), h[CORE].column('seq'), h[CORE].column('title'),
-        h[CORE].column('audit_seq'), h[CORE].column('deleted_at') !== null,
-      ]), [
+      assert.deepEqual(auditHistoryRows(history.values(), CORE), [
         ['insert', null, seq, 'first', 1, false],
         ['update', 1, seq, 'second', 2, false],
       ], 'item_history in history_id order');
