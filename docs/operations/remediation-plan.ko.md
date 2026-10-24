@@ -1,5 +1,5 @@
 <!-- doc-id: remediation-plan -->
-<!-- source-sha256: bfea5c1fba78e37cca619a3a15f251f4600d7f2cdc9e35bed733906f3b25ce47 -->
+<!-- source-sha256: 4719e9a2f28c79dca4d599db84612dc05b5c91872f0814372cde9680bb560f47 -->
 # 남은 작업의 진단과 해결 방안
 
 [English](remediation-plan.md)
@@ -39,7 +39,7 @@
 | ID | 근거와 진단 | 구체적 수정 | 완료 기준과 선행 조건 |
 |---|---|---|---|
 | KSTD-2 | 공통 동작, 852 units, 여섯 symbol set. | 모든 공통 동작 unit을 여섯 native 구현에 연결한다. | 전체 parity CI. 아래 자식 항목 전에는 부모 완료가 아니다. |
-| KSTD-2-2 | 382a775 source tree의 RED에서 74개 지적이 재현됐다: 수량 문장 49개, 불완전 열거 17개, 표 머리글 6개, protocol 행 2개. main rebase 뒤 동시 remediation note의 수량 문장 3개가 추가로 검출되어 현재 합계는 77개다(수량 문장 52개, 열거 17개, 머리글 6개, protocol 행 2개). | `config/parity.json`의 여섯 항목에 맞춰 모든 문장을 정렬하고 공통 요구와 실제 증거·지원 범위를 구분한다. 명시적 `--only docs.implementation-count` 선택자와 전용 target을 추가하되 기본 rules 검사는 전체 규칙을 유지한다. | 전용 규칙에 지적이 없고 선택자 unit은 알 수 없는 규칙과 정확한 규칙 구분자를 검증한다. 상태 변경 전 `make docs-check` 통과. PHP 확장 catalog 기능 등 미지원 범위는 native 구현 작업에 남는다. |
+| KSTD-2-2 | 수정 전 main `0898f6f1`에서 전용 source RED로 75건이 확인됐다: 수량 문장 50개, 열거 집합 17개, 표 머리글 6개, protocol 행 2개. | `config/parity.json`의 여섯 항목에 맞춰 모든 문장을 정렬하고 공통 요구와 실제 증거·지원 범위를 구분한다. 명시적 `--only docs.implementation-count` 선택자와 전용 target을 추가하되 기본 rules 검사는 전체 규칙을 유지한다. | 전용 규칙에 지적이 없고 공유 COMPUTE harness를 쓰는 네 selector unit이 알 수 없는 규칙과 정확하지 않은 구분자를 거부한다. 상태 변경 전 `make docs-check` 통과. PHP 확장 catalog 기능 등 미지원 범위는 native 구현 작업에 남는다. |
 | KSTD-2-3 | `contracts/interfaces.json`, `tests/interfaces/contracts/validate.go`; native Model.connect가 없다. | 실제 native signature/rule을 선언하고 logical/extension drift 검사를 추가한다. | `TestLogicalContractRejectsNativeDrift`, `TestExtensionContractRejectsDrift`가 추출 선언을 검증한다. C 의존. |
 | KSTD-2-4 | 여섯 오류 catalog은 이미 있다. extension 설정 경로는 낡은 `stubs/code.stub.php`가 아니라 `packages/php-ext/src/polyspec_orm.stub.php`다. | 실제 stub catalog와 API unit을 확인하고 중복 오류 구현을 하지 않는다. | 여섯 catalog와 API 증거가 일치한다. |
 | KSTD-2-7 | requirement ID는 있으나 assertion 연결과 여섯 클라이언트 binding이 부족하다(CFG/PAR/ORE/PLN/PRT/INT/ORES). | 각 requirement를 실제 domain 동작과 native case에 연결하고 KSTD-2-11-11…18이 domain을 소유하게 한다. | 모든 필수 assertion에 여섯 실행 binding. 임의 태그 금지. |
