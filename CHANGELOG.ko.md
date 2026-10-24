@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 1ff0755792cdd9d92f48010a0a51e6785a93741d1c208e8dbcc892aec4ad1f74 -->
+<!-- source-sha256: b2276d094d7806ab5de149ed37563817e43364079898ac0baae31c16b46454e9 -->
 # 변경 이력
 
 ## Unreleased
 
+- Native PHP extension API의 인자 오류 우선순위를 client와 맞췄다. schema evolution은 계획 전에 external 문서를 확인하고 SQLite `BEGIN IMMEDIATE`를 row-lock 상태를 만들지 않고 사용한다. schema 이름의 underscore는 문자 그대로 처리하며 Schema, Config, Model, AesKeyring 인자는 선언된 경계에서 거부한다. SQLite 정리 과정에서 두 오류를 보존하고 BEGIN 알림 실패 뒤에는 열린 트랜잭션을 롤백한다. 트랜잭션 상태 확인 실패는 외부로 전달하면서 foreign-key 복구를 수행한다. native focused case 11개(76 assertions), API binding unit과 공식 extension extractor가 통과했다 (KSTD-2-11-7).
 - 56개 markdown corpus case가 여섯 client 모두에서 DIA-175 codec-column과 DIA-177 명시적 선택 동작을 검사한다. PHP extension case는 generated Model을 native C method로 실행하며, Flowmark pin은 `packages/go` module과 일치하는 문서 source를 사용한다(KSTD-2-10-3).
 - API parity check가 77개 error-code unit을 PHP extension의 native `Code` 상수에 연결하고 generated stub catalog와 대조한다. RED는 `f69b3a2f1^`의 `config/parity.json` blob `845da3a77ac511ee6fb144e6d097b53d49499b4f`를 재생한 fixture test였으며, 해당 historical checkout을 실행한 것은 아니다. 재생 결과 catalog 코드 77개에 API unit 43개만 있었다(KSTD-2-4).
 - Rust compiler fixture는 생성 model과 DSL의 유효한 소비자를 compile하고, private field 접근과 잘못된 DSL 호출을 기대한 rustc 진단으로 거부한다. 열 개 fixture가 DSL-49, DSL-50, DSL-124를 다룬다(KSTD-2-10-5).
