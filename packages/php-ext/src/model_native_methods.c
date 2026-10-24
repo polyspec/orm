@@ -172,6 +172,18 @@ static zend_string *model_pending(model_state *s)
     return Z_STR_P(pending);
 }
 
+static bool model_report_pending_connector(model_state *parent, model_state *child)
+{
+    zend_string *pending = model_pending(child);
+    if (ZSTR_LEN(pending) == 0) return false;
+    smart_str message = {0};
+    smart_str_append_printf(&message, "connector %s without a following condition", ZSTR_VAL(pending));
+    zend_string *text = smart_str_extract(&message);
+    model_native_fail(parent, ZSTR_VAL(text));
+    zend_string_release(text);
+    return true;
+}
+
 static bool model_invoke_group_callback(zval *group, zval *callback)
 {
     zend_fcall_info fci;
@@ -211,22 +223,17 @@ static bool model_call_group(zval *owner, zval *callback, const char *conn, size
             snprintf(message, sizeof(message), "%.*s%s group callback added no condition",
                 (int)conn_len, conn, negated ? " not" : "");
             model_native_fail(parent, message);
-        } else if (ZSTR_LEN(model_pending(child)) != 0) {
-            zend_string *pending = model_pending(child);
-            smart_str message = {0};
-            smart_str_append_printf(&message, "connector %s without a following condition", ZSTR_VAL(pending));
-            zend_string *text = smart_str_extract(&message);
-            model_native_fail(parent, ZSTR_VAL(text));
-            zend_string_release(text);
         } else {
-            zval node, group_items;
-            array_init(&node);
-            ZVAL_COPY(&group_items, items);
-            add_assoc_zval(&node, "group", &group_items);
-            if (negated) add_assoc_bool(&node, "not", true);
-            const char *error = NULL;
-            if (!model_chain_add_item(parent, conn, conn_len, &node, &error)) model_native_fail(parent, error);
-            zval_ptr_dtor(&node);
+            if (!model_report_pending_connector(parent, child)) {
+                zval node, group_items;
+                array_init(&node);
+                ZVAL_COPY(&group_items, items);
+                add_assoc_zval(&node, "group", &group_items);
+                if (negated) add_assoc_bool(&node, "not", true);
+                const char *error = NULL;
+                if (!model_chain_add_item(parent, conn, conn_len, &node, &error)) model_native_fail(parent, error);
+                zval_ptr_dtor(&node);
+            }
         }
     }
     zval_ptr_dtor(&group);
@@ -374,16 +381,10 @@ ZEND_METHOD(Polyspec_Orm_Model, on)
         model_copy_error(parent, child);
         if (Z_TYPE_P(model_state_property(parent, "error")) == IS_NULL) {
             zval *items = model_where_items(child);
-            if (ZSTR_LEN(model_pending(child)) != 0) {
-                zend_string *pending = model_pending(child);
-                smart_str message = {0};
-                smart_str_append_printf(&message, "connector %s without a following condition", ZSTR_VAL(pending));
-                zend_string *text = smart_str_extract(&message);
-                model_native_fail(parent, ZSTR_VAL(text));
-                zend_string_release(text);
-            } else if (items == NULL || Z_TYPE_P(items) != IS_ARRAY || zend_hash_num_elements(Z_ARRVAL_P(items)) == 0) {
+            if (!model_report_pending_connector(parent, child)
+                && (items == NULL || Z_TYPE_P(items) != IS_ARRAY || zend_hash_num_elements(Z_ARRVAL_P(items)) == 0)) {
                 model_native_fail(parent, "on callback added no condition");
-            } else {
+            } else if (Z_TYPE_P(model_state_property(parent, "error")) == IS_NULL) {
                 model_state_reset(parent, "on");
                 model_state_property_set(parent, "on", items);
             }
