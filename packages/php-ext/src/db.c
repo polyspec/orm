@@ -4358,6 +4358,25 @@ static void end_savepoint(zval *self, zval *frame, const char *kind, const char 
     ZVAL_COPY_VALUE(out, &ex);
 }
 
+/* Attempts both rollback and release, returning the failures in statement order. */
+static void rollback_release_savepoint(zval *self, zval *frame, const char *name, zval *out)
+{
+    zval rollback, release, errors;
+    end_savepoint(self, frame, "rollback_to", name, &rollback);
+    end_savepoint(self, frame, "release", name, &release);
+    array_init(&errors);
+    if (Z_TYPE(rollback) != IS_NULL) {
+        push(&errors, &rollback);
+    }
+    if (Z_TYPE(release) != IS_NULL) {
+        push(&errors, &release);
+    }
+    zval_ptr_dtor(&rollback);
+    zval_ptr_dtor(&release);
+    joined(&errors, out);
+    zval_ptr_dtor(&errors);
+}
+
 static void savepoint_control(zval *self, zval *frame, const char *kind, const char *name, bool *ok)
 {
     const char *op = "savepoint";
@@ -4626,6 +4645,16 @@ static void driver_error(zval *self, zval *ex, zval *out)
     }
 }
 
+/* Maps a callback PDO failure through the active driver and preserves other throwable values unchanged. */
+static void transaction_callback_error(zval *self, zval *error, zval *out)
+{
+    if (is_instance(error, "PDOException")) {
+        driver_error(self, error, out);
+    } else {
+        ZVAL_COPY(out, error);
+    }
+}
+
 /* Db::begin: opens the transaction on the connection. out is the frame; false with the error pending when it failed. */
 static bool begin_tx(zval *self, const char *isolation, bool read_only, zend_long timeout, zval *out);
 
@@ -4635,19 +4664,6 @@ static bool invoke_transaction_callback(zval *self, zval *fn, dbs_transaction_ca
     if (callback != NULL) return callback(self, context, out) && EG(exception) == NULL;
     ZVAL_UNDEF(out);
     return call_user_function(NULL, NULL, fn, out, 0, NULL) == SUCCESS && EG(exception) == NULL;
-}
-
-static void take_callback_failure(zval *self, zval *failure)
-{
-    zval ex;
-    take_exception(&ex);
-    frames_pop();
-    if (is_instance(&ex, "PDOException")) {
-        driver_error(self, &ex, failure);
-    } else {
-        ZVAL_COPY(failure, &ex);
-    }
-    zval_ptr_dtor(&ex);
 }
 
 static bool savepoint_tx(zval *self, zval *frame, zval *fn, dbs_transaction_callback callback, void *context, zval *out)
@@ -4676,13 +4692,12 @@ static bool savepoint_tx(zval *self, zval *frame, zval *fn, dbs_transaction_call
         ZVAL_UNDEF(&ret);
         bool ok = invoke_transaction_callback(self, fn, callback, context, &ret);
         if (!ok) {
-            zval failure, e1, e2, ended;
-            take_callback_failure(self, &failure);
-            end_savepoint(self, frame, "rollback_to", name, &e1);
-            end_savepoint(self, frame, "release", name, &e2);
-            joined_pair(&e1, &e2, &ended);
-            zval_ptr_dtor(&e1);
-            zval_ptr_dtor(&e2);
+            zval ex, failure, ended;
+            take_exception(&ex);
+            frames_pop();
+            transaction_callback_error(self, &ex, &failure);
+            zval_ptr_dtor(&ex);
+            rollback_release_savepoint(self, frame, name, &ended);
             if (Z_TYPE(ended) == IS_NULL) {
                 ZVAL_COPY_VALUE(&pending, &failure);
             } else {
@@ -5288,12 +5303,7 @@ static void settle_audit(zval *self, zval *frame, zend_long affected, zval *out)
     zval nul;
     ZVAL_NULL(&nul);
     wr(frame, "audit", &nul);
-    zval e1, e2;
-    end_savepoint(self, frame, "rollback_to", "orm_audit", &e1);
-    end_savepoint(self, frame, "release", "orm_audit", &e2);
-    joined_pair(&e1, &e2, out);
-    zval_ptr_dtor(&e1);
-    zval_ptr_dtor(&e2);
+    rollback_release_savepoint(self, frame, "orm_audit", out);
 }
 
 /* Db::runTransaction: the callback runs in the frame; an error rolls the frame back, and its own failure is reported with the
@@ -5313,8 +5323,11 @@ static bool run_transaction(zval *self, zval *fn, dbs_transaction_callback callb
     ZVAL_UNDEF(&v);
     bool ok = invoke_transaction_callback(self, fn, callback, context, &v);
     if (!ok) {
-        zval failure, cleanup;
-        take_callback_failure(self, &failure);
+        zval ex, failure, cleanup;
+        take_exception(&ex);
+        frames_pop();
+        transaction_callback_error(self, &ex, &failure);
+        zval_ptr_dtor(&ex);
         if (!finish_tx(self, &frame, false)) {
             take_exception(&cleanup);
             throw_rollback(&failure, &cleanup);
