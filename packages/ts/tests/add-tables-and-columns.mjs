@@ -11,8 +11,8 @@
 //
 // Usage: node packages/ts/tests/add-tables-and-columns.mjs [case ...] (after npm run typescript:build)
 import { Db, OrmError, dbspecManifest, parseDbspec, readDbspecFile } from '../dist/index.js';
-import { caseTest } from '../../../tests/testcase.mts';
 import { withCaseDatabase } from './case-database.mjs';
+import { registerDatabaseCases } from './database-case-tests.mjs';
 import { nativeQuery } from './coverage_case.mjs';
 import { captureError } from './capture-error.mjs';
 import { createFailureCheck } from './check-state.mjs';
@@ -185,20 +185,9 @@ const cases = {
   add_tables_and_columns_transaction: addTablesAndColumnsTransaction,
   add_tables_and_columns_edited_manifest: addTablesAndColumnsEditedManifest,
 };
-const selected = process.argv.length > 2 ? process.argv.slice(2) : Object.keys(cases);
-for (const env of ['ORM_TEST_MYSQL_DSN', 'ORM_TEST_POSTGRES_DSN']) {
-  if (!process.env[env]) throw new Error(`${env} is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers`);
-}
-for (const name of selected) {
-  const run = cases[name];
-  if (run === undefined) throw new Error(`unknown case ${name}`);
-  for (const driver of ['sqlite', 'mysql', 'postgres']) {
-    caseTest(`add-tables-and-columns/${name}/${driver}`, CASE_DEADLINE_MS, async ({ step }) => {
-      const before = failures;
-      current = `${name}/${driver}`;
-      await withCaseDatabase(driver, step, database => run(driver, database.dsn));
-      if (failures > before) throw new Error(`${failures - before} check(s) failed; each FAIL line above names one`);
-    });
-  }
-}
+registerDatabaseCases({
+  feature: 'add-tables-and-columns', cases, deadline: CASE_DEADLINE_MS, withDatabase: withCaseDatabase,
+  getFailures: () => failures, setCurrent: value => { current = value; },
+  runCase: (run, _name, driver, database) => run(driver, database.dsn),
+});
 if (failures > 0) process.exitCode = 1;

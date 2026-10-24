@@ -1777,6 +1777,17 @@
         "packages/ts/tests/mysql-test-options.test.mjs"
       ]
     },
+    "database-case-tests-helper-check": {
+      "scope": "owner",
+      "needs": [
+        "node-modules"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/ts/tests/database-case-tests.mjs",
+        "packages/ts/tests/database-case-tests.test.mjs"
+      ]
+    },
     "catalog-mutation-helper-python-check": {
       "scope": "owner",
       "needs": [

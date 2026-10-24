@@ -23,8 +23,8 @@ import { spawnSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import * as packageEntry from '../dist/index.js';
-import { caseTest } from '../../../tests/testcase.mts';
 import { mysqlConnection, postgresClient, relatedDsn, withCaseDatabase } from './case-database.mjs';
+import { registerDatabaseCases } from './database-case-tests.mjs';
 import { CORE, Db, OrmError } from '../dist/index.js';
 import { failNextRollback } from '@polyspec/orm/testing';
 import { schemaOf } from './schema_of.mjs';
@@ -193,20 +193,9 @@ async function rollbackFault(driver, dsn) {
 
 // Requirements: CFG-15.
 const cases = { rollback_failed: rollbackFailed, savepoint_rollback_failed: savepointRollbackFailed, rollback_fault: rollbackFault };
-const selected = process.argv.length > 2 ? process.argv.slice(2) : Object.keys(cases);
-for (const env of ['ORM_TEST_MYSQL_DSN', 'ORM_TEST_POSTGRES_DSN']) {
-  if (!process.env[env]) throw new Error(`${env} is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers`);
-}
-for (const name of selected) {
-  const run = cases[name];
-  if (run === undefined) throw new Error(`unknown case ${name}`);
-  for (const driver of ['sqlite', 'mysql', 'postgres']) {
-    caseTest(`rollback/${name}/${driver}`, CASE_DEADLINE_MS, async ({ step }) => {
-      const before = failures;
-      current = `${name}/${driver}`;
-      await withCaseDatabase(driver, step, database => run(driver, database.dsn));
-      if (failures > before) throw new Error(`${failures - before} check(s) failed; each FAIL line above names one`);
-    });
-  }
-}
+registerDatabaseCases({
+  feature: 'rollback', cases, deadline: CASE_DEADLINE_MS, withDatabase: withCaseDatabase,
+  getFailures: () => failures, setCurrent: value => { current = value; },
+  runCase: (run, _name, driver, database) => run(driver, database.dsn),
+});
 if (failures > 0) process.exitCode = 1;

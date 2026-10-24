@@ -17,8 +17,8 @@
 // Usage: node packages/ts/tests/schema-set.mjs [case ...] (after npm run typescript:build)
 import { readFile } from 'node:fs/promises';
 import { CORE, Db, OrmError, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
-import { caseTest } from '../../../tests/testcase.mts';
 import { withCaseDatabase } from './case-database.mjs';
+import { registerDatabaseCases } from './database-case-tests.mjs';
 import { nativeQuery } from './coverage_case.mjs';
 import { classesFromModel, manifestOf } from './registered_models.mjs';
 
@@ -272,20 +272,9 @@ const cases = {
   external_documents: externalDocuments,
   register_sends_no_statement: registerSendsNoStatement,
 };
-const selected = process.argv.length > 2 ? process.argv.slice(2) : Object.keys(cases);
-for (const env of ['ORM_TEST_MYSQL_DSN', 'ORM_TEST_POSTGRES_DSN']) {
-  if (!process.env[env]) throw new Error(`${env} is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers`);
-}
-for (const name of selected) {
-  const run = cases[name];
-  if (run === undefined) throw new Error(`unknown case ${name}`);
-  for (const driver of ['sqlite', 'mysql', 'postgres']) {
-    caseTest(`schema-set/${name}/${driver}`, CASE_DEADLINE_MS, async ({ step }) => {
-      const before = failures;
-      current = `${name}/${driver}`;
-      await withCaseDatabase(driver, step, database => run(database.dsn, driver));
-      if (failures > before) throw new Error(`${failures - before} check(s) failed; each FAIL line above names one`);
-    });
-  }
-}
+registerDatabaseCases({
+  feature: 'schema-set', cases, deadline: CASE_DEADLINE_MS, withDatabase: withCaseDatabase,
+  getFailures: () => failures, setCurrent: value => { current = value; },
+  runCase: (run, _name, driver, database) => run(database.dsn, driver),
+});
 if (failures > 0) process.exitCode = 1;
