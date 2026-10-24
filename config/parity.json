@@ -3875,20 +3875,6 @@
       ]
     },
     {
-      "id": "ts-statement-events",
-      "kind": "feature",
-      "requirements": [
-        "INT-91"
-      ],
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/statement-events.mjs",
-          "id": "statement_events/model_statements/sqlite"
-        }
-      ]
-    },
-    {
       "id": "ts-statement-fault-entry",
       "kind": "feature",
       "requirements": [
@@ -13471,20 +13457,6 @@
           "implementation": "python",
           "test": "packages/python/tests/coverage_constraints_and_relations.py",
           "id": "test_constraint_errors"
-        }
-      ]
-    },
-    {
-      "id": "py-cov-statement-events-statement-events",
-      "kind": "feature",
-      "requirements": [
-        "INT-91"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_statement_events.py",
-          "id": "test_statement_events"
         }
       ]
     },
