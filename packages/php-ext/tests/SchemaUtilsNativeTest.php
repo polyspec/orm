@@ -27,9 +27,7 @@ final class SchemaUtilsNativeTest extends TestCase
             $pdo = $db->pdo();
             $pdo->exec('CREATE TABLE shared (id BIGINT NOT NULL PRIMARY KEY)');
             $events = [];
-            $unsubscribe = $db->subscribe(static function ($event) use (&$events): void {
-                $events[] = $event;
-            });
+            $unsubscribe = subscribeToNativeTestEvents($db, $events);
             $before = $pdo->query(
                 "SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' "
                 . 'ORDER BY type, name'

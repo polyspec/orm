@@ -43,9 +43,7 @@ final class UtilsNativeTest extends TestCase
         try {
             $db = Orm::connect('sqlite:///' . $path, new Config());
             $events = [];
-            $unsubscribe = $db->subscribe(static function ($event) use (&$events): void {
-                $events[] = $event;
-            });
+            $unsubscribe = subscribeToNativeTestEvents($db, $events);
             for ($attempt = 0; $attempt < 2; $attempt++) {
                 try {
                     $db->utils()->wasInserted('', 0);

@@ -19,6 +19,8 @@
         "packages/php-ext/src/polyspec_orm.stub.php",
         "packages/php-ext/src/config.m4",
         "packages/php-ext/tests/CollectionTest.php",
+        "packages/php-ext/tests/UninitializedRecordingPdo.php",
+        "packages/php-ext/tests/bootstrap.php",
         "packages/php-ext/tests/DeclarationsTest.php",
         "packages/php-ext/tests/declarations_functions.php",
         "Makefile"
@@ -3223,6 +3225,8 @@
         "packages/php-ext/src/utils.c",
         "packages/php-ext/tests/SchemaUtilsNativeTest.php",
         "packages/php-ext/tests/UtilsNativeTest.php",
+        "packages/php-ext/tests/NativeTestEventLog.php",
+        "packages/php-ext/tests/bootstrap.php",
         "packages/php-ext/tests/AesUtilsNativeTest.php",
         "packages/php-ext/tests/OrmExceptionNativeTest.php"
       ]

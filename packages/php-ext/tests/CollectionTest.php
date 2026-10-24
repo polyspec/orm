@@ -12,22 +12,14 @@ use Polyspec\Orm\Bytes;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 
-final class CollectionFakePdo extends \PDO
+final class CollectionFakePdo extends \Polyspec\Orm\Tests\UninitializedRecordingPdo
 {
     public bool $active = false;
-    public array $statements = [];
     public bool $suspendFirstStart = false;
-
-    public function __construct() {}
-
-    public function setAttribute(int $attribute, mixed $value): bool
-    {
-        return true;
-    }
 
     public function exec(string $statement): int|false
     {
-        $this->statements[] = $statement;
+        parent::exec($statement);
         if (str_starts_with($statement, 'START TRANSACTION')) {
             $this->active = true;
             if ($this->suspendFirstStart) {
