@@ -93,7 +93,11 @@ fn finish(styles: &[&str], mut cur: Vec<u8>) -> Result<Param> {
             other => return Err(err(CODEC_UNSUPPORTED, format!("style {other}"))),
         }
     }
-    Ok(Param::Str(String::from_utf8(cur).map_err(|e| err(CODEC_ENCODE, e.to_string()))?))
+    encoded_text(cur)
+}
+
+fn encoded_text(bytes: Vec<u8>) -> Result<Param> {
+    Ok(Param::Str(String::from_utf8(bytes).map_err(|e| err(CODEC_ENCODE, e.to_string()))?))
 }
 
 enum BinaryStage {
@@ -158,7 +162,7 @@ pub fn encode(styles: &[&str], v: StyledValue<&Value>) -> Result<Param> {
             other => return Err(err(CODEC_UNSUPPORTED, format!("style {other}"))),
         }
     }
-    Ok(Param::Str(String::from_utf8(cur).map_err(|e| err(CODEC_ENCODE, e.to_string()))?))
+    encoded_text(cur)
 }
 
 // ---- yaml: YAML 1.2 with the core schema: read through saphyr-parser, written by serde-saphyr ----
