@@ -20,27 +20,88 @@ final class ConnectionStatementTimeoutNativeTest extends TestCase
     public function testNativeStatementTimeoutCancelsAndReusesConnection(): void
     {
         self::assertTrue((new ReflectionMethod(Orm::class, 'connect'))->isInternal());
-        foreach (
-            [
-                'mysql' => ['ORM_TEST_MYSQL_DSN', 'SELECT SLEEP(1)'],
-                'postgres' => ['ORM_TEST_POSTGRES_DSN', 'SELECT pg_sleep(1)'],
-            ] as $driver => [$name, $sql]
-        ) {
+        foreach (['mysql' => 'ORM_TEST_MYSQL_DSN', 'postgres' => 'ORM_TEST_POSTGRES_DSN'] as $driver => $name) {
             $dsn = requiredDsn($name);
             if (!is_string($dsn) || $dsn === '') {
                 throw new RuntimeException("$name is not set; run make orm-test-servers");
             }
-            $db = Orm::connect($dsn, new Config(statementTimeoutMs: 200));
+            $table = 'orm_timeout_native_' . getmypid() . '_' . bin2hex(random_bytes(4));
+            $quotedTable = $driver === 'mysql' ? "`$table`" : "\"$table\"";
+            $setup = null;
+            $holder = null;
+            $bounded = null;
+            $created = false;
+            $failure = null;
             try {
+                $setup = Orm::connect($dsn, new Config());
+                $setup->pdo()->exec("CREATE TABLE $quotedTable (id INTEGER PRIMARY KEY)");
+                $created = true;
+                $setup->pdo()->exec("INSERT INTO $quotedTable (id) VALUES (1)");
+
+                $holder = Orm::connect($dsn, new Config());
+                $holder->pdo()->beginTransaction();
+                $holder->pdo()->exec("UPDATE $quotedTable SET id = id");
+                $bounded = Orm::connect($dsn, new Config(statementTimeoutMs: 200));
                 try {
-                    $db->fetch('query', [], null, $sql);
-                    self::fail("$driver: the statement passed its timeout");
+                    $bounded->transaction(
+                        static fn() => $bounded->fetch('query', [], null, "SELECT id FROM $quotedTable WHERE id = 1 FOR UPDATE"),
+                        retry: 0
+                    );
+                    self::fail("$driver: the locking read passed its statement timeout");
                 } catch (OrmException $error) {
                     self::assertSame(Code::CANCELED, $error->code_, "$driver: {$error->getMessage()}");
                 }
-                self::assertCount(1, $db->fetch('query', [], null, 'SELECT 1'), "$driver: connection reuse");
+                $holder->pdo()->rollBack();
+                self::assertCount(
+                    1,
+                    $bounded->fetch('query', [], null, "SELECT id FROM $quotedTable WHERE id = 1"),
+                    "$driver: connection reuse after cancellation"
+                );
+            } catch (\Throwable $error) {
+                $failure = $error;
             } finally {
-                $db->close();
+                $cleanupErrors = [];
+                if ($holder !== null) {
+                    try {
+                        if ($holder->pdo()->inTransaction()) {
+                            $holder->pdo()->rollBack();
+                        }
+                    } catch (\Throwable $error) {
+                        $cleanupErrors[] = $error;
+                    }
+                }
+                foreach ([$bounded, $holder] as $db) {
+                    if ($db === null) {
+                        continue;
+                    }
+                    try {
+                        $db->close();
+                    } catch (\Throwable $error) {
+                        $cleanupErrors[] = $error;
+                    }
+                }
+                if ($created && $setup !== null) {
+                    try {
+                        $setup->pdo()->exec("DROP TABLE IF EXISTS $quotedTable");
+                    } catch (\Throwable $error) {
+                        $cleanupErrors[] = $error;
+                    }
+                }
+                if ($setup !== null) {
+                    try {
+                        $setup->close();
+                    } catch (\Throwable $error) {
+                        $cleanupErrors[] = $error;
+                    }
+                }
+                if ($cleanupErrors !== []) {
+                    $messages = array_map(static fn(\Throwable $error): string => $error->getMessage(), $cleanupErrors);
+                    $message = "$driver: timeout fixture cleanup failed: " . implode('; ', $messages);
+                    throw new RuntimeException($message, 0, $failure ?? $cleanupErrors[0]);
+                }
+            }
+            if ($failure !== null) {
+                throw $failure;
             }
         }
     }
