@@ -830,6 +830,8 @@
         "packages/rust/tests/tests/integration/result_chains.rs",
         "packages/go/model/coverage_model_queries_test.go",
         "packages/php/tests/CoverageModelQueriesTest.php",
+        "packages/php-ext/tests/CoverageModelQueriesExtensionTest.php",
+        "packages/php-ext/tests/ModelQueriesWritesNativeTest.php",
         "packages/rust/tests/tests/integration/coverage_model_queries.rs",
         "packages/ts/tests/coverage_model_queries.mjs",
         "packages/go/orm/shape_test.go",
@@ -878,6 +880,18 @@
         "docs/spec/protocol.md"
       ],
       "verification": [
+        {
+          "id": "native-model-query-write-sqlite-unit",
+          "command": "make model-query-write-php-extension-unit-check",
+          "shard": "other",
+          "inputs": [
+            "Makefile",
+            "packages/php-ext/tests/ModelQueriesWritesNativeTest.php",
+            "packages/php-ext/src/model_read.c",
+            "packages/php-ext/src/model_assembly.c",
+            "packages/php-ext/src/model_query.c"
+          ]
+        },
         {
           "id": "styled-column-states-php-extension-unit",
           "command": "make model-native-php-extension-check MODEL_NATIVE_TEST_FILTER=testStyledColumnDistinguishesUnselectedSqlNullAndEncodedNull",
@@ -1475,6 +1489,42 @@
                 }
               ]
             }
+          },
+          "php-extension": {
+            "part": "packages/php-ext/tests",
+            "tests": [
+              "packages/php-ext/tests/CoverageModelQueriesExtensionTest.php"
+            ],
+            "inputs": [
+              "contracts/fixtures/bench/bench.dbs",
+              "contracts/fixtures/bench/bench_shared.dbs"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageModelQueriesExtensionTest.php",
+                  "cases": ["model_query_rows"],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageModelQueriesExtensionTest.php",
+                  "cases": ["model_query_rows"],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageModelQueriesExtensionTest.php",
+                  "cases": ["model_query_rows"],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
           }
         },
         "dependents": []
@@ -1573,6 +1623,8 @@
         "packages/rust/orm/tests/decimal_model.rs",
         "packages/go/model/coverage_model_writes_test.go",
         "packages/php/tests/CoverageModelWritesTest.php",
+        "packages/php-ext/tests/CoverageModelWritesExtensionTest.php",
+        "packages/php-ext/tests/ModelQueriesWritesNativeTest.php",
         "packages/rust/tests/tests/integration/coverage_model_writes.rs",
         "packages/ts/tests/coverage_model_writes.mjs",
         "packages/go/orm/assignment_propagation_test.go",
@@ -1599,6 +1651,18 @@
         "docs/spec/protocol.md"
       ],
       "verification": [
+        {
+          "id": "native-model-query-write-sqlite-unit",
+          "command": "make model-query-write-php-extension-unit-check",
+          "shard": "other",
+          "inputs": [
+            "Makefile",
+            "packages/php-ext/tests/ModelQueriesWritesNativeTest.php",
+            "packages/php-ext/src/model_write.c",
+            "packages/php-ext/src/model_read.c",
+            "packages/php-ext/src/model_query.c"
+          ]
+        },
         {
           "id": "writes-go",
           "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/model -run 'Writes' -count=1",
@@ -2065,6 +2129,42 @@
                   "cases": [
                     "model_write_cycle"
                   ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "php-extension": {
+            "part": "packages/php-ext/tests",
+            "tests": [
+              "packages/php-ext/tests/CoverageModelWritesExtensionTest.php"
+            ],
+            "inputs": [
+              "contracts/fixtures/bench/bench.dbs",
+              "contracts/fixtures/bench/bench_shared.dbs"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageModelWritesExtensionTest.php",
+                  "cases": ["model_write_cycle"],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageModelWritesExtensionTest.php",
+                  "cases": ["model_write_cycle"],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageModelWritesExtensionTest.php",
+                  "cases": ["model_write_cycle"],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]

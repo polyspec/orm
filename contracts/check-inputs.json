@@ -2094,6 +2094,24 @@
         "packages/php-ext/src/**"
       ]
     },
+    "model-query-write-php-extension-unit-check": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/php-ext/tests/ModelQueriesWritesNativeTest.php",
+        "packages/php/tests/bench.php",
+        "packages/php/src/Model.php",
+        "packages/php-ext/src/model_read.c",
+        "packages/php-ext/src/model_write.c",
+        "packages/php-ext/src/model_assembly.c",
+        "packages/php-ext/src/model_query.c"
+      ]
+    },
     "model-native-php-extension-check": {
       "scope": "owner",
       "needs": [

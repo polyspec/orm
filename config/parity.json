@@ -2030,8 +2030,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/CoverageModelQueriesTest.php",
-          "id": "CoverageModelQueriesTest::test_model_query_rows"
+          "test": "packages/php-ext/tests/CoverageModelQueriesExtensionTest.php",
+          "id": "CoverageModelQueriesExtensionTest::test_model_query_rows"
         },
         {
           "implementation": "typescript",
@@ -2100,8 +2100,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/CoverageModelWritesTest.php",
-          "id": "CoverageModelWritesTest::test_model_write_cycle"
+          "test": "packages/php-ext/tests/CoverageModelWritesExtensionTest.php",
+          "id": "CoverageModelWritesExtensionTest::test_model_write_cycle"
         },
         {
           "implementation": "typescript",
