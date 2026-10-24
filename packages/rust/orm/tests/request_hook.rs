@@ -45,39 +45,7 @@ static HOOK_ENTRY: Entity = Entity {
 const ENTRY_COLUMNS: [&str; 4] = ["id", "part", "label", "note"];
 
 /// A row of the soft delete table hook_entry, whose unique key is (part, label).
-#[derive(Clone)]
-struct HookEntry {
-    core: Core,
-    values: BTreeMap<String, Val>,
-}
-
-impl Model for HookEntry {
-    fn entity() -> &'static Entity {
-        &HOOK_ENTRY
-    }
-    fn core(&self) -> &Core {
-        &self.core
-    }
-    fn core_mut(&mut self) -> &mut Core {
-        &mut self.core
-    }
-    fn from_core(core: Core) -> Self {
-        HookEntry { core, values: BTreeMap::new() }
-    }
-    fn into_core(self) -> Core {
-        self.core
-    }
-    fn assign(&mut self, name: &str, v: Val) -> polyspec_orm::Result<bool> {
-        if !ENTRY_COLUMNS.contains(&name) {
-            return Ok(false);
-        }
-        self.values.insert(name.to_owned(), v);
-        Ok(true)
-    }
-    fn value(&self, name: &str) -> Option<Val> {
-        self.values.get(name).cloned()
-    }
-}
+model_row!(HookEntry, HOOK_ENTRY, ENTRY_COLUMNS);
 
 static HOOK_UPSERT: Entity = Entity {
     name: "hook_upsert",
@@ -88,39 +56,7 @@ static HOOK_UPSERT: Entity = Entity {
 const UPSERT_COLUMNS: [&str; 4] = ["id", "scope_col", "name", "hits"];
 
 /// A row of hook_upsert, whose unique key is (scope_col, name).
-#[derive(Clone)]
-struct HookUpsert {
-    core: Core,
-    values: BTreeMap<String, Val>,
-}
-
-impl Model for HookUpsert {
-    fn entity() -> &'static Entity {
-        &HOOK_UPSERT
-    }
-    fn core(&self) -> &Core {
-        &self.core
-    }
-    fn core_mut(&mut self) -> &mut Core {
-        &mut self.core
-    }
-    fn from_core(core: Core) -> Self {
-        HookUpsert { core, values: BTreeMap::new() }
-    }
-    fn into_core(self) -> Core {
-        self.core
-    }
-    fn assign(&mut self, name: &str, v: Val) -> polyspec_orm::Result<bool> {
-        if !UPSERT_COLUMNS.contains(&name) {
-            return Ok(false);
-        }
-        self.values.insert(name.to_owned(), v);
-        Ok(true)
-    }
-    fn value(&self, name: &str) -> Option<Val> {
-        self.values.get(name).cloned()
-    }
-}
+model_row!(HookUpsert, HOOK_UPSERT, UPSERT_COLUMNS);
 
 /// A hook_entry model connected to db with values set.
 fn entry(db: &Db, values: &[(&str, Param)]) -> HookEntry {
@@ -315,7 +251,6 @@ async fn same_handle_child_hook_once_case(driver: &str) {
     db.close().await;
     database.drop().await;
 }
-
 
 async fn insert_assign_case(driver: &str) {
     let database = CaseDatabase::create(driver).await;
@@ -620,7 +555,6 @@ async fn same_handle_child_hook_once() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     same_handle_child_hook_once_case("sqlite").await;
 }
-
 
 #[tokio::test]
 async fn coverage_request_hook_read_filter() {

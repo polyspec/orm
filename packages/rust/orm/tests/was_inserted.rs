@@ -10,23 +10,16 @@ mod model_row;
 mod or_panic;
 use or_panic::OrPanic;
 
+#[path = "common/clock_event.rs"]
+mod clock_event;
+use clock_event::{CLOCK_EVENT, CLOCK_SCHEMA, ClockEvent};
+
 use std::time::Duration;
 
-use polyspec_orm::{Core, Db, Entity, Error, Model, Param, Schema, Val};
+use polyspec_orm::{Core, Db, Error, Model, Param, Val};
 use polyspec_orm_case_database::CaseDatabase;
 
-static CLOCK_SCHEMA: Schema =
-    Schema::new(include_str!("../../../../contracts/fixtures/clock.dbs"), "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb");
-static CLOCK_EVENT: Entity = Entity {
-    name: "clock_event",
-    schema: &CLOCK_SCHEMA,
-    new: polyspec_orm::model::new_boxed::<ClockEvent>,
-    collect: polyspec_orm::model::collect_boxed::<ClockEvent>,
-};
-const COLUMNS: [&str; 3] = ["seq", "label", "created_ts"];
 const CASE_DEADLINE: Duration = Duration::from_secs(60);
-
-model_row!(ClockEvent, CLOCK_EVENT, COLUMNS);
 
 fn connected(db: &Db) -> ClockEvent {
     let mut core = Core::new(&CLOCK_EVENT);
@@ -99,11 +92,7 @@ async fn no_waiter(driver: &str, db: &Db) {
 /// to ten seconds.
 async fn postgres_waiter(dsn: &str, db: &Db) {
     let utils = db.utils();
-    let seq = db
-        .transaction(async || Ok(insert_event(db, "held").await))
-        .retry(0)
-        .await
-        .or_panic(|e| format!("postgres: {e}"));
+    let seq = db.transaction(async || Ok(insert_event(db, "held").await)).retry(0).await.or_panic(|e| format!("postgres: {e}"));
     let (waiting, waiter) = db
         .transaction(async || {
             let mut row = connected(db);

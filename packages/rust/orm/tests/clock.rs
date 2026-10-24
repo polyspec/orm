@@ -14,6 +14,10 @@ mod model_row;
 mod or_panic;
 use or_panic::OrPanic;
 
+#[path = "common/clock_event.rs"]
+mod clock_event;
+use clock_event::{CLOCK_EVENT, CLOCK_SCHEMA, ClockEvent};
+
 use std::time::Duration;
 
 use polyspec_orm::core::{Arg, ChainKey};
@@ -21,18 +25,7 @@ use polyspec_orm::db::Pool;
 use polyspec_orm::{Core, Db, Entity, Model, Param, Schema, Val};
 use polyspec_orm_case_database::CaseDatabase;
 
-static CLOCK_SCHEMA: Schema =
-    Schema::new(include_str!("../../../../contracts/fixtures/clock.dbs"), "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb");
-static CLOCK_EVENT: Entity = Entity {
-    name: "clock_event",
-    schema: &CLOCK_SCHEMA,
-    new: polyspec_orm::model::new_boxed::<ClockEvent>,
-    collect: polyspec_orm::model::collect_boxed::<ClockEvent>,
-};
-const COLUMNS: [&str; 3] = ["seq", "label", "created_ts"];
 const CASE_DEADLINE: Duration = Duration::from_secs(30);
-
-model_row!(ClockEvent, CLOCK_EVENT, COLUMNS);
 
 fn connected(db: &Db) -> ClockEvent {
     let mut core = Core::new(&CLOCK_EVENT);
@@ -83,9 +76,7 @@ async fn clock_microseconds(driver: &str, dsn: &str) {
 
 async fn bounded(driver: &str) {
     let database = CaseDatabase::create(driver).await;
-    tokio::time::timeout(CASE_DEADLINE, clock_microseconds(driver, database.dsn()))
-        .await
-        .or_panic(|_| format!("{driver}: timeout after {CASE_DEADLINE:?}"));
+    tokio::time::timeout(CASE_DEADLINE, clock_microseconds(driver, database.dsn())).await.or_panic(|_| format!("{driver}: timeout after {CASE_DEADLINE:?}"));
     database.drop().await;
 }
 
@@ -119,40 +110,7 @@ static CLOCK_MARK: Entity = Entity {
     collect: polyspec_orm::model::collect_boxed::<ClockMark>,
 };
 const MARK_COLUMNS: [&str; 4] = ["seq", "label", "created_ts", "deleted_at"];
-
-#[derive(Clone)]
-struct ClockMark {
-    core: Core,
-    values: std::collections::BTreeMap<String, Val>,
-}
-
-impl Model for ClockMark {
-    fn entity() -> &'static Entity {
-        &CLOCK_MARK
-    }
-    fn core(&self) -> &Core {
-        &self.core
-    }
-    fn core_mut(&mut self) -> &mut Core {
-        &mut self.core
-    }
-    fn from_core(core: Core) -> Self {
-        ClockMark { core, values: std::collections::BTreeMap::new() }
-    }
-    fn into_core(self) -> Core {
-        self.core
-    }
-    fn assign(&mut self, name: &str, v: Val) -> polyspec_orm::Result<bool> {
-        if !MARK_COLUMNS.contains(&name) {
-            return Ok(false);
-        }
-        self.values.insert(name.to_owned(), v);
-        Ok(true)
-    }
-    fn value(&self, name: &str) -> Option<Val> {
-        self.values.get(name).cloned()
-    }
-}
+model_row!(ClockMark, CLOCK_MARK, MARK_COLUMNS);
 
 fn mark(db: &Db) -> ClockMark {
     let mut core = Core::new(&CLOCK_MARK);
