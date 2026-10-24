@@ -94,6 +94,13 @@ final class CatalogConnectionSurfaceTest extends TestCase
         $setup = new PDO('sqlite:' . $path, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
         $setup->exec('CREATE TABLE sample (id INTEGER PRIMARY KEY, payload BLOB NOT NULL, note TEXT NULL)');
         $setup->exec("INSERT INTO sample (id, payload, note) VALUES (1, X'00ff', NULL), (2, X'6162', 'two')");
+        $setup->exec('CREATE TABLE catalog_control (ignore_sample_delete INTEGER NOT NULL)');
+        $setup->exec('INSERT INTO catalog_control (ignore_sample_delete) VALUES (0)');
+        $setup->exec(
+            'CREATE TRIGGER ignore_sample_delete BEFORE DELETE ON sample '
+            . 'WHEN (SELECT ignore_sample_delete FROM catalog_control) = 1 '
+            . 'BEGIN SELECT RAISE(IGNORE); END'
+        );
         $setup->exec('CREATE TABLE required_identity (id BIGINT NOT NULL PRIMARY KEY, payload TEXT NOT NULL)');
         $setup->exec('CREATE TABLE generated (id INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL)');
         $setup->exec(
@@ -225,6 +232,18 @@ final class CatalogConnectionSurfaceTest extends TestCase
                 }
             }
             self::assertNotNull($updatedIndex);
+            $control = new PDO('sqlite:' . $path, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+            $control->exec('UPDATE catalog_control SET ignore_sample_delete = 1');
+            try {
+                $catalog->deleteRow($catalog->rowSnapshotFromPage($afterUpdate, $updatedIndex));
+                self::fail('a delete that affected no rows was accepted');
+            } catch (\Polyspec\Orm\OrmException $error) {
+                self::assertSame(Code::ROW_WRITE_MISMATCH, $error->code_);
+                self::assertSame('ROW_WRITE_MISMATCH: expected exactly one deleted row, got 0', $error->getMessage());
+            }
+            self::assertSame(1, (int) $control->query('SELECT COUNT(*) FROM sample WHERE id = 3')->fetchColumn());
+            $control->exec('UPDATE catalog_control SET ignore_sample_delete = 0');
+            $control = null;
             self::assertSame(
                 1,
                 $catalog->deleteRow($catalog->rowSnapshotFromPage($afterUpdate, $updatedIndex))

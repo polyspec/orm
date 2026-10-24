@@ -2907,6 +2907,38 @@ static bool cat_descriptor_unchanged(zval *db, const char *dialect, zval *pdo, z
     return unchanged;
 }
 
+typedef enum {
+    CAT_MUTATION_UPDATE,
+    CAT_MUTATION_DELETE
+} cat_mutation_kind;
+
+static bool cat_mutation_statement(zval *db, const char *dialect, zval *pdo, smart_str *sql, zval *args,
+                                   zval *descriptor, cat_mutation_kind kind, zend_long *affected_out)
+{
+    zend_long affected = 0;
+    bool ok = cat_exec(db, pdo, ZSTR_VAL(sql->s), args, &affected);
+    smart_str_free(sql);
+    zval_ptr_dtor(args);
+    if (!ok) {
+        zval_ptr_dtor(descriptor);
+        return false;
+    }
+    bool mismatch = kind == CAT_MUTATION_UPDATE
+        ? affected > 1 || (affected == 0 && strcmp(dialect, "mysql") != 0)
+        : affected != 1;
+    if (mismatch) {
+        zval_ptr_dtor(descriptor);
+        if (kind == CAT_MUTATION_UPDATE) {
+            db_throw_orm("ROW_WRITE_MISMATCH", "unexpected affected row count %ld", (long)affected);
+        } else {
+            db_throw_orm("ROW_WRITE_MISMATCH", "expected exactly one deleted row, got %ld", (long)affected);
+        }
+        return false;
+    }
+    if (affected_out != NULL) *affected_out = affected;
+    return true;
+}
+
 static bool cat_update_body(zval *db, const char *dialect, zval *pdo, zval *original, zval *changes, zval *updated, zval *keys,
                             zval *new_keys, zval *out)
 {
@@ -2927,19 +2959,7 @@ static bool cat_update_body(zval *db, const char *dialect, zval *pdo, zval *orig
     cat_append_changes(&sql, columns, changes, dialect, &args, CAT_CHANGE_ASSIGNMENTS);
     cat_key_predicate(&sql, metadata, dialect, keys, &args);
     smart_str_0(&sql);
-    zend_long affected = 0;
-    bool ok = cat_exec(db, pdo, ZSTR_VAL(sql.s), &args, &affected);
-    smart_str_free(&sql);
-    zval_ptr_dtor(&args);
-    if (!ok) {
-        zval_ptr_dtor(&descriptor);
-        return false;
-    }
-    if (affected > 1 || (affected == 0 && strcmp(dialect, "mysql") != 0)) {
-        zval_ptr_dtor(&descriptor);
-        db_throw_orm("ROW_WRITE_MISMATCH", "unexpected affected row count %ld", (long)affected);
-        return false;
-    }
+    if (!cat_mutation_statement(db, dialect, pdo, &sql, &args, &descriptor, CAT_MUTATION_UPDATE, NULL)) return false;
     zval after;
     if (!cat_lookup(db, dialect, pdo, &descriptor, new_keys, false, &after)) {
         zval_ptr_dtor(&descriptor);
@@ -2975,7 +2995,7 @@ static bool cat_update_body(zval *db, const char *dialect, zval *pdo, zval *orig
         }
         i++;
     } ZEND_HASH_FOREACH_END();
-    ok = cat_result(&descriptor, &after, out);
+    bool ok = cat_result(&descriptor, &after, out);
     zval_ptr_dtor(&after);
     zval_ptr_dtor(&descriptor);
     return ok;
@@ -3072,19 +3092,8 @@ static bool cat_delete_body(zval *db, const char *dialect, zval *pdo, zval *orig
     array_init(&args);
     cat_key_predicate(&sql, metadata, dialect, keys, &args);
     smart_str_0(&sql);
-    zend_long affected = 0;
-    bool ok = cat_exec(db, pdo, ZSTR_VAL(sql.s), &args, &affected);
-    smart_str_free(&sql);
-    zval_ptr_dtor(&args);
-    if (!ok) {
-        zval_ptr_dtor(&descriptor);
-        return false;
-    }
-    if (affected != 1) {
-        zval_ptr_dtor(&descriptor);
-        db_throw_orm("ROW_WRITE_MISMATCH", "expected exactly one deleted row, got %ld", (long)affected);
-        return false;
-    }
+    zend_long affected;
+    if (!cat_mutation_statement(db, dialect, pdo, &sql, &args, &descriptor, CAT_MUTATION_DELETE, &affected)) return false;
     zval after;
     if (!cat_lookup(db, dialect, pdo, &descriptor, keys, false, &after)) {
         zval_ptr_dtor(&descriptor);
