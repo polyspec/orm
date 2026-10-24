@@ -15,11 +15,6 @@ final class PlanObjects
 {
     // Token of canonical check text: a string literal, a name or number, or any other single character.
     private const CHECK_TOKEN = "/'(?:[^']|'')*'|[A-Za-z0-9_]+|./s";
-    private const KEYWORDS = [
-        'and' => true, 'or' => true, 'not' => true, 'in' => true, 'between' => true, 'is' => true,
-        'null' => true, 'true' => true, 'false' => true
-    ];
-
     public static function compare(PlanDiff $d): void
     {
         $alteredColumn = []; // The target name "table.column"
@@ -235,6 +230,6 @@ final class PlanObjects
     /** A string, a number, and a name token that is not a keyword is a column. */
     private static function isColumn(string $token): bool
     {
-        return preg_match('/^[a-z][a-z0-9_]*$/D', $token) === 1 && !isset(self::KEYWORDS[$token]);
+        return preg_match('/^[a-z][a-z0-9_]*$/D', $token) === 1 && !Expression::isKeyword($token);
     }
 }

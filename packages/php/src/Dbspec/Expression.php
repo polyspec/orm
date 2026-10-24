@@ -27,6 +27,12 @@ final class Expression
         'null' => true, 'true' => true, 'false' => true
     ];
 
+    /** Whether a token is a dbspec predicate keyword. */
+    public static function isKeyword(string $token): bool
+    {
+        return isset(self::KEYWORDS[$token]);
+    }
+
     private int $at = 0;
     /**
      * @var array<int, string> index in the line => class of the tokens the predicate read
@@ -235,7 +241,7 @@ final class Expression
             if ($this->peek(1) === '(') {
                 $this->fail('a check has no functions');
             }
-            if (!isset(self::KEYWORDS[$token])) {
+            if (!self::isKeyword($token)) {
                 $operand = ['column', $token, $this->position(), $this->columns[$token] ?? null];
                 $this->refs[] = $token;
                 $this->take('name');
