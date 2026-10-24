@@ -549,6 +549,19 @@ ZEND_METHOD(Polyspec_Orm_Request, padIn)
     }
 }
 
+static bool request_ir_params(zval *request, zval *ir_rv, zval *params_rv, zval **ir, zval **params)
+{
+    *ir = zend_read_property(polyspec_request_ce, Z_OBJ_P(request), "ir", sizeof("ir") - 1, 0, ir_rv);
+    *params = zend_read_property(polyspec_request_ce, Z_OBJ_P(request), "params", sizeof("params") - 1, 0, params_rv);
+    ZVAL_DEREF(*ir);
+    ZVAL_DEREF(*params);
+    if (Z_TYPE_P(*ir) != IS_ARRAY || Z_TYPE_P(*params) != IS_ARRAY) {
+        zend_throw_error(NULL, "Request::$ir and Request::$params must be arrays");
+        return false;
+    }
+    return true;
+}
+
 ZEND_METHOD(Polyspec_Orm_Request, canonicalize)
 {
     ZEND_PARSE_PARAMETERS_NONE();
@@ -557,14 +570,8 @@ ZEND_METHOD(Polyspec_Orm_Request, canonicalize)
         RETURN_NULL();
     }
     zval ir_rv, params_rv;
-    zval *ir = zend_read_property(polyspec_request_ce, Z_OBJ_P(ZEND_THIS), "ir", sizeof("ir") - 1, 0, &ir_rv);
-    zval *params = zend_read_property(polyspec_request_ce, Z_OBJ_P(ZEND_THIS), "params", sizeof("params") - 1, 0, &params_rv);
-    ZVAL_DEREF(ir);
-    ZVAL_DEREF(params);
-    if (Z_TYPE_P(ir) != IS_ARRAY || Z_TYPE_P(params) != IS_ARRAY) {
-        zend_throw_error(NULL, "Request::$ir and Request::$params must be arrays");
-        RETURN_THROWS();
-    }
+    zval *ir, *params;
+    if (!request_ir_params(ZEND_THIS, &ir_rv, &params_rv, &ir, &params)) RETURN_THROWS();
     zval out_params, out_ir;
     array_init(&out_params);
     ZVAL_UNDEF(&out_ir);
@@ -603,14 +610,9 @@ ZEND_METHOD(Polyspec_Orm_Request, canonicalize)
 ZEND_METHOD(Polyspec_Orm_Request, shape)
 {
     ZEND_PARSE_PARAMETERS_NONE();
-    zval rv, *ir = zend_read_property(polyspec_request_ce, Z_OBJ_P(ZEND_THIS), "ir", sizeof("ir") - 1, 0, &rv);
-    zval params_rv, *params = zend_read_property(polyspec_request_ce, Z_OBJ_P(ZEND_THIS), "params", sizeof("params") - 1, 0, &params_rv);
-    ZVAL_DEREF(ir);
-    ZVAL_DEREF(params);
-    if (Z_TYPE_P(ir) != IS_ARRAY || Z_TYPE_P(params) != IS_ARRAY) {
-        zend_throw_error(NULL, "Request::$ir and Request::$params must be arrays");
-        RETURN_THROWS();
-    }
+    zval ir_rv, params_rv;
+    zval *ir, *params;
+    if (!request_ir_params(ZEND_THIS, &ir_rv, &params_rv, &ir, &params)) RETURN_THROWS();
     array_init_size(return_value, zend_hash_num_elements(Z_ARRVAL_P(ir)) + 1);
     zend_hash_copy(Z_ARRVAL_P(return_value), Z_ARRVAL_P(ir), zval_add_ref);
     zval count;
