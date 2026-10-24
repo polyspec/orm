@@ -689,6 +689,9 @@ fn a_name_is_typed_by_its_binding_in_its_own_scope() {
     }
     let member = Author::new();
     let _ = member.get_is_close();
+}
+impl ServiceMember {
+    fn read(row: Author) { let _ = row.get_is_close(); }
 }",
     )
     .unwrap();

@@ -501,6 +501,14 @@ impl Scanner<'_> {
         format!("{}:{}:{}", self.file, at.line, at.column + 1)
     }
 
+    fn visit_function_scope(&mut self, params: &[Pat], visit: impl FnOnce(&mut Self)) {
+        let outer = std::mem::take(&mut self.scopes);
+        self.scopes.push(HashMap::new());
+        self.bind_params(params.iter());
+        visit(self);
+        self.scopes = outer;
+    }
+
     fn bind_params<'p>(&mut self, params: impl Iterator<Item = &'p Pat>) {
         for p in params {
             if let Some((name, ty)) = pat_ident(p) {
@@ -576,9 +584,7 @@ impl<'ast> Visit<'ast> for Scanner<'_> {
     }
 
     fn visit_item_fn(&mut self, f: &'ast syn::ItemFn) {
-        // A function item sees no local of the function that contains it, so the scopes of the outer function are set aside.
-        let outer = std::mem::take(&mut self.scopes);
-        self.scopes.push(HashMap::new());
+        // A function item sees no local of the function that contains it.
         let pats: Vec<Pat> = f
             .sig
             .inputs
@@ -588,14 +594,10 @@ impl<'ast> Visit<'ast> for Scanner<'_> {
                 FnArg::Receiver(_) => None,
             })
             .collect();
-        self.bind_params(pats.iter());
-        visit::visit_item_fn(self, f);
-        self.scopes = outer;
+        self.visit_function_scope(&pats, |this| visit::visit_item_fn(this, f));
     }
 
     fn visit_impl_item_fn(&mut self, f: &'ast syn::ImplItemFn) {
-        let outer = std::mem::take(&mut self.scopes);
-        self.scopes.push(HashMap::new());
         let pats: Vec<Pat> = f
             .sig
             .inputs
@@ -605,9 +607,7 @@ impl<'ast> Visit<'ast> for Scanner<'_> {
                 FnArg::Receiver(_) => None,
             })
             .collect();
-        self.bind_params(pats.iter());
-        visit::visit_impl_item_fn(self, f);
-        self.scopes = outer;
+        self.visit_function_scope(&pats, |this| visit::visit_impl_item_fn(this, f));
     }
 
     fn visit_block(&mut self, b: &'ast syn::Block) {
