@@ -73,6 +73,13 @@ final class ModelDslNativeTest extends TestCase
         }
     }
 
+    public function testGroupAndJoinCallbacksUseNativeInvocationPaths(): void
+    {
+        $model = new DslFixture();
+        self::assertSame($model, $model->and(static fn(DslFixture $group) => $group->name('Ada')));
+        self::assertSame($model, $model->on(static fn(DslFixture $group) => $group->age(20)));
+    }
+
     public function testBetweenUsesAListAndColumnFunctionConsumesOneComparedValue(): void
     {
         $model = new DslFixture();

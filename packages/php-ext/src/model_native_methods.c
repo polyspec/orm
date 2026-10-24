@@ -172,6 +172,23 @@ static zend_string *model_pending(model_state *s)
     return Z_STR_P(pending);
 }
 
+static bool model_invoke_group_callback(zval *group, zval *callback)
+{
+    zend_fcall_info fci;
+    zend_fcall_info_cache fcc;
+    if (zend_fcall_info_init(callback, 0, &fci, &fcc, NULL, NULL) != SUCCESS) return false;
+    zval argument, result;
+    ZVAL_COPY(&argument, group);
+    ZVAL_UNDEF(&result);
+    fci.retval = &result;
+    fci.params = &argument;
+    fci.param_count = 1;
+    zend_call_function(&fci, &fcc);
+    zval_ptr_dtor(&argument);
+    if (Z_TYPE(result) != IS_UNDEF) zval_ptr_dtor(&result);
+    return EG(exception) == NULL;
+}
+
 static bool model_call_group(zval *owner, zval *callback, const char *conn, size_t conn_len, bool negated)
 {
     model_state *parent = model_state_of(Z_OBJ_P(owner));
@@ -181,22 +198,7 @@ static bool model_call_group(zval *owner, zval *callback, const char *conn, size
     model_state *child = model_state_of(Z_OBJ(group));
     ZVAL_COPY(model_state_property(child, "group_of"), owner);
 
-    zend_fcall_info fci;
-    zend_fcall_info_cache fcc;
-    if (zend_fcall_info_init(callback, 0, &fci, &fcc, NULL, NULL) != SUCCESS) {
-        zval_ptr_dtor(&group);
-        return false;
-    }
-    zval arg, retval;
-    ZVAL_COPY(&arg, &group);
-    ZVAL_UNDEF(&retval);
-    fci.retval = &retval;
-    fci.params = &arg;
-    fci.param_count = 1;
-    zend_call_function(&fci, &fcc);
-    zval_ptr_dtor(&arg);
-    if (Z_TYPE(retval) != IS_UNDEF) zval_ptr_dtor(&retval);
-    if (EG(exception) != NULL) {
+    if (!model_invoke_group_callback(&group, callback)) {
         zval_ptr_dtor(&group);
         return false;
     }
@@ -364,21 +366,10 @@ ZEND_METHOD(Polyspec_Orm_Model, on)
     if (EG(exception) != NULL) RETURN_THROWS();
     model_state *child = model_state_of(Z_OBJ(group));
     ZVAL_COPY(model_state_property(child, "group_of"), ZEND_THIS);
-    zend_fcall_info fci;
-    zend_fcall_info_cache fcc;
-    if (zend_fcall_info_init(callback, 0, &fci, &fcc, NULL, NULL) != SUCCESS) {
+    if (!model_invoke_group_callback(&group, callback)) {
         zval_ptr_dtor(&group);
         RETURN_THROWS();
     }
-    zval arg, retval;
-    ZVAL_COPY(&arg, &group);
-    ZVAL_UNDEF(&retval);
-    fci.retval = &retval;
-    fci.params = &arg;
-    fci.param_count = 1;
-    zend_call_function(&fci, &fcc);
-    zval_ptr_dtor(&arg);
-    if (Z_TYPE(retval) != IS_UNDEF) zval_ptr_dtor(&retval);
     if (EG(exception) == NULL) {
         model_copy_error(parent, child);
         if (Z_TYPE_P(model_state_property(parent, "error")) == IS_NULL) {
@@ -759,24 +750,11 @@ ZEND_METHOD(Polyspec_Orm_Model, registerJoins)
 
 static void model_throw_orm(const char *code_name, const char *message)
 {
-    zend_string *name = zend_string_init("Polyspec\\Orm\\OrmException", sizeof("Polyspec\\Orm\\OrmException") - 1, 0);
-    zend_class_entry *ce = zend_lookup_class(name);
-    zend_string_release(name);
-    if (ce == NULL) {
-        zend_throw_error(NULL, "Polyspec\\Orm\\OrmException is not loaded");
-        return;
-    }
-    zval exception, code, text;
-    object_init_ex(&exception, ce);
-    ZVAL_STRING(&code, code_name);
-    ZVAL_STRING(&text, message);
-    zend_call_method_with_2_params(Z_OBJ(exception), ce, NULL, "__construct", NULL, &code, &text);
-    zval_ptr_dtor(&code);
-    zval_ptr_dtor(&text);
-    if (EG(exception) != NULL) {
-        zval_ptr_dtor(&exception);
-        return;
-    }
+    zend_string *text = zend_string_init(message, strlen(message), 0);
+    zval exception;
+    bool ok = orm_exception_object(code_name, text, &exception);
+    zend_string_release(text);
+    if (!ok) return;
     zend_throw_exception_object(&exception);
 }
 
