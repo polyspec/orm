@@ -2800,8 +2800,8 @@ ZEND_METHOD(Polyspec_Orm_Catalog, insertRow)
     zval_ptr_dtor(&key_indexes);
 }
 
-static bool cat_update_body(zval *db, const char *dialect, zval *pdo, zval *original, zval *changes, zval *updated, zval *keys,
-                            zval *new_keys, zval *out)
+/* Locks and validates the original snapshot before either mutation path writes its row. */
+static bool cat_locked_original(zval *db, const char *dialect, zval *pdo, zval *original, zval *keys, zval *descriptor)
 {
     zval rv_m, *metadata = catalog_prop(original, "metadata", &rv_m);
     zval rv_t, *table = catalog_prop(metadata, "table", &rv_t);
@@ -2809,28 +2809,51 @@ static bool cat_update_body(zval *db, const char *dialect, zval *pdo, zval *orig
     zval *tname = zend_hash_str_find(Z_ARRVAL_P(table), "name", 4);
     zval current;
     if (!cat_lookup(db, dialect, pdo, metadata, keys, true, &current)) return false;
-    zval descriptor;
-    if (!cat_describe(db, dialect, pdo, Z_STR_P(ns), Z_STR_P(tname), &descriptor)) {
+    if (!cat_describe(db, dialect, pdo, Z_STR_P(ns), Z_STR_P(tname), descriptor)) {
         zval_ptr_dtor(&current);
         return false;
     }
-    if (zend_compare(&descriptor, metadata) != 0) {
+    if (zend_compare(descriptor, metadata) != 0) {
         zval_ptr_dtor(&current);
-        zval_ptr_dtor(&descriptor);
+        zval_ptr_dtor(descriptor);
         db_throw_orm("ROW_SCHEMA_CHANGED", "original descriptor changed");
         return false;
     }
     zval rv_cells, *cells = catalog_prop(original, "cells", &rv_cells);
     if (!cat_check_current(&current, cells)) {
         zval_ptr_dtor(&current);
-        zval_ptr_dtor(&descriptor);
+        zval_ptr_dtor(descriptor);
         return false;
     }
     zval_ptr_dtor(&current);
-    if (strcmp(dialect, "mysql") == 0 && !cat_mysql_safety(db, pdo, &descriptor)) {
-        zval_ptr_dtor(&descriptor);
+    if (strcmp(dialect, "mysql") == 0 && !cat_mysql_safety(db, pdo, descriptor)) {
+        zval_ptr_dtor(descriptor);
         return false;
     }
+    return true;
+}
+
+/* Rechecks the descriptor after mutation so the result never mixes schema versions. */
+static bool cat_descriptor_unchanged(zval *db, const char *dialect, zval *pdo, zval *ns, zval *tname,
+                                     zval *descriptor)
+{
+    zval again;
+    if (!cat_describe(db, dialect, pdo, Z_STR_P(ns), Z_STR_P(tname), &again)) return false;
+    bool unchanged = zend_compare(&again, descriptor) == 0;
+    zval_ptr_dtor(&again);
+    if (!unchanged) db_throw_orm("ROW_SCHEMA_CHANGED", "original descriptor changed");
+    return unchanged;
+}
+
+static bool cat_update_body(zval *db, const char *dialect, zval *pdo, zval *original, zval *changes, zval *updated, zval *keys,
+                            zval *new_keys, zval *out)
+{
+    zval rv_m, *metadata = catalog_prop(original, "metadata", &rv_m);
+    zval rv_t, *table = catalog_prop(metadata, "table", &rv_t);
+    zval *ns = zend_hash_str_find(Z_ARRVAL_P(table), "namespace", 9);
+    zval *tname = zend_hash_str_find(Z_ARRVAL_P(table), "name", 4);
+    zval descriptor;
+    if (!cat_locked_original(db, dialect, pdo, original, keys, &descriptor)) return false;
     zval rv_cols, *columns = catalog_prop(&descriptor, "columns", &rv_cols);
     smart_str sql = {0};
     smart_str_appends(&sql, "UPDATE ");
@@ -2894,18 +2917,9 @@ static bool cat_update_body(zval *db, const char *dialect, zval *pdo, zval *orig
         db_throw_orm("ROW_WRITE_MISMATCH", "expected exactly one updated row, got %u", n);
         return false;
     }
-    zval again;
-    if (!cat_describe(db, dialect, pdo, Z_STR_P(ns), Z_STR_P(tname), &again)) {
+    if (!cat_descriptor_unchanged(db, dialect, pdo, ns, tname, &descriptor)) {
         zval_ptr_dtor(&after);
         zval_ptr_dtor(&descriptor);
-        return false;
-    }
-    bool unchanged = zend_compare(&again, &descriptor) == 0;
-    zval_ptr_dtor(&again);
-    if (!unchanged) {
-        zval_ptr_dtor(&after);
-        zval_ptr_dtor(&descriptor);
-        db_throw_orm("ROW_SCHEMA_CHANGED", "original descriptor changed");
         return false;
     }
     zval *first_row = zend_hash_index_find(Z_ARRVAL(after), 0);
@@ -3009,30 +3023,8 @@ static bool cat_delete_body(zval *db, const char *dialect, zval *pdo, zval *orig
     zval rv_t, *table = catalog_prop(metadata, "table", &rv_t);
     zval *ns = zend_hash_str_find(Z_ARRVAL_P(table), "namespace", 9);
     zval *tname = zend_hash_str_find(Z_ARRVAL_P(table), "name", 4);
-    zval current;
-    if (!cat_lookup(db, dialect, pdo, metadata, keys, true, &current)) return false;
     zval descriptor;
-    if (!cat_describe(db, dialect, pdo, Z_STR_P(ns), Z_STR_P(tname), &descriptor)) {
-        zval_ptr_dtor(&current);
-        return false;
-    }
-    if (zend_compare(&descriptor, metadata) != 0) {
-        zval_ptr_dtor(&current);
-        zval_ptr_dtor(&descriptor);
-        db_throw_orm("ROW_SCHEMA_CHANGED", "original descriptor changed");
-        return false;
-    }
-    zval rv_cells, *cells = catalog_prop(original, "cells", &rv_cells);
-    if (!cat_check_current(&current, cells)) {
-        zval_ptr_dtor(&current);
-        zval_ptr_dtor(&descriptor);
-        return false;
-    }
-    zval_ptr_dtor(&current);
-    if (strcmp(dialect, "mysql") == 0 && !cat_mysql_safety(db, pdo, &descriptor)) {
-        zval_ptr_dtor(&descriptor);
-        return false;
-    }
+    if (!cat_locked_original(db, dialect, pdo, original, keys, &descriptor)) return false;
     smart_str sql = {0};
     smart_str_appends(&sql, "DELETE FROM ");
     cat_quote(&sql, Z_STR_P(ns), dialect);
@@ -3073,16 +3065,9 @@ static bool cat_delete_body(zval *db, const char *dialect, zval *pdo, zval *orig
         db_throw_orm("ROW_WRITE_MISMATCH", "deleted row remains");
         return false;
     }
-    zval again;
-    if (!cat_describe(db, dialect, pdo, Z_STR_P(ns), Z_STR_P(tname), &again)) {
-        zval_ptr_dtor(&descriptor);
-        return false;
-    }
-    bool unchanged = zend_compare(&again, &descriptor) == 0;
-    zval_ptr_dtor(&again);
+    bool unchanged = cat_descriptor_unchanged(db, dialect, pdo, ns, tname, &descriptor);
     zval_ptr_dtor(&descriptor);
     if (!unchanged) {
-        db_throw_orm("ROW_SCHEMA_CHANGED", "original descriptor changed");
         return false;
     }
     *affected_out = affected;
