@@ -1103,21 +1103,8 @@ mod send_tests;
 
 #[cfg(test)]
 mod tests {
-    /// Returns the value of an Ok, and panics with the message the error gives otherwise.
-    trait OrPanic<T, E> {
-        fn or_panic(self, report: impl FnOnce(E) -> String) -> T;
-    }
-
-    impl<T, E> OrPanic<T, E> for std::result::Result<T, E> {
-        fn or_panic(self, report: impl FnOnce(E) -> String) -> T {
-            match self {
-                Ok(value) => value,
-                Err(error) => panic!("{}", report(error)),
-            }
-        }
-    }
-
     use super::*;
+    use polyspec_orm_testcase::OrPanic;
 
     /// A directory of its own for one test, removed when the value is dropped. A test that fails an assertion
     /// unwinds through the drop, so it leaves nothing behind either.
