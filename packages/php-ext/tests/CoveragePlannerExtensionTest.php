@@ -60,6 +60,7 @@ final class CoveragePlannerExtensionTest extends TestCase
 
     // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- feature IDs require the test method to preserve underscores.
     // Requirements: PRT-37.
+    // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- feature IDs require the test method to preserve underscores.
     public function test_planner_tables(): void
     {
         $this->runPlannerCoverageCase('planner_tables');
@@ -403,6 +404,7 @@ final class CoveragePlannerExtensionTest extends TestCase
 
     // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- feature IDs require the test method to preserve underscores.
     // Requirements: PRT-78.
+    // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- feature IDs require the test method to preserve underscores.
     public function test_planner_scalar_column_subquery(): void
     {
         $this->runPlannerCoverageCase('planner_scalar_column_subquery');

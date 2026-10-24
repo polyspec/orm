@@ -27,132 +27,6 @@ use ReflectionProperty;
 use RuntimeException;
 use mysqli;
 
-final class CatalogMetadataFailurePdo extends PDO
-{
-    /** @var list<string> */
-    public array $statements = [];
-
-    public function __construct()
-    {
-    }
-
-    public function setAttribute(int $attribute, mixed $value): bool
-    {
-        return true;
-    }
-
-    public function exec(string $statement): int|false
-    {
-        $this->statements[] = $statement;
-        return 0;
-    }
-
-    public function prepare(string $query, array $options = []): \PDOStatement|false
-    {
-        return new CatalogMetadataFailureStatement();
-    }
-}
-
-final class CatalogMetadataFailureStatement extends \PDOStatement
-{
-    public static ?PDOException $failure = null;
-
-    public function __construct()
-    {
-    }
-
-    public function execute(?array $params = null): bool
-    {
-        return true;
-    }
-
-    public function columnCount(): int
-    {
-        return 3;
-    }
-
-    public function getColumnMeta(int $column): array|false
-    {
-        if ($column === 1) {
-            throw self::$failure ?? new PDOException('column metadata failed');
-        }
-        return ['name' => "column_$column", 'native_type' => 'INTEGER'];
-    }
-}
-
-final class CatalogCommitFailureLink extends \mysqli
-{
-    public int $rollbackCalls = 0;
-
-    public function __construct(private readonly bool $failRollback)
-    {
-    }
-
-    public function begin_transaction(int $flags = MYSQLI_TRANS_START_READ_WRITE, ?string $name = null): bool
-    {
-        return true;
-    }
-
-    public function prepare(string $query): \mysqli_stmt|false
-    {
-        return new CatalogCommitFailureStatement();
-    }
-
-    public function commit(int $flags = 0, ?string $name = null): bool
-    {
-        throw new \mysqli_sql_exception('grid commit failed');
-    }
-
-    public function rollback(int $flags = 0, ?string $name = null): bool
-    {
-        $this->rollbackCalls++;
-        if ($this->failRollback) {
-            throw new \mysqli_sql_exception('grid rollback failed');
-        }
-        return true;
-    }
-}
-
-final class CatalogCommitFailureStatement extends \mysqli_stmt
-{
-    public function __construct()
-    {
-    }
-
-    public function execute(?array $params = null): bool
-    {
-        return true;
-    }
-
-    public function get_result(): \mysqli_result|false
-    {
-        return new CatalogCommitFailureResult();
-    }
-}
-
-final class CatalogCommitFailureResult extends \mysqli_result
-{
-    private bool $fetched = false;
-
-    public function __construct()
-    {
-    }
-
-    public function fetch_fields(): array
-    {
-        return [(object) ['name' => 'value', 'type' => MYSQLI_TYPE_LONG, 'flags' => 0, 'charsetnr' => 63]];
-    }
-
-    public function fetch_row(): array|null|false
-    {
-        if ($this->fetched) {
-            return null;
-        }
-        $this->fetched = true;
-        return [1];
-    }
-}
-
 #[Small]
 final class CatalogConnectionSurfaceTest extends TestCase
 {
@@ -216,6 +90,8 @@ final class CatalogConnectionSurfaceTest extends TestCase
 
     public function testNativeGridMetadataFailureReleasesOnlyInitializedColumnTypes(): void
     {
+        require_once __DIR__ . '/CatalogMetadataFailurePdo.php';
+        require_once __DIR__ . '/CatalogMetadataFailureStatement.php';
         $failure = new PDOException('column metadata failed');
         CatalogMetadataFailureStatement::$failure = $failure;
         $pdo = new CatalogMetadataFailurePdo();
@@ -237,6 +113,11 @@ final class CatalogConnectionSurfaceTest extends TestCase
 
     public function testNativeGridCommitFailureRollsBackAndComposesRollbackFailure(): void
     {
+        require_once __DIR__ . '/CatalogMetadataFailurePdo.php';
+        require_once __DIR__ . '/CatalogMetadataFailureStatement.php';
+        require_once __DIR__ . '/CatalogCommitFailureLink.php';
+        require_once __DIR__ . '/CatalogCommitFailureStatement.php';
+        require_once __DIR__ . '/CatalogCommitFailureResult.php';
         $link = new CatalogCommitFailureLink(true);
         $db = new Db(new CatalogMetadataFailurePdo(), 'mysql', new Config(), new DateTimeZone('UTC'));
         $catalog = self::catalogWith($db, 'mysql');
@@ -509,7 +390,9 @@ final class CatalogConnectionSurfaceTest extends TestCase
             self::assertSame(0, (int) $check->query('SELECT COUNT(*) FROM generated')->fetchColumn());
         } finally {
             $catalog?->close();
-            @unlink($path);
+            if (is_file($path)) {
+                self::assertTrue(unlink($path), 'the temporary catalog database could not be removed');
+            }
         }
     }
 }

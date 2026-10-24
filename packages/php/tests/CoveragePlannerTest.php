@@ -168,7 +168,6 @@ final class CoveragePlannerTest extends TestCase
             Assert::assertSame('INTERNAL', $error->code_);
             Assert::assertStringContainsString('author.missing_column', $error->getMessage());
         }
-
     }
 
     public function testScalarSubqueryAggregateTypesRemainI64AndF64(): void
@@ -178,10 +177,16 @@ final class CoveragePlannerTest extends TestCase
             $request = $baseRequest;
             $request['columns']['sub']['first_author']['agg'] = $aggregate;
             $request['columns']['sub']['first_author']['column'] = $column;
-            unset($request['columns']['sub']['first_author']['query']['limit'], $request['columns']['sub']['first_author']['query']['order']);
+            unset(
+                $request['columns']['sub']['first_author']['query']['limit'],
+                $request['columns']['sub']['first_author']['query']['order']
+            );
             (new \Polyspec\Orm\Validator($model))->validate($request);
             $plan = (new Planner($model, new Dialect('sqlite')))->compile($request);
-            $output = array_values(array_filter($plan['steps'][0]['assemble']['columns'], static fn(array $col): bool => $col['name'] === 'first_author'))[0];
+            $output = array_values(array_filter(
+                $plan['steps'][0]['assemble']['columns'],
+                static fn(array $col): bool => $col['name'] === 'first_author'
+            ))[0];
             Assert::assertSame($expected, $output['type'], "$aggregate output type");
         }
     }

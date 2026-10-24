@@ -190,8 +190,9 @@ final class SchemaUtilsNativeTest extends TestCase
                 if ($failRollback) {
                     self::assertSame(Code::ROLLBACK, $error->code_);
                     self::assertSame(
-                        'ROLLBACK: transaction failed (SUBSCRIBER: statement event subscriber failed: begin observer failed) '
-                        . 'and rollback failed (SUBSCRIBER: statement event subscriber failed: rollback observer failed)',
+                        'ROLLBACK: transaction failed (SUBSCRIBER: statement event subscriber failed: '
+                        . 'begin observer failed) and rollback failed (SUBSCRIBER: statement event subscriber failed: '
+                        . 'rollback observer failed)',
                         $error->getMessage()
                     );
                     self::assertSame(
@@ -496,9 +497,15 @@ final class SchemaUtilsNativeTest extends TestCase
             }
             self::assertSame([], $events);
         } finally {
-            if ($unsubscribe !== null) $unsubscribe();
-            if ($db !== null) $db->close();
-            if (is_file($path)) unlink($path);
+            if ($unsubscribe !== null) {
+                $unsubscribe();
+            }
+            if ($db !== null) {
+                $db->close();
+            }
+            if (is_file($path)) {
+                self::assertTrue(unlink($path), 'the temporary schema database could not be removed');
+            }
         }
     }
 
