@@ -39,7 +39,7 @@
     }
   },
   "symbol_hashes": {
-    "go": "sha256:02f5cb4fa2f9de696960e6511bafb2493839d3a9af4e9fe6d6d604fb03bf9ae9",
+    "go": "sha256:74a8f6ccf6efbf3420bec90b1b54b939e59dad905081b5a7d18cc19940c33b24",
     "php": "sha256:80431f71fe6d6f7985a52db80862e7a0ca53de6cb9c0f54ef683470c55c362c3",
     "rust": "sha256:d9e823d98f29bb4f81279c40342d3f70768eef585c8f66177fd7b0249691bb72",
     "typescript": "sha256:3ed6f00671f93cd4552224b4af4ffcbe6306df83e5ce49bd4cb886252788f056",
@@ -47,7 +47,7 @@
   },
   "extensions": {
     "php-extension": {
-      "description": "The PHP extension polyspec_orm (packages/php-ext) implements the dbspec surface and the error codes of the PHP client in C under the client's own names: the classes of Polyspec\\Orm\\Dbspec with the same properties and methods, and Polyspec\\Orm\\Code. Its declarations are read from its stub with the PHP parser; make dbspec-php-extension-check checks that the loaded extension declares the same.",
+      "description": "The PHP extension polyspec_orm (packages/php-ext) implements the dbspec surface and error codes of the PHP client in C under the client's own names, and registers the native Stats value returned by Db::stats() and Utils::stats(). Its declarations are read from its stub with the PHP parser; make dbspec-php-extension-check checks that the loaded extension declares the same.",
       "syntax": "php",
       "roots": [
         "packages/php-ext/src"

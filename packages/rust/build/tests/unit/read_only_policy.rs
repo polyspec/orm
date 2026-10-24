@@ -31,3 +31,11 @@ fn policy_validates_nested_read_shapes_and_rejects_writes() {
     assert!(validate(&std::iter::repeat_n("SELECT 1", 200).collect::<Vec<_>>().join(" UNION ALL "), "postgres").is_err());
     assert!(validate(&format!("SELECT {}", std::iter::repeat_n("1", 200).collect::<Vec<_>>().join("+")), "postgres").is_err());
 }
+
+#[test]
+fn parser_failure_preserves_native_cause_message() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let error = validate("SELECT '", "postgres").expect_err("unterminated string must fail");
+    assert!(error.starts_with("QUERY_READ_ONLY: expected one supported non-locking read query: "), "{error}");
+    assert!(error.contains("Unterminated string literal"), "{error}");
+}

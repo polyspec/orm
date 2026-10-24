@@ -1,7 +1,8 @@
-"""Driver conversions of the Python client for DECIMAL and NUMERIC cells.
+"""Driver conversions of the Python client's exact DECIMAL and NUMERIC cells.
 
 The TypeScript and PHP clients receive these cells as the exact text of the database. PyMySQL and psycopg return
-decimal.Decimal, which the codec does not read. The conversions here return the text of the cell instead.
+decimal.Decimal, which the codec does not read. The conversions here return the text of the cell instead. Binary cells
+keep PyMySQL's native bytes conversion unchanged.
 """
 
 

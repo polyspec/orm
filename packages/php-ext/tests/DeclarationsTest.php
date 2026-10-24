@@ -222,6 +222,15 @@ final class DeclarationsTest extends TestCase
         );
     }
 
+    public function testStatsRetainsItsConnectionCounters(): void
+    {
+        $stats = new \Polyspec\Orm\Stats(4, 2, 1, 1);
+        Assert::assertSame(4, $stats->maxOpenConnections);
+        Assert::assertSame(2, $stats->openConnections);
+        Assert::assertSame(1, $stats->inUse);
+        Assert::assertSame(1, $stats->idle);
+    }
+
     public function testInternalCatalogBuildExceptionIsExcludedFromClientDeclarations(): void
     {
         $client = declared('client');

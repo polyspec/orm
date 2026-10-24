@@ -46,7 +46,7 @@ func TestCoverageCompositeKeyRows(t *testing.T) {
 	must(membership().SetTenantId(compositeTenant).SetAccountId(2).SetRole("owner").Create())
 	must(membership().SetTenantId(compositeOtherTenant).SetAccountId(2).SetRole("guest").Create())
 
-	if got := must(account().GetByTenantIdAndAccountId(compositeTenant, 2)).GetName(); got != "b" {
+	if got := readColumn(t, must(account().GetByTenantIdAndAccountId(compositeTenant, 2)).GetName); got != "b" {
 		t.Fatalf("account (%d, 2) name = %q, want b", compositeTenant, got)
 	}
 	// The relation links both components of the foreign key in key order. Linking only one component
@@ -62,7 +62,7 @@ func TestCoverageCompositeKeyRows(t *testing.T) {
 		var got []string
 		for _, a := range loaded.Slice() {
 			for _, m := range must(a.GetMemberships()).Slice() {
-				got = append(got, fmt.Sprintf("%d/%d:%d/%d/%s", a.GetTenantId(), a.GetAccountId(), m.GetTenantId(), m.GetAccountId(), m.GetRole()))
+				got = append(got, fmt.Sprintf("%d/%d:%d/%d/%s", readColumn(t, a.GetTenantId), readColumn(t, a.GetAccountId), readColumn(t, m.GetTenantId), readColumn(t, m.GetAccountId), readColumn(t, m.GetRole)))
 			}
 		}
 		want := []string{"990004/1:990004/1/member", "990004/2:990004/2/owner"}

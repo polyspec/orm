@@ -44,8 +44,8 @@ func decimalPhysical(t *testing.T, env string) {
 		if err != nil {
 			return err
 		}
-		if loaded.GetAmount() != amount || loaded.GetLargeValue() == nil || *loaded.GetLargeValue() != large {
-			t.Errorf("decimal fields lost precision: amount=%q large=%v", loaded.GetAmount(), loaded.GetLargeValue())
+		if readColumn(t, loaded.GetAmount) != amount || readColumn(t, loaded.GetLargeValue) == nil || *readColumn(t, loaded.GetLargeValue) != large {
+			t.Errorf("decimal fields lost precision: amount=%q large=%v", readColumn(t, loaded.GetAmount), readColumn(t, loaded.GetLargeValue))
 		}
 		return rollback
 	})

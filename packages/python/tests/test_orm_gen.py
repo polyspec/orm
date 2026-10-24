@@ -5,6 +5,7 @@ import types
 import subprocess
 import sys
 import tempfile
+import typing
 import unittest
 from pathlib import Path
 from . import testcase
@@ -64,6 +65,24 @@ class OrmGenTest(unittest.TestCase):
         self.assertEqual(author.entity_def.entity.name, "author")
         self.assertEqual(len(models.model.entities), 25)
         self.assertTrue(models.SCHEMA.manifest_text.startswith("dbspec 1 bench"))
+
+    # Requirements: DBS-112, DBS-114.
+    def test_generated_typed_getter_is_the_public_column_api(self):
+        from polyspec.orm import OrmError, codes
+        import models
+
+        author = models.Author()
+        self.assertEqual(typing.get_type_hints(models.Author.get_seq)["return"], int)
+        self.assertEqual(typing.get_type_hints(models.Author.set_seq)["value"], int)
+        self.assertTrue(callable(models.Author.get_seq))
+        self.assertTrue(callable(models.Author.set_seq))
+        self.assertNotIn("seq", models.Author.__annotations__)
+        with self.assertRaises(OrmError) as caught:
+            author.get_seq()
+        self.assertEqual(caught.exception.code, codes.COLUMN_UNSELECTED)
+
+        self.assertIs(author.set_seq(17), author)
+        self.assertEqual(author.get_seq(), 17)
 
     def test_fixed_column_methods(self):
         import models

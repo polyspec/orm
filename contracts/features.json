@@ -2126,7 +2126,9 @@
       ],
       "parity": [
         "coverage-transactions-transaction-rollback",
-        "coverage-transactions-transaction-savepoint"
+        "coverage-transactions-transaction-savepoint",
+        "transaction-failure-rollback",
+        "transaction-failure-savepoint-end"
       ],
       "fixtures": [
         "packages/php/tests/deadlock_child.php",
@@ -2142,6 +2144,7 @@
         "packages/go/model/model_test.go",
         "packages/go/orm/cancel_test.go",
         "packages/php/tests/ModelTest.php",
+        "packages/php-ext/tests/TransactionFailureNativeTest.php",
         "packages/ts/tests/model.mjs",
         "packages/rust/orm/tests/zone.rs",
         "packages/rust/tests/src/integration.rs",
@@ -2153,9 +2156,15 @@
         "packages/ts/tests/sqlite-concurrency.mjs",
         "packages/rust/orm/tests/sqlite_concurrency.rs",
         "packages/go/orm/rollback_test.go",
+        "packages/go/orm/coverage_transaction_failure_test.go",
         "packages/php/tests/RollbackTest.php",
+        "packages/php/tests/TransactionFailureTest.php",
+        "packages/php/tests/TransactionFailureCases.php",
+        "packages/php/tests/ModelTestFailingPdo.php",
+        "packages/php-ext/tests/TransactionFailureNativeTest.php",
         "packages/rust/orm/tests/rollback.rs",
         "packages/ts/tests/rollback.mjs",
+        "packages/ts/tests/transaction-failure.mjs",
         "packages/go/orm/cancelled_session_test.go",
         "packages/go/orm/transaction_end_test.go",
         "packages/go/model/coverage_transactions_test.go",
@@ -2175,6 +2184,7 @@
         "packages/rust/orm/src/tx.rs",
         "packages/rust/orm/src/tx_send_tests.rs",
         "packages/python/tests/test_rollback_fault.py",
+        "packages/python/tests/test_sqlite.py",
         "packages/python/tests/test_utils.py",
         "packages/python/tests/test_utils_statements.py",
         "packages/python/tests/test_row_lock_event.py",
@@ -2221,6 +2231,18 @@
           ]
         },
         {
+          "id": "transaction-failure-go",
+          "command": "make transaction-failure-go-check",
+          "shard": "other",
+          "inputs": [
+            "packages/go/orm/coverage_transaction_failure_test.go",
+            "packages/go/orm/failing_driver_test.go",
+            "packages/go/orm/test_helpers_test.go",
+            "packages/go/orm/coverage_fixture_test.go",
+            "packages/go/orm/schema_helpers_test.go"
+          ]
+        },
+        {
           "id": "rollback-php",
           "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/RollbackTest.php",
           "shard": "other",
@@ -2228,6 +2250,28 @@
             "packages/php/tests/RollbackTest.php",
             "packages/php/testing/Faults.php",
             "contracts/fixtures/rollback.dbs"
+          ]
+        },
+        {
+          "id": "transaction-failure-php",
+          "command": "make transaction-failure-php-check",
+          "shard": "other",
+          "inputs": [
+            "packages/php/tests/TransactionFailureTest.php",
+            "packages/php/tests/TransactionFailureCases.php",
+            "packages/php/tests/ModelTestFailingPdo.php",
+            "packages/php/tests/bootstrap.php"
+          ]
+        },
+        {
+          "id": "transaction-failure-php-extension",
+          "command": "make transaction-failure-php-extension-check",
+          "shard": "other",
+          "inputs": [
+            "packages/php-ext/tests/TransactionFailureNativeTest.php",
+            "packages/php-ext/tests/bootstrap.php",
+            "packages/php/tests/TransactionFailureCases.php",
+            "packages/php/tests/ModelTestFailingPdo.php"
           ]
         },
         {
@@ -2328,6 +2372,17 @@
           "inputs": [
             "packages/ts/tests/rollback.mjs",
             "contracts/fixtures/rollback.dbs"
+          ]
+        },
+        {
+          "id": "transaction-failure-typescript",
+          "command": "make transaction-failure-typescript-check",
+          "shard": "other",
+          "inputs": [
+            "packages/ts/tests/transaction-failure.mjs",
+            "packages/ts/src/database.ts",
+            "packages/ts/src/driver.ts",
+            "packages/ts/src/runtime_error.ts"
           ]
         },
         {
@@ -2703,6 +2758,28 @@
             "packages/go/orm/statement_events_export_test.go",
             "packages/go/orm/statement_events_test.go",
             "tests/events/vectors.json"
+          ]
+        },
+        {
+          "id": "transaction-failure-python",
+          "command": "make transaction-failure-python-check",
+          "shard": "other",
+          "inputs": [
+            "packages/python/tests/test_rollback_fault.py",
+            "packages/python/tests/test_sqlite.py",
+            "packages/python/tests/entry_point_check.py",
+            "packages/python/tests/testcase.py",
+            "packages/python/src/polyspec/orm/database.py",
+            "packages/python/src/polyspec/orm/errors.py",
+            "packages/python/src/polyspec/orm/testing/__init__.py"
+          ]
+        },
+        {
+          "id": "transaction-failure-rust",
+          "command": "make transaction-failure-rust-check",
+          "shard": "rust",
+          "inputs": [
+            "packages/rust/orm/src/tx.rs"
           ]
         },
         {
@@ -7079,7 +7156,9 @@
         "contracts/fixtures/external/core_extra.dbs",
         "contracts/fixtures/external/member.dbs",
         "contracts/fixtures/external/member_v2.dbs",
-        "packages/python/tests/coverage_audit_triggers.py"
+        "packages/python/tests/coverage_audit_triggers.py",
+        "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
+        "packages/php-ext/tests/CoverageAuditColumnsExtensionTest.php"
       ],
       "docs": [
         "docs/spec/dbspec.md",
@@ -7443,6 +7522,84 @@
                     "audit_selected_columns",
                     "audit_transaction_entry_points",
                     "soft_delete_restore"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "php-extension": {
+            "part": "packages/php-ext/tests",
+            "tests": [
+              "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
+              "packages/php-ext/tests/CoverageAuditColumnsExtensionTest.php"
+            ],
+            "inputs": [
+              "packages/php/tests/restore_case.php",
+              "packages/php/tests/audit_case.php",
+              "contracts/fixtures/audit.dbs",
+              "contracts/fixtures/audit_columns.dbs",
+              "contracts/fixtures/restore.dbs",
+              "packages/php/tests/CoverageAuditTriggersTest.php",
+              "packages/php/tests/CoverageAuditColumnsTest.php"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
+                  "cases": [
+                    "audit_history",
+                    "audit_transaction_entry_points",
+                    "soft_delete_restore"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageAuditColumnsExtensionTest.php",
+                  "cases": [
+                    "audit_selected_columns"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
+                  "cases": [
+                    "audit_history",
+                    "audit_transaction_entry_points",
+                    "soft_delete_restore"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageAuditColumnsExtensionTest.php",
+                  "cases": [
+                    "audit_selected_columns"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
+                  "cases": [
+                    "audit_history",
+                    "audit_transaction_entry_points",
+                    "soft_delete_restore"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageAuditColumnsExtensionTest.php",
+                  "cases": [
+                    "audit_selected_columns"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -8817,7 +8974,8 @@
         "packages/php/tests/request_hook_cases.php",
         "packages/rust/orm/tests/request_hook.rs",
         "packages/python/tests/test_request_hook.py",
-        "packages/python/tests/coverage_request_hook.py"
+        "packages/python/tests/coverage_request_hook.py",
+        "packages/php-ext/tests/CoverageRequestHookExtensionTest.php"
       ],
       "docs": [
         "docs/operations/usage.md",
@@ -9310,6 +9468,80 @@
                 {
                   "runner": "python",
                   "test": "packages/python/tests/coverage_request_hook.py",
+                  "cases": [
+                    "without_hook",
+                    "read_filter",
+                    "insert_assign",
+                    "loaded_row_writes",
+                    "invalid_param",
+                    "restore_key",
+                    "restore_condition",
+                    "restore_no_key",
+                    "restore_rewritten_key",
+                    "restore_hook_set_key",
+                    "restore_rewritten_key_set_scope"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "php-extension": {
+            "part": "packages/php-ext/tests",
+            "tests": [
+              "packages/php-ext/tests/CoverageRequestHookExtensionTest.php"
+            ],
+            "inputs": [
+              "packages/php/tests/request_hook_cases.php",
+              "packages/php/tests/case_database.php",
+              "contracts/fixtures/request_hook.dbs",
+              "packages/php/tests/CoverageRequestHookTest.php"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
+                  "cases": [
+                    "without_hook",
+                    "read_filter",
+                    "insert_assign",
+                    "loaded_row_writes",
+                    "invalid_param",
+                    "restore_key",
+                    "restore_condition",
+                    "restore_no_key",
+                    "restore_rewritten_key",
+                    "restore_hook_set_key",
+                    "restore_rewritten_key_set_scope"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
+                  "cases": [
+                    "without_hook",
+                    "read_filter",
+                    "insert_assign",
+                    "loaded_row_writes",
+                    "invalid_param",
+                    "restore_key",
+                    "restore_condition",
+                    "restore_no_key",
+                    "restore_rewritten_key",
+                    "restore_hook_set_key",
+                    "restore_rewritten_key_set_scope"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
                   "cases": [
                     "without_hook",
                     "read_filter",

@@ -65,9 +65,10 @@ func run() (code int) {
 
 	rows, err := query()
 	check(err)
-	out := []map[string]any{}
-	for _, r := range rows.Slice() {
-		out = append(out, map[string]any{"seq": r.GetSeq(), "name": r.GetName(), "is_display": r.GetIsDisplay(), "like_count": r.GetLikeCount()})
+	out, err := modelRows(rows.Slice())
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "demo:", err)
+		return 1
 	}
 	b, err := json.Marshal(out)
 	check(err)
@@ -117,6 +118,30 @@ func nativeDSN(raw string) string {
 	cfg, err := testcase.MySQLConfig(raw)
 	check(err)
 	return cfg.FormatDSN()
+}
+
+func modelRows(rows []*model.AuthorModel) ([]map[string]any, error) {
+	out := make([]map[string]any, 0, len(rows))
+	for _, row := range rows {
+		seq, err := row.GetSeq()
+		if err != nil {
+			return nil, err
+		}
+		name, err := row.GetName()
+		if err != nil {
+			return nil, err
+		}
+		isDisplay, err := row.GetIsDisplay()
+		if err != nil {
+			return nil, err
+		}
+		likeCount, err := row.GetLikeCount()
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, map[string]any{"seq": seq, "name": name, "is_display": isDisplay, "like_count": likeCount})
+	}
+	return out, nil
 }
 
 func p50(f func()) int64 {

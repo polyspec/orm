@@ -428,3 +428,17 @@ mod exact_i64_tests {
         assert_eq!(row.to_json().unwrap(), r#"{"exact_value":9007199254740991,"row_count":1}"#);
     }
 }
+
+#[cfg(test)]
+mod native_cell_bytes_tests {
+    use super::Cells;
+    use crate::{row::Src, Val};
+
+    #[test]
+    fn positional_driver_bytes_remain_exact() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let source = vec![0x00, 0x80, 0xff, b'A'];
+        let mut row = Cells::Pos(vec![Val::Bytes(source.clone())]);
+        assert_eq!(row.val(0).unwrap(), Val::Bytes(source));
+    }
+}

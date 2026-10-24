@@ -84,7 +84,7 @@ pub(super) fn validate_refs<'a>(values: impl Iterator<Item = &'a P>, dialect: &s
             P::DateTime(value) if !super::is_temporal("datetime", value) => return Err(invalid()),
             P::Float32(bits) if dialect == "mysql" && !f32::from_bits(*bits).is_finite() => return Err(invalid()),
             P::Float64(bits) if (dialect == "mysql" && !f64::from_bits(*bits).is_finite()) || (dialect == "sqlite" && f64::from_bits(*bits).is_nan()) => {
-                return Err(invalid())
+                return Err(invalid());
             }
             P::Decimal(value) => {
                 if value.len() > 65536 {

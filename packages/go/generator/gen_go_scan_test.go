@@ -59,6 +59,14 @@ func buildScannedModule(t *testing.T) {
 	}
 }
 
+// testScannedModule executes the tests of the generated consumer module.
+func testScannedModule(t *testing.T) {
+	t.Helper()
+	if out, err := exec.Command("go", "test", "-count=1", "./...").CombinedOutput(); err != nil {
+		t.Fatalf("go test: %v\n%s", err, out)
+	}
+}
+
 // TestGoGenerationIgnoresMethodsOfRelationResults checks that a method called
 // on a relation getter result is not requested as a model method while the
 // getter does not exist yet.
@@ -74,6 +82,63 @@ func Brands() *model.ProductModel {
 }
 
 `+scanCountFunc)
+	generateModel(t, namesManifest(t, namesDiagram))
+	buildScannedModule(t)
+}
+
+// TestGoGeneratedScalarGetterRejectsUnselectedRead checks the generated getter at runtime through
+// an external consumer that compiles against either the current or corrected getter signature.
+func TestGoGeneratedScalarGetterRejectsUnselectedRead(t *testing.T) {
+	testcase.Start(t, testcase.Process)
+	write := scannedModule(t)
+	write("example/getter_test.go", `package example
+
+import (
+	"reflect"
+	"testing"
+
+	"example.com/ormexample/model"
+	"github.com/polyspec/orm/packages/go/orm"
+)
+
+func TestPriceGetterSelection(t *testing.T) {
+	product := model.Product()
+	field, ok := reflect.TypeOf(*product).FieldByName("fPrice")
+	if !ok || field.IsExported() {
+		t.Fatalf("generated fPrice field = %+v, exists=%t; want an unexported typed field", field, ok)
+	}
+	read := func() []reflect.Value { return reflect.ValueOf(product).MethodByName("GetPrice").Call(nil) }
+	values := read()
+	if len(values) != 2 {
+		t.Fatalf("GetPrice returned %d values, want value and error", len(values))
+	}
+	if values[1].IsNil() || orm.ErrorCode(values[1].Interface().(error)) != orm.CodeColumnUnselected {
+		t.Fatalf("unselected GetPrice error = %v, want COLUMN_UNSELECTED", values[1].Interface())
+	}
+	product.SetPrice(17)
+	values = read()
+	if got := values[0].Interface().(int32); got != 17 {
+		t.Fatalf("assigned GetPrice = %d, want 17", got)
+	}
+	if !values[1].IsNil() {
+		t.Fatalf("assigned GetPrice error = %v, want nil", values[1].Interface())
+	}
+}
+`)
+	generateModel(t, namesManifest(t, namesDiagram))
+	testScannedModule(t)
+}
+
+// TestGoGeneratedScalarGetterCompilesAtItsDeclaredType checks a typed getter through an external consumer.
+func TestGoGeneratedScalarGetterCompilesAtItsDeclaredType(t *testing.T) {
+	testcase.Start(t, testcase.Process)
+	write := scannedModule(t)
+	write("example/example.go", `package example
+
+import "example.com/ormexample/model"
+
+func Price(p *model.ProductModel) (int32, error) { return p.GetPrice() }
+`)
 	generateModel(t, namesManifest(t, namesDiagram))
 	buildScannedModule(t)
 }

@@ -799,13 +799,14 @@ try {
       // SQLite has no session timeout. The bounded statement is a locking read
       // of a row that another connection holds, so it waits past the bound.
       if (dialect !== 'sqlite') {
-        const bounded = await connectBench(dsn, { aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key', statementTimeoutMs: 200 });
+        const bounded = await connectBench(dsn, { aesKey: 'test-aes-key', blindIndexKey: 'test-blind-key', poolSize: 1, statementTimeoutMs: 200 });
         try {
           await seed(bounded);
           const release = await holdRows(dialect, dsn, 'author');
           try {
             check(await code(lockedRead(bounded, Author)) === 'CANCELED', 'a statement past the timeout');
           } finally { await release(); }
+          check(typeof await new Author().connect(bounded).getCount() === 'number', 'the connection is usable after its statement timeout');
         } finally { await bounded.close(); }
       }
     });

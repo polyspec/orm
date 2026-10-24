@@ -1,8 +1,8 @@
-// transactions coverage: a callback error rolls back the transaction and is passed to the caller unchanged,
+// transactions coverage: a callback error or an aborted statement rolls back the transaction and is passed to the caller,
 // and a nested transaction rolls back only its inner writes with a savepoint. The written rows
 // are only in composite_account, and the case deletes all of them when it ends.
 import assert from 'node:assert/strict';
-import { CompositeAccount, connect } from '../dist/index.js';
+import { CompositeAccount, OrmError, connect } from '../dist/index.js';
 import { runCases, withCleanup } from './coverage_case.mjs';
 
 const tenant = 990003;
@@ -35,6 +35,20 @@ await runCases('coverage_transactions.mjs', {
       } catch (error) { caught = error; }
       assert.equal(caught, boom, 'the callback error reaches the caller');
       assert.equal(await exists(db, 1), false, 'the rolled back row does not exist');
+
+      const controller = new AbortController();
+      const signalled = db.withSignal(controller.signal);
+      let cancellation = null;
+      try {
+        await signalled.transaction(async () => {
+          await new CompositeAccount().connect(signalled).setTenantId(tenant).setAccountId(4).setName('cancelled').create();
+          controller.abort();
+          await new CompositeAccount().connect(signalled).setTenantId(tenant).setAccountId(5).setName('not written').create();
+        });
+      } catch (error) { cancellation = error; }
+      assert.ok(cancellation instanceof OrmError && cancellation.code === 'CANCELED', 'the aborted statement ends the transaction');
+      assert.equal(await exists(db, 4), false, 'aborting a transaction rolls back its earlier write');
+      assert.equal(await exists(db, 5), false, 'the aborted statement did not write its row');
     });
   },
 

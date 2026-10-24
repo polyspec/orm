@@ -12,102 +12,107 @@ use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
 
 #[Medium]
-final class CoverageRequestHookTest extends TestCase
+class CoverageRequestHookTest extends TestCase
 {
-    // Requirements: CFG-9.
-    public function testWithoutHook(): void
+    protected static function coverageTestFile(): string
     {
-        foreach (coverageItemsOf(__FILE__) as $item) {
+        return __FILE__;
+    }
+
+    // Requirements: CFG-9.
+    public function test_without_hook(): void
+    {
+        foreach (coverageItemsOf(static::coverageTestFile()) as $item) {
             selectCoverageItem($item);
             self::runCase('without_hook');
         }
     }
 
     // Requirements: DSL-65, PRT-2.
-    public function testReadFilter(): void
+    public function test_read_filter(): void
     {
-        foreach (coverageItemsOf(__FILE__) as $item) {
+        foreach (coverageItemsOf(static::coverageTestFile()) as $item) {
             selectCoverageItem($item);
             self::runCase('read_filter');
         }
     }
 
     // Requirements: PRT-4, PRT-5, PRT-41.
-    public function testInsertAssign(): void
+    public function test_insert_assign(): void
     {
-        foreach (coverageItemsOf(__FILE__) as $item) {
+        foreach (coverageItemsOf(static::coverageTestFile()) as $item) {
             selectCoverageItem($item);
             self::runCase('insert_assign');
         }
     }
 
     // Requirements: CFG-21, INT-36, INT-37, PLN-16.
-    public function testLoadedRowWrites(): void
+    public function test_loaded_row_writes(): void
     {
-        foreach (coverageItemsOf(__FILE__) as $item) {
+        foreach (coverageItemsOf(static::coverageTestFile()) as $item) {
             selectCoverageItem($item);
             self::runCase('loaded_row_writes');
         }
     }
 
     // Requirements: PRT-65.
-    public function testInvalidParam(): void
+    public function test_invalid_param(): void
     {
-        foreach (coverageItemsOf(__FILE__) as $item) {
+        foreach (coverageItemsOf(static::coverageTestFile()) as $item) {
             selectCoverageItem($item);
             self::runCase('invalid_param');
         }
     }
 
     // Requirements: DIA-161.
-    public function testRestoreKey(): void
+    public function test_restore_key(): void
     {
-        foreach (coverageItemsOf(__FILE__) as $item) {
+        foreach (coverageItemsOf(static::coverageTestFile()) as $item) {
             selectCoverageItem($item);
             self::runCase('restore_key');
         }
     }
 
     // Requirements: DIA-161, INT-38.
-    public function testRestoreCondition(): void
+    public function test_restore_condition(): void
     {
-        foreach (coverageItemsOf(__FILE__) as $item) {
+        foreach (coverageItemsOf(static::coverageTestFile()) as $item) {
             selectCoverageItem($item);
             self::runCase('restore_condition');
         }
     }
 
     // Requirements: DIA-161.
-    public function testRestoreNoKey(): void
+    public function test_restore_no_key(): void
     {
-        foreach (coverageItemsOf(__FILE__) as $item) {
+        foreach (coverageItemsOf(static::coverageTestFile()) as $item) {
             selectCoverageItem($item);
             self::runCase('restore_no_key');
         }
     }
 
     // Requirements: DIA-161.
-    public function testRestoreRewrittenKey(): void
+    public function test_restore_rewritten_key(): void
     {
-        foreach (coverageItemsOf(__FILE__) as $item) {
+        foreach (coverageItemsOf(static::coverageTestFile()) as $item) {
             selectCoverageItem($item);
             self::runCase('restore_rewritten_key');
         }
     }
 
     // Requirements: DIA-161.
-    public function testRestoreHookSetKey(): void
+    public function test_restore_hook_set_key(): void
     {
-        foreach (coverageItemsOf(__FILE__) as $item) {
+        foreach (coverageItemsOf(static::coverageTestFile()) as $item) {
             selectCoverageItem($item);
             self::runCase('restore_hook_set_key');
         }
     }
 
     // Requirements: DIA-161.
-    public function testRestoreRewrittenKeySetScope(): void
+    public function test_restore_rewritten_key_set_scope(): void
     {
-        foreach (coverageItemsOf(__FILE__) as $item) {
+        foreach (coverageItemsOf(static::coverageTestFile()) as $item) {
             selectCoverageItem($item);
             self::runCase('restore_rewritten_key_set_scope');
         }

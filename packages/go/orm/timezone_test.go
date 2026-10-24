@@ -292,14 +292,21 @@ func TestStatementTimeout(t *testing.T) {
 			defer testcase.Close(t, setup)
 			ent := zoneEntity(s)
 			createZoneRow(t, setup, ent)
-			holdRows(t, driver, dsn, "zone_event")
-			db, err := orm.ConnectSchema(dsn, s, orm.Config{StatementTimeoutMs: 200})
+			release := holdRows(t, driver, dsn, "zone_event")
+			db, err := orm.ConnectSchema(dsn, s, orm.Config{PoolSize: 1, StatementTimeoutMs: 200})
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer testcase.Close(t, db)
 			if err := lockedRead(db, ent); orm.ErrorCode(err) != orm.CodeCanceled {
 				t.Fatalf("a statement past the timeout: %v (code %q)", err, orm.ErrorCode(err))
+			}
+			release()
+			after := orm.NewCore(ent)
+			ent.New(after)
+			after.Connect(db)
+			if count, err := after.GetCount(); err != nil || count != 1 {
+				t.Fatalf("a connection after its statement timeout: count %d, err %v", count, err)
 			}
 			if _, err := orm.ConnectSchema(dsn, s, orm.Config{StatementTimeoutMs: -1}); err == nil || orm.ErrorCode(err) != orm.CodeConfig {
 				t.Fatalf("negative statement timeout: %v", err)

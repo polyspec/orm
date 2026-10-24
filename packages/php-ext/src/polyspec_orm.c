@@ -39,7 +39,7 @@ static str zs(zend_string *z)
 }
 
 /* The constructor writes properties like a PHP assignment: the engine enforces the type and readonly rules. */
-static void init_prop(zval *self, const char *name, zval *v)
+void init_prop(zval *self, const char *name, zval *v)
 {
     /* Stops at the first failure, as a PHP constructor does. */
     if (EG(exception) != NULL) {
@@ -48,28 +48,28 @@ static void init_prop(zval *self, const char *name, zval *v)
     zend_update_property(Z_OBJCE_P(self), Z_OBJ_P(self), name, strlen(name), v);
 }
 
-static void init_str(zval *self, const char *name, zend_string *s)
+void init_str(zval *self, const char *name, zend_string *s)
 {
     zval v;
     ZVAL_STR(&v, s);
     init_prop(self, name, &v);
 }
 
-static void init_long(zval *self, const char *name, zend_long n)
+void init_long(zval *self, const char *name, zend_long n)
 {
     zval v;
     ZVAL_LONG(&v, n);
     init_prop(self, name, &v);
 }
 
-static void init_bool(zval *self, const char *name, bool b)
+void init_bool(zval *self, const char *name, bool b)
 {
     zval v;
     ZVAL_BOOL(&v, b);
     init_prop(self, name, &v);
 }
 
-static void init_str_or_null(zval *self, const char *name, zend_string *s)
+void init_str_or_null(zval *self, const char *name, zend_string *s)
 {
     zval v;
     if (s == NULL) {
@@ -81,7 +81,7 @@ static void init_str_or_null(zval *self, const char *name, zend_string *s)
 }
 
 /* Array arguments are received as zval and copied like a PHP assignment (does not touch the refcount of immutable arrays). */
-static void init_array(zval *self, const char *name, zval *array)
+void init_array(zval *self, const char *name, zval *array)
 {
     zval v;
     if (array == NULL) {
@@ -92,7 +92,7 @@ static void init_array(zval *self, const char *name, zval *array)
     }
 }
 
-static void init_array_or_null(zval *self, const char *name, zval *array)
+void init_array_or_null(zval *self, const char *name, zval *array)
 {
     zval v;
     if (array == NULL) {
@@ -103,7 +103,7 @@ static void init_array_or_null(zval *self, const char *name, zval *array)
     }
 }
 
-static void init_obj_or_null(zval *self, const char *name, zend_object *o)
+void init_obj_or_null(zval *self, const char *name, zend_object *o)
 {
     zval v;
     if (o == NULL) {
@@ -1810,6 +1810,21 @@ ZEND_METHOD(Polyspec_Orm_Validator, __construct)
     validator_construct(ZEND_THIS, model);
 }
 
+ZEND_METHOD(Polyspec_Orm_Stats, __construct)
+{
+    zend_long max_open_connections, open_connections, in_use, idle;
+    ZEND_PARSE_PARAMETERS_START(4, 4)
+        Z_PARAM_LONG(max_open_connections)
+        Z_PARAM_LONG(open_connections)
+        Z_PARAM_LONG(in_use)
+        Z_PARAM_LONG(idle)
+    ZEND_PARSE_PARAMETERS_END();
+    init_long(ZEND_THIS, "maxOpenConnections", max_open_connections);
+    init_long(ZEND_THIS, "openConnections", open_connections);
+    init_long(ZEND_THIS, "inUse", in_use);
+    init_long(ZEND_THIS, "idle", idle);
+}
+
 ZEND_METHOD(Polyspec_Orm_Validator, opAllowed)
 {
     HashTable *col;
@@ -2425,6 +2440,149 @@ static void effect_queries_constant(void)
 /* ------------------------------------------------------------------ module */
 
 /* Declares an array constant that gen_stub cannot write as a persistent immutable array. */
+/* The classes of the catalog connection that carry a result (SCH-6a): their constructors write the readonly properties. */
+
+/* Reads a property of the object like PHP's $self->name, without the scope check of a user method. */
+zval *catalog_prop(zval *self, const char *name, zval *rv)
+{
+    return zend_read_property(Z_OBJCE_P(self), Z_OBJ_P(self), name, strlen(name), 0, rv);
+}
+
+ZEND_METHOD(Polyspec_Orm_CatalogColumn, __construct)
+{
+    zend_string *name, *native, *default_expression;
+    bool nullable, generated, automatic, expression_default;
+    ZEND_PARSE_PARAMETERS_START(7, 7)
+        Z_PARAM_STR(name)
+        Z_PARAM_STR(native)
+        Z_PARAM_BOOL(nullable)
+        Z_PARAM_BOOL(generated)
+        Z_PARAM_BOOL(automatic)
+        Z_PARAM_STR_OR_NULL(default_expression)
+        Z_PARAM_BOOL(expression_default)
+    ZEND_PARSE_PARAMETERS_END();
+    init_str(ZEND_THIS, "name", name);
+    init_str(ZEND_THIS, "nativeType", native);
+    init_bool(ZEND_THIS, "nullable", nullable);
+    init_bool(ZEND_THIS, "generated", generated);
+    init_bool(ZEND_THIS, "automaticKey", automatic);
+    init_str_or_null(ZEND_THIS, "defaultExpression", default_expression);
+    init_bool(ZEND_THIS, "expressionDefault", expression_default);
+}
+
+ZEND_METHOD(Polyspec_Orm_CatalogTableMetadata, __construct)
+{
+    zval *table, *columns, *primary_key;
+    zend_string *kind;
+    bool reliable;
+    ZEND_PARSE_PARAMETERS_START(5, 5)
+        Z_PARAM_ARRAY(table)
+        Z_PARAM_STR(kind)
+        Z_PARAM_ARRAY(columns)
+        Z_PARAM_ARRAY(primary_key)
+        Z_PARAM_BOOL(reliable)
+    ZEND_PARSE_PARAMETERS_END();
+    init_array(ZEND_THIS, "table", table);
+    init_str(ZEND_THIS, "kind", kind);
+    init_array(ZEND_THIS, "columns", columns);
+    init_array(ZEND_THIS, "primaryKey", primary_key);
+    init_bool(ZEND_THIS, "reliableRowIdentity", reliable);
+}
+
+ZEND_METHOD(Polyspec_Orm_CatalogResult, __construct)
+{
+    zval *columns, *rows;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+        Z_PARAM_ARRAY(columns)
+        Z_PARAM_ARRAY(rows)
+    ZEND_PARSE_PARAMETERS_END();
+    init_array(ZEND_THIS, "columns", columns);
+    init_array(ZEND_THIS, "rows", rows);
+}
+
+ZEND_METHOD(Polyspec_Orm_CatalogTablePage, __construct)
+{
+    zval *metadata, *result, *order_by;
+    zend_long limit, offset;
+    bool has_more;
+    ZEND_PARSE_PARAMETERS_START(6, 6)
+        Z_PARAM_OBJECT_OF_CLASS(metadata, catalog_ce_metadata)
+        Z_PARAM_OBJECT_OF_CLASS(result, catalog_ce_result)
+        Z_PARAM_LONG(limit)
+        Z_PARAM_LONG(offset)
+        Z_PARAM_ARRAY(order_by)
+        Z_PARAM_BOOL(has_more)
+    ZEND_PARSE_PARAMETERS_END();
+    init_prop(ZEND_THIS, "metadata", metadata);
+    init_prop(ZEND_THIS, "result", result);
+    init_long(ZEND_THIS, "limit", limit);
+    init_long(ZEND_THIS, "offset", offset);
+    init_array(ZEND_THIS, "orderBy", order_by);
+    init_bool(ZEND_THIS, "hasMore", has_more);
+}
+
+/* The position of a column of the page: the index of the named column in the metadata, or COLUMN_UNKNOWN. */
+ZEND_METHOD(Polyspec_Orm_CatalogTablePage, columnIndex)
+{
+    zend_string *name;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_STR(name)
+    ZEND_PARSE_PARAMETERS_END();
+    zval rv_meta, rv_columns, *metadata, *columns, *column, rv_name;
+    metadata = catalog_prop(ZEND_THIS, "metadata", &rv_meta);
+    columns = catalog_prop(metadata, "columns", &rv_columns);
+    zval *entry;
+    uint32_t i = 0;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(columns), entry) {
+        column = entry;
+        zval *column_name = catalog_prop(column, "name", &rv_name);
+        if (zend_string_equals(Z_STR_P(column_name), name)) {
+            RETURN_LONG((zend_long)i);
+        }
+        i++;
+    } ZEND_HASH_FOREACH_END();
+    db_throw_orm("COLUMN_UNKNOWN", "table page has no column %s", ZSTR_VAL(name));
+}
+
+ZEND_METHOD(Polyspec_Orm_CatalogRowSnapshot, __construct)
+{
+    zval *metadata, *cells, *key_indexes;
+    zend_string *revision;
+    ZEND_PARSE_PARAMETERS_START(4, 4)
+        Z_PARAM_OBJECT_OF_CLASS(metadata, catalog_ce_metadata)
+        Z_PARAM_ARRAY(cells)
+        Z_PARAM_ARRAY(key_indexes)
+        Z_PARAM_STR(revision)
+    ZEND_PARSE_PARAMETERS_END();
+    init_prop(ZEND_THIS, "metadata", metadata);
+    init_array(ZEND_THIS, "cells", cells);
+    init_array(ZEND_THIS, "keyIndexes", key_indexes);
+    init_str(ZEND_THIS, "revision", revision);
+}
+
+ZEND_METHOD(Polyspec_Orm_CatalogRowSnapshot, revision)
+{
+    ZEND_PARSE_PARAMETERS_START(0, 0)
+    ZEND_PARSE_PARAMETERS_END();
+    zval rv;
+    RETURN_COPY(catalog_prop(ZEND_THIS, "revision", &rv));
+}
+
+ZEND_METHOD(Polyspec_Orm_CatalogGridCell, __construct)
+{
+    zend_string *kind;
+    zval *value = NULL;
+    ZEND_PARSE_PARAMETERS_START(1, 2)
+        Z_PARAM_STR(kind)
+        Z_PARAM_OPTIONAL
+        Z_PARAM_ZVAL(value)
+    ZEND_PARSE_PARAMETERS_END();
+    init_str(ZEND_THIS, "kind", kind);
+    zval null_value;
+    ZVAL_NULL(&null_value);
+    init_prop(ZEND_THIS, "value", value != NULL ? value : &null_value);
+}
+
 static void array_constant(zend_class_entry *ce, const char *name, const char *const *keys, const zend_long *values, size_t n)
 {
     HashTable *ht = pemalloc(sizeof(HashTable), 1);
@@ -2519,6 +2677,7 @@ static PHP_MINIT_FUNCTION(polyspec_orm)
     register_class_Polyspec_Orm_Codec();
     register_class_Polyspec_Orm_Validator();
     register_class_Polyspec_Orm_Planner();
+    register_class_Polyspec_Orm_Stats();
     register_class_Polyspec_Orm_StatementEvent();
     collection_init(
         register_class_Polyspec_Orm_Collection(zend_ce_aggregate, zend_ce_countable, php_json_serializable_ce),
@@ -2574,6 +2733,13 @@ static PHP_MINIT_FUNCTION(polyspec_orm)
     /* Db::DRIVERS, the array constant gen_stub cannot write (db.c implements the class). */
     static const char *const drivers[] = {"mysql", "postgres", "sqlite"};
     array_constant(register_class_Polyspec_Orm_Db(), "DRIVERS", drivers, NULL, COUNT(drivers));
+    catalog_ce = register_class_Polyspec_Orm_Catalog();
+    register_class_Polyspec_Orm_CatalogColumn();
+    catalog_ce_metadata = register_class_Polyspec_Orm_CatalogTableMetadata();
+    catalog_ce_result = register_class_Polyspec_Orm_CatalogResult();
+    catalog_ce_table_page = register_class_Polyspec_Orm_CatalogTablePage();
+    catalog_ce_snapshot = register_class_Polyspec_Orm_CatalogRowSnapshot();
+    register_class_Polyspec_Orm_CatalogGridCell();
     dbs_ce_Diagnostic = register_class_Polyspec_Orm_Dbspec_Diagnostic();
     dbs_ce_Document = register_class_Polyspec_Orm_Dbspec_Document();
     dbs_ce_UseLine = register_class_Polyspec_Orm_Dbspec_UseLine();

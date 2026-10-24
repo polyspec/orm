@@ -1,0 +1,70 @@
+[
+  {
+    "id": "generated-typed-getter-positive",
+    "expect": "success",
+    "source": "polyspec_orm::models!();\nfn main() { let row = model::Author::new().set_seq(17); let value: i64 = row.get_seq().expect(\"assigned sequence\"); assert_eq!(value, 17); }\n"
+  },
+  {
+    "id": "dsl49-nullable-null-positive",
+    "expect": "success",
+    "source": "polyspec_orm::models!();\nfn main() { let _ = model::Author::new().photo_url(polyspec_orm::Null); }\n"
+  },
+  {
+    "id": "dsl50-equality-and-ne-list-positive",
+    "expect": "success",
+    "source": "polyspec_orm::models!();\nfn main() { let _ = model::Author::new().read_count(vec![1, 2]).and_ne_read_count(vec![1, 2]); }\n"
+  },
+  {
+    "id": "dsl124-public-transaction-positive",
+    "expect": "success",
+    "source": "polyspec_orm::models!();\nfn db() -> polyspec_orm::Db { panic!(\"compile-only\") }\nfn main() { let db = db(); let _ = db.transaction_once(|| async { Ok::<(), polyspec_orm::Error>(()) }); }\n"
+  },
+  {
+    "id": "generated-private-field-e0616",
+    "expect": "error",
+    "code": "E0616",
+    "diagnostic": "field `seq` of struct `Author` is private",
+    "sourceLine": "let _ = row.seq;",
+    "source": "polyspec_orm::models!();\nfn main() { let row = model::Author::new().set_seq(17); let _ = row.get_seq(); let _ = row.seq; }\n"
+  },
+  {
+    "id": "dsl49-nonnull-null-e0277",
+    "expect": "error",
+    "code": "E0277",
+    "diagnostic": "EqArg",
+    "sourceLine": "service_seq(polyspec_orm::Null)",
+    "source": "polyspec_orm::models!();\nfn main() { let _ = model::Author::new().service_seq(polyspec_orm::Null); }\n"
+  },
+  {
+    "id": "dsl50-ordering-list-e0277",
+    "expect": "error",
+    "code": "E0277",
+    "diagnostic": "CmpArg",
+    "sourceLine": "and_gt_read_count(vec![1, 2])",
+    "source": "polyspec_orm::models!();\nfn main() { let _ = model::Author::new().and_gt_read_count(vec![1, 2]); }\n"
+  },
+  {
+    "id": "dsl124-db-begin-e0599",
+    "expect": "error",
+    "code": "E0599",
+    "diagnostic": "no method named `begin` found for struct `Db`",
+    "sourceLine": "db.begin()",
+    "source": "polyspec_orm::models!();\nfn db() -> polyspec_orm::Db { panic!(\"compile-only\") }\nfn main() { let db = db(); let _ = db.begin(); }\n"
+  },
+  {
+    "id": "dsl124-db-commit-e0599",
+    "expect": "error",
+    "code": "E0599",
+    "diagnostic": "no method named `commit` found for struct `Db`",
+    "sourceLine": "db.commit()",
+    "source": "polyspec_orm::models!();\nfn db() -> polyspec_orm::Db { panic!(\"compile-only\") }\nfn main() { let db = db(); let _ = db.commit(); }\n"
+  },
+  {
+    "id": "dsl124-db-rollback-e0599",
+    "expect": "error",
+    "code": "E0599",
+    "diagnostic": "no method named `rollback` found for struct `Db`",
+    "sourceLine": "db.rollback()",
+    "source": "polyspec_orm::models!();\nfn db() -> polyspec_orm::Db { panic!(\"compile-only\") }\nfn main() { let db = db(); let _ = db.rollback(); }\n"
+  }
+]

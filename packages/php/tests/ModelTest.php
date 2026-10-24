@@ -1110,8 +1110,12 @@ final class ModelTest extends TestCase
                 self::code(fn() => self::lockedRead($bounded, Author::class)) === Code::CANCELED,
                 'a statement past the timeout'
             );
-            $bounded->close();
             $holder->rollBack();
+            self::check(
+                is_int((new Author())->connect($bounded)->getCount()),
+                'the connection is usable after its statement timeout'
+            );
+            $bounded->close();
         }
     }
 

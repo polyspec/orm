@@ -1,5 +1,5 @@
 <!-- doc-id: examples-complex-query -->
-<!-- source-sha256: 4a760dc2e3b6d88e14d69c2610747e2c8e69923665cafb3dbabd44befd854b35 -->
+<!-- source-sha256: acac55f6370f7bd308db7efce21154c9e72921b852368505f5ed8957f3b57bf4 -->
 # 복잡한 쿼리 예 — 상품 검색 목록
 
 이 예는 [dsl.md](dsl.ko.md)의 문법을 사용하며 여러 관계와 조건 패턴을 함께 사용한다.
@@ -82,11 +82,42 @@ page, err := model.Product().Connect(slave1).
     OrderByLikeCountDescAndSeqDesc().
     GetsPage(pageNo, 20)
 
-for seq, p := range page.Items.All() {
-    _ = p.GetName()
-    _ = p.GetBrand().GetName()                  // nil-safe getter chain
-    for reviewSeq, r := range p.GetReviews().All() { _ = r.GetUser().GetName() }
-    _ = p.GetMyOrderItem().GetSeq()             // zero value when absent
+if err := func() error {
+    for seq, p := range page.Items.All() {
+        _ = seq
+        name, err := p.GetName()
+        if err != nil { return err }
+        _ = name
+        brand, err := p.GetBrand()
+        if err != nil { return err }
+        if brand != nil {
+            brandName, err := brand.GetName()
+            if err != nil { return err }
+            _ = brandName
+        }
+        reviews, err := p.GetReviews()
+        if err != nil { return err }
+        for reviewSeq, r := range reviews.All() {
+            _ = reviewSeq
+            user, err := r.GetUser()
+            if err != nil { return err }
+            if user != nil {
+                userName, err := user.GetName()
+                if err != nil { return err }
+                _ = userName
+            }
+        }
+        item, err := p.GetMyOrderItem()
+        if err != nil { return err }
+        if item != nil {
+            itemSeq, err := item.GetSeq()
+            if err != nil { return err }
+            _ = itemSeq
+        }
+    }
+    return nil
+}(); err != nil {
+    return err
 }
 _ = page.TotalCount; _ = page.TotalPages
 ```

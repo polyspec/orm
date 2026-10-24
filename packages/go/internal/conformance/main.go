@@ -166,8 +166,17 @@ type rowModel[R any] interface {
 
 // createdRow is a row that the round trip masks and deletes.
 type createdRow interface {
-	GetSeq() int64
+	GetSeq() (int64, error)
 	Delete(...bool) error
+}
+
+func maskCreatedRow(row createdRow) error {
+	seq, err := row.GetSeq()
+	if err != nil {
+		return err
+	}
+	mask([]int64{seq})
+	return nil
 }
 
 // roundTripRow creates the row that build makes, masks its sequence, reads the rows
@@ -181,7 +190,11 @@ func roundTripRow[M rowModel[C], C createdRow, T orm.Model](build func() (M, err
 	if err != nil {
 		return nil, err
 	}
-	mask([]int64{created.GetSeq()})
+	seq, err := created.GetSeq()
+	if err != nil {
+		return nil, err
+	}
+	mask([]int64{seq})
 	rows, err := gets()
 	if err != nil {
 		return nil, err
@@ -589,7 +602,15 @@ func run() (status int) {
 			if err != nil {
 				return nil, err
 			}
-			related = append(related, []any{r.GetSeq(), note.GetTitle()})
+			seq, err := r.GetSeq()
+			if err != nil {
+				return nil, err
+			}
+			title, err := note.GetTitle()
+			if err != nil {
+				return nil, err
+			}
+			related = append(related, []any{seq, title})
 		}
 		notes, err := model.SharedNote().Connect(db).
 			Seq(model.NoteReader().AddColumnSharedNoteSeq()).
@@ -599,7 +620,11 @@ func run() (status int) {
 		}
 		titles := []any{}
 		for _, n := range notes.Slice() {
-			titles = append(titles, n.GetTitle())
+			title, err := n.GetTitle()
+			if err != nil {
+				return nil, err
+			}
+			titles = append(titles, title)
 		}
 		_, err = model.SharedNote().Connect(db).SetSeq(9).SetTitle("written").Create()
 		return map[string]any{"relation": related, "subquery": titles, "write": code(err)}, nil
@@ -620,7 +645,11 @@ func run() (status int) {
 			if err != nil {
 				return nil, err
 			}
-			out = append(out, []any{u.GetSeq(), readTotal})
+			seq, err := u.GetSeq()
+			if err != nil {
+				return nil, err
+			}
+			out = append(out, []any{seq, readTotal})
 		}
 		return out, nil
 	})
@@ -750,7 +779,9 @@ func run() (status int) {
 			if err != nil {
 				return err
 			}
-			mask([]int64{created.GetSeq()})
+			if err := maskCreatedRow(created); err != nil {
+				return err
+			}
 			written, err := model.AuditRecord().GetCount()
 			if err != nil {
 				return err
@@ -860,7 +891,10 @@ func run() (status int) {
 		if err != nil {
 			return nil, err
 		}
-		seq := created.GetSeq()
+		seq, err := created.GetSeq()
+		if err != nil {
+			return nil, err
+		}
 		mask([]int64{seq})
 		createdArray := created.ToArray()
 		createdArray["seq"] = "$SEQ"
@@ -868,7 +902,11 @@ func run() (status int) {
 		if err != nil {
 			return nil, err
 		}
-		mask(nil, loaded.GetUpdatedTs())
+		updatedTs, err := loaded.GetUpdatedTs()
+		if err != nil {
+			return nil, err
+		}
+		mask(nil, updatedTs)
 		if _, err := loaded.SetName("cycle-2").PlusReadCount(3).Update(true); err != nil {
 			return nil, err
 		}
@@ -894,13 +932,23 @@ func run() (status int) {
 		if err != nil {
 			return nil, err
 		}
-		seq := created.GetSeq()
+		seq, err := created.GetSeq()
+		if err != nil {
+			return nil, err
+		}
 		mask([]int64{seq})
 		loaded, err := author().GetBySeq(seq)
 		if err != nil {
 			return nil, err
 		}
-		createdTs, updatedTs := loaded.GetCreatedTs(), loaded.GetUpdatedTs()
+		createdTs, err := loaded.GetCreatedTs()
+		if err != nil {
+			return nil, err
+		}
+		updatedTs, err := loaded.GetUpdatedTs()
+		if err != nil {
+			return nil, err
+		}
 		near := createdTs.Sub(before).Abs() < time.Minute
 		if err := loaded.Delete(); err != nil {
 			return nil, err
@@ -921,7 +969,9 @@ func run() (status int) {
 		if err != nil {
 			return nil, err
 		}
-		mask([]int64{created.GetSeq()})
+		if err := maskCreatedRow(created); err != nil {
+			return nil, err
+		}
 		if err := created.Delete(); err != nil {
 			return nil, err
 		}
@@ -1010,14 +1060,21 @@ func run() (status int) {
 		if err != nil {
 			return nil, err
 		}
-		seq := service.GetSeq()
+		seq, err := service.GetSeq()
+		if err != nil {
+			return nil, err
+		}
 		seqs := []int64{seq}
 		for i := 0; i < 2; i++ {
 			member, err := model.ServiceMember().Connect(db).SetServiceSeq(seq).SetUserSeq(int64(i + 1)).Create()
 			if err != nil {
 				return nil, err
 			}
-			seqs = append(seqs, member.GetSeq())
+			memberSeq, err := member.GetSeq()
+			if err != nil {
+				return nil, err
+			}
+			seqs = append(seqs, memberSeq)
 		}
 		loaded, err := model.Service().Connect(db).
 			Relations(model.ServiceMember().MatchSeqWithServiceSeq()).
@@ -1094,7 +1151,10 @@ func run() (status int) {
 			if err != nil {
 				return err
 			}
-			seq := created.GetSeq()
+			seq, err := created.GetSeq()
+			if err != nil {
+				return err
+			}
 			mask([]int64{seq})
 			deletedAt := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
 			if _, err := created.SetDeletedAt(textPtr(dateTimeText(deletedAt))).Update(); err != nil {
@@ -1135,7 +1195,9 @@ func run() (status int) {
 			if err != nil {
 				return err
 			}
-			mask([]int64{created.GetSeq()})
+			if err := maskCreatedRow(created); err != nil {
+				return err
+			}
 			deletedAt := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
 			if _, err := created.SetDeletedAt(textPtr(dateTimeText(deletedAt))).Update(); err != nil {
 				return err
@@ -1153,7 +1215,9 @@ func run() (status int) {
 			if err != nil {
 				return err
 			}
-			mask([]int64{made.GetSeq()})
+			if err := maskCreatedRow(made); err != nil {
+				return err
+			}
 			createdRow := made.ToArray()
 			createdRow["seq"] = "$SEQ"
 			result["created"] = createdRow
@@ -1177,7 +1241,15 @@ func run() (status int) {
 			if err != nil {
 				return nil, err
 			}
-			return map[string]any{"name": row.GetName(), "like_count": row.GetLikeCount()}, nil
+			name, err := row.GetName()
+			if err != nil {
+				return nil, err
+			}
+			likeCount, err := row.GetLikeCount()
+			if err != nil {
+				return nil, err
+			}
+			return map[string]any{"name": name, "like_count": likeCount}, nil
 		}
 		err := db.Transaction(func() error {
 			before, err := read()
@@ -1235,7 +1307,12 @@ func run() (status int) {
 				if err != nil {
 					return err
 				}
-				mask([]int64{service.GetSeq(), record.GetSeq()})
+				if err := maskCreatedRow(service); err != nil {
+					return err
+				}
+				if err := maskCreatedRow(record); err != nil {
+					return err
+				}
 				if name == "soft-join-deleted" {
 					deletedAt := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
 					if _, err := record.SetDeletedAt(textPtr(dateTimeText(deletedAt))).Update(); err != nil {
@@ -1260,7 +1337,11 @@ func run() (status int) {
 				if err != nil {
 					return err
 				}
-				rows = append(rows, map[string]any{"name": row.GetName(), "record": pick(record, "name")})
+				name, err := row.GetName()
+				if err != nil {
+					return err
+				}
+				rows = append(rows, map[string]any{"name": name, "record": pick(record, "name")})
 			}
 			result["left"] = rows
 			return boom
@@ -1441,7 +1522,9 @@ func run() (status int) {
 		if err != nil {
 			return nil, err
 		}
-		mask([]int64{created.GetSeq()})
+		if err := maskCreatedRow(created); err != nil {
+			return nil, err
+		}
 		inserted, err := upsertCell().Code("k1").Gets()
 		if err != nil {
 			return nil, err
@@ -1471,7 +1554,9 @@ func run() (status int) {
 		if err != nil {
 			return nil, err
 		}
-		mask([]int64{created.GetSeq()})
+		if err := maskCreatedRow(created); err != nil {
+			return nil, err
+		}
 		rows, err := model.UuidCell().Connect(db).Id("0f8e2d4c-1a3b-4c5d-8e9f-a0b1c2d3e4f5").Gets()
 		if err != nil {
 			return nil, err
@@ -1486,11 +1571,15 @@ func run() (status int) {
 	// (docs/spec/protocol.md §5 "Parameters"). A create that the client lets through is deleted,
 	// so the vector leaves the database as it found it.
 	rejected := func(created interface {
-		GetSeq() int64
+		GetSeq() (int64, error)
 		Delete(...bool) error
 	}, err error) (any, error) {
 		if err == nil {
-			mask([]int64{created.GetSeq()})
+			seq, err := created.GetSeq()
+			if err != nil {
+				return nil, err
+			}
+			mask([]int64{seq})
 			if err := created.Delete(); err != nil {
 				return nil, err
 			}
@@ -1596,7 +1685,11 @@ func run() (status int) {
 			}
 			rows := []any{}
 			for _, u := range users.Slice() {
-				rows = append(rows, []any{u.GetSeq(), u.GetReadTotal()})
+				seq, err := u.GetSeq()
+				if err != nil {
+					return nil, err
+				}
+				rows = append(rows, []any{seq, u.GetReadTotal()})
 			}
 			out[order] = rows
 		}
@@ -1717,8 +1810,16 @@ func deleteLockVector(db *orm.DB) (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		author, err := model.Author().Connect(db).SetName("delete-lock").SetUserSeq(user.GetSeq()).SetServiceSeq(7).
+		userSeq, err := user.GetSeq()
+		if err != nil {
+			return nil, err
+		}
+		author, err := model.Author().Connect(db).SetName("delete-lock").SetUserSeq(userSeq).SetServiceSeq(7).
 			SetServiceRegionSeq(7).SetServiceMemberSeq(7).SetStartDt("2026-01-01 00:00:00").SetEndDt("2026-12-31 00:00:00").Create()
+		if err != nil {
+			return nil, err
+		}
+		authorSeq, err := author.GetSeq()
 		if err != nil {
 			return nil, err
 		}
@@ -1726,7 +1827,7 @@ func deleteLockVector(db *orm.DB) (any, error) {
 		if locked {
 			rel.DeleteLock()
 		}
-		loaded, err := model.User().Connect(db).Seq(user.GetSeq()).Relations(rel).Gets()
+		loaded, err := model.User().Connect(db).Seq(userSeq).Relations(rel).Gets()
 		if err != nil {
 			return nil, err
 		}
@@ -1737,24 +1838,24 @@ func deleteLockVector(db *orm.DB) (any, error) {
 				return nil, err
 			}
 		}
-		authors, err := model.Author().Connect(db).Seq(author.GetSeq()).Gets()
+		authors, err := model.Author().Connect(db).Seq(authorSeq).Gets()
 		if err != nil {
 			return nil, err
 		}
-		users, err := model.User().Connect(db).Seq(user.GetSeq()).Gets()
+		users, err := model.User().Connect(db).Seq(userSeq).Gets()
 		if err != nil {
 			return nil, err
 		}
 		out = append(out, []any{len(picks(authors, "seq")), len(picks(users, "seq")), code})
 		if locked {
-			leftAuthors, err := model.Author().Connect(db).Seq(author.GetSeq()).Gets()
+			leftAuthors, err := model.Author().Connect(db).Seq(authorSeq).Gets()
 			if err != nil {
 				return nil, err
 			}
 			if err := leftAuthors.Delete(); err != nil {
 				return nil, err
 			}
-			leftUsers, err := model.User().Connect(db).Seq(user.GetSeq()).Gets()
+			leftUsers, err := model.User().Connect(db).Seq(userSeq).Gets()
 			if err != nil {
 				return nil, err
 			}

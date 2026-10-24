@@ -58,6 +58,11 @@ final class RequestHookNativeTest extends TestCase
         $this->runNativeCase('restore_no_key');
     }
 
+    public function testSameHandleChildUsesNativeTerminalAndRunsOneHook(): void
+    {
+        $this->runNativeCase('same_handle_child_hook_once');
+    }
+
     public function testRestoreRewrittenKey(): void
     {
         $this->runNativeCase('restore_rewritten_key');

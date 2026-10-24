@@ -1,12 +1,15 @@
 // Generator test: the npm bin declares only valid chain names and imports the
 // published package outside this repository.
 // Usage: node packages/ts/tests/generate.mjs (after npm run typescript:build)
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { caseTest, PROCESS } from '../../../tests/testcase.mts';
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { caseTest, PROCESS, runLong, stepLines } from '../../../tests/testcase.mts';
+import { isolatedEnvironment } from '../../../tests/environment.mts';
 
 const root = new URL('../../..', import.meta.url).pathname;
 const bin = join(root, 'packages/ts/dist/bin/orm-gen.js');
@@ -19,7 +22,25 @@ function check(cond, message) {
 function uncheckedReads(text) {
   return text.split('\n').filter(line => /\)!|\]!|\)\s+as\s+[A-Za-z]/.test(line)).map(line => line.trim());
 }
-function run(...args) { return spawnSync(process.execPath, [bin, ...args], { encoding: 'utf8' }); }
+function run(...args) { return spawnSync(process.execPath, [bin, ...args], { encoding: 'utf8', cwd: root, env: isolatedEnvironment() }); }
+
+/** Runs a tool without a deadline and streams every output line to its step record. */
+async function runLogged(name, args, cwd) {
+  let code;
+  let output = '';
+  const passed = await runLong(name, async ({ step }) => {
+    const child = spawn(process.execPath, args, { cwd, env: isolatedEnvironment(), stdio: ['ignore', 'pipe', 'pipe'] });
+    const stdout = stepLines(step);
+    const stderr = stepLines(step);
+    child.stdout.on('data', chunk => { const text = String(chunk); output += text; stdout.write(text); });
+    child.stderr.on('data', chunk => { const text = String(chunk); output += text; stderr.write(text); });
+    await new Promise((resolve, reject) => {
+      child.on('error', reject);
+      child.on('close', result => { code = result; stdout.flush(); stderr.flush(); resolve(); });
+    });
+  });
+  return { passed, code, output };
+}
 /**
  * Writes the documents, each a name and its text, and a set file that owns them into a new directory under the work
  * directory, and returns the path of the set file.
@@ -76,6 +97,7 @@ caseTest('generate', PROCESS, async () => {
       'getClock(): string', 'setClock(value: string): this', 'getStamp(): string', 'getId(): string', 'getBody(): string',
       'getBlob(): Uint8Array', 'getRatio(): number', 'plusSmall(n: number): this',
     ]) check(typedText.includes(`public ${declaration} {`), `declaration ${declaration}`);
+
     const nested = await mkdtemp(join(root, 'packages/ts/src/models/decimal-test-'));
     try {
       const nestedResult = run('gen', '--set', join(root, 'contracts/fixtures/dbspec-set.json'), '--out', nested, '--scan', usage);
@@ -174,4 +196,68 @@ caseTest('generate', PROCESS, async () => {
     await rm(work, { recursive: true, force: true });
   }
   if (failures > 0) throw new Error(`${failures} check(s) failed; each FAIL line above names one`);
+});
+
+// The positive consumer compiles and runs without diagnostic suppression. Its separate negative fixture must fail only
+// at the raw typed-field assignment, with TypeScript's exact code and source location.
+test('generated typed getter consumer compiler fixture', async () => {
+  const runDir = join(root, '.runtime/run');
+  await mkdir(runDir, { recursive: true });
+  const consumerDir = await mkdtemp(join(runDir, 'ts-generated-getter-'));
+  try {
+    const getterSet = await setOf(join(consumerDir, 'set'), [['getter.dbs',
+      'dbspec 1 getter\n\ntable item {\n  price i32\n  primary key (price)\n}\n']]);
+    const generated = join(consumerDir, 'generated');
+    const emptyScan = join(consumerDir, 'empty-scan.ts');
+    await writeFile(emptyScan, 'export {};\n');
+    const generatedRun = await runLogged('typescript-generated-getter-generate', [bin, 'gen', '--set', getterSet, '--out', generated, '--scan', emptyScan], root);
+    assert.equal(generatedRun.passed, true, generatedRun.output);
+    assert.equal(generatedRun.code, 0, generatedRun.output);
+
+    const consumer = join(consumerDir, 'consumer.ts');
+    await writeFile(consumer, `import assert from 'node:assert/strict';
+import { Item } from './generated/models.js';
+
+const item = new Item();
+let errorCode = '';
+try { item.getPrice(); } catch (error) {
+  if (typeof error === 'object' && error !== null && 'code' in error) errorCode = String(error.code);
+}
+assert.equal(errorCode, 'COLUMN_UNSELECTED');
+const price: number = item.setPrice(17).getPrice();
+assert.equal(price, 17);
+assert.equal(Object.hasOwn(item, 'price'), false);
+assert.equal('price' in item, false);
+`);
+    const tsc = join(root, 'node_modules/typescript/bin/tsc');
+    const compiled = join(consumerDir, 'compiled');
+    const positive = await runLogged('typescript-generated-getter-positive-compile', [
+      tsc, '--ignoreConfig', '--strict', '--target', 'ES2022', '--module', 'NodeNext', '--moduleResolution', 'NodeNext',
+      '--rootDir', consumerDir, '--outDir', compiled, consumer,
+    ], root);
+    assert.equal(positive.passed, true, positive.output);
+    assert.equal(positive.code, 0, positive.output);
+    const executed = await runLogged('typescript-generated-getter-positive-runtime', [join(compiled, 'consumer.js')], root);
+    assert.equal(executed.passed, true, executed.output);
+    assert.equal(executed.code, 0, executed.output);
+
+    const negative = join(consumerDir, 'negative.ts');
+    await writeFile(negative, `import { Item } from './generated/models.js';
+
+const item = new Item();
+const rawPrice: number = item.price;
+void rawPrice;
+`);
+    const rejected = await runLogged('typescript-generated-getter-negative-compile', [
+      tsc, '--ignoreConfig', '--strict', '--target', 'ES2022', '--module', 'NodeNext', '--moduleResolution', 'NodeNext',
+      '--noEmit', '--rootDir', consumerDir, negative,
+    ], root);
+    const diagnostics = rejected.output.trim().split('\n').filter(Boolean);
+    assert.equal(rejected.passed, true, rejected.output);
+    assert.equal(rejected.code, 1, rejected.output);
+    assert.equal(diagnostics.length, 1, rejected.output);
+    assert.match(diagnostics[0], /^\.runtime\/run\/ts-generated-getter-[A-Za-z0-9_-]+\/negative\.ts\(4,7\): error TS2322: Type '\(v0: number \| Model \| readonly number\[\] \| ValueFunction\) => Item' is not assignable to type 'number'\.$/);
+  } finally {
+    await rm(consumerDir, { recursive: true, force: true });
+  }
 });

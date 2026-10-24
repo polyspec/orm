@@ -27,8 +27,8 @@ func TestCoverageModelWriteCycle(t *testing.T) {
 	t.Cleanup(func() { removeTenantAccounts(t, db, writeTenant) })
 
 	created := must(account().SetTenantId(writeTenant).SetAccountId(1).SetName("created").Create())
-	if created.GetTenantId() != writeTenant || created.GetAccountId() != 1 || created.GetName() != "created" {
-		t.Fatalf("created row = %d %d %q", created.GetTenantId(), created.GetAccountId(), created.GetName())
+	if readColumn(t, created.GetTenantId) != writeTenant || readColumn(t, created.GetAccountId) != 1 || readColumn(t, created.GetName) != "created" {
+		t.Fatalf("created row = %d %d %q", readColumn(t, created.GetTenantId), readColumn(t, created.GetAccountId), readColumn(t, created.GetName))
 	}
 	many := []*model.CompositeAccountModel{
 		model.CompositeAccount().SetTenantId(writeTenant).SetAccountId(2).SetName("many-2"),
@@ -39,20 +39,20 @@ func TestCoverageModelWriteCycle(t *testing.T) {
 		t.Fatalf("creates inserted %d rows, want 3", n)
 	}
 	for id, name := range map[int64]string{2: "many-2", 3: "many-3", 4: "many-4"} {
-		if got := must(account().GetByTenantIdAndAccountId(writeTenant, id)).GetName(); got != name {
+		if got := readColumn(t, must(account().GetByTenantIdAndAccountId(writeTenant, id)).GetName); got != name {
 			t.Fatalf("account %d name = %q, want %q", id, got, name)
 		}
 	}
 
 	row := must(account().GetByTenantIdAndAccountId(writeTenant, 1))
 	must(row.SetName("updated").Update())
-	if got := must(account().GetByTenantIdAndAccountId(writeTenant, 1)).GetName(); got != "updated" {
+	if got := readColumn(t, must(account().GetByTenantIdAndAccountId(writeTenant, 1)).GetName); got != "updated" {
 		t.Fatalf("updated name = %q, want updated", got)
 	}
 
 	must(account().SetTenantId(writeTenant).SetAccountId(1).SetName("ignored").
 		Duplication(model.CompositeAccount().SetName("upserted")).Create())
-	if got := must(account().GetByTenantIdAndAccountId(writeTenant, 1)).GetName(); got != "upserted" {
+	if got := readColumn(t, must(account().GetByTenantIdAndAccountId(writeTenant, 1)).GetName); got != "upserted" {
 		t.Fatalf("upserted name = %q, want upserted", got)
 	}
 	if n := must(account().TenantId(writeTenant).GetCount()); n != 4 {

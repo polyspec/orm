@@ -288,3 +288,64 @@ mod mysql_code_tests {
         assert_eq!(mysql_code(1205), Some(codes::CANCELED));
     }
 }
+
+#[cfg(test)]
+mod driver_error_tests {
+    use super::*;
+    use std::borrow::Cow;
+    use std::error::Error as StdError;
+    use std::fmt::{Display, Formatter};
+
+    #[derive(Debug)]
+    struct NativeError {
+        message: String,
+    }
+
+    impl Display for NativeError {
+        fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+            f.write_str(&self.message)
+        }
+    }
+
+    impl StdError for NativeError {}
+
+    impl sqlx::error::DatabaseError for NativeError {
+        fn message(&self) -> &str {
+            &self.message
+        }
+
+        fn code(&self) -> Option<Cow<'_, str>> {
+            None
+        }
+
+        fn as_error(&self) -> &(dyn StdError + Send + Sync + 'static) {
+            self
+        }
+
+        fn as_error_mut(&mut self) -> &mut (dyn StdError + Send + Sync + 'static) {
+            self
+        }
+
+        fn into_error(self: Box<Self>) -> Box<dyn StdError + Send + Sync + 'static> {
+            self
+        }
+
+        fn kind(&self) -> sqlx::error::ErrorKind {
+            sqlx::error::ErrorKind::Other
+        }
+    }
+
+    #[test]
+    fn unknown_database_error_keeps_the_native_source_chain() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let mapped = Error::from(sqlx::Error::Database(Box::new(NativeError {
+            message: "trigger refused the write".into(),
+        })));
+        assert_eq!(mapped.code(), codes::DRIVER);
+        assert!(mapped.to_string().contains("trigger refused the write"));
+        let sqlx_source = StdError::source(&mapped).expect("mapped error keeps sqlx error");
+        assert!(sqlx_source.is::<sqlx::Error>());
+        assert_eq!(sqlx_source.to_string(), "error returned from database: trigger refused the write");
+        assert_eq!(StdError::source(sqlx_source).unwrap().to_string(), "trigger refused the write");
+    }
+}

@@ -1,5 +1,5 @@
 <!-- doc-id: dsl -->
-<!-- source-sha256: b16b3a454952eb39da0232995d551663dd0cd03116ac7147acbf5d1ea06cd1da -->
+<!-- source-sha256: 1498b5c3cfab6fdae6041af4ba219e7546ad0ab9fd833f99943edd84010b90f3 -->
 # DSL
 
 이 문서는 [설계 계획](plan.md)이 정한 쿼리 문법을 정의한다. 클라이언트 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록하며, 이 문서와 일치하지 않는 클라이언트는 미완료 상태다.
@@ -293,7 +293,11 @@ err := master.Transaction(func() error {
     if err != nil {
         return err
     }
-    _, err = model.OrderItem().SetOrderSeq(order.GetSeq()).SetAmount(amount).Create()
+    orderSeq, err := order.GetSeq()
+    if err != nil {
+        return err
+    }
+    _, err = model.OrderItem().SetOrderSeq(orderSeq).SetAmount(amount).Create()
     return err
 })
 ```

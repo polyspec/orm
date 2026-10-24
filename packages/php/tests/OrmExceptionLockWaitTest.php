@@ -29,4 +29,17 @@ final class OrmExceptionLockWaitTest extends TestCase
         $error = OrmException::fromDriver($driverError, 'mysql', new PDO('sqlite::memory:'));
         self::assertSame(Code::CANCELED, $error->code_, "MySQL 1205 maps to {$error->code_}");
     }
+
+    public function testUnlistedMysqlDriverErrorKeepsItsCause(): void
+    {
+        $message = 'trigger refused the write';
+        $driverError = new PDOException($message);
+        $driverError->errorInfo = ['HY000', 1644, $message];
+        $pdo = (new \ReflectionClass(PDO::class))->newInstanceWithoutConstructor();
+        $error = OrmException::fromDriver($driverError, 'mysql', $pdo);
+
+        self::assertSame(Code::DRIVER, $error->code_);
+        self::assertSame('DRIVER: ' . $message, $error->getMessage());
+        self::assertSame($driverError, $error->getPrevious());
+    }
 }

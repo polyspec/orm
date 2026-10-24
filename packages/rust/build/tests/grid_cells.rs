@@ -10,9 +10,7 @@ use grid_open::open_catalog;
 mod dialect_dsn;
 use dialect_dsn::dsn_for;
 
-use polyspec_orm_build::{
-    tool_db::{GridCell, QueryLimits},
-};
+use polyspec_orm_build::tool_db::{GridCell, QueryLimits};
 
 #[tokio::test]
 // Requirements: SCH-3.
@@ -38,6 +36,11 @@ async fn check() {
         match catalog.read_only_grid_query(sql, &[], QueryLimits::default()).await {
             Ok(result) if result.rows == expected && result.columns.len() == 5 => {}
             _ => failures.push(dialect),
+        }
+        if dialect == "sqlite"
+            && !catalog.read_only_query("SELECT X'FF'", &[], QueryLimits::default()).await.is_err_and(|error| error.contains("invalid utf-8 sequence"))
+        {
+            failures.push("invalid-text-blob-cause");
         }
         let tiny = QueryLimits { max_rows: 1, max_bytes: 2 };
         if !catalog.read_only_grid_query(sql, &[], tiny).await.err().is_some_and(|error| error.contains("TOOL_QUERY_LIMIT")) {

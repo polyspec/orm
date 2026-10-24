@@ -10,9 +10,7 @@ use grid_open::open_catalog;
 mod dialect_dsn;
 use dialect_dsn::dsn_for;
 
-use polyspec_orm_build::{
-    tool_db::{GridCell, QueryLimits},
-};
+use polyspec_orm_build::tool_db::{GridCell, QueryLimits};
 
 #[tokio::test]
 // Requirements: INT-97.
@@ -67,8 +65,12 @@ async fn check() {
                 Ok(result) if result.rows == vec![vec![GridCell::Decimal(huge), GridCell::Decimal("0.00000000000000000001".into())]] => {}
                 _ => failures.push("large-numeric"),
             }
-            if catalog.read_only_grid_query("SELECT 'NaN'::numeric", &[], QueryLimits::default()).await.is_ok() {
-                failures.push("nonfinite-numeric")
+            if !catalog
+                .read_only_grid_query("SELECT 'NaN'::numeric", &[], QueryLimits::default())
+                .await
+                .is_err_and(|error| error.contains("Unsupported or invalid finite grid decimal: ") && error.contains("NaN"))
+            {
+                failures.push("nonfinite-numeric-cause")
             }
         }
         catalog.close().await;

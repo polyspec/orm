@@ -585,6 +585,24 @@ str catalog_unscaled_decimal(str text, zend_long scale);
 
 /* Calls a method of a PDO object through the Zend API. If an exception is left, it is false and ret is UNDEF. */
 bool pdo_call(zval *obj, const char *name, zval *ret, uint32_t argc, zval *a1, zval *a2);
+/* Throws the OrmException of code with the formatted message (db.c). */
+void db_throw_orm(const char *code, const char *fmt, ...);
+/* The class entry of Polyspec\Orm\Catalog (catalog_connection.c). */
+extern zend_class_entry *catalog_ce;
+extern zend_class_entry *catalog_ce_metadata, *catalog_ce_result, *catalog_ce_table_page, *catalog_ce_snapshot;
+/* Calls a function or a static method by name, and creates an object of a class with its constructor arguments (db.c). */
+bool scall(const char *f, zval *ret, uint32_t argc, zval *argv);
+bool newobj(const char *name, zval *ret, uint32_t argc, zval *argv);
+/* The property writers and readers of the value classes (polyspec_orm.c): they act like PHP assignments on the object. */
+void init_prop(zval *self, const char *name, zval *v);
+void init_str(zval *self, const char *name, zend_string *s);
+void init_long(zval *self, const char *name, zend_long n);
+void init_bool(zval *self, const char *name, bool b);
+void init_str_or_null(zval *self, const char *name, zend_string *s);
+void init_array(zval *self, const char *name, zval *array);
+void init_array_or_null(zval *self, const char *name, zval *array);
+void init_obj_or_null(zval *self, const char *name, zend_object *o);
+zval *catalog_prop(zval *self, const char *name, zval *rv);
 bool pending_pdo_exception(void);
 zend_object *take_exception(void);
 void throw_with_previous(zend_class_entry *ce, str message, zend_object *previous);

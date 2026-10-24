@@ -246,7 +246,11 @@ func conformanceCases() map[string]caseFunc {
 			if err != nil {
 				return nil, err
 			}
-			return map[string]any{"id": m.GetId()}, nil
+			id, err := m.GetId()
+			if err != nil {
+				return nil, err
+			}
+			return map[string]any{"id": id}, nil
 		},
 		"insert_rows": func(s *served) (any, error) {
 			bob, err := markdownmodel.People().SetName("Bob").SetEmail(ptr("bob@example.com")).SetAge(ptr(int32(25))).SetScore("2.00")
@@ -272,7 +276,11 @@ func conformanceCases() map[string]caseFunc {
 			if err != nil {
 				return nil, err
 			}
-			return map[string]any{"id": m.GetId()}, nil
+			id, err := m.GetId()
+			if err != nil {
+				return nil, err
+			}
+			return map[string]any{"id": id}, nil
 		},
 		"one": func(s *served) (any, error) {
 			m, err := markdownmodel.People().Connect(s.db).RemoveAllColumns().AddColumnName().AddColumnEmail().AddColumnAge().AddColumnActive().AddColumnScore().Id("P1").Get()
@@ -386,7 +394,15 @@ func conformanceCases() map[string]caseFunc {
 			if err != nil {
 				return nil, err
 			}
-			return map[string]any{"created": m.GetId(), "name": read.GetName()}, nil
+			id, err := m.GetId()
+			if err != nil {
+				return nil, err
+			}
+			name, err := read.GetName()
+			if err != nil {
+				return nil, err
+			}
+			return map[string]any{"created": id, "name": name}, nil
 		},
 		"delete": func(s *served) (any, error) {
 			m, err := markdownmodel.Tasks().Connect(s.db).Id("T2").Get()
@@ -424,7 +440,15 @@ func conformanceCases() map[string]caseFunc {
 			if err != nil {
 				return nil, err
 			}
-			return map[string]any{"id": m.GetId(), "name": m.GetName(), "count": n}, nil
+			id, err := m.GetId()
+			if err != nil {
+				return nil, err
+			}
+			name, err := m.GetName()
+			if err != nil {
+				return nil, err
+			}
+			return map[string]any{"id": id, "name": name, "count": n}, nil
 		},
 		"transaction_commit": func(s *served) (any, error) {
 			if err := s.db.Transaction(func() error {
@@ -471,7 +495,11 @@ func conformanceCases() map[string]caseFunc {
 			}
 			var notes []string
 			for _, m := range rows.All() {
-				notes = append(notes, m.GetNote())
+				note, err := m.GetNote()
+				if err != nil {
+					return nil, err
+				}
+				notes = append(notes, note)
 			}
 			return notes, nil
 		},
@@ -528,7 +556,11 @@ func conformanceCases() map[string]caseFunc {
 			if rerr != nil {
 				return nil, rerr
 			}
-			return map[string]any{"error": orm.ErrorCode(err), "name": read.GetName()}, nil
+			name, rerr := read.GetName()
+			if rerr != nil {
+				return nil, rerr
+			}
+			return map[string]any{"error": orm.ErrorCode(err), "name": name}, nil
 		},
 		// transaction_retry_commit runs a transaction that reads P1 and writes its own name back, with retry options,
 		// and answers the commit's code (null when it commits) and how many times the callback ran: a commit that is
@@ -541,7 +573,11 @@ func conformanceCases() map[string]caseFunc {
 				if err != nil {
 					return err
 				}
-				_, err = m.SetName(m.GetName()).Update()
+				name, err := m.GetName()
+				if err != nil {
+					return err
+				}
+				_, err = m.SetName(name).Update()
 				return err
 			}, orm.Retry(3))
 			var code any
@@ -599,7 +635,11 @@ func conformanceCases() map[string]caseFunc {
 			}
 			var keys []string
 			for _, m := range rows.All() {
-				keys = append(keys, m.GetId())
+				id, err := m.GetId()
+				if err != nil {
+					return nil, err
+				}
+				keys = append(keys, id)
 			}
 			slices.Sort(keys)
 			return keys, nil
@@ -655,7 +695,11 @@ func conformanceCases() map[string]caseFunc {
 					}
 					v = n
 				}
-				sums = append(sums, []any{m.GetId(), v})
+				id, err := m.GetId()
+				if err != nil {
+					return nil, err
+				}
+				sums = append(sums, []any{id, v})
 			}
 			owners, err := markdownmodel.People().Connect(s.db).RemoveAllColumns().
 				Id(markdownmodel.Tasks().AddColumnOwner()).OrderByIdAsc().Gets()
@@ -676,7 +720,11 @@ func conformanceCases() map[string]caseFunc {
 			}
 			firsts := []any{}
 			for _, m := range rows.All() {
-				firsts = append(firsts, []any{m.GetId(), m.GetFirstTask()})
+				id, err := m.GetId()
+				if err != nil {
+					return nil, err
+				}
+				firsts = append(firsts, []any{id, m.GetFirstTask()})
 			}
 			_, unlimited := markdownmodel.People().Connect(s.db).RemoveAllColumns().
 				AddColumnFirstTask(func(p *markdownmodel.PeopleModel) orm.Model {
@@ -736,7 +784,11 @@ func conformanceCases() map[string]caseFunc {
 			if err != nil {
 				return nil, err
 			}
-			return map[string]any{"fraction": m.GetJoined().Nanosecond(), "out_of_range": []any{gt, le}}, nil
+			joined, err := m.GetJoined()
+			if err != nil {
+				return nil, err
+			}
+			return map[string]any{"fraction": joined.Nanosecond(), "out_of_range": []any{gt, le}}, nil
 		},
 		// index_read reads through the column of the index ix_tasks_owner, which the corpus derives in memory (DIA-176).
 		"index_read": func(s *served) (any, error) {

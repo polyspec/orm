@@ -14,7 +14,7 @@ mod result;
 pub(crate) use grid::is_temporal;
 pub use grid::{GridCell, GridQueryResult};
 pub use limits::QueryLimits;
-pub use params::{ParamType, P};
+pub use params::{P, ParamType};
 pub use result::{QueryColumn, QueryResult};
 
 pub(crate) fn validate_params(values: &[P], dialect: &str) -> Result<(), sqlx::Error> {
@@ -287,7 +287,7 @@ impl Conn {
             Pool::Postgres(p) => Conn::Postgres(p.acquire().await?),
             Pool::Sqlite(p) => Conn::Sqlite(p.acquire().await?),
             Pool::Markdown(_) => {
-                return Err(sqlx::Error::Configuration("a markdown corpus has no SQL connection; give a mysql, postgres or sqlite DSN".into()))
+                return Err(sqlx::Error::Configuration("a markdown corpus has no SQL connection; give a mysql, postgres or sqlite DSN".into()));
             }
         })
     }
@@ -357,11 +357,7 @@ impl Conn {
 
 /// The bind placeholder of a driver.
 pub fn placeholder(driver: &str, n: usize) -> String {
-    if driver == "postgres" {
-        format!("${n}")
-    } else {
-        "?".into()
-    }
+    if driver == "postgres" { format!("${n}") } else { "?".into() }
 }
 
 /// A database named by the same DSN URI the clients accept: `mysql://`,
@@ -382,7 +378,7 @@ impl ToolDsn {
         match dialect.as_str() {
             "mysql" if host.is_empty() || database.is_empty() => return Err("MIGRATION_CONFIG: mysql DSN must include host and database".into()),
             "postgres" if (host.is_empty() && !url.query_pairs().any(|(k, _)| k == "host")) || database.is_empty() => {
-                return Err("MIGRATION_CONFIG: postgres DSN must include host and database".into())
+                return Err("MIGRATION_CONFIG: postgres DSN must include host and database".into());
             }
             "sqlite" if !url.path().starts_with('/') || !host.is_empty() => return Err("MIGRATION_CONFIG: sqlite DSN must be sqlite://<absolute path>".into()),
             "mysql" | "postgres" | "sqlite" => {}
@@ -419,4 +415,48 @@ pub async fn open(raw: &str) -> Result<(polyspec_orm::Db, Conn, ToolDsn), String
     let db = polyspec_orm::Db::connect(&target, 4, polyspec_orm::Config::default()).await.map_err(|e| connect_err(&e))?;
     let conn = Conn::acquire(db.pool()).await.map_err(|e| connect_err(&e))?;
     Ok((db, conn, dsn))
+}
+
+#[cfg(test)]
+mod cause_message_tests {
+    use super::Val;
+
+    #[test]
+    fn malformed_integer_preserves_parse_cause_without_input_text() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let error = Val::Text("private-invalid-number".into()).int().expect_err("invalid integer must fail");
+        let message = error.to_string();
+        assert!(message.contains("Invalid tool integer: invalid digit found in string"), "{message}");
+        assert!(!message.contains("private-invalid-number"), "{message}");
+    }
+
+    #[test]
+    fn invalid_dsn_preserves_parse_cause_message() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let error = match super::ToolDsn::parse("not a URI") {
+            Ok(_) => panic!("invalid DSN unexpectedly parsed"),
+            Err(error) => error,
+        };
+        assert!(error.starts_with("MIGRATION_CONFIG: dsn must be a URI using mysql://, postgres://, or sqlite://: "), "{error}");
+        assert!(error.len() > "MIGRATION_CONFIG: dsn must be a URI using mysql://, postgres://, or sqlite://: ".len(), "{error}");
+    }
+
+    #[test]
+    fn dsn_redaction_cause_message_test_masks_password_for_valid_input() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let dsn = super::ToolDsn::parse("mysql://user:secret@localhost/database").expect("valid DSN must parse");
+        let redacted = format!("{:?}", dsn.redacted());
+        assert!(redacted.contains("xxxxx"), "{redacted}");
+        assert!(!redacted.contains("secret"), "{redacted}");
+    }
+
+    #[test]
+    fn grid_value_decoders_preserve_conversion_causes() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let error = super::decode_bytes(Some(vec![0xff])).expect_err("invalid UTF-8 database bytes must fail");
+        assert!(error.to_string().contains("invalid utf-8 sequence"), "{error}");
+
+        let error = super::decode_unsigned(Some(u64::MAX)).expect_err("out-of-range unsigned database integer must fail");
+        assert!(error.to_string().contains("number too large to fit in target type"), "{error}");
+    }
 }

@@ -1,6 +1,6 @@
-# Driver cells of the Python client: a DECIMAL or NUMERIC cell is text, as in the TypeScript and PHP clients. PyMySQL
-# and psycopg return decimal.Decimal, which the codec of the client does not read; the driver conversions named here
-# return the exact text of the cell instead.
+# Driver cells of the Python client: DECIMAL and NUMERIC cells stay exact text, and binary cells retain their bytes.
+# PyMySQL and psycopg return decimal.Decimal, which the codec of the client does not read; the conversions return exact
+# text, while the native binary conversion remains unchanged.
 import unittest
 
 
@@ -25,6 +25,13 @@ class MysqlCells(unittest.TestCase):
             mysql_conversions()[FIELD_TYPE.LONG],
             pymysql.converters.conversions[FIELD_TYPE.LONG],
         )
+
+    # Requirements: PRT-69.
+    def test_binary_cells_keep_the_exact_driver_bytes(self):
+        source = b"\x00\x80\xffA"
+        conversion = mysql_conversions()[FIELD_TYPE.BLOB]
+        self.assertIs(conversion, pymysql.converters.conversions[FIELD_TYPE.BLOB])
+        self.assertEqual(conversion(source), source)
 
 
 class PostgresCells(unittest.TestCase):

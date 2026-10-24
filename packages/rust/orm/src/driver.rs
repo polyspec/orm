@@ -7,16 +7,16 @@ use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
 
 use chrono::{NaiveDate, NaiveDateTime};
+use sqlx::Executor;
 use sqlx::mysql::{MySql, MySqlPool, MySqlRow};
 use sqlx::postgres::{PgPool, PgRow, PgTypeInfo, Postgres};
 use sqlx::sqlite::{Sqlite, SqlitePool, SqliteRow};
-use sqlx::Executor;
 
 use crate::collection::Key;
 use crate::db::Pool;
 use crate::db::Zone;
 use crate::plan::{Assemble, BindSlot, ParentRef, Plan, Step};
-use crate::row::{decode_boolean_columns, decode_styled, read_cell, read_row, DriverRow};
+use crate::row::{DriverRow, decode_boolean_columns, decode_styled, read_cell, read_row};
 use crate::value::{Param, Val};
 use crate::{Error, Result};
 
@@ -114,9 +114,7 @@ pub(crate) fn expand_in(st: &Step, mut vals: Vec<Param>, numbered: bool, parent_
             while j < bytes.len() && bytes[j].is_ascii_digit() {
                 j += 1;
             }
-            let k: usize = st.sql[i + 1..j]
-                .parse()
-                .map_err(|error| Error::Config(format!("placeholder {} is not a slot index: {error}", &st.sql[i..j])))?;
+            let k: usize = st.sql[i + 1..j].parse().map_err(|error| Error::Config(format!("placeholder {} is not a slot index: {error}", &st.sql[i..j])))?;
             if k == parent {
                 for m in 0..n * width {
                     if m > 0 {
@@ -572,6 +570,10 @@ pub(crate) fn relation_chunks(st: &Step, vals: Vec<Param>, driver: &str) -> Resu
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+#[path = "../tests/unit/driver_cause.rs"]
+mod cause_message_tests;
 
 /// The first cell of the first row (Null when there is no row).
 pub(crate) fn first_cell(rows: &[DriverRow], zone: Zone) -> Result<Val> {

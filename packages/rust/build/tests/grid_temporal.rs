@@ -11,9 +11,9 @@ mod dialect_dsn;
 use dialect_dsn::dsn_for;
 use polyspec_orm_build::{
     catalog::{CatalogConnection, MutationPhase, RowSnapshot, TableRef},
-    tool_db::{self, GridCell, QueryLimits, P},
+    tool_db::{self, GridCell, P, QueryLimits},
 };
-use std::sync::{atomic::AtomicBool, Arc};
+use std::sync::{Arc, atomic::AtomicBool};
 
 #[tokio::test]
 // Requirements: INT-103.
@@ -169,9 +169,12 @@ async fn check() {
                 failures.push(format!("{dialect}: a time outside the day was accepted"));
             }
             if dialect == "postgres" {
-                for infinite in ["SELECT CAST('infinity' AS timestamp)", "SELECT CAST('-infinity' AS date)"] {
-                    if catalog.read_only_grid_query(infinite, &[], QueryLimits::default()).await.is_ok() {
-                        failures.push(format!("{dialect}: {infinite} was accepted"));
+                for (infinite, cause) in [
+                    ("SELECT CAST('infinity' AS timestamp)", "infinite or out of range timestamp"),
+                    ("SELECT CAST('-infinity' AS date)", "infinite or out of range date"),
+                ] {
+                    if !catalog.read_only_grid_query(infinite, &[], QueryLimits::default()).await.is_err_and(|error| error.contains(cause)) {
+                        failures.push(format!("{dialect}: {infinite} did not retain the cause"));
                     }
                 }
             }

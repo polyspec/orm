@@ -118,6 +118,31 @@ class RequestHookTest(RequestHookCase):
             self.labels(self.db.with_request_hook(part_filter("b"))), ["b1"]
         )
 
+    def test_same_handle_child_hook_once(self):
+        self.models.HookEntry().connect(self.db).set_part("a").set_label(
+            "parent"
+        ).create()
+        calls = {}
+
+        def hook(request, add_param, params):
+            if request["kind"] in READS:
+                entity = request["entity"]
+                calls[entity] = calls.get(entity, 0) + 1
+            return request
+
+        hooked = self.db.with_request_hook(hook)
+        parent = (
+            self.models.HookEntry()
+            .connect(hooked)
+            .relations(self.item(hooked).match_part_with_part())
+            .get()
+        )
+        self.assertEqual(calls, {"hook_entry": 1, "hook_item": 1})
+        self.assertEqual(
+            sorted(row.get_label() for row in parent.get_hook_item_models()),
+            ["a1", "a2"],
+        )
+
     def test_insert_assign(self):
         def hook(request, add_param, params):
             if request["kind"] == "insert":

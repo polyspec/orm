@@ -30,7 +30,7 @@ delete process.env.ORM_RUST_TEST_FEATURES;
 
 const ownerTests: Record<string, string> = {
   go: 'packages/go/orm/dsn_test.go', php: 'packages/php/tests/DsnTest.php',
-  'php-extension': 'packages/php-ext/tests/CoverageSchemaDefinitionExtensionTest.php', python: 'packages/python/tests/test_utils.py',
+  'php-extension': 'packages/php-ext/tests/CoverageCatalogConnectionTest.php', python: 'packages/python/tests/test_utils.py',
   rust: 'packages/rust/orm/tests/zone.rs', typescript: 'packages/ts/tests/typecheck.ts',
 };
 const dependentTest = 'packages/go/model/model_test.go';
@@ -59,7 +59,7 @@ caseTest('PHP extension coverage tests reside in the owning package', 1000, () =
   assert.ok(owner);
   assert.equal(testDirectoryOf('php-extension'), 'packages/php-ext');
   assert.deepEqual(checkCoverage(manifest, reports), []);
-  owner.tests = ['packages/php/tests/CoverageSchemaDefinitionTest.php'];
+  owner.tests = ['packages/php/tests/CoverageCatalogConnectionTest.php'];
   assert.match(checkCoverage(manifest, reports).join('\n'), /sample\/owner\/php-extension: tests must reside in owning part/);
   const extensionTest = ownerTests['php-extension'];
   assert.ok(extensionTest);

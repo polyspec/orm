@@ -1,5 +1,5 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: 5cdd73eff468b00367242add34d733e10da9699f910422922e0570ac827ae685 -->
+<!-- source-sha256: 2236c1136ecc597f461c196950ca694867b36bd223479247da2809ee0b5b1ca5 -->
 # 사용법
 
 하나의 dbspec document set에서 language client를 생성한다. 공통 contract는 Go, PHP, PHP extension, TypeScript, Python, Rust 여섯 구현에 적용되며 확장의 미완료 native 범위는 별도로 추적한다.
@@ -298,7 +298,11 @@ err := master.Transaction(func() error {
     if err != nil {
         return err
     }
-    _, err = model.AuthorLog().SetAuthorSeq(row.GetSeq()).Create()
+    authorSeq, err := row.GetSeq()
+    if err != nil {
+        return err
+    }
+    _, err = model.AuthorLog().SetAuthorSeq(authorSeq).Create()
     return err
 })
 ```

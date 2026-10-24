@@ -20,25 +20,25 @@ func TestCoverageConstraintErrors(t *testing.T) {
 	if err := user.Delete(); orm.ErrorCode(err) != orm.CodeForeignKey {
 		t.Fatalf("delete of a referenced user = %v, want FOREIGN_KEY", err)
 	}
-	if got := must(model.User().Connect(db).Seq(1).Get()).GetName(); got != "user-1" {
+	if got := readColumn(t, must(model.User().Connect(db).Seq(1).Get()).GetName); got != "user-1" {
 		t.Fatalf("user 1 name = %q after the rejected delete", got)
 	}
 
 	first := must(model.Author().Connect(db).GetBySeq(1))
 	second := must(model.Author().Connect(db).GetBySeq(2))
-	likes, uuid := first.GetLikeCount(), first.GetUuid()
-	if uuid == nil || second.GetUuid() == nil || *uuid == *second.GetUuid() {
-		t.Fatalf("seed uuids of author 1 and 2 are not distinct values: %v %v", uuid, second.GetUuid())
+	likes, uuid := readColumn(t, first.GetLikeCount), readColumn(t, first.GetUuid)
+	if uuid == nil || readColumn(t, second.GetUuid) == nil || *uuid == *readColumn(t, second.GetUuid) {
+		t.Fatalf("seed uuids of author 1 and 2 are not distinct values: %v %v", uuid, readColumn(t, second.GetUuid))
 	}
 	if _, err := must(model.Author().Connect(db).GetBySeq(1)).SetLikeCount(-1).Update(); orm.ErrorCode(err) != orm.CodeConstraint {
 		t.Fatalf("negative like_count = %v, want CONSTRAINT", err)
 	}
-	if _, err := must(model.Author().Connect(db).GetBySeq(1)).SetUuid(second.GetUuid()).Update(); orm.ErrorCode(err) != orm.CodeDuplicateKey {
+	if _, err := must(model.Author().Connect(db).GetBySeq(1)).SetUuid(readColumn(t, second.GetUuid)).Update(); orm.ErrorCode(err) != orm.CodeDuplicateKey {
 		t.Fatalf("duplicate uuid = %v, want DUPLICATE_KEY", err)
 	}
 	after := must(model.Author().Connect(db).GetBySeq(1))
-	if after.GetLikeCount() != likes || after.GetUuid() == nil || *after.GetUuid() != *uuid ||
-		!after.GetUpdatedTs().Equal(first.GetUpdatedTs()) {
-		t.Fatalf("author 1 changed: like_count %d uuid %v updated_ts %v", after.GetLikeCount(), after.GetUuid(), after.GetUpdatedTs())
+	if readColumn(t, after.GetLikeCount) != likes || readColumn(t, after.GetUuid) == nil || *readColumn(t, after.GetUuid) != *uuid ||
+		!readColumn(t, after.GetUpdatedTs).Equal(readColumn(t, first.GetUpdatedTs)) {
+		t.Fatalf("author 1 changed: like_count %d uuid %v updated_ts %v", readColumn(t, after.GetLikeCount), readColumn(t, after.GetUuid), readColumn(t, after.GetUpdatedTs))
 	}
 }

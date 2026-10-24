@@ -78,9 +78,18 @@ final class Catalog
         'ANALYZE' => true,
     ];
 
+    /** The MySQL connection of the grid queries: a mysqli connection, opened on first use, with the target of the DSN. */
+    private ?\mysqli $gridLink = null;
+    private bool $closed = false;
+
+    /**
+     * @param ?array{host: ?string, port: int, user: string, password: string, database: string, socket: ?string,
+     *     sslCa: ?string} $mysqlTarget
+     */
     private function __construct(
         private readonly Db $db,
         private readonly string $dialect,
+        private readonly ?array $mysqlTarget,
     ) {
     }
 
@@ -96,7 +105,7 @@ final class Catalog
                 'CATALOG_DSN: a markdown corpus has no database catalog; give a mysql, postgres or sqlite DSN'
             );
         }
-        [$driver, $pdoDsn] = Orm::parseDsn($dsn);
+        [$driver, $pdoDsn, , , , $sslCa] = Orm::parseDsn($dsn);
         if ($driver === 'sqlite') {
             // A symbolic link is not a regular file.
             $path = substr($pdoDsn, strlen('sqlite:'));
@@ -104,7 +113,8 @@ final class Catalog
                 throw new OrmException(Code::CONFIG, 'CATALOG_SQLITE_FILE: expected an existing regular file');
             }
         }
-        return new self(Orm::connect($dsn, new Config()), $driver);
+        $target = $driver === 'mysql' ? self::mysqlTarget($dsn, $sslCa) : null;
+        return new self(Orm::connect($dsn, new Config()), $driver, $target);
     }
 
     /** The database of the connection: mysql, postgres or sqlite. */
@@ -113,11 +123,98 @@ final class Catalog
         return $this->dialect;
     }
 
-    /** Releases the connection. */
+    /** Releases the connection and the MySQL connection of the grid queries. */
     public function close(): void
     {
-        $this->db->close();
+        if ($this->closed) {
+            return;
+        }
+        $this->closed = true;
+        $failure = null;
+        try {
+            $this->gridLink?->close();
+        } catch (\Throwable $e) {
+            $failure = $e;
+        }
+        $this->gridLink = null;
+        try {
+            $this->db->close();
+        } catch (\Throwable $e) {
+            $failure = $failure === null ? $e : OrmException::withCleanup($failure, $e);
+        }
+        if ($failure !== null) {
+            throw $failure;
+        }
     }
+
+    /**
+     * The target of the MySQL grid connection, read from the DSN the connection was opened with.
+     *
+     * @return array{host: ?string, port: int, user: string, password: string, database: string, socket: ?string,
+     *     sslCa: ?string}
+     */
+    private static function mysqlTarget(string $dsn, ?string $sslCa): array
+    {
+        $parts = parse_url($dsn);
+        if ($parts === false) {
+            throw new OrmException(Code::CONFIG, 'invalid DSN URI');
+        }
+        $query = [];
+        parse_str((string) ($parts['query'] ?? ''), $query);
+        return [
+            'host' => isset($parts['host']) ? $parts['host'] : null,
+            'port' => $parts['port'] ?? 3306,
+            'user' => rawurldecode($parts['user'] ?? ''),
+            'password' => rawurldecode($parts['pass'] ?? ''),
+            'database' => ltrim((string) ($parts['path'] ?? ''), '/'),
+            'socket' => isset($query['socket']) ? (string) $query['socket'] : null,
+            'sslCa' => $sslCa,
+        ];
+    }
+
+    /** The MySQL connection of the grid queries, opened with the target of the DSN on first use. */
+    private function mysqlGridLink(): \mysqli
+    {
+        $this->assertOpen();
+        if ($this->gridLink === null) {
+            $target = $this->mysqlTarget
+                ?? throw new OrmException(Code::CONFIG, 'the catalog connection has no MySQL target');
+            try {
+                $link = mysqli_init();
+                if (!$link instanceof \mysqli) {
+                    throw new OrmException(Code::DRIVER, 'cannot initialize the MySQL grid connection');
+                }
+                $flags = 0;
+                if ($target['sslCa'] !== null) {
+                    if (!$link->ssl_set(null, null, $target['sslCa'], null, null)) {
+                        throw new OrmException(Code::CONFIG, 'cannot set the MySQL grid connection CA');
+                    }
+                    if (!$link->options(MYSQLI_OPT_SSL_VERIFY_SERVER_CERT, true)) {
+                        throw new OrmException(Code::CONFIG, 'cannot verify the MySQL grid server certificate');
+                    }
+                    $flags = MYSQLI_CLIENT_SSL;
+                }
+                if (!$link->real_connect(
+                    $target['host'] ?? 'localhost',
+                    $target['user'],
+                    $target['password'],
+                    $target['database'],
+                    (int) $target['port'],
+                    $target['socket'] ?? null,
+                    $flags
+                )) {
+                    throw new \mysqli_sql_exception($link->connect_error ?? 'MySQL grid connection failed');
+                }
+                $link->set_charset('utf8mb4');
+                $link->query("SET time_zone = '+00:00'");
+            } catch (\mysqli_sql_exception $e) {
+                throw OrmException::fromMysqli($e);
+            }
+            $this->gridLink = $link;
+        }
+        return $this->gridLink;
+    }
+
 
     /**
      * The namespace of the connection: the current schema of PostgreSQL, the current database of MySQL and main for
@@ -284,6 +381,9 @@ final class Catalog
         $args = [];
         foreach (array_values($params) as $param) {
             $args[] = self::param($param);
+        }
+        if ($grid && $this->dialect === 'mysql') {
+            return $this->mysqlGridQuery($sql, $args, $maxRows, $maxBytes);
         }
         return $this->read(function (\PDO $pdo) use ($sql, $args, $maxRows, $maxBytes, $grid): CatalogResult {
             if ($grid) {
@@ -490,6 +590,116 @@ final class Catalog
             }
             return $affected;
         });
+    }
+
+    /**
+     * The MySQL grid query: one read-only transaction on the grid connection, a prepared statement, and the flags of
+     * its
+     * fields for the UNSIGNED and binary charset of each cell. The cells follow the binding of SCH-6a. A failed query
+     * rolls back, and a
+     * failed rollback is reported with the query error as its cause.
+     *
+     * @param list<mixed> $args
+     */
+    private function mysqlGridQuery(string $sql, array $args, int $maxRows, int $maxBytes): CatalogResult
+    {
+        $link = $this->mysqlGridLink();
+        try {
+            $link->begin_transaction(MYSQLI_TRANS_START_READ_ONLY);
+            $result = $this->mysqlGridRun($link, $sql, $args, $maxRows, $maxBytes);
+            $link->commit();
+            return $result;
+        } catch (\Throwable $error) {
+            $cause = $error instanceof \mysqli_sql_exception ? OrmException::fromMysqli($error) : $error;
+            try {
+                $link->rollback();
+            } catch (\mysqli_sql_exception $rollbackError) {
+                throw OrmException::rollback($cause, OrmException::fromMysqli($rollbackError));
+            }
+            throw $cause;
+        }
+    }
+
+    /** @param list<mixed> $args */
+    private function mysqlGridRun(\mysqli $link, string $sql, array $args, int $maxRows, int $maxBytes): CatalogResult
+    {
+        $statement = $link->prepare($sql);
+        if ($args !== []) {
+            $types = '';
+            foreach ($args as $arg) {
+                $types .= match (true) {
+                    is_int($arg) || is_bool($arg) => 'i',
+                    is_float($arg) => 'd',
+                    default => 's',
+                };
+            }
+            $statement->bind_param($types, ...$args);
+        }
+        $statement->execute();
+        $result = $statement->get_result();
+        if ($result === false) {
+            throw new OrmException(Code::DRIVER, 'the grid query returned no result set');
+        }
+        $fields = $result->fetch_fields();
+        $names = array_map(static fn (object $field): string => $field->name, $fields);
+        $rows = [];
+        $budget = 0;
+        while (($row = $result->fetch_row()) !== null) {
+            if (count($rows) === $maxRows) {
+                throw new OrmException(Code::CATALOG_LIMIT, "result has more than $maxRows rows");
+            }
+            foreach ($row as $value) {
+                $budget += is_string($value) ? strlen($value) : 8;
+            }
+            if ($budget > $maxBytes) {
+                throw new OrmException(Code::CATALOG_LIMIT, "result has more than $maxBytes bytes of values");
+            }
+            $cells = [];
+            foreach ($row as $i => $value) {
+                $cells[] = self::mysqlGridCell($value, $fields[$i]);
+            }
+            $rows[] = $cells;
+        }
+        $result->free();
+        return new CatalogResult($names, $rows);
+    }
+
+    /** The grid cell of one MySQL value, by the type, the UNSIGNED flag and the charset of its field (mysqli). */
+    private static function mysqlGridCell(mixed $value, object $field): CatalogGridCell
+    {
+        if ($value === null) {
+            return new CatalogGridCell('null');
+        }
+        $unsigned = ($field->flags & MYSQLI_UNSIGNED_FLAG) !== 0;
+        $binary = $field->charsetnr === 63;
+        return match ((int) $field->type) {
+            MYSQLI_TYPE_FLOAT => self::float32Cell($value),
+            MYSQLI_TYPE_DOUBLE => self::float64Cell($value),
+            MYSQLI_TYPE_TIMESTAMP => throw self::refused('MySQL TIMESTAMP follows a time zone'),
+            MYSQLI_TYPE_DATE => new CatalogGridCell('date', self::dateText(self::gridText($value))),
+            MYSQLI_TYPE_DATETIME => new CatalogGridCell('datetime', self::dateTimeText(self::gridText($value))),
+            MYSQLI_TYPE_TIME => new CatalogGridCell('time', self::timeText(self::gridText($value))),
+            MYSQLI_TYPE_DECIMAL, MYSQLI_TYPE_NEWDECIMAL => new CatalogGridCell('decimal', self::gridText($value)),
+            MYSQLI_TYPE_TINY,
+            MYSQLI_TYPE_SHORT,
+            MYSQLI_TYPE_LONG,
+            MYSQLI_TYPE_LONGLONG,
+            MYSQLI_TYPE_INT24,
+            MYSQLI_TYPE_YEAR
+                => self::integerCell($value, $unsigned),
+            default => $binary ? new CatalogGridCell('binary', self::bytes($value))
+                : new CatalogGridCell('text', self::utf8Text($value)),
+        };
+    }
+
+    /** A text cell: its value must be valid UTF-8. */
+    private static function utf8Text(mixed $value): string
+    {
+        $text = self::gridText($value);
+        if (!self::isUtf8($text)) {
+            throw self::refused('text is not valid UTF-8');
+        }
+        return $text;
     }
 
     /**
@@ -826,6 +1036,7 @@ final class Catalog
      */
     private function session(bool $readOnly, \Closure $fn): mixed
     {
+        $this->assertOpen();
         $pdo = $this->db->pdo();
         try {
             if ($this->dialect === 'sqlite') {
@@ -850,6 +1061,13 @@ final class Catalog
             $this->commitFailed($pdo, $e);
         }
         return $value;
+    }
+
+    private function assertOpen(): void
+    {
+        if ($this->closed) {
+            throw new OrmException(Code::CATALOG_CLOSED, 'catalog connection is closed');
+        }
     }
 
     /**

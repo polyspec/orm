@@ -28,7 +28,10 @@ func init() {
 			if err != nil {
 				return nil, err
 			}
-			seq := created.GetSeq()
+			seq, err := created.GetSeq()
+			if err != nil {
+				return nil, err
+			}
 			mask([]int64{seq})
 			out["upsert_inserted"] = affected()
 			if _, err := upsertCell().SetCode("c1").SetLabel("x").

@@ -330,7 +330,7 @@ async fn statement_timeout() {
     for driver in ["mysql", "postgres"] {
         let database = CaseDatabase::create(driver).await;
         let cfg = polyspec_orm::Config { statement_timeout_ms: 200, ..polyspec_orm::Config::default() };
-        let db = Db::connect(database.dsn(), 2, cfg).await.or_panic(|e| format!("{driver}: {e}"));
+        let db = Db::connect(database.dsn(), 1, cfg).await.or_panic(|e| format!("{driver}: {e}"));
         db.utils().schema().install(&SCHEMA).await.or_panic(|e| format!("{driver}: install: {e}"));
         let mut row = event(&db);
         row.core_mut().set("start_dt", datetime_param(NaiveDate::from_ymd_opt(2026, 1, 2).unwrap().and_hms_opt(0, 0, 0).unwrap()));
@@ -340,6 +340,9 @@ async fn statement_timeout() {
         let err = locked_read(&db, &ENTITY).await.expect_err("a statement past the timeout");
         assert_eq!(err.code(), polyspec_orm::codes::CANCELED, "{driver}: {err}");
         held.release().await;
+        let count = polyspec_orm::model::get_count(event(&db).core()).await
+            .or_panic(|e| format!("{driver}: connection after statement timeout: {e}"));
+        assert_eq!(count, 1, "{driver}: connection after statement timeout");
         holder.close().await;
         db.close().await;
         database.drop().await;

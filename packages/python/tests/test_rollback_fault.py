@@ -10,6 +10,7 @@ import tomllib
 import unittest
 from pathlib import Path
 from polyspec.orm.errors import OrmError
+from polyspec.orm.database import Db
 from . import testcase
 
 from .entry_point_check import assert_import_does_not_load_testing
@@ -22,6 +23,41 @@ PACKAGE = Path(__file__).resolve().parents[1]
 FAULT_MESSAGE = (
     "test fault: the rollback of the transaction ran and is reported as failed"
 )
+
+
+class _LostRollbackConnection:
+    def __init__(self, index: int):
+        self.index = index
+        self.closed = False
+        self.transaction = False
+        self.statements = []
+
+    def execute(self, sql: str, values):
+        self.statements.append(sql)
+        if sql == "BEGIN IMMEDIATE":
+            self.transaction = True
+        elif sql == "COMMIT":
+            self.transaction = False
+        elif sql == "ROLLBACK":
+            raise OrmError("CONNECTION_LOST", "rollback connection lost in test driver")
+        return {"rows": [], "insert_id": None, "affected": 0}
+
+    def in_transaction(self) -> bool:
+        return self.transaction
+
+    def close(self) -> None:
+        self.closed = True
+
+
+class _LostRollbackDb(Db):
+    def __init__(self):
+        self.connections = []
+        super().__init__("sqlite:///transaction-failure-fake.sqlite", {"poolSize": 1})
+
+    def _open(self):
+        connection = _LostRollbackConnection(len(self.connections) + 1)
+        self.connections.append(connection)
+        return connection
 
 
 def fail_next_rollback(db) -> None:
@@ -155,26 +191,96 @@ class RollbackFaultTest(unittest.TestCase):
         )
 
     def test_a_failed_savepoint_rollback_and_transaction_rollback_report_both(self):
-        with sqlite3.connect(self.path) as conn:
-            conn.execute(
-                "CREATE TRIGGER rollback_probe_end BEFORE INSERT ON rollback_probe WHEN NEW.label = 'end' "
-                "BEGIN SELECT RAISE(ROLLBACK, 'rollback probe ended the transaction'); END"
+        raw = self.db._shared.pool._idle[0].connection
+        self.addCleanup(raw.set_authorizer, None)
+        scenarios = [
+            ("rollback-only", {"ROLLBACK"}),
+            ("release-only", {"RELEASE"}),
+            ("both-endpoints", {"ROLLBACK", "RELEASE"}),
+        ]
+        for name, rejected in scenarios:
+            controls = []
+
+            def authorize(action, first, second, database, source):
+                if action == sqlite3.SQLITE_SAVEPOINT and second == "orm_sp_1":
+                    controls.append(first)
+                    if first in rejected:
+                        return sqlite3.SQLITE_DENY
+                return sqlite3.SQLITE_OK
+
+            raw.set_authorizer(authorize)
+            callback = RuntimeError("savepoint callback failed")
+
+            def nested_failure():
+                def inner():
+                    raise callback
+
+                return self.db.transaction(
+                    lambda: self.db.transaction(inner), {"retry": 0}
+                )
+
+            error = self.raised(nested_failure)
+            self.check_rollback(error, name)
+            self.assertIs(error.cause, callback, name)
+            self.assertIn("not authorized", str(error.rollback), name)
+            self.assertEqual(
+                controls,
+                ["BEGIN", "ROLLBACK", "RELEASE"],
+                f"{name}: savepoint creation and both endpoints are ordered",
             )
-        conn.close()
+            self.assertIsInstance(error.rollback.cause, sqlite3.Error, name)
 
-        def nested():
-            self.probe("kept").create()
+        controls = []
 
-            def inner():
-                self.probe("nested").create()
-                self.probe("end").create()
+        def authorize_release(action, first, second, database, source):
+            if action == sqlite3.SQLITE_SAVEPOINT and second == "orm_sp_1":
+                controls.append(first)
+                if first == "RELEASE":
+                    return sqlite3.SQLITE_DENY
+            return sqlite3.SQLITE_OK
 
-            self.db.transaction(inner)
+        raw.set_authorizer(authorize_release)
+        error = self.raised(
+            lambda: self.db.transaction(
+                lambda: self.db.transaction(lambda: None), {"retry": 0}
+            )
+        )
+        self.assertIsInstance(error, OrmError)
+        self.assertEqual(error.code, "DRIVER")
+        self.assertIsInstance(error.cause, sqlite3.Error)
+        self.assertIn("not authorized", str(error))
+        self.assertNotIn("savepoint callback failed", str(error))
+        self.assertEqual(controls, ["BEGIN", "RELEASE"])
+        raw.set_authorizer(None)
 
-        error = self.raised(lambda: self.db.transaction(nested, {"retry": 0}))
-        self.check_rollback(error, "transaction")
-        self.check_rollback(error.cause, "savepoint")
-        self.assertEqual(self.count(), 0)
+    def test_lost_rollback_connection_is_closed_before_the_next_transaction(self):
+        db = _LostRollbackDb()
+        first = db.connections[0]
+        callback = RuntimeError("transaction callback failed")
+
+        def failing():
+            raise callback
+
+        try:
+            error = self.raised(lambda: db.transaction(failing, {"retry": 0}))
+            self.assertIsInstance(error, OrmError)
+            self.assertEqual(error.code, "ROLLBACK")
+            self.assertIs(error.cause, callback)
+            self.assertIsInstance(error.rollback, OrmError)
+            self.assertEqual(error.rollback.code, "CONNECTION_LOST")
+            self.assertTrue(
+                first.closed, "the connection lost during rollback is closed"
+            )
+            self.assertEqual(
+                db.stats().open_connections, 0, "the broken connection leaves the pool"
+            )
+
+            db.transaction(lambda: "ok", {"retry": 0})
+            self.assertEqual(len(db.connections), 2)
+            self.assertIsNot(db.connections[1], first)
+            self.assertFalse(db.connections[1].closed)
+        finally:
+            db.close()
 
 
 class RollbackFaultEntryTest(unittest.TestCase):

@@ -110,17 +110,24 @@ class ConnectionConfigTest(unittest.TestCase):
                 model().connect(setup).set_label("held").create()
                 setup.close()
                 holder = hold_rows(dialect, dsn, table)
+                bounded = models.connect(dsn, poolSize=1, statementTimeoutMs=200)
                 try:
-                    bounded = models.connect(dsn, statementTimeoutMs=200)
-                    self.assertEqual(
-                        code_of(lambda: locked_read(bounded, model)),
-                        "CANCELED",
-                        f"{dialect}: past the bound",
+                    try:
+                        self.assertEqual(
+                            code_of(lambda: locked_read(bounded, model)),
+                            "CANCELED",
+                            f"{dialect}: past the bound",
+                        )
+                    finally:
+                        holder.rollback()
+                        holder.close()
+                    self.assertIsInstance(
+                        model().connect(bounded).get_count(),
+                        int,
+                        f"{dialect}: connection after its statement timeout",
                     )
-                    bounded.close()
                 finally:
-                    holder.rollback()
-                    holder.close()
+                    bounded.close()
 
     # A pooler in transaction mode hands one server session to every client in turn. Through
     # ORM_TEST_PGBOUNCER_SINGLE_DSN every client shares one server connection, so the statement timeout of one

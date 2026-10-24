@@ -4,7 +4,7 @@
 // bootstrap requires it.
 declare(strict_types=1);
 
-// The namespace and the class outside it that the extension registers, which are those of the PHP client.
+// The namespace and the client classes outside it that the extension registers.
 const EXTENSION_NAMESPACE = 'Polyspec\\Orm\\Dbspec\\';
 
 const CLIENT_CLASSES = [
@@ -13,7 +13,15 @@ const CLIENT_CLASSES = [
     'Polyspec\\Orm\\Validator',
     'Polyspec\\Orm\\Planner',
     'Polyspec\\Orm\\Db',
+    'Polyspec\\Orm\\Stats',
     'Polyspec\\Orm\\StatementEvent',
+    'Polyspec\\Orm\\Catalog',
+    'Polyspec\\Orm\\CatalogColumn',
+    'Polyspec\\Orm\\CatalogTableMetadata',
+    'Polyspec\\Orm\\CatalogResult',
+    'Polyspec\\Orm\\CatalogTablePage',
+    'Polyspec\\Orm\\CatalogRowSnapshot',
+    'Polyspec\\Orm\\CatalogGridCell',
     'Polyspec\\Orm\\Collection',
     'Polyspec\\Orm\\StyledValue',
     'Polyspec\\Orm\\Page',

@@ -297,7 +297,11 @@ err := master.Transaction(func() error {
     if err != nil {
         return err
     }
-    _, err = model.AuthorLog().SetAuthorSeq(row.GetSeq()).Create()
+    authorSeq, err := row.GetSeq()
+    if err != nil {
+        return err
+    }
+    _, err = model.AuthorLog().SetAuthorSeq(authorSeq).Create()
     return err
 })
 ```

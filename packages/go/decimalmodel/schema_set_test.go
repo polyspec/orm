@@ -24,6 +24,15 @@ func schemaSetDatabase(t *testing.T, driver string) string {
 	return testdb.New(t, driver)
 }
 
+func readColumn[T any](t *testing.T, getter func() (T, error)) T {
+	t.Helper()
+	value, err := getter()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return value
+}
+
 // schemaSet connects with the bench set's connect helper and installs the bench set (benchset.Install) and the decimal schema
 // (decimal twice; the second install changes nothing), and uses the generated models of both sets
 // inside and outside transactions on that connection.
@@ -73,8 +82,8 @@ func schemaSet(t *testing.T, driver string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if loaded.GetAmount() != "48.0450" {
-		t.Fatalf("decimal amount = %q", loaded.GetAmount())
+	if readColumn(t, loaded.GetAmount) != "48.0450" {
+		t.Fatalf("decimal amount = %q", readColumn(t, loaded.GetAmount))
 	}
 	decimals, err := decimalmodel.DecimalCase().Connect(db).GetCount()
 	if err != nil || decimals != 2 {

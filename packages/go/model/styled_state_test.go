@@ -95,7 +95,7 @@ func TestStyledStatesAcrossDatabases(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	each(t, func(t *testing.T, db *orm.DB) {
 		f := seed(t, db)
-		id := f.authors[0].GetSeq()
+		id := readColumn(t, f.authors[0].GetSeq)
 		if _, err := model.Author().Connect(db).GetBySeq(id); err != nil {
 			t.Fatal(err)
 		}

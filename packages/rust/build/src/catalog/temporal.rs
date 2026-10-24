@@ -2,16 +2,16 @@
 //! digits (docs/spec/dbspec.md). The grid decode uses six digits, so the remaining digits must be 0.
 //! For SQLite, the dbspec text of a declared temporal column is turned into the same temporal cell.
 use super::TableMetadata;
-use crate::tool_db::{is_temporal, Conn, GridCell, GridQueryResult, QueryLimits, P};
+use crate::tool_db::{Conn, GridCell, GridQueryResult, P, QueryLimits, is_temporal};
 
 /// The `(p)` of the native type. If absent, the dialect default: MySQL `time` and `datetime` are 0, PostgreSQL
 /// `time` and `timestamp` are 6.
 fn precision(native_type: &str, dialect: &str) -> Result<usize, String> {
     let declared = native_type.split_once('(').and_then(|(_, rest)| rest.split_once(')')).map(|(digits, _)| digits);
     let p = match (declared, dialect) {
-        (Some(digits), _) => digits
-                .parse::<usize>()
-                .map_err(|error| format!("GRID_TEMPORAL_PRECISION: native type {native_type:?} has no precision: {error}"))?,
+        (Some(digits), _) => {
+            digits.parse::<usize>().map_err(|error| format!("GRID_TEMPORAL_PRECISION: native type {native_type:?} has no precision: {error}"))?
+        }
         (None, "mysql") => 0,
         (None, "postgres") => 6,
         (None, _) => return Err(format!("GRID_TEMPORAL_PRECISION: native type {native_type:?} has no precision")),
@@ -96,6 +96,14 @@ mod tests {
         assert_eq!(precision("timestamp without time zone", "postgres"), Ok(6));
         assert!(precision("DATETIME", "sqlite").is_err());
         assert!(precision("datetime(7)", "mysql").is_err());
+    }
+
+    #[test]
+    fn malformed_precision_preserves_parse_cause_message() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let error = precision("datetime(x)", "mysql").expect_err("malformed precision must fail");
+        assert!(error.starts_with("GRID_TEMPORAL_PRECISION: native type \"datetime(x)\" has no precision: "), "{error}");
+        assert!(error.contains("invalid digit found in string"), "{error}");
     }
 
     #[test]

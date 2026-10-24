@@ -46,9 +46,9 @@ for (const file of readers) {
 // A feature's languages are the declared implementations its parity units bind, php-extension among them, and an
 // undeclared unit id is reported.
 test('featureLanguages derives the implementations that the parity units bind', () => {
-  assert.deepEqual(featureLanguages(['coverage-audit-triggers-audit-history']), implementationLanguages().filter(language => language !== 'php-extension'));
-  assert.ok(featureLanguages(['aes-version-codes']).includes('php-extension'));
+  assert.deepEqual(featureLanguages(['coverage-audit-triggers-audit-history']), implementationLanguages());
   assert.deepEqual(unknownParityUnits(['coverage-audit-triggers-audit-history', 'no-such-unit']), ['no-such-unit']);
   assert.deepEqual(unitTests('coverage-audit-triggers-audit-history', 'python'), ['packages/python/tests/coverage_audit_triggers.py']);
   assert.deepEqual(unitTests('coverage-audit-triggers-audit-history', 'typescript'), ['packages/ts/tests/coverage_audit_triggers.mjs']);
+  assert.deepEqual(unitTests('coverage-audit-triggers-audit-history', 'php-extension'), ['packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php']);
 });

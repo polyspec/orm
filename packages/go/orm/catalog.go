@@ -168,7 +168,12 @@ func (s *catalogSession) discard(err error) error {
 // end rolls the session back, discards its connection and returns err joined with a failed rollback.
 func (s *catalogSession) end(err error) error {
 	if _, rollbackErr := s.conn.ExecContext(s.ctx, "ROLLBACK"); rollbackErr != nil {
-		err = errors.Join(err, catalogErr("ROW_ROLLBACK_FAILED", "rollback: %v", mapDriverErr(rollbackErr)))
+		mapped := mapDriverErr(rollbackErr)
+		err = errors.Join(err, &ir.Error{
+			Code:  CodeRowRollbackFailed,
+			Msg:   fmt.Sprintf("rollback: %v", mapped),
+			Cause: mapped,
+		})
 	}
 	return s.discard(err)
 }

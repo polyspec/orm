@@ -8,6 +8,7 @@ import (
 	"github.com/go-sql-driver/mysql"
 
 	"github.com/polyspec/orm/packages/go/engine/ir"
+	"github.com/polyspec/orm/packages/go/engine/plan"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
@@ -52,6 +53,43 @@ func TestMapMySQLErrClassifiesReadOnly(t *testing.T) {
 		if got := ErrorCode(err); got != CodeReadOnly {
 			t.Fatalf("mapped MySQL read-only error %d = %q, want %q: %v", number, got, CodeReadOnly, err)
 		}
+	}
+}
+
+func TestMapDriverErrorPreservesNativeCause(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	driverErr := &mysql.MySQLError{Number: 1644, Message: "trigger refused the write"}
+	mapped := mapDriverErr(driverErr)
+	var ormErr *ir.Error
+	if !errors.As(mapped, &ormErr) {
+		t.Fatalf("mapped error = %T, want *ir.Error", mapped)
+	}
+	if ormErr.Code != CodeDriver || ormErr.Msg != "Error 1644: trigger refused the write" {
+		t.Fatalf("mapped error = (%q, %q), want DRIVER and the native message", ormErr.Code, ormErr.Msg)
+	}
+	var nativeCause *mysql.MySQLError
+	if !errors.Is(mapped, driverErr) || !errors.As(ormErr.Cause, &nativeCause) || nativeCause != driverErr {
+		t.Fatalf("mapped error does not preserve the exact driver cause: %#v", ormErr.Cause)
+	}
+}
+
+func TestCellScanCopiesLosslessNativeBytes(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	source := []byte{0x00, 0x80, 0xff, 0x41}
+	want := string(source)
+	var cell cell
+	if err := cell.Scan(source); err != nil {
+		t.Fatal(err)
+	}
+	source[0] = 0x7f
+	values := []any{cell.v}
+	assemble := &plan.Assemble{Columns: []plan.OutCol{{Index: 0, Type: "bytes"}}}
+	if err := restoreByteColumns(values, assemble); err != nil {
+		t.Fatalf("restore scanned byte cell: %v", err)
+	}
+	got, ok := values[0].([]byte)
+	if !ok || string(got) != want {
+		t.Fatalf("restored byte cell = %T %v, want original bytes %v", values[0], got, []byte(want))
 	}
 }
 

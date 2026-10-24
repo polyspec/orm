@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 06ce4ee1ac0a1ae0dfe3fef8c2e829ad21fe3ca119aff5136696f9955de3beba -->
+<!-- source-sha256: 9aca7aca6eec979637d0ad46166cd9e1bf989ea4219fb62afd6a524535a2d623 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -33,7 +33,7 @@
 | KSTD-2-10-2 | full-text search를 모든 구현에 구현하고 그 규칙 DSL-32, DSL-33, DIA-6, DIA-187을 검사한다 (KSTD-2-10 후속). Cause: spec은 full-text match를 규정하지만 IR에는 match 연산자가 없고 어떤 client도 이를 보내지 않아 test는 red일 수밖에 없다 | docs/spec/protocol.md, the IR, every planner and client, tests/conformance | `make parity-declarations-check UNITS=fulltext-search` and `sh -c 'for f in packages/go/engine/fulltext_search_test.go packages/php/tests/FulltextSearchTest.php packages/ts/tests/fulltext-search.mjs packages/python/tests/fulltext_search.py packages/rust/orm/tests/fulltext_search.rs; do test -f "$f" \|\| exit 1; done'` | [o] |
 | KSTD-2-10-3 | DIA-175와 DIA-177을 codec column과 select explicit이 있는 corpus의 markdown case가 검사한다 (KSTD-2-10 후속). Cause: markdown corpus catalog에 둘 다 없고, 이를 더하면 다섯 client의 생성 model이 바뀐다 | tests/markdown, the generated models | `make parity-declarations-check` | [ ] |
 | KSTD-2-10-4 | Python chain은 DSL-49대로 null 인자를 CONFIG로 거부한다 (KSTD-2-10 후속). Cause: service_seq(None)이 거부하지 않고 IS NULL을 render한다 | packages/python, its tests | `packages/python/.venv/bin/python -m unittest packages.python.tests.test_chain_values` | [o] |
-| KSTD-2-10-5 | Rust는 DSL-49, DSL-50, DSL-124를 compile-fail case로 검사한다 (KSTD-2-10 후속). Cause: Rust에 compile-fail harness가 없어 compile 시점 거부에 test가 없다 | packages/rust, config/parity.json | `make parity-declarations-check` | [ ] |
+| KSTD-2-10-5 | Rust는 DSL-49, DSL-50, DSL-124를 compile-fail case로 검사한다 (KSTD-2-10 후속). Cause: Rust에 compile-fail harness가 없어 compile 시점 거부에 test가 없다 | packages/rust, config/parity.json | `make rust-compiler-fixtures-check` | [ ] |
 | KSTD-2-10-6 | TestProbeCitations가 dialect spec을 그것이 있는 곳에서 읽고 make target이 이를 돌린다 (KSTD-2-10 후속). Cause: 더는 없는 docs/dialects.md를 읽고 어떤 target도 돌리지 않아 보이지 않게 실패한다 | the Go probe test, Makefile | `make dialect-facts-check` | [o] |
 | KSTD-2-10-6-1 | MySQL dialect probe가 connection마다 한 번만 닫는다 (KSTD-2-10-6 후속). Cause: packages/go/internal/dialects/probes_mysql.go:539-571이 e.Merge(other)에서 other.Conn을 닫고 지연된 closeDB()에서 또 닫아, TestDialectFacts/mysql.trigger.binlog_privilege_1419가 "sql: connection is already closed"로 실패한다 | packages/go/internal/dialects/probes_mysql.go | `make dialect-facts-check` | [o] |
 | KSTD-2-10-7 | TypeScript chain이 DSL-49대로 non-null column의 null 인자를 실행 시 거부한다 (KSTD-2-10-4 후속). Cause: packages/ts/src/core.ts:279가 조건 없음이나 ne에서 column 검사 없이 null을 IS NULL로 넘기는데, Python client가 가졌던 형태다 | packages/ts/src/core.ts, its tests, config/parity.json | `node --test packages/ts/tests/chain-null.mjs` | [o] |

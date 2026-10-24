@@ -1,10 +1,19 @@
 //! bind_message: the message cases of tests/bind/vectors.json, the runtime value model JSON of IR executor message parameters
 //! (docs/spec/protocol.md §5 "Parameters"). These are the same cases as Go's TestBindMessageVectors. markdown_param is visible only inside the crate
 //! , so src/markdown.rs makes this file a unit test module.
-use super::{begin_message, markdown_param};
+use super::{answer_value, begin_message, markdown_param};
 use crate::db::Zone;
 use crate::engine::ParamUse;
 use crate::{Error, Param};
+
+#[test]
+fn markdown_answer_value_preserves_base64_cause_message() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let raw = serde_json::value::RawValue::from_string("\"not-base64!\"".into()).expect("valid raw JSON string");
+    let error = answer_value("bytes", &raw).expect_err("invalid base64 must fail");
+    assert_eq!(error.code(), crate::codes::CODEC_DECODE);
+    assert!(error.to_string().contains("Invalid symbol"), "{error}");
+}
 
 #[test]
 fn message_vectors() {

@@ -226,6 +226,30 @@ var requestHookCases = []struct {
 		}
 	}},
 
+	{"same_handle_child_hook_once", func(t *testing.T, db *orm.DB, e, entry *orm.Entity) {
+		seedHookItems(t, e, db)
+		if _, err := hookEntry(entry, db, map[string]any{"part": "a", "label": "parent"}).Create(); err != nil {
+			t.Fatal(err)
+		}
+		calls := map[string]int{}
+		hooked := db.WithRequestHook(func(r *ir.Request, _ func(any) int, _ []any) error {
+			if r.Kind == "all" {
+				calls[r.Entity]++
+			}
+			return nil
+		})
+		parent := hookEntry(entry, hooked, nil)
+		child := hookItem(e, hooked, nil)
+		child.Match("part", "part")
+		parent.Relation(true, child.Self())
+		if _, err := orm.Gets[*keywordRow](parent); err != nil {
+			t.Fatal(err)
+		}
+		if calls["hook_entry"] != 1 || calls["hook_item"] != 1 || len(calls) != 2 {
+			t.Fatalf("same-handle relation hooks = %v, want one root and one child request", calls)
+		}
+	}},
+
 	{"reads_params", func(t *testing.T, db *orm.DB, e, entry *orm.Entity) {
 		// The hook reads the value that the model bound to the assignment of the insert, on a copy of the parameters.
 		var seen any

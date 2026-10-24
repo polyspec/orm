@@ -79,21 +79,33 @@ final class OrmException extends \RuntimeException
                 is_int($num) && ($num & 0xff) === 8 => Code::READ_ONLY,
                 default => Code::DRIVER,
             },
-            default => match (true) {
-                $num === 3572 || $state === 'ER_LOCK_NOWAIT' => Code::LOCK_NOT_AVAILABLE,
-                $num === 1213 || $state === '40001' => Code::DEADLOCK,
-                $num === 1062 || ($num === null && $state === '23000') => Code::DUPLICATE_KEY,
-                $num === 1451 || $num === 1452 => Code::FOREIGN_KEY,
-                $num === 1205 || $num === 1317 || $num === 3024 => Code::CANCELED,
-                $num === 1290 || $num === 1792 => Code::READ_ONLY,
-                $num === 3819 || $num === 4025 => Code::CONSTRAINT,
-                // 2006 (server has gone away) and 2013 (lost connection during query) mean the client lost the
-                // connection, and 4031 means the server ended an idle connection.
-                $num === 2006 || $num === 2013 || $num === 4031 => Code::CONNECTION_LOST,
-                default => Code::DRIVER,
-            },
+            default => self::mysqlCode($num, $state),
         };
         return new self($code, $e->getMessage(), $e);
+    }
+
+    /** The code of a MySQL error by its error number, or by its SQLSTATE when the number is not known. */
+    private static function mysqlCode(?int $num, string $state): string
+    {
+        return match (true) {
+            $num === 3572 || $state === 'ER_LOCK_NOWAIT' => Code::LOCK_NOT_AVAILABLE,
+            $num === 1213 || $state === '40001' => Code::DEADLOCK,
+            $num === 1062 || ($num === null && $state === '23000') => Code::DUPLICATE_KEY,
+            $num === 1451 || $num === 1452 => Code::FOREIGN_KEY,
+            $num === 1205 || $num === 1317 || $num === 3024 => Code::CANCELED,
+            $num === 1290 || $num === 1792 => Code::READ_ONLY,
+            $num === 3819 || $num === 4025 => Code::CONSTRAINT,
+            // 2006 (server has gone away) and 2013 (lost connection during query) mean the client lost the
+            // connection, and 4031 means the server ended an idle connection.
+            $num === 2006 || $num === 2013 || $num === 4031 => Code::CONNECTION_LOST,
+            default => Code::DRIVER,
+        };
+    }
+
+    /** Reports a mysqli error with the code of its MySQL error number (the mysqli client of the catalog grid query). */
+    public static function fromMysqli(\mysqli_sql_exception $e): self
+    {
+        return new self(self::mysqlCode($e->getCode(), $e->getSqlState()), $e->getMessage(), $e);
     }
 
     /** The code of a PostgreSQL error that the server reported as SQLSTATE. */

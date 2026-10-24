@@ -24,7 +24,10 @@ func init() {
 			if err != nil {
 				return nil, err
 			}
-			seq := created.GetSeq()
+			seq, err := created.GetSeq()
+			if err != nil {
+				return nil, err
+			}
 			mask([]int64{seq})
 			row, err := clockCell().GetBySeq(seq)
 			if err != nil {
@@ -33,10 +36,21 @@ func init() {
 			if err := row.Delete(); err != nil {
 				return nil, err
 			}
-			at6 := row.GetAt6()
+			at6, err := row.GetAt6()
+			if err != nil {
+				return nil, err
+			}
+			at0, err := row.GetAt0()
+			if err != nil {
+				return nil, err
+			}
+			at3, err := row.GetAt3()
+			if err != nil {
+				return nil, err
+			}
 			return map[string]any{
-				"p0_truncated": row.GetAt0().Equal(at6.Truncate(time.Second)),
-				"p3_truncated": row.GetAt3().Equal(at6.Truncate(time.Millisecond)),
+				"p0_truncated": at0.Equal(at6.Truncate(time.Second)),
+				"p3_truncated": at3.Equal(at6.Truncate(time.Millisecond)),
 			}, nil
 		})
 		run("clock_compare_six_digits", func() (any, error) {
@@ -48,7 +62,11 @@ func init() {
 			if err != nil {
 				return nil, err
 			}
-			mask([]int64{created.GetSeq()})
+			seq, err := created.GetSeq()
+			if err != nil {
+				return nil, err
+			}
+			mask([]int64{seq})
 			geNow, err := clockCell().Label("compare").AndGeAt0(orm.Now()).GetCount()
 			if err != nil {
 				return nil, err

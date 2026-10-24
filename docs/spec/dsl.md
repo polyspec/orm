@@ -292,7 +292,11 @@ err := master.Transaction(func() error {
     if err != nil {
         return err
     }
-    _, err = model.OrderItem().SetOrderSeq(order.GetSeq()).SetAmount(amount).Create()
+    orderSeq, err := order.GetSeq()
+    if err != nil {
+        return err
+    }
+    _, err = model.OrderItem().SetOrderSeq(orderSeq).SetAmount(amount).Create()
     return err
 })
 ```

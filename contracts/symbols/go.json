@@ -427,6 +427,22 @@
     "exported": false,
     "signature": "func(ctx context.Context, c Execer, dialect Dialect, plans []*Plan, now func() time.Time, events func(ApplyEvent) error) (*applier, error)"
   },
+  "packages/go/engine/dbspec/apply.go::schemaMismatchError": {
+    "exported": false,
+    "signature": "type schemaMismatchError struct{ message string }"
+  },
+  "packages/go/engine/dbspec/apply.go::schemaMismatchError#field.message": {
+    "exported": false,
+    "signature": "string"
+  },
+  "packages/go/engine/dbspec/apply.go::schemaMismatchError.Error": {
+    "exported": false,
+    "signature": "receiver=*schemaMismatchError func() string"
+  },
+  "packages/go/engine/dbspec/apply.go::sqliteLockResult": {
+    "exported": false,
+    "signature": "func(err error) bool"
+  },
   "packages/go/engine/dbspec/apply.go::unjoined": {
     "exported": false,
     "signature": "func(err error) bool"
@@ -4209,7 +4225,7 @@
   },
   "packages/go/engine/dialect/dialect.go::Dialect": {
     "exported": true,
-    "signature": "type Dialect interface { Name() string Quote(ident string) string Placeholder(n int) string Like(col, ph string) string Limit(offset, count int) string ForceIndex(name string) string RowNumber(partition, orderBy string) string InsertReturningID() bool Upsert(conflict []string, assigns string) string ReadExpr(col string, styles []string, ph func() string) (string, int) WriteExpr(ph func() string, styles []string) (string, int) ReadTime(col string, precision int) string WriteTime(ph string) string ReadUUID(col string) string WriteUUID(ph string) string Now(precision int) string HandlesStyle(style string) bool DecodesStyle(style string) bool HostNow() bool ClockOperand(col string, precision int) string RowLock(mode string) (string, bool) ColumnFunction(name, col string, arg func(int) string) (string, bool) ValueFunction(name string, arg, now func() string) (string, bool) ContainsBinary(col string, value func(transform string) string) string TupleIn(cols []string, rows [][]string, negate bool) string Random() string NullsOrder(desc bool) string RestartIdentity(table, column string) string }"
+    "signature": "type Dialect interface { Name() string Quote(ident string) string Placeholder(n int) string Like(col, ph string) string Limit(offset, count int) string LimitParams(offset, count string) string ForceIndex(name string) string RowNumber(partition, orderBy string) string InsertReturningID() bool Upsert(conflict []string, assigns string) string ReadExpr(col string, styles []string, ph func() string) (string, int) WriteExpr(ph func() string, styles []string) (string, int) ReadTime(col string, precision int) string WriteTime(ph string) string ReadUUID(col string) string WriteUUID(ph string) string Now(precision int) string HandlesStyle(style string) bool DecodesStyle(style string) bool HostNow() bool ClockOperand(col string, precision int) string RowLock(mode string) (string, bool) ColumnFunction(name, col string, arg func(int) string) (string, bool) ValueFunction(name string, arg, now func() string) (string, bool) ContainsBinary(col string, value func(transform string) string) string Fulltext(cols []string, value func(transform string) string, boolean bool) (sql string, ok bool) TupleIn(cols []string, rows [][]string, negate bool) string Random() string NullsOrder(desc bool) string RestartIdentity(table, column string) string }"
   },
   "packages/go/engine/dialect/dialect.go::Literal": {
     "exported": true,
@@ -4239,6 +4255,10 @@
     "exported": true,
     "signature": "receiver=MySQL func(col string, value func(string) string) string"
   },
+  "packages/go/engine/dialect/functions.go::MySQL.Fulltext": {
+    "exported": true,
+    "signature": "receiver=MySQL func(cols []string, value func(string) string, boolean bool) (string, bool)"
+  },
   "packages/go/engine/dialect/functions.go::MySQL.NullsOrder": {
     "exported": true,
     "signature": "receiver=MySQL func(bool) string"
@@ -4263,6 +4283,10 @@
     "exported": true,
     "signature": "receiver=Postgres func(col string, value func(string) string) string"
   },
+  "packages/go/engine/dialect/functions.go::Postgres.Fulltext": {
+    "exported": true,
+    "signature": "receiver=Postgres func(cols []string, value func(string) string, boolean bool) (string, bool)"
+  },
   "packages/go/engine/dialect/functions.go::Postgres.NullsOrder": {
     "exported": true,
     "signature": "receiver=Postgres func(desc bool) string"
@@ -4286,6 +4310,10 @@
   "packages/go/engine/dialect/functions.go::SQLite.ContainsBinary": {
     "exported": true,
     "signature": "receiver=SQLite func(col string, value func(string) string) string"
+  },
+  "packages/go/engine/dialect/functions.go::SQLite.Fulltext": {
+    "exported": true,
+    "signature": "receiver=SQLite func([]string, func(string) string, bool) (string, bool)"
   },
   "packages/go/engine/dialect/functions.go::SQLite.NullsOrder": {
     "exported": true,
@@ -4350,6 +4378,10 @@
   "packages/go/engine/dialect/mysql.go::MySQL.Limit": {
     "exported": true,
     "signature": "receiver=MySQL func(offset, count int) string"
+  },
+  "packages/go/engine/dialect/mysql.go::MySQL.LimitParams": {
+    "exported": true,
+    "signature": "receiver=MySQL func(offset, count string) string"
   },
   "packages/go/engine/dialect/mysql.go::MySQL.Name": {
     "exported": true,
@@ -4447,6 +4479,10 @@
     "exported": true,
     "signature": "receiver=Postgres func(offset, count int) string"
   },
+  "packages/go/engine/dialect/postgres.go::Postgres.LimitParams": {
+    "exported": true,
+    "signature": "receiver=Postgres func(offset, count string) string"
+  },
   "packages/go/engine/dialect/postgres.go::Postgres.Name": {
     "exported": true,
     "signature": "receiver=Postgres func() string"
@@ -4539,6 +4575,10 @@
     "exported": true,
     "signature": "receiver=SQLite func(offset, count int) string"
   },
+  "packages/go/engine/dialect/sqlite.go::SQLite.LimitParams": {
+    "exported": true,
+    "signature": "receiver=SQLite func(offset, count string) string"
+  },
   "packages/go/engine/dialect/sqlite.go::SQLite.Name": {
     "exported": true,
     "signature": "receiver=SQLite func() string"
@@ -4610,6 +4650,10 @@
   "packages/go/engine/engine.go::Engine.Compile": {
     "exported": true,
     "signature": "receiver=*Engine func(irJSON []byte) ([]byte, error)"
+  },
+  "packages/go/engine/engine.go::Engine.Validate": {
+    "exported": true,
+    "signature": "receiver=*Engine func(req *ir.Request) error"
   },
   "packages/go/engine/engine.go::Load": {
     "exported": true,
@@ -4897,19 +4941,27 @@
   },
   "packages/go/engine/ir/ir.go::Limit": {
     "exported": true,
-    "signature": "type Limit struct { Offset int `json:\"offset\"` Count int `json:\"count\"` }"
+    "signature": "type Limit struct { Offset int `json:\"offset,omitempty\"` Count int `json:\"count,omitempty\"` OffsetP *int `json:\"offset_p,omitempty\"` CountP *int `json:\"count_p,omitempty\"` }"
   },
   "packages/go/engine/ir/ir.go::Limit#field.Count": {
     "exported": true,
     "signature": "int"
   },
+  "packages/go/engine/ir/ir.go::Limit#field.CountP": {
+    "exported": true,
+    "signature": "*int"
+  },
   "packages/go/engine/ir/ir.go::Limit#field.Offset": {
     "exported": true,
     "signature": "int"
   },
+  "packages/go/engine/ir/ir.go::Limit#field.OffsetP": {
+    "exported": true,
+    "signature": "*int"
+  },
   "packages/go/engine/ir/ir.go::Limit#wire": {
     "exported": true,
-    "signature": "{\"count\":\"integer\",\"offset\":\"integer\"}"
+    "signature": "{\"count\":\"integer\",\"count_p\":\"integer\",\"offset\":\"integer\",\"offset_p\":\"integer\"}"
   },
   "packages/go/engine/ir/ir.go::OpAllowed": {
     "exported": true,
@@ -5285,7 +5337,7 @@
   },
   "packages/go/engine/ir/ir.go::validator.query": {
     "exported": false,
-    "signature": "receiver=*validator func(q *Query, s *scope, isJoin, isRelation bool) error"
+    "signature": "receiver=*validator func(q *Query, s *scope, isJoin, isRelation, root bool) error"
   },
   "packages/go/engine/ir/ir.go::validator.ref": {
     "exported": false,
@@ -5301,7 +5353,7 @@
   },
   "packages/go/engine/ir/params.go::FunctionType": {
     "exported": true,
-    "signature": "func(name string, f *runtimemodel.Field) string"
+    "signature": "func(name string, f *runtimemodel.Field) (string, bool)"
   },
   "packages/go/engine/ir/params.go::IntervalType": {
     "exported": true,
@@ -5325,7 +5377,7 @@
   },
   "packages/go/engine/ir/params.go::ParamUses": {
     "exported": true,
-    "signature": "func(m *runtimemodel.Model, r *Request) [][]ParamUse"
+    "signature": "func(m *runtimemodel.Model, r *Request) ([][]ParamUse, error)"
   },
   "packages/go/engine/ir/params.go::paramUses": {
     "exported": false,
@@ -5357,15 +5409,19 @@
   },
   "packages/go/engine/ir/params.go::paramUses.group": {
     "exported": false,
-    "signature": "receiver=*paramUses func(g *Group, ent *runtimemodel.Entity)"
+    "signature": "receiver=*paramUses func(g *Group, ent *runtimemodel.Entity) error"
   },
   "packages/go/engine/ir/params.go::paramUses.pred": {
     "exported": false,
-    "signature": "receiver=*paramUses func(p *Pred, ent *runtimemodel.Entity)"
+    "signature": "receiver=*paramUses func(p *Pred, ent *runtimemodel.Entity) error"
   },
   "packages/go/engine/ir/params.go::paramUses.query": {
     "exported": false,
-    "signature": "receiver=*paramUses func(q *Query, parent *runtimemodel.Entity)"
+    "signature": "receiver=*paramUses func(q *Query, parent *runtimemodel.Entity) error"
+  },
+  "packages/go/engine/plan/fulltext.go::FulltextBoolean": {
+    "exported": true,
+    "signature": "func(s string) string"
   },
   "packages/go/engine/plan/plan.go::Assemble": {
     "exported": true,
@@ -5793,7 +5849,7 @@
   },
   "packages/go/engine/planner/planner.go::Planner.subType": {
     "exported": false,
-    "signature": "receiver=*Planner func(sub *ir.Sub) string"
+    "signature": "receiver=*Planner func(sub *ir.Sub) (string, error)"
   },
   "packages/go/engine/planner/planner.go::Planner.updateStep": {
     "exported": false,
@@ -5801,7 +5857,7 @@
   },
   "packages/go/engine/planner/planner.go::addBlindIndexAssignments": {
     "exported": false,
-    "signature": "func(ent *runtimemodel.Entity, set []ir.Assign) []ir.Assign"
+    "signature": "func(ent *runtimemodel.Entity, set []ir.Assign) ([]ir.Assign, []int, error)"
   },
   "packages/go/engine/planner/planner.go::assigned": {
     "exported": false,
@@ -5810,10 +5866,6 @@
   "packages/go/engine/planner/planner.go::assignsAES": {
     "exported": false,
     "signature": "func(ent *runtimemodel.Entity, set []ir.Assign) bool"
-  },
-  "packages/go/engine/planner/planner.go::blindIndexSource": {
-    "exported": false,
-    "signature": "func(ent *runtimemodel.Entity, target string) *runtimemodel.Field"
   },
   "packages/go/engine/planner/planner.go::builder": {
     "exported": false,
@@ -5906,6 +5958,10 @@
   "packages/go/engine/planner/planner.go::indexOf": {
     "exported": false,
     "signature": "func(a *plan.Assemble, name string) int"
+  },
+  "packages/go/engine/planner/planner.go::isBlindIndexTarget": {
+    "exported": false,
+    "signature": "func(ent *runtimemodel.Entity, target string) bool"
   },
   "packages/go/engine/planner/planner.go::keyRefs": {
     "exported": false,
@@ -16979,6 +17035,14 @@
     "exported": false,
     "signature": "receiver=*canonicalizer func(ps []int) []int"
   },
+  "packages/go/orm/canonical.go::canonicalizer.pageIndex": {
+    "exported": false,
+    "signature": "receiver=*canonicalizer func(p int, field string) int"
+  },
+  "packages/go/orm/canonical.go::canonicalizer.pageValue": {
+    "exported": false,
+    "signature": "receiver=*canonicalizer func(value int) int"
+  },
   "packages/go/orm/canonical.go::canonicalizer.pred": {
     "exported": false,
     "signature": "receiver=*canonicalizer func(p *ir.Pred) *ir.Pred"
@@ -16989,7 +17053,7 @@
   },
   "packages/go/orm/canonical.go::canonicalizer.query": {
     "exported": false,
-    "signature": "receiver=*canonicalizer func(q ir.Query) ir.Query"
+    "signature": "receiver=*canonicalizer func(q ir.Query, root bool) ir.Query"
   },
   "packages/go/orm/canonical.go::canonicalizer.queryPtr": {
     "exported": false,
@@ -16998,6 +17062,586 @@
   "packages/go/orm/canonical.go::canonicalizer.sub": {
     "exported": false,
     "signature": "receiver=*canonicalizer func(s *ir.Sub) *ir.Sub"
+  },
+  "packages/go/orm/canonical.go::validatePageValues": {
+    "exported": false,
+    "signature": "func(params []any, offsetIndex, countIndex int) error"
+  },
+  "packages/go/orm/catalog.go::CatalogConnection": {
+    "exported": true,
+    "signature": "type CatalogConnection struct { db *DB dialect string closed atomic.Bool }"
+  },
+  "packages/go/orm/catalog.go::CatalogConnection#field.closed": {
+    "exported": false,
+    "signature": "atomic.Bool"
+  },
+  "packages/go/orm/catalog.go::CatalogConnection#field.db": {
+    "exported": false,
+    "signature": "*DB"
+  },
+  "packages/go/orm/catalog.go::CatalogConnection#field.dialect": {
+    "exported": false,
+    "signature": "string"
+  },
+  "packages/go/orm/catalog.go::CatalogConnection.Close": {
+    "exported": true,
+    "signature": "receiver=*CatalogConnection func() error"
+  },
+  "packages/go/orm/catalog.go::CatalogConnection.CurrentNamespace": {
+    "exported": true,
+    "signature": "receiver=*CatalogConnection func(ctx context.Context) (string, error)"
+  },
+  "packages/go/orm/catalog.go::CatalogConnection.Dialect": {
+    "exported": true,
+    "signature": "receiver=*CatalogConnection func() string"
+  },
+  "packages/go/orm/catalog.go::CatalogConnection.begin": {
+    "exported": false,
+    "signature": "receiver=*CatalogConnection func(ctx context.Context, readOnly bool) (*catalogSession, error)"
+  },
+  "packages/go/orm/catalog.go::CatalogConnection.ensureOpen": {
+    "exported": false,
+    "signature": "receiver=*CatalogConnection func() error"
+  },
+  "packages/go/orm/catalog.go::ConnectCatalog": {
+    "exported": true,
+    "signature": "func(dsn string) (*CatalogConnection, error)"
+  },
+  "packages/go/orm/catalog.go::catalogBegin": {
+    "exported": false,
+    "signature": "func(dialect string, readOnly bool) string"
+  },
+  "packages/go/orm/catalog.go::catalogBytesValue": {
+    "exported": false,
+    "signature": "func(value []byte, nativeType string) (any, error)"
+  },
+  "packages/go/orm/catalog.go::catalogCheckName": {
+    "exported": false,
+    "signature": "func(name string) error"
+  },
+  "packages/go/orm/catalog.go::catalogConvert": {
+    "exported": false,
+    "signature": "func(raw catalogRaw, nativeTypes []string) ([][]any, error)"
+  },
+  "packages/go/orm/catalog.go::catalogErr": {
+    "exported": false,
+    "signature": "func(code, format string, args ...any) error"
+  },
+  "packages/go/orm/catalog.go::catalogParams": {
+    "exported": false,
+    "signature": "func(params []any) ([]any, error)"
+  },
+  "packages/go/orm/catalog.go::catalogPlaceholder": {
+    "exported": false,
+    "signature": "func(index int, dialect string) string"
+  },
+  "packages/go/orm/catalog.go::catalogQualified": {
+    "exported": false,
+    "signature": "func(ref CatalogTableRef, dialect string) string"
+  },
+  "packages/go/orm/catalog.go::catalogQuote": {
+    "exported": false,
+    "signature": "func(name, dialect string) string"
+  },
+  "packages/go/orm/catalog.go::catalogRaw": {
+    "exported": false,
+    "signature": "type catalogRaw struct { names []string types []string rows [][]any }"
+  },
+  "packages/go/orm/catalog.go::catalogRaw#field.names": {
+    "exported": false,
+    "signature": "[]string"
+  },
+  "packages/go/orm/catalog.go::catalogRaw#field.rows": {
+    "exported": false,
+    "signature": "[][]any"
+  },
+  "packages/go/orm/catalog.go::catalogRaw#field.types": {
+    "exported": false,
+    "signature": "[]string"
+  },
+  "packages/go/orm/catalog.go::catalogRead": {
+    "exported": false,
+    "signature": "func[T any](ctx context.Context, c *CatalogConnection, fn func(s *catalogSession) (T, error)) (T, error)"
+  },
+  "packages/go/orm/catalog.go::catalogSession": {
+    "exported": false,
+    "signature": "type catalogSession struct { ctx context.Context conn *sql.Conn dialect string }"
+  },
+  "packages/go/orm/catalog.go::catalogSession#field.conn": {
+    "exported": false,
+    "signature": "*sql.Conn"
+  },
+  "packages/go/orm/catalog.go::catalogSession#field.ctx": {
+    "exported": false,
+    "signature": "context.Context"
+  },
+  "packages/go/orm/catalog.go::catalogSession#field.dialect": {
+    "exported": false,
+    "signature": "string"
+  },
+  "packages/go/orm/catalog.go::catalogSession.discard": {
+    "exported": false,
+    "signature": "receiver=*catalogSession func(err error) error"
+  },
+  "packages/go/orm/catalog.go::catalogSession.end": {
+    "exported": false,
+    "signature": "receiver=*catalogSession func(err error) error"
+  },
+  "packages/go/orm/catalog.go::catalogSession.exec": {
+    "exported": false,
+    "signature": "receiver=*catalogSession func(query string, args []any) (int64, error)"
+  },
+  "packages/go/orm/catalog.go::catalogSession.queryRaw": {
+    "exported": false,
+    "signature": "receiver=*catalogSession func(query string, args []any, maxRows int, maxBytes int) (raw catalogRaw, err error)"
+  },
+  "packages/go/orm/catalog.go::catalogSize": {
+    "exported": false,
+    "signature": "func(value any) int"
+  },
+  "packages/go/orm/catalog.go::catalogValue": {
+    "exported": false,
+    "signature": "func(value any, nativeType string) (any, error)"
+  },
+  "packages/go/orm/catalog.go::catalogWrite": {
+    "exported": false,
+    "signature": "func[T any](ctx context.Context, c *CatalogConnection, fn func(s *catalogSession) (T, error)) (T, error)"
+  },
+  "packages/go/orm/catalog_grid.go::CatalogConnection.ReadOnlyGridQuery": {
+    "exported": true,
+    "signature": "receiver=*CatalogConnection func(ctx context.Context, query string, params []any, limits CatalogQueryLimits) (CatalogGridResult, error)"
+  },
+  "packages/go/orm/catalog_grid.go::CatalogGridCell": {
+    "exported": true,
+    "signature": "type CatalogGridCell struct { Kind CatalogGridKind Value any }"
+  },
+  "packages/go/orm/catalog_grid.go::CatalogGridCell#field.Kind": {
+    "exported": true,
+    "signature": "CatalogGridKind"
+  },
+  "packages/go/orm/catalog_grid.go::CatalogGridCell#field.Value": {
+    "exported": true,
+    "signature": "any"
+  },
+  "packages/go/orm/catalog_grid.go::CatalogGridKind": {
+    "exported": true,
+    "signature": "type CatalogGridKind string"
+  },
+  "packages/go/orm/catalog_grid.go::CatalogGridResult": {
+    "exported": true,
+    "signature": "type CatalogGridResult struct { Columns []string Rows [][]CatalogGridCell }"
+  },
+  "packages/go/orm/catalog_grid.go::CatalogGridResult#field.Columns": {
+    "exported": true,
+    "signature": "[]string"
+  },
+  "packages/go/orm/catalog_grid.go::CatalogGridResult#field.Rows": {
+    "exported": true,
+    "signature": "[][]CatalogGridCell"
+  },
+  "packages/go/orm/catalog_grid.go::catalogGridBinaryName": {
+    "exported": false,
+    "signature": "func(native string) bool"
+  },
+  "packages/go/orm/catalog_grid.go::catalogGridCell": {
+    "exported": false,
+    "signature": "func(value any, native string, dialect string) (CatalogGridCell, error)"
+  },
+  "packages/go/orm/catalog_grid.go::catalogGridClock": {
+    "exported": false,
+    "signature": "func(text string) (string, error)"
+  },
+  "packages/go/orm/catalog_grid.go::catalogGridDate": {
+    "exported": false,
+    "signature": "func(year, month, day int) (string, error)"
+  },
+  "packages/go/orm/catalog_grid.go::catalogGridDateText": {
+    "exported": false,
+    "signature": "func(text string) (string, error)"
+  },
+  "packages/go/orm/catalog_grid.go::catalogGridFiniteDecimal": {
+    "exported": false,
+    "signature": "func(text string) bool"
+  },
+  "packages/go/orm/catalog_grid.go::catalogGridSQLite": {
+    "exported": false,
+    "signature": "func(value any, refuse func(string, ...any) (CatalogGridCell, error), cell func(CatalogGridKind, any) (CatalogGridCell, error)) (CatalogGridCell, error)"
+  },
+  "packages/go/orm/catalog_grid.go::catalogGridTextName": {
+    "exported": false,
+    "signature": "func(native string) bool"
+  },
+  "packages/go/orm/catalog_grid.go::catalogGridTextual": {
+    "exported": false,
+    "signature": "func(text string, native, dialect string, refuse func(string, ...any) (CatalogGridCell, error), cell func(CatalogGridKind, any) (CatalogGridCell, error)) (CatalogGridCell, error)"
+  },
+  "packages/go/orm/catalog_grid.go::catalogGridTimeValue": {
+    "exported": false,
+    "signature": "func(v time.Time, native, dialect string, refuse func(string, ...any) (CatalogGridCell, error), cell func(CatalogGridKind, any) (CatalogGridCell, error)) (CatalogGridCell, error)"
+  },
+  "packages/go/orm/catalog_grid.go::catalogSQLiteRawQuery": {
+    "exported": false,
+    "signature": "func(query string, width int) string"
+  },
+  "packages/go/orm/catalog_grid.go::catalogSession.columnNames": {
+    "exported": false,
+    "signature": "receiver=*catalogSession func(query string, args []any) (names []string, err error)"
+  },
+  "packages/go/orm/catalog_metadata.go::CatalogColumn": {
+    "exported": true,
+    "signature": "type CatalogColumn struct { Name string NativeType string Nullable bool Generated bool AutomaticKey bool DefaultExpression *string ExpressionDefault bool }"
+  },
+  "packages/go/orm/catalog_metadata.go::CatalogColumn#field.AutomaticKey": {
+    "exported": true,
+    "signature": "bool"
+  },
+  "packages/go/orm/catalog_metadata.go::CatalogColumn#field.DefaultExpression": {
+    "exported": true,
+    "signature": "*string"
+  },
+  "packages/go/orm/catalog_metadata.go::CatalogColumn#field.ExpressionDefault": {
+    "exported": true,
+    "signature": "bool"
+  },
+  "packages/go/orm/catalog_metadata.go::CatalogColumn#field.Generated": {
+    "exported": true,
+    "signature": "bool"
+  },
+  "packages/go/orm/catalog_metadata.go::CatalogColumn#field.Name": {
+    "exported": true,
+    "signature": "string"
+  },
+  "packages/go/orm/catalog_metadata.go::CatalogColumn#field.NativeType": {
+    "exported": true,
+    "signature": "string"
+  },
+  "packages/go/orm/catalog_metadata.go::CatalogColumn#field.Nullable": {
+    "exported": true,
+    "signature": "bool"
+  },
+  "packages/go/orm/catalog_metadata.go::CatalogConnection.DescribeTable": {
+    "exported": true,
+    "signature": "receiver=*CatalogConnection func(ctx context.Context, table CatalogTableRef) (CatalogTableMetadata, error)"
+  },
+  "packages/go/orm/catalog_metadata.go::CatalogTableKind": {
+    "exported": true,
+    "signature": "type CatalogTableKind string"
+  },
+  "packages/go/orm/catalog_metadata.go::CatalogTableMetadata": {
+    "exported": true,
+    "signature": "type CatalogTableMetadata struct { Table CatalogTableRef Kind CatalogTableKind Columns []CatalogColumn PrimaryKey []string ReliableRowIdentity bool }"
+  },
+  "packages/go/orm/catalog_metadata.go::CatalogTableMetadata#field.Columns": {
+    "exported": true,
+    "signature": "[]CatalogColumn"
+  },
+  "packages/go/orm/catalog_metadata.go::CatalogTableMetadata#field.Kind": {
+    "exported": true,
+    "signature": "CatalogTableKind"
+  },
+  "packages/go/orm/catalog_metadata.go::CatalogTableMetadata#field.PrimaryKey": {
+    "exported": true,
+    "signature": "[]string"
+  },
+  "packages/go/orm/catalog_metadata.go::CatalogTableMetadata#field.ReliableRowIdentity": {
+    "exported": true,
+    "signature": "bool"
+  },
+  "packages/go/orm/catalog_metadata.go::CatalogTableMetadata#field.Table": {
+    "exported": true,
+    "signature": "CatalogTableRef"
+  },
+  "packages/go/orm/catalog_metadata.go::CatalogTableRef": {
+    "exported": true,
+    "signature": "type CatalogTableRef struct { Namespace string Name string }"
+  },
+  "packages/go/orm/catalog_metadata.go::CatalogTableRef#field.Name": {
+    "exported": true,
+    "signature": "string"
+  },
+  "packages/go/orm/catalog_metadata.go::CatalogTableRef#field.Namespace": {
+    "exported": true,
+    "signature": "string"
+  },
+  "packages/go/orm/catalog_metadata.go::catalogBool": {
+    "exported": false,
+    "signature": "func(value any) (bool, error)"
+  },
+  "packages/go/orm/catalog_metadata.go::catalogColumnRow": {
+    "exported": false,
+    "signature": "func(row []any) (CatalogColumn, error)"
+  },
+  "packages/go/orm/catalog_metadata.go::catalogInt": {
+    "exported": false,
+    "signature": "func(value any) (int64, error)"
+  },
+  "packages/go/orm/catalog_metadata.go::catalogKind": {
+    "exported": false,
+    "signature": "func(dialect, native string) (CatalogTableKind, error)"
+  },
+  "packages/go/orm/catalog_metadata.go::catalogNativeTypes": {
+    "exported": false,
+    "signature": "func(metadata CatalogTableMetadata) []string"
+  },
+  "packages/go/orm/catalog_metadata.go::catalogSameNames": {
+    "exported": false,
+    "signature": "func(names []string, columns []CatalogColumn) error"
+  },
+  "packages/go/orm/catalog_metadata.go::catalogSession.describe": {
+    "exported": false,
+    "signature": "receiver=*catalogSession func(ref CatalogTableRef) (CatalogTableMetadata, error)"
+  },
+  "packages/go/orm/catalog_metadata.go::catalogText": {
+    "exported": false,
+    "signature": "func(value any) (string, error)"
+  },
+  "packages/go/orm/catalog_metadata.go::catalogValidateTable": {
+    "exported": false,
+    "signature": "func(ref CatalogTableRef) error"
+  },
+  "packages/go/orm/catalog_metadata.go::sameDescriptor": {
+    "exported": false,
+    "signature": "func(a, b CatalogTableMetadata) bool"
+  },
+  "packages/go/orm/catalog_mutation.go::CatalogAssignment": {
+    "exported": true,
+    "signature": "type CatalogAssignment struct { Name string Value any }"
+  },
+  "packages/go/orm/catalog_mutation.go::CatalogAssignment#field.Name": {
+    "exported": true,
+    "signature": "string"
+  },
+  "packages/go/orm/catalog_mutation.go::CatalogAssignment#field.Value": {
+    "exported": true,
+    "signature": "any"
+  },
+  "packages/go/orm/catalog_mutation.go::CatalogConnection.DeleteRow": {
+    "exported": true,
+    "signature": "receiver=*CatalogConnection func(ctx context.Context, original CatalogRowSnapshot) (int64, error)"
+  },
+  "packages/go/orm/catalog_mutation.go::CatalogConnection.InsertRow": {
+    "exported": true,
+    "signature": "receiver=*CatalogConnection func(ctx context.Context, declared CatalogTableMetadata, values []CatalogAssignment) (CatalogMutationResult, error)"
+  },
+  "packages/go/orm/catalog_mutation.go::CatalogConnection.UpdateRow": {
+    "exported": true,
+    "signature": "receiver=*CatalogConnection func(ctx context.Context, original CatalogRowSnapshot, values []CatalogAssignment) (CatalogMutationResult, error)"
+  },
+  "packages/go/orm/catalog_mutation.go::CatalogMutationResult": {
+    "exported": true,
+    "signature": "type CatalogMutationResult struct { Columns []string Rows [][]any }"
+  },
+  "packages/go/orm/catalog_mutation.go::CatalogMutationResult#field.Columns": {
+    "exported": true,
+    "signature": "[]string"
+  },
+  "packages/go/orm/catalog_mutation.go::CatalogMutationResult#field.Rows": {
+    "exported": true,
+    "signature": "[][]any"
+  },
+  "packages/go/orm/catalog_mutation.go::catalogChange": {
+    "exported": false,
+    "signature": "type catalogChange struct { index int value any }"
+  },
+  "packages/go/orm/catalog_mutation.go::catalogChange#field.index": {
+    "exported": false,
+    "signature": "int"
+  },
+  "packages/go/orm/catalog_mutation.go::catalogChange#field.value": {
+    "exported": false,
+    "signature": "any"
+  },
+  "packages/go/orm/catalog_mutation.go::catalogChanges": {
+    "exported": false,
+    "signature": "func(metadata CatalogTableMetadata, values []CatalogAssignment, code string) ([]catalogChange, error)"
+  },
+  "packages/go/orm/catalog_mutation.go::catalogCheckCurrent": {
+    "exported": false,
+    "signature": "func(current [][]any, original []any) error"
+  },
+  "packages/go/orm/catalog_mutation.go::catalogColumnList": {
+    "exported": false,
+    "signature": "func(metadata CatalogTableMetadata, dialect string) string"
+  },
+  "packages/go/orm/catalog_mutation.go::catalogKeyPredicate": {
+    "exported": false,
+    "signature": "func(metadata CatalogTableMetadata, dialect string, start int) string"
+  },
+  "packages/go/orm/catalog_mutation.go::catalogSameCell": {
+    "exported": false,
+    "signature": "func(a, b any) (bool, error)"
+  },
+  "packages/go/orm/catalog_mutation.go::catalogSession.lookup": {
+    "exported": false,
+    "signature": "receiver=*catalogSession func(metadata CatalogTableMetadata, keys []any, lock bool) ([][]any, error)"
+  },
+  "packages/go/orm/catalog_mutation.go::catalogSession.mysqlSafety": {
+    "exported": false,
+    "signature": "receiver=*catalogSession func(metadata CatalogTableMetadata) error"
+  },
+  "packages/go/orm/catalog_mutation.go::columnNames": {
+    "exported": false,
+    "signature": "func(metadata CatalogTableMetadata) []string"
+  },
+  "packages/go/orm/catalog_page.go::CatalogConnection.TablePage": {
+    "exported": true,
+    "signature": "receiver=*CatalogConnection func(ctx context.Context, table CatalogTableRef, limit int, offset int64) (CatalogTablePage, error)"
+  },
+  "packages/go/orm/catalog_page.go::CatalogResult": {
+    "exported": true,
+    "signature": "type CatalogResult struct { Columns []CatalogColumn Rows [][]any }"
+  },
+  "packages/go/orm/catalog_page.go::CatalogResult#field.Columns": {
+    "exported": true,
+    "signature": "[]CatalogColumn"
+  },
+  "packages/go/orm/catalog_page.go::CatalogResult#field.Rows": {
+    "exported": true,
+    "signature": "[][]any"
+  },
+  "packages/go/orm/catalog_page.go::CatalogRowSnapshot": {
+    "exported": true,
+    "signature": "type CatalogRowSnapshot struct { metadata CatalogTableMetadata cells []any keyIndexes []int revision string }"
+  },
+  "packages/go/orm/catalog_page.go::CatalogRowSnapshot#field.cells": {
+    "exported": false,
+    "signature": "[]any"
+  },
+  "packages/go/orm/catalog_page.go::CatalogRowSnapshot#field.keyIndexes": {
+    "exported": false,
+    "signature": "[]int"
+  },
+  "packages/go/orm/catalog_page.go::CatalogRowSnapshot#field.metadata": {
+    "exported": false,
+    "signature": "CatalogTableMetadata"
+  },
+  "packages/go/orm/catalog_page.go::CatalogRowSnapshot#field.revision": {
+    "exported": false,
+    "signature": "string"
+  },
+  "packages/go/orm/catalog_page.go::CatalogRowSnapshot.Revision": {
+    "exported": true,
+    "signature": "receiver=CatalogRowSnapshot func() string"
+  },
+  "packages/go/orm/catalog_page.go::CatalogRowSnapshot.keys": {
+    "exported": false,
+    "signature": "receiver=CatalogRowSnapshot func() []any"
+  },
+  "packages/go/orm/catalog_page.go::CatalogRowSnapshot.valid": {
+    "exported": false,
+    "signature": "receiver=CatalogRowSnapshot func() error"
+  },
+  "packages/go/orm/catalog_page.go::CatalogSnapshotFromPage": {
+    "exported": true,
+    "signature": "func(page CatalogTablePage, index int) (CatalogRowSnapshot, error)"
+  },
+  "packages/go/orm/catalog_page.go::CatalogTablePage": {
+    "exported": true,
+    "signature": "type CatalogTablePage struct { Metadata CatalogTableMetadata Result CatalogResult Limit int Offset int64 OrderBy []string HasMore bool }"
+  },
+  "packages/go/orm/catalog_page.go::CatalogTablePage#field.HasMore": {
+    "exported": true,
+    "signature": "bool"
+  },
+  "packages/go/orm/catalog_page.go::CatalogTablePage#field.Limit": {
+    "exported": true,
+    "signature": "int"
+  },
+  "packages/go/orm/catalog_page.go::CatalogTablePage#field.Metadata": {
+    "exported": true,
+    "signature": "CatalogTableMetadata"
+  },
+  "packages/go/orm/catalog_page.go::CatalogTablePage#field.Offset": {
+    "exported": true,
+    "signature": "int64"
+  },
+  "packages/go/orm/catalog_page.go::CatalogTablePage#field.OrderBy": {
+    "exported": true,
+    "signature": "[]string"
+  },
+  "packages/go/orm/catalog_page.go::CatalogTablePage#field.Result": {
+    "exported": true,
+    "signature": "CatalogResult"
+  },
+  "packages/go/orm/catalog_page.go::CatalogTablePage.Column": {
+    "exported": true,
+    "signature": "receiver=CatalogTablePage func(row []any, name string) any"
+  },
+  "packages/go/orm/catalog_page.go::catalogCellKey": {
+    "exported": false,
+    "signature": "func(cell any) (string, error)"
+  },
+  "packages/go/orm/catalog_page.go::catalogCheckCells": {
+    "exported": false,
+    "signature": "func(metadata CatalogTableMetadata, cells []any) error"
+  },
+  "packages/go/orm/catalog_page.go::catalogDescriptor": {
+    "exported": false,
+    "signature": "func(metadata CatalogTableMetadata) ([]int, error)"
+  },
+  "packages/go/orm/catalog_page.go::catalogQuoteList": {
+    "exported": false,
+    "signature": "func(names []string, dialect string) string"
+  },
+  "packages/go/orm/catalog_page.go::catalogRevision": {
+    "exported": false,
+    "signature": "func(metadata CatalogTableMetadata, cells []any) (string, error)"
+  },
+  "packages/go/orm/catalog_page.go::catalogSameRow": {
+    "exported": false,
+    "signature": "func(a, b []any) (bool, error)"
+  },
+  "packages/go/orm/catalog_query.go::CatalogConnection.ReadOnlyQuery": {
+    "exported": true,
+    "signature": "receiver=*CatalogConnection func(ctx context.Context, query string, params []any, limits CatalogQueryLimits) (CatalogQueryResult, error)"
+  },
+  "packages/go/orm/catalog_query.go::CatalogConnection.readOnlyArgs": {
+    "exported": false,
+    "signature": "receiver=*CatalogConnection func(query string, params []any, limits CatalogQueryLimits) ([]any, int, int, error)"
+  },
+  "packages/go/orm/catalog_query.go::CatalogQueryLimits": {
+    "exported": true,
+    "signature": "type CatalogQueryLimits struct { MaxRows int MaxBytes int }"
+  },
+  "packages/go/orm/catalog_query.go::CatalogQueryLimits#field.MaxBytes": {
+    "exported": true,
+    "signature": "int"
+  },
+  "packages/go/orm/catalog_query.go::CatalogQueryLimits#field.MaxRows": {
+    "exported": true,
+    "signature": "int"
+  },
+  "packages/go/orm/catalog_query.go::CatalogQueryResult": {
+    "exported": true,
+    "signature": "type CatalogQueryResult struct { Columns []string Rows [][]any }"
+  },
+  "packages/go/orm/catalog_query.go::CatalogQueryResult#field.Columns": {
+    "exported": true,
+    "signature": "[]string"
+  },
+  "packages/go/orm/catalog_query.go::CatalogQueryResult#field.Rows": {
+    "exported": true,
+    "signature": "[][]any"
+  },
+  "packages/go/orm/catalog_query.go::catalogSkipQuoted": {
+    "exported": false,
+    "signature": "func(query string, start int, quote byte, backslash bool) (int, bool)"
+  },
+  "packages/go/orm/catalog_query.go::catalogValidateReadOnly": {
+    "exported": false,
+    "signature": "func(query, dialect string) error"
+  },
+  "packages/go/orm/catalog_query.go::catalogWords": {
+    "exported": false,
+    "signature": "func(query, dialect string) ([]string, bool)"
+  },
+  "packages/go/orm/catalog_query.go::isASCIIDigit": {
+    "exported": false,
+    "signature": "func(c byte) bool"
+  },
+  "packages/go/orm/catalog_query.go::isASCIILetter": {
+    "exported": false,
+    "signature": "func(c byte) bool"
   },
   "packages/go/orm/codec.go::Decode": {
     "exported": true,
@@ -18233,7 +18877,7 @@
   },
   "packages/go/orm/db.go::dbMutable": {
     "exported": false,
-    "signature": "type dbMutable struct { engineMu sync.RWMutex engines map[string]*engine.Engine schemas map[string]*Schema planMu sync.RWMutex planOrder []uint64 stmMu sync.Mutex stmtOrder []string closeOnce sync.Once closed atomic.Bool closeErr error sqliteRowLockMu sync.Mutex sqliteRowLockReady atomic.Bool keyringOnce sync.Once keyring AESKeyring keyringErr error subs subscribers rollbackFault atomic.Bool statementFault atomic.Pointer[stmtFault] fixedClock atomic.Pointer[time.Time] lastAffected atomic.Int64 }"
+    "signature": "type dbMutable struct { native string engineMu sync.RWMutex engines map[string]*engine.Engine schemas map[string]*Schema planMu sync.RWMutex planOrder []uint64 stmMu sync.Mutex stmtOrder []string closeOnce sync.Once closed atomic.Bool closeErr error sqliteRowLockMu sync.Mutex sqliteRowLockReady atomic.Bool keyringOnce sync.Once keyring AESKeyring keyringErr error subs subscribers rollbackFault atomic.Bool statementFault atomic.Pointer[stmtFault] fixedClock atomic.Pointer[time.Time] lastAffected atomic.Int64 }"
   },
   "packages/go/orm/db.go::dbMutable#field.closeErr": {
     "exported": false,
@@ -18274,6 +18918,10 @@
   "packages/go/orm/db.go::dbMutable#field.lastAffected": {
     "exported": false,
     "signature": "atomic.Int64"
+  },
+  "packages/go/orm/db.go::dbMutable#field.native": {
+    "exported": false,
+    "signature": "string"
   },
   "packages/go/orm/db.go::dbMutable#field.planMu": {
     "exported": false,
@@ -18723,6 +19371,10 @@
     "exported": false,
     "signature": "func(vals []any, asm *plan.Assemble) (int32, error)"
   },
+  "packages/go/orm/exec.go::splitQueryRowKey": {
+    "exported": false,
+    "signature": "func(row []any, refs []plan.KeyRef) (Key, error)"
+  },
   "packages/go/orm/exec.go::stepRows": {
     "exported": false,
     "signature": "type stepRows struct { step *plan.Step data [][]any byKey map[Key][]int }"
@@ -18910,6 +19562,90 @@
   "packages/go/orm/hostcodec.go::unpackIP": {
     "exported": false,
     "signature": "func(b []byte) (string, error)"
+  },
+  "packages/go/orm/listen.go::DB.Listen": {
+    "exported": true,
+    "signature": "receiver=*DB func(channel string) (*Subscription, error)"
+  },
+  "packages/go/orm/listen.go::DB.Notify": {
+    "exported": true,
+    "signature": "receiver=*DB func(channel, payload string) error"
+  },
+  "packages/go/orm/listen.go::DB.listenable": {
+    "exported": false,
+    "signature": "receiver=*DB func(surface string) error"
+  },
+  "packages/go/orm/listen.go::ListenConn": {
+    "exported": true,
+    "signature": "type ListenConn interface { Exec(ctx context.Context, sqlText string) error WaitNotification(ctx context.Context) (Notification, error) Close() error }"
+  },
+  "packages/go/orm/listen.go::Notification": {
+    "exported": true,
+    "signature": "type Notification struct { Channel string Payload string PID int32 }"
+  },
+  "packages/go/orm/listen.go::Notification#field.Channel": {
+    "exported": true,
+    "signature": "string"
+  },
+  "packages/go/orm/listen.go::Notification#field.PID": {
+    "exported": true,
+    "signature": "int32"
+  },
+  "packages/go/orm/listen.go::Notification#field.Payload": {
+    "exported": true,
+    "signature": "string"
+  },
+  "packages/go/orm/listen.go::RegisterListener": {
+    "exported": true,
+    "signature": "func(name string, open func(ctx context.Context, native string) (ListenConn, error))"
+  },
+  "packages/go/orm/listen.go::Subscription": {
+    "exported": true,
+    "signature": "type Subscription struct { mu sync.Mutex conn ListenConn ctx context.Context channels map[string]bool closed bool }"
+  },
+  "packages/go/orm/listen.go::Subscription#field.channels": {
+    "exported": false,
+    "signature": "map[string]bool"
+  },
+  "packages/go/orm/listen.go::Subscription#field.closed": {
+    "exported": false,
+    "signature": "bool"
+  },
+  "packages/go/orm/listen.go::Subscription#field.conn": {
+    "exported": false,
+    "signature": "ListenConn"
+  },
+  "packages/go/orm/listen.go::Subscription#field.ctx": {
+    "exported": false,
+    "signature": "context.Context"
+  },
+  "packages/go/orm/listen.go::Subscription#field.mu": {
+    "exported": false,
+    "signature": "sync.Mutex"
+  },
+  "packages/go/orm/listen.go::Subscription.Close": {
+    "exported": true,
+    "signature": "receiver=*Subscription func() error"
+  },
+  "packages/go/orm/listen.go::Subscription.Receive": {
+    "exported": true,
+    "signature": "receiver=*Subscription func() (Notification, error)"
+  },
+  "packages/go/orm/listen.go::Subscription.Unlisten": {
+    "exported": true,
+    "signature": "receiver=*Subscription func(channel string) error"
+  },
+  "packages/go/orm/listen.go::checkChannel": {
+    "exported": false,
+    "signature": "func(channel string) error"
+  },
+  "packages/go/orm/listen.go::listenOpener": {
+    "exported": false,
+    "signature": "func(name string) (func(ctx context.Context, native string) (ListenConn, error), bool)"
+  },
+  "packages/go/orm/listen.go::quoteIdent": {
+    "exported": false,
+    "signature": "func(name string) string"
   },
   "packages/go/orm/markdown.go::DB.beginMarkdown": {
     "exported": false,
@@ -19742,6 +20478,34 @@
   "packages/go/orm/ordered_json_value.go::orderedJSONValue": {
     "exported": false,
     "signature": "func(value any) (*orderedjson.Value, error)"
+  },
+  "packages/go/orm/pg/listen.go::init": {
+    "exported": false,
+    "signature": "func()"
+  },
+  "packages/go/orm/pg/listen.go::listenConn": {
+    "exported": false,
+    "signature": "type listenConn struct{ conn *pgx.Conn }"
+  },
+  "packages/go/orm/pg/listen.go::listenConn#field.conn": {
+    "exported": false,
+    "signature": "*pgx.Conn"
+  },
+  "packages/go/orm/pg/listen.go::listenConn.Close": {
+    "exported": false,
+    "signature": "receiver=*listenConn func() error"
+  },
+  "packages/go/orm/pg/listen.go::listenConn.Exec": {
+    "exported": false,
+    "signature": "receiver=*listenConn func(ctx context.Context, sqlText string) error"
+  },
+  "packages/go/orm/pg/listen.go::listenConn.WaitNotification": {
+    "exported": false,
+    "signature": "receiver=*listenConn func(ctx context.Context) (orm.Notification, error)"
+  },
+  "packages/go/orm/pg/listen.go::openListen": {
+    "exported": false,
+    "signature": "func(ctx context.Context, native string) (orm.ListenConn, error)"
   },
   "packages/go/orm/pg/pg.go::init": {
     "exported": false,

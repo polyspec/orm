@@ -62,6 +62,52 @@ final class OrmGenTest extends TestCase
         return [proc_close($process), $out, $err];
     }
 
+    // Requirements: DBS-112, DBS-114.
+    public function testGeneratedTypedGetterUsesPrivateModelStorageAndRejectsUnselectedRead(): void
+    {
+        $dir = self::$work . '/typed-getter';
+        $namespace = 'Polyspec\\Orm\\Tests\\GeneratedTypedGetter';
+        $set = self::setFile($dir, ['typed.dbs']);
+        file_put_contents(
+            "$dir/typed.dbs",
+            "dbspec 1 typed\n\ntable item {\n  price i32\n  primary key (price)\n}\n"
+        );
+        [$code, $out, $err] = self::tool([
+            'gen', '--set', $set, '--out', "$dir/model", '--namespace', $namespace
+        ]);
+        self::assertSame(0, $code, "$out $err");
+        require_once "$dir/model/Item.php";
+
+        $class = "$namespace\\Item";
+        $model = new $class();
+        $getter = new \ReflectionMethod($class, 'getPrice');
+        self::assertSame('int', $getter->getReturnType()->getName());
+        self::assertFalse($getter->isInternal());
+        self::assertSame([], (new \ReflectionClass($class))->getProperties());
+        self::assertTrue((new \ReflectionProperty(\Polyspec\Orm\Model::class, 'values'))->isPrivate());
+
+        try {
+            $model->getPrice();
+            self::fail('An unselected generated column must fail.');
+        } catch (\Polyspec\Orm\OrmException $error) {
+            self::assertSame(\Polyspec\Orm\Code::COLUMN_UNSELECTED, $error->code_);
+        }
+
+        self::assertSame($model, $model->setPrice(17));
+        self::assertSame(17, $model->getPrice());
+        set_error_handler(static fn(int $severity, string $message): never => throw new \ErrorException($message));
+        try {
+            try {
+                $model->values;
+                self::fail('Generated consumers must not access private model storage.');
+            } catch (\ErrorException $error) {
+                self::assertStringContainsString('undefined property', strtolower($error->getMessage()));
+            }
+        } finally {
+            restore_error_handler();
+        }
+    }
+
     public function testGenCheckComparesTheModelsWithoutWriting(): void
     {
         $work = self::$work;

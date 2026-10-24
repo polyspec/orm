@@ -14,6 +14,9 @@ use PDOStatement;
 // The rollback is actually finished first, and then the failure is returned.
 final class ModelTestFailingPdo extends PDO
 {
+    /** @var list<string> */
+    public array $statements = [];
+
     /** @var ?Closure(string): bool */
     public ?Closure $rejects = null;
     public bool $rejectRollback = false;
@@ -27,6 +30,7 @@ final class ModelTestFailingPdo extends PDO
 
     public function exec(string $statement): int|false
     {
+        $this->statements[] = $statement;
         $this->check($statement);
         $result = parent::exec($statement);
         // rejectRollback runs the client's ROLLBACK and then reports it as a failure.
@@ -38,6 +42,7 @@ final class ModelTestFailingPdo extends PDO
 
     public function prepare(string $query, array $options = []): PDOStatement|false
     {
+        $this->statements[] = $query;
         $this->check($query);
         return parent::prepare($query, $options);
     }

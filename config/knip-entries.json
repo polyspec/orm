@@ -6,6 +6,7 @@
     "docs/.vitepress/theme/index.ts": "the VitePress theme of the site under docs/, which VitePress loads by its path",
     "examples/thin-slice/ts/main.mts": "the TypeScript thin-slice demo, which the usage guide runs with node and the thin-slice checks run",
     "packages/go/testing/feature-json.mts": "the Go feature runner, which the feature-go-unit target of make runs with node (Makefile)",
+    "scripts/rust/compiler-fixtures.mts": "the Rust compiler fixture runner, which make rust-compiler-fixtures-check runs with node (Makefile)",
     "tests/dbspec/compare/check.mts": "the dbspec comparison check, which make runs with node",
     "tests/dbspec/stress.mts": "the writer of the stress documents, which make runs with node",
     "tests/go-run.mts": "the Go test runner, which the repository checks and the CI spawn",

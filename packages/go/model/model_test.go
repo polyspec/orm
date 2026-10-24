@@ -66,6 +66,15 @@ func must[T any](v T, err error) T {
 	return v
 }
 
+func readColumn[T any](t *testing.T, getter func() (T, error)) T {
+	t.Helper()
+	value, err := getter()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return value
+}
+
 type fixture struct {
 	service *model.ServiceModel
 	member  *model.ServiceMemberModel
@@ -83,16 +92,16 @@ func seed(t *testing.T, db *orm.DB) fixture {
 	for _, name := range []string{"kim", "lee", "park"} {
 		f.users = append(f.users, must(model.User().Connect(db).SetName(name).Create()))
 	}
-	f.module = must(model.ServiceRegion().Connect(db).SetServiceSeq(f.service.GetSeq()).SetName("module").Create())
-	f.member = must(model.ServiceMember().Connect(db).SetServiceSeq(f.service.GetSeq()).SetUserSeq(f.users[0].GetSeq()).Create())
+	f.module = must(model.ServiceRegion().Connect(db).SetServiceSeq(readColumn(t, f.service.GetSeq)).SetName("module").Create())
+	f.member = must(model.ServiceMember().Connect(db).SetServiceSeq(readColumn(t, f.service.GetSeq)).SetUserSeq(readColumn(t, f.users[0].GetSeq)).Create())
 	for i, name := range []string{"alpha", "beta", "gamma", "delta"} {
 		cover := "cover-" + name
 		b := model.Author().Connect(db).
 			SetName(name).
-			SetUserSeq(f.users[i%2].GetSeq()).
-			SetServiceSeq(f.service.GetSeq()).
-			SetServiceRegionSeq(f.module.GetSeq()).
-			SetServiceMemberSeq(f.member.GetSeq()).
+			SetUserSeq(readColumn(t, f.users[i%2].GetSeq)).
+			SetServiceSeq(readColumn(t, f.service.GetSeq)).
+			SetServiceRegionSeq(readColumn(t, f.module.GetSeq)).
+			SetServiceMemberSeq(readColumn(t, f.member.GetSeq)).
 			SetStartDt(start.Add(time.Duration(i) * time.Hour).Format(time.DateTime)).
 			SetEndDt(start.Add(48 * time.Hour).Format(time.DateTime)).
 			SetReadCount(int32(i * 10)).
@@ -105,10 +114,10 @@ func seed(t *testing.T, db *orm.DB) fixture {
 	return f
 }
 
-func names(c *orm.Collection[*model.AuthorModel]) string {
+func names(t *testing.T, c *orm.Collection[*model.AuthorModel]) string {
 	var out []string
 	for _, b := range c.Slice() {
-		out = append(out, b.GetName())
+		out = append(out, readColumn(t, b.GetName))
 	}
 	return strings.Join(out, ",")
 }
@@ -118,27 +127,27 @@ func TestConditions(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	each(t, func(t *testing.T, db *orm.DB) {
 		f := seed(t, db)
-		svc := f.service.GetSeq()
+		svc := readColumn(t, f.service.GetSeq)
 		rows := must(model.Author().Connect(db).
 			ServiceSeq(svc).
 			AndIsClose(false).
 			Or().IsClose(true).
 			OrderBySeqAsc().
 			Gets())
-		if names(rows) != "alpha,beta,gamma,delta" {
-			t.Fatalf("connectors: %s", names(rows))
+		if names(t, rows) != "alpha,beta,gamma,delta" {
+			t.Fatalf("connectors: %s", names(t, rows))
 		}
 		rows = must(model.Author().Connect(db).
 			ServiceSeq(svc).
 			And(func(q *model.AuthorModel) { q.GeReadCount(10).AndLtReadCount(30).Or().Name("alpha") }).
 			OrderByReadCountDescAndSeqAsc().
 			Gets())
-		if names(rows) != "gamma,beta,alpha" {
-			t.Fatalf("group: %s", names(rows))
+		if names(t, rows) != "gamma,beta,alpha" {
+			t.Fatalf("group: %s", names(t, rows))
 		}
-		rows = must(model.Author().Connect(db).GetsBySeqAndNeName([]int64{f.authors[0].GetSeq(), f.authors[1].GetSeq()}, "beta"))
-		if names(rows) != "alpha" {
-			t.Fatalf("getsBy list: %s", names(rows))
+		rows = must(model.Author().Connect(db).GetsBySeqAndNeName([]int64{readColumn(t, f.authors[0].GetSeq), readColumn(t, f.authors[1].GetSeq)}, "beta"))
+		if names(t, rows) != "alpha" {
+			t.Fatalf("getsBy list: %s", names(t, rows))
 		}
 		if n := must(model.Author().Connect(db).PhotoUrl(orm.Null).GetCount()); n != 2 {
 			t.Fatalf("null: %d", n)
@@ -153,7 +162,7 @@ func TestConditions(t *testing.T) {
 			t.Fatalf("time compare: %d", n)
 		}
 		one := must(model.Author().Connect(db).GetByName("gamma"))
-		if one == nil || one.GetReadCount() != 20 {
+		if one == nil || readColumn(t, one.GetReadCount) != 20 {
 			t.Fatalf("getBy: %+v", one)
 		}
 		if none, err := model.Author().Connect(db).GetByName("missing"); none != nil || err != nil {
@@ -221,14 +230,14 @@ func TestJoinsAndRelations(t *testing.T) {
 			Name("kim")
 		rows := must(model.Author().Connect(db).
 			LeftJoinUserSeqWithSeq(author).
-			ServiceSeq(f.service.GetSeq()).
+			ServiceSeq(readColumn(t, f.service.GetSeq)).
 			And(func(q *model.AuthorModel) { q.Name("delta").Or(author) }).
 			OrderBySeqAsc().
 			Gets())
-		if names(rows) != "alpha,gamma,delta" {
-			t.Fatalf("placed join conditions: %s", names(rows))
+		if names(t, rows) != "alpha,gamma,delta" {
+			t.Fatalf("placed join conditions: %s", names(t, rows))
 		}
-		if u := must(rows.First().GetUserModel()); u == nil || u.GetName() != "kim" {
+		if u := must(rows.First().GetUserModel()); u == nil || readColumn(t, u.GetName) != "kim" {
 			t.Fatalf("join result: %+v", u)
 		}
 		member := model.ServiceMember()
@@ -248,25 +257,25 @@ func TestJoinsAndRelations(t *testing.T) {
 			OrderBySeqAsc().
 			Gets())
 		b := loaded.First()
-		if w := must(b.GetWriter()); w == nil || w.GetName() != "kim" {
+		if w := must(b.GetWriter()); w == nil || readColumn(t, w.GetName) != "kim" {
 			t.Fatalf("relation alias: %+v", w)
 		}
-		if members, module := must(b.GetMembers()), must(b.GetServiceRegionModel()); members.Len() != 1 || module.GetName() != "module" {
+		if members, module := must(b.GetMembers()), must(b.GetServiceRegionModel()); members.Len() != 1 || readColumn(t, module.GetName) != "module" {
 			t.Fatalf("relations: %d %+v", members.Len(), module)
 		}
 		limited := must(model.User().Connect(db).
 			Relations(model.Author().MatchSeqWithUserSeq().OrderBySeqDesc().GroupLimit(1)).
 			OrderBySeqAsc().
 			Gets())
-		if got := must(limited.First().GetAuthorModels()); got.Len() != 1 || got.First().GetName() != "gamma" {
-			t.Fatalf("groupLimit: %s", names(got))
+		if got := must(limited.First().GetAuthorModels()); got.Len() != 1 || readColumn(t, got.First().GetName) != "gamma" {
+			t.Fatalf("groupLimit: %s", names(t, got))
 		}
 		other := must(model.Connect(dsnOf(t, db), orm.Config{}))
 		defer testcase.Close(t, other)
 		external := must(model.Author().Connect(db).
 			Relation(model.User().Connect(other).MatchUserSeqWithSeq().AliasOwner()).
 			GetByName("beta"))
-		if owner := must(external.GetOwner()); owner == nil || owner.GetName() != "lee" {
+		if owner := readColumn(t, external.GetOwner); owner == nil || readColumn(t, owner.GetName) != "lee" {
 			t.Fatalf("relation on another connection: %+v", owner)
 		}
 		if _, err := model.Author().Connect(db).JoinUserSeqWithSeq(model.User().Connect(db)).Gets(); orm.ErrorCode(err) != orm.CodeConfig {
@@ -305,8 +314,8 @@ func TestInsertWithoutIdentityOnEveryDatabase(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	each(t, func(t *testing.T, db *orm.DB) {
 		row := must(model.CompositeAccount().Connect(db).SetTenantId(1).SetAccountId(10).SetName("n").Create())
-		if row.GetAccountId() != 10 {
-			t.Fatalf("created account %d, want 10", row.GetAccountId())
+		if readColumn(t, row.GetAccountId) != 10 {
+			t.Fatalf("created account %d, want 10", readColumn(t, row.GetAccountId))
 		}
 	})
 }
@@ -329,8 +338,8 @@ func TestColumnsAndSubqueries(t *testing.T) {
 		if must(orm.AsInt64(u.GetReadTotal())) != 20 {
 			t.Fatalf("added column: %v", u.GetReadTotal())
 		}
-		sum := must(model.Author().Connect(db).ServiceSeq(f.service.GetSeq()).SumReadCount().GetSum())
-		avg := must(model.Author().Connect(db).ServiceSeq(f.service.GetSeq()).AvgReadCount().GetAvg())
+		sum := must(model.Author().Connect(db).ServiceSeq(readColumn(t, f.service.GetSeq)).SumReadCount().GetSum())
+		avg := must(model.Author().Connect(db).ServiceSeq(readColumn(t, f.service.GetSeq)).AvgReadCount().GetAvg())
 		if sum != 60 || avg == nil || *avg != 15 {
 			t.Fatalf("aggregates: %v %v", sum, avg)
 		}
@@ -357,7 +366,7 @@ func TestColumnsAndSubqueries(t *testing.T) {
 			t.Fatalf("grouped counts: %#v", counts)
 		}
 		page := must(model.Author().Connect(db).OrderBySeqAsc().GetsPage(2, 3))
-		if page.TotalCount != 4 || page.TotalPages != 2 || page.Items.Len() != 1 || page.Items.First().GetName() != "delta" {
+		if page.TotalCount != 4 || page.TotalPages != 2 || page.Items.Len() != 1 || readColumn(t, page.Items.First().GetName) != "delta" {
 			t.Fatalf("page: %+v", page)
 		}
 		keyed := must(model.Author().Connect(db).KeyNameName().Gets())
@@ -391,11 +400,11 @@ func TestWrites(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	each(t, func(t *testing.T, db *orm.DB) {
 		f := seed(t, db)
-		b := must(model.Author().Connect(db).GetBySeq(f.authors[0].GetSeq()))
+		b := must(model.Author().Connect(db).GetBySeq(readColumn(t, f.authors[0].GetSeq)))
 		must(b.SetName("renamed").PlusReadCount(5).Update(true))
-		again := must(model.Author().Connect(db).GetBySeq(b.GetSeq()))
-		if again.GetName() != "renamed" || again.GetReadCount() != 5 {
-			t.Fatalf("update: %s %d", again.GetName(), again.GetReadCount())
+		again := must(model.Author().Connect(db).GetBySeq(readColumn(t, b.GetSeq)))
+		if readColumn(t, again.GetName) != "renamed" || readColumn(t, again.GetReadCount) != 5 {
+			t.Fatalf("update: %s %d", readColumn(t, again.GetName), readColumn(t, again.GetReadCount))
 		}
 		// Requirements: DSL-155.
 		if _, err := b.SetName("stale").Update(true); orm.ErrorCode(err) != orm.CodeConfig {
@@ -409,11 +418,12 @@ func TestWrites(t *testing.T) {
 		if item.GetLabel() != "shown" || item.ToArray()["label"] != "shown" {
 			t.Fatalf("new value: %v", item.ToArray())
 		}
-		saved := must(model.Account().Connect(db).SetSeq(item.GetSeq()).SetName("saved").Save())
-		if saved.GetName() != "saved" || must(model.Account().Connect(db).GetBySeq(item.GetSeq())).GetName() != "saved" {
+		saved := must(model.Account().Connect(db).SetSeq(readColumn(t, item.GetSeq)).SetName("saved").Save())
+		itemSeq := readColumn(t, item.GetSeq)
+		if readColumn(t, saved.GetName) != "saved" || readColumn(t, must(model.Account().Connect(db).GetBySeq(itemSeq)).GetName) != "saved" {
 			t.Fatal("save as update")
 		}
-		if err := must(model.Author().Connect(db).GetBySeq(f.authors[3].GetSeq())).Delete(); err != nil {
+		if err := must(model.Author().Connect(db).GetBySeq(readColumn(t, f.authors[3].GetSeq))).Delete(); err != nil {
 			t.Fatal(err)
 		}
 		if n := must(model.Author().Connect(db).GetCount()); n != 3 {
@@ -430,8 +440,8 @@ func TestWrites(t *testing.T) {
 		must(up.Create())
 		must(model.CompositeAccount().Connect(db).SetTenantId(9).SetAccountId(9).SetName("first").
 			Duplication(model.CompositeAccount().SetName("second")).Create())
-		if got := must(model.CompositeAccount().Connect(db).GetByTenantIdAndAccountId(9, 9)); got.GetName() != "second" {
-			t.Fatalf("duplication: %s", got.GetName())
+		if got := must(model.CompositeAccount().Connect(db).GetByTenantIdAndAccountId(9, 9)); readColumn(t, got.GetName) != "second" {
+			t.Fatalf("duplication: %s", readColumn(t, got.GetName))
 		}
 	})
 }
@@ -533,7 +543,7 @@ func TestAESRotation(t *testing.T) {
 	each(t, func(t *testing.T, db *orm.DB) {
 		f := seed(t, db)
 		email := "person@example.com"
-		b := must(model.Author().Connect(db).GetBySeq(f.authors[0].GetSeq()))
+		b := must(model.Author().Connect(db).GetBySeq(readColumn(t, f.authors[0].GetSeq)))
 		must(b.SetAesHexEmail(&email).Update())
 		keyring, err := orm.NewAESKeyring(map[int32]string{1: "test-aes-key", 2: "next-aes-key"}, 2)
 		if err != nil {

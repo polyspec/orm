@@ -120,6 +120,23 @@ export const cases = {
     assert.equal(await new Item().connect(signalled).getCount(), 2, 'a signal handle of a hooked handle keeps the hook');
   },
 
+  /** An explicitly connected relation child on the same handle starts exactly one child request. */
+  async same_handle_child_hook_once(db) {
+    const parent = await entry({ part: 'a', label: 'parent' }).connect(db).create();
+    const calls = new Map();
+    const hooked = db.withRequestHook(request => {
+      if (READS.has(request.kind)) calls.set(request.entity, (calls.get(request.entity) ?? 0) + 1);
+      return request;
+    });
+    const result = await new Entry().connect(hooked)
+      .relations(new Item().connect(hooked).matchPartWithPart())
+      .get();
+    assert.deepEqual(Object.fromEntries(calls), { hook_entry: 1, hook_item: 1 }, 'the root and explicitly connected child each run one hook');
+    assert.deepEqual(result.getHookItemModels().values().map(row => row.toArray().label), ['a1', 'a2'], 'the child query attaches both matching rows');
+    assert.equal(parent.toArray().part, 'a', 'the relation parent was created on the fixture');
+  },
+
+
   /** A single-row insert and a multi-row insert write the assignment that the hook added to insert. */
   async insert_assign(db) {
     const hooked = db.withRequestHook((request, addParam) => {

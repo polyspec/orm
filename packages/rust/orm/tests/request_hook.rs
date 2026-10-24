@@ -291,6 +291,32 @@ async fn read_filter_case(driver: &str) {
     database.drop().await;
 }
 
+async fn same_handle_child_hook_once_case(driver: &str) {
+    let database = CaseDatabase::create(driver).await;
+    let db = installed(&database).await;
+    seed(&db).await;
+    let mut parent = entry(&db, &[("part", Param::from("a")), ("label", Param::from("parent"))]);
+    polyspec_orm::model::create(&mut parent).await.expect("create parent");
+
+    let calls = Arc::new(Mutex::new(BTreeMap::<String, usize>::new()));
+    let observed = Arc::clone(&calls);
+    let hooked = db.with_request_hook(move |request: &mut Request, _: &mut RequestParams| {
+        if READS.contains(&request.kind.as_str()) {
+            *observed.lock().expect("hook calls").entry(request.query.entity.clone()).or_default() += 1;
+        }
+        Ok(())
+    });
+    let mut parent = entry(&hooked, &[]);
+    let mut child = item(&hooked);
+    child.core_mut().add_match("part", "part");
+    parent.core_mut().relation(true, child.into_core());
+    polyspec_orm::model::get(&parent).await.expect("get with explicit child relation");
+    assert_eq!(*calls.lock().expect("hook calls"), BTreeMap::from([("hook_entry".to_owned(), 1), ("hook_item".to_owned(), 1)]));
+    db.close().await;
+    database.drop().await;
+}
+
+
 async fn insert_assign_case(driver: &str) {
     let database = CaseDatabase::create(driver).await;
     let db = installed(&database).await;
@@ -589,6 +615,13 @@ async fn read_filter() {
 }
 
 // Requirements: DSL-65, PRT-2.
+#[tokio::test]
+async fn same_handle_child_hook_once() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    same_handle_child_hook_once_case("sqlite").await;
+}
+
+
 #[tokio::test]
 async fn coverage_request_hook_read_filter() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);

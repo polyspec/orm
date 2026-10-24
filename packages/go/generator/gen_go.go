@@ -701,11 +701,14 @@ func (x *T) ForShareNoWait() *T { x.m.Lock("share_nowait"); return x }
 		p, f, gt, ft := pascal(c.Name), field(c), goType(c), fieldType(c)
 		if gt == "orm.StyledValue" {
 			fmt.Fprintf(&b, "// Get%s returns %s.\nfunc (x *%s) Get%s() (orm.StyledValue, error) {\n\tif !x.m.Selected(%q) { return orm.StyledValue{}, orm.ColumnUnselected(%q) }\n\treturn x.%s, nil\n}\n\n", p, c.Name, t, p, c.Name, c.Name, f)
+		} else {
+			fmt.Fprintf(&b, "// Get%s returns %s.\nfunc (x *%s) Get%s() (%s, error) {\n\tif !x.m.Selected(%q) { var zero %s; return zero, orm.ColumnUnselected(%q) }\n\treturn x.%s, nil\n}\n\n", p, c.Name, t, p, ft, c.Name, ft, c.Name, f)
+		}
+		if gt == "orm.StyledValue" {
 			fmt.Fprintf(&b, "// Set%s sets %s.\nfunc (x *%s) Set%s(v orm.StyledValue) (*%s, error) {\n\tnormalized, err := orm.NormalizeStyled(%#v, %t, v)\n\tif err != nil { return nil, err }\n\tx.%s = normalized\n\tx.m.Set(%q, normalized)\n\treturn x, nil\n}\n\n", p, c.Name, t, p, t, clientStyles(c), c.Null, f, c.Name)
 		} else if (c.Type == "date" || c.Type == "datetime") && len(c.Codec) == 0 {
 			// The setter takes the text form and keeps the parsed time in the typed field; a text that is not a
 			// time is the statement's error (T189).
-			fmt.Fprintf(&b, "// Get%s returns %s.\nfunc (x *%s) Get%s() %s { return x.%s }\n\n", p, c.Name, t, p, ft, f)
 			if c.Null {
 				fmt.Fprintf(&b, "// Set%s sets %s from its text form; nil stores NULL. A text that is not a time is the statement's error: Create, Update and the query builders return it, and no statement is sent.\nfunc (x *%s) Set%s(v *string) *%s {\n\tif v == nil {\n\t\tx.%s = nil\n\t\tx.m.SetNull(%q)\n\t\treturn x\n\t}\n", p, c.Name, t, p, t, f, c.Name)
 				fmt.Fprintf(&b, "\tif parsed, ok := x.m.SetTimeText(%q, *v); ok {\n\t\tx.%s = &parsed\n\t}\n\treturn x\n}\n\n", c.Name, f)
@@ -718,7 +721,6 @@ func (x *T) ForShareNoWait() *T { x.m.Lock("share_nowait"); return x }
 			if c.Type == "time" {
 				normalize = fmt.Sprintf("orm.AsTimeText(%%s, %d)", c.Precision)
 			}
-			fmt.Fprintf(&b, "// Get%s returns %s.\nfunc (x *%s) Get%s() %s { return x.%s }\n\n", p, c.Name, t, p, ft, f)
 			fmt.Fprintf(&b, "// Set%s sets %s after exact %s validation.\nfunc (x *%s) Set%s(v %s) (*%s, error) {\n", p, c.Name, c.Type, t, p, ft, t)
 			if ft != gt {
 				fmt.Fprintf(&b, "\tif v == nil {\n\t\tx.%s = nil\n\t\tx.m.SetNull(%q)\n\t\treturn x, nil\n\t}\n", f, c.Name)
@@ -727,7 +729,6 @@ func (x *T) ForShareNoWait() *T { x.m.Lock("share_nowait"); return x }
 				fmt.Fprintf(&b, "\tvalue, err := %s\n\tif err != nil { return nil, err }\n\tx.%s = value\n\tx.m.Set(%q, value)\n\treturn x, nil\n}\n\n", fmt.Sprintf(normalize, "v"), f, c.Name)
 			}
 		} else {
-			fmt.Fprintf(&b, "// Get%s returns %s.\nfunc (x *%s) Get%s() %s { return x.%s }\n\n", p, c.Name, t, p, ft, f)
 			if ft != gt {
 				fmt.Fprintf(&b, "// Set%s sets %s; nil stores NULL.\nfunc (x *%s) Set%s(v %s) *%s {\n\tx.%s = v\n\tif v == nil {\n\t\tx.m.SetNull(%q)\n\t} else {\n\t\tx.m.Set(%q, *v)\n\t}\n\treturn x\n}\n\n", p, c.Name, t, p, ft, t, f, c.Name, c.Name)
 			} else {

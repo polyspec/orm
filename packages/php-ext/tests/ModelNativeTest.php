@@ -73,6 +73,66 @@ final class NativeModelFixture extends Model
 
 final class ModelNativeTest extends TestCase
 {
+    public function testPhpGeneratedTypedGetterUsesInternalModelStorage(): void
+    {
+        $dir = sys_get_temp_dir() . '/orm-php-ext-generated-getter-' . getmypid();
+        is_dir($dir) || mkdir($dir, 0o700, true);
+        $namespace = 'Polyspec\\Orm\\Extension\\Tests\\GeneratedTypedGetter';
+        try {
+            $set = "$dir/dbspec-set.json";
+            file_put_contents($set, json_encode(['schema' => 1, 'documents' => ['typed.dbs'], 'external' => []]));
+            file_put_contents(
+                "$dir/typed.dbs",
+                "dbspec 1 typed\n\ntable item {\n  price i32\n  primary key (price)\n}\n"
+            );
+            $stderr = fopen('php://memory', 'w+');
+            ob_start();
+            $code = \Polyspec\Orm\OrmGen::run([
+                'gen', '--set', $set, '--out', "$dir/model", '--namespace', $namespace
+            ], $stderr);
+            $output = (string) ob_get_clean();
+            rewind($stderr);
+            $message = (string) stream_get_contents($stderr);
+            fclose($stderr);
+            self::assertSame(0, $code, "$output $message");
+            require_once "$dir/model/Item.php";
+
+            $class = "$namespace\\Item";
+            $model = new $class();
+            $getter = new \ReflectionMethod($class, 'getPrice');
+            self::assertSame('int', $getter->getReturnType()->getName());
+            self::assertFalse($getter->isInternal());
+            self::assertTrue((new \ReflectionMethod(Model::class, 'readColumn'))->isInternal());
+            self::assertTrue((new \ReflectionMethod(Model::class, 'writeColumn'))->isInternal());
+            self::assertTrue((new \ReflectionProperty(Model::class, 'values'))->isPrivate());
+            $source = (string) file_get_contents("$dir/model/Item.php");
+            self::assertStringContainsString("return \$this->readColumn('price');", $source);
+            self::assertStringContainsString("return \$this->writeColumn('price', \$v);", $source);
+
+            try {
+                $model->getPrice();
+                self::fail('An unselected generated column must fail.');
+            } catch (OrmException $error) {
+                self::assertSame('COLUMN_UNSELECTED', $error->code_);
+            }
+            self::assertSame($model, $model->setPrice(17));
+            self::assertSame(17, $model->getPrice());
+            set_error_handler(static fn(int $severity, string $message): never => throw new \ErrorException($message));
+            try {
+                try {
+                    $model->values;
+                    self::fail('Generated consumers must not access private model storage.');
+                } catch (\ErrorException $error) {
+                    self::assertStringContainsString('undefined property', strtolower($error->getMessage()));
+                }
+            } finally {
+                restore_error_handler();
+            }
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    }
+
     public function testOrmGeneratorSubclassKeepsItsPhpMetaImplementation(): void
     {
         require_once dirname(__DIR__, 2) . '/php/gen/bootstrap.php';

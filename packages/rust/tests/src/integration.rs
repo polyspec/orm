@@ -10,6 +10,24 @@ use std::cell::Cell;
 
 polyspec_orm::models!();
 
+#[test]
+// Requirements: DBS-112, DBS-114.
+fn generated_typed_getter_is_a_checked_public_consumer_api() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+
+    fn read_seq(row: &Author) -> polyspec_orm::Result<i64> {
+        row.get_seq()
+    }
+
+    let unselected = Author::new();
+    let error = read_seq(&unselected).expect_err("an unselected generated field must fail");
+    assert_eq!(error.code(), polyspec_orm::codes::COLUMN_UNSELECTED);
+
+    let assigned = Author::new().set_seq(17);
+    let sequence: i64 = read_seq(&assigned).expect("an assigned generated field is readable");
+    assert_eq!(sequence, 17);
+}
+
 mod bench_set;
 
 #[allow(

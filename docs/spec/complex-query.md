@@ -81,11 +81,42 @@ page, err := model.Product().Connect(slave1).
     OrderByLikeCountDescAndSeqDesc().
     GetsPage(pageNo, 20)
 
-for seq, p := range page.Items.All() {
-    _ = p.GetName()
-    _ = p.GetBrand().GetName()                  // nil-safe getter chain
-    for reviewSeq, r := range p.GetReviews().All() { _ = r.GetUser().GetName() }
-    _ = p.GetMyOrderItem().GetSeq()             // zero value when absent
+if err := func() error {
+    for seq, p := range page.Items.All() {
+        _ = seq
+        name, err := p.GetName()
+        if err != nil { return err }
+        _ = name
+        brand, err := p.GetBrand()
+        if err != nil { return err }
+        if brand != nil {
+            brandName, err := brand.GetName()
+            if err != nil { return err }
+            _ = brandName
+        }
+        reviews, err := p.GetReviews()
+        if err != nil { return err }
+        for reviewSeq, r := range reviews.All() {
+            _ = reviewSeq
+            user, err := r.GetUser()
+            if err != nil { return err }
+            if user != nil {
+                userName, err := user.GetName()
+                if err != nil { return err }
+                _ = userName
+            }
+        }
+        item, err := p.GetMyOrderItem()
+        if err != nil { return err }
+        if item != nil {
+            itemSeq, err := item.GetSeq()
+            if err != nil { return err }
+            _ = itemSeq
+        }
+    }
+    return nil
+}(); err != nil {
+    return err
 }
 _ = page.TotalCount; _ = page.TotalPages
 ```

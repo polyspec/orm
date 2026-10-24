@@ -150,6 +150,29 @@ function readFilterCase(string $dsn): void
     $db->close();
 }
 
+function sameHandleChildHookOnce(string $dsn): void
+{
+    $db = hookConnect($dsn);
+    hookSeed($db);
+    (new HookEntry())($db)->setPart('a')->setLabel('parent')->create();
+    $calls = [];
+    $hooked = $db->withRequestHook(static function (Request $r) use (&$calls): void {
+        if (in_array($r->ir['kind'], READ_KINDS, true)) {
+            $entity = $r->ir['entity'];
+            $calls[$entity] = ($calls[$entity] ?? 0) + 1;
+        }
+    });
+    $parent = (new HookEntry())($hooked)
+        ->relations((new HookItem())($hooked)->matchPartWithPart())
+        ->get();
+    hookCheck($calls === ['hook_entry' => 1, 'hook_item' => 1], 'the root and explicitly connected child each run one hook: ' . json_encode($calls));
+    hookCheck($parent instanceof HookEntry, 'the relation query returns its parent row');
+    $children = hookLabels($parent->getHookItemModels());
+    hookCheck($children === ['a1', 'a2'], 'the relation child returns the two matching rows: ' . json_encode($children));
+    $db->close();
+}
+
+
 /** An assignment the hook adds is written by a single and a bulk insert. */
 function insertAssign(string $dsn): void
 {
@@ -457,6 +480,7 @@ function restoreRewrittenKeySetScopeCase(string $dsn): void
 const REQUEST_HOOK_CASES = [
     'without_hook' => 'withoutHook',
     'read_filter' => 'readFilterCase',
+    'same_handle_child_hook_once' => 'sameHandleChildHookOnce',
     'insert_assign' => 'insertAssign',
     'upsert_scope' => 'upsertScope',
     'loaded_row_writes' => 'loadedRowWrites',

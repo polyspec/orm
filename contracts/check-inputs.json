@@ -77,6 +77,20 @@
         "package-lock.json"
       ]
     },
+    "rust-compiler-fixtures-check": {
+      "scope": "owner",
+      "needs": [
+        "rust",
+        "node-modules"
+      ],
+      "inputs": [
+        "Makefile",
+        "scripts/rust/compiler-fixtures.mts",
+        "scripts/rust/compiler-fixtures.schema.json",
+        "packages/rust/testing/compiler-fixtures/cases.json",
+        "packages/rust/tests/build.rs"
+      ]
+    },
     "commits-check": {
       "scope": "owner",
       "needs": [],
@@ -548,9 +562,49 @@
         "packages/php/tests/PerfExtensionsTest.php"
       ]
     },
+    "generator-consumer-check": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "rust",
+        "php",
+        "composer",
+        "node-modules",
+        "php-extension-tools",
+        "python"
+      ],
+      "inputs": [
+        "Makefile",
+        "contracts/fixtures/bench/dbspec-set.json",
+        "packages/go/generator/gen_go.go",
+        "packages/go/generator/gen_go_scan_test.go",
+        "packages/go/orm/model.go",
+        "packages/php/src/Generator.php",
+        "packages/php/src/Model.php",
+        "packages/php/tests/OrmGenTest.php",
+        "packages/php-ext/src/model_native_methods.c",
+        "packages/php-ext/src/model_native_methods.h",
+        "packages/php-ext/src/model_state.c",
+        "packages/php-ext/src/model_state.h",
+        "packages/php-ext/src/polyspec_orm.stub.php",
+        "packages/php-ext/tests/ModelNativeTest.php",
+        "packages/ts/src/generate/typescript.ts",
+        "packages/ts/src/model.ts",
+        "packages/ts/tests/generate.mjs",
+        "packages/python/src/polyspec/orm/core.py",
+        "packages/python/src/polyspec/orm/generate/python.py",
+        "packages/python/src/polyspec/orm/model.py",
+        "packages/python/tests/test_orm_gen.py",
+        "packages/rust/build/src/generate.rs",
+        "packages/rust/build/tests/generate.rs",
+        "packages/rust/tests/src/integration.rs"
+      ]
+    },
     "blind-index-source-go-check": {
       "scope": "owner",
-      "needs": ["go"],
+      "needs": [
+        "go"
+      ],
       "inputs": [
         "packages/go/engine/planner/planner.go",
         "packages/go/engine/planner/blind_index_source_test.go"
@@ -558,7 +612,11 @@
     },
     "blind-index-source-php-check": {
       "scope": "owner",
-      "needs": ["php", "composer", "node-modules"],
+      "needs": [
+        "php",
+        "composer",
+        "node-modules"
+      ],
       "inputs": [
         "packages/php/src/Planner.php",
         "packages/php/tests/BlindIndexSourcePlannerTest.php"
@@ -566,7 +624,12 @@
     },
     "blind-index-source-php-extension-check": {
       "scope": "owner",
-      "needs": ["php", "composer", "node-modules", "php-extension-tools"],
+      "needs": [
+        "php",
+        "composer",
+        "node-modules",
+        "php-extension-tools"
+      ],
       "inputs": [
         "Makefile",
         "packages/php-ext/src/planner.c",
@@ -575,7 +638,9 @@
     },
     "blind-index-source-ts-check": {
       "scope": "owner",
-      "needs": ["node-modules"],
+      "needs": [
+        "node-modules"
+      ],
       "inputs": [
         "packages/ts/src/engine/planner.ts",
         "packages/ts/tests/engine.mjs"
@@ -583,7 +648,10 @@
     },
     "blind-index-source-python-check": {
       "scope": "owner",
-      "needs": ["python", "node-modules"],
+      "needs": [
+        "python",
+        "node-modules"
+      ],
       "inputs": [
         "packages/python/src/polyspec/orm/engine/planner.py",
         "packages/python/tests/test_blind_index_source.py"
@@ -591,7 +659,10 @@
     },
     "blind-index-source-rust-check": {
       "scope": "owner",
-      "needs": ["rust", "node-modules"],
+      "needs": [
+        "rust",
+        "node-modules"
+      ],
       "inputs": [
         "packages/rust/orm/src/engine/planner.rs",
         "packages/rust/orm/src/engine/mod.rs",
@@ -600,7 +671,15 @@
     },
     "nowait-restore-check": {
       "scope": "owner",
-      "needs": ["go", "rust", "php", "composer", "node-modules", "python", "php-extension-tools"],
+      "needs": [
+        "go",
+        "rust",
+        "php",
+        "composer",
+        "node-modules",
+        "python",
+        "php-extension-tools"
+      ],
       "inputs": [
         "Makefile",
         "packages/go/orm/sqlite_lock.go",
@@ -608,6 +687,8 @@
         "packages/ts/src/database.ts",
         "packages/ts/tests/sqlite-row-lock-restore.mjs",
         "packages/php/src/Db.php",
+        "packages/php/src/Assembly.php",
+        "packages/php/src/Config.php",
         "packages/php/src/OrmException.php",
         "packages/php/tests/SqliteRowLockRestoreTest.php",
         "packages/php-ext/src/db.c",
@@ -676,7 +757,10 @@
     },
     "sqlite-version-ts-check": {
       "scope": "owner",
-      "needs": ["go", "node-modules"],
+      "needs": [
+        "go",
+        "node-modules"
+      ],
       "inputs": [
         "packages/ts/src/driver.ts",
         "packages/ts/tests/sqlite-version.test.mjs"
@@ -684,7 +768,11 @@
     },
     "sqlite-version-rust-check": {
       "scope": "owner",
-      "needs": ["go", "rust", "node-modules"],
+      "needs": [
+        "go",
+        "rust",
+        "node-modules"
+      ],
       "inputs": [
         "packages/rust/orm/src/db.rs",
         "packages/rust/orm/src/db/sqlite_version_tests.rs"
@@ -692,7 +780,15 @@
     },
     "split-null-check": {
       "scope": "owner",
-      "needs": ["go", "rust", "php", "composer", "python", "node-modules", "php-extension-tools"],
+      "needs": [
+        "go",
+        "rust",
+        "php",
+        "composer",
+        "python",
+        "node-modules",
+        "php-extension-tools"
+      ],
       "inputs": [
         "Makefile",
         "packages/go/orm/exec.go",
@@ -712,7 +808,15 @@
     },
     "collection-composite-key-check": {
       "scope": "owner",
-      "needs": ["go", "rust", "php", "composer", "python", "node-modules", "php-extension-tools"],
+      "needs": [
+        "go",
+        "rust",
+        "php",
+        "composer",
+        "python",
+        "node-modules",
+        "php-extension-tools"
+      ],
       "inputs": [
         "Makefile",
         "tests/collection/keys.json",
@@ -898,7 +1002,11 @@
     },
     "rust-build-environment-check": {
       "scope": "owner",
-      "needs": ["go", "rust", "node-modules"],
+      "needs": [
+        "go",
+        "rust",
+        "node-modules"
+      ],
       "inputs": [
         "Makefile",
         "packages/rust/build/src/lib.rs",
@@ -907,7 +1015,11 @@
     },
     "rust-build-outdir-check": {
       "scope": "owner",
-      "needs": ["go", "rust", "node-modules"],
+      "needs": [
+        "go",
+        "rust",
+        "node-modules"
+      ],
       "inputs": [
         "Makefile",
         "packages/rust/build/src/lib.rs",
@@ -916,7 +1028,11 @@
     },
     "rust-duplicate-catalog-check": {
       "scope": "owner",
-      "needs": ["go", "rust", "node-modules"],
+      "needs": [
+        "go",
+        "rust",
+        "node-modules"
+      ],
       "inputs": [
         "Makefile",
         "contracts/check-inputs.json",
@@ -939,7 +1055,15 @@
     },
     "column-function-metadata-check": {
       "scope": "owner",
-      "needs": ["go", "rust", "php", "composer", "python", "node-modules", "php-extension-tools"],
+      "needs": [
+        "go",
+        "rust",
+        "php",
+        "composer",
+        "python",
+        "node-modules",
+        "php-extension-tools"
+      ],
       "inputs": [
         "Makefile",
         "contracts/check-inputs.json",
@@ -975,7 +1099,11 @@
     },
     "rust-time-precision-check": {
       "scope": "owner",
-      "needs": ["go", "rust", "node-modules"],
+      "needs": [
+        "go",
+        "rust",
+        "node-modules"
+      ],
       "inputs": [
         "Makefile",
         "packages/rust/orm/src/db.rs",
@@ -985,7 +1113,11 @@
     },
     "rust-upsert-conflict-check": {
       "scope": "owner",
-      "needs": ["go", "rust", "node-modules"],
+      "needs": [
+        "go",
+        "rust",
+        "node-modules"
+      ],
       "inputs": [
         "Makefile",
         "packages/rust/orm/src/engine/planner.rs",
@@ -994,7 +1126,15 @@
     },
     "scalar-subquery-column-check": {
       "scope": "owner",
-      "needs": ["go", "rust", "php", "composer", "python", "node-modules", "php-extension-tools"],
+      "needs": [
+        "go",
+        "rust",
+        "php",
+        "composer",
+        "python",
+        "node-modules",
+        "php-extension-tools"
+      ],
       "inputs": [
         "Makefile",
         "contracts/check-inputs.json",
@@ -1017,7 +1157,11 @@
     },
     "relation-parent-bind-rust-check": {
       "scope": "owner",
-      "needs": ["go", "rust", "node-modules"],
+      "needs": [
+        "go",
+        "rust",
+        "node-modules"
+      ],
       "inputs": [
         "Makefile",
         "packages/rust/orm/src/driver.rs",
@@ -1026,7 +1170,10 @@
     },
     "paged-read-rust-check": {
       "scope": "owner",
-      "needs": ["rust", "node-modules"],
+      "needs": [
+        "rust",
+        "node-modules"
+      ],
       "inputs": [
         "Makefile",
         "packages/rust/orm/src/db.rs",
@@ -1095,7 +1242,11 @@
     },
     "php-catalog-bounds-check": {
       "scope": "owner",
-      "needs": ["php", "composer", "node-modules"],
+      "needs": [
+        "php",
+        "composer",
+        "node-modules"
+      ],
       "inputs": [
         "Makefile",
         "packages/php/src/Catalog.php",
@@ -1155,7 +1306,11 @@
     },
     "php-codec-causes-check": {
       "scope": "owner",
-      "needs": ["php", "composer", "php-extension-tools"],
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools"
+      ],
       "inputs": [
         "Makefile",
         "packages/php/src/Codec.php",
@@ -1167,6 +1322,49 @@
         "packages/php/tests/fixtures/CodecProbeYamlStream.php",
         "packages/php-ext/tests/CodecCauseTest.php",
         "packages/php-ext/src/codec.c"
+      ]
+    },
+    "native-error-cause-check": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "rust",
+        "php",
+        "composer",
+        "python",
+        "node-modules",
+        "php-extension-tools"
+      ],
+      "inputs": [
+        "Makefile",
+        "config/parity.json",
+        "docs/spec/protocol.md",
+        "docs/spec/protocol.ko.md",
+        "packages/go/orm/driver_error_test.go",
+        "packages/go/orm/markdown_test.go",
+        "packages/php/src/Db.php",
+        "packages/php/src/Model.php",
+        "packages/php/src/OrmException.php",
+        "packages/php/tests/MarkdownTest.php",
+        "packages/php/tests/NativeCellReadTest.php",
+        "packages/php/tests/OrmExceptionLockWaitTest.php",
+        "packages/php-ext/src/db.c",
+        "packages/php-ext/src/model_read.c",
+        "packages/php-ext/tests/DriverErrorTest.php",
+        "packages/php-ext/tests/ModelStreamReadTest.php",
+        "packages/python/tests/test_driver_cells.py",
+        "packages/python/src/polyspec/orm/driver_cells.py",
+        "packages/python/tests/test_driver_errors.py",
+        "packages/python/tests/test_markdown.py",
+        "packages/rust/orm/tests/markdown.rs",
+        "packages/rust/orm/src/lib.rs",
+        "packages/rust/orm/src/row.rs",
+        "packages/ts/tests/driver-cell-bytes.mjs",
+        "packages/ts/tests/driver-error-lock-wait.mjs",
+        "packages/ts/tests/markdown.mjs",
+        "packages/ts/src/codec.ts",
+        "packages/ts/src/database.ts",
+        "packages/ts/src/model.ts"
       ]
     },
     "bind-check": {
@@ -1294,6 +1492,15 @@
         "packages/rust/tests/tests/markdown_conformance.rs",
         "packages/ts/tests/markdown_conformance.mjs",
         "packages/ts/tests/markdown_cases.mjs"
+      ]
+    },
+    "go-package-entry-check": {
+      "scope": "owner",
+      "needs": [
+        "go"
+      ],
+      "inputs": [
+        "packages/go/orm/package_entry_test.go"
       ]
     },
     "package-check": {
@@ -1474,33 +1681,73 @@
     },
     "dbspec-lock-go-check": {
       "scope": "owner",
-      "needs": ["go"],
-      "inputs": ["Makefile", "packages/go/engine/dbspec/apply.go", "packages/go/engine/dbspec/sqlite_lock_result_test.go"]
+      "needs": [
+        "go"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/go/engine/dbspec/apply.go",
+        "packages/go/engine/dbspec/sqlite_lock_result_test.go"
+      ]
     },
     "dbspec-lock-php-check": {
       "scope": "owner",
-      "needs": ["php", "composer"],
-      "inputs": ["Makefile", "packages/php/src/Dbspec/PlanApply.php", "packages/php/tests/DbspecSqliteLockTest.php"]
+      "needs": [
+        "php",
+        "composer"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/php/src/Dbspec/PlanApply.php",
+        "packages/php/tests/DbspecSqliteLockTest.php"
+      ]
     },
     "dbspec-lock-php-extension-check": {
       "scope": "owner",
-      "needs": ["php", "composer", "php-extension-tools"],
-      "inputs": ["Makefile", "packages/php-ext/src/apply.c", "packages/php/tests/DbspecSqliteLockTest.php"]
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/php-ext/src/apply.c",
+        "packages/php/tests/DbspecSqliteLockTest.php"
+      ]
     },
     "dbspec-lock-python-check": {
       "scope": "owner",
-      "needs": ["go"],
-      "inputs": ["Makefile", "packages/python/src/polyspec/orm/dbspec/apply.py", "packages/python/tests/test_dbspec_sqlite_lock.py"]
+      "needs": [
+        "go"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/python/src/polyspec/orm/dbspec/apply.py",
+        "packages/python/tests/test_dbspec_sqlite_lock.py"
+      ]
     },
     "dbspec-lock-rust-check": {
       "scope": "owner",
-      "needs": ["go", "rust"],
-      "inputs": ["Makefile", "packages/rust/orm/src/dbspec/apply.rs"]
+      "needs": [
+        "go",
+        "rust"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/rust/orm/src/dbspec/apply.rs"
+      ]
     },
     "dbspec-lock-ts-check": {
       "scope": "owner",
-      "needs": ["go", "node-modules"],
-      "inputs": ["Makefile", "packages/ts/src/dbspec/apply.ts", "packages/ts/tests/dbspec-begin-exclusive-lock.mjs"]
+      "needs": [
+        "go",
+        "node-modules"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/ts/src/dbspec/apply.ts",
+        "packages/ts/tests/dbspec-begin-exclusive-lock.mjs"
+      ]
     },
     "dbspec-plan-ts-check": {
       "scope": "owner",
@@ -1615,12 +1862,29 @@
     },
     "model-types-php-extension-check": {
       "scope": "owner",
-      "needs": ["php", "composer", "php-extension-tools"],
-      "inputs": ["packages/php-ext/tests/ModelTypesSurfaceTest.php", "packages/php-ext/tests/PlanCacheBoundNativeTest.php", "packages/php-ext/tests/bootstrap.php", "packages/php-ext/tests/DeclarationsTest.php", "packages/php-ext/tests/declarations_functions.php", "packages/php/tests/ModelTypesSourceTest.php", "packages/php/tests/model-types-weak-caller.php", "packages/php-ext/src/**"]
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools"
+      ],
+      "inputs": [
+        "packages/php-ext/tests/ModelTypesSurfaceTest.php",
+        "packages/php-ext/tests/PlanCacheBoundNativeTest.php",
+        "packages/php-ext/tests/bootstrap.php",
+        "packages/php-ext/tests/DeclarationsTest.php",
+        "packages/php-ext/tests/declarations_functions.php",
+        "packages/php/tests/ModelTypesSourceTest.php",
+        "packages/php/tests/model-types-weak-caller.php",
+        "packages/php-ext/src/**"
+      ]
     },
     "model-native-php-extension-check": {
       "scope": "owner",
-      "needs": ["php", "composer", "php-extension-tools"],
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools"
+      ],
       "inputs": [
         "packages/php/src/Model.php",
         "packages/php/tests/ModelMethodsTest.php",
@@ -1642,6 +1906,105 @@
         "packages/php-ext/tests/declarations_functions.php",
         "packages/php-ext/src/**",
         "Makefile"
+      ]
+    },
+    "transaction-failure-php-extension-check": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools"
+      ],
+      "inputs": [
+        "packages/php-ext/tests/TransactionFailureNativeTest.php",
+        "packages/php-ext/tests/bootstrap.php",
+        "packages/php/tests/TransactionFailureCases.php",
+        "packages/php/tests/ModelTestFailingPdo.php",
+        "packages/php-ext/src/**",
+        "Makefile"
+      ]
+    },
+    "transaction-failure-go-check": {
+      "scope": "owner",
+      "needs": [
+        "go"
+      ],
+      "inputs": [
+        "packages/go/orm/coverage_transaction_failure_test.go",
+        "packages/go/orm/failing_driver_test.go",
+        "packages/go/orm/test_helpers_test.go",
+        "packages/go/orm/coverage_fixture_test.go",
+        "packages/go/orm/schema_helpers_test.go",
+        "Makefile"
+      ]
+    },
+    "transaction-failure-php-check": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer"
+      ],
+      "inputs": [
+        "packages/php/tests/TransactionFailureTest.php",
+        "packages/php/tests/TransactionFailureCases.php",
+        "packages/php/tests/ModelTestFailingPdo.php",
+        "packages/php/tests/bootstrap.php",
+        "Makefile"
+      ]
+    },
+    "transaction-failure-typescript-check": {
+      "scope": "owner",
+      "needs": [
+        "node-modules"
+      ],
+      "inputs": [
+        "packages/ts/tests/transaction-failure.mjs",
+        "packages/ts/src/database.ts",
+        "packages/ts/src/driver.ts",
+        "packages/ts/src/runtime_error.ts",
+        "Makefile"
+      ]
+    },
+    "transaction-failure-python-check": {
+      "scope": "owner",
+      "needs": [
+        "python"
+      ],
+      "inputs": [
+        "packages/python/tests/test_rollback_fault.py",
+        "packages/python/tests/test_sqlite.py",
+        "packages/python/tests/entry_point_check.py",
+        "packages/python/tests/testcase.py",
+        "packages/python/src/polyspec/orm/database.py",
+        "packages/python/src/polyspec/orm/errors.py",
+        "packages/python/src/polyspec/orm/testing/__init__.py",
+        "Makefile"
+      ]
+    },
+    "transaction-failure-rust-check": {
+      "scope": "owner",
+      "needs": [
+        "rust",
+        "node-modules"
+      ],
+      "inputs": [
+        "packages/rust/orm/src/tx.rs",
+        "Makefile"
+      ]
+    },
+    "connection-timeout-php-extension-check": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/php-ext/scripts/build.sh",
+        "packages/php-ext/src/db.c",
+        "packages/php-ext/tests/ConnectionTimeoutCleanupTest.php",
+        "packages/php/src/OrmException.php"
       ]
     },
     "dbspec-apply-php-extension-check": {
@@ -2000,7 +2363,9 @@
     },
     "php-extension-build-logs-check": {
       "scope": "owner",
-      "needs": ["node-modules"],
+      "needs": [
+        "node-modules"
+      ],
       "inputs": [
         "Makefile",
         "packages/php-ext/scripts/build.sh",
@@ -2047,6 +2412,131 @@
         "packages/rust/orm/src/codec.rs",
         "packages/rust/orm/src/model.rs",
         "packages/rust/orm/tests/codec_vectors.rs"
+      ]
+    },
+    "request-hook-php-extension-check": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/php/tests/request_hook_cases.php",
+        "packages/php-ext/src/db.c",
+        "packages/php-ext/src/model_read.c",
+        "packages/php-ext/src/polyspec_orm.stub.php",
+        "packages/php-ext/src/polyspec_orm_arginfo.h",
+        "packages/php-ext/tests/RequestHookNativeTest.php"
+      ]
+    },
+    "request-hook-rust-check": {
+      "scope": "owner",
+      "needs": [
+        "rust"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/rust/orm/tests/request_hook.rs"
+      ]
+    },
+    "rust-causes-check": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "rust",
+        "node-modules"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/rust/orm/src/codec.rs",
+        "packages/rust/orm/src/driver.rs",
+        "packages/rust/orm/tests/unit/bind_message.rs",
+        "packages/rust/orm/tests/unit/driver_cause.rs",
+        "packages/rust/build/src/catalog/temporal.rs",
+        "packages/rust/build/src/catalog/row_snapshot.rs",
+        "packages/rust/build/src/tool_db.rs",
+        "packages/rust/build/tests/unit/read_only_policy.rs",
+        "packages/rust/build/tests/unit/typed_bind_validation.rs"
+      ]
+    },
+    "go-catalog-session-error-check": {
+      "scope": "owner",
+      "needs": [
+        "go"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/go/orm/catalog.go",
+        "packages/go/orm/catalog_session_error_test.go",
+        "packages/go/orm/failing_driver_test.go"
+      ]
+    },
+    "catalog-php-extension-surface-check": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools"
+      ],
+      "inputs": [
+        "Makefile",
+        "contracts/check-inputs.json",
+        "packages/php/src/**",
+        "packages/php-ext/**",
+        "packages/php/tests/bootstrap.php",
+        "packages/php/tests/CatalogConnectionCoverageCases.php",
+        "packages/php/tests/StatementEventsCoverageCases.php",
+        "packages/php/tests/CoverageSchemaDefinitionTest.php",
+        "packages/php/tests/coverage_cases.php",
+        "packages/php/tests/statement_events_run.php"
+      ]
+    },
+    "native-arginfo-php-extension-check": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools"
+      ],
+      "inputs": [
+        "packages/php/src/Model.php",
+        "packages/php/models.txt",
+        "packages/php-ext/scripts/build.sh",
+        "packages/php-ext/src/polyspec_orm.stub.php",
+        "packages/php-ext/src/polyspec_orm.c",
+        "packages/php-ext/tests/ArginfoBuildTest.php",
+        "packages/php-ext/tests/DeclarationsTest.php",
+        "packages/php-ext/tests/ModelNativeTest.php",
+        "packages/php-ext/tests/CollectionTest.php",
+        "Makefile"
+      ]
+    },
+    "request-hook-audit-native-binding-check": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
+        "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
+        "packages/php-ext/tests/CoverageAuditColumnsExtensionTest.php",
+        "packages/php/tests/CoverageRequestHookTest.php",
+        "packages/php/tests/CoverageAuditTriggersTest.php",
+        "packages/php/tests/CoverageAuditColumnsTest.php",
+        "packages/php/tests/request_hook_cases.php",
+        "packages/php/tests/audit_case.php",
+        "packages/php/tests/restore_case.php",
+        "packages/php/tests/case_database.php",
+        "packages/php/tests/coverage_cases.php",
+        "contracts/fixtures/request_hook.dbs",
+        "contracts/fixtures/audit.dbs",
+        "contracts/fixtures/audit_columns.dbs",
+        "contracts/fixtures/restore.dbs"
       ]
     }
   },

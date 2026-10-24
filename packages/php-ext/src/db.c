@@ -89,8 +89,8 @@ static bool mcall(zval *o, const char *m, zval *ret, uint32_t argc, zval *argv)
 
 /* Calls a function by name, or a static method as "Polyspec\\Orm\\Codec::decodeRows". A call that is not callable, or that
  * throws, returns false with an exception set; the result must be checked by every caller (warn_unused_result). */
-static bool scall(const char *f, zval *ret, uint32_t argc, zval *argv) __attribute__((warn_unused_result));
-static bool scall(const char *f, zval *ret, uint32_t argc, zval *argv)
+bool scall(const char *f, zval *ret, uint32_t argc, zval *argv) __attribute__((warn_unused_result));
+bool scall(const char *f, zval *ret, uint32_t argc, zval *argv)
 {
     zval fn;
     ZVAL_STRING(&fn, f);
@@ -103,7 +103,7 @@ static bool scall(const char *f, zval *ret, uint32_t argc, zval *argv)
 }
 
 /* new $name(...argv) */
-static bool newobj(const char *name, zval *ret, uint32_t argc, zval *argv)
+bool newobj(const char *name, zval *ret, uint32_t argc, zval *argv)
 {
     zend_class_entry *ce = cls(name);
     if (ce == NULL) {
@@ -124,7 +124,7 @@ static bool newobj(const char *name, zval *ret, uint32_t argc, zval *argv)
 }
 
 /* Throws the OrmException of code and the formatted message. */
-static void throw_orm(const char *code, const char *fmt, ...)
+void db_throw_orm(const char *code, const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
@@ -286,7 +286,7 @@ static bool handle_pdo(zval *self, zval *out)
 {
     zval *state = rd(self, "state");
     if (as_bool(rd(state, "closed"))) {
-        throw_orm("CONFIG", "database is closed");
+        db_throw_orm("CONFIG", "database is closed");
         return false;
     }
     zval *md = rd(self, "md");
@@ -302,7 +302,7 @@ static bool handle_pdo(zval *self, zval *out)
     }
     zval *pdo = rd(state, "pdo");
     if (pdo == NULL || Z_TYPE_P(pdo) != IS_OBJECT) {
-        throw_orm("CONFIG", "database is closed");
+        db_throw_orm("CONFIG", "database is closed");
         return false;
     }
     ZVAL_COPY(out, pdo);
@@ -880,7 +880,7 @@ static bool bound_time_text(zval *dt, zend_long prec, const char *col, zend_stri
     for (size_t i = (size_t)prec; i < ZSTR_LEN(u); i++) {
         if (ZSTR_VAL(u)[i] != '0') {
             zend_string *full = format_of(dt, "Y-m-d H:i:s.u");
-            throw_orm("CODEC_ENCODE", "%s value %s has a non-zero digit past its %ld fraction digits", col,
+            db_throw_orm("CODEC_ENCODE", "%s value %s has a non-zero digit past its %ld fraction digits", col,
                 full != NULL ? ZSTR_VAL(full) : "", (long)prec);
             if (full != NULL) {
                 zend_string_release(full);
@@ -897,7 +897,7 @@ static bool bound_time_text(zval *dt, zend_long prec, const char *col, zend_stri
 static void invalid_time_text(const char *v, size_t vlen, const char *col)
 {
     const char *form = strcmp(col, "date") == 0 ? "YYYY-MM-DD" : "YYYY-MM-DD HH:MM:SS[.ffffff][Z|\xc2\xb1HH:MM]";
-    throw_orm("CODEC_ENCODE", "%s value \"%.*s\" is not %s", col, (int)vlen, v, form);
+    db_throw_orm("CODEC_ENCODE", "%s value \"%.*s\" is not %s", col, (int)vlen, v, form);
 }
 
 /* Db::timeValue. Dates and times are text with no offset; a datetime is converted to the connection zone. out is the value. */
@@ -929,13 +929,13 @@ static bool time_value(zval *v, const char *col, zend_long prec, zval *zone, zva
         int fl = n == 0 ? -1 : match_fraction(s + n, len - n, &fd);
         if (n == 0 || fl < 0 || n + (size_t)(fl == 0 ? 0 : fl) != len) {
             zval_ptr_dtor(&cur);
-            throw_orm("CODEC_ENCODE", "time value \"%.*s\" is not HH:MM:SS[.ffffff]", (int)len, s);
+            db_throw_orm("CODEC_ENCODE", "time value \"%.*s\" is not HH:MM:SS[.ffffff]", (int)len, s);
             return false;
         }
         zend_long h = digits_value(s, 2), m = digits_value(s + 3, 2), sec = digits_value(s + 6, 2);
         if (h > 23 || m > 59 || sec > 59) {
             zval_ptr_dtor(&cur);
-            throw_orm("CODEC_ENCODE", "time value \"%.*s\" is not HH:MM:SS[.ffffff]", (int)len, s);
+            db_throw_orm("CODEC_ENCODE", "time value \"%.*s\" is not HH:MM:SS[.ffffff]", (int)len, s);
             return false;
         }
         /* The fraction padded to six digits: the digits past the precision must be zero. */
@@ -946,7 +946,7 @@ static bool time_value(zval *v, const char *col, zend_long prec, zval *zone, zva
         for (size_t i = (size_t)prec; i < 6; i++) {
             if (frac[i] != '0') {
                 zval_ptr_dtor(&cur);
-                throw_orm("CODEC_ENCODE", "time value \"%.*s\" has a non-zero digit past its %ld fraction digits",
+                db_throw_orm("CODEC_ENCODE", "time value \"%.*s\" has a non-zero digit past its %ld fraction digits",
                     (int)len, s, (long)prec);
                 return false;
             }
@@ -1199,7 +1199,7 @@ static bool composite_key_part(zval *v, char *tag, zend_string **out)
     if (is_instance(v, BYTES_CLASS)) {
         zval *raw = rd(v, "bytes");
         if (raw == NULL || Z_TYPE_P(raw) != IS_STRING) {
-            throw_orm("CODEC_DECODE", "Bytes key component has no byte string");
+            db_throw_orm("CODEC_DECODE", "Bytes key component has no byte string");
             return false;
         }
         static const char digits[] = "0123456789abcdef";
@@ -1340,7 +1340,7 @@ static bool split_row_slot(zval *row, zval *refs, zval *out)
     }
     if (Z_TYPE_P(out) == IS_NULL) {
         zval_ptr_dtor(out);
-        throw_orm("CODEC_DECODE", "split query row identity contains SQL NULL");
+        db_throw_orm("CODEC_DECODE", "split query row identity contains SQL NULL");
         return false;
     }
     return true;
@@ -1354,7 +1354,7 @@ static bool registered_model(zval *self, zval *hash, zval *out)
     zval *state = rd(self, "state");
     zval *sets = rd(state, "sets");
     if (sets == NULL || Z_TYPE_P(sets) != IS_ARRAY || zend_symtable_find(Z_ARRVAL_P(sets), Z_STR_P(hash)) == NULL) {
-        throw_orm("SCHEMA_HASH_MISMATCH", "manifest %s is not registered on this connection: connect through its generated code or install it",
+        db_throw_orm("SCHEMA_HASH_MISMATCH", "manifest %s is not registered on this connection: connect through its generated code or install it",
             Z_STRVAL_P(hash));
         return false;
     }
@@ -1379,19 +1379,19 @@ static bool apply_hook(zval *self, zval *r)
 static bool enter(zval *self, zval *frame, zval *ir)
 {
     if (as_bool(rd(rd(self, "state"), "closed"))) {
-        throw_orm("CONFIG", "database is closed");
+        db_throw_orm("CONFIG", "database is closed");
         return false;
     }
     if (frame != NULL && Z_TYPE_P(frame) == IS_OBJECT) {
         if (as_bool(rd(frame, "finished"))) {
-            throw_orm("CONFIG", "transaction already finished");
+            db_throw_orm("CONFIG", "transaction already finished");
             return false;
         }
     }
     zval *lock = aget(ir, "lock");
     bool in_transaction = frame != NULL && Z_TYPE_P(frame) == IS_OBJECT;
     if (lock != NULL && Z_TYPE_P(lock) == IS_STRING && Z_STRLEN_P(lock) > 0 && !in_transaction) {
-        throw_orm("CONFIG", "row locks are allowed only inside a transaction");
+        db_throw_orm("CONFIG", "row locks are allowed only inside a transaction");
         return false;
     }
     return true;
@@ -1522,7 +1522,7 @@ static bool args_of(zval *self, zval *step, zval *params, zval *parents, zval *f
                 if (strcmp(col, "decimal") == 0 && Z_TYPE(v) != IS_NULL) {
                     if (Z_TYPE(v) != IS_STRING) {
                         zval_ptr_dtor(&v);
-                        throw_orm("CODEC_ENCODE", "decimal bind requires exact text");
+                        db_throw_orm("CODEC_ENCODE", "decimal bind requires exact text");
                         goto fail;
                     }
                     zval dargs[3], dres;
@@ -1606,7 +1606,7 @@ static bool args_of(zval *self, zval *step, zval *params, zval *parents, zval *f
             } else if (is_str(from, "secret")) {
                 zval *name = aget(b, "name");
                 if (!is_str(name, "aes") || is_empty_str(rd(cfg, "aesKey"))) {
-                    throw_orm("CONFIG", "secret %s is not configured", name != NULL && Z_TYPE_P(name) == IS_STRING ? Z_STRVAL_P(name) : "");
+                    db_throw_orm("CONFIG", "secret %s is not configured", name != NULL && Z_TYPE_P(name) == IS_STRING ? Z_STRVAL_P(name) : "");
                     goto fail;
                 }
                 set_masked(&masks, acount(out), SECRET_MASK);
@@ -1614,7 +1614,7 @@ static bool args_of(zval *self, zval *step, zval *params, zval *parents, zval *f
             } else if (is_str(from, "config")) {
                 zval *name = aget(b, "name");
                 if (!is_str(name, "aes_version")) {
-                    throw_orm("CONFIG", "config value %s is not configured", name != NULL && Z_TYPE_P(name) == IS_STRING ? Z_STRVAL_P(name) : "");
+                    db_throw_orm("CONFIG", "config value %s is not configured", name != NULL && Z_TYPE_P(name) == IS_STRING ? Z_STRVAL_P(name) : "");
                     goto fail;
                 }
                 push(out, rd(cfg, "aesVersion"));
@@ -1637,20 +1637,20 @@ static bool args_of(zval *self, zval *step, zval *params, zval *parents, zval *f
             } else if (is_str(from, "audit")) {
                 zval *audit = frame != NULL && Z_TYPE_P(frame) == IS_OBJECT ? rd(frame, "audit") : NULL;
                 if (audit == NULL) {
-                    throw_orm("CONFIG", "a write of an audited table needs an audit: run it in a transaction with audit values");
+                    db_throw_orm("CONFIG", "a write of an audited table needs an audit: run it in a transaction with audit values");
                     goto fail;
                 }
                 zval *aname = aget(audit, "table");
                 zval *bname = aget(b, "name");
                 if (!(aname != NULL && bname != NULL && zend_string_equals(Z_STR_P(bname), Z_STR_P(aname)))) {
-                    throw_orm("CONFIG", "the audited table records its audits in %s, but the audit of the transaction is a row of %s",
+                    db_throw_orm("CONFIG", "the audited table records its audits in %s, but the audit of the transaction is a row of %s",
                         bname != NULL && Z_TYPE_P(bname) == IS_STRING ? Z_STRVAL_P(bname) : "",
                         aname != NULL && Z_TYPE_P(aname) == IS_STRING ? Z_STRVAL_P(aname) : "");
                     goto fail;
                 }
                 push(out, aget(audit, "key"));
             } else {
-                throw_orm("INTERNAL", "bind from %s", from != NULL && Z_TYPE_P(from) == IS_STRING ? Z_STRVAL_P(from) : "");
+                db_throw_orm("INTERNAL", "bind from %s", from != NULL && Z_TYPE_P(from) == IS_STRING ? Z_STRVAL_P(from) : "");
                 goto fail;
             }
         }
@@ -2019,7 +2019,7 @@ static bool relation_chunks(zval *step, zval *vals, zval *driver, zval *out)
     ZEND_HASH_FOREACH_END();
     zend_long max_tuples = width == 0 ? 0 : (bind_limit(driver) - non_parent) / width;
     if (max_tuples < 1) {
-        throw_orm("IR_INVALID", "relation %ld needs more bind parameters than %s permits", (long)as_long(aget(step, "id")),
+        db_throw_orm("IR_INVALID", "relation %ld needs more bind parameters than %s permits", (long)as_long(aget(step, "id")),
             Z_STRVAL_P(driver));
         return false;
     }
@@ -2094,7 +2094,7 @@ static bool child_keys_of(zval *plan, zend_long id, zval *out)
         }
     }
     ZEND_HASH_FOREACH_END();
-    throw_orm("INTERNAL", "relation step %ld without a child", (long)id);
+    db_throw_orm("INTERNAL", "relation step %ld without a child", (long)id);
     return false;
 }
 
@@ -2393,7 +2393,7 @@ static bool root_parts(zval *self, zval *r, zval *step, zval *out)
     zval_ptr_dtor(&unique);
     return true;
 too_large:
-    throw_orm("IR_INVALID", "the statement needs %ld bind parameters but %s permits %ld", (long)nbind,
+    db_throw_orm("IR_INVALID", "the statement needs %ld bind parameters but %s permits %ld", (long)nbind,
         Z_STRVAL_P(rd(self, "driver")), (long)limit);
     zval_ptr_dtor(out);
     ZVAL_UNDEF(out);
@@ -2893,7 +2893,7 @@ static bool scalar_of_impl(zval *self, zval *frame, zval *r, zval *out)
     if (acount(&parts) > 0) {
         zval *ir = rd(r, "ir");
         if (!is_str(aget(ir, "kind"), "count")) {
-            throw_orm("IR_INVALID", "a split IN list can be merged only for a count");
+            db_throw_orm("IR_INVALID", "a split IN list can be merged only for a count");
             ok = false;
         } else {
             zend_long total = 0;
@@ -2975,7 +2975,7 @@ static bool paginate_impl(zval *self, zval *frame, zval *r, zval *out)
     zval_ptr_dtor(&res);
     zval_ptr_dtor(&plan);
     if (!found) {
-        throw_orm("INTERNAL", "paginate plan has no count step");
+        db_throw_orm("INTERNAL", "paginate plan has no count step");
         return false;
     }
     return ok;
@@ -3077,7 +3077,7 @@ static bool write_of_impl(zval *self, zval *frame, zval *r, zval *after, zval *o
         zval_ptr_dtor(&res);
         if (aget(ir, "optimistic") != NULL && n == 0) {
             zval_ptr_dtor(&first);
-            throw_orm("OPTIMISTIC_LOCK", "the row changed after it was read");
+            db_throw_orm("OPTIMISTIC_LOCK", "the row changed after it was read");
             return false;
         }
         if (!record_inserted(frame, r, &first)) {
@@ -3139,7 +3139,7 @@ static bool write_of_impl(zval *self, zval *frame, zval *r, zval *after, zval *o
     }
     if (aget(ir, "optimistic") != NULL && n == 0) {
         zval_ptr_dtor(&id);
-        throw_orm("OPTIMISTIC_LOCK", "the row changed after it was read");
+        db_throw_orm("OPTIMISTIC_LOCK", "the row changed after it was read");
         return false;
     }
     if (!record_inserted(frame, r, &id)) {
@@ -3459,7 +3459,7 @@ ZEND_METHOD(Polyspec_Orm_Db, markdownSession)
     zval *state = rd(ZEND_THIS, "state");
     zval *md = rd(ZEND_THIS, "md");
     if (as_bool(rd(state, "closed")) || md == NULL) {
-        throw_orm("CONFIG", "database is closed");
+        db_throw_orm("CONFIG", "database is closed");
         RETURN_THROWS();
     }
     RETURN_COPY(md);
@@ -3858,7 +3858,7 @@ static bool execute_impl(zval *self, zval *step, zval *params)
     }
     if (aget(step, "assemble") != NULL) {
         zval_ptr_dtor(&frame);
-        throw_orm("IR_INVALID", "execute runs a statement without rows; the statement is a read");
+        db_throw_orm("IR_INVALID", "execute runs a statement without rows; the statement is a read");
         return false;
     }
     zval plist;
@@ -3881,7 +3881,7 @@ static bool execute_impl(zval *self, zval *step, zval *params)
             if (is_str(from, "param") && (pi < 0 || pi >= nparams)) {
                 zval_ptr_dtor(&plist);
                 zval_ptr_dtor(&frame);
-                throw_orm("IR_INVALID", "bind slot %ld reads parameter %ld, but execute has %ld parameters", (long)i, (long)pi,
+                db_throw_orm("IR_INVALID", "bind slot %ld reads parameter %ld, but execute has %ld parameters", (long)i, (long)pi,
                     (long)nparams);
                 return false;
             }
@@ -4333,7 +4333,7 @@ static void frame_cleanup(zval *self, zval *frame, zval *errors)
                 }
                 zval_ptr_dtor(&rows);
                 if (!held) {
-                    throw_orm("CONFIG", "lock %s was not held at transaction end", Z_STRVAL_P(key));
+                    db_throw_orm("CONFIG", "lock %s was not held at transaction end", Z_STRVAL_P(key));
                     ok = false;
                 }
             }
@@ -4634,11 +4634,11 @@ static bool begin_tx(zval *self, const char *isolation, bool read_only, zend_lon
 {
     zval *state = rd(self, "state");
     if (as_bool(rd(state, "closed"))) {
-        throw_orm("CONFIG", "database is closed");
+        db_throw_orm("CONFIG", "database is closed");
         return false;
     }
     if (timeout > 0 && !is_str(rd(self, "driver"), "postgres")) {
-        throw_orm("CAPABILITY_UNSUPPORTED", "transaction timeoutMs is supported only by postgres");
+        db_throw_orm("CAPABILITY_UNSUPPORTED", "transaction timeoutMs is supported only by postgres");
         return false;
     }
     zval *md = rd(self, "md");
@@ -4821,7 +4821,7 @@ static bool audit_record(zval *self, zval *values, zval *out)
 {
     zval *source = rd(rd(self, "config"), "auditSource");
     if (source == NULL || Z_TYPE_P(source) != IS_OBJECT) {
-        throw_orm("CONFIG", "the transaction has audit values but the connection has no audit source: set Config auditSource");
+        db_throw_orm("CONFIG", "the transaction has audit values but the connection has no audit source: set Config auditSource");
         return false;
     }
     zval *state = rd(self, "state");
@@ -4886,7 +4886,7 @@ static bool audit_record(zval *self, zval *values, zval *out)
     if (nt == 0) {
         zval_ptr_dtor(&models);
         zval_ptr_dtor(&tables);
-        throw_orm("CONFIG", "the transaction has audit values but no set of the connection has an audited table");
+        db_throw_orm("CONFIG", "the transaction has audit values but no set of the connection has an audited table");
         return false;
     }
     /* Sorts the tables bytewise: the first one is the record table. */
@@ -4908,7 +4908,7 @@ static bool audit_record(zval *self, zval *values, zval *out)
             smart_str_append(&list, tk[i]);
         }
         smart_str_0(&list);
-        throw_orm("CONFIG", "the audited tables of the connection record their audits in %s; one audit record table is required",
+        db_throw_orm("CONFIG", "the audited tables of the connection record their audits in %s; one audit record table is required",
             ZSTR_VAL(list.s));
         smart_str_free(&list);
         free_keys(tk, nt);
@@ -4941,7 +4941,7 @@ static bool audit_record(zval *self, zval *values, zval *out)
     }
     ZEND_HASH_FOREACH_END();
     if (Z_TYPE(target) == IS_NULL) {
-        throw_orm("CONFIG", "the audit record table %s is not a table of a set registered on the connection", ZSTR_VAL(record_table));
+        db_throw_orm("CONFIG", "the audit record table %s is not a table of a set registered on the connection", ZSTR_VAL(record_table));
         free_keys(tk, nt);
         zval_ptr_dtor(&models);
         zval_ptr_dtor(&tables);
@@ -4949,7 +4949,7 @@ static bool audit_record(zval *self, zval *values, zval *out)
     }
     zval *entity = aget(&target, "entity");
     if (acount(aget(entity, "pk")) != 1) {
-        throw_orm("CONFIG", "the audit record table %s needs a primary key of one column", ZSTR_VAL(record_table));
+        db_throw_orm("CONFIG", "the audit record table %s needs a primary key of one column", ZSTR_VAL(record_table));
         zval_ptr_dtor(&target);
         free_keys(tk, nt);
         zval_ptr_dtor(&models);
@@ -4971,7 +4971,7 @@ static bool audit_record(zval *self, zval *values, zval *out)
                 zval *v = zend_symtable_find(Z_ARRVAL_P(set), sk[i]);
                 ZVAL_DEREF(v);
                 if (zend_symtable_find(Z_ARRVAL_P(cols), sk[i]) == NULL || Z_TYPE_P(zend_symtable_find(Z_ARRVAL_P(cols), sk[i])) == IS_NULL) {
-                    throw_orm("CONFIG", "audit value %s is not a column of %s", ZSTR_VAL(sk[i]), ZSTR_VAL(record_table));
+                    db_throw_orm("CONFIG", "audit value %s is not a column of %s", ZSTR_VAL(sk[i]), ZSTR_VAL(record_table));
                     ok = false;
                     break;
                 }
@@ -4982,7 +4982,7 @@ static bool audit_record(zval *self, zval *values, zval *out)
     }
     zval_ptr_dtor(&src);
     if (ok && acount(&merged) == 0) {
-        throw_orm("CONFIG", "the audit record of %s has no value: the audit source and the transaction give none", ZSTR_VAL(record_table));
+        db_throw_orm("CONFIG", "the audit record of %s has no value: the audit source and the transaction give none", ZSTR_VAL(record_table));
         ok = false;
     }
     free_keys(tk, nt);
@@ -5101,7 +5101,7 @@ static bool insert_audit(zval *self, zval *frame, zval *record, zval *out)
     }
     zval_ptr_dtor(&id_pair);
     if (Z_TYPE(key) == IS_NULL) {
-        throw_orm("CONFIG", "the audit record %s has no %s after its insert", Z_STRVAL_P(aget(entity, "table")),
+        db_throw_orm("CONFIG", "the audit record %s has no %s after its insert", Z_STRVAL_P(aget(entity, "table")),
             Z_STRVAL_P(pk));
         return false;
     }
@@ -5241,7 +5241,7 @@ static bool run_transaction(zval *self, zval *fn, const char *isolation, bool re
             ZVAL_FALSE(&f);
             wr(rd(self, "state"), "rollbackFault", &f);
             zval inner;
-            throw_orm("FAULT", "test fault: the rollback of the transaction ran and is reported as failed");
+            db_throw_orm("FAULT", "test fault: the rollback of the transaction ran and is reported as failed");
             take_exception(&inner);
             throw_rollback(&failure, &inner);
             zval_ptr_dtor(&inner);
@@ -5268,11 +5268,11 @@ static bool transaction_impl(zval *self, zval *fn, const char *isolation, bool r
     zval *audit, zval *out)
 {
     if (retry < 0) {
-        throw_orm("CONFIG", "transaction retry must not be negative");
+        db_throw_orm("CONFIG", "transaction retry must not be negative");
         return false;
     }
     if (timeout < 0) {
-        throw_orm("CONFIG", "transaction timeoutMs must not be negative");
+        db_throw_orm("CONFIG", "transaction timeoutMs must not be negative");
         return false;
     }
     static const char *const levels[] = {"", "read_uncommitted", "read_committed", "repeatable_read", "serializable"};
@@ -5283,7 +5283,7 @@ static bool transaction_impl(zval *self, zval *fn, const char *isolation, bool r
         }
     }
     if (!known) {
-        throw_orm("CONFIG", "unsupported transaction isolation %s", isolation);
+        db_throw_orm("CONFIG", "unsupported transaction isolation %s", isolation);
         return false;
     }
     if (audit != NULL && Z_TYPE_P(audit) != IS_NULL) {
@@ -5312,7 +5312,7 @@ static bool transaction_impl(zval *self, zval *fn, const char *isolation, bool r
         bool has_audit = audit != NULL && Z_TYPE_P(audit) != IS_NULL;
         if (strlen(isolation) != 0 || read_only || timeout != 0 || has_audit) {
             zval_ptr_dtor(&outer_copy);
-            throw_orm("CONFIG", "a nested transaction of the same connection accepts only the retry option");
+            db_throw_orm("CONFIG", "a nested transaction of the same connection accepts only the retry option");
             return false;
         }
         bool kept = savepoint_tx(self, &outer_copy, fn, out);
@@ -5427,7 +5427,7 @@ ZEND_METHOD(Polyspec_Orm_Db, resolve)
     if (conn != NULL) {
         if (as_bool(rd(rd(conn, "state"), "closed"))) {
             zval_ptr_dtor(&pair);
-            throw_orm("CONFIG", "database is closed");
+            db_throw_orm("CONFIG", "database is closed");
             RETURN_THROWS();
         }
         zval c;
@@ -5444,7 +5444,7 @@ ZEND_METHOD(Polyspec_Orm_Db, resolve)
     } else {
         if (g_nframes == 0) {
             zval_ptr_dtor(&pair);
-            throw_orm("CONFIG", "the model has no connection; use connect or run it inside a transaction");
+            db_throw_orm("CONFIG", "the model has no connection; use connect or run it inside a transaction");
             RETURN_THROWS();
         }
         zval *frame = &g_frames[g_nframes - 1];
@@ -5467,7 +5467,7 @@ ZEND_METHOD(Polyspec_Orm_Db, inTransaction)
     ZEND_PARSE_PARAMETERS_END();
     if (conn == NULL) {
         if (g_nframes == 0) {
-            throw_orm("CONFIG", "the model has no connection; use connect or run it inside a transaction");
+            db_throw_orm("CONFIG", "the model has no connection; use connect or run it inside a transaction");
             RETURN_THROWS();
         }
         zval ret;

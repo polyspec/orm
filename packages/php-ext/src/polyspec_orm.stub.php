@@ -7,8 +7,8 @@
 /*
  * The one stub of the PHP extension polyspec_orm: the declarations of the classes it registers. Not loaded at runtime: if the
  * extension is present, it registers the class of the same name. The declarations are the inventory of the interface check
- * (contracts/interfaces.json's php-extension); make php-ext-arginfo writes src/polyspec_orm_arginfo.h from this file with
- * gen_stub.php, and make lint-php-ext checks that the header records this file's hash. packages/php-ext/tests/DeclarationsTest.php
+ * (contracts/interfaces.json's php-extension); the native build runs gen_stub.php on a temporary copy of this file to produce
+ * polyspec_orm_arginfo.h beside it. packages/php-ext/tests/DeclarationsTest.php
  * checks that the Reflection of the loaded extension is the same as this file's Reflection.
  * The classes, their properties and methods are the same as the same-named classes of the PHP client (packages/php/src/Dbspec).
  * gen_stub cannot write array constants, so this file declares none: src/polyspec_orm.c registers ColumnType::SIMPLE,
@@ -1060,6 +1060,17 @@ final class Db
     public static function scalarText(mixed $v): string {}
 }
 
+/** The connection counters returned by Db::stats() and Utils::stats(). */
+final readonly class Stats
+{
+    public int $maxOpenConnections;
+    public int $openConnections;
+    public int $inUse;
+    public int $idle;
+
+    public function __construct(int $maxOpenConnections, int $openConnections, int $inUse, int $idle) {}
+}
+
 /** One statement that the connection sent to the database (docs/operations/usage.md "Statement events"). */
 final readonly class StatementEvent
 {
@@ -1120,6 +1131,103 @@ final class Collection implements \IteratorAggregate, \Countable, \JsonSerializa
     public function toArray(): array {}
     public function toJson(): string {}
     public function jsonSerialize(): array {}
+}
+
+/** One column of a catalog table in physical order. defaultExpression is null when the column has no default. */
+final class CatalogColumn
+{
+    public readonly string $name;
+    public readonly string $nativeType;
+    public readonly bool $nullable;
+    public readonly bool $generated;
+    public readonly bool $automaticKey;
+    public readonly ?string $defaultExpression;
+    public readonly bool $expressionDefault;
+
+    public function __construct(string $name, string $nativeType, bool $nullable, bool $generated, bool $automaticKey, ?string $defaultExpression, bool $expressionDefault) {}
+}
+
+/** The descriptor of a table: its qualified name, its native relation kind, its columns, its primary key and whether that key is a reliable row identity. */
+final class CatalogTableMetadata
+{
+    public readonly array $table;
+    public readonly string $kind;
+    public readonly array $columns;
+    public readonly array $primaryKey;
+    public readonly bool $reliableRowIdentity;
+
+    public function __construct(array $table, string $kind, array $columns, array $primaryKey, bool $reliableRowIdentity) {}
+}
+
+/** A catalog result: the column names in order and the rows of typed values. */
+final class CatalogResult
+{
+    public readonly array $columns;
+    public readonly array $rows;
+
+    public function __construct(array $columns, array $rows) {}
+}
+
+/** One bounded page of a table in primary-key order. */
+final class CatalogTablePage
+{
+    public readonly CatalogTableMetadata $metadata;
+    public readonly CatalogResult $result;
+    public readonly int $limit;
+    public readonly int $offset;
+    public readonly array $orderBy;
+    public readonly bool $hasMore;
+
+    public function __construct(CatalogTableMetadata $metadata, CatalogResult $result, int $limit, int $offset, array $orderBy, bool $hasMore) {}
+
+    /** The position of the named column in the rows of the page. */
+    public function columnIndex(string $name): int {}
+}
+
+/** One checked original row, with its SHA-256 revision. Catalog::rowSnapshotFromPage creates it. @internal */
+final class CatalogRowSnapshot
+{
+    public readonly CatalogTableMetadata $metadata;
+    public readonly array $cells;
+    public readonly array $keyIndexes;
+    public readonly string $revision;
+
+    public function __construct(CatalogTableMetadata $metadata, array $cells, array $keyIndexes, string $revision) {}
+
+    /** The SHA-256 revision of the descriptor and the cells, in lowercase hexadecimal. */
+    public function revision(): string {}
+}
+
+/** One typed cell of a grid query: a kind and its value, as the PHP client documents them (SCH-6a). */
+final class CatalogGridCell
+{
+    public readonly string $kind;
+    public readonly mixed $value;
+
+    public function __construct(string $kind, mixed $value = null) {}
+}
+
+/** The catalog connection (SCH-6a): table metadata, pages, read-only queries and row changes on a database of a DSN. */
+final class Catalog
+{
+    private readonly Db $db;
+    private readonly string $dialect;
+    private readonly ?array $mysqlTarget;
+    private ?\mysqli $gridLink;
+    private bool $closed = false;
+
+    public static function connect(string $dsn): Catalog {}
+    public function dialect(): string {}
+    public function close(): void {}
+    public function currentNamespace(): string {}
+    public function describeTable(array $table): CatalogTableMetadata {}
+    public function tablePage(array $table, int $limit, int $offset): CatalogTablePage {}
+    public function rowSnapshotFromPage(CatalogTablePage $page, int $index): CatalogRowSnapshot {}
+    public function readOnlyQuery(string $sql, array $params = [], int $maxRows = 0, int $maxBytes = 0): CatalogResult {}
+    public function readOnlyGridQuery(string $sql, array $params = [], int $maxRows = 0, int $maxBytes = 0): CatalogResult {}
+    public function insertRow(CatalogTableMetadata $declared, array $values): CatalogResult {}
+    public function updateRow(CatalogRowSnapshot $original, array $values): CatalogResult {}
+    public function deleteRow(CatalogRowSnapshot $original): int {}
 }
 
 /**

@@ -1,4 +1,23 @@
 use super::*;
+
+#[test]
+fn decimal_parse_preserves_native_cause_message() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let error = decimal("private-decimal").expect_err("invalid decimal must fail").to_string();
+    assert!(error.contains("TOOL_BIND_INVALID: unsupported or invalid native bind: "), "{error}");
+    assert!(!error.contains("private-decimal"), "{error}");
+}
+
+#[test]
+fn temporal_parse_preserves_native_cause_message() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    for error in [date("private-date").unwrap_err(), time("private-time").unwrap_err(), datetime("private-datetime").unwrap_err()] {
+        let message = error.to_string();
+        assert!(message.contains("TOOL_BIND_INVALID: unsupported or invalid native bind: "), "{message}");
+        assert!(!message.contains("private-"), "{message}");
+    }
+}
+
 #[tokio::test]
 // Requirements: INT-122.
 async fn bind_validation_checks_exact_bounds_before_driver_encoding() {

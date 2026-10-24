@@ -10,3 +10,11 @@ caseTest('driver-error/lock-wait-timeout/mysql', COMPUTE, () => {
   const error = Object.assign(new Error('Lock wait timeout exceeded; try restarting transaction'), { code: 'ER_LOCK_WAIT_TIMEOUT', errno: 1205 });
   assert.equal(driverError('mysql', error).code, 'CANCELED');
 });
+
+caseTest('driver-error/native-cause/mysql', COMPUTE, () => {
+  const source = Object.assign(new Error('trigger refused the write'), { code: 'ER_SIGNAL_EXCEPTION', errno: 1644 });
+  const mapped = driverError('mysql', source);
+  assert.equal(mapped.code, 'DRIVER');
+  assert.match(mapped.message, /mysql: trigger refused the write/);
+  assert.strictEqual(mapped.cause, source);
+});

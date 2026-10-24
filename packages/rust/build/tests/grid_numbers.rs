@@ -10,9 +10,7 @@ use grid_open::open_catalog;
 mod dialect_dsn;
 use dialect_dsn::dsn_for;
 
-use polyspec_orm_build::{
-    tool_db::{GridCell, QueryLimits},
-};
+use polyspec_orm_build::tool_db::{GridCell, QueryLimits};
 
 #[tokio::test]
 // Requirements: INT-102.
@@ -57,6 +55,13 @@ async fn check() {
             match catalog.read_only_grid_query("SELECT CAST(18446744073709551615 AS UNSIGNED)", &[], QueryLimits::default()).await {
                 Ok(result) if result.rows == vec![vec![GridCell::Unsigned(u64::MAX)]] => {}
                 _ => failures.push("unsigned-range"),
+            }
+            if !catalog
+                .read_only_query("SELECT CAST(18446744073709551615 AS UNSIGNED)", &[], QueryLimits::default())
+                .await
+                .is_err_and(|error| error.to_string().contains("number too large to fit in target type"))
+            {
+                failures.push("unsigned-legacy-conversion-cause");
             }
         }
         if dialect == "postgres" {

@@ -143,12 +143,17 @@ function auditColumnsCase(string $dsn, string $document, string $work): void
 }
 
 #[Medium]
-final class CoverageAuditColumnsTest extends TestCase
+class CoverageAuditColumnsTest extends TestCase
 {
-    // Requirements: DBS-85, DBS-88, DBS-93, DBS-94, DBS-96.
-    public function testAuditSelectedColumns(): void
+    protected static function coverageTestFile(): string
     {
-        foreach (coverageItemsOf(__FILE__) as $item) {
+        return __FILE__;
+    }
+
+    // Requirements: DBS-85, DBS-88, DBS-93, DBS-94, DBS-96.
+    public function test_audit_selected_columns(): void
+    {
+        foreach (coverageItemsOf(static::coverageTestFile()) as $item) {
             selectCoverageItem($item);
             [, $dsn] = coverageItem();
             $root = dirname(__DIR__, 3);

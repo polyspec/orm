@@ -1616,7 +1616,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageAuditTriggersTest.php",
-          "id": "CoverageAuditTriggersTest::testAuditHistory"
+          "id": "CoverageAuditTriggersTest::test_audit_history"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
+          "id": "CoverageAuditTriggersExtensionTest::test_audit_history"
         },
         {
           "implementation": "python",
@@ -1665,7 +1670,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageAuditColumnsTest.php",
-          "id": "CoverageAuditColumnsTest::testAuditSelectedColumns"
+          "id": "CoverageAuditColumnsTest::test_audit_selected_columns"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageAuditColumnsExtensionTest.php",
+          "id": "CoverageAuditColumnsExtensionTest::test_audit_selected_columns"
         },
         {
           "implementation": "python",
@@ -1714,7 +1724,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageAuditTriggersTest.php",
-          "id": "CoverageAuditTriggersTest::testAuditTransactionEntryPoints"
+          "id": "CoverageAuditTriggersTest::test_audit_transaction_entry_points"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
+          "id": "CoverageAuditTriggersExtensionTest::test_audit_transaction_entry_points"
         },
         {
           "implementation": "python",
@@ -1766,7 +1781,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageAuditTriggersTest.php",
-          "id": "CoverageAuditTriggersTest::testSoftDeleteRestore"
+          "id": "CoverageAuditTriggersTest::test_soft_delete_restore"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
+          "id": "CoverageAuditTriggersExtensionTest::test_soft_delete_restore"
         },
         {
           "implementation": "python",
@@ -2141,7 +2161,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::testWithoutHook"
+          "id": "CoverageRequestHookTest::test_without_hook"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
+          "id": "CoverageRequestHookExtensionTest::test_without_hook"
         },
         {
           "implementation": "typescript",
@@ -2187,7 +2212,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::testReadFilter"
+          "id": "CoverageRequestHookTest::test_read_filter"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
+          "id": "CoverageRequestHookExtensionTest::test_read_filter"
         },
         {
           "implementation": "typescript",
@@ -2234,7 +2264,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::testInsertAssign"
+          "id": "CoverageRequestHookTest::test_insert_assign"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
+          "id": "CoverageRequestHookExtensionTest::test_insert_assign"
         },
         {
           "implementation": "typescript",
@@ -2282,7 +2317,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::testLoadedRowWrites"
+          "id": "CoverageRequestHookTest::test_loaded_row_writes"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
+          "id": "CoverageRequestHookExtensionTest::test_loaded_row_writes"
         },
         {
           "implementation": "typescript",
@@ -2327,7 +2367,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::testInvalidParam"
+          "id": "CoverageRequestHookTest::test_invalid_param"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
+          "id": "CoverageRequestHookExtensionTest::test_invalid_param"
         },
         {
           "implementation": "typescript",
@@ -2372,7 +2417,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::testRestoreKey"
+          "id": "CoverageRequestHookTest::test_restore_key"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
+          "id": "CoverageRequestHookExtensionTest::test_restore_key"
         },
         {
           "implementation": "typescript",
@@ -2418,7 +2468,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::testRestoreCondition"
+          "id": "CoverageRequestHookTest::test_restore_condition"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
+          "id": "CoverageRequestHookExtensionTest::test_restore_condition"
         },
         {
           "implementation": "typescript",
@@ -2463,7 +2518,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::testRestoreNoKey"
+          "id": "CoverageRequestHookTest::test_restore_no_key"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
+          "id": "CoverageRequestHookExtensionTest::test_restore_no_key"
         },
         {
           "implementation": "typescript",
@@ -2508,7 +2568,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::testRestoreRewrittenKey"
+          "id": "CoverageRequestHookTest::test_restore_rewritten_key"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
+          "id": "CoverageRequestHookExtensionTest::test_restore_rewritten_key"
         },
         {
           "implementation": "typescript",
@@ -2553,7 +2618,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::testRestoreHookSetKey"
+          "id": "CoverageRequestHookTest::test_restore_hook_set_key"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
+          "id": "CoverageRequestHookExtensionTest::test_restore_hook_set_key"
         },
         {
           "implementation": "typescript",
@@ -2598,7 +2668,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::testRestoreRewrittenKeySetScope"
+          "id": "CoverageRequestHookTest::test_restore_rewritten_key_set_scope"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
+          "id": "CoverageRequestHookExtensionTest::test_restore_rewritten_key_set_scope"
         },
         {
           "implementation": "typescript",
@@ -2664,6 +2739,11 @@
           "id": "CoverageTransactionsTest::testTransactionRollback"
         },
         {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/AuditLazyFakePdoTest.php",
+          "id": "AuditLazyFakePdoTest::test_lazy_audit_precedes_writes_is_reused_and_write_failure_propagates"
+        },
+        {
           "implementation": "python",
           "test": "packages/python/tests/coverage_transactions.py",
           "id": "test_transaction_rollback"
@@ -2689,6 +2769,89 @@
           "implementation": "typescript",
           "test": "packages/ts/tests/coverage_transactions.mjs",
           "id": "transaction_rollback [sqlite]"
+        }
+      ]
+    },
+    {
+      "id": "handle-disposal-abort-or-unwind-rolls-back",
+      "kind": "feature",
+      "requirements": [
+        "INT-67"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/cancel_test.go",
+          "id": "TestWithContextCancelsTransaction"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageTransactionsTest.php",
+          "id": "CoverageTransactionsTest::testTransactionRollback"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/AuditLazyFakePdoTest.php",
+          "id": "AuditLazyFakePdoTest::test_lazy_audit_precedes_writes_is_reused_and_write_failure_propagates"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_transactions.mjs",
+          "id": "transaction_rollback [sqlite]"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_transactions.mjs",
+          "id": "transaction_rollback [mysql]"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_transactions.mjs",
+          "id": "transaction_rollback [postgres]"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_transactions.py",
+          "id": "test_transaction_rollback"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/zone.rs",
+          "id": "dropping_a_transaction_frees_a_single_connection"
+        }
+      ]
+    },
+    {
+      "id": "handle-disposal-abandoned-query-cancels-and-releases",
+      "kind": "feature",
+      "requirements": [
+        "CFG-9"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/cancel_test.go",
+          "id": "TestWithContextCancels"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_transactions.mjs",
+          "id": "transaction_rollback [sqlite]"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_transactions.mjs",
+          "id": "transaction_rollback [mysql]"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_transactions.mjs",
+          "id": "transaction_rollback [postgres]"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/zone.rs",
+          "id": "dropping_a_query_cancels_it"
         }
       ]
     },
@@ -4283,7 +4446,7 @@
         "DSL-83",
         "DSL-84",
         "DSL-85",
-        "DSL-86",
+        "DSL-86", "DSL-87",
         "DSL-88",
         "DSL-89",
         "DSL-90",
@@ -4480,7 +4643,7 @@
         "DSL-83",
         "DSL-84",
         "DSL-85",
-        "DSL-86",
+        "DSL-86", "DSL-87",
         "DSL-88",
         "DSL-89",
         "DSL-90",
@@ -4677,7 +4840,7 @@
         "DSL-83",
         "DSL-84",
         "DSL-85",
-        "DSL-86",
+        "DSL-86", "DSL-87",
         "DSL-88",
         "DSL-89",
         "DSL-90",
@@ -7496,8 +7659,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/OrmExceptionLockWaitTest.php",
-          "id": "OrmExceptionLockWaitTest::testMysqlLockWaitTimeoutIsCanceled"
+          "test": "packages/php-ext/tests/ConnectionTimeoutCleanupTest.php",
+          "id": "ConnectionTimeoutCleanupTest::test_mysql_lock_wait_timeout_maps_to_canceled_and_closes_cursor"
         },
         {
           "implementation": "typescript",
@@ -7512,6 +7675,119 @@
       ]
     }
 ,
+    {
+      "id": "native-row-cell-bytes",
+      "kind": "feature",
+      "requirements": [
+        "PRT-69"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/driver_error_test.go",
+          "id": "TestCellScanCopiesLosslessNativeBytes"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/NativeCellReadTest.php",
+          "id": "NativeCellReadTest::testRowAssemblyPreservesBinaryDriverCellBytes"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelStreamReadTest.php",
+          "id": "ModelStreamReadTest::testNativeRowAssemblyPreservesBinaryDriverCellBytes"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/driver-cell-bytes.mjs",
+          "id": "driver-cell/bytes/mysql"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_driver_cells.py",
+          "id": "test_binary_cells_keep_the_exact_driver_bytes"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/row.rs",
+          "id": "row::native_cell_bytes_tests::positional_driver_bytes_remain_exact"
+        }
+      ]
+    },
+    {
+      "id": "native-markdown-connect-refused",
+      "kind": "feature",
+      "requirements": [
+        "PRT-64"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/markdown_test.go",
+          "id": "TestMarkdownConnectRefused"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/MarkdownTest.php",
+          "id": "MarkdownTest::testConnectRefused"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/markdown.mjs",
+          "id": "markdown/connect-refused"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_markdown.py",
+          "id": "test_markdown_connect_refused"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/markdown.rs",
+          "id": "markdown_connect_refused"
+        }
+      ]
+    },
+    {
+      "id": "native-driver-error-cause",
+      "kind": "feature",
+      "requirements": [
+        "PRT-79"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/driver_error_test.go",
+          "id": "TestMapDriverErrorPreservesNativeCause"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/OrmExceptionLockWaitTest.php",
+          "id": "OrmExceptionLockWaitTest::testUnlistedMysqlDriverErrorKeepsItsCause"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DriverErrorTest.php",
+          "id": "DriverErrorTest::testNativeDbMapperKeepsTheDriverErrorAsPrevious"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/driver-error-lock-wait.mjs",
+          "id": "driver-error/native-cause/mysql"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_driver_errors.py",
+          "id": "test_mysql_errors_have_the_codes_of_the_catalog"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/lib.rs",
+          "id": "driver_error_tests::unknown_database_error_keeps_the_native_source_chain"
+        }
+      ]
+    }
+    ,
     {
       "id": "go-internal-packages-go-orm-driver-error",
       "kind": "feature",
@@ -15633,132 +15909,6 @@
       ]
     },
     {
-      "id": "php-internal-model-failed-rollback",
-      "kind": "feature",
-      "requirements": [
-        "CFG-2",
-        "CFG-4",
-        "CFG-5",
-        "CFG-6",
-        "CFG-7",
-        "CFG-21",
-        "CFG-22",
-        "CFG-24",
-        "CFG-27",
-        "CFG-29",
-        "COD-8",
-        "CPX-1",
-        "DBS-118",
-        "DIA-57",
-        "DSL-49",
-        "DSL-50",
-        "DSL-107",
-        "DSL-116",
-        "DSL-118",
-        "DSL-119",
-        "DSL-123",
-        "DSL-124",
-        "DSL-125",
-        "DSL-126",
-        "DSL-141",
-        "PLN-6",
-        "PLN-7",
-        "PLN-8",
-        "PLN-9",
-        "PLN-10",
-        "PLN-12",
-        "PLN-13",
-        "PLN-14",
-        "PLN-16",
-        "PLN-17",
-        "PLN-20",
-        "PLN-21",
-        "PLN-23",
-        "PLN-24",
-        "PLN-27",
-        "PLN-28",
-        "PLN-29",
-        "PLN-36",
-        "PLN-37",
-        "PLN-38",
-        "PLN-39",
-        "PLN-41",
-        "PLN-42",
-        "PLN-43",
-        "SCH-7"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testFailedRollback"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-model-failed-savepoint-end",
-      "kind": "feature",
-      "requirements": [
-        "CFG-2",
-        "CFG-4",
-        "CFG-5",
-        "CFG-6",
-        "CFG-7",
-        "CFG-21",
-        "CFG-22",
-        "CFG-24",
-        "CFG-27",
-        "CFG-29",
-        "COD-8",
-        "CPX-1",
-        "DBS-118",
-        "DIA-57",
-        "DSL-49",
-        "DSL-50",
-        "DSL-107",
-        "DSL-116",
-        "DSL-118",
-        "DSL-119",
-        "DSL-123",
-        "DSL-124",
-        "DSL-125",
-        "DSL-126",
-        "DSL-141",
-        "PLN-6",
-        "PLN-7",
-        "PLN-8",
-        "PLN-9",
-        "PLN-10",
-        "PLN-12",
-        "PLN-13",
-        "PLN-14",
-        "PLN-16",
-        "PLN-17",
-        "PLN-20",
-        "PLN-21",
-        "PLN-23",
-        "PLN-24",
-        "PLN-27",
-        "PLN-28",
-        "PLN-29",
-        "PLN-36",
-        "PLN-37",
-        "PLN-38",
-        "PLN-39",
-        "PLN-41",
-        "PLN-42",
-        "PLN-43",
-        "SCH-7"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testFailedSavepointEnd"
-        }
-      ]
-    },
-    {
       "id": "php-internal-model-conditions",
       "kind": "feature",
       "requirements": [
@@ -21501,6 +21651,32 @@
           "implementation": "rust",
           "symbol": "polyspec_orm::codes::GRID_TEMPORAL_PRECISION"
         }
+      ]
+    },
+    {
+      "id": "transaction-failure-rollback",
+      "kind": "feature",
+      "requirements": ["INT-72", "DIA-180"],
+      "bindings": [
+        {"implementation": "go", "test": "packages/go/orm/coverage_transaction_failure_test.go", "id": "TestTransactionFailureRollback"},
+        {"implementation": "php", "test": "packages/php/tests/TransactionFailureTest.php", "id": "TransactionFailureTest::test_transaction_keeps_callback_and_failed_rollback_errors"},
+        {"implementation": "php-extension", "test": "packages/php-ext/tests/TransactionFailureNativeTest.php", "id": "TransactionFailureNativeTest::test_transaction_keeps_callback_and_failed_rollback_errors"},
+        {"implementation": "typescript", "test": "packages/ts/tests/transaction-failure.mjs", "id": "transaction-failure/rollback-primary-and-cleanup"},
+        {"implementation": "python", "test": "packages/python/tests/test_rollback_fault.py", "id": "test_a_failed_rollback_reports_the_callback_error_and_the_rollback_error"},
+        {"implementation": "rust", "test": "packages/rust/orm/src/tx.rs", "id": "tx::tests::sqlite_transaction_end_failures_are_reported"}
+      ]
+    },
+    {
+      "id": "transaction-failure-savepoint-end",
+      "kind": "feature",
+      "requirements": ["DIA-181", "PLN-17"],
+      "bindings": [
+        {"implementation": "go", "test": "packages/go/orm/coverage_transaction_failure_test.go", "id": "TestTransactionFailureSavepointEnd"},
+        {"implementation": "php", "test": "packages/php/tests/TransactionFailureTest.php", "id": "TransactionFailureTest::test_savepoint_attempts_both_end_steps_and_keeps_the_callback_error"},
+        {"implementation": "php-extension", "test": "packages/php-ext/tests/TransactionFailureNativeTest.php", "id": "TransactionFailureNativeTest::test_savepoint_attempts_both_end_steps_and_keeps_the_callback_error"},
+        {"implementation": "typescript", "test": "packages/ts/tests/transaction-failure.mjs", "id": "transaction-failure/savepoint-end-attempts-both"},
+        {"implementation": "python", "test": "packages/python/tests/test_rollback_fault.py", "id": "test_a_failed_savepoint_rollback_and_transaction_rollback_report_both"},
+        {"implementation": "rust", "test": "packages/rust/orm/src/tx.rs", "id": "tx::tests::savepoint_end_failures_are_reported"}
       ]
     }
   ],

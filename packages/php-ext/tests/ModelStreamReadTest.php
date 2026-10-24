@@ -23,6 +23,7 @@ final class ModelStreamFixture extends Model
             'columns' => [
                 'title' => ['type' => 'text', 'codec' => [], 'nullable' => true],
                 'active' => ['type' => 'bool', 'codec' => [], 'nullable' => true],
+                'body' => ['type' => 'bytes', 'codec' => [], 'nullable' => true],
             ],
         ];
     }
@@ -177,6 +178,30 @@ final class ModelStreamReadTest extends TestCase
             } finally {
                 fclose($stream);
             }
+        }
+    }
+
+    public function testNativeRowAssemblyPreservesBinaryDriverCellBytes(): void
+    {
+        $source = "\0\x80\xffA";
+        $stream = fopen('php://temp', 'w+');
+        self::assertIsResource($stream);
+        try {
+            fwrite($stream, $source);
+            rewind($stream);
+            $model = new ModelStreamFixture();
+            $assembleRow = new \ReflectionMethod(Model::class, 'assembleRow');
+            self::assertTrue($assembleRow->isInternal());
+            $row = $assembleRow->invoke($model, self::assembly(), [
+                'node' => 48118,
+                'key' => [],
+                'children' => [],
+                'columns' => [['index' => 0, 'name' => 'body', 'column' => 'body', 'hidden' => false]],
+            ], [$stream]);
+            $values = (new \ReflectionProperty(Model::class, 'values'))->getValue($row);
+            self::assertSame($source, $values['body']);
+        } finally {
+            fclose($stream);
         }
     }
 
