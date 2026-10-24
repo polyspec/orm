@@ -4242,7 +4242,7 @@
       ]
     },
     {
-      "id": "ts-plan-cache-in-lengths-share-keys",
+      "id": "plan-cache-in-list-shapes-share-ten-bucketed-keys",
       "kind": "feature",
       "requirements": [
         "CPX-4"
@@ -4252,6 +4252,31 @@
           "implementation": "typescript",
           "test": "packages/ts/tests/plan-cache-in.mjs",
           "id": "IN lists of lengths 1 to 300 share at most ten plan cache keys"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/plan_cache_test.go",
+          "id": "TestPlanCacheBoundedByInListShape"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/PlanCacheBoundTest.php",
+          "id": "PlanCacheBoundTest::testInListLengthsShareBucketedPlans"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/PlanCacheBoundNativeTest.php",
+          "id": "PlanCacheBoundNativeTest::testInListLengthsShareBucketedPlans"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_plan_cache_bound.py",
+          "id": "test_in_list_lengths_share_bucketed_plans"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/request.rs",
+          "id": "request::plan_cache_tests::in_list_keys_are_bounded_by_bucket"
         }
       ]
     },
@@ -9136,20 +9161,6 @@
       ]
     },
     {
-      "id": "go-internal-plan-cache-bounded-in-list-shape",
-      "kind": "feature",
-      "requirements": [
-        "CPX-4"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/plan_cache_test.go",
-          "id": "TestPlanCacheBoundedByInListShape"
-        }
-      ]
-    },
-    {
       "id": "go-internal-plan-cache-pads-in-list-and-rejects-range",
       "kind": "feature",
       "requirements": [
@@ -13283,20 +13294,6 @@
       ]
     },
     {
-      "id": "rust-plan-cache-in-list-keys-bounded",
-      "kind": "feature",
-      "requirements": [
-        "CPX-4"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/src/request.rs",
-          "id": "request::plan_cache_tests::in_list_keys_are_bounded_by_bucket"
-        }
-      ]
-    },
-    {
       "id": "py-codec-vector",
       "kind": "feature",
       "requirements": [
@@ -13988,20 +13985,6 @@
           "implementation": "python",
           "test": "packages/python/tests/ir_answers.py",
           "id": "one"
-        }
-      ]
-    },
-    {
-      "id": "py-plan-cache-in-lengths-share-plans",
-      "kind": "feature",
-      "requirements": [
-        "CPX-4"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_plan_cache_bound.py",
-          "id": "test_in_list_lengths_share_bucketed_plans"
         }
       ]
     },
@@ -16458,20 +16441,6 @@
           "implementation": "php",
           "test": "packages/php/tests/RuntimeDbTest.php",
           "id": "RuntimeDbTest::testRestoreOfSoftDeletedRows"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-plan-cache-bound",
-      "kind": "feature",
-      "requirements": [
-        "CPX-4"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/PlanCacheBoundTest.php",
-          "id": "PlanCacheBoundTest::testInListLengthsShareBucketedPlans"
         }
       ]
     },
