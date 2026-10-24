@@ -15,6 +15,7 @@ import (
 	_ "github.com/polyspec/orm/packages/go/orm/sqlite"
 
 	"github.com/polyspec/orm/packages/go/internal/benchset"
+	"github.com/polyspec/orm/packages/go/internal/testassert"
 	"github.com/polyspec/orm/packages/go/internal/testdb"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
@@ -67,12 +68,7 @@ func must[T any](v T, err error) T {
 }
 
 func readColumn[T any](t *testing.T, getter func() (T, error)) T {
-	t.Helper()
-	value, err := getter()
-	if err != nil {
-		t.Fatal(err)
-	}
-	return value
+	return testassert.ReadColumn(t, getter)
 }
 
 type fixture struct {

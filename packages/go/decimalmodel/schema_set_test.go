@@ -7,6 +7,7 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/polyspec/orm/packages/go/decimalmodel"
 	"github.com/polyspec/orm/packages/go/internal/benchset"
+	"github.com/polyspec/orm/packages/go/internal/testassert"
 	"github.com/polyspec/orm/packages/go/model"
 	"github.com/polyspec/orm/packages/go/orm"
 	_ "github.com/polyspec/orm/packages/go/orm/pg"
@@ -22,15 +23,6 @@ import (
 func schemaSetDatabase(t *testing.T, driver string) string {
 	t.Helper()
 	return testdb.New(t, driver)
-}
-
-func readColumn[T any](t *testing.T, getter func() (T, error)) T {
-	t.Helper()
-	value, err := getter()
-	if err != nil {
-		t.Fatal(err)
-	}
-	return value
 }
 
 // schemaSet connects with the bench set's connect helper and installs the bench set (benchset.Install) and the decimal schema
@@ -82,8 +74,8 @@ func schemaSet(t *testing.T, driver string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if readColumn(t, loaded.GetAmount) != "48.0450" {
-		t.Fatalf("decimal amount = %q", readColumn(t, loaded.GetAmount))
+	if testassert.ReadColumn(t, loaded.GetAmount) != "48.0450" {
+		t.Fatalf("decimal amount = %q", testassert.ReadColumn(t, loaded.GetAmount))
 	}
 	decimals, err := decimalmodel.DecimalCase().Connect(db).GetCount()
 	if err != nil || decimals != 2 {
