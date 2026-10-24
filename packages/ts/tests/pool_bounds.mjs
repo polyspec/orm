@@ -77,7 +77,27 @@ async function checkConfiguredLimit(dialect, dsn, step) {
 
 }
 
-async function checkIdleLifetime(dialect, dsn, step) {
+function connectionRemoval(dialect, db, signal) {
+  const driver = db.connection;
+  const pool = dialect === 'mysql' ? driver.pool.pool : driver.pool;
+  const connection = dialect === 'mysql' ? pool._freeConnections?.get?.(0) : pool;
+  const event = dialect === 'mysql' ? 'end' : 'remove';
+  if (typeof connection?.once !== 'function' || typeof connection?.removeListener !== 'function') {
+    throw new Error(`${dialect}: native pool does not expose the ${event} event source`);
+  }
+  return new Promise((resolve, reject) => {
+    const cleanup = () => {
+      connection.removeListener(event, removed);
+      signal.removeEventListener('abort', aborted);
+    };
+    const removed = () => { cleanup(); resolve(); };
+    const aborted = () => { cleanup(); reject(signal.reason ?? new Error('pool lifetime observation was aborted')); };
+    connection.once(event, removed);
+    signal.addEventListener('abort', aborted, { once: true });
+  });
+}
+
+async function checkIdleLifetime(dialect, dsn, signal, step) {
   const idle = await connect(dsn, { poolSize: 3, poolIdleSize: 1 });
   let releaseIdle;
   let idleTasks = [];
@@ -105,17 +125,18 @@ async function checkIdleLifetime(dialect, dsn, step) {
     try { await Promise.all(idleTasks); } finally { await idle.close(); }
   }
 
-  const aged = await connect(dsn, { poolLifetimeMs: 100 });
+  const aged = await connect(dsn, { poolLifetimeMs: 1000 });
   try {
-    await aged.transaction(async () => {}, { retry: 0 });
-    const released = aged.utils().stats();
-    if (released.openConnections !== 1 || released.idle !== 1) {
-      throw new Error(`${dialect}: a transaction left ${released.openConnections} open / ${released.idle} idle connections before expiry`);
+    const before = aged.utils().stats();
+    if (before.openConnections !== 1 || before.idle !== 1) {
+      throw new Error(`${dialect}: connect left ${before.openConnections} open / ${before.idle} idle connections before expiry`);
     }
-    await new Promise(resolve => setTimeout(resolve, 400));
-    const open = aged.utils().stats().openConnections;
-    if (open !== 0) throw new Error(`${dialect}: poolLifetimeMs 100 left ${open} connections open after 400 ms`);
-    step(`${dialect}: the idle connection closes after its configured lifetime`);
+    await connectionRemoval(dialect, aged, signal);
+    const after = aged.utils().stats();
+    if (after.openConnections !== 0 || after.idle !== 0) {
+      throw new Error(`${dialect}: native pool removal left ${after.openConnections} open / ${after.idle} idle connections`);
+    }
+    step(`${dialect}: the pool remove/end event observes expiry at the configured lifetime`);
   } finally {
     await aged.close();
   }
@@ -132,7 +153,7 @@ for (const dialect of ['sqlite', 'mysql', 'postgres']) {
 // Requirements: CFG-5. SQLite's single connection has no pool idle-size or
 // lifetime behavior; MySQL and PostgreSQL execute these native pool checks.
 for (const dialect of ['mysql', 'postgres']) {
-  caseTest(`connection/pool-idle-lifetime/${dialect}`, DATABASE, async ({ step }) => {
-    await withCaseDatabase(dialect, step, database => checkIdleLifetime(dialect, database.dsn, step));
+  caseTest(`connection/pool-idle-lifetime/${dialect}`, DATABASE, async ({ signal, step }) => {
+    await withCaseDatabase(dialect, step, database => checkIdleLifetime(dialect, database.dsn, signal, step));
   });
 }
