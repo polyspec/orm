@@ -1,5 +1,5 @@
 //! Bounded typed insert assignment and generated-identity validation.
-use super::{mutation::cell, row_snapshot, TableMetadata};
+use super::{assignment_budget, mutation::cell, row_snapshot, TableMetadata};
 use crate::tool_db::{self, P};
 use std::collections::HashSet;
 
@@ -21,11 +21,7 @@ pub(super) fn validate(metadata: &TableMetadata, values: &[(String, P)], dialect
             P::Binary(v) => v.len(),
             _ => 16,
         };
-        bytes = bytes
-            .checked_add(name.len())
-            .and_then(|n| n.checked_add(size))
-            .filter(|n| *n <= 8 * 1024 * 1024)
-            .ok_or_else(|| "ROW_INSERT_LIMIT: assignment budget exceeded".to_owned())?;
+        bytes = assignment_budget::add(bytes, name.len(), size).ok_or_else(|| "ROW_INSERT_LIMIT: assignment budget exceeded".to_owned())?;
     }
     let mut omitted = Vec::new();
     let keys = metadata
@@ -54,3 +50,7 @@ pub(super) fn validate(metadata: &TableMetadata, values: &[(String, P)], dialect
     row_snapshot::revision(metadata, &cells).map_err(|error| format!("ROW_INSERT_LIMIT: assignment encoding budget exceeded: {error}"))?;
     Ok(if omitted.is_empty() { Some(keys.into_iter().flatten().collect()) } else { None })
 }
+
+#[cfg(test)]
+#[path = "../../tests/unit/insert_values.rs"]
+mod tests;

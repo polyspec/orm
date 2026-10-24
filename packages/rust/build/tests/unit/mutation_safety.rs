@@ -28,3 +28,15 @@ async fn absent_trigger_privilege_is_not_proof_of_absent_triggers() {
     .await
     .expect("trigger visibility deadline");
 }
+
+#[tokio::test]
+async fn rust_duplicate_row_mutations_choose_the_declared_dialect_transaction() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    tokio::time::timeout(std::time::Duration::from_secs(5), async {
+        assert_eq!(write_transaction_statement("mysql"), "START TRANSACTION");
+        assert_eq!(write_transaction_statement("postgres"), "BEGIN");
+        assert_eq!(write_transaction_statement("sqlite"), "BEGIN IMMEDIATE");
+    })
+    .await
+    .expect("transaction statement deadline");
+}

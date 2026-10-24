@@ -1,7 +1,7 @@
 //! Delete an exact checked original row under an owning transaction.
 use super::{
     metadata,
-    mutation::{bind, cancelled, lookup, mysql_safety, predicate, qualified, CommitPermit, Publisher},
+    mutation::{bind, cancelled, lookup, mysql_safety, predicate, qualified, write_transaction_statement, CommitPermit, Publisher},
     mutation_finish, CatalogConnection, MutationPhase, RowSnapshot,
 };
 use crate::tool_db::{self, Conn};
@@ -17,17 +17,7 @@ impl CatalogConnection {
         let mut connection = Conn::acquire(&self.pool).await.map_err(|e| e.to_string())?;
         connection.discard_on_drop();
         cancelled(&cancellation)?;
-        connection
-            .exec(
-                match self.dialect.as_str() {
-                    "mysql" => "START TRANSACTION",
-                    "postgres" => "BEGIN",
-                    _ => "BEGIN IMMEDIATE",
-                },
-                &[],
-            )
-            .await
-            .map_err(|e| e.to_string())?;
+        connection.exec(write_transaction_statement(&self.dialect), &[]).await.map_err(|e| e.to_string())?;
         let result = async {
             cancelled(&cancellation)?;
             let current = lookup(&mut connection, original.metadata(), &self.dialect, &keys, true).await?;

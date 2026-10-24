@@ -29,6 +29,13 @@ pub(super) fn cancelled(flag: &AtomicBool) -> Result<(), String> {
         Ok(())
     }
 }
+pub(super) fn write_transaction_statement(dialect: &str) -> &'static str {
+    match dialect {
+        "mysql" => "START TRANSACTION",
+        "postgres" => "BEGIN",
+        _ => "BEGIN IMMEDIATE",
+    }
+}
 pub(super) fn cell(value: &P) -> GridCell {
     match value {
         P::S(v) => GridCell::Text(v.clone()),
@@ -167,17 +174,7 @@ impl CatalogConnection {
         let mut connection = Conn::acquire(&self.pool).await.map_err(|e| e.to_string())?;
         connection.discard_on_drop();
         cancelled(&cancellation)?;
-        connection
-            .exec(
-                match self.dialect.as_str() {
-                    "mysql" => "START TRANSACTION",
-                    "postgres" => "BEGIN",
-                    _ => "BEGIN IMMEDIATE",
-                },
-                &[],
-            )
-            .await
-            .map_err(|e| e.to_string())?;
+        connection.exec(write_transaction_statement(&self.dialect), &[]).await.map_err(|e| e.to_string())?;
         let result = async {
             cancelled(&cancellation)?;
             let current = lookup(&mut connection, original.metadata(), &self.dialect, &keys, true).await?;

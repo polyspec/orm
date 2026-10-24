@@ -1,7 +1,7 @@
 //! Typed insertion with database-owned generated identities.
 use super::{
     metadata,
-    mutation::{cancelled, cell, lookup, mysql_safety, placeholder, qualified, CommitPermit, Publisher},
+    mutation::{cancelled, cell, lookup, mysql_safety, placeholder, qualified, write_transaction_statement, CommitPermit, Publisher},
     mutation_finish,
     page::quote,
     row_snapshot, CatalogConnection, MutationPhase, TableMetadata,
@@ -36,17 +36,7 @@ impl CatalogConnection {
         let mut connection = Conn::acquire(&self.pool).await.map_err(|e| e.to_string())?;
         connection.discard_on_drop();
         cancelled(&cancellation)?;
-        connection
-            .exec(
-                match self.dialect.as_str() {
-                    "mysql" => "START TRANSACTION",
-                    "postgres" => "BEGIN",
-                    _ => "BEGIN IMMEDIATE",
-                },
-                &[],
-            )
-            .await
-            .map_err(|e| e.to_string())?;
+        connection.exec(write_transaction_statement(&self.dialect), &[]).await.map_err(|e| e.to_string())?;
         let result = async {
             cancelled(&cancellation)?;
             if self.dialect == "mysql" && keys.is_none() {

@@ -1,4 +1,5 @@
 //! Native catalog connections selected by a DSN URI.
+mod assignment_budget;
 mod insert_mysql_identity;
 mod insert_mysql_locator;
 mod insert_returning;

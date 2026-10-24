@@ -1,7 +1,11 @@
 //! Pure update checks; the executor owns locking, rollback and commit.
-use super::{row_snapshot, RowSnapshot, TableMetadata};
+use super::{assignment_budget, row_snapshot, RowSnapshot, TableMetadata};
 use crate::tool_db::{GridCell, GridQueryResult};
 use std::collections::HashSet;
+
+#[cfg(test)]
+#[path = "../../tests/unit/row_update_budget.rs"]
+mod tests;
 
 fn invalid() -> String {
     "ROW_UPDATE_INVALID: invalid column assignments".into()
@@ -27,11 +31,7 @@ impl RowSnapshot {
                 GridCell::Binary(value) => value.len(),
                 _ => 16,
             };
-            bytes = bytes
-                .checked_add(name.len())
-                .and_then(|n| n.checked_add(size))
-                .filter(|n| *n <= 8 * 1024 * 1024)
-                .ok_or_else(|| "ROW_UPDATE_LIMIT: assignment budget exceeded".to_owned())?;
+            bytes = assignment_budget::add(bytes, name.len(), size).ok_or_else(|| "ROW_UPDATE_LIMIT: assignment budget exceeded".to_owned())?;
         }
         let mut cells = self.cells().to_vec();
         for (name, value) in changes {
