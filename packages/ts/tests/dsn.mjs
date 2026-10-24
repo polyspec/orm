@@ -26,6 +26,7 @@ await run.run('dsn/timezone', COMPUTE, () => {
     if (parseDsn(dsn).zone !== '+00:00') throw new Error(`connection zone of ${dsn}: ${parseDsn(dsn).zone}`);
   }
 });
+// Requirements: CFG-4, CFG-5. Invalid options fail as CONFIG before a pool opens.
 await run.run('dsn/pool-options', COMPUTE, async () => {
   for (const options of [{ poolIdleSize: -1 }, { poolSize: 3, poolIdleSize: 4 }, { poolIdleSize: 11 }, { poolLifetimeMs: -1 }]) {
     let failed = false;
@@ -33,7 +34,7 @@ await run.run('dsn/pool-options', COMPUTE, async () => {
     if (!failed) throw new Error(`invalid pool options were accepted: ${JSON.stringify(options)}`);
   }
 });
-// The pool bounds reach the driver pools, which open no connection before the first statement.
+// Requirements: CFG-4, CFG-5. The pool bounds reach the driver pools, which open no connection before the first statement.
 await run.run('dsn/pool-bounds', COMPUTE, async () => {
   const bounds = { size: 3, idleSize: 1, lifetimeMs: 250 };
   const postgres = openDriver('postgres://orm@127.0.0.1:1/orm', parseDsn('postgres://orm@127.0.0.1:1/orm'), bounds, 16);

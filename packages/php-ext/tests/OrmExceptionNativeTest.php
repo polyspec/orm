@@ -208,12 +208,14 @@ final class OrmExceptionNativeTest extends TestCase
         }
     }
 
-    // Requirements: CFG-6.
+    // Requirements: CFG-4, CFG-5, CFG-6.
     public function testNativeConnectionRejectsUnsupportedPoolAndNegativeTimeoutOptions(): void
     {
         foreach (
             [
             [new Config(poolSize: 1), 'poolSize, poolIdleSize and poolLifetimeMs configure a connection pool'],
+            [new Config(poolIdleSize: 1), 'poolSize, poolIdleSize and poolLifetimeMs configure a connection pool'],
+            [new Config(poolLifetimeMs: 1000), 'poolSize, poolIdleSize and poolLifetimeMs configure a connection pool'],
             [new Config(statementTimeoutMs: -1), 'statement timeout must not be negative'],
             ] as [$config, $message]
         ) {

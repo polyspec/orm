@@ -75,6 +75,7 @@
         "packages/php/tests/DsnTest.php",
         "packages/ts/tests/dsn.mjs",
         "packages/ts/tests/statement_timeout.mjs",
+        "packages/ts/tests/pool_bounds.mjs",
         "packages/ts/tests/idle-connection-end.mjs",
         "packages/rust/orm/tests/zone.rs",
         "packages/rust/orm/tests/sqlite_file_name.rs",

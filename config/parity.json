@@ -7852,7 +7852,6 @@
       ]
     },
     {
-    {
       "id": "connection-statement-timeout-negative-refused",
       "kind": "feature",
       "requirements": [
@@ -7891,6 +7890,188 @@
         }
       ]
     },
+    {
+      "id": "connection-pool-size-host-form",
+      "kind": "feature",
+      "requirements": [
+        "CFG-4"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/timezone_test.go",
+          "id": "TestPoolSize"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testPoolOptions"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/OrmExceptionNativeTest.php",
+          "id": "OrmExceptionNativeTest::testNativeConnectionRejectsUnsupportedPoolAndNegativeTimeoutOptions"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn.mjs",
+          "id": "dsn/pool-bounds"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/pool_bounds.mjs",
+          "id": "connection/pool-invalid-options-refused"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/connection_pool.py",
+          "id": "test_options"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/zone.rs",
+          "id": "pool_size_bound"
+        }
+      ]
+    },
+    {
+      "id": "connection-pool-idle-lifetime-host-form",
+      "kind": "feature",
+      "requirements": [
+        "CFG-5"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/timezone_test.go",
+          "id": "TestPoolIdleSizeAndLifetime"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testPoolOptions"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/OrmExceptionNativeTest.php",
+          "id": "OrmExceptionNativeTest::testNativeConnectionRejectsUnsupportedPoolAndNegativeTimeoutOptions"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn.mjs",
+          "id": "dsn/pool-bounds"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/pool_bounds.mjs",
+          "id": "connection/pool-invalid-options-refused"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/connection_pool.py",
+          "id": "test_idle_size_and_connection_lifetime"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/zone.rs",
+          "id": "pool_idle_size_and_lifetime"
+        }
+      ]
+    },
+    {
+      "id": "connection-pool-open-limit-policy",
+      "kind": "feature",
+      "requirements": [
+        "CFG-4"
+      ],
+      "bindings": [
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testPoolOptions"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/OrmExceptionNativeTest.php",
+          "id": "OrmExceptionNativeTest::testNativeConnectionRejectsUnsupportedPoolAndNegativeTimeoutOptions"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/timezone_test.go",
+          "id": "TestPoolSize"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/pool_bounds.mjs",
+          "id": "connection/pool-open-limit/sqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/pool_bounds.mjs",
+          "id": "connection/pool-open-limit/mysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/pool_bounds.mjs",
+          "id": "connection/pool-open-limit/postgres"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/connection_pool.py",
+          "id": "test_concurrent_transactions_and_the_limit"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/zone.rs",
+          "id": "pool_size_bound"
+        }
+      ]
+    },
+    {
+      "id": "connection-pool-idle-lifetime-policy",
+      "kind": "feature",
+      "requirements": [
+        "CFG-5"
+      ],
+      "bindings": [
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testPoolOptions"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/OrmExceptionNativeTest.php",
+          "id": "OrmExceptionNativeTest::testNativeConnectionRejectsUnsupportedPoolAndNegativeTimeoutOptions"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/timezone_test.go",
+          "id": "TestPoolIdleSizeAndLifetime"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/pool_bounds.mjs",
+          "id": "connection/pool-idle-lifetime/mysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/pool_bounds.mjs",
+          "id": "connection/pool-idle-lifetime/postgres"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/connection_pool.py",
+          "id": "test_idle_size_and_connection_lifetime"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/zone.rs",
+          "id": "pool_idle_size_and_lifetime"
+        }
+      ]
+    },
+    {
       "id": "mysql-lock-wait-canceled",
       "kind": "feature",
       "requirements": [
@@ -11870,48 +12051,9 @@
         }
       ]
     },
-    {
-      "id": "rust-pool-idle-size-and-lifetime",
-      "kind": "feature",
-      "requirements": [
-        "CFG-5"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/zone.rs",
-          "id": "pool_idle_size_and_lifetime"
-        }
-      ]
-    },
-    {
-      "id": "rust-pool-size",
-      "kind": "feature",
-      "requirements": [
-        "CFG-4"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/zone.rs",
-          "id": "pool_size"
-        }
-      ]
-    },
-    {
-      "id": "rust-pool-size-bound",
-      "kind": "feature",
-      "requirements": [
-        "CFG-4"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/zone.rs",
-          "id": "pool_size_bound"
-        }
-      ]
-    },
+
+
+
     {
       "id": "rust-statement-timeout",
       "kind": "feature",

@@ -2328,6 +2328,18 @@
         "tests/testcase.mts"
       ]
     },
+    "connection-pool-resource-bounds-typescript-check": {
+      "scope": "owner",
+      "needs": [
+        "node-modules",
+        "databases"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/ts/tests/pool_bounds.mjs",
+        "packages/ts/tests/case-database.mjs"
+      ]
+    },
     "dbspec-apply-php-extension-check": {
       "scope": "owner",
       "needs": [

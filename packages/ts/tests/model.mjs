@@ -685,7 +685,7 @@ async function storedCell(dialect, dsn, sqlitePath) {
 
 const zones = ['', 'UTC', '+00:00'];
 
-// poolSize, failedLocalReset, and failedLockRelease install no schema and create no table, so
+// failedLocalReset and failedLockRelease install no schema and create no table, so
 // they only connect to the database the DSN points to. Each of the other cases gets its own case database.
 const targets = [['sqlite', `sqlite://${join(work, 'model.sqlite')}?_pragma=busy_timeout(5000)`]];
 if (!process.env.ORM_TEST_MYSQL_DSN) throw new Error('ORM_TEST_MYSQL_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers');
@@ -727,69 +727,6 @@ try {
     }
   }
   if (selectedCase === undefined) {
-  for (const [dialect, dsn] of targets) {
-    begin(`${dialect}/poolSize`);
-    const sized = await connectBench(dsn, { poolSize: 3 });
-    try {
-      // The SQLite driver holds one connection, so the size applies to the pooled drivers.
-      const want = dialect === 'sqlite' ? 1 : 3;
-      check(sized.utils().stats().maxOpenConnections === want, `configured pool size ${sized.utils().stats().maxOpenConnections}`);
-      check(await code(connectBench(dsn, { poolSize: -1 })) === 'CONFIG', 'negative pool size');
-      for (const options of [{}, { poolSize: 0 }]) {
-        const unset = await connectBench(dsn, options);
-        try {
-          const got = unset.utils().stats().maxOpenConnections;
-          check(got === (dialect === 'sqlite' ? 1 : 10), `pool size ${JSON.stringify(options)}: ${got}`);
-        } finally { await unset.close(); }
-      }
-      if (dialect !== 'sqlite') {
-        // Each transaction holds a connection while it runs, so six
-        // transactions on a pool of two run at most two at a time.
-        const bounded = await connectBench(dsn, { poolSize: 2 });
-        try {
-          let active = 0;
-          let peak = 0;
-          let opened = 0;
-          await Promise.all(Array.from({ length: 6 }, () => bounded.transaction(async () => {
-            active++;
-            peak = Math.max(peak, active);
-            opened = Math.max(opened, bounded.utils().stats().openConnections);
-            await new Promise(resolve => setTimeout(resolve, 50));
-            active--;
-          })));
-          check(peak === 2 && opened <= 2, `pool of 2: ${peak} concurrent transactions, ${opened} open connections`);
-        } finally { await bounded.close(); }
-        // Three transactions hold three connections at once; after they end
-        // the pool keeps one idle connection and closes the others.
-        const idle = await connectBench(dsn, { poolSize: 3, poolIdleSize: 1 });
-        try {
-          let release;
-          let arrived;
-          const held = new Promise(resolve => { release = resolve; });
-          const allStarted = new Promise(resolve => { arrived = resolve; });
-          let started = 0;
-          const all = Promise.all(Array.from({ length: 3 }, () => idle.transaction(async () => { if (++started === 3) arrived(); await held; })));
-          await allStarted;
-          check(idle.utils().stats().openConnections === 3, `three transactions hold ${idle.utils().stats().openConnections} connections`);
-          release();
-          await all;
-          const stats = idle.utils().stats();
-          check(stats.idle === 1 && stats.openConnections === 1, `pool idle size 1 keeps ${stats.idle} idle of ${stats.openConnections} open connections`);
-        } finally { await idle.close(); }
-        // A connection is closed when its lifetime passes, idle or at its release.
-        const aged = await connectBench(dsn, { poolLifetimeMs: 100 });
-        try {
-          check(aged.utils().stats().openConnections === 1, 'the connection opened by connect');
-          await new Promise(resolve => setTimeout(resolve, 400));
-          check(aged.utils().stats().openConnections === 0, `pool lifetime 100 ms keeps ${aged.utils().stats().openConnections} connections open after 400 ms`);
-        } finally { await aged.close(); }
-      }
-      for (const options of [{ poolIdleSize: -1 }, { poolSize: 3, poolIdleSize: 4 }, { poolLifetimeMs: -1 }]) {
-        check(await code(connectBench(dsn, options)) === 'CONFIG', `pool options ${JSON.stringify(options)}`);
-      }
-    } catch (error) { failures++; console.error(`FAIL ${current}:`, error); } finally { await sized.close(); }
-    end();
-  }
   {
     // A pooler in transaction mode hands one server session to every client
     // in turn. Through ORM_TEST_PGBOUNCER_SINGLE_DSN every client shares one
