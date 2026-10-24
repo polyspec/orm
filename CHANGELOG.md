@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- Every client now rejects SQL NULL at the split-query merge boundary with CODEC_DECODE while preserving valid falsey keys. General nullable row-key handling remains unchanged for joins. `make item-test ID=KSTD-5-50-1` passes Go (1), PHP (1 test, 29 assertions), PHP extension (1 test, 7 assertions), TypeScript (2), Python (2) and Rust (1) focused cases. (KSTD-5-50-1)
+
 - The native PHP extension treats a null transaction audit as pending, so the first audited write inserts its audit record. The focused fake-PDO regression fails with the original guard before any prepared SQL and passes under `make item-test ID=KSTD-7-5-1-1` on PHP 8.4.26 (1 test, 11 assertions; 3 declaration tests, 8 assertions; 10 PHP source comparison tests, 68 assertions) (KSTD-7-5-1-1).
 
 - Rust build generation now resolves relative set, scan, and explicit output paths from `CARGO_MANIFEST_DIR`. It reports an actionable error when that variable is required but missing or relative, while absolute paths remain usable without it and implicit `OUT_DIR` behavior is unchanged. The focused native environment unit passes 1 test across 8 isolated subprocess scenarios (KSTD-5-70).

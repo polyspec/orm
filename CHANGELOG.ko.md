@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: feace193de9ba055383cdefe3d0dd9f801916f33ac2caa44ac73bb73899699a7 -->
+<!-- source-sha256: ade8e8ea312852125ad9b55273ad6fab5980bd8f20edb22bc801874846504841 -->
 # 변경 이력
 
 ## Unreleased
+
+- 모든 client가 split-query merge 경계의 SQL NULL을 CODEC_DECODE로 거부하고 유효한 falsey key를 보존한다. join이 사용하는 일반 nullable row-key 처리는 유지한다. `make item-test ID=KSTD-5-50-1`의 focused case가 Go (1), PHP (1 test, 29 assertions), PHP extension (1 test, 7 assertions), TypeScript (2), Python (2), Rust (1)에서 통과한다. (KSTD-5-50-1)
 
 - native PHP extension은 null transaction audit을 pending으로 처리해 첫 audited write에서 audit record를 insert한다. focused fake-PDO regression은 기존 guard에서 준비된 SQL이 하나도 실행되기 전에 실패하고, PHP 8.4.26에서 `make item-test ID=KSTD-7-5-1-1`은 통과한다(native test 1개, 11 assertions; declaration test 3개, 8 assertions; PHP source 비교 test 10개, 68 assertions) (KSTD-7-5-1-1).
 
