@@ -140,7 +140,7 @@ class CoverageConstraintsAndRelationsTest extends TestCase
                 Assert::assertFalse(coverageTableExists($db, 'refused_row'), 'refused_row exists before the case');
                 coverageRestoring(function () use ($db): void {
                     $db->utils()->schema()->install(\Polyspec\Orm\Tests\CoverageConstraints\Refusal\schema());
-                    $row = (new RefusedRow())->setAmount(1)->create();
+                    $row = (new RefusedRow())($db)->setAmount(1)->create();
                     try {
                         $row->setAmount(2)->update();
                         Assert::fail('an immutable row update must fail');
