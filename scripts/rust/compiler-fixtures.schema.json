@@ -16,7 +16,14 @@
     "allOf": [
       {
         "if": { "properties": { "expect": { "const": "error" } } },
-        "then": { "required": ["code", "diagnostic", "sourceLine"] }
+        "then": {
+          "properties": {
+            "code": { "type": "string", "minLength": 1 },
+            "diagnostic": { "type": "string", "minLength": 1 },
+            "sourceLine": { "type": "string", "minLength": 1 }
+          },
+          "required": ["code", "diagnostic", "sourceLine"]
+        }
       }
     ]
   }
