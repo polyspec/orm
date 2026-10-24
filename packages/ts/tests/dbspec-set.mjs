@@ -6,14 +6,14 @@
 //
 // Usage: node --test packages/ts/tests/dbspec-set.mjs (after the build)
 import assert from 'node:assert/strict';
-import { linkSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { dirname, join, posix } from 'node:path';
+import { readFileSync, rmSync } from 'node:fs';
+import { posix } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { caseTest } from '../../../tests/testcase.mts';
 import { parseSet, readDbspecSet } from '../dist/dbspec/index.js';
 import { parseSet as browserParseSet } from '../dist/dbspec/entry.js';
 import { exactKeys } from './assertions.mjs';
+import { buildSetTree } from '../../../tests/dbspec/set-tree.mjs';
 
 // The deadline of one case: it writes a tree of a few files and reads it.
 const TIMEOUT = 15000;
@@ -90,28 +90,6 @@ function treeBytes(tree, path) {
   throw new Error(`tree path ${path} is a symbolic link, which has no bytes`);
 }
 
-/** Writes the tree under a new empty temporary directory and returns that directory. */
-function build(tree) {
-  const root = mkdtempSync(join(tmpdir(), 'orm-ts-set-'));
-  for (const [path, entry] of Object.entries(tree)) {
-    const target = join(root, path);
-    mkdirSync(dirname(target), { recursive: true });
-    if ('file' in entry) writeFileSync(target, entry.file, 'utf8');
-    else if ('hex' in entry) writeFileSync(target, Buffer.from(entry.hex, 'hex'));
-    else if ('hardlink' in entry) linkSync(join(root, entry.hardlink), target);
-    else {
-      // Windows needs the kind of the target; POSIX ignores it.
-      let type = 'file';
-      try { if (statSync(join(dirname(target), entry.symlink)).isDirectory()) type = 'dir'; } catch (error) {
-        if (error?.code !== 'ENOENT') throw error;
-        // A missing target is a file link.
-      }
-      symlinkSync(entry.symlink, target, type);
-    }
-  }
-  return root;
-}
-
 function checkMessages(errors) {
   for (const e of errors) {
     assert.deepEqual(Object.keys(e).sort(), ['message', 'path', 'rule']);
@@ -121,7 +99,7 @@ function checkMessages(errors) {
 
 // readSet reads the case's file tree with readDbspecSet.
 function readSet(c) {
-  const root = build(c.tree);
+  const root = buildSetTree(c.tree, 'orm-ts-set-');
   try {
     const result = readDbspecSet(`${root}/${c.set}`);
     if ('errors' in c.want) {

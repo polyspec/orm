@@ -5,14 +5,14 @@
 //
 // Usage: node --test packages/dbspec-language/tests/resolve-set.test.mjs (after the build)
 import assert from 'node:assert/strict';
-import { linkSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { dirname, join, posix } from 'node:path';
+import { readFileSync, rmSync } from 'node:fs';
+import { posix } from 'node:path';
 import { parseSet } from '@polyspec/orm/dbspec';
 import { caseTest } from '../../../tests/testcase.mts';
 import { resolveSet } from '../dist/index.js';
 import { nodeSetHost } from '../dist/cli/host.js';
 import { repo } from './helpers.mjs';
+import { buildSetTree } from '../../../tests/dbspec/set-tree.mjs';
 
 // The deadline of one case: it writes a tree of a few files and reads it.
 const TIMEOUT = 15000;
@@ -21,34 +21,9 @@ const SET_NAME = 'dbspec-set.json';
 
 const vectors = JSON.parse(readFileSync(new URL('tests/dbspec/set-files.json', repo), 'utf8'));
 
-/** A tree root in the `/` form that resolveSet takes: the platform separators become `/`. */
-const slashes = path => path.replaceAll('\\', '/');
-
-/** Writes the tree under a new empty temporary directory and returns that directory with `/` separators. */
-function build(tree) {
-  const root = mkdtempSync(join(tmpdir(), 'dbspec-language-set-'));
-  for (const [path, entry] of Object.entries(tree)) {
-    const target = join(root, path);
-    mkdirSync(dirname(target), { recursive: true });
-    if ('file' in entry) writeFileSync(target, entry.file, 'utf8');
-    else if ('hex' in entry) writeFileSync(target, Buffer.from(entry.hex, 'hex'));
-    else if ('hardlink' in entry) linkSync(join(root, entry.hardlink), target);
-    else {
-      // Windows needs the kind of the target; POSIX ignores it.
-      let type = 'file';
-      try { if (statSync(join(dirname(target), entry.symlink)).isDirectory()) type = 'dir'; } catch (error) {
-        if (error?.code !== 'ENOENT') throw error;
-        // A missing target is a file link.
-      }
-      symlinkSync(entry.symlink, target, type);
-    }
-  }
-  return slashes(root);
-}
-
 /** Runs body with a tree written under a temporary directory, and removes the directory. */
 function withTree(tree, body) {
-  const root = build(tree);
+  const root = buildSetTree(tree, 'dbspec-language-set-');
   try {
     return body(root);
   } finally {

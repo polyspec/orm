@@ -9587,6 +9587,16 @@
       "command": "node --test tests/dbspec/join.test.mjs"
     },
     {
+      "id": "dbspec-set-fixture-tree",
+      "paths": [
+        "tests/dbspec/set-tree.mjs"
+      ],
+      "tests": [
+        "tests/dbspec/set-tree.test.mjs"
+      ],
+      "command": "node --test tests/dbspec/set-tree.test.mjs"
+    },
+    {
       "id": "javascript-vector-case-registrar",
       "paths": [
         "tests/vector-registrar.mjs"
