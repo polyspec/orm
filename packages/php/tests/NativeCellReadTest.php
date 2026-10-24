@@ -31,9 +31,10 @@ final class NativeByteCellFixture extends Model
 #[Small]
 final class NativeCellReadTest extends TestCase
 {
+    // Requirements: INT-5, PRT-69.
     public function testRowAssemblyPreservesBinaryDriverCellBytes(): void
     {
-        $source = "\0\x80\xffA";
+        $source = "\0\x7f\x80\xffA";
         $stream = fopen('php://temp', 'w+');
         self::assertIsResource($stream);
         try {

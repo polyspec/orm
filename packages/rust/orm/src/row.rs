@@ -373,7 +373,7 @@ pub(crate) fn decode_boolean_columns(asm: &crate::plan::Assemble, data: &mut [Ve
 
 #[cfg(test)]
 mod declared_boolean_tests {
-    use super::{decode_boolean_columns, Val};
+    use super::{Val, decode_boolean_columns};
     use crate::plan::{Assemble, Child, OutCol};
     use std::sync::Arc;
 
@@ -432,12 +432,13 @@ mod exact_i64_tests {
 #[cfg(test)]
 mod native_cell_bytes_tests {
     use super::Cells;
-    use crate::{row::Src, Val};
+    use crate::{Val, row::Src};
 
+    // Requirements: INT-5, PRT-69.
     #[test]
     fn positional_driver_bytes_remain_exact() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        let source = vec![0x00, 0x80, 0xff, b'A'];
+        let source = vec![0x00, 0x7f, 0x80, 0xff, b'A'];
         let mut row = Cells::Pos(vec![Val::Bytes(source.clone())]);
         assert_eq!(row.val(0).unwrap(), Val::Bytes(source));
     }

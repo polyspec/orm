@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
 import { CORE, Db, Model, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
 
+// Requirements: INT-5, PRT-69.
 caseTest('driver-cell/bytes/mysql', COMPUTE, async () => {
   const source = Uint8Array.from([0x00, 0x7f, 0x80, 0xff, 0x41]);
   const parsed = parseDbspec('dbspec 1 native_cell\n\ntable byte_cell {\n  id i32\n  body bytes\n  primary key (id)\n}\n', {});

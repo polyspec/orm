@@ -73,9 +73,10 @@ func TestMapDriverErrorPreservesNativeCause(t *testing.T) {
 	}
 }
 
+// Requirements: INT-5, PRT-69.
 func TestCellScanCopiesLosslessNativeBytes(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	source := []byte{0x00, 0x80, 0xff, 0x41}
+	source := []byte{0x00, 0x7f, 0x80, 0xff, 0x41}
 	want := string(source)
 	var cell cell
 	if err := cell.Scan(source); err != nil {

@@ -8045,7 +8045,8 @@
       "id": "native-row-cell-bytes",
       "kind": "feature",
       "requirements": [
-        "PRT-69"
+        "PRT-69",
+        "INT-5"
       ],
       "bindings": [
         {
