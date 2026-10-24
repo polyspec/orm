@@ -1119,21 +1119,29 @@ func paginate(ex executor, r *request) (*result, int64, error) {
 	if err != nil {
 		return nil, 0, err
 	}
+	var countStep *plan.Step
+	for i := range c.plan.Steps {
+		if st := &c.plan.Steps[i]; st.Role == "count" {
+			countStep = st
+			break
+		}
+	}
+	if countStep == nil {
+		return nil, 0, &ir.Error{Code: CodeInternal, Msg: "paginate plan has no count step"}
+	}
+	countValue, err := scanOne(ctx, ex, c, countStep, r)
+	if err != nil {
+		return nil, 0, err
+	}
+	total, err := AsInt64(countValue)
+	if err != nil {
+		return nil, 0, err
+	}
 	res, err := runRelations(ctx, ex, c, r, main)
 	if err != nil {
 		return nil, 0, err
 	}
-	for i := range c.plan.Steps {
-		if st := &c.plan.Steps[i]; st.Role == "count" {
-			v, err := scanOne(ctx, ex, c, st, r)
-			if err != nil {
-				return nil, 0, err
-			}
-			n, err := AsInt64(v)
-			return res, n, err
-		}
-	}
-	return nil, 0, &ir.Error{Code: CodeInternal, Msg: "paginate plan has no count step"}
+	return res, total, nil
 }
 
 // write runs an insert, update, delete, or restore and returns the key of the

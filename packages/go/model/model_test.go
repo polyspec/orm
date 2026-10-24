@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -364,6 +365,40 @@ func TestColumnsAndSubqueries(t *testing.T) {
 		page := must(model.Author().Connect(db).OrderBySeqAsc().GetsPage(2, 3))
 		if page.TotalCount != 4 || page.TotalPages != 2 || page.Items.Len() != 1 || readColumn(t, page.Items.First().GetName) != "delta" {
 			t.Fatalf("page: %+v", page)
+		}
+		var pageEvents []orm.StatementEvent
+		unsubscribe, err := db.Subscribe(func(event orm.StatementEvent) error {
+			pageEvents = append(pageEvents, event)
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		writer := model.User().MatchUserSeqWithSeq().AliasWriter()
+		pageWithRelations := must(model.Author().Connect(db).
+			Relation(writer).
+			Relations(model.ServiceMember().MatchServiceSeqWithServiceSeq().AliasMembers()).
+			OrderBySeqAsc().GetsPage(1, 2))
+		unsubscribe()
+		if pageWithRelations.TotalCount != 4 || pageWithRelations.Items.Len() != 2 {
+			t.Fatalf("page with relations: total %d items %d", pageWithRelations.TotalCount, pageWithRelations.Items.Len())
+		}
+		var pageEventTables [][]string
+		for _, event := range pageEvents {
+			pageEventTables = append(pageEventTables, event.Tables)
+		}
+		wantPageEventTables := [][]string{{"author"}, {"author"}, {"user"}, {"service_member"}}
+		eventsMatch := len(pageEventTables) == len(wantPageEventTables)
+		if eventsMatch {
+			for i := range pageEventTables {
+				if !slices.Equal(pageEventTables[i], wantPageEventTables[i]) {
+					eventsMatch = false
+					break
+				}
+			}
+		}
+		if !eventsMatch {
+			t.Fatalf("page statement tables = %v, want rows, count, writer relation, members relation: %v", pageEventTables, wantPageEventTables)
 		}
 		keyed := must(model.Author().Connect(db).KeyNameName().Gets())
 		if got, err := keyed.Get("beta"); err != nil || got == nil {

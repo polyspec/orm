@@ -134,11 +134,11 @@ type Core struct {
 	// assembler creates for a loaded row has none until it is used as a builder.
 	*statement
 
-	sets        []setSpec
-	news        []string
+	sets []setSpec
+	news []string
 	// expected is the revision column and the expected revision of the next
 	// update or delete (docs/spec/dsl.md "Writes"); nil when none is expected.
-	expected *expectedRevision
+	expected    *expectedRevision
 	newValues   map[string]any
 	duplication *Core
 
@@ -376,6 +376,13 @@ var operators = map[string]string{"": "eq", "ne": "not_eq", "gt": "gt", "lt": "l
 
 func (c *Core) predicate(key ChainKey, value any, rest []any, single bool) (*predSpec, int, error) {
 	p := &predSpec{column: key.Column}
+	if key.Op == "fulltext" || key.Op == "fulltext_boolean" {
+		if key.Column != "" || len(key.Columns) == 0 {
+			return nil, 0, configErr("%s requires one or more columns", key.Op)
+		}
+		p.op, p.cols, p.value = key.Op, slices.Clone(key.Columns), value
+		return p, 0, nil
+	}
 	switch key.Op {
 	case "tuple", "ne_tuple":
 		rows, err := tupleRows(value, len(key.Columns))

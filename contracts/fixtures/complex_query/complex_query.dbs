@@ -1,0 +1,87 @@
+dbspec 1 complex_query
+
+table product {
+  seq i64 identity
+  name varchar(191)
+  short_description text
+  content text
+  service_seq i64
+  is_close bool
+  is_display bool
+  is_allday bool
+  display_start_dt datetime(6) null
+  display_end_dt datetime(6) null
+  product_brand_seq i64 null
+  like_count i32
+  primary key (seq)
+  index ix_product_service_state (service_seq, is_close, is_display, is_allday)
+  index ix_product_brand (product_brand_seq)
+  foreign key fk_product_brand (product_brand_seq) references product_brand (seq) on delete restrict on update restrict
+}
+
+table product_match_category {
+  product_seq i64
+  service_region_category_item_seq i64
+  primary key (product_seq, service_region_category_item_seq)
+  index ix_product_match_category_category (service_region_category_item_seq)
+  foreign key fk_product_match_category_product (product_seq) references product (seq) on delete cascade on update restrict
+}
+
+table product_lang {
+  seq i64 identity
+  product_seq i64
+  lang_id i32
+  name varchar(191)
+  short_description text
+  content text
+  primary key (seq)
+  unique uq_product_lang_product_lang (product_seq, lang_id)
+  foreign key fk_product_lang_product (product_seq) references product (seq) on delete cascade on update restrict
+}
+
+table product_brand {
+  seq i64 identity
+  name varchar(191)
+  primary key (seq)
+}
+
+table product_brand_lang {
+  seq i64 identity
+  product_brand_seq i64
+  lang_id i32
+  name varchar(191)
+  description text
+  primary key (seq)
+  unique uq_product_brand_lang_brand_lang (product_brand_seq, lang_id)
+  foreign key fk_product_brand_lang_brand (product_brand_seq) references product_brand (seq) on delete cascade on update restrict
+}
+
+table product_review {
+  seq i64 identity
+  product_seq i64
+  user_seq i64
+  is_close bool
+  content text
+  primary key (seq)
+  index ix_product_review_product_close_seq (product_seq, is_close, seq)
+  index ix_product_review_user (user_seq)
+  foreign key fk_product_review_product (product_seq) references product (seq) on delete cascade on update restrict
+  foreign key fk_product_review_user (user_seq) references user (seq) on delete restrict on update restrict
+}
+
+table user {
+  seq i64 identity
+  name varchar(191)
+  profile_url varchar(191)
+  primary key (seq)
+}
+
+table order_product_item {
+  seq i64 identity
+  product_seq i64
+  service_member_seq i64
+  is_close bool
+  primary key (seq)
+  index ix_order_product_item_product_member_close_seq (product_seq, service_member_seq, is_close, seq)
+  foreign key fk_order_product_item_product (product_seq) references product (seq) on delete cascade on update restrict
+}

@@ -1014,6 +1014,8 @@ func (g *goGen) chainParams(pos string, gm *goModel, name string, keys []chainKe
 	for i, k := range keys {
 		p := fmt.Sprintf("v%d", i)
 		switch k.op {
+		case "fulltext", "fulltext_boolean":
+			params = append(params, p+" string")
 		case "tuple", "ne_tuple":
 			tt := g.tupleType(gm, k.columns)
 			params = append(params, p+" []"+tt)

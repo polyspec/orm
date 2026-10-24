@@ -52,11 +52,13 @@ func TestParseChain(t *testing.T) {
 	m := namesManifest(t, namesDiagram)
 	e := m.Entities["product"]
 	cases := map[string][]chainKey{
-		"BrandSeqAndLtSaleStartDt": {{column: "brand_seq"}, {conn: "and", op: "lt", column: "sale_start_dt"}},
-		"NeNameOrLkName":           {{op: "ne", column: "name"}, {conn: "or", op: "lk", column: "name"}},
-		"BetweenPrice":             {{op: "between", column: "price"}},
-		"PriceGtMinPrice":          {{op: "gt", column: "price", compare: "min_price"}},
-		"NeTupleSeqWithBrandSeq":   {{op: "ne_tuple", columns: []string{"seq", "brand_seq"}}},
+		"BrandSeqAndLtSaleStartDt":    {{column: "brand_seq"}, {conn: "and", op: "lt", column: "sale_start_dt"}},
+		"NeNameOrLkName":              {{op: "ne", column: "name"}, {conn: "or", op: "lk", column: "name"}},
+		"BetweenPrice":                {{op: "between", column: "price"}},
+		"PriceGtMinPrice":             {{op: "gt", column: "price", compare: "min_price"}},
+		"NeTupleSeqWithBrandSeq":      {{op: "ne_tuple", columns: []string{"seq", "brand_seq"}}},
+		"FulltextBooleanNameWithBody": {{op: "fulltext_boolean", columns: []string{"name", "body"}}},
+		"FulltextName":                {{op: "fulltext", columns: []string{"name"}}},
 	}
 	for name, want := range cases {
 		got, err := parseChain(m, e, name)
@@ -73,6 +75,8 @@ func TestParseChain(t *testing.T) {
 		"PriceGtUnknown":         "no model has the column",
 		"TupleSeq":               "two or more columns",
 		"BetweenName":            "does not accept",
+		"FulltextBooleanPrice":   "does not accept full-text search",
+		"FulltextBooleanMissing": "needs one or more text columns",
 		"NameAnd":                "empty",
 		"GtSaleStartDtAndLtName": "",
 	} {
@@ -87,6 +91,22 @@ func TestParseChain(t *testing.T) {
 			t.Fatalf("%s: got %v, want %q", name, err, message)
 		}
 	}
+}
+
+// TestGeneratedFulltextPredicateCompiles checks the documented full-text chain shape, argument type, and generated column list.
+func TestGeneratedFulltextPredicateCompiles(t *testing.T) {
+	testcase.Start(t, testcase.Process)
+	write := scannedModule(t)
+	write("example/example.go", `package example
+
+import "example.com/ormexample/model"
+
+func Search(keyword string) *model.ProductModel {
+	return model.Product().FulltextBooleanNameWithBody(keyword).OrFulltextName(keyword)
+}
+`)
+	generateModel(t, namesManifest(t, namesDiagram))
+	testScannedModule(t)
 }
 
 // Requirements: PLN-22.

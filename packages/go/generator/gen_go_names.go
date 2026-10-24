@@ -19,9 +19,9 @@ import (
 // these are the rules the generator applies.
 var (
 	// reservedSegments cannot come as a segment split by underscore.
-	reservedSegments = []string{"and", "or", "with", "gt", "lt", "ge", "le", "eq", "ne", "lk", "lb", "between", "tuple"}
+	reservedSegments = []string{"and", "or", "with", "gt", "lt", "ge", "le", "eq", "ne", "lk", "lb", "between", "fulltext", "tuple"}
 	// Column names cannot start with reservedPrefixes.
-	reservedPrefixes = []string{"and", "or", "get", "set", "new", "plus", "minus", "order_by", "group_by", "tuple", "gt", "lt", "ge", "le", "eq", "ne", "lk", "lb", "between"}
+	reservedPrefixes = []string{"and", "or", "get", "set", "new", "plus", "minus", "order_by", "group_by", "tuple", "gt", "lt", "ge", "le", "eq", "ne", "lk", "lb", "between", "fulltext"}
 	// reservedColumns cannot be column names.
 	reservedColumns = []string{"and", "or", "not", "get", "gets", "gets_page", "get_query", "limit", "alias", "connect", "create", "creates", "update", "delete", "restore", "save", "on", "random"}
 	// reservedEntities collide with package-level names in the generated package.
@@ -185,6 +185,29 @@ func parseKey(m *runtimemodel.Model, e *runtimemodel.Entity, ix columnIndex, ws 
 	}
 	if c, ok := ix.column(ws); ok {
 		try(checkOp(e, c, "", chainKey{column: c.Name}))
+	}
+	if ws[0] == "Fulltext" {
+		mode, start := "fulltext", 1
+		if len(ws) > 1 && ws[1] == "Boolean" {
+			mode, start = "fulltext_boolean", 2
+		}
+		cols, ok := splitWith(ix, ws[start:])
+		if !ok || len(cols) == 0 {
+			errs = append(errs, fmt.Sprintf("%s needs one or more text columns of %s joined by With", text, e.Name))
+		} else {
+			columns := make([]string, len(cols))
+			valid := true
+			for i, c := range cols {
+				if (c.Type != "varchar" && c.Type != "text") || len(c.Codec) > 0 {
+					errs = append(errs, fmt.Sprintf("%s.%s does not accept full-text search", e.Name, c.Name))
+					valid = false
+				}
+				columns[i] = c.Name
+			}
+			if valid {
+				try(chainKey{op: mode, columns: columns}, nil)
+			}
+		}
 	}
 	if op, ok := leadingOps[ws[0]]; ok && len(ws) > 1 {
 		if ws[0] == "Ne" && ws[1] == "Tuple" {

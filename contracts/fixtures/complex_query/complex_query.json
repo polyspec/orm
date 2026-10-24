@@ -1,0 +1,143 @@
+{
+  "schema": "contracts/fixtures/complex_query/complex_query.dbs",
+  "case": "product_search_page",
+  "mysql_setup": [
+    "CREATE FULLTEXT INDEX ft_product_search ON product (name, short_description, content)",
+    "CREATE FULLTEXT INDEX ft_product_lang_search ON product_lang (name, short_description, content)",
+    "CREATE FULLTEXT INDEX ft_product_brand_lang_search ON product_brand_lang (name, description)"
+  ],
+  "input": {
+    "category_seqs": [11, 12, 13],
+    "keyword": "alpha beta",
+    "lang_id": 1,
+    "member_seq": 77,
+    "page": 1,
+    "per_page": 20,
+    "service_seq": 7
+  },
+  "seed_order": [
+    "user",
+    "product_brand",
+    "product_brand_lang",
+    "product",
+    "product_match_category",
+    "product_lang",
+    "product_review",
+    "order_product_item"
+  ],
+  "seed_columns": {
+    "user": ["seq", "name", "profile_url"],
+    "product_brand": ["seq", "name"],
+    "product_brand_lang": ["seq", "product_brand_seq", "lang_id", "name", "description"],
+    "product": ["seq", "name", "short_description", "content", "service_seq", "is_close", "is_display", "is_allday", "display_start_dt", "display_end_dt", "product_brand_seq", "like_count"],
+    "product_match_category": ["product_seq", "service_region_category_item_seq"],
+    "product_lang": ["seq", "product_seq", "lang_id", "name", "short_description", "content"],
+    "product_review": ["seq", "product_seq", "user_seq", "is_close", "content"],
+    "order_product_item": ["seq", "product_seq", "service_member_seq", "is_close"]
+  },
+  "seed": {
+    "user": [
+      {"seq": 41, "name": "user-41", "profile_url": "/users/41"},
+      {"seq": 42, "name": "user-42", "profile_url": "/users/42"},
+      {"seq": 43, "name": "user-43", "profile_url": "/users/43"},
+      {"seq": 44, "name": "user-44", "profile_url": "/users/44"}
+    ],
+    "product_brand": [
+      {"seq": 501, "name": "brand-501"},
+      {"seq": 502, "name": "brand-502"}
+    ],
+    "product_brand_lang": [
+      {"seq": 601, "product_brand_seq": 501, "lang_id": 1, "name": "brand-501-en", "description": "ordinary maker"},
+      {"seq": 602, "product_brand_seq": 502, "lang_id": 1, "name": "brand-502-en", "description": "alpha beta maker"}
+    ],
+    "product": [
+      {"seq": 1001, "name": "alpha beta widget", "short_description": "direct match", "content": "root text", "service_seq": 7, "is_close": false, "is_display": true, "is_allday": true, "display_start_dt": null, "display_end_dt": null, "product_brand_seq": 501, "like_count": 90},
+      {"seq": 1002, "name": "vendor widget", "short_description": "ordinary", "content": "root text", "service_seq": 7, "is_close": false, "is_display": true, "is_allday": false, "display_start_dt": "2000-01-01 00:00:00.000000", "display_end_dt": "2100-01-01 00:00:00.000000", "product_brand_seq": 502, "like_count": 80},
+      {"seq": 1003, "name": "translated widget", "short_description": "ordinary", "content": "root text", "service_seq": 7, "is_close": false, "is_display": true, "is_allday": false, "display_start_dt": "2000-01-01 00:00:00.000000", "display_end_dt": "2100-01-01 00:00:00.000000", "product_brand_seq": null, "like_count": 70},
+      {"seq": 1004, "name": "other widget", "short_description": "ordinary", "content": "root text", "service_seq": 7, "is_close": false, "is_display": true, "is_allday": true, "display_start_dt": null, "display_end_dt": null, "product_brand_seq": null, "like_count": 60}
+    ],
+    "product_match_category": [
+      {"product_seq": 1001, "service_region_category_item_seq": 11},
+      {"product_seq": 1001, "service_region_category_item_seq": 12},
+      {"product_seq": 1002, "service_region_category_item_seq": 11},
+      {"product_seq": 1003, "service_region_category_item_seq": 12},
+      {"product_seq": 1004, "service_region_category_item_seq": 14}
+    ],
+    "product_lang": [
+      {"seq": 2001, "product_seq": 1001, "lang_id": 1, "name": "widget-1001-en", "short_description": "localized ordinary", "content": "localized text"},
+      {"seq": 2002, "product_seq": 1002, "lang_id": 1, "name": "widget-1002-en", "short_description": "localized ordinary", "content": "localized text"},
+      {"seq": 2003, "product_seq": 1003, "lang_id": 1, "name": "widget-1003-en", "short_description": "localized ordinary", "content": "alpha beta localized content"}
+    ],
+    "product_review": [
+      {"seq": 3001, "product_seq": 1001, "user_seq": 41, "is_close": false, "content": "oldest"},
+      {"seq": 3002, "product_seq": 1001, "user_seq": 42, "is_close": false, "content": "review-3002"},
+      {"seq": 3003, "product_seq": 1001, "user_seq": 43, "is_close": false, "content": "review-3003"},
+      {"seq": 3004, "product_seq": 1001, "user_seq": 44, "is_close": false, "content": "review-3004"},
+      {"seq": 3005, "product_seq": 1001, "user_seq": 41, "is_close": true, "content": "closed"},
+      {"seq": 3101, "product_seq": 1002, "user_seq": 42, "is_close": false, "content": "review-3101"}
+    ],
+    "order_product_item": [
+      {"seq": 5001, "product_seq": 1001, "service_member_seq": 77, "is_close": false},
+      {"seq": 5002, "product_seq": 1001, "service_member_seq": 77, "is_close": false},
+      {"seq": 5003, "product_seq": 1001, "service_member_seq": 77, "is_close": true},
+      {"seq": 5010, "product_seq": 1003, "service_member_seq": 77, "is_close": false}
+    ]
+  },
+  "expected": {
+    "row_seqs": [1001, 1002, 1003],
+    "total_count": 3,
+    "total_pages": 1,
+    "product_lang_seqs": {"1001": 2001, "1002": 2002, "1003": 2003},
+    "brand_seqs": {"1001": 501, "1002": 502},
+    "brand_lang_seqs": {"501": 601, "502": 602},
+    "review_seqs": {"1001": [3004, 3003, 3002], "1002": [3101]},
+    "review_user_seqs": {"3002": 42, "3003": 43, "3004": 44, "3101": 42},
+    "order_product_item_seqs": {"1001": 5002, "1003": 5010}
+  },
+  "expected_plan_steps": {
+    "mysql": [
+      {"role": "main", "tables": ["product", "product_brand_lang", "product_lang", "product_match_category"]},
+      {"role": "count", "tables": ["product", "product_brand_lang", "product_lang", "product_match_category"]},
+      {"role": "relation", "tables": ["product_lang"]},
+      {"role": "relation", "tables": ["product_brand"]},
+      {"role": "relation", "tables": ["product_brand_lang"]},
+      {"role": "relation", "tables": ["product_review"]},
+      {"role": "relation", "tables": ["user"]},
+      {"role": "relation", "tables": ["order_product_item"]}
+    ],
+    "postgres": [
+      {"role": "main", "tables": ["product", "product_brand_lang", "product_lang", "product_match_category"]},
+      {"role": "count", "tables": ["product", "product_brand_lang", "product_lang", "product_match_category"]},
+      {"role": "relation", "tables": ["product_lang"]},
+      {"role": "relation", "tables": ["product_brand"]},
+      {"role": "relation", "tables": ["product_brand_lang"]},
+      {"role": "relation", "tables": ["product_review"]},
+      {"role": "relation", "tables": ["user"]},
+      {"role": "relation", "tables": ["order_product_item"]}
+    ],
+    "sqlite": {"error": "OPERATOR_NOT_ALLOWED"}
+  },
+  "expected_events": {
+    "mysql": [
+      {"kind": "select", "tables": ["product", "product_brand_lang", "product_lang", "product_match_category"]},
+      {"kind": "select", "tables": ["product", "product_brand_lang", "product_lang", "product_match_category"]},
+      {"kind": "select", "tables": ["product_lang"]},
+      {"kind": "select", "tables": ["product_brand"]},
+      {"kind": "select", "tables": ["product_brand_lang"]},
+      {"kind": "select", "tables": ["product_review"]},
+      {"kind": "select", "tables": ["user"]},
+      {"kind": "select", "tables": ["order_product_item"]}
+    ],
+    "postgres": [
+      {"kind": "select", "tables": ["product", "product_brand_lang", "product_lang", "product_match_category"]},
+      {"kind": "select", "tables": ["product", "product_brand_lang", "product_lang", "product_match_category"]},
+      {"kind": "select", "tables": ["product_lang"]},
+      {"kind": "select", "tables": ["product_brand"]},
+      {"kind": "select", "tables": ["product_brand_lang"]},
+      {"kind": "select", "tables": ["product_review"]},
+      {"kind": "select", "tables": ["user"]},
+      {"kind": "select", "tables": ["order_product_item"]}
+    ],
+    "sqlite": []
+  }
+}

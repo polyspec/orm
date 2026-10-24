@@ -158,9 +158,13 @@ func (p *Planner) Compile(r *ir.Request) (*plan.Plan, error) {
 	case "one", "all", "count", "group_count", "sum", "avg":
 		_, err = p.selectStep(ps, &r.Query, r.Kind, r.Agg, nil)
 	case "paginate":
-		// main (+ its relation steps), then the count step: executors find it by role.
+		// Compile the root and its relations before the count, then move the count
+		// step immediately after the root so every client executes the same plan order.
 		if _, err = p.selectStep(ps, &r.Query, "all", "", nil); err == nil {
 			_, err = p.selectStep(ps, &r.Query, "count", "", nil)
+			if err == nil {
+				reorderPaginateCount(ps)
+			}
 		}
 	case "insert":
 		var st *plan.Step
@@ -195,6 +199,45 @@ func (p *Planner) Compile(r *ir.Request) (*plan.Plan, error) {
 		out.Steps = append(out.Steps, *st)
 	}
 	return out, nil
+}
+
+// reorderPaginateCount places the count statement after the root statement.
+// Relation references use step indexes, so inserting the count shifts every
+// relation step reference by one.
+func reorderPaginateCount(ps *stepSet) {
+	count := -1
+	for i, st := range ps.steps {
+		if st.Role == "count" {
+			count = i
+			break
+		}
+	}
+	if count <= 1 {
+		return
+	}
+	step := ps.steps[count]
+	copy(ps.steps[2:count+1], ps.steps[1:count])
+	ps.steps[1] = step
+	for i, st := range ps.steps {
+		st.ID = i
+		if st.Parent != nil && st.Parent.Step > 0 {
+			st.Parent.Step++
+		}
+		if st.Assemble != nil {
+			shiftChildSteps(st.Assemble)
+		}
+	}
+}
+
+func shiftChildSteps(assemble *plan.Assemble) {
+	for _, child := range assemble.Children {
+		if child.Step > 0 {
+			child.Step++
+		}
+		if child.Assemble != nil {
+			shiftChildSteps(child.Assemble)
+		}
+	}
 }
 
 // buildScopes assigns deterministic aliases: root "a", joins by relation name

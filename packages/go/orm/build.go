@@ -265,6 +265,11 @@ func (r *request) group(g *condGroup, owner *Core, f *frame) *ir.Group {
 func (r *request) pred(p *predSpec, owner *Core, f *frame) *ir.Pred {
 	out := &ir.Pred{Column: p.column, Op: p.op}
 	switch {
+	case p.op == "fulltext" || p.op == "fulltext_boolean":
+		out.Column = ""
+		out.Cols = p.cols
+		i := r.param(p.value)
+		out.P = &i
 	case p.tuple:
 		rows, ok := p.value.([][]any)
 		if !ok {

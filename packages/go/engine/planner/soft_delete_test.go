@@ -29,6 +29,42 @@ func TestSoftDeleteFiltersReads(t *testing.T) {
 	}
 }
 
+func TestPaginatePlanOrdersCountBeforeRelations(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	m := testModel(t, "dbspec 1 page\n\ntable parent {\n  id i64\n  primary key (id)\n}\n\ntable child {\n  id i64\n  parent_id i64\n  primary key (id)\n  index ix_child_parent (parent_id)\n  foreign key fk_child_parent (parent_id) references parent (id) on delete restrict on update restrict\n}\n")
+	p, err := (&Planner{M: m, D: dialect.SQLite{}}).Compile(&ir.Request{
+		Kind: "paginate",
+		Query: ir.Query{
+			Entity: "parent",
+			Relations: []*ir.Relation{{
+				Rel: "children", Kind: "many",
+				Query: &ir.Query{Entity: "child"},
+				Keys:  []ir.KeyPair{{Left: "id", Right: "parent_id"}},
+			}},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(p.Steps) != 3 || p.Steps[0].Role != "main" || p.Steps[1].Role != "count" || p.Steps[2].Role != "relation" {
+		t.Fatalf("paginate roles = %v, want [main count relation]", stepRoles(p.Steps))
+	}
+	if p.Steps[2].Parent == nil || p.Steps[2].Parent.Step != 0 {
+		t.Fatalf("relation parent step = %+v, want root step 0", p.Steps[2].Parent)
+	}
+	if len(p.Steps[0].Assemble.Children) != 1 || p.Steps[0].Assemble.Children[0].Step != 2 {
+		t.Fatalf("root relation assembly = %+v, want relation step 2", p.Steps[0].Assemble.Children)
+	}
+}
+
+func stepRoles(steps []plan.Step) []string {
+	roles := make([]string, len(steps))
+	for i := range steps {
+		roles[i] = steps[i].Role
+	}
+	return roles
+}
+
 func TestSoftDeleteConvertsDeleteToTimestampedUpdate(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	p := &Planner{M: softDeleteManifest(t), D: dialect.SQLite{}}
