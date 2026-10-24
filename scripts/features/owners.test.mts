@@ -48,9 +48,13 @@ caseTest('a changed path selects the lint target of its language', 5000, async (
     ['packages/python/orm/errs.py', 'lint-python'],
     ['packages/php/src/Errs.php', 'lint-php'],
     ['scripts/features/owners.mts', 'lint-ts'],
+    ['packages/dbspec-codemirror/tests/fixtures.test.mjs', 'lint-ts'],
+    ['packages/php-ext/src/convert.c', 'lint-php-ext'],
   ];
   for (const [path, lint] of cases)
     assert.ok(targets(path).includes(lint), `${path} selects ${targets(path).join(', ') || 'no target'}, not ${lint}`);
+  for (const path of cases.map(([path]) => path))
+    assert.ok(targets(path).includes('duplication-check'), `${path} does not select duplication-check`);
 });
 
 // The transaction-end case (G5.45-1) checks that for a file containing a test, the file selects the command that runs that test. Rust's tx.rs has its own
