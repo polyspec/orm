@@ -1909,6 +1909,45 @@
       ]
     },
     {
+      "id": "connection-mysql-tls-rejects-untrusted-identity",
+      "kind": "feature",
+      "requirements": [
+        "CFG-16"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/mysql_tls_test.go",
+          "id": "TestMySQLTLSConnection"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/MysqlTlsTest.php",
+          "id": "MysqlTlsTest::testConnections"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/MysqlTlsTest.php",
+          "id": "MysqlTlsTest::testConnections"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/mysql_tls.mjs",
+          "id": "mysql_tls/connections"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/mysql_tls.py",
+          "id": "test_connections"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/mysql_tls.rs",
+          "id": "verify_identity_refuses_another_ca_and_another_host"
+        }
+      ]
+    },
+    {
       "id": "connection-mysql-tls-requires-hostname-tcp",
       "kind": "feature",
       "requirements": [
@@ -10926,20 +10965,6 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/mysql_tls.rs",
           "id": "session_sql_mode_is_the_declared_one"
-        }
-      ]
-    },
-    {
-      "id": "rust-verify-identity-refuses-another-ca-and-another-host",
-      "kind": "feature",
-      "requirements": [
-        "CFG-16"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/mysql_tls.rs",
-          "id": "verify_identity_refuses_another_ca_and_another_host"
         }
       ]
     },
