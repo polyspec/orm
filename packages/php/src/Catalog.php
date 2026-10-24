@@ -1371,9 +1371,7 @@ final class Catalog
     private function exec(\PDO $pdo, string $sql, array $args): int
     {
         try {
-            $st = $pdo->prepare($sql);
-            $st->execute($args);
-            return $st->rowCount();
+            return $this->prepareQuery($pdo, $sql, $args)->rowCount();
         } catch (\PDOException $e) {
             throw $this->db->driverError($e);
         }
