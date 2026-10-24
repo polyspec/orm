@@ -654,39 +654,60 @@ where
     }
 }
 
-impl<'a, T> SendTransaction<'a, T> {
-    pub fn isolation(mut self, level: Isolation) -> Self {
-        self.isolation = Some(level);
-        self.set = true;
-        self
-    }
+macro_rules! transaction_options {
+    ($type:ident<$($generic:tt),+>) => {
+        impl<$($generic),+> $type<$($generic),+> {
+            /// Sets the transaction isolation level.
+            pub fn isolation(mut self, level: Isolation) -> Self {
+                self.isolation = Some(level);
+                self.set = true;
+                self
+            }
 
-    pub fn read_only(mut self) -> Self {
-        self.read_only = true;
-        self.set = true;
-        self
-    }
+            /// Makes the transaction read-only.
+            pub fn read_only(mut self) -> Self {
+                self.read_only = true;
+                self.set = true;
+                self
+            }
 
-    /// Bounds every statement of the transaction; see `Transaction::timeout_ms`.
-    pub fn timeout_ms(mut self, ms: u64) -> Self {
-        self.timeout_ms = ms;
-        self.set = true;
-        self
-    }
+            /// Bounds every statement of the transaction in milliseconds. PostgreSQL sends
+            /// `SET LOCAL statement_timeout = <ms>` after its `BEGIN`; the server cancels a statement
+            /// that runs longer with `CANCELED`. MySQL and SQLite fail with `CAPABILITY_UNSUPPORTED`
+            /// before the transaction begins. Zero sets no bound.
+            pub fn timeout_ms(mut self, ms: u64) -> Self {
+                self.timeout_ms = ms;
+                self.set = true;
+                self
+            }
 
-    pub fn retry(mut self, n: u32) -> Self {
-        self.retry = n;
-        self
-    }
+            /// Sets how many times a deadlocked callback runs again; 0 disables retry.
+            pub fn retry(mut self, n: u32) -> Self {
+                self.retry = n;
+                self
+            }
 
-    /// Records the audit of the transaction with the defaults of the handle
-    /// (`Db::audit`) and `values`; see `Transaction::audit`.
-    pub fn audit<K: Into<String>, V: Into<Param>>(mut self, values: impl IntoIterator<Item = (K, V)>) -> Self {
-        self.audit = Some(audit_values(values));
-        self.set = true;
-        self
-    }
+            /// Makes the transaction one unit of work with an audit record. Right before the first
+            /// write of an audited table, in every attempt, the transaction inserts one row into the
+            /// audit record table: the defaults of the handle (`Db::audit`) with `values`, of which a
+            /// value wins over the default of the same column. Every insert, update, soft delete and
+            /// restore of an audited table writes the record's primary key into the table's audit
+            /// column. The handle must have defaults, and every key must be a column of the audit
+            /// record table; otherwise the transaction fails with CONFIG before it begins. A
+            /// transaction that writes no audited row inserts no record: a first update, delete or
+            /// restore that matches no row undoes the record with a savepoint, and a rolled back
+            /// savepoint undoes the record with the write that inserted it. A nested transaction uses
+            /// the audit of the outer one and takes none.
+            pub fn audit<K: Into<String>, V: Into<Param>>(mut self, values: impl IntoIterator<Item = (K, V)>) -> Self {
+                self.audit = Some(audit_values(values));
+                self.set = true;
+                self
+            }
+        }
+    };
 }
+
+transaction_options!(SendTransaction<'a, T>);
 
 impl<'a, T> IntoFuture for SendTransaction<'a, T>
 where
@@ -716,57 +737,7 @@ where
     }
 }
 
-impl<'a, F> Transaction<'a, F> {
-    /// Sets the isolation level.
-    pub fn isolation(mut self, level: Isolation) -> Self {
-        self.isolation = Some(level);
-        self.set = true;
-        self
-    }
-
-    /// Makes the transaction read-only.
-    pub fn read_only(mut self) -> Self {
-        self.read_only = true;
-        self.set = true;
-        self
-    }
-
-    /// Bounds every statement of the transaction in milliseconds: PostgreSQL
-    /// sends `SET LOCAL statement_timeout = <ms>` after its `BEGIN`, and the
-    /// server cancels a statement that runs longer with `CANCELED`. MySQL and
-    /// SQLite fail with `CAPABILITY_UNSUPPORTED` before the transaction
-    /// begins. Zero sets no bound.
-    pub fn timeout_ms(mut self, ms: u64) -> Self {
-        self.timeout_ms = ms;
-        self.set = true;
-        self
-    }
-
-    /// Sets how many times a deadlocked callback runs again; 0 disables retry.
-    pub fn retry(mut self, n: u32) -> Self {
-        self.retry = n;
-        self
-    }
-
-    /// Makes the transaction one unit of work with an audit record. Right before
-    /// the first write of an audited table, in every attempt, the transaction
-    /// inserts one row into the audit record table: the defaults of the handle (`Db::audit`) with
-    /// `values`, of which a value wins over the default of the same column.
-    /// Every insert, update, soft delete and restore of an audited table in the
-    /// transaction writes the record's primary key into the table's audit
-    /// column. The handle must have defaults, and every key must be a column of
-    /// the audit record table; otherwise the transaction fails with CONFIG
-    /// before it begins. A transaction that writes no audited row inserts no
-    /// record: a first update, delete or restore that matches no row undoes the
-    /// record with a savepoint, and a rolled back savepoint undoes the record
-    /// with the write that inserted it. A nested transaction uses the audit of the outer one
-    /// and takes none.
-    pub fn audit<K: Into<String>, V: Into<Param>>(mut self, values: impl IntoIterator<Item = (K, V)>) -> Self {
-        self.audit = Some(audit_values(values));
-        self.set = true;
-        self
-    }
-}
+transaction_options!(Transaction<'a, F>);
 
 impl<'a, F, T> IntoFuture for Transaction<'a, F>
 where
