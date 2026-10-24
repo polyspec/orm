@@ -14,7 +14,7 @@ use PHPUnit\Framework\TestCase;
 
 final class CoverageModelGenerationNativeTest extends TestCase
 {
-    // Requirements: DBS-112, INT-66.
+    // Requirements: DBS-104, DBS-112, INT-66.
     public function testModelGenerationCheck(): void
     {
         $manifest = RuntimeModel::build(RuntimeModel::parse([
@@ -45,6 +45,10 @@ DBSPEC,
             require "$directory/Item.php";
 
             $class = "$namespace\\Item";
+            Assert::assertSame(
+                'sha256:' . hash('sha256', $manifest->manifestText . $manifest->externalText),
+                $manifest->manifestHash
+            );
             $reflection = new \ReflectionClass($class);
             Assert::assertTrue((new \ReflectionClass(Model::class))->isInternal());
             Assert::assertTrue($reflection->getParentClass()->isInternal());

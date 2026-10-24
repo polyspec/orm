@@ -62,7 +62,7 @@ final class OrmGenTest extends TestCase
         return [proc_close($process), $out, $err];
     }
 
-    // Requirements: DBS-112, DBS-114, INT-66.
+    // Requirements: DBS-104, DBS-112, DBS-114, INT-66.
     public function testGeneratedTypedGetterUsesPrivateModelStorageAndRejectsUnselectedRead(): void
     {
         $dir = self::$work . '/typed-getter';
@@ -84,6 +84,10 @@ final class OrmGenTest extends TestCase
         require_once "$dir/model/Item.php";
 
         $class = "$namespace\\Item";
+        self::assertSame(
+            'sha256:' . hash('sha256', file_get_contents("$dir/typed.dbs")),
+            $class::meta()['manifest_hash']
+        );
         $model = new $class();
         $getter = new \ReflectionMethod($class, 'getPrice');
         self::assertSame('int', $getter->getReturnType()->getName());

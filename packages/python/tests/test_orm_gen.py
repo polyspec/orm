@@ -1,5 +1,6 @@
 # orm-gen generator check: builds models.py from the document set of contracts/fixtures/bench/dbspec-set.json,
 # and checks that the generated module interprets the chain syntax (unittest).
+import hashlib
 import json
 import types
 import subprocess
@@ -53,7 +54,7 @@ class OrmGenTest(unittest.TestCase):
         cls.addClassCleanup(sys.modules.pop, "models", None)
         exec(compile(source.read_text(), module.__file__, "exec"), module.__dict__)
 
-    # Requirements: DBS-120, DSL-43.
+    # Requirements: DBS-104, DBS-120, DSL-43.
     def test_generated_module_imports_and_builds_the_model(self):
         import models
 
@@ -65,6 +66,11 @@ class OrmGenTest(unittest.TestCase):
         self.assertEqual(author.entity_def.entity.name, "author")
         self.assertEqual(len(models.model.entities), 25)
         self.assertTrue(models.SCHEMA.manifest_text.startswith("dbspec 1 bench"))
+        self.assertEqual(
+            models.MANIFEST_HASH,
+            "sha256:"
+            + hashlib.sha256((models.SCHEMA.manifest_text + models.SCHEMA.external_text).encode()).hexdigest(),
+        )
 
     # Requirements: DBS-112, DBS-114, INT-66.
     def test_generated_typed_getter_is_the_public_column_api(self):

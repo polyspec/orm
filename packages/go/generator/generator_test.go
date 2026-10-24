@@ -3,6 +3,7 @@ package generator
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -10,7 +11,7 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// Requirements: SCH-2.
+// Requirements: DBS-104, SCH-2.
 func TestGenerateUsesCanonicalManifestForGoClient(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	manifest := sampleModel(t)
@@ -20,6 +21,19 @@ func TestGenerateUsesCanonicalManifestForGoClient(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(out, "sample.go")); err != nil {
 		t.Fatalf("generated ORM client is missing: %v", err)
+	}
+	orm, err := os.ReadFile(filepath.Join(out, "orm.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"const ManifestHash = " + strconv.Quote(manifest.ManifestHash),
+		"const ManifestText = " + goStringLiteral(manifest.ManifestText),
+		"var Schema = &orm.Schema{Hash: ManifestHash, Text: ManifestText}",
+	} {
+		if !strings.Contains(string(orm), want) {
+			t.Errorf("orm.go does not carry generated manifest value %q", want)
+		}
 	}
 }
 

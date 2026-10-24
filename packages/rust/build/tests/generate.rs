@@ -2,6 +2,7 @@
 //! generated, and a call the schema does not allow fails with its position.
 
 use polyspec_orm_testcase::OrPanic;
+use sha2::Digest;
 use std::path::{Path, PathBuf};
 
 fn schema() -> PathBuf {
@@ -273,10 +274,14 @@ fn manifest_text_is_embedded_with_its_hash() {
     let audit = polyspec_orm_testcase::manifest_dir().join("../../../contracts/fixtures/audit.dbs");
     polyspec_orm_build::Builder::set(set_file(&dir, &[schema(), audit.clone()], &[])).scan(dir.join("src")).out_dir(dir.join("out")).try_generate().unwrap();
     let embedded = std::fs::read_to_string(dir.join("out").join(polyspec_orm_build::MANIFEST_FILE)).unwrap();
+    let generated = std::fs::read_to_string(dir.join("out").join(polyspec_orm_build::MODEL_FILE)).unwrap();
     let zone = std::fs::read_to_string(schema()).unwrap();
     let audit = std::fs::read_to_string(audit).unwrap();
     remove_test_dir(&dir);
     assert_eq!(embedded, format!("{audit}{zone}"), "the manifest text holds the documents in name order");
+    let digest = sha2::Sha256::digest(embedded.as_bytes());
+    let hash = format!("sha256:{digest:x}");
+    assert!(generated.contains(&format!("pub const MANIFEST_HASH: &str = {hash:?};")), "generated hash does not match embedded manifest text");
 }
 
 #[test]

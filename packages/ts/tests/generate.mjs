@@ -2,6 +2,7 @@
 // published package outside this repository.
 // Usage: node packages/ts/tests/generate.mjs (after npm run typescript:build)
 import { spawn, spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -264,5 +265,23 @@ void rawPrice;
     assert.match(diagnostics[0], /^\.runtime\/run\/ts-generated-getter-[A-Za-z0-9_-]+\/negative\.ts\(4,7\): error TS2322: Type '\(v0: number \| Model \| readonly number\[\] \| ValueFunction\) => Item' is not assignable to type 'number'\.$/);
   } finally {
     await rm(consumerDir, { recursive: true, force: true });
+  }
+});
+
+// Requirements: DBS-104.
+test('generated manifest text and hash match', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'orm-ts-manifest-'));
+  try {
+    const manifestText = 'dbspec 1 manifest\n\ntable item {\n  id i64 identity\n  primary key (id)\n}\n';
+    const set = await setOf(join(dir, 'set'), [['manifest.dbs', manifestText]]);
+    const output = join(dir, 'generated');
+    const generated = run('gen', '--set', set, '--out', output);
+    assert.equal(generated.status, 0, generated.stderr);
+    const source = await readFile(join(output, 'models.ts'), 'utf8');
+    const hash = `sha256:${createHash('sha256').update(manifestText).digest('hex')}`;
+    assert.ok(source.includes(`export const MANIFEST_TEXT = \`${manifestText}\`;`));
+    assert.ok(source.includes(`export const MANIFEST_HASH = '${hash}';`));
+  } finally {
+    await rm(dir, { recursive: true, force: true });
   }
 });
