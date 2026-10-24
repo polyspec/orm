@@ -144,25 +144,21 @@ final class PlanApply
     public static function recover(\PDO $c, string $dialect, array $plans, \Closure $now, ?\Closure $events): void
     {
         self::inSession($c, $dialect, $plans, $now, $events, static function (self $a): void {
-            $last = $a->lastPlan();
-            if ($last === null) {
-                return;
-            }
-            $plan = $last['plan'];
-            $row = $last['row'];
-            if ($row['state'] === self::APPLIED || $row['state'] === self::DONE) {
-                return;
-            }
-            $steps = $a->steps($plan);
-            $k = $a->resolve($plan, $row, $steps, true);
-            if ($row['state'] === self::FINALIZING) {
-                $a->emit(new ApplyEvent('finalize', $plan->name, 0, count($steps), ''));
-                $a->finalizeFrom($plan, $steps, $k);
-                return;
-            }
-            $a->emit(new ApplyEvent('plan', $plan->name, 0, count($steps), ''));
-            $a->record($plan, self::APPLYING, $k);
-            $a->forward($plan, $steps, $k);
+            $a->withLastPlan(static function (Plan $plan, array $row) use ($a): void {
+                if ($row['state'] === self::APPLIED || $row['state'] === self::DONE) {
+                    return;
+                }
+                $steps = $a->steps($plan);
+                $k = $a->resolve($plan, $row, $steps, true);
+                if ($row['state'] === self::FINALIZING) {
+                    $a->emit(new ApplyEvent('finalize', $plan->name, 0, count($steps), ''));
+                    $a->finalizeFrom($plan, $steps, $k);
+                    return;
+                }
+                $a->emit(new ApplyEvent('plan', $plan->name, 0, count($steps), ''));
+                $a->record($plan, self::APPLYING, $k);
+                $a->forward($plan, $steps, $k);
+            });
         });
     }
 
@@ -174,65 +170,61 @@ final class PlanApply
     public static function rollback(\PDO $c, string $dialect, array $plans, \Closure $now, ?\Closure $events): void
     {
         self::inSession($c, $dialect, $plans, $now, $events, static function (self $a): void {
-            $last = $a->lastPlan();
-            if ($last === null) {
-                return;
-            }
-            $plan = $last['plan'];
-            $row = $last['row'];
-            $steps = $a->steps($plan);
-            $k = $row['step'];
-            $applied = $row['state'] === self::APPLIED || $row['state'] === self::DONE;
-            if ($applied) {
-                if ($k < 0 || $k > count($steps)) {
-                    throw new ApplyError(
-                        'chain',
-                        $plan->name,
-                        0,
-                        sprintf("the recorded step %d is outside the plan's %d steps", $k, count($steps))
-                    );
+            $a->withLastPlan(static function (Plan $plan, array $row) use ($a): void {
+                $steps = $a->steps($plan);
+                $k = $row['step'];
+                $applied = $row['state'] === self::APPLIED || $row['state'] === self::DONE;
+                if ($applied) {
+                    if ($k < 0 || $k > count($steps)) {
+                        throw new ApplyError(
+                            'chain',
+                            $plan->name,
+                            0,
+                            sprintf("the recorded step %d is outside the plan's %d steps", $k, count($steps))
+                        );
+                    }
+                    try {
+                        $a->verify($plan->to);
+                    } catch (PlanSchemaMismatch $e) {
+                        throw new ApplyError('drift', $plan->name, 0, $e->getMessage());
+                    } catch (\RuntimeException $e) {
+                        throw new ApplyError('verify', $plan->name, 0, '', $e);
+                    }
+                } else {
+                    $k = $a->resolve($plan, $row, $steps, false);
                 }
+                if ($k > 0 && $steps[$k - 1]->rollback === '') {
+                    throw $a->irreversible($plan, $steps, $k - 1);
+                }
+                if ($applied) {
+                    $a->nullChecks($plan, array_slice($steps, 0, $k));
+                }
+                $a->emit(new ApplyEvent('rollback', $plan->name, 0, count($steps), ''));
+                $a->record($plan, self::ROLLING_BACK, $k);
+                for ($i = $k - 1; $i >= 0; $i--) {
+                    $step = $steps[$i];
+                    if ($step->rollback === '') {
+                        throw $a->irreversible($plan, $steps, $i);
+                    }
+                    $statement = $step->rollback;
+                    if ($step->rollbackRestore !== '' && $a->effect($plan, $i, $step->restoreIf)) {
+                        $statement = $step->rollbackRestore;
+                    }
+                    $a->run($plan, $steps, $i, $statement);
+                    $a->setStep($plan, $i);
+                }
+                $a->foreignKeyCheck($plan);
                 try {
-                    $a->verify($plan->to);
-                } catch (PlanSchemaMismatch $e) {
-                    throw new ApplyError('drift', $plan->name, 0, $e->getMessage());
+                    $a->verify($plan->from ?? '');
                 } catch (\RuntimeException $e) {
                     throw new ApplyError('verify', $plan->name, 0, '', $e);
                 }
-            } else {
-                $k = $a->resolve($plan, $row, $steps, false);
-            }
-            if ($k > 0 && $steps[$k - 1]->rollback === '') {
-                throw $a->irreversible($plan, $steps, $k - 1);
-            }
-            if ($applied) {
-                $a->nullChecks($plan, array_slice($steps, 0, $k));
-            }
-            $a->emit(new ApplyEvent('rollback', $plan->name, 0, count($steps), ''));
-            $a->record($plan, self::ROLLING_BACK, $k);
-            for ($i = $k - 1; $i >= 0; $i--) {
-                $step = $steps[$i];
-                if ($step->rollback === '') {
-                    throw $a->irreversible($plan, $steps, $i);
-                }
-                $statement = $step->rollback;
-                if ($step->rollbackRestore !== '' && $a->effect($plan, $i, $step->restoreIf)) {
-                    $statement = $step->rollbackRestore;
-                }
-                $a->run($plan, $steps, $i, $statement);
-                $a->setStep($plan, $i);
-            }
-            $a->foreignKeyCheck($plan);
-            try {
-                $a->verify($plan->from ?? '');
-            } catch (\RuntimeException $e) {
-                throw new ApplyError('verify', $plan->name, 0, '', $e);
-            }
-            $a->emit(new ApplyEvent('verified', $plan->name, 0, count($steps), ''));
-            $q = $a->r->q(...);
-            $a->c->prepare('DELETE FROM ' . $q(self::HISTORY) . ' WHERE ' . $q('name') . ' = ?')
-                ->execute([$plan->name]);
-            $a->emit(new ApplyEvent('done', $plan->name, 0, count($steps), ''));
+                $a->emit(new ApplyEvent('verified', $plan->name, 0, count($steps), ''));
+                $q = $a->r->q(...);
+                $a->c->prepare('DELETE FROM ' . $q(self::HISTORY) . ' WHERE ' . $q('name') . ' = ?')
+                    ->execute([$plan->name]);
+                $a->emit(new ApplyEvent('done', $plan->name, 0, count($steps), ''));
+            });
         });
     }
 
@@ -611,15 +603,15 @@ final class PlanApply
         return $position;
     }
 
-    /** @return array{plan: Plan, row: array{from: string, to: string, state: string, step: int}}|null */
-    private function lastPlan(): ?array
+    /** @param \Closure(Plan, array{from: string, to: string, state: string, step: int}): void $operation */
+    private function withLastPlan(\Closure $operation): void
     {
         $position = $this->position();
         if ($position === 0) {
-            return null;
+            return;
         }
         $plan = $this->chain[$position - 1];
-        return ['plan' => $plan, 'row' => $this->history[$plan->name]];
+        $operation($plan, $this->history[$plan->name]);
     }
 
     /**

@@ -172,6 +172,16 @@ final class DbspecApplyCleanupTest extends TestCase
         );
     }
 
+    public function testRecoverAndRollbackWithNoRecordedPlan(): void
+    {
+        $pdo = failing_pdo([]);
+        Dbspec::recover($pdo, 'sqlite', [], self::now(), null);
+        Dbspec::rollback($pdo, 'sqlite', [], self::now(), null);
+
+        $rows = $pdo->query('SELECT COUNT(*) FROM "dbspec$plans"')->fetchColumn();
+        Assert::assertSame(0, (int) $rows);
+    }
+
     // apply/effect-row
     public function testEffectRow(): void
     {
