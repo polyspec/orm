@@ -1780,6 +1780,35 @@ static zend_string *cat_dialect(zval *self)
     return Z_STR_P(d);
 }
 
+/* Validates shared input and copies read-only query parameters before either Catalog query path starts. */
+static bool cat_read_only_inputs(zval *self, zend_string *sql, zval *params, zend_long *max_rows, zend_long *max_bytes,
+                                 zval *db_rv, zval **db, zend_string **dialect, zval *args)
+{
+    if (!cat_open(self)) return false;
+    *db = cat_db(self, db_rv);
+    *dialect = cat_dialect(self);
+    if (!cat_validate_read_only(sql, ZSTR_VAL(*dialect))) return false;
+    if (*max_rows < 0 || *max_bytes < 0) {
+        db_throw_orm("QUERY_LIMIT_INVALID", "limits must not be negative");
+        return false;
+    }
+    if (*max_rows == 0) *max_rows = CAT_DEFAULT_ROWS;
+    if (*max_bytes == 0) *max_bytes = CAT_DEFAULT_BYTES;
+    array_init(args);
+    if (params != NULL) {
+        zval *param;
+        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(params), param) {
+            if (!cat_param(param)) {
+                zval_ptr_dtor(args);
+                return false;
+            }
+            Z_TRY_ADDREF_P(param);
+            add_next_index_zval(args, param);
+        } ZEND_HASH_FOREACH_END();
+    }
+    return true;
+}
+
 /* ---- writes (SCH-6a) -------------------------------------------------------------------------------------------------------- */
 
 /* Opens a writable transaction (Catalog::begin, writable): SQLite takes the write lock at once. */
@@ -3631,32 +3660,11 @@ ZEND_METHOD(Polyspec_Orm_Catalog, readOnlyQuery)
         Z_PARAM_LONG(max_rows)
         Z_PARAM_LONG(max_bytes)
     ZEND_PARSE_PARAMETERS_END();
-    if (!cat_open(ZEND_THIS)) return;
     zval rv;
-    zval *db = cat_db(ZEND_THIS, &rv);
-    zend_string *dialect = cat_dialect(ZEND_THIS);
-    if (!cat_validate_read_only(sql, ZSTR_VAL(dialect))) {
-        return;
-    }
-    if (max_rows < 0 || max_bytes < 0) {
-        db_throw_orm("QUERY_LIMIT_INVALID", "limits must not be negative");
-        return;
-    }
-    if (max_rows == 0) max_rows = CAT_DEFAULT_ROWS;
-    if (max_bytes == 0) max_bytes = CAT_DEFAULT_BYTES;
+    zval *db;
+    zend_string *dialect;
     zval args;
-    array_init(&args);
-    if (params != NULL) {
-        zval *param;
-        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(params), param) {
-            if (!cat_param(param)) {
-                zval_ptr_dtor(&args);
-                return;
-            }
-            Z_TRY_ADDREF_P(param);
-            add_next_index_zval(&args, param);
-        } ZEND_HASH_FOREACH_END();
-    }
+    if (!cat_read_only_inputs(ZEND_THIS, sql, params, &max_rows, &max_bytes, &rv, &db, &dialect, &args)) return;
     zval pdo;
     ZVAL_UNDEF(&pdo);
     if (!cat_begin_read(db, ZSTR_VAL(dialect), &pdo)) {
@@ -3711,32 +3719,11 @@ ZEND_METHOD(Polyspec_Orm_Catalog, readOnlyGridQuery)
         Z_PARAM_LONG(max_rows)
         Z_PARAM_LONG(max_bytes)
     ZEND_PARSE_PARAMETERS_END();
-    if (!cat_open(ZEND_THIS)) return;
     zval rv;
-    zval *db = cat_db(ZEND_THIS, &rv);
-    zend_string *dialect = cat_dialect(ZEND_THIS);
-    if (!cat_validate_read_only(sql, ZSTR_VAL(dialect))) {
-        return;
-    }
-    if (max_rows < 0 || max_bytes < 0) {
-        db_throw_orm("QUERY_LIMIT_INVALID", "limits must not be negative");
-        return;
-    }
-    if (max_rows == 0) max_rows = CAT_DEFAULT_ROWS;
-    if (max_bytes == 0) max_bytes = CAT_DEFAULT_BYTES;
+    zval *db;
+    zend_string *dialect;
     zval args;
-    array_init(&args);
-    if (params != NULL) {
-        zval *param;
-        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(params), param) {
-            if (!cat_param(param)) {
-                zval_ptr_dtor(&args);
-                return;
-            }
-            Z_TRY_ADDREF_P(param);
-            add_next_index_zval(&args, param);
-        } ZEND_HASH_FOREACH_END();
-    }
+    if (!cat_read_only_inputs(ZEND_THIS, sql, params, &max_rows, &max_bytes, &rv, &db, &dialect, &args)) return;
     zval sql_zv;
     ZVAL_STR_COPY(&sql_zv, sql);
     zval names, rows, result;
