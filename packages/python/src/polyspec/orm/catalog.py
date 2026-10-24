@@ -354,6 +354,9 @@ class CatalogColumn:
     native_type: str
     nullable: bool
     generated: bool
+    automatic_key: bool = False
+    default_expression: str | None = None
+    expression_default: bool = False
 
 
 @dataclass
@@ -437,6 +440,7 @@ class _Raw:
     affected: int
     codes: list = field(default_factory=list)
     unsigned: list = field(default_factory=list)
+    insert_id: int | None = None
 
 
 def _descriptor(metadata: CatalogTableMetadata) -> list:
@@ -795,6 +799,7 @@ class _Session:
                         list(row) if grid else [_check_value(value) for value in row]
                     )
             affected = cursor.rowcount if cursor.rowcount is not None else 0
+            insert_id = cursor.lastrowid if self.dialect == "mysql" else None
         except Exception as error:
             if not _is_driver_error(self.dialect, error):
                 raise
@@ -802,7 +807,7 @@ class _Session:
             _raise_driver_error(self.dialect, error, lost)
         finally:
             cursor.close()
-        return _Raw(names, rows, affected, codes, unsigned)
+        return _Raw(names, rows, affected, codes, unsigned, insert_id)
 
     def close(self) -> None:
         self.wrapper.close()
@@ -849,6 +854,9 @@ class _Session:
                 native_type=_text(row[1]),
                 nullable=_bool(row[2]),
                 generated=_bool(row[3]),
+                automatic_key=_bool(row[5]),
+                default_expression=default,
+                expression_default=_bool(row[7]),
             )
             ordinal = _int(row[4])
             if ordinal < 0:
@@ -878,6 +886,7 @@ class _Session:
                 raise _error(codes.TABLE_METADATA_INVALID, "primary index count")
             if _int(count_rows[0][0]) == 0:
                 columns[keys[0][1]].nullable = False
+                columns[keys[0][1]].automatic_key = True
 
         reliable = kind in ("table", "partitioned") and len(keys) > 0
         primary_key = []
@@ -1237,20 +1246,29 @@ class CatalogConnection:
     def insert_row(
         self, declared: CatalogTableMetadata, values
     ) -> CatalogMutationResult:
-        """Inserts one row with explicit primary-key values inside a writable transaction. It rejects an existing key, writes
-        with bound parameters, requires exactly one affected row and re-reads the row by its key before it commits. Every
-        supplied value must read back exactly. Automatic and expression-default keys are not supported."""
+        """Inserts one row inside a writable transaction. A missing sole automatic primary key is obtained from the
+        statement's returned row or insert acknowledgement. The method rejects an existing explicit key, revalidates the
+        descriptor and re-reads the row by its key before commit. Every supplied value must read back exactly."""
         key_indexes = _descriptor(declared)
         changes = _changes(declared, values, codes.ROW_INSERT_INVALID)
         provided = {index: value for index, value in changes}
         keys = []
+        generated_key = False
         for index in key_indexes:
             if index not in provided:
-                raise _error(
-                    codes.ROW_INSERT_INVALID,
-                    f"explicit primary-key value of {declared.columns[index].name!r} is required",
-                )
-            keys.append(provided[index])
+                column = declared.columns[index]
+                if (
+                    len(key_indexes) != 1
+                    or not column.automatic_key
+                    or column.default_expression is not None
+                ):
+                    raise _error(
+                        codes.ROW_INSERT_INVALID,
+                        f"primary-key value of {column.name!r} is required",
+                    )
+                generated_key = True
+            else:
+                keys.append(provided[index])
 
         def work(session: _Session) -> CatalogMutationResult:
             if self._dialect == "postgres":
@@ -1258,7 +1276,7 @@ class CatalogConnection:
                 session.run(
                     f"LOCK TABLE {_qualified(declared.table, self._dialect)} IN ROW EXCLUSIVE MODE"
                 )
-            if session.lookup(declared, keys, lock=True):
+            if not generated_key and session.lookup(declared, keys, lock=True):
                 raise _error(codes.ROW_CONFLICT, "insertion key already exists")
             descriptor = session.describe(declared.table)
             if descriptor != declared:
@@ -1273,16 +1291,44 @@ class CatalogConnection:
                 _placeholder(i + 1, self._dialect) for i in range(len(changes))
             ]
             args = [value for _, value in changes]
-            query = (
-                f"INSERT INTO {_qualified(descriptor.table, self._dialect)} ({','.join(names)}) "
-                f"VALUES ({','.join(placeholders)})"
-            )
-            affected = session.run(query, args).affected
-            if affected != 1:
-                raise _error(
-                    codes.ROW_WRITE_MISMATCH,
-                    f"expected exactly one inserted row, got {affected}",
+            if changes:
+                query = (
+                    f"INSERT INTO {_qualified(descriptor.table, self._dialect)} ({','.join(names)}) "
+                    f"VALUES ({','.join(placeholders)})"
                 )
+            elif self._dialect == "mysql":
+                query = f"INSERT INTO {_qualified(descriptor.table, self._dialect)} () VALUES ()"
+            else:
+                query = f"INSERT INTO {_qualified(descriptor.table, self._dialect)} DEFAULT VALUES"
+            if generated_key:
+                if self._dialect == "mysql":
+                    inserted = session.run(query, args)
+                    if inserted.affected != 1 or inserted.insert_id is None:
+                        raise _error(
+                            codes.ROW_WRITE_MISMATCH,
+                            "insert acknowledgement did not return an automatic key",
+                        )
+                    keys = [inserted.insert_id]
+                else:
+                    returning = _quote_list(
+                        [column.name for column in descriptor.columns], self._dialect
+                    )
+                    returned = session.run(f"{query} RETURNING {returning}", args)
+                    if len(returned.rows) != 1 or len(returned.rows[0]) != len(
+                        descriptor.columns
+                    ):
+                        raise _error(
+                            codes.ROW_WRITE_MISMATCH,
+                            "expected exactly one returned inserted row",
+                        )
+                    keys = [returned.rows[0][index] for index in key_indexes]
+            else:
+                affected = session.run(query, args).affected
+                if affected != 1:
+                    raise _error(
+                        codes.ROW_WRITE_MISMATCH,
+                        f"expected exactly one inserted row, got {affected}",
+                    )
             after = session.lookup(descriptor, keys, lock=False)
             if len(after) != 1:
                 raise _error(
