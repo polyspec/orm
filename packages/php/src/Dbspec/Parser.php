@@ -2266,7 +2266,12 @@ final class Parser
                     break;
                 case 'title':
                 case 'body':
-                    $this->requireTextColumn($arguments[0], $line, $kind, "$kind needs a non-null varchar or text column");
+                    $this->requireTextColumn(
+                        $arguments[0],
+                        $line,
+                        $kind,
+                        "$kind needs a non-null varchar or text column"
+                    );
                     break;
                 case 'order':
                     $definition = $this->columnRef($arguments[0], $line, $kind);
@@ -3427,8 +3432,7 @@ final class Parser
         int $line,
         string $role,
         string $missing = 'is not a table of this document or a used table'
-    ): ?array
-    {
+    ): ?array {
         $name = $token[0];
         $entry = $this->tables[$name] ?? null;
         if ($entry !== null) {
