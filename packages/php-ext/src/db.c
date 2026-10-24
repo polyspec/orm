@@ -35,6 +35,8 @@ typedef bool (*dbs_transaction_callback)(zval *connection, void *context, zval *
 
 static void set_masked(zval *masks, zend_long idx, const char *s);
 static zval *active_for(zval *db);
+static bool finish_tx(zval *self, zval *frame, bool commit);
+static void throw_rollback(zval *cause, zval *rollback);
 static bool audit_for(zval *self, zval *frame, bool guard, bool *settle);
 static void settle_audit(zval *self, zval *frame, zend_long affected, zval *out);
 static zend_long bind_limit(zval *driver);
@@ -3611,6 +3613,12 @@ ZEND_METHOD(Polyspec_Orm_Db, close)
     if (as_bool(rd(state, "closed"))) {
         return;
     }
+    zval cleanup;
+    ZVAL_UNDEF(&cleanup);
+    zval *frame = active_for(self);
+    if (frame != NULL && !as_bool(rd(frame, "finished")) && !finish_tx(self, frame, false)) {
+        take_exception(&cleanup);
+    }
     zval *md = rd(self, "md");
     if (md != NULL && Z_TYPE_P(md) == IS_OBJECT) {
         zval t, r;
@@ -3618,6 +3626,9 @@ ZEND_METHOD(Polyspec_Orm_Db, close)
         wr(state, "closed", &t);
         if (mcall(md, "close", &r, 0, NULL)) {
             zval_ptr_dtor(&r);
+        }
+        if (Z_TYPE(cleanup) != IS_UNDEF) {
+            put_exception(&cleanup);
         }
         return;
     }
@@ -3663,8 +3674,14 @@ ZEND_METHOD(Polyspec_Orm_Db, close)
     zval_ptr_dtor(&empty);
     ZVAL_NULL(&nul);
     wr(state, "pdo", &nul);
-    if (Z_TYPE(err) != IS_UNDEF) {
+    if (Z_TYPE(err) != IS_UNDEF && Z_TYPE(cleanup) != IS_UNDEF) {
+        throw_rollback(&cleanup, &err);
+        zval_ptr_dtor(&cleanup);
+        zval_ptr_dtor(&err);
+    } else if (Z_TYPE(err) != IS_UNDEF) {
         put_exception(&err);
+    } else if (Z_TYPE(cleanup) != IS_UNDEF) {
+        put_exception(&cleanup);
     }
 }
 
@@ -4476,6 +4493,9 @@ static void frame_cleanup(zval *self, zval *frame, zval *errors)
 /* Db::finish: ends the transaction. Returns false with the error pending when the end failed. */
 static bool finish_tx(zval *self, zval *frame, bool commit)
 {
+    if (as_bool(rd(frame, "finished"))) {
+        return true;
+    }
     zval t;
     ZVAL_TRUE(&t);
     wr(frame, "finished", &t);
@@ -5320,6 +5340,12 @@ static bool run_transaction(zval *self, zval *fn, dbs_transaction_callback callb
         return false;
     }
     frames_pop();
+    if (as_bool(rd(&frame, "finished"))) {
+        zval_ptr_dtor(&frame);
+        db_throw_orm("CONFIG", "database was closed during the transaction");
+        zval_ptr_dtor(&v);
+        return false;
+    }
     if (!finish_tx(self, &frame, true)) {
         zval_ptr_dtor(&frame);
         zval_ptr_dtor(&v);

@@ -3169,7 +3169,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/AuditLazyFakePdoTest.php",
-          "id": "AuditLazyFakePdoTest::test_lazy_audit_precedes_writes_is_reused_and_write_failure_propagates"
+          "id": "AuditLazyFakePdoTest::testCloseDuringTransactionRollsBackBeforeReleasingNativeConnection"
         },
         {
           "implementation": "typescript",
