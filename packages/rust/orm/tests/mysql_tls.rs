@@ -4,8 +4,8 @@
 //! unchanged. The DSNs from `make orm-test-servers` are ORM_TEST_MYSQL_TLS_DSN, ORM_TEST_MYSQL_TLS_OTHER_CA_DSN,
 //! and ORM_TEST_MYSQL_TLS_MISMATCH_DSN; the test fails if one is missing.
 
-use polyspec_orm::db::Pool;
 use polyspec_orm::Db;
+use polyspec_orm::db::Pool;
 
 #[test]
 // Requirements: CFG-17.
@@ -36,7 +36,9 @@ fn tls_options_follow_sqlx_parameter_support() {
         "mysql://root@db.example/app?ssl-mode=VERIFY_IDENTITY&ssl-ca=ca.pem",
         "mysql://root@db.example/app?ssl-mode=VERIFY_IDENTITY&ssl-ca=%2Ftmp%2Fmissing-ca.pem",
     ] {
-        polyspec_orm::db::parse_dsn(dsn).unwrap_or_else(|error| panic!("sqlx parameter should parse for {dsn}: {error}"));
+        if let Err(error) = polyspec_orm::db::parse_dsn(dsn) {
+            panic!("sqlx parameter should parse for {dsn}: {error}");
+        }
     }
 }
 
