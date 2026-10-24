@@ -16,20 +16,6 @@ static zval *privilege_utils_db(zval *object)
     return zend_read_property(privilege_utils_ce, Z_OBJ_P(object), "db", sizeof("db") - 1, true, &rv);
 }
 
-static bool privilege_utils_identifier(zend_string *value, bool qualified_role)
-{
-    if (ZSTR_LEN(value) == 0) return false;
-    const unsigned char *text = (const unsigned char *)ZSTR_VAL(value);
-    if (!((text[0] >= 'A' && text[0] <= 'Z') || (text[0] >= 'a' && text[0] <= 'z') || text[0] == '_')) return false;
-    for (size_t i = 1; i < ZSTR_LEN(value); i++) {
-        unsigned char ch = text[i];
-        if ((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '_') continue;
-        if (qualified_role && ch == '.') continue;
-        return false;
-    }
-    return true;
-}
-
 static bool privilege_utils_table(zval *db, zend_string *table, zend_string **quoted, zend_string **schema)
 {
     zval driver;
@@ -49,7 +35,7 @@ static bool privilege_utils_table(zval *db, zend_string *table, zend_string **qu
     size_t name_len = ZSTR_LEN(table) - schema_len - 1;
     zend_string *schema_name = zend_string_init(ZSTR_VAL(table), schema_len, 0);
     zend_string *table_name = zend_string_init(dot + 1, name_len, 0);
-    bool valid = privilege_utils_identifier(schema_name, false) && privilege_utils_identifier(table_name, false);
+    bool valid = dbs_identifier(schema_name, false) && dbs_identifier(table_name, false);
     if (!valid) {
         zend_string_release(schema_name);
         zend_string_release(table_name);
@@ -64,7 +50,7 @@ static bool privilege_utils_table(zval *db, zend_string *table, zend_string **qu
 
 static bool privilege_utils_role(zend_string *role, zend_string **quoted)
 {
-    if (!privilege_utils_identifier(role, true)) {
+    if (!dbs_identifier(role, true)) {
         db_throw_orm("CONFIG", "role %s is invalid", ZSTR_VAL(role));
         return false;
     }

@@ -42,6 +42,20 @@ bool dbs_bind_db_utils(zval *instance, zend_class_entry *ce, zval *db, zval *uti
     return true;
 }
 
+bool dbs_identifier(zend_string *value, bool allow_dots)
+{
+    if (ZSTR_LEN(value) == 0) return false;
+    const unsigned char *text = (const unsigned char *)ZSTR_VAL(value);
+    if (!((text[0] >= 'A' && text[0] <= 'Z') || (text[0] >= 'a' && text[0] <= 'z') || text[0] == '_')) return false;
+    for (size_t i = 1; i < ZSTR_LEN(value); i++) {
+        unsigned char ch = text[i];
+        if ((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '_') continue;
+        if (allow_dots && ch == '.') continue;
+        return false;
+    }
+    return true;
+}
+
 static zend_class_entry *utils_ce;
 
 static bool utils_call(zval *object, const char *method, zval *result, uint32_t argc, zval *argv)
