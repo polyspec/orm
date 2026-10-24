@@ -2210,6 +2210,14 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, compareSchemas)
     LEAVE();
 }
 
+static bool in_schema_graph_arguments(zval *live, zval *unsupported_list, zval *target,
+    document **live_document, unsupportedv *unsupported, document **target_document)
+{
+    return in_document(live, live_document)
+        && in_unsupported(unsupported_list, unsupported, "the unsupported objects")
+        && in_document(target, target_document);
+}
+
 ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, installedDifferences)
 {
     zval *live, *unsupported_list, *target;
@@ -2221,7 +2229,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, installedDifferences)
     ENTER();
     document *l, *t;
     unsupportedv u;
-    if (in_document(live, &l) && in_unsupported(unsupported_list, &u, "the unsupported objects") && in_document(target, &t)) {
+    if (in_schema_graph_arguments(live, unsupported_list, target, &l, &u, &t)) {
         strs out = installed_differences(l, &u, t);
         zv_strs(return_value, &out);
     }
@@ -2241,7 +2249,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, addTablesAndColumnsSteps)
     ENTER();
     document *l, *t;
     unsupportedv u;
-    if (in_document(live, &l) && in_unsupported(unsupported_list, &u, "the unsupported objects") && in_document(target, &t)) {
+    if (in_schema_graph_arguments(live, unsupported_list, target, &l, &u, &t)) {
         strs added, differences;
         planstepv steps;
         add_tables_and_columns_steps(l, &u, t, zs(dialect_name), &added, &steps, &differences);
