@@ -10,6 +10,10 @@ fn main() {
     }
     builder.generate();
     let out = std::path::PathBuf::from(std::env::var_os("OUT_DIR").expect("OUT_DIR is required; build the crate with cargo, which sets it for build scripts"));
+    polyspec_orm_build::Builder::set("../../../contracts/fixtures/complex_query/dbspec-set.json")
+        .scan("tests/integration/coverage_complex_query.rs")
+        .out_dir(out.join("complex_query"))
+        .generate();
     polyspec_orm_build::Builder::set("dbspec-set.json").scan("src/integration.rs").out_dir(out.join("nonnull")).generate();
     polyspec_orm_build::Builder::set("../../../contracts/fixtures/dbspec-set.json").scan("tests/decimal_physical.rs").out_dir(out.join("decimal")).generate();
     // The member document uses ext_core of core.dbs: its used tables are entities of the member set (ExtAudit among them), so the

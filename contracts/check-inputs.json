@@ -1368,6 +1368,13 @@
         "databases"
       ]
     },
+    "complex-query-rust-check": {
+      "scope": "suite",
+      "needs": [
+        "rust",
+        "databases"
+      ]
+    },
     "codec-check": {
       "scope": "owner",
       "needs": [
