@@ -835,7 +835,7 @@ final class ModelTest extends TestCase
     private static function connectionUtc(Db $db): void
     {
         $f = self::seed($db);
-        $midnight = new DateTimeImmutable('2026-01-02 09:00:00', new DateTimeZone('+09:00'));
+        $midnight = new DateTimeImmutable('2026-01-02 00:00:00', new DateTimeZone('+09:00'));
         $before = new DateTimeImmutable('now');
         $created = (new Author())($db)
             ->setName('zone')->setUserSeq($f['users'][0]->getSeq())->setServiceSeq($f['service']->getSeq())

@@ -2341,6 +2341,73 @@
         "tests/testcase.mts"
       ]
     },
+    "connection-utc-typescript-check": {
+      "scope": "owner",
+      "needs": [
+        "node-modules",
+        "databases"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/ts/tests/connection_utc.mjs",
+        "packages/ts/tests/model.mjs",
+        "packages/ts/tests/bench-set.mjs",
+        "packages/ts/tests/case-database.mjs",
+        "contracts/fixtures/bench/**",
+        "tests/testcase.mts"
+      ]
+    },
+    "connection-utc-php-extension-check": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools",
+        "databases"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/php-ext/tests/ConnectionUtcNativeTest.php",
+        "packages/php-ext/tests/bootstrap.php",
+        "packages/php-ext/src/orm.c",
+        "packages/php/src/Orm.php",
+        "packages/php/src/Db.php",
+        "packages/php/gen/**",
+        "packages/php/tests/case_database.php",
+        "packages/php/tests/bench.php",
+        "contracts/fixtures/bench/**"
+      ]
+    },
+    "connection-utc-php-check": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "databases"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/php/tests/ModelTest.php",
+        "packages/php/tests/case_database.php",
+        "packages/php/tests/bench.php",
+        "packages/php/gen/**",
+        "contracts/fixtures/bench/**"
+      ]
+    },
+    "connection-utc-rust-check": {
+      "scope": "owner",
+      "needs": [
+        "rust",
+        "databases",
+        "node-modules"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/rust/orm/tests/zone.rs",
+        "tests/cargo-test.mts",
+        "tests/testcase.mts"
+      ]
+    },
     "dbspec-apply-php-extension-check": {
       "scope": "owner",
       "needs": [

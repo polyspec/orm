@@ -509,33 +509,6 @@ function connect(dsn) {
 }
 
 /**
- * Every connection reads and writes datetime as UTC regardless of the server's time zone
- * (docs/spec/dialects.md "Date and time"). The test server's MySQL uses SYSTEM (KST),
- * and PostgreSQL uses Asia/Seoul. A datetime is its canonical UTC text, stored as that wall
- * clock, and the clock default is also UTC.
- */
-async function connectionsUseUtc(db) {
-  const f = await seed(db);
-  const midnight = '2026-01-01 15:00:00';
-  const before = Date.now();
-  const created = await new Author().connect(db)
-    .setName('zone').setUserSeq(f.users[0].getSeq()).setServiceSeq(f.service.getSeq())
-    .setServiceRegionSeq(f.module.getSeq()).setServiceMemberSeq(f.member.getSeq())
-    .setStartDt(midnight).setEndDt('2026-01-03 00:00:00').create();
-  const row = await new Author().connect(db).getBySeq(created.getSeq());
-  check(row?.getStartDt() === '2026-01-01 15:00:00.000000', `start_dt ${row?.getStartDt()}`);
-  const wall = text => Date.parse(`${text.replace(' ', 'T').slice(0, 23)}Z`);
-  check(row !== null && Math.abs(wall(row.getCreatedTs()) - before) < 60_000, `created_ts ${row?.getCreatedTs()} at ${new Date(before).toISOString()}`);
-  check(await new Author().connect(db).startDt('2026-01-01 15:00:00').getCount() === 1, 'equality filter by text');
-  check(await new Author().connect(db).startDt('2026-01-01T15:00:00.0').getCount() === 1, 'equality filter by text with fraction');
-  check(await new Author().connect(db).startDt(['2026-01-01 15:00:00', '2026-01-03 00:00:00']).getCount() === 1, 'in filter by text');
-  check(await new Author().connect(db).betweenStartDt(['2026-01-01 15:00:00', '2026-01-01 15:00:00.5']).getCount() === 1, 'between filter by text');
-  if (db.driver === 'sqlite') {
-    check(await code(new Author().connect(db).startDt('2026-01-02').getCount()) === 'CODEC_ENCODE', 'date-only datetime text');
-  }
-}
-
-/**
  * Inserts and reads more values than SQLite binds in one statement: the
  * inserts and the root IN list are split, duplicate IN values are read once,
  * and a shape that a merge would change is rejected.
@@ -683,8 +656,6 @@ async function storedCell(dialect, dsn, sqlitePath) {
   try { const { rows } = await client.query(sql); return [rows[0].config, rows[0].aes_key_version]; } finally { await client.end(); }
 }
 
-const zones = ['', 'UTC', '+00:00'];
-
 // failedLocalReset and failedLockRelease install no schema and create no table, so
 // they only connect to the database the DSN points to. Each of the other cases gets its own case database.
 const targets = [['sqlite', `sqlite://${join(work, 'model.sqlite')}?_pragma=busy_timeout(5000)`]];
@@ -825,18 +796,6 @@ try {
       try { await mysqlInstallInsideTransaction(db); } finally { await db.close(); }
     });
     end();
-  }
-  for (const dialect of dialects) {
-    for (const zone of zones) {
-      begin(`${dialect}/connectionsUseUtc/${zone}`);
-      await inCaseDatabase(dialect, async base => {
-        const dsn = zone === '' ? base : `${base}${base.includes('?') ? '&' : '?'}timezone=${encodeURIComponent(zone)}`;
-        await install(dsn);
-        const db = await connect(dsn);
-        try { await connectionsUseUtc(db); } finally { await db.close(); }
-      });
-      end();
-    }
   }
   if (dialects.includes('sqlite')) {
     // A connection to a SQLite database file that the process may only read:

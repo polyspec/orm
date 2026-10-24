@@ -68,7 +68,8 @@ fn event(db: &Db) -> ZoneEvent {
 // Requirements: CFG-2.
 async fn connections_use_utc() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    let start = NaiveDate::from_ymd_opt(2026, 1, 2).unwrap().and_hms_opt(0, 0, 0).unwrap();
+    // The Rust input is timezone-less; use the UTC wall clock of 2026-01-02T00:00:00+09:00.
+    let start = NaiveDate::from_ymd_opt(2026, 1, 1).unwrap().and_hms_opt(15, 0, 0).unwrap();
     for driver in ["sqlite", "mysql", "postgres"] {
         // The test server's MySQL is SYSTEM (KST), and PostgreSQL is Asia/Seoul.
         for zone in ["", "UTC", "+00:00"] {
@@ -96,10 +97,10 @@ async fn connections_use_utc() {
             let text = |v: &str| Param::Str(v.to_owned());
             const BETWEEN: &[ChainKey] = &[ChainKey { conn: "", op: "between", column: "start_dt", columns: &[], compare: "" }];
             let filters = [
-                ("equal by text", KEYS, polyspec_orm::args::Value::One(text("2026-01-02 00:00:00")), 1),
-                ("equal by text with fraction", KEYS, polyspec_orm::args::Value::One(text("2026-01-02T00:00:00.0")), 1),
-                ("in by text", KEYS, polyspec_orm::args::Value::List(vec![text("2026-01-02 00:00:00"), text("2026-01-03 00:00:00")]), 1),
-                ("between by text", BETWEEN, polyspec_orm::args::Value::Pair(text("2026-01-02 00:00:00"), text("2026-01-02 00:00:00.5")), 1),
+                ("equal by text", KEYS, polyspec_orm::args::Value::One(text("2026-01-01 15:00:00")), 1),
+                ("equal by text with fraction", KEYS, polyspec_orm::args::Value::One(text("2026-01-01T15:00:00.0")), 1),
+                ("in by text", KEYS, polyspec_orm::args::Value::List(vec![text("2026-01-01 15:00:00"), text("2026-01-03 00:00:00")]), 1),
+                ("between by text", BETWEEN, polyspec_orm::args::Value::Pair(text("2026-01-01 15:00:00"), text("2026-01-01 15:00:00.5")), 1),
             ];
             for (name, keys, value, want) in filters {
                 let filter = event(&db).core().by(keys, vec![Arg::Value(value)]);
@@ -107,7 +108,7 @@ async fn connections_use_utc() {
                 assert_eq!(found, want, "{label}: {name}");
             }
             if driver == "sqlite" {
-                let filter = event(&db).core().by(KEYS, vec![Arg::Value(polyspec_orm::args::Value::One(text("2026-01-02")))]);
+                let filter = event(&db).core().by(KEYS, vec![Arg::Value(polyspec_orm::args::Value::One(text("2026-01-01")))]);
                 let err = polyspec_orm::model::get_count(&filter).await.expect_err("date-only datetime text");
                 assert_eq!(err.code(), polyspec_orm::codes::CODEC_ENCODE, "{label}: date-only datetime text: {err}");
             }

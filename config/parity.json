@@ -13085,38 +13085,8 @@
         }
       ]
     },
-    {
-      "id": "py-connection-pool",
-      "kind": "feature",
-      "requirements": [
-        "CFG-4",
-        "CFG-5"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/connection_pool.py",
-          "id": "test_options"
-        }
-      ]
-    },
-    {
-      "id": "py-connection-utc",
-      "kind": "feature",
-      "requirements": [
-        "DSL-141",
-        "DIA-57",
-        "CFG-2",
-        "CFG-7"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/connection_utc.py",
-          "id": "test_connections_use_utc"
-        }
-      ]
-    },
+
+
     {
       "id": "py-dbspec-cases",
       "kind": "feature",
