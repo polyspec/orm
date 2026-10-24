@@ -118,6 +118,19 @@ final class CoveragePlannerTest extends TestCase
         require_once __DIR__ . '/ColumnFunctionMetadataAssertions.php';
     }
 
+    /** @return array{RuntimeModel, array<string, mixed>} */
+    private function scalarColumnSubqueryRequest(): array
+    {
+        $root = dirname(__DIR__, 3);
+        $fixture = coverageJson("$root/contracts/fixtures/planner.json");
+        $case = array_values(array_filter(
+            $fixture['cases'],
+            static fn(array $c): bool => $c['id'] === 'planner_scalar_column_subquery'
+        ))[0];
+        $model = RuntimeModel::build(RuntimeModel::files(["$root/{$case['schema']}"]));
+        return [$model, ['manifest_hash' => $model->manifestHash] + $case['input']];
+    }
+
     public function testPlannerStatement(): void
     {
         $root = dirname(__DIR__, 3);
@@ -127,14 +140,7 @@ final class CoveragePlannerTest extends TestCase
 
     public function testFunctionAndSubqueryCannotReuseAnOutputName(): void
     {
-        $root = dirname(__DIR__, 3);
-        $fixture = coverageJson("$root/contracts/fixtures/planner.json");
-        $case = array_values(array_filter(
-            $fixture['cases'],
-            static fn(array $c): bool => $c['id'] === 'planner_scalar_column_subquery'
-        ))[0];
-        $model = RuntimeModel::build(RuntimeModel::files(["$root/{$case['schema']}"]));
-        $request = ['manifest_hash' => $model->manifestHash] + $case['input'];
+        [$model, $request] = $this->scalarColumnSubqueryRequest();
         $request['entity'] = 'author';
         $request['columns']['fn']['first_author'] = ['column' => 'created_ts', 'fn' => ['name' => 'year']];
 
@@ -152,11 +158,7 @@ final class CoveragePlannerTest extends TestCase
 
     public function testScalarSubqueryMissingPostValidationColumnIsInternal(): void
     {
-        $root = dirname(__DIR__, 3);
-        $fixture = coverageJson("$root/contracts/fixtures/planner.json");
-        $case = array_values(array_filter($fixture['cases'], static fn(array $c): bool => $c['id'] === 'planner_scalar_column_subquery'))[0];
-        $model = RuntimeModel::build(RuntimeModel::files(["$root/{$case['schema']}"]));
-        $request = ['manifest_hash' => $model->manifestHash] + $case['input'];
+        [$model, $request] = $this->scalarColumnSubqueryRequest();
         (new \Polyspec\Orm\Validator($model))->validate($request);
         $request['columns']['sub']['first_author']['column'] = 'missing_column';
         try {
@@ -171,12 +173,9 @@ final class CoveragePlannerTest extends TestCase
 
     public function testScalarSubqueryAggregateTypesRemainI64AndF64(): void
     {
-        $root = dirname(__DIR__, 3);
-        $fixture = coverageJson("$root/contracts/fixtures/planner.json");
-        $case = array_values(array_filter($fixture['cases'], static fn(array $c): bool => $c['id'] === 'planner_scalar_column_subquery'))[0];
-        $model = RuntimeModel::build(RuntimeModel::files(["$root/{$case['schema']}"]));
+        [$model, $baseRequest] = $this->scalarColumnSubqueryRequest();
         foreach ([['count', '', 'i64'], ['avg', 'read_count', 'f64']] as [$aggregate, $column, $expected]) {
-            $request = ['manifest_hash' => $model->manifestHash] + $case['input'];
+            $request = $baseRequest;
             $request['columns']['sub']['first_author']['agg'] = $aggregate;
             $request['columns']['sub']['first_author']['column'] = $column;
             unset($request['columns']['sub']['first_author']['query']['limit'], $request['columns']['sub']['first_author']['query']['order']);
