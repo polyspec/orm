@@ -31,13 +31,7 @@ use PHPUnit\Framework\TestCase;
 /** The DSNs of the servers; the test fails when either is unset. */
 function plan_dsns(): array
 {
-    $dsns = ['mysql' => requiredDsn('ORM_TEST_MYSQL_DSN'), 'postgres' => requiredDsn('ORM_TEST_POSTGRES_DSN')];
-    foreach ($dsns as $dsn) {
-        if (!is_string($dsn) || $dsn === '') {
-            throw new RuntimeException('ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN are required; pass TEST_ENV');
-        }
-    }
-    return $dsns;
+    return dbspec_dsns(['mysql' => 'ORM_TEST_MYSQL_DSN', 'postgres' => 'ORM_TEST_POSTGRES_DSN']);
 }
 
 /**

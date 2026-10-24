@@ -337,4 +337,45 @@ final class DbspecPlanTest extends TestCase
             'sqlite' => ['PRAGMA foreign_keys = ON'],
         ], dbspec_connection_rules());
     }
+
+    public function testDbspecDsnsPreserveMissingVariableErrors(): void
+    {
+        $names = ['mysql' => 'ORM_TEST_MYSQL_DSN', 'postgres' => 'ORM_TEST_POSTGRES_DSN'];
+        $old = array_map(static fn(string $name): string|false => getenv($name), $names);
+        try {
+            foreach ($names as $name) {
+                putenv($name);
+            }
+            try {
+                dbspec_dsns($names, 'both database DSNs are required');
+                self::fail('missing DSNs were accepted');
+            } catch (RuntimeException $error) {
+                self::assertSame('both database DSNs are required', $error->getMessage());
+            }
+            putenv('ORM_TEST_MYSQL_DSN=mysql://test');
+            putenv('ORM_TEST_POSTGRES_DSN=postgres://test');
+            self::assertSame(
+                ['mysql' => 'mysql://test', 'postgres' => 'postgres://test'],
+                dbspec_dsns($names, 'both database DSNs are required')
+            );
+            putenv('ORM_TEST_POSTGRES_DSN');
+            try {
+                dbspec_dsns($names);
+                self::fail('the missing individual DSN was accepted');
+            } catch (RuntimeException $error) {
+                self::assertSame(
+                    'ORM_TEST_POSTGRES_DSN is not set; run the test through make orm-test-servers or its make target',
+                    $error->getMessage()
+                );
+            }
+        } finally {
+            foreach ($old as $name => $value) {
+                if ($value === false) {
+                    putenv($name);
+                } else {
+                    putenv("$name=$value");
+                }
+            }
+        }
+    }
 }

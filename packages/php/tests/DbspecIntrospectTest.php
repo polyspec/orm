@@ -34,13 +34,10 @@ const QUERY_COUNTS = ['mysql' => 9, 'postgres' => 7, 'sqlite' => 3];
 /** The DSNs of the servers; the test fails when either is unset. */
 function introspect_dsns(): array
 {
-    $dsns = ['mysql' => getenv('ORM_TEST_MYSQL_DSN'), 'postgres' => getenv('ORM_TEST_POSTGRES_DSN')];
-    foreach ($dsns as $dsn) {
-        if (!is_string($dsn) || $dsn === '') {
-            throw new RuntimeException('ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN are required; pass TEST_ENV');
-        }
-    }
-    return $dsns;
+    return dbspec_dsns(
+        ['mysql' => 'ORM_TEST_MYSQL_DSN', 'postgres' => 'ORM_TEST_POSTGRES_DSN'],
+        'ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN are required; pass TEST_ENV'
+    );
 }
 
 /**

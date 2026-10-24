@@ -14,6 +14,27 @@ function dbspec_connection_rules(): array
     ];
 }
 
+/**
+ * @param array{mysql: string, postgres: string} $names
+ * @return array{mysql: string, postgres: string}
+ */
+function dbspec_dsns(array $names, ?string $missingMessage = null): array
+{
+    $dsns = [];
+    foreach ($names as $driver => $name) {
+        if ($missingMessage === null) {
+            $dsns[$driver] = requiredDsn($name);
+            continue;
+        }
+        $dsn = getenv($name);
+        if (!is_string($dsn) || $dsn === '') {
+            throw new RuntimeException($missingMessage);
+        }
+        $dsns[$driver] = $dsn;
+    }
+    return $dsns;
+}
+
 // Checks dbspec cases in the shape of tests/dbspec/cases.json with the PHPUnit
 // assertions; the test classes run each case as one data set named by its id.
 
