@@ -53,15 +53,20 @@ mod param_uses_tests;
 mod tests {
     use super::*;
 
+    fn bench_fixture() -> (crate::dbspec::Manifest, Manifest) {
+        let text = crate::dbspec::read_file(&polyspec_orm_testcase::manifest_dir().join("../../../contracts/fixtures/bench/bench.dbs")).unwrap();
+        let document = crate::dbspec::parse(&text, &Default::default()).map(|parsed| parsed.document).unwrap();
+        let set = crate::dbspec::manifest(&[&document]).unwrap();
+        let manifest = Manifest::load(&set.manifest_text, &set.manifest_hash).unwrap();
+        (set, manifest)
+    }
+
     // A node that selects all columns reads the AES key version column only once and marks its position.
     #[test]
     // The test of DIA-33 (docs/spec).
     fn all_columns_select_the_aes_version_once() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        let text = crate::dbspec::read_file(&polyspec_orm_testcase::manifest_dir().join("../../../contracts/fixtures/bench/bench.dbs")).unwrap();
-        let document = crate::dbspec::parse(&text, &Default::default()).map(|parsed| parsed.document).unwrap();
-        let set = crate::dbspec::manifest(&[&document]).unwrap();
-        let manifest = Manifest::load(&set.manifest_text, &set.manifest_hash).unwrap();
+        let (set, manifest) = bench_fixture();
         let request = ir::Request {
             ir_version: 1,
             manifest_hash: set.manifest_hash.clone(),
@@ -82,10 +87,7 @@ mod tests {
     #[test]
     fn composite_relation_keys() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        let text = crate::dbspec::read_file(&polyspec_orm_testcase::manifest_dir().join("../../../contracts/fixtures/bench/bench.dbs")).unwrap();
-        let document = crate::dbspec::parse(&text, &Default::default()).map(|parsed| parsed.document).unwrap();
-        let set = crate::dbspec::manifest(&[&document]).unwrap();
-        let manifest = Manifest::load(&set.manifest_text, &set.manifest_hash).unwrap();
+        let (set, manifest) = bench_fixture();
         let request = |keys: &[(&str, &str)]| ir::Request {
             ir_version: 1,
             manifest_hash: set.manifest_hash.clone(),
@@ -128,10 +130,7 @@ mod tests {
     #[test]
     fn key_columns_are_not_written() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        let text = crate::dbspec::read_file(&polyspec_orm_testcase::manifest_dir().join("../../../contracts/fixtures/bench/bench.dbs")).unwrap();
-        let document = crate::dbspec::parse(&text, &Default::default()).map(|parsed| parsed.document).unwrap();
-        let set = crate::dbspec::manifest(&[&document]).unwrap();
-        let manifest = Manifest::load(&set.manifest_text, &set.manifest_hash).unwrap();
+        let (_, manifest) = bench_fixture();
         let assign = |column: &str, p: usize| ir::Assign { column: column.into(), p: Some(p), ..Default::default() };
         let by_seq = |p: usize| {
             Some(ir::Group {
