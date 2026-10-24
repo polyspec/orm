@@ -21,12 +21,11 @@ use external_schema::set_schema;
 
 #[path = "common/pool_exec.rs"]
 mod pool_exec;
-use pool_exec::exec;
+use pool_exec::{exec, scalar as pool_scalar};
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use polyspec_orm::db::Pool;
 use polyspec_orm::{Config, Core, Db, Entity, Model, Param, Schema, Val};
 use polyspec_orm_case_database::CaseDatabase;
 
@@ -72,23 +71,11 @@ impl Model for Post {
 }
 
 async fn scalar(db: &Db, query: &str) -> i64 {
-    match db.pool() {
-        Pool::MySql(p) => sqlx::query_scalar(sqlx::AssertSqlSafe(query.to_owned())).fetch_one(p).await,
-        Pool::Postgres(p) => sqlx::query_scalar(sqlx::AssertSqlSafe(query.to_owned())).fetch_one(p).await,
-        Pool::Sqlite(p) => sqlx::query_scalar(sqlx::AssertSqlSafe(query.to_owned())).fetch_one(p).await,
-        Pool::Markdown(_) => unreachable!("these cases run on SQL databases"),
-    }
-    .or_panic(|e| format!("{query}: {e}"))
+    pool_scalar(db, query).await.or_panic(|e| format!("{query}: {e}"))
 }
 
 async fn text(db: &Db, query: &str) -> String {
-    match db.pool() {
-        Pool::MySql(p) => sqlx::query_scalar(sqlx::AssertSqlSafe(query.to_owned())).fetch_one(p).await,
-        Pool::Postgres(p) => sqlx::query_scalar(sqlx::AssertSqlSafe(query.to_owned())).fetch_one(p).await,
-        Pool::Sqlite(p) => sqlx::query_scalar(sqlx::AssertSqlSafe(query.to_owned())).fetch_one(p).await,
-        Pool::Markdown(_) => unreachable!("these cases run on SQL databases"),
-    }
-    .or_panic(|e| format!("{query}: {e}"))
+    pool_scalar(db, query).await.or_panic(|e| format!("{query}: {e}"))
 }
 
 /// Checks that it is CONFIG and that the message contains `message`.
