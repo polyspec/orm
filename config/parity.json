@@ -11330,23 +11330,6 @@
       ]
     },
     {
-      "id": "rust-rollback-fault-sqlite",
-      "kind": "feature",
-      "requirements": [
-        "CFG-15",
-        "PRT-44",
-        "PRT-54",
-        "PRT-59"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/rollback.rs",
-          "id": "rollback_fault_sqlite"
-        }
-      ]
-    },
-    {
       "id": "rust-savepoint-rollback-failed-mysql",
       "kind": "feature",
       "requirements": [
@@ -13201,22 +13184,6 @@
           "implementation": "python",
           "test": "packages/python/tests/test_request_hook.py",
           "id": "test_without_hook"
-        }
-      ]
-    },
-    {
-      "id": "py-test-rollback-fault",
-      "kind": "feature",
-      "requirements": [
-        "PRT-47",
-        "PRT-57",
-        "PRT-62"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_rollback_fault.py",
-          "id": "test_the_fault_reports_the_next_failed_rollback"
         }
       ]
     },
@@ -21325,6 +21292,19 @@
         {"implementation": "typescript", "test": "packages/ts/tests/transaction-failure.mjs", "id": "transaction-failure/rollback-primary-and-cleanup"},
         {"implementation": "python", "test": "packages/python/tests/test_rollback_fault.py", "id": "test_a_failed_rollback_reports_the_callback_error_and_the_rollback_error"},
         {"implementation": "rust", "test": "packages/rust/orm/src/tx.rs", "id": "tx::tests::sqlite_transaction_end_failures_are_reported"}
+      ]
+    },
+    {
+      "id": "transaction-failure-rollback-fault",
+      "kind": "feature",
+      "requirements": ["INT-72", "DIA-180"],
+      "bindings": [
+        {"implementation": "go", "test": "packages/go/orm/rollback_fault_behavior_test.go", "id": "TestTransactionFailureRollbackFault"},
+        {"implementation": "php", "test": "packages/php/tests/TransactionFailureTest.php", "id": "TransactionFailureTest::test_rollback_fault_is_consumed_after_transaction_rollback"},
+        {"implementation": "php-extension", "test": "packages/php-ext/tests/TransactionFailureNativeTest.php", "id": "TransactionFailureNativeTest::test_rollback_fault_is_consumed_after_transaction_rollback"},
+        {"implementation": "typescript", "test": "packages/ts/tests/transaction-failure.mjs", "id": "transaction-failure/rollback-fault-consumption"},
+        {"implementation": "python", "test": "packages/python/tests/test_rollback_fault.py", "id": "test_the_fault_reports_the_next_failed_rollback"},
+        {"implementation": "rust", "test": "packages/rust/orm/tests/rollback.rs", "id": "rollback_fault_sqlite"}
       ]
     },
     {

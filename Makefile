@@ -2494,31 +2494,30 @@ transaction-failure-php-extension-check: php-vendor-check php-models orm-install
 # dbspec-php-extension-check/silent-paths runs silent_paths.php with the extension alone (php -n, no library class): a call that must fail with an OrmException must throw, not return silently (T182-2-4).
 
 transaction-failure-go-check:
-	$(NODE) tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestTransactionFailure(Rollback|SavepointEnd)$$' -count=1
+	$(NODE) tests/go-test.mts -v -timeout 0 -tags=ormtest ./packages/go/orm $(if $(TRANSACTION_FAILURE_GO_TEST_FILTER),-run '$(TRANSACTION_FAILURE_GO_TEST_FILTER)',-run '^TestTransactionFailure(Rollback|SavepointEnd)$$|^TestTransactionFailureRollbackFault$$') -count=1
 
 # Runs the TypeScript transaction and savepoint cleanup failure cases against a temporary SQLite database.
 
 transaction-failure-php-check: php-vendor-check php-models
-	vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/TransactionFailureTest.php
+	vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist $(if $(TRANSACTION_FAILURE_PHP_TEST_FILTER),--filter '$(TRANSACTION_FAILURE_PHP_TEST_FILTER)',) packages/php/tests/TransactionFailureTest.php
 
 # python-check runs the Python client's unit tests, the interface tests of the Python extractor, the generated-model check and
 # the Python conformance result check. The tests import the client and ordered-json installed into the venv (orm-install-python).
 
 transaction-failure-typescript-check: typescript-build
-	$(NODE) --test packages/ts/tests/transaction-failure.mjs
+	$(NODE) --conditions=orm-test --test $(if $(TRANSACTION_FAILURE_TYPESCRIPT_TEST_FILTER),--test-name-pattern='$(TRANSACTION_FAILURE_TYPESCRIPT_TEST_FILTER)',) packages/ts/tests/transaction-failure.mjs
 
 # The assignment expansion regression is a pure planner unit, separate from the Go database suite.
 
 transaction-failure-python-check: python-venv-check
 	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- \
-		packages.python.tests.test_rollback_fault.RollbackFaultTest.test_a_failed_rollback_reports_the_callback_error_and_the_rollback_error \
-		packages.python.tests.test_rollback_fault.RollbackFaultTest.test_a_failed_savepoint_rollback_and_transaction_rollback_report_both \
-		packages.python.tests.test_rollback_fault.RollbackFaultTest.test_lost_rollback_connection_is_closed_before_the_next_transaction
+		$(if $(TRANSACTION_FAILURE_PYTHON_TEST_FILTER),$(TRANSACTION_FAILURE_PYTHON_TEST_FILTER),packages.python.tests.test_rollback_fault.RollbackFaultTest.test_a_failed_rollback_reports_the_callback_error_and_the_rollback_error packages.python.tests.test_rollback_fault.RollbackFaultTest.test_a_failed_savepoint_rollback_and_transaction_rollback_report_both packages.python.tests.test_rollback_fault.RollbackFaultTest.test_lost_rollback_connection_is_closed_before_the_next_transaction packages.python.tests.test_rollback_fault.RollbackFaultTest.test_the_fault_reports_the_next_failed_rollback)
 
 # Runs the Rust transaction and savepoint failure cases that use only local SQLite and its authorizer.
 
 transaction-failure-rust-check: cargo-downloads-check
-	cd packages/rust && $(CARGO_TEST) transaction-failure-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --lib end_failures_are_reported -- --nocapture
+	$(if $(TRANSACTION_FAILURE_RUST_FAULT_FILTER),:,cd packages/rust && $(CARGO_TEST) transaction-failure-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --lib end_failures_are_reported -- --nocapture)
+	cd packages/rust && $(CARGO_TEST) transaction-failure-rust-fault -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test rollback $(if $(TRANSACTION_FAILURE_RUST_FAULT_FILTER),$(TRANSACTION_FAILURE_RUST_FAULT_FILTER),rollback_fault_sqlite) -- --nocapture
 
 # The shared blind-index target regression runs only the Python client's pure planner tests.
 

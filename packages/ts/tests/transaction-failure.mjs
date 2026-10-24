@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { DATABASE, caseTest } from '../../../tests/testcase.mts';
 import { Db } from '../dist/database.js';
+import { failNextRollback } from '../dist/testing.js';
 
 async function withDatabase(name, run) {
   const directory = await mkdtemp(join(tmpdir(), 'orm-transaction-failure-'));
@@ -39,6 +40,40 @@ caseTest('transaction-failure/rollback-primary-and-cleanup', DATABASE, async () 
       assert.equal(error.rollback.message, 'DRIVER: sqlite: rollback rejected by the test driver');
       return true;
     });
+  });
+});
+
+// Requirements: INT-72, DIA-180.
+caseTest('transaction-failure/rollback-fault-consumption', DATABASE, async () => {
+  await withDatabase('rollback-fault.sqlite', async db => {
+    const state = db.pool.state;
+    state.statement('CREATE TABLE transaction_failure_rollback_fault (label TEXT NOT NULL)').run();
+    failNextRollback(db);
+    await db.transaction(async () => {
+      state.statement("INSERT INTO transaction_failure_rollback_fault VALUES ('committed')").run();
+    }, { retry: 0 });
+
+    const callback = new Error('rollback fault callback failed');
+    const failing = async () => {
+      state.statement("INSERT INTO transaction_failure_rollback_fault VALUES ('rolled back')").run();
+      throw callback;
+    };
+    await assert.rejects(db.transaction(failing, { retry: 0 }), error => {
+      assert.equal(error.code, 'ROLLBACK');
+      assert.equal(error.cause, callback);
+      assert.equal(error.rollback.code, 'FAULT');
+      return true;
+    });
+    assert.deepEqual(
+      state.statement('SELECT label FROM transaction_failure_rollback_fault ORDER BY label').all().map(row => row.label),
+      ['committed'],
+    );
+
+    await assert.rejects(db.transaction(failing, { retry: 0 }), error => error === callback);
+    assert.deepEqual(
+      state.statement('SELECT label FROM transaction_failure_rollback_fault ORDER BY label').all().map(row => row.label),
+      ['committed'],
+    );
   });
 });
 

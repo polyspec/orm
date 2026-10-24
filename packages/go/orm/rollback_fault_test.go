@@ -61,10 +61,6 @@ func rollbackFault(t *testing.T, driver string) {
 	}
 }
 
-func TestRollbackFaultSQLite(t *testing.T) {
-	testcase.Start(t, testcase.Database)
-	rollbackFault(t, "sqlite")
-}
 func TestRollbackFaultMySQL(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	rollbackFault(t, "mysql")

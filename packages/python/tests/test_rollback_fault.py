@@ -108,6 +108,7 @@ class RollbackFaultTest(unittest.TestCase):
             f"ROLLBACK: transaction failed ({error.cause}) and rollback failed ({error.rollback})",
         )
 
+    # Requirements: INT-72, DIA-180.
     def test_the_fault_reports_the_next_failed_rollback(self):
         fail_next_rollback(self.db)
         committed = self.raised(

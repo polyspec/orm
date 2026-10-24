@@ -2189,6 +2189,8 @@
         "packages/go/orm/test_helpers_test.go",
         "packages/go/orm/coverage_fixture_test.go",
         "packages/go/orm/schema_helpers_test.go",
+        "packages/go/orm/rollback_fault_test.go",
+        "packages/go/orm/rollback_fault_behavior_test.go",
         "Makefile"
       ]
     },
@@ -2217,6 +2219,7 @@
         "packages/ts/src/database.ts",
         "packages/ts/src/driver.ts",
         "packages/ts/src/runtime_error.ts",
+        "packages/ts/src/testing.ts",
         "Makefile"
       ]
     },
@@ -2244,6 +2247,8 @@
       ],
       "inputs": [
         "packages/rust/orm/src/tx.rs",
+        "packages/rust/orm/tests/rollback.rs",
+        "contracts/fixtures/rollback.dbs",
         "Makefile"
       ]
     },

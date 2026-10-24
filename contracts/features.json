@@ -2295,6 +2295,7 @@
         "coverage-transactions-transaction-rollback",
         "coverage-transactions-transaction-savepoint",
         "transaction-failure-rollback",
+        "transaction-failure-rollback-fault",
         "transaction-failure-savepoint-end"
       ],
       "fixtures": [
@@ -2407,7 +2408,9 @@
             "packages/go/orm/failing_driver_test.go",
             "packages/go/orm/test_helpers_test.go",
             "packages/go/orm/coverage_fixture_test.go",
-            "packages/go/orm/schema_helpers_test.go"
+            "packages/go/orm/schema_helpers_test.go",
+            "packages/go/orm/rollback_fault_test.go",
+            "packages/go/orm/rollback_fault_behavior_test.go"
           ]
         },
         {
@@ -2551,7 +2554,8 @@
             "packages/ts/tests/transaction-failure.mjs",
             "packages/ts/src/database.ts",
             "packages/ts/src/driver.ts",
-            "packages/ts/src/runtime_error.ts"
+            "packages/ts/src/runtime_error.ts",
+            "packages/ts/src/testing.ts"
           ]
         },
         {
@@ -3016,7 +3020,9 @@
           "command": "make transaction-failure-rust-check",
           "shard": "rust",
           "inputs": [
-            "packages/rust/orm/src/tx.rs"
+            "packages/rust/orm/src/tx.rs",
+            "packages/rust/orm/tests/rollback.rs",
+            "contracts/fixtures/rollback.dbs"
           ]
         },
         {
