@@ -479,6 +479,18 @@ final class CoveragePlannerExtensionTest extends TestCase
     }
 
     // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- feature IDs require the test method to preserve underscores.
+    public function test_planner_contains_ascii_fold(): void
+    {
+        $this->runPlannerCoverageCase('planner_contains_ascii_fold');
+    }
+
+    // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- feature IDs require the test method to preserve underscores.
+    public function test_planner_contains_binary_collation(): void
+    {
+        $this->runPlannerCoverageCase('planner_contains_binary_collation');
+    }
+
+    // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- feature IDs require the test method to preserve underscores.
     public function test_param_uses_column_function(): void
     {
         $this->runPlannerCoverageCase('param_uses_column_function');
