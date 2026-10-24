@@ -200,6 +200,7 @@ caseTest('generate', PROCESS, async () => {
 
 // The positive consumer compiles and runs without diagnostic suppression. Its separate negative fixture must fail only
 // at the raw typed-field assignment, with TypeScript's exact code and source location.
+// Requirements: DBS-112.
 test('generated typed getter consumer compiler fixture', async () => {
   const runDir = join(root, '.runtime/run');
   await mkdir(runDir, { recursive: true });

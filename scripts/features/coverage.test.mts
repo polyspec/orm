@@ -347,10 +347,9 @@ caseTest('a slow but healthy coverage build runs to its end without a deadline',
 });
 
 // phpunitStub writes, under root, a vendor-php/bin/phpunit that stands for PHPUnit: it requires the arguments with
-// which coverage.mts runs the test file of a PHP case `first` (the TeamCity output, the package configuration, the anchored
-// filter of test_first and the file), runs the PHP code `before`, and writes the TeamCity events `events` to stdout.
-async function phpunitStub(root: string, file: string, events: string[], before = ''): Promise<void> {
-  const want = ['--teamcity', '--configuration', join(root, 'packages/php/phpunit.xml.dist'), '--filter', '/::(test_first)$/', join(root, file)];
+// which coverage.mts runs a PHP case, runs the PHP code `before`, and writes the TeamCity events `events` to stdout.
+async function phpunitStub(root: string, file: string, events: string[], before = '', method = 'test_first'): Promise<void> {
+  const want = ['--teamcity', '--configuration', join(root, 'packages/php/phpunit.xml.dist'), '--filter', `/::(${method})$/`, join(root, file)];
   await mkdir(join(root, 'vendor-php/bin'), { recursive: true });
   await writeFile(join(root, 'vendor-php/bin/phpunit'), `<?php\nif (array_slice($argv, 1) !== ${phpArray(want)}) exit(2);\n${before}echo ${JSON.stringify(events.map((e: string) => `##teamcity[${e} flowId='1']`).join('\n') + '\n')};\n`);
 }
@@ -360,6 +359,54 @@ function phpArray(list: string[]): string {
 }
 
 const PASSED = ["testStarted name='test_first'", "testFinished name='test_first' duration='0'"];
+
+caseTest('PHP coverage cases use their explicitly declared method symbols', 30000, async () => {
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-php-symbols-')));
+  const file = 'packages/php/tests/OwnerTest.php';
+  const method = 'testSchemaInstallExisting';
+  const manifest: SampleManifest = { features: [{ id: 'sample', status: 'partial', parity: parityOf(['php']),
+    coverage: { kind: 'independent', cases: ['schema_install_existing'], dependents: [], owners: {
+      php: { part: 'packages/php/tests', tests: [file], commands: { none: [{ runner: 'php', test: file,
+        cases: ['schema_install_existing'], symbols: { schema_install_existing: method } }] } },
+    } } }] };
+  try {
+    await mkdir(join(root, file, '..'), { recursive: true });
+    await writeFile(join(root, file), '<?php\n');
+    await phpunitStub(root, file, [
+      `testStarted name='${method}'`,
+      `testFinished name='${method}' duration='0'`,
+    ], '', method);
+    assert.deepEqual(await executeCoverage(manifest, root, 30000), []);
+
+    const defaultManifest: SampleManifest = { features: [{ id: 'sample', status: 'partial', parity: parityOf(['php']),
+      coverage: { kind: 'independent', cases: ['first'], dependents: [], owners: {
+        php: { part: 'packages/php/tests', tests: [file], commands: { none: [{ runner: 'php', test: file, cases: ['first'] }] } },
+      } } }] };
+    await phpunitStub(root, file, PASSED);
+    assert.deepEqual(await executeCoverage(defaultManifest, root, 30000), []);
+
+    const featureCoverage = defined(manifest.features[0].coverage);
+    const phpOwner = defined(defined(featureCoverage.owners).php);
+    const phpCommands = defined(phpOwner.commands);
+    const command = defined(defined(phpCommands.none)[0]);
+    for (const symbols of [
+      { wrong_case: method },
+      { schema_install_existing: method, unused_case: 'testUnused' },
+    ]) {
+      command.symbols = symbols;
+      assert.match((await executeCoverage(manifest, root, 30000)).join('\n'), /invalid native test command/);
+    }
+    const duplicate: SampleManifest = { features: [{ id: 'sample', status: 'partial', parity: parityOf(['php']),
+      coverage: { kind: 'independent', cases: ['schema_install_existing', 'model_generation_check'], dependents: [], owners: {
+        php: { part: 'packages/php/tests', tests: [file], commands: { none: [{ runner: 'php', test: file,
+          cases: ['schema_install_existing', 'model_generation_check'],
+          symbols: { schema_install_existing: method, model_generation_check: method } }] } },
+      } } }] };
+    assert.match((await executeCoverage(duplicate, root, 30000)).join('\n'), /invalid native test command/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
 
 // The Rust build overlap case (G5.123) checks that a run not using the cargo test binary does not wait for the Rust build. The cargo at the front of PATH
 // waits until it reads the FIFO in `cargo test --no-run`, that is, until the PHP case writes to that FIFO, and then runs the real cargo. From the manifest,

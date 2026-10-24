@@ -1176,39 +1176,6 @@
       ]
     },
     {
-      "id": "ts-coverage_interface_contract",
-      "kind": "feature",
-      "requirements": [
-        "INT-17",
-        "INT-18",
-        "INT-19",
-        "INT-57",
-        "INT-61",
-        "INT-64"
-      ],
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_interface_contract.mjs",
-          "id": "interface_symbols"
-        }
-      ]
-    },
-    {
-      "id": "ts-coverage_model_generation",
-      "kind": "feature",
-      "requirements": [
-        "DSL-40"
-      ],
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_model_generation.mjs",
-          "id": "model_generation_check"
-        }
-      ]
-    },
-    {
       "id": "ts-dbspec-analyze",
       "kind": "feature",
       "requirements": [
@@ -2700,21 +2667,6 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/request_hook.rs",
           "id": "coverage_request_hook_restore_rewritten_key_set_scope"
-        }
-      ]
-    },
-    {
-      "id": "ts-coverage_schema_install",
-      "kind": "feature",
-      "requirements": [
-        "DBS-108",
-        "SCH-7"
-      ],
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_schema_install.mjs",
-          "id": "schema_install_existing [sqlite]"
         }
       ]
     },
@@ -7283,32 +7235,6 @@
       ]
     },
     {
-      "id": "go-internal-packages-go-model-coverage-schema-install",
-      "kind": "feature",
-      "requirements": [
-        "DBS-108",
-        "SCH-7"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_schema_install_test.go",
-          "id": "TestCoverageSchemaInstallExisting",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=mysql",
-            "FEATURE_DSN_ENV=BENCH_MYSQL_DSN",
-            "FEATURE_TEST=TestCoverageSchemaInstallExisting",
-            "FEATURE_PACKAGE=./model"
-          ]
-        }
-      ]
-    },
-    {
       "id": "go-internal-packages-go-model-coverage-schema-install-postgres",
       "kind": "feature",
       "requirements": [
@@ -7703,25 +7629,6 @@
             "FEATURE_TEST=TestCoverageDSNConnection",
             "FEATURE_PACKAGE=./orm"
           ]
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-orm-coverage-interface-contract",
-      "kind": "feature",
-      "requirements": [
-        "INT-17",
-        "INT-18",
-        "INT-19",
-        "INT-57",
-        "INT-61",
-        "INT-64"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/coverage_interface_contract_test.go",
-          "id": "TestCoverageInterfaceSymbols"
         }
       ]
     },
@@ -10666,25 +10573,6 @@
       ]
     },
     {
-      "id": "rust-coverage-interface-symbols",
-      "kind": "feature",
-      "requirements": [
-        "INT-17",
-        "INT-18",
-        "INT-19",
-        "INT-57",
-        "INT-61",
-        "INT-64"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/coverage_interface_contract.rs",
-          "id": "coverage_interface_symbols"
-        }
-      ]
-    },
-    {
       "id": "dbspec-apply-pooler",
       "kind": "feature",
       "requirements": [
@@ -12179,20 +12067,6 @@
       ]
     },
     {
-      "id": "rust-coverage-model-generation-check",
-      "kind": "feature",
-      "requirements": [
-        "INT-100"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_model_generation.rs",
-          "id": "coverage_model_generation_check"
-        }
-      ]
-    },
-    {
       "id": "rust-integration-coverage-generated-model-connection-postgres",
       "kind": "feature",
       "requirements": [
@@ -12794,33 +12668,6 @@
       ]
     },
     {
-      "id": "rust-integration-coverage-schema-install-coverage-schema-install-existing",
-      "kind": "feature",
-      "requirements": [
-        "DBS-108",
-        "SCH-7"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_schema_install.rs",
-          "id": "coverage_schema_install::coverage_schema_install_existing",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=mysql",
-            "FEATURE_DSN_ENV=BENCH_MYSQL_DSN",
-            "FEATURE_TEST=coverage_schema_install::coverage_schema_install_existing"
-          ]
-        }
-      ]
-    },
-    {
       "id": "rust-integration-coverage-schema-install-coverage-schema-install-existing-postgres",
       "kind": "feature",
       "requirements": [
@@ -12875,33 +12722,6 @@
       ]
     },
     {
-      "id": "rust-integration-coverage-schema-install-coverage-schema-install-partial",
-      "kind": "feature",
-      "requirements": [
-        "DBS-108",
-        "SCH-10"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_schema_install.rs",
-          "id": "coverage_schema_install::coverage_schema_install_partial",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=mysql",
-            "FEATURE_DSN_ENV=BENCH_MYSQL_DSN",
-            "FEATURE_TEST=coverage_schema_install::coverage_schema_install_partial"
-          ]
-        }
-      ]
-    },
-    {
       "id": "rust-integration-coverage-schema-install-coverage-schema-install-partial-postgres",
       "kind": "feature",
       "requirements": [
@@ -12951,34 +12771,6 @@
             "FEATURE_DATABASE=sqlite",
             "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=coverage_schema_install::coverage_schema_install_partial"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "rust-integration-coverage-schema-install-coverage-schema-install-external-documents",
-      "kind": "feature",
-      "requirements": [
-        "DBS-107",
-        "SCH-7",
-        "SCH-11"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_schema_install.rs",
-          "id": "coverage_schema_install::coverage_schema_install_external_documents",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=mysql",
-            "FEATURE_DSN_ENV=BENCH_MYSQL_DSN",
-            "FEATURE_TEST=coverage_schema_install::coverage_schema_install_external_documents"
           ]
         }
       ]
@@ -13991,39 +13783,6 @@
       ]
     },
     {
-      "id": "py-cov-interface-contract-interface-symbols",
-      "kind": "feature",
-      "requirements": [
-        "INT-17",
-        "INT-18",
-        "INT-19",
-        "INT-57",
-        "INT-61",
-        "INT-64"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_interface_contract.py",
-          "id": "test_interface_symbols"
-        }
-      ]
-    },
-    {
-      "id": "py-cov-model-generation-model-generation-check",
-      "kind": "feature",
-      "requirements": [
-        "DBS-175"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_model_generation.py",
-          "id": "test_model_generation_check"
-        }
-      ]
-    },
-    {
       "id": "py-cov-parameter-chunking-root-in-chunking",
       "kind": "feature",
       "requirements": [
@@ -14034,53 +13793,6 @@
           "implementation": "python",
           "test": "packages/python/tests/coverage_parameter_chunking.py",
           "id": "test_root_in_chunking"
-        }
-      ]
-    },
-    {
-      "id": "py-cov-schema-install-schema-install-existing",
-      "kind": "feature",
-      "requirements": [
-        "DBS-108",
-        "SCH-7"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_schema_install.py",
-          "id": "test_schema_install_existing"
-        }
-      ]
-    },
-    {
-      "id": "py-cov-schema-install-schema-install-partial",
-      "kind": "feature",
-      "requirements": [
-        "DBS-108",
-        "SCH-7",
-        "SCH-10"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_schema_install.py",
-          "id": "test_schema_install_partial"
-        }
-      ]
-    },
-    {
-      "id": "py-cov-schema-install-schema-install-external-documents",
-      "kind": "feature",
-      "requirements": [
-        "DBS-107",
-        "SCH-7",
-        "SCH-11"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_schema_install.py",
-          "id": "test_schema_install_external_documents"
         }
       ]
     },
@@ -15571,70 +15283,6 @@
           "implementation": "php",
           "test": "packages/php/tests/CoverageCompositeKeysTest.php",
           "id": "CoverageCompositeKeysTest::testCompositeKeyRows"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-coverage-interface-contract-interface-symbols",
-      "kind": "feature",
-      "requirements": [
-        "INT-17",
-        "INT-18",
-        "INT-19",
-        "INT-57",
-        "INT-61",
-        "INT-64"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageInterfaceContractTest.php",
-          "id": "CoverageInterfaceContractTest::testInterfaceSymbols"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-coverage-schema-install-schema-install-existing",
-      "kind": "feature",
-      "requirements": [
-        "DBS-108",
-        "SCH-7"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageSchemaInstallTest.php",
-          "id": "CoverageSchemaInstallTest::testSchemaInstallExisting"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-coverage-schema-install-schema-install-partial",
-      "kind": "feature",
-      "requirements": [
-        "DBS-108",
-        "SCH-10"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageSchemaInstallTest.php",
-          "id": "CoverageSchemaInstallTest::testSchemaInstallPartial"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-coverage-schema-install-schema-install-external-documents",
-      "kind": "feature",
-      "requirements": [
-        "DBS-107",
-        "SCH-7"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageSchemaInstallTest.php",
-          "id": "CoverageSchemaInstallTest::testSchemaInstallExternalDocuments"
         }
       ]
     },
@@ -21905,6 +21553,278 @@
         {"implementation": "typescript", "test": "packages/ts/tests/transaction-failure.mjs", "id": "transaction-failure/savepoint-end-attempts-both"},
         {"implementation": "python", "test": "packages/python/tests/test_rollback_fault.py", "id": "test_a_failed_savepoint_rollback_and_transaction_rollback_report_both"},
         {"implementation": "rust", "test": "packages/rust/orm/src/tx.rs", "id": "tx::tests::savepoint_end_failures_are_reported"}
+      ]
+    },
+    {
+      "id": "coverage-schema-install-existing",
+      "kind": "feature",
+      "requirements": [
+        "DBS-108",
+        "SCH-7"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/coverage_schema_install_test.go",
+          "id": "TestCoverageSchemaInstallExisting",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-go-unit",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=TestCoverageSchemaInstallExisting",
+            "FEATURE_PACKAGE=./model"
+          ]
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageSchemaInstallTest.php",
+          "id": "CoverageSchemaInstallTest::testSchemaInstallExisting"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
+          "id": "CoverageSchemaInstallNativeTest::testSchemaInstallExisting"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_schema_install.py",
+          "id": "test_schema_install_existing"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/integration/coverage_schema_install.rs",
+          "id": "coverage_schema_install::coverage_schema_install_existing",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-rust-database",
+            "FEATURE_CRATE=packages/rust/tests",
+            "FEATURE_CARGO_TARGET=--test integration",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=coverage_schema_install::coverage_schema_install_existing"
+          ]
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_schema_install.mjs",
+          "id": "schema_install_existing [sqlite]"
+        }
+      ]
+    },
+    {
+      "id": "coverage-schema-install-partial",
+      "kind": "feature",
+      "requirements": [
+        "DBS-108",
+        "SCH-10"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/coverage_schema_install_test.go",
+          "id": "TestCoverageSchemaInstallPartial",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-go-unit",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=TestCoverageSchemaInstallPartial",
+            "FEATURE_PACKAGE=./model"
+          ]
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageSchemaInstallTest.php",
+          "id": "CoverageSchemaInstallTest::testSchemaInstallPartial"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
+          "id": "CoverageSchemaInstallNativeTest::testSchemaInstallPartial"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_schema_install.py",
+          "id": "test_schema_install_partial"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/integration/coverage_schema_install.rs",
+          "id": "coverage_schema_install::coverage_schema_install_partial",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-rust-database",
+            "FEATURE_CRATE=packages/rust/tests",
+            "FEATURE_CARGO_TARGET=--test integration",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=coverage_schema_install::coverage_schema_install_partial"
+          ]
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_schema_install.mjs",
+          "id": "schema_install_partial [sqlite]"
+        }
+      ]
+    },
+    {
+      "id": "coverage-schema-install-external-documents",
+      "kind": "feature",
+      "requirements": [
+        "DBS-107",
+        "SCH-7"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/coverage_schema_install_test.go",
+          "id": "TestCoverageSchemaInstallExternalDocuments",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-go-unit",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=TestCoverageSchemaInstallExternalDocuments",
+            "FEATURE_PACKAGE=./model"
+          ]
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageSchemaInstallTest.php",
+          "id": "CoverageSchemaInstallTest::testSchemaInstallExternalDocuments"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
+          "id": "CoverageSchemaInstallNativeTest::testSchemaInstallExternalDocuments"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_schema_install.py",
+          "id": "test_schema_install_external_documents"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/integration/coverage_schema_install.rs",
+          "id": "coverage_schema_install::coverage_schema_install_external_documents",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-rust-database",
+            "FEATURE_CRATE=packages/rust/tests",
+            "FEATURE_CARGO_TARGET=--test integration",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=coverage_schema_install::coverage_schema_install_external_documents"
+          ]
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_schema_install.mjs",
+          "id": "schema_install_external_documents [sqlite]"
+        }
+      ]
+    },
+        {
+      "id": "generated-typed-getter-public-column-api",
+      "kind": "feature",
+      "requirements": [
+        "DBS-112"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/decimal_field_test.go",
+          "id": "TestGeneratedDecimalFieldUsesExactText"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/OrmGenTest.php",
+          "id": "OrmGenTest::testGeneratedTypedGetterUsesPrivateModelStorageAndRejectsUnselectedRead"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageModelGenerationNativeTest.php",
+          "id": "CoverageModelGenerationNativeTest::testModelGenerationCheck"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_orm_gen.py",
+          "id": "test_generated_typed_getter_is_the_public_column_api"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/tests/generate.rs",
+          "id": "generated_field_types_follow_the_runtime_model"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/generate.mjs",
+          "id": "generated typed getter consumer compiler fixture"
+        }
+      ]
+    },
+    {
+      "id": "coverage-interface-contract-interface-symbols",
+      "kind": "feature",
+      "requirements": [
+        "INT-17",
+        "INT-18",
+        "INT-19",
+        "INT-57",
+        "INT-61",
+        "INT-64"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_interface_contract_test.go",
+          "id": "TestCoverageInterfaceSymbols"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageInterfaceContractTest.php",
+          "id": "CoverageInterfaceContractTest::testInterfaceSymbols"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageInterfaceContractNativeTest.php",
+          "id": "CoverageInterfaceContractNativeTest::testInterfaceSymbols"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_interface_contract.py",
+          "id": "test_interface_symbols"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/coverage_interface_contract.rs",
+          "id": "coverage_interface_symbols"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_interface_contract.mjs",
+          "id": "interface_symbols"
+        }
       ]
     }
   ],

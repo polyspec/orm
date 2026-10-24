@@ -3330,7 +3330,7 @@
       "id": "model_generation",
       "title": "Model generation",
       "title_ko": "\ubaa8\ub378 \uc0dd\uc131",
-      "status": "partial",
+      "status": "implemented",
       "description": "Generate the models from the dbspec document set with the generator of each language. Go and Rust scan the sources and generate the chain methods they call; TypeScript and PHP (`--scan`) type the scanned chains, and PHP otherwise resolves chains at run time. With `--check`, the Go, PHP, TypeScript, Python, and Rust generators compare the models with the output directory without writing.",
       "description_ko": "\uc5b8\uc5b4\ubcc4 \uc0dd\uc131\uae30\ub85c dbspec document set\uc5d0\uc11c \ubaa8\ub378\uc744 \ub9cc\ub4e0\ub2e4. Go\uc640 Rust\ub294 \uc18c\uc2a4\ub97c \uc77d\uc5b4 \ud638\ucd9c\ud55c \uccb4\uc778 \uba54\uc11c\ub4dc\ub97c \ub9cc\ub4e4\uace0, TypeScript\uc640 PHP(`--scan`)\ub294 \uc77d\uc740 \uccb4\uc778\uc5d0 \ud0c0\uc785\uc744 \ubd99\uc774\uba70 PHP\ub294 \uadf8 \ubc16\uc5d0\ub294 \uc2e4\ud589 \uc2dc \uccb4\uc778\uc744 \ud574\uc11d\ud55c\ub2e4. `--check`\ub97c \ubd99\uc774\uba74 Go, PHP, TypeScript, Python, Rust \uc0dd\uc131\uae30\ub294 \uc4f0\uc9c0 \uc54a\uace0 \ubaa8\ub378\uc744 \ucd9c\ub825 \ub514\ub809\ud130\ub9ac\uc640 \ube44\uad50\ud55c\ub2e4.",
       "inputs": {
@@ -3366,9 +3366,7 @@
         }
       ],
       "parity": [
-        "py-cov-model-generation-model-generation-check",
-        "rust-coverage-model-generation-check",
-        "ts-coverage_model_generation"
+        "generated-typed-getter-public-column-api"
       ],
       "fixtures": [
         "packages/go/model/coverage_helpers_test.go",
@@ -3397,6 +3395,7 @@
         "packages/ts/tests/models-scan.mjs",
         "packages/go/model/coverage_model_generation_test.go",
         "packages/php/tests/CoverageModelGenerationTest.php",
+        "packages/php-ext/tests/CoverageModelGenerationNativeTest.php",
         "packages/rust/tests/tests/coverage_model_generation.rs",
         "packages/ts/tests/coverage_model_generation.mjs",
         "packages/python/tests/test_orm_gen.py",
@@ -3556,13 +3555,36 @@
                   "test": "packages/php/tests/CoverageModelGenerationTest.php",
                   "cases": [
                     "model_generation_check"
-                  ]
+                  ],
+                  "symbols": {
+                    "model_generation_check": "testModelGenerationCheck"
+                  }
                 }
               ]
             },
             "inputs": [
               "packages/php/bin/orm-gen"
             ]
+          },
+          "php-extension": {
+            "part": "packages/php-ext/tests",
+            "tests": [
+              "packages/php-ext/tests/CoverageModelGenerationNativeTest.php"
+            ],
+            "commands": {
+              "none": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageModelGenerationNativeTest.php",
+                  "cases": [
+                    "model_generation_check"
+                  ],
+                  "symbols": {
+                    "model_generation_check": "testModelGenerationCheck"
+                  }
+                }
+              ]
+            }
           },
           "rust": {
             "part": "packages/rust/tests",
@@ -4360,7 +4382,7 @@
       "id": "schema_install",
       "title": "Schema installation",
       "title_ko": "\uc2a4\ud0a4\ub9c8 \uc124\uce58",
-      "status": "partial",
+      "status": "implemented",
       "description": "Install a dbspec document set through a connection: every client renders the statements of its dialect, creates every table when no table of the set exists, changes nothing when every table exists, and fails with CONFIG when only some exist; it then compares the tables of the set in the database with the set and fails with CONFIG naming each difference. Registering a set on a connection, with utils().schema().register or the connect helper of generated code, reads and writes nothing in the database; install and addTablesAndColumns verify the database. A process loads the generated code of several document sets, and one connection serves all of them, each request with the model of its manifest hash. addTablesAndColumns upgrades an installed document set by the tables the database lacks the missing columns of the existing tables that are null or have a default and the missing indexes of the existing tables with the plan steps of the dialect, which create each table with its indexes, foreign keys, checks and triggers and replace the audit triggers of each changed table; it leaves the tables of other sets unchanged and returns SCHEMA_DIFFERS before any change for every other difference, a missing unique key included, because it can fail on the existing rows. A set that uses external documents of another set owns only its own tables: install and addTablesAndColumns require the used external tables in the database as declared and fail with CONFIG otherwise, and never create or change them.",
       "description_ko": "\uc5f0\uacb0\ub85c dbspec document set\uc744 \uc124\uce58\ud55c\ub2e4. \ubaa8\ub4e0 client\uac00 \uc790\uae30 dialect\uc758 \ubb38\uc7a5\uc744 \ub80c\ub354\ub9c1\ud574 set\uc758 table\uc774 \ud558\ub098\ub3c4 \uc5c6\uc73c\uba74 \ubaa8\ub450 \ub9cc\ub4e4\uace0, \ubaa8\ub450 \uc788\uc73c\uba74 \uc544\ubb34\uac83\ub3c4 \ubc14\uafb8\uc9c0 \uc54a\uc73c\uba70, \uc77c\ubd80\ub9cc \uc788\uc73c\uba74 CONFIG\ub85c \uc2e4\ud328\ud55c\ub2e4. \uadf8\ub2e4\uc74c database\uc758 set table\uc744 set\uacfc \ube44\uad50\ud558\uace0 \uac01 \ucc28\uc774\ub97c \uc801\uc740 CONFIG\ub85c \uc2e4\ud328\ud55c\ub2e4. utils().schema().register\ub098 generated code\uc758 connect helper\ub85c \uc5f0\uacb0\uc5d0 set\uc744 \ub4f1\ub85d\ud558\ub294 \uac83\uc740 database\ub97c \uc77d\uac70\ub098 \uc4f0\uc9c0 \uc54a\uc73c\uba70, install\uacfc addTablesAndColumns\uac00 database\ub97c \ud655\uc778\ud55c\ub2e4. \ud55c process\uac00 \uc5ec\ub7ec document set\uc758 generated code\ub97c \uc77d\uace0, \ud55c \uc5f0\uacb0\uc774 \uadf8 \ubaa8\ub450\ub97c \uac01 \uc694\uccad\uc758 manifest hash\uc5d0 \ub9de\ub294 model\ub85c \ucc98\ub9ac\ud55c\ub2e4. addTablesAndColumns\ub294 \uc124\uce58\ud55c document set\uc5d0 database\uc5d0 \uc5c6\ub294 table\uacfc, \uae30\uc874 table\uc5d0 \ube60\uc9c4 column \uac00\uc6b4\ub370 null\uc774\uac70\ub098 default\uac00 \uc788\ub294 column\uacfc, \uae30\uc874 table\uc5d0 \ube60\uc9c4 index\ub97c dialect\uc758 plan step\uc73c\ub85c \ub354\ud558\uba70, \uadf8 step\uc740 \uac01 table\uc744 index, foreign key, check, trigger\uc640 \ud568\uaed8 \ub9cc\ub4e4\uace0 \ubc14\ub010 table\uc758 audit trigger\ub97c \ubc14\uafbc\ub2e4. \ub2e4\ub978 set\uc758 table\uc740 \ubc14\uafb8\uc9c0 \uc54a\uace0, \ub2e4\ub978 \ubaa8\ub4e0 \ucc28\uc774\uc5d0\ub294 \ubcc0\uacbd \uc804\uc5d0 SCHEMA_DIFFERS\ub97c \ubc18\ud658\ud558\uba70, \ube60\uc9c4 unique key\ub294 \uc788\ub294 row\uc5d0\uc11c \uc2e4\ud328\ud560 \uc218 \uc788\uc73c\ubbc0\ub85c \uadf8 \ucc28\uc774\uc5d0 \ub4e0\ub2e4. \ub2e4\ub978 set\uc758 \uc678\ubd80 \ubb38\uc11c\ub97c \uc4f0\ub294 set\uc740 \uc790\uae30 table\ub9cc \uc18c\uc720\ud55c\ub2e4. install\uacfc addTablesAndColumns\ub294 \uc4f0\ub294 \uc678\ubd80 table\uc774 \uc120\uc5b8\ub300\ub85c database\uc5d0 \uc788\uae30\ub97c \uc694\uad6c\ud558\uace0 \uc544\ub2c8\uba74 CONFIG\ub85c \uc2e4\ud328\ud558\uba70, \uadf8 table\uc744 \ub9cc\ub4e4\uac70\ub098 \ubc14\uafb8\uc9c0 \uc54a\ub294\ub2e4.",
       "inputs": {
@@ -4401,17 +4423,9 @@
         }
       ],
       "parity": [
-        "go-internal-packages-go-model-coverage-schema-install",
-        "php-internal-coverage-schema-install-schema-install-existing",
-        "php-internal-coverage-schema-install-schema-install-external-documents",
-        "php-internal-coverage-schema-install-schema-install-partial",
-        "py-cov-schema-install-schema-install-existing",
-        "py-cov-schema-install-schema-install-external-documents",
-        "py-cov-schema-install-schema-install-partial",
-        "rust-integration-coverage-schema-install-coverage-schema-install-existing",
-        "rust-integration-coverage-schema-install-coverage-schema-install-external-documents",
-        "rust-integration-coverage-schema-install-coverage-schema-install-partial",
-        "ts-coverage_schema_install"
+        "coverage-schema-install-existing",
+        "coverage-schema-install-partial",
+        "coverage-schema-install-external-documents"
       ],
       "fixtures": [
         "packages/go/model/coverage_helpers_test.go",
@@ -4477,7 +4491,8 @@
         "packages/python/tests/test_schema_utils.py",
         "packages/python/tests/test_load_set.py",
         "packages/python/tests/case_database.py",
-        "packages/python/tests/coverage_schema_install.py"
+        "packages/python/tests/coverage_schema_install.py",
+        "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php"
       ],
       "docs": [
         "docs/spec/schema.md",
@@ -4722,7 +4737,12 @@
                     "schema_install_partial",
                     "schema_install_external_documents"
                   ],
-                  "dsn_env": "BENCH_MYSQL_DSN"
+                  "dsn_env": "BENCH_MYSQL_DSN",
+                  "symbols": {
+                    "schema_install_existing": "testSchemaInstallExisting",
+                    "schema_install_partial": "testSchemaInstallPartial",
+                    "schema_install_external_documents": "testSchemaInstallExternalDocuments"
+                  }
                 }
               ],
               "postgres": [
@@ -4734,7 +4754,12 @@
                     "schema_install_partial",
                     "schema_install_external_documents"
                   ],
-                  "dsn_env": "BENCH_POSTGRES_DSN"
+                  "dsn_env": "BENCH_POSTGRES_DSN",
+                  "symbols": {
+                    "schema_install_existing": "testSchemaInstallExisting",
+                    "schema_install_partial": "testSchemaInstallPartial",
+                    "schema_install_external_documents": "testSchemaInstallExternalDocuments"
+                  }
                 }
               ],
               "sqlite": [
@@ -4746,7 +4771,12 @@
                     "schema_install_partial",
                     "schema_install_external_documents"
                   ],
-                  "dsn_env": "BENCH_SQLITE_DSN"
+                  "dsn_env": "BENCH_SQLITE_DSN",
+                  "symbols": {
+                    "schema_install_existing": "testSchemaInstallExisting",
+                    "schema_install_partial": "testSchemaInstallPartial",
+                    "schema_install_external_documents": "testSchemaInstallExternalDocuments"
+                  }
                 }
               ]
             }
@@ -4894,6 +4924,65 @@
                     "schema_install_external_documents"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "php-extension": {
+            "part": "packages/php-ext/tests",
+            "tests": [
+              "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
+                  "cases": [
+                    "schema_install_existing",
+                    "schema_install_partial",
+                    "schema_install_external_documents"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN",
+                  "symbols": {
+                    "schema_install_existing": "testSchemaInstallExisting",
+                    "schema_install_partial": "testSchemaInstallPartial",
+                    "schema_install_external_documents": "testSchemaInstallExternalDocuments"
+                  }
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
+                  "cases": [
+                    "schema_install_existing",
+                    "schema_install_partial",
+                    "schema_install_external_documents"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN",
+                  "symbols": {
+                    "schema_install_existing": "testSchemaInstallExisting",
+                    "schema_install_partial": "testSchemaInstallPartial",
+                    "schema_install_external_documents": "testSchemaInstallExternalDocuments"
+                  }
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
+                  "cases": [
+                    "schema_install_existing",
+                    "schema_install_partial",
+                    "schema_install_external_documents"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN",
+                  "symbols": {
+                    "schema_install_existing": "testSchemaInstallExisting",
+                    "schema_install_partial": "testSchemaInstallPartial",
+                    "schema_install_external_documents": "testSchemaInstallExternalDocuments"
+                  }
                 }
               ]
             }
@@ -8036,7 +8125,7 @@
       "id": "interface_contract",
       "title": "Common interface verification",
       "title_ko": "\uacf5\ud1b5 \uc778\ud130\ud398\uc774\uc2a4 \uac80\uc99d",
-      "status": "partial",
+      "status": "implemented",
       "description": "Every client exposes the public symbols declared in contracts/interfaces.json. Each language extracts its declarations from real syntax trees without running model code, and the comparator fails when a symbol, field, return, or error differs from the common interface.",
       "description_ko": "\ubaa8\ub4e0 \ud074\ub77c\uc774\uc5b8\ud2b8\ub294 contracts/interfaces.json\uc5d0 \uc120\uc5b8\ud55c \uacf5\uac1c \uc2ec\ubcfc\uc744 \ub178\ucd9c\ud55c\ub2e4. \uac01 \uc5b8\uc5b4\ub294 \ubaa8\ub378 \ucf54\ub4dc\ub97c \uc2e4\ud589\ud558\uc9c0 \uc54a\uace0 \uc2e4\uc81c \uad6c\ubb38 \ud2b8\ub9ac\uc5d0\uc11c \uc120\uc5b8\uc744 \ubf51\uace0, \ube44\uad50 \ub3c4\uad6c\ub294 \uc2ec\ubcfc, \ud544\ub4dc, \ubc18\ud658, \uc624\ub958\uac00 \uacf5\ud1b5 \uc778\ud130\ud398\uc774\uc2a4\uc640 \ub2e4\ub974\uba74 \uc2e4\ud328\ud55c\ub2e4.",
       "inputs": {
@@ -8064,11 +8153,7 @@
         }
       ],
       "parity": [
-        "go-internal-packages-go-orm-coverage-interface-contract",
-        "php-internal-coverage-interface-contract-interface-symbols",
-        "py-cov-interface-contract-interface-symbols",
-        "rust-coverage-interface-symbols",
-        "ts-coverage_interface_contract"
+        "coverage-interface-contract-interface-symbols"
       ],
       "fixtures": [
         "contracts/interfaces.json",
@@ -8096,7 +8181,8 @@
         "packages/python/tests/coverage_interface_contract.py",
         "packages/python/testing/interfaces/python.py",
         "packages/python/tests/test_python_extractor.py",
-        "packages/python/tests/test_python_natives.py"
+        "packages/python/tests/test_python_natives.py",
+        "packages/php-ext/tests/CoverageInterfaceContractNativeTest.php"
       ],
       "docs": [
         "docs/spec/interfaces.md",
@@ -8208,7 +8294,10 @@
                   "test": "packages/php/tests/CoverageInterfaceContractTest.php",
                   "cases": [
                     "interface_symbols"
-                  ]
+                  ],
+                  "symbols": {
+                    "interface_symbols": "testInterfaceSymbols"
+                  }
                 }
               ]
             }
@@ -8283,6 +8372,29 @@
                   "cases": [
                     "interface_symbols"
                   ]
+                }
+              ]
+            }
+          },
+          "php-extension": {
+            "part": "packages/php-ext/tests",
+            "tests": [
+              "packages/php-ext/tests/CoverageInterfaceContractNativeTest.php"
+            ],
+            "inputs": [
+              "contracts/symbols/php-extension.json"
+            ],
+            "commands": {
+              "none": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageInterfaceContractNativeTest.php",
+                  "cases": [
+                    "interface_symbols"
+                  ],
+                  "symbols": {
+                    "interface_symbols": "testInterfaceSymbols"
+                  }
                 }
               ]
             }

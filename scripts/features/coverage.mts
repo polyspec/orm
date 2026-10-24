@@ -306,8 +306,9 @@ function run(program: string, args: string[], cwd: string | undefined, timeoutMs
 
 async function nativeTest(item: Item, command: NativeCommand, root: string): Promise<Spec> {
   const nativeRunner = command?.runner === 'go' || command?.runner === 'cargo';
+  const phpSymbols = command?.runner === 'php' && command?.symbols !== undefined;
   const symbols = command?.symbols;
-  const validSymbols = nativeRunner ? Array.isArray(command.cases) &&
+  const validSymbols = nativeRunner || phpSymbols ? Array.isArray(command.cases) &&
     symbols && typeof symbols === 'object' && !Array.isArray(symbols) &&
     Object.keys(symbols).length === command.cases?.length &&
     command.cases?.every((id: string) => Object.hasOwn(symbols, id)) &&
@@ -341,8 +342,9 @@ async function nativeTest(item: Item, command: NativeCommand, root: string): Pro
     throw new Error('invalid native test file extension');
   if (command.runner === 'node')
     return { format: 'case', program: command.runner, args: [testPath, ...command.cases] };
-  // PHP runs on PHPUnit with the phpunit.xml.dist of the owning client package (testDirectoryOf): a case <id> is the
-  // method test_<id> of its owning test class, selected with an anchored filter and read from PHPUnit's TeamCity events. For
+  // PHP runs on PHPUnit with the phpunit.xml.dist of the owning client package (testDirectoryOf): a case <id> defaults to
+  // test_<id>; an explicit symbols map can name its exact method when it follows another convention. The method is selected
+  // with an anchored filter and read from PHPUnit's TeamCity events. For
   // the PHP extension the test package's bootstrap requires ORM_PHP_MODE=extension and verifies the loaded module.
   if (command.runner === 'php') {
     const directory = testDirectoryOf(item.language);
@@ -351,11 +353,12 @@ async function nativeTest(item: Item, command: NativeCommand, root: string): Pro
     const extension = item.language === 'php-extension' ? process.env.POLYSPEC_ORM_EXTENSION : undefined;
     if (item.language === 'php-extension' && !extension)
       throw new Error('POLYSPEC_ORM_EXTENSION is unset; run this through make, which builds the extension and exports it');
+    const phpCaseSymbols = command.cases.map(id => command.symbols?.[id] ?? `test_${id}`);
     return { format: 'phpunit', program: 'php', cwd: root,
       args: [...(extension ? ['-d', `extension=${extension}`] : []),
         resolve(root, 'vendor-php/bin/phpunit'), '--teamcity', '--configuration', resolve(phpPackage, 'phpunit.xml.dist'),
-        '--filter', `/::(${command.cases.map(id => `test_${id}`).join('|')})$/`, testPath],
-      symbols: command.cases.map(id => `test_${id}`),
+        '--filter', `/::(${phpCaseSymbols.join('|')})$/`, testPath],
+      symbols: phpCaseSymbols,
       ...(item.language === 'php-extension' ? { env: { ORM_PHP_MODE: 'extension' } } : {}) };
   }
   // Python runs on the interpreter of the client's venv, which make names in ORM_PYTHON and where the client is installed
