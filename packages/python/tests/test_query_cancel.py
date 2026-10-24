@@ -6,7 +6,7 @@ import tempfile
 import threading
 import unittest
 
-from polyspec.orm.database import Db
+from polyspec.orm.database import Db, _ActiveStatement, _FutureCancellation
 from polyspec.orm.errors import OrmError
 
 from . import testcase
@@ -14,6 +14,32 @@ from . import testcase
 
 class QueryCancelTest(unittest.IsolatedAsyncioTestCase):
     deadline = testcase.COMPUTE
+
+    async def test_cancel_state_is_observed_before_done_callback_dispatch(self):
+        loop = asyncio.get_running_loop()
+        admission_future = loop.create_future()
+        admission = _FutureCancellation(admission_future)
+        admission_future.cancel()
+        with self.assertRaises(OrmError) as rejected:
+            admission.start(object())
+        self.assertEqual(rejected.exception.code, "CANCELED")
+
+        class CancellationConnection:
+            def __init__(self):
+                self.requested = threading.Event()
+
+            def cancel_query(self):
+                self.requested.set()
+
+        finish_future = loop.create_future()
+        cancellation = _FutureCancellation(finish_future)
+        connection = CancellationConnection()
+        operation = _ActiveStatement(connection)
+        with cancellation._lock:
+            cancellation._active.add(operation)
+        finish_future.cancel()
+        self.assertTrue(cancellation.finish(operation))
+        self.assertTrue(connection.requested.is_set())
 
     async def test_cancel_interrupts_active_statement_and_root_is_reusable(self):
         with tempfile.TemporaryDirectory(prefix="orm-query-cancel-") as directory:

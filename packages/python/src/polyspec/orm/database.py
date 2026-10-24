@@ -1047,6 +1047,7 @@ class _FutureCancellation:
 
     def __init__(self, future: asyncio.Future):
         self._lock = threading.Lock()
+        self._future = future
         self._cancelled = future.cancelled()
         self._active: set[_ActiveStatement] = set()
         future.add_done_callback(self._future_done)
@@ -1065,6 +1066,8 @@ class _FutureCancellation:
     def start(self, connection) -> _ActiveStatement:
         operation = _ActiveStatement(connection)
         with self._lock:
+            if self._future.cancelled():
+                self._cancelled = True
             if self._cancelled:
                 raise OrmError(codes.CANCELED, "statement cancelled")
             self._active.add(operation)
@@ -1072,6 +1075,11 @@ class _FutureCancellation:
 
     def finish(self, operation: _ActiveStatement) -> bool:
         with self._lock:
+            if self._future.cancelled():
+                self._cancelled = True
+                # Observe cancellation before removing the operation: its result and connection
+                # cannot escape while the Future's scheduled callback is still pending.
+                operation.cancel()
             self._active.discard(operation)
             cancelled = self._cancelled
         operation.wait()
