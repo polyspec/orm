@@ -666,6 +666,8 @@ static bool query_ir_callable(zval *function, zval *request, zval *ir)
     return EG(exception) == NULL;
 }
 
+static bool query_invoke(zval *object, const char *method_name, zval *args, uint32_t argc, zval *result);
+
 ZEND_METHOD(Polyspec_Orm_Model, columnsIr)
 {
     zval *request;
@@ -720,15 +722,12 @@ ZEND_METHOD(Polyspec_Orm_Model, columnsIr)
                 if (Z_TYPE(retval) != IS_UNDEF) zval_ptr_dtor(&retval);
                 zval_ptr_dtor(&out); zend_string *message = strpprintf(0, "the %s callback must return a model", ZSTR_VAL(name)); query_throw_orm("CONFIG", message); zend_string_release(message); RETURN_THROWS();
             }
-            zval scalar, sub_ir; ZVAL_TRUE(&scalar); ZVAL_UNDEF(&sub_ir);
-            zval callable, target, method, args[3]; array_init(&callable); ZVAL_COPY(&target, &retval); ZVAL_STRING(&method, "subqueryIr"); add_next_index_zval(&callable, &target); add_next_index_zval(&callable, &method);
-            zend_fcall_info call_info; zend_fcall_info_cache call_cache;
-            if (zend_fcall_info_init(&callable, 0, &call_info, &call_cache, NULL, NULL) != SUCCESS) { zval_ptr_dtor(&callable); zval_ptr_dtor(&retval); zval_ptr_dtor(&out); RETURN_THROWS(); }
+            zval scalar, sub_ir, args[3]; ZVAL_TRUE(&scalar); ZVAL_UNDEF(&sub_ir);
             ZVAL_COPY(&args[0], request); ZVAL_COPY(&args[1], ZEND_THIS); ZVAL_COPY(&args[2], &scalar);
-            call_info.retval = &sub_ir; call_info.params = args; call_info.param_count = 3; zend_call_function(&call_info, &call_cache);
-            for (size_t arg_index = 0; arg_index < 3; arg_index++) zval_ptr_dtor(&args[arg_index]); zval_ptr_dtor(&callable);
+            bool sub_ok = query_invoke(&retval, "subqueryIr", args, 3, &sub_ir);
+            for (size_t arg_index = 0; arg_index < 3; arg_index++) zval_ptr_dtor(&args[arg_index]);
             zval_ptr_dtor(&retval);
-            if (EG(exception) != NULL) { if (Z_TYPE(sub_ir) != IS_UNDEF) zval_ptr_dtor(&sub_ir); zval_ptr_dtor(&out); RETURN_THROWS(); }
+            if (!sub_ok) { if (Z_TYPE(sub_ir) != IS_UNDEF) zval_ptr_dtor(&sub_ir); zval_ptr_dtor(&out); RETURN_THROWS(); }
             zval *sub_out = zend_hash_str_find(Z_ARRVAL(out), "sub", sizeof("sub") - 1);
             if (sub_out == NULL) { zval fresh; array_init(&fresh); zend_hash_str_update(Z_ARRVAL(out), "sub", sizeof("sub") - 1, &fresh); sub_out = zend_hash_str_find(Z_ARRVAL(out), "sub", sizeof("sub") - 1); }
             if (Z_TYPE_P(sub_out) != IS_ARRAY) { zval_ptr_dtor(&sub_ir); zval_ptr_dtor(&out); zend_throw_error(NULL, "columns IR sub has invalid shape"); RETURN_THROWS(); }

@@ -347,4 +347,37 @@ final class ModelNativeTest extends TestCase
         self::assertSame([], $duplicateSnapshot);
         self::assertSame(['NativeModelFixture_model' => true], $duplicateRequest->names);
     }
+
+    public function testRelationAndSubqueryIrUseFramedQueryResults(): void
+    {
+        $model = new NativeModelFixture();
+        $request = new Request('all', 'sha256:framed-model-query-test');
+        $relationIr = new \ReflectionMethod(Model::class, 'relationIr');
+        $relation = $relationIr->invoke($model, false, $request);
+        self::assertIsArray($relation);
+
+        $subqueryModel = (new NativeModelFixture())->addColumnId();
+        $subqueryRequest = new Request('all', 'sha256:framed-subquery-test');
+        $subqueryIr = new \ReflectionMethod(Model::class, 'subqueryIr');
+        $subquery = $subqueryIr->invoke($subqueryModel, $subqueryRequest, $model, false);
+        self::assertIsArray($subquery);
+        self::assertArrayNotHasKey('columns', $subquery);
+    }
+
+    public function testColumnsIrIncludesAddedScalarSubquery(): void
+    {
+        $outer = (new NativeModelFixture())->removeAllColumns()
+            ->addColumnTaskPoints(static fn (NativeModelFixture $parent) => (new NativeModelFixture())->addColumnId())
+            ->orderByIdAsc();
+        $outputs = (new \ReflectionProperty(Model::class, 'outputs'))->getValue($outer);
+        $mode = (new \ReflectionProperty(Model::class, 'columnMode'))->getValue($outer);
+        $request = new Request('all', 'sha256:columns-ir-subquery');
+        $columns = (new \ReflectionMethod(Model::class, 'columnsIr'))->invoke($outer, $request);
+        self::assertTrue((new \ReflectionMethod(Model::class, 'columnsIr'))->isInternal());
+        self::assertSame('none', $mode);
+        self::assertArrayHasKey('task_points', $outputs);
+        self::assertIsArray($columns);
+        self::assertArrayHasKey('sub', $columns);
+        self::assertArrayHasKey('task_points', $columns['sub']);
+    }
 }
