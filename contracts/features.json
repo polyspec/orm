@@ -10735,6 +10735,50 @@
         "docs/spec/complex-query.md",
         "docs/spec/complex-query.ko.md"
       ],
+      "verification": [
+        {
+          "id": "complex-query-go-plan",
+          "command": "make complex-query-go-plan-check",
+          "shard": "other",
+          "inputs": ["packages/go/complexquery/public_plan_test.go"]
+        },
+        {
+          "id": "complex-query-php-owner",
+          "command": "make complex-query-php-db-check",
+          "shard": "other",
+          "inputs": ["packages/php/tests/ComplexQueryDbTest.php", "packages/php/tests/ComplexQueryDbCase.php"]
+        },
+        {
+          "id": "complex-query-php-extension-owner",
+          "command": "make complex-query-php-extension-db-check",
+          "shard": "other",
+          "inputs": ["packages/php-ext/tests/ComplexQueryNativeTest.php", "packages/php/tests/ComplexQueryDbCase.php"]
+        },
+        {
+          "id": "complex-query-typescript-unit",
+          "command": "make complex-query-typescript-unit-check",
+          "shard": "other",
+          "inputs": ["packages/ts/tests/fulltext-search.mjs", "packages/ts/tests/fulltext-chain-types.mjs", "packages/ts/tests/paginate-order.mjs"]
+        },
+        {
+          "id": "complex-query-typescript-request",
+          "command": "make complex-query-typescript-request-check",
+          "shard": "other",
+          "inputs": ["packages/ts/tests/complex-query-request.mjs", "packages/ts/tests/complex-query-request-types.mjs"]
+        },
+        {
+          "id": "complex-query-python-unit",
+          "command": "make python-complex-query-check",
+          "shard": "other",
+          "inputs": ["packages/python/tests/test_complex_query.py"]
+        },
+        {
+          "id": "complex-query-rust-plan",
+          "command": "make complex-query-rust-plan-check",
+          "shard": "rust",
+          "inputs": ["packages/rust/tests/tests/integration/coverage_complex_query.rs"]
+        }
+      ],
       "coverage": {
         "kind": "database",
         "cases": [
