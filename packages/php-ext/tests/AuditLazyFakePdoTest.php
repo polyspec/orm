@@ -182,6 +182,7 @@ final class AuditLazyFakeStatement extends PDOStatement
 #[Small]
 final class AuditLazyFakePdoTest extends TestCase
 {
+    // Requirements: INT-67.
     public function test_lazy_audit_precedes_writes_is_reused_and_write_failure_propagates(): void
     {
         $pdo = new AuditLazyFakePdo();
@@ -235,6 +236,21 @@ final class AuditLazyFakePdoTest extends TestCase
                 'ROLLBACK',
             ], $controls, 'SQLite uses its native begin, audit savepoint settlement, and outer rollback protocol');
             self::assertSame($failure, $caught, 'the native transaction must propagate the original write failure');
+            self::assertFalse($pdo->inTransaction(), 'the failed transaction releases its native transaction state');
+
+            $db->transaction(static function () use ($db): void {
+                (new AuditedNote())->connect($db)->setLabel('after-failure')->create();
+            }, retry: 0, audit: ['request_id' => 'after-failure']);
+
+            self::assertFalse($pdo->inTransaction(), 'the reused Db settles the following transaction too');
+            self::assertSame(1, count(array_filter(
+                $pdo->operations,
+                static fn(array $operation): bool => $operation['kind'] === 'exec' && $operation['sql'] === 'COMMIT',
+            )), 'the same native PDO commits a transaction after rollback');
+            self::assertSame(1, count(array_filter(
+                $pdo->operations,
+                static fn(array $operation): bool => $operation['kind'] === 'exec' && $operation['sql'] === 'ROLLBACK',
+            )), 'the original failure rolled back before the same Db committed again');
         } finally {
             $db->close();
         }

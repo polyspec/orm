@@ -475,6 +475,7 @@ async fn dropping_a_query_cancels_it() {
 /// of waiting for SQLx's five-second close-on-drop path. On MySQL and
 /// PostgreSQL the transaction waits for a row that another connection holds.
 #[tokio::test]
+// Requirements: INT-67.
 async fn dropping_a_transaction_frees_a_single_connection() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     for driver in ["sqlite", "mysql", "postgres"] {

@@ -2,17 +2,18 @@
 # polyspec.orm.testing.fail_next_rollback, and a failed rollback reports both the callback error and
 # the rollback error (docs/spec/protocol.md "Errors" and "Test faults", packages/ts/tests/rollback.mjs,
 # packages/php/tests/RollbackTest.php).
-from polyspec.orm import testing
 import os
 import sqlite3
 import tempfile
 import tomllib
 import unittest
 from pathlib import Path
-from polyspec.orm.errors import OrmError
-from polyspec.orm.database import Db
-from . import testcase
 
+from polyspec.orm import testing
+from polyspec.orm.database import Db
+from polyspec.orm.errors import OrmError
+
+from . import testcase
 from .entry_point_check import assert_import_does_not_load_testing
 from .test_sqlite import generate_document, installed_sqlite
 
@@ -56,6 +57,39 @@ class _LostRollbackDb(Db):
 
     def _open(self):
         connection = _LostRollbackConnection(len(self.connections) + 1)
+        self.connections.append(connection)
+        return connection
+
+
+class _DisposalConnection:
+    def __init__(self):
+        self.closed = False
+        self.transaction = False
+        self.statements = []
+
+    def execute(self, sql: str, values):
+        self.statements.append(sql)
+        if sql == "BEGIN IMMEDIATE":
+            self.transaction = True
+        elif sql == "ROLLBACK" or sql == "COMMIT":
+            self.transaction = False
+        return {"rows": [], "insert_id": None, "affected": 0}
+
+    def in_transaction(self) -> bool:
+        return self.transaction
+
+    def close(self) -> None:
+        self.closed = True
+
+
+class _CloseDuringTransactionDb(Db):
+    def __init__(self):
+        self.connections = []
+        super().__init__("sqlite:///close-during-transaction.sqlite", {"poolSize": 1})
+        self._shared.row_lock_ready = True
+
+    def _open(self):
+        connection = _DisposalConnection()
         self.connections.append(connection)
         return connection
 
@@ -318,6 +352,39 @@ class RollbackFaultEntryTest(unittest.TestCase):
             (PACKAGE / "src" / "polyspec" / "orm" / "testing" / "__init__.py").is_file()
         )
         assert_import_does_not_load_testing(self)
+
+
+class HandleDisposalTest(unittest.TestCase):
+    # Requirements: INT-67.
+    deadline = testcase.COMPUTE
+
+    def test_close_during_transaction_rolls_back_and_closes_connection(self):
+        db = _CloseDuringTransactionDb()
+        connection = db.connections[0]
+        abandoned = RuntimeError("the caller abandoned the transaction")
+
+        def abandon():
+            db.close()
+            raise abandoned
+
+        try:
+            with self.assertRaises(RuntimeError) as caught:
+                db.transaction(abandon, {"retry": 0})
+
+            self.assertIs(caught.exception, abandoned)
+            self.assertEqual(
+                connection.statements,
+                ["BEGIN IMMEDIATE", "ROLLBACK"],
+                "closing the Db while its transaction is active rolls back before releasing the session",
+            )
+            self.assertFalse(connection.transaction)
+            self.assertTrue(
+                connection.closed,
+                "the closed pool disposes the checked-out connection on return",
+            )
+            self.assertTrue(db.closed)
+        finally:
+            db.close()
 
 
 if __name__ == "__main__":

@@ -22,7 +22,7 @@ async function withTenant({ driver, dsn }, body) {
 const exists = async (db, account) => await new CompositeAccount().connect(db).tenantId(tenant).andAccountId(account).getCount() === 1;
 
 await runCases('coverage_transactions.mjs', {
-  // Requirements: DSL-118, INT-45, PLN-13, PLN-20.
+  // Requirements: DSL-118, INT-45, INT-67, PLN-13, PLN-20.
   async transaction_rollback(item) {
     await withTenant(item, async db => {
       const boom = new Error('rollback requested by the callback');
@@ -71,6 +71,46 @@ await runCases('coverage_transactions.mjs', {
       assert.equal(await exists(db, 3), false, 'the inner row is rolled back to the savepoint');
       await (await new CompositeAccount().connect(db).getByTenantIdAndAccountId(tenant, 2)).delete();
       assert.equal(await exists(db, 2), false, 'the outer row is deleted');
+    });
+  },
+  // Requirements: CFG-9.
+  async handle_abandoned_query(item) {
+    const { driver } = item;
+    await withTenant(item, async db => {
+      await new CompositeAccount().connect(db).setTenantId(tenant).setAccountId(6).setName('original').create();
+
+      let announceHeld;
+      const rowHeld = new Promise(resolve => { announceHeld = resolve; });
+      let releaseHolder;
+      const holderReleased = new Promise(resolve => { releaseHolder = resolve; });
+      const rollback = new Error('release the row lock');
+      const holder = db.transaction(async () => {
+        await new CompositeAccount().connect(db).setTenantId(tenant).setAccountId(6).setName('held').update();
+        announceHeld();
+        await holderReleased;
+        throw rollback;
+      }).catch(error => error);
+      await rowHeld;
+
+      const controller = new AbortController();
+      const signalled = db.withSignal(controller.signal);
+      let statement;
+      if (driver === 'sqlite') {
+        // SQLite executes synchronously, so the signal applies to the next statement.
+        controller.abort();
+        statement = new CompositeAccount().connect(signalled).setTenantId(tenant).setAccountId(6).setName('cancelled').update();
+      } else {
+        statement = new CompositeAccount().connect(signalled).setTenantId(tenant).setAccountId(6).setName('cancelled').update();
+        setTimeout(() => controller.abort(), 100);
+      }
+      let cancellation = null;
+      try { await statement; } catch (error) { cancellation = error; }
+      assert.ok(cancellation instanceof OrmError && cancellation.code === 'CANCELED', `${driver}: the abandoned statement is cancelled`);
+
+      releaseHolder();
+      assert.equal(await holder, rollback, `${driver}: releasing the holder rolls its transaction back`);
+      assert.equal(await new CompositeAccount().connect(db).getByTenantIdAndAccountId(tenant, 6).getName(), 'original', `${driver}: cancellation and rollback preserve the stored row`);
+      assert.equal(await exists(db, 6), true, `${driver}: the connection handle remains usable`);
     });
   },
 }, 300_000);

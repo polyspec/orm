@@ -114,6 +114,7 @@ func holdRows(t *testing.T, driver, dsn, table string) func() {
 
 // TestWithContextCancelsTransaction cancels a transaction started on a context
 // handle: the transaction fails with CANCELED and its writes are rolled back.
+// Requirements: INT-67.
 func TestWithContextCancelsTransaction(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	s := fixtureSchema(t, "zone")
