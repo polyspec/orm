@@ -13,8 +13,6 @@ use Polyspec\Orm\Dbspec\PlanApply;
 use RuntimeException;
 use Throwable;
 
-const VERIFY_ERRORS_RUN = 'dbspec_verify_errors';
-
 /** The create-from-empty plan of tests/dbspec/plans.json. */
 function verify_errors_plan(): array
 {
@@ -36,18 +34,23 @@ function verify_errors_plan(): array
 }
 
 /**
- * FailingPdo on a new SQLite file.
+ * FailingPdo on a new SQLite file owned by $run.
  *
  * @param array<string, PDOException> $fail
  * @param array<string, string> $replace
  * @param list<string> $failClose
  * @param array<string, PDOException> $queryFail
  */
-function verify_errors_pdo(array $fail, array $replace = [], array $failClose = [], array $queryFail = []): FailingPdo
-{
+function dbspec_failing_pdo(
+    string $run,
+    array $fail,
+    array $replace = [],
+    array $failClose = [],
+    array $queryFail = []
+): FailingPdo {
     static $fileIndex = 0;
     $fileIndex++;
-    $path = sys_get_temp_dir() . sprintf('/%s_%d_%02d.sqlite', VERIFY_ERRORS_RUN, getmypid(), $fileIndex);
+    $path = sys_get_temp_dir() . sprintf('/%s_%d_%02d.sqlite', $run, getmypid(), $fileIndex);
     if (file_exists($path)) {
         throw new RuntimeException("SQLite file $path already exists");
     }
@@ -67,7 +70,7 @@ function verify_errors_case(array $plans, callable $now): void
     $master = 'SELECT type, name, tbl_name, IFNULL(sql, \'\') FROM sqlite_master' . "\n"
         . 'WHERE name NOT LIKE \'sqlite_%\' AND tbl_name NOT LIKE \'dbspec$%\' ORDER BY type, name';
     $cause = new PDOException('catalog read failed');
-    $pdo = verify_errors_pdo([], [], [], [$master => $cause]);
+    $pdo = dbspec_failing_pdo('dbspec_verify_errors', [], [], [], [$master => $cause]);
     try {
         Dbspec::apply($pdo, 'sqlite', $plans, $now, null);
         Assert::fail('apply succeeded on a catalog read error');
@@ -80,7 +83,7 @@ function verify_errors_case(array $plans, callable $now): void
         );
     }
 
-    $pdo = verify_errors_pdo([]);
+    $pdo = dbspec_failing_pdo('dbspec_verify_errors', []);
     Dbspec::apply($pdo, 'sqlite', $plans, $now, null);
     $rollbackCause = new PDOException('rollback catalog read failed');
     $pdo->failQuery($master, $rollbackCause);
@@ -96,7 +99,7 @@ function verify_errors_case(array $plans, callable $now): void
         );
     }
 
-    $pdo = verify_errors_pdo([]);
+    $pdo = dbspec_failing_pdo('dbspec_verify_errors', []);
     $pdo->exec('CREATE TABLE unrelated (id INTEGER)');
     try {
         Dbspec::apply($pdo, 'sqlite', $plans, $now, null);
@@ -105,7 +108,7 @@ function verify_errors_case(array $plans, callable $now): void
         Assert::assertSame('drift', $error->code_);
     }
 
-    $pdo = verify_errors_pdo([]);
+    $pdo = dbspec_failing_pdo('dbspec_verify_errors', []);
     $postForwardCause = new PDOException('post-forward catalog read failed');
     $pdo->failQuery($master, $postForwardCause, 2);
     $events = [];

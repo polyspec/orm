@@ -27,27 +27,6 @@ use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 
-const APPLY_CLEANUP_RUN = 'apply_cleanup_php';
-
-/** FailingPdo on a new SQLite file. */
-function failing_pdo(array $fail, array $replace = [], array $failClose = [], array $queryFail = []): FailingPdo
-{
-    static $fileIndex = 0;
-    $fileIndex++;
-    $path = sys_get_temp_dir() . sprintf('/%s_%d_%02d.sqlite', APPLY_CLEANUP_RUN, getmypid(), $fileIndex);
-    if (file_exists($path)) {
-        throw new RuntimeException("SQLite file $path already exists");
-    }
-    register_shutdown_function(static function () use ($path): void {
-        foreach (['', '-journal'] as $suffix) {
-            if (file_exists($path . $suffix) && !unlink($path . $suffix)) {
-                throw new RuntimeException("$path$suffix cannot be removed");
-            }
-        }
-    });
-    return new FailingPdo($path, $fail, $replace, $failClose, $queryFail);
-}
-
 /**
  * Checks that the operation fails with the failure, and that the cleanup error after it is exactly cleanup.
  * Decides whether the failure is the first expected error.
@@ -121,7 +100,7 @@ final class DbspecApplyCleanupTest extends TestCase
         $now = self::now();
         $stop = new RuntimeException('stop');
         $release = new PDOException('release failed');
-        $pdo = failing_pdo(['PRAGMA locking_mode = normal' => $release]);
+        $pdo = dbspec_failing_pdo('apply_cleanup_php', ['PRAGMA locking_mode = normal' => $release]);
         $events = static function (ApplyEvent $event) use ($stop): void {
             if ($event->kind === 'applied') {
                 throw $stop;
@@ -142,7 +121,10 @@ final class DbspecApplyCleanupTest extends TestCase
         $begin = new PDOException('begin failed');
         $begin->errorInfo = ['HY000', 5, 'database is locked'];
         $restore = new PDOException('restore failed');
-        $pdo = failing_pdo(['BEGIN EXCLUSIVE' => $begin, 'PRAGMA foreign_keys = 0' => $restore]);
+        $pdo = dbspec_failing_pdo(
+            'apply_cleanup_php',
+            ['BEGIN EXCLUSIVE' => $begin, 'PRAGMA foreign_keys = 0' => $restore]
+        );
         want_cleanup(
             static fn() => Dbspec::apply($pdo, 'sqlite', $plans, $now, null),
             static fn(
@@ -163,7 +145,7 @@ final class DbspecApplyCleanupTest extends TestCase
     {
         $plans = self::$plans;
         $now = self::now();
-        $pdo = failing_pdo([]);
+        $pdo = dbspec_failing_pdo('apply_cleanup_php', []);
         Dbspec::apply($pdo, 'sqlite', $plans, $now, null);
         $pdo->exec('UPDATE "dbspec$plans" SET step = 99');
         want_message(
@@ -174,7 +156,7 @@ final class DbspecApplyCleanupTest extends TestCase
 
     public function testRecoverAndRollbackWithNoRecordedPlan(): void
     {
-        $pdo = failing_pdo([]);
+        $pdo = dbspec_failing_pdo('apply_cleanup_php', []);
         Dbspec::recover($pdo, 'sqlite', [], self::now(), null);
         Dbspec::rollback($pdo, 'sqlite', [], self::now(), null);
 
@@ -187,7 +169,7 @@ final class DbspecApplyCleanupTest extends TestCase
     {
         $effect = self::effect(...);
         $tablesQuery = self::tablesQuery();
-        $pdo = failing_pdo([], [$tablesQuery => 'SELECT 1 WHERE 0']);
+        $pdo = dbspec_failing_pdo('apply_cleanup_php', [], [$tablesQuery => 'SELECT 1 WHERE 0']);
         want_message(static fn() => $effect($pdo), "$tablesQuery returned no row");
     }
 
@@ -196,7 +178,7 @@ final class DbspecApplyCleanupTest extends TestCase
     {
         $effect = self::effect(...);
         $tablesQuery = self::tablesQuery();
-        $pdo = failing_pdo([], [$tablesQuery => 'SELECT 1'], ['SELECT 1']);
+        $pdo = dbspec_failing_pdo('apply_cleanup_php', [], [$tablesQuery => 'SELECT 1'], ['SELECT 1']);
         want_message(static fn() => $effect($pdo), "closing the result of $tablesQuery failed");
     }
 }
