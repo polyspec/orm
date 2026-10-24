@@ -9,6 +9,7 @@
 #[macro_use]
 #[path = "common/model_row.rs"]
 mod model_row;
+use model_row::connected;
 
 #[path = "common/or_panic.rs"]
 mod or_panic;
@@ -16,7 +17,7 @@ use or_panic::OrPanic;
 
 #[path = "common/clock_event.rs"]
 mod clock_event;
-use clock_event::{CLOCK_EVENT, CLOCK_SCHEMA, ClockEvent};
+use clock_event::{CLOCK_SCHEMA, ClockEvent};
 
 use std::time::Duration;
 
@@ -27,12 +28,6 @@ use polyspec_orm_case_database::CaseDatabase;
 
 const CASE_DEADLINE: Duration = Duration::from_secs(30);
 
-fn connected(db: &Db) -> ClockEvent {
-    let mut core = Core::new(&CLOCK_EVENT);
-    core.connect(db);
-    ClockEvent::from_core(core)
-}
-
 /// Sixteen inserts in separate statements store created_ts with six fraction
 /// digits near the wall clock; at least one value has microseconds that a
 /// millisecond clock cannot give.
@@ -42,12 +37,12 @@ async fn clock_microseconds(driver: &str, dsn: &str) {
     db.utils().schema().install(&CLOCK_SCHEMA).await.or_panic(|e| format!("{driver}: install: {e}"));
     let before = chrono::Utc::now().naive_utc();
     for i in 0..16 {
-        let mut row = connected(&db);
+        let mut row = connected::<ClockEvent>(&db);
         row.core_mut().set("label", Param::from(format!("event-{i}").as_str()));
         polyspec_orm::model::create(&mut row).await.or_panic(|e| format!("{driver}: create: {e}"));
     }
     let after = chrono::Utc::now().naive_utc();
-    let mut q = connected(&db);
+    let mut q = connected::<ClockEvent>(&db);
     q.core_mut().add_all_columns();
     q.core_mut().order_by("seq", false, None);
     let rows = polyspec_orm::model::gets(&q).await.or_panic(|e| format!("{driver}: gets: {e}")).into_vec();

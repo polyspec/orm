@@ -5,6 +5,7 @@
 #[macro_use]
 #[path = "common/model_row.rs"]
 mod model_row;
+use model_row::connected;
 
 #[path = "common/or_panic.rs"]
 mod or_panic;
@@ -12,24 +13,18 @@ use or_panic::OrPanic;
 
 #[path = "common/clock_event.rs"]
 mod clock_event;
-use clock_event::{CLOCK_EVENT, CLOCK_SCHEMA, ClockEvent};
+use clock_event::{CLOCK_SCHEMA, ClockEvent};
 
 use std::time::Duration;
 
-use polyspec_orm::{Core, Db, Error, Model, Param, Val};
+use polyspec_orm::{Db, Error, Model, Param, Val};
 use polyspec_orm_case_database::CaseDatabase;
 
 const CASE_DEADLINE: Duration = Duration::from_secs(60);
 
-fn connected(db: &Db) -> ClockEvent {
-    let mut core = Core::new(&CLOCK_EVENT);
-    core.connect(db);
-    ClockEvent::from_core(core)
-}
-
 /// Inserts one clock event with label in the active transaction and returns its identity key.
 async fn insert_event(db: &Db, label: &str) -> i64 {
-    let mut row = connected(db);
+    let mut row = connected::<ClockEvent>(db);
     row.core_mut().set("label", Param::from(label));
     let created = polyspec_orm::model::create(&mut row).await.or_panic(|e| format!("create {label}: {e}"));
     match created.value("seq") {
@@ -95,14 +90,14 @@ async fn postgres_waiter(dsn: &str, db: &Db) {
     let seq = db.transaction(async || Ok(insert_event(db, "held").await)).retry(0).await.or_panic(|e| format!("postgres: {e}"));
     let (waiting, waiter) = db
         .transaction(async || {
-            let mut row = connected(db);
+            let mut row = connected::<ClockEvent>(db);
             row.core_mut().set("seq", Param::from(seq));
             row.core_mut().set("label", Param::from("parent"));
             polyspec_orm::model::update(&mut row, false).await?;
             let owned = dsn.to_owned();
             let waiter = tokio::spawn(async move {
                 let other = Db::connect_schema(&owned, &CLOCK_SCHEMA, 1, polyspec_orm::Config::default()).await?;
-                let mut row = connected(&other);
+                let mut row = connected::<ClockEvent>(&other);
                 row.core_mut().set("seq", Param::from(seq));
                 row.core_mut().set("label", Param::from("waiter"));
                 let result = polyspec_orm::model::update(&mut row, false).await;

@@ -18,6 +18,7 @@
 #[macro_use]
 #[path = "common/model_row.rs"]
 mod model_row;
+use model_row::connected;
 
 #[path = "common/or_panic.rs"]
 mod or_panic;
@@ -41,12 +42,6 @@ const COLUMNS: [&str; 2] = ["seq", "label"];
 const CASE_DEADLINE: Duration = Duration::from_secs(30);
 
 model_row!(RollbackProbe, ROLLBACK_PROBE, COLUMNS);
-
-fn connected(db: &Db) -> RollbackProbe {
-    let mut core = Core::new(&ROLLBACK_PROBE);
-    core.connect(db);
-    RollbackProbe::from_core(core)
-}
 
 /// Opens the client, installs the fixture and, on SQLite, the trigger that raises ROLLBACK.
 async fn installed(driver: &str, dsn: &str) -> Db {
@@ -148,7 +143,7 @@ async fn rollback_failed(driver: &str, dsn: &str, session: &str) {
     }
     if driver == "sqlite" {
         assert!(callback.to_string().contains("rollback probe ended the transaction"), "callback error {callback}");
-        assert_eq!(polyspec_orm::model::get_count(connected(&db).core()).await.unwrap(), 0, "the connection serves later requests");
+        assert_eq!(polyspec_orm::model::get_count(connected::<RollbackProbe>(&db).core()).await.unwrap(), 0, "the connection serves later requests");
     }
     db.close().await;
 }
@@ -172,7 +167,7 @@ async fn savepoint_rollback_failed(driver: &str, dsn: &str, session: &str) {
     let callback = check_rollback(driver, &error, "transaction");
     check_rollback(driver, callback, "savepoint");
     if driver == "sqlite" {
-        assert_eq!(polyspec_orm::model::get_count(connected(&db).core()).await.unwrap(), 0, "the connection serves later requests");
+        assert_eq!(polyspec_orm::model::get_count(connected::<RollbackProbe>(&db).core()).await.unwrap(), 0, "the connection serves later requests");
     }
     db.close().await;
 }
@@ -207,7 +202,7 @@ async fn rollback_fault(driver: &str, dsn: &str) {
     };
     let error = db.transaction(failing).retry(0).await.expect_err("transaction");
     check_fault(driver, &error, "transaction");
-    let count = async || polyspec_orm::model::get_count(connected(&db).core()).await.unwrap();
+    let count = async || polyspec_orm::model::get_count(connected::<RollbackProbe>(&db).core()).await.unwrap();
     assert_eq!(count().await, 1, "{driver}: the faulted rollback keeps only the committed row");
     let again = db.transaction(failing).retry(0).await.expect_err("transaction");
     assert!(

@@ -16,6 +16,7 @@
 #[macro_use]
 #[path = "common/model_row.rs"]
 mod model_row;
+use model_row::connected;
 
 #[path = "common/or_panic.rs"]
 mod or_panic;
@@ -23,7 +24,7 @@ use or_panic::OrPanic;
 
 use std::time::Duration;
 
-use polyspec_orm::{Core, Db, Entity, Model, Param, Schema};
+use polyspec_orm::{Db, Entity, Model, Param, Schema};
 use polyspec_orm_case_database::CaseDatabase;
 use serde::Deserialize;
 
@@ -63,12 +64,6 @@ const COLUMNS: [&str; 2] = ["seq", "label"];
 
 model_row!(Probe, PROBE, COLUMNS);
 
-fn connected(db: &Db) -> Probe {
-    let mut core = Core::new(&PROBE);
-    core.connect(db);
-    Probe::from_core(core)
-}
-
 /// Opens the client and installs the probe table.
 async fn installed(driver: &str, dsn: &str) -> Db {
     let db = Db::connect(dsn, 2, polyspec_orm::Config::default()).await.or_panic(|e| format!("{driver}: {e}"));
@@ -78,13 +73,13 @@ async fn installed(driver: &str, dsn: &str) -> Db {
 
 /// Inserts one probe row through the connection of `db`.
 async fn create(db: &Db, label: &str) -> polyspec_orm::Result<()> {
-    let mut row = connected(db);
+    let mut row = connected::<Probe>(db);
     row.core_mut().set("label", Param::from(label));
     polyspec_orm::model::create(&mut row).await.map(|_| ())
 }
 
 async fn count(db: &Db) -> i64 {
-    polyspec_orm::model::get_count(connected(db).core()).await.unwrap()
+    polyspec_orm::model::get_count(connected::<Probe>(db).core()).await.unwrap()
 }
 
 /// Checks the error of a refused statement: its code and message are the fixture's.
