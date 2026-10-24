@@ -16,6 +16,9 @@
 #include <stdint.h>
 #include <string.h>
 
+void schema_utils_set_class(zend_class_entry *ce);
+bool schema_utils_render_statements(zval *documents, zend_string *dialect, zval *statements);
+
 /* Private exception code used only when a catalog cannot parse its own generated document. */
 #define DBS_CATALOG_DOCUMENT_BUILD_CODE ((zend_long)-62062)
 
@@ -591,6 +594,15 @@ typedef bool (*dbs_transaction_callback)(zval *connection, void *context, zval *
 bool db_transaction_native(zval *connection, dbs_transaction_callback callback, void *context, zval *result);
 bool db_observed_native(zval *connection, zval *kind, zval *tables, zval *transaction, zval *sql,
     zval *binds, dbs_transaction_callback callback, void *context, zval *result);
+zend_long db_now_hr_native(void);
+bool db_catalog_event_native(zval *db, zend_string *query, zval *transaction, zend_long start, zval *error);
+typedef struct catalog_observer_scope {
+    zval *db;
+    zval *transaction;
+    struct catalog_observer_scope *previous;
+} catalog_observer_scope;
+void dbs_catalog_observer_enter(catalog_observer_scope *scope, zval *db, zval *transaction);
+void dbs_catalog_observer_leave(catalog_observer_scope *scope);
 /* The class entry of Polyspec\Orm\Catalog (catalog_connection.c). */
 extern zend_class_entry *catalog_ce;
 extern zend_class_entry *catalog_ce_metadata, *catalog_ce_result, *catalog_ce_table_page, *catalog_ce_snapshot;

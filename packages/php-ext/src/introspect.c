@@ -4,6 +4,103 @@
  * subclasses' overridden methods and the meaning of PDOException are the same as in the PHP client.
  */
 #include "dbspec.h"
+
+static DBS_TLS catalog_observer_scope *catalog_observer_current;
+
+static bool catalog_method(zval *object, const char *method, zval *result, uint32_t argc, zval *argv)
+{
+    ZVAL_UNDEF(result);
+    zval function;
+    ZVAL_STRING(&function, method);
+    zend_result status = call_user_function(NULL, object, &function, result, argc, argv);
+    zval_ptr_dtor(&function);
+    return status == SUCCESS && EG(exception) == NULL;
+}
+
+static void catalog_string(zval *value, str text)
+{
+    ZVAL_STRINGL(value, text.s == NULL ? "" : text.s, text.n);
+}
+
+void dbs_catalog_observer_enter(catalog_observer_scope *scope, zval *db, zval *transaction)
+{
+    scope->db = db;
+    scope->transaction = transaction;
+    scope->previous = catalog_observer_current;
+    catalog_observer_current = scope;
+}
+
+void dbs_catalog_observer_leave(catalog_observer_scope *scope)
+{
+    if (catalog_observer_current == scope) catalog_observer_current = scope->previous;
+}
+
+static bool catalog_publish(zval *pdo, str query, zend_long start, zend_object *failure, bool runtime, str runtime_message)
+{
+    if (catalog_observer_current == NULL) return true;
+    zval error;
+    zval *error_ptr = NULL;
+    if (failure != NULL) {
+        ZVAL_OBJ_COPY(&error, failure);
+        zend_string *pdo_name = zend_string_init("PDOException", sizeof("PDOException") - 1, 0);
+        zend_class_entry *pdo_exception = zend_lookup_class(pdo_name);
+        zend_string_release(pdo_name);
+        if (pdo_exception != NULL && instanceof_function(Z_OBJCE(error), pdo_exception)) {
+            zval argument;
+            ZVAL_COPY(&argument, &error);
+            zval converted;
+            bool converted_ok = scall("Polyspec\\Orm\\Db::driverError", &converted, 1, &argument);
+            zval_ptr_dtor(&argument);
+            zval_ptr_dtor(&error);
+            if (!converted_ok) return false;
+            ZVAL_COPY_VALUE(&error, &converted);
+        } else {
+            zval message, args[3];
+            ZVAL_UNDEF(&message);
+            if (!catalog_method(&error, "getMessage", &message, 0, NULL)) {
+                zval_ptr_dtor(&error);
+                return false;
+            }
+            catalog_string(&args[0], SL("DRIVER"));
+            ZVAL_COPY(&args[1], &message);
+            ZVAL_COPY(&args[2], &error);
+            zval wrapped;
+            bool wrapped_ok = newobj("Polyspec\\Orm\\OrmException", &wrapped, 3, args);
+            for (size_t i = 0; i < 3; i++) zval_ptr_dtor(&args[i]);
+            zval_ptr_dtor(&message);
+            zval_ptr_dtor(&error);
+            if (!wrapped_ok) return false;
+            ZVAL_COPY_VALUE(&error, &wrapped);
+        }
+        error_ptr = &error;
+    } else if (runtime) {
+        zval previous, previous_args[1], args[3];
+        catalog_string(&previous_args[0], runtime_message);
+        bool previous_ok = newobj("RuntimeException", &previous, 1, previous_args);
+        zval_ptr_dtor(&previous_args[0]);
+        if (!previous_ok) return false;
+        catalog_string(&args[0], SL("DRIVER"));
+        catalog_string(&args[1], runtime_message);
+        ZVAL_COPY(&args[2], &previous);
+        bool wrapped = newobj("Polyspec\\Orm\\OrmException", &error, 3, args);
+        for (size_t i = 0; i < 3; i++) zval_ptr_dtor(&args[i]);
+        zval_ptr_dtor(&previous);
+        if (!wrapped) return false;
+        error_ptr = &error;
+    }
+    zend_string *query_text = str_zend(query);
+    bool ok = db_catalog_event_native(
+        catalog_observer_current->db,
+        query_text,
+        catalog_observer_current->transaction,
+        start,
+        error_ptr
+    );
+    zend_string_release(query_text);
+    if (error_ptr != NULL) zval_ptr_dtor(&error);
+    (void)pdo;
+    return ok;
+}
 #include "ext/pdo/php_pdo_driver.h"
 #include "ext/spl/spl_exceptions.h"
 #include "Zend/zend_exceptions.h"
@@ -107,6 +204,7 @@ static str failure_message(str query, zval *info)
  */
 bool catalog_read(zval *pdo, str query, zval *rows)
 {
+    zend_long start = db_now_hr_native();
     ZVAL_EMPTY_ARRAY(rows);
     zval q, mode, stmt;
     ZVAL_STR(&q, str_zend(query));
@@ -171,6 +269,10 @@ bool catalog_read(zval *pdo, str query, zval *rows)
             }
         }
         zval_ptr_dtor(&stmt);
+    }
+    if (!catalog_publish(pdo, query, start, failure, runtime, runtime_message)) {
+        if (failure != NULL) OBJ_RELEASE(failure);
+        return false;
     }
     if (failure != NULL) {
         throw_with_previous(spl_ce_RuntimeException, fmt("Catalog query failed: %S\n%S", exception_message(failure), query), failure);

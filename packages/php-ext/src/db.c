@@ -340,6 +340,11 @@ static zend_long now_hr(void)
     return n;
 }
 
+zend_long db_now_hr_native(void)
+{
+    return now_hr();
+}
+
 /* Db::failed: closes the cursor of a failed statement, ignoring its own error, and keeps the driver error pending. */
 static void failed_cursor(zval *st)
 {
@@ -434,6 +439,21 @@ static bool publish(zval *self, zval *kind, zval *tables, zval *tx, zval *sql, z
     ZEND_HASH_FOREACH_END();
     zend_array_destroy(copy);
     zval_ptr_dtor(&event);
+    return ok;
+}
+
+bool db_catalog_event_native(zval *db, zend_string *query, zval *transaction, zend_long start, zval *error)
+{
+    zval kind, tables, sql, binds;
+    ZVAL_STRING(&kind, "schema");
+    array_init(&tables);
+    ZVAL_STR_COPY(&sql, query);
+    array_init(&binds);
+    bool ok = publish(db, &kind, &tables, transaction, &sql, &binds, start, error);
+    zval_ptr_dtor(&kind);
+    zval_ptr_dtor(&tables);
+    zval_ptr_dtor(&sql);
+    zval_ptr_dtor(&binds);
     return ok;
 }
 

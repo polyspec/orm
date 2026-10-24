@@ -3447,6 +3447,46 @@
     "exported": true,
     "signature": "public function verify(): void"
   },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\SchemaUtils": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\SchemaUtils extends  implements  uses "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\SchemaUtils::$db": {
+    "exported": false,
+    "signature": "private readonly Polyspec\\Orm\\Db"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\SchemaUtils::$u": {
+    "exported": false,
+    "signature": "private readonly Polyspec\\Orm\\Utils"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\SchemaUtils::__construct": {
+    "exported": true,
+    "signature": "public function __construct(Polyspec\\Orm\\Db $db, Polyspec\\Orm\\Utils $u): "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\SchemaUtils::addTablesAndColumns": {
+    "exported": true,
+    "signature": "public function addTablesAndColumns(Polyspec\\Orm\\Schema $schema): array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\SchemaUtils::empty": {
+    "exported": true,
+    "signature": "public function empty(): bool"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\SchemaUtils::exists": {
+    "exported": true,
+    "signature": "public function exists(string $schema): bool"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\SchemaUtils::install": {
+    "exported": true,
+    "signature": "public function install(Polyspec\\Orm\\Schema $schema): void"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\SchemaUtils::installed": {
+    "exported": true,
+    "signature": "public function installed(string $schema, string $table): bool"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\SchemaUtils::register": {
+    "exported": true,
+    "signature": "public function register(Polyspec\\Orm\\Schema $schema): void"
+  },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\StatementEvent": {
     "exported": true,
     "signature": "final readonly class Polyspec\\Orm\\StatementEvent extends  implements  uses "

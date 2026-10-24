@@ -1521,6 +1521,20 @@ final class Schema
     public function verify(): void {}
     public function documents(): array {}
 }
+
+/** Schema installation and inspection for one connection. */
+final class SchemaUtils
+{
+    private readonly Db $db;
+    private readonly Utils $u;
+    public function __construct(Db $db, Utils $u) {}
+    public function register(Schema $schema): void {}
+    public function install(Schema $schema): void {}
+    public function addTablesAndColumns(Schema $schema): array {}
+    public function exists(string $schema): bool {}
+    public function installed(string $schema, string $table): bool {}
+    public function empty(): bool {}
+}
 /** The native runtime model of the canonical dbspec document set. */
 final class RuntimeModel
 {

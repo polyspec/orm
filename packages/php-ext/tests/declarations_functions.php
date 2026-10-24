@@ -20,6 +20,7 @@ const CLIENT_CLASSES = [
     'Polyspec\\Orm\\AesUtils',
     'Polyspec\\Orm\\PrivilegeUtils',
     'Polyspec\\Orm\\Utils',
+    'Polyspec\\Orm\\SchemaUtils',
     'Polyspec\\Orm\\Stats',
     'Polyspec\\Orm\\StatementEvent',
     'Polyspec\\Orm\\Catalog',

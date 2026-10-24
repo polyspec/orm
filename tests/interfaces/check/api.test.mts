@@ -2,6 +2,7 @@
 // symbol each declared implementation names, and the checker refuses a unit, a symbol or a constant that does not match the catalog.
 import assert from 'node:assert/strict';
 import { resolve } from 'node:path';
+import { checkParity } from '../../../node_modules/@polyspec/kit/dist/parity.mjs';
 import { caseTest, COMPUTE } from '../../testcase.mts';
 import { apiProblems, readParity, type Parity } from './api.mts';
 import { readErrorCatalog } from './manifest.mts';
@@ -28,6 +29,16 @@ const sources = (): Map<string, string> => new Map([
   ['codes.ts', "export const IR_INVALID = 'IR_INVALID';\n"],
   ['codes.py', 'IR_INVALID = "IR_INVALID"\n'],
 ]);
+
+caseTest('all API units have native declarations for their symbols', COMPUTE, () => {
+  const ids = (readParity(root).units ?? [])
+    .filter(unit => unit.kind === 'api')
+    .map(unit => unit.id)
+    .filter((id): id is string => typeof id === 'string');
+  assert.equal(ids.length, 147, 'API unit count changed; review the extension API binding set');
+  const result = checkParity(root, { execute: false, units: ids, say: () => {} });
+  assert.deepEqual(result.findings, [], 'one or more selected API declarations do not match their source symbols');
+});
 
 caseTest('the native Stats API is bound by the PHP extension', COMPUTE, () => {
   const unit = (readParity(root).units ?? []).find(entry => entry.id === 'client-db-stats');
@@ -117,6 +128,26 @@ caseTest('the native Utils API is bound by the PHP extension', COMPUTE, () => {
     ['client-utils-stats', 'Polyspec\\Orm\\Utils::stats'],
     ['client-utils-was-inserted', 'Polyspec\\Orm\\Utils::wasInserted'],
     ['client-utils-backend-waiting-for-lock', 'Polyspec\\Orm\\Utils::backendWaitingForLock'],
+  ]) {
+    const unit = units.get(id);
+    assert.ok(unit, `${id} API unit is missing`);
+    assert.ok(
+      unit.symbols?.some(entry => entry.implementation === 'php-extension' && entry.symbol === symbol),
+      `${id} does not bind the native ${symbol} symbol`,
+    );
+  }
+});
+
+caseTest('the native SchemaUtils API is bound by the PHP extension', COMPUTE, () => {
+  const units = new Map((readParity(root).units ?? []).map(unit => [unit.id, unit]));
+  for (const [id, symbol] of [
+    ['client-schema-utils', 'Polyspec\\Orm\\SchemaUtils'],
+    ['client-schema-utils-register', 'Polyspec\\Orm\\SchemaUtils::register'],
+    ['client-schema-utils-install', 'Polyspec\\Orm\\SchemaUtils::install'],
+    ['client-schema-utils-add-tables-and-columns', 'Polyspec\\Orm\\SchemaUtils::addTablesAndColumns'],
+    ['client-schema-utils-exists', 'Polyspec\\Orm\\SchemaUtils::exists'],
+    ['client-schema-utils-installed', 'Polyspec\\Orm\\SchemaUtils::installed'],
+    ['client-schema-utils-empty', 'Polyspec\\Orm\\SchemaUtils::empty'],
   ]) {
     const unit = units.get(id);
     assert.ok(unit, `${id} API unit is missing`);

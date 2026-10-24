@@ -2570,7 +2570,9 @@
         "packages/php-ext/src/privilege_utils.h",
         "packages/php-ext/src/utils.c",
         "packages/php-ext/src/utils.h",
+        "packages/php-ext/src/schema_utils.c",
         "packages/php-ext/src/db.c",
+        "packages/php-ext/src/introspect.c",
         "packages/php-ext/src/dbspec.h",
         "packages/php-ext/src/config.m4",
         "packages/php-ext/src/aes_keyring.c",
@@ -2585,6 +2587,7 @@
         "packages/php-ext/tests/AesUtilsNativeTest.php",
         "packages/php-ext/tests/PrivilegeUtilsNativeTest.php",
         "packages/php-ext/tests/UtilsNativeTest.php",
+        "packages/php-ext/tests/SchemaUtilsNativeTest.php",
         "packages/php-ext/tests/declarations_functions.php",
         "Makefile"
       ]
@@ -2613,6 +2616,17 @@
         "contracts/fixtures/audit.dbs",
         "contracts/fixtures/audit_columns.dbs",
         "contracts/fixtures/restore.dbs"
+      ]
+    },
+    "interface-api-binding-unit-check": {
+      "scope": "owner",
+      "needs": [
+        "node-modules"
+      ],
+      "inputs": [
+        "config/parity.json",
+        "tests/interfaces/check/api.test.mts",
+        "Makefile"
       ]
     }
   },

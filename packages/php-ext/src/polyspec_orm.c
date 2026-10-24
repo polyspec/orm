@@ -2026,6 +2026,39 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, render)
     LEAVE();
 }
 
+bool schema_utils_render_statements(zval *documents, zend_string *dialect_name, zval *statements)
+{
+    ENTER();
+    documentv set, ordered;
+    dialect d;
+    diags found = {0};
+    bool ok = dbs_dialect(zs(dialect_name), &d)
+        && in_documents(documents, &set, "the document set");
+    if (ok) {
+        dbs_set_check(&set, &ordered, &found);
+        if (found.n != 0) {
+            ok = false;
+        } else {
+            renderedv rendered = {0};
+            render_statements(&set, d, &rendered);
+            if (dbs_failed()) {
+                ok = false;
+            } else {
+                array_init_size(statements, rendered.n);
+                for (size_t i = 0; i < rendered.n; i++) {
+                    zval pair;
+                    array_init_size(&pair, 2);
+                    add_next_index_str(&pair, str_zend(rendered.v[i].statement));
+                    add_next_index_str(&pair, str_zend(rendered.v[i].table));
+                    add_next_index_zval(statements, &pair);
+                }
+            }
+        }
+    }
+    LEAVE();
+    return ok;
+}
+
 ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, manifest)
 {
     zval *documents;
@@ -2685,6 +2718,7 @@ static PHP_MINIT_FUNCTION(polyspec_orm)
     aes_utils_set_class(register_class_Polyspec_Orm_AesUtils());
     privilege_utils_set_class(register_class_Polyspec_Orm_PrivilegeUtils());
     utils_set_class(register_class_Polyspec_Orm_Utils());
+    schema_utils_set_class(register_class_Polyspec_Orm_SchemaUtils());
     register_class_Polyspec_Orm_Codec();
     register_class_Polyspec_Orm_Validator();
     register_class_Polyspec_Orm_Planner();

@@ -19327,6 +19327,10 @@
           "symbol": "Polyspec\\Orm\\SchemaUtils::addTablesAndColumns"
         },
         {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\SchemaUtils::addTablesAndColumns"
+        },
+        {
           "implementation": "typescript",
           "symbol": "@polyspec/orm!SchemaUtils#addTablesAndColumns:member(1)"
         },
@@ -19353,6 +19357,10 @@
         },
         {
           "implementation": "php",
+          "symbol": "Polyspec\\Orm\\SchemaUtils::empty"
+        },
+        {
+          "implementation": "php-extension",
           "symbol": "Polyspec\\Orm\\SchemaUtils::empty"
         },
         {
@@ -19385,6 +19393,10 @@
           "symbol": "Polyspec\\Orm\\SchemaUtils::exists"
         },
         {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\SchemaUtils::exists"
+        },
+        {
           "implementation": "typescript",
           "symbol": "@polyspec/orm!SchemaUtils#exists:member(1)"
         },
@@ -19411,6 +19423,10 @@
         },
         {
           "implementation": "php",
+          "symbol": "Polyspec\\Orm\\SchemaUtils::install"
+        },
+        {
+          "implementation": "php-extension",
           "symbol": "Polyspec\\Orm\\SchemaUtils::install"
         },
         {
@@ -19443,6 +19459,10 @@
           "symbol": "Polyspec\\Orm\\SchemaUtils::installed"
         },
         {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\SchemaUtils::installed"
+        },
+        {
           "implementation": "typescript",
           "symbol": "@polyspec/orm!SchemaUtils#installed:member(1)"
         },
@@ -19469,6 +19489,10 @@
         },
         {
           "implementation": "php",
+          "symbol": "Polyspec\\Orm\\SchemaUtils::register"
+        },
+        {
+          "implementation": "php-extension",
           "symbol": "Polyspec\\Orm\\SchemaUtils::register"
         },
         {
@@ -19903,6 +19927,10 @@
         },
         {
           "implementation": "php",
+          "symbol": "Polyspec\\Orm\\SchemaUtils"
+        },
+        {
+          "implementation": "php-extension",
           "symbol": "Polyspec\\Orm\\SchemaUtils"
         },
         {
