@@ -5,10 +5,7 @@
     "target": "ES2022",
     "strict": true,
     "noEmit": true,
-    "types": ["node"],
-    "paths": {
-      "typescript": ["./typescript/node_modules/typescript/lib/typescript.d.ts"]
-    }
+    "types": ["node"]
   },
-  "include": ["typescript.mts"]
+  "include": ["typescript.mts", "typescript-api.test.ts"]
 }

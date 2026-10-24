@@ -3,14 +3,14 @@ import { relative, resolve } from 'node:path';
 
 // typescript is a dependency of the packages/ts/testing/interfaces/typescript project (TypeScript 6.0.3, an exception in config/toolchain.json): it is found from that project.
 // make orm-install-interfaces-typescript installs it; the import gives the compiler API with its declarations.
-type Node = import('typescript').Node;
-type SourceFile = import('typescript').SourceFile;
-type TypeNode = import('typescript').TypeNode;
-type MethodLike = import('typescript').MethodDeclaration | import('typescript').MethodSignature;
-type ConstructorDeclaration = import('typescript').ConstructorDeclaration;
-type FunctionDeclaration = import('typescript').FunctionDeclaration;
-type Declaration = import('typescript').Declaration;
-type CompilerApi = typeof import('typescript');
+type Node = import('./typescript/node_modules/typescript/lib/typescript.js').Node;
+type SourceFile = import('./typescript/node_modules/typescript/lib/typescript.js').SourceFile;
+type TypeNode = import('./typescript/node_modules/typescript/lib/typescript.js').TypeNode;
+type MethodLike = import('./typescript/node_modules/typescript/lib/typescript.js').MethodDeclaration | import('./typescript/node_modules/typescript/lib/typescript.js').MethodSignature;
+type ConstructorDeclaration = import('./typescript/node_modules/typescript/lib/typescript.js').ConstructorDeclaration;
+type FunctionDeclaration = import('./typescript/node_modules/typescript/lib/typescript.js').FunctionDeclaration;
+type Declaration = import('./typescript/node_modules/typescript/lib/typescript.js').Declaration;
+export type CompilerApi = typeof import('./typescript/node_modules/typescript/lib/typescript.js');
 const ts: CompilerApi = (await import('./typescript/node_modules/typescript/lib/typescript.js')).default;
 // isDeclaration is a node whose modifiers the compiler combines: a declaration statement, a class element, or a variable,
 // parameter, enum member, type parameter or binding element.
