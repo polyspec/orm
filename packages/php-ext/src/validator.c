@@ -96,32 +96,26 @@ static HashTable *arr_or_empty(HashTable *h)
     return h != NULL ? h : (HashTable *)&zend_empty_array;
 }
 
-/* $h[$k] with ?? semantics: NULL when the key is missing or null. */
-static zval *get(HashTable *h, const char *k)
-{
-    return orm_hash_value(h, k, strlen(k), true);
-}
-
 static bool has(HashTable *h, const char *k)
 {
-    return get(h, k) != NULL;
+    return orm_hash_value(h, k, strlen(k), true) != NULL;
 }
 
 static const char *str(vctx *c, HashTable *h, const char *k, const char *dflt)
 {
-    zval *v = get(h, k);
+    zval *v = orm_hash_value(h, k, strlen(k), true);
     return v != NULL ? sv(c, v) : dflt;
 }
 
 static zend_long num(HashTable *h, const char *k, zend_long dflt)
 {
-    zval *v = get(h, k);
+    zval *v = orm_hash_value(h, k, strlen(k), true);
     return v != NULL ? zval_get_long(v) : dflt;
 }
 
 static bool flag(HashTable *h, const char *k)
 {
-    zval *v = get(h, k);
+    zval *v = orm_hash_value(h, k, strlen(k), true);
     return v != NULL && zend_is_true(v);
 }
 
@@ -238,7 +232,7 @@ static bool numeric(vctx *c, HashTable *col, bool *yes)
 static bool kind_of(vctx *c, HashTable *col, zend_string **out)
 {
     zval args[3];
-    zval *t = get(col, "type");
+    zval *t = orm_hash_value(col, "type", sizeof("type") - 1, true);
     if (t != NULL) {
         ZVAL_COPY_VALUE(&args[0], t);
     } else {
@@ -357,7 +351,7 @@ static const type_ops *ops_of_type(const char *type)
 /* Whether the list of a column (codec) is exactly the one name given. */
 static bool codec_is(HashTable *col, const char *name)
 {
-    HashTable *codec = ha(get(col, "codec"));
+    HashTable *codec = ha(orm_hash_value(col, "codec", sizeof("codec") - 1, true));
     if (codec == NULL || zend_hash_num_elements(codec) != 1) {
         return false;
     }
@@ -367,7 +361,7 @@ static bool codec_is(HashTable *col, const char *name)
 
 static bool has_codec(HashTable *col)
 {
-    return has_items(ha(get(col, "codec")));
+    return has_items(ha(orm_hash_value(col, "codec", sizeof("codec") - 1, true)));
 }
 
 /* Validator::opAllowed. */
@@ -377,7 +371,7 @@ bool validator_op_allowed(HashTable *col, zend_string *op)
     if (IN(o, COL_OPS)) {
         return true;
     }
-    HashTable *codec = ha(get(col, "codec"));
+    HashTable *codec = ha(orm_hash_value(col, "codec", sizeof("codec") - 1, true));
     if (has_items(codec)) {
         bool hex_ip_only = true;
         zval *v;
@@ -394,7 +388,7 @@ bool validator_op_allowed(HashTable *col, zend_string *op)
         }
         return streq(o, "is_null") || streq(o, "is_not_null");
     }
-    zval *t = get(col, "type");
+    zval *t = orm_hash_value(col, "type", sizeof("type") - 1, true);
     if (t == NULL || Z_TYPE_P(t) != IS_STRING) {
         return false;
     }
@@ -411,7 +405,7 @@ static bool col_pair_op_allowed(HashTable *left, HashTable *right, const char *o
     memcpy(base, op, blen);
     base[blen] = '\0';
     if (!has_codec(left) && !has_codec(right)) {
-        zval *t = get(left, "type");
+        zval *t = orm_hash_value(left, "type", sizeof("type") - 1, true);
         const type_ops *ops = (t != NULL && Z_TYPE_P(t) == IS_STRING) ? ops_of_type(Z_STRVAL_P(t)) : NULL;
         return ops != NULL && in_strs(base, ops->ops, ops->n);
     }
@@ -623,7 +617,7 @@ static HashTable *entity_named(vctx *c, const char *name)
     if (c->entities == NULL) {
         return NULL;
     }
-    return ha(get(c->entities, name));
+    return ha(orm_hash_value(c->entities, name, strlen(name), true));
 }
 
 static void set_n(vctx *c, zend_long n)
@@ -656,7 +650,7 @@ static bool params(vctx *c, HashTable *list)
 
 static bool has_group_by(HashTable *q)
 {
-    return has_items(ha(get(q, "group_by")));
+    return has_items(ha(orm_hash_value(q, "group_by", sizeof("group_by") - 1, true)));
 }
 
 /* Validator::assign. */
@@ -669,7 +663,7 @@ static bool assign(vctx *c, HashTable *ent, HashTable *a)
     if (col == NULL) {
         return fail("COLUMN_UNKNOWN", "%s.%s", ename, column);
     }
-    if (zv_eq_str(get(ent, "audit"), column)) {
+    if (zv_eq_str(orm_hash_value(ent, "audit", sizeof("audit") - 1, true), column)) {
         return fail(IR_INVALID, "%s.%s is written by the executor from the audit of the transaction", ename, column);
     }
     int n = (has(a, "p") ? 1 : 0) + (flag(a, "null") ? 1 : 0) + (has(a, "plus_p") ? 1 : 0) + (has(a, "minus_p") ? 1 : 0);
@@ -713,13 +707,13 @@ static zval *scopes(vctx *c, HashTable *q)
     add_assoc_zval(s, "ent", &ent_z);
     zval joins;
     array_init(&joins);
-    HashTable *jh = ha(get(q, "joins"));
+    HashTable *jh = ha(orm_hash_value(q, "joins", sizeof("joins") - 1, true));
     zval *j;
     ZEND_HASH_FOREACH_VAL(arr_or_empty(jh), j)
     {
         HashTable *jq = ha(j);
         const char *rel = str(c, jq, "rel", "");
-        HashTable *query = ha(get(jq, "query"));
+        HashTable *query = ha(orm_hash_value(jq, "query", sizeof("query") - 1, true));
         if (!zend_symtable_str_find(Z_ARRVAL(joins), rel, strlen(rel)) && query != NULL) {
             zval *sub = scopes(c, query);
             zval cp;
@@ -734,7 +728,7 @@ static zval *scopes(vctx *c, HashTable *q)
 
 static zval *scope_join(zval *scope, const char *rel)
 {
-    HashTable *joins = ha(get(ha(scope), "joins"));
+    HashTable *joins = ha(orm_hash_value(ha(scope), "joins", sizeof("joins") - 1, true));
     zval *v = joins != NULL ? zend_symtable_str_find(joins, rel, strlen(rel)) : NULL;
     if (v != NULL) {
         ZVAL_DEREF(v);
@@ -744,7 +738,7 @@ static zval *scope_join(zval *scope, const char *rel)
 
 static HashTable *scope_ent(zval *scope)
 {
-    return ha(get(ha(scope), "ent"));
+    return ha(orm_hash_value(ha(scope), "ent", sizeof("ent") - 1, true));
 }
 
 /* Validator::ref: the column that a column-to-column condition compares with. */
@@ -807,7 +801,7 @@ static bool conflict_key(vctx *c, HashTable *ent, HashTable *set, zval *ret)
     }
     ZEND_HASH_FOREACH_END();
     zval *f;
-    ZEND_HASH_FOREACH_VAL(arr_or_empty(ha(get(ent, "columns"))), f)
+    ZEND_HASH_FOREACH_VAL(arr_or_empty(ha(orm_hash_value(ent, "columns", sizeof("columns") - 1, true))), f)
     {
         HashTable *fh = ha(f);
         const char *bi = str(c, fh, "blind_index", "");
@@ -817,8 +811,8 @@ static bool conflict_key(vctx *c, HashTable *ent, HashTable *set, zval *ret)
     }
     ZEND_HASH_FOREACH_END();
 
-    HashTable *pk = ha(get(ent, "pk"));
-    HashTable *unique = ha(get(ent, "unique"));
+    HashTable *pk = ha(orm_hash_value(ent, "pk", sizeof("pk") - 1, true));
+    HashTable *unique = ha(orm_hash_value(ent, "unique", sizeof("unique") - 1, true));
     zval *cands = keep(c);
     array_init(cands);
     bool pk_meets = false;
@@ -869,7 +863,7 @@ static bool conflict_key(vctx *c, HashTable *ent, HashTable *set, zval *ret)
     }
     HashTable *chosen = ha(zend_hash_index_find(Z_ARRVAL_P(cands), 0));
     const char *cname = str(c, chosen, "name", "");
-    HashTable *cols = ha(get(chosen, "columns"));
+    HashTable *cols = ha(orm_hash_value(chosen, "columns", sizeof("columns") - 1, true));
     zval *col;
     ZEND_HASH_FOREACH_VAL(arr_or_empty(cols), col)
     {
@@ -879,7 +873,7 @@ static bool conflict_key(vctx *c, HashTable *ent, HashTable *set, zval *ret)
         }
     }
     ZEND_HASH_FOREACH_END();
-    ZVAL_COPY(ret, get(chosen, "columns"));
+    ZVAL_COPY(ret, orm_hash_value(chosen, "columns", sizeof("columns") - 1, true));
     return true;
 }
 
@@ -911,36 +905,36 @@ static bool covered(HashTable *valued, HashTable *columns)
 static bool restore_key(vctx *c, HashTable *ent, HashTable *r, zval *ret)
 {
     const char *ename = str(c, ent, "entity", "");
-    zval *sd = get(ent, "soft_delete");
+    zval *sd = orm_hash_value(ent, "soft_delete", sizeof("soft_delete") - 1, true);
     if (sd != NULL && Z_TYPE_P(sd) == IS_STRING && Z_STRLEN_P(sd) == 0) {
         return fail(IR_INVALID, "restore of %s, which has no soft_delete setting", ename);
     }
-    HashTable *items = ha(get(ha(get(r, "where")), "items"));
+    HashTable *items = ha(orm_hash_value(ha(orm_hash_value(r, "where", sizeof("where") - 1, true)), "items", sizeof("items") - 1, true));
     HashTable *valued = new_set(c);
     zval *item;
     zend_ulong i = 0;
     ZEND_HASH_FOREACH_VAL(arr_or_empty(items), item)
     {
         HashTable *it = ha(item);
-        HashTable *pick = ha(get(it, "pred"));
+        HashTable *pick = ha(orm_hash_value(it, "pred", sizeof("pred") - 1, true));
         if (pick == NULL) {
-            pick = ha(get(it, "group"));
+            pick = ha(orm_hash_value(it, "group", sizeof("group") - 1, true));
         }
         if (pick == NULL) {
-            pick = ha(get(it, "joined"));
+            pick = ha(orm_hash_value(it, "joined", sizeof("joined") - 1, true));
         }
         const char *conn = str(c, pick, "conn", "");
         if (i > 0 && streq(conn, "or")) {
             return fail(IR_INVALID, "restore of %s joins the conditions of its where with and", ename);
         }
-        HashTable *pr = ha(get(it, "pred"));
+        HashTable *pr = ha(orm_hash_value(it, "pred", sizeof("pred") - 1, true));
         if (pr != NULL && streq(str(c, pr, "op", ""), "eq") && has(pr, "p") && !has(pr, "fn") && !has(pr, "value") && !has(pr, "ref") && !has(pr, "sub")) {
             set_add(valued, str(c, pr, "column", ""));
         }
         i++;
     }
     ZEND_HASH_FOREACH_END();
-    HashTable *set = ha(get(r, "set"));
+    HashTable *set = ha(orm_hash_value(r, "set", sizeof("set") - 1, true));
     zval *a;
     ZEND_HASH_FOREACH_VAL(arr_or_empty(set), a)
     {
@@ -951,11 +945,11 @@ static bool restore_key(vctx *c, HashTable *ent, HashTable *r, zval *ret)
     ZEND_HASH_FOREACH_END();
 
     HashTable *key = NULL;
-    HashTable *pk = ha(get(ent, "pk"));
+    HashTable *pk = ha(orm_hash_value(ent, "pk", sizeof("pk") - 1, true));
     if (covered(valued, pk)) {
         key = pk;
     } else {
-        HashTable *unique = ha(get(ent, "unique"));
+        HashTable *unique = ha(orm_hash_value(ent, "unique", sizeof("unique") - 1, true));
         HashTable *sorted = zend_array_dup(arr_or_empty(unique));
         zend_hash_sort(sorted, cmp_key_bucket, 0);
         zval *cz = keep(c);
@@ -1009,7 +1003,7 @@ static bool restore_key(vctx *c, HashTable *ent, HashTable *r, zval *ret)
             add_assoc_string(&pred, "column", (char *)column);
             add_assoc_string(&pred, "op", "eq");
             zval pv;
-            ZVAL_COPY(&pv, get(ah, "p"));
+            ZVAL_COPY(&pv, orm_hash_value(ah, "p", sizeof("p") - 1, true));
             add_assoc_zval(&pred, "p", &pv);
             zval wrap;
             array_init(&wrap);
@@ -1019,7 +1013,9 @@ static bool restore_key(vctx *c, HashTable *ent, HashTable *r, zval *ret)
         }
         HashTable *col;
         TRY(col_of(c, ent, column, &col));
-        if ((col != NULL && flag(col, "pk")) || zv_eq_str(get(ent, "identity"), column) || zv_eq_str(get(ent, "soft_delete"), column)) {
+        if ((col != NULL && flag(col, "pk"))
+            || zv_eq_str(orm_hash_value(ent, "identity", sizeof("identity") - 1, true), column)
+            || zv_eq_str(orm_hash_value(ent, "soft_delete", sizeof("soft_delete") - 1, true), column)) {
             return fail(IR_INVALID, "restore cannot assign %s", column);
         }
         zval cp;
@@ -1086,10 +1082,10 @@ static bool column_func(vctx *c, HashTable *ent, HashTable *col, HashTable *f)
     HashTable *arity_t = dialect_table(c, "COLUMN_FUNCTION_ARITY");
     zval *arity = arity_t != NULL ? zend_symtable_str_find(arity_t, fn, strlen(fn)) : NULL;
     zend_long want = arity != NULL ? zval_get_long(arity) : 0;
-    if ((zend_long)zend_hash_num_elements(arr_or_empty(ha(get(f, "ps")))) != want) {
+    if ((zend_long)zend_hash_num_elements(arr_or_empty(ha(orm_hash_value(f, "ps", sizeof("ps") - 1, true)))) != want) {
         return fail(IR_INVALID, "%s takes %ld arguments", fn, (long)want);
     }
-    return params(c, ha(get(f, "ps")));
+    return params(c, ha(orm_hash_value(f, "ps", sizeof("ps") - 1, true)));
 }
 
 static bool sub(vctx *c, HashTable *s, bool scalar, zval *outer);
@@ -1103,7 +1099,7 @@ static bool pred(vctx *c, const vat *at, HashTable *p)
     if (ent == NULL) {
         return fail("ENTITY_UNKNOWN", "%s", "");
     }
-    TRY(params(c, ha(get(p, "ps"))));
+    TRY(params(c, ha(orm_hash_value(p, "ps", sizeof("ps") - 1, true))));
     if (has(p, "p")) {
         TRY(params_one(c, num(p, "p", 0)));
     }
@@ -1111,7 +1107,7 @@ static bool pred(vctx *c, const vat *at, HashTable *p)
     const char *column = str(c, p, "column", "");
     const char *op = str(c, p, "op", "");
     if (streq(op, "tuple_in") || streq(op, "tuple_not_in")) {
-        HashTable *cols = ha(get(p, "cols"));
+        HashTable *cols = ha(orm_hash_value(p, "cols", sizeof("cols") - 1, true));
         uint32_t cn = cols != NULL ? zend_hash_num_elements(cols) : 0;
         if (cn < 2) {
             return fail(IR_INVALID, "%s needs at least two columns", op);
@@ -1130,7 +1126,7 @@ static bool pred(vctx *c, const vat *at, HashTable *p)
             }
         }
         ZEND_HASH_FOREACH_END();
-        HashTable *ps = ha(get(p, "ps"));
+        HashTable *ps = ha(orm_hash_value(p, "ps", sizeof("ps") - 1, true));
         if (!has_items(ps)) {
             smart_str b = {0};
             bool first = true;
@@ -1155,8 +1151,10 @@ static bool pred(vctx *c, const vat *at, HashTable *p)
     }
     if (streq(op, "fulltext") || streq(op, "fulltext_boolean")) {
         /* PRT-75: cols and p only; each column is a text column without a codec (DIA-6, DIA-187). */
-        HashTable *fcols = ha(get(p, "cols"));
-        if (!has_items(fcols) || !has(p, "p") || *str(c, p, "column", "") != '\0' || has_items(ha(get(p, "ps"))) || has(p, "sub") || has(p, "fn") || has(p, "value") || has(p, "ref")) {
+        HashTable *fcols = ha(orm_hash_value(p, "cols", sizeof("cols") - 1, true));
+        if (!has_items(fcols) || !has(p, "p") || *str(c, p, "column", "") != '\0'
+            || has_items(ha(orm_hash_value(p, "ps", sizeof("ps") - 1, true))) || has(p, "sub") || has(p, "fn")
+            || has(p, "value") || has(p, "ref")) {
             return fail(IR_INVALID, "%s takes cols and p only", op);
         }
         zval *fv;
@@ -1168,7 +1166,7 @@ static bool pred(vctx *c, const vat *at, HashTable *p)
             if (fc == NULL) {
                 return fail("COLUMN_UNKNOWN", "%s.%s", name, fname);
             }
-            zval *ft = get(fc, "type");
+            zval *ft = orm_hash_value(fc, "type", sizeof("type") - 1, true);
             bool text = ft != NULL && Z_TYPE_P(ft) == IS_STRING && (streq(Z_STRVAL_P(ft), "varchar") || streq(Z_STRVAL_P(ft), "text"));
             if (!text || has_codec(fc)) {
                 return fail("OPERATOR_NOT_ALLOWED", "%s on %s.%s", op, name, fname);
@@ -1177,7 +1175,7 @@ static bool pred(vctx *c, const vat *at, HashTable *p)
         ZEND_HASH_FOREACH_END();
         return true;
     }
-    if (has_items(ha(get(p, "cols")))) {
+    if (has_items(ha(orm_hash_value(p, "cols", sizeof("cols") - 1, true)))) {
         return fail(IR_INVALID, "cols is only valid with tuple_in or tuple_not_in");
     }
     if (has(p, "sub")) {
@@ -1189,22 +1187,24 @@ static bool pred(vctx *c, const vat *at, HashTable *p)
         if (!streq(op, "in") && !streq(op, "not_in")) {
             return fail(IR_INVALID, "subquery needs in or not_in");
         }
-        if (has(p, "p") || has_items(ha(get(p, "ps"))) || has(p, "fn") || has(p, "value")) {
+        if (has(p, "p") || has_items(ha(orm_hash_value(p, "ps", sizeof("ps") - 1, true))) || has(p, "fn") || has(p, "value")) {
             return fail(IR_INVALID, "subquery pred may not carry values");
         }
-        TRY(sub(c, ha(get(p, "sub")), false, at->node));
-        HashTable *sq = ha(get(ha(get(p, "sub")), "query"));
+        TRY(sub(c, ha(orm_hash_value(p, "sub", sizeof("sub") - 1, true)), false, at->node));
+        HashTable *sq = ha(orm_hash_value(ha(orm_hash_value(p, "sub", sizeof("sub") - 1, true)), "query", sizeof("query") - 1, true));
         const char *sname = str(c, sq, "entity", "");
         HashTable *sub_ent = entity_named(c, sname);
         HashTable *sc;
-        TRY(col_of(c, sub_ent, str(c, ha(get(p, "sub")), "column", ""), &sc));
+        TRY(col_of(c, sub_ent, str(c, ha(orm_hash_value(p, "sub", sizeof("sub") - 1, true)), "column", ""), &sc));
         if (sc != NULL) {
             bool yes;
             HashTable *own;
             TRY(col_of(c, ent, column, &own));
             TRY(meets(c, own, sc, &yes));
             if (!yes) {
-                return fail("OPERATOR_NOT_ALLOWED", "%s.%s does not meet the subquery column %s.%s", name, column, sname, str(c, ha(get(p, "sub")), "column", ""));
+                const char *sub_column = str(c, ha(orm_hash_value(p, "sub", sizeof("sub") - 1, true)), "column", "");
+                return fail("OPERATOR_NOT_ALLOWED", "%s.%s does not meet the subquery column %s.%s", name,
+                    column, sname, sub_column);
             }
         }
         return true;
@@ -1219,17 +1219,17 @@ static bool pred(vctx *c, const vat *at, HashTable *p)
             return fail(IR_INVALID, "fn and value cannot be combined");
         }
         if (has(p, "fn")) {
-            TRY(column_func(c, ent, cc, ha(get(p, "fn"))));
+            TRY(column_func(c, ent, cc, ha(orm_hash_value(p, "fn", sizeof("fn") - 1, true))));
             if (IN(op, CMP_OPS)) {
                 if (!has(p, "p")) {
                     return fail(IR_INVALID, "%s needs a value (p)", op);
                 }
             } else if (streq(op, "in") || streq(op, "not_in")) {
-                if (!has_items(ha(get(p, "ps")))) {
+                if (!has_items(ha(orm_hash_value(p, "ps", sizeof("ps") - 1, true)))) {
                     return fail("EMPTY_IN", "%s.%s", name, column);
                 }
             } else if (streq(op, "between")) {
-                if (zend_hash_num_elements(arr_or_empty(ha(get(p, "ps")))) != 2) {
+                if (zend_hash_num_elements(arr_or_empty(ha(orm_hash_value(p, "ps", sizeof("ps") - 1, true)))) != 2) {
                     return fail(IR_INVALID, "between needs 2 params (ps)");
                 }
             } else {
@@ -1237,7 +1237,7 @@ static bool pred(vctx *c, const vat *at, HashTable *p)
             }
             return true;
         }
-        const char *fn = str(c, ha(get(p, "value")), "name", "");
+        const char *fn = str(c, ha(orm_hash_value(p, "value", sizeof("value") - 1, true)), "name", "");
         bool is_fn;
         TRY(is_value_function(c, fn, &is_fn));
         if (!is_fn) {
@@ -1249,16 +1249,18 @@ static bool pred(vctx *c, const vat *at, HashTable *p)
         }
         HashTable *units = dialect_table(c, "VALUE_FUNCTION_UNITS");
         zend_long want = (units != NULL && zend_symtable_str_find(units, fn, strlen(fn)) != NULL) ? 1 : 0;
-        if ((zend_long)zend_hash_num_elements(arr_or_empty(ha(get(ha(get(p, "value")), "ps")))) != want) {
+        HashTable *value = ha(orm_hash_value(p, "value", sizeof("value") - 1, true));
+        HashTable *value_params = ha(orm_hash_value(value, "ps", sizeof("ps") - 1, true));
+        if ((zend_long)zend_hash_num_elements(arr_or_empty(value_params)) != want) {
             return fail(IR_INVALID, "%s takes %ld arguments", fn, (long)want);
         }
-        if (has(p, "p") || has_items(ha(get(p, "ps")))) {
+        if (has(p, "p") || has_items(ha(orm_hash_value(p, "ps", sizeof("ps") - 1, true)))) {
             return fail(IR_INVALID, "value function pred may not carry p or ps");
         }
         if (!IN(op, CMP_OPS)) {
             return fail("OPERATOR_NOT_ALLOWED", "%s with a value function", op);
         }
-        return params(c, ha(get(ha(get(p, "value")), "ps")));
+        return params(c, ha(orm_hash_value(ha(orm_hash_value(p, "value", sizeof("value") - 1, true)), "ps", sizeof("ps") - 1, true)));
     }
     HashTable *cc;
     TRY(col_of(c, ent, column, &cc));
@@ -1275,13 +1277,13 @@ static bool pred(vctx *c, const vat *at, HashTable *p)
         return true;
     }
     if (streq(op, "in") || streq(op, "not_in")) {
-        if (!has_items(ha(get(p, "ps")))) {
+        if (!has_items(ha(orm_hash_value(p, "ps", sizeof("ps") - 1, true)))) {
             return fail("EMPTY_IN", "%s.%s", name, column);
         }
         return true;
     }
     if (streq(op, "between")) {
-        if (zend_hash_num_elements(arr_or_empty(ha(get(p, "ps")))) != 2) {
+        if (zend_hash_num_elements(arr_or_empty(ha(orm_hash_value(p, "ps", sizeof("ps") - 1, true)))) != 2) {
             return fail(IR_INVALID, "between needs 2 params (ps)");
         }
         return true;
@@ -1291,10 +1293,10 @@ static bool pred(vctx *c, const vat *at, HashTable *p)
             return fail(IR_INVALID, "%s needs ref", op);
         }
         HashTable *other;
-        TRY(ref_resolve(c, at, ha(get(p, "ref")), &other));
+        TRY(ref_resolve(c, at, ha(orm_hash_value(p, "ref", sizeof("ref") - 1, true)), &other));
         bool yes;
         TRY(meets(c, cc, other, &yes));
-        const char *refcol = str(c, ha(get(p, "ref")), "column", "");
+        const char *refcol = str(c, ha(orm_hash_value(p, "ref", sizeof("ref") - 1, true)), "column", "");
         if (!yes) {
             return fail("OPERATOR_NOT_ALLOWED", "%s.%s does not meet %s", name, column, refcol);
         }
@@ -1311,7 +1313,7 @@ static bool pred(vctx *c, const vat *at, HashTable *p)
 
 static bool group(vctx *c, const vat *at, HashTable *g, HashTable *joined)
 {
-    HashTable *items = ha(get(g, "items"));
+    HashTable *items = ha(orm_hash_value(g, "items", sizeof("items") - 1, true));
     zend_ulong i = 0;
     zval *it;
     ZEND_HASH_FOREACH_VAL(arr_or_empty(items), it)
@@ -1323,7 +1325,7 @@ static bool group(vctx *c, const vat *at, HashTable *g, HashTable *joined)
         for (size_t k = 0; k < 3; k++) {
             if (has(ih, kinds[k])) {
                 n++;
-                conn = str(c, ha(get(ih, kinds[k])), "conn", "");
+                conn = str(c, ha(orm_hash_value(ih, kinds[k], strlen(kinds[k]), true)), "conn", "");
             }
         }
         if (n != 1) {
@@ -1339,19 +1341,22 @@ static bool group(vctx *c, const vat *at, HashTable *g, HashTable *joined)
             return fail(IR_INVALID, "the first item of a group takes no conn (\"%s\")", conn);
         }
         if (has(ih, "joined")) {
-            const char *name = str(c, ha(get(ih, "joined")), "join", "");
+            const char *name = str(c, ha(orm_hash_value(ih, "joined", sizeof("joined") - 1, true)), "join", "");
             zval *j = zend_symtable_str_find(joined, name, strlen(name));
             if (j == NULL) {
                 return fail("ENTITY_NOT_JOINED", "%s is not joined in this statement", name);
             }
-            if (!has_items(ha(get(ha(get(ha(get(ha(j), "query")), "where")), "items")))) {
+            HashTable *joined_query = ha(orm_hash_value(ha(j), "query", sizeof("query") - 1, true));
+            HashTable *joined_where = ha(orm_hash_value(joined_query, "where", sizeof("where") - 1, true));
+            HashTable *joined_items = ha(orm_hash_value(joined_where, "items", sizeof("items") - 1, true));
+            if (!has_items(joined_items)) {
                 return fail(IR_INVALID, "joined %s has no conditions", name);
             }
         } else if (has(ih, "pred")) {
-            TRY(pred(c, at, ha(get(ih, "pred"))));
+            TRY(pred(c, at, ha(orm_hash_value(ih, "pred", sizeof("pred") - 1, true))));
         } else {
-            HashTable *grp = ha(get(ih, "group"));
-            if (!has_items(ha(get(grp, "items")))) {
+            HashTable *grp = ha(orm_hash_value(ih, "group", sizeof("group") - 1, true));
+            if (!has_items(ha(orm_hash_value(grp, "items", sizeof("items") - 1, true)))) {
                 return fail(IR_INVALID, "empty group");
             }
             TRY(group(c, at, grp, joined));
@@ -1365,18 +1370,18 @@ static bool group(vctx *c, const vat *at, HashTable *g, HashTable *joined)
 static bool joined_refs(vctx *c, HashTable *g, HashTable *seen)
 {
     zval *it;
-    ZEND_HASH_FOREACH_VAL(arr_or_empty(ha(get(g, "items"))), it)
+    ZEND_HASH_FOREACH_VAL(arr_or_empty(ha(orm_hash_value(g, "items", sizeof("items") - 1, true))), it)
     {
         HashTable *ih = ha(it);
         if (has(ih, "joined")) {
-            const char *name = str(c, ha(get(ih, "joined")), "join", "");
+            const char *name = str(c, ha(orm_hash_value(ih, "joined", sizeof("joined") - 1, true)), "join", "");
             if (set_has(seen, name)) {
                 return fail(IR_INVALID, "joined %s is placed twice", name);
             }
             set_add(seen, name);
         }
         if (has(ih, "group")) {
-            TRY(joined_refs(c, ha(get(ih, "group")), seen));
+            TRY(joined_refs(c, ha(orm_hash_value(ih, "group", sizeof("group") - 1, true)), seen));
         }
     }
     ZEND_HASH_FOREACH_END();
@@ -1385,7 +1390,7 @@ static bool joined_refs(vctx *c, HashTable *g, HashTable *seen)
 
 static bool sub(vctx *c, HashTable *s, bool scalar, zval *outer)
 {
-    HashTable *q = ha(get(s, "query"));
+    HashTable *q = ha(orm_hash_value(s, "query", sizeof("query") - 1, true));
     if (q == NULL) {
         return fail(IR_INVALID, "subquery needs a query");
     }
@@ -1430,14 +1435,15 @@ static bool sub(vctx *c, HashTable *s, bool scalar, zval *outer)
         }
     }
     bool scalar_column = scalar && streq(agg, "");
-    if (has_items(ha(get(q, "relations"))) || (*str(c, q, "lock", "") != '\0') || has(q, "columns") || (has(q, "limit") && !scalar_column)) {
+    if (has_items(ha(orm_hash_value(q, "relations", sizeof("relations") - 1, true))) || (*str(c, q, "lock", "") != '\0')
+        || has(q, "columns") || (has(q, "limit") && !scalar_column)) {
         return fail(IR_INVALID, "subquery may not use limit, relations, lock or columns");
     }
     if (scalar_column) {
-        if (!has(q, "limit") || num(ha(get(q, "limit")), "count", 0) != 1) {
+        if (!has(q, "limit") || num(ha(orm_hash_value(q, "limit", sizeof("limit") - 1, true)), "count", 0) != 1) {
             return fail(IR_INVALID, "a scalar column subquery needs limit with count 1");
         }
-        HashTable *order = ha(get(q, "order"));
+        HashTable *order = ha(orm_hash_value(q, "order", sizeof("order") - 1, true));
         zval *o;
         ZEND_HASH_FOREACH_VAL(arr_or_empty(order), o)
         {
@@ -1447,7 +1453,7 @@ static bool sub(vctx *c, HashTable *s, bool scalar, zval *outer)
         }
         ZEND_HASH_FOREACH_END();
         zval *pk;
-        ZEND_HASH_FOREACH_VAL(arr_or_empty(ha(get(ent, "pk"))), pk)
+        ZEND_HASH_FOREACH_VAL(arr_or_empty(ha(orm_hash_value(ent, "pk", sizeof("pk") - 1, true))), pk)
         {
             const char *pkn = sv(c, pk);
             bool found = false;
@@ -1479,7 +1485,7 @@ static bool query(vctx *c, HashTable *q, const vat *at, bool is_join, bool is_re
         return fail("ENTITY_UNKNOWN", "%s", entity);
     }
     const char *ent_name = str(c, ent, "entity", "");
-    HashTable *cols = ha(get(q, "columns"));
+    HashTable *cols = ha(orm_hash_value(q, "columns", sizeof("columns") - 1, true));
     if (cols != NULL) {
         const char *mode = str(c, cols, "mode", "");
         if (*mode != '\0' && !streq(mode, "all") && !streq(mode, "none")) {
@@ -1488,7 +1494,7 @@ static bool query(vctx *c, HashTable *q, const vat *at, bool is_join, bool is_re
         const char *lists[] = {"add", "remove"};
         for (size_t k = 0; k < 2; k++) {
             zval *cv;
-            ZEND_HASH_FOREACH_VAL(arr_or_empty(ha(get(cols, lists[k]))), cv)
+            ZEND_HASH_FOREACH_VAL(arr_or_empty(ha(orm_hash_value(cols, lists[k], strlen(lists[k]), true))), cv)
             {
                 const char *cn = sv(c, cv);
                 HashTable *x;
@@ -1505,7 +1511,7 @@ static bool query(vctx *c, HashTable *q, const vat *at, bool is_join, bool is_re
         zend_string *key;
         zend_ulong idx;
         zval *cf;
-        ZEND_HASH_FOREACH_KEY_VAL(arr_or_empty(ha(get(cols, "fn"))), idx, key, cf)
+        ZEND_HASH_FOREACH_KEY_VAL(arr_or_empty(ha(orm_hash_value(cols, "fn", sizeof("fn") - 1, true))), idx, key, cf)
         {
             char nb[32];
             const char *out;
@@ -1516,11 +1522,11 @@ static bool query(vctx *c, HashTable *q, const vat *at, bool is_join, bool is_re
             if (col == NULL) {
                 return fail("COLUMN_UNKNOWN", "%s.%s", entity, ccol);
             }
-            HashTable *fn = ha(get(ha(cf), "fn"));
+            HashTable *fn = ha(orm_hash_value(ha(cf), "fn", sizeof("fn") - 1, true));
             TRY(column_func(c, ent, col, fn != NULL ? fn : (HashTable *)&zend_empty_array));
         }
         ZEND_HASH_FOREACH_END();
-        ZEND_HASH_FOREACH_KEY_VAL(arr_or_empty(ha(get(cols, "sub"))), idx, key, cf)
+        ZEND_HASH_FOREACH_KEY_VAL(arr_or_empty(ha(orm_hash_value(cols, "sub", sizeof("sub") - 1, true))), idx, key, cf)
         {
             char nb[32];
             const char *out;
@@ -1534,7 +1540,7 @@ static bool query(vctx *c, HashTable *q, const vat *at, bool is_join, bool is_re
     array_init(joined_z);
     HashTable *joined = Z_ARRVAL_P(joined_z);
     zval *jv;
-    ZEND_HASH_FOREACH_VAL(arr_or_empty(ha(get(q, "joins"))), jv)
+    ZEND_HASH_FOREACH_VAL(arr_or_empty(ha(orm_hash_value(q, "joins", sizeof("joins") - 1, true))), jv)
     {
         HashTable *j = ha(jv);
         const char *kind = str(c, j, "kind", "");
@@ -1547,7 +1553,7 @@ static bool query(vctx *c, HashTable *q, const vat *at, bool is_join, bool is_re
         }
         const char *left = str(c, j, "left", "");
         const char *right = str(c, j, "right", "");
-        HashTable *jq = ha(get(j, "query"));
+        HashTable *jq = ha(orm_hash_value(j, "query", sizeof("query") - 1, true));
         if (*left == '\0' || *right == '\0' || jq == NULL) {
             return fail(IR_INVALID, "join %s: left, right and query are required", rel);
         }
@@ -1573,28 +1579,29 @@ static bool query(vctx *c, HashTable *q, const vat *at, bool is_join, bool is_re
     if (!is_join && has(q, "on")) {
         return fail(IR_INVALID, "on[] is only valid on join children");
     }
-    if (flag(ha(get(q, "on")), "not") || flag(ha(get(q, "where")), "not")) {
+    if (flag(ha(orm_hash_value(q, "on", sizeof("on") - 1, true)), "not")
+        || flag(ha(orm_hash_value(q, "where", sizeof("where") - 1, true)), "not")) {
         return fail(IR_INVALID, "not applies to a nested group");
     }
     const char *tops[] = {"on", "where"};
     for (size_t k = 0; k < 2; k++) {
-        const char *conn = str(c, ha(get(q, tops[k])), "conn", "");
+        const char *conn = str(c, ha(orm_hash_value(q, tops[k], strlen(tops[k]), true)), "conn", "");
         if (*conn != '\0') {
             return fail(IR_INVALID, "the top-level group takes no conn (\"%s\")", conn);
         }
     }
     if (has(q, "on")) {
-        TRY(group(c, at, ha(get(q, "on")), joined));
+        TRY(group(c, at, ha(orm_hash_value(q, "on", sizeof("on") - 1, true)), joined));
     }
     if (has(q, "where")) {
-        TRY(group(c, at, ha(get(q, "where")), joined));
+        TRY(group(c, at, ha(orm_hash_value(q, "where", sizeof("where") - 1, true)), joined));
         HashTable *seen = new_set(c);
-        TRY(joined_refs(c, ha(get(q, "where")), seen));
+        TRY(joined_refs(c, ha(orm_hash_value(q, "where", sizeof("where") - 1, true)), seen));
     }
 
     HashTable *rel_names = new_set(c);
     zval *rv;
-    ZEND_HASH_FOREACH_VAL(arr_or_empty(ha(get(q, "relations"))), rv)
+    ZEND_HASH_FOREACH_VAL(arr_or_empty(ha(orm_hash_value(q, "relations", sizeof("relations") - 1, true))), rv)
     {
         HashTable *r = ha(rv);
         const char *rel = str(c, r, "rel", "");
@@ -1607,12 +1614,12 @@ static bool query(vctx *c, HashTable *q, const vat *at, bool is_join, bool is_re
         if (same != NULL) {
             return fail("COLUMN_ALIAS_CONFLICT", "%s.%s is already a column", entity, rel);
         }
-        HashTable *child = ha(get(r, "query"));
+        HashTable *child = ha(orm_hash_value(r, "query", sizeof("query") - 1, true));
         if (child == NULL) {
             return fail(IR_INVALID, "relation %s needs a query", rel);
         }
         const char *kind = str(c, r, "kind", "");
-        HashTable *keys = ha(get(r, "keys"));
+        HashTable *keys = ha(orm_hash_value(r, "keys", sizeof("keys") - 1, true));
         if (!has_items(keys) || (!streq(kind, "one") && !streq(kind, "many"))) {
             return fail(IR_INVALID, "relation %s: keys and kind one|many are required", rel);
         }
@@ -1652,7 +1659,7 @@ static bool query(vctx *c, HashTable *q, const vat *at, bool is_join, bool is_re
             return fail(IR_INVALID, "relation %s: key_by needs a many relation", rel);
         }
         if (has(child, "if_parent")) {
-            const char *ipc = str(c, ha(get(child, "if_parent")), "column", "");
+            const char *ipc = str(c, ha(orm_hash_value(child, "if_parent", sizeof("if_parent") - 1, true)), "column", "");
             HashTable *ic;
             TRY(col_of(c, ent, ipc, &ic));
             if (ic == NULL) {
@@ -1677,13 +1684,13 @@ static bool query(vctx *c, HashTable *q, const vat *at, bool is_join, bool is_re
         }
     }
     if (has(q, "if_parent")) {
-        TRY(params_one(c, num(ha(get(q, "if_parent")), "p", 0)));
+        TRY(params_one(c, num(ha(orm_hash_value(q, "if_parent", sizeof("if_parent") - 1, true)), "p", 0)));
     }
     if (!is_relation && (*key_by != '\0' || flag(q, "flatten") || num(q, "limit_per_parent", 0) > 0 || has(q, "if_parent") || flag(q, "no_cascade_delete"))) {
         return fail(IR_INVALID, "relation-only options on %s", entity);
     }
     zval *ov;
-    ZEND_HASH_FOREACH_VAL(arr_or_empty(ha(get(q, "order"))), ov)
+    ZEND_HASH_FOREACH_VAL(arr_or_empty(ha(orm_hash_value(q, "order", sizeof("order") - 1, true))), ov)
     {
         HashTable *o = ha(ov);
         const char *column = str(c, o, "column", "");
@@ -1698,14 +1705,14 @@ static bool query(vctx *c, HashTable *q, const vat *at, bool is_join, bool is_re
                 return fail("COLUMN_UNKNOWN", "%s.%s", entity, column);
             }
             if (has(o, "fn")) {
-                TRY(column_func(c, ent, oc, ha(get(o, "fn"))));
+                TRY(column_func(c, ent, oc, ha(orm_hash_value(o, "fn", sizeof("fn") - 1, true))));
             }
         } else if (has(o, "fn")) {
             return fail(IR_INVALID, "order function needs a column");
         }
     }
     ZEND_HASH_FOREACH_END();
-    HashTable *gb = ha(get(q, "group_by"));
+    HashTable *gb = ha(orm_hash_value(q, "group_by", sizeof("group_by") - 1, true));
     zval *gv;
     ZEND_HASH_FOREACH_VAL(arr_or_empty(gb), gv)
     {
@@ -1722,7 +1729,7 @@ static bool query(vctx *c, HashTable *q, const vat *at, bool is_join, bool is_re
             return fail(IR_INVALID, "group_by is only valid on the request's root query");
         }
         zval *o2;
-        ZEND_HASH_FOREACH_VAL(arr_or_empty(ha(get(q, "order"))), o2)
+        ZEND_HASH_FOREACH_VAL(arr_or_empty(ha(orm_hash_value(q, "order", sizeof("order") - 1, true))), o2)
         {
             const char *oc = str(c, ha(o2), "column", "");
             bool in_group = false;
@@ -1741,7 +1748,7 @@ static bool query(vctx *c, HashTable *q, const vat *at, bool is_join, bool is_re
         ZEND_HASH_FOREACH_END();
     }
     if (has(q, "limit")) {
-        HashTable *lim = ha(get(q, "limit"));
+        HashTable *lim = ha(orm_hash_value(q, "limit", sizeof("limit") - 1, true));
         bool indexed = has(lim, "offset_p") || has(lim, "count_p");
         if (indexed) {
             if (is_join || is_relation || at->outer != NULL || zend_hash_num_elements(lim) != 2
@@ -1765,7 +1772,7 @@ static bool query(vctx *c, HashTable *q, const vat *at, bool is_join, bool is_re
     }
     const char *index = str(c, q, "force_index", "");
     if (*index != '\0') {
-        HashTable *indexes = ha(get(ent, "indexes"));
+        HashTable *indexes = ha(orm_hash_value(ent, "indexes", sizeof("indexes") - 1, true));
         if (indexes == NULL || zend_symtable_str_find(indexes, index, strlen(index)) == NULL) {
             return fail("INDEX_UNKNOWN", "%s.%s", entity, index);
         }
@@ -1789,12 +1796,12 @@ bool validator_construct(zval *self, zval *model)
 static bool validate_request(vctx *c, zval *rz, HashTable *r)
 {
     TRY(shape(c, "Request", rz, ""));
-    zval *ir = get(r, "ir_version");
+    zval *ir = orm_hash_value(r, "ir_version", sizeof("ir_version") - 1, true);
     if (ir == NULL || Z_TYPE_P(ir) != IS_LONG || Z_LVAL_P(ir) != 1) {
         return fail("VERSION_MISMATCH", "ir_version %s, engine 1", ir != NULL ? sv(c, ir) : "0");
     }
     const char *hash = model_hash(c);
-    zval *mh = get(r, "manifest_hash");
+    zval *mh = orm_hash_value(r, "manifest_hash", sizeof("manifest_hash") - 1, true);
     if (mh == NULL || Z_TYPE_P(mh) != IS_STRING || !streq(Z_STRVAL_P(mh), hash)) {
         return fail("SCHEMA_HASH_MISMATCH", "client %s, engine %s", mh != NULL ? sv(c, mh) : "", hash);
     }
@@ -1809,10 +1816,14 @@ static bool validate_request(vctx *c, zval *rz, HashTable *r)
     if (target != NULL && flag(target, "external") && IN(kind, owned)) {
         return fail("CONFIG", "%s is owned by another document set", str(c, target, "table", ""));
     }
-    if (flag(r, "load") && (!streq(kind, "insert") || has_items(ha(get(r, "on_duplicate"))))) {
+    if (flag(r, "load") && (!streq(kind, "insert") || has_items(ha(orm_hash_value(r, "on_duplicate", sizeof("on_duplicate") - 1, true))))) {
         return fail(IR_INVALID, "load is only valid on insert without on_duplicate");
     }
-    if (streq(kind, "restart_identity") && (has_items(ha(get(r, "set"))) || has_items(ha(get(r, "rows"))) || has_items(ha(get(r, "on_duplicate"))) || has(r, "where") || has(r, "optimistic"))) {
+    if (streq(kind, "restart_identity")
+        && (has_items(ha(orm_hash_value(r, "set", sizeof("set") - 1, true)))
+            || has_items(ha(orm_hash_value(r, "rows", sizeof("rows") - 1, true)))
+            || has_items(ha(orm_hash_value(r, "on_duplicate", sizeof("on_duplicate") - 1, true)))
+            || has(r, "where") || has(r, "optimistic"))) {
         return fail(IR_INVALID, "restart_identity takes no set, rows, on_duplicate, where or optimistic");
     }
     set_n(c, num(r, "n_params", 0));
@@ -1846,7 +1857,7 @@ static bool validate_request(vctx *c, zval *rz, HashTable *r)
     if (has_group_by(r) && !streq(kind, "count") && !streq(kind, "group_count")) {
         return fail(IR_INVALID, "group_by is only valid on count or group_count, not %s", kind);
     }
-    HashTable *set = ha(get(r, "set"));
+    HashTable *set = ha(orm_hash_value(r, "set", sizeof("set") - 1, true));
     if (streq(kind, "insert") || streq(kind, "update") || streq(kind, "restore")) {
         if (!has_items(set) && !streq(kind, "restore")) {
             return fail(IR_INVALID, "%s needs set[]", kind);
@@ -1863,16 +1874,16 @@ static bool validate_request(vctx *c, zval *rz, HashTable *r)
                 const char *cn = str(c, a, "column", "");
                 HashTable *cc;
                 TRY(col_of(c, ent, cn, &cc));
-                if ((cc != NULL && flag(cc, "pk")) || zv_eq_str(get(ent, "identity"), cn)) {
+                if ((cc != NULL && flag(cc, "pk")) || zv_eq_str(orm_hash_value(ent, "identity", sizeof("identity") - 1, true), cn)) {
                     return fail(IR_INVALID, "cannot update %s", cn);
                 }
             }
         }
         ZEND_HASH_FOREACH_END();
     }
-    HashTable *rows = ha(get(r, "rows"));
+    HashTable *rows = ha(orm_hash_value(r, "rows", sizeof("rows") - 1, true));
     if (has_items(rows)) {
-        if (!streq(kind, "insert") || has_items(ha(get(r, "on_duplicate")))) {
+        if (!streq(kind, "insert") || has_items(ha(orm_hash_value(r, "on_duplicate", sizeof("on_duplicate") - 1, true)))) {
             return fail(IR_INVALID, "rows are only valid on insert without on_duplicate");
         }
         zval *av;
@@ -1897,7 +1908,7 @@ static bool validate_request(vctx *c, zval *rz, HashTable *r)
         }
         ZEND_HASH_FOREACH_END();
     }
-    HashTable *on_dup = ha(get(r, "on_duplicate"));
+    HashTable *on_dup = ha(orm_hash_value(r, "on_duplicate", sizeof("on_duplicate") - 1, true));
     if (has_items(on_dup)) {
         if (!streq(kind, "insert")) {
             return fail(IR_INVALID, "on_duplicate is only valid on insert");
@@ -1919,7 +1930,7 @@ static bool validate_request(vctx *c, zval *rz, HashTable *r)
         zval_ptr_dtor(&dummy);
     }
     if (has(r, "optimistic")) {
-        HashTable *opt = ha(get(r, "optimistic"));
+        HashTable *opt = ha(orm_hash_value(r, "optimistic", sizeof("optimistic") - 1, true));
         const char *oc = str(c, opt, "column", "");
         HashTable *x;
         TRY(col_of(c, ent, oc, &x));
@@ -1928,7 +1939,9 @@ static bool validate_request(vctx *c, zval *rz, HashTable *r)
         }
         TRY(params_one(c, num(opt, "p", 0)));
     }
-    if ((streq(kind, "update") || streq(kind, "delete")) && !has_items(ha(get(ha(get(r, "where")), "items")))) {
+    HashTable *where = ha(orm_hash_value(r, "where", sizeof("where") - 1, true));
+    HashTable *where_items = ha(orm_hash_value(where, "items", sizeof("items") - 1, true));
+    if ((streq(kind, "update") || streq(kind, "delete")) && !has_items(where_items)) {
         return fail(IR_INVALID, "%s without where", kind);
     }
     if (streq(kind, "restore")) {
@@ -2054,7 +2067,7 @@ static const char *function_type(vctx *c, const char *name, HashTable *col)
     if (streq(name, "date")) {
         return "date";
     }
-    zval *t = get(col, "type");
+    zval *t = orm_hash_value(col, "type", sizeof("type") - 1, true);
     return t != NULL ? sv(c, t) : "text";
 }
 
@@ -2072,16 +2085,16 @@ static void pred_uses(vctx *c, HashTable *p, HashTable *ent, HashTable *out);
 static void group_uses(vctx *c, HashTable *g, HashTable *ent, HashTable *out)
 {
     zval *item;
-    ZEND_HASH_FOREACH_VAL(arr_or_empty(ha(get(g, "items"))), item)
+    ZEND_HASH_FOREACH_VAL(arr_or_empty(ha(orm_hash_value(g, "items", sizeof("items") - 1, true))), item)
     {
         HashTable *ih = ha(item);
         if (has(ih, "pred")) {
-            pred_uses(c, ha(get(ih, "pred")), ent, out);
+            pred_uses(c, ha(orm_hash_value(ih, "pred", sizeof("pred") - 1, true)), ent, out);
             if (EG(exception) != NULL) {
                 return;
             }
         } else if (has(ih, "group")) {
-            group_uses(c, ha(get(ih, "group")), ent, out);
+            group_uses(c, ha(orm_hash_value(ih, "group", sizeof("group") - 1, true)), ent, out);
             if (EG(exception) != NULL) {
                 return;
             }
@@ -2092,15 +2105,17 @@ static void group_uses(vctx *c, HashTable *g, HashTable *ent, HashTable *out)
 static void pred_uses(vctx *c, HashTable *p, HashTable *ent, HashTable *out)
 {
     if (has(p, "sub")) {
-        query_uses(c, ha(get(ha(get(p, "sub")), "query")), NULL, out);
+        HashTable *subquery = ha(orm_hash_value(p, "sub", sizeof("sub") - 1, true));
+        HashTable *query = ha(orm_hash_value(subquery, "query", sizeof("query") - 1, true));
+        query_uses(c, query, NULL, out);
         if (EG(exception) != NULL) {
             return;
         }
     }
     const char *op = str(c, p, "op", "");
     if (streq(op, "tuple_in") || streq(op, "tuple_not_in")) {
-        HashTable *cols = ha(get(p, "cols"));
-        HashTable *ps = ha(get(p, "ps"));
+        HashTable *cols = ha(orm_hash_value(p, "cols", sizeof("cols") - 1, true));
+        HashTable *ps = ha(orm_hash_value(p, "ps", sizeof("ps") - 1, true));
         uint32_t cn = zend_hash_num_elements(arr_or_empty(cols));
         zend_ulong k = 0;
         zval *iv;
@@ -2127,10 +2142,10 @@ static void pred_uses(vctx *c, HashTable *p, HashTable *ent, HashTable *out)
     }
     HashTable *col = NULL;
     col_of(c, ent, str(c, p, "column", ""), &col);
-    HashTable *value = ha(get(p, "value"));
+    HashTable *value = ha(orm_hash_value(p, "value", sizeof("value") - 1, true));
     if (value != NULL) {
         zval *iv;
-        ZEND_HASH_FOREACH_VAL(arr_or_empty(ha(get(value, "ps"))), iv)
+        ZEND_HASH_FOREACH_VAL(arr_or_empty(ha(orm_hash_value(value, "ps", sizeof("ps") - 1, true))), iv)
         {
             add_use(c, out, zval_get_long(iv), interval_type(c, str(c, value, "name", "")), NULL, false);
         }
@@ -2149,7 +2164,7 @@ static void pred_uses(vctx *c, HashTable *p, HashTable *ent, HashTable *out)
         add_next_index_long(slots, num(p, "p", 0));
     }
     zval *sv_;
-    ZEND_HASH_FOREACH_VAL(arr_or_empty(ha(get(p, "ps"))), sv_)
+    ZEND_HASH_FOREACH_VAL(arr_or_empty(ha(orm_hash_value(p, "ps", sizeof("ps") - 1, true))), sv_)
     {
         add_next_index_long(slots, zval_get_long(sv_));
     }
@@ -2163,7 +2178,7 @@ static void pred_uses(vctx *c, HashTable *p, HashTable *ent, HashTable *out)
                 fail("INTERNAL", "%s.%s is missing from validated column-function metadata", str(c, ent, "entity", ""), str(c, p, "column", ""));
                 return;
             }
-            const char *type = function_type(c, str(c, ha(get(p, "fn")), "name", ""), col);
+            const char *type = function_type(c, str(c, ha(orm_hash_value(p, "fn", sizeof("fn") - 1, true)), "name", ""), col);
             if (col != NULL && streq(type, str(c, col, "type", ""))) {
                 column_use(c, out, i, col);
             } else {
@@ -2185,42 +2200,44 @@ static bool query_uses(vctx *c, HashTable *q, HashTable *parent, HashTable *out)
     if (ent == NULL) {
         return true;
     }
-    group_uses(c, ha(get(q, "on")), ent, out);
+    group_uses(c, ha(orm_hash_value(q, "on", sizeof("on") - 1, true)), ent, out);
     if (EG(exception) != NULL) {
         return false;
     }
-    group_uses(c, ha(get(q, "where")), ent, out);
+    group_uses(c, ha(orm_hash_value(q, "where", sizeof("where") - 1, true)), ent, out);
     if (EG(exception) != NULL) {
         return false;
     }
     if (has(q, "if_parent") && parent != NULL) {
-        HashTable *ip = ha(get(q, "if_parent"));
+        HashTable *ip = ha(orm_hash_value(q, "if_parent", sizeof("if_parent") - 1, true));
         HashTable *pc = NULL;
         col_of(c, parent, str(c, ip, "column", ""), &pc);
         column_use(c, out, num(ip, "p", 0), pc);
     }
     zval *s;
-    ZEND_HASH_FOREACH_VAL(arr_or_empty(ha(get(ha(get(q, "columns")), "sub"))), s)
+    HashTable *columns = ha(orm_hash_value(q, "columns", sizeof("columns") - 1, true));
+    HashTable *subqueries = ha(orm_hash_value(columns, "sub", sizeof("sub") - 1, true));
+    ZEND_HASH_FOREACH_VAL(arr_or_empty(subqueries), s)
     {
-        query_uses(c, ha(get(ha(s), "query")), NULL, out);
+        query_uses(c, ha(orm_hash_value(ha(s), "query", sizeof("query") - 1, true)), NULL, out);
         if (EG(exception) != NULL) {
             return false;
         }
     }
     ZEND_HASH_FOREACH_END();
     zval *j;
-    ZEND_HASH_FOREACH_VAL(arr_or_empty(ha(get(q, "joins"))), j)
+    ZEND_HASH_FOREACH_VAL(arr_or_empty(ha(orm_hash_value(q, "joins", sizeof("joins") - 1, true))), j)
     {
-        query_uses(c, ha(get(ha(j), "query")), NULL, out);
+        query_uses(c, ha(orm_hash_value(ha(j), "query", sizeof("query") - 1, true)), NULL, out);
         if (EG(exception) != NULL) {
             return false;
         }
     }
     ZEND_HASH_FOREACH_END();
     zval *rel;
-    ZEND_HASH_FOREACH_VAL(arr_or_empty(ha(get(q, "relations"))), rel)
+    ZEND_HASH_FOREACH_VAL(arr_or_empty(ha(orm_hash_value(q, "relations", sizeof("relations") - 1, true))), rel)
     {
-        query_uses(c, ha(get(ha(rel), "query")), ent, out);
+        query_uses(c, ha(orm_hash_value(ha(rel), "query", sizeof("query") - 1, true)), ent, out);
         if (EG(exception) != NULL) {
             return false;
         }
@@ -2253,18 +2270,18 @@ bool validator_param_uses(zval *self, HashTable *r, zval *ret)
     if (EG(exception) != NULL) {
         goto out;
     }
-    if (!assignment_param_uses(&c, out, ent, ha(get(r, "set")))
-        || !assignment_param_uses(&c, out, ent, ha(get(r, "on_duplicate")))) {
+    if (!assignment_param_uses(&c, out, ent, ha(orm_hash_value(r, "set", sizeof("set") - 1, true)))
+        || !assignment_param_uses(&c, out, ent, ha(orm_hash_value(r, "on_duplicate", sizeof("on_duplicate") - 1, true)))) {
         goto out;
     }
     zval *row;
-    ZEND_HASH_FOREACH_VAL(arr_or_empty(ha(get(r, "rows"))), row)
+    ZEND_HASH_FOREACH_VAL(arr_or_empty(ha(orm_hash_value(r, "rows", sizeof("rows") - 1, true))), row)
     {
         zend_ulong j;
         zval *iv;
         ZEND_HASH_FOREACH_NUM_KEY_VAL(arr_or_empty(ha(row)), j, iv)
         {
-            zval *setitem = zend_hash_index_find(arr_or_empty(ha(get(r, "set"))), (zend_long)j);
+            zval *setitem = zend_hash_index_find(arr_or_empty(ha(orm_hash_value(r, "set", sizeof("set") - 1, true))), (zend_long)j);
             HashTable *col = NULL;
             ok = col_of(&c, ent, str(&c, ha(setitem), "column", ""), &col);
             if (!ok) {
@@ -2278,7 +2295,7 @@ bool validator_param_uses(zval *self, HashTable *r, zval *ret)
     }
     ZEND_HASH_FOREACH_END();
     if (has(r, "optimistic")) {
-        HashTable *opt = ha(get(r, "optimistic"));
+        HashTable *opt = ha(orm_hash_value(r, "optimistic", sizeof("optimistic") - 1, true));
         HashTable *col = NULL;
         ok = col_of(&c, ent, str(&c, opt, "column", ""), &col);
         if (!ok) {

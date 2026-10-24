@@ -92,16 +92,10 @@ static void *fail(const char *code, const char *fmt, ...)
     return NULL;
 }
 
-/* $h[$k] with ?? semantics: NULL when the key is missing or null. */
-static zval *get(HashTable *h, const char *k)
-{
-    return orm_hash_value(h, k, strlen(k), false);
-}
-
 /* $h[$k] when it is an array, or NULL. */
 static HashTable *ga(HashTable *h, const char *k)
 {
-    zval *v = get(h, k);
+    zval *v = orm_hash_value(h, k, strlen(k), false);
     return (v != NULL && Z_TYPE_P(v) == IS_ARRAY) ? Z_ARRVAL_P(v) : NULL;
 }
 
@@ -129,27 +123,27 @@ static zend_string *zstr(pctx *c, zval *z)
 /* $h[$k] as a string (the ?? '' of the PHP code). */
 static zend_string *gs(pctx *c, HashTable *h, const char *k)
 {
-    return zstr(c, get(h, k));
+    return zstr(c, orm_hash_value(h, k, strlen(k), false));
 }
 
 /* $h[$k] as an integer, def when missing. */
 static zend_long gl(HashTable *h, const char *k, zend_long def)
 {
-    zval *v = get(h, k);
+    zval *v = orm_hash_value(h, k, strlen(k), false);
     return v == NULL ? def : zval_get_long(v);
 }
 
 /* empty($h[$k]) is its negation: the truth of the value, false when missing. */
 static bool gt(HashTable *h, const char *k)
 {
-    zval *v = get(h, k);
+    zval *v = orm_hash_value(h, k, strlen(k), false);
     return v != NULL && zend_is_true(v);
 }
 
 /* isset($h[$k]). */
 static bool isset_(HashTable *h, const char *k)
 {
-    return get(h, k) != NULL;
+    return orm_hash_value(h, k, strlen(k), false) != NULL;
 }
 
 static zend_long count_of(HashTable *h)
@@ -325,7 +319,7 @@ static zval *column_of(pctx *c, HashTable *rows, const char *key)
         if (Z_TYPE_P(row) != IS_ARRAY) {
             continue;
         }
-        zval *v = get(Z_ARRVAL_P(row), key);
+        zval *v = orm_hash_value(Z_ARRVAL_P(row), key, strlen(key), false);
         if (v != NULL) {
             lpush(out, v);
         }
@@ -508,7 +502,7 @@ static zend_string *b_add(pctx *c, pbinds *b, zval *slot)
 /* Adds a typed slot: a planner error when the slot has no declared type. */
 static zend_string *b_typed(pctx *c, pbinds *b, zval *slot)
 {
-    zval *t = get(Z_ARRVAL_P(slot), "col_type");
+    zval *t = orm_hash_value(Z_ARRVAL_P(slot), "col_type", sizeof("col_type") - 1, false);
     if (t == NULL || zstr(c, t)->len == 0) {
         zend_string *from = gs(c, Z_ARRVAL_P(slot), "from");
         return fail("IR_INVALID", "bind slot %d (%s) has no declared type", (int)count_of(Z_ARRVAL_P(b->slots)),
@@ -863,9 +857,9 @@ static zend_long index_of(passm *a, zend_string *name)
     ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(a->columns), v) {
         ZVAL_DEREF(v);
         HashTable *col = Z_ARRVAL_P(v);
-        zval *n = get(col, "name");
+        zval *n = orm_hash_value(col, "name", sizeof("name") - 1, false);
         if (n != NULL && Z_TYPE_P(n) == IS_STRING && zend_string_equals(Z_STR_P(n), name)) {
-            return zval_get_long(get(col, "index"));
+            return zval_get_long(orm_hash_value(col, "index", sizeof("index") - 1, false));
         }
     } ZEND_HASH_FOREACH_END();
     fail("INTERNAL", "column %s is not projected in %s", ZSTR_VAL(name), ZSTR_VAL(a->entity));
@@ -1209,14 +1203,14 @@ static zval *projection(pctx *c, pscope *s)
         HashTable *rh = Z_ARRVAL_P(r);
         zval *k;
         ZEND_HASH_FOREACH_VAL(lst(rh, "keys"), k) {
-            zval *left = get(Z_ARRVAL_P(k), "left");
+            zval *left = orm_hash_value(Z_ARRVAL_P(k), "left", sizeof("left") - 1, false);
             if (left != NULL) {
                 lpush(need, left);
             }
         } ZEND_HASH_FOREACH_END();
         HashTable *qh = ga(rh, "query");
         if (isset_(qh, "if_parent")) {
-            zval *col2 = get(ga(qh, "if_parent"), "column");
+            zval *col2 = orm_hash_value(ga(qh, "if_parent"), "column", sizeof("column") - 1, false);
             if (col2 != NULL) {
                 lpush(need, col2);
             }
@@ -1268,8 +1262,9 @@ static zval *projection(pctx *c, pscope *s)
             zval *e = newlist(c);
             puts_(e, "name", name);
             if (k == 0) {
-                puts_(e, "column", zstr(c, get(Z_ARRVAL_P(v), "column")));
-                put(e, "fn", get(Z_ARRVAL_P(v), "fn") != NULL ? get(Z_ARRVAL_P(v), "fn") : keep_null(c));
+                puts_(e, "column", zstr(c, orm_hash_value(Z_ARRVAL_P(v), "column", sizeof("column") - 1, false)));
+                zval *fn = orm_hash_value(Z_ARRVAL_P(v), "fn", sizeof("fn") - 1, false);
+                put(e, "fn", fn != NULL ? fn : keep_null(c));
             } else {
                 puts_(e, "column", ZSTR_EMPTY_ALLOC());
                 put(e, "sub", v);
@@ -2138,7 +2133,7 @@ static zend_string *sub_type(pctx *c, HashTable *sub)
     if (col == NULL) {
         return fail("INTERNAL", "%s.%s is missing from a validated scalar subquery", ZSTR_VAL(gs(c, ent, "entity")), ZSTR_VAL(column_name));
     }
-    zval *t = get(col, "type");
+    zval *t = orm_hash_value(col, "type", sizeof("type") - 1, false);
     return t != NULL ? zstr(c, t) : fail("INTERNAL", "%s.%s has no type in a validated scalar subquery", ZSTR_VAL(gs(c, ent, "entity")), ZSTR_VAL(column_name));
 }
 
@@ -2635,7 +2630,7 @@ static zval *with_blind_indexes(pctx *c, HashTable *ent, HashTable *set)
             zval *derived = newlist(c);
             puts_(derived, "column", target);
             if (isset_(ah, "p")) {
-                put(derived, "p", get(ah, "p"));
+                put(derived, "p", orm_hash_value(ah, "p", sizeof("p") - 1, false));
             }
             if (gt(ah, "null")) {
                 putb(derived, "null", true);
