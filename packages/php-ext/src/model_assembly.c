@@ -470,14 +470,20 @@ static void group_rows_iterator_adapter_next(zend_object_iterator *iterator)
         zend_hash_move_forward_ex(Z_ARRVAL(it->snapshot), &it->position);
 }
 
-static void group_rows_iterator_adapter_rewind(zend_object_iterator *iterator)
+static bool group_rows_iterator_reset(group_rows_iterator *it)
 {
-    group_rows_iterator *it = GRI(Z_OBJ(iterator->data));
-    if (Z_ISUNDEF(it->owner) || Z_TYPE(it->owner) != IS_OBJECT) return;
+    if (Z_ISUNDEF(it->owner) || Z_TYPE(it->owner) != IS_OBJECT) return false;
     zval *rows = read_prop_scope(polyspec_group_rows_ce, Z_OBJ(it->owner), "rows");
     if (!Z_ISUNDEF(it->snapshot)) zval_ptr_dtor(&it->snapshot);
     ZVAL_COPY(&it->snapshot, rows);
     zend_hash_internal_pointer_reset_ex(Z_ARRVAL(it->snapshot), &it->position);
+    return true;
+}
+
+static void group_rows_iterator_adapter_rewind(zend_object_iterator *iterator)
+{
+    group_rows_iterator *it = GRI(Z_OBJ(iterator->data));
+    group_rows_iterator_reset(it);
 }
 
 static HashTable *group_rows_iterator_adapter_gc(zend_object_iterator *iterator, zval **table, int *n)
@@ -542,11 +548,7 @@ ZEND_METHOD(Polyspec_Orm_GroupRowsIterator, rewind)
 {
     ZEND_PARSE_PARAMETERS_NONE();
     group_rows_iterator *it = GRI(Z_OBJ_P(ZEND_THIS));
-    if (Z_ISUNDEF(it->owner) || Z_TYPE(it->owner) != IS_OBJECT) RETURN_NULL();
-    zval *rows = read_prop_scope(polyspec_group_rows_ce, Z_OBJ(it->owner), "rows");
-    if (!Z_ISUNDEF(it->snapshot)) zval_ptr_dtor(&it->snapshot);
-    ZVAL_COPY(&it->snapshot, rows);
-    zend_hash_internal_pointer_reset_ex(Z_ARRVAL(it->snapshot), &it->position);
+    if (!group_rows_iterator_reset(it)) RETURN_NULL();
 }
 
 ZEND_METHOD(Polyspec_Orm_GroupRowsIterator, valid)
@@ -656,17 +658,22 @@ static bool assembly_markdown_links(zval *parent, const char *field, const char 
     return true;
 }
 
+static void assembly_markdown_relation(zval *child, zval *parent, const char *field, zval *out)
+{
+    zval *rel = array_find(child, "rel");
+    zend_string *key = rel != NULL ? zval_get_string(rel) : ZSTR_EMPTY_ALLOC();
+    assembly_markdown_links(parent, field, ZSTR_VAL(key), out);
+    if (rel != NULL) zend_string_release(key);
+}
+
 ZEND_METHOD(Polyspec_Orm_Assembly, joinRow)
 {
     zval *child, *parent;
     ZEND_PARSE_PARAMETERS_START(2, 2) Z_PARAM_ARRAY(child) Z_PARAM_ARRAY(parent) ZEND_PARSE_PARAMETERS_END();
     zval *markdown = read_prop_scope(polyspec_assembly_ce, Z_OBJ_P(ZEND_THIS), "markdown");
     if (zend_is_true(markdown)) {
-        zval *rel = array_find(child, "rel");
-        zend_string *key = rel != NULL ? zval_get_string(rel) : ZSTR_EMPTY_ALLOC();
         zval row;
-        assembly_markdown_links(parent, "joins", ZSTR_VAL(key), &row);
-        if (rel != NULL) zend_string_release(key);
+        assembly_markdown_relation(child, parent, "joins", &row);
         if (Z_TYPE(row) == IS_NULL) { zval_ptr_dtor(&row); RETURN_NULL(); }
         RETURN_ZVAL(&row, 0, 0);
     }
@@ -707,11 +714,8 @@ ZEND_METHOD(Polyspec_Orm_Assembly, related)
     ZEND_PARSE_PARAMETERS_START(2, 2) Z_PARAM_ARRAY(child) Z_PARAM_ARRAY(parent) ZEND_PARSE_PARAMETERS_END();
     zval *markdown = read_prop_scope(polyspec_assembly_ce, Z_OBJ_P(ZEND_THIS), "markdown");
     if (zend_is_true(markdown)) {
-        zval *rel = array_find(child, "rel");
-        zend_string *key = rel != NULL ? zval_get_string(rel) : ZSTR_EMPTY_ALLOC();
         zval rows;
-        assembly_markdown_links(parent, "rels", ZSTR_VAL(key), &rows);
-        if (rel != NULL) zend_string_release(key);
+        assembly_markdown_relation(child, parent, "rels", &rows);
         if (Z_TYPE(rows) != IS_ARRAY) { zval_ptr_dtor(&rows); array_init(return_value); }
         else RETURN_ZVAL(&rows, 0, 0);
         return;

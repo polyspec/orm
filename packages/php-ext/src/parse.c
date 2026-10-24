@@ -735,6 +735,17 @@ static void open_settings_block(parser *p, settings *s)
     p->settings_failed = syntax_here(p);
 }
 
+static void start_settings_block(parser *p)
+{
+    token first = p->t.v[0];
+    settings *s = dbs_alloc(sizeof *s);
+    s->comments = take_comments(p);
+    open_settings_block(p, s);
+    p->settings_open[0] = p->line;
+    p->settings_open[1] = p->t.n > 1 ? p->t.v[1].column : first.column;
+    p->state = S_SETTINGS;
+}
+
 /* A table line with a lex error (not }) keeps only its state and failed name, as in Go's tableLine. */
 static void lexed_table_line(parser *p)
 {
@@ -742,12 +753,7 @@ static void lexed_table_line(parser *p)
     str w = first.text;
     if (str_eqc(w, "settings")) {
         p->table_phase = 2;
-        settings *s = dbs_alloc(sizeof *s);
-        s->comments = take_comments(p);
-        open_settings_block(p, s);
-        p->settings_open[0] = p->line;
-        p->settings_open[1] = p->t.n > 1 ? p->t.v[1].column : first.column;
-        p->state = S_SETTINGS;
+        start_settings_block(p);
         return;
     }
     if (str_eqc(w, "primary")) {
@@ -816,6 +822,18 @@ static void header(parser *p)
 
 static used_entry *used_document(parser *p, str name);
 
+static str use_cycle_reason(parser *p, str name)
+{
+    sbuf b = {0};
+    sb_c(&b, "use cycle: ");
+    for (size_t k = 0; k < p->using.n; k++) {
+        sb_s(&b, p->using.v[k]);
+        sb_c(&b, " -> ");
+    }
+    sb_fmt(&b, "%S -> %S", p->doc->name, name);
+    return sb_str(&b);
+}
+
 static void use_line(parser *p)
 {
     const token *docname = word_at(p, 1);
@@ -878,15 +896,8 @@ static void use_line(parser *p)
         has_reason = true;
         reason = SL("a document cannot use itself");
     } else if (strs_has(&p->using, name)) {
-        sbuf b = {0};
-        sb_c(&b, "use cycle: ");
-        for (size_t k = 0; k < p->using.n; k++) {
-            sb_s(&b, p->using.v[k]);
-            sb_c(&b, " -> ");
-        }
-        sb_fmt(&b, "%S -> %S", p->doc->name, name);
         has_reason = true;
-        reason = sb_str(&b);
+        reason = use_cycle_reason(p, name);
     } else if (!smap_has(p->documents, name)) {
         has_reason = true;
         reason = fmt("document `%S` is not in the declared document set", name);
@@ -2384,12 +2395,7 @@ static void table_line(parser *p)
         if (expect_at(p, 1, "{")) {
             end_at(p, 2);
         }
-        settings *s = dbs_alloc(sizeof *s);
-        s->comments = take_comments(p);
-        open_settings_block(p, s);
-        p->settings_open[0] = p->line;
-        p->settings_open[1] = p->t.n > 1 ? p->t.v[1].column : first.column;
-        p->state = S_SETTINGS;
+        start_settings_block(p);
         return;
     }
     size_t mark = p->diagnostics.n;
@@ -3198,25 +3204,33 @@ static void check_foreign_key_targets(parser *p)
     }
 }
 
+static tentry *audit_table_entry(parser *p, drecord_rec *record, token *name, const char *kind)
+{
+    tentry *entry = smap_get(&p->tables, name->text);
+    if (entry == NULL && smap_has(&p->failed_tables, name->text)) {
+        return NULL;
+    }
+    if (entry == NULL) {
+        error(p, "setting", record->line, name->column,
+            fmt("%s table `%S` is not a table of this document or a used table", kind, name->text));
+        return NULL;
+    }
+    if (entry->table->header_failed) {
+        return NULL;
+    }
+    return entry;
+}
+
 static void check_audit_records(parser *p)
 {
     for (size_t i = 0; i < p->deferred_records.n; i++) {
         drecord_rec *r = &p->deferred_records.v[i];
         token *history = &r->args.v[0], *col = &r->args.v[1], *refs = &r->args.v[2];
         str name = refs->text;
-        tentry *entry = smap_get(&p->tables, name);
-        if (entry == NULL && smap_has(&p->failed_tables, name)) {
-            continue;
-        }
-        if (entry == NULL) {
-            error(p, "setting", r->line, refs->column, fmt("audit record table `%S` is not a table of this document or a used table", name));
-            continue;
-        }
+        tentry *entry = audit_table_entry(p, r, refs, "audit record");
+        if (entry == NULL) continue;
         table *record = entry->table;
         /* Go does not check the key of an audit record table whose table line failed (settings.go's auditRecord). */
-        if (record->header_failed) {
-            continue;
-        }
         if (record == r->audited) {
             error(p, "setting", r->line, refs->column, SL("a table cannot record its audits in itself"));
             continue;
@@ -3278,18 +3292,9 @@ static void check_audit_tables(parser *p)
         }
         token *history = &r->args.v[0], *refs = &r->args.v[2], *tt = &r->args.v[5], *rec = &r->args.v[6], *nm = &r->args.v[7];
         str name = tt->text;
-        tentry *entry = smap_get(&p->tables, name);
-        if (entry == NULL && smap_has(&p->failed_tables, name)) {
-            continue;
-        }
-        if (entry == NULL) {
-            error(p, "setting", r->line, tt->column, fmt("tables table `%S` is not a table of this document or a used table", name));
-            continue;
-        }
+        tentry *entry = audit_table_entry(p, r, tt, "tables");
+        if (entry == NULL) continue;
         table *tables = entry->table;
-        if (tables->header_failed) {
-            continue;
-        }
         if (tables == r->audited || str_eq(name, history->text) || str_eq(name, refs->text)) {
             error(p, "setting", r->line, tt->column, SL("the tables table is another table than the audited, the history and the audit record table"));
             continue;
@@ -3685,15 +3690,8 @@ static used_entry *used_document(parser *p, str name)
     if (e == &reading) {
         /* Rewriting a document being read is a use cycle. If the header name differs from the set's name, it cannot be found through the name chain. */
         used_entry *cycle = dbs_alloc(sizeof *cycle);
-        sbuf b = {0};
-        sb_c(&b, "use cycle: ");
-        for (size_t k = 0; k < p->using.n; k++) {
-            sb_s(&b, p->using.v[k]);
-            sb_c(&b, " -> ");
-        }
-        sb_fmt(&b, "%S -> %S", p->doc->name, name);
         cycle->has_reason = true;
-        cycle->reason = sb_str(&b);
+        cycle->reason = use_cycle_reason(p, name);
         return cycle;
     }
     if (e != NULL) {
