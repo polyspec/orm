@@ -70,10 +70,11 @@ static bool utils_active_transaction(zval *db, zval *transaction)
     return utils_call(db, "transactionNumber", transaction, 0, NULL);
 }
 
-static bool utils_fetch(zval *db, zval *tables, zval *transaction, zend_string *sql, zval *args, zval *rows)
+static bool utils_fetch_call(zval *db, const char *kind, size_t kind_len, zval *tables, zval *transaction,
+                             zend_string *sql, zval *args, zval *rows)
 {
     zval call_args[5];
-    ZVAL_STRING(&call_args[0], "utility");
+    ZVAL_STRINGL(&call_args[0], kind, kind_len);
     ZVAL_COPY(&call_args[1], tables);
     ZVAL_COPY(&call_args[2], transaction);
     ZVAL_STR_COPY(&call_args[3], sql);
@@ -81,6 +82,11 @@ static bool utils_fetch(zval *db, zval *tables, zval *transaction, zend_string *
     bool ok = utils_call(db, "fetch", rows, 5, call_args);
     for (size_t i = 0; i < 5; i++) zval_ptr_dtor(&call_args[i]);
     return ok;
+}
+
+static bool utils_fetch(zval *db, zval *tables, zval *transaction, zend_string *sql, zval *args, zval *rows)
+{
+    return utils_fetch_call(db, "utility", sizeof("utility") - 1, tables, transaction, sql, args, rows);
 }
 
 static bool utils_valid_key(zend_string *key)
@@ -216,14 +222,7 @@ ZEND_METHOD(Polyspec_Orm_Utils, read)
     ZVAL_UNDEF(&transaction);
     ZVAL_UNDEF(&rows);
     if (!utils_active_transaction(db, &transaction)) RETURN_THROWS();
-    zval call_args[5];
-    ZVAL_STR_COPY(&call_args[0], kind);
-    ZVAL_COPY(&call_args[1], tables);
-    ZVAL_COPY(&call_args[2], &transaction);
-    ZVAL_STR_COPY(&call_args[3], sql);
-    ZVAL_COPY(&call_args[4], args);
-    bool ok = utils_call(db, "fetch", &rows, 5, call_args);
-    for (size_t i = 0; i < 5; i++) zval_ptr_dtor(&call_args[i]);
+    bool ok = utils_fetch_call(db, ZSTR_VAL(kind), ZSTR_LEN(kind), tables, &transaction, sql, args, &rows);
     zval_ptr_dtor(&transaction);
     if (!ok) RETURN_THROWS();
     zval *row = zend_hash_index_find(Z_ARRVAL(rows), 0);
@@ -257,14 +256,7 @@ ZEND_METHOD(Polyspec_Orm_Utils, exec)
         if (args == &empty) zval_ptr_dtor(&empty);
         RETURN_THROWS();
     }
-    zval call_args[5];
-    ZVAL_STR_COPY(&call_args[0], kind);
-    ZVAL_COPY(&call_args[1], tables);
-    ZVAL_COPY(&call_args[2], &transaction);
-    ZVAL_STR_COPY(&call_args[3], sql);
-    ZVAL_COPY(&call_args[4], args);
-    bool ok = utils_call(db, "fetch", &rows, 5, call_args);
-    for (size_t i = 0; i < 5; i++) zval_ptr_dtor(&call_args[i]);
+    bool ok = utils_fetch_call(db, ZSTR_VAL(kind), ZSTR_LEN(kind), tables, &transaction, sql, args, &rows);
     zval_ptr_dtor(&transaction);
     if (args == &empty) zval_ptr_dtor(&empty);
     if (!ok) RETURN_THROWS();
