@@ -18,7 +18,7 @@ static void model_native_fail_code(model_state *s, const char *code_name, const 
     }
     zend_string *text = zend_string_init(message, strlen(message), 0);
     zval exception;
-    bool ok = orm_exception_object(code_name, text, &exception);
+    bool ok = orm_exception_object("Polyspec\\Orm\\OrmException is not loaded", code_name, text, &exception);
     zend_string_release(text);
     if (!ok) return;
     ZVAL_COPY_VALUE(model_state_property(s, "error"), &exception);
@@ -753,7 +753,7 @@ static void model_throw_orm(const char *code_name, const char *message)
 {
     zend_string *text = zend_string_init(message, strlen(message), 0);
     zval exception;
-    bool ok = orm_exception_object(code_name, text, &exception);
+    bool ok = orm_exception_object("Polyspec\\Orm\\OrmException is not loaded", code_name, text, &exception);
     zend_string_release(text);
     if (!ok) return;
     zend_throw_exception_object(&exception);

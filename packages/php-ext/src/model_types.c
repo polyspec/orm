@@ -1,5 +1,6 @@
 /* Native Request, StyledValue, Page, Func and PendingTime helpers (T182-6). */
 #include "model_types.h"
+#include "orm_exception_object.h"
 #include "Zend/zend_exceptions.h"
 #include "Zend/zend_interfaces.h"
 #include "ext/spl/spl_exceptions.h"
@@ -75,28 +76,12 @@ ZEND_METHOD(Polyspec_Orm_Request, param)
 
 static bool orm_types_throw(const char *code, const char *message)
 {
-    zend_string *name = zend_string_init(ORM_EXCEPTION_CLASS, sizeof(ORM_EXCEPTION_CLASS) - 1, 0);
-    zend_class_entry *ce = zend_lookup_class(name);
-    zend_string_release(name);
-    if (ce == NULL) {
-        if (EG(exception) == NULL) {
-            zend_throw_error(NULL, "class Polyspec\\Orm\\OrmException is not loaded");
-        }
-        return false;
-    }
-    zval ex, args[2], rv;
-    object_init_ex(&ex, ce);
-    ZVAL_STRING(&args[0], code);
-    ZVAL_STRING(&args[1], message);
-    zend_call_method(Z_OBJ(ex), ce, NULL, ZEND_STRL("__construct"), &rv, 2, &args[0], &args[1]);
-    zval_ptr_dtor(&args[0]);
-    zval_ptr_dtor(&args[1]);
-    zval_ptr_dtor(&rv);
-    if (EG(exception) != NULL) {
-        zval_ptr_dtor(&ex);
-        return false;
-    }
-    zend_throw_exception_object(&ex);
+    zend_string *text = zend_string_init(message, strlen(message), 0);
+    zval exception;
+    bool ok = orm_exception_object("class Polyspec\\Orm\\OrmException is not loaded", code, text, &exception);
+    zend_string_release(text);
+    if (!ok) return false;
+    zend_throw_exception_object(&exception);
     return false;
 }
 

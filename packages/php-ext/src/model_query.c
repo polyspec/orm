@@ -53,7 +53,7 @@ static zval *query_meta_entity(zend_object *model, zval *meta)
 static void query_throw_orm(const char *code_name, zend_string *message)
 {
     zval exception;
-    if (!orm_exception_object(code_name, message, &exception)) return;
+    if (!orm_exception_object("Polyspec\\Orm\\OrmException is not loaded", code_name, message, &exception)) return;
     zend_throw_exception_object(&exception);
 }
 

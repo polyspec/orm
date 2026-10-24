@@ -3,18 +3,23 @@
 
 #include "Zend/zend_interfaces.h"
 
-static inline bool orm_exception_object(const char *code_name, zend_string *message, zval *exception)
+static inline bool orm_exception_object(const char *missing_class_message, const char *code_name,
+    zend_string *message, zval *exception)
 {
     zend_string *class_name = zend_string_init("Polyspec\\Orm\\OrmException", sizeof("Polyspec\\Orm\\OrmException") - 1, 0);
     zend_class_entry *class_entry = zend_lookup_class(class_name);
     zend_string_release(class_name);
     if (class_entry == NULL) {
-        zend_throw_error(NULL, "Polyspec\\Orm\\OrmException is not loaded");
+        zend_throw_error(NULL, "%s", missing_class_message);
         return false;
     }
     ZVAL_UNDEF(exception);
     object_init_ex(exception, class_entry);
-    if (EG(exception) != NULL) return false;
+    if (EG(exception) != NULL) {
+        if (Z_TYPE_P(exception) != IS_UNDEF) zval_ptr_dtor(exception);
+        ZVAL_UNDEF(exception);
+        return false;
+    }
     zval code, text, result;
     ZVAL_STRING(&code, code_name);
     ZVAL_STR_COPY(&text, message);
