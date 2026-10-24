@@ -744,38 +744,6 @@
       ]
     },
     {
-      "id": "ts-browser-entry",
-      "kind": "feature",
-      "requirements": [
-        "ORE-6",
-        "ORES-53",
-        "ORES-54",
-        "ORES-55"
-      ],
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/browser-entry.mjs",
-          "id": "the subpath module reaches no Node module, undeclared package or Node global"
-        }
-      ]
-    },
-    {
-      "id": "ts-browser-entry-exports",
-      "kind": "feature",
-      "requirements": [
-        "ORE-1",
-        "ORES-52"
-      ],
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/browser-entry.mjs",
-          "id": "the subpath module exports exactly the parser functions"
-        }
-      ]
-    },
-    {
       "id": "ts-codec-values",
       "kind": "feature",
       "requirements": [
@@ -3106,20 +3074,6 @@
       ]
     },
     {
-      "id": "ts-package-declarations",
-      "kind": "feature",
-      "requirements": [
-        "INT-93"
-      ],
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/package-declarations.mjs",
-          "id": "package-declarations/no-driver-imports"
-        }
-      ]
-    },
-    {
       "id": "ts-param-uses",
       "kind": "feature",
       "requirements": [
@@ -3492,20 +3446,6 @@
       ]
     },
     {
-      "id": "ts-statement-fault-entry",
-      "kind": "feature",
-      "requirements": [
-        "PRT-50"
-      ],
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/statement_fault_entry.mjs",
-          "id": "statement-fault-entry/entry_point"
-        }
-      ]
-    },
-    {
       "id": "native-public-package-entry",
       "kind": "feature",
       "requirements": [
@@ -3541,22 +3481,6 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/package_entry.rs",
           "id": "package_entry::public_package_entry"
-        }
-      ]
-    },
-    {
-      "id": "ts-statement-fault-entry-other-entry-points",
-      "kind": "feature",
-      "requirements": [
-        "PRT-45",
-        "PRT-55",
-        "PRT-60"
-      ],
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/statement_fault_entry.mjs",
-          "id": "statement-fault-entry/other_entry_points"
         }
       ]
     },
@@ -8338,22 +8262,6 @@
       ]
     },
     {
-      "id": "go-internal-packages-go-orm-rollback-fault-entry",
-      "kind": "feature",
-      "requirements": [
-        "PRT-43",
-        "PRT-53",
-        "PRT-58"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/rollback_fault_entry_test.go",
-          "id": "TestRollbackFaultEntry"
-        }
-      ]
-    },
-    {
       "id": "go-internal-packages-go-orm-rollback",
       "kind": "feature",
       "requirements": [
@@ -10464,20 +10372,6 @@
       ]
     },
     {
-      "id": "rust-audit-transaction-entry-points",
-      "kind": "feature",
-      "requirements": [
-        "INT-44"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/audit.rs",
-          "id": "audit_transaction_entry_points"
-        }
-      ]
-    },
-    {
       "id": "rust-clock-microseconds-mysql",
       "kind": "feature",
       "requirements": [
@@ -11358,22 +11252,6 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/rollback.rs",
           "id": "rollback_failed_sqlite"
-        }
-      ]
-    },
-    {
-      "id": "rust-rollback-fault-entry",
-      "kind": "feature",
-      "requirements": [
-        "PRT-44",
-        "PRT-54",
-        "PRT-59"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/rollback.rs",
-          "id": "rollback_fault_entry"
         }
       ]
     },
@@ -13656,20 +13534,6 @@
       ]
     },
     {
-      "id": "py-test-statement-fault-entry",
-      "kind": "feature",
-      "requirements": [
-        "PRT-52"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_statement_fault_entry.py",
-          "id": "test_the_package_entry_point_does_not_export_the_fault"
-        }
-      ]
-    },
-    {
       "id": "py-test-styled-sql-null",
       "kind": "feature",
       "requirements": [
@@ -14167,51 +14031,6 @@
           "implementation": "typescript",
           "test": "packages/ts/tests/schema-set.mjs",
           "id": "schema-set/register_sends_no_statement/sqlite"
-        }
-      ]
-    },
-    {
-      "id": "py-test-rollback-fault-entry-package",
-      "kind": "feature",
-      "requirements": [
-        "PRT-47"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_rollback_fault.py",
-          "id": "test_the_package_entry_point_does_not_export_the_fault"
-        }
-      ]
-    },
-    {
-      "id": "py-test-rollback-fault-entry-other-entry-points",
-      "kind": "feature",
-      "requirements": [
-        "PRT-57",
-        "PRT-62"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_rollback_fault.py",
-          "id": "test_the_package_entry_point_does_not_export_the_other_entry_points"
-        }
-      ]
-    },
-    {
-      "id": "py-test-rollback-fault-entry-distribution",
-      "kind": "feature",
-      "requirements": [
-        "PRT-47",
-        "PRT-57",
-        "PRT-62"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_rollback_fault.py",
-          "id": "test_the_distribution_holds_the_test_entry_point_that_no_import_loads"
         }
       ]
     },
@@ -16590,48 +16409,6 @@
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/DeclarationsTest.php",
           "id": "DeclarationsTest::testRequiredModules"
-        }
-      ]
-    },
-    {
-      "id": "php-extension-internal-declarations-declarations",
-      "kind": "feature",
-      "requirements": [
-        "DBS-172"
-      ],
-      "bindings": [
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DeclarationsTest.php",
-          "id": "DeclarationsTest::testDeclarations"
-        }
-      ]
-    },
-    {
-      "id": "php-extension-internal-declarations-client",
-      "kind": "feature",
-      "requirements": [
-        "DBS-172"
-      ],
-      "bindings": [
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DeclarationsTest.php",
-          "id": "DeclarationsTest::testClient"
-        }
-      ]
-    },
-    {
-      "id": "php-extension-internal-declarations-package",
-      "kind": "feature",
-      "requirements": [
-        "INT-95"
-      ],
-      "bindings": [
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DeclarationsTest.php",
-          "id": "DeclarationsTest::testPackage"
         }
       ]
     },

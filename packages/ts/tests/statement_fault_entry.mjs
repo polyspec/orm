@@ -19,6 +19,7 @@ function check(cond, message) {
   if (!cond) { failures++; console.error(`FAIL ${current}: ${message}`); }
 }
 
+// Requirements: PRT-50.
 /** The test entry point exports the fault under orm-test only, and the package entry point exports none. */
 function checkFaultEntry() {
   const packageRoot = new URL('..', import.meta.url).pathname;
