@@ -1,5 +1,5 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 2626d8b82bdd220d88a3f13851226e99591950c52fe182ce8174f30517944d41 -->
+<!-- source-sha256: 7c200762554c3a16b5090ab5519b4c962f9cb69edd353547545cd07dc8b87fe7 -->
 # 변경 이력
 
 ## Unreleased
@@ -8,7 +8,7 @@
 
 - native PHP extension은 null transaction audit을 pending으로 처리해 첫 audited write에서 audit record를 insert한다. focused fake-PDO regression은 기존 guard에서 준비된 SQL이 하나도 실행되기 전에 실패하고, PHP 8.4.26에서 `make item-test ID=KSTD-7-5-1-1`은 통과한다(native test 1개, 11 assertions; declaration test 3개, 8 assertions; PHP source 비교 test 10개, 68 assertions) (KSTD-7-5-1-1).
 
-- Rust build generation은 상대 `set`, `scan`, 명시적 출력 경로를 `CARGO_MANIFEST_DIR` 기준으로 해석한다. 해당 변수가 필요한데 없거나 상대 경로이면 해결 방법을 포함한 오류를 반환하며, 절대 경로는 변수 없이 사용할 수 있고 암묵적 `OUT_DIR` 동작은 유지한다. Focused native environment unit은 격리된 subprocess 시나리오 8개를 포함해 1개 test를 통과한다(KSTD-5-70).
+- Rust build generation은 상대 `set`, `scan`, 명시적 출력 경로를 `CARGO_MANIFEST_DIR` 기준으로 해석한다. 해당 변수가 필요한데 없거나 상대 경로이면 해결 방법을 포함한 오류를 반환하며, 절대 경로는 변수 없이 사용할 수 있고 암묵적 `OUT_DIR` 동작은 유지한다. Focused native environment unit은 격리된 subprocess 시나리오 7개를 포함해 1개 test를 통과한다(KSTD-5-70).
 
 - Rust build scan이 비어 있는 model 출력 경로로 스캔하는 대신, `OUT_DIR`이 없을 때 해결 방법을 포함한 오류를 전파한다. `make rust-build-outdir-check`는 유효한 `OUT_DIR` 및 명시적 `out_dir` 대조군을 포함해 native test 1개를 통과한다. 수정 전 `60604e714189`에서는 변수가 없을 때의 assertion이 실패했다(KSTD-5-65).
 
