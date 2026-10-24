@@ -1036,7 +1036,7 @@ def _cancel_error_types(connection):
     if isinstance(connection, _MysqlConnection):
         import pymysql
 
-        return pymysql.MySQLError
+        return (pymysql.MySQLError, OSError)
     if isinstance(connection, _PostgresConnection):
         import psycopg
 
@@ -1069,51 +1069,71 @@ class _FutureCancellation:
             for operation in active:
                 operation.cancel()
 
-    def _observe_future(self, done: threading.Event | None = None) -> None:
-        try:
-            if self._future.cancelled():
-                self._mark_cancelled()
-        finally:
-            if done is not None:
-                done.set()
-
-    def _refresh_from_loop(self) -> None:
+    def _owner_loop_call(self, callback):
         try:
             current_loop = asyncio.get_running_loop()
         except RuntimeError:
             current_loop = None
         if current_loop is self._loop:
-            self._observe_future()
-            return
+            return callback()
         done = threading.Event()
+        result = []
+
+        def invoke():
+            try:
+                result.append(callback())
+            except BaseException as error:
+                result.append(error)
+            finally:
+                done.set()
+
         try:
-            self._loop.call_soon_threadsafe(self._observe_future, done)
+            self._loop.call_soon_threadsafe(invoke)
         except RuntimeError as error:
-            # A closed owner loop can no longer observe the Future safely. Fail closed and
-            # interrupt any active operation so an uncertain connection is discarded.
-            with self._lock:
-                self._cancelled = True
-                active = tuple(self._active)
-                for operation in active:
-                    operation.error = error
-                    operation.cancel()
-            return
+            raise OrmError(
+                codes.CONFIG, "the cancellation Future's event loop is closed", error
+            ) from error
         done.wait()
+        value = result[0]
+        if isinstance(value, BaseException):
+            raise value
+        return value
 
     def start(self, connection) -> _ActiveStatement:
         operation = _ActiveStatement(connection)
-        self._refresh_from_loop()
-        with self._lock:
-            if self._cancelled:
-                raise OrmError(codes.CANCELED, "statement cancelled")
-            self._active.add(operation)
+        def admit():
+            if self._future.cancelled():
+                self._mark_cancelled()
+            with self._lock:
+                if self._cancelled:
+                    return False
+                self._active.add(operation)
+                return True
+
+        if not self._owner_loop_call(admit):
+            raise OrmError(codes.CANCELED, "statement cancelled")
         return operation
 
     def finish(self, operation: _ActiveStatement) -> bool:
-        self._refresh_from_loop()
-        with self._lock:
-            self._active.discard(operation)
-            cancelled = self._cancelled
+        def settle():
+            if self._future.cancelled():
+                self._mark_cancelled()
+            with self._lock:
+                self._active.discard(operation)
+                return self._cancelled
+
+        try:
+            cancelled = self._owner_loop_call(settle)
+        except OrmError as error:
+            operation.cancel()
+            operation.wait()
+            with self._lock:
+                self._active.discard(operation)
+            raise OrmError(
+                codes.CONNECTION_LOST,
+                "the cancellation Future's event loop closed before statement cleanup",
+                error,
+            ) from error
         operation.wait()
         return cancelled
 

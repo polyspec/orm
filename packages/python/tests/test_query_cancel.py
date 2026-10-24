@@ -135,6 +135,25 @@ class QueryCancelTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(statements, ["KILL QUERY 73"])
         self.assertTrue(control.closed)
 
+        timeout = TimeoutError("control connection timed out")
+
+        def fail_connect(**_options):
+            raise timeout
+
+        with patch.dict(
+            sys.modules,
+            {
+                "pymysql": SimpleNamespace(
+                    connect=fail_connect,
+                    MySQLError=type("MySQLError", (Exception,), {}),
+                )
+            },
+        ):
+            operation = _ActiveStatement(mysql)
+            operation.cancel()
+            operation.wait()
+        self.assertIs(operation.error, timeout)
+
     async def test_cancel_interrupts_active_statement_and_root_is_reusable(self):
         with tempfile.TemporaryDirectory(prefix="orm-query-cancel-") as directory:
             db = Db(
