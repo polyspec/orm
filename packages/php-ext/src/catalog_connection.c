@@ -2872,27 +2872,32 @@ ZEND_METHOD(Polyspec_Orm_Catalog, insertRow)
 }
 
 /* Locks and validates the original snapshot before either mutation path writes its row. */
-static void cat_snapshot_table_names(zval *snapshot, zval *metadata_rv, zval *table_rv, zval **metadata,
-                                    zval **ns, zval **tname)
+typedef struct {
+    zval metadata_rv;
+    zval table_rv;
+    zval *metadata;
+    zval *ns;
+    zval *tname;
+} cat_snapshot_table;
+
+static void cat_snapshot_table_names(zval *snapshot, cat_snapshot_table *table)
 {
-    *metadata = catalog_prop(snapshot, "metadata", metadata_rv);
-    zval *table = catalog_prop(*metadata, "table", table_rv);
-    *ns = zend_hash_str_find(Z_ARRVAL_P(table), "namespace", 9);
-    *tname = zend_hash_str_find(Z_ARRVAL_P(table), "name", 4);
+    table->metadata = catalog_prop(snapshot, "metadata", &table->metadata_rv);
+    zval *definition = catalog_prop(table->metadata, "table", &table->table_rv);
+    table->ns = zend_hash_str_find(Z_ARRVAL_P(definition), "namespace", 9);
+    table->tname = zend_hash_str_find(Z_ARRVAL_P(definition), "name", 4);
 }
 
-static bool cat_locked_original(zval *db, const char *dialect, zval *pdo, zval *original, zval *keys, zval *descriptor)
+static bool cat_locked_original(zval *db, const char *dialect, zval *pdo, zval *original, zval *keys,
+                               cat_snapshot_table *table, zval *descriptor)
 {
-    zval rv_m, rv_t;
-    zval *metadata, *ns, *tname;
-    cat_snapshot_table_names(original, &rv_m, &rv_t, &metadata, &ns, &tname);
     zval current;
-    if (!cat_lookup(db, dialect, pdo, metadata, keys, true, &current)) return false;
-    if (!cat_describe(db, dialect, pdo, Z_STR_P(ns), Z_STR_P(tname), descriptor)) {
+    if (!cat_lookup(db, dialect, pdo, table->metadata, keys, true, &current)) return false;
+    if (!cat_describe(db, dialect, pdo, Z_STR_P(table->ns), Z_STR_P(table->tname), descriptor)) {
         zval_ptr_dtor(&current);
         return false;
     }
-    if (zend_compare(descriptor, metadata) != 0) {
+    if (zend_compare(descriptor, table->metadata) != 0) {
         zval_ptr_dtor(&current);
         zval_ptr_dtor(descriptor);
         db_throw_orm("ROW_SCHEMA_CHANGED", "original descriptor changed");
@@ -2910,6 +2915,13 @@ static bool cat_locked_original(zval *db, const char *dialect, zval *pdo, zval *
         return false;
     }
     return true;
+}
+
+static bool cat_prepare_snapshot_mutation(zval *db, const char *dialect, zval *pdo, zval *original, zval *keys,
+                                          cat_snapshot_table *table, zval *descriptor)
+{
+    cat_snapshot_table_names(original, table);
+    return cat_locked_original(db, dialect, pdo, original, keys, table, descriptor);
 }
 
 /* Rechecks the descriptor after mutation so the result never mixes schema versions. */
@@ -2959,22 +2971,20 @@ static bool cat_mutation_statement(zval *db, const char *dialect, zval *pdo, sma
 static bool cat_update_body(zval *db, const char *dialect, zval *pdo, zval *original, zval *changes, zval *updated, zval *keys,
                             zval *new_keys, zval *out)
 {
-    zval rv_m, rv_t;
-    zval *metadata, *ns, *tname;
-    cat_snapshot_table_names(original, &rv_m, &rv_t, &metadata, &ns, &tname);
+    cat_snapshot_table table;
     zval descriptor;
-    if (!cat_locked_original(db, dialect, pdo, original, keys, &descriptor)) return false;
+    if (!cat_prepare_snapshot_mutation(db, dialect, pdo, original, keys, &table, &descriptor)) return false;
     zval rv_cols, *columns = catalog_prop(&descriptor, "columns", &rv_cols);
     smart_str sql = {0};
     smart_str_appends(&sql, "UPDATE ");
-    cat_quote(&sql, Z_STR_P(ns), dialect);
+    cat_quote(&sql, Z_STR_P(table.ns), dialect);
     smart_str_appendc(&sql, '.');
-    cat_quote(&sql, Z_STR_P(tname), dialect);
+    cat_quote(&sql, Z_STR_P(table.tname), dialect);
     smart_str_appends(&sql, " SET ");
     zval args;
     array_init(&args);
     cat_append_changes(&sql, columns, changes, dialect, &args, CAT_CHANGE_ASSIGNMENTS);
-    cat_key_predicate(&sql, metadata, dialect, keys, &args);
+    cat_key_predicate(&sql, table.metadata, dialect, keys, &args);
     smart_str_0(&sql);
     if (!cat_mutation_statement(db, dialect, pdo, &sql, &args, &descriptor, CAT_MUTATION_UPDATE, NULL)) return false;
     zval after;
@@ -2989,7 +2999,7 @@ static bool cat_update_body(zval *db, const char *dialect, zval *pdo, zval *orig
         db_throw_orm("ROW_WRITE_MISMATCH", "expected exactly one updated row, got %u", n);
         return false;
     }
-    if (!cat_descriptor_unchanged(db, dialect, pdo, ns, tname, &descriptor)) {
+    if (!cat_descriptor_unchanged(db, dialect, pdo, table.ns, table.tname, &descriptor)) {
         zval_ptr_dtor(&after);
         zval_ptr_dtor(&descriptor);
         return false;
@@ -3095,19 +3105,17 @@ ZEND_METHOD(Polyspec_Orm_Catalog, updateRow)
 
 static bool cat_delete_body(zval *db, const char *dialect, zval *pdo, zval *original, zval *keys, zend_long *affected_out)
 {
-    zval rv_m, rv_t;
-    zval *metadata, *ns, *tname;
-    cat_snapshot_table_names(original, &rv_m, &rv_t, &metadata, &ns, &tname);
+    cat_snapshot_table table;
     zval descriptor;
-    if (!cat_locked_original(db, dialect, pdo, original, keys, &descriptor)) return false;
+    if (!cat_prepare_snapshot_mutation(db, dialect, pdo, original, keys, &table, &descriptor)) return false;
     smart_str sql = {0};
     smart_str_appends(&sql, "DELETE FROM ");
-    cat_quote(&sql, Z_STR_P(ns), dialect);
+    cat_quote(&sql, Z_STR_P(table.ns), dialect);
     smart_str_appendc(&sql, '.');
-    cat_quote(&sql, Z_STR_P(tname), dialect);
+    cat_quote(&sql, Z_STR_P(table.tname), dialect);
     zval args;
     array_init(&args);
-    cat_key_predicate(&sql, metadata, dialect, keys, &args);
+    cat_key_predicate(&sql, table.metadata, dialect, keys, &args);
     smart_str_0(&sql);
     zend_long affected;
     if (!cat_mutation_statement(db, dialect, pdo, &sql, &args, &descriptor, CAT_MUTATION_DELETE, &affected)) return false;
@@ -3123,7 +3131,7 @@ static bool cat_delete_body(zval *db, const char *dialect, zval *pdo, zval *orig
         db_throw_orm("ROW_WRITE_MISMATCH", "deleted row remains");
         return false;
     }
-    bool unchanged = cat_descriptor_unchanged(db, dialect, pdo, ns, tname, &descriptor);
+    bool unchanged = cat_descriptor_unchanged(db, dialect, pdo, table.ns, table.tname, &descriptor);
     zval_ptr_dtor(&descriptor);
     if (!unchanged) {
         return false;
