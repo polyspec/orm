@@ -110,10 +110,6 @@
           "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/go/model/coverage_constraints_and_relations_test.go",
-          "reason": "external: an internal package test of the go module that runs against a database or driver of an external service, not a helper the contract names (K313)"
-        },
-        {
           "glob": "packages/go/model/coverage_model_generation_test.go",
           "reason": "generated: an internal package test of the go module that checks the output of a generator of the owner, not a behaviour of the contract (K313)"
         },
@@ -242,10 +238,6 @@
           "reason": "harness: an internal test of the PHP package that checks the test harness of the owner, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
-          "reason": "external: an internal test of the PHP package that runs against a database or driver of an external service, not a helper the contract names (K313)"
-        },
-        {
           "glob": "packages/php/tests/CoverageModelGenerationTest.php",
           "reason": "generated: an internal test of the PHP package that checks the output of a generator of the owner, not a behaviour of the contract (K313)"
         },
@@ -308,7 +300,8 @@
       "errors": {
         "file": "packages/php-ext/src/polyspec_orm.stub.php",
         "pattern": "^    public const (?:string )?(\\w+) = '\\1';$"
-      }
+      },
+      "internal": []
     },
     {
       "name": "typescript",
@@ -1837,20 +1830,6 @@
           "implementation": "typescript",
           "test": "packages/ts/tests/coverage_audit_triggers.mjs",
           "id": "soft_delete_restore [sqlite]"
-        }
-      ]
-    },
-    {
-      "id": "ts-coverage_constraints_and_relations",
-      "kind": "feature",
-      "requirements": [
-        "CFG-33"
-      ],
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_constraints_and_relations.mjs",
-          "id": "constraint_errors [sqlite]"
         }
       ]
     },
@@ -12441,84 +12420,6 @@
       ]
     },
     {
-      "id": "rust-integration-coverage-constraints-and-relations-coverage-constraint-errors",
-      "kind": "feature",
-      "requirements": [
-        "CFG-33"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_constraints_and_relations.rs",
-          "id": "coverage_constraints_and_relations::coverage_constraint_errors",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=mysql",
-            "FEATURE_DSN_ENV=BENCH_MYSQL_DSN",
-            "FEATURE_TEST=coverage_constraints_and_relations::coverage_constraint_errors"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "rust-integration-coverage-constraints-and-relations-coverage-constraint-errors-postgres",
-      "kind": "feature",
-      "requirements": [
-        "CFG-33"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_constraints_and_relations.rs",
-          "id": "coverage_constraints_and_relations::coverage_constraint_errors",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=postgres",
-            "FEATURE_DSN_ENV=BENCH_POSTGRES_DSN",
-            "FEATURE_TEST=coverage_constraints_and_relations::coverage_constraint_errors"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "rust-integration-coverage-constraints-and-relations-coverage-constraint-errors-sqlite",
-      "kind": "feature",
-      "requirements": [
-        "CFG-33"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/integration/coverage_constraints_and_relations.rs",
-          "id": "coverage_constraints_and_relations::coverage_constraint_errors",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--test integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_constraints_and_relations::coverage_constraint_errors"
-          ]
-        }
-      ]
-    },
-    {
       "id": "rust-integration-result-chains-generated-model-result-chains-preserve-assigned-values",
       "kind": "feature",
       "requirements": [
@@ -13245,20 +13146,6 @@
           "implementation": "python",
           "test": "packages/python/tests/test_plan_cache_bound.py",
           "id": "test_out_of_range_in_param_is_refused"
-        }
-      ]
-    },
-    {
-      "id": "py-cov-constraints-and-relations-constraint-errors",
-      "kind": "feature",
-      "requirements": [
-        "CFG-33"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_constraints_and_relations.py",
-          "id": "test_constraint_errors"
         }
       ]
     },
@@ -21539,6 +21426,130 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/sqlite_concurrency.rs",
           "id": "reads_during_write"
+        }
+      ]
+    },
+    {
+      "id": "coverage-constraints-and-relations-constraint-errors",
+      "kind": "feature",
+      "requirements": [
+        "CFG-33"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/coverage_constraints_and_relations_test.go",
+          "id": "TestCoverageConstraintErrors",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-go-unit",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=TestCoverageConstraintErrors",
+            "FEATURE_PACKAGE=./model"
+          ]
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
+          "id": "CoverageConstraintsAndRelationsTest::testConstraintErrors"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageConstraintsAndRelationsExtensionTest.php",
+          "id": "CoverageConstraintsAndRelationsExtensionTest::testConstraintErrors"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_constraints_and_relations.mjs",
+          "id": "constraint_errors [sqlite]"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_constraints_and_relations.py",
+          "id": "test_constraint_errors"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/integration/coverage_constraints_and_relations.rs",
+          "id": "coverage_constraints_and_relations::coverage_constraint_errors",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-rust-database",
+            "FEATURE_CRATE=packages/rust/tests",
+            "FEATURE_CARGO_TARGET=--test integration",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=coverage_constraints_and_relations::coverage_constraint_errors"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coverage-constraints-and-relations-immutable-write",
+      "kind": "feature",
+      "requirements": [
+        "DBS-84"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/coverage_constraints_and_relations_test.go",
+          "id": "TestCoverageImmutableWrite",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-go-unit",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=TestCoverageImmutableWrite",
+            "FEATURE_PACKAGE=./model"
+          ]
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
+          "id": "CoverageConstraintsAndRelationsTest::testImmutableWrite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageConstraintsAndRelationsExtensionTest.php",
+          "id": "CoverageConstraintsAndRelationsExtensionTest::testImmutableWrite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_constraints_and_relations.mjs",
+          "id": "immutable_write [sqlite]"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_constraints_and_relations.py",
+          "id": "test_immutable_write"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/integration/coverage_constraints_and_relations.rs",
+          "id": "coverage_constraints_and_relations::coverage_immutable_write",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-rust-database",
+            "FEATURE_CRATE=packages/rust/tests",
+            "FEATURE_CARGO_TARGET=--test integration",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=coverage_constraints_and_relations::coverage_immutable_write"
+          ]
         }
       ]
     }

@@ -7353,8 +7353,8 @@
       "title": "Constraints and relations",
       "title_ko": "\uc81c\uc57d\uacfc \uad00\uacc4",
       "status": "partial",
-      "description": "Keep CHECK constraints, indexes, internal and external foreign keys, soft delete, immutable tables, and relation delete actions in the planner and the migration system.",
-      "description_ko": "CHECK \uc81c\uc57d, index, \ub0b4\ubd80\uc640 \uc678\ubd80 foreign key, soft delete, \ubcc0\uacbd \ubd88\uac00 \ud14c\uc774\ube14, \uad00\uacc4 \uc0ad\uc81c \ub3d9\uc791\uc744 planner\uc640 migration \uc2dc\uc2a4\ud15c\uc5d0\uc11c \uc720\uc9c0\ud55c\ub2e4.",
+      "description": "Keep CHECK constraints, indexes, internal and external foreign keys, external-document relation traversal, soft delete, immutable tables, and relation delete actions in the planner and migration system; refused immutable writes preserve the row and driver cause.",
+      "description_ko": "CHECK \uc81c\uc57d, index, \ub0b4\ubd80\u00b7\uc678\ubd80 foreign key, \uc678\ubd80 \ubb38\uc11c \uad00\uacc4 \uc870\ud68c, soft delete, \ubcc0\uacbd \ubd88\uac00 \ud14c\uc774\ube14\uacfc \uad00\uacc4 \uc0ad\uc81c \ub3d9\uc791\uc744 planner\uc640 migration \uc2dc\uc2a4\ud15c\uc5d0\uc11c \uc720\uc9c0\ud55c\ub2e4. \ubcc0\uacbd \ubd88\uac00 \uc4f0\uae30\uac00 \uac70\ubd80\ub418\uba74 \ud589\uacfc driver \uc6d0\uc778\uc744 \ubcf4\uc874\ud55c\ub2e4.",
       "inputs": {
         "type": "DbspecDocumentSet",
         "fields": [
@@ -7392,9 +7392,11 @@
         }
       ],
       "parity": [
-        "py-cov-constraints-and-relations-constraint-errors",
-        "rust-integration-coverage-constraints-and-relations-coverage-constraint-errors",
-        "ts-coverage_constraints_and_relations"
+        "coverage-audit-triggers-soft-delete-restore",
+        "client-query-relation",
+        "coverage-composite-keys-composite-key-rows",
+        "coverage-constraints-and-relations-immutable-write",
+        "coverage-constraints-and-relations-constraint-errors"
       ],
       "fixtures": [
         "contracts/fixtures/bench/bench.dbs",
@@ -7508,13 +7510,19 @@
       "coverage": {
         "kind": "database",
         "cases": [
-          "constraint_errors"
+          "constraint_errors",
+          "composite_key_rows",
+          "soft_delete_restore",
+          "external_relation",
+          "immutable_write"
         ],
         "owners": {
           "go": {
-            "part": "packages/go/model",
+            "part": "packages/go",
             "tests": [
-              "packages/go/model/coverage_constraints_and_relations_test.go"
+              "packages/go/model/coverage_constraints_and_relations_test.go",
+              "packages/go/model/coverage_composite_keys_test.go",
+              "packages/go/orm/coverage_audit_triggers_test.go"
             ],
             "commands": {
               "mysql": [
@@ -7522,10 +7530,36 @@
                   "runner": "go",
                   "test": "packages/go/model/coverage_constraints_and_relations_test.go",
                   "cases": [
-                    "constraint_errors"
+                    "constraint_errors",
+                    "external_relation",
+                    "immutable_write"
                   ],
                   "symbols": {
-                    "constraint_errors": "TestCoverageConstraintErrors"
+                    "constraint_errors": "TestCoverageConstraintErrors",
+                    "external_relation": "TestCoverageExternalRelation",
+                    "immutable_write": "TestCoverageImmutableWrite"
+                  },
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                },
+                {
+                  "runner": "go",
+                  "test": "packages/go/model/coverage_composite_keys_test.go",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "symbols": {
+                    "composite_key_rows": "TestCoverageCompositeKeyRows"
+                  },
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                },
+                {
+                  "runner": "go",
+                  "test": "packages/go/orm/coverage_audit_triggers_test.go",
+                  "cases": [
+                    "soft_delete_restore"
+                  ],
+                  "symbols": {
+                    "soft_delete_restore": "TestCoverageSoftDeleteRestore"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -7535,10 +7569,36 @@
                   "runner": "go",
                   "test": "packages/go/model/coverage_constraints_and_relations_test.go",
                   "cases": [
-                    "constraint_errors"
+                    "constraint_errors",
+                    "external_relation",
+                    "immutable_write"
                   ],
                   "symbols": {
-                    "constraint_errors": "TestCoverageConstraintErrors"
+                    "constraint_errors": "TestCoverageConstraintErrors",
+                    "external_relation": "TestCoverageExternalRelation",
+                    "immutable_write": "TestCoverageImmutableWrite"
+                  },
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                },
+                {
+                  "runner": "go",
+                  "test": "packages/go/model/coverage_composite_keys_test.go",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "symbols": {
+                    "composite_key_rows": "TestCoverageCompositeKeyRows"
+                  },
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                },
+                {
+                  "runner": "go",
+                  "test": "packages/go/orm/coverage_audit_triggers_test.go",
+                  "cases": [
+                    "soft_delete_restore"
+                  ],
+                  "symbols": {
+                    "soft_delete_restore": "TestCoverageSoftDeleteRestore"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -7548,20 +7608,53 @@
                   "runner": "go",
                   "test": "packages/go/model/coverage_constraints_and_relations_test.go",
                   "cases": [
-                    "constraint_errors"
+                    "constraint_errors",
+                    "external_relation",
+                    "immutable_write"
                   ],
                   "symbols": {
-                    "constraint_errors": "TestCoverageConstraintErrors"
+                    "constraint_errors": "TestCoverageConstraintErrors",
+                    "external_relation": "TestCoverageExternalRelation",
+                    "immutable_write": "TestCoverageImmutableWrite"
+                  },
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                },
+                {
+                  "runner": "go",
+                  "test": "packages/go/model/coverage_composite_keys_test.go",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "symbols": {
+                    "composite_key_rows": "TestCoverageCompositeKeyRows"
+                  },
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                },
+                {
+                  "runner": "go",
+                  "test": "packages/go/orm/coverage_audit_triggers_test.go",
+                  "cases": [
+                    "soft_delete_restore"
+                  ],
+                  "symbols": {
+                    "soft_delete_restore": "TestCoverageSoftDeleteRestore"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
-            }
+            },
+            "inputs": [
+              "contracts/fixtures/audit.dbs",
+              "contracts/fixtures/audit_columns.dbs",
+              "contracts/fixtures/refusal.dbs"
+            ]
           },
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/CoverageConstraintsAndRelationsTest.php"
+              "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
+              "packages/php/tests/CoverageCompositeKeysTest.php",
+              "packages/php/tests/CoverageAuditTriggersTest.php"
             ],
             "commands": {
               "mysql": [
@@ -7569,9 +7662,31 @@
                   "runner": "php",
                   "test": "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
                   "cases": [
-                    "constraint_errors"
+                    "constraint_errors",
+                    "external_relation",
+                    "immutable_write"
                   ],
-                  "symbols": {"constraint_errors": "testConstraintErrors"},
+                  "symbols": {
+                    "constraint_errors": "testConstraintErrors",
+                    "external_relation": "testExternalRelation",
+                    "immutable_write": "testImmutableWrite"
+                  },
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/CoverageCompositeKeysTest.php",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/CoverageAuditTriggersTest.php",
+                  "cases": [
+                    "soft_delete_restore"
+                  ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
               ],
@@ -7580,9 +7695,31 @@
                   "runner": "php",
                   "test": "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
                   "cases": [
-                    "constraint_errors"
+                    "constraint_errors",
+                    "external_relation",
+                    "immutable_write"
                   ],
-                  "symbols": {"constraint_errors": "testConstraintErrors"},
+                  "symbols": {
+                    "constraint_errors": "testConstraintErrors",
+                    "external_relation": "testExternalRelation",
+                    "immutable_write": "testImmutableWrite"
+                  },
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/CoverageCompositeKeysTest.php",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/CoverageAuditTriggersTest.php",
+                  "cases": [
+                    "soft_delete_restore"
+                  ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
@@ -7591,18 +7728,50 @@
                   "runner": "php",
                   "test": "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
                   "cases": [
-                    "constraint_errors"
+                    "constraint_errors",
+                    "external_relation",
+                    "immutable_write"
                   ],
-                  "symbols": {"constraint_errors": "testConstraintErrors"},
+                  "symbols": {
+                    "constraint_errors": "testConstraintErrors",
+                    "external_relation": "testExternalRelation",
+                    "immutable_write": "testImmutableWrite"
+                  },
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/CoverageCompositeKeysTest.php",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/CoverageAuditTriggersTest.php",
+                  "cases": [
+                    "soft_delete_restore"
+                  ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
-            }
+            },
+            "inputs": [
+              "packages/php/tests/restore_case.php",
+              "packages/php/tests/audit_case.php",
+              "contracts/fixtures/audit.dbs",
+              "contracts/fixtures/audit_columns.dbs",
+              "contracts/fixtures/restore.dbs",
+              "contracts/fixtures/refusal.dbs"
+            ]
           },
           "rust": {
-            "part": "packages/rust/tests",
+            "part": "packages/rust",
             "tests": [
-              "packages/rust/tests/tests/integration/coverage_constraints_and_relations.rs"
+              "packages/rust/tests/tests/integration/coverage_constraints_and_relations.rs",
+              "packages/rust/tests/tests/integration/coverage_composite_keys.rs",
+              "packages/rust/orm/tests/coverage_audit_triggers.rs"
             ],
             "commands": {
               "mysql": [
@@ -7610,10 +7779,36 @@
                   "runner": "cargo",
                   "test": "packages/rust/tests/tests/integration/coverage_constraints_and_relations.rs",
                   "cases": [
-                    "constraint_errors"
+                    "constraint_errors",
+                    "external_relation",
+                    "immutable_write"
                   ],
                   "symbols": {
-                    "constraint_errors": "coverage_constraints_and_relations::coverage_constraint_errors"
+                    "constraint_errors": "coverage_constraints_and_relations::coverage_constraint_errors",
+                    "external_relation": "coverage_constraints_and_relations::coverage_external_relation",
+                    "immutable_write": "coverage_constraints_and_relations::coverage_immutable_write"
+                  },
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                },
+                {
+                  "runner": "cargo",
+                  "test": "packages/rust/tests/tests/integration/coverage_composite_keys.rs",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "symbols": {
+                    "composite_key_rows": "coverage_composite_keys::coverage_composite_key_rows"
+                  },
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                },
+                {
+                  "runner": "cargo",
+                  "test": "packages/rust/orm/tests/coverage_audit_triggers.rs",
+                  "cases": [
+                    "soft_delete_restore"
+                  ],
+                  "symbols": {
+                    "soft_delete_restore": "coverage_soft_delete_restore"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -7623,10 +7818,36 @@
                   "runner": "cargo",
                   "test": "packages/rust/tests/tests/integration/coverage_constraints_and_relations.rs",
                   "cases": [
-                    "constraint_errors"
+                    "constraint_errors",
+                    "external_relation",
+                    "immutable_write"
                   ],
                   "symbols": {
-                    "constraint_errors": "coverage_constraints_and_relations::coverage_constraint_errors"
+                    "constraint_errors": "coverage_constraints_and_relations::coverage_constraint_errors",
+                    "external_relation": "coverage_constraints_and_relations::coverage_external_relation",
+                    "immutable_write": "coverage_constraints_and_relations::coverage_immutable_write"
+                  },
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                },
+                {
+                  "runner": "cargo",
+                  "test": "packages/rust/tests/tests/integration/coverage_composite_keys.rs",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "symbols": {
+                    "composite_key_rows": "coverage_composite_keys::coverage_composite_key_rows"
+                  },
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                },
+                {
+                  "runner": "cargo",
+                  "test": "packages/rust/orm/tests/coverage_audit_triggers.rs",
+                  "cases": [
+                    "soft_delete_restore"
+                  ],
+                  "symbols": {
+                    "soft_delete_restore": "coverage_soft_delete_restore"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -7636,20 +7857,54 @@
                   "runner": "cargo",
                   "test": "packages/rust/tests/tests/integration/coverage_constraints_and_relations.rs",
                   "cases": [
-                    "constraint_errors"
+                    "constraint_errors",
+                    "external_relation",
+                    "immutable_write"
                   ],
                   "symbols": {
-                    "constraint_errors": "coverage_constraints_and_relations::coverage_constraint_errors"
+                    "constraint_errors": "coverage_constraints_and_relations::coverage_constraint_errors",
+                    "external_relation": "coverage_constraints_and_relations::coverage_external_relation",
+                    "immutable_write": "coverage_constraints_and_relations::coverage_immutable_write"
+                  },
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                },
+                {
+                  "runner": "cargo",
+                  "test": "packages/rust/tests/tests/integration/coverage_composite_keys.rs",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "symbols": {
+                    "composite_key_rows": "coverage_composite_keys::coverage_composite_key_rows"
+                  },
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                },
+                {
+                  "runner": "cargo",
+                  "test": "packages/rust/orm/tests/coverage_audit_triggers.rs",
+                  "cases": [
+                    "soft_delete_restore"
+                  ],
+                  "symbols": {
+                    "soft_delete_restore": "coverage_soft_delete_restore"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
-            }
+            },
+            "inputs": [
+              "contracts/fixtures/audit.dbs",
+              "contracts/fixtures/audit_columns.dbs",
+              "contracts/fixtures/restore.dbs",
+              "contracts/fixtures/refusal.dbs"
+            ]
           },
           "typescript": {
             "part": "packages/ts/tests",
             "tests": [
-              "packages/ts/tests/coverage_constraints_and_relations.mjs"
+              "packages/ts/tests/coverage_constraints_and_relations.mjs",
+              "packages/ts/tests/coverage_composite_keys.mjs",
+              "packages/ts/tests/coverage_audit_triggers.mjs"
             ],
             "commands": {
               "mysql": [
@@ -7657,7 +7912,25 @@
                   "runner": "node",
                   "test": "packages/ts/tests/coverage_constraints_and_relations.mjs",
                   "cases": [
-                    "constraint_errors"
+                    "constraint_errors",
+                    "external_relation",
+                    "immutable_write"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                },
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/coverage_composite_keys.mjs",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                },
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/coverage_audit_triggers.mjs",
+                  "cases": [
+                    "soft_delete_restore"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -7667,7 +7940,25 @@
                   "runner": "node",
                   "test": "packages/ts/tests/coverage_constraints_and_relations.mjs",
                   "cases": [
-                    "constraint_errors"
+                    "constraint_errors",
+                    "external_relation",
+                    "immutable_write"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                },
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/coverage_composite_keys.mjs",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                },
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/coverage_audit_triggers.mjs",
+                  "cases": [
+                    "soft_delete_restore"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -7677,17 +7968,44 @@
                   "runner": "node",
                   "test": "packages/ts/tests/coverage_constraints_and_relations.mjs",
                   "cases": [
-                    "constraint_errors"
+                    "constraint_errors",
+                    "external_relation",
+                    "immutable_write"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                },
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/coverage_composite_keys.mjs",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                },
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/coverage_audit_triggers.mjs",
+                  "cases": [
+                    "soft_delete_restore"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
-            }
+            },
+            "inputs": [
+              "packages/ts/tests/restore_case.mjs",
+              "contracts/fixtures/audit.dbs",
+              "contracts/fixtures/audit_columns.dbs",
+              "contracts/fixtures/restore.dbs",
+              "contracts/fixtures/refusal.dbs"
+            ]
           },
           "python": {
             "part": "packages/python/tests",
             "tests": [
-              "packages/python/tests/coverage_constraints_and_relations.py"
+              "packages/python/tests/coverage_constraints_and_relations.py",
+              "packages/python/tests/coverage_composite_keys.py",
+              "packages/python/tests/coverage_audit_triggers.py"
             ],
             "commands": {
               "mysql": [
@@ -7695,7 +8013,25 @@
                   "runner": "python",
                   "test": "packages/python/tests/coverage_constraints_and_relations.py",
                   "cases": [
-                    "constraint_errors"
+                    "constraint_errors",
+                    "external_relation",
+                    "immutable_write"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                },
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_composite_keys.py",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                },
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_audit_triggers.py",
+                  "cases": [
+                    "soft_delete_restore"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -7705,7 +8041,25 @@
                   "runner": "python",
                   "test": "packages/python/tests/coverage_constraints_and_relations.py",
                   "cases": [
-                    "constraint_errors"
+                    "constraint_errors",
+                    "external_relation",
+                    "immutable_write"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                },
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_composite_keys.py",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                },
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_audit_triggers.py",
+                  "cases": [
+                    "soft_delete_restore"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -7715,20 +8069,55 @@
                   "runner": "python",
                   "test": "packages/python/tests/coverage_constraints_and_relations.py",
                   "cases": [
-                    "constraint_errors"
+                    "constraint_errors",
+                    "external_relation",
+                    "immutable_write"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                },
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_composite_keys.py",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                },
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_audit_triggers.py",
+                  "cases": [
+                    "soft_delete_restore"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
-            }
+            },
+            "inputs": [
+              "packages/python/tests/test_sqlite.py",
+              "contracts/fixtures/audit.dbs",
+              "contracts/fixtures/audit_columns.dbs",
+              "contracts/fixtures/restore.dbs",
+              "contracts/fixtures/refusal.dbs"
+            ]
           },
           "php-extension": {
             "part": "packages/php-ext/tests",
             "tests": [
-              "packages/php-ext/tests/CoverageConstraintsAndRelationsExtensionTest.php"
+              "packages/php-ext/tests/CoverageConstraintsAndRelationsExtensionTest.php",
+              "packages/php-ext/tests/CoverageCompositeKeysExtensionTest.php",
+              "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php"
             ],
             "inputs": [
-              "packages/php/tests/CoverageConstraintsAndRelationsTest.php"
+              "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
+              "packages/php/tests/restore_case.php",
+              "packages/php/tests/audit_case.php",
+              "contracts/fixtures/audit.dbs",
+              "contracts/fixtures/audit_columns.dbs",
+              "contracts/fixtures/restore.dbs",
+              "packages/php/tests/CoverageAuditTriggersTest.php",
+              "packages/php/tests/CoverageAuditColumnsTest.php",
+              "contracts/fixtures/refusal.dbs"
             ],
             "commands": {
               "mysql": [
@@ -7736,9 +8125,31 @@
                   "runner": "php",
                   "test": "packages/php-ext/tests/CoverageConstraintsAndRelationsExtensionTest.php",
                   "cases": [
-                    "constraint_errors"
+                    "constraint_errors",
+                    "external_relation",
+                    "immutable_write"
                   ],
-                  "symbols": {"constraint_errors": "testConstraintErrors"},
+                  "symbols": {
+                    "constraint_errors": "testConstraintErrors",
+                    "external_relation": "testExternalRelation",
+                    "immutable_write": "testImmutableWrite"
+                  },
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageCompositeKeysExtensionTest.php",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
+                  "cases": [
+                    "soft_delete_restore"
+                  ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
               ],
@@ -7747,9 +8158,31 @@
                   "runner": "php",
                   "test": "packages/php-ext/tests/CoverageConstraintsAndRelationsExtensionTest.php",
                   "cases": [
-                    "constraint_errors"
+                    "constraint_errors",
+                    "external_relation",
+                    "immutable_write"
                   ],
-                  "symbols": {"constraint_errors": "testConstraintErrors"},
+                  "symbols": {
+                    "constraint_errors": "testConstraintErrors",
+                    "external_relation": "testExternalRelation",
+                    "immutable_write": "testImmutableWrite"
+                  },
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageCompositeKeysExtensionTest.php",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
+                  "cases": [
+                    "soft_delete_restore"
+                  ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
@@ -7758,9 +8191,31 @@
                   "runner": "php",
                   "test": "packages/php-ext/tests/CoverageConstraintsAndRelationsExtensionTest.php",
                   "cases": [
-                    "constraint_errors"
+                    "constraint_errors",
+                    "external_relation",
+                    "immutable_write"
                   ],
-                  "symbols": {"constraint_errors": "testConstraintErrors"},
+                  "symbols": {
+                    "constraint_errors": "testConstraintErrors",
+                    "external_relation": "testExternalRelation",
+                    "immutable_write": "testImmutableWrite"
+                  },
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageCompositeKeysExtensionTest.php",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                },
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
+                  "cases": [
+                    "soft_delete_restore"
+                  ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
