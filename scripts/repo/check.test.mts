@@ -13,7 +13,7 @@ import { connectProbeErrors } from './probes.mts';
 import { composerVersionErrors, goModulePathErrors, goVersionErrors, phpVersionErrors, rustToolchainErrors } from './toolchains.mts';
 import { execFileSync } from 'node:child_process';
 import { CI_SETUP, expandNeeds, GROUP_OUTPUTS, groupOutputs, groupSetupErrors, RUNNER_STEPS, stepCondition } from '../check/ci-setup.mts';
-import { declaredNeeds } from '../check/inputs.mts';
+import { declaredNeeds, readCheckInputs } from '../check/inputs.mts';
 import { readFeatures } from '../features/manifest.mts';
 import { readComposer, readPackage } from '../json/formats.mts';
 import { kitCopies } from './kit-copies.mts';
@@ -374,6 +374,16 @@ caseTest('the CI groups run every target of CHECK_TARGETS in exactly one job', C
   }
   assert.ok(workflow.includes('        run: make check-run GROUP=${{ matrix.group }}\n'), 'ci.yml runs make check-run for the group of its matrix');
   assert.deepEqual(ciCheckTargetErrors(workflow, makefile), []);
+});
+
+caseTest('database-free dbspec verification stays in the static CI group', COMPUTE, () => {
+  const makefile = text('Makefile');
+  const staticGroup = /^CI_TARGETS_static = (.*)$/m.exec(makefile)?.[1]?.split(/\s+/) ?? [];
+  const dbspecApplyGroup = /^CI_TARGETS_dbspec_apply = (.*)$/m.exec(makefile)?.[1]?.split(/\s+/) ?? [];
+  assert.ok(staticGroup.includes('dbspec-verify-errors-check'));
+  assert.ok(!dbspecApplyGroup.includes('dbspec-verify-errors-check'));
+  const inputs = readCheckInputs(repository.pathname);
+  assert.ok(!inputs.targets['dbspec-verify-errors-check']?.needs.includes('databases'));
 });
 
 caseTest('a CI group set that omits, repeats or adds a target of CHECK_TARGETS fails', COMPUTE, () => {
