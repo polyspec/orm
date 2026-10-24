@@ -1,10 +1,81 @@
 import os
+import re
 import sqlite3
 import tempfile
 import unittest
 
 from . import testcase
-from polyspec.orm import connect_catalog
+from polyspec.orm import OrmError, connect_catalog
+from polyspec.orm.catalog import (
+    CatalogColumn,
+    CatalogConnection,
+    CatalogTableMetadata,
+    _Raw,
+)
+from polyspec.orm.database import parse_dsn
+
+
+class _FakeMysqlSession:
+    def __init__(
+        self, metadata, row, insert_id=None, preexisting=False, uses_preflight=False
+    ):
+        self.metadata = metadata
+        self.row = row
+        self.insert_id = insert_id
+        self.preexisting = preexisting
+        self.uses_preflight = uses_preflight
+        self.calls = []
+        self.locator_reads = 0
+
+    def run(self, sql, params=(), max_rows=None, max_bytes=None):
+        self.calls.append(("run", sql, list(params)))
+        names = [column.name for column in self.metadata.columns]
+        if sql.startswith("SELECT 1 FROM"):
+            return _Raw([], [], 0)
+        if sql.startswith("INSERT"):
+            return _Raw([], [], 1, insert_id=self.insert_id)
+        if "LIMIT 2 FOR UPDATE" in sql:
+            self.locator_reads += 1
+            if self.uses_preflight:
+                if self.preexisting and self.locator_reads == 1:
+                    return _Raw(names, [self.row], 1)
+                if self.locator_reads == 1:
+                    return _Raw(names, [], 0)
+            return _Raw(names, [self.row], 1)
+        raise AssertionError(f"unexpected SQL: {sql}")
+
+    def lookup(self, metadata, keys, lock):
+        self.calls.append(("lookup", list(keys), lock))
+        expected = [
+            self.row[metadata.column_index(name)] for name in metadata.primary_key
+        ]
+        return [self.row] if keys == expected else []
+
+    def describe(self, table):
+        self.calls.append(("describe", table))
+        return self.metadata
+
+    def mysql_safety(self, metadata):
+        self.calls.append(("mysql_safety", metadata))
+
+
+class _FakeMysqlCatalog(CatalogConnection):
+    def __init__(self, metadata, session):
+        super().__init__(parse_dsn("mysql://user:password@localhost/catalog"))
+        self.session = session
+
+    def _write(self, work):
+        return work(self.session)
+
+
+def _mysql_metadata(columns, primary_key, table_name):
+    return CatalogTableMetadata(
+        table={"namespace": "catalog", "name": table_name},
+        kind="table",
+        columns=columns,
+        primary_key=primary_key,
+        reliable_row_identity=True,
+    )
 
 
 class CatalogAutoKeyTest(unittest.TestCase):
@@ -39,6 +110,196 @@ class CatalogAutoKeyTest(unittest.TestCase):
                 self.assertEqual(stored.rows, [[1, "generated"]])
             finally:
                 catalog.close()
+
+    def test_sqlite_literal_and_expression_default_primary_keys(self):
+        with tempfile.TemporaryDirectory(
+            prefix="orm-catalog-default-key-"
+        ) as directory:
+            path = os.path.join(directory, "catalog.sqlite3")
+            raw = sqlite3.connect(path)
+            try:
+                raw.execute(
+                    "CREATE TABLE literal_key (tenant BIGINT NOT NULL, seq VARCHAR(30) NOT NULL DEFAULT 'generated', n BIGINT NOT NULL, PRIMARY KEY (tenant, seq))"
+                )
+                raw.execute(
+                    "CREATE TABLE expression_key (seq TEXT NOT NULL DEFAULT (lower(hex(randomblob(16)))) PRIMARY KEY, n BIGINT NOT NULL UNIQUE, label TEXT NULL)"
+                )
+            finally:
+                raw.close()
+
+            catalog = connect_catalog(f"sqlite://{path}")
+            try:
+                literal_table = {"namespace": "main", "name": "literal_key"}
+                literal_metadata = catalog.describe_table(literal_table)
+                self.assertEqual(literal_metadata.primary_key, ["tenant", "seq"])
+                literal_seq = literal_metadata.columns[1]
+                self.assertFalse(literal_seq.automatic_key)
+                self.assertEqual(literal_seq.default_expression, "'generated'")
+                self.assertTrue(literal_seq.expression_default)
+                literal_insert = catalog.insert_row(
+                    literal_metadata, [("tenant", 2), ("n", 50)]
+                )
+                self.assertEqual(literal_insert.rows, [[2, "generated", 50]])
+                literal_stored = catalog.read_only_query(
+                    'SELECT "tenant", "seq", "n" FROM "literal_key"', []
+                )
+                self.assertEqual(literal_insert.rows, literal_stored.rows)
+                explicit_insert = catalog.insert_row(
+                    literal_metadata,
+                    [("tenant", 3), ("seq", "explicit"), ("n", 51)],
+                )
+                self.assertEqual(explicit_insert.rows, [[3, "explicit", 51]])
+
+                expression_table = {"namespace": "main", "name": "expression_key"}
+                expression_metadata = catalog.describe_table(expression_table)
+                self.assertEqual(expression_metadata.primary_key, ["seq"])
+                expression_key = expression_metadata.columns[0]
+                self.assertFalse(expression_key.automatic_key)
+                self.assertTrue(expression_key.expression_default)
+                self.assertIn("randomblob", expression_key.default_expression)
+                expression_insert = catalog.insert_row(
+                    expression_metadata, [("n", 1), ("label", None)]
+                )
+                self.assertEqual(len(expression_insert.rows), 1)
+                self.assertEqual(len(expression_insert.rows[0]), 3)
+                self.assertRegex(
+                    expression_insert.rows[0][0], re.compile(r"[0-9a-f]{32}")
+                )
+                self.assertEqual(expression_insert.rows[0][1:], [1, None])
+                expression_stored = catalog.read_only_query(
+                    'SELECT "seq", "n", "label" FROM "expression_key"', []
+                )
+                self.assertEqual(expression_insert.rows, expression_stored.rows)
+                with self.assertRaises(OrmError) as raised:
+                    catalog.insert_row(expression_metadata, [("n", 1), ("label", None)])
+                self.assertEqual(raised.exception.code, "DUPLICATE_KEY")
+                after_rejection = catalog.read_only_query(
+                    'SELECT "seq", "n", "label" FROM "expression_key"', []
+                )
+                self.assertEqual(expression_insert.rows, after_rejection.rows)
+            finally:
+                catalog.close()
+
+    def test_mysql_literal_default_composite_key_uses_statement_default(self):
+        metadata = _mysql_metadata(
+            [
+                CatalogColumn("tenant", "bigint", False, False),
+                CatalogColumn(
+                    "seq", "varchar(30)", False, False, False, "'generated'", False
+                ),
+                CatalogColumn("n", "bigint", False, False),
+            ],
+            ["tenant", "seq"],
+            "literal_key",
+        )
+        session = _FakeMysqlSession(metadata, [2, "generated", 50])
+        catalog = _FakeMysqlCatalog(metadata, session)
+
+        result = catalog.insert_row(metadata, [("tenant", 2), ("n", 50)])
+
+        self.assertEqual(result.rows, [[2, "generated", 50]])
+        statements = [call[1] for call in session.calls if call[0] == "run"]
+        self.assertTrue(statements[0].startswith("SELECT 1 FROM"))
+        self.assertIn("DEFAULT(`seq`)", statements[-1])
+        describe_index = next(
+            index for index, call in enumerate(session.calls) if call[0] == "describe"
+        )
+        self.assertLess(
+            next(
+                index
+                for index, call in enumerate(session.calls)
+                if call[0] == "run" and call[1].startswith("SELECT 1 FROM")
+            ),
+            describe_index,
+        )
+
+    def test_mysql_automatic_key_uses_insert_acknowledgement(self):
+        metadata = _mysql_metadata(
+            [
+                CatalogColumn("id", "bigint", False, False, True),
+                CatalogColumn("payload", "text", False, False),
+            ],
+            ["id"],
+            "automatic_key",
+        )
+        session = _FakeMysqlSession(metadata, [17, "generated"], insert_id=17)
+        catalog = _FakeMysqlCatalog(metadata, session)
+
+        result = catalog.insert_row(metadata, [("payload", "generated")])
+
+        self.assertEqual(result.rows, [[17, "generated"]])
+        statements = [call[1] for call in session.calls if call[0] == "run"]
+        self.assertTrue(statements[1].startswith("INSERT"))
+        self.assertIn("`id`=?", statements[2])
+
+    def test_mysql_expression_default_uses_bounded_input_locator(self):
+        metadata = _mysql_metadata(
+            [
+                CatalogColumn(
+                    "seq", "varchar(36)", False, False, False, "UUID()", True
+                ),
+                CatalogColumn("n", "bigint", False, False),
+                CatalogColumn("label", "varchar(20)", True, False),
+            ],
+            ["seq"],
+            "expression_key",
+        )
+        row = ["a" * 36, 1, None]
+        session = _FakeMysqlSession(metadata, row, uses_preflight=True)
+        catalog = _FakeMysqlCatalog(metadata, session)
+
+        result = catalog.insert_row(metadata, [("n", 1), ("label", None)])
+
+        self.assertEqual(result.rows, [row])
+        locator_calls = [
+            call
+            for call in session.calls
+            if call[0] == "run" and "LIMIT 2 FOR UPDATE" in call[1]
+        ]
+        self.assertEqual(len(locator_calls), 2)
+        self.assertIn("`label` IS NULL", locator_calls[0][1])
+        self.assertEqual(locator_calls[0][2], [1])
+        insert_index = next(
+            index
+            for index, call in enumerate(session.calls)
+            if call[0] == "run" and call[1].startswith("INSERT")
+        )
+        self.assertLess(
+            next(
+                index
+                for index, call in enumerate(session.calls)
+                if call[0] == "run" and "LIMIT 2 FOR UPDATE" in call[1]
+            ),
+            insert_index,
+        )
+
+    def test_mysql_expression_locator_rejects_existing_match_before_insert(self):
+        metadata = _mysql_metadata(
+            [
+                CatalogColumn(
+                    "seq", "varchar(36)", False, False, False, "UUID()", True
+                ),
+                CatalogColumn("n", "bigint", False, False),
+                CatalogColumn("label", "varchar(20)", True, False),
+            ],
+            ["seq"],
+            "expression_key",
+        )
+        session = _FakeMysqlSession(
+            metadata, ["a" * 36, 1, None], preexisting=True, uses_preflight=True
+        )
+        catalog = _FakeMysqlCatalog(metadata, session)
+
+        with self.assertRaises(OrmError) as raised:
+            catalog.insert_row(metadata, [("n", 1), ("label", None)])
+
+        self.assertEqual(raised.exception.code, "ROW_IDENTITY_AMBIGUOUS")
+        self.assertFalse(
+            any(
+                call[0] == "run" and call[1].startswith("INSERT")
+                for call in session.calls
+            )
+        )
 
 
 if __name__ == "__main__":

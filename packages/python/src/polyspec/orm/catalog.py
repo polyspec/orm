@@ -1252,37 +1252,74 @@ class CatalogConnection:
         key_indexes = _descriptor(declared)
         changes = _changes(declared, values, codes.ROW_INSERT_INVALID)
         provided = {index: value for index, value in changes}
-        keys = []
-        generated_key = False
+        omitted_indexes = []
         for index in key_indexes:
             if index not in provided:
                 column = declared.columns[index]
-                if (
-                    len(key_indexes) != 1
-                    or not column.automatic_key
-                    or column.default_expression is not None
-                ):
+                if not column.automatic_key and column.default_expression is None:
                     raise _error(
-                        codes.ROW_INSERT_INVALID,
-                        f"primary-key value of {column.name!r} is required",
+                        codes.ROW_INSERT_IDENTITY_REQUIRED,
+                        f"primary key {column.name!r} has no generator",
                     )
-                generated_key = True
-            else:
-                keys.append(provided[index])
+                omitted_indexes.append(index)
+        omitted_auto_keys = [
+            index for index in omitted_indexes if declared.columns[index].automatic_key
+        ]
+        if self._dialect == "mysql" and len(omitted_auto_keys) > 1:
+            raise _error(
+                codes.ROW_INSERT_UNSUPPORTED,
+                "multiple AUTO_INCREMENT primary-key columns are unsupported",
+            )
 
         def work(session: _Session) -> CatalogMutationResult:
+            keys = [provided[index] for index in key_indexes if index in provided]
             if self._dialect == "postgres":
                 # The lock that an INSERT takes, held before the schema check so that no DDL changes the table in between.
                 session.run(
                     f"LOCK TABLE {_qualified(declared.table, self._dialect)} IN ROW EXCLUSIVE MODE"
                 )
-            if not generated_key and session.lookup(declared, keys, lock=True):
+            if self._dialect == "mysql" and omitted_indexes:
+                session.run(
+                    f"SELECT 1 FROM {_qualified(declared.table, self._dialect)} LIMIT 0 FOR UPDATE"
+                )
+            if not omitted_indexes and session.lookup(declared, keys, lock=True):
                 raise _error(codes.ROW_CONFLICT, "insertion key already exists")
             descriptor = session.describe(declared.table)
             if descriptor != declared:
                 raise _error(codes.ROW_SCHEMA_CHANGED, "insertion descriptor changed")
             if self._dialect == "mysql":
                 session.mysql_safety(descriptor)
+            mysql_locator = self._dialect == "mysql" and any(
+                descriptor.columns[index].expression_default
+                for index in omitted_indexes
+            )
+            locator_sql = None
+            locator_args = []
+            if mysql_locator:
+                predicates = []
+                for index, value in changes:
+                    column = _quote(descriptor.columns[index].name, "mysql")
+                    if value is None:
+                        predicates.append(f"{column} IS NULL")
+                    else:
+                        predicates.append(
+                            f"{column}={_placeholder(len(locator_args) + 1, 'mysql')}"
+                        )
+                        locator_args.append(value)
+                where = " AND ".join(predicates) if predicates else "1=1"
+                selected = _quote_list(
+                    [column.name for column in descriptor.columns], "mysql"
+                )
+                locator_sql = (
+                    f"SELECT {selected} FROM {_qualified(descriptor.table, 'mysql')} "
+                    f"WHERE {where} LIMIT 2 FOR UPDATE"
+                )
+                existing = session.run(locator_sql, locator_args, 2, PAGE_BYTES).rows
+                if existing:
+                    raise _error(
+                        codes.ROW_IDENTITY_AMBIGUOUS,
+                        "generated identity locator already matches rows",
+                    )
             names = [
                 _quote(descriptor.columns[index].name, self._dialect)
                 for index, _ in changes
@@ -1300,20 +1337,92 @@ class CatalogConnection:
                 query = f"INSERT INTO {_qualified(descriptor.table, self._dialect)} () VALUES ()"
             else:
                 query = f"INSERT INTO {_qualified(descriptor.table, self._dialect)} DEFAULT VALUES"
-            if generated_key:
-                if self._dialect == "mysql":
+            if omitted_indexes:
+                if self._dialect == "mysql" and mysql_locator:
                     inserted = session.run(query, args)
-                    if inserted.affected != 1 or inserted.insert_id is None:
+                    if inserted.affected != 1:
+                        raise _error(
+                            codes.ROW_WRITE_MISMATCH,
+                            "expected exactly one inserted row",
+                        )
+                    located = session.run(locator_sql, locator_args, 2, PAGE_BYTES)
+                    _same_names(located.names, descriptor.columns)
+                    if len(located.rows) != 1:
+                        raise _error(
+                            codes.ROW_IDENTITY_AMBIGUOUS,
+                            "expected exactly one inserted locator row",
+                        )
+                    returned = located.rows[0]
+                    _check_cells(descriptor, returned)
+                    _revision(descriptor, returned)
+                    for index, value in changes:
+                        if not _same_row([returned[index]], [value]):
+                            raise _error(
+                                codes.ROW_WRITE_MISMATCH,
+                                "locator values differ from requested values",
+                            )
+                    keys = [returned[index] for index in key_indexes]
+                elif self._dialect == "mysql":
+                    inserted = session.run(query, args)
+                    if inserted.affected != 1:
+                        raise _error(
+                            codes.ROW_WRITE_MISMATCH,
+                            "expected exactly one inserted row",
+                        )
+                    if omitted_auto_keys and (
+                        inserted.insert_id is None or inserted.insert_id == 0
+                    ):
                         raise _error(
                             codes.ROW_WRITE_MISMATCH,
                             "insert acknowledgement did not return an automatic key",
                         )
-                    keys = [inserted.insert_id]
+                    predicates = []
+                    key_args = []
+                    for index in key_indexes:
+                        column = descriptor.columns[index]
+                        quoted = _quote(column.name, "mysql")
+                        if index in provided:
+                            predicates.append(
+                                f"{quoted}={_placeholder(len(key_args) + 1, 'mysql')}"
+                            )
+                            key_args.append(provided[index])
+                        elif column.automatic_key:
+                            predicates.append(
+                                f"{quoted}={_placeholder(len(key_args) + 1, 'mysql')}"
+                            )
+                            key_args.append(inserted.insert_id)
+                        else:
+                            predicates.append(f"{quoted}=DEFAULT({quoted})")
+                    selected = _quote_list(
+                        [column.name for column in descriptor.columns], "mysql"
+                    )
+                    sql = (
+                        f"SELECT {selected} FROM {_qualified(descriptor.table, 'mysql')} "
+                        f"WHERE {' AND '.join(predicates)} LIMIT 2 FOR UPDATE"
+                    )
+                    located = session.run(sql, key_args, 2, PAGE_BYTES)
+                    _same_names(located.names, descriptor.columns)
+                    if len(located.rows) != 1:
+                        raise _error(
+                            codes.ROW_IDENTITY_AMBIGUOUS,
+                            "expected exactly one inserted default-key row",
+                        )
+                    returned = located.rows[0]
+                    _check_cells(descriptor, returned)
+                    _revision(descriptor, returned)
+                    for index, value in changes:
+                        if not _same_row([returned[index]], [value]):
+                            raise _error(
+                                codes.ROW_WRITE_MISMATCH,
+                                "stored inserted values differ",
+                            )
+                    keys = [returned[index] for index in key_indexes]
                 else:
                     returning = _quote_list(
                         [column.name for column in descriptor.columns], self._dialect
                     )
                     returned = session.run(f"{query} RETURNING {returning}", args)
+                    _same_names(returned.names, descriptor.columns)
                     if len(returned.rows) != 1 or len(returned.rows[0]) != len(
                         descriptor.columns
                     ):
@@ -1321,6 +1430,8 @@ class CatalogConnection:
                             codes.ROW_WRITE_MISMATCH,
                             "expected exactly one returned inserted row",
                         )
+                    _check_cells(descriptor, returned.rows[0])
+                    _revision(descriptor, returned.rows[0])
                     keys = [returned.rows[0][index] for index in key_indexes]
             else:
                 affected = session.run(query, args).affected
@@ -1334,6 +1445,8 @@ class CatalogConnection:
                 raise _error(
                     codes.ROW_WRITE_MISMATCH, "expected exactly one inserted row"
                 )
+            _check_cells(descriptor, after[0])
+            _revision(descriptor, after[0])
             if session.describe(declared.table) != descriptor:
                 raise _error(codes.ROW_SCHEMA_CHANGED, "insertion descriptor changed")
             for index, value in changes:
