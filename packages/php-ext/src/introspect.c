@@ -5,6 +5,7 @@
  */
 #include "dbspec.h"
 #include "literal_match.h"
+#include "value_export.h"
 
 static DBS_TLS catalog_observer_scope *catalog_observer_current;
 
@@ -376,23 +377,6 @@ bool row_integer(zval *row, zend_long i, str query, zend_long *out)
     return value_integer(row_value(row, i), i, query, out);
 }
 
-/* var_export($value, true) */
-static str exported(zval *v)
-{
-    zval fn, args[2], ret;
-    ZVAL_STRING(&fn, "var_export");
-    ZVAL_COPY(&args[0], v);
-    ZVAL_TRUE(&args[1]);
-    str out = SL("");
-    if (call_user_function(NULL, NULL, &fn, &ret, 2, args) == SUCCESS && Z_TYPE(ret) == IS_STRING) {
-        out = str_z(Z_STR(ret));
-    }
-    zval_ptr_dtor(&ret);
-    zval_ptr_dtor(&args[0]);
-    zval_ptr_dtor(&fn);
-    return out;
-}
-
 bool value_flag(zval *v, zend_long i, str query, bool *out)
 {
     if (v != NULL && (Z_TYPE_P(v) == IS_TRUE || Z_TYPE_P(v) == IS_FALSE)) {
@@ -409,7 +393,8 @@ bool value_flag(zval *v, zend_long i, str query, bool *out)
     }
     zval none;
     ZVAL_NULL(&none);
-    return dbs_throw(spl_ce_UnexpectedValueException, fmt("Catalog value %d is %S, not a boolean, in %S", i, exported(v != NULL ? v : &none), first_line(query)));
+    return dbs_throw(spl_ce_UnexpectedValueException, fmt("Catalog value %d is %S, not a boolean, in %S", i,
+        dbs_export_value(v != NULL ? v : &none), first_line(query)));
 }
 
 static bool row_flag(zval *row, zend_long i, str query, bool *out)

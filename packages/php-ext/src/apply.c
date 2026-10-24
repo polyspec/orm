@@ -4,6 +4,7 @@
  * that override methods and exceptions behave as in the PHP client. All failures are PHP exceptions, and the function returns false if one is left.
  */
 #include "dbspec.h"
+#include "value_export.h"
 #include "ext/pdo/php_pdo_driver.h"
 #include "ext/spl/spl_exceptions.h"
 #include "Zend/zend_exceptions.h"
@@ -128,24 +129,6 @@ static bool apply_error(const char *code, str plan_name, zend_long step, str det
 static bool runtime_error(str message)
 {
     return dbs_throw(spl_ce_RuntimeException, message);
-}
-
-/* var_export($value, true) */
-static str exported(zval *v)
-{
-    zval fn, args[2], ret;
-    ZVAL_STRING(&fn, "var_export");
-    ZVAL_COPY(&args[0], v);
-    ZVAL_TRUE(&args[1]);
-    ZVAL_UNDEF(&ret);
-    str out = SL("");
-    if (call_user_function(NULL, NULL, &fn, &ret, 2, args) == SUCCESS && Z_TYPE(ret) == IS_STRING) {
-        out = str_z(Z_STR(ret));
-    }
-    zval_ptr_dtor(&ret);
-    zval_ptr_dtor(&args[0]);
-    zval_ptr_dtor(&fn);
-    return out;
 }
 
 /* ($this->events)(new ApplyEvent(...)) */
@@ -1234,7 +1217,7 @@ static bool postgres_release(applier *a, void *ctx)
     if (Z_TYPE(released) == IS_FALSE) {
         ok = runtime_error(SL("the advisory lock of " HISTORY " was not held at unlock"));
     } else if (Z_TYPE(released) != IS_TRUE) {
-        ok = runtime_error(fmt("pg_advisory_unlock returned %S; want true or false", exported(&released)));
+        ok = runtime_error(fmt("pg_advisory_unlock returned %S; want true or false", dbs_export_value(&released)));
     }
     zval_ptr_dtor(&released);
     return ok;
@@ -1381,12 +1364,12 @@ static bool session(applier *a, operation op)
         if ((Z_TYPE(got) == IS_LONG && Z_LVAL(got) == 0) || (Z_TYPE(got) == IS_STRING && zend_string_equals_literal(Z_STR(got), "0"))) {
             ok = apply_error("locked", SL(""), 0, SL("another session holds the " HISTORY " lock of this database"), NULL);
         } else if (!((Z_TYPE(got) == IS_LONG && Z_LVAL(got) == 1) || (Z_TYPE(got) == IS_STRING && zend_string_equals_literal(Z_STR(got), "1")))) {
-            ok = runtime_error(fmt("GET_LOCK returned %S; want 1 or 0", exported(&got)));
+            ok = runtime_error(fmt("GET_LOCK returned %S; want 1 or 0", dbs_export_value(&got)));
         }
     } else if (Z_TYPE(got) == IS_FALSE) {
         ok = apply_error("locked", SL(""), 0, SL("another session holds the " HISTORY " advisory lock of this schema"), NULL);
     } else if (Z_TYPE(got) != IS_TRUE) {
-        ok = runtime_error(fmt("pg_try_advisory_lock returned %S; want true or false", exported(&got)));
+            ok = runtime_error(fmt("pg_try_advisory_lock returned %S; want true or false", dbs_export_value(&got)));
     }
     zval_ptr_dtor(&got);
     if (ok) {
