@@ -160,7 +160,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_UseLine, __construct)
     init_array(ZEND_THIS, "comments", comments);
 }
 
-ZEND_METHOD(Polyspec_Orm_Dbspec_Table, __construct)
+static void dbspec_named_comments_construct(INTERNAL_FUNCTION_PARAMETERS)
 {
     zend_string *name;
     zval *comments = NULL;
@@ -171,6 +171,11 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Table, __construct)
     ZEND_PARSE_PARAMETERS_END();
     init_str(ZEND_THIS, "name", name);
     init_array(ZEND_THIS, "comments", comments);
+}
+
+ZEND_METHOD(Polyspec_Orm_Dbspec_Table, __construct)
+{
+    dbspec_named_comments_construct(INTERNAL_FUNCTION_PARAM_PASSTHRU);
 }
 
 ZEND_METHOD(Polyspec_Orm_Dbspec_Column, __construct)
@@ -506,15 +511,7 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Setting, auditLine)
 
 ZEND_METHOD(Polyspec_Orm_Dbspec_Diagram, __construct)
 {
-    zend_string *name;
-    zval *comments = NULL;
-    ZEND_PARSE_PARAMETERS_START(1, 2)
-        Z_PARAM_STR(name)
-        Z_PARAM_OPTIONAL
-        Z_PARAM_ARRAY(comments)
-    ZEND_PARSE_PARAMETERS_END();
-    init_str(ZEND_THIS, "name", name);
-    init_array(ZEND_THIS, "comments", comments);
+    dbspec_named_comments_construct(INTERNAL_FUNCTION_PARAM_PASSTHRU);
 }
 
 ZEND_METHOD(Polyspec_Orm_Dbspec_Placement, __construct)
