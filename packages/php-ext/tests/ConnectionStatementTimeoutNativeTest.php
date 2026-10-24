@@ -30,12 +30,10 @@ final class ConnectionStatementTimeoutNativeTest extends TestCase
             $setup = null;
             $holder = null;
             $bounded = null;
-            $created = false;
             $failure = null;
             try {
                 $setup = Orm::connect($dsn, new Config());
                 $setup->pdo()->exec("CREATE TABLE $quotedTable (id INTEGER PRIMARY KEY)");
-                $created = true;
                 $setup->pdo()->exec("INSERT INTO $quotedTable (id) VALUES (1)");
 
                 $holder = Orm::connect($dsn, new Config());
@@ -80,7 +78,7 @@ final class ConnectionStatementTimeoutNativeTest extends TestCase
                         $cleanupErrors[] = $error;
                     }
                 }
-                if ($created && $setup !== null) {
+                if ($setup !== null) {
                     try {
                         $setup->pdo()->exec("DROP TABLE IF EXISTS $quotedTable");
                     } catch (\Throwable $error) {
