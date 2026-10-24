@@ -1453,7 +1453,7 @@ client-unit-check/runtime-model: php-vendor-check
 client-unit-check/orm-gen: php-vendor-check
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenTest.php
 
-generator-consumer-check: cargo-downloads-check lease-tool php-vendor-check python-venv-check
+generator-consumer-check: cargo-downloads-check lease-tool php-vendor-check php-models python-venv-check
 	cd packages/go && $(NODE) $(abspath tests/go-test.mts) -v -timeout 0 ./generator -run '^(TestGoGeneratedScalarGetterRejectsUnselectedRead|TestGoGeneratedScalarGetterCompilesAtItsDeclaredType)$$' -count=1
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenTest.php --filter testGeneratedTypedGetterUsesPrivateModelStorageAndRejectsUnselectedRead
 	@set -eu; \
@@ -1464,6 +1464,7 @@ generator-consumer-check: cargo-downloads-check lease-tool php-vendor-check pyth
 	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ModelNativeTest.php --filter testPhpGeneratedTypedGetterUsesInternalModelStorage
 	$(NODE) --test packages/ts/tests/generate.mjs
 	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_orm_gen.OrmGenTest.test_generated_typed_getter_is_the_public_column_api
+	cd packages/rust && $(CARGO_TEST) generator-consumer-rust-field-types -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm-build --lib generate::field_type_tests::generated_field_types_follow_the_runtime_model -- --test-threads=1 --exact
 	cd packages/rust && $(CARGO_TEST) generator-consumer-rust-emission -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm-build --test generate generated_rows_reject_unselected_fields_and_separate_group_results -- --test-threads=1 --exact
 	cd packages/rust && $(CARGO_TEST) generator-consumer-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm-tests --bin integration generated_typed_getter_is_a_checked_public_consumer_api -- --test-threads=1 --exact
 

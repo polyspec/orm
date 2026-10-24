@@ -9209,20 +9209,6 @@
       ]
     },
     {
-      "id": "rust-generate-field-type-tests-generated-field-types-follow-the-runtime-model",
-      "kind": "feature",
-      "requirements": [
-        "DBS-112"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/src/generate.rs",
-          "id": "generate::field_type_tests::generated_field_types_follow_the_runtime_model"
-        }
-      ]
-    },
-    {
       "id": "rust-manifest-reserved-method-names-are-not-columns",
       "kind": "feature",
       "requirements": [
