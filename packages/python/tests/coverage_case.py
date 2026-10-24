@@ -2,6 +2,7 @@
 # `<python> -m <module> <case id>...`, and the standard output must be `CASE <id> [<database>] PASS` lines; coverage_main
 # runs exactly the requested test methods and CoverageCase.each_item prints those lines.
 import io
+import os
 import sys
 import unittest
 from pathlib import Path
@@ -92,19 +93,22 @@ def coverage_main(test_class: type) -> None:
 
 
 def feature_items(test: str):
-    """The coverage items of this test file from the feature manifest: the coverage resolver of scripts/features/coverage.mts
-    (`--items`) gives one (driver, dsn) for each database the manifest lists for the file. A file without a database
-    gives None. A DSN variable that is unset fails with its name."""
+    """Resolve every database by default, or the exact ORM_FEATURE_DATABASE assigned to this owner run.
+    The selected item keeps its declared DSN variable; a missing DSN fails with its name."""
     import json
     import subprocess
 
+    arguments = [
+        "node",
+        str(REPOSITORY_ROOT / "scripts/features/coverage.mts"),
+        "--items",
+        test,
+    ]
+    selected_database = os.environ.get("ORM_FEATURE_DATABASE")
+    if selected_database:
+        arguments.extend(["--database", selected_database])
     listed = subprocess.run(
-        [
-            "node",
-            str(REPOSITORY_ROOT / "scripts/features/coverage.mts"),
-            "--items",
-            test,
-        ],
+        arguments,
         cwd=REPOSITORY_ROOT,
         capture_output=True,
         text=True,

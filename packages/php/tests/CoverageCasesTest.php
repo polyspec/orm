@@ -136,6 +136,29 @@ final class CoverageCasesTest extends TestCase
         $GLOBALS['orm_coverage_item'] = null;
     }
 
+    public function testCoverageItemsCanSelectOneDatabaseWithoutOtherDsns(): void
+    {
+        $previousDatabase = getenv('ORM_FEATURE_DATABASE');
+        $previousSqliteDsn = getenv('BENCH_SQLITE_DSN');
+        putenv('ORM_FEATURE_DATABASE=sqlite');
+        putenv('BENCH_SQLITE_DSN=sqlite:///selected.sqlite');
+        try {
+            $items = coverageItemsOf(__DIR__ . '/CoverageConstraintsAndRelationsTest.php');
+            self::assertNotSame([], $items, 'the feature test has declared coverage items');
+            foreach ($items as [$database, $dsn]) {
+                self::assertSame('sqlite', $database, 'only the selected database is returned');
+                self::assertSame('sqlite:///selected.sqlite', $dsn, 'the selected database DSN is preserved');
+            }
+        } finally {
+            if ($previousDatabase === false) {
+                putenv('ORM_FEATURE_DATABASE');
+            } else {
+                putenv("ORM_FEATURE_DATABASE=$previousDatabase");
+            }
+            $previousSqliteDsn === false ? putenv('BENCH_SQLITE_DSN') : putenv("BENCH_SQLITE_DSN=$previousSqliteDsn");
+        }
+    }
+
     public function testRunsAChildProcess(): void
     {
         [$status, $stdout, $stderr] = coverageProcess(

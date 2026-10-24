@@ -44,9 +44,8 @@ function coverageDatabaseDrivers(): iterable
 }
 
 /**
- * The coverage items of a test file from the feature resolver (scripts/features/coverage.mts --items, the form the
- * Python readers use): one [database, dsn] for each database the manifest lists for the file. A DSN variable that is
- * unset fails with its name, from the resolver.
+ * The coverage items of a test file from the feature resolver: one [database, dsn] per declared database by default,
+ * or the exact ORM_FEATURE_DATABASE assigned to this owner run. A selected database uses its declared DSN variable.
  *
  * @return list<array{string, ?string}>
  */
@@ -54,8 +53,14 @@ function coverageItemsOf(string $testFile): array
 {
     $root = realpath(dirname(__DIR__, 3));
     $relative = substr((string) realpath($testFile), strlen((string) $root) + 1);
+    $command = ['node', "$root/scripts/features/coverage.mts", '--items', $relative];
+    $selectedDatabase = getenv('ORM_FEATURE_DATABASE');
+    if (is_string($selectedDatabase) && $selectedDatabase !== '') {
+        $command[] = '--database';
+        $command[] = $selectedDatabase;
+    }
     $process = proc_open(
-        ['node', "$root/scripts/features/coverage.mts", '--items', $relative],
+        $command,
         [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
         $pipes,
         $root

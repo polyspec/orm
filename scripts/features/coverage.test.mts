@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { testDirectoryOf } from './packages.mts';
-import { checkCoverage, databases, executeCoverage, observedCases, languages, NATIVE_DEADLINE, selectFeatures, type Coverage, type Dependent, type Feature, type Manifest, type Owner, type Report } from './coverage.mts';
+import { checkCoverage, coverageItems, databases, executeCoverage, observedCases, languages, NATIVE_DEADLINE, selectFeatures, type Coverage, type Dependent, type Feature, type Manifest, type Owner, type Report } from './coverage.mts';
 import { readFeatures } from './manifest.mts';
 import { readParityConfig, type ParityConfig } from '../json/formats.mts';
 
@@ -146,6 +146,65 @@ caseTest('selecting coverage parts requires only those parts', 1000, async () =>
   assert.throws(() => selectFeatures(manifest, 'statement_events', ['owner/cobol']),
     { message: 'unknown coverage part owner/cobol of statement_events; valid parts: owner/go, owner/php, owner/php-extension, owner/rust, owner/typescript, owner/python' });
   assert.throws(() => selectFeatures(manifest, undefined, ['owner/php']), { message: '--part needs --feature' });
+});
+
+caseTest('selecting a coverage owner, database and cases reports only that subset', COMPUTE, () => {
+  const manifest = readFeatures(new URL('../..', import.meta.url).pathname);
+  const selected = selectFeatures(manifest, 'constraints_and_relations', ['owner/typescript'], 'sqlite', [
+    'external_relation', 'immutable_write',
+  ]);
+  assert.deepEqual(selected.features[0]?.coverage?.cases, ['external_relation', 'immutable_write']);
+  assert.deepEqual(checkCoverage(selected, {}), [
+    'constraints_and_relations/owner/typescript/sqlite: no executed report',
+  ]);
+  assert.throws(() => selectFeatures(manifest, 'constraints_and_relations', [], 'mysql', ['missing_case']), /unknown coverage case/);
+});
+
+caseTest('the feature runner does not inherit a database subset from the environment', COMPUTE, () => {
+  const manifest = readFeatures(new URL('../..', import.meta.url).pathname);
+  const before = process.env.ORM_FEATURE_DATABASE;
+  process.env.ORM_FEATURE_DATABASE = 'sqlite';
+  try {
+    const selected = selectFeatures(manifest, 'constraints_and_relations', ['owner/typescript']);
+    assert.deepEqual(checkCoverage(selected, {}).toSorted(),
+      databases.map(database => `constraints_and_relations/owner/typescript/${database}: no executed report`).toSorted());
+  } finally {
+    if (before === undefined) delete process.env.ORM_FEATURE_DATABASE;
+    else process.env.ORM_FEATURE_DATABASE = before;
+  }
+});
+
+caseTest('coverage item selection runs one declared database and defaults to all', COMPUTE, () => {
+  const file = 'packages/ts/tests/a.mjs';
+  const command = (dsn_env: string) => [{ runner: 'node', test: file, cases: ['c'], dsn_env }];
+  const manifest: Manifest = { features: [{ id: 'sample', coverage: {
+    kind: 'database', cases: ['c'],
+    owners: { typescript: { part: 'packages/ts/tests', tests: [file], commands: {
+      sqlite: command('DSN_SQLITE'), mysql: command('DSN_MYSQL'),
+    } } }, dependents: [],
+  } }] };
+  const sqliteEnv = { DSN_SQLITE: 'sqlite:///selected.sqlite' };
+  assert.deepEqual(coverageItems(manifest, file, sqliteEnv, 'sqlite'), [
+    { database: 'sqlite', dsn_env: 'DSN_SQLITE', dsn: 'sqlite:///selected.sqlite' },
+  ]);
+  assert.throws(() => coverageItems(manifest, file, sqliteEnv), /DSN_MYSQL/);
+  assert.throws(() => coverageItems(manifest, file, { ...sqliteEnv, ORM_FEATURE_DATABASE: 'sqlite' }), /DSN_MYSQL/);
+  assert.throws(() => coverageItems(manifest, file, sqliteEnv, 'mysql'), /DSN_MYSQL/);
+  assert.throws(() => coverageItems(manifest, file, sqliteEnv, 'oracle'), /unknown coverage database oracle/);
+  assert.throws(() => coverageItems(manifest, file, sqliteEnv, 'postgres'), /has no coverage item for postgres/);
+});
+
+caseTest('the coverage item CLI selects one declared database', PROCESS, () => {
+  const root = new URL('../..', import.meta.url).pathname;
+  const script = new URL('./coverage.mts', import.meta.url).pathname;
+  const env: NodeJS.ProcessEnv = { ...process.env, BENCH_SQLITE_DSN: 'sqlite:///selected.sqlite' };
+  for (const name of ['ORM_FEATURE_DATABASE', 'ORM_FEATURE_DSN', 'BENCH_MYSQL_DSN', 'BENCH_POSTGRES_DSN']) delete env[name];
+  const output = execFileSync(process.execPath, [
+    script, '--items', 'packages/ts/tests/coverage_constraints_and_relations.mjs', '--database', 'sqlite',
+  ], { cwd: root, env, encoding: 'utf8' });
+  const items = JSON.parse(output) as { database: string; dsn: string | null }[];
+  assert.ok(items.length > 0, 'the test file has declared SQLite coverage items');
+  assert.ok(items.every(item => item.database === 'sqlite' && item.dsn === 'sqlite:///selected.sqlite'));
 });
 
 caseTest('an unknown feature name fails with the list of valid names', 1000, () => {

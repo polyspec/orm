@@ -7,7 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { errorCode, runCases, withCleanup } from './coverage_case.mjs';
+import { errorCode, featureItems, runCases, withCleanup } from './coverage_case.mjs';
 import { coverageItems } from '../../../scripts/features/coverage.mts';
 import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
 
@@ -69,6 +69,23 @@ caseTest('coverage_case/resolves-each-listed-database', COMPUTE, () => {
   assert.deepEqual(coverageItems(manifest, file, { DSN_S: 's', DSN_M: 'm' }).map(item => [item.database, item.dsn]),
     [['sqlite', 's'], ['mysql', 'm']]);
   assert.deepEqual(coverageItems(manifest, 'packages/ts/tests/none.mjs', {}), []);
+});
+caseTest('coverage_case/uses-the-exact-database-assigned-to-the-owner-run', COMPUTE, () => {
+  const names = ['ORM_FEATURE_DATABASE', 'ORM_FEATURE_DSN', 'BENCH_SQLITE_DSN', 'BENCH_MYSQL_DSN', 'BENCH_POSTGRES_DSN'];
+  const previous = new Map(names.map(name => [name, process.env[name]]));
+  for (const name of names) delete process.env[name];
+  process.env.ORM_FEATURE_DATABASE = 'sqlite';
+  process.env.BENCH_SQLITE_DSN = 'sqlite:///selected.sqlite';
+  try {
+    const items = featureItems('coverage_constraints_and_relations.mjs');
+    assert.ok(items.length > 0, 'the test file has declared SQLite coverage items');
+    assert.ok(items.every(item => item.database === 'sqlite' && item.dsn === 'sqlite:///selected.sqlite'));
+  } finally {
+    for (const [name, value] of previous) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+  }
 });
 caseTest('coverage_case/reports-error-codes-and-cleanup-failures', COMPUTE, async () => {
   assert.equal(await errorCode(Promise.reject(Object.assign(new Error('bad'), { code: 'CONFIG' }))), 'CONFIG');
