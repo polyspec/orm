@@ -1,6 +1,6 @@
 // Verify selected and unselected PHP generated fields twice on every database.
 import { run, state, step, TIMEOUT_MS } from './physical.mts';
-import { errorMessage } from '../tests/errors.mts';
+import { runPhysicalCommandCase } from './physical-command-case.mts';
 
 for (const database of ['mysql', 'postgres', 'sqlite']) {
   const key = `BENCH_${database.toUpperCase()}_DSN`;
@@ -13,19 +13,9 @@ for (const database of ['mysql', 'postgres', 'sqlite']) {
   });
   for (let attempt = 1; attempt <= 2; attempt++) {
     await step(`unselected-column/${database}/php/${attempt}`, 2 * TIMEOUT_MS, async ({ step: progress }) => {
-      let output = '';
-      let redacted: string | undefined;
-      try {
-        output = await run('php', ['vendor-php/bin/phpunit', '--configuration', 'packages/php/phpunit.xml.dist', '--teamcity', 'packages/php/tests/UnselectedColumnDbTest.php'], {
-          ...process.env, ORM_UNSELECTED_DATABASE: database, ORM_UNSELECTED_DSN: dsn,
-        });
-      } catch (error) { redacted = errorMessage(error).replaceAll(dsn, '[redacted]'); }
-      if (redacted !== undefined) throw new Error(redacted);
-      // In PHPUnit's TeamCity output, after a test ends there must be no failed or skipped test.
-      const finished = [...output.matchAll(/^##teamcity\[testFinished name='([^']*)'/gm)].map(match => match[1]);
-      if (JSON.stringify(finished) !== JSON.stringify(['test_unselected_column']) || /^##teamcity\[test(?:Failed|Ignored) /m.test(output)) {
-        throw new Error(`${database}/${attempt}: missing exact pass event`);
-      }
+      await runPhysicalCommandCase(run, 'php', ['vendor-php/bin/phpunit', '--configuration', 'packages/php/phpunit.xml.dist', '--teamcity', 'packages/php/tests/UnselectedColumnDbTest.php'], {
+        ...process.env, ORM_UNSELECTED_DATABASE: database, ORM_UNSELECTED_DSN: dsn,
+      }, dsn, { kind: 'teamcity', testName: 'test_unselected_column' }, `${database}/${attempt}: missing exact pass event`);
       const after = await state(database, dsn);
       if (after !== before) throw new Error(`${database}/${attempt}: database state changed`);
       progress(`state ${after}`);

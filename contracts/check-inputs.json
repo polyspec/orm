@@ -1721,6 +1721,18 @@
         "packages/ts/tests/dbspec-plan-fixture.test.mjs"
       ]
     },
+    "physical-command-case-helper-check": {
+      "scope": "owner",
+      "needs": [
+        "node-modules"
+      ],
+      "inputs": [
+        "Makefile",
+        "scripts/physical-command-case.mts",
+        "scripts/physical-command-case.test.mts",
+        "tests/errors.mts"
+      ]
+    },
     "catalog-mutation-helper-python-check": {
       "scope": "owner",
       "needs": [
