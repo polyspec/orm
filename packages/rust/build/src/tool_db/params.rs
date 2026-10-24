@@ -59,6 +59,15 @@ pub(super) fn invalid_with(error: impl std::fmt::Display) -> sqlx::Error {
 pub(super) fn decimal(value: &str) -> Result<bigdecimal::BigDecimal, sqlx::Error> {
     value.parse().map_err(invalid_with)
 }
+
+pub(crate) fn decimal_valid(value: &str) -> bool {
+    let unsigned = value.strip_prefix('-').unwrap_or(value);
+    let (whole, fraction) = unsigned.split_once('.').map_or((unsigned, None), |(whole, fraction)| (whole, Some(fraction)));
+    !whole.is_empty()
+        && !(whole.len() > 1 && whole.starts_with('0'))
+        && whole.bytes().all(|byte| byte.is_ascii_digit())
+        && fraction.is_none_or(|fraction| !fraction.is_empty() && fraction.bytes().all(|byte| byte.is_ascii_digit()))
+}
 pub(super) fn validate(values: &[P], dialect: &str) -> Result<(), sqlx::Error> {
     if values.len() > 65535 {
         return Err(limit());
@@ -96,13 +105,7 @@ pub(super) fn validate_refs<'a>(values: impl Iterator<Item = &'a P>, dialect: &s
                 if value.len() > 65536 {
                     return Err(limit());
                 }
-                let unsigned = value.strip_prefix('-').unwrap_or(value);
-                let (whole, fraction) = unsigned.split_once('.').map_or((unsigned, None), |(whole, fraction)| (whole, Some(fraction)));
-                if whole.is_empty()
-                    || (whole.len() > 1 && whole.starts_with('0'))
-                    || !whole.bytes().all(|byte| byte.is_ascii_digit())
-                    || fraction.is_some_and(|fraction| fraction.is_empty() || !fraction.bytes().all(|byte| byte.is_ascii_digit()))
-                {
+                if !decimal_valid(value) {
                     return Err(invalid());
                 }
             }

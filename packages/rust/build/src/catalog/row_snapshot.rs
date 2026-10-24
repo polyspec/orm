@@ -83,13 +83,7 @@ pub(super) fn row(metadata: &TableMetadata, cells: &[GridCell]) -> Result<(), St
             return Err(invalid());
         }
         if let GridCell::Decimal(value) = cell {
-            let unsigned = value.strip_prefix('-').unwrap_or(value);
-            let (whole, fraction) = unsigned.split_once('.').map_or((unsigned, None), |(whole, fraction)| (whole, Some(fraction)));
-            if whole.is_empty()
-                || (whole.len() > 1 && whole.starts_with('0'))
-                || !whole.bytes().all(|byte| byte.is_ascii_digit())
-                || fraction.is_some_and(|fraction| fraction.is_empty() || !fraction.bytes().all(|byte| byte.is_ascii_digit()))
-            {
+            if !crate::tool_db::decimal_valid(value) {
                 return Err(invalid());
             }
         }
@@ -191,6 +185,18 @@ mod cause_message_tests {
             offset: 0,
             order_by: vec!["id".into()],
             has_more: false,
+        }
+    }
+
+    #[test]
+    fn row_snapshot_uses_shared_decimal_syntax_validation() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let page = fixture();
+        for value in ["0", "-0", "100.23000", "-12345678901234567890.00001"] {
+            assert!(row(&page.metadata, &[GridCell::Decimal(value.into())]).is_ok(), "{value}");
+        }
+        for value in ["", "01", "-", "+1", "1.", "1e3", "NaN"] {
+            assert!(row(&page.metadata, &[GridCell::Decimal(value.into())]).is_err(), "{value}");
         }
     }
 

@@ -15,6 +15,7 @@ pub(crate) use grid::is_temporal;
 pub use grid::{GridCell, GridQueryResult};
 pub use limits::QueryLimits;
 pub use params::{P, ParamType};
+pub(crate) use params::decimal_valid;
 pub use result::{QueryColumn, QueryResult};
 
 pub(crate) fn validate_params(values: &[P], dialect: &str) -> Result<(), sqlx::Error> {
