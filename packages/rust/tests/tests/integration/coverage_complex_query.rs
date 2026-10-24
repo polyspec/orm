@@ -95,7 +95,7 @@ fn full_product_search_request_compiles_for_mysql_and_postgres_and_rejects_sqlit
     let core = polyspec_orm::Model::core(&request);
 
     for dialect in [polyspec_orm::Dialect::MySql, polyspec_orm::Dialect::Postgres] {
-        let plan = polyspec_orm::testing::compile_core_request(&core, "paginate", dialect).expect("typed product search plan");
+        let plan = polyspec_orm::testing::compile_core_request(core, "paginate", dialect).expect("typed product search plan");
         assert_eq!(
             plan.steps.iter().map(|step| step.role.as_str()).collect::<Vec<_>>(),
             ["main", "count", "relation", "relation", "relation", "relation", "relation", "relation"]
@@ -105,7 +105,7 @@ fn full_product_search_request_compiles_for_mysql_and_postgres_and_rejects_sqlit
         assert!(plan.steps.iter().all(|step| !step.sql.to_ascii_uppercase().contains("GROUP BY")));
     }
 
-    let error = polyspec_orm::testing::compile_core_request(&core, "paginate", polyspec_orm::Dialect::Sqlite)
+    let error = polyspec_orm::testing::compile_core_request(core, "paginate", polyspec_orm::Dialect::Sqlite)
         .expect_err("SQLite must reject the full-text predicates before query execution");
     assert_eq!(error.code(), polyspec_orm::codes::OPERATOR_NOT_ALLOWED);
 }

@@ -1883,7 +1883,21 @@ mod page_order_tests {
 
     impl Drop for TempSqlite {
         fn drop(&mut self) {
-            let _ = std::fs::remove_file(&self.0);
+            match std::fs::remove_file(&self.0) {
+                Ok(()) => {}
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                Err(error) => {
+                    let message = format!(
+                        "failed to remove temporary SQLite database {}: {error}",
+                        self.0.display()
+                    );
+                    if std::thread::panicking() {
+                        eprintln!("{message}");
+                    } else {
+                        panic!("{message}");
+                    }
+                }
+            }
         }
     }
 
