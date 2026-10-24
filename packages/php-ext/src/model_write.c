@@ -2,6 +2,7 @@
 #include "model_write.h"
 #include "model_state.h"
 #include "model_native_methods.h"
+#include "object_method_lookup.h"
 #include "model_dsl.h"
 #include "runtime_model.h"
 #include "Zend/zend_exceptions.h"
@@ -36,34 +37,12 @@ static zval *object_property(zval *object, const char *name)
 
 static bool model_call(zval *model, const char *name, zval *result, uint32_t argc, zval *args)
 {
-    zend_class_entry *ce = model_native_class_entry();
-    zend_string *key = zend_string_init(name, strlen(name), 0);
-    zend_str_tolower(ZSTR_VAL(key), ZSTR_LEN(key));
-    zend_function *fn = zend_hash_find_ptr(&ce->function_table, key);
-    zend_string_release(key);
-    if (fn == NULL) {
-        zend_throw_error(NULL, "Native Model helper %s is not registered", name);
-        return false;
-    }
-    ZVAL_UNDEF(result);
-    zend_call_known_function(fn, Z_OBJ_P(model), Z_OBJCE_P(model), result, argc, args, NULL);
-    return EG(exception) == NULL;
+    return native_model_method_call(model_native_class_entry(), model, name, false, result, argc, args);
 }
 
 static bool model_static_call(zval *model, const char *name, zval *result, uint32_t argc, zval *args)
 {
-    zend_class_entry *base = model_native_class_entry();
-    zend_string *key = zend_string_init(name, strlen(name), 0);
-    zend_str_tolower(ZSTR_VAL(key), ZSTR_LEN(key));
-    zend_function *fn = zend_hash_find_ptr(&base->function_table, key);
-    zend_string_release(key);
-    if (fn == NULL) {
-        zend_throw_error(NULL, "Native Model helper %s is not registered", name);
-        return false;
-    }
-    ZVAL_UNDEF(result);
-    zend_call_known_function(fn, NULL, Z_OBJCE_P(model), result, argc, args, NULL);
-    return EG(exception) == NULL;
+    return native_model_method_call(model_native_class_entry(), model, name, true, result, argc, args);
 }
 
 static bool dynamic_call(zval *object, const char *name, zval *result, uint32_t argc, zval *args)
