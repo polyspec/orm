@@ -4,12 +4,10 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Extension\Tests;
 
-use PHPUnit\Framework\Attributes\Large;
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\Large;
 use Polyspec\Orm\Model;
 use ReflectionMethod;
-
-require_once dirname(__DIR__, 2) . '/php/tests/MarkdownConformanceTest.php';
 
 /** Executes the shared markdown corpus with the extension's native Model methods loaded. */
 #[Large]
@@ -25,7 +23,12 @@ final class MarkdownConformanceNativeTest extends \Polyspec\Orm\Tests\MarkdownCo
     public function testGeneratedModelOperationsAreNativeExtensionMethods(): void
     {
         self::assertTrue(extension_loaded('polyspec_orm'));
-        foreach (['get', 'gets', 'getsCount', 'getCount', 'getSum', 'getAvg', 'getsPage', 'create', 'creates', 'update', 'delete', 'restore'] as $method) {
+        foreach (
+            [
+                'get', 'gets', 'getsCount', 'getCount', 'getSum', 'getAvg',
+                'getsPage', 'create', 'creates', 'update', 'delete', 'restore',
+            ] as $method
+        ) {
             self::assertTrue((new ReflectionMethod(Model::class, $method))->isInternal(), $method);
         }
     }

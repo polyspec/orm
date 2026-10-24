@@ -10,7 +10,7 @@ function git(directory: string, args: string[]): string {
   try {
     return execFileSync('git', ['-C', directory, ...args], { encoding: 'utf8' }).trim();
   } catch (error) {
-    throw new Error(`git -C ${directory} ${args.join(' ')} failed: ${String(error)}`);
+    throw new Error(`git -C ${directory} ${args.join(' ')} failed: ${String(error)}`, { cause: error });
   }
 }
 

@@ -790,7 +790,11 @@ def conformance_cases() -> dict:
 
     # codec_insert writes a base64-encoded value to an explicit column (DIA-175, DIA-177).
     def codec_insert(s):
-        row = s.models.CodecRows().set_id("C1").set_payload(StyledValue.value("first encoded value"))
+        row = (
+            s.models.CodecRows()
+            .set_id("C1")
+            .set_payload(StyledValue.value("first encoded value"))
+        )
         created = row.connect(s.db).create()
         return {"id": created.get_id()}
 
@@ -800,14 +804,35 @@ def conformance_cases() -> dict:
 
     # codec_explicit_select reads the selected column through its base64 codec.
     def codec_explicit_select(s):
-        row = s.models.CodecRows().connect(s.db).remove_all_columns().add_column_payload().id("C1").get()
+        row = (
+            s.models.CodecRows()
+            .connect(s.db)
+            .remove_all_columns()
+            .add_column_payload()
+            .id("C1")
+            .get()
+        )
         return row.get_payload().payload()
 
     # codec_update changes the encoded value and reads back the decoded text.
     def codec_update(s):
-        row = s.models.CodecRows().connect(s.db).remove_all_columns().add_column_payload().id("C1").get()
+        row = (
+            s.models.CodecRows()
+            .connect(s.db)
+            .remove_all_columns()
+            .add_column_payload()
+            .id("C1")
+            .get()
+        )
         row.set_payload(StyledValue.value("updated encoded value")).update()
-        read = s.models.CodecRows().connect(s.db).remove_all_columns().add_column_payload().id("C1").get()
+        read = (
+            s.models.CodecRows()
+            .connect(s.db)
+            .remove_all_columns()
+            .add_column_payload()
+            .id("C1")
+            .get()
+        )
         return read.get_payload().payload()
 
     # select_explicit_insert_omitted inserts a row without the explicit column.
@@ -817,7 +842,14 @@ def conformance_cases() -> dict:
 
     # select_explicit_read_null includes the omitted SQL NULL column in the read.
     def select_explicit_read_null(s):
-        row = s.models.CodecRows().connect(s.db).remove_all_columns().add_column_payload().id("C2").get()
+        row = (
+            s.models.CodecRows()
+            .connect(s.db)
+            .remove_all_columns()
+            .add_column_payload()
+            .id("C2")
+            .get()
+        )
         return row.get_payload().kind
 
     def connect_mismatch(corpus_of, token_of):
