@@ -117,6 +117,12 @@ static bool read_child_result(zval *items, zend_string *name, bool relation, zva
     return true;
 }
 
+static bool read_non_null_string_argument(zend_execute_data *execute_data)
+{
+    static const char *const scalar_types[] = {"string"};
+    return model_reject_null_scalar_args(execute_data, scalar_types, 1);
+}
+
 ZEND_METHOD(Polyspec_Orm_Model, newRow)
 {
     zval *conn = NULL;
@@ -378,8 +384,7 @@ static bool read_column_convert(zval *model, zval *db, zval *zone, zval *column,
 
 ZEND_METHOD(Polyspec_Orm_Model, joinChild)
 {
-    static const char *const scalar_types[] = {"string"};
-    if (!model_reject_null_scalar_args(execute_data, scalar_types, 1)) RETURN_THROWS();
+    if (!read_non_null_string_argument(execute_data)) RETURN_THROWS();
     zend_string *name;
     ZEND_PARSE_PARAMETERS_START(1, 1) Z_PARAM_STR(name) ZEND_PARSE_PARAMETERS_END();
     zval *joins = model_state_property(model_state_of(Z_OBJ_P(ZEND_THIS)), "joins");
@@ -392,8 +397,7 @@ ZEND_METHOD(Polyspec_Orm_Model, joinChild)
 
 ZEND_METHOD(Polyspec_Orm_Model, relationChild)
 {
-    static const char *const scalar_types[] = {"string"};
-    if (!model_reject_null_scalar_args(execute_data, scalar_types, 1)) RETURN_THROWS();
+    if (!read_non_null_string_argument(execute_data)) RETURN_THROWS();
     zend_string *name;
     ZEND_PARSE_PARAMETERS_START(1, 1) Z_PARAM_STR(name) ZEND_PARSE_PARAMETERS_END();
     zval *relations = model_state_property(model_state_of(Z_OBJ_P(ZEND_THIS)), "relations");
@@ -524,8 +528,7 @@ ZEND_METHOD(Polyspec_Orm_Model, collectionKey)
 
 ZEND_METHOD(Polyspec_Orm_Model, columnOrExtra)
 {
-    static const char *const scalar_types[] = {"string"};
-    if (!model_reject_null_scalar_args(execute_data, scalar_types, 1)) RETURN_THROWS();
+    if (!read_non_null_string_argument(execute_data)) RETURN_THROWS();
     zend_string *name;
     ZEND_PARSE_PARAMETERS_START(1, 1) Z_PARAM_STR(name) ZEND_PARSE_PARAMETERS_END();
     zval *values = model_state_property(model_state_of(Z_OBJ_P(ZEND_THIS)), "values");
