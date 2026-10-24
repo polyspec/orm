@@ -4,10 +4,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from polyspec.orm.errors import OrmError
+
 from .complex_query_product import FIXTURE, SCHEMA_PATH, product_search_query
 from .coverage_case import coverage_main
 from .test_sqlite import generate_document
-from polyspec.orm.errors import OrmError
 
 
 class ComplexQueryCoverageTest(unittest.TestCase):
@@ -22,7 +23,9 @@ class ComplexQueryCoverageTest(unittest.TestCase):
         }[driver]
         self.assertTrue(dsn, f"ORM_FEATURE_DSN is required; run make {target}")
 
-        with tempfile.TemporaryDirectory(prefix="orm-complex-query-models-") as directory:
+        with tempfile.TemporaryDirectory(
+            prefix="orm-complex-query-models-"
+        ) as directory:
             models = generate_document(str(Path(directory) / "models"), SCHEMA_PATH)
             db = models.connect(dsn)
             try:

@@ -3,12 +3,13 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from . import testcase
-from .complex_query_product import FIXTURE, SCHEMA_PATH, product_search_query
-from .test_sqlite import generate_document
 from polyspec.orm import codes
 from polyspec.orm.engine import Engine, model_of_documents, parse_document_set
 from polyspec.orm.errors import OrmError
+
+from . import testcase
+from .complex_query_product import FIXTURE, SCHEMA_PATH, product_search_query
+from .test_sqlite import generate_document
 
 
 class ComplexQueryTest(unittest.TestCase):
@@ -88,18 +89,18 @@ class ComplexQueryTest(unittest.TestCase):
                     driver = dialect
                     request_hook = None
 
-                    def plan(self, _request):
+                    def plan(self, _request, plan=plan):
                         return {"plan": plan}
 
-                    def _send_step(self, _ex, _sql, step, _params):
+                    def _send_step(self, _ex, _sql, step, _params, events=events):
                         events.append(step["role"])
                         return {"rows": [[FIXTURE["expected"]["total_count"]]]}
 
-                def read_root(_ex, _cached, _step, _params):
+                def read_root(_ex, _cached, _step, _params, events=events):
                     events.append("main")
                     return []
 
-                def read_relations(_ex, cached, _params, main):
+                def read_relations(_ex, cached, _params, main, events=events):
                     events.extend(
                         step["role"]
                         for step in cached["plan"]["steps"][1:]
