@@ -3503,6 +3503,62 @@
     "exported": true,
     "signature": "pub fn get (\u0026 self , index : usize) -\u003e Option \u003c \u0026 Param \u003e"
   },
+  "packages/rust/orm/src/db.rs::SqliteRowLockSequence": {
+    "exported": false,
+    "signature": " struct SqliteRowLockSequence \u003c 'a \u003e { db : \u0026 'a Db , tx : \u0026 'a mut crate :: driver :: CancellableConnection \u003c sqlx :: Sqlite \u003e , transaction : Option \u003c u64 \u003e , previous : i64 , nowait : bool , }"
+  },
+  "packages/rust/orm/src/db.rs::SqliteRowLockSequence \u003c '_ \u003e as SqliteRowLockSequenceOps::restore_timeout": {
+    "exported": false,
+    "signature": " async fn restore_timeout (\u0026 mut self) -\u003e Result \u003c () \u003e"
+  },
+  "packages/rust/orm/src/db.rs::SqliteRowLockSequence \u003c '_ \u003e as SqliteRowLockSequenceOps::set_nowait": {
+    "exported": false,
+    "signature": " async fn set_nowait (\u0026 mut self) -\u003e Result \u003c () \u003e"
+  },
+  "packages/rust/orm/src/db.rs::SqliteRowLockSequence \u003c '_ \u003e as SqliteRowLockSequenceOps::take_row_lock": {
+    "exported": false,
+    "signature": " async fn take_row_lock (\u0026 mut self) -\u003e Result \u003c () \u003e"
+  },
+  "packages/rust/orm/src/db.rs::SqliteRowLockSequence#field.db": {
+    "exported": false,
+    "signature": "\u0026 'a Db"
+  },
+  "packages/rust/orm/src/db.rs::SqliteRowLockSequence#field.nowait": {
+    "exported": false,
+    "signature": "bool"
+  },
+  "packages/rust/orm/src/db.rs::SqliteRowLockSequence#field.previous": {
+    "exported": false,
+    "signature": "i64"
+  },
+  "packages/rust/orm/src/db.rs::SqliteRowLockSequence#field.transaction": {
+    "exported": false,
+    "signature": "Option \u003c u64 \u003e"
+  },
+  "packages/rust/orm/src/db.rs::SqliteRowLockSequence#field.tx": {
+    "exported": false,
+    "signature": "\u0026 'a mut crate :: driver :: CancellableConnection \u003c sqlx :: Sqlite \u003e"
+  },
+  "packages/rust/orm/src/db.rs::SqliteRowLockSequence#wire": {
+    "exported": false,
+    "signature": "{\"db\":\"unsupported:\u0026 'a Db\",\"nowait\":\"bool\",\"previous\":\"integer\",\"transaction\":\"integer\",\"tx\":\"unsupported:\u0026 'a mut crate :: driver :: CancellableConnection \u003c sqlx :: Sqlite \u003e\"}"
+  },
+  "packages/rust/orm/src/db.rs::SqliteRowLockSequenceOps": {
+    "exported": false,
+    "signature": " trait SqliteRowLockSequenceOps  : "
+  },
+  "packages/rust/orm/src/db.rs::SqliteRowLockSequenceOps::restore_timeout": {
+    "exported": false,
+    "signature": "async fn restore_timeout (\u0026 mut self) -\u003e Result \u003c () \u003e"
+  },
+  "packages/rust/orm/src/db.rs::SqliteRowLockSequenceOps::set_nowait": {
+    "exported": false,
+    "signature": "async fn set_nowait (\u0026 mut self) -\u003e Result \u003c () \u003e"
+  },
+  "packages/rust/orm/src/db.rs::SqliteRowLockSequenceOps::take_row_lock": {
+    "exported": false,
+    "signature": "async fn take_row_lock (\u0026 mut self) -\u003e Result \u003c () \u003e"
+  },
   "packages/rust/orm/src/db.rs::Statement": {
     "exported": true,
     "signature": "pub struct Statement  { pub sql : String , pub binds : Vec \u003c Param \u003e , }"
@@ -3586,6 +3642,10 @@
   "packages/rust/orm/src/db.rs::pool_options": {
     "exported": false,
     "signature": " fn pool_options \u003c DB : sqlx :: Database \u003e (size : u32 , idle : u32 , lifetime_ms : u32 , owner : \u0026 PoolOwner) -\u003e sqlx :: pool :: PoolOptions \u003c DB \u003e"
+  },
+  "packages/rust/orm/src/db.rs::run_sqlite_row_lock_sequence": {
+    "exported": false,
+    "signature": " async fn run_sqlite_row_lock_sequence (ops : \u0026 mut impl SqliteRowLockSequenceOps) -\u003e Result \u003c () \u003e"
   },
   "packages/rust/orm/src/db.rs::sqlite_date_text": {
     "exported": false,
@@ -5845,7 +5905,7 @@
   },
   "packages/rust/orm/src/lib.rs::Error": {
     "exported": true,
-    "signature": "pub enum Error  { # [doc = \" An error with a code from docs/spec/errors.yaml.\"] Engine { code : String , msg : String } , # [doc = \" A driver error: the code the error catalog names for it, or DRIVER,\"] # [doc = \" with the driver message and the driver error.\"] Driver { code : String , msg : String , source : sqlx :: Error } , # [doc = \" A strict one-row query matched no row.\"] NoRows , # [doc = \" Update with optimistic locking matched no row.\"] OptimisticLock , # [doc = \" Executor configuration problem (missing AES key, bad transform input, …).\"] Config (String) , # [doc = \" A transaction or savepoint callback failed and its rollback failed too.\"] Rollback { callback : Box \u003c Error \u003e , rollback : Box \u003c Error \u003e } , # [doc = \" A statement event subscriber failed (SUBSCRIBER); `source` is its error.\"] Subscriber { msg : String , source : events :: SubscriberError } , }"
+    "signature": "pub enum Error  { # [doc = \" An error with a code from docs/spec/errors.yaml.\"] Engine { code : String , msg : String } , # [doc = \" A driver error: the code the error catalog names for it, or DRIVER,\"] # [doc = \" with the driver message and the driver error.\"] Driver { code : String , msg : String , source : sqlx :: Error } , # [doc = \" A strict one-row query matched no row.\"] NoRows , # [doc = \" Update with optimistic locking matched no row.\"] OptimisticLock , # [doc = \" Executor configuration problem (missing AES key, bad transform input, …).\"] Config (String) , # [doc = \" A transaction or savepoint callback failed and its rollback failed too.\"] Rollback { callback : Box \u003c Error \u003e , rollback : Box \u003c Error \u003e } , # [doc = \" A primary operation failed and one or more cleanup actions failed; the primary code remains observable.\"] Cleanup { primary : Box \u003c Error \u003e , cleanup : Vec \u003c Error \u003e } , # [doc = \" A statement event subscriber failed (SUBSCRIBER); `source` is its error.\"] Subscriber { msg : String , source : events :: SubscriberError } , }"
   },
   "packages/rust/orm/src/lib.rs::Error as From \u003c sqlx :: Error \u003e::from": {
     "exported": true,
@@ -5861,7 +5921,7 @@
   },
   "packages/rust/orm/src/lib.rs::Error#wire": {
     "exported": true,
-    "signature": "{\"callback\":\"Error\",\"code\":\"text\",\"msg\":\"text\",\"rollback\":\"Error\",\"source\":\"SubscriberError\"}"
+    "signature": "{\"callback\":\"Error\",\"cleanup\":\"list\u003cError\u003e\",\"code\":\"text\",\"msg\":\"text\",\"primary\":\"Error\",\"rollback\":\"Error\",\"source\":\"SubscriberError\"}"
   },
   "packages/rust/orm/src/lib.rs::Error::code": {
     "exported": true,

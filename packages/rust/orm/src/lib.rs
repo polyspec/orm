@@ -63,6 +63,8 @@ pub enum Error {
     Config(String),
     /// A transaction or savepoint callback failed and its rollback failed too.
     Rollback { callback: Box<Error>, rollback: Box<Error> },
+    /// A primary operation failed and one or more cleanup actions failed; the primary code remains observable.
+    Cleanup { primary: Box<Error>, cleanup: Vec<Error> },
     /// A statement event subscriber failed (SUBSCRIBER); `source` is its error.
     Subscriber { msg: String, source: events::SubscriberError },
 }
@@ -76,6 +78,7 @@ impl std::fmt::Display for Error {
             Error::OptimisticLock => write!(f, "{}: row changed since it was read", codes::OPTIMISTIC_LOCK),
             Error::Config(m) => write!(f, "{}: {m}", codes::CONFIG),
             Error::Rollback { callback, rollback } => write!(f, "{}: {}", codes::ROLLBACK, rollback_message(callback, rollback)),
+            Error::Cleanup { primary, cleanup } => write!(f, "{} (cleanup failed: {})", primary, cleanup.iter().map(ToString::to_string).collect::<Vec<_>>().join("; ")),
             Error::Subscriber { msg, .. } => write!(f, "{}: {msg}", codes::SUBSCRIBER),
         }
     }
@@ -90,6 +93,7 @@ impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Error::Driver { source, .. } => Some(source),
+            Error::Cleanup { primary, .. } => Some(primary),
             Error::Rollback { callback, .. } => Some(callback.as_ref()),
             Error::Subscriber { source, .. } => Some(source.as_ref()),
             _ => None,
@@ -218,6 +222,7 @@ impl Error {
             Error::OptimisticLock => codes::OPTIMISTIC_LOCK,
             Error::Config(_) => codes::CONFIG,
             Error::Rollback { .. } => codes::ROLLBACK,
+            Error::Cleanup { primary, .. } => primary.code(),
             Error::Subscriber { .. } => codes::SUBSCRIBER,
         }
     }

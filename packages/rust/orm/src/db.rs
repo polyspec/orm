@@ -421,6 +421,74 @@ fn check_sqlite_version(version: &str) -> Result<()> {
     Ok(())
 }
 
+trait SqliteRowLockSequenceOps {
+    async fn set_nowait(&mut self) -> Result<()>;
+    async fn take_row_lock(&mut self) -> Result<()>;
+    async fn restore_timeout(&mut self) -> Result<()>;
+}
+
+async fn run_sqlite_row_lock_sequence(ops: &mut impl SqliteRowLockSequenceOps) -> Result<()> {
+    ops.set_nowait().await?;
+    let primary = ops.take_row_lock().await;
+    let restore = ops.restore_timeout().await;
+    match (primary, restore) {
+        (Ok(()), Ok(())) => Ok(()),
+        (Err(primary), Ok(())) => Err(primary),
+        (Ok(()), Err(restore)) => Err(restore),
+        (Err(primary), Err(restore)) => Err(with_restore_failure(primary, restore)),
+    }
+}
+
+fn with_restore_failure(primary: Error, restore: Error) -> Error {
+    match primary {
+        Error::Engine { code, msg } => Error::Engine { code, msg: format!("{msg}; restoring busy_timeout also failed: {restore}") },
+        Error::Config(msg) => Error::Config(format!("{msg}; restoring busy_timeout also failed: {restore}")),
+        other => Error::Rollback { callback: Box::new(other), rollback: Box::new(restore) },
+    }
+}
+
+struct SqliteRowLockSequence<'a> {
+    db: &'a Db,
+    tx: &'a mut crate::driver::CancellableConnection<sqlx::Sqlite>,
+    transaction: Option<u64>,
+    previous: i64,
+    nowait: bool,
+}
+
+impl SqliteRowLockSequenceOps for SqliteRowLockSequence<'_> {
+    async fn set_nowait(&mut self) -> Result<()> {
+        let sql = "PRAGMA busy_timeout=0";
+        let start = std::time::Instant::now();
+        let result = crate::events::raw(self.db, &mut **self.tx, Sent::bare(KIND_UTILITY, &[], self.transaction, sql)).await;
+        self.db.statement_done(Sent::bare(KIND_UTILITY, &[], self.transaction, sql), start, result)
+    }
+
+    async fn take_row_lock(&mut self) -> Result<()> {
+        let tables = [crate::tx::ROW_LOCK_TABLE.to_owned()];
+        let insert = "INSERT INTO \"orm__row_lock\" (\"id\") VALUES (1) ON CONFLICT (\"id\") DO UPDATE SET \"id\"=excluded.\"id\"";
+        let statement = sqlx::SqlSafeStr::into_sql_str(sqlx::AssertSqlSafe(insert));
+        let start = std::time::Instant::now();
+        let operation = match sqlx::raw_sql(statement).execute(&mut **self.tx).await {
+            Ok(_) => Ok(()),
+            Err(error) => {
+                let busy = crate::sqlite_busy(&error);
+                let mapped = Error::from(error);
+                match busy {
+                    Ok(true) if self.nowait => Err(Error::Engine { code: crate::codes::LOCK_NOT_AVAILABLE.into(), msg: mapped.to_string() }),
+                    Ok(true) | Ok(false) => Err(mapped),
+                    Err(error) => Err(error),
+                }
+            }
+        };
+        self.db.statement_done(Sent::bare(KIND_UTILITY, &tables, self.transaction, insert), start, operation)
+    }
+
+    async fn restore_timeout(&mut self) -> Result<()> {
+        let sql = format!("PRAGMA busy_timeout={}", self.previous);
+        crate::events::raw(self.db, &mut **self.tx, Sent::bare(KIND_UTILITY, &[], self.transaction, &sql)).await
+    }
+}
+
 impl Db {
     /// Connects to the database selected by the DSN URI and registers the set
     /// of a generated schema on the connection, as `utils().schema().register`
@@ -819,39 +887,16 @@ impl Db {
             _ => return Ok(()),
         };
         let nowait = mode.ends_with("_nowait");
-        let mut previous = None;
         if nowait {
             let read = "PRAGMA busy_timeout";
             let start = std::time::Instant::now();
             let r = sqlx::query_scalar::<_, i64>(read).fetch_one(&mut **tx).await.map_err(Error::from);
-            previous = Some(self.statement_done(Sent::bare(KIND_UTILITY, &[], transaction, read), start, r)?);
-            crate::events::raw(self, &mut **tx, Sent::bare(KIND_UTILITY, &[], transaction, "PRAGMA busy_timeout=0")).await?;
+            let previous = self.statement_done(Sent::bare(KIND_UTILITY, &[], transaction, read), start, r)?;
+            let mut sequence = SqliteRowLockSequence { db: self, tx, transaction, previous, nowait: true };
+            return run_sqlite_row_lock_sequence(&mut sequence).await;
         }
-        let tables = [crate::tx::ROW_LOCK_TABLE.to_owned()];
-        let insert = "INSERT INTO \"orm__row_lock\" (\"id\") VALUES (1) ON CONFLICT (\"id\") DO UPDATE SET \"id\"=excluded.\"id\"";
-        let statement = sqlx::SqlSafeStr::into_sql_str(sqlx::AssertSqlSafe(insert));
-        let start = std::time::Instant::now();
-        let result = match sqlx::raw_sql(statement).execute(&mut **tx).await {
-            Ok(_) => Ok(()),
-            Err(error) => {
-                let busy = crate::sqlite_busy(&error)?;
-                let mapped = Error::from(error);
-                Err(if nowait && busy { Error::Engine { code: crate::codes::LOCK_NOT_AVAILABLE.into(), msg: mapped.to_string() } } else { mapped })
-            }
-        };
-        let result = self.statement_done(Sent::bare(KIND_UTILITY, &tables, transaction, insert), start, result);
-        let restore_failure = match previous {
-            Some(previous) => {
-                let restore = format!("PRAGMA busy_timeout={previous}");
-                crate::events::raw(self, &mut **tx, Sent::bare(KIND_UTILITY, &[], transaction, &restore)).await.err()
-            }
-            None => None,
-        };
-        match (result, restore_failure) {
-            (result, None) => result,
-            (Ok(_), Some(restore)) => Err(restore),
-            (Err(lock), Some(restore)) => Err(with_restore_failure(lock, restore)),
-        }
+        let mut sequence = SqliteRowLockSequence { db: self, tx, transaction, previous: 0, nowait: false };
+        sequence.take_row_lock().await
     }
 
     pub(crate) async fn run_query(
@@ -1232,15 +1277,6 @@ pub(crate) fn precision_count(precision: i64) -> Result<usize> {
         return Err(Error::Engine { code: codes::SCHEMA_INVALID.into(), msg: format!("precision {precision} is outside 0..6") });
     }
     Ok(count)
-}
-
-/// Joins a lock-request failure with the failure of the busy_timeout restore that follows it, so both reach the caller.
-fn with_restore_failure(lock: Error, restore: Error) -> Error {
-    match lock {
-        Error::Engine { code, msg } => Error::Engine { code, msg: format!("{msg}; restoring busy_timeout also failed: {restore}") },
-        Error::Config(msg) => Error::Config(format!("{msg}; restoring busy_timeout also failed: {restore}")),
-        other => Error::Rollback { callback: Box::new(other), rollback: Box::new(restore) },
-    }
 }
 
 /// A `time(p)` value is `HH:MM:SS` text with exactly p fractional digits (docs/spec/dbspec.md, "Runtime model"). The value is `HH:MM:SS[.f{1,6}]`

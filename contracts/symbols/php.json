@@ -10699,6 +10699,10 @@
     "exported": true,
     "signature": "final class Polyspec\\Orm\\OrmException extends RuntimeException implements Stringable,Throwable uses "
   },
+  "packages/php/src/OrmException.php::Polyspec\\Orm\\OrmException::$cleanup": {
+    "exported": true,
+    "signature": "public readonly array"
+  },
   "packages/php/src/OrmException.php::Polyspec\\Orm\\OrmException::$code_": {
     "exported": true,
     "signature": "public readonly string"
@@ -10709,7 +10713,7 @@
   },
   "packages/php/src/OrmException.php::Polyspec\\Orm\\OrmException::__construct": {
     "exported": true,
-    "signature": "public function __construct(string $code_, string $message, ?Throwable $previous=null, ?Throwable $rollback=null): "
+    "signature": "public function __construct(string $code_, string $message, ?Throwable $previous=null, ?Throwable $rollback=null, array $cleanup=[]): "
   },
   "packages/php/src/OrmException.php::Polyspec\\Orm\\OrmException::fromDriver": {
     "exported": true,
@@ -10722,6 +10726,10 @@
   "packages/php/src/OrmException.php::Polyspec\\Orm\\OrmException::rollback": {
     "exported": true,
     "signature": "public static function rollback(Throwable $cause, Throwable $rollback): Polyspec\\Orm\\OrmException"
+  },
+  "packages/php/src/OrmException.php::Polyspec\\Orm\\OrmException::withCleanup": {
+    "exported": true,
+    "signature": "public static function withCleanup(Throwable $primary, Throwable $cleanup): Polyspec\\Orm\\OrmException"
   },
   "packages/php/src/OrmGen.php::Polyspec\\Orm\\OrmGen": {
     "exported": true,

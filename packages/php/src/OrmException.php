@@ -14,7 +14,8 @@ final class OrmException extends \RuntimeException
         public readonly string $code_,
         string $message,
         ?\Throwable $previous = null,
-        public readonly ?\Throwable $rollback = null
+        public readonly ?\Throwable $rollback = null,
+        public readonly array $cleanup = []
     ) {
         parent::__construct($code_ . ': ' . $message, 0, $previous);
     }
@@ -31,6 +32,13 @@ final class OrmException extends \RuntimeException
             $cause,
             $rollback
         );
+    }
+
+    /** Keeps a primary operation error and ordered cleanup failures without changing its public code. */
+    public static function withCleanup(\Throwable $primary, \Throwable $cleanup): self
+    {
+        $code = $primary instanceof self ? $primary->code_ : Code::DRIVER;
+        return new self($code, $primary->getMessage(), $primary, null, [$cleanup]);
     }
 
     /**
