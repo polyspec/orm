@@ -17,7 +17,7 @@ use or_panic::OrPanic;
 
 #[path = "common/clock_event.rs"]
 mod clock_event;
-use clock_event::{CLOCK_SCHEMA, ClockEvent};
+use clock_event::{ClockEvent, CLOCK_SCHEMA};
 
 use std::time::Duration;
 

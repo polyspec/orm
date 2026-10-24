@@ -6,7 +6,7 @@
 //! its recorded one; [`rollback`] undoes the last plan with its rollback
 //! statements; [`finalize`] drops what the applied plans hid.
 
-use super::{CatalogQuerier, CatalogValue, Dialect, Effect, IntrospectError, Plan, PlanStep, chain, introspect, manifest, plan_steps};
+use super::{chain, introspect, manifest, plan_steps, CatalogQuerier, CatalogValue, Dialect, Effect, IntrospectError, Plan, PlanStep};
 use chrono::{DateTime, Utc};
 use sqlx::{AssertSqlSafe, MySqlConnection, PgConnection, SqliteConnection};
 use std::future::Future;
@@ -1190,7 +1190,11 @@ mod sqlite_lock_result_tests {
     }
     impl ApplyConnection for FailingBegin {
         async fn execute(&mut self, statement: &str) -> Result<(), sqlx::Error> {
-            if statement == "BEGIN EXCLUSIVE" { Err(sqlx::Error::Database(Box::new(ResultError(self.code)))) } else { Ok(()) }
+            if statement == "BEGIN EXCLUSIVE" {
+                Err(sqlx::Error::Database(Box::new(ResultError(self.code))))
+            } else {
+                Ok(())
+            }
         }
         async fn execute_bound(&mut self, _statement: &str, _args: &[CatalogValue]) -> Result<(), sqlx::Error> {
             Ok(())

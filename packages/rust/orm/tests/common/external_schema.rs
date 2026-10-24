@@ -1,8 +1,8 @@
 //! Builds schema values from owned and external fixture documents for registration tests.
 
 use crate::or_panic::OrPanic;
-use polyspec_orm::Schema;
 use polyspec_orm::dbspec::{self, Document};
+use polyspec_orm::Schema;
 use std::collections::BTreeMap;
 
 /// The text of `contracts/fixtures/<name>.dbs`.

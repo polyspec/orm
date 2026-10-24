@@ -31,8 +31,8 @@ pub mod utils;
 pub mod value;
 
 pub use args::{
-    Func, GroupArg, IntoNullable, Null, date, day_of_week, days_ago, days_later, hours_ago, hours_later, minutes_ago, minutes_later, month, months_ago,
-    months_later, now, seconds_ago, seconds_later, today, year,
+    date, day_of_week, days_ago, days_later, hours_ago, hours_later, minutes_ago, minutes_later, month, months_ago, months_later, now, seconds_ago,
+    seconds_later, today, year, Func, GroupArg, IntoNullable, Null,
 };
 pub use chrono;
 pub use collection::{Collection, GroupRow, GroupRows, Key, Page};
@@ -45,7 +45,7 @@ pub use ordered_json;
 pub use schema::{Manifest, Schema};
 pub use serde;
 pub use serde_json;
-pub use tx::{Isolation, SendTransaction, Transaction, TransactionOnce, TransactionOnceError, TransactionOnceFuture, transaction_conflict};
+pub use tx::{transaction_conflict, Isolation, SendTransaction, Transaction, TransactionOnce, TransactionOnceError, TransactionOnceFuture};
 pub use utils::{AesKeyring, AesRotationStatus, TablePrivileges, Utils};
 pub use value::{Param, StyledValue, Val};
 

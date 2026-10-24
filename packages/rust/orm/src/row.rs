@@ -373,7 +373,7 @@ pub(crate) fn decode_boolean_columns(asm: &crate::plan::Assemble, data: &mut [Ve
 
 #[cfg(test)]
 mod declared_boolean_tests {
-    use super::{Val, decode_boolean_columns};
+    use super::{decode_boolean_columns, Val};
     use crate::plan::{Assemble, Child, OutCol};
     use std::sync::Arc;
 
@@ -432,7 +432,7 @@ mod exact_i64_tests {
 #[cfg(test)]
 mod native_cell_bytes_tests {
     use super::Cells;
-    use crate::{Val, row::Src};
+    use crate::{row::Src, Val};
 
     // Requirements: INT-5, PRT-69.
     #[test]

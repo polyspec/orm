@@ -77,7 +77,11 @@ pub async fn text_rows(db: &Db, query: &str) -> Vec<Vec<String>> {
 
 /// A SQL expression that reads a column as text.
 fn cast_text(driver: &str, column: &str) -> String {
-    if driver == "mysql" { format!("CAST({column} AS CHAR)") } else { format!("CAST({column} AS TEXT)") }
+    if driver == "mysql" {
+        format!("CAST({column} AS CHAR)")
+    } else {
+        format!("CAST({column} AS TEXT)")
+    }
 }
 
 /// Installs restore.dbs in the dsn's database and restores soft-deleted rows. membership has a unique key

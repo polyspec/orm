@@ -342,8 +342,7 @@ async fn statement_timeout() {
         let err = locked_read(&db, &ENTITY).await.expect_err("a statement past the timeout");
         assert_eq!(err.code(), polyspec_orm::codes::CANCELED, "{driver}: {err}");
         held.release().await;
-        let count = polyspec_orm::model::get_count(event(&db).core()).await
-            .or_panic(|e| format!("{driver}: connection after statement timeout: {e}"));
+        let count = polyspec_orm::model::get_count(event(&db).core()).await.or_panic(|e| format!("{driver}: connection after statement timeout: {e}"));
         assert_eq!(count, 1, "{driver}: connection after statement timeout");
         holder.close().await;
         db.close().await;
