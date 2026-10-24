@@ -822,6 +822,28 @@ static bool execute_prepared_stmt(zval *self, zval *st, zval *args)
     return true;
 }
 
+/* Fetch one statement result, close its cursor, and transfer the fetched value to the caller. */
+static bool fetch_stmt_result(zval *st, const char *method, uint32_t argc, zval *argv, zval *out)
+{
+    zval fetched, closed;
+    if (!mcall(st, method, &fetched, argc, argv)) {
+        if (pdo_exception_pending()) {
+            failed_cursor(st);
+        }
+        zval_ptr_dtor(st);
+        return false;
+    }
+    bool ok = mcall(st, "closeCursor", &closed, 0, NULL);
+    zval_ptr_dtor(st);
+    if (!ok) {
+        zval_ptr_dtor(&fetched);
+        return false;
+    }
+    zval_ptr_dtor(&closed);
+    ZVAL_COPY_VALUE(out, &fetched);
+    return true;
+}
+
 /* ---- time values (Db::timeValue) ---- */
 
 static bool is_digit_run(const char *s, size_t n)
@@ -1762,7 +1784,7 @@ static bool close_statement(zval *st)
 static bool op_query(zval *self, void *ctx, zval *ret)
 {
     qctx *c = ctx;
-    zval st, mode, rows;
+    zval st, mode;
     if (!stmt_of(self, c->sql, &st)) {
         return false;
     }
@@ -1770,38 +1792,20 @@ static bool op_query(zval *self, void *ctx, zval *ret)
         return false;
     }
     ZVAL_LONG(&mode, FETCH_NUM);
-    if (!mcall(&st, "fetchAll", &rows, 1, &mode)) {
-        failed_statement(&st);
-        return false;
-    }
-    if (!close_statement(&st)) {
-        zval_ptr_dtor(&rows);
-        return false;
-    }
-    ZVAL_COPY_VALUE(ret, &rows);
-    return true;
+    return fetch_stmt_result(&st, "fetchAll", 1, &mode, ret);
 }
 
 static bool op_scalar(zval *self, void *ctx, zval *ret)
 {
     qctx *c = ctx;
-    zval st, v;
+    zval st;
     if (!stmt_of(self, c->sql, &st)) {
         return false;
     }
     if (!execute_prepared_stmt(self, &st, c->args)) {
         return false;
     }
-    if (!mcall(&st, "fetchColumn", &v, 0, NULL)) {
-        failed_statement(&st);
-        return false;
-    }
-    if (!close_statement(&st)) {
-        zval_ptr_dtor(&v);
-        return false;
-    }
-    ZVAL_COPY_VALUE(ret, &v);
-    return true;
+    return fetch_stmt_result(&st, "fetchColumn", 0, NULL, ret);
 }
 
 /* Db::query and Db::scalar: the statement of the step with its args, published as a model statement. */
@@ -1937,20 +1941,22 @@ static bool parent_values(zval *pr, zval *parents, zval *params, zval *out)
     return true;
 }
 
-static void append_parent_placeholders(smart_str *out, zend_long tuples, zend_long width, const char *sep,
-    char marker, zend_long first)
+static void append_repeated_placeholders(smart_str *sql, const char *separator, zend_long count, zend_long width,
+    bool numbered, zend_long first)
 {
-    for (zend_long tuple = 0; tuple < tuples; tuple++) {
+    for (zend_long tuple = 0; tuple < count; tuple++) {
         if (tuple > 0) {
-            smart_str_appends(out, sep);
+            smart_str_appends(sql, separator);
         }
-        for (zend_long column = 0; column < width; column++) {
-            if (column > 0) {
-                smart_str_appends(out, ", ");
+        for (zend_long part = 0; part < width; part++) {
+            if (part > 0) {
+                smart_str_appends(sql, ", ");
             }
-            smart_str_appendc(out, marker);
-            if (marker == '$') {
-                smart_str_append_long(out, first + tuple * width + column);
+            if (numbered) {
+                smart_str_appendc(sql, '$');
+                smart_str_append_long(sql, first + tuple * width + part);
+            } else {
+                smart_str_appendc(sql, '?');
             }
         }
     }
@@ -2018,7 +2024,7 @@ static bool expand_in(zval *step, zval *vals, zval *sql_out, zval *vals_out)
                 q++;
             }
             if (k == parent) {
-                append_parent_placeholders(&b, n, width, sep, '$', k);
+                append_repeated_placeholders(&b, sep, n, width, true, k);
             } else if (k > parent) {
                 smart_str_appendc(&b, '$');
                 smart_str_append_long(&b, k + n * width - 1);
@@ -2037,7 +2043,7 @@ static bool expand_in(zval *step, zval *vals, zval *sql_out, zval *vals_out)
             zval *from = aidx(bs, slot);
             zval *fv = from != NULL ? aget(from, "from") : NULL;
             if (is_str(fv, "parent")) {
-                append_parent_placeholders(&b, n, width, sep, '?', 0);
+                append_repeated_placeholders(&b, sep, n, width, false, 0);
             } else {
                 smart_str_appendc(&b, '?');
             }
