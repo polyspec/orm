@@ -178,9 +178,10 @@ func catalogGeneratedKeyMutations(t *testing.T, ctx context.Context, c *orm.Cata
 	}
 
 	autoKeyType := "INTEGER PRIMARY KEY AUTOINCREMENT"
-	if driver == "mysql" {
+	switch driver {
+	case "mysql":
 		autoKeyType = "BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY"
-	} else if driver == "postgres" {
+	case "postgres":
 		autoKeyType = "BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY"
 	}
 	catalogProbe(t, driver, dsn, "catalog_generated", "CREATE TABLE catalog_generated (id "+autoKeyType+", payload TEXT NOT NULL)"+engine)
@@ -230,9 +231,10 @@ func catalogGeneratedKeyMutations(t *testing.T, ctx context.Context, c *orm.Cata
 
 	expression := "lower(hex(randomblob(16)))"
 	keyType := "TEXT"
-	if driver == "mysql" {
+	switch driver {
+	case "mysql":
 		expression, keyType = "UUID()", "VARCHAR(36)"
-	} else if driver == "postgres" {
+	case "postgres":
 		expression, keyType = "gen_random_uuid()::text", "VARCHAR(36)"
 	}
 	catalogProbe(t, driver, dsn, "catalog_generated_expression",
