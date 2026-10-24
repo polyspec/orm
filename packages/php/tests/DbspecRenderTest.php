@@ -17,26 +17,11 @@ use Polyspec\Orm\Dbspec\Dbspec;
 #[Small]
 final class DbspecRenderTest extends TestCase
 {
-    private static array $started;
+    use DbspecTimedTest;
 
-    public static function setUpBeforeClass(): void
+    protected static function timingName(): string
     {
-        self::$started = caseClockStart();
-    }
-
-    // Warns if the CPU time of all vectors together exceeds the 10 s baseline.
-    public static function tearDownAfterClass(): void
-    {
-        [$cpuMs, $wallMs] = caseClockElapsed(self::$started);
-        if ($cpuMs > 10000) {
-            caseClockWarning(
-                sprintf(
-                    'dbspec_render used %.3f ms of CPU (%.3f ms wall), above its reference of 10 s',
-                    $cpuMs,
-                    $wallMs
-                )
-            );
-        }
+        return 'dbspec_render';
     }
 
     /** @param list<string> $lines */

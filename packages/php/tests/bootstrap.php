@@ -21,6 +21,7 @@ require_once __DIR__ . '/CountingPdo.php';
 require_once __DIR__ . '/FailingPdo.php';
 require_once __DIR__ . '/FailingStatement.php';
 require_once __DIR__ . '/dbspec_verify_errors_case.php';
+require_once __DIR__ . '/DbspecTimedTest.php';
 require_once __DIR__ . '/ModelTestFailingPdo.php';
 require_once __DIR__ . '/TransactionFailureCases.php';
 require_once __DIR__ . '/Served.php';
