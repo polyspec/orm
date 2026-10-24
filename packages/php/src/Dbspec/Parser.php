@@ -2515,17 +2515,8 @@ final class Parser
         foreach ($this->deferredAuditRecords as [$audited, $column, $arguments, $line, $failedKeys]) {
             [$historyToken, $columnToken, $referencesToken] = $arguments;
             $name = $referencesToken[0];
-            $entry = $this->tables[$name] ?? null;
-            if ($entry === null && isset($this->failedTables[$name])) {
-                continue;
-            }
+            $entry = $this->settingTable($referencesToken, $line, 'audit record table');
             if ($entry === null) {
-                $this->error(
-                    'setting',
-                    $line,
-                    $referencesToken[1],
-                    "audit record table `$name` is not a table of this document or a used table"
-                );
                 continue;
             }
             $record = $entry['table'];
@@ -2619,13 +2610,8 @@ final class Parser
             }
             [$historyToken, , $referencesToken, , , $tablesToken, $recordToken, $nameToken] = $arguments;
             $name = $tablesToken[0];
-            $entry = $this->tables[$name] ?? null;
-            if ($entry === null && isset($this->failedTables[$name])) {
-                continue;
-            }
+            $entry = $this->settingTable($tablesToken, $line, 'tables table');
             if ($entry === null) {
-                $this->error('setting', $line, $tablesToken[1], "tables table `$name` is not a table of this document "
-                    . "or a used table");
                 continue;
             }
             $tables = $entry['table'];
@@ -3380,13 +3366,8 @@ final class Parser
         foreach ($this->deferredHistories as [$machine, $line, $arguments, $state, $requires, $columns]) {
             [, $tableToken, $rowToken, $fromToken, $toToken, $atToken] = $arguments;
             $name = $tableToken[0];
-            $entry = $this->tables[$name] ?? null;
-            if ($entry === null && isset($this->failedTables[$name])) {
-                continue;
-            }
+            $entry = $this->settingTable($tableToken, $line, 'history table');
             if ($entry === null) {
-                $this->error('setting', $line, $tableToken[1], "history table `$name` is not a table of this document "
-                    . "or a used table");
                 continue;
             }
             if ($entry['table'] === null || $state === null || $state->type->name === 'invalid') {
@@ -3447,6 +3428,26 @@ final class Parser
                     . "table does not");
             }
         }
+    }
+
+    /** @return ?array{table: ?Table, columns: array, headerFailed?: bool} */
+    private function settingTable(array $token, int $line, string $role): ?array
+    {
+        $name = $token[0];
+        $entry = $this->tables[$name] ?? null;
+        if ($entry !== null) {
+            return $entry;
+        }
+        if (isset($this->failedTables[$name])) {
+            return null;
+        }
+        $this->error(
+            'setting',
+            $line,
+            $token[1],
+            "$role `$name` is not a table of this document or a used table"
+        );
+        return null;
     }
 
     // ------------------------------------------------------- helpers
