@@ -237,7 +237,7 @@ pub fn parse_dsn(dsn: &str) -> Result<ParsedDsn> {
                 return Err(bad("mysql DSN must include host and database".into()));
             }
             if pairs.iter().any(|(key, _)| key == "ssl-mode") {
-                if url.host_str().and_then(|host| host.trim_start_matches('[').trim_end_matches(']').parse::<std::net::IpAddr>().ok()).is_some() {
+                if url.host_str().is_some_and(|host| host.trim_start_matches('[').trim_end_matches(']').parse::<std::net::IpAddr>().is_ok()) {
                     return Err(bad("mysql DSN ssl-mode requires a host name, not an IP address".into()));
                 }
                 if pairs.iter().any(|(key, _)| key == "socket") {
