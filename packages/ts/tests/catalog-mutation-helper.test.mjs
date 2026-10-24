@@ -18,6 +18,15 @@ const metadata = {
   reliableRowIdentity: true,
 };
 
+function catalogFixturePool(session) {
+  return {
+    async reserve() { return session; },
+    async execute() { throw new Error('unexpected pool execute'); },
+    stats() { return { maxOpenConnections: 1, openConnections: 1, inUse: 0, idle: 1 }; },
+    async close() {},
+  };
+}
+
 function mysqlCatalogFixture({ expressionDefault = false, autoKey = false, priorRows = [], postRows } = {}) {
   const queries = [];
   const columns = autoKey
@@ -86,13 +95,7 @@ function mysqlCatalogFixture({ expressionDefault = false, autoKey = false, prior
     },
     release() {},
   };
-  const pool = {
-    async reserve() { return session; },
-    async execute() { throw new Error('unexpected pool execute'); },
-    stats() { return { maxOpenConnections: 1, openConnections: 1, inUse: 0, idle: 1 }; },
-    async close() {},
-  };
-  return { catalog: new CatalogConnection('mysql', pool), columns, metadata, queries, stored };
+  return { catalog: new CatalogConnection('mysql', catalogFixturePool(session)), columns, metadata, queries, stored };
 }
 
 function postgresCatalogFixture() {
@@ -132,13 +135,33 @@ function postgresCatalogFixture() {
     },
     release() {},
   };
-  const pool = {
-    async reserve() { return session; },
-    async execute() { throw new Error('unexpected pool execute'); },
-    stats() { return { maxOpenConnections: 1, openConnections: 1, inUse: 0, idle: 1 }; },
-    async close() {},
-  };
-  return { catalog: new CatalogConnection('postgres', pool), metadata, queries, stored };
+  return { catalog: new CatalogConnection('postgres', catalogFixturePool(session)), metadata, queries, stored };
+}
+
+async function withSqliteCatalog(prefix, ddl, exercise) {
+  const directory = await mkdtemp(join(tmpdir(), prefix));
+  const path = join(directory, 'catalog.sqlite');
+  const database = new DatabaseSync(path);
+  try {
+    database.exec(ddl);
+  } finally {
+    database.close();
+  }
+  let catalog;
+  try {
+    catalog = await connectCatalog(`sqlite://${path}`);
+    await exercise(catalog);
+  } finally {
+    if (catalog !== undefined) await catalog.close();
+    await rm(directory, { recursive: true, force: true });
+  }
+}
+
+async function assertAmbiguousInsert(catalog, metadata, values) {
+  await assert.rejects(
+    catalog.insertRow(metadata, values),
+    error => error.code === 'ROW_IDENTITY_AMBIGUOUS',
+  );
 }
 
 test('locks, validates and returns the descriptor of an unchanged original row', async () => {
@@ -248,13 +271,10 @@ test('rejects an already-matching MySQL expression locator before inserting', as
   const existing = ['earlier-key', 1, null];
   const { catalog, metadata, queries } = mysqlCatalogFixture({ expressionDefault: true, priorRows: [existing] });
   try {
-    await assert.rejects(
-      catalog.insertRow(metadata, [
-        { name: 'n', value: 1 },
-        { name: 'label', value: null },
-      ]),
-      error => error.code === 'ROW_IDENTITY_AMBIGUOUS',
-    );
+    await assertAmbiguousInsert(catalog, metadata, [
+      { name: 'n', value: 1 },
+      { name: 'label', value: null },
+    ]);
     assert.equal(queries.some(([kind]) => kind === 'execute'), false);
   } finally {
     await catalog.close();
@@ -264,13 +284,10 @@ test('rejects an already-matching MySQL expression locator before inserting', as
 test('reports an ambiguous MySQL expression locator result without changing strategy', async () => {
   const { catalog, metadata, queries } = mysqlCatalogFixture({ expressionDefault: true, postRows: [['first-key', 1, null], ['second-key', 1, null]] });
   try {
-    await assert.rejects(
-      catalog.insertRow(metadata, [
-        { name: 'n', value: 1 },
-        { name: 'label', value: null },
-      ]),
-      error => error.code === 'ROW_IDENTITY_AMBIGUOUS',
-    );
+    await assertAmbiguousInsert(catalog, metadata, [
+      { name: 'n', value: 1 },
+      { name: 'label', value: null },
+    ]);
     assert.equal(queries.filter(([, sql]) => sql.startsWith('INSERT INTO')).length, 1);
     assert.equal(queries.some(([, sql]) => sql.includes('DEFAULT(`seq`)') || sql.includes('RETURNING')), false);
   } finally {
@@ -279,17 +296,7 @@ test('reports an ambiguous MySQL expression locator result without changing stra
 });
 
 test('inserts an omitted SQLite AUTOINCREMENT key and returns the stored row', async () => {
-  const directory = await mkdtemp(join(tmpdir(), 'orm-catalog-auto-key-'));
-  const path = join(directory, 'catalog.sqlite');
-  const database = new DatabaseSync(path);
-  try {
-    database.exec('CREATE TABLE generated_record (id INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL)');
-  } finally {
-    database.close();
-  }
-  let catalog;
-  try {
-    catalog = await connectCatalog(`sqlite://${path}`);
+  await withSqliteCatalog('orm-catalog-auto-key-', 'CREATE TABLE generated_record (id INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL)', async catalog => {
     const metadata = await catalog.describeTable({ namespace: 'main', name: 'generated_record' });
     assert.deepEqual(metadata.primaryKey, ['id']);
     assert.deepEqual(metadata.columns[0], {
@@ -301,24 +308,11 @@ test('inserts an omitted SQLite AUTOINCREMENT key and returns the stored row', a
     assert.deepEqual(inserted.rows, [[1, 'generated']]);
     assert.equal(typeof inserted.rows[0][0], 'number');
     assert.deepEqual((await catalog.readOnlyQuery('SELECT id, payload FROM generated_record', [])).rows, [[1, 'generated']]);
-  } finally {
-    if (catalog !== undefined) await catalog.close();
-    await rm(directory, { recursive: true, force: true });
-  }
+  });
 });
 
 test('inserts an omitted literal-default component of a composite SQLite key', async () => {
-  const directory = await mkdtemp(join(tmpdir(), 'orm-catalog-literal-key-'));
-  const path = join(directory, 'catalog.sqlite');
-  const database = new DatabaseSync(path);
-  try {
-    database.exec("CREATE TABLE generated_record (tenant BIGINT NOT NULL, seq VARCHAR(30) NOT NULL DEFAULT 'generated', n BIGINT NOT NULL, PRIMARY KEY (tenant, seq))");
-  } finally {
-    database.close();
-  }
-  let catalog;
-  try {
-    catalog = await connectCatalog(`sqlite://${path}`);
+  await withSqliteCatalog('orm-catalog-literal-key-', "CREATE TABLE generated_record (tenant BIGINT NOT NULL, seq VARCHAR(30) NOT NULL DEFAULT 'generated', n BIGINT NOT NULL, PRIMARY KEY (tenant, seq))", async catalog => {
     const metadata = await catalog.describeTable({ namespace: 'main', name: 'generated_record' });
     assert.deepEqual(metadata.primaryKey, ['tenant', 'seq']);
     assert.equal(metadata.columns[1].defaultExpression, "'generated'");
@@ -328,24 +322,11 @@ test('inserts an omitted literal-default component of a composite SQLite key', a
     ]);
     assert.deepEqual(inserted.rows, [[2, 'generated', 50]]);
     assert.deepEqual((await catalog.readOnlyQuery('SELECT tenant, seq, n FROM generated_record', [])).rows, [[2, 'generated', 50]]);
-  } finally {
-    if (catalog !== undefined) await catalog.close();
-    await rm(directory, { recursive: true, force: true });
-  }
+  });
 });
 
 test('inserts an omitted volatile expression-default SQLite key without reevaluating it', async () => {
-  const directory = await mkdtemp(join(tmpdir(), 'orm-catalog-expression-key-'));
-  const path = join(directory, 'catalog.sqlite');
-  const database = new DatabaseSync(path);
-  try {
-    database.exec('CREATE TABLE generated_record (seq TEXT NOT NULL PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))), n INTEGER NOT NULL UNIQUE, label TEXT)');
-  } finally {
-    database.close();
-  }
-  let catalog;
-  try {
-    catalog = await connectCatalog(`sqlite://${path}`);
+  await withSqliteCatalog('orm-catalog-expression-key-', 'CREATE TABLE generated_record (seq TEXT NOT NULL PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))), n INTEGER NOT NULL UNIQUE, label TEXT)', async catalog => {
     const metadata = await catalog.describeTable({ namespace: 'main', name: 'generated_record' });
     assert.deepEqual(metadata.primaryKey, ['seq']);
     assert.equal(metadata.columns[0].expressionDefault, true);
@@ -360,8 +341,5 @@ test('inserts an omitted volatile expression-default SQLite key without reevalua
     assert.equal(row[1], 1);
     assert.equal(row[2], null);
     assert.deepEqual((await catalog.readOnlyQuery('SELECT seq, n, label FROM generated_record', [])).rows, [row]);
-  } finally {
-    if (catalog !== undefined) await catalog.close();
-    await rm(directory, { recursive: true, force: true });
-  }
+  });
 });

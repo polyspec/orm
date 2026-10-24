@@ -1349,14 +1349,20 @@ export class CatalogConnection {
       if (!sameDescriptor(descriptor, declared)) throw err(CODE_SCHEMA, 'insertion descriptor changed');
       if (this.dialect === 'mysql') await session.mysqlSafety(descriptor);
       const expressionLocator = this.dialect === 'mysql' && omittedKeys.some(index => descriptor.columns[index]?.expressionDefault === true);
+      const readInputLocator = () => session.collect<CatalogValue>(
+        mysqlInputLocatorSql(descriptor, changes, this.dialect),
+        mysqlInputLocatorParams(changes),
+        2,
+        PAGE_BYTES,
+        (value, column, index) => describedCell(value, column, descriptor.columns[index], this.dialect),
+      );
+      const checkProjection = (columns: readonly DriverColumn[], message: string) => {
+        if (columns.length !== descriptor.columns.length || columns.some((column, index) => column.name !== descriptor.columns[index]?.name)) {
+          throw err(CODE_WRITE, message);
+        }
+      };
       if (expressionLocator) {
-        const before = await session.collect<CatalogValue>(
-          mysqlInputLocatorSql(descriptor, changes, this.dialect),
-          mysqlInputLocatorParams(changes),
-          2,
-          PAGE_BYTES,
-          (value, column, index) => describedCell(value, column, descriptor.columns[index], this.dialect),
-        );
+        const before = await readInputLocator();
         if (before.rows.length !== 0) throw err(CODE_AMBIGUOUS, 'generated identity locator already matches rows');
       }
       const names = changes.map(change => quoteIdent(descriptor.columns[change.index]?.name ?? '', this.dialect));
@@ -1372,25 +1378,15 @@ export class CatalogConnection {
           PAGE_BYTES,
           (value, column, index) => describedCell(value, column, descriptor.columns[index], this.dialect),
         );
-        if (result.columns.length !== descriptor.columns.length || result.columns.some((column, index) => column.name !== descriptor.columns[index]?.name)) {
-          throw err(CODE_WRITE, 'returned insert projection differs from descriptor');
-        }
+        checkProjection(result.columns, 'returned insert projection differs from descriptor');
         if (result.rows.length !== 1) throw err(CODE_WRITE, `expected exactly one inserted row, got ${result.rows.length}`);
         checkCells(descriptor, result.rows[0] ?? []);
         after = result.rows;
       } else if (expressionLocator) {
         const affected = await session.exec(insert, changes.map(change => change.value));
         if (affected !== 1) throw err(CODE_WRITE, `expected exactly one inserted row, got ${affected}`);
-        const result = await session.collect<CatalogValue>(
-          mysqlInputLocatorSql(descriptor, changes, this.dialect),
-          mysqlInputLocatorParams(changes),
-          2,
-          PAGE_BYTES,
-          (value, column, index) => describedCell(value, column, descriptor.columns[index], this.dialect),
-        );
-        if (result.columns.length !== descriptor.columns.length || result.columns.some((column, index) => column.name !== descriptor.columns[index]?.name)) {
-          throw err(CODE_WRITE, 'generated insert locator projection differs from descriptor');
-        }
+        const result = await readInputLocator();
+        checkProjection(result.columns, 'generated insert locator projection differs from descriptor');
         if (result.rows.length !== 1) throw err(CODE_AMBIGUOUS, 'expected exactly one inserted locator row');
         checkCells(descriptor, result.rows[0] ?? []);
         after = result.rows;
