@@ -8,22 +8,7 @@ const orm = await import('../dist/index.js');
 const { keyOfValues, rowKey } = await import('../dist/database.js');
 
 /** The TypeScript value of one fixture entry, with the type that the client reads from a column. */
-function valueOf(entry) {
-  switch (entry.type) {
-    case 'text':
-    case 'bool':
-    case 'int':
-      return entry.value;
-    case 'bytes':
-      return Uint8Array.from(Buffer.from(entry.hex, 'hex'));
-    case 'datetime':
-      return new Date(entry.value);
-    default:
-      throw new Error(`fixture ${entry.name} has unknown type ${entry.type}`);
-  }
-}
-
-function compositeValueOf(entry) {
+function valueOf(entry, allowNull = false) {
   switch (entry.type) {
     case 'text':
     case 'bool':
@@ -34,10 +19,17 @@ function compositeValueOf(entry) {
     case 'datetime':
       return new Date(entry.value);
     case 'null':
-      return null;
+      if (allowNull) return null;
+      break;
     default:
-      throw new Error(`fixture ${entry.name} has unknown composite type ${entry.type}`);
+      break;
   }
+  const kind = allowNull ? 'unknown composite type' : 'unknown type';
+  throw new Error(`fixture ${entry.name} has ${kind} ${entry.type}`);
+}
+
+function compositeValueOf(entry) {
+  return valueOf(entry, true);
 }
 
 // Each case is a node:test test, the form that the parity runner reads (tests/testcase.mts, caseTest).
