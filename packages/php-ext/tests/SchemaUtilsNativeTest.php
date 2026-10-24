@@ -257,6 +257,71 @@ final class SchemaUtilsNativeTest extends TestCase
         }
     }
 
+    public function testBeginInspectionFailureReplacesThePrimaryAndRestoresForeignKeys(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'orm-schema-inspection-failure-');
+        self::assertIsString($path);
+        try {
+            $db = Orm::connect('sqlite:///' . $path, new Config());
+            $pdo = new class ('sqlite:' . $path) extends \PDO {
+                public bool $failInspection = false;
+
+                public function inTransaction(): bool
+                {
+                    if ($this->failInspection) {
+                        throw new \RuntimeException('transaction inspection failed');
+                    }
+                    return parent::inTransaction();
+                }
+            };
+            $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+            $pdo->exec('PRAGMA foreign_keys = ON');
+            $state = (new \ReflectionProperty(\Polyspec\Orm\Db::class, 'state'))->getValue($db);
+            $state->pdo = $pdo;
+            $before = $pdo->query(
+                "SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name"
+            )->fetchAll(\PDO::FETCH_ASSOC);
+            $events = [];
+            $unsubscribe = $db->subscribe(static function ($event) use (&$events, $pdo): void {
+                $events[] = $event->kind . ':' . $event->sql;
+                if ($event->kind === 'begin' && $event->sql === 'BEGIN IMMEDIATE') {
+                    $pdo->failInspection = true;
+                    throw new \RuntimeException('begin observer failed');
+                }
+            });
+
+            try {
+                $db->utils()->schema()->addTablesAndColumns(self::schema(
+                    "dbspec 1 inspection_failure\n\ntable sample {\n  id i64\n  primary key (id)\n}\n"
+                ));
+                self::fail('the BEGIN and inspection failures were ignored');
+            } catch (\RuntimeException $error) {
+                self::assertSame('transaction inspection failed', $error->getMessage());
+            }
+
+            $pdo->failInspection = false;
+            self::assertTrue($pdo->inTransaction());
+            self::assertSame(0, (int) $pdo->query('PRAGMA foreign_keys')->fetchColumn());
+            self::assertSame($before, $pdo->query(
+                "SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name"
+            )->fetchAll(\PDO::FETCH_ASSOC));
+            self::assertSame([
+                'utility:PRAGMA foreign_keys = OFF',
+                'begin:BEGIN IMMEDIATE',
+                'utility:PRAGMA foreign_keys = ON',
+            ], $events);
+            $pdo->exec('ROLLBACK');
+            $pdo->exec('PRAGMA foreign_keys = ON');
+            self::assertSame(1, (int) $pdo->query('PRAGMA foreign_keys')->fetchColumn());
+            $unsubscribe();
+            $db->close();
+        } finally {
+            if (is_file($path)) {
+                unlink($path);
+            }
+        }
+    }
+
     public function testSchemaMutationMethodsRejectObjectsThatAreNotSchema(): void
     {
         $path = tempnam(sys_get_temp_dir(), 'orm-schema-type-');

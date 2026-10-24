@@ -354,11 +354,13 @@ static bool schema_utils_sqlite_add_body(zval *db, schema_add_context *context, 
                         zval_ptr_dtor(&rollback);
                     }
                 }
-            } else {
-                zend_clear_exception();
+            } else if (EG(exception) != NULL) {
+                zval_ptr_dtor(&primary);
+                ZVAL_OBJ(&primary, take_exception());
             }
-        } else {
-            zend_clear_exception();
+        } else if (EG(exception) != NULL) {
+            zval_ptr_dtor(&primary);
+            ZVAL_OBJ(&primary, take_exception());
         }
     } else {
         schema_add_context active = *context;
