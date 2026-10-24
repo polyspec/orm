@@ -1,7 +1,7 @@
 //! Delete an exact checked original row under an owning transaction.
 use super::{
     metadata,
-    mutation::{bind, cancelled, lookup, mysql_safety, predicate, qualified, write_transaction_statement, CommitPermit, Publisher},
+    mutation::{bind, cancelled, lock_original, lookup, predicate, qualified, write_transaction_statement, CommitPermit, Publisher},
     mutation_finish, CatalogConnection, MutationPhase, RowSnapshot,
 };
 use crate::tool_db::{self, Conn};
@@ -19,15 +19,7 @@ impl CatalogConnection {
         cancelled(&cancellation)?;
         connection.exec(write_transaction_statement(&self.dialect), &[]).await.map_err(|e| e.to_string())?;
         let result = async {
-            cancelled(&cancellation)?;
-            let current = lookup(&mut connection, original.metadata(), &self.dialect, &keys, true).await?;
-            let descriptor = metadata::describe(&mut connection, &self.dialect, &original.metadata().table).await?;
-            original.check_current(&descriptor, &current)?;
-            if self.dialect == "mysql" {
-                mysql_safety(&mut connection, &descriptor).await?;
-            }
-            publish(MutationPhase::Locked);
-            cancelled(&cancellation)?;
+            let descriptor = lock_original(&mut connection, original, &self.dialect, &keys, &cancellation, &publish).await?;
             let sql = format!("DELETE FROM {} WHERE {}", qualified(&descriptor, &self.dialect)?, predicate(&descriptor, &self.dialect, 1)?);
             let affected = connection.exec(&sql, &keys).await.map_err(|e| e.to_string())?;
             if affected != 1 {

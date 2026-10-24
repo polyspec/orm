@@ -36,6 +36,27 @@ pub(super) fn write_transaction_statement(dialect: &str) -> &'static str {
         _ => "BEGIN IMMEDIATE",
     }
 }
+
+pub(super) async fn lock_original(
+    connection: &mut Conn,
+    original: &RowSnapshot,
+    dialect: &str,
+    keys: &[P],
+    cancellation: &AtomicBool,
+    publish: &Publisher,
+) -> Result<TableMetadata, String> {
+    cancelled(cancellation)?;
+    let current = lookup(connection, original.metadata(), dialect, keys, true).await?;
+    let descriptor = metadata::describe(connection, dialect, &original.metadata().table).await?;
+    original.check_current(&descriptor, &current)?;
+    if dialect == "mysql" {
+        mysql_safety(connection, &descriptor).await?;
+    }
+    publish(MutationPhase::Locked);
+    cancelled(cancellation)?;
+    Ok(descriptor)
+}
+
 pub(super) fn cell(value: &P) -> GridCell {
     match value {
         P::S(v) => GridCell::Text(v.clone()),
@@ -176,15 +197,7 @@ impl CatalogConnection {
         cancelled(&cancellation)?;
         connection.exec(write_transaction_statement(&self.dialect), &[]).await.map_err(|e| e.to_string())?;
         let result = async {
-            cancelled(&cancellation)?;
-            let current = lookup(&mut connection, original.metadata(), &self.dialect, &keys, true).await?;
-            let descriptor = metadata::describe(&mut connection, &self.dialect, &original.metadata().table).await?;
-            original.check_current(&descriptor, &current)?;
-            if self.dialect == "mysql" {
-                mysql_safety(&mut connection, &descriptor).await?;
-            }
-            publish(MutationPhase::Locked);
-            cancelled(&cancellation)?;
+            let descriptor = lock_original(&mut connection, original, &self.dialect, &keys, &cancellation, &publish).await?;
             let sets = changes
                 .iter()
                 .enumerate()
