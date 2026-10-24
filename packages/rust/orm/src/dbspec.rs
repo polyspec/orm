@@ -66,8 +66,25 @@ fn decode_error(message: String) -> sqlx::Error {
     sqlx::Error::Decode(message.into())
 }
 
-fn catalog_rows<R: Row>(rows: &[R], mut value: impl FnMut(&R, usize) -> Result<CatalogValue, sqlx::Error>) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
+pub(super) fn catalog_rows<R: Row>(rows: &[R], mut value: impl FnMut(&R, usize) -> Result<CatalogValue, sqlx::Error>) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
     rows.iter().map(|row| (0..row.len()).map(|i| value(row, i)).collect()).collect()
+}
+
+#[cfg(test)]
+mod catalog_row_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn catalog_rows_preserves_row_and_column_order() {
+        use sqlx::Connection as _;
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let mut connection = SqliteConnection::connect("sqlite::memory:").await.expect("SQLite memory connection");
+        let rows = sqlx::query("SELECT 1 AS first, 'two' AS second UNION ALL SELECT 3, NULL").fetch_all(&mut connection).await.expect("rows");
+        assert_eq!(
+            catalog_rows(&rows, sqlite_value).unwrap(),
+            vec![vec![CatalogValue::Int(1), CatalogValue::Text("two".into())], vec![CatalogValue::Int(3), CatalogValue::Null]],
+        );
+    }
 }
 
 /// Chooses the CatalogValue by the MySQL value's type name. A string with binary collation

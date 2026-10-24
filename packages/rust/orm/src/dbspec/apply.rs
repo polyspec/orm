@@ -1160,7 +1160,7 @@ impl ApplyConnection for MySqlConnection {
 
     async fn query_bound(&mut self, query: &str, args: &[CatalogValue]) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
         let rows = bound::<sqlx::MySql>(query, args).fetch_all(self).await?;
-        rows.iter().map(|row| (0..sqlx::Row::len(row)).map(|i| super::mysql_value(row, i)).collect()).collect()
+        super::catalog_rows(&rows, super::mysql_value)
     }
 }
 
@@ -1175,7 +1175,7 @@ impl ApplyConnection for PgConnection {
 
     async fn query_bound(&mut self, query: &str, args: &[CatalogValue]) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
         let rows = bound::<sqlx::Postgres>(query, args).fetch_all(self).await?;
-        rows.iter().map(|row| (0..sqlx::Row::len(row)).map(|i| super::postgres_value(row, i)).collect()).collect()
+        super::catalog_rows(&rows, super::postgres_value)
     }
 }
 
@@ -1190,7 +1190,7 @@ impl ApplyConnection for SqliteConnection {
 
     async fn query_bound(&mut self, query: &str, args: &[CatalogValue]) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
         let rows = bound::<sqlx::Sqlite>(query, args).fetch_all(self).await?;
-        rows.iter().map(|row| (0..sqlx::Row::len(row)).map(|i| super::sqlite_value(row, i)).collect()).collect()
+        super::catalog_rows(&rows, super::sqlite_value)
     }
 }
 
