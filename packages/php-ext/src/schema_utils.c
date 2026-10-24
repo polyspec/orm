@@ -1,6 +1,7 @@
 /* Native schema inspection and installation for Polyspec\\Orm\\SchemaUtils. */
 #include "dbspec.h"
 
+#include "Zend/zend_exceptions.h"
 #include "Zend/zend_smart_str.h"
 
 static zend_class_entry *schema_utils_ce;
@@ -327,6 +328,38 @@ static bool schema_utils_sqlite_add_body(zval *db, schema_add_context *context, 
     bool ok = began;
     if (!began) {
         ZVAL_OBJ(&primary, take_exception());
+        zval pdo, in_transaction;
+        if (schema_utils_call(db, "pdo", &pdo, 0, NULL)) {
+            bool checked = schema_utils_call(&pdo, "inTransaction", &in_transaction, 0, NULL);
+            zval_ptr_dtor(&pdo);
+            if (checked) {
+                bool transaction_open = zend_is_true(&in_transaction);
+                zval_ptr_dtor(&in_transaction);
+                if (transaction_open) {
+                    array_init(&empty_tables);
+                    bool rolled_back = schema_utils_run(db, "rollback", &empty_tables, &transaction, "ROLLBACK");
+                    zval_ptr_dtor(&empty_tables);
+                    if (!rolled_back) {
+                        zval rollback;
+                        ZVAL_OBJ(&rollback, take_exception());
+                        zval args[2], combined;
+                        ZVAL_COPY(&args[0], &primary);
+                        ZVAL_COPY(&args[1], &rollback);
+                        if (scall("Polyspec\\Orm\\OrmException::rollback", &combined, 2, args)) {
+                            zval_ptr_dtor(&primary);
+                            ZVAL_COPY_VALUE(&primary, &combined);
+                        }
+                        zval_ptr_dtor(&args[0]);
+                        zval_ptr_dtor(&args[1]);
+                        zval_ptr_dtor(&rollback);
+                    }
+                }
+            } else {
+                zend_clear_exception();
+            }
+        } else {
+            zend_clear_exception();
+        }
     } else {
         schema_add_context active = *context;
         active.transaction = &transaction;
@@ -364,7 +397,10 @@ static bool schema_utils_sqlite_add_body(zval *db, schema_add_context *context, 
     zval_ptr_dtor(&no_transaction);
     zval_ptr_dtor(&transaction);
     if (!restored) {
-        if (!Z_ISUNDEF(primary)) zval_ptr_dtor(&primary);
+        if (!Z_ISUNDEF(primary) && EG(exception) != NULL) {
+            zend_exception_set_previous(EG(exception), Z_OBJ(primary));
+            ZVAL_UNDEF(&primary);
+        }
         return false;
     }
     if (!Z_ISUNDEF(primary)) {

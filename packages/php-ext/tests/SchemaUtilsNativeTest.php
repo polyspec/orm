@@ -150,6 +150,113 @@ final class SchemaUtilsNativeTest extends TestCase
         }
     }
 
+    public function testBeginSubscriberFailureRollsBackAnOpenedSqliteTransaction(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'orm-schema-begin-subscriber-');
+        self::assertIsString($path);
+        try {
+            $db = Orm::connect('sqlite:///' . $path, new Config());
+            $pdo = $db->pdo();
+            $before = $pdo->query(
+                "SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name"
+            )->fetchAll(\PDO::FETCH_ASSOC);
+            $events = [];
+            $unsubscribe = $db->subscribe(static function ($event) use (&$events): void {
+                $events[] = $event->kind . ':' . $event->sql;
+                if ($event->kind === 'begin' && $event->sql === 'BEGIN IMMEDIATE') {
+                    throw new \RuntimeException('begin observer failed');
+                }
+            });
+
+            try {
+                $db->utils()->schema()->addTablesAndColumns(self::schema(
+                    "dbspec 1 begin_failure\n\ntable sample {\n  id i64\n  primary key (id)\n}\n"
+                ));
+                self::fail('the BEGIN subscriber failure was ignored');
+            } catch (OrmException $error) {
+                self::assertSame(Code::SUBSCRIBER, $error->code_);
+                self::assertSame('begin observer failed', $error->getPrevious()?->getMessage());
+            }
+
+            self::assertFalse($pdo->inTransaction());
+            self::assertSame(1, (int) $pdo->query('PRAGMA foreign_keys')->fetchColumn());
+            self::assertSame($before, $pdo->query(
+                "SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name"
+            )->fetchAll(\PDO::FETCH_ASSOC));
+            self::assertSame([
+                'utility:PRAGMA foreign_keys = OFF',
+                'begin:BEGIN IMMEDIATE',
+                'rollback:ROLLBACK',
+                'utility:PRAGMA foreign_keys = ON',
+            ], $events);
+            $unsubscribe();
+            $db->close();
+        } finally {
+            if (is_file($path)) {
+                unlink($path);
+            }
+        }
+    }
+
+    public function testSqliteRestoreFailureKeepsThePrimaryFailureAsPrevious(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'orm-schema-restore-failure-');
+        self::assertIsString($path);
+        try {
+            $db = Orm::connect('sqlite:///' . $path, new Config());
+            $pdo = $db->pdo();
+            $before = $pdo->query(
+                "SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name"
+            )->fetchAll(\PDO::FETCH_ASSOC);
+            $events = [];
+            $unsubscribe = $db->subscribe(static function ($event) use (&$events): void {
+                $events[] = $event->kind . ':' . $event->sql;
+                if ($event->kind === 'begin' && $event->sql === 'BEGIN IMMEDIATE') {
+                    throw new \RuntimeException('primary begin failure');
+                }
+                if ($event->kind === 'utility' && $event->sql === 'PRAGMA foreign_keys = ON') {
+                    throw new \RuntimeException('foreign key restore failure');
+                }
+            });
+
+            try {
+                $db->utils()->schema()->addTablesAndColumns(self::schema(
+                    "dbspec 1 restore_failure\n\ntable sample {\n  id i64\n  primary key (id)\n}\n"
+                ));
+                self::fail('the subscriber failures were ignored');
+            } catch (OrmException $error) {
+                self::assertSame(Code::SUBSCRIBER, $error->code_);
+                $chain = [];
+                for ($cause = $error; $cause !== null; $cause = $cause->getPrevious()) {
+                    $chain[] = $cause->getMessage();
+                }
+                self::assertSame([
+                    'SUBSCRIBER: statement event subscriber failed: foreign key restore failure',
+                    'foreign key restore failure',
+                    'SUBSCRIBER: statement event subscriber failed: primary begin failure',
+                    'primary begin failure',
+                ], $chain);
+            }
+
+            self::assertFalse($pdo->inTransaction());
+            self::assertSame($before, $pdo->query(
+                "SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name"
+            )->fetchAll(\PDO::FETCH_ASSOC));
+            self::assertSame([
+                'utility:PRAGMA foreign_keys = OFF',
+                'begin:BEGIN IMMEDIATE',
+                'rollback:ROLLBACK',
+                'utility:PRAGMA foreign_keys = ON',
+            ], $events);
+            $unsubscribe();
+            $db->close();
+        } finally {
+            if (is_file($path)) {
+                unlink($path);
+            }
+        }
+    }
+
     public function testSchemaMutationMethodsRejectObjectsThatAreNotSchema(): void
     {
         $path = tempnam(sys_get_temp_dir(), 'orm-schema-type-');
