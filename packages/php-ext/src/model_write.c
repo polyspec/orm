@@ -534,6 +534,38 @@ static bool array_has_string_value(zval *array, zend_string *needle)
     return false;
 }
 
+static bool append_set_values(zval *model, zval *request, zval *sets, zval *primary_key, bool loaded, zval *own)
+{
+    zend_string *column;
+    zval *spec;
+    ZEND_HASH_FOREACH_STR_KEY_VAL(Z_ARRVAL_P(sets), column, spec) {
+        if (column == NULL) {
+            zend_throw_error(NULL, "Model set columns must have string names");
+            return false;
+        }
+        if (!loaded && primary_key != NULL && array_has_string_value(primary_key, column)) continue;
+        zval item;
+        if (!assign_ir(model, request, column, spec, &item)) {
+            call_result_dtor(&item);
+            return false;
+        }
+        if (own != NULL) {
+            zval *index = array_key(&item, "p");
+            if (index != NULL && Z_TYPE_P(index) == IS_LONG) {
+                zval own_column;
+                ZVAL_STR_COPY(&own_column, column);
+                zend_hash_index_update(Z_ARRVAL_P(own), Z_LVAL_P(index), &own_column);
+            }
+        }
+        if (!request_append(request, "set", &item)) {
+            zval_ptr_dtor(&item);
+            return false;
+        }
+        zval_ptr_dtor(&item);
+    } ZEND_HASH_FOREACH_END();
+    return true;
+}
+
 static bool model_create(zval *model, zval *result_model)
 {
     zval db, frame, meta, request, written;
@@ -552,24 +584,7 @@ static bool model_create(zval *model, zval *result_model)
     if (!model_meta(model, &meta) || !write_request(model, "insert", &db, &request))
         goto failed;
 
-    zend_string *column;
-    zval *spec;
-    ZEND_HASH_FOREACH_STR_KEY_VAL(Z_ARRVAL_P(sets), column, spec) {
-        if (column == NULL) {
-            zend_throw_error(NULL, "Model set columns must have string names");
-            goto failed;
-        }
-        zval item;
-        if (!assign_ir(model, &request, column, spec, &item)) {
-            call_result_dtor(&item);
-            goto failed;
-        }
-        if (!request_append(&request, "set", &item)) {
-            zval_ptr_dtor(&item);
-            goto failed;
-        }
-        zval_ptr_dtor(&item);
-    } ZEND_HASH_FOREACH_END();
+    if (!append_set_values(model, &request, sets, NULL, true, NULL)) goto failed;
 
     zval *duplication = model_field(model, "duplication");
     if (duplication != NULL && Z_TYPE_P(duplication) == IS_OBJECT) {
@@ -1046,27 +1061,8 @@ static bool model_update(zval *model, bool optimistic, zval *result)
         zend_throw_error(NULL, "Model::withAesColumns() must return array");
         goto failed;
     }
-    zend_string *column;
-    zval *spec;
-    ZEND_HASH_FOREACH_STR_KEY_VAL(Z_ARRVAL(sets), column, spec) {
-        if (column == NULL) {
-            zend_throw_error(NULL, "Model set columns must have string names");
-            goto failed;
-        }
-        zval *pk = array_key(&meta, "pk");
-        if (!loaded && pk != NULL && array_has_string_value(pk, column))
-            continue;
-        zval item;
-        if (!assign_ir(model, &request, column, spec, &item)) {
-            call_result_dtor(&item);
-            goto failed;
-        }
-        if (!request_append(&request, "set", &item)) {
-            zval_ptr_dtor(&item);
-            goto failed;
-        }
-        zval_ptr_dtor(&item);
-    } ZEND_HASH_FOREACH_END();
+    zval *primary_key = array_key(&meta, "pk");
+    if (!append_set_values(model, &request, &sets, primary_key, loaded, NULL)) goto failed;
     zval *ir = object_property(&request, "ir");
     zval *set_list = array_key(ir, "set");
     if ((set_list == NULL || Z_TYPE_P(set_list) != IS_ARRAY || zend_hash_num_elements(Z_ARRVAL_P(set_list)) == 0)
@@ -1544,19 +1540,8 @@ static bool model_restore_step(zval *model, zval *restored_count, zval *query)
     zval_ptr_dtor(&build_args[0]); zval_ptr_dtor(&build_args[1]);
     array_init(&own);
     zval *sets = model_field(model, "sets");
-    zend_string *column; zval *spec;
     if (sets == NULL || Z_TYPE_P(sets) != IS_ARRAY) { zend_throw_error(NULL, "Model sets state is invalid"); goto failed; }
-    ZEND_HASH_FOREACH_STR_KEY_VAL(Z_ARRVAL_P(sets), column, spec) {
-        if (column == NULL) { zend_throw_error(NULL, "Model set columns must have string names"); goto failed; }
-        zval item;
-        if (!assign_ir(model, &request, column, spec, &item)) { call_result_dtor(&item); goto failed; }
-        zval *index = array_key(&item, "p");
-        if (index != NULL && Z_TYPE_P(index) == IS_LONG) {
-            zval own_column; ZVAL_STR_COPY(&own_column, column); zend_hash_index_update(Z_ARRVAL(own), Z_LVAL_P(index), &own_column);
-        }
-        if (!request_append(&request, "set", &item)) { zval_ptr_dtor(&item); goto failed; }
-        zval_ptr_dtor(&item);
-    } ZEND_HASH_FOREACH_END();
+    if (!append_set_values(model, &request, sets, NULL, true, &own)) goto failed;
     if (restore_hook_ce == NULL) { zend_throw_error(NULL, "ModelRestoreHook is not registered"); goto failed; }
     zval hook, closure; object_init_ex(&hook, restore_hook_ce);
     callback_property(&hook, "model", model); callback_property(&hook, "own", &own);
