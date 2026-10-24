@@ -182,23 +182,17 @@ impl CatalogFetch for SqliteConnection {
     }
 }
 
-impl CatalogQuerier for MySqlConnection {
-    async fn rows(&mut self, query: &str) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
-        let rows = self.fetch(query).await?;
-        Self::values(&rows)
-    }
+macro_rules! impl_catalog_querier {
+    ($($connection:ty),+ $(,)?) => {
+        $(
+            impl CatalogQuerier for $connection {
+                async fn rows(&mut self, query: &str) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
+                    let rows = self.fetch(query).await?;
+                    Self::values(&rows)
+                }
+            }
+        )+
+    };
 }
 
-impl CatalogQuerier for PgConnection {
-    async fn rows(&mut self, query: &str) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
-        let rows = self.fetch(query).await?;
-        Self::values(&rows)
-    }
-}
-
-impl CatalogQuerier for SqliteConnection {
-    async fn rows(&mut self, query: &str) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
-        let rows = self.fetch(query).await?;
-        Self::values(&rows)
-    }
-}
+impl_catalog_querier!(MySqlConnection, PgConnection, SqliteConnection);
