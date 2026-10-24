@@ -9188,9 +9188,7 @@
       ],
       "parity": [
         "catalog-connection-read",
-        "catalog-connection-row-mutation",
-        "rust-coverage-catalog-read",
-        "rust-coverage-catalog-row-mutation"
+        "catalog-connection-row-mutation"
       ],
       "fixtures": [
         "packages/rust/tests/tests/common/mod.rs"

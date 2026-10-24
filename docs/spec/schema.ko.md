@@ -1,5 +1,5 @@
 <!-- doc-id: schema -->
-<!-- source-sha256: a47dbe936fa5383ca27256d5d683dce084af63e21e1adf0a5fc250c146c0d148 -->
+<!-- source-sha256: 6f96346084a6023297797601ae23dcfb17e30a4cf74762dca7bc4270b7b0696d -->
 # 스키마
 
 스키마 source는 dbspec document(`.dbs`)의 집합이다. [dbspec.md](dbspec.md)가 언어, 검증 규칙, manifest text와 두 hash를 정의한다. `contracts/fixtures/bench/bench.dbs`는 테스트와 벤치마크의 스키마다. 다른 스키마 파일은 없으며 모든 generator, runtime, 스키마 작업이 document set을 읽는다.
@@ -52,7 +52,7 @@ PHP extension은 extension 선언을 통해 PHP API의 `Dbspec` parse/render/int
 
 - **SCH-6** SQLite Catalog 연결은 기존 regular database file을 요구하고 파일 자동 생성을 끈다. Catalog를 닫으면 소유한 database resource를 해제하고, 닫힌 뒤의 연산은 statement를 보내지 않고 `CATALOG_CLOSED`로 실패한다.
 
-- **SCH-6a** 카탈로그 연결은 설정된 여섯 구현(Go, PHP, PHP extension, TypeScript, Python, Rust)의 공통 요구다. 각 구현은 `connect(dsn)`과 `current_namespace`, `describe_table`, `table_page`, `read_only_query`, `read_only_grid_query`, `insert_row`, `update_row`, `delete_row`를 [인터페이스](interfaces.md)의 의미와 오류 코드에 맞춰 제공한다. 모든 client가 각 연산을 구현해야 하며, 누락된 연산이 있어도 공통 요구를 낮추지 않는다. KSTD-7-7은 MySQL, PostgreSQL, SQLite의 공통 실행 증거도 요구한다. Rust는 DSN에서 DB를 선택하고 markdown DSN을 거부하며 기존 SQLite 파일을 요구한다. `close(self)`는 연결을 소비한다. PHP library의 grid binding 규칙도 계속 공통 값 contract다.
+- **SCH-6a** Catalog 연결은 Go, PHP, PHP extension, TypeScript, Python, Rust의 공통 요구다. 각 native package는 [인터페이스](interfaces.md)의 의미와 오류 코드를 따르는 `connect(dsn)`, `current_namespace`, `describe_table`, `table_page`, `read_only_query`, `read_only_grid_query`, `insert_row`, `update_row`, `delete_row`를 제공한다. 연산이나 owner case가 빠지면 feature는 미완료이며, 구현별 wrapper와 값 표현은 공통 결과, 검증, 오류, snapshot, 정리 동작을 바꾸지 않는다. Catalog 연결은 markdown DSN을 거부한다. Catalog feature의 database case는 모든 client에서 MySQL, PostgreSQL, SQLite를 대상으로 한다.
 
 ## 4. 스키마 설치 {#_4-schema-installation}
 
