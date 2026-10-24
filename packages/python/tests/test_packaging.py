@@ -33,5 +33,6 @@ class PackageDataTest(unittest.TestCase):
         )
         self.assertTrue((SRC / "polyspec" / "orm" / "py.typed").is_file())
 
+
 if __name__ == "__main__":
     testcase.main()
