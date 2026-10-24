@@ -7,16 +7,16 @@ use std::ops::{Deref, DerefMut};
 use std::str::FromStr;
 
 use chrono::{NaiveDate, NaiveDateTime};
-use sqlx::Executor;
 use sqlx::mysql::{MySql, MySqlPool, MySqlRow};
 use sqlx::postgres::{PgPool, PgRow, PgTypeInfo, Postgres};
 use sqlx::sqlite::{Sqlite, SqlitePool, SqliteRow};
+use sqlx::Executor;
 
 use crate::collection::Key;
 use crate::db::Pool;
 use crate::db::Zone;
 use crate::plan::{Assemble, BindSlot, ParentRef, Plan, Step};
-use crate::row::{DriverRow, decode_boolean_columns, decode_styled, read_cell, read_row};
+use crate::row::{decode_boolean_columns, decode_styled, read_cell, read_row, DriverRow};
 use crate::value::{Param, Val};
 use crate::{Error, Result};
 
@@ -262,31 +262,28 @@ impl sqlx::Encode<'_, Postgres> for PgUuid {
     }
 }
 
+macro_rules! bind_param {
+    ($query:expr, $param:expr) => {
+        match $param {
+            Param::Null => $query.bind(Option::<i64>::None),
+            Param::Bool(value) => $query.bind(*value),
+            Param::I64(value) => $query.bind(*value),
+            Param::F64(value) => $query.bind(*value),
+            Param::Str(value) => $query.bind(value.as_str()),
+            Param::Bytes(value) => $query.bind(value.as_slice()),
+            Param::DateTime(value) => $query.bind(*value),
+            Param::Date(value) => $query.bind(*value),
+        }
+    };
+}
+
 pub(crate) fn bind_mysql<'q>(q: MySqlQuery<'q>, p: &'q Param) -> MySqlQuery<'q> {
-    match p {
-        Param::Null => q.bind(Option::<i64>::None),
-        Param::Bool(b) => q.bind(*b),
-        Param::I64(x) => q.bind(*x),
-        Param::F64(x) => q.bind(*x),
-        Param::Str(s) => q.bind(s.as_str()),
-        Param::Bytes(b) => q.bind(b.as_slice()),
-        Param::DateTime(t) => q.bind(*t),
-        Param::Date(d) => q.bind(*d),
-    }
+    bind_param!(q, p)
 }
 
 /// SQLite is dynamically typed: values bind as they are (datetimes already as text, see `args`).
 pub(crate) fn bind_sqlite<'q>(q: SqliteQuery<'q>, p: &'q Param) -> SqliteQuery<'q> {
-    match p {
-        Param::Null => q.bind(Option::<i64>::None),
-        Param::Bool(b) => q.bind(*b),
-        Param::I64(x) => q.bind(*x),
-        Param::F64(x) => q.bind(*x),
-        Param::Str(s) => q.bind(s.as_str()),
-        Param::Bytes(b) => q.bind(b.as_slice()),
-        Param::DateTime(t) => q.bind(*t),
-        Param::Date(d) => q.bind(*d),
-    }
+    bind_param!(q, p)
 }
 
 /// A datetime from the text forms a caller binds (the same layouts Go's AsTime accepts).

@@ -1,6 +1,8 @@
-use super::{statement, BindSlot, ParentRef, Step};
+use super::{bind_sqlite, statement, BindSlot, ParentRef, Step};
 use crate::plan::KeyRef;
 use crate::{codes, Error, Param};
+use chrono::{NaiveDate, NaiveDateTime};
+use sqlx::{Connection, Row};
 
 fn relation_step(sql: &str, slots: &[&str], key_width: usize) -> Step {
     Step {
@@ -71,4 +73,31 @@ fn parent_expansion_keeps_single_value_and_composite_padding_order() {
     let (sql, expanded) = statement(&positional, values.clone(), false).expect("positional composite parent slot is valid");
     assert_eq!(sql, "SELECT ? WHERE (a, b) IN ((?, ?), (?, ?), (?, ?), (?, ?)) AND active = ?");
     assert_eq!(expanded, [Param::I64(10), Param::I64(11), Param::I64(20), Param::I64(21), Param::I64(30), Param::I64(31), Param::I64(30), Param::I64(31),]);
+}
+
+#[tokio::test]
+async fn sqlite_bind_accepts_every_parameter_variant() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    tokio::time::timeout(std::time::Duration::from_secs(5), async {
+        let mut connection = sqlx::SqliteConnection::connect("sqlite::memory:").await.unwrap();
+        let date = NaiveDate::from_ymd_opt(2026, 10, 24).unwrap();
+        let datetime = NaiveDateTime::new(date, chrono::NaiveTime::from_hms_opt(12, 34, 56).unwrap());
+        let values = [
+            Param::Null,
+            Param::Bool(true),
+            Param::I64(42),
+            Param::F64(1.5),
+            Param::Str("text".into()),
+            Param::Bytes(vec![1, 2, 3]),
+            Param::DateTime(datetime),
+            Param::Date(date),
+        ];
+        for value in values {
+            let row = bind_sqlite(sqlx::query("SELECT ? IS NULL"), &value).fetch_one(&mut connection).await.unwrap();
+            let is_null: i64 = row.try_get(0).unwrap();
+            assert_eq!(is_null, i64::from(matches!(value, Param::Null)), "{value:?}");
+        }
+    })
+    .await
+    .expect("SQLite memory bind deadline");
 }
