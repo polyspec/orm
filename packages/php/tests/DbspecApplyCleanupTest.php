@@ -140,6 +140,7 @@ final class DbspecApplyCleanupTest extends TestCase
         $plans = self::$plans;
         $now = self::now();
         $begin = new PDOException('begin failed');
+        $begin->errorInfo = ['HY000', 5, 'database is locked'];
         $restore = new PDOException('restore failed');
         $pdo = failing_pdo(['BEGIN EXCLUSIVE' => $begin, 'PRAGMA foreign_keys = 0' => $restore]);
         want_cleanup(
