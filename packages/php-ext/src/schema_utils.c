@@ -26,6 +26,19 @@ static bool schema_utils_call(zval *object, const char *method, zval *result, ui
     return dbs_call_method(object, method, result, argc, argv);
 }
 
+static bool schema_utils_preflight(zval *db, zval *schema, const char *surface_text)
+{
+    zval surface, ignored;
+    ZVAL_STRING(&surface, surface_text);
+    bool ok = schema_utils_call(db, "unsupportedOnMarkdown", &ignored, 1, &surface);
+    zval_ptr_dtor(&surface);
+    if (!Z_ISUNDEF(ignored)) zval_ptr_dtor(&ignored);
+    if (!ok) return false;
+    if (!schema_utils_call(schema, "verify", &ignored, 0, NULL)) return false;
+    if (!Z_ISUNDEF(ignored)) zval_ptr_dtor(&ignored);
+    return true;
+}
+
 static zval *schema_utils_db(zval *object)
 {
     zval rv;
@@ -594,14 +607,8 @@ ZEND_METHOD(Polyspec_Orm_SchemaUtils, install)
     ZEND_PARSE_PARAMETERS_END();
     if (!schema_utils_require_schema(schema, "install")) RETURN_THROWS();
     zval *db = schema_utils_db(ZEND_THIS);
-    zval surface, ignored;
-    ZVAL_STRING(&surface, "schema install (flowmark install creates a corpus)");
-    bool ok = schema_utils_call(db, "unsupportedOnMarkdown", &ignored, 1, &surface);
-    zval_ptr_dtor(&surface);
-    if (!Z_ISUNDEF(ignored)) zval_ptr_dtor(&ignored);
-    if (!ok) RETURN_THROWS();
-    if (!schema_utils_call(schema, "verify", &ignored, 0, NULL)) RETURN_THROWS();
-    if (!Z_ISUNDEF(ignored)) zval_ptr_dtor(&ignored);
+    if (!schema_utils_preflight(db, schema, "schema install (flowmark install creates a corpus)")) RETURN_THROWS();
+    bool ok;
 
     zval driver, documents, render, target, pdo, statements;
     ZVAL_UNDEF(&driver);
@@ -687,14 +694,8 @@ ZEND_METHOD(Polyspec_Orm_SchemaUtils, addTablesAndColumns)
     ZEND_PARSE_PARAMETERS_END();
     if (!schema_utils_require_schema(schema, "addTablesAndColumns")) RETURN_THROWS();
     zval *db = schema_utils_db(ZEND_THIS);
-    zval surface, ignored;
-    ZVAL_STRING(&surface, "addTablesAndColumns (schema evolution follows the flowmark migration rules)");
-    bool ok = schema_utils_call(db, "unsupportedOnMarkdown", &ignored, 1, &surface);
-    zval_ptr_dtor(&surface);
-    if (!Z_ISUNDEF(ignored)) zval_ptr_dtor(&ignored);
-    if (!ok) RETURN_THROWS();
-    if (!schema_utils_call(schema, "verify", &ignored, 0, NULL)) RETURN_THROWS();
-    if (!Z_ISUNDEF(ignored)) zval_ptr_dtor(&ignored);
+    if (!schema_utils_preflight(db, schema, "addTablesAndColumns (schema evolution follows the flowmark migration rules)")) RETURN_THROWS();
+    bool ok;
 
     zval driver, documents, target, pdo;
     ZVAL_UNDEF(&driver);
