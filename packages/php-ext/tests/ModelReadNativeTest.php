@@ -131,8 +131,14 @@ final class ModelReadNativeTest extends TestCase
         (new \ReflectionProperty(Model::class, 'joins'))->setValue($parent, [['child' => $child]]);
         (new \ReflectionProperty(Model::class, 'relations'))->setValue($parent, [['many' => true, 'child' => $child]]);
 
-        self::assertSame($child, (new \ReflectionMethod(Model::class, 'joinChild'))->invoke($parent, 'read_shape_model'));
-        self::assertSame([$child, true], (new \ReflectionMethod(Model::class, 'relationChild'))->invoke($parent, 'read_shape_models'));
+        self::assertSame(
+            $child,
+            (new \ReflectionMethod(Model::class, 'joinChild'))->invoke($parent, 'read_shape_model'),
+        );
+        self::assertSame(
+            [$child, true],
+            (new \ReflectionMethod(Model::class, 'relationChild'))->invoke($parent, 'read_shape_models'),
+        );
     }
 
     public function testCollectionKeyUsesTheNativeFetchKeyCallback(): void
