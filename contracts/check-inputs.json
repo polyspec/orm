@@ -1928,6 +1928,7 @@
       ],
       "inputs": [
         "packages/php-ext/tests/ModelTypesSurfaceTest.php",
+        "packages/php-ext/tests/ModelTypesPendingFixture.php",
         "packages/php-ext/tests/PlanCacheBoundNativeTest.php",
         "packages/php-ext/tests/bootstrap.php",
         "packages/php-ext/tests/DeclarationsTest.php",

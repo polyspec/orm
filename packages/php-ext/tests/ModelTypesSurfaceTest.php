@@ -21,13 +21,7 @@ use function Polyspec\Orm\Tests\modelTypesWeakPage;
 use function Polyspec\Orm\Tests\modelTypesWeakPendingTime;
 use function Polyspec\Orm\Tests\modelTypesWeakRequest;
 
-final class ModelTypesPendingFixture extends Model
-{
-    public static function meta(): array
-    {
-        return [];
-    }
-}
+require_once __DIR__ . '/ModelTypesPendingFixture.php';
 
 final class ModelTypesSurfaceTest extends TestCase
 {
