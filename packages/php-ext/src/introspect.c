@@ -789,6 +789,19 @@ static cnode *array_literals(cdecoder *c)
     return holder;
 }
 
+static cnode *cmembership(cdecoder *c, cnode *left, bool negated)
+{
+    cexpect(c, "(");
+    cnode *list = c->failed ? left : literal_list(c, false);
+    cnode *n = dbs_alloc(sizeof *n);
+    n->predicate = true;
+    n->op = SL("in");
+    n->left = left;
+    n->list = list->list;
+    n->negated = negated;
+    return n;
+}
+
 static cnode *cpredicate(cdecoder *c)
 {
     cnode *left = cterm(c);
@@ -849,25 +862,10 @@ static cnode *cpredicate(cdecoder *c)
             cfail(c, SL("not outside not in"));
             return left;
         }
-        cexpect(c, "(");
-        cnode *list = c->failed ? left : literal_list(c, false);
-        cnode *n = dbs_alloc(sizeof *n);
-        n->predicate = true;
-        n->op = SL("in");
-        n->left = left;
-        n->list = list->list;
-        n->negated = true;
-        return n;
+        return cmembership(c, left, true);
     }
     if (cword(c, "in")) {
-        cexpect(c, "(");
-        cnode *list = c->failed ? left : literal_list(c, false);
-        cnode *n = dbs_alloc(sizeof *n);
-        n->predicate = true;
-        n->op = SL("in");
-        n->left = left;
-        n->list = list->list;
-        return n;
+        return cmembership(c, left, false);
     }
     return left;
 }
