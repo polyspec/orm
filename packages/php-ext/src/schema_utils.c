@@ -127,6 +127,17 @@ static bool schema_utils_introspect(zval *db, zval *pdo, zval *driver, zval *tra
     return ok;
 }
 
+static void schema_utils_append_differences(smart_str *message, zval *differences)
+{
+    zval *difference;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(differences), difference) {
+        if (message->s != NULL) smart_str_appends(message, "; ");
+        zend_string *text = zval_get_string(difference);
+        smart_str_append(message, text);
+        zend_string_release(text);
+    } ZEND_HASH_FOREACH_END();
+}
+
 static bool schema_utils_differences(zval *live, zval *unsupported, zval *documents, zval *target, const char *method,
     const char *code)
 {
@@ -146,13 +157,7 @@ static bool schema_utils_differences(zval *live, zval *unsupported, zval *docume
     bool found = Z_TYPE(differences) == IS_ARRAY && zend_hash_num_elements(Z_ARRVAL(differences)) != 0;
     if (found) {
         smart_str message = {0};
-        zval *difference;
-        ZEND_HASH_FOREACH_VAL(Z_ARRVAL(differences), difference) {
-            if (message.s != NULL) smart_str_appends(&message, "; ");
-            zend_string *text = zval_get_string(difference);
-            smart_str_append(&message, text);
-            zend_string_release(text);
-        } ZEND_HASH_FOREACH_END();
+        schema_utils_append_differences(&message, &differences);
         smart_str_0(&message);
         db_throw_orm(code, "%s", message.s == NULL ? "schema differs" : ZSTR_VAL(message.s));
         smart_str_free(&message);
@@ -226,13 +231,7 @@ static bool schema_utils_add_body(zval *db, void *opaque, zval *result)
     }
     if (zend_hash_num_elements(Z_ARRVAL_P(differences)) != 0) {
         smart_str message = {0};
-        zval *difference;
-        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(differences), difference) {
-            if (message.s != NULL) smart_str_appends(&message, "; ");
-            zend_string *text = zval_get_string(difference);
-            smart_str_append(&message, text);
-            zend_string_release(text);
-        } ZEND_HASH_FOREACH_END();
+        schema_utils_append_differences(&message, differences);
         smart_str_0(&message);
         db_throw_orm("SCHEMA_DIFFERS", "the existing tables differ beyond supported additions: %s",
             message.s == NULL ? "" : ZSTR_VAL(message.s));
