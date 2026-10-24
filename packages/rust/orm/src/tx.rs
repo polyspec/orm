@@ -709,17 +709,23 @@ macro_rules! transaction_options {
 
 transaction_options!(SendTransaction<'a, T>);
 
-impl<'a, T> IntoFuture for SendTransaction<'a, T>
-where
-    T: Send + 'a,
-{
-    type Output = Result<T>;
-    type IntoFuture = Pin<Box<dyn Future<Output = Result<T>> + Send + 'a>>;
+macro_rules! transaction_into_future {
+    ([$($generic:tt),+], $transaction:ty, [$($bound:tt)*], $future:ty) => {
+        impl<$($generic),+> IntoFuture for $transaction
+        where
+            $($bound)*
+        {
+            type Output = Result<T>;
+            type IntoFuture = $future;
 
-    fn into_future(self) -> Self::IntoFuture {
-        Box::pin(async move { self.run().await })
-    }
+            fn into_future(self) -> Self::IntoFuture {
+                Box::pin(async move { self.run().await })
+            }
+        }
+    };
 }
+
+transaction_into_future!(['a, T], SendTransaction<'a, T>, [T: Send + 'a], Pin<Box<dyn Future<Output = Result<T>> + Send + 'a>>);
 
 impl<'a, T> SendTransaction<'a, T>
 where
@@ -739,18 +745,7 @@ where
 
 transaction_options!(Transaction<'a, F>);
 
-impl<'a, F, T> IntoFuture for Transaction<'a, F>
-where
-    F: AsyncFn() -> Result<T> + 'a,
-    T: 'a,
-{
-    type Output = Result<T>;
-    type IntoFuture = Pin<Box<dyn Future<Output = Result<T>> + 'a>>;
-
-    fn into_future(self) -> Self::IntoFuture {
-        Box::pin(async move { self.run().await })
-    }
-}
+transaction_into_future!(['a, F, T], Transaction<'a, F>, [F: AsyncFn() -> Result<T> + 'a, T: 'a], Pin<Box<dyn Future<Output = Result<T>> + 'a>>);
 
 impl<'a, F> Transaction<'a, F> {
     async fn run<T>(self) -> Result<T>
