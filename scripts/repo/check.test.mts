@@ -382,6 +382,9 @@ caseTest('database-free dbspec verification stays in the static CI group', COMPU
   const dbspecApplyGroup = /^CI_TARGETS_dbspec_apply = (.*)$/m.exec(makefile)?.[1]?.split(/\s+/) ?? [];
   assert.ok(staticGroup.includes('dbspec-verify-errors-check'));
   assert.ok(!dbspecApplyGroup.includes('dbspec-verify-errors-check'));
+  const verifyRecipe = /^dbspec-verify-errors-check:[^\n]*\n((?:\t[^\n]*\n)+)/m.exec(makefile)?.[1] ?? '';
+  assert.ok(verifyRecipe, 'the focused owner target has a recipe');
+  assert.doesNotMatch(verifyRecipe, /\$\(CARGO_TEST\).*--test dbspec_apply_cleanup -- --nocapture/);
   const inputs = readCheckInputs(repository.pathname);
   assert.ok(!inputs.targets['dbspec-verify-errors-check']?.needs.includes('databases'));
 });

@@ -683,7 +683,6 @@ dbspec-verify-errors-check: dbspec-verify-errors-rust-check php-vendor-check php
 	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	node --test packages/ts/tests/dbspec-apply-verify-errors.mjs
-	cd packages/rust && $(CARGO_TEST) dbspec-rust-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test dbspec_apply_cleanup -- --nocapture
 # dbspec-rust-check/show-create checks that shown_checks (mysql.rs) reads every case of tests/dbspec/show-create.json with the expected body,
 # and that the public MySQL introspection (read_catalog) reports, for each case of that catalog, the expected check, unsupported objects, and error.
 dbspec-rust-check/show-create: dbspec-rust-check/show-create/unit dbspec-rust-check/show-create/vectors
