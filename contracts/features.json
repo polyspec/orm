@@ -9667,6 +9667,16 @@
       "command": "make --no-print-directory typescript-check-state-helper-check"
     },
     {
+      "id": "typescript-mysql-test-options",
+      "paths": [
+        "packages/ts/tests/mysql-test-options.mjs"
+      ],
+      "tests": [
+        "packages/ts/tests/mysql-test-options.test.mjs"
+      ],
+      "command": "make --no-print-directory mysql-test-options-helper-check"
+    },
+    {
       "id": "physical-command-output",
       "paths": [
         "scripts/physical-command-case.mts"

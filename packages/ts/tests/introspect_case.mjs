@@ -11,6 +11,7 @@ import mysql from 'mysql2/promise';
 import pg from 'pg';
 import { fileURLToPath } from 'node:url';
 import { dbspecManifest, parseDbspec, readDbspecFile } from '../dist/dbspec/index.js';
+import { mysqlTestOptions } from './mysql-test-options.mjs';
 
 export const root = new URL('../../../', import.meta.url);
 // TIMEOUT is the deadline (ms) of one case. One round trip applies one document set to one database, introspects it, then drops it.
@@ -91,18 +92,6 @@ export function expectedSchemaText(documents) {
   return result.manifest.schemaText;
 }
 
-function mysqlOptions(database) {
-  const url = new URL(mysqlDSN);
-  return {
-    user: decodeURIComponent(url.username),
-    password: decodeURIComponent(url.password),
-    socketPath: url.searchParams.get('socket') ?? undefined,
-    host: url.hostname || undefined,
-    port: url.port ? Number(url.port) : undefined,
-    database,
-  };
-}
-
 const run = `ts${process.pid}`;
 const sqliteDirectory = mkdtempSync(join(tmpdir(), `dbspec-introspect-${run}-`));
 process.on('exit', () => rmSync(sqliteDirectory, { recursive: true, force: true }));
@@ -115,11 +104,11 @@ export async function withDatabase(dialect, body) {
   const name = `dbspec_${run}_${String(probes++).padStart(3, '0')}`;
   switch (dialect) {
     case 'mysql': {
-      const admin = await mysql.createConnection(mysqlOptions(undefined));
+      const admin = await mysql.createConnection(mysqlTestOptions(mysqlDSN, undefined));
       try {
         await admin.query(`CREATE DATABASE \`${name}\``);
         try {
-          const connection = await mysql.createConnection(mysqlOptions(name));
+          const connection = await mysql.createConnection(mysqlTestOptions(mysqlDSN, name));
           try {
             await body(connection, (connection, sql) => connection.query(sql), name);
           } finally {

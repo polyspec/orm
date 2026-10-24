@@ -18,6 +18,7 @@ import { DatabaseSync } from 'node:sqlite';
 import mysql from 'mysql2/promise';
 import pg from 'pg';
 import { dbspecManifest, introspectDbspec, parseDbspec, parsePlan, planSteps, renderDbspec } from '../dist/dbspec/index.js';
+import { mysqlTestOptions } from './mysql-test-options.mjs';
 
 const root = new URL('../../../', import.meta.url);
 // TIMEOUT is the deadline (ms) of one case. One plan case creates one database, applies steps, reverts, applies again, finalizes, then drops it.
@@ -42,18 +43,6 @@ function vector(name, body) {
   caseTest(name, TIMEOUT, body);
 }
 
-function mysqlOptions(database) {
-  const url = new URL(mysqlDSN);
-  return {
-    user: decodeURIComponent(url.username),
-    password: decodeURIComponent(url.password),
-    socketPath: url.searchParams.get('socket') ?? undefined,
-    host: url.hostname || undefined,
-    port: url.port ? Number(url.port) : undefined,
-    database,
-  };
-}
-
 const run = `ts${process.pid}`;
 const sqliteDirectory = mkdtempSync(join(tmpdir(), `dbspec-plan-${run}-`));
 process.on('exit', () => rmSync(sqliteDirectory, { recursive: true, force: true }));
@@ -67,11 +56,11 @@ async function withDatabase(dialect, body) {
   const name = `plan_${run}_${String(probes++).padStart(3, '0')}`;
   switch (dialect) {
     case 'mysql': {
-      const admin = await mysql.createConnection(mysqlOptions(undefined));
+      const admin = await mysql.createConnection(mysqlTestOptions(mysqlDSN, undefined));
       try {
         await admin.query(`CREATE DATABASE \`${name}\``);
         try {
-          const connection = await mysql.createConnection(mysqlOptions(name));
+          const connection = await mysql.createConnection(mysqlTestOptions(mysqlDSN, name));
           try {
             await body({
               connection,

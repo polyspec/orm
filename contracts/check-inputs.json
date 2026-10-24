@@ -1766,6 +1766,17 @@
         "packages/ts/tests/check-state.test.mjs"
       ]
     },
+    "mysql-test-options-helper-check": {
+      "scope": "owner",
+      "needs": [
+        "node-modules"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/ts/tests/mysql-test-options.mjs",
+        "packages/ts/tests/mysql-test-options.test.mjs"
+      ]
+    },
     "catalog-mutation-helper-python-check": {
       "scope": "owner",
       "needs": [
