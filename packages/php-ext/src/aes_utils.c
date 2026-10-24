@@ -147,6 +147,21 @@ static bool aes_utils_driver(zval *db, bool *mysql, bool *postgres)
     return true;
 }
 
+static bool aes_utils_require_model_keyring(zval *model, zval *keyring, const char *method)
+{
+    if (aes_model_ce == NULL) aes_model_ce = aes_utils_class("Polyspec\\Orm\\Model");
+    if (aes_model_ce == NULL || !instanceof_function(Z_OBJCE_P(model), aes_model_ce)) {
+        zend_type_error("AesUtils::%s expects a Model", method);
+        return false;
+    }
+    if (aes_keyring_ce == NULL) aes_keyring_ce = aes_utils_class("Polyspec\\Orm\\AesKeyring");
+    if (aes_keyring_ce == NULL || !instanceof_function(Z_OBJCE_P(keyring), aes_keyring_ce)) {
+        zend_type_error("AesUtils::%s expects an AesKeyring", method);
+        return false;
+    }
+    return true;
+}
+
 static bool aes_utils_fetch(zval *db, zval *tables, zend_string *sql, zval *args, zval *rows)
 {
     zval tx, argv[5];
@@ -183,16 +198,7 @@ ZEND_METHOD(Polyspec_Orm_AesUtils, status)
         Z_PARAM_OBJECT(model)
         Z_PARAM_OBJECT(keyring)
     ZEND_PARSE_PARAMETERS_END();
-    if (aes_model_ce == NULL) aes_model_ce = aes_utils_class("Polyspec\\Orm\\Model");
-    if (aes_model_ce == NULL || !instanceof_function(Z_OBJCE_P(model), aes_model_ce)) {
-        zend_type_error("AesUtils::status expects a Model");
-        RETURN_THROWS();
-    }
-    if (aes_keyring_ce == NULL) aes_keyring_ce = aes_utils_class("Polyspec\\Orm\\AesKeyring");
-    if (aes_keyring_ce == NULL || !instanceof_function(Z_OBJCE_P(keyring), aes_keyring_ce)) {
-        zend_type_error("AesUtils::status expects an AesKeyring");
-        RETURN_THROWS();
-    }
+    if (!aes_utils_require_model_keyring(model, keyring, "status")) RETURN_THROWS();
     zval rv_db, rv_version;
     zval *db = zend_read_property(aes_utils_ce, Z_OBJ_P(ZEND_THIS), "db", sizeof("db") - 1, true, &rv_db);
     zval *version_value = zend_read_property(aes_keyring_ce, Z_OBJ_P(keyring), "currentVersion", sizeof("currentVersion") - 1, true, &rv_version);
@@ -518,16 +524,7 @@ ZEND_METHOD(Polyspec_Orm_AesUtils, rotate)
         Z_PARAM_OBJECT(model)
         Z_PARAM_OBJECT(keyring)
     ZEND_PARSE_PARAMETERS_END();
-    if (aes_model_ce == NULL) aes_model_ce = aes_utils_class("Polyspec\\Orm\\Model");
-    if (aes_model_ce == NULL || !instanceof_function(Z_OBJCE_P(model), aes_model_ce)) {
-        zend_type_error("AesUtils::rotate expects a Model");
-        RETURN_THROWS();
-    }
-    if (aes_keyring_ce == NULL) aes_keyring_ce = aes_utils_class("Polyspec\\Orm\\AesKeyring");
-    if (aes_keyring_ce == NULL || !instanceof_function(Z_OBJCE_P(keyring), aes_keyring_ce)) {
-        zend_type_error("AesUtils::rotate expects an AesKeyring");
-        RETURN_THROWS();
-    }
+    if (!aes_utils_require_model_keyring(model, keyring, "rotate")) RETURN_THROWS();
     zval rv_db, spec;
     zval *db = zend_read_property(aes_utils_ce, Z_OBJ_P(ZEND_THIS), "db", sizeof("db") - 1, true, &rv_db);
     ZVAL_UNDEF(&spec);

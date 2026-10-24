@@ -18,7 +18,7 @@ use Polyspec\Orm\Tests\Model\Author;
 #[Medium]
 final class AesUtilsNativeTest extends TestCase
 {
-    public function testRotateChecksKeyringTypeBeforeModelMetadata(): void
+    public function testStatusAndRotateCheckKeyringTypeBeforeModelMetadata(): void
     {
         $path = tempnam(sys_get_temp_dir(), 'orm-aes-rotate-type-');
         self::assertIsString($path);
@@ -34,14 +34,17 @@ final class AesUtilsNativeTest extends TestCase
             $unsubscribe = $db->subscribe(static function ($event) use (&$events): void {
                 $events[] = $event;
             });
-            for ($attempt = 0; $attempt < 2; $attempt++) {
-                try {
-                    $db->utils()->aes()->rotate($model, new \stdClass());
-                    self::fail('rotate accepted an object that is not an AesKeyring');
-                } catch (\TypeError $error) {
-                    self::assertStringContainsString('AesKeyring', $error->getMessage());
+            $aes = $db->utils()->aes();
+            foreach (['status', 'rotate'] as $method) {
+                for ($attempt = 0; $attempt < 2; $attempt++) {
+                    try {
+                        $aes->$method($model, new \stdClass());
+                        self::fail("$method accepted an object that is not an AesKeyring");
+                    } catch (\TypeError $error) {
+                        self::assertSame("AesUtils::$method expects an AesKeyring", $error->getMessage());
+                    }
+                    self::assertSame([], $events);
                 }
-                self::assertSame([], $events);
             }
             $unsubscribe();
             $db->close();
