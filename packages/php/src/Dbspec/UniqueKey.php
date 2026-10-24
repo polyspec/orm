@@ -6,11 +6,6 @@ namespace Polyspec\Orm\Dbspec;
 
 final class UniqueKey
 {
-    /**
-     * @param list<string> $columns
-     * @param list<string> $comments
-     */
-    public function __construct(public string $name, public array $columns, public array $comments = [])
-    {
-    }
+    /** @use NamedColumns<string> */
+    use NamedColumns;
 }

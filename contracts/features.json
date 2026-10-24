@@ -3704,6 +3704,7 @@
           "command": "make dbspec-php-check",
           "shard": "other",
           "inputs": [
+            "packages/php/src/Dbspec/*.php",
             "packages/php/tests/DbspecTest.php",
             "packages/php/tests/case_clock.php",
             "packages/php/tests/dbspec_cases.php",

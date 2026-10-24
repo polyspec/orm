@@ -1,5 +1,5 @@
 <!-- doc-id: features -->
-<!-- source-sha256: cfdc15d48ff0c6be086e752cdbf79210844239646cd4f15ee4a44839448f31ba -->
+<!-- source-sha256: 9f01ae9784e69fed9c7b16de604032201efe9162c3b523cb57b4342d98ac1ec8 -->
 # 기능 정의
 
 실행 기준은 저장소의 기능 manifest이다. 먼저 manifest의 `source.read_order` 경로를 읽고 선택한 기능의 모든 참조 경로를 읽는다. 각 항목은 input, output, 상태 전이, 오류, parity unit, fixture, test, paired document, 실제 검증 명령을 정의한다.
@@ -9,7 +9,7 @@
 | dsn_connection | DSN URI 연결 | partial | go, php, typescript, python, rust |
 | model_queries | 모델 조회 | implemented | go, php, php-extension, typescript, python, rust |
 | model_writes | 모델 쓰기 | implemented | go, php, php-extension, typescript, python, rust |
-| transactions | 트랜잭션 | partial | go, php, typescript, python, rust |
+| transactions | 트랜잭션 | partial | go, php, php-extension, typescript, python, rust |
 | statement_events | Statement event | partial | go, php, php-extension, typescript, python, rust |
 | model_generation | 모델 생성 | partial | typescript, python, rust |
 | schema_definition | 스키마 정의와 마이그레이션 | implemented | go, php, php-extension, typescript, python, rust |
