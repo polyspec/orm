@@ -6,6 +6,7 @@ import { Engine, dbspecManifest, parseDbspec, registerModel } from '../dist/inde
 import { markdownRead } from '../dist/markdown.js';
 import { validate } from '../dist/engine/validate.js';
 import { repositoryRoot } from './coverage_case.mjs';
+import { isInternalColumnError } from './internal-column-error.mjs';
 
 const plannerFixture = JSON.parse(await readFile(join(repositoryRoot, 'contracts/fixtures/planner.json'), 'utf8'));
 const scalar = plannerFixture.cases.find(({ id }) => id === 'planner_scalar_column_subquery');
@@ -19,7 +20,7 @@ validate(model, request);
 request.columns.sub.first_author.column = 'missing_column';
 for (const dialect of ['mysql', 'postgres', 'sqlite']) {
   const engine = new Engine(model, dialect);
-  assert.throws(() => engine.planner.compile(request), error => error?.code === 'INTERNAL' && /author\.missing_column/.test(error.message));
+  assert.throws(() => engine.planner.compile(request), error => isInternalColumnError(error, 'author', 'missing_column'));
 }
 
 for (const [agg, column, expected] of [['count', '', 'i64'], ['avg', 'read_count', 'f64']]) {
@@ -56,5 +57,5 @@ poolSession = {
 };
 await assert.rejects(
   markdownRead({ db, frame: undefined }, markdownRequest, []),
-  error => error?.code === 'INTERNAL' && /author\.missing_column/.test(error.message),
+  error => isInternalColumnError(error, 'author', 'missing_column'),
 );

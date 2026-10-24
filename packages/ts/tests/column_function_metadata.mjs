@@ -8,6 +8,7 @@ import { markdownRead } from '../dist/markdown.js';
 import { paramUses } from '../dist/engine/params.js';
 import { validate } from '../dist/engine/validate.js';
 import { repositoryRoot } from './coverage_case.mjs';
+import { isInternalColumnError } from './internal-column-error.mjs';
 
 const fixtures = JSON.parse(await readFile(join(repositoryRoot, 'contracts/fixtures/planner.json'), 'utf8'));
 const predicateCase = fixtures.cases.find(({ id }) => id === 'planner_column_function_date');
@@ -36,7 +37,7 @@ test('planner rejects missing post-validation predicate field and preserves publ
   assert.throws(() => validate(model, publicInvalid), error => error?.code === 'COLUMN_UNKNOWN');
   valid.where.items[0].pred.column = 'missing_column';
   for (const dialect of ['mysql', 'postgres', 'sqlite']) {
-    assert.throws(() => new Engine(model, dialect).planner.compile(valid), error => error?.code === 'INTERNAL' && /author\.missing_column/.test(error.message));
+    assert.throws(() => new Engine(model, dialect).planner.compile(valid), error => isInternalColumnError(error, 'author', 'missing_column'));
   }
 });
 
@@ -44,7 +45,7 @@ test('parameter-use collection rejects missing post-validation function field', 
   const valid = { ...structuredClone(predicateCase.input), manifest_hash: manifest.manifestHash };
   validate(model, valid);
   valid.where.items[0].pred.column = 'missing_column';
-  assert.throws(() => paramUses(model, valid), error => error?.code === 'INTERNAL' && /author\.missing_column/.test(error.message));
+  assert.throws(() => paramUses(model, valid), error => isInternalColumnError(error, 'author', 'missing_column'));
 });
 
 test('planner output projection rejects missing post-validation function field', () => {
@@ -53,7 +54,7 @@ test('planner output projection rejects missing post-validation function field',
   const plan = new Engine(model, 'sqlite').planner.compile(valid);
   assert.equal(plan.steps[0].assemble.columns.find(({ name }) => name === 'selected_year')?.type, 'i64');
   valid.columns.fn.selected_year.column = 'missing_column';
-  assert.throws(() => new Engine(model, 'sqlite').planner.compile(valid), error => error?.code === 'INTERNAL' && /author\.missing_column/.test(error.message));
+  assert.throws(() => new Engine(model, 'sqlite').planner.compile(valid), error => isInternalColumnError(error, 'author', 'missing_column'));
 });
 
 test('markdown output assembly rejects missing post-validation function field', async () => {
@@ -75,6 +76,6 @@ test('markdown output assembly rejects missing post-validation function field', 
   };
   await assert.rejects(
     markdownRead({ db, frame: undefined }, request, []),
-    error => error?.code === 'INTERNAL' && /author\.missing_column/.test(error.message),
+    error => isInternalColumnError(error, 'author', 'missing_column'),
   );
 });

@@ -9607,6 +9607,16 @@
       "command": "node --test tests/dbspec/set-tree.test.mjs"
     },
     {
+      "id": "typescript-internal-column-error",
+      "paths": [
+        "packages/ts/tests/internal-column-error.mjs"
+      ],
+      "tests": [
+        "packages/ts/tests/internal-column-error.test.mjs"
+      ],
+      "command": "node --test packages/ts/tests/internal-column-error.test.mjs"
+    },
+    {
       "id": "javascript-vector-case-registrar",
       "paths": [
         "tests/vector-registrar.mjs"
