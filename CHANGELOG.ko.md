@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 4b7d08983548174e6198cb9c06f04b704b3f475f422390aa989bbdfb21968ce5 -->
+<!-- source-sha256: d4bd166592bd6b05ee0603563512c214a2de6b6720227ad22804e32ec9f7c646 -->
 # 변경 이력
 
 ## Unreleased
+
+- Root page는 cached plan을 재사용하기 전에 잘못되었거나 안전 범위를 벗어난 offset/count 값을 거부한다(T236).
 
 - PHP extension 선언 검사는 `CatalogDocumentBuildException`을 내부 catalog 작성 helper로 제외하고 PHP 전용 public `Catalog` 연결을 유지한다. 수정 전 main source `27716799b`의 실제 client 선언 map에는 helper가 포함되어 있었다. source commit `ba06f0adb`에서 extension 선언 검사는 6개 테스트(15 assertions), native Mermaid 경계 대조 검사는 2개 테스트(4 assertions)를 통과한다(KSTD-5-62-1).
 

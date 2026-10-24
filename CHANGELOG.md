@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- Root pages reject malformed or unsafe offset/count values before reusing a cached plan (T236).
+
 - The PHP extension declaration checks now exclude `CatalogDocumentBuildException` as an internal catalog-building helper while keeping the public PHP `Catalog` connection available. The actual pre-fix client declaration map included the helper at main source `27716799b`. On source commit `ba06f0adb`, extension declarations pass (6 tests, 15 assertions) and the native Mermaid boundary controls pass (2 tests, 4 assertions) (KSTD-5-62-1).
 
 - Dbspec verification now distinguishes a real schema mismatch from catalog or driver failures across Go, PHP, the PHP extension, Python, Rust and TypeScript. Verification failures retain their original cause; a failed post-forward verification does not mark apply history successful. The focused database-free fake-driver target covers settled and rollback verification failures, post-forward failure state, and a genuine mismatch across all six implementations. On main source `fc50349c19be`, the exact Go regression failed on original source `67aee14d481e` in both settled and rollback paths (KSTD-5-61).
