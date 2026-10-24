@@ -57,6 +57,7 @@ go.work.sum
 # these packages are hand-written and stay tracked.
 /packages/go/model/*.go
 !/packages/go/model/*_test.go
+/packages/go/complexmodel/
 /packages/go/markdownmodel/*.go
 !/packages/go/markdownmodel/*_test.go
 /packages/go/decimalmodel/*.go
