@@ -7,9 +7,11 @@
 mod or_panic;
 use or_panic::OrPanic;
 
+#[path = "common/pool_exec.rs"]
+mod pool_exec;
+
 use std::collections::BTreeMap;
 
-use polyspec_orm::db::Pool;
 use polyspec_orm::dbspec::{self, Document};
 use polyspec_orm::serde_json::Value;
 use polyspec_orm::{Config, Db, Schema};
@@ -21,14 +23,7 @@ fn root() -> String {
 }
 
 async fn exec(db: &Db, statement: &str) {
-    let sql = sqlx::raw_sql(sqlx::AssertSqlSafe(statement.to_owned()));
-    match db.pool() {
-        Pool::MySql(p) => sql.execute(p).await.map(|_| ()),
-        Pool::Postgres(p) => sql.execute(p).await.map(|_| ()),
-        Pool::Sqlite(p) => sql.execute(p).await.map(|_| ()),
-        Pool::Markdown(_) => unreachable!("these cases run on SQL databases"),
-    }
-    .or_panic(|e| format!("{statement}: {e}"))
+    pool_exec::exec(db, statement).await.or_panic(|e| format!("{statement}: {e}"))
 }
 
 async fn install_case(driver: &str, dsn: &str, vector: &Value) {

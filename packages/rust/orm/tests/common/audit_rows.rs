@@ -3,6 +3,7 @@
 //! both use them.
 
 use crate::or_panic::OrPanic;
+use crate::pool_exec;
 use crate::result_code::code;
 
 use std::collections::BTreeMap;
@@ -55,13 +56,7 @@ pub async fn audit_db(dsn: &str, config: polyspec_orm::Config) -> Db {
 
 /// Runs a statement and returns its result.
 pub async fn try_exec(db: &Db, statement: &str) -> Result<(), sqlx::Error> {
-    let sql = sqlx::raw_sql(sqlx::AssertSqlSafe(statement.to_owned()));
-    match db.pool() {
-        Pool::MySql(p) => sql.execute(p).await.map(|_| ()),
-        Pool::Postgres(p) => sql.execute(p).await.map(|_| ()),
-        Pool::Sqlite(p) => sql.execute(p).await.map(|_| ()),
-        Pool::Markdown(_) => unreachable!("these cases run on SQL databases"),
-    }
+    pool_exec::exec(db, statement).await
 }
 
 // Only coverage_audit_triggers.rs uses this. audit.rs drops its whole case database.

@@ -19,6 +19,10 @@ use or_panic::OrPanic;
 mod external_schema;
 use external_schema::set_schema;
 
+#[path = "common/pool_exec.rs"]
+mod pool_exec;
+use pool_exec::exec;
+
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
@@ -64,16 +68,6 @@ impl Model for Post {
     }
     fn value(&self, name: &str) -> Option<Val> {
         self.values.get(name).cloned()
-    }
-}
-
-async fn exec(db: &Db, statement: &str) -> Result<(), sqlx::Error> {
-    let sql = sqlx::raw_sql(sqlx::AssertSqlSafe(statement.to_owned()));
-    match db.pool() {
-        Pool::MySql(p) => sql.execute(p).await.map(|_| ()),
-        Pool::Postgres(p) => sql.execute(p).await.map(|_| ()),
-        Pool::Sqlite(p) => sql.execute(p).await.map(|_| ()),
-        Pool::Markdown(_) => unreachable!("these cases run on SQL databases"),
     }
 }
 

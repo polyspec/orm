@@ -12,6 +12,8 @@ use or_panic::OrPanic;
 mod model_row;
 #[path = "common/audit_rows.rs"]
 mod audit_rows;
+#[path = "common/pool_exec.rs"]
+mod pool_exec;
 #[path = "common/restore_rows.rs"]
 mod restore_rows;
 #[path = "common/result_code.rs"]
