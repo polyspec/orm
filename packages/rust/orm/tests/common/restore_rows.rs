@@ -17,18 +17,16 @@ pub static SCHEMA: Schema =
 #[allow(dead_code, reason = "tests/common is compiled into each test crate, and not every crate uses this item")]
 pub const TABLES: [&str; 4] = ["audit", "label", "membership", "membership_history"];
 
-/// A model that reads and writes values by column name.
-macro_rules! row_model {
-    ($name:ident, $entity:ident, $entity_name:literal, $columns:expr) => {
-        static $entity: Entity =
-            Entity { name: $entity_name, schema: &SCHEMA, new: polyspec_orm::model::new_boxed::<$name>, collect: polyspec_orm::model::collect_boxed::<$name> };
-
-        model_row!($name, $entity, $columns);
-    };
-}
-
-row_model!(Membership, MEMBERSHIP, "membership", ["seq", "team_id", "member_id", "note", "audit_seq", "deleted_at"]);
-row_model!(Label, LABEL, "label", ["id", "name", "color", "deleted_at"]);
+static MEMBERSHIP: Entity = Entity {
+    name: "membership",
+    schema: &SCHEMA,
+    new: polyspec_orm::model::new_boxed::<Membership>,
+    collect: polyspec_orm::model::collect_boxed::<Membership>,
+};
+model_row!(Membership, MEMBERSHIP, ["seq", "team_id", "member_id", "note", "audit_seq", "deleted_at"]);
+static LABEL: Entity =
+    Entity { name: "label", schema: &SCHEMA, new: polyspec_orm::model::new_boxed::<Label>, collect: polyspec_orm::model::collect_boxed::<Label> };
+model_row!(Label, LABEL, ["id", "name", "color", "deleted_at"]);
 
 /// A model that is connected and has its values set.
 fn with<M: Model>(db: &Db, values: &[(&str, Param)]) -> M {
@@ -70,9 +68,7 @@ pub async fn text_rows(db: &Db, query: &str) -> Vec<Vec<String>> {
             let rows = sqlx::raw_sql(sqlx::AssertSqlSafe(query.to_owned())).fetch_all($pool).await.or_panic(|e| format!("{query}: {e}"));
             rows.iter()
                 .map(|r| {
-                    (0..r.len())
-                        .map(|i| r.try_get::<Option<String>, _>(i).or_panic(|e| format!("{query}: {e}")).unwrap_or_else(|| "NULL".to_owned()))
-                        .collect()
+                    (0..r.len()).map(|i| r.try_get::<Option<String>, _>(i).or_panic(|e| format!("{query}: {e}")).unwrap_or_else(|| "NULL".to_owned())).collect()
                 })
                 .collect()
         }};
@@ -107,9 +103,8 @@ fn cast_text(driver: &str, column: &str) -> String {
 ///   - a restore with no key value and a restore with no set values are IR_INVALID without any statement.
 pub async fn restore_case(driver: &str, dsn: &str) {
     let source: polyspec_orm::AuditSource = std::sync::Arc::new(|| Ok(vec![("actor".to_owned(), Param::from("default"))]));
-    let db = Db::connect(dsn, 2, polyspec_orm::Config { audit_source: Some(source), ..Default::default() })
-        .await
-        .or_panic(|e| format!("{driver}: connect: {e}"));
+    let db =
+        Db::connect(dsn, 2, polyspec_orm::Config { audit_source: Some(source), ..Default::default() }).await.or_panic(|e| format!("{driver}: connect: {e}"));
     db.utils().schema().install(&SCHEMA).await.or_panic(|e| format!("{driver}: install: {e}"));
     let i = Param::I64;
     let text = |s: &str| Param::Str(s.to_owned());

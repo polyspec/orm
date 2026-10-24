@@ -13,18 +13,12 @@ use sqlx::Row;
 pub static SCHEMA: Schema =
     Schema::new(include_str!("../../../../../contracts/fixtures/audit.dbs"), "sha256:c651e923992a61fa5712620c7cf6cf7d1a509796b23c4ae597f58e9f561a0c1f");
 
-/// A model that reads and writes values by column name.
-macro_rules! row_model {
-    ($name:ident, $entity:ident, $entity_name:literal, $columns:expr) => {
-        static $entity: Entity =
-            Entity { name: $entity_name, schema: &SCHEMA, new: polyspec_orm::model::new_boxed::<$name>, collect: polyspec_orm::model::collect_boxed::<$name> };
-
-        model_row!($name, $entity, $columns);
-    };
-}
-
-row_model!(Item, ITEM, "item", ["seq", "title", "audit_seq", "deleted_at"]);
-row_model!(History, HISTORY, "item_history", ["history_id", "change", "previous_audit_seq", "seq", "title", "audit_seq", "deleted_at"]);
+static ITEM: Entity =
+    Entity { name: "item", schema: &SCHEMA, new: polyspec_orm::model::new_boxed::<Item>, collect: polyspec_orm::model::collect_boxed::<Item> };
+model_row!(Item, ITEM, ["seq", "title", "audit_seq", "deleted_at"]);
+static HISTORY: Entity =
+    Entity { name: "item_history", schema: &SCHEMA, new: polyspec_orm::model::new_boxed::<History>, collect: polyspec_orm::model::collect_boxed::<History> };
+model_row!(History, HISTORY, ["history_id", "change", "previous_audit_seq", "seq", "title", "audit_seq", "deleted_at"]);
 
 /// The `.audit(...)` argument of a transaction with no audit values.
 #[allow(dead_code, reason = "tests/common is compiled into each test crate, and not every crate uses this item")]
