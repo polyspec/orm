@@ -10216,6 +10216,340 @@
         },
         "dependents": []
       }
+    },
+    {
+      "id": "complex_query",
+      "title": "Complex product search",
+      "title_ko": "복합 상품 검색",
+      "status": "partial",
+      "description": "CPX-2 compiles and executes a generated public product search with localized full-text OR filters expressed as IN semijoins, one category membership filter, stable like-count ordering, six relations, an exact page and count, and eight ordered database statements. Each runtime uses its own seeded fixture database on MySQL, PostgreSQL, and SQLite; SQLite rejects full-text operators before issuing a statement.",
+      "description_ko": "CPX-2는 생성된 공개 product 검색을 컴파일하고 실행한다. 지역화 full-text OR 필터는 IN semijoin으로 표현하고 category membership 필터 하나, 안정적인 like-count 정렬, 관계 6개, 정확한 page/count, 순서가 지정된 데이터베이스 문장 8개를 유지한다. 각 runtime은 MySQL, PostgreSQL, SQLite에서 별도로 seed된 fixture 데이터베이스를 사용하며 SQLite는 문장을 실행하기 전에 full-text operator를 거부한다.",
+      "inputs": {
+        "type": "ProductSearchInput",
+        "fields": [
+          "category_seqs",
+          "keyword",
+          "lang_id",
+          "member_seq",
+          "page",
+          "per_page",
+          "service_seq"
+        ]
+      },
+      "outputs": {
+        "type": "ProductSearchPage",
+        "fields": [
+          "items",
+          "total_count",
+          "total_pages",
+          "six_relations",
+          "ordered_statement_events"
+        ]
+      },
+      "state": [
+        "connect to the runtime-owned, preseeded database",
+        "compile the public generated-model query",
+        "read the ordered root and count results",
+        "load the six declared relations"
+      ],
+      "errors": [
+        {
+          "code": "OPERATOR_NOT_ALLOWED",
+          "when": "the SQLite dialect receives a full-text predicate; rejection occurs before any query event"
+        }
+      ],
+      "parity": [
+        "complex-query-product-search"
+      ],
+      "fixtures": [
+        "contracts/fixtures/complex_query/complex_query.dbs",
+        "contracts/fixtures/complex_query/complex_query.json"
+      ],
+      "tests": [
+        "packages/go/complexquery/coverage_complex_query_test.go",
+        "packages/php/tests/ComplexQueryDbTest.php",
+        "packages/php-ext/tests/ComplexQueryNativeTest.php",
+        "packages/ts/tests/coverage_complex_query.mjs",
+        "packages/python/tests/coverage_complex_query.py",
+        "packages/rust/tests/tests/integration/coverage_complex_query.rs"
+      ],
+      "docs": [
+        "docs/spec/complex-query.md",
+        "docs/spec/complex-query.ko.md"
+      ],
+      "coverage": {
+        "kind": "database",
+        "cases": [
+          "complex_query_product_search"
+        ],
+        "owners": {
+          "go": {
+            "part": "packages/go/complexquery",
+            "tests": [
+              "packages/go/complexquery/coverage_complex_query_test.go"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "go",
+                  "test": "packages/go/complexquery/coverage_complex_query_test.go",
+                  "cases": [
+                    "complex_query_product_search"
+                  ],
+                  "dsn_env": "COMPLEX_QUERY_GO_MYSQL_DSN",
+                  "symbols": {
+                    "complex_query_product_search": "TestCoverageComplexQueryProductSearch"
+                  }
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "go",
+                  "test": "packages/go/complexquery/coverage_complex_query_test.go",
+                  "cases": [
+                    "complex_query_product_search"
+                  ],
+                  "dsn_env": "COMPLEX_QUERY_GO_POSTGRES_DSN",
+                  "symbols": {
+                    "complex_query_product_search": "TestCoverageComplexQueryProductSearch"
+                  }
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "go",
+                  "test": "packages/go/complexquery/coverage_complex_query_test.go",
+                  "cases": [
+                    "complex_query_product_search"
+                  ],
+                  "dsn_env": "COMPLEX_QUERY_GO_SQLITE_DSN",
+                  "symbols": {
+                    "complex_query_product_search": "TestCoverageComplexQueryProductSearch"
+                  }
+                }
+              ]
+            }
+          },
+          "php": {
+            "part": "packages/php/tests",
+            "tests": [
+              "packages/php/tests/ComplexQueryDbTest.php"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/ComplexQueryDbTest.php",
+                  "cases": [
+                    "complex_query_product_search"
+                  ],
+                  "dsn_env": "COMPLEX_QUERY_PHP_MYSQL_DSN",
+                  "symbols": {
+                    "complex_query_product_search": "testFeatureProductSearchPage"
+                  }
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/ComplexQueryDbTest.php",
+                  "cases": [
+                    "complex_query_product_search"
+                  ],
+                  "dsn_env": "COMPLEX_QUERY_PHP_POSTGRES_DSN",
+                  "symbols": {
+                    "complex_query_product_search": "testFeatureProductSearchPage"
+                  }
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/ComplexQueryDbTest.php",
+                  "cases": [
+                    "complex_query_product_search"
+                  ],
+                  "dsn_env": "COMPLEX_QUERY_PHP_SQLITE_DSN",
+                  "symbols": {
+                    "complex_query_product_search": "testFeatureProductSearchPage"
+                  }
+                }
+              ]
+            }
+          },
+          "php-extension": {
+            "part": "packages/php-ext/tests",
+            "tests": [
+              "packages/php-ext/tests/ComplexQueryNativeTest.php"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/ComplexQueryNativeTest.php",
+                  "cases": [
+                    "complex_query_product_search"
+                  ],
+                  "dsn_env": "COMPLEX_QUERY_PHP_EXTENSION_MYSQL_DSN",
+                  "symbols": {
+                    "complex_query_product_search": "testFeatureProductSearchPageUsesNativePlannerAndModels"
+                  }
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/ComplexQueryNativeTest.php",
+                  "cases": [
+                    "complex_query_product_search"
+                  ],
+                  "dsn_env": "COMPLEX_QUERY_PHP_EXTENSION_POSTGRES_DSN",
+                  "symbols": {
+                    "complex_query_product_search": "testFeatureProductSearchPageUsesNativePlannerAndModels"
+                  }
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/ComplexQueryNativeTest.php",
+                  "cases": [
+                    "complex_query_product_search"
+                  ],
+                  "dsn_env": "COMPLEX_QUERY_PHP_EXTENSION_SQLITE_DSN",
+                  "symbols": {
+                    "complex_query_product_search": "testFeatureProductSearchPageUsesNativePlannerAndModels"
+                  }
+                }
+              ]
+            }
+          },
+          "typescript": {
+            "part": "packages/ts/tests",
+            "tests": [
+              "packages/ts/tests/coverage_complex_query.mjs"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/coverage_complex_query.mjs",
+                  "cases": [
+                    "complex_query_product_search"
+                  ],
+                  "dsn_env": "COMPLEX_QUERY_TYPESCRIPT_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/coverage_complex_query.mjs",
+                  "cases": [
+                    "complex_query_product_search"
+                  ],
+                  "dsn_env": "COMPLEX_QUERY_TYPESCRIPT_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/coverage_complex_query.mjs",
+                  "cases": [
+                    "complex_query_product_search"
+                  ],
+                  "dsn_env": "COMPLEX_QUERY_TYPESCRIPT_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "python": {
+            "part": "packages/python/tests",
+            "tests": [
+              "packages/python/tests/coverage_complex_query.py"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_complex_query.py",
+                  "cases": [
+                    "complex_query_product_search"
+                  ],
+                  "dsn_env": "COMPLEX_QUERY_PYTHON_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_complex_query.py",
+                  "cases": [
+                    "complex_query_product_search"
+                  ],
+                  "dsn_env": "COMPLEX_QUERY_PYTHON_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/coverage_complex_query.py",
+                  "cases": [
+                    "complex_query_product_search"
+                  ],
+                  "dsn_env": "COMPLEX_QUERY_PYTHON_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "rust": {
+            "part": "packages/rust/tests",
+            "tests": [
+              "packages/rust/tests/tests/integration/coverage_complex_query.rs"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "cargo",
+                  "test": "packages/rust/tests/tests/integration/coverage_complex_query.rs",
+                  "cases": [
+                    "complex_query_product_search"
+                  ],
+                  "dsn_env": "COMPLEX_QUERY_RUST_MYSQL_DSN",
+                  "symbols": {
+                    "complex_query_product_search": "coverage_complex_query::coverage_complex_query_product_search"
+                  }
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "cargo",
+                  "test": "packages/rust/tests/tests/integration/coverage_complex_query.rs",
+                  "cases": [
+                    "complex_query_product_search"
+                  ],
+                  "dsn_env": "COMPLEX_QUERY_RUST_POSTGRES_DSN",
+                  "symbols": {
+                    "complex_query_product_search": "coverage_complex_query::coverage_complex_query_product_search"
+                  }
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "cargo",
+                  "test": "packages/rust/tests/tests/integration/coverage_complex_query.rs",
+                  "cases": [
+                    "complex_query_product_search"
+                  ],
+                  "dsn_env": "COMPLEX_QUERY_RUST_SQLITE_DSN",
+                  "symbols": {
+                    "complex_query_product_search": "coverage_complex_query::coverage_complex_query_product_search"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "dependents": []
+      }
     }
   ],
   "helpers": [

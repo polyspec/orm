@@ -7,6 +7,7 @@
       "runner": "go",
       "roots": [
         "packages/go/cmd",
+        "packages/go/complexquery",
         "packages/go/decimalmodel",
         "packages/go/engine",
         "packages/go/generator",
@@ -19,7 +20,8 @@
         "examples"
       ],
       "tests": [
-        "packages/go/{cmd,decimalmodel,engine,generator,internal,markdownmodel,model,orm,procevent,testcase}/**/coverage_*_test.go"
+        "packages/go/{cmd,decimalmodel,engine,generator,internal,markdownmodel,model,orm,procevent,testcase}/**/coverage_*_test.go",
+        "packages/go/complexquery/coverage_*_test.go"
       ],
       "support": [
         "packages/go/engine/dbspec/vector_reader_test.go",
@@ -22025,6 +22027,45 @@
           ]
         }
       ]
+    },
+    {
+          "id": "complex-query-product-search",
+          "kind": "feature",
+          "requirements": [
+                "CPX-2"
+          ],
+          "bindings": [
+                {
+                      "implementation": "go",
+                      "test": "packages/go/complexquery/coverage_complex_query_test.go",
+                      "id": "TestCoverageComplexQueryProductSearch"
+                },
+                {
+                      "implementation": "php",
+                      "test": "packages/php/tests/ComplexQueryDbTest.php",
+                      "id": "ComplexQueryDbTest::testFeatureProductSearchPage"
+                },
+                {
+                      "implementation": "php-extension",
+                      "test": "packages/php-ext/tests/ComplexQueryNativeTest.php",
+                      "id": "ComplexQueryNativeTest::testFeatureProductSearchPageUsesNativePlannerAndModels"
+                },
+                {
+                      "implementation": "typescript",
+                      "test": "packages/ts/tests/coverage_complex_query.mjs",
+                      "id": "complex_query_product_search"
+                },
+                {
+                      "implementation": "python",
+                      "test": "packages/python/tests/coverage_complex_query.py",
+                      "id": "test_complex_query_product_search"
+                },
+                {
+                      "implementation": "rust",
+                      "test": "packages/rust/tests/tests/integration/coverage_complex_query.rs",
+                      "id": "coverage_complex_query::coverage_complex_query_product_search"
+                }
+          ]
     }
   ],
   "errors": {
