@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 7c200762554c3a16b5090ab5519b4c962f9cb69edd353547545cd07dc8b87fe7 -->
+<!-- source-sha256: 9421d1c237e6e82d0a601d369a88a934d731f29f9a75baa6610303c2f22668f8 -->
 # 변경 이력
 
 ## Unreleased
+
+- Rust relation 실행은 parent bind slot이 0개 또는 여러 개인 relation step을 query 실행 전에 `IR_INVALID`로 거부한다. 수정 전 `abd38b77eae57fc108311dce4a615fccd6392161`에서 선택한 native target은 정상 scalar/composite 대조군 1개가 통과하고 동작 assertion 4개가 실패했다. 커밋된 구현 `e0fe5ae77b451ed5ee38e9b84f270a658810c7b2`은 `make item-test ID=KSTD-5-67`에서 5개 case를 모두 통과한다(KSTD-5-67).
 
 - 모든 client가 split-query merge 경계의 SQL NULL을 CODEC_DECODE로 거부하고 유효한 falsey key를 보존한다. join이 사용하는 일반 nullable row-key 처리는 유지한다. `make item-test ID=KSTD-5-50-1`의 focused case가 Go (1), PHP (1 test, 29 assertions), PHP extension (1 test, 7 assertions), TypeScript (2), Python (2), Rust (1)에서 통과한다. (KSTD-5-50-1)
 
