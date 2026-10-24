@@ -6877,6 +6877,7 @@
       ],
       "parity": [
         "py-cov-parameter-chunking-root-in-chunking",
+        "php-coverage-parameter-chunking-root-in-chunking",
         "rust-integration-coverage-parameter-chunking-coverage-root-in-chunking",
         "ts-coverage_parameter_chunking",
         "go-internal-packages-go-model-coverage-parameter-chunking-root-in-chunking",

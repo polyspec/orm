@@ -14,9 +14,9 @@ The executable source is the repository feature manifest. Read the manifest, the
 | schema_definition | Schema definition and migration | implemented | go, php, php-extension, typescript, python, rust |
 | schema_install | Schema installation | implemented | go, php, php-extension, typescript, python, rust |
 | planner | In-process planner | partial | go, php, php-extension, typescript, python, rust |
-| composite_keys | Composite keys | partial | go, php, typescript, python, rust |
+| composite_keys | Composite keys | partial | go, php, php-extension, typescript, python, rust |
 | authenticated_encryption | Authenticated encryption | implemented | go, php, php-extension, typescript, python, rust |
-| parameter_chunking | Parameter chunking | partial | typescript, python, rust |
+| parameter_chunking | Parameter chunking | partial | go, php, php-extension, typescript, python, rust |
 | constraints_and_relations | Constraints and relations | partial | typescript, python, rust |
 | audit_triggers | Audit triggers | partial | go, php, php-extension, typescript, python, rust |
 | interface_contract | Common interface verification | implemented | go, php, php-extension, typescript, python, rust |

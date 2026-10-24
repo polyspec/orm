@@ -10,9 +10,9 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// TestCoverageRootInChunking checks that a root IN list exceeding every driver's bind limit
-// runs split into chunks, counts duplicate values only once, and that a limit whose split changes the result
-// is IR_INVALID.
+// PRT-76: TestCoverageRootInChunking checks that a root IN list exceeding every driver's bind limit
+// runs in chunks, counts duplicate values only once, and rejects a limit whose split changes the merged result
+// with IR_INVALID.
 func TestCoverageRootInChunking(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	db, _, _ := connectFeature(t)
