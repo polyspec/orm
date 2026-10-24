@@ -15,8 +15,9 @@
 import { readFile } from 'node:fs/promises';
 import { caseTest } from '../../../tests/testcase.mts';
 import { withCaseDatabase } from './case-database.mjs';
-import { Db, Model, OrmError, dbspecManifest, parseDbspec, registerModel, CORE } from '../dist/index.js';
+import { Db, OrmError, dbspecManifest, parseDbspec, CORE } from '../dist/index.js';
 import * as testing from '@polyspec/orm/testing';
+import { models } from './registered_models.mjs';
 
 const fixture = JSON.parse(await readFile(new URL('../../../contracts/fixtures/statement_fault.json', import.meta.url), 'utf8'));
 const rollbackText = await readFile(new URL('../../../contracts/fixtures/rollback.dbs', import.meta.url), 'utf8');
@@ -52,20 +53,6 @@ function schemaOf(text) {
   return { manifestText: manifest.manifestText, manifestHash: manifest.manifestHash };
 }
 
-/** Registers the model of a document set as generated code does and returns a model class per entity. */
-function models(text) {
-  const parsed = parseDbspec(text, {});
-  if (parsed.document === null) throw new Error(JSON.stringify(parsed.diagnostics));
-  const { manifest } = dbspecManifest([parsed.document]);
-  const model = registerModel(manifest.manifestText, manifest.manifestHash);
-  const out = {};
-  for (const entity of model.entities.values()) {
-    const cls = class extends Model {};
-    cls.entity = { model, entity, create: core => new cls(core) };
-    out[entity.name] = cls;
-  }
-  return out;
-}
 const { rollback_probe: RollbackProbe } = models(rollbackText);
 const probe = (db, label) => { const m = new RollbackProbe().connect(db); m[CORE].setValue('label', label); return m; };
 const countOf = db => new RollbackProbe().connect(db).getCount();
