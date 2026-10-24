@@ -130,6 +130,11 @@ ZEND_METHOD(Polyspec_Orm_PrivilegeUtils, __construct)
     if (!dbs_bind_db_utils(ZEND_THIS, privilege_utils_ce, db, utils, "PrivilegeUtils")) RETURN_THROWS();
 }
 
+#define PRIVILEGE_RESOLVE_TABLE_ROLE() \
+    zend_string *qualified = NULL, *schema = NULL, *quoted_role = NULL; \
+    zval *db = privilege_utils_table_role(ZEND_THIS, table, role, &qualified, &schema, &quoted_role); \
+    if (db == NULL) RETURN_THROWS()
+
 ZEND_METHOD(Polyspec_Orm_PrivilegeUtils, grantTable)
 {
     zend_string *table, *role;
@@ -137,9 +142,7 @@ ZEND_METHOD(Polyspec_Orm_PrivilegeUtils, grantTable)
         Z_PARAM_STR(table)
         Z_PARAM_STR(role)
     ZEND_PARSE_PARAMETERS_END();
-    zend_string *qualified = NULL, *schema = NULL, *quoted_role = NULL;
-    zval *db = privilege_utils_table_role(ZEND_THIS, table, role, &qualified, &schema, &quoted_role);
-    if (db == NULL) RETURN_THROWS();
+    PRIVILEGE_RESOLVE_TABLE_ROLE();
     zend_string *first = strpprintf(0, "GRANT USAGE ON SCHEMA \"%s\" TO %s", ZSTR_VAL(schema), ZSTR_VAL(quoted_role));
     zend_string *second = strpprintf(0, "GRANT SELECT, INSERT, UPDATE, DELETE ON %s TO %s", ZSTR_VAL(qualified), ZSTR_VAL(quoted_role));
     zval tables, result;
@@ -167,9 +170,7 @@ ZEND_METHOD(Polyspec_Orm_PrivilegeUtils, revokeTable)
         Z_PARAM_STR(privilege)
         Z_PARAM_STR(role)
     ZEND_PARSE_PARAMETERS_END();
-    zend_string *qualified = NULL, *schema = NULL, *quoted_role = NULL;
-    zval *db = privilege_utils_table_role(ZEND_THIS, table, role, &qualified, &schema, &quoted_role);
-    if (db == NULL) RETURN_THROWS();
+    PRIVILEGE_RESOLVE_TABLE_ROLE();
     size_t start = 0, end = ZSTR_LEN(privilege);
     while (start < end && privilege_utils_trim_character((unsigned char)ZSTR_VAL(privilege)[start])) start++;
     while (end > start && privilege_utils_trim_character((unsigned char)ZSTR_VAL(privilege)[end - 1])) end--;
@@ -206,6 +207,8 @@ ZEND_METHOD(Polyspec_Orm_PrivilegeUtils, revokeTable)
     if (!ok) RETURN_THROWS();
     RETURN_NULL();
 }
+
+#undef PRIVILEGE_RESOLVE_TABLE_ROLE
 
 ZEND_METHOD(Polyspec_Orm_PrivilegeUtils, inspectTable)
 {
