@@ -32,7 +32,9 @@ func TestQueryCountIsIndependentOfSQLiteTableCount(t *testing.T) {
 		db.SetMaxOpenConns(1)
 		for i := range tableCount {
 			if _, err := db.ExecContext(context.Background(), `CREATE TABLE "item_`+strconv.Itoa(i)+`" ("id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, "label" TEXT NULL)`); err != nil {
-				db.Close()
+				if closeErr := db.Close(); closeErr != nil {
+					t.Errorf("close fixture after table creation failure: %v", closeErr)
+				}
 				t.Fatalf("create table %d: %v", i, err)
 			}
 		}
