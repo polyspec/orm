@@ -675,15 +675,7 @@ final class Catalog
             $newKeys[] = $updated[$index];
         }
         return $this->write(function (\PDO $pdo) use ($original, $changes, $updated, $keys, $newKeys): CatalogResult {
-            $current = $this->lookup($pdo, $original->metadata, $keys, true);
-            $descriptor = $this->describe($pdo, $original->metadata->table);
-            if ($descriptor != $original->metadata) {
-                throw new OrmException(Code::ROW_SCHEMA_CHANGED, 'original descriptor changed');
-            }
-            self::checkCurrent($current, $original->cells);
-            if ($this->dialect === 'mysql') {
-                $this->mysqlSafety($pdo, $descriptor);
-            }
+            $descriptor = $this->lockOriginalRow($pdo, $original, $keys);
             $sets = [];
             $args = [];
             foreach ($changes as [$index, $value]) {
@@ -735,15 +727,7 @@ final class Catalog
         self::validSnapshot($original);
         $keys = self::keysOf($original);
         return $this->write(function (\PDO $pdo) use ($original, $keys): int {
-            $current = $this->lookup($pdo, $original->metadata, $keys, true);
-            $descriptor = $this->describe($pdo, $original->metadata->table);
-            if ($descriptor != $original->metadata) {
-                throw new OrmException(Code::ROW_SCHEMA_CHANGED, 'original descriptor changed');
-            }
-            self::checkCurrent($current, $original->cells);
-            if ($this->dialect === 'mysql') {
-                $this->mysqlSafety($pdo, $descriptor);
-            }
+            $descriptor = $this->lockOriginalRow($pdo, $original, $keys);
             $sql = 'DELETE FROM ' . self::qualified(
                 $descriptor->table,
                 $this->dialect
@@ -760,6 +744,25 @@ final class Catalog
             }
             return $affected;
         });
+    }
+
+    /**
+     * Locks and verifies the original snapshot before a row mutation.
+     *
+     * @param list<mixed> $keys
+     */
+    private function lockOriginalRow(\PDO $pdo, CatalogRowSnapshot $original, array $keys): CatalogTableMetadata
+    {
+        $current = $this->lookup($pdo, $original->metadata, $keys, true);
+        $descriptor = $this->describe($pdo, $original->metadata->table);
+        if ($descriptor != $original->metadata) {
+            throw new OrmException(Code::ROW_SCHEMA_CHANGED, 'original descriptor changed');
+        }
+        self::checkCurrent($current, $original->cells);
+        if ($this->dialect === 'mysql') {
+            $this->mysqlSafety($pdo, $descriptor);
+        }
+        return $descriptor;
     }
 
     /**

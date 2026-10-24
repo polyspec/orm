@@ -76,6 +76,27 @@ final class CatalogQueryBoundsTest extends TestCase
         );
     }
 
+    public function testRowMutationsCheckTheLockedOriginalSnapshot(): void
+    {
+        $table = ['namespace' => $this->catalog->currentNamespace(), 'name' => 'values_table'];
+        $page = $this->catalog->tablePage($table, 10, 0);
+        $original = $this->catalog->rowSnapshotFromPage($page, 0);
+        $updated = $this->catalog->updateRow($original, ['value' => 'alpha-updated']);
+        self::assertSame([[1, 'alpha-updated']], $updated->rows);
+
+        try {
+            $this->catalog->deleteRow($original);
+            self::fail('a stale row snapshot was accepted for deletion');
+        } catch (OrmException $error) {
+            self::assertSame(Code::ROW_CONFLICT, $error->code_);
+        }
+
+        $page = $this->catalog->tablePage($table, 10, 0);
+        $current = $this->catalog->rowSnapshotFromPage($page, 0);
+        self::assertSame(1, $this->catalog->deleteRow($current));
+        self::assertSame([['beta']], $this->catalog->readOnlyQuery('SELECT value FROM values_table ORDER BY id')->rows);
+    }
+
     private function assertLimit(\Closure $query, string $message): void
     {
         try {
