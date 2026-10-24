@@ -4,6 +4,7 @@
 #include "model_native_methods.h"
 #include "model_kind_db_args.h"
 #include "pending_time_parts.h"
+#include "orm_exception_object.h"
 #include "Zend/zend_exceptions.h"
 #include "Zend/zend_interfaces.h"
 #include "Zend/zend_smart_str.h"
@@ -51,15 +52,8 @@ static zval *query_meta_entity(zend_object *model, zval *meta)
 
 static void query_throw_orm(const char *code_name, zend_string *message)
 {
-    zend_class_entry *ce = query_class("Polyspec\\Orm\\OrmException");
-    if (ce == NULL) { zend_throw_error(NULL, "Polyspec\\Orm\\OrmException is not loaded"); return; }
-    zval exception, code, text;
-    object_init_ex(&exception, ce);
-    ZVAL_STRING(&code, code_name);
-    ZVAL_STR_COPY(&text, message);
-    zend_call_method_with_2_params(Z_OBJ(exception), ce, NULL, "__construct", NULL, &code, &text);
-    zval_ptr_dtor(&code); zval_ptr_dtor(&text);
-    if (EG(exception) != NULL) { zval_ptr_dtor(&exception); return; }
+    zval exception;
+    if (!orm_exception_object(code_name, message, &exception)) return;
     zend_throw_exception_object(&exception);
 }
 

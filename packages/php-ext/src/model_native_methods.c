@@ -3,6 +3,7 @@
 #include "model_state.h"
 #include "model_chain.h"
 #include "pending_time_parts.h"
+#include "orm_exception_object.h"
 #include "Zend/zend_exceptions.h"
 #include "Zend/zend_interfaces.h"
 #include "Zend/zend_closures.h"
@@ -15,24 +16,11 @@ static void model_native_fail_code(model_state *s, const char *code_name, const 
     if (Z_TYPE_P(model_state_property(s, "error")) != IS_NULL || EG(exception) != NULL) {
         return;
     }
-    zend_string *name = zend_string_init("Polyspec\\Orm\\OrmException", sizeof("Polyspec\\Orm\\OrmException") - 1, 0);
-    zend_class_entry *ce = zend_lookup_class(name);
-    zend_string_release(name);
-    if (ce == NULL) {
-        zend_throw_error(NULL, "Polyspec\\Orm\\OrmException is not loaded");
-        return;
-    }
-    zval exception, code, text;
-    object_init_ex(&exception, ce);
-    ZVAL_STRING(&code, code_name);
-    ZVAL_STRING(&text, message);
-    zend_call_method_with_2_params(Z_OBJ(exception), ce, NULL, "__construct", NULL, &code, &text);
-    zval_ptr_dtor(&code);
-    zval_ptr_dtor(&text);
-    if (EG(exception) != NULL) {
-        zval_ptr_dtor(&exception);
-        return;
-    }
+    zend_string *text = zend_string_init(message, strlen(message), 0);
+    zval exception;
+    bool ok = orm_exception_object(code_name, text, &exception);
+    zend_string_release(text);
+    if (!ok) return;
     ZVAL_COPY_VALUE(model_state_property(s, "error"), &exception);
 }
 
