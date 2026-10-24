@@ -50,6 +50,50 @@ pub use set::{
     RULE_SET_SCHEMA, RULE_SET_SYMLINK, SET_FILE_NAME,
 };
 
+/// Whether a scalar comparison operator is supported by a dbspec field type.
+/// Codec restrictions and column-to-column operators are checked by the caller.
+pub fn operator_allowed_for_type(typ: &str, op: &str) -> bool {
+    const COMPARE: &[&str] = &["eq", "not_eq", "gt", "gte", "lt", "lte", "in", "not_in", "between", "is_null", "is_not_null"];
+    let ops: &[&str] = match typ {
+        "i16" | "i32" | "i64" | "f64" | "decimal" | "date" | "time" | "datetime" => COMPARE,
+        "varchar" => &["eq", "not_eq", "gt", "gte", "lt", "lte", "in", "not_in", "contains", "contains_binary", "is_null", "is_not_null"],
+        "text" => &["eq", "not_eq", "gt", "gte", "lt", "lte", "contains", "contains_binary", "is_null", "is_not_null"],
+        "uuid" | "bytes" => EQUALITY_OPERATORS,
+        "bool" => &["eq", "not_eq", "is_null", "is_not_null"],
+        _ => &["is_null", "is_not_null"],
+    };
+    ops.contains(&op)
+}
+
+const EQUALITY_OPERATORS: &[&str] = &["eq", "not_eq", "in", "not_in", "is_null", "is_not_null"];
+
+/// Whether an operator compares only for equality or list membership.
+pub fn equality_operator_allowed(op: &str) -> bool {
+    EQUALITY_OPERATORS.contains(&op)
+}
+
+#[cfg(test)]
+mod operator_tests {
+    use super::operator_allowed_for_type;
+
+    #[test]
+    fn operators_follow_field_type_capabilities() {
+        for (typ, op, allowed) in [
+            ("i64", "between", true),
+            ("varchar", "contains_binary", true),
+            ("text", "in", false),
+            ("uuid", "gt", false),
+            ("bool", "is_null", true),
+            ("unknown", "eq", false),
+            ("varchar", "gt", true),
+        ] {
+            assert_eq!(operator_allowed_for_type(typ, op), allowed, "{typ} {op}");
+        }
+        assert!(!super::equality_operator_allowed("gt"));
+        assert!(super::equality_operator_allowed("not_in"));
+    }
+}
+
 use parser::Diag;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt;

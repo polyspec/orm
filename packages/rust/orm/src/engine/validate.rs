@@ -2,32 +2,16 @@
 
 use super::dialect::{column_function_types, is_value_function, value_function_unit};
 use super::err;
-use crate::Result;
 use crate::codes;
 use crate::ir;
 use crate::schema::Manifest;
+use crate::Result;
 use polyspec_orm_schema::dbspec::{Entity, Field, Type};
 
 const IR_VERSION: u32 = 1;
 
 fn numeric(c: &Field) -> bool {
     matches!(c.ty.name(), "i16" | "i32" | "i64" | "f64" | "decimal")
-}
-
-const COMPARE: &[&str] = &["eq", "not_eq", "gt", "gte", "lt", "lte", "in", "not_in", "between", "is_null", "is_not_null"];
-
-/// An operator that only compares equality and lists.
-const EQUALITY: &[&str] = &["eq", "not_eq", "in", "not_in", "is_null", "is_not_null"];
-
-fn ops_by_type(typ: &str) -> &'static [&'static str] {
-    match typ {
-        "i16" | "i32" | "i64" | "f64" | "decimal" | "date" | "time" | "datetime" => COMPARE,
-        "varchar" => &["eq", "not_eq", "gt", "gte", "lt", "lte", "in", "not_in", "contains", "contains_binary", "is_null", "is_not_null"],
-        "text" => &["eq", "not_eq", "gt", "gte", "lt", "lte", "contains", "contains_binary", "is_null", "is_not_null"],
-        "uuid" | "bytes" => EQUALITY,
-        "bool" => &["eq", "not_eq", "is_null", "is_not_null"],
-        _ => &["is_null", "is_not_null"],
-    }
 }
 
 fn col_op(op: &str) -> bool {
@@ -43,11 +27,11 @@ fn op_allowed(c: &Field, op: &str) -> bool {
     }
     if !c.codec.is_empty() {
         if c.aes() || c.codec.iter().all(|s| s == "hex" || s == "ip") {
-            return EQUALITY.contains(&op);
+            return polyspec_orm_schema::dbspec::equality_operator_allowed(op);
         }
         return matches!(op, "is_null" | "is_not_null");
     }
-    ops_by_type(c.ty.name()).contains(&op)
+    polyspec_orm_schema::dbspec::operator_allowed_for_type(c.ty.name(), op)
 }
 
 /// The one key an insert with `on_duplicate` conflicts on. MySQL updates the row met on any unique key, while
@@ -101,7 +85,7 @@ fn meets(a: &Field, b: &Field) -> bool {
 fn col_pair_op_allowed(left: &Field, right: &Field, op: &str) -> bool {
     let base = op.trim_end_matches("_col");
     if left.codec.is_empty() && right.codec.is_empty() {
-        return ops_by_type(left.ty.name()).contains(&base);
+        return polyspec_orm_schema::dbspec::operator_allowed_for_type(left.ty.name(), base);
     }
     left.codec == ["ip"] && right.codec == ["ip"] && matches!(base, "eq" | "not_eq")
 }

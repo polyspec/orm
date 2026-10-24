@@ -103,11 +103,6 @@ fn engine_op(op: &str) -> &'static str {
     }
 }
 
-const COMPARE: &[&str] = &["eq", "not_eq", "gt", "gte", "lt", "lte", "in", "not_in", "between", "is_null", "is_not_null"];
-
-/// Operators that only do equality and list comparison.
-const EQUALITY: &[&str] = &["eq", "not_eq", "in", "not_in", "is_null", "is_not_null"];
-
 /// The operator table of the engine.
 fn op_allowed(c: &Field, op: &str) -> bool {
     if op.ends_with("_col") {
@@ -115,19 +110,11 @@ fn op_allowed(c: &Field, op: &str) -> bool {
     }
     if !c.codec.is_empty() {
         if c.aes() || c.codec.iter().all(|s| s == "hex" || s == "ip") {
-            return EQUALITY.contains(&op);
+            return polyspec_orm_schema::dbspec::equality_operator_allowed(op);
         }
         return matches!(op, "is_null" | "is_not_null");
     }
-    let ops: &[&str] = match c.ty.name() {
-        "i16" | "i32" | "i64" | "f64" | "decimal" | "date" | "time" | "datetime" => COMPARE,
-        "varchar" => &["eq", "not_eq", "gt", "gte", "lt", "lte", "in", "not_in", "contains", "contains_binary", "is_null", "is_not_null"],
-        "text" => &["eq", "not_eq", "gt", "gte", "lt", "lte", "contains", "contains_binary", "is_null", "is_not_null"],
-        "uuid" | "bytes" => EQUALITY,
-        "bool" => &["eq", "not_eq", "is_null", "is_not_null"],
-        _ => &["is_null", "is_not_null"],
-    };
-    ops.contains(&op)
+    polyspec_orm_schema::dbspec::operator_allowed_for_type(c.ty.name(), op)
 }
 
 fn column_of<'e>(e: &'e Entity, ws: &[&str]) -> Option<&'e Field> {
