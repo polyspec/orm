@@ -315,6 +315,10 @@
         "-d",
         "extension=${ORM_PARITY_PHP_EXTENSION}"
       ],
+      "symbols": {
+        "extractor": "php",
+        "entry": "packages/php-ext/src/polyspec_orm.stub.php"
+      },
       "errors": {
         "file": "packages/php-ext/src/polyspec_orm.stub.php",
         "pattern": "^    public const (?:string )?(\\w+) = '\\1';$"
