@@ -13,3 +13,15 @@ export function walkModules(start, inspect) {
   }
   return { modules, violations };
 }
+
+/** Collects resolved targets and violations from one import resolver per scanned import. */
+export function resolveImports(imports, resolve) {
+  const targets = [];
+  const violations = [];
+  for (const { specifier, at } of imports) {
+    const result = resolve(specifier, at);
+    if (result.target !== undefined) targets.push(result.target);
+    if (result.violation !== undefined) violations.push(result.violation);
+  }
+  return { targets, violations };
+}

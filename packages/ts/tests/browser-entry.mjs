@@ -13,7 +13,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { caseTest } from '../../../tests/testcase.mts';
 import { isBuiltinModule, scanModule } from '../../../tests/module-scan.mjs';
-import { walkModules } from '../../../tests/module-graph.mjs';
+import { resolveImports, walkModules } from '../../../tests/module-graph.mjs';
 
 // The deadline of one case; each case runs through caseTest so it reports its RUN, PASS or FAIL line.
 const TIMEOUT = 15000;
@@ -32,11 +32,9 @@ const BROWSER_PACKAGES = new Set(['@noble/hashes']);
 function graph() {
   const { modules, violations } = walkModules(start, file => {
     const { imports, violations: local } = scanModule(file, pkgRoot);
-    const targets = [];
-    for (const { specifier, at } of imports) {
+    const inspected = resolveImports(imports, (specifier, at) => {
       if (specifier.startsWith('node:')) {
-        local.push(`${at} imports "${specifier}"`);
-        continue;
+        return { violation: `${at} imports "${specifier}"` };
       }
       let target;
       if (!specifier.startsWith('.') && !specifier.startsWith('/')) {
@@ -44,20 +42,18 @@ function graph() {
         const name = specifier.startsWith('@') ? parts.slice(0, 2).join('/') : parts[0];
         if (!BROWSER_PACKAGES.has(name)) {
           const kind = isBuiltinModule(specifier) ? 'a Node builtin' : 'a bare module (a package such as a driver)';
-          local.push(`${at} imports "${specifier}", ${kind}`);
-          continue;
+          return { violation: `${at} imports "${specifier}", ${kind}` };
         }
         target = createRequire(file).resolve(specifier);
       } else {
         target = resolve(dirname(file), specifier);
       }
       if (!target.endsWith('.js')) {
-        local.push(`${at} imports "${specifier}", which is not a built .js module`);
-        continue;
+        return { violation: `${at} imports "${specifier}", which is not a built .js module` };
       }
-      targets.push(target);
-    }
-    return { targets, violations: local };
+      return { target };
+    });
+    return { targets: inspected.targets, violations: [...local, ...inspected.violations] };
   });
   return { modules, violations };
 }

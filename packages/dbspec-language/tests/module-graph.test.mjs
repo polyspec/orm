@@ -12,7 +12,7 @@ import { caseTest } from '../../../tests/testcase.mts';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isBuiltinModule, scanModule } from '../../../tests/module-scan.mjs';
-import { walkModules } from '../../../tests/module-graph.mjs';
+import { resolveImports, walkModules } from '../../../tests/module-graph.mjs';
 
 // The deadline of one case; each case runs through caseTest so it reports its RUN, PASS or FAIL line.
 const TIMEOUT = 15000;
@@ -28,22 +28,24 @@ function graph() {
   const entries = new Set();
   const { modules: seen, violations } = walkModules(start, file => {
     const { imports, violations: local } = scanModule(file, pkgRoot);
-    const targets = [];
-    for (const { specifier, at } of imports) {
+    const inspected = resolveImports(imports, (specifier, at) => {
       if (specifier.startsWith('node:')) {
-        local.push(`${at} imports "${specifier}"`);
+        return { violation: `${at} imports "${specifier}"` };
       } else if (specifier.startsWith('.') || specifier.startsWith('/')) {
-        targets.push(resolve(dirname(file), specifier));
+        return { target: resolve(dirname(file), specifier) };
       } else if (specifier === ALLOWED_BARE) {
         const resolved = fileURLToPath(import.meta.resolve(ALLOWED_BARE));
-        if (resolved !== parserEntry) local.push(`${at} resolves "${ALLOWED_BARE}" to ${resolved}, not the parser entry`);
         entries.add(resolved);
+        if (resolved !== parserEntry) {
+          return { violation: `${at} resolves "${ALLOWED_BARE}" to ${resolved}, not the parser entry` };
+        }
+        return {};
       } else {
         const root = specifier.split('/')[0];
-        local.push(`${at} imports "${specifier}"${isBuiltinModule(root) ? ' (a Node builtin)' : ''}; only "${ALLOWED_BARE}" is allowed`);
+        return { violation: `${at} imports "${specifier}"${isBuiltinModule(root) ? ' (a Node builtin)' : ''}; only "${ALLOWED_BARE}" is allowed` };
       }
-    }
-    return { targets, violations: local };
+    });
+    return { targets: inspected.targets, violations: [...local, ...inspected.violations] };
   });
   return { violations, seen, entries };
 }

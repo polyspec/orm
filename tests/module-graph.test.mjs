@@ -1,6 +1,22 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { walkModules } from './module-graph.mjs';
+import { resolveImports, walkModules } from './module-graph.mjs';
+
+test('collects resolved import targets and violations in source order', () => {
+  const result = resolveImports(
+    [
+      { specifier: './local.js', at: 'entry:1' },
+      { specifier: 'node:fs', at: 'entry:2' },
+    ],
+    (specifier, at) => specifier.startsWith('.')
+      ? { target: 'local.js' }
+      : { violation: `${at} imports "${specifier}"` },
+  );
+  assert.deepEqual(result, {
+    targets: ['local.js'],
+    violations: ['entry:2 imports "node:fs"'],
+  });
+});
 
 test('visits reachable modules once in breadth-first order and keeps violations', () => {
   const edges = new Map([
