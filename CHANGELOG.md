@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The native driver-error cause, lossless row-byte cell, and Markdown connect-refusal behaviors each have one neutral six-client unit, backed by 18 exact native cases. The Rust byte case crosses SQLx row decoding, and Markdown refusal is exercised through native `Orm::connect`. The narrow official RED replay of the historical five-client Markdown declaration reported the missing PHP-extension binding (KSTD-2-11-17).
 - The transaction failure units for rollback, rollback faults, and failed savepoint end have executable bindings across all six clients. Focused native cases pass. Go's public nested-transaction test covers failed savepoint rollback and release and names DIA-181 and PLN-17 (KSTD-2-11-11).
 - The dbspec set-reader requirements DBS-12 through DBS-15 are explicit requirement bullets, and DIA-198 has one six-runtime query-count unit with native SQLite-memory cases. The focused owner checks and scoped declarations pass; the pre-fix RED replay used the exact `config/parity.json` input from `c3bd1a817` at current test sources, and exposed five missing runtime bindings (KSTD-2-9).
 - The PHP extension now tags SQLite row-lock write events with their transaction ID. The focused native transaction test verifies repeated transactions (KSTD-7-5-2).

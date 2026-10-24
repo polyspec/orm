@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: f76dcaf95bb974e7822af15b26cc79db993d37c1a4eeb53c0880a3524569cfc4 -->
+<!-- source-sha256: 3897071bf80f77026500c062a6616eea2686bf19e82be677b3677bf021b9be99 -->
 # 변경 이력
 
 ## Unreleased
 
+- native driver error cause, lossless row-byte cell, Markdown connect refusal 동작이 각각 중립 6-client unit 하나에 묶이고 정확한 native case 18개를 실행했다. Rust byte case는 SQLx row decoder를 통과하며 Markdown 거부는 native `Orm::connect` 경계에서 검사한다. 과거 5-client Markdown 선언만 사용한 좁은 공식 RED replay에서 PHP extension binding 누락이 확인됐다(KSTD-2-11-17).
 - rollback, rollback fault, failed savepoint end 동작을 검증하는 transaction failure unit이 여섯 client 모두에 실행 가능한 binding을 갖는다. Focused native case가 통과한다. Go의 public nested-transaction test는 savepoint rollback과 release 실패를 다루고 DIA-181 및 PLN-17을 명시한다(KSTD-2-11-11).
 - dbspec set-reader 요구사항 DBS-12부터 DBS-15까지를 명시적 requirement bullet로 정리했고, DIA-198은 여섯 runtime의 query-count unit 하나로 묶어 SQLite memory native case를 포함한다. Focused owner check와 scoped declaration이 통과했다. 수정 전 RED replay는 현재 test source에서 `c3bd1a817`의 `config/parity.json` 입력만 사용해 runtime binding 다섯 개가 빠진 사실을 확인했다(KSTD-2-9).
 - PHP 확장의 SQLite row-lock write event에 트랜잭션 ID를 기록한다. focused native transaction 테스트가 연속 트랜잭션을 확인한다(KSTD-7-5-2).
