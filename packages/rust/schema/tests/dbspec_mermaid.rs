@@ -8,7 +8,10 @@
 
 #[path = "common/or_panic.rs"]
 mod or_panic;
-use or_panic::OrPanic;
+
+#[path = "common/vector_file.rs"]
+mod vector_file;
+use vector_file::{lines, vectors};
 
 use polyspec_orm_case_clock::CaseClock;
 use polyspec_orm_schema::dbspec::model::{DefaultValue, Document};
@@ -20,17 +23,6 @@ use std::time::Duration;
 
 /// The deadline of one case.
 const DEADLINE: Duration = Duration::from_secs(5);
-
-fn vectors() -> Value {
-    let path = polyspec_orm_testcase::manifest_dir().join("../../../tests/dbspec/mermaid.json");
-    let vectors: Value = serde_json::from_str(&std::fs::read_to_string(&path).or_panic(|e| format!("{}: {e}", path.display()))).expect("mermaid.json");
-    assert_eq!(vectors["version"], 1, "tests/dbspec/mermaid.json version");
-    vectors
-}
-
-fn lines(value: &Value) -> String {
-    value.as_array().expect("lines").iter().map(|l| format!("{}\n", l.as_str().expect("line"))).collect()
-}
 
 fn cases<'v>(vectors: &'v Value, group: &str) -> &'v [Value] {
     let cases = vectors[group].as_array().unwrap_or_else(|| panic!("mermaid.json has no {group} cases"));
@@ -88,7 +80,7 @@ fn run(body: impl FnOnce() -> Result<(), String>) {
 
 /// Each case of tests/dbspec/mermaid.json, of every kind, is the trial `mermaid_vectors::<kind>::<id>`.
 fn mermaid_vectors() -> Vec<Trial> {
-    let vectors = vectors();
+    let vectors = vectors("mermaid");
     let mut trials = Vec::new();
     for (kind, check) in
         [("export", export_case as fn(&Value) -> Result<(), String>), ("import", import_case), ("invalid", invalid_case), ("round_trip", round_trip_case)]

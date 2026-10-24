@@ -11,6 +11,10 @@
 mod or_panic;
 use or_panic::OrPanic;
 
+#[path = "common/vector_file.rs"]
+mod vector_file;
+use vector_file::{lines, vectors};
+
 use polyspec_orm_case_clock::CaseClock;
 use polyspec_orm_schema::dbspec::{self, chain, compare_schemas, diff, emit_plan, parse_plan, plan_steps, Dialect, Document, Plan, PlanStep};
 use polyspec_orm_testcase::Trial;
@@ -56,17 +60,6 @@ const DEADLINE: Duration = Duration::from_secs(5);
 
 const DIALECTS: [(&str, Dialect); 3] = [("mysql", Dialect::MySql), ("postgres", Dialect::Postgres), ("sqlite", Dialect::Sqlite)];
 
-fn vectors() -> Value {
-    let path = polyspec_orm_testcase::manifest_dir().join("../../../tests/dbspec/plans.json");
-    let vectors: Value = serde_json::from_str(&std::fs::read_to_string(&path).or_panic(|e| format!("{}: {e}", path.display()))).expect("plans.json");
-    assert_eq!(vectors["version"], 1, "tests/dbspec/plans.json version");
-    vectors
-}
-
-fn lines(value: &Value) -> String {
-    value.as_array().expect("lines").iter().map(|l| format!("{}\n", l.as_str().expect("line"))).collect()
-}
-
 fn strings(value: &Value) -> Vec<String> {
     value.as_array().expect("strings").iter().map(|s| s.as_str().expect("string").to_owned()).collect()
 }
@@ -95,7 +88,7 @@ fn run(id: &str, body: impl FnOnce() -> Result<(), String>) {
 }
 
 fn plan_vectors() -> Vec<Trial> {
-    let vectors = vectors();
+    let vectors = vectors("plans");
     let cases = vectors["cases"].as_array().expect("cases");
     let invalid = vectors["invalid"].as_array().expect("invalid");
     assert!(!cases.is_empty() && !invalid.is_empty(), "tests/dbspec/plans.json has {} cases and {} invalid cases", cases.len(), invalid.len());
@@ -169,7 +162,7 @@ fn plan_vectors_invalid(case: &Value) {
 }
 
 fn plan_chains() -> Vec<Trial> {
-    let vectors = vectors();
+    let vectors = vectors("plans");
     let chains = vectors["chains"].as_array().expect("chains");
     assert!(!chains.is_empty(), "tests/dbspec/plans.json has no chains");
     let mut trials = Vec::new();
@@ -207,7 +200,7 @@ fn plan_chains_chains(case: &Value) {
 }
 
 fn plan_parse_errors() -> Vec<Trial> {
-    let vectors = vectors();
+    let vectors = vectors("plans");
     let parse = vectors["parse"].as_array().expect("parse");
     assert!(!parse.is_empty(), "tests/dbspec/plans.json has no parse cases");
     let mut trials = Vec::new();
@@ -243,7 +236,7 @@ fn plan_parse_errors_parse(case: &Value) {
 }
 
 fn plan_comparisons() -> Vec<Trial> {
-    let vectors = vectors();
+    let vectors = vectors("plans");
     let comparisons = vectors["comparisons"].as_array().expect("comparisons");
     assert!(!comparisons.is_empty(), "tests/dbspec/plans.json has no comparisons");
     let mut trials = Vec::new();

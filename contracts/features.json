@@ -4033,6 +4033,7 @@
             "contracts/fixtures/bench/bench.dbs",
             "tests/dbspec/cases.json",
             "packages/rust/schema/tests/common/dbspec_cases.rs",
+            "packages/rust/schema/tests/common/vector_file.rs",
             "tests/dbspec/schema/cases.schema.json",
             "tests/dbspec/ddl.json",
             "tests/dbspec/plans.json",
