@@ -874,8 +874,7 @@ final class Catalog
     private function gridQuery(\PDO $pdo, string $sql, array $args, int $maxRows, int $maxBytes): array
     {
         try {
-            $st = $pdo->prepare($sql);
-            $st->execute($args);
+            $st = $this->prepareQuery($pdo, $sql, $args);
             $names = [];
             $columns = [];
             for ($i = 0, $n = $st->columnCount(); $i < $n; $i++) {
@@ -1332,6 +1331,14 @@ final class Catalog
         return $rows;
     }
 
+    /** @param list<mixed> $args */
+    private function prepareQuery(\PDO $pdo, string $sql, array $args): \PDOStatement
+    {
+        $statement = $pdo->prepare($sql);
+        $statement->execute($args);
+        return $statement;
+    }
+
     /**
      * Runs a bounded query. It fails when the result has more than maxRows rows or more than maxBytes of values.
      *
@@ -1341,8 +1348,7 @@ final class Catalog
     private function query(\PDO $pdo, string $sql, array $args, int $maxRows, int $maxBytes): array
     {
         try {
-            $st = $pdo->prepare($sql);
-            $st->execute($args);
+            $st = $this->prepareQuery($pdo, $sql, $args);
             $names = [];
             $types = [];
             for ($i = 0, $n = $st->columnCount(); $i < $n; $i++) {
