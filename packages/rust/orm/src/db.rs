@@ -392,6 +392,10 @@ fn pool_options<DB: sqlx::Database>(size: u32, idle: u32, lifetime_ms: u32, owne
 #[path = "db/sqlite_version_tests.rs"]
 mod sqlite_version_tests;
 
+#[cfg(test)]
+#[path = "../tests/unit/time_precision.rs"]
+mod time_precision_tests;
+
 fn parse_sqlite_version(version: &str) -> Result<(u32, u32, u32)> {
     let parts: Vec<&str> = version.split('.').collect();
     if parts.len() != 3 && parts.len() != 4 {
@@ -1087,6 +1091,9 @@ fn digits(b: &[u8]) -> bool {
 
 /// A date or datetime bind in the text form SQLite stores (Db::bind_time_value) in the connection time zone `zone`.
 pub(crate) fn bound_time_value(v: Param, col_type: &str, precision: i64, zone: &Zone) -> Result<Param> {
+    if col_type == "datetime" {
+        precision_count(precision)?;
+    }
     match v {
         Param::DateTime(t) if col_type == "date" => Ok(Param::Str(t.format("%Y-%m-%d").to_string())),
         Param::Str(text) if col_type == "date" => {
@@ -1194,10 +1201,11 @@ pub(crate) fn message_time_text(text: &str, col_type: &str, zone: &Zone) -> Resu
 /// Shortens a six-fractional-digit `YYYY-MM-DD HH:MM:SS.ffffff` text to p fractional digits. If a nonzero digit
 /// is in the dropped digits, the value changes, so it is CODEC_ENCODE.
 fn datetime_digits(text: &str, precision: i64) -> Result<String> {
+    let p = precision_count(precision)?;
     let Some((whole, fraction)) = text.split_once('.') else {
         return Ok(text.to_owned());
     };
-    let p = precision_count(precision)?.min(fraction.len());
+    let p = p.min(fraction.len());
     if fraction[p..].bytes().any(|b| b != b'0') {
         return Err(Error::Engine { code: codes::CODEC_ENCODE.into(), msg: format!("datetime value {text:?} has more than {p} fraction digits") });
     }
@@ -1206,19 +1214,24 @@ fn datetime_digits(text: &str, precision: i64) -> Result<String> {
 
 /// Truncates the six-digit fractional text of the executor clock to the p fractional digits of a `datetime(p)` column.
 fn clock_digits(text: &str, precision: i64) -> Result<String> {
+    let p = precision_count(precision)?;
     let Some((whole, fraction)) = text.split_once('.') else {
         return Ok(text.to_owned());
     };
-    let p = precision_count(precision)?.min(fraction.len());
+    let p = p.min(fraction.len());
     Ok(if p == 0 { whole.to_owned() } else { format!("{whole}.{}", &fraction[..p]) })
 }
 
-/// The number of fractional digits a precision names, which is a count and so cannot be negative.
-fn precision_count(precision: i64) -> Result<usize> {
-    usize::try_from(precision).map_err(|error| Error::Engine {
+/// The number of fractional digits a precision names, which is between zero and six.
+pub(crate) fn precision_count(precision: i64) -> Result<usize> {
+    let count = usize::try_from(precision).map_err(|error| Error::Engine {
         code: codes::SCHEMA_INVALID.into(),
         msg: format!("precision {precision} is not a count of fractional digits: {error}"),
-    })
+    })?;
+    if count > 6 {
+        return Err(Error::Engine { code: codes::SCHEMA_INVALID.into(), msg: format!("precision {precision} is outside 0..6") });
+    }
+    Ok(count)
 }
 
 /// Joins a lock-request failure with the failure of the busy_timeout restore that follows it, so both reach the caller.
@@ -1233,6 +1246,7 @@ fn with_restore_failure(lock: Error, restore: Error) -> Error {
 /// A `time(p)` value is `HH:MM:SS` text with exactly p fractional digits (docs/spec/dbspec.md, "Runtime model"). The value is `HH:MM:SS[.f{1,6}]`
 /// text; zeros after the p digits are dropped, and a nonzero digit is CODEC_ENCODE.
 pub(crate) fn time_value(v: Param, precision: i64) -> Result<Param> {
+    let p = precision_count(precision)?;
     let text = match v {
         Param::Null => return Ok(Param::Null),
         Param::Str(text) => text,
@@ -1240,7 +1254,7 @@ pub(crate) fn time_value(v: Param, precision: i64) -> Result<Param> {
     };
     let full = message_time_text(&text, "time", &Zone)?;
     let (whole, fraction) = full.split_at(8);
-    let p = precision_count(precision)?.min(6);
+    let p = p.min(6);
     if fraction[1 + p..].bytes().any(|b| b != b'0') {
         return Err(Error::Engine { code: codes::CODEC_ENCODE.into(), msg: format!("time value {text:?} has more than {p} fraction digits") });
     }

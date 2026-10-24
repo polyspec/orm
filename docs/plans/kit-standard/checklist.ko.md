@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: d5ac0db71c3731dbaa7dbdae257979a835e834e2a8eae74d1a5004970f2ad052 -->
+<!-- source-sha256: 54672e7d1648e95a68595c9b0402fbef851890c4d442b4970eb650dbfdf8013a -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -233,7 +233,7 @@
 | KSTD-5-65 | build scan이 OUT_DIR이 없다는 오류를 전파한다 | packages/rust/build/src/lib.rs; packages/rust/build/src/tests/out_dir.rs; Makefile; contracts/check-inputs.json | `make rust-build-outdir-check` | [o] |
 | KSTD-5-66 | upsert planner의 conflict-key 오류를 전파한다 | packages/rust/orm/src/engine/planner.rs:313 | `make rust-check` | [ ] |
 | KSTD-5-67 | relation step에는 parent bind slot이 정확히 하나 있어야 한다 | Makefile; contracts/check-inputs.json; packages/rust/orm/src/driver.rs; packages/rust/orm/src/driver/tests.rs; RED: make relation-parent-bind-rust-check exit 2 at abd38b77eae57fc108311dce4a615fccd6392161 (4 behavioral assertions failed); committed GREEN e0fe5ae77b451ed5ee38e9b84f270a658810c7b2: 5/5 | `make relation-parent-bind-rust-check` | [o] |
-| KSTD-5-68 | 음수 또는 범위를 벗어난 소수 정밀도를 거부한다 | packages/rust/orm/src/db.rs:1155,1167,1185 | `make rust-check` | [ ] |
+| KSTD-5-68 | 값 바인딩 전에 0..6 범위를 벗어난 시간 정밀도를 거부한다 | packages/rust/orm/src/db.rs; packages/rust/orm/src/bind_check.rs; packages/rust/orm/tests/unit/time_precision.rs; Makefile; contracts/check-inputs.json | `make rust-time-precision-check` | [~] |
 | KSTD-5-69 | commit task의 panic payload를 포함한다 | packages/rust/build/src/catalog/mutation_finish.rs:40 | `make rust-check` | [-] 원인: 현재 코드는 Tokio 1.53.1 JoinError를 직접 format하며 Display는 static str와 String panic payload를 포함하고 취소를 분류한다. 불투명한 비문자열 payload를 노출하라는 요구는 없다. 런타임: 실행하지 않음. 근거: var/evidence/KSTD-5-69/audit.md. |
 | KSTD-5-70 | CARGO_MANIFEST_DIR을 기준으로 상대 build 경로를 해석한다 | packages/rust/build/src/lib.rs:146 | `make rust-build-environment-check` | [o] |
 | KSTD-5-71 | Rust codec, driver, markdown와 build 파일의 map_err(\|_\|) 클로저가 원인을 유지하게 한다 | packages/rust/orm/src/codec.rs; packages/rust/orm/src/driver.rs (bad()); packages/rust/orm/src/markdown.rs:573,579; packages/rust/build/src/catalog/*; packages/rust/build/src/tool_db/* | `make rust-check` | [ ] |

@@ -64,6 +64,9 @@ pub(crate) fn check_assign(i: usize, v: &Param, s: &ParamSlot<'_>) -> Result<()>
 /// non-zero digit of a time or datetime past its precision, at most n characters of a varchar(n), no U+0000 in text
 /// and a lower-case canonical uuid. A value outside it is CODEC_ENCODE; SQL NULL is accepted.
 pub(crate) fn check_param(i: usize, v: &Param, s: &ParamSlot<'_>, zone: &Zone) -> Result<()> {
+    if matches!(s.ty, "time" | "datetime") {
+        crate::db::precision_count(s.precision)?;
+    }
     if matches!(v, Param::Null) {
         return Ok(());
     }

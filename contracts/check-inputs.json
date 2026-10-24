@@ -855,6 +855,16 @@
         "packages/rust/build/src/tests/out_dir.rs"
       ]
     },
+    "rust-time-precision-check": {
+      "scope": "owner",
+      "needs": ["go", "rust", "node-modules"],
+      "inputs": [
+        "Makefile",
+        "packages/rust/orm/src/db.rs",
+        "packages/rust/orm/src/bind_check.rs",
+        "packages/rust/orm/tests/unit/time_precision.rs"
+      ]
+    },
     "relation-parent-bind-rust-check": {
       "scope": "owner",
       "needs": ["go", "rust", "node-modules"],
