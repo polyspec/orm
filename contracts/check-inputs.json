@@ -1744,6 +1744,17 @@
         "packages/ts/tests/audit-history-rows.test.mjs"
       ]
     },
+    "typescript-capture-error-helper-check": {
+      "scope": "owner",
+      "needs": [
+        "node-modules"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/ts/tests/capture-error.mjs",
+        "packages/ts/tests/capture-error.test.mjs"
+      ]
+    },
     "catalog-mutation-helper-python-check": {
       "scope": "owner",
       "needs": [

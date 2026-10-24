@@ -14,6 +14,7 @@ import { Db, OrmError, dbspecManifest, parseDbspec, readDbspecFile } from '../di
 import { caseTest } from '../../../tests/testcase.mts';
 import { withCaseDatabase } from './case-database.mjs';
 import { nativeQuery } from './coverage_case.mjs';
+import { captureError } from './capture-error.mjs';
 
 // CASE_DEADLINE_MS is the deadline of one case. A case creates a database, installs two sets, and adds columns
 // a few times, then drops the database.
@@ -34,9 +35,7 @@ function check(cond, message) {
   if (!cond) { failures++; console.error(`FAIL ${current}: ${message}`); }
 }
 /** The OrmError that the call rejected. null on success. */
-async function thrown(run) {
-  try { await run(); return null; } catch (error) { if (error instanceof OrmError) return error; throw error; }
-}
+const thrown = run => captureError(run, error => error instanceof OrmError);
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
 /** The schema value of contracts/fixtures/add_tables_and_columns/<name>.dbs. */
