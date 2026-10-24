@@ -2654,12 +2654,12 @@ def paginate(ex: Executor, request: dict, params):
             return {"result": result, "total": total}
         cached = db.plan(request)
         main = _select(ex, cached, cached["plan"]["steps"][0], params)
-        result = _relations(ex, cached, params, main)
         step = next((s for s in cached["plan"]["steps"] if s["role"] == "count"), None)
         if step is None:
             raise OrmError(codes.INTERNAL, "paginate plan has no count step")
         counted = db._send_step(ex, step["sql"], step, params)
         total = int(counted["rows"][0][0] if counted["rows"] else 0)
+        result = _relations(ex, cached, params, main)
         return {"result": result, "total": total}
 
     return _guarded(ex, work)

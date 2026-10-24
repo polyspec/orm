@@ -2719,6 +2719,20 @@
         "tests/codec/decode-vectors.json"
       ]
     },
+    "python-complex-query-check": {
+      "scope": "owner",
+      "needs": [
+        "python",
+        "node-modules"
+      ],
+      "inputs": [
+        "packages/python/src/polyspec/orm/names.py",
+        "packages/python/src/polyspec/orm/core.py",
+        "packages/python/src/polyspec/orm/engine/planner.py",
+        "packages/python/src/polyspec/orm/database.py",
+        "packages/python/tests/test_complex_query.py"
+      ]
+    },
     "parity-declarations-check": {
       "scope": "suite",
       "needs": [

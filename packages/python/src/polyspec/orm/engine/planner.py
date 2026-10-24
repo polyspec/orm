@@ -340,9 +340,12 @@ class Planner:
         if kind in ("one", "all", "count", "group_count", "sum", "avg"):
             self._select_step(add, steps, r, kind, r.get("agg") or "", None)
         elif kind == "paginate":
-            # Count step after main (including relation steps).
-            self._select_step(add, steps, r, "all", "", None)
+            # The page query and count run before any relation query.
+            deferred = []
+            self._select_step(add, steps, r, "all", "", None, deferred)
             self._select_step(add, steps, r, "count", "", None)
+            for scope, asm, step_id in deferred:
+                self._relation_steps(add, steps, scope, asm, step_id)
         elif kind == "insert":
             add(self._insert_step(r))
         elif kind == "update":
@@ -386,7 +389,9 @@ class Planner:
     def _client_styles(self, stages) -> list:
         return [s for s in stages if not self.d.decodes_stage(s)]
 
-    def _select_step(self, add, steps, q: dict, kind: str, agg: str, rc) -> dict:
+    def _select_step(
+        self, add, steps, q: dict, kind: str, agg: str, rc, deferred=None
+    ) -> dict:
         b = _Builder(self.d)
         root = self._build_scopes(q, "a", None)
         if rc is not None:
@@ -520,7 +525,10 @@ class Planner:
             step["assemble"] = asm
         added = add(step)
         if added.get("assemble"):
-            self._relation_steps(add, steps, root, asm, added["id"])
+            if deferred is None:
+                self._relation_steps(add, steps, root, asm, added["id"])
+            else:
+                deferred.append((root, asm, added["id"]))
         return added
 
     def _relation_steps(self, add, steps, s: _Scope, asm: dict, step_id: int) -> None:

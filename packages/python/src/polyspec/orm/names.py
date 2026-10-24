@@ -233,6 +233,27 @@ def _parse_key(model: RuntimeModel, e: Entity, ws) -> ChainKey:
     whole = index.get(text)
     if whole is not None:
         candidates.append(ChainKey(column=whole))
+    if ws[0] == "Fulltext":
+        boolean = len(ws) > 1 and ws[1] == "Boolean"
+        column_words = ws[2:] if boolean else ws[1:]
+        columns = _split_with(e, column_words) if column_words else None
+        if columns:
+            bad = [
+                c
+                for c in columns
+                if fields[c].type not in ("varchar", "text") or fields[c].stages
+            ]
+            if bad:
+                errors.append(f"{bad[0]} cannot be used in full-text search")
+            else:
+                candidates.append(
+                    ChainKey(
+                        op="fulltext_boolean" if boolean else "fulltext",
+                        columns=tuple(columns),
+                    )
+                )
+        else:
+            errors.append(f"full-text search needs columns of {e.name} joined by With")
     op = _LEADING_OPS.get(ws[0])
     if op is not None and len(ws) > 1:
         if ws[0] == "Ne" and len(ws) > 1 and ws[1] == "Tuple":

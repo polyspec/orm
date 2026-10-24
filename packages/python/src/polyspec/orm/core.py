@@ -294,6 +294,16 @@ class Core:
                 cols=list(key.columns),
                 value=rows,
             ), 0
+        if key.op in ("fulltext", "fulltext_boolean"):
+            if not isinstance(value, str):
+                raise OrmError(codes.CONFIG, "full-text search requires a string")
+            return {
+                "kind": "fulltext",
+                "op": key.op,
+                "column": "",
+                "cols": list(key.columns),
+                "value": value,
+            }, 0
         if key.op == "between":
             if not isinstance(value, (list, tuple)) or len(value) != 2:
                 raise OrmError(
@@ -890,6 +900,10 @@ class BuiltRequest:
             del out["column"]
             out["cols"] = list(p["cols"])
             out["ps"] = [self.param(value) for row in p["value"] for value in row]
+        elif kind == "fulltext":
+            del out["column"]
+            out["cols"] = list(p["cols"])
+            out["p"] = self.param(p["value"])
         elif kind == "between":
             out["ps"] = [self.param(value) for value in p["value"]]
         elif kind == "list":
