@@ -21,7 +21,9 @@
     "DIA-172",
     "DIA-173",
     "DIA-174",
+    "DIA-175",
     "DIA-176",
+    "DIA-177",
     "DIA-178",
     "DIA-179",
     "DIA-180",
@@ -134,6 +136,12 @@
     { "id": "index_read", "expect": [{ "id": "T3", "owner": "P2" }] },
     { "id": "force_index", "expect": { "error": "CAPABILITY_UNSUPPORTED" } },
     { "id": "unavailable_table", "expect": { "broken": "CONSTRAINT", "names_file": true, "restored": 2 } },
+    { "id": "codec_insert", "expect": { "id": "C1" } },
+    { "id": "codec_default_select", "expect": { "error": "COLUMN_UNSELECTED" } },
+    { "id": "codec_explicit_select", "expect": "first encoded value" },
+    { "id": "codec_update", "expect": "updated encoded value" },
+    { "id": "select_explicit_insert_omitted", "expect": { "id": "C2" } },
+    { "id": "select_explicit_read_null", "expect": "sql-null" },
     { "id": "install_refuses_aes", "expect": { "error": "SCHEMA_INVALID" } },
     { "id": "install_refuses_audit", "expect": { "error": "SCHEMA_INVALID" } }
   ]

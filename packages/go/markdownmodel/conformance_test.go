@@ -823,6 +823,92 @@ func conformanceCases() map[string]caseFunc {
 			}
 			return map[string]any{"broken": orm.ErrorCode(broken), "names_file": broken != nil && strings.Contains(broken.Error(), "tasks.flowmark.md"), "restored": n}, nil
 		},
+		// codec_insert writes a base64-encoded value to an explicit column (DIA-175, DIA-177).
+		"codec_insert": func(s *served) (any, error) {
+			row, err := markdownmodel.CodecRows().SetId("C1").SetPayload(orm.Value("first encoded value"))
+			if err != nil {
+				return nil, err
+			}
+			created, err := row.Connect(s.db).Create()
+			if err != nil {
+				return nil, err
+			}
+			id, err := created.GetId()
+			return map[string]any{"id": id}, err
+		},
+		// codec_default_select asks for a select-explicit getter without selecting it.
+		"codec_default_select": func(s *served) (any, error) {
+			row, err := markdownmodel.CodecRows().Connect(s.db).Id("C1").Get()
+			if err != nil {
+				return nil, err
+			}
+			_, err = row.GetPayload()
+			return nil, err
+		},
+		// codec_explicit_select reads the selected column through its base64 codec.
+		"codec_explicit_select": func(s *served) (any, error) {
+			row, err := markdownmodel.CodecRows().Connect(s.db).RemoveAllColumns().AddColumnPayload().Id("C1").Get()
+			if err != nil {
+				return nil, err
+			}
+			value, err := row.GetPayload()
+			if err != nil {
+				return nil, err
+			}
+			payload, ok := value.Data()
+			if !ok {
+				return nil, fmt.Errorf("payload is %s, not a stored value", value.Kind())
+			}
+			return payload, nil
+		},
+		// codec_update changes the encoded value and reads back the decoded text.
+		"codec_update": func(s *served) (any, error) {
+			row, err := markdownmodel.CodecRows().Connect(s.db).RemoveAllColumns().AddColumnPayload().Id("C1").Get()
+			if err != nil {
+				return nil, err
+			}
+			row, err = row.SetPayload(orm.Value("updated encoded value"))
+			if err != nil {
+				return nil, err
+			}
+			if _, err := row.Update(); err != nil {
+				return nil, err
+			}
+			read, err := markdownmodel.CodecRows().Connect(s.db).RemoveAllColumns().AddColumnPayload().Id("C1").Get()
+			if err != nil {
+				return nil, err
+			}
+			value, err := read.GetPayload()
+			if err != nil {
+				return nil, err
+			}
+			payload, ok := value.Data()
+			if !ok {
+				return nil, fmt.Errorf("payload is %s, not a stored value", value.Kind())
+			}
+			return payload, nil
+		},
+		// select_explicit_insert_omitted inserts a row without the explicit column.
+		"select_explicit_insert_omitted": func(s *served) (any, error) {
+			created, err := markdownmodel.CodecRows().Connect(s.db).SetId("C2").Create()
+			if err != nil {
+				return nil, err
+			}
+			id, err := created.GetId()
+			return map[string]any{"id": id}, err
+		},
+		// select_explicit_read_null includes the omitted SQL NULL column in the read.
+		"select_explicit_read_null": func(s *served) (any, error) {
+			row, err := markdownmodel.CodecRows().Connect(s.db).RemoveAllColumns().AddColumnPayload().Id("C2").Get()
+			if err != nil {
+				return nil, err
+			}
+			value, err := row.GetPayload()
+			if err != nil {
+				return nil, err
+			}
+			return value.Kind(), nil
+		},
 		// install_refuses_aes installs a catalog with an aes column, a schema error on a corpus (DIA-178).
 		"install_refuses_aes": func(s *served) (any, error) {
 			return refusedInstall(s, "aes")

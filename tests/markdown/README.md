@@ -8,7 +8,7 @@ a database, so its conformance has no SQL text and no bind list to compare. Each
 | file | role |
 |---|---|
 | `cases.json` | the case IDs in their order and the expected result of each, the only place a case is declared |
-| `corpus/dbspec/conformance.dbs` | the catalog of the corpus: `people` (a `document` table with `key_prefix`, a soft delete column, an update time column and a unique key), `tasks` (with a foreign key to `people`) and `logs` (with an `identity` key) |
+| `corpus/dbspec/conformance.dbs` | the catalog of the corpus: `people` (a `document` table with `key_prefix`, a soft delete column, an update time column and a unique key), `tasks` (with a foreign key to `people`), `logs` (with an `identity` key) and `codec_rows` (with a base64 codec and an explicit-select payload) |
 | `refused/aes.dbs`, `refused/audit.dbs` | catalogs that a corpus refuses: an `aes` column and an `audit` setting, which `install_refuses_aes` and `install_refuses_audit` install as a new corpus of their own and answer the code that `flowmark install` prints, `{"error": <code>}` |
 | `flowmark.version` | the Go module version of `github.com/polyspec/flowmark` whose `flowmark` the cases run on |
 | `packages/go/markdownmodel` | the Go models generated from the catalog and the Go runner, `TestMarkdownConformance` |
@@ -65,6 +65,8 @@ meets), tuple conditions, a scalar `Sub` aggregate and an `IN` subquery, a scala
 its limit (`IR_INVALID`), a column comparison that meets and one that does not (`OPERATOR_NOT_ALLOWED`), `contains`
 and `contains_binary`, the `default now` of a `datetime(0)` column and a relative time function past 9999-12-31, a
 read through an indexed column, the refused `force_index` (`CAPABILITY_UNSUPPORTED`), a table made unavailable by an
-edit of its file (`CONSTRAINT`, naming the file, until the file is restored), and the catalogs of `refused/`
-(`SCHEMA_INVALID`). A result that holds a code next to other members writes the code alone, such as
+edit of its file (`CONSTRAINT`, naming the file, until the file is restored), a base64 codec write and decoded read,
+the `COLUMN_UNSELECTED` default read of an explicit-select column, an explicit read of that value, a codec update,
+and an omitted explicit-select value that remains SQL NULL, and the catalogs of `refused/` (`SCHEMA_INVALID`). A result
+that holds a code next to other members writes the code alone, such as
 `{"broken": "CONSTRAINT", "names_file": true, "restored": 2}`.

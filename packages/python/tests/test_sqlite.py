@@ -316,6 +316,26 @@ class SqliteEndToEndTest(unittest.TestCase):
             self.models.Author().connect(self.db).name("tx-outer").get_count(), 0
         )
 
+    def test_generated_identity_write_set_rolls_back_with_savepoint(self):
+        utils = self.db.utils()
+        inserted = []
+
+        def outer():
+            outer_seq = self.author("write-set-outer").create().get_seq()
+            self.assertTrue(utils.was_inserted("author", outer_seq))
+
+            def inner():
+                inserted.append(self.author("write-set-inner").create().get_seq())
+                self.assertTrue(utils.was_inserted("author", inserted[0]))
+                raise RuntimeError("roll back nested insert")
+
+            with self.assertRaisesRegex(RuntimeError, "roll back nested insert"):
+                self.db.transaction(inner, {"retry": 0})
+            self.assertFalse(utils.was_inserted("author", inserted[0]))
+            self.assertTrue(utils.was_inserted("author", outer_seq))
+
+        self.db.transaction(outer, {"retry": 0})
+
     def _inner(self, boom):
         self.author("tx-inner").create()
         raise boom

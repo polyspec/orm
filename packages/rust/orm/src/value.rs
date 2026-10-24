@@ -47,6 +47,14 @@ mod checked_value_tests {
         assert_eq!(transform("unknown", "input").unwrap_err().code(), crate::codes::CONFIG);
     }
 
+    #[test]
+    fn styled_text_decodes_as_a_json_string_value() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let mut text = Val::Str("decoded text".into());
+        assert_eq!(text.take_json().unwrap(), Some(serde_json::json!("decoded text")));
+        assert_eq!(text, Val::Null);
+    }
+
     /// The checked values outside the shared cases: integers past 2^53 round, and other kinds are refused.
     #[test]
     fn aggregate_numbers_round_integers_and_refuse_other_kinds() {
@@ -295,6 +303,10 @@ impl Val {
             Val::Json(_) => {
                 let Val::Json(value) = std::mem::replace(self, Val::Null) else { unreachable!() };
                 Ok(Some(value))
+            }
+            Val::Str(_) => {
+                let Val::Str(value) = std::mem::replace(self, Val::Null) else { unreachable!() };
+                Ok(Some(serde_json::Value::String(value)))
             }
             Val::Null => Ok(None),
             other => Err(decode_value(format!("expected JSON, received {other:?}"))),

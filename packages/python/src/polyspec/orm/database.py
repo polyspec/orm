@@ -1370,7 +1370,7 @@ class Db:
         if self.driver == "markdown" and self.statement_timeout_ms > 0:
             unsupported_on_markdown(self, "statement timeout")
         self.engines: dict[str, Engine] = {}
-        # The runtime model of the set registered on a markdown connection. For SQL connections, engines takes that place.
+        # The runtime model registered for each manifest; SQL engines also hold their planner for that model.
         self.schemas: dict[str, RuntimeModel] = {}
         self.plans: dict[str, dict] = {}
         self.plan_cache_size = options.get("planCacheSize", 1024)
@@ -1462,10 +1462,9 @@ class Db:
         return self
 
     def _register_set(self, manifest_hash: str, model: RuntimeModel) -> None:
-        """Registers the runtime model of the manifest. A SQL connection creates its planner, while a markdown connection, which does not plan,
-        keeps only the model. A set that is already registered is not changed."""
+        """Registers the runtime model of the manifest for validation and planning. A set that is already registered is not changed."""
+        self.schemas.setdefault(manifest_hash, model)
         if self.driver == "markdown":
-            self.schemas.setdefault(manifest_hash, model)
             return
         if manifest_hash not in self.engines:
             self.engines[manifest_hash] = Engine(model, self.driver)
@@ -2724,9 +2723,8 @@ def _record_inserted(ex: Executor, request: dict, key) -> None:
         return
     if not isinstance(key, int) or isinstance(key, bool) or key <= 0:
         return
-    entity = ex.db.engines[request["manifest_hash"]].model.entities.get(
-        request["entity"]
-    )
+    model = ex.db.schemas[request["manifest_hash"]]
+    entity = model.entities.get(request["entity"])
     if entity is None or not entity.identity:
         return
     frame.inserted.setdefault(request["entity"], set()).add(key)

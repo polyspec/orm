@@ -12,7 +12,7 @@ import unittest
 from pathlib import Path
 from .test_sqlite import generate
 from .vector_case import VectorCase, vector_tests
-from polyspec.orm import Collection, Model, OrmError
+from polyspec.orm import Collection, Model, OrmError, StyledValue
 from polyspec.orm.values import orm
 from . import testcase
 
@@ -770,6 +770,38 @@ def conformance_cases() -> dict:
         restored = s.models.Tasks().connect(s.db).get_count()
         return {"broken": broken, "names_file": names_file, "restored": restored}
 
+    # codec_insert writes a base64-encoded value to an explicit column (DIA-175, DIA-177).
+    def codec_insert(s):
+        row = s.models.CodecRows().set_id("C1").set_payload(StyledValue.value("first encoded value"))
+        created = row.connect(s.db).create()
+        return {"id": created.get_id()}
+
+    # codec_default_select asks for a select-explicit getter without selecting it.
+    def codec_default_select(s):
+        return s.models.CodecRows().connect(s.db).id("C1").get().get_payload()
+
+    # codec_explicit_select reads the selected column through its base64 codec.
+    def codec_explicit_select(s):
+        row = s.models.CodecRows().connect(s.db).remove_all_columns().add_column_payload().id("C1").get()
+        return row.get_payload().payload()
+
+    # codec_update changes the encoded value and reads back the decoded text.
+    def codec_update(s):
+        row = s.models.CodecRows().connect(s.db).remove_all_columns().add_column_payload().id("C1").get()
+        row.set_payload(StyledValue.value("updated encoded value")).update()
+        read = s.models.CodecRows().connect(s.db).remove_all_columns().add_column_payload().id("C1").get()
+        return read.get_payload().payload()
+
+    # select_explicit_insert_omitted inserts a row without the explicit column.
+    def select_explicit_insert_omitted(s):
+        created = s.models.CodecRows().set_id("C2").connect(s.db).create()
+        return {"id": created.get_id()}
+
+    # select_explicit_read_null includes the omitted SQL NULL column in the read.
+    def select_explicit_read_null(s):
+        row = s.models.CodecRows().connect(s.db).remove_all_columns().add_column_payload().id("C2").get()
+        return row.get_payload().kind
+
     def connect_mismatch(corpus_of, token_of):
         def run(s):
             db = s.models.connect(s.dsn(corpus_of(s), token_of(s)))
@@ -830,6 +862,12 @@ def conformance_cases() -> dict:
         "index_read": index_read,
         "force_index": force_index,
         "unavailable_table": unavailable_table,
+        "codec_insert": codec_insert,
+        "codec_default_select": codec_default_select,
+        "codec_explicit_select": codec_explicit_select,
+        "codec_update": codec_update,
+        "select_explicit_insert_omitted": select_explicit_insert_omitted,
+        "select_explicit_read_null": select_explicit_read_null,
         # A catalog with an aes column is a schema error on a corpus (DIA-178).
         "install_refuses_aes": lambda s: refused_install(s, "aes"),
         # A catalog with an audit setting is a schema error on a corpus (DIA-179).

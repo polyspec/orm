@@ -49,3 +49,15 @@ table logs {
     store document table
   }
 }
+
+table codec_rows {
+  id varchar(32)
+  payload text null
+  primary key (id)
+  settings {
+    key_prefix 'C'
+    store document table
+    codec payload base64
+    select explicit payload
+  }
+}

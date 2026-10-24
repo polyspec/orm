@@ -8,7 +8,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { OrmError, StyledValue, orm } from '../dist/index.js';
-import { Logs, People, Tasks, connect } from '../dist/models/markdown_fixture/models.js';
+import { CodecRows, Logs, People, Tasks, connect } from '../dist/models/markdown_fixture/models.js';
 /** The error that the callback throws to roll back the transaction. */
 export const stop = new Error('stop');
 
@@ -268,6 +268,25 @@ export const conformanceCases = {
     await writeFile(file, text);
     return { broken, names_file: namesFile, restored: await new Tasks().connect(s.db).getCount() };
   },
+  // codec_insert writes a base64-encoded value to an explicit column (DIA-175, DIA-177).
+  codec_insert: async s => {
+    const row = new CodecRows().setId('C1').setPayload(StyledValue.value('first encoded value'));
+    return { id: (await row.connect(s.db).create()).getId() };
+  },
+  // codec_default_select asks for a select-explicit getter without selecting it.
+  codec_default_select: async s => (await new CodecRows().connect(s.db).id('C1').get()).getPayload(),
+  // codec_explicit_select reads the selected column through its base64 codec.
+  codec_explicit_select: async s => (await new CodecRows().connect(s.db).removeAllColumns().addColumnPayload().id('C1').get()).getPayload().payload(),
+  // codec_update changes the encoded value and reads back the decoded text.
+  codec_update: async s => {
+    const row = await new CodecRows().connect(s.db).removeAllColumns().addColumnPayload().id('C1').get();
+    await row.setPayload(StyledValue.value('updated encoded value')).update();
+    return (await new CodecRows().connect(s.db).removeAllColumns().addColumnPayload().id('C1').get()).getPayload().payload();
+  },
+  // select_explicit_insert_omitted inserts a row without the explicit column.
+  select_explicit_insert_omitted: async s => ({ id: (await new CodecRows().setId('C2').connect(s.db).create()).getId() }),
+  // select_explicit_read_null includes the omitted SQL NULL column in the read.
+  select_explicit_read_null: async s => (await new CodecRows().connect(s.db).removeAllColumns().addColumnPayload().id('C2').get()).getPayload().kind,
   // A catalog with an aes column is a schema error on a corpus (DIA-178).
   install_refuses_aes: async s => refusedInstall(s, 'aes'),
   // A catalog with an audit setting is a schema error on a corpus (DIA-179).

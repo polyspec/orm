@@ -19,9 +19,9 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::{Mutex, PoisonError};
 
-use markdown_model::{Logs, People, Tasks};
+use markdown_model::{CodecRows, Logs, People, Tasks};
 use polyspec_orm::chrono::NaiveDate;
-use polyspec_orm::{Config, Db, Error, Isolation};
+use polyspec_orm::{Config, Db, Error, Isolation, StyledValue};
 use serde_json::{json, Value};
 
 /// The module path that must be the main module of the build FLOWMARK points to.
@@ -77,6 +77,12 @@ const CASES: &[&str] = &[
     "index_read",
     "force_index",
     "unavailable_table",
+    "codec_insert",
+    "codec_default_select",
+    "codec_explicit_select",
+    "codec_update",
+    "select_explicit_insert_omitted",
+    "select_explicit_read_null",
     "install_refuses_aes",
     "install_refuses_audit",
 ];
@@ -747,6 +753,49 @@ async fn run_case(id: &str, s: &Served) -> polyspec_orm::Result<Value> {
             std::fs::write(&path, &text).map_err(io)?;
             let names_file = broken.as_ref().is_err_and(|e| e.to_string().contains("tasks.flowmark.md"));
             json!({ "broken": code_of(broken), "names_file": names_file, "restored": Tasks::new().connect(db).get_count().await? })
+        }
+        // codec_insert writes a base64-encoded value to an explicit column (DIA-175, DIA-177).
+        "codec_insert" => {
+            let row = CodecRows::new().set_id("C1").set_payload(StyledValue::Value("first encoded value".into()))?;
+            let created = row.connect(db).create().await?;
+            json!({ "id": created.get_id()? })
+        }
+        // codec_default_select asks for a select-explicit getter without selecting it.
+        "codec_default_select" => {
+            let row = CodecRows::new().connect(db).id("C1").get().await?.ok_or(Error::NoRows)?;
+            let _ = row.get_payload()?;
+            Value::Null
+        }
+        // codec_explicit_select reads the selected column through its base64 codec.
+        "codec_explicit_select" => {
+            let row = CodecRows::new().connect(db).remove_all_columns().add_column_payload().id("C1").get().await?.ok_or(Error::NoRows)?;
+            match row.get_payload()? {
+                StyledValue::Value(value) => json!(value),
+                StyledValue::SqlNull => json!("sql-null"),
+            }
+        }
+        // codec_update changes the encoded value and reads back the decoded text.
+        "codec_update" => {
+            let row = CodecRows::new().connect(db).remove_all_columns().add_column_payload().id("C1").get().await?.ok_or(Error::NoRows)?;
+            row.set_payload(StyledValue::Value("updated encoded value".into()))?.update(false).await?;
+            let read = CodecRows::new().connect(db).remove_all_columns().add_column_payload().id("C1").get().await?.ok_or(Error::NoRows)?;
+            match read.get_payload()? {
+                StyledValue::Value(value) => json!(value),
+                StyledValue::SqlNull => json!("sql-null"),
+            }
+        }
+        // select_explicit_insert_omitted inserts a row without the explicit column.
+        "select_explicit_insert_omitted" => {
+            let created = CodecRows::new().connect(db).set_id("C2").create().await?;
+            json!({ "id": created.get_id()? })
+        }
+        // select_explicit_read_null includes the omitted SQL NULL column in the read.
+        "select_explicit_read_null" => {
+            let row = CodecRows::new().connect(db).remove_all_columns().add_column_payload().id("C2").get().await?.ok_or(Error::NoRows)?;
+            match row.get_payload()? {
+                StyledValue::SqlNull => json!("sql-null"),
+                StyledValue::Value(_) => json!("value"),
+            }
         }
         // A catalog with an aes column is a schema error on a corpus (DIA-178).
         "install_refuses_aes" => refused_install(s, "aes"),

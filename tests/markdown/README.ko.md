@@ -1,5 +1,5 @@
 <!-- doc-id: tests-markdown-readme -->
-<!-- source-sha256: beeec15a96724a9f0d9346c14195e84534c68df0abecc7bdf2221ed20bff58ba -->
+<!-- source-sha256: adcedd71d175ca703315fea0796a6d15871cad8d3c28173d7c14ebedd229fc0e -->
 # Markdown executor 적합성
 
 markdown IR executor([프로토콜](../../docs/spec/protocol.ko.md#_5-ir-executors))는 데이터베이스가 아니라 flowmark
@@ -9,7 +9,7 @@ corpus 하나에서 `cases.json`의 case를 실행하고, case마다 결과를 �
 | 파일 | 역할 |
 |---|---|
 | `cases.json` | case ID의 순서와 각 case의 기대 결과. case를 선언하는 유일한 곳이다 |
-| `corpus/dbspec/conformance.dbs` | corpus의 catalog: `people`(`key_prefix`, soft delete column, 수정 시각 column, unique key를 가진 `document` table), `tasks`(`people`로 가는 foreign key), `logs`(`identity` key) |
+| `corpus/dbspec/conformance.dbs` | corpus의 catalog: `people`(`key_prefix`, soft delete column, 수정 시각 column, unique key를 가진 `document` table), `tasks`(`people`로 가는 foreign key), `logs`(`identity` key), `codec_rows`(base64 codec과 명시 선택 payload) |
 | `refused/aes.dbs`, `refused/audit.dbs` | corpus가 거절하는 catalog: `aes` column과 `audit` setting이며, `install_refuses_aes`와 `install_refuses_audit`가 각자의 새 corpus로 install하고 `flowmark install`이 출력한 code를 `{"error": <code>}`로 답한다 |
 | `flowmark.version` | case를 실행하는 `flowmark`의 `github.com/polyspec/flowmark` Go module 판 |
 | `packages/go/markdownmodel` | catalog에서 생성한 Go model과 Go 실행기 `TestMarkdownConformance` |
@@ -63,5 +63,7 @@ engine 밖의 편집을 만난 commit(`WRITE_CONFLICT`, 재시도하지 않는�
 subquery(`IR_INVALID`), 만나는 column 비교와 만나지 않는 column 비교(`OPERATOR_NOT_ALLOWED`), `contains`와
 `contains_binary`, `datetime(0)` column의 `default now`와 9999-12-31을 넘는 상대 시각 함수, index된 column을 통한 읽기,
 거절되는 `force_index`(`CAPABILITY_UNSUPPORTED`), 파일 편집으로 쓸 수 없게 된 table(파일을 되돌릴 때까지 파일을 밝히는
-`CONSTRAINT`), `refused/`의 catalog(`SCHEMA_INVALID`)이다. code와 다른 member를 함께 담는 결과는 code만 쓴다. 예를 들어
+`CONSTRAINT`), base64 codec 쓰기와 decode 읽기, 명시 선택 column의 기본 읽기에서 `COLUMN_UNSELECTED`, 해당 값의 명시
+읽기, codec update, 생략한 명시 선택 값이 SQL NULL로 남는 동작, `refused/`의 catalog(`SCHEMA_INVALID`)이다. code와
+다른 member를 함께 담는 결과는 code만 쓴다. 예를 들어
 `{"broken": "CONSTRAINT", "names_file": true, "restored": 2}`이다.

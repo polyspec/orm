@@ -22,7 +22,9 @@ use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;
 use Polyspec\Orm\Orm;
 use Polyspec\Orm\OrmException;
+use Polyspec\Orm\StyledValue;
 use Polyspec\Orm\Tests\MarkdownModel\Logs;
+use Polyspec\Orm\Tests\MarkdownModel\CodecRows;
 use Polyspec\Orm\Tests\MarkdownModel\People;
 use Polyspec\Orm\Tests\MarkdownModel\Tasks;
 use PHPUnit\Framework\Attributes\Large;
@@ -692,6 +694,32 @@ final class MarkdownConformanceTest extends TestCase
                     'names_file' => $namesFile,
                     'restored' => (new Tasks())->connect($s->db)->getCount()
                 ];
+            },
+            // codec_insert writes a base64-encoded value to an explicit column (DIA-175, DIA-177).
+            'codec_insert' => static function (Served $s): mixed {
+                return ['id' => (new CodecRows())->setId('C1')->setPayload(StyledValue::value('first encoded value'))->connect($s->db)->create()->getId()];
+            },
+            // codec_default_select asks for a select-explicit getter without selecting it.
+            'codec_default_select' => static function (Served $s): mixed {
+                return (new CodecRows())->connect($s->db)->id('C1')->get()->getPayload();
+            },
+            // codec_explicit_select reads the selected column through its base64 codec.
+            'codec_explicit_select' => static function (Served $s): mixed {
+                return (new CodecRows())->connect($s->db)->removeAllColumns()->addColumnPayload()->id('C1')->get()->getPayload()->payload();
+            },
+            // codec_update changes the encoded value and reads back the decoded text.
+            'codec_update' => static function (Served $s): mixed {
+                $row = (new CodecRows())->connect($s->db)->removeAllColumns()->addColumnPayload()->id('C1')->get();
+                $row->setPayload(StyledValue::value('updated encoded value'))->update();
+                return (new CodecRows())->connect($s->db)->removeAllColumns()->addColumnPayload()->id('C1')->get()->getPayload()->payload();
+            },
+            // select_explicit_insert_omitted inserts a row without the explicit column.
+            'select_explicit_insert_omitted' => static function (Served $s): mixed {
+                return ['id' => (new CodecRows())->setId('C2')->connect($s->db)->create()->getId()];
+            },
+            // select_explicit_read_null includes the omitted SQL NULL column in the read.
+            'select_explicit_read_null' => static function (Served $s): mixed {
+                return (new CodecRows())->connect($s->db)->removeAllColumns()->addColumnPayload()->id('C2')->get()->getPayload()->kind;
             },
             // A catalog with an aes column is a schema error on a corpus (DIA-178).
             'install_refuses_aes' => static function (Served $s): mixed {
