@@ -98,28 +98,27 @@ final class OrmGen
                 throw new UsageError("flag provided but not defined: -$name");
             }
             if (is_array($spec[$name])) {
-                if ($value === null) {
-                    if ($i + 1 >= count($args)) {
-                        throw new UsageError("flag needs an argument: -$name");
-                    }
-                    $value = $args[++$i];
-                }
-                $values[$name][] = $value;
+                $values[$name][] = self::optionValue($args, $i, $name, $value);
                 continue;
             }
             if (is_bool($spec[$name])) {
                 $values[$name] = $value === null ? true : in_array(strtolower($value), ['1', 't', 'true'], true);
                 continue;
             }
-            if ($value === null) {
-                if ($i + 1 >= count($args)) {
-                    throw new UsageError("flag needs an argument: -$name");
-                }
-                $value = $args[++$i];
-            }
-            $values[$name] = $value;
+            $values[$name] = self::optionValue($args, $i, $name, $value);
         }
         return [$values, $positional];
+    }
+
+    private static function optionValue(array $args, int &$i, string $name, ?string $value): string
+    {
+        if ($value !== null) {
+            return $value;
+        }
+        if ($i + 1 >= count($args)) {
+            throw new UsageError("flag needs an argument: -$name");
+        }
+        return $args[++$i];
     }
 
     private static function gen(array $args): int
