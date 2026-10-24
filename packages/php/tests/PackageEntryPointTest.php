@@ -17,9 +17,15 @@ final class PackageEntryPointTest extends TestCase
     #[PreserveGlobalState(false)]
     public function testTestingFaultsRequireTheirExplicitPackagePath(): void
     {
-        self::assertTrue(class_exists(\Polyspec\Orm\Db::class), 'the Composer package autoloader cannot resolve the public Db entry point');
+        self::assertTrue(
+            class_exists(\Polyspec\Orm\Db::class),
+            'the Composer package autoloader cannot resolve the public Db entry point'
+        );
         $class = 'Polyspec\\Orm\\Testing\\Faults';
-        self::assertFalse(class_exists($class), 'the production package autoloader resolves the test-only Faults class');
+        self::assertFalse(
+            class_exists($class),
+            'the production package autoloader resolves the test-only Faults class'
+        );
 
         $entryPoint = dirname(__DIR__) . '/testing/Faults.php';
         self::assertFileExists($entryPoint, 'the distribution omits the declared test entry point');
