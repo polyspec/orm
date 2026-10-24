@@ -18,7 +18,7 @@ export async function runPhysicalCommandCase(
 ): Promise<void> {
   let output: string;
   try { output = await run(program, args, env); }
-  catch (error) { throw new Error(errorMessage(error).replaceAll(dsn, '[redacted]')); }
+  catch (error) { throw new Error(errorMessage(error).replaceAll(dsn, '[redacted]'), { cause: error }); }
 
   const passed = expected.kind === 'teamcity'
     ? JSON.stringify([...output.matchAll(/^##teamcity\[testFinished name='([^']*)'/gm)].map(match => match[1])) === JSON.stringify([expected.testName])

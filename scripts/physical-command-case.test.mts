@@ -18,11 +18,13 @@ test('rejects a failed or unexpected TeamCity event and nonmatching exact output
 });
 
 test('redacts the DSN from command failures', async () => {
-  await assert.rejects(runPhysicalCommandCase(async () => { throw new Error('failed for dsn-secret'); }, 'php', [], {}, 'dsn-secret',
+  const cause = new Error('failed for dsn-secret');
+  await assert.rejects(runPhysicalCommandCase(async () => { throw cause; }, 'php', [], {}, 'dsn-secret',
     { kind: 'teamcity', testName: 'test_group_rows' }, 'missing pass event'), error => {
     assert(error instanceof Error);
     assert.equal(error.message, 'failed for [redacted]');
     assert.equal(error.message.includes('dsn-secret'), false);
+    assert.equal(error.cause, cause);
     return true;
   });
 });
