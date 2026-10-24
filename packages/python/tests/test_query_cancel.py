@@ -166,7 +166,6 @@ class QueryCancelTest(unittest.IsolatedAsyncioTestCase):
                 {"poolSize": 1},
             )
             self.addCleanup(db.close)
-            connection = db._shared.pool._idle[0]
             entered = threading.Event()
             resume = threading.Event()
 
@@ -176,7 +175,6 @@ class QueryCancelTest(unittest.IsolatedAsyncioTestCase):
                 return 0
 
             loop = asyncio.get_running_loop()
-            connection.connection.set_progress_handler(progress, 100)
             future = loop.create_future()
             handle = db.with_future(future)
             completed = loop.create_future()
@@ -223,10 +221,21 @@ class QueryCancelTest(unittest.IsolatedAsyncioTestCase):
                 )
                 future.cancel()
                 await callback_ran.wait()
-            finally:
+            except BaseException as primary_error:
+                resume.set()
+                cleanup_results = await asyncio.shield(
+                    asyncio.gather(task, return_exceptions=True)
+                )
+                cleanup_result = cleanup_results[0]
+                if isinstance(cleanup_result, BaseException):
+                    primary_error.add_note(
+                        f"SQLite worker cleanup also failed: {cleanup_result!r}"
+                    )
+                raise
+            else:
                 resume.set()
             with self.assertRaises(OrmError) as raised:
-                await task
+                await asyncio.shield(task)
             self.assertEqual(raised.exception.code, "CANCELED")
             self.assertIsNotNone(
                 raised.exception.cause, "SQLite supplies the native interruption cause"
