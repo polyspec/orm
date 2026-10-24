@@ -13,8 +13,9 @@ import { after } from 'node:test';
 import { caseTest } from '../../../tests/testcase.mts';
 import { createCaseDatabase } from './case-database.mjs';
 import { auditCase, auditSource, restoreCase, restoreSchema } from './restore_case.mjs';
-import { CORE, Db, Model, OrmError, StyledValue, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
+import { CORE, Db, OrmError, StyledValue, dbspecManifest, parseDbspec } from '../dist/index.js';
 import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
+import { models } from './registered_models.mjs';
 
 const root = new URL('../../..', import.meta.url).pathname;
 
@@ -49,21 +50,6 @@ const auditText = await readFile(join(root, 'contracts/fixtures/audit.dbs'), 'ut
 function schemaOf(text) {
   const { manifest } = dbspecManifest([parseDbspec(text, {}).document]);
   return { manifestText: manifest.manifestText, manifestHash: manifest.manifestHash };
-}
-
-/** Registers the model of a document set and returns a model class per entity. */
-function models(text) {
-  const parsed = parseDbspec(text, {});
-  assert.equal(parsed.diagnostics.length, 0, JSON.stringify(parsed.diagnostics));
-  const { manifest } = dbspecManifest([parsed.document]);
-  const model = registerModel(manifest.manifestText, manifest.manifestHash);
-  const out = {};
-  for (const entity of model.entities.values()) {
-    const cls = class extends Model {};
-    cls.entity = { model, entity, create: core => new cls(core) };
-    out[entity.name] = cls;
-  }
-  return out;
 }
 
 const { probe: Probe } = models(probeText);
