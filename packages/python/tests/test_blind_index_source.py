@@ -52,6 +52,20 @@ class BlindIndexSourceTest(unittest.TestCase):
         self.assertIn("email_a", str(error))
         self.assertIn("email_b", str(error))
 
+    def assert_explicit_target_wins(self, request, expected_params):
+        runtime = model()
+        plan = Engine(runtime, "mysql").compile(
+            {
+                "ir_version": 1,
+                "manifest_hash": runtime.manifest_hash,
+                "kind": "insert",
+                "entity": "t",
+                **request,
+            }
+        )
+        self.assertEqual(plan["steps"][0]["sql"].count("`hash`"), 1)
+        self.assertEqual(blind_index_params(plan), expected_params)
+
     def test_multi_row_index_binds_the_assigned_source_column_position(self):
         runtime = model()
         plan = Engine(runtime, "mysql").compile(
@@ -139,13 +153,8 @@ class BlindIndexSourceTest(unittest.TestCase):
         self.assert_invalid_shared_source(raised.exception)
 
     def test_explicit_target_assignment_wins_for_shared_schema(self):
-        runtime = model()
-        plan = Engine(runtime, "mysql").compile(
+        self.assert_explicit_target_wins(
             {
-                "ir_version": 1,
-                "manifest_hash": runtime.manifest_hash,
-                "kind": "insert",
-                "entity": "t",
                 "n_params": 5,
                 "set": [
                     assignment("id", 0),
@@ -154,10 +163,9 @@ class BlindIndexSourceTest(unittest.TestCase):
                     assignment("email_b", 3),
                     assignment("hash", 4),
                 ],
-            }
+            },
+            [4],
         )
-        self.assertEqual(plan["steps"][0]["sql"].count("`hash`"), 1)
-        self.assertEqual(blind_index_params(plan), [4])
 
     def test_on_duplicate_rejects_two_sources_independently(self):
         runtime = model()
@@ -194,13 +202,8 @@ class BlindIndexSourceTest(unittest.TestCase):
                 self.assert_invalid_shared_source(raised.exception)
 
     def test_explicit_target_wins_in_on_duplicate(self):
-        runtime = model()
-        plan = Engine(runtime, "mysql").compile(
+        self.assert_explicit_target_wins(
             {
-                "ir_version": 1,
-                "manifest_hash": runtime.manifest_hash,
-                "kind": "insert",
-                "entity": "t",
                 "n_params": 5,
                 "set": [assignment("id", 0), assignment("name", 1)],
                 "on_duplicate": [
@@ -208,10 +211,9 @@ class BlindIndexSourceTest(unittest.TestCase):
                     assignment("email_b", 3),
                     assignment("hash", 4),
                 ],
-            }
+            },
+            [4],
         )
-        self.assertEqual(plan["steps"][0]["sql"].count("`hash`"), 1)
-        self.assertEqual(blind_index_params(plan), [4])
 
 
 if __name__ == "__main__":
