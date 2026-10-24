@@ -17,7 +17,7 @@ use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
 
 #[Medium]
-final class CoverageConstraintsAndRelationsTest extends TestCase
+class CoverageConstraintsAndRelationsTest extends TestCase
 {
     public function testConstraintErrors(): void
     {

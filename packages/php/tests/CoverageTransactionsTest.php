@@ -45,7 +45,7 @@ function accountExists(Db $db, int $accountId): bool
 }
 
 #[Medium]
-final class CoverageTransactionsTest extends TestCase
+class CoverageTransactionsTest extends TestCase
 {
     // Requirements: DSL-118, INT-45, PLN-13, PLN-20.
     public function testTransactionRollback(): void

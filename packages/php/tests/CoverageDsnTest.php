@@ -15,12 +15,17 @@ use Polyspec\Orm\Config;
 use Polyspec\Orm\Orm;
 
 #[Medium]
-final class CoverageDsnTest extends TestCase
+class CoverageDsnTest extends TestCase
 {
+    protected static function coverageTestFile(): string
+    {
+        return __FILE__;
+    }
+
     // Requirements: CFG-1.
     public function testDsnConnection(): void
     {
-        foreach (coverageItemsOf(__FILE__) as $item) {
+        foreach (coverageItemsOf(static::coverageTestFile()) as $item) {
             selectCoverageItem($item);
             [$driver, $dsn] = coverageItem();
             $this->assertSame(

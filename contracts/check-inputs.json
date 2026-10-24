@@ -2788,6 +2788,29 @@
         "Makefile"
       ]
     },
+    "php-lifecycle-extension-native-check": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools"
+      ],
+      "inputs": [
+        "Makefile",
+        "contracts/features.json",
+        "packages/php-ext/scripts/build.sh",
+        "packages/php-ext/src/**",
+        "packages/php-ext/tests/bootstrap.php",
+        "packages/php-ext/tests/CoverageDsnConnectionExtensionTest.php",
+        "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
+        "packages/php-ext/tests/CoverageConstraintsAndRelationsExtensionTest.php",
+        "packages/php-ext/tests/CoverageStatementEventsTest.php",
+        "packages/php/tests/CoverageDsnTest.php",
+        "packages/php/tests/CoverageTransactionsTest.php",
+        "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
+        "packages/php/models.txt"
+      ]
+    },
     "request-hook-audit-native-binding-check": {
       "scope": "owner",
       "needs": [

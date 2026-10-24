@@ -111,7 +111,8 @@
         "packages/python/tests/coverage_dsn.py",
         "packages/python/tests/connection_utc.py",
         "packages/python/tests/connection_pool.py",
-        "packages/python/tests/mysql_session.py"
+        "packages/python/tests/mysql_session.py",
+        "packages/php-ext/tests/CoverageDsnConnectionExtensionTest.php"
       ],
       "docs": [
         "docs/spec/config.md",
@@ -611,6 +612,47 @@
                 {
                   "runner": "python",
                   "test": "packages/python/tests/coverage_dsn.py",
+                  "cases": [
+                    "dsn_connection"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "php-extension": {
+            "part": "packages/php-ext/tests",
+            "tests": [
+              "packages/php-ext/tests/CoverageDsnConnectionExtensionTest.php"
+            ],
+            "inputs": [
+              "packages/php/tests/CoverageDsnTest.php"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageDsnConnectionExtensionTest.php",
+                  "cases": [
+                    "dsn_connection"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageDsnConnectionExtensionTest.php",
+                  "cases": [
+                    "dsn_connection"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageDsnConnectionExtensionTest.php",
                   "cases": [
                     "dsn_connection"
                   ],
@@ -2295,7 +2337,8 @@
         "packages/python/tests/test_utils.py",
         "packages/python/tests/test_utils_statements.py",
         "packages/python/tests/test_row_lock_event.py",
-        "packages/python/tests/coverage_transactions.py"
+        "packages/python/tests/coverage_transactions.py",
+        "packages/php-ext/tests/CoverageTransactionsExtensionTest.php"
       ],
       "docs": [
         "docs/spec/config.md",
@@ -2781,6 +2824,50 @@
                 }
               ]
             }
+          },
+          "php-extension": {
+            "part": "packages/php-ext/tests",
+            "tests": [
+              "packages/php-ext/tests/CoverageTransactionsExtensionTest.php"
+            ],
+            "inputs": [
+              "packages/php/tests/CoverageTransactionsTest.php"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
+                  "cases": [
+                    "transaction_rollback",
+                    "transaction_savepoint"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
+                  "cases": [
+                    "transaction_rollback",
+                    "transaction_savepoint"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
+                  "cases": [
+                    "transaction_rollback",
+                    "transaction_savepoint"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
           }
         },
         "dependents": []
@@ -3067,7 +3154,7 @@
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageStatementEventsTest.php",
+                  "test": "packages/php-ext/tests/CoverageStatementEventsTest.php",
                   "cases": [
                     "statement_events"
                   ],
@@ -3077,7 +3164,7 @@
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageStatementEventsTest.php",
+                  "test": "packages/php-ext/tests/CoverageStatementEventsTest.php",
                   "cases": [
                     "statement_events"
                   ],
@@ -3087,7 +3174,7 @@
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageStatementEventsTest.php",
+                  "test": "packages/php-ext/tests/CoverageStatementEventsTest.php",
                   "cases": [
                     "statement_events"
                   ],
@@ -7074,7 +7161,8 @@
         "packages/ts/tests/coverage_constraints_and_relations.mjs",
         "contracts/fixtures/refusal.dbs",
         "packages/python/tests/test_driver_errors.py",
-        "packages/python/tests/coverage_constraints_and_relations.py"
+        "packages/python/tests/coverage_constraints_and_relations.py",
+        "packages/php-ext/tests/CoverageConstraintsAndRelationsExtensionTest.php"
       ],
       "docs": [
         "docs/spec/schema.md",
@@ -7358,6 +7446,47 @@
                 {
                   "runner": "python",
                   "test": "packages/python/tests/coverage_constraints_and_relations.py",
+                  "cases": [
+                    "constraint_errors"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "php-extension": {
+            "part": "packages/php-ext/tests",
+            "tests": [
+              "packages/php-ext/tests/CoverageConstraintsAndRelationsExtensionTest.php"
+            ],
+            "inputs": [
+              "packages/php/tests/CoverageConstraintsAndRelationsTest.php"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageConstraintsAndRelationsExtensionTest.php",
+                  "cases": [
+                    "constraint_errors"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageConstraintsAndRelationsExtensionTest.php",
+                  "cases": [
+                    "constraint_errors"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageConstraintsAndRelationsExtensionTest.php",
                   "cases": [
                     "constraint_errors"
                   ],
