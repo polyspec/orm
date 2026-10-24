@@ -33,6 +33,22 @@ function dbspec_documents(array $documents, bool $crlf, bool $mixed = false): ar
 }
 
 /**
+ * @param list<array{line: int, column: int, rule: string}> $errors
+ * @return list<array{line: int, column: int, rule: string}>
+ */
+function dbspec_error_locations(array $errors): array
+{
+    return array_map(
+        static fn(array $error): array => [
+            'line' => $error['line'],
+            'column' => $error['column'],
+            'rule' => $error['rule']
+        ],
+        $errors
+    );
+}
+
+/**
  * Checks one case of a kind (canonical, normalize, invalid) with the PHPUnit assertions: a canonical case emits
  * unchanged, a normalize case emits its canonical lines, an invalid case reports exactly the listed errors in order.
  * The case's CPU time is measured against its reference $cpuSeconds (case_clock.php).
@@ -55,10 +71,7 @@ function dbspec_check_case(string $kind, array $case, float $cpuSeconds): void
             ],
             $result->diagnostics
         );
-        $want = array_map(
-            static fn(array $e): array => ['line' => $e['line'], 'column' => $e['column'], 'rule' => $e['rule']],
-            $case['errors']
-        );
+        $want = dbspec_error_locations($case['errors']);
         Assert::assertSame(
             $want,
             $got,

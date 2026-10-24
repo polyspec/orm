@@ -114,10 +114,7 @@ final class DbspecAnalyzeTest extends TestCase
                 static fn($d): array => ['line' => $d->line, 'column' => $d->column, 'rule' => $d->rule],
                 $format->diagnostics
             );
-            $want = array_map(
-                static fn(array $e): array => ['line' => $e['line'], 'column' => $e['column'], 'rule' => $e['rule']],
-                $case['errors']
-            );
+            $want = dbspec_error_locations($case['errors']);
             $this->assertSame($want, $got, "format/$id: diagnostics differ");
         } else {
             $want = $kind === 'canonical' ? implode(
