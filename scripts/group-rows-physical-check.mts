@@ -1,7 +1,7 @@
 // Run PHP and TypeScript grouped-result owners twice on each database.
 import { packageDirectory } from './features/packages.mts';
 import { run, state, step, TIMEOUT_MS } from './physical.mts';
-import { runPhysicalCommandCase } from './physical-command-case.mts';
+import { reportUnchangedState, runPhysicalCommandCase } from './physical-command-case.mts';
 
 const databases = ['mysql', 'postgres', 'sqlite'];
 
@@ -26,9 +26,7 @@ for (const database of databases) {
           ? { kind: 'teamcity' as const, testName: 'test_group_rows' }
           : { kind: 'exact' as const, output: `CASE group_rows_${database} PASS` };
         await runPhysicalCommandCase(run, program, args, env, dsn, expected, `${database}/${language}/${attempt}: missing exact pass event`);
-        const after = await state(database, dsn);
-        if (after !== before) throw new Error(`${database}/${language}/${attempt}: database state changed`);
-        progress(`state ${after}`);
+        await reportUnchangedState(() => state(database, dsn), before, `${database}/${language}/${attempt}: database state changed`, progress);
       });
     }
   }

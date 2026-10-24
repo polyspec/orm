@@ -1,6 +1,6 @@
 // Verify selected and unselected PHP generated fields twice on every database.
 import { run, state, step, TIMEOUT_MS } from './physical.mts';
-import { runPhysicalCommandCase } from './physical-command-case.mts';
+import { reportUnchangedState, runPhysicalCommandCase } from './physical-command-case.mts';
 
 for (const database of ['mysql', 'postgres', 'sqlite']) {
   const key = `BENCH_${database.toUpperCase()}_DSN`;
@@ -16,9 +16,7 @@ for (const database of ['mysql', 'postgres', 'sqlite']) {
       await runPhysicalCommandCase(run, 'php', ['vendor-php/bin/phpunit', '--configuration', 'packages/php/phpunit.xml.dist', '--teamcity', 'packages/php/tests/UnselectedColumnDbTest.php'], {
         ...process.env, ORM_UNSELECTED_DATABASE: database, ORM_UNSELECTED_DSN: dsn,
       }, dsn, { kind: 'teamcity', testName: 'test_unselected_column' }, `${database}/${attempt}: missing exact pass event`);
-      const after = await state(database, dsn);
-      if (after !== before) throw new Error(`${database}/${attempt}: database state changed`);
-      progress(`state ${after}`);
+      await reportUnchangedState(() => state(database, dsn), before, `${database}/${attempt}: database state changed`, progress);
     });
   }
 }

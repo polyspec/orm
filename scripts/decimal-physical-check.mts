@@ -1,6 +1,6 @@
 // Execute every generated decimal model owner twice against each isolated database.
 import { run, state, step, TIMEOUT_MS } from './physical.mts';
-import { errorMessage } from '../tests/errors.mts';
+import { reportUnchangedState, runPhysicalCommandCase } from './physical-command-case.mts';
 import { parseGoTestEvent } from './json/formats.mts';
 import { implementationLanguages } from './features/languages.mts';
 
@@ -73,15 +73,10 @@ for (const database of databases) {
     for (let attempt = 1; attempt <= 2; attempt++) {
       await step(`decimal/${database}/${language}/${attempt}`, 2 * TIMEOUT_MS, async ({ step: progress }) => {
         const [program, args] = command(language, database);
-        let output = '';
-        let redacted: string | undefined;
-        try { output = await run(program, args); }
-        catch (error) { redacted = errorMessage(error).replaceAll(dsn, '[redacted]'); }
-        if (redacted !== undefined) throw new Error(redacted);
-        if (!observed(language, database, output)) throw new Error(`${database}/${language}/${attempt}: missing exact pass event`);
-        const after = await state(database, dsn);
-        if (after !== before) throw new Error(`${database}/${language}/${attempt}: database state changed`);
-        progress(`state ${after}`);
+        await runPhysicalCommandCase(run, program, args, process.env, dsn,
+          { kind: 'predicate', accepts: output => observed(language, database, output) },
+          `${database}/${language}/${attempt}: missing exact pass event`);
+        await reportUnchangedState(() => state(database, dsn), before, `${database}/${language}/${attempt}: database state changed`, progress);
       });
     }
   }
