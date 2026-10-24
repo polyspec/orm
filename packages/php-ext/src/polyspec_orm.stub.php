@@ -933,6 +933,41 @@ final class OrmException extends \RuntimeException
     private static function postgresCode(string $state): string {}
 }
 
+/** Versioned AES keys and row-level all-column rotation. */
+final class AesKeyring
+{
+    private array $keys;
+    public readonly int $currentVersion;
+
+    /** @param array $keys */
+    public function __construct(array $keys, int $currentVersion) {}
+
+    /** @return list<int> */
+    public function versions(): array {}
+
+    public function key(int $version): string {}
+
+    /** @internal Codec and rotation read the stored row version. */
+    public static function storedVersion(mixed $value): int {}
+
+    /** @param array $row
+     * @param array $columns
+     * @return array
+     */
+    public function rotateRow(array $row, string $versionColumn, array $columns, int $targetVersion): array {}
+}
+
+final readonly class AesRotationStatus
+{
+    public int $current;
+    public int $total;
+    public int $pending;
+    public array $versions;
+
+    /** @param array $versions */
+    public function __construct(int $current, int $total, int $pending, array $versions) {}
+}
+
 namespace Polyspec\Orm;
 
 /**

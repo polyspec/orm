@@ -18171,6 +18171,10 @@
           "symbol": "Polyspec\\Orm\\AesKeyring"
         },
         {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\AesKeyring"
+        },
+        {
           "implementation": "typescript",
           "symbol": "@polyspec/orm!AesKeyring:class"
         },
@@ -18200,6 +18204,10 @@
           "symbol": "Polyspec\\Orm\\AesKeyring::versions"
         },
         {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\AesKeyring::versions"
+        },
+        {
           "implementation": "typescript",
           "symbol": "@polyspec/orm!AesKeyring#versions:member(1)"
         },
@@ -18226,6 +18234,10 @@
         },
         {
           "implementation": "php",
+          "symbol": "Polyspec\\Orm\\AesRotationStatus"
+        },
+        {
+          "implementation": "php-extension",
           "symbol": "Polyspec\\Orm\\AesRotationStatus"
         },
         {

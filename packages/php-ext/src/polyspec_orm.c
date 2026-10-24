@@ -28,6 +28,7 @@
 #include "runtime_model.h"
 #include "chain_native.h"
 #include "registry_native.h"
+#include "aes_keyring.h"
 
 /* Holds one method's arena. */
 #define ENTER() dbs_arena arena_; dbs_arena *saved_; dbs_enter(&arena_, &saved_)
@@ -2675,6 +2676,8 @@ static PHP_MINIT_FUNCTION(polyspec_orm)
 #endif
     register_class_Polyspec_Orm_Code();
     register_class_Polyspec_Orm_OrmException(spl_ce_RuntimeException);
+    aes_keyring_set_class(register_class_Polyspec_Orm_AesKeyring());
+    aes_rotation_status_set_class(register_class_Polyspec_Orm_AesRotationStatus());
     register_class_Polyspec_Orm_Codec();
     register_class_Polyspec_Orm_Validator();
     register_class_Polyspec_Orm_Planner();

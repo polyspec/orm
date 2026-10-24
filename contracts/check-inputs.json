@@ -2506,11 +2506,17 @@
         "packages/php-ext/scripts/build.sh",
         "packages/php-ext/src/polyspec_orm.stub.php",
         "packages/php-ext/src/polyspec_orm.c",
+        "packages/php-ext/src/aes_keyring.c",
+        "packages/php-ext/src/aes_keyring.h",
+        "packages/php-ext/src/codec.c",
+        "packages/php-ext/src/codec.h",
+        "packages/php-ext/src/config.m4",
         "packages/php-ext/tests/ArginfoBuildTest.php",
         "packages/php-ext/tests/DeclarationsTest.php",
         "packages/php-ext/tests/ModelNativeTest.php",
         "packages/php-ext/tests/CollectionTest.php",
         "packages/php-ext/tests/OrmExceptionNativeTest.php",
+        "packages/php-ext/tests/declarations_functions.php",
         "Makefile"
       ]
     },

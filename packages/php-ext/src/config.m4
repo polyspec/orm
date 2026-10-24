@@ -16,7 +16,7 @@ if test "$PHP_POLYSPEC_ORM" != "no"; then
     POLYSPEC_ORM_TEST_CFLAGS="-DPOLYSPEC_ORM_MERMAID_TEST"
   fi
   PHP_NEW_EXTENSION([polyspec_orm],
-    [polyspec_orm.c orm_exception.c codec.c statement_event.c model_types.c model_helpers.c model_state.c model_chain.c model_native_methods.c model_output.c model_query.c model_dsl.c model_read.c model_write.c model_assembly.c runtime_model.c chain_native.c registry_native.c validator.c planner.c collection.c db.c convert.c util.c model.c literal.c expression.c parse.c emit.c render.c plan.c steps.c catalog.c catalog_connection.c mermaid.c introspect.c apply.c set.c $POLYSPEC_ORM_TEST_SOURCES],
+    [polyspec_orm.c orm_exception.c aes_keyring.c codec.c statement_event.c model_types.c model_helpers.c model_state.c model_chain.c model_native_methods.c model_output.c model_query.c model_dsl.c model_read.c model_write.c model_assembly.c runtime_model.c chain_native.c registry_native.c validator.c planner.c collection.c db.c convert.c util.c model.c literal.c expression.c parse.c emit.c render.c plan.c steps.c catalog.c catalog_connection.c mermaid.c introspect.c apply.c set.c $POLYSPEC_ORM_TEST_SOURCES],
     [$ext_shared],, [-std=gnu11 -Wall -Wextra -Werror -Wno-unused-parameter $POLYSPEC_ORM_TEST_CFLAGS])
   dnl codec.c inflates and deflates the gz stage with libz (zlib.h, -lz).
   AC_CHECK_HEADER([zlib.h], [], [AC_MSG_ERROR([polyspec_orm needs the zlib headers (zlib.h)])])

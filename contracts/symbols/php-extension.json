@@ -1,4 +1,60 @@
 {
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\AesKeyring": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\AesKeyring extends  implements  uses "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\AesKeyring::$currentVersion": {
+    "exported": true,
+    "signature": "public readonly int"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\AesKeyring::$keys": {
+    "exported": false,
+    "signature": "private array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\AesKeyring::__construct": {
+    "exported": true,
+    "signature": "public function __construct(array $keys, int $currentVersion): "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\AesKeyring::key": {
+    "exported": true,
+    "signature": "public function key(int $version): string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\AesKeyring::rotateRow": {
+    "exported": true,
+    "signature": "public function rotateRow(array $row, string $versionColumn, array $columns, int $targetVersion): array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\AesKeyring::storedVersion": {
+    "exported": true,
+    "signature": "public static function storedVersion(mixed $value): int"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\AesKeyring::versions": {
+    "exported": true,
+    "signature": "public function versions(): array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\AesRotationStatus": {
+    "exported": true,
+    "signature": "final readonly class Polyspec\\Orm\\AesRotationStatus extends  implements  uses "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\AesRotationStatus::$current": {
+    "exported": true,
+    "signature": "public readonly int"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\AesRotationStatus::$pending": {
+    "exported": true,
+    "signature": "public readonly int"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\AesRotationStatus::$total": {
+    "exported": true,
+    "signature": "public readonly int"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\AesRotationStatus::$versions": {
+    "exported": true,
+    "signature": "public readonly array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\AesRotationStatus::__construct": {
+    "exported": true,
+    "signature": "public function __construct(int $current, int $total, int $pending, array $versions): "
+  },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Assembly": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Assembly extends  implements  uses "
