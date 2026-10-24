@@ -88,7 +88,9 @@ class MysqlTlsParametersTest(unittest.TestCase):
             "absolute",
         )
         self.refused("mysql://root@db.local/orm_example?ssl-ca=/tmp/ca.pem", "ssl-mode")
-        ca = os.path.join(tempfile.gettempdir(), f"orm-missing-ca-{uuid.uuid4().hex}.pem")
+        ca = os.path.join(
+            tempfile.gettempdir(), f"orm-missing-ca-{uuid.uuid4().hex}.pem"
+        )
         db = None
         try:
             db = Db.connect(

@@ -123,6 +123,7 @@ class ConnectionConfigTest(unittest.TestCase):
                     )
                 finally:
                     bounded.close()
+
     # A pooler in transaction mode hands one server session to every client in turn. Through
     # ORM_TEST_PGBOUNCER_SINGLE_DSN every client shares one server connection, so the statement timeout of one
     # connection must bound only the statements of that connection. The pool of that DSN is bound to the database of
