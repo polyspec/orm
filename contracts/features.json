@@ -2681,6 +2681,8 @@
         "packages/rust/orm/tests/statement_events.rs",
         "packages/go/orm/coverage_statement_events_test.go",
         "packages/php/tests/CoverageStatementEventsTest.php",
+        "packages/php/tests/StatementEventsCoverageCases.php",
+        "packages/php-ext/tests/CoverageStatementEventsTest.php",
         "packages/ts/tests/coverage_statement_events.mjs",
         "packages/python/tests/statement_events.py",
         "packages/python/tests/test_event_placeholders.py",
@@ -2824,6 +2826,8 @@
             ],
             "inputs": [
               "packages/php/tests/statement_events_run.php",
+              "packages/php/tests/StatementEventsCoverageCases.php",
+              "packages/php/tests/coverage_cases.php",
               "packages/php/tests/case_database.php",
               "contracts/fixtures/statement_events.dbs",
               "tests/events/vectors.json"
@@ -2832,7 +2836,7 @@
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageStatementEventsTest.php",
+                  "test": "packages/php-ext/tests/CoverageStatementEventsTest.php",
                   "cases": [
                     "statement_events"
                   ],
@@ -2842,7 +2846,7 @@
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageStatementEventsTest.php",
+                  "test": "packages/php-ext/tests/CoverageStatementEventsTest.php",
                   "cases": [
                     "statement_events"
                   ],
@@ -2852,7 +2856,7 @@
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageStatementEventsTest.php",
+                  "test": "packages/php-ext/tests/CoverageStatementEventsTest.php",
                   "cases": [
                     "statement_events"
                   ],
@@ -2862,12 +2866,14 @@
             }
           },
           "php-extension": {
-            "part": "packages/php/tests",
+            "part": "packages/php-ext/tests",
             "tests": [
-              "packages/php/tests/CoverageStatementEventsTest.php"
+              "packages/php-ext/tests/CoverageStatementEventsTest.php"
             ],
             "inputs": [
               "packages/php/tests/statement_events_run.php",
+              "packages/php/tests/StatementEventsCoverageCases.php",
+              "packages/php/tests/coverage_cases.php",
               "packages/php/tests/case_database.php",
               "contracts/fixtures/statement_events.dbs",
               "tests/events/vectors.json"
@@ -3501,6 +3507,7 @@
         "packages/ts/tests/dbspec-show-create.mjs",
         "packages/go/orm/coverage_schema_definition_test.go",
         "packages/php/tests/CoverageSchemaDefinitionTest.php",
+        "packages/php-ext/tests/CoverageSchemaDefinitionExtensionTest.php",
         "packages/rust/schema/tests/coverage_schema_definition.rs",
         "packages/ts/tests/coverage_schema_definition.mjs",
         "packages/ts/tests/package-declarations.mjs",
@@ -3957,18 +3964,20 @@
             }
           },
           "php-extension": {
-            "part": "packages/php/tests",
+            "part": "packages/php-ext/tests",
             "tests": [
-              "packages/php/tests/CoverageSchemaDefinitionTest.php"
+              "packages/php-ext/tests/CoverageSchemaDefinitionExtensionTest.php"
             ],
             "inputs": [
-              "contracts/fixtures/schema_definition.json"
+              "contracts/fixtures/schema_definition.json",
+              "packages/php/tests/CoverageSchemaDefinitionTest.php",
+              "packages/php/tests/coverage_cases.php"
             ],
             "commands": {
               "none": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageSchemaDefinitionTest.php",
+                  "test": "packages/php-ext/tests/CoverageSchemaDefinitionExtensionTest.php",
                   "cases": [
                     "dbspec_emit_round_trip",
                     "dbspec_manifest_hash",

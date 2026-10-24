@@ -31,6 +31,7 @@ require_once __DIR__ . '/PageCacheBoundCases.php';
 require_once dirname(__DIR__) . '/testing/conformance/result_php_helpers.php';
 require_once dirname(__DIR__) . '/testing/required_dsn.php';
 require_once __DIR__ . '/coverage_cases.php';
+require_once __DIR__ . '/StatementEventsCoverageCases.php';
 require_once __DIR__ . '/restore_case.php';
 require_once __DIR__ . '/audit_case.php';
 require_once __DIR__ . '/request_hook_cases.php';

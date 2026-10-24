@@ -1574,6 +1574,8 @@
       "inputs": [
         "packages/php-ext/tests/DeclarationsTest.php",
         "packages/php/tests/CoverageSchemaDefinitionTest.php",
+        "packages/php-ext/tests/CoverageSchemaDefinitionExtensionTest.php",
+        "packages/php-ext/tests/bootstrap.php",
         "packages/php-ext/src/**",
         "tests/dbspec/cases.json",
         "contracts/fixtures/schema_definition.json"

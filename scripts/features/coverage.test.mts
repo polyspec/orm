@@ -30,7 +30,7 @@ delete process.env.ORM_RUST_TEST_FEATURES;
 
 const ownerTests: Record<string, string> = {
   go: 'packages/go/orm/dsn_test.go', php: 'packages/php/tests/DsnTest.php',
-  'php-extension': 'packages/php/tests/CoverageSchemaDefinitionTest.php', python: 'packages/python/tests/test_utils.py',
+  'php-extension': 'packages/php-ext/tests/CoverageSchemaDefinitionExtensionTest.php', python: 'packages/python/tests/test_utils.py',
   rust: 'packages/rust/orm/tests/zone.rs', typescript: 'packages/ts/tests/typecheck.ts',
 };
 const dependentTest = 'packages/go/model/model_test.go';
@@ -51,6 +51,27 @@ function sampleManifest(owner: string): SampleManifest {
         commands: { none: [{ runner: 'go', test: owner, cases: ['first'], symbols: { first: 'TestFirst' } }] } } },
       dependents: [] } }] };
 }
+
+caseTest('PHP extension coverage tests reside in the owning package', 1000, () => {
+  const manifest = contract();
+  const reports = complete();
+  const owner = manifest.features[0].coverage.owners['php-extension'];
+  assert.ok(owner);
+  assert.equal(testDirectoryOf('php-extension'), 'packages/php-ext');
+  assert.deepEqual(checkCoverage(manifest, reports), []);
+  owner.tests = ['packages/php/tests/CoverageSchemaDefinitionTest.php'];
+  assert.match(checkCoverage(manifest, reports).join('\n'), /sample\/owner\/php-extension: tests must reside in owning part/);
+  const extensionTest = ownerTests['php-extension'];
+  assert.ok(extensionTest);
+  owner.tests = [extensionTest];
+  owner.part = 'packages/php/tests';
+  const mysqlReports = reports['sample/owner/php-extension/mysql'];
+  assert.ok(mysqlReports?.[0]);
+  assert.ok(mysqlReports[1]);
+  mysqlReports[0].part = 'packages/php/tests';
+  mysqlReports[1].part = 'packages/php/tests';
+  assert.match(checkCoverage(manifest, reports).join('\n'), /sample\/owner\/php-extension: missing owning client part/);
+});
 
 caseTest('one feature can run without declaring unrelated coverage complete', 1000, () => {
   const manifest = { features: [{ id: 'one' }, { id: 'two' }] };

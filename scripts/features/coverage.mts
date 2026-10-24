@@ -39,7 +39,7 @@ type StepWriter = (text: string) => void;
 /** The outcome of run: an error message, or the collected output. */
 type RunResult = { error?: string | null | undefined; value?: string | undefined; stdout: string };
 /** A native test planned for one execution. */
-type Spec = { format: 'case'; program: string; args: string[]; cwd?: string } | { format: 'phpunit'; program: string; args: string[]; cwd: string; symbols: string[] } | { format: 'go'; cwd: string; symbols: string[] } | { format: 'cargo'; cwd: string; testPath: string; symbols: string[] };
+type Spec = { format: 'case'; program: string; args: string[]; cwd?: string } | { format: 'phpunit'; program: string; args: string[]; cwd: string; symbols: string[]; env?: Record<string, string> } | { format: 'go'; cwd: string; symbols: string[] } | { format: 'cargo'; cwd: string; testPath: string; symbols: string[] };
 /** A build of buildNative: its binary or its error. */
 type Built = { binary: string; error?: undefined } | { error: string; binary?: undefined };
 /** The Rust builds of a crate. */
@@ -80,7 +80,8 @@ function requirements(feature: Feature, coverage: Coverage, errors: string[]): I
     if (!claimed.has(language)) continue;
     const owner = coverage.owners?.[language];
     const directory = testDirectoryOf(language);
-    if (!owner || !validPart(owner.part) || !owner.part.startsWith(`${directory}/`) && owner.part !== directory) {
+    const validOwnerDirectory = owner?.part?.startsWith(`${directory}/`) || owner?.part === directory;
+    if (!owner || !validPart(owner.part) || !validOwnerDirectory) {
       errors.push(`${feature.id}/owner/${language}: missing owning client part`);
       continue;
     }
@@ -340,10 +341,9 @@ async function nativeTest(item: Item, command: NativeCommand, root: string): Pro
     throw new Error('invalid native test file extension');
   if (command.runner === 'node')
     return { format: 'case', program: command.runner, args: [testPath, ...command.cases] };
-  // PHP runs on PHPUnit with the phpunit.xml.dist of packages/php, whose tests check the PHP library and the PHP extension
-  // (testDirectoryOf): a case <id> is the test method test_<id> of the test file's class, selected with an anchored filter and
-  // read from the TeamCity events that PHPUnit writes to stdout. For the extension the tests run on a PHP that loads the built
-  // extension library that make names in POLYSPEC_ORM_EXTENSION, whose classes take the place of the library's.
+  // PHP runs on PHPUnit with the phpunit.xml.dist of the owning client package (testDirectoryOf): a case <id> is the
+  // method test_<id> of its owning test class, selected with an anchored filter and read from PHPUnit's TeamCity events. For
+  // the PHP extension the test package's bootstrap requires ORM_PHP_MODE=extension and verifies the loaded module.
   if (command.runner === 'php') {
     const directory = testDirectoryOf(item.language);
     const phpPackage = resolve(root, directory);
@@ -355,7 +355,8 @@ async function nativeTest(item: Item, command: NativeCommand, root: string): Pro
       args: [...(extension ? ['-d', `extension=${extension}`] : []),
         resolve(root, 'vendor-php/bin/phpunit'), '--teamcity', '--configuration', resolve(phpPackage, 'phpunit.xml.dist'),
         '--filter', `/::(${command.cases.map(id => `test_${id}`).join('|')})$/`, testPath],
-      symbols: command.cases.map(id => `test_${id}`) };
+      symbols: command.cases.map(id => `test_${id}`),
+      ...(item.language === 'php-extension' ? { env: { ORM_PHP_MODE: 'extension' } } : {}) };
   }
   // Python runs on the interpreter of the client's venv, which make names in ORM_PYTHON and where the client is installed
   // (Makefile PYTHON_VENV); a python of PATH is not that interpreter.
@@ -565,7 +566,8 @@ async function buildCargo(plans: Plans, directory: string, builds: Builds, build
 // The Rust test binary receives the crate's package directory as CARGO_MANIFEST_DIR, as cargo test does:
 // the test gets the fixture path from the value at run time (polyspec_orm_testcase::manifest_dir).
 function prepared(spec: Spec, builds: Builds): Prepared[] {
-  if (spec.format === 'case' || spec.format === 'phpunit') return [{ program: spec.program, args: spec.args, cwd: spec.cwd }];
+  if (spec.format === 'case' || spec.format === 'phpunit')
+    return [{ program: spec.program, args: spec.args, cwd: spec.cwd, ...(spec.format === 'phpunit' && spec.env ? { env: spec.env } : {}) }];
   if (spec.format === 'go') {
     const binary = builds.go.get(spec.cwd);
     const test2json = builds.test2json;

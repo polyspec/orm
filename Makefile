@@ -782,6 +782,7 @@ PHP_EXTENSION_LIBRARY = $(RUN_DIR)/php-extension/polyspec_orm.so
 # PHP_EXTENSION_TESTS runs PHPUnit files of packages/php with the extension loaded, through kit's run-tests, which gives each test
 # its own timeout (K436).
 PHP_EXTENSION_TESTS = env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension $(PHP_EXTENSION_LIBRARY) -- --configuration packages/php/phpunit.xml.dist
+PHP_EXTENSION_NATIVE_TESTS = env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension $(PHP_EXTENSION_LIBRARY) -- --configuration packages/php-ext/phpunit.xml.dist
 PHP_CODEC_CAUSE_TEST_FILTER = testCodecExpectedExceptionCause|testCodecUnexpectedThrowableIdentity
 PHP_CODEC_CAUSE_NATIVE_FILTER = testCodecExpectedExceptionCause|testCodecUnexpectedThrowableIdentity
 PHP_CODEC_CAUSE_NATIVE_YAML_FILTER = testYamlExpectedCauseIdentity|testYamlUnexpectedThrowableIdentity
@@ -937,7 +938,7 @@ dbspec-php-extension-check/behaviour: php-vendor-check dbspec-php-extension-chec
 	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecBehaviourTest.php
 # dbspec-php-extension-check/schema-definition runs CoverageSchemaDefinitionTest with the extension: the cases of contracts/fixtures/schema_definition.json.
 dbspec-php-extension-check/schema-definition: php-vendor-check dbspec-php-extension-check/prepare
-	$(PHP_EXTENSION_TESTS) packages/php/tests/CoverageSchemaDefinitionTest.php
+	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/CoverageSchemaDefinitionExtensionTest.php
 # dbspec-php-extension-check/analyze runs DbspecAnalyzeTest with the extension: the syntax analysis and format of the focused cases, of tests/dbspec/syntax.json and of the limit errors.
 dbspec-php-extension-check/analyze: php-vendor-check dbspec-php-extension-check/prepare
 	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecAnalyzeTest.php

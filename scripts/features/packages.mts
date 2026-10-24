@@ -1,6 +1,5 @@
 // The directory of the package that implements a client language: the label of the directory is the package kind (npm for
-// TypeScript), as in config/release.json. The PHP extension polyspec_orm (packages/php-ext) implements every PHP library (S10),
-// so php-extension is a client language of its own.
+// TypeScript), as in config/release.json. PHP extension is a client language with its own tests under packages/php-ext.
 export const packageDirectory = {
   go: 'packages/go',
   php: 'packages/php',
@@ -17,10 +16,7 @@ export function packageDirectoryOf(language: string): string {
   return directory;
 }
 
-/**
- * testDirectoryOf is the package directory whose tests check a client language: that of its package, except for the PHP extension,
- * which runs the tests of the PHP library with the extension loaded (S10), since it registers the library's own names.
- */
+/** testDirectoryOf is the owning package directory whose tests check a client language. */
 export function testDirectoryOf(language: string): string {
-  return language === 'php-extension' ? packageDirectoryOf('php') : packageDirectoryOf(language);
+  return packageDirectoryOf(language);
 }
