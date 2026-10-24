@@ -2183,6 +2183,10 @@ GO_MODELS_FILE = packages/go/models.txt
 .PHONY: go-models
 go-models:
 	cd packages/go && while IFS= read -r entry; do case "$$entry" in ''|'#'*) continue ;; esac; $(GO) run ./cmd/orm-gen gen --lang go $$entry || exit 1; done < $(CURDIR)/$(GO_MODELS_FILE)
+
+# The runtime build compiles Go packages that import these generated models.
+build-go: go-models
+
 orm-install-go:
 	$(ONLINE) $(GO) mod download
 	$(MAKE) --no-print-directory go-models

@@ -4,6 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
+import { isolatedEnvironment } from '../../tests/environment.mts';
 import { main as startServers, paths as serverPaths, SERVER_VARIABLES, TestServerError } from '../test-servers.mts';
 import { AFTER_GROUP_CHECK, CI_PASSED_STEPS, ciPassedErrors, ciGroups, GROUP_NEEDS, chainedCommandErrors, concurrencyErrors, ownWorkflows, workflowTriggerErrors, WORKFLOW_TRIGGERS, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, expand, helperEnvironmentErrors, helperRunErrors, featureCommands, makeVariables, runnerErrors, runnerIdentity, stepTimeoutErrors } from './ci.mts';
 import { nodeVersionErrors, npmGitSourceErrors } from './node.mts';
@@ -32,6 +33,17 @@ const yamlSteps = (steps: unknown[]) => stringify(steps).split('\n').map(line =>
 const copies = kitCopies(new URL('../..', import.meta.url).pathname);
 const notVendored = (path: string) => !Object.hasOwn(copies, path);
 const tracked = ['scripts/docs/rules.mts', 'packages/ts/package.json', 'scripts/typescript/sqlite-test.mts'];
+
+caseTest('the Go runtime build generates models before compiling their consumers', COMPUTE, () => {
+  const root = new URL('../..', import.meta.url).pathname;
+  const result = spawnSync('make', ['-n', 'build-go'], { cwd: root, encoding: 'utf8', env: isolatedEnvironment() });
+  assert.equal(result.status, 0, result.stderr);
+  const generation = result.stdout.indexOf('go run ./cmd/orm-gen gen --lang go');
+  const build = result.stdout.indexOf('runtime-targets.mjs build go');
+  assert.ok(generation >= 0, 'build-go does not run the Go model generator');
+  assert.ok(build >= 0, 'build-go does not invoke the Go runtime build');
+  assert.ok(generation < build, 'build-go compiles consumers before refreshing generated models');
+});
 
 caseTest('a script path must be a tracked file or directory', COMPUTE, () => {
   assert.deepEqual(scriptPathErrors({ 'schema:check': 'node scripts/schema/check.mts' }, tracked), [
