@@ -2266,18 +2266,7 @@ final class Parser
                     break;
                 case 'title':
                 case 'body':
-                    $definition = $this->columnRef($arguments[0], $line, $kind);
-                    if (
-                        $definition !== null && (($definition->type->name !== 'invalid'
-                        && !in_array($definition->type->name, ['varchar', 'text'], true)) || $definition->nullable)
-                    ) {
-                        $this->error(
-                            'setting',
-                            $line,
-                            $arguments[0][1],
-                            "$kind needs a non-null varchar or text column"
-                        );
-                    }
+                    $this->requireTextColumn($arguments[0], $line, $kind, "$kind needs a non-null varchar or text column");
                     break;
                 case 'order':
                     $definition = $this->columnRef($arguments[0], $line, $kind);
@@ -2305,18 +2294,12 @@ final class Parser
                     }
                     break;
                 case 'state_machine':
-                    $definition = $this->columnRef($arguments[0], $line, $kind);
-                    if (
-                        $definition !== null && (($definition->type->name !== 'invalid'
-                        && !in_array($definition->type->name, ['varchar', 'text'], true)) || $definition->nullable)
-                    ) {
-                        $this->error(
-                            'setting',
-                            $line,
-                            $arguments[0][1],
-                            'state_machine needs a non-null varchar or text column'
-                        );
-                    }
+                    $this->requireTextColumn(
+                        $arguments[0],
+                        $line,
+                        $kind,
+                        'state_machine needs a non-null varchar or text column'
+                    );
                     foreach ($lists as [, $columns]) {
                         foreach ($columns as $token) {
                             $this->columnRef($token, $line, $kind);
@@ -3082,6 +3065,18 @@ final class Parser
             return null;
         }
         return $this->columns[$token[0]];
+    }
+
+    /** A setting that names text requires a non-null varchar or text column. */
+    private function requireTextColumn(array $token, int $line, string $kind, string $message): void
+    {
+        $column = $this->columnRef($token, $line, $kind);
+        if (
+            $column !== null && (($column->type->name !== 'invalid'
+            && !in_array($column->type->name, ['varchar', 'text'], true)) || $column->nullable)
+        ) {
+            $this->error('setting', $line, $token[1], $message);
+        }
     }
 
     /** The foreign key that the `store block` line names must be a foreign key of the table. */
