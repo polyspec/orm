@@ -1038,15 +1038,7 @@ final class Planner
         $set = self::withBlindIndexes($ent, $r['set']);
         self::checkAesAssignments($ent, $set, true);
         $root = $this->scopes($r, $ent['table'], null);
-        $sets = [];
-        foreach ($set as $a) {
-            $col = RuntimeModel::column($ent, $a['column']);
-            $sets[] = $this->d->quote($a['column']) . ' = ' . $this->renderAssign($b, $ent, $col, $a);
-        }
-        if (self::assignsAes($ent, $set)) {
-            $sets[] = $this->d->quote($ent['aes_version']) . ' = '
-                . $b->config('aes_version', RuntimeModel::column($ent, $ent['aes_version'])['type']);
-        }
+        $sets = $this->assignmentSets($b, $ent, $set);
         // the updated time is always assigned: optimistic locking needs the same behavior everywhere
         $updated = $ent['updated'];
         if ($updated !== '' && !self::assigned($r['set'], $updated)) {
@@ -1124,15 +1116,7 @@ final class Planner
         self::checkAesAssignments($ent, $set, true);
         $b = new PlanBinds($this->d);
         $root = $this->scopes($r, $ent['table'], null);
-        $sets = [];
-        foreach ($set as $a) {
-            $col = RuntimeModel::column($ent, $a['column']);
-            $sets[] = $this->d->quote($a['column']) . ' = ' . $this->renderAssign($b, $ent, $col, $a);
-        }
-        if (self::assignsAes($ent, $set)) {
-            $sets[] = $this->d->quote($ent['aes_version']) . ' = '
-                . $b->config('aes_version', RuntimeModel::column($ent, $ent['aes_version'])['type']);
-        }
+        $sets = $this->assignmentSets($b, $ent, $set);
         $sets[] = $this->d->quote($soft) . ' = NULL';
         if ($ent['audit'] !== '') {
             $sets[] = $this->d->quote($ent['audit']) . ' = ' . $b->audit($ent);
@@ -1141,6 +1125,22 @@ final class Planner
             . $this->qcol($root, $soft) . ' IS NOT NULL';
         return new PlanStep('main', 'UPDATE ' . $b->table($ent) . ' SET ' . implode(', ', $sets) . ' WHERE '
             . $where, '', $b->slots, $b->tables());
+    }
+
+    /** @return list<string> */
+    private function assignmentSets(PlanBinds $b, array $ent, array $set): array
+    {
+        $sets = [];
+        foreach ($set as $assignment) {
+            $column = RuntimeModel::column($ent, $assignment['column']);
+            $sets[] = $this->d->quote($assignment['column']) . ' = '
+                . $this->renderAssign($b, $ent, $column, $assignment);
+        }
+        if (self::assignsAes($ent, $set)) {
+            $sets[] = $this->d->quote($ent['aes_version']) . ' = '
+                . $b->config('aes_version', RuntimeModel::column($ent, $ent['aes_version'])['type']);
+        }
+        return $sets;
     }
 
     /** Whether the set assigns a parameter value (p) to a column. */

@@ -125,6 +125,31 @@ final class CoveragePlannerTest extends TestCase
         plannerCase($root, $fixture, 'planner_statement');
     }
 
+    public function testFunctionAndSubqueryCannotReuseAnOutputName(): void
+    {
+        $root = dirname(__DIR__, 3);
+        $fixture = coverageJson("$root/contracts/fixtures/planner.json");
+        $case = array_values(array_filter(
+            $fixture['cases'],
+            static fn(array $c): bool => $c['id'] === 'planner_scalar_column_subquery'
+        ))[0];
+        $model = RuntimeModel::build(RuntimeModel::files(["$root/{$case['schema']}"]));
+        $request = ['manifest_hash' => $model->manifestHash] + $case['input'];
+        $request['entity'] = 'author';
+        $request['columns']['fn']['first_author'] = ['column' => 'created_ts', 'fn' => ['name' => 'year']];
+
+        try {
+            (new Engine($model, 'sqlite', 8))->compile($request);
+            Assert::fail('planner accepted a function and subquery with the same output name');
+        } catch (OrmException $error) {
+            Assert::assertSame('COLUMN_ALIAS_CONFLICT', $error->code_);
+            Assert::assertSame(
+                'COLUMN_ALIAS_CONFLICT: author.first_author is already a row name',
+                $error->getMessage()
+            );
+        }
+    }
+
     public function testScalarSubqueryMissingPostValidationColumnIsInternal(): void
     {
         $root = dirname(__DIR__, 3);

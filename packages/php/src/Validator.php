@@ -690,6 +690,30 @@ final class Validator
             === Meet::kind($b['type'], $b['scale'] ?? 0, $b['precision'] ?? 0);
     }
 
+    private static function requireMatchingColumns(
+        array $leftEntity,
+        array $rightEntity,
+        string $leftName,
+        string $rightName,
+        string $leftEntityName,
+        string $context
+    ): void {
+        $left = RuntimeModel::column($leftEntity, $leftName);
+        if ($left === null) {
+            throw self::err(Code::COLUMN_UNKNOWN, "$leftEntityName.$leftName");
+        }
+        $right = RuntimeModel::column($rightEntity, $rightName);
+        if ($right === null) {
+            throw self::err(Code::COLUMN_UNKNOWN, "{$rightEntity['entity']}.$rightName");
+        }
+        if (!self::meets($left, $right)) {
+            throw self::err(
+                Code::OPERATOR_NOT_ALLOWED,
+                "$context: $leftEntityName.$leftName does not meet {$rightEntity['entity']}.$rightName"
+            );
+        }
+    }
+
     /**
      * Whether the column comparison $op may compare $left with $right: its base operator (eq for eq_col) must be one of
      * the left column's type, and neither column may have a codec, since a codec's stored form is not the value the
@@ -724,10 +748,7 @@ final class Validator
             $outputs = [];
             foreach ($cols['fn'] ?? [] as $out => $cf) {
                 $out = (string) $out;
-                if (RuntimeModel::column($ent, $out) !== null || isset($outputs[$out])) {
-                    throw self::err(Code::COLUMN_ALIAS_CONFLICT, "$entity.$out is already a row name");
-                }
-                $outputs[$out] = true;
+                $this->reserveOutput($ent, $outputs, $entity, $out);
                 $col = RuntimeModel::column($ent, $cf['column'] ?? '') ?? throw self::err(
                     Code::COLUMN_UNKNOWN,
                     "$entity." . ($cf['column'] ?? '')
@@ -736,10 +757,7 @@ final class Validator
             }
             foreach ($cols['sub'] ?? [] as $out => $sub) {
                 $out = (string) $out;
-                if (RuntimeModel::column($ent, $out) !== null || isset($outputs[$out])) {
-                    throw self::err(Code::COLUMN_ALIAS_CONFLICT, "$entity.$out is already a row name");
-                }
-                $outputs[$out] = true;
+                $this->reserveOutput($ent, $outputs, $entity, $out);
                 $this->sub($sub, true, $at['node']);
             }
         }
@@ -763,18 +781,7 @@ final class Validator
                 Code::ENTITY_UNKNOWN,
                 $j['query']['entity'] ?? ''
             );
-            if (RuntimeModel::column($ent, $left) === null) {
-                throw self::err(Code::COLUMN_UNKNOWN, "{$ent['entity']}.$left");
-            }
-            if (RuntimeModel::column($target, $right) === null) {
-                throw self::err(Code::COLUMN_UNKNOWN, "{$target['entity']}.$right");
-            }
-            if (!self::meets(RuntimeModel::column($ent, $left), RuntimeModel::column($target, $right))) {
-                throw self::err(
-                    Code::OPERATOR_NOT_ALLOWED,
-                    "join $rel: {$ent['entity']}.$left does not meet {$target['entity']}.$right"
-                );
-            }
+            self::requireMatchingColumns($ent, $target, $left, $right, $ent['entity'], "join $rel");
             $joined[$rel] = $j;
             $this->query($j['query'], ['root' => $at['root'], 'outer' => $at['outer'],
                 'node' => $at['node']['joins'][$rel]], true, false, false);
@@ -827,18 +834,7 @@ final class Validator
                 if ($left === '' || $right === '') {
                     throw self::err(Code::IR_INVALID, "relation $rel: every key needs left and right");
                 }
-                if (RuntimeModel::column($ent, $left) === null) {
-                    throw self::err(Code::COLUMN_UNKNOWN, "$entity.$left");
-                }
-                if (RuntimeModel::column($target, $right) === null) {
-                    throw self::err(Code::COLUMN_UNKNOWN, "{$target['entity']}.$right");
-                }
-                if (!self::meets(RuntimeModel::column($ent, $left), RuntimeModel::column($target, $right))) {
-                    throw self::err(
-                        Code::OPERATOR_NOT_ALLOWED,
-                        "relation $rel: $entity.$left does not meet {$target['entity']}.$right"
-                    );
-                }
+                self::requireMatchingColumns($ent, $target, $left, $right, $entity, "relation $rel");
                 // A column that appears in two components is not a key.
                 if (isset($lefts[$left]) || isset($rights[$right])) {
                     throw self::err(Code::IR_INVALID, "relation $rel: key column $left or $right is used twice");
@@ -940,6 +936,15 @@ final class Validator
         if ($index !== '' && !array_key_exists($index, $ent['indexes'])) {
             throw self::err(Code::INDEX_UNKNOWN, "$entity.$index");
         }
+    }
+
+    /** @param array<string, true> $outputs */
+    private function reserveOutput(array $ent, array &$outputs, string $entity, string $output): void
+    {
+        if (RuntimeModel::column($ent, $output) !== null || isset($outputs[$output])) {
+            throw self::err(Code::COLUMN_ALIAS_CONFLICT, "$entity.$output is already a row name");
+        }
+        $outputs[$output] = true;
     }
 
     private function group(array $at, array $g, array $joined): void
