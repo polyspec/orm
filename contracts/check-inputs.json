@@ -707,6 +707,8 @@
         "packages/php/src/Config.php",
         "packages/php/src/OrmException.php",
         "packages/php/tests/SqliteRowLockRestoreTest.php",
+        "packages/php/tests/UninitializedRecordingPdo.php",
+        "packages/php/tests/bootstrap.php",
         "packages/php-ext/src/db.c",
         "packages/python/src/polyspec/orm/database.py",
         "packages/python/tests/test_sqlite_row_lock_restore.py",
