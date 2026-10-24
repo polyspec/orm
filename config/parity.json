@@ -16107,20 +16107,6 @@
       ]
     },
         {
-      "id": "php-internal-mysql-tls-session-sql-mode",
-      "kind": "feature",
-      "requirements": [
-        "CFG-7"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/MysqlTlsTest.php",
-          "id": "MysqlTlsTest::testSessionSqlMode"
-        }
-      ]
-    },
-    {
       "id": "php-internal-rollback-rollback-failed",
       "kind": "feature",
       "requirements": [
@@ -16419,8 +16405,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/MysqlTlsTest.php",
-          "symbol": "MysqlTlsTest::testSessionSqlMode"
+          "test": "packages/php-ext/tests/MysqlSessionNativeTest.php",
+          "symbol": "MysqlSessionNativeTest::testNativeConnectionSetsDeclaredSqlMode"
         },
         {
           "implementation": "typescript",

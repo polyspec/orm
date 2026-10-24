@@ -2210,6 +2210,21 @@
         "packages/php-ext/tests/bootstrap.php"
       ]
     },
+    "mysql-session-php-extension-check": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools",
+        "databases"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/php-ext/tests/MysqlSessionNativeTest.php",
+        "packages/php-ext/tests/bootstrap.php",
+        "tests/dsn/mysql-session.json"
+      ]
+    },
     "transaction-failure-php-extension-check": {
       "scope": "owner",
       "needs": [
