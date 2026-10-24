@@ -23,6 +23,7 @@ export function driverConnections(
 }
 
 export async function valid(db: Db): Promise<void> {
+  new Author().fulltextBooleanNameWithDescription('alpha beta').fulltextNameWithDescription('alpha');
   const rows = await new Author().connect(db)
     .serviceSeq(7).andIsClose(false).or().readCount(6)
     .and(q => q.isDisplay(false).or(q => q.isClose(true).andGtReadCount(500)))
@@ -65,6 +66,8 @@ export async function invalid(db: Db): Promise<void> {
   chains.push('orderByNotAColumnAsc');
   // @ts-expect-error a string is not an integer column value
   b.serviceSeq('7');
+  // @ts-expect-error full-text operators accept text columns only
+  b.fulltextBooleanReadCount('seven');
   // @ts-expect-error null is not a value of a NOT NULL column
   b.serviceSeq(null);
   // @ts-expect-error between takes a pair

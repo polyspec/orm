@@ -132,6 +132,7 @@ class Generator {
   private keyType(e: Entity, k: ChainKey): string {
     switch (k.op) {
       case 'tuple': case 'ne_tuple': return `ReadonlyArray<readonly [${k.columns.map(c => tsScalar(this.column(e, c))).join(', ')}]>`;
+      case 'fulltext': case 'fulltext_boolean': return 'string';
     }
     if (k.compare !== '') return this.owners(k.compare);
     const c = this.column(e, k.column);

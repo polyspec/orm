@@ -46,7 +46,7 @@ interface PredSpec {
   ref?: Core;
   refCol?: string;
   sub?: Core;
-  kind: 'value' | 'list' | 'null' | 'between' | 'tuple' | 'ref' | 'sub' | 'column_fn' | 'value_fn';
+  kind: 'value' | 'list' | 'null' | 'between' | 'tuple' | 'fulltext' | 'ref' | 'sub' | 'column_fn' | 'value_fn';
 }
 
 interface CondNode {
@@ -270,6 +270,9 @@ export class Core {
       case 'between':
         if (!Array.isArray(value) || value.length !== 2) throw configError(`between value for ${key.column} must be a two-value array`);
         return [p({ kind: 'between', op: 'between', value }), 0];
+      case 'fulltext': case 'fulltext_boolean':
+        if (typeof value !== 'string') throw configError(`${key.op} requires a string`);
+        return [p({ kind: 'fulltext', op: key.op, cols: key.columns, value }), 0];
     }
     if (key.compare !== '') {
       if (!isModel(value)) throw configError(`column comparison ${key.column} requires a model`);
@@ -641,6 +644,11 @@ export class BuiltRequest {
         delete out.column;
         if (p.cols !== undefined) out.cols = p.cols;
         out.ps = listOf(p.value, 'tuple values').flatMap(row => listOf(row, 'a tuple value group').map(v => this.param(v)));
+        break;
+      case 'fulltext':
+        delete out.column;
+        out.cols = present(p.cols, 'the columns of a fulltext predicate');
+        out.p = this.param(p.value);
         break;
       case 'between':
         out.ps = listOf(p.value, 'between values').map(v => this.param(v));

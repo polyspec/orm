@@ -150,6 +150,18 @@ function parseKey(m: Manifest, e: Entity, ix: Map<string, Column>, ws: readonly 
     }
   }
   if (ws[0] === 'Tuple') attempt(() => tupleKey(e, ix, ws.slice(1), 'tuple'));
+  if (ws[0] === 'Fulltext') {
+    const boolean = ws[1] === 'Boolean';
+    const cols = splitWith(ix, ws.slice(boolean ? 2 : 1));
+    if (!cols || cols.length === 0) {
+      if (!whole) throw new NameError(`fulltext needs one or more columns of ${e.name} joined by With`);
+    } else {
+      for (const c of cols) {
+        if ((c.type !== 'varchar' && c.type !== 'text') || clientStyles(c).length > 0) throw new NameError(`${e.name}.${c.name} does not accept fulltext`);
+      }
+      candidates.push(key({ op: boolean ? 'fulltext_boolean' : 'fulltext', columns: cols.map(c => c.name) }));
+    }
+  }
   for (let i = 1; i < ws.length - 1; i++) {
     const cmp = compareOps[ws[i] ?? ''];
     if (cmp === undefined) continue;

@@ -256,9 +256,11 @@ export class Planner {
         this.selectStep(add, steps, r, r.kind, r.agg ?? '', undefined);
         break;
       case 'paginate':
-        // main (and its relation steps), then the count step
-        this.selectStep(add, steps, r, 'all', '', undefined);
+        // The root query runs first, then the independent count, then its relation steps.
+        let appendRelations: (() => void) | undefined;
+        this.selectStep(add, steps, r, 'all', '', undefined, append => { appendRelations = append; });
         this.selectStep(add, steps, r, 'count', '', undefined);
+        present(appendRelations, 'the relation steps of a paginate plan')();
         break;
       case 'insert': add(this.insertStep(r)); break;
       case 'update': add(this.updateStep(r)); break;
@@ -290,7 +292,7 @@ export class Planner {
 
   private clientStyles(list: readonly string[]): string[] { return list.filter(s => !this.d.decodesStage(s)); }
 
-  private selectStep(add: (st: Omit<PlanStep, 'id'>) => PlanStep, steps: readonly PlanStep[], q: RequestQuery, kind: string, agg: string, rc: RelationContext | undefined): PlanStep {
+  private selectStep(add: (st: Omit<PlanStep, 'id'>) => PlanStep, steps: readonly PlanStep[], q: RequestQuery, kind: string, agg: string, rc: RelationContext | undefined, deferRelations?: (append: () => void) => void): PlanStep {
     const b = new Builder(this.d);
     const root = this.buildScopes(q, 'a', undefined);
     if (rc) {
@@ -396,7 +398,11 @@ export class Planner {
     }
     if (kind === 'one' || kind === 'all' || kind === 'group_count') st.assemble = asm;
     const step = add(st);
-    if (step.assemble) this.relationSteps(add, steps, root, asm, step.id);
+    if (step.assemble) {
+      const append = () => this.relationSteps(add, steps, root, asm, step.id);
+      if (deferRelations) deferRelations(append);
+      else append();
+    }
     return step;
   }
 

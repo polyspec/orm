@@ -121,6 +121,12 @@ function parseKey(model: RuntimeModel, e: Entity, ws: readonly string[]): ChainK
     if (cols && cols.length >= 2) candidates.push(key({ op: 'tuple', columns: cols }));
     else errors.push(`a tuple needs two or more columns of ${e.name} joined by With`);
   }
+  if (ws[0] === 'Fulltext') {
+    const boolean = ws[1] === 'Boolean';
+    const cols = splitWith(e, ws.slice(boolean ? 2 : 1));
+    if (cols && cols.length > 0) candidates.push(key({ op: boolean ? 'fulltext_boolean' : 'fulltext', columns: cols }));
+    else errors.push(`fulltext needs one or more columns of ${e.name} joined by With`);
+  }
   for (let i = 1; i < ws.length - 1; i++) {
     const cmp = compareOps[present(ws[i], `word ${i} of a condition key`)];
     if (cmp === undefined) continue;

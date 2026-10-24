@@ -724,6 +724,24 @@
         "databases"
       ]
     },
+    "complex-query-typescript-unit-check": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "node-modules"
+      ],
+      "inputs": [
+        "packages/ts/src/names.ts",
+        "packages/ts/src/generate/names.ts",
+        "packages/ts/src/generate/typescript.ts",
+        "packages/ts/src/core.ts",
+        "packages/ts/src/database.ts",
+        "packages/ts/tests/fulltext-search.mjs",
+        "packages/ts/tests/fulltext-chain-types.mjs",
+        "packages/ts/tests/paginate-order.mjs",
+        "packages/ts/tests/typecheck.ts"
+      ]
+    },
     "ts-save-key-check": {
       "scope": "owner",
       "needs": [

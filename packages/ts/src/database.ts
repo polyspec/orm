@@ -1499,10 +1499,10 @@ export async function paginate(ex: Executor, given: Request, givenParams: readon
     if (db.md !== undefined) return markdownRead(ex, request, params);
     const cached = await db.plan(request);
     const main = await select(ex, cached, mainStep(cached.plan), params);
-    const result = await relations(ex, cached, params, main);
     const step = cached.plan.steps.find(s => s.role === 'count');
     if (!step) throw new OrmError(codes.INTERNAL, 'paginate plan has no count step');
     const total = Number((await db.runStep(ex, step.sql, step, params)).rows[0]?.[0] ?? 0);
+    const result = await relations(ex, cached, params, main);
     return { result, total };
   });
 }
