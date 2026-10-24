@@ -459,8 +459,20 @@ def sub_type(m: RuntimeModel, sub: dict) -> str:
         return "i64"
     if sub.get("agg") == "avg":
         return "f64"
-    f = field_of(entity_of(m, sub["query"]["entity"]), sub["column"])
-    return f.type if f is not None else "text"
+    entity_name = sub["query"]["entity"]
+    entity = entity_of(m, entity_name)
+    if entity is None:
+        raise OrmError(
+            codes.INTERNAL, f"scalar subquery entity {entity_name} is missing"
+        )
+    column_name = sub["column"]
+    f = field_of(entity, column_name)
+    if f is None:
+        raise OrmError(
+            codes.INTERNAL,
+            f"{entity.name}.{column_name} is missing from a validated scalar subquery",
+        )
+    return f.type
 
 
 def answer_value(type_: str, raw, where: str):

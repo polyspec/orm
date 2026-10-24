@@ -513,7 +513,7 @@ impl<'m> MdNode<'m> {
         }
         if let (Some(c), false) = (&self.q.columns, self.groups) {
             if let Some(sub) = c.sub.get(name) {
-                return Ok(OutCol { index, name: name.into(), typ: self.sub_type(sub), ..Default::default() });
+                return Ok(OutCol { index, name: name.into(), typ: self.sub_type(sub)?, ..Default::default() });
             }
             if let Some(cf) = c.r#fn.get(name) {
                 let typ = engine::function_type(&cf.r#fn.name, self.ent.field(&cf.column));
@@ -525,11 +525,17 @@ impl<'m> MdNode<'m> {
     }
 
     /// The type of a scalar subquery column.
-    fn sub_type(&self, sub: &ir::Sub) -> String {
+    fn sub_type(&self, sub: &ir::Sub) -> Result<String> {
         match sub.agg.as_str() {
-            "count" => "i64".into(),
-            "avg" => "f64".into(),
-            _ => self.m.model.entity(&sub.query.entity).and_then(|e| e.field(&sub.column)).map(|f| f.ty.name().to_owned()).unwrap_or_else(|| "text".into()),
+            "count" => Ok("i64".into()),
+            "avg" => Ok("f64".into()),
+            _ => {
+                let entity = self.m.model.entity(&sub.query.entity)
+                    .ok_or_else(|| engine::err(codes::INTERNAL, format!("scalar subquery entity {} is missing", sub.query.entity)))?;
+                let field = entity.field(&sub.column)
+                    .ok_or_else(|| engine::err(codes::INTERNAL, format!("{}.{} is missing from a validated scalar subquery", entity.name, sub.column)))?;
+                Ok(field.ty.name().to_owned())
+            }
         }
     }
 
@@ -715,3 +721,7 @@ pub(crate) async fn markdown_write(ex: &Executor, req: &mut Req) -> Result<(Vec<
 #[cfg(test)]
 #[path = "../tests/unit/bind_message.rs"]
 mod bind_message_tests;
+
+#[cfg(test)]
+#[path = "../tests/unit/markdown_scalar_subquery.rs"]
+mod markdown_scalar_subquery_tests;

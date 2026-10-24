@@ -908,6 +908,29 @@
         "packages/rust/orm/tests/unit/upsert_conflict.rs"
       ]
     },
+    "scalar-subquery-column-check": {
+      "scope": "owner",
+      "needs": ["go", "rust", "php", "composer", "python", "node-modules", "php-extension-tools"],
+      "inputs": [
+        "Makefile",
+        "contracts/check-inputs.json",
+        "packages/go/engine/planner/planner.go",
+        "packages/go/engine/planner/scalar_subquery_type_test.go",
+        "packages/rust/orm/src/engine/planner.rs",
+        "packages/rust/orm/src/markdown.rs",
+        "packages/rust/orm/tests/unit/coverage_planner.rs",
+        "packages/rust/orm/tests/unit/markdown_scalar_subquery.rs",
+        "packages/ts/src/engine/planner.ts",
+        "packages/ts/src/markdown.ts",
+        "packages/ts/tests/scalar_subquery_type.mjs",
+        "packages/php/src/Planner.php",
+        "packages/php/tests/CoveragePlannerTest.php",
+        "packages/python/src/polyspec/orm/engine/planner.py",
+        "packages/python/src/polyspec/orm/markdown.py",
+        "packages/python/tests/test_scalar_subquery_type.py",
+        "packages/php-ext/src/planner.c"
+      ]
+    },
     "relation-parent-bind-rust-check": {
       "scope": "owner",
       "needs": ["go", "rust", "node-modules"],
@@ -966,6 +989,22 @@
       "inputs": [
         "tests/codec/**",
         "packages/php/tests/CodecVectorsTest.php"
+      ]
+    },
+    "php-codec-causes-check": {
+      "scope": "owner",
+      "needs": ["php", "composer", "php-extension-tools"],
+      "inputs": [
+        "Makefile",
+        "packages/php/src/Codec.php",
+        "packages/php/tests/CodecVectorsTest.php",
+        "packages/php/tests/CodecYamlCauseTest.php",
+        "packages/php/tests/CodecYamlProbe.php",
+        "packages/php/tests/codec-yaml-probe.php",
+        "packages/php/tests/fixtures/CodecProbeYaml.php",
+        "packages/php/tests/fixtures/CodecProbeYamlStream.php",
+        "packages/php-ext/tests/CodecCauseTest.php",
+        "packages/php-ext/src/codec.c"
       ]
     },
     "bind-check": {

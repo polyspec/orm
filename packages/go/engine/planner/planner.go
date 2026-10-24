@@ -569,7 +569,10 @@ func (p *Planner) selectList(b *builder, sb *strings.Builder, s *scope, asm *pla
 				return err
 			}
 			expr = "(" + e + ")"
-			typ = p.subType(c.sub)
+			typ, err = p.subType(c.sub)
+			if err != nil {
+				return err
+			}
 		default:
 			e, _ := p.D.ReadExpr(p.qcol(s, c.column), p.readSQLStyles(col.Codec), func() string { return b.secret("aes") })
 			expr = e
@@ -1624,15 +1627,19 @@ func (p *Planner) subSelect(b *builder, outer *scope, sub *ir.Sub) (string, erro
 }
 
 // subType is the assembled type of a scalar subquery column.
-func (p *Planner) subType(sub *ir.Sub) string {
+func (p *Planner) subType(sub *ir.Sub) (string, error) {
 	switch sub.Agg {
 	case "count":
-		return "i64"
+		return "i64", nil
 	case "avg":
-		return "f64"
+		return "f64", nil
 	}
-	if c := p.M.Entities[sub.Query.Entity].Field(sub.Column); c != nil {
-		return c.Type
+	entity := p.M.Entities[sub.Query.Entity]
+	if entity == nil {
+		return "", &ir.Error{Code: "INTERNAL", Msg: "scalar subquery entity " + sub.Query.Entity + " is missing"}
 	}
-	return "text"
+	if c := entity.Field(sub.Column); c != nil {
+		return c.Type, nil
+	}
+	return "", &ir.Error{Code: "INTERNAL", Msg: entity.Name + "." + sub.Column + " is missing from a validated scalar subquery"}
 }

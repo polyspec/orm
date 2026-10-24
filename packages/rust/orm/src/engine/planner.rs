@@ -1081,11 +1081,16 @@ impl<'m> Planner<'m> {
     }
 
     fn sub_type(&self, sub: &ir::Sub) -> Result<String> {
-        Ok(match sub.agg.as_str() {
-            "count" => "i64".into(),
-            "avg" => "f64".into(),
-            _ => self.entity(&sub.query.entity)?.field(&sub.column).map(|c| c.ty.name().to_owned()).unwrap_or_else(|| "varchar".into()),
-        })
+        match sub.agg.as_str() {
+            "count" => Ok("i64".into()),
+            "avg" => Ok("f64".into()),
+            _ => {
+                let entity = self.entity(&sub.query.entity)?;
+                self.column_of(entity, &sub.column)
+                    .map(|column| column.ty.name().to_owned())
+                    .map_err(|_error| err(codes::INTERNAL, format!("{}.{} is missing from a validated scalar subquery", entity.name, sub.column)))
+            }
+        }
     }
 
     fn table_scope<'a>(&self, ent: &'a Entity, q: &'a ir::Query) -> Result<Scope<'a>>

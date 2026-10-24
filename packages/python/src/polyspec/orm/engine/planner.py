@@ -1037,8 +1037,18 @@ class Planner:
             return "i64"
         if agg == "avg":
             return "f64"
-        col = field_of(self._entity(sub["query"]["entity"]), sub.get("column") or "")
-        return (col.type if col is not None else None) or "string"
+        entity_name = sub["query"]["entity"]
+        entity = self.m.entities.get(entity_name)
+        if entity is None:
+            _fail(codes.INTERNAL, f"scalar subquery entity {entity_name} is missing")
+        column_name = sub.get("column") or ""
+        col = field_of(entity, column_name)
+        if col is None:
+            _fail(
+                codes.INTERNAL,
+                f"{entity.name}.{column_name} is missing from a validated scalar subquery",
+            )
+        return col.type
 
     def _render_assign(self, b: _Builder, ent: Entity, col: Field, a: dict) -> str:
         if _blind_index_source(ent, col.name):

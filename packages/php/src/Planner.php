@@ -1190,13 +1190,22 @@ final class Planner
 
     private function subType(array $sub): string
     {
-        return match ($sub['agg'] ?? '') {
-            'count' => 'i64',
-            'avg' => 'f64',
-            default => RuntimeModel::column(
-                $this->m->entities[$sub['query']['entity']],
-                $sub['column'] ?? ''
-            )['type'] ?? 'string',
-        };
+        if (($sub['agg'] ?? '') === 'count') {
+            return 'i64';
+        }
+        if (($sub['agg'] ?? '') === 'avg') {
+            return 'f64';
+        }
+        $entityName = $sub['query']['entity'];
+        $entity = $this->m->entities[$entityName] ?? null;
+        if ($entity === null) {
+            throw self::err(Code::INTERNAL, "scalar subquery entity $entityName is missing");
+        }
+        $columnName = $sub['column'] ?? '';
+        $column = RuntimeModel::column($entity, $columnName);
+        if ($column === null) {
+            throw self::err(Code::INTERNAL, "{$entity['entity']}.$columnName is missing from a validated scalar subquery");
+        }
+        return $column['type'];
     }
 }

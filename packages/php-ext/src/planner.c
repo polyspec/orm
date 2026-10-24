@@ -2117,12 +2117,21 @@ static zend_string *sub_type(pctx *c, HashTable *sub)
     if (zend_string_equals_literal(agg, "avg")) {
         return fmt(c, "f64");
     }
+    zend_string *entity_name = gs(c, ga(sub, "query"), "entity");
+    HashTable *ent = entity(c, entity_name);
+    if (ent == NULL) {
+        return fail("INTERNAL", "scalar subquery entity %s is missing", ZSTR_VAL(entity_name));
+    }
+    zend_string *column_name = gs(c, sub, "column");
     HashTable *col = NULL;
-    if (!col_of(c, entity(c, gs(c, ga(sub, "query"), "entity")), gs(c, sub, "column"), &col)) {
+    if (!col_of(c, ent, column_name, &col)) {
         return NULL;
     }
-    zval *t = col != NULL ? get(col, "type") : NULL;
-    return t != NULL ? zstr(c, t) : fmt(c, "string");
+    if (col == NULL) {
+        return fail("INTERNAL", "%s.%s is missing from a validated scalar subquery", ZSTR_VAL(gs(c, ent, "entity")), ZSTR_VAL(column_name));
+    }
+    zval *t = get(col, "type");
+    return t != NULL ? zstr(c, t) : fail("INTERNAL", "%s.%s has no type in a validated scalar subquery", ZSTR_VAL(gs(c, ent, "entity")), ZSTR_VAL(column_name));
 }
 
 /* Planner::selectStep: the statement of a select, count, sum or avg, with its relation steps. */

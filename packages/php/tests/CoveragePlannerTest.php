@@ -11,7 +11,9 @@ namespace Polyspec\Orm\Tests;
 
 
 use Polyspec\Orm\Engine;
+use Polyspec\Orm\Dialect;
 use Polyspec\Orm\OrmException;
+use Polyspec\Orm\Planner;
 use Polyspec\Orm\RuntimeModel;
 use Polyspec\Orm\Validator;
 use PHPUnit\Framework\Assert;
@@ -115,6 +117,42 @@ final class CoveragePlannerTest extends TestCase
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
         plannerCase($root, $fixture, 'planner_statement');
+    }
+
+    public function testScalarSubqueryMissingPostValidationColumnIsInternal(): void
+    {
+        $root = dirname(__DIR__, 3);
+        $fixture = coverageJson("$root/contracts/fixtures/planner.json");
+        $case = array_values(array_filter($fixture['cases'], static fn(array $c): bool => $c['id'] === 'planner_scalar_column_subquery'))[0];
+        $model = RuntimeModel::build(RuntimeModel::files(["$root/{$case['schema']}"]));
+        $request = ['manifest_hash' => $model->manifestHash] + $case['input'];
+        (new \Polyspec\Orm\Validator($model))->validate($request);
+        $request['columns']['sub']['first_author']['column'] = 'missing_column';
+        try {
+            (new Planner($model, new Dialect('sqlite')))->compile($request);
+            Assert::fail('planner accepted a missing post-validation scalar subquery column');
+        } catch (OrmException $error) {
+            Assert::assertSame('INTERNAL', $error->code_);
+            Assert::assertStringContainsString('author.missing_column', $error->getMessage());
+        }
+    }
+
+    public function testScalarSubqueryAggregateTypesRemainI64AndF64(): void
+    {
+        $root = dirname(__DIR__, 3);
+        $fixture = coverageJson("$root/contracts/fixtures/planner.json");
+        $case = array_values(array_filter($fixture['cases'], static fn(array $c): bool => $c['id'] === 'planner_scalar_column_subquery'))[0];
+        $model = RuntimeModel::build(RuntimeModel::files(["$root/{$case['schema']}"]));
+        foreach ([['count', '', 'i64'], ['avg', 'read_count', 'f64']] as [$aggregate, $column, $expected]) {
+            $request = ['manifest_hash' => $model->manifestHash] + $case['input'];
+            $request['columns']['sub']['first_author']['agg'] = $aggregate;
+            $request['columns']['sub']['first_author']['column'] = $column;
+            unset($request['columns']['sub']['first_author']['query']['limit'], $request['columns']['sub']['first_author']['query']['order']);
+            (new \Polyspec\Orm\Validator($model))->validate($request);
+            $plan = (new Planner($model, new Dialect('sqlite')))->compile($request);
+            $output = array_values(array_filter($plan['steps'][0]['assemble']['columns'], static fn(array $col): bool => $col['name'] === 'first_author'))[0];
+            Assert::assertSame($expected, $output['type'], "$aggregate output type");
+        }
     }
 
     public function testPlannerCount(): void

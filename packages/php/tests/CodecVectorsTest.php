@@ -21,6 +21,84 @@ use Polyspec\Orm\StyledValue;
 #[Small]
 final class CodecVectorsTest extends TestCase
 {
+    private static function throwingJsonValue(\Throwable $failure): \JsonSerializable
+    {
+        return new class ($failure) implements \JsonSerializable {
+            public function __construct(private readonly \Throwable $failure)
+            {
+            }
+
+            public function jsonSerialize(): mixed
+            {
+                throw $this->failure;
+            }
+        };
+    }
+
+    public function testCodecExpectedExceptionCause(): void
+    {
+        $cases = [
+            'YAML parser syntax' => [
+                fn() => Codec::decode(['yaml'], 'value: ['),
+                Code::CODEC_DECODE,
+            ],
+            'YAML undefined alias' => [
+                fn() => Codec::decode(['yaml'], "value: *missing\n"),
+                Code::CODEC_DECODE,
+            ],
+            'YAML codec policy' => [
+                fn() => Codec::decode(['yaml'], "value: &x 1\nother: *x\n"),
+                Code::CODEC_DECODE,
+            ],
+            'YAML encode policy' => [
+                fn() => Codec::encode(['yaml'], StyledValue::value(new \stdClass())),
+                Code::CODEC_ENCODE,
+            ],
+            'ordered JSON parser' => [fn() => Codec::decode(['ordered_json'], '{'), Code::CODEC_DECODE],
+            'JSON encoder' => [fn() => Codec::encode(['ordered_json'], StyledValue::value("\xFF")), Code::CODEC_ENCODE],
+        ];
+        foreach ($cases as $name => [$operation, $code]) {
+            try {
+                $operation();
+                self::fail("$name: expected codec failure");
+            } catch (OrmException $exception) {
+                self::assertSame($code, $exception->code_, $name);
+                self::assertInstanceOf(\Throwable::class, $exception->getPrevious(), $name);
+                self::assertStringContainsString(
+                    $exception->getPrevious()->getMessage(),
+                    $exception->getMessage(),
+                    $name
+                );
+            }
+        }
+
+        $cause = new \InvalidArgumentException('sentinel expected parser exception');
+        try {
+            Codec::encode(['ordered_json'], StyledValue::value(self::throwingJsonValue($cause)));
+            self::fail('expected sentinel codec failure');
+        } catch (OrmException $exception) {
+            self::assertSame(Code::CODEC_ENCODE, $exception->code_);
+            self::assertSame($cause, $exception->getPrevious());
+        }
+    }
+
+    public function testCodecUnexpectedThrowableIdentity(): void
+    {
+        $causes = [
+            new \RuntimeException('runtime sentinel'),
+            new \TypeError('type sentinel'),
+            new \Error('error sentinel'),
+        ];
+        foreach ($causes as $cause) {
+            try {
+                Codec::encode(['ordered_json'], StyledValue::value(self::throwingJsonValue($cause)));
+                self::fail('expected the sentinel throwable');
+            } catch (\Throwable $exception) {
+                self::assertSame($cause, $exception);
+            }
+        }
+    }
+
     /**
      * Value model: an ordered-json value is decoded; sequential arrays are lists, other arrays are maps with sorted
      * string keys.

@@ -742,7 +742,11 @@ export class Planner {
       case 'count': return 'i64';
       case 'avg': return 'f64';
     }
-    return columnOf(this.entity(sub.query.entity), sub.column ?? '')?.type ?? 'string';
+    const entity = this.m.entities.get(sub.query.entity);
+    if (!entity) fail(codes.INTERNAL, `scalar subquery entity ${sub.query.entity} is missing`);
+    const column = columnOf(entity, sub.column ?? '');
+    if (!column) fail(codes.INTERNAL, `${entity.name}.${sub.column ?? ''} is missing from a validated scalar subquery`);
+    return column.type;
   }
 
   private renderAssign(b: Builder, ent: Entity, col: Column, a: Assignment): string {

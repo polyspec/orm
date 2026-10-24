@@ -62,6 +62,19 @@ static bool exception_is(const char *name)
     return ce != NULL && instanceof_function(EG(exception)->ce, ce);
 }
 
+static bool yaml_decode_exception_expected(void)
+{
+    return exception_is("Purr\\Yaml\\Exception\\ParseException")
+        || exception_is("Purr\\Yaml\\Exception\\ReferenceException")
+        || exception_is("InvalidArgumentException");
+}
+
+static bool yaml_encode_exception_expected(void)
+{
+    return exception_is("Symfony\\Component\\Yaml\\Exception\\DumpException")
+        || exception_is("InvalidArgumentException");
+}
+
 /* Releases a string that may be NULL (a style that is not set). */
 static void str_free(zend_string *s)
 {
@@ -70,16 +83,13 @@ static void str_free(zend_string *s)
     }
 }
 
-/* Takes the pending exception and returns its message (a new string). */
-static zend_string *take_message(void)
+/* Returns the message of an exception after its caller has detached it from EG(exception). */
+static zend_string *exception_message(zend_object *ex)
 {
-    zend_object *ex = EG(exception);
     zval rv;
-    EG(exception) = NULL;
     zend_call_method_with_0_params(ex, ex->ce, NULL, "getmessage", &rv);
     zend_string *msg = zval_get_string(&rv);
     zval_ptr_dtor(&rv);
-    OBJ_RELEASE(ex);
     return msg;
 }
 
@@ -157,21 +167,33 @@ static bool new_object(zval *obj, zend_class_entry *ce)
     return true;
 }
 
-/* Throws an OrmException with the code and the message (the message takes ownership). */
-static bool orm_fail(const char *code, zend_string *msg)
+/* Throws an OrmException with the code, message and optional previous exception; it takes ownership of both. */
+static bool orm_fail_previous(const char *code, zend_string *msg, zend_object *previous)
 {
     zend_class_entry *ce = class_named("Polyspec\\Orm\\OrmException");
     if (ce == NULL) {
         zend_string_release(msg);
+        if (previous != NULL) {
+            OBJ_RELEASE(previous);
+        }
         return false;
     }
-    zval ex, args[2], rv;
+    zval ex, args[3], rv;
     object_init_ex(&ex, ce);
     ZVAL_STRING(&args[0], code);
     ZVAL_STR(&args[1], msg);
-    zend_call_method(Z_OBJ(ex), ce, NULL, ZEND_STRL("__construct"), &rv, 2, &args[0], &args[1]);
+    uint32_t argc = 2;
+    if (previous != NULL) {
+        ZVAL_OBJ(&args[2], previous);
+        argc = 3;
+    }
+    ZVAL_UNDEF(&rv);
+    zend_call_known_function(ce->constructor, Z_OBJ(ex), ce, &rv, argc, args, NULL);
     zval_ptr_dtor(&args[0]);
     zval_ptr_dtor(&args[1]);
+    if (previous != NULL) {
+        zval_ptr_dtor(&args[2]);
+    }
     zval_ptr_dtor(&rv);
     if (EG(exception) != NULL) {
         zval_ptr_dtor(&ex);
@@ -179,6 +201,18 @@ static bool orm_fail(const char *code, zend_string *msg)
     }
     zend_throw_exception_object(&ex);
     return false;
+}
+
+static bool orm_fail(const char *code, zend_string *msg)
+{
+    return orm_fail_previous(code, msg, NULL);
+}
+
+static zend_object *take_exception(void)
+{
+    zend_object *previous = EG(exception);
+    EG(exception) = NULL;
+    return previous;
 }
 
 static bool orm_failf(const char *code, const char *fmt, ...)
@@ -190,15 +224,36 @@ static bool orm_failf(const char *code, const char *fmt, ...)
     return orm_fail(code, msg);
 }
 
-/* A YAML step failed: its PHP exception (any Throwable, as Codec.php catches) or its own message in err. */
+static bool orm_failf_previous(const char *code, zend_object *previous, const char *fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    zend_string *msg = zend_vstrpprintf(0, fmt, ap);
+    va_end(ap);
+    return orm_fail_previous(code, msg, previous);
+}
+
+/* A YAML step failed: an expected delegated PHP exception or the codec's own validation message. */
 static bool yaml_fail(const char *code, zend_string *err)
 {
     zend_string *msg = err;
+    zend_object *previous = NULL;
+    if (EG(exception) == NULL && err != NULL) {
+        zend_class_entry *ce = class_named("InvalidArgumentException");
+        if (ce == NULL) {
+            str_free(err);
+            return false;
+        }
+        zend_throw_exception(ce, ZSTR_VAL(err), 0);
+    }
     if (EG(exception) != NULL) {
         str_free(err);
-        msg = take_message();
+        previous = take_exception();
+        msg = exception_message(previous);
     }
-    bool r = orm_failf(code, "yaml: %s", msg != NULL ? ZSTR_VAL(msg) : "unknown error");
+    bool r = previous != NULL
+        ? orm_failf_previous(code, previous, "yaml: %s", msg != NULL ? ZSTR_VAL(msg) : "unknown error")
+        : orm_failf(code, "yaml: %s", msg != NULL ? ZSTR_VAL(msg) : "unknown error");
     str_free(msg);
     return r;
 }
@@ -915,7 +970,8 @@ static bool decode_stages(HashTable *styles, zval *raw, zval *ret)
             if (!need_string(&cur, "Yaml")) {
                 ok = false;
             } else if (!yaml_decode_text(Z_STR(cur), &value, &err)) {
-                ok = yaml_fail("CODEC_DECODE", err);
+                ok = EG(exception) == NULL || yaml_decode_exception_expected()
+                    ? yaml_fail("CODEC_DECODE", err) : false;
             } else if (!yaml_validate(&value, &err)) {
                 zval_ptr_dtor(&value);
                 ok = yaml_fail("CODEC_DECODE", err);
@@ -930,8 +986,9 @@ static bool decode_stages(HashTable *styles, zval *raw, zval *ret)
                 zval parsed;
                 if (!call_fn("Polyspec\\OrderedJson\\parse", &parsed, 1, &cur)) {
                     if (exception_is("InvalidArgumentException")) {
-                        zend_string *m = take_message();
-                        ok = orm_failf("CODEC_DECODE", "json: %s", ZSTR_VAL(m));
+                        zend_object *previous = take_exception();
+                        zend_string *m = exception_message(previous);
+                        ok = orm_failf_previous("CODEC_DECODE", previous, "json: %s", ZSTR_VAL(m));
                         zend_string_release(m);
                     } else {
                         ok = false;
@@ -1039,7 +1096,8 @@ bool codec_encode(HashTable *styles, zval *styled, zval *ret)
                 zend_string *err = NULL;
                 zval s;
                 if (!yaml_dump(&value, &s, &err)) {
-                    ok = yaml_fail("CODEC_ENCODE", err);
+                    ok = EG(exception) == NULL || yaml_encode_exception_expected()
+                        ? yaml_fail("CODEC_ENCODE", err) : false;
                 } else {
                     zval_ptr_dtor(&cur);
                     ZVAL_COPY_VALUE(&cur, &s);
@@ -1066,8 +1124,9 @@ bool codec_encode(HashTable *styles, zval *styled, zval *ret)
             }
             smart_str_free(&buf);
             if (!ok && (exception_is("JsonException") || exception_is("InvalidArgumentException"))) {
-                zend_string *m = take_message();
-                ok = orm_failf("CODEC_ENCODE", "json: %s", ZSTR_VAL(m));
+                zend_object *previous = take_exception();
+                zend_string *m = exception_message(previous);
+                ok = orm_failf_previous("CODEC_ENCODE", previous, "json: %s", ZSTR_VAL(m));
                 zend_string_release(m);
             }
         } else if (streq(st, "base64")) {

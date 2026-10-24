@@ -345,7 +345,10 @@ function subType(m: RuntimeModel, sub: Subquery): string {
     case 'avg': return 'f64';
   }
   const ent = entityOf(m, sub.query.entity);
-  return (ent !== undefined ? fieldOf(ent, sub.column ?? '')?.type : undefined) ?? 'text';
+  if (ent === undefined) throw new OrmError(codes.INTERNAL, `scalar subquery entity ${sub.query.entity} is missing`);
+  const column = fieldOf(ent, sub.column ?? '');
+  if (column === undefined) throw new OrmError(codes.INTERNAL, `${ent.name}.${sub.column ?? ''} is missing from a validated scalar subquery`);
+  return column.type;
 }
 
 /**

@@ -10,8 +10,11 @@ use Purr\Yaml\Node\AliasNode;
 use Purr\Yaml\Node\MappingNode;
 use Purr\Yaml\Node\ScalarNode;
 use Purr\Yaml\Node\SequenceNode;
+use Purr\Yaml\Exception\ParseException;
+use Purr\Yaml\Exception\ReferenceException;
 use Purr\Yaml\Schema\CoreSchema;
 use Purr\Yaml\YamlStream;
+use Symfony\Component\Yaml\Exception\DumpException;
 use Symfony\Component\Yaml\Yaml;
 
 use function Polyspec\OrderedJson\parse as orderedJsonParse;
@@ -93,8 +96,8 @@ final class Codec
                     try {
                         $v = self::yamlDecode($v);
                         self::validateYamlValue($v);
-                    } catch (\Throwable $e) {
-                        throw new OrmException(Code::CODEC_DECODE, 'yaml: ' . $e->getMessage());
+                    } catch (ParseException | ReferenceException | \InvalidArgumentException $e) {
+                        throw new OrmException(Code::CODEC_DECODE, 'yaml: ' . $e->getMessage(), $e);
                     }
                     break;
                 case 'ordered_json':
@@ -102,7 +105,7 @@ final class Codec
                     try {
                         $v = orderedJsonParse($v);
                     } catch (\InvalidArgumentException $e) {
-                        throw new OrmException(Code::CODEC_DECODE, 'json: ' . $e->getMessage());
+                        throw new OrmException(Code::CODEC_DECODE, 'json: ' . $e->getMessage(), $e);
                     }
                     break;
                 default:
@@ -146,15 +149,15 @@ final class Codec
                         self::validateYamlValue($value);
                         $cur = Yaml::dump($value, 20, 2, Yaml::DUMP_EXCEPTION_ON_INVALID_TYPE
                             | Yaml::DUMP_EMPTY_ARRAY_AS_SEQUENCE | Yaml::DUMP_NUMERIC_KEY_AS_STRING);
-                    } catch (\Throwable $e) {
-                        throw new OrmException(Code::CODEC_ENCODE, 'yaml: ' . $e->getMessage());
+                    } catch (DumpException | \InvalidArgumentException $e) {
+                        throw new OrmException(Code::CODEC_ENCODE, 'yaml: ' . $e->getMessage(), $e);
                     }
                     break;
                 case 'ordered_json':
                     try {
                         $cur = orderedJsonStringify(orderedJsonParse(self::jsonText($value)));
                     } catch (\JsonException | \InvalidArgumentException $e) {
-                        throw new OrmException(Code::CODEC_ENCODE, 'json: ' . $e->getMessage());
+                        throw new OrmException(Code::CODEC_ENCODE, 'json: ' . $e->getMessage(), $e);
                     }
                     break;
                 case 'base64':
