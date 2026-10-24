@@ -607,6 +607,27 @@ static zend_string *b_audit(pctx *c, pbinds *b, HashTable *ent)
     return b_typed(c, b, slot) ;
 }
 
+static void lpushs(zval *list, zend_string *value);
+
+/* Adds the audit record assignment used by upsert, update and soft-delete steps. */
+static bool append_audit_set(pctx *c, pbinds *b, HashTable *ent, zval *sets)
+{
+    zend_string *audit = gs(c, ent, "audit");
+    if (ZSTR_LEN(audit) == 0) {
+        return true;
+    }
+    zend_string *column = quote(c, audit);
+    if (column == NULL) {
+        return false;
+    }
+    zend_string *value = b_audit(c, b, ent);
+    if (value == NULL) {
+        return false;
+    }
+    lpushs(sets, fmt(c, "%s = %s", ZSTR_VAL(column), ZSTR_VAL(value)));
+    return true;
+}
+
 /* The one placeholder the executor expands to the parent key values. */
 static zend_string *b_parent(pctx *c, pbinds *b, zend_long step, zval *keyTypes)
 {
@@ -2925,10 +2946,7 @@ static pstep *insert_step(pctx *c, HashTable *r)
             } ZEND_HASH_FOREACH_END();
             sql = fmt(c, "%s, (%s)", ZSTR_VAL(sql), ZSTR_VAL(implode(c, ", ", Z_ARRVAL_P(more))));
         } ZEND_HASH_FOREACH_END();
-        zval *slots = copy_list(c, Z_ARRVAL_P(b->slots));
-        zval *tables = b_tables(c, b);
-        OKP(tables);
-        return step_new(c, "main", sql, ZSTR_EMPTY_ALLOC(), slots, tables);
+        return main_step(c, b, sql);
     }
     HashTable *dup = lst(r, "on_duplicate");
     if (count_of(dup) > 0) {
@@ -2953,12 +2971,8 @@ static pstep *insert_step(pctx *c, HashTable *r)
         if (!push_aes_version(c, b, ent, Z_ARRVAL_P(dupz), sets)) {
             return NULL;
         }
-        if (audited) {
-            zend_string *qa = quote(c, gs(c, ent, "audit"));
-            OKP(qa);
-            zend_string *au = b_audit(c, b, ent);
-            OKP(au);
-            lpushs(sets, fmt(c, "%s = %s", ZSTR_VAL(qa), ZSTR_VAL(au)));
+        if (audited && !append_audit_set(c, b, ent, sets)) {
+            return NULL;
         }
         if (ZSTR_LEN(identity) > 0) {
             zval *irid = D(c, "insertReturningId", 0, NULL);
@@ -3052,12 +3066,8 @@ static pstep *update_step(pctx *c, HashTable *r)
         OKP(ck);
         lpushs(sets, fmt(c, "%s = %s", ZSTR_VAL(qu), ZSTR_VAL(ck)));
     }
-    if (ZSTR_LEN(gs(c, ent, "audit")) > 0) {
-        zend_string *qa = quote(c, gs(c, ent, "audit"));
-        OKP(qa);
-        zend_string *au = b_audit(c, b, ent);
-        OKP(au);
-        lpushs(sets, fmt(c, "%s = %s", ZSTR_VAL(qa), ZSTR_VAL(au)));
+    if (!append_audit_set(c, b, ent, sets)) {
+        return NULL;
     }
     zend_string *where = render_group(c, b, root, ga(r, "where"), true);
     OKP(where);
@@ -3155,12 +3165,8 @@ static pstep *restore_step(pctx *c, HashTable *r)
     zend_string *qsoft = quote(c, soft);
     OKP(qsoft);
     lpushs(sets, fmt(c, "%s = NULL", ZSTR_VAL(qsoft)));
-    if (ZSTR_LEN(gs(c, ent, "audit")) > 0) {
-        zend_string *qa = quote(c, gs(c, ent, "audit"));
-        OKP(qa);
-        zend_string *au = b_audit(c, b, ent);
-        OKP(au);
-        lpushs(sets, fmt(c, "%s = %s", ZSTR_VAL(qa), ZSTR_VAL(au)));
+    if (!append_audit_set(c, b, ent, sets)) {
+        return NULL;
     }
     zend_string *where = render_group(c, b, root, ga(Z_ARRVAL_P(parts), "where"), true);
     OKP(where);
