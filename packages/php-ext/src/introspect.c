@@ -2139,6 +2139,19 @@ static str pg_kind(str contype)
     return SL("index");
 }
 
+static bool pg_report_unmapped_names(catalog *c, zval *rows, str query, smap *mapped, str kind, str reason)
+{
+    zval *row;
+    EACH_ROW(*rows, row) {
+        str name;
+        if (!row_text(row, 0, query, &name)) return false;
+        if (mapped == NULL || !smap_has(mapped, name)) {
+            catalog_report(c, kind, SL(""), name, reason);
+        }
+    } ZEND_HASH_FOREACH_END();
+    return true;
+}
+
 static bool non_space(char c)
 {
     return !(c == ' ' || c == '\t' || c == '\n' || c == '\v' || c == '\f' || c == '\r');
@@ -2220,16 +2233,8 @@ static catalog *pg_read(zval *pdo)
     TRY(ok);
     q = Q(PG_SEQUENCES);
     ok = catalog_read(pdo, q, &rows);
-    if (ok) {
-        EACH_ROW(rows, row) {
-            str name;
-            if (!row_text(row, 0, q, &name)) {
-                ok = false;
-                break;
-            }
-            catalog_report(c, SL("sequence"), SL(""), name, SL("a sequence outside identity has no dbspec definition"));
-        } ZEND_HASH_FOREACH_END();
-    }
+    if (ok) ok = pg_report_unmapped_names(c, &rows, q, NULL, SL("sequence"),
+        SL("a sequence outside identity has no dbspec definition"));
     zval_ptr_dtor(&rows);
     TRY(ok);
     smap quoted = {0}, pending = {0}; /* table => smap* */
@@ -2415,18 +2420,8 @@ static catalog *pg_read(zval *pdo)
     recognize_triggers(c, D_POSTGRES, &triggers);
     q = Q(PG_ROUTINES);
     ok = catalog_read(pdo, q, &rows);
-    if (ok) {
-        EACH_ROW(rows, row) {
-            str name;
-            if (!row_text(row, 0, q, &name)) {
-                ok = false;
-                break;
-            }
-            if (!smap_has(&functions, name)) {
-                catalog_report(c, SL("routine"), SL(""), name, SL("a function outside the renderer triggers has no dbspec definition"));
-            }
-        } ZEND_HASH_FOREACH_END();
-    }
+    if (ok) ok = pg_report_unmapped_names(c, &rows, q, &functions, SL("routine"),
+        SL("a function outside the renderer triggers has no dbspec definition"));
     zval_ptr_dtor(&rows);
     TRY(ok);
     return c;
