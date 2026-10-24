@@ -1,6 +1,7 @@
 /* Native non-query operations for Polyspec\\Orm\\Utils. */
 #include "dbspec.h"
 #include "Zend/zend_closures.h"
+#include "Zend/zend_interfaces.h"
 
 int dbs_cmp_table_name(const void *a, const void *b, void *ctx)
 {
@@ -15,6 +16,12 @@ bool dbs_call_method(zval *object, const char *method, zval *result, uint32_t ar
     zend_result status = call_user_function(NULL, object, &function, result, argc, argv);
     zval_ptr_dtor(&function);
     return status == SUCCESS && EG(exception) == NULL;
+}
+
+bool dbs_model_meta(zval *model, zval *meta)
+{
+    zend_call_method(NULL, Z_OBJCE_P(model), NULL, "meta", sizeof("meta") - 1, meta, 0, NULL, NULL);
+    return EG(exception) == NULL && Z_TYPE_P(meta) == IS_ARRAY;
 }
 
 static zend_class_entry *utils_ce;

@@ -140,12 +140,6 @@ static void throw_model_error(const char *code, const char *message)
     zend_string_release(text);
 }
 
-static bool model_meta(zval *model, zval *meta)
-{
-    zend_call_method(NULL, Z_OBJCE_P(model), NULL, "meta", sizeof("meta") - 1, meta, 0, NULL, NULL);
-    return EG(exception) == NULL && Z_TYPE_P(meta) == IS_ARRAY;
-}
-
 static zval *array_key(zval *array, const char *name)
 {
     if (array == NULL)
@@ -291,7 +285,7 @@ static bool write_request(zval *model, const char *kind, zval *db, zval *request
         call_result_dtor(&hash);
         return false;
     }
-    if (!model_meta(model, &meta)) {
+    if (!dbs_model_meta(model, &meta)) {
         call_result_dtor(&hash);
         call_result_dtor(&meta);
         return false;
@@ -388,7 +382,7 @@ static bool assign_param(zval *request, zval *meta, zval *result, zval *value, c
 static bool assign_ir(zval *model, zval *request, zend_string *column, zval *spec, zval *result)
 {
     zval meta;
-    if (!model_meta(model, &meta)) {
+    if (!dbs_model_meta(model, &meta)) {
         call_result_dtor(&meta);
         return false;
     }
@@ -554,7 +548,7 @@ static bool model_create(zval *model, zval *result_model)
         throw_model_error("CONFIG", "create requires set<Col> values");
         goto failed;
     }
-    if (!model_meta(model, &meta) || !write_request(model, "insert", &db, &request))
+    if (!dbs_model_meta(model, &meta) || !write_request(model, "insert", &db, &request))
         goto failed;
 
     if (!append_set_values(model, &request, sets, NULL, true, NULL)) goto failed;
@@ -769,7 +763,7 @@ ZEND_METHOD(Polyspec_Orm_Model, create)
 static bool model_key_values(zval *model, zval *keys)
 {
     zval meta;
-    if (!model_meta(model, &meta)) {
+    if (!dbs_model_meta(model, &meta)) {
         call_result_dtor(&meta);
         return false;
     }
@@ -915,7 +909,7 @@ ZEND_METHOD(Polyspec_Orm_Model, withAesColumns)
 {
     ZEND_PARSE_PARAMETERS_NONE();
     zval meta;
-    if (!model_meta(ZEND_THIS, &meta)) {
+    if (!dbs_model_meta(ZEND_THIS, &meta)) {
         call_result_dtor(&meta);
         RETURN_THROWS();
     }
@@ -1019,7 +1013,7 @@ static bool model_update(zval *model, bool optimistic, zval *result)
     ZVAL_UNDEF(&db); ZVAL_UNDEF(&frame); ZVAL_UNDEF(&meta); ZVAL_UNDEF(&request);
     ZVAL_UNDEF(&keys); ZVAL_UNDEF(&sets); ZVAL_UNDEF(&revision); ZVAL_UNDEF(&written);
     if (!resolve_executor(model, &db, &frame)) goto failed;
-    if (!model_meta(model, &meta)) goto failed;
+    if (!dbs_model_meta(model, &meta)) goto failed;
     if (!write_request(model, "update", &db, &request)) goto failed;
     if (!model_key_values(model, &keys)) goto failed;
     zval *row = model_field(model, "row");
@@ -1172,7 +1166,7 @@ ZEND_METHOD(Polyspec_Orm_Model, save)
     zval db, frame, meta;
     ZVAL_UNDEF(&db); ZVAL_UNDEF(&frame); ZVAL_UNDEF(&meta);
     if (!resolve_executor(ZEND_THIS, &db, &frame)) RETURN_THROWS();
-    if (!model_meta(ZEND_THIS, &meta)) {
+    if (!dbs_model_meta(ZEND_THIS, &meta)) {
         call_result_dtor(&db); call_result_dtor(&frame); call_result_dtor(&meta); RETURN_THROWS();
     }
     zval *row = model_field(ZEND_THIS, "row");
@@ -1386,7 +1380,7 @@ ZEND_METHOD(Polyspec_Orm_Model, creates)
             }
         } ZEND_HASH_FOREACH_END();
     } ZEND_HASH_FOREACH_END();
-    if (!model_meta(ZEND_THIS, &meta)) { zval_ptr_dtor(&columns); call_result_dtor(&db); call_result_dtor(&frame); call_result_dtor(&meta); RETURN_THROWS(); }
+    if (!dbs_model_meta(ZEND_THIS, &meta)) { zval_ptr_dtor(&columns); call_result_dtor(&db); call_result_dtor(&frame); call_result_dtor(&meta); RETURN_THROWS(); }
     zval driver, limit_arg, limit, parts_args[2], parts;
     if (!dynamic_call(&db, "driver", &driver, 0, NULL)) { zval_ptr_dtor(&columns); call_result_dtor(&db); call_result_dtor(&frame); call_result_dtor(&meta); call_result_dtor(&driver); RETURN_THROWS(); }
     ZVAL_COPY(&limit_arg, &driver);
@@ -1472,7 +1466,7 @@ ZEND_METHOD(Polyspec_Orm_ModelRestoreHook, __invoke)
     zval *ir = object_property(hooked, "ir");
     zval meta, args[2], selected;
     ZVAL_UNDEF(&meta); ZVAL_UNDEF(&selected);
-    if (!model_meta(model, &meta)) { call_result_dtor(&meta); RETURN_THROWS(); }
+    if (!dbs_model_meta(model, &meta)) { call_result_dtor(&meta); RETURN_THROWS(); }
     ZVAL_COPY(&args[0], &meta); ZVAL_COPY(&args[1], ir);
     bool ok = named_call("Polyspec\\Orm\\Validator::restoreKey", &selected, 2, args);
     zval_ptr_dtor(&args[0]); zval_ptr_dtor(&args[1]); zval_ptr_dtor(&meta);
@@ -1690,7 +1684,7 @@ static bool model_delete_row(zval *model, bool recursive)
             } ZEND_HASH_FOREACH_END();
         }
     }
-    if (!model_meta(model, &meta) || !write_request(model, "delete", &db, &request) || !model_key_values(model, &keys)) goto failed;
+    if (!dbs_model_meta(model, &meta) || !write_request(model, "delete", &db, &request) || !model_key_values(model, &keys)) goto failed;
     if (!model_key_where(&request, &keys)) goto failed;
     zval guard_args[3]; ZVAL_COPY(&guard_args[0], &request); ZVAL_FALSE(&guard_args[1]); ZVAL_FALSE(&guard_args[2]);
     bool guard_ok = model_call(model, "revisionGuard", &revision, 3, guard_args);

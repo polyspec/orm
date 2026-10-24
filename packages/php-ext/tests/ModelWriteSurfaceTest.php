@@ -20,6 +20,14 @@ final class ModelWriteCallbackFixture extends Model
     }
 }
 
+final class ModelKeyValuesFixture extends Model
+{
+    public static function meta(): array
+    {
+        return ['entity' => 'ModelKeyValuesFixture', 'columns' => [], 'pk' => ['id']];
+    }
+}
+
 final class ModelWriteAesFixture extends Model
 {
     public static function meta(): array
@@ -43,6 +51,16 @@ final class ModelWriteAesFixture extends Model
 #[Small]
 final class ModelWriteSurfaceTest extends TestCase
 {
+    public function testNativeKeyValuesReadsTheModelMetadata(): void
+    {
+        $model = new ModelKeyValuesFixture();
+        $sets = (new \ReflectionClass(Model::class))->getProperty('sets');
+        $sets->setValue($model, ['id' => ['value' => 42]]);
+
+        $keyValues = new \ReflectionMethod(Model::class, 'keyValues');
+        self::assertSame(['id' => 42], $keyValues->invoke($model));
+    }
+
     public function testNativeMarkdownWriteReturnsFirstKeyOrNullWhenNoKeysWereAnswered(): void
     {
         $manifestHash = \Polyspec\Orm\Tests\MarkdownModel\People::meta()['manifest_hash'];

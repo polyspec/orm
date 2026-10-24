@@ -46,12 +46,6 @@ static bool aes_utils_contains(zval *values, const char *name)
     return false;
 }
 
-static bool aes_utils_model_meta(zval *model, zval *meta)
-{
-    zend_call_method(NULL, Z_OBJCE_P(model), NULL, "meta", sizeof("meta") - 1, meta, 0, NULL, NULL);
-    return EG(exception) == NULL && Z_TYPE_P(meta) == IS_ARRAY;
-}
-
 static bool aes_utils_spec(zval *db, zval *model, zval *spec)
 {
     zval unsupported, operation;
@@ -63,7 +57,7 @@ static bool aes_utils_spec(zval *db, zval *model, zval *spec)
 
     zval meta;
     ZVAL_UNDEF(&meta);
-    if (!aes_utils_model_meta(model, &meta)) {
+    if (!dbs_model_meta(model, &meta)) {
         if (EG(exception) == NULL) db_throw_orm("INTERNAL", "model meta() did not return an array");
         return false;
     }
