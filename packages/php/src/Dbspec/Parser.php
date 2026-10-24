@@ -2089,16 +2089,8 @@ final class Parser
         }
         foreach ($this->tableSettings as [$kind, $arguments, $line, $at, $lists]) {
             // A column reference: the column, or null after a diagnostic or a failed name or line.
-            $column = function (array $token) use ($kind, $line): ?Column {
-                if (!self::validName($token[0])) {
-                    return null;
-                }
-                if (!isset($this->columns[$token[0]])) {
-                    $this->error('setting', $line, $token[1], "setting `$kind` names unknown column `{$token[0]}`");
-                    return null;
-                }
-                return isset($this->invalidTypes[$token[0]]) ? null : $this->columns[$token[0]];
-            };
+            $column = fn(array $token): ?Column => self::validName($token[0])
+                ? $this->columnDefinition($token, $line, $kind, true) : null;
             switch ($kind) {
                 case 'updated':
                 case 'soft_delete':
@@ -3065,11 +3057,16 @@ final class Parser
         if (!$this->name($token, $line)) {
             return null;
         }
+        return $this->columnDefinition($token, $line, $kind, false);
+    }
+
+    private function columnDefinition(array $token, int $line, string $kind, bool $requireValidType): ?Column
+    {
         if (!isset($this->columns[$token[0]])) {
             $this->error('setting', $line, $token[1], "setting `$kind` names unknown column `{$token[0]}`");
             return null;
         }
-        return $this->columns[$token[0]];
+        return $requireValidType && isset($this->invalidTypes[$token[0]]) ? null : $this->columns[$token[0]];
     }
 
     /** A setting that names text requires a non-null varchar or text column. */
