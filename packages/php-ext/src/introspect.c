@@ -1651,6 +1651,22 @@ static bool mysql_indexes(zval *pdo, catalog *c)
     return true;
 }
 
+/* Removes types whose required renderer CHECK was absent from the catalog. */
+static void catalog_drop_missing_renderer_checks(catalog *c, const smap *pending, const smap *checked)
+{
+    SMAP_EACH(pending, i) {
+        const smap *cols = pending->e[i].val;
+        const smap *cm = smap_get(checked, pending->e[i].key);
+        SMAP_EACH(cols, k) {
+            if (cm == NULL || !smap_has(cm, cols->e[k].key)) {
+                catalog_report(c, SL("column"), pending->e[i].key, cols->e[k].key,
+                    fmt("%S without its renderer CHECK has no dbspec type", *(str *)cols->e[k].val));
+                itable_drop_column(catalog_table(c, pending->e[i].key), cols->e[k].key);
+            }
+        }
+    }
+}
+
 /* Collects column rows for each foreign key. An unsupported key is reported for each column row. */
 static bool mysql_foreign_keys(zval *pdo, catalog *c)
 {
@@ -1893,16 +1909,7 @@ static catalog *mysql_read(zval *pdo)
     zval_ptr_dtor(&rows);
     TRY(ok);
     /* A type that requires a renderer CHECK is not a dbspec type if that CHECK is missing. */
-    SMAP_EACH(&pending, i) {
-        smap *cols = pending.e[i].val;
-        smap *cm = smap_get(&checked, pending.e[i].key);
-        SMAP_EACH(cols, k) {
-            if (cm == NULL || !smap_has(cm, cols->e[k].key)) {
-                catalog_report(c, SL("column"), pending.e[i].key, cols->e[k].key, fmt("%S without its renderer CHECK has no dbspec type", *(str *)cols->e[k].val));
-                itable_drop_column(catalog_table(c, pending.e[i].key), cols->e[k].key);
-            }
-        }
-    }
+    catalog_drop_missing_renderer_checks(c, &pending, &checked);
     q = Q(MYSQL_TRIGGERS);
     smap triggers = {0};
     ok = catalog_read(pdo, q, &rows);
@@ -2254,7 +2261,9 @@ static catalog *pg_read(zval *pdo)
                     pm = dbs_alloc(sizeof *pm);
                     smap_set(&pending, table, pm);
                 }
-                smap_set(pm, name, TRUEP);
+                str *need = dbs_alloc(sizeof *need);
+                *need = SL("time");
+                smap_set(pm, name, need);
             }
         } ZEND_HASH_FOREACH_END();
     }
@@ -2337,16 +2346,7 @@ static catalog *pg_read(zval *pdo)
     }
     zval_ptr_dtor(&rows);
     TRY(ok);
-    SMAP_EACH(&pending, i) {
-        smap *cols = pending.e[i].val;
-        smap *cm = smap_get(&checked, pending.e[i].key);
-        SMAP_EACH(cols, k) {
-            if (cm == NULL || !smap_has(cm, cols->e[k].key)) {
-                catalog_report(c, SL("column"), pending.e[i].key, cols->e[k].key, SL("time without its renderer CHECK has no dbspec type"));
-                itable_drop_column(catalog_table(c, pending.e[i].key), cols->e[k].key);
-            }
-        }
-    }
+    catalog_drop_missing_renderer_checks(c, &pending, &checked);
     q = Q(PG_INDEXES);
     ok = catalog_read(pdo, q, &rows);
     if (ok) {
