@@ -554,10 +554,7 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
                 .await;
                 match settings {
                     Ok(restore) => Ok(restore),
-                    Err(e) => {
-                        let released = self.release().await;
-                        Err(settle(Err(e), released).expect_err("a failure stays a failure"))
-                    }
+                    Err(error) => Err(self.release_after_setup_error(error).await),
                 }
             }
             Dialect::Postgres => {
@@ -584,10 +581,7 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
                 .await;
                 match settings {
                     Ok(restore) => Ok(restore),
-                    Err(e) => {
-                        let released = self.release().await;
-                        Err(settle(Err(e), released).expect_err("a failure stays a failure"))
-                    }
+                    Err(error) => Err(self.release_after_setup_error(error).await),
                 }
             }
             Dialect::Sqlite => {
@@ -616,6 +610,10 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
                 }
             }
         }
+    }
+
+    async fn release_after_setup_error(&mut self, error: ApplyError) -> ApplyError {
+        settle(Err(error), self.release().await).expect_err("a failure stays a failure")
     }
 
     /// Releases the MySQL and PostgreSQL lock. On PostgreSQL, an unlock that releases nothing is an error.
@@ -1270,6 +1268,50 @@ mod sqlite_lock_result_tests {
                 _ => return Err(sqlx::Error::Protocol(format!("unexpected query {query}"))),
             };
             Ok(vec![vec![value]])
+        }
+    }
+
+    struct FailingPostgresSetup;
+    impl CatalogQuerier for FailingPostgresSetup {
+        async fn rows(&mut self, query: &str) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
+            self.query_bound(query, &[]).await
+        }
+    }
+    impl ApplyConnection for FailingPostgresSetup {
+        async fn execute(&mut self, _statement: &str) -> Result<(), sqlx::Error> { Ok(()) }
+        async fn execute_bound(&mut self, _statement: &str, _args: &[CatalogValue]) -> Result<(), sqlx::Error> { Ok(()) }
+        async fn query_bound(&mut self, query: &str, _args: &[CatalogValue]) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
+            if query.contains("pg_locks") {
+                Ok(vec![vec![CatalogValue::Int(7), CatalogValue::Bool(false)]])
+            } else if query.contains("pg_try_advisory_lock") {
+                Ok(vec![vec![CatalogValue::Bool(true), CatalogValue::Int(7)]])
+            } else if query.contains("current_setting('lock_timeout')") {
+                Err(sqlx::Error::Protocol("lock setting read failed".into()))
+            } else if query.contains("pg_advisory_unlock") {
+                Ok(vec![vec![CatalogValue::Bool(false)]])
+            } else {
+                Err(sqlx::Error::Protocol(format!("unexpected query {query}")))
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn lock_setup_failure_keeps_error_when_unlock_fails() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let mut connection = FailingPostgresSetup;
+        let clock: &ApplyClock<'_> = &|| Utc::now();
+        let events: &mut ApplyEvents<'_> = &mut |_| Ok(());
+        let mut applier = Applier::new(&mut connection, Dialect::Postgres, &[], clock, events).expect("empty plan chain");
+        let error = match applier.open().await {
+            Err(error) => error,
+            Ok(_) => panic!("settings read unexpectedly succeeded"),
+        };
+        match error {
+            ApplyError::Cleanup { error, cleanup } => {
+                assert!(error.to_string().contains("lock setting read failed"), "primary: {error}");
+                assert!(cleanup.to_string().contains("advisory lock"), "cleanup: {cleanup}");
+            }
+            other => panic!("expected primary and unlock errors, got {other:?}"),
         }
     }
 
