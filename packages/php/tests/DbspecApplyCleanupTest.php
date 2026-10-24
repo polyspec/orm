@@ -27,36 +27,9 @@ use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 
-// APPLY_CLEANUP_RUN is the prefix of the SQLite file name the case uses. A process id and file number are appended
-// after it.
 const APPLY_CLEANUP_RUN = 'apply_cleanup_php';
 
-/** The create-from-empty plan of tests/dbspec/plans.json, the one plan the cases apply. */
-function apply_cleanup_plans(): array
-{
-    $plans = [];
-    foreach (plan_vectors()['cases'] as $case) {
-        if ($case['id'] === 'create-from-empty') {
-            $parsed = Dbspec::parsePlan(implode("\n", $case['plan']) . "\n");
-            $plans[] = $parsed->plan ?? throw new RuntimeException(
-                'create-from-empty: ' . json_encode($parsed->diagnostics)
-            );
-        }
-    }
-    if (count($plans) !== 1) {
-        throw new RuntimeException('plans.json has no create-from-empty case');
-    }
-    return $plans;
-}
-
-/**
- * FailingPdo on a new SQLite file.
- *
- * @param array<string, PDOException> $fail
- * @param array<string, string> $replace
- * @param list<string> $failClose
- * @param array<string, PDOException> $queryFail
- */
+/** FailingPdo on a new SQLite file. */
 function failing_pdo(array $fail, array $replace = [], array $failClose = [], array $queryFail = []): FailingPdo
 {
     static $fileIndex = 0;
@@ -122,7 +95,7 @@ final class DbspecApplyCleanupTest extends TestCase
 
     public static function setUpBeforeClass(): void
     {
-        self::$plans = apply_cleanup_plans();
+        self::$plans = verify_errors_plan();
     }
 
     private static function now(): Closure
@@ -181,78 +154,7 @@ final class DbspecApplyCleanupTest extends TestCase
     // apply/settled-introspection-error and apply/rollback-introspection-error
     public function testVerifyErrorsAreNotDriftAndPreserveCause(): void
     {
-        if (getenv('ORM_PHP_MODE') === 'extension') {
-            Assert::assertTrue(extension_loaded('polyspec_orm'));
-            Assert::assertTrue((new \ReflectionClass(Dbspec::class))->isInternal());
-            Assert::assertFalse(function_exists('mermaid_test_import'), 'release extension omits private Mermaid test hooks');
-        }
-        $master = 'SELECT type, name, tbl_name, IFNULL(sql, \'\') FROM sqlite_master' . "\n"
-            . 'WHERE name NOT LIKE \'sqlite_%\' AND tbl_name NOT LIKE \'dbspec$%\' ORDER BY type, name';
-        $cause = new PDOException('catalog read failed');
-        $pdo = failing_pdo([], [], [], [$master => $cause]);
-        try {
-            Dbspec::apply($pdo, 'sqlite', self::$plans, self::now(), null);
-            Assert::fail('apply succeeded on a catalog read error');
-        } catch (ApplyError $error) {
-            Assert::assertSame('verify', $error->code_);
-            $previous = $error->getPrevious();
-            Assert::assertTrue(
-                $previous === $cause || $previous?->getPrevious() === $cause,
-                'the verification error keeps the original PDO exception'
-            );
-        }
-
-        $pdo = failing_pdo([]);
-        Dbspec::apply($pdo, 'sqlite', self::$plans, self::now(), null);
-        $rollbackCause = new PDOException('rollback catalog read failed');
-        $pdo->failQuery($master, $rollbackCause);
-        try {
-            Dbspec::rollback($pdo, 'sqlite', self::$plans, self::now(), null);
-            Assert::fail('rollback succeeded on a catalog read error');
-        } catch (ApplyError $error) {
-            Assert::assertSame('verify', $error->code_);
-            $previous = $error->getPrevious();
-            Assert::assertTrue(
-                $previous === $rollbackCause || $previous?->getPrevious() === $rollbackCause,
-                'the rollback verification error keeps the original PDO exception'
-            );
-        }
-
-        $pdo = failing_pdo([]);
-        $pdo->exec('CREATE TABLE unrelated (id INTEGER)');
-        try {
-            Dbspec::apply($pdo, 'sqlite', self::$plans, self::now(), null);
-            Assert::fail('apply succeeded on a real schema mismatch');
-        } catch (ApplyError $error) {
-            Assert::assertSame('drift', $error->code_);
-        }
-
-        $pdo = failing_pdo([]);
-        $postForwardCause = new PDOException('post-forward catalog read failed');
-        $pdo->failQuery($master, $postForwardCause, 2);
-        $events = [];
-        try {
-            Dbspec::apply(
-                $pdo,
-                'sqlite',
-                self::$plans,
-                self::now(),
-                static function (ApplyEvent $event) use (&$events): void {
-                    $events[] = $event->kind;
-                }
-            );
-            Assert::fail('apply succeeded after a post-forward catalog read error');
-        } catch (ApplyError $error) {
-            Assert::assertSame('verify', $error->code_);
-            $previous = $error->getPrevious();
-            Assert::assertTrue(
-                $previous === $postForwardCause || $previous?->getPrevious() === $postForwardCause,
-                'the post-forward verification error keeps the original PDO exception'
-            );
-        }
-        Assert::assertSame('applying', $pdo->query('SELECT state FROM "dbspec$plans"')->fetchColumn());
-        Assert::assertNotContains('verified', $events);
-        Assert::assertNotContains('done', $events);
+        verify_errors_case(self::$plans, self::now());
     }
 
     // apply/rollback-step-outside

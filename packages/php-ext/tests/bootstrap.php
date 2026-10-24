@@ -14,3 +14,6 @@ if (getenv('ORM_PHP_MODE') !== 'extension') {
 }
 // The functions that DeclarationsTest.php shares with declarations.php, which it runs as a child process.
 require_once __DIR__ . '/declarations_functions.php';
+require_once dirname(__DIR__, 2) . '/php/tests/FailingStatement.php';
+require_once dirname(__DIR__, 2) . '/php/tests/FailingPdo.php';
+require_once dirname(__DIR__, 2) . '/php/tests/dbspec_verify_errors_case.php';
