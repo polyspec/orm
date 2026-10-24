@@ -19501,6 +19501,10 @@
           "symbol": "Polyspec\\Orm\\Utils::local"
         },
         {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Utils::local"
+        },
+        {
           "implementation": "typescript",
           "symbol": "@polyspec/orm!Utils#local:member(1)"
         },
@@ -19530,6 +19534,10 @@
           "symbol": "Polyspec\\Orm\\Utils::lock"
         },
         {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Utils::lock"
+        },
+        {
           "implementation": "typescript",
           "symbol": "@polyspec/orm!Utils#lock:member(1)"
         },
@@ -19556,6 +19564,10 @@
         },
         {
           "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Utils::privileges"
+        },
+        {
+          "implementation": "php-extension",
           "symbol": "Polyspec\\Orm\\Utils::privileges"
         },
         {
@@ -19592,6 +19604,10 @@
           "symbol": "Polyspec\\Orm\\Utils::schema"
         },
         {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Utils::schema"
+        },
+        {
           "implementation": "typescript",
           "symbol": "@polyspec/orm!Utils#schema:member(1)"
         },
@@ -19621,6 +19637,10 @@
           "symbol": "Polyspec\\Orm\\Utils::setLocal"
         },
         {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Utils::setLocal"
+        },
+        {
           "implementation": "typescript",
           "symbol": "@polyspec/orm!Utils#setLocal:member(1)"
         },
@@ -19647,6 +19667,10 @@
         },
         {
           "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Utils::stats"
+        },
+        {
+          "implementation": "php-extension",
           "symbol": "Polyspec\\Orm\\Utils::stats"
         },
         {
@@ -20011,6 +20035,10 @@
         },
         {
           "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Utils"
+        },
+        {
+          "implementation": "php-extension",
           "symbol": "Polyspec\\Orm\\Utils"
         },
         {

@@ -1175,6 +1175,44 @@ final class Db
     public static function scalarText(mixed $v): string {}
 }
 
+/** Operations outside the query syntax: `$db->utils()`. */
+final class Utils
+{
+    private readonly Db $db;
+
+    public function __construct(Db $db) {}
+
+    /** @internal */
+    public function active(string $name): TxFrame {}
+
+    /** @internal */
+    public function run(\Closure $fn): mixed {}
+
+    /** @internal @param list<string> $tables */
+    public function read(string $kind, array $tables, string $sql, array $args): mixed {}
+
+    /** @internal @param list<string> $tables */
+    public function exec(string $kind, array $tables, string $sql, array $args = []): void {}
+
+    public function lock(string $key): void {}
+
+    public function setLocal(string $key, string $value): void {}
+
+    public function local(string $key): string {}
+
+    public function wasInserted(string $entity, int $sequence): bool {}
+
+    public function backendWaitingForLock(): bool {}
+
+    public function schema(): SchemaUtils {}
+
+    public function privileges(): PrivilegeUtils {}
+
+    public function aes(): AesUtils {}
+
+    public function stats(): Stats {}
+}
+
 /** The connection counters returned by Db::stats() and Utils::stats(). */
 final readonly class Stats
 {

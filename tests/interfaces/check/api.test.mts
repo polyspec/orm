@@ -105,6 +105,28 @@ caseTest('the native privilege utilities API is bound by the PHP extension', COM
   }
 });
 
+caseTest('the native Utils API is bound by the PHP extension', COMPUTE, () => {
+  const units = new Map((readParity(root).units ?? []).map(unit => [unit.id, unit]));
+  for (const [id, symbol] of [
+    ['client-utils', 'Polyspec\\Orm\\Utils'],
+    ['client-utils-local', 'Polyspec\\Orm\\Utils::local'],
+    ['client-utils-lock', 'Polyspec\\Orm\\Utils::lock'],
+    ['client-utils-privileges', 'Polyspec\\Orm\\Utils::privileges'],
+    ['client-utils-schema', 'Polyspec\\Orm\\Utils::schema'],
+    ['client-utils-set-local', 'Polyspec\\Orm\\Utils::setLocal'],
+    ['client-utils-stats', 'Polyspec\\Orm\\Utils::stats'],
+    ['client-utils-was-inserted', 'Polyspec\\Orm\\Utils::wasInserted'],
+    ['client-utils-backend-waiting-for-lock', 'Polyspec\\Orm\\Utils::backendWaitingForLock'],
+  ]) {
+    const unit = units.get(id);
+    assert.ok(unit, `${id} API unit is missing`);
+    assert.ok(
+      unit.symbols?.some(entry => entry.implementation === 'php-extension' && entry.symbol === symbol),
+      `${id} does not bind the native ${symbol} symbol`,
+    );
+  }
+});
+
 caseTest('the API units of the error catalog cover every code of errors.yaml once', COMPUTE, () => {
   const parity = readParity(root);
   const codes = readErrorCatalog(root);

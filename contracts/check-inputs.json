@@ -2568,6 +2568,8 @@
         "packages/php-ext/src/aes_utils.h",
         "packages/php-ext/src/privilege_utils.c",
         "packages/php-ext/src/privilege_utils.h",
+        "packages/php-ext/src/utils.c",
+        "packages/php-ext/src/utils.h",
         "packages/php-ext/src/db.c",
         "packages/php-ext/src/dbspec.h",
         "packages/php-ext/src/config.m4",
@@ -2582,6 +2584,7 @@
         "packages/php-ext/tests/OrmExceptionNativeTest.php",
         "packages/php-ext/tests/AesUtilsNativeTest.php",
         "packages/php-ext/tests/PrivilegeUtilsNativeTest.php",
+        "packages/php-ext/tests/UtilsNativeTest.php",
         "packages/php-ext/tests/declarations_functions.php",
         "Makefile"
       ]

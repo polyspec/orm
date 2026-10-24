@@ -3539,6 +3539,70 @@
     "exported": true,
     "signature": "public static function value(mixed $value): Polyspec\\Orm\\StyledValue"
   },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Utils": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\Utils extends  implements  uses "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Utils::$db": {
+    "exported": false,
+    "signature": "private readonly Polyspec\\Orm\\Db"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Utils::__construct": {
+    "exported": true,
+    "signature": "public function __construct(Polyspec\\Orm\\Db $db): "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Utils::active": {
+    "exported": true,
+    "signature": "public function active(string $name): Polyspec\\Orm\\TxFrame"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Utils::aes": {
+    "exported": true,
+    "signature": "public function aes(): Polyspec\\Orm\\AesUtils"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Utils::backendWaitingForLock": {
+    "exported": true,
+    "signature": "public function backendWaitingForLock(): bool"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Utils::exec": {
+    "exported": true,
+    "signature": "public function exec(string $kind, array $tables, string $sql, array $args=[]): void"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Utils::local": {
+    "exported": true,
+    "signature": "public function local(string $key): string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Utils::lock": {
+    "exported": true,
+    "signature": "public function lock(string $key): void"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Utils::privileges": {
+    "exported": true,
+    "signature": "public function privileges(): Polyspec\\Orm\\PrivilegeUtils"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Utils::read": {
+    "exported": true,
+    "signature": "public function read(string $kind, array $tables, string $sql, array $args): mixed"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Utils::run": {
+    "exported": true,
+    "signature": "public function run(Closure $fn): mixed"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Utils::schema": {
+    "exported": true,
+    "signature": "public function schema(): Polyspec\\Orm\\SchemaUtils"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Utils::setLocal": {
+    "exported": true,
+    "signature": "public function setLocal(string $key, string $value): void"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Utils::stats": {
+    "exported": true,
+    "signature": "public function stats(): Polyspec\\Orm\\Stats"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Utils::wasInserted": {
+    "exported": true,
+    "signature": "public function wasInserted(string $entity, int $sequence): bool"
+  },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Validator": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Validator extends  implements  uses "
