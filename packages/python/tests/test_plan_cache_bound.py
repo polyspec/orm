@@ -156,7 +156,7 @@ class PlanCacheBoundTest(unittest.TestCase):
         self.assertEqual(canonical["rows"], [[17]])
         self.assertEqual(canonical["optimistic"]["p"], 18)
 
-    # Requirements: T236.
+    # Requirements: PRT-78; T236.
     def test_paged_reads_share_plan_and_bind_page_values(self):
         for driver in ("mysql", "postgres", "sqlite"):
             db = handle(driver)

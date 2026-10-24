@@ -97,7 +97,7 @@ func TestCanonicalizePadsInListAndRejectsOutOfRangeParam(t *testing.T) {
 	}
 }
 
-// Requirements: T236.
+// Requirements: PRT-78; T236.
 func TestPlanCachePagedReadBindsPageValues(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	m, err := runtimemodel.LoadFiles("../../../contracts/fixtures/identity_load.dbs")

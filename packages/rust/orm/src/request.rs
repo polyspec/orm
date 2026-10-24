@@ -489,6 +489,7 @@ mod plan_cache_tests {
         assert!(keys.len() <= 10, "{} distinct plan keys for lengths 1 to 300, want at most 10", keys.len());
     }
 
+    // Requirements: PRT-78; T236.
     #[test]
     fn paged_requests_share_one_root_limit_shape() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);

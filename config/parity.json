@@ -579,6 +579,45 @@
   },
   "units": [
     {
+      "id": "page-cache-root-limit-values",
+      "kind": "feature",
+      "requirements": [
+        "PRT-78"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/plan_cache_test.go",
+          "id": "TestPlanCachePagedReadBindsPageValues"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/PageCacheBoundCases.php",
+          "id": "testPagedReadsSharePlanAndBindPageValues"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/PlanCacheBoundNativeTest.php",
+          "id": "PlanCacheBoundNativeTest::testPagedReadsSharePlanAndBindPageValues"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/plan-cache-in.mjs",
+          "id": "root pages share one plan shape and bind offset then count"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_plan_cache_bound.py",
+          "id": "test_paged_reads_share_plan_and_bind_page_values"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/request.rs",
+          "id": "request::plan_cache_tests::paged_requests_share_one_root_limit_shape"
+        }
+      ]
+    },
+    {
       "id": "fulltext-search",
       "kind": "feature",
       "requirements": [
@@ -4507,7 +4546,8 @@
         "COD-43",
         "PRT-7",
         "PRT-19",
-        "PRT-67"
+        "PRT-67",
+        "PRT-78"
       ],
       "file": "contracts/fixtures/planner.json",
       "cases": "$.cases[*].id",

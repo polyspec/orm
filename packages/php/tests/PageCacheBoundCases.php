@@ -41,7 +41,7 @@ trait PageCacheBoundCases
         }
     }
 
-    // Requirements: T236.
+    // Requirements: PRT-78; T236.
     public function testPagedReadsSharePlanAndBindPageValues(): void
     {
         if (getenv('ORM_PHP_MODE') === 'extension') {

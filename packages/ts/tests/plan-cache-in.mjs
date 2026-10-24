@@ -45,7 +45,7 @@ caseTest('a parameter index past the parameters is IR_INVALID', COMPUTE, () => {
   assert.throws(() => canonicalize(request, ['a']), (error) => error.code === 'IR_INVALID');
 });
 
-// Requirements: T236.
+// Requirements: PRT-78; T236.
 caseTest('root pages share one plan shape and bind offset then count', COMPUTE, () => {
   const keys = new Set();
   for (let page = 0; page < 300; page++) {
