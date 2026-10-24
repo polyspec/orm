@@ -21,7 +21,7 @@ use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 
 use polyspec_orm::ir::{Assign, Group, Item, Pred, Request};
-use polyspec_orm::{Core, Db, Entity, Model, Param, RequestParams, Schema, Val};
+use polyspec_orm::{Core, Db, Entity, Model, Param, RequestParams, Schema};
 use polyspec_orm_case_database::CaseDatabase;
 
 static HOOK_SCHEMA: Schema =
@@ -44,7 +44,7 @@ static HOOK_ENTRY: Entity = Entity {
 };
 const ENTRY_COLUMNS: [&str; 4] = ["id", "part", "label", "note"];
 
-/// A row of the soft delete table hook_entry, whose unique key is (part, label).
+// A row of the soft delete table hook_entry, whose unique key is (part, label).
 model_row!(HookEntry, HOOK_ENTRY, ENTRY_COLUMNS);
 
 static HOOK_UPSERT: Entity = Entity {
@@ -55,7 +55,7 @@ static HOOK_UPSERT: Entity = Entity {
 };
 const UPSERT_COLUMNS: [&str; 4] = ["id", "scope_col", "name", "hits"];
 
-/// A row of hook_upsert, whose unique key is (scope_col, name).
+// A row of hook_upsert, whose unique key is (scope_col, name).
 model_row!(HookUpsert, HOOK_UPSERT, UPSERT_COLUMNS);
 
 /// A hook_entry model connected to db with values set.
