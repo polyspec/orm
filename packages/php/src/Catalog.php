@@ -538,32 +538,25 @@ final class Catalog
                 }
                 $columns[] = [$native, $unsigned, $binary];
             }
-            $rows = [];
-            $budget = 0;
-            while (($row = $st->fetch(\PDO::FETCH_NUM)) !== false) {
-                if (count($rows) === $maxRows) {
-                    throw new OrmException(Code::CATALOG_LIMIT, "result has more than $maxRows rows");
-                }
-                foreach ($row as $value) {
-                    $budget += is_string($value) ? strlen($value) : 8;
-                }
-                if ($budget > $maxBytes) {
-                    throw new OrmException(Code::CATALOG_LIMIT, "result has more than $maxBytes bytes of values");
-                }
-                $cells = [];
-                foreach ($row as $i => $value) {
-                    [$native, $unsigned, $binary] = $columns[$i];
-                    if ($this->dialect === 'sqlite') {
-                        // SQLite types each value: PDO reports the type of this row's value, and a blob with the flag
-                        // blob.
-                        $cellMeta = $st->getColumnMeta($i) ?: [];
-                        $native = strtoupper((string) ($cellMeta['native_type'] ?? ''));
-                        $binary = in_array('blob', (array) ($cellMeta['flags'] ?? []), true);
+            $rows = $this->boundedRows(
+                $st,
+                $maxRows,
+                $maxBytes,
+                function (array $row) use ($st, $columns): array {
+                    $cells = [];
+                    foreach ($row as $i => $value) {
+                        [$native, $unsigned, $binary] = $columns[$i];
+                        if ($this->dialect === 'sqlite') {
+                            // SQLite reports each value's type and whether it is a blob.
+                            $cellMeta = $st->getColumnMeta($i) ?: [];
+                            $native = strtoupper((string) ($cellMeta['native_type'] ?? ''));
+                            $binary = in_array('blob', (array) ($cellMeta['flags'] ?? []), true);
+                        }
+                        $cells[] = self::gridCell($value, $this->dialect, $native, $unsigned, $binary);
                     }
-                    $cells[] = self::gridCell($value, $this->dialect, $native, $unsigned, $binary);
+                    return $cells;
                 }
-                $rows[] = $cells;
-            }
+            );
             return ['names' => $names, 'rows' => $rows];
         } catch (\PDOException $e) {
             throw $this->db->driverError($e);
@@ -927,6 +920,36 @@ final class Catalog
     }
 
     /**
+     * Fetches rows within the shared row and byte budgets. The transform runs after both limits are checked for the
+     * current row, in fetch order, so grid conversion errors keep their original precedence.
+     *
+     * @param (\Closure(list<mixed>): list<mixed>)|null $transform
+     * @return list<list<mixed>>
+     */
+    private function boundedRows(
+        \PDOStatement $st,
+        int $maxRows,
+        int $maxBytes,
+        ?\Closure $transform = null
+    ): array {
+        $rows = [];
+        $budget = 0;
+        while (($row = $st->fetch(\PDO::FETCH_NUM)) !== false) {
+            if (count($rows) === $maxRows) {
+                throw new OrmException(Code::CATALOG_LIMIT, "result has more than $maxRows rows");
+            }
+            foreach ($row as $value) {
+                $budget += is_string($value) ? strlen($value) : 8;
+            }
+            if ($budget > $maxBytes) {
+                throw new OrmException(Code::CATALOG_LIMIT, "result has more than $maxBytes bytes of values");
+            }
+            $rows[] = $transform === null ? $row : $transform($row);
+        }
+        return $rows;
+    }
+
+    /**
      * Runs a bounded query. It fails when the result has more than maxRows rows or more than maxBytes of values.
      *
      * @param list<mixed> $args
@@ -944,20 +967,7 @@ final class Catalog
                 $names[] = (string) ($meta['name'] ?? '');
                 $types[] = strtoupper((string) ($meta['native_type'] ?? ''));
             }
-            $rows = [];
-            $budget = 0;
-            while (($row = $st->fetch(\PDO::FETCH_NUM)) !== false) {
-                if (count($rows) === $maxRows) {
-                    throw new OrmException(Code::CATALOG_LIMIT, "result has more than $maxRows rows");
-                }
-                foreach ($row as $value) {
-                    $budget += is_string($value) ? strlen($value) : 8;
-                }
-                if ($budget > $maxBytes) {
-                    throw new OrmException(Code::CATALOG_LIMIT, "result has more than $maxBytes bytes of values");
-                }
-                $rows[] = $row;
-            }
+            $rows = $this->boundedRows($st, $maxRows, $maxBytes);
             return ['names' => $names, 'types' => $types, 'rows' => $rows];
         } catch (\PDOException $e) {
             throw $this->db->driverError($e);

@@ -1093,6 +1093,15 @@
         "tests/ir/validate.json"
       ]
     },
+    "php-catalog-bounds-check": {
+      "scope": "owner",
+      "needs": ["php", "composer", "node-modules"],
+      "inputs": [
+        "Makefile",
+        "packages/php/src/Catalog.php",
+        "packages/php/tests/CatalogQueryBoundsTest.php"
+      ]
+    },
     "rust-driver-check": {
       "scope": "owner",
       "needs": [
