@@ -1574,20 +1574,6 @@
       ]
     },
     {
-      "id": "ts-dbspec-stress",
-      "kind": "feature",
-      "requirements": [
-        "DBS-123"
-      ],
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-stress.mjs",
-          "id": "dbspec stress document parses and emits canonically"
-        }
-      ]
-    },
-    {
       "id": "ts-dbspec",
       "kind": "feature",
       "requirements": [
@@ -7206,20 +7192,6 @@
           "implementation": "rust",
           "test": "packages/rust/schema/src/dbspec/introspect/mysql.rs",
           "id": "dbspec::introspect::mysql::show_create_tests::every_show_create_case_reads_to_its_expected_body"
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-engine-dbspec-stress",
-      "kind": "feature",
-      "requirements": [
-        "DBS-123"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/engine/dbspec/stress_test.go",
-          "id": "TestStressDocument"
         }
       ]
     },
@@ -14593,20 +14565,6 @@
           "implementation": "php",
           "test": "packages/php/tests/DbspecRulesTest.php",
           "id": "DbspecRulesTest::testLimit"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-dbspec-stress-stress",
-      "kind": "feature",
-      "requirements": [
-        "DBS-123"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/DbspecStressTest.php",
-          "id": "DbspecStressTest::testStress"
         }
       ]
     },
