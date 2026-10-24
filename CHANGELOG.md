@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- Each client package now has a database-free native entry-point case for its declared public surface. The six client targets and `make package-check` pass; declaration checks cover INT-93, INT-138, and the affected R12 disposal units (KSTD-2-11-18).
 - Rust lint now passes the benchmark, package-workspace, interface-symbols, and catch-check steps. The canonical pre-fix run at `6e0b129d6c57` failed all four steps on the original lint findings; the committed tree passes `make lint-rust` without suppressions (KSTD-5-41).
 - Go lint now passes across the repository. The historical canonical run at `b45468a36e63` reported 11 errcheck findings and one deadcode finding; the current checker evaluates build-tag reachability as a union. Database-free catalog session cases verify that primary and rollback driver causes remain discoverable through `errors.Is` (KSTD-5-42).
 - The case-database crate now propagates all six clippy-reported failures through `Result` without suppressions. The canonical strict clippy target fails on the actual pre-fix source at `e9617f4f967f` and passes on the committed fixed source (KSTD-5-41-1).
