@@ -11,10 +11,13 @@ class CatalogAutoKeyTest(unittest.TestCase):
     def test_sqlite_automatic_primary_key_insert_returns_stored_row(self):
         with tempfile.TemporaryDirectory(prefix="orm-catalog-auto-key-") as directory:
             path = os.path.join(directory, "catalog.sqlite3")
-            with sqlite3.connect(path) as raw:
+            raw = sqlite3.connect(path)
+            try:
                 raw.execute(
                     "CREATE TABLE sample (id INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL)"
                 )
+            finally:
+                raw.close()
 
             catalog = connect_catalog(f"sqlite://{path}")
             try:
