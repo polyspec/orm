@@ -14,10 +14,68 @@ use Polyspec\Orm\OrmException;
 use ReflectionMethod;
 use RuntimeException;
 
+#[Large]
 final class ConnectionBusyTimeoutNativeTest extends TestCase
 {
+    // Requirements: CFG-13. This verifies committed-row visibility through native C connections.
+    public function testNativeSqliteReadDuringWriteSeesOnlyCommittedRows(): void
+    {
+        self::assertTrue((new ReflectionMethod(Orm::class, 'connect'))->isInternal());
+        $path = tempnam(sys_get_temp_dir(), 'orm-sqlite-read-during-write-');
+        self::assertIsString($path);
+        unlink($path);
+        $setup = null;
+        $writer = null;
+        $reader = null;
+        $failure = null;
+        try {
+            $setup = Orm::connect("sqlite://$path", new Config());
+            $setup->pdo()->exec('CREATE TABLE orm_read_probe (id INTEGER PRIMARY KEY, label TEXT NOT NULL)');
+            $setup->close();
+            $setup = null;
+            $writer = Orm::connect("sqlite://$path", new Config());
+            $reader = Orm::connect("sqlite://$path", new Config());
+            $writer->transaction(static function () use ($writer, $reader): void {
+                $writer->run('insert', [], null, "INSERT INTO orm_read_probe (label) VALUES ('pending')");
+                self::assertCount(0, $reader->fetch('query', [], null, 'SELECT id FROM orm_read_probe'));
+                $duringReadOnly = $reader->transaction(
+                    static fn(): array => $reader->fetch('query', [], null, 'SELECT id FROM orm_read_probe'),
+                    readOnly: true,
+                    retry: 0
+                );
+                self::assertCount(0, $duringReadOnly);
+            }, retry: 0);
+            self::assertCount(1, $reader->fetch('query', [], null, 'SELECT id FROM orm_read_probe'));
+        } catch (\Throwable $error) {
+            $failure = $error;
+        } finally {
+            $cleanupErrors = [];
+            foreach ([$reader, $writer, $setup] as $db) {
+                if ($db === null) {
+                    continue;
+                }
+                try {
+                    $db->close();
+                } catch (\Throwable $error) {
+                    $cleanupErrors[] = $error;
+                }
+            }
+            foreach ([$path, "$path-journal", "$path-wal", "$path-shm"] as $file) {
+                if (is_file($file) && !unlink($file)) {
+                    $cleanupErrors[] = new RuntimeException("unable to remove SQLite fixture $file");
+                }
+            }
+            if ($cleanupErrors !== []) {
+                $messages = array_map(static fn(\Throwable $error): string => $error->getMessage(), $cleanupErrors);
+                throw new RuntimeException('SQLite read fixture cleanup failed: ' . implode('; ', $messages), 0, $failure ?? $cleanupErrors[0]);
+            }
+        }
+        if ($failure !== null) {
+            throw $failure;
+        }
+    }
+
     // Requirements: CFG-12. This case enters the connection and transaction paths through the C extension.
-    #[Large]
     public function testNativeConnectionsCommitConcurrentSqliteWriters(): void
     {
         self::assertTrue((new ReflectionMethod(Orm::class, 'connect'))->isInternal());

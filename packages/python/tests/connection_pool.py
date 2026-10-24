@@ -193,6 +193,34 @@ class ConnectionPoolTest(unittest.TestCase):
                 for db in dbs:
                     db.close()
 
+    # Requirements: CFG-13. A separate connection sees committed rows, not the writer's pending insert.
+    def test_sqlite_read_during_write_sees_only_committed_rows(self):
+        with tempfile.TemporaryDirectory(prefix="orm-sqlite-read-during-write-") as directory:
+            dsn = f"sqlite://{directory}/reads.sqlite3"
+            setup = models.connect(dsn)
+            install_bench(setup)
+            setup.close()
+            writer = models.connect(dsn)
+            reader = models.connect(dsn)
+            try:
+                install_bench(writer)
+                install_bench(reader)
+
+                def body():
+                    models.Service().connect(writer).set_name("pending").create()
+                    self.assertEqual(models.Service().connect(reader).get_count(), 0)
+                    count = reader.transaction(
+                        lambda: models.Service().get_count(),
+                        {"readOnly": True, "retry": 0},
+                    )
+                    self.assertEqual(count, 0)
+
+                writer.transaction(body, {"retry": 0})
+                self.assertEqual(models.Service().connect(reader).get_count(), 1)
+            finally:
+                reader.close()
+                writer.close()
+
     def test_idle_size_and_lifetime(self):
         def body(dialect, dsn):
             db = models.connect(dsn, poolSize=3, poolIdleSize=1)

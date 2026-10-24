@@ -2869,6 +2869,30 @@
         "packages/python/tests/connection_pool.py"
       ]
     },
+    "connection-sqlite-read-during-write-python-check": {
+      "scope": "owner",
+      "needs": [
+        "python"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/python/tests/connection_pool.py"
+      ]
+    },
+    "connection-sqlite-read-during-write-php-extension-check": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/php-ext/scripts/build.sh",
+        "packages/php-ext/src/db.c",
+        "packages/php-ext/tests/ConnectionBusyTimeoutNativeTest.php"
+      ]
+    },
     "python-check": {
       "scope": "owner",
       "needs": [

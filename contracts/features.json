@@ -444,6 +444,26 @@
             "Makefile",
             "packages/python/tests/connection_pool.py"
           ]
+        },
+        {
+          "id": "connection-sqlite-read-during-write-python",
+          "command": "make connection-sqlite-read-during-write-python-check",
+          "shard": "other",
+          "inputs": [
+            "Makefile",
+            "packages/python/tests/connection_pool.py"
+          ]
+        },
+        {
+          "id": "connection-sqlite-read-during-write-php-extension",
+          "command": "make connection-sqlite-read-during-write-php-extension-check",
+          "shard": "other",
+          "inputs": [
+            "Makefile",
+            "packages/php-ext/scripts/build.sh",
+            "packages/php-ext/src/db.c",
+            "packages/php-ext/tests/ConnectionBusyTimeoutNativeTest.php"
+          ]
         }
       ],
       "coverage": {

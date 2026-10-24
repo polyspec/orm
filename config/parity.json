@@ -12142,20 +12142,6 @@
       ]
     },
     {
-      "id": "rust-reads-during-write",
-      "kind": "feature",
-      "requirements": [
-        "CFG-13"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/sqlite_concurrency.rs",
-          "id": "reads_during_write"
-        }
-      ]
-    },
-    {
       "id": "rust-statement-timeout-bounds-sqlite-lock-wait",
       "kind": "feature",
       "requirements": [
@@ -15306,20 +15292,6 @@
           "implementation": "php",
           "test": "packages/php/tests/RuntimeModelTest.php",
           "id": "RuntimeModelTest::testRequestsCarryTheManifestHash"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-sqlite-concurrency-reads-during-a-write",
-      "kind": "feature",
-      "requirements": [
-        "CFG-13"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/SqliteConcurrencyTest.php",
-          "id": "SqliteConcurrencyTest::testReadsDuringAWrite"
         }
       ]
     },
@@ -22346,6 +22318,45 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/sqlite_concurrency.rs",
           "id": "writers_on_several_connections"
+        }
+      ]
+    },
+    {
+      "id": "connection-sqlite-read-during-write",
+      "kind": "feature",
+      "requirements": [
+        "CFG-13"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/sqlite_concurrency_test.go",
+          "id": "TestSQLiteReadsDuringWrite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/SqliteConcurrencyTest.php",
+          "id": "SqliteConcurrencyTest::testReadsDuringAWrite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConnectionBusyTimeoutNativeTest.php",
+          "id": "ConnectionBusyTimeoutNativeTest::testNativeSqliteReadDuringWriteSeesOnlyCommittedRows"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/sqlite-concurrency.mjs",
+          "id": "sqlite-concurrency/readsDuringWrite"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/connection_pool.py",
+          "id": "test_sqlite_read_during_write_sees_only_committed_rows"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/sqlite_concurrency.rs",
+          "id": "reads_during_write"
         }
       ]
     }
