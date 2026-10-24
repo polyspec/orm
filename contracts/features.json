@@ -9949,8 +9949,7 @@
     {
       "id": "php-array-value-rows",
       "paths": [
-        "packages/php/src/ArrayValue.php",
-        "packages/php/src/ArrayValueRows.php"
+        "packages/php/src/Internal/ArrayValueRows.php"
       ],
       "tests": [
         "packages/php/tests/ArrayValueRowsTest.php"

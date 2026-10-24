@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Polyspec\Orm;
 
 /** One grouped result with only selected values and a checked row count. */
-final readonly class GroupRow implements \JsonSerializable, ArrayValue
+final readonly class GroupRow implements \JsonSerializable
 {
     /** @var array<string, mixed> */
     private array $values;

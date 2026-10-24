@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm;
 
+use Polyspec\Orm\Internal\ArrayValueRows;
+
 /** Grouped values in result order, without partial model rows. */
 final readonly class GroupRows implements \Countable, \IteratorAggregate, \JsonSerializable
 {

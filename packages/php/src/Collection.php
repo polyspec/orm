@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm;
 
+use Polyspec\Orm\Internal\ArrayValueRows;
+
 /**
  * An ordered set of models keyed by primary key, key column, or key callback.
  * A later row with the same key replaces the earlier one. The integer 7 and

@@ -9,7 +9,7 @@ namespace Polyspec\Orm;
  * classes add typed column getters and setters and the model metadata; every
  * other method name is resolved at call time with the grammar of docs/spec/dsl.md.
  */
-abstract class Model implements \JsonSerializable, ModelMetadata, ArrayValue
+abstract class Model implements \JsonSerializable, ModelMetadata
 {
     private ?Db $conn = null;
     /** the model a group callback stands for */

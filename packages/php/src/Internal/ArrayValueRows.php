@@ -2,13 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Polyspec\Orm;
+namespace Polyspec\Orm\Internal;
+
+use Polyspec\Orm\GroupRow;
+use Polyspec\Orm\Model;
 
 /** @internal */
 final class ArrayValueRows
 {
     /**
-     * @param iterable<ArrayValue> $values
+     * @param iterable<Model|GroupRow> $values
      * @return list<array<string, mixed>>
      */
     public static function rows(iterable $values): array
