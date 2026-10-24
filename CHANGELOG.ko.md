@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: f89478db12195cd4c4505abdfa3107c658130217a30bf36c357c8152213ecb84 -->
+<!-- source-sha256: 3b24fe56e350e977fbf372f1b322a5770248feea6119bd980ed44c15e26e53a4 -->
 # 변경 이력
 
 ## Unreleased
 
+- API parity check가 77개 error-code unit을 PHP extension의 native `Code` 상수에 연결하고 generated stub catalog와 대조한다. RED는 `f69b3a2f1^`의 `config/parity.json` blob `845da3a77ac511ee6fb144e6d097b53d49499b4f`를 재생한 fixture test였으며, 해당 historical checkout을 실행한 것은 아니다. 재생 결과 catalog 코드 77개에 API unit 43개만 있었다(KSTD-2-4).
 - Rust compiler fixture는 생성 model과 DSL의 유효한 소비자를 compile하고, private field 접근과 잘못된 DSL 호출을 기대한 rustc 진단으로 거부한다. 열 개 fixture가 DSL-49, DSL-50, DSL-124를 다룬다(KSTD-2-10-5).
 - 각 client package에 선언된 공개 surface를 확인하는 DB 비의존 native entry-point case를 추가했다. 여섯 client target과 `make package-check`가 통과하며, declaration check는 INT-93, INT-138 및 관련 R12 disposal unit을 확인한다(KSTD-2-11-18).
 - Rust lint가 benchmark, package workspace, interface-symbols, catch-check 네 단계를 통과한다. 실제 수정 전 canonical 실행은 `6e0b129d6c57`에서 기존 lint finding으로 네 단계 모두 실패했고, 커밋된 트리는 suppression 없이 `make lint-rust`를 통과한다 (KSTD-5-41).

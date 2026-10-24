@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The API parity check binds all 77 error-code units to the PHP extension's native `Code` constants and checks each against the generated stub catalog. Its RED was a fixture replay of `config/parity.json` blob `845da3a77ac511ee6fb144e6d097b53d49499b4f` from `f69b3a2f1^`, not a run of that historical checkout; the replay reported 43 units for 77 catalog codes (KSTD-2-4).
 - Rust compiler fixtures compile positive generated-model and DSL consumers and reject private-field access and invalid DSL calls with the expected rustc diagnostics. Ten fixtures cover DSL-49, DSL-50, and DSL-124 (KSTD-2-10-5).
 - Each client package now has a database-free native entry-point case for its declared public surface. The six client targets and `make package-check` pass; declaration checks cover INT-93, INT-138, and the affected R12 disposal units (KSTD-2-11-18).
 - Rust lint now passes the benchmark, package-workspace, interface-symbols, and catch-check steps. The canonical pre-fix run at `6e0b129d6c57` failed all four steps on the original lint findings; the committed tree passes `make lint-rust` without suppressions (KSTD-5-41).
