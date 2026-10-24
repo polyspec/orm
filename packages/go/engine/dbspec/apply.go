@@ -533,7 +533,12 @@ func (a *applier) sqliteSession(f func() error) error {
 
 // sqliteLockResult keeps BEGIN EXCLUSIVE error classification at the SQLite apply boundary.
 func sqliteLockResult(err error) bool {
-	return err != nil
+	var coded interface{ Code() int }
+	if !errors.As(err, &coded) {
+		return false
+	}
+	code := coded.Code() & 0xff
+	return code == 5 || code == 6
 }
 
 // joinCleanup returns the failure together with the errors of the cleanup steps after it. When there is more than one

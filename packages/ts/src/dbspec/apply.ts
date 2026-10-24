@@ -676,8 +676,10 @@ class Applier {
   }
 }
 
-function sqliteLockResult(_error: unknown): boolean {
-  return true;
+function sqliteLockResult(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null || !('errcode' in error)) return false;
+  const code = (error as { errcode?: unknown }).errcode;
+  return typeof code === 'number' && Number.isInteger(code) && ((code & 0xff) === 5 || (code & 0xff) === 6);
 }
 
 function messageOf(error: unknown): string {

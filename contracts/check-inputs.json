@@ -1271,6 +1271,36 @@
         "packages/go/internal/dialects/apply_physical_test.go"
       ]
     },
+    "dbspec-lock-go-check": {
+      "scope": "owner",
+      "needs": ["go"],
+      "inputs": ["Makefile", "packages/go/engine/dbspec/apply.go", "packages/go/engine/dbspec/sqlite_lock_result_test.go"]
+    },
+    "dbspec-lock-php-check": {
+      "scope": "owner",
+      "needs": ["php", "composer"],
+      "inputs": ["Makefile", "packages/php/src/Dbspec/PlanApply.php", "packages/php/tests/DbspecSqliteLockTest.php"]
+    },
+    "dbspec-lock-php-extension-check": {
+      "scope": "owner",
+      "needs": ["php", "composer", "php-extension-tools"],
+      "inputs": ["Makefile", "packages/php-ext/src/apply.c", "packages/php/tests/DbspecSqliteLockTest.php"]
+    },
+    "dbspec-lock-python-check": {
+      "scope": "owner",
+      "needs": ["go"],
+      "inputs": ["Makefile", "packages/python/src/polyspec/orm/dbspec/apply.py", "packages/python/tests/test_dbspec_sqlite_lock.py"]
+    },
+    "dbspec-lock-rust-check": {
+      "scope": "owner",
+      "needs": ["go", "rust"],
+      "inputs": ["Makefile", "packages/rust/orm/src/dbspec/apply.rs"]
+    },
+    "dbspec-lock-ts-check": {
+      "scope": "owner",
+      "needs": ["go", "node-modules"],
+      "inputs": ["Makefile", "packages/ts/src/dbspec/apply.ts", "packages/ts/tests/dbspec-begin-exclusive-lock.mjs"]
+    },
     "dbspec-plan-ts-check": {
       "scope": "owner",
       "needs": [

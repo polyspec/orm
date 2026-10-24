@@ -472,7 +472,12 @@ final class PlanApply
 
     private static function sqliteLockResult(\PDOException $error): bool
     {
-        return $error instanceof \PDOException;
+        $info = $error->errorInfo;
+        if (!is_array($info) || !isset($info[1]) || !is_int($info[1])) {
+            return false;
+        }
+        $code = $info[1] & 0xff;
+        return $code === 5 || $code === 6;
     }
 
     /** Creates the history table if it does not exist. */

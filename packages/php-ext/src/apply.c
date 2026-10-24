@@ -1219,7 +1219,24 @@ typedef struct {
 
 static bool sqlite_lock_result(zend_object *exception)
 {
-    return exception != NULL;
+    if (exception == NULL) {
+        return false;
+    }
+    zval rv;
+    ZVAL_UNDEF(&rv);
+    zval *info = zend_read_property(exception->ce, exception, ZEND_STRL("errorInfo"), 1, &rv);
+    if (Z_TYPE_P(info) != IS_ARRAY) {
+        if (!Z_ISUNDEF(rv)) zval_ptr_dtor(&rv);
+        return false;
+    }
+    zval *code = zend_hash_index_find(Z_ARRVAL_P(info), 1);
+    bool locked = false;
+    if (code != NULL && Z_TYPE_P(code) == IS_LONG) {
+        zend_long primary = Z_LVAL_P(code) & 0xff;
+        locked = primary == 5 || primary == 6;
+    }
+    if (!Z_ISUNDEF(rv)) zval_ptr_dtor(&rv);
+    return locked;
 }
 
 static bool sqlite_body(applier *a, void *ctx)

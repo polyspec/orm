@@ -855,7 +855,10 @@ def apply_plans(
 
 
 def _sqlite_lock_result(error) -> bool:
-    return isinstance(error, Exception)
+    code = getattr(error, "sqlite_errorcode", None)
+    if not isinstance(code, int):
+        return False
+    return code & 0xFF in (5, 6)
 
 
 def recover_plans(

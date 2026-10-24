@@ -1074,10 +1074,18 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
     }
 }
 
-fn sqlite_lock_result(_error: &sqlx::Error) -> bool {
-    true
+fn sqlite_lock_result(error: &sqlx::Error) -> bool {
+    let Some(code) = error
+        .as_database_error()
+        .and_then(|database| database.code())
+    else {
+        return false;
+    };
+    match code.parse::<i32>() {
+        Ok(code) => matches!(code & 0xff, 5 | 6),
+        Err(_) => false,
+    }
 }
-
 fn irreversible(p: &Plan, steps: &[PlanStep], i: usize) -> ApplyError {
     let message = if steps[i].finalize { "a finalize step has no rollback".to_owned() } else { steps[i].irreversible.clone() };
     ApplyError::Irreversible { plan: p.name().to_owned(), step: i, message }
@@ -1160,5 +1168,129 @@ impl ApplyConnection for SqliteConnection {
     async fn query_bound(&mut self, query: &str, args: &[CatalogValue]) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
         let rows = bound::<sqlx::Sqlite>(query, args).fetch_all(self).await?;
         rows.iter().map(|row| (0..sqlx::Row::len(row)).map(|i| super::sqlite_value(row, i)).collect()).collect()
+    }
+}
+
+#[cfg(test)]
+mod sqlite_lock_result_tests {
+    use super::{
+        Applier, ApplyClock, ApplyConnection, ApplyError, ApplyEvents, CatalogQuerier,
+        CatalogValue, Dialect,
+    };
+    use chrono::Utc;
+    use sqlx::error::{DatabaseError, ErrorKind};
+    use std::{borrow::Cow, error::Error as StdError, fmt};
+
+    #[derive(Debug)]
+    struct ResultError(i32);
+
+    impl fmt::Display for ResultError {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(f, "SQLite result {}", self.0)
+        }
+    }
+    impl StdError for ResultError {}
+    impl DatabaseError for ResultError {
+        fn message(&self) -> &str {
+            "synthetic SQLite result"
+        }
+        fn code(&self) -> Option<Cow<'_, str>> {
+            Some(Cow::Owned(self.0.to_string()))
+        }
+        fn as_error(&self) -> &(dyn StdError + Send + Sync + 'static) {
+            self
+        }
+        fn as_error_mut(&mut self) -> &mut (dyn StdError + Send + Sync + 'static) {
+            self
+        }
+        fn into_error(self: Box<Self>) -> Box<dyn StdError + Send + Sync + 'static> {
+            self
+        }
+        fn kind(&self) -> ErrorKind {
+            ErrorKind::Other
+        }
+    }
+
+    struct FailingBegin {
+        code: i32,
+    }
+    impl CatalogQuerier for FailingBegin {
+        async fn rows(&mut self, _query: &str) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
+            Ok(Vec::new())
+        }
+    }
+    impl ApplyConnection for FailingBegin {
+        async fn execute(&mut self, statement: &str) -> Result<(), sqlx::Error> {
+            if statement == "BEGIN EXCLUSIVE" {
+                Err(sqlx::Error::Database(Box::new(ResultError(self.code))))
+            } else {
+                Ok(())
+            }
+        }
+        async fn execute_bound(
+            &mut self,
+            _statement: &str,
+            _args: &[CatalogValue],
+        ) -> Result<(), sqlx::Error> {
+            Ok(())
+        }
+        async fn query_bound(
+            &mut self,
+            query: &str,
+            _args: &[CatalogValue],
+        ) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
+            let value = match query {
+                "PRAGMA foreign_keys" | "PRAGMA busy_timeout" => CatalogValue::Int(1),
+                "PRAGMA legacy_alter_table" => CatalogValue::Int(0),
+                "PRAGMA locking_mode" => CatalogValue::Text("normal".to_owned()),
+                "SELECT COUNT(*) FROM sqlite_master" => CatalogValue::Int(0),
+                _ => return Err(sqlx::Error::Protocol(format!("unexpected query {query}"))),
+            };
+            Ok(vec![vec![value]])
+        }
+    }
+
+    #[tokio::test]
+    async fn begin_exclusive_maps_only_lock_errors_and_keeps_the_driver_source() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        for code in [5, 6, 261, 517, 773, 262, 518, 10, 8, 14, 23, 1] {
+            let mut connection = FailingBegin { code };
+            let clock: &ApplyClock<'_> = &|| Utc::now();
+            let events: &mut ApplyEvents<'_> = &mut |_| Ok(());
+            let mut applier = Applier::new(&mut connection, Dialect::Sqlite, &[], clock, events)
+                .expect("empty plan chain");
+            let error = match applier.open().await {
+                Err(error) => error,
+                Ok(_) => panic!("BEGIN EXCLUSIVE unexpectedly succeeded for result {code}"),
+            };
+            match (code & 0xff, error) {
+                (
+                    5 | 6,
+                    ApplyError::Locked {
+                        source: Some(source),
+                        ..
+                    },
+                ) => {
+                    assert_eq!(
+                        source
+                            .as_database_error()
+                            .and_then(|error| error.code())
+                            .as_deref(),
+                        Some(code.to_string().as_str())
+                    );
+                }
+                (5 | 6, other) => panic!("SQLite result {code} mapped to {other:?}, want Locked"),
+                (_, ApplyError::Database(source)) => {
+                    assert_eq!(
+                        source
+                            .as_database_error()
+                            .and_then(|error| error.code())
+                            .as_deref(),
+                        Some(code.to_string().as_str())
+                    );
+                }
+                (_, other) => panic!("SQLite result {code} mapped to {other:?}, want Database"),
+            }
+        }
     }
 }
