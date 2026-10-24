@@ -72,6 +72,21 @@ pub fn equality_operator_allowed(op: &str) -> bool {
     EQUALITY_OPERATORS.contains(&op)
 }
 
+/// Maps the shared comparison names to the engine's operator names.
+pub fn comparison_operator(op: &str) -> Option<&'static str> {
+    Some(match op {
+        "" => "eq",
+        "ne" => "not_eq",
+        "gt" => "gt",
+        "lt" => "lt",
+        "ge" => "gte",
+        "le" => "lte",
+        "lk" => "contains",
+        "lb" => "contains_binary",
+        _ => return None,
+    })
+}
+
 #[cfg(test)]
 mod operator_tests {
     use super::operator_allowed_for_type;
@@ -91,6 +106,12 @@ mod operator_tests {
         }
         assert!(!super::equality_operator_allowed("gt"));
         assert!(super::equality_operator_allowed("not_in"));
+        for (operator, expected) in
+            [("", "eq"), ("ne", "not_eq"), ("gt", "gt"), ("lt", "lt"), ("ge", "gte"), ("le", "lte"), ("lk", "contains"), ("lb", "contains_binary")]
+        {
+            assert_eq!(super::comparison_operator(operator), Some(expected));
+        }
+        assert_eq!(super::comparison_operator("unknown"), None);
     }
 }
 

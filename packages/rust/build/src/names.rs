@@ -89,20 +89,6 @@ fn compare_op(w: &str) -> Option<&'static str> {
     })
 }
 
-fn engine_op(op: &str) -> &'static str {
-    match op {
-        "" => "eq",
-        "ne" => "not_eq",
-        "gt" => "gt",
-        "lt" => "lt",
-        "ge" => "gte",
-        "le" => "lte",
-        "lk" => "contains",
-        "lb" => "contains_binary",
-        _ => "between",
-    }
-}
-
 /// The operator table of the engine.
 fn op_allowed(c: &Field, op: &str) -> bool {
     if op.ends_with("_col") {
@@ -199,12 +185,12 @@ fn parse_key(m: &RuntimeModel, e: &Entity, ws: &[&str]) -> Result<ChainKey, Stri
 fn check_op(e: &Entity, c: &Field, k: ChainKey) -> Result<ChainKey, String> {
     let op = k.op;
     if !k.compare.is_empty() {
-        if !op_allowed(c, &format!("{}_col", engine_op(op))) || styled(c) {
+        if !op_allowed(c, &format!("{}_col", polyspec_orm_schema::dbspec::comparison_operator(op).unwrap_or("between"))) || styled(c) {
             return Err(format!("{}.{} cannot be compared with a column", e.name, c.name));
         }
         return Ok(k);
     }
-    let mut allowed = op_allowed(c, engine_op(op));
+    let mut allowed = op_allowed(c, polyspec_orm_schema::dbspec::comparison_operator(op).unwrap_or("between"));
     if op.is_empty() || op == "ne" {
         allowed = allowed || op_allowed(c, "is_null");
     }

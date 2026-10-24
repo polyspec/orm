@@ -655,19 +655,7 @@ impl Core {
 }
 
 fn predicate(key: &ChainKey, arg: Arg, single: bool) -> crate::Result<PredSpec> {
-    let op_of = |op: &str| -> &'static str {
-        match op {
-            "" => "eq",
-            "ne" => "not_eq",
-            "gt" => "gt",
-            "lt" => "lt",
-            "ge" => "gte",
-            "le" => "lte",
-            "lk" => "contains",
-            "lb" => "contains_binary",
-            _ => "eq",
-        }
-    };
+    let op_of = |op: &str| polyspec_orm_schema::dbspec::comparison_operator(op).unwrap_or("eq");
     let pred = |op: &'static str, value: PredValue| PredSpec { column: key.column.to_owned(), op, value };
     match key.op {
         "tuple" | "ne_tuple" => {
