@@ -51,6 +51,43 @@ trait TransactionFailureCases
         );
     }
 
+    // Requirements: INT-67.
+    public function testCallbackUnwindRollsBackAndReusesTheConnection(): void
+    {
+        $pdo = new ModelTestFailingPdo('sqlite::memory:');
+        $pdo->exec('CREATE TABLE transaction_unwind (value TEXT NOT NULL)');
+        $db = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
+        $failure = new RuntimeException('transaction callback abandoned its work');
+
+        try {
+            try {
+                $db->transaction(static function () use ($pdo, $failure): never {
+                    $pdo->exec("INSERT INTO transaction_unwind VALUES ('rolled back')");
+                    throw $failure;
+                }, retry: 0);
+                self::fail('the callback failure must escape after rollback');
+            } catch (RuntimeException $error) {
+                self::assertSame($failure, $error, 'callback unwind preserves the original failure');
+            }
+
+            self::assertSame(
+                [],
+                $pdo->query('SELECT value FROM transaction_unwind')->fetchAll(PDO::FETCH_COLUMN),
+                'the callback write is absent after rollback'
+            );
+            $db->transaction(static function () use ($pdo): void {
+                $pdo->exec("INSERT INTO transaction_unwind VALUES ('committed')");
+            }, retry: 0);
+            self::assertSame(
+                ['committed'],
+                $pdo->query('SELECT value FROM transaction_unwind')->fetchAll(PDO::FETCH_COLUMN),
+                'the same PDO connection works for the next transaction'
+            );
+        } finally {
+            $db->close();
+        }
+    }
+
     // Requirements: INT-72.
     public function testRollbackFaultIsConsumedAfterTransactionRollback(): void
     {
