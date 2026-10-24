@@ -2576,6 +2576,15 @@ static bool check_required_assignments(pctx *c, HashTable *ent, HashTable *set)
 /* The set with the derived blind-index assignments added (Planner::withBlindIndexes). */
 static HashTable *block_index_source(pctx *c, HashTable *ent, zend_string *target, HashTable *assignments);
 
+/* Resolves an assignment's declared column while retaining its validated assignment record. */
+static bool assignment_column(pctx *c, HashTable *ent, zval *assignment, HashTable **record, HashTable **column)
+{
+    ZVAL_DEREF(assignment);
+    *record = Z_ARRVAL_P(assignment);
+    *column = NULL;
+    return col_of(c, ent, gs(c, *record, "column"), column);
+}
+
 static zval *with_blind_indexes(pctx *c, HashTable *ent, HashTable *set)
 {
     zval *out = newlist(c);
@@ -2584,10 +2593,8 @@ static zval *with_blind_indexes(pctx *c, HashTable *ent, HashTable *set)
         lpush(out, a);
     } ZEND_HASH_FOREACH_END();
     ZEND_HASH_FOREACH_VAL(set, a) {
-        ZVAL_DEREF(a);
-        HashTable *ah = Z_ARRVAL_P(a);
-        HashTable *col = NULL;
-        if (!col_of(c, ent, gs(c, ah, "column"), &col)) {
+        HashTable *ah, *col;
+        if (!assignment_column(c, ent, a, &ah, &col)) {
             return NULL;
         }
         bool e = false;
@@ -2799,10 +2806,8 @@ static pstep *insert_step(pctx *c, HashTable *r)
     zval *vals = newlist(c);
     zval *a;
     ZEND_HASH_FOREACH_VAL(set, a) {
-        ZVAL_DEREF(a);
-        HashTable *ah = Z_ARRVAL_P(a);
-        HashTable *col = NULL;
-        if (!col_of(c, ent, gs(c, ah, "column"), &col)) {
+        HashTable *ah, *col;
+        if (!assignment_column(c, ent, a, &ah, &col)) {
             return NULL;
         }
         if (zend_string_equals(gs(c, col, "name"), identity) && !load) {
@@ -2935,10 +2940,8 @@ static pstep *insert_step(pctx *c, HashTable *r)
         zval *sets = newlist(c);
         zval *da;
         ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(dupz), da) {
-            ZVAL_DEREF(da);
-            HashTable *dah = Z_ARRVAL_P(da);
-            HashTable *col = NULL;
-            if (!col_of(c, ent, gs(c, dah, "column"), &col)) {
+            HashTable *dah, *col;
+            if (!assignment_column(c, ent, da, &dah, &col)) {
                 return NULL;
             }
             zend_string *qc = quote(c, gs(c, dah, "column"));
@@ -2990,10 +2993,8 @@ static bool render_sets(pctx *c, pbinds *b, HashTable *ent, HashTable *set, zval
 {
     zval *a;
     ZEND_HASH_FOREACH_VAL(set, a) {
-        ZVAL_DEREF(a);
-        HashTable *ah = Z_ARRVAL_P(a);
-        HashTable *col = NULL;
-        if (!col_of(c, ent, gs(c, ah, "column"), &col)) {
+        HashTable *ah, *col;
+        if (!assignment_column(c, ent, a, &ah, &col)) {
             return false;
         }
         zend_string *qc = quote(c, gs(c, ah, "column"));
