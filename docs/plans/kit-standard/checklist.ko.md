@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: be0bf876ea75db24ce419f23f5de89e1844843e386fea8422545f25efef10cbe -->
+<!-- source-sha256: f8670a94d2c6c617789b54f3d1e81c0c26c96bc29a518344b5e8940ad1b6ee1a -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -239,7 +239,7 @@
 | KSTD-5-68 | 값 바인딩 전에 0..6 범위를 벗어난 시간 정밀도를 거부한다 | packages/rust/orm/src/db.rs; packages/rust/orm/src/bind_check.rs; packages/rust/orm/tests/unit/time_precision.rs; Makefile; contracts/check-inputs.json | `make rust-time-precision-check` | [o] |
 | KSTD-5-69 | commit task의 panic payload를 포함한다 | packages/rust/build/src/catalog/mutation_finish.rs:40 | `make rust-check` | [-] 원인: 현재 코드는 Tokio 1.53.1 JoinError를 직접 format하며 Display는 static str와 String panic payload를 포함하고 취소를 분류한다. 불투명한 비문자열 payload를 노출하라는 요구는 없다. 런타임: 실행하지 않음. 근거: var/evidence/KSTD-5-69/audit.md. |
 | KSTD-5-70 | CARGO_MANIFEST_DIR을 기준으로 상대 build 경로를 해석한다 | packages/rust/build/src/lib.rs:146 | `make rust-build-environment-check` | [o] |
-| KSTD-5-71 | Rust codec, driver, markdown와 build 파일의 map_err(\|_\|) 클로저가 원인을 유지하게 한다 | packages/rust/orm/src/codec.rs; packages/rust/orm/src/driver.rs (bad()); packages/rust/orm/src/markdown.rs:573,579; packages/rust/build/src/catalog/*; packages/rust/build/src/tool_db/* | `make rust-check` | [ ] |
+| KSTD-5-71 | Rust codec, driver, markdown와 build의 오류 변환에서 원인을 보존한다. 증거: 기존 rust-causes-check GREEN은 ORM 6/6, build 14/14였으며 재실행하지 않았다. 공식 현재 트리 RED는 97196f6a^의 read_only.rs 수정 전 blob을 사용했고 parser_failure_preserves_native_cause_message만 실패했다 (build 13/14). var/plan/KSTD-5-71.json 및 var/parallel/KSTD-5-71-current-proof/manifest.md를 참조한다. 다음 네 native database assertion은 아직 실행되지 않았다: tool_cells::physical_tool_cells_reject_loss_without_substituting_values (SQLite 잘못된 UTF-8, MySQL unsigned overflow); grid_numbers::grid_numbers_preserve_native_bits_and_unsigned_range (MySQL unsigned conversion 원인); grid_decimals::finite_grid_decimals_preserve_precision_and_scale (PostgreSQL NaN 원인); grid_temporal::temporal_grid_cells_follow_the_declared_precision (PostgreSQL date/timestamp infinity 원인). 소스 수정은 있으나 이 실행들이 완료되어야 항목을 닫을 수 있다. | packages/rust/orm/src/codec.rs; packages/rust/orm/src/driver.rs (bad()); packages/rust/orm/src/markdown.rs:573,579; packages/rust/build/src/catalog/*; packages/rust/build/src/tool_db/* | `make rust-causes-check` | [~] |
 | KSTD-5-72 | Go Entity.Value 계약은 (any, bool)을 반환하므로 무시된 오류가 없다 | packages/go/orm/core.go:30; packages/go/generator/gen_go.go:457,493-502; packages/go/orm/model.go:122 | Independent source audit; no tests run (var/parallel/KSTD-5-72/audit.md) | [-] 원인: Entity.Value는 오류가 아니라 (any, bool)을 반환하며, 독립 감사에서 무시된 존재 여부 값으로 인한 동작 결함을 입증하지 못했다. |
 | KSTD-5-73 | TypeScript decipher에서 AES 인증 실패만 잡는다 | packages/ts/src/codec.ts; packages/ts/tests/codec-aes-errors.test.mjs; Makefile; contracts/check-inputs.json | `make ts-aes-auth-check` | [o] |
 | KSTD-5-74 | TypeScript save에서 키 없음 OrmError만 잡는다 | packages/ts/src/model.ts; packages/ts/tests/save-key-errors.test.mjs; Makefile; contracts/check-inputs.json | `var/tools/bin/node --test packages/ts/tests/save-key-errors.test.mjs` | [o] |
