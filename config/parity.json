@@ -1317,7 +1317,8 @@
       "id": "dbspec-introspect-round-trip",
       "kind": "feature",
       "requirements": [
-        "DIA-133"
+        "DIA-133",
+        "DIA-198"
       ],
       "bindings": [
         {
@@ -1365,87 +1366,29 @@
             "${ORM_CHECKOUT}",
             "dbspec-introspect-python-check"
           ]
-        }
-      ]
-    },
-    {
-      "id": "dbspec-introspect-query-count",
-      "kind": "feature",
-      "requirements": [
-        "DIA-198"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/engine/dbspec/introspect_query_count_test.go",
-          "id": "TestQueryCountIsIndependentOfSQLiteTableCount"
         },
         {
-          "implementation": "go",
-          "test": "packages/go/internal/dialects/introspect_physical_test.go",
-          "id": "TestIntrospectRoundTrip",
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec-introspect-round-trip.mjs",
+          "id": "mysql.introspect.ddl_types_and_defaults",
           "command": [
             "make",
             "-s",
             "-C",
             "${ORM_CHECKOUT}",
-            "dbspec-introspect-check"
-          ]
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/DbspecIntrospectQueryCountTest.php",
-          "id": "DbspecIntrospectQueryCountTest::testSQLiteMemoryCountIndependentOfTableCount"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/DbspecIntrospectTest.php",
-          "id": "DbspecIntrospectTest::testRoundTrip"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DbspecIntrospectNativeTest.php",
-          "id": "DbspecIntrospectNativeTest::testSQLiteMemoryCountIndependentOfTableCount",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "dbspec-introspect-php-extension-query-count-check"
-          ]
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php/tests/DbspecIntrospectTest.php",
-          "id": "DbspecIntrospectTest::testRoundTrip",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "dbspec-introspect-php-extension-check"
+            "dbspec-introspect-ts-check"
           ]
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-introspect-query-count.mjs",
-          "id": "SQLite memory catalog query count is independent of table count"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_dbspec_introspect_query_count.py",
-          "id": "test_sqlite_memory_count_independent_of_table_count"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/dbspec_introspect_queries.py",
-          "id": "test_sqlite",
+          "test": "packages/ts/tests/dbspec-introspect-round-trip.mjs",
+          "id": "introspection query count per dialect",
           "command": [
             "make",
             "-s",
             "-C",
             "${ORM_CHECKOUT}",
-            "dbspec-introspect-python-check"
+            "dbspec-introspect-ts-check"
           ]
         },
         {
@@ -1471,23 +1414,52 @@
             "${ORM_CHECKOUT}",
             "dbspec-introspect-python-check"
           ]
+        }
+      ]
+    },
+    {
+      "id": "dbspec-introspect-query-count",
+      "kind": "feature",
+      "requirements": [
+        "DIA-198"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/engine/dbspec/introspect_query_count_test.go",
+          "id": "TestQueryCountIsIndependentOfSQLiteTableCount"
         },
         {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/dbspec_introspect_query_count.rs",
-          "id": "sqlite_memory_query_count_is_independent_of_table_count"
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecIntrospectQueryCountTest.php",
+          "id": "DbspecIntrospectQueryCountTest::testSQLiteMemoryCountIndependentOfTableCount"
         },
         {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/dbspec_introspect.rs",
-          "id": "introspect_round_trip",
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecIntrospectNativeTest.php",
+          "id": "DbspecIntrospectNativeTest::testSQLiteMemoryCountIndependentOfTableCount",
           "command": [
             "make",
             "-s",
             "-C",
             "${ORM_CHECKOUT}",
-            "dbspec-introspect-rust-check"
+            "dbspec-introspect-php-extension-query-count-check"
           ]
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec-introspect-query-count.mjs",
+          "id": "SQLite memory catalog query count is independent of table count"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_introspect_query_count.py",
+          "id": "test_sqlite_memory_count_independent_of_table_count"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/dbspec_introspect_query_count.rs",
+          "id": "sqlite_memory_query_count_is_independent_of_table_count"
         }
       ]
     },
