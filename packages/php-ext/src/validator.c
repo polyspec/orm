@@ -743,6 +743,8 @@ static bool ref_resolve(vctx *c, const vat *at, HashTable *ref, HashTable **out)
     return true;
 }
 
+static void append_conflict_candidate(vctx *c, zval *candidates, const char *label, HashTable *columns);
+
 /* Validator::conflictKey: the columns of the one key that an insert with on_duplicate conflicts on. */
 static bool conflict_key(vctx *c, HashTable *ent, HashTable *set, zval *ret)
 {
@@ -783,30 +785,7 @@ static bool conflict_key(vctx *c, HashTable *ent, HashTable *set, zval *ret)
     }
     ZEND_HASH_FOREACH_END();
     if (pk_meets) {
-        smart_str b = {0};
-        smart_str_appends(&b, "primary key (");
-        zval *x;
-        bool first = true;
-        ZEND_HASH_FOREACH_VAL(arr_or_empty(pk), x)
-        {
-            if (!first) {
-                smart_str_appends(&b, ", ");
-            }
-            smart_str_appends(&b, sv(c, x));
-            first = false;
-        }
-        ZEND_HASH_FOREACH_END();
-        smart_str_appendc(&b, ')');
-        smart_str_0(&b);
-        const char *name = kstrl(c, ZSTR_VAL(b.s), ZSTR_LEN(b.s));
-        smart_str_free(&b);
-        zval e, cz;
-        array_init(&e);
-        add_assoc_string(&e, "name", (char *)name);
-        ZVAL_ARR(&cz, pk);
-        Z_TRY_ADDREF(cz);
-        add_assoc_zval(&e, "columns", &cz);
-        zend_hash_next_index_insert(Z_ARRVAL_P(cands), &e);
+        append_conflict_candidate(c, cands, "primary key (", pk);
     }
     zval *uv;
     zend_string *uk;
@@ -816,30 +795,7 @@ static bool conflict_key(vctx *c, HashTable *ent, HashTable *set, zval *ret)
         (void)uidx;
         (void)uk;
         HashTable *uh = ha(uv);
-        smart_str b = {0};
-        smart_str_appends(&b, "unique (");
-        zval *x;
-        bool first = true;
-        ZEND_HASH_FOREACH_VAL(arr_or_empty(uh), x)
-        {
-            if (!first) {
-                smart_str_appends(&b, ", ");
-            }
-            smart_str_appends(&b, sv(c, x));
-            first = false;
-        }
-        ZEND_HASH_FOREACH_END();
-        smart_str_appendc(&b, ')');
-        smart_str_0(&b);
-        const char *name = kstrl(c, ZSTR_VAL(b.s), ZSTR_LEN(b.s));
-        smart_str_free(&b);
-        zval e, cz;
-        array_init(&e);
-        add_assoc_string(&e, "name", (char *)name);
-        ZVAL_ARR(&cz, uh);
-        Z_TRY_ADDREF(cz);
-        add_assoc_zval(&e, "columns", &cz);
-        zend_hash_next_index_insert(Z_ARRVAL_P(cands), &e);
+        append_conflict_candidate(c, cands, "unique (", uh);
     }
     ZEND_HASH_FOREACH_END();
 
@@ -2045,6 +2001,35 @@ static bool assignment_param_uses(vctx *c, HashTable *out, HashTable *ent, HashT
     }
     ZEND_HASH_FOREACH_END();
     return true;
+}
+
+/* Adds a named primary-key or unique-key candidate with its ordered columns. */
+static void append_conflict_candidate(vctx *c, zval *candidates, const char *label, HashTable *columns)
+{
+    smart_str name = {0};
+    smart_str_appends(&name, label);
+    zval *column;
+    bool first = true;
+    ZEND_HASH_FOREACH_VAL(arr_or_empty(columns), column)
+    {
+        if (!first) {
+            smart_str_appends(&name, ", ");
+        }
+        smart_str_appends(&name, sv(c, column));
+        first = false;
+    }
+    ZEND_HASH_FOREACH_END();
+    smart_str_appendc(&name, ')');
+    smart_str_0(&name);
+    const char *candidate_name = kstrl(c, ZSTR_VAL(name.s), ZSTR_LEN(name.s));
+    smart_str_free(&name);
+    zval candidate, column_list;
+    array_init(&candidate);
+    add_assoc_string(&candidate, "name", (char *)candidate_name);
+    ZVAL_ARR(&column_list, columns);
+    Z_TRY_ADDREF(column_list);
+    add_assoc_zval(&candidate, "columns", &column_list);
+    zend_hash_next_index_insert(Z_ARRVAL_P(candidates), &candidate);
 }
 
 static const char *function_type(vctx *c, const char *name, HashTable *col)
