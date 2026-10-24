@@ -688,12 +688,7 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
     }
 
     async fn recover_chain(&mut self) -> Result<(), ApplyError> {
-        let position = self.position().await?;
-        if position == 0 {
-            return Ok(());
-        }
-        let p = self.chain[position - 1];
-        let (state, step) = self.row_of(p);
+        let Some((p, state, step)) = self.last_history_plan().await? else { return Ok(()) };
         if state == APPLIED || state == DONE {
             return Ok(());
         }
@@ -709,12 +704,7 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
     }
 
     async fn rollback_chain(&mut self) -> Result<(), ApplyError> {
-        let position = self.position().await?;
-        if position == 0 {
-            return Ok(());
-        }
-        let p = self.chain[position - 1];
-        let (state, step) = self.row_of(p);
+        let Some((p, state, step)) = self.last_history_plan().await? else { return Ok(()) };
         let steps = self.steps(p)?;
         let applied = state == APPLIED || state == DONE;
         let k = if applied {
@@ -771,6 +761,13 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
             self.finalize_from(p, &steps, start).await?;
         }
         Ok(())
+    }
+
+    async fn last_history_plan(&mut self) -> Result<Option<(&'a Plan, String, usize)>, ApplyError> {
+        let position = self.position().await?;
+        let Some(plan) = position.checked_sub(1).and_then(|index| self.chain.get(index).copied()) else { return Ok(None) };
+        let (state, step) = self.row_of(plan);
+        Ok(Some((plan, state, step)))
     }
 
     fn row_of(&self, p: &Plan) -> (String, usize) {
