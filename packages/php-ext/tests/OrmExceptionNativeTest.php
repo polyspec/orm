@@ -133,7 +133,9 @@ final class OrmExceptionNativeTest extends TestCase
         $driverError = new \PDOException('driver operation failed');
         $driverError->errorInfo = ['HY000', 1205, 'lock wait timeout'];
         $error = OrmException::fromDriver($driverError, 'mysql', new class extends \PDO {
-            public function __construct() {}
+            public function __construct()
+            {
+            }
         });
 
         Assert::assertSame(Code::CANCELED, $error->code_);
