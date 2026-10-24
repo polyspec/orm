@@ -1,7 +1,7 @@
 //! Explicit transactional input locator for unreturned expression-default keys.
 //! No key/default evaluation, schema changes or automatic retry.
 use super::{
-    mutation::{bind, cell, qualified},
+    mutation::{cell, qualified},
     page::quote,
     row_snapshot, TableMetadata,
 };
@@ -52,13 +52,6 @@ impl Locator {
                 return Err("ROW_WRITE_MISMATCH: locator values differ from requested values".into());
             }
         }
-        metadata
-            .primary_key
-            .iter()
-            .map(|name| {
-                let index = metadata.columns.iter().position(|column| column.name == *name).unwrap();
-                bind(&result.rows[0][index])
-            })
-            .collect()
+        row_snapshot::key_params(metadata, &result.rows[0])
     }
 }

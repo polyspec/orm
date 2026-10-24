@@ -1,6 +1,6 @@
 //! Recover statement-owned AUTO_INCREMENT and server-resolved literal defaults.
 use super::{
-    mutation::{bind, cell, qualified},
+    mutation::{cell, qualified},
     page::quote,
     row_snapshot, TableMetadata,
 };
@@ -58,12 +58,5 @@ pub(super) async fn execute(connection: &mut Conn, metadata: &TableMetadata, sql
             return Err("ROW_WRITE_MISMATCH: inserted values differ".into());
         }
     }
-    metadata
-        .primary_key
-        .iter()
-        .map(|name| {
-            let index = metadata.columns.iter().position(|column| column.name == *name).unwrap();
-            bind(&result.rows[0][index])
-        })
-        .collect()
+    row_snapshot::key_params(metadata, &result.rows[0])
 }

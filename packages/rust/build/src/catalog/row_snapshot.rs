@@ -1,6 +1,6 @@
 //! Checked original values for optimistic row editing, not write authorization.
 use super::{TableKind, TableMetadata, TablePage, metadata};
-use crate::tool_db::{GridCell, GridQueryResult};
+use crate::tool_db::{GridCell, GridQueryResult, P};
 use sha2::{Digest, Sha256};
 use std::{collections::HashSet, io::Write};
 
@@ -74,6 +74,17 @@ pub(super) fn projection(metadata: &TableMetadata, result: &GridQueryResult) -> 
     }
     Ok(())
 }
+pub(super) fn key_params(metadata: &TableMetadata, cells: &[GridCell]) -> Result<Vec<P>, String> {
+    metadata
+        .primary_key
+        .iter()
+        .map(|name| {
+            let index = metadata.columns.iter().position(|column| column.name == *name).unwrap();
+            super::mutation::bind(&cells[index])
+        })
+        .collect()
+}
+
 pub(super) fn row(metadata: &TableMetadata, cells: &[GridCell]) -> Result<(), String> {
     if cells.len() != metadata.columns.len() {
         return Err(invalid());
@@ -186,6 +197,24 @@ mod cause_message_tests {
             order_by: vec!["id".into()],
             has_more: false,
         }
+    }
+
+    #[test]
+    fn primary_key_parameters_follow_declared_key_order() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let mut page = fixture();
+        page.metadata.columns.push(super::super::TableColumnMetadata {
+            name: "slug".into(),
+            native_type: "TEXT".into(),
+            nullable: false,
+            generated: false,
+            automatic_key: false,
+            default_expression: None,
+            expression_default: false,
+        });
+        page.metadata.primary_key = vec!["slug".into(), "id".into()];
+        let keys = key_params(&page.metadata, &[GridCell::Integer(7), GridCell::Text("row-key".into())]).unwrap();
+        assert!(matches!(keys.as_slice(), [P::S(slug), P::I(7)] if slug == "row-key"));
     }
 
     #[test]

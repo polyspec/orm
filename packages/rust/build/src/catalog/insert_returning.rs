@@ -1,5 +1,5 @@
 //! Bounded typed INSERT RETURNING identities on PostgreSQL/SQLite.
-use super::{mutation::bind, page::quote, row_snapshot, TableMetadata};
+use super::{page::quote, row_snapshot, TableMetadata};
 use crate::tool_db::{Conn, QueryLimits, P};
 
 pub(super) async fn execute(connection: &mut Conn, metadata: &TableMetadata, sql: &str, params: &[P], dialect: &str) -> Result<Vec<P>, String> {
@@ -18,12 +18,5 @@ pub(super) async fn execute(connection: &mut Conn, metadata: &TableMetadata, sql
         return Err("ROW_WRITE_MISMATCH: expected one returned insert row".into());
     }
     row_snapshot::row(metadata, &result.rows[0])?;
-    metadata
-        .primary_key
-        .iter()
-        .map(|name| {
-            let index = metadata.columns.iter().position(|column| column.name == *name).unwrap();
-            bind(&result.rows[0][index])
-        })
-        .collect::<Result<Vec<_>, _>>()
+    row_snapshot::key_params(metadata, &result.rows[0])
 }
