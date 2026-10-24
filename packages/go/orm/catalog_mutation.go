@@ -98,10 +98,10 @@ func (s *catalogSession) lookup(metadata CatalogTableMetadata, keys []any, lock 
 	return catalogConvert(raw, catalogNativeTypes(metadata))
 }
 
-// InsertRow inserts one row with explicit primary-key values inside a writable transaction. It rejects an existing key,
-// writes with bound parameters, requires exactly one affected row and re-reads the row by its key before it commits.
-// Every supplied value must read back exactly. Automatic and expression-default keys are not supported and fail when
-// the key is not given.
+// InsertRow inserts one row inside a writable transaction. An omitted automatic primary key is read from the database
+// using RETURNING or the MySQL insert acknowledgement; other omitted primary keys are rejected. It rejects an existing
+// explicit key, writes with bound parameters, requires exactly one inserted row and re-reads the row by its key before
+// it commits. Every supplied value must read back exactly.
 func (c *CatalogConnection) InsertRow(ctx context.Context, declared CatalogTableMetadata, values []CatalogAssignment) (CatalogMutationResult, error) {
 	keyIndexes, err := catalogDescriptor(declared)
 	if err != nil {
@@ -116,10 +116,15 @@ func (c *CatalogConnection) InsertRow(ctx context.Context, declared CatalogTable
 		provided[change.index] = change.value
 	}
 	keys := make([]any, len(keyIndexes))
+	var omittedAutomaticKeys []int
 	for i, index := range keyIndexes {
 		value, ok := provided[index]
 		if !ok {
-			return CatalogMutationResult{}, catalogErr("ROW_INSERT_INVALID", "explicit primary-key value of %q is required", declared.Columns[index].Name)
+			if !declared.Columns[index].AutomaticKey {
+				return CatalogMutationResult{}, catalogErr("ROW_INSERT_INVALID", "explicit primary-key value of %q is required", declared.Columns[index].Name)
+			}
+			omittedAutomaticKeys = append(omittedAutomaticKeys, i)
+			continue
 		}
 		keys[i] = value
 	}
@@ -130,12 +135,24 @@ func (c *CatalogConnection) InsertRow(ctx context.Context, declared CatalogTable
 				return CatalogMutationResult{}, err
 			}
 		}
-		existing, err := s.lookup(declared, keys, true)
-		if err != nil {
-			return CatalogMutationResult{}, err
+		if len(omittedAutomaticKeys) != 0 && c.dialect == "mysql" {
+			if len(omittedAutomaticKeys) != 1 {
+				return CatalogMutationResult{}, catalogErr(catalogCodeRowUnsupport, "multiple omitted AUTO_INCREMENT primary-key columns")
+			}
+			// Retain the table metadata lock through insertion and readback, as Rust does for a
+			// database-generated key whose value cannot be checked before the write.
+			if _, err := s.queryRaw("SELECT 1 FROM "+catalogQualified(declared.Table, c.dialect)+" LIMIT 0 FOR UPDATE", nil, 1, 4096); err != nil {
+				return CatalogMutationResult{}, err
+			}
 		}
-		if len(existing) != 0 {
-			return CatalogMutationResult{}, catalogErr(catalogCodeRowConflict, "insertion key already exists")
+		if len(omittedAutomaticKeys) == 0 {
+			existing, err := s.lookup(declared, keys, true)
+			if err != nil {
+				return CatalogMutationResult{}, err
+			}
+			if len(existing) != 0 {
+				return CatalogMutationResult{}, catalogErr(catalogCodeRowConflict, "insertion key already exists")
+			}
 		}
 		descriptor, err := s.describe(declared.Table)
 		if err != nil {
@@ -159,12 +176,60 @@ func (c *CatalogConnection) InsertRow(ctx context.Context, declared CatalogTable
 		}
 		query := "INSERT INTO " + catalogQualified(descriptor.Table, c.dialect) + " (" + strings.Join(names, ",") + ") VALUES (" +
 			strings.Join(placeholders, ",") + ")"
-		affected, err := s.exec(query, args)
-		if err != nil {
-			return CatalogMutationResult{}, err
-		}
-		if affected != 1 {
-			return CatalogMutationResult{}, catalogErr(catalogCodeRowWrite, "expected exactly one inserted row, got %d", affected)
+		if len(omittedAutomaticKeys) == 0 {
+			affected, err := s.exec(query, args)
+			if err != nil {
+				return CatalogMutationResult{}, err
+			}
+			if affected != 1 {
+				return CatalogMutationResult{}, catalogErr(catalogCodeRowWrite, "expected exactly one inserted row, got %d", affected)
+			}
+		} else if c.dialect == "mysql" {
+			result, err := s.conn.ExecContext(ctx, query, args...)
+			if err != nil {
+				return CatalogMutationResult{}, mapDriverErr(err)
+			}
+			affected, err := result.RowsAffected()
+			if err != nil {
+				return CatalogMutationResult{}, mapDriverErr(err)
+			}
+			if affected != 1 {
+				return CatalogMutationResult{}, catalogErr(catalogCodeRowWrite, "expected exactly one inserted row, got %d", affected)
+			}
+			identity, err := result.LastInsertId()
+			if err != nil {
+				return CatalogMutationResult{}, mapDriverErr(err)
+			}
+			if identity <= 0 {
+				return CatalogMutationResult{}, catalogErr(catalogCodeRowWrite, "insert acknowledgement did not return a positive generated identity")
+			}
+			keys[omittedAutomaticKeys[0]] = identity
+		} else {
+			returning := "INSERT INTO " + catalogQualified(descriptor.Table, c.dialect) + " (" + strings.Join(names, ",") + ") VALUES (" + strings.Join(placeholders, ",") + ") RETURNING " + catalogColumnList(descriptor, c.dialect)
+			raw, err := s.queryRaw(returning, args, 2, catalogPageBytes)
+			if err != nil {
+				return CatalogMutationResult{}, err
+			}
+			if err := catalogSameNames(raw.names, descriptor.Columns); err != nil {
+				return CatalogMutationResult{}, err
+			}
+			returned, err := catalogConvert(raw, catalogNativeTypes(descriptor))
+			if err != nil {
+				return CatalogMutationResult{}, err
+			}
+			if len(returned) != 1 {
+				return CatalogMutationResult{}, catalogErr(catalogCodeRowWrite, "expected exactly one returned insert row, got %d", len(returned))
+			}
+			if err := catalogCheckCells(descriptor, returned[0]); err != nil {
+				return CatalogMutationResult{}, err
+			}
+			if _, err := catalogRevision(descriptor, returned[0]); err != nil {
+				return CatalogMutationResult{}, err
+			}
+			for _, keyIndex := range omittedAutomaticKeys {
+				columnIndex := keyIndexes[keyIndex]
+				keys[keyIndex] = returned[0][columnIndex]
+			}
 		}
 		after, err := s.lookup(descriptor, keys, false)
 		if err != nil {
