@@ -6,13 +6,10 @@ namespace Polyspec\Orm\Dbspec;
 
 final class Diagram
 {
+    use NamedComments;
+
     /** @var list<Placement> */
     public array $placements = [];
     /** @var list<string> Comment lines before the closing brace. */
     public array $closingComments = [];
-
-    /** @param list<string> $comments */
-    public function __construct(public string $name, public array $comments = [])
-    {
-    }
 }
