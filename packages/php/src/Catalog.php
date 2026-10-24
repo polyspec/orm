@@ -155,12 +155,7 @@ final class Catalog
      */
     private static function mysqlTarget(string $dsn, ?string $sslCa): array
     {
-        $parts = parse_url($dsn);
-        if ($parts === false) {
-            throw new OrmException(Code::CONFIG, 'invalid DSN URI');
-        }
-        $query = [];
-        parse_str((string) ($parts['query'] ?? ''), $query);
+        [$parts, $query] = DsnUrl::parse($dsn, 'mysql');
         return [
             'host' => isset($parts['host']) ? $parts['host'] : null,
             'port' => $parts['port'] ?? 3306,

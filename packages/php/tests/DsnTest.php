@@ -10,8 +10,10 @@ use RuntimeException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
+use Polyspec\Orm\Catalog;
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
+use Polyspec\Orm\DsnUrl;
 use Polyspec\Orm\Orm;
 use Polyspec\Orm\OrmException;
 
@@ -45,6 +47,31 @@ final class DsnTest extends TestCase
             self::assertSame(Code::CONFIG, $error->code_);
             self::assertStringContainsString('statement timeout', $error->getMessage());
         }
+    }
+
+    public function testSharedDsnUrlPartsPreserveEmptyAuthorityRules(): void
+    {
+        [$parts, $query] = DsnUrl::parse('postgres:///orm_example?host=%2Ftmp&timezone=UTC', 'postgres');
+        self::assertSame('localhost', $parts['host']);
+        self::assertSame(['host' => '/tmp', 'timezone' => 'UTC'], $query);
+
+        $target = (new \ReflectionMethod(Catalog::class, 'mysqlTarget'))->invoke(
+            null,
+            'mysql:///orm_example?socket=%2Ftmp%2Fmysql.sock',
+            null
+        );
+        self::assertSame(
+            [
+                'host' => 'localhost',
+                'port' => 3306,
+                'user' => '',
+                'password' => '',
+                'database' => 'orm_example',
+                'socket' => '/tmp/mysql.sock',
+                'sslCa' => null,
+            ],
+            $target
+        );
     }
 
     /** @return iterable<string, array{string}> */

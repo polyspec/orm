@@ -235,13 +235,7 @@ final class Orm
                 "unsupported DSN scheme $driver; want mysql, postgres, sqlite, or markdown"
             );
         }
-        $scheme = substr($dsn, 0, strlen($driver));
-        $parts = parse_url(str_replace($scheme . ':///', $scheme . '://localhost/', $dsn));
-        if ($parts === false) {
-            throw new OrmException(Code::CONFIG, 'invalid DSN URI');
-        }
-        $query = [];
-        parse_str((string) ($parts['query'] ?? ''), $query);
+        [$parts, $query] = DsnUrl::parse($dsn, $driver);
         $accepted = self::DSN_PARAMETERS[$driver];
         foreach (explode('&', (string) ($parts['query'] ?? '')) as $pair) {
             $key = urldecode(explode('=', $pair, 2)[0]);
