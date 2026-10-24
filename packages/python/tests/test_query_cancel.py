@@ -56,7 +56,9 @@ class QueryCancelTest(unittest.IsolatedAsyncioTestCase):
         class OwnerLoopFuture(asyncio.Future):
             def cancelled(self):
                 if threading.get_ident() != owner_thread:
-                    raise AssertionError("Future state was read outside its loop thread")
+                    raise AssertionError(
+                        "Future state was read outside its loop thread"
+                    )
                 return super().cancelled()
 
         future = OwnerLoopFuture(loop=loop)
@@ -123,15 +125,18 @@ class QueryCancelTest(unittest.IsolatedAsyncioTestCase):
         with patch.dict(sys.modules, {"pymysql": SimpleNamespace(connect=connect)}):
             mysql.cancel_query()
 
-        self.assertEqual(calls, [
-            {
-                "host": "db.test",
-                "user": "orm",
-                "connect_timeout": 10,
-                "read_timeout": 10,
-                "write_timeout": 10,
-            }
-        ])
+        self.assertEqual(
+            calls,
+            [
+                {
+                    "host": "db.test",
+                    "user": "orm",
+                    "connect_timeout": 10,
+                    "read_timeout": 10,
+                    "write_timeout": 10,
+                }
+            ],
+        )
         self.assertEqual(statements, ["KILL QUERY 73"])
         self.assertTrue(control.closed)
 

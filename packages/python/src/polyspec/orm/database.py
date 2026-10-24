@@ -1076,31 +1076,23 @@ class _FutureCancellation:
             current_loop = None
         if current_loop is self._loop:
             return callback()
-        done = threading.Event()
-        result = []
 
-        def invoke():
-            try:
-                result.append(callback())
-            except BaseException as error:
-                result.append(error)
-            finally:
-                done.set()
+        async def invoke():
+            return callback()
 
+        coroutine = invoke()
         try:
-            self._loop.call_soon_threadsafe(invoke)
+            result = asyncio.run_coroutine_threadsafe(coroutine, self._loop)
         except RuntimeError as error:
+            coroutine.close()
             raise OrmError(
                 codes.CONFIG, "the cancellation Future's event loop is closed", error
             ) from error
-        done.wait()
-        value = result[0]
-        if isinstance(value, BaseException):
-            raise value
-        return value
+        return result.result()
 
     def start(self, connection) -> _ActiveStatement:
         operation = _ActiveStatement(connection)
+
         def admit():
             if self._future.cancelled():
                 self._mark_cancelled()
