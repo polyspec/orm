@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm;
 
-use Polyspec\Orm\Internal\ArrayValueRows;
+use Polyspec\Orm\Internal\ArrayRows;
 
 /**
  * An ordered set of models keyed by primary key, key column, or key callback.
@@ -16,6 +16,8 @@ use Polyspec\Orm\Internal\ArrayValueRows;
  */
 final class Collection implements \IteratorAggregate, \Countable, \JsonSerializable
 {
+    use ArrayRows;
+
     /** @var array<string, array{0: int|string|bool|Bytes|\DateTimeInterface, 1: TModel}> */
     private array $items = [];
     /** @var array<string, mixed> */
@@ -178,12 +180,6 @@ final class Collection implements \IteratorAggregate, \Countable, \JsonSerializa
                 $m->deleteRow($recursive);
             }
         });
-    }
-
-    /** @return list<array<string, mixed>> */
-    public function toArray(): array
-    {
-        return ArrayValueRows::rows($this->all());
     }
 
     /** The models as a JSON array of Model::toJson texts. */

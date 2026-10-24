@@ -7,6 +7,7 @@ namespace Polyspec\Orm\Tests;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Code;
+use Polyspec\Orm\Collection;
 use Polyspec\Orm\Db;
 use Polyspec\Orm\GroupRow;
 use Polyspec\Orm\GroupRows;
@@ -18,6 +19,17 @@ final class GroupRowsTest extends TestCase
 {
     public function testOwner(): void
     {
+        foreach ([Collection::class, GroupRows::class] as $class) {
+            $method = new \ReflectionMethod($class, 'toArray');
+            self::assertTrue($method->isPublic(), "$class::toArray is not public");
+            self::assertSame([], $method->getParameters(), "$class::toArray accepts arguments");
+            self::assertSame('array', $method->getReturnType()?->getName(), "$class::toArray return type changed");
+            self::assertSame(
+                $class,
+                $method->getDeclaringClass()->getName(),
+                "$class::toArray is not declared on the class"
+            );
+        }
         $row = new GroupRow([['is_close', false], ['row_count', 3]]);
         self::assertSame(3, $row->count(), 'group result lost its count');
         self::assertFalse($row->value('is_close'), 'group result lost a selected value');

@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm;
 
-use Polyspec\Orm\Internal\ArrayValueRows;
+use Polyspec\Orm\Internal\ArrayRows;
 
 /** Grouped values in result order, without partial model rows. */
 final readonly class GroupRows implements \Countable, \IteratorAggregate, \JsonSerializable
 {
+    use ArrayRows;
+
     /** @param list<GroupRow> $rows */
     public function __construct(private array $rows)
     {
@@ -34,12 +36,6 @@ final readonly class GroupRows implements \Countable, \IteratorAggregate, \JsonS
     public function getIterator(): \Traversable
     {
         yield from $this->rows;
-    }
-
-    /** @return list<array<string, mixed>> */
-    public function toArray(): array
-    {
-        return ArrayValueRows::rows($this->rows);
     }
 
     public function jsonSerialize(): array
