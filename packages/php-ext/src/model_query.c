@@ -532,6 +532,27 @@ static bool query_make_frame(zval *model, zval *outer, zval *frame)
     return EG(exception) == NULL;
 }
 
+static bool query_execute_with_frame(zval *model, zval *request, zval *frame, zval *query)
+{
+    ZVAL_UNDEF(query);
+    zend_call_method(Z_OBJ_P(model), Z_OBJCE_P(model), NULL, "query", sizeof("query") - 1,
+        query, 2, request, frame);
+    zval_ptr_dtor(frame);
+    ZVAL_UNDEF(frame);
+    if (EG(exception) != NULL) {
+        if (Z_TYPE_P(query) != IS_UNDEF) zval_ptr_dtor(query);
+        ZVAL_UNDEF(query);
+        return false;
+    }
+    if (Z_TYPE_P(query) != IS_ARRAY) {
+        if (Z_TYPE_P(query) != IS_UNDEF) zval_ptr_dtor(query);
+        ZVAL_UNDEF(query);
+        zend_throw_error(NULL, "Model::query() must return an array");
+        return false;
+    }
+    return true;
+}
+
 ZEND_METHOD(Polyspec_Orm_Model, relationIr)
 {
     static const char *const scalar_types[] = {"bool", NULL};
@@ -561,11 +582,7 @@ ZEND_METHOD(Polyspec_Orm_Model, relationIr)
         RETURN_THROWS();
     }
     zval query;
-    ZVAL_UNDEF(&query);
-    zend_call_method(Z_OBJ_P(ZEND_THIS), Z_OBJCE_P(ZEND_THIS), NULL, "query", sizeof("query") - 1, &query, 2, request, &frame);
-    zval_ptr_dtor(&frame);
-    if (EG(exception) != NULL) { if (Z_TYPE(query) != IS_UNDEF) zval_ptr_dtor(&query); RETURN_THROWS(); }
-    if (Z_TYPE(query) != IS_ARRAY) { if (Z_TYPE(query) != IS_UNDEF) zval_ptr_dtor(&query); zend_throw_error(NULL, "Model::query() must return an array"); RETURN_THROWS(); }
+    if (!query_execute_with_frame(ZEND_THIS, request, &frame, &query)) RETURN_THROWS();
     if (zend_is_true(model_state_property(state, "parent_node"))) add_assoc_bool(&query, "flatten", true);
     zval *group_limit = model_state_property(state, "group_limit");
     if (group_limit != NULL && Z_TYPE_P(group_limit) == IS_LONG && Z_LVAL_P(group_limit) > 0) add_assoc_long(&query, "limit_per_parent", Z_LVAL_P(group_limit));
@@ -622,11 +639,7 @@ ZEND_METHOD(Polyspec_Orm_Model, subqueryIr)
     ZVAL_UNDEF(&frame);
     if (!query_make_frame(ZEND_THIS, outer, &frame)) { if (Z_TYPE(frame) != IS_UNDEF) zval_ptr_dtor(&frame); RETURN_THROWS(); }
     zval query;
-    ZVAL_UNDEF(&query);
-    zend_call_method(Z_OBJ_P(ZEND_THIS), Z_OBJCE_P(ZEND_THIS), NULL, "query", sizeof("query") - 1, &query, 2, request, &frame);
-    zval_ptr_dtor(&frame);
-    if (EG(exception) != NULL) { if (Z_TYPE(query) != IS_UNDEF) zval_ptr_dtor(&query); RETURN_THROWS(); }
-    if (Z_TYPE(query) != IS_ARRAY) { if (Z_TYPE(query) != IS_UNDEF) zval_ptr_dtor(&query); zend_throw_error(NULL, "Model::query() must return an array"); RETURN_THROWS(); }
+    if (!query_execute_with_frame(ZEND_THIS, request, &frame, &query)) RETURN_THROWS();
     zend_hash_str_del(Z_ARRVAL(query), "columns", sizeof("columns") - 1);
     zval *agg = model_state_property(state, "agg");
     zval *agg_fn = model_state_property(state, "agg_fn");
