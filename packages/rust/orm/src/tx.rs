@@ -136,6 +136,22 @@ fn insert_audit_boxed<'a>(ex: &'a Executor, record: &'a AuditInsert) -> Pin<Box<
 const AUDIT_SAVEPOINT: &str = "orm_audit";
 
 impl TxShared {
+    fn new(db: &Db, inner: TxInner, sqlite_mode: Option<(bool, bool)>) -> Self {
+        Self {
+            db: db.clone(),
+            number: db.next_transaction(),
+            inner: tokio::sync::Mutex::new(Some(inner)),
+            finished: AtomicBool::new(false),
+            savepoints: AtomicU32::new(0),
+            locals: Mutex::new(HashMap::new()),
+            locks: Mutex::new(Vec::new()),
+            audit: Mutex::new(None),
+            pending_audit: Mutex::new(None),
+            inserted: Mutex::new(HashMap::new()),
+            sqlite_mode: Mutex::new(sqlite_mode),
+        }
+    }
+
     /// Makes sure the audit record precedes a write of an audited table: when the transaction has a pending record and
     /// has not inserted it, it inserts it now. `guard` is true for an update, delete or restore, which can match no row:
     /// the record is then inserted inside the savepoint orm_audit, and the result is true; the caller then calls
@@ -919,19 +935,7 @@ async fn begin(db: &Db, isolation: Option<Isolation>, read_only: bool, timeout_m
         }
         Pool::Markdown(pool) => return begin_markdown(db, pool, isolation, read_only).await,
     };
-    let tx = TxShared {
-        db: db.clone(),
-        number: db.next_transaction(),
-        inner: tokio::sync::Mutex::new(Some(inner)),
-        finished: AtomicBool::new(false),
-        savepoints: AtomicU32::new(0),
-        locals: Mutex::new(HashMap::new()),
-        locks: Mutex::new(Vec::new()),
-        audit: Mutex::new(None),
-        pending_audit: Mutex::new(None),
-        inserted: Mutex::new(HashMap::new()),
-        sqlite_mode: Mutex::new(sqlite_mode),
-    };
+    let tx = TxShared::new(db, inner, sqlite_mode);
     let mut began = false;
     for (kind, sql) in &opening {
         if let Err(error) = tx.raw(kind, sql).await {
@@ -959,19 +963,7 @@ async fn begin_markdown(db: &Db, pool: &Arc<MdPool>, isolation: Option<Isolation
     }
     let mut session = pool.acquire().await?;
     session.call(&begin_message(read_only)).await?;
-    Ok(TxShared {
-        db: db.clone(),
-        number: db.next_transaction(),
-        inner: tokio::sync::Mutex::new(Some(TxInner::Markdown(session))),
-        finished: AtomicBool::new(false),
-        savepoints: AtomicU32::new(0),
-        locals: Mutex::new(HashMap::new()),
-        locks: Mutex::new(Vec::new()),
-        audit: Mutex::new(None),
-        pending_audit: Mutex::new(None),
-        inserted: Mutex::new(HashMap::new()),
-        sqlite_mode: Mutex::new(None),
-    })
+    Ok(TxShared::new(db, TxInner::Markdown(session), None))
 }
 
 /// The table that the SQLite row lock uses.
