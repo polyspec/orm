@@ -26,12 +26,13 @@ async fn sqlite_memory_query_count_is_independent_of_table_count() -> Result<(),
                 .await
                 .expect("create SQLite table");
         }
-        let mut counted = CountingSqlite { connection: &mut connection, queries: 0 };
-        let Introspection { document, unsupported } = dbspec::introspect(&mut counted, Dialect::Sqlite, "introspected").await?;
-        assert!(unsupported.is_empty(), "unsupported objects: {unsupported:?}");
-        assert_eq!(document.tables.len(), table_count);
-        assert_eq!(counted.queries, 3, "{table_count} tables: catalog query count");
-        drop(counted);
+        {
+            let mut counted = CountingSqlite { connection: &mut connection, queries: 0 };
+            let Introspection { document, unsupported } = dbspec::introspect(&mut counted, Dialect::Sqlite, "introspected").await?;
+            assert!(unsupported.is_empty(), "unsupported objects: {unsupported:?}");
+            assert_eq!(document.tables.len(), table_count);
+            assert_eq!(counted.queries, 3, "{table_count} tables: catalog query count");
+        }
         connection.close().await.expect("close SQLite memory connection");
     }
     Ok(())
