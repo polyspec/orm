@@ -402,6 +402,20 @@ final class SchemaUtilsNativeTest extends TestCase
         foreach (['register', 'install', 'addTablesAndColumns', 'exists', 'installed', 'empty'] as $method) {
             self::assertTrue($class->getMethod($method)->isInternal());
         }
+        $document = Dbspec::parse(
+            "dbspec 1 manifest_test\n\ntable users {\n  id i64\n  primary key (id)\n}\n",
+            []
+        )->document;
+        self::assertNotNull($document);
+        $manifest = Dbspec::manifest([$document, $document]);
+        self::assertNull($manifest->manifest);
+        self::assertSame(
+            [['name.duplicate', 1, 10]],
+            array_map(
+                static fn($diagnostic): array => [$diagnostic->rule, $diagnostic->line, $diagnostic->column],
+                $manifest->diagnostics
+            )
+        );
 
         $path = tempnam(sys_get_temp_dir(), 'orm-schema-native-');
         self::assertIsString($path);

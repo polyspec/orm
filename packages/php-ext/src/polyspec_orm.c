@@ -2052,18 +2052,18 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, manifest)
     if (in_documents(documents, &set, "the document set")) {
         manifest m;
         diags found = {0};
+        zval mz;
+        zval *value = NULL;
         if (dbs_manifest(&set, &m, &found)) {
-            zval mz;
             obj_new(&mz, dbs_ce_Manifest);
             obj_put_str(&mz, "manifestText", m.manifest_text);
             obj_put_str(&mz, "schemaText", m.schema_text);
             obj_put_str(&mz, "manifestHash", m.manifest_hash);
             obj_put_str(&mz, "schemaHash", m.schema_hash);
             obj_put_str(&mz, "externalText", m.external_text);
-            zv_result(return_value, dbs_ce_ManifestResult, "manifest", &mz, &found);
-        } else {
-            zv_result(return_value, dbs_ce_ManifestResult, "manifest", NULL, &found);
+            value = &mz;
         }
+        zv_result(return_value, dbs_ce_ManifestResult, "manifest", value, &found);
     }
     LEAVE();
 }
