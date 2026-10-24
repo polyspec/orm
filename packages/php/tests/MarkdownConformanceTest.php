@@ -34,7 +34,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use function Polyspec\Orm\Tests\MarkdownModel\connect;
 
 #[Large]
-final class MarkdownConformanceTest extends TestCase
+class MarkdownConformanceTest extends TestCase
 {
     /** The text of the stderr file of the server at $path for an error message; a file that is missing is named as missing. */
     private static function stderrText(string $path): string
@@ -52,7 +52,7 @@ final class MarkdownConformanceTest extends TestCase
     // conformanceDir is the directory of the shared suite: cases.json, flowmark.version, corpus/.
     private const MARKDOWN_CONFORMANCE_DIR = __DIR__ . '/../../../tests/markdown';
     // The module path, which must be the main module of the build that FLOWMARK points at.
-    private const FLOWMARK_MODULE = 'github.com/polyspec/flowmark';
+    private const FLOWMARK_MODULE = 'github.com/polyspec/flowmark/packages/go';
 
     /** @return list<array{id: string, expect: mixed}> */
     private static function loadCases(): array
@@ -105,7 +105,14 @@ final class MarkdownConformanceTest extends TestCase
                     . "flowmark $pin pinned in tests/markdown/flowmark.version"
             );
         }
-        if ($main[0] !== self::FLOWMARK_MODULE || $main[1] !== $pin) {
+        $revision = substr($pin, strrpos($pin, '-') + 1);
+        preg_match('/^\tbuild\tvcs\.revision=(.*)$/m', $out, $revisionMatch);
+        preg_match('/^\tbuild\tvcs\.modified=(.*)$/m', $out, $modifiedMatch);
+        $checkout = $main[1] === '(devel)'
+            && strlen($revision) === 12
+            && str_starts_with($revisionMatch[1] ?? '', $revision)
+            && ($modifiedMatch[1] ?? '') === 'false';
+        if ($main[0] !== self::FLOWMARK_MODULE || ($main[1] !== $pin && !$checkout)) {
             throw new RuntimeException(
                 "FLOWMARK $bin is \"{$main[0]}\" \"{$main[1]}\", not the pinned " . self::FLOWMARK_MODULE
                     . " $pin; run make orm-install-flowmark, or give FLOWMARK a build of a flowmark checkout at that "
@@ -171,6 +178,12 @@ final class MarkdownConformanceTest extends TestCase
             )
         ) {
             throw new RuntimeException('cannot copy the corpus catalog');
+        }
+        if (!copy(
+            self::MARKDOWN_CONFORMANCE_DIR . '/corpus/dbspec/dbspec-set.json',
+            "{$s->dir}/dbspec/dbspec-set.json"
+        )) {
+            throw new RuntimeException('cannot copy the corpus catalog set');
         }
         $step("flowmark install {$s->dir}");
         [$code, $out, $err] = self::runProcess([$bin, 'install', $s->dir]);

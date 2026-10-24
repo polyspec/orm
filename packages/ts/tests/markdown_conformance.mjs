@@ -25,7 +25,7 @@ import { conformanceCases, normalize } from './markdown_cases.mjs';
 const run = promisify(execFile);
 const conformanceDir = fileURLToPath(new URL('../../../tests/markdown/', import.meta.url));
 // The module path, which must be the main module of the build that FLOWMARK points to.
-const flowmarkModule = 'github.com/polyspec/flowmark';
+const flowmarkModule = 'github.com/polyspec/flowmark/packages/go';
 
 const runner = cases();
 
@@ -55,7 +55,11 @@ async function pinnedFlowmark() {
     throw new Error(`FLOWMARK ${bin} is no Go build (${String(error.stderr ?? error.message).trim()}); run make orm-install-flowmark, which installs the flowmark ${pin} pinned in tests/markdown/flowmark.version`, { cause: error });
   }
   const main = /^\tmod\t(\S+)\t(\S+)/m.exec(info);
-  if (main === null || main[1] !== flowmarkModule || main[2] !== pin) {
+  const revision = pin.slice(pin.lastIndexOf('-') + 1);
+  const checkout = main?.[2] === '(devel)' && revision.length === 12
+    && new RegExp(`^\\tbuild\\tvcs\\.revision=${revision}`, 'm').test(info)
+    && /^\tbuild\tvcs\.modified=false$/m.test(info);
+  if (main === null || main[1] !== flowmarkModule || (main[2] !== pin && !checkout)) {
     throw new Error(`FLOWMARK ${bin} is ${JSON.stringify(main?.[1] ?? '')} ${JSON.stringify(main?.[2] ?? '')}, not the pinned ${flowmarkModule} ${pin}; run make orm-install-flowmark, or give FLOWMARK a build of a flowmark checkout at that revision`);
   }
   return bin;
@@ -82,6 +86,7 @@ async function serve(bin, step) {
   try {
     await mkdir(path.join(s.dir, 'dbspec'), { recursive: true });
     await writeFile(path.join(s.dir, 'dbspec', 'conformance.dbs'), await readFile(path.join(conformanceDir, 'corpus', 'dbspec', 'conformance.dbs')));
+    await writeFile(path.join(s.dir, 'dbspec', 'dbspec-set.json'), await readFile(path.join(conformanceDir, 'corpus', 'dbspec', 'dbspec-set.json')));
     step(`flowmark install ${s.dir}`);
     try { await run(bin, ['install', s.dir]); } catch (error) { throw new Error(`flowmark install: ${error.message}\n${error.stdout ?? ''}${error.stderr ?? ''}`, { cause: error }); }
     step(`flowmark serve ${s.dir} --port 0`);

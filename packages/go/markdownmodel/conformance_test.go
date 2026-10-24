@@ -33,7 +33,7 @@ import (
 const conformanceDir = "../../../tests/markdown"
 
 // flowmarkModule is the module path that must be the main module of the build FLOWMARK points to.
-const flowmarkModule = "github.com/polyspec/flowmark"
+const flowmarkModule = "github.com/polyspec/flowmark/packages/go"
 
 // served is the flowmark server that the test started and its corpus.
 type served struct {
@@ -134,10 +134,28 @@ func pinnedFlowmark(t *testing.T) string {
 	if err != nil {
 		t.Fatalf("FLOWMARK %s is no Go build (%v); run make orm-install-flowmark, which installs the flowmark %s pinned in tests/markdown/flowmark.version", bin, err, pin)
 	}
-	if info.Main.Path != flowmarkModule || info.Main.Version != pin {
-		t.Fatalf("FLOWMARK %s is %q %q, not the pinned %s %s; run make orm-install-flowmark, or give FLOWMARK a build of a flowmark checkout at that revision", bin, info.Main.Path, info.Main.Version, flowmarkModule, pin)
+	if !pinnedFlowmarkBuild(info, pin) {
+		t.Fatalf("FLOWMARK %s is %q %q, not the pinned %s %s or a clean checkout at that revision; run make orm-install-flowmark, or build the exact Flowmark revision", bin, info.Main.Path, info.Main.Version, flowmarkModule, pin)
 	}
 	return bin
+}
+
+func pinnedFlowmarkBuild(info *buildinfo.BuildInfo, pin string) bool {
+	if info.Main.Path != flowmarkModule {
+		return false
+	}
+	if info.Main.Version == pin {
+		return true
+	}
+	if info.Main.Version != "(devel)" {
+		return false
+	}
+	revision := pin[strings.LastIndex(pin, "-")+1:]
+	settings := make(map[string]string, len(info.Settings))
+	for _, setting := range info.Settings {
+		settings[setting.Key] = setting.Value
+	}
+	return len(revision) == 12 && strings.HasPrefix(settings["vcs.revision"], revision) && settings["vcs.modified"] == "false"
 }
 
 var listening = regexp.MustCompile(`^\[serve\] listening on 127\.0\.0\.1:([0-9]+) for the corpus (.+)$`)
@@ -157,6 +175,13 @@ func serve(t *testing.T, bin string) *served {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(s.dir, "dbspec", "conformance.dbs"), catalog, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	set, err := os.ReadFile(filepath.Join(conformanceDir, "corpus", "dbspec", "dbspec-set.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(s.dir, "dbspec", "dbspec-set.json"), set, 0o644); err != nil {
 		t.Fatal(err)
 	}
 	c.Step("flowmark install %s", s.dir)

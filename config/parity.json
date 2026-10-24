@@ -6482,6 +6482,11 @@
           "symbol": "MarkdownConformanceTest::testMarkdownConformance"
         },
         {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/MarkdownConformanceNativeTest.php",
+          "symbol": "MarkdownConformanceNativeTest::testMarkdownConformance"
+        },
+        {
           "implementation": "python",
           "test": "packages/python/tests/markdown_conformance.py"
         },

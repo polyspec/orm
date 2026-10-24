@@ -25,7 +25,7 @@ use polyspec_orm::{Config, Db, Error, Isolation, StyledValue};
 use serde_json::{json, Value};
 
 /// The module path that must be the main module of the build FLOWMARK points to.
-const FLOWMARK_MODULE: &str = "github.com/polyspec/flowmark";
+const FLOWMARK_MODULE: &str = "github.com/polyspec/flowmark/packages/go";
 
 /// The case this runner implements. It must equal the case set in cases.json.
 const CASES: &[&str] = &[
@@ -281,8 +281,7 @@ fn load_cases() -> Vec<(String, Value)> {
     out
 }
 
-/// The flowmark binary that FLOWMARK points to. Fails if the binary's Go build info does not show
-/// the flowmark.version of the flowmark module.
+/// The flowmark binary that FLOWMARK points to. Accepts the pinned module version or a clean build of its exact revision.
 fn pinned_flowmark() -> PathBuf {
     let version = conformance_dir().join("flowmark.version");
     let pin = std::fs::read_to_string(&version).unwrap_or_else(|e| panic!("{}: {e}", version.display())).trim().to_owned();
@@ -297,24 +296,55 @@ fn pinned_flowmark() -> PathBuf {
     let main = main_module(&bytes).unwrap_or_else(|| {
         panic!("FLOWMARK {bin} is no Go build; run make orm-install-flowmark, which installs the flowmark {pin} pinned in tests/markdown/flowmark.version")
     });
+    let pinned_revision = pin.rsplit('-').next().unwrap_or("");
+    let installed = main.path == FLOWMARK_MODULE && main.version == pin;
+    let checkout = main.path == FLOWMARK_MODULE
+        && main.version == "(devel)"
+        && main.revision.starts_with(pinned_revision)
+        && main.modified == "false";
     assert!(
-        main == (FLOWMARK_MODULE.to_owned(), pin.clone()),
-        "FLOWMARK {bin} is {main:?}, not the pinned {FLOWMARK_MODULE} {pin}; run make orm-install-flowmark, or give FLOWMARK a build of a flowmark checkout at that revision"
+        installed || checkout,
+        "FLOWMARK {bin} is {main:?}, not the pinned {FLOWMARK_MODULE} {pin} or a clean checkout at that revision; run make orm-install-flowmark, or build the exact Flowmark revision"
     );
     PathBuf::from(bin)
 }
 
-/// Reads the main module's path and version from the Go binary's build info. The Go linker puts the module info text between two
-/// 16-byte markers, and the `mod\t<path>\t<version>` line in that text is the main module.
-fn main_module(binary: &[u8]) -> Option<(String, String)> {
+#[derive(Debug)]
+struct GoBuildInfo {
+    path: String,
+    version: String,
+    revision: String,
+    modified: String,
+}
+
+/// Reads the main module and VCS settings from the Go binary's build info between the linker's 16-byte markers.
+fn main_module(binary: &[u8]) -> Option<GoBuildInfo> {
     const START: [u8; 16] = [0x30, 0x77, 0xaf, 0x0c, 0x92, 0x74, 0x08, 0x02, 0x41, 0xe1, 0xc1, 0x07, 0xe6, 0xd6, 0x18, 0xe6];
     const END: [u8; 16] = [0xf9, 0x32, 0x43, 0x31, 0x86, 0x18, 0x20, 0x72, 0x00, 0x82, 0x42, 0x10, 0x41, 0x16, 0xd8, 0xf2];
     let start = binary.windows(START.len()).position(|w| w == START)? + START.len();
     let end = start + binary[start..].windows(END.len()).position(|w| w == END)?;
     let text = std::str::from_utf8(&binary[start..end]).ok()?;
-    let line = text.lines().find(|line| line.starts_with("mod\t"))?;
-    let mut fields = line.split('\t').skip(1);
-    Some((fields.next()?.to_owned(), fields.next()?.to_owned()))
+    let mut path = None;
+    let mut version = None;
+    let mut revision = None;
+    let mut modified = None;
+    for line in text.lines() {
+        if let Some(rest) = line.strip_prefix("mod\t") {
+            let mut fields = rest.split('\t');
+            path = fields.next().map(str::to_owned);
+            version = fields.next().map(str::to_owned);
+        } else if let Some(value) = line.strip_prefix("build\tvcs.revision=") {
+            revision = Some(value.to_owned());
+        } else if let Some(value) = line.strip_prefix("build\tvcs.modified=") {
+            modified = Some(value.to_owned());
+        }
+    }
+    Some(GoBuildInfo {
+        path: path?,
+        version: version?,
+        revision: revision.unwrap_or_default(),
+        modified: modified.unwrap_or_default(),
+    })
 }
 
 /// Installs corpus/ as a new corpus, starts that server, and connects to it.
@@ -323,6 +353,7 @@ async fn serve(bin: &Path, scratch: &Path) -> (Served, Server) {
     let dir = scratch.join(&corpus);
     std::fs::create_dir_all(dir.join("dbspec")).unwrap();
     std::fs::copy(conformance_dir().join("corpus/dbspec/conformance.dbs"), dir.join("dbspec/conformance.dbs")).unwrap();
+    std::fs::copy(conformance_dir().join("corpus/dbspec/dbspec-set.json"), dir.join("dbspec/dbspec-set.json")).unwrap();
     polyspec_orm_testcase::step(format_args!("flowmark install {}", dir.display()));
     let install = Command::new(bin).arg("install").arg(&dir).output().unwrap();
     assert!(

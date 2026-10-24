@@ -491,6 +491,8 @@
       ],
       "inputs": [
         "scripts/docs/markdown-table.mts",
+        "scripts/docs/flowmark-source.mts",
+        "Makefile",
         "tests/markdown/flowmark.version",
         "docs/spec/dialects.md",
         "docs/spec/dialects.ko.md"
@@ -1475,7 +1477,8 @@
         "flowmark",
         "python",
         "rust",
-        "node-modules"
+        "node-modules",
+        "php-extension-tools"
       ],
       "inputs": [
         "tests/markdown/cases.json",
@@ -1484,6 +1487,7 @@
         "tests/markdown/flowmark.version",
         "packages/go/markdownmodel/conformance_test.go",
         "packages/php/tests/MarkdownConformanceTest.php",
+        "packages/php-ext/tests/MarkdownConformanceNativeTest.php",
         "packages/python/tests/markdown_conformance.py",
         "packages/python/tests/testcase.py",
         "packages/python/tests/vector_case.py",

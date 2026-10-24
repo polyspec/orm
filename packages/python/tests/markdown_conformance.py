@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parents[3]
 
 
 CONFORMANCE_DIR = ROOT / "tests" / "markdown"
-FLOWMARK_MODULE = "github.com/polyspec/flowmark"
+FLOWMARK_MODULE = "github.com/polyspec/flowmark/packages/go"
 CORPUS = "conformance"
 # Deadline of one case. Past it, the server is stopped to drop the connection, so the case fails with CONNECTION_LOST.
 CASE_TIMEOUT_S = 60
@@ -86,7 +86,21 @@ def pinned_flowmark() -> str:
             f"orm-install-flowmark, which installs the flowmark {pin} pinned in "
             f"tests/markdown/flowmark.version"
         )
-    if main[2] != FLOWMARK_MODULE or main[3] != pin:
+    revision = pin.rsplit("-", 1)[-1]
+    settings = dict(
+        fields[2].split("=", 1)
+        for line in info.stdout.splitlines()
+        if len(fields := line.split("\t")) >= 3
+        and fields[1] == "build"
+        and "=" in fields[2]
+    )
+    checkout = (
+        main[3] == "(devel)"
+        and len(revision) == 12
+        and settings.get("vcs.revision", "").startswith(revision)
+        and settings.get("vcs.modified") == "false"
+    )
+    if main[2] != FLOWMARK_MODULE or (main[3] != pin and not checkout):
         raise AssertionError(
             f"FLOWMARK {binary} is {main[2]!r} {main[3]!r}, not the pinned {FLOWMARK_MODULE} {pin}; "
             f"run make orm-install-flowmark, or give FLOWMARK a build of a flowmark checkout at that "
@@ -138,6 +152,10 @@ def serve(binary: str, workdir: Path, models, cleanups: list) -> Served:
     shutil.copyfile(
         CONFORMANCE_DIR / "corpus" / "dbspec" / "conformance.dbs",
         directory / "dbspec" / "conformance.dbs",
+    )
+    shutil.copyfile(
+        CONFORMANCE_DIR / "corpus" / "dbspec" / "dbspec-set.json",
+        directory / "dbspec" / "dbspec-set.json",
     )
     print(f"STEP flowmark install {directory}", flush=True)
     installed = subprocess.run(

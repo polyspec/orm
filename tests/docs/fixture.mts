@@ -5,6 +5,7 @@ import { spawnSync, type SpawnSyncReturns } from 'node:child_process';
 import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { isolatedEnvironment } from '../environment.mts';
 
 const checkout = fileURLToPath(new URL('../../', import.meta.url));
 // The fixture lives under var/ of the checkout, so the packages of its node_modules resolve from it.
@@ -22,7 +23,7 @@ export function runFixture(script: string, files: Record<string, string>, env: R
       writeFileSync(path.join(dir, name), text);
     }
     const fixtureEnv = Object.fromEntries(Object.entries(env).map(([key, value]) => [key, value.replaceAll('{dir}', dir)]));
-    return spawnSync(process.execPath, [path.join(dir, script)], { cwd: dir, encoding: 'utf8', env: { ...process.env, ...fixtureEnv }, timeout: 60_000 });
+    return spawnSync(process.execPath, [path.join(dir, script)], { cwd: dir, encoding: 'utf8', env: isolatedEnvironment(fixtureEnv), timeout: 60_000 });
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

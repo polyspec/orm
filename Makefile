@@ -1548,7 +1548,9 @@ conformance-check/run: lease-tool conformance-python-models
 # orm-install-flowmark installs it here. The test fails unless the version matches what the build information pins, so a flowmark checkout
 # built at the pinned revision can be given as FLOWMARK=<that path>.
 FLOWMARK ?= $(abspath .runtime/bin/flowmark)
-.PHONY: markdown-conformance-check markdown-conformance-check/go markdown-conformance-check/php markdown-conformance-check/python markdown-conformance-check/rust markdown-conformance-check/typescript orm-install-flowmark
+FLOWMARK_REVISION = $(shell sed 's/.*-//' tests/markdown/flowmark.version)
+FLOWMARK_SOURCE ?= $(abspath .runtime/flowmark-source/$(FLOWMARK_REVISION))
+.PHONY: markdown-conformance-check markdown-conformance-check/go markdown-conformance-check/php markdown-conformance-check/php-extension markdown-conformance-check/python markdown-conformance-check/rust markdown-conformance-check/typescript orm-install-flowmark
 # parity-prepare builds what the bindings of config/parity.json load before kit's parity-check runs them, into the
 # directory of this make run: the PHP extension that the php-extension implementation loads
 # (ORM_PARITY_PHP_EXTENSION) and the conformance runner that the Rust conformance bindings start
@@ -1601,11 +1603,13 @@ parity-check: export ORM_SEND_SQLITE_DSN = sqlite://$(PARITY_RUN_DIR)/send-savep
 # ORM_CHECKOUT is the checkout root: a binding command names it with ${ORM_CHECKOUT}, since kit forbids .. in a command word.
 parity-check: export ORM_CHECKOUT = $(CURDIR)
 parity-check: export ORM_PROGRAM_CONFORMANCE = $(PARITY_RUN_DIR)/target/debug/conformance
-markdown-conformance-check: markdown-conformance-check/go markdown-conformance-check/php markdown-conformance-check/python markdown-conformance-check/rust markdown-conformance-check/typescript
+markdown-conformance-check: markdown-conformance-check/go markdown-conformance-check/php markdown-conformance-check/php-extension markdown-conformance-check/python markdown-conformance-check/rust markdown-conformance-check/typescript
 markdown-conformance-check/go:
 	FLOWMARK=$(FLOWMARK) $(GO_TEST) -tags markdown ./packages/go/markdownmodel -run '^TestMarkdownConformance$$' -count=1
 markdown-conformance-check/php: php-vendor-check
 	FLOWMARK=$(FLOWMARK) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --stop-on-defect packages/php/tests/MarkdownConformanceTest.php
+markdown-conformance-check/php-extension: php-vendor-check php-models orm-install-php-extension-tools
+	@set -eu; run_dir="$(abspath .runtime/run)/markdown-conformance-php-extension-check-$$$$"; trap 'rm -rf "$$run_dir"' EXIT; mkdir -p "$$run_dir/php-extension"; $(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh "$$run_dir/php-extension/polyspec_orm.so"; FLOWMARK=$(FLOWMARK) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist --stop-on-defect packages/php-ext/tests/MarkdownConformanceNativeTest.php
 # The Python runner reads the build information with go version -m.
 markdown-conformance-check/python: python-venv-check
 	FLOWMARK=$(FLOWMARK) $(PYTHON_VENV)/bin/python -m packages.python.tests.markdown_conformance
@@ -2013,7 +2017,7 @@ docs-dbs-check: lease-tool
 # capability table of flowmark's docs/spec/60-dialect.md at the version of tests/markdown/flowmark.version, which it
 # downloads as orm-install-flowmark does.
 markdown-table-check:
-	$(NODE) scripts/docs/markdown-table.mts
+	FLOWMARK_SOURCE=$(FLOWMARK_SOURCE) $(NODE) scripts/docs/markdown-table.mts
 
 # go-fmt-check fails when gofmt would change a tracked Go source and lists
 # the files it would change.
@@ -2201,8 +2205,9 @@ orm-install-go:
 # orm-install-flowmark installs, in the FLOWMARK directory, the flowmark that markdown-conformance-check runs, at the module
 # version that tests/markdown/flowmark.version pins.
 orm-install-flowmark:
-	$(ONLINE) GOBIN=$(dir $(FLOWMARK)) $(GO) install github.com/polyspec/flowmark/cmd/flowmark@$$(cat tests/markdown/flowmark.version)
-	$(ONLINE) $(GO) mod download github.com/polyspec/flowmark@$$(cat tests/markdown/flowmark.version)
+	$(ONLINE) GOBIN=$(dir $(FLOWMARK)) $(GO) install github.com/polyspec/flowmark/packages/go/cmd/flowmark@$$(cat tests/markdown/flowmark.version)
+	$(ONLINE) $(GO) mod download github.com/polyspec/flowmark/packages/go@$$(cat tests/markdown/flowmark.version)
+	$(ONLINE) $(RUN_LONG) flowmark-source-install -- $(NODE) scripts/docs/flowmark-source.mts install "$(FLOWMARK_SOURCE)" "$(FLOWMARK_REVISION)"
 # orm-install-server-programs installs, on the CI Linux runner, the server programs that make orm-test-servers starts
 # (scripts/ci/server-programs.mts).
 orm-install-server-programs:

@@ -8,11 +8,12 @@ a database, so its conformance has no SQL text and no bind list to compare. Each
 | file | role |
 |---|---|
 | `cases.json` | the case IDs in their order and the expected result of each, the only place a case is declared |
-| `corpus/dbspec/conformance.dbs` | the catalog of the corpus: `people` (a `document` table with `key_prefix`, a soft delete column, an update time column and a unique key), `tasks` (with a foreign key to `people`), `logs` (with an `identity` key) and `codec_rows` (with a base64 codec and an explicit-select payload) |
+| `corpus/dbspec/dbspec-set.json`, `corpus/dbspec/conformance.dbs` | the catalog set and its corpus: `people` (a `document` table with `key_prefix`, a soft delete column, an update time column and a unique key), `tasks` (with a foreign key to `people`), `logs` (with an `identity` key) and `codec_rows` (with a base64 codec and an explicit-select payload) |
 | `refused/aes.dbs`, `refused/audit.dbs` | catalogs that a corpus refuses: an `aes` column and an `audit` setting, which `install_refuses_aes` and `install_refuses_audit` install as a new corpus of their own and answer the code that `flowmark install` prints, `{"error": <code>}` |
-| `flowmark.version` | the Go module version of `github.com/polyspec/flowmark` whose `flowmark` the cases run on |
+| `flowmark.version` | the Go module version of `github.com/polyspec/flowmark/packages/go` whose `flowmark` the cases run on |
 | `packages/go/markdownmodel` | the Go models generated from the catalog and the Go runner, `TestMarkdownConformance` |
 | `packages/php/markdownmodel` | the PHP models generated from the catalog; the PHP runner is the PHPUnit test `packages/php/tests/MarkdownConformanceTest.php`, which runs each case as a data set named by its id |
+| `packages/php-ext/tests/MarkdownConformanceNativeTest.php` | the same cases with the PHP extension loaded, plus a check that generated model operations enter the extension's internal `Model` methods |
 | `packages/python/tests/markdown_conformance.py` | the Python runner, which generates the Python models from the catalog into its temporary directory |
 | `packages/rust/tests/tests/markdown_conformance.rs` | the Rust runner, `markdown_conformance`; the `build.rs` of its crate generates the models from the catalog |
 | `packages/ts/src/models/markdown_fixture` | the TypeScript models generated from the catalog, which the TypeScript runner `packages/ts/tests/markdown_conformance.mjs` checks against the generator before its cases and reports each case as `markdown-conformance/<id>` |
@@ -24,13 +25,11 @@ make orm-install-flowmark
 make markdown-conformance-check
 ```
 
-`make orm-install-flowmark` installs the pinned `flowmark` at `.runtime/bin/flowmark`, and
+`make orm-install-flowmark` installs the pinned `flowmark` at `.runtime/bin/flowmark` and checks out its clean source at the pinned revision for the documentation table, and
 `make markdown-conformance-check` passes that path as `FLOWMARK` to each runner, each on a server and a corpus of its
 own (`make markdown-conformance-check/<client>` runs one; the TypeScript one builds the package first). A runner
-reads the build information of `FLOWMARK` (the PHP runner and the Python runner with `go version -m`) and fails unless its main module is `github.com/polyspec/flowmark` at the version of
-`flowmark.version`; a missing or other build fails the run and is never skipped. A build of a flowmark checkout
-at the pinned revision carries the same version, so `make markdown-conformance-check FLOWMARK=<its path>` runs
-the cases on it.
+reads the build information of `FLOWMARK` and fails unless its main module is `github.com/polyspec/flowmark/packages/go` at the version of
+`flowmark.version`, or it is a clean checkout whose VCS revision matches that pin; a missing or other build fails the run and is never skipped. This lets a local checkout run before its revision is published.
 
 The runner copies the catalog into a new directory named `conformance`, runs `flowmark install` on it, starts
 `flowmark serve <corpus> --port 0`, reads the port from its listening line and the token from

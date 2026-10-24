@@ -14,6 +14,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { Link, Nodes } from 'mdast';
 import { root } from './lib.mts';
+import { flowmarkSpecRoot } from './flowmark-source.mts';
 import { parse, tableUnder, textOf } from './tables.mts';
 
 const version = (await readFile(path.join(root, 'tests/markdown/flowmark.version'), 'utf8')).trim();
@@ -21,8 +22,9 @@ const revision = version.split('-').pop();
 // The module source of the pinned flowmark, which make orm-install-flowmark downloads into the module cache; a check
 // downloads nothing, so a missing module names the install target instead of fetching.
 const cache = execFileSync('go', ['env', 'GOMODCACHE'], { cwd: root, encoding: 'utf8' }).trim();
-const module = { Dir: path.join(cache, 'github.com', `polyspec/flowmark@${version}`) };
-if (!existsSync(module.Dir)) throw new Error(`${module.Dir} is missing; run make orm-install-flowmark, which downloads the module of tests/markdown/flowmark.version`);
+const module = { Dir: path.join(cache, 'github.com', 'polyspec', 'flowmark', 'packages', `go@${version}`) };
+const specRoot = process.env.FLOWMARK_SOURCE === undefined ? module.Dir : flowmarkSpecRoot(version);
+if (!existsSync(specRoot)) throw new Error(`${specRoot} is missing; run make orm-install-flowmark, which downloads the module and checks out the source of tests/markdown/flowmark.version`);
 
 // A relative link of the ruling: a spec of flowmark (NN-name.md or NN-name.ko.md) with an optional anchor.
 const relativeLink = /^(\d\d-[a-z-]+(?:\.ko)?\.md)(?:#.*)?$/;
@@ -82,7 +84,7 @@ const targets = [
 const write = process.argv.includes('--write');
 const failures = [];
 for (const t of targets) {
-  const expected = rows(await readFile(path.join(module.Dir, t.spec), 'utf8'));
+  const expected = rows(await readFile(path.join(specRoot, t.spec), 'utf8'));
   const text = await readFile(path.join(root, t.file), 'utf8');
   const table = tableUnder(text, heading => heading.depth === 2 && `## ${textOf(heading)}` === t.heading);
   if (table === undefined) { failures.push(`${t.file}: no table under "${t.heading}"`); continue; }
