@@ -1942,6 +1942,27 @@ static bool cat_commit(zval *db, zval *pdo)
     return false;
 }
 
+typedef bool (*cat_write_operation)(zval *db, const char *dialect, zval *pdo, void *context, zval *result);
+
+/* Runs every Catalog mutation body in the same commit/rollback boundary. */
+static bool cat_write_transaction(zval *db, const char *dialect, cat_write_operation operation, void *context, zval *result)
+{
+    zval pdo;
+    ZVAL_UNDEF(&pdo);
+    if (!cat_begin_write(db, dialect, &pdo)) return false;
+    bool ok = operation(db, dialect, &pdo, context, result);
+    if (ok) {
+        if (!cat_commit(db, &pdo)) {
+            zval_ptr_dtor(result);
+            ok = false;
+        }
+    } else {
+        cat_abort(db, &pdo);
+    }
+    zval_ptr_dtor(&pdo);
+    return ok;
+}
+
 /* Runs one bounded query with the values of a PHP array as parameters (a mysql safety check). */
 static bool cat_query_params(zval *db, zval *pdo, const char *sql, zval *args, zend_long max_rows, zval *rows)
 {
@@ -2753,6 +2774,20 @@ static bool cat_insert_body(zval *db, const char *dialect, zval *pdo, zval *decl
     return ok;
 }
 
+typedef struct {
+    zval *declared;
+    zval *changes;
+    zval *keys;
+    zval *generated_key_indexes;
+} cat_insert_write_context;
+
+static bool cat_insert_write(zval *db, const char *dialect, zval *pdo, void *opaque, zval *result)
+{
+    cat_insert_write_context *context = opaque;
+    return cat_insert_body(db, dialect, pdo, context->declared, context->changes, context->keys,
+                           context->generated_key_indexes, result);
+}
+
 ZEND_METHOD(Polyspec_Orm_Catalog, insertRow)
 {
     zval *declared, *values;
@@ -2814,24 +2849,12 @@ ZEND_METHOD(Polyspec_Orm_Catalog, insertRow)
         db_throw_orm("ROW_INSERT_UNSUPPORTED", "multiple AUTO_INCREMENT identities");
         return;
     }
-    zval pdo;
-    ZVAL_UNDEF(&pdo);
     zval rv_db;
     zval *db = cat_db(ZEND_THIS, &rv_db);
     zval result;
-    if (cat_begin_write(db, ZSTR_VAL(dialect), &pdo)) {
-        bool ok = cat_insert_body(db, ZSTR_VAL(dialect), &pdo, declared, &changes, &keys,
-                                  &generated_key_indexes, &result);
-        if (ok) {
-            if (cat_commit(db, &pdo)) {
-                RETVAL_COPY_VALUE(&result);
-            } else {
-                zval_ptr_dtor(&result);
-            }
-        } else {
-            cat_abort(db, &pdo);
-        }
-        zval_ptr_dtor(&pdo);
+    cat_insert_write_context context = {declared, &changes, &keys, &generated_key_indexes};
+    if (cat_write_transaction(db, ZSTR_VAL(dialect), cat_insert_write, &context, &result)) {
+        RETVAL_COPY_VALUE(&result);
     }
     zval_ptr_dtor(&keys);
     zval_ptr_dtor(&generated_key_indexes);
@@ -2959,6 +2982,21 @@ static bool cat_update_body(zval *db, const char *dialect, zval *pdo, zval *orig
     return ok;
 }
 
+typedef struct {
+    zval *original;
+    zval *changes;
+    zval *updated;
+    zval *keys;
+    zval *new_keys;
+} cat_update_write_context;
+
+static bool cat_update_write(zval *db, const char *dialect, zval *pdo, void *opaque, zval *result)
+{
+    cat_update_write_context *context = opaque;
+    return cat_update_body(db, dialect, pdo, context->original, context->changes, context->updated,
+                           context->keys, context->new_keys, result);
+}
+
 ZEND_METHOD(Polyspec_Orm_Catalog, updateRow)
 {
     zval *original, *values;
@@ -3005,24 +3043,13 @@ ZEND_METHOD(Polyspec_Orm_Catalog, updateRow)
     zval keys, new_keys;
     cat_pick(cells, key_indexes, &keys);
     cat_pick(&updated, key_indexes, &new_keys);
-    zval pdo;
-    ZVAL_UNDEF(&pdo);
     zval rv_db;
     zval *db = cat_db(ZEND_THIS, &rv_db);
     zend_string *dialect = cat_dialect(ZEND_THIS);
     zval result;
-    if (cat_begin_write(db, ZSTR_VAL(dialect), &pdo)) {
-        bool ok = cat_update_body(db, ZSTR_VAL(dialect), &pdo, original, &changes, &updated, &keys, &new_keys, &result);
-        if (ok) {
-            if (cat_commit(db, &pdo)) {
-                RETVAL_COPY_VALUE(&result);
-            } else {
-                zval_ptr_dtor(&result);
-            }
-        } else {
-            cat_abort(db, &pdo);
-        }
-        zval_ptr_dtor(&pdo);
+    cat_update_write_context context = {original, &changes, &updated, &keys, &new_keys};
+    if (cat_write_transaction(db, ZSTR_VAL(dialect), cat_update_write, &context, &result)) {
+        RETVAL_COPY_VALUE(&result);
     }
     zval_ptr_dtor(&keys);
     zval_ptr_dtor(&new_keys);
@@ -3081,6 +3108,20 @@ static bool cat_delete_body(zval *db, const char *dialect, zval *pdo, zval *orig
     return true;
 }
 
+typedef struct {
+    zval *original;
+    zval *keys;
+} cat_delete_write_context;
+
+static bool cat_delete_write(zval *db, const char *dialect, zval *pdo, void *opaque, zval *result)
+{
+    cat_delete_write_context *context = opaque;
+    zend_long affected;
+    if (!cat_delete_body(db, dialect, pdo, context->original, context->keys, &affected)) return false;
+    ZVAL_LONG(result, affected);
+    return true;
+}
+
 ZEND_METHOD(Polyspec_Orm_Catalog, deleteRow)
 {
     zval *original;
@@ -3099,22 +3140,13 @@ ZEND_METHOD(Polyspec_Orm_Catalog, deleteRow)
     }
     zval keys;
     cat_pick(cells, key_indexes, &keys);
-    zval pdo;
-    ZVAL_UNDEF(&pdo);
     zval rv_db;
     zval *db = cat_db(ZEND_THIS, &rv_db);
     zend_string *dialect = cat_dialect(ZEND_THIS);
-    zend_long affected = 0;
-    if (cat_begin_write(db, ZSTR_VAL(dialect), &pdo)) {
-        bool ok = cat_delete_body(db, ZSTR_VAL(dialect), &pdo, original, &keys, &affected);
-        if (ok) {
-            if (cat_commit(db, &pdo)) {
-                RETVAL_LONG(affected);
-            }
-        } else {
-            cat_abort(db, &pdo);
-        }
-        zval_ptr_dtor(&pdo);
+    zval result;
+    cat_delete_write_context context = {original, &keys};
+    if (cat_write_transaction(db, ZSTR_VAL(dialect), cat_delete_write, &context, &result)) {
+        RETVAL_COPY_VALUE(&result);
     }
     zval_ptr_dtor(&keys);
 }
