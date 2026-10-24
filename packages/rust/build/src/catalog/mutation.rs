@@ -47,6 +47,12 @@ pub(super) async fn begin_mutation(pool: &Pool, dialect: &str, cancellation: &At
     Ok(connection)
 }
 
+pub(super) fn validated_keys(original: &RowSnapshot, dialect: &str) -> Result<Vec<P>, String> {
+    let keys = original.key().map(|(_, value)| bind(value)).collect::<Result<Vec<_>, _>>()?;
+    tool_db::validate_params(&keys, dialect).map_err(|e| e.to_string())?;
+    Ok(keys)
+}
+
 pub(super) async fn lock_original(
     connection: &mut Conn,
     original: &RowSnapshot,
@@ -198,8 +204,7 @@ impl CatalogConnection {
         tool_db::validate_params(&params, &self.dialect).map_err(|e| e.to_string())?;
         let assignments = changes.iter().map(|(name, value)| (name.clone(), cell(value))).collect::<Vec<_>>();
         original.validate_update(&assignments)?;
-        let keys = original.key().map(|(_, value)| bind(value)).collect::<Result<Vec<_>, _>>()?;
-        tool_db::validate_params(&keys, &self.dialect).map_err(|e| e.to_string())?;
+        let keys = validated_keys(original, &self.dialect)?;
         publish(MutationPhase::Validated);
         let mut connection = begin_mutation(&self.pool, &self.dialect, &cancellation).await?;
         let result = async {

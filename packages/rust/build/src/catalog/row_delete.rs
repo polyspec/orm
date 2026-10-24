@@ -1,17 +1,15 @@
 //! Delete an exact checked original row under an owning transaction.
 use super::{
     metadata,
-    mutation::{begin_mutation, bind, cancelled, lock_original, lookup, predicate, qualified, CommitPermit, Publisher},
+    mutation::{begin_mutation, cancelled, lock_original, lookup, predicate, qualified, validated_keys, CommitPermit, Publisher},
     mutation_finish, CatalogConnection, MutationPhase, RowSnapshot,
 };
-use crate::tool_db;
 use std::sync::{atomic::AtomicBool, Arc};
 
 impl CatalogConnection {
     pub async fn delete_row(&self, original: &RowSnapshot, cancellation: Arc<AtomicBool>, publish: Publisher, permit: CommitPermit) -> Result<u64, String> {
         cancelled(&cancellation)?;
-        let keys = original.key().map(|(_, value)| bind(value)).collect::<Result<Vec<_>, _>>()?;
-        tool_db::validate_params(&keys, &self.dialect).map_err(|e| e.to_string())?;
+        let keys = validated_keys(original, &self.dialect)?;
         publish(MutationPhase::Validated);
         let mut connection = begin_mutation(&self.pool, &self.dialect, &cancellation).await?;
         let result = async {
