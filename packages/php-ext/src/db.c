@@ -1715,35 +1715,46 @@ typedef struct qctx {
     zval *args;
 } qctx;
 
+static void failed_statement(zval *st)
+{
+    if (pdo_exception_pending()) {
+        failed_cursor(st);
+    }
+    zval_ptr_dtor(st);
+}
+
+static bool close_statement(zval *st)
+{
+    zval result;
+    bool ok = mcall(st, "closeCursor", &result, 0, NULL);
+    zval_ptr_dtor(st);
+    if (!ok) {
+        return false;
+    }
+    zval_ptr_dtor(&result);
+    return true;
+}
+
 static bool op_query(zval *self, void *ctx, zval *ret)
 {
     qctx *c = ctx;
-    zval st, mode, rows, r;
+    zval st, mode, rows;
     if (!stmt_of(self, c->sql, &st)) {
         return false;
     }
     if (!exec_stmt(self, &st, c->args)) {
-        if (pdo_exception_pending()) {
-            failed_cursor(&st);
-        }
-        zval_ptr_dtor(&st);
+        failed_statement(&st);
         return false;
     }
     ZVAL_LONG(&mode, FETCH_NUM);
     if (!mcall(&st, "fetchAll", &rows, 1, &mode)) {
-        if (pdo_exception_pending()) {
-            failed_cursor(&st);
-        }
-        zval_ptr_dtor(&st);
+        failed_statement(&st);
         return false;
     }
-    bool ok = mcall(&st, "closeCursor", &r, 0, NULL);
-    zval_ptr_dtor(&st);
-    if (!ok) {
+    if (!close_statement(&st)) {
         zval_ptr_dtor(&rows);
         return false;
     }
-    zval_ptr_dtor(&r);
     ZVAL_COPY_VALUE(ret, &rows);
     return true;
 }
@@ -1751,31 +1762,22 @@ static bool op_query(zval *self, void *ctx, zval *ret)
 static bool op_scalar(zval *self, void *ctx, zval *ret)
 {
     qctx *c = ctx;
-    zval st, v, r;
+    zval st, v;
     if (!stmt_of(self, c->sql, &st)) {
         return false;
     }
     if (!exec_stmt(self, &st, c->args)) {
-        if (pdo_exception_pending()) {
-            failed_cursor(&st);
-        }
-        zval_ptr_dtor(&st);
+        failed_statement(&st);
         return false;
     }
     if (!mcall(&st, "fetchColumn", &v, 0, NULL)) {
-        if (pdo_exception_pending()) {
-            failed_cursor(&st);
-        }
-        zval_ptr_dtor(&st);
+        failed_statement(&st);
         return false;
     }
-    bool ok = mcall(&st, "closeCursor", &r, 0, NULL);
-    zval_ptr_dtor(&st);
-    if (!ok) {
+    if (!close_statement(&st)) {
         zval_ptr_dtor(&v);
         return false;
     }
-    zval_ptr_dtor(&r);
     ZVAL_COPY_VALUE(ret, &v);
     return true;
 }
@@ -1913,6 +1915,25 @@ static bool parent_values(zval *pr, zval *parents, zval *params, zval *out)
     return true;
 }
 
+static void append_parent_placeholders(smart_str *out, zend_long tuples, zend_long width, const char *sep,
+    char marker, zend_long first)
+{
+    for (zend_long tuple = 0; tuple < tuples; tuple++) {
+        if (tuple > 0) {
+            smart_str_appends(out, sep);
+        }
+        for (zend_long column = 0; column < width; column++) {
+            if (column > 0) {
+                smart_str_appends(out, ", ");
+            }
+            smart_str_appendc(out, marker);
+            if (marker == '$') {
+                smart_str_append_long(out, first + tuple * width + column);
+            }
+        }
+    }
+}
+
 /* Db::expandIn: rewrites the parent placeholder of a relation step into a list padded to a power of two. The values are padded
  * the same way; on PostgreSQL every later placeholder number shifts. */
 static bool expand_in(zval *step, zval *vals, zval *sql_out, zval *vals_out)
@@ -1975,18 +1996,7 @@ static bool expand_in(zval *step, zval *vals, zval *sql_out, zval *vals_out)
                 q++;
             }
             if (k == parent) {
-                for (zend_long t = 0; t < n; t++) {
-                    if (t > 0) {
-                        smart_str_appends(&b, sep);
-                    }
-                    for (zend_long pp = 0; pp < width; pp++) {
-                        if (pp > 0) {
-                            smart_str_appends(&b, ", ");
-                        }
-                        smart_str_appendc(&b, '$');
-                        smart_str_append_long(&b, k + t * width + pp);
-                    }
-                }
+                append_parent_placeholders(&b, n, width, sep, '$', k);
             } else if (k > parent) {
                 smart_str_appendc(&b, '$');
                 smart_str_append_long(&b, k + n * width - 1);
@@ -2005,17 +2015,7 @@ static bool expand_in(zval *step, zval *vals, zval *sql_out, zval *vals_out)
             zval *from = aidx(bs, slot);
             zval *fv = from != NULL ? aget(from, "from") : NULL;
             if (is_str(fv, "parent")) {
-                for (zend_long t = 0; t < n; t++) {
-                    if (t > 0) {
-                        smart_str_appends(&b, sep);
-                    }
-                    for (zend_long pp = 0; pp < width; pp++) {
-                        if (pp > 0) {
-                            smart_str_appends(&b, ", ");
-                        }
-                        smart_str_appendc(&b, '?');
-                    }
-                }
+                append_parent_placeholders(&b, n, width, sep, '?', 0);
             } else {
                 smart_str_appendc(&b, '?');
             }
@@ -3902,20 +3902,14 @@ static bool op_execute(zval *self, void *ctx, zval *ret)
         return false;
     }
     if (!exec_stmt(self, &st, c->args)) {
-        if (pdo_exception_pending()) {
-            failed_cursor(&st);
-        }
-        zval_ptr_dtor(&st);
+        failed_statement(&st);
         return false;
     }
-    zval r;
-    bool ok = mcall(&st, "closeCursor", &r, 0, NULL);
-    zval_ptr_dtor(&st);
-    if (ok) {
-        zval_ptr_dtor(&r);
-        ZVAL_NULL(ret);
+    if (!close_statement(&st)) {
+        return false;
     }
-    return ok;
+    ZVAL_NULL(ret);
+    return true;
 }
 
 /* Db::execute: a compiled statement without rows, run on the connection (outside a transaction it has no audit). */
