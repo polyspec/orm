@@ -2125,10 +2125,11 @@ static void cat_key_predicate(smart_str *sql, zval *metadata, const char *dialec
 typedef enum {
     CAT_CHANGE_COLUMNS,
     CAT_CHANGE_ASSIGNMENTS,
+    CAT_CHANGE_LOCATOR,
 } cat_change_mode;
 
-/* Serializes validated Catalog changes and binds their values for insert and update statements. */
-static void cat_append_changes(smart_str *sql, zval *columns, zval *changes, const char *dialect, zval *args,
+/* Serializes validated Catalog changes and binds their values for insert, update and locator predicates. */
+static bool cat_append_changes(smart_str *sql, zval *columns, zval *changes, const char *dialect, zval *args,
                                cat_change_mode mode)
 {
     bool first = true;
@@ -2137,13 +2138,19 @@ static void cat_append_changes(smart_str *sql, zval *columns, zval *changes, con
         zend_long index = Z_LVAL_P(zend_hash_index_find(Z_ARRVAL_P(pair), 0));
         zval *value = zend_hash_index_find(Z_ARRVAL_P(pair), 1);
         zval nrv, *name = catalog_prop(zend_hash_index_find(Z_ARRVAL_P(columns), (zend_ulong)index), "name", &nrv);
-        if (!first) smart_str_appendc(sql, ',');
+        if (!first) smart_str_appends(sql, mode == CAT_CHANGE_LOCATOR ? " AND " : ",");
         first = false;
         cat_quote(sql, Z_STR_P(name), dialect);
         if (mode == CAT_CHANGE_ASSIGNMENTS) smart_str_appends(sql, "=?");
-        Z_TRY_ADDREF_P(value);
-        add_next_index_zval(args, value);
+        if (mode == CAT_CHANGE_LOCATOR && Z_TYPE_P(value) == IS_NULL) {
+            smart_str_appends(sql, " IS NULL");
+        } else {
+            if (mode == CAT_CHANGE_LOCATOR) smart_str_appends(sql, "=?");
+            Z_TRY_ADDREF_P(value);
+            add_next_index_zval(args, value);
+        }
     } ZEND_HASH_FOREACH_END();
+    return !first;
 }
 
 /* The primary-key lookup of a descriptor: at most two rows, locked where the server locks (Catalog::lookup). */
@@ -2625,24 +2632,9 @@ static bool cat_insert_body(zval *db, const char *dialect, zval *pdo, zval *decl
         smart_str_appendc(&locator_sql, '.');
         cat_quote(&locator_sql, Z_STR_P(tname), dialect);
         smart_str_appends(&locator_sql, " WHERE ");
-        bool first_predicate = true;
-        zval *pair;
-        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(changes), pair) {
-            zend_long index = Z_LVAL_P(zend_hash_index_find(Z_ARRVAL_P(pair), 0));
-            zval *value = zend_hash_index_find(Z_ARRVAL_P(pair), 1);
-            zval nrv, *name = catalog_prop(zend_hash_index_find(Z_ARRVAL_P(columns), (zend_ulong)index), "name", &nrv);
-            if (!first_predicate) smart_str_appends(&locator_sql, " AND ");
-            first_predicate = false;
-            cat_quote(&locator_sql, Z_STR_P(name), dialect);
-            if (Z_TYPE_P(value) == IS_NULL) {
-                smart_str_appends(&locator_sql, " IS NULL");
-            } else {
-                smart_str_appends(&locator_sql, "=?");
-                Z_TRY_ADDREF_P(value);
-                add_next_index_zval(&locator_args, value);
-            }
-        } ZEND_HASH_FOREACH_END();
-        if (first_predicate) smart_str_appends(&locator_sql, "1=1");
+        if (!cat_append_changes(&locator_sql, columns, changes, dialect, &locator_args, CAT_CHANGE_LOCATOR)) {
+            smart_str_appends(&locator_sql, "1=1");
+        }
         smart_str_appends(&locator_sql, " LIMIT 2 FOR UPDATE");
         smart_str_0(&locator_sql);
         zval before;
