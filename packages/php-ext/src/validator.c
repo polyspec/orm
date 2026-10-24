@@ -7,6 +7,7 @@
 #include "validator.h"
 #include "orm_exception_object.h"
 #include "orm_hash_value.h"
+#include "runtime_column_lookup.h"
 #include "temps.h"
 #include "Zend/zend_exceptions.h"
 #include "Zend/zend_smart_str.h"
@@ -192,24 +193,14 @@ static zval *lib_call(vctx *c, const char *cls, const char *method, uint32_t arg
 }
 
 /* RuntimeModel::column($entity, $name): the column array, or NULL when the entity has no such column. */
+static zval *runtime_column_resolve(void *context, zval *args)
+{
+    return lib_call(context, RUNTIME_MODEL, "column", 2, args);
+}
+
 static bool col_of(vctx *c, HashTable *ent, const char *name, HashTable **out)
 {
-    zval args[2];
-    zval e;
-    if (ent != NULL) {
-        ZVAL_ARR(&e, ent);
-    } else {
-        ZVAL_NULL(&e);
-    }
-    ZVAL_COPY_VALUE(&args[0], &e);
-    ZVAL_STRING(&args[1], name);
-    zval *r = lib_call(c, RUNTIME_MODEL, "column", 2, args);
-    zval_ptr_dtor(&args[1]);
-    if (r == NULL) {
-        return false;
-    }
-    *out = Z_TYPE_P(r) == IS_ARRAY ? Z_ARRVAL_P(r) : NULL;
-    return true;
+    return orm_runtime_column_lookup(c, runtime_column_resolve, ent, name, out);
 }
 
 /* RuntimeModel::numeric($column). */

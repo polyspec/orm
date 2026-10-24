@@ -10,6 +10,7 @@
 #include "planner.h"
 #include "orm_exception_object.h"
 #include "orm_hash_value.h"
+#include "runtime_column_lookup.h"
 #include "temps.h"
 #include "validator.h"
 #include "Zend/zend_exceptions.h"
@@ -394,22 +395,14 @@ static zend_string *dialect_name(pctx *c)
 }
 
 /* RuntimeModel::column($ent, $name) in *out: the column array, or NULL when the entity has no such column. False with an exception. */
+static zval *runtime_column_resolve(void *context, zval *args)
+{
+    return lib_static(context, RUNTIME_MODEL, "column", 2, args);
+}
+
 static bool col_of(pctx *c, HashTable *ent, zend_string *name, HashTable **out)
 {
-    zval args[2];
-    if (ent != NULL) {
-        ZVAL_ARR(&args[0], ent);
-    } else {
-        ZVAL_NULL(&args[0]);
-    }
-    ZVAL_STR_COPY(&args[1], name);
-    zval *r = lib_static(c, RUNTIME_MODEL, "column", 2, args);
-    zval_ptr_dtor(&args[1]);
-    if (r == NULL) {
-        return false;
-    }
-    *out = Z_TYPE_P(r) == IS_ARRAY ? Z_ARRVAL_P(r) : NULL;
-    return true;
+    return orm_runtime_column_lookup(c, runtime_column_resolve, ent, ZSTR_VAL(name), out);
 }
 
 /* RuntimeModel::encrypted($col) in *yes. False with an exception. */
