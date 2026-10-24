@@ -396,6 +396,10 @@ mod sqlite_version_tests;
 mod sqlite_row_lock_restore_tests;
 
 #[cfg(test)]
+#[path = "db/executor_route_tests.rs"]
+mod executor_route_tests;
+
+#[cfg(test)]
 #[path = "../tests/unit/time_precision.rs"]
 mod time_precision_tests;
 
@@ -1042,6 +1046,27 @@ pub(crate) enum Executor {
     Tx(Arc<TxShared>),
 }
 
+macro_rules! with_executor_target {
+    ($executor:expr, $db:ident, $target:ident, $audit:ident, $validate:block, $run:block) => {{
+        match $executor {
+            Executor::Db($db) => {
+                $validate
+                let $target = Target::Pool(&$db.inner.pool);
+                let $audit: Option<AuditKey> = None;
+                $run
+            }
+            Executor::Tx(tx) => {
+                let mut guard = tx.enter()?;
+                let inner = guard.as_mut().ok_or_else(|| Error::Config("transaction already finished".into()))?;
+                let $db = &tx.db;
+                let $target = Target::Tx(inner);
+                let $audit = tx.audit();
+                $run
+            }
+        }
+    }};
+}
+
 impl Executor {
     pub(crate) fn db(&self) -> &Db {
         match self {
@@ -1073,23 +1098,21 @@ impl Executor {
         parent_vals: Vec<Param>,
     ) -> Result<Vec<DriverRow>> {
         let origin = Origin { kind, tables, transaction: self.transaction() };
-        match self {
-            Executor::Db(d) => {
-                if d.inner.closed.load(Ordering::Acquire) {
+        with_executor_target!(
+            self,
+            db,
+            target,
+            audit,
+            {
+                if db.inner.closed.load(Ordering::Acquire) {
                     return Err(Error::Config("database is closed".into()));
                 }
                 if !st.lock.is_empty() {
                     return Err(Error::Config("row locks are allowed only inside a transaction".into()));
                 }
-                d.run_query(Target::Pool(&d.inner.pool), origin, st, params, parent_vals, None).await
-            }
-            Executor::Tx(t) => {
-                let mut guard = t.enter()?;
-                let inner = guard.as_mut().ok_or_else(|| Error::Config("transaction already finished".into()))?;
-                let audit = t.audit();
-                t.db.run_query(Target::Tx(inner), origin, st, params, parent_vals, audit.as_ref()).await
-            }
-        }
+            },
+            { db.run_query(target, origin, st, params, parent_vals, audit.as_ref()).await }
+        )
     }
 
     /// Takes SQLite's row lock in the transaction. On other databases, nothing is sent.
@@ -1112,20 +1135,18 @@ impl Executor {
     /// Runs the step. If `kind` and `tables` are given, the event carries them.
     pub(crate) async fn execute_as(&self, kind: Option<&str>, tables: Option<&[String]>, st: &Step, params: &[Param]) -> Result<(u64, u64)> {
         let origin = Origin { kind, tables, transaction: self.transaction() };
-        match self {
-            Executor::Db(d) => {
-                if d.inner.closed.load(Ordering::Acquire) {
+        with_executor_target!(
+            self,
+            db,
+            target,
+            audit,
+            {
+                if db.inner.closed.load(Ordering::Acquire) {
                     return Err(Error::Config("database is closed".into()));
                 }
-                d.run_execute(Target::Pool(&d.inner.pool), origin, st, params, None).await
-            }
-            Executor::Tx(t) => {
-                let mut guard = t.enter()?;
-                let inner = guard.as_mut().ok_or_else(|| Error::Config("transaction already finished".into()))?;
-                let audit = t.audit();
-                t.db.run_execute(Target::Tx(inner), origin, st, params, audit.as_ref()).await
-            }
-        }
+            },
+            { db.run_execute(target, origin, st, params, audit.as_ref()).await }
+        )
     }
 }
 
