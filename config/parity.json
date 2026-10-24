@@ -1841,20 +1841,6 @@
       ]
     },
     {
-      "id": "ts-coverage_conformance_verification",
-      "kind": "feature",
-      "requirements": [
-        "DIA-37"
-      ],
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_conformance_verification.mjs",
-          "id": "conformance_vector [sqlite]"
-        }
-      ]
-    },
-    {
       "id": "ts-coverage_constraints_and_relations",
       "kind": "feature",
       "requirements": [
@@ -13951,20 +13937,6 @@
           "implementation": "python",
           "test": "packages/python/tests/test_plan_cache_bound.py",
           "id": "test_out_of_range_in_param_is_refused"
-        }
-      ]
-    },
-    {
-      "id": "py-cov-conformance-verification-conformance-vector",
-      "kind": "feature",
-      "requirements": [
-        "DIA-37"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_conformance_verification.py",
-          "id": "test_conformance_vector"
         }
       ]
     },
