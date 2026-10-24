@@ -27,6 +27,8 @@ require_once __DIR__ . '/ModelTestFailingPdo.php';
 require_once __DIR__ . '/TransactionFailureCases.php';
 require_once __DIR__ . '/Served.php';
 require_once __DIR__ . '/StatementCountingPdo.php';
+require_once __DIR__ . '/UninitializedRecordingPdo.php';
+require_once __DIR__ . '/TransactionTrackingPdo.php';
 require_once __DIR__ . '/Stop.php';
 require_once __DIR__ . '/generated_classes.php';
 require_once __DIR__ . '/case_database.php';

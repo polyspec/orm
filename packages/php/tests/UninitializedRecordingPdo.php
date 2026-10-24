@@ -24,6 +24,11 @@ class UninitializedRecordingPdo extends PDO
     public function exec(string $statement): int|false
     {
         $this->statements[] = $statement;
+        $this->afterStatement($statement);
         return 0;
+    }
+
+    protected function afterStatement(string $statement): void
+    {
     }
 }

@@ -19,7 +19,9 @@
         "packages/php-ext/src/polyspec_orm.stub.php",
         "packages/php-ext/src/config.m4",
         "packages/php-ext/tests/CollectionTest.php",
-        "packages/php-ext/tests/UninitializedRecordingPdo.php",
+        "packages/php/tests/UninitializedRecordingPdo.php",
+        "packages/php/tests/TransactionTrackingPdo.php",
+        "packages/php/tests/bootstrap.php",
         "packages/php-ext/tests/bootstrap.php",
         "packages/php-ext/tests/DeclarationsTest.php",
         "packages/php-ext/tests/declarations_functions.php",
@@ -2382,6 +2384,8 @@
         "packages/php/src/Db.php",
         "packages/php/tests/TransactionFailureTest.php",
         "packages/php/tests/TransactionFailureCases.php",
+        "packages/php/tests/UninitializedRecordingPdo.php",
+        "packages/php/tests/TransactionTrackingPdo.php",
         "packages/php/tests/ModelTestFailingPdo.php",
         "packages/php/tests/bootstrap.php",
         "Makefile"
@@ -3100,6 +3104,7 @@
         "packages/php/src/**",
         "packages/php-ext/**",
         "packages/php/tests/bootstrap.php",
+        "packages/php/tests/UninitializedRecordingPdo.php",
         "packages/php/tests/CatalogConnectionCoverageCases.php",
         "packages/php/tests/StatementEventsCoverageCases.php",
         "packages/php/tests/CoverageSchemaDefinitionTest.php",
@@ -3227,6 +3232,7 @@
         "packages/php-ext/tests/UtilsNativeTest.php",
         "packages/php-ext/tests/NativeTestEventLog.php",
         "packages/php-ext/tests/bootstrap.php",
+        "packages/php/tests/bootstrap.php",
         "packages/php-ext/tests/AesUtilsNativeTest.php",
         "packages/php-ext/tests/OrmExceptionNativeTest.php"
       ]

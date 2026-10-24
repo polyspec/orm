@@ -21,36 +21,7 @@ final class TransactionFailureTest extends TestCase
     // Requirements: INT-67.
     public function testCloseDuringTransactionRollsBackAndPreservesCallbackFailure(): void
     {
-        $pdo = new class extends \PDO {
-            /** @var list<string> */
-            public array $statements = [];
-            private bool $transaction = false;
-
-            public function __construct()
-            {
-            }
-
-            public function setAttribute(int $attribute, mixed $value): bool
-            {
-                return true;
-            }
-
-            public function exec(string $statement): int|false
-            {
-                $this->statements[] = $statement;
-                if ($statement === 'BEGIN IMMEDIATE') {
-                    $this->transaction = true;
-                } elseif ($statement === 'ROLLBACK' || $statement === 'COMMIT') {
-                    $this->transaction = false;
-                }
-                return 0;
-            }
-
-            public function inTransaction(): bool
-            {
-                return $this->transaction;
-            }
-        };
+        $pdo = new TransactionTrackingPdo();
         $db = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
         $failure = new RuntimeException('the caller abandoned the transaction');
 

@@ -12,29 +12,17 @@ use Polyspec\Orm\Bytes;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 
-final class CollectionFakePdo extends \Polyspec\Orm\Tests\UninitializedRecordingPdo
+final class CollectionFakePdo extends \Polyspec\Orm\Tests\TransactionTrackingPdo
 {
-    public bool $active = false;
     public bool $suspendFirstStart = false;
 
-    public function exec(string $statement): int|false
+    protected function afterStatement(string $statement): void
     {
-        parent::exec($statement);
-        if (str_starts_with($statement, 'START TRANSACTION')) {
-            $this->active = true;
-            if ($this->suspendFirstStart) {
-                $this->suspendFirstStart = false;
-                \Fiber::suspend();
-            }
-        } elseif ($statement === 'COMMIT' || $statement === 'ROLLBACK') {
-            $this->active = false;
+        parent::afterStatement($statement);
+        if (str_starts_with($statement, 'START TRANSACTION') && $this->suspendFirstStart) {
+            $this->suspendFirstStart = false;
+            \Fiber::suspend();
         }
-        return 0;
-    }
-
-    public function inTransaction(): bool
-    {
-        return $this->active;
     }
 }
 use Polyspec\Orm\Collection;

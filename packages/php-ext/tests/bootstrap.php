@@ -16,7 +16,6 @@ require_once dirname(__DIR__, 2) . '/php/tests/bootstrap.php';
 require_once dirname(__DIR__, 2) . '/php/tests/MarkdownConformanceTest.php';
 // The functions that DeclarationsTest.php shares with declarations.php, which it runs as a child process.
 require_once __DIR__ . '/declarations_functions.php';
-require_once __DIR__ . '/UninitializedRecordingPdo.php';
 require_once __DIR__ . '/NativeTestEventLog.php';
 require_once dirname(__DIR__, 2) . '/php/tests/FailingStatement.php';
 require_once dirname(__DIR__, 2) . '/php/tests/FailingPdo.php';
