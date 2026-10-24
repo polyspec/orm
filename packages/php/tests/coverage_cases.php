@@ -8,6 +8,18 @@ declare(strict_types=1);
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;
 use Polyspec\Orm\OrmException;
+use PHPUnit\Framework\Assert;
+
+/** Fails in extension mode if a client entry point has fallen back to its PHP implementation. */
+function coverageAssertEntryClassesAreInternal(): void
+{
+    if (getenv('ORM_PHP_MODE') !== 'extension') {
+        return;
+    }
+    foreach (['Polyspec\\Orm\\Db', 'Polyspec\\Orm\\Planner'] as $entry) {
+        Assert::assertTrue((new ReflectionClass($entry))->isInternal(), "$entry is the extension class");
+    }
+}
 
 /** Reads from the selected database's catalog whether a table exists. */
 function coverageTableExists(Db $db, string $table): bool

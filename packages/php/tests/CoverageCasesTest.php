@@ -31,6 +31,12 @@ final class CoverageCasesTest extends TestCase
         );
     }
 
+    public function testEntryClassAssertionAllowsLibraryMode(): void
+    {
+        self::assertNotSame('extension', getenv('ORM_PHP_MODE'), 'this helper unit runs in library mode');
+        coverageAssertEntryClassesAreInternal();
+    }
+
     public function testTableLookupUsesTheSelectedCatalogWithoutADatabaseServer(): void
     {
         $queries = [

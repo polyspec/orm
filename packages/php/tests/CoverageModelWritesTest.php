@@ -21,24 +21,10 @@ const WRITE_TENANT = 990002;
 #[Medium]
 final class CoverageModelWritesTest extends TestCase
 {
-    /**
-     * With the extension loaded (php-extension, S10) the client's entry classes are the extension's: a fallback to the
-     * PHP classes would not test the extension, so each one is asserted internal.
-     */
-    private static function assertEntryClassesAreInternal(): void
-    {
-        if (getenv('ORM_PHP_MODE') !== 'extension') {
-            return;
-        }
-        foreach (['Polyspec\\Orm\\Db', 'Polyspec\\Orm\\Planner'] as $entry) {
-            Assert::assertTrue((new \ReflectionClass($entry))->isInternal(), "$entry is the extension class");
-        }
-    }
-
     // Requirements: DSL-56, DSL-57, DSL-58, DSL-60, DSL-103, DSL-104, DSL-105, DSL-106, DSL-110.
     public function testModelWriteCycle(): void
     {
-        self::assertEntryClassesAreInternal();
+        coverageAssertEntryClassesAreInternal();
         foreach (coverageItemsOf(__FILE__) as $item) {
             selectCoverageItem($item);
             [, $dsn] = coverageItem();
