@@ -19603,6 +19603,10 @@
           "symbol": "Polyspec\\Orm\\OrmException"
         },
         {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\OrmException"
+        },
+        {
           "implementation": "typescript",
           "symbol": "@polyspec/orm!OrmError:class"
         },

@@ -13,6 +13,7 @@ const CLIENT_CLASSES = [
     'Polyspec\\Orm\\Validator',
     'Polyspec\\Orm\\Planner',
     'Polyspec\\Orm\\Db',
+    'Polyspec\\Orm\\OrmException',
     'Polyspec\\Orm\\Stats',
     'Polyspec\\Orm\\StatementEvent',
     'Polyspec\\Orm\\Catalog',

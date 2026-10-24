@@ -38,6 +38,15 @@ caseTest('the native Stats API is bound by the PHP extension', COMPUTE, () => {
   );
 });
 
+caseTest('the native OrmException API is bound by the PHP extension', COMPUTE, () => {
+  const unit = (readParity(root).units ?? []).find(entry => entry.id === 'client-orm-error');
+  assert.ok(unit, 'client-orm-error API unit is missing');
+  assert.ok(
+    unit.symbols?.some(entry => entry.implementation === 'php-extension' && entry.symbol === 'Polyspec\\Orm\\OrmException'),
+    'client-orm-error does not bind the native Polyspec\\Orm\\OrmException class',
+  );
+});
+
 caseTest('the API units of the error catalog cover every code of errors.yaml once', COMPUTE, () => {
   const parity = readParity(root);
   const codes = readErrorCatalog(root);

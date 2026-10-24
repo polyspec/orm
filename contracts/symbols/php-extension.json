@@ -2939,6 +2939,50 @@
     "exported": true,
     "signature": "public function __invoke(): void"
   },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\OrmException": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\OrmException extends RuntimeException implements Stringable,Throwable uses "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\OrmException::$cleanup": {
+    "exported": true,
+    "signature": "public readonly array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\OrmException::$code_": {
+    "exported": true,
+    "signature": "public readonly string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\OrmException::$rollback": {
+    "exported": true,
+    "signature": "public readonly ?Throwable"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\OrmException::__construct": {
+    "exported": true,
+    "signature": "public function __construct(string $code_, string $message, ?Throwable $previous=null, ?Throwable $rollback=null, array $cleanup=[]): "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\OrmException::fromDriver": {
+    "exported": true,
+    "signature": "public static function fromDriver(PDOException $e, string $driver, PDO $pdo): Polyspec\\Orm\\OrmException"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\OrmException::fromMysqli": {
+    "exported": true,
+    "signature": "public static function fromMysqli(mysqli_sql_exception $e): Polyspec\\Orm\\OrmException"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\OrmException::mysqlCode": {
+    "exported": false,
+    "signature": "private static function mysqlCode(?int $num, string $state): string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\OrmException::postgresCode": {
+    "exported": false,
+    "signature": "private static function postgresCode(string $state): string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\OrmException::rollback": {
+    "exported": true,
+    "signature": "public static function rollback(Throwable $cause, Throwable $rollback): Polyspec\\Orm\\OrmException"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\OrmException::withCleanup": {
+    "exported": true,
+    "signature": "public static function withCleanup(Throwable $primary, Throwable $cleanup): Polyspec\\Orm\\OrmException"
+  },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Page": {
     "exported": true,
     "signature": "final readonly class Polyspec\\Orm\\Page extends  implements  uses "

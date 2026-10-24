@@ -2510,6 +2510,7 @@
         "packages/php-ext/tests/DeclarationsTest.php",
         "packages/php-ext/tests/ModelNativeTest.php",
         "packages/php-ext/tests/CollectionTest.php",
+        "packages/php-ext/tests/OrmExceptionNativeTest.php",
         "Makefile"
       ]
     },
