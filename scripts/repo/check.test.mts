@@ -391,6 +391,7 @@ caseTest('the CI groups run every target of CHECK_TARGETS in exactly one job', C
   assert.ok(groups.length > 1, 'the Makefile declares more than one CI group');
   const byCodeUnit = (a: string, b: string) => (a < b ? -1 : Number(a > b));
   assert.deepEqual(groups.flatMap(group => targets[group] ?? []).sort(byCodeUnit), [...checkTargets(makefile)].sort(byCodeUnit));
+  assert.ok((targets.static ?? []).includes('dbspec-vscode-check'), 'the database-free VS Code extension check runs in the static CI group');
   // The group-rows-db targets each run in exactly one CI group (KSTD-10-1).
   for (const target of ['group-rows-db-go', 'group-rows-db-typescript', 'group-rows-db-python', 'group-rows-db-php', 'group-rows-db-php-extension', 'group-rows-db-rust']) {
     assert.equal(groups.flatMap(group => targets[group] ?? []).filter(name => name === target).length, 1, `${target} runs in one CI group`);

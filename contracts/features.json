@@ -2458,10 +2458,6 @@
           "shard": "other",
           "inputs": [
             "packages/go/orm/coverage_transaction_failure_test.go",
-            "packages/go/orm/failing_driver_test.go",
-            "packages/go/orm/test_helpers_test.go",
-            "packages/go/orm/coverage_fixture_test.go",
-            "packages/go/orm/schema_helpers_test.go",
             "packages/go/orm/rollback_fault_test.go"
           ]
         },
@@ -2483,8 +2479,7 @@
             "packages/php/src/Db.php",
             "packages/php/tests/TransactionFailureTest.php",
             "packages/php/tests/TransactionFailureCases.php",
-            "packages/php/tests/ModelTestFailingPdo.php",
-            "packages/php/tests/bootstrap.php"
+            "packages/php/tests/ModelTestFailingPdo.php"
           ]
         },
         {
@@ -2493,7 +2488,6 @@
           "shard": "other",
           "inputs": [
             "packages/php-ext/tests/TransactionFailureNativeTest.php",
-            "packages/php-ext/tests/bootstrap.php",
             "packages/php/tests/TransactionFailureCases.php",
             "packages/php/tests/ModelTestFailingPdo.php"
           ]
@@ -3061,7 +3055,6 @@
             "packages/python/tests/test_rollback_fault.py",
             "packages/python/tests/test_sqlite.py",
             "packages/python/tests/entry_point_check.py",
-            "packages/python/tests/testcase.py",
             "packages/python/src/polyspec/orm/database.py",
             "packages/python/src/polyspec/orm/errors.py",
             "packages/python/src/polyspec/orm/testing/__init__.py"
@@ -3199,7 +3192,6 @@
             "inputs": [
               "packages/php/tests/statement_events_run.php",
               "packages/php/tests/StatementEventsCoverageCases.php",
-              "packages/php/tests/coverage_cases.php",
               "packages/php/tests/case_database.php",
               "contracts/fixtures/statement_events.dbs",
               "tests/events/vectors.json"
@@ -3248,7 +3240,6 @@
             "inputs": [
               "packages/php/tests/statement_events_run.php",
               "packages/php/tests/StatementEventsCoverageCases.php",
-              "packages/php/tests/coverage_cases.php",
               "packages/php/tests/case_database.php",
               "contracts/fixtures/statement_events.dbs",
               "tests/events/vectors.json"
@@ -4373,8 +4364,7 @@
             ],
             "inputs": [
               "contracts/fixtures/schema_definition.json",
-              "packages/php/tests/CoverageSchemaDefinitionTest.php",
-              "packages/php/tests/coverage_cases.php"
+              "packages/php/tests/CoverageSchemaDefinitionTest.php"
             ],
             "commands": {
               "none": [
@@ -8980,8 +8970,7 @@
             "inputs": [
               "tests/conformance/vectors.json",
               "tests/conformance/vectors.postgres.json",
-              "tests/conformance/vectors.sqlite.json",
-              "packages/php/testing/conformance/runner.php"
+              "tests/conformance/vectors.sqlite.json"
             ],
             "commands": {
               "mysql": [
