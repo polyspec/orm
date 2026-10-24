@@ -1,12 +1,11 @@
 //! CPX-2 product search using the shared generated schema, seed, and golden result.
 use super::coverage_env::run;
-use polyspec_orm::db::Pool;
 use polyspec_orm::Db;
-use polyspec_orm_case_database::CaseDatabase;
 use serde::Deserialize;
-use serde_json::Value;
-use std::collections::BTreeMap;
-use std::sync::{Arc, Mutex};
+use std::{
+    collections::BTreeMap,
+    sync::{Arc, Mutex},
+};
 
 const FIXTURE: &str = include_str!("../../../../../contracts/fixtures/complex_query/complex_query.json");
 
@@ -14,16 +13,11 @@ const FIXTURE: &str = include_str!("../../../../../contracts/fixtures/complex_qu
 mod complex_model {
     include!(concat!(env!("OUT_DIR"), "/complex_query/orm_model.rs"));
 }
-
 use complex_model::{self as model, OrderProductItem, Product, ProductBrandLang, ProductLang, ProductMatchCategory, ProductReview, User};
 
 #[derive(Deserialize)]
 struct Fixture {
     input: Input,
-    seed_order: Vec<String>,
-    seed_columns: BTreeMap<String, Vec<String>>,
-    seed: BTreeMap<String, Vec<BTreeMap<String, Value>>>,
-    mysql_setup: Vec<String>,
     expected: Expected,
     expected_events: BTreeMap<String, Vec<ExpectedEvent>>,
 }
@@ -92,6 +86,30 @@ fn shared_fixture_has_the_fulltext_case_and_eight_ordered_statements() {
     assert!(fixture.expected_events["sqlite"].is_empty());
 }
 
+#[test]
+// Requirements: CPX-2.
+fn full_product_search_request_compiles_for_mysql_and_postgres_and_rejects_sqlite() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let fixture: Fixture = serde_json::from_str(FIXTURE).expect("shared complex-query fixture");
+    let request = search_query(&fixture.input).limit(0, fixture.input.per_page);
+    let core = polyspec_orm::Model::core(&request);
+
+    for dialect in [polyspec_orm::Dialect::MySql, polyspec_orm::Dialect::Postgres] {
+        let plan = polyspec_orm::testing::compile_core_request(&core, "paginate", dialect).expect("typed product search plan");
+        assert_eq!(
+            plan.steps.iter().map(|step| step.role.as_str()).collect::<Vec<_>>(),
+            ["main", "count", "relation", "relation", "relation", "relation", "relation", "relation"]
+        );
+        assert_eq!(plan.steps[0].tables, ["product", "product_brand_lang", "product_lang", "product_match_category"]);
+        assert_eq!(plan.steps[1].tables, plan.steps[0].tables);
+        assert!(plan.steps.iter().all(|step| !step.sql.to_ascii_uppercase().contains("GROUP BY")));
+    }
+
+    let error = polyspec_orm::testing::compile_core_request(&core, "paginate", polyspec_orm::Dialect::Sqlite)
+        .expect_err("SQLite must reject the full-text predicates before query execution");
+    assert_eq!(error.code(), polyspec_orm::codes::OPERATOR_NOT_ALLOWED);
+}
+
 #[tokio::test]
 // Requirements: CPX-2.
 async fn coverage_complex_query_product_search() {
@@ -100,16 +118,11 @@ async fn coverage_complex_query_product_search() {
         let driver =
             std::env::var("ORM_FEATURE_DATABASE").expect("ORM_FEATURE_DATABASE is required; run through make feature-check, which selects each database");
         assert!(matches!(driver.as_str(), "mysql" | "postgres" | "sqlite"), "unknown fixture driver {driver:?}");
+        let dsn = std::env::var("ORM_FEATURE_DSN").expect("ORM_FEATURE_DSN is required; connect to the seeded CPX owner database");
+        assert!(!dsn.is_empty(), "ORM_FEATURE_DSN is empty");
         let fixture: Fixture = serde_json::from_str(FIXTURE).expect("shared complex-query fixture");
-        let database = CaseDatabase::create(&driver).await;
-        let db = model::connect(database.dsn(), 4, polyspec_orm::Config::default()).await.unwrap();
-        db.utils().schema().install(&model::SCHEMA).await.unwrap();
-        seed(&db, &driver, &fixture).await;
-        if driver == "mysql" {
-            for statement in &fixture.mysql_setup {
-                execute(&db, statement).await;
-            }
-        }
+        let db = model::connect(&dsn, 4, polyspec_orm::Config::default()).await.unwrap();
+        assert_eq!(db.driver(), driver, "ORM_FEATURE_DSN selects another database than ORM_FEATURE_DATABASE");
 
         let events = Arc::new(Mutex::new(Vec::<ObservedEvent>::new()));
         let observed = events.clone();
@@ -146,17 +159,21 @@ async fn coverage_complex_query_product_search() {
         }
 
         db.close().await;
-        database.drop().await;
     })
     .await;
 }
 
 async fn search(db: &Db, input: &Input) -> polyspec_orm::Result<polyspec_orm::Page<Product>> {
+    search_query(input).connect(db).gets_page(input.page, input.per_page).await
+}
+
+fn search_query(input: &Input) -> Product {
     let category = ProductMatchCategory::new().remove_all_columns().service_region_category_item_seq(input.category_seqs.clone());
-    let brand_lang = ProductBrandLang::new().remove_all_columns().fulltext_boolean_name_with_description(input.keyword.clone());
-    let lang = ProductLang::new().remove_all_columns().fulltext_boolean_name_with_short_description_with_content(input.keyword.clone());
+    let category = category.add_column_product_seq();
+    let brand_lang = ProductBrandLang::new().remove_all_columns().add_column_product_brand_seq().fulltext_boolean_name_with_description(input.keyword.clone());
+    let lang =
+        ProductLang::new().remove_all_columns().add_column_product_seq().fulltext_boolean_name_with_short_description_with_content(input.keyword.clone());
     Product::new()
-        .connect(db)
         .relation(ProductLang::new().match_seq_with_product_seq().lang_id(input.lang_id))
         .relation(
             model::ProductBrand::new()
@@ -183,21 +200,20 @@ async fn search(db: &Db, input: &Input) -> polyspec_orm::Result<polyspec_orm::Pa
                 .order_by_seq_desc()
                 .group_limit(1),
         )
-        .join_seq_with_product_seq(category)
-        .left_join_product_brand_seq_with_product_brand_seq(brand_lang.clone())
-        .left_join_seq_with_product_seq(lang.clone())
-        .service_seq(input.service_seq)
+        .seq(category)
+        .and_service_seq(input.service_seq)
         .and_is_close(false)
         .and_is_display(true)
         .and(|q: Product| {
             q.is_allday(true)
                 .or(|q: Product| q.is_allday(false).and_le_display_start_dt(polyspec_orm::args::now()).and_ge_display_end_dt(polyspec_orm::args::now()))
         })
-        .and(|q: Product| q.fulltext_boolean_name_with_short_description_with_content(input.keyword.clone()).or(&brand_lang).or(&lang))
-        .group_by_seq()
+        .and(|q: Product| {
+            q.fulltext_boolean_name_with_short_description_with_content(input.keyword.clone())
+                .or(|q: Product| q.product_brand_seq(brand_lang))
+                .or(|q: Product| q.seq(lang))
+        })
         .order_by_like_count_desc_and_seq_desc()
-        .gets_page(input.page, input.per_page)
-        .await
 }
 
 fn assert_relations(product: &Product, expected: &Expected) {
@@ -228,50 +244,5 @@ fn assert_relations(product: &Product, expected: &Expected) {
     }
     if let Some(want) = expected.order_product_item_seqs.get(&key) {
         assert_eq!(product.get_my_order_item().unwrap().unwrap().get_seq().unwrap(), *want);
-    }
-}
-
-async fn seed(db: &Db, driver: &str, fixture: &Fixture) {
-    for table in &fixture.seed_order {
-        let columns = &fixture.seed_columns[table];
-        let rows = &fixture.seed[table];
-        for row in rows {
-            let values = columns.iter().map(|column| literal(&row[column])).collect::<Vec<_>>().join(", ");
-            let columns = columns.iter().map(|column| quote(driver, column)).collect::<Vec<_>>().join(", ");
-            execute(db, &format!("INSERT INTO {} ({columns}) VALUES ({values})", quote(driver, table))).await;
-        }
-    }
-}
-
-async fn execute(db: &Db, sql: &str) {
-    match db.pool() {
-        Pool::MySql(pool) => {
-            sqlx::query(sqlx::AssertSqlSafe(sql)).execute(pool).await.unwrap();
-        }
-        Pool::Postgres(pool) => {
-            sqlx::query(sqlx::AssertSqlSafe(sql)).execute(pool).await.unwrap();
-        }
-        Pool::Sqlite(pool) => {
-            sqlx::query(sqlx::AssertSqlSafe(sql)).execute(pool).await.unwrap();
-        }
-        Pool::Markdown(_) => panic!("complex-query fixture does not support markdown"),
-    };
-}
-
-fn literal(value: &Value) -> String {
-    match value {
-        Value::Null => "NULL".into(),
-        Value::Bool(value) => if *value { "TRUE" } else { "FALSE" }.into(),
-        Value::Number(value) => value.to_string(),
-        Value::String(value) => format!("'{}'", value.replace('\'', "''")),
-        other => panic!("unsupported seed value {other}"),
-    }
-}
-
-fn quote(driver: &str, identifier: &str) -> String {
-    match driver {
-        "mysql" => format!("`{}`", identifier.replace('`', "``")),
-        "postgres" | "sqlite" => format!("\"{}\"", identifier.replace('"', "\"\"")),
-        other => panic!("unknown database driver {other:?}"),
     }
 }

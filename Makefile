@@ -1502,11 +1502,11 @@ client-db-check: lease-tool python-venv-check
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_statement_fault_entry
 	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python ORM_CLIENT_DB_LANES=parallel node scripts/client-db-test.mts
 
-# complex-query-rust-check runs the shared CPX-2 fixture against isolated MySQL, PostgreSQL, and SQLite case databases.
+# complex-query-rust-check runs the shared CPX-2 fixture against its preseeded MySQL, PostgreSQL, and SQLite owner databases.
 complex-query-rust-check: lease-tool
-	$(WITH_TEST_ENV) cd packages/rust && ORM_FEATURE_DATABASE=mysql ORM_FEATURE_DSN="$$BENCH_MYSQL_DSN" $(CARGO_TEST) complex-query-rust-mysql -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-tests --test integration -- --test-threads=1 --exact coverage_complex_query::coverage_complex_query_product_search
-	$(WITH_TEST_ENV) cd packages/rust && ORM_FEATURE_DATABASE=postgres ORM_FEATURE_DSN="$$BENCH_POSTGRES_DSN" $(CARGO_TEST) complex-query-rust-postgres -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-tests --test integration -- --test-threads=1 --exact coverage_complex_query::coverage_complex_query_product_search
-	$(WITH_TEST_ENV) cd packages/rust && ORM_FEATURE_DATABASE=sqlite ORM_FEATURE_DSN="$$BENCH_SQLITE_DSN" $(CARGO_TEST) complex-query-rust-sqlite -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-tests --test integration -- --test-threads=1 --exact coverage_complex_query::coverage_complex_query_product_search
+	$(WITH_TEST_ENV) cd packages/rust && ORM_FEATURE_DATABASE=mysql ORM_FEATURE_DSN="$$COMPLEX_QUERY_RUST_MYSQL_DSN" $(CARGO_TEST) complex-query-rust-mysql -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-tests --test integration -- --test-threads=1 --exact coverage_complex_query::coverage_complex_query_product_search
+	$(WITH_TEST_ENV) cd packages/rust && ORM_FEATURE_DATABASE=postgres ORM_FEATURE_DSN="$$COMPLEX_QUERY_RUST_POSTGRES_DSN" $(CARGO_TEST) complex-query-rust-postgres -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-tests --test integration -- --test-threads=1 --exact coverage_complex_query::coverage_complex_query_product_search
+	$(WITH_TEST_ENV) cd packages/rust && ORM_FEATURE_DATABASE=sqlite ORM_FEATURE_DSN="$$COMPLEX_QUERY_RUST_SQLITE_DSN" $(CARGO_TEST) complex-query-rust-sqlite -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-tests --test integration -- --test-threads=1 --exact coverage_complex_query::coverage_complex_query_product_search
 
 # python-install-changed-database-check runs every case of contracts/fixtures/install/changed_database.json with the
 # Python client on SQLite, MySQL and PostgreSQL (packages/python/tests/install_changed_database.py).

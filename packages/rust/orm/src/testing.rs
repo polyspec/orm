@@ -6,6 +6,19 @@ use std::sync::atomic::Ordering;
 use crate::Db;
 use crate::Error;
 
+/// Compiles a request built from a generated model without opening a database connection.
+/// This is available only with `test-faults`, for database-independent planner tests.
+pub fn compile_core_request(core: &crate::Core, kind: &str, dialect: crate::Dialect) -> crate::Result<crate::plan::Plan> {
+    let request = crate::request::build(core, kind);
+    if let Some(error) = request.error() {
+        return Err(error);
+    }
+    let manifest = request.schema.manifest()?;
+    crate::engine::validate(&manifest, &request.ir)?;
+    crate::request::validate_page_params(&request.ir, &request.params)?;
+    crate::engine::compile(&manifest, dialect, &request.ir)
+}
+
 /// Sets a test fault on the connection of `db` and all its clones. After a callback fails,
 /// the next transaction's rollback, once run, reports a `FAULT` error as the rollback error
 /// so the transaction returns an `Error::Rollback` carrying the callback error and the fault
