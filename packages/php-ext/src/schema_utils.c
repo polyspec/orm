@@ -582,6 +582,15 @@ static bool schema_utils_bool(zval *db, zend_string *sql, zval *args, zval *resu
     return true;
 }
 
+/* Consumes sql and args regardless of the database query result. */
+static bool schema_utils_bool_query(zval *db, zend_string *sql, zval *args, zval *result)
+{
+    bool ok = schema_utils_bool(db, sql, args, result);
+    zend_string_release(sql);
+    zval_ptr_dtor(args);
+    return ok;
+}
+
 ZEND_METHOD(Polyspec_Orm_SchemaUtils, __construct)
 {
     zval *db, *utils;
@@ -783,9 +792,7 @@ ZEND_METHOD(Polyspec_Orm_SchemaUtils, exists)
         add_next_index_str(&args, pattern.s);
     }
     zval_ptr_dtor(&driver);
-    bool ok = schema_utils_bool(schema_utils_db(ZEND_THIS), sql, &args, return_value);
-    zend_string_release(sql);
-    zval_ptr_dtor(&args);
+    bool ok = schema_utils_bool_query(schema_utils_db(ZEND_THIS), sql, &args, return_value);
     if (!ok) RETURN_THROWS();
 }
 
@@ -817,9 +824,7 @@ ZEND_METHOD(Polyspec_Orm_SchemaUtils, installed)
         add_next_index_str(&args, strpprintf(0, "%s__%s", ZSTR_VAL(schema), ZSTR_VAL(table)));
     }
     zval_ptr_dtor(&driver);
-    bool ok = schema_utils_bool(schema_utils_db(ZEND_THIS), sql, &args, return_value);
-    zend_string_release(sql);
-    zval_ptr_dtor(&args);
+    bool ok = schema_utils_bool_query(schema_utils_db(ZEND_THIS), sql, &args, return_value);
     if (!ok) RETURN_THROWS();
 }
 
@@ -838,9 +843,7 @@ ZEND_METHOD(Polyspec_Orm_SchemaUtils, empty)
         sql = zend_string_init("SELECT NOT EXISTS(SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite\\_%' ESCAPE '\\' AND name NOT LIKE 'orm\\_\\_%' ESCAPE '\\')", sizeof("SELECT NOT EXISTS(SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite\\_%' ESCAPE '\\' AND name NOT LIKE 'orm\\_\\_%' ESCAPE '\\')") - 1, 0);
     }
     zval_ptr_dtor(&driver);
-    bool ok = schema_utils_bool(schema_utils_db(ZEND_THIS), sql, &args, return_value);
-    zend_string_release(sql);
-    zval_ptr_dtor(&args);
+    bool ok = schema_utils_bool_query(schema_utils_db(ZEND_THIS), sql, &args, return_value);
     if (!ok) RETURN_THROWS();
 }
 
