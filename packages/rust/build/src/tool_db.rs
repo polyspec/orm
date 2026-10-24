@@ -93,49 +93,8 @@ fn decode_unsigned(value: Option<u64>) -> Result<Val, sqlx::Error> {
     value.map(i64::try_from).transpose().map(|value| value.map_or(Val::Null, Val::Int)).map_err(|error| sqlx::Error::Decode(Box::new(error)))
 }
 
-macro_rules! cell {
-    ($row:expr, $i:expr) => {{
-        let row = $row;
-        let i = $i;
-        if row.columns()[i].type_info().name().ends_with(" UNSIGNED") {
-            cell_extra!(row, i)
-        } else if let Ok(v) = row.try_get::<Option<String>, _>(i) {
-            Ok(v.map_or(Val::Null, Val::Text))
-        } else if let Ok(v) = row.try_get::<Option<i64>, _>(i) {
-            Ok(v.map_or(Val::Null, Val::Int))
-        } else if let Ok(v) = row.try_get::<Option<i32>, _>(i) {
-            Ok(v.map_or(Val::Null, |n| Val::Int(i64::from(n))))
-        } else if let Ok(v) = row.try_get::<Option<i16>, _>(i) {
-            Ok(v.map_or(Val::Null, |n| Val::Int(i64::from(n))))
-        } else if let Ok(v) = row.try_get::<Option<bool>, _>(i) {
-            Ok(v.map_or(Val::Null, Val::Bool))
-        } else if let Ok(v) = row.try_get::<Option<Vec<u8>>, _>(i) {
-            decode_bytes(v)
-        } else {
-            cell_extra!(row, i)
-        }
-    }};
-}
-
-macro_rules! cell_extra {
-    ($row:expr, $i:expr) => {{
-        let (row, i) = ($row, $i);
-        if let Ok(v) = row.try_get::<Option<u64>, _>(i) {
-            decode_unsigned(v)
-        } else if let Ok(v) = row.try_get::<Option<u32>, _>(i) {
-            Ok(v.map_or(Val::Null, |n| Val::Int(i64::from(n))))
-        } else if let Ok(v) = row.try_get::<Option<i8>, _>(i) {
-            Ok(v.map_or(Val::Null, |n| Val::Int(i64::from(n))))
-        } else if let Ok(v) = row.try_get::<Option<u8>, _>(i) {
-            Ok(v.map_or(Val::Null, |n| Val::Int(i64::from(n))))
-        } else {
-            Err(sqlx::Error::Decode("Unsupported catalog cell type".into()))
-        }
-    }};
-}
-
-macro_rules! cell_pg {
-    ($row:expr, $i:expr) => {{
+macro_rules! cell_common {
+    ($row:expr, $i:expr, $fallback:ident) => {{
         let (row, i) = ($row, $i);
         if let Ok(v) = row.try_get::<Option<String>, _>(i) {
             Ok(v.map_or(Val::Null, Val::Text))
@@ -148,13 +107,56 @@ macro_rules! cell_pg {
         } else if let Ok(v) = row.try_get::<Option<bool>, _>(i) {
             Ok(v.map_or(Val::Null, Val::Bool))
         } else if let Ok(v) = row.try_get::<Option<Vec<u8>>, _>(i) {
-            decode_bytes(v)
+            $crate::tool_db::decode_bytes(v)
+        } else {
+            $fallback!(row, i)
+        }
+    }};
+}
+
+macro_rules! cell {
+    ($row:expr, $i:expr) => {{
+        let (row, i) = ($row, $i);
+        if row.columns()[i].type_info().name().ends_with(" UNSIGNED") {
+            cell_extra!(row, i)
+        } else {
+            cell_common!(row, i, cell_extra)
+        }
+    }};
+}
+
+macro_rules! cell_extra {
+    ($row:expr, $i:expr) => {{
+        let (row, i) = ($row, $i);
+        if let Ok(v) = row.try_get::<Option<u64>, _>(i) {
+            $crate::tool_db::decode_unsigned(v)
+        } else if let Ok(v) = row.try_get::<Option<u32>, _>(i) {
+            Ok(v.map_or(Val::Null, |n| Val::Int(i64::from(n))))
         } else if let Ok(v) = row.try_get::<Option<i8>, _>(i) {
+            Ok(v.map_or(Val::Null, |n| Val::Int(i64::from(n))))
+        } else if let Ok(v) = row.try_get::<Option<u8>, _>(i) {
+            Ok(v.map_or(Val::Null, |n| Val::Int(i64::from(n))))
+        } else {
+            Err(sqlx::Error::Decode("Unsupported catalog cell type".into()))
+        }
+    }};
+}
+
+macro_rules! cell_pg_extra {
+    ($row:expr, $i:expr) => {{
+        let (row, i) = ($row, $i);
+        if let Ok(v) = row.try_get::<Option<i8>, _>(i) {
             Ok(v.map_or(Val::Null, |n| Val::Text((n as u8 as char).to_string())))
         } else {
             Err(sqlx::Error::Decode("Unsupported catalog cell type".into()))
         }
     }};
+}
+
+macro_rules! cell_pg {
+    ($row:expr, $i:expr) => {
+        cell_common!($row, $i, cell_pg_extra)
+    };
 }
 
 macro_rules! grid_cell {
@@ -421,6 +423,7 @@ pub async fn open(raw: &str) -> Result<(polyspec_orm::Db, Conn, ToolDsn), String
 #[cfg(test)]
 mod cause_message_tests {
     use super::Val;
+    use sqlx::{Column as _, Row as _, TypeInfo as _};
 
     #[test]
     fn malformed_integer_preserves_parse_cause_without_input_text() {
@@ -449,6 +452,18 @@ mod cause_message_tests {
         let redacted = format!("{:?}", dsn.redacted());
         assert!(redacted.contains("xxxxx"), "{redacted}");
         assert!(!redacted.contains("secret"), "{redacted}");
+    }
+
+    #[tokio::test]
+    async fn sqlite_catalog_cells_use_the_shared_decoder_path() {
+        use sqlx::Connection as _;
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let mut connection = sqlx::SqliteConnection::connect("sqlite::memory:").await.expect("SQLite memory connection");
+        let row = sqlx::query("SELECT NULL AS n, 7 AS i, 'text' AS t, X'74657874' AS b").fetch_one(&mut connection).await.expect("row");
+        assert_eq!(cell!(&row, 0).unwrap(), Val::Null);
+        assert_eq!(cell!(&row, 1).unwrap(), Val::Int(7));
+        assert_eq!(cell!(&row, 2).unwrap(), Val::Text("text".into()));
+        assert_eq!(cell!(&row, 3).unwrap(), Val::Text("text".into()));
     }
 
     #[test]
