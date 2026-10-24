@@ -18,6 +18,38 @@ use Polyspec\Orm\Utils;
 #[Medium]
 final class UtilsNativeTest extends TestCase
 {
+    public function testWasInsertedChecksTransactionBeforeArguments(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'orm-utils-was-inserted-');
+        self::assertIsString($path);
+        try {
+            $db = Orm::connect('sqlite:///' . $path, new Config());
+            $events = [];
+            $unsubscribe = $db->subscribe(static function ($event) use (&$events): void {
+                $events[] = $event;
+            });
+            for ($attempt = 0; $attempt < 2; $attempt++) {
+                try {
+                    $db->utils()->wasInserted('', 0);
+                    self::fail('wasInserted accepted invalid arguments outside a transaction');
+                } catch (OrmException $error) {
+                    self::assertSame(Code::CONFIG, $error->code_);
+                    self::assertSame(
+                        'CONFIG: wasInserted requires an active transaction of the connection',
+                        $error->getMessage()
+                    );
+                }
+                self::assertSame([], $events);
+            }
+            $unsubscribe();
+            $db->close();
+        } finally {
+            if (is_file($path)) {
+                unlink($path);
+            }
+        }
+    }
+
     public function testNativeUtilitiesUseTheActiveTransactionAndKeepItsLocalState(): void
     {
         $class = new \ReflectionClass(Utils::class);

@@ -35,6 +35,26 @@ final class OrmExceptionNativeTest extends TestCase
         }
     }
 
+    public function testOrmConnectionFactoryRejectsAConfigThatIsNotConfigBeforeOpeningSqlite(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'orm-connect-config-type-');
+        Assert::assertIsString($path);
+        unlink($path);
+        try {
+            try {
+                Orm::connect('sqlite:///' . $path, new \stdClass());
+                Assert::fail('connect accepted an object that is not a Config');
+            } catch (\TypeError $error) {
+                Assert::assertStringContainsString('Config', $error->getMessage());
+            }
+            Assert::assertFileDoesNotExist($path);
+        } finally {
+            if (is_file($path)) {
+                unlink($path);
+            }
+        }
+    }
+
     public function testNativeOrmParsesMysqlDsn(): void
     {
         Assert::assertSame(
@@ -223,6 +243,16 @@ final class OrmExceptionNativeTest extends TestCase
             Assert::fail('a schema with an invalid hash must fail before connecting');
         } catch (OrmException $error) {
             Assert::assertSame(Code::CONFIG, $error->code_);
+        }
+    }
+
+    public function testConnectSchemaChecksSchemaTypeBeforeConfigTypeAndDsn(): void
+    {
+        try {
+            Orm::connectSchema('not a DSN', new \stdClass(), new \stdClass());
+            Assert::fail('connectSchema accepted objects that are not Schema and Config');
+        } catch (\TypeError $error) {
+            Assert::assertStringContainsString('Schema', $error->getMessage());
         }
     }
 

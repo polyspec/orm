@@ -423,15 +423,16 @@ ZEND_METHOD(Polyspec_Orm_Utils, wasInserted)
         Z_PARAM_STR(entity)
         Z_PARAM_LONG(sequence)
     ZEND_PARSE_PARAMETERS_END();
-    if (ZSTR_LEN(entity) == 0 || sequence <= 0) {
-        db_throw_orm("CONFIG", "inserted entity and positive key are required");
-        RETURN_THROWS();
-    }
     zval *db = utils_db(ZEND_THIS);
     zval frame;
     ZVAL_UNDEF(&frame);
     if (!utils_get_frame(db, "wasInserted", &frame)) {
         if (!Z_ISUNDEF(frame)) zval_ptr_dtor(&frame);
+        RETURN_THROWS();
+    }
+    if (ZSTR_LEN(entity) == 0 || sequence <= 0) {
+        zval_ptr_dtor(&frame);
+        db_throw_orm("CONFIG", "inserted entity and positive key are required");
         RETURN_THROWS();
     }
     zval rv_inserted;

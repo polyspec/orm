@@ -879,6 +879,14 @@ ZEND_METHOD(Polyspec_Orm_Orm, connect)
         Z_PARAM_STR(dsn)
         Z_PARAM_OBJECT(config)
     ZEND_PARSE_PARAMETERS_END();
+    zend_string *config_name = zend_string_init("Polyspec\\Orm\\Config", sizeof("Polyspec\\Orm\\Config") - 1, 0);
+    zend_class_entry *config_ce = zend_lookup_class(config_name);
+    zend_string_release(config_name);
+    if (config_ce == NULL || !instanceof_function(Z_OBJCE_P(config), config_ce)) {
+        zend_type_error("Polyspec\\Orm\\Orm::connect(): Argument #2 ($config) must be of type "
+            "Polyspec\\Orm\\Config, %s given", zend_zval_type_name(config));
+        RETURN_THROWS();
+    }
     zend_string *scheme = NULL;
     if (!orm_scheme(dsn, &scheme)) RETURN_THROWS();
     bool markdown = zend_string_equals_literal(scheme, "markdown");
@@ -897,6 +905,22 @@ ZEND_METHOD(Polyspec_Orm_Orm, connectSchema)
         Z_PARAM_OBJECT(schema)
         Z_PARAM_OBJECT(config)
     ZEND_PARSE_PARAMETERS_END();
+    zend_string *schema_name = zend_string_init("Polyspec\\Orm\\Schema", sizeof("Polyspec\\Orm\\Schema") - 1, 0);
+    zend_class_entry *schema_ce = zend_lookup_class(schema_name);
+    zend_string_release(schema_name);
+    if (schema_ce == NULL || !instanceof_function(Z_OBJCE_P(schema), schema_ce)) {
+        zend_type_error("Polyspec\\Orm\\Orm::connectSchema(): Argument #2 ($schema) must be of type "
+            "Polyspec\\Orm\\Schema, %s given", zend_zval_type_name(schema));
+        RETURN_THROWS();
+    }
+    zend_string *config_name = zend_string_init("Polyspec\\Orm\\Config", sizeof("Polyspec\\Orm\\Config") - 1, 0);
+    zend_class_entry *config_ce = zend_lookup_class(config_name);
+    zend_string_release(config_name);
+    if (config_ce == NULL || !instanceof_function(Z_OBJCE_P(config), config_ce)) {
+        zend_type_error("Polyspec\\Orm\\Orm::connectSchema(): Argument #3 ($config) must be of type "
+            "Polyspec\\Orm\\Config, %s given", zend_zval_type_name(config));
+        RETURN_THROWS();
+    }
     zval verified;
     if (!pdo_call(schema, "verify", &verified, 0, NULL, NULL)) RETURN_THROWS();
     zval_ptr_dtor(&verified);

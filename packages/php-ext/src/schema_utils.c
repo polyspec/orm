@@ -4,6 +4,20 @@
 #include "Zend/zend_smart_str.h"
 
 static zend_class_entry *schema_utils_ce;
+static zend_class_entry *schema_ce;
+
+static bool schema_utils_require_schema(zval *schema, const char *method)
+{
+    if (schema_ce == NULL) {
+        zend_string *name = zend_string_init("Polyspec\\Orm\\Schema", sizeof("Polyspec\\Orm\\Schema") - 1, 0);
+        schema_ce = zend_lookup_class(name);
+        zend_string_release(name);
+    }
+    if (schema_ce == NULL) return false;
+    if (instanceof_function(Z_OBJCE_P(schema), schema_ce)) return true;
+    zend_type_error("SchemaUtils::%s expects a Schema", method);
+    return false;
+}
 
 static bool schema_utils_call(zval *object, const char *method, zval *result, uint32_t argc, zval *argv)
 {
@@ -155,12 +169,15 @@ typedef struct {
     zval *transaction;
 } schema_add_context;
 
+static bool schema_utils_run(zval *db, const char *kind_name, zval *tables, zval *transaction, const char *sql);
+
 static bool schema_utils_add_body(zval *db, void *opaque, zval *result)
 {
     schema_add_context *base = opaque;
     zval transaction;
     ZVAL_UNDEF(&transaction);
-    if (!schema_utils_call(db, "transactionNumber", &transaction, 0, NULL)) return false;
+    if (base->transaction != NULL) ZVAL_COPY(&transaction, base->transaction);
+    else if (!schema_utils_call(db, "transactionNumber", &transaction, 0, NULL)) return false;
     schema_add_context active = *base;
     active.transaction = &transaction;
     schema_add_context *context = &active;
@@ -172,6 +189,12 @@ static bool schema_utils_add_body(zval *db, void *opaque, zval *result)
     }
     zval *live_document = zend_read_property(Z_OBJCE(live), Z_OBJ(live), "document", sizeof("document") - 1, true, NULL);
     zval *unsupported = zend_read_property(Z_OBJCE(live), Z_OBJ(live), "unsupported", sizeof("unsupported") - 1, true, NULL);
+    if (!schema_utils_differences(live_document, unsupported, context->documents, context->target,
+            "externalDifferences", "CONFIG")) {
+        zval_ptr_dtor(&live);
+        zval_ptr_dtor(&transaction);
+        return false;
+    }
     zval args[4], plan;
     ZVAL_COPY(&args[0], live_document);
     ZVAL_COPY(&args[1], unsupported);
@@ -245,34 +268,109 @@ static bool schema_utils_add_body(zval *db, void *opaque, zval *result)
     }
     ok = schema_utils_differences(live_document, unsupported, context->documents, context->target,
         "installedDifferences", "CONFIG");
-    if (ok && zend_string_equals_literal(Z_STR_P(context->driver), "sqlite")) {
-        zval kind, tables, args[5], rows;
-        ZVAL_STRING(&kind, "schema");
-        array_init(&tables);
-        ZVAL_COPY(&args[0], &kind);
-        ZVAL_COPY(&args[1], &tables);
-        ZVAL_COPY(&args[2], context->transaction);
-        ZVAL_STRING(&args[3], "SELECT COUNT(*) FROM pragma_foreign_key_check");
-        array_init(&args[4]);
-        ok = schema_utils_call(db, "fetch", &rows, 5, args);
-        for (size_t i = 0; i < 5; i++) zval_ptr_dtor(&args[i]);
-        zval_ptr_dtor(&kind);
-        zval_ptr_dtor(&tables);
-        if (ok) {
-            zval *row = zend_hash_index_find(Z_ARRVAL(rows), 0);
-            zval *count = row != NULL && Z_TYPE_P(row) == IS_ARRAY ? zend_hash_index_find(Z_ARRVAL_P(row), 0) : NULL;
-            if (count != NULL && zval_get_long(count) > 0) {
-                db_throw_orm("INTERNAL", "the rebuilt tables break foreign keys");
-                ok = false;
-            }
-            zval_ptr_dtor(&rows);
-        }
-    }
     if (ok) ZVAL_COPY(result, added);
 plan_done:
     zval_ptr_dtor(&plan);
     if (!Z_ISUNDEF(live)) zval_ptr_dtor(&live);
     zval_ptr_dtor(&transaction);
+    return ok && EG(exception) == NULL;
+}
+
+static bool schema_utils_sqlite_foreign_key_check(zval *db, zval *transaction)
+{
+    zval kind, tables, args[5], rows;
+    ZVAL_STRING(&kind, "schema");
+    array_init(&tables);
+    ZVAL_COPY(&args[0], &kind);
+    ZVAL_COPY(&args[1], &tables);
+    ZVAL_COPY(&args[2], transaction);
+    ZVAL_STRING(&args[3], "SELECT COUNT(*) FROM pragma_foreign_key_check");
+    array_init(&args[4]);
+    bool ok = schema_utils_call(db, "fetch", &rows, 5, args);
+    for (size_t i = 0; i < 5; i++) zval_ptr_dtor(&args[i]);
+    zval_ptr_dtor(&kind);
+    zval_ptr_dtor(&tables);
+    if (!ok) return false;
+    zval *row = Z_TYPE(rows) == IS_ARRAY ? zend_hash_index_find(Z_ARRVAL(rows), 0) : NULL;
+    zval *count = row != NULL && Z_TYPE_P(row) == IS_ARRAY ? zend_hash_index_find(Z_ARRVAL_P(row), 0) : NULL;
+    if (count != NULL && zval_get_long(count) > 0) {
+        db_throw_orm("INTERNAL", "the rebuilt tables break %lld foreign keys", (long long)zval_get_long(count));
+        ok = false;
+    }
+    zval_ptr_dtor(&rows);
+    return ok;
+}
+
+static bool schema_utils_sqlite_add_body(zval *db, schema_add_context *context, zval *result)
+{
+    zval empty_tables, no_transaction;
+    array_init(&empty_tables);
+    ZVAL_NULL(&no_transaction);
+    if (!schema_utils_run(db, "utility", &empty_tables, &no_transaction, "PRAGMA foreign_keys = OFF")) {
+        zval_ptr_dtor(&empty_tables);
+        zval_ptr_dtor(&no_transaction);
+        return false;
+    }
+    zval_ptr_dtor(&empty_tables);
+
+    zval transaction;
+    ZVAL_UNDEF(&transaction);
+    if (!schema_utils_call(db, "nextTransaction", &transaction, 0, NULL)) {
+        zval_ptr_dtor(&no_transaction);
+        return false;
+    }
+    array_init(&empty_tables);
+    bool began = schema_utils_run(db, "begin", &empty_tables, &transaction, "BEGIN IMMEDIATE");
+    zval_ptr_dtor(&empty_tables);
+    zval primary;
+    ZVAL_UNDEF(&primary);
+    bool ok = began;
+    if (!began) {
+        ZVAL_OBJ(&primary, take_exception());
+    } else {
+        schema_add_context active = *context;
+        active.transaction = &transaction;
+        ok = schema_utils_add_body(db, &active, result);
+        if (ok) ok = schema_utils_sqlite_foreign_key_check(db, &transaction);
+        if (!ok) {
+            ZVAL_OBJ(&primary, take_exception());
+            array_init(&empty_tables);
+            bool rolled_back = schema_utils_run(db, "rollback", &empty_tables, &transaction, "ROLLBACK");
+            zval_ptr_dtor(&empty_tables);
+            if (!rolled_back) {
+                zval rollback;
+                ZVAL_OBJ(&rollback, take_exception());
+                zval args[2], combined;
+                ZVAL_COPY(&args[0], &primary);
+                ZVAL_COPY(&args[1], &rollback);
+                if (scall("Polyspec\\Orm\\OrmException::rollback", &combined, 2, args)) {
+                    zval_ptr_dtor(&primary);
+                    ZVAL_COPY_VALUE(&primary, &combined);
+                }
+                zval_ptr_dtor(&args[0]);
+                zval_ptr_dtor(&args[1]);
+                zval_ptr_dtor(&rollback);
+            }
+        } else {
+            array_init(&empty_tables);
+            ok = schema_utils_run(db, "commit", &empty_tables, &transaction, "COMMIT");
+            zval_ptr_dtor(&empty_tables);
+            if (!ok) ZVAL_OBJ(&primary, take_exception());
+        }
+    }
+    array_init(&empty_tables);
+    bool restored = schema_utils_run(db, "utility", &empty_tables, &no_transaction, "PRAGMA foreign_keys = ON");
+    zval_ptr_dtor(&empty_tables);
+    zval_ptr_dtor(&no_transaction);
+    zval_ptr_dtor(&transaction);
+    if (!restored) {
+        if (!Z_ISUNDEF(primary)) zval_ptr_dtor(&primary);
+        return false;
+    }
+    if (!Z_ISUNDEF(primary)) {
+        zend_throw_exception_object(&primary);
+        return false;
+    }
     return ok && EG(exception) == NULL;
 }
 
@@ -469,6 +567,7 @@ ZEND_METHOD(Polyspec_Orm_SchemaUtils, register)
     ZEND_PARSE_PARAMETERS_START(1, 1)
         Z_PARAM_OBJECT(schema)
     ZEND_PARSE_PARAMETERS_END();
+    if (!schema_utils_require_schema(schema, "register")) RETURN_THROWS();
     zval args[1], result;
     ZVAL_COPY(&args[0], schema);
     bool ok = schema_utils_call(schema_utils_db(ZEND_THIS), "registerSet", &result, 1, args);
@@ -484,6 +583,7 @@ ZEND_METHOD(Polyspec_Orm_SchemaUtils, install)
     ZEND_PARSE_PARAMETERS_START(1, 1)
         Z_PARAM_OBJECT(schema)
     ZEND_PARSE_PARAMETERS_END();
+    if (!schema_utils_require_schema(schema, "install")) RETURN_THROWS();
     zval *db = schema_utils_db(ZEND_THIS);
     zval surface, ignored;
     ZVAL_STRING(&surface, "schema install (flowmark install creates a corpus)");
@@ -576,6 +676,7 @@ ZEND_METHOD(Polyspec_Orm_SchemaUtils, addTablesAndColumns)
     ZEND_PARSE_PARAMETERS_START(1, 1)
         Z_PARAM_OBJECT(schema)
     ZEND_PARSE_PARAMETERS_END();
+    if (!schema_utils_require_schema(schema, "addTablesAndColumns")) RETURN_THROWS();
     zval *db = schema_utils_db(ZEND_THIS);
     zval surface, ignored;
     ZVAL_STRING(&surface, "addTablesAndColumns (schema evolution follows the flowmark migration rules)");
@@ -618,37 +719,11 @@ ZEND_METHOD(Polyspec_Orm_SchemaUtils, addTablesAndColumns)
         else ok = schema_utils_add_body(db, &context, return_value);
         if (!ok) goto add_failed;
     } else {
-        zval empty_tables, no_transaction;
-        array_init(&empty_tables);
-        ZVAL_NULL(&no_transaction);
-        ok = schema_utils_run(db, "utility", &empty_tables, &no_transaction, "PRAGMA foreign_keys = OFF");
-        zval_ptr_dtor(&empty_tables);
-        if (!ok) goto add_failed;
         zval result;
         ZVAL_UNDEF(&result);
-        ok = db_transaction_native(db, schema_utils_add_body, &context, &result);
+        ok = schema_utils_sqlite_add_body(db, &context, &result);
         if (!ok) {
-            zend_object *primary = take_exception();
-            array_init(&empty_tables);
-            bool restored = schema_utils_run(db, "utility", &empty_tables, &no_transaction, "PRAGMA foreign_keys = ON");
-            zval_ptr_dtor(&empty_tables);
-            if (restored) {
-                if (primary != NULL) {
-                    zval exception;
-                    ZVAL_OBJ(&exception, primary);
-                    zend_throw_exception_object(&exception);
-                }
-            } else if (primary != NULL) {
-                OBJ_RELEASE(primary);
-            }
             if (!Z_ISUNDEF(result)) zval_ptr_dtor(&result);
-            goto add_failed;
-        }
-        array_init(&empty_tables);
-        bool restored = schema_utils_run(db, "utility", &empty_tables, &no_transaction, "PRAGMA foreign_keys = ON");
-        zval_ptr_dtor(&empty_tables);
-        if (!restored) {
-            zval_ptr_dtor(&result);
             goto add_failed;
         }
         ZVAL_COPY_VALUE(return_value, &result);
@@ -689,8 +764,14 @@ ZEND_METHOD(Polyspec_Orm_SchemaUtils, exists)
         add_next_index_str(&args, zend_string_copy(schema));
     } else {
         sql = zend_string_init("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name LIKE ? ESCAPE '\\')", sizeof("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name LIKE ? ESCAPE '\\')") - 1, 0);
-        zend_string *pattern = strpprintf(0, "%s\\_\\_%%", ZSTR_VAL(schema));
-        add_next_index_str(&args, pattern);
+        smart_str pattern = {0};
+        for (size_t index = 0; index < ZSTR_LEN(schema); index++) {
+            if (ZSTR_VAL(schema)[index] == '_') smart_str_appends(&pattern, "\\_");
+            else smart_str_appendc(&pattern, ZSTR_VAL(schema)[index]);
+        }
+        smart_str_appends(&pattern, "\\_\\_%");
+        smart_str_0(&pattern);
+        add_next_index_str(&args, pattern.s);
     }
     zval_ptr_dtor(&driver);
     bool ok = schema_utils_bool(schema_utils_db(ZEND_THIS), sql, &args, return_value);

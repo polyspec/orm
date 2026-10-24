@@ -18,6 +18,179 @@ use Polyspec\Orm\SchemaUtils;
 #[Medium]
 final class SchemaUtilsNativeTest extends TestCase
 {
+    public function testAddTablesAndColumnsRejectsExternalDriftWithoutChangingDatabase(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'orm-schema-external-');
+        self::assertIsString($path);
+        try {
+            $db = Orm::connect('sqlite:///' . $path, new Config());
+            $pdo = $db->pdo();
+            $pdo->exec('CREATE TABLE shared (id BIGINT NOT NULL PRIMARY KEY)');
+            $events = [];
+            $unsubscribe = $db->subscribe(static function ($event) use (&$events): void {
+                $events[] = $event;
+            });
+            $before = $pdo->query(
+                "SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' "
+                . 'ORDER BY type, name'
+            )->fetchAll(\PDO::FETCH_ASSOC);
+            $foreignKeysBefore = $pdo->query('PRAGMA foreign_keys')->fetchColumn();
+            $external = "dbspec 1 core\n\ntable shared {\n  id i32\n  primary key (id)\n}\n";
+            $owned = "dbspec 1 app\n\nuse core { shared }\n\ntable local {\n  id i64\n  primary key (id)\n}\n";
+            $model = RuntimeModel::build(RuntimeModel::parseSet(['app.dbs' => $owned], ['core.dbs' => $external]));
+            $schema = new Schema($model->manifestText, $model->manifestHash, $model->externalText);
+
+            for ($attempt = 0; $attempt < 2; $attempt++) {
+                try {
+                    $db->utils()->schema()->addTablesAndColumns($schema);
+                    self::fail('external schema drift was accepted');
+                } catch (OrmException $error) {
+                    self::assertSame(Code::CONFIG, $error->code_);
+                }
+                self::assertSame($before, $pdo->query(
+                    "SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' "
+                    . 'ORDER BY type, name'
+                )->fetchAll(\PDO::FETCH_ASSOC));
+                self::assertSame($foreignKeysBefore, $pdo->query('PRAGMA foreign_keys')->fetchColumn());
+            }
+            $controls = array_values(array_filter(
+                array_map(static fn($event): string => $event->kind, $events),
+                static fn(string $kind): bool => in_array($kind, ['utility', 'begin', 'rollback'], true)
+            ));
+            self::assertSame(
+                ['utility', 'begin', 'rollback', 'utility', 'utility', 'begin', 'rollback', 'utility'],
+                $controls
+            );
+            $unsubscribe();
+            $db->close();
+        } finally {
+            if (is_file($path)) {
+                unlink($path);
+            }
+        }
+    }
+
+    public function testExistsEscapesUnderscoreInSqliteSchemaName(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'orm-schema-underscore-');
+        self::assertIsString($path);
+        try {
+            $db = Orm::connect('sqlite:///' . $path, new Config());
+            $pdo = $db->pdo();
+            $pdo->exec('CREATE TABLE fooXbar__sample (id INTEGER)');
+            $before = $pdo->query(
+                "SELECT name, sql FROM sqlite_master WHERE type = 'table' "
+                . "AND name NOT LIKE 'sqlite_%' ORDER BY name"
+            )->fetchAll(\PDO::FETCH_ASSOC);
+            $schema = $db->utils()->schema();
+
+            for ($attempt = 0; $attempt < 2; $attempt++) {
+                self::assertFalse($schema->exists('foo_bar'));
+                self::assertSame($before, $pdo->query(
+                    "SELECT name, sql FROM sqlite_master WHERE type = 'table' "
+                    . "AND name NOT LIKE 'sqlite_%' ORDER BY name"
+                )->fetchAll(\PDO::FETCH_ASSOC));
+            }
+            $db->close();
+        } finally {
+            if (is_file($path)) {
+                unlink($path);
+            }
+        }
+    }
+
+    public function testAddTablesAndColumnsRollsBackWithoutCreatingInternalLockTable(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'orm-schema-rollback-');
+        self::assertIsString($path);
+        try {
+            $db = Orm::connect('sqlite:///' . $path, new Config());
+            $pdo = $db->pdo();
+            $pdo->exec('CREATE TABLE owned (id TEXT NOT NULL PRIMARY KEY)');
+            $events = [];
+            $unsubscribe = $db->subscribe(static function ($event) use (&$events): void {
+                $events[] = $event;
+            });
+            $before = $pdo->query(
+                "SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' "
+                . 'ORDER BY type, name'
+            )->fetchAll(\PDO::FETCH_ASSOC);
+            $foreignKeysBefore = $pdo->query('PRAGMA foreign_keys')->fetchColumn();
+            $owned = "dbspec 1 app\n\ntable owned {\n  id i64\n  primary key (id)\n}\n";
+            $model = RuntimeModel::build(RuntimeModel::parseSet(['app.dbs' => $owned], []));
+            $schema = new Schema($model->manifestText, $model->manifestHash, $model->externalText);
+
+            for ($attempt = 0; $attempt < 2; $attempt++) {
+                try {
+                    $db->utils()->schema()->addTablesAndColumns($schema);
+                    self::fail('an incompatible owned table was accepted');
+                } catch (OrmException $error) {
+                    self::assertSame(Code::SCHEMA_DIFFERS, $error->code_);
+                }
+                self::assertSame($before, $pdo->query(
+                    "SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' "
+                    . 'ORDER BY type, name'
+                )->fetchAll(\PDO::FETCH_ASSOC));
+                self::assertSame($foreignKeysBefore, $pdo->query('PRAGMA foreign_keys')->fetchColumn());
+            }
+            $controls = array_values(array_filter(
+                array_map(static fn($event): string => $event->kind, $events),
+                static fn(string $kind): bool => in_array($kind, ['utility', 'begin', 'rollback'], true)
+            ));
+            self::assertSame(
+                ['utility', 'begin', 'rollback', 'utility', 'utility', 'begin', 'rollback', 'utility'],
+                $controls
+            );
+            $unsubscribe();
+            $db->close();
+        } finally {
+            if (is_file($path)) {
+                unlink($path);
+            }
+        }
+    }
+
+    public function testSchemaMutationMethodsRejectObjectsThatAreNotSchema(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'orm-schema-type-');
+        self::assertIsString($path);
+        try {
+            $db = Orm::connect('sqlite:///' . $path, new Config());
+            $pdo = $db->pdo();
+            $schema = $db->utils()->schema();
+            $events = [];
+            $unsubscribe = $db->subscribe(static function ($event) use (&$events): void {
+                $events[] = $event;
+            });
+            $before = $pdo->query(
+                "SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' "
+                . 'ORDER BY type, name'
+            )->fetchAll(\PDO::FETCH_ASSOC);
+
+            foreach (['register', 'install', 'addTablesAndColumns'] as $method) {
+                for ($attempt = 0; $attempt < 2; $attempt++) {
+                    try {
+                        $schema->{$method}(new \stdClass());
+                        self::fail("$method accepted an object that is not a Schema");
+                    } catch (\TypeError $error) {
+                        self::assertStringContainsString('Schema', $error->getMessage());
+                    }
+                    self::assertSame([], $events);
+                    self::assertSame($before, $pdo->query(
+                        "SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' "
+                        . 'ORDER BY type, name'
+                    )->fetchAll(\PDO::FETCH_ASSOC));
+                }
+            }
+            $unsubscribe();
+            $db->close();
+        } finally {
+            if (is_file($path)) {
+                unlink($path);
+            }
+        }
+    }
+
     public function testNativeSchemaInspectionAndRegistration(): void
     {
         $class = new \ReflectionClass(SchemaUtils::class);

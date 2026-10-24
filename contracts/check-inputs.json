@@ -2628,6 +2628,27 @@
         "tests/interfaces/check/api.test.mts",
         "Makefile"
       ]
+    },
+    "native-api-equivalence-check": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/php-ext/scripts/build.sh",
+        "packages/php-ext/src/config.m4",
+        "packages/php-ext/src/aes_utils.c",
+        "packages/php-ext/src/orm.c",
+        "packages/php-ext/src/schema_utils.c",
+        "packages/php-ext/src/utils.c",
+        "packages/php-ext/tests/SchemaUtilsNativeTest.php",
+        "packages/php-ext/tests/UtilsNativeTest.php",
+        "packages/php-ext/tests/AesUtilsNativeTest.php",
+        "packages/php-ext/tests/OrmExceptionNativeTest.php"
+      ]
     }
   },
   "paths": {

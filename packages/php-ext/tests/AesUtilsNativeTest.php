@@ -10,6 +10,7 @@ use Polyspec\Orm\AesKeyring;
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Codec;
 use Polyspec\Orm\Config;
+use Polyspec\Orm\Model;
 use Polyspec\Orm\Orm;
 use Polyspec\Orm\OrmException;
 use Polyspec\Orm\Tests\Model\Author;
@@ -17,6 +18,40 @@ use Polyspec\Orm\Tests\Model\Author;
 #[Medium]
 final class AesUtilsNativeTest extends TestCase
 {
+    public function testRotateChecksKeyringTypeBeforeModelMetadata(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'orm-aes-rotate-type-');
+        self::assertIsString($path);
+        try {
+            $db = Orm::connect('sqlite:///' . $path, new Config());
+            $model = new class extends Model {
+                public static function meta(): array
+                {
+                    return [];
+                }
+            };
+            $events = [];
+            $unsubscribe = $db->subscribe(static function ($event) use (&$events): void {
+                $events[] = $event;
+            });
+            for ($attempt = 0; $attempt < 2; $attempt++) {
+                try {
+                    $db->utils()->aes()->rotate($model, new \stdClass());
+                    self::fail('rotate accepted an object that is not an AesKeyring');
+                } catch (\TypeError $error) {
+                    self::assertStringContainsString('AesKeyring', $error->getMessage());
+                }
+                self::assertSame([], $events);
+            }
+            $unsubscribe();
+            $db->close();
+        } finally {
+            if (is_file($path)) {
+                unlink($path);
+            }
+        }
+    }
+
     public function testNativeStatusRotationAndTransactionRollback(): void
     {
         self::assertTrue(
