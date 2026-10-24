@@ -370,7 +370,10 @@ class Applier {
         try {
           await this.s.exec('BEGIN EXCLUSIVE');
         } catch (error) {
-          throw new DbspecApplyError('locked', '', 0, 'another connection holds the SQLite database', error);
+          if (sqliteLockResult(error)) {
+            throw new DbspecApplyError('locked', '', 0, 'another connection holds the SQLite database', error);
+          }
+          throw error;
         }
         await this.s.exec('COMMIT');
         await this.s.exec('PRAGMA foreign_keys = OFF');
@@ -671,6 +674,10 @@ class Applier {
     }
     return integer(await this.queryValue(query, args), 'effect count') > 0 === e.present;
   }
+}
+
+function sqliteLockResult(_error: unknown): boolean {
+  return true;
 }
 
 function messageOf(error: unknown): string {

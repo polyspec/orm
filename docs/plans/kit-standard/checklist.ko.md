@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 31068548a45df6fa7d1fba86debc67a0c3ae771755c9da86baed163a22df466f -->
+<!-- source-sha256: 21eaf49e4f1482463916799277f6ccc6438da4014d4f80a809f5e60fa5e17b43 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -225,7 +225,7 @@
 | KSTD-5-57-19 | orm 테스트 파일 zone.rs의 lint 발견 사항을 고친다 (KSTD-5-57 하위) | packages/rust/orm/tests/zone.rs | `make lint-rust` reports no finding in these files | [o] |
 | KSTD-5-58 | DbspecRulesTest::testLimitColumnsPeak가 limit과 columns 문서의 peak 메모리를 안정적으로 잰다: 그 bound는 앞서 실행된 test의 프로세스 상태에 따라 달라지지 않는다 | packages/php/tests/DbspecRulesTest.php | `vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter testLimitColumnsPeak packages/php/tests/DbspecRulesTest.php` | [o] |
 | KSTD-5-59 | NOWAIT 행 잠금 뒤 busy_timeout 복원 오류를 잠금 오류와 합친다(모든 언어) | packages/rust/orm/src/db.rs:808; packages/ts/src/database.ts:1134; packages/php/src/Db.php:1670; packages/python/src/polyspec/orm/database.py:1978 | `make rust-check` | [ ] |
-| KSTD-5-60 | dbspec apply의 BEGIN EXCLUSIVE 실패 중 SQLITE_BUSY와 SQLITE_LOCKED만 locked로 분류한다 | packages/go/engine/dbspec/apply.go:514; packages/rust/orm/src/dbspec/apply.rs:579; packages/ts/src/dbspec/apply.ts:372; packages/php/src/Dbspec/PlanApply.php:386; packages/python/src/polyspec/orm/dbspec/apply.py:380 | `make rust-check` | [ ] |
+| KSTD-5-60 | dbspec apply의 BEGIN EXCLUSIVE 실패 중 SQLITE_BUSY와 SQLITE_LOCKED만 locked로 분류한다 | packages/go/engine/dbspec/apply.go:514; packages/rust/orm/src/dbspec/apply.rs:579; packages/ts/src/dbspec/apply.ts:372; packages/php/src/Dbspec/PlanApply.php:386; packages/python/src/polyspec/orm/dbspec/apply.py:380 | `make dbspec-lock-go-check`; `make dbspec-lock-php-check`; `make dbspec-lock-php-extension-check`; `make dbspec-lock-python-check`; `make dbspec-lock-rust-check`; `make dbspec-lock-ts-check` (each runs its focused native fake-driver cases without database servers; primary 5/6, extended 261/517/773/262/518, non-lock IOERR/READONLY/CANTOPEN/AUTH and error identity). | [~] |
 | KSTD-5-61 | verify의 introspection 또는 driver 오류를 drift가 아닌 자기 오류로 보고한다 | packages/go/engine/dbspec/apply.go:249,652; packages/rust/orm/src/dbspec/apply.rs:691,838,845; packages/ts/src/dbspec/apply.ts:461,803; packages/php/src/Dbspec/PlanApply.php:200,573; packages/python/src/polyspec/orm/dbspec/apply.py:501,916 | `make rust-check` | [ ] |
 | KSTD-5-62 | catalog의 문서 생성 불가 오류만 mermaid 진단으로 바꾸고 나머지는 전파한다 | packages/ts/src/dbspec/mermaid.ts:336; packages/python/src/polyspec/orm/dbspec/mermaid.py:464; packages/php/src/Dbspec/Mermaid.php:416; packages/php-ext/src/mermaid.c:893-900; packages/go mermaid import | `make ts-check` | [ ] |
 | KSTD-5-63 | 존재하지 않는 column의 scalar subquery에 대해 임의 타입 대신 내부 오류를 반환한다 | packages/rust/orm/src/engine/planner.rs:1060; packages/rust/orm/src/markdown.rs:532; packages/rust/orm/src/engine/params.rs:159; packages/ts/src/engine/planner.ts:734; packages/ts/src/markdown.ts:348 | `make rust-check` | [ ] |

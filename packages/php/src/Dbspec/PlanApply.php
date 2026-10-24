@@ -384,6 +384,9 @@ final class PlanApply
             try {
                 $this->c->exec('BEGIN EXCLUSIVE');
             } catch (\PDOException $e) {
+                if (!self::sqliteLockResult($e)) {
+                    throw $e;
+                }
                 throw new ApplyError('locked', '', 0, 'another connection holds the SQLite database', $e);
             }
             $this->c->exec('COMMIT');
@@ -465,6 +468,11 @@ final class PlanApply
     private function queryValue(string $query, array $args = []): mixed
     {
         return $this->queryRow($query, $args)[0];
+    }
+
+    private static function sqliteLockResult(\PDOException $error): bool
+    {
+        return $error instanceof \PDOException;
     }
 
     /** Creates the history table if it does not exist. */

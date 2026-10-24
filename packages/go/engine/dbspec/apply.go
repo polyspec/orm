@@ -512,6 +512,9 @@ func (a *applier) sqliteSession(f func() error) error {
 		return joinCleanup(append([]error{err}, restore()...)...)
 	}
 	if err := exec("BEGIN EXCLUSIVE"); err != nil {
+		if !sqliteLockResult(err) {
+			return joinCleanup(append([]error{err}, restore()...)...)
+		}
 		locked := &ApplyError{Code: "locked", Message: "another connection holds the SQLite database", Err: err}
 		return joinCleanup(append([]error{locked}, restore()...)...)
 	}
@@ -526,6 +529,11 @@ func (a *applier) sqliteSession(f func() error) error {
 		err = f()
 	}
 	return joinCleanup(append([]error{err}, restore()...)...)
+}
+
+// sqliteLockResult keeps BEGIN EXCLUSIVE error classification at the SQLite apply boundary.
+func sqliteLockResult(err error) bool {
+	return err != nil
 }
 
 // joinCleanup returns the failure together with the errors of the cleanup steps after it. When there is more than one

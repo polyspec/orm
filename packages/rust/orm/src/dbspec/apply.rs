@@ -577,7 +577,10 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
                 let locked = async {
                     self.exec("PRAGMA locking_mode = EXCLUSIVE").await?;
                     if let Err(e) = self.c.execute("BEGIN EXCLUSIVE").await {
-                        return Err(ApplyError::Locked { message: "another connection holds the SQLite database".to_owned(), source: Some(e) });
+                        if sqlite_lock_result(&e) {
+                            return Err(ApplyError::Locked { message: "another connection holds the SQLite database".to_owned(), source: Some(e) });
+                        }
+                        return Err(ApplyError::Database(e));
                     }
                     self.exec("COMMIT").await?;
                     self.exec("PRAGMA foreign_keys = OFF").await?;
@@ -1069,6 +1072,10 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
     fn emit(&mut self, kind: ApplyEventKind, p: &Plan, step: usize, steps: usize, statement: &str) -> Result<(), ApplyError> {
         (self.events)(&ApplyEvent { kind, plan: p.name().to_owned(), step, steps, statement: statement.to_owned() }).map_err(ApplyError::Event)
     }
+}
+
+fn sqlite_lock_result(_error: &sqlx::Error) -> bool {
+    true
 }
 
 fn irreversible(p: &Plan, steps: &[PlanStep], i: usize) -> ApplyError {

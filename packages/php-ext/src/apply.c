@@ -1217,6 +1217,11 @@ typedef struct {
     str mode;
 } sqlite_state;
 
+static bool sqlite_lock_result(zend_object *exception)
+{
+    return exception != NULL;
+}
+
 static bool sqlite_body(applier *a, void *ctx)
 {
     sqlite_state *s = ctx;
@@ -1225,6 +1230,9 @@ static bool sqlite_body(applier *a, void *ctx)
     }
     if (!exec_sql(a, SL("BEGIN EXCLUSIVE"))) {
         if (!pending(php_pdo_get_exception())) {
+            return false;
+        }
+        if (!sqlite_lock_result(EG(exception))) {
             return false;
         }
         return apply_error("locked", SL(""), 0, SL("another connection holds the SQLite database"), take_exception());

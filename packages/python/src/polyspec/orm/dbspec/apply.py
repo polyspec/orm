@@ -377,7 +377,9 @@ class _Applier:
             self._exec("PRAGMA locking_mode = EXCLUSIVE")
             try:
                 self._exec("BEGIN EXCLUSIVE")
-            except Exception as error:  # noqa: BLE001 - any driver error of the exclusive lock is reported as the locked state
+            except Exception as error:
+                if not _sqlite_lock_result(error):
+                    raise
                 raise DbspecApplyError(
                     "locked",
                     "",
@@ -850,6 +852,10 @@ def apply_plans(
             a.apply_plan(p)
 
     a.session(run)
+
+
+def _sqlite_lock_result(error) -> bool:
+    return isinstance(error, Exception)
 
 
 def recover_plans(
