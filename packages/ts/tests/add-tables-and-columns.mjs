@@ -34,7 +34,7 @@ let failures = 0;
 let current = '';
 const check = createFailureCheck(() => current, () => { failures++; });
 /** The OrmError that the call rejected. null on success. */
-const thrown = run => captureError(run, error => error instanceof OrmError);
+const thrown = run => captureError(run, { accepts: error => error instanceof OrmError });
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
 /** The schema value of contracts/fixtures/add_tables_and_columns/<name>.dbs. */

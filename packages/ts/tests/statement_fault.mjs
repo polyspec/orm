@@ -19,6 +19,7 @@ import { Db, OrmError, CORE } from '../dist/index.js';
 import * as testing from '@polyspec/orm/testing';
 import { models } from './registered_models.mjs';
 import { schemaOf } from './schema_of.mjs';
+import { captureError } from './capture-error.mjs';
 
 const fixture = JSON.parse(await readFile(new URL('../../../contracts/fixtures/statement_fault.json', import.meta.url), 'utf8'));
 const rollbackText = await readFile(new URL('../../../contracts/fixtures/rollback.dbs', import.meta.url), 'utf8');
@@ -41,9 +42,7 @@ let current = '';
 function check(cond, message) {
   if (!cond) { failures++; console.error(`FAIL ${current}: ${message}`); }
 }
-async function raised(run) {
-  try { await run(); return undefined; } catch (error) { return error; }
-}
+const raised = run => captureError(run, { success: undefined });
 function raisedSync(run) {
   try { run(); return undefined; } catch (error) { return error; }
 }
