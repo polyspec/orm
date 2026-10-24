@@ -413,6 +413,17 @@ static void append_read_diagnostics(sbuf *errors, zval *path, zval *diagnostics)
     } ZEND_HASH_FOREACH_END();
 }
 
+static void append_read_result(sbuf *errors, zval *texts, zend_ulong index, zval *path, zval *result)
+{
+    zval *diagnostics = prop(result, "diagnostics"), *text = prop(result, "text");
+    if (diagnostics && zend_hash_num_elements(Z_ARRVAL_P(diagnostics))) {
+        append_read_diagnostics(errors, path, diagnostics);
+    } else if (text && Z_TYPE_P(text) == IS_STRING) {
+        Z_TRY_ADDREF_P(text);
+        zend_hash_update(Z_ARRVAL(texts[index]), Z_STR_P(path), text);
+    }
+}
+
 static void finish_document_parse(zval *texts, zval *result, dbs_arena *arena, dbs_arena *saved)
 {
     documents_parse(&texts[0], &texts[1], result);
@@ -722,13 +733,7 @@ PHP_METHOD(Polyspec_Orm_RuntimeModel, set) {
             }
             zval_ptr_dtor(&args[0]);
             zval_ptr_dtor(&args[1]);
-            zval *ds = prop(&rr, "diagnostics"), *text = prop(&rr, "text");
-            if (ds && zend_hash_num_elements(Z_ARRVAL_P(ds))) {
-                append_read_diagnostics(&errors_text, p, ds);
-            } else if (text && Z_TYPE_P(text) == IS_STRING) {
-                Z_TRY_ADDREF_P(text);
-                zend_hash_update(Z_ARRVAL(texts[l]), Z_STR_P(p), text);
-            }
+            append_read_result(&errors_text, texts, l, p, &rr);
             zval_ptr_dtor(&rr);
         }
         ZEND_HASH_FOREACH_END();
@@ -780,13 +785,7 @@ PHP_METHOD(Polyspec_Orm_RuntimeModel, files) {
                 RETURN_THROWS();
             }
             zval_ptr_dtor(&a);
-            zval *ds = prop(&rr, "diagnostics"), *text = prop(&rr, "text");
-            if (ds && zend_hash_num_elements(Z_ARRVAL_P(ds))) {
-                append_read_diagnostics(&errors, p, ds);
-            } else if (text && Z_TYPE_P(text) == IS_STRING) {
-                Z_TRY_ADDREF_P(text);
-                zend_hash_update(Z_ARRVAL(texts[l]), Z_STR_P(p), text);
-            }
+            append_read_result(&errors, texts, l, p, &rr);
             zval_ptr_dtor(&rr);
             if (EG(exception))
                 break;
