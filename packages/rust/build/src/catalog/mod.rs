@@ -25,6 +25,10 @@ pub use row_snapshot::RowSnapshot;
 #[path = "../../tests/unit/read_only_disposal.rs"]
 mod disposal_tests;
 
+#[cfg(test)]
+#[path = "../../tests/unit/catalog_fixtures.rs"]
+mod test_fixtures;
+
 pub struct CatalogConnection {
     connection: Conn,
     pool: Pool,

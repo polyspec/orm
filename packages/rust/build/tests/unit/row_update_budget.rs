@@ -1,33 +1,8 @@
-use crate::catalog::{RowSnapshot, TableColumnMetadata, TableKind, TableMetadata, TablePage, TableRef};
+use crate::catalog::{RowSnapshot, TablePage};
 use crate::tool_db::{GridCell, GridQueryResult, QueryColumn};
 
 fn snapshot() -> RowSnapshot {
-    let metadata = TableMetadata {
-        table: TableRef { namespace: "main".into(), name: "fixture".into() },
-        kind: TableKind::Table,
-        columns: vec![
-            TableColumnMetadata {
-                name: "id".into(),
-                native_type: "INTEGER".into(),
-                nullable: false,
-                generated: false,
-                automatic_key: false,
-                default_expression: None,
-                expression_default: false,
-            },
-            TableColumnMetadata {
-                name: "value".into(),
-                native_type: "TEXT".into(),
-                nullable: false,
-                generated: false,
-                automatic_key: false,
-                default_expression: None,
-                expression_default: false,
-            },
-        ],
-        primary_key: vec!["id".into()],
-        reliable_row_identity: true,
-    };
+    let metadata = crate::catalog::test_fixtures::metadata("fixture", "value");
     let page = TablePage {
         metadata,
         result: GridQueryResult {

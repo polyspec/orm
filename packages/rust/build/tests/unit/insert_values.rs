@@ -1,33 +1,7 @@
 use super::*;
-use crate::catalog::{TableColumnMetadata, TableKind, TableRef};
 
 fn metadata() -> TableMetadata {
-    TableMetadata {
-        table: TableRef { namespace: "main".into(), name: "people".into() },
-        kind: TableKind::Table,
-        columns: vec![
-            TableColumnMetadata {
-                name: "id".into(),
-                native_type: "INTEGER".into(),
-                nullable: false,
-                generated: false,
-                automatic_key: false,
-                default_expression: None,
-                expression_default: false,
-            },
-            TableColumnMetadata {
-                name: "name".into(),
-                native_type: "TEXT".into(),
-                nullable: false,
-                generated: false,
-                automatic_key: false,
-                default_expression: None,
-                expression_default: false,
-            },
-        ],
-        primary_key: vec!["id".into()],
-        reliable_row_identity: true,
-    }
+    crate::catalog::test_fixtures::metadata("people", "name")
 }
 
 #[tokio::test]
