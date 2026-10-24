@@ -32,12 +32,19 @@ final class ColumnFunctionMetadataAssertions
         return [RuntimeModel::build(RuntimeModel::files(["$root/{$case['schema']}"])), $case['input']];
     }
 
-    public static function assertPlannerMissingPostValidationFieldIsInternal(): void
+    /** @return array{RuntimeModel, Validator, array<string, mixed>} */
+    private static function validatedRequest(): array
     {
         [$model, $input] = self::fixture();
         $validator = new Validator($model);
         $request = ['manifest_hash' => $model->manifestHash] + $input;
         $validator->validate($request);
+        return [$model, $validator, $request];
+    }
+
+    public static function assertPlannerMissingPostValidationFieldIsInternal(): void
+    {
+        [$model, $validator, $request] = self::validatedRequest();
         Assert::assertSame('date', $validator->paramUses($request)[0][0]['type']);
         (new Planner($model, new Dialect('sqlite')))->compile($request);
 
@@ -64,10 +71,7 @@ final class ColumnFunctionMetadataAssertions
 
     public static function assertParamUsesMissingPostValidationFieldIsInternal(): void
     {
-        [$model, $input] = self::fixture();
-        $validator = new Validator($model);
-        $request = ['manifest_hash' => $model->manifestHash] + $input;
-        $validator->validate($request);
+        [$model, $validator, $request] = self::validatedRequest();
         Assert::assertSame('date', $validator->paramUses($request)[0][0]['type']);
         $request['where']['items'][0]['pred']['column'] = 'missing_column';
         try {
