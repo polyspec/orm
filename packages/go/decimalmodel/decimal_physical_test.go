@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/polyspec/orm/packages/go/decimalmodel"
+	"github.com/polyspec/orm/packages/go/internal/testassert"
 	"github.com/polyspec/orm/packages/go/orm"
 	_ "github.com/polyspec/orm/packages/go/orm/pg"
 	_ "github.com/polyspec/orm/packages/go/orm/sqlite"
@@ -44,8 +45,8 @@ func decimalPhysical(t *testing.T, env string) {
 		if err != nil {
 			return err
 		}
-		if readColumn(t, loaded.GetAmount) != amount || readColumn(t, loaded.GetLargeValue) == nil || *readColumn(t, loaded.GetLargeValue) != large {
-			t.Errorf("decimal fields lost precision: amount=%q large=%v", readColumn(t, loaded.GetAmount), readColumn(t, loaded.GetLargeValue))
+		if testassert.ReadColumn(t, loaded.GetAmount) != amount || testassert.ReadColumn(t, loaded.GetLargeValue) == nil || *testassert.ReadColumn(t, loaded.GetLargeValue) != large {
+			t.Errorf("decimal fields lost precision: amount=%q large=%v", testassert.ReadColumn(t, loaded.GetAmount), testassert.ReadColumn(t, loaded.GetLargeValue))
 		}
 		return rollback
 	})
