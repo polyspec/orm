@@ -314,6 +314,58 @@ pub struct SendTransaction<'a, T> {
     set: bool,
 }
 
+macro_rules! run_transaction {
+    ($db:expr, $callback:expr, $isolation:expr, $read_only:expr, $timeout_ms:expr, $retry:expr, $audit:expr) => {{
+        async {
+            let db = $db;
+            let isolation = $isolation;
+            let read_only = $read_only;
+            let timeout_ms = $timeout_ms;
+            let retry = $retry;
+            let audit = $audit;
+            let record = audit.as_ref().map(|values| audit_record(db, values)).transpose()?.map(Arc::new);
+            let mut attempt = 0u32;
+            loop {
+                let tx = Arc::new(begin(db, isolation, read_only, timeout_ms).await?);
+                let mut stack = frames();
+                stack.push(tx.clone());
+                // Each attempt starts with the pending record and no inserted audit.
+                *tx.pending_audit.lock().unwrap() = record.clone();
+                let body = $callback;
+                let callback = std::panic::AssertUnwindSafe(FLOW.scope(stack, body)).catch_unwind();
+                let result = match callback.await {
+                    Ok(result) => result,
+                    Err(payload) => match rollback_and_resume(&tx, payload).await {},
+                };
+                match result {
+                    // A deadlocked commit is retried as a deadlocked callback is, as the other clients retry the whole
+                    // transaction; any other commit error, such as WRITE_CONFLICT, is returned at once.
+                    Ok(value) => match commit(&tx).await {
+                        Ok(()) => return Ok(value),
+                        Err(error) if error.is_deadlock() && attempt < retry => {
+                            let jitter = rand::random::<u64>() % 20;
+                            tokio::time::sleep(std::time::Duration::from_millis((50u64 << attempt.min(10)) + jitter)).await;
+                            attempt += 1;
+                        }
+                        Err(error) => return Err(error),
+                    },
+                    Err(error) => {
+                        if let Err(rollback_error) = rollback(&tx).await.and_then(|()| rollback_fault(db)) {
+                            return Err(Error::rollback(error, rollback_error));
+                        }
+                        if !error.is_deadlock() || attempt >= retry {
+                            return Err(error);
+                        }
+                        let jitter = rand::random::<u64>() % 20;
+                        tokio::time::sleep(std::time::Duration::from_millis((50u64 << attempt.min(10)) + jitter)).await;
+                        attempt += 1;
+                    }
+                }
+            }
+        }
+    }};
+}
+
 /// Failure of a callback transaction that runs exactly once.
 #[derive(Debug)]
 pub enum TransactionOnceError<E> {
@@ -637,51 +689,14 @@ where
     T: Send + 'a,
 {
     async fn run(self) -> Result<T> {
-        if let Some(outer) = active_for(self.db) {
-            if self.set {
+        let Self { db, f, isolation, read_only, timeout_ms, retry, audit, set } = self;
+        if let Some(outer) = active_for(db) {
+            if set {
                 return Err(Error::Config("a nested transaction of the same connection accepts only the retry option".into()));
             }
-            return savepoint_send(outer, self.f.as_ref()).await;
+            return savepoint_send(outer, f.as_ref()).await;
         }
-        let record = self.audit.as_ref().map(|values| audit_record(self.db, values)).transpose()?.map(Arc::new);
-        let mut attempt = 0u32;
-        loop {
-            let tx = Arc::new(begin(self.db, self.isolation, self.read_only, self.timeout_ms).await?);
-            let mut stack = frames();
-            stack.push(tx.clone());
-            // Each attempt starts with the pending record and no inserted audit.
-            *tx.pending_audit.lock().unwrap() = record.clone();
-            let body = (self.f)();
-            let callback = std::panic::AssertUnwindSafe(FLOW.scope(stack, body)).catch_unwind();
-            let result = match callback.await {
-                Ok(result) => result,
-                Err(payload) => match rollback_and_resume(&tx, payload).await {},
-            };
-            match result {
-                // A deadlocked commit is retried as a deadlocked callback is, as the other clients retry the whole
-                // transaction; any other commit error, such as WRITE_CONFLICT, is returned at once.
-                Ok(v) => match commit(&tx).await {
-                    Ok(()) => return Ok(v),
-                    Err(e) if e.is_deadlock() && attempt < self.retry => {
-                        let jitter = rand::random::<u64>() % 20;
-                        tokio::time::sleep(std::time::Duration::from_millis((50u64 << attempt.min(10)) + jitter)).await;
-                        attempt += 1;
-                    }
-                    Err(e) => return Err(e),
-                },
-                Err(e) => {
-                    if let Err(rollback_error) = rollback(&tx).await.and_then(|()| rollback_fault(self.db)) {
-                        return Err(Error::rollback(e, rollback_error));
-                    }
-                    if !e.is_deadlock() || attempt >= self.retry {
-                        return Err(e);
-                    }
-                    let jitter = rand::random::<u64>() % 20;
-                    tokio::time::sleep(std::time::Duration::from_millis((50u64 << attempt.min(10)) + jitter)).await;
-                    attempt += 1;
-                }
-            }
-        }
+        run_transaction!(db, f(), isolation, read_only, timeout_ms, retry, audit).await
     }
 }
 
@@ -755,51 +770,14 @@ impl<'a, F> Transaction<'a, F> {
     where
         F: AsyncFn() -> Result<T>,
     {
-        if let Some(outer) = active_for(self.db) {
-            if self.set {
+        let Self { db, f, isolation, read_only, timeout_ms, retry, audit, set } = self;
+        if let Some(outer) = active_for(db) {
+            if set {
                 return Err(Error::Config("a nested transaction of the same connection accepts only the retry option".into()));
             }
-            return savepoint(outer, &self.f).await;
+            return savepoint(outer, &f).await;
         }
-        let record = self.audit.as_ref().map(|values| audit_record(self.db, values)).transpose()?.map(Arc::new);
-        let mut attempt = 0u32;
-        loop {
-            let tx = Arc::new(begin(self.db, self.isolation, self.read_only, self.timeout_ms).await?);
-            let mut stack = frames();
-            stack.push(tx.clone());
-            // Each attempt starts with the pending record and no inserted audit.
-            *tx.pending_audit.lock().unwrap() = record.clone();
-            let body = (self.f)();
-            let callback = std::panic::AssertUnwindSafe(FLOW.scope(stack, body)).catch_unwind();
-            let result = match callback.await {
-                Ok(result) => result,
-                Err(payload) => match rollback_and_resume(&tx, payload).await {},
-            };
-            match result {
-                // A deadlocked commit is retried as a deadlocked callback is, as the other clients retry the whole
-                // transaction; any other commit error, such as WRITE_CONFLICT, is returned at once.
-                Ok(v) => match commit(&tx).await {
-                    Ok(()) => return Ok(v),
-                    Err(e) if e.is_deadlock() && attempt < self.retry => {
-                        let jitter = rand::random::<u64>() % 20;
-                        tokio::time::sleep(std::time::Duration::from_millis((50u64 << attempt.min(10)) + jitter)).await;
-                        attempt += 1;
-                    }
-                    Err(e) => return Err(e),
-                },
-                Err(e) => {
-                    if let Err(rollback_error) = rollback(&tx).await.and_then(|()| rollback_fault(self.db)) {
-                        return Err(Error::rollback(e, rollback_error));
-                    }
-                    if !e.is_deadlock() || attempt >= self.retry {
-                        return Err(e);
-                    }
-                    let jitter = rand::random::<u64>() % 20;
-                    tokio::time::sleep(std::time::Duration::from_millis((50u64 << attempt.min(10)) + jitter)).await;
-                    attempt += 1;
-                }
-            }
-        }
+        run_transaction!(db, f(), isolation, read_only, timeout_ms, retry, audit).await
     }
 }
 
@@ -1244,6 +1222,19 @@ mod tests {
     #[test]
     fn transaction_send_future_contract_is_checked() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    }
+
+    #[tokio::test]
+    async fn transaction_variants_share_the_retryable_execution_path() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+        let scratch = Scratch::new("orm-transaction-shared-runner");
+        let db =
+            Db::connect(&format!("sqlite://{}", scratch.join("transaction.sqlite").display()), 1, crate::Config::default()).await.expect("connect to SQLite");
+        let standard = db.transaction(async || Ok::<_, Error>(17)).retry(0).await.expect("standard transaction");
+        let send = db.transaction_send(|| async { Ok::<_, Error>(23) }).retry(0).await.expect("Send transaction");
+        assert_eq!(standard, 17);
+        assert_eq!(send, 23);
+        db.close().await;
     }
 
     #[derive(Debug, PartialEq, Eq)]
