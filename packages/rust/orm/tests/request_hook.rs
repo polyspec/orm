@@ -1,7 +1,7 @@
 //! The request hook of a connection handle (docs/operations/usage.md "Request hook"): the handle returned by `Db::with_request_hook`
 //! uses the same connection, and its hook receives the request and `RequestParams` for each request of the handle, just before planning.
-//! Runs ten shared cases of contracts/fixtures/request_hook.dbs in a SQLite case database (polyspec-orm-case-database,
-//! the file is deleted when it ends or panics): without_hook, read_filter, insert_assign,
+//! Runs thirteen shared cases of contracts/fixtures/request_hook.dbs in a SQLite case database (polyspec-orm-case-database,
+//! the file is deleted when it ends or panics): without_hook, read_filter, same_handle_child_hook_once, insert_assign, upsert_scope,
 //! loaded_row_writes, invalid_param, restore_key, restore_condition, restore_no_key, restore_rewritten_key,
 //! restore_hook_set_key. `coverage_request_hook_<case>` runs the same case on the database that feature-check chose,
 //! in that database's case database (docs/spec/feature-coverage.md).
@@ -562,6 +562,13 @@ async fn coverage_request_hook_read_filter() {
     read_filter_case(feature_database()).await;
 }
 
+// Requirements: DSL-65, PRT-2.
+#[tokio::test]
+async fn coverage_request_hook_same_handle_child_hook_once() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    same_handle_child_hook_once_case(feature_database()).await;
+}
+
 #[tokio::test]
 async fn reads_params() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -598,6 +605,13 @@ async fn coverage_request_hook_loaded_row_writes() {
 async fn upsert_scope() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     upsert_scope_case("sqlite").await;
+}
+
+// Requirements: PRT-4, PRT-5, PRT-41.
+#[tokio::test]
+async fn coverage_request_hook_upsert_scope() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    upsert_scope_case(feature_database()).await;
 }
 
 #[tokio::test]

@@ -2977,6 +2977,109 @@
       ]
     },
     {
+      "id": "coverage-request-hook-same-handle-child-hook-once",
+      "kind": "feature",
+      "requirements": [
+        "DSL-65",
+        "PRT-2"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_request_hook_test.go",
+          "id": "TestCoverageRequestHookSameHandleChildHookOnce",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-go-unit",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=TestCoverageRequestHookSameHandleChildHookOnce",
+            "FEATURE_PACKAGE=./orm"
+          ]
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageRequestHookTest.php",
+          "id": "CoverageRequestHookTest::testSameHandleChildHookOnce"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
+          "id": "CoverageRequestHookExtensionTest::testSameHandleChildHookOnce"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_request_hook.mjs",
+          "id": "same_handle_child_hook_once [sqlite]"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_request_hook.py",
+          "id": "test_same_handle_child_hook_once"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/request_hook.rs",
+          "id": "coverage_request_hook_same_handle_child_hook_once"
+        }
+      ]
+    },
+    {
+      "id": "coverage-request-hook-upsert-scope",
+      "kind": "feature",
+      "requirements": [
+        "PRT-4",
+        "PRT-5",
+        "PRT-41"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_request_hook_test.go",
+          "id": "TestCoverageRequestHookUpsertScope",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-go-unit",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=TestCoverageRequestHookUpsertScope",
+            "FEATURE_PACKAGE=./orm"
+          ]
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageRequestHookTest.php",
+          "id": "CoverageRequestHookTest::testUpsertScope"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
+          "id": "CoverageRequestHookExtensionTest::testUpsertScope"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_request_hook.mjs",
+          "id": "upsert_scope [sqlite]"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_request_hook.py",
+          "id": "test_upsert_scope"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/request_hook.rs",
+          "id": "coverage_request_hook_upsert_scope"
+        }
+      ]
+    },
+    {
       "id": "coverage-transactions-transaction-rollback",
       "kind": "feature",
       "requirements": [

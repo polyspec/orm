@@ -11,7 +11,9 @@ from .test_request_hook import RequestHookTest
 CASES = (
     "without_hook",
     "read_filter",
+    "same_handle_child_hook_once",
     "insert_assign",
+    "upsert_scope",
     "loaded_row_writes",
     "invalid_param",
     "restore_key",
@@ -54,9 +56,20 @@ class CoverageTest(CoverageCase):
     def test_read_filter(self):
         self.each_item("read_filter", lambda item: run_case("read_filter", item))
 
+    # Requirements: DSL-65, PRT-2.
+    def test_same_handle_child_hook_once(self):
+        self.each_item(
+            "same_handle_child_hook_once",
+            lambda item: run_case("same_handle_child_hook_once", item),
+        )
+
     # Requirements: PRT-4, PRT-5, PRT-41.
     def test_insert_assign(self):
         self.each_item("insert_assign", lambda item: run_case("insert_assign", item))
+
+    # Requirements: PRT-4, PRT-5, PRT-41.
+    def test_upsert_scope(self):
+        self.each_item("upsert_scope", lambda item: run_case("upsert_scope", item))
 
     # Requirements: CFG-21, INT-36, INT-37, PLN-16.
     def test_loaded_row_writes(self):

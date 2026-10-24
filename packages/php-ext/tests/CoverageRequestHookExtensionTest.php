@@ -25,4 +25,16 @@ final class CoverageRequestHookExtensionTest extends CoverageRequestHookTest
         Assert::assertTrue((new ReflectionMethod(Db::class, 'withRequestHook'))->isInternal());
         Assert::assertTrue((new ReflectionMethod(Model::class, 'get'))->isInternal());
     }
+
+    // Requirements: DSL-65, PRT-2.
+    public function testSameHandleChildHookOnce(): void
+    {
+        parent::testSameHandleChildHookOnce();
+    }
+
+    // Requirements: PRT-4, PRT-5, PRT-41.
+    public function testUpsertScope(): void
+    {
+        parent::testUpsertScope();
+    }
 }

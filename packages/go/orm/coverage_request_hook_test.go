@@ -39,10 +39,22 @@ func TestCoverageRequestHookReadFilter(t *testing.T) {
 	runRequestHookCoverage(t, "read_filter")
 }
 
+// Requirements: DSL-65, PRT-2.
+func TestCoverageRequestHookSameHandleChildHookOnce(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	runRequestHookCoverage(t, "same_handle_child_hook_once")
+}
+
 // Requirements: PRT-4, PRT-5, PRT-41.
 func TestCoverageRequestHookInsertAssign(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	runRequestHookCoverage(t, "insert_assign")
+}
+
+// Requirements: PRT-4, PRT-5, PRT-41.
+func TestCoverageRequestHookUpsertScope(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	runRequestHookCoverage(t, "upsert_scope")
 }
 
 // Requirements: CFG-21, INT-36, INT-37, PLN-16.

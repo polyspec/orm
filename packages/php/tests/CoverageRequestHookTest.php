@@ -37,12 +37,30 @@ class CoverageRequestHookTest extends TestCase
         }
     }
 
+    // Requirements: DSL-65, PRT-2.
+    public function testSameHandleChildHookOnce(): void
+    {
+        foreach (coverageItemsOf(static::coverageTestFile()) as $item) {
+            selectCoverageItem($item);
+            self::runCase('same_handle_child_hook_once');
+        }
+    }
+
     // Requirements: PRT-4, PRT-5, PRT-41.
     public function test_insert_assign(): void
     {
         foreach (coverageItemsOf(static::coverageTestFile()) as $item) {
             selectCoverageItem($item);
             self::runCase('insert_assign');
+        }
+    }
+
+    // Requirements: PRT-4, PRT-5, PRT-41.
+    public function testUpsertScope(): void
+    {
+        foreach (coverageItemsOf(static::coverageTestFile()) as $item) {
+            selectCoverageItem($item);
+            self::runCase('upsert_scope');
         }
     }
 
