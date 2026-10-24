@@ -325,7 +325,7 @@ async fn rollback_fault_postgres() {
 /// Requirements: PRT-44, PRT-54, PRT-59.
 #[test]
 fn rollback_fault_entry() {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let manifest = std::fs::read_to_string(polyspec_orm_testcase::manifest_dir().join("Cargo.toml")).unwrap();
     let features = manifest.split("[features]").nth(1).expect("the crate declares its features").split("\n[").next().unwrap();
     assert!(features.contains("test-faults = []"), "the crate declares the feature test-faults: {features}");
