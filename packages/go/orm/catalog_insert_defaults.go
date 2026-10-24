@@ -1,8 +1,42 @@
 package orm
 
 import (
+	"database/sql"
 	"strings"
 )
+
+func catalogExecSingleInsert(s *catalogSession, query string, args []any) (sql.Result, error) {
+	result, err := s.conn.ExecContext(s.ctx, query, args...)
+	if err != nil {
+		return nil, mapDriverErr(err)
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return nil, mapDriverErr(err)
+	}
+	if affected != 1 {
+		return nil, catalogErr(catalogCodeRowWrite, "expected exactly one inserted row, got %d", affected)
+	}
+	return result, nil
+}
+
+func catalogValidateInsertedRow(
+	metadata CatalogTableMetadata,
+	row []any,
+	changes []catalogChange,
+	keyIndexes []int,
+) ([]any, error) {
+	if err := catalogCheckCells(metadata, row); err != nil {
+		return nil, err
+	}
+	if _, err := catalogRevision(metadata, row); err != nil {
+		return nil, err
+	}
+	if err := catalogVerifyInsertedValues(row, changes); err != nil {
+		return nil, err
+	}
+	return catalogInsertedKeys(row, keyIndexes)
+}
 
 // catalogInsertReturningKeys performs an insert whose primary-key components are supplied by the database, then reads
 // their exact values from the same statement on SQLite and PostgreSQL.
@@ -16,30 +50,14 @@ func catalogInsertReturningKeys(
 	dialect string,
 ) ([]any, error) {
 	returning := query + " RETURNING " + catalogColumnList(metadata, dialect)
-	raw, err := s.queryRaw(returning, args, 2, catalogPageBytes)
-	if err != nil {
-		return nil, err
-	}
-	if err := catalogSameNames(raw.names, metadata.Columns); err != nil {
-		return nil, err
-	}
-	rows, err := catalogConvert(raw, catalogNativeTypes(metadata))
+	rows, err := catalogReadRows(s, metadata, returning, args)
 	if err != nil {
 		return nil, err
 	}
 	if len(rows) != 1 {
 		return nil, catalogErr(catalogCodeRowWrite, "expected exactly one returned insert row, got %d", len(rows))
 	}
-	if err := catalogCheckCells(metadata, rows[0]); err != nil {
-		return nil, err
-	}
-	if _, err := catalogRevision(metadata, rows[0]); err != nil {
-		return nil, err
-	}
-	if err := catalogVerifyInsertedValues(rows[0], changes); err != nil {
-		return nil, err
-	}
-	return catalogInsertedKeys(rows[0], keyIndexes)
+	return catalogValidateInsertedRow(metadata, rows[0], changes, keyIndexes)
 }
 
 // catalogInsertLocator identifies a MySQL row with the assigned input values when an expression default cannot be read
@@ -71,14 +89,7 @@ func newCatalogInsertLocator(metadata CatalogTableMetadata, changes []catalogCha
 }
 
 func (locator *catalogInsertLocator) read(s *catalogSession, metadata CatalogTableMetadata) ([][]any, error) {
-	raw, err := s.queryRaw(locator.query, locator.args, 2, catalogPageBytes)
-	if err != nil {
-		return nil, err
-	}
-	if err := catalogSameNames(raw.names, metadata.Columns); err != nil {
-		return nil, err
-	}
-	return catalogConvert(raw, catalogNativeTypes(metadata))
+	return catalogReadRows(s, metadata, locator.query, locator.args)
 }
 
 func (locator *catalogInsertLocator) requireAbsent(s *catalogSession, metadata CatalogTableMetadata) error {
@@ -100,16 +111,8 @@ func (locator *catalogInsertLocator) insertAndReadKeys(
 	changes []catalogChange,
 	keyIndexes []int,
 ) ([]any, error) {
-	result, err := s.conn.ExecContext(s.ctx, query, args...)
-	if err != nil {
-		return nil, mapDriverErr(err)
-	}
-	affected, err := result.RowsAffected()
-	if err != nil {
-		return nil, mapDriverErr(err)
-	}
-	if affected != 1 {
-		return nil, catalogErr(catalogCodeRowWrite, "expected exactly one inserted row, got %d", affected)
+	if _, err := catalogExecSingleInsert(s, query, args); err != nil {
+		return nil, err
 	}
 	rows, err := locator.read(s, metadata)
 	if err != nil {
@@ -118,16 +121,7 @@ func (locator *catalogInsertLocator) insertAndReadKeys(
 	if len(rows) != 1 {
 		return nil, catalogErr(catalogCodeRowAmbiguous, "expected exactly one inserted locator row")
 	}
-	if err := catalogCheckCells(metadata, rows[0]); err != nil {
-		return nil, err
-	}
-	if _, err := catalogRevision(metadata, rows[0]); err != nil {
-		return nil, err
-	}
-	if err := catalogVerifyInsertedValues(rows[0], changes); err != nil {
-		return nil, err
-	}
-	return catalogInsertedKeys(rows[0], keyIndexes)
+	return catalogValidateInsertedRow(metadata, rows[0], changes, keyIndexes)
 }
 
 // catalogMySQLInsertKeys uses the native insert acknowledgement for automatic keys and DEFAULT(column) for omitted
@@ -142,16 +136,9 @@ func catalogMySQLInsertKeys(
 	omittedKeys []int,
 	omittedAutomaticKeys []int,
 ) ([]any, error) {
-	result, err := s.conn.ExecContext(s.ctx, query, args...)
+	result, err := catalogExecSingleInsert(s, query, args)
 	if err != nil {
-		return nil, mapDriverErr(err)
-	}
-	affected, err := result.RowsAffected()
-	if err != nil {
-		return nil, mapDriverErr(err)
-	}
-	if affected != 1 {
-		return nil, catalogErr(catalogCodeRowWrite, "expected exactly one inserted row, got %d", affected)
+		return nil, err
 	}
 	var identity int64
 	if len(omittedAutomaticKeys) != 0 {
@@ -193,30 +180,14 @@ func catalogMySQLInsertKeys(
 	}
 	lookup := "SELECT " + catalogColumnList(metadata, "mysql") + " FROM " + catalogQualified(metadata.Table, "mysql") +
 		" WHERE " + strings.Join(predicates, " AND ") + " LIMIT 2 FOR UPDATE"
-	raw, err := s.queryRaw(lookup, keyArgs, 2, catalogPageBytes)
-	if err != nil {
-		return nil, err
-	}
-	if err := catalogSameNames(raw.names, metadata.Columns); err != nil {
-		return nil, err
-	}
-	rows, err := catalogConvert(raw, catalogNativeTypes(metadata))
+	rows, err := catalogReadRows(s, metadata, lookup, keyArgs)
 	if err != nil {
 		return nil, err
 	}
 	if len(rows) != 1 {
 		return nil, catalogErr(catalogCodeRowWrite, "expected exactly one inserted generated-key row, got %d", len(rows))
 	}
-	if err := catalogCheckCells(metadata, rows[0]); err != nil {
-		return nil, err
-	}
-	if _, err := catalogRevision(metadata, rows[0]); err != nil {
-		return nil, err
-	}
-	if err := catalogVerifyInsertedValues(rows[0], changes); err != nil {
-		return nil, err
-	}
-	return catalogInsertedKeys(rows[0], keyIndexes)
+	return catalogValidateInsertedRow(metadata, rows[0], changes, keyIndexes)
 }
 
 func catalogVerifyInsertedValues(row []any, changes []catalogChange) error {

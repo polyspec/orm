@@ -18,6 +18,17 @@ type CatalogQueryResult struct {
 	Rows    [][]any
 }
 
+func catalogReadRows(s *catalogSession, metadata CatalogTableMetadata, query string, args []any) ([][]any, error) {
+	raw, err := s.queryRaw(query, args, 2, catalogPageBytes)
+	if err != nil {
+		return nil, err
+	}
+	if err := catalogSameNames(raw.names, metadata.Columns); err != nil {
+		return nil, err
+	}
+	return catalogConvert(raw, catalogNativeTypes(metadata))
+}
+
 // catalogWriteWords are the keywords that a read query never uses as a statement or clause: a query that contains one is
 // refused before it runs. A write that still reached the database would fail in the read-only transaction.
 var catalogWriteWords = map[string]bool{

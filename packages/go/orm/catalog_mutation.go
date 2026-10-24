@@ -88,14 +88,7 @@ func (s *catalogSession) lookup(metadata CatalogTableMetadata, keys []any, lock 
 	}
 	query := "SELECT " + catalogColumnList(metadata, s.dialect) + " FROM " + catalogQualified(metadata.Table, s.dialect) +
 		" WHERE " + catalogKeyPredicate(metadata, s.dialect, 1) + " LIMIT 2" + suffix
-	raw, err := s.queryRaw(query, keys, 2, catalogPageBytes)
-	if err != nil {
-		return nil, err
-	}
-	if err := catalogSameNames(raw.names, metadata.Columns); err != nil {
-		return nil, err
-	}
-	return catalogConvert(raw, catalogNativeTypes(metadata))
+	return catalogReadRows(s, metadata, query, keys)
 }
 
 // InsertRow inserts one row inside a writable transaction. An omitted automatic or defaulted primary-key component is
