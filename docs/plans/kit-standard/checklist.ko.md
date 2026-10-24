@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 2eab26d530100d817442b2410deaa55899ab57ab6c95208167c5a93ba2210a7b -->
+<!-- source-sha256: d5ac0db71c3731dbaa7dbdae257979a835e834e2a8eae74d1a5004970f2ad052 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -232,7 +232,7 @@
 | KSTD-5-64 | 파싱할 수 없는 SQLite library version을 그 텍스트를 밝히는 오류로 보고한다 | Makefile; contracts/check-inputs.json; contracts/symbols/typescript.json; packages/rust/orm/src/db.rs; packages/rust/orm/src/db/sqlite_version_tests.rs; packages/ts/src/driver.ts; packages/ts/tests/sqlite-version.test.mjs | `make sqlite-version-ts-check`; `make sqlite-version-rust-check` | [o] |
 | KSTD-5-65 | build scan이 OUT_DIR이 없다는 오류를 전파한다 | packages/rust/build/src/lib.rs; packages/rust/build/src/tests/out_dir.rs; Makefile; contracts/check-inputs.json | `make rust-build-outdir-check` | [o] |
 | KSTD-5-66 | upsert planner의 conflict-key 오류를 전파한다 | packages/rust/orm/src/engine/planner.rs:313 | `make rust-check` | [ ] |
-| KSTD-5-67 | relation step에는 parent bind slot이 정확히 하나 있어야 한다 | Makefile; contracts/check-inputs.json; packages/rust/orm/src/driver.rs; packages/rust/orm/src/driver/tests.rs; RED: make relation-parent-bind-rust-check exit 2 at abd38b77eae57fc108311dce4a615fccd6392161 (4 behavioral assertions failed); committed GREEN e0fe5ae77b451ed5ee38e9b84f270a658810c7b2: 5/5 | `make relation-parent-bind-rust-check` | [~] |
+| KSTD-5-67 | relation step에는 parent bind slot이 정확히 하나 있어야 한다 | Makefile; contracts/check-inputs.json; packages/rust/orm/src/driver.rs; packages/rust/orm/src/driver/tests.rs; RED: make relation-parent-bind-rust-check exit 2 at abd38b77eae57fc108311dce4a615fccd6392161 (4 behavioral assertions failed); committed GREEN e0fe5ae77b451ed5ee38e9b84f270a658810c7b2: 5/5 | `make relation-parent-bind-rust-check` | [o] |
 | KSTD-5-68 | 음수 또는 범위를 벗어난 소수 정밀도를 거부한다 | packages/rust/orm/src/db.rs:1155,1167,1185 | `make rust-check` | [ ] |
 | KSTD-5-69 | commit task의 panic payload를 포함한다 | packages/rust/build/src/catalog/mutation_finish.rs:40 | `make rust-check` | [-] 원인: 현재 코드는 Tokio 1.53.1 JoinError를 직접 format하며 Display는 static str와 String panic payload를 포함하고 취소를 분류한다. 불투명한 비문자열 payload를 노출하라는 요구는 없다. 런타임: 실행하지 않음. 근거: var/evidence/KSTD-5-69/audit.md. |
 | KSTD-5-70 | CARGO_MANIFEST_DIR을 기준으로 상대 build 경로를 해석한다 | packages/rust/build/src/lib.rs:146 | `make rust-build-environment-check` | [o] |

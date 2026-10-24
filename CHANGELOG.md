@@ -3,7 +3,8 @@
 
 ## Unreleased
 
-- Rust relation execution now rejects relation steps with zero or multiple parent bind slots as `IR_INVALID` before executing a query. The selected native target had four behavioral failures and one valid scalar/composite control passing at pre-fix `abd38b77eae57fc108311dce4a615fccd6392161`; committed implementation `e0fe5ae77b451ed5ee38e9b84f270a658810c7b2` passes all five cases with `make item-test ID=KSTD-5-67` (KSTD-5-67).
+- Rust relation execution now rejects relation steps with zero or multiple parent bind slots as `IR_INVALID` before executing a query (KSTD-5-67).
+  The native target's four malformed-parent assertions failed while its valid scalar/composite control passed at pre-fix `abd38b77eae57fc108311dce4a615fccd6392161`; committed implementation `e0fe5ae77b451ed5ee38e9b84f270a658810c7b2` passes all five cases with `make item-test ID=KSTD-5-67`, including the completion run (KSTD-5-67).
 
 - Every client now rejects SQL NULL at the split-query merge boundary with CODEC_DECODE while preserving valid falsey keys. General nullable row-key handling remains unchanged for joins. `make item-test ID=KSTD-5-50-1` passes Go (1), PHP (1 test, 29 assertions), PHP extension (1 test, 7 assertions), TypeScript (2), Python (2) and Rust (1) focused cases. (KSTD-5-50-1)
 
