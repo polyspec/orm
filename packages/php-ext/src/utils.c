@@ -70,6 +70,17 @@ static zval *utils_db(zval *object)
     return zend_read_property(utils_ce, Z_OBJ_P(object), "db", sizeof("db") - 1, true, &rv);
 }
 
+static bool utils_new_subutility(zval *instance, const char *class_name, zval *result)
+{
+    zval args[2];
+    ZVAL_COPY(&args[0], utils_db(instance));
+    ZVAL_COPY(&args[1], instance);
+    bool ok = newobj(class_name, result, 2, args);
+    zval_ptr_dtor(&args[0]);
+    zval_ptr_dtor(&args[1]);
+    return ok;
+}
+
 static bool utils_active_frame(zval *db, zval *frame)
 {
     zval argument;
@@ -544,49 +555,19 @@ ZEND_METHOD(Polyspec_Orm_Utils, backendWaitingForLock)
 ZEND_METHOD(Polyspec_Orm_Utils, schema)
 {
     ZEND_PARSE_PARAMETERS_NONE();
-    zval *db = utils_db(ZEND_THIS);
-    zval args[2];
-    ZVAL_COPY(&args[0], db);
-    ZVAL_COPY(&args[1], ZEND_THIS);
-    if (!newobj("Polyspec\\Orm\\SchemaUtils", return_value, 2, args)) {
-        zval_ptr_dtor(&args[0]);
-        zval_ptr_dtor(&args[1]);
-        RETURN_THROWS();
-    }
-    zval_ptr_dtor(&args[0]);
-    zval_ptr_dtor(&args[1]);
+    if (!utils_new_subutility(ZEND_THIS, "Polyspec\\Orm\\SchemaUtils", return_value)) RETURN_THROWS();
 }
 
 ZEND_METHOD(Polyspec_Orm_Utils, privileges)
 {
     ZEND_PARSE_PARAMETERS_NONE();
-    zval *db = utils_db(ZEND_THIS);
-    zval args[2];
-    ZVAL_COPY(&args[0], db);
-    ZVAL_COPY(&args[1], ZEND_THIS);
-    if (!newobj("Polyspec\\Orm\\PrivilegeUtils", return_value, 2, args)) {
-        zval_ptr_dtor(&args[0]);
-        zval_ptr_dtor(&args[1]);
-        RETURN_THROWS();
-    }
-    zval_ptr_dtor(&args[0]);
-    zval_ptr_dtor(&args[1]);
+    if (!utils_new_subutility(ZEND_THIS, "Polyspec\\Orm\\PrivilegeUtils", return_value)) RETURN_THROWS();
 }
 
 ZEND_METHOD(Polyspec_Orm_Utils, aes)
 {
     ZEND_PARSE_PARAMETERS_NONE();
-    zval *db = utils_db(ZEND_THIS);
-    zval args[2];
-    ZVAL_COPY(&args[0], db);
-    ZVAL_COPY(&args[1], ZEND_THIS);
-    if (!newobj("Polyspec\\Orm\\AesUtils", return_value, 2, args)) {
-        zval_ptr_dtor(&args[0]);
-        zval_ptr_dtor(&args[1]);
-        RETURN_THROWS();
-    }
-    zval_ptr_dtor(&args[0]);
-    zval_ptr_dtor(&args[1]);
+    if (!utils_new_subutility(ZEND_THIS, "Polyspec\\Orm\\AesUtils", return_value)) RETURN_THROWS();
 }
 
 ZEND_METHOD(Polyspec_Orm_Utils, stats)
