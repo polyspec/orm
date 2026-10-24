@@ -801,11 +801,7 @@ async fn savepoint<T, F>(tx: Arc<TxShared>, f: &F) -> Result<T>
 where
     F: AsyncFn() -> Result<T>,
 {
-    match run_savepoint(tx, f()).await? {
-        Ok(value) => Ok(value),
-        Err((callback, None)) => Err(callback),
-        Err((callback, Some(rollback))) => Err(Error::rollback(callback, rollback)),
-    }
+    savepoint_result(run_savepoint(tx, f()).await?)
 }
 
 async fn savepoint_send<'a, 'b, T>(tx: Arc<TxShared>, f: &'b SendOperation<'a, T>) -> Result<T>
@@ -813,7 +809,11 @@ where
     'a: 'b,
     T: Send + 'a,
 {
-    match run_savepoint(tx, (f)()).await? {
+    savepoint_result(run_savepoint(tx, (f)()).await?)
+}
+
+fn savepoint_result<T>(result: std::result::Result<T, (Error, Option<Error>)>) -> Result<T> {
+    match result {
         Ok(value) => Ok(value),
         Err((callback, None)) => Err(callback),
         Err((callback, Some(rollback))) => Err(Error::rollback(callback, rollback)),
