@@ -208,6 +208,7 @@ final class OrmExceptionNativeTest extends TestCase
         }
     }
 
+    // Requirements: CFG-6.
     public function testNativeConnectionRejectsUnsupportedPoolAndNegativeTimeoutOptions(): void
     {
         foreach (
