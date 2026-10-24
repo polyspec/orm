@@ -10,6 +10,18 @@ import { readErrorCatalog } from './manifest.mts';
 
 const root = resolve(import.meta.dirname, '../../..');
 
+function assertPhpExtensionBindings(parity: Parity, bindings: Array<[string, string]>): void {
+  const units = new Map((parity.units ?? []).map(unit => [unit.id, unit]));
+  for (const [id, symbol] of bindings) {
+    const unit = units.get(id);
+    assert.ok(unit, `${id} API unit is missing`);
+    assert.ok(
+      unit.symbols?.some(entry => entry.implementation === 'php-extension' && entry.symbol === symbol),
+      `${id} does not bind the native ${symbol} symbol`,
+    );
+  }
+}
+
 const clientSurfaceRequirements: Array<[string, string[]]> = [
   ['aes-keyring', ['INT-130', 'INT-60']],
   ['aes-keyring-versions', ['INT-74']],
@@ -157,35 +169,19 @@ caseTest('the native OrmException API is bound by the PHP extension', COMPUTE, (
 });
 
 caseTest('the native AES keyring API is bound by the PHP extension', COMPUTE, () => {
-  const units = new Map((readParity(root).units ?? []).map(unit => [unit.id, unit]));
-  for (const [id, symbol] of [
+  assertPhpExtensionBindings(readParity(root), [
     ['aes-keyring', 'Polyspec\\Orm\\AesKeyring'],
     ['aes-keyring-versions', 'Polyspec\\Orm\\AesKeyring::versions'],
     ['aes-rotation-status', 'Polyspec\\Orm\\AesRotationStatus'],
-  ]) {
-    const unit = units.get(id);
-    assert.ok(unit, `${id} API unit is missing`);
-    assert.ok(
-      unit.symbols?.some(entry => entry.implementation === 'php-extension' && entry.symbol === symbol),
-      `${id} does not bind the native ${symbol} symbol`,
-    );
-  }
+  ]);
 });
 
 caseTest('the native AES utilities API is bound by the PHP extension', COMPUTE, () => {
-  const units = new Map((readParity(root).units ?? []).map(unit => [unit.id, unit]));
-  for (const [id, symbol] of [
+  assertPhpExtensionBindings(readParity(root), [
     ['aes-utils', 'Polyspec\\Orm\\AesUtils'],
     ['aes-utils-status', 'Polyspec\\Orm\\AesUtils::status'],
     ['aes-utils-rotate', 'Polyspec\\Orm\\AesUtils::rotate'],
-  ]) {
-    const unit = units.get(id);
-    assert.ok(unit, `${id} API unit is missing`);
-    assert.ok(
-      unit.symbols?.some(entry => entry.implementation === 'php-extension' && entry.symbol === symbol),
-      `${id} does not bind the native ${symbol} symbol`,
-    );
-  }
+  ]);
 });
 
 caseTest('the native connection factory API is bound by the PHP extension', COMPUTE, () => {
@@ -198,25 +194,16 @@ caseTest('the native connection factory API is bound by the PHP extension', COMP
 });
 
 caseTest('the native privilege utilities API is bound by the PHP extension', COMPUTE, () => {
-  const units = new Map((readParity(root).units ?? []).map(unit => [unit.id, unit]));
-  for (const [id, symbol] of [
+  assertPhpExtensionBindings(readParity(root), [
     ['client-privilege-utils', 'Polyspec\\Orm\\PrivilegeUtils'],
     ['client-privilege-utils-grant-table', 'Polyspec\\Orm\\PrivilegeUtils::grantTable'],
     ['client-privilege-utils-inspect-table', 'Polyspec\\Orm\\PrivilegeUtils::inspectTable'],
     ['client-privilege-utils-revoke-table', 'Polyspec\\Orm\\PrivilegeUtils::revokeTable'],
-  ]) {
-    const unit = units.get(id);
-    assert.ok(unit, `${id} API unit is missing`);
-    assert.ok(
-      unit.symbols?.some(entry => entry.implementation === 'php-extension' && entry.symbol === symbol),
-      `${id} does not bind the native ${symbol} symbol`,
-    );
-  }
+  ]);
 });
 
 caseTest('the native Utils API is bound by the PHP extension', COMPUTE, () => {
-  const units = new Map((readParity(root).units ?? []).map(unit => [unit.id, unit]));
-  for (const [id, symbol] of [
+  assertPhpExtensionBindings(readParity(root), [
     ['client-utils', 'Polyspec\\Orm\\Utils'],
     ['client-utils-local', 'Polyspec\\Orm\\Utils::local'],
     ['client-utils-lock', 'Polyspec\\Orm\\Utils::lock'],
@@ -226,19 +213,11 @@ caseTest('the native Utils API is bound by the PHP extension', COMPUTE, () => {
     ['client-utils-stats', 'Polyspec\\Orm\\Utils::stats'],
     ['client-utils-was-inserted', 'Polyspec\\Orm\\Utils::wasInserted'],
     ['client-utils-backend-waiting-for-lock', 'Polyspec\\Orm\\Utils::backendWaitingForLock'],
-  ]) {
-    const unit = units.get(id);
-    assert.ok(unit, `${id} API unit is missing`);
-    assert.ok(
-      unit.symbols?.some(entry => entry.implementation === 'php-extension' && entry.symbol === symbol),
-      `${id} does not bind the native ${symbol} symbol`,
-    );
-  }
+  ]);
 });
 
 caseTest('the native SchemaUtils API is bound by the PHP extension', COMPUTE, () => {
-  const units = new Map((readParity(root).units ?? []).map(unit => [unit.id, unit]));
-  for (const [id, symbol] of [
+  assertPhpExtensionBindings(readParity(root), [
     ['client-schema-utils', 'Polyspec\\Orm\\SchemaUtils'],
     ['client-schema-utils-register', 'Polyspec\\Orm\\SchemaUtils::register'],
     ['client-schema-utils-install', 'Polyspec\\Orm\\SchemaUtils::install'],
@@ -246,14 +225,7 @@ caseTest('the native SchemaUtils API is bound by the PHP extension', COMPUTE, ()
     ['client-schema-utils-exists', 'Polyspec\\Orm\\SchemaUtils::exists'],
     ['client-schema-utils-installed', 'Polyspec\\Orm\\SchemaUtils::installed'],
     ['client-schema-utils-empty', 'Polyspec\\Orm\\SchemaUtils::empty'],
-  ]) {
-    const unit = units.get(id);
-    assert.ok(unit, `${id} API unit is missing`);
-    assert.ok(
-      unit.symbols?.some(entry => entry.implementation === 'php-extension' && entry.symbol === symbol),
-      `${id} does not bind the native ${symbol} symbol`,
-    );
-  }
+  ]);
 });
 
 caseTest('the API units of the error catalog cover every code of errors.yaml once', COMPUTE, () => {
