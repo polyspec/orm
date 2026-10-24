@@ -207,6 +207,7 @@ impl From<sqlx::Error> for ApplyError {
 /// The table that records applied plans. Since dbspec names have no `$`, it does not
 /// collide with user tables, and introspection reads while excluding tables that start with `dbspec$`.
 const HISTORY_TABLE: &str = "dbspec$plans";
+const HISTORY_COLUMNS: [&str; 7] = ["name", "from_hash", "to_hash", "state", "step", "steps", "applied_at"];
 
 /// The lock name for the current database. MySQL lock names are up to 64 characters, so
 /// instead of the database name, the first 51 characters of its SHA-256 hex are appended to make 64 characters.
@@ -440,6 +441,10 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
 
     fn q(&self, name: &str) -> String {
         quote(self.d, name)
+    }
+
+    fn history_columns(&self) -> [String; 7] {
+        HISTORY_COLUMNS.map(|name| self.q(name))
     }
 
     fn placeholder(&self, n: usize) -> String {
@@ -778,30 +783,32 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
             Dialect::MySql => ("INT", "varchar(71) CHARACTER SET ascii COLLATE ascii_bin", " ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_bin"),
             _ => ("integer", "varchar(71)", ""),
         };
+        let columns = self.history_columns();
         let statement = format!(
             "CREATE TABLE IF NOT EXISTS {} ({} {text} NOT NULL, {} {text} NOT NULL, {} {text} NOT NULL, {} {text} NOT NULL, {} {integer} NOT NULL, {} {integer} NOT NULL, {} {text} NOT NULL, PRIMARY KEY ({})){tail}",
             self.q(HISTORY_TABLE),
-            self.q("name"),
-            self.q("from_hash"),
-            self.q("to_hash"),
-            self.q("state"),
-            self.q("step"),
-            self.q("steps"),
-            self.q("applied_at"),
-            self.q("name"),
+            columns[0],
+            columns[1],
+            columns[2],
+            columns[3],
+            columns[4],
+            columns[5],
+            columns[6],
+            columns[0],
         );
         self.exec(&statement).await
     }
 
     async fn read_history(&mut self) -> Result<(), ApplyError> {
         self.create_history().await?;
+        let columns = self.history_columns();
         let query = format!(
             "SELECT {}, {}, {}, {}, {} FROM {}",
-            self.q("name"),
-            self.q("from_hash"),
-            self.q("to_hash"),
-            self.q("state"),
-            self.q("step"),
+            columns[0],
+            columns[1],
+            columns[2],
+            columns[3],
+            columns[4],
             self.q(HISTORY_TABLE)
         );
         let rows = self.c.query_bound(&query, &[]).await?;
@@ -934,16 +941,11 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
         let count = |n: usize| i64::try_from(n).map_err(|error| ApplyError::Database(protocol(format!("the step {n} does not fit a history row: {error}"))));
         if !self.history.iter().any(|r| r.name == p.name()) {
             let placeholders: Vec<String> = (1..=7).map(|n| self.placeholder(n)).collect();
+            let columns = self.history_columns();
             let insert = format!(
-                "INSERT INTO {} ({}, {}, {}, {}, {}, {}, {}) VALUES ({})",
+                "INSERT INTO {} ({}) VALUES ({})",
                 self.q(HISTORY_TABLE),
-                self.q("name"),
-                self.q("from_hash"),
-                self.q("to_hash"),
-                self.q("state"),
-                self.q("step"),
-                self.q("steps"),
-                self.q("applied_at"),
+                columns.join(", "),
                 placeholders.join(", ")
             );
             // applied_at is the tool clock's UTC time truncated to six fractional digits, as text (docs/spec/plans.md "Apply").
