@@ -1245,11 +1245,9 @@ pub(crate) fn message_time_text(text: &str, col_type: &str, zone: &Zone) -> Resu
 /// Shortens a six-fractional-digit `YYYY-MM-DD HH:MM:SS.ffffff` text to p fractional digits. If a nonzero digit
 /// is in the dropped digits, the value changes, so it is CODEC_ENCODE.
 fn datetime_digits(text: &str, precision: i64) -> Result<String> {
-    let p = precision_count(precision)?;
-    let Some((whole, fraction)) = text.split_once('.') else {
+    let Some((whole, fraction, p)) = fractional_parts(text, precision)? else {
         return Ok(text.to_owned());
     };
-    let p = p.min(fraction.len());
     if fraction[p..].bytes().any(|b| b != b'0') {
         return Err(Error::Engine { code: codes::CODEC_ENCODE.into(), msg: format!("datetime value {text:?} has more than {p} fraction digits") });
     }
@@ -1258,12 +1256,18 @@ fn datetime_digits(text: &str, precision: i64) -> Result<String> {
 
 /// Truncates the six-digit fractional text of the executor clock to the p fractional digits of a `datetime(p)` column.
 fn clock_digits(text: &str, precision: i64) -> Result<String> {
-    let p = precision_count(precision)?;
-    let Some((whole, fraction)) = text.split_once('.') else {
+    let Some((whole, fraction, p)) = fractional_parts(text, precision)? else {
         return Ok(text.to_owned());
     };
-    let p = p.min(fraction.len());
     Ok(if p == 0 { whole.to_owned() } else { format!("{whole}.{}", &fraction[..p]) })
+}
+
+fn fractional_parts(text: &str, precision: i64) -> Result<Option<(&str, &str, usize)>> {
+    let precision = precision_count(precision)?;
+    let Some((whole, fraction)) = text.split_once('.') else {
+        return Ok(None);
+    };
+    Ok(Some((whole, fraction, precision.min(fraction.len()))))
 }
 
 /// The number of fractional digits a precision names, which is between zero and six.
