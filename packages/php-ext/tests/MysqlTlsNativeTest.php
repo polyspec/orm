@@ -24,7 +24,9 @@ final class MysqlTlsNativeTest extends TestCase
         }
         $db = Orm::connect($dsn, new Config());
         try {
-            $version = (string) ($db->pdo()->query("SHOW SESSION STATUS LIKE 'Ssl_version'")->fetch(\PDO::FETCH_NUM)[1] ?? '');
+            $version = (string) (
+                $db->pdo()->query("SHOW SESSION STATUS LIKE 'Ssl_version'")->fetch(\PDO::FETCH_NUM)[1] ?? ''
+            );
             self::assertMatchesRegularExpression('/^TLSv1\.[23]$/', $version, 'the native connection uses TLS');
         } finally {
             $db->close();
