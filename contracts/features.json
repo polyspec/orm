@@ -97,6 +97,7 @@
         "packages/php/tests/MysqlTlsTest.php",
         "packages/php-ext/tests/MysqlTlsNativeTest.php",
         "packages/php-ext/tests/ConnectionStatementTimeoutNativeTest.php",
+        "packages/php-ext/tests/ConnectionBusyTimeoutNativeTest.php",
         "packages/php-ext/tests/OrmExceptionNativeTest.php",
         "packages/rust/orm/tests/mysql_tls.rs",
         "packages/ts/tests/mysql_tls.mjs",
@@ -303,6 +304,17 @@
           "inputs": [
             "Makefile",
             "packages/php-ext/tests/MysqlTlsNativeTest.php"
+          ]
+        },
+        {
+          "id": "connection-sqlite-busy-timeout-php-extension",
+          "command": "make connection-busy-timeout-php-extension-check",
+          "shard": "other",
+          "inputs": [
+            "Makefile",
+            "packages/php-ext/tests/ConnectionBusyTimeoutNativeTest.php",
+            "packages/php-ext/src/db.c",
+            "packages/php/src/OrmException.php"
           ]
         },
         {

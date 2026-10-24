@@ -12132,12 +12132,37 @@
       ]
     },
     {
-      "id": "rust-lock-wait-expires",
+      "id": "connection-sqlite-busy-timeout-canceled",
       "kind": "feature",
       "requirements": [
         "CFG-12"
       ],
       "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/sqlite_concurrency_test.go",
+          "id": "TestSQLiteLockWaitExpires"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/SqliteConcurrencyTest.php",
+          "id": "SqliteConcurrencyTest::testLockWaitExpires"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConnectionBusyTimeoutNativeTest.php",
+          "id": "ConnectionBusyTimeoutNativeTest::testNativeSqliteBusyTimeoutCancelsWrite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/sqlite-concurrency.mjs",
+          "id": "sqlite-concurrency/lockWaitExpires"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_driver_errors.py",
+          "id": "SqliteDriverErrorTest.test_a_lock_held_past_busy_timeout_is_canceled"
+        },
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/sqlite_concurrency.rs",
@@ -15383,20 +15408,7 @@
         }
       ]
     },
-    {
-      "id": "php-internal-sqlite-concurrency-lock-wait-expires",
-      "kind": "feature",
-      "requirements": [
-        "CFG-12"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/SqliteConcurrencyTest.php",
-          "id": "SqliteConcurrencyTest::testLockWaitExpires"
-        }
-      ]
-    },
+
     {
       "id": "php-internal-add-tables-and-columns-add-tables-and-columns",
       "kind": "feature",

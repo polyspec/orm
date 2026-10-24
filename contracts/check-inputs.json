@@ -2465,6 +2465,21 @@
         "packages/php/src/OrmException.php"
       ]
     },
+    "connection-busy-timeout-php-extension-check": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/php-ext/scripts/build.sh",
+        "packages/php-ext/src/db.c",
+        "packages/php-ext/tests/ConnectionBusyTimeoutNativeTest.php",
+        "packages/php/src/OrmException.php"
+      ]
+    },
     "connection-statement-timeout-typescript-check": {
       "scope": "owner",
       "needs": [

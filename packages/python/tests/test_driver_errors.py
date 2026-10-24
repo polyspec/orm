@@ -123,6 +123,7 @@ class SqliteDriverErrorTest(unittest.TestCase):
             lambda: self.parent("refused").create(), "DRIVER", "parent refused"
         )
 
+    # Requirements: CFG-12.
     def test_a_lock_held_past_busy_timeout_is_canceled(self):
         self.db.close()
         self.db = Db.connect_schema(
