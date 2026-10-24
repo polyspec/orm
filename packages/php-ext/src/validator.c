@@ -50,13 +50,8 @@ static bool fail(const char *code, const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
-    zend_string *msg = zend_vstrpprintf(0, fmt, ap);
+    orm_throw_formatted_exception("class Polyspec\\Orm\\OrmException is not loaded", code, fmt, ap);
     va_end(ap);
-    zval exception;
-    bool ok = orm_exception_object("class Polyspec\\Orm\\OrmException is not loaded", code, msg, &exception);
-    zend_string_release(msg);
-    if (!ok) return false;
-    zend_throw_exception_object(&exception);
     return false;
 }
 

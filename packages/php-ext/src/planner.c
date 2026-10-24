@@ -85,13 +85,8 @@ static void *fail(const char *code, const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
-    zend_string *msg = zend_vstrpprintf(0, fmt, ap);
+    orm_throw_formatted_exception(NULL, code, fmt, ap);
     va_end(ap);
-    zval exception;
-    bool ok = orm_exception_object(NULL, code, msg, &exception);
-    zend_string_release(msg);
-    if (!ok) return NULL;
-    zend_throw_exception_object(&exception);
     return NULL;
 }
 

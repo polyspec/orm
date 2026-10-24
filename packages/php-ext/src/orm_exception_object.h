@@ -2,6 +2,8 @@
 #define POLYSPEC_ORM_EXCEPTION_OBJECT_H
 
 #include "Zend/zend_interfaces.h"
+#include "Zend/zend_exceptions.h"
+#include <stdarg.h>
 
 static inline bool orm_exception_object(const char *missing_class_message, const char *code_name,
     zend_string *message, zval *exception)
@@ -34,6 +36,17 @@ static inline bool orm_exception_object(const char *missing_class_message, const
         return false;
     }
     return true;
+}
+
+static inline bool orm_throw_formatted_exception(const char *missing_class_message, const char *code_name,
+    const char *format, va_list args)
+{
+    zend_string *message = zend_vstrpprintf(0, format, args);
+    zval exception;
+    bool ok = orm_exception_object(missing_class_message, code_name, message, &exception);
+    zend_string_release(message);
+    if (ok) zend_throw_exception_object(&exception);
+    return ok;
 }
 
 #endif
