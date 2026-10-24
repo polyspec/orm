@@ -25,6 +25,7 @@ final class CatalogQueryBoundsTest extends TestCase
         $this->path = $path;
         $pdo = new PDO('sqlite:' . $path, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
         $pdo->exec('CREATE TABLE values_table (id INTEGER PRIMARY KEY, value TEXT NOT NULL)');
+        $pdo->exec('CREATE TABLE generated_values (id INTEGER PRIMARY KEY AUTOINCREMENT, value TEXT NOT NULL)');
         $pdo->exec("INSERT INTO values_table (id, value) VALUES (1, 'alpha'), (2, 'beta')");
         $pdo = null;
         $this->catalog = Catalog::connect('sqlite://' . $path);
@@ -101,10 +102,10 @@ final class CatalogQueryBoundsTest extends TestCase
     {
         $metadata = $this->catalog->describeTable([
             'namespace' => $this->catalog->currentNamespace(),
-            'name' => 'values_table',
+            'name' => 'generated_values',
         ]);
         $inserted = $this->catalog->insertRow($metadata, ['value' => 'gamma']);
-        self::assertSame([[3, 'gamma']], $inserted->rows);
+        self::assertSame([[1, 'gamma']], $inserted->rows);
 
         $verify = new \ReflectionMethod(Catalog::class, 'verifyInsertedRow');
         foreach (
