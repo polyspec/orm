@@ -2811,6 +2811,16 @@
           "id": "transaction_rollback [sqlite]"
         },
         {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_transactions.mjs",
+          "id": "transaction_rollback [mysql]"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_transactions.mjs",
+          "id": "transaction_rollback [postgres]"
+        },
+        {
           "implementation": "python",
           "test": "packages/python/tests/coverage_transactions.py",
           "id": "test_transaction_rollback"
@@ -2838,6 +2848,16 @@
           "implementation": "typescript",
           "test": "packages/ts/tests/coverage_transactions.mjs",
           "id": "transaction_rollback [sqlite]"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_transactions.mjs",
+          "id": "transaction_rollback [mysql]"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_transactions.mjs",
+          "id": "transaction_rollback [postgres]"
         },
         {
           "implementation": "rust",
