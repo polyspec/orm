@@ -61,14 +61,6 @@ function step_fields(PlanStep $s): array
     return $out;
 }
 
-/** @param list<Diagnostic> $diagnostics */
-function plan_diagnostics(array $diagnostics): string
-{
-    return json_encode(
-        array_map(static fn(Diagnostic $d): array => [$d->rule, $d->line, $d->column, $d->message], $diagnostics)
-    );
-}
-
 /** @param ?list<string> $lines */
 function plan_source(string $id, ?array $lines): ?Document
 {

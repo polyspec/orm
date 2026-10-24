@@ -117,11 +117,7 @@ function open_apply_database(string $dialect): array
 /** @param list<Diagnostic> $diagnostics */
 function apply_failure(string $id, array $diagnostics): never
 {
-    throw new RuntimeException(
-        "$id: " . json_encode(
-            array_map(static fn(Diagnostic $d): array => [$d->rule, $d->line, $d->column, $d->message], $diagnostics)
-        )
-    );
+    throw new RuntimeException("$id: " . plan_diagnostics($diagnostics));
 }
 
 /** The text of the first column of the first row. Only strings and integers are read as text. */

@@ -37,3 +37,14 @@ function dbspec_plan_text(array $lines): string
 {
     return implode("\n", $lines) . "\n";
 }
+
+/** @param list<\Polyspec\Orm\Dbspec\Diagnostic> $diagnostics */
+function plan_diagnostics(array $diagnostics): string
+{
+    return json_encode(
+        array_map(
+            static fn(\Polyspec\Orm\Dbspec\Diagnostic $d): array => [$d->rule, $d->line, $d->column, $d->message],
+            $diagnostics
+        )
+    );
+}
