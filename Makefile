@@ -2187,6 +2187,9 @@ go-models:
 # The runtime build compiles Go packages that import these generated models.
 build-go: go-models
 
+# The runtime build compiles TypeScript packages that import generated models.
+build-ts: typescript-build
+
 orm-install-go:
 	$(ONLINE) $(GO) mod download
 	$(MAKE) --no-print-directory go-models

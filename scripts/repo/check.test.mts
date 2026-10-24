@@ -45,6 +45,17 @@ caseTest('the Go runtime build generates models before compiling their consumers
   assert.ok(generation < build, 'build-go compiles consumers before refreshing generated models');
 });
 
+caseTest('the TypeScript runtime build generates models before compiling their consumers', COMPUTE, () => {
+  const root = new URL('../..', import.meta.url).pathname;
+  const result = spawnSync('make', ['-n', 'build-ts'], { cwd: root, encoding: 'utf8', env: isolatedEnvironment() });
+  assert.equal(result.status, 0, result.stderr);
+  const generation = result.stdout.indexOf('npm run typescript:build');
+  const build = result.stdout.indexOf('runtime-targets.mjs build ts');
+  assert.ok(generation >= 0, 'build-ts does not run the TypeScript model generator');
+  assert.ok(build >= 0, 'build-ts does not invoke the TypeScript runtime build');
+  assert.ok(generation < build, 'build-ts compiles consumers before refreshing generated models');
+});
+
 caseTest('a script path must be a tracked file or directory', COMPUTE, () => {
   assert.deepEqual(scriptPathErrors({ 'schema:check': 'node scripts/schema/check.mts' }, tracked), [
     'package.json script schema:check names scripts/schema/check.mts, which is not a tracked file or directory',
