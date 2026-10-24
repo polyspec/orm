@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 1e5eab6783804025d3804f6002db8d097cd0ccfad12d36380c64756822777313 -->
+<!-- source-sha256: 4b7d08983548174e6198cb9c06f04b704b3f475f422390aa989bbdfb21968ce5 -->
 # 변경 이력
 
 ## Unreleased
+
+- PHP extension 선언 검사는 `CatalogDocumentBuildException`을 내부 catalog 작성 helper로 제외하고 PHP 전용 public `Catalog` 연결을 유지한다. 수정 전 main source `27716799b`의 실제 client 선언 map에는 helper가 포함되어 있었다. source commit `ba06f0adb`에서 extension 선언 검사는 6개 테스트(15 assertions), native Mermaid 경계 대조 검사는 2개 테스트(4 assertions)를 통과한다(KSTD-5-62-1).
 
 - Go, PHP, PHP extension, Python, Rust, TypeScript의 dbspec verification은 실제 schema 불일치와 catalog 또는 driver 실패를 구분한다. Verification 실패는 원래 cause를 보존하고, forward 이후 실패가 apply history를 성공으로 기록하지 않는다. DB 서버 없이 실행하는 fake-driver target은 여섯 구현에서 settled/rollback verification 실패, forward 이후 실패 상태, 실제 schema 불일치를 다룬다. main source `fc50349c19be`에서 통과한 정확한 Go 회귀는 원래 source `67aee14d481e`의 settled와 rollback 경로에서 실패했다(KSTD-5-61).
 
