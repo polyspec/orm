@@ -932,23 +932,33 @@ static bool verify_as(applier *a, const plan *p, str want, const char *code)
     return apply_error("verify", p->name, 0, SL(""), e);
 }
 
+/* Selects a step's direction-specific restore SQL after checking the same schema effect. */
+static bool step_statement(applier *a, const plan *p, const planstepv *steps, zend_long i, bool rollback, str *out)
+{
+    const planstep *s = &steps->v[i];
+    str restore = rollback ? s->rollback_restore : s->restore;
+    *out = rollback ? s->rollback : s->statement;
+    if (restore.n == 0) {
+        return true;
+    }
+    bool held;
+    if (!effect_at(a, p, i, s->has_restore_if ? &s->restore_if : NULL, &held)) {
+        return false;
+    }
+    if (held) {
+        *out = restore;
+    }
+    return true;
+}
+
 /* Runs from step start up to the finalize step, verifies, then sets the row to applied. */
 static bool forward(applier *a, const plan *p, const planstepv *steps, zend_long start)
 {
     zend_long end = finalize_start(steps), n = (zend_long)steps->n;
     for (zend_long i = start; i < end; i++) {
-        const planstep *s = &steps->v[i];
-        str statement = s->statement;
-        if (s->restore.n > 0) {
-            bool held;
-            if (!effect_at(a, p, i, s->has_restore_if ? &s->restore_if : NULL, &held)) {
-                return false;
-            }
-            if (held) {
-                statement = s->restore;
-            }
-        }
-        if (!run(a, p, steps, i, statement) || !set_step(a, p, i + 1)) {
+        str statement;
+        if (!step_statement(a, p, steps, i, false, &statement) || !run(a, p, steps, i, statement)
+            || !set_step(a, p, i + 1)) {
             return false;
         }
     }
@@ -1070,17 +1080,9 @@ static bool op_rollback(applier *a)
         if (s->rollback.n == 0) {
             return irreversible(p, &steps, i);
         }
-        str statement = s->rollback;
-        if (s->rollback_restore.n > 0) {
-            bool held;
-            if (!effect_at(a, p, i, s->has_restore_if ? &s->restore_if : NULL, &held)) {
-                return false;
-            }
-            if (held) {
-                statement = s->rollback_restore;
-            }
-        }
-        if (!run(a, p, &steps, i, statement) || !set_step(a, p, i)) {
+        str statement;
+        if (!step_statement(a, p, &steps, i, true, &statement) || !run(a, p, &steps, i, statement)
+            || !set_step(a, p, i)) {
             return false;
         }
     }
