@@ -122,13 +122,28 @@ mod default_tests {
             CatalogValue::Text("value".into()),
             CatalogValue::Text("value".into()),
             CatalogValue::Text("integer".into()),
-            CatalogValue::Bool(false),
+            CatalogValue::Bool(true),
             CatalogValue::Text("7".into()),
             CatalogValue::Text(String::new()),
             CatalogValue::Text(String::new()),
             CatalogValue::Text(String::new()),
         ]);
+        postgres[3].push(vec![
+            CatalogValue::Text("sample".into()),
+            CatalogValue::Text("sample_pkey".into()),
+            CatalogValue::Text("p".into()),
+            CatalogValue::Text("PRIMARY KEY (value)".into()),
+            CatalogValue::Bool(false),
+            CatalogValue::Bool(true),
+            CatalogValue::Text("s".into()),
+            CatalogValue::Text("a".into()),
+            CatalogValue::Text("a".into()),
+            CatalogValue::Text(String::new()),
+            CatalogValue::Text("value".into()),
+            CatalogValue::Text(String::new()),
+        ]);
         let postgres = read_catalog(Dialect::Postgres, &postgres, "sample").expect("read PostgreSQL default");
+        assert!(!postgres.document.tables.is_empty(), "PostgreSQL catalog reported: {:?}", postgres.unsupported);
         let postgres_column = postgres.document.tables[0].column("value").expect("PostgreSQL column");
         assert_eq!(postgres_column.ty, Type::I32);
         assert_eq!(postgres_column.default, Some(DefaultValue::Literal("7".into())));
@@ -138,18 +153,19 @@ mod default_tests {
             CatalogValue::Text("table".into()),
             CatalogValue::Text("sample".into()),
             CatalogValue::Text("sample".into()),
-            CatalogValue::Text("CREATE TABLE \"sample\" (\"value\" INTEGER DEFAULT 7)".into()),
+            CatalogValue::Text("CREATE TABLE \"sample\" (\"value\" INTEGER NOT NULL DEFAULT 7, CONSTRAINT \"sample$value\" CHECK (typeof(\"value\") IN ('integer', 'null') AND \"value\" BETWEEN -2147483648 AND 2147483647), PRIMARY KEY (\"value\"))".into()),
         ]);
         sqlite[1].push(vec![
             CatalogValue::Text("sample".into()),
             CatalogValue::Text("value".into()),
             CatalogValue::Text("INTEGER".into()),
-            CatalogValue::Int(0),
+            CatalogValue::Int(1),
             CatalogValue::Text("7".into()),
-            CatalogValue::Int(0),
+            CatalogValue::Int(1),
             CatalogValue::Int(0),
         ]);
         let sqlite = read_catalog(Dialect::Sqlite, &sqlite, "sample").expect("read SQLite default");
+        assert!(!sqlite.document.tables.is_empty(), "SQLite catalog reported: {:?}", sqlite.unsupported);
         let sqlite_column = sqlite.document.tables[0].column("value").expect("SQLite column");
         assert_eq!(sqlite_column.ty, Type::I32);
         assert_eq!(sqlite_column.default, Some(DefaultValue::Literal("7".into())));
