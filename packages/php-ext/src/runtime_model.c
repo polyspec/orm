@@ -400,6 +400,19 @@ PHP_METHOD(Polyspec_Orm_RuntimeModel, parse) {
     if (EG(exception))
         RETURN_THROWS();
 }
+
+static void append_read_diagnostics(sbuf *errors, zval *path, zval *diagnostics)
+{
+    zval *diagnostic;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(diagnostics), diagnostic) {
+        zval *line = prop(diagnostic, "line"), *column = prop(diagnostic, "column");
+        zval *rule = prop(diagnostic, "rule"), *message = prop(diagnostic, "message");
+        if (errors->n) sb_ch(errors, '\n');
+        sb_fmt(errors, "%S:%d:%d: %S: %S", zs(Z_STR_P(path)), Z_LVAL_P(line), Z_LVAL_P(column),
+               zs(Z_STR_P(rule)), zs(Z_STR_P(message)));
+    } ZEND_HASH_FOREACH_END();
+}
+
 PHP_METHOD(Polyspec_Orm_RuntimeModel, splitManifest) {
     zend_string *text;
     ZEND_PARSE_PARAMETERS_START(1, 1) Z_PARAM_STR(text) ZEND_PARSE_PARAMETERS_END();
@@ -703,15 +716,7 @@ PHP_METHOD(Polyspec_Orm_RuntimeModel, set) {
             zval_ptr_dtor(&args[1]);
             zval *ds = prop(&rr, "diagnostics"), *text = prop(&rr, "text");
             if (ds && zend_hash_num_elements(Z_ARRVAL_P(ds))) {
-                zval *d;
-                ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(ds), d) {
-                    zval *line = prop(d, "line"), *col = prop(d, "column"), *rule = prop(d, "rule"), *msg = prop(d, "message");
-                    if (errors_text.n)
-                        sb_ch(&errors_text, '\n');
-                    sb_fmt(&errors_text, "%S:%d:%d: %S: %S", zs(Z_STR_P(p)), Z_LVAL_P(line), Z_LVAL_P(col), zs(Z_STR_P(rule)),
-                           zs(Z_STR_P(msg)));
-                }
-                ZEND_HASH_FOREACH_END();
+                append_read_diagnostics(&errors_text, p, ds);
             } else if (text && Z_TYPE_P(text) == IS_STRING) {
                 Z_TRY_ADDREF_P(text);
                 zend_hash_update(Z_ARRVAL(texts[l]), Z_STR_P(p), text);
@@ -772,15 +777,7 @@ PHP_METHOD(Polyspec_Orm_RuntimeModel, files) {
             zval_ptr_dtor(&a);
             zval *ds = prop(&rr, "diagnostics"), *text = prop(&rr, "text");
             if (ds && zend_hash_num_elements(Z_ARRVAL_P(ds))) {
-                zval *d;
-                ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(ds), d) {
-                    zval *line = prop(d, "line"), *col = prop(d, "column"), *rule = prop(d, "rule"), *msg = prop(d, "message");
-                    if (errors.n)
-                        sb_ch(&errors, '\n');
-                    sb_fmt(&errors, "%S:%d:%d: %S: %S", zs(Z_STR_P(p)), Z_LVAL_P(line), Z_LVAL_P(col), zs(Z_STR_P(rule)),
-                           zs(Z_STR_P(msg)));
-                }
-                ZEND_HASH_FOREACH_END();
+                append_read_diagnostics(&errors, p, ds);
             } else if (text && Z_TYPE_P(text) == IS_STRING) {
                 Z_TRY_ADDREF_P(text);
                 zend_hash_update(Z_ARRVAL(texts[l]), Z_STR_P(p), text);

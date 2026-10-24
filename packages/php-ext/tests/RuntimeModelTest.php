@@ -126,6 +126,40 @@ DBSPEC;
         self::assertSame($fromSet->entities, $fromFiles->entities);
     }
 
+    public function testSetAndFilesFormatParseDiagnosticsTheSameWay(): void
+    {
+        $dir = sys_get_temp_dir() . '/polyspec-runtime-diagnostics-' . bin2hex(random_bytes(8));
+        self::assertTrue(mkdir($dir));
+        $source = "$dir/source.dbs";
+        $set = "$dir/dbspec-set.json";
+        try {
+            file_put_contents($source, "not a dbspec\n");
+            file_put_contents(
+                $set,
+                json_encode(['schema' => 1, 'documents' => ['source.dbs'], 'external' => []], JSON_THROW_ON_ERROR),
+            );
+            try {
+                RuntimeModel::set($set);
+                self::fail('expected invalid document in set');
+            } catch (\Polyspec\Orm\OrmException $error) {
+                self::assertSame(Code::SCHEMA_INVALID, $error->code_);
+                $setMessage = str_replace($source, 'source.dbs', $error->getMessage());
+            }
+            try {
+                RuntimeModel::files([$source]);
+                self::fail('expected invalid document in files');
+            } catch (\Polyspec\Orm\OrmException $error) {
+                self::assertSame(Code::SCHEMA_INVALID, $error->code_);
+                $filesMessage = str_replace($source, 'source.dbs', $error->getMessage());
+            }
+            self::assertSame($setMessage, $filesMessage);
+        } finally {
+            if (is_file($source)) unlink($source);
+            if (is_file($set)) unlink($set);
+            if (is_dir($dir)) rmdir($dir);
+        }
+    }
+
     public function testFileReadConfigurationErrorKeepsItsOriginalCause(): void
     {
         $path = sys_get_temp_dir() . '/polyspec-runtime-model-missing-' . bin2hex(random_bytes(8));
