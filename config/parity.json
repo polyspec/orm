@@ -7205,75 +7205,6 @@
       ]
     },
     {
-      "id": "go-internal-packages-go-model-coverage-parameter-chunking-root-in-chunking",
-      "kind": "feature",
-      "requirements": ["PRT-76"],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_parameter_chunking_test.go",
-          "id": "TestCoverageRootInChunking",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=mysql",
-            "FEATURE_DSN_ENV=BENCH_MYSQL_DSN",
-            "FEATURE_TEST=TestCoverageRootInChunking",
-            "FEATURE_PACKAGE=./model"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-model-coverage-parameter-chunking-root-in-chunking-postgres",
-      "kind": "feature",
-      "requirements": ["PRT-76"],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_parameter_chunking_test.go",
-          "id": "TestCoverageRootInChunking",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=postgres",
-            "FEATURE_DSN_ENV=BENCH_POSTGRES_DSN",
-            "FEATURE_TEST=TestCoverageRootInChunking",
-            "FEATURE_PACKAGE=./model"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-model-coverage-parameter-chunking-root-in-chunking-sqlite",
-      "kind": "feature",
-      "requirements": ["PRT-76"],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_parameter_chunking_test.go",
-          "id": "TestCoverageRootInChunking",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageRootInChunking",
-            "FEATURE_PACKAGE=./model"
-          ]
-        }
-      ]
-    },
-    {
       "id": "go-internal-packages-go-model-coverage-dsn-postgres",
       "kind": "feature",
       "requirements": [
@@ -15377,23 +15308,6 @@
           "implementation": "php",
           "test": "packages/php/tests/ClockTest.php",
           "id": "ClockTest::testClockNowCondition"
-        }
-      ]
-    },
-    {
-      "id": "php-coverage-parameter-chunking-root-in-chunking",
-      "kind": "feature",
-      "requirements": ["PRT-76"],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageParameterChunkingTest.php",
-          "id": "CoverageParameterChunkingTest::testRootInChunking"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageParameterChunkingExtensionTest.php",
-          "id": "CoverageParameterChunkingExtensionTest::test_root_in_chunking"
         }
       ]
     },
