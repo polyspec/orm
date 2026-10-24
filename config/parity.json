@@ -22034,13 +22034,14 @@
       "id": "generated-typed-getter-public-column-api",
       "kind": "feature",
       "requirements": [
-        "DBS-112"
+        "DBS-112",
+        "DBS-114"
       ],
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/decimal_field_test.go",
-          "id": "TestGeneratedDecimalFieldUsesExactText"
+          "test": "packages/go/generator/gen_go_scan_test.go",
+          "id": "TestGoGeneratedScalarGetterRejectsUnselectedRead"
         },
         {
           "implementation": "php",
@@ -22049,8 +22050,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageModelGenerationNativeTest.php",
-          "id": "CoverageModelGenerationNativeTest::testModelGenerationCheck"
+          "test": "packages/php-ext/tests/ModelNativeTest.php",
+          "id": "ModelNativeTest::testPhpGeneratedTypedGetterUsesInternalModelStorage"
         },
         {
           "implementation": "python",
@@ -22059,8 +22060,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/build/tests/generate.rs",
-          "id": "generated_field_types_follow_the_runtime_model"
+          "test": "packages/rust/tests/src/integration.rs",
+          "id": "generated_typed_getter_is_a_checked_public_consumer_api"
         },
         {
           "implementation": "typescript",
