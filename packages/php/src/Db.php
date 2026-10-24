@@ -738,29 +738,23 @@ final class Db
     private function runTransaction(\Closure $fn, string $isolation, bool $readOnly, int $timeoutMs): mixed
     {
         $frame = $this->begin($isolation, $readOnly, $timeoutMs);
-        self::$frames[] = $frame;
-        try {
-            $v = $fn();
-        } catch (\Throwable $e) {
-            array_pop(self::$frames);
-            $failure = $this->transactionFailure($e);
+        $v = $this->runInFrame($frame, $fn, function (\Throwable $failure) use ($frame): \Throwable {
             try {
                 $this->finish($frame, false);
             } catch (\Throwable $cleanup) {
                 // Reports both the callback error and the error at the end of the transaction
                 // (docs/spec/interfaces.md).
-                throw OrmException::rollback($failure, $cleanup);
+                return OrmException::rollback($failure, $cleanup);
             }
             if ($this->state->rollbackFault) {
                 $this->state->rollbackFault = false;
-                throw OrmException::rollback($failure, new OrmException(
+                return OrmException::rollback($failure, new OrmException(
                     Code::FAULT,
                     'test fault: the rollback of the transaction ran and is reported as failed'
                 ));
             }
-            throw $failure;
-        }
-        array_pop(self::$frames);
+            return $failure;
+        });
         $this->finish($frame, true);
         return $v;
     }
@@ -983,6 +977,27 @@ final class Db
         return $failure instanceof \PDOException ? $this->driverError($failure) : $failure;
     }
 
+    /**
+     * Runs a callback with its transaction frame active; callers choose how to recover from a normalized failure.
+     *
+     * @template T
+     * @param \Closure(): T $operation
+     * @param \Closure(\Throwable): \Throwable $failure
+     * @return T
+     */
+    private function runInFrame(TxFrame $frame, \Closure $operation, \Closure $failure): mixed
+    {
+        self::$frames[] = $frame;
+        try {
+            $value = $operation();
+        } catch (\Throwable $e) {
+            array_pop(self::$frames);
+            throw $failure($this->transactionFailure($e));
+        }
+        array_pop(self::$frames);
+        return $value;
+    }
+
     private function savepoint(TxFrame $frame, \Closure $fn): mixed
     {
         $name = 'orm_sp_' . (++$frame->savepoints);
@@ -992,21 +1007,15 @@ final class Db
         $kept = false;
         try {
             $this->savepointControl($frame, StatementEvent::SAVEPOINT, $name);
-            self::$frames[] = $frame;
-            try {
-                $v = $fn();
-            } catch (\Throwable $e) {
-                array_pop(self::$frames);
-                $failure = $this->transactionFailure($e);
+            $v = $this->runInFrame($frame, $fn, function (\Throwable $failure) use ($frame, $name): \Throwable {
                 // Attempts both statements: the one that undoes the work after the savepoint, and the one that
                 // releases the savepoint.
                 $ended = self::joined(array_values(array_filter([
                     $this->endSavepoint($frame, StatementEvent::ROLLBACK_TO, $name),
                     $this->endSavepoint($frame, StatementEvent::RELEASE, $name),
                 ])));
-                throw $ended === null ? $failure : OrmException::rollback($failure, $ended);
-            }
-            array_pop(self::$frames);
+                return $ended === null ? $failure : OrmException::rollback($failure, $ended);
+            });
             $released = $this->endSavepoint($frame, StatementEvent::RELEASE, $name);
             if ($released !== null) {
                 throw $released;
