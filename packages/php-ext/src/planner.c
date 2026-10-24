@@ -9,6 +9,7 @@
  */
 #include "planner.h"
 #include "orm_exception_object.h"
+#include "orm_hash_value.h"
 #include "temps.h"
 #include "validator.h"
 #include "Zend/zend_exceptions.h"
@@ -93,15 +94,7 @@ static void *fail(const char *code, const char *fmt, ...)
 /* $h[$k] with ?? semantics: NULL when the key is missing or null. */
 static zval *get(HashTable *h, const char *k)
 {
-    if (h == NULL) {
-        return NULL;
-    }
-    zval *v = zend_hash_str_find(h, k, strlen(k));
-    if (v == NULL) {
-        return NULL;
-    }
-    ZVAL_DEREF(v);
-    return Z_TYPE_P(v) == IS_NULL ? NULL : v;
+    return orm_hash_value(h, k, strlen(k), false);
 }
 
 /* $h[$k] when it is an array, or NULL. */

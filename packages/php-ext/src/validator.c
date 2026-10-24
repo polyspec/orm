@@ -6,6 +6,7 @@
  */
 #include "validator.h"
 #include "orm_exception_object.h"
+#include "orm_hash_value.h"
 #include "temps.h"
 #include "Zend/zend_exceptions.h"
 #include "Zend/zend_smart_str.h"
@@ -97,15 +98,7 @@ static HashTable *arr_or_empty(HashTable *h)
 /* $h[$k] with ?? semantics: NULL when the key is missing or null. */
 static zval *get(HashTable *h, const char *k)
 {
-    if (h == NULL) {
-        return NULL;
-    }
-    zval *v = zend_symtable_str_find(h, k, strlen(k));
-    if (v == NULL) {
-        return NULL;
-    }
-    ZVAL_DEREF(v);
-    return Z_TYPE_P(v) == IS_NULL ? NULL : v;
+    return orm_hash_value(h, k, strlen(k), true);
 }
 
 static bool has(HashTable *h, const char *k)
