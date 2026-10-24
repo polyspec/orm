@@ -412,12 +412,12 @@ final class Catalog
             $provided[$index] = $value;
         }
         $keys = [];
-        $automaticKeyIndex = null;
+        $generatedKeyIndexes = [];
         foreach ($keyIndexes as $index) {
             if (!array_key_exists($index, $provided)) {
                 $column = $declared->columns[$index];
-                if ($this->dialect === 'sqlite' && count($keyIndexes) === 1 && $column->automaticKey) {
-                    $automaticKeyIndex = $index;
+                if ($column->automaticKey || $column->defaultExpression !== null) {
+                    $generatedKeyIndexes[] = $index;
                     continue;
                 }
                 throw new OrmException(
@@ -427,80 +427,219 @@ final class Catalog
             }
             $keys[] = $provided[$index];
         }
-        return $this->write(function (\PDO $pdo) use ($declared, $changes, $keys, $automaticKeyIndex): CatalogResult {
-            if ($this->dialect === 'postgres') {
-                // The lock that an INSERT takes, held before the schema check so that no DDL changes the table in
-                // between.
-                $this->exec(
-                    $pdo,
-                    'LOCK TABLE ' . self::qualified($declared->table, $this->dialect) . ' IN ROW EXCLUSIVE MODE',
-                    []
-                );
-            }
-            if ($automaticKeyIndex === null && $this->lookup($pdo, $declared, $keys, true) !== []) {
-                throw new OrmException(Code::ROW_CONFLICT, 'insertion key already exists');
-            }
-            $descriptor = $this->describe($pdo, $declared->table);
-            if ($descriptor != $declared) {
-                throw new OrmException(Code::ROW_SCHEMA_CHANGED, 'insertion descriptor changed');
-            }
-            if ($this->dialect === 'mysql') {
-                $this->mysqlSafety($pdo, $descriptor);
-            }
-            $names = [];
-            $placeholders = [];
-            $args = [];
-            foreach ($changes as [$index, $value]) {
-                $names[] = self::quote($descriptor->columns[$index]->name, $this->dialect);
-                $placeholders[] = '?';
-                $args[] = $value;
-            }
-            $sql = 'INSERT INTO ' . self::qualified($descriptor->table, $this->dialect)
-                . ' (' . implode(',', $names) . ') VALUES (' . implode(',', $placeholders) . ')';
-            if ($automaticKeyIndex !== null) {
-                $returned = $this->query(
-                    $pdo,
-                    $sql . ' RETURNING ' . self::quoteList(self::columnNames($descriptor), $this->dialect),
-                    $args,
-                    2,
-                    self::PAGE_BYTES
-                );
-                if (count($returned['rows']) !== 1) {
-                    throw new OrmException(Code::ROW_WRITE_MISMATCH, 'expected one returned insert row');
-                }
-                if ($returned['names'] !== self::columnNames($descriptor)) {
-                    throw new OrmException(
-                        Code::TABLE_PAGE_METADATA_CHANGED,
-                        'returned insert columns differ from descriptor'
+        $mysqlAutoKeyCount = count(array_filter(
+            $generatedKeyIndexes,
+            fn (int $index): bool => $declared->columns[$index]->automaticKey
+        ));
+        if ($this->dialect === 'mysql' && $mysqlAutoKeyCount > 1) {
+            throw new OrmException(Code::ROW_MUTATION_UNSUPPORTED, 'multiple AUTO_INCREMENT identities');
+        }
+        return $this->write(
+            function (\PDO $pdo) use (
+                $declared,
+                $changes,
+                $keys,
+                $generatedKeyIndexes,
+                $keyIndexes,
+                $provided
+            ): CatalogResult {
+                $hasGeneratedKeys = $generatedKeyIndexes !== [];
+                if ($this->dialect === 'postgres') {
+                    // The lock that an INSERT takes, held before the schema check so that no DDL changes the table in
+                    // between.
+                    $this->exec(
+                        $pdo,
+                        'LOCK TABLE ' . self::qualified($declared->table, $this->dialect) . ' IN ROW EXCLUSIVE MODE',
+                        []
                     );
                 }
-                $keys = [$returned['rows'][0][$automaticKeyIndex]];
-            } else {
-                $affected = $this->exec($pdo, $sql, $args);
-                if ($affected !== 1) {
-                    throw new OrmException(
-                        Code::ROW_WRITE_MISMATCH,
-                        "expected exactly one inserted row, got $affected"
+                if ($this->dialect === 'mysql' && $hasGeneratedKeys) {
+                    $this->query(
+                        $pdo,
+                        'SELECT 1 FROM ' . self::qualified($declared->table, $this->dialect) . ' LIMIT 0 FOR UPDATE',
+                        [],
+                        1,
+                        self::PAGE_BYTES
                     );
                 }
-            }
-            $after = $this->lookup($pdo, $descriptor, $keys, false);
-            if (count($after) !== 1) {
-                throw new OrmException(Code::ROW_WRITE_MISMATCH, 'expected exactly one inserted row');
-            }
-            if ($this->describe($pdo, $declared->table) != $descriptor) {
-                throw new OrmException(Code::ROW_SCHEMA_CHANGED, 'insertion descriptor changed');
-            }
-            foreach ($changes as [$index, $value]) {
-                if (self::cellKey($after[0][$index]) !== self::cellKey($value)) {
-                    throw new OrmException(
-                        Code::ROW_WRITE_MISMATCH,
-                        'stored inserted values of "' . $descriptor->columns[$index]->name . '" differ'
-                    );
+                if (!$hasGeneratedKeys && $this->lookup($pdo, $declared, $keys, true) !== []) {
+                    throw new OrmException(Code::ROW_CONFLICT, 'insertion key already exists');
                 }
+                $descriptor = $this->describe($pdo, $declared->table);
+                if ($descriptor != $declared) {
+                    throw new OrmException(Code::ROW_SCHEMA_CHANGED, 'insertion descriptor changed');
+                }
+                if ($this->dialect === 'mysql') {
+                    $this->mysqlSafety($pdo, $descriptor);
+                }
+                $mysqlLocatorSql = null;
+                $mysqlLocatorArgs = [];
+                $hasExpressionKey = false;
+                foreach ($generatedKeyIndexes as $index) {
+                    $hasExpressionKey = $hasExpressionKey || $descriptor->columns[$index]->expressionDefault;
+                }
+                $hasExpressionKey = $this->dialect === 'mysql' && $hasExpressionKey;
+                if ($hasExpressionKey) {
+                    $predicates = [];
+                    foreach ($changes as [$index, $value]) {
+                        $column = self::quote($descriptor->columns[$index]->name, $this->dialect);
+                        if ($value === null) {
+                            $predicates[] = "$column IS NULL";
+                        } else {
+                            $predicates[] = "$column=?";
+                            $mysqlLocatorArgs[] = $value;
+                        }
+                    }
+                    $mysqlLocatorSql = 'SELECT ' . self::quoteList(self::columnNames($descriptor), $this->dialect)
+                        . ' FROM ' . self::qualified($descriptor->table, $this->dialect)
+                        . ' WHERE ' . ($predicates === [] ? '1=1' : implode(' AND ', $predicates))
+                        . ' LIMIT 2 FOR UPDATE';
+                    $before = $this->query($pdo, $mysqlLocatorSql, $mysqlLocatorArgs, 2, self::PAGE_BYTES);
+                    self::sameNames($before['names'], $descriptor, Code::TABLE_PAGE_METADATA_CHANGED);
+                    if ($before['rows'] !== []) {
+                        throw new OrmException(
+                            Code::ROW_IDENTITY_AMBIGUOUS,
+                            'generated identity locator already matches rows'
+                        );
+                    }
+                }
+                $names = [];
+                $placeholders = [];
+                $args = [];
+                foreach ($changes as [$index, $value]) {
+                    $names[] = self::quote($descriptor->columns[$index]->name, $this->dialect);
+                    $placeholders[] = '?';
+                    $args[] = $value;
+                }
+                $sql = 'INSERT INTO ' . self::qualified($descriptor->table, $this->dialect)
+                    . ($names === [] ? ($this->dialect === 'mysql' ? '() VALUES()' : ' DEFAULT VALUES')
+                        : ' (' . implode(',', $names) . ') VALUES (' . implode(',', $placeholders) . ')');
+                if ($hasGeneratedKeys && $this->dialect !== 'mysql') {
+                    $returned = $this->query(
+                        $pdo,
+                        $sql . ' RETURNING ' . self::quoteList(self::columnNames($descriptor), $this->dialect),
+                        $args,
+                        2,
+                        self::PAGE_BYTES
+                    );
+                    if (count($returned['rows']) !== 1) {
+                        throw new OrmException(Code::ROW_WRITE_MISMATCH, 'expected one returned insert row');
+                    }
+                    self::sameNames($returned['names'], $descriptor, Code::TABLE_PAGE_METADATA_CHANGED);
+                    $returnedRows = self::convertRows($returned, self::nativeTypes($descriptor));
+                    $keys = array_map(static fn (int $index): mixed => $returnedRows[0][$index], $keyIndexes);
+                } else {
+                    $affected = $this->exec($pdo, $sql, $args);
+                    if ($affected !== 1) {
+                        throw new OrmException(
+                            Code::ROW_WRITE_MISMATCH,
+                            "expected exactly one inserted row, got $affected"
+                        );
+                    }
+                    if ($hasGeneratedKeys) {
+                        if ($mysqlLocatorSql !== null) {
+                            $returned = $this->query($pdo, $mysqlLocatorSql, $mysqlLocatorArgs, 2, self::PAGE_BYTES);
+                            self::sameNames($returned['names'], $descriptor, Code::TABLE_PAGE_METADATA_CHANGED);
+                            $returnedRows = self::convertRows($returned, self::nativeTypes($descriptor));
+                            if (count($returnedRows) !== 1) {
+                                throw new OrmException(
+                                    Code::ROW_IDENTITY_AMBIGUOUS,
+                                    'expected exactly one inserted locator row'
+                                );
+                            }
+                            foreach ($changes as [$index, $value]) {
+                                if (self::cellKey($returnedRows[0][$index]) !== self::cellKey($value)) {
+                                    throw new OrmException(
+                                        Code::ROW_WRITE_MISMATCH,
+                                        'locator values differ from requested values'
+                                    );
+                                }
+                            }
+                            $keys = array_map(static fn (int $index): mixed => $returnedRows[0][$index], $keyIndexes);
+                        } else {
+                            $identity = null;
+                            foreach ($generatedKeyIndexes as $index) {
+                                if ($descriptor->columns[$index]->automaticKey) {
+                                    try {
+                                        $identity = $pdo->lastInsertId();
+                                    } catch (\PDOException $error) {
+                                        throw $this->db->driverError($error);
+                                    }
+                                    if (
+                                        !is_string($identity)
+                                        || !preg_match('/^[0-9]+$/D', $identity)
+                                        || $identity === '0'
+                                    ) {
+                                        throw new OrmException(
+                                            Code::ROW_WRITE_MISMATCH,
+                                            'insert acknowledgement mismatch'
+                                        );
+                                    }
+                                    break;
+                                }
+                            }
+                            $predicates = [];
+                            $keyArgs = [];
+                            foreach ($keyIndexes as $index) {
+                                $column = $descriptor->columns[$index];
+                                $quoted = self::quote($column->name, $this->dialect);
+                                if (array_key_exists($index, $provided)) {
+                                    $predicates[] = "$quoted=?";
+                                    $keyArgs[] = $provided[$index];
+                                } elseif ($column->automaticKey) {
+                                    if ($identity === null) {
+                                            throw new OrmException(
+                                                Code::ROW_WRITE_MISMATCH,
+                                                'insert acknowledgement mismatch'
+                                            );
+                                    }
+                                    $predicates[] = "$quoted=?";
+                                    $keyArgs[] = $identity;
+                                } else {
+                                    $predicates[] = "$quoted=DEFAULT($quoted)";
+                                }
+                            }
+                            $returned = $this->query(
+                                $pdo,
+                                'SELECT ' . self::quoteList(self::columnNames($descriptor), $this->dialect)
+                                    . ' FROM ' . self::qualified($descriptor->table, $this->dialect)
+                                    . ' WHERE ' . implode(' AND ', $predicates) . ' LIMIT 2 FOR UPDATE',
+                                $keyArgs,
+                                2,
+                                self::PAGE_BYTES
+                            );
+                            self::sameNames($returned['names'], $descriptor, Code::TABLE_PAGE_METADATA_CHANGED);
+                            $returnedRows = self::convertRows($returned, self::nativeTypes($descriptor));
+                            if (count($returnedRows) !== 1) {
+                                throw new OrmException(Code::ROW_WRITE_MISMATCH, 'expected one generated-key row');
+                            }
+                            foreach ($changes as [$index, $value]) {
+                                if (self::cellKey($returnedRows[0][$index]) !== self::cellKey($value)) {
+                                    throw new OrmException(Code::ROW_WRITE_MISMATCH, 'inserted values differ');
+                                }
+                            }
+                            $keys = array_map(static fn (int $index): mixed => $returnedRows[0][$index], $keyIndexes);
+                        }
+                    }
+                }
+                $after = $this->lookup($pdo, $descriptor, $keys, false);
+                if (count($after) !== 1) {
+                    throw new OrmException(Code::ROW_WRITE_MISMATCH, 'expected exactly one inserted row');
+                }
+                if ($this->describe($pdo, $declared->table) != $descriptor) {
+                    throw new OrmException(Code::ROW_SCHEMA_CHANGED, 'insertion descriptor changed');
+                }
+                foreach ($changes as [$index, $value]) {
+                    if (self::cellKey($after[0][$index]) !== self::cellKey($value)) {
+                        throw new OrmException(
+                            Code::ROW_WRITE_MISMATCH,
+                            'stored inserted values of "' . $descriptor->columns[$index]->name . '" differ'
+                        );
+                    }
+                }
+                return new CatalogResult(self::columnNames($descriptor), $after);
             }
-            return new CatalogResult(self::columnNames($descriptor), $after);
-        });
+        );
     }
 
     /**

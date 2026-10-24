@@ -2261,9 +2261,170 @@ static bool cat_check_current(zval *current, zval *original)
     return true;
 }
 
-static bool cat_insert_body(zval *db, const char *dialect, zval *pdo, zval *declared, zval *changes, zval *keys,
-                            bool generated_auto_key, zend_long auto_key_index, zval *out)
+/* A bounded insert-owned row read with the descriptor's exact projection (Catalog::query and Catalog::sameNames). */
+static bool cat_insert_rows(zval *db, const char *dialect, zval *pdo, zval *metadata, const char *sql, zval *args, zval *rows)
 {
+    zval names, types, raw, expected;
+    if (!cat_query(db, pdo, sql, args, 2, CAT_PAGE_BYTES, &names, &types, &raw)) return false;
+    cat_column_names(metadata, &expected);
+    bool same = zend_compare(&names, &expected) == 0;
+    zval_ptr_dtor(&expected);
+    zval_ptr_dtor(&names);
+    if (!same) {
+        zval_ptr_dtor(&types);
+        zval_ptr_dtor(&raw);
+        db_throw_orm("TABLE_PAGE_METADATA_CHANGED", "prepared columns differ from descriptor");
+        return false;
+    }
+    bool ok = cat_convert_rows(&raw, &types, rows);
+    zval_ptr_dtor(&types);
+    zval_ptr_dtor(&raw);
+    return ok;
+}
+
+/* The row selected by the MySQL key/default strategy after one insert. */
+static bool cat_mysql_inserted_keys(zval *db, zval *pdo, zval *metadata, zval *changes, zval *generated_key_indexes,
+                                    const char *locator_sql, zval *locator_args, zval *keys)
+{
+    zval rows;
+    if (locator_sql != NULL) {
+        if (!cat_insert_rows(db, "mysql", pdo, metadata, locator_sql, locator_args, &rows)) return false;
+        if (zend_hash_num_elements(Z_ARRVAL(rows)) != 1) {
+            zval_ptr_dtor(&rows);
+            db_throw_orm("ROW_IDENTITY_AMBIGUOUS", "expected exactly one inserted locator row");
+            return false;
+        }
+    } else {
+        zval rv_cols, *columns = catalog_prop(metadata, "columns", &rv_cols);
+        zval identity;
+        ZVAL_UNDEF(&identity);
+        bool automatic = false;
+        zval *generated_index;
+        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(generated_key_indexes), generated_index) {
+            zval *column = zend_hash_index_find(Z_ARRVAL_P(columns), (zend_ulong)Z_LVAL_P(generated_index));
+            zval arv, *is_auto = catalog_prop(column, "automaticKey", &arv);
+            automatic = automatic || Z_TYPE_P(is_auto) == IS_TRUE;
+        } ZEND_HASH_FOREACH_END();
+        if (automatic) {
+            if (!pdo_call(pdo, "lastInsertId", &identity, 0, NULL, NULL)) {
+                cat_driver_error(db);
+                return false;
+            }
+            bool valid = false;
+            if (Z_TYPE(identity) == IS_LONG) {
+                valid = Z_LVAL(identity) > 0;
+            } else if (Z_TYPE(identity) == IS_STRING && Z_STRLEN(identity) != 0) {
+                valid = true;
+                bool nonzero = false;
+                for (size_t i = 0; i < Z_STRLEN(identity); i++) {
+                    char digit = Z_STRVAL(identity)[i];
+                    if (digit < '0' || digit > '9') valid = false;
+                    if (digit != '0') nonzero = true;
+                }
+                valid = valid && nonzero;
+            }
+            if (!valid) {
+                zval_ptr_dtor(&identity);
+                db_throw_orm("ROW_WRITE_MISMATCH", "insert acknowledgement mismatch");
+                return false;
+            }
+        }
+        zval key_indexes, args;
+        if (!cat_descriptor_keys(metadata, &key_indexes)) {
+            if (!Z_ISUNDEF(identity)) zval_ptr_dtor(&identity);
+            return false;
+        }
+        array_init(&args);
+        smart_str sql = {0};
+        smart_str_appends(&sql, "SELECT ");
+        bool first = true;
+        zval *column;
+        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(columns), column) {
+            zval nrv, *name = catalog_prop(column, "name", &nrv);
+            if (!first) smart_str_appendc(&sql, ',');
+            first = false;
+            cat_quote(&sql, Z_STR_P(name), "mysql");
+        } ZEND_HASH_FOREACH_END();
+        smart_str_appends(&sql, " FROM ");
+        zval rv_table, *table = catalog_prop(metadata, "table", &rv_table);
+        zval *ns = zend_hash_str_find(Z_ARRVAL_P(table), "namespace", 9);
+        zval *table_name = zend_hash_str_find(Z_ARRVAL_P(table), "name", 4);
+        cat_quote(&sql, Z_STR_P(ns), "mysql");
+        smart_str_appendc(&sql, '.');
+        cat_quote(&sql, Z_STR_P(table_name), "mysql");
+        smart_str_appends(&sql, " WHERE ");
+        bool first_predicate = true;
+        zval *key_index;
+        ZEND_HASH_FOREACH_VAL(Z_ARRVAL(key_indexes), key_index) {
+            zend_long index = Z_LVAL_P(key_index);
+            zval *key_column = zend_hash_index_find(Z_ARRVAL_P(columns), (zend_ulong)index);
+            zval nrv, arv, *name = catalog_prop(key_column, "name", &nrv);
+            zval *is_auto = catalog_prop(key_column, "automaticKey", &arv);
+            zval *provided = NULL;
+            zval *pair;
+            ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(changes), pair) {
+                if (Z_LVAL_P(zend_hash_index_find(Z_ARRVAL_P(pair), 0)) == index) {
+                    provided = zend_hash_index_find(Z_ARRVAL_P(pair), 1);
+                    break;
+                }
+            } ZEND_HASH_FOREACH_END();
+            if (!first_predicate) smart_str_appends(&sql, " AND ");
+            first_predicate = false;
+            cat_quote(&sql, Z_STR_P(name), "mysql");
+            if (provided != NULL || Z_TYPE_P(is_auto) == IS_TRUE) {
+                smart_str_appends(&sql, "=?");
+                zval *value = provided != NULL ? provided : &identity;
+                Z_TRY_ADDREF_P(value);
+                add_next_index_zval(&args, value);
+            } else {
+                smart_str_appends(&sql, "=DEFAULT(");
+                cat_quote(&sql, Z_STR_P(name), "mysql");
+                smart_str_appendc(&sql, ')');
+            }
+        } ZEND_HASH_FOREACH_END();
+        smart_str_appends(&sql, " LIMIT 2 FOR UPDATE");
+        smart_str_0(&sql);
+        bool ok = cat_insert_rows(db, "mysql", pdo, metadata, ZSTR_VAL(sql.s), &args, &rows);
+        smart_str_free(&sql);
+        zval_ptr_dtor(&args);
+        zval_ptr_dtor(&key_indexes);
+        if (!Z_ISUNDEF(identity)) zval_ptr_dtor(&identity);
+        if (!ok) return false;
+        if (zend_hash_num_elements(Z_ARRVAL(rows)) != 1) {
+            zval_ptr_dtor(&rows);
+            db_throw_orm("ROW_WRITE_MISMATCH", "expected one generated-key row");
+            return false;
+        }
+    }
+    zval *row = zend_hash_index_find(Z_ARRVAL(rows), 0);
+    zval *pair;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(changes), pair) {
+        zend_long index = Z_LVAL_P(zend_hash_index_find(Z_ARRVAL_P(pair), 0));
+        zval *value = zend_hash_index_find(Z_ARRVAL_P(pair), 1);
+        zval *stored = zend_hash_index_find(Z_ARRVAL_P(row), (zend_ulong)index);
+        if (!cat_same_cell(stored, value)) {
+            zval_ptr_dtor(&rows);
+            db_throw_orm("ROW_WRITE_MISMATCH", "inserted values differ");
+            return false;
+        }
+    } ZEND_HASH_FOREACH_END();
+    zval key_indexes, generated;
+    if (!cat_descriptor_keys(metadata, &key_indexes)) {
+        zval_ptr_dtor(&rows);
+        return false;
+    }
+    cat_pick(row, &key_indexes, &generated);
+    zval_ptr_dtor(&key_indexes);
+    zval_ptr_dtor(keys);
+    ZVAL_COPY_VALUE(keys, &generated);
+    zval_ptr_dtor(&rows);
+    return true;
+}
+
+static bool cat_insert_body(zval *db, const char *dialect, zval *pdo, zval *declared, zval *changes, zval *keys,
+                            zval *generated_key_indexes, zval *out)
+{
+    bool has_generated_keys = zend_hash_num_elements(Z_ARRVAL_P(generated_key_indexes)) != 0;
     zval rv_t, *table = catalog_prop(declared, "table", &rv_t);
     zval *ns = zend_hash_str_find(Z_ARRVAL_P(table), "namespace", 9);
     zval *tname = zend_hash_str_find(Z_ARRVAL_P(table), "name", 4);
@@ -2283,7 +2444,25 @@ static bool cat_insert_body(zval *db, const char *dialect, zval *pdo, zval *decl
         smart_str_free(&lock);
         if (!locked) return false;
     }
-    if (!generated_auto_key) {
+    if (strcmp(dialect, "mysql") == 0 && has_generated_keys) {
+        smart_str lock = {0};
+        smart_str_appends(&lock, "SELECT 1 FROM ");
+        cat_quote(&lock, Z_STR_P(ns), dialect);
+        smart_str_appendc(&lock, '.');
+        cat_quote(&lock, Z_STR_P(tname), dialect);
+        smart_str_appends(&lock, " LIMIT 0 FOR UPDATE");
+        smart_str_0(&lock);
+        zval none, names, types, rows;
+        array_init(&none);
+        bool locked = cat_query(db, pdo, ZSTR_VAL(lock.s), &none, 1, CAT_PAGE_BYTES, &names, &types, &rows);
+        zval_ptr_dtor(&none);
+        smart_str_free(&lock);
+        if (!locked) return false;
+        zval_ptr_dtor(&names);
+        zval_ptr_dtor(&types);
+        zval_ptr_dtor(&rows);
+    }
+    if (!has_generated_keys) {
         zval existing;
         if (!cat_lookup(db, dialect, pdo, declared, keys, true, &existing)) return false;
         bool exists = zend_hash_num_elements(Z_ARRVAL(existing)) != 0;
@@ -2305,34 +2484,102 @@ static bool cat_insert_body(zval *db, const char *dialect, zval *pdo, zval *decl
         return false;
     }
     zval rv_cols, *columns = catalog_prop(&descriptor, "columns", &rv_cols);
+    bool expression_key = false;
+    zval *generated_index;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(generated_key_indexes), generated_index) {
+        zval *column = zend_hash_index_find(Z_ARRVAL_P(columns), (zend_ulong)Z_LVAL_P(generated_index));
+        zval erv, *expression = catalog_prop(column, "expressionDefault", &erv);
+        expression_key = expression_key || Z_TYPE_P(expression) == IS_TRUE;
+    } ZEND_HASH_FOREACH_END();
+    bool mysql_locator = strcmp(dialect, "mysql") == 0 && expression_key;
+    smart_str locator_sql = {0};
+    zval locator_args;
+    array_init(&locator_args);
+    if (mysql_locator) {
+        smart_str_appends(&locator_sql, "SELECT ");
+        bool first_column = true;
+        zval *column;
+        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(columns), column) {
+            zval nrv, *name = catalog_prop(column, "name", &nrv);
+            if (!first_column) smart_str_appendc(&locator_sql, ',');
+            first_column = false;
+            cat_quote(&locator_sql, Z_STR_P(name), dialect);
+        } ZEND_HASH_FOREACH_END();
+        smart_str_appends(&locator_sql, " FROM ");
+        cat_quote(&locator_sql, Z_STR_P(ns), dialect);
+        smart_str_appendc(&locator_sql, '.');
+        cat_quote(&locator_sql, Z_STR_P(tname), dialect);
+        smart_str_appends(&locator_sql, " WHERE ");
+        bool first_predicate = true;
+        zval *pair;
+        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(changes), pair) {
+            zend_long index = Z_LVAL_P(zend_hash_index_find(Z_ARRVAL_P(pair), 0));
+            zval *value = zend_hash_index_find(Z_ARRVAL_P(pair), 1);
+            zval nrv, *name = catalog_prop(zend_hash_index_find(Z_ARRVAL_P(columns), (zend_ulong)index), "name", &nrv);
+            if (!first_predicate) smart_str_appends(&locator_sql, " AND ");
+            first_predicate = false;
+            cat_quote(&locator_sql, Z_STR_P(name), dialect);
+            if (Z_TYPE_P(value) == IS_NULL) {
+                smart_str_appends(&locator_sql, " IS NULL");
+            } else {
+                smart_str_appends(&locator_sql, "=?");
+                Z_TRY_ADDREF_P(value);
+                add_next_index_zval(&locator_args, value);
+            }
+        } ZEND_HASH_FOREACH_END();
+        if (first_predicate) smart_str_appends(&locator_sql, "1=1");
+        smart_str_appends(&locator_sql, " LIMIT 2 FOR UPDATE");
+        smart_str_0(&locator_sql);
+        zval before;
+        if (!cat_insert_rows(db, dialect, pdo, &descriptor, ZSTR_VAL(locator_sql.s), &locator_args, &before)) {
+            smart_str_free(&locator_sql);
+            zval_ptr_dtor(&locator_args);
+            zval_ptr_dtor(&descriptor);
+            return false;
+        }
+        bool absent = zend_hash_num_elements(Z_ARRVAL(before)) == 0;
+        zval_ptr_dtor(&before);
+        if (!absent) {
+            smart_str_free(&locator_sql);
+            zval_ptr_dtor(&locator_args);
+            zval_ptr_dtor(&descriptor);
+            db_throw_orm("ROW_IDENTITY_AMBIGUOUS", "generated identity locator already matches rows");
+            return false;
+        }
+    }
     smart_str sql = {0};
     smart_str_appends(&sql, "INSERT INTO ");
     cat_quote(&sql, Z_STR_P(ns), dialect);
     smart_str_appendc(&sql, '.');
     cat_quote(&sql, Z_STR_P(tname), dialect);
-    smart_str_appends(&sql, " (");
     zval args;
     array_init(&args);
-    bool first = true;
-    zval *pair;
-    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(changes), pair) {
-        zend_long index = Z_LVAL_P(zend_hash_index_find(Z_ARRVAL_P(pair), 0));
-        zval *value = zend_hash_index_find(Z_ARRVAL_P(pair), 1);
-        zval *column = zend_hash_index_find(Z_ARRVAL_P(columns), (zend_ulong)index);
-        zval nrv, *name = catalog_prop(column, "name", &nrv);
-        if (!first) smart_str_appendc(&sql, ',');
-        first = false;
-        cat_quote(&sql, Z_STR_P(name), dialect);
-        Z_TRY_ADDREF_P(value);
-        add_next_index_zval(&args, value);
-    } ZEND_HASH_FOREACH_END();
-    smart_str_appends(&sql, ") VALUES (");
-    for (uint32_t k = 0; k < zend_hash_num_elements(Z_ARRVAL_P(changes)); k++) {
-        if (k) smart_str_appendc(&sql, ',');
-        smart_str_appendc(&sql, '?');
+    if (zend_hash_num_elements(Z_ARRVAL_P(changes)) == 0) {
+        smart_str_appends(&sql, strcmp(dialect, "mysql") == 0 ? "() VALUES()" : " DEFAULT VALUES");
+    } else {
+        smart_str_appends(&sql, " (");
+        bool first = true;
+        zval *pair;
+        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(changes), pair) {
+            zend_long index = Z_LVAL_P(zend_hash_index_find(Z_ARRVAL_P(pair), 0));
+            zval *value = zend_hash_index_find(Z_ARRVAL_P(pair), 1);
+            zval nrv, *name = catalog_prop(zend_hash_index_find(Z_ARRVAL_P(columns), (zend_ulong)index), "name", &nrv);
+            if (!first) smart_str_appendc(&sql, ',');
+            first = false;
+            cat_quote(&sql, Z_STR_P(name), dialect);
+            Z_TRY_ADDREF_P(value);
+            add_next_index_zval(&args, value);
+        } ZEND_HASH_FOREACH_END();
+        smart_str_appends(&sql, ") VALUES (");
+        for (uint32_t k = 0; k < zend_hash_num_elements(Z_ARRVAL_P(changes)); k++) {
+            if (k) smart_str_appendc(&sql, ',');
+            smart_str_appendc(&sql, '?');
+        }
+        smart_str_appendc(&sql, ')');
     }
-    if (generated_auto_key) {
-        smart_str_appends(&sql, ") RETURNING ");
+    bool returning = has_generated_keys && strcmp(dialect, "mysql") != 0;
+    if (returning) {
+        smart_str_appends(&sql, " RETURNING ");
         bool first_column = true;
         zval *column;
         ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(columns), column) {
@@ -2341,62 +2588,46 @@ static bool cat_insert_body(zval *db, const char *dialect, zval *pdo, zval *decl
             first_column = false;
             cat_quote(&sql, Z_STR_P(name), dialect);
         } ZEND_HASH_FOREACH_END();
-    } else {
-        smart_str_appendc(&sql, ')');
     }
     smart_str_0(&sql);
     bool ok;
-    if (generated_auto_key) {
-        zval returned_names, returned_types, raw, returned;
-        ok = cat_query(db, pdo, ZSTR_VAL(sql.s), &args, 2, CAT_PAGE_BYTES, &returned_names, &returned_types, &raw);
-        if (!ok) {
-            smart_str_free(&sql);
-            zval_ptr_dtor(&args);
-            zval_ptr_dtor(&descriptor);
-            return false;
+    if (returning) {
+        zval returned;
+        ok = cat_insert_rows(db, dialect, pdo, &descriptor, ZSTR_VAL(sql.s), &args, &returned);
+        if (ok) {
+            if (zend_hash_num_elements(Z_ARRVAL(returned)) != 1) {
+                zval_ptr_dtor(&returned);
+                db_throw_orm("ROW_WRITE_MISMATCH", "expected one returned insert row");
+                ok = false;
+            } else {
+                zval key_indexes, generated;
+                if (!cat_descriptor_keys(&descriptor, &key_indexes)) {
+                    zval_ptr_dtor(&returned);
+                    ok = false;
+                } else {
+                    cat_pick(zend_hash_index_find(Z_ARRVAL(returned), 0), &key_indexes, &generated);
+                    zval_ptr_dtor(&key_indexes);
+                    zval_ptr_dtor(keys);
+                    ZVAL_COPY_VALUE(keys, &generated);
+                    zval_ptr_dtor(&returned);
+                }
+            }
         }
-        zval expected_names;
-        cat_column_names(&descriptor, &expected_names);
-        bool names_match = zend_compare(&returned_names, &expected_names) == 0;
-        zval_ptr_dtor(&expected_names);
-        zval_ptr_dtor(&returned_names);
-        if (!names_match || zend_hash_num_elements(Z_ARRVAL(raw)) != 1 || !cat_convert_rows(&raw, &returned_types, &returned)) {
-            zval_ptr_dtor(&returned_types);
-            zval_ptr_dtor(&raw);
-            smart_str_free(&sql);
-            zval_ptr_dtor(&args);
-            zval_ptr_dtor(&descriptor);
-            if (!EG(exception)) db_throw_orm("ROW_WRITE_MISMATCH", "expected one returned insert row matching the descriptor");
-            return false;
-        }
-        zval_ptr_dtor(&returned_types);
-        zval_ptr_dtor(&raw);
-        zval *row = zend_hash_index_find(Z_ARRVAL(returned), 0);
-        zval *key = zend_hash_index_find(Z_ARRVAL_P(row), (zend_ulong)auto_key_index);
-        if (key == NULL || Z_TYPE_P(key) != IS_LONG) {
-            zval_ptr_dtor(&returned);
-            smart_str_free(&sql);
-            zval_ptr_dtor(&args);
-            zval_ptr_dtor(&descriptor);
-            db_throw_orm("ROW_WRITE_MISMATCH", "SQLite did not return an integer generated key");
-            return false;
-        }
-        Z_TRY_ADDREF_P(key);
-        add_next_index_zval(keys, key);
-        zval_ptr_dtor(&returned);
-        ok = true;
     } else {
         zend_long affected = 0;
         ok = cat_exec(db, pdo, ZSTR_VAL(sql.s), &args, &affected);
         if (ok && affected != 1) {
-            smart_str_free(&sql);
-            zval_ptr_dtor(&args);
-            zval_ptr_dtor(&descriptor);
             db_throw_orm("ROW_WRITE_MISMATCH", "expected exactly one inserted row, got %ld", (long)affected);
-            return false;
+            ok = false;
+        }
+        if (ok && has_generated_keys) {
+            ok = cat_mysql_inserted_keys(db, pdo, &descriptor, changes, generated_key_indexes,
+                                         mysql_locator ? ZSTR_VAL(locator_sql.s) : NULL, &locator_args, keys);
         }
     }
     smart_str_free(&sql);
+    smart_str_free(&locator_sql);
+    zval_ptr_dtor(&locator_args);
     zval_ptr_dtor(&args);
     if (!ok) {
         zval_ptr_dtor(&descriptor);
@@ -2428,6 +2659,7 @@ static bool cat_insert_body(zval *db, const char *dialect, zval *pdo, zval *decl
         return false;
     }
     zval *first_row = zend_hash_index_find(Z_ARRVAL(after), 0);
+    zval *pair;
     ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(changes), pair) {
         zend_long index = Z_LVAL_P(zend_hash_index_find(Z_ARRVAL_P(pair), 0));
         zval *value = zend_hash_index_find(Z_ARRVAL_P(pair), 1);
@@ -2465,8 +2697,9 @@ ZEND_METHOD(Polyspec_Orm_Catalog, insertRow)
     zend_string *dialect = cat_dialect(ZEND_THIS);
     zval keys;
     array_init(&keys);
-    bool generated_auto_key = false;
-    zend_long auto_key_index = -1;
+    zval generated_key_indexes;
+    array_init(&generated_key_indexes);
+    zend_long mysql_auto_keys = 0;
     zval *ix;
     ZEND_HASH_FOREACH_VAL(Z_ARRVAL(key_indexes), ix) {
         zend_long want = Z_LVAL_P(ix);
@@ -2482,14 +2715,14 @@ ZEND_METHOD(Polyspec_Orm_Catalog, insertRow)
             zval *column = zend_hash_index_find(Z_ARRVAL_P(columns), (zend_ulong)want);
             zval nrv, *name = catalog_prop(column, "name", &nrv);
             zval arv, *automatic = catalog_prop(column, "automaticKey", &arv);
-            zval grv, *generated = catalog_prop(column, "generated", &grv);
-            if (strcmp(ZSTR_VAL(dialect), "sqlite") == 0 && zend_hash_num_elements(Z_ARRVAL(key_indexes)) == 1
-                && Z_TYPE_P(automatic) == IS_TRUE && Z_TYPE_P(generated) != IS_TRUE) {
-                generated_auto_key = true;
-                auto_key_index = want;
+            zval drv, *default_expression = catalog_prop(column, "defaultExpression", &drv);
+            if (Z_TYPE_P(automatic) == IS_TRUE || Z_TYPE_P(default_expression) != IS_NULL) {
+                add_next_index_long(&generated_key_indexes, want);
+                if (Z_TYPE_P(automatic) == IS_TRUE) mysql_auto_keys++;
                 continue;
             }
             zval_ptr_dtor(&keys);
+            zval_ptr_dtor(&generated_key_indexes);
             zval_ptr_dtor(&changes);
             zval_ptr_dtor(&key_indexes);
             db_throw_orm("ROW_INSERT_INVALID", "explicit primary-key value of \"%s\" is required", Z_STRVAL_P(name));
@@ -2498,6 +2731,14 @@ ZEND_METHOD(Polyspec_Orm_Catalog, insertRow)
         Z_TRY_ADDREF_P(found);
         add_next_index_zval(&keys, found);
     } ZEND_HASH_FOREACH_END();
+    if (strcmp(ZSTR_VAL(dialect), "mysql") == 0 && mysql_auto_keys > 1) {
+        zval_ptr_dtor(&keys);
+        zval_ptr_dtor(&generated_key_indexes);
+        zval_ptr_dtor(&changes);
+        zval_ptr_dtor(&key_indexes);
+        db_throw_orm("ROW_MUTATION_UNSUPPORTED", "multiple AUTO_INCREMENT identities");
+        return;
+    }
     zval pdo;
     ZVAL_UNDEF(&pdo);
     zval rv_db;
@@ -2505,7 +2746,7 @@ ZEND_METHOD(Polyspec_Orm_Catalog, insertRow)
     zval result;
     if (cat_begin_write(db, ZSTR_VAL(dialect), &pdo)) {
         bool ok = cat_insert_body(db, ZSTR_VAL(dialect), &pdo, declared, &changes, &keys,
-                                  generated_auto_key, auto_key_index, &result);
+                                  &generated_key_indexes, &result);
         if (ok) {
             if (cat_commit(db, &pdo)) {
                 RETVAL_COPY_VALUE(&result);
@@ -2518,6 +2759,7 @@ ZEND_METHOD(Polyspec_Orm_Catalog, insertRow)
         zval_ptr_dtor(&pdo);
     }
     zval_ptr_dtor(&keys);
+    zval_ptr_dtor(&generated_key_indexes);
     zval_ptr_dtor(&changes);
     zval_ptr_dtor(&key_indexes);
 }

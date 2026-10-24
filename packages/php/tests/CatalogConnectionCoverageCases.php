@@ -108,25 +108,30 @@ trait CatalogConnectionCoverageCases
         self::assertCount(1, $updated->rows);
         self::assertSame(1, $this->catalog->deleteRow($find('catalog-updated')));
         self::assertSame(0, $tenantRows());
-        if ($this->driver === 'sqlite') {
-            $this->assertSqliteGeneratedKey();
-        }
+        $this->assertAutomaticGeneratedKey();
+        $this->assertLiteralDefaultKey();
+        $this->assertExpressionDefaultKey();
         $this->assertFailedCommitLeavesNoRow();
     }
 
-    private function assertSqliteGeneratedKey(): void
+    private function assertAutomaticGeneratedKey(): void
     {
-        $name = 'catalog_generated_' . bin2hex(random_bytes(6));
+        $name = 'catalog_generated_auto_' . bin2hex(random_bytes(6));
         $namespace = $this->catalog->currentNamespace();
         $qualified = $this->quote($namespace) . '.' . $this->quote($name);
         $setup = Orm::connect((string) getenv('ORM_FEATURE_DSN'), new Config());
         $pdo = $setup->pdo();
+        $id = match ($this->driver) {
+            'sqlite' => 'INTEGER PRIMARY KEY AUTOINCREMENT',
+            'mysql' => 'BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY',
+            'postgres' => 'BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY',
+        };
+        $engine = $this->driver === 'mysql' ? ' ENGINE=InnoDB' : '';
         try {
-            $pdo->exec("CREATE TABLE {$qualified} (id INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL)");
+            $pdo->exec("CREATE TABLE {$qualified} (id {$id}, payload TEXT NOT NULL){$engine}");
             $metadata = $this->catalog->describeTable(['namespace' => $namespace, 'name' => $name]);
             self::assertSame(['id'], $metadata->primaryKey);
             self::assertFalse($metadata->columns[0]->nullable);
-            self::assertSame('INTEGER', $metadata->columns[0]->nativeType);
             self::assertFalse($metadata->columns[0]->generated);
             self::assertTrue($metadata->columns[0]->automaticKey);
             self::assertNull($metadata->columns[0]->defaultExpression);
@@ -135,6 +140,86 @@ trait CatalogConnectionCoverageCases
             $inserted = $this->catalog->insertRow($metadata, ['payload' => 'generated']);
             self::assertSame(['id', 'payload'], $inserted->columns);
             self::assertSame([[1, 'generated']], $inserted->rows);
+            self::assertSame(
+                $inserted->rows,
+                $this->catalog->tablePage(['namespace' => $namespace, 'name' => $name], 2, 0)->result->rows
+            );
+        } finally {
+            try {
+                $pdo->exec("DROP TABLE IF EXISTS {$qualified}");
+            } finally {
+                $setup->close();
+            }
+        }
+    }
+
+    private function assertLiteralDefaultKey(): void
+    {
+        $name = 'catalog_generated_literal_' . bin2hex(random_bytes(6));
+        $namespace = $this->catalog->currentNamespace();
+        $qualified = $this->quote($namespace) . '.' . $this->quote($name);
+        $engine = $this->driver === 'mysql' ? ' ENGINE=InnoDB' : '';
+        $setup = Orm::connect((string) getenv('ORM_FEATURE_DSN'), new Config());
+        $pdo = $setup->pdo();
+        try {
+            $pdo->exec(
+                "CREATE TABLE {$qualified} (tenant BIGINT NOT NULL, seq VARCHAR(30) NOT NULL DEFAULT 'generated', "
+                . "n BIGINT NOT NULL, PRIMARY KEY (tenant, seq)){$engine}"
+            );
+            $metadata = $this->catalog->describeTable(['namespace' => $namespace, 'name' => $name]);
+            self::assertSame(['tenant', 'seq'], $metadata->primaryKey);
+            self::assertNotNull($metadata->columns[1]->defaultExpression);
+            self::assertFalse($metadata->columns[1]->automaticKey);
+            $inserted = $this->catalog->insertRow($metadata, ['tenant' => 2, 'n' => 50]);
+            self::assertSame(['tenant', 'seq', 'n'], $inserted->columns);
+            self::assertSame([[2, 'generated', 50]], $inserted->rows);
+            self::assertSame(
+                $inserted->rows,
+                $this->catalog->tablePage(['namespace' => $namespace, 'name' => $name], 2, 0)->result->rows
+            );
+        } finally {
+            try {
+                $pdo->exec("DROP TABLE IF EXISTS {$qualified}");
+            } finally {
+                $setup->close();
+            }
+        }
+    }
+
+    private function assertExpressionDefaultKey(): void
+    {
+        $name = 'catalog_generated_expression_' . bin2hex(random_bytes(6));
+        $namespace = $this->catalog->currentNamespace();
+        $qualified = $this->quote($namespace) . '.' . $this->quote($name);
+        $expression = match ($this->driver) {
+            'sqlite' => 'lower(hex(randomblob(16)))',
+            'mysql' => 'UUID()',
+            'postgres' => 'gen_random_uuid()::text',
+        };
+        $keyType = $this->driver === 'sqlite' ? 'TEXT' : 'VARCHAR(36)';
+        $engine = $this->driver === 'mysql' ? ' ENGINE=InnoDB' : '';
+        $setup = Orm::connect((string) getenv('ORM_FEATURE_DSN'), new Config());
+        $pdo = $setup->pdo();
+        try {
+            $pdo->exec(
+                "CREATE TABLE {$qualified} (seq {$keyType} NOT NULL DEFAULT ({$expression}) PRIMARY KEY, "
+                . "n BIGINT NOT NULL UNIQUE, label VARCHAR(20) NULL){$engine}"
+            );
+            $metadata = $this->catalog->describeTable(['namespace' => $namespace, 'name' => $name]);
+            self::assertSame(['seq'], $metadata->primaryKey);
+            self::assertTrue($metadata->columns[0]->expressionDefault);
+            $inserted = $this->catalog->insertRow($metadata, ['n' => 1, 'label' => null]);
+            $rows = $inserted->rows;
+            self::assertCount(1, $rows);
+            $pattern = $this->driver === 'sqlite'
+                ? '/^[0-9a-f]{32}$/D'
+                : '/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/Di';
+            self::assertMatchesRegularExpression($pattern, $rows[0][0]);
+            self::assertSame([1, null], array_slice($rows[0], 1));
+            self::assertSame(
+                $rows,
+                $this->catalog->tablePage(['namespace' => $namespace, 'name' => $name], 2, 0)->result->rows
+            );
         } finally {
             try {
                 $pdo->exec("DROP TABLE IF EXISTS {$qualified}");

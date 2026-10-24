@@ -86,6 +86,14 @@ final class CatalogConnectionSurfaceTest extends TestCase
         $setup->exec('CREATE TABLE sample (id INTEGER PRIMARY KEY, payload BLOB NOT NULL, note TEXT NULL)');
         $setup->exec("INSERT INTO sample (id, payload, note) VALUES (1, X'00ff', NULL), (2, X'6162', 'two')");
         $setup->exec('CREATE TABLE generated (id INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL)');
+        $setup->exec(
+            "CREATE TABLE generated_default (tenant BIGINT NOT NULL, seq VARCHAR(30) NOT NULL DEFAULT 'generated', "
+            . 'n BIGINT NOT NULL, PRIMARY KEY (tenant, seq))'
+        );
+        $setup->exec(
+            'CREATE TABLE generated_expression (seq TEXT NOT NULL PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))), '
+            . 'n BIGINT NOT NULL UNIQUE, label VARCHAR(20) NULL)'
+        );
         $setup = null;
 
         $catalog = null;
@@ -108,6 +116,34 @@ final class CatalogConnectionSurfaceTest extends TestCase
             $generated = $catalog->insertRow($generatedMetadata, ['payload' => 'generated']);
             self::assertSame(['id', 'payload'], $generated->columns);
             self::assertSame([[1, 'generated']], $generated->rows);
+            $generatedDefaultMetadata = $catalog->describeTable(['namespace' => 'main', 'name' => 'generated_default']);
+            self::assertSame(['tenant', 'seq'], $generatedDefaultMetadata->primaryKey);
+            self::assertSame("'generated'", $generatedDefaultMetadata->columns[1]->defaultExpression);
+            self::assertFalse($generatedDefaultMetadata->columns[1]->automaticKey);
+            $generatedDefault = $catalog->insertRow(
+                $generatedDefaultMetadata,
+                ['tenant' => 2, 'n' => 50]
+            );
+            self::assertSame(['tenant', 'seq', 'n'], $generatedDefault->columns);
+            self::assertSame([[2, 'generated', 50]], $generatedDefault->rows);
+            $generatedExpressionMetadata = $catalog->describeTable(
+                ['namespace' => 'main', 'name' => 'generated_expression']
+            );
+            self::assertSame(['seq'], $generatedExpressionMetadata->primaryKey);
+            self::assertTrue($generatedExpressionMetadata->columns[0]->expressionDefault);
+            $generatedExpression = $catalog->insertRow(
+                $generatedExpressionMetadata,
+                ['n' => 1, 'label' => null]
+            );
+            $storedExpression = $catalog->tablePage(
+                ['namespace' => 'main', 'name' => 'generated_expression'],
+                2,
+                0
+            );
+            self::assertCount(1, $generatedExpression->rows);
+            self::assertMatchesRegularExpression('/^[0-9a-f]{32}$/D', $generatedExpression->rows[0][0]);
+            self::assertSame([1, null], array_slice($generatedExpression->rows[0], 1));
+            self::assertSame($storedExpression->result->rows, $generatedExpression->rows);
 
             $page = $catalog->tablePage($table, 1, 0);
             self::assertSame(['id'], $page->orderBy);
