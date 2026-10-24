@@ -1,9 +1,9 @@
 //! Reads dbspec text line by line into the model and reports the errors that a
 //! single line shows. Cross references are checked by `validate`.
 
-use super::check::{not_allowed, CheckParser, KEYWORDS};
-use super::lexer::{tokenize, Kind, Token};
-use super::literal::{default_literal, Value};
+use super::check::{CheckParser, KEYWORDS, not_allowed};
+use super::lexer::{Cursor, Kind, Token, tokenize};
+use super::literal::{Value, default_literal};
 use super::model::*;
 use std::collections::HashSet;
 
@@ -184,37 +184,6 @@ fn stop_marks(diag: &Diag) -> Marks {
 
 fn stopping(diag: Diag) -> Stopped {
     Stopped { marks: stop_marks(&diag), diags: vec![diag] }
-}
-
-struct Cursor<'t, 'a> {
-    tokens: &'t [Token<'a>],
-    at: usize,
-    end: Pos,
-}
-
-impl<'t, 'a> Cursor<'t, 'a> {
-    fn new(tokens: &'t [Token<'a>]) -> Self {
-        let end = tokens.last().map_or(Pos::default(), |t| t.end());
-        Self { tokens, at: 0, end }
-    }
-
-    fn peek(&self) -> Option<&'t Token<'a>> {
-        self.tokens.get(self.at)
-    }
-
-    fn peek_is(&self, text: &str) -> bool {
-        self.peek().is_some_and(|t| t.is(text))
-    }
-
-    fn next(&mut self) -> Option<&'t Token<'a>> {
-        let token = self.tokens.get(self.at);
-        self.at += 1;
-        token
-    }
-
-    fn here(&self) -> Pos {
-        self.peek().map_or(self.end, |t| t.pos)
-    }
 }
 
 enum Context {
@@ -414,6 +383,18 @@ fn codec_stage(stage: &str) -> Class {
         Class::Keyword
     } else {
         Class::Word
+    }
+}
+
+#[cfg(test)]
+mod cursor_tests {
+    use super::parse;
+
+    #[test]
+    fn parser_cursor_keeps_declaration_tokens_in_order() {
+        let parsed = parse("dbspec 1 shop\n\ntable cafe {\n  id i64\n}\n").expect("valid document parses");
+        assert_eq!(parsed.document.tables[0].name.text, "cafe");
+        assert_eq!(parsed.document.tables[0].columns[0].name.text, "id");
     }
 }
 

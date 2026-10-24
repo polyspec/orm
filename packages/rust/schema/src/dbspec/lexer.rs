@@ -24,6 +24,49 @@ pub(crate) struct Token<'a> {
     pub pos: Pos,
 }
 
+pub(super) struct Cursor<'t, 'a> {
+    pub(super) tokens: &'t [Token<'a>],
+    pub(super) at: usize,
+    pub(super) end: Pos,
+}
+
+impl<'t, 'a> Cursor<'t, 'a> {
+    pub(super) fn new(tokens: &'t [Token<'a>]) -> Self {
+        let end = tokens.last().map_or(Pos::default(), |t| t.end());
+        Self { tokens, at: 0, end }
+    }
+
+    pub(super) fn with_end(tokens: &'t [Token<'a>], end: Pos) -> Self {
+        Self { tokens, at: 0, end }
+    }
+
+    pub(super) fn peek(&self) -> Option<&'t Token<'a>> {
+        self.tokens.get(self.at)
+    }
+
+    pub(super) fn peek_n(&self, offset: usize) -> Option<&'t Token<'a>> {
+        self.tokens.get(self.at + offset)
+    }
+
+    pub(super) fn peek_is(&self, text: &str) -> bool {
+        self.peek().is_some_and(|token| token.is(text))
+    }
+
+    pub(super) fn next(&mut self) -> Option<&'t Token<'a>> {
+        let token = self.tokens.get(self.at);
+        self.at += 1;
+        token
+    }
+
+    pub(super) fn advance(&mut self) {
+        self.at += 1;
+    }
+
+    pub(super) fn here(&self) -> Pos {
+        self.peek().map_or(self.end, |token| token.pos)
+    }
+}
+
 impl<'a> Token<'a> {
     pub fn is(&self, text: &str) -> bool {
         matches!(self.kind, Kind::Word | Kind::Punct) && self.text == text

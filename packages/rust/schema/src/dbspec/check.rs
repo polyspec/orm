@@ -2,7 +2,7 @@
 //! comparison, `in`, `is null`, and `and`/`or` with parentheses. `check_type`
 //! checks the type.
 
-use super::lexer::{Kind, Token};
+use super::lexer::{Cursor, Kind, Token};
 use super::literal::Value;
 use super::model::{Expr, Literal, Name, Operand, Pos};
 
@@ -10,9 +10,7 @@ pub(crate) const KEYWORDS: [&str; 9] = ["and", "or", "not", "in", "between", "is
 const COMPARISONS: [&str; 6] = ["=", "<>", "<", "<=", ">", ">="];
 
 pub(crate) struct CheckParser<'t, 'a> {
-    tokens: &'t [Token<'a>],
-    at: usize,
-    end: Pos,
+    cursor: Cursor<'t, 'a>,
 }
 
 pub(crate) type CheckError = (Pos, String);
@@ -20,32 +18,24 @@ pub(crate) type CheckError = (Pos, String);
 impl<'t, 'a> CheckParser<'t, 'a> {
     /// `end` is the position reported when the expression ends early.
     pub fn new(tokens: &'t [Token<'a>], end: Pos) -> Self {
-        Self { tokens, at: 0, end }
+        Self { cursor: Cursor::with_end(tokens, end) }
     }
 
     /// The index of the first token after the parsed expression.
     pub fn position(&self) -> usize {
-        self.at
-    }
-
-    fn peek(&self) -> Option<&'t Token<'a>> {
-        self.tokens.get(self.at)
-    }
-
-    fn peek_is(&self, text: &str) -> bool {
-        self.peek().is_some_and(|t| t.is(text))
+        self.cursor.at
     }
 
     fn unexpected<T>(&self) -> Result<T, CheckError> {
-        match self.peek() {
+        match self.cursor.peek() {
             Some(t) => Err(not_allowed(t)),
-            None => Err((self.end, "check expression ends early".into())),
+            None => Err((self.cursor.here(), "check expression ends early".into())),
         }
     }
 
     fn expect(&mut self, text: &str) -> Result<(), CheckError> {
-        if self.peek_is(text) {
-            self.at += 1;
+        if self.cursor.peek_is(text) {
+            self.cursor.advance();
             Ok(())
         } else {
             self.unexpected()
@@ -54,8 +44,8 @@ impl<'t, 'a> CheckParser<'t, 'a> {
 
     pub fn expression(&mut self) -> Result<Expr, CheckError> {
         let mut left = self.and()?;
-        while self.peek_is("or") {
-            self.at += 1;
+        while self.cursor.peek_is("or") {
+            self.cursor.advance();
             let right = self.and()?;
             left = Expr::Logic(Box::new(left), "or", Box::new(right));
         }
@@ -64,8 +54,8 @@ impl<'t, 'a> CheckParser<'t, 'a> {
 
     fn and(&mut self) -> Result<Expr, CheckError> {
         let mut left = self.predicate()?;
-        while self.peek_is("and") {
-            self.at += 1;
+        while self.cursor.peek_is("and") {
+            self.cursor.advance();
             let right = self.predicate()?;
             left = Expr::Logic(Box::new(left), "and", Box::new(right));
         }
@@ -75,16 +65,16 @@ impl<'t, 'a> CheckParser<'t, 'a> {
     /// A predicate form that starts with a parenthesized predicate or operand. Parentheses leave no node
     /// and emission writes only the parentheses that precedence requires.
     fn predicate(&mut self) -> Result<Expr, CheckError> {
-        if self.peek_is("(") {
-            self.at += 1;
+        if self.cursor.peek_is("(") {
+            self.cursor.advance();
             let inner = self.expression()?;
             self.expect(")")?;
             return Ok(inner);
         }
         let left = self.operand()?;
-        if let Some(token) = self.peek() {
+        if let Some(token) = self.cursor.peek() {
             if let Some(op) = COMPARISONS.iter().find(|op| token.is(op)) {
-                self.at += 1;
+                self.cursor.advance();
                 let right = self.operand()?;
                 if let (Operand::Literal(first), Operand::Literal(_)) = (&left, &right) {
                     return Err((first.pos, "a comparison of two literals has no column".into()));
@@ -96,25 +86,25 @@ impl<'t, 'a> CheckParser<'t, 'a> {
             Operand::Column(column) => column,
             Operand::Literal(literal) => return self.after_literal(&literal),
         };
-        if self.peek_is("is") {
-            self.at += 1;
-            let negated = self.peek_is("not");
+        if self.cursor.peek_is("is") {
+            self.cursor.advance();
+            let negated = self.cursor.peek_is("not");
             if negated {
-                self.at += 1;
+                self.cursor.advance();
             }
             self.expect("null")?;
             return Ok(Expr::IsNull(column, negated));
         }
-        let negated = self.peek_is("not") && self.tokens.get(self.at + 1).is_some_and(|t| t.is("in"));
+        let negated = self.cursor.peek_is("not") && self.cursor.peek_n(1).is_some_and(|t| t.is("in"));
         if negated {
-            self.at += 1;
+            self.cursor.advance();
         }
-        if self.peek_is("in") {
-            self.at += 1;
+        if self.cursor.peek_is("in") {
+            self.cursor.advance();
             self.expect("(")?;
             let mut list = vec![self.literal()?];
-            while self.peek_is(",") {
-                self.at += 1;
+            while self.cursor.peek_is(",") {
+                self.cursor.advance();
                 list.push(self.literal()?);
             }
             self.expect(")")?;
@@ -126,7 +116,8 @@ impl<'t, 'a> CheckParser<'t, 'a> {
     /// Error for a literal not followed by a comparison: a literal that is the subject of `in` or `is`
     /// is reported at the literal itself; otherwise it is handled as a standalone operand.
     fn after_literal<T>(&self, literal: &Literal) -> Result<T, CheckError> {
-        let subject = self.peek_is("in") || self.peek_is("is") || (self.peek_is("not") && self.tokens.get(self.at + 1).is_some_and(|t| t.is("in")));
+        let subject =
+            self.cursor.peek_is("in") || self.cursor.peek_is("is") || (self.cursor.peek_is("not") && self.cursor.peek_n(1).is_some_and(|t| t.is("in")));
         if subject {
             return Err((literal.pos, "a literal is not the subject of 'in' or 'is'; the subject is a column".into()));
         }
@@ -136,7 +127,7 @@ impl<'t, 'a> CheckParser<'t, 'a> {
     /// Error for an operand not followed by a comparison, `in`, or `is`: when `and`, `or`,
     /// `)`, or the end follows, it is reported at the operand; otherwise at the next token.
     fn alone<T>(&self, operand: Pos, message: String) -> Result<T, CheckError> {
-        match self.peek() {
+        match self.cursor.peek() {
             Some(t) if !(t.is("and") || t.is("or") || t.is(")")) => self.unexpected(),
             _ => Err((operand, message)),
         }
@@ -144,12 +135,12 @@ impl<'t, 'a> CheckParser<'t, 'a> {
 
     /// A column or a literal.
     fn operand(&mut self) -> Result<Operand, CheckError> {
-        let Some(token) = self.peek() else { return self.unexpected() };
+        let Some(token) = self.cursor.peek() else { return self.unexpected() };
         if token.kind == Kind::Word && !KEYWORDS.contains(&token.text) {
-            if self.tokens.get(self.at + 1).is_some_and(|t| t.is("(")) {
+            if self.cursor.peek_n(1).is_some_and(|t| t.is("(")) {
                 return Err((token.pos, format!("function '{}' is not allowed in a check expression", token.text)));
             }
-            self.at += 1;
+            self.cursor.advance();
             return Ok(Operand::Column(Name { text: token.text.to_owned(), pos: token.pos }));
         }
         self.literal().map(Operand::Literal)
@@ -157,12 +148,12 @@ impl<'t, 'a> CheckParser<'t, 'a> {
 
     /// A literal: a number with an optional unary minus, a string, `true` or `false`.
     fn literal(&mut self) -> Result<Literal, CheckError> {
-        let Some(token) = self.peek() else { return self.unexpected() };
+        let Some(token) = self.cursor.peek() else { return self.unexpected() };
         let pos = token.pos;
         let value = if token.is("-") {
-            match self.tokens.get(self.at + 1) {
+            match self.cursor.peek_n(1) {
                 Some(next) if next.kind == Kind::Number => {
-                    self.at += 1;
+                    self.cursor.advance();
                     Value::Number { negative: true, text: next.text.to_owned() }
                 }
                 _ => return Err((pos, "a unary minus applies only to a number literal".into())),
@@ -176,7 +167,7 @@ impl<'t, 'a> CheckParser<'t, 'a> {
                 _ => return self.unexpected(),
             }
         };
-        self.at += 1;
+        self.cursor.advance();
         Ok(Literal { value, pos, text: String::new() })
     }
 }
@@ -187,5 +178,25 @@ pub(crate) fn not_allowed(token: &Token) -> CheckError {
         (token.pos, format!("arithmetic operator '{}' is not allowed in a check expression", token.text))
     } else {
         (token.pos, format!("'{}' is not allowed in a check expression", token.text))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::CheckParser;
+    use crate::dbspec::lexer::tokenize;
+    use crate::dbspec::model::Pos;
+
+    #[test]
+    fn check_parser_uses_shared_cursor_for_lookahead_and_end_position() {
+        let tokens = tokenize("field not in (1, 2)", 7);
+        let mut parser = CheckParser::new(&tokens, Pos { line: 7, column: 21 });
+        assert!(parser.expression().is_ok());
+        assert_eq!(parser.position(), tokens.len());
+
+        let empty = tokenize("", 7);
+        let end = Pos { line: 7, column: 42 };
+        let mut parser = CheckParser::new(&empty, end);
+        assert_eq!(parser.expression().unwrap_err().0, end);
     }
 }
