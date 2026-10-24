@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+namespace Polyspec\Orm\Tests;
+
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\AesKeyring;
@@ -15,16 +17,27 @@ use Polyspec\Orm\Tests\Model\Author;
 #[Medium]
 final class AesUtilsNativeTest extends TestCase
 {
-    public function test_native_status_rotation_and_transaction_rollback(): void
+    public function testNativeStatusRotationAndTransactionRollback(): void
     {
-        self::assertTrue((new ReflectionClass(\Polyspec\Orm\AesUtils::class))->isInternal());
+        self::assertTrue(
+            (new ReflectionClass(\Polyspec\Orm\AesUtils::class))->isInternal(),
+        );
         $path = tempnam(sys_get_temp_dir(), 'orm-aes-native-');
         self::assertIsString($path);
         try {
-            $db = Orm::connect('sqlite:///' . $path, new Config(aesVersion: 2, aesKeys: [1 => 'old-key', 2 => 'new-key']));
+            $db = Orm::connect(
+                'sqlite:///' . $path,
+                new Config(aesVersion: 2, aesKeys: [1 => 'old-key', 2 => 'new-key']),
+            );
             $pdo = $db->pdo();
-            $pdo->exec('CREATE TABLE author (seq INTEGER PRIMARY KEY, aes_key_version INTEGER NOT NULL, aes_hex_email TEXT, aes_hex_phone TEXT)');
-            $insert = $pdo->prepare('INSERT INTO author (seq, aes_key_version, aes_hex_email, aes_hex_phone) VALUES (?, ?, ?, ?)');
+            $pdo->exec(
+                'CREATE TABLE author (seq INTEGER PRIMARY KEY, aes_key_version INTEGER NOT NULL, '
+                . 'aes_hex_email TEXT, aes_hex_phone TEXT)',
+            );
+            $insert = $pdo->prepare(
+                'INSERT INTO author (seq, aes_key_version, aes_hex_email, aes_hex_phone) '
+                . 'VALUES (?, ?, ?, ?)',
+            );
             $insert->execute([
                 1,
                 1,
@@ -49,10 +62,15 @@ final class AesUtilsNativeTest extends TestCase
                 Codec::hostEncode('rollback@example.test', ['aes', 'hex'], 'old-key'),
                 null,
             ]);
-            $pdo->exec('CREATE TRIGGER reject_aes_rotation BEFORE UPDATE ON author BEGIN SELECT RAISE(IGNORE); END');
+            $pdo->exec(
+                'CREATE TRIGGER reject_aes_rotation BEFORE UPDATE ON author '
+                . 'BEGIN SELECT RAISE(IGNORE); END',
+            );
             try {
                 $aes->rotate(new Author(), $keyring);
-                self::fail('an ignored optimistic update did not abort the rotation transaction');
+                self::fail(
+                    'an ignored optimistic update did not abort the rotation transaction',
+                );
             } catch (OrmException $error) {
                 self::assertSame(Code::DEADLOCK, $error->code_);
             }
@@ -60,7 +78,9 @@ final class AesUtilsNativeTest extends TestCase
             $pdo->exec('DROP TRIGGER reject_aes_rotation');
             $db->close();
         } finally {
-            @unlink($path);
+            if (is_file($path)) {
+                unlink($path);
+            }
         }
     }
 }
