@@ -133,8 +133,7 @@ final class PlanApply
      */
     public static function apply(\PDO $c, string $dialect, array $plans, \Closure $now, ?\Closure $events): void
     {
-        $a = new self($c, $dialect, $plans, $now, $events);
-        $a->session(static function () use ($a): void {
+        self::inSession($c, $dialect, $plans, $now, $events, static function (self $a): void {
             $position = $a->settled();
             foreach (array_slice($a->chain, $position) as $plan) {
                 $a->applyPlan($plan);
@@ -149,8 +148,7 @@ final class PlanApply
      */
     public static function recover(\PDO $c, string $dialect, array $plans, \Closure $now, ?\Closure $events): void
     {
-        $a = new self($c, $dialect, $plans, $now, $events);
-        $a->session(static function () use ($a): void {
+        self::inSession($c, $dialect, $plans, $now, $events, static function (self $a): void {
             $position = $a->position();
             if ($position === 0) {
                 return;
@@ -180,8 +178,7 @@ final class PlanApply
      */
     public static function rollback(\PDO $c, string $dialect, array $plans, \Closure $now, ?\Closure $events): void
     {
-        $a = new self($c, $dialect, $plans, $now, $events);
-        $a->session(static function () use ($a): void {
+        self::inSession($c, $dialect, $plans, $now, $events, static function (self $a): void {
             $position = $a->position();
             if ($position === 0) {
                 return;
@@ -251,8 +248,7 @@ final class PlanApply
      */
     public static function finalize(\PDO $c, string $dialect, array $plans, \Closure $now, ?\Closure $events): void
     {
-        $a = new self($c, $dialect, $plans, $now, $events);
-        $a->session(static function () use ($a): void {
+        self::inSession($c, $dialect, $plans, $now, $events, static function (self $a): void {
             $position = $a->settled();
             foreach (array_slice($a->chain, 0, $position) as $plan) {
                 if ($a->history[$plan->name]['state'] !== self::APPLIED) {
@@ -264,6 +260,28 @@ final class PlanApply
                 $a->record($plan, self::FINALIZING, $start);
                 $a->finalizeFrom($plan, $steps, $start);
             }
+        });
+    }
+
+    /**
+     * Runs an operation after validating the plan chain and inside its locked database session.
+     *
+     * @param list<Plan> $plans
+     * @param \Closure(): \DateTimeInterface $now
+     * @param ?\Closure(ApplyEvent): void $events
+     * @param \Closure(self): void $operation
+     */
+    private static function inSession(
+        \PDO $c,
+        string $dialect,
+        array $plans,
+        \Closure $now,
+        ?\Closure $events,
+        \Closure $operation
+    ): void {
+        $apply = new self($c, $dialect, $plans, $now, $events);
+        $apply->session(static function () use ($apply, $operation): void {
+            $operation($apply);
         });
     }
 
