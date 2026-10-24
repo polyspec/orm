@@ -18292,6 +18292,10 @@
           "symbol": "Polyspec\\Orm\\Collection"
         },
         {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Collection"
+        },
+        {
           "implementation": "typescript",
           "symbol": "@polyspec/orm!Collection:class"
         },
@@ -18318,6 +18322,10 @@
         },
         {
           "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Collection::get"
+        },
+        {
+          "implementation": "php-extension",
           "symbol": "Polyspec\\Orm\\Collection::get"
         },
         {
@@ -18350,6 +18358,10 @@
           "symbol": "Polyspec\\Orm\\Collection::first"
         },
         {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Collection::first"
+        },
+        {
           "implementation": "typescript",
           "symbol": "@polyspec/orm!Collection#first:member(1)"
         },
@@ -18376,6 +18388,10 @@
         },
         {
           "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Collection::keys"
+        },
+        {
+          "implementation": "php-extension",
           "symbol": "Polyspec\\Orm\\Collection::keys"
         },
         {
@@ -18408,6 +18424,10 @@
           "symbol": "Polyspec\\Orm\\Collection::toArray"
         },
         {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Collection::toArray"
+        },
+        {
           "implementation": "typescript",
           "symbol": "@polyspec/orm!Collection#toArray:member(1)"
         },
@@ -18434,6 +18454,10 @@
         },
         {
           "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Collection::delete"
+        },
+        {
+          "implementation": "php-extension",
           "symbol": "Polyspec\\Orm\\Collection::delete"
         },
         {
@@ -18466,6 +18490,10 @@
           "symbol": "Polyspec\\Orm\\Collection::connect"
         },
         {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Collection::connect"
+        },
+        {
           "implementation": "typescript",
           "symbol": "@polyspec/orm!Collection#connect:member(1)"
         },
@@ -18492,6 +18520,10 @@
         },
         {
           "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Model::connect"
+        },
+        {
+          "implementation": "php-extension",
           "symbol": "Polyspec\\Orm\\Model::connect"
         },
         {
@@ -18524,6 +18556,10 @@
           "symbol": "Polyspec\\Orm\\Model::relation"
         },
         {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Model::relation"
+        },
+        {
           "implementation": "typescript",
           "symbol": "@polyspec/orm!Core#relation:member(1)"
         },
@@ -18550,6 +18586,10 @@
         },
         {
           "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Db::close"
+        },
+        {
+          "implementation": "php-extension",
           "symbol": "Polyspec\\Orm\\Db::close"
         },
         {
@@ -18641,6 +18681,10 @@
           "symbol": "Polyspec\\Orm\\Db::execute"
         },
         {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Db::execute"
+        },
+        {
           "implementation": "typescript",
           "symbol": "@polyspec/orm!Db#execute:member(1)"
         },
@@ -18667,6 +18711,10 @@
         },
         {
           "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Db::stats"
+        },
+        {
+          "implementation": "php-extension",
           "symbol": "Polyspec\\Orm\\Db::stats"
         },
         {
@@ -18699,6 +18747,10 @@
           "symbol": "Polyspec\\Orm\\Db::subscribe"
         },
         {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Db::subscribe"
+        },
+        {
           "implementation": "typescript",
           "symbol": "@polyspec/orm!Db#subscribe:member(1)"
         },
@@ -18728,6 +18780,10 @@
           "symbol": "Polyspec\\Orm\\Db::transaction"
         },
         {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Db::transaction"
+        },
+        {
           "implementation": "typescript",
           "symbol": "@polyspec/orm!Db#transaction:member(1)"
         },
@@ -18754,6 +18810,10 @@
         },
         {
           "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Db::utils"
+        },
+        {
+          "implementation": "php-extension",
           "symbol": "Polyspec\\Orm\\Db::utils"
         },
         {
@@ -18849,6 +18909,10 @@
         },
         {
           "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Db::withRequestHook"
+        },
+        {
+          "implementation": "php-extension",
           "symbol": "Polyspec\\Orm\\Db::withRequestHook"
         },
         {
@@ -19320,6 +19384,10 @@
           "symbol": "Polyspec\\Orm\\Model"
         },
         {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Model"
+        },
+        {
           "implementation": "typescript",
           "symbol": "@polyspec/orm!Core:class"
         },
@@ -19349,6 +19417,10 @@
         },
         {
           "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Db"
+        },
+        {
+          "implementation": "php-extension",
           "symbol": "Polyspec\\Orm\\Db"
         },
         {
@@ -19410,6 +19482,10 @@
           "symbol": "Polyspec\\Orm\\Page"
         },
         {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Page"
+        },
+        {
           "implementation": "typescript",
           "symbol": "@polyspec/orm!Page:interface"
         },
@@ -19463,6 +19539,10 @@
         },
         {
           "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Schema"
+        },
+        {
+          "implementation": "php-extension",
           "symbol": "Polyspec\\Orm\\Schema"
         },
         {
@@ -19557,6 +19637,10 @@
           "symbol": "Polyspec\\Orm\\StatementEvent"
         },
         {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\StatementEvent"
+        },
+        {
           "implementation": "typescript",
           "symbol": "@polyspec/orm!StatementEvent:interface"
         },
@@ -19589,6 +19673,10 @@
         },
         {
           "implementation": "php",
+          "symbol": "Polyspec\\Orm\\StyledValue"
+        },
+        {
+          "implementation": "php-extension",
           "symbol": "Polyspec\\Orm\\StyledValue"
         },
         {
@@ -19654,6 +19742,10 @@
           "symbol": "Polyspec\\Orm\\StyledValue"
         },
         {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\StyledValue"
+        },
+        {
           "implementation": "typescript",
           "symbol": "@polyspec/orm!StyledValue:class"
         },
@@ -19683,6 +19775,10 @@
         },
         {
           "implementation": "php",
+          "symbol": "Polyspec\\Orm\\StyledValue::sqlNull"
+        },
+        {
+          "implementation": "php-extension",
           "symbol": "Polyspec\\Orm\\StyledValue::sqlNull"
         },
         {
@@ -19718,6 +19814,10 @@
           "symbol": "Polyspec\\Orm\\StyledValue::value"
         },
         {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\StyledValue::value"
+        },
+        {
           "implementation": "typescript",
           "symbol": "@polyspec/orm!StyledValue.value:member(1)"
         },
@@ -19747,6 +19847,10 @@
           "symbol": "Polyspec\\Orm\\Page"
         },
         {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Page"
+        },
+        {
           "implementation": "typescript",
           "symbol": "@polyspec/orm!Page:interface"
         },
@@ -19771,6 +19875,10 @@
         },
         {
           "implementation": "php",
+          "symbol": "Polyspec\\Orm\\GroupRow"
+        },
+        {
+          "implementation": "php-extension",
           "symbol": "Polyspec\\Orm\\GroupRow"
         },
         {
@@ -19803,6 +19911,10 @@
           "symbol": "Polyspec\\Orm\\GroupRows"
         },
         {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\GroupRows"
+        },
+        {
           "implementation": "typescript",
           "symbol": "@polyspec/orm!GroupRows:class"
         },
@@ -19829,6 +19941,10 @@
         },
         {
           "implementation": "php",
+          "symbol": "Polyspec\\Orm\\GroupRow::toArray"
+        },
+        {
+          "implementation": "php-extension",
           "symbol": "Polyspec\\Orm\\GroupRow::toArray"
         },
         {
@@ -19861,6 +19977,10 @@
           "symbol": "Polyspec\\Orm\\GroupRow::value"
         },
         {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\GroupRow::value"
+        },
+        {
           "implementation": "typescript",
           "symbol": "@polyspec/orm!GroupRow#value:member(1)"
         },
@@ -19887,6 +20007,10 @@
         },
         {
           "implementation": "php",
+          "symbol": "Polyspec\\Orm\\GroupRows::count"
+        },
+        {
+          "implementation": "php-extension",
           "symbol": "Polyspec\\Orm\\GroupRows::count"
         },
         {
@@ -19919,6 +20043,10 @@
           "symbol": "Polyspec\\Orm\\GroupRows::toArray"
         },
         {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\GroupRows::toArray"
+        },
+        {
           "implementation": "typescript",
           "symbol": "@polyspec/orm!GroupRows#toArray:member(1)"
         },
@@ -19945,6 +20073,10 @@
         },
         {
           "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Collection::count"
+        },
+        {
+          "implementation": "php-extension",
           "symbol": "Polyspec\\Orm\\Collection::count"
         },
         {
@@ -19977,6 +20109,10 @@
           "symbol": "Polyspec\\Orm\\Collection::toJson"
         },
         {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Collection::toJson"
+        },
+        {
           "implementation": "typescript",
           "symbol": "@polyspec/orm!Collection#toJSONText:member(1)"
         },
@@ -20003,6 +20139,10 @@
         },
         {
           "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Collection::fetchedValue"
+        },
+        {
+          "implementation": "php-extension",
           "symbol": "Polyspec\\Orm\\Collection::fetchedValue"
         },
         {
@@ -20035,6 +20175,10 @@
           "symbol": "Polyspec\\Orm\\Collection::all"
         },
         {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Collection::all"
+        },
+        {
           "implementation": "typescript",
           "symbol": "@polyspec/orm!Collection#values:member(1)"
         },
@@ -20061,6 +20205,10 @@
         },
         {
           "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Collection::entries"
+        },
+        {
+          "implementation": "php-extension",
           "symbol": "Polyspec\\Orm\\Collection::entries"
         },
         {
