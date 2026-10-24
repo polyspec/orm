@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Tests;
 
 use PDO;
+use PDOStatement;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Dbspec\Dbspec;
@@ -42,7 +43,7 @@ final class DbspecIntrospectNativeTest extends TestCase
                     $pdo->exec(
                         sprintf(
                             'CREATE TABLE "item_%d" ("id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, '
-                                . '"label" TEXT NULL',
+                                . '"label" TEXT NULL)',
                             $index
                         )
                     );
