@@ -115,6 +115,22 @@ func fixtureValue(t *testing.T, entry map[string]any) any {
 	}
 }
 
+func compositeKeyFromFixture(t *testing.T, name, encoded string, values []any) Key {
+	t.Helper()
+	key, err := keyFromValues(values)
+	if err != nil {
+		t.Fatalf("key %s: %v", name, err)
+	}
+	if got := key.String(); got != encoded {
+		t.Errorf("key %s: got %q, want %q", name, got, encoded)
+	}
+	again, err := keyFromValues(values)
+	if err != nil || again != key {
+		t.Errorf("key %s changed on repeated creation: %v", name, err)
+	}
+	return key
+}
+
 func TestCollectionKeyIdentityFromFixture(t *testing.T) {
 	// Requirements: PRT-35.
 	testcase.Start(t, testcase.Compute)
@@ -169,17 +185,7 @@ func TestCompositeCollectionKeyTypedComponentsFromFixture(t *testing.T) {
 		for i, value := range entry.Values {
 			values[i] = fixtureValue(t, value)
 		}
-		key, err := keyFromValues(values)
-		if err != nil {
-			t.Fatalf("key %s: %v", entry.Name, err)
-		}
-		if got := key.String(); got != entry.Encoded {
-			t.Errorf("key %s: got %q, want %q", entry.Name, got, entry.Encoded)
-		}
-		again, err := keyFromValues(values)
-		if err != nil || again != key {
-			t.Errorf("key %s changed on repeated creation: %v", entry.Name, err)
-		}
+		key := compositeKeyFromFixture(t, entry.Name, entry.Encoded, values)
 		if entry.SameAs != "" {
 			if want, ok := seen[entry.SameAs]; !ok || key != want {
 				t.Errorf("key %s differs from %s", entry.Name, entry.SameAs)
@@ -204,17 +210,7 @@ func TestCompositeCollectionKeyMicrosecondPrecisionFromFixture(t *testing.T) {
 			t.Fatalf("parse fixture %s: %v", entry.Name, err)
 		}
 		values := []any{instant, ""}
-		key, err := keyFromValues(values)
-		if err != nil {
-			t.Fatalf("key %s: %v", entry.Name, err)
-		}
-		if got := key.String(); got != entry.Encoded {
-			t.Errorf("key %s: got %q, want %q", entry.Name, got, entry.Encoded)
-		}
-		again, err := keyFromValues(values)
-		if err != nil || again != key {
-			t.Errorf("key %s changed on repeated creation: %v", entry.Name, err)
-		}
+		compositeKeyFromFixture(t, entry.Name, entry.Encoded, values)
 	}
 }
 
