@@ -9,25 +9,14 @@
 // new SQLite file (case-database.mjs); the test fails when either DSN is unset.
 //
 // Usage: node packages/ts/tests/driver-error.mjs [case ...] (after npm run typescript:build)
-import { readFile } from 'node:fs/promises';
-import { models } from './registered_models.mjs';
 import { CORE, Db, OrmError } from '../dist/index.js';
 import { withCaseDatabase } from './case-database.mjs';
 import { registerDatabaseCases } from './database-case-tests.mjs';
 import { schemaOf } from './schema_of.mjs';
-import { createFailureCheck } from './check-state.mjs';
-import { captureError } from './capture-error.mjs';
+import { loadDatabaseCaseFixture } from './database-case-fixture.mjs';
 
-const refusalText = await readFile(new URL('../../../contracts/fixtures/refusal.dbs', import.meta.url), 'utf8');
-// CASE_DEADLINE_MS is the deadline of one case. A case creates a case database, installs the refusal document, runs a few writes that are rejected, then drops the database.
-const CASE_DEADLINE_MS = 30_000;
-let failures = 0;
-let current = '';
-
-const check = createFailureCheck(() => current, () => { failures++; });
-const raised = run => captureError(run, { success: undefined });
-
-const { refused_row: RefusedRow } = models(refusalText);
+const { text: refusalText, model: RefusedRow, deadline: CASE_DEADLINE_MS, state, check, raised } =
+  await loadDatabaseCaseFixture('refusal.dbs', 'refused_row');
 const row = (db, amount) => { const m = new RefusedRow().connect(db); m[CORE].setValue('amount', amount); return m; };
 
 async function connect(dsn) {
@@ -68,7 +57,7 @@ async function checkRefused(dsn) {
 const cases = { trigger_refused: triggerRefused, check_refused: checkRefused };
 registerDatabaseCases({
   feature: 'driver-error', cases, deadline: CASE_DEADLINE_MS, withDatabase: withCaseDatabase,
-  getFailures: () => failures, setCurrent: value => { current = value; },
+  getFailures: () => state.failures, setCurrent: value => { state.current = value; },
   runCase: (run, _name, _driver, database) => run(database.dsn),
 });
-if (failures > 0) process.exitCode = 1;
+if (state.failures > 0) process.exitCode = 1;

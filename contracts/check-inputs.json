@@ -1799,6 +1799,28 @@
         "packages/ts/tests/dbspec-physical-database.test.mjs"
       ]
     },
+    "typescript-conditional-entry-helper-check": {
+      "scope": "owner",
+      "needs": [
+        "node-modules"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/ts/tests/conditional-entry.mjs",
+        "packages/ts/tests/conditional-entry.test.mjs"
+      ]
+    },
+    "typescript-database-case-fixture-helper-check": {
+      "scope": "owner",
+      "needs": [
+        "node-modules"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/ts/tests/database-case-fixture.mjs",
+        "packages/ts/tests/database-case-fixture.test.mjs"
+      ]
+    },
     "catalog-mutation-helper-python-check": {
       "scope": "owner",
       "needs": [

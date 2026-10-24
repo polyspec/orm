@@ -9697,6 +9697,26 @@
       "command": "make --no-print-directory dbspec-physical-database-helper-check"
     },
     {
+      "id": "typescript-conditional-entry",
+      "paths": [
+        "packages/ts/tests/conditional-entry.mjs"
+      ],
+      "tests": [
+        "packages/ts/tests/conditional-entry.test.mjs"
+      ],
+      "command": "make --no-print-directory typescript-conditional-entry-helper-check"
+    },
+    {
+      "id": "typescript-database-case-fixture",
+      "paths": [
+        "packages/ts/tests/database-case-fixture.mjs"
+      ],
+      "tests": [
+        "packages/ts/tests/database-case-fixture.test.mjs"
+      ],
+      "command": "make --no-print-directory typescript-database-case-fixture-helper-check"
+    },
+    {
       "id": "physical-command-output",
       "paths": [
         "scripts/physical-command-case.mts"

@@ -19,8 +19,6 @@
 // of `@polyspec/orm/testing`.
 //
 // Usage: node --conditions=orm-test packages/ts/tests/rollback.mjs [case ...] (after npm run typescript:build)
-import { spawnSync } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
 import { DatabaseSync } from 'node:sqlite';
 import * as packageEntry from '../dist/index.js';
 import { mysqlConnection, postgresClient, relatedDsn, withCaseDatabase } from './case-database.mjs';
@@ -28,20 +26,11 @@ import { registerDatabaseCases } from './database-case-tests.mjs';
 import { CORE, Db, OrmError } from '../dist/index.js';
 import { failNextRollback } from '@polyspec/orm/testing';
 import { schemaOf } from './schema_of.mjs';
-import { models } from './registered_models.mjs';
-import { createFailureCheck } from './check-state.mjs';
-import { captureError } from './capture-error.mjs';
+import { loadDatabaseCaseFixture } from './database-case-fixture.mjs';
+import { checkConditionalEntry } from './conditional-entry.mjs';
 
-const rollbackText = await readFile(new URL('../../../contracts/fixtures/rollback.dbs', import.meta.url), 'utf8');
-// CASE_DEADLINE_MS is the deadline of one case. A case creates a case database, installs the rollback document, runs a few failing transactions, then drops the database.
-const CASE_DEADLINE_MS = 30_000;
-let failures = 0;
-let current = '';
-
-const check = createFailureCheck(() => current, () => { failures++; });
-const raised = run => captureError(run, { success: undefined });
-
-const { rollback_probe: RollbackProbe } = models(rollbackText);
+const { text: rollbackText, model: RollbackProbe, deadline: CASE_DEADLINE_MS, state, check, raised } =
+  await loadDatabaseCaseFixture('rollback.dbs', 'rollback_probe');
 const probe = (db, label) => { const m = new RollbackProbe().connect(db); m[CORE].setValue('label', label); return m; };
 
 /** Runs statements on a connection of the test, outside the client, and returns the rows of the last one. */
@@ -156,10 +145,8 @@ async function savepointRollbackFailed(driver, dsn) {
  */
 function checkFaultEntry() {
   const packageRoot = new URL('..', import.meta.url).pathname;
-  const load = "await import('@polyspec/orm/testing')";
-  const plain = spawnSync(process.execPath, ['--input-type=module', '-e', load], { cwd: packageRoot, encoding: 'utf8' });
+  const { withoutCondition: plain, withCondition: tested } = checkConditionalEntry('@polyspec/orm/testing', 'orm-test', packageRoot);
   check(plain.status !== 0 && plain.stderr.includes('ERR_PACKAGE_PATH_NOT_EXPORTED'), `the test entry point resolves without the condition orm-test: status ${plain.status} ${plain.stderr}`);
-  const tested = spawnSync(process.execPath, ['--conditions=orm-test', '--input-type=module', '-e', load], { cwd: packageRoot, encoding: 'utf8' });
   check(tested.status === 0, `the test entry point does not resolve under the condition orm-test: ${tested.stderr}`);
   check(!('failNextRollback' in packageEntry) && !('armRollbackFault' in packageEntry), 'the package entry point exports the rollback fault');
 }
@@ -195,7 +182,7 @@ async function rollbackFault(driver, dsn) {
 const cases = { rollback_failed: rollbackFailed, savepoint_rollback_failed: savepointRollbackFailed, rollback_fault: rollbackFault };
 registerDatabaseCases({
   feature: 'rollback', cases, deadline: CASE_DEADLINE_MS, withDatabase: withCaseDatabase,
-  getFailures: () => failures, setCurrent: value => { current = value; },
+  getFailures: () => state.failures, setCurrent: value => { state.current = value; },
   runCase: (run, _name, driver, database) => run(driver, database.dsn),
 });
-if (failures > 0) process.exitCode = 1;
+if (state.failures > 0) process.exitCode = 1;
