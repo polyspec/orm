@@ -1503,6 +1503,62 @@
         "packages/go/orm/package_entry_test.go"
       ]
     },
+    "php-package-entry-check": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer"
+      ],
+      "inputs": [
+        "packages/php/composer.json",
+        "packages/php/testing/Faults.php",
+        "packages/php/tests/PackageEntryPointTest.php"
+      ]
+    },
+    "php-extension-package-entry-check": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer"
+      ],
+      "inputs": [
+        "packages/php-ext/composer.json",
+        "packages/php-ext/src/config.m4",
+        "packages/php-ext/tests/DeclarationsTest.php"
+      ]
+    },
+    "rust-package-entry-check": {
+      "scope": "owner",
+      "needs": [
+        "rust"
+      ],
+      "inputs": [
+        "packages/rust/orm/tests/rollback.rs"
+      ]
+    },
+    "typescript-package-entry-check": {
+      "scope": "owner",
+      "needs": [
+        "node-modules"
+      ],
+      "inputs": [
+        "packages/ts/package.json",
+        "packages/ts/src/index.ts",
+        "packages/ts/tests/statement_fault_entry.mjs"
+      ]
+    },
+    "python-package-entry-check": {
+      "scope": "owner",
+      "needs": [
+        "python"
+      ],
+      "inputs": [
+        "packages/python/pyproject.toml",
+        "packages/python/src/polyspec/orm/__init__.py",
+        "packages/python/tests/test_packaging.py",
+        "packages/python/tests/test_rollback_fault.py"
+      ]
+    },
     "package-check": {
       "scope": "owner",
       "needs": [
