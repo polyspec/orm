@@ -4718,8 +4718,8 @@
       "title": "In-process planner",
       "title_ko": "\ud504\ub85c\uc138\uc2a4 \ub0b4 planner",
       "status": "partial",
-      "description": "Validate a value-free request against the manifest and render the dialect SQL, bind slots, assembly metadata, and the tables each statement names in the client process. The five planners produce identical statements.",
-      "description_ko": "\uac12\uc774 \uc5c6\ub294 request\ub97c manifest\ub85c \uac80\uc99d\ud558\uace0 dialect SQL, bind slot, \uc870\ub9bd \uc815\ubcf4, \uac01 statement\uac00 \uac00\ub9ac\ud0a4\ub294 table\uc744 client process\uc5d0\uc11c \ub9cc\ub4e0\ub2e4. \ub2e4\uc12f planner\ub294 \uac19\uc740 statement\ub97c \ub9cc\ub4e0\ub2e4.",
+      "description": "Validate a value-free request against the manifest and render the dialect SQL, bind slots, assembly metadata, and the tables each statement names in the client process. Each implementation produces identical planner statements.",
+      "description_ko": "\uac12\uc774 \uc5c6\ub294 request\ub97c manifest\ub85c \uac80\uc99d\ud558\uace0 dialect SQL, bind slot, \uc870\ub9bd \uc815\ubcf4, \uac01 statement\uac00 \uac00\ub9ac\ud0a4\ub294 table\uc744 client process\uc5d0\uc11c \ub9cc\ub4e0\ub2e4. \uac01 \uad6c\ud604\uc740 \uac19\uc740 planner statement\ub97c \ub9cc\ub4e0\ub2e4.",
       "inputs": {
         "type": "RequestIR",
         "fields": [
@@ -4800,7 +4800,8 @@
         "packages/go/orm/plan_cache_test.go",
         "packages/php/tests/PlanCacheBoundTest.php",
         "packages/ts/tests/plan-cache-in.mjs",
-        "packages/python/tests/test_plan_cache_bound.py"
+        "packages/python/tests/test_plan_cache_bound.py",
+        "packages/php-ext/tests/CoveragePlannerExtensionTest.php"
       ],
       "docs": [
         "docs/spec/protocol.md",
@@ -5684,6 +5685,105 @@
                 }
               ]
             }
+          },
+          "php-extension": {
+            "part": "packages/php-ext/tests",
+            "tests": [
+              "packages/php-ext/tests/CoveragePlannerExtensionTest.php"
+            ],
+            "commands": {
+              "none": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoveragePlannerExtensionTest.php",
+                  "cases": [
+                    "planner_statement",
+                    "planner_count",
+                    "planner_rejects_unknown_column",
+                    "planner_restore",
+                    "planner_tables",
+                    "planner_restore_rejects_non_key",
+                    "planner_restore_key_from_set",
+                    "planner_restore_extra_condition",
+                    "planner_restore_primary_key_first",
+                    "planner_restore_first_unique_by_name",
+                    "planner_bind_types_select",
+                    "planner_bind_types_update",
+                    "planner_bind_types_insert",
+                    "planner_time_select",
+                    "planner_time_insert",
+                    "planner_uuid_select",
+                    "planner_uuid_insert",
+                    "planner_clock_compare",
+                    "planner_clock_insert",
+                    "planner_parent_key_types",
+                    "planner_not_group",
+                    "planner_rejects_top_not",
+                    "planner_rejects_top_group_conn",
+                    "planner_rejects_first_item_conn",
+                    "planner_column_refs",
+                    "planner_rejects_ref_unknown_column",
+                    "planner_rejects_outer_ref_outside_subquery",
+                    "planner_rejects_unjoined_ref",
+                    "planner_ref_path_absent",
+                    "planner_group_by_count",
+                    "planner_group_count_order_column",
+                    "planner_group_count_order_column_function",
+                    "planner_group_count_order_random",
+                    "planner_rejects_group_by_all",
+                    "planner_rejects_group_by_sum",
+                    "planner_rejects_group_by_join",
+                    "planner_rejects_group_by_subquery",
+                    "planner_rejects_group_order_non_group_column",
+                    "planner_rejects_nullable_key_by",
+                    "planner_key_by_empty_is_absent",
+                    "planner_insert_by_value",
+                    "planner_insert_on_duplicate_plus",
+                    "planner_rejects_insert_set_plus",
+                    "planner_rejects_insert_set_minus",
+                    "planner_ip_eq_col_ip",
+                    "planner_rejects_bool_gt_col",
+                    "planner_rejects_ip_gt_col",
+                    "planner_rejects_aes_eq_col",
+                    "planner_col_pair_integers",
+                    "planner_rejects_col_pair_integer_varchar",
+                    "planner_rejects_in_subquery_integer_varchar",
+                    "planner_rejects_join_integer_varchar",
+                    "planner_rejects_relation_integer_varchar",
+                    "planner_rejects_upsert_primary_and_unique_key",
+                    "planner_rejects_upsert_unique_key_not_assigned",
+                    "planner_rejects_upsert_without_a_key",
+                    "planner_order_nullable_column",
+                    "planner_order_not_null_column",
+                    "planner_order_nullable_column_function",
+                    "planner_order_nullable_group_count",
+                    "planner_order_nullable_limit_per_parent",
+                    "planner_scalar_column_subquery",
+                    "planner_rejects_scalar_column_subquery_without_limit",
+                    "planner_rejects_scalar_column_subquery_without_key_order",
+                    "planner_rejects_in_subquery_limit",
+                    "planner_join_inner_soft_delete",
+                    "planner_join_left_soft_delete",
+                    "planner_join_on_soft_delete",
+                    "planner_force_index",
+                    "planner_value_function_today",
+                    "planner_column_function_date",
+                    "planner_rejects_column_function_on_varchar",
+                    "planner_rejects_styled_column_equality",
+                    "planner_styled_column_is_null",
+                    "param_uses_column_function",
+                    "param_uses_interval",
+                    "param_uses_contains",
+                    "param_uses_if_parent",
+                    "param_uses_optimistic"
+                  ]
+                }
+              ]
+            },
+            "inputs": [
+              "contracts/fixtures/planner.json",
+              "contracts/fixtures/restore_keys.dbs"
+            ]
           }
         },
         "dependents": []
@@ -5746,7 +5846,9 @@
         "packages/rust/tests/tests/integration/coverage_composite_keys.rs",
         "packages/ts/tests/coverage_composite_keys.mjs",
         "packages/python/tests/test_key_prefix.py",
-        "packages/python/tests/coverage_composite_keys.py"
+        "packages/python/tests/coverage_composite_keys.py",
+        "packages/php-ext/tests/CoverageCompositeKeysExtensionTest.php",
+        "packages/php-ext/tests/CompositeKeysNativeTest.php"
       ],
       "docs": [
         "docs/spec/schema.md",
@@ -5977,6 +6079,44 @@
                 {
                   "runner": "python",
                   "test": "packages/python/tests/coverage_composite_keys.py",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "php-extension": {
+            "part": "packages/php-ext/tests",
+            "tests": [
+              "packages/php-ext/tests/CoverageCompositeKeysExtensionTest.php"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageCompositeKeysExtensionTest.php",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageCompositeKeysExtensionTest.php",
+                  "cases": [
+                    "composite_key_rows"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageCompositeKeysExtensionTest.php",
                   "cases": [
                     "composite_key_rows"
                   ],
@@ -6412,7 +6552,10 @@
       "parity": [
         "py-cov-parameter-chunking-root-in-chunking",
         "rust-integration-coverage-parameter-chunking-coverage-root-in-chunking",
-        "ts-coverage_parameter_chunking"
+        "ts-coverage_parameter_chunking",
+        "go-internal-packages-go-model-coverage-parameter-chunking-root-in-chunking",
+        "go-internal-packages-go-model-coverage-parameter-chunking-root-in-chunking-postgres",
+        "go-internal-packages-go-model-coverage-parameter-chunking-root-in-chunking-sqlite"
       ],
       "fixtures": [
         "packages/go/model/coverage_helpers_test.go",
@@ -6434,7 +6577,9 @@
         "packages/rust/tests/tests/integration/result_chains.rs",
         "packages/rust/tests/build.rs",
         "packages/rust/tests/nonnull.dbs",
-        "packages/python/tests/coverage_parameter_chunking.py"
+        "packages/python/tests/coverage_parameter_chunking.py",
+        "packages/php-ext/tests/CoverageParameterChunkingExtensionTest.php",
+        "packages/php-ext/tests/ParameterChunkingNativeTest.php"
       ],
       "docs": [
         "docs/spec/protocol.md",
@@ -6699,6 +6844,44 @@
                 {
                   "runner": "python",
                   "test": "packages/python/tests/coverage_parameter_chunking.py",
+                  "cases": [
+                    "root_in_chunking"
+                  ],
+                  "dsn_env": "BENCH_SQLITE_DSN"
+                }
+              ]
+            }
+          },
+          "php-extension": {
+            "part": "packages/php-ext/tests",
+            "tests": [
+              "packages/php-ext/tests/CoverageParameterChunkingExtensionTest.php"
+            ],
+            "commands": {
+              "mysql": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageParameterChunkingExtensionTest.php",
+                  "cases": [
+                    "root_in_chunking"
+                  ],
+                  "dsn_env": "BENCH_MYSQL_DSN"
+                }
+              ],
+              "postgres": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageParameterChunkingExtensionTest.php",
+                  "cases": [
+                    "root_in_chunking"
+                  ],
+                  "dsn_env": "BENCH_POSTGRES_DSN"
+                }
+              ],
+              "sqlite": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/CoverageParameterChunkingExtensionTest.php",
                   "cases": [
                     "root_in_chunking"
                   ],
@@ -10115,6 +10298,18 @@
         "packages/php/tests/ArrayValueRowsTest.php"
       ],
       "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ArrayValueRowsTest.php"
+    },
+    {
+      "id": "native-query-probe",
+      "paths": [
+        "packages/php-ext/tests/NativeQueryProbePdo.php",
+        "packages/php-ext/tests/NativeQueryProbeStatement.php"
+      ],
+      "tests": [
+        "packages/php-ext/tests/ParameterChunkingNativeTest.php",
+        "packages/php-ext/tests/CompositeKeysNativeTest.php"
+      ],
+      "command": "make model-chunk-composite-native-php-extension-check"
     }
   ]
 }

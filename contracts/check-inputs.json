@@ -2124,6 +2124,21 @@
         "Makefile"
       ]
     },
+    "model-chunk-composite-native-php-extension-check": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools"
+      ],
+      "inputs": [
+        "packages/php-ext/tests/ParameterChunkingNativeTest.php",
+        "packages/php-ext/tests/CompositeKeysNativeTest.php",
+        "packages/php-ext/tests/NativeQueryProbePdo.php",
+        "packages/php-ext/tests/NativeQueryProbeStatement.php",
+        "Makefile"
+      ]
+    },
     "transaction-failure-php-extension-check": {
       "scope": "owner",
       "needs": [
