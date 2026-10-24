@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 38ffaa8d6553fd7cb5733229894a31e1e68f736391f59e79fb5e8f53aaeb96ba -->
+<!-- source-sha256: 929298ffc02b7c0f9014039b1e07eb0d18c55ae926098f9e2a2bb33f91964896 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -144,7 +144,7 @@
 | KSTD-5-46-2 | schema crate의 manifest와 render 테스트 helper 중복을 공유한다 (KSTD-5-46 하위) | packages/rust/schema/tests/dbspec_manifest.rs, packages/rust/schema/tests/dbspec_render.rs, and the shared helper module they both use | `make dbspec-rust-check` passes, and make duplication-check lists no clone between dbspec_manifest.rs and dbspec_render.rs | [-] 원인: KSTD-5-46에 병합됨 |
 | KSTD-5-41 | orm의 Rust 소스가 make lint-rust(-D warnings 아래 clippy)를 통과한다 | The 40 clippy errors of benchmarks/rust, packages/rust, testcase, schema and the interface tools are fixed in the code, with no suppression | `make lint-rust` | [ ] |
 | KSTD-5-41-0 | orm에 패키지별 clippy 대상 `make clippy-crate CRATE=polyspec-orm-schema`가 lint-rust와 같은 플래그로 있다 | A clippy-crate target in the Makefile that runs cargo clippy --all-targets for CRATE with the lint-rust flags and CLIPPY_CONF_DIR of kit | `make -n clippy-crate CRATE=polyspec-orm-schema` | [o] |
-| KSTD-5-41-1 | case-database 패키지가 lint-rust 플래그의 clippy를 통과한다, `make clippy-crate CRATE=polyspec-orm-case-database` | The six clippy sites of packages/rust/case-database/src/lib.rs are propagated through their Result, with no suppression | `make clippy-crate CRATE=polyspec-orm-case-database` | [~] |
+| KSTD-5-41-1 | case-database 패키지가 lint-rust 플래그의 clippy를 통과한다, `make clippy-crate CRATE=polyspec-orm-case-database` | The six clippy sites of packages/rust/case-database/src/lib.rs are propagated through their Result, with no suppression | `make clippy-crate CRATE=polyspec-orm-case-database` | [o] |
 | KSTD-5-48 | docs-check는 Markdown 검사만 실행하고, 사이트 build는 docs-site-check에서 실행한다 | docs-check runs only the Markdown checks; the VitePress site build and the built-site readers run in docs-site-check, which the owner rules select for docs/ changes and the VitePress config | `node --test tests/docs/split.test.mts` fails on the current docs-check, which runs the site build, and passes after the split | [o] |
 | KSTD-5-40 | 모든 suppression은 이유를 적는다(KSTD-5 하위). 원인: suppression-check가 main에서 이유 없는 suppression 95개를 보고하고(Python 테스트 71, dbspec 소스 15, orm 패키지 6, 적합성 코드 2, Rust allow 1), 그래서 CI가 P8로 실패한다. | packages/python, packages/rust/orm (the suppressed lines) | `make suppression-check` | [o] |
 | KSTD-5-51 | Python test_schema_install이 main에서 통과한다: set이 쓰는 외부 document의 table을 set이 요구하는 대로 설치하거나 검사하며, 실패하던 세 test가 assertion을 약화하지 않고 통과한다 | packages/python/tests/test_schema_install.py or the fixture it reads, packages/python/src | `node node_modules/@polyspec/kit/dist/run-tests.mjs python --venv packages/python/.venv --module packages.python.tests.testcase -- packages.python.tests.test_schema_install` | [o] |

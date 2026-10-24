@@ -1,70 +1,41 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 2fdfe60896746cbaa3645b08f2615e094008687c3b4af87be7b0d866be65ea1e -->
+<!-- source-sha256: 0fe0b6a59dd332f9dc9490151c2b4311b73d020fdd554d1f35120c4f29327b56 -->
 # 변경 이력
 
 ## Unreleased
 
+- case-database crate가 clippy에서 발견한 여섯 실패를 suppression 없이 `Result`로 전파한다. canonical strict clippy target은 실제 수정 전 source `e9617f4f967f`에서 실패하고 커밋된 수정 source에서 통과한다 (KSTD-5-41-1).
 - PHP extension은 임시 build copy에서 arginfo를 offline 생성하고 native readonly `Stats` 클래스를 선언한다. 수정 전 공식 실행인 `336699563b61`에서는 extension의 `Stats` 선언 누락으로 focused declaration 검증이 실패했다. 커밋된 source에서는 arginfo/build 검증 42개 테스트(589 assertions), declaration 검증 8개 테스트(22 assertions)가 통과한다(T182-6-15).
-
 - Kit Standard checklist는 `<gate>`, `min-0-max <max@blue.tools>`, `Collection<X>`를 HTML로 파싱하지 않고 문자 그대로 렌더링한다. Focused Markdown renderer case는 두 checklist와 `Refines <id>:` 예시를 확인한다(KSTD-5-87).
-
 - PHP `Validator::functionType` 선언을 native 2개 인자 계약과 다시 맞췄다. Planner, Markdown, parameter-use caller는 타입 계산 전에 entity.column `INTERNAL` 검사를 유지하고, 공개 unknown-column validation은 `COLUMN_UNKNOWN`을 유지한다. 실제 main declaration 회귀는 PHP 수정 전에 4개와 2개 인자 불일치를 확인했다(KSTD-5-63-1-1).
-
 - result 형태 coverage가 여섯 client의 중립 제품 동작 다섯 가지를 묶는다: unselected, SQL NULL, encoded null을 구분하는 styled column 상태, `CODEC_DECODE`를 반환하는 잘못 저장된 grouped boolean, 정확한 grouped i64 값, 정확한 nonnegative row count (잘못된 값은 `CODEC_DECODE`, 빠진 `row_count`는 `INTERNAL`), key 순서와 저장된 숫자 표기를 보존하는 ordered-json Model 출력 텍스트다. TypeScript conformance-result 검사 5개는 host 전용 COD/helper 검사로 유지하고, 과거 Rust invalid-result conformance-helper binding 2개는 제거 상태를 유지한다. 집중 result target은 다섯 동작을 검증하고 Python conformance encoder helper는 별도 self-test로 확인한다. (KSTD-2-11-14)
-
 - Root page는 cached plan을 재사용하기 전에 잘못되었거나 안전 범위를 벗어난 offset/count 값을 거부한다(T236).
-
 - Column-function caller는 검증 후 source field가 없으면 해당 entity와 column을 명시한 `INTERNAL`을 반환한다. 공개 validation의 `COLUMN_UNKNOWN`과 유효한 함수 결과 타입 및 parameter use 동작은 유지한다. 실제 수정 전 main `cca1851d37ec`에서 predicate와 selection planner case가 모두 실패했다. source commit `1f2def8c6919`의 `make item-test ID=KSTD-5-63-1`은 Go planner와 IR(각 1개), Rust(3개), TypeScript(4개), PHP(3 tests, 17 assertions), Python(2개), PHP extension mode(PHP 3 tests, 17 assertions; native 3 tests, 29 assertions)를 통과한다(KSTD-5-63-1).
-
 - PHP extension 선언 검사는 `CatalogDocumentBuildException`을 내부 catalog 작성 helper로 제외하고 PHP 전용 public `Catalog` 연결을 유지한다. 수정 전 main source `27716799b`의 실제 client 선언 map에는 helper가 포함되어 있었다. source commit `ba06f0adb`에서 extension 선언 검사는 6개 테스트(15 assertions), native Mermaid 경계 대조 검사는 2개 테스트(4 assertions)를 통과한다(KSTD-5-62-1).
-
 - Go, PHP, PHP extension, Python, Rust, TypeScript의 dbspec verification은 실제 schema 불일치와 catalog 또는 driver 실패를 구분한다. Verification 실패는 원래 cause를 보존하고, forward 이후 실패가 apply history를 성공으로 기록하지 않는다. DB 서버 없이 실행하는 fake-driver target은 여섯 구현에서 settled/rollback verification 실패, forward 이후 실패 상태, 실제 schema 불일치를 다룬다. main source `fc50349c19be`에서 통과한 정확한 Go 회귀는 원래 source `67aee14d481e`의 settled와 rollback 경로에서 실패했다(KSTD-5-61).
-
 - Mermaid import는 catalog의 generated-document 생성 오류만 line-1 diagnostic으로 바꾸며, 다른 catalog 예외는 원래 객체 그대로 전파한다. commit `6dabce876bf8`에서 focused target은 TypeScript 2개, Python 2개, PHP 2개와 native PHP extension 2개 case를 통과한다. Extension case는 실제 Mermaid 경계를 호출하는 test-only module을 빌드한다. 수정 전 `48b4f552b028`의 canonical 실행에서는 예상 밖 오류 identity 확인으로 네 target 모두 실패했다(KSTD-5-62).
-
 - `docs/spec/errors.yaml`의 모든 code에 이제 `config/parity.json`의 API unit 하나가 있고, 각 implementation의 catalog symbol 하나와 일치한다. 수정 전 main HEAD `48b4f552b028`의 API checker는 code 77개에 unit 43개를 보고했다. 커밋된 focused verification은 5개 case를 모두 통과하고 code 77개와 unit 77개를 대조한다 (KSTD-7-10).
-
 - SQLite NOWAIT 잠금은 setup, 잠금 테이블 설정 또는 잠금 획득 실패 뒤에도 기존 `busy_timeout`을 복원한다. 잠금 획득의 `SQLITE_BUSY`만 `LOCK_NOT_AVAILABLE`로 바꾸며, cleanup도 실패하면 primary 오류 코드와 두 원인을 보존하고 실패가 하나면 원래 오류를 유지한다. 실제 수정 전 main `68f414329ab9`의 focused 6개 client target은 실패했다. 커밋된 `make item-test ID=KSTD-5-59`는 Go (2 tests), TypeScript (1), PHP (1 test, 18 assertions), PHP extension (1 test, 18 assertions), Python (2, `BaseException` 복원 포함), Rust (2)를 통과한다. PHP extension은 userland `OrmException::withCleanup` 계약을 사용한다(KSTD-5-59).
-
 - Scalar-subquery planner와 markdown 결과 조립은 존재하지 않는 entity나 column에 임의 결과 타입을 만들지 않고 이름을 포함한 `INTERNAL`을 반환한다. canonical native owner target은 수정 전 실제 source `0898f6f16287`에서 실패했고 수정 후 통과한다: Go (2 tests), Rust planner/markdown (4 tests), TypeScript 선택 case, PHP (2 tests), Python (4 dialect subcase를 포함한 1 test), PHP extension (2 tests). count는 `i64`, avg는 `f64`로 유지한다(KSTD-5-63).
-
 - PHP 및 native C Codec은 예상된 YAML/JSON codec 오류만 감싸고 동일한 cause 객체를 보존하며, 예상 밖 RuntimeException, TypeError, Error는 그대로 전파한다. PHP 8.4.26에서 main commit `9af48c4ab`의 `make php-codec-causes-check`는 source와 native extension의 focused 테스트 8개(102 assertions)를 통과한다. 수정 전 `382a7754552a`에서 같은 target은 YAML/JSON wrapper가 원인을 버리고 YAML probe가 예상 밖 throwable identity를 바꾸어 실패했다(KSTD-5-77).
-
 - SQLite `BEGIN EXCLUSIVE` 실패는 primary result code가 `SQLITE_BUSY` (5) 또는 `SQLITE_LOCKED` (6)일 때만 확장 코드를 포함해 `locked`로 분류한다. 그 외 driver 오류는 원인을 보존한다. main fix commit `e8c2fef66128`에서 DB 없는 focused target은 Go (2), PHP (test 2개, assertion 23개), PHP extension (test 2개, assertion 23개), Python (2개), Rust (1개), TypeScript (2개)에서 통과한다. 실제 수정 전 main `4af40c9a20df`에서 canonical 6개 target은 비잠금 result 때문에 실패했고, Go fake driver는 원래 오류 전달과 state 복원도 검증한다(KSTD-5-60).
-
 - 문서의 구현 열거를 `config/parity.json`에 맞추고 PHP extension의 지원 주장은 확인된 범위로 제한한다. 선택자 unit 네 개가 통과했고 전용 규칙은 영어 문서 50개와 한국어 문서 50개에서 지적이 없으며 `make docs-check`도 통과한다. 수정 전 main `0898f6f1`에서 실행한 focused source RED는 75건을 보고했다: 개수 문장 50개, 열거 집합 17개, 표 머리글 6개, protocol 행 2개. PHP extension catalog 미지원은 KSTD-7-7에 남는다(KSTD-2-2).
-
 - Rust upsert planner는 빈 conflict target을 출력하는 대신 conflict-key validation 오류를 전파한다. Direct native `Planner::compile` case는 `ENTITY_UNKNOWN`, key 없음 및 모호한 primary-plus-unique의 `IR_INVALID` 오류를 검증하고, 모든 column을 할당한 복합 primary key는 선언 순서 SQL target과 bind를 만든다. canonical target은 수정 전 source인 `351422f365d5`에서 오류 누락 case 두 개가 실패했고(2/4 통과), main commit `534b426c603f`에서 네 case 모두 통과한다(KSTD-5-66).
-
 - Composite collection key는 integer, boolean, text, byte, datetime component type을 byte-length framing으로 인코딩한다. byte payload는 소문자 hex를 사용하고 datetime payload는 UTC RFC3339에서 끝의 fractional zero를 host precision에 맞춰 제거한다. Scalar key와 nullable-row 처리는 바뀌지 않는다. 커밋된 main `c28c72d52`에서 `make item-test ID=T77-6-4`가 통과한다: TypeScript 2개, Go 3개, PHP 3개(156 assertions), PHP extension 3개(153 assertions), Python 3개, Rust 3개. 실제 pre-fix main 실행에서는 TypeScript, PHP, PHP extension, Python, Rust의 false/text 충돌, Go의 raw-byte 사례 3개, 그리고 PHP, PHP extension, Python, Rust의 `.123400` 포맷이 실패했다. 공유 millisecond vector는 `.120`, `.010`, `.000`, multibyte 및 embedded-NUL text를 다루며 microsecond 검사는 host precision을 보존한다(T77-6-4).
-
 - Rust는 NULL 및 소수점 없는 입력을 포함해 값을 바인딩하기 전에 0..6 범위를 벗어난 시간 정밀도를 `SCHEMA_INVALID`로 거부한다. 유효 자릿수를 넘는 0이 아닌 소수 자릿수는 계속 `CODEC_ENCODE`이고, 뒤쪽 0은 허용하며, 유효한 실행기 clock 자르기는 유지한다. 집중 native 테스트는 수정 전 `aca190bfb927`에서 실패했고 `d84a4547407d`의 `make item-test ID=KSTD-5-68`에서 3/3 통과한다(KSTD-5-68).
-
 - Rust relation 실행은 parent bind slot이 0개 또는 여러 개인 relation step을 query 실행 전에 `IR_INVALID`로 거부한다(KSTD-5-67).
   수정 전 `abd38b77eae57fc108311dce4a615fccd6392161`에서는 malformed-parent assertion 4개가 실패하고 정상 scalar/composite 대조군이 통과했다. 커밋된 구현 `e0fe5ae77b451ed5ee38e9b84f270a658810c7b2`은 `make item-test ID=KSTD-5-67`의 완료 검증을 포함해 5개 case를 모두 통과한다(KSTD-5-67).
-
 - 모든 client가 split-query merge 경계의 SQL NULL을 CODEC_DECODE로 거부하고 유효한 falsey key를 보존한다. join이 사용하는 일반 nullable row-key 처리는 유지한다. `make item-test ID=KSTD-5-50-1`의 focused case가 Go (1), PHP (1 test, 29 assertions), PHP extension (1 test, 7 assertions), TypeScript (2), Python (2), Rust (1)에서 통과한다. (KSTD-5-50-1)
-
 - native PHP extension은 null transaction audit을 pending으로 처리해 첫 audited write에서 audit record를 insert한다. focused fake-PDO regression은 기존 guard에서 준비된 SQL이 하나도 실행되기 전에 실패하고, PHP 8.4.26에서 `make item-test ID=KSTD-7-5-1-1`은 통과한다(native test 1개, 11 assertions; declaration test 3개, 8 assertions; PHP source 비교 test 10개, 68 assertions) (KSTD-7-5-1-1).
-
 - Rust build generation은 상대 `set`, `scan`, 명시적 출력 경로를 `CARGO_MANIFEST_DIR` 기준으로 해석한다. 해당 변수가 필요한데 없거나 상대 경로이면 해결 방법을 포함한 오류를 반환하며, 절대 경로는 변수 없이 사용할 수 있고 암묵적 `OUT_DIR` 동작은 유지한다. Focused native environment unit은 격리된 subprocess 시나리오 7개를 포함해 1개 test를 통과한다(KSTD-5-70).
-
 - Rust build scan이 비어 있는 model 출력 경로로 스캔하는 대신, `OUT_DIR`이 없을 때 해결 방법을 포함한 오류를 전파한다. `make rust-build-outdir-check`는 유효한 `OUT_DIR` 및 명시적 `out_dir` 대조군을 포함해 native test 1개를 통과한다. 수정 전 `60604e714189`에서는 변수가 없을 때의 assertion이 실패했다(KSTD-5-65).
-
 - TypeScript와 Rust는 native SQLite version을 ASCII decimal u32 component 세 개 또는 네 개로 검증하고, 3.46.0과 수치 비교하며, SQLite를 열기 전에 잘못된 raw version을 INTERNAL로 보고한다. 커밋된 focused target은 각각 unit case 세 개를 통과한다. 수정 전 2100937d4에서는 빈 입력이 잘못 분류되고 Rust가 3.46을 허용했다(KSTD-5-64).
-
 - Rust row mapping 결함을 KSTD-5-49-1의 여섯 client 공통 blind-index source 처리로 수정했고, 집중 Rust planner 검사가 통과한다 (KSTD-5-49).
-
 - 공유 blind-index target은 명시적으로 할당된 target을 우선 사용하고, target이 없을 때 서로 다른 AES source가 할당되어 있으면 거부한다. insert와 on-duplicate 할당은 각각 검사하며 원래 row parameter offset을 보존한다. commit `3c3243761`에서 `make item-test ID=KSTD-5-49-1`가 Go (6 tests), PHP (7/26), PHP extension (7/26), TypeScript (125), Python (7), Rust (7)를 모두 통과한다. Python 회귀는 `4b164670`에서 실패했다 (`var/plan/KSTD-5-49-1.json`) (KSTD-5-49-1).
-
 - PHP extension이 runtime Model 전체 API와 native 보조 클래스를 C로 구현한다. PHP 8.4.26에서 커밋된 구현 `24a1e7e`의 `make item-test ID=T182-6-14`가 native test 47개(654 assertions), declaration test 3개(8 assertions), PHP source 비교 test 10개(68 assertions)를 통과한다(T182-6-14).
-
 - TypeScript 인터페이스 extractor가 접근 제한, overload, optional ErrorOptions를 포함한 명시적 생성자 signature를 기록하면서 class key와 parameter-property 필드를 보존한다. 구현 커밋 `35dae79ed`에서 `make interface-typescript-extractor-check`의 compiler 검사와 native case (1/1)가 통과했고, 기존 extractor는 ErrorOptions assertion에 실패했다 (KSTD-5-86).
-
 - PHP relation 선언 수집이 PHP method 호출과 같이 대소문자를 구분하지 않아 uppercase `RELATIONS`에서도 relation-edge cardinality와 CONFIG 충돌 검사를 유지한다. focused 회귀는 정규화 전 실패하고 `b4546a29d`에서 relation cases 및 scan vector와 함께 통과한다(KSTD-5-84).
-
 - PHP relation getter가 복수 관계에서 runtime `Collection<Target>` 타입을 사용하고 target model 타입을 보존한다. Alias getter 타입은 terminal read와 무관하게 소유 relation edge와 cardinality를 따른다. 구현 커밋 `23d83be1a`에서 focused PHPStan consumer, relation 회귀 6개와 scan vector 2개가 통과했고, 원래 consumer case는 baseline에서 실패했다(KSTD-5-83).
-
 - step과 test-server 스크립트의 process cleanup은 이제 ESRCH만 종료 상태로 처리하고, cleanup 및 timeout 원인을 보존하며, 정리에 실패한 group을 계속 추적한다. 신호 전에 PID 파일을 검증하고 모든 서버 종료가 성공한 뒤 data를 삭제한다. 커밋 `f718563f3`에서 `make scripts-typecheck`, `var/tools/bin/node --test scripts/check/step.test.mts` (12/12), 선택한 fake-process/FS cases (4/4)가 통과한다. 수정 전에는 step case 세 개와 선택한 server case 네 개가 모두 실패했다(KSTD-5-78).
 - PHP extension이 Collection을 C로 구현하고 `getIterator()`에서 native Iterator를 반환한다. 커밋된 구현 `1d20505db`에서 `make collection-php-extension-check`는 native 19개 test(212 assertions), declaration 3개 test(8 assertions), PHP library identity 3개 test(82 assertions)를 통과한다(T182-6-12).
 - PHP extension이 Request, StyledValue, Page, Func, PendingTime Model 보조 타입을 native로 소유한다. PHP 8.4.26에서 focused verification이 native surface test 12개(119 assertions), declaration test 5개(12 assertions), PHP source test 2개(21 assertions)를 통과한다(T182-6-13).
