@@ -965,6 +965,75 @@
         "packages/rust/orm/src/driver/tests.rs"
       ]
     },
+    "paged-read-rust-check": {
+      "scope": "owner",
+      "needs": ["rust", "node-modules"],
+      "inputs": [
+        "Makefile",
+        "packages/rust/orm/src/db.rs",
+        "packages/rust/orm/src/engine/dialect.rs",
+        "packages/rust/orm/src/engine/mod.rs",
+        "packages/rust/orm/src/engine/planner.rs",
+        "packages/rust/orm/src/engine/validate.rs",
+        "packages/rust/orm/src/ir.rs",
+        "packages/rust/orm/src/request.rs",
+        "packages/rust/orm/tests/unit/ir_request.rs",
+        "packages/rust/orm/tests/unit/markdown_scalar_subquery.rs"
+      ]
+    },
+    "page-cache-unit-check": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "rust",
+        "php",
+        "composer",
+        "python",
+        "node-modules",
+        "php-extension-tools"
+      ],
+      "inputs": [
+        "Makefile",
+        "contracts/check-inputs.json",
+        "contracts/interfaces.json",
+        "packages/go/engine/dialect/*.go",
+        "packages/go/engine/engine.go",
+        "packages/go/engine/ir/ir.go",
+        "packages/go/engine/planner/planner.go",
+        "packages/go/orm/canonical.go",
+        "packages/go/orm/exec.go",
+        "packages/go/orm/plan_cache_test.go",
+        "packages/php-ext/src/model_types.c",
+        "packages/php-ext/src/planner.c",
+        "packages/php-ext/src/validator.c",
+        "packages/php-ext/tests/ModelTypesSurfaceTest.php",
+        "packages/php/src/CanonicalRequest.php",
+        "packages/php/src/Dialect.php",
+        "packages/php/src/Engine.php",
+        "packages/php/src/Planner.php",
+        "packages/php/src/Validator.php",
+        "packages/php/tests/PlanCacheBoundTest.php",
+        "packages/php/tests/PageCacheBoundCases.php",
+        "packages/php/tests/bootstrap.php",
+        "packages/python/src/polyspec/orm/canonical.py",
+        "packages/python/src/polyspec/orm/database.py",
+        "packages/python/src/polyspec/orm/engine/*.py",
+        "packages/python/src/polyspec/orm/ir.py",
+        "packages/python/tests/test_plan_cache_bound.py",
+        "packages/rust/orm/src/db.rs",
+        "packages/rust/orm/src/engine/*.rs",
+        "packages/rust/orm/src/ir.rs",
+        "packages/rust/orm/src/request.rs",
+        "packages/rust/orm/tests/unit/coverage_planner.rs",
+        "packages/rust/orm/tests/unit/ir_request.rs",
+        "packages/rust/orm/tests/unit/markdown_scalar_subquery.rs",
+        "packages/rust/orm/tests/unit/param_uses.rs",
+        "packages/ts/src/engine/*.ts",
+        "packages/ts/src/ir.ts",
+        "packages/ts/tests/plan-cache-in.mjs",
+        "tests/ir/validate.json"
+      ]
+    },
     "rust-driver-check": {
       "scope": "owner",
       "needs": [
@@ -1477,7 +1546,7 @@
     "model-types-php-extension-check": {
       "scope": "owner",
       "needs": ["php", "composer", "php-extension-tools"],
-      "inputs": ["packages/php-ext/tests/ModelTypesSurfaceTest.php", "packages/php-ext/tests/DeclarationsTest.php", "packages/php-ext/tests/declarations_functions.php", "packages/php/tests/ModelTypesSourceTest.php", "packages/php/tests/model-types-weak-caller.php", "packages/php-ext/src/**"]
+      "inputs": ["packages/php-ext/tests/ModelTypesSurfaceTest.php", "packages/php-ext/tests/PlanCacheBoundNativeTest.php", "packages/php-ext/tests/bootstrap.php", "packages/php-ext/tests/DeclarationsTest.php", "packages/php-ext/tests/declarations_functions.php", "packages/php/tests/ModelTypesSourceTest.php", "packages/php/tests/model-types-weak-caller.php", "packages/php-ext/src/**"]
     },
     "model-native-php-extension-check": {
       "scope": "owner",

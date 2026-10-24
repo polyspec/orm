@@ -302,10 +302,7 @@ fn add_blind_index_assignments(ent: &Entity, mut set: Vec<ir::Assign>) -> Result
         }
         if let Some(previous) = sources.insert(index.clone(), col.name.clone()) {
             if previous != col.name {
-                return Err(err(
-                    codes::IR_INVALID,
-                    format!("blind index {index} is derived from both {previous} and {}", col.name),
-                ));
+                return Err(err(codes::IR_INVALID, format!("blind index {index} is derived from both {previous} and {}", col.name)));
             }
         }
     }
@@ -322,9 +319,7 @@ fn add_blind_index_assignments(ent: &Entity, mut set: Vec<ir::Assign>) -> Result
 }
 
 fn assigned_blind_index_source<'e>(ent: &'e Entity, target: &str, assignments: &[ir::Assign]) -> Option<&'e Field> {
-    ent.fields.iter().find(|field| {
-        field.aes() && field.blind_index.as_deref() == Some(target) && assigned(assignments, &field.name)
-    })
+    ent.fields.iter().find(|field| field.aes() && field.blind_index.as_deref() == Some(target) && assigned(assignments, &field.name))
 }
 
 fn blind_index_source<'e>(ent: &'e Entity, target: &str) -> Option<&'e Field> {
@@ -387,6 +382,22 @@ fn has_where(g: &Option<ir::Group>) -> bool {
 impl<'m> Planner<'m> {
     fn entity(&self, name: &str) -> Result<&'m Entity> {
         self.m.entity(name)
+    }
+
+    fn limit(&self, b: &mut Builder, limit: &ir::Limit) -> Result<String> {
+        match limit {
+            ir::Limit::Literal { offset, count } => Ok(self.d.limit(*offset, *count)),
+            ir::Limit::Params { offset_p, count_p } => {
+                let (offset, count) = if self.d == Dialect::MySql {
+                    (b.param(*offset_p, "i64"), b.param(*count_p, "i64"))
+                } else {
+                    let count = b.param(*count_p, "i64");
+                    let offset = b.param(*offset_p, "i64");
+                    (offset, count)
+                };
+                Ok(self.d.limit_params(&offset, &count))
+            }
+        }
     }
 
     pub fn compile(&self, r: &ir::Request) -> Result<Plan> {
@@ -542,7 +553,7 @@ impl<'m> Planner<'m> {
                 if kind == "one" && rc.is_none() {
                     sb.push_str(&self.d.limit(0, 1));
                 } else if let Some(l) = &q.limit {
-                    sb.push_str(&self.d.limit(l.offset, l.count));
+                    sb.push_str(&self.limit(&mut b, l)?);
                 }
                 if !q.lock.is_empty() {
                     let lock = self
@@ -1074,7 +1085,10 @@ impl<'m> Planner<'m> {
         if sub.agg.is_empty() {
             if let Some(l) = &sub.query.limit {
                 sb.push_str(&self.render_order(root, &sub.query)?);
-                sb.push_str(&self.d.limit(l.offset, l.count));
+                let ir::Limit::Literal { offset, count } = l else {
+                    return Err(err(codes::IR_INVALID, "scalar subquery limit must be literal"));
+                };
+                sb.push_str(&self.d.limit(*offset, *count));
             }
         }
         Ok(sb)
@@ -1178,9 +1192,11 @@ impl<'m> Planner<'m> {
                 } else {
                     let src = assigned_blind_index_source(ent, &a.column, &r.set)
                         .ok_or_else(|| err(codes::IR_INVALID, format!("no assigned AES source for blind index {}", a.column)))?;
-                    let source_index = r.set.iter().position(|x| x.column == src.name).ok_or_else(|| {
-                        err(codes::IR_INVALID, format!("assigned AES source {} is missing from insert set", src.name))
-                    })?;
+                    let source_index = r
+                        .set
+                        .iter()
+                        .position(|x| x.column == src.name)
+                        .ok_or_else(|| err(codes::IR_INVALID, format!("assigned AES source {} is missing from insert set", src.name)))?;
                     source.push(source_index);
                 }
             }

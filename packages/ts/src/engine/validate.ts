@@ -234,8 +234,16 @@ class Validator {
         if (o.column !== undefined && o.column !== '' && !(q.group_by ?? []).includes(o.column)) fail(codes.IR_INVALID, `order by ${o.column}, which is not a group column`);
       }
     }
-    if (q.limit && (!Number.isSafeInteger(q.limit.offset) || !Number.isSafeInteger(q.limit.count) || q.limit.offset < 0 || q.limit.count <= 0)) {
-      fail(codes.IR_INVALID, 'limit offset>=0, count>0');
+    if (q.limit) {
+      if ('offset_p' in q.limit || 'count_p' in q.limit) {
+        if (!('offset_p' in q.limit) || !('count_p' in q.limit)
+          || !Number.isSafeInteger(q.limit.offset_p) || !Number.isSafeInteger(q.limit.count_p)
+          || q.limit.offset_p < 0 || q.limit.offset_p >= this.n || q.limit.count_p < 0 || q.limit.count_p >= this.n) {
+          fail(codes.IR_INVALID, 'limit parameter indexes must be in range');
+        }
+      } else if (!Number.isSafeInteger(q.limit.offset) || !Number.isSafeInteger(q.limit.count) || q.limit.offset < 0 || q.limit.count <= 0) {
+        fail(codes.IR_INVALID, 'limit offset>=0, count>0');
+      }
     }
     const lock = q.lock ?? '';
     if (lock !== '' && !['update', 'share', 'update_nowait', 'share_nowait'].includes(lock)) {
@@ -479,7 +487,7 @@ const records: Readonly<Record<string, Readonly<Record<string, string>>>> = {
   },
   ColRef: { path: 'string', column: 'string' },
   Order: { column: 'string', desc: 'bool', random: 'bool', fn: 'Func' },
-  Limit: { offset: 'int', count: 'int' },
+  Limit: { offset: 'int', count: 'int', offset_p: 'int', count_p: 'int' },
   IfParent: { column: 'string', p: 'int' },
   Assign: { column: 'string', p: 'int', null: 'bool', plus_p: 'int', minus_p: 'int' },
   Optimist: { column: 'string', p: 'int' },

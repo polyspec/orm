@@ -12,6 +12,8 @@ if (getenv('ORM_PHP_MODE') !== 'extension') {
         'the extension polyspec_orm is not loaded; run make dbspec-php-extension-check, which builds and loads it'
     );
 }
+// The PHP and extension owners share the same page-cache assertions.
+require_once dirname(__DIR__, 2) . '/php/tests/PageCacheBoundCases.php';
 // The functions that DeclarationsTest.php shares with declarations.php, which it runs as a child process.
 require_once __DIR__ . '/declarations_functions.php';
 require_once dirname(__DIR__, 2) . '/php/tests/FailingStatement.php';

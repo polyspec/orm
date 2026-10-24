@@ -94,6 +94,13 @@ impl Dialect {
         }
     }
 
+    pub fn limit_params(self, offset: &str, count: &str) -> String {
+        match self {
+            Dialect::MySql => format!(" LIMIT {offset}, {count}"),
+            _ => format!(" LIMIT {count} OFFSET {offset}"),
+        }
+    }
+
     pub fn force_index(self, name: &str) -> String {
         match self {
             Dialect::MySql => format!(" FORCE INDEX ({})", quote_with("`", name)),
@@ -196,10 +203,7 @@ impl Dialect {
                 format!("MATCH ({}) AGAINST ({} IN NATURAL LANGUAGE MODE)", cols.join(", "), value(""))
             }),
             Dialect::Postgres => {
-                let doc = format!(
-                    "to_tsvector('simple', {})",
-                    cols.iter().map(|c| format!("coalesce({c}, '')")).collect::<Vec<_>>().join(" || ' ' || ")
-                );
+                let doc = format!("to_tsvector('simple', {})", cols.iter().map(|c| format!("coalesce({c}, '')")).collect::<Vec<_>>().join(" || ' ' || "));
                 let query = if boolean { "websearch_to_tsquery" } else { "plainto_tsquery" };
                 Some(format!("{doc} @@ {query}('simple', {})", value("")))
             }

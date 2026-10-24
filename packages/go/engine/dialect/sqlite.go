@@ -23,6 +23,9 @@ func (SQLite) Placeholder(int) string { return "?" }
 func (SQLite) Limit(offset, count int) string {
 	return fmt.Sprintf(" LIMIT %d OFFSET %d", count, offset)
 }
+func (SQLite) LimitParams(offset, count string) string {
+	return " LIMIT " + count + " OFFSET " + offset
+}
 func (SQLite) ForceIndex(name string) string { return " INDEXED BY " + QuoteWith(`"`, name) }
 func (SQLite) InsertReturningID() bool       { return true }
 func (SQLite) Now(int) string                { return "CURRENT_TIMESTAMP" }

@@ -207,8 +207,7 @@ fn decoded_path(raw: &str, scheme: &str) -> Result<String> {
 /// Parses a DSN URI.
 pub fn parse_dsn(dsn: &str) -> Result<ParsedDsn> {
     let bad = |msg: String| Error::Config(msg);
-    let url = url::Url::parse(dsn)
-        .map_err(|error| bad(format!("dsn must be a URI using mysql://, postgres://, sqlite://, or markdown://: {error}")))?;
+    let url = url::Url::parse(dsn).map_err(|error| bad(format!("dsn must be a URI using mysql://, postgres://, sqlite://, or markdown://: {error}")))?;
     let mut zone_text = None;
     let mut pragmas = Vec::new();
     let mut rest = url.clone();
@@ -700,6 +699,8 @@ impl Db {
             });
         }
         let Some(dialect) = self.inner.dialect else { return Err(Error::internal("a markdown connection plans no request")) };
+        engine::validate(&manifest, &req.ir)?;
+        crate::request::validate_page_params(&req.ir, &req.params)?;
         let key = req.shape_key();
         if let Some(p) = self.inner.plans.lock().unwrap().get(&key) {
             return Ok(p.clone());

@@ -169,7 +169,14 @@ class _Validator:
             _fail(codes.COLUMN_UNKNOWN, f"{target['name']}.{column}")
         return found
 
-    def query(self, q: dict, at: dict, is_join: bool, is_relation: bool) -> None:
+    def query(
+        self,
+        q: dict,
+        at: dict,
+        is_join: bool,
+        is_relation: bool,
+        root_page: bool = False,
+    ) -> None:
         """Checks q. at is the place of q (see ref)."""
         ent = self.entity(q["entity"])
         cols = q.get("columns")
@@ -370,13 +377,22 @@ class _Validator:
                         f"order by {o['column']}, which is not a group column",
                     )
         limit = q.get("limit")
-        if limit is not None and (
-            not _is_safe(limit["offset"])
-            or not _is_safe(limit["count"])
-            or limit["offset"] < 0
-            or limit["count"] <= 0
-        ):
-            _fail(codes.IR_INVALID, "limit offset>=0, count>0")
+        if limit is not None:
+            fields = sorted(limit)
+            if "offset_p" in fields or "count_p" in fields:
+                if not root_page or fields != ["count_p", "offset_p"]:
+                    _fail(
+                        codes.IR_INVALID,
+                        "limit needs exactly offset and count parameters on the root query",
+                    )
+                self.params([limit["offset_p"], limit["count_p"]])
+            elif fields != ["count", "offset"] or (
+                not _is_safe(limit["offset"])
+                or not _is_safe(limit["count"])
+                or limit["offset"] < 0
+                or limit["count"] <= 0
+            ):
+                _fail(codes.IR_INVALID, "limit offset>=0, count>0")
         lock = q.get("lock") or ""
         if lock != "" and lock not in (
             "update",
@@ -779,7 +795,7 @@ _RECORDS = {
     },
     "ColRef": {"path": "string", "column": "string"},
     "Order": {"column": "string", "desc": "bool", "random": "bool", "fn": "Func"},
-    "Limit": {"offset": "int", "count": "int"},
+    "Limit": {"offset": "int", "count": "int", "offset_p": "int", "count_p": "int"},
     "IfParent": {"column": "string", "p": "int"},
     "Assign": {
         "column": "string",
@@ -873,7 +889,7 @@ def validate(m: RuntimeModel, r: dict) -> None:
         )
     v = _Validator(m, r.get("n_params") or 0)
     root = v.scopes(r)
-    v.query(r, {"root": root, "outer": None, "node": root}, False, False)
+    v.query(r, {"root": root, "outer": None, "node": root}, False, False, True)
     if r.get("lock") and r["kind"] not in ("one", "all"):
         _fail(codes.IR_INVALID, "row lock is only valid on one or all")
     ent = v.entity(r["entity"])

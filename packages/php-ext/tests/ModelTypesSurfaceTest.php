@@ -123,6 +123,10 @@ final class ModelTypesSurfaceTest extends TestCase
         $request = new Request('read', 'manifest');
         $request->params = ['unused', 7, 'seven', 9, 11, 'tail'];
         $request->ir = [
+            'ir_version' => 1,
+            'manifest_hash' => 'manifest',
+            'kind' => 'read',
+            'entity' => 'probe',
             'where' => ['op' => 'in', 'ps' => [1, 2, 3, 4, 5]],
             'joins' => [['where' => ['p' => 0, 'plus_p' => 2]]],
             'rows' => [[4, 1]],

@@ -22,7 +22,7 @@ fn manifest() -> Manifest {
 
 fn request(manifest_hash: String, agg: &str, column: &str) -> ir::Request {
     let (order, limit) = if agg.is_empty() {
-        (vec![ir::Order { column: "id".into(), ..Default::default() }], Some(ir::Limit { count: 1, ..Default::default() }))
+        (vec![ir::Order { column: "id".into(), ..Default::default() }], Some(ir::Limit::Literal { offset: 0, count: 1 }))
     } else {
         (Vec::new(), None)
     };
@@ -33,16 +33,15 @@ fn request(manifest_hash: String, agg: &str, column: &str) -> ir::Request {
         query: ir::Query {
             entity: "parent".into(),
             columns: Some(ir::Columns {
-                sub: [("selected".into(), ir::Sub {
-                    column: column.into(),
-                    agg: agg.into(),
-                    query: Box::new(ir::Query {
-                        entity: "child".into(),
-                        order,
-                        limit,
-                        ..Default::default()
-                    }),
-                })].into(),
+                sub: [(
+                    "selected".into(),
+                    ir::Sub {
+                        column: column.into(),
+                        agg: agg.into(),
+                        query: Box::new(ir::Query { entity: "child".into(), order, limit, ..Default::default() }),
+                    },
+                )]
+                .into(),
                 ..Default::default()
             }),
             ..Default::default()

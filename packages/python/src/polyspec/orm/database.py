@@ -1538,6 +1538,7 @@ class Db:
                 f"manifest {request['manifest_hash']} is not registered on this "
                 f"connection: connect through its generated models or install it",
             )
+        engine.validate(request)
         key = _canonical(request)
         cached = self.plans.get(key)
         if cached is not None:

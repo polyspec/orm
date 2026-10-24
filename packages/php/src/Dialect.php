@@ -65,6 +65,11 @@ final class Dialect
         return $this->name === 'mysql' ? " LIMIT $offset, $count" : " LIMIT $count OFFSET $offset";
     }
 
+    public function limitParams(string $offset, string $count): string
+    {
+        return $this->name === 'mysql' ? " LIMIT $offset, $count" : " LIMIT $count OFFSET $offset";
+    }
+
     public function forceIndex(string $index): string
     {
         return match ($this->name) {

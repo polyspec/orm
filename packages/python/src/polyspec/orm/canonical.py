@@ -17,7 +17,7 @@ def canonical_request(request: dict, params) -> tuple[dict, list]:
     """Returns the request and the parameter values in canonical form. The inputs are not changed."""
     c = _Canon(list(params))
     out = dict(request)
-    _query_into(c, request, out)
+    _query_into(c, request, out, root=True)
     for key in ("set", "on_duplicate"):
         if request.get(key) is not None:
             out[key] = [_assign(c, a) for a in request[key]]
@@ -52,6 +52,22 @@ class _Canon:
         self.used[p] = True
         self.out.append(self.params[p])
         return len(self.out) - 1
+
+    def page_value(self, value, field):
+        if type(value) is not int or abs(value) > (1 << 53) - 1:
+            raise OrmError(codes.CODEC_ENCODE, f"page {field} must be a safe integer")
+        self.out.append(value)
+        return len(self.out) - 1
+
+    def page_index(self, p, field):
+        if type(p) is not int or p < 0 or p >= len(self.params):
+            raise OrmError(codes.IR_INVALID, "limit parameter index is out of range")
+        value = self.params[p]
+        if type(value) is not int or abs(value) > (1 << 53) - 1:
+            raise OrmError(codes.CODEC_ENCODE, f"page {field} must be a safe integer")
+        if (field == "offset" and value < 0) or (field == "count" and value <= 0):
+            raise OrmError(codes.IR_INVALID, "limit offset>=0, count>0")
+        return self.index(p)
 
     def ints(self, ps):
         return None if ps is None else [self.index(p) for p in ps]
@@ -136,7 +152,7 @@ def _query(c: _Canon, q: dict) -> dict:
     return out
 
 
-def _query_into(c: _Canon, q: dict, out: dict) -> None:
+def _query_into(c: _Canon, q: dict, out: dict, root: bool = False) -> None:
     """Walks the query fields in the order the Go client walks them, writing the canonical values into out."""
     if q.get("columns") is not None:
         cols = dict(q["columns"])
@@ -183,5 +199,37 @@ def _query_into(c: _Canon, q: dict, out: dict) -> None:
             {**o, "fn": _func(c, o["fn"])} if o.get("fn") is not None else o
             for o in q["order"]
         ]
+    if q.get("limit") is not None:
+        limit = q["limit"]
+        if not isinstance(limit, dict):
+            raise OrmError(codes.IR_INVALID, "limit must be an object")
+        fields = sorted(limit)
+        if root and fields == ["count", "offset"]:
+            offset = limit["offset"]
+            count = limit["count"]
+            if (
+                type(offset) is not int
+                or type(count) is not int
+                or abs(offset) > (1 << 53) - 1
+                or abs(count) > (1 << 53) - 1
+            ):
+                raise OrmError(
+                    codes.CODEC_ENCODE, "page offset and count must be safe integers"
+                )
+            if offset < 0 or count <= 0:
+                raise OrmError(codes.IR_INVALID, "limit offset>=0, count>0")
+            out["limit"] = {
+                "offset_p": c.page_value(offset, "offset"),
+                "count_p": c.page_value(count, "count"),
+            }
+        elif root and fields == ["count_p", "offset_p"]:
+            out["limit"] = {
+                "offset_p": c.page_index(limit["offset_p"], "offset"),
+                "count_p": c.page_index(limit["count_p"], "count"),
+            }
+        elif not root and fields == ["count", "offset"]:
+            out["limit"] = limit
+        else:
+            raise OrmError(codes.IR_INVALID, "limit needs exactly offset and count")
     if q.get("if_parent") is not None:
         out["if_parent"] = {**q["if_parent"], "p": c.index(q["if_parent"]["p"])}

@@ -4009,9 +4009,11 @@
       },
       "fields": {
         "offset": "integer",
-        "count": "integer"
+        "count": "integer",
+        "offset_p": "integer",
+        "count_p": "integer"
       },
-      "optional": []
+      "optional": ["offset", "count", "offset_p", "count_p"]
     },
     {
       "id": "IRIfParent",

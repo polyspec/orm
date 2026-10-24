@@ -15,6 +15,9 @@ func (Postgres) Placeholder(n int) string  { return fmt.Sprintf("$%d", n) }
 func (Postgres) Limit(offset, count int) string {
 	return fmt.Sprintf(" LIMIT %d OFFSET %d", count, offset)
 }
+func (Postgres) LimitParams(offset, count string) string {
+	return " LIMIT " + count + " OFFSET " + offset
+}
 func (Postgres) ForceIndex(string) string { return "" } // planner hints are not a thing in PostgreSQL
 func (Postgres) InsertReturningID() bool  { return true }
 func (Postgres) Now(int) string           { return "CURRENT_TIMESTAMP" }

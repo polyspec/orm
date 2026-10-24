@@ -58,7 +58,7 @@ export interface Dialect {
   /** Placeholder for the n-th (1-based) bind. */
   placeholder(n: number): string;
   like(col: string, ph: string): string;
-  limit(offset: number, count: number): string;
+  limit(offset: number | string, count: number | string): string;
   forceIndex(name: string): string;
   insertReturningId: boolean;
   upsert(conflict: readonly string[], assigns: string): string;

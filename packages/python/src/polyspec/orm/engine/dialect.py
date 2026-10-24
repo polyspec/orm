@@ -133,6 +133,9 @@ class _Dialect:
     def limit(self, offset: int, count: int) -> str:
         return f" LIMIT {count} OFFSET {offset}"
 
+    def limit_params(self, offset: str, count: str) -> str:
+        return f" LIMIT {count} OFFSET {offset}"
+
     def force_index(self, name: str) -> str:
         return ""
 
@@ -227,6 +230,9 @@ class MysqlDialect(_Dialect):
         return f"{_ascii_lower(col)} LIKE {_ascii_lower(ph)}"
 
     def limit(self, offset, count):
+        return f" LIMIT {offset}, {count}"
+
+    def limit_params(self, offset, count):
         return f" LIMIT {offset}, {count}"
 
     def force_index(self, name):

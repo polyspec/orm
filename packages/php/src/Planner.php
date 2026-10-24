@@ -174,7 +174,18 @@ final class Planner
                 if ($kind === 'one' && $rc === null) {
                     $sql .= $this->d->limit(0, 1);
                 } elseif (isset($q['limit'])) {
-                    $sql .= $this->d->limit($q['limit']['offset'] ?? 0, $q['limit']['count']);
+                    if (isset($q['limit']['offset_p'], $q['limit']['count_p'])) {
+                        if ($this->d->name === 'mysql') {
+                            $offset = $b->param($q['limit']['offset_p'], 'i64');
+                            $count = $b->param($q['limit']['count_p'], 'i64');
+                        } else {
+                            $count = $b->param($q['limit']['count_p'], 'i64');
+                            $offset = $b->param($q['limit']['offset_p'], 'i64');
+                        }
+                        $sql .= $this->d->limitParams($offset, $count);
+                    } else {
+                        $sql .= $this->d->limit($q['limit']['offset'] ?? 0, $q['limit']['count']);
+                    }
                 }
                 if ($lock !== '') {
                     $suffix = $this->d->rowLock($lock) ?? throw self::err(

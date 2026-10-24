@@ -60,3 +60,8 @@ func (e *Engine) Compile(irJSON []byte) ([]byte, error) {
 	}
 	return out, nil
 }
+
+// Validate checks an already-built request without compiling its plan.
+func (e *Engine) Validate(req *ir.Request) error {
+	return ir.Validate(e.M, req)
+}

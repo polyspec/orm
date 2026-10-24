@@ -3,9 +3,9 @@
 //! in order (the parent slot is -1), table) must equal `expected[dialect]`, or the error code must equal `expected.error`.
 //! The engine's compile is visible only inside the crate, so src/engine/mod.rs makes this file a unit test module.
 
-use crate::or_panic::OrPanic;
 use super::ir_request::{members, repository, request, schema};
 use super::{compile, param_uses, validate, Dialect};
+use crate::or_panic::OrPanic;
 use polyspec_orm_case_clock::CaseClock;
 use polyspec_orm_schema::dbspec::Type;
 use serde_json::{json, Value};
@@ -22,8 +22,8 @@ fn case(id: &str) -> (String, Value, Value) {
 
 fn case_of(id: &str, operation: &str) -> (String, Value, Value) {
     let path = repository().join("contracts/fixtures/planner.json");
-    let fixture: Value = serde_json::from_str(&std::fs::read_to_string(&path).or_panic(|e| format!("{}: {e}", path.display())))
-        .or_panic(|e| format!("{}: {e}", path.display()));
+    let fixture: Value =
+        serde_json::from_str(&std::fs::read_to_string(&path).or_panic(|e| format!("{}: {e}", path.display()))).or_panic(|e| format!("{}: {e}", path.display()));
     assert_eq!(fixture["feature"], "planner", "{}: feature", path.display());
     let cases: Vec<&Value> = fixture["cases"].as_array().expect("fixture cases").iter().filter(|c| c["id"] == id).collect();
     let [case] = cases.as_slice() else { panic!("{}: case {id} appears {} times", path.display(), cases.len()) };

@@ -24,7 +24,7 @@ import (
 func canonicalize(r *request) error {
 	c := &canonicalizer{params: r.params, used: make([]bool, len(r.params))}
 	req := r.ir
-	req.Query = c.query(r.ir.Query)
+	req.Query = c.query(r.ir.Query, true)
 	req.Set = c.assigns(r.ir.Set)
 	req.OnDuplicate = c.assigns(r.ir.OnDuplicate)
 	if r.ir.Rows != nil {
@@ -74,6 +74,70 @@ func (c *canonicalizer) index(p int) int {
 	c.used[p] = true
 	c.out = append(c.out, c.params[p])
 	return len(c.out) - 1
+}
+
+func (c *canonicalizer) pageValue(value int) int {
+	if int64(value) > 9007199254740991 || int64(value) < -9007199254740991 {
+		if c.err == nil {
+			c.err = &ir.Error{Code: "CODEC_ENCODE", Msg: "page offset and count must be safe integers"}
+		}
+	}
+	c.out = append(c.out, int64(value))
+	return len(c.out) - 1
+}
+
+func (c *canonicalizer) pageIndex(p int, field string) int {
+	if p < 0 || p >= len(c.params) {
+		return c.index(p)
+	}
+	value, ok := c.params[p].(int64)
+	if !ok {
+		if c.err == nil {
+			c.err = &ir.Error{Code: "CODEC_ENCODE", Msg: fmt.Sprintf("page %s must be a signed integer", field)}
+		}
+		return p
+	}
+	if value > 9007199254740991 || value < -9007199254740991 {
+		if c.err == nil {
+			c.err = &ir.Error{Code: "CODEC_ENCODE", Msg: fmt.Sprintf("page %s must be a safe integer", field)}
+		}
+		return p
+	}
+	if field == "offset" && value < 0 || field == "count" && value <= 0 {
+		if c.err == nil {
+			c.err = &ir.Error{Code: "IR_INVALID", Msg: "limit offset>=0, count>0"}
+		}
+		return p
+	}
+	return c.index(p)
+}
+
+func validatePageValues(params []any, offsetIndex, countIndex int) error {
+	read := func(index int, field string) (int64, error) {
+		if index < 0 || index >= len(params) {
+			return 0, &ir.Error{Code: "IR_INVALID", Msg: fmt.Sprintf("page %s parameter index is out of range", field)}
+		}
+		value, ok := params[index].(int64)
+		if !ok {
+			return 0, &ir.Error{Code: "CODEC_ENCODE", Msg: fmt.Sprintf("page %s must be a signed integer", field)}
+		}
+		if value > 9007199254740991 || value < -9007199254740991 {
+			return 0, &ir.Error{Code: "CODEC_ENCODE", Msg: fmt.Sprintf("page %s must be a safe integer", field)}
+		}
+		return value, nil
+	}
+	offset, err := read(offsetIndex, "offset")
+	if err != nil {
+		return err
+	}
+	count, err := read(countIndex, "count")
+	if err != nil {
+		return err
+	}
+	if offset < 0 || count <= 0 {
+		return &ir.Error{Code: "IR_INVALID", Msg: "limit offset>=0, count>0"}
+	}
+	return nil
 }
 
 func (c *canonicalizer) ptr(p *int) *int {
@@ -134,7 +198,7 @@ func (c *canonicalizer) queryPtr(q *ir.Query) *ir.Query {
 	if q == nil {
 		return nil
 	}
-	v := c.query(*q)
+	v := c.query(*q, false)
 	return &v
 }
 
@@ -194,7 +258,7 @@ func (c *canonicalizer) pred(p *ir.Pred) *ir.Pred {
 	return &v
 }
 
-func (c *canonicalizer) query(q ir.Query) ir.Query {
+func (c *canonicalizer) query(q ir.Query, root bool) ir.Query {
 	out := q
 	if q.Columns != nil {
 		cols := *q.Columns
@@ -251,6 +315,31 @@ func (c *canonicalizer) query(q ir.Query) ir.Query {
 	out.GroupBy = slices.Clone(q.GroupBy)
 	if q.Limit != nil {
 		l := *q.Limit
+		if l.OffsetP != nil || l.CountP != nil {
+			if !root || l.OffsetP == nil || l.CountP == nil || l.Offset != 0 || l.Count != 0 {
+				if c.err == nil {
+					c.err = &ir.Error{Code: "IR_INVALID", Msg: "limit needs exactly offset and count parameters on the root query"}
+				}
+			} else {
+				offset := c.pageIndex(*l.OffsetP, "offset")
+				count := c.pageIndex(*l.CountP, "count")
+				l = ir.Limit{OffsetP: &offset, CountP: &count}
+			}
+		} else if root {
+			if l.Offset < 0 || l.Count <= 0 {
+				if c.err == nil {
+					c.err = &ir.Error{Code: "IR_INVALID", Msg: "limit offset>=0, count>0"}
+				}
+			} else {
+				offset := c.pageValue(l.Offset)
+				count := c.pageValue(l.Count)
+				l = ir.Limit{OffsetP: &offset, CountP: &count}
+			}
+		} else if l.Offset < 0 || l.Count <= 0 {
+			if c.err == nil {
+				c.err = &ir.Error{Code: "IR_INVALID", Msg: "limit offset>=0, count>0"}
+			}
+		}
 		out.Limit = &l
 	}
 	if q.IfParent != nil {

@@ -1,7 +1,9 @@
 package orm
 
 import (
+	"reflect"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/polyspec/orm/packages/go/engine"
@@ -92,5 +94,133 @@ func TestCanonicalizePadsInListAndRejectsOutOfRangeParam(t *testing.T) {
 	bad.ir.Where.Items[0].Pred.Ps = []int{7}
 	if err := canonicalize(bad); ErrorCode(err) != "IR_INVALID" {
 		t.Fatalf("out-of-range param error = %v, want IR_INVALID", err)
+	}
+}
+
+// Requirements: T236.
+func TestPlanCachePagedReadBindsPageValues(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	m, err := runtimemodel.LoadFiles("../../../contracts/fixtures/identity_load.dbs")
+	if err != nil {
+		t.Fatal(err)
+	}
+	schema := &Schema{Hash: m.ManifestHash, Text: m.ManifestText}
+	for _, driver := range []string{"mysql", "postgres", "sqlite"} {
+		eng, err := engine.New(m, driver)
+		if err != nil {
+			t.Fatal(err)
+		}
+		d := &DB{
+			cfg: Config{PlanCacheSize: 1024}, driver: driver,
+			m:     &dbMutable{engines: map[string]*engine.Engine{m.ManifestHash: eng}, schemas: map[string]*Schema{}},
+			plans: map[uint64]*cached{},
+		}
+		for page := 0; page < 300; page++ {
+			r := &request{
+				ir: ir.Request{IRVersion: 1, ManifestHash: m.ManifestHash, Kind: "all", NParams: 1,
+					Query: ir.Query{Entity: "load_probe", Where: &ir.Group{Items: []ir.Item{{Pred: &ir.Pred{Column: "seq", Op: "eq", P: pageParamIndex(0)}}}}, Limit: &ir.Limit{Offset: page * 20, Count: 20}}},
+				schema: schema, params: []any{"where"},
+			}
+			c, err := d.plan(r)
+			if err != nil {
+				t.Fatalf("%s page %d: %v", driver, page, err)
+			}
+			if got, want := r.params, []any{"where", int64(page * 20), int64(20)}; !reflect.DeepEqual(got, want) {
+				t.Fatalf("%s page %d params = %#v, want %#v", driver, page, got, want)
+			}
+			if got := len(d.plans); got != 1 {
+				t.Fatalf("%s page %d has %d cache entries, want one", driver, page, got)
+			}
+			step := c.plan.Steps[0]
+			wantParams := []int{0, 1, 2}
+			if driver != "mysql" {
+				wantParams = []int{0, 2, 1}
+			}
+			gotParams := make([]int, len(step.BindSlots))
+			for i, slot := range step.BindSlots {
+				gotParams[i] = slot.Param
+				if slot.ColType != "i64" && i > 0 {
+					t.Fatalf("%s page bind %d type = %s, want i64", driver, i, slot.ColType)
+				}
+			}
+			if !slices.Equal(gotParams, wantParams) {
+				t.Fatalf("%s bind params = %v, want %v", driver, gotParams, wantParams)
+			}
+			if !strings.Contains(step.SQL, " LIMIT ") {
+				t.Fatalf("%s SQL has no page limit: %s", driver, step.SQL)
+			}
+		}
+		for _, test := range []struct {
+			name  string
+			value any
+			code  string
+		}{
+			{name: "wrong type", value: false, code: "CODEC_ENCODE"},
+			{name: "unsafe integer", value: int64(9007199254740992), code: "CODEC_ENCODE"},
+			{name: "negative offset", value: int64(-1), code: "IR_INVALID"},
+		} {
+			bad := &request{
+				ir: ir.Request{IRVersion: 1, ManifestHash: m.ManifestHash, Kind: "all", NParams: 3,
+					Query: ir.Query{Entity: "load_probe", Where: &ir.Group{Items: []ir.Item{{Pred: &ir.Pred{Column: "seq", Op: "eq", P: pageParamIndex(0)}}}}, Limit: &ir.Limit{OffsetP: pageParamIndex(1), CountP: pageParamIndex(2)}}},
+				schema: schema, params: []any{"where", test.value, int64(20)}, canonical: true,
+			}
+			if _, err := d.plan(bad); ErrorCode(err) != test.code {
+				t.Fatalf("%s warm-cache invalid page error = %v, want %s", test.name, err, test.code)
+			}
+		}
+	}
+}
+
+func pageParamIndex(value int) *int { return &value }
+
+// Requirements: T236.
+func TestCanonicalizeCompositeRequestParameterWalk(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	pred := func(index int) *ir.Group {
+		return &ir.Group{Items: []ir.Item{{Pred: &ir.Pred{Column: "seq", Op: "eq", P: pageParamIndex(index)}}}}
+	}
+	request := &request{
+		ir: ir.Request{
+			IRVersion: 1, ManifestHash: "h", Kind: "all", NParams: 18,
+			Query: ir.Query{
+				Entity: "root",
+				Columns: &ir.Columns{
+					Fn: map[string]ir.ColFunc{
+						"z_fn": {Column: "seq", Fn: ir.Func{Name: "year", Ps: []int{0}}},
+						"a_fn": {Column: "seq", Fn: ir.Func{Name: "year", Ps: []int{1}}},
+					},
+					Sub: map[string]*ir.Sub{
+						"z_sub": {Column: "seq", Query: &ir.Query{Entity: "inner", Where: pred(2)}},
+						"a_sub": {Column: "seq", Query: &ir.Query{Entity: "inner", Where: pred(3)}},
+					},
+				},
+				On: pred(4), Where: pred(5),
+				Joins: []*ir.Join{{Rel: "j", Kind: "inner", Query: &ir.Query{Entity: "joined", On: pred(6), Where: pred(7)}}},
+				Relations: []*ir.Relation{
+					{Rel: "r1", Query: &ir.Query{Entity: "related", Where: pred(8), IfParent: &ir.IfParent{Column: "seq", P: 9}}},
+					{Rel: "r2", Query: &ir.Query{Entity: "related", Where: pred(10)}},
+				},
+				Order:    []ir.Order{{Column: "seq", Fn: &ir.Func{Name: "year", Ps: []int{11}}}},
+				Limit:    &ir.Limit{Offset: 0, Count: 20},
+				IfParent: &ir.IfParent{Column: "seq", P: 12},
+			},
+			Set:         []ir.Assign{{Column: "seq", P: pageParamIndex(13)}},
+			OnDuplicate: []ir.Assign{{Column: "seq", P: pageParamIndex(14)}},
+			Rows:        [][]int{{15}}, Optimistic: &ir.Optimist{Column: "seq", P: 16},
+		},
+		params: []any{"v0", "v1", "v2", "v3", "v4", "v5", "v6", "v7", "v8", "v9", "v10", "v11", "v12", "v13", "v14", "v15", "v16", "v17"},
+	}
+	if err := canonicalize(request); err != nil {
+		t.Fatal(err)
+	}
+	want := []any{"v1", "v0", "v3", "v2", "v4", "v5", "v6", "v7", "v8", "v9", "v10", "v11", int64(0), int64(20), "v12", "v13", "v14", "v15", "v16", "v17"}
+	if !reflect.DeepEqual(request.params, want) {
+		t.Fatalf("canonical params = %#v, want %#v", request.params, want)
+	}
+	if request.ir.Limit.OffsetP == nil || *request.ir.Limit.OffsetP != 12 || request.ir.Limit.CountP == nil || *request.ir.Limit.CountP != 13 {
+		t.Fatalf("canonical limit = %#v, want offset_p=12,count_p=13", request.ir.Limit)
+	}
+	if request.ir.IfParent.P != 14 || *request.ir.Set[0].P != 15 || *request.ir.OnDuplicate[0].P != 16 || request.ir.Rows[0][0] != 17 || request.ir.Optimistic.P != 18 {
+		t.Fatalf("request parameter fields were not renumbered by the walk: %#v", request.ir)
 	}
 }

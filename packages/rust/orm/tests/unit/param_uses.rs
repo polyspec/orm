@@ -2,9 +2,9 @@
 //! "Parameters"). The request and expected values are the same as Go engine/ir/params_test.go's TestParamUses. The engine's function is
 //! visible only inside the crate, so src/engine/mod.rs makes this file a unit test module.
 
-use crate::or_panic::OrPanic;
 use super::{param_uses, validate, ParamUse};
 use crate::ir;
+use crate::or_panic::OrPanic;
 use crate::schema::Manifest;
 
 const DOCUMENT: &str = "dbspec 1 params

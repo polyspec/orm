@@ -8,6 +8,7 @@ from types import SimpleNamespace
 from polyspec.orm.database import Db, _hooked
 from polyspec.orm.engine import Engine, model_of_documents, parse_document_set
 from polyspec.orm.errors import OrmError
+from polyspec.orm.canonical import canonical_request
 
 from . import testcase
 
@@ -34,14 +35,14 @@ def in_request(n: int) -> tuple[dict, list]:
     return request, list(range(n))
 
 
-def handle() -> Db:
+def handle(driver: str = "sqlite") -> Db:
     db = Db.__new__(Db)
     db._shared = SimpleNamespace(closed=False)
-    db.engines = {MODEL.manifest_hash: Engine(MODEL, "sqlite")}
+    db.engines = {MODEL.manifest_hash: Engine(MODEL, driver)}
     db.plans = {}
     db.plan_cache_size = 1024
     db.request_hook = None
-    db.driver = "sqlite"
+    db.driver = driver
     return db
 
 
@@ -66,6 +67,149 @@ class PlanCacheBoundTest(unittest.TestCase):
         with self.assertRaises(OrmError) as caught:
             _hooked(db, request, params)
         self.assertEqual(caught.exception.code, "IR_INVALID")
+
+    # Requirements: T236.
+    def test_composite_request_parameters_follow_the_specified_recursive_walk(self):
+        def pred(p):
+            return {"items": [{"pred": {"column": "seq", "op": "eq", "p": p}}]}
+
+        request = {
+            "ir_version": 1,
+            "manifest_hash": "h",
+            "kind": "all",
+            "entity": "root",
+            "n_params": 18,
+            "columns": {
+                "fn": {
+                    "z_fn": {"column": "seq", "fn": {"name": "year", "ps": [0]}},
+                    "a_fn": {"column": "seq", "fn": {"name": "year", "ps": [1]}},
+                },
+                "sub": {
+                    "z_sub": {
+                        "column": "seq",
+                        "query": {"entity": "inner", "where": pred(2)},
+                    },
+                    "a_sub": {
+                        "column": "seq",
+                        "query": {"entity": "inner", "where": pred(3)},
+                    },
+                },
+            },
+            "on": pred(4),
+            "where": pred(5),
+            "joins": [
+                {
+                    "rel": "j",
+                    "kind": "inner",
+                    "query": {"entity": "joined", "on": pred(6), "where": pred(7)},
+                }
+            ],
+            "relations": [
+                {
+                    "rel": "r1",
+                    "query": {
+                        "entity": "related",
+                        "where": pred(8),
+                        "if_parent": {"column": "seq", "p": 9},
+                    },
+                },
+                {"rel": "r2", "query": {"entity": "related", "where": pred(10)}},
+            ],
+            "order": [{"column": "seq", "fn": {"name": "year", "ps": [11]}}],
+            "limit": {"offset": 0, "count": 20},
+            "if_parent": {"column": "seq", "p": 12},
+            "set": [{"column": "seq", "p": 13}],
+            "on_duplicate": [{"column": "seq", "p": 14}],
+            "rows": [[15]],
+            "optimistic": {"column": "seq", "p": 16},
+        }
+        canonical, params = canonical_request(request, [f"v{i}" for i in range(18)])
+        self.assertEqual(
+            params,
+            [
+                "v1",
+                "v0",
+                "v3",
+                "v2",
+                "v4",
+                "v5",
+                "v6",
+                "v7",
+                "v8",
+                "v9",
+                "v10",
+                "v11",
+                0,
+                20,
+                "v12",
+                "v13",
+                "v14",
+                "v15",
+                "v16",
+                "v17",
+            ],
+        )
+        self.assertEqual(canonical["limit"], {"offset_p": 12, "count_p": 13})
+        self.assertEqual(canonical["if_parent"]["p"], 14)
+        self.assertEqual(canonical["set"][0]["p"], 15)
+        self.assertEqual(canonical["on_duplicate"][0]["p"], 16)
+        self.assertEqual(canonical["rows"], [[17]])
+        self.assertEqual(canonical["optimistic"]["p"], 18)
+
+    # Requirements: T236.
+    def test_paged_reads_share_plan_and_bind_page_values(self):
+        for driver in ("mysql", "postgres", "sqlite"):
+            db = handle(driver)
+            for page in range(300):
+                request = {
+                    "manifest_hash": MODEL.manifest_hash,
+                    "ir_version": 1,
+                    "kind": "all",
+                    "entity": "load_probe",
+                    "where": {
+                        "items": [{"pred": {"column": "seq", "op": "eq", "p": 0}}]
+                    },
+                    "limit": {"offset": page * 20, "count": 20},
+                    "n_params": 1,
+                }
+                planned, params = _hooked(db, request, ["where"])
+                self.assertEqual(planned["limit"], {"offset_p": 1, "count_p": 2})
+                self.assertEqual(params, ["where", page * 20, 20])
+                cached = db.plan(planned)
+                step = cached["plan"]["steps"][0]
+                expected = [0, 1, 2] if driver == "mysql" else [0, 2, 1]
+                self.assertEqual(
+                    [slot["param"] for slot in step["bind_slots"]], expected
+                )
+                self.assertEqual(len(db.plans), 1)
+                self.assertIn(" LIMIT ", step["sql"])
+
+    # Requirements: T236.
+    def test_page_values_and_limit_shapes_are_checked_before_planning(self):
+        request = {
+            "manifest_hash": MODEL.manifest_hash,
+            "ir_version": 1,
+            "kind": "all",
+            "entity": "load_probe",
+            "limit": {"offset_p": 0, "count_p": 1},
+            "n_params": 2,
+        }
+        for value in (None, False, "1", 1.5, (1 << 53)):
+            with self.subTest(value=value), self.assertRaises(OrmError) as caught:
+                _hooked(handle(), request, [value, 2])
+            self.assertEqual(caught.exception.code, "CODEC_ENCODE")
+        for values in ((-1, 2), (0, 0)):
+            with self.subTest(values=values), self.assertRaises(OrmError) as caught:
+                _hooked(handle(), request, list(values))
+            self.assertEqual(caught.exception.code, "IR_INVALID")
+        for limit in (
+            {"offset": 0},
+            {"offset": 0, "count": 2, "offset_p": 0, "count_p": 1},
+            {"offset_p": 0},
+        ):
+            with self.subTest(limit=limit), self.assertRaises(OrmError) as caught:
+                _hooked(handle(), {**request, "limit": limit}, [0, 2])
+            self.assertEqual(caught.exception.code, "IR_INVALID")
 
 
 if __name__ == "__main__":

@@ -474,7 +474,17 @@ class Planner:
                 if kind == "one" and rc is None:
                     sql += self.d.limit(0, 1)
                 elif q.get("limit"):
-                    sql += self.d.limit(q["limit"]["offset"], q["limit"]["count"])
+                    limit = q["limit"]
+                    if "offset_p" in limit and "count_p" in limit:
+                        if self.d.name == "mysql":
+                            offset = b.param(limit["offset_p"], "i64")
+                            count = b.param(limit["count_p"], "i64")
+                        else:
+                            count = b.param(limit["count_p"], "i64")
+                            offset = b.param(limit["offset_p"], "i64")
+                        sql += self.d.limit_params(offset, count)
+                    else:
+                        sql += self.d.limit(limit["offset"], limit["count"])
                 lock = q.get("lock") or ""
                 if lock:
                     suffix = self.d.row_lock(lock)

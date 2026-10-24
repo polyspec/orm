@@ -16,8 +16,7 @@ pub(crate) fn repository() -> PathBuf {
 pub(crate) fn schema(at: &str) -> Manifest {
     let path = repository().join(at);
     let text = std::fs::read_to_string(&path).or_panic(|e| format!("{}: {e}", path.display()));
-    let document =
-        crate::dbspec::parse(&text, &Default::default()).map(|parsed| parsed.document).or_panic(|errors| format!("{}: {errors:?}", path.display()));
+    let document = crate::dbspec::parse(&text, &Default::default()).map(|parsed| parsed.document).or_panic(|errors| format!("{}: {errors:?}", path.display()));
     let set = crate::dbspec::manifest(&[&document]).or_panic(|errors| format!("{}: {errors:?}", path.display()));
     Manifest::load(&set.manifest_text, &set.manifest_hash).or_panic(|e| format!("{}: {e}", path.display()))
 }
@@ -284,8 +283,16 @@ fn query(value: &Value, at: &str) -> ir::Query {
     });
     let limit = object.get("limit").map(|limit| {
         let at = format!("{at}.limit");
-        let limit = members(limit, &at, &["count", "offset"]);
-        ir::Limit { count: count(limit.get("count"), &format!("{at}.count")), offset: count(limit.get("offset"), &format!("{at}.offset")) }
+        let limit = members(limit, &at, &["count", "offset", "count_p", "offset_p"]);
+        match (limit.get("offset_p"), limit.get("count_p")) {
+            (Some(offset_p), Some(count_p)) if limit.get("offset").is_none() && limit.get("count").is_none() => {
+                ir::Limit::Params { offset_p: index(offset_p, &format!("{at}.offset_p")), count_p: index(count_p, &format!("{at}.count_p")) }
+            }
+            (None, None) if limit.get("offset").is_some() && limit.get("count").is_some() => {
+                ir::Limit::Literal { count: count(limit.get("count"), &format!("{at}.count")), offset: count(limit.get("offset"), &format!("{at}.offset")) }
+            }
+            _ => panic!("{REJECTED}{at}: expected exactly offset/count or offset_p/count_p"),
+        }
     });
     let list = |key: &str| -> Vec<(String, &Value)> {
         object

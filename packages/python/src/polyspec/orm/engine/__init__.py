@@ -51,3 +51,7 @@ class Engine:
         """Validates a request and returns its plan."""
         validate(self.model, request)
         return self._planner.compile(request)
+
+    def validate(self, request: dict) -> None:
+        """Validates a request before a caller checks its plan cache."""
+        validate(self.model, request)

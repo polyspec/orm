@@ -27,6 +27,7 @@ require_once __DIR__ . '/StatementCountingPdo.php';
 require_once __DIR__ . '/Stop.php';
 require_once __DIR__ . '/generated_classes.php';
 require_once __DIR__ . '/case_database.php';
+require_once __DIR__ . '/PageCacheBoundCases.php';
 require_once dirname(__DIR__) . '/testing/conformance/result_php_helpers.php';
 require_once dirname(__DIR__) . '/testing/required_dsn.php';
 require_once __DIR__ . '/coverage_cases.php';

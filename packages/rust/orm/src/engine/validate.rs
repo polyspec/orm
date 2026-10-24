@@ -2,10 +2,10 @@
 
 use super::dialect::{column_function_types, is_value_function, value_function_unit};
 use super::err;
+use crate::Result;
 use crate::codes;
 use crate::ir;
 use crate::schema::Manifest;
-use crate::Result;
 use polyspec_orm_schema::dbspec::{Entity, Field, Type};
 
 const IR_VERSION: u32 = 1;
@@ -302,7 +302,7 @@ pub(crate) fn restore_key(ent: &Entity, r: &ir::Request) -> Result<RestoreParts>
                 return Err(err(
                     codes::IR_INVALID,
                     format!("restore of {} gives no primary key or unique key a value in its set or in an eq condition of its where", ent.name),
-                ))
+                ));
             }
         }
     };
@@ -564,8 +564,18 @@ impl<'m> Validator<'m> {
             }
         }
         if let Some(l) = &q.limit {
-            if l.count == 0 {
-                return Err(err(codes::IR_INVALID, "limit offset>=0, count>0"));
+            match l {
+                ir::Limit::Literal { count, .. } => {
+                    if *count == 0 {
+                        return Err(err(codes::IR_INVALID, "limit offset>=0, count>0"));
+                    }
+                }
+                ir::Limit::Params { offset_p, count_p } => {
+                    if is_join || is_relation || at.outer.is_some() {
+                        return Err(err(codes::IR_INVALID, "limit parameters are valid only on the root query"));
+                    }
+                    self.params(&[*offset_p, *count_p])?;
+                }
             }
         }
         if !q.lock.is_empty() {
@@ -646,7 +656,15 @@ impl<'m> Validator<'m> {
             return Ok(());
         }
         if p.op == "fulltext" || p.op == "fulltext_boolean" {
-            if p.cols.is_empty() || p.p.is_none() || !p.column.is_empty() || !p.ps.is_empty() || p.sub.is_some() || p.r#fn.is_some() || p.value.is_some() || p.r#ref.is_some() {
+            if p.cols.is_empty()
+                || p.p.is_none()
+                || !p.column.is_empty()
+                || !p.ps.is_empty()
+                || p.sub.is_some()
+                || p.r#fn.is_some()
+                || p.value.is_some()
+                || p.r#ref.is_some()
+            {
                 return Err(err(codes::IR_INVALID, format!("{} takes cols and p only", p.op)));
             }
             for name in &p.cols {
@@ -805,7 +823,7 @@ impl<'m> Validator<'m> {
             return Err(err(codes::IR_INVALID, "subquery may not use limit, relations, lock or columns"));
         }
         if scalar_column {
-            if q.limit.as_ref().is_none_or(|l| l.count != 1) {
+            if q.limit.as_ref().and_then(ir::Limit::literal_count) != Some(1) {
                 return Err(err(codes::IR_INVALID, "a scalar column subquery needs limit with count 1"));
             }
             if q.order.iter().any(|o| o.random) {

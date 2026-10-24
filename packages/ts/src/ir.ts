@@ -72,7 +72,8 @@ export interface Predicate {
 
 export interface Projection { mode?: '' | 'all' | 'none'; add?: string[]; remove?: string[]; fn?: Record<string, ColumnFunction>; sub?: Record<string, Subquery>; }
 export interface Order { column?: string; desc?: boolean; random?: boolean; fn?: OrmFunction; }
-export interface Limit { offset: number; count: number; }
+export type Limit = { offset: number; count: number; offset_p?: never; count_p?: never }
+  | { offset_p: number; count_p: number; offset?: never; count?: never };
 export interface IfParent { column: string; p: number; }
 export interface Assignment { column: string; p?: number; null?: boolean; plus_p?: number; minus_p?: number; }
 export interface Optimistic { column: string; p: number; }

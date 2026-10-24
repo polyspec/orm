@@ -12,7 +12,7 @@ import * as codes from '../codes.js';
 export function canonicalize(request: Request, params: readonly unknown[]): { request: Request; params: unknown[] } {
   const c = new Canonicalizer(params);
   const { manifest_hash, ir_version, kind, load, agg } = request;
-  const query = c.query(request);
+  const query = c.query(request, true);
   const out: Request = { ...request, ...query, ir_version, manifest_hash, kind };
   if (load !== undefined) out.load = load;
   if (agg !== undefined) out.agg = agg;
@@ -42,6 +42,22 @@ class Canonicalizer {
     this.used[p] = true;
     this.out.push(this.params[p]);
     return this.out.length - 1;
+  }
+
+  /** Adds a root page value at its position in the canonical request walk. */
+  public pageValue(value: number): number {
+    if (!Number.isSafeInteger(value)) throw new OrmError(codes.CODEC_ENCODE, 'page offset and count must be safe integers');
+    this.out.push(value);
+    return this.out.length - 1;
+  }
+
+  /** Validates and renumbers an already parameterized root page value before a cache lookup. */
+  private pageIndex(p: number, field: 'offset' | 'count'): number {
+    const index = this.index(p);
+    const value = this.params[p];
+    if (typeof value !== 'number' || !Number.isSafeInteger(value)) throw new OrmError(codes.CODEC_ENCODE, `page ${field} must be a safe integer`);
+    if (field === 'offset' ? value < 0 : value <= 0) throw new OrmError(codes.IR_INVALID, 'limit offset>=0, count>0');
+    return index;
   }
 
   public ints(ps: readonly number[]): number[] {
@@ -105,7 +121,7 @@ class Canonicalizer {
     return v;
   }
 
-  public query(q: RequestQuery): RequestQuery {
+  public query(q: RequestQuery, root = false): RequestQuery {
     const out: RequestQuery = { ...q };
     if (q.columns !== undefined) {
       const cols = { ...q.columns };
@@ -133,7 +149,25 @@ class Canonicalizer {
     }
     if (q.order !== undefined) out.order = q.order.map((o: Order) => (o.fn === undefined ? { ...o } : { ...o, fn: this.fn(o.fn) }));
     if (q.group_by !== undefined) out.group_by = [...q.group_by];
-    if (q.limit !== undefined) out.limit = { ...q.limit };
+    if (q.limit !== undefined) {
+      if (q.limit === null || typeof q.limit !== 'object') throw new OrmError(codes.IR_INVALID, 'limit must be an object');
+      const fields = Object.keys(q.limit).sort().join(',');
+      const literal = fields === 'count,offset';
+      const indexed = fields === 'count_p,offset_p';
+      if (!literal && !(root && indexed)) throw new OrmError(codes.IR_INVALID, 'limit needs exactly offset and count');
+      if (literal && root) {
+        const offset = q.limit.offset;
+        const count = q.limit.count;
+        if (typeof offset !== 'number' || typeof count !== 'number' || !Number.isSafeInteger(offset) || !Number.isSafeInteger(count)) throw new OrmError(codes.CODEC_ENCODE, 'page offset and count must be safe integers');
+        if (offset < 0 || count <= 0) throw new OrmError(codes.IR_INVALID, 'limit offset>=0, count>0');
+        out.limit = { offset_p: this.pageValue(offset), count_p: this.pageValue(count) };
+      } else if (indexed) {
+        const offset = q.limit.offset_p;
+        const count = q.limit.count_p;
+        if (typeof offset !== 'number' || typeof count !== 'number') throw new OrmError(codes.IR_INVALID, 'limit needs exactly offset and count');
+        out.limit = { offset_p: this.pageIndex(offset, 'offset'), count_p: this.pageIndex(count, 'count') };
+      } else out.limit = { ...q.limit };
+    }
     if (q.if_parent !== undefined) out.if_parent = { ...q.if_parent, p: this.index(q.if_parent.p) };
     return out;
   }

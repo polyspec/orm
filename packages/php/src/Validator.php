@@ -54,7 +54,7 @@ final class Validator
         ],
         'ColRef' => ['path' => 'string', 'column' => 'string'],
         'Order' => ['column' => 'string', 'desc' => 'bool', 'random' => 'bool', 'fn' => 'Func'],
-        'Limit' => ['offset' => 'int', 'count' => 'int'],
+        'Limit' => ['offset' => 'int', 'count' => 'int', 'offset_p' => 'int', 'count_p' => 'int'],
         'IfParent' => ['column' => 'string', 'p' => 'int'],
         'Assign' => ['column' => 'string', 'p' => 'int', 'null' => 'bool', 'plus_p' => 'int', 'minus_p' => 'int'],
         'Optimist' => ['column' => 'string', 'p' => 'int'],
@@ -140,7 +140,7 @@ final class Validator
         }
         $this->n = $r['n_params'] ?? 0;
         $root = $this->scopes($r);
-        $this->query($r, ['root' => $root, 'outer' => null, 'node' => $root], false, false);
+        $this->query($r, ['root' => $root, 'outer' => null, 'node' => $root], false, false, true);
         if (($r['lock'] ?? '') !== '' && $kind !== 'one' && $kind !== 'all') {
             throw self::err(Code::IR_INVALID, 'row lock is only valid on one or all');
         }
@@ -699,7 +699,7 @@ final class Validator
     }
 
     /** query checks q. $at is the place in q (see ref). */
-    private function query(array $q, array $at, bool $isJoin, bool $isRelation): void
+    private function query(array $q, array $at, bool $isJoin, bool $isRelation, bool $rootPage = false): void
     {
         $entity = $q['entity'] ?? '';
         $ent = $this->m->entities[$entity] ?? throw self::err(Code::ENTITY_UNKNOWN, $entity);
@@ -770,7 +770,7 @@ final class Validator
             }
             $joined[$rel] = $j;
             $this->query($j['query'], ['root' => $at['root'], 'outer' => $at['outer'],
-                'node' => $at['node']['joins'][$rel]], true, false);
+                'node' => $at['node']['joins'][$rel]], true, false, false);
         }
         if (!$isJoin && isset($q['on'])) {
             throw self::err(Code::IR_INVALID, 'on[] is only valid on join children');
@@ -858,7 +858,7 @@ final class Validator
                 );
             }
             $scope = $this->scopes($child);
-            $this->query($child, ['root' => $scope, 'outer' => null, 'node' => $scope], false, true);
+            $this->query($child, ['root' => $scope, 'outer' => null, 'node' => $scope], false, true, false);
         }
         $keyBy = $q['key_by'] ?? '';
         if ($keyBy !== '') {
@@ -909,8 +909,18 @@ final class Validator
                 }
             }
         }
-        if (isset($q['limit']) && (($q['limit']['offset'] ?? 0) < 0 || ($q['limit']['count'] ?? 0) <= 0)) {
-            throw self::err(Code::IR_INVALID, 'limit offset>=0, count>0');
+        if (isset($q['limit'])) {
+            $limit = $q['limit'];
+            $fields = array_keys($limit);
+            sort($fields, SORT_STRING);
+            if (in_array('offset_p', $fields, true) || in_array('count_p', $fields, true)) {
+                if (!$rootPage || $fields !== ['count_p', 'offset_p']) {
+                    throw self::err(Code::IR_INVALID, 'limit needs exactly offset and count parameters on the root query');
+                }
+                $this->params([$limit['offset_p'], $limit['count_p']]);
+            } elseif ($fields !== ['count', 'offset'] || $limit['offset'] < 0 || $limit['count'] <= 0) {
+                throw self::err(Code::IR_INVALID, 'limit offset>=0, count>0');
+            }
         }
         $lock = $q['lock'] ?? '';
         if ($lock !== '' && !in_array($lock, ['update', 'share', 'update_nowait', 'share_nowait'], true)) {
@@ -1217,7 +1227,7 @@ final class Validator
             }
         }
         $scope = $this->scopes($q);
-        $this->query($q, ['root' => $scope, 'outer' => $outer, 'node' => $scope], false, false);
+        $this->query($q, ['root' => $scope, 'outer' => $outer, 'node' => $scope], false, false, false);
     }
 
     private static function joinedRefs(array $g, array &$seen): void

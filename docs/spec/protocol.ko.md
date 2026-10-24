@@ -1,5 +1,5 @@
 <!-- doc-id: protocol -->
-<!-- source-sha256: 1475f4299345b9fee24625d870e1246c9f1347fdc594dc3c4006326e9a619876 -->
+<!-- source-sha256: 94f95bb0d9aebf56f86aa2e726c1885745799567d171f5c6d03a3ff93e723224 -->
 # IR과 Plan 프로토콜
 
 클라이언트는 [DSL](dsl.md)로 만든 모델을 아래 요청으로 변환하고, 호출한 프로세스 안에서 요청을 plan으로 계획한 뒤 요청 형태를 키로 plan을 캐시한다. 타입 정의는 `packages/go/engine/ir/ir.go`와 `packages/go/engine/plan/plan.go`를 기준으로 하며, 모든 클라이언트가 같은 필드를 구현한다.
@@ -18,7 +18,7 @@
   "relations": [Relation],
   "order": [Order],
   "group_by": ["user_seq"],
-  "limit": {"offset": 0, "count": 20},
+  "limit": {"offset_p": 6, "count_p": 7},
   "force_index": "ix_service",
   "lock": "update | share | update_nowait | share_nowait",
   "agg": "read_count",
@@ -31,7 +31,7 @@
 }
 ```
 
-요청에는 값이 들어가지 않는다. 모든 값은 클라이언트가 가진 매개변수 목록의 위치이며, `n_params`는 그 목록의 길이다. 따라서 plan은 값과 무관하다.
+요청에는 값이 들어가지 않는다. 모든 값은 클라이언트가 가진 매개변수 목록의 위치이며, `n_params`는 그 목록의 길이다. 따라서 plan은 값과 무관하다. 공개 `limit(offset, count)` 호출은 정수 literal을 받는다. canonicalization은 루트 query의 페이지 limit만 정확한 `{"offset_p": N, "count_p": M}` 쌍으로 바꾸고 offset과 count를 `i64` 매개변수로 추가한다. 전체 매개변수 순회는 `columns.fn`의 출력 이름 정렬 순, `columns.sub`의 출력 이름 정렬 순과 각 subquery의 재귀 순회, `on`, `where`, 배열 순서대로 join과 재귀 순회, 배열 순서대로 relation과 재귀 순회, order 함수, 루트 페이지 offset과 count, `if_parent.p`, 요청 `set`, `on_duplicate`, `rows`, `optimistic.p`, 원래 순서의 미사용 매개변수 순이다. MySQL은 offset, count 순으로 렌더링하고 bind하며 PostgreSQL과 SQLite는 count, offset 순으로 렌더링하고 bind한다. 잘못된 쌍이나 범위를 벗어난 인덱스는 `IR_INVALID`이다. null, boolean, text, 소수 또는 공통 안전 정수 범위를 벗어난 bind 값은 `CODEC_ENCODE`이고, 음수 offset이나 0 이하 count는 `IR_INVALID`이다. 공개 builder에 잘못된 limit을 주면 `CONFIG`다. 모든 plan-cache 조회 전에 검증한다. 스칼라 컬럼 subquery는 count 1의 literal limit을 유지하고, 암시적 `one` limit은 `LIMIT 1`이며 `paginate`의 count 문장에는 페이지 bind가 없다.
 
 모든 클라이언트는 요청을 엄격하게 decode한다. 최상위나 어떤 객체(`ref`, `pred`, item, group, order item, `limit`, join, relation, 할당) 안에서든 그 객체가 정의하지 않은 member는 `IR_INVALID`이고, JSON type이 틀린 member도 그렇다: 문자열이 아닌 `column`, `agg`, `entity`, `op`, 정수가 아닌 매개변수 위치나 개수(`0.0`이나 `1e1`처럼 literal이 정수가 아닌 수도 포함한다. TypeScript는 literal을 지키는 ordered-json으로 요청 text를 읽는다), 배열이 아닌 목록 member, 객체가 아닌 객체 member가 그 예다. `sum`과 `avg`는 column을 `agg`에 적으므로 `sum` 요청의 `column`은 정의되지 않은 member다. 이 형태 검사는 다른 모든 규칙보다 먼저 하므로, type이 틀린 이름의 요청은 `COLUMN_UNKNOWN`이나 `ENTITY_UNKNOWN`이 아니라 `IR_INVALID`로 실패한다. null인 member는 없는 것과 같다. `tests/ir/validate.json`(`shape-*` case)이 이 사례를 담고, Go, PHP, Rust, TypeScript, Python이 이를 실행한다.
 
@@ -97,7 +97,7 @@ Sub   = {"query": Query, "column": "user_seq", "agg": "sum | avg | count"}
 
 - **PRT-16** `conn`은 항목을 같은 그룹의 이전 항목에 연결한다. 첫 항목에는 연결자가 없다. `or`를 가진 첫 항목은 `OR_AT_GROUP_START`로, `and`를 가진 첫 항목은 `IR_INVALID`로 실패한다. top-level `where`나 `on` 그룹은 이전 형제가 없으므로 그 자신의 `conn`은 `IR_INVALID`로 실패한다.
 - **PRT-17** `ref.path`는 SQL 문장 루트에서 시작하는 조인 경로(`""`는 루트, `a/b`는 중첩 조인)이거나, 서브쿼리를 소유한 모델을 뜻하는 `^`다. relation과 서브쿼리는 자기 문장이므로 그 `""`는 자기 루트다. 검증은 요청 종류가 render하지 않는 relation이나 서브쿼리 안의 ref도 모두 푼다. 조인되지 않은 이름을 지나는 경로는 `ENTITY_NOT_JOINED`, 서브쿼리 밖의 `^`는 `IR_INVALID`, 대상 모델에 없는 column은 `COLUMN_UNKNOWN`으로 실패한다.
-- **PRT-18** `tests/ir/validate.json`의 공유 case가 검증 규칙을 고정한다. 모든 클라이언트가 각자 자기 패키지에서(Go는 `packages/go/engine/ir`에서) 이 파일을 읽어 각 요청을 자기 검증기에만 준다. PHP 확장 `polyspec_orm`은 dbspec 표면만 구현하고(`packages/php-ext/src/polyspec_orm.stub.php`) 요청 검증기가 없다. PHP 프로그램은 PHP 클라이언트의 `Polyspec\Orm\Validator`로 요청을 검증하고 계획한다.
+- **PRT-18** `tests/ir/validate.json`의 공유 case가 검증 규칙을 고정한다. Go, PHP, Rust, TypeScript, Python은 각자 자기 패키지에서 파일을 읽어 각 요청을 자기 검증기에만 준다. PHP 확장도 요청 검증과 계획을 native code로 구현한다. 공유 PHP request 및 plan 테스트는 `ORM_PHP_MODE=extension`에서 실행하고 `Request::canonicalize`, `Planner::compile`이 internal 메서드인지 확인한다.
 - **PRT-19** `fn`은 `p`와 비교하기 전에 `column`에 컬럼 함수를 적용한다. `value`는 `column`을 값 함수와 비교한다. 0001-01-01부터 9999-12-31 23:59:59.999999 밖이거나 그 폭을 넘는 interval의 상대 시간 함수는 NULL이므로 비교도 그 부정도 어떤 행과도 맞지 않는다([dialects](dialects.ko.md)). 함수는 구조만 전달하며 각 dialect가 [dialect](dialects.md)의 설명대로 SQL을 만든다. 알 수 없는 함수는 `FUNCTION_UNKNOWN`을 반환한다.
 - **PRT-20** 열 비교의 두 컬럼, 컬럼 `in`/`not_in` subquery 컬럼, join의 `left`와 `right`, 각 relation key 쌍은 dbspec check 피연산자가 만나는 대로([dbspec](dbspec.md)) 만난다: 정수는 정수와, `decimal`은 같은 scale의 `decimal`과, `f64`, `bool`, `varchar`와 `text`는 서로, `uuid`, `date`, 같은 precision의 `time` 또는 `datetime`, `bytes`는 `bytes`와 만난다. 그 밖의 쌍은 `OPERATOR_NOT_ALLOWED`로 실패한다. database마다 답이 다르기 때문이다(PostgreSQL은 `integer = varchar`를 거절하고 MySQL은 강제 변환하며 SQLite는 affinity로 비교한다). validator는 dbspec check 검증의 표를 읽으며, conformance vector `column_pairs`가 두 종류의 쌍을 모두 실행한다.
 - **PRT-21** 스칼라 컬럼 subquery(`agg` 없는 `columns.sub`)는 count가 1인 `limit`(`offset`은 무엇이든)과, 모든 primary key 컬럼을 포함하고 `random` 항목이 없는 `order`를 가지므로 모든 database에서 많아야 한 행을 내고 일치하는 행이 없으면 NULL이다. 그것이 없으면 요청은 `IR_INVALID`이다. 여러 행에 MySQL은 1242, PostgreSQL은 21000으로 답하고 SQLite는 첫 행을 돌려주기 때문이다. `limit`은 `in` subquery(MySQL 1235)와 집계 subquery에서는 계속 `IR_INVALID`이다.
@@ -106,6 +106,7 @@ Sub   = {"query": Query, "column": "user_seq", "agg": "sum | avg | count"}
 - **PRT-24** 요청은 SQL text를 싣지 않는다. 모든 조건, 출력, 정렬, 그룹, 할당은 위 형식 중 하나이며 plan의 모든 bind slot은 dbspec type을 가진다.
 - **PRT-25** `contains`와 `contains_binary`는 값을 와일드카드 사이에 바인드한다. `contains`는 ASCII 글자를 대소문자 구분 없이, 다른 모든 문자를 code point로 비교하고, `contains_binary`는 code point로 비교한다([dialects](dialects.md)).
 - **PRT-77** **값 함수.** `Func`의 값 함수는 `name`에 함수 이름을 쓴다. ORM 값 함수의 snake_case 이름(`seconds_ago`, `now`)이다. 인자의 요청 매개변수 인덱스는 `ps`에 쓴다. 인자가 없는 함수에는 `ps`가 없다. `now`는 `{"name": "now"}`다.
+- **PRT-78** canonical 루트 페이지 limit에는 `offset_p`와 `count_p` 인덱스가 정확히 하나씩 있다. literal `offset`과 `count`는 canonicalization 전 공개 builder 입력에만 허용하고 스칼라 컬럼 subquery에서만 literal로 유지한다. 페이지 값이 달라도 같은 query 구조면 하나의 cached plan을 공유한다.
 
 ### 1.4 정렬과 할당
 

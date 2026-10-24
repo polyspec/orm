@@ -4,6 +4,7 @@
 #include "Zend/zend_interfaces.h"
 #include "ext/spl/spl_exceptions.h"
 #include "ext/json/php_json.h"
+#include <stdint.h>
 
 zend_class_entry *polyspec_request_ce;
 zend_class_entry *polyspec_styled_value_ce;
@@ -127,6 +128,77 @@ typedef struct {
 } request_walk;
 
 static bool request_node(request_walk *walk, zval *input, zval *output);
+static bool request_index(request_walk *walk, zend_long p, zend_long *result);
+
+static bool request_page_value(request_walk *walk, zval *value, const char *field, zend_long *slot)
+{
+    ZVAL_DEREF(value);
+    if (Z_TYPE_P(value) != IS_LONG || Z_LVAL_P(value) > INT64_C(9007199254740991) || Z_LVAL_P(value) < -INT64_C(9007199254740991)) {
+        return orm_types_throw("CODEC_ENCODE", "page offset and count must be safe integers");
+    }
+    if ((strcmp(field, "offset") == 0 && Z_LVAL_P(value) < 0) || (strcmp(field, "count") == 0 && Z_LVAL_P(value) <= 0)) {
+        return orm_types_throw("IR_INVALID", "limit offset>=0, count>0");
+    }
+    zval copy;
+    ZVAL_COPY(&copy, value);
+    if (zend_hash_next_index_insert(walk->out, &copy) == NULL) {
+        zval_ptr_dtor(&copy);
+        return false;
+    }
+    *slot = (zend_long)zend_hash_num_elements(walk->out) - 1;
+    return true;
+}
+
+static bool request_page_index(request_walk *walk, zval *value, const char *field, zend_long *slot)
+{
+    ZVAL_DEREF(value);
+    if (Z_TYPE_P(value) != IS_LONG || Z_LVAL_P(value) < 0 || (zend_ulong)Z_LVAL_P(value) >= zend_hash_num_elements(walk->params)) {
+        return orm_types_throw("IR_INVALID", "limit parameter index is out of range");
+    }
+    zval *param = zend_hash_index_find(walk->params, (zend_ulong)Z_LVAL_P(value));
+    if (param == NULL) {
+        return orm_types_throw("IR_INVALID", "limit parameter index is out of range");
+    }
+    ZVAL_DEREF(param);
+    if (Z_TYPE_P(param) != IS_LONG || Z_LVAL_P(param) > INT64_C(9007199254740991) || Z_LVAL_P(param) < -INT64_C(9007199254740991)) {
+        return orm_types_throw("CODEC_ENCODE", "page value must be a safe integer");
+    }
+    if ((strcmp(field, "offset") == 0 && Z_LVAL_P(param) < 0) || (strcmp(field, "count") == 0 && Z_LVAL_P(param) <= 0)) {
+        return orm_types_throw("IR_INVALID", "limit offset>=0, count>0");
+    }
+    return request_index(walk, Z_LVAL_P(value), slot);
+}
+
+static bool request_limit(request_walk *walk, zval *source, zval *output, bool root)
+{
+    ZVAL_DEREF(source);
+    if (Z_TYPE_P(source) != IS_ARRAY || array_is_list_native(Z_ARRVAL_P(source))) {
+        return orm_types_throw("IR_INVALID", "limit must be an object");
+    }
+    HashTable *limit = Z_ARRVAL_P(source);
+    bool literal = zend_hash_num_elements(limit) == 2 && zend_hash_str_exists(limit, "offset", sizeof("offset") - 1)
+        && zend_hash_str_exists(limit, "count", sizeof("count") - 1);
+    bool indexed = zend_hash_num_elements(limit) == 2 && zend_hash_str_exists(limit, "offset_p", sizeof("offset_p") - 1)
+        && zend_hash_str_exists(limit, "count_p", sizeof("count_p") - 1);
+    if (!literal && !(root && indexed)) {
+        return orm_types_throw("IR_INVALID", "limit needs exactly offset and count");
+    }
+    if (!root && literal) {
+        return request_node(walk, source, output);
+    }
+    zval *offset = zend_hash_str_find(limit, literal ? "offset" : "offset_p", literal ? sizeof("offset") - 1 : sizeof("offset_p") - 1);
+    zval *count = zend_hash_str_find(limit, literal ? "count" : "count_p", literal ? sizeof("count") - 1 : sizeof("count_p") - 1);
+    zend_long new_offset, new_count;
+    if (literal) {
+        if (!request_page_value(walk, offset, "offset", &new_offset) || !request_page_value(walk, count, "count", &new_count)) return false;
+    } else {
+        if (!request_page_index(walk, offset, "offset", &new_offset) || !request_page_index(walk, count, "count", &new_count)) return false;
+    }
+    array_init_size(output, 2);
+    add_assoc_long(output, "offset_p", new_offset);
+    add_assoc_long(output, "count_p", new_count);
+    return true;
+}
 
 static bool request_index(request_walk *walk, zend_long p, zend_long *result)
 {
@@ -270,6 +342,8 @@ static bool request_assoc(request_walk *walk, HashTable *input, zval *output)
 {
     zval keys, *op_value, *sub_value;
     zend_string *key;
+    bool is_query = zend_hash_str_exists(input, "entity", sizeof("entity") - 1);
+    bool is_root = is_query && zend_hash_str_exists(input, "manifest_hash", sizeof("manifest_hash") - 1);
     array_init_size(&keys, zend_hash_num_elements(input));
     zend_ulong numeric_key;
     ZEND_HASH_FOREACH_KEY(input, numeric_key, key) {
@@ -281,6 +355,41 @@ static bool request_assoc(request_walk *walk, HashTable *input, zval *output)
     } ZEND_HASH_FOREACH_END();
     /* Associative IR keys are strings; preserve unusual numeric keys in insertion order if any. */
     zend_hash_sort(Z_ARRVAL(keys), types_bucket_compare, 1);
+    zval result_keys;
+    ZVAL_COPY(&result_keys, &keys);
+    if (is_query) {
+        static const char *query_order[] = {
+            "columns", "on", "where", "joins", "relations", "order", "limit", "if_parent",
+            "set", "on_duplicate", "rows", "optimistic",
+        };
+        zval ordered_keys;
+        array_init_size(&ordered_keys, zend_hash_num_elements(Z_ARRVAL(keys)));
+        size_t order_count = is_root ? sizeof(query_order) / sizeof(query_order[0]) : 8;
+        for (size_t i = 0; i < order_count; i++) {
+            zend_string *field = zend_string_init(query_order[i], strlen(query_order[i]), 0);
+            if (zend_hash_exists(input, field)) add_next_index_str(&ordered_keys, field);
+            else zend_string_release(field);
+        }
+        zval *sorted_key;
+        ZEND_HASH_FOREACH_VAL(Z_ARRVAL(keys), sorted_key) {
+            bool scheduled = false;
+            if (Z_TYPE_P(sorted_key) == IS_STRING) {
+                for (size_t i = 0; i < order_count; i++) {
+                    if (zend_string_equals_cstr(Z_STR_P(sorted_key), query_order[i], strlen(query_order[i]))) {
+                        scheduled = true;
+                        break;
+                    }
+                }
+            }
+            if (!scheduled) {
+                zval copy;
+                ZVAL_COPY(&copy, sorted_key);
+                add_next_index_zval(&ordered_keys, &copy);
+            }
+        } ZEND_HASH_FOREACH_END();
+        zval_ptr_dtor(&keys);
+        ZVAL_COPY_VALUE(&keys, &ordered_keys);
+    }
 
     op_value = zend_hash_str_find(input, "op", sizeof("op") - 1);
     sub_value = zend_hash_str_find(input, "sub", sizeof("sub") - 1);
@@ -311,6 +420,7 @@ static bool request_assoc(request_walk *walk, HashTable *input, zval *output)
             && (key_equals(key, "p") || key_equals(key, "plus_p") || key_equals(key, "minus_p"))) {
             zend_long mapped;
             if (!request_index(walk, Z_LVAL_P(source), &mapped)) {
+                zval_ptr_dtor(&result_keys);
                 zval_ptr_dtor(&keys);
                 zval_ptr_dtor(output);
                 ZVAL_UNDEF(output);
@@ -320,6 +430,15 @@ static bool request_assoc(request_walk *walk, HashTable *input, zval *output)
         } else if (key != NULL && key_equals(key, "ps") && Z_TYPE_P(source) == IS_ARRAY) {
             bool ok = in_list ? request_list(walk, Z_ARRVAL_P(source), &transformed) : request_ints(walk, Z_ARRVAL_P(source), &transformed);
             if (!ok) {
+                zval_ptr_dtor(&result_keys);
+                zval_ptr_dtor(&keys);
+                zval_ptr_dtor(output);
+                ZVAL_UNDEF(output);
+                return false;
+            }
+        } else if (is_query && key != NULL && key_equals(key, "limit")) {
+            if (!request_limit(walk, source, &transformed, is_root)) {
+                zval_ptr_dtor(&result_keys);
                 zval_ptr_dtor(&keys);
                 zval_ptr_dtor(output);
                 ZVAL_UNDEF(output);
@@ -327,12 +446,14 @@ static bool request_assoc(request_walk *walk, HashTable *input, zval *output)
             }
         } else if (key != NULL && key_equals(key, "rows") && Z_TYPE_P(source) == IS_ARRAY) {
             if (!request_rows(walk, Z_ARRVAL_P(source), &transformed)) {
+                zval_ptr_dtor(&result_keys);
                 zval_ptr_dtor(&keys);
                 zval_ptr_dtor(output);
                 ZVAL_UNDEF(output);
                 return false;
             }
         } else if (!request_node(walk, source, &transformed)) {
+            zval_ptr_dtor(&result_keys);
             zval_ptr_dtor(&keys);
             zval_ptr_dtor(output);
             ZVAL_UNDEF(output);
@@ -346,25 +467,26 @@ static bool request_assoc(request_walk *walk, HashTable *input, zval *output)
     } ZEND_HASH_FOREACH_END();
     zval ordered;
     array_init_size(&ordered, zend_hash_num_elements(input));
-    zend_ulong ordered_index;
-    zend_string *ordered_key;
-    ZEND_HASH_FOREACH_KEY(input, ordered_index, ordered_key) {
-        zval *transformed = ordered_key == NULL
-            ? zend_hash_index_find(Z_ARRVAL_P(output), ordered_index)
-            : zend_hash_find(Z_ARRVAL_P(output), ordered_key);
-        if (transformed == NULL) {
-            continue;
+    zval *result_key;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL(result_keys), result_key) {
+        zval *transformed = NULL;
+        if (Z_TYPE_P(result_key) == IS_STRING) {
+            transformed = zend_hash_find(Z_ARRVAL_P(output), Z_STR_P(result_key));
+        } else {
+            transformed = zend_hash_index_find(Z_ARRVAL_P(output), (zend_ulong)Z_LVAL_P(result_key));
         }
+        if (transformed == NULL) continue;
         zval copy;
         ZVAL_COPY(&copy, transformed);
-        if (ordered_key == NULL) {
-            zend_hash_index_update(Z_ARRVAL(ordered), ordered_index, &copy);
+        if (Z_TYPE_P(result_key) == IS_STRING) {
+            zend_hash_update(Z_ARRVAL(ordered), Z_STR_P(result_key), &copy);
         } else {
-            zend_hash_update(Z_ARRVAL(ordered), ordered_key, &copy);
+            zend_hash_index_update(Z_ARRVAL(ordered), (zend_ulong)Z_LVAL_P(result_key), &copy);
         }
     } ZEND_HASH_FOREACH_END();
     zval_ptr_dtor(output);
     ZVAL_COPY_VALUE(output, &ordered);
+    zval_ptr_dtor(&result_keys);
     zval_ptr_dtor(&keys);
     return true;
 }

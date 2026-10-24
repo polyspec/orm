@@ -37,11 +37,12 @@ final class Engine
     /** The plan of a value-free request (docs/spec/protocol.md). */
     public function plan(array $ir): array
     {
+        $this->validator->validate($ir);
         $shape = json_encode($ir, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION);
         if (isset($this->plans[$shape])) {
             return $this->plans[$shape];
         }
-        $plan = $this->compile($ir);
+        $plan = $this->planner->compile($ir);
         Assemble::index($plan, $this->model);
         $this->plans[$shape] = $plan;
         if (count($this->plans) > $this->cacheSize) {

@@ -205,10 +205,20 @@ pub struct Order {
     pub r#fn: Option<Func>,
 }
 
-#[derive(Serialize, Debug, Clone, Default)]
-pub struct Limit {
-    pub offset: u32,
-    pub count: u32,
+#[derive(Serialize, Debug, Clone)]
+#[serde(untagged)]
+pub enum Limit {
+    Literal { offset: u32, count: u32 },
+    Params { offset_p: usize, count_p: usize },
+}
+
+impl Limit {
+    pub(crate) fn literal_count(&self) -> Option<u32> {
+        match self {
+            Self::Literal { count, .. } => Some(*count),
+            Self::Params { .. } => None,
+        }
+    }
 }
 
 #[derive(Serialize, Debug, Clone, Default)]

@@ -14,6 +14,8 @@ type Dialect interface {
 	Like(col, ph string) string
 	// Limit renders LIMIT/OFFSET.
 	Limit(offset, count int) string
+	// LimitParams renders a paged read whose offset and count are bound placeholders.
+	LimitParams(offset, count string) string
 	// ForceIndex renders an index hint or "" when unsupported.
 	ForceIndex(name string) string
 	// RowNumber renders ROW_NUMBER() OVER (PARTITION BY p ORDER BY o).

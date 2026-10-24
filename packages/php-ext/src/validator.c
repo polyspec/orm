@@ -447,7 +447,9 @@ static const field_t PRED_FIELDS[] = {
 };
 static const field_t COLREF_FIELDS[] = {{"path", "string"}, {"column", "string"}};
 static const field_t ORDER_FIELDS[] = {{"column", "string"}, {"desc", "bool"}, {"random", "bool"}, {"fn", "Func"}};
-static const field_t LIMIT_FIELDS[] = {{"offset", "int"}, {"count", "int"}};
+static const field_t LIMIT_FIELDS[] = {
+    {"offset", "int"}, {"count", "int"}, {"offset_p", "int"}, {"count_p", "int"},
+};
 static const field_t IFPARENT_FIELDS[] = {{"column", "string"}, {"p", "int"}};
 static const field_t ASSIGN_FIELDS[] = {{"column", "string"}, {"p", "int"}, {"null", "bool"}, {"plus_p", "int"}, {"minus_p", "int"}};
 static const field_t OPTIMIST_FIELDS[] = {{"column", "string"}, {"p", "int"}};
@@ -1810,7 +1812,16 @@ static bool query(vctx *c, HashTable *q, const vat *at, bool is_join, bool is_re
     }
     if (has(q, "limit")) {
         HashTable *lim = ha(get(q, "limit"));
-        if (num(lim, "offset", 0) < 0 || num(lim, "count", 0) <= 0) {
+        bool indexed = has(lim, "offset_p") || has(lim, "count_p");
+        if (indexed) {
+            if (is_join || is_relation || at->outer != NULL || zend_hash_num_elements(lim) != 2
+                || !has(lim, "offset_p") || !has(lim, "count_p")) {
+                return fail(IR_INVALID, "limit needs exactly offset and count parameters on the root query");
+            }
+            TRY(params_one(c, num(lim, "offset_p", -1)));
+            TRY(params_one(c, num(lim, "count_p", -1)));
+        } else if (zend_hash_num_elements(lim) != 2 || !has(lim, "offset") || !has(lim, "count")
+            || num(lim, "offset", 0) < 0 || num(lim, "count", 0) <= 0) {
             return fail(IR_INVALID, "limit offset>=0, count>0");
         }
     }

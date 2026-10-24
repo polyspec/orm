@@ -364,7 +364,20 @@ export class Planner {
       } else {
         sql += this.renderOrder(b, root, q);
         if (kind === 'one' && rc === undefined) sql += this.d.limit(0, 1);
-        else if (q.limit) sql += this.d.limit(q.limit.offset, q.limit.count);
+        else if (q.limit) {
+          if ('offset_p' in q.limit && 'count_p' in q.limit) {
+            let offset: string;
+            let count: string;
+            if (this.d.name === 'mysql') {
+              offset = b.param(q.limit.offset_p, 'i64');
+              count = b.param(q.limit.count_p, 'i64');
+            } else {
+              count = b.param(q.limit.count_p, 'i64');
+              offset = b.param(q.limit.offset_p, 'i64');
+            }
+            sql += this.d.limit(offset, count);
+          } else sql += this.d.limit(q.limit.offset, q.limit.count);
+        }
         const lock = q.lock ?? '';
         if (lock !== '') {
           const suffix = this.d.rowLock(lock);
@@ -733,7 +746,10 @@ export class Planner {
     this.collectJoinWhere(b, root, where);
     if (where.length > 0) sql += ` WHERE ${where.join(' AND ')}`;
     // A scalar column subquery is ordered and limited to one row, which the validator has checked.
-    if ((sub.agg ?? '') === '' && sub.query.limit) sql += this.renderOrder(b, root, sub.query) + this.d.limit(sub.query.limit.offset, sub.query.limit.count);
+    if ((sub.agg ?? '') === '' && sub.query.limit) {
+      if ('offset_p' in sub.query.limit || 'count_p' in sub.query.limit) fail(codes.IR_INVALID, 'only the root page limit may use parameter slots');
+      sql += this.renderOrder(b, root, sub.query) + this.d.limit(sub.query.limit.offset, sub.query.limit.count);
+    }
     return sql;
   }
 

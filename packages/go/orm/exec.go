@@ -86,6 +86,14 @@ func (d *DB) plan(r *request) (*cached, error) {
 			return nil, err
 		}
 	}
+	if err := eng.Validate(&r.ir); err != nil {
+		return nil, err
+	}
+	if l := r.ir.Limit; l != nil && l.OffsetP != nil && l.CountP != nil {
+		if err := validatePageValues(r.params, *l.OffsetP, *l.CountP); err != nil {
+			return nil, err
+		}
+	}
 	key := shapeKey(&r.ir)
 	d.m.planMu.RLock()
 	c, ok := d.plans[key]

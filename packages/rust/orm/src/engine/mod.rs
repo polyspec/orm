@@ -225,6 +225,34 @@ mod tests {
         Manifest::load(&set.manifest_text, &set.manifest_hash).unwrap()
     }
 
+    #[test]
+    fn paged_reads_bind_root_limit_values_in_dialect_order() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let m = restore_manifest();
+        let request = ir::Request {
+            ir_version: 1,
+            manifest_hash: m.manifest_hash.clone(),
+            kind: "all".into(),
+            query: ir::Query { entity: "tag".into(), limit: Some(ir::Limit::Params { offset_p: 0, count_p: 1 }), ..Default::default() },
+            n_params: 2,
+            ..Default::default()
+        };
+        for (dialect, sql, params) in [
+            (Dialect::MySql, "LIMIT ?, ?", vec![0, 1]),
+            (Dialect::Postgres, "LIMIT $1 OFFSET $2", vec![1, 0]),
+            (Dialect::Sqlite, "LIMIT ? OFFSET ?", vec![1, 0]),
+        ] {
+            let plan = compile(&m, dialect, &request).unwrap();
+            let step = &plan.steps[0];
+            assert!(step.sql.contains(sql), "{dialect:?}: {}", step.sql);
+            assert_eq!(step.bind_slots.iter().map(|slot| slot.param).collect::<Vec<_>>(), params);
+            assert!(step.bind_slots.iter().all(|slot| slot.col_type == "i64"), "{dialect:?}: {:?}", step.bind_slots);
+        }
+        let mut bad_index = request.clone();
+        bad_index.query.limit = Some(ir::Limit::Params { offset_p: 2, count_p: 1 });
+        assert_eq!(compile(&m, Dialect::Sqlite, &bad_index).unwrap_err().code(), crate::codes::IR_INVALID);
+    }
+
     /// A request that restores an entity by (conn, column, op) conditions. Unless is_null, each condition has one param.
     fn restore_request(m: &Manifest, entity: &str, preds: &[(&str, &str, &str)]) -> ir::Request {
         let mut n = 0;

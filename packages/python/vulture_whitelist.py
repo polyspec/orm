@@ -70,6 +70,8 @@ _.flatten
 _.limit_per_parent
 _.no_cascade_delete
 _.ir_version
+_.offset_p  # PRT-78 page-limit IR field, read dynamically by key before cache lookup
+_.count_p  # PRT-78 page-limit IR field, read dynamically by key before cache lookup
 _.on_duplicate
 _.n_params
 _.plus_p

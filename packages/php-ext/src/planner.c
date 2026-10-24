@@ -2298,8 +2298,30 @@ static pstep *select_step(pctx *c, zval *steps, HashTable *q, const char *kind, 
                 sql = fmt(c, "%s%s", ZSTR_VAL(sql), ZSTR_VAL(lim));
             } else if (isset_(q, "limit")) {
                 HashTable *lh = ga(q, "limit");
-                zval a[2] = {*Zl(c, gl(lh, "offset", 0)), *Zl(c, gl(lh, "count", 0))};
-                zend_string *lim = Ds(c, "limit", 2, a);
+                zend_string *lim;
+                if (isset_(lh, "offset_p") && isset_(lh, "count_p")) {
+                    zend_string *type = zend_string_init("i64", sizeof("i64") - 1, 0);
+                    zend_string *empty = ZSTR_EMPTY_ALLOC();
+                    zend_string *offset, *count;
+                    zval name_rv;
+                    zval *name = zend_read_property(Z_OBJCE_P(c->dialect), Z_OBJ_P(c->dialect), "name", sizeof("name") - 1, 0, &name_rv);
+                    bool mysql = name != NULL && Z_TYPE_P(name) == IS_STRING && zend_string_equals_literal(Z_STR_P(name), "mysql");
+                    if (mysql) {
+                        offset = b_param(c, b, gl(lh, "offset_p", -1), type, empty, NULL);
+                        count = b_param(c, b, gl(lh, "count_p", -1), type, empty, NULL);
+                    } else {
+                        count = b_param(c, b, gl(lh, "count_p", -1), type, empty, NULL);
+                        offset = b_param(c, b, gl(lh, "offset_p", -1), type, empty, NULL);
+                    }
+                    zend_string_release(type);
+                    zend_string_release(empty);
+                    if (offset == NULL || count == NULL) return NULL;
+                    zval a[2] = {*Zs(c, offset), *Zs(c, count)};
+                    lim = Ds(c, "limitParams", 2, a);
+                } else {
+                    zval a[2] = {*Zl(c, gl(lh, "offset", 0)), *Zl(c, gl(lh, "count", 0))};
+                    lim = Ds(c, "limit", 2, a);
+                }
                 OKP(lim);
                 sql = fmt(c, "%s%s", ZSTR_VAL(sql), ZSTR_VAL(lim));
             }

@@ -347,7 +347,19 @@ func (p *Planner) selectStep(ps *stepSet, q *ir.Query, kind, agg string, rc *rel
 			case kind == "one" && rc == nil:
 				sb.WriteString(p.D.Limit(0, 1))
 			case q.Limit != nil:
-				sb.WriteString(p.D.Limit(q.Limit.Offset, q.Limit.Count))
+				if q.Limit.OffsetP != nil && q.Limit.CountP != nil {
+					var offset, count string
+					if p.D.Name() == "mysql" {
+						offset = b.param(*q.Limit.OffsetP, "i64")
+						count = b.param(*q.Limit.CountP, "i64")
+					} else {
+						count = b.param(*q.Limit.CountP, "i64")
+						offset = b.param(*q.Limit.OffsetP, "i64")
+					}
+					sb.WriteString(p.D.LimitParams(offset, count))
+				} else {
+					sb.WriteString(p.D.Limit(q.Limit.Offset, q.Limit.Count))
+				}
 			}
 			if q.Lock != "" {
 				lock, ok := p.D.RowLock(q.Lock)

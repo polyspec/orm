@@ -10,12 +10,13 @@ import (
 // AES and hex are host-side; IP packing remains SQL-side.
 type MySQL struct{}
 
-func (MySQL) Name() string                   { return "mysql" }
-func (MySQL) Quote(ident string) string      { return QuoteWith("`", ident) }
-func (MySQL) Placeholder(int) string         { return "?" }
-func (MySQL) Limit(offset, count int) string { return fmt.Sprintf(" LIMIT %d, %d", offset, count) }
-func (MySQL) ForceIndex(name string) string  { return " FORCE INDEX (" + QuoteWith("`", name) + ")" }
-func (MySQL) InsertReturningID() bool        { return false }
+func (MySQL) Name() string                            { return "mysql" }
+func (MySQL) Quote(ident string) string               { return QuoteWith("`", ident) }
+func (MySQL) Placeholder(int) string                  { return "?" }
+func (MySQL) Limit(offset, count int) string          { return fmt.Sprintf(" LIMIT %d, %d", offset, count) }
+func (MySQL) LimitParams(offset, count string) string { return " LIMIT " + offset + ", " + count }
+func (MySQL) ForceIndex(name string) string           { return " FORCE INDEX (" + QuoteWith("`", name) + ")" }
+func (MySQL) InsertReturningID() bool                 { return false }
 func (MySQL) Now(precision int) string {
 	if precision > 0 {
 		return fmt.Sprintf("CURRENT_TIMESTAMP(%d)", precision)

@@ -171,8 +171,10 @@ type Order struct {
 }
 
 type Limit struct {
-	Offset int `json:"offset"`
-	Count  int `json:"count"`
+	Offset  int  `json:"offset,omitempty"`
+	Count   int  `json:"count,omitempty"`
+	OffsetP *int `json:"offset_p,omitempty"`
+	CountP  *int `json:"count_p,omitempty"`
 }
 
 type IfParent struct {
@@ -331,7 +333,7 @@ func Validate(m *runtimemodel.Model, r *Request) error {
 		return errf("IR_INVALID", "restart_identity takes no set, rows, on_duplicate, where or optimistic")
 	}
 	v := &validator{m: m, n: r.NParams, root: &r.Query}
-	if err := v.query(&r.Query, v.scopes(&r.Query, nil, nil), false, false); err != nil {
+	if err := v.query(&r.Query, v.scopes(&r.Query, nil, nil), false, false, true); err != nil {
 		return err
 	}
 	if r.Lock != "" && r.Kind != "one" && r.Kind != "all" {
@@ -668,7 +670,7 @@ func (v *validator) params(ps []int) error {
 
 // query validates one Query and its subtrees. s is the scope of q in its
 // statement (v.scopes), against which column-to-column refs resolve.
-func (v *validator) query(q *Query, s *scope, isJoin, isRelation bool) error {
+func (v *validator) query(q *Query, s *scope, isJoin, isRelation, root bool) error {
 	ent, ok := v.m.Entities[q.Entity]
 	if !ok {
 		return errf("ENTITY_UNKNOWN", "%s", q.Entity)
@@ -732,7 +734,7 @@ func (v *validator) query(q *Query, s *scope, isJoin, isRelation bool) error {
 			return errf("OPERATOR_NOT_ALLOWED", "join %s: %s.%s (%s) does not meet %s.%s (%s)", j.Rel, ent.Name, j.Left, ent.Field(j.Left).Type, target.Name, j.Right, target.Field(j.Right).Type)
 		}
 		joined[j.Rel] = j
-		if err := v.query(j.Query, s.joins[j.Rel], true, false); err != nil {
+		if err := v.query(j.Query, s.joins[j.Rel], true, false, false); err != nil {
 			return err
 		}
 	}
@@ -805,7 +807,7 @@ func (v *validator) query(q *Query, s *scope, isJoin, isRelation bool) error {
 		if r.Query.IfParent != nil && ent.Field(r.Query.IfParent.Column) == nil {
 			return errf("COLUMN_UNKNOWN", "%s.%s (if_parent)", q.Entity, r.Query.IfParent.Column)
 		}
-		if err := v.query(r.Query, v.scopes(r.Query, nil, nil), false, true); err != nil {
+		if err := v.query(r.Query, v.scopes(r.Query, nil, nil), false, true, false); err != nil {
 			return err
 		}
 	}
@@ -867,8 +869,18 @@ func (v *validator) query(q *Query, s *scope, isJoin, isRelation bool) error {
 			}
 		}
 	}
-	if q.Limit != nil && (q.Limit.Offset < 0 || q.Limit.Count <= 0) {
-		return errf("IR_INVALID", "limit offset>=0, count>0")
+	if q.Limit != nil {
+		l := q.Limit
+		if l.OffsetP != nil || l.CountP != nil {
+			if !root || l.OffsetP == nil || l.CountP == nil || l.Offset != 0 || l.Count != 0 {
+				return errf("IR_INVALID", "limit needs exactly offset and count parameters on the root query")
+			}
+			if err := v.params([]int{*l.OffsetP, *l.CountP}); err != nil {
+				return err
+			}
+		} else if l.Offset < 0 || l.Count <= 0 {
+			return errf("IR_INVALID", "limit offset>=0, count>0")
+		}
 	}
 	if q.Lock != "" && q.Lock != "update" && q.Lock != "share" && q.Lock != "update_nowait" && q.Lock != "share_nowait" {
 		return errf("IR_INVALID", "lock %q: want update, share, update_nowait or share_nowait", q.Lock)
@@ -1180,7 +1192,7 @@ func (v *validator) sub(s *Sub, scalar bool, outer *scope) error {
 			}
 		}
 	}
-	return v.query(s.Query, v.scopes(s.Query, nil, outer), false, false)
+	return v.query(s.Query, v.scopes(s.Query, nil, outer), false, false, false)
 }
 
 // joinedRefs checks that each join referenced by a group appears once.

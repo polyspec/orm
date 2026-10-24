@@ -125,8 +125,10 @@ class IROrder(TypedDict):
 
 
 class IRLimit(TypedDict):
-    offset: int
-    count: int
+    offset: NotRequired[int]
+    count: NotRequired[int]
+    offset_p: NotRequired[int]
+    count_p: NotRequired[int]
 
 
 class IRIfParent(TypedDict):
