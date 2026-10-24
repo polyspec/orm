@@ -333,7 +333,7 @@ function dbspec_write_positions(string $dbspec, array $cases): void
  * @param array<string, list<array<string, mixed>>> $cases
  * @return array<string, array{0: string, 1: array<string, string>}>
  */
-function dbspec_syntax_inputs(array $cases): array
+function dbspec_compare_syntax_inputs(array $cases): array
 {
     $inputs = [];
     foreach (['canonical', 'normalize', 'invalid'] as $kind) {
@@ -389,7 +389,7 @@ function dbspec_syntax_inputs(array $cases): array
 function dbspec_write_syntax(string $dbspec, array $cases, string $syntaxPath): void
 {
     $ids = dbspec_read_vectors($syntaxPath, 'syntax')['cases'];
-    $inputs = dbspec_syntax_inputs($cases);
+    $inputs = dbspec_compare_syntax_inputs($cases);
     foreach ($ids as $i => ['id' => $id]) {
         if (!array_key_exists($id, $inputs)) {
             dbspec_vector_fail($syntaxPath, "cases[$i].id", 'names no input of the shared cases');

@@ -106,18 +106,18 @@ final class DbspecManifestTest extends TestCase
     #[DataProvider('hashesCases')]
     public function testHashes(array $case): void
     {
+        require_once dirname(__DIR__) . '/testing/dbspec/compare/php-interface.php';
+        ob_start();
+        $documents = dbspec_parse_document_set(Dbspec::class, $case);
+        $parseOutput = (string) ob_get_clean();
+        self::assertNotNull($documents, "{$case['id']}: valid documents were rejected\n$parseOutput");
+        self::assertSame('', $parseOutput, "{$case['id']}: valid documents emitted diagnostics");
         $names = array_keys($case['documents']);
         sort($names, SORT_STRING);
-        $documents = [];
-        foreach ($names as $name) {
-            $set = [];
-            foreach ($case['documents'] as $other => $lines) {
-                if ($other !== $name) {
-                    $set[$other] = manifest_text($lines);
-                }
-            }
-            $documents[] = manifest_parsed("{$case['id']}/$name", $case['documents'][$name], $set);
-        }
+        self::assertSame(
+            $names,
+            array_map(static fn(Document $document): string => $document->name, $documents)
+        );
         manifest_expect($case, $documents);
         // The set is ordered by document name, not by the order given.
         manifest_expect($case, array_reverse($documents));
