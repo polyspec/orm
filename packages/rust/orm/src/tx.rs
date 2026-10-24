@@ -1106,6 +1106,28 @@ mod tests {
     use super::*;
     use polyspec_orm_testcase::OrPanic;
 
+    async fn probe_row_count(db: &Db) -> i64 {
+        match db.pool() {
+            Pool::MySql(pool) => sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM orm_once_probe").fetch_one(pool).await.unwrap(),
+            Pool::Postgres(pool) => sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM orm_once_probe").fetch_one(pool).await.unwrap(),
+            Pool::Sqlite(pool) => sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM orm_once_probe").fetch_one(pool).await.unwrap(),
+            Pool::Markdown(_) => unreachable!("the transaction tests connect to SQL databases"),
+        }
+    }
+
+    #[tokio::test]
+    async fn transaction_probe_count_reads_sqlite_rows() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let scratch = Scratch::new("orm-probe-count");
+        let db = Db::connect(&format!("sqlite://{}", scratch.join("probe.sqlite").display()), 1, crate::Config::default()).await.unwrap();
+        let Pool::Sqlite(pool) = db.pool() else { panic!("the test database is SQLite") };
+        sqlx::query("CREATE TABLE orm_once_probe (id INTEGER PRIMARY KEY)").execute(pool).await.unwrap();
+        sqlx::query("INSERT INTO orm_once_probe (id) VALUES (1), (2)").execute(pool).await.unwrap();
+
+        assert_eq!(probe_row_count(&db).await, 2);
+        db.close().await;
+    }
+
     /// A directory of its own for one test, removed when the value is dropped. A test that fails an assertion
     /// unwinds through the drop, so it leaves nothing behind either.
     struct Scratch(std::path::PathBuf);
@@ -1278,12 +1300,7 @@ mod tests {
                 })
                 .await;
             assert!(matches!(result, Err(TransactionOnceError::Callback(DomainFailure::Rejected))), "{driver}: {result:?}");
-            let count = match db.pool() {
-                Pool::MySql(pool) => sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM orm_once_probe").fetch_one(pool).await.unwrap(),
-                Pool::Postgres(pool) => sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM orm_once_probe").fetch_one(pool).await.unwrap(),
-                Pool::Sqlite(pool) => sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM orm_once_probe").fetch_one(pool).await.unwrap(),
-                Pool::Markdown(_) => unreachable!("the transaction tests connect to SQL databases"),
-            };
+            let count = probe_row_count(&db).await;
             assert_eq!(count, 0, "{driver}: rollback");
             db.transaction_once(async || {
                 active_for(&db).expect("transaction active").raw(KIND_UTILITY, "INSERT INTO orm_once_probe (id) VALUES (2)").await.unwrap();
@@ -1305,12 +1322,7 @@ mod tests {
             .retry(0)
             .await
             .or_panic(|e| format!("{driver}: nested transaction: {e}"));
-            let count = match db.pool() {
-                Pool::MySql(pool) => sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM orm_once_probe").fetch_one(pool).await.unwrap(),
-                Pool::Postgres(pool) => sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM orm_once_probe").fetch_one(pool).await.unwrap(),
-                Pool::Sqlite(pool) => sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM orm_once_probe").fetch_one(pool).await.unwrap(),
-                Pool::Markdown(_) => unreachable!("the transaction tests connect to SQL databases"),
-            };
+            let count = probe_row_count(&db).await;
             assert_eq!(count, 3, "{driver}: committed rows");
             execute(&db, "DROP TABLE orm_once_probe").await;
             db.close().await;
