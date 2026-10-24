@@ -413,6 +413,14 @@ static void append_read_diagnostics(sbuf *errors, zval *path, zval *diagnostics)
     } ZEND_HASH_FOREACH_END();
 }
 
+static void finish_document_parse(zval *texts, zval *result, dbs_arena *arena, dbs_arena *saved)
+{
+    documents_parse(&texts[0], &texts[1], result);
+    zval_ptr_dtor(&texts[0]);
+    zval_ptr_dtor(&texts[1]);
+    dbs_leave(arena, saved);
+}
+
 PHP_METHOD(Polyspec_Orm_RuntimeModel, splitManifest) {
     zend_string *text;
     ZEND_PARSE_PARAMETERS_START(1, 1) Z_PARAM_STR(text) ZEND_PARSE_PARAMETERS_END();
@@ -733,10 +741,7 @@ PHP_METHOD(Polyspec_Orm_RuntimeModel, set) {
         LEAVE();
         RETURN_THROWS();
     }
-    documents_parse(&texts[0], &texts[1], return_value);
-    zval_ptr_dtor(&texts[0]);
-    zval_ptr_dtor(&texts[1]);
-    LEAVE();
+    finish_document_parse(texts, return_value, &arena_, saved_);
     if (EG(exception))
         RETURN_THROWS();
 }
@@ -802,10 +807,7 @@ PHP_METHOD(Polyspec_Orm_RuntimeModel, files) {
             RETURN_THROWS();
         }
     }
-    documents_parse(&texts[0], &texts[1], return_value);
-    zval_ptr_dtor(&texts[0]);
-    zval_ptr_dtor(&texts[1]);
-    LEAVE();
+    finish_document_parse(texts, return_value, &arena_, saved_);
     if (EG(exception))
         RETURN_THROWS();
 }
