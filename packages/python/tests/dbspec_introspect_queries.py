@@ -1,5 +1,5 @@
 # Counts the catalog queries that the Python client sends to introspect one case of tests/dbspec/introspect.json on each
-# dialect (DIA-133: every query reads all tables at once, so their number does not depend on the table count). Each
+# dialect (DIA-198: the query count does not depend on the table count). Each
 # case is rendered and run in its empty database, schema or file, the same way dbspec_introspect.py runs it, and the
 # number of queries introspect_dbspec sends must equal the number that packages/ts/tests/dbspec-introspect-round-trip.mjs
 # asserts for the same dialect: MySQL 9, PostgreSQL 7, SQLite 3.
@@ -82,11 +82,11 @@ class DbspecIntrospectQueryCountTest(unittest.TestCase):
             f"{dialect}: introspection sent {got} queries, want {QUERY_COUNTS[dialect]}",
         )
 
-    # Requirements: DIA-133.
+    # Requirements: DIA-198.
     def test_sqlite(self):
         self._check("sqlite", None)
 
-    # Requirements: DIA-133.
+    # Requirements: DIA-198.
     def test_mysql(self):
         dsn = os.environ.get("ORM_TEST_MYSQL_DSN")
         if not dsn:
@@ -95,7 +95,7 @@ class DbspecIntrospectQueryCountTest(unittest.TestCase):
             )
         self._check("mysql", dsn)
 
-    # Requirements: DIA-133.
+    # Requirements: DIA-198.
     def test_postgres(self):
         dsn = os.environ.get("ORM_TEST_POSTGRES_DSN")
         if not dsn:

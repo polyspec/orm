@@ -1,5 +1,5 @@
 <!-- doc-id: remediation-plan -->
-<!-- source-sha256: fb74ed850b7d2f8e042e956efb9b97cdec7b69e8ab5603c8475639d7d3abec66 -->
+<!-- source-sha256: acefd4ac4895c4ac0df14b247fc01e41c9b36b350afd0615b9fcb6be8a51d191 -->
 # 남은 작업의 진단과 해결 방안
 
 [English](remediation-plan.md)
@@ -43,7 +43,7 @@
 | KSTD-2-3 | `contracts/interfaces.json`, `tests/interfaces/contracts/validate.go`; native Model.connect가 없다. | 실제 native signature/rule을 선언하고 logical/extension drift 검사를 추가한다. | `TestLogicalContractRejectsNativeDrift`, `TestExtensionContractRejectsDrift`가 추출 선언을 검증한다. C 의존. |
 | KSTD-2-4 | 여섯 오류 catalog은 이미 있다. extension 설정 경로는 낡은 `stubs/code.stub.php`가 아니라 `packages/php-ext/src/polyspec_orm.stub.php`다. | 실제 stub catalog와 API unit을 확인하고 중복 오류 구현을 하지 않는다. | 여섯 catalog와 API 증거가 일치한다. |
 | KSTD-2-7 | requirement ID는 있으나 assertion 연결과 여섯 클라이언트 binding이 부족하다(CFG/PAR/ORE/PLN/PRT/INT/ORES). | 각 requirement를 실제 domain 동작과 native case에 연결하고 KSTD-2-11-11…18이 domain을 소유하게 한다. | 모든 필수 assertion에 여섯 실행 binding. 임의 태그 금지. |
-| KSTD-2-9, KSTD-2-9-13 | `complex-query.md` CPX2는 fixture/full-text 지원 없는 제품 예제다. | parent page/count와 ordered relation 최소 fixture를 추가해 정확히 8 statements와 6 planners를 확인한다. | CPX2 fixture 통과. CPX3 empty와 CPX4 shape 유지. |
+| KSTD-2-9, KSTD-2-9-13 | `complex-query.md` CPX2는 fixture/full-text 지원 없는 제품 예제다. introspection의 DIA-154..156은 앞선 Markdown rule ID와 중복된다. Markdown ID는 `ab1887886`에서 먼저 배정됐고, introspection query-count 동작은 `7c728eba8`에서 추가되면서 Python test 실행 안내도 requirement ID로 바뀌었다. | parent page/count와 ordered relation 최소 fixture를 추가해 정확히 8 statements와 6 planners를 확인한다. Markdown DIA-154..156을 유지하고 introspection query-count 동작은 DIA-198로 옮겨 세 query-count unit에서 인용한다. 실행 문장은 operations에 둔다: `make dbspec-introspect-python-check`는 SQLite, MySQL, PostgreSQL case를 실행한다. | CPX2 fixture 통과. CPX3 empty와 CPX4 shape 유지. requirement parser에서 DIA-154..156 중복이 없고 모든 introspection query-count unit은 DIA-198을 인용한다. |
 | KSTD-2-10-1 | delete-lock vector는 PHP extension을 제외한 현재 runner set과 3개 expectation에 있다. 미병합 parity DSL 87행은 낡았다. | 기존 expectation을 보존하고 native 동작이 생긴 뒤 PHP extension case를 추가한다. | locked child가 parent를 보존하고 unlocked cascade는 세 DB에서 성공한다. CI 검증. |
 | KSTD-2-10-3 | 새 fixture `tests/markdown/conformance.dbs`; 생성 모델은 ignore 대상. | codec과 명시적 select를 추가하고 DIA175/177 write encode/read decode, 생략 기본값, 선택 필드를 검증한다. 생성 모델을 다시 만든다. | 여섯 실제 case; 세 DB CI. |
 | KSTD-2-10-5 | Rust에는 외부 의존성 없는 표준 compile-fail fixture가 필요하다. | 소유 checkout에 의존하는 임시 consumer에서 실제 생성 모델을 `cargo check --offline --message-format=json`로 검사한다. target은 이 checkout 아래 둔다. RAII 정리, 완료 timeout 없음. | 먼저 positive control 컴파일. DSL49 nonnullable NULL은 E0277 `EqArg`; DSL50 ordering은 E0277 `CmpArg`이며 bare/Eq/Ne는 통과; DSL124 DB begin/commit/rollback은 E0599이며 공개 transaction은 통과. 주요 span/code/type/method만 기대한다. Harness/build 오류는 compile-fail 통과가 아니다. |

@@ -1363,7 +1363,7 @@
       "id": "dbspec-introspect-query-count",
       "kind": "feature",
       "requirements": [
-        "DIA-154"
+        "DIA-198"
       ],
       "bindings": [
         {
@@ -1377,7 +1377,7 @@
       "id": "dbspec-introspect-mysql-python",
       "kind": "feature",
       "requirements": [
-        "DIA-155"
+        "DIA-198"
       ],
       "bindings": [
         {
@@ -1398,7 +1398,7 @@
       "id": "dbspec-introspect-postgres-python",
       "kind": "feature",
       "requirements": [
-        "DIA-156"
+        "DIA-198"
       ],
       "bindings": [
         {

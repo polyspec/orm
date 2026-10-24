@@ -37,7 +37,7 @@ for (const s of sets) {
   }
 }
 
-// Requirements: DIA-133.
+// Requirements: DIA-198.
 vector('introspection query count per dialect', () => {
   for (const dialect of DIALECTS) {
     const counts = queries[dialect];
