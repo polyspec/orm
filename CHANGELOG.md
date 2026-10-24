@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- Rust rejects temporal precision outside 0..6 as `SCHEMA_INVALID` before binding values, including NULL and dotless input. Excess nonzero fraction digits remain `CODEC_ENCODE`, trailing zeroes are accepted, and valid executor clock truncation is unchanged. The focused native test failed on pre-fix `aca190bfb927` and passes 3/3 with `make item-test ID=KSTD-5-68` on `d84a4547407d` (KSTD-5-68).
+
 - Rust relation execution now rejects relation steps with zero or multiple parent bind slots as `IR_INVALID` before executing a query (KSTD-5-67).
   The native target's four malformed-parent assertions failed while its valid scalar/composite control passed at pre-fix `abd38b77eae57fc108311dce4a615fccd6392161`; committed implementation `e0fe5ae77b451ed5ee38e9b84f270a658810c7b2` passes all five cases with `make item-test ID=KSTD-5-67`, including the completion run (KSTD-5-67).
 

@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: edfe7c6dbfa7e6954c9e02cd8b2639c652fe4b8b3261bf67b31efccc784ce21c -->
+<!-- source-sha256: 0b161e4b72a4e33ac1e0fc2293e44f22e102a8f94cc64b7c8c00b75b2b05b812 -->
 # 변경 이력
 
 ## Unreleased
+
+- Rust는 NULL 및 소수점 없는 입력을 포함해 값을 바인딩하기 전에 0..6 범위를 벗어난 시간 정밀도를 `SCHEMA_INVALID`로 거부한다. 유효 자릿수를 넘는 0이 아닌 소수 자릿수는 계속 `CODEC_ENCODE`이고, 뒤쪽 0은 허용하며, 유효한 실행기 clock 자르기는 유지한다. 집중 native 테스트는 수정 전 `aca190bfb927`에서 실패했고 `d84a4547407d`의 `make item-test ID=KSTD-5-68`에서 3/3 통과한다(KSTD-5-68).
 
 - Rust relation 실행은 parent bind slot이 0개 또는 여러 개인 relation step을 query 실행 전에 `IR_INVALID`로 거부한다(KSTD-5-67).
   수정 전 `abd38b77eae57fc108311dce4a615fccd6392161`에서는 malformed-parent assertion 4개가 실패하고 정상 scalar/composite 대조군이 통과했다. 커밋된 구현 `e0fe5ae77b451ed5ee38e9b84f270a658810c7b2`은 `make item-test ID=KSTD-5-67`의 완료 검증을 포함해 5개 case를 모두 통과한다(KSTD-5-67).
