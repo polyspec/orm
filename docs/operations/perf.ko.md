@@ -1,5 +1,5 @@
 <!-- doc-id: perf -->
-<!-- source-sha256: 3c3ed69d6368cdb6917ffa55c0330daa5ad10357062a4b52f06079f30919cc30 -->
+<!-- source-sha256: 0912c7609a91110b3c4e405221be6adc09fa1a134f5faa49bdf1d46e7af93511 -->
 # 성능
 
 모든 클라이언트는 호출한 프로세스 안에서 문장을 계획하고 네이티브 드라이버로 실행한다. 현재 클라이언트 오버헤드 기준은 아래 Go·PHP 실행 경로를 `make perf-check`로 측정하며 필수 데이터베이스 환경이 없으면 명령이 실패한다.
@@ -37,6 +37,8 @@
 |---|---:|---:|---|
 | Go | 1.35 | 1.25 | build tag `perfgate`로 build하는 `packages/go/bench` `TestHotPathGate` |
 | PHP | 1.35 | 1.25 | `packages/php/tests/PerfGateTest.php` |
+
+owner case는 PHP extension, TypeScript, Python의 native/client 측정값도 진단용으로 기록한다. PHP extension은 로드한 native extension으로 PHP workload를 실행한다. TypeScript와 Python은 현재 두 컬럼(`seq`, `name`) projection에서 같은 SQL과 타입 결과를 native driver와 client 경로로 측정한다. 이 세 runtime은 고정 기준값을 아직 측정하지 않았으므로 비율만 보고하고 경고 한도는 적용하지 않는다. Rust도 고정 기준값 없이 측정값을 보고한다. 이 탐색 측정은 runtime 간 비교나 회귀 기준을 확정하지 않는다.
 
 두 검사는 `ORM_BENCH_MYSQL_DSN`에서 시드된 벤치 데이터베이스를 읽는다. Go 검사는 `make perf-check`가 주는 tag `perfgate`로만 build된다. `ORM_BENCH_MYSQL_DSN` 없이 실행한 검사는 그 변수 명칭을 출력하고 실패하며, 어떤 벤치 테스트도 로컬 서버로 대신하지 않는다.
 

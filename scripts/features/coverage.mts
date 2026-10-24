@@ -407,6 +407,10 @@ export function observedCases(format: Spec['format'], output: string, requested:
   if (format === 'case') {
     for (const line of output.split(/\r?\n/)) {
       if (!line) continue;
+      // Performance owners may report nondeterministic measurements on stderr. The case runner
+      // keeps those lines in its diagnostic step log; they are deliberately excluded from the
+      // deterministic coverage result, which records only the CASE event below.
+      if (/^PERF hot_path_gate (?:typescript|python) (?:pk|list100): native p50=\d+\.\dµs client p50=\d+\.\dµs ratio=\d+\.\d{2} samples=1000 cpu=\d+\.\dms wall=\d+\.\dms machine=.+ reference=not-recorded$/.test(line)) continue;
       const named = /^CASE ([A-Za-z0-9_.-]+) \[([a-z]+)\] PASS$/.exec(line);
       const plain = /^CASE ([A-Za-z0-9_.-]+) PASS$/.exec(line);
       if (database === 'none') {

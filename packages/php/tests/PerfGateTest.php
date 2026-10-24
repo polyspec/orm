@@ -65,13 +65,17 @@ final class PerfGateTest extends TestCase
      * The gate queries with their reference ratio, each a data set; under ORM_PERF_CPU_LOAD=1 the
      * data set names end in /under-load.
      *
-     * @return iterable<string, array{string, float}>
+     * @return iterable<string, array{string, float|null}>
      */
     public static function gates(): iterable
     {
         $suffix = getenv('ORM_PERF_CPU_LOAD') === '1' ? '/under-load' : '';
-        yield "pk$suffix" => ['pk', 1.35];
-        yield "list100$suffix" => ['list100', 1.25];
+        // The native extension has no recorded reference yet. It still reports its real
+        // measurement, but only the library client uses the published PHP bounds.
+        $pkBound = extension_loaded('polyspec_orm') ? null : 1.35;
+        $listBound = extension_loaded('polyspec_orm') ? null : 1.25;
+        yield "pk$suffix" => ['pk', $pkBound];
+        yield "list100$suffix" => ['list100', $listBound];
     }
 
     private static function query(string $name): Author
@@ -85,22 +89,31 @@ final class PerfGateTest extends TestCase
     /** The gate measures and reports; it asserts nothing, since a slow ratio is a warning. */
     #[DataProvider('gates')]
     #[DoesNotPerformAssertions]
-    public function testPerfGate(string $name, float $bound): void
+    public function testPerfGate(string $name, ?float $bound): void
     {
         $native = self::native(self::$db, self::query($name));
+        $wallStarted = hrtime(true);
+        $usageStarted = getrusage();
         [$clientNs, $nativeNs, $ratio] = self::pairedRatio(static fn() => self::query($name)->gets(), $native);
+        $wallMs = (hrtime(true) - $wallStarted) / 1_000_000;
+        $usageEnded = getrusage();
+        $cpuMs = (self::usageMicros($usageEnded) - self::usageMicros($usageStarted)) / 1000;
         fwrite(
             STDERR,
             sprintf(
-                "perf_gate %s: native %.1fµs client %.1fµs ratio %.2f (bound %.2f)\n",
+                "perf_gate %s: native %.1fµs client %.1fµs ratio %.2f cpu %.1fms wall %.1fms "
+                    . "machine %s reference %s\n",
                 $name,
                 $nativeNs / 1000,
                 $clientNs / 1000,
                 $ratio,
-                $bound
+                $cpuMs,
+                $wallMs,
+                php_uname('s') . ' ' . php_uname('m'),
+                $bound === null ? 'not-recorded' : number_format($bound, 2)
             )
         );
-        if ($ratio > $bound) {
+        if ($bound !== null && $ratio > $bound) {
             fwrite(
                 STDERR,
                 sprintf(
@@ -112,6 +125,13 @@ final class PerfGateTest extends TestCase
                 )
             );
         }
+    }
+
+    /** @param array<string, int> $usage */
+    private static function usageMicros(array $usage): int
+    {
+        return ($usage['ru_utime.tv_sec'] * 1_000_000) + $usage['ru_utime.tv_usec']
+            + ($usage['ru_stime.tv_sec'] * 1_000_000) + $usage['ru_stime.tv_usec'];
     }
 
     /**

@@ -37,6 +37,8 @@ The check measures the generated client and an equivalent native result in one p
 | Go | 1.35 | 1.25 | `packages/go/bench` `TestHotPathGate` with the build tag `perfgate` |
 | PHP | 1.35 | 1.25 | `packages/php/tests/PerfGateTest.php` |
 
+The owner cases also record diagnostic native/client measurements for the PHP extension, TypeScript and Python. The extension runs the PHP workload through the loaded native extension; TypeScript and Python currently measure a two-column (`seq`, `name`) projection with the same SQL and typed results on the native-driver and client paths. No fixed reference has been captured for those three runtimes, so their ratios are reported without a warning threshold. Rust likewise reports measurements without a fixed reference. These exploratory measurements do not establish a cross-runtime comparison or a regression bound.
+
 Both checks read the seeded bench database from `ORM_BENCH_MYSQL_DSN`. The Go check builds only with the tag `perfgate`, which `make perf-check` gives; a check that runs without `ORM_BENCH_MYSQL_DSN` fails and prints the variable name, and no bench test connects to a local server instead.
 
 With the converted baseline, PHP 8.4.25 on the local socket measures a PK ratio of 1.20–1.31 and a 100-row ratio of 1.06–1.12 across runs; the PK ratio is dominated by the fixed request build and plan cost of about 10.5µs per query.

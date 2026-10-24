@@ -751,5 +751,14 @@ caseTest('database items take their own [database] lines and refuse plain or unl
   assert.throws(() => observedCases('case', 'CASE first [sqlite] PASS\nCASE first [sqlite] PASS\n', ['first'], ['first'], 'sqlite', listed), /duplicate observed case first on sqlite/);
   assert.throws(() => observedCases('case', 'CASE first [sqlite] PASS\n', ['first', 'second'], ['first', 'second'], 'sqlite', listed), /differ/);
   assert.deepEqual(observedCases('case', 'CASE first PASS\n', ['first'], ['first'], 'none', ['none']), [{ id: 'first', database: 'none', value_json: 'true' }]);
+  assert.deepEqual(observedCases(
+    'case',
+    'PERF hot_path_gate typescript pk: native p50=12.3µs client p50=15.7µs ratio=1.28 samples=1000 cpu=42.1ms wall=123.4ms machine=Darwin arm64 Apple M3 Pro reference=not-recorded\nCASE first PASS\n',
+    ['first'], ['first'], 'none', ['none']),
+  [{ id: 'first', database: 'none', value_json: 'true' }]);
+  assert.throws(() => observedCases(
+    'case',
+    'PERF hot_path_gate typescript pk: ratio=1.28 reference=not-recorded\nCASE first PASS\n',
+    ['first'], ['first'], 'none', ['none']), /unexpected test output: PERF/);
   assert.throws(() => observedCases('case', 'CASE first [sqlite] PASS\n', ['first'], ['first'], 'none', ['none']), /unexpected test output/);
 });
