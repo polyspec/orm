@@ -37,24 +37,23 @@ fn generate(source: &str) -> Result<String, String> {
 fn generate_external(source: &str) -> Result<String, String> {
     let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let dir = std::env::temp_dir().join(format!("orm-build-test-{}-{n}", std::process::id()));
-    let src = dir.join("src");
-    std::fs::create_dir_all(&src).unwrap();
-    std::fs::write(src.join("main.rs"), source).unwrap();
     let external = polyspec_orm_testcase::manifest_dir().join("../../../contracts/fixtures/external");
     let set = set_file(&dir, &[external.join("member.dbs")], &[external.join("core.dbs")]);
-    let out = polyspec_orm_build::Builder::set(set).scan(&src).out_dir(dir.join("out")).try_generate();
-    let text = out.map(|p| std::fs::read_to_string(p).unwrap());
-    remove_test_dir(&dir);
-    text
+    generate_with_set(dir, source, set)
 }
 
 fn generate_with_schema(schema: PathBuf, source: &str) -> Result<String, String> {
     let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let dir = std::env::temp_dir().join(format!("orm-build-test-{}-{n}", std::process::id()));
+    let set = set_file(&dir, &[schema], &[]);
+    generate_with_set(dir, source, set)
+}
+
+fn generate_with_set(dir: PathBuf, source: &str, set: PathBuf) -> Result<String, String> {
     let src = dir.join("src");
     std::fs::create_dir_all(&src).unwrap();
     std::fs::write(src.join("main.rs"), source).unwrap();
-    let out = polyspec_orm_build::Builder::set(set_file(&dir, &[schema], &[])).scan(&src).out_dir(dir.join("out")).try_generate();
+    let out = polyspec_orm_build::Builder::set(set).scan(&src).out_dir(dir.join("out")).try_generate();
     let text = out.map(|p| std::fs::read_to_string(p).unwrap());
     remove_test_dir(&dir);
     text
