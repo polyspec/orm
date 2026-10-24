@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: dc1effd2eb8614192d9157f15ef128560a3347323ee4ddba08170acb31caa9b1 -->
+<!-- source-sha256: 5532371bba54e2e1d37cfe0569171a57fec39bb564af3db31ca66f7e6abacb8d -->
 # 변경 이력
 
 ## Unreleased
+
+- `docs/spec/errors.yaml`의 모든 code에 이제 `config/parity.json`의 API unit 하나가 있고, 각 implementation의 catalog symbol 하나와 일치한다. 수정 전 main HEAD `48b4f552b028`의 API checker는 code 77개에 unit 43개를 보고했다. 커밋된 focused verification은 5개 case를 모두 통과하고 code 77개와 unit 77개를 대조한다 (KSTD-7-10).
 
 - SQLite NOWAIT 잠금은 setup, 잠금 테이블 설정 또는 잠금 획득 실패 뒤에도 기존 `busy_timeout`을 복원한다. 잠금 획득의 `SQLITE_BUSY`만 `LOCK_NOT_AVAILABLE`로 바꾸며, cleanup도 실패하면 primary 오류 코드와 두 원인을 보존하고 실패가 하나면 원래 오류를 유지한다. 실제 수정 전 main `68f414329ab9`의 focused 6개 client target은 실패했다. 커밋된 `make item-test ID=KSTD-5-59`는 Go (2 tests), TypeScript (1), PHP (1 test, 18 assertions), PHP extension (1 test, 18 assertions), Python (2, `BaseException` 복원 포함), Rust (2)를 통과한다. PHP extension은 userland `OrmException::withCleanup` 계약을 사용한다(KSTD-5-59).
 
