@@ -5370,6 +5370,8 @@
         "cases": [
           "planner_statement",
           "planner_count",
+          "planner_contains_ascii_fold",
+          "planner_contains_binary_collation",
           "planner_rejects_unknown_column",
           "planner_restore",
           "planner_tables",
@@ -5466,6 +5468,8 @@
                   "cases": [
                     "planner_statement",
                     "planner_count",
+                    "planner_contains_ascii_fold",
+                    "planner_contains_binary_collation",
                     "planner_rejects_unknown_column",
                     "planner_restore",
                     "planner_tables",
@@ -5547,6 +5551,8 @@
                   "symbols": {
                     "planner_statement": "TestCoveragePlannerStatement",
                     "planner_count": "TestCoveragePlannerCount",
+                    "planner_contains_ascii_fold": "TestCoveragePlannerContainsAsciiFold",
+                    "planner_contains_binary_collation": "TestCoveragePlannerContainsBinaryCollation",
                     "planner_rejects_unknown_column": "TestCoveragePlannerRejectsUnknownColumn",
                     "planner_restore": "TestCoveragePlannerRestore",
                     "planner_restore_rejects_non_key": "TestCoveragePlannerRestoreRejectsNonKey",
@@ -5646,6 +5652,8 @@
                   "cases": [
                     "planner_statement",
                     "planner_count",
+                    "planner_contains_ascii_fold",
+                    "planner_contains_binary_collation",
                     "planner_rejects_unknown_column",
                     "planner_restore",
                     "planner_tables",
@@ -5745,6 +5753,8 @@
                   "cases": [
                     "planner_statement",
                     "planner_count",
+                    "planner_contains_ascii_fold",
+                    "planner_contains_binary_collation",
                     "planner_rejects_unknown_column",
                     "planner_restore",
                     "planner_tables",
@@ -5826,6 +5836,8 @@
                   "symbols": {
                     "planner_statement": "engine::coverage_planner::planner::planner_statement",
                     "planner_count": "engine::coverage_planner::planner::planner_count",
+                    "planner_contains_ascii_fold": "engine::coverage_planner::planner::planner_contains_ascii_fold",
+                    "planner_contains_binary_collation": "engine::coverage_planner::planner::planner_contains_binary_collation",
                     "planner_rejects_unknown_column": "engine::coverage_planner::planner::planner_rejects_unknown_column",
                     "planner_restore": "engine::coverage_planner::planner::planner_restore",
                     "planner_restore_rejects_non_key": "engine::coverage_planner::planner::planner_restore_rejects_non_key",
@@ -5925,6 +5937,8 @@
                   "cases": [
                     "planner_statement",
                     "planner_count",
+                    "planner_contains_ascii_fold",
+                    "planner_contains_binary_collation",
                     "planner_rejects_unknown_column",
                     "planner_restore",
                     "planner_tables",
@@ -6024,6 +6038,8 @@
                   "cases": [
                     "planner_statement",
                     "planner_count",
+                    "planner_contains_ascii_fold",
+                    "planner_contains_binary_collation",
                     "planner_rejects_unknown_column",
                     "planner_restore",
                     "planner_tables",
@@ -6119,6 +6135,8 @@
                   "cases": [
                     "planner_statement",
                     "planner_count",
+                    "planner_contains_ascii_fold",
+                    "planner_contains_binary_collation",
                     "planner_rejects_unknown_column",
                     "planner_restore",
                     "planner_tables",
