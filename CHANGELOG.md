@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- Mermaid imports now convert only the catalog's generated-document build failure into a line-1 diagnostic; other catalog exceptions escape with their original identity. On commit `6dabce876bf8`, the focused targets pass TypeScript (2 cases), Python (2), PHP (2) and the native PHP extension (2). The extension cases build a test-only module that calls the production Mermaid boundary. The canonical pre-fix run on `48b4f552b028` failed all four targets on unexpected-error identity (KSTD-5-62).
+
 - Every code in `docs/spec/errors.yaml` now has one API unit in `config/parity.json`, with one matching catalog symbol per implementation. The API checker on pre-fix main HEAD `48b4f552b028` reported 43 units for 77 codes. The committed focused verification passes all 5 cases and checks 77 codes against 77 units (KSTD-7-10).
 
 - SQLite NOWAIT locking now restores the prior `busy_timeout` after setup, lock-table, or lock failures. Only lock-acquisition `SQLITE_BUSY` maps to `LOCK_NOT_AVAILABLE`; cleanup failures preserve the primary error code and both causes, while single failures retain their original error. The actual pre-fix main RED at `68f414329ab9` failed the focused six-client target. Committed `make item-test ID=KSTD-5-59` passes Go (2 tests), TypeScript (1), PHP (1 test, 18 assertions), PHP extension (1 test, 18 assertions), Python (2, including `BaseException` restoration), and Rust (2). The PHP extension uses the userland `OrmException::withCleanup` contract (KSTD-5-59).

@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 5532371bba54e2e1d37cfe0569171a57fec39bb564af3db31ca66f7e6abacb8d -->
+<!-- source-sha256: 055782def460ae865ac709168a5560150c0cc694f67cf0287678828bc344a3bc -->
 # 변경 이력
 
 ## Unreleased
+
+- Mermaid import는 catalog의 generated-document 생성 오류만 line-1 diagnostic으로 바꾸며, 다른 catalog 예외는 원래 객체 그대로 전파한다. commit `6dabce876bf8`에서 focused target은 TypeScript 2개, Python 2개, PHP 2개와 native PHP extension 2개 case를 통과한다. Extension case는 실제 Mermaid 경계를 호출하는 test-only module을 빌드한다. 수정 전 `48b4f552b028`의 canonical 실행에서는 예상 밖 오류 identity 확인으로 네 target 모두 실패했다(KSTD-5-62).
 
 - `docs/spec/errors.yaml`의 모든 code에 이제 `config/parity.json`의 API unit 하나가 있고, 각 implementation의 catalog symbol 하나와 일치한다. 수정 전 main HEAD `48b4f552b028`의 API checker는 code 77개에 unit 43개를 보고했다. 커밋된 focused verification은 5개 case를 모두 통과하고 code 77개와 unit 77개를 대조한다 (KSTD-7-10).
 
