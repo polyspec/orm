@@ -404,12 +404,6 @@ static document *external_document(const document *d, const strs *tables)
     return out->tables.n == 0 ? NULL : out;
 }
 
-static int cmp_table(const void *a, const void *b, void *ctx)
-{
-    (void)ctx;
-    return str_cmp((*(table *const *)a)->name, (*(table *const *)b)->name);
-}
-
 bool dbs_manifest(const documentv *documents, manifest *m, diags *out)
 {
     documentv ordered;
@@ -464,7 +458,7 @@ bool dbs_manifest(const documentv *documents, manifest *m, diags *out)
         }
     }
     /* Schema text is one document `schema` holding all tables the set owns, in name order, so it does not depend on how documents are split. */
-    dbs_sort(tables.v, tables.n, sizeof(table *), cmp_table, NULL);
+    dbs_sort(tables.v, tables.n, sizeof(table *), dbs_cmp_table_name, NULL);
     schema->tables = tables;
     m->manifest_text = sb_str(&manifest_text);
     m->external_text = sb_str(&external_text);

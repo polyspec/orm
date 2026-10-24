@@ -1169,12 +1169,6 @@ static int cmp_difference(const void *a, const void *b, void *ctx)
     return str_cmp(x->name, y->name);
 }
 
-static int cmp_table_name(const void *a, const void *b, void *ctx)
-{
-    (void)ctx;
-    return str_cmp((*(table *const *)a)->name, (*(table *const *)b)->name);
-}
-
 /* Reports whether a document's canonical emission is the schema text of that one document. */
 bool is_schema_text(const document *d)
 {
@@ -1185,7 +1179,7 @@ bool is_schema_text(const document *d)
     for (size_t i = 0; i < d->tables.n; i++) {
         PUSH(schema->tables, d->tables.v[i]);
     }
-    dbs_sort(schema->tables.v, schema->tables.n, sizeof(table *), cmp_table_name, NULL);
+    dbs_sort(schema->tables.v, schema->tables.n, sizeof(table *), dbs_cmp_table_name, NULL);
     for (size_t i = 0; i < d->uses.n; i++) {
         strs tables = {0};
         for (size_t k = 0; k < d->uses.v[i]->tables.n; k++) {

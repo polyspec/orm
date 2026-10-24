@@ -2,6 +2,12 @@
 #include "dbspec.h"
 #include "Zend/zend_closures.h"
 
+int dbs_cmp_table_name(const void *a, const void *b, void *ctx)
+{
+    (void)ctx;
+    return str_cmp((*(table *const *)a)->name, (*(table *const *)b)->name);
+}
+
 static zend_class_entry *utils_ce;
 
 static bool utils_call(zval *object, const char *method, zval *result, uint32_t argc, zval *argv)
