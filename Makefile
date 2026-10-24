@@ -1124,16 +1124,18 @@ dbspec-php-extension-check/ir: php-vendor-check dbspec-php-extension-check/prepa
 # dbspec-php-extension-check/set-parse runs DbspecSetParseTest with the extension: Dbspec::parseSet on every case of tests/dbspec/set-parse.json.
 dbspec-php-extension-check/set-parse: php-vendor-check dbspec-php-extension-check/prepare
 	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecSetParseTest.php
-# dbspec-php-extension-check/planner runs the planner suites with the extension: CoveragePlannerTest (the compile vectors of
-# contracts/fixtures/planner.json), InsertPartsTest (contracts/fixtures/insert_parts.json) and IrAnswersTest (contracts/fixtures/ir_answers.json).
+# dbspec-php-extension-check/planner runs the planner suites with the extension: the native-owner CoveragePlannerExtensionTest
+# (the compile vectors of contracts/fixtures/planner.json), InsertPartsTest (contracts/fixtures/insert_parts.json) and IrAnswersTest
+# (contracts/fixtures/ir_answers.json).
 # It first checks that the extension registers Polyspec\Orm\Planner: its class is internal, so the planner the suites run is C.
 dbspec-php-extension-check/planner: dbspec-php-extension-check/planner/coverage dbspec-php-extension-check/planner/insert-parts dbspec-php-extension-check/planner/ir-answers
 
 # The planner parts are independent: each runs as its own target after the class check, so make -j runs them together.
 dbspec-php-extension-check/planner/internal: php-vendor-check dbspec-php-extension-check/prepare
 	php -d extension=$(PHP_EXTENSION_LIBRARY) -r 'exit((new ReflectionClass("Polyspec\\Orm\\Planner"))->isInternal() ? 0 : 1);'
+PHP_EXTENSION_PLANNER_TEST_FILTER ?= test_
 dbspec-php-extension-check/planner/coverage: php-vendor-check dbspec-php-extension-check/planner/internal
-	$(PHP_EXTENSION_TESTS) packages/php/tests/CoveragePlannerTest.php
+	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/CoveragePlannerExtensionTest.php --filter '$(PHP_EXTENSION_PLANNER_TEST_FILTER)'
 dbspec-php-extension-check/planner/insert-parts: php-vendor-check dbspec-php-extension-check/planner/internal
 	$(PHP_EXTENSION_TESTS) packages/php/tests/InsertPartsTest.php
 dbspec-php-extension-check/planner/ir-answers: php-vendor-check dbspec-php-extension-check/planner/internal
