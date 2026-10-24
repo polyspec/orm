@@ -20080,6 +20080,1128 @@
           "id": "collection::group_tests::group_row_owner_selected_values_counts_and_types"
         }
       ]
+    },
+    {
+      "id": "error-code-query-read-only",
+      "kind": "api",
+      "requirements": [
+        "INT-65"
+      ],
+      "symbols": [
+        {
+          "implementation": "go",
+          "symbol": "github.com/polyspec/orm/packages/go/orm.CodeQueryReadOnly"
+        },
+        {
+          "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Code::QUERY_READ_ONLY"
+        },
+        {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Code::QUERY_READ_ONLY"
+        },
+        {
+          "implementation": "typescript",
+          "symbol": "@polyspec/orm!codes.QUERY_READ_ONLY:var"
+        },
+        {
+          "implementation": "python",
+          "symbol": "orm.codes.QUERY_READ_ONLY"
+        },
+        {
+          "implementation": "rust",
+          "symbol": "polyspec_orm::codes::QUERY_READ_ONLY"
+        }
+      ]
+    },
+    {
+      "id": "error-code-query-limit-invalid",
+      "kind": "api",
+      "requirements": [
+        "INT-65"
+      ],
+      "symbols": [
+        {
+          "implementation": "go",
+          "symbol": "github.com/polyspec/orm/packages/go/orm.CodeQueryLimitInvalid"
+        },
+        {
+          "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Code::QUERY_LIMIT_INVALID"
+        },
+        {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Code::QUERY_LIMIT_INVALID"
+        },
+        {
+          "implementation": "typescript",
+          "symbol": "@polyspec/orm!codes.QUERY_LIMIT_INVALID:var"
+        },
+        {
+          "implementation": "python",
+          "symbol": "orm.codes.QUERY_LIMIT_INVALID"
+        },
+        {
+          "implementation": "rust",
+          "symbol": "polyspec_orm::codes::QUERY_LIMIT_INVALID"
+        }
+      ]
+    },
+    {
+      "id": "error-code-catalog-limit",
+      "kind": "api",
+      "requirements": [
+        "INT-65"
+      ],
+      "symbols": [
+        {
+          "implementation": "go",
+          "symbol": "github.com/polyspec/orm/packages/go/orm.CodeCatalogLimit"
+        },
+        {
+          "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Code::CATALOG_LIMIT"
+        },
+        {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Code::CATALOG_LIMIT"
+        },
+        {
+          "implementation": "typescript",
+          "symbol": "@polyspec/orm!codes.CATALOG_LIMIT:var"
+        },
+        {
+          "implementation": "python",
+          "symbol": "orm.codes.CATALOG_LIMIT"
+        },
+        {
+          "implementation": "rust",
+          "symbol": "polyspec_orm::codes::CATALOG_LIMIT"
+        }
+      ]
+    },
+    {
+      "id": "error-code-catalog-value",
+      "kind": "api",
+      "requirements": [
+        "INT-65"
+      ],
+      "symbols": [
+        {
+          "implementation": "go",
+          "symbol": "github.com/polyspec/orm/packages/go/orm.CodeCatalogValue"
+        },
+        {
+          "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Code::CATALOG_VALUE"
+        },
+        {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Code::CATALOG_VALUE"
+        },
+        {
+          "implementation": "typescript",
+          "symbol": "@polyspec/orm!codes.CATALOG_VALUE:var"
+        },
+        {
+          "implementation": "python",
+          "symbol": "orm.codes.CATALOG_VALUE"
+        },
+        {
+          "implementation": "rust",
+          "symbol": "polyspec_orm::codes::CATALOG_VALUE"
+        }
+      ]
+    },
+    {
+      "id": "error-code-catalog-param",
+      "kind": "api",
+      "requirements": [
+        "INT-65"
+      ],
+      "symbols": [
+        {
+          "implementation": "go",
+          "symbol": "github.com/polyspec/orm/packages/go/orm.CodeCatalogParam"
+        },
+        {
+          "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Code::CATALOG_PARAM"
+        },
+        {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Code::CATALOG_PARAM"
+        },
+        {
+          "implementation": "typescript",
+          "symbol": "@polyspec/orm!codes.CATALOG_PARAM:var"
+        },
+        {
+          "implementation": "python",
+          "symbol": "orm.codes.CATALOG_PARAM"
+        },
+        {
+          "implementation": "rust",
+          "symbol": "polyspec_orm::codes::CATALOG_PARAM"
+        }
+      ]
+    },
+    {
+      "id": "error-code-catalog-closed",
+      "kind": "api",
+      "requirements": [
+        "INT-65"
+      ],
+      "symbols": [
+        {
+          "implementation": "go",
+          "symbol": "github.com/polyspec/orm/packages/go/orm.CodeCatalogClosed"
+        },
+        {
+          "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Code::CATALOG_CLOSED"
+        },
+        {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Code::CATALOG_CLOSED"
+        },
+        {
+          "implementation": "typescript",
+          "symbol": "@polyspec/orm!codes.CATALOG_CLOSED:var"
+        },
+        {
+          "implementation": "python",
+          "symbol": "orm.codes.CATALOG_CLOSED"
+        },
+        {
+          "implementation": "rust",
+          "symbol": "polyspec_orm::codes::CATALOG_CLOSED"
+        }
+      ]
+    },
+    {
+      "id": "error-code-table-metadata-invalid",
+      "kind": "api",
+      "requirements": [
+        "INT-65"
+      ],
+      "symbols": [
+        {
+          "implementation": "go",
+          "symbol": "github.com/polyspec/orm/packages/go/orm.CodeTableMetadataInvalid"
+        },
+        {
+          "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Code::TABLE_METADATA_INVALID"
+        },
+        {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Code::TABLE_METADATA_INVALID"
+        },
+        {
+          "implementation": "typescript",
+          "symbol": "@polyspec/orm!codes.TABLE_METADATA_INVALID:var"
+        },
+        {
+          "implementation": "python",
+          "symbol": "orm.codes.TABLE_METADATA_INVALID"
+        },
+        {
+          "implementation": "rust",
+          "symbol": "polyspec_orm::codes::TABLE_METADATA_INVALID"
+        }
+      ]
+    },
+    {
+      "id": "error-code-table-reference-invalid",
+      "kind": "api",
+      "requirements": [
+        "INT-65"
+      ],
+      "symbols": [
+        {
+          "implementation": "go",
+          "symbol": "github.com/polyspec/orm/packages/go/orm.CodeTableReferenceInvalid"
+        },
+        {
+          "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Code::TABLE_REFERENCE_INVALID"
+        },
+        {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Code::TABLE_REFERENCE_INVALID"
+        },
+        {
+          "implementation": "typescript",
+          "symbol": "@polyspec/orm!codes.TABLE_REFERENCE_INVALID:var"
+        },
+        {
+          "implementation": "python",
+          "symbol": "orm.codes.TABLE_REFERENCE_INVALID"
+        },
+        {
+          "implementation": "rust",
+          "symbol": "polyspec_orm::codes::TABLE_REFERENCE_INVALID"
+        }
+      ]
+    },
+    {
+      "id": "error-code-table-not-found",
+      "kind": "api",
+      "requirements": [
+        "INT-65"
+      ],
+      "symbols": [
+        {
+          "implementation": "go",
+          "symbol": "github.com/polyspec/orm/packages/go/orm.CodeTableNotFound"
+        },
+        {
+          "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Code::TABLE_NOT_FOUND"
+        },
+        {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Code::TABLE_NOT_FOUND"
+        },
+        {
+          "implementation": "typescript",
+          "symbol": "@polyspec/orm!codes.TABLE_NOT_FOUND:var"
+        },
+        {
+          "implementation": "python",
+          "symbol": "orm.codes.TABLE_NOT_FOUND"
+        },
+        {
+          "implementation": "rust",
+          "symbol": "polyspec_orm::codes::TABLE_NOT_FOUND"
+        }
+      ]
+    },
+    {
+      "id": "error-code-table-kind-unsupported",
+      "kind": "api",
+      "requirements": [
+        "INT-65"
+      ],
+      "symbols": [
+        {
+          "implementation": "go",
+          "symbol": "github.com/polyspec/orm/packages/go/orm.CodeTableKindUnsupported"
+        },
+        {
+          "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Code::TABLE_KIND_UNSUPPORTED"
+        },
+        {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Code::TABLE_KIND_UNSUPPORTED"
+        },
+        {
+          "implementation": "typescript",
+          "symbol": "@polyspec/orm!codes.TABLE_KIND_UNSUPPORTED:var"
+        },
+        {
+          "implementation": "python",
+          "symbol": "orm.codes.TABLE_KIND_UNSUPPORTED"
+        },
+        {
+          "implementation": "rust",
+          "symbol": "polyspec_orm::codes::TABLE_KIND_UNSUPPORTED"
+        }
+      ]
+    },
+    {
+      "id": "error-code-tool-bind-invalid",
+      "kind": "api",
+      "requirements": [
+        "INT-65"
+      ],
+      "symbols": [
+        {
+          "implementation": "go",
+          "symbol": "github.com/polyspec/orm/packages/go/orm.CodeToolBindInvalid"
+        },
+        {
+          "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Code::TOOL_BIND_INVALID"
+        },
+        {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Code::TOOL_BIND_INVALID"
+        },
+        {
+          "implementation": "typescript",
+          "symbol": "@polyspec/orm!codes.TOOL_BIND_INVALID:var"
+        },
+        {
+          "implementation": "python",
+          "symbol": "orm.codes.TOOL_BIND_INVALID"
+        },
+        {
+          "implementation": "rust",
+          "symbol": "polyspec_orm::codes::TOOL_BIND_INVALID"
+        }
+      ]
+    },
+    {
+      "id": "error-code-tool-bind-limit",
+      "kind": "api",
+      "requirements": [
+        "INT-65"
+      ],
+      "symbols": [
+        {
+          "implementation": "go",
+          "symbol": "github.com/polyspec/orm/packages/go/orm.CodeToolBindLimit"
+        },
+        {
+          "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Code::TOOL_BIND_LIMIT"
+        },
+        {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Code::TOOL_BIND_LIMIT"
+        },
+        {
+          "implementation": "typescript",
+          "symbol": "@polyspec/orm!codes.TOOL_BIND_LIMIT:var"
+        },
+        {
+          "implementation": "python",
+          "symbol": "orm.codes.TOOL_BIND_LIMIT"
+        },
+        {
+          "implementation": "rust",
+          "symbol": "polyspec_orm::codes::TOOL_BIND_LIMIT"
+        }
+      ]
+    },
+    {
+      "id": "error-code-tool-query-columns",
+      "kind": "api",
+      "requirements": [
+        "INT-65"
+      ],
+      "symbols": [
+        {
+          "implementation": "go",
+          "symbol": "github.com/polyspec/orm/packages/go/orm.CodeToolQueryColumns"
+        },
+        {
+          "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Code::TOOL_QUERY_COLUMNS"
+        },
+        {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Code::TOOL_QUERY_COLUMNS"
+        },
+        {
+          "implementation": "typescript",
+          "symbol": "@polyspec/orm!codes.TOOL_QUERY_COLUMNS:var"
+        },
+        {
+          "implementation": "python",
+          "symbol": "orm.codes.TOOL_QUERY_COLUMNS"
+        },
+        {
+          "implementation": "rust",
+          "symbol": "polyspec_orm::codes::TOOL_QUERY_COLUMNS"
+        }
+      ]
+    },
+    {
+      "id": "error-code-tool-query-statement",
+      "kind": "api",
+      "requirements": [
+        "INT-65"
+      ],
+      "symbols": [
+        {
+          "implementation": "go",
+          "symbol": "github.com/polyspec/orm/packages/go/orm.CodeToolQueryStatement"
+        },
+        {
+          "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Code::TOOL_QUERY_STATEMENT"
+        },
+        {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Code::TOOL_QUERY_STATEMENT"
+        },
+        {
+          "implementation": "typescript",
+          "symbol": "@polyspec/orm!codes.TOOL_QUERY_STATEMENT:var"
+        },
+        {
+          "implementation": "python",
+          "symbol": "orm.codes.TOOL_QUERY_STATEMENT"
+        },
+        {
+          "implementation": "rust",
+          "symbol": "polyspec_orm::codes::TOOL_QUERY_STATEMENT"
+        }
+      ]
+    },
+    {
+      "id": "error-code-table-namespace-unsupported",
+      "kind": "api",
+      "requirements": [
+        "INT-65"
+      ],
+      "symbols": [
+        {
+          "implementation": "go",
+          "symbol": "github.com/polyspec/orm/packages/go/orm.CodeTableNamespaceUnsupported"
+        },
+        {
+          "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Code::TABLE_NAMESPACE_UNSUPPORTED"
+        },
+        {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Code::TABLE_NAMESPACE_UNSUPPORTED"
+        },
+        {
+          "implementation": "typescript",
+          "symbol": "@polyspec/orm!codes.TABLE_NAMESPACE_UNSUPPORTED:var"
+        },
+        {
+          "implementation": "python",
+          "symbol": "orm.codes.TABLE_NAMESPACE_UNSUPPORTED"
+        },
+        {
+          "implementation": "rust",
+          "symbol": "polyspec_orm::codes::TABLE_NAMESPACE_UNSUPPORTED"
+        }
+      ]
+    },
+    {
+      "id": "error-code-table-namespace-unavailable",
+      "kind": "api",
+      "requirements": [
+        "INT-65"
+      ],
+      "symbols": [
+        {
+          "implementation": "go",
+          "symbol": "github.com/polyspec/orm/packages/go/orm.CodeTableNamespaceUnavailable"
+        },
+        {
+          "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Code::TABLE_NAMESPACE_UNAVAILABLE"
+        },
+        {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Code::TABLE_NAMESPACE_UNAVAILABLE"
+        },
+        {
+          "implementation": "typescript",
+          "symbol": "@polyspec/orm!codes.TABLE_NAMESPACE_UNAVAILABLE:var"
+        },
+        {
+          "implementation": "python",
+          "symbol": "orm.codes.TABLE_NAMESPACE_UNAVAILABLE"
+        },
+        {
+          "implementation": "rust",
+          "symbol": "polyspec_orm::codes::TABLE_NAMESPACE_UNAVAILABLE"
+        }
+      ]
+    },
+    {
+      "id": "error-code-table-page-invalid",
+      "kind": "api",
+      "requirements": [
+        "INT-65"
+      ],
+      "symbols": [
+        {
+          "implementation": "go",
+          "symbol": "github.com/polyspec/orm/packages/go/orm.CodeTablePageInvalid"
+        },
+        {
+          "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Code::TABLE_PAGE_INVALID"
+        },
+        {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Code::TABLE_PAGE_INVALID"
+        },
+        {
+          "implementation": "typescript",
+          "symbol": "@polyspec/orm!codes.TABLE_PAGE_INVALID:var"
+        },
+        {
+          "implementation": "python",
+          "symbol": "orm.codes.TABLE_PAGE_INVALID"
+        },
+        {
+          "implementation": "rust",
+          "symbol": "polyspec_orm::codes::TABLE_PAGE_INVALID"
+        }
+      ]
+    },
+    {
+      "id": "error-code-table-page-unsupported",
+      "kind": "api",
+      "requirements": [
+        "INT-65"
+      ],
+      "symbols": [
+        {
+          "implementation": "go",
+          "symbol": "github.com/polyspec/orm/packages/go/orm.CodeTablePageUnsupported"
+        },
+        {
+          "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Code::TABLE_PAGE_UNSUPPORTED"
+        },
+        {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Code::TABLE_PAGE_UNSUPPORTED"
+        },
+        {
+          "implementation": "typescript",
+          "symbol": "@polyspec/orm!codes.TABLE_PAGE_UNSUPPORTED:var"
+        },
+        {
+          "implementation": "python",
+          "symbol": "orm.codes.TABLE_PAGE_UNSUPPORTED"
+        },
+        {
+          "implementation": "rust",
+          "symbol": "polyspec_orm::codes::TABLE_PAGE_UNSUPPORTED"
+        }
+      ]
+    },
+    {
+      "id": "error-code-table-page-metadata-changed",
+      "kind": "api",
+      "requirements": [
+        "INT-65"
+      ],
+      "symbols": [
+        {
+          "implementation": "go",
+          "symbol": "github.com/polyspec/orm/packages/go/orm.CodeTablePageMetadataChanged"
+        },
+        {
+          "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Code::TABLE_PAGE_METADATA_CHANGED"
+        },
+        {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Code::TABLE_PAGE_METADATA_CHANGED"
+        },
+        {
+          "implementation": "typescript",
+          "symbol": "@polyspec/orm!codes.TABLE_PAGE_METADATA_CHANGED:var"
+        },
+        {
+          "implementation": "python",
+          "symbol": "orm.codes.TABLE_PAGE_METADATA_CHANGED"
+        },
+        {
+          "implementation": "rust",
+          "symbol": "polyspec_orm::codes::TABLE_PAGE_METADATA_CHANGED"
+        }
+      ]
+    },
+    {
+      "id": "error-code-row-snapshot-invalid",
+      "kind": "api",
+      "requirements": [
+        "INT-65"
+      ],
+      "symbols": [
+        {
+          "implementation": "go",
+          "symbol": "github.com/polyspec/orm/packages/go/orm.CodeRowSnapshotInvalid"
+        },
+        {
+          "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Code::ROW_SNAPSHOT_INVALID"
+        },
+        {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Code::ROW_SNAPSHOT_INVALID"
+        },
+        {
+          "implementation": "typescript",
+          "symbol": "@polyspec/orm!codes.ROW_SNAPSHOT_INVALID:var"
+        },
+        {
+          "implementation": "python",
+          "symbol": "orm.codes.ROW_SNAPSHOT_INVALID"
+        },
+        {
+          "implementation": "rust",
+          "symbol": "polyspec_orm::codes::ROW_SNAPSHOT_INVALID"
+        }
+      ]
+    },
+    {
+      "id": "error-code-row-snapshot-limit",
+      "kind": "api",
+      "requirements": [
+        "INT-65"
+      ],
+      "symbols": [
+        {
+          "implementation": "go",
+          "symbol": "github.com/polyspec/orm/packages/go/orm.CodeRowSnapshotLimit"
+        },
+        {
+          "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Code::ROW_SNAPSHOT_LIMIT"
+        },
+        {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Code::ROW_SNAPSHOT_LIMIT"
+        },
+        {
+          "implementation": "typescript",
+          "symbol": "@polyspec/orm!codes.ROW_SNAPSHOT_LIMIT:var"
+        },
+        {
+          "implementation": "python",
+          "symbol": "orm.codes.ROW_SNAPSHOT_LIMIT"
+        },
+        {
+          "implementation": "rust",
+          "symbol": "polyspec_orm::codes::ROW_SNAPSHOT_LIMIT"
+        }
+      ]
+    },
+    {
+      "id": "error-code-row-insert-invalid",
+      "kind": "api",
+      "requirements": [
+        "INT-65"
+      ],
+      "symbols": [
+        {
+          "implementation": "go",
+          "symbol": "github.com/polyspec/orm/packages/go/orm.CodeRowInsertInvalid"
+        },
+        {
+          "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Code::ROW_INSERT_INVALID"
+        },
+        {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Code::ROW_INSERT_INVALID"
+        },
+        {
+          "implementation": "typescript",
+          "symbol": "@polyspec/orm!codes.ROW_INSERT_INVALID:var"
+        },
+        {
+          "implementation": "python",
+          "symbol": "orm.codes.ROW_INSERT_INVALID"
+        },
+        {
+          "implementation": "rust",
+          "symbol": "polyspec_orm::codes::ROW_INSERT_INVALID"
+        }
+      ]
+    },
+    {
+      "id": "error-code-row-update-invalid",
+      "kind": "api",
+      "requirements": [
+        "INT-65"
+      ],
+      "symbols": [
+        {
+          "implementation": "go",
+          "symbol": "github.com/polyspec/orm/packages/go/orm.CodeRowUpdateInvalid"
+        },
+        {
+          "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Code::ROW_UPDATE_INVALID"
+        },
+        {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Code::ROW_UPDATE_INVALID"
+        },
+        {
+          "implementation": "typescript",
+          "symbol": "@polyspec/orm!codes.ROW_UPDATE_INVALID:var"
+        },
+        {
+          "implementation": "python",
+          "symbol": "orm.codes.ROW_UPDATE_INVALID"
+        },
+        {
+          "implementation": "rust",
+          "symbol": "polyspec_orm::codes::ROW_UPDATE_INVALID"
+        }
+      ]
+    },
+    {
+      "id": "error-code-row-update-limit",
+      "kind": "api",
+      "requirements": [
+        "INT-65"
+      ],
+      "symbols": [
+        {
+          "implementation": "go",
+          "symbol": "github.com/polyspec/orm/packages/go/orm.CodeRowUpdateLimit"
+        },
+        {
+          "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Code::ROW_UPDATE_LIMIT"
+        },
+        {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Code::ROW_UPDATE_LIMIT"
+        },
+        {
+          "implementation": "typescript",
+          "symbol": "@polyspec/orm!codes.ROW_UPDATE_LIMIT:var"
+        },
+        {
+          "implementation": "python",
+          "symbol": "orm.codes.ROW_UPDATE_LIMIT"
+        },
+        {
+          "implementation": "rust",
+          "symbol": "polyspec_orm::codes::ROW_UPDATE_LIMIT"
+        }
+      ]
+    },
+    {
+      "id": "error-code-row-conflict",
+      "kind": "api",
+      "requirements": [
+        "INT-65"
+      ],
+      "symbols": [
+        {
+          "implementation": "go",
+          "symbol": "github.com/polyspec/orm/packages/go/orm.CodeRowConflict"
+        },
+        {
+          "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Code::ROW_CONFLICT"
+        },
+        {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Code::ROW_CONFLICT"
+        },
+        {
+          "implementation": "typescript",
+          "symbol": "@polyspec/orm!codes.ROW_CONFLICT:var"
+        },
+        {
+          "implementation": "python",
+          "symbol": "orm.codes.ROW_CONFLICT"
+        },
+        {
+          "implementation": "rust",
+          "symbol": "polyspec_orm::codes::ROW_CONFLICT"
+        }
+      ]
+    },
+    {
+      "id": "error-code-row-identity-ambiguous",
+      "kind": "api",
+      "requirements": [
+        "INT-65"
+      ],
+      "symbols": [
+        {
+          "implementation": "go",
+          "symbol": "github.com/polyspec/orm/packages/go/orm.CodeRowIdentityAmbiguous"
+        },
+        {
+          "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Code::ROW_IDENTITY_AMBIGUOUS"
+        },
+        {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Code::ROW_IDENTITY_AMBIGUOUS"
+        },
+        {
+          "implementation": "typescript",
+          "symbol": "@polyspec/orm!codes.ROW_IDENTITY_AMBIGUOUS:var"
+        },
+        {
+          "implementation": "python",
+          "symbol": "orm.codes.ROW_IDENTITY_AMBIGUOUS"
+        },
+        {
+          "implementation": "rust",
+          "symbol": "polyspec_orm::codes::ROW_IDENTITY_AMBIGUOUS"
+        }
+      ]
+    },
+    {
+      "id": "error-code-row-schema-changed",
+      "kind": "api",
+      "requirements": [
+        "INT-65"
+      ],
+      "symbols": [
+        {
+          "implementation": "go",
+          "symbol": "github.com/polyspec/orm/packages/go/orm.CodeRowSchemaChanged"
+        },
+        {
+          "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Code::ROW_SCHEMA_CHANGED"
+        },
+        {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Code::ROW_SCHEMA_CHANGED"
+        },
+        {
+          "implementation": "typescript",
+          "symbol": "@polyspec/orm!codes.ROW_SCHEMA_CHANGED:var"
+        },
+        {
+          "implementation": "python",
+          "symbol": "orm.codes.ROW_SCHEMA_CHANGED"
+        },
+        {
+          "implementation": "rust",
+          "symbol": "polyspec_orm::codes::ROW_SCHEMA_CHANGED"
+        }
+      ]
+    },
+    {
+      "id": "error-code-row-write-mismatch",
+      "kind": "api",
+      "requirements": [
+        "INT-65"
+      ],
+      "symbols": [
+        {
+          "implementation": "go",
+          "symbol": "github.com/polyspec/orm/packages/go/orm.CodeRowWriteMismatch"
+        },
+        {
+          "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Code::ROW_WRITE_MISMATCH"
+        },
+        {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Code::ROW_WRITE_MISMATCH"
+        },
+        {
+          "implementation": "typescript",
+          "symbol": "@polyspec/orm!codes.ROW_WRITE_MISMATCH:var"
+        },
+        {
+          "implementation": "python",
+          "symbol": "orm.codes.ROW_WRITE_MISMATCH"
+        },
+        {
+          "implementation": "rust",
+          "symbol": "polyspec_orm::codes::ROW_WRITE_MISMATCH"
+        }
+      ]
+    },
+    {
+      "id": "error-code-row-mutation-unsupported",
+      "kind": "api",
+      "requirements": [
+        "INT-65"
+      ],
+      "symbols": [
+        {
+          "implementation": "go",
+          "symbol": "github.com/polyspec/orm/packages/go/orm.CodeRowMutationUnsupported"
+        },
+        {
+          "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Code::ROW_MUTATION_UNSUPPORTED"
+        },
+        {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Code::ROW_MUTATION_UNSUPPORTED"
+        },
+        {
+          "implementation": "typescript",
+          "symbol": "@polyspec/orm!codes.ROW_MUTATION_UNSUPPORTED:var"
+        },
+        {
+          "implementation": "python",
+          "symbol": "orm.codes.ROW_MUTATION_UNSUPPORTED"
+        },
+        {
+          "implementation": "rust",
+          "symbol": "polyspec_orm::codes::ROW_MUTATION_UNSUPPORTED"
+        }
+      ]
+    },
+    {
+      "id": "error-code-row-commit-rejected",
+      "kind": "api",
+      "requirements": [
+        "INT-65"
+      ],
+      "symbols": [
+        {
+          "implementation": "go",
+          "symbol": "github.com/polyspec/orm/packages/go/orm.CodeRowCommitRejected"
+        },
+        {
+          "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Code::ROW_COMMIT_REJECTED"
+        },
+        {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Code::ROW_COMMIT_REJECTED"
+        },
+        {
+          "implementation": "typescript",
+          "symbol": "@polyspec/orm!codes.ROW_COMMIT_REJECTED:var"
+        },
+        {
+          "implementation": "python",
+          "symbol": "orm.codes.ROW_COMMIT_REJECTED"
+        },
+        {
+          "implementation": "rust",
+          "symbol": "polyspec_orm::codes::ROW_COMMIT_REJECTED"
+        }
+      ]
+    },
+    {
+      "id": "error-code-row-commit-indeterminate",
+      "kind": "api",
+      "requirements": [
+        "INT-65"
+      ],
+      "symbols": [
+        {
+          "implementation": "go",
+          "symbol": "github.com/polyspec/orm/packages/go/orm.CodeRowCommitIndeterminate"
+        },
+        {
+          "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Code::ROW_COMMIT_INDETERMINATE"
+        },
+        {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Code::ROW_COMMIT_INDETERMINATE"
+        },
+        {
+          "implementation": "typescript",
+          "symbol": "@polyspec/orm!codes.ROW_COMMIT_INDETERMINATE:var"
+        },
+        {
+          "implementation": "python",
+          "symbol": "orm.codes.ROW_COMMIT_INDETERMINATE"
+        },
+        {
+          "implementation": "rust",
+          "symbol": "polyspec_orm::codes::ROW_COMMIT_INDETERMINATE"
+        }
+      ]
+    },
+    {
+      "id": "error-code-row-rollback-failed",
+      "kind": "api",
+      "requirements": [
+        "INT-65"
+      ],
+      "symbols": [
+        {
+          "implementation": "go",
+          "symbol": "github.com/polyspec/orm/packages/go/orm.CodeRowRollbackFailed"
+        },
+        {
+          "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Code::ROW_ROLLBACK_FAILED"
+        },
+        {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Code::ROW_ROLLBACK_FAILED"
+        },
+        {
+          "implementation": "typescript",
+          "symbol": "@polyspec/orm!codes.ROW_ROLLBACK_FAILED:var"
+        },
+        {
+          "implementation": "python",
+          "symbol": "orm.codes.ROW_ROLLBACK_FAILED"
+        },
+        {
+          "implementation": "rust",
+          "symbol": "polyspec_orm::codes::ROW_ROLLBACK_FAILED"
+        }
+      ]
+    },
+    {
+      "id": "error-code-grid-temporal-value",
+      "kind": "api",
+      "requirements": [
+        "INT-65"
+      ],
+      "symbols": [
+        {
+          "implementation": "go",
+          "symbol": "github.com/polyspec/orm/packages/go/orm.CodeGridTemporalValue"
+        },
+        {
+          "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Code::GRID_TEMPORAL_VALUE"
+        },
+        {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Code::GRID_TEMPORAL_VALUE"
+        },
+        {
+          "implementation": "typescript",
+          "symbol": "@polyspec/orm!codes.GRID_TEMPORAL_VALUE:var"
+        },
+        {
+          "implementation": "python",
+          "symbol": "orm.codes.GRID_TEMPORAL_VALUE"
+        },
+        {
+          "implementation": "rust",
+          "symbol": "polyspec_orm::codes::GRID_TEMPORAL_VALUE"
+        }
+      ]
+    },
+    {
+      "id": "error-code-grid-temporal-precision",
+      "kind": "api",
+      "requirements": [
+        "INT-65"
+      ],
+      "symbols": [
+        {
+          "implementation": "go",
+          "symbol": "github.com/polyspec/orm/packages/go/orm.CodeGridTemporalPrecision"
+        },
+        {
+          "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Code::GRID_TEMPORAL_PRECISION"
+        },
+        {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Code::GRID_TEMPORAL_PRECISION"
+        },
+        {
+          "implementation": "typescript",
+          "symbol": "@polyspec/orm!codes.GRID_TEMPORAL_PRECISION:var"
+        },
+        {
+          "implementation": "python",
+          "symbol": "orm.codes.GRID_TEMPORAL_PRECISION"
+        },
+        {
+          "implementation": "rust",
+          "symbol": "polyspec_orm::codes::GRID_TEMPORAL_PRECISION"
+        }
+      ]
     }
   ],
   "errors": {
