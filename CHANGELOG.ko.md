@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: f429aa742a6c06ff8abc63e88ed305a7a73f67c9964920421a05078fb5384c5f -->
+<!-- source-sha256: c133ba3abe1f77b84be96e923c6e4d414003779ed6cc8934fadb0ab9cf87c332 -->
 # 변경 이력
 
 ## Unreleased
 
+- 이름이 지정된 client API unit 63개가 두 언어 specification의 정확한 INT 또는 COD requirement bullet을 인용하는지 확인한다. Focused requirement test는 1/1 통과했다. RED replay는 현재 test와 runtime을 유지하고 `694ca3a35^`의 config와 specification 입력만 정확히 사용했다(KSTD-2-11-7-1).
 - logical interface rule 82개 모두에 generated extension symbol snapshot과 signature가 일치하는 exported PHP extension symbol을 기록했다. contract validator는 각 rule을 PHP input/output type과 대조하고 extension을 다섯 client language mutation case와 별도로 검증한다. focused logical drift unit이 통과한다 (KSTD-2-3).
 - Native PHP extension API의 인자 오류 우선순위를 client와 맞췄다. schema evolution은 계획 전에 external 문서를 확인하고 SQLite `BEGIN IMMEDIATE`를 row-lock 상태를 만들지 않고 사용한다. schema 이름의 underscore는 문자 그대로 처리하며 Schema, Config, Model, AesKeyring 인자는 선언된 경계에서 거부한다. SQLite 정리 과정에서 두 오류를 보존하고 BEGIN 알림 실패 뒤에는 열린 트랜잭션을 롤백한다. 트랜잭션 상태 확인 실패는 외부로 전달하면서 foreign-key 복구를 수행한다. native focused case 11개(76 assertions), API binding unit과 공식 extension extractor가 통과했다 (KSTD-2-11-7).
 - 56개 markdown corpus case가 여섯 client 모두에서 DIA-175 codec-column과 DIA-177 명시적 선택 동작을 검사한다. PHP extension case는 generated Model을 native C method로 실행하며, Flowmark pin은 `packages/go` module과 일치하는 문서 source를 사용한다(KSTD-2-10-3).

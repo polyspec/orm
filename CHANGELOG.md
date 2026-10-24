@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The 63 named client API units are checked against their exact INT or COD requirement bullets in both specification languages. The focused requirement test passed 1/1; its RED replay used the exact pre-fix config and specification inputs from `694ca3a35^` while retaining the current test and runtime (KSTD-2-11-7-1).
 - All 82 logical interface rules now name an exported PHP extension symbol with a signature matching its generated extension snapshot. The contract validator checks each rule against PHP input and output types and validates the extension separately from the five client language mutation cases. The focused logical drift unit passes (KSTD-2-3).
 - Native PHP extension API precedence now matches the client: schema evolution checks external documents before planning and uses SQLite `BEGIN IMMEDIATE` without creating row-lock state; schema names escape literal underscores; Schema, Config, Model and AesKeyring arguments fail at the declared boundary. SQLite cleanup preserves both failures and rolls back when a BEGIN observer fails; transaction-inspection failures propagate while foreign-key restoration runs. Eleven focused native cases pass (76 assertions), and the API binding unit and official extension extractor pass (KSTD-2-11-7).
 - The 56-case markdown corpus now covers codec-column and explicit-selection behavior for DIA-175 and DIA-177 across all six clients. PHP extension cases run the generated Model through native C methods; the Flowmark pin uses its `packages/go` module and matching documentation source (KSTD-2-10-3).
