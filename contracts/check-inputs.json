@@ -2314,6 +2314,20 @@
         "packages/php/src/OrmException.php"
       ]
     },
+    "connection-statement-timeout-typescript-check": {
+      "scope": "owner",
+      "needs": [
+        "node-modules",
+        "databases"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/ts/tests/statement_timeout.mjs",
+        "packages/ts/tests/bench-set.mjs",
+        "packages/ts/tests/case-database.mjs",
+        "tests/testcase.mts"
+      ]
+    },
     "dbspec-apply-php-extension-check": {
       "scope": "owner",
       "needs": [
