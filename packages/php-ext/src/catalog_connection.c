@@ -1825,6 +1825,23 @@ static bool cat_read_only_inputs(zval *self, zend_string *sql, zval *params, zen
     return true;
 }
 
+#define CAT_PARSE_READ_ONLY_INPUTS() \
+    zend_string *sql; \
+    zval *params = NULL; \
+    zend_long max_rows = 0, max_bytes = 0; \
+    ZEND_PARSE_PARAMETERS_START(1, 4) \
+        Z_PARAM_STR(sql) \
+        Z_PARAM_OPTIONAL \
+        Z_PARAM_ARRAY(params) \
+        Z_PARAM_LONG(max_rows) \
+        Z_PARAM_LONG(max_bytes) \
+    ZEND_PARSE_PARAMETERS_END(); \
+    zval rv; \
+    zval *db; \
+    zend_string *dialect; \
+    zval args; \
+    if (!cat_read_only_inputs(ZEND_THIS, sql, params, &max_rows, &max_bytes, &rv, &db, &dialect, &args)) return
+
 /* ---- writes (SCH-6a) -------------------------------------------------------------------------------------------------------- */
 
 /* Opens a writable transaction (Catalog::begin, writable): SQLite takes the write lock at once. */
@@ -3681,21 +3698,7 @@ ZEND_METHOD(Polyspec_Orm_Catalog, rowSnapshotFromPage)
 
 ZEND_METHOD(Polyspec_Orm_Catalog, readOnlyQuery)
 {
-    zend_string *sql;
-    zval *params = NULL;
-    zend_long max_rows = 0, max_bytes = 0;
-    ZEND_PARSE_PARAMETERS_START(1, 4)
-        Z_PARAM_STR(sql)
-        Z_PARAM_OPTIONAL
-        Z_PARAM_ARRAY(params)
-        Z_PARAM_LONG(max_rows)
-        Z_PARAM_LONG(max_bytes)
-    ZEND_PARSE_PARAMETERS_END();
-    zval rv;
-    zval *db;
-    zend_string *dialect;
-    zval args;
-    if (!cat_read_only_inputs(ZEND_THIS, sql, params, &max_rows, &max_bytes, &rv, &db, &dialect, &args)) return;
+    CAT_PARSE_READ_ONLY_INPUTS();
     zval pdo;
     ZVAL_UNDEF(&pdo);
     if (!cat_begin_read(db, ZSTR_VAL(dialect), &pdo)) {
@@ -3737,21 +3740,7 @@ ZEND_METHOD(Polyspec_Orm_Catalog, readOnlyQuery)
 
 ZEND_METHOD(Polyspec_Orm_Catalog, readOnlyGridQuery)
 {
-    zend_string *sql;
-    zval *params = NULL;
-    zend_long max_rows = 0, max_bytes = 0;
-    ZEND_PARSE_PARAMETERS_START(1, 4)
-        Z_PARAM_STR(sql)
-        Z_PARAM_OPTIONAL
-        Z_PARAM_ARRAY(params)
-        Z_PARAM_LONG(max_rows)
-        Z_PARAM_LONG(max_bytes)
-    ZEND_PARSE_PARAMETERS_END();
-    zval rv;
-    zval *db;
-    zend_string *dialect;
-    zval args;
-    if (!cat_read_only_inputs(ZEND_THIS, sql, params, &max_rows, &max_bytes, &rv, &db, &dialect, &args)) return;
+    CAT_PARSE_READ_ONLY_INPUTS();
     zval sql_zv;
     ZVAL_STR_COPY(&sql_zv, sql);
     zval names, rows, result;
@@ -3803,3 +3792,5 @@ ZEND_METHOD(Polyspec_Orm_Catalog, readOnlyGridQuery)
     }
     zval_ptr_dtor(&pdo);
 }
+
+#undef CAT_PARSE_READ_ONLY_INPUTS
