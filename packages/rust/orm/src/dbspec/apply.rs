@@ -1162,50 +1162,28 @@ where
     q
 }
 
-impl ApplyConnection for MySqlConnection {
-    async fn execute(&mut self, statement: &str) -> Result<(), sqlx::Error> {
-        sqlx::raw_sql(AssertSqlSafe(statement.to_owned())).execute(self).await.map(drop)
-    }
+macro_rules! impl_apply_connection {
+    ($connection:ty, $database:ty, $decoder:expr) => {
+        impl ApplyConnection for $connection {
+            async fn execute(&mut self, statement: &str) -> Result<(), sqlx::Error> {
+                sqlx::raw_sql(AssertSqlSafe(statement.to_owned())).execute(self).await.map(drop)
+            }
 
-    async fn execute_bound(&mut self, statement: &str, args: &[CatalogValue]) -> Result<(), sqlx::Error> {
-        bound::<sqlx::MySql>(statement, args).execute(self).await.map(drop)
-    }
+            async fn execute_bound(&mut self, statement: &str, args: &[CatalogValue]) -> Result<(), sqlx::Error> {
+                bound::<$database>(statement, args).execute(self).await.map(drop)
+            }
 
-    async fn query_bound(&mut self, query: &str, args: &[CatalogValue]) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
-        let rows = bound::<sqlx::MySql>(query, args).fetch_all(self).await?;
-        super::catalog_rows(&rows, super::mysql_value)
-    }
+            async fn query_bound(&mut self, query: &str, args: &[CatalogValue]) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
+                let rows = bound::<$database>(query, args).fetch_all(self).await?;
+                super::catalog_rows(&rows, $decoder)
+            }
+        }
+    };
 }
 
-impl ApplyConnection for PgConnection {
-    async fn execute(&mut self, statement: &str) -> Result<(), sqlx::Error> {
-        sqlx::raw_sql(AssertSqlSafe(statement.to_owned())).execute(self).await.map(drop)
-    }
-
-    async fn execute_bound(&mut self, statement: &str, args: &[CatalogValue]) -> Result<(), sqlx::Error> {
-        bound::<sqlx::Postgres>(statement, args).execute(self).await.map(drop)
-    }
-
-    async fn query_bound(&mut self, query: &str, args: &[CatalogValue]) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
-        let rows = bound::<sqlx::Postgres>(query, args).fetch_all(self).await?;
-        super::catalog_rows(&rows, super::postgres_value)
-    }
-}
-
-impl ApplyConnection for SqliteConnection {
-    async fn execute(&mut self, statement: &str) -> Result<(), sqlx::Error> {
-        sqlx::raw_sql(AssertSqlSafe(statement.to_owned())).execute(self).await.map(drop)
-    }
-
-    async fn execute_bound(&mut self, statement: &str, args: &[CatalogValue]) -> Result<(), sqlx::Error> {
-        bound::<sqlx::Sqlite>(statement, args).execute(self).await.map(drop)
-    }
-
-    async fn query_bound(&mut self, query: &str, args: &[CatalogValue]) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
-        let rows = bound::<sqlx::Sqlite>(query, args).fetch_all(self).await?;
-        super::catalog_rows(&rows, super::sqlite_value)
-    }
-}
+impl_apply_connection!(MySqlConnection, sqlx::MySql, super::mysql_value);
+impl_apply_connection!(PgConnection, sqlx::Postgres, super::postgres_value);
+impl_apply_connection!(SqliteConnection, sqlx::Sqlite, super::sqlite_value);
 
 #[cfg(test)]
 mod sqlite_lock_result_tests {
