@@ -183,10 +183,12 @@ final class ModelWriteSurfaceTest extends TestCase
     public function testTransactionalWriteCallbacksPreserveMissingConnectionError(): void
     {
         $model = new ModelWriteCallbackFixture();
-        foreach ([
-            static fn() => $model->restoreOrCreate(),
-            static fn() => $model->delete(true),
-        ] as $call) {
+        foreach (
+            [
+                static fn() => $model->restoreOrCreate(),
+                static fn() => $model->delete(true),
+            ] as $call
+        ) {
             try {
                 $call();
                 self::fail('transactional callback without a connection must throw');
@@ -205,10 +207,12 @@ final class ModelWriteSurfaceTest extends TestCase
         $model = new ModelWriteCallbackFixture();
         $build = new \ReflectionMethod(Model::class, 'build');
         $writeRequest = new \ReflectionMethod(Model::class, 'writeRequest');
-        foreach ([
-            static fn() => $build->invoke($model, null, new \stdClass()),
-            static fn() => $writeRequest->invoke($model, null, new \stdClass()),
-        ] as $call) {
+        foreach (
+            [
+                static fn() => $build->invoke($model, null, new \stdClass()),
+                static fn() => $writeRequest->invoke($model, null, new \stdClass()),
+            ] as $call
+        ) {
             try {
                 $call();
                 self::fail('build and writeRequest require a non-null kind');
