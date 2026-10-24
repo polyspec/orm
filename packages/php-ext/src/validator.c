@@ -2022,6 +2022,31 @@ static void column_use(vctx *c, HashTable *out, zend_long i, HashTable *col)
     }
 }
 
+/* Adds parameter uses from a set of value assignments. */
+static bool assignment_param_uses(vctx *c, HashTable *out, HashTable *ent, HashTable *assignments)
+{
+    zval *assignment;
+    ZEND_HASH_FOREACH_VAL(arr_or_empty(assignments), assignment)
+    {
+        HashTable *item = ha(assignment);
+        HashTable *col = NULL;
+        if (!col_of(c, ent, str(c, item, "column", ""), &col)) {
+            return false;
+        }
+        if (has(item, "plus_p")) {
+            column_use(c, out, num(item, "plus_p", 0), col);
+        }
+        if (has(item, "minus_p")) {
+            column_use(c, out, num(item, "minus_p", 0), col);
+        }
+        if (has(item, "p") && col != NULL) {
+            add_use(c, out, num(item, "p", 0), str(c, col, "type", ""), col, true);
+        }
+    }
+    ZEND_HASH_FOREACH_END();
+    return true;
+}
+
 static const char *function_type(vctx *c, const char *name, HashTable *col)
 {
     if (col == NULL) {
@@ -2233,45 +2258,10 @@ bool validator_param_uses(zval *self, HashTable *r, zval *ret)
     if (EG(exception) != NULL) {
         goto out;
     }
-    zval *av;
-    ZEND_HASH_FOREACH_VAL(arr_or_empty(ha(get(r, "set"))), av)
-    {
-        HashTable *a = ha(av);
-        HashTable *col = NULL;
-        ok = col_of(&c, ent, str(&c, a, "column", ""), &col);
-        if (!ok) {
-            goto out;
-        }
-        if (has(a, "plus_p")) {
-            column_use(&c, out, num(a, "plus_p", 0), col);
-        }
-        if (has(a, "minus_p")) {
-            column_use(&c, out, num(a, "minus_p", 0), col);
-        }
-        if (has(a, "p") && col != NULL) {
-            add_use(&c, out, num(a, "p", 0), str(&c, col, "type", ""), col, true);
-        }
+    if (!assignment_param_uses(&c, out, ent, ha(get(r, "set")))
+        || !assignment_param_uses(&c, out, ent, ha(get(r, "on_duplicate")))) {
+        goto out;
     }
-    ZEND_HASH_FOREACH_END();
-    ZEND_HASH_FOREACH_VAL(arr_or_empty(ha(get(r, "on_duplicate"))), av)
-    {
-        HashTable *a = ha(av);
-        HashTable *col = NULL;
-        ok = col_of(&c, ent, str(&c, a, "column", ""), &col);
-        if (!ok) {
-            goto out;
-        }
-        if (has(a, "plus_p")) {
-            column_use(&c, out, num(a, "plus_p", 0), col);
-        }
-        if (has(a, "minus_p")) {
-            column_use(&c, out, num(a, "minus_p", 0), col);
-        }
-        if (has(a, "p") && col != NULL) {
-            add_use(&c, out, num(a, "p", 0), str(&c, col, "type", ""), col, true);
-        }
-    }
-    ZEND_HASH_FOREACH_END();
     zval *row;
     ZEND_HASH_FOREACH_VAL(arr_or_empty(ha(get(r, "rows"))), row)
     {
