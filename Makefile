@@ -2478,7 +2478,7 @@ php-lifecycle-extension-native-check: php-vendor-check php-models
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh "$$run_dir/php-extension/polyspec_orm.so"; \
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CoverageDsnConnectionExtensionTest.php packages/php-ext/tests/CoverageTransactionsExtensionTest.php packages/php-ext/tests/CoverageConstraintsAndRelationsExtensionTest.php packages/php-ext/tests/CoverageStatementEventsTest.php --filter 'test_native_methods_are_internal|test_statement_event_entry_points_are_native'
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CoverageDsnConnectionExtensionTest.php packages/php-ext/tests/CoverageTransactionsExtensionTest.php packages/php-ext/tests/CoverageConstraintsAndRelationsExtensionTest.php packages/php-ext/tests/CoverageStatementEventsTest.php --filter 'test_native_methods_are_internal|test_native_sqlite_connection_queries_and_closes|test_native_sqlite_transaction_commits_and_publishes_one_transaction_id|test_native_sqlite_rollback_statement_discards_rows_and_publishes_event|test_statement_event_entry_points_are_native'
 
 
 transaction-failure-php-extension-check: php-vendor-check php-models orm-install-php-extension-tools
