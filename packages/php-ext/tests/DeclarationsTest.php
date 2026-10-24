@@ -222,6 +222,16 @@ final class DeclarationsTest extends TestCase
         );
     }
 
+    public function testInternalCatalogBuildExceptionIsExcludedFromClientDeclarations(): void
+    {
+        $client = declared('client');
+        $catalog = new \ReflectionClass(\Polyspec\Orm\Catalog::class);
+        $buildException = 'Polyspec\\Orm\\Dbspec\\CatalogDocumentBuildException';
+
+        Assert::assertTrue($catalog->getMethod('connect')->isPublic(), 'the public PHP Catalog API remains public');
+        Assert::assertArrayNotHasKey($buildException, $client);
+    }
+
     // The extension has the same public declarations (name, parent, constants, order and types of properties, methods)
     // for each class that is not PHP client's @internal, and the only other classes are those the stub marks @internal.
     // DBS-172: the extension registers the PHP client's own class names, properties, constants and methods.
