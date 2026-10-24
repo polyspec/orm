@@ -80,7 +80,7 @@ final class RequestHookNativeTest extends TestCase
 
     private function runNativeCase(string $case): void
     {
-        foreach ([[Db::class, 'withRequestHook'], [Model::class, 'get']] as [$class, $method]) {
+        foreach ([[Db::class, 'withRequestHook'], [Model::class, 'get'], [Model::class, 'matchValues']] as [$class, $method]) {
             self::assertTrue(
                 (new ReflectionMethod($class, $method))->isInternal(),
                 "$class::$method must run through the native extension"

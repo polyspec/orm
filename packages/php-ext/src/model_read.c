@@ -536,7 +536,7 @@ ZEND_METHOD(Polyspec_Orm_Model, matchValues)
     ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(matches), zval *match) {
         ZVAL_DEREF(match);
         zval *column = Z_TYPE_P(match) == IS_ARRAY
-            ? zend_hash_index_find(Z_ARRVAL_P(match), zend_string_equals_literal(side, "left") ? 0 : 1)
+            ? zend_hash_find(Z_ARRVAL_P(match), side)
             : NULL;
         if (column != NULL) ZVAL_DEREF(column);
         if (column == NULL || Z_TYPE_P(column) != IS_STRING) { zval_ptr_dtor(return_value); ZVAL_UNDEF(return_value); read_throw("INTERNAL", "relation match has no column"); RETURN_THROWS(); }
@@ -624,7 +624,7 @@ ZEND_METHOD(Polyspec_Orm_Model, attachExternal)
         zval alias; ZVAL_EMPTY_STRING(&alias); model_state_property_set(model_state_of(Z_OBJ(clone)), "alias", &alias); zval_ptr_dtor(&alias);
         zval *matches = model_state_property(model_state_of(Z_OBJ_P(ZEND_THIS)), "matches"); zval rights; array_init(&rights);
         if (matches != NULL) ZVAL_DEREF(matches);
-        if (matches != NULL && Z_TYPE_P(matches) == IS_ARRAY) ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(matches), zval *match) { ZVAL_DEREF(match); zval *right=Z_TYPE_P(match)==IS_ARRAY?zend_hash_index_find(Z_ARRVAL_P(match),1):NULL; if(right!=NULL){ZVAL_DEREF(right);zval c;ZVAL_COPY(&c,right);add_next_index_zval(&rights,&c);} } ZEND_HASH_FOREACH_END();
+        if (matches != NULL && Z_TYPE_P(matches) == IS_ARRAY) ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(matches), zval *match) { ZVAL_DEREF(match); zval *right=Z_TYPE_P(match)==IS_ARRAY?zend_hash_str_find(Z_ARRVAL_P(match),"right",sizeof("right")-1):NULL; if(right!=NULL){ZVAL_DEREF(right);zval c;ZVAL_COPY(&c,right);add_next_index_zval(&rights,&c);} } ZEND_HASH_FOREACH_END();
         zval predicate;
         if (zend_hash_num_elements(Z_ARRVAL(rights)) == 1) {
             zval pred; array_init(&pred); zval *col=zend_hash_index_find(Z_ARRVAL(rights),0); zval c; ZVAL_COPY(&c,col); add_assoc_zval(&pred,"column",&c); add_assoc_string(&pred,"op","in"); ZVAL_COPY(&c,&values); add_assoc_zval(&pred,"value",&c); add_assoc_string(&pred,"kind","list");
