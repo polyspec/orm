@@ -43,13 +43,9 @@ final class OrmGenScanTest extends TestCase
         return $out;
     }
 
-    /**
-     * Generates the models of contracts/fixtures/bench/dbspec-set.json with --scan of $sources in a new folder; returns
-     * the code, stderr and the folder.
-     */
-    private static function generate(string $name, array $sources, array $extra = []): array
+    /** @param array<string, string> $sources @return list<string> */
+    private static function scanArguments(string $dir, array $sources): array
     {
-        $dir = self::$work . '/' . $name;
         is_dir("$dir/src") || mkdir("$dir/src", 0o700, true);
         $scan = [];
         foreach ($sources as $file => $text) {
@@ -57,6 +53,17 @@ final class OrmGenScanTest extends TestCase
             $scan[] = '--scan';
             $scan[] = "$dir/src/$file";
         }
+        return $scan;
+    }
+
+    /**
+     * Generates the models of contracts/fixtures/bench/dbspec-set.json with --scan of $sources in a new folder; returns
+     * the code, stderr and the folder.
+     */
+    private static function generate(string $name, array $sources, array $extra = []): array
+    {
+        $dir = self::$work . '/' . $name;
+        $scan = self::scanArguments($dir, $sources);
         $stderr = fopen('php://memory', 'w+');
         ob_start();
         $code = OrmGen::run(
@@ -88,7 +95,6 @@ final class OrmGenScanTest extends TestCase
         $dir = self::$work . '/' . $name;
         is_dir("$dir/set/app") || mkdir("$dir/set/app", 0o700, true);
         is_dir("$dir/set/core") || mkdir("$dir/set/core", 0o700, true);
-        is_dir("$dir/src") || mkdir("$dir/src", 0o700, true);
         $document = $owned === null ? 'member.dbs' : 'note.dbs';
         if ($owned === null) {
             copy("$root/contracts/fixtures/external/member.dbs", "$dir/set/app/$document");
@@ -104,12 +110,7 @@ final class OrmGenScanTest extends TestCase
                 JSON_UNESCAPED_SLASHES
             )
         );
-        $scan = [];
-        foreach ($sources as $file => $text) {
-            file_put_contents("$dir/src/$file", $text);
-            $scan[] = '--scan';
-            $scan[] = "$dir/src/$file";
-        }
+        $scan = self::scanArguments($dir, $sources);
         $stderr = fopen('php://memory', 'w+');
         ob_start();
         $code = OrmGen::run(['gen', '--set', $set, '--out', "$dir/model", '--namespace', self::NS, ...$scan], $stderr);
