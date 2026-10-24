@@ -33,6 +33,12 @@ final class Expression
         return isset(self::KEYWORDS[$token]);
     }
 
+    /** Whether a token compares two check operands. */
+    public static function isComparison(string $token): bool
+    {
+        return isset(self::COMPARISONS[$token]);
+    }
+
     private int $at = 0;
     /**
      * @var array<int, string> index in the line => class of the tokens the predicate read
@@ -177,7 +183,7 @@ final class Expression
     {
         $left = $this->operand();
         $next = $this->peek();
-        if ($next !== null && isset(self::COMPARISONS[$next])) {
+        if ($next !== null && self::isComparison($next)) {
             $operator = [$next, $this->position()];
             $this->at++;
             $right = $this->operand();

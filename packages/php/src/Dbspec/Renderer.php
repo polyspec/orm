@@ -14,12 +14,6 @@ final class Renderer
 {
     public const DIALECTS = ['mysql', 'postgres', 'sqlite'];
     public const UUID_PATTERN = '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$';
-    private const COMPARISONS = ['=' => true, '<>' => true, '<' => true, '<=' => true, '>' => true, '>=' => true];
-    private const KEYWORDS = [
-        'and' => true, 'or' => true, 'not' => true, 'in' => true, 'between' => true, 'is' => true,
-        'null' => true, 'true' => true, 'false' => true
-    ];
-
     /** @var list<string> The tokens of the check being read; the position, table, and check name go with them. */
     private array $tokens = [];
     private int $at = 0;
@@ -530,7 +524,7 @@ final class Renderer
     {
         $left = $this->operand();
         $next = $this->peek();
-        if ($next !== null && isset(self::COMPARISONS[$next])) {
+        if ($next !== null && Expression::isComparison($next)) {
             $this->at++;
             $right = $this->operand();
             $type = $this->operandType($left, $right);
@@ -571,7 +565,7 @@ final class Renderer
         $token = $this->peek();
         if (
             $token !== null && preg_match('/^[A-Za-z0-9_]+$/D', $token) && !ctype_digit($token)
-            && !isset(self::KEYWORDS[$token])
+            && !Expression::isKeyword($token)
         ) {
             $this->at++;
             return ['column', $this->findColumn($token) ?? $this->invalid("`$token` is not a column of the table")];
