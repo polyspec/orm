@@ -992,6 +992,8 @@ static void cat_column_names(zval *metadata, zval *out)
 }
 
 /* The page of a table in primary-key order, read in an open read session (Catalog::tablePage). */
+static bool cat_named_result(zval *names, zval *rows, zval *out);
+
 static bool cat_table_page(zval *db, const char *dialect, zval *pdo, zend_string *ns, zend_string *name, zend_long limit, zend_long offset, zval *out)
 {
     zval metadata;
@@ -1098,13 +1100,11 @@ static bool cat_table_page(zval *db, const char *dialect, zval *pdo, zend_string
     zval_ptr_dtor(&converted);
     zval column_names;
     cat_column_names(&metadata, &column_names);
-    zval result_args[2], result;
-    ZVAL_COPY_VALUE(&result_args[0], &column_names);
-    ZVAL_COPY_VALUE(&result_args[1], &page_rows);
-    ok = newobj("Polyspec\\Orm\\CatalogResult", &result, 2, result_args);
+    zval result;
+    ok = cat_named_result(&column_names, &page_rows, &result);
+    zval_ptr_dtor(&column_names);
+    zval_ptr_dtor(&page_rows);
     if (!ok) {
-        zval_ptr_dtor(&column_names);
-        zval_ptr_dtor(&page_rows);
         zval_ptr_dtor(&metadata);
         return false;
     }
@@ -1365,6 +1365,30 @@ static bool cat_bytes_value(zval *v, zval *out)
     return true;
 }
 
+/* Creates a CatalogResult with one consistent array ownership path for every result producer. */
+static bool cat_named_result(zval *names, zval *rows, zval *out)
+{
+    zval args[2];
+    ZVAL_COPY(&args[0], names);
+    ZVAL_COPY(&args[1], rows);
+    bool ok = newobj("Polyspec\\Orm\\CatalogResult", out, 2, args);
+    zval_ptr_dtor(&args[0]);
+    zval_ptr_dtor(&args[1]);
+    return ok;
+}
+
+/* Transfers a typed Catalog grid value into the public cell DTO using one ownership path for every driver. */
+static bool cat_grid_cell_object(zval *kind, zval *value, zval *cell)
+{
+    zval args[2];
+    ZVAL_COPY_VALUE(&args[0], kind);
+    ZVAL_COPY_VALUE(&args[1], value);
+    bool made = newobj("Polyspec\\Orm\\CatalogGridCell", cell, 2, args);
+    zval_ptr_dtor(kind);
+    zval_ptr_dtor(value);
+    return made;
+}
+
 /* A PDO grid cell: typed by the native type of its PostgreSQL column, or by the value that SQLite holds for it (cat_grid_pdo). */
 static bool cat_grid_pdo_cell(zval *v, const char *dialect, const char *native, bool blob, zval *cell)
 {
@@ -1424,13 +1448,7 @@ static bool cat_grid_pdo_cell(zval *v, const char *dialect, const char *native, 
         zval_ptr_dtor(&kind);
         return false;
     }
-    zval args[2];
-    ZVAL_COPY_VALUE(&args[0], &kind);
-    ZVAL_COPY_VALUE(&args[1], &value);
-    bool made = newobj("Polyspec\\Orm\\CatalogGridCell", cell, 2, args);
-    zval_ptr_dtor(&kind);
-    zval_ptr_dtor(&value);
-    return made;
+    return cat_grid_cell_object(&kind, &value, cell);
 }
 
 /* A MySQL grid cell from its mysqli field: the type, the UNSIGNED flag and the charset (MYSQLI_BINARY charset 63). */
@@ -1474,13 +1492,7 @@ static bool cat_grid_mysql_cell(zval *v, zend_long type, zend_long flags, zend_l
         zval_ptr_dtor(&kind);
         return false;
     }
-    zval args[2];
-    ZVAL_COPY_VALUE(&args[0], &kind);
-    ZVAL_COPY_VALUE(&args[1], &value);
-    bool made = newobj("Polyspec\\Orm\\CatalogGridCell", cell, 2, args);
-    zval_ptr_dtor(&kind);
-    zval_ptr_dtor(&value);
-    return made;
+    return cat_grid_cell_object(&kind, &value, cell);
 }
 
 
@@ -2267,10 +2279,7 @@ static bool cat_result(zval *metadata, zval *rows, zval *out)
 {
     zval names;
     cat_column_names(metadata, &names);
-    zval args[2];
-    ZVAL_COPY_VALUE(&args[0], &names);
-    ZVAL_COPY_VALUE(&args[1], rows);
-    bool ok = newobj("Polyspec\\Orm\\CatalogResult", out, 2, args);
+    bool ok = cat_named_result(&names, rows, out);
     zval_ptr_dtor(&names);
     return ok;
 }
@@ -3677,10 +3686,7 @@ ZEND_METHOD(Polyspec_Orm_Catalog, readOnlyQuery)
         zval_ptr_dtor(&pdo);
         return;
     }
-    zval result_args[2];
-    ZVAL_COPY_VALUE(&result_args[0], &names);
-    ZVAL_COPY_VALUE(&result_args[1], &converted);
-    ok = newobj("Polyspec\\Orm\\CatalogResult", &result, 2, result_args);
+    ok = cat_named_result(&names, &converted, &result);
     zval_ptr_dtor(&names);
     zval_ptr_dtor(&converted);
     if (!ok) {
@@ -3729,10 +3735,7 @@ ZEND_METHOD(Polyspec_Orm_Catalog, readOnlyGridQuery)
         zval_ptr_dtor(&args);
         zval_ptr_dtor(&sql_zv);
         if (ok) {
-            zval result_args[2];
-            ZVAL_COPY_VALUE(&result_args[0], &names);
-            ZVAL_COPY_VALUE(&result_args[1], &rows);
-            ok = newobj("Polyspec\\Orm\\CatalogResult", &result, 2, result_args);
+            ok = cat_named_result(&names, &rows, &result);
             zval_ptr_dtor(&names);
             zval_ptr_dtor(&rows);
             if (ok) {
@@ -3752,10 +3755,7 @@ ZEND_METHOD(Polyspec_Orm_Catalog, readOnlyGridQuery)
     zval_ptr_dtor(&args);
     zval_ptr_dtor(&sql_zv);
     if (ok) {
-        zval result_args[2];
-        ZVAL_COPY_VALUE(&result_args[0], &names);
-        ZVAL_COPY_VALUE(&result_args[1], &rows);
-        ok = newobj("Polyspec\\Orm\\CatalogResult", &result, 2, result_args);
+        ok = cat_named_result(&names, &rows, &result);
         zval_ptr_dtor(&names);
         zval_ptr_dtor(&rows);
     }
