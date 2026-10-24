@@ -58,13 +58,7 @@ final class PlanBinds
      */
     public function param(int $i, string $type, string $transform = '', array $hostStyles = []): string
     {
-        $slot = ['from' => 'param', 'param' => $i];
-        if ($transform !== '') {
-            $slot['transform'] = $transform;
-        }
-        if ($hostStyles !== []) {
-            $slot['host_styles'] = $hostStyles;
-        }
+        $slot = $this->parameterSlot($i, $transform, $hostStyles);
         $slot['col_type'] = $type;
         // A datetime or time compared with a function's argument or result is text of six fraction digits.
         if ($type === 'datetime' || $type === 'time') {
@@ -81,13 +75,7 @@ final class PlanBinds
      */
     public function colParam(int $i, array $col, string $transform = '', array $hostStyles = []): string
     {
-        $slot = ['from' => 'param', 'param' => $i];
-        if ($transform !== '') {
-            $slot['transform'] = $transform;
-        }
-        if ($hostStyles !== []) {
-            $slot['host_styles'] = $hostStyles;
-        }
+        $slot = $this->parameterSlot($i, $transform, $hostStyles);
         $slot['col_type'] = $col['type'];
         if ($col['type'] === 'decimal') {
             $slot['precision'] = $col['precision'];
@@ -98,6 +86,19 @@ final class PlanBinds
             $slot['length'] = $col['length'];
         }
         return $this->typed($slot);
+    }
+
+    /** @param list<string> $hostStyles */
+    private function parameterSlot(int $i, string $transform, array $hostStyles): array
+    {
+        $slot = ['from' => 'param', 'param' => $i];
+        if ($transform !== '') {
+            $slot['transform'] = $transform;
+        }
+        if ($hostStyles !== []) {
+            $slot['host_styles'] = $hostStyles;
+        }
+        return $slot;
     }
 
     /** Plaintext the executor hashes with the blind-index key; $type is the index column's type. */
