@@ -3122,8 +3122,8 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_rollback_fault.py",
-          "id": "HandleDisposalTest.test_close_during_transaction_rolls_back_and_closes_connection"
+          "test": "packages/python/tests/coverage_transactions.py",
+          "id": "test_transaction_rollback"
         },
         {
           "implementation": "rust",
@@ -3163,8 +3163,8 @@
         },
         {
           "implementation": "php",
-          "test": "packages/php/tests/CoverageTransactionsTest.php",
-          "id": "CoverageTransactionsTest::testTransactionRollback"
+          "test": "packages/php/tests/TransactionFailureTest.php",
+          "id": "TransactionFailureTest::testCloseDuringTransactionRollsBackAndPreservesCallbackFailure"
         },
         {
           "implementation": "php-extension",
@@ -3188,8 +3188,8 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/coverage_transactions.py",
-          "id": "test_transaction_rollback"
+          "test": "packages/python/tests/test_rollback_fault.py",
+          "id": "HandleDisposalTest.test_close_during_transaction_rolls_back_and_closes_connection"
         },
         {
           "implementation": "rust",

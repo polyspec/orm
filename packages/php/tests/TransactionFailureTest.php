@@ -11,11 +11,82 @@ use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;
 use Polyspec\Orm\OrmException;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
 
 // Requirements: INT-72, DIA-181, PLN-17.
 final class TransactionFailureTest extends TestCase
 {
     use TransactionFailureCases;
+
+    // Requirements: INT-67.
+    public function testCloseDuringTransactionRollsBackAndPreservesCallbackFailure(): void
+    {
+        $pdo = new class extends \PDO {
+            /** @var list<string> */
+            public array $statements = [];
+            private bool $transaction = false;
+
+            public function __construct()
+            {
+            }
+
+            public function setAttribute(int $attribute, mixed $value): bool
+            {
+                return true;
+            }
+
+            public function exec(string $statement): int|false
+            {
+                $this->statements[] = $statement;
+                if ($statement === 'BEGIN IMMEDIATE') {
+                    $this->transaction = true;
+                } elseif ($statement === 'ROLLBACK' || $statement === 'COMMIT') {
+                    $this->transaction = false;
+                }
+                return 0;
+            }
+
+            public function inTransaction(): bool
+            {
+                return $this->transaction;
+            }
+        };
+        $db = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
+        $failure = new RuntimeException('the caller abandoned the transaction');
+
+        try {
+            $caught = null;
+            try {
+                $db->transaction(static function () use ($db, $failure): void {
+                    $db->close();
+                    throw $failure;
+                }, retry: 0);
+            } catch (RuntimeException $error) {
+                $caught = $error;
+            }
+
+            self::assertSame($failure, $caught, 'closing the connection preserves the callback failure');
+            self::assertSame([
+                'CREATE TABLE IF NOT EXISTS "orm__row_lock" ("id" INTEGER PRIMARY KEY CHECK ("id" = 1))',
+                'BEGIN IMMEDIATE',
+                'ROLLBACK',
+            ], $pdo->statements, 'close rolls back before releasing the connection');
+            self::assertFalse($pdo->inTransaction(), 'the active transaction is settled');
+
+            try {
+                $db->transaction(
+                    static function (): void {
+                    },
+                    retry: 0
+                );
+                self::fail('the disposed connection must reject another transaction');
+            } catch (OrmException $error) {
+                self::assertSame(Code::CONFIG, $error->code_);
+            }
+        } finally {
+            $db->close();
+        }
+    }
 
     public function testStatementFailureKeepsItsDriverCause(): void
     {

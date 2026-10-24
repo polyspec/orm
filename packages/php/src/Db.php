@@ -200,22 +200,53 @@ final class Db
         if ($this->state->closed) {
             return;
         }
+        $transactionFailure = null;
+        $frame = self::activeFor($this);
+        if ($frame !== null && !$frame->finished) {
+            try {
+                $this->finish($frame, false);
+            } catch (\Throwable $error) {
+                $transactionFailure = $error;
+            }
+        }
         if ($this->md !== null) {
             $this->state->closed = true;
-            $this->md->close();
+            try {
+                $this->md->close();
+            } catch (\Throwable $error) {
+                if ($transactionFailure !== null) {
+                    throw OrmException::withCleanup($transactionFailure, $error);
+                }
+                throw $error;
+            }
+            if ($transactionFailure !== null) {
+                throw $transactionFailure;
+            }
             return;
         }
+        $closeFailure = null;
         try {
             foreach ($this->state->stmts as $st) {
                 $st->closeCursor();
             }
         } catch (\PDOException $e) {
-            throw $this->driverError($e);
+            $closeFailure = $this->driverError($e);
+        } catch (\Throwable $error) {
+            $closeFailure = $error;
         } finally {
             $this->state->closed = true;
             $this->state->stmts = [];
             $this->state->stmtOrder = [];
             $this->state->pdo = null;
+        }
+        if ($transactionFailure !== null && $closeFailure !== null) {
+            throw OrmException::withCleanup($transactionFailure, $closeFailure);
+        }
+        if ($transactionFailure !== null) {
+            throw $transactionFailure;
+        }
+        if ($closeFailure !== null) {
+            throw $closeFailure;
         }
     }
 
@@ -755,6 +786,9 @@ final class Db
             }
             return $failure;
         });
+        if ($frame->finished) {
+            throw new OrmException(Code::CONFIG, 'database was closed during the transaction');
+        }
         $this->finish($frame, true);
         return $v;
     }
@@ -866,6 +900,9 @@ final class Db
      */
     private function finish(TxFrame $frame, bool $commit): void
     {
+        if ($frame->finished) {
+            return;
+        }
         $frame->finished = true;
         if ($this->md !== null) {
             // A markdown transaction leaves no state on the session: a single commit or rollback message
@@ -1008,6 +1045,9 @@ final class Db
         try {
             $this->savepointControl($frame, StatementEvent::SAVEPOINT, $name);
             $v = $this->runInFrame($frame, $fn, function (\Throwable $failure) use ($frame, $name): \Throwable {
+                if ($frame->finished) {
+                    return $failure;
+                }
                 // Attempts both statements: the one that undoes the work after the savepoint, and the one that
                 // releases the savepoint.
                 $ended = self::joined(array_values(array_filter([
@@ -1016,6 +1056,9 @@ final class Db
                 ])));
                 return $ended === null ? $failure : OrmException::rollback($failure, $ended);
             });
+            if ($frame->finished) {
+                throw new OrmException(Code::CONFIG, 'database was closed during the transaction');
+            }
             $released = $this->endSavepoint($frame, StatementEvent::RELEASE, $name);
             if ($released !== null) {
                 throw $released;
