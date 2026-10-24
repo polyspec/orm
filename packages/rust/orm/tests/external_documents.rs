@@ -21,7 +21,10 @@ use external_schema::set_schema;
 
 #[path = "common/pool_exec.rs"]
 mod pool_exec;
-use pool_exec::{exec, scalar as pool_scalar};
+#[path = "common/pool_scalar.rs"]
+mod pool_scalar;
+use pool_exec::exec;
+use pool_scalar::scalar as pool_scalar;
 
 use std::collections::BTreeMap;
 use std::sync::Arc;

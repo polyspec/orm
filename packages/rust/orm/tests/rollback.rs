@@ -18,7 +18,9 @@
 #[macro_use]
 #[path = "common/model_row.rs"]
 mod model_row;
-use model_row::connected;
+#[path = "common/model_connect.rs"]
+mod model_connect;
+use model_connect::connected;
 
 #[path = "common/or_panic.rs"]
 mod or_panic;

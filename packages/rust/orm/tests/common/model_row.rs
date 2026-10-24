@@ -1,15 +1,6 @@
 //! The row of a test model: a struct with its core and its column values, and the `Model` impl that reads and writes
 //! the values by the column names of the entity (KSTD-5-46).
 
-use polyspec_orm::{Core, Db, Model};
-
-/// Connects a test model to the database using its declared entity.
-pub fn connected<M: Model>(db: &Db) -> M {
-    let mut core = Core::new(M::entity());
-    core.connect(db);
-    M::from_core(core)
-}
-
 /// Defines the row `$row` of the entity `$entity`, whose column names are the columns `$columns`, with its `Model` impl.
 macro_rules! model_row {
     ($row:ident, $entity:ident, $columns:expr) => {
