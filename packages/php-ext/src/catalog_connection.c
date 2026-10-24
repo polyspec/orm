@@ -2082,11 +2082,29 @@ static bool cat_mysql_safety(zval *db, zval *pdo, zval *metadata)
     return true;
 }
 
+/* Appends a primary-key WHERE clause and its arguments in descriptor key order. */
+static void cat_key_predicate(smart_str *sql, zval *metadata, const char *dialect, zval *keys, zval *args)
+{
+    zval rv_pk, *pk = catalog_prop(metadata, "primaryKey", &rv_pk);
+    smart_str_appends(sql, " WHERE ");
+    bool first = true;
+    zval *key;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(pk), key) {
+        if (!first) smart_str_appends(sql, " AND ");
+        first = false;
+        cat_quote(sql, Z_STR_P(key), dialect);
+        smart_str_appends(sql, "=?");
+    } ZEND_HASH_FOREACH_END();
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(keys), key) {
+        Z_TRY_ADDREF_P(key);
+        add_next_index_zval(args, key);
+    } ZEND_HASH_FOREACH_END();
+}
+
 /* The primary-key lookup of a descriptor: at most two rows, locked where the server locks (Catalog::lookup). */
 static bool cat_lookup(zval *db, const char *dialect, zval *pdo, zval *metadata, zval *keys, bool lock, zval *rows)
 {
-    zval rv_pk, rv_table, rv_cols;
-    zval *pk = catalog_prop(metadata, "primaryKey", &rv_pk);
+    zval rv_table, rv_cols;
     zval *table = catalog_prop(metadata, "table", &rv_table);
     zval *columns = catalog_prop(metadata, "columns", &rv_cols);
     zval *ns = zend_hash_str_find(Z_ARRVAL_P(table), "namespace", 9);
@@ -2112,23 +2130,18 @@ static bool cat_lookup(zval *db, const char *dialect, zval *pdo, zval *metadata,
     cat_quote(&sql, Z_STR_P(ns), dialect);
     smart_str_appendc(&sql, '.');
     cat_quote(&sql, Z_STR_P(tname), dialect);
-    smart_str_appends(&sql, " WHERE ");
-    first = true;
-    zval *key;
-    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(pk), key) {
-        if (!first) smart_str_appends(&sql, " AND ");
-        first = false;
-        cat_quote(&sql, Z_STR_P(key), dialect);
-        smart_str_appends(&sql, "=?");
-    } ZEND_HASH_FOREACH_END();
+    zval key_args;
+    array_init(&key_args);
+    cat_key_predicate(&sql, metadata, dialect, keys, &key_args);
     smart_str_appends(&sql, " LIMIT 2");
     if (lock && strcmp(dialect, "sqlite") != 0) {
         smart_str_appends(&sql, " FOR UPDATE");
     }
     smart_str_0(&sql);
     zval got_names, got_types, raw;
-    bool ok = cat_query(db, pdo, ZSTR_VAL(sql.s), keys, 2, CAT_PAGE_BYTES, &got_names, &got_types, &raw);
+    bool ok = cat_query(db, pdo, ZSTR_VAL(sql.s), &key_args, 2, CAT_PAGE_BYTES, &got_names, &got_types, &raw);
     smart_str_free(&sql);
+    zval_ptr_dtor(&key_args);
     if (!ok) {
         zval_ptr_dtor(&names);
         zval_ptr_dtor(&native_types);
@@ -2889,21 +2902,7 @@ static bool cat_update_body(zval *db, const char *dialect, zval *pdo, zval *orig
         Z_TRY_ADDREF_P(value);
         add_next_index_zval(&args, value);
     } ZEND_HASH_FOREACH_END();
-    smart_str_appends(&sql, " WHERE ");
-    first = true;
-    zval *key;
-    zval rv_pk, *pk = catalog_prop(metadata, "primaryKey", &rv_pk);
-    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(pk), key) {
-        if (!first) smart_str_appends(&sql, " AND ");
-        first = false;
-        cat_quote(&sql, Z_STR_P(key), dialect);
-        smart_str_appends(&sql, "=?");
-    } ZEND_HASH_FOREACH_END();
-    zval *k;
-    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(keys), k) {
-        Z_TRY_ADDREF_P(k);
-        add_next_index_zval(&args, k);
-    } ZEND_HASH_FOREACH_END();
+    cat_key_predicate(&sql, metadata, dialect, keys, &args);
     smart_str_0(&sql);
     zend_long affected = 0;
     bool ok = cat_exec(db, pdo, ZSTR_VAL(sql.s), &args, &affected);
@@ -3043,20 +3042,14 @@ static bool cat_delete_body(zval *db, const char *dialect, zval *pdo, zval *orig
     cat_quote(&sql, Z_STR_P(ns), dialect);
     smart_str_appendc(&sql, '.');
     cat_quote(&sql, Z_STR_P(tname), dialect);
-    smart_str_appends(&sql, " WHERE ");
-    zval rv_pk, *pk = catalog_prop(metadata, "primaryKey", &rv_pk);
-    bool first = true;
-    zval *key;
-    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(pk), key) {
-        if (!first) smart_str_appends(&sql, " AND ");
-        first = false;
-        cat_quote(&sql, Z_STR_P(key), dialect);
-        smart_str_appends(&sql, "=?");
-    } ZEND_HASH_FOREACH_END();
+    zval args;
+    array_init(&args);
+    cat_key_predicate(&sql, metadata, dialect, keys, &args);
     smart_str_0(&sql);
     zend_long affected = 0;
-    bool ok = cat_exec(db, pdo, ZSTR_VAL(sql.s), keys, &affected);
+    bool ok = cat_exec(db, pdo, ZSTR_VAL(sql.s), &args, &affected);
     smart_str_free(&sql);
+    zval_ptr_dtor(&args);
     if (!ok) {
         zval_ptr_dtor(&descriptor);
         return false;
