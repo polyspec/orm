@@ -109,6 +109,34 @@ function plan_messages(string $id, string $rule, array $diagnostics): array
 #[Small]
 final class DbspecPlanTest extends TestCase
 {
+    public function testComparisonHarnessParsesPlanVectorsAndWritesDiagnostics(): void
+    {
+        $root = dirname(__DIR__, 3);
+        $program = implode("\n", [
+            'require ' . var_export("$root/vendor-php/autoload.php", true) . ';',
+            'require ' . var_export("$root/tests/dbspec/input.php", true) . ';',
+            'require ' . var_export("$root/tests/dbspec/vectors.php", true) . ';',
+            'require ' . var_export("$root/tests/dbspec/cases.php", true) . ';',
+            'require ' . var_export("$root/packages/php/testing/dbspec/compare/php-interface.php", true) . ';',
+            '$plans = json_decode(file_get_contents(' . var_export("$root/tests/dbspec/plans.json", true)
+                . '), true, 512, JSON_THROW_ON_ERROR);',
+            'ob_start();',
+            '$plan = dbspec_parse_plan(Polyspec\\Orm\\Dbspec\\Dbspec::class, $plans[\'cases\'][0][\'plan\']);',
+            '$validOutput = ob_get_clean();',
+            'ob_start();',
+            '$rejected = dbspec_parse_plan(Polyspec\\Orm\\Dbspec\\Dbspec::class, [\'not a plan\']);',
+            '$invalidOutput = ob_get_clean();',
+            'echo json_encode([$plan?->name, $validOutput, $rejected === null, $invalidOutput], JSON_THROW_ON_ERROR);'
+        ]);
+        [$status, $stdout, $stderr] = coverageProcess([PHP_BINARY, '-r', $program], $root);
+        self::assertSame(0, $status, $stderr);
+        $result = json_decode($stdout, true, 512, JSON_THROW_ON_ERROR);
+        self::assertNotSame('', $result[0], 'valid plan is returned');
+        self::assertSame('', $result[1], 'valid plan has no diagnostic output');
+        self::assertTrue($result[2], 'invalid plan is rejected');
+        self::assertStringStartsWith('! plan ', $result[3], 'invalid plan diagnostics are written');
+    }
+
     public static function casesCases(): iterable
     {
         foreach (plan_vectors()['cases'] as $case) {

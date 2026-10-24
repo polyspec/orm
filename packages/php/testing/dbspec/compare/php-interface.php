@@ -504,19 +504,18 @@ function dbspec_write_plans(string $dbspec, string $plansPath): void
         if ($source === false) {
             continue;
         }
-        $parsed = $dbspec::parsePlan(dbspec_join($case['plan'], false, false));
-        if ($parsed->plan === null) {
-            dbspec_plan_diagnostics($parsed->diagnostics);
+        $plan = dbspec_parse_plan($dbspec, $case['plan']);
+        if ($plan === null) {
             continue;
         }
-        dbspec_emitted_plan($dbspec, $parsed->plan);
+        dbspec_emitted_plan($dbspec, $plan);
         echo "plans/cases/{$case['id']}/changes\n";
-        $diff = $dbspec::diff($source, $parsed->plan);
+        $diff = $dbspec::diff($source, $plan);
         dbspec_plan_diagnostics($diff->diagnostics);
         dbspec_changes($diff->changes ?? []);
         foreach (['mysql', 'postgres', 'sqlite'] as $dialect) {
             echo "plans/cases/{$case['id']}/$dialect\n";
-            $result = $dbspec::planSteps($source, $parsed->plan, $dialect);
+            $result = $dbspec::planSteps($source, $plan, $dialect);
             dbspec_plan_diagnostics($result->diagnostics);
             foreach ($result->steps ?? [] as $step) {
                 dbspec_step($step);
@@ -529,12 +528,11 @@ function dbspec_write_plans(string $dbspec, string $plansPath): void
         if ($source === false) {
             continue;
         }
-        $parsed = $dbspec::parsePlan(dbspec_join($case['plan'], false, false));
-        if ($parsed->plan === null) {
-            dbspec_plan_diagnostics($parsed->diagnostics);
+        $plan = dbspec_parse_plan($dbspec, $case['plan']);
+        if ($plan === null) {
             continue;
         }
-        $diff = $dbspec::diff($source, $parsed->plan);
+        $diff = $dbspec::diff($source, $plan);
         dbspec_plan_diagnostics($diff->diagnostics);
         dbspec_changes($diff->changes ?? []);
     }
@@ -542,9 +540,7 @@ function dbspec_write_plans(string $dbspec, string $plansPath): void
         echo "plans/chains/{$case['id']}\n";
         $parsedPlans = [];
         foreach ($case['plans'] as $lines) {
-            $parsed = $dbspec::parsePlan(dbspec_join($lines, false, false));
-            dbspec_plan_diagnostics($parsed->diagnostics);
-            $parsedPlans[] = $parsed->plan;
+            $parsedPlans[] = dbspec_parse_plan($dbspec, $lines);
         }
         if (in_array(null, $parsedPlans, true)) {
             continue;
@@ -557,12 +553,11 @@ function dbspec_write_plans(string $dbspec, string $plansPath): void
     }
     foreach ($plans['parse'] as $case) {
         echo "plans/parse/{$case['id']}\n";
-        $parsed = $dbspec::parsePlan(dbspec_join($case['plan'], false, false));
-        if ($parsed->plan === null) {
-            dbspec_plan_diagnostics($parsed->diagnostics);
+        $plan = dbspec_parse_plan($dbspec, $case['plan']);
+        if ($plan === null) {
             continue;
         }
-        dbspec_emitted_plan($dbspec, $parsed->plan);
+        dbspec_emitted_plan($dbspec, $plan);
     }
     foreach ($plans['comparisons'] as $case) {
         echo "plans/comparisons/{$case['id']}\n";
@@ -579,6 +574,14 @@ function dbspec_write_plans(string $dbspec, string $plansPath): void
             echo "| {$d->kind} {$d->table} {$d->name}\n";
         }
     }
+}
+
+/** Parses plan lines and writes all diagnostics in the format of the comparison runner. */
+function dbspec_parse_plan(string $dbspec, array $lines): ?object
+{
+    $result = $dbspec::parsePlan(dbspec_join($lines, false, false));
+    dbspec_plan_diagnostics($result->diagnostics);
+    return $result->plan;
 }
 
 /**
