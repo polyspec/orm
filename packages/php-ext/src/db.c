@@ -809,6 +809,19 @@ static bool exec_stmt(zval *self, zval *st, zval *args)
     return true;
 }
 
+/* Db::exec; a failed driver statement closes its cursor before the cached statement is released. */
+static bool execute_prepared_stmt(zval *self, zval *st, zval *args)
+{
+    if (!exec_stmt(self, st, args)) {
+        if (pdo_exception_pending()) {
+            failed_cursor(st);
+        }
+        zval_ptr_dtor(st);
+        return false;
+    }
+    return true;
+}
+
 /* ---- time values (Db::timeValue) ---- */
 
 static bool is_digit_run(const char *s, size_t n)
@@ -1749,8 +1762,7 @@ static bool op_query(zval *self, void *ctx, zval *ret)
     if (!stmt_of(self, c->sql, &st)) {
         return false;
     }
-    if (!exec_stmt(self, &st, c->args)) {
-        failed_statement(&st);
+    if (!execute_prepared_stmt(self, &st, c->args)) {
         return false;
     }
     ZVAL_LONG(&mode, FETCH_NUM);
@@ -1773,8 +1785,7 @@ static bool op_scalar(zval *self, void *ctx, zval *ret)
     if (!stmt_of(self, c->sql, &st)) {
         return false;
     }
-    if (!exec_stmt(self, &st, c->args)) {
-        failed_statement(&st);
+    if (!execute_prepared_stmt(self, &st, c->args)) {
         return false;
     }
     if (!mcall(&st, "fetchColumn", &v, 0, NULL)) {
@@ -3228,11 +3239,7 @@ static bool op_write(zval *self, void *ctx, zval *ret)
     }
     zval *ir = rd(c->r, "ir");
     bool insert = is_str(aget(ir, "kind"), "insert");
-    if (!exec_stmt(self, &st, c->args)) {
-        if (pdo_exception_pending()) {
-            failed_cursor(&st);
-        }
-        zval_ptr_dtor(&st);
+    if (!execute_prepared_stmt(self, &st, c->args)) {
         return false;
     }
     if (insert && strstr(Z_STRVAL_P(sql), " RETURNING ") != NULL) {
@@ -3903,8 +3910,7 @@ static bool op_execute(zval *self, void *ctx, zval *ret)
     if (!stmt_of(self, aget(c->step, "sql"), &st)) {
         return false;
     }
-    if (!exec_stmt(self, &st, c->args)) {
-        failed_statement(&st);
+    if (!execute_prepared_stmt(self, &st, c->args)) {
         return false;
     }
     if (!close_statement(&st)) {
