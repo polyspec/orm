@@ -142,12 +142,7 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
                     $c->report('check', $t->name, $name, "the check $expression is not the renderer CHECK");
                     continue;
                 }
-                try {
-                    $t->checks[] = ['name' => $name,
-                        'predicate' => CheckDecoder::decode('sqlite', $expression, $t->columnTypes())];
-                } catch (CheckDecodeFailure $e) {
-                    $c->report('check', $t->name, $name, $e->getMessage());
-                }
+                CatalogChecks::add($c, 'sqlite', $t, $name, $expression);
             }
         }
         $q = self::INDEXES;

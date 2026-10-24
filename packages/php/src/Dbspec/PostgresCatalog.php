@@ -174,12 +174,7 @@ WHERE NOT t.tgisinternal AND c.relnamespace = current_schema()::regnamespace ORD
                     $checked[$table][$column] = true;
                     continue;
                 }
-                try {
-                    $t->checks[] = ['name' => $name,
-                        'predicate' => CheckDecoder::decode('postgres', $definition, $t->columnTypes())];
-                } catch (CheckDecodeFailure $e) {
-                    $c->report('check', $table, $name, $e->getMessage());
-                }
+                CatalogChecks::add($c, 'postgres', $t, $name, $definition);
             } else {
                 $c->report(self::kind($kind), $table, $name, "a constraint of kind $kind has no dbspec definition");
             }
