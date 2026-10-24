@@ -58,6 +58,11 @@ final class ModelStreamWarningWrapper
 #[Small]
 final class ModelStreamReadTest extends TestCase
 {
+    public function testNativeRowAssemblyMethodIsInternal(): void
+    {
+        self::assertTrue((new \ReflectionMethod(Model::class, 'assembleRow'))->isInternal());
+    }
+
     private static function columnValue(array $column, mixed $value): mixed
     {
         return (new \ReflectionMethod(Model::class, 'columnValue'))
@@ -191,7 +196,6 @@ final class ModelStreamReadTest extends TestCase
             rewind($stream);
             $model = new ModelStreamFixture();
             $assembleRow = new \ReflectionMethod(Model::class, 'assembleRow');
-            self::assertTrue($assembleRow->isInternal());
             $row = $assembleRow->invoke($model, self::assembly(), [
                 'node' => 48118,
                 'key' => [],
