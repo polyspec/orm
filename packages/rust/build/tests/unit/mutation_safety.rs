@@ -1,4 +1,6 @@
 use super::*;
+use crate::catalog::{RowSnapshot, TablePage};
+use crate::tool_db::{GridCell, GridQueryResult, QueryColumn};
 
 #[tokio::test]
 // Requirements: INT-120.
@@ -39,4 +41,44 @@ async fn rust_duplicate_row_mutations_choose_the_declared_dialect_transaction() 
     })
     .await
     .expect("transaction statement deadline");
+}
+
+#[tokio::test]
+async fn rust_duplicate_row_mutations_share_cancellation_and_key_preflight() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    tokio::time::timeout(std::time::Duration::from_secs(5), async {
+        let metadata = crate::catalog::test_fixtures::metadata("fixture", "value");
+        let page = TablePage {
+            metadata,
+            result: GridQueryResult {
+                columns: vec![
+                    QueryColumn { name: "id".into(), native_type: "INTEGER".into() },
+                    QueryColumn { name: "value".into(), native_type: "TEXT".into() },
+                ],
+                rows: vec![vec![GridCell::Integer(1), GridCell::Text("original".into())]],
+            },
+            limit: 1,
+            offset: 0,
+            order_by: vec!["id".into()],
+            has_more: false,
+        };
+        let original = RowSnapshot::from_page(&page, 0).unwrap();
+        let phases = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+        let phases_for_publish = phases.clone();
+        let publish: Publisher = std::sync::Arc::new(move |phase| phases_for_publish.lock().unwrap().push(phase));
+
+        let keys = prepare_mutation(&original, "sqlite", &AtomicBool::new(false), &publish).unwrap();
+        assert!(matches!(keys.as_slice(), [P::I(1)]));
+        assert_eq!(*phases.lock().unwrap(), [MutationPhase::Validated]);
+
+        phases.lock().unwrap().clear();
+        let error = match prepare_mutation(&original, "sqlite", &AtomicBool::new(true), &publish) {
+            Err(error) => error,
+            Ok(_) => panic!("cancelled mutation must fail preflight"),
+        };
+        assert!(error.starts_with("JOB_CANCELLED:"));
+        assert!(phases.lock().unwrap().is_empty(), "a cancelled mutation is not published as validated");
+    })
+    .await
+    .expect("mutation preflight deadline");
 }
