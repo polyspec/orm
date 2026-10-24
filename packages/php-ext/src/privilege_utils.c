@@ -58,6 +58,17 @@ static bool privilege_utils_role(zend_string *role, zend_string **quoted)
     return true;
 }
 
+static bool privilege_utils_table_role(zval *db, zend_string *table, zend_string *role,
+    zend_string **qualified, zend_string **schema, zend_string **quoted_role)
+{
+    if (privilege_utils_table(db, table, qualified, schema) && privilege_utils_role(role, quoted_role)) {
+        return true;
+    }
+    if (*qualified != NULL) zend_string_release(*qualified);
+    if (*schema != NULL) zend_string_release(*schema);
+    return false;
+}
+
 static bool privilege_utils_trim_character(unsigned char character)
 {
     return character == ' ' || character == '\n' || character == '\r' || character == '\t'
@@ -127,11 +138,7 @@ ZEND_METHOD(Polyspec_Orm_PrivilegeUtils, grantTable)
     ZEND_PARSE_PARAMETERS_END();
     zval *db = privilege_utils_db(ZEND_THIS);
     zend_string *qualified = NULL, *schema = NULL, *quoted_role = NULL;
-    if (!privilege_utils_table(db, table, &qualified, &schema) || !privilege_utils_role(role, &quoted_role)) {
-        if (qualified != NULL) zend_string_release(qualified);
-        if (schema != NULL) zend_string_release(schema);
-        RETURN_THROWS();
-    }
+    if (!privilege_utils_table_role(db, table, role, &qualified, &schema, &quoted_role)) RETURN_THROWS();
     zend_string *first = strpprintf(0, "GRANT USAGE ON SCHEMA \"%s\" TO %s", ZSTR_VAL(schema), ZSTR_VAL(quoted_role));
     zend_string *second = strpprintf(0, "GRANT SELECT, INSERT, UPDATE, DELETE ON %s TO %s", ZSTR_VAL(qualified), ZSTR_VAL(quoted_role));
     zval tables, result;
@@ -161,11 +168,7 @@ ZEND_METHOD(Polyspec_Orm_PrivilegeUtils, revokeTable)
     ZEND_PARSE_PARAMETERS_END();
     zval *db = privilege_utils_db(ZEND_THIS);
     zend_string *qualified = NULL, *schema = NULL, *quoted_role = NULL;
-    if (!privilege_utils_table(db, table, &qualified, &schema) || !privilege_utils_role(role, &quoted_role)) {
-        if (qualified != NULL) zend_string_release(qualified);
-        if (schema != NULL) zend_string_release(schema);
-        RETURN_THROWS();
-    }
+    if (!privilege_utils_table_role(db, table, role, &qualified, &schema, &quoted_role)) RETURN_THROWS();
     size_t start = 0, end = ZSTR_LEN(privilege);
     while (start < end && privilege_utils_trim_character((unsigned char)ZSTR_VAL(privilege)[start])) start++;
     while (end > start && privilege_utils_trim_character((unsigned char)ZSTR_VAL(privilege)[end - 1])) end--;
