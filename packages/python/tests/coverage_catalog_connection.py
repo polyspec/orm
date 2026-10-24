@@ -4,7 +4,9 @@
 # Requirements: SCH-5, SCH-6a, INT-109, INT-113, INT-114, INT-123.
 import io
 import os
+import sqlite3
 import sys
+import tempfile
 import unittest
 
 from polyspec.orm import connect_catalog
@@ -157,6 +159,31 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
         self.assertEqual(len(updated.rows), 1)
         self.assertEqual(self.catalog.delete_row(find("catalog-updated")), 1)
         self.assertEqual(tenant_rows(), 0)
+        if driver == "sqlite":
+            with tempfile.TemporaryDirectory(
+                prefix="orm-catalog-auto-key-"
+            ) as directory:
+                path = os.path.join(directory, "catalog.sqlite3")
+                with sqlite3.connect(path) as raw:
+                    raw.execute(
+                        "CREATE TABLE sample (id INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL)"
+                    )
+                catalog = connect_catalog(f"sqlite://{path}")
+                try:
+                    metadata = catalog.describe_table(
+                        {"namespace": "main", "name": "sample"}
+                    )
+                    self.assertEqual(metadata.primary_key, ["id"])
+                    self.assertTrue(metadata.columns[0].automatic_key)
+                    self.assertIsNone(metadata.columns[0].default_expression)
+                    inserted = catalog.insert_row(metadata, [("payload", "generated")])
+                    self.assertEqual(inserted.rows, [[1, "generated"]])
+                    stored = catalog.read_only_query(
+                        'SELECT "id", "payload" FROM "sample"', []
+                    )
+                    self.assertEqual(stored.rows, [[1, "generated"]])
+                finally:
+                    catalog.close()
 
     def test_closed_connection(self):
         self.catalog.close()
