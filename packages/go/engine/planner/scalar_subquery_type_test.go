@@ -2,6 +2,7 @@ package planner
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/polyspec/orm/packages/go/engine/dialect"
@@ -69,6 +70,61 @@ func TestScalarSubqueryAggregateTypes(t *testing.T) {
 				}
 			}
 			t.Fatalf("%s output column missing from assembly: %+v", tc.aggregate, compiled.Steps[0].Assemble.Columns)
+		})
+	}
+}
+
+func TestColumnFunctionMissingPostValidationFieldIsInternal(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	m := testModel(t, runtimeDocument)
+	p := func(i int) *int { return &i }
+	request := func(column string, selectFunction bool) *ir.Request {
+		q := ir.Query{Entity: "note"}
+		if selectFunction {
+			q.Columns = &ir.Columns{Mode: "none", Fn: map[string]ir.ColFunc{"selected": {Column: column, Fn: ir.Func{Name: "year"}}}}
+		} else {
+			q.Where = &ir.Group{Items: []ir.Item{{Pred: &ir.Pred{Column: column, Op: "eq", Fn: &ir.Func{Name: "date"}, P: p(0)}}}}
+		}
+		r := &ir.Request{Kind: "all", NParams: 1, Query: q}
+		r.IRVersion, r.ManifestHash = ir.Version, m.ManifestHash
+		return r
+	}
+	valid := request("created_at", false)
+	if err := ir.Validate(m, valid); err != nil {
+		t.Fatalf("valid column function failed validation: %v", err)
+	}
+	publicInvalid := request("missing_column", false)
+	publicErr := ir.Validate(m, publicInvalid)
+	var publicPlannerErr *ir.Error
+	if !errors.As(publicErr, &publicPlannerErr) || publicPlannerErr.Code != "COLUMN_UNKNOWN" {
+		t.Fatalf("public validation error = %v, want COLUMN_UNKNOWN", publicErr)
+	}
+	for _, tc := range []struct {
+		name    string
+		request *ir.Request
+	}{
+		{"predicate", request("created_at", false)},
+		{"selection", request("created_at", true)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := ir.Validate(m, tc.request); err != nil {
+				t.Fatalf("valid request failed validation: %v", err)
+			}
+			if _, err := (&Planner{M: m, D: dialect.SQLite{}}).Compile(tc.request); err != nil {
+				t.Fatalf("valid column-function request failed planning: %v", err)
+			}
+			if tc.name == "predicate" {
+				tc.request.Where.Items[0].Pred.Column = "missing_column"
+			} else {
+				columnFunction := tc.request.Columns.Fn["selected"]
+				columnFunction.Column = "missing_column"
+				tc.request.Columns.Fn["selected"] = columnFunction
+			}
+			_, err := (&Planner{M: m, D: dialect.SQLite{}}).Compile(tc.request)
+			var plannerErr *ir.Error
+			if !errors.As(err, &plannerErr) || plannerErr.Code != "INTERNAL" || !strings.Contains(plannerErr.Msg, "note.missing_column") {
+				t.Fatalf("planner error = %#v, want INTERNAL naming note.missing_column", err)
+			}
 		})
 	}
 }

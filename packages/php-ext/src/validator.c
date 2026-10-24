@@ -2060,6 +2060,10 @@ static void column_use(vctx *c, HashTable *out, zend_long i, HashTable *col)
 
 static const char *function_type(vctx *c, const char *name, HashTable *col)
 {
+    if (col == NULL) {
+        fail("INTERNAL", "column-function source field is missing from validated metadata");
+        return NULL;
+    }
     if (streq(name, "day_of_week") || streq(name, "year") || streq(name, "month")) {
         return "i64";
     }
@@ -2089,8 +2093,14 @@ static void group_uses(vctx *c, HashTable *g, HashTable *ent, HashTable *out)
         HashTable *ih = ha(item);
         if (has(ih, "pred")) {
             pred_uses(c, ha(get(ih, "pred")), ent, out);
+            if (EG(exception) != NULL) {
+                return;
+            }
         } else if (has(ih, "group")) {
             group_uses(c, ha(get(ih, "group")), ent, out);
+            if (EG(exception) != NULL) {
+                return;
+            }
         }
     }
     ZEND_HASH_FOREACH_END();
@@ -2099,6 +2109,9 @@ static void pred_uses(vctx *c, HashTable *p, HashTable *ent, HashTable *out)
 {
     if (has(p, "sub")) {
         query_uses(c, ha(get(ha(get(p, "sub")), "query")), NULL, out);
+        if (EG(exception) != NULL) {
+            return;
+        }
     }
     const char *op = str(c, p, "op", "");
     if (streq(op, "tuple_in") || streq(op, "tuple_not_in")) {
@@ -2162,6 +2175,10 @@ static void pred_uses(vctx *c, HashTable *p, HashTable *ent, HashTable *out)
     {
         zend_long i = zval_get_long(slot);
         if (has(p, "fn")) {
+            if (col == NULL) {
+                fail("INTERNAL", "%s.%s is missing from validated column-function metadata", str(c, ent, "entity", ""), str(c, p, "column", ""));
+                return;
+            }
             const char *type = function_type(c, str(c, ha(get(p, "fn")), "name", ""), col);
             if (col != NULL && streq(type, str(c, col, "type", ""))) {
                 column_use(c, out, i, col);
@@ -2185,7 +2202,13 @@ static bool query_uses(vctx *c, HashTable *q, HashTable *parent, HashTable *out)
         return true;
     }
     group_uses(c, ha(get(q, "on")), ent, out);
+    if (EG(exception) != NULL) {
+        return false;
+    }
     group_uses(c, ha(get(q, "where")), ent, out);
+    if (EG(exception) != NULL) {
+        return false;
+    }
     if (has(q, "if_parent") && parent != NULL) {
         HashTable *ip = ha(get(q, "if_parent"));
         HashTable *pc = NULL;
@@ -2196,18 +2219,27 @@ static bool query_uses(vctx *c, HashTable *q, HashTable *parent, HashTable *out)
     ZEND_HASH_FOREACH_VAL(arr_or_empty(ha(get(ha(get(q, "columns")), "sub"))), s)
     {
         query_uses(c, ha(get(ha(s), "query")), NULL, out);
+        if (EG(exception) != NULL) {
+            return false;
+        }
     }
     ZEND_HASH_FOREACH_END();
     zval *j;
     ZEND_HASH_FOREACH_VAL(arr_or_empty(ha(get(q, "joins"))), j)
     {
         query_uses(c, ha(get(ha(j), "query")), NULL, out);
+        if (EG(exception) != NULL) {
+            return false;
+        }
     }
     ZEND_HASH_FOREACH_END();
     zval *rel;
     ZEND_HASH_FOREACH_VAL(arr_or_empty(ha(get(q, "relations"))), rel)
     {
         query_uses(c, ha(get(ha(rel), "query")), ent, out);
+        if (EG(exception) != NULL) {
+            return false;
+        }
     }
     ZEND_HASH_FOREACH_END();
     return true;
@@ -2234,6 +2266,9 @@ bool validator_param_uses(zval *self, HashTable *r, zval *ret)
     HashTable *out = Z_ARRVAL_P(ret);
     HashTable *ent = entity_named(&c, str(&c, r, "entity", ""));
     query_uses(&c, r, NULL, out);
+    if (EG(exception) != NULL) {
+        goto out;
+    }
     zval *av;
     ZEND_HASH_FOREACH_VAL(arr_or_empty(ha(get(r, "set"))), av)
     {
@@ -2313,6 +2348,10 @@ bool validator_function_type(zend_string *name, HashTable *col, zval *ret)
     vctx c;
     ctx_init(&c, NULL);
     const char *t = function_type(&c, ZSTR_VAL(name), col);
+    if (t == NULL || EG(exception) != NULL) {
+        release(&c);
+        return false;
+    }
     ZVAL_STRING(ret, t);
     release(&c);
     return true;

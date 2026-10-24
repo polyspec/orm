@@ -605,7 +605,11 @@ func paramUsesCase(t *testing.T, id string) {
 		t.Fatal(err)
 	}
 	got := [][]paramUseOut{}
-	for _, uses := range ir.ParamUses(m, &request) {
+	parameterUses, err := ir.ParamUses(m, &request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, uses := range parameterUses {
 		list := []paramUseOut{}
 		for _, u := range uses {
 			out := paramUseOut{Type: u.Type, Assign: u.Assign}

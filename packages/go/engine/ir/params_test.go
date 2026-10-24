@@ -1,7 +1,9 @@
 package ir
 
 import (
+	"errors"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
@@ -28,6 +30,10 @@ table notes {
   foreign key fk_notes_owner (owner) references owners (id)
 }
 `
+
+func callParamUses(m *runtimemodel.Model, r *Request) ([][]ParamUse, error) {
+	return ParamUses(m, r)
+}
 
 // paramUseOf reduces a ParamUse to its type and column name, to make comparisons easy.
 type paramUseOf struct{ Type, Column string }
@@ -84,7 +90,11 @@ func TestParamUses(t *testing.T) {
 		{{"f64", ""}},
 		{{"varchar", "title"}},
 	}
-	if got := usesOf(ParamUses(m, read)); !reflect.DeepEqual(got, want) {
+	readUses, err := callParamUses(m, read)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := usesOf(readUses); !reflect.DeepEqual(got, want) {
 		t.Fatalf("read uses = %v\nwant %v", got, want)
 	}
 	insert := &Request{IRVersion: Version, ManifestHash: m.ManifestHash, Kind: "insert", NParams: 6, Query: Query{Entity: "notes"},
@@ -98,7 +108,11 @@ func TestParamUses(t *testing.T) {
 		{{"varchar", "owner"}}, {{"varchar", "title"}}, {{"datetime", "at"}},
 		{{"varchar", "owner"}}, {{"varchar", "title"}}, {{"datetime", "at"}},
 	}
-	if got := usesOf(ParamUses(m, insert)); !reflect.DeepEqual(got, want) {
+	insertUses, err := callParamUses(m, insert)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := usesOf(insertUses); !reflect.DeepEqual(got, want) {
 		t.Fatalf("insert uses = %v\nwant %v", got, want)
 	}
 	update := &Request{IRVersion: Version, ManifestHash: m.ManifestHash, Kind: "update", NParams: 3, Query: Query{Entity: "notes",
@@ -110,7 +124,35 @@ func TestParamUses(t *testing.T) {
 		t.Fatal(err)
 	}
 	want = [][]paramUseOf{{{"i64", "id"}}, {{"varchar", "title"}}, {{"datetime", "version"}}}
-	if got := usesOf(ParamUses(m, update)); !reflect.DeepEqual(got, want) {
+	updateUses, err := callParamUses(m, update)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := usesOf(updateUses); !reflect.DeepEqual(got, want) {
 		t.Fatalf("update uses = %v\nwant %v", got, want)
+	}
+}
+
+func TestParamUsesColumnFunctionMissingPostValidationFieldIsInternal(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	m, err := runtimemodel.Load(paramUsesDocument)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := &Request{IRVersion: Version, ManifestHash: m.ManifestHash, Kind: "all", NParams: 1, Query: Query{
+		Entity: "notes", Where: &Group{Items: []Item{{Pred: &Pred{Column: "at", Op: "eq", Fn: &Func{Name: "date"}, P: p(0)}}}},
+	}}
+	if err := Validate(m, request); err != nil {
+		t.Fatalf("valid column function failed validation: %v", err)
+	}
+	validUses, usesErr := callParamUses(m, request)
+	if usesErr != nil || validUses[0][0].Type != "date" {
+		t.Fatalf("valid date function parameter use = %+v, %v", validUses, usesErr)
+	}
+	request.Where.Items[0].Pred.Column = "missing_column"
+	uses, usesErr := callParamUses(m, request)
+	var irErr *Error
+	if !errors.As(usesErr, &irErr) || irErr.Code != "INTERNAL" || !strings.Contains(irErr.Msg, "notes.missing_column") {
+		t.Fatalf("parameter-use result = %+v, error %#v; want INTERNAL naming notes.missing_column", uses, usesErr)
 	}
 }

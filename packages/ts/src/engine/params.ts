@@ -2,6 +2,8 @@
 // (docs/spec/protocol.md §5 Parameters) the client reads the type here.
 import type { Assignment, Group, Predicate, Request, RequestQuery } from '../ir.js';
 import { present } from '../present.js';
+import { OrmError } from '../runtime_error.js';
+import * as codes from '../codes.js';
 import { valueFunctionUnits } from './dialect.js';
 import { entityOf, fieldOf, type Entity, type Field, type RuntimeModel } from './model.js';
 
@@ -101,7 +103,8 @@ class ParamUses {
     const slots = p.p !== undefined ? [p.p, ...p.ps ?? []] : p.ps ?? [];
     for (const i of slots) {
       if (p.fn) {
-        const t = functionType(p.fn.name, f);
+        if (f === undefined) throw new OrmError(codes.INTERNAL, `${ent.name}.${p.column} is missing from validated column-function metadata`);
+        const t = functionType(p.fn.name, f, ent.name, p.column ?? '');
         if (f !== undefined && t === f.type) this.column(i, f);
         else this.add(i, { type: t });
         continue;
@@ -112,12 +115,13 @@ class ParamUses {
 }
 
 /** The type of a column function's result on column f: the type of a parameter compared with it and of the output column it selects. */
-export function functionType(name: string, f: Field | undefined): string {
+export function functionType(name: string, f: Field | undefined, entity: string, column: string): string {
+  if (f === undefined) throw new OrmError(codes.INTERNAL, `${entity}.${column} is missing from validated column-function metadata`);
   switch (name) {
     case 'day_of_week': case 'year': case 'month': return 'i64';
     case 'date': return 'date';
   }
-  return f?.type ?? 'text';
+  return f.type;
 }
 
 /** The type of the interval of a relative time function: seconds take a fraction, the other units an integer. */

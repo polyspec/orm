@@ -3,6 +3,7 @@
 
 use crate::ir;
 use crate::schema::Manifest;
+use crate::{Result, codes};
 use polyspec_orm_schema::dbspec::{Entity, Field};
 
 /// One slot that a request parameter fills: the slot's logical type (dbspec type name), and, for a column slot, the column it compares or
@@ -17,9 +18,9 @@ pub(crate) struct ParamUse<'m> {
 /// For each parameter of the validated request, in parameter order, these slots: the column compared or written, the column function's
 /// result, the interval of relative time functions (seconds as f64, the rest as i32), the text of contains and contains_binary, and the parent
 /// column of if_parent, and the column of optimistic.
-pub(crate) fn param_uses<'m>(m: &'m Manifest, r: &ir::Request) -> Vec<Vec<ParamUse<'m>>> {
+pub(crate) fn param_uses<'m>(m: &'m Manifest, r: &ir::Request) -> Result<Vec<Vec<ParamUse<'m>>>> {
     let mut u = ParamUses { m, out: (0..r.n_params).map(|_| Vec::new()).collect() };
-    u.query(&r.query, None);
+    u.query(&r.query, None)?;
     if let Some(ent) = m.model.entity(&r.query.entity) {
         for a in r.set.iter().chain(&r.on_duplicate) {
             u.assign(ent, a);
@@ -35,7 +36,7 @@ pub(crate) fn param_uses<'m>(m: &'m Manifest, r: &ir::Request) -> Vec<Vec<ParamU
             u.column(o.p, ent.field(&o.column));
         }
     }
-    u.out
+    Ok(u.out)
 }
 
 struct ParamUses<'m> {
@@ -73,41 +74,43 @@ impl<'m> ParamUses<'m> {
     }
 
     /// Walks q. For a relation child, the parent is its parent entity.
-    fn query(&mut self, q: &ir::Query, parent: Option<&'m Entity>) {
+    fn query(&mut self, q: &ir::Query, parent: Option<&'m Entity>) -> Result<()> {
         let m = self.m;
-        let Some(ent) = m.model.entity(&q.entity) else { return };
+        let Some(ent) = m.model.entity(&q.entity) else { return Ok(()) };
         for g in [&q.on, &q.where_].into_iter().flatten() {
-            self.group(g, ent);
+            self.group(g, ent)?;
         }
         if let (Some(ip), Some(parent)) = (&q.if_parent, parent) {
             self.column(ip.p, parent.field(&ip.column));
         }
         if let Some(columns) = &q.columns {
             for sub in columns.sub.values() {
-                self.query(&sub.query, None);
+                self.query(&sub.query, None)?;
             }
         }
         for j in &q.joins {
-            self.query(&j.query, None);
+            self.query(&j.query, None)?;
         }
         for rel in &q.relations {
-            self.query(&rel.query, Some(ent));
+            self.query(&rel.query, Some(ent))?;
         }
+        Ok(())
     }
 
-    fn group(&mut self, g: &ir::Group, ent: &'m Entity) {
+    fn group(&mut self, g: &ir::Group, ent: &'m Entity) -> Result<()> {
         for item in &g.items {
             match item {
-                ir::Item::Pred { pred } => self.pred(pred, ent),
-                ir::Item::Group { group } => self.group(group, ent),
+                ir::Item::Pred { pred } => self.pred(pred, ent)?,
+                ir::Item::Group { group } => self.group(group, ent)?,
                 ir::Item::Joined { .. } => {}
             }
         }
+        Ok(())
     }
 
-    fn pred(&mut self, p: &ir::Pred, ent: &'m Entity) {
+    fn pred(&mut self, p: &ir::Pred, ent: &'m Entity) -> Result<()> {
         if let Some(sub) = &p.sub {
-            self.query(&sub.query, None);
+            self.query(&sub.query, None)?;
         }
         if p.op == "tuple_in" || p.op == "tuple_not_in" {
             if !p.cols.is_empty() {
@@ -115,13 +118,13 @@ impl<'m> ParamUses<'m> {
                     self.column(i, ent.field(&p.cols[k % p.cols.len()]));
                 }
             }
-            return;
+            return Ok(());
         }
         if p.op == "fulltext" || p.op == "fulltext_boolean" {
             if let Some(i) = p.p {
                 self.add(i, "text".into(), None);
             }
-            return;
+            return Ok(());
         }
         let f = ent.field(&p.column);
         if let Some(value) = &p.value {
@@ -133,12 +136,12 @@ impl<'m> ParamUses<'m> {
             if let Some(i) = p.p {
                 self.add(i, "text".into(), None);
             }
-            return;
+            return Ok(());
         }
         for i in p.p.into_iter().chain(p.ps.iter().copied()) {
             match &p.r#fn {
                 Some(func) => {
-                    let ty = function_type(&func.name, f);
+                    let ty = function_type(&func.name, f, &ent.name, &p.column)?;
                     match f {
                         Some(f) if f.ty.name() == ty => self.column(i, Some(f)),
                         _ => self.add(i, ty, None),
@@ -147,17 +150,19 @@ impl<'m> ParamUses<'m> {
                 None => self.column(i, f),
             }
         }
+        Ok(())
     }
 }
 
 /// The type of the result of applying column function `name` to column f: the parameter compared with it and the output that selects it
 /// has the column's type.
-pub(crate) fn function_type(name: &str, f: Option<&Field>) -> String {
-    match name {
+pub(crate) fn function_type(name: &str, f: Option<&Field>, entity: &str, column: &str) -> Result<String> {
+    let f = f.ok_or_else(|| crate::engine::err(codes::INTERNAL, format!("{entity}.{column}")))?;
+    Ok(match name {
         "day_of_week" | "year" | "month" => "i64".into(),
         "date" => "date".into(),
-        _ => f.map(|f| f.ty.name().to_owned()).unwrap_or_else(|| "text".into()),
-    }
+        _ => f.ty.name().to_owned(),
+    })
 }
 
 /// The type of the interval value a relative time function takes. Seconds take a decimal number; other units take an integer.

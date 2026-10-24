@@ -137,6 +137,35 @@ mod planner {
     }
 
     #[test]
+    fn column_function_metadata_planner_rejects_missing_post_validation_field() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let (at, input, _) = case("planner_column_function_date");
+        let manifest = schema(&at);
+        let mut request = request(&input, &manifest.manifest_hash);
+        validate(&manifest, &request).expect("valid column-function request passes validation");
+
+        let mut invalid_public = request.clone();
+        let public_pred = match &mut invalid_public.query.where_.as_mut().unwrap().items[0] {
+            crate::ir::Item::Pred { pred } => pred,
+            _ => panic!("fixture starts with a predicate"),
+        };
+        public_pred.column = "missing_column".into();
+        let public_error = validate(&manifest, &invalid_public).expect_err("public validation keeps rejecting an unknown column");
+        assert_eq!(public_error.code(), crate::codes::COLUMN_UNKNOWN);
+
+        let pred = match &mut request.query.where_.as_mut().unwrap().items[0] {
+            crate::ir::Item::Pred { pred } => pred,
+            _ => panic!("fixture starts with a predicate"),
+        };
+        pred.column = "missing_column".into();
+        let error = super::super::planner::Planner { m: &manifest, d: Dialect::Sqlite }
+            .compile(&request)
+            .expect_err("planner must reject missing post-validation column-function metadata");
+        assert_eq!(error.code(), crate::codes::INTERNAL);
+        assert!(error.to_string().contains("author.missing_column"), "{error}");
+    }
+
+    #[test]
     fn planner_statement() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         run("planner_statement");
@@ -629,6 +658,7 @@ fn run_param_uses(id: &str) {
     let request = request(&input, &manifest.manifest_hash);
     validate(&manifest, &request).or_panic(|e| format!("{id}: {e}"));
     let got: Vec<Vec<Value>> = param_uses(&manifest, &request)
+        .expect("validated request has parameter uses")
         .iter()
         .map(|uses| {
             uses.iter()

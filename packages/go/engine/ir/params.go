@@ -22,10 +22,12 @@ type ParamUse struct {
 // for contains and contains_binary; the parent column for if_parent; the column
 // for optimistic. An IR executor message writes each parameter in the form of
 // its slot's type (docs/spec/protocol.md §5), so the client reads the type here.
-func ParamUses(m *runtimemodel.Model, r *Request) [][]ParamUse {
+func ParamUses(m *runtimemodel.Model, r *Request) ([][]ParamUse, error) {
 	u := &paramUses{m: m, out: make([][]ParamUse, r.NParams)}
 	ent := m.Entities[r.Entity]
-	u.query(&r.Query, nil)
+	if err := u.query(&r.Query, nil); err != nil {
+		return nil, err
+	}
 	for _, a := range r.Set {
 		u.assign(ent, a)
 	}
@@ -40,7 +42,7 @@ func ParamUses(m *runtimemodel.Model, r *Request) [][]ParamUse {
 	if o := r.Optimistic; o != nil {
 		u.column(o.P, ent.Field(o.Column))
 	}
-	return u.out
+	return u.out, nil
 }
 
 type paramUses struct {
@@ -79,46 +81,64 @@ func (u *paramUses) assigned(i int, f *runtimemodel.Field) {
 }
 
 // query walks q, whose parent entity is parent for a relation child.
-func (u *paramUses) query(q *Query, parent *runtimemodel.Entity) {
+func (u *paramUses) query(q *Query, parent *runtimemodel.Entity) error {
 	ent := u.m.Entities[q.Entity]
 	if ent == nil {
-		return
+		return nil
 	}
-	u.group(q.On, ent)
-	u.group(q.Where, ent)
+	if err := u.group(q.On, ent); err != nil {
+		return err
+	}
+	if err := u.group(q.Where, ent); err != nil {
+		return err
+	}
 	if q.IfParent != nil && parent != nil {
 		u.column(q.IfParent.P, parent.Field(q.IfParent.Column))
 	}
 	if q.Columns != nil {
 		for _, s := range q.Columns.Sub {
-			u.query(s.Query, nil)
+			if err := u.query(s.Query, nil); err != nil {
+				return err
+			}
 		}
 	}
 	for _, j := range q.Joins {
-		u.query(j.Query, nil)
+		if err := u.query(j.Query, nil); err != nil {
+			return err
+		}
 	}
 	for _, rel := range q.Relations {
-		u.query(rel.Query, ent)
+		if err := u.query(rel.Query, ent); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
-func (u *paramUses) group(g *Group, ent *runtimemodel.Entity) {
+func (u *paramUses) group(g *Group, ent *runtimemodel.Entity) error {
 	if g == nil {
-		return
+		return nil
 	}
 	for _, item := range g.Items {
 		switch {
 		case item.Pred != nil:
-			u.pred(item.Pred, ent)
+			if err := u.pred(item.Pred, ent); err != nil {
+				return err
+			}
 		case item.Group != nil:
-			u.group(item.Group, ent)
+			if err := u.group(item.Group, ent); err != nil {
+				return err
+			}
 		}
 	}
+	return nil
 }
 
-func (u *paramUses) pred(p *Pred, ent *runtimemodel.Entity) {
+func (u *paramUses) pred(p *Pred, ent *runtimemodel.Entity) error {
 	if p.Sub != nil {
-		u.query(p.Sub.Query, nil)
+		if err := u.query(p.Sub.Query, nil); err != nil {
+			return err
+		}
 	}
 	if p.Op == "tuple_in" || p.Op == "tuple_not_in" {
 		for k, i := range p.Ps {
@@ -126,13 +146,13 @@ func (u *paramUses) pred(p *Pred, ent *runtimemodel.Entity) {
 				u.column(i, ent.Field(p.Cols[k%len(p.Cols)]))
 			}
 		}
-		return
+		return nil
 	}
 	if p.Op == "fulltext" || p.Op == "fulltext_boolean" {
 		if p.P != nil {
 			u.add(*p.P, ParamUse{Type: "text"})
 		}
-		return
+		return nil
 	}
 	f := ent.Field(p.Column)
 	if p.Value != nil {
@@ -144,7 +164,7 @@ func (u *paramUses) pred(p *Pred, ent *runtimemodel.Entity) {
 		if p.P != nil {
 			u.add(*p.P, ParamUse{Type: "text"})
 		}
-		return
+		return nil
 	}
 	slots := p.Ps
 	if p.P != nil {
@@ -152,7 +172,11 @@ func (u *paramUses) pred(p *Pred, ent *runtimemodel.Entity) {
 	}
 	for _, i := range slots {
 		if p.Fn != nil {
-			if t := FunctionType(p.Fn.Name, f); f != nil && t == f.Type {
+			t, ok := FunctionType(p.Fn.Name, f)
+			if !ok {
+				return &Error{Code: "INTERNAL", Msg: ent.Name + "." + p.Column + " is missing from validated column-function metadata"}
+			}
+			if f != nil && t == f.Type {
 				u.column(i, f)
 			} else {
 				u.add(i, ParamUse{Type: t})
@@ -161,21 +185,22 @@ func (u *paramUses) pred(p *Pred, ent *runtimemodel.Entity) {
 		}
 		u.column(i, f)
 	}
+	return nil
 }
 
 // FunctionType is the type of a column function's result on column f: the type
 // of a parameter compared with it and of the output column it selects.
-func FunctionType(name string, f *runtimemodel.Field) string {
+func FunctionType(name string, f *runtimemodel.Field) (string, bool) {
+	if f == nil {
+		return "", false
+	}
 	switch name {
 	case "day_of_week", "year", "month":
-		return "i64"
+		return "i64", true
 	case "date":
-		return "date"
+		return "date", true
 	}
-	if f != nil {
-		return f.Type
-	}
-	return "text"
+	return f.Type, true
 }
 
 // IntervalType is the type of the interval of a relative time function: seconds

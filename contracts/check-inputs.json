@@ -914,6 +914,42 @@
         "packages/rust/build/src/tests/out_dir.rs"
       ]
     },
+    "column-function-metadata-check": {
+      "scope": "owner",
+      "needs": ["go", "rust", "php", "composer", "python", "node-modules", "php-extension-tools"],
+      "inputs": [
+        "Makefile",
+        "contracts/check-inputs.json",
+        "packages/go/engine/ir/params.go",
+        "packages/go/engine/ir/params_test.go",
+        "packages/go/engine/planner/planner.go",
+        "packages/go/engine/planner/scalar_subquery_type_test.go",
+        "packages/go/orm/coverage_planner_test.go",
+        "packages/go/orm/markdown.go",
+        "packages/rust/orm/src/engine/params.rs",
+        "packages/rust/orm/src/engine/planner.rs",
+        "packages/rust/orm/src/markdown.rs",
+        "packages/rust/orm/tests/unit/coverage_planner.rs",
+        "packages/rust/orm/tests/unit/param_uses.rs",
+        "packages/rust/orm/tests/unit/markdown_column_function.rs",
+        "packages/ts/src/engine/params.ts",
+        "packages/ts/src/engine/planner.ts",
+        "packages/ts/src/markdown.ts",
+        "packages/ts/tests/column_function_metadata.mjs",
+        "packages/php/src/Validator.php",
+        "packages/php/src/Planner.php",
+        "packages/php/src/Markdown.php",
+        "packages/php/tests/ColumnFunctionMetadataAssertions.php",
+        "packages/php/tests/CoveragePlannerTest.php",
+        "packages/php-ext/tests/ColumnFunctionMetadataTest.php",
+        "packages/php-ext/src/validator.c",
+        "packages/php-ext/src/planner.c",
+        "packages/python/src/polyspec/orm/engine/params.py",
+        "packages/python/src/polyspec/orm/engine/planner.py",
+        "packages/python/src/polyspec/orm/markdown.py",
+        "packages/python/tests/test_column_function_metadata.py"
+      ]
+    },
     "rust-time-precision-check": {
       "scope": "owner",
       "needs": ["go", "rust", "node-modules"],

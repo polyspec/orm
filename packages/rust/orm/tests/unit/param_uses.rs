@@ -34,8 +34,26 @@ fn manifest() -> Manifest {
     Manifest::load(&set.manifest_text, &set.manifest_hash).unwrap()
 }
 
+trait ParamUsesResult<'m> {
+    fn into_result(self) -> crate::Result<Vec<Vec<ParamUse<'m>>>>;
+}
+
+// Keep the same assertions compilable on the pre-fix Vec API while the implementation moves to Result for error propagation.
+impl<'m> ParamUsesResult<'m> for Vec<Vec<ParamUse<'m>>> {
+    fn into_result(self) -> crate::Result<Vec<Vec<ParamUse<'m>>>> {
+        Ok(self)
+    }
+}
+
+impl<'m> ParamUsesResult<'m> for crate::Result<Vec<Vec<ParamUse<'m>>>> {
+    fn into_result(self) -> crate::Result<Vec<Vec<ParamUse<'m>>>> {
+        self
+    }
+}
+
 /// ParamUse reduced to type and column names to make comparison easy.
-fn uses_of(uses: Vec<Vec<ParamUse<'_>>>) -> Vec<Vec<(String, String)>> {
+fn uses_of<'m>(uses: impl ParamUsesResult<'m>) -> Vec<Vec<(String, String)>> {
+    let uses = uses.into_result().expect("valid requests produce parameter uses");
     uses.into_iter().map(|list| list.into_iter().map(|u| (u.ty, u.column.map(|c| c.name.clone()).unwrap_or_default())).collect()).collect()
 }
 
@@ -136,4 +154,37 @@ fn param_uses_name_each_slot() {
     };
     validate(&m, &update).unwrap();
     assert_eq!(uses_of(param_uses(&m, &update)), expect(&[&[("i64", "id")], &[("varchar", "title")], &[("datetime", "version")]]));
+}
+
+#[test]
+fn column_function_metadata_param_uses_reject_missing_post_validation_field() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let m = manifest();
+    let mut request = ir::Request {
+        ir_version: 1,
+        manifest_hash: m.manifest_hash.clone(),
+        kind: "all".into(),
+        query: ir::Query {
+            entity: "notes".into(),
+            where_: Some(ir::Group { items: vec![item(ir::Pred { r#fn: func("date", vec![]), p: Some(0), ..pred("", "at", "eq") })], ..Default::default() }),
+            ..Default::default()
+        },
+        n_params: 1,
+        ..Default::default()
+    };
+    validate(&m, &request).expect("valid function field passes public validation");
+
+    let p = match &mut request.query.where_.as_mut().unwrap().items[0] {
+        ir::Item::Pred { pred } => pred,
+        _ => panic!("request contains a predicate"),
+    };
+    p.column = "missing_column".into();
+
+    let result = param_uses(&m, &request).into_result();
+    let error = match result {
+        Ok(_) => panic!("parameter-use collection must reject missing post-validation field metadata"),
+        Err(error) => error,
+    };
+    assert_eq!(error.code(), crate::codes::INTERNAL);
+    assert!(error.to_string().contains("notes.missing_column"), "{error}");
 }

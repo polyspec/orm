@@ -366,12 +366,19 @@ final class Validator
      * The type of a column function's result on column $col: the type of a parameter compared with it and of
      * the output column it selects.
      */
-    public static function functionType(string $name, ?array $col): string
-    {
+    public static function functionType(
+        string $name,
+        ?array $col,
+        string $entity = 'column function',
+        string $column = 'source'
+    ): string {
+        if ($col === null) {
+            throw self::err(Code::INTERNAL, "$entity.$column is missing from validated column-function metadata");
+        }
         return match ($name) {
             'day_of_week', 'year', 'month' => 'i64',
             'date' => 'date',
-            default => $col['type'] ?? 'text',
+            default => $col['type'],
         };
     }
 
@@ -474,7 +481,14 @@ final class Validator
         }
         foreach ($slots as $i) {
             if (isset($p['fn'])) {
-                $type = self::functionType($p['fn']['name'], $col);
+                if ($col === null) {
+                    $entityName = $ent['entity'] ?? $p['column'];
+                    throw self::err(
+                        Code::INTERNAL,
+                        "$entityName.{$p['column']} is missing from validated column-function metadata"
+                    );
+                }
+                $type = self::functionType($p['fn']['name'], $col, $ent['entity'] ?? '', $p['column']);
                 if ($col !== null && $type === $col['type']) {
                     self::columnUse($out, $i, $col);
                 } else {

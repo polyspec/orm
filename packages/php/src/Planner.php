@@ -346,8 +346,14 @@ final class Planner
             $styles = [];
             $type = 'string';
             if (isset($c['fn'])) {
+                if ($col === null) {
+                    throw self::err(
+                        Code::INTERNAL,
+                        "{$s->ent['entity']}.{$c['column']} is missing from validated column-function metadata"
+                    );
+                }
                 $expr = $this->columnFunction($s, $c['column'], $c['fn']);
-                $type = Validator::functionType($c['fn']['name'], $col);
+                $type = Validator::functionType($c['fn']['name'], $col, $s->ent['entity'], $c['column']);
                 $col = null;
             } elseif (isset($c['sub'])) {
                 $expr = '(' . $this->subSelect($b, $s, $c['sub']) . ')';
@@ -575,8 +581,14 @@ final class Planner
             return $lhs . ' ' . self::cmp($op) . ' ' . $value;
         }
         if (isset($p['fn'])) {
+            if ($col === null) {
+                throw self::err(
+                    Code::INTERNAL,
+                    "{$s->ent['entity']}.{$p['column']} is missing from validated column-function metadata"
+                );
+            }
             $fn = $this->columnFunction($s, $p['column'], $p['fn']);
-            $type = Validator::functionType($p['fn']['name'], $col);
+            $type = Validator::functionType($p['fn']['name'], $col, $s->ent['entity'], $p['column']);
             return match ($op) {
                 'in', 'not_in' => $fn . ($op === 'not_in' ? ' NOT IN ' : ' IN ') . '(' . implode(
                     ', ',

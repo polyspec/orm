@@ -373,7 +373,10 @@ func markdownCall(ex executor, r *request) (json.RawMessage, *runtimemodel.Model
 	if err := ir.Validate(m, &r.ir); err != nil {
 		return nil, nil, err
 	}
-	uses := ir.ParamUses(m, &r.ir)
+	uses, err := ir.ParamUses(m, &r.ir)
+	if err != nil {
+		return nil, nil, err
+	}
 	for i, v := range r.params {
 		for _, u := range uses[i] {
 			if err := checkAssign(i, v, useSlotType(u)); err != nil {
@@ -542,7 +545,15 @@ func (n *mdNode) outCol(name string, index int) (plan.OutCol, error) {
 			return plan.OutCol{Index: index, Name: name, Type: subType(n.m, sub)}, nil
 		}
 		if cf, ok := c.Fn[name]; ok {
-			return plan.OutCol{Index: index, Name: name, Column: cf.Column, Type: ir.FunctionType(cf.Fn.Name, n.ent.Field(cf.Column))}, nil
+			field := n.ent.Field(cf.Column)
+			if field == nil {
+				return plan.OutCol{}, &ir.Error{Code: "INTERNAL", Msg: n.ent.Name + "." + cf.Column + " is missing from validated column-function metadata"}
+			}
+			typ, ok := ir.FunctionType(cf.Fn.Name, field)
+			if !ok {
+				return plan.OutCol{}, &ir.Error{Code: "INTERNAL", Msg: n.ent.Name + "." + cf.Column + " is missing from validated column-function metadata"}
+			}
+			return plan.OutCol{Index: index, Name: name, Column: cf.Column, Type: typ}, nil
 		}
 	}
 	f := n.ent.Field(name)

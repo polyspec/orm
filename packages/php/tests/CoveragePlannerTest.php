@@ -112,6 +112,12 @@ function paramUsesCase(string $root, array $fixture, string $id): void
 #[Small]
 final class CoveragePlannerTest extends TestCase
 {
+    public static function setUpBeforeClass(): void
+    {
+        parent::setUpBeforeClass();
+        require_once __DIR__ . '/ColumnFunctionMetadataAssertions.php';
+    }
+
     public function testPlannerStatement(): void
     {
         $root = dirname(__DIR__, 3);
@@ -135,6 +141,7 @@ final class CoveragePlannerTest extends TestCase
             Assert::assertSame('INTERNAL', $error->code_);
             Assert::assertStringContainsString('author.missing_column', $error->getMessage());
         }
+
     }
 
     public function testScalarSubqueryAggregateTypesRemainI64AndF64(): void
@@ -153,6 +160,21 @@ final class CoveragePlannerTest extends TestCase
             $output = array_values(array_filter($plan['steps'][0]['assemble']['columns'], static fn(array $col): bool => $col['name'] === 'first_author'))[0];
             Assert::assertSame($expected, $output['type'], "$aggregate output type");
         }
+    }
+
+    public function testColumnFunctionPlannerMissingPostValidationFieldIsInternal(): void
+    {
+        ColumnFunctionMetadataAssertions::assertPlannerMissingPostValidationFieldIsInternal();
+    }
+
+    public function testColumnFunctionParamUsesMissingPostValidationFieldIsInternal(): void
+    {
+        ColumnFunctionMetadataAssertions::assertParamUsesMissingPostValidationFieldIsInternal();
+    }
+
+    public function testColumnFunctionOutputMissingPostValidationFieldIsInternal(): void
+    {
+        ColumnFunctionMetadataAssertions::assertOutputMissingPostValidationFieldIsInternal();
     }
 
     public function testPlannerCount(): void

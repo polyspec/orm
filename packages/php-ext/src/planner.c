@@ -989,7 +989,9 @@ static zend_string *style_input_type(pctx *c, zend_string *style)
 static zend_string *function_type(pctx *c, zend_string *name, HashTable *col)
 {
     zval *r = keep(c);
-    validator_function_type(name, col, r);
+    if (!validator_function_type(name, col, r)) {
+        return NULL;
+    }
     return Z_STR_P(r);
 }
 
@@ -1529,6 +1531,10 @@ static zend_string *render_pred(pctx *c, pbinds *b, pscope *s, HashTable *p)
         return fmt(c, "%s %s %s", ZSTR_VAL(lhs), cmp_of(ops), ZSTR_VAL(v));
     }
     if (isset_(p, "fn")) {
+        if (colh == NULL) {
+            fail("INTERNAL", "%s.%s is missing from validated column-function metadata", ZSTR_VAL(gs(c, s->ent, "entity")), ZSTR_VAL(gs(c, p, "column")));
+            return NULL;
+        }
         HashTable *fh = ga(p, "fn");
         zend_string *fnc = column_function(c, s, gs(c, p, "column"), fh);
         OKP(fnc);
@@ -1958,6 +1964,10 @@ static zend_string *select_list(pctx *c, pbinds *b, pscope *s, passm *ast, zend_
         zval *styles = newlist(c);
         bool fnBranch = false;
         if (isset_(ch, "fn")) {
+            if (col == NULL) {
+                fail("INTERNAL", "%s.%s is missing from validated column-function metadata", ZSTR_VAL(gs(c, s->ent, "entity")), ZSTR_VAL(cname));
+                return NULL;
+            }
             HashTable *fh = ga(ch, "fn");
             expr = column_function(c, s, cname, fh);
             OKP(expr);

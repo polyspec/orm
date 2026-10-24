@@ -646,8 +646,13 @@ class Planner:
             col_styles: list = []
             type_ = "string"
             if c.get("fn"):
+                if col is None:
+                    _fail(
+                        codes.INTERNAL,
+                        f"{s.ent.name}.{c['column']} is missing from validated column-function metadata",
+                    )
                 expr = self._column_function(b, s, c["column"], c["fn"])
-                type_ = function_type(c["fn"]["name"], col)
+                type_ = function_type(c["fn"]["name"], col, s.ent.name, c["column"])
                 col = None
             elif c.get("sub"):
                 expr = f"({self._sub_select(b, s, c['sub'])})"
@@ -887,8 +892,13 @@ class Planner:
                 lhs = self.d.clock_operand(lhs, col.precision)
             return f"{lhs} {_cmp(op)} {value}"
         if pr.get("fn"):
+            if col is None:
+                _fail(
+                    codes.INTERNAL,
+                    f"{s.ent.name}.{pr['column']} is missing from validated column-function metadata",
+                )
             fn_text = self._column_function(b, s, pr["column"], pr["fn"])
-            type_ = function_type(pr["fn"]["name"], col)
+            type_ = function_type(pr["fn"]["name"], col, s.ent.name, pr["column"])
             if op in ("in", "not_in"):
                 listing = ", ".join(b.param(i, type_) for i in pr["ps"])
                 keyword = " NOT IN " if op == "not_in" else " IN "

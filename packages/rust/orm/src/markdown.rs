@@ -347,7 +347,7 @@ async fn markdown_call(ex: &Executor, req: &mut Req) -> Result<(Vec<u8>, Arc<Man
     let manifest = db.markdown_model(req.schema)?;
     req.ir.n_params = req.params.len();
     engine::validate(&manifest, &req.ir)?;
-    let uses = engine::param_uses(&manifest, &req.ir);
+    let uses = engine::param_uses(&manifest, &req.ir)?;
     for (i, value) in req.params.iter().enumerate() {
         for u in &uses[i] {
             crate::bind_check::check_assign(i, value, &crate::bind_check::use_slot_type(u))?;
@@ -516,7 +516,7 @@ impl<'m> MdNode<'m> {
                 return Ok(OutCol { index, name: name.into(), typ: self.sub_type(sub)?, ..Default::default() });
             }
             if let Some(cf) = c.r#fn.get(name) {
-                let typ = engine::function_type(&cf.r#fn.name, self.ent.field(&cf.column));
+                let typ = engine::function_type(&cf.r#fn.name, self.ent.field(&cf.column), &self.ent.name, &cf.column)?;
                 return Ok(OutCol { index, name: name.into(), column: cf.column.clone(), typ, ..Default::default() });
             }
         }
@@ -725,3 +725,7 @@ mod bind_message_tests;
 #[cfg(test)]
 #[path = "../tests/unit/markdown_scalar_subquery.rs"]
 mod markdown_scalar_subquery_tests;
+
+#[cfg(test)]
+#[path = "../tests/unit/markdown_column_function.rs"]
+mod markdown_column_function_tests;

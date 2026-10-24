@@ -568,12 +568,16 @@ func (p *Planner) selectList(b *builder, sb *strings.Builder, s *scope, asm *pla
 		typ := "text"
 		switch {
 		case c.fn != nil:
+			fnType, ok := ir.FunctionType(c.fn.Name, col)
+			if !ok {
+				return &ir.Error{Code: "INTERNAL", Msg: s.ent.Name + "." + c.column + " is missing from validated column-function metadata"}
+			}
 			e, err := p.columnFunction(b, s, c.column, c.fn)
 			if err != nil {
 				return err
 			}
 			expr = e
-			typ = ir.FunctionType(c.fn.Name, col)
+			typ = fnType
 			col = nil
 		case c.sub != nil:
 			e, err := p.subSelect(b, s, c.sub)
@@ -879,7 +883,10 @@ func (p *Planner) renderPred(b *builder, s *scope, pr *ir.Pred) (string, error) 
 		if err != nil {
 			return "", err
 		}
-		fnType := ir.FunctionType(pr.Fn.Name, col)
+		fnType, ok := ir.FunctionType(pr.Fn.Name, col)
+		if !ok {
+			return "", &ir.Error{Code: "INTERNAL", Msg: s.ent.Name + "." + pr.Column + " is missing from validated column-function metadata"}
+		}
 		plain := func(i int) string { return b.param(i, fnType) }
 		switch pr.Op {
 		case "in", "not_in":

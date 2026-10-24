@@ -316,8 +316,15 @@ final class Markdown
         }
         if (!$groups && isset($q['columns']['fn'][$name])) {
             $cf = $q['columns']['fn'][$name];
+            $field = RuntimeModel::column($ent, $cf['column']);
+            if ($field === null) {
+                throw new OrmException(
+                    Code::INTERNAL,
+                    "{$ent['entity']}.{$cf['column']} is missing from validated column-function metadata"
+                );
+            }
             return ['index' => $index, 'name' => $name, 'column' => $cf['column'],
-                'type' => Validator::functionType($cf['fn']['name'], RuntimeModel::column($ent, $cf['column']))];
+                'type' => Validator::functionType($cf['fn']['name'], $field, $ent['entity'], $cf['column'])];
         }
         $col = RuntimeModel::column($ent, $name) ?? throw self::answerError(
             "{$q['entity']} answers $name, which is no output of the request"

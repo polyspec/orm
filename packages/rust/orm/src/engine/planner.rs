@@ -697,8 +697,8 @@ impl<'m> Planner<'m> {
             let mut typ = "varchar".to_owned();
             let expr = match c.kind {
                 OutKind::Fn(f) => {
+                    typ = function_type(&f.name, col, &s.ent.name, &c.column)?;
                     let e = self.column_function(s, &c.column, f)?;
-                    typ = function_type(&f.name, col);
                     col = None;
                     e
                 }
@@ -895,7 +895,13 @@ impl<'m> Planner<'m> {
             }
             _ => {}
         }
-        let col = s.ent.field(&pr.column).ok_or_else(|| err(codes::COLUMN_UNKNOWN, format!("{}.{}", s.ent.name, pr.column)))?;
+        let col = s.ent.field(&pr.column).ok_or_else(|| {
+            if pr.r#fn.is_some() {
+                err(codes::INTERNAL, format!("{}.{}", s.ent.name, pr.column))
+            } else {
+                err(codes::COLUMN_UNKNOWN, format!("{}.{}", s.ent.name, pr.column))
+            }
+        })?;
         let mut lhs = self.qcol(s, &pr.column);
         if let Some(sub) = &pr.sub {
             let inner = self.sub_select(b, s, sub)?;
@@ -923,7 +929,7 @@ impl<'m> Planner<'m> {
         }
         if let Some(f) = &pr.r#fn {
             let fcol = self.column_function(s, &pr.column, f)?;
-            let ty = function_type(&f.name, Some(col));
+            let ty = function_type(&f.name, Some(col), &s.ent.name, &pr.column)?;
             return Ok(match pr.op.as_str() {
                 "in" | "not_in" => {
                     let phs: Vec<String> = pr.ps.iter().map(|i| b.param(*i, &ty)).collect();

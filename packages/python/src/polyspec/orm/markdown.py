@@ -355,12 +355,18 @@ class MdNode:
                 }
             cf = (columns.get("fn") or {}).get(name)
             if cf is not None:
+                field = field_of(self.ent, cf["column"])
+                if field is None:
+                    raise OrmError(
+                        codes.INTERNAL,
+                        f"{self.ent.name}.{cf['column']} is missing from validated column-function metadata",
+                    )
                 return {
                     "index": index,
                     "name": name,
                     "column": cf["column"],
                     "type": function_type(
-                        cf["fn"]["name"], field_of(self.ent, cf["column"])
+                        cf["fn"]["name"], field, self.ent.name, cf["column"]
                     ),
                     "styles": [],
                     "hidden": False,

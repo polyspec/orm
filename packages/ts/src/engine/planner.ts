@@ -474,8 +474,9 @@ export class Planner {
       let colStyles: string[] = [];
       let type = 'string';
       if (c.fn) {
+        if (col === undefined) fail(codes.INTERNAL, `${s.ent.name}.${c.column} is missing from validated column-function metadata`);
         expr = this.columnFunction(b, s, c.column, c.fn);
-        type = functionType(c.fn.name, col);
+        type = functionType(c.fn.name, col, s.ent.name, c.column);
         col = undefined;
       } else if (c.sub) {
         expr = `(${this.subSelect(b, s, c.sub)})`;
@@ -617,7 +618,9 @@ export class Planner {
       return sql;
     }
     const column = present(pr.column, `the column of ${op}`);
-    const col = columnIn(s.ent, column);
+    const col = pr.fn
+      ? columnOf(s.ent, column) ?? fail(codes.INTERNAL, `${s.ent.name}.${column} is missing from validated column-function metadata`)
+      : columnIn(s.ent, column);
     let lhs = this.qcol(s, column);
     if (pr.sub) return `${lhs}${op === 'not_in' ? ' NOT IN ' : ' IN '}(${this.subSelect(b, s, pr.sub)})`;
     if (pr.value) {
@@ -631,7 +634,7 @@ export class Planner {
     }
     if (pr.fn) {
       const fn = this.columnFunction(b, s, column, pr.fn);
-      const type = functionType(pr.fn.name, col);
+      const type = functionType(pr.fn.name, col, s.ent.name, column);
       switch (op) {
         case 'in': case 'not_in':
           return `${fn}${op === 'not_in' ? ' NOT IN ' : ' IN '}(${(pr.ps ?? []).map(i => b.param(i, type)).join(', ')})`;

@@ -390,7 +390,11 @@ class MarkdownNode {
       const sub = c.sub?.[name];
       if (sub !== undefined) return { index, name, column: '', type: subType(this.m, sub), styles: [], hidden: false };
       const cf = c.fn?.[name];
-      if (cf !== undefined) return { index, name, column: cf.column, type: functionType(cf.fn.name, fieldOf(this.ent, cf.column)), styles: [], hidden: false };
+      if (cf !== undefined) {
+        const field = fieldOf(this.ent, cf.column);
+        if (field === undefined) throw new OrmError(codes.INTERNAL, `${this.ent.name}.${cf.column} is missing from validated column-function metadata`);
+        return { index, name, column: cf.column, type: functionType(cf.fn.name, field, this.ent.name, cf.column), styles: [], hidden: false };
+      }
     }
     const f = fieldOf(this.ent, name);
     if (f === undefined) throw answerError(`${this.ent.name} answers ${name}, which is no output of the request`);

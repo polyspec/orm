@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from polyspec.orm import codes
 from polyspec.orm.engine.dialect import value_function_units
 from polyspec.orm.engine.model import Entity, Field, RuntimeModel, entity_of, field_of
+from polyspec.orm.errors import OrmError
 
 __all__ = ["ParamUse", "function_type", "interval_type", "param_uses"]
 
@@ -120,7 +122,7 @@ class _ParamUses:
         for i in slots:
             fn = p.get("fn")
             if fn:
-                t = function_type(fn["name"], f)
+                t = function_type(fn["name"], f, ent.name, p.get("column", ""))
                 if f is not None and t == f.type:
                     self.column(i, f)
                 else:
@@ -129,14 +131,19 @@ class _ParamUses:
             self.column(i, f)
 
 
-def function_type(name: str, f: Field | None) -> str:
+def function_type(name: str, f: Field | None, entity: str, column: str) -> str:
     """The type of the column-function result written to column f: the parameter compared with it, and the output column that selects it
     type."""
+    if f is None:
+        raise OrmError(
+            codes.INTERNAL,
+            f"{entity}.{column} is missing from validated column-function metadata",
+        )
     if name in ("day_of_week", "year", "month"):
         return "i64"
     if name == "date":
         return "date"
-    return f.type if f is not None else "text"
+    return f.type
 
 
 def interval_type(name: str) -> str:
