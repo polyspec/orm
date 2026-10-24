@@ -91,16 +91,7 @@ fn compare_op(w: &str) -> Option<&'static str> {
 
 /// The operator table of the engine.
 fn op_allowed(c: &Field, op: &str) -> bool {
-    if op.ends_with("_col") {
-        return true;
-    }
-    if !c.codec.is_empty() {
-        if c.aes() || c.codec.iter().all(|s| s == "hex" || s == "ip") {
-            return polyspec_orm_schema::dbspec::equality_operator_allowed(op);
-        }
-        return matches!(op, "is_null" | "is_not_null");
-    }
-    polyspec_orm_schema::dbspec::operator_allowed_for_type(c.ty.name(), op)
+    polyspec_orm_schema::dbspec::operator_allowed_for_field(c, op, op.ends_with("_col"))
 }
 
 fn column_of<'e>(e: &'e Entity, ws: &[&str]) -> Option<&'e Field> {

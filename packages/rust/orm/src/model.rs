@@ -441,10 +441,7 @@ async fn select(ex: &Executor, conn: &Option<Db>, req: &mut Req) -> Result<Query
 }
 
 fn split_row_key(row: &[Val], refs: &[crate::plan::KeyRef]) -> Result<Key> {
-    Key::of_row(row, refs)?.ok_or_else(|| Error::Engine {
-        code: codes::CODEC_DECODE.into(),
-        msg: "split query row identity contains SQL NULL".into(),
-    })
+    Key::of_row(row, refs)?.ok_or_else(|| Error::Engine { code: codes::CODEC_DECODE.into(), msg: "split query row identity contains SQL NULL".into() })
 }
 
 // ---- assembly ----
@@ -1038,7 +1035,11 @@ async fn sql_write(ex: &Executor, st: &crate::plan::Step, req: &Req) -> Result<(
     let (id, affected) = ex.execute(st, &req.params).await?;
     // An upsert writes one row: MySQL counts 2 for the one that updates, PostgreSQL and SQLite 1.
     let affected = if req.ir.kind == "insert" && !req.ir.on_duplicate.is_empty() { 1 } else { affected };
-    let key = if req.ir.kind == "insert" { Val::I64(i64::try_from(id).map_err(|error| Error::internal(format!("generated id is outside i64 range: {error}")))?) } else { Val::Null };
+    let key = if req.ir.kind == "insert" {
+        Val::I64(i64::try_from(id).map_err(|error| Error::internal(format!("generated id is outside i64 range: {error}")))?)
+    } else {
+        Val::Null
+    };
     Ok((key, affected))
 }
 
@@ -1555,26 +1556,15 @@ pub fn to_array(m: &dyn AnyModel) -> Result<serde_json::Value> {
     let mut out = serde_json::Map::new();
     let empty = RowState::default();
     let st = c.row.as_ref().unwrap_or(&empty);
-    let mut names = st.names.clone();
-    if c.row.is_none() {
-        names = c.sets.iter().map(|s| s.column.clone()).collect();
-    }
-    for name in &names {
-        if st.hidden.contains(name) {
-            continue;
-        }
-        let v = match m.value_dyn(name) {
-            Some(v) => v,
-            None => st.extra.get(name).cloned().ok_or_else(|| missing_output_column(c, name))?,
-        };
+    for (name, v) in row_values(m)? {
         let value = v.to_json()?;
         // A time or datetime text from the database has the column precision; the array form has six digits.
-        let temporal_text = c.ent.entity_schema()?.field(name).is_some_and(|f| matches!(f.ty, dbspec::Type::Time(_) | dbspec::Type::DateTime(_)));
+        let temporal_text = c.ent.entity_schema()?.field(&name).is_some_and(|f| matches!(f.ty, dbspec::Type::Time(_) | dbspec::Type::DateTime(_)));
         let value = match &v {
             Val::Str(text) if temporal_text => serde_json::json!(six_fraction_digits(text)),
             _ => value,
         };
-        let value = if styled_column(c, name)? {
+        let value = if styled_column(c, &name)? {
             if matches!(v, Val::Null) {
                 serde_json::json!({"kind": "sql-null"})
             } else {
@@ -1583,7 +1573,7 @@ pub fn to_array(m: &dyn AnyModel) -> Result<serde_json::Value> {
         } else {
             value
         };
-        out.insert(name.clone(), value);
+        out.insert(name, value);
     }
     for (name, v) in &c.news {
         out.entry(name.clone()).or_insert_with(|| v.clone());
@@ -1635,23 +1625,12 @@ fn json_members(m: &dyn AnyModel) -> Result<Vec<(String, String)>> {
     };
     let empty = RowState::default();
     let st = c.row.as_ref().unwrap_or(&empty);
-    let mut names = st.names.clone();
-    if c.row.is_none() {
-        names = c.sets.iter().map(|s| s.column.clone()).collect();
-    }
-    for name in &names {
-        if st.hidden.contains(name) {
-            continue;
-        }
-        let v = match m.value_dyn(name) {
-            Some(v) => v,
-            None => st.extra.get(name).cloned().ok_or_else(|| missing_output_column(c, name))?,
-        };
+    for (name, v) in row_values(m)? {
         let document = match &v {
             Val::Ordered(o) => o.compact(),
             other => other.to_json()?.to_string(),
         };
-        let text = if styled_column(c, name)? {
+        let text = if styled_column(c, &name)? {
             if matches!(v, Val::Null) {
                 r#"{"kind":"sql-null"}"#.to_owned()
             } else {
@@ -1660,7 +1639,7 @@ fn json_members(m: &dyn AnyModel) -> Result<Vec<(String, String)>> {
         } else {
             document
         };
-        add(&mut out, name, text);
+        add(&mut out, &name, text);
     }
     for (name, v) in &c.news {
         add(&mut out, name, v.to_string());
@@ -1681,6 +1660,25 @@ fn json_members(m: &dyn AnyModel) -> Result<Vec<(String, String)>> {
         }
     }
     Ok(out)
+}
+
+fn row_values(m: &dyn AnyModel) -> Result<Vec<(String, Val)>> {
+    let c = m.core_dyn();
+    let empty = RowState::default();
+    let st = c.row.as_ref().unwrap_or(&empty);
+    let names = if c.row.is_none() { c.sets.iter().map(|set| set.column.clone()).collect() } else { st.names.clone() };
+    let mut values = Vec::with_capacity(names.len());
+    for name in names {
+        if st.hidden.contains(&name) {
+            continue;
+        }
+        let value = match m.value_dyn(&name) {
+            Some(value) => value,
+            None => st.extra.get(&name).cloned().ok_or_else(|| missing_output_column(c, &name))?,
+        };
+        values.push((name, value));
+    }
+    Ok(values)
 }
 
 /// A time or datetime text with six fraction digits, zeros past the column precision.
@@ -1870,14 +1868,8 @@ mod related_tests {
         };
         assert_eq!(composite_error.code(), codes::CODEC_DECODE);
         assert!(composite_error.to_string().contains("split query row identity contains SQL NULL"));
-        let composite_false = super::split_row_key(
-            &[Val::I64(0), Val::Bool(false), Val::Str(String::new())],
-            &composite_refs,
-        ).unwrap();
-        let composite_true = super::split_row_key(
-            &[Val::I64(0), Val::Bool(true), Val::Str(String::new())],
-            &composite_refs,
-        ).unwrap();
+        let composite_false = super::split_row_key(&[Val::I64(0), Val::Bool(false), Val::Str(String::new())], &composite_refs).unwrap();
+        let composite_true = super::split_row_key(&[Val::I64(0), Val::Bool(true), Val::Str(String::new())], &composite_refs).unwrap();
         assert_ne!(composite_false, composite_true);
     }
 }

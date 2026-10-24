@@ -65,6 +65,20 @@ pub fn operator_allowed_for_type(typ: &str, op: &str) -> bool {
     ops.contains(&op)
 }
 
+/// Whether a field permits the operator after the caller identifies column operators.
+pub fn operator_allowed_for_field(field: &Field, op: &str, column_operator: bool) -> bool {
+    if column_operator {
+        return true;
+    }
+    if !field.codec.is_empty() {
+        if field.aes() || field.codec.iter().all(|stage| stage == "hex" || stage == "ip") {
+            return equality_operator_allowed(op);
+        }
+        return matches!(op, "is_null" | "is_not_null");
+    }
+    operator_allowed_for_type(field.ty.name(), op)
+}
+
 const EQUALITY_OPERATORS: &[&str] = &["eq", "not_eq", "in", "not_in", "is_null", "is_not_null"];
 
 /// Whether an operator compares only for equality or list membership.
@@ -112,6 +126,28 @@ mod operator_tests {
             assert_eq!(super::comparison_operator(operator), Some(expected));
         }
         assert_eq!(super::comparison_operator("unknown"), None);
+    }
+
+    #[test]
+    fn codecs_and_column_operators_keep_their_restrictions() {
+        let field = |ty, codec: &[&str]| super::Field {
+            name: "value".to_owned(),
+            ty,
+            nullable: false,
+            identity: false,
+            primary_key: false,
+            foreign_key: false,
+            default: None,
+            select_explicit: false,
+            codec: codec.iter().map(|stage| (*stage).to_owned()).collect(),
+            blind_index: None,
+        };
+        assert!(!super::operator_allowed_for_field(&field(super::Type::Varchar(8), &["aes"]), "gt", false));
+        assert!(super::operator_allowed_for_field(&field(super::Type::Varchar(8), &["aes"]), "eq", false));
+        assert!(super::operator_allowed_for_field(&field(super::Type::Text, &["hex", "ip"]), "not_eq", false));
+        assert!(!super::operator_allowed_for_field(&field(super::Type::Text, &["base64"]), "eq", false));
+        assert!(super::operator_allowed_for_field(&field(super::Type::Text, &["base64"]), "is_null", false));
+        assert!(super::operator_allowed_for_field(&field(super::Type::Text, &[]), "between_col", true));
     }
 }
 

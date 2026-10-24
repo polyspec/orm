@@ -22,16 +22,7 @@ fn col_op(op: &str) -> bool {
 /// compares equality by blind index, and a column that uses only `hex` and `ip` has the same value as the same
 /// stored value, so equality is compared.
 fn op_allowed(c: &Field, op: &str) -> bool {
-    if col_op(op) {
-        return true;
-    }
-    if !c.codec.is_empty() {
-        if c.aes() || c.codec.iter().all(|s| s == "hex" || s == "ip") {
-            return polyspec_orm_schema::dbspec::equality_operator_allowed(op);
-        }
-        return matches!(op, "is_null" | "is_not_null");
-    }
-    polyspec_orm_schema::dbspec::operator_allowed_for_type(c.ty.name(), op)
+    polyspec_orm_schema::dbspec::operator_allowed_for_field(c, op, col_op(op))
 }
 
 /// The one key an insert with `on_duplicate` conflicts on. MySQL updates the row met on any unique key, while
