@@ -2788,14 +2788,35 @@ static pstep *main_step(pctx *c, pbinds *b, zend_string *sql)
     return step_new(c, "main", sql, ZSTR_EMPTY_ALLOC(), slots, tables);
 }
 
+typedef struct {
+    pbinds *binds;
+    HashTable *entity;
+    HashTable *assignments;
+} pwrite_inputs;
+
+/* Initializes the shared write context and its assignments after blind-index expansion. */
+static bool write_inputs(pctx *c, HashTable *request, pwrite_inputs *out)
+{
+    out->binds = binds_new(c);
+    out->entity = entity(c, gs(c, request, "entity"));
+    zval *expanded = with_blind_indexes(c, out->entity, lst(request, "set"));
+    if (expanded == NULL) {
+        return false;
+    }
+    out->assignments = Z_ARRVAL_P(expanded);
+    return true;
+}
+
 /* The statement of an insert, with its rows and upsert (Planner::insertStep). */
 static pstep *insert_step(pctx *c, HashTable *r)
 {
-    pbinds *b = binds_new(c);
-    HashTable *ent = entity(c, gs(c, r, "entity"));
-    zval *setz = with_blind_indexes(c, ent, lst(r, "set"));
-    OKP(setz);
-    HashTable *set = Z_ARRVAL_P(setz);
+    pwrite_inputs input;
+    if (!write_inputs(c, r, &input)) {
+        return NULL;
+    }
+    pbinds *b = input.binds;
+    HashTable *ent = input.entity;
+    HashTable *set = input.assignments;
     if (!check_aes_assignments(c, ent, set, false) || !check_required_assignments(c, ent, set)) {
         return NULL;
     }
@@ -3037,11 +3058,13 @@ static pstep *update_main(pctx *c, pbinds *b, HashTable *ent, zval *sets, zend_s
 /* The statement of an update (Planner::updateStep). */
 static pstep *update_step(pctx *c, HashTable *r)
 {
-    pbinds *b = binds_new(c);
-    HashTable *ent = entity(c, gs(c, r, "entity"));
-    zval *setz = with_blind_indexes(c, ent, lst(r, "set"));
-    OKP(setz);
-    HashTable *set = Z_ARRVAL_P(setz);
+    pwrite_inputs input;
+    if (!write_inputs(c, r, &input)) {
+        return NULL;
+    }
+    pbinds *b = input.binds;
+    HashTable *ent = input.entity;
+    HashTable *set = input.assignments;
     if (!check_aes_assignments(c, ent, set, true)) {
         return NULL;
     }
