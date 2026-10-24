@@ -510,14 +510,27 @@ PHP_METHOD(Polyspec_Orm_Collection, identityOf)
     RETURN_STR(identity);
 }
 
+static bool collection_find_entry(zend_object *collection, zval *key, zval **entry)
+{
+    *entry = NULL;
+    if (!collection_key_argument(key, 1)) return false;
+    zend_string *id = key_identity(key);
+    if (id == NULL) return false;
+    zval *items = collection_items(collection);
+    if (items == NULL) {
+        zend_string_release(id);
+        return false;
+    }
+    *entry = zend_hash_find(Z_ARRVAL_P(items), id);
+    zend_string_release(id);
+    return true;
+}
+
 PHP_METHOD(Polyspec_Orm_Collection, get)
 {
     zval *key; ZEND_PARSE_PARAMETERS_START(1,1) Z_PARAM_ZVAL(key) ZEND_PARSE_PARAMETERS_END();
-    if (!collection_key_argument(key, 1)) RETURN_THROWS();
-    zend_string *id = key_identity(key); if (!id) RETURN_THROWS();
-    zval *items = collection_items(Z_OBJ_P(ZEND_THIS));
-    if (items == NULL) { zend_string_release(id); RETURN_THROWS(); }
-    zval *entry = zend_hash_find(Z_ARRVAL_P(items), id); zend_string_release(id);
+    zval *entry;
+    if (!collection_find_entry(Z_OBJ_P(ZEND_THIS), key, &entry)) RETURN_THROWS();
     if (!entry) RETURN_NULL();
     zval *model = entry_model(entry); if (!model) { if (EG(exception)) RETURN_THROWS(); RETURN_NULL(); } RETURN_COPY(model);
 }
@@ -525,11 +538,9 @@ PHP_METHOD(Polyspec_Orm_Collection, get)
 PHP_METHOD(Polyspec_Orm_Collection, has)
 {
     zval *key; ZEND_PARSE_PARAMETERS_START(1,1) Z_PARAM_ZVAL(key) ZEND_PARSE_PARAMETERS_END();
-    if (!collection_key_argument(key, 1)) RETURN_THROWS();
-    zend_string *id = key_identity(key); if (!id) RETURN_THROWS();
-    zval *items = collection_items(Z_OBJ_P(ZEND_THIS));
-    if (items == NULL) { zend_string_release(id); RETURN_THROWS(); }
-    bool found = zend_hash_exists(Z_ARRVAL_P(items), id); zend_string_release(id); RETURN_BOOL(found);
+    zval *entry;
+    if (!collection_find_entry(Z_OBJ_P(ZEND_THIS), key, &entry)) RETURN_THROWS();
+    RETURN_BOOL(entry != NULL);
 }
 
 PHP_METHOD(Polyspec_Orm_Collection, count)
