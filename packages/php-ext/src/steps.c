@@ -376,32 +376,37 @@ static triggerpartv trigger_parts(writer *w, const table *t)
     return out;
 }
 
-static void drop_triggers(writer *w, const table *t)
+static void change_triggers(writer *w, const table *t, bool create)
 {
     triggerpartv parts = trigger_parts(w, t);
     for (size_t i = 0; i < parts.n; i++) {
         triggerpart *p = &parts.v[i];
         if (w->r.d == D_POSTGRES) {
-            add(w, step(fmt("DROP TRIGGER %S ON %S", q(w, p->name), q(w, t->name)), p->create, SL(""), absent("trigger", t->name, p->name)));
-            add(w, step(fmt("DROP FUNCTION %S()", q(w, p->name)), p->function, SL(""), absent("function", SL(""), p->name)));
+            if (create) {
+                add(w, step(p->function, fmt("DROP FUNCTION %S()", q(w, p->name)), SL(""), present("function", SL(""), p->name)));
+                add(w, step(p->create, fmt("DROP TRIGGER %S ON %S", q(w, p->name), q(w, t->name)), SL(""), present("trigger", t->name, p->name)));
+            } else {
+                add(w, step(fmt("DROP TRIGGER %S ON %S", q(w, p->name), q(w, t->name)), p->create, SL(""), absent("trigger", t->name, p->name)));
+                add(w, step(fmt("DROP FUNCTION %S()", q(w, p->name)), p->function, SL(""), absent("function", SL(""), p->name)));
+            }
             continue;
         }
-        add(w, step(fmt("DROP TRIGGER %S", q(w, p->name)), p->create, SL(""), absent("trigger", t->name, p->name)));
+        if (create) {
+            add(w, step(p->create, fmt("DROP TRIGGER %S", q(w, p->name)), SL(""), present("trigger", t->name, p->name)));
+        } else {
+            add(w, step(fmt("DROP TRIGGER %S", q(w, p->name)), p->create, SL(""), absent("trigger", t->name, p->name)));
+        }
     }
+}
+
+static void drop_triggers(writer *w, const table *t)
+{
+    change_triggers(w, t, false);
 }
 
 static void create_triggers(writer *w, const table *t)
 {
-    triggerpartv parts = trigger_parts(w, t);
-    for (size_t i = 0; i < parts.n; i++) {
-        triggerpart *p = &parts.v[i];
-        if (w->r.d == D_POSTGRES) {
-            add(w, step(p->function, fmt("DROP FUNCTION %S()", q(w, p->name)), SL(""), present("function", SL(""), p->name)));
-            add(w, step(p->create, fmt("DROP TRIGGER %S ON %S", q(w, p->name), q(w, t->name)), SL(""), present("trigger", t->name, p->name)));
-            continue;
-        }
-        add(w, step(p->create, fmt("DROP TRIGGER %S", q(w, p->name)), SL(""), present("trigger", t->name, p->name)));
-    }
+    change_triggers(w, t, true);
 }
 
 /* In the SQLite rebuild, the expression that moves a source value into the target column's format. Added decimal places are filled with 0. */
