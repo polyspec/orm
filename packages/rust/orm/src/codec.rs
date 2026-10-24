@@ -85,17 +85,35 @@ pub fn encode_ordered(styles: &[&str], v: StyledValue<&strict_json::Value>) -> R
 fn finish(styles: &[&str], mut cur: Vec<u8>) -> Result<Param> {
     for st in styles {
         match *st {
-            "base64" => cur = base64::engine::general_purpose::STANDARD.encode(&cur).into_bytes(),
-            "gz" => {
-                let mut enc = flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::best());
-                enc.write_all(&cur).map_err(|e| err(CODEC_ENCODE, format!("gz: {e}")))?;
-                return Ok(Param::Bytes(enc.finish().map_err(|e| err(CODEC_ENCODE, format!("gz: {e}")))?));
-            }
+            "base64" | "gz" => match encode_binary_stage(st, &mut cur)? {
+                BinaryStage::Continue => {}
+                BinaryStage::Complete(value) => return Ok(value),
+            },
             "ordered_json" | "serialize" | "yaml" => return Err(err(CODEC_UNSUPPORTED, format!("{st} must be the first style"))),
             other => return Err(err(CODEC_UNSUPPORTED, format!("style {other}"))),
         }
     }
     Ok(Param::Str(String::from_utf8(cur).map_err(|e| err(CODEC_ENCODE, e.to_string()))?))
+}
+
+enum BinaryStage {
+    Continue,
+    Complete(Param),
+}
+
+fn encode_binary_stage(style: &str, cur: &mut Vec<u8>) -> Result<BinaryStage> {
+    match style {
+        "base64" => {
+            *cur = base64::engine::general_purpose::STANDARD.encode(&*cur).into_bytes();
+            Ok(BinaryStage::Continue)
+        }
+        "gz" => {
+            let mut enc = flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::best());
+            enc.write_all(cur).map_err(|e| err(CODEC_ENCODE, format!("gz: {e}")))?;
+            Ok(BinaryStage::Complete(Param::Bytes(enc.finish().map_err(|e| err(CODEC_ENCODE, format!("gz: {e}")))?)))
+        }
+        other => Err(err(CODEC_UNSUPPORTED, format!("style {other}"))),
+    }
 }
 
 /// Value → stored representation as a bind parameter (`Str`, or `Bytes` for gz).
@@ -133,12 +151,10 @@ pub fn encode(styles: &[&str], v: StyledValue<&Value>) -> Result<Param> {
                 let parsed = strict_json::parse_bytes(&raw).map_err(|e| err(CODEC_ENCODE, format!("json: {e}")))?;
                 cur = strict_json::stringify(&parsed).into_bytes();
             }
-            "base64" => cur = base64::engine::general_purpose::STANDARD.encode(&cur).into_bytes(),
-            "gz" => {
-                let mut enc = flate2::write::ZlibEncoder::new(Vec::new(), flate2::Compression::best());
-                enc.write_all(&cur).map_err(|e| err(CODEC_ENCODE, format!("gz: {e}")))?;
-                return Ok(Param::Bytes(enc.finish().map_err(|e| err(CODEC_ENCODE, format!("gz: {e}")))?));
-            }
+            "base64" | "gz" => match encode_binary_stage(st, &mut cur)? {
+                BinaryStage::Continue => {}
+                BinaryStage::Complete(value) => return Ok(value),
+            },
             other => return Err(err(CODEC_UNSUPPORTED, format!("style {other}"))),
         }
     }
@@ -568,8 +584,8 @@ pub fn executor_stages(stages: &[String]) -> Vec<&str> {
 // ---- host stages (docs/spec/dialects.md): what MySQL does in SQL, PostgreSQL/SQLite leave to the executor ----
 
 use aes_gcm::{
-    Aes256Gcm, KeyInit as GcmKeyInit, Nonce,
     aead::{Aead, Payload},
+    Aes256Gcm, KeyInit as GcmKeyInit, Nonce,
 };
 use hmac::{Hmac, Mac};
 use sha2::{Digest, Sha256};
@@ -1038,6 +1054,23 @@ mod tests {
         assert_eq!(encode_ordered(&["ordered_json"], StyledValue::Value(&strict_json::Value::null())).unwrap(), Param::Str("null".into()));
         assert_eq!(encode_ordered(&["serialize"], StyledValue::Value(&strict_json::parse("{}").unwrap())).unwrap_err().code(), CODEC_UNSUPPORTED);
         assert_eq!(decode(&["ordered_json".to_string()], &Val::Str("{".into())).unwrap_err().code(), CODEC_DECODE);
+    }
+
+    #[test]
+    fn encoding_binary_stages_round_trips_json() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let value = serde_json::json!({"name": "Ada", "scores": [3, 5]});
+        let text = serde_json::to_string(&value).unwrap();
+        let expected = strict_json::parse(&text).unwrap();
+        for stage in ["base64", "gz"] {
+            let stored = encode(&["ordered_json", stage], StyledValue::Value(&value)).unwrap();
+            let raw = match stored {
+                Param::Str(text) => Val::Str(text),
+                Param::Bytes(bytes) => Val::Bytes(bytes),
+                other => panic!("{stage}: stored {other:?}"),
+            };
+            assert_eq!(decode(&["ordered_json".into(), stage.into()], &raw).unwrap(), Val::Ordered(expected.clone()), "{stage}");
+        }
     }
 
     /// A first `gz` or `base64` stage serializes nothing: it stores the UTF-8 text of a string value and refuses any
