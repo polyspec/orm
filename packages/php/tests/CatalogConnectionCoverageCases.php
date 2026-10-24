@@ -108,7 +108,40 @@ trait CatalogConnectionCoverageCases
         self::assertCount(1, $updated->rows);
         self::assertSame(1, $this->catalog->deleteRow($find('catalog-updated')));
         self::assertSame(0, $tenantRows());
+        if ($this->driver === 'sqlite') {
+            $this->assertSqliteGeneratedKey();
+        }
         $this->assertFailedCommitLeavesNoRow();
+    }
+
+    private function assertSqliteGeneratedKey(): void
+    {
+        $name = 'catalog_generated_' . bin2hex(random_bytes(6));
+        $namespace = $this->catalog->currentNamespace();
+        $qualified = $this->quote($namespace) . '.' . $this->quote($name);
+        $setup = Orm::connect((string) getenv('ORM_FEATURE_DSN'), new Config());
+        $pdo = $setup->pdo();
+        try {
+            $pdo->exec("CREATE TABLE {$qualified} (id INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL)");
+            $metadata = $this->catalog->describeTable(['namespace' => $namespace, 'name' => $name]);
+            self::assertSame(['id'], $metadata->primaryKey);
+            self::assertFalse($metadata->columns[0]->nullable);
+            self::assertSame('INTEGER', $metadata->columns[0]->nativeType);
+            self::assertFalse($metadata->columns[0]->generated);
+            self::assertTrue($metadata->columns[0]->automaticKey);
+            self::assertNull($metadata->columns[0]->defaultExpression);
+            self::assertFalse($metadata->columns[0]->expressionDefault);
+
+            $inserted = $this->catalog->insertRow($metadata, ['payload' => 'generated']);
+            self::assertSame(['id', 'payload'], $inserted->columns);
+            self::assertSame([[1, 'generated']], $inserted->rows);
+        } finally {
+            try {
+                $pdo->exec("DROP TABLE IF EXISTS {$qualified}");
+            } finally {
+                $setup->close();
+            }
+        }
     }
 
     private function assertFailedCommitLeavesNoRow(): void

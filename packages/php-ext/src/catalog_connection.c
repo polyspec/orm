@@ -2261,7 +2261,8 @@ static bool cat_check_current(zval *current, zval *original)
     return true;
 }
 
-static bool cat_insert_body(zval *db, const char *dialect, zval *pdo, zval *declared, zval *changes, zval *keys, zval *out)
+static bool cat_insert_body(zval *db, const char *dialect, zval *pdo, zval *declared, zval *changes, zval *keys,
+                            bool generated_auto_key, zend_long auto_key_index, zval *out)
 {
     zval rv_t, *table = catalog_prop(declared, "table", &rv_t);
     zval *ns = zend_hash_str_find(Z_ARRVAL_P(table), "namespace", 9);
@@ -2282,13 +2283,15 @@ static bool cat_insert_body(zval *db, const char *dialect, zval *pdo, zval *decl
         smart_str_free(&lock);
         if (!locked) return false;
     }
-    zval existing;
-    if (!cat_lookup(db, dialect, pdo, declared, keys, true, &existing)) return false;
-    bool exists = zend_hash_num_elements(Z_ARRVAL(existing)) != 0;
-    zval_ptr_dtor(&existing);
-    if (exists) {
-        db_throw_orm("ROW_CONFLICT", "insertion key already exists");
-        return false;
+    if (!generated_auto_key) {
+        zval existing;
+        if (!cat_lookup(db, dialect, pdo, declared, keys, true, &existing)) return false;
+        bool exists = zend_hash_num_elements(Z_ARRVAL(existing)) != 0;
+        zval_ptr_dtor(&existing);
+        if (exists) {
+            db_throw_orm("ROW_CONFLICT", "insertion key already exists");
+            return false;
+        }
     }
     zval descriptor;
     if (!cat_describe(db, dialect, pdo, Z_STR_P(ns), Z_STR_P(tname), &descriptor)) return false;
@@ -2328,19 +2331,75 @@ static bool cat_insert_body(zval *db, const char *dialect, zval *pdo, zval *decl
         if (k) smart_str_appendc(&sql, ',');
         smart_str_appendc(&sql, '?');
     }
-    smart_str_appendc(&sql, ')');
+    if (generated_auto_key) {
+        smart_str_appends(&sql, ") RETURNING ");
+        bool first_column = true;
+        zval *column;
+        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(columns), column) {
+            zval nrv, *name = catalog_prop(column, "name", &nrv);
+            if (!first_column) smart_str_appendc(&sql, ',');
+            first_column = false;
+            cat_quote(&sql, Z_STR_P(name), dialect);
+        } ZEND_HASH_FOREACH_END();
+    } else {
+        smart_str_appendc(&sql, ')');
+    }
     smart_str_0(&sql);
-    zend_long affected = 0;
-    bool ok = cat_exec(db, pdo, ZSTR_VAL(sql.s), &args, &affected);
+    bool ok;
+    if (generated_auto_key) {
+        zval returned_names, returned_types, raw, returned;
+        ok = cat_query(db, pdo, ZSTR_VAL(sql.s), &args, 2, CAT_PAGE_BYTES, &returned_names, &returned_types, &raw);
+        if (!ok) {
+            smart_str_free(&sql);
+            zval_ptr_dtor(&args);
+            zval_ptr_dtor(&descriptor);
+            return false;
+        }
+        zval expected_names;
+        cat_column_names(&descriptor, &expected_names);
+        bool names_match = zend_compare(&returned_names, &expected_names) == 0;
+        zval_ptr_dtor(&expected_names);
+        zval_ptr_dtor(&returned_names);
+        if (!names_match || zend_hash_num_elements(Z_ARRVAL(raw)) != 1 || !cat_convert_rows(&raw, &returned_types, &returned)) {
+            zval_ptr_dtor(&returned_types);
+            zval_ptr_dtor(&raw);
+            smart_str_free(&sql);
+            zval_ptr_dtor(&args);
+            zval_ptr_dtor(&descriptor);
+            if (!EG(exception)) db_throw_orm("ROW_WRITE_MISMATCH", "expected one returned insert row matching the descriptor");
+            return false;
+        }
+        zval_ptr_dtor(&returned_types);
+        zval_ptr_dtor(&raw);
+        zval *row = zend_hash_index_find(Z_ARRVAL(returned), 0);
+        zval *key = zend_hash_index_find(Z_ARRVAL_P(row), (zend_ulong)auto_key_index);
+        if (key == NULL || Z_TYPE_P(key) != IS_LONG) {
+            zval_ptr_dtor(&returned);
+            smart_str_free(&sql);
+            zval_ptr_dtor(&args);
+            zval_ptr_dtor(&descriptor);
+            db_throw_orm("ROW_WRITE_MISMATCH", "SQLite did not return an integer generated key");
+            return false;
+        }
+        Z_TRY_ADDREF_P(key);
+        add_next_index_zval(keys, key);
+        zval_ptr_dtor(&returned);
+        ok = true;
+    } else {
+        zend_long affected = 0;
+        ok = cat_exec(db, pdo, ZSTR_VAL(sql.s), &args, &affected);
+        if (ok && affected != 1) {
+            smart_str_free(&sql);
+            zval_ptr_dtor(&args);
+            zval_ptr_dtor(&descriptor);
+            db_throw_orm("ROW_WRITE_MISMATCH", "expected exactly one inserted row, got %ld", (long)affected);
+            return false;
+        }
+    }
     smart_str_free(&sql);
     zval_ptr_dtor(&args);
     if (!ok) {
         zval_ptr_dtor(&descriptor);
-        return false;
-    }
-    if (affected != 1) {
-        zval_ptr_dtor(&descriptor);
-        db_throw_orm("ROW_WRITE_MISMATCH", "expected exactly one inserted row, got %ld", (long)affected);
         return false;
     }
     zval after;
@@ -2403,8 +2462,11 @@ ZEND_METHOD(Polyspec_Orm_Catalog, insertRow)
         return;
     }
     zval rv_cols, *columns = catalog_prop(declared, "columns", &rv_cols);
+    zend_string *dialect = cat_dialect(ZEND_THIS);
     zval keys;
     array_init(&keys);
+    bool generated_auto_key = false;
+    zend_long auto_key_index = -1;
     zval *ix;
     ZEND_HASH_FOREACH_VAL(Z_ARRVAL(key_indexes), ix) {
         zend_long want = Z_LVAL_P(ix);
@@ -2417,7 +2479,16 @@ ZEND_METHOD(Polyspec_Orm_Catalog, insertRow)
             }
         } ZEND_HASH_FOREACH_END();
         if (found == NULL) {
-            zval nrv, *name = catalog_prop(zend_hash_index_find(Z_ARRVAL_P(columns), (zend_ulong)want), "name", &nrv);
+            zval *column = zend_hash_index_find(Z_ARRVAL_P(columns), (zend_ulong)want);
+            zval nrv, *name = catalog_prop(column, "name", &nrv);
+            zval arv, *automatic = catalog_prop(column, "automaticKey", &arv);
+            zval grv, *generated = catalog_prop(column, "generated", &grv);
+            if (strcmp(ZSTR_VAL(dialect), "sqlite") == 0 && zend_hash_num_elements(Z_ARRVAL(key_indexes)) == 1
+                && Z_TYPE_P(automatic) == IS_TRUE && Z_TYPE_P(generated) != IS_TRUE) {
+                generated_auto_key = true;
+                auto_key_index = want;
+                continue;
+            }
             zval_ptr_dtor(&keys);
             zval_ptr_dtor(&changes);
             zval_ptr_dtor(&key_indexes);
@@ -2431,10 +2502,10 @@ ZEND_METHOD(Polyspec_Orm_Catalog, insertRow)
     ZVAL_UNDEF(&pdo);
     zval rv_db;
     zval *db = cat_db(ZEND_THIS, &rv_db);
-    zend_string *dialect = cat_dialect(ZEND_THIS);
     zval result;
     if (cat_begin_write(db, ZSTR_VAL(dialect), &pdo)) {
-        bool ok = cat_insert_body(db, ZSTR_VAL(dialect), &pdo, declared, &changes, &keys, &result);
+        bool ok = cat_insert_body(db, ZSTR_VAL(dialect), &pdo, declared, &changes, &keys,
+                                  generated_auto_key, auto_key_index, &result);
         if (ok) {
             if (cat_commit(db, &pdo)) {
                 RETVAL_COPY_VALUE(&result);

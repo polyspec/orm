@@ -398,8 +398,8 @@ final class Catalog
     /**
      * Inserts one row with explicit primary-key values inside a writable transaction. It rejects an existing key,
      * writes with bound parameters, requires exactly one affected row and re-reads the row by its key before it
-     * commits. Every supplied value must read back exactly. Automatic and expression-default keys are not supported and
-     * fail when the key is not given.
+     * commits. Every supplied value must read back exactly. A supported database-owned key may be omitted when the
+     * database returns its generated row in the same transaction.
      *
      * @param array<string, mixed> $values column name => value
      */
@@ -412,16 +412,22 @@ final class Catalog
             $provided[$index] = $value;
         }
         $keys = [];
+        $automaticKeyIndex = null;
         foreach ($keyIndexes as $index) {
             if (!array_key_exists($index, $provided)) {
+                $column = $declared->columns[$index];
+                if ($this->dialect === 'sqlite' && count($keyIndexes) === 1 && $column->automaticKey) {
+                    $automaticKeyIndex = $index;
+                    continue;
+                }
                 throw new OrmException(
                     Code::ROW_INSERT_INVALID,
-                    'explicit primary-key value of "' . $declared->columns[$index]->name . '" is required'
+                    'explicit primary-key value of "' . $column->name . '" is required'
                 );
             }
             $keys[] = $provided[$index];
         }
-        return $this->write(function (\PDO $pdo) use ($declared, $changes, $keys): CatalogResult {
+        return $this->write(function (\PDO $pdo) use ($declared, $changes, $keys, $automaticKeyIndex): CatalogResult {
             if ($this->dialect === 'postgres') {
                 // The lock that an INSERT takes, held before the schema check so that no DDL changes the table in
                 // between.
@@ -431,7 +437,7 @@ final class Catalog
                     []
                 );
             }
-            if ($this->lookup($pdo, $declared, $keys, true) !== []) {
+            if ($automaticKeyIndex === null && $this->lookup($pdo, $declared, $keys, true) !== []) {
                 throw new OrmException(Code::ROW_CONFLICT, 'insertion key already exists');
             }
             $descriptor = $this->describe($pdo, $declared->table);
@@ -451,9 +457,32 @@ final class Catalog
             }
             $sql = 'INSERT INTO ' . self::qualified($descriptor->table, $this->dialect)
                 . ' (' . implode(',', $names) . ') VALUES (' . implode(',', $placeholders) . ')';
-            $affected = $this->exec($pdo, $sql, $args);
-            if ($affected !== 1) {
-                throw new OrmException(Code::ROW_WRITE_MISMATCH, "expected exactly one inserted row, got $affected");
+            if ($automaticKeyIndex !== null) {
+                $returned = $this->query(
+                    $pdo,
+                    $sql . ' RETURNING ' . self::quoteList(self::columnNames($descriptor), $this->dialect),
+                    $args,
+                    2,
+                    self::PAGE_BYTES
+                );
+                if (count($returned['rows']) !== 1) {
+                    throw new OrmException(Code::ROW_WRITE_MISMATCH, 'expected one returned insert row');
+                }
+                if ($returned['names'] !== self::columnNames($descriptor)) {
+                    throw new OrmException(
+                        Code::TABLE_PAGE_METADATA_CHANGED,
+                        'returned insert columns differ from descriptor'
+                    );
+                }
+                $keys = [$returned['rows'][0][$automaticKeyIndex]];
+            } else {
+                $affected = $this->exec($pdo, $sql, $args);
+                if ($affected !== 1) {
+                    throw new OrmException(
+                        Code::ROW_WRITE_MISMATCH,
+                        "expected exactly one inserted row, got $affected"
+                    );
+                }
             }
             $after = $this->lookup($pdo, $descriptor, $keys, false);
             if (count($after) !== 1) {

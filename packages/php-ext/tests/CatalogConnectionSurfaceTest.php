@@ -85,6 +85,7 @@ final class CatalogConnectionSurfaceTest extends TestCase
         $setup = new PDO('sqlite:' . $path, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
         $setup->exec('CREATE TABLE sample (id INTEGER PRIMARY KEY, payload BLOB NOT NULL, note TEXT NULL)');
         $setup->exec("INSERT INTO sample (id, payload, note) VALUES (1, X'00ff', NULL), (2, X'6162', 'two')");
+        $setup->exec('CREATE TABLE generated (id INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL)');
         $setup = null;
 
         $catalog = null;
@@ -95,6 +96,18 @@ final class CatalogConnectionSurfaceTest extends TestCase
             $metadata = $catalog->describeTable($table);
             self::assertSame(['id'], $metadata->primaryKey);
             self::assertTrue($metadata->reliableRowIdentity);
+            $generatedTable = ['namespace' => 'main', 'name' => 'generated'];
+            $generatedMetadata = $catalog->describeTable($generatedTable);
+            self::assertSame(['id'], $generatedMetadata->primaryKey);
+            self::assertSame('INTEGER', $generatedMetadata->columns[0]->nativeType);
+            self::assertFalse($generatedMetadata->columns[0]->nullable);
+            self::assertFalse($generatedMetadata->columns[0]->generated);
+            self::assertTrue($generatedMetadata->columns[0]->automaticKey);
+            self::assertNull($generatedMetadata->columns[0]->defaultExpression);
+            self::assertFalse($generatedMetadata->columns[0]->expressionDefault);
+            $generated = $catalog->insertRow($generatedMetadata, ['payload' => 'generated']);
+            self::assertSame(['id', 'payload'], $generated->columns);
+            self::assertSame([[1, 'generated']], $generated->rows);
 
             $page = $catalog->tablePage($table, 1, 0);
             self::assertSame(['id'], $page->orderBy);
@@ -121,7 +134,7 @@ final class CatalogConnectionSurfaceTest extends TestCase
                 self::assertSame(Code::QUERY_READ_ONLY, $error->code_);
             }
 
-            $inserted = $catalog->insertRow($metadata, ['id' => 3, 'payload' => 'three', 'note' => null]);
+            $inserted = $catalog->insertRow($metadata, ['payload' => 'three', 'note' => null]);
             self::assertSame([3, 'three', null], $inserted->rows[0]);
             $afterInsert = $catalog->tablePage($table, 10, 0);
             $idColumn = $afterInsert->columnIndex('id');
