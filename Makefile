@@ -32,6 +32,8 @@
 .PHONY: complex-query-typescript-unit-check
 .PHONY: complex-query-typescript-check
 .PHONY: complex-query-typescript-request-check
+.PHONY: complex-query-php-db-check
+.PHONY: complex-query-php-extension-db-check
 .PHONY: python-package-entry-check
 .PHONY: native-arginfo-php-extension-check
 .NOTPARALLEL: check check-run docs-check docs-verify-idempotent
@@ -1631,6 +1633,17 @@ group-rows-db-php-extension: php-vendor-check dbspec-php-extension-check/prepare
 # group-rows-db-rust runs coverage_group_rows_db on BENCH_SQLITE_DSN.
 group-rows-db-rust:
 	$(MAKE) -s feature-rust-database FEATURE_CRATE=packages/rust/tests FEATURE_CARGO_TARGET='--test integration' FEATURE_DATABASE=sqlite FEATURE_DSN_ENV=BENCH_SQLITE_DSN FEATURE_TEST=coverage_group_rows_db::coverage_group_rows_db
+
+# The PHP and native extension owners execute the shared complex product fixture on all three database servers.
+complex-query-php-db-check: php-vendor-check php-models
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ComplexQueryDbTest.php
+complex-query-php-extension-db-check: php-vendor-check php-models
+	@set -eu; \
+	run_dir="$(abspath .runtime/run)/complex-query-php-extension-db-check-$$$$"; \
+	trap 'rm -rf "$$run_dir"' EXIT; \
+	mkdir -p "$$run_dir/php-extension"; \
+	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh "$$run_dir/php-extension/polyspec_orm.so"; \
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ComplexQueryNativeTest.php
 
 unselected-column-physical-check: php-vendor-check
 	$(WITH_TEST_ENV) node scripts/unselected-column-physical-check.mts

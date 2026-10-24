@@ -752,6 +752,7 @@
         "packages/ts/tests/typecheck.ts"
       ]
     },
+
     "complex-query-typescript-check": {
       "scope": "owner",
       "needs": [
@@ -800,6 +801,23 @@
         "packages/ts/tests/complex-query-request.types.ts",
         "packages/ts/tests/complex-query-request-types.mjs",
         "packages/ts/tests/complex-query-support.mjs"
+      ]
+    },
+"complex-query-php-db-check": {
+      "scope": "suite",
+      "needs": [
+        "php",
+        "composer",
+        "databases"
+      ]
+    },
+    "complex-query-php-extension-db-check": {
+      "scope": "suite",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools",
+        "databases"
       ]
     },
     "ts-save-key-check": {

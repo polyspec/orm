@@ -3,3 +3,4 @@
 # directory and the namespace. make php-models writes them, and make php-model-check checks them with --check.
 --set contracts/fixtures/bench/dbspec-set.json --out packages/php/gen --namespace Polyspec\Orm\Tests\Model
 --set tests/markdown/corpus/dbspec/dbspec-set.json --out packages/php/markdownmodel --namespace Polyspec\Orm\Tests\MarkdownModel
+--set contracts/fixtures/complex_query/dbspec-set.json --out packages/php/complexmodel --namespace Polyspec\Orm\Tests\ComplexModel

@@ -12,6 +12,7 @@ declare(strict_types=1);
 // (its autoload-dev files would fail before the models exist).
 require_once __DIR__ . '/bench.php';
 require_once dirname(__DIR__) . '/gen/bootstrap.php';
+require_once dirname(__DIR__) . '/complexmodel/bootstrap.php';
 // The helper classes of the tests, one class per file, and the helpers that the test classes use, required once here:
 // a test file then declares its one class and causes no side effect (PSR-1).
 require_once __DIR__ . '/CallbackFailed.php';
@@ -29,6 +30,7 @@ require_once __DIR__ . '/StatementCountingPdo.php';
 require_once __DIR__ . '/Stop.php';
 require_once __DIR__ . '/generated_classes.php';
 require_once __DIR__ . '/case_database.php';
+require_once __DIR__ . '/ComplexQueryDbCase.php';
 require_once __DIR__ . '/PageCacheBoundCases.php';
 require_once dirname(__DIR__) . '/testing/conformance/result_php_helpers.php';
 require_once dirname(__DIR__) . '/testing/required_dsn.php';
