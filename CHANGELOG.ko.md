@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 7482c2bdc70b1d848cd0a9ab16dc0df87fb609071ba6da5f15024648e4232ef3 -->
+<!-- source-sha256: c038347b4909f01be37bc029ec2e9d989ed02ec607375832ced013f86615c326 -->
 # 변경 이력
 
 ## Unreleased
+
+- Kit Standard checklist는 `<gate>`, `min-0-max <max@blue.tools>`, `Collection<X>`를 HTML로 파싱하지 않고 문자 그대로 렌더링한다. Focused Markdown renderer case는 두 checklist와 `Refines <id>:` 예시를 확인한다(KSTD-5-87).
 
 - PHP `Validator::functionType` 선언을 native 2개 인자 계약과 다시 맞췄다. Planner, Markdown, parameter-use caller는 타입 계산 전에 entity.column `INTERNAL` 검사를 유지하고, 공개 unknown-column validation은 `COLUMN_UNKNOWN`을 유지한다. 실제 main declaration 회귀는 PHP 수정 전에 4개와 2개 인자 불일치를 확인했다(KSTD-5-63-1-1).
 
