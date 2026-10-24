@@ -334,6 +334,22 @@ static bool schema_utils_sqlite_foreign_key_check(zval *db, zval *transaction)
     return ok;
 }
 
+static void schema_utils_attach_rollback_failure(zval *primary)
+{
+    zval rollback;
+    ZVAL_OBJ(&rollback, take_exception());
+    zval args[2], combined;
+    ZVAL_COPY(&args[0], primary);
+    ZVAL_COPY(&args[1], &rollback);
+    if (scall("Polyspec\\Orm\\OrmException::rollback", &combined, 2, args)) {
+        zval_ptr_dtor(primary);
+        ZVAL_COPY_VALUE(primary, &combined);
+    }
+    zval_ptr_dtor(&args[0]);
+    zval_ptr_dtor(&args[1]);
+    zval_ptr_dtor(&rollback);
+}
+
 static bool schema_utils_sqlite_add_body(zval *db, schema_add_context *context, zval *result)
 {
     zval empty_tables, no_transaction;
@@ -371,20 +387,7 @@ static bool schema_utils_sqlite_add_body(zval *db, schema_add_context *context, 
                     array_init(&empty_tables);
                     bool rolled_back = schema_utils_run(db, "rollback", &empty_tables, &transaction, "ROLLBACK");
                     zval_ptr_dtor(&empty_tables);
-                    if (!rolled_back) {
-                        zval rollback;
-                        ZVAL_OBJ(&rollback, take_exception());
-                        zval args[2], combined;
-                        ZVAL_COPY(&args[0], &primary);
-                        ZVAL_COPY(&args[1], &rollback);
-                        if (scall("Polyspec\\Orm\\OrmException::rollback", &combined, 2, args)) {
-                            zval_ptr_dtor(&primary);
-                            ZVAL_COPY_VALUE(&primary, &combined);
-                        }
-                        zval_ptr_dtor(&args[0]);
-                        zval_ptr_dtor(&args[1]);
-                        zval_ptr_dtor(&rollback);
-                    }
+                    if (!rolled_back) schema_utils_attach_rollback_failure(&primary);
                 }
             } else if (EG(exception) != NULL) {
                 zval_ptr_dtor(&primary);
@@ -404,20 +407,7 @@ static bool schema_utils_sqlite_add_body(zval *db, schema_add_context *context, 
             array_init(&empty_tables);
             bool rolled_back = schema_utils_run(db, "rollback", &empty_tables, &transaction, "ROLLBACK");
             zval_ptr_dtor(&empty_tables);
-            if (!rolled_back) {
-                zval rollback;
-                ZVAL_OBJ(&rollback, take_exception());
-                zval args[2], combined;
-                ZVAL_COPY(&args[0], &primary);
-                ZVAL_COPY(&args[1], &rollback);
-                if (scall("Polyspec\\Orm\\OrmException::rollback", &combined, 2, args)) {
-                    zval_ptr_dtor(&primary);
-                    ZVAL_COPY_VALUE(&primary, &combined);
-                }
-                zval_ptr_dtor(&args[0]);
-                zval_ptr_dtor(&args[1]);
-                zval_ptr_dtor(&rollback);
-            }
+            if (!rolled_back) schema_utils_attach_rollback_failure(&primary);
         } else {
             array_init(&empty_tables);
             ok = schema_utils_run(db, "commit", &empty_tables, &transaction, "COMMIT");

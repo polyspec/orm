@@ -198,6 +198,71 @@ final class SchemaUtilsNativeTest extends TestCase
         }
     }
 
+    public function testBeginAndRollbackSubscriberFailuresKeepBothCauses(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'orm-schema-rollback-failure-');
+        self::assertIsString($path);
+        try {
+            $db = Orm::connect('sqlite:///' . $path, new Config());
+            $pdo = $db->pdo();
+            $before = $pdo->query(
+                "SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name"
+            )->fetchAll(\PDO::FETCH_ASSOC);
+            $events = [];
+            $unsubscribe = $db->subscribe(static function ($event) use (&$events): void {
+                $events[] = $event->kind . ':' . $event->sql;
+                if ($event->kind === 'begin' && $event->sql === 'BEGIN IMMEDIATE') {
+                    throw new \RuntimeException('begin observer failed');
+                }
+                if ($event->kind === 'rollback' && $event->sql === 'ROLLBACK') {
+                    throw new \RuntimeException('rollback observer failed');
+                }
+            });
+
+            try {
+                $db->utils()->schema()->addTablesAndColumns(self::schema(
+                    "dbspec 1 rollback_failure\n\ntable sample {\n  id i64\n  primary key (id)\n}\n"
+                ));
+                self::fail('the BEGIN and ROLLBACK subscriber failures were ignored');
+            } catch (OrmException $error) {
+                self::assertSame(Code::ROLLBACK, $error->code_);
+                self::assertSame(
+                    'ROLLBACK: transaction failed (SUBSCRIBER: statement event subscriber failed: begin observer failed) '
+                    . 'and rollback failed (SUBSCRIBER: statement event subscriber failed: rollback observer failed)',
+                    $error->getMessage()
+                );
+                self::assertSame(
+                    'SUBSCRIBER: statement event subscriber failed: begin observer failed',
+                    $error->getPrevious()?->getMessage()
+                );
+                self::assertSame(
+                    'SUBSCRIBER: statement event subscriber failed: rollback observer failed',
+                    $error->rollback?->getMessage()
+                );
+                self::assertSame('begin observer failed', $error->getPrevious()?->getPrevious()?->getMessage());
+                self::assertSame('rollback observer failed', $error->rollback?->getPrevious()?->getMessage());
+            }
+
+            self::assertFalse($pdo->inTransaction());
+            self::assertSame(1, (int) $pdo->query('PRAGMA foreign_keys')->fetchColumn());
+            self::assertSame($before, $pdo->query(
+                "SELECT type, name, sql FROM sqlite_master WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name"
+            )->fetchAll(\PDO::FETCH_ASSOC));
+            self::assertSame([
+                'utility:PRAGMA foreign_keys = OFF',
+                'begin:BEGIN IMMEDIATE',
+                'rollback:ROLLBACK',
+                'utility:PRAGMA foreign_keys = ON',
+            ], $events);
+            $unsubscribe();
+            $db->close();
+        } finally {
+            if (is_file($path)) {
+                unlink($path);
+            }
+        }
+    }
+
     public function testSqliteRestoreFailureKeepsThePrimaryFailureAsPrevious(): void
     {
         $path = tempnam(sys_get_temp_dir(), 'orm-schema-restore-failure-');
