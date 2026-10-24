@@ -14,6 +14,7 @@ const symbolsSchema = resolve(import.meta.dirname, '../../../scripts/schema/inte
 
 /** Tools is the extractor execution file built by this run. It is empty in a run that does not check that language. */
 export type Tools = { go?: string; rust?: string };
+type ExtractOptions = { loadPhpAutoloader?: boolean };
 
 /** Output is the exit code of the finished child process (null if ended by a signal), the signal, stdout, and stderr. */
 type Output = { code: number | null; signal: NodeJS.Signals | null; stdout: string; stderr: string };
@@ -39,10 +40,21 @@ function run(program: string, args: string[], options: { cwd?: string; signal?: 
  * extract reads declarations of roots under root with the lang extractor. toolRoot is the repository
  * root where the PHP, TypeScript, and Python extractor scripts are. If the extractor fails, it is an error containing its exit status and stderr.
  */
-export async function extract(signal: AbortSignal | undefined, root: string, lang: string, roots: string[], tools: Tools, toolRoot: string): Promise<Symbols> {
+export async function extract(
+  signal: AbortSignal | undefined,
+  root: string,
+  lang: string,
+  roots: string[],
+  tools: Tools,
+  toolRoot: string,
+  options: ExtractOptions = {},
+): Promise<Symbols> {
   let program: string, args: string[];
   if (lang === 'go') [program, args] = [tools.go ?? '', [root, ...roots]];
-  else if (lang === 'php') [program, args] = ['php', [join(toolRoot, 'packages/php/testing/interfaces/php.php'), root, ...roots]];
+  else if (lang === 'php') {
+    const loadPhpAutoloader = options.loadPhpAutoloader ?? true;
+    [program, args] = ['php', [join(toolRoot, 'packages/php/testing/interfaces/php.php'), ...(loadPhpAutoloader ? [] : ['--no-autoload']), root, ...roots]];
+  }
   else if (lang === 'typescript') [program, args] = ['node', [join(toolRoot, 'packages/ts/testing/interfaces/typescript.mts'), root, ...roots]];
   else if (lang === 'python') [program, args] = ['python3', [join(toolRoot, 'packages/python/testing/interfaces/python.py'), root, ...roots]];
   else [program, args] = [tools.rust ?? '', [root, ...roots]];

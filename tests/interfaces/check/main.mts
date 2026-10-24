@@ -176,7 +176,7 @@ export async function checkExtension(root: string, name: string, e: Extension, m
   const syntax = e.syntax ?? '', roots = e.roots ?? [];
   const callFailures = checkCallsInRoots(root, syntax, roots);
   step(`extracting ${name} declarations with the ${syntax} parser`);
-  const actual = await extract(signal, root, syntax, roots, {}, root);
+  const actual = await extract(signal, root, syntax, roots, {}, root, { loadPhpAutoloader: false });
   problems.push(...checkRules(name, actual, rules, order), ...checkOwnersAs(name, syntax, actual, owners),
     ...checkProhibitedSymbols(name, actual, m.prohibited_symbols ?? []), ...callFailures);
   if (problems.length > 0) throw new Error(problems.join('\n'));

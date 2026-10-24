@@ -4,11 +4,18 @@ declare(strict_types=1);
 
 // Reflection reads resolved classes, inheritance, traits, properties and signatures.
 // No constructors or SQL are run while inspecting the declarations.
-$root = realpath($argv[1]);
+$args = array_slice($argv, 1);
+$loadAutoloader = true;
+$noAutoloader = array_search('--no-autoload', $args, true);
+if ($noAutoloader !== false) {
+    array_splice($args, $noAutoloader, 1);
+    $loadAutoloader = false;
+}
+$root = realpath($args[0] ?? '');
 if ($root === false) {
     throw new InvalidArgumentException('Source root does not exist');
 }
-$dirs = array_slice($argv, 2);
+$dirs = array_slice($args, 1);
 $files = [];
 foreach ($dirs as $dir) {
     $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator("$root/$dir", FilesystemIterator::SKIP_DOTS));
@@ -22,7 +29,7 @@ foreach ($dirs as $dir) {
 sort($files);
 // Load the runtime before generated subclasses. Top-level bootstrap only registers names.
 $autoload = "$root/packages/php/tests/autoload.php";
-if (is_file($autoload)) {
+if ($loadAutoloader && is_file($autoload)) {
     require_once $autoload;
 }
 foreach ($files as $file) {

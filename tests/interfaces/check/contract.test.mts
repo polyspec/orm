@@ -153,6 +153,24 @@ caseTest('the PHP records match the common contract', PROCESS, async ({ signal }
   assert.deepEqual(checkRecords('php', got, manifest.records ?? []), [], 'PHP record contract differs');
 });
 
+caseTest('PHP extension extraction does not load the client autoloader', PROCESS, async ({ signal }) => {
+  requirePhp();
+  const dir = mkdtempSync(join(tmpdir(), 'orm-interface-test-'));
+  try {
+    const stubPath = join(dir, 'packages/php-ext/src/polyspec_orm.stub.php');
+    const autoloadPath = join(dir, 'packages/php/tests/autoload.php');
+    mkdirSync(dirname(stubPath), { recursive: true });
+    mkdirSync(dirname(autoloadPath), { recursive: true });
+    writeFileSync(stubPath, '<?php namespace Polyspec\\Orm; final class Registry {}\n');
+    writeFileSync(autoloadPath, '<?php namespace Polyspec\\Orm; final class Registry {}\n');
+
+    const got = await extract(signal, dir, 'php', ['packages/php-ext/src'], {}, root, { loadPhpAutoloader: false });
+    assert.deepEqual(Object.keys(got), ['packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Registry']);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 // Checks that it accepts the stub with the PHP extension (php-extension) check recorded, and rejects a stub that differs from the common contract, an adapter the extension does not write,
 // or a different symbol snapshot. Each case copies the stub and snapshot into a temporary root and changes them there.
 caseTest('the extension declarations are checked against the contract', PROCESS, async ({ signal }) => {
@@ -167,7 +185,12 @@ caseTest('the extension declarations are checked against the contract', PROCESS,
   const check = async (stubSource: string, snapshotSource: string, manifest: Manifest): Promise<string> => {
     const dir = mkdtempSync(join(tmpdir(), 'orm-interface-test-'));
     try {
-      for (const [path, content] of [[stubPath, stubSource], [symbolsPath, snapshotSource], ['packages/php/testing/interfaces/php.php', readFileSync(join(root, 'packages/php/testing/interfaces/php.php'), 'utf8')]] as const) {
+      for (const [path, content] of [
+        [stubPath, stubSource],
+        [symbolsPath, snapshotSource],
+        ['packages/php/testing/interfaces/php.php', readFileSync(join(root, 'packages/php/testing/interfaces/php.php'), 'utf8')],
+        ['packages/php/tests/autoload.php', '<?php namespace Polyspec\\Orm; class Registry {}'],
+      ] as const) {
         mkdirSync(dirname(join(dir, path)), { recursive: true });
         writeFileSync(join(dir, path), content);
       }
