@@ -862,21 +862,25 @@ bool codec_is_host_style(zend_string *style)
     return zend_string_equals_literal(style, "aes") || zend_string_equals_literal(style, "hex") || zend_string_equals_literal(style, "ip");
 }
 
+static bool codec_copy_or_read_stream(zval *raw, zval *value)
+{
+    ZVAL_COPY(value, raw);
+    if (Z_TYPE_P(value) != IS_RESOURCE) return true;
+    zval contents;
+    if (!call_fn("stream_get_contents", &contents, 1, value)) {
+        zval_ptr_dtor(value);
+        return false;
+    }
+    zval_ptr_dtor(value);
+    ZVAL_COPY_VALUE(value, &contents);
+    return true;
+}
+
 static bool decode_stages(HashTable *styles, zval *raw, zval *ret)
 {
     zend_long n = zend_hash_num_elements(styles);
     zval cur;
-    ZVAL_COPY(&cur, raw);
-
-    if (Z_TYPE(cur) == IS_RESOURCE) {
-        zval s;
-        if (!call_fn("stream_get_contents", &s, 1, &cur)) {
-            zval_ptr_dtor(&cur);
-            return false;
-        }
-        zval_ptr_dtor(&cur);
-        ZVAL_COPY_VALUE(&cur, &s);
-    }
+    if (!codec_copy_or_read_stream(raw, &cur)) return false;
     if (Z_TYPE(cur) == IS_NULL) {
         zval_ptr_dtor(&cur);
         return call_static("Polyspec\\Orm\\StyledValue", "sqlNull", ret, 0, NULL);
@@ -1479,16 +1483,7 @@ bool codec_blind_index(zval *v, zend_string *key, zval *ret)
 bool codec_host_decode(zval *raw, HashTable *styles, zend_string *aes_key, zval *ret)
 {
     zval cur;
-    ZVAL_COPY(&cur, raw);
-    if (Z_TYPE(cur) == IS_RESOURCE) {
-        zval s;
-        if (!call_fn("stream_get_contents", &s, 1, &cur)) {
-            zval_ptr_dtor(&cur);
-            return false;
-        }
-        zval_ptr_dtor(&cur);
-        ZVAL_COPY_VALUE(&cur, &s);
-    }
+    if (!codec_copy_or_read_stream(raw, &cur)) return false;
     if (Z_TYPE(cur) == IS_NULL) {
         ZVAL_NULL(ret);
         return true;
