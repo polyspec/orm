@@ -1,4 +1,5 @@
 """SQLite-memory owner case for the query count observed by the Python introspector."""
+
 import sqlite3
 import unittest
 
