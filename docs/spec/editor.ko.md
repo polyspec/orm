@@ -1,5 +1,5 @@
 <!-- doc-id: editor -->
-<!-- source-sha256: fb0ffe6b9490eb37cfebd42a238afc8bbade861af7a4fc2770791efc92c2a3fb -->
+<!-- source-sha256: 51ee12b32b6db17aa9abc1a66b6786eeaa03742812ccaa8e798efcad48d9e033 -->
 # dbspec editor 도구
 
 [English](editor.md)
@@ -8,7 +8,7 @@ editor 도구는 다른 모든 도구와 같은 parser로 dbspec 문서를 읽�
 
 ## 계층
 
-- **ORE-1** **parser 진입점.** `@polyspec/orm`은 `parse`, `emit`, `analyze`, `format`, `readDbspecBytes`만 가진 subpath를 export한다. 그 module은 `node:` module을 import하지 않고, Node global(`Buffer`, `process`, `__dirname`, `require`)을 읽지 않으며, database driver를 load하지 않으므로 Node에서처럼 browser에서도 실행된다. `parseDbspec`과 `emitDbspec`은 `node:crypto`를 import하는 `dbspec/index.ts` 밖에 있고, `readDbspecBytes`는 `Buffer`가 아니라 `TextEncoder`와 `TextDecoder`로 decode한다.
+- **ORE-1** `@polyspec/orm` package의 parser 진입점은 `parse`, `emit`, `analyze`, `format`, `readDbspecBytes`만 가진 subpath를 export한다. 그 module은 `node:` module을 import하지 않고, Node global(`Buffer`, `process`, `__dirname`, `require`)을 읽지 않으며, database driver를 load하지 않으므로 Node에서처럼 browser에서도 실행된다. `parseDbspec`과 `emitDbspec`은 `node:crypto`를 import하는 `dbspec/index.ts` 밖에 있고, `readDbspecBytes`는 `Buffer`가 아니라 `TextEncoder`와 `TextDecoder`로 decode한다.
 - **ORE-2** **language service**(`packages/dbspec-language`). `openDocument(text, {set})`은 range를 가진 diagnostic, token, folding range(block), `format()`을 준다. code point를 UTF-16 offset으로 바꾸는 것은 이 계층뿐이다. `dbspec-fmt` command line을 가진다.
 - **ORE-3** **adapter**: language server(`packages/dbspec-lsp`), CodeMirror extension(`packages/dbspec-codemirror`), VS Code extension(`packages/dbspec-vscode`). adapter는 language service의 결과를 host의 형식으로 바꾸며 자기만의 읽기를 더하지 않는다.
 
@@ -18,7 +18,7 @@ editor 도구는 다른 모든 도구와 같은 parser로 dbspec 문서를 읽�
 
 - **ORE-4** adapter는 `@polyspec/orm`을 import하지 않는다. parser에는 language service를 통해서만 닿는다;
 - **ORE-5** language service는 command line 밖에서 `node:` module, Node global, driver에 닿지 않는다;
-- **ORE-6** parser 진입점은 `node:` module, Node global, driver에 닿지 않는다.
+- **ORE-6** `@polyspec/orm` package의 parser 진입점은 `node:` module, Node global, driver에 닿지 않는다.
 
 CodeMirror host와 VS Code web host가 language service를 browser에서 실행하도록 language service는 node 없이 동작한다. template의 editor도 같다(그 규칙 EDT-3).
 

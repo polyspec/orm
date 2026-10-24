@@ -7,7 +7,7 @@ The editor tools read dbspec documents through the same parser as every other to
 
 ## Layers
 
-- **ORE-1** **The parser entry.** `@polyspec/orm` exports a subpath that holds `parse`, `emit`, `analyze`, `format` and `readDbspecBytes`, and nothing else. Its modules import no `node:` module, read no Node global (`Buffer`, `process`, `__dirname`, `require`) and load no database driver, so it runs in a browser as in Node. `parseDbspec` and `emitDbspec` live outside `dbspec/index.ts`, which imports `node:crypto`, and `readDbspecBytes` decodes with `TextEncoder` and `TextDecoder`, not `Buffer`.
+- **ORE-1** The `@polyspec/orm` package parser entry exports a subpath that holds `parse`, `emit`, `analyze`, `format` and `readDbspecBytes`, and nothing else. Its modules import no `node:` module, read no Node global (`Buffer`, `process`, `__dirname`, `require`) and load no database driver, so it runs in a browser as in Node. `parseDbspec` and `emitDbspec` live outside `dbspec/index.ts`, which imports `node:crypto`, and `readDbspecBytes` decodes with `TextEncoder` and `TextDecoder`, not `Buffer`.
 - **ORE-2** **The language service** (`packages/dbspec-language`). `openDocument(text, {set})` gives the diagnostics with their ranges, the tokens, the folding ranges (the blocks) and `format()`. It converts code points to UTF-16 offsets; no other layer does. It holds the `dbspec-fmt` command line.
 - **ORE-3** **The adapters**: the language server (`packages/dbspec-lsp`), the CodeMirror extensions (`packages/dbspec-codemirror`) and the VS Code extension (`packages/dbspec-vscode`). An adapter turns the language service's results into its host's form and adds no reading of its own.
 
@@ -17,7 +17,7 @@ A check follows every import transitively and fails on a breach:
 
 - **ORE-4** an adapter never imports `@polyspec/orm`; it reaches the parser only through the language service;
 - **ORE-5** the language service, outside its command line, reaches no `node:` module, no Node global and no driver;
-- **ORE-6** the parser entry reaches no `node:` module, no Node global and no driver.
+- **ORE-6** The `@polyspec/orm` package's parser entry reaches no `node:` module, no Node global and no driver.
 
 The language service is node-free so that the CodeMirror host and the VS Code web host run it in a browser, as template's editor does (its rule EDT-3).
 

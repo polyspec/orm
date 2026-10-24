@@ -1,4 +1,5 @@
 # audit_triggers coverage: the audit fixtures are installed with schema install and written in the order of
+# Requirements: INT-44.
 # packages/go/orm/coverage_audit_triggers_test.go and packages/ts/tests/coverage_audit_triggers.mjs, then the history
 # tables that the triggers wrote are checked. At the end, even after a failure, the installed tables and the PostgreSQL
 # trigger functions are dropped, so the database is as it was.

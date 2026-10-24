@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: c65f92402de592994748f7a3aa9f484a552cb0415783dde456a5f05083e2d6ef -->
+<!-- source-sha256: 56dea7d7287148f2b243befb4930180a250be7c65a9e7ded1055e0efdfa78189 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -66,7 +66,7 @@
 | KSTD-2-11-15 | generator unit은 생성 code 규칙의 각 언어 native 형식에 묶인다 (KSTD-2-11 후속, KSTD-2-11-3). Cause: generator 출력 unit 50개가 각각 한 구현만 검사한다 | config/parity.json, the generators of every implementation | `make parity-declarations-check` | [ ] |
 | KSTD-2-11-16 | handle 폐기 unit은 각 언어의 폐기 형식에 묶인다 (KSTD-2-11 후속, KSTD-2-11-4). Cause: 약 18개 Rust drop unit에 다른 구현의 unit이 없다 | config/parity.json, tests of every implementation | `make parity-declarations-check` | [ ] |
 | KSTD-2-11-17 | driver error, native cell, markdown connect unit은 중립 unit이며 각 구현이 native 형식으로 묶인다 (KSTD-2-11 후속). Cause: unit 33개가 각각 한 driver만 검사한다 | config/parity.json, tests of every implementation | `make parity-declarations-check` | [ ] |
-| KSTD-2-11-18 | 각 client package는 native package 진입점으로 선언된 공개 표면을 노출한다 (KSTD-2-11 후속). 원인: 구현마다 DB-free native import case 하나를 공통 요구사항에 매핑하지 않았다 | `INT-138`; `config/parity.json`, contracts/interfaces.json, runtime package manifest와 Go, PHP, PHP extension, TypeScript, Python, Rust의 native import 또는 reflection test | `make go-package-entry-check`; `make php-package-entry-check`; `make php-extension-package-entry-check`; `make typescript-package-entry-check`; `make python-package-entry-check`; `make rust-package-entry-check`; `make package-check` | [ ] |
+| KSTD-2-11-18 | 각 client package는 native package 진입점으로 선언된 공개 표면을 노출한다 (KSTD-2-11 후속). 원인: 구현마다 DB-free native import case 하나를 공통 요구사항에 매핑하지 않았다 | `INT-138`; `config/parity.json`, contracts/interfaces.json, runtime package manifest와 Go, PHP, PHP extension, TypeScript, Python, Rust의 native import 또는 reflection test | `make go-package-entry-check`; `make php-package-entry-check`; `make php-extension-package-entry-check`; `make typescript-package-entry-check`; `make python-package-entry-check`; `make rust-package-entry-check`; `make package-check` | [~] |
 | KSTD-3 | orm-gen이 생성하는 code가 그 ecosystem의 formatter와 linter를 통과한다(fsm adoption). 원인: orm-gen의 Python 출력인 fsm의 examples/model/models.py가 ruff format --check에 실패하고 vulture 지적이 25건이며, 생성된 PHP model은 phpcs의 PSR12 header 규칙에 실패한다 | the generators of the five clients and their generated fixture models | `make generated-lint-check` | [o] |
 | KSTD-3-1 | make generated-lint-check가 composer.json과 맞는 autoload의 설치된 checkout에서 돈다 (KSTD-3 후속). Cause: php-vendor-check는 파일 존재만 보므로, 1aa88a607 이전에 설치된 vendor-php가 아직 생성되지 않은 packages/php/gen/bootstrap.php를 autoload하고, php-models가 실행되기 전에 main checkout에서 실패한다 | Makefile | `make generated-lint-check` | [o] |
 | KSTD-3-2 | php-vendor-check는 낡은 Composer autoload를 보고하고 고치지 않는다 (KSTD-3-1 후속). Cause: KSTD-3-1이 check에 composer dump-autoload를 넣어, 낡은 vendor-php가 조용히 고쳐지고 다음 낡은 상태는 보고되지 않는다; check는 보고하고 install이 고친다 | Makefile | `make php-vendor-check` | [o] |

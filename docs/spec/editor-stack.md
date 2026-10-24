@@ -161,12 +161,12 @@ Owner rulings:
      ruling 1 excludes.
    - **ORES-51** Each standard class has a colour in both the light and the dark site theme.
 8. **A browser-safe parser entry.**
-   - **ORES-52** `@polyspec/orm` gains a subpath export: parse, emit, analyze, format, readDbspecBytes.
-   - **ORES-53** Its modules hold no `node:` module, no Node global and no driver.
+   - **ORES-52** The `@polyspec/orm` package gains a subpath export: parse, emit, analyze, format, readDbspecBytes.
+   - **ORES-53** The `@polyspec/orm` package modules hold no `node:` module, no Node global and no driver.
    - `parseDbspec` and `emitDbspec` move out of `dbspec/index.ts`, which imports
      `node:crypto`.
-   - **ORES-54** `readDbspecBytes` uses `TextEncoder` instead of `Buffer`.
-   - **ORES-55** The module-graph test rejects `node:` imports and the Node globals.
+   - **ORES-54** The `@polyspec/orm` package's `readDbspecBytes` uses `TextEncoder` instead of `Buffer`.
+   - **ORES-55** The `@polyspec/orm` package module-graph test rejects `node:` imports and the Node globals.
 
 ## orm: T128 in the single checklist `docs/plans/execution/checklist.md` (+ko)
 T128 is rewritten, and sub-items T128-1 to T128-9 are added. Each is one commit: RED, GREEN, the

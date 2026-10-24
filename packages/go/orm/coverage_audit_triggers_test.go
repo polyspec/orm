@@ -1,5 +1,7 @@
 //go:build featurecoverage
 
+// Requirements: INT-44.
+
 package orm_test
 
 import (

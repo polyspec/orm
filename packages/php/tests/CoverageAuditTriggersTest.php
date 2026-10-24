@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
+// Requirements: INT-44.
+
 // audit_triggers feature coverage: installs contracts/fixtures/audit.dbs in the bench database
 // and writes it in an audit transaction in the same order as auditCase in packages/go/orm/audit_transaction_test.go,
 // checks the item_history and audit record left by the trigger, and removes the installed table and PostgreSQL

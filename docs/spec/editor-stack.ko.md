@@ -1,5 +1,5 @@
 <!-- doc-id: plans-editor-stack -->
-<!-- source-sha256: 0e8be07f430dc92ef2482842821556b708de1b18141f57be23e6e653c37fde38 -->
+<!-- source-sha256: 20db027fdbda4eae4bac447c88e05c976b1ddebf9e9f6091857fdd2e345efc77 -->
 # 계획: 표준으로서의 dbspec editor stack
 
 [English](editor-stack.md)
@@ -147,11 +147,11 @@ owner 판정:
      (config.mts:149). Shiki는 쓰지 않는다. Shiki는 TextMate 문법만 받으며 판정 1이 그것을 제외한다.
    - **ORES-51** 표준 class마다 site의 밝은 theme와 어두운 theme 모두에 색을 둔다.
 8. **browser-safe parser 진입점.**
-   - **ORES-52** `@polyspec/orm`에 subpath export를 더한다: parse, emit, analyze, format, readDbspecBytes.
-   - **ORES-53** 그 module들은 `node:` module, Node global, driver를 갖지 않는다.
+   - **ORES-52** `@polyspec/orm` package에 subpath export를 더한다: parse, emit, analyze, format, readDbspecBytes.
+   - **ORES-53** `@polyspec/orm` package의 module들은 `node:` module, Node global, driver를 갖지 않는다.
    - `parseDbspec`과 `emitDbspec`은 `node:crypto`를 import하는 `dbspec/index.ts` 밖으로 옮긴다.
-   - **ORES-54** `readDbspecBytes`는 `Buffer` 대신 `TextEncoder`를 쓴다.
-   - **ORES-55** module graph test가 `node:` import와 Node global을 거부한다.
+   - **ORES-54** `@polyspec/orm` package의 `readDbspecBytes`는 `Buffer` 대신 `TextEncoder`를 쓴다.
+   - **ORES-55** `@polyspec/orm` package의 module graph test가 `node:` import와 Node global을 거부한다.
 
 ## orm: 단일 checklist `docs/plans/execution/checklist.md`(+ko)의 T128
 T128을 다시 쓰고 하위 항목 T128-1부터 T128-9까지를 더한다. 각 항목은 commit 하나다: RED, GREEN,

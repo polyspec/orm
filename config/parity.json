@@ -744,6 +744,48 @@
       ]
     },
     {
+      "id": "ts-browser-entry",
+      "kind": "feature",
+      "requirements": [
+        "ORE-6",
+        "ORES-53",
+        "ORES-54",
+        "ORES-55"
+      ],
+      "bindings": [
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/browser-entry.mjs",
+          "id": "the subpath module reaches no Node module, undeclared package or Node global"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "@polyspec/orm"
+      }
+    },
+    {
+      "id": "ts-browser-entry-exports",
+      "kind": "feature",
+      "requirements": [
+        "ORE-1",
+        "ORES-52"
+      ],
+      "bindings": [
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/browser-entry.mjs",
+          "id": "the subpath module exports exactly the parser functions"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "@polyspec/orm"
+      }
+    },
+    {
       "id": "ts-codec-values",
       "kind": "feature",
       "requirements": [
@@ -1670,7 +1712,8 @@
         "DBS-87",
         "DBS-88",
         "DBS-93",
-        "DSL-126"
+        "DSL-126",
+        "INT-44"
       ],
       "bindings": [
         {
@@ -3074,6 +3117,25 @@
       ]
     },
     {
+      "id": "ts-package-declarations",
+      "kind": "feature",
+      "requirements": [
+        "INT-93"
+      ],
+      "bindings": [
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/package-declarations.mjs",
+          "id": "package-declarations/no-driver-imports"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "@polyspec/orm"
+      }
+    },
+    {
       "id": "ts-param-uses",
       "kind": "feature",
       "requirements": [
@@ -3446,6 +3508,25 @@
       ]
     },
     {
+      "id": "ts-statement-fault-entry",
+      "kind": "feature",
+      "requirements": [
+        "PRT-50"
+      ],
+      "bindings": [
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/statement_fault_entry.mjs",
+          "id": "statement-fault-entry/entry_point"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "@polyspec/orm"
+      }
+    },
+    {
       "id": "native-public-package-entry",
       "kind": "feature",
       "requirements": [
@@ -3480,9 +3561,30 @@
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/package_entry.rs",
-          "id": "package_entry::public_package_entry"
+          "id": "public_package_entry"
         }
       ]
+    },
+    {
+      "id": "ts-statement-fault-entry-other-entry-points",
+      "kind": "feature",
+      "requirements": [
+        "PRT-45",
+        "PRT-55",
+        "PRT-60"
+      ],
+      "bindings": [
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/statement_fault_entry.mjs",
+          "id": "statement-fault-entry/other_entry_points"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "@polyspec/orm"
+      }
     },
     {
       "id": "ts-schema-set-several-schemas-sqlite",
@@ -8262,6 +8364,27 @@
       ]
     },
     {
+      "id": "go-internal-packages-go-orm-rollback-fault-entry",
+      "kind": "feature",
+      "requirements": [
+        "PRT-43",
+        "PRT-53",
+        "PRT-58"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/rollback_fault_entry_test.go",
+          "id": "TestRollbackFaultEntry"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "go-module",
+        "package": "github.com/polyspec/orm/packages/go"
+      }
+    },
+    {
       "id": "go-internal-packages-go-orm-rollback",
       "kind": "feature",
       "requirements": [
@@ -11256,6 +11379,27 @@
       ]
     },
     {
+      "id": "rust-rollback-fault-entry",
+      "kind": "feature",
+      "requirements": [
+        "PRT-44",
+        "PRT-54",
+        "PRT-59"
+      ],
+      "bindings": [
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/rollback.rs",
+          "id": "rollback_fault_entry"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm"
+      }
+    },
+    {
       "id": "rust-rollback-fault-mysql",
       "kind": "feature",
       "requirements": [
@@ -13534,6 +13678,25 @@
       ]
     },
     {
+      "id": "py-test-statement-fault-entry",
+      "kind": "feature",
+      "requirements": [
+        "PRT-52"
+      ],
+      "bindings": [
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_statement_fault_entry.py",
+          "id": "test_the_package_entry_point_does_not_export_the_fault"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec-orm"
+      }
+    },
+    {
       "id": "py-test-styled-sql-null",
       "kind": "feature",
       "requirements": [
@@ -14033,6 +14196,66 @@
           "id": "schema-set/register_sends_no_statement/sqlite"
         }
       ]
+    },
+    {
+      "id": "py-test-rollback-fault-entry-package",
+      "kind": "feature",
+      "requirements": [
+        "PRT-47"
+      ],
+      "bindings": [
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_rollback_fault.py",
+          "id": "test_the_package_entry_point_does_not_export_the_fault"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec-orm"
+      }
+    },
+    {
+      "id": "py-test-rollback-fault-entry-other-entry-points",
+      "kind": "feature",
+      "requirements": [
+        "PRT-57",
+        "PRT-62"
+      ],
+      "bindings": [
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_rollback_fault.py",
+          "id": "test_the_package_entry_point_does_not_export_the_other_entry_points"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec-orm"
+      }
+    },
+    {
+      "id": "py-test-rollback-fault-entry-distribution",
+      "kind": "feature",
+      "requirements": [
+        "PRT-47",
+        "PRT-57",
+        "PRT-62"
+      ],
+      "bindings": [
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_rollback_fault.py",
+          "id": "test_the_distribution_holds_the_test_entry_point_that_no_import_loads"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec-orm"
+      }
     },
     {
       "id": "py-test-ir-validate-manifest-hash",
@@ -16411,6 +16634,63 @@
           "id": "DeclarationsTest::testRequiredModules"
         }
       ]
+    },
+    {
+      "id": "php-extension-internal-declarations-declarations",
+      "kind": "feature",
+      "requirements": [
+        "DBS-172"
+      ],
+      "bindings": [
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DeclarationsTest.php",
+          "id": "DeclarationsTest::testDeclarations"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec/orm-php-ext"
+      }
+    },
+    {
+      "id": "php-extension-internal-declarations-client",
+      "kind": "feature",
+      "requirements": [
+        "DBS-172"
+      ],
+      "bindings": [
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DeclarationsTest.php",
+          "id": "DeclarationsTest::testClient"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec/orm-php-ext"
+      }
+    },
+    {
+      "id": "php-extension-internal-declarations-package",
+      "kind": "feature",
+      "requirements": [
+        "INT-95"
+      ],
+      "bindings": [
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DeclarationsTest.php",
+          "id": "DeclarationsTest::testPackage"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec/orm-php-ext"
+      }
     },
     {
       "id": "ir-answers",

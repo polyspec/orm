@@ -1,4 +1,5 @@
 //! audit_triggers: installs contracts/fixtures/audit.dbs, audit_columns.dbs, and restore.dbs in a seeded bench database,
+//! Requirements: INT-44.
 //! writes with audit record transactions in the same order as Go's coverage_audit_triggers_test.go, then reads the history the trigger left,
 //! and drops the installed tables and PostgreSQL trigger functions. The database ends in the state it started in.
 

@@ -1,4 +1,5 @@
 // audit_triggers coverage: installs the audit fixture with schema install and, with packages/go/orm/coverage_audit_triggers_test.go,
+// Requirements: INT-44.
 // writes in the same order, then checks the history table left by the trigger. At the end, even on failure, it removes the installed tables and the PostgreSQL trigger
 // function, returning the database to its initial state.
 import assert from 'node:assert/strict';
