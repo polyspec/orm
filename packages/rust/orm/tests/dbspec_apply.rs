@@ -18,8 +18,10 @@ use or_panic::OrPanic;
 #[path = "common/dbspec_probe.rs"]
 mod dbspec_probe;
 
-use chrono::{DateTime, TimeZone, Utc};
+#[path = "common/fixed_plan_time.rs"]
+mod fixed_plan_time;
 use dbspec_probe::{connection_rules, lines, repository, require_dsn, run_probe, Conn, Servers, Session, DIALECTS};
+use fixed_plan_time::fixed_now;
 use polyspec_orm::db::{parse_dsn, ConnectOptions};
 use polyspec_orm::dbspec::{
     self, apply, finalize, parse_plan, plan_steps, recover, rollback, ApplyConnection, ApplyError, ApplyEvent, ApplyEventKind, CatalogQuerier, CatalogValue,
@@ -65,11 +67,6 @@ fn apply_chain() -> Vec<Plan> {
         .collect();
     assert!(plans.len() == 2 && plans[1].from() == Some(plans[0].to()), "plans.json does not chain create-from-empty and rename-table-and-column");
     plans
-}
-
-/// tool clock: 2026-10-01T00:00:00.123456789Z. applied_at in history is truncated to six fractional digits.
-fn fixed_now() -> DateTime<Utc> {
-    Utc.with_ymd_and_hms(2026, 10, 1, 0, 0, 0).single().expect("fixed time") + chrono::Duration::nanoseconds(123_456_789)
 }
 
 /// Right after the statement that starts with `after` runs, runs statement `then` once

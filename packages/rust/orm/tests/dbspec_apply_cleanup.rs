@@ -11,7 +11,9 @@
 mod or_panic;
 use or_panic::OrPanic;
 
-use chrono::{DateTime, TimeZone, Utc};
+#[path = "common/fixed_plan_time.rs"]
+mod fixed_plan_time;
+use fixed_plan_time::fixed_now;
 use polyspec_orm::dbspec::{
     apply, effect_holds, effect_query, parse_plan, rollback, ApplyConnection, ApplyError, ApplyEvent, ApplyEventKind, CatalogQuerier, CatalogValue, Dialect,
     Effect, Plan,
@@ -46,11 +48,6 @@ fn create_from_empty() -> Vec<Plan> {
     let case = vectors["cases"].as_array().expect("plan cases").iter().find(|c| c["id"] == "create-from-empty").expect("create-from-empty case");
     let text: String = case["plan"].as_array().expect("plan lines").iter().map(|l| format!("{}\n", l.as_str().expect("plan line"))).collect();
     vec![parse_plan(&text).or_panic(|e| format!("create-from-empty: {e:?}"))]
-}
-
-/// tool clock: 2026-10-01T00:00:00.123456789Z. applied_at in history is truncated to six fractional digits.
-fn fixed_now() -> DateTime<Utc> {
-    Utc.with_ymd_and_hms(2026, 10, 1, 0, 0, 0).single().expect("fixed time") + chrono::Duration::nanoseconds(123_456_789)
 }
 
 fn quiet(_: &ApplyEvent) -> Result<(), EventError> {
