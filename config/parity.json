@@ -18268,6 +18268,10 @@
           "symbol": "Polyspec\\Orm\\AesUtils"
         },
         {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\AesUtils"
+        },
+        {
           "implementation": "typescript",
           "symbol": "@polyspec/orm!AesUtils:class"
         },
@@ -18297,6 +18301,10 @@
           "symbol": "Polyspec\\Orm\\AesUtils::status"
         },
         {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\AesUtils::status"
+        },
+        {
           "implementation": "typescript",
           "symbol": "@polyspec/orm!AesUtils#status:member(1)"
         },
@@ -18323,6 +18331,10 @@
         },
         {
           "implementation": "php",
+          "symbol": "Polyspec\\Orm\\AesUtils::rotate"
+        },
+        {
+          "implementation": "php-extension",
           "symbol": "Polyspec\\Orm\\AesUtils::rotate"
         },
         {

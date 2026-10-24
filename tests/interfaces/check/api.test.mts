@@ -63,6 +63,22 @@ caseTest('the native AES keyring API is bound by the PHP extension', COMPUTE, ()
   }
 });
 
+caseTest('the native AES utilities API is bound by the PHP extension', COMPUTE, () => {
+  const units = new Map((readParity(root).units ?? []).map(unit => [unit.id, unit]));
+  for (const [id, symbol] of [
+    ['aes-utils', 'Polyspec\\Orm\\AesUtils'],
+    ['aes-utils-status', 'Polyspec\\Orm\\AesUtils::status'],
+    ['aes-utils-rotate', 'Polyspec\\Orm\\AesUtils::rotate'],
+  ]) {
+    const unit = units.get(id);
+    assert.ok(unit, `${id} API unit is missing`);
+    assert.ok(
+      unit.symbols?.some(entry => entry.implementation === 'php-extension' && entry.symbol === symbol),
+      `${id} does not bind the native ${symbol} symbol`,
+    );
+  }
+});
+
 caseTest('the native connection factory API is bound by the PHP extension', COMPUTE, () => {
   const unit = (readParity(root).units ?? []).find(entry => entry.id === 'client-db-connect');
   assert.ok(unit, 'client-db-connect API unit is missing');

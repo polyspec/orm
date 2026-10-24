@@ -31,6 +31,8 @@
 #define SECRET_MASK "$SECRET"
 #define NOW_MASK "$NOW"
 
+typedef bool (*dbs_transaction_callback)(zval *connection, void *context, zval *result);
+
 static void set_masked(zval *masks, zend_long idx, const char *s);
 static zval *active_for(zval *db);
 static bool audit_for(zval *self, zval *frame, bool guard, bool *settle);
@@ -2583,6 +2585,23 @@ static bool observed_as(zval *self, bool control, zval *kind, zval *tables, zval
     return send_op(self, control, op, opctx, done_publish, &pc, out);
 }
 
+bool db_observed_native(zval *connection, zval *kind, zval *tables, zval *transaction, zval *sql,
+    zval *binds, dbs_transaction_callback callback, void *context, zval *result)
+{
+    if (callback == NULL) {
+        db_throw_orm("INTERNAL", "native observed callback is missing");
+        return false;
+    }
+    zval kind_copy, sql_copy;
+    ZVAL_COPY(&kind_copy, kind);
+    ZVAL_COPY(&sql_copy, sql);
+    bool ok = observed_as(connection, false, &kind_copy, tables, transaction, &sql_copy, binds,
+        callback, context, result);
+    zval_ptr_dtor(&kind_copy);
+    zval_ptr_dtor(&sql_copy);
+    return ok;
+}
+
 /* Db::run: a statement with no binds and no rows. */
 static bool run_stmt(zval *self, const char *kind, zval *tables, zval *tx, const char *sql, bool control)
 {
@@ -4524,7 +4543,14 @@ static void driver_error(zval *self, zval *ex, zval *out)
 static bool begin_tx(zval *self, const char *isolation, bool read_only, zend_long timeout, zval *out);
 
 /* Db::savepoint: a nested transaction of the same connection is a savepoint of the outer frame. out is the callback's result. */
-static bool savepoint_tx(zval *self, zval *frame, zval *fn, zval *out)
+static bool invoke_transaction_callback(zval *self, zval *fn, dbs_transaction_callback callback, void *context, zval *out)
+{
+    if (callback != NULL) return callback(self, context, out) && EG(exception) == NULL;
+    ZVAL_UNDEF(out);
+    return call_user_function(NULL, NULL, fn, out, 0, NULL) == SUCCESS && EG(exception) == NULL;
+}
+
+static bool savepoint_tx(zval *self, zval *frame, zval *fn, dbs_transaction_callback callback, void *context, zval *out)
 {
     zend_long sp = as_long(rd(frame, "savepoints")) + 1;
     zval spz;
@@ -4548,7 +4574,7 @@ static bool savepoint_tx(zval *self, zval *frame, zval *fn, zval *out)
         frames_push(frame);
         zval ret;
         ZVAL_UNDEF(&ret);
-        bool ok = call_user_function(NULL, NULL, fn, &ret, 0, NULL) == SUCCESS && EG(exception) == NULL;
+        bool ok = invoke_transaction_callback(self, fn, callback, context, &ret);
         if (!ok) {
             zval ex, failure, e1, e2, list, ended;
             take_exception(&ex);
@@ -5203,7 +5229,8 @@ static void settle_audit(zval *self, zval *frame, zend_long affected, zval *out)
 
 /* Db::runTransaction: the callback runs in the frame; an error rolls the frame back, and its own failure is reported with the
  * rollback's when the rollback fails too. A rollback fault of the test entry point is reported as failed. */
-static bool run_transaction(zval *self, zval *fn, const char *isolation, bool read_only, zend_long timeout, zval *pending, zval *out)
+static bool run_transaction(zval *self, zval *fn, dbs_transaction_callback callback, void *context,
+    const char *isolation, bool read_only, zend_long timeout, zval *pending, zval *out)
 {
     zval frame;
     if (!begin_tx(self, isolation, read_only, timeout, &frame)) {
@@ -5215,7 +5242,7 @@ static bool run_transaction(zval *self, zval *fn, const char *isolation, bool re
     frames_push(&frame);
     zval v;
     ZVAL_UNDEF(&v);
-    bool ok = call_user_function(NULL, NULL, fn, &v, 0, NULL) == SUCCESS && EG(exception) == NULL;
+    bool ok = invoke_transaction_callback(self, fn, callback, context, &v);
     if (!ok) {
         zval ex, failure, cleanup;
         take_exception(&ex);
@@ -5264,8 +5291,8 @@ static bool run_transaction(zval *self, zval *fn, const char *isolation, bool re
 
 /* Db::transaction: the callback runs in a transaction of the connection; a transaction of the same connection inside an active one
  * is a savepoint and accepts only the retry option. A DEADLOCK is retried up to retry times, with a growing back-off. */
-static bool transaction_impl(zval *self, zval *fn, const char *isolation, bool read_only, zend_long timeout, zend_long retry,
-    zval *audit, zval *out)
+static bool transaction_impl(zval *self, zval *fn, dbs_transaction_callback callback, void *context,
+    const char *isolation, bool read_only, zend_long timeout, zend_long retry, zval *audit, zval *out)
 {
     if (retry < 0) {
         db_throw_orm("CONFIG", "transaction retry must not be negative");
@@ -5315,12 +5342,12 @@ static bool transaction_impl(zval *self, zval *fn, const char *isolation, bool r
             db_throw_orm("CONFIG", "a nested transaction of the same connection accepts only the retry option");
             return false;
         }
-        bool kept = savepoint_tx(self, &outer_copy, fn, out);
+        bool kept = savepoint_tx(self, &outer_copy, fn, callback, context, out);
         zval_ptr_dtor(&outer_copy);
         return kept;
     }
     for (zend_long attempt = 0;; attempt++) {
-        if (run_transaction(self, fn, isolation, read_only, timeout, has_record ? &record : NULL, out)) {
+        if (run_transaction(self, fn, callback, context, isolation, read_only, timeout, has_record ? &record : NULL, out)) {
             if (has_record) {
                 zval_ptr_dtor(&record);
             }
@@ -5376,10 +5403,22 @@ ZEND_METHOD(Polyspec_Orm_Db, transaction)
     const char *isolation = iso != NULL ? ZSTR_VAL(iso) : "";
     zval out;
     ZVAL_UNDEF(&out);
-    if (!transaction_impl(ZEND_THIS, fn, isolation, read_only, timeout, retry, audit, &out)) {
+    if (!transaction_impl(ZEND_THIS, fn, NULL, NULL, isolation, read_only, timeout, retry, audit, &out)) {
         RETURN_THROWS();
     }
     RETURN_COPY_VALUE(&out);
+}
+
+bool db_transaction_native(zval *connection, dbs_transaction_callback callback, void *context, zval *result)
+{
+    if (callback == NULL) {
+        db_throw_orm("INTERNAL", "native transaction callback is missing");
+        return false;
+    }
+    if (active_for(connection) != NULL) {
+        return callback(connection, context, result) && EG(exception) == NULL;
+    }
+    return transaction_impl(connection, NULL, callback, context, "", false, 0, 0, NULL, result);
 }
 
 ZEND_METHOD(Polyspec_Orm_Db, nextTransaction)
@@ -5481,7 +5520,7 @@ ZEND_METHOD(Polyspec_Orm_Db, inTransaction)
     }
     zval out;
     ZVAL_UNDEF(&out);
-    if (!transaction_impl(conn, fn, "", false, 0, 0, NULL, &out)) {
+    if (!transaction_impl(conn, fn, NULL, NULL, "", false, 0, 0, NULL, &out)) {
         RETURN_THROWS();
     }
     zval_ptr_dtor(&out);

@@ -587,6 +587,10 @@ str catalog_unscaled_decimal(str text, zend_long scale);
 bool pdo_call(zval *obj, const char *name, zval *ret, uint32_t argc, zval *a1, zval *a2);
 /* Throws the OrmException of code with the formatted message (db.c). */
 void db_throw_orm(const char *code, const char *fmt, ...);
+typedef bool (*dbs_transaction_callback)(zval *connection, void *context, zval *result);
+bool db_transaction_native(zval *connection, dbs_transaction_callback callback, void *context, zval *result);
+bool db_observed_native(zval *connection, zval *kind, zval *tables, zval *transaction, zval *sql,
+    zval *binds, dbs_transaction_callback callback, void *context, zval *result);
 /* The class entry of Polyspec\Orm\Catalog (catalog_connection.c). */
 extern zend_class_entry *catalog_ce;
 extern zend_class_entry *catalog_ce_metadata, *catalog_ce_result, *catalog_ce_table_page, *catalog_ce_snapshot;

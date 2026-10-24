@@ -995,6 +995,19 @@ final readonly class AesRotationStatus
     public function __construct(int $current, int $total, int $pending, array $versions) {}
 }
 
+/** Native AES status and all-column row rotation. */
+final class AesUtils
+{
+    private readonly Db $db;
+    private readonly Utils $u;
+
+    public function __construct(Db $db, Utils $u) {}
+
+    public function status(Model $model, AesKeyring $keyring): AesRotationStatus {}
+
+    public function rotate(Model $model, AesKeyring $keyring): int {}
+}
+
 namespace Polyspec\Orm;
 
 /**

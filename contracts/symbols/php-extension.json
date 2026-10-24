@@ -55,6 +55,30 @@
     "exported": true,
     "signature": "public function __construct(int $current, int $total, int $pending, array $versions): "
   },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\AesUtils": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\AesUtils extends  implements  uses "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\AesUtils::$db": {
+    "exported": false,
+    "signature": "private readonly Polyspec\\Orm\\Db"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\AesUtils::$u": {
+    "exported": false,
+    "signature": "private readonly Polyspec\\Orm\\Utils"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\AesUtils::__construct": {
+    "exported": true,
+    "signature": "public function __construct(Polyspec\\Orm\\Db $db, Polyspec\\Orm\\Utils $u): "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\AesUtils::rotate": {
+    "exported": true,
+    "signature": "public function rotate(Polyspec\\Orm\\Model $model, Polyspec\\Orm\\AesKeyring $keyring): int"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\AesUtils::status": {
+    "exported": true,
+    "signature": "public function status(Polyspec\\Orm\\Model $model, Polyspec\\Orm\\AesKeyring $keyring): Polyspec\\Orm\\AesRotationStatus"
+  },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Assembly": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Assembly extends  implements  uses "
