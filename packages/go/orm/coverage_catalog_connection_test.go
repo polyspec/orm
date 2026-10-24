@@ -97,7 +97,7 @@ func TestCoverageCatalogRead(t *testing.T) {
 	}
 }
 
-// Requirements: SCH-5, SCH-6a.
+// Requirements: SCH-5, SCH-6a, DBS-113, INT-34.
 func TestCoverageCatalogRowMutation(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	ctx := context.Background()
@@ -150,6 +150,157 @@ func TestCoverageCatalogRowMutation(t *testing.T) {
 	if got := tenantRows(); got != int64(0) {
 		t.Fatalf("%s: rows left after delete: %v", driver, got)
 	}
+	catalogGeneratedKeyMutations(t, ctx, c, driver)
+}
+
+// Requirements: DBS-113, INT-34.
+func catalogGeneratedKeyMutations(t *testing.T, ctx context.Context, c *orm.CatalogConnection, driver string) {
+	dsn := os.Getenv("ORM_FEATURE_DSN")
+	engine := ""
+	if driver == "mysql" {
+		engine = " ENGINE=InnoDB"
+	}
+
+	catalogProbe(t, driver, dsn, "catalog_required_identity",
+		"CREATE TABLE catalog_required_identity (id BIGINT NOT NULL PRIMARY KEY, payload TEXT NOT NULL)"+engine)
+	requiredTable := orm.CatalogTableRef{Namespace: mustCatalogNamespace(t, ctx, c), Name: "catalog_required_identity"}
+	requiredMetadata, err := c.DescribeTable(ctx, requiredTable)
+	if err != nil {
+		t.Fatalf("%s: required-key descriptor: %v", driver, err)
+	}
+	_, err = c.InsertRow(ctx, requiredMetadata, []orm.CatalogAssignment{{Name: "payload", Value: "missing-key"}})
+	if orm.ErrorCode(err) != "ROW_INSERT_IDENTITY_REQUIRED" {
+		t.Fatalf("%s: insert without a supplied or generated key error = %v, want ROW_INSERT_IDENTITY_REQUIRED", driver, err)
+	}
+	requiredPage, err := c.TablePage(ctx, requiredTable, 2, 0)
+	if err != nil || len(requiredPage.Result.Rows) != 0 {
+		t.Fatalf("%s: rows after rejected keyless insert = %+v, err %v", driver, requiredPage.Result.Rows, err)
+	}
+
+	autoKeyType := "INTEGER PRIMARY KEY AUTOINCREMENT"
+	if driver == "mysql" {
+		autoKeyType = "BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY"
+	} else if driver == "postgres" {
+		autoKeyType = "BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY"
+	}
+	catalogProbe(t, driver, dsn, "catalog_generated", "CREATE TABLE catalog_generated (id "+autoKeyType+", payload TEXT NOT NULL)"+engine)
+	autoTable := orm.CatalogTableRef{Namespace: mustCatalogNamespace(t, ctx, c), Name: "catalog_generated"}
+	autoMetadata, err := c.DescribeTable(ctx, autoTable)
+	if err != nil {
+		t.Fatalf("%s: generated-key descriptor: %v", driver, err)
+	}
+	if !slices.Equal(autoMetadata.PrimaryKey, []string{"id"}) || !autoMetadata.Columns[0].AutomaticKey || autoMetadata.Columns[0].DefaultExpression != nil {
+		t.Fatalf("%s: generated-key metadata = %+v, want automatic id with no default expression", driver, autoMetadata)
+	}
+	auto, err := c.InsertRow(ctx, autoMetadata, []orm.CatalogAssignment{{Name: "payload", Value: "generated"}})
+	if err != nil || len(auto.Rows) != 1 || len(auto.Rows[0]) != 2 || auto.Rows[0][0] != int64(1) || auto.Rows[0][1] != "generated" {
+		t.Fatalf("%s: automatic-key insert = %+v, err %v", driver, auto, err)
+	}
+	autoPage, err := c.TablePage(ctx, autoTable, 2, 0)
+	if err != nil || !reflect.DeepEqual(autoPage.Result.Rows, auto.Rows) {
+		t.Fatalf("%s: automatic-key stored row = %+v, err %v; returned %+v", driver, autoPage.Result.Rows, err, auto.Rows)
+	}
+
+	catalogProbe(t, driver, dsn, "catalog_generated_default",
+		"CREATE TABLE catalog_generated_default (tenant BIGINT NOT NULL, seq VARCHAR(30) NOT NULL DEFAULT 'generated', n BIGINT NOT NULL, PRIMARY KEY(tenant,seq))"+engine)
+	defaultTable := orm.CatalogTableRef{Namespace: autoTable.Namespace, Name: "catalog_generated_default"}
+	defaultMetadata, err := c.DescribeTable(ctx, defaultTable)
+	if err != nil {
+		t.Fatalf("%s: literal-default descriptor: %v", driver, err)
+	}
+	if !slices.Equal(defaultMetadata.PrimaryKey, []string{"tenant", "seq"}) || defaultMetadata.Columns[1].DefaultExpression == nil || defaultMetadata.Columns[1].AutomaticKey {
+		t.Fatalf("%s: literal-default metadata = %+v", driver, defaultMetadata)
+	}
+	literal, err := c.InsertRow(ctx, defaultMetadata, []orm.CatalogAssignment{{Name: "tenant", Value: int64(2)}, {Name: "n", Value: int64(50)}})
+	literalWant := []any{int64(2), "generated", int64(50)}
+	if err != nil || len(literal.Rows) != 1 || !reflect.DeepEqual(literal.Rows[0], literalWant) {
+		t.Fatalf("%s: literal-default insert = %+v, err %v", driver, literal, err)
+	}
+	literalPage, err := c.TablePage(ctx, defaultTable, 2, 0)
+	if err != nil || !reflect.DeepEqual(literalPage.Result.Rows, literal.Rows) {
+		t.Fatalf("%s: literal-default stored row = %+v, err %v; returned %+v", driver, literalPage.Result.Rows, err, literal.Rows)
+	}
+	if _, err := c.InsertRow(ctx, defaultMetadata, []orm.CatalogAssignment{{Name: "tenant", Value: int64(2)}, {Name: "n", Value: int64(51)}}); orm.ErrorCode(err) != orm.CodeDuplicateKey {
+		t.Fatalf("%s: repeated literal-default key error = %v, want %s", driver, err, orm.CodeDuplicateKey)
+	}
+	literalAfter, err := c.TablePage(ctx, defaultTable, 2, 0)
+	if err != nil || !reflect.DeepEqual(literalAfter.Result.Rows, literal.Rows) {
+		t.Fatalf("%s: literal-default state after duplicate = %+v, err %v", driver, literalAfter.Result.Rows, err)
+	}
+
+	expression := "lower(hex(randomblob(16)))"
+	keyType := "TEXT"
+	if driver == "mysql" {
+		expression, keyType = "UUID()", "VARCHAR(36)"
+	} else if driver == "postgres" {
+		expression, keyType = "gen_random_uuid()::text", "VARCHAR(36)"
+	}
+	catalogProbe(t, driver, dsn, "catalog_generated_expression",
+		"CREATE TABLE catalog_generated_expression (seq "+keyType+" NOT NULL PRIMARY KEY DEFAULT ("+expression+"), n BIGINT NOT NULL UNIQUE, label VARCHAR(20) NULL)"+engine)
+	expressionTable := orm.CatalogTableRef{Namespace: autoTable.Namespace, Name: "catalog_generated_expression"}
+	expressionMetadata, err := c.DescribeTable(ctx, expressionTable)
+	if err != nil {
+		t.Fatalf("%s: expression-default descriptor: %v", driver, err)
+	}
+	if !slices.Equal(expressionMetadata.PrimaryKey, []string{"seq"}) || expressionMetadata.Columns[0].DefaultExpression == nil || !expressionMetadata.Columns[0].ExpressionDefault {
+		t.Fatalf("%s: expression-default metadata = %+v", driver, expressionMetadata)
+	}
+	expressionValues := []orm.CatalogAssignment{{Name: "n", Value: int64(1)}, {Name: "label", Value: nil}}
+	expressionInsert, err := c.InsertRow(ctx, expressionMetadata, expressionValues)
+	if err != nil || len(expressionInsert.Rows) != 1 || len(expressionInsert.Rows[0]) != 3 {
+		t.Fatalf("%s: expression-default insert = %+v, err %v", driver, expressionInsert, err)
+	}
+	key, ok := expressionInsert.Rows[0][0].(string)
+	wantLength := 32
+	if driver != "sqlite" {
+		wantLength = 36
+	}
+	if !ok || !validCatalogGeneratedKey(driver, key, wantLength) || !reflect.DeepEqual(expressionInsert.Rows[0][1:], []any{int64(1), nil}) {
+		t.Fatalf("%s: expression-default returned row = %#v, want formatted database key, n=1, NULL", driver, expressionInsert.Rows[0])
+	}
+	expressionPage, err := c.TablePage(ctx, expressionTable, 2, 0)
+	if err != nil || !reflect.DeepEqual(expressionPage.Result.Rows, expressionInsert.Rows) {
+		t.Fatalf("%s: expression-default stored row = %+v, err %v; returned %+v", driver, expressionPage.Result.Rows, err, expressionInsert.Rows)
+	}
+	_, duplicateErr := c.InsertRow(ctx, expressionMetadata, expressionValues)
+	wantDuplicateCode := orm.CodeDuplicateKey
+	if driver == "mysql" {
+		wantDuplicateCode = "ROW_IDENTITY_AMBIGUOUS"
+	}
+	if orm.ErrorCode(duplicateErr) != wantDuplicateCode {
+		t.Fatalf("%s: repeated expression locator error = %v, want %s", driver, duplicateErr, wantDuplicateCode)
+	}
+	expressionAfter, err := c.TablePage(ctx, expressionTable, 2, 0)
+	if err != nil || !reflect.DeepEqual(expressionAfter.Result.Rows, expressionInsert.Rows) {
+		t.Fatalf("%s: expression-default state after duplicate = %+v, err %v", driver, expressionAfter.Result.Rows, err)
+	}
+}
+
+func mustCatalogNamespace(t *testing.T, ctx context.Context, c *orm.CatalogConnection) string {
+	t.Helper()
+	namespace, err := c.CurrentNamespace(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return namespace
+}
+
+func validCatalogGeneratedKey(driver, value string, length int) bool {
+	if len(value) != length {
+		return false
+	}
+	for i, character := range value {
+		if driver != "sqlite" && (i == 8 || i == 13 || i == 18 || i == 23) {
+			if character != '-' {
+				return false
+			}
+			continue
+		}
+		if !strings.ContainsRune("0123456789abcdef", character) {
+			return false
+		}
+	}
+	return true
 }
 
 // catalogFindTenantRow reads the page of composite_account, finds the one row of the test tenant and returns its snapshot

@@ -32,20 +32,22 @@ const (
 
 // Error codes of the catalog connection that the Rust reference names; QUERY_READ_ONLY is the code that tests check.
 const (
-	catalogCodeReadOnly      = "QUERY_READ_ONLY"
-	catalogCodeValue         = "CATALOG_VALUE"
-	catalogCodeParam         = "CATALOG_PARAM"
-	catalogCodeMetadata      = "TABLE_METADATA_INVALID"
-	catalogCodeTableRef      = "TABLE_REFERENCE_INVALID"
-	catalogCodePageChanged   = "TABLE_PAGE_METADATA_CHANGED"
-	catalogCodeRowConflict   = "ROW_CONFLICT"
-	catalogCodeRowSchema     = "ROW_SCHEMA_CHANGED"
-	catalogCodeRowWrite      = "ROW_WRITE_MISMATCH"
-	catalogCodeRowSnapshot   = "ROW_SNAPSHOT_INVALID"
-	catalogCodeRowAmbiguous  = "ROW_IDENTITY_AMBIGUOUS"
-	catalogCodeRowUnsupport  = "ROW_MUTATION_UNSUPPORTED"
-	catalogCodeCommitReject  = "ROW_COMMIT_REJECTED"
-	catalogCodeCommitUnknown = "ROW_COMMIT_INDETERMINATE"
+	catalogCodeReadOnly               = "QUERY_READ_ONLY"
+	catalogCodeValue                  = "CATALOG_VALUE"
+	catalogCodeParam                  = "CATALOG_PARAM"
+	catalogCodeMetadata               = "TABLE_METADATA_INVALID"
+	catalogCodeTableRef               = "TABLE_REFERENCE_INVALID"
+	catalogCodePageChanged            = "TABLE_PAGE_METADATA_CHANGED"
+	catalogCodeRowConflict            = "ROW_CONFLICT"
+	catalogCodeRowSchema              = "ROW_SCHEMA_CHANGED"
+	catalogCodeRowWrite               = "ROW_WRITE_MISMATCH"
+	catalogCodeRowSnapshot            = "ROW_SNAPSHOT_INVALID"
+	catalogCodeRowAmbiguous           = "ROW_IDENTITY_AMBIGUOUS"
+	catalogCodeRowUnsupport           = "ROW_MUTATION_UNSUPPORTED"
+	catalogCodeInsertIdentityRequired = "ROW_INSERT_IDENTITY_REQUIRED"
+	catalogCodeInsertUnsupported      = "ROW_INSERT_UNSUPPORTED"
+	catalogCodeCommitReject           = "ROW_COMMIT_REJECTED"
+	catalogCodeCommitUnknown          = "ROW_COMMIT_INDETERMINATE"
 )
 
 // CatalogConnection is a native catalog connection to a MySQL, PostgreSQL or SQLite database selected by its DSN. It
