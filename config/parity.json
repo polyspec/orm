@@ -3261,7 +3261,6 @@
       "id": "ts-mysql_tls",
       "kind": "feature",
       "requirements": [
-        "CFG-16",
         "CFG-18"
       ],
       "bindings": [
@@ -8449,7 +8448,6 @@
       "id": "go-internal-packages-go-orm-mysql-tls",
       "kind": "feature",
       "requirements": [
-        "CFG-16",
         "CFG-18"
       ],
       "bindings": [
@@ -10922,9 +10920,7 @@
     {
       "id": "rust-session-sql-mode-is-the-declared-one",
       "kind": "feature",
-      "requirements": [
-        "CFG-16"
-      ],
+      "requirements": ["CFG-3"],
       "bindings": [
         {
           "implementation": "rust",
@@ -12956,7 +12952,6 @@
       "id": "py-mysql-tls",
       "kind": "feature",
       "requirements": [
-        "CFG-16",
         "CFG-18"
       ],
       "bindings": [
@@ -16050,21 +16045,7 @@
         }
       ]
     },
-    {
-      "id": "php-internal-mysql-tls-connections",
-      "kind": "feature",
-      "requirements": [
-        "CFG-16"
-      ],
-      "bindings": [
         {
-          "implementation": "php",
-          "test": "packages/php/tests/MysqlTlsTest.php",
-          "id": "MysqlTlsTest::testConnections"
-        }
-      ]
-    },
-    {
       "id": "php-internal-mysql-tls-session-sql-mode",
       "kind": "feature",
       "requirements": [

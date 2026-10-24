@@ -62,6 +62,7 @@ async fn verify_identity_refuses_another_ca_and_another_host() {
 /// `sql_mode.session` of tests/dsn/mysql-session.json, not the server default or
 /// the modes sqlx adds (docs/spec/config.md "Runtime connection").
 #[tokio::test]
+// Requirements: CFG-3.
 async fn session_sql_mode_is_the_declared_one() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let vector: serde_json::Value = serde_json::from_str(include_str!("../../../../tests/dsn/mysql-session.json")).unwrap();
