@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- Rust compiler fixtures compile positive generated-model and DSL consumers and reject private-field access and invalid DSL calls with the expected rustc diagnostics. Ten fixtures cover DSL-49, DSL-50, and DSL-124 (KSTD-2-10-5).
 - Each client package now has a database-free native entry-point case for its declared public surface. The six client targets and `make package-check` pass; declaration checks cover INT-93, INT-138, and the affected R12 disposal units (KSTD-2-11-18).
 - Rust lint now passes the benchmark, package-workspace, interface-symbols, and catch-check steps. The canonical pre-fix run at `6e0b129d6c57` failed all four steps on the original lint findings; the committed tree passes `make lint-rust` without suppressions (KSTD-5-41).
 - Go lint now passes across the repository. The historical canonical run at `b45468a36e63` reported 11 errcheck findings and one deadcode finding; the current checker evaluates build-tag reachability as a union. Database-free catalog session cases verify that primary and rollback driver causes remain discoverable through `errors.Is` (KSTD-5-42).
