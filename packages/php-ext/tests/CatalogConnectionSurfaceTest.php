@@ -6,8 +6,11 @@ namespace Polyspec\Orm\Tests;
 
 // DB-free native tests for the Catalog DTOs and the extension's public connection boundary.
 
-use PHPUnit\Framework\TestCase;
+use DateTimeZone;
+use Error;
+use PDO;
 use PHPUnit\Framework\Attributes\Small;
+use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Catalog;
 use Polyspec\Orm\CatalogColumn;
 use Polyspec\Orm\CatalogGridCell;
@@ -18,6 +21,10 @@ use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;
 use Polyspec\Orm\OrmException;
+use ReflectionClass;
+use ReflectionProperty;
+use RuntimeException;
+use mysqli;
 
 #[Small]
 final class CatalogConnectionSurfaceTest extends TestCase
@@ -258,6 +265,40 @@ final class CatalogConnectionSurfaceTest extends TestCase
             self::fail('a read operation after close reached the database');
         } catch (OrmException $error) {
             self::assertSame(Code::CATALOG_CLOSED, $error->code_);
+        }
+    }
+
+    public function testGeneratedInsertRejectsChangedStoredValueAndRollsBack(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'orm-catalog-generated-');
+        self::assertNotFalse($path);
+        $setup = new PDO('sqlite:' . $path, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+        $setup->exec('CREATE TABLE generated (id INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL)');
+        $setup->exec(
+            "CREATE TRIGGER rewrite_payload AFTER INSERT ON generated BEGIN "
+            . "UPDATE generated SET payload = 'rewritten' WHERE id = NEW.id; END"
+        );
+        $setup = null;
+
+        $catalog = null;
+        try {
+            $catalog = Catalog::connect('sqlite://' . $path);
+            $metadata = $catalog->describeTable(['namespace' => 'main', 'name' => 'generated']);
+            try {
+                $catalog->insertRow($metadata, ['payload' => 'submitted']);
+                self::fail('an insert whose stored value changed was accepted');
+            } catch (OrmException $error) {
+                self::assertSame(Code::ROW_WRITE_MISMATCH, $error->code_);
+                self::assertSame(
+                    'ROW_WRITE_MISMATCH: stored inserted values of "payload" differ',
+                    $error->getMessage()
+                );
+            }
+            $check = new PDO('sqlite:' . $path, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+            self::assertSame(0, (int) $check->query('SELECT COUNT(*) FROM generated')->fetchColumn());
+        } finally {
+            $catalog?->close();
+            @unlink($path);
         }
     }
 }

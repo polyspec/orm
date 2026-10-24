@@ -2120,6 +2120,28 @@ static bool cat_same_cell(zval *a, zval *b)
     return same;
 }
 
+/* Verifies the submitted cells against a row returned for a Catalog insert. */
+static bool cat_check_inserted_values(zval *metadata, zval *row, zval *changes, bool name_mismatch)
+{
+    zval rv_cols, *columns = catalog_prop(metadata, "columns", &rv_cols);
+    zval *pair;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(changes), pair) {
+        zend_long index = Z_LVAL_P(zend_hash_index_find(Z_ARRVAL_P(pair), 0));
+        zval *value = zend_hash_index_find(Z_ARRVAL_P(pair), 1);
+        zval *stored = zend_hash_index_find(Z_ARRVAL_P(row), (zend_ulong)index);
+        if (!cat_same_cell(stored, value)) {
+            if (name_mismatch) {
+                zval nrv, *name = catalog_prop(zend_hash_index_find(Z_ARRVAL_P(columns), (zend_ulong)index), "name", &nrv);
+                db_throw_orm("ROW_WRITE_MISMATCH", "stored inserted values of \"%s\" differ", Z_STRVAL_P(name));
+            } else {
+                db_throw_orm("ROW_WRITE_MISMATCH", "inserted values differ");
+            }
+            return false;
+        }
+    } ZEND_HASH_FOREACH_END();
+    return true;
+}
+
 /* Converts the pending error into a new error with code and the message prefix; the original error is its previous one. */
 static void cat_rewrap(const char *code, const char *prefix)
 {
@@ -2397,17 +2419,10 @@ static bool cat_mysql_inserted_keys(zval *db, zval *pdo, zval *metadata, zval *c
         }
     }
     zval *row = zend_hash_index_find(Z_ARRVAL(rows), 0);
-    zval *pair;
-    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(changes), pair) {
-        zend_long index = Z_LVAL_P(zend_hash_index_find(Z_ARRVAL_P(pair), 0));
-        zval *value = zend_hash_index_find(Z_ARRVAL_P(pair), 1);
-        zval *stored = zend_hash_index_find(Z_ARRVAL_P(row), (zend_ulong)index);
-        if (!cat_same_cell(stored, value)) {
-            zval_ptr_dtor(&rows);
-            db_throw_orm("ROW_WRITE_MISMATCH", "inserted values differ");
-            return false;
-        }
-    } ZEND_HASH_FOREACH_END();
+    if (!cat_check_inserted_values(metadata, row, changes, false)) {
+        zval_ptr_dtor(&rows);
+        return false;
+    }
     zval key_indexes, generated;
     if (!cat_descriptor_keys(metadata, &key_indexes)) {
         zval_ptr_dtor(&rows);
@@ -2659,19 +2674,11 @@ static bool cat_insert_body(zval *db, const char *dialect, zval *pdo, zval *decl
         return false;
     }
     zval *first_row = zend_hash_index_find(Z_ARRVAL(after), 0);
-    zval *pair;
-    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(changes), pair) {
-        zend_long index = Z_LVAL_P(zend_hash_index_find(Z_ARRVAL_P(pair), 0));
-        zval *value = zend_hash_index_find(Z_ARRVAL_P(pair), 1);
-        zval *stored = zend_hash_index_find(Z_ARRVAL_P(first_row), (zend_ulong)index);
-        if (!cat_same_cell(stored, value)) {
-            zval nrv, *name = catalog_prop(zend_hash_index_find(Z_ARRVAL_P(columns), (zend_ulong)index), "name", &nrv);
-            zval_ptr_dtor(&after);
-            zval_ptr_dtor(&descriptor);
-            db_throw_orm("ROW_WRITE_MISMATCH", "stored inserted values of \"%s\" differ", Z_STRVAL_P(name));
-            return false;
-        }
-    } ZEND_HASH_FOREACH_END();
+    if (!cat_check_inserted_values(&descriptor, first_row, changes, true)) {
+        zval_ptr_dtor(&after);
+        zval_ptr_dtor(&descriptor);
+        return false;
+    }
     ok = cat_result(&descriptor, &after, out);
     zval_ptr_dtor(&after);
     zval_ptr_dtor(&descriptor);
