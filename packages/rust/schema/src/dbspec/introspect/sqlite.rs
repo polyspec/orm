@@ -122,13 +122,9 @@ pub(super) fn read(results: &Results) -> Result<Catalog, String> {
             col.typ = typ;
         }
         st.checks.remove(&check_name);
-        match super::parse_column_default(dflt, |text| sqlite_default(&r, text, col.typ)) {
-            Ok(Some(value)) => col.dflt = value,
-            Ok(None) => {}
-            Err(text) => {
-                c.report("column", &table, &name, format!("default {text} is not a dbspec default"));
-                continue;
-            }
+        let typ = col.typ;
+        if !super::apply_column_default(&mut c, &mut col, &table, &name, dflt, |text| sqlite_default(&r, text, typ)) {
+            continue;
         }
         c.table(&table).expect("table read above").columns.push(col);
     }

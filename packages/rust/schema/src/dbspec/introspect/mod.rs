@@ -101,6 +101,25 @@ fn parse_column_default(text: Option<String>, parse: impl FnOnce(&str) -> Option
     text.map(|value| parse(&value).ok_or(value)).transpose()
 }
 
+fn apply_column_default(
+    catalog: &mut Catalog,
+    column: &mut IColumn,
+    table: &str,
+    name: &str,
+    text: Option<String>,
+    parse: impl FnOnce(&str) -> Option<String>,
+) -> bool {
+    match parse_column_default(text, parse) {
+        Ok(Some(value)) => column.dflt = value,
+        Ok(None) => {}
+        Err(text) => {
+            catalog.report("column", table, name, format!("default {text} is not a dbspec default"));
+            return false;
+        }
+    }
+    true
+}
+
 #[cfg(test)]
 mod default_tests {
     use super::{parse_column_default, read_catalog, CatalogValue, Dialect};
