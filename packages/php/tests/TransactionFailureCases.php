@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
+use Closure;
 use DateTimeZone;
 use PDOException;
 use Polyspec\Orm\Code;
@@ -14,6 +15,16 @@ use RuntimeException;
 
 trait TransactionFailureCases
 {
+    private function ormFailure(string $message, Closure $operation): OrmException
+    {
+        try {
+            $operation();
+            self::fail($message);
+        } catch (OrmException $error) {
+            return $error;
+        }
+    }
+
     public function testTransactionMapsDriverCallbackError(): void
     {
         $pdo = new ModelTestFailingPdo('sqlite::memory:');
@@ -21,15 +32,14 @@ trait TransactionFailureCases
         $driver = new PDOException('transaction callback driver failure');
 
         try {
-            try {
-                $db->transaction(static function () use ($driver): never {
+            $error = $this->ormFailure(
+                'a driver exception must be normalized',
+                static fn() => $db->transaction(static function () use ($driver): never {
                     throw $driver;
-                }, retry: 0);
-                self::fail('a driver exception must be normalized');
-            } catch (OrmException $error) {
-                self::assertSame(Code::DRIVER, $error->code_);
-                self::assertSame($driver, $error->getPrevious());
-            }
+                }, retry: 0)
+            );
+            self::assertSame(Code::DRIVER, $error->code_);
+            self::assertSame($driver, $error->getPrevious());
         } finally {
             $db->close();
         }
@@ -42,17 +52,16 @@ trait TransactionFailureCases
         $driver = new PDOException('savepoint callback driver failure');
 
         try {
-            try {
-                $db->transaction(static function () use ($db, $driver): void {
+            $error = $this->ormFailure(
+                'a savepoint driver exception must be normalized',
+                static fn() => $db->transaction(static function () use ($db, $driver): void {
                     $db->transaction(static function () use ($driver): never {
                         throw $driver;
                     });
-                }, retry: 0);
-                self::fail('a savepoint driver exception must be normalized');
-            } catch (OrmException $error) {
-                self::assertSame(Code::DRIVER, $error->code_);
-                self::assertSame($driver, $error->getPrevious());
-            }
+                }, retry: 0)
+            );
+            self::assertSame(Code::DRIVER, $error->code_);
+            self::assertSame($driver, $error->getPrevious());
         } finally {
             $db->close();
         }
