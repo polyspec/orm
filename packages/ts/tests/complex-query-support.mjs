@@ -4,24 +4,30 @@ import { OrderProductItem, Product, ProductBrand, ProductBrandLang, ProductLang,
 
 export const fixture = JSON.parse(await readFile(new URL('../../../contracts/fixtures/complex_query/complex_query.json', import.meta.url), 'utf8'));
 
-export function search(db, input) {
-  const category = new ProductMatchCategory().removeAllColumns().serviceRegionCategoryItemSeq(input.category_seqs);
-  const brandLang = new ProductBrandLang().removeAllColumns().fulltextBooleanNameWithDescription(input.keyword);
-  const lang = new ProductLang().removeAllColumns().fulltextBooleanNameWithShortDescriptionWithContent(input.keyword);
-  return new Product().connect(db)
+export function buildSearch(input, db) {
+  const category = new ProductMatchCategory().removeAllColumns().addColumnProductSeq().serviceRegionCategoryItemSeq(input.category_seqs);
+  const brandLang = new ProductBrandLang().removeAllColumns().addColumnProductBrandSeq().fulltextBooleanNameWithDescription(input.keyword);
+  const lang = new ProductLang().removeAllColumns().addColumnProductSeq().fulltextBooleanNameWithShortDescriptionWithContent(input.keyword);
+  const root = new Product();
+  if (db !== undefined) root.connect(db);
+  return root
     .relation(new ProductLang().matchSeqWithProductSeq().langId(input.lang_id).parentNode())
     .relation(new ProductBrand().matchProductBrandSeqWithSeq().aliasBrand()
       .relation(new ProductBrandLang().matchSeqWithProductBrandSeq().langId(input.lang_id).parentNode()))
     .relations(new ProductReview().matchSeqWithProductSeq().aliasReviews().isClose(false).orderBySeqDesc().groupLimit(3).keyNameSeq()
       .relation(new User().matchUserSeqWithSeq().aliasUser().removeAllColumns().addColumnName().addColumnProfileUrl()))
     .relation(new OrderProductItem().matchSeqWithProductSeq().aliasMyOrderItem().serviceMemberSeq(input.member_seq).andIsClose(false).orderBySeqDesc().groupLimit(1))
-    .joinSeqWithProductSeq(category)
-    .leftJoinProductBrandSeqWithProductBrandSeq(brandLang)
-    .leftJoinSeqWithProductSeq(lang)
-    .serviceSeq(input.service_seq).andIsClose(false).andIsDisplay(true)
+    .seq(category)
+    .and(q => q.serviceSeq(input.service_seq)).andIsClose(false).andIsDisplay(true)
     .and(q => q.isAllday(true).or(q => q.isAllday(false).andLeDisplayStartDt(orm.now()).andGeDisplayEndDt(orm.now())))
-    .and(q => q.fulltextBooleanNameWithShortDescriptionWithContent(input.keyword).or(brandLang).or(lang))
-    .groupBySeq().orderByLikeCountDescAndSeqDesc().getsPage(input.page, input.per_page);
+    .and(q => q.fulltextBooleanNameWithShortDescriptionWithContent(input.keyword)
+      .or(q => q.productBrandSeq(brandLang))
+      .or(q => q.seq(lang)))
+    .orderByLikeCountDescAndSeqDesc();
+}
+
+export function search(db, input) {
+  return buildSearch(input, db).getsPage(input.page, input.per_page);
 }
 
 function sequence(row, field) {

@@ -779,6 +779,29 @@
         "tests/testcase.mts"
       ]
     },
+    "complex-query-typescript-request-check": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "node-modules"
+      ],
+      "inputs": [
+        "Makefile",
+        "contracts/fixtures/complex_query/**",
+        "scripts/typescript/models.mts",
+        "packages/ts/src/core.ts",
+        "packages/ts/src/model.ts",
+        "packages/ts/src/generate/names.ts",
+        "packages/ts/src/generate/typescript.ts",
+        "packages/ts/src/engine/dialect.ts",
+        "packages/ts/src/engine/planner.ts",
+        "packages/ts/src/engine/validate.ts",
+        "packages/ts/tests/complex-query-request.mjs",
+        "packages/ts/tests/complex-query-request.types.ts",
+        "packages/ts/tests/complex-query-request-types.mjs",
+        "packages/ts/tests/complex-query-support.mjs"
+      ]
+    },
     "ts-save-key-check": {
       "scope": "owner",
       "needs": [
