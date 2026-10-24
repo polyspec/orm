@@ -4,6 +4,7 @@
  * grammar.
  */
 #include "dbspec.h"
+#include "compare_by_field.h"
 #include "ext/spl/spl_exceptions.h"
 
 #ifdef POLYSPEC_ORM_MERMAID_TEST
@@ -53,17 +54,8 @@ static str mermaid_type(const ctype *t)
     return ctype_text(t);
 }
 
-static int cmp_table(const void *a, const void *b, void *ctx)
-{
-    (void)ctx;
-    return str_cmp((*(table *const *)a)->name, (*(table *const *)b)->name);
-}
-
-static int cmp_fkey(const void *a, const void *b, void *ctx)
-{
-    (void)ctx;
-    return str_cmp((*(fkey *const *)a)->name, (*(fkey *const *)b)->name);
-}
+DBS_CMP_BY_FIELD(cmp_table, table, name)
+DBS_CMP_BY_FIELD(cmp_fkey, fkey, name)
 
 str mermaid_export(const document *d, unsupportedv *dropped)
 {

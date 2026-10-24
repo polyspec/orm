@@ -3,6 +3,7 @@
  * docs/spec/plans.md "Steps").
  */
 #include "dbspec.h"
+#include "compare_by_field.h"
 #include "plandiff.h"
 #include "ext/spl/spl_exceptions.h"
 
@@ -221,23 +222,9 @@ typedef struct {
 
 typedef VEC(indexsql) indexsqlv;
 
-static int cmp_ukey_name(const void *a, const void *b, void *ctx)
-{
-    (void)ctx;
-    return str_cmp((*(ukey *const *)a)->name, (*(ukey *const *)b)->name);
-}
-
-static int cmp_index_name(const void *a, const void *b, void *ctx)
-{
-    (void)ctx;
-    return str_cmp((*(xindex *const *)a)->name, (*(xindex *const *)b)->name);
-}
-
-static int cmp_fkey_name(const void *a, const void *b, void *ctx)
-{
-    (void)ctx;
-    return str_cmp((*(fkey *const *)a)->name, (*(fkey *const *)b)->name);
-}
+DBS_CMP_BY_FIELD(cmp_ukey_name, ukey, name)
+DBS_CMP_BY_FIELD(cmp_index_name, xindex, name)
+DBS_CMP_BY_FIELD(cmp_fkey_name, fkey, name)
 
 /* Returns the unique keys and indexes of table t named name, in renderer order, as [name, create statement, drop statement]. */
 static indexsqlv index_sqls(writer *w, const table *t, str name)

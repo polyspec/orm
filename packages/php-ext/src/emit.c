@@ -3,6 +3,7 @@
  * "Canonical form", "Manifest and hashes"). The document set check (DocumentSet) and the manifest are also here.
  */
 #include "dbspec.h"
+#include "compare_by_field.h"
 
 /* Canonical order: mapping settings (markdown through state_machine) come before immutable and audit. */
 static const char *const setting_kinds[] = {
@@ -33,18 +34,11 @@ static void comments(sbuf *b, const strs *c, const char *indent, dbs_view view)
     }
 }
 
-#define BYNAME(T, field) \
-    static int cmp_##T(const void *a, const void *b, void *ctx) \
-    { \
-        (void)ctx; \
-        return str_cmp((*(T *const *)a)->field, (*(T *const *)b)->field); \
-    }
-
-BYNAME(useline, document)
-BYNAME(ukey, name)
-BYNAME(xindex, name)
-BYNAME(fkey, name)
-BYNAME(check, name)
+DBS_CMP_BY_FIELD(cmp_useline, useline, document)
+DBS_CMP_BY_FIELD(cmp_ukey, ukey, name)
+DBS_CMP_BY_FIELD(cmp_xindex, xindex, name)
+DBS_CMP_BY_FIELD(cmp_fkey, fkey, name)
+DBS_CMP_BY_FIELD(cmp_check, check, name)
 
 /* A copy stably sorted by name byte order. */
 static void *sorted_copy(void *items, size_t n, size_t size, int (*cmp)(const void *, const void *, void *))
