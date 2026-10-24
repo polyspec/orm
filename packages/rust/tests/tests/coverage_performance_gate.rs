@@ -1,8 +1,11 @@
 //! Runs the Rust client's diagnostic hot-path measurements against the exact feature database.
-use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use std::time::Instant;
 
 use polyspec_orm::{Param, Val};
-use sqlx::{Column, MySqlPool, PgPool, Row, SqlitePool};
+use sqlx::mysql::MySqlRow;
+use sqlx::postgres::PgRow;
+use sqlx::sqlite::SqliteRow;
+use sqlx::{Column, MySqlPool, PgPool, Row, SqlitePool, TypeInfo, ValueRef};
 
 polyspec_orm::models!();
 use model::Author;
@@ -40,46 +43,16 @@ impl Workload {
     fn query(self, db: &polyspec_orm::Db) -> impl std::future::Future<Output = polyspec_orm::Result<polyspec_orm::Statement>> + '_ {
         async move {
             match self {
-                Self::Pk => {
-                    Author::new()
-                        .connect(db)
-                        .seq(42)
-                        .limit(0, 1)
-                        .get_query()
-                        .await
-                }
-                Self::List100 => {
-                    Author::new()
-                        .connect(db)
-                        .service_seq(7)
-                        .and_is_close(false)
-                        .order_by_seq_desc()
-                        .limit(0, 100)
-                        .get_query()
-                        .await
-                }
+                Self::Pk => Author::new().connect(db).seq(42).limit(0, 1).get_query().await,
+                Self::List100 => Author::new().connect(db).service_seq(7).and_is_close(false).order_by_seq_desc().limit(0, 100).get_query().await,
             }
         }
     }
 
     async fn client(self, db: &polyspec_orm::Db) -> Vec<(i64, String)> {
         let rows = match self {
-            Self::Pk => Author::new()
-                .connect(db)
-                .seq(42)
-                .limit(0, 1)
-                .gets()
-                .await
-                .unwrap(),
-            Self::List100 => Author::new()
-                .connect(db)
-                .service_seq(7)
-                .and_is_close(false)
-                .order_by_seq_desc()
-                .limit(0, 100)
-                .gets()
-                .await
-                .unwrap(),
+            Self::Pk => Author::new().connect(db).seq(42).limit(0, 1).gets().await.unwrap(),
+            Self::List100 => Author::new().connect(db).service_seq(7).and_is_close(false).order_by_seq_desc().limit(0, 100).gets().await.unwrap(),
         };
         rows.models().map(|row| (row.get_seq().unwrap(), row.get_name().unwrap().to_owned())).collect()
     }
@@ -92,15 +65,79 @@ fn decode_aes_cell(raw: Option<String>) {
     assert!(matches!(decoded, Val::Null | Val::Str(_)), "native AES2 value type");
 }
 
+fn mysql_datetime(row: &MySqlRow, index: usize) -> Option<chrono::NaiveDateTime> {
+    row.try_get(index).expect("native MySQL datetime")
+}
+
+fn postgres_datetime(row: &PgRow, index: usize) -> Option<chrono::NaiveDateTime> {
+    row.try_get(index).expect("native PostgreSQL datetime")
+}
+
+fn sqlite_datetime(row: &SqliteRow, index: usize) -> Option<chrono::NaiveDateTime> {
+    let value: Option<String> = row.try_get(index).expect("native SQLite datetime text");
+    value.map(|value| {
+        chrono::NaiveDateTime::parse_from_str(&value, "%Y-%m-%d %H:%M:%S%.f")
+            .or_else(|_| chrono::NaiveDateTime::parse_from_str(&value, "%Y-%m-%d %H:%M:%S"))
+            .expect("native SQLite datetime value")
+    })
+}
+
+fn mysql_price(row: &MySqlRow) -> Option<f64> {
+    let value: Option<sqlx::types::Decimal> = row.try_get(25).expect("native MySQL price");
+    value.map(|decimal| Val::Str(decimal.to_string()).as_f64().expect("native MySQL decimal value"))
+}
+
+fn postgres_price(row: &PgRow) -> Option<f64> {
+    let value: Option<sqlx::types::Decimal> = row.try_get(25).expect("native PostgreSQL price");
+    value.map(|decimal| Val::Str(decimal.to_string()).as_f64().expect("native PostgreSQL decimal value"))
+}
+
+fn sqlite_price(row: &SqliteRow) -> Option<f64> {
+    let raw = row.try_get_raw(25).expect("native SQLite price cell");
+    if raw.is_null() {
+        return None;
+    }
+    let value = match raw.type_info().name() {
+        "INTEGER" => Val::I64(row.try_get(25).expect("native SQLite integer price")),
+        "REAL" => Val::F64(row.try_get(25).expect("native SQLite real price")),
+        "TEXT" => Val::Str(row.try_get(25).expect("native SQLite text price")),
+        "BLOB" => Val::Bytes(row.try_get(25).expect("native SQLite byte price")),
+        "BOOLEAN" => Val::Bool(row.try_get(25).expect("native SQLite boolean price")),
+        other => panic!("native SQLite price has unsupported storage type {other}"),
+    };
+    Some(value.as_f64().expect("native SQLite decimal value"))
+}
+
 macro_rules! typed_native_row {
-    ($row:expr) => {{
+    ($row:expr, $datetime:ident, $price:ident) => {{
         const COLUMNS: [&str; 27] = [
-            "a__seq", "a__name", "a__created_ts", "a__updated_ts", "a__is_close", "a__is_display",
-            "a__display_start_dt", "a__display_end_dt", "a__is_allday", "a__target_club_reader_count",
-            "a__success_count", "a__reader_count", "a__read_count", "a__photo_url", "a__user_seq",
-            "a__service_seq", "a__service_region_seq", "a__service_member_seq", "a__start_dt", "a__end_dt",
-            "a__uuid", "a__is_single_work", "a__like_count", "a__aes_hex_email", "a__aes_hex_phone",
-            "a__price", "a__aes_key_version",
+            "a__seq",
+            "a__name",
+            "a__created_ts",
+            "a__updated_ts",
+            "a__is_close",
+            "a__is_display",
+            "a__display_start_dt",
+            "a__display_end_dt",
+            "a__is_allday",
+            "a__target_club_reader_count",
+            "a__success_count",
+            "a__reader_count",
+            "a__read_count",
+            "a__photo_url",
+            "a__user_seq",
+            "a__service_seq",
+            "a__service_region_seq",
+            "a__service_member_seq",
+            "a__start_dt",
+            "a__end_dt",
+            "a__uuid",
+            "a__is_single_work",
+            "a__like_count",
+            "a__aes_hex_email",
+            "a__aes_hex_phone",
+            "a__price",
+            "a__aes_key_version",
         ];
         assert_eq!($row.columns().len(), COLUMNS.len(), "native author projection width");
         for (column, expected) in $row.columns().iter().zip(COLUMNS) {
@@ -108,12 +145,12 @@ macro_rules! typed_native_row {
         }
         let seq: i64 = $row.try_get(0).expect("native seq i64");
         let name: String = $row.try_get(1).expect("native name string");
-        let _: chrono::NaiveDateTime = $row.try_get(2).expect("native created_ts");
-        let _: chrono::NaiveDateTime = $row.try_get(3).expect("native updated_ts");
+        let _: chrono::NaiveDateTime = $datetime($row, 2).expect("native created_ts");
+        let _: chrono::NaiveDateTime = $datetime($row, 3).expect("native updated_ts");
         let _: bool = $row.try_get(4).expect("native is_close");
         let _: bool = $row.try_get(5).expect("native is_display");
-        let _: Option<chrono::NaiveDateTime> = $row.try_get(6).expect("native display_start_dt");
-        let _: Option<chrono::NaiveDateTime> = $row.try_get(7).expect("native display_end_dt");
+        let _: Option<chrono::NaiveDateTime> = $datetime($row, 6);
+        let _: Option<chrono::NaiveDateTime> = $datetime($row, 7);
         let _: bool = $row.try_get(8).expect("native is_allday");
         let _: i32 = $row.try_get(9).expect("native target_club_reader_count");
         let _: i32 = $row.try_get(10).expect("native success_count");
@@ -124,14 +161,14 @@ macro_rules! typed_native_row {
         let _: i64 = $row.try_get(15).expect("native service_seq");
         let _: i64 = $row.try_get(16).expect("native service_region_seq");
         let _: i64 = $row.try_get(17).expect("native service_member_seq");
-        let _: chrono::NaiveDateTime = $row.try_get(18).expect("native start_dt");
-        let _: chrono::NaiveDateTime = $row.try_get(19).expect("native end_dt");
+        let _: chrono::NaiveDateTime = $datetime($row, 18).expect("native start_dt");
+        let _: chrono::NaiveDateTime = $datetime($row, 19).expect("native end_dt");
         let _: Option<String> = $row.try_get(20).expect("native uuid");
         let _: bool = $row.try_get(21).expect("native is_single_work");
         let _: i32 = $row.try_get(22).expect("native like_count");
         decode_aes_cell($row.try_get(23).expect("native aes_hex_email"));
         decode_aes_cell($row.try_get(24).expect("native aes_hex_phone"));
-        let _: Option<sqlx::types::Decimal> = $row.try_get(25).expect("native price");
+        let _price: Option<f64> = $price($row);
         let aes_version: i32 = $row.try_get(26).expect("native aes_key_version");
         assert_eq!(aes_version, 1, "native AES key version must match the benchmark key");
         (seq, name)
@@ -162,7 +199,7 @@ impl Native {
                     Workload::Pk => query.bind(42_i64).bind(1_i64).bind(0_i64).fetch_all(pool).await.expect("native MySQL PK query"),
                     Workload::List100 => query.bind(7_i64).bind(false).bind(100_i64).bind(0_i64).fetch_all(pool).await.expect("native MySQL list query"),
                 };
-                rows.iter().map(|row| typed_native_row!(row)).collect()
+                rows.iter().map(|row| typed_native_row!(row, mysql_datetime, mysql_price)).collect()
             }
             Self::Postgres(pool) => {
                 let query = sqlx::query(sqlx::AssertSqlSafe(statement));
@@ -170,7 +207,7 @@ impl Native {
                     Workload::Pk => query.bind(42_i64).bind(1_i64).bind(0_i64).fetch_all(pool).await.expect("native PostgreSQL PK query"),
                     Workload::List100 => query.bind(7_i64).bind(false).bind(100_i64).bind(0_i64).fetch_all(pool).await.expect("native PostgreSQL list query"),
                 };
-                rows.iter().map(|row| typed_native_row!(row)).collect()
+                rows.iter().map(|row| typed_native_row!(row, postgres_datetime, postgres_price)).collect()
             }
             Self::Sqlite(pool) => {
                 let query = sqlx::query(sqlx::AssertSqlSafe(statement));
@@ -178,7 +215,7 @@ impl Native {
                     Workload::Pk => query.bind(42_i64).bind(1_i64).bind(0_i64).fetch_all(pool).await.expect("native SQLite PK query"),
                     Workload::List100 => query.bind(7_i64).bind(false).bind(100_i64).bind(0_i64).fetch_all(pool).await.expect("native SQLite list query"),
                 };
-                rows.iter().map(|row| typed_native_row!(row)).collect()
+                rows.iter().map(|row| typed_native_row!(row, sqlite_datetime, sqlite_price)).collect()
             }
         }
     }
@@ -245,8 +282,19 @@ async fn coverage_hot_path_gate_for(expected: &str) {
         native_ns.sort_unstable();
         let client_p50 = client_ns[ITERATIONS / 2] as f64;
         let native_p50 = native_ns[ITERATIONS / 2] as f64;
-        eprintln!("PERF hot_path_gate rust {expected} {}: native p50={:.1}µs client p50={:.1}µs ratio={:.2} samples={} cpu={:.1}ms wall={:.1}ms machine={} reference=not-recorded", workload.name(), native_p50 / 1000.0, client_p50 / 1000.0, client_p50 / native_p50, ITERATIONS, cpu_ms, wall_ms, std::env::consts::OS.to_owned() + " " + std::env::consts::ARCH);
+        eprintln!(
+            "PERF hot_path_gate rust {expected} {}: native p50={:.1}µs client p50={:.1}µs ratio={:.2} samples={} cpu={:.1}ms wall={:.1}ms machine={} reference=not-recorded",
+            workload.name(),
+            native_p50 / 1000.0,
+            client_p50 / 1000.0,
+            client_p50 / native_p50,
+            ITERATIONS,
+            cpu_ms,
+            wall_ms,
+            std::env::consts::OS.to_owned() + " " + std::env::consts::ARCH
+        );
     }
+    native.close().await;
 }
 
 #[tokio::test]
