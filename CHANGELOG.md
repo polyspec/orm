@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The 56-case markdown corpus now covers codec-column and explicit-selection behavior for DIA-175 and DIA-177 across all six clients. PHP extension cases run the generated Model through native C methods; the Flowmark pin uses its `packages/go` module and matching documentation source (KSTD-2-10-3).
 - The API parity check binds all 77 error-code units to the PHP extension's native `Code` constants and checks each against the generated stub catalog. Its RED was a fixture replay of `config/parity.json` blob `845da3a77ac511ee6fb144e6d097b53d49499b4f` from `f69b3a2f1^`, not a run of that historical checkout; the replay reported 43 units for 77 catalog codes (KSTD-2-4).
 - Rust compiler fixtures compile positive generated-model and DSL consumers and reject private-field access and invalid DSL calls with the expected rustc diagnostics. Ten fixtures cover DSL-49, DSL-50, and DSL-124 (KSTD-2-10-5).
 - Each client package now has a database-free native entry-point case for its declared public surface. The six client targets and `make package-check` pass; declaration checks cover INT-93, INT-138, and the affected R12 disposal units (KSTD-2-11-18).
