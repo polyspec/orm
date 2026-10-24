@@ -323,10 +323,7 @@ pub async fn apply<C: ApplyConnection + ?Sized>(
     now: &ApplyClock<'_>,
     events: &mut ApplyEvents<'_>,
 ) -> Result<(), ApplyError> {
-    let mut a = Applier::new(connection, dialect, plans, now, events)?;
-    let restore = a.open().await?;
-    let result = a.apply_chain().await;
-    a.close(result, restore).await
+    run_command(connection, dialect, plans, now, events, Command::Apply).await
 }
 
 /// Continues the interrupted plan forward from the catalog effect of the step
@@ -340,10 +337,7 @@ pub async fn recover<C: ApplyConnection + ?Sized>(
     now: &ApplyClock<'_>,
     events: &mut ApplyEvents<'_>,
 ) -> Result<(), ApplyError> {
-    let mut a = Applier::new(connection, dialect, plans, now, events)?;
-    let restore = a.open().await?;
-    let result = a.recover_chain().await;
-    a.close(result, restore).await
+    run_command(connection, dialect, plans, now, events, Command::Recover).await
 }
 
 /// Undoes the last plan of the history with its rollback statements down to
@@ -358,10 +352,7 @@ pub async fn rollback<C: ApplyConnection + ?Sized>(
     now: &ApplyClock<'_>,
     events: &mut ApplyEvents<'_>,
 ) -> Result<(), ApplyError> {
-    let mut a = Applier::new(connection, dialect, plans, now, events)?;
-    let restore = a.open().await?;
-    let result = a.rollback_chain().await;
-    a.close(result, restore).await
+    run_command(connection, dialect, plans, now, events, Command::Rollback).await
 }
 
 /// Runs the finalize steps of every applied plan in chain order, dropping the
@@ -374,10 +365,34 @@ pub async fn finalize<C: ApplyConnection + ?Sized>(
     now: &ApplyClock<'_>,
     events: &mut ApplyEvents<'_>,
 ) -> Result<(), ApplyError> {
-    let mut a = Applier::new(connection, dialect, plans, now, events)?;
-    let restore = a.open().await?;
-    let result = a.finalize_chain().await;
-    a.close(result, restore).await
+    run_command(connection, dialect, plans, now, events, Command::Finalize).await
+}
+
+#[derive(Clone, Copy)]
+enum Command {
+    Apply,
+    Recover,
+    Rollback,
+    Finalize,
+}
+
+async fn run_command<C: ApplyConnection + ?Sized>(
+    connection: &mut C,
+    dialect: Dialect,
+    plans: &[Plan],
+    now: &ApplyClock<'_>,
+    events: &mut ApplyEvents<'_>,
+    command: Command,
+) -> Result<(), ApplyError> {
+    let mut applier = Applier::new(connection, dialect, plans, now, events)?;
+    let restore = applier.open().await?;
+    let result = match command {
+        Command::Apply => applier.apply_chain().await,
+        Command::Recover => applier.recover_chain().await,
+        Command::Rollback => applier.rollback_chain().await,
+        Command::Finalize => applier.finalize_chain().await,
+    };
+    applier.close(result, restore).await
 }
 
 /// One row of the history table.
@@ -1313,6 +1328,20 @@ mod sqlite_lock_result_tests {
             }
             other => panic!("expected primary and unlock errors, got {other:?}"),
         }
+    }
+
+    #[tokio::test]
+    async fn command_entrypoints_share_sqlite_lock_lifecycle_for_empty_plan_chain() {
+        use sqlx::Connection as _;
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let mut connection = sqlx::SqliteConnection::connect("sqlite::memory:").await.expect("SQLite memory connection");
+        let clock: &ApplyClock<'_> = &|| Utc::now();
+        let mut callback = |_event: &super::ApplyEvent| Ok(());
+        let events: &mut ApplyEvents<'_> = &mut callback;
+        super::apply(&mut connection, Dialect::Sqlite, &[], clock, events).await.expect("apply empty chain");
+        super::recover(&mut connection, Dialect::Sqlite, &[], clock, events).await.expect("recover empty chain");
+        super::rollback(&mut connection, Dialect::Sqlite, &[], clock, events).await.expect("rollback empty chain");
+        super::finalize(&mut connection, Dialect::Sqlite, &[], clock, events).await.expect("finalize empty chain");
     }
 
     #[tokio::test]
