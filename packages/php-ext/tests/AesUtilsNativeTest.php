@@ -20,7 +20,7 @@ final class AesUtilsNativeTest extends TestCase
     public function testNativeStatusRotationAndTransactionRollback(): void
     {
         self::assertTrue(
-            (new ReflectionClass(\Polyspec\Orm\AesUtils::class))->isInternal(),
+            (new \ReflectionClass(\Polyspec\Orm\AesUtils::class))->isInternal(),
         );
         $path = tempnam(sys_get_temp_dir(), 'orm-aes-native-');
         self::assertIsString($path);
