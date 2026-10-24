@@ -26,20 +26,6 @@ use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
 
-/** Reads from the catalog whether the connection's database has the table. */
-function auditTable(Db $db, string $table): bool
-{
-    $sql = match ($db->driver()) {
-        'mysql' => 'SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?',
-        'postgres' => 'SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = current_schema() AND '
-            . 'table_name = ?',
-        'sqlite' => "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = ?",
-    };
-    $st = $db->pdo()->prepare($sql);
-    $st->execute([$table]);
-    return (int) $st->fetchColumn() === 1;
-}
-
 /**
  * Removes the installed tables, starting with the table that points at the audit record table, and the
  * PostgreSQL trigger functions that are not removed with the table.
@@ -123,14 +109,14 @@ function withAudit(Closure $body): void
     $db = Orm::connect($dsn, auditConfig('default'));
     try {
         foreach (AUDIT_TABLES as $table) {
-            Assert::assertTrue(!auditTable($db, $table), "$table exists before the case");
+            Assert::assertTrue(!coverageTableExists($db, $table), "$table exists before the case");
         }
         coverageRestoring(function () use ($db, $dsn, $body): void {
             $db->utils()->schema()->install(\Polyspec\Orm\Tests\CoverageAudit\schema());
             $body($db, $dsn);
         }, fn() => dropFixture($db, ['item_history', 'item', 'audit'], ['item']));
         foreach (AUDIT_TABLES as $table) {
-            Assert::assertTrue(!auditTable($db, $table), "$table remains after the case");
+            Assert::assertTrue(!coverageTableExists($db, $table), "$table remains after the case");
         }
     } finally {
         $db->close();
@@ -218,14 +204,14 @@ class CoverageAuditTriggersTest extends TestCase
             $db = Orm::connect($dsn, auditConfig('default'));
             try {
                 foreach ($tables as $table) {
-                    Assert::assertTrue(!auditTable($db, $table), "$table exists before the case");
+                    Assert::assertTrue(!coverageTableExists($db, $table), "$table exists before the case");
                 }
                 coverageRestoring(function () use ($db): void {
                     $db->utils()->schema()->install(\Polyspec\Orm\Tests\CoverageRestore\schema());
                     restoreCase($db, 'Polyspec\\Orm\\Tests\\CoverageRestore');
                 }, fn() => dropFixture($db, ['membership_history', 'membership', 'label', 'audit'], ['membership']));
                 foreach ($tables as $table) {
-                    Assert::assertTrue(!auditTable($db, $table), "$table remains after the case");
+                    Assert::assertTrue(!coverageTableExists($db, $table), "$table remains after the case");
                 }
             } finally {
                 $db->close();

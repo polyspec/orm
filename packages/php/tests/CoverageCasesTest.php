@@ -8,7 +8,12 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
+use DateTimeZone;
+use PDO;
+use PDOStatement;
 use RuntimeException;
+use Polyspec\Orm\Config;
+use Polyspec\Orm\Db;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Code;
@@ -24,6 +29,66 @@ final class CoverageCasesTest extends TestCase
             iterator_to_array(coverageDatabaseDrivers()),
             'coverage database cases'
         );
+    }
+
+    public function testTableLookupUsesTheSelectedCatalogWithoutADatabaseServer(): void
+    {
+        $queries = [
+            'mysql' => 'SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND '
+                . 'TABLE_NAME = ?',
+            'postgres' => 'SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = current_schema() AND '
+                . 'table_name = ?',
+            'sqlite' => "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = ?",
+        ];
+        foreach ($queries as $driver => $query) {
+            foreach ([1 => true, 0 => false] as $count => $exists) {
+                $executions = [];
+                $pdo = new class ($count, $executions) extends PDO {
+                    /** @var list<array{string, ?array}> */
+                    public array $executions;
+
+                    /** @param list<array{string, ?array}> $executions */
+                    public function __construct(private readonly int $count, array &$executions)
+                    {
+                        $this->executions =& $executions;
+                    }
+
+                    public function setAttribute(int $attribute, mixed $value): bool
+                    {
+                        return true;
+                    }
+
+                    public function prepare(string $query, array $options = []): PDOStatement|false
+                    {
+                        $executions =& $this->executions;
+                        $record = static function (?array $params) use (&$executions, $query): void {
+                            $executions[] = [$query, $params];
+                        };
+                        return new class ($this->count, $record) extends PDOStatement {
+                            public function __construct(
+                                private readonly int $count,
+                                private readonly \Closure $record
+                            ) {
+                            }
+
+                            public function execute(?array $params = null): bool
+                            {
+                                ($this->record)($params);
+                                return true;
+                            }
+
+                            public function fetchColumn(int $column = 0): mixed
+                            {
+                                return $this->count;
+                            }
+                        };
+                    }
+                };
+                $db = new Db($pdo, $driver, new Config(), new DateTimeZone('UTC'));
+                self::assertSame($exists, coverageTableExists($db, 'users'), "$driver row count $count");
+                self::assertSame([[$query, ['users']]], $executions, "$driver catalog query");
+            }
+        }
     }
 
     public function testReportsErrorCodesAndRestoreFailures(): void

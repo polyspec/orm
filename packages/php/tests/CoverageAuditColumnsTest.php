@@ -27,20 +27,6 @@ use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
 
-/** Reads from the catalog whether the connection's database has the table. */
-function auditColumnsTable(Db $db, string $table): bool
-{
-    $sql = match ($db->driver()) {
-        'mysql' => 'SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?',
-        'postgres' => 'SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = current_schema() AND '
-            . 'table_name = ?',
-        'sqlite' => "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = ?",
-    };
-    $st = $db->pdo()->prepare($sql);
-    $st->execute([$table]);
-    return (int) $st->fetchColumn() === 1;
-}
-
 /** Removes the installed table, and the PostgreSQL trigger function that is not removed with the table. */
 function dropAuditColumns(Db $db): void
 {
@@ -135,7 +121,7 @@ function auditColumnsCase(string $dsn, string $document, string $work): void
             Assert::assertTrue($rows === $want, 'tag_history ' . json_encode($rows) . ', want ' . json_encode($want));
         }, fn() => dropAuditColumns($db));
         foreach (['audit', 'card', 'card_history', 'tag', 'tag_history'] as $table) {
-            Assert::assertTrue(!auditColumnsTable($db, $table), "table $table remains after the case");
+            Assert::assertTrue(!coverageTableExists($db, $table), "table $table remains after the case");
         }
     } finally {
         $db->close();

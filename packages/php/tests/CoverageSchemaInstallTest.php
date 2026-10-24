@@ -66,20 +66,6 @@ table coverage_external_post {
 
 DBSPEC;
 
-/** Reads from the catalog whether the connection's database has the table. */
-function installedTable(Db $db, string $table): bool
-{
-    $sql = match ($db->driver()) {
-        'mysql' => 'SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?',
-        'postgres' => 'SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = current_schema() AND '
-            . 'table_name = ?',
-        'sqlite' => "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = ?",
-    };
-    $st = $db->pdo()->prepare($sql);
-    $st->execute([$table]);
-    return (int) $st->fetchColumn() === 1;
-}
-
 #[Medium]
 final class CoverageSchemaInstallTest extends TestCase
 {
@@ -91,7 +77,7 @@ final class CoverageSchemaInstallTest extends TestCase
             [, $dsn] = coverageItem();
             $db = coverageConnect($dsn);
             try {
-                Assert::assertTrue(installedTable($db, 'author'), 'the bench database has no author table');
+                Assert::assertTrue(coverageTableExists($db, 'author'), 'the bench database has no author table');
                 // Installs the schema value of the generated code.
                 $db->utils()->schema()->install(\Polyspec\Orm\Tests\Model\schema());
             } finally {
@@ -109,7 +95,7 @@ final class CoverageSchemaInstallTest extends TestCase
             $db = coverageConnect($dsn);
             try {
                 Assert::assertTrue(
-                    !installedTable($db, 'coverage_install_missing'),
+                    !coverageTableExists($db, 'coverage_install_missing'),
                     'coverage_install_missing exists before the case'
                 );
                 $partial = RuntimeModel::build(RuntimeModel::parse(['partial.dbs' => PARTIAL_DOCUMENT]));
@@ -118,7 +104,7 @@ final class CoverageSchemaInstallTest extends TestCase
                 );
                 Assert::assertTrue($code === Code::CONFIG, "a partly installed document set is $code, want CONFIG");
                 Assert::assertTrue(
-                    !installedTable($db, 'coverage_install_missing'),
+                    !coverageTableExists($db, 'coverage_install_missing'),
                     'the rejected install created coverage_install_missing'
                 );
             } finally {
@@ -175,7 +161,7 @@ final class CoverageSchemaInstallTest extends TestCase
                     static fn() => $db->utils()->schema()->install($drifted)
                 );
                 Assert::assertTrue(
-                    !installedTable($db, 'coverage_external_post'),
+                    !coverageTableExists($db, 'coverage_external_post'),
                     'the rejected install created coverage_external_post'
                 );
             } finally {

@@ -9,6 +9,20 @@ use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;
 use Polyspec\Orm\OrmException;
 
+/** Reads from the selected database's catalog whether a table exists. */
+function coverageTableExists(Db $db, string $table): bool
+{
+    $sql = match ($db->driver()) {
+        'mysql' => 'SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?',
+        'postgres' => 'SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = current_schema() AND '
+            . 'table_name = ?',
+        'sqlite' => "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = ?",
+    };
+    $st = $db->pdo()->prepare($sql);
+    $st->execute([$table]);
+    return (int) $st->fetchColumn() === 1;
+}
+
 /** @return iterable<string, array{string}> */
 function coverageDatabaseDrivers(): iterable
 {
