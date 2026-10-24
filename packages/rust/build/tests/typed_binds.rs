@@ -1,10 +1,6 @@
-#[path = "common/grid_catalog.rs"]
-mod grid_catalog;
-use grid_catalog::fixture_path;
-
-#[path = "common/dialect_dsn.rs"]
-mod dialect_dsn;
-use dialect_dsn::dsn_for;
+#[path = "common/physical_fixture.rs"]
+mod physical_fixture;
+use physical_fixture::{dsn_for, sqlite_path};
 
 use polyspec_orm_build::tool_db::{self, GridCell, ParamType, QueryLimits, P};
 #[tokio::test]
@@ -12,7 +8,7 @@ use polyspec_orm_build::tool_db::{self, GridCell, ParamType, QueryLimits, P};
 async fn native_typed_binds_preserve_values_and_typed_nulls() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(30), async {
-        let path = fixture_path("typed-binds");
+        let path = sqlite_path("typed-binds");
         let mut failures = Vec::new();
         for dialect in ["sqlite", "mysql", "postgres"] {
             polyspec_orm_testcase::step(format_args!("running {dialect}"));
@@ -36,9 +32,7 @@ async fn native_typed_binds_preserve_values_and_typed_nulls() {
                     failures.push("postgres-native-float-bits");
                 }
             }
-            drop(connection);
-            database.close().await;
-            polyspec_orm_testcase::step(format_args!("{dialect} finished"));
+            physical_fixture::finish_physical_dialect(database, connection, dialect, "finished").await;
         }
         std::fs::remove_file(path).expect("remove owned SQLite fixture");
         assert!(failures.is_empty(), "typed bind cases failed: {failures:?}");
@@ -52,7 +46,7 @@ async fn native_typed_binds_preserve_values_and_typed_nulls() {
 async fn native_typed_writes_roundtrip_reject_and_rollback() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(30), async {
-        let path = fixture_path("typed-writes");
+        let path = sqlite_path("typed-writes");
         let mut failures = Vec::new();
         for dialect in ["sqlite", "mysql", "postgres"] {
             polyspec_orm_testcase::step(format_args!("running {dialect}"));
@@ -227,9 +221,7 @@ async fn native_typed_writes_roundtrip_reject_and_rollback() {
                 }
             }
             connection.exec(&format!("DROP TABLE {table}"), &[]).await.expect("remove owned fixture");
-            drop(connection);
-            database.close().await;
-            polyspec_orm_testcase::step(format_args!("{dialect} finished"));
+            physical_fixture::finish_physical_dialect(database, connection, dialect, "finished").await;
         }
         std::fs::remove_file(path).expect("remove owned SQLite fixture");
         assert!(failures.is_empty(), "typed write cases failed: {failures:?}");

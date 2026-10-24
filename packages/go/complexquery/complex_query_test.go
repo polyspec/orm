@@ -55,15 +55,7 @@ func TestComplexQuery(t *testing.T) {
 	for _, driver := range []string{"mysql", "postgres", "sqlite"} {
 		t.Run(driver, func(t *testing.T) {
 			dsn := testdb.New(t, driver)
-			db, err := complexmodel.Connect(dsn, orm.Config{})
-			if err != nil {
-				t.Fatal(err)
-			}
-			t.Cleanup(func() {
-				if err := db.Close(); err != nil {
-					t.Error(err)
-				}
-			})
+			db := openComplexDB(t, dsn, orm.Config{})
 			if err := db.Utils().Schema().Install(complexmodel.Schema); err != nil {
 				t.Fatal(err)
 			}
@@ -86,21 +78,28 @@ func TestComplexQuery(t *testing.T) {
 	}
 }
 
+func openComplexDB(t *testing.T, dsn string, config orm.Config) *orm.DB {
+	t.Helper()
+	db, err := complexmodel.Connect(dsn, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { testcase.Close(t, db) })
+	return db
+}
+
 func assertComplexSearch(t *testing.T, db *orm.DB, driver string, fixture complexFixture) {
 	t.Helper()
-	var events []orm.StatementEvent
-	unsubscribe, err := db.Subscribe(func(event orm.StatementEvent) error {
-		events = append(events, event)
-		return nil
-	})
+	recorder := testcase.NewEventRecorder[orm.StatementEvent]()
+	unsubscribe, err := db.Subscribe(recorder.Record)
 	if err != nil {
 		t.Fatal(err)
 	}
 	page, err := Search(db, inputFromFixture(fixture))
 	unsubscribe()
 	if driver == "sqlite" {
-		if orm.ErrorCode(err) != orm.CodeOperatorNotAllowed || len(events) != 0 {
-			t.Fatalf("SQLite full-text request = %v with %d events, want OPERATOR_NOT_ALLOWED before statements", err, len(events))
+		if orm.ErrorCode(err) != orm.CodeOperatorNotAllowed || len(recorder.Events()) != 0 {
+			t.Fatalf("SQLite full-text request = %v with %d events, want OPERATOR_NOT_ALLOWED before statements", err, len(recorder.Events()))
 		}
 		return
 	}
@@ -166,12 +165,12 @@ func assertComplexSearch(t *testing.T, db *orm.DB, driver string, fixture comple
 		}
 	}
 	wantEvents := fixture.ExpectedEvents[driver]
-	if len(events) != len(wantEvents) {
-		t.Fatalf("statement events = %d, want %d", len(events), len(wantEvents))
+	if len(recorder.Events()) != len(wantEvents) {
+		t.Fatalf("statement events = %d, want %d", len(recorder.Events()), len(wantEvents))
 	}
 	for i, want := range wantEvents {
-		if events[i].Kind != want.Kind || !slices.Equal(events[i].Tables, want.Tables) {
-			t.Errorf("statement event %d = %s %v, want %s %v", i, events[i].Kind, events[i].Tables, want.Kind, want.Tables)
+		if recorder.Events()[i].Kind != want.Kind || !slices.Equal(recorder.Events()[i].Tables, want.Tables) {
+			t.Errorf("statement event %d = %s %v, want %s %v", i, recorder.Events()[i].Kind, recorder.Events()[i].Tables, want.Kind, want.Tables)
 		}
 	}
 }
@@ -209,11 +208,7 @@ func inputFromFixture(f complexFixture) Input {
 func seedComplexFixture(t *testing.T, driver, dsn string, fixture complexFixture) {
 	t.Helper()
 	db := testdb.Open(t, driver, dsn)
-	defer func() {
-		if err := db.Close(); err != nil {
-			t.Errorf("close fixture database: %v", err)
-		}
-	}()
+	defer testcase.Close(t, db)
 	for _, table := range fixture.SeedOrder {
 		columns := fixture.SeedColumns[table]
 		for _, row := range fixture.Seed[table] {
@@ -262,11 +257,7 @@ func joinStrings(values []string) string {
 func execFixtureSQL(t *testing.T, driver, dsn string, statements []string) error {
 	t.Helper()
 	db := testdb.Open(t, driver, dsn)
-	defer func() {
-		if err := db.Close(); err != nil {
-			t.Errorf("close fixture database: %v", err)
-		}
-	}()
+	defer testcase.Close(t, db)
 	for _, statement := range statements {
 		if _, err := db.Exec(statement); err != nil {
 			return err

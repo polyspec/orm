@@ -22,11 +22,13 @@ pub mod plan;
 mod request;
 pub mod row;
 pub mod schema;
-#[cfg(test)]
-mod test_support;
 #[cfg(feature = "test-faults")]
 pub mod testing;
 pub mod tx;
+
+#[cfg(test)]
+#[path = "../tests/common/test_support.rs"]
+mod test_support;
 pub mod utils;
 pub mod value;
 
@@ -293,30 +295,18 @@ mod mysql_code_tests {
 #[cfg(test)]
 mod driver_error_tests {
     use super::*;
-    use crate::test_support::impl_database_error;
+    use crate::test_support::DatabaseErrorStub;
     use std::error::Error as StdError;
-    use std::fmt::{Display, Formatter};
-
-    #[derive(Debug)]
-    struct NativeError {
-        message: String,
-    }
-
-    impl Display for NativeError {
-        fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-            f.write_str(&self.message)
-        }
-    }
-
-    impl StdError for NativeError {}
-
-    impl_database_error!(NativeError, self, { &self.message }, { None });
 
     // Requirements: PRT-79.
     #[test]
     fn unknown_database_error_keeps_the_native_source_chain() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        let mapped = Error::from(sqlx::Error::Database(Box::new(NativeError { message: "trigger refused the write".into() })));
+        let mapped = Error::from(sqlx::Error::Database(Box::new(DatabaseErrorStub::new(
+            "trigger refused the write",
+            "trigger refused the write",
+            None,
+        ))));
         assert_eq!(mapped.code(), codes::DRIVER);
         assert!(mapped.to_string().contains("trigger refused the write"));
         let sqlx_source = StdError::source(&mapped).expect("mapped error keeps sqlx error");

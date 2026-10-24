@@ -109,25 +109,13 @@ final class ModelNativeTest extends TestCase
             self::assertStringContainsString("return \$this->readColumn('price');", $source);
             self::assertStringContainsString("return \$this->writeColumn('price', \$v);", $source);
 
-            try {
-                $model->getPrice();
-                self::fail('An unselected generated column must fail.');
-            } catch (OrmException $error) {
-                self::assertSame('COLUMN_UNSELECTED', $error->code_);
-            }
-            self::assertSame($model, $model->setPrice(17));
-            self::assertSame(17, $model->getPrice());
-            set_error_handler(static fn(int $severity, string $message): never => throw new \ErrorException($message));
-            try {
-                try {
-                    $model->values;
-                    self::fail('Generated consumers must not access private model storage.');
-                } catch (\ErrorException $error) {
-                    self::assertStringContainsString('undefined property', strtolower($error->getMessage()));
-                }
-            } finally {
-                restore_error_handler();
-            }
+            OrmGenTestSupport::assertGeneratedTypedGetter(
+                $this,
+                $model,
+                'getPrice',
+                'setPrice',
+                'COLUMN_UNSELECTED'
+            );
         } finally {
             exec('rm -rf ' . escapeshellarg($dir));
         }

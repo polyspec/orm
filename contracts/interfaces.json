@@ -45,6 +45,79 @@
     "typescript": "sha256:3ed6f00671f93cd4552224b4af4ffcbe6306df83e5ce49bd4cb886252788f056",
     "python": "sha256:a1865a8dc066f405ee15fd5fe61f493fd896a4bc7d8088d445120cbe7d737280"
   },
+  "native_surfaces": [
+    {
+      "id": "Db.withContext",
+      "owner": "go",
+      "semantic": "CFG-9",
+      "symbol": "packages/go/orm/db.go::DB.WithContext",
+      "signature": "receiver=*DB func(ctx context.Context) *DB"
+    },
+    {
+      "id": "Db.withSignal",
+      "owner": "typescript",
+      "semantic": "CFG-9",
+      "symbol": "packages/ts/src/database.ts::Db.withSignal",
+      "signature": "public withSignal(signal: AbortSignal): Db"
+    },
+    {
+      "id": "Db.withFuture",
+      "owner": "python",
+      "semantic": "CFG-9",
+      "symbol": "packages/python/src/polyspec/orm/database.py::Db.with_future",
+      "signature": "def with_future(self, future: asyncio.Future) -> Db"
+    }
+  ],
+  "behavior_adapters": [
+    {
+      "id": "CFG-9",
+      "completion_item": "KSTD-2-11-16",
+      "parity": "handle-disposal-abandoned-query-cancels-and-releases",
+      "adapters": {
+        "go": {
+          "status": "implemented",
+          "primitive": "Db.WithContext",
+          "surface": "Db.withContext",
+          "cases": [{ "test": "packages/go/orm/cancel_test.go", "id": "TestWithContextCancels" }]
+        },
+        "typescript": {
+          "status": "implemented",
+          "primitive": "Db.withSignal",
+          "surface": "Db.withSignal",
+          "cases": [
+            { "test": "packages/ts/tests/coverage_transactions.mjs", "id": "handle_abandoned_query [sqlite]", "phase": "before-start" },
+            { "test": "packages/ts/tests/coverage_transactions.mjs", "id": "handle_abandoned_query [mysql]" },
+            { "test": "packages/ts/tests/coverage_transactions.mjs", "id": "handle_abandoned_query [postgres]" }
+          ]
+        },
+        "python": {
+          "status": "implemented",
+          "primitive": "Db.with_future",
+          "surface": "Db.withFuture",
+          "cases": [
+            { "test": "packages/python/tests/coverage_transactions.py", "id": "handle_abandoned_query [sqlite]" },
+            { "test": "packages/python/tests/coverage_transactions.py", "id": "handle_abandoned_query [mysql]" },
+            { "test": "packages/python/tests/coverage_transactions.py", "id": "handle_abandoned_query [postgres]" }
+          ]
+        },
+        "rust": {
+          "status": "implemented",
+          "primitive": "dropping the statement future",
+          "cases": [{ "test": "packages/rust/orm/tests/zone.rs", "id": "dropping_a_query_cancels_it" }]
+        },
+        "php": {
+          "status": "unresolved",
+          "item": "KSTD-2-11-16-1",
+          "required_case": "cancel_active_query_and_reuse_connection"
+        },
+        "php-extension": {
+          "status": "unresolved",
+          "item": "KSTD-2-11-16-1",
+          "required_case": "cancel_active_query_and_reuse_connection"
+        }
+      }
+    }
+  ],
   "extensions": {
     "php-extension": {
       "description": "The PHP extension polyspec_orm (packages/php-ext) implements the PHP logical interface rules declared here and the dbspec surface and error codes in C under the client's own names. Its declarations are read from its stub with the PHP parser; make dbspec-php-extension-check checks that the loaded extension declares the same.",
@@ -344,8 +417,7 @@
         "stats",
         "subscribe",
         "execute",
-        "withRequestHook",
-        "withFuture"
+        "withRequestHook"
       ],
       "ownership": "Owns the pool, the planners of the schema sets registered on it, the plan and statement caches, and the statement event subscribers.",
       "ownership_ko": "pool, 자기에게 등록된 schema set의 planner, plan cache, statement cache, statement event subscriber를 가진다."
@@ -1929,25 +2001,6 @@
         "php-extension": {
           "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Db::withRequestHook",
           "signature": "public function withRequestHook(Closure $hook): Polyspec\\Orm\\Db"
-        }
-      }
-    },
-    {
-      "id": "Db.withFuture",
-      "for": "once",
-      "inputs": [
-        "asyncio.Future"
-      ],
-      "output": "Db",
-      "errors": [
-        "CONFIG",
-        "CANCELED"
-      ],
-      "state": "Returns a handle on the same connection; cancelling the Future interrupts the active statement and waits for driver cleanup before the connection is reused, while normal Future completion has no effect (CFG-9)",
-      "native": {
-        "python": {
-          "symbol": "packages/python/src/polyspec/orm/database.py::Db.with_future",
-          "signature": "def with_future(self, future: asyncio.Future) -> Db"
         }
       }
     },

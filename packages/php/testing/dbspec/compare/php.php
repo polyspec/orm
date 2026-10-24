@@ -24,8 +24,4 @@ if ($argc !== 7) {
     exit(2);
 }
 
-$cases = dbspec_write_interface(Polyspec\Orm\Dbspec\Dbspec::class, $argv[1], $argv[2], $argv[3]);
-dbspec_write_plans(Polyspec\Orm\Dbspec\Dbspec::class, $argv[4]);
-dbspec_write_mermaid(Polyspec\Orm\Dbspec\Dbspec::class, $argv[5]);
-dbspec_write_positions(Polyspec\Orm\Dbspec\Dbspec::class, $cases);
-dbspec_write_syntax(Polyspec\Orm\Dbspec\Dbspec::class, $cases, $argv[6]);
+dbspec_write_comparison(Polyspec\Orm\Dbspec\Dbspec::class, array_slice($argv, 1));

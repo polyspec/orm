@@ -61,6 +61,15 @@ jobs:
           for repository in $repositories; do
             git clone --depth 1 "https://github.com/polyspec/$repository.git" "../$repository"
           done
+      # The consumer bootstrap selects ../kit/dist when the sibling checkout exists; build that fresh clone before make install reads it.
+      - name: build sibling kit
+        working-directory: ${{ github.event.repository.name }}
+        run: |
+          if [ -d ../kit/.git ]; then
+            make -C ../kit install-tools TOOLS=npm
+            make -C ../kit install-packages
+            make -C ../kit kit-build
+          fi
       - name: install
         working-directory: ${{ github.event.repository.name }}
         run: make install

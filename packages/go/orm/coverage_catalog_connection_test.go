@@ -481,7 +481,7 @@ func TestCoverageCatalogGridDeclared(t *testing.T) {
 	driver, c := catalogConnect(t)
 	defer testcase.Close(t, c)
 	if driver != "sqlite" {
-		t.Skip("the declared-type cases of the grid are the SQLite storage-class cases")
+		t.Fatalf("catalog grid declared-type cases require SQLite, got %s", driver)
 	}
 	_, dsn := featureDatabase(t)
 	catalogProbe(t, driver, dsn, "grid_probe",
@@ -549,7 +549,7 @@ func TestCoverageCatalogGridTimestamp(t *testing.T) {
 			"INSERT INTO grid_probe VALUES (1, '2026-10-22 01:02:03+00', '01:02:03+00')")
 		refused = []string{"SELECT tz FROM grid_probe WHERE seq = 1", "SELECT tt FROM grid_probe WHERE seq = 1"}
 	default:
-		t.Skip("the timestamp refusals are the MySQL and PostgreSQL time-zone types")
+		t.Fatalf("catalog grid timestamp refusal cases require MySQL or PostgreSQL, got %s", driver)
 	}
 	for _, query := range refused {
 		_, err := c.ReadOnlyGridQuery(ctx, query, nil, orm.CatalogQueryLimits{})

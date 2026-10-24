@@ -3,6 +3,8 @@
 package model_test
 
 import (
+	"fmt"
+	"slices"
 	"testing"
 
 	"github.com/polyspec/orm/packages/go/model"
@@ -71,6 +73,115 @@ func TestCoverageModelWriteCycle(t *testing.T) {
 	}
 	if n := must(account().TenantId(writeTenant).GetCount()); n != 0 {
 		t.Fatalf("tenant %d count after delete = %d, want 0", writeTenant, n)
+	}
+}
+
+// TestCoverageModelCreateParts checks that multi-row creates refuse an invalid batch before writing, preserve row order
+// across batches, and roll back earlier batches when a later batch fails.
+// Requirements: DSL-104, INT-35, PRT-41.
+func TestCoverageModelCreateParts(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	db, driver, _ := connectFeature(t)
+	const tenant int64 = writeTenant + 1
+	account := func() *model.CompositeAccountModel { return model.CompositeAccount().Connect(db) }
+	cleanup := func() {
+		rows, err := account().TenantId(tenant).Gets()
+		if err != nil {
+			t.Errorf("read create_parts rows for cleanup: %v", err)
+			return
+		}
+		if err := rows.Delete(); err != nil {
+			t.Errorf("delete create_parts rows: %v", err)
+		}
+	}
+	t.Cleanup(cleanup)
+	if n := must(account().TenantId(tenant).GetCount()); n != 0 {
+		t.Fatalf("composite_account has %d rows of tenant %d before the case", n, tenant)
+	}
+
+	recorder := testcase.NewEventRecorder[orm.StatementEvent]()
+	unsubscribe, err := db.Subscribe(recorder.Record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer unsubscribe()
+	rows := func(start, count int, prefix string) []*model.CompositeAccountModel {
+		result := make([]*model.CompositeAccountModel, count)
+		for i := range result {
+			id := int64(start + i)
+			result[i] = model.CompositeAccount().SetTenantId(tenant).SetAccountId(id).SetName(fmt.Sprintf("%s-%d", prefix, id))
+		}
+		return result
+	}
+	if _, err := account().Creates(rows(1, 2, "refused"), 0); orm.ErrorCode(err) != orm.CodeConfig {
+		t.Fatalf("creates with batch 0 = %v, want CONFIG", err)
+	}
+	limit := 65535
+	if driver == "sqlite" {
+		limit = 999
+	}
+	oversized := make([]*model.CompositeAccountModel, limit/3+1)
+	row := model.CompositeAccount().SetTenantId(tenant).SetAccountId(8).SetName("oversized")
+	for i := range oversized {
+		oversized[i] = row
+	}
+	if _, err := account().Creates(oversized, len(oversized)); orm.ErrorCode(err) != orm.CodeBatchTooLarge {
+		t.Fatalf("creates over the %s bind limit = %v, want BATCH_TOO_LARGE", driver, err)
+	}
+	if len(recorder.Events()) != 0 {
+		t.Fatalf("refused creates sent %d statements, want none", len(recorder.Events()))
+	}
+
+	labels := []string{"ordered-5", "ordered-4", "ordered-3", "ordered-2", "ordered-1"}
+	ordered := make([]*model.CompositeAccountModel, len(labels))
+	for i, label := range labels {
+		ordered[i] = model.CompositeAccount().SetTenantId(tenant).SetAccountId(int64(i + 1)).SetName(label)
+	}
+	if n, err := account().Creates(ordered, 2); err != nil || n != int64(len(ordered)) {
+		t.Fatalf("creates ordered rows = %d, %v; want %d", n, err, len(ordered))
+	}
+	var sizes []int
+	for _, event := range recorder.Events() {
+		if event.Kind == orm.KindInsert && slices.Contains(event.Tables, "composite_account") {
+			sizes = append(sizes, len(event.Binds)/3)
+		}
+	}
+	if !slices.Equal(sizes, []int{2, 2, 1}) {
+		t.Fatalf("create_parts INSERT sizes = %v, want [2 2 1]", sizes)
+	}
+	for i, label := range labels {
+		got := readColumn(t, must(account().GetByTenantIdAndAccountId(tenant, int64(i+1))).GetName)
+		if got != label {
+			t.Fatalf("stored row %d name = %q, want %q", i+1, got, label)
+		}
+	}
+	if err := must(account().TenantId(tenant).Gets()).Delete(); err != nil {
+		t.Fatal(err)
+	}
+	recorder.Reset()
+
+	if _, err := account().SetTenantId(tenant).SetAccountId(99).SetName("existing").Create(); err != nil {
+		t.Fatalf("create rollback sentinel: %v", err)
+	}
+	recorder.Reset()
+	rollback := append(rows(10, 4, "rollback"), model.CompositeAccount().SetTenantId(tenant).SetAccountId(99).SetName("duplicate"))
+	if _, err := account().Creates(rollback, 2); orm.ErrorCode(err) != orm.CodeDuplicateKey {
+		t.Fatalf("creates with duplicate in third batch = %v, want DUPLICATE_KEY", err)
+	}
+	var failedInsertSizes []int
+	for _, event := range recorder.Events() {
+		if event.Kind == orm.KindInsert && slices.Contains(event.Tables, "composite_account") {
+			failedInsertSizes = append(failedInsertSizes, len(event.Binds)/3)
+		}
+	}
+	if !slices.Equal(failedInsertSizes, []int{2, 2, 1}) {
+		t.Fatalf("rollback INSERT sizes = %v, want [2 2 1]", failedInsertSizes)
+	}
+	if n := must(account().TenantId(tenant).GetCount()); n != 1 {
+		t.Fatalf("rows after failed create_parts = %d, want only the sentinel", n)
+	}
+	if got := readColumn(t, must(account().GetByTenantIdAndAccountId(tenant, 99)).GetName); got != "existing" {
+		t.Fatalf("sentinel name after rollback = %q, want existing", got)
 	}
 }
 

@@ -19,7 +19,21 @@ class CoverageRequestHookTest extends TestCase
         return __FILE__;
     }
 
-    // Requirements: CFG-9.
+    // Requirements: INT-78.
+    public function testReadsParams(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'orm-request-hook-reads-params-');
+        if (!is_string($path)) {
+            throw new \RuntimeException('cannot create the request hook SQLite database file');
+        }
+        try {
+            readsParamsCase('sqlite://' . $path);
+        } finally {
+            unlink($path);
+        }
+    }
+
+    // Requirements: INT-78.
     public function test_without_hook(): void
     {
         foreach (coverageItemsOf(static::coverageTestFile()) as $item) {
@@ -28,7 +42,7 @@ class CoverageRequestHookTest extends TestCase
         }
     }
 
-    // Requirements: DSL-65, PRT-2.
+    // Requirements: INT-78, PRT-2.
     public function test_read_filter(): void
     {
         foreach (coverageItemsOf(static::coverageTestFile()) as $item) {
@@ -37,7 +51,7 @@ class CoverageRequestHookTest extends TestCase
         }
     }
 
-    // Requirements: DSL-65, PRT-2.
+    // Requirements: INT-78, PRT-2.
     public function testSameHandleChildHookOnce(): void
     {
         foreach (coverageItemsOf(static::coverageTestFile()) as $item) {
@@ -55,7 +69,7 @@ class CoverageRequestHookTest extends TestCase
         }
     }
 
-    // Requirements: PRT-4, PRT-5, PRT-41.
+    // Requirements: INT-78, PRT-4, PRT-6.
     public function testUpsertScope(): void
     {
         foreach (coverageItemsOf(static::coverageTestFile()) as $item) {

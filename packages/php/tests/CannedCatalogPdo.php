@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
+require_once __DIR__ . '/SqliteLiteralRowsPdo.php';
+
 use PDO;
 use PDOStatement;
 use RuntimeException;
@@ -15,6 +17,8 @@ use RuntimeException;
  */
 final class CannedCatalogPdo extends PDO
 {
+    use SqliteLiteralRowsPdo;
+
     /** @param array<string, mixed> $catalog */
     public function __construct(
         private readonly array $catalog,
@@ -27,19 +31,7 @@ final class CannedCatalogPdo extends PDO
     public function query(string $query, ?int $fetchMode = null, mixed ...$fetchModeArgs): PDOStatement|false
     {
         [$rows, $width] = $this->answer($query);
-        $params = [];
-        $selects = [];
-        foreach ($rows as $row) {
-            $selects[] = 'SELECT ' . implode(', ', array_fill(0, count($row), '?'));
-            array_push($params, ...$row);
-        }
-        $sql = $selects === []
-            ? 'SELECT ' . implode(', ', array_fill(0, $width, 'NULL')) . ' WHERE 0'
-            : implode(' UNION ALL ', $selects);
-        $statement = parent::prepare($sql);
-        $statement->execute($params);
-        $statement->setFetchMode(PDO::FETCH_NUM);
-        return $statement;
+        return $this->queryRows($rows, $width);
     }
 
     /** The rows of one catalog query and the number of its columns. */

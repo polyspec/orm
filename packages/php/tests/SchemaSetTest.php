@@ -47,12 +47,10 @@ final class SchemaSetTest extends TestCase
     private static mixed $work = null;
     private static mixed $decimalDocuments = null;
     private static mixed $decimalModel = null;
-    private static mixed $root = null;
 
     /** The fixture of the file: what the script did before its cases, once per class. */
     private static function fixture(): void
     {
-        self::$root = dirname(__DIR__, 3);
         self::$work = sys_get_temp_dir() . '/orm-php-schema-set-' . getmypid();
         is_dir(self::$work) || mkdir(self::$work, 0o700, true);
         register_shutdown_function(static function (): void {
@@ -65,7 +63,7 @@ final class SchemaSetTest extends TestCase
             str_replace(
                 "dbspec 1 decimal_schema\n",
                 "dbspec 1 schema_set_decimal\n",
-                (string) file_get_contents(self::$root . "/contracts/fixtures/decimal_schema.dbs")
+                (string) file_get_contents(\coverageRepositoryRoot() . "/contracts/fixtures/decimal_schema.dbs")
             )
         ];
         self::$decimalModel = RuntimeModel::build(
@@ -300,7 +298,8 @@ final class SchemaSetTest extends TestCase
         if ($sets !== null) {
             return $sets;
         }
-        $fixture = static fn(string $name): string => self::$root . "/contracts/fixtures/external/$name.dbs";
+        $fixture = static fn(string $name): string => \coverageRepositoryRoot()
+            . "/contracts/fixtures/external/$name.dbs";
         $built = [];
         foreach (
             [
@@ -494,7 +493,7 @@ final class SchemaSetTest extends TestCase
             $case['operation'] === 'install',
             "{$case['id']}: the operation {$case['operation']}, want install"
         );
-        $document = (string) file_get_contents(self::$root . "/contracts/fixtures/{$case['document']}");
+        $document = (string) file_get_contents(\coverageRepositoryRoot() . "/contracts/fixtures/{$case['document']}");
         $documents = RuntimeModel::parse([basename($case['document']) => $document]);
         $model = RuntimeModel::build($documents);
         $schema = new Schema($model->manifestText, $model->manifestHash);

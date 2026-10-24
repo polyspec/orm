@@ -11,7 +11,7 @@ import { writeAtomic } from './files.mts';
 import path from 'node:path';
 import { fileDigest } from './digest.mts';
 import { installOnce } from './install-tool.mts';
-import { bootstrapEnvironment, printedRelease, quote, run, toolsPath, wrapperText, writeWrapper } from './tool-wrappers.mts';
+import { bootstrapEnvironment, printedRelease, quote, run, toolsPath, toolsRoot, wrapperText, writeWrapper } from './tool-wrappers.mts';
 
 // The asset of the mise archive of each platform key (process.platform-process.arch) that the declaration may name.
 export const MISE_ASSETS: Readonly<Record<string, string>> = {
@@ -50,7 +50,8 @@ export function removeForeignTrusts(root: string): void {
 export function foreignTrusts(root: string): { name: string; target: string }[] {
   const directory = toolsPath(root, 'mise', 'state', 'trusted-configs');
   if (!existsSync(directory)) return [];
-  const own = new Set([path.resolve(root), realpathSync(root)]);
+  // K532: a linked worktree runs the trust store of its main checkout (K519), whose trust of the main checkout is its own.
+  const own = new Set([root, toolsRoot(root)].flatMap(checkout => [path.resolve(checkout), realpathSync(checkout)]));
   const found: { name: string; target: string }[] = [];
   for (const name of readdirSync(directory)) {
     const entry = path.join(directory, name);

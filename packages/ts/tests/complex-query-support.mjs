@@ -34,6 +34,22 @@ function sequence(row, field) {
   return row === null || row === undefined ? null : row[`get${field}`]();
 }
 
+export async function assertSearchCase(assert, db, dialect) {
+  const events = [];
+  const unsubscribe = db.subscribe(event => events.push({ kind: event.kind, tables: [...event.tables] }));
+  let page;
+  let failure;
+  try { page = await search(db, fixture.input); } catch (error) { failure = error; }
+  unsubscribe();
+  if (dialect === 'sqlite') {
+    assert.equal(failure?.code, fixture.expected_plan_steps.sqlite.error);
+    assert.deepEqual(events, fixture.expected_events.sqlite);
+    return;
+  }
+  if (failure !== undefined) throw failure;
+  assertSearchResult(assert, page, events, dialect);
+}
+
 export function assertSearchResult(assert, page, events, dialect) {
   assert.equal(page.totalCount, fixture.expected.total_count);
   assert.equal(page.totalPages, fixture.expected.total_pages);

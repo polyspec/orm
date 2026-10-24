@@ -22,10 +22,8 @@ use Throwable;
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;
-use Polyspec\Orm\Generator;
 use Polyspec\Orm\Orm;
 use Polyspec\Orm\OrmException;
-use Polyspec\Orm\RuntimeModel;
 use Polyspec\Orm\Testing\Faults;
 use Polyspec\Orm\Tests\StatementFaultCase\StatementProbe;
 use PHPUnit\Framework\Attributes\Large;
@@ -35,6 +33,8 @@ use PHPUnit\Framework\Attributes\DataProvider;
 #[Large]
 final class StatementFaultTest extends TestCase
 {
+    use DatabaseTestAssertions;
+
     private static mixed $fault = null;
 
     /** The fixture of the file: what the script did before its cases, once per class. */
@@ -62,37 +62,11 @@ final class StatementFaultTest extends TestCase
         }
         self::$fault = ['code' => $fixture['code'], 'message' => $fixture['message']];
 
-        $work = sys_get_temp_dir() . '/orm-php-statement-fault-' . getmypid();
-        is_dir($work) || mkdir($work, 0o700, true);
-        register_shutdown_function(static function () use ($work): void {
-            exec('rm -rf ' . escapeshellarg($work));
-        });
-
         $schemaText = "dbspec 1 statement_fault\n\ntable statement_probe {\n  seq i64 identity\n  label "
             . "varchar(32)\n  primary key (seq)\n}\n";
-        Generator::generate(
-            RuntimeModel::build(RuntimeModel::parse(['statement_fault.dbs' => $schemaText])),
-            "$work/models",
-            'Polyspec\\Orm\\Tests\\StatementFaultCase'
-        );
-        requireGeneratedClasses("$work/models");
-        require "$work/models/bootstrap.php";
-    }
-
-    private static function check(bool $ok, string $message): void
-    {
-        \PHPUnit\Framework\Assert::assertTrue($ok, $message);
-    }
-
-    /** The error a call raises, or null when it returns. */
-    private static function raised(callable $f): ?Throwable
-    {
-        try {
-            $f();
-        } catch (Throwable $e) {
-            return $e;
-        }
-        return null;
+        loadGeneratedDocumentSets('orm-php-statement-fault-', [
+            'Polyspec\\Orm\\Tests\\StatementFaultCase' => ['statement_fault.dbs' => $schemaText],
+        ]);
     }
 
     /** Opens a Db on the case database and installs the fixture schema. */
@@ -106,11 +80,8 @@ final class StatementFaultTest extends TestCase
     /** Checks an OrmException with the armed code, whose message names the armed message. */
     private static function checkFault(?Throwable $e, string $subject, array $fault): void
     {
-        self::check(
-            $e instanceof OrmException,
-            "$subject raises " . ($e === null ? 'nothing' : $e::class . ': ' . $e->getMessage())
-        );
-        if (!$e instanceof OrmException) {
+        $e = self::checkedOrmException($e, $subject);
+        if ($e === null) {
             return;
         }
         self::check($e->code_ === $fault['code'], "$subject code {$e->code_}: {$e->getMessage()}");
@@ -215,6 +186,19 @@ final class StatementFaultTest extends TestCase
     public static function setUpBeforeClass(): void
     {
         self::fixture();
+    }
+
+    public function testGeneratedProbeAndSharedThrownResultAreAvailable(): void
+    {
+        $this->assertTrue(class_exists(StatementProbe::class));
+        $this->assertNotSame('', self::$fault['code']);
+        $this->assertNotSame('', self::$fault['message']);
+        $expected = new RuntimeException('fixture fault');
+        $this->assertSame($expected, self::raised(static function () use ($expected): never {
+            throw $expected;
+        }));
+        $ormError = new OrmException(Code::DRIVER, 'fixture database error');
+        $this->assertSame($ormError, self::checkedOrmException($ormError, 'fixture statement'));
     }
 
     /**

@@ -15,23 +15,20 @@ use Polyspec\Orm\StyledValue;
 #[Small]
 final class StyledValueTest extends TestCase
 {
+    use DatabaseTestAssertions;
+
     /** @return array<string, mixed> contracts/fixtures/styled_column_states.json */
     private static function fixture(): array
     {
-        return json_decode(
-            file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/styled_column_states.json'),
-            true,
-            512,
-            JSON_THROW_ON_ERROR
+        return self::readJsonFixture(
+            dirname(__DIR__, 3) . '/contracts/fixtures/styled_column_states.json',
         );
     }
 
     /** @return iterable<string, array{array<string, mixed>}> for each case of the fixture */
     public static function cases(): iterable
     {
-        foreach (self::fixture()['cases'] as $case) {
-            yield $case['id'] => [$case];
-        }
+        yield from self::fixtureCases(self::fixture());
     }
 
     public function testClassExists(): void

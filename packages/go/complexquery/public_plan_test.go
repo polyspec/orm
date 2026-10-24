@@ -11,7 +11,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/polyspec/orm/packages/go/complexmodel"
 	"github.com/polyspec/orm/packages/go/orm"
 	_ "github.com/polyspec/orm/packages/go/orm/pg"
 	_ "github.com/polyspec/orm/packages/go/orm/sqlite"
@@ -49,15 +48,7 @@ func runComplexQueryPublicPlan(t *testing.T) {
 		{driver: "postgres", dsn: "postgres://user:pass@localhost/example"},
 	} {
 		t.Run(test.driver, func(t *testing.T) {
-			db, err := orm.ConnectSchema(test.dsn, complexmodel.Schema, orm.Config{})
-			if err != nil {
-				t.Fatal(err)
-			}
-			t.Cleanup(func() {
-				if err := db.Close(); err != nil {
-					t.Error(err)
-				}
-			})
+			db := openComplexDB(t, test.dsn, orm.Config{})
 			statement, err := searchModel(db, inputFromFixture(fixture)).GetQuery()
 			if err != nil {
 				t.Fatal(err)
@@ -78,15 +69,7 @@ func runComplexQueryPublicPlan(t *testing.T) {
 			}
 		})
 	}
-	db, err := orm.ConnectSchema("sqlite://"+filepath.Join(t.TempDir(), "query-plan.sqlite"), complexmodel.Schema, orm.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if err := db.Close(); err != nil {
-			t.Error(err)
-		}
-	})
+	db := openComplexDB(t, "sqlite://"+filepath.Join(t.TempDir(), "query-plan.sqlite"), orm.Config{})
 	if _, err := searchModel(db, inputFromFixture(fixture)).GetQuery(); orm.ErrorCode(err) != orm.CodeOperatorNotAllowed {
 		t.Fatalf("SQLite public query error = %v, want %s", err, orm.CodeOperatorNotAllowed)
 	}

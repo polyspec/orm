@@ -16,41 +16,6 @@ use sqlite_case::SCHEMA;
 #[path = "common/typed_model.rs"]
 mod typed_model;
 
-/// A database file of a test: it is removed before the test starts, so an old file of an earlier run is never read, and when the test
-/// ends, failed or not. A removal that fails fails the test, unless the test already panics, which then names the file on stderr.
-struct TempFile(std::path::PathBuf);
-
-impl TempFile {
-    fn fresh(path: std::path::PathBuf) -> Self {
-        match std::fs::remove_file(&path) {
-            Ok(()) => {}
-            Err(error) => {
-                if error.kind() != std::io::ErrorKind::NotFound {
-                    panic!("remove the database file {}: {error}", path.display());
-                }
-            }
-        }
-        TempFile(path)
-    }
-}
-
-impl Drop for TempFile {
-    fn drop(&mut self) {
-        match std::fs::remove_file(&self.0) {
-            Ok(()) => {}
-            Err(error) => {
-                if error.kind() != std::io::ErrorKind::NotFound {
-                    if std::thread::panicking() {
-                        eprintln!("remove the database file {}: {error}", self.0.display());
-                    } else {
-                        panic!("remove the database file {}: {error}", self.0.display());
-                    }
-                }
-            }
-        }
-    }
-}
-
 static ENTITY: LazyLock<Entity> = LazyLock::new(|| Entity {
     name: "soft_record",
     schema: &SCHEMA,
@@ -75,7 +40,7 @@ fn record(db: &Db) -> SoftRecord {
 async fn soft_delete_filters_reads_and_rewrites_deletes() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let path = std::env::temp_dir().join(format!("orm-rust-soft-delete-{}.sqlite", std::process::id()));
-    let _file = TempFile::fresh(path.clone());
+    let _file = polyspec_orm_testcase::SqliteFile::fresh(path.clone());
     let dsn = format!("sqlite://{}?_pragma=busy_timeout(5000)", path.display());
     let logged: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
     let hook = logged.clone();

@@ -275,7 +275,12 @@ final class Db
     private function hook(Request $r): void
     {
         if ($this->requestHook !== null) {
-            ($this->requestHook)($r);
+            $params = $r->params;
+            try {
+                ($this->requestHook)($r);
+            } finally {
+                $r->params = array_merge($params, array_slice($r->params, count($params)));
+            }
         }
     }
 

@@ -316,28 +316,8 @@ final class OrmExceptionNativeTest extends TestCase
 
     public function testNativeMarkdownConnectionSendsTheConnectHandshake(): void
     {
-        $serverCode = <<<'PHP'
-$server = stream_socket_server('tcp://127.0.0.1:0', $errno, $error);
-if ($server === false) { fwrite(STDERR, $error); exit(2); }
-$address = stream_socket_get_name($server, false);
-echo substr($address, strrpos($address, ':') + 1), "\n";
-flush();
-$client = stream_socket_accept($server, 10);
-if ($client === false) { exit(3); }
-$request = fgets($client);
-if ($request === false) { exit(4); }
-fwrite($client, "{}\n");
-fclose($client);
-echo base64_encode($request), "\n";
-fclose($server);
-PHP;
-        $pipes = [];
-        $process = proc_open(
-            [PHP_BINARY, '-r', $serverCode],
-            [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
-            $pipes
-        );
-        Assert::assertIsResource($process);
+        $serverCode = self::markdownServerCode('{}');
+        [$process, $pipes] = self::startMarkdownServer($serverCode);
         try {
             $port = trim((string) fgets($pipes[1]));
             Assert::assertMatchesRegularExpression('/^[1-9][0-9]*$/', $port);
@@ -348,45 +328,19 @@ PHP;
             Assert::assertSame(['op' => 'connect', 'corpus' => 'corpus', 'token' => 'test-token'], $request);
             $db->close();
         } finally {
-            foreach ($pipes as $pipe) {
-                if (is_resource($pipe)) {
-                    fclose($pipe);
-                }
-            }
-            $status = proc_get_status($process);
-            if ($status['running']) {
-                proc_terminate($process);
-            }
-            proc_close($process);
+            self::stopMarkdownServer($process, $pipes);
         }
     }
 
     // Requirements: PRT-64.
     public function testNativeMarkdownConnectionRefusesConnectError(): void
     {
-        $serverCode = <<<'PHP'
-$server = stream_socket_server('tcp://127.0.0.1:0', $errno, $error);
-if ($server === false) { fwrite(STDERR, $error); exit(2); }
-$address = stream_socket_get_name($server, false);
-echo substr($address, strrpos($address, ':') + 1), "\n";
-flush();
-$client = stream_socket_accept($server, 10);
-if ($client === false) { exit(3); }
-$request = fgets($client);
-if ($request === false) { exit(4); }
-$response = ['error' => ['code' => 'CONFIG', 'message' => "connect: the token is not the corpus's token"]];
-fwrite($client, json_encode($response, JSON_THROW_ON_ERROR) . "\n");
-fclose($client);
-echo base64_encode($request), "\n";
-fclose($server);
-PHP;
-        $pipes = [];
-        $process = proc_open(
-            [PHP_BINARY, '-r', $serverCode],
-            [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
-            $pipes
+        $response = json_encode(
+            ['error' => ['code' => 'CONFIG', 'message' => "connect: the token is not the corpus's token"]],
+            JSON_THROW_ON_ERROR
         );
-        Assert::assertIsResource($process);
+        $serverCode = self::markdownServerCode($response);
+        [$process, $pipes] = self::startMarkdownServer($serverCode);
         try {
             $port = trim((string) fgets($pipes[1]));
             Assert::assertMatchesRegularExpression('/^[1-9][0-9]*$/', $port);
@@ -414,16 +368,7 @@ PHP;
                 $request
             );
         } finally {
-            foreach ($pipes as $pipe) {
-                if (is_resource($pipe)) {
-                    fclose($pipe);
-                }
-            }
-            $status = proc_get_status($process);
-            if ($status['running']) {
-                proc_terminate($process);
-            }
-            proc_close($process);
+            self::stopMarkdownServer($process, $pipes);
         }
     }
 
@@ -555,5 +500,52 @@ PHP;
         Assert::assertSame($driverError, $error->getPrevious());
         Assert::assertNull($error->rollback);
         Assert::assertSame([], $error->cleanup);
+    }
+
+    private static function markdownServerCode(string $response): string
+    {
+        return str_replace('__RESPONSE__', var_export($response, true), <<<'PHP'
+$server = stream_socket_server('tcp://127.0.0.1:0', $errno, $error);
+if ($server === false) { fwrite(STDERR, $error); exit(2); }
+$address = stream_socket_get_name($server, false);
+echo substr($address, strrpos($address, ':') + 1), "\n";
+flush();
+$client = stream_socket_accept($server, 10);
+if ($client === false) { exit(3); }
+$request = fgets($client);
+if ($request === false) { exit(4); }
+fwrite($client, __RESPONSE__ . "\n");
+fclose($client);
+echo base64_encode($request), "\n";
+fclose($server);
+PHP);
+    }
+
+    /** @return array{resource, array<int, resource>} */
+    private static function startMarkdownServer(string $serverCode): array
+    {
+        $pipes = [];
+        $process = proc_open(
+            [PHP_BINARY, '-r', $serverCode],
+            [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+            $pipes
+        );
+        Assert::assertIsResource($process);
+        return [$process, $pipes];
+    }
+
+    /** @param array<int, resource> $pipes */
+    private static function stopMarkdownServer($process, array $pipes): void
+    {
+        foreach ($pipes as $pipe) {
+            if (is_resource($pipe)) {
+                fclose($pipe);
+            }
+        }
+        $status = proc_get_status($process);
+        if ($status['running']) {
+            proc_terminate($process);
+        }
+        proc_close($process);
     }
 }

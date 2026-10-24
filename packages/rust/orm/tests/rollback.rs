@@ -26,6 +26,11 @@ use model_connect::connected;
 mod or_panic;
 use or_panic::OrPanic;
 
+
+#[path = "common/case_database_run.rs"]
+mod case_database_run;
+use case_database_run::run_case;
+
 use std::time::Duration;
 
 use polyspec_orm::db::Pool;
@@ -44,6 +49,7 @@ const COLUMNS: [&str; 2] = ["seq", "label"];
 const CASE_DEADLINE: Duration = Duration::from_secs(30);
 
 model_row!(RollbackProbe, ROLLBACK_PROBE, COLUMNS);
+
 
 /// Opens the client, installs the fixture and, on SQLite, the trigger that raises ROLLBACK.
 async fn installed(driver: &str, dsn: &str) -> Db {
@@ -246,18 +252,17 @@ async fn rollback_fault(driver: &str, dsn: &str) {
 /// Runs the case within its deadline in its own case database, and drops the database when done.
 async fn bounded(driver: &str, case: &str) {
     let database = CaseDatabase::create(driver).await;
-    let dsn = database.dsn();
+    let dsn = database.dsn().to_owned();
     let session = session_dsn(driver, &database);
     let run = async {
         match case {
-            "rollback_failed" => rollback_failed(driver, dsn, &session).await,
-            "savepoint_rollback_failed" => savepoint_rollback_failed(driver, dsn, &session).await,
-            "rollback_fault" => rollback_fault(driver, dsn).await,
+            "rollback_failed" => rollback_failed(driver, &dsn, &session).await,
+            "savepoint_rollback_failed" => savepoint_rollback_failed(driver, &dsn, &session).await,
+            "rollback_fault" => rollback_fault(driver, &dsn).await,
             other => unreachable!("unknown case {other}"),
         }
     };
-    tokio::time::timeout(CASE_DEADLINE, run).await.or_panic(|_| format!("{driver}: {case}: timeout after {CASE_DEADLINE:?}"));
-    database.drop().await;
+    run_case(database, driver, case, CASE_DEADLINE, run).await;
 }
 
 #[tokio::test]

@@ -7,13 +7,22 @@ declare(strict_types=1);
 if (getenv('ORM_PHP_MODE') !== 'extension') {
     throw new RuntimeException('ORM_PHP_MODE must be extension for the PHP extension test package');
 }
-if (!extension_loaded('polyspec_orm')) {
-    throw new RuntimeException(
-        'the extension polyspec_orm is not loaded; run make dbspec-php-extension-check, which builds and loads it'
-    );
+final class PhpExtensionBootstrapAssertions extends \PHPUnit\Framework\Assert
+{
+    public static function requireLoaded(): void
+    {
+        self::assertTrue(
+            extension_loaded('polyspec_orm'),
+            'the extension polyspec_orm is not loaded; run make dbspec-php-extension-check, which builds and loads it'
+        );
+    }
 }
+PhpExtensionBootstrapAssertions::requireLoaded();
 require_once dirname(__DIR__, 2) . '/php/tests/bootstrap.php';
 require_once dirname(__DIR__, 2) . '/php/tests/MarkdownConformanceTest.php';
+require_once __DIR__ . '/ModelAssemblyFixture.php';
+require_once __DIR__ . '/ModelAssemblyTestSupport.php';
+require_once __DIR__ . '/ModelTypesPendingFixture.php';
 // The functions that DeclarationsTest.php shares with declarations.php, which it runs as a child process.
 require_once __DIR__ . '/declarations_functions.php';
 require_once __DIR__ . '/NativeTestEventLog.php';

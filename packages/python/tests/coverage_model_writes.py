@@ -2,10 +2,12 @@
 # model, as the model_writes coverage of Go, PHP, TypeScript and Rust does. It writes only composite_account, which has
 # no identity column, and deletes every row it wrote, so the database state stays as it was.
 from polyspec.orm.models import models
+
 from .coverage_case import (
-    expect_equal,
     CoverageCase,
     coverage_main,
+    error_code,
+    expect_equal,
     run_on_empty_tenant,
     with_cleanup,
 )
@@ -86,6 +88,122 @@ def model_write_cycle(item):
 
 
 class CoverageTest(CoverageCase):
+    # Requirements: DSL-104, INT-35, PRT-41.
+    def test_create_parts(self):
+        tenant = TENANT + 1
+
+        def case(_db, account):
+            events = []
+            unsubscribe = _db.subscribe(events.append)
+            try:
+                refused = [
+                    models.CompositeAccount()
+                    .set_tenant_id(tenant)
+                    .set_account_id(1)
+                    .set_name("refused")
+                ]
+                expect_equal(
+                    error_code(lambda: account().creates(refused, 0)),
+                    "CONFIG",
+                    "batch zero error",
+                )
+                expect_equal(events, [], "refused batch sends no statements")
+                limit = 999 if _db.driver == "sqlite" else 65535
+                oversized = [
+                    models.CompositeAccount()
+                    .set_tenant_id(tenant)
+                    .set_account_id(8)
+                    .set_name("oversized")
+                    for _ in range(limit // 3 + 1)
+                ]
+                expect_equal(
+                    error_code(lambda: account().creates(oversized, len(oversized))),
+                    "BATCH_TOO_LARGE",
+                    "over-limit batch is refused",
+                )
+                expect_equal(events, [], "over-limit batch sends no statements")
+
+                labels = [
+                    "ordered-5",
+                    "ordered-4",
+                    "ordered-3",
+                    "ordered-2",
+                    "ordered-1",
+                ]
+                rows = [
+                    models.CompositeAccount()
+                    .set_tenant_id(tenant)
+                    .set_account_id(i + 1)
+                    .set_name(label)
+                    for i, label in enumerate(labels)
+                ]
+                expect_equal(account().creates(rows, 2), 5, "rows inserted")
+                inserts = [event for event in events if event.kind == "insert"]
+                expect_equal(
+                    [len(event.binds) // 3 for event in inserts],
+                    [2, 2, 1],
+                    "INSERT batch sizes",
+                )
+                stored = account().tenant_id(tenant).order_by_account_id_asc().gets()
+                expect_equal(
+                    [row.get_name() for row in stored], labels, "stored row order"
+                )
+
+                account().tenant_id(tenant).gets().delete()
+                events.clear()
+                account().set_tenant_id(tenant).set_account_id(99).set_name(
+                    "existing"
+                ).create()
+                events.clear()
+                failing = [
+                    models.CompositeAccount()
+                    .set_tenant_id(tenant)
+                    .set_account_id(key)
+                    .set_name(f"rollback-{key}")
+                    for key in (10, 11, 12, 13, 99)
+                ]
+                expect_equal(
+                    error_code(lambda: account().creates(failing, 2)),
+                    "DUPLICATE_KEY",
+                    "third batch conflicts with sentinel",
+                )
+                failed_inserts = [event for event in events if event.kind == "insert"]
+                expect_equal(
+                    [len(event.binds) // 3 for event in failed_inserts],
+                    [2, 2, 1],
+                    "failing INSERT batches",
+                )
+                expect_equal(
+                    account().tenant_id(tenant).get_count(),
+                    1,
+                    "failed call rolls back earlier batches",
+                )
+                expect_equal(
+                    account().get_by_tenant_id_and_account_id(tenant, 99).get_name(),
+                    "existing",
+                    "sentinel survives rollback",
+                )
+            finally:
+                try:
+                    unsubscribe()
+                finally:
+                    account().tenant_id(tenant).gets().delete()
+
+            def assert_clean():
+                account().tenant_id(tenant).gets().delete()
+                expect_equal(
+                    account().tenant_id(tenant).get_count(), 0, "case leaves no rows"
+                )
+
+            with_cleanup(
+                assert_clean,
+                lambda: account().tenant_id(tenant).gets().delete(),
+            )
+
+        self.each_item(
+            "create_parts", lambda item: run_on_empty_tenant(models, item, tenant, case)
+        )
+
     # Requirements: DSL-56, DSL-57, DSL-58, DSL-60, DSL-103, DSL-104, DSL-105, DSL-106, DSL-110.
     def test_model_write_cycle(self):
         self.each_item("model_write_cycle", model_write_cycle)

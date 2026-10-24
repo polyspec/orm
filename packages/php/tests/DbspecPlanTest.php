@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
+require_once __DIR__ . '/dbspec-php-interface-program.php';
+
 // The plan vectors of tests/dbspec/plans.json through Polyspec\Orm\Dbspec\Dbspec
 // (docs/spec/plans.md): every case's canonical emission, changes and steps of
 // three dialects, every invalid case's `plan` diagnostics, every chain
@@ -99,12 +101,7 @@ final class DbspecPlanTest extends TestCase
     public function testComparisonHarnessParsesPlanVectorsAndWritesDiagnostics(): void
     {
         $root = dirname(__DIR__, 3);
-        $program = implode("\n", [
-            'require ' . var_export("$root/vendor-php/autoload.php", true) . ';',
-            'require ' . var_export("$root/tests/dbspec/input.php", true) . ';',
-            'require ' . var_export("$root/tests/dbspec/vectors.php", true) . ';',
-            'require ' . var_export("$root/tests/dbspec/cases.php", true) . ';',
-            'require ' . var_export("$root/packages/php/testing/dbspec/compare/php-interface.php", true) . ';',
+        $program = dbspec_php_interface_program($root, [
             '$plans = json_decode(file_get_contents(' . var_export("$root/tests/dbspec/plans.json", true)
                 . '), true, 512, JSON_THROW_ON_ERROR);',
             'ob_start();',
@@ -117,7 +114,7 @@ final class DbspecPlanTest extends TestCase
             '$casePlan = dbspec_case_plan(Polyspec\\Orm\\Dbspec\\Dbspec::class, $plans[\'cases\'][0]);',
             '$caseOutput = ob_get_clean();',
             'echo json_encode([$plan?->name, $validOutput, $rejected === null, $invalidOutput, '
-                . '$casePlan !== false, $casePlan[1]->name ?? null, $caseOutput], JSON_THROW_ON_ERROR);'
+                . '$casePlan !== false, $casePlan[1]->name ?? null, $caseOutput], JSON_THROW_ON_ERROR);',
         ]);
         [$status, $stdout, $stderr] = coverageProcess([PHP_BINARY, '-r', $program], $root);
         self::assertSame(0, $status, $stderr);

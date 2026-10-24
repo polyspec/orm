@@ -9,9 +9,6 @@ namespace Polyspec\Orm\Tests;
 // service_seq i%100+1, read_count i%1000, and the name of user seq n is user-n.
 
 
-use Polyspec\Orm\Tests\Model\Author;
-use Polyspec\Orm\Tests\Model\User;
-use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
 
@@ -21,35 +18,10 @@ final class CoverageModelQueriesTest extends TestCase
     // Requirements: DSL-57, DSL-58, DSL-60, DSL-62, DSL-80, DSL-82, DSL-99, PLN-11.
     public function testModelQueryRows(): void
     {
+        require_once __DIR__ . '/CoverageModelQueriesCase.php';
         coverageAssertEntryClassesAreInternal();
-        foreach (coverageItemsOf(__FILE__) as $item) {
-            selectCoverageItem($item);
-            [, $dsn] = coverageItem();
-            $db = coverageConnect($dsn);
-            try {
-                $count = (new Author())($db)->userSeq(1)->getCount();
-                Assert::assertTrue($count === 20, "author count of user_seq 1 is $count, want 20");
-                $names = array_map(
-                    static fn(Author $b): string => $b->getName(),
-                    (new Author())($db)->serviceSeq(7)->orderBySeqDesc()->limit(0, 3)->gets()->all()
-                );
-                Assert::assertTrue(
-                    $names === ['author-99906', 'author-99806', 'author-99706'],
-                    'ordered limited rows ' . json_encode($names)
-                );
-                $sum = (new Author())($db)->serviceSeq(7)->sumReadCount()->getSum();
-                Assert::assertTrue($sum === 456000.0, "read_count sum of service_seq 7 is $sum, want 456000");
-                $author = (new Author())($db)->relation(
-                    (new User())->matchUserSeqWithSeq()->aliasWriter()
-                )->getBySeq(5000);
-                $writer = $author->getWriter();
-                Assert::assertTrue(
-                    $writer instanceof User && $writer->getName() === 'user-1',
-                    'user relation of author 5000 is ' . json_encode($writer?->toArray())
-                );
-            } finally {
-                $db->close();
-            }
-        }
+        coverageRunDatabaseItems(__FILE__, static function (\Polyspec\Orm\Db $db): void {
+            CoverageModelQueriesCase::run($db);
+        });
     }
 }

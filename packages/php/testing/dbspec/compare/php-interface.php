@@ -414,6 +414,16 @@ function dbspec_write_syntax(string $dbspec, array $cases, string $syntaxPath): 
     }
 }
 
+/** Runs the shared PHP dbspec comparison output sequence for the six runner inputs. @param list<string> $inputs */
+function dbspec_write_comparison(string $dbspec, array $inputs): void
+{
+    $cases = dbspec_write_interface($dbspec, $inputs[0], $inputs[1], $inputs[2]);
+    dbspec_write_plans($dbspec, $inputs[3]);
+    dbspec_write_mermaid($dbspec, $inputs[4]);
+    dbspec_write_positions($dbspec, $cases);
+    dbspec_write_syntax($dbspec, $cases, $inputs[5]);
+}
+
 /** Writes one step as a statement line and its attribute lines (tests/dbspec/compare/check.mts). */
 function dbspec_step(object $s): void
 {

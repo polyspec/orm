@@ -3,6 +3,9 @@
 use crate::or_panic::OrPanic;
 use serde_json::Value;
 
+#[path = "json_lines.rs"]
+mod json_lines;
+
 /// The versioned dbspec vector file at the repository path.
 pub(super) fn vectors(name: &str) -> Value {
     let filename = format!("{name}.json");
@@ -14,5 +17,5 @@ pub(super) fn vectors(name: &str) -> Value {
 
 /// Joins text lines with one trailing newline per line.
 pub(super) fn lines(value: &Value) -> String {
-    value.as_array().expect("lines").iter().map(|l| format!("{}\n", l.as_str().expect("line"))).collect()
+    json_lines::text(value)
 }

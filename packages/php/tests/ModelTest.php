@@ -46,6 +46,8 @@ use PHPUnit\Framework\Attributes\DataProvider;
 #[Medium]
 final class ModelTest extends TestCase
 {
+    use ThreeDrivers;
+
     private static mixed $work = null;
     private static mixed $targets = null;
     private static mixed $root = null;
@@ -1013,14 +1015,6 @@ final class ModelTest extends TestCase
         self::$caseDatabases = [];
         foreach ($databases as $database) {
             $database->drop();
-        }
-    }
-
-    /** @return iterable<string, array{string}> the drivers, each a data set */
-    public static function drivers(): iterable
-    {
-        foreach (['sqlite', 'mysql', 'postgres'] as $driver) {
-            yield $driver => [$driver];
         }
     }
 

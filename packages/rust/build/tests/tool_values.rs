@@ -1,3 +1,6 @@
+#[path = "common/physical_fixture.rs"]
+mod physical_fixture;
+
 use polyspec_orm_build::tool_db::{self, Val};
 
 // Requirements: SCH-4.
@@ -45,15 +48,11 @@ async fn physical_tool_accessors_preserve_errors_on_all_databases() {
 }
 
 async fn physical_accessors() {
-    let path = std::env::temp_dir().join(format!("orm-tool-values-{}.sqlite", std::process::id()));
+    let path = physical_fixture::sqlite_path("tool-values");
     assert!(!path.exists(), "owned fixture must not already exist");
     for dialect in ["sqlite", "mysql", "postgres"] {
         polyspec_orm_testcase::step(format_args!("running {dialect}"));
-        let dsn = match dialect {
-            "sqlite" => format!("sqlite://{}", path.display()),
-            "mysql" => std::env::var("ORM_TOOLS_MYSQL_DSN").expect("declared MySQL test DSN"),
-            _ => std::env::var("ORM_TOOLS_POSTGRES_DSN").expect("declared PostgreSQL test DSN"),
-        };
+        let dsn = physical_fixture::dsn_for(dialect, &path);
         let (database, mut connection, _) = tool_db::open(&dsn).await.expect("owning test connection");
         let rows = connection.query("SELECT 'private-invalid-value', 2, NULL", &[]).await.unwrap();
         assert!(rows[0][0].int().is_err());
@@ -67,9 +66,7 @@ async fn physical_accessors() {
         for (cell, expected) in rows[0].iter().zip([true, false, true, false]) {
             assert_eq!(cell.bool().unwrap(), expected);
         }
-        drop(connection);
-        database.close().await;
-        polyspec_orm_testcase::step(format_args!("{dialect} passed"));
+        physical_fixture::finish_physical_dialect(database, connection, dialect, "passed").await;
     }
     std::fs::remove_file(path).expect("remove owned SQLite fixture");
 }

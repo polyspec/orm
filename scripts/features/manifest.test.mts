@@ -5,6 +5,8 @@ import { readFileSync } from 'node:fs';
 import { caseTest, COMPUTE } from '../../tests/testcase.mts';
 import { parseJson, refusedPaths, SchemaError } from '../json/schema.mts';
 import { parseFeatures, readFeatures, type ManifestFeature } from './manifest.mts';
+import { completionItemAdapterErrors } from './behavior-adapters.mts';
+import { readManifest as readInterfaceManifest } from '../../tests/interfaces/check/manifest.mts';
 
 const root = new URL('../..', import.meta.url).pathname;
 const manifest = readFeatures(root);
@@ -37,6 +39,20 @@ caseTest('the schema of contracts/features.json refuses a manifest outside its s
   assert.ok(refused(withFeature(feature => ({ ...feature, verification: [{ id: 'a', command: '', shard: 'other' }] }))).includes('/features/0/verification/0/command'));
   assert.ok(refused(withFeature(feature => ({ ...feature, verification: [{ id: 'a', command: 'x', shard: 'other', timeout: 1 }] }))).includes('/features/0/verification/0'));
   assert.ok(refused(withFeature(feature => ({ ...feature, verification: [{ id: 'a', command: 'x', shard: 'other', environment: 'mac' }] }))).includes('/features/0/verification/0/environment'));
+});
+
+caseTest('a checklist item cannot close while a declared runtime adapter is unresolved', COMPUTE, () => {
+  const contract = readInterfaceManifest(new URL('../../contracts/interfaces.json', import.meta.url).pathname).behavior_adapters?.find(value => value.id === 'CFG-9');
+  assert.ok(contract, 'CFG-9 adapter contract is missing');
+  const inProgress = '| KSTD-2-11-16 | Handle cancellation | [~] |';
+  assert.deepEqual(completionItemAdapterErrors(inProgress, [contract]), [], 'an in-progress item was refused');
+  const completed = '| KSTD-2-11-16 | Handle cancellation | [o] |';
+  const failures = completionItemAdapterErrors(completed, [contract]);
+  assert.ok(failures.some(error => error.includes('KSTD-2-11-16: CFG-9/php: unresolved native behavior adapter')),
+    'item completion passed with unresolved PHP cancellation');
+  assert.ok(failures.some(error => error.includes('KSTD-2-11-16: CFG-9/php-extension: unresolved native behavior adapter')),
+    'item completion passed with unresolved PHP extension cancellation');
+  assert.notDeepEqual(completionItemAdapterErrors('', [contract]), [], 'missing owning checklist item passed');
 });
 
 caseTest('the schema of a shared fixture refuses a fixture without its feature or its cases', COMPUTE, () => {

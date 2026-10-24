@@ -18,6 +18,9 @@ use model::{
 use polyspec_orm::{AesKeyring, Collection, Db, Model, Null, Param};
 use serde_json::{json, Map, Value};
 
+#[path = "../tests/common/statement_record.rs"]
+mod statement_record;
+
 #[derive(Default)]
 struct Log {
     statements: Vec<Value>,
@@ -28,6 +31,14 @@ struct Log {
 }
 
 type Shared = Arc<Mutex<Log>>;
+
+/// Consumes the sentinel error used to roll back a conformance transaction and propagates other errors.
+fn check_rollback_result(result: polyspec_orm::Result<()>) -> polyspec_orm::Result<()> {
+    if !matches!(&result, Err(polyspec_orm::Error::Config(message)) if message == "boom") {
+        result?;
+    }
+    Ok(())
+}
 
 fn time_text(t: &chrono::NaiveDateTime) -> String {
     t.format("%Y-%m-%d %H:%M:%S%.6f").to_string()
@@ -311,14 +322,7 @@ async fn main() {
                 let next = log.transactions.len() as u64 + 1;
                 *log.transactions.entry(n).or_insert(next)
             });
-            log.statements.push(json!({
-                "sql": e.sql,
-                "binds": binds,
-                "kind": e.kind,
-                "tables": e.tables,
-                "transaction": transaction,
-                "error": e.error.map(|error| error.code().to_owned()),
-            }));
+            log.statements.push(statement_record::statement_record(e, binds, transaction));
             Ok(())
         })
         .expect("a SQL connection accepts a subscriber");
@@ -374,6 +378,15 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
             ));
         }};
     }
+    macro_rules! insert_read_delete {
+        ($create:expr, $read:expr, $columns:expr $(,)?) => {{
+            let created = $create.await?;
+            mask(shared, &[created.get_seq().unwrap()], &[]);
+            let rows = $read.await?;
+            created.delete(false).await?;
+            Ok::<Value, polyspec_orm::Error>(picks(&rows, $columns))
+        }};
+    }
     let author = move || Author::new().connect(db);
     let cols = ["seq", "name", "is_close", "is_display", "read_count"];
 
@@ -396,11 +409,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
                 .create()
                 .await?;
             let a_seq = author.get_seq()?;
-            let rel = if locked {
-                Author::new().match_seq_with_user_seq().delete_lock()
-            } else {
-                Author::new().match_seq_with_user_seq()
-            };
+            let rel = if locked { Author::new().match_seq_with_user_seq().delete_lock() } else { Author::new().match_seq_with_user_seq() };
             let loaded = User::new().connect(db).seq(u_seq).relations(rel).gets().await?;
             let error = match loaded.delete(true).await {
                 Ok(()) => "none".to_owned(),
@@ -914,9 +923,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
             })
             .retry(0)
             .await;
-        if !matches!(&ended, Err(polyspec_orm::Error::Config(m)) if m == "boom") {
-            ended?;
-        }
+        check_rollback_result(ended)?;
         let left = SoftRecord::new().connect(db).name("restore").get_count().await?;
         let mut result = result.into_inner().unwrap();
         result.insert("left".into(), json!(left));
@@ -948,9 +955,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
             })
             .retry(0)
             .await;
-        if !matches!(&ended, Err(polyspec_orm::Error::Config(m)) if m == "boom") {
-            ended?;
-        }
+        check_rollback_result(ended)?;
         let left = SoftLink::new().connect(db).get_count().await?;
         let mut result = result.into_inner().unwrap();
         result.insert("left".into(), json!(left));
@@ -989,9 +994,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
             })
             .retry(0)
             .await;
-        if !matches!(&ended, Err(polyspec_orm::Error::Config(m)) if m == "boom") {
-            ended?;
-        }
+        check_rollback_result(ended)?;
         let left = Author::new().connect(db).seq(42).get_count().await?;
         let mut result = result.into_inner().unwrap();
         result.insert("left".into(), json!(left));
@@ -1026,9 +1029,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
             })
             .retry(0)
             .await;
-        if !matches!(&ended, Err(polyspec_orm::Error::Config(m)) if m == "boom") {
-            ended?;
-        }
+        check_rollback_result(ended)?;
         Ok::<Value, polyspec_orm::Error>(Value::Object(result.into_inner().unwrap()))
     });
     run!("column_pairs", async {
@@ -1089,22 +1090,22 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
     run!(
         "datetime_p0_roundtrip",
         db.transaction(async || {
-            let created = TimeCell::new().connect(db).set_at(txt(at))?.set_clock("10:11:12").create().await?;
-            mask(shared, &[created.get_seq().unwrap()], &[]);
-            let rows = TimeCell::new().connect(db).at(txt(at)).gets().await?;
-            created.delete(false).await?;
-            Ok::<Value, polyspec_orm::Error>(picks(&rows, &["clock"]))
+            insert_read_delete!(
+                TimeCell::new().connect(db).set_at(txt(at))?.set_clock("10:11:12").create(),
+                TimeCell::new().connect(db).at(txt(at)).gets(),
+                &["clock"],
+            )
         })
         .retry(0)
     );
     run!(
         "time_p3_roundtrip",
         db.transaction(async || {
-            let created = TimeCell::new().connect(db).set_at(txt(at))?.set_clock("10:11:12.345000").create().await?;
-            mask(shared, &[created.get_seq().unwrap()], &[]);
-            let rows = TimeCell::new().connect(db).clock("10:11:12.345").gets().await?;
-            created.delete(false).await?;
-            Ok::<Value, polyspec_orm::Error>(picks(&rows, &["clock"]))
+            insert_read_delete!(
+                TimeCell::new().connect(db).set_at(txt(at))?.set_clock("10:11:12.345000").create(),
+                TimeCell::new().connect(db).clock("10:11:12.345").gets(),
+                &["clock"],
+            )
         })
         .retry(0)
     );
@@ -1112,22 +1113,18 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
     run!(
         "date_roundtrip",
         db.transaction(async || {
-            let created = DayCell::new().connect(db).set_label("date").set_day("2026-06-01")?.set_at_time("10:11:12").create().await?;
-            mask(shared, &[created.get_seq().unwrap()], &[]);
-            let rows = DayCell::new().connect(db).label("date").gets().await?;
-            created.delete(false).await?;
-            Ok::<Value, polyspec_orm::Error>(picks(&rows, &["day", "at_time"]))
+            insert_read_delete!(
+                DayCell::new().connect(db).set_label("date").set_day("2026-06-01")?.set_at_time("10:11:12").create(),
+                DayCell::new().connect(db).label("date").gets(),
+                &["day", "at_time"],
+            )
         })
         .retry(0)
     );
     run!(
         "date_null",
         db.transaction(async || {
-            let created = DayCell::new().connect(db).set_label("nil").create().await?;
-            mask(shared, &[created.get_seq().unwrap()], &[]);
-            let rows = DayCell::new().connect(db).label("nil").gets().await?;
-            created.delete(false).await?;
-            Ok::<Value, polyspec_orm::Error>(picks(&rows, &["day", "at_time"]))
+            insert_read_delete!(DayCell::new().connect(db).set_label("nil").create(), DayCell::new().connect(db).label("nil").gets(), &["day", "at_time"],)
         })
         .retry(0)
     );

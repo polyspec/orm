@@ -16,18 +16,7 @@ declare(strict_types=1);
 
 require __DIR__ . '/../../../../../vendor-php/autoload.php';
 require __DIR__ . '/../../../../../tests/dbspec/input.php';
-
-use Polyspec\Orm\Dbspec\ApplyError;
-use Polyspec\Orm\Dbspec\ApplyEvent;
-use Polyspec\Orm\Dbspec\Dbspec;
-use Polyspec\Orm\Orm;
-
-// Statement that every client runs on a new connection (packages/go/internal/dialects connectionRules).
-const CONNECTION_RULES = [
-    'mysql' => ["SET time_zone = '+00:00'"],
-    'postgres' => ["SET TimeZone = 'UTC'"],
-    'sqlite' => ['PRAGMA foreign_keys = ON']
-];
+require __DIR__ . '/../../../../php/testing/dbspec/apply/runner.php';
 
 if ($argc !== 5) {
     fwrite(
@@ -45,59 +34,4 @@ if (getenv('ORM_PHP_MODE') !== 'extension') {
     );
     exit(1);
 }
-[, $action, $dialect, $uri, $vectorsPath] = $argv;
-try {
-    $vectors = json_decode(dbspec_read_input($vectorsPath), true, 512, JSON_THROW_ON_ERROR);
-} catch (JsonException $e) {
-    fwrite(STDERR, "$vectorsPath: {$e->getMessage()}\n");
-    exit(1);
-}
-$plans = [];
-foreach ($vectors['cases'] as $case) {
-    if ($case['id'] === 'create-from-empty' || $case['id'] === 'rename-table-and-column') {
-        $parsed = Dbspec::parsePlan(implode("\n", $case['plan']) . "\n");
-        $plans[] = $parsed->plan ?? throw new RuntimeException("{$case['id']}: " . json_encode($parsed->diagnostics));
-    }
-}
-if (count($plans) !== 2 || $plans[1]->from !== $plans[0]->to) {
-    throw new RuntimeException('plans.json does not chain create-from-empty and rename-table-and-column');
-}
-[, $pdoDsn, $user, $password] = Orm::parseDsn($uri);
-$pdo = new PDO($pdoDsn, $user, $password, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-foreach (CONNECTION_RULES[$dialect] ?? throw new InvalidArgumentException("unknown dialect $dialect") as $rule) {
-    $pdo->exec($rule);
-}
-$now = static fn(): DateTimeImmutable => new DateTimeImmutable('2026-10-01T00:00:00.123456789Z');
-$stop = new RuntimeException('stop');
-try {
-    match ($action) {
-        'apply-first' => Dbspec::apply($pdo, $dialect, [$plans[0]], $now, null),
-        'apply' => Dbspec::apply($pdo, $dialect, $plans, $now, null),
-        'recover' => Dbspec::recover($pdo, $dialect, $plans, $now, null),
-        'rollback' => Dbspec::rollback($pdo, $dialect, $plans, $now, null),
-        'stop' => Dbspec::apply($pdo, $dialect, $plans, $now, static function (
-            ApplyEvent $event
-        ) use (
-            $plans,
-            $stop
-): void {
-            if ($event->kind === 'applied' && $event->plan === $plans[1]->name && $event->step === 1) {
-                throw $stop;
-            }
-        }),
-        default => throw new InvalidArgumentException("unknown action $action"),
-    };
-} catch (ApplyError $e) {
-    echo "error {$e->code_}\n";
-    exit(0);
-} catch (RuntimeException $e) {
-    if ($e !== $stop) {
-        throw $e;
-    }
-    echo "stopped\n";
-    exit(0);
-}
-if ($action === 'stop') {
-    throw new RuntimeException('stop: apply did not stop');
-}
-echo "ok\n";
+exit(dbspec_apply_runner_run($argv));

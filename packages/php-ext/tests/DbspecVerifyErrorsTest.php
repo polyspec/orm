@@ -17,9 +17,9 @@ final class DbspecVerifyErrorsTest extends TestCase
 {
     public function testNativeVerificationErrorsPreserveCauseAndDistinguishDrift(): void
     {
-        Assert::assertTrue(extension_loaded('polyspec_orm'));
+        self::assertTrue(extension_loaded('polyspec_orm'));
         Assert::assertTrue((new \ReflectionClass(Dbspec::class))->isInternal());
-        Assert::assertFalse(function_exists('mermaid_test_import'), 'release extension omits private Mermaid test hooks');
+        self::assertFalse(function_exists('mermaid_test_import'), 'release extension omits private Mermaid test hooks');
 
         verify_errors_case(
             verify_errors_plan(),

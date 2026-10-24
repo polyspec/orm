@@ -57,11 +57,7 @@ final class FulltextSearchTest extends TestCase
         self::assertSame(['name'], $where['items'][0]['pred']['cols']);
         self::assertSame('alpha beta', $where['items'][0]['pred']['value']);
 
-        $path = tempnam(sys_get_temp_dir(), 'orm-fulltext-');
-        self::assertIsString($path);
-        $db = null;
-        try {
-            $db = \Polyspec\Orm\Tests\Model\connect("sqlite://$path", new Config());
+        $this->withSqliteConnection('orm-fulltext-', function ($db): void {
             $query = (new \Polyspec\Orm\Tests\Model\User())->connect($db)->fulltextBooleanName('alpha beta');
             try {
                 $query->getQuery();
@@ -69,16 +65,7 @@ final class FulltextSearchTest extends TestCase
             } catch (OrmException $e) {
                 self::assertSame(Code::OPERATOR_NOT_ALLOWED, $e->code_);
             }
-        } finally {
-            if ($db !== null) {
-                $db->close();
-            }
-            foreach (['', '-journal', '-wal', '-shm'] as $suffix) {
-                if (file_exists($path . $suffix)) {
-                    self::assertTrue(unlink($path . $suffix), "remove SQLite test file $path$suffix");
-                }
-            }
-        }
+        });
     }
 
     public function testPaginateRunsRootThenCountThenItsSixRelations(): void
@@ -86,11 +73,7 @@ final class FulltextSearchTest extends TestCase
         if (getenv('ORM_PHP_MODE') === 'extension') {
             self::assertTrue((new \ReflectionClass(\Polyspec\Orm\Db::class))->isInternal());
         }
-        $path = tempnam(sys_get_temp_dir(), 'orm-cpx2-');
-        self::assertIsString($path);
-        $db = null;
-        try {
-            $db = \Polyspec\Orm\Tests\Model\connect("sqlite://$path", new Config());
+        $this->withSqliteConnection('orm-cpx2-', function ($db): void {
             \Polyspec\Orm\Tests\installBench($db);
             $service = (new \Polyspec\Orm\Tests\Model\Service())->connect($db)
                 ->setName('service')
@@ -140,6 +123,18 @@ final class FulltextSearchTest extends TestCase
             foreach (array_slice($selects, 2) as $sql) {
                 self::assertStringContainsString('service_region', $sql);
             }
+        });
+    }
+
+    /** @param \Closure(\Polyspec\Orm\Db): void $run */
+    private function withSqliteConnection(string $prefix, \Closure $run): void
+    {
+        $path = tempnam(sys_get_temp_dir(), $prefix);
+        self::assertIsString($path);
+        $db = null;
+        try {
+            $db = \Polyspec\Orm\Tests\Model\connect("sqlite://$path", new Config());
+            $run($db);
         } finally {
             if ($db !== null) {
                 $db->close();

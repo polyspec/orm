@@ -23,13 +23,8 @@ final class CoverageTransactionsExtensionTest extends CoverageTransactionsTest
 
     public function testNativeSqliteTransactionCommitsAndPublishesOneTransactionId(): void
     {
-        $pdo = new PDO('sqlite::memory:');
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $db = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
         $events = [];
-        $unsubscribe = $db->subscribe(static function (StatementEvent $event) use (&$events): void {
-            $events[] = $event;
-        });
+        [$pdo, $db, $unsubscribe] = self::nativeSqliteTransactionContext($events);
 
         try {
             $db->run(StatementEvent::SCHEMA, [], null, 'CREATE TABLE lifecycle_rows (value TEXT NOT NULL)');
@@ -90,13 +85,8 @@ final class CoverageTransactionsExtensionTest extends CoverageTransactionsTest
 
     public function testNativeSqliteRollbackStatementDiscardsRowsAndPublishesEvent(): void
     {
-        $pdo = new PDO('sqlite::memory:');
-        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $db = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
         $events = [];
-        $unsubscribe = $db->subscribe(static function (StatementEvent $event) use (&$events): void {
-            $events[] = $event;
-        });
+        [$pdo, $db, $unsubscribe] = self::nativeSqliteTransactionContext($events);
 
         try {
             $db->run(StatementEvent::SCHEMA, [], null, 'CREATE TABLE lifecycle_rows (value TEXT NOT NULL)');
@@ -132,5 +122,19 @@ final class CoverageTransactionsExtensionTest extends CoverageTransactionsTest
             $unsubscribe();
             $db->close();
         }
+    }
+
+    /** @param list<StatementEvent> $events
+     * @return array{PDO, Db, \Closure}
+     */
+    private static function nativeSqliteTransactionContext(array &$events): array
+    {
+        $pdo = new PDO('sqlite::memory:');
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $db = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
+        $unsubscribe = $db->subscribe(static function (StatementEvent $event) use (&$events): void {
+            $events[] = $event;
+        });
+        return [$pdo, $db, $unsubscribe];
     }
 }

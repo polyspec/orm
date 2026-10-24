@@ -2314,6 +2314,70 @@
       ]
     },
     {
+      "id": "coverage-model-create-parts",
+      "kind": "feature",
+      "requirements": [
+        "DSL-104",
+        "INT-35",
+        "PRT-41"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/coverage_model_writes_test.go",
+          "id": "TestCoverageModelCreateParts",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-go-unit",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=TestCoverageModelCreateParts",
+            "FEATURE_PACKAGE=./model"
+          ]
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageModelWritesTest.php",
+          "id": "CoverageModelWritesTest::testCreateParts"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageModelWritesExtensionTest.php",
+          "id": "CoverageModelWritesExtensionTest::testCreateParts"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_model_writes.mjs",
+          "id": "create_parts [sqlite]"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_model_writes.py",
+          "id": "test_create_parts"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/integration/coverage_model_writes.rs",
+          "id": "coverage_model_writes::coverage_model_create_parts",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-rust-database",
+            "FEATURE_CRATE=packages/rust/tests",
+            "FEATURE_CARGO_TARGET=--test integration",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=coverage_model_writes::coverage_model_create_parts"
+          ]
+        }
+      ]
+    },
+    {
       "id": "coverage-model-write-cycle",
       "kind": "feature",
       "requirements": [
@@ -2387,7 +2451,7 @@
       "id": "coverage-request-hook-without-hook",
       "kind": "feature",
       "requirements": [
-        "CFG-9"
+        "INT-78"
       ],
       "bindings": [
         {
@@ -2414,7 +2478,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
-          "id": "CoverageRequestHookExtensionTest::test_without_hook"
+          "id": "CoverageRequestHookExtensionTest::testWithoutHook"
         },
         {
           "implementation": "typescript",
@@ -2437,7 +2501,7 @@
       "id": "coverage-request-hook-read-filter",
       "kind": "feature",
       "requirements": [
-        "DSL-65",
+        "INT-78",
         "PRT-2"
       ],
       "bindings": [
@@ -2570,7 +2634,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
-          "id": "CoverageRequestHookExtensionTest::test_loaded_row_writes"
+          "id": "CoverageRequestHookExtensionTest::testLoadedRowWrites"
         },
         {
           "implementation": "typescript",
@@ -2620,7 +2684,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
-          "id": "CoverageRequestHookExtensionTest::test_invalid_param"
+          "id": "CoverageRequestHookExtensionTest::testInvalidParam"
         },
         {
           "implementation": "typescript",
@@ -2670,7 +2734,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
-          "id": "CoverageRequestHookExtensionTest::test_restore_key"
+          "id": "CoverageRequestHookExtensionTest::testRestoreKey"
         },
         {
           "implementation": "typescript",
@@ -2721,7 +2785,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
-          "id": "CoverageRequestHookExtensionTest::test_restore_condition"
+          "id": "CoverageRequestHookExtensionTest::testRestoreCondition"
         },
         {
           "implementation": "typescript",
@@ -2771,7 +2835,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
-          "id": "CoverageRequestHookExtensionTest::test_restore_no_key"
+          "id": "CoverageRequestHookExtensionTest::testRestoreNoKey"
         },
         {
           "implementation": "typescript",
@@ -2821,7 +2885,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
-          "id": "CoverageRequestHookExtensionTest::test_restore_rewritten_key"
+          "id": "CoverageRequestHookExtensionTest::testRestoreRewrittenKey"
         },
         {
           "implementation": "typescript",
@@ -2871,7 +2935,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
-          "id": "CoverageRequestHookExtensionTest::test_restore_hook_set_key"
+          "id": "CoverageRequestHookExtensionTest::testRestoreHookSetKey"
         },
         {
           "implementation": "typescript",
@@ -2921,7 +2985,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
-          "id": "CoverageRequestHookExtensionTest::test_restore_rewritten_key_set_scope"
+          "id": "CoverageRequestHookExtensionTest::testRestoreRewrittenKeySetScope"
         },
         {
           "implementation": "typescript",
@@ -2944,7 +3008,7 @@
       "id": "coverage-request-hook-same-handle-child-hook-once",
       "kind": "feature",
       "requirements": [
-        "DSL-65",
+        "INT-78",
         "PRT-2"
       ],
       "bindings": [
@@ -2995,9 +3059,9 @@
       "id": "coverage-request-hook-upsert-scope",
       "kind": "feature",
       "requirements": [
+        "INT-78",
         "PRT-4",
-        "PRT-5",
-        "PRT-41"
+        "PRT-6"
       ],
       "bindings": [
         {
@@ -3040,6 +3104,45 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/request_hook.rs",
           "id": "coverage_request_hook_upsert_scope"
+        }
+      ]
+    },
+    {
+      "id": "request-hook-reads-params",
+      "kind": "feature",
+      "requirements": [
+        "INT-78"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_request_hook_test.go",
+          "id": "TestCoverageRequestHookReadsParams"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageRequestHookTest.php",
+          "id": "CoverageRequestHookTest::testReadsParams"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
+          "id": "CoverageRequestHookExtensionTest::testReadsParams"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_request_hook_reads_params.mjs",
+          "id": "request-hook-reads-params [sqlite]"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_request_hook.py",
+          "id": "test_reads_params"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/request_hook.rs",
+          "id": "reads_params"
         }
       ]
     },
@@ -3123,12 +3226,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/TransactionFailureTest.php",
-          "id": "TransactionFailureTest::testCloseDuringTransactionRollsBackAndPreservesCallbackFailure"
+          "id": "TransactionFailureTest::testCallbackUnwindRollsBackAndReusesTheConnection"
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php-ext/tests/AuditLazyFakePdoTest.php",
-          "id": "AuditLazyFakePdoTest::testCloseDuringTransactionRollsBackBeforeReleasingNativeConnection"
+          "test": "packages/php-ext/tests/TransactionFailureNativeTest.php",
+          "id": "TransactionFailureNativeTest::testCallbackUnwindRollsBackAndReusesTheConnection"
         },
         {
           "implementation": "typescript",
@@ -3480,20 +3583,6 @@
           "implementation": "typescript",
           "test": "packages/ts/tests/param-uses.mjs",
           "id": "param-uses/kinds"
-        }
-      ]
-    },
-    {
-      "id": "ts-request_hook",
-      "kind": "feature",
-      "requirements": [
-        "INT-78"
-      ],
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/request_hook.mjs",
-          "id": "request-hook/without_hook"
         }
       ]
     },
@@ -4218,6 +4307,11 @@
           "symbol": "AggregateNumericTest::testAggregateNumeric"
         },
         {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageNativeFixtureExtensionTest.php",
+          "symbol": "CoverageNativeFixtureExtensionTest::testAggregateNumeric"
+        },
+        {
           "implementation": "typescript",
           "test": "packages/ts/tests/aggregate_numeric.mjs"
         },
@@ -4295,6 +4389,11 @@
           "symbol": "DecimalModelTest::testDecimalModel"
         },
         {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageNativeFixtureExtensionTest.php",
+          "symbol": "CoverageNativeFixtureExtensionTest::testDecimalModel"
+        },
+        {
           "implementation": "typescript",
           "test": "packages/ts/tests/decimal_model.mjs"
         },
@@ -4334,6 +4433,11 @@
           "implementation": "php",
           "test": "packages/php/tests/IdentityLoadTest.php",
           "symbol": "IdentityLoadTest::testIdentityLoad"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageNativeFixtureExtensionTest.php",
+          "symbol": "CoverageNativeFixtureExtensionTest::testIdentityLoad"
         },
         {
           "implementation": "typescript",
@@ -4581,6 +4685,11 @@
           "implementation": "php",
           "test": "packages/php/tests/SchemaSetTest.php",
           "symbol": "SchemaSetTest::testInstallVerifiesTheDatabase"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageNativeChangedDatabaseExtensionTest.php",
+          "symbol": "CoverageNativeChangedDatabaseExtensionTest::testInstallChangedDatabase"
         },
         {
           "implementation": "typescript",
@@ -8850,84 +8959,6 @@
       ]
     },
     {
-      "id": "catalog-connection-read",
-      "kind": "feature",
-      "requirements": [
-        "SCH-6a"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/coverage_catalog_connection_test.go",
-          "id": "TestCoverageCatalogRead"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
-          "id": "CoverageCatalogConnectionTest::test_catalog_read"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
-          "id": "CoverageCatalogConnectionTest::test_catalog_read"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
-          "id": "catalog_read"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_catalog_connection.py",
-          "id": "catalog_read"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_catalog_connection.rs",
-          "id": "coverage_catalog_read"
-        }
-      ]
-    },
-    {
-      "id": "catalog-connection-row-mutation",
-      "kind": "feature",
-      "requirements": [
-        "SCH-6a"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/coverage_catalog_connection_test.go",
-          "id": "TestCoverageCatalogRowMutation"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
-          "id": "CoverageCatalogConnectionTest::test_catalog_row_mutation"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
-          "id": "CoverageCatalogConnectionTest::test_catalog_row_mutation"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
-          "id": "catalog_row_mutation"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_catalog_connection.py",
-          "id": "catalog_row_mutation"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_catalog_connection.rs",
-          "id": "coverage_catalog_row_mutation"
-        }
-      ]
-    },
-    {
       "id": "rust-catalog-connection-does-not-create-a-missing-sqlite-database",
       "kind": "feature",
       "requirements": [
@@ -11196,370 +11227,6 @@
       ]
     },
     {
-      "id": "rust-creates-parts-order",
-      "kind": "feature",
-      "requirements": [
-        "CFG-9",
-        "CFG-21",
-        "DIA-161",
-        "DSL-65",
-        "INT-36",
-        "INT-37",
-        "INT-38",
-        "PLN-16",
-        "PRT-2",
-        "PRT-4",
-        "PRT-5",
-        "PRT-41",
-        "PRT-65"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/request_hook.rs",
-          "id": "creates_parts_order"
-        }
-      ]
-    },
-    {
-      "id": "rust-creates-parts-rollback",
-      "kind": "feature",
-      "requirements": [
-        "CFG-9",
-        "CFG-21",
-        "DIA-161",
-        "DSL-65",
-        "INT-36",
-        "INT-37",
-        "INT-38",
-        "PLN-16",
-        "PRT-2",
-        "PRT-4",
-        "PRT-5",
-        "PRT-41",
-        "PRT-65"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/request_hook.rs",
-          "id": "creates_parts_rollback"
-        }
-      ]
-    },
-    {
-      "id": "rust-creates-parts-shapes",
-      "kind": "feature",
-      "requirements": [
-        "CFG-9",
-        "CFG-21",
-        "DIA-161",
-        "DSL-65",
-        "INT-36",
-        "INT-37",
-        "INT-38",
-        "PLN-16",
-        "PRT-2",
-        "PRT-4",
-        "PRT-5",
-        "PRT-41",
-        "PRT-65"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/request_hook.rs",
-          "id": "creates_parts_shapes"
-        }
-      ]
-    },
-    {
-      "id": "rust-insert-assign",
-      "kind": "feature",
-      "requirements": [
-        "CFG-9",
-        "CFG-21",
-        "DIA-161",
-        "DSL-65",
-        "INT-36",
-        "INT-37",
-        "INT-38",
-        "PLN-16",
-        "PRT-2",
-        "PRT-4",
-        "PRT-5",
-        "PRT-41",
-        "PRT-65"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/request_hook.rs",
-          "id": "insert_assign"
-        }
-      ]
-    },
-    {
-      "id": "rust-invalid-param",
-      "kind": "feature",
-      "requirements": [
-        "CFG-9",
-        "CFG-21",
-        "DIA-161",
-        "DSL-65",
-        "INT-36",
-        "INT-37",
-        "INT-38",
-        "PLN-16",
-        "PRT-2",
-        "PRT-4",
-        "PRT-5",
-        "PRT-41",
-        "PRT-65"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/request_hook.rs",
-          "id": "invalid_param"
-        }
-      ]
-    },
-    {
-      "id": "rust-loaded-row-writes",
-      "kind": "feature",
-      "requirements": [
-        "CFG-9",
-        "CFG-21",
-        "DIA-161",
-        "DSL-65",
-        "INT-36",
-        "INT-37",
-        "INT-38",
-        "PLN-16",
-        "PRT-2",
-        "PRT-4",
-        "PRT-5",
-        "PRT-41",
-        "PRT-65"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/request_hook.rs",
-          "id": "loaded_row_writes"
-        }
-      ]
-    },
-    {
-      "id": "rust-read-filter",
-      "kind": "feature",
-      "requirements": [
-        "CFG-9",
-        "CFG-21",
-        "DIA-161",
-        "DSL-65",
-        "INT-36",
-        "INT-37",
-        "INT-38",
-        "PLN-16",
-        "PRT-2",
-        "PRT-4",
-        "PRT-5",
-        "PRT-41",
-        "PRT-65"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/request_hook.rs",
-          "id": "read_filter"
-        }
-      ]
-    },
-    {
-      "id": "rust-reads-params",
-      "kind": "feature",
-      "requirements": [
-        "CFG-9",
-        "CFG-21",
-        "DIA-161",
-        "DSL-65",
-        "INT-36",
-        "INT-37",
-        "INT-38",
-        "PLN-16",
-        "PRT-2",
-        "PRT-4",
-        "PRT-5",
-        "PRT-41",
-        "PRT-65"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/request_hook.rs",
-          "id": "reads_params"
-        }
-      ]
-    },
-    {
-      "id": "rust-restore-condition",
-      "kind": "feature",
-      "requirements": [
-        "CFG-9",
-        "CFG-21",
-        "DIA-161",
-        "DSL-65",
-        "INT-36",
-        "INT-37",
-        "INT-38",
-        "PLN-16",
-        "PRT-2",
-        "PRT-4",
-        "PRT-5",
-        "PRT-41",
-        "PRT-65"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/request_hook.rs",
-          "id": "restore_condition"
-        }
-      ]
-    },
-    {
-      "id": "rust-restore-hook-set-key",
-      "kind": "feature",
-      "requirements": [
-        "CFG-9",
-        "CFG-21",
-        "DIA-161",
-        "DSL-65",
-        "INT-36",
-        "INT-37",
-        "INT-38",
-        "PLN-16",
-        "PRT-2",
-        "PRT-4",
-        "PRT-5",
-        "PRT-41",
-        "PRT-65"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/request_hook.rs",
-          "id": "restore_hook_set_key"
-        }
-      ]
-    },
-    {
-      "id": "rust-restore-key",
-      "kind": "feature",
-      "requirements": [
-        "CFG-9",
-        "CFG-21",
-        "DIA-161",
-        "DSL-65",
-        "INT-36",
-        "INT-37",
-        "INT-38",
-        "PLN-16",
-        "PRT-2",
-        "PRT-4",
-        "PRT-5",
-        "PRT-41",
-        "PRT-65"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/request_hook.rs",
-          "id": "restore_key"
-        }
-      ]
-    },
-    {
-      "id": "rust-restore-no-key",
-      "kind": "feature",
-      "requirements": [
-        "CFG-9",
-        "CFG-21",
-        "DIA-161",
-        "DSL-65",
-        "INT-36",
-        "INT-37",
-        "INT-38",
-        "PLN-16",
-        "PRT-2",
-        "PRT-4",
-        "PRT-5",
-        "PRT-41",
-        "PRT-65"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/request_hook.rs",
-          "id": "restore_no_key"
-        }
-      ]
-    },
-    {
-      "id": "rust-restore-rewritten-key",
-      "kind": "feature",
-      "requirements": [
-        "CFG-9",
-        "CFG-21",
-        "DIA-161",
-        "DSL-65",
-        "INT-36",
-        "INT-37",
-        "INT-38",
-        "PLN-16",
-        "PRT-2",
-        "PRT-4",
-        "PRT-5",
-        "PRT-41",
-        "PRT-65"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/request_hook.rs",
-          "id": "restore_rewritten_key"
-        }
-      ]
-    },
-    {
-      "id": "rust-without-hook",
-      "kind": "feature",
-      "requirements": [
-        "CFG-9",
-        "CFG-21",
-        "DIA-161",
-        "DSL-65",
-        "INT-36",
-        "INT-37",
-        "INT-38",
-        "PLN-16",
-        "PRT-2",
-        "PRT-4",
-        "PRT-5",
-        "PRT-41",
-        "PRT-65"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/request_hook.rs",
-          "id": "without_hook"
-        }
-      ]
-    },
-    {
       "id": "rust-restore-soft-deleted-row",
       "kind": "feature",
       "requirements": [
@@ -12886,20 +12553,6 @@
           "implementation": "python",
           "test": "packages/python/tests/test_remove_columns.py",
           "id": "test_keys_and_the_added_column_only"
-        }
-      ]
-    },
-    {
-      "id": "py-test-request-hook",
-      "kind": "feature",
-      "requirements": [
-        "INT-78"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_request_hook.py",
-          "id": "test_without_hook"
         }
       ]
     },

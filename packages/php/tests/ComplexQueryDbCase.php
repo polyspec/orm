@@ -184,16 +184,7 @@ final class ComplexQueryDbCase
             $build = new \ReflectionMethod(\Polyspec\Orm\Model::class, 'build');
             $request = $build->invoke($query, 'paginate', $db);
             foreach (['mysql', 'postgres'] as $driver) {
-                $plan = (new Engine($model, $driver, 8))->compile($request->shape());
-                $steps = array_map(static fn(array $step): array => [
-                    'role' => $step['role'],
-                    'tables' => $step['tables'],
-                ], $plan['steps']);
-                Assert::assertSame(
-                    $fixture['expected_plan_steps'][$driver],
-                    $steps,
-                    "$driver compiled public request"
-                );
+                self::assertPlanSteps($model, $driver, $request->shape(), $fixture, "$driver compiled public request");
             }
             try {
                 (new Engine($model, 'sqlite', 8))->compile($request->shape());
@@ -213,12 +204,22 @@ final class ComplexQueryDbCase
         $request = $build->invoke($query, 'paginate', $db);
         $root = dirname(__DIR__, 3);
         $model = RuntimeModel::build(RuntimeModel::files(["$root/{$fixture['schema']}"]));
-        $plan = (new Engine($model, $driver, 8))->compile($request->shape());
+        self::assertPlanSteps($model, $driver, $request->shape(), $fixture, "$driver compiled plan steps");
+    }
+
+    private static function assertPlanSteps(
+        RuntimeModel $model,
+        string $driver,
+        array $shape,
+        array $fixture,
+        string $message
+    ): void {
+        $plan = (new Engine($model, $driver, 8))->compile($shape);
         $steps = array_map(static fn(array $step): array => [
             'role' => $step['role'],
             'tables' => $step['tables'],
         ], $plan['steps']);
-        Assert::assertSame($fixture['expected_plan_steps'][$driver], $steps, "$driver compiled plan steps");
+        Assert::assertSame($fixture['expected_plan_steps'][$driver], $steps, $message);
     }
 
     private static function seed(PDO $pdo, string $driver, array $fixture): void

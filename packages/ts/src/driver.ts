@@ -693,10 +693,13 @@ function sqliteScan(state: SqliteState, sql: string, params: readonly DriverValu
 class SqlitePoolDriver implements DriverPool {
   public readonly name = 'sqlite' as const;
   private readonly state: SqliteState;
-  private waiters: Array<() => void> = [];
+  private waiters: Array<{ wake: () => void }> = [];
   public constructor(db: DatabaseSync, cacheSize: number) { this.state = new SqliteState(db, cacheSize); }
   public async execute(sql: string, params: readonly DriverValue[], signal: AbortSignal | undefined, done: StatementDone): Promise<DriverResult> {
-    await this.idle();
+    // Reject cancellation before waiting for the connection, then check again
+    // after the wait to cover an abort while this statement is queued.
+    if (signal?.aborted) throw canceled(this.name);
+    await this.idle(signal);
     // node:sqlite runs a statement to its end without yielding, so the signal
     // is read before the statement starts.
     if (signal?.aborted) throw canceled(this.name);
@@ -709,14 +712,41 @@ class SqlitePoolDriver implements DriverPool {
     return new SqliteSession(this.state, () => this.release());
   }
   /** Waits until no session holds the single SQLite connection. */
-  private async idle(): Promise<void> {
-    while (this.state.busy) await new Promise<void>(resolve => this.waiters.push(resolve));
+  private async idle(signal?: AbortSignal): Promise<void> {
+    while (this.state.busy) {
+      if (signal?.aborted) throw canceled(this.name);
+      await new Promise<void>((resolve, reject) => {
+        let settled = false;
+        const remove = (): void => {
+          const index = this.waiters.indexOf(waiter);
+          if (index !== -1) this.waiters.splice(index, 1);
+          signal?.removeEventListener('abort', abort);
+        };
+        const wake = (): void => {
+          if (settled) return;
+          settled = true;
+          remove();
+          resolve();
+        };
+        const abort = (): void => {
+          if (settled) return;
+          settled = true;
+          remove();
+          reject(canceled(this.name));
+        };
+        const waiter = { wake };
+        this.waiters.push(waiter);
+        signal?.addEventListener('abort', abort, { once: true });
+        // Close the race between the initial check and listener registration.
+        if (signal?.aborted) abort();
+      });
+    }
   }
   private release(): void {
     this.state.busy = false;
     const waiters = this.waiters;
     this.waiters = [];
-    for (const wake of waiters) wake();
+    for (const waiter of waiters) waiter.wake();
   }
   public stats(): PoolStats { return { maxOpenConnections: 1, openConnections: 1, inUse: this.state.busy ? 1 : 0, idle: this.state.busy ? 0 : 1 }; }
   public async close(): Promise<void> { this.state.db.close(); }

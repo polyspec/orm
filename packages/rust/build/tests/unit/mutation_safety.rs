@@ -1,6 +1,5 @@
 use super::*;
-use crate::catalog::{RowSnapshot, TablePage};
-use crate::tool_db::{GridCell, GridQueryResult, QueryColumn};
+use crate::tool_db::GridCell;
 
 #[tokio::test]
 // Requirements: INT-120.
@@ -47,22 +46,7 @@ async fn rust_duplicate_row_mutations_choose_the_declared_dialect_transaction() 
 async fn rust_duplicate_row_mutations_share_cancellation_and_key_preflight() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     tokio::time::timeout(std::time::Duration::from_secs(5), async {
-        let metadata = crate::catalog::test_fixtures::metadata("fixture", "value");
-        let page = TablePage {
-            metadata,
-            result: GridQueryResult {
-                columns: vec![
-                    QueryColumn { name: "id".into(), native_type: "INTEGER".into() },
-                    QueryColumn { name: "value".into(), native_type: "TEXT".into() },
-                ],
-                rows: vec![vec![GridCell::Integer(1), GridCell::Text("original".into())]],
-            },
-            limit: 1,
-            offset: 0,
-            order_by: vec!["id".into()],
-            has_more: false,
-        };
-        let original = RowSnapshot::from_page(&page, 0).unwrap();
+        let original = crate::catalog::test_fixtures::row_snapshot("fixture", "value", "INTEGER");
         let phases = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
         let phases_for_publish = phases.clone();
         let publish: Publisher = std::sync::Arc::new(move |phase| phases_for_publish.lock().unwrap().push(phase));

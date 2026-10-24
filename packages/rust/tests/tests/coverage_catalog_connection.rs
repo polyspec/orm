@@ -5,10 +5,13 @@
 use polyspec_orm_testcase::OrPanic;
 
 use polyspec_orm_build::catalog::{CatalogConnection, MutationPhase, RowSnapshot, TableRef};
-use polyspec_orm_build::tool_db::{GridCell, P, QueryLimits, Val};
+use polyspec_orm_build::tool_db::{GridCell, QueryLimits, Val, P};
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
+use std::time::Duration;
+
+#[path = "common/coverage_database.rs"]
+mod coverage_database;
 
 /// The deadline for one case. It is wall-clock time because it limits what the database does.
 const DEADLINE: Duration = Duration::from_secs(300);
@@ -16,26 +19,22 @@ const DEADLINE: Duration = Duration::from_secs(300);
 const TENANT: i64 = 990005;
 
 async fn connect() -> (String, CatalogConnection) {
-    let driver = std::env::var("ORM_FEATURE_DATABASE")
-        .expect("ORM_FEATURE_DATABASE is required; run it through make feature-check, which sets it for each coverage case");
-    let dsn = std::env::var("ORM_FEATURE_DSN").expect("ORM_FEATURE_DSN is required; run it through make feature-check, which sets it for each coverage case");
-    assert!(["mysql", "postgres", "sqlite"].contains(&driver.as_str()), "ORM_FEATURE_DATABASE {driver:?} is not mysql, postgres or sqlite");
+    let (driver, dsn) = coverage_database::feature_database();
     let catalog = CatalogConnection::connect(&dsn).await.or_panic(|e| format!("{driver}: catalog connection: {}", e.replace(&dsn, "[dsn]")));
     assert_eq!(catalog.dialect(), driver, "ORM_FEATURE_DSN selects another database than ORM_FEATURE_DATABASE");
-    (driver, catalog)
+    (driver.to_owned(), catalog)
 }
 
 fn quote(name: &str, driver: &str) -> String {
-    if driver == "mysql" { format!("`{name}`") } else { format!("\"{name}\"") }
+    if driver == "mysql" {
+        format!("`{name}`")
+    } else {
+        format!("\"{name}\"")
+    }
 }
 
 async fn within<F: std::future::Future<Output = ()>>(case: &str, body: F) {
-    let started = Instant::now();
-    polyspec_orm_testcase::step(format_args!("start {case}"));
-    if tokio::time::timeout(DEADLINE, body).await.is_err() {
-        panic!("{case}: not finished within {DEADLINE:?}");
-    }
-    polyspec_orm_testcase::step(format_args!("{case} {:?}", started.elapsed()));
+    polyspec_orm_testcase::run_with_deadline(case, DEADLINE, body).await;
 }
 
 /// The position of `column` within the page.

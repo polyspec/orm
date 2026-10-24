@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
+require_once __DIR__ . '/SqliteLiteralRowsPdo.php';
+
 // The PHP behaviours of the dbspec interface that the shared vectors do not fix: non-UTF-8 text, argument errors,
 // result objects, documents built and edited in PHP, introspection failures, the apply argument errors, and apply,
 // recover, rollback and finalize stopped at each event on a SQLite file. Each case returns the outcome as JSON values;
@@ -71,6 +73,8 @@ function behaviour_parsed(string $text, array $set): array
 /** A PDO subclass that returns the fixed rows for each catalog query, or throws the fixed exception. */
 final class BehaviourScriptedPdo extends PDO
 {
+    use SqliteLiteralRowsPdo;
+
     /** @param Closure(string): mixed $answer */
     public function __construct(private Closure $answer)
     {
@@ -79,19 +83,8 @@ final class BehaviourScriptedPdo extends PDO
 
     public function query(string $query, ?int $fetchMode = null, mixed ...$fetchModeArgs): PDOStatement|false
     {
-        // Rows are a SELECT of SQLite literals that keep the value's type: integers are int, reals are float, null is
-        // null.
-        $literal = fn(mixed $v): string => match (true) {
-            $v === null => 'NULL',
-            is_int($v), is_float($v) => var_export($v, true),
-            default => $this->quote((string) $v),
-        };
         $rows = ($this->answer)($query);
-        $selects = array_map(
-            static fn(array $row): string => 'SELECT ' . implode(', ', array_map($literal, $row)),
-            $rows
-        );
-        return parent::query($rows === [] ? 'SELECT 1 WHERE 0' : implode(' UNION ALL ', $selects), PDO::FETCH_NUM);
+        return $this->queryRows($rows);
     }
 }
 

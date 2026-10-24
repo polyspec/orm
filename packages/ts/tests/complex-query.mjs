@@ -1,9 +1,8 @@
-import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { connect } from '../dist/models/complex_query/models.js';
 import { caseTest, DATABASE } from '../../../tests/testcase.mts';
 import { mysqlConnection, postgresClient, withCaseDatabase } from './case-database.mjs';
-import { fixture, search, assertSearchResult } from './complex-query-support.mjs';
+import { fixture, assertSearchCase } from './complex-query-support.mjs';
 
 async function seed(database, dialect) {
   let connection;
@@ -49,19 +48,7 @@ for (const dialect of ['mysql', 'postgres', 'sqlite']) caseTest(`complex_query_p
     try {
       await db.utils().schema().install();
       if (dialect !== 'sqlite') await seed(database, dialect);
-      const events = [];
-      const unsubscribe = db.subscribe(event => events.push({ kind: event.kind, tables: [...event.tables] }));
-      let page;
-      let failure;
-      try { page = await search(db, fixture.input); } catch (error) { failure = error; }
-      unsubscribe();
-      if (dialect === 'sqlite') {
-        assert.equal(failure?.code, fixture.expected_plan_steps.sqlite.error);
-        assert.deepEqual(events, fixture.expected_events.sqlite);
-        return;
-      }
-      if (failure !== undefined) throw failure;
-      assertSearchResult(assert, page, events, dialect);
+      await assertSearchCase(assert, db, dialect);
     } finally {
       await db.close();
     }

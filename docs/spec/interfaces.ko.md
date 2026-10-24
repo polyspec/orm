@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: b204c6ea3568e71b4985e8531c36b9380b0c7ae585dcdbd378b33366135dd7d0 -->
+<!-- source-sha256: 4cad8a06b623b604ea22127959d6d7f6552494ce0de76d3b5e8f5a3c46ca3ebb -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -192,7 +192,7 @@ classDiagram
 - **INT-75** `AESRotationStatus`는 필드 `current`(keyring의 현재 version), `total`(모델 테이블의 행 수), `pending`(저장된 version이 `current`가 아닌 행 수), `versions`(저장된 version별 행 수)를 가진다. `aes().status(model, keyring)`이 이를 만든다.
 - **INT-76** `execute(step, params)`는 request parameter와 함께 컴파일된 statement step 하나를 연결 또는 그 활성 트랜잭션에서 실행한다([컴파일된 statement 실행](../operations/usage.ko.md#execute-a-compiled-statement)). 행을 읽는 step이나 parameter 개수를 넘는 `param` bind slot은 어떤 statement도 실행하기 전에 `IR_INVALID`로 실패하며, `execute`는 아무것도 반환하지 않는다.
 - **INT-77** `subscribe(subscriber)`는 끝난 뒤 연결과 그 handle들의 모든 statement event를 등록 순서대로 받는 subscriber를 등록하고, 그것을 제거하는 함수를 돌려준다. markdown 연결은 `CAPABILITY_UNSUPPORTED`를 반환한다.
-- **INT-78** `withRequestHook(hook)`은 같은 연결의 handle을 돌려주며, 그 handle의 각 요청은 계획되기 직전에 hook을 받는다. handle은 연결, plan과 statement 캐시, statement event subscriber, 활성 트랜잭션을 공유하며, hook이 있는 handle에 `withRequestHook`을 호출하면 hook을 바꾼다.
+- **INT-78** `withRequestHook(hook)`은 같은 연결의 handle을 돌려주며, 그 handle의 각 요청과 bind된 매개변수 값을 계획 직전에 hook에 전달한다. bind된 매개변수 값은 읽기 전용이고, hook은 제공된 매개변수 추가 수단으로만 매개변수를 덧붙인다. handle은 연결, plan과 statement 캐시, statement event subscriber, 활성 트랜잭션을 공유하며, hook이 있는 handle에 `withRequestHook`을 호출하면 hook을 바꾼다.
 - **INT-79** `stats()`는 연결 풀의 개수를 돌려준다: 최대 열린 연결 수, 열린 연결 수, 사용 중인 연결 수, 유휴 연결 수(Go `DBStats`, PHP `Stats`, TypeScript `PoolStats`, Python `DbStats`).
 - **INT-67** handle을 버리면 그것이 쥔 것을 놓는다: 버려진 query handle은 끝나지 않은 statement를 취소하고, 버려진 transaction이나 connection handle은 열린 transaction을 rollback하고 connection을 pool에 돌려준다. 각 언어는 자기 폐기 형식으로 버린다: Rust는 값을 drop하고, Go는 context를 취소하거나 `Close`를 부르고, Python은 context manager를 나오거나 `close()`를 부르고, TypeScript는 `AbortSignal`을 abort하거나 `close()`를 부르고, PHP는 객체를 파괴하거나 `close()`를 부른다.
 

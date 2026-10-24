@@ -30,6 +30,15 @@ fn read_cases() -> Value {
     value
 }
 
+fn expected_diagnostics(value: &Value) -> Vec<(String, usize, usize)> {
+    value
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|error| (error["rule"].as_str().unwrap().to_owned(), error["line"].as_u64().unwrap() as usize, error["column"].as_u64().unwrap() as usize))
+        .collect()
+}
+
 /// Line ends of a case: LF, CRLF when `crlf` is true, or alternating CRLF and
 /// LF starting with CRLF when `mixed` is true, where the last line has none.
 #[derive(Clone, Copy)]
@@ -86,14 +95,6 @@ fn parsed(id: &str, text: &str, set: &BTreeMap<String, String>) -> Document {
     }
 }
 
-fn diagnostic_locations(value: &Value) -> Vec<(String, usize, usize)> {
-    value
-        .as_array()
-        .unwrap()
-        .iter()
-        .map(|error| (error["rule"].as_str().unwrap().to_owned(), error["line"].as_u64().unwrap() as usize, error["column"].as_u64().unwrap() as usize))
-        .collect()
-}
 
 fn run(case: &Value, kind: &str) {
     let clock = CaseClock::start();
@@ -123,7 +124,7 @@ fn run(case: &Value, kind: &str) {
                 Err(errors) => errors,
             };
             let got: Vec<(String, usize, usize)> = errors.iter().map(|e| (e.rule.clone(), e.line, e.column)).collect();
-            let expected = diagnostic_locations(&case["errors"]);
+            let expected = expected_diagnostics(&case["errors"]);
             assert_eq!(got, expected, "{id}: diagnostics {errors:?}");
             for error in &errors {
                 assert!(!error.message.is_empty(), "{id}: diagnostic has a message");
@@ -333,7 +334,7 @@ fn read_file_case(case: &Value, path: &std::path::Path) {
     let id = case["id"].as_str().unwrap();
     let case_clock = CaseClock::start();
     let file_path = path.parent().unwrap().join(case["path"].as_str().unwrap());
-    let expected = diagnostic_locations(&case["errors"]);
+    let expected = expected_diagnostics(&case["errors"]);
     let name = case["path"].as_str().unwrap();
     let shown = file_path.display().to_string();
     let raw = std::fs::read(&file_path).or_panic(|e| format!("{id}: {shown}: {e}"));

@@ -2,7 +2,8 @@
 import assert from 'node:assert/strict';
 import { join, resolve } from 'node:path';
 import { caseTest, COMPUTE } from '../../testcase.mts';
-import { allRules, checkErrorLabels, readErrorCatalog, readManifest, validateManifest, validateProhibitions, type Component, type Manifest, type Native, type Rule, type Sequence } from './manifest.mts';
+import { allRules, behaviorCompletionErrors, checkErrorLabels, readErrorCatalog, readManifest, validateBehaviorAdapters, validateManifest, validateProhibitions, type BehaviorContract, type Component, type Manifest, type Native, type Rule, type Sequence } from './manifest.mts';
+import { checkBehaviorAdapterCases, checkNativeSurfaces } from './contract.mts';
 
 const root = resolve(import.meta.dirname, '../../..');
 
@@ -16,6 +17,11 @@ function componentManifest(components: Component[], ...rules: string[]): Manifes
     sequences: [{ id: 's' }],
     components,
     rules: rules.map(id => ({ id })),
+    behavior_adapters: [{
+      id: 'CFG-9', completion_item: 'KSTD-2-11-16', parity: 'unit', adapters: Object.fromEntries(['go', 'php', 'php-extension', 'python', 'rust', 'typescript'].map(runtime => [runtime, {
+        status: 'unresolved', item: 'fixture', required_case: 'cancellation-case',
+      }])),
+    }],
   };
 }
 
@@ -102,4 +108,58 @@ caseTest('getsCount uses the dedicated grouped rows in every client', COMPUTE, (
     const signature: string = native.signature ?? '';
     assert.ok(signature.includes('GroupRows') && !signature.includes('Collection'), `getsCount ${language} native signature returns a model collection: ${signature}`);
   }
+});
+
+caseTest('CFG-9 records six explicit adapters and refuses fake, missing, or unresolved-as-pass entries', COMPUTE, () => {
+  const manifest = readManifest(join(root, 'contracts/interfaces.json'));
+  validateManifest(manifest);
+  const contract = manifest.behavior_adapters?.find(adapter => adapter.id === 'CFG-9');
+  assert.ok(contract, 'CFG-9 adapter contract is missing');
+  assert.deepEqual(Object.keys(contract.adapters ?? {}).sort(), ['go', 'php', 'php-extension', 'python', 'rust', 'typescript']);
+  assert.equal((contract.adapters?.php?.status), 'unresolved', 'PHP cancellation was counted as implemented');
+  assert.equal((contract.adapters?.['php-extension']?.status), 'unresolved', 'PHP extension cancellation was counted as implemented');
+  assert.equal(behaviorCompletionErrors(contract).length, 2, 'unresolved PHP adapters did not block six-client completion');
+
+  const surfaces = manifest.native_surfaces ?? [];
+  const goSurface = surfaces.find(surface => surface.owner === 'go');
+  assert.ok(goSurface);
+  assert.deepEqual(checkNativeSurfaces('go', { [goSurface.symbol ?? '']: { signature: goSurface.signature ?? '', exported: true } }, surfaces), []);
+  assert.notDeepEqual(checkNativeSurfaces('go', {}, surfaces), [], 'a fake Go host primitive passed');
+  const tsSurface = surfaces.find(surface => surface.owner === 'typescript');
+  assert.ok(tsSurface);
+  assert.deepEqual(checkNativeSurfaces('typescript', { [tsSurface.symbol ?? '']: { signature: tsSurface.signature ?? '', exported: true } }, surfaces), []);
+  const actual = { 'packages/python/src/polyspec/orm/database.py::Db.with_future': { signature: 'def with_future(self, future: asyncio.Future) -> Db', exported: true } };
+  assert.deepEqual(checkNativeSurfaces('python', actual, surfaces), [], 'real Python host primitive did not match');
+  assert.notDeepEqual(checkNativeSurfaces('python', {}, surfaces), [], 'a fake host primitive passed');
+
+  const copy = (): BehaviorContract => structuredClone(contract);
+  const missing = copy();
+  delete missing.adapters?.rust;
+  assert.throws(() => validateBehaviorAdapters([missing], surfaces), /CFG-9/);
+  const noCases = copy();
+  if (noCases.adapters?.go) noCases.adapters.go.cases = [];
+  assert.throws(() => validateBehaviorAdapters([noCases], surfaces), /go: implemented adapter requires/);
+  const missingSurface = copy();
+  if (missingSurface.adapters?.go) delete missingSurface.adapters.go.surface;
+  assert.throws(() => validateBehaviorAdapters([missingSurface], surfaces), /go: implemented adapter requires/);
+  const unresolvedAsPass = copy();
+  if (unresolvedAsPass.adapters?.php) unresolvedAsPass.adapters.php.status = 'implemented';
+  assert.throws(() => validateBehaviorAdapters([unresolvedAsPass], surfaces), /php: implemented adapter requires/);
+});
+
+caseTest('behavior adapters must match exact parity bindings', COMPUTE, () => {
+  const contract: BehaviorContract = {
+    id: 'CFG-9', parity: 'cancel-query', adapters: {
+      go: { status: 'implemented', primitive: 'context.Context', cases: [{ test: 'cancel_test.go', id: 'TestCancel' }] },
+      php: { status: 'unresolved', item: 'KSTD-2-11-16-1', required_case: 'cancel_active_query' },
+    },
+  };
+  const runtimes = ['php-extension', 'python', 'rust', 'typescript'] as const;
+  const adapters = contract.adapters;
+  assert.ok(adapters);
+  for (const runtime of runtimes) adapters[runtime] = { status: 'unresolved', item: 'fixture', required_case: 'cancel' };
+  const unit = { id: 'cancel-query', bindings: [{ implementation: 'go', test: 'cancel_test.go', id: 'TestCancel' }] };
+  assert.deepEqual(checkBehaviorAdapterCases([contract], [unit]), []);
+  assert.notDeepEqual(checkBehaviorAdapterCases([contract], [{ ...unit, bindings: [] }]), [], 'missing native case passed');
+  assert.notDeepEqual(checkBehaviorAdapterCases([contract], [{ ...unit, bindings: [{ implementation: 'go', test: 'fake.go', id: 'TestCancel' }] }]), [], 'fake native symbol/case passed');
 });

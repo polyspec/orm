@@ -16,7 +16,7 @@ import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { readJsonFile } from '../../../scripts/json/schema.mts';
 import { COMPUTE, PROCESS, runCase, runLong, type Step } from '../../testcase.mts';
-import { checkOwners, checkOwnersAs, checkProhibitedSymbols, checkRecords, checkRules, differences } from './contract.mts';
+import { checkBehaviorAdapterCases, checkNativeSurfaces, checkOwners, checkOwnersAs, checkProhibitedSymbols, checkRecords, checkRules, differences } from './contract.mts';
 import { diagram } from './diagram.mts';
 import { buildGo, buildRust, checkCallsInRoots, extract, type Tools } from './extract.mts';
 import { byteOrder, goJson } from './json.mts';
@@ -132,6 +132,7 @@ async function checkLanguage({ root, lang, tools, manifest: m, order, record, se
   const problems = [
     ...checkRules(lang, actual, m.rules ?? [], order),
     ...checkRules(lang, actual, m.storage ?? [], order),
+    ...checkNativeSurfaces(lang, actual, m.native_surfaces ?? []),
     ...checkRecords(lang, actual, m.records ?? []),
     ...checkOwners(lang, actual, m.owners ?? []),
     ...checkProhibitedSymbols(lang, actual, m.prohibited_symbols ?? []),
@@ -232,6 +233,8 @@ async function main(argv: string[]): Promise<number> {
     const codes = readErrorCatalog(root);
     const failures = checkErrorLabels(codes, allRules(m), m.sequences ?? []);
     if (failures.length !== 0) throw new Error(failures.join('\n'));
+    const adapterFailures = checkBehaviorAdapterCases(m.behavior_adapters ?? [], readParity(root).units ?? []);
+    if (adapterFailures.length !== 0) throw new Error(adapterFailures.join('\n'));
     const english = diagram(m, false), korean = diagram(m, true);
     const englishPath = join(root, 'docs/spec/interfaces-model.md'), koreanPath = join(root, 'docs/spec/interfaces-model.ko.md');
     if (generate) {

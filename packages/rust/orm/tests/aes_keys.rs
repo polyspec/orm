@@ -19,9 +19,8 @@ use polyspec_orm::{Core, Db, Entity, Model, Schema, Val};
 mod secret_config;
 #[path = "common/secret_connected.rs"]
 mod secret_connected;
-use secret_connected::connected;
 use secret_config::{COLUMNS, SCHEMA};
-
+use secret_connected::connected;
 
 fn keys(pairs: &[(i32, &str)]) -> BTreeMap<i32, String> {
     pairs.iter().map(|(v, k)| (*v, (*k).to_owned())).collect()
@@ -85,31 +84,11 @@ async fn aes_write_uses_key_of_current_version() {
 #[test]
 fn aes_read_version_codes_match_the_other_clients() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    use polyspec_orm::plan::{Assemble, OutCol};
-    let asm = Assemble {
-        entity: "secret_config".to_owned(),
-        columns: vec![
-            OutCol {
-                index: 0,
-                name: "config".into(),
-                column: "config".into(),
-                typ: "longblob".into(),
-                styles: vec!["aes".into(), "hex".into()],
-                hidden: false,
-            },
-            OutCol { index: 1, name: "aes_key_version".into(), column: "aes_key_version".into(), typ: "int".into(), styles: vec![], hidden: false },
-        ],
-        aes_version: Some(1),
-        ..Default::default()
-    };
+    let asm = aes_read_assemble();
     let keys = keys(&[(1, "old-key"), (2, "new-key")]);
     let cases = [(Val::Str("abc".into()), "CODEC_DECODE"), (Val::I64(0), "CODEC_DECODE"), (Val::I64(2_147_483_648), "CODEC_DECODE"), (Val::I64(9), "CONFIG")];
     for (version, want) in cases {
-        let mut data = vec![vec![Val::Str("00".into()), version.clone()]];
-        let got = match polyspec_orm::row::decode_styled(&asm, &mut data, &keys) {
-            Ok(()) => String::new(),
-            Err(error) => error.code().to_owned(),
-        };
+        let got = decode_error_code(&asm, vec![Val::Str("00".into()), version.clone()], &keys);
         assert_eq!(got, want, "stored version {version:?}");
     }
 }
@@ -118,26 +97,9 @@ fn aes_read_version_codes_match_the_other_clients() {
 #[test]
 fn aes_read_plan_without_version_column_is_internal() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    use polyspec_orm::plan::{Assemble, OutCol};
-    let asm = Assemble {
-        entity: "secret_config".to_owned(),
-        columns: vec![OutCol {
-            index: 0,
-            name: "config".into(),
-            column: "config".into(),
-            typ: "longblob".into(),
-            styles: vec!["aes".into(), "hex".into()],
-            hidden: false,
-        }],
-        aes_version: None,
-        ..Default::default()
-    };
+    let asm = aes_read_assemble_without_version();
     let keys = keys(&[(1, "old-key"), (2, "new-key")]);
-    let mut data = vec![vec![Val::Str("00".into())]];
-    let got = match polyspec_orm::row::decode_styled(&asm, &mut data, &keys) {
-        Ok(()) => String::new(),
-        Err(error) => error.code().to_owned(),
-    };
+    let got = decode_error_code(&asm, vec![Val::Str("00".into())], &keys);
     assert_eq!(got, "INTERNAL");
 }
 
@@ -147,11 +109,7 @@ fn aes_read_keyring_lacks_stored_version_is_config() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let asm = aes_read_assemble();
     let keys = keys(&[(1, "old-key"), (2, "new-key")]);
-    let mut data = vec![vec![Val::Str("00".into()), Val::I64(9)]];
-    let got = match polyspec_orm::row::decode_styled(&asm, &mut data, &keys) {
-        Ok(()) => String::new(),
-        Err(error) => error.code().to_owned(),
-    };
+    let got = decode_error_code(&asm, vec![Val::Str("00".into()), Val::I64(9)], &keys);
     assert_eq!(got, "CONFIG");
 }
 
@@ -161,11 +119,7 @@ fn aes_read_null_version_with_aes_value_is_codec_decode() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let asm = aes_read_assemble();
     let keys = keys(&[(1, "old-key"), (2, "new-key")]);
-    let mut data = vec![vec![Val::Str("00".into()), Val::Null]];
-    let got = match polyspec_orm::row::decode_styled(&asm, &mut data, &keys) {
-        Ok(()) => String::new(),
-        Err(error) => error.code().to_owned(),
-    };
+    let got = decode_error_code(&asm, vec![Val::Str("00".into()), Val::Null], &keys);
     assert_eq!(got, "CODEC_DECODE");
 }
 
@@ -186,18 +140,35 @@ fn aes_read_assemble() -> polyspec_orm::plan::Assemble {
     Assemble {
         entity: "secret_config".to_owned(),
         columns: vec![
-            OutCol {
-                index: 0,
-                name: "config".into(),
-                column: "config".into(),
-                typ: "longblob".into(),
-                styles: vec!["aes".into(), "hex".into()],
-                hidden: false,
-            },
+            aes_config_column(),
             OutCol { index: 1, name: "aes_key_version".into(), column: "aes_key_version".into(), typ: "int".into(), styles: vec![], hidden: false },
         ],
         aes_version: Some(1),
         ..Default::default()
+    }
+}
+
+fn aes_read_assemble_without_version() -> polyspec_orm::plan::Assemble {
+    use polyspec_orm::plan::Assemble;
+    Assemble { entity: "secret_config".to_owned(), columns: vec![aes_config_column()], aes_version: None, ..Default::default() }
+}
+
+fn aes_config_column() -> polyspec_orm::plan::OutCol {
+    polyspec_orm::plan::OutCol {
+        index: 0,
+        name: "config".into(),
+        column: "config".into(),
+        typ: "longblob".into(),
+        styles: vec!["aes".into(), "hex".into()],
+        hidden: false,
+    }
+}
+
+fn decode_error_code(assembly: &polyspec_orm::plan::Assemble, row: Vec<Val>, keys: &BTreeMap<i32, String>) -> String {
+    let mut data = vec![row];
+    match polyspec_orm::row::decode_styled(assembly, &mut data, keys) {
+        Ok(()) => String::new(),
+        Err(error) => error.code().to_owned(),
     }
 }
 

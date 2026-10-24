@@ -29,10 +29,7 @@ func TestParseDSNMySQLTLS(t *testing.T) {
 		"mysql://root@localhost/orm_example?socket=/tmp/mysql.sock&ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem": "socket",
 	} {
 		t.Run(input, func(t *testing.T) {
-			_, err := parseDSN(input, 0)
-			if err == nil || ErrorCode(err) != CodeConfig || !strings.Contains(err.Error(), wanted) {
-				t.Fatalf("parseDSN() error = %v; want CONFIG with %q", err, wanted)
-			}
+			assertMySQLTLSConfigError(t, input, wanted)
 		})
 	}
 }
@@ -52,16 +49,21 @@ func TestParseDSNMySQLTLSRejectsUnsupportedOptions(t *testing.T) {
 		"mysql://root@db.local/orm_example?ssl-ca=/tmp/ca.pem":                          "ssl-mode",
 	} {
 		t.Run(input, func(t *testing.T) {
-			_, err := parseDSN(input, 0)
-			if err == nil || ErrorCode(err) != CodeConfig || !strings.Contains(err.Error(), wanted) {
-				t.Fatalf("parseDSN() error = %v; want CONFIG with %q", err, wanted)
-			}
+			assertMySQLTLSConfigError(t, input, wanted)
 		})
 	}
 	ca := url.QueryEscape(filepath.Join(t.TempDir(), "missing-ca.pem"))
 	_, err := Connect("mysql://root@localhost/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca="+ca, Config{})
 	if err == nil || ErrorCode(err) != CodeConfig || !strings.Contains(err.Error(), "cannot be read") {
 		t.Fatalf("unreadable TLS CA: got %v, want CONFIG before connecting", err)
+	}
+}
+
+func assertMySQLTLSConfigError(t *testing.T, input, wanted string) {
+	t.Helper()
+	_, err := parseDSN(input, 0)
+	if err == nil || ErrorCode(err) != CodeConfig || !strings.Contains(err.Error(), wanted) {
+		t.Fatalf("parseDSN() error = %v; want CONFIG with %q", err, wanted)
 	}
 }
 

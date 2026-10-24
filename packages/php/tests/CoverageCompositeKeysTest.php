@@ -12,9 +12,6 @@ namespace Polyspec\Orm\Tests;
 // so that a relation linked only by the account_id part is exposed.
 
 
-use Polyspec\Orm\Tests\Model\CompositeAccount;
-use Polyspec\Orm\Tests\Model\CompositeMembership;
-use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
 
@@ -27,96 +24,13 @@ final class CoverageCompositeKeysTest extends TestCase
     // Requirements: PRT-12.
     public function testCompositeKeyRows(): void
     {
+        require_once __DIR__ . '/CoverageCompositeKeysCase.php';
         foreach (coverageItemsOf(__FILE__) as $item) {
             selectCoverageItem($item);
             [, $dsn] = coverageItem();
             $db = coverageConnect($dsn);
-            $accounts = static fn(int $tenant) => (new CompositeAccount())($db)->tenantId($tenant)->getCount();
-            $memberships = static fn(int $tenant) => (new CompositeMembership())($db)->tenantId($tenant)->getCount();
-            $tenants = [COMPOSITE_TENANT, COMPOSITE_OTHER_TENANT];
             try {
-                foreach ($tenants as $tenant) {
-                    Assert::assertTrue(
-                        $accounts($tenant) === 0 && $memberships($tenant) === 0,
-                        "tenant $tenant has rows before the case"
-                    );
-                }
-                coverageRestoring(function () use ($db, $accounts, $memberships, $tenants): void {
-                    (new CompositeAccount())($db)->setTenantId(COMPOSITE_TENANT)
-                        ->setAccountId(1)
-                        ->setName('a')
-                        ->create();
-                    (new CompositeAccount())($db)->setTenantId(COMPOSITE_TENANT)
-                        ->setAccountId(2)
-                        ->setName('b')
-                        ->create();
-                    (new CompositeAccount())($db)->setTenantId(COMPOSITE_OTHER_TENANT)
-                        ->setAccountId(2)
-                        ->setName('c')
-                        ->create();
-                    (new CompositeMembership())($db)->setTenantId(COMPOSITE_TENANT)
-                        ->setAccountId(1)
-                        ->setRole('member')
-                        ->create();
-                    (new CompositeMembership())($db)->setTenantId(COMPOSITE_TENANT)
-                        ->setAccountId(2)
-                        ->setRole('owner')
-                        ->create();
-                    (new CompositeMembership())($db)->setTenantId(COMPOSITE_OTHER_TENANT)
-                        ->setAccountId(2)
-                        ->setRole('guest')
-                        ->create();
-                    $name = (new CompositeAccount())($db)->getByTenantIdAndAccountId(COMPOSITE_TENANT, 2)->getName();
-                    Assert::assertTrue($name === 'b', "account by both key components is $name, want b");
-                    // A child whose relation has its own link reads the parent row first, then reads separately. The
-                    // two paths give the same result.
-                    foreach (
-                        [
-                        'same statement' => new CompositeMembership(),
-                        'own connection' => (new CompositeMembership())($db)
-                        ] as $path => $child
-                    ) {
-                        $loaded = (new CompositeAccount())($db)->tenantId(COMPOSITE_TENANT)
-                            ->relations(
-                                $child->matchTenantIdWithTenantId()->matchAccountIdWithAccountId()->aliasMemberships()
-                            )
-                            ->gets();
-                        $got = [];
-                        foreach ($loaded as $a) {
-                            foreach ($a->getMemberships() as $m) {
-                                $got[] = "{$a->getTenantId()}/{$a->getAccountId()}:"
-                                    . "{$m->getTenantId()}/{$m->getAccountId()}/{$m->getRole()}";
-                            }
-                        }
-                        $want = [
-                            COMPOSITE_TENANT . '/1:' . COMPOSITE_TENANT . '/1/member',
-                            COMPOSITE_TENANT . '/2:' . COMPOSITE_TENANT . '/2/owner'
-                        ];
-                        Assert::assertTrue(
-                            $got === $want,
-                            "$path: memberships of tenant " . COMPOSITE_TENANT . ' accounts ' . json_encode($got)
-                        );
-                    }
-                    (new CompositeAccount())($db)->getByTenantIdAndAccountId(COMPOSITE_TENANT, 2)->delete();
-                    Assert::assertTrue(
-                        $memberships(COMPOSITE_TENANT) === 1,
-                        'ON DELETE CASCADE removed the membership of account 2'
-                    );
-                    foreach ($tenants as $tenant) {
-                        (new CompositeAccount())($db)->tenantId($tenant)->gets()->delete();
-                        Assert::assertTrue(
-                            $accounts($tenant) === 0 && $memberships($tenant) === 0,
-                            "tenant $tenant rows remain after the deletes"
-                        );
-                    }
-                }, function () use ($db, $tenants): void {
-                    // The membership is removed by the cascade when the account is deleted, and rows left without an
-                    // account are removed too.
-                    foreach ($tenants as $tenant) {
-                        (new CompositeMembership())($db)->tenantId($tenant)->gets()->delete();
-                        (new CompositeAccount())($db)->tenantId($tenant)->gets()->delete();
-                    }
-                });
+                CoverageCompositeKeysCase::run($db, COMPOSITE_TENANT, COMPOSITE_OTHER_TENANT);
             } finally {
                 $db->close();
             }

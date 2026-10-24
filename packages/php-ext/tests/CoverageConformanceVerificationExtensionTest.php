@@ -13,7 +13,7 @@ use ReflectionClass;
 #[Large]
 final class CoverageConformanceVerificationExtensionTest extends TestCase
 {
-    private const CONFORMANCE_VECTORS = ['conditions_values', 'relations', 'audit_lazy'];
+    private const CONFORMANCE_VECTORS = ['conditions_values', 'relations', 'audit_lazy', 'relation_null_key'];
 
     private static function extensionPath(): string
     {
@@ -114,13 +114,55 @@ final class CoverageConformanceVerificationExtensionTest extends TestCase
                 '-d',
                 'extension=' . self::extensionPath(),
                 '-r',
-                'exit(extension_loaded("polyspec_orm") && ' .
-                    '(new ReflectionClass("Polyspec\\Orm\\Model"))->isInternal() ? 0 : 1);',
+                'exit((new ReflectionClass("Polyspec\\Orm\\Model"))->isInternal() ? 0 : 1);',
             ],
             $root,
             self::childEnvironment(),
         );
         Assert::assertSame(0, $status, "native extension child failed: $stderr$stdout");
+    }
+
+    public function testRelationNullKeyRefusalMatchesRecordedVector(): void
+    {
+        Assert::assertTrue((new ReflectionClass(Model::class))->isInternal());
+        $root = dirname(__DIR__, 3);
+        $recorded = coverageJson("$root/tests/conformance/vectors.sqlite.json", false);
+        $expected = null;
+        foreach ($recorded->vectors as $vector) {
+            if ($vector->name === 'relation_null_key') {
+                $expected = $vector->expect;
+                break;
+            }
+        }
+        Assert::assertNotNull($expected, 'SQLite vectors lack relation_null_key');
+        $path = tempnam(sys_get_temp_dir(), 'orm-relation-null-key-');
+        if ($path === false) {
+            throw new \RuntimeException('could not create the SQLite file for relation_null_key');
+        }
+        try {
+            [$status, $stdout, $stderr] = coverageProcess(
+                self::childCommand(
+                    "$root/packages/php/testing/conformance/runner.php",
+                    '--dsn',
+                    'sqlite:///' . $path,
+                    '--vector',
+                    'relation_null_key',
+                ),
+                $root,
+                self::childEnvironment(),
+            );
+            Assert::assertSame(0, $status, "native relation_null_key child failed: $stderr$stdout");
+            $actual = json_decode($stdout, false, 512, JSON_THROW_ON_ERROR);
+            Assert::assertSame(['relation_null_key'], array_keys(get_object_vars($actual)));
+            Assert::assertTrue(
+                \Polyspec\Orm\Tests\sameJson($actual->relation_null_key, $expected),
+                'native extension relation_null_key differs from the recorded SQLite vector',
+            );
+        } finally {
+            if (is_file($path) && !unlink($path)) {
+                throw new \RuntimeException("could not remove the SQLite file for relation_null_key: $path");
+            }
+        }
     }
 
     // Requirements: DSL-1, DSL-2, DSL-3, DSL-4, DSL-5, DSL-6, DSL-7, DSL-10, DSL-11, DSL-12, DSL-13, DSL-14.
@@ -147,12 +189,7 @@ final class CoverageConformanceVerificationExtensionTest extends TestCase
             $root = dirname(__DIR__, 3);
             $file = $driver === 'mysql' ? 'vectors.json' : "vectors.$driver.json";
             $recorded = coverageJson("$root/tests/conformance/$file", false);
-            $expected = [];
-            foreach ($recorded->vectors as $vector) {
-                if (in_array($vector->name, self::CONFORMANCE_VECTORS, true)) {
-                    $expected[$vector->name] = $vector->expect;
-                }
-            }
+            $expected = coverageExpectedConformanceVectors($recorded, self::CONFORMANCE_VECTORS);
             Assert::assertCount(count(self::CONFORMANCE_VECTORS), $expected);
             $arguments = [];
             foreach (self::CONFORMANCE_VECTORS as $vector) {

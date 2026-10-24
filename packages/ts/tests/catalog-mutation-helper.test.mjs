@@ -164,6 +164,20 @@ async function assertAmbiguousInsert(catalog, metadata, values) {
   );
 }
 
+async function assertLiteralDefaultCompositeKeyInsert(fixture, checkQueries) {
+  const { catalog, metadata, queries, stored } = fixture();
+  try {
+    const result = await catalog.insertRow(metadata, [
+      { name: 'tenant', value: 2 },
+      { name: 'n', value: 50 },
+    ]);
+    assert.deepEqual(result.rows, [stored]);
+    checkQueries(queries);
+  } finally {
+    await catalog.close();
+  }
+}
+
 test('locks, validates and returns the descriptor of an unchanged original row', async () => {
   const calls = [];
   const session = {
@@ -210,32 +224,16 @@ test('rejects a changed descriptor before applying MySQL safety', async () => {
 });
 
 test('uses MySQL DEFAULT(column) to locate a literal-default composite key', async () => {
-  const { catalog, metadata, queries, stored } = mysqlCatalogFixture();
-  try {
-    const result = await catalog.insertRow(metadata, [
-      { name: 'tenant', value: 2 },
-      { name: 'n', value: 50 },
-    ]);
-    assert.deepEqual(result.rows, [stored]);
+  await assertLiteralDefaultCompositeKeyInsert(mysqlCatalogFixture, queries => {
     assert.ok(queries.some(([, sql]) => sql.includes('`seq`=DEFAULT(`seq`)')));
     assert.equal(queries.some(([, sql]) => sql.includes('SELECT MAX(') || sql.includes('LAST_INSERT_ID()')), false);
-  } finally {
-    await catalog.close();
-  }
+  });
 });
 
 test('uses PostgreSQL INSERT RETURNING for a literal-default composite key', async () => {
-  const { catalog, metadata, queries, stored } = postgresCatalogFixture();
-  try {
-    const result = await catalog.insertRow(metadata, [
-      { name: 'tenant', value: 2 },
-      { name: 'n', value: 50 },
-    ]);
-    assert.deepEqual(result.rows, [stored]);
+  await assertLiteralDefaultCompositeKeyInsert(postgresCatalogFixture, queries => {
     assert.ok(queries.some(([, sql]) => sql === 'INSERT INTO "app"."generated_record" ("tenant","n") VALUES ($1,$2) RETURNING "tenant","seq","n"'));
-  } finally {
-    await catalog.close();
-  }
+  });
 });
 
 test('uses the MySQL statement insertId for an omitted automatic key', async () => {

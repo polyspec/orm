@@ -1,20 +1,8 @@
-use crate::catalog::{RowSnapshot, TablePage};
-use crate::tool_db::{GridCell, GridQueryResult, QueryColumn};
+use crate::catalog::RowSnapshot;
+use crate::tool_db::GridCell;
 
 fn snapshot() -> RowSnapshot {
-    let metadata = crate::catalog::test_fixtures::metadata("fixture", "value");
-    let page = TablePage {
-        metadata,
-        result: GridQueryResult {
-            columns: vec![QueryColumn { name: "id".into(), native_type: "INT8".into() }, QueryColumn { name: "value".into(), native_type: "TEXT".into() }],
-            rows: vec![vec![GridCell::Integer(1), GridCell::Text("original".into())]],
-        },
-        limit: 1,
-        offset: 0,
-        order_by: vec!["id".into()],
-        has_more: false,
-    };
-    RowSnapshot::from_page(&page, 0).unwrap()
+    crate::catalog::test_fixtures::row_snapshot("fixture", "value", "INT8")
 }
 
 #[tokio::test]

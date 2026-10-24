@@ -8,6 +8,8 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
+require_once __DIR__ . '/phpstan-runner.php';
+
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 
@@ -91,29 +93,12 @@ final class ClientGenericsTest extends TestCase
         // autoloader of that root.
         // PHPStan keeps its cache in the case's own folder, which tearDownAfterClass removes.
         file_put_contents("$work/phpstan.neon", "parameters:\n    tmpDir: $work/phpstan-cache\n");
-        $command = [
-            PHP_BINARY,
-            "$root/vendor-php/bin/phpstan",
-            'analyse',
-            '--no-progress',
-            '--no-ansi',
-            '--error-format=raw',
-            '--configuration', "$work/phpstan.neon", '--level=9', '--memory-limit=512M', '--autoload-file', __DIR__
-                . '/autoload.php', "$work/calls.php"];
-        $process = proc_open($command, [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, $root);
-        $out = (string) stream_get_contents($pipes[1]);
-        $err = (string) stream_get_contents($pipes[2]);
-        fclose($pipes[1]);
-        fclose($pipes[2]);
-        $code = proc_close($process);
-        $findings = array_values(
-            array_filter(explode("\n", $out), static fn(string $line): bool => str_contains($line, '[identifier='))
-        );
-        self::assertFalse(
-            $code !== 0 || $findings !== [],
-            "phpstan exited $code with " . count($findings) . " findings:\n" . implode("\n", $findings) . (
-                $findings === [] ? "\n$out$err" : ''
-            )
+        assertPhpstanHasNoFindings(
+            $this,
+            $root,
+            "$work/phpstan.neon",
+            __DIR__ . '/autoload.php',
+            "$work/calls.php",
         );
     }
 }

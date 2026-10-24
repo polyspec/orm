@@ -22,35 +22,33 @@ use Polyspec\Orm\OrmException;
 #[Medium]
 final class MysqlTlsTest extends TestCase
 {
-    /** parseDsn refuses $dsn with CONFIG and a message that contains $wanted. */
-    private static function refused(string $dsn, string $wanted): void
-    {
-        try {
-            Orm::parseDsn($dsn);
-            self::fail("accepted $dsn");
-        } catch (OrmException $e) {
-            self::assertTrue(
-                $e->code_ === Code::CONFIG && str_contains($e->getMessage(), $wanted),
-                "$dsn: {$e->code_} {$e->getMessage()}, expected CONFIG with $wanted"
-            );
-        }
-    }
-
     // Requirements: CFG-17, CFG-19.
     public function testParameters(): void
     {
-        self::refused('mysql://root@db.local/orm_example?charset=latin1', 'unknown parameter charset');
-        self::refused('mysql://root@db.local/orm_example?sslmode=disable', 'unknown parameter sslmode');
-        self::refused(
+        MysqlTlsCases::assertRefused(
+            'mysql://root@db.local/orm_example?charset=latin1',
+            'unknown parameter charset'
+        );
+        MysqlTlsCases::assertRefused(
+            'mysql://root@db.local/orm_example?sslmode=disable',
+            'unknown parameter sslmode'
+        );
+        MysqlTlsCases::assertRefused(
             'postgres://root@db.local/orm_example?application_name=orm',
             'unknown parameter application_name'
         );
-        self::refused('postgres://root@db.local/orm_example?ssl-mode=VERIFY_IDENTITY', 'unknown parameter ssl-mode');
-        self::refused('sqlite:///tmp/orm-tls.sqlite?cache=shared', 'unknown parameter cache');
+        MysqlTlsCases::assertRefused(
+            'postgres://root@db.local/orm_example?ssl-mode=VERIFY_IDENTITY',
+            'unknown parameter ssl-mode'
+        );
+        MysqlTlsCases::assertRefused('sqlite:///tmp/orm-tls.sqlite?cache=shared', 'unknown parameter cache');
         foreach (['127.0.0.1', '[::1]'] as $host) {
-            self::refused("mysql://root@$host/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem", 'host name');
+            MysqlTlsCases::assertRefused(
+                "mysql://root@$host/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem",
+                'host name'
+            );
         }
-        self::refused(
+        MysqlTlsCases::assertRefused(
             'mysql://root@localhost/orm_example?socket=/tmp/mysql.sock&ssl-mode=VERIFY_IDENTITY&ssl-ca=/tmp/ca.pem',
             'socket'
         );
@@ -78,43 +76,16 @@ final class MysqlTlsTest extends TestCase
     // Requirements: CFG-18.
     public function testUnsupportedTlsOptions(): void
     {
-        foreach (['VERIFY_CA', 'REQUIRED', 'PREFERRED', 'DISABLED', 'verify_identity', ''] as $mode) {
-            self::refused("mysql://root@db.local/orm_example?ssl-mode=$mode&ssl-ca=/tmp/ca.pem", 'ssl-mode');
-        }
-        self::refused('mysql://root@db.local/orm_example?ssl-mode=VERIFY_IDENTITY', 'ssl-ca');
-        self::refused('mysql://root@db.local/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=ca.pem', 'absolute');
-        self::refused('mysql://root@db.local/orm_example?ssl-ca=/tmp/ca.pem', 'ssl-mode');
-
-        $ca = sys_get_temp_dir() . '/orm-missing-ca-' . bin2hex(random_bytes(8)) . '.pem';
-        $db = null;
-        try {
-            $db = Orm::connect(
-                'mysql://root@localhost/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=' . rawurlencode($ca),
-                new Config()
-            );
-            self::fail('a missing TLS CA file must be CONFIG');
-        } catch (OrmException $error) {
-            self::assertSame(Code::CONFIG, $error->code_);
-            self::assertStringContainsString('not a readable file', $error->getMessage());
-        } finally {
-            $db?->close();
-        }
+        MysqlTlsCases::assertUnsupportedOptions('mysql://root@db.local/orm_example', '/tmp/ca.pem');
+        MysqlTlsCases::assertMissingCaRejected(
+            'mysql://root@localhost/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=',
+            'a missing TLS CA file must be CONFIG'
+        );
     }
 
     // Requirements: CFG-16.
     public function testConnections(): void
     {
-        $config = new Config();
-        $sslVersion = static function (string $dsn) use ($config): string {
-            $db = Orm::connect($dsn, $config);
-            try {
-                return (string) (
-                    $db->pdo()->query("SHOW SESSION STATUS LIKE 'Ssl_version'")->fetch(\PDO::FETCH_NUM)[1] ?? ''
-                );
-            } finally {
-                $db->close();
-            }
-        };
         $dsns = [];
         foreach (
             [
@@ -129,7 +100,7 @@ final class MysqlTlsTest extends TestCase
             }
             $dsns[] = $value;
         }
-        $version = $sslVersion($dsns[0]);
+        $version = MysqlTlsCases::sslVersion($dsns[0]);
         self::assertMatchesRegularExpression(
             '/^TLSv1\.[23]$/',
             $version,
@@ -137,7 +108,7 @@ final class MysqlTlsTest extends TestCase
         );
         foreach (['another CA' => $dsns[1], 'a certificate of another host' => $dsns[2]] as $name => $dsn) {
             try {
-                $sslVersion($dsn);
+                MysqlTlsCases::sslVersion($dsn);
                 self::fail("the connection with $name was accepted");
             } catch (OrmException $e) {
                 self::assertTrue(
@@ -159,18 +130,6 @@ final class MysqlTlsTest extends TestCase
         if (!is_string($dsn) || $dsn === '') {
             throw new RuntimeException('ORM_TEST_MYSQL_DSN is not set; run make orm-test-servers');
         }
-        $vector = json_decode(
-            (string) file_get_contents(__DIR__ . '/../../../tests/dsn/mysql-session.json'),
-            true,
-            512,
-            JSON_THROW_ON_ERROR
-        );
-        $db = Orm::connect($dsn, new Config());
-        try {
-            $mode = (string) $db->pdo()->query('SELECT @@SESSION.sql_mode')->fetchColumn();
-        } finally {
-            $db->close();
-        }
-        self::assertSame($vector['sql_mode']['session'], $mode, '@@SESSION.sql_mode');
+        MysqlTlsCases::assertSessionSqlMode($dsn);
     }
 }

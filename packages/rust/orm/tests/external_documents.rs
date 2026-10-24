@@ -26,52 +26,32 @@ mod pool_scalar;
 use pool_exec::exec;
 use pool_scalar::scalar as pool_scalar;
 
-use std::collections::BTreeMap;
+
+#[macro_use]
+#[path = "common/model_row.rs"]
+mod model_row;
+
 use std::sync::Arc;
 
-use polyspec_orm::{Config, Core, Db, Entity, Model, Param, Schema, Val};
+use polyspec_orm::{Config, Core, Db, Model, Param, Schema};
 use polyspec_orm_case_database::CaseDatabase;
 
 /// The manifest text, external text, and manifestHash of the member set. Like generated code, they are constants. external_case
-/// checks that they match the values made by set_schema.
+/// checks that they match the values made by set_schema::build.
 const MEMBER_EXTERNAL: &str = "dbspec 1 ext_core\n\ntable ext_account {\n  seq i64 identity\n  name varchar(64)\n  primary key (seq)\n  unique uq_ext_account_name (name)\n}\n\ntable ext_audit {\n  seq i64 identity\n  actor varchar(64)\n  primary key (seq)\n}\n";
 const MEMBER_TEXT: &str = "dbspec 1 ext_member\n\nuse ext_core { ext_account, ext_audit }\n\ntable ext_post {\n  seq i64 identity\n  account_seq i64\n  title varchar(191)\n  audit_seq i64\n  primary key (seq)\n  index ix_ext_post_account (account_seq)\n  index ix_ext_post_audit (audit_seq)\n  foreign key fk_ext_post_account (account_seq) references ext_account (seq) on delete restrict on update restrict\n  foreign key fk_ext_post_audit (audit_seq) references ext_audit (seq) on delete restrict on update restrict\n  settings {\n    audit into ext_post_history column audit_seq references ext_audit action change previous previous_audit_seq\n  }\n}\n\ntable ext_post_history {\n  history_id i64 identity\n  change varchar(8)\n  previous_audit_seq i64 null\n  seq i64\n  account_seq i64\n  title varchar(191)\n  audit_seq i64\n  primary key (history_id)\n  index ix_ext_post_history_row (seq)\n}\n";
 static MEMBER: Schema = Schema::with_external(MEMBER_TEXT, MEMBER_EXTERNAL, "sha256:c96bcde55bf0c8034c0b1ca46cc2d1ac097d9de4a54f55b058708eebd2f313b2");
 
 /// The model that writes the member set's ext_post by column name.
-static POST: Entity =
-    Entity { name: "ext_post", schema: &MEMBER, new: polyspec_orm::model::new_boxed::<Post>, collect: polyspec_orm::model::collect_boxed::<Post> };
+static POST: polyspec_orm::Entity = polyspec_orm::Entity {
+    name: "ext_post",
+    schema: &MEMBER,
+    new: polyspec_orm::model::new_boxed::<Post>,
+    collect: polyspec_orm::model::collect_boxed::<Post>,
+};
+const POST_COLUMNS: [&str; 4] = ["seq", "account_seq", "title", "audit_seq"];
 
-#[derive(Clone)]
-struct Post {
-    core: Core,
-    values: BTreeMap<String, Val>,
-}
-
-impl Model for Post {
-    fn entity() -> &'static Entity {
-        &POST
-    }
-    fn core(&self) -> &Core {
-        &self.core
-    }
-    fn core_mut(&mut self) -> &mut Core {
-        &mut self.core
-    }
-    fn from_core(core: Core) -> Self {
-        Post { core, values: BTreeMap::new() }
-    }
-    fn into_core(self) -> Core {
-        self.core
-    }
-    fn assign(&mut self, name: &str, v: Val) -> polyspec_orm::Result<bool> {
-        self.values.insert(name.to_owned(), v);
-        Ok(true)
-    }
-    fn value(&self, name: &str) -> Option<Val> {
-        self.values.get(name).cloned()
-    }
-}
+model_row!(Post, POST, POST_COLUMNS);
 
 async fn scalar(db: &Db, query: &str) -> i64 {
     pool_scalar(db, query).await.or_panic(|e| format!("{query}: {e}"))

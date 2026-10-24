@@ -3,11 +3,62 @@
 // deletes all rows it wrote, so the database state is unchanged.
 import assert from 'node:assert/strict';
 import { CompositeAccount, connect } from '../dist/index.js';
-import { runCases, withCleanup } from './coverage_case.mjs';
+import { errorCode, runCases, withCleanup } from './coverage_case.mjs';
 
 const tenant = 990002;
 
 await runCases('coverage_model_writes.mjs', {
+  // Requirements: DSL-104, INT-35, PRT-41.
+  async create_parts({ driver, dsn }) {
+    const db = await connect(dsn);
+    const createTenant = tenant + 1;
+    const account = () => new CompositeAccount().connect(db);
+    try {
+      assert.equal(db.driver, driver);
+      assert.equal(await account().tenantId(createTenant).getCount(), 0, 'tenant starts empty');
+      const events = [];
+      const unsubscribe = db.subscribe(event => { events.push(event); });
+      try {
+        const refused = [new CompositeAccount().setTenantId(createTenant).setAccountId(1).setName('refused')];
+        assert.equal(await errorCode(account().creates(refused, 0)), 'CONFIG', 'batch zero is refused');
+        assert.equal(events.length, 0, 'invalid batch sends no statements');
+        const limit = driver === 'sqlite' ? 999 : 65535;
+        const oversized = Array.from({ length: Math.floor(limit / 3) + 1 }, () =>
+          new CompositeAccount().setTenantId(createTenant).setAccountId(8).setName('oversized'));
+        assert.equal(await errorCode(account().creates(oversized, oversized.length)), 'BATCH_TOO_LARGE', 'over-limit batch is refused');
+        assert.equal(events.length, 0, 'over-limit batch sends no statements');
+
+        const labels = ['ordered-5', 'ordered-4', 'ordered-3', 'ordered-2', 'ordered-1'];
+        const rows = labels.map((name, i) => new CompositeAccount().setTenantId(createTenant).setAccountId(i + 1).setName(name));
+        assert.equal(await account().creates(rows, 2), 5, 'creates inserts all rows');
+        const inserts = events.filter(event => event.kind === 'insert');
+        assert.deepEqual(inserts.map(event => event.binds.length / 3), [2, 2, 1], 'INSERT batches are 2, 2, 1');
+        const stored = await account().tenantId(createTenant).orderByAccountIdAsc().gets();
+        assert.deepEqual([...stored].map(row => row.getName()), labels, 'stored rows preserve input order');
+
+        await (await account().tenantId(createTenant).gets()).delete();
+        events.length = 0;
+        await account().setTenantId(createTenant).setAccountId(99).setName('existing').create();
+        events.length = 0;
+        const failing = [10, 11, 12, 13, 99].map(id => new CompositeAccount()
+          .setTenantId(createTenant).setAccountId(id).setName(`rollback-${id}`));
+        assert.equal(await errorCode(account().creates(failing, 2)), 'DUPLICATE_KEY', 'third batch conflicts with sentinel');
+        const failedInserts = events.filter(event => event.kind === 'insert');
+        assert.deepEqual(failedInserts.map(event => event.binds.length / 3), [2, 2, 1], 'failure is in third batch');
+        assert.equal(await account().tenantId(createTenant).getCount(), 1, 'failed call rolls back earlier batches');
+        assert.equal((await account().getByTenantIdAndAccountId(createTenant, 99)).getName(), 'existing');
+      } finally { unsubscribe(); }
+    } finally {
+      try {
+        await withCleanup(async () => {
+            await (await account().tenantId(createTenant).gets()).delete();
+          assert.equal(await account().tenantId(createTenant).getCount(), 0, 'case leaves no rows');
+        }, async () => { await (await account().tenantId(createTenant).gets()).delete(); });
+      } finally {
+        await db.close();
+      }
+    }
+  },
   // Requirements: DSL-56, DSL-57, DSL-58, DSL-60, DSL-103, DSL-104, DSL-105, DSL-106, DSL-110.
   async model_write_cycle({ driver, dsn }) {
     const db = await connect(dsn);

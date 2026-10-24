@@ -1,3 +1,6 @@
+#[path = "common/physical_fixture.rs"]
+mod physical_fixture;
+
 use polyspec_orm_build::tool_db::{self, QueryLimits, Val};
 
 #[tokio::test]
@@ -8,15 +11,10 @@ async fn physical_tool_queries_reject_budgets_without_partial_success() {
 }
 
 async fn check_databases() {
-    let path = std::env::temp_dir().join(format!("orm-tool-limits-{}.sqlite", std::process::id()));
-    assert!(!path.exists());
+    let path = physical_fixture::sqlite_path("tool-limits");
     for dialect in ["sqlite", "mysql", "postgres"] {
         polyspec_orm_testcase::step(format_args!("running {dialect}"));
-        let dsn = match dialect {
-            "sqlite" => format!("sqlite://{}", path.display()),
-            "mysql" => std::env::var("ORM_TOOLS_MYSQL_DSN").expect("declared MySQL test DSN"),
-            _ => std::env::var("ORM_TOOLS_POSTGRES_DSN").expect("declared PostgreSQL test DSN"),
-        };
+        let dsn = physical_fixture::dsn_for(dialect, &path);
         let (database, mut connection, _) = tool_db::open(&dsn).await.expect("owner test connection");
         let bind_sql = if dialect == "postgres" { "SELECT $1::bigint" } else { "SELECT ?" };
         assert_eq!(connection.query_bounded(bind_sql, &[tool_db::P::I(7)], QueryLimits::default()).await.unwrap(), vec![vec![Val::Int(7)]]);
@@ -40,9 +38,7 @@ async fn check_databases() {
         }
         let error = connection.query_bounded("SELECT 'private-cell-value'", &[], QueryLimits { max_rows: 1, max_bytes: 2 }).await.unwrap_err();
         assert!(!error.to_string().contains("private-cell-value"));
-        drop(connection);
-        database.close().await;
-        polyspec_orm_testcase::step(format_args!("{dialect} passed"));
+        physical_fixture::finish_physical_dialect(database, connection, dialect, "passed").await;
     }
     std::fs::remove_file(path).expect("remove owner SQLite fixture");
 }

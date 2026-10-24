@@ -1,5 +1,5 @@
 <!-- doc-id: principles -->
-<!-- source-sha256: 40d8ecdade0fbdee61668d75d122aab0ae8010e40668338f91a09b71e8ce954b -->
+<!-- source-sha256: 8fee9c8238c2c2b0f53ccc7469cd3e4ddf5e8453bfa37c5b10510c760c20c46e -->
 # 원칙
 
 [English](PRINCIPLES.md)
@@ -136,9 +136,10 @@ vendor하므로, 모든 repository가 같은 text를 가지며 `make kit-check`�
 - P31 gate는 우회하지 않는다. test, script, Makefile은 workflow 밖에서 CI identity(`GITHUB_ACTIONS`, `CI`)를 설정하지 않고,
   `make -o`, `--old-file`, `--assume-old`에 kit-gates의 gate를 적지 않으며, `--no-verify`를 쓰지 않는다 (K308).
   Enforced by: `make bypass-check`
-- P32 범위: contract 동작은 모든 구현에 있고(S6, S10) test와 함께 구현한다. 언어나 runtime에 고유한 통합은 docs/spec에
-  중립적인 규칙 하나로 쓰고, 각 구현이 자기 고유한 형태를 거기에 묶는다. 구현 내부 test는 자기 package의 보통 test이지 parity
-  unit이 아니며 requirement를 인용하지 않는다. 우연히 public인 symbol은 non-public이 된다.
+- P32 범위: 공유 contract 동작은 모든 구현에 있고(S6, S10) test와 함께 구현한다. 언어나 runtime에 고유한 통합은 docs/spec에
+  중립적인 규칙 하나로 쓰고, 적용되는 각 구현이 자기 고유한 형태를 거기에 묶는다. component나 artifact에만 해당하는 requirement는
+  기존 coverage part나 release package에서 owner가 도출되는 feature unit만 test한다. scope가 없는 unit은 여전히 모든 구현에 적용한다.
+  구현 내부 test는 자기 package의 보통 test이지 parity unit이 아니며 requirement를 인용하지 않는다. 우연히 public인 symbol은 non-public이 된다.
   Enforced by: `make parity-declarations-check`, `make parity-check`, `make divergence-check`, `make test-markers-check`
 - P33 작업에 필요한데 docs/spec에 없는 규칙은 docs/spec에 먼저 쓴다. requirement는 그것을 test하는 test만 인용하고, unit을 통과하려고
   버리지 않으며, 검사를 피하려고 이름을 바꾸지 않는다.
@@ -190,7 +191,7 @@ owner가 2026-10-13에 이 기준을 승인했습니다. 각 기준은 위반 �
   가집니다(K245). `make layout-check`가 alint로 `config/layout.yml`(kit 공통 rule 위에 레포의 map을 더한 설정)에 맞춰 검사하며,
   그 안의 예외는 모두 이유를 가집니다.
   Enforced by: `make layout-check`
-- S6 언어 parity: repository의 모든 구현은 같은 feature unit, vector, API를 같은 수준으로 test하고, docs/spec이 정의하는 각 requirement(list item, 곧 글머리 기호나 번호 목록의 `**<id>**` 또는 heading `<id>`)는 unit이 인용하므로 모든 구현이 그것을 test합니다. 모든 unit은 모든 구현이 가집니다: profile, exclusion, native-only symbol은 없습니다. directory suite의 case는 자신이 test하는 requirement를 `case.json`에 나열합니다.
+- S6 언어 parity: repository의 모든 구현은 공유 feature unit, vector, API를 같은 수준으로 test하고, docs/spec이 정의하는 각 requirement(list item, 곧 글머리 기호나 번호 목록의 `**<id>**` 또는 heading `<id>`)는 unit이 인용합니다. scope가 없는 unit은 모든 구현에 binding합니다. component나 artifact에만 해당하는 requirement는 `contracts/features.json`의 coverage part 또는 `config/release.json`의 package에서 도출한 owner에만 feature unit을 scope할 수 있습니다. requirement는 owner를 이름으로 말하고 native test는 requirement를 인용합니다. 임의 profile, implementation 허용 목록, exclusion, native-only symbol은 scope가 아닙니다. directory suite의 case는 자신이 test하는 requirement를 `case.json`에 나열합니다.
   Enforced by: `make parity-declarations-check`, `make parity-check`
 - S7 test 위치: 기본 기능의 test는 그 기능을 소유한 package와 repository에 둡니다. 소비자는 소비자 관점의 test만 둡니다.
   Enforced by: `make layout-check`, `make parity-declarations-check`

@@ -560,6 +560,16 @@
         "packages/php/tests/InsertPartsTest.php",
         "packages/ts/tests/insert-parts.mjs",
         "packages/php/tests/DsnTest.php",
+        "packages/php/tests/DbspecRunnerTest.php",
+        "packages/php/testing/dbspec/apply/runner.php",
+        "packages/php/testing/dbspec/apply/php.php",
+        "packages/php-ext/testing/dbspec/apply/php-extension.php",
+        "packages/php/testing/dbspec/introspect/runner.php",
+        "packages/php/testing/dbspec/introspect/php.php",
+        "packages/php-ext/testing/dbspec/introspect/php-extension.php",
+        "packages/php/testing/dbspec/compare/php-interface.php",
+        "packages/php/testing/dbspec/compare/php.php",
+        "packages/php-ext/testing/dbspec/compare/php-extension.php",
         "packages/php/tests/MarkdownTest.php",
         "packages/php/tests/markdown_fake_server.php",
         "packages/php/tests/RelationKeysTest.php",
@@ -572,6 +582,8 @@
         "packages/php/tests/RuntimeModelTest.php",
         "packages/php/tests/OrmGenTest.php",
         "packages/php/tests/OrmGenScanTest.php",
+        "packages/php/tests/OrmGenScanParityTest.php",
+        "packages/php/tests/OrmGenTestSupport.php",
         "packages/php/src/Generator.php",
         "packages/php/src/ScanVisitor.php",
         "tests/generator/php-scan-vectors.json",
@@ -598,6 +610,7 @@
         "packages/php/src/Generator.php",
         "packages/php/src/Model.php",
         "packages/php/tests/OrmGenTest.php",
+        "packages/php/tests/OrmGenTestSupport.php",
         "packages/php-ext/src/model_native_methods.c",
         "packages/php-ext/src/model_native_methods.h",
         "packages/php-ext/src/model_state.c",
@@ -909,6 +922,7 @@
         "packages/go/orm/collection_key_test.go",
         "packages/php/src/Db.php",
         "packages/php/tests/RelationKeysTest.php",
+        "packages/php/tests/CollectionIdentityTest.php",
         "packages/python/src/polyspec/orm/database.py",
         "packages/python/tests/test_split_null.py",
         "packages/rust/orm/src/model.rs",
@@ -1161,6 +1175,7 @@
         "packages/rust/build/src/catalog/row_insert.rs",
         "packages/rust/build/src/catalog/row_update.rs",
         "packages/rust/build/tests/unit/assignment_budget.rs",
+        "packages/rust/build/tests/unit/catalog_fixtures.rs",
         "packages/rust/build/tests/unit/insert_values.rs",
         "packages/rust/build/tests/unit/mutation_safety.rs",
         "packages/rust/build/tests/unit/row_update_budget.rs"
@@ -1485,6 +1500,7 @@
         "packages/ts/tests/markdown.mjs",
         "packages/ts/src/codec.ts",
         "packages/ts/src/database.ts",
+        "packages/ts/src/driver.ts",
         "packages/ts/src/model.ts"
       ]
     },
@@ -1608,6 +1624,7 @@
         "tests/markdown/flowmark.version",
         "packages/go/markdownmodel/conformance_test.go",
         "packages/php/tests/MarkdownConformanceTest.php",
+        "packages/php/tests/OrmGenTestSupport.php",
         "packages/php-ext/tests/MarkdownConformanceNativeTest.php",
         "packages/python/tests/markdown_conformance.py",
         "packages/python/tests/testcase.py",
@@ -1773,6 +1790,17 @@
         "packages/php-ext/src/introspect.c"
       ]
     },
+    "dbspec-sqlite-literal-rows-helper-check": {
+      "scope": "owner",
+      "needs": ["php", "composer"],
+      "inputs": [
+        "Makefile",
+        "packages/php/tests/CannedCatalogPdo.php",
+        "packages/php/tests/dbspec_behaviour.php",
+        "packages/php/tests/DbspecShowCreateIntrospectTest.php",
+        "packages/php/tests/DbspecBehaviourTest.php"
+      ]
+    },
     "dbspec-introspect-query-count-unit-check": {
       "scope": "owner",
       "needs": [
@@ -1791,6 +1819,8 @@
         "packages/go/engine/dbspec/introspect_query_count_test.go",
         "packages/php/src/Dbspec/CatalogRows.php",
         "packages/php/tests/CountingPdo.php",
+        "packages/php/tests/bootstrap.php",
+        "packages/php/tests/DbspecIntrospectQueryCountCases.php",
         "packages/php/tests/DbspecIntrospectQueryCountTest.php",
         "packages/php/models.txt",
         "packages/php-ext/src/introspect.c",
@@ -1829,6 +1859,30 @@
         "packages/python/tests/testcase.py",
         "packages/python/tests/vector_case.py",
         "tests/dbspec/introspect.json"
+      ]
+    },
+    "dbspec-php-interface-program-helper-check": {
+      "scope": "owner",
+      "needs": ["php", "composer"],
+      "inputs": [
+        "Makefile",
+        "packages/php/tests/dbspec-php-interface-program.php",
+        "packages/php/tests/DbspecRunnerTest.php",
+        "packages/php/tests/DbspecPlanTest.php"
+      ]
+    },
+    "phpstan-test-runner-helper-check": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/php/tests/phpstan-runner.php",
+        "packages/php/tests/OrmGenTestSupport.php",
+        "packages/php/tests/ClientGenericsTest.php",
+        "packages/php/tests/ModelMethodsTest.php"
       ]
     },
     "dbspec-introspect-python-helper-check": {
@@ -2286,6 +2340,7 @@
         "packages/php/tests/ModelMethodsTest.php",
         "packages/php/tests/ModelTypesSourceTest.php",
         "packages/php/tests/model-types-weak-caller.php",
+        "packages/php/tests/OrmGenTestSupport.php",
         "packages/php-ext/tests/ModelNativeTest.php",
         "packages/php-ext/tests/AuditLazyFakePdoTest.php",
         "packages/php-ext/tests/RequestHookNativeTest.php",
@@ -2330,6 +2385,7 @@
       "inputs": [
         "Makefile",
         "packages/php-ext/tests/MysqlTlsNativeTest.php",
+        "packages/php/tests/MysqlTlsCases.php",
         "packages/php-ext/tests/bootstrap.php"
       ]
     },
@@ -2344,6 +2400,7 @@
       "inputs": [
         "Makefile",
         "packages/php-ext/tests/MysqlSessionNativeTest.php",
+        "packages/php/tests/MysqlTlsCases.php",
         "packages/php-ext/tests/bootstrap.php",
         "tests/dsn/mysql-session.json"
       ]
@@ -2544,7 +2601,8 @@
         "packages/php-ext/src/orm.c",
         "packages/php/src/Orm.php",
         "packages/php/src/Db.php",
-        "packages/php/gen/**",
+        "packages/php/models.txt",
+        "packages/php/bin/orm-gen",
         "packages/php/tests/case_database.php",
         "packages/php/tests/bench.php",
         "contracts/fixtures/bench/**"
@@ -2562,7 +2620,8 @@
         "packages/php/tests/ModelTest.php",
         "packages/php/tests/case_database.php",
         "packages/php/tests/bench.php",
-        "packages/php/gen/**",
+        "packages/php/models.txt",
+        "packages/php/bin/orm-gen",
         "contracts/fixtures/bench/**"
       ]
     },
@@ -3135,6 +3194,18 @@
         "packages/rust/build/tests/unit/typed_bind_validation.rs"
       ]
     },
+    "rust-closed-executor-check": {
+      "scope": "owner",
+      "needs": [
+        "rust",
+        "node-modules"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/rust/orm/src/db.rs",
+        "packages/rust/orm/src/db/executor_route_tests.rs"
+      ]
+    },
     "go-catalog-session-error-check": {
       "scope": "owner",
       "needs": [
@@ -3288,6 +3359,15 @@
         "config/parity.json",
         "tests/interfaces/check/api.test.mts",
         "Makefile"
+      ]
+    },
+    "php-test-assertions-helper-check": {
+      "scope": "owner",
+      "needs": ["php", "composer"],
+      "inputs": [
+        "Makefile",
+        "packages/php/tests/DatabaseTestAssertions.php",
+        "packages/php/tests/DatabaseTestAssertionsTest.php"
       ]
     },
     "native-api-equivalence-check": {

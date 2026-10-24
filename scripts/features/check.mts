@@ -9,6 +9,10 @@ import { readFeatures, type FeatureManifest } from './manifest.mts';
 import { implementationLanguages, unitTests, unknownParityUnits } from './languages.mts';
 import { JsonError, readJsonFile, SchemaError } from '../json/schema.mts';
 import { parseSelection, selectChecks, selectionErrors, SHARDS } from './select.mts';
+import { completionItemAdapterErrors } from './behavior-adapters.mts';
+import { checkBehaviorAdapterCases } from '../../tests/interfaces/check/contract.mts';
+import { readManifest as readInterfaceManifest, validateManifest as validateInterfaceManifest } from '../../tests/interfaces/check/manifest.mts';
+import { readParity } from '../../tests/interfaces/check/api.mts';
 
 const root = resolve(new URL('../..', import.meta.url).pathname);
 // The manifest check before the verify command is one case that reads a file and compares it.
@@ -19,6 +23,11 @@ const errors: string[] = [];
 // the doc and verify-command fields are checked by the schema, and the checks below look at what the schema cannot say (VERSION, the path on disk, unique ids,
 // shards, fixtures). If the schema rejects, it reports only that error and stops.
 const manifest = readManifest();
+const interfaceManifest = readInterfaceManifest(resolve(root, 'contracts/interfaces.json'));
+validateInterfaceManifest(interfaceManifest);
+const checklist = await readFile(resolve(root, 'docs/plans/kit-standard/checklist.md'), 'utf8');
+errors.push(...completionItemAdapterErrors(checklist, interfaceManifest.behavior_adapters ?? []));
+errors.push(...checkBehaviorAdapterCases(interfaceManifest.behavior_adapters ?? [], readParity(root).units ?? []));
 const ids = new Set<string>();
 // shardOf is, for each (cwd, command), the verify command that first declared it and its shard.
 const shardOf = new Map<string, { shard: string; name: string }>();

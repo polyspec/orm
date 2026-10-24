@@ -29,10 +29,8 @@ use Throwable;
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;
-use Polyspec\Orm\Generator;
 use Polyspec\Orm\Orm;
 use Polyspec\Orm\OrmException;
-use Polyspec\Orm\RuntimeModel;
 use Polyspec\Orm\Testing\Faults;
 use Polyspec\Orm\Tests\RollbackCase\RollbackProbe;
 use PHPUnit\Framework\Attributes\Medium;
@@ -43,8 +41,8 @@ use PHPUnit\Framework\Attributes\DataProvider;
 final class RollbackTest extends TestCase
 {
     use ThreeDrivers;
+    use DatabaseTestAssertions;
 
-    private static mixed $documents = null;
     private static mixed $faultsAutoloaded = null;
 
     /** The fixture of the file: what the script did before its cases, once per class. */
@@ -55,43 +53,17 @@ final class RollbackTest extends TestCase
         self::$faultsAutoloaded = class_exists(\Polyspec\Orm\Testing\Faults::class);
         require_once dirname(__DIR__) . '/testing/Faults.php';
 
-        $work = sys_get_temp_dir() . '/orm-php-rollback-' . getmypid();
-        is_dir($work) || mkdir($work, 0o700, true);
-        register_shutdown_function(static function () use ($work): void {
-            exec('rm -rf ' . escapeshellarg($work));
-        });
-
-        self::$documents = [(string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/rollback.dbs')];
-        Generator::generate(
-            RuntimeModel::build(RuntimeModel::parse(['rollback.dbs' => self::$documents[0]])),
-            "$work/models",
+        loadGeneratedFixture(
+            'orm-php-rollback-',
+            'rollback.dbs',
             'Polyspec\\Orm\\Tests\\RollbackCase'
         );
-        requireGeneratedClasses("$work/models");
-        require "$work/models/bootstrap.php";
-    }
-
-    private static function check(bool $ok, string $message): void
-    {
-        \PHPUnit\Framework\Assert::assertTrue($ok, $message);
-    }
-
-    /** The error a call raises, or null when it returns. */
-    private static function raised(callable $f): ?Throwable
-    {
-        try {
-            $f();
-        } catch (Throwable $e) {
-            return $e;
-        }
-        return null;
     }
 
     /** A connection of the test, outside the client. */
     private static function native(string $dsn): array
     {
-        [$driver, $pdoDsn, $user, $password] = Orm::parseDsn($dsn);
-        return [$driver, new PDO($pdoDsn, $user, $password, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION])];
+        return self::nativeConnection($dsn);
     }
 
     /** Opens the client, installs the fixture and, on SQLite, the trigger that raises ROLLBACK. */
@@ -125,14 +97,7 @@ final class RollbackTest extends TestCase
         if ($driver === 'sqlite') {
             return;
         }
-        $env = 'ORM_TEST_' . strtoupper($driver) . '_SERVER_DSN';
-        $server = requiredDsn($env);
-        if ($server === false || $server === '') {
-            throw new RuntimeException(
-                "$env is required; database tests never skip; run the test through its make target, which reads the "
-                . "environment of make orm-test-servers"
-            );
-        }
+        $server = self::serverDsn($driver);
         // The case database name is the path of the case DSN. The server connection opens that database too.
         $database = ltrim((string) parse_url($dsn, PHP_URL_PATH), '/');
         [, $pdo] = self::native(case_dsn_with_database($server, $database));
@@ -155,14 +120,24 @@ final class RollbackTest extends TestCase
         }
     }
 
+    private static function serverDsn(string $driver): string
+    {
+        $env = 'ORM_TEST_' . strtoupper($driver) . '_SERVER_DSN';
+        $server = requiredDsn($env);
+        if ($server === false || $server === '') {
+            throw new RuntimeException(
+                "$env is required; database tests never skip; run the test through its make target, which reads the "
+                . "environment of make orm-test-servers"
+            );
+        }
+        return $server;
+    }
+
     /** Checks a ROLLBACK error: both errors are kept and the message names both. */
     private static function checkRollback(?Throwable $e, string $subject): void
     {
-        self::check(
-            $e instanceof OrmException,
-            "$subject raises " . ($e === null ? 'nothing' : $e::class . ': ' . $e->getMessage())
-        );
-        if (!$e instanceof OrmException) {
+        $e = self::checkedOrmException($e, $subject);
+        if ($e === null) {
             return;
         }
         self::check($e->code_ === Code::ROLLBACK, "$subject code {$e->code_}: {$e->getMessage()}");
@@ -179,15 +154,20 @@ final class RollbackTest extends TestCase
         }
     }
 
+    private static function writeAroundSessionEnd(Db $db, string $dsn, string $label): void
+    {
+        (new RollbackProbe())($db)->setLabel($label)->create();
+        self::endSession($dsn);
+        (new RollbackProbe())($db)->setLabel('end')->create();
+    }
+
     /** The callback of a transaction fails and the rollback fails. */
     private static function rollbackFailed(string $dsn): void
     {
         $db = self::connect($dsn);
         $driver = $db->driver();
         $e = self::raised(fn() => $db->transaction(function () use ($db, $dsn): void {
-            (new RollbackProbe())($db)->setLabel('kept')->create();
-            self::endSession($dsn);
-            (new RollbackProbe())($db)->setLabel('end')->create();
+            self::writeAroundSessionEnd($db, $dsn, 'kept');
         }, retry: 0));
         self::checkRollback($e, 'transaction');
         if ($driver !== 'sqlite' && $e instanceof OrmException) {
@@ -225,9 +205,7 @@ final class RollbackTest extends TestCase
         $e = self::raised(fn() => $db->transaction(function () use ($db, $dsn): void {
             (new RollbackProbe())($db)->setLabel('kept')->create();
             $db->transaction(function () use ($db, $dsn): void {
-                (new RollbackProbe())($db)->setLabel('nested')->create();
-                self::endSession($dsn);
-                (new RollbackProbe())($db)->setLabel('end')->create();
+                self::writeAroundSessionEnd($db, $dsn, 'nested');
             });
         }, retry: 0));
         self::checkRollback($e, 'transaction');
@@ -308,14 +286,7 @@ final class RollbackTest extends TestCase
     {
         [$driver] = Orm::parseDsn($dsn);
         self::connect($dsn)->close();
-        $env = 'ORM_TEST_' . strtoupper($driver) . '_SERVER_DSN';
-        $server = requiredDsn($env);
-        if ($server === false || $server === '') {
-            throw new RuntimeException(
-                "$env is required; database tests never skip; run the test through its make target, which reads the "
-                . "environment of make orm-test-servers"
-            );
-        }
+        $server = self::serverDsn($driver);
         $direct = case_dsn_with_database($server, ltrim((string) parse_url($dsn, PHP_URL_PATH), '/'));
         [, $pdo] = self::native($direct);
         // Another client's session in the case database, such as a server connection of a pooler, is open

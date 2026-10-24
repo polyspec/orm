@@ -9,20 +9,24 @@ final class ForeignKey
 {
     public const ACTIONS = ['restrict', 'cascade', 'set_null'];
 
+    /** @use NamedColumns<string> */
+    use NamedColumns;
+
     /**
      * @param list<string> $columns
      * @param list<string> $referencedColumns
      * @param list<string> $comments
      */
     public function __construct(
-        public string $name,
-        public array $columns,
+        string $name,
+        array $columns,
         public string $table,
         public array $referencedColumns,
         public string $onDelete,
         public string $onUpdate,
-        public array $comments = [],
+        array $comments = [],
     ) {
+        $this->initializeNamedColumns($name, $columns, $comments);
     }
 
     /** True when an action changes child rows: `cascade` or `set_null` on delete or update. */

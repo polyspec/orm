@@ -11,6 +11,10 @@
 mod or_panic;
 use or_panic::OrPanic;
 
+#[macro_use]
+#[path = "common/json_trials.rs"]
+mod json_trials;
+
 #[path = "common/dbspec_probe.rs"]
 mod dbspec_probe;
 
@@ -185,17 +189,7 @@ fn introspect_unsupported() -> Vec<Trial> {
     let vectors: Value = serde_json::from_str(&std::fs::read_to_string(path).expect("introspect.json")).expect("introspect.json");
     let cases = vectors["cases"].as_array().expect("introspect cases");
     assert!(!cases.is_empty(), "tests/dbspec/introspect.json has no cases");
-    cases
-        .iter()
-        .enumerate()
-        .map(|(index, case)| {
-            let id = case["id"].as_str().expect("id").to_owned();
-            let case = case.clone();
-            polyspec_orm_testcase::async_trial(format!("introspect_unsupported::{id}"), polyspec_orm_testcase::DATABASE, move || async move {
-                introspect_unsupported_case(index, &case).await
-            })
-        })
-        .collect()
+    json_trials!(cases, "introspect_unsupported", polyspec_orm_testcase::DATABASE, introspect_unsupported_case)
 }
 
 async fn introspect_unsupported_case(index: usize, case: &Value) {

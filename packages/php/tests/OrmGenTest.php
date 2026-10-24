@@ -9,7 +9,6 @@ namespace Polyspec\Orm\Tests;
 
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
-use Polyspec\Orm\OrmGen;
 
 // Each case runs orm-gen in this process and writes and reads models in a temporary directory,
 // except the bin cases, which run the bin in a new process.
@@ -20,46 +19,24 @@ final class OrmGenTest extends TestCase
 
     public static function setUpBeforeClass(): void
     {
-        self::$work = sys_get_temp_dir() . '/orm-php-orm-gen-' . getmypid();
-        is_dir(self::$work) || mkdir(self::$work, 0o700, true);
+        self::$work = OrmGenTestSupport::createWorkDirectory('orm-php-orm-gen-');
     }
 
     public static function tearDownAfterClass(): void
     {
-        exec('rm -rf ' . escapeshellarg(self::$work));
-    }
-
-    /** Writes the set file of $documents and $external into $dir. */
-    private static function setFile(string $dir, array $documents, array $external = []): string
-    {
-        is_dir($dir) || mkdir($dir, 0o700, true);
-        $path = "$dir/dbspec-set.json";
-        file_put_contents(
-            $path,
-            json_encode(['schema' => 1, 'documents' => $documents, 'external' => $external], JSON_UNESCAPED_SLASHES)
-        );
-        return $path;
+        OrmGenTestSupport::removeWorkDirectory(self::$work);
     }
 
     private static function tool(array $args): array
     {
-        ob_start();
-        $stderr = fopen('php://memory', 'w+');
-        $code = OrmGen::run($args, $stderr);
-        $out = (string) ob_get_clean();
-        rewind($stderr);
-        return [$code, $out, (string) stream_get_contents($stderr)];
+        return OrmGenTestSupport::run($args);
     }
 
     /** Runs $command in a new process from the repository root and returns its exit code, stdout and stderr. */
     private static function process(array $command): array
     {
-        $process = proc_open($command, [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, dirname(__DIR__, 3));
-        $out = (string) stream_get_contents($pipes[1]);
-        $err = (string) stream_get_contents($pipes[2]);
-        fclose($pipes[1]);
-        fclose($pipes[2]);
-        return [proc_close($process), $out, $err];
+        return OrmGenTestSupport::runProcess($command, dirname(__DIR__, 3))
+            ?? throw new \RuntimeException('cannot start ' . implode(' ', $command));
     }
 
     // Requirements: DBS-104, DBS-112, DBS-114, INT-66.
@@ -67,7 +44,7 @@ final class OrmGenTest extends TestCase
     {
         $dir = self::$work . '/typed-getter';
         $namespace = 'Polyspec\\Orm\\Tests\\GeneratedTypedGetter';
-        $set = self::setFile($dir, ['typed.dbs']);
+        $set = OrmGenTestSupport::setFile($dir, ['typed.dbs']);
         file_put_contents(
             "$dir/typed.dbs",
             "dbspec 1 typed\n\ntable item {\n  price i32\n  primary key (price)\n}\n"
@@ -95,26 +72,13 @@ final class OrmGenTest extends TestCase
         self::assertSame([], (new \ReflectionClass($class))->getProperties());
         self::assertTrue((new \ReflectionProperty(\Polyspec\Orm\Model::class, 'values'))->isPrivate());
 
-        try {
-            $model->getPrice();
-            self::fail('An unselected generated column must fail.');
-        } catch (\Polyspec\Orm\OrmException $error) {
-            self::assertSame(\Polyspec\Orm\Code::COLUMN_UNSELECTED, $error->code_);
-        }
-
-        self::assertSame($model, $model->setPrice(17));
-        self::assertSame(17, $model->getPrice());
-        set_error_handler(static fn(int $severity, string $message): never => throw new \ErrorException($message));
-        try {
-            try {
-                $model->values;
-                self::fail('Generated consumers must not access private model storage.');
-            } catch (\ErrorException $error) {
-                self::assertStringContainsString('undefined property', strtolower($error->getMessage()));
-            }
-        } finally {
-            restore_error_handler();
-        }
+        OrmGenTestSupport::assertGeneratedTypedGetter(
+            $this,
+            $model,
+            'getPrice',
+            'setPrice',
+            \Polyspec\Orm\Code::COLUMN_UNSELECTED
+        );
     }
 
     public function testGenCheckComparesTheModelsWithoutWriting(): void
@@ -127,7 +91,7 @@ final class OrmGenTest extends TestCase
             "dbspec 1 example\n\ntable item {\n  seq i64\n  name varchar(32)\n  primary key (seq)\n}\n\ntable tag "
             . "{\n  seq i64\n  primary key (seq)\n}\n"
         );
-        $set = self::setFile($dir, ['example.dbs']);
+        $set = OrmGenTestSupport::setFile($dir, ['example.dbs']);
         $args = [
             'gen',
             '--set',
@@ -168,7 +132,7 @@ final class OrmGenTest extends TestCase
         $work = self::$work;
         // The byte check rejects the DbSchema project XML and the empty file before the parse, and every
         // file's diagnostic is printed.
-        $set = self::setFile("$work/signature", ['dbschema.dbs', 'empty.dbs']);
+        $set = OrmGenTestSupport::setFile("$work/signature", ['dbschema.dbs', 'empty.dbs']);
         foreach (['dbschema.dbs', 'empty.dbs'] as $name) {
             copy(dirname(__DIR__, 3) . "/tests/dbspec/files/$name", "$work/signature/$name");
         }
@@ -188,7 +152,7 @@ final class OrmGenTest extends TestCase
     {
         $work = self::$work;
         $dir = "$work/set-errors";
-        $set = self::setFile($dir, ['gone.dbs', 'sub\\x.dbs']);
+        $set = OrmGenTestSupport::setFile($dir, ['gone.dbs', 'sub\\x.dbs']);
         [$code, $out, $err] = self::tool(
             ['gen', '--set', $set, '--out', "$dir/model", '--namespace', 'Polyspec\\Orm\\Tests\\Example']
         );
@@ -203,7 +167,7 @@ final class OrmGenTest extends TestCase
     {
         $work = self::$work;
         $dir = "$work/positional";
-        $set = self::setFile($dir, ['example.dbs']);
+        $set = OrmGenTestSupport::setFile($dir, ['example.dbs']);
         file_put_contents("$dir/example.dbs", "dbspec 1 example\n\ntable item {\n  seq i64\n  primary key (seq)\n}\n");
         foreach (
             [
@@ -238,7 +202,7 @@ final class OrmGenTest extends TestCase
         // restore() is a method of every model, so it overlaps with the condition method of a restore column.
         $dir = "$work/gen-reserved";
         is_dir("$dir/model") || mkdir("$dir/model", 0o700, true);
-        $set = self::setFile($dir, ['example.dbs']);
+        $set = OrmGenTestSupport::setFile($dir, ['example.dbs']);
         foreach (['create', 'restore'] as $column) {
             file_put_contents(
                 "$dir/example.dbs",
@@ -263,7 +227,7 @@ final class OrmGenTest extends TestCase
         // and the bootstrap holds the text of the used external tables.
         $root = dirname(__DIR__, 3);
         $dir = "$work/gen-use";
-        $set = self::setFile("$dir/set/app", ['member.dbs'], ['../core/core.dbs']);
+        $set = OrmGenTestSupport::setFile("$dir/set/app", ['member.dbs'], ['../core/core.dbs']);
         is_dir("$dir/set/core") || mkdir("$dir/set/core", 0o700, true);
         copy("$root/contracts/fixtures/external/member.dbs", "$dir/set/app/member.dbs");
         copy("$root/contracts/fixtures/external/core.dbs", "$dir/set/core/core.dbs");
@@ -309,7 +273,7 @@ final class OrmGenTest extends TestCase
         // The PHP generator scans no source, so only the set and output paths are written relative, absolute,
         // with `./` and with a trailing `/` (the output only: a set path ends in its file name).
         $dir = "$work/gen-path-spelling";
-        self::setFile($dir, ['example.dbs']);
+        OrmGenTestSupport::setFile($dir, ['example.dbs']);
         file_put_contents(
             "$dir/example.dbs",
             "dbspec 1 example\n\ntable item {\n  seq i64\n  name varchar(32)\n  primary key (seq)\n}\n"

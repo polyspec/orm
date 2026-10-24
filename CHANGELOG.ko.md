@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 3897071bf80f77026500c062a6616eea2686bf19e82be677b3677bf021b9be99 -->
+<!-- source-sha256: bcafe9715ce596f2555c35969d6609e146cd846932ab9601214ce2fa45d62c14 -->
 # 변경 이력
 
 ## Unreleased
 
+- 선택한 PHP extension bootstrap test가 root Composer vendor에서 실행되며 trait만 정의한 `*Test.php` 파일을 PHPUnit이 발견하지 않는다. Dbspec 시간 측정 trait를 `DbspecTimedCases.php`로 옮기고 import, bootstrap include, feature owner 입력을 함께 갱신했다. 수정 전 `3cd748f44648`의 gate 실행은 discovery warning으로 실패했고, extension을 로드한 focused test는 1개 test와 5개 assertion으로 통과한다(KSTD-5-10).
 - native driver error cause, lossless row-byte cell, Markdown connect refusal 동작이 각각 중립 6-client unit 하나에 묶이고 정확한 native case 18개를 실행했다. Rust byte case는 SQLx row decoder를 통과하며 Markdown 거부는 native `Orm::connect` 경계에서 검사한다. 과거 5-client Markdown 선언만 사용한 좁은 공식 RED replay에서 PHP extension binding 누락이 확인됐다(KSTD-2-11-17).
 - rollback, rollback fault, failed savepoint end 동작을 검증하는 transaction failure unit이 여섯 client 모두에 실행 가능한 binding을 갖는다. Focused native case가 통과한다. Go의 public nested-transaction test는 savepoint rollback과 release 실패를 다루고 DIA-181 및 PLN-17을 명시한다(KSTD-2-11-11).
 - dbspec set-reader 요구사항 DBS-12부터 DBS-15까지를 명시적 requirement bullet로 정리했고, DIA-198은 여섯 runtime의 query-count unit 하나로 묶어 SQLite memory native case를 포함한다. Focused owner check와 scoped declaration이 통과했다. 수정 전 RED replay는 현재 test source에서 `c3bd1a817`의 `config/parity.json` 입력만 사용해 runtime binding 다섯 개가 빠진 사실을 확인했다(KSTD-2-9).

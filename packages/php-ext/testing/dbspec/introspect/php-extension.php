@@ -11,9 +11,7 @@ declare(strict_types=1);
 // <mysql|postgres|sqlite> <uri>
 
 require __DIR__ . '/../../../../../vendor-php/autoload.php';
-
-use Polyspec\Orm\Dbspec\Dbspec;
-use Polyspec\Orm\Orm;
+require __DIR__ . '/../../../../php/testing/dbspec/introspect/runner.php';
 
 if ($argc !== 3) {
     fwrite(
@@ -31,15 +29,4 @@ if (getenv('ORM_PHP_MODE') !== 'extension') {
     );
     exit(1);
 }
-[, $dialect, $uri] = $argv;
-[, $pdoDsn, $user, $password] = Orm::parseDsn($uri);
-$pdo = new PDO($pdoDsn, $user, $password, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-$start = hrtime(true);
-$result = Dbspec::introspect($pdo, $dialect, 'introspected');
-$elapsed = (hrtime(true) - $start) / 1e6;
-$out = Dbspec::emit($result->document);
-foreach ($result->unsupported as $u) {
-    $out .= "! {$u->kind}\t{$u->table}\t{$u->name}\n";
-}
-fwrite(STDOUT, $out);
-fwrite(STDERR, sprintf("elapsed %.1f\n", $elapsed));
+dbspec_introspect_runner_run($argv[1], $argv[2]);

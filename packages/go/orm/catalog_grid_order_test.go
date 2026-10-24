@@ -21,7 +21,7 @@ func TestCoverageCatalogGridOrder(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	driver, dsn := testdb.FeatureDatabase(t)
 	if driver != "sqlite" {
-		t.Skip("the wrapper of the grid read is the SQLite form")
+		t.Fatalf("catalog grid order requires SQLite, got %s", driver)
 	}
 	raw, err := sql.Open("sqlite", strings.TrimPrefix(dsn, "sqlite://"))
 	if err != nil {

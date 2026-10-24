@@ -275,19 +275,21 @@ export const cases = {
     assert.deepEqual(await entryRows(db), [[ids.ax, 'n5']], 'the connection reads only (a, x) with note n5');
   },
 
-  /** The hook reads the bound values of the request, read-only: the value of a predicate that the model bound. */
+  /** The hook reads the bound values of an INSERT, read-only: the value of a label assignment that the model bound. */
   async reads_params(db) {
     let seen;
     let frozen;
     const hooked = db.withRequestHook((request, addParam, params) => {
-      if (request.kind === 'all') {
-        seen = params[request.where.items[0].pred.p];
+      if (request.kind === 'insert') {
+        const label = request.set.find(assignment => assignment.column === 'label');
+        seen = params[label.p];
         frozen = Object.isFrozen(params);
       }
       return request;
     });
-    await new Item().connect(hooked).label('a2').gets();
-    assert.equal(seen, 'a2', 'the hook reads the value bound to the predicate');
+    await item({ part: 'r', label: 'read' }).connect(hooked).create();
+    assert.equal(seen, 'read', 'the hook reads the value bound to the INSERT assignment');
     assert.equal(frozen, true, 'the parameters the hook reads are read-only');
+    assert.ok((await stored(db)).some(([part, label]) => part === 'r' && label === 'read'), 'the hook cannot change the bound value');
   },
 };

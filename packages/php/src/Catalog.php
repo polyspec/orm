@@ -223,7 +223,7 @@ final class Catalog
             return 'main';
         }
         $query = $this->dialect === 'postgres' ? 'SELECT current_schema()' : 'SELECT DATABASE()';
-        return $this->read(function (\PDO $pdo) use ($query): string {
+        return $this->session(true, function (\PDO $pdo) use ($query): string {
             $raw = $this->query($pdo, $query, [], 2, self::METADATA_BYTES);
             if (count($raw['rows']) !== 1 || count($raw['rows'][0]) !== 1) {
                 throw new OrmException(
@@ -249,7 +249,7 @@ final class Catalog
     public function describeTable(array $table): CatalogTableMetadata
     {
         $ref = self::tableRef($table);
-        return $this->read(fn (\PDO $pdo): CatalogTableMetadata => $this->describe($pdo, $ref));
+        return $this->session(true, fn (\PDO $pdo): CatalogTableMetadata => $this->describe($pdo, $ref));
     }
 
     /**
@@ -264,7 +264,7 @@ final class Catalog
         if ($limit < 1 || $limit > 1000 || $offset < 0 || $offset > 1000000) {
             throw new OrmException(Code::TABLE_PAGE_INVALID, 'limit requires 1..1000 and offset 0..1000000');
         }
-        return $this->read(function (\PDO $pdo) use ($ref, $limit, $offset): CatalogTablePage {
+        return $this->session(true, function (\PDO $pdo) use ($ref, $limit, $offset): CatalogTablePage {
             $metadata = $this->describe($pdo, $ref);
             if ($metadata->columns === []) {
                 throw new OrmException(Code::TABLE_PAGE_UNSUPPORTED, 'relation has no selectable columns');
@@ -382,7 +382,7 @@ final class Catalog
         if ($grid && $this->dialect === 'mysql') {
             return $this->mysqlGridQuery($sql, $args, $maxRows, $maxBytes);
         }
-        return $this->read(function (\PDO $pdo) use ($sql, $args, $maxRows, $maxBytes, $grid): CatalogResult {
+        return $this->session(true, function (\PDO $pdo) use ($sql, $args, $maxRows, $maxBytes, $grid): CatalogResult {
             if ($grid) {
                 $raw = $this->gridQuery($pdo, $sql, $args, $maxRows, $maxBytes);
                 return new CatalogResult($raw['names'], $raw['rows']);
@@ -431,7 +431,8 @@ final class Catalog
         if ($this->dialect === 'mysql' && $mysqlAutoKeyCount > 1) {
             throw new OrmException(Code::ROW_INSERT_UNSUPPORTED, 'multiple AUTO_INCREMENT identities');
         }
-        return $this->write(
+        return $this->session(
+            false,
             function (\PDO $pdo) use (
                 $declared,
                 $changes,
@@ -658,7 +659,7 @@ final class Catalog
         foreach ($original->keyIndexes as $index) {
             $newKeys[] = $updated[$index];
         }
-        return $this->write(function (\PDO $pdo) use ($original, $changes, $updated, $keys, $newKeys): CatalogResult {
+        return $this->session(false, function (\PDO $pdo) use ($original, $changes, $updated, $keys, $newKeys): CatalogResult {
             $descriptor = $this->lockOriginalRow($pdo, $original, $keys);
             $sets = [];
             $args = [];
@@ -710,7 +711,7 @@ final class Catalog
     {
         self::validSnapshot($original);
         $keys = self::keysOf($original);
-        return $this->write(function (\PDO $pdo) use ($original, $keys): int {
+        return $this->session(false, function (\PDO $pdo) use ($original, $keys): int {
             $descriptor = $this->lockOriginalRow($pdo, $original, $keys);
             $sql = 'DELETE FROM ' . self::qualified(
                 $descriptor->table,
@@ -1149,31 +1150,6 @@ final class Catalog
             throw self::refused("datetime \"$text\" has no date and time");
         }
         return self::dateText(substr($text, 0, $space)) . ' ' . self::timeText(substr($text, $space + 1));
-    }
-
-    /**
-     * Runs fn in a read-only session and ends it with ROLLBACK.
-     *
-     * @template T
-     * @param \Closure(\PDO): T $fn
-     * @return T
-     */
-    private function read(\Closure $fn): mixed
-    {
-        return $this->session(true, $fn);
-    }
-
-    /**
-     * Runs fn in a writable transaction. A failed fn rolls back. A commit that the database rejects rolls back and
-     * reports ROW_COMMIT_REJECTED; any other commit failure is an unknown outcome that must not be retried.
-     *
-     * @template T
-     * @param \Closure(\PDO): T $fn
-     * @return T
-     */
-    private function write(\Closure $fn): mixed
-    {
-        return $this->session(false, $fn);
     }
 
     /**

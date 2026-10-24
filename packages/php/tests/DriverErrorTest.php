@@ -16,14 +16,11 @@ namespace Polyspec\Orm\Tests;
 // [--filter <case>]
 
 use PDOException;
-use Throwable;
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;
-use Polyspec\Orm\Generator;
 use Polyspec\Orm\Orm;
 use Polyspec\Orm\OrmException;
-use Polyspec\Orm\RuntimeModel;
 use Polyspec\Orm\Tests\RefusalCase\RefusedRow;
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
@@ -33,42 +30,17 @@ use PHPUnit\Framework\Attributes\DataProvider;
 final class DriverErrorTest extends TestCase
 {
     use ThreeDrivers;
+    use DatabaseTestAssertions;
+    use GeneratedFixtureLifecycle;
 
-    private static mixed $documents = null;
-
-    /** The fixture of the file: what the script did before its cases, once per class. */
-    private static function fixture(): void
+    /** @return array{prefix: non-empty-string, documentName: non-empty-string, namespace: non-empty-string} */
+    protected static function generatedFixture(): array
     {
-        $work = sys_get_temp_dir() . '/orm-php-driver-error-' . getmypid();
-        is_dir($work) || mkdir($work, 0o700, true);
-        register_shutdown_function(static function () use ($work): void {
-            exec('rm -rf ' . escapeshellarg($work));
-        });
-
-        self::$documents = [(string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/refusal.dbs')];
-        Generator::generate(
-            RuntimeModel::build(RuntimeModel::parse(['refusal.dbs' => self::$documents[0]])),
-            "$work/models",
-            'Polyspec\\Orm\\Tests\\RefusalCase'
-        );
-        requireGeneratedClasses("$work/models");
-        require "$work/models/bootstrap.php";
-    }
-
-    private static function check(bool $ok, string $message): void
-    {
-        \PHPUnit\Framework\Assert::assertTrue($ok, $message);
-    }
-
-    /** The error a call raises, or null when it returns. */
-    private static function raised(callable $f): ?Throwable
-    {
-        try {
-            $f();
-        } catch (Throwable $e) {
-            return $e;
-        }
-        return null;
+        return [
+            'prefix' => 'orm-php-driver-error-',
+            'documentName' => 'refusal.dbs',
+            'namespace' => 'Polyspec\\Orm\\Tests\\RefusalCase',
+        ];
     }
 
     private static function connect(string $dsn): Db
@@ -128,11 +100,6 @@ final class DriverErrorTest extends TestCase
         } finally {
             $db->close();
         }
-    }
-
-    public static function setUpBeforeClass(): void
-    {
-        self::fixture();
     }
 
     #[DataProvider('drivers')]

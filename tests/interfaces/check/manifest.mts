@@ -20,6 +20,12 @@ export type Rule = {
   id?: string; for?: string; inputs?: string[]; output?: string; errors?: string[]; state?: string;
   native?: Record<string, Native>;
 };
+export type NativeSurface = { id?: string; owner?: string; semantic?: string; symbol?: string; signature?: string };
+type AdapterCase = { test?: string; id?: string; phase?: string };
+type BehaviorAdapter = {
+  status?: string; primitive?: string; surface?: string; cases?: AdapterCase[]; item?: string; required_case?: string;
+};
+export type BehaviorContract = { id?: string; completion_item?: string; parity?: string; adapters?: Record<string, BehaviorAdapter> };
 /**
  * Extension is what implements part of the contract outside the five client languages (extensions in contracts/interfaces.json, PHP extension
  * polyspec_orm). Its declarations are read from roots by a syntax language's extractor, only rules and owners are checked, and it holds its symbol snapshot and its hash
@@ -57,6 +63,8 @@ export type Manifest = {
   extensions?: Record<string, Extension>;
   prohibited_symbols?: string[];
   rules?: Rule[];
+  native_surfaces?: NativeSurface[];
+  behavior_adapters?: BehaviorContract[];
   components?: Component[];
   edges?: Edge[];
   sequences?: Sequence[];
@@ -95,6 +103,68 @@ export function validateManifest(m: Manifest): void {
   }
   validateProhibitions(m.prohibited_symbols ?? []);
   checkComponentMethods(m);
+  validateNativeSurfaces(m.native_surfaces ?? []);
+  validateBehaviorAdapters(m.behavior_adapters ?? [], m.native_surfaces ?? []);
+}
+
+/** validateNativeSurfaces accepts only typed, language-owned host APIs tied to a shared semantic requirement. */
+function validateNativeSurfaces(surfaces: NativeSurface[]): void {
+  const seen = new Set<string>();
+  for (const surface of surfaces) {
+    const id = surface.id ?? '', owner = surface.owner ?? '';
+    if (id === '' || seen.has(id) || !['go', 'php', 'rust', 'typescript', 'python'].includes(owner)
+      || (surface.semantic ?? '') === '' || (surface.symbol ?? '') === '' || (surface.signature ?? '') === '') {
+      throw new Error(`invalid or duplicate native surface ${id}`);
+    }
+    seen.add(id);
+  }
+}
+
+/** validateBehaviorAdapters keeps a truthful six-runtime adapter ledger without treating unresolved work as completed behavior. */
+export function validateBehaviorAdapters(contracts: BehaviorContract[], surfaces: NativeSurface[]): void {
+  const runtimes = ['go', 'php', 'php-extension', 'python', 'rust', 'typescript'];
+  const ids = new Set<string>();
+  const surfaceIds = new Set(surfaces.map(surface => surface.id ?? ''));
+  for (const contract of contracts) {
+    const id = contract.id ?? '', adapters = contract.adapters ?? {};
+    if (id === '' || ids.has(id) || (contract.completion_item ?? '') === '' || (contract.parity ?? '') === '' || runtimes.some(runtime => !Object.hasOwn(adapters, runtime))
+      || Object.keys(adapters).some(runtime => !runtimes.includes(runtime))) {
+      throw new Error(`invalid or duplicate behavior adapter contract ${id}`);
+    }
+    ids.add(id);
+    for (const runtime of runtimes) {
+      const adapter = adapters[runtime] ?? {};
+      if (adapter.status === 'implemented') {
+        const requiresSurface = runtime === 'go' || runtime === 'typescript' || runtime === 'python';
+        if ((adapter.primitive ?? '') === '' || (adapter.cases ?? []).length === 0 || adapter.item !== undefined
+          || adapter.required_case !== undefined || (requiresSurface && adapter.surface === undefined)
+          || (adapter.surface !== undefined && !surfaceIds.has(adapter.surface))) {
+          throw new Error(`${id}/${runtime}: implemented adapter requires a primitive and exact cases`);
+        }
+        if (adapter.surface !== undefined) {
+          const surface = surfaces.find(candidate => candidate.id === adapter.surface);
+          if (surface?.owner !== runtime || surface.semantic !== id) throw new Error(`${id}/${runtime}: host surface owner or semantic does not match`);
+        }
+        for (const c of adapter.cases ?? []) {
+          if ((c.test ?? '') === '' || (c.id ?? '') === '' || (c.phase !== undefined && c.phase !== 'before-start' && c.phase !== 'in-flight')) {
+            throw new Error(`${id}/${runtime}: adapter case requires test and id and has an invalid phase`);
+          }
+        }
+      } else if (adapter.status === 'unresolved') {
+        if ((adapter.item ?? '') === '' || (adapter.required_case ?? '') === '' || adapter.primitive !== undefined
+          || (adapter.cases ?? []).length > 0 || adapter.surface !== undefined) {
+          throw new Error(`${id}/${runtime}: unresolved adapter requires an item and required case, and cannot claim implementation`);
+        }
+      } else throw new Error(`${id}/${runtime}: status must be implemented or unresolved`);
+    }
+  }
+  if (!ids.has('CFG-9')) throw new Error('missing behavior adapter contract CFG-9');
+}
+
+/** behaviorCompletionErrors reports unresolved runtime adapters so an item cannot claim six-client completion early. */
+export function behaviorCompletionErrors(contract: BehaviorContract): string[] {
+  return Object.entries(contract.adapters ?? {}).filter(([, adapter]) => adapter.status !== 'implemented')
+    .map(([runtime]) => `${contract.id ?? ''}/${runtime}: unresolved native behavior adapter`);
 }
 
 /**

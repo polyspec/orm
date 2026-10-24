@@ -1,7 +1,7 @@
 //! Markdown result assembly rejects column functions whose post-validation source field is absent.
 use crate::engine;
 use crate::markdown::MdNode;
-use crate::{dbspec, ir, schema::Manifest};
+use crate::{ir, test_support::manifest};
 use std::collections::BTreeMap;
 
 const SCHEMA: &str = "dbspec 1 shared\n\
@@ -10,12 +10,6 @@ table author {\n\
   started datetime(6)\n\
   primary key (id)\n\
 }\n";
-
-fn manifest() -> Manifest {
-    let document = dbspec::parse(SCHEMA, &Default::default()).unwrap().document;
-    let set = dbspec::manifest(&[&document]).unwrap();
-    Manifest::load(&set.manifest_text, &set.manifest_hash).unwrap()
-}
 
 fn request(manifest_hash: String) -> ir::Request {
     ir::Request {
@@ -41,7 +35,7 @@ fn request(manifest_hash: String) -> ir::Request {
 #[test]
 fn column_function_metadata_markdown_rejects_missing_post_validation_field() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let manifest = manifest();
+    let manifest = manifest(SCHEMA);
     let mut request = request(manifest.manifest_hash.clone());
     engine::validate(&manifest, &request).expect("valid column-function output passes validation");
 

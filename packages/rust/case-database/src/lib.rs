@@ -18,6 +18,11 @@ use polyspec_orm::db::Pool;
 /// The number of case names issued in this process. The counter of names starts at 1.
 static COUNTER: AtomicU64 = AtomicU64::new(0);
 
+/// Yields the SQLite database path and sidecars in the caller's requested cleanup order.
+pub fn sqlite_paths_with_suffixes<'a>(path: &'a Path, suffixes: &'a [&'a str]) -> impl Iterator<Item = PathBuf> + 'a {
+    suffixes.iter().map(move |suffix| PathBuf::from(format!("{}{suffix}", path.display())))
+}
+
 /// A case name `orm_case_<pid>_<counter>` that does not collide within this process.
 pub fn case_name() -> String {
     let counter = COUNTER.fetch_add(1, Ordering::SeqCst) + 1;
@@ -223,8 +228,7 @@ async fn drop_table(dsn: &str, name: &str) -> Result<(), String> {
 /// is still stuck from dropping returns an error. PostgreSQL ends remaining connections and then drops.
 async fn remove(admin: Option<&str>, name: &str, path: Option<&Path>) -> Result<(), String> {
     if let Some(path) = path {
-        for suffix in ["", "-wal", "-shm", "-journal"] {
-            let file = PathBuf::from(format!("{}{suffix}", path.display()));
+        for file in sqlite_paths_with_suffixes(path, &["", "-wal", "-shm", "-journal"]) {
             match std::fs::remove_file(&file) {
                 Ok(()) => {}
                 Err(e) => {

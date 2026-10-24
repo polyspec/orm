@@ -10,6 +10,11 @@
 #[path = "common/model_row.rs"]
 mod model_row;
 
+#[path = "common/feature_database.rs"]
+mod feature_database;
+#[path = "../../tests/tests/common/statement_record.rs"]
+mod statement_record;
+
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
@@ -75,17 +80,23 @@ fn record(recorded: &Mutex<Recorded>, e: &StatementEvent<'_>) {
         *r.numbers.entry(n).or_insert(next)
     });
     let binds: Vec<Value> = e.binds.iter().map(bind_json).collect();
-    r.records.push(json!({
-        "sql": e.sql,
-        "binds": binds,
-        "kind": e.kind,
-        "tables": e.tables,
-        "transaction": transaction,
-        "error": e.error.map(|error| error.code().to_owned()),
-    }));
+    r.records.push(statement_record::statement_record(e, binds, transaction));
+}
+
+fn subscribe_recording(db: &Db, recorded: &Arc<Mutex<Recorded>>) -> Subscription {
+    let sink = Arc::clone(recorded);
+    db.subscribe(move |event: &StatementEvent<'_>| {
+        record(&sink, event);
+        Ok(())
+    })
+    .unwrap()
 }
 
 impl EventRun {
+    fn new(driver: &'static str, db: Db, recorded: Arc<Mutex<Recorded>>, recording: Subscription) -> Self {
+        Self { driver, db, recorded, recording: Mutex::new(Some(recording)), failing: Mutex::new(None) }
+    }
+
     fn model(&self) -> EventProbe {
         let mut core = Core::new(&EVENT_PROBE);
         core.connect(&self.db);
@@ -221,14 +232,8 @@ async fn run_case(driver: &'static str, case: &Value) {
             }
         }
         let recorded = Arc::new(Mutex::new(Recorded::default()));
-        let sink = recorded.clone();
-        let recording = db
-            .subscribe(move |e: &StatementEvent<'_>| {
-                record(&sink, e);
-                Ok(())
-            })
-            .unwrap();
-        let r = EventRun { driver, db: db.clone(), recorded, recording: Mutex::new(Some(recording)), failing: Mutex::new(None) };
+        let recording = subscribe_recording(&db, &recorded);
+        let r = EventRun::new(driver, db.clone(), recorded, recording);
         for s in case["steps"].as_array().expect("case steps") {
             let outcome = r.checked(s).await;
             assert_step_outcome(&outcome, s, driver);
@@ -285,13 +290,7 @@ fn statement_events() -> Vec<polyspec_orm_testcase::Trial> {
 /// runs every case of the vector, each in a new case database. The bench database is neither read nor written.
 /// It is an ignored trial, which feature-check runs with --include-ignored.
 async fn coverage_statement_events() {
-    let driver = match std::env::var("ORM_FEATURE_DATABASE").as_deref() {
-        Ok("mysql") => "mysql",
-        Ok("postgres") => "postgres",
-        Ok("sqlite") => "sqlite",
-        _ => panic!("ORM_FEATURE_DATABASE (mysql, postgres or sqlite) is required; run it through make feature-check, which sets it for each coverage case"),
-    };
-    run_cases(driver).await;
+    run_cases(feature_database::selected()).await;
 }
 
 /// Runs the vector's server_transactions in a PostgreSQL case database. The number of server transactions counted for one run of a page, which the probe returns,
@@ -332,14 +331,8 @@ async fn statement_events_server_transactions() {
         let first = probe().await;
         let cost = probe().await - first;
         let recorded = Arc::new(Mutex::new(Recorded::default()));
-        let sink = recorded.clone();
-        let recording = db
-            .subscribe(move |e: &StatementEvent<'_>| {
-                record(&sink, e);
-                Ok(())
-            })
-            .unwrap();
-        let r = EventRun { driver, db: db.clone(), recorded, recording: Mutex::new(Some(recording)), failing: Mutex::new(None) };
+        let recording = subscribe_recording(&db, &recorded);
+        let r = EventRun::new(driver, db.clone(), recorded, recording);
         let mut before = probe().await;
         let mut failures = Vec::new();
         for name in ["first", "second"] {

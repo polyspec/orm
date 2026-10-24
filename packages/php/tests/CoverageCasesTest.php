@@ -14,6 +14,7 @@ use PDOStatement;
 use RuntimeException;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;
+use PHPUnit\Framework\Attributes\DataProviderExternal;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Code;
@@ -22,6 +23,12 @@ use Polyspec\Orm\OrmException;
 #[Small]
 final class CoverageCasesTest extends TestCase
 {
+    /** @return iterable<string, array{string}> */
+    public static function databaseDrivers(): iterable
+    {
+        return coverageDatabaseDrivers();
+    }
+
     public function testEnumeratesTheSupportedCoverageDatabases(): void
     {
         $this->assertSame(
@@ -138,25 +145,60 @@ final class CoverageCasesTest extends TestCase
 
     public function testCoverageItemsCanSelectOneDatabaseWithoutOtherDsns(): void
     {
-        $previousDatabase = getenv('ORM_FEATURE_DATABASE');
-        $previousSqliteDsn = getenv('BENCH_SQLITE_DSN');
-        putenv('ORM_FEATURE_DATABASE=sqlite');
-        putenv('BENCH_SQLITE_DSN=sqlite:///selected.sqlite');
-        try {
+        $this->withSelectedSQLiteEnvironment(function (): void {
             $items = coverageItemsOf(__DIR__ . '/CoverageConstraintsAndRelationsTest.php');
             self::assertNotSame([], $items, 'the feature test has declared coverage items');
             foreach ($items as [$database, $dsn]) {
                 self::assertSame('sqlite', $database, 'only the selected database is returned');
                 self::assertSame('sqlite:///selected.sqlite', $dsn, 'the selected database DSN is preserved');
             }
-        } finally {
-            if ($previousDatabase === false) {
-                putenv('ORM_FEATURE_DATABASE');
-            } else {
-                putenv("ORM_FEATURE_DATABASE=$previousDatabase");
+        });
+    }
+
+    public function testSelectsOnlyTheRequestedConformanceExpectations(): void
+    {
+        $recorded = (object) [
+            'vectors' => [
+                (object) ['name' => 'conditions_values', 'expect' => ['values' => [1, 2]]],
+                (object) ['name' => 'ignored', 'expect' => ['values' => [3]]],
+                (object) ['name' => 'relations', 'expect' => ['related' => true]],
+            ],
+        ];
+        self::assertSame(
+            [
+                'conditions_values' => ['values' => [1, 2]],
+                'relations' => ['related' => true],
+            ],
+            coverageExpectedConformanceVectors($recorded, ['conditions_values', 'relations']),
+        );
+    }
+
+    public function testModelQueryRunnerSelectsOwnerAndClosesItsConnection(): void
+    {
+        $connections = [];
+        $seen = [];
+        $this->withSelectedSQLiteEnvironment(function () use (&$connections, &$seen): void {
+            coverageRunDatabaseItems(
+                __DIR__ . '/CoverageModelQueriesTest.php',
+                static function (Db $db) use (&$seen): void {
+                    $seen[] = coverageItem();
+                },
+                static function (string $dsn) use (&$connections): Db {
+                    self::assertSame('sqlite:///selected.sqlite', $dsn);
+                    $db = new Db(new PDO('sqlite::memory:'), 'sqlite', new Config(), new DateTimeZone('UTC'));
+                    $connections[] = $db;
+                    return $db;
+                },
+            );
+            self::assertSame([['sqlite', 'sqlite:///selected.sqlite']], $seen);
+            self::assertCount(1, $connections);
+            try {
+                $connections[0]->pdo();
+                self::fail('coverage runner left its database connection open');
+            } catch (OrmException $error) {
+                self::assertSame(Code::CONFIG, $error->code_);
             }
-            $previousSqliteDsn === false ? putenv('BENCH_SQLITE_DSN') : putenv("BENCH_SQLITE_DSN=$previousSqliteDsn");
-        }
+        });
     }
 
     public function testRunsAChildProcess(): void
@@ -166,5 +208,23 @@ final class CoverageCasesTest extends TestCase
             __DIR__
         );
         $this->assertSame([3, 'out', 'err'], [$status, $stdout, $stderr], 'child');
+    }
+
+    private function withSelectedSQLiteEnvironment(callable $test): void
+    {
+        $previousDatabase = getenv('ORM_FEATURE_DATABASE');
+        $previousSqliteDsn = getenv('BENCH_SQLITE_DSN');
+        putenv('ORM_FEATURE_DATABASE=sqlite');
+        putenv('BENCH_SQLITE_DSN=sqlite:///selected.sqlite');
+        try {
+            $test();
+        } finally {
+            if ($previousDatabase === false) {
+                putenv('ORM_FEATURE_DATABASE');
+            } else {
+                putenv("ORM_FEATURE_DATABASE=$previousDatabase");
+            }
+            $previousSqliteDsn === false ? putenv('BENCH_SQLITE_DSN') : putenv("BENCH_SQLITE_DSN=$previousSqliteDsn");
+        }
     }
 }

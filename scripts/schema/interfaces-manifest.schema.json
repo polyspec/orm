@@ -32,6 +32,8 @@
     "prohibited_symbols": { "$ref": "#/$defs/strings" },
     "rules": { "type": "array", "items": { "$ref": "#/$defs/rule" } },
     "storage": { "type": "array", "items": { "$ref": "#/$defs/rule" } },
+    "native_surfaces": { "type": "array", "items": { "$ref": "#/$defs/nativeSurface" } },
+    "behavior_adapters": { "type": "array", "items": { "$ref": "#/$defs/behaviorContract" } },
     "components": {
       "type": "array",
       "items": {
@@ -102,6 +104,45 @@
   "$defs": {
     "strings": { "type": "array", "items": { "type": "string" } },
     "stringMap": { "type": "object", "additionalProperties": { "type": "string" } },
+    "nativeSurface": {
+      "type": "object",
+      "required": ["id", "owner", "semantic", "symbol", "signature"],
+      "properties": {
+        "id": { "type": "string" }, "owner": { "enum": ["go", "php", "rust", "typescript", "python"] },
+        "semantic": { "type": "string" }, "symbol": { "type": "string" }, "signature": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "adapterCase": {
+      "type": "object", "required": ["test", "id"],
+      "properties": { "test": { "type": "string" }, "id": { "type": "string" }, "phase": { "enum": ["before-start", "in-flight"] } },
+      "additionalProperties": false
+    },
+    "behaviorAdapter": {
+      "type": "object", "required": ["status"],
+      "properties": {
+        "status": { "enum": ["implemented", "unresolved"] }, "primitive": { "type": "string" },
+        "surface": { "type": "string" }, "cases": { "type": "array", "items": { "$ref": "#/$defs/adapterCase" } },
+        "item": { "type": "string" }, "required_case": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "behaviorContract": {
+      "type": "object", "required": ["id", "completion_item", "parity", "adapters"],
+      "properties": {
+        "id": { "type": "string" }, "completion_item": { "type": "string" }, "parity": { "type": "string" },
+        "adapters": {
+          "type": "object", "required": ["go", "php", "php-extension", "python", "rust", "typescript"],
+          "properties": {
+            "go": { "$ref": "#/$defs/behaviorAdapter" }, "php": { "$ref": "#/$defs/behaviorAdapter" },
+            "php-extension": { "$ref": "#/$defs/behaviorAdapter" }, "python": { "$ref": "#/$defs/behaviorAdapter" },
+            "rust": { "$ref": "#/$defs/behaviorAdapter" }, "typescript": { "$ref": "#/$defs/behaviorAdapter" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
     "rule": {
       "type": "object",
       "properties": {

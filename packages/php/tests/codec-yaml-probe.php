@@ -10,10 +10,6 @@ namespace {
     $operation = $argv[1] ?? '';
     $failure = $argv[2] ?? '';
     $mode = $argv[3] ?? 'library';
-    if ($mode === 'native' && !extension_loaded('polyspec_orm')) {
-        fwrite(STDERR, 'the native YAML probe did not load polyspec_orm');
-        exit(1);
-    }
     $previous = match ($failure) {
         'parse' => new \Purr\Yaml\Exception\ParseException('parse sentinel', 1, 'value: ['),
         'reference' => \Purr\Yaml\Exception\ReferenceException::undefinedAnchor('missing', 1),

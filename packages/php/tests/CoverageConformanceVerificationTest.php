@@ -9,7 +9,7 @@ namespace Polyspec\Orm\Tests;
 // make orm-check create), and each vector is one data set, named by the vector, whose output must equal the recorded
 // expect as a JSON value (tests/conformance/vectors.json for MySQL, vectors.<dialect>.json for the others).
 // testConformanceVector is the feature coverage (contracts/features.json): it runs the read-only vectors
-// conditions_values and relations on the database that ORM_FEATURE_DATABASE and ORM_FEATURE_DSN select.
+// conditions_values, relations and relation_null_key on the database that ORM_FEATURE_DATABASE and ORM_FEATURE_DSN select.
 
 
 use RuntimeException;
@@ -55,7 +55,7 @@ function sameJson(mixed $a, mixed $b): bool
     return $a === $b;
 }
 
-const CONFORMANCE_VECTORS = ['conditions_values', 'relations'];
+const CONFORMANCE_VECTORS = ['conditions_values', 'relations', 'relation_null_key'];
 
 #[Large]
 final class CoverageConformanceVerificationTest extends TestCase
@@ -155,12 +155,7 @@ final class CoverageConformanceVerificationTest extends TestCase
             $root = dirname(__DIR__, 3);
             $file = $driver === 'mysql' ? 'vectors.json' : "vectors.$driver.json";
             $recorded = coverageJson("$root/tests/conformance/$file", false);
-            $expect = [];
-            foreach ($recorded->vectors as $vector) {
-                if (in_array($vector->name, CONFORMANCE_VECTORS, true)) {
-                    $expect[$vector->name] = $vector->expect;
-                }
-            }
+            $expect = coverageExpectedConformanceVectors($recorded, CONFORMANCE_VECTORS);
             Assert::assertTrue(count($expect) === count(CONFORMANCE_VECTORS), "$file lacks a selected vector");
             $command = [PHP_BINARY, "$root/packages/php/testing/conformance/runner.php", '--dsn', $dsn];
             foreach (CONFORMANCE_VECTORS as $name) {

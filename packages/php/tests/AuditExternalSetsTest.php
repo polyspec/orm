@@ -26,24 +26,18 @@ use Polyspec\Orm\Schema;
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use PHPUnit\Framework\TestCase;
-use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\DataProviderExternal;
 
 #[Medium]
 #[RunTestsInSeparateProcesses]
 final class AuditExternalSetsTest extends TestCase
 {
-    private static mixed $root = null;
-
-    /** The fixture of the file: what the script did before its cases, once per class. */
-    private static function fixture(): void
-    {
-        self::$root = dirname(__DIR__, 3);
-    }
+    use DatabaseTestAssertions;
 
     /** Creates the schema value of the set in contracts/fixtures/external. No generated class is made. */
     private static function valueSchema(array $owned, array $external): Schema
     {
-        $path = static fn(string $name): string => self::$root . "/contracts/fixtures/external/$name.dbs";
+        $path = static fn(string $name): string => \coverageRepositoryRoot() . "/contracts/fixtures/external/$name.dbs";
         $m = RuntimeModel::build(RuntimeModel::files(array_map($path, $owned), array_map($path, $external)));
         return new Schema($m->manifestText, $m->manifestHash, $m->externalText);
     }
@@ -51,18 +45,13 @@ final class AuditExternalSetsTest extends TestCase
     /** Creates the model of the member set in $work. The caller requires the bootstrap. */
     private static function generateMember(string $work): void
     {
-        $path = static fn(string $name): string => self::$root . "/contracts/fixtures/external/$name.dbs";
+        $path = static fn(string $name): string => \coverageRepositoryRoot() . "/contracts/fixtures/external/$name.dbs";
         Generator::generate(
             RuntimeModel::build(RuntimeModel::files([$path('member')], [$path('core')])),
             "$work/member",
             'Polyspec\\Orm\\Tests\\AuditExternalSets\\Member'
         );
         requireGeneratedClasses("$work/member");
-    }
-
-    private static function want(bool $ok, string $message): void
-    {
-        \PHPUnit\Framework\Assert::assertTrue($ok, $message);
     }
 
     /**
@@ -93,29 +82,18 @@ final class AuditExternalSetsTest extends TestCase
                 audit: []
             );
             $records = $db->pdo()->query('SELECT seq, actor FROM ext_audit ORDER BY seq')->fetchAll(PDO::FETCH_NUM);
-            self::want(
+            self::check(
                 count($records) === 1 && $records[0][1] === 'writer',
                 'ext_audit ' . json_encode($records) . ', want one record of writer'
             );
             $recorded = $db->pdo()->query('SELECT audit_seq FROM ext_post_history')->fetchAll(PDO::FETCH_COLUMN);
-            self::want(
+            self::check(
                 count($recorded) === 1 && (int) $recorded[0] === (int) $records[0][0],
                 'ext_post_history audit keys ' . json_encode($recorded) . ", want [{$records[0][0]}]"
             );
         } finally {
             $db->close();
         }
-    }
-
-    public static function setUpBeforeClass(): void
-    {
-        self::fixture();
-    }
-
-    /** @return iterable<string, array{string}> */
-    public static function drivers(): iterable
-    {
-        return coverageDatabaseDrivers();
     }
 
     /** Runs the order on a case database of the driver with a work directory of its own, removed on every path. */
@@ -134,14 +112,14 @@ final class AuditExternalSetsTest extends TestCase
     }
 
     // Requirements: DBS-110, SCH-11, SCH-12.
-    #[DataProvider('drivers')]
+    #[DataProviderExternal(CoverageCasesTest::class, 'databaseDrivers')]
     public function testGeneratedAfterValues(string $driver): void
     {
         self::runOrder('generated_after_values', $driver);
     }
 
     // Requirements: DBS-110, SCH-11, SCH-12.
-    #[DataProvider('drivers')]
+    #[DataProviderExternal(CoverageCasesTest::class, 'databaseDrivers')]
     public function testMemberByValueFirst(string $driver): void
     {
         self::runOrder('member_by_value_first', $driver);

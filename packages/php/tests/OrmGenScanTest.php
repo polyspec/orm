@@ -9,10 +9,11 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
+require_once __DIR__ . '/phpstan-runner.php';
+
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
-use Polyspec\Orm\OrmGen;
 
 #[Small]
 final class OrmGenScanTest extends TestCase
@@ -23,13 +24,12 @@ final class OrmGenScanTest extends TestCase
 
     public static function setUpBeforeClass(): void
     {
-        self::$work = sys_get_temp_dir() . '/orm-php-orm-gen-scan-' . getmypid();
-        is_dir(self::$work) || mkdir(self::$work, 0o700, true);
+        self::$work = OrmGenTestSupport::createWorkDirectory('orm-php-orm-gen-scan-');
     }
 
     public static function tearDownAfterClass(): void
     {
-        exec('rm -rf ' . escapeshellarg(self::$work));
+        OrmGenTestSupport::removeWorkDirectory(self::$work);
     }
 
     /** @return array<string, array{array<string, mixed>}> */
@@ -59,27 +59,25 @@ final class OrmGenScanTest extends TestCase
     /** @param list<string> $args @return array{int, string} */
     private static function runGenerator(array $args): array
     {
-        $stderr = fopen('php://memory', 'w+');
-        ob_start();
-        $code = OrmGen::run($args, $stderr);
-        ob_end_clean();
-        rewind($stderr);
-        return [$code, (string) stream_get_contents($stderr)];
+        [$code, , $error] = OrmGenTestSupport::run($args);
+        return [$code, $error];
     }
 
     /** @return array{int, string} */
     private static function runScanDirectory(string $dir, string $out): array
     {
-        return self::runGenerator([
-            'gen',
-            '--set',
+        return self::runScan(
             dirname(__DIR__, 3) . '/contracts/fixtures/bench/dbspec-set.json',
-            '--out',
             $out,
-            '--namespace',
-            self::NS,
-            '--scan',
-            "$dir/src"
+            ['--scan', "$dir/src"]
+        );
+    }
+
+    /** @param list<string> $scan @param list<string> $extra @return array{int, string} */
+    private static function runScan(string $set, string $out, array $scan, array $extra = []): array
+    {
+        return self::runGenerator([
+            'gen', '--set', $set, '--out', $out, '--namespace', self::NS, ...$scan, ...$extra
         ]);
     }
 
@@ -89,19 +87,20 @@ final class OrmGenScanTest extends TestCase
      */
     private static function generate(string $name, array $sources, array $extra = []): array
     {
+        return self::generateFromSet(
+            $name,
+            $sources,
+            dirname(__DIR__, 3) . '/contracts/fixtures/bench/dbspec-set.json',
+            $extra
+        );
+    }
+
+    /** @param array<string, string> $sources @param list<string> $extra @return array{int, string, string} */
+    private static function generateFromSet(string $name, array $sources, string $set, array $extra = []): array
+    {
         $dir = self::$work . '/' . $name;
         $scan = self::scanArguments($dir, $sources);
-        [$code, $stderr] = self::runGenerator([
-            'gen',
-            '--set',
-            dirname(__DIR__, 3) . '/contracts/fixtures/bench/dbspec-set.json',
-            '--out',
-            "$dir/model",
-            '--namespace',
-            self::NS,
-            ...$scan,
-            ...$extra
-        ]);
+        [$code, $stderr] = self::runScan($set, "$dir/model", $scan, $extra);
         return [$code, $stderr, $dir];
     }
 
@@ -122,33 +121,14 @@ final class OrmGenScanTest extends TestCase
             file_put_contents("$dir/set/app/$document", $owned);
         }
         copy("$root/contracts/fixtures/external/core.dbs", "$dir/set/core/core.dbs");
-        $set = "$dir/set/app/dbspec-set.json";
-        file_put_contents(
-            $set,
-            json_encode(
-                ['schema' => 1, 'documents' => [$document], 'external' => ['../core/core.dbs']],
-                JSON_UNESCAPED_SLASHES
-            )
-        );
-        $scan = self::scanArguments($dir, $sources);
-        [$code, $stderr] = self::runGenerator([
-            'gen',
-            '--set',
-            $set,
-            '--out',
-            "$dir/model",
-            '--namespace',
-            self::NS,
-            ...$scan
-        ]);
-        return [$code, $stderr, $dir];
+        $set = OrmGenTestSupport::setFile("$dir/set/app", [$document], ['../core/core.dbs']);
+        return self::generateFromSet($name, $sources, $set);
     }
 
     /** @return list<string> the methods the class comment of a model declares with @method, in file order */
     private static function tags(string $dir, string $class): array
     {
-        preg_match_all('/^ \* @method \S+ (\w+)\(/m', (string) file_get_contents("$dir/model/$class.php"), $m);
-        return $m[1];
+        return OrmGenTestSupport::phpMethodNames("$dir/model/$class.php");
     }
 
     #[DataProvider('vectors')]
@@ -164,8 +144,11 @@ final class OrmGenScanTest extends TestCase
         if (isset($case['body'])) {
             $calls = $case['body'];
         }
-        $source = "<?php\nuse " . self::NS . "\\{$case['model']};\n\n\$db = null;\n"
-            . "\$m = new {$case['model']}();\n$calls";
+        $source = OrmGenTestSupport::phpScanFixture(
+            $case['model'],
+            $calls,
+            self::NS . "\\{$case['model']}"
+        );
         [$code, $err, $dir] = self::generate('vector-' . $case['id'], ['usage.php' => $source]);
         if (isset($case['expected']['rejected'])) {
             self::assertSame(1, $code, $case['id'] . ' status');
@@ -291,30 +274,57 @@ PHP;
 
     public function testRelationAliasTypesFollowRelationEdgesAndExplicitAliases(): void
     {
-        $ns = self::NS;
-        $source = <<<PHP
-<?php
-namespace App;
-
-use $ns\\Author;
-use $ns\\ServiceMember;
-use $ns\\User;
-
-\$author = new Author();
-\$author->relation((new User())->matchUserSeqWithSeq()->aliasOldWriter()->aliasWriter())->gets();
-\$author->getWriter();
-\$author->relation((new User())->matchUserSeqWithSeq()->aliasWriter())->get();
-\$author->relations((new ServiceMember())->matchServiceSeqWithServiceSeq()->aliasMembers())->get();
-\$author->getMembers();
-\$author->relation((new User())->matchUserSeqWithSeq()->aliasNestedWriter()
-    ->relation((new Author())->matchSeqWithUserSeq()->aliasMatch()))->gets();
-\$author->getNestedWriter();
-\$user = new User();
-\$user->getMatch();
-\$author->getUserModel();
-\$author->relations((new ServiceMember())->matchServiceSeqWithServiceSeq()->aliasUserModel())->gets();
-\$author->getUserModel();
-PHP;
+        $source = OrmGenTestSupport::phpModelSource(
+            'Author',
+            'author',
+            [self::NS . '\\Author', self::NS . '\\ServiceMember', self::NS . '\\User'],
+            implode("\n", [
+                OrmGenTestSupport::phpRelationCall(
+                    '$author',
+                    'relation',
+                    'User',
+                    'matchUserSeqWithSeq()->aliasOldWriter()->aliasWriter()',
+                    'gets'
+                ),
+                '$author->getWriter();',
+                OrmGenTestSupport::phpRelationCall(
+                    '$author',
+                    'relation',
+                    'User',
+                    'matchUserSeqWithSeq()->aliasWriter()',
+                    'get'
+                ),
+                OrmGenTestSupport::phpRelationCall(
+                    '$author',
+                    'relations',
+                    'ServiceMember',
+                    'matchServiceSeqWithServiceSeq()->aliasMembers()',
+                    'get'
+                ),
+                '$author->getMembers();',
+                OrmGenTestSupport::phpRelationCall(
+                    '$author',
+                    'relation',
+                    'User',
+                    'matchUserSeqWithSeq()->aliasNestedWriter()'
+                        . '->relation((new Author())->matchSeqWithUserSeq()->aliasMatch())',
+                    'gets'
+                ),
+                '$author->getNestedWriter();',
+                '$user = new User();',
+                '$user->getMatch();',
+                '$author->getUserModel();',
+                OrmGenTestSupport::phpRelationCall(
+                    '$author',
+                    'relations',
+                    'ServiceMember',
+                    'matchServiceSeqWithServiceSeq()->aliasUserModel()',
+                    'gets'
+                ),
+                '$author->getUserModel();'
+            ]) . "\n",
+            'App'
+        );
         [$code, $err, $dir] = self::generate('relation-alias-types', ['usage.php' => $source]);
         self::assertSame(0, $code, $err);
         self::assertSame('?User', self::tagType($dir, 'Author', 'getWriter'));
@@ -327,16 +337,21 @@ PHP;
 
     public function testSupersededRelationAliasDoesNotDeclareItsGetterType(): void
     {
-        $ns = self::NS;
-        $source = <<<PHP
-<?php
-use $ns\\Author;
-use $ns\\User;
-
-\$author = new Author();
-\$author->relation((new User())->matchUserSeqWithSeq()->aliasOldWriter()->aliasWriter())->gets();
-\$author->getOldWriter();
-PHP;
+        $source = OrmGenTestSupport::phpModelSource(
+            'Author',
+            'author',
+            [self::NS . '\\Author', self::NS . '\\User'],
+            implode("\n", [
+                OrmGenTestSupport::phpRelationCall(
+                    '$author',
+                    'relation',
+                    'User',
+                    'matchUserSeqWithSeq()->aliasOldWriter()->aliasWriter()',
+                    'gets'
+                ),
+                '$author->getOldWriter();'
+            ]) . "\n"
+        );
         [$code, $err] = self::generate('superseded-relation-alias', ['usage.php' => $source]);
         self::assertSame(1, $code, 'status');
         self::assertStringContainsString('Author.getOldWriter: no get or gets reads the alias', $err);
@@ -344,19 +359,34 @@ PHP;
 
     public function testDifferentRelationAliasTypesAreRejected(): void
     {
-        $ns = self::NS;
-        $source = <<<PHP
-<?php
-use $ns\\Author;
-use $ns\\ServiceMember;
-use $ns\\User;
-
-\$author = new Author();
-\$author->relation((new User())->matchUserSeqWithSeq()->aliasShared());
-\$author->relations((new User())->matchUserSeqWithSeq()->aliasShared());
-\$author->relation((new ServiceMember())->matchServiceSeqWithServiceSeq()->aliasShared());
-\$author->getShared();
-PHP;
+        $source = OrmGenTestSupport::phpModelSource(
+            'Author',
+            'author',
+            [self::NS . '\\Author', self::NS . '\\ServiceMember', self::NS . '\\User'],
+            implode("\n", [
+                OrmGenTestSupport::phpRelationCall(
+                    '$author',
+                    'relation',
+                    'User',
+                    'matchUserSeqWithSeq()->aliasShared()',
+                    null
+                ),
+                OrmGenTestSupport::phpRelationCall(
+                    '$author',
+                    'relations',
+                    'User',
+                    'matchUserSeqWithSeq()->aliasShared()',
+                    null
+                ),
+                OrmGenTestSupport::phpRelationCall(
+                    '$author',
+                    'relation',
+                    'ServiceMember',
+                    'matchServiceSeqWithServiceSeq()->aliasShared()',
+                    'getShared'
+                )
+            ]) . "\n"
+        );
         [$code, $err, $dir] = self::generate('relation-alias-conflict', ['usage.php' => $source]);
         self::assertSame(1, $code, 'status');
         self::assertStringContainsString('Author.getShared: relation declarations conflict', $err);
@@ -371,17 +401,27 @@ PHP;
 
     public function testImplicitRelationAndExplicitAliasCannotAttachDifferentTypesToOneGetter(): void
     {
-        $ns = self::NS;
-        $source = <<<PHP
-<?php
-use $ns\\Author;
-use $ns\\ServiceMember;
-use $ns\\User;
-
-\$author = new Author();
-\$author->relation((new User())->matchUserSeqWithSeq());
-\$author->relations((new ServiceMember())->matchServiceSeqWithServiceSeq()->aliasUserModel());
-PHP;
+        $source = OrmGenTestSupport::phpModelSource(
+            'Author',
+            'author',
+            [self::NS . '\\Author', self::NS . '\\ServiceMember', self::NS . '\\User'],
+            implode("\n", [
+                OrmGenTestSupport::phpRelationCall(
+                    '$author',
+                    'relation',
+                    'User',
+                    'matchUserSeqWithSeq()',
+                    null
+                ),
+                OrmGenTestSupport::phpRelationCall(
+                    '$author',
+                    'relations',
+                    'ServiceMember',
+                    'matchServiceSeqWithServiceSeq()->aliasUserModel()',
+                    null
+                )
+            ]) . "\n"
+        );
         [$code, $err] = self::generate('implicit-explicit-relation-alias-conflict', ['usage.php' => $source]);
         self::assertSame(1, $code, 'status');
         self::assertStringContainsString('Author.getUserModel: relation declarations conflict', $err);
@@ -394,18 +434,27 @@ PHP;
 
     public function testRelationKeywordCaseDoesNotChangeRelationTypeConflict(): void
     {
-        $ns = self::NS;
-        $source = <<<PHP
-<?php
-use $ns\Author;
-use $ns\ServiceMember;
-use $ns\User;
-
-\$author = new Author();
-\$author->RELATIONS((new ServiceMember())->matchServiceSeqWithServiceSeq());
-\$author->relation((new User())->matchUserSeqWithSeq()->aliasServiceMemberModels());
-\$author->getServiceMemberModels();
-PHP;
+        $source = OrmGenTestSupport::phpModelSource(
+            'Author',
+            'author',
+            [self::NS . '\\Author', self::NS . '\\ServiceMember', self::NS . '\\User'],
+            implode("\n", [
+                OrmGenTestSupport::phpRelationCall(
+                    '$author',
+                    'RELATIONS',
+                    'ServiceMember',
+                    'matchServiceSeqWithServiceSeq()',
+                    null
+                ),
+                OrmGenTestSupport::phpRelationCall(
+                    '$author',
+                    'relation',
+                    'User',
+                    'matchUserSeqWithSeq()->aliasServiceMemberModels()',
+                    'getServiceMemberModels'
+                )
+            ]) . "\n"
+        );
         [$code, $err] = self::generate('relation-keyword-case-conflict', ['usage.php' => $source]);
         self::assertSame(1, $code, 'status');
         self::assertStringContainsString('Author.getServiceMemberModels: relation declarations conflict', $err);
@@ -432,22 +481,23 @@ PHP;
     public function testANestedRelationAliasDeclaresItsGetterOnTheModelItAliasesOn(): void
     {
         // The test of DSL-44 (docs/spec).
-        $ns = self::NS;
-        $source = <<<PHP
-<?php
-namespace App;
-
-use $ns\\Author;
-use $ns\\User;
-
-\$rows = (new Author())->relation((new User())->matchUserSeqWithSeq()->aliasWriter()
-    ->relation((new Author())->matchSeqWithUserSeq()->aliasMatch()))->gets();
-foreach (\$rows as \$row) {
-    /** @var User|null \$writer */
-    \$writer = \$row->getWriter();
-    \$writer?->getMatch();
-}
-PHP;
+        $source = OrmGenTestSupport::phpSource(
+            [self::NS . '\\Author', self::NS . '\\User'],
+            '$rows = ' . OrmGenTestSupport::phpRelationCall(
+                '(new Author())',
+                'relation',
+                'User',
+                'matchUserSeqWithSeq()->aliasWriter()'
+                    . "\n    ->relation((new Author())->matchSeqWithUserSeq()->aliasMatch())",
+                'gets'
+            ) . "\n"
+                . "foreach (\$rows as \$row) {\n"
+                . "    /** @var User|null \$writer */\n"
+                . "    \$writer = \$row->getWriter();\n"
+                . "    \$writer?->getMatch();\n"
+                . "}\n",
+            'App'
+        );
         [$code, $err, $dir] = self::generate('nested-alias', ['usage.php' => $source]);
         self::assertSame(0, $code, $err);
         self::assertContains('getWriter', self::tags($dir, 'Author'));
@@ -457,19 +507,21 @@ PHP;
     public function testAGetterCallThatNothingAttachesStopsGeneration(): void
     {
         // The test of DSL-44 (docs/spec).
-        $ns = self::NS;
-        $source = <<<PHP
-<?php
-use $ns\\Author;
-use $ns\\User;
-
-\$rows = (new Author())->relation((new User())->matchUserSeqWithSeq()->aliasWriter())->gets();
-foreach (\$rows as \$row) {
-    /** @var User|null \$writer */
-    \$writer = \$row->getWriter();
-    \$writer?->getGhost();
-}
-PHP;
+        $source = OrmGenTestSupport::phpSource(
+            [self::NS . '\\Author', self::NS . '\\User'],
+            '$rows = ' . OrmGenTestSupport::phpRelationCall(
+                '(new Author())',
+                'relation',
+                'User',
+                'matchUserSeqWithSeq()->aliasWriter()',
+                'gets'
+            ) . "\n"
+                . "foreach (\$rows as \$row) {\n"
+                . "    /** @var User|null \$writer */\n"
+                . "    \$writer = \$row->getWriter();\n"
+                . "    \$writer?->getGhost();\n"
+                . "}\n"
+        );
         [$code, $err, $dir] = self::generate('unattached-getter', ['usage.php' => $source]);
         self::assertSame(1, $code, 'status');
         self::assertStringContainsString(
@@ -881,23 +933,20 @@ function branch(bool \$x): void
 PHP;
         [$code, $err] = self::generate('method-branch', ['usage.php' => $branch]);
         self::assertSame(0, $code, $err);
-        $try = <<<PHP
-<?php
-namespace App;
-
-use $ns\Author;
-use $ns\ServiceMember;
-
-function attempts(): void
+        $try = OrmGenTestSupport::phpSource(
+            [self::NS . '\Author', self::NS . '\ServiceMember'],
+            "function attempts(): void
 {
-    try {
-        \$row = new Author();
-    } catch (\\Exception \$e) {
-        \$row = new ServiceMember();
-    }
-    \$row->neIsClose(true);
+"
+                . OrmGenTestSupport::phpTryCatch(
+                    '$row = new Author();',
+                    '$row = new ServiceMember();'
+                )
+                . "    \$row->neIsClose(true);
 }
-PHP;
+",
+            'App'
+        );
         [$code, $err] = self::generate('method-try', ['usage.php' => $try]);
         self::assertSame(0, $code, $err);
         // A handler that rethrows contributes nothing, so the call is on Author alone.
@@ -926,25 +975,22 @@ PHP;
     /** A try that assigns the name on every path leaves no outcome with the value from before the try. */
     public function testATryLeavesNoOutcomeWithTheValueBeforeIt(): void
     {
-        $ns = self::NS;
-        $source = <<<PHP
-<?php
-namespace App;
-
-use $ns\Author;
-use $ns\ServiceMember;
-
-function attempts(): void
+        $source = OrmGenTestSupport::phpSource(
+            [self::NS . '\Author', self::NS . '\ServiceMember'],
+            "function attempts(): void
 {
-    \$row = new Author();
-    try {
-        \$row = new ServiceMember();
-    } catch (\\Exception \$e) {
-        \$row = new ServiceMember();
-    }
-    \$row->neIsClose(true);
+"
+                . "    \$row = new Author();
+"
+                . OrmGenTestSupport::phpTryCatch(
+                    '$row = new ServiceMember();',
+                    '$row = new ServiceMember();'
+                )
+                . "    \$row->neIsClose(true);
 }
-PHP;
+",
+            'App'
+        );
         [$code, $err] = self::generate('try-no-base', ['usage.php' => $source]);
         self::assertSame(1, $code, 'status');
         self::assertStringContainsString('ServiceMember.neIsClose is not a model method', $err);
@@ -965,12 +1011,9 @@ PHP;
             "dbspec 1 shapes\n\ntable alpha {\n  seq i64 identity\n  flag bool\n  primary key (seq)\n}\n\ntable beta "
             . "{\n  seq i64 identity\n  flag datetime(6)\n  primary key (seq)\n}\n"
         );
-        $set = "$dir/set/dbspec-set.json";
-        file_put_contents($set, json_encode(['schema' => 1, 'documents' => ['shapes.dbs']], JSON_UNESCAPED_SLASHES));
+        $set = OrmGenTestSupport::setFile("$dir/set", ['shapes.dbs'], null);
         file_put_contents("$dir/src/usage.php", $source);
-        [$code, $stderr] = self::runGenerator(
-            ['gen', '--set', $set, '--out', "$dir/model", '--namespace', self::NS, '--scan', "$dir/src/usage.php"],
-        );
+        [$code, $stderr] = self::runScan($set, "$dir/model", ['--scan', "$dir/src/usage.php"]);
         return [$code, $stderr, $dir];
     }
 
@@ -1097,25 +1140,7 @@ PHP;
         is_dir("$dir/src") || mkdir("$dir/src", 0o700, true);
         file_put_contents("$dir/src/usage.php", "<?php\n\$x = 1;\n");
         file_put_contents("$dir/src/broken.php", "<?php\n\$a = new (;\n");
-        $stderr = fopen('php://memory', 'w+');
-        ob_start();
-        $code = OrmGen::run(
-            [
-                'gen',
-                '--set',
-                dirname(__DIR__, 3) . '/contracts/fixtures/bench/dbspec-set.json',
-                '--out',
-                "$dir/model",
-                '--namespace',
-                self::NS,
-                '--scan',
-                "$dir/src"
-            ],
-            $stderr
-        );
-        ob_end_clean();
-        rewind($stderr);
-        $err = (string) stream_get_contents($stderr);
+        [$code, $err] = self::runScanDirectory($dir, "$dir/model");
         self::assertSame(1, $code, $err);
         self::assertMatchesRegularExpression('~broken\.php:2:\d+: does not parse: ~', $err);
         self::assertDirectoryDoesNotExist("$dir/model");
@@ -1147,8 +1172,6 @@ PHP;
         $source = "<?php\n\$a = new " . self::NS . "\\Author();\n\$a->ltSeq(1);\n";
         [$code, $err, $dir] = self::generate('check', ['usage.php' => $source]);
         self::assertSame(0, $code, $err);
-        $stderr = fopen('php://memory', 'w+');
-        ob_start();
         $args = [
             'gen',
             '--set',
@@ -1161,12 +1184,13 @@ PHP;
             "$dir/src/usage.php",
             '--check'
         ];
-        self::assertSame(0, OrmGen::run($args, $stderr), 'current');
-        self::assertSame('', (string) ob_get_clean());
+        [$code, $stdout] = OrmGenTestSupport::run($args);
+        self::assertSame(0, $code, 'current');
+        self::assertSame('', $stdout);
         file_put_contents("$dir/src/usage.php", $source . "\$a->gtSeq(1);\n");
-        ob_start();
-        self::assertSame(1, OrmGen::run($args, $stderr), 'stale');
-        self::assertSame("differs: $dir/model/Author.php\n", (string) ob_get_clean());
+        [$code, $stdout] = OrmGenTestSupport::run($args);
+        self::assertSame(1, $code, 'stale');
+        self::assertSame("differs: $dir/model/Author.php\n", $stdout);
     }
 
     public function testPhpstanFindsEveryScannedChainMethod(): void
@@ -1222,26 +1246,14 @@ PHP;
             . "control(\\$ns\\Author \$a): void\n{\n    \$a->ltReadCount(1);\n}\n"
         );
         $analyse = function (string $file) use ($root, $dir): array {
-            $command = [
-                PHP_BINARY,
-                "$root/vendor-php/bin/phpstan",
-                'analyse',
-                '--no-progress',
-                '--no-ansi',
-                '--error-format=json',
-                '--configuration',
+            [$status, $out, $err] = runPhpstan(
+                $this,
+                $root,
                 "$dir/phpstan.neon",
-                '--level=9',
-                '--memory-limit=512M',
-                '--autoload-file',
                 "$dir/autoload.php",
-                $file];
-            $process = proc_open($command, [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes, $root);
-            $out = (string) stream_get_contents($pipes[1]);
-            $err = (string) stream_get_contents($pipes[2]);
-            fclose($pipes[1]);
-            fclose($pipes[2]);
-            $status = proc_close($process);
+                $file,
+                'json'
+            );
             // PHPStan exits 0 without errors and 1 with errors; any other status is a run that did not analyse.
             self::assertContains($status, [0, 1], "phpstan analyse $file exited with $status:\n$out$err");
             // The JSON report names the identifier of each error (files.<path>.messages[].identifier), so a finding is

@@ -2,9 +2,9 @@
 //! installing a manifest where only some tables exist fails with CONFIG and does not create the missing tables.
 use polyspec_orm_testcase::OrPanic;
 
-use super::coverage_env::{code, connect, run};
-use polyspec_orm::db::Pool;
-use polyspec_orm::Db;
+use super::coverage_env::code;
+use super::coverage_env::{connect, run};
+use super::table_exists::table_exists;
 
 const PARTIAL: &str = "dbspec 1 partial
 
@@ -30,25 +30,6 @@ async fn coverage_schema_install_existing() {
         db.close().await;
     })
     .await;
-}
-
-/// Reads whether `table` exists in the connection's database (MySQL), current schema (PostgreSQL), or file (SQLite).
-async fn table_exists(db: &Db, table: &str) -> bool {
-    let count: i64 = match db.pool() {
-        Pool::MySql(p) => sqlx::query_scalar("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?")
-            .bind(table)
-            .fetch_one(p)
-            .await
-            .unwrap(),
-        Pool::Postgres(p) => sqlx::query_scalar("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = $1")
-            .bind(table)
-            .fetch_one(p)
-            .await
-            .unwrap(),
-        Pool::Sqlite(p) => sqlx::query_scalar("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = ?").bind(table).fetch_one(p).await.unwrap(),
-        Pool::Markdown(_) => unreachable!("these cases run on SQL databases"),
-    };
-    count > 0
 }
 
 // Requirements: SCH-10, DBS-108.

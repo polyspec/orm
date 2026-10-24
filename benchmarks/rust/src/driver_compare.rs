@@ -8,6 +8,9 @@ use sqlx::{MySqlPool, Row};
 use std::str::FromStr as _;
 use std::time::Instant;
 
+mod bench_input;
+use bench_input::{bench_dsn, invalid_dsn, iterations};
+
 const PK_SQL: &str = "SELECT seq, name, is_close, service_seq FROM author WHERE seq = ?";
 const LIST_SQL: &str = "SELECT seq, name, is_close, service_seq FROM author WHERE service_seq = ? ORDER BY seq DESC LIMIT 100";
 
@@ -98,49 +101,9 @@ async fn async_list(pool: &AsyncPool, service_seq: i64) -> Vec<ResultRow> {
     .unwrap()
 }
 
-/// `ORM_BENCH_MYSQL_DSN` points to the seeded bench database. If it is missing or empty, it prints that variable name
-/// without connecting, and ends.
-fn bench_dsn() -> String {
-    match std::env::var("ORM_BENCH_MYSQL_DSN") {
-        Ok(v) if !v.is_empty() => v,
-        Ok(_) | Err(std::env::VarError::NotPresent) => {
-            eprintln!("ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database; run it through make orm-check or make run-databases TARGETS=<target>, which create the bench database of the run");
-            std::process::exit(1)
-        }
-        Err(e) => {
-            eprintln!("ORM_BENCH_MYSQL_DSN must be UTF-8: {e}");
-            std::process::exit(1)
-        }
-    }
-}
-
-/// The first argument is the repeat count. If it is missing or not an integer of at least `minimum`, it prints the argument name and the value received
-/// and ends. There is no default repeat count.
-fn iterations(minimum: usize) -> usize {
-    let Some(arg) = std::env::args().nth(1) else {
-        eprintln!("usage: driver_compare <iterations>; the iterations argument is required; give the number of iterations as the first argument");
-        std::process::exit(1)
-    };
-    match arg.parse::<usize>() {
-        Ok(n) if n >= minimum => n,
-        _ => {
-            eprintln!(
-                "the iterations argument must be an integer of at least {minimum}, got {arg:?}"
-            );
-            std::process::exit(1)
-        }
-    }
-}
-
-/// If `ORM_BENCH_MYSQL_DSN` cannot be resolved, it prints that error and ends.
-fn invalid_dsn(error: impl std::fmt::Display) -> ! {
-    eprintln!("ORM_BENCH_MYSQL_DSN: {error}");
-    std::process::exit(1)
-}
-
 #[tokio::main]
 async fn main() {
-    let iterations = iterations(10);
+    let iterations = iterations("driver_compare", 10);
 
     let dsn = bench_dsn();
     let sqlx_options = match MySqlConnectOptions::from_str(&dsn) {
@@ -155,12 +118,11 @@ async fn main() {
         .await
         .unwrap();
 
-    let async_options =
-        OptsBuilder::from_opts(match Opts::from_url(&dsn) {
-            Ok(opts) => opts,
-            Err(e) => invalid_dsn(e),
-        })
-            .pool_opts(PoolOpts::default().with_constraints(PoolConstraints::new(1, 1).unwrap()));
+    let async_options = OptsBuilder::from_opts(match Opts::from_url(&dsn) {
+        Ok(opts) => opts,
+        Err(e) => invalid_dsn(e),
+    })
+    .pool_opts(PoolOpts::default().with_constraints(PoolConstraints::new(1, 1).unwrap()));
     let mysql_async = AsyncPool::new(async_options);
 
     for index in 0..200 {

@@ -48,15 +48,15 @@ def run_case(name: str, item) -> None:
 
 
 class CoverageTest(CoverageCase):
-    # Requirements: CFG-9.
+    # Requirements: INT-78.
     def test_without_hook(self):
         self.each_item("without_hook", lambda item: run_case("without_hook", item))
 
-    # Requirements: DSL-65, PRT-2.
+    # Requirements: INT-78, PRT-2.
     def test_read_filter(self):
         self.each_item("read_filter", lambda item: run_case("read_filter", item))
 
-    # Requirements: DSL-65, PRT-2.
+    # Requirements: INT-78, PRT-2.
     def test_same_handle_child_hook_once(self):
         self.each_item(
             "same_handle_child_hook_once",
@@ -67,7 +67,7 @@ class CoverageTest(CoverageCase):
     def test_insert_assign(self):
         self.each_item("insert_assign", lambda item: run_case("insert_assign", item))
 
-    # Requirements: PRT-4, PRT-5, PRT-41.
+    # Requirements: INT-78, PRT-4, PRT-6.
     def test_upsert_scope(self):
         self.each_item("upsert_scope", lambda item: run_case("upsert_scope", item))
 

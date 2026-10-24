@@ -227,17 +227,33 @@ static bool candidate_add(zval *candidates, zval *errors, zval *meta, zend_strin
     add_next_index_zval(candidates, &key); return true;
 }
 
-static bool tuple_candidate(zval *meta, zval *words, uint32_t from, uint32_t end, const char *op, zval *candidates, zval *errors)
+static bool candidate_columns(zval *meta, zval *words, uint32_t from, uint32_t end, zval *columns)
 {
-    zval cols; array_init(&cols); uint32_t part = from; bool valid = true;
+    array_init(columns);
+    uint32_t part = from;
+    bool valid = true;
     for (uint32_t i = from; i <= end; i++) {
-        if (i < end && !word_eq(words, i, "With")) continue;
+        if (i < end && !word_eq(words, i, "With")) {
+            continue;
+        }
         zend_string *pascal = word_concat(words, part, i);
-        zend_string *column = column_for(meta, pascal); zend_string_release(pascal);
-        if (!ZSTR_LEN(column)) { zend_string_release(column); valid = false; }
-        else add_next_index_str(&cols, column);
+        zend_string *column = column_for(meta, pascal);
+        zend_string_release(pascal);
+        if (!ZSTR_LEN(column)) {
+            zend_string_release(column);
+            valid = false;
+        } else {
+            add_next_index_str(columns, column);
+        }
         part = i + 1;
     }
+    return valid;
+}
+
+static bool tuple_candidate(zval *meta, zval *words, uint32_t from, uint32_t end, const char *op, zval *candidates, zval *errors)
+{
+    zval cols;
+    bool valid = candidate_columns(meta, words, from, end, &cols);
     zval *entity = field(meta, "entity");
     const char *entity_name = entity && Z_TYPE_P(entity) == IS_STRING ? Z_STRVAL_P(entity) : "";
     if (!valid || zend_hash_num_elements(Z_ARRVAL(cols)) < 2) {
@@ -260,15 +276,8 @@ static bool tuple_candidate(zval *meta, zval *words, uint32_t from, uint32_t end
 
 static bool fulltext_candidate(zval *meta, zval *words, uint32_t from, uint32_t end, const char *op, zval *candidates, zval *errors)
 {
-    zval columns; array_init(&columns); uint32_t part = from; bool valid = true;
-    for (uint32_t i = from; i <= end; i++) {
-        if (i < end && !word_eq(words, i, "With")) continue;
-        zend_string *pascal = word_concat(words, part, i);
-        zend_string *column = column_for(meta, pascal); zend_string_release(pascal);
-        if (!ZSTR_LEN(column)) { zend_string_release(column); valid = false; }
-        else add_next_index_str(&columns, column);
-        part = i + 1;
-    }
+    zval columns;
+    bool valid = candidate_columns(meta, words, from, end, &columns);
     zval *entity = field(meta, "entity");
     const char *entity_name = entity && Z_TYPE_P(entity) == IS_STRING ? Z_STRVAL_P(entity) : "";
     if (!valid || zend_hash_num_elements(Z_ARRVAL(columns)) == 0) {

@@ -10,16 +10,16 @@ namespace Polyspec\Orm\Tests;
 
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
-use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\GroupRow;
 use Polyspec\Orm\GroupRows;
-use Polyspec\Orm\OrmException;
 use Polyspec\Orm\Tests\Model\Author;
 
 #[Medium]
 final class GroupRowsDbTest extends TestCase
 {
+    use DatabaseTestAssertions;
+
     // Requirements: INT-31.
     public function testGroupRows(): void
     {
@@ -54,12 +54,7 @@ final class GroupRowsDbTest extends TestCase
                         array_keys($row->toArray()),
                         'group row includes an unselected field'
                     );
-                    try {
-                        $row->value('name');
-                        self::fail('unselected model column was available');
-                    } catch (OrmException $error) {
-                        self::assertSame(Code::COLUMN_UNSELECTED, $error->code_, $error->getMessage());
-                    }
+                    self::assertColumnUnselected(static fn() => $row->value('name'), 'name');
                     $total += $row->count();
                 }
                 self::assertSame($query()->getCount(), $total, 'group counts do not sum to the row count');

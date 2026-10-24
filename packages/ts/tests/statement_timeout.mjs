@@ -19,16 +19,14 @@ function documentModel(text) {
   return Probe;
 }
 
-async function holdPoolerRows(dsn, table) {
-  const client = postgresClient(dsn);
-  await client.connect();
+async function holdConnectionRows(connection, begin, lock, releaseFailure) {
   try {
-    await client.query('BEGIN');
-    await client.query(`UPDATE "${table}" SET "seq" = "seq"`);
+    await connection.query(begin);
+    await connection.query(lock);
   } catch (error) {
     const cleanupErrors = [];
-    try { await client.query('ROLLBACK'); } catch (cleanup) { cleanupErrors.push(cleanup); }
-    try { await client.end(); } catch (cleanup) { cleanupErrors.push(cleanup); }
+    try { await connection.query('ROLLBACK'); } catch (cleanup) { cleanupErrors.push(cleanup); }
+    try { await connection.end(); } catch (cleanup) { cleanupErrors.push(cleanup); }
     if (cleanupErrors.length) throw new AggregateError([error, ...cleanupErrors], 'locking rows and cleaning up failed', { cause: error });
     throw error;
   }
@@ -37,10 +35,17 @@ async function holdPoolerRows(dsn, table) {
     if (released) return;
     released = true;
     const failures = [];
-    try { await client.query('ROLLBACK'); } catch (error) { failures.push(error); }
-    try { await client.end(); } catch (error) { failures.push(error); }
-    if (failures.length) throw new AggregateError(failures, 'rolling back and closing the PostgreSQL lock connection failed');
+    try { await connection.query('ROLLBACK'); } catch (error) { failures.push(error); }
+    try { await connection.end(); } catch (error) { failures.push(error); }
+    if (failures.length) throw new AggregateError(failures, releaseFailure);
   };
+}
+
+async function holdPoolerRows(dsn, table) {
+  const client = postgresClient(dsn);
+  await client.connect();
+  return holdConnectionRows(client, 'BEGIN', `UPDATE "${table}" SET "seq" = "seq"`,
+    'rolling back and closing the PostgreSQL lock connection failed');
 }
 
 async function dropPoolerTable(dsn, table) {
@@ -78,48 +83,21 @@ async function seed(db) {
 async function holdRows(dialect, dsn) {
   if (dialect === 'mysql') {
     const connection = await mysqlConnection(dsn);
-    try {
-      await connection.query('START TRANSACTION');
-      await connection.query('UPDATE `author` SET `seq` = `seq`');
-    } catch (error) {
-      const cleanupErrors = [];
-      try { await connection.query('ROLLBACK'); } catch (cleanup) { cleanupErrors.push(cleanup); }
-      try { await connection.end(); } catch (cleanup) { cleanupErrors.push(cleanup); }
-      if (cleanupErrors.length) throw new AggregateError([error, ...cleanupErrors], 'locking rows and cleaning up failed', { cause: error });
-      throw error;
-    }
-    let released = false;
-    return async () => {
-      if (released) return;
-      released = true;
-      const failures = [];
-      try { await connection.query('ROLLBACK'); } catch (error) { failures.push(error); }
-      try { await connection.end(); } catch (error) { failures.push(error); }
-      if (failures.length) throw new AggregateError(failures, 'rolling back and closing the MySQL lock connection failed');
-    };
+    return holdConnectionRows(connection, 'START TRANSACTION', 'UPDATE `author` SET `seq` = `seq`',
+      'rolling back and closing the MySQL lock connection failed');
   }
 
   const client = postgresClient(dsn);
   await client.connect();
-  try {
-    await client.query('BEGIN');
-    await client.query('UPDATE "author" SET "seq" = "seq"');
-  } catch (error) {
-    const cleanupErrors = [];
-    try { await client.query('ROLLBACK'); } catch (cleanup) { cleanupErrors.push(cleanup); }
-    try { await client.end(); } catch (cleanup) { cleanupErrors.push(cleanup); }
-    if (cleanupErrors.length) throw new AggregateError([error, ...cleanupErrors], 'locking rows and cleaning up failed', { cause: error });
-    throw error;
+  return holdConnectionRows(client, 'BEGIN', 'UPDATE "author" SET "seq" = "seq"',
+    'rolling back and closing the PostgreSQL lock connection failed');
+}
+
+async function collectCleanupErrors(errors, actions) {
+  for (const action of actions) {
+    if (!action) continue;
+    try { await action(); } catch (error) { errors.push(error); }
   }
-  let released = false;
-  return async () => {
-    if (released) return;
-    released = true;
-    const failures = [];
-    try { await client.query('ROLLBACK'); } catch (error) { failures.push(error); }
-    try { await client.end(); } catch (error) { failures.push(error); }
-    if (failures.length) throw new AggregateError(failures, 'rolling back and closing the PostgreSQL lock connection failed');
-  };
 }
 
 async function verifyDialect(dialect, database, step) {
@@ -151,9 +129,11 @@ async function verifyDialect(dialect, database, step) {
   } catch (error) {
     primaryFailure = error;
   } finally {
-    if (release) try { await release(); } catch (error) { cleanupErrors.push(error); }
-    if (bounded) try { await bounded.close(); } catch (error) { cleanupErrors.push(error); }
-    try { await db.close(); } catch (error) { cleanupErrors.push(error); }
+    await collectCleanupErrors(cleanupErrors, [
+      release && (() => release()),
+      bounded && (() => bounded.close()),
+      () => db.close(),
+    ]);
   }
   if (cleanupErrors.length && primaryFailure) throw new AggregateError([primaryFailure, ...cleanupErrors], `${dialect}: timeout test and cleanup failed`, { cause: primaryFailure });
   if (cleanupErrors.length) throw new AggregateError(cleanupErrors, `${dialect}: timeout test cleanup failed`, { cause: cleanupErrors[0] });
@@ -259,10 +239,12 @@ caseTest('connection/statement-timeout-through-pooler', DATABASE, async ({ step 
   } catch (error) {
     primaryFailure = error;
   } finally {
-    if (release) try { await release(); } catch (error) { cleanupErrors.push(error); }
-    if (bounded) try { await bounded.close(); } catch (error) { cleanupErrors.push(error); }
-    if (plain) try { await plain.close(); } catch (error) { cleanupErrors.push(error); }
-    if (setup) try { await setup.close(); } catch (error) { cleanupErrors.push(error); }
+    await collectCleanupErrors(cleanupErrors, [
+      release && (() => release()),
+      bounded && (() => bounded.close()),
+      plain && (() => plain.close()),
+      setup && (() => setup.close()),
+    ]);
     try { await dropPoolerTable(single, table); step(`table ${table} dropped`); } catch (error) { cleanupErrors.push(error); }
   }
   if (cleanupErrors.length && primaryFailure) throw new AggregateError([primaryFailure, ...cleanupErrors], 'pooler timeout test and cleanup failed', { cause: primaryFailure });

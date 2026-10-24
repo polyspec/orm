@@ -35,6 +35,12 @@ function coverageTableExists(Db $db, string $table): bool
     return (int) $st->fetchColumn() === 1;
 }
 
+/** The repository root used by PHP test fixtures. */
+function coverageRepositoryRoot(): string
+{
+    return dirname(__DIR__, 3);
+}
+
 /** @return iterable<string, array{string}> */
 function coverageDatabaseDrivers(): iterable
 {
@@ -70,7 +76,7 @@ function coverageGenerateFixtureModels(string $fixture, string $document, string
  */
 function coverageItemsOf(string $testFile): array
 {
-    $root = realpath(dirname(__DIR__, 3));
+    $root = realpath(coverageRepositoryRoot());
     $relative = substr((string) realpath($testFile), strlen((string) $root) + 1);
     $command = ['node', "$root/scripts/features/coverage.mts", '--items', $relative];
     $selectedDatabase = getenv('ORM_FEATURE_DATABASE');
@@ -127,6 +133,43 @@ function coverageConnect(string $dsn): Db
         $dsn,
         new Config(aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index')
     );
+}
+
+/**
+ * Selects the expected conformance vectors owned by a coverage case.
+ *
+ * @param list<string> $names
+ * @return array<string, mixed>
+ */
+function coverageExpectedConformanceVectors(\stdClass $recorded, array $names): array
+{
+    $expected = [];
+    foreach ($recorded->vectors as $vector) {
+        if (in_array($vector->name, $names, true)) {
+            $expected[$vector->name] = $vector->expect;
+        }
+    }
+    return $expected;
+}
+
+/**
+ * Runs one selected model-query coverage case per database and closes each connection on every path.
+ *
+ * @param Closure(Db): void $run
+ * @param (Closure(string): Db)|null $connect A test seam for the DB-free helper unit.
+ */
+function coverageRunDatabaseItems(string $testFile, Closure $run, ?Closure $connect = null): void
+{
+    foreach (coverageItemsOf($testFile) as $item) {
+        selectCoverageItem($item);
+        [, $dsn] = coverageItem();
+        $db = $connect === null ? coverageConnect($dsn) : $connect($dsn);
+        try {
+            $run($db);
+        } finally {
+            $db->close();
+        }
+    }
 }
 
 /** Reads the JSON of a repository file. Fails if it cannot be read or parsed. */

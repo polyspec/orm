@@ -1006,8 +1006,8 @@ impl Db {
     /// runs (docs/operations/usage.md "Execute a compiled statement").
     pub async fn execute(&self, step: &Step, params: &[Param]) -> Result<()> {
         let ex = crate::tx::resolve(&Some(self.clone()))?;
-        if matches!(ex, Executor::Db(_)) && self.inner.closed.load(Ordering::Acquire) {
-            return Err(Error::Config("database is closed".into()));
+        if matches!(ex, Executor::Db(_)) {
+            self.ensure_open()?;
         }
         if step.assemble.is_some() {
             return Err(Error::Engine { code: codes::IR_INVALID.into(), msg: "execute runs a statement without rows; the statement is a read".into() });
@@ -1029,6 +1029,13 @@ impl Db {
         // This is the same path as model writes: it runs on the connection or the active transaction, and uses the transaction's audit,
         // statement fault, statement event, and driver error conversion as they are.
         ex.execute(step, params).await.map(drop)
+    }
+
+    pub(crate) fn ensure_open(&self) -> Result<()> {
+        if self.inner.closed.load(Ordering::Acquire) {
+            return Err(Error::Config("database is closed".into()));
+        }
+        Ok(())
     }
 }
 
@@ -1112,9 +1119,7 @@ impl Executor {
             target,
             audit,
             {
-                if db.inner.closed.load(Ordering::Acquire) {
-                    return Err(Error::Config("database is closed".into()));
-                }
+                db.ensure_open()?;
                 if !st.lock.is_empty() {
                     return Err(Error::Config("row locks are allowed only inside a transaction".into()));
                 }
@@ -1143,18 +1148,7 @@ impl Executor {
     /// Runs the step. If `kind` and `tables` are given, the event carries them.
     pub(crate) async fn execute_as(&self, kind: Option<&str>, tables: Option<&[String]>, st: &Step, params: &[Param]) -> Result<(u64, u64)> {
         let origin = Origin { kind, tables, transaction: self.transaction() };
-        with_executor_target!(
-            self,
-            db,
-            target,
-            audit,
-            {
-                if db.inner.closed.load(Ordering::Acquire) {
-                    return Err(Error::Config("database is closed".into()));
-                }
-            },
-            { db.run_execute(target, origin, st, params, audit.as_ref()).await }
-        )
+        with_executor_target!(self, db, target, audit, { db.ensure_open()? }, { db.run_execute(target, origin, st, params, audit.as_ref()).await })
     }
 }
 

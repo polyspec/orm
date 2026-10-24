@@ -927,7 +927,8 @@
         "packages/php/tests/coverage_cases.php",
         "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/ts/tests/coverage_case.mjs",
-        "packages/python/tests/coverage_case.py"
+        "packages/python/tests/coverage_case.py",
+        "contracts/fixtures/bench/bench.dbs"
       ],
       "tests": [
         "packages/go/model/model_test.go",
@@ -1014,7 +1015,8 @@
         "packages/ts/tests/collection_identity.mjs",
         "packages/python/tests/test_collection_identity.py",
         "packages/python/tests/test_group_rows.py",
-        "packages/rust/orm/src/row.rs"
+        "packages/rust/orm/src/row.rs",
+        "packages/php-ext/tests/CoverageNativeFixtureExtensionTest.php"
       ],
       "docs": [
         "docs/spec/dsl.md",
@@ -1417,6 +1419,23 @@
             "packages/ts/tests/collection_identity.mjs",
             "tests/collection/keys.json"
           ]
+        },
+        {
+          "id": "t182-6-php-extension-model-fixtures",
+          "command": "make t182-php-extension-model-check",
+          "shard": "other",
+          "inputs": [
+            "Makefile",
+            "packages/php-ext/tests/CoverageNativeFixtureExtensionTest.php",
+            "packages/php/tests/AggregateNumericTest.php",
+            "packages/php/tests/DecimalModelTest.php",
+            "packages/php/tests/IdentityLoadTest.php",
+            "packages/php/tests/case_database.php",
+            "contracts/fixtures/aggregate_numeric.json",
+            "contracts/fixtures/decimal_model.json",
+            "contracts/fixtures/identity_load.json",
+            "contracts/fixtures/identity_load.dbs"
+          ]
         }
       ],
       "coverage": {
@@ -1429,6 +1448,9 @@
             "part": "packages/go/model",
             "tests": [
               "packages/go/model/coverage_model_queries_test.go"
+            ],
+            "inputs": [
+              "contracts/fixtures/bench/bench.dbs"
             ],
             "commands": {
               "mysql": [
@@ -1477,6 +1499,10 @@
             "tests": [
               "packages/php/tests/CoverageModelQueriesTest.php"
             ],
+            "inputs": [
+              "contracts/fixtures/bench/bench.dbs",
+              "packages/php/tests/CoverageModelQueriesCase.php"
+            ],
             "commands": {
               "mysql": [
                 {
@@ -1517,6 +1543,9 @@
             "part": "packages/rust/tests",
             "tests": [
               "packages/rust/tests/tests/integration/coverage_model_queries.rs"
+            ],
+            "inputs": [
+              "contracts/fixtures/bench/bench.dbs"
             ],
             "commands": {
               "mysql": [
@@ -1565,6 +1594,9 @@
             "tests": [
               "packages/ts/tests/coverage_model_queries.mjs"
             ],
+            "inputs": [
+              "contracts/fixtures/bench/bench.dbs"
+            ],
             "commands": {
               "mysql": [
                 {
@@ -1602,6 +1634,9 @@
             "part": "packages/python/tests",
             "tests": [
               "packages/python/tests/coverage_model_queries.py"
+            ],
+            "inputs": [
+              "contracts/fixtures/bench/bench.dbs"
             ],
             "commands": {
               "mysql": [
@@ -1643,7 +1678,7 @@
             ],
             "inputs": [
               "contracts/fixtures/bench/bench.dbs",
-              "contracts/fixtures/bench/bench_shared.dbs"
+              "packages/php/tests/CoverageModelQueriesCase.php"
             ],
             "commands": {
               "mysql": [
@@ -1727,7 +1762,8 @@
         }
       ],
       "parity": [
-        "coverage-model-write-cycle"
+        "coverage-model-write-cycle",
+        "coverage-model-create-parts"
       ],
       "fixtures": [
         "tests/conformance/vectors.json",
@@ -1742,7 +1778,8 @@
         "packages/php/tests/coverage_cases.php",
         "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/ts/tests/coverage_case.mjs",
-        "packages/python/tests/coverage_case.py"
+        "packages/python/tests/coverage_case.py",
+        "contracts/fixtures/bench/bench.dbs"
       ],
       "tests": [
         "packages/go/model/model_test.go",
@@ -2073,7 +2110,8 @@
       "coverage": {
         "kind": "database",
         "cases": [
-          "model_write_cycle"
+          "model_write_cycle",
+          "create_parts"
         ],
         "owners": {
           "go": {
@@ -2081,16 +2119,21 @@
             "tests": [
               "packages/go/model/coverage_model_writes_test.go"
             ],
+            "inputs": [
+              "contracts/fixtures/bench/bench.dbs"
+            ],
             "commands": {
               "mysql": [
                 {
                   "runner": "go",
                   "test": "packages/go/model/coverage_model_writes_test.go",
                   "cases": [
-                    "model_write_cycle"
+                    "model_write_cycle",
+                    "create_parts"
                   ],
                   "symbols": {
-                    "model_write_cycle": "TestCoverageModelWriteCycle"
+                    "model_write_cycle": "TestCoverageModelWriteCycle",
+                    "create_parts": "TestCoverageModelCreateParts"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -2100,10 +2143,12 @@
                   "runner": "go",
                   "test": "packages/go/model/coverage_model_writes_test.go",
                   "cases": [
-                    "model_write_cycle"
+                    "model_write_cycle",
+                    "create_parts"
                   ],
                   "symbols": {
-                    "model_write_cycle": "TestCoverageModelWriteCycle"
+                    "model_write_cycle": "TestCoverageModelWriteCycle",
+                    "create_parts": "TestCoverageModelCreateParts"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -2113,10 +2158,12 @@
                   "runner": "go",
                   "test": "packages/go/model/coverage_model_writes_test.go",
                   "cases": [
-                    "model_write_cycle"
+                    "model_write_cycle",
+                    "create_parts"
                   ],
                   "symbols": {
-                    "model_write_cycle": "TestCoverageModelWriteCycle"
+                    "model_write_cycle": "TestCoverageModelWriteCycle",
+                    "create_parts": "TestCoverageModelCreateParts"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -2128,15 +2175,19 @@
             "tests": [
               "packages/php/tests/CoverageModelWritesTest.php"
             ],
+            "inputs": [
+              "contracts/fixtures/bench/bench.dbs"
+            ],
             "commands": {
               "mysql": [
                 {
                   "runner": "php",
                   "test": "packages/php/tests/CoverageModelWritesTest.php",
                   "cases": [
-                    "model_write_cycle"
+                    "model_write_cycle",
+                    "create_parts"
                   ],
-                  "symbols": {"model_write_cycle": "testModelWriteCycle"},
+                  "symbols": {"model_write_cycle": "testModelWriteCycle", "create_parts": "testCreateParts"},
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
               ],
@@ -2145,9 +2196,10 @@
                   "runner": "php",
                   "test": "packages/php/tests/CoverageModelWritesTest.php",
                   "cases": [
-                    "model_write_cycle"
+                    "model_write_cycle",
+                    "create_parts"
                   ],
-                  "symbols": {"model_write_cycle": "testModelWriteCycle"},
+                  "symbols": {"model_write_cycle": "testModelWriteCycle", "create_parts": "testCreateParts"},
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
@@ -2156,9 +2208,10 @@
                   "runner": "php",
                   "test": "packages/php/tests/CoverageModelWritesTest.php",
                   "cases": [
-                    "model_write_cycle"
+                    "model_write_cycle",
+                    "create_parts"
                   ],
-                  "symbols": {"model_write_cycle": "testModelWriteCycle"},
+                  "symbols": {"model_write_cycle": "testModelWriteCycle", "create_parts": "testCreateParts"},
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
@@ -2169,16 +2222,21 @@
             "tests": [
               "packages/rust/tests/tests/integration/coverage_model_writes.rs"
             ],
+            "inputs": [
+              "contracts/fixtures/bench/bench.dbs"
+            ],
             "commands": {
               "mysql": [
                 {
                   "runner": "cargo",
                   "test": "packages/rust/tests/tests/integration/coverage_model_writes.rs",
                   "cases": [
-                    "model_write_cycle"
+                    "model_write_cycle",
+                    "create_parts"
                   ],
                   "symbols": {
-                    "model_write_cycle": "coverage_model_writes::coverage_model_write_cycle"
+                    "model_write_cycle": "coverage_model_writes::coverage_model_write_cycle",
+                    "create_parts": "coverage_model_writes::coverage_model_create_parts"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -2188,10 +2246,12 @@
                   "runner": "cargo",
                   "test": "packages/rust/tests/tests/integration/coverage_model_writes.rs",
                   "cases": [
-                    "model_write_cycle"
+                    "model_write_cycle",
+                    "create_parts"
                   ],
                   "symbols": {
-                    "model_write_cycle": "coverage_model_writes::coverage_model_write_cycle"
+                    "model_write_cycle": "coverage_model_writes::coverage_model_write_cycle",
+                    "create_parts": "coverage_model_writes::coverage_model_create_parts"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -2201,10 +2261,12 @@
                   "runner": "cargo",
                   "test": "packages/rust/tests/tests/integration/coverage_model_writes.rs",
                   "cases": [
-                    "model_write_cycle"
+                    "model_write_cycle",
+                    "create_parts"
                   ],
                   "symbols": {
-                    "model_write_cycle": "coverage_model_writes::coverage_model_write_cycle"
+                    "model_write_cycle": "coverage_model_writes::coverage_model_write_cycle",
+                    "create_parts": "coverage_model_writes::coverage_model_create_parts"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -2216,13 +2278,17 @@
             "tests": [
               "packages/ts/tests/coverage_model_writes.mjs"
             ],
+            "inputs": [
+              "contracts/fixtures/bench/bench.dbs"
+            ],
             "commands": {
               "mysql": [
                 {
                   "runner": "node",
                   "test": "packages/ts/tests/coverage_model_writes.mjs",
                   "cases": [
-                    "model_write_cycle"
+                    "model_write_cycle",
+                    "create_parts"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -2232,7 +2298,8 @@
                   "runner": "node",
                   "test": "packages/ts/tests/coverage_model_writes.mjs",
                   "cases": [
-                    "model_write_cycle"
+                    "model_write_cycle",
+                    "create_parts"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -2242,7 +2309,8 @@
                   "runner": "node",
                   "test": "packages/ts/tests/coverage_model_writes.mjs",
                   "cases": [
-                    "model_write_cycle"
+                    "model_write_cycle",
+                    "create_parts"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -2254,13 +2322,17 @@
             "tests": [
               "packages/python/tests/coverage_model_writes.py"
             ],
+            "inputs": [
+              "contracts/fixtures/bench/bench.dbs"
+            ],
             "commands": {
               "mysql": [
                 {
                   "runner": "python",
                   "test": "packages/python/tests/coverage_model_writes.py",
                   "cases": [
-                    "model_write_cycle"
+                    "model_write_cycle",
+                    "create_parts"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -2270,7 +2342,8 @@
                   "runner": "python",
                   "test": "packages/python/tests/coverage_model_writes.py",
                   "cases": [
-                    "model_write_cycle"
+                    "model_write_cycle",
+                    "create_parts"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -2280,7 +2353,8 @@
                   "runner": "python",
                   "test": "packages/python/tests/coverage_model_writes.py",
                   "cases": [
-                    "model_write_cycle"
+                    "model_write_cycle",
+                    "create_parts"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -2293,16 +2367,15 @@
               "packages/php-ext/tests/CoverageModelWritesExtensionTest.php"
             ],
             "inputs": [
-              "contracts/fixtures/bench/bench.dbs",
-              "contracts/fixtures/bench/bench_shared.dbs"
+              "contracts/fixtures/bench/bench.dbs"
             ],
             "commands": {
               "mysql": [
                 {
                   "runner": "php",
                   "test": "packages/php-ext/tests/CoverageModelWritesExtensionTest.php",
-                  "cases": ["model_write_cycle"],
-                  "symbols": {"model_write_cycle": "testModelWriteCycle"},
+                  "cases": ["model_write_cycle", "create_parts"],
+                  "symbols": {"model_write_cycle": "testModelWriteCycle", "create_parts": "testCreateParts"},
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
               ],
@@ -2310,8 +2383,8 @@
                 {
                   "runner": "php",
                   "test": "packages/php-ext/tests/CoverageModelWritesExtensionTest.php",
-                  "cases": ["model_write_cycle"],
-                  "symbols": {"model_write_cycle": "testModelWriteCycle"},
+                  "cases": ["model_write_cycle", "create_parts"],
+                  "symbols": {"model_write_cycle": "testModelWriteCycle", "create_parts": "testCreateParts"},
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
@@ -2319,8 +2392,8 @@
                 {
                   "runner": "php",
                   "test": "packages/php-ext/tests/CoverageModelWritesExtensionTest.php",
-                  "cases": ["model_write_cycle"],
-                  "symbols": {"model_write_cycle": "testModelWriteCycle"},
+                  "cases": ["model_write_cycle", "create_parts"],
+                  "symbols": {"model_write_cycle": "testModelWriteCycle", "create_parts": "testCreateParts"},
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
@@ -3528,6 +3601,7 @@
         "packages/ts/tests/generate.mjs",
         "packages/rust/build/tests/generate.rs",
         "packages/php/tests/OrmGenTest.php",
+        "packages/php/tests/OrmGenTestSupport.php",
         "packages/php/tests/ModelMethodsTest.php",
         "packages/php/tests/OrmGenScanTest.php",
         "packages/php/tests/OrmGenScanParityTest.php",
@@ -3619,6 +3693,7 @@
           "shard": "other",
           "inputs": [
             "packages/php/tests/OrmGenScanParityTest.php",
+            "packages/php/tests/OrmGenTestSupport.php",
             "tests/generator/php-scan-vectors.json",
             "packages/ts/src/bin/orm-gen.ts"
           ]
@@ -4062,7 +4137,7 @@
           "shard": "other",
           "inputs": [
             "packages/php/src/Dbspec/*.php",
-            "packages/php/tests/DbspecTimedTest.php",
+            "packages/php/tests/DbspecTimedCases.php",
             "packages/php/tests/DbspecTest.php",
             "packages/php/tests/case_clock.php",
             "packages/php/tests/dbspec_cases.php",
@@ -4632,7 +4707,8 @@
         "packages/python/tests/test_load_set.py",
         "packages/python/tests/case_database.py",
         "packages/python/tests/coverage_schema_install.py",
-        "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php"
+        "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
+        "packages/php-ext/tests/CoverageNativeChangedDatabaseExtensionTest.php"
       ],
       "docs": [
         "docs/spec/schema.md",
@@ -4792,6 +4868,20 @@
           "shard": "other",
           "inputs": [
             "packages/python/tests/schema_inspection.py"
+          ]
+        },
+        {
+          "id": "t182-6-php-extension-changed-database",
+          "command": "make t182-php-extension-schema-check",
+          "shard": "other",
+          "inputs": [
+            "Makefile",
+            "packages/php-ext/tests/CoverageNativeChangedDatabaseExtensionTest.php",
+            "packages/php/tests/SchemaSetTest.php",
+            "packages/php/tests/case_database.php",
+            "packages/php-ext/src/schema_utils.c",
+            "contracts/fixtures/install/changed_database.json",
+            "contracts/fixtures/install/note.dbs"
           ]
         }
       ],
@@ -6266,7 +6356,8 @@
         "packages/php/tests/coverage_cases.php",
         "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/ts/tests/coverage_case.mjs",
-        "packages/python/tests/coverage_case.py"
+        "packages/python/tests/coverage_case.py",
+        "contracts/fixtures/bench/bench.dbs"
       ],
       "tests": [
         "packages/go/model/model_test.go",
@@ -6316,6 +6407,9 @@
             "tests": [
               "packages/go/model/coverage_composite_keys_test.go"
             ],
+            "inputs": [
+              "contracts/fixtures/bench/bench.dbs"
+            ],
             "commands": {
               "mysql": [
                 {
@@ -6363,6 +6457,10 @@
             "tests": [
               "packages/php/tests/CoverageCompositeKeysTest.php"
             ],
+            "inputs": [
+              "contracts/fixtures/bench/bench.dbs",
+              "packages/php/tests/CoverageCompositeKeysCase.php"
+            ],
             "commands": {
               "mysql": [
                 {
@@ -6371,6 +6469,9 @@
                   "cases": [
                     "composite_key_rows"
                   ],
+                  "symbols": {
+                    "composite_key_rows": "testCompositeKeyRows"
+                  },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
               ],
@@ -6381,6 +6482,9 @@
                   "cases": [
                     "composite_key_rows"
                   ],
+                  "symbols": {
+                    "composite_key_rows": "testCompositeKeyRows"
+                  },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
@@ -6391,6 +6495,9 @@
                   "cases": [
                     "composite_key_rows"
                   ],
+                  "symbols": {
+                    "composite_key_rows": "testCompositeKeyRows"
+                  },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
@@ -6400,6 +6507,9 @@
             "part": "packages/rust/tests",
             "tests": [
               "packages/rust/tests/tests/integration/coverage_composite_keys.rs"
+            ],
+            "inputs": [
+              "contracts/fixtures/bench/bench.dbs"
             ],
             "commands": {
               "mysql": [
@@ -6448,6 +6558,9 @@
             "tests": [
               "packages/ts/tests/coverage_composite_keys.mjs"
             ],
+            "inputs": [
+              "contracts/fixtures/bench/bench.dbs"
+            ],
             "commands": {
               "mysql": [
                 {
@@ -6486,6 +6599,9 @@
             "tests": [
               "packages/python/tests/coverage_composite_keys.py"
             ],
+            "inputs": [
+              "contracts/fixtures/bench/bench.dbs"
+            ],
             "commands": {
               "mysql": [
                 {
@@ -6523,6 +6639,10 @@
             "part": "packages/php-ext/tests",
             "tests": [
               "packages/php-ext/tests/CoverageCompositeKeysExtensionTest.php"
+            ],
+            "inputs": [
+              "contracts/fixtures/bench/bench.dbs",
+              "packages/php/tests/CoverageCompositeKeysCase.php"
             ],
             "commands": {
               "mysql": [
@@ -7016,7 +7136,8 @@
         "packages/php/tests/coverage_cases.php",
         "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/ts/tests/coverage_case.mjs",
-        "packages/python/tests/coverage_case.py"
+        "packages/python/tests/coverage_case.py",
+        "contracts/fixtures/bench/bench.dbs"
       ],
       "tests": [
         "packages/go/model/chunk_test.go",
@@ -7103,6 +7224,9 @@
             "tests": [
               "packages/go/model/coverage_parameter_chunking_test.go"
             ],
+            "inputs": [
+              "contracts/fixtures/bench/bench.dbs"
+            ],
             "commands": {
               "mysql": [
                 {
@@ -7150,6 +7274,9 @@
             "tests": [
               "packages/php/tests/CoverageParameterChunkingTest.php"
             ],
+            "inputs": [
+              "contracts/fixtures/bench/bench.dbs"
+            ],
             "commands": {
               "mysql": [
                 {
@@ -7187,6 +7314,9 @@
             "part": "packages/rust/tests",
             "tests": [
               "packages/rust/tests/tests/integration/coverage_parameter_chunking.rs"
+            ],
+            "inputs": [
+              "contracts/fixtures/bench/bench.dbs"
             ],
             "commands": {
               "mysql": [
@@ -7235,6 +7365,9 @@
             "tests": [
               "packages/ts/tests/coverage_parameter_chunking.mjs"
             ],
+            "inputs": [
+              "contracts/fixtures/bench/bench.dbs"
+            ],
             "commands": {
               "mysql": [
                 {
@@ -7273,6 +7406,9 @@
             "tests": [
               "packages/python/tests/coverage_parameter_chunking.py"
             ],
+            "inputs": [
+              "contracts/fixtures/bench/bench.dbs"
+            ],
             "commands": {
               "mysql": [
                 {
@@ -7310,6 +7446,9 @@
             "part": "packages/php-ext/tests",
             "tests": [
               "packages/php-ext/tests/CoverageParameterChunkingExtensionTest.php"
+            ],
+            "inputs": [
+              "contracts/fixtures/bench/bench.dbs"
             ],
             "commands": {
               "mysql": [
@@ -9291,7 +9430,6 @@
               "packages/php-ext/tests/CoveragePerformanceGateExtensionSqliteTest.php"
             ],
             "inputs": [
-              "packages/php-ext/tests/bootstrap.php",
               "packages/php/tests/PerformanceGateCoverageCase.php",
               "packages/php/tests/PerfGateTest.php"
             ],
@@ -9345,8 +9483,7 @@
               "packages/ts/tests/coverage_performance_gate_sqlite.mjs"
             ],
             "inputs": [
-              "packages/ts/tests/coverage_performance_gate.mjs",
-              "packages/ts/tests/coverage_case.mjs"
+              "packages/ts/tests/coverage_performance_gate.mjs"
             ],
             "commands": {
               "mysql": [
@@ -9389,8 +9526,7 @@
               "packages/python/tests/coverage_performance_gate_sqlite.py"
             ],
             "inputs": [
-              "packages/python/tests/coverage_performance_gate.py",
-              "packages/python/tests/coverage_case.py"
+              "packages/python/tests/coverage_performance_gate.py"
             ],
             "commands": {
               "mysql": [
@@ -9431,7 +9567,6 @@
               "packages/rust/tests/tests/coverage_performance_gate.rs"
             ],
             "inputs": [
-              "packages/rust/tests/tests/common/mod.rs"
             ],
             "commands": {
               "mysql": [
@@ -9753,7 +9888,9 @@
               "packages/php/tests/CoverageConformanceVerificationTest.php"
             ],
             "inputs": [
-              "tests/conformance/vectors.json"
+              "tests/conformance/vectors.json",
+              "tests/conformance/vectors.postgres.json",
+              "tests/conformance/vectors.sqlite.json"
             ],
             "commands": {
               "mysql": [
@@ -10058,6 +10195,43 @@
       ],
       "verification": [
         {
+          "id": "catalog-grid-sqlite-go",
+          "command": "ORM_FEATURE_DATABASE=sqlite ORM_FEATURE_DSN=\"$BENCH_SQLITE_DSN\" node tests/go-test.mts -v -timeout 0 -tags featurecoverage ./packages/go/orm -run '^(TestCoverageCatalogGridOrder|TestCoverageCatalogGridDeclared)$' -count=1",
+          "shard": "other",
+          "inputs": [
+            "packages/go/orm/catalog_grid_order_test.go",
+            "packages/go/orm/coverage_catalog_connection_test.go",
+            "contracts/fixtures/bench/bench.dbs"
+          ]
+        },
+        {
+          "id": "catalog-grid-timestamp-mysql-go",
+          "command": "ORM_FEATURE_DATABASE=mysql ORM_FEATURE_DSN=\"$BENCH_MYSQL_DSN\" node tests/go-test.mts -v -timeout 0 -tags featurecoverage ./packages/go/orm -run '^TestCoverageCatalogGridTimestamp$' -count=1",
+          "shard": "other",
+          "inputs": [
+            "packages/go/orm/coverage_catalog_connection_test.go",
+            "contracts/fixtures/bench/bench.dbs"
+          ]
+        },
+        {
+          "id": "catalog-grid-timestamp-postgres-go",
+          "command": "ORM_FEATURE_DATABASE=postgres ORM_FEATURE_DSN=\"$BENCH_POSTGRES_DSN\" node tests/go-test.mts -v -timeout 0 -tags featurecoverage ./packages/go/orm -run '^TestCoverageCatalogGridTimestamp$' -count=1",
+          "shard": "other",
+          "inputs": [
+            "packages/go/orm/coverage_catalog_connection_test.go",
+            "contracts/fixtures/bench/bench.dbs"
+          ]
+        },
+        {
+          "id": "catalog-grid-timestamp-mysql-python",
+          "command": "ORM_FEATURE_DATABASE=mysql ORM_FEATURE_DSN=\"$BENCH_MYSQL_DSN\" packages/python/.venv/bin/python -m packages.python.tests.testcase packages.python.tests.coverage_catalog_connection.CatalogConnectionCoverageTest.test_mysql_timestamp_refused",
+          "shard": "other",
+          "inputs": [
+            "packages/python/tests/coverage_catalog_connection.py",
+            "contracts/fixtures/bench/bench.dbs"
+          ]
+        },
+        {
           "id": "catalog-rust",
           "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts catalog-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test catalog --test 'tool_*' --test read_only_query --test 'grid_*' --test 'table_*' --test 'row_*' --test typed_binds --test generate",
           "shard": "rust",
@@ -10242,6 +10416,10 @@
                     "catalog_read",
                     "catalog_row_mutation"
                   ],
+                  "symbols": {
+                    "catalog_read": "testCatalogRead",
+                    "catalog_row_mutation": "testCatalogRowMutation"
+                  },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
               ],
@@ -10253,6 +10431,10 @@
                     "catalog_read",
                     "catalog_row_mutation"
                   ],
+                  "symbols": {
+                    "catalog_read": "testCatalogRead",
+                    "catalog_row_mutation": "testCatalogRowMutation"
+                  },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
@@ -10264,6 +10446,10 @@
                     "catalog_read",
                     "catalog_row_mutation"
                   ],
+                  "symbols": {
+                    "catalog_read": "testCatalogRead",
+                    "catalog_row_mutation": "testCatalogRowMutation"
+                  },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
@@ -10330,6 +10516,10 @@
                     "catalog_read",
                     "catalog_row_mutation"
                   ],
+                  "symbols": {
+                    "catalog_read": "testCatalogRead",
+                    "catalog_row_mutation": "testCatalogRowMutation"
+                  },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
               ],
@@ -10341,6 +10531,10 @@
                     "catalog_read",
                     "catalog_row_mutation"
                   ],
+                  "symbols": {
+                    "catalog_read": "testCatalogRead",
+                    "catalog_row_mutation": "testCatalogRowMutation"
+                  },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
@@ -10352,6 +10546,10 @@
                     "catalog_read",
                     "catalog_row_mutation"
                   ],
+                  "symbols": {
+                    "catalog_read": "testCatalogRead",
+                    "catalog_row_mutation": "testCatalogRowMutation"
+                  },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
@@ -10427,6 +10625,7 @@
       "state": [
         "derive a handle that shares the connection and carries the hook",
         "call the hook on each request of the handle before planning",
+        "read bound parameter values without changing the values the request writes",
         "validate and plan the changed request"
       ],
       "errors": [
@@ -10440,6 +10639,7 @@
         "coverage-request-hook-invalid-param",
         "coverage-request-hook-loaded-row-writes",
         "coverage-request-hook-read-filter",
+        "request-hook-reads-params",
         "coverage-request-hook-same-handle-child-hook-once",
         "coverage-request-hook-restore-condition",
         "coverage-request-hook-restore-hook-set-key",
@@ -10448,21 +10648,7 @@
         "coverage-request-hook-restore-rewritten-key",
         "coverage-request-hook-restore-rewritten-key-set-scope",
         "coverage-request-hook-upsert-scope",
-        "coverage-request-hook-without-hook",
-        "rust-creates-parts-order",
-        "rust-creates-parts-rollback",
-        "rust-creates-parts-shapes",
-        "rust-insert-assign",
-        "rust-invalid-param",
-        "rust-loaded-row-writes",
-        "rust-read-filter",
-        "rust-reads-params",
-        "rust-restore-condition",
-        "rust-restore-hook-set-key",
-        "rust-restore-key",
-        "rust-restore-no-key",
-        "rust-restore-rewritten-key",
-        "rust-without-hook"
+        "coverage-request-hook-without-hook"
       ],
       "fixtures": [
         "contracts/fixtures/request_hook.dbs",
@@ -10475,6 +10661,7 @@
         "packages/go/orm/request_hook_test.go",
         "packages/go/orm/coverage_request_hook_test.go",
         "packages/ts/tests/request_hook.mjs",
+        "packages/ts/tests/coverage_request_hook_reads_params.mjs",
         "packages/ts/tests/coverage_request_hook.mjs",
         "packages/ts/tests/request_hook_run.mjs",
         "packages/php/tests/RequestHookTest.php",
@@ -10487,6 +10674,8 @@
       ],
       "docs": [
         "docs/operations/usage.md",
+        "docs/spec/interfaces.md",
+        "docs/spec/interfaces.ko.md",
         "docs/spec/protocol.md"
       ],
       "verification": [
@@ -11593,6 +11782,38 @@
   ],
   "helpers": [
     {
+      "id": "dbspec-sqlite-literal-rows",
+      "paths": ["packages/php/tests/SqliteLiteralRowsPdo.php"],
+      "tests": [
+        "packages/php/tests/DbspecShowCreateIntrospectTest.php",
+        "packages/php/tests/DbspecBehaviourTest.php"
+      ],
+      "command": "make --no-print-directory dbspec-sqlite-literal-rows-helper-check"
+    },
+    {
+      "id": "phpstan-test-runner",
+      "paths": [
+        "packages/php/tests/phpstan-runner.php",
+        "packages/php/tests/OrmGenTestSupport.php"
+      ],
+      "tests": [
+        "packages/php/tests/ClientGenericsTest.php",
+        "packages/php/tests/ModelMethodsTest.php"
+      ],
+      "command": "make --no-print-directory phpstan-test-runner-helper-check"
+    },
+    {
+      "id": "rust-dbspec-json-lines",
+      "paths": [
+        "packages/rust/schema/tests/common/json_lines.rs"
+      ],
+      "tests": [
+        "packages/rust/schema/tests/dbspec_mermaid.rs",
+        "packages/rust/schema/tests/dbspec_plan.rs"
+      ],
+      "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-long.mts rust-dbspec-lines-helper --cwd packages/rust -- cargo test --no-run -p polyspec-orm-schema --test dbspec_mermaid --test dbspec_plan --locked --offline"
+    },
+    {
       "id": "dbspec-vector-line-join",
       "paths": [
         "tests/dbspec/join.mjs"
@@ -11953,7 +12174,8 @@
       "paths": [
         "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/rust/tests/tests/common/mod.rs",
-        "packages/rust/orm/src/test_support.rs",
+        "packages/rust/build/tests/common/*.rs",
+        "packages/rust/testcase/src/*.rs",
         "packages/rust/orm/tests/common/*.rs",
         "packages/rust/tests/tests/integration/main.rs"
       ],
@@ -12087,6 +12309,7 @@
       "paths": [
         "packages/php/tests/DbspecStressTest.php",
         "packages/php/tests/DbspecIntrospectStressTest.php",
+        "packages/php/tests/DbspecStressTestSupport.php",
         "packages/ts/tests/dbspec-stress.mjs",
         "packages/go/engine/dbspec/stress_test.go"
       ],
@@ -12155,6 +12378,95 @@
       "packages/php-ext/tests/CoverageAuditColumnsExtensionTest.php"
     ],
     "command": "make --no-print-directory audit-native-method-assertions-helper-check"
-  }
+  },
+  {
+    "id": "php-composite-identity-test-cases",
+    "paths": [
+      "packages/php/tests/CollectionIdentityCases.php"
+    ],
+    "tests": [
+      "packages/php/tests/CollectionIdentityTest.php",
+      "packages/php-ext/tests/CollectionTest.php",
+      "packages/php-ext/tests/ModelAssemblyTest.php"
+    ],
+    "command": "make collection-composite-key-check split-null-check && env ORM_PHP_MODE=library vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/CollectionIdentityTest.php --filter testWeakAndStrictTypedKeyCoercionBoundaries"
+  },
+  {
+    "id": "php-group-rows-test-cases",
+    "paths": [
+      "packages/php/tests/GroupRowsCases.php",
+      "packages/php/tests/GroupRowsModelFixture.php",
+      "packages/php-ext/tests/ModelAssemblyFixture.php"
+    ],
+    "tests": [
+      "packages/php/tests/GroupRowsTest.php",
+      "packages/php-ext/tests/ModelAssemblyTest.php"
+    ],
+    "command": "make group-count-boolean-unit-check"
+  },
+  {
+    "id": "php-model-types-test-cases",
+    "paths": [
+      "packages/php/tests/ModelTypesWeakCallerCases.php"
+    ],
+    "tests": [
+      "packages/php/tests/ModelTypesSourceTest.php",
+      "packages/php-ext/tests/ModelTypesSurfaceTest.php"
+    ],
+    "command": "make model-types-php-extension-check"
+  },
+  {
+    "id": "php-dbspec-interface-program",
+    "paths": [
+      "packages/php/tests/dbspec-php-interface-program.php"
+    ],
+    "tests": [
+      "packages/php/tests/DbspecRunnerTest.php",
+      "packages/php/tests/DbspecPlanTest.php"
+    ],
+    "command": "make dbspec-php-interface-program-helper-check"
+  },
+    {
+      "id": "go-coverage-event-recorder",
+      "paths": ["packages/go/testcase/event_recorder.go"],
+      "tests": [
+        "packages/go/complexquery/complex_query_test.go",
+        "packages/go/model/coverage_model_writes_test.go"
+      ],
+      "command": "node scripts/features/coverage.mts --feature complex_query --part owner/go && node scripts/features/coverage.mts --feature model_writes --part owner/go"
+    },
+    {
+      "id": "rust-clock-integration-test-support",
+      "paths": ["packages/rust/orm/tests/common/clock_test_support.rs"],
+      "tests": [
+        "packages/rust/orm/tests/clock.rs",
+        "packages/rust/orm/tests/was_inserted.rs"
+      ],
+      "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts rust-clock-test-support-helper -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test clock --test was_inserted"
+    },
+    {
+      "id": "php-coverage-model-writes-case",
+      "paths": ["packages/php/tests/CoverageModelWritesCase.php"],
+      "tests": [
+        "packages/php/tests/CoverageModelWritesTest.php",
+        "packages/php-ext/tests/CoverageModelWritesExtensionTest.php"
+      ],
+      "command": "node scripts/features/coverage.mts --feature model_writes --part owner/php --part owner/php-extension"
+    },
+    {
+      "id": "php-database-test-assertions",
+      "paths": ["packages/php/tests/DatabaseTestAssertions.php"],
+      "tests": ["packages/php/tests/DatabaseTestAssertionsTest.php"],
+      "command": "make --no-print-directory php-test-assertions-helper-check"
+    },
+    {
+      "id": "php-extension-model-assembly-test-support",
+      "paths": ["packages/php-ext/tests/ModelAssemblyTestSupport.php"],
+      "tests": [
+        "packages/php-ext/tests/ModelReadNativeTest.php",
+        "packages/php-ext/tests/ModelStreamReadTest.php"
+      ],
+      "command": "make --no-print-directory model-native-php-extension-check MODEL_NATIVE_TEST_FILTER='testNativeRowStreamReadFailurePreservesThrowableAndDoesNotMutateBuilder|testSuccessfulNormalAndExtraRowsPreserveStreamText|testNativeRowAssemblyPreservesBinaryDriverCellBytes|testWarningThrowableEscapesNormalAndExtraRowsWithoutMutatingBuilder'"
+    }
   ]
 }

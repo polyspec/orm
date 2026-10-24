@@ -1,10 +1,8 @@
-#[path = "common/grid_catalog.rs"]
-mod grid_catalog;
-use grid_catalog::fixture_path;
-
-#[path = "common/dialect_dsn.rs"]
-mod dialect_dsn;
-use dialect_dsn::dsn_for;
+#[path = "common/physical_fixture.rs"]
+mod physical_fixture;
+#[macro_use]
+#[path = "common/physical_dialects.rs"]
+mod physical_dialects;
 
 use polyspec_orm_build::{
     catalog::{CatalogConnection, RowSnapshot, TableRef},
@@ -21,11 +19,7 @@ async fn qualified_table_pages_preserve_columns_key_order_and_bounds() {
     tokio::time::timeout(std::time::Duration::from_secs(30), check()).await.expect("table page deadline");
 }
 async fn check() {
-    let path = fixture_path("table-page");
-    let mut failures = Vec::new();
-    for dialect in ["sqlite", "mysql", "postgres"] {
-        polyspec_orm_testcase::step(format_args!("running {dialect}"));
-        let dsn = dsn_for(dialect, &path);
+    let failures = for_physical_dialects!("table-page", |dialect, dsn, failures| {
         let (database, mut seed, _) = tool_db::open(&dsn).await.expect("fixture connection");
         let name = format!("orm_table_page_{}_\"'", std::process::id());
         let sql_name = quote(&name, dialect);
@@ -143,10 +137,7 @@ async fn check() {
         }
         catalog.close().await;
         seed.exec(&format!("DROP TABLE {sql_name}"), &[]).await.expect("remove owned fixture");
-        drop(seed);
-        database.close().await;
-        polyspec_orm_testcase::step(format_args!("{dialect} finished"));
-    }
-    std::fs::remove_file(path).expect("remove owned SQLite fixture");
+        physical_fixture::finish_physical_dialect(database, seed, dialect, "finished").await;
+    });
     assert!(failures.is_empty(), "table page cases failed: {failures:?}");
 }

@@ -83,14 +83,19 @@ DBSPEC;
         $this->assertSourceConflict($engine, $request);
     }
 
-    public function testMultiRowIndexUsesTheAssignedSourceColumnPosition(): void
+    private function compileInsert(array $assignments, int $nParams, array $extra = []): array
     {
         $engine = $this->engine();
-        $plan = $engine->compile($this->request($engine, [
+        return $engine->compile($this->request($engine, $assignments, $nParams, $extra));
+    }
+
+    public function testMultiRowIndexUsesTheAssignedSourceColumnPosition(): void
+    {
+        $plan = $this->compileInsert([
             $this->assignment('id', 0),
             $this->assignment('name', 1),
             $this->assignment('email_b', 2),
-        ], 6, ['rows' => [[3, 4, 5]]]));
+        ], 6, ['rows' => [[3, 4, 5]]]);
         $params = [];
         foreach ($plan['steps'][0]['bind_slots'] as $slot) {
             if (in_array('blind_index', $slot['host_styles'] ?? [], true)) {
@@ -130,14 +135,13 @@ DBSPEC;
 
     public function testExplicitTargetAssignmentWinsForSharedSchema(): void
     {
-        $engine = $this->engine();
-        $plan = $engine->compile($this->request($engine, [
+        $plan = $this->compileInsert([
             $this->assignment('id', 0),
             $this->assignment('name', 1),
             $this->assignment('email_a', 2),
             $this->assignment('email_b', 3),
             $this->assignment('hash', 4),
-        ], 5));
+        ], 5);
         Assert::assertSame(1, substr_count($plan['steps'][0]['sql'], '`hash`'));
     }
 

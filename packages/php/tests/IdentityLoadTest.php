@@ -152,23 +152,21 @@ function run_execute_case(
 #[Large]
 final class IdentityLoadTest extends TestCase
 {
+    use DatabaseTestAssertions;
+
     /** @return array<string, mixed> */
     private static function doc(): array
     {
-        return json_decode(
-            (string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/identity_load.json'),
+        return self::readJsonFixture(
+            dirname(__DIR__, 3) . '/contracts/fixtures/identity_load.json',
             true,
-            512,
-            JSON_THROW_ON_ERROR
         );
     }
 
     /** @return iterable<string, array{array<string, mixed>}> */
     public static function cases(): iterable
     {
-        foreach (self::doc()['cases'] as $case) {
-            yield $case['id'] => [$case];
-        }
+        yield from self::fixtureCases(self::doc());
     }
 
     /** @param array<string, mixed> $case */

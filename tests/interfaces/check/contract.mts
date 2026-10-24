@@ -1,7 +1,8 @@
 // A check that compares a language's (or extension's) native declarations with the common contract: the signature of rules, prohibited symbols, the field
 // lists of owners, and the wire format of records. Each check returns one line per difference.
 import { sortBytes } from './json.mts';
-import { mark, type ContractRecord, type Owner, type Rule, type Symbol, type Symbols } from './manifest.mts';
+import { mark, type BehaviorContract, type ContractRecord, type NativeSurface, type Owner, type Rule, type Symbol, type Symbols } from './manifest.mts';
+import type { ParityBinding } from './api.mts';
 
 /** differences returns the differences between expected and actual symbols (missing, changed, unexpected) in byte order. */
 // show writes one symbol with whether it is public and its signature.
@@ -57,6 +58,42 @@ export function checkRules(lang: string, actual: Symbols, rules: Rule[], order: 
       const key = fill(native.symbol ?? ''), want = fill(native.signature ?? '');
       const got = actual[key]?.signature ?? '';
       if (!Object.hasOwn(actual, key) || compact(got) !== compact(want)) errors.push(`${lang}/${id}: ${key}\n  want ${want}\n  got  ${got}`);
+    }
+  }
+  return errors;
+}
+
+/** checkNativeSurfaces verifies explicitly language-owned host primitives without making them common signatures. */
+export function checkNativeSurfaces(lang: string, actual: Symbols, surfaces: NativeSurface[]): string[] {
+  const errors: string[] = [];
+  for (const surface of surfaces) {
+    if (surface.owner !== lang) continue;
+    const id = surface.id ?? '', key = surface.symbol ?? '', want = surface.signature ?? '';
+    const got = actual[key]?.signature ?? '';
+    if (!Object.hasOwn(actual, key) || actual[key]?.exported !== true || compact(got) !== compact(want)) {
+      errors.push(`${lang}/${id}: ${key}\n  want ${want}\n  got  ${got}`);
+    }
+  }
+  return errors;
+}
+
+/** checkBehaviorAdapterCases ties each declared runtime adapter to the exact executable binding of its parity unit. */
+export function checkBehaviorAdapterCases(contracts: BehaviorContract[], units: { id?: string; bindings?: ParityBinding[] }[]): string[] {
+  const errors: string[] = [];
+  for (const contract of contracts) {
+    const id = contract.id ?? '', unitId = contract.parity ?? '';
+    const unit = units.find(candidate => candidate.id === unitId);
+    if (unit === undefined) {
+      errors.push(`${id}: missing parity unit ${unitId}`);
+      continue;
+    }
+    for (const [runtime, adapter] of Object.entries(contract.adapters ?? {})) {
+      const expected = (adapter.cases ?? []).map(c => `${c.test ?? ''}::${c.id ?? ''}`).sort();
+      const actual = (unit.bindings ?? []).filter(binding => binding.implementation === runtime)
+        .map(binding => `${binding.test ?? ''}::${binding.id ?? ''}`).sort();
+      if (expected.join('\n') !== actual.join('\n')) {
+        errors.push(`${id}/${runtime}: parity bindings differ\n  want ${expected.join(', ')}\n  got  ${actual.join(', ')}`);
+      }
     }
   }
   return errors;

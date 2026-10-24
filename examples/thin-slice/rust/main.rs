@@ -14,24 +14,12 @@ use polyspec_orm::db::Pool;
 use polyspec_orm::Param;
 use serde_json::json;
 
+#[path = "../../../packages/rust/tests/tests/common/bench_dsn.rs"]
+mod bench_dsn;
+use bench_dsn::dsn;
+
 const ITERATIONS: usize = 500;
 const AES_KEY: &str = "bench-salt";
-
-/// `ORM_BENCH_MYSQL_DSN` points to the seeded bench database. If it is missing or empty, it does not connect
-/// and ends after printing that variable name.
-fn dsn() -> String {
-    match std::env::var("ORM_BENCH_MYSQL_DSN") {
-        Ok(v) if !v.is_empty() => v,
-        Ok(_) | Err(std::env::VarError::NotPresent) => {
-            eprintln!("ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database; run it through make orm-check or make run-databases TARGETS=<target>, which create the bench database of the run");
-            std::process::exit(1)
-        }
-        Err(e) => {
-            eprintln!("ORM_BENCH_MYSQL_DSN must be UTF-8: {e}");
-            std::process::exit(1)
-        }
-    }
-}
 
 fn p50(mut s: Vec<u128>) -> u128 {
     s.sort_unstable();

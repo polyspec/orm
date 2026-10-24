@@ -5,6 +5,7 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
+    "requirements",
     "version",
     "note",
     "cases",
@@ -14,6 +15,16 @@
     "comparisons"
   ],
   "properties": {
+    "requirements": {
+      "description": "The requirement ids of docs/spec that the cases of this file test, read by the parity check of @polyspec/kit (R15) and by no runner.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Z]+-[0-9]+$"
+      }
+    },
     "version": {
       "const": 1
     },

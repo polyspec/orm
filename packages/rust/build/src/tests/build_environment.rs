@@ -49,7 +49,6 @@ fn environment_subprocess() {
         require_child_success(run_child("default-out-dir", None, Some("/tmp/kstd-5-65-70-out-dir")), "default-out-dir");
         require_child_success(run_child("relative-path-without-manifest", None, None), "relative-path-without-manifest");
         require_child_success(run_child("relative-manifest-dir", Some("package"), None), "relative-manifest-dir");
-        #[cfg(unix)]
         require_child_success(run_child("non-unicode-manifest-dir", None, None), "non-unicode-manifest-dir");
         return;
     };
@@ -105,13 +104,8 @@ fn environment_subprocess() {
             assert!(error.contains("CARGO_MANIFEST_DIR"), "{error}");
             assert!(error.contains("absolute paths"), "{error}");
         }
-        #[cfg(unix)]
         "non-unicode-manifest-dir" => {
-            use std::ffi::OsString;
-            use std::os::unix::ffi::{OsStrExt, OsStringExt};
-            let mut bytes = package_dir().as_os_str().as_bytes().to_vec();
-            bytes.push(0xff);
-            let manifest_dir = OsString::from_vec(bytes);
+            let manifest_dir = crate::test_support::non_unicode_manifest_dir(&package_dir());
             std::env::set_var("CARGO_MANIFEST_DIR", &manifest_dir);
             let expected = PathBuf::from(&manifest_dir).join("src");
             let builder = Builder::set(package_dir().as_path().join("../../../contracts/fixtures/bench/dbspec-set.json")).out_dir("src");

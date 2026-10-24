@@ -4,6 +4,7 @@ package orm_test
 
 import (
 	"os"
+	"path/filepath"
 	"slices"
 	"testing"
 
@@ -27,22 +28,40 @@ func runRequestHookCoverage(t *testing.T, id string) {
 	t.Fatalf("request hook case %s is not declared", id)
 }
 
-// Requirements: CFG-9.
+// Requirements: INT-78.
 func TestCoverageRequestHookWithoutHook(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	runRequestHookCoverage(t, "without_hook")
 }
 
-// Requirements: DSL-65, PRT-2.
+// Requirements: INT-78, PRT-2.
 func TestCoverageRequestHookReadFilter(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	runRequestHookCoverage(t, "read_filter")
 }
 
-// Requirements: DSL-65, PRT-2.
+// Requirements: INT-78, PRT-2.
 func TestCoverageRequestHookSameHandleChildHookOnce(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	runRequestHookCoverage(t, "same_handle_child_hook_once")
+}
+
+// Requirements: INT-78.
+func TestCoverageRequestHookReadsParams(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	db, entity, entry := hookFixture(t, "sqlite://"+filepath.Join(t.TempDir(), "request-hook-reads-params.sqlite"))
+	t.Cleanup(func() {
+		if err := db.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	for _, test := range requestHookCases {
+		if test.id == "reads_params" {
+			test.run(t, db, entity, entry)
+			return
+		}
+	}
+	t.Fatal("request hook reads_params case is not declared")
 }
 
 // Requirements: PRT-4, PRT-5, PRT-41.
@@ -51,7 +70,7 @@ func TestCoverageRequestHookInsertAssign(t *testing.T) {
 	runRequestHookCoverage(t, "insert_assign")
 }
 
-// Requirements: PRT-4, PRT-5, PRT-41.
+// Requirements: INT-78, PRT-4, PRT-6.
 func TestCoverageRequestHookUpsertScope(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	runRequestHookCoverage(t, "upsert_scope")

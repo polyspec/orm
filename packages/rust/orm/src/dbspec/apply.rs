@@ -1165,20 +1165,8 @@ impl_apply_connection!(SqliteConnection, sqlx::Sqlite, super::sqlite_value);
 #[cfg(test)]
 mod sqlite_lock_result_tests {
     use super::{Applier, ApplyClock, ApplyConnection, ApplyError, ApplyEvents, CatalogQuerier, CatalogValue, Dialect};
-    use crate::test_support::impl_database_error;
     use chrono::Utc;
-    use std::fmt;
-
-    #[derive(Debug)]
-    struct ResultError(i32);
-
-    impl fmt::Display for ResultError {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            write!(f, "SQLite result {}", self.0)
-        }
-    }
-    impl std::error::Error for ResultError {}
-    impl_database_error!(ResultError, self, { "synthetic SQLite result" }, { Some(std::borrow::Cow::Owned(self.0.to_string())) });
+    use crate::test_support::DatabaseErrorStub;
 
     struct FailingBegin {
         code: i32,
@@ -1191,7 +1179,11 @@ mod sqlite_lock_result_tests {
     impl ApplyConnection for FailingBegin {
         async fn execute(&mut self, statement: &str) -> Result<(), sqlx::Error> {
             if statement == "BEGIN EXCLUSIVE" {
-                Err(sqlx::Error::Database(Box::new(ResultError(self.code))))
+                Err(sqlx::Error::Database(Box::new(DatabaseErrorStub::new(
+                    format!("SQLite result {}", self.code),
+                    "synthetic SQLite result",
+                    Some(self.code.to_string()),
+                ))))
             } else {
                 Ok(())
             }

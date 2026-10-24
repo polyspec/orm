@@ -1,14 +1,12 @@
-#[path = "common/grid_catalog.rs"]
-mod grid_catalog;
-use grid_catalog::fixture_path;
+#[path = "common/physical_fixture.rs"]
+mod physical_fixture;
+#[macro_use]
+#[path = "common/physical_dialects.rs"]
+mod physical_dialects;
 
 #[path = "common/grid_open.rs"]
 mod grid_open;
 use grid_open::open_catalog;
-
-#[path = "common/dialect_dsn.rs"]
-mod dialect_dsn;
-use dialect_dsn::dsn_for;
 
 use polyspec_orm_build::tool_db::{GridCell, QueryLimits};
 
@@ -16,14 +14,10 @@ use polyspec_orm_build::tool_db::{GridCell, QueryLimits};
 // Requirements: INT-102.
 async fn grid_numbers_preserve_native_bits_and_unsigned_range() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    tokio::time::timeout(std::time::Duration::from_secs(30), check()).await.expect("grid numeric deadline");
+    physical_fixture::within(30, "grid numeric deadline", check()).await;
 }
 async fn check() {
-    let path = fixture_path("grid-numbers");
-    let mut failures = Vec::new();
-    for dialect in ["sqlite", "mysql", "postgres"] {
-        polyspec_orm_testcase::step(format_args!("running {dialect}"));
-        let dsn = dsn_for(dialect, &path);
+    let failures = for_physical_dialects!("grid-numbers", |dialect, dsn, failures| {
         let (database, mut catalog) = open_catalog(&dsn).await;
         let sql = match dialect {
             "postgres" => "SELECT 1.5::double precision",
@@ -34,12 +28,7 @@ async fn check() {
             Ok(result) if result.rows == vec![vec![GridCell::Float64(1.5f64.to_bits())]] => {}
             _ => failures.push("float64"),
         }
-        if !catalog
-            .read_only_grid_query(sql, &[], QueryLimits { max_rows: 1, max_bytes: 2 })
-            .await
-            .err()
-            .is_some_and(|error| error.contains("TOOL_QUERY_LIMIT"))
-        {
+        if !grid_open::query_limit(&mut catalog, sql, QueryLimits { max_rows: 1, max_bytes: 2 }).await {
             failures.push("numeric-byte-budget");
         }
         let null_sql = match dialect {
@@ -71,10 +60,7 @@ async fn check() {
                 _ => failures.push("float-width-specials"),
             }
         }
-        catalog.close().await;
-        database.close().await;
-        polyspec_orm_testcase::step(format_args!("{dialect} finished"));
-    }
-    std::fs::remove_file(path).expect("remove owned SQLite fixture");
+        grid_open::finish_catalog(database, catalog, dialect).await;
+    });
     assert!(failures.is_empty(), "grid numeric cases failed: {failures:?}");
 }

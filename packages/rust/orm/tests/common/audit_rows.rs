@@ -4,14 +4,14 @@
 
 use crate::or_panic::OrPanic;
 use crate::pool_exec;
+
+#[path = "map_rows.rs"]
+mod map_rows;
 use crate::result_code::code;
 
 use std::collections::BTreeMap;
 
-use polyspec_orm::db::Pool;
 use polyspec_orm::{Core, Db, Entity, Model, Param, Schema, Val};
-use sqlx::Row;
-
 pub static SCHEMA: Schema =
     Schema::new(include_str!("../../../../../contracts/fixtures/audit.dbs"), "sha256:c651e923992a61fa5712620c7cf6cf7d1a509796b23c4ae597f58e9f561a0c1f");
 
@@ -121,15 +121,13 @@ pub async fn audit_records(db: &Db) -> Vec<(String, String)> {
     macro_rules! read {
         ($pool:expr) => {{
             let rows = sqlx::raw_sql(sqlx::AssertSqlSafe(query.to_owned())).fetch_all($pool).await.or_panic(|e| format!("{query}: {e}"));
-            rows.iter().map(|r| (r.try_get::<i64, _>(0).unwrap().to_string(), r.try_get::<String, _>(1).unwrap())).collect()
+            map_rows::map_rows(&rows, |row| {
+                let (sequence, label) = map_rows::sequence_label(row).unwrap();
+                (sequence.to_string(), label)
+            })
         }};
     }
-    match db.pool() {
-        Pool::MySql(p) => read!(p),
-        Pool::Postgres(p) => read!(p),
-        Pool::Sqlite(p) => read!(p),
-        Pool::Markdown(_) => unreachable!("these cases run on SQL databases"),
-    }
+    map_rows::for_sql_pools!(db.pool(), read)
 }
 
 /// Checks the writes of a transaction that received an audit record (in the same order as auditCase in

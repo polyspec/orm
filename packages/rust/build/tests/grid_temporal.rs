@@ -2,24 +2,23 @@
 //! and for a described table's read, the column precision p applies; a grid query uses six fractional digits.
 //! SQLite gives the same temporal cell for a described table and the stored text for a grid query. The tables each dialect made are dropped at the end.
 
-#[path = "common/grid_catalog.rs"]
-mod grid_catalog;
-use grid_catalog::fixture_path;
+#[path = "common/physical_fixture.rs"]
+mod physical_fixture;
+#[macro_use]
+#[path = "common/physical_dialects.rs"]
+mod physical_dialects;
 
-#[path = "common/dialect_dsn.rs"]
-mod dialect_dsn;
-use dialect_dsn::dsn_for;
 use polyspec_orm_build::{
     catalog::{CatalogConnection, MutationPhase, RowSnapshot, TableRef},
-    tool_db::{self, GridCell, P, QueryLimits},
+    tool_db::{self, GridCell, QueryLimits, P},
 };
-use std::sync::{Arc, atomic::AtomicBool};
+use std::sync::{atomic::AtomicBool, Arc};
 
 #[tokio::test]
 // Requirements: INT-103.
 async fn temporal_grid_cells_follow_the_declared_precision() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    tokio::time::timeout(std::time::Duration::from_secs(60), check()).await.expect("grid temporal deadline");
+    physical_fixture::within(60, "grid temporal deadline", check()).await;
 }
 
 fn quote(value: &str, dialect: &str) -> String {
@@ -109,11 +108,7 @@ async fn writes(catalog: &mut CatalogConnection, namespace: &str, name: &str, fa
 }
 
 async fn check() {
-    let path = fixture_path("grid-temporal");
-    let mut failures = Vec::new();
-    for dialect in ["sqlite", "mysql", "postgres"] {
-        polyspec_orm_testcase::step(format_args!("running {dialect}"));
-        let dsn = dsn_for(dialect, &path);
+    let failures = for_physical_dialects!("grid-temporal", |dialect, dsn, failures| {
         let (database, mut seed, _) = tool_db::open(&dsn).await.expect("fixture connection");
         let name = format!("orm_grid_temporal_{}", std::process::id());
         let table_sql = quote(&name, dialect);
@@ -199,7 +194,7 @@ async fn check() {
         let written = format!("orm_grid_temporal_write_{}", std::process::id());
         let written_sql = quote(&written, dialect);
         seed.exec(&format!("CREATE TABLE {written_sql}({})", write_columns(dialect)), &[]).await.expect("owned temporal write table");
-        writes(&mut catalog, &table.namespace, &written, &mut failures, dialect).await;
+        writes(&mut catalog, &table.namespace, &written, &mut *failures, dialect).await;
         seed.exec(&format!("DROP TABLE {written_sql}"), &[]).await.expect("remove owned temporal write table");
         // A temporal primary key is bound as the row identity.
         let keyed = format!("orm_grid_temporal_key_{}", std::process::id());
@@ -239,10 +234,7 @@ async fn check() {
         catalog.close().await;
         seed.exec(&format!("DROP TABLE {keyed_sql}"), &[]).await.expect("remove owned temporal key table");
         seed.exec(&format!("DROP TABLE {table_sql}"), &[]).await.expect("remove owned temporal table");
-        drop(seed);
-        database.close().await;
-        polyspec_orm_testcase::step(format_args!("{dialect} finished"));
-    }
-    std::fs::remove_file(path).expect("remove owned SQLite fixture");
+        physical_fixture::finish_physical_dialect(database, seed, dialect, "finished").await;
+    });
     assert!(failures.is_empty(), "grid temporal cases failed: {failures:#?}");
 }

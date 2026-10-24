@@ -11,24 +11,40 @@ declare(strict_types=1);
 // gen/bootstrap.php, the registration of the generated test models, is required here, not by the Composer autoloader
 // (its autoload-dev files would fail before the models exist).
 require_once __DIR__ . '/bench.php';
+require_once __DIR__ . '/generated_classes.php';
+requireGeneratedClasses(dirname(__DIR__) . '/complexmodel');
 require_once dirname(__DIR__) . '/gen/bootstrap.php';
 require_once dirname(__DIR__) . '/complexmodel/bootstrap.php';
 // The helper classes of the tests, one class per file, and the helpers that the test classes use, required once here:
 // a test file then declares its one class and causes no side effect (PSR-1).
 require_once __DIR__ . '/CallbackFailed.php';
 require_once __DIR__ . '/three_drivers.php';
+require_once __DIR__ . '/DatabaseTestAssertions.php';
+require_once __DIR__ . '/MysqlTlsCases.php';
+require_once __DIR__ . '/SqliteConcurrencyWriter.php';
+require_once __DIR__ . '/CollectionIdentityCases.php';
+require_once __DIR__ . '/GroupRowsModelFixture.php';
+require_once __DIR__ . '/GroupRowsCases.php';
+require_once __DIR__ . '/ModelTypesWeakCallerCases.php';
+require_once __DIR__ . '/collection-weak-caller.php';
+require_once __DIR__ . '/model-types-weak-caller.php';
+require_once __DIR__ . '/generated_fixture.php';
 require_once __DIR__ . '/CannedCatalogPdo.php';
 require_once __DIR__ . '/CountingPdo.php';
 require_once __DIR__ . '/FailingPdo.php';
 require_once __DIR__ . '/FailingStatement.php';
 require_once __DIR__ . '/dbspec_verify_errors_case.php';
-require_once __DIR__ . '/DbspecTimedTest.php';
+require_once __DIR__ . '/DbspecTimedCases.php';
+require_once __DIR__ . '/DbspecIntrospectQueryCountCases.php';
+require_once __DIR__ . '/DbspecStressTestSupport.php';
 require_once __DIR__ . '/ModelTestFailingPdo.php';
 require_once __DIR__ . '/TransactionFailureCases.php';
+require_once __DIR__ . '/TransactionCloseDuringFailure.php';
 require_once __DIR__ . '/Served.php';
 require_once __DIR__ . '/StatementCountingPdo.php';
 require_once __DIR__ . '/UninitializedRecordingPdo.php';
 require_once __DIR__ . '/TransactionTrackingPdo.php';
+require_once __DIR__ . '/OrmGenTestSupport.php';
 require_once __DIR__ . '/Stop.php';
 require_once __DIR__ . '/generated_classes.php';
 require_once __DIR__ . '/case_database.php';

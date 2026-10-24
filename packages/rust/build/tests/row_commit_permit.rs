@@ -1,3 +1,6 @@
+#[path = "common/physical_fixture.rs"]
+mod physical_fixture;
+
 use polyspec_orm_build::{
     catalog::{CatalogConnection, MutationPhase, RowSnapshot, TableRef},
     tool_db::{self, P},
@@ -12,15 +15,10 @@ use std::sync::{
 async fn rejected_commit_permits_rollback_all_native_mutations() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(30), async {
-        let path = std::env::temp_dir().join(format!("orm-commit-permit-{}.sqlite", std::process::id()));
-        assert!(!path.exists());
+        let path = physical_fixture::sqlite_path("commit-permit");
         for dialect in ["sqlite", "mysql", "postgres"] {
             polyspec_orm_testcase::step(format_args!("running {dialect}"));
-            let dsn = match dialect {
-                "sqlite" => format!("sqlite://{}", path.display()),
-                "mysql" => std::env::var("ORM_TOOLS_MYSQL_DSN").unwrap(),
-                _ => std::env::var("ORM_TOOLS_POSTGRES_DSN").unwrap(),
-            };
+            let dsn = physical_fixture::dsn_for(dialect, &path);
             let (db, mut seed, _) = tool_db::open(&dsn).await.unwrap();
             let name = format!("orm_commit_permit_{}", std::process::id());
             seed.exec(
@@ -75,9 +73,7 @@ async fn rejected_commit_permits_rollback_all_native_mutations() {
             assert_eq!(phases.lock().unwrap().last(), Some(&MutationPhase::Committed));
             seed.exec(&format!("DROP TABLE {name}"), &[]).await.unwrap();
             catalog.close().await;
-            drop(seed);
-            db.close().await;
-            polyspec_orm_testcase::step(format_args!("{dialect} passed"));
+            physical_fixture::finish_physical_dialect(db, seed, dialect, "passed").await;
         }
         std::fs::remove_file(path).unwrap();
     })

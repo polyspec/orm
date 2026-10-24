@@ -22,9 +22,7 @@ use Polyspec\Orm\Tests\AesJson\SecretConfig;
 use Polyspec\Orm\AesKeyring;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;
-use Polyspec\Orm\Generator;
 use Polyspec\Orm\Orm;
-use Polyspec\Orm\RuntimeModel;
 use Polyspec\Orm\StyledValue;
 use Polyspec\OrderedJson\Value;
 use PHPUnit\Framework\Attributes\Medium;
@@ -38,37 +36,25 @@ use function Polyspec\OrderedJson\stringify;
 final class AesJsonTest extends TestCase
 {
     use ThreeDrivers;
+    use DatabaseTestAssertions;
+    use GeneratedFixtureLifecycle;
 
-    private static mixed $documents = null;
-
-    /** The fixture of the file: what the script did before its cases, once per class. */
-    private static function fixture(): void
+    /** @return array{prefix: non-empty-string, documentName: non-empty-string, namespace: non-empty-string,
+     *     outputName: non-empty-string}
+     */
+    protected static function generatedFixture(): array
     {
-        $work = sys_get_temp_dir() . '/orm-php-aes-json-' . getmypid();
-        is_dir($work) || mkdir($work, 0o700, true);
-        register_shutdown_function(static function () use ($work): void {
-            exec('rm -rf ' . escapeshellarg($work));
-        });
-
-        self::$documents = [(string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/secret_config.dbs')];
-        Generator::generate(
-            RuntimeModel::build(RuntimeModel::parse(['secret_config.dbs' => self::$documents[0]])),
-            "$work/gen",
-            'Polyspec\\Orm\\Tests\\AesJson'
-        );
-        requireGeneratedClasses("$work/gen");
-        require "$work/gen/bootstrap.php";
-    }
-
-    private static function check(bool $ok, string $message): void
-    {
-        \PHPUnit\Framework\Assert::assertTrue($ok, $message);
+        return [
+            'prefix' => 'orm-php-aes-json-',
+            'documentName' => 'secret_config.dbs',
+            'namespace' => 'Polyspec\\Orm\\Tests\\AesJson',
+            'outputName' => 'gen',
+        ];
     }
 
     private static function raw(string $dsn): PDO
     {
-        [, $pdoDsn, $user, $password] = Orm::parseDsn($dsn);
-        return new PDO($pdoDsn, $user, $password, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+        return self::nativeConnection($dsn)[1];
     }
 
     /** @return array{string, int} the stored cell and key version of the single row */
@@ -188,11 +174,6 @@ final class AesJsonTest extends TestCase
             'updated read'
         );
         $again->close();
-    }
-
-    public static function setUpBeforeClass(): void
-    {
-        self::fixture();
     }
 
     #[DataProvider('drivers')]

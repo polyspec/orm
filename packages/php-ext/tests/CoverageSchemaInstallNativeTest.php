@@ -43,36 +43,19 @@ final class CoverageSchemaInstallNativeTest extends TestCase
     // Requirements: DBS-108, SCH-7.
     public function testSchemaInstallExisting(): void
     {
-        foreach (coverageItemsOf(__FILE__) as $item) {
-            selectCoverageItem($item);
-            [, $dsn] = coverageItem();
-            Assert::assertIsString($dsn);
-            coverageAssertEntryClassesAreInternal();
-            self::assertNativeSchemaUtils();
-            $db = coverageConnect($dsn);
-            try {
-                Assert::assertTrue(coverageTableExists($db, 'author'), 'the bench database has no author table');
-                $db->utils()->schema()->install(\Polyspec\Orm\Tests\Model\schema());
-            } finally {
-                $db->close();
-            }
-        }
+        self::forEachCoverageDatabase(static function ($db): void {
+            Assert::assertTrue(coverageTableExists($db, 'author'), 'the bench database has no author table');
+            $db->utils()->schema()->install(\Polyspec\Orm\Tests\Model\schema());
+        });
     }
 
     // Requirements: DBS-108, SCH-10.
     public function testSchemaInstallPartial(): void
     {
-        foreach (coverageItemsOf(__FILE__) as $item) {
-            selectCoverageItem($item);
-            [, $dsn] = coverageItem();
-            Assert::assertIsString($dsn);
-            coverageAssertEntryClassesAreInternal();
-            self::assertNativeSchemaUtils();
-            $db = coverageConnect($dsn);
-            try {
-                Assert::assertFalse(coverageTableExists($db, 'coverage_install_missing'));
-                $manifest = RuntimeModel::build(RuntimeModel::parse([
-                    'partial.dbs' => <<<'DBSPEC'
+        self::forEachCoverageDatabase(static function ($db): void {
+            Assert::assertFalse(coverageTableExists($db, 'coverage_install_missing'));
+            $manifest = RuntimeModel::build(RuntimeModel::parse([
+                'partial.dbs' => <<<'DBSPEC'
 dbspec 1 partial
 
 table user {
@@ -86,38 +69,29 @@ table coverage_install_missing {
   primary key (seq)
 }
 DBSPEC,
-                ]));
-                try {
-                    $db->utils()->schema()->install(
-                        new Schema($manifest->manifestText, $manifest->manifestHash)
-                    );
-                    Assert::fail('a partial document set install was accepted');
-                } catch (OrmException $error) {
-                    Assert::assertSame(Code::CONFIG, $error->code_);
-                }
-                Assert::assertFalse(coverageTableExists($db, 'coverage_install_missing'));
-            } finally {
-                $db->close();
+            ]));
+            try {
+                $db->utils()->schema()->install(
+                    new Schema($manifest->manifestText, $manifest->manifestHash)
+                );
+                Assert::fail('a partial document set install was accepted');
+            } catch (OrmException $error) {
+                Assert::assertSame(Code::CONFIG, $error->code_);
             }
-        }
+            Assert::assertFalse(coverageTableExists($db, 'coverage_install_missing'));
+        });
     }
 
     // Requirements: DBS-107, SCH-7.
     public function testSchemaInstallExternalDocuments(): void
     {
-        foreach (coverageItemsOf(__FILE__) as $item) {
-            selectCoverageItem($item);
-            [, $dsn] = coverageItem();
-            Assert::assertIsString($dsn);
-            coverageAssertEntryClassesAreInternal();
-            self::assertNativeSchemaUtils();
+        self::forEachCoverageDatabase(static function ($db): void {
             $manifest = self::externalSchema(NATIVE_EXTERNAL_USER);
             $drifted = self::externalSchema(str_replace(
                 "  name varchar(191)\n",
                 "  name varchar(191)\n  coverage_missing varchar(8) null\n",
                 NATIVE_EXTERNAL_USER
             ));
-            $db = coverageConnect($dsn);
             $events = [];
             $unsubscribe = $db->subscribe(static function ($event) use (&$events): void {
                 $events[] = $event->kind;
@@ -135,6 +109,23 @@ DBSPEC,
                 Assert::assertFalse(coverageTableExists($db, 'coverage_external_post'));
             } finally {
                 $unsubscribe();
+            }
+        });
+    }
+
+    /** @param callable(mixed): void $case */
+    private static function forEachCoverageDatabase(callable $case): void
+    {
+        foreach (coverageItemsOf(__FILE__) as $item) {
+            selectCoverageItem($item);
+            [, $dsn] = coverageItem();
+            Assert::assertIsString($dsn);
+            coverageAssertEntryClassesAreInternal();
+            self::assertNativeSchemaUtils();
+            $db = coverageConnect($dsn);
+            try {
+                $case($db);
+            } finally {
                 $db->close();
             }
         }

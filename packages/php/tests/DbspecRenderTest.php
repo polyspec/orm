@@ -17,7 +17,7 @@ use Polyspec\Orm\Dbspec\Dbspec;
 #[Small]
 final class DbspecRenderTest extends TestCase
 {
-    use DbspecTimedTest;
+    use DbspecTimedCases;
 
     protected static function timingName(): string
     {

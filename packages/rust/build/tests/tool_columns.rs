@@ -1,3 +1,6 @@
+#[path = "common/physical_fixture.rs"]
+mod physical_fixture;
+
 use polyspec_orm_build::tool_db::{self, QueryLimits, Val};
 
 #[tokio::test]
@@ -7,15 +10,10 @@ async fn physical_query_columns_preserve_empty_results_and_duplicate_aliases() {
     tokio::time::timeout(std::time::Duration::from_secs(30), check()).await.expect("column test deadline");
 }
 async fn check() {
-    let path = std::env::temp_dir().join(format!("orm-tool-columns-{}.sqlite", std::process::id()));
-    assert!(!path.exists());
+    let path = physical_fixture::sqlite_path("tool-columns");
     for dialect in ["sqlite", "mysql", "postgres"] {
         polyspec_orm_testcase::step(format_args!("running {dialect}"));
-        let dsn = match dialect {
-            "sqlite" => format!("sqlite://{}", path.display()),
-            "mysql" => std::env::var("ORM_TOOLS_MYSQL_DSN").unwrap(),
-            _ => std::env::var("ORM_TOOLS_POSTGRES_DSN").unwrap(),
-        };
+        let dsn = physical_fixture::dsn_for(dialect, &path);
         let (database, mut connection, _) = tool_db::open(&dsn).await.unwrap();
         for tail in ["", " WHERE 1=0"] {
             let result =
@@ -29,9 +27,7 @@ async fn check() {
         assert_eq!(result.columns[0].name, "public_column");
         assert_eq!(result.rows, vec![vec![Val::Int(7)]]);
         catalog.close().await;
-        drop(connection);
-        database.close().await;
-        polyspec_orm_testcase::step(format_args!("{dialect} passed"));
+        physical_fixture::finish_physical_dialect(database, connection, dialect, "passed").await;
     }
     std::fs::remove_file(path).unwrap();
 }

@@ -15,20 +15,17 @@ use Polyspec\Orm\OrmException;
 #[Small]
 final class AggregateNumericTest extends TestCase
 {
+    use DatabaseTestAssertions;
+
     /**
      * @return iterable<string, array{array<string, mixed>}> for each case in contracts/fixtures/aggregate_numeric.json
      */
     public static function cases(): iterable
     {
-        $fixture = json_decode(
-            (string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/aggregate_numeric.json'),
+        yield from self::fixtureCases(self::readJsonFixture(
+            dirname(__DIR__, 3) . '/contracts/fixtures/aggregate_numeric.json',
             true,
-            512,
-            JSON_THROW_ON_ERROR
-        );
-        foreach ($fixture['cases'] as $case) {
-            yield $case['id'] => [$case];
-        }
+        ));
     }
 
     /** @param array<string, mixed> $case */

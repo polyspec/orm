@@ -24,6 +24,11 @@ use model_connect::connected;
 mod or_panic;
 use or_panic::OrPanic;
 
+
+#[path = "common/case_database_run.rs"]
+mod case_database_run;
+use case_database_run::run_case;
+
 use std::time::Duration;
 
 use polyspec_orm::{Db, Entity, Model, Param, Schema};
@@ -65,6 +70,7 @@ static PROBE: Entity = Entity {
 const COLUMNS: [&str; 2] = ["seq", "label"];
 
 model_row!(Probe, PROBE, COLUMNS);
+
 
 /// Opens the client and installs the probe table.
 async fn installed(driver: &str, dsn: &str) -> Db {
@@ -147,18 +153,17 @@ async fn empty_argument_refused(driver: &str, dsn: &str) {
 async fn bounded(driver: &str, case: &str) {
     let case = named_case(case);
     let database = CaseDatabase::create(driver).await;
-    let dsn = database.dsn();
+    let dsn = database.dsn().to_owned();
     let run = async {
         match case.as_str() {
-            "refused_insert" => refused_insert(driver, dsn).await,
-            "consumed_by_one_statement" => consumed_by_one_statement(driver, dsn).await,
-            "refused_in_transaction" => refused_in_transaction(driver, dsn).await,
-            "empty_argument_refused" => empty_argument_refused(driver, dsn).await,
+            "refused_insert" => refused_insert(driver, &dsn).await,
+            "consumed_by_one_statement" => consumed_by_one_statement(driver, &dsn).await,
+            "refused_in_transaction" => refused_in_transaction(driver, &dsn).await,
+            "empty_argument_refused" => empty_argument_refused(driver, &dsn).await,
             other => unreachable!("unknown case {other}"),
         }
     };
-    tokio::time::timeout(CASE_DEADLINE, run).await.or_panic(|_| format!("{driver}: {case}: timeout after {CASE_DEADLINE:?}"));
-    database.drop().await;
+    run_case(database, driver, &case, CASE_DEADLINE, run).await;
 }
 
 /// Guard: every case the fixture names has a test function for each driver in

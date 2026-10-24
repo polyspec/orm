@@ -1,14 +1,12 @@
-#[path = "common/grid_catalog.rs"]
-mod grid_catalog;
-use grid_catalog::fixture_path;
+#[path = "common/physical_fixture.rs"]
+mod physical_fixture;
+#[macro_use]
+#[path = "common/physical_dialects.rs"]
+mod physical_dialects;
 
 #[path = "common/grid_open.rs"]
 mod grid_open;
 use grid_open::open_catalog;
-
-#[path = "common/dialect_dsn.rs"]
-mod dialect_dsn;
-use dialect_dsn::dsn_for;
 
 use polyspec_orm_build::tool_db::{GridCell, QueryLimits};
 
@@ -16,15 +14,11 @@ use polyspec_orm_build::tool_db::{GridCell, QueryLimits};
 // Requirements: SCH-3.
 async fn binary_grid_values_remain_distinct_from_text_and_null() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
-    tokio::time::timeout(std::time::Duration::from_secs(30), check()).await.expect("grid cell deadline");
+    physical_fixture::within(30, "grid cell deadline", check()).await;
 }
 
 async fn check() {
-    let path = fixture_path("grid-cells");
-    let mut failures = Vec::new();
-    for dialect in ["sqlite", "mysql", "postgres"] {
-        polyspec_orm_testcase::step(format_args!("running {dialect}"));
-        let dsn = dsn_for(dialect, &path);
+    let failures = for_physical_dialects!("grid-cells", |dialect, dsn, failures| {
         let (database, mut catalog) = open_catalog(&dsn).await;
         let sql = if dialect == "postgres" {
             "SELECT decode('00ff','hex'), decode('6869','hex'), decode('','hex'), 'hi', NULL"
@@ -43,17 +37,12 @@ async fn check() {
             failures.push("invalid-text-blob-cause");
         }
         let tiny = QueryLimits { max_rows: 1, max_bytes: 2 };
-        if !catalog.read_only_grid_query(sql, &[], tiny).await.err().is_some_and(|error| error.contains("TOOL_QUERY_LIMIT")) {
+        if !grid_open::query_limit(&mut catalog, sql, tiny).await {
             failures.push("binary-byte-budget");
         }
         let two_rows =
             if dialect == "postgres" { "SELECT decode('ff','hex') UNION ALL SELECT decode('ff','hex')" } else { "SELECT X'FF' UNION ALL SELECT X'FF'" };
-        if !catalog
-            .read_only_grid_query(two_rows, &[], QueryLimits { max_rows: 1, max_bytes: 1024 })
-            .await
-            .err()
-            .is_some_and(|error| error.contains("TOOL_QUERY_LIMIT"))
-        {
+        if !grid_open::query_limit(&mut catalog, two_rows, QueryLimits { max_rows: 1, max_bytes: 1024 }).await {
             failures.push("binary-row-budget");
         }
         if !catalog
@@ -74,10 +63,7 @@ async fn check() {
             Ok(result) if result.rows == vec![vec![GridCell::Text("text".into())]] => {}
             _ => failures.push("bound-text"),
         }
-        catalog.close().await;
-        database.close().await;
-        polyspec_orm_testcase::step(format_args!("{dialect} finished"));
-    }
-    std::fs::remove_file(path).expect("remove owned SQLite fixture");
+        grid_open::finish_catalog(database, catalog, dialect).await;
+    });
     assert!(failures.is_empty(), "grid type cases failed: {failures:?}");
 }

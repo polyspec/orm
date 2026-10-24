@@ -1,7 +1,7 @@
 <?php
 
 // The shared cases of the request hook (docs/operations/usage.md "Request hook") with the
-// fixture contracts/fixtures/request_hook.dbs: without_hook, read_filter,
+// fixture contracts/fixtures/request_hook.dbs: without_hook, reads_params, read_filter,
 // insert_assign, loaded_row_writes, invalid_param, restore_key,
 // restore_condition, restore_no_key, restore_rewritten_key and
 // restore_hook_set_key. A handle from
@@ -98,10 +98,15 @@ function hookAndWhere(array &$q, array $pred): void
 function readFilter(string $part): Closure
 {
     return static function (Request $r) use ($part): void {
-        if (in_array($r->ir['kind'], READ_KINDS, true)) {
+        if (requestIsRead($r)) {
             hookAndWhere($r->ir, ['column' => 'part', 'op' => 'eq', 'p' => $r->param($part)]);
         }
     };
+}
+
+function requestIsRead(Request $request): bool
+{
+    return in_array($request->ir['kind'], READ_KINDS, true);
 }
 
 /** The labels of rows, sorted. */
@@ -113,6 +118,42 @@ function hookLabels(iterable $rows): array
     }
     sort($out, SORT_STRING);
     return $out;
+}
+
+/** The hook reads an INSERT assignment value without changing the bound value that the ORM writes. */
+function hookReadsParams(Db $db): void
+{
+    $seen = null;
+    $hooked = $db->withRequestHook(static function (Request $r) use (&$seen): void {
+        if ($r->ir['kind'] !== 'insert') {
+            return;
+        }
+        foreach ($r->ir['set'] as $assignment) {
+            if ($assignment['column'] === 'label') {
+                $seen = $r->params[$assignment['p']];
+                $r->params[$assignment['p']] = 'changed';
+            }
+        }
+    });
+    (new HookItem())($hooked)->setPart('r')->setLabel('read')->create();
+    hookCheck($seen === 'read', 'the hook reads the label value of the INSERT assignment');
+    hookCheck(
+        in_array('read', hookLabels((new HookItem())($db)->gets()), true),
+        'changing the parameter value the hook reads does not change the INSERT: '
+            . json_encode(hookLabels((new HookItem())($db)->gets()))
+    );
+}
+
+/** The native owner case installs the fixture on a SQLite file and checks request parameter readback. */
+function readsParamsCase(string $dsn): void
+{
+    requestHookModels();
+    $db = hookConnect($dsn);
+    try {
+        hookReadsParams($db);
+    } finally {
+        $db->close();
+    }
 }
 
 /** The connection, and the connection after a hooked handle was derived from it, read every row. */
@@ -305,7 +346,7 @@ function invalidParam(string $dsn): void
 function partScope(string $part): Closure
 {
     return static function (Request $r) use ($part): void {
-        if ($r->ir['kind'] === 'restore' || in_array($r->ir['kind'], READ_KINDS, true)) {
+        if ($r->ir['kind'] === 'restore' || requestIsRead($r)) {
             hookAndWhere($r->ir, ['column' => 'part', 'op' => 'eq', 'p' => $r->param($part)]);
         }
     };
@@ -427,53 +468,71 @@ function restoreRewrittenKeyCase(string $dsn): void
     $db->close();
 }
 
-/** The hook puts part a first in the set; the model's label completes the unique key. */
-function restoreHookSetKeyCase(string $dsn): void
+/** Runs one restore with a request mutation and case-specific result assertions. */
+function restoreWithHook(string $dsn, string $note, \Closure $modify, \Closure $verify): void
 {
     $db = hookConnect($dsn);
     $ids = seedDeletedEntries($db);
-    $h = $db->withRequestHook(static function (Request $r): void {
-        if ($r->ir['kind'] === 'restore') {
+    try {
+        $h = $db->withRequestHook(static function (Request $r) use ($modify): void {
+            if ($r->ir['kind'] === 'restore') {
+                $modify($r);
+            }
+        });
+        $row = (new HookEntry())($h)->setLabel('x')->setNote($note)->restore();
+        $verify($db, $ids, $row);
+    } finally {
+        $db->close();
+    }
+}
+
+/** The hook puts part a first in the set; the model's label completes the unique key. */
+function restoreHookSetKeyCase(string $dsn): void
+{
+    restoreWithHook(
+        $dsn,
+        'n5',
+        static function (Request $r): void {
             array_unshift($r->ir['set'], ['column' => 'part', 'p' => $r->param('a')]);
+        },
+        static function (Db $db, array $ids, HookEntry $row): void {
+            hookCheck(
+                [$row->getId(), $row->getPart(), $row->getNote()] === [$ids['ax'], 'a', 'n5'],
+                'the restore returns (a, x) with note n5: ' . json_encode($row->toArray())
+            );
+            hookCheck(
+                entryRows($db) === [[$ids['ax'], 'n5']],
+                'the connection reads only (a, x) with note n5: ' . json_encode(entryRows($db))
+            );
         }
-    });
-    $row = (new HookEntry())($h)->setLabel('x')->setNote('n5')->restore();
-    hookCheck(
-        [$row->getId(), $row->getPart(), $row->getNote()] === [$ids['ax'], 'a', 'n5'],
-        'the restore returns (a, x) with note n5: ' . json_encode($row->toArray())
     );
-    hookCheck(
-        entryRows($db) === [[$ids['ax'], 'n5']],
-        'the connection reads only (a, x) with note n5: ' . json_encode(entryRows($db))
-    );
-    $db->close();
 }
 
 /** The hook gives the model's label its own value y and sets part a after it, with no where parameter. */
 function restoreRewrittenKeySetScopeCase(string $dsn): void
 {
-    $db = hookConnect($dsn);
-    $ids = seedDeletedEntries($db);
-    $h = $db->withRequestHook(static function (Request $r): void {
-        if ($r->ir['kind'] === 'restore') {
+    restoreWithHook(
+        $dsn,
+        'n6',
+        static function (Request $r): void {
             foreach ($r->ir['set'] as $i => $a) {
                 if ($a['column'] === 'label') {
                     $r->ir['set'][$i]['p'] = $r->param('y');
                 }
             }
             $r->ir['set'][] = ['column' => 'part', 'p' => $r->param('a')];
+        },
+        static function (Db $db, array $ids, HookEntry $row): void {
+            hookCheck(
+                [$row->getId(), $row->getLabel(), $row->getNote()] === [$ids['ay'], 'y', 'n6'],
+                'the restore returns (a, y) with note n6: ' . json_encode($row->toArray())
+            );
+            hookCheck(
+                entryRows($db) === [[$ids['ay'], 'n6']],
+                'the connection reads only (a, y) with note n6: ' . json_encode(entryRows($db))
+            );
         }
-    });
-    $row = (new HookEntry())($h)->setLabel('x')->setNote('n6')->restore();
-    hookCheck(
-        [$row->getId(), $row->getLabel(), $row->getNote()] === [$ids['ay'], 'y', 'n6'],
-        'the restore returns (a, y) with note n6: ' . json_encode($row->toArray())
     );
-    hookCheck(
-        entryRows($db) === [[$ids['ay'], 'n6']],
-        'the connection reads only (a, y) with note n6: ' . json_encode(entryRows($db))
-    );
-    $db->close();
 }
 
 /** The case functions by shared case ID; each takes the DSN of an empty database. */

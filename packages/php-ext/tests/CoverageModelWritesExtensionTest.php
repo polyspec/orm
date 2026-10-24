@@ -14,6 +14,14 @@ use ReflectionMethod;
 #[Medium]
 final class CoverageModelWritesExtensionTest extends TestCase
 {
+    // Requirements: DSL-104, INT-35, PRT-41.
+    public function testCreateParts(): void
+    {
+        Assert::assertTrue((new ReflectionMethod(Model::class, 'creates'))->isInternal(), 'Model::creates is native');
+        require_once dirname(__DIR__, 2) . '/php/tests/CoverageModelWritesCase.php';
+        \Polyspec\Orm\Tests\CoverageModelWritesCase::createParts(__FILE__, 990003);
+    }
+
     // Requirements: DSL-56, DSL-57, DSL-58, DSL-60, DSL-103, DSL-104, DSL-105, DSL-106, DSL-110.
     public function testModelWriteCycle(): void
     {

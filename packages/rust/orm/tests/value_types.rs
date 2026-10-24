@@ -5,6 +5,13 @@
 //! case database (polyspec-orm-case-database), and it fails if ORM_TEST_MYSQL_DSN or
 //! ORM_TEST_POSTGRES_DSN is missing.
 
+#[path = "common/model_connect.rs"]
+mod model_connect;
+
+#[macro_use]
+#[path = "common/model_row.rs"]
+mod model_row;
+
 #[path = "common/or_panic.rs"]
 mod or_panic;
 use or_panic::OrPanic;
@@ -15,7 +22,7 @@ use result_code::code;
 
 use std::collections::BTreeMap;
 
-use polyspec_orm::{Core, Db, Entity, Model, Param, Schema, Val};
+use polyspec_orm::{Db, Entity, Model, Param, Schema};
 use polyspec_orm_case_database::CaseDatabase;
 
 const DOCUMENT: &str = "dbspec 1 value_types
@@ -46,57 +53,19 @@ fn schema() -> &'static Schema {
     })
 }
 
-static RECORD: std::sync::OnceLock<Entity> = std::sync::OnceLock::new();
-
-fn entity() -> &'static Entity {
-    RECORD.get_or_init(|| Entity {
-        name: "value_record",
-        schema: schema(),
-        new: polyspec_orm::model::new_boxed::<Record>,
-        collect: polyspec_orm::model::collect_boxed::<Record>,
-    })
-}
+static RECORD: std::sync::LazyLock<Entity> = std::sync::LazyLock::new(|| Entity {
+    name: "value_record",
+    schema: schema(),
+    new: polyspec_orm::model::new_boxed::<Record>,
+    collect: polyspec_orm::model::collect_boxed::<Record>,
+});
 
 const COLUMNS: [&str; 7] = ["seq", "small", "rank", "code", "opens", "day", "note"];
 
-#[derive(Clone)]
-struct Record {
-    core: Core,
-    values: BTreeMap<String, Val>,
-}
-
-impl Model for Record {
-    fn entity() -> &'static Entity {
-        entity()
-    }
-    fn core(&self) -> &Core {
-        &self.core
-    }
-    fn core_mut(&mut self) -> &mut Core {
-        &mut self.core
-    }
-    fn from_core(core: Core) -> Self {
-        Record { core, values: BTreeMap::new() }
-    }
-    fn into_core(self) -> Core {
-        self.core
-    }
-    fn assign(&mut self, name: &str, v: Val) -> polyspec_orm::Result<bool> {
-        if !COLUMNS.contains(&name) {
-            return Ok(false);
-        }
-        self.values.insert(name.to_owned(), v);
-        Ok(true)
-    }
-    fn value(&self, name: &str) -> Option<Val> {
-        self.values.get(name).cloned()
-    }
-}
+model_row!(Record, RECORD, COLUMNS);
 
 fn connected(db: &Db) -> Record {
-    let mut core = Core::new(entity());
-    core.connect(db);
-    Record::from_core(core)
+    model_connect::connected(db)
 }
 
 #[tokio::test]

@@ -11,24 +11,13 @@ namespace Polyspec\Orm\Tests;
 
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
-use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
-use Polyspec\Orm\OrmException;
 use Polyspec\Orm\Tests\Model\Author;
 
 #[Medium]
 final class UnselectedColumnDbTest extends TestCase
 {
-    private static function requireUnselected(callable $read, string $column): void
-    {
-        try {
-            $read();
-        } catch (OrmException $error) {
-            self::assertSame(Code::COLUMN_UNSELECTED, $error->code_, "unselected $column: {$error->getMessage()}");
-            return;
-        }
-        self::fail("unselected $column returned a value");
-    }
+    use DatabaseTestAssertions;
 
     public function testUnselectedColumn(): void
     {
@@ -49,11 +38,11 @@ final class UnselectedColumnDbTest extends TestCase
                 $row = (new Author())($db)->removeAllColumns()->addColumnSeq()->getBySeq(1);
                 $seq = $row->getSeq();
                 self::assertGreaterThanOrEqual(1, $seq, 'selected seq is invalid');
-                self::requireUnselected(static fn() => $row->getName(), 'text');
-                self::requireUnselected(static fn() => $row->getIsClose(), 'boolean');
-                self::requireUnselected(static fn() => $row->getDescription(), 'nullable text');
-                self::requireUnselected(static fn() => $row->getCreatedTs(), 'date');
-                self::requireUnselected(static fn() => $row->getPrice(), 'nullable decimal');
+                self::assertColumnUnselected(static fn() => $row->getName(), 'text');
+                self::assertColumnUnselected(static fn() => $row->getIsClose(), 'boolean');
+                self::assertColumnUnselected(static fn() => $row->getDescription(), 'nullable text');
+                self::assertColumnUnselected(static fn() => $row->getCreatedTs(), 'date');
+                self::assertColumnUnselected(static fn() => $row->getPrice(), 'nullable decimal');
                 $selected = (new Author())($db)->removeAllColumns()->addColumnSeq()->addColumnPrice()->getBySeq($seq);
                 self::assertTrue(
                     $selected->getSeq() === $seq && $selected->getPrice() === null,

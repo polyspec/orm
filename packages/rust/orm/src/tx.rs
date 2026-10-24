@@ -458,6 +458,9 @@ pub struct TransactionOnce<'a, F> {
     audit: Option<AuditValues>,
 }
 
+type OnceCallbackResult<T, E> = std::result::Result<T, E>;
+type OnceTransactionResult<T, E> = std::result::Result<T, TransactionOnceError<E>>;
+
 impl<F> TransactionOnce<'_, F> {
     /// Records the audit of the transaction: right before its first write of an
     /// audited table the transaction inserts one audit record with the defaults of the handle (`Db::audit`)
@@ -472,9 +475,9 @@ impl<F> TransactionOnce<'_, F> {
 impl<'a, F, Fut, T, E> IntoFuture for TransactionOnce<'a, F>
 where
     F: FnOnce() -> Fut,
-    Fut: Future<Output = std::result::Result<T, E>>,
+    Fut: Future<Output = OnceCallbackResult<T, E>>,
 {
-    type Output = std::result::Result<T, TransactionOnceError<E>>;
+    type Output = OnceTransactionResult<T, E>;
     type IntoFuture = TransactionOnceFuture<'a, F, Fut, T, E>;
 
     fn into_future(self) -> Self::IntoFuture {
@@ -573,9 +576,9 @@ impl<F, Fut, T, E> Unpin for TransactionOnceFuture<'_, F, Fut, T, E> {}
 impl<'a, F, Fut, T, E> Future for TransactionOnceFuture<'a, F, Fut, T, E>
 where
     F: FnOnce() -> Fut,
-    Fut: Future<Output = std::result::Result<T, E>>,
+    Fut: Future<Output = OnceCallbackResult<T, E>>,
 {
-    type Output = std::result::Result<T, TransactionOnceError<E>>;
+    type Output = OnceTransactionResult<T, E>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> std::task::Poll<Self::Output> {
         use std::task::Poll;
@@ -850,9 +853,7 @@ fn joined(mut errors: Vec<Error>) -> Result<()> {
 }
 
 async fn begin(db: &Db, isolation: Option<Isolation>, read_only: bool, timeout_ms: u64) -> Result<TxShared> {
-    if db.inner.closed.load(Ordering::Acquire) {
-        return Err(Error::Config("database is closed".into()));
-    }
+    db.ensure_open()?;
     if timeout_ms > 0 && !matches!(db.pool(), Pool::Postgres(_)) {
         return Err(Error::Engine { code: codes::CAPABILITY_UNSUPPORTED.into(), msg: "transaction timeoutMs is supported only by postgres".into() });
     }
@@ -1104,6 +1105,7 @@ mod send_tests;
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_support::Scratch;
     use polyspec_orm_testcase::OrPanic;
 
     async fn probe_row_count(db: &Db) -> i64 {
@@ -1128,38 +1130,6 @@ mod tests {
         db.close().await;
     }
 
-    /// A directory of its own for one test, removed when the value is dropped. A test that fails an assertion
-    /// unwinds through the drop, so it leaves nothing behind either.
-    struct Scratch(std::path::PathBuf);
-
-    impl Scratch {
-        fn new(prefix: &str) -> Self {
-            let path = std::env::temp_dir().join(format!("{prefix}-{}", std::process::id()));
-            if let Err(error) = std::fs::remove_dir_all(&path) {
-                if error.kind() != std::io::ErrorKind::NotFound {
-                    panic!("remove {}: {error}", path.display());
-                }
-            }
-            std::fs::create_dir_all(&path).unwrap();
-            Scratch(path)
-        }
-
-        fn join(&self, name: &str) -> std::path::PathBuf {
-            self.0.join(name)
-        }
-    }
-
-    impl Drop for Scratch {
-        fn drop(&mut self) {
-            // A failed removal fails a test that passed; during a panic it is left to the panic already reported.
-            if let Err(error) = std::fs::remove_dir_all(&self.0) {
-                if !std::thread::panicking() {
-                    panic!("remove {}: {error}", self.0.display());
-                }
-            }
-        }
-    }
-
     #[test]
     fn scratch_is_removed_after_a_failed_assertion() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -1167,7 +1137,7 @@ mod tests {
         let unwound = std::panic::catch_unwind(|| {
             let scratch = Scratch::new("orm-scratch-unwind");
             std::fs::write(scratch.join("left.sqlite"), b"x").unwrap();
-            *path.lock().unwrap() = Some(scratch.0.clone());
+            *path.lock().unwrap() = Some(scratch.path().to_path_buf());
             panic!("a failed assertion");
         });
         assert!(unwound.is_err(), "the body panicked");
@@ -1195,7 +1165,8 @@ mod tests {
     async fn transaction_variants_share_the_retryable_execution_path() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
         let scratch = Scratch::new("orm-transaction-shared-runner");
-        let db = Db::connect(&format!("sqlite://{}", scratch.join("transaction.sqlite").display()), 1, crate::Config::default()).await.expect("connect to SQLite");
+        let db =
+            Db::connect(&format!("sqlite://{}", scratch.join("transaction.sqlite").display()), 1, crate::Config::default()).await.expect("connect to SQLite");
 
         let standard_attempts = std::sync::atomic::AtomicUsize::new(0);
         let standard = db
@@ -1654,7 +1625,13 @@ mod tests {
         _: *const std::ffi::c_char,
     ) -> std::ffi::c_int {
         // SAFETY: SQLite passes a null or NUL-terminated string.
-        let text = |p: *const std::ffi::c_char| if p.is_null() { "" } else { unsafe { std::ffi::CStr::from_ptr(p) }.to_str().or_panic(|e| format!("the SQLite text is not UTF-8: {e}")) };
+        let text = |p: *const std::ffi::c_char| {
+            if p.is_null() {
+                ""
+            } else {
+                unsafe { std::ffi::CStr::from_ptr(p) }.to_str().or_panic(|e| format!("the SQLite text is not UTF-8: {e}"))
+            }
+        };
         let denied = match SQLITE_DENIED.load(Ordering::Acquire) {
             DENY_ROLLBACK => action == libsqlite3_sys::SQLITE_TRANSACTION && text(first) == "ROLLBACK",
             DENY_QUERY_ONLY_ON => action == libsqlite3_sys::SQLITE_PRAGMA && text(first) == "query_only" && text(second) == "1",

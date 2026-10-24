@@ -11,7 +11,6 @@ namespace Polyspec\Orm\Tests;
 
 
 use Polyspec\Orm\Tests\Model\CompositeAccount;
-use Polyspec\Orm\Code;
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
@@ -21,6 +20,13 @@ const WRITE_TENANT = 990002;
 #[Medium]
 final class CoverageModelWritesTest extends TestCase
 {
+    // Requirements: DSL-104, INT-35, PRT-41.
+    public function testCreateParts(): void
+    {
+        require_once __DIR__ . '/CoverageModelWritesCase.php';
+        CoverageModelWritesCase::createParts(__FILE__, WRITE_TENANT + 1);
+    }
+
     // Requirements: DSL-56, DSL-57, DSL-58, DSL-60, DSL-103, DSL-104, DSL-105, DSL-106, DSL-110.
     public function testModelWriteCycle(): void
     {

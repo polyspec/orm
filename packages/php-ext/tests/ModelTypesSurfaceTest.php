@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Extension\Tests;
 
-require_once __DIR__ . '/../../php/tests/model-types-weak-caller.php';
-
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\CanonicalRequest;
 use Polyspec\Orm\Code;
@@ -16,15 +14,12 @@ use Polyspec\Orm\Page;
 use Polyspec\Orm\PendingTime;
 use Polyspec\Orm\Request;
 use Polyspec\Orm\StyledValue;
-use function Polyspec\Orm\Tests\modelTypesWeakFunc;
-use function Polyspec\Orm\Tests\modelTypesWeakPage;
-use function Polyspec\Orm\Tests\modelTypesWeakPendingTime;
-use function Polyspec\Orm\Tests\modelTypesWeakRequest;
-
-require_once __DIR__ . '/ModelTypesPendingFixture.php';
+use Polyspec\Orm\Tests\ModelTypesWeakCallerCases;
 
 final class ModelTypesSurfaceTest extends TestCase
 {
+    use ModelTypesWeakCallerCases;
+
     /** @return array{0: mixed, 1: list<string>} */
     private static function captureWarnings(callable $call): array
     {
@@ -42,11 +37,12 @@ final class ModelTypesSurfaceTest extends TestCase
 
     private static function userlandPadIn(array $values): array
     {
-        $n = 1;
-        while ($n < count($values)) {
-            $n <<= 1;
-        }
-        while (count($values) < $n) {
+        $count = count($values);
+        // The bit length of n - 1 equals ceil(log2(n)); this avoids the native doubling loop.
+        $exponent = $count <= 1 ? 0 : strlen(decbin($count - 1));
+        // Counts above this exponent cannot have a representable positive PHP integer bucket.
+        $bucketSize = $exponent >= PHP_INT_SIZE * 8 - 1 ? 0 : 1 << $exponent;
+        while (count($values) < $bucketSize) {
             $values[] = $values[count($values) - 1];
         }
         return $values;
@@ -60,28 +56,67 @@ final class ModelTypesSurfaceTest extends TestCase
             self::assertTrue($reflection->isFinal());
         }
 
-        self::assertSame(['__construct', 'param', 'padIn', 'canonicalize', 'shape'], array_map(static fn (\ReflectionMethod $method): string => $method->getName(), (new \ReflectionClass(Request::class))->getMethods()));
+        self::assertSame(
+            ['__construct', 'param', 'padIn', 'canonicalize', 'shape'],
+            array_map(
+                static fn (\ReflectionMethod $method): string => $method->getName(),
+                (new \ReflectionClass(Request::class))->getMethods(),
+            ),
+        );
         $requestReflection = new \ReflectionClass(Request::class);
-        self::assertSame(['ir', 'params', 'names', 'external', 'canonical'], array_map(static fn (\ReflectionProperty $property): string => $property->getName(), $requestReflection->getProperties()));
-        self::assertSame(['params', 'names', 'external', 'canonical'], array_keys($requestReflection->getDefaultProperties()));
+        self::assertSame(
+            ['ir', 'params', 'names', 'external', 'canonical'],
+            array_map(
+                static fn (\ReflectionProperty $property): string => $property->getName(),
+                $requestReflection->getProperties(),
+            ),
+        );
+        self::assertSame(
+            ['params', 'names', 'external', 'canonical'],
+            array_keys($requestReflection->getDefaultProperties()),
+        );
         foreach (['ir', 'params', 'names', 'external'] as $name) {
             self::assertSame('array', $requestReflection->getProperty($name)->getType()->getName());
         }
         self::assertSame('bool', $requestReflection->getProperty('canonical')->getType()->getName());
-        self::assertSame(['__construct', 'sqlNull', 'value', 'payload', 'jsonSerialize'], array_map(static fn (\ReflectionMethod $method): string => $method->getName(), (new \ReflectionClass(StyledValue::class))->getMethods()));
+        self::assertSame(
+            ['__construct', 'sqlNull', 'value', 'payload', 'jsonSerialize'],
+            array_map(
+                static fn (\ReflectionMethod $method): string => $method->getName(),
+                (new \ReflectionClass(StyledValue::class))->getMethods(),
+            ),
+        );
         $styledReflection = new \ReflectionClass(StyledValue::class);
         self::assertTrue($styledReflection->isReadOnly());
-        self::assertSame(['kind', 'payload'], array_map(static fn (\ReflectionProperty $property): string => $property->getName(), $styledReflection->getProperties()));
+        self::assertSame(
+            ['kind', 'payload'],
+            array_map(
+                static fn (\ReflectionProperty $property): string => $property->getName(),
+                $styledReflection->getProperties(),
+            ),
+        );
         self::assertSame('string', $styledReflection->getProperty('kind')->getType()->getName());
         self::assertTrue($styledReflection->getProperty('kind')->isPublic());
         self::assertTrue($styledReflection->getProperty('kind')->isReadOnly());
         self::assertTrue($styledReflection->getProperty('payload')->isPrivate());
         self::assertTrue($styledReflection->getProperty('payload')->isReadOnly());
         self::assertTrue($styledReflection->getMethod('__construct')->isPrivate());
-        self::assertSame(['__construct'], array_map(static fn (\ReflectionMethod $method): string => $method->getName(), (new \ReflectionClass(Page::class))->getMethods()));
+        self::assertSame(
+            ['__construct'],
+            array_map(
+                static fn (\ReflectionMethod $method): string => $method->getName(),
+                (new \ReflectionClass(Page::class))->getMethods(),
+            ),
+        );
         $pageReflection = new \ReflectionClass(Page::class);
         self::assertTrue($pageReflection->isReadOnly());
-        self::assertSame(['items', 'totalCount', 'totalPages', 'page', 'perPage'], array_map(static fn (\ReflectionProperty $property): string => $property->getName(), $pageReflection->getProperties()));
+        self::assertSame(
+            ['items', 'totalCount', 'totalPages', 'page', 'perPage'],
+            array_map(
+                static fn (\ReflectionProperty $property): string => $property->getName(),
+                $pageReflection->getProperties(),
+            ),
+        );
         self::assertSame('Polyspec\\Orm\\Collection', $pageReflection->getProperty('items')->getType()->getName());
         foreach (['totalCount', 'totalPages', 'page', 'perPage'] as $name) {
             self::assertSame('int', $pageReflection->getProperty($name)->getType()->getName());
@@ -151,6 +186,23 @@ final class ModelTypesSurfaceTest extends TestCase
 
     public function testPadInMatchesUserlandForBucketSizesSparseAndStringKeys(): void
     {
+        // These vectors are independent of both the userland oracle and native implementation.
+        // Padding targets the least power of two >= input length and repeats the last value.
+        foreach (
+            [
+                [[10], [10]],
+                [[10, 11], [10, 11]],
+                [[10, 11, 12], [10, 11, 12, 12]],
+                [[10, 11, 12, 13], [10, 11, 12, 13]],
+                [[10, 11, 12, 13, 14], [10, 11, 12, 13, 14, 14, 14, 14]],
+                [[10, 11, 12, 13, 14, 15], [10, 11, 12, 13, 14, 15, 15, 15]],
+                [[10, 11, 12, 13, 14, 15, 16, 17], [10, 11, 12, 13, 14, 15, 16, 17]],
+            ] as [$input, $expected]
+        ) {
+            self::assertSame($expected, self::userlandPadIn($input), 'independent userland pad vector');
+            self::assertSame($expected, Request::padIn($input), 'native pad vector');
+        }
+
         $inputs = [
             [],
             [10],
@@ -203,7 +255,10 @@ final class ModelTypesSurfaceTest extends TestCase
             self::fail('out-of-range parameter reference was accepted');
         } catch (OrmException $error) {
             self::assertSame(Code::IR_INVALID, $error->code_);
-            self::assertSame('param index 3 out of range (n_params 1)', substr($error->getMessage(), strlen(Code::IR_INVALID) + 2));
+            self::assertSame(
+                'param index 3 out of range (n_params 1)',
+                substr($error->getMessage(), strlen(Code::IR_INVALID) + 2),
+            );
         }
         self::assertSame(['where' => ['p' => 3]], $request->ir);
         self::assertSame(['kept'], $request->params);
@@ -221,7 +276,10 @@ final class ModelTypesSurfaceTest extends TestCase
             self::fail('SQL NULL has no payload');
         } catch (OrmException $error) {
             self::assertSame(Code::CODEC_DECODE, $error->code_);
-            self::assertSame('SQL NULL has no styled value', substr($error->getMessage(), strlen(Code::CODEC_DECODE) + 2));
+            self::assertSame(
+                'SQL NULL has no styled value',
+                substr($error->getMessage(), strlen(Code::CODEC_DECODE) + 2),
+            );
         }
 
         $value = StyledValue::value(['answer' => 42]);
@@ -292,7 +350,9 @@ final class ModelTypesSurfaceTest extends TestCase
 
         $expected = new \RuntimeException('callback failed');
         try {
-            $func->ir(static function () use ($expected): never { throw $expected; });
+            $func->ir(static function () use ($expected): never {
+                throw $expected;
+            });
             self::fail('callback exception was swallowed or replaced');
         } catch (\RuntimeException $actual) {
             self::assertSame($expected, $actual);
@@ -307,34 +367,6 @@ final class ModelTypesSurfaceTest extends TestCase
         }
     }
 
-    public function testWeakScalarCallsRejectNullAndAllowPhpCoercions(): void
-    {
-        self::assertSame('12', modelTypesWeakRequest(12, 34)->ir['kind']);
-        self::assertSame('34', modelTypesWeakRequest(12, 34)->ir['manifest_hash']);
-        self::assertTrue(modelTypesWeakFunc('f', 1)->column);
-        self::assertSame('1', modelTypesWeakPendingTime(1, new \DateTimeZone('UTC'))->text);
-        $page = modelTypesWeakPage(1.0, 2.0, 3.0, 4.0);
-        self::assertSame([1, 2, 3, 4], [$page->totalCount, $page->totalPages, $page->page, $page->perPage]);
-
-        foreach ([
-            static fn () => modelTypesWeakRequest(null, 'hash'),
-            static fn () => modelTypesWeakRequest('kind', null),
-            static fn () => modelTypesWeakFunc('f', null),
-            static fn () => modelTypesWeakPendingTime(null, new \DateTimeZone('UTC')),
-            static fn () => modelTypesWeakPage(null, 1, 1, 1),
-            static fn () => modelTypesWeakPage(1, null, 1, 1),
-            static fn () => modelTypesWeakPage(1, 1, null, 1),
-            static fn () => modelTypesWeakPage(1, 1, 1, null),
-        ] as $call) {
-            try {
-                $call();
-                self::fail('weak caller accepted null for a non-null scalar parameter');
-            } catch (\TypeError) {
-                self::assertTrue(true);
-            }
-        }
-    }
-
     public function testPendingTimePreservesUnparsedTextAndTimezoneIdentity(): void
     {
         $zone = new \DateTimeZone('Pacific/Chatham');
@@ -342,7 +374,13 @@ final class ModelTypesSurfaceTest extends TestCase
         self::assertSame($time->text, '2031-06-07 08:09:10.123456');
         self::assertSame($zone, $time->zone);
         $reflection = new \ReflectionClass(PendingTime::class);
-        self::assertSame(['text', 'zone'], array_map(static fn (\ReflectionProperty $property): string => $property->getName(), $reflection->getProperties()));
+        self::assertSame(
+            ['text', 'zone'],
+            array_map(
+                static fn (\ReflectionProperty $property): string => $property->getName(),
+                $reflection->getProperties(),
+            ),
+        );
         self::assertSame('string', $reflection->getProperty('text')->getType()->getName());
         self::assertSame(\DateTimeZone::class, $reflection->getProperty('zone')->getType()->getName());
         self::assertTrue($reflection->getProperty('text')->isReadOnly());

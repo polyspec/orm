@@ -7,6 +7,8 @@ polyspec_orm::models!();
 mod coverage_complex_query;
 mod coverage_composite_keys;
 mod coverage_constraints_and_relations;
+#[path = "../common/coverage_database.rs"]
+mod coverage_database;
 mod coverage_env;
 mod coverage_group_rows_db;
 mod coverage_model_queries;
@@ -15,3 +17,7 @@ mod coverage_parameter_chunking;
 mod coverage_schema_install;
 mod coverage_transactions;
 mod result_chains;
+#[path = "../common/result_code.rs"]
+mod result_code;
+#[path = "../common/table_exists.rs"]
+mod table_exists;

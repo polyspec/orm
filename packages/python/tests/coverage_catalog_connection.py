@@ -232,7 +232,11 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
 
     def test_mysql_timestamp_refused(self):
         if self.driver != "mysql":
-            self.skipTest("MySQL TIMESTAMP")
+            self.assertEqual(
+                self.driver,
+                "mysql",
+                "MySQL TIMESTAMP refusal must run on the MySQL bench database",
+            )
         # A table that this test creates and drops: a grid query reads its TIMESTAMP column, which must be refused.
         import pymysql
         from polyspec.orm.database import parse_dsn

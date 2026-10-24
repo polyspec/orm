@@ -3,13 +3,13 @@
 //! coverage_audit_triggers.rs both use it.
 
 use crate::or_panic::OrPanic;
+use crate::model_connect;
 use crate::result_code::code;
 
 use std::collections::BTreeMap;
 
-use polyspec_orm::db::Pool;
-use polyspec_orm::{Core, Db, Entity, Model, Param, Schema, Val};
-use sqlx::Row;
+use polyspec_orm::{Db, Entity, Model, Param, Schema, Val};
+use crate::sql_text_rows::text_rows;
 
 pub static SCHEMA: Schema =
     Schema::new(include_str!("../../../../../contracts/fixtures/restore.dbs"), "sha256:a00c2b376b166195f8aabc29de2a2dee20313e5d9d253eeb4f601f55e9ba0aaf");
@@ -31,12 +31,7 @@ model_row!(Label, LABEL, ["id", "name", "color", "deleted_at"]);
 
 /// A model that is connected and has its values set.
 fn with<M: Model>(db: &Db, values: &[(&str, Param)]) -> M {
-    let mut core = Core::new(M::entity());
-    core.connect(db);
-    for (column, value) in values {
-        core.set(column, value.clone());
-    }
-    M::from_core(core)
+    model_connect::connected_with(db, values)
 }
 
 /// The name-ordered notation of model values. The MySQL driver returns text as bytes, so UTF-8 bytes are written as strings.
@@ -55,33 +50,9 @@ fn shown(values: &BTreeMap<String, Val>) -> String {
     format!("{text:?}")
 }
 
-/// Reads the rows of a query. Each value is a string or NULL, and NULL is "NULL".
-pub async fn text_rows(db: &Db, query: &str) -> Vec<Vec<String>> {
-    macro_rules! read {
-        ($pool:expr) => {{
-            let rows = sqlx::raw_sql(sqlx::AssertSqlSafe(query.to_owned())).fetch_all($pool).await.or_panic(|e| format!("{query}: {e}"));
-            rows.iter()
-                .map(|r| {
-                    (0..r.len()).map(|i| r.try_get::<Option<String>, _>(i).or_panic(|e| format!("{query}: {e}")).unwrap_or_else(|| "NULL".to_owned())).collect()
-                })
-                .collect()
-        }};
-    }
-    match db.pool() {
-        Pool::MySql(p) => read!(p),
-        Pool::Postgres(p) => read!(p),
-        Pool::Sqlite(p) => read!(p),
-        Pool::Markdown(_) => unreachable!("these cases run on SQL databases"),
-    }
-}
-
 /// A SQL expression that reads a column as text.
 fn cast_text(driver: &str, column: &str) -> String {
-    if driver == "mysql" {
-        format!("CAST({column} AS CHAR)")
-    } else {
-        format!("CAST({column} AS TEXT)")
-    }
+    if driver == "mysql" { format!("CAST({column} AS CHAR)") } else { format!("CAST({column} AS TEXT)") }
 }
 
 /// Installs restore.dbs in the dsn's database and restores soft-deleted rows. membership has a unique key

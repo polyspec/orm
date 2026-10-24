@@ -26,42 +26,7 @@ FAULT_MESSAGE = (
 )
 
 
-class _LostRollbackConnection:
-    def __init__(self, index: int):
-        self.index = index
-        self.closed = False
-        self.transaction = False
-        self.statements = []
-
-    def execute(self, sql: str, values):
-        self.statements.append(sql)
-        if sql == "BEGIN IMMEDIATE":
-            self.transaction = True
-        elif sql == "COMMIT":
-            self.transaction = False
-        elif sql == "ROLLBACK":
-            raise OrmError("CONNECTION_LOST", "rollback connection lost in test driver")
-        return {"rows": [], "insert_id": None, "affected": 0}
-
-    def in_transaction(self) -> bool:
-        return self.transaction
-
-    def close(self) -> None:
-        self.closed = True
-
-
-class _LostRollbackDb(Db):
-    def __init__(self):
-        self.connections = []
-        super().__init__("sqlite:///transaction-failure-fake.sqlite", {"poolSize": 1})
-
-    def _open(self):
-        connection = _LostRollbackConnection(len(self.connections) + 1)
-        self.connections.append(connection)
-        return connection
-
-
-class _DisposalConnection:
+class _TransactionRecordingConnection:
     def __init__(self):
         self.closed = False
         self.transaction = False
@@ -82,6 +47,29 @@ class _DisposalConnection:
         self.closed = True
 
 
+class _LostRollbackConnection(_TransactionRecordingConnection):
+    def __init__(self, index: int):
+        super().__init__()
+        self.index = index
+
+    def execute(self, sql: str, values):
+        if sql == "ROLLBACK":
+            self.statements.append(sql)
+            raise OrmError("CONNECTION_LOST", "rollback connection lost in test driver")
+        return super().execute(sql, values)
+
+
+class _LostRollbackDb(Db):
+    def __init__(self):
+        self.connections = []
+        super().__init__("sqlite:///transaction-failure-fake.sqlite", {"poolSize": 1})
+
+    def _open(self):
+        connection = _LostRollbackConnection(len(self.connections) + 1)
+        self.connections.append(connection)
+        return connection
+
+
 class _CloseDuringTransactionDb(Db):
     def __init__(self):
         self.connections = []
@@ -89,7 +77,7 @@ class _CloseDuringTransactionDb(Db):
         self._shared.row_lock_ready = True
 
     def _open(self):
-        connection = _DisposalConnection()
+        connection = _TransactionRecordingConnection()
         self.connections.append(connection)
         return connection
 

@@ -68,8 +68,37 @@ fn run(case: &Case) {
 
 const USERS: &[&str] =
     &["dbspec 1 core", "", "table users {", "  id i64 identity", "  code varchar(8)", "  primary key (id)", "  unique uq_users_code (code)", "}"];
-const USED_USERS_AND_TEAMS: &[&str] =
-    &["dbspec 1 core", "table users {", "  id i64 identity", "  primary key (id)", "}", "table teams {", "  id i64 identity", "  primary key (id)", "}"];
+
+macro_rules! constraint_named_table_case {
+    ($id:literal, $table:literal) => {
+        Case {
+            id: $id,
+            documents: &[
+                &[
+                    "dbspec 1 shop",
+                    "use core { users }",
+                    "table orders {",
+                    "  id i64 identity",
+                    "  primary key (id)",
+                    concat!("  check ", $table, " (id > 0)"),
+                    "}",
+                ],
+                &[
+                    "dbspec 1 core",
+                    "table users {",
+                    "  id i64 identity",
+                    "  primary key (id)",
+                    "}",
+                    "table teams {",
+                    "  id i64 identity",
+                    "  primary key (id)",
+                    "}",
+                ],
+            ],
+            expect: Expect::Errors(&[("name.duplicate", 6, 9)]),
+        }
+    };
+}
 
 const CASES: &[Case] = &[
     // encoding, header and limits
@@ -978,22 +1007,8 @@ const CASES: &[Case] = &[
         ]],
         expect: Expect::Errors(&[("setting", 11, 23)]),
     },
-    Case {
-        id: "constraint-named-like-used-table",
-        documents: &[
-            &["dbspec 1 shop", "use core { users }", "table orders {", "  id i64 identity", "  primary key (id)", "  check users (id > 0)", "}"],
-            USED_USERS_AND_TEAMS,
-        ],
-        expect: Expect::Errors(&[("name.duplicate", 6, 9)]),
-    },
-    Case {
-        id: "constraint-named-like-unlisted-used-table",
-        documents: &[
-            &["dbspec 1 shop", "use core { users }", "table orders {", "  id i64 identity", "  primary key (id)", "  check teams (id > 0)", "}"],
-            USED_USERS_AND_TEAMS,
-        ],
-        expect: Expect::Errors(&[("name.duplicate", 6, 9)]),
-    },
+    constraint_named_table_case!("constraint-named-like-used-table", "users"),
+    constraint_named_table_case!("constraint-named-like-unlisted-used-table", "teams"),
     Case {
         id: "used-documents-repeat-a-constraint",
         documents: &[

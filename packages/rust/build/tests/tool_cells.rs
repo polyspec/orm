@@ -1,3 +1,6 @@
+#[path = "common/physical_fixture.rs"]
+mod physical_fixture;
+
 use polyspec_orm_build::tool_db;
 
 // Requirements: SCH-3.
@@ -8,16 +11,11 @@ async fn physical_tool_cells_reject_loss_without_substituting_values() {
 }
 
 async fn physical_tool_cells() {
-    let path = std::env::temp_dir().join(format!("orm-tool-cells-{}.sqlite", std::process::id()));
-    assert!(!path.exists());
+    let path = physical_fixture::sqlite_path("tool-cells");
     let mut failures = Vec::new();
     for dialect in ["sqlite", "mysql", "postgres"] {
         polyspec_orm_testcase::step(format_args!("running {dialect}"));
-        let dsn = match dialect {
-            "sqlite" => format!("sqlite://{}", path.display()),
-            "mysql" => std::env::var("ORM_TOOLS_MYSQL_DSN").expect("declared MySQL test DSN"),
-            _ => std::env::var("ORM_TOOLS_POSTGRES_DSN").expect("declared PostgreSQL test DSN"),
-        };
+        let dsn = physical_fixture::dsn_for(dialect, &path);
         let (database, mut connection, _) = tool_db::open(&dsn).await.expect("owning test connection");
         let float = match dialect {
             "postgres" => "SELECT 1.5::double precision",
@@ -36,9 +34,7 @@ async fn physical_tool_cells() {
         }
         let valid = connection.query("SELECT 1, 'valid', NULL", &[]).await.expect("valid scalar query");
         assert_eq!(valid[0], vec![tool_db::Val::Int(1), tool_db::Val::Text("valid".into()), tool_db::Val::Null]);
-        drop(connection);
-        database.close().await;
-        polyspec_orm_testcase::step(format_args!("{dialect} finished"));
+        physical_fixture::finish_physical_dialect(database, connection, dialect, "finished").await;
     }
     std::fs::remove_file(path).expect("remove owned SQLite test fixture");
     assert!(failures.is_empty(), "lossy cases accepted: {failures:?}");

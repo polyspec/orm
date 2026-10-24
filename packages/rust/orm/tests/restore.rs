@@ -9,10 +9,14 @@ mod or_panic;
 #[macro_use]
 #[path = "common/model_row.rs"]
 mod model_row;
+#[path = "common/model_connect.rs"]
+mod model_connect;
 #[path = "common/restore_rows.rs"]
 mod restore_rows;
 #[path = "common/result_code.rs"]
 mod result_code;
+#[path = "common/sql_text_rows.rs"]
+mod sql_text_rows;
 
 use polyspec_orm_case_database::CaseDatabase;
 

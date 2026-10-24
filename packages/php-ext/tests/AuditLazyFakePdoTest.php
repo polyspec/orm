@@ -13,6 +13,7 @@ use RuntimeException;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;
 use Polyspec\Orm\Tests\Model\AuditedNote;
+use Polyspec\Orm\Tests\TransactionCloseDuringFailure;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 
@@ -182,6 +183,8 @@ final class AuditLazyFakeStatement extends PDOStatement
 #[Small]
 final class AuditLazyFakePdoTest extends TestCase
 {
+    use TransactionCloseDuringFailure;
+
     // Requirements: INT-67.
     public function test_lazy_audit_precedes_writes_is_reused_and_write_failure_propagates(): void
     {
@@ -264,15 +267,7 @@ final class AuditLazyFakePdoTest extends TestCase
         $failure = new RuntimeException('the caller abandoned the transaction');
 
         try {
-            $caught = null;
-            try {
-                $db->transaction(static function () use ($db, $failure): void {
-                    $db->close();
-                    throw $failure;
-                }, retry: 0);
-            } catch (RuntimeException $error) {
-                $caught = $error;
-            }
+            $caught = $this->closeDuringTransaction($db, $failure);
 
             self::assertSame($failure, $caught, 'the callback failure survives transaction disposal');
             self::assertSame(

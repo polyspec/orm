@@ -9,6 +9,7 @@ use ErrorException;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Assembly;
+use Polyspec\Orm\Extension\Tests\ModelAssemblyTestSupport;
 use Polyspec\Orm\Db;
 use Polyspec\Orm\Model;
 use Throwable;
@@ -71,13 +72,7 @@ final class ModelStreamReadTest extends TestCase
 
     private static function assembly(): Assembly
     {
-        $assembly = (new \ReflectionClass(Assembly::class))->newInstanceWithoutConstructor();
-        (new \ReflectionProperty(Assembly::class, 'db'))->setValue(
-            $assembly,
-            (new \ReflectionClass(Db::class))->newInstanceWithoutConstructor(),
-        );
-        (new \ReflectionProperty(Assembly::class, 'conn'))->setValue($assembly, null);
-        (new \ReflectionProperty(Assembly::class, 'zone'))->setValue($assembly, new DateTimeZone('UTC'));
+        $assembly = ModelAssemblyTestSupport::uninitializedAssembly();
         (new \ReflectionProperty(Assembly::class, 'track'))->setValue($assembly, false);
         return $assembly;
     }

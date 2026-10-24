@@ -1,6 +1,6 @@
 # Runs the shared Db.with_request_hook cases (docs/operations/usage.md "Request hook") on SQLite with contracts/fixtures/request_hook.dbs.
 # The hook receives each request of the handle just before planning, and can add predicates, assignments and parameters.
-# Case names are the same as in the other clients: without_hook, read_filter, insert_assign, loaded_row_writes, invalid_param,
+# Case names are the same as in the other clients: without_hook, reads_params, read_filter, insert_assign, loaded_row_writes, invalid_param,
 # restore_key, restore_condition, restore_no_key, restore_rewritten_key, restore_hook_set_key.
 import os
 import tempfile
@@ -91,21 +91,27 @@ class RequestHookTest(RequestHookCase):
         )
         self.assertEqual(self.item(self.db).get_count(), 3)
 
+    # Requirements: INT-78.
     def test_reads_params(self):
         seen = []
 
         def hook(request, add_param, params):
-            if request["kind"] == "all":
-                seen.append(params[request["where"]["items"][0]["pred"]["p"]])
+            if request["kind"] == "insert":
+                for assignment in request["set"]:
+                    if assignment["column"] == "label":
+                        seen.append(params[assignment["p"]])
                 seen.append(isinstance(params, tuple))
             return request
 
-        self.item(self.db.with_request_hook(hook)).label("a2").gets()
+        self.item(self.db.with_request_hook(hook)).set_part("r").set_label(
+            "read"
+        ).create()
         self.assertEqual(
             seen,
-            ["a2", True],
-            "the hook reads the value bound to the predicate, read-only",
+            ["read", True],
+            "the hook reads the value bound to the insert assignment, read-only",
         )
+        self.assertIn("read", self.labels(self.db))
 
     def test_read_filter(self):
         hooked = self.db.with_request_hook(part_filter("a"))

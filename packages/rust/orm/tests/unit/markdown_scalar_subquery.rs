@@ -1,7 +1,7 @@
 //! Markdown result assembly preserves scalar subquery result types.
 use crate::engine;
 use crate::markdown::MdNode;
-use crate::{dbspec, ir, schema::Manifest};
+use crate::{ir, test_support::manifest};
 
 const SCHEMA: &str = "dbspec 1 shared\n\
 table parent {\n\
@@ -13,12 +13,6 @@ table child {\n\
   value i64\n\
   primary key (id)\n\
 }\n";
-
-fn manifest() -> Manifest {
-    let document = dbspec::parse(SCHEMA, &Default::default()).unwrap().document;
-    let set = dbspec::manifest(&[&document]).unwrap();
-    Manifest::load(&set.manifest_text, &set.manifest_hash).unwrap()
-}
 
 fn request(manifest_hash: String, agg: &str, column: &str) -> ir::Request {
     let (order, limit) = if agg.is_empty() {
@@ -53,7 +47,7 @@ fn request(manifest_hash: String, agg: &str, column: &str) -> ir::Request {
 #[test]
 fn markdown_subquery_missing_post_validation_column_is_internal() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let manifest = manifest();
+    let manifest = manifest(SCHEMA);
     let mut request = request(manifest.manifest_hash.clone(), "", "value");
     engine::validate(&manifest, &request).unwrap();
     request.query.columns.as_mut().unwrap().sub.get_mut("selected").unwrap().column = "missing_column".into();
@@ -66,7 +60,7 @@ fn markdown_subquery_missing_post_validation_column_is_internal() {
 #[test]
 fn markdown_subquery_aggregate_types_remain_i64_and_f64() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let manifest = manifest();
+    let manifest = manifest(SCHEMA);
     for (agg, column, expected) in [("count", "", "i64"), ("avg", "value", "f64")] {
         let request = request(manifest.manifest_hash.clone(), agg, column);
         engine::validate(&manifest, &request).unwrap();

@@ -118,7 +118,6 @@ classDiagram
         subscribe()
         execute()
         withRequestHook()
-        withFuture()
     }
     class TransactionFlow {
         <<internal>>
@@ -273,6 +272,29 @@ classDiagram
 | DbspecDocument | One parsed and validated dbspec document. It is immutable; emitting it gives its canonical text. |
 
 A component marked `<<internal>>` states its grounding in the manifest field `internal` (`internal_ko`): each client implements its methods privately with no common signature, so they have no interface rule. Every method of the other components has a rule, and every rule names a method of a public component; `make interface-check` checks both directions.
+
+## Host-native APIs
+
+| API | Host | Semantic requirement | Native declaration |
+|---|---|---|---|
+| Db.withContext | go | CFG-9 | `packages/go/orm/db.go::DB.WithContext` |
+| Db.withSignal | typescript | CFG-9 | `packages/ts/src/database.ts::Db.withSignal` |
+| Db.withFuture | python | CFG-9 | `packages/python/src/polyspec/orm/database.py::Db.with_future` |
+
+A host-native API uses its host language’s public primitive and has no common signature. The shared behavior is checked through every runtime entry and its exact parity cases in `behavior_adapters`. An `unresolved` entry is not implementation evidence.
+
+## Shared behavior adapters
+
+| Requirement | Completion item | Runtime | Status | Host primitive | Executable case |
+|---|---|---|---|---|---|
+| CFG-9 | KSTD-2-11-16 | go | implemented | Db.WithContext | packages/go/orm/cancel_test.go::TestWithContextCancels |
+| CFG-9 | KSTD-2-11-16 | php | unresolved (KSTD-2-11-16-1; cancel_active_query_and_reuse_connection) |  |  |
+| CFG-9 | KSTD-2-11-16 | php-extension | unresolved (KSTD-2-11-16-1; cancel_active_query_and_reuse_connection) |  |  |
+| CFG-9 | KSTD-2-11-16 | python | implemented | Db.with_future | packages/python/tests/coverage_transactions.py::handle_abandoned_query [sqlite]<br>packages/python/tests/coverage_transactions.py::handle_abandoned_query [mysql]<br>packages/python/tests/coverage_transactions.py::handle_abandoned_query [postgres] |
+| CFG-9 | KSTD-2-11-16 | rust | implemented | dropping the statement future | packages/rust/orm/tests/zone.rs::dropping_a_query_cancels_it |
+| CFG-9 | KSTD-2-11-16 | typescript | implemented | Db.withSignal | packages/ts/tests/coverage_transactions.mjs::handle_abandoned_query [sqlite] (before-start)<br>packages/ts/tests/coverage_transactions.mjs::handle_abandoned_query [mysql]<br>packages/ts/tests/coverage_transactions.mjs::handle_abandoned_query [postgres] |
+
+A shared behavior is complete only when every runtime has an exact executable case. An `unresolved` entry blocks completion until its checklist item is resolved.
 
 | From | To | Relation |
 |---|---|---|

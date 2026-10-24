@@ -22,9 +22,7 @@ use PDO;
 use Polyspec\Orm\Tests\ClockCase\ClockEvent;
 use Polyspec\Orm\Tests\ClockMarkCase\ClockMark;
 use Polyspec\Orm\Config;
-use Polyspec\Orm\Generator;
 use Polyspec\Orm\Orm;
-use Polyspec\Orm\RuntimeModel;
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -34,34 +32,25 @@ final class ClockTest extends TestCase
 {
     use ThreeDrivers;
 
-    private static mixed $documents = null;
-    private static mixed $markDocuments = null;
-
     /** The fixture of the file: what the script did before its cases, once per class. */
     private static function fixture(): void
     {
-        $work = sys_get_temp_dir() . '/orm-php-clock-' . getmypid();
-        is_dir($work) || mkdir($work, 0o700, true);
-        register_shutdown_function(static function () use ($work): void {
-            exec('rm -rf ' . escapeshellarg($work));
-        });
-
-        self::$documents = [(string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/clock.dbs')];
-        Generator::generate(
-            RuntimeModel::build(RuntimeModel::parse(['clock.dbs' => self::$documents[0]])),
-            "$work/models",
-            'Polyspec\\Orm\\Tests\\ClockCase'
+        $fixtures = dirname(__DIR__, 3) . '/contracts/fixtures/';
+        loadGeneratedDocumentSets(
+            'orm-php-clock-',
+            [
+                'Polyspec\\Orm\\Tests\\ClockCase' => [
+                    'clock.dbs' => (string) file_get_contents($fixtures . 'clock.dbs'),
+                ],
+                'Polyspec\\Orm\\Tests\\ClockMarkCase' => [
+                    'clock_mark.dbs' => (string) file_get_contents($fixtures . 'clock_mark.dbs'),
+                ],
+            ],
+            [
+                'Polyspec\\Orm\\Tests\\ClockCase' => 'models',
+                'Polyspec\\Orm\\Tests\\ClockMarkCase' => 'mark-models',
+            ]
         );
-        requireGeneratedClasses("$work/models");
-        require "$work/models/bootstrap.php";
-        self::$markDocuments = [(string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/clock_mark.dbs')];
-        Generator::generate(
-            RuntimeModel::build(RuntimeModel::parse(['clock_mark.dbs' => self::$markDocuments[0]])),
-            "$work/mark-models",
-            'Polyspec\\Orm\\Tests\\ClockMarkCase'
-        );
-        requireGeneratedClasses("$work/mark-models");
-        require "$work/mark-models/bootstrap.php";
     }
 
     private static function check(bool $ok, string $message): void

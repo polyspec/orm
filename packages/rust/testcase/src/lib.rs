@@ -8,10 +8,14 @@
 //! stderr and ends the test process. A code that keeps the deadline itself (e.g. `tokio::time::timeout`) first fails with its own error
 //! and finishes its cleanup.
 use std::fmt::Display;
+use std::future::Future;
 use std::io::Write;
 use std::sync::mpsc::{self, RecvTimeoutError, Sender};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
+
+mod sqlite_file;
+pub use sqlite_file::SqliteFile;
 
 /// Deadline for a case that only computes in memory and reads repository files. Basis: the largest of such cases
 /// (parse and emit of the dbspec stress document) finishes within a few seconds, so a case over one minute is stuck.
@@ -108,6 +112,16 @@ pub fn warning(text: impl Display) {
 /// Prints one stage line. Used by helper functions that take no case value. libtest captures the test's output, so it is seen only for a failed test.
 pub fn step(text: impl Display) {
     println!("{text}");
+}
+
+/// Runs one asynchronous database case under its wall-clock deadline and reports its elapsed time.
+pub async fn run_with_deadline(case: &str, deadline: Duration, body: impl Future<Output = ()>) {
+    let started = std::time::Instant::now();
+    step(format_args!("start {case}"));
+    if tokio::time::timeout(deadline, body).await.is_err() {
+        panic!("{case}: not finished within {deadline:?}");
+    }
+    step(format_args!("{case} {:?}", started.elapsed()));
 }
 
 /// Writes in Go's time.Duration String form (1m0s, 1.5s, 12ms, 500µs). The report lines of the four languages have the same

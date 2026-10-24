@@ -2,6 +2,10 @@
 //! the opener makes a file like `named.sqlite?_pragma=…` (docs/spec/dialects.md
 //! "Probe environment").
 
+#[macro_use]
+#[path = "common/json_trials.rs"]
+mod json_trials;
+
 use polyspec_orm_testcase::Trial;
 
 async fn sqlite_file_name_is_the_path() {
@@ -36,17 +40,7 @@ fn sqlite_path_cases() -> Vec<Trial> {
     let vectors: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&path).expect("sqlite-paths.json")).expect("sqlite-paths.json");
     let cases = vectors["cases"].as_array().expect("cases");
     assert!(vectors["version"] == 1 && !cases.is_empty(), "tests/dsn/sqlite-paths.json has no cases");
-    cases
-        .iter()
-        .enumerate()
-        .map(|(index, case)| {
-            let id = case["id"].as_str().expect("id").to_owned();
-            let case = case.clone();
-            polyspec_orm_testcase::async_trial(format!("sqlite_path_cases::{id}"), std::time::Duration::from_secs(10), move || async move {
-                sqlite_path_case(index, &case).await
-            })
-        })
-        .collect()
+    json_trials!(cases, "sqlite_path_cases", std::time::Duration::from_secs(10), sqlite_path_case)
 }
 
 async fn sqlite_path_case(index: usize, case: &serde_json::Value) {

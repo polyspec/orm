@@ -7,6 +7,10 @@ use std::sync::LazyLock;
 use chrono::NaiveDateTime;
 use polyspec_orm::{Entity, Val};
 
+#[macro_use]
+#[path = "model_core_methods.rs"]
+mod model_core_methods;
+
 /// A column type: `from_val` reads a value written to the column, `to_val` gives the value read back by name.
 pub trait Column: Default {
     fn from_val(v: Val) -> polyspec_orm::Result<Self>;
@@ -93,21 +97,10 @@ macro_rules! typed_model {
         }
 
         impl polyspec_orm::Model for $name {
-            fn entity() -> &'static polyspec_orm::Entity {
-                crate::typed_model::EntityRef::entity(&$entity)
-            }
-            fn core(&self) -> &polyspec_orm::Core {
-                &self.core
-            }
-            fn core_mut(&mut self) -> &mut polyspec_orm::Core {
-                &mut self.core
-            }
-            fn from_core(core: polyspec_orm::Core) -> Self {
-                $name { core, $($field: Default::default()),* }
-            }
-            fn into_core(self) -> polyspec_orm::Core {
-                self.core
-            }
+            model_core_methods!(crate::typed_model::EntityRef::entity(&$entity), |core| $name {
+                core,
+                $($field: Default::default()),*
+            });
             fn assign(&mut self, name: &str, v: polyspec_orm::Val) -> polyspec_orm::Result<bool> {
                 match name {
                     $($column => self.$field = <$ty as crate::typed_model::Column>::from_val(v)?,)*

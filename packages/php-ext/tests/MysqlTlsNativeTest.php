@@ -18,42 +18,16 @@ final class MysqlTlsNativeTest extends TestCase
     public function testNativeOrmRejectsUnsupportedTlsOptions(): void
     {
         self::assertTrue((new ReflectionMethod(Orm::class, 'parseDsn'))->isInternal());
-        $cases = [
-            'mysql://orm@db.local/app?ssl-mode=VERIFY_CA&ssl-ca=%2Ftmp%2Fca.pem' => 'ssl-mode',
-            'mysql://orm@db.local/app?ssl-mode=REQUIRED&ssl-ca=%2Ftmp%2Fca.pem' => 'ssl-mode',
-            'mysql://orm@db.local/app?ssl-mode=PREFERRED&ssl-ca=%2Ftmp%2Fca.pem' => 'ssl-mode',
-            'mysql://orm@db.local/app?ssl-mode=DISABLED&ssl-ca=%2Ftmp%2Fca.pem' => 'ssl-mode',
-            'mysql://orm@db.local/app?ssl-mode=verify_identity&ssl-ca=%2Ftmp%2Fca.pem' => 'ssl-mode',
-            'mysql://orm@db.local/app?ssl-mode=&ssl-ca=%2Ftmp%2Fca.pem' => 'ssl-mode',
-            'mysql://orm@db.local/app?ssl-mode=VERIFY_IDENTITY' => 'ssl-ca',
-            'mysql://orm@db.local/app?ssl-mode=VERIFY_IDENTITY&ssl-ca=ca.pem' => 'absolute',
-            'mysql://orm@db.local/app?ssl-ca=%2Ftmp%2Fca.pem' => 'ssl-mode',
-        ];
-        foreach ($cases as $dsn => $expected) {
-            try {
-                Orm::parseDsn($dsn);
-                self::fail("accepted unsupported TLS options in $dsn");
-            } catch (OrmException $error) {
-                self::assertSame(Code::CONFIG, $error->code_, "$dsn: {$error->getMessage()}");
-                self::assertStringContainsString($expected, $error->getMessage(), $dsn);
-            }
-        }
+        \Polyspec\Orm\Tests\MysqlTlsCases::assertUnsupportedOptions(
+            'mysql://orm@db.local/app',
+            '%2Ftmp%2Fca.pem'
+        );
 
         self::assertTrue((new ReflectionMethod(Orm::class, 'connect'))->isInternal());
-        $ca = sys_get_temp_dir() . '/orm-missing-ca-' . bin2hex(random_bytes(8)) . '.pem';
-        $db = null;
-        try {
-            $db = Orm::connect(
-                'mysql://orm@localhost/app?ssl-mode=VERIFY_IDENTITY&ssl-ca=' . rawurlencode($ca),
-                new Config()
-            );
-            self::fail('a missing native TLS CA file must be CONFIG');
-        } catch (OrmException $error) {
-            self::assertSame(Code::CONFIG, $error->code_);
-            self::assertStringContainsString('not a readable file', $error->getMessage());
-        } finally {
-            $db?->close();
-        }
+        \Polyspec\Orm\Tests\MysqlTlsCases::assertMissingCaRejected(
+            'mysql://orm@localhost/app?ssl-mode=VERIFY_IDENTITY&ssl-ca=',
+            'a missing native TLS CA file must be CONFIG'
+        );
     }
 
     // Requirements: CFG-16.

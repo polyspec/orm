@@ -12,62 +12,43 @@ use or_panic::OrPanic;
 mod model_row;
 #[path = "common/audit_rows.rs"]
 mod audit_rows;
+#[path = "common/feature_database.rs"]
+mod feature_database;
+#[path = "common/model_connect.rs"]
+mod model_connect;
 #[path = "common/pool_exec.rs"]
 mod pool_exec;
 #[path = "common/restore_rows.rs"]
 mod restore_rows;
 #[path = "common/result_code.rs"]
 mod result_code;
+#[path = "common/sql_text_rows.rs"]
+mod sql_text_rows;
+#[path = "../../tests/tests/common/table_exists.rs"]
+mod table_exists;
 
 use audit_rows::drop_tables;
 use polyspec_orm::db::Pool;
-use polyspec_orm::{Core, Db, Entity, Model, Param, Schema};
-use sqlx::Row;
+use polyspec_orm::{Db, Entity, Model, Param, Schema};
+use sql_text_rows::text_rows;
 use std::time::Duration;
+use table_exists::table_exists;
 
 /// The case deadline. It is wall-clock time, since it bounds what the database does.
 const DEADLINE: Duration = Duration::from_secs(300);
 
-/// Reads whether `table` exists in the connection's database (MySQL), current schema (PostgreSQL), or file (SQLite).
-async fn table_exists(db: &Db, table: &str) -> bool {
-    let count: i64 = match db.pool() {
-        Pool::MySql(p) => sqlx::query_scalar("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?")
-            .bind(table)
-            .fetch_one(p)
-            .await
-            .unwrap(),
-        Pool::Postgres(p) => sqlx::query_scalar("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = $1")
-            .bind(table)
-            .fetch_one(p)
-            .await
-            .unwrap(),
-        Pool::Sqlite(p) => sqlx::query_scalar("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = ?").bind(table).fetch_one(p).await.unwrap(),
-        Pool::Markdown(_) => unreachable!("these cases run on SQL databases"),
-    };
-    count > 0
-}
-
-/// The chosen database and DSN. It fails if either is missing.
-fn feature_database() -> (String, String) {
-    let driver = std::env::var("ORM_FEATURE_DATABASE")
-        .expect("ORM_FEATURE_DATABASE is required; run it through make feature-check, which sets it for each coverage case");
-    let dsn = std::env::var("ORM_FEATURE_DSN").expect("ORM_FEATURE_DSN is required; run it through make feature-check, which sets it for each coverage case");
-    assert!(["mysql", "postgres", "sqlite"].contains(&driver.as_str()), "ORM_FEATURE_DATABASE {driver:?} is not mysql, postgres or sqlite");
-    (driver, dsn)
-}
-
 /// Runs the case that installs audit.dbs in the chosen database, then drops the installed tables and functions even if the case fails,
 /// and continues that failure. It fails if item, item_history, or audit already exist.
 async fn with_audit(case: impl AsyncFnOnce(&str, &str)) {
-    let (driver, dsn) = feature_database();
+    let (driver, dsn) = feature_database::selected_and_dsn();
     let db = Db::connect(&dsn, 2, polyspec_orm::Config::default()).await.or_panic(|e| format!("{driver}: connect: {e}"));
     assert_eq!(db.driver(), driver, "ORM_FEATURE_DSN selects another database than ORM_FEATURE_DATABASE");
     for table in ["item", "item_history", "audit"] {
         assert!(!table_exists(&db, table).await, "{driver}: table {table} exists before the case");
     }
     // The case installs audit.dbs and writes through its own connection, which has an audit source.
-    let ran = futures_util::FutureExt::catch_unwind(std::panic::AssertUnwindSafe(case(&driver, &dsn))).await;
-    drop_tables(&db, &driver).await;
+    let ran = futures_util::FutureExt::catch_unwind(std::panic::AssertUnwindSafe(case(driver, &dsn))).await;
+    drop_tables(&db, driver).await;
     for table in ["item", "item_history", "audit"] {
         assert!(!table_exists(&db, table).await, "{driver}: table {table} remains");
     }
@@ -117,35 +98,6 @@ macro_rules! columns_model {
 columns_model!(Card, CARD, "card", ["seq", "title", "secret", "audit_seq", "deleted_at"]);
 columns_model!(Tag, TAG, "tag", ["id", "label", "color", "audit_seq"]);
 
-/// A model with its values set.
-fn with<M: Model>(values: &[(&str, Param)]) -> M {
-    let mut row = M::from_core(Core::new(M::entity()));
-    for (column, value) in values {
-        row.core_mut().set(column, value.clone());
-    }
-    row
-}
-
-/// Reads the rows of a query. The query returns each value as a string or NULL, and NULL is "NULL".
-async fn text_rows(db: &Db, query: &str) -> Vec<Vec<String>> {
-    macro_rules! read {
-        ($pool:expr) => {{
-            let rows = sqlx::raw_sql(sqlx::AssertSqlSafe(query.to_owned())).fetch_all($pool).await.or_panic(|e| format!("{query}: {e}"));
-            rows.iter()
-                .map(|r| {
-                    (0..r.len()).map(|i| r.try_get::<Option<String>, _>(i).or_panic(|e| format!("{query}: {e}")).unwrap_or_else(|| "NULL".to_owned())).collect()
-                })
-                .collect()
-        }};
-    }
-    match db.pool() {
-        Pool::MySql(p) => read!(p),
-        Pool::Postgres(p) => read!(p),
-        Pool::Sqlite(p) => read!(p),
-        Pool::Markdown(_) => unreachable!("these cases run on SQL databases"),
-    }
-}
-
 /// Drops the tables made by audit_columns and the PostgreSQL trigger functions.
 async fn drop_columns_tables(db: &Db, driver: &str) {
     let quote = |n: &str| if driver == "mysql" { format!("`{n}`") } else { format!("\"{n}\"") };
@@ -171,7 +123,7 @@ async fn drop_columns_tables(db: &Db, driver: &str) {
 }
 
 async fn audit_selected_columns() {
-    let (driver, dsn) = feature_database();
+    let (driver, dsn) = feature_database::selected_and_dsn();
     let db = Db::connect(&dsn, 2, polyspec_orm::Config::default()).await.or_panic(|e| format!("{driver}: connect: {e}"));
     assert_eq!(db.driver(), driver, "ORM_FEATURE_DSN selects another database than ORM_FEATURE_DATABASE");
     for table in ["card", "card_history", "tag", "tag_history", "audit"] {
@@ -182,11 +134,15 @@ async fn audit_selected_columns() {
     adb.utils().schema().install(&COLUMNS_SCHEMA).await.or_panic(|e| format!("{driver}: install: {e}"));
     let (seq, id) = adb
         .transaction(async || {
-            let card = polyspec_orm::model::create(&mut with::<Card>(&[("title", text("first")), ("secret", text("s1"))])).await?;
+            let card = polyspec_orm::model::create(&mut model_connect::with::<Card>(&[("title", text("first")), ("secret", text("s1"))])).await?;
             let seq = card.value("seq").expect("generated seq").as_i64()?;
-            let tag = polyspec_orm::model::create(&mut with::<Tag>(&[("label", text("x")), ("color", text("red"))])).await?;
+            let tag = polyspec_orm::model::create(&mut model_connect::with::<Tag>(&[("label", text("x")), ("color", text("red"))])).await?;
             let id = tag.value("id").expect("generated id").as_i64()?;
-            polyspec_orm::model::update(&mut with::<Card>(&[("seq", Param::I64(seq)), ("title", text("second")), ("secret", text("s2"))]), false).await?;
+            polyspec_orm::model::update(
+                &mut model_connect::with::<Card>(&[("seq", Param::I64(seq)), ("title", text("second")), ("secret", text("s2"))]),
+                false,
+            )
+            .await?;
             Ok((seq, id))
         })
         .audit([("actor", "first")])
@@ -194,8 +150,8 @@ async fn audit_selected_columns() {
         .await
         .or_panic(|e| format!("{driver}: audit first: {e}"));
     adb.transaction(async || {
-        polyspec_orm::model::delete(&with::<Card>(&[("seq", Param::I64(seq))]), false).await?;
-        polyspec_orm::model::update(&mut with::<Tag>(&[("id", Param::I64(id)), ("color", text("blue"))]), false).await
+        polyspec_orm::model::delete(&model_connect::with::<Card>(&[("seq", Param::I64(seq))]), false).await?;
+        polyspec_orm::model::update(&mut model_connect::with::<Tag>(&[("id", Param::I64(id)), ("color", text("blue"))]), false).await
     })
     .audit([("actor", "second")])
     .retry(0)
@@ -224,7 +180,7 @@ async fn audit_selected_columns() {
     let want = [["insert", "NULL", "x", "1"], ["update", "1", "x", "2"]];
     assert_eq!(rows, want.map(|r| r.map(str::to_owned).to_vec()), "{driver}: tag_history rows");
     adb.close().await;
-    drop_columns_tables(&db, &driver).await;
+    drop_columns_tables(&db, driver).await;
     for table in ["card", "card_history", "tag", "tag_history", "audit"] {
         assert!(!table_exists(&db, table).await, "{driver}: table {table} remains");
     }
@@ -273,15 +229,15 @@ async fn drop_restore_tables(db: &Db, driver: &str) {
 /// Runs restore_rows::restore_case on the chosen database: an audit table with a unique key and an exclude list, and
 /// a table without audit whose soft-deleted rows are restored. When done, it drops the installed tables and functions.
 async fn soft_delete_restore() {
-    let (driver, dsn) = feature_database();
+    let (driver, dsn) = feature_database::selected_and_dsn();
     let db = Db::connect(&dsn, 2, polyspec_orm::Config::default()).await.or_panic(|e| format!("{driver}: connect: {e}"));
     assert_eq!(db.driver(), driver, "ORM_FEATURE_DSN selects another database than ORM_FEATURE_DATABASE");
     for table in restore_rows::TABLES {
         assert!(!table_exists(&db, table).await, "{driver}: table {table} exists before the case");
     }
     // The case runs separately so that the installed tables are dropped even on failure, and its panic continues after cleanup.
-    let case = futures_util::FutureExt::catch_unwind(std::panic::AssertUnwindSafe(restore_rows::restore_case(&driver, &dsn))).await;
-    drop_restore_tables(&db, &driver).await;
+    let case = futures_util::FutureExt::catch_unwind(std::panic::AssertUnwindSafe(restore_rows::restore_case(driver, &dsn))).await;
+    drop_restore_tables(&db, driver).await;
     for table in restore_rows::TABLES {
         assert!(!table_exists(&db, table).await, "{driver}: table {table} remains");
     }

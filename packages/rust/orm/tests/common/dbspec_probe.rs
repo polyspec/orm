@@ -263,8 +263,7 @@ impl Servers {
             _ => {
                 // A case that needs a second file makes it as <name>_b.sqlite.
                 for path in [Self::sqlite_path(name), Self::sqlite_path(&format!("{name}_b"))] {
-                    for suffix in ["", "-journal", "-wal", "-shm"] {
-                        let file = PathBuf::from(format!("{}{suffix}", path.display()));
+                    for file in polyspec_orm_case_database::sqlite_paths_with_suffixes(&path, &["", "-journal", "-wal", "-shm"]) {
                         match std::fs::remove_file(&file) {
                             Ok(()) => {}
                             Err(e) => {

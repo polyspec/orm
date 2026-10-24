@@ -11,10 +11,10 @@ namespace Polyspec\Orm\Tests;
 // packages/php/tests/SqliteConcurrencyTest.php [--filter <case>]
 // The writer processes run sqlite_concurrency_writer.php <dsn> <name> <count>.
 
-use Polyspec\Orm\Tests\Model\Service;
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;
+use Polyspec\Orm\Tests\Model\Service;
 use Polyspec\Orm\OrmException;
 use PHPUnit\Framework\Attributes\Large;
 use PHPUnit\Framework\TestCase;
@@ -47,17 +47,6 @@ final class SqliteConcurrencyTest extends TestCase
     private static function connect(string $dsn): Db
     {
         return \Polyspec\Orm\Tests\Model\connect($dsn, new Config());
-    }
-
-    /** Runs $count transactions that read the service count and then insert one service. */
-    private static function writeServices(Db $db, string $name, int $count): void
-    {
-        for ($i = 0; $i < $count; $i++) {
-            $db->transaction(function () use ($name, $i): void {
-                (new Service())->getCount();
-                (new Service())->setName("$name-$i")->create();
-            }, retry: 0);
-        }
     }
 
     private static function check(bool $ok, string $message): void
@@ -120,7 +109,7 @@ final class SqliteConcurrencyTest extends TestCase
             $started = microtime(true);
             $code = 'no error';
             try {
-                self::writeServices($waiter, 'waiter', 1);
+                SqliteConcurrencyWriter::writeServices($waiter, 'waiter', 1);
             } catch (OrmException $e) {
                 $code = $e->code_;
             }

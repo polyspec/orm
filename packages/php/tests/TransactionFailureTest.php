@@ -17,6 +17,7 @@ use RuntimeException;
 final class TransactionFailureTest extends TestCase
 {
     use TransactionFailureCases;
+    use TransactionCloseDuringFailure;
 
     // Requirements: INT-67.
     public function testCloseDuringTransactionRollsBackAndPreservesCallbackFailure(): void
@@ -26,15 +27,7 @@ final class TransactionFailureTest extends TestCase
         $failure = new RuntimeException('the caller abandoned the transaction');
 
         try {
-            $caught = null;
-            try {
-                $db->transaction(static function () use ($db, $failure): void {
-                    $db->close();
-                    throw $failure;
-                }, retry: 0);
-            } catch (RuntimeException $error) {
-                $caught = $error;
-            }
+            $caught = $this->closeDuringTransaction($db, $failure);
 
             self::assertSame($failure, $caught, 'closing the connection preserves the callback failure');
             self::assertSame([

@@ -9,12 +9,13 @@
 
 use std::time::Duration;
 
-use polyspec_orm::db::Pool;
+#[path = "common/map_rows.rs"]
+mod map_rows;
+
 use polyspec_orm::{engine, ir, plan, Db, Dialect, Manifest, Param, Schema};
 use polyspec_orm_case_database::CaseDatabase;
 use polyspec_orm_testcase::Trial;
 use serde_json::{json, Map, Value};
-use sqlx::Row;
 
 static LOAD_SCHEMA: Schema =
     Schema::new(include_str!("../../../../contracts/fixtures/identity_load.dbs"), "sha256:5b9923a69ed67de11e46bc3b825656d177d6e3664a867ca4d4d779b2677f97de");
@@ -157,22 +158,14 @@ async fn read_rows(db: &Db, query: &str) -> Result<Vec<(i64, String)>, String> {
     macro_rules! read {
         ($pool:expr) => {{
             let rows = sqlx::raw_sql(sqlx::AssertSqlSafe(query.to_owned())).fetch_all($pool).await.map_err(|e| format!("{query}: {e}"))?;
-            rows.iter()
-                .map(|r| {
-                    Ok((
-                        r.try_get::<i64, _>(0).map_err(|e| format!("{query}: seq: {e}"))?,
-                        r.try_get::<String, _>(1).map_err(|e| format!("{query}: label: {e}"))?,
-                    ))
-                })
-                .collect()
+            map_rows::map_rows(&rows, |row| {
+                map_rows::sequence_label(row).map_err(|(column, error)| format!("{query}: {}: {error}", if column == 0 { "seq" } else { "label" }))
+            })
+            .into_iter()
+            .collect()
         }};
     }
-    match db.pool() {
-        Pool::MySql(p) => read!(p),
-        Pool::Postgres(p) => read!(p),
-        Pool::Sqlite(p) => read!(p),
-        Pool::Markdown(_) => unreachable!("these cases run on SQL databases"),
-    }
+    map_rows::for_sql_pools!(db.pool(), read)
 }
 
 /// Runs the execute case's steps on connection `db` and compares the rows.

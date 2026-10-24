@@ -130,8 +130,10 @@ static bool schema_utils_introspect(zval *db, zval *pdo, zval *driver, zval *tra
 static void schema_utils_append_differences(smart_str *message, zval *differences)
 {
     zval *difference;
+    bool first = true;
     ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(differences), difference) {
-        if (message->s != NULL) smart_str_appends(message, "; ");
+        if (!first) smart_str_appends(message, "; ");
+        first = false;
         zend_string *text = zval_get_string(difference);
         smart_str_append(message, text);
         zend_string_release(text);
@@ -181,6 +183,9 @@ static bool schema_utils_differences(zval *live, zval *unsupported, zval *docume
     bool found = Z_TYPE(differences) == IS_ARRAY && zend_hash_num_elements(Z_ARRVAL(differences)) != 0;
     if (found) {
         smart_str message = {0};
+        if (strcmp(method, "installedDifferences") == 0) {
+            smart_str_appends(&message, "the database differs from the document set: ");
+        }
         schema_utils_append_differences(&message, &differences);
         smart_str_0(&message);
         db_throw_orm(code, "%s", message.s == NULL ? "schema differs" : ZSTR_VAL(message.s));

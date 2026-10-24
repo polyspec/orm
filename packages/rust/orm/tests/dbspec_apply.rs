@@ -15,13 +15,14 @@
 mod or_panic;
 use or_panic::OrPanic;
 
+#[macro_use]
+#[path = "common/dbspec_apply_support.rs"]
+mod dbspec_apply_support;
 #[path = "common/dbspec_probe.rs"]
 mod dbspec_probe;
 
-#[path = "common/fixed_plan_time.rs"]
-mod fixed_plan_time;
+use dbspec_apply_support::{EventError, Stop, fixed_now, quiet};
 use dbspec_probe::{connection_rules, lines, repository, require_dsn, run_probe, Conn, Servers, Session, DIALECTS};
-use fixed_plan_time::fixed_now;
 use polyspec_orm::db::{parse_dsn, ConnectOptions};
 use polyspec_orm::dbspec::{
     self, apply, finalize, parse_plan, plan_steps, recover, rollback, ApplyConnection, ApplyError, ApplyEvent, ApplyEventKind, CatalogQuerier, CatalogValue,
@@ -30,20 +31,6 @@ use polyspec_orm::dbspec::{
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::time::{Duration, Instant};
-
-type EventError = Box<dyn std::error::Error + Send + Sync>;
-
-/// The error that halts apply in an event handler.
-#[derive(Debug)]
-struct Stop;
-
-impl std::fmt::Display for Stop {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str("stop")
-    }
-}
-
-impl std::error::Error for Stop {}
 
 fn stopped(result: &Result<(), ApplyError>) -> bool {
     matches!(result, Err(ApplyError::Event(e)) if e.downcast_ref::<Stop>().is_some())
@@ -79,11 +66,17 @@ struct RunAfter<'c, C> {
     done: bool,
 }
 
-impl<C: CatalogQuerier + Send> CatalogQuerier for RunAfter<'_, C> {
-    async fn rows(&mut self, query: &str) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
-        self.inner.rows(query).await
-    }
+macro_rules! impl_rows_delegation {
+    ($wrapper:ident) => {
+        impl<C: CatalogQuerier + Send> CatalogQuerier for $wrapper<'_, C> {
+            async fn rows(&mut self, query: &str) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
+                self.inner.rows(query).await
+            }
+        }
+    };
 }
+
+impl_rows_delegation!(RunAfter);
 
 impl<C: ApplyConnection + Send> ApplyConnection for RunAfter<'_, C> {
     async fn execute(&mut self, statement: &str) -> Result<(), sqlx::Error> {
@@ -95,13 +88,7 @@ impl<C: ApplyConnection + Send> ApplyConnection for RunAfter<'_, C> {
         Ok(())
     }
 
-    async fn execute_bound(&mut self, statement: &str, args: &[CatalogValue]) -> Result<(), sqlx::Error> {
-        self.inner.execute_bound(statement, args).await
-    }
-
-    async fn query_bound(&mut self, query: &str, args: &[CatalogValue]) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
-        self.inner.query_bound(query, args).await
-    }
+    delegate_bound_methods!();
 }
 
 /// The lock name and key of docs/spec/plans.md "Apply".
@@ -117,11 +104,7 @@ struct ApplyOtherUnderLock<'c, C> {
     result: Option<Result<(), ApplyError>>,
 }
 
-impl<C: CatalogQuerier + Send> CatalogQuerier for ApplyOtherUnderLock<'_, C> {
-    async fn rows(&mut self, query: &str) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
-        self.inner.rows(query).await
-    }
-}
+impl_rows_delegation!(ApplyOtherUnderLock);
 
 impl<C: ApplyConnection + Send> ApplyConnection for ApplyOtherUnderLock<'_, C> {
     async fn execute(&mut self, statement: &str) -> Result<(), sqlx::Error> {
@@ -137,13 +120,7 @@ impl<C: ApplyConnection + Send> ApplyConnection for ApplyOtherUnderLock<'_, C> {
         Ok(())
     }
 
-    async fn execute_bound(&mut self, statement: &str, args: &[CatalogValue]) -> Result<(), sqlx::Error> {
-        self.inner.execute_bound(statement, args).await
-    }
-
-    async fn query_bound(&mut self, query: &str, args: &[CatalogValue]) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
-        self.inner.query_bound(query, args).await
-    }
+    delegate_bound_methods!();
 }
 
 /// The kind of command.
@@ -164,55 +141,49 @@ async fn run(
     run_after: Option<(&str, &str)>,
     events: &mut (dyn FnMut(&ApplyEvent) -> Result<(), EventError> + Send),
 ) -> Result<(), ApplyError> {
-    async fn command_on<C: ApplyConnection + Send + ?Sized>(
-        c: &mut C,
-        dialect: Dialect,
-        command: Command,
-        plans: &[Plan],
-        events: &mut (dyn FnMut(&ApplyEvent) -> Result<(), EventError> + Send),
-    ) -> Result<(), ApplyError> {
-        match command {
-            Command::Apply => apply(c, dialect, plans, &fixed_now, events).await,
-            Command::Recover => recover(c, dialect, plans, &fixed_now, events).await,
-            Command::Rollback => rollback(c, dialect, plans, &fixed_now, events).await,
-            Command::Finalize => finalize(c, dialect, plans, &fixed_now, events).await,
-        }
-    }
-    async fn on<C: ApplyConnection + Send>(
-        c: &mut C,
-        dialect: Dialect,
-        command: Command,
-        plans: &[Plan],
-        run_after: Option<(&str, &str)>,
-        events: &mut (dyn FnMut(&ApplyEvent) -> Result<(), EventError> + Send),
-    ) -> Result<(), ApplyError> {
-        match run_after {
-            Some((after, then)) => {
-                let mut wrapped = RunAfter { inner: c, after: after.to_owned(), then: then.to_owned(), done: false };
-                command_on(&mut wrapped, dialect, command, plans, events).await
+    macro_rules! command_on {
+        ($connection:expr, $dialect:expr) => {{
+            let connection = $connection;
+            match command {
+                Command::Apply => apply(connection, $dialect, plans, &fixed_now, events).await,
+                Command::Recover => recover(connection, $dialect, plans, &fixed_now, events).await,
+                Command::Rollback => rollback(connection, $dialect, plans, &fixed_now, events).await,
+                Command::Finalize => finalize(connection, $dialect, plans, &fixed_now, events).await,
             }
-            None => command_on(c, dialect, command, plans, events).await,
-        }
+        }};
+    }
+    macro_rules! on {
+        ($connection:expr, $dialect:expr) => {{
+            match run_after {
+                Some((after, then)) => {
+                    let mut wrapped = RunAfter { inner: $connection, after: after.to_owned(), then: then.to_owned(), done: false };
+                    command_on!(&mut wrapped, $dialect)
+                }
+                None => command_on!($connection, $dialect),
+            }
+        }};
     }
     match conn {
-        Conn::MySql(c) => on(c, Dialect::MySql, command, plans, run_after, events).await,
-        Conn::Postgres(c) => on(c, Dialect::Postgres, command, plans, run_after, events).await,
-        Conn::Sqlite(c) => on(c, Dialect::Sqlite, command, plans, run_after, events).await,
+        Conn::MySql(c) => on!(c, Dialect::MySql),
+        Conn::Postgres(c) => on!(c, Dialect::Postgres),
+        Conn::Sqlite(c) => on!(c, Dialect::Sqlite),
     }
 }
 
-fn quiet(_: &ApplyEvent) -> Result<(), EventError> {
-    Ok(())
-}
-
-/// Reads the only value of `query` as text.
-async fn scalar(conn: &mut Conn, query: &str) -> Result<String, String> {
+/// Reads the result rows of an unbound query through the selected SQL connection.
+async fn query_rows(conn: &mut Conn, query: &str) -> Result<Vec<Vec<CatalogValue>>, String> {
     let rows = match conn {
         Conn::MySql(c) => c.query_bound(query, &[]).await,
         Conn::Postgres(c) => c.query_bound(query, &[]).await,
         Conn::Sqlite(c) => c.query_bound(query, &[]).await,
     }
     .map_err(|e| format!("{query}: {e}"))?;
+    Ok(rows)
+}
+
+/// Reads the only value of `query` as text.
+async fn scalar(conn: &mut Conn, query: &str) -> Result<String, String> {
+    let rows = query_rows(conn, query).await?;
     match rows.as_slice() {
         [row] => match row.as_slice() {
             [CatalogValue::Int(n)] => Ok(n.to_string()),
@@ -225,12 +196,7 @@ async fn scalar(conn: &mut Conn, query: &str) -> Result<String, String> {
 
 /// Joins all rows of `query` as `a|b`, with rows joined by commas.
 async fn rows_text(conn: &mut Conn, query: &str) -> Result<String, String> {
-    let rows = match conn {
-        Conn::MySql(c) => c.query_bound(query, &[]).await,
-        Conn::Postgres(c) => c.query_bound(query, &[]).await,
-        Conn::Sqlite(c) => c.query_bound(query, &[]).await,
-    }
-    .map_err(|e| format!("{query}: {e}"))?;
+    let rows = query_rows(conn, query).await?;
     let cell = |v: &CatalogValue| match v {
         CatalogValue::Null => "NULL".to_owned(),
         CatalogValue::Text(s) => s.clone(),
@@ -326,9 +292,15 @@ fn schema_text(p: &Plan) -> String {
 /// The number of tables and columns whose names start with dbspec$, excluding the history table.
 fn hidden_left(db: &str) -> &'static str {
     match db {
-        "mysql" => "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME LIKE 'dbspec$%' OR COLUMN_NAME LIKE 'dbspec$%') AND TABLE_NAME <> 'dbspec$plans'",
-        "postgres" => "SELECT COUNT(*) FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid WHERE c.relnamespace = current_schema()::regnamespace AND c.relkind = 'r' AND a.attnum > 0 AND (c.relname LIKE 'dbspec$%' OR a.attname LIKE 'dbspec$%') AND c.relname <> 'dbspec$plans'",
-        _ => "SELECT COUNT(*) FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type = 'table' AND (m.name LIKE 'dbspec$%' OR p.name LIKE 'dbspec$%') AND m.name <> 'dbspec$plans'",
+        "mysql" => {
+            "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND (TABLE_NAME LIKE 'dbspec$%' OR COLUMN_NAME LIKE 'dbspec$%') AND TABLE_NAME <> 'dbspec$plans'"
+        }
+        "postgres" => {
+            "SELECT COUNT(*) FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid WHERE c.relnamespace = current_schema()::regnamespace AND c.relkind = 'r' AND a.attnum > 0 AND (c.relname LIKE 'dbspec$%' OR a.attname LIKE 'dbspec$%') AND c.relname <> 'dbspec$plans'"
+        }
+        _ => {
+            "SELECT COUNT(*) FROM sqlite_master m JOIN pragma_table_info(m.name) p WHERE m.type = 'table' AND (m.name LIKE 'dbspec$%' OR p.name LIKE 'dbspec$%') AND m.name <> 'dbspec$plans'"
+        }
     }
 }
 

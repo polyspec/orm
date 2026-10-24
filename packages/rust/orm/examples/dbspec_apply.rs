@@ -12,19 +12,10 @@ use polyspec_orm::dbspec::{apply, parse_plan, recover, rollback, ApplyConnection
 use serde_json::Value;
 use sqlx::Connection;
 
-type EventError = Box<dyn std::error::Error + Send + Sync>;
+#[path = "../tests/common/apply_stop.rs"]
+mod apply_stop;
 
-/// The error by which the stop action halts apply at an event.
-#[derive(Debug)]
-struct Stop;
-
-impl std::fmt::Display for Stop {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str("stop")
-    }
-}
-
-impl std::error::Error for Stop {}
+use apply_stop::{EventError, Stop};
 
 #[tokio::main]
 async fn main() {

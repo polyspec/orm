@@ -24,6 +24,8 @@ mod generate;
 mod manifest;
 mod names;
 mod scan;
+#[cfg(test)]
+mod test_support;
 #[cfg(feature = "live-db")]
 pub mod tool_db;
 

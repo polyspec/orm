@@ -144,10 +144,11 @@ repository.
 - P31 No gate is bypassed: a test, script or Makefile never sets the CI identity (`GITHUB_ACTIONS`, `CI`) outside a workflow, never
   names a gate of kit-gates in `make -o`, `--old-file` or `--assume-old`, and never uses `--no-verify` (K308).
   Enforced by: `make bypass-check`
-- P32 Scope: a contract behaviour exists in every implementation (S6, S10), implemented with its tests. A language- or
-  runtime-native integration is written once as a neutral rule in docs/spec, and each implementation binds its native form
-  to it. An implementation-internal test is a plain test of its package, not a parity unit, and it cites no requirement; a
-  symbol that is public by accident becomes non-public.
+- P32 Scope: shared contract behaviour exists in every implementation (S6, S10), implemented with its tests. A language- or
+  runtime-native integration is written once as a neutral rule in docs/spec, and each applicable implementation binds its native form
+  to it. A component- or artifact-specific requirement is tested only by a feature unit whose owner resolves from an existing
+  coverage part or released package; an unscoped unit still applies to every implementation. An implementation-internal test is a
+  plain test of its package, not a parity unit, and it cites no requirement; a symbol that is public by accident becomes non-public.
   Enforced by: `make parity-declarations-check`, `make parity-check`, `make divergence-check`, `make test-markers-check`
 - P33 A rule that the work needs and docs/spec lacks is written in docs/spec first. A requirement is cited only by a test that
   tests it, a unit is never dropped to pass, and nothing is renamed to escape a check.
@@ -202,9 +203,12 @@ tool lands, a standard binds the work as written here.
   of a VitePress site (K245). `make layout-check` checks it with alint against `config/layout.yml`, the map of the repository over kit's common rules;
   each exception there carries its reason.
   Enforced by: `make layout-check`
-- S6 Language parity: every implementation of a repository tests the same feature units, vectors and API at the same
-  level, and each requirement that docs/spec defines (a list item, bulleted or numbered, `**<id>**` or a heading `<id>`) is cited by a unit, so
-  every implementation tests it. Every unit holds in every implementation: no profile, no exclusion and no native-only symbol. A case of a directory suite lists the requirements it tests in its `case.json`.
+- S6 Language parity: every implementation of a repository tests the same shared feature units, vectors and API at the same
+  level, and each requirement that docs/spec defines (a list item, bulleted or numbered, `**<id>**` or a heading `<id>`) is cited by a unit.
+  An unscoped unit binds every implementation. A component- or artifact-specific requirement may scope a feature unit only to an owner
+  derived from a coverage part in `contracts/features.json` or a package in `config/release.json`; the requirement names that owner and
+  its native test names the requirement. A free-form profile, implementation allow-list, exclusion or native-only symbol is not scope.
+  A case of a directory suite lists the requirements it tests in its `case.json`.
   Enforced by: `make parity-declarations-check`, `make parity-check`
 - S7 Test placement: a test of a basic feature lives in the package and repository that own the feature; a consumer keeps
   only tests from the consumer's point of view.

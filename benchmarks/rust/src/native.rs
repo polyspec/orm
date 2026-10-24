@@ -7,6 +7,13 @@ use std::collections::HashMap;
 use std::str::FromStr as _;
 use std::time::Instant;
 
+mod bench_input;
+use bench_input::{bench_dsn, invalid_dsn, iterations};
+
+#[path = "../../../packages/rust/tests/tests/common/bench_stats.rs"]
+mod bench_stats;
+use bench_stats::stats;
+
 const COLS: &str = "`a`.`seq`, `a`.`name`, `a`.`created_ts`, `a`.`updated_ts`, `a`.`is_close`, `a`.`is_display`, `a`.`display_start_dt`, `a`.`display_end_dt`, `a`.`is_allday`, `a`.`target_club_reader_count`, `a`.`success_count`, `a`.`reader_count`, `a`.`read_count`, `a`.`photo_url`, `a`.`user_seq`, `a`.`service_seq`, `a`.`service_region_seq`, `a`.`service_member_seq`, `a`.`start_dt`, `a`.`end_dt`, `a`.`uuid`, `a`.`is_single_work`, `a`.`like_count`, `a`.`aes_hex_email`, `a`.`aes_hex_phone`";
 
 /// Decodes exactly the `author` column types of contracts/fixtures/bench/bench.dbs: `i64` key, `i32` count,
@@ -72,21 +79,6 @@ fn from_row(r: &sqlx::mysql::MySqlRow) -> sqlx::Result<Author> {
         email: r.try_get(23)?,
         phone: r.try_get(24)?,
     })
-}
-
-fn stats(name: &str, mut s: Vec<u64>) {
-    s.sort_unstable();
-    let n = s.len();
-    let p = |q: f64| s[((n as f64 - 1.0) * q) as usize];
-    println!(
-        "{:<30} n={:<6} mean={:>9.0}ns p50={:>9}ns p90={:>9}ns p99={:>9}ns",
-        name,
-        n,
-        s.iter().sum::<u64>() as f64 / n as f64,
-        p(0.5),
-        p(0.9),
-        p(0.99)
-    );
 }
 
 async fn pk_get(pool: &MySqlPool, seq: i64) -> Author {
@@ -157,50 +149,10 @@ async fn relation4(pool: &MySqlPool, service_seq: i64) -> HashMap<i64, Vec<Autho
     out
 }
 
-/// Points to the seeded bench database through `ORM_BENCH_MYSQL_DSN`. If it is missing or empty, it does not connect
-/// and prints that variable name and ends.
-fn bench_dsn() -> String {
-    match std::env::var("ORM_BENCH_MYSQL_DSN") {
-        Ok(v) if !v.is_empty() => v,
-        Ok(_) | Err(std::env::VarError::NotPresent) => {
-            eprintln!("ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database; run it through make orm-check or make run-databases TARGETS=<target>, which create the bench database of the run");
-            std::process::exit(1)
-        }
-        Err(e) => {
-            eprintln!("ORM_BENCH_MYSQL_DSN must be UTF-8: {e}");
-            std::process::exit(1)
-        }
-    }
-}
-
-/// The first argument is the repeat count. If it is missing or not an integer of at least `minimum`, it prints the argument name and the value received
-/// and ends. There is no default repeat count. relation4 is
-/// measured as one third of the repeat count, so its minimum is 3.
-fn iterations(minimum: usize) -> usize {
-    let Some(arg) = std::env::args().nth(1) else {
-        eprintln!("usage: native <iterations>; the iterations argument is required; give the number of iterations as the first argument");
-        std::process::exit(1)
-    };
-    match arg.parse::<usize>() {
-        Ok(n) if n >= minimum => n,
-        _ => {
-            eprintln!(
-                "the iterations argument must be an integer of at least {minimum}, got {arg:?}"
-            );
-            std::process::exit(1)
-        }
-    }
-}
-
-/// If `ORM_BENCH_MYSQL_DSN` cannot be resolved, it prints that error and ends.
-fn invalid_dsn(error: impl std::fmt::Display) -> ! {
-    eprintln!("ORM_BENCH_MYSQL_DSN: {error}");
-    std::process::exit(1)
-}
-
 #[tokio::main]
 async fn main() {
-    let iters = iterations(3);
+    // relation4 is measured as one third of the repeat count, so its minimum is 3.
+    let iters = iterations("native", 3);
     let opts = match MySqlConnectOptions::from_str(&bench_dsn()) {
         Ok(options) => options,
         Err(e) => invalid_dsn(e),

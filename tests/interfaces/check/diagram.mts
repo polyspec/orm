@@ -47,6 +47,28 @@ export function diagram(m: Manifest, korean: boolean): string {
   b += korean
     ? '\n`<<internal>>`로 표시한 구성요소는 manifest의 `internal` 필드(`internal_ko`)가 그 근거를 적는다. 각 client가 그 method를 공통 signature 없이 비공개로 구현하므로 그 method에는 interface rule이 없다. 다른 구성요소의 모든 method는 rule을 가지며 모든 rule은 공개 구성요소의 method 하나의 rule이다. `make interface-check`가 두 방향을 모두 확인한다.\n'
     : '\nA component marked `<<internal>>` states its grounding in the manifest field `internal` (`internal_ko`): each client implements its methods privately with no common signature, so they have no interface rule. Every method of the other components has a rule, and every rule names a method of a public component; `make interface-check` checks both directions.\n';
+  const surfaces = m.native_surfaces ?? [];
+  b += korean ? '\n## Host-native APIs\n\n| API | Host | Semantic requirement | Native declaration |\n|---|---|---|---|\n'
+    : '\n## Host-native APIs\n\n| API | Host | Semantic requirement | Native declaration |\n|---|---|---|---|\n';
+  for (const surface of surfaces) {
+    b += `| ${surface.id ?? ''} | ${surface.owner ?? ''} | ${surface.semantic ?? ''} | \`${surface.symbol ?? ''}\` |\n`;
+  }
+  b += korean
+    ? '\nHost-native API는 해당 host의 공개 primitive 형식으로만 선언하며 공통 signature를 요구하지 않는다. 공통 동작은 `behavior_adapters`의 모든 runtime 항목과 정확한 parity case로 검증한다. `unresolved` 항목은 구현 완료 증거가 아니다.\n'
+    : '\nA host-native API uses its host language’s public primitive and has no common signature. The shared behavior is checked through every runtime entry and its exact parity cases in `behavior_adapters`. An `unresolved` entry is not implementation evidence.\n';
+  const behaviors = m.behavior_adapters ?? [];
+  b += korean ? '\n## 공통 동작 adapter\n\n| 요구사항 | 완료 checklist 항목 | Runtime | 상태 | Host primitive | 실행 case |\n|---|---|---|---|---|---|\n'
+    : '\n## Shared behavior adapters\n\n| Requirement | Completion item | Runtime | Status | Host primitive | Executable case |\n|---|---|---|---|---|---|\n';
+  for (const behavior of behaviors) {
+    for (const [runtime, adapter] of Object.entries(behavior.adapters ?? {}).sort(([a], [b]) => byteOrder(a, b))) {
+      const cases = (adapter.cases ?? []).map(c => `${c.test ?? ''}::${c.id ?? ''}${c.phase ? ` (${c.phase})` : ''}`).join('<br>');
+      const state = adapter.status === 'unresolved' ? `${adapter.status} (${adapter.item ?? ''}; ${adapter.required_case ?? ''})` : adapter.status ?? '';
+      b += `| ${behavior.id ?? ''} | ${behavior.completion_item ?? ''} | ${runtime} | ${state} | ${adapter.primitive ?? ''} | ${cases} |\n`;
+    }
+  }
+  b += korean
+    ? '\n모든 runtime에 정확한 실행 case가 있어야 공통 동작이 완료된다. `unresolved` 상태는 지정된 checklist 작업이 해결될 때까지 완료를 막는다.\n'
+    : '\nA shared behavior is complete only when every runtime has an exact executable case. An `unresolved` entry blocks completion until its checklist item is resolved.\n';
   b += korean ? '\n| 시작 | 대상 | 관계 |\n|---|---|---|\n' : '\n| From | To | Relation |\n|---|---|---|\n';
   for (const e of edges) b += `| ${e.from ?? ''} | ${e.to ?? ''} | ${(korean ? e.role_ko : e.role) ?? ''} |\n`;
   b += korean

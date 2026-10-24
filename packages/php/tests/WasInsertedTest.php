@@ -13,10 +13,8 @@ namespace Polyspec\Orm\Tests;
 
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
-use Polyspec\Orm\Generator;
 use Polyspec\Orm\Orm;
 use Polyspec\Orm\OrmException;
-use Polyspec\Orm\RuntimeModel;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
@@ -32,19 +30,11 @@ final class WasInsertedTest extends TestCase
         if (self::$generated) {
             return;
         }
-        $work = sys_get_temp_dir() . '/orm-php-was-inserted-' . getmypid();
-        is_dir($work) || mkdir($work, 0o700, true);
-        register_shutdown_function(static function () use ($work): void {
-            exec('rm -rf ' . escapeshellarg($work));
-        });
-        $document = (string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/clock.dbs');
-        Generator::generate(
-            RuntimeModel::build(RuntimeModel::parse(['clock.dbs' => $document])),
-            "$work/models",
+        loadGeneratedFixture(
+            'orm-php-was-inserted-',
+            'clock.dbs',
             'Polyspec\\Orm\\Tests\\WasInsertedCase'
         );
-        requireGeneratedClasses("$work/models");
-        require "$work/models/bootstrap.php";
         self::$generated = true;
     }
 

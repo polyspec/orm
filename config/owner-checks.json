@@ -11,7 +11,7 @@
     { "paths": ["**/*.rs"], "targets": ["lint-rust", "duplication-check"] },
     { "paths": ["**/*.py"], "targets": ["lint-python", "duplication-check"] },
     { "paths": ["**/*.php"], "targets": ["lint-php", "duplication-check"] },
-    { "paths": ["**/*.ts", "**/*.mts", "**/*.mjs"], "targets": ["lint-ts", "duplication-check"] },
+    { "paths": ["**/*.ts", "**/*.mts", "**/*.mjs", "packages/dbspec-vscode/tests/integration/suite/index.cjs"], "targets": ["lint-ts", "duplication-check"] },
     { "paths": ["packages/php-ext/**"], "targets": ["lint-php-ext", "duplication-check"] },
     { "paths": ["**"], "targets": ["feature-owner-check"], "variable": "PATHS" }
   ]

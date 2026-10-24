@@ -6,6 +6,10 @@ polyspec_orm::models!();
 use model::{Author, Service, ServiceMember, User};
 use serde::Serialize;
 
+#[path = "../../../packages/rust/tests/tests/common/bench_dsn.rs"]
+mod bench_dsn;
+use bench_dsn::dsn;
+
 /// Declares the members of the output document in the same order as the Go and PHP programs.
 #[derive(Serialize)]
 struct Output<'a, R: Serialize> {
@@ -22,22 +26,6 @@ struct Output<'a, R: Serialize> {
 /// serde_json always adds a fractional part to f64 (456000.0).
 fn shortest_number(v: f64) -> serde_json::Result<serde_json::Number> {
     v.to_string().parse()
-}
-
-/// `ORM_BENCH_MYSQL_DSN` points to the seeded bench database. If it is missing or empty, it does not connect
-/// and ends after printing that variable name.
-fn dsn() -> String {
-    match std::env::var("ORM_BENCH_MYSQL_DSN") {
-        Ok(v) if !v.is_empty() => v,
-        Ok(_) | Err(std::env::VarError::NotPresent) => {
-            eprintln!("ORM_BENCH_MYSQL_DSN is required; it names the seeded bench database; run it through make orm-check or make run-databases TARGETS=<target>, which create the bench database of the run");
-            std::process::exit(1)
-        }
-        Err(e) => {
-            eprintln!("ORM_BENCH_MYSQL_DSN must be UTF-8: {e}");
-            std::process::exit(1)
-        }
-    }
 }
 
 #[tokio::main]

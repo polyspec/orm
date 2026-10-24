@@ -220,11 +220,7 @@ trait TransactionFailureCases
                         substr_count($error->rollback?->getMessage() ?? '', 'statement rejected by the test driver'),
                         $scenario
                     );
-                    $controls = array_values(array_filter(
-                        $pdo->statements,
-                        static fn(string $sql): bool => str_starts_with($sql, 'ROLLBACK TO SAVEPOINT ')
-                            || str_starts_with($sql, 'RELEASE SAVEPOINT ')
-                    ));
+                    $controls = self::savepointControlStatements($pdo->statements);
                     self::assertSame(
                         ['ROLLBACK TO SAVEPOINT orm_sp_1', 'RELEASE SAVEPOINT orm_sp_1'],
                         $controls,
@@ -250,15 +246,23 @@ trait TransactionFailureCases
                 self::assertInstanceOf(\PDOException::class, $error->getPrevious());
                 self::assertStringContainsString('statement rejected by the test driver', $error->getMessage());
                 self::assertStringNotContainsString('savepoint callback failed', $error->getMessage());
-                $controls = array_values(array_filter(
-                    $pdo->statements,
-                    static fn(string $sql): bool => str_starts_with($sql, 'ROLLBACK TO SAVEPOINT ')
-                        || str_starts_with($sql, 'RELEASE SAVEPOINT ')
-                ));
+                $controls = self::savepointControlStatements($pdo->statements);
                 self::assertSame(['RELEASE SAVEPOINT orm_sp_1'], $controls);
             }
         } finally {
             $db->close();
         }
+    }
+
+    /** @param list<string> $statements
+     * @return list<string>
+     */
+    private static function savepointControlStatements(array $statements): array
+    {
+        return array_values(array_filter(
+            $statements,
+            static fn(string $sql): bool => str_starts_with($sql, 'ROLLBACK TO SAVEPOINT ')
+                || str_starts_with($sql, 'RELEASE SAVEPOINT ')
+        ));
     }
 }

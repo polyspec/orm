@@ -130,15 +130,11 @@ class MarkdownConformanceTest extends TestCase
      */
     private static function runProcess(array $command): array
     {
-        $process = proc_open($command, [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
-        if ($process === false) {
+        $result = OrmGenTestSupport::runProcess($command);
+        if ($result === null) {
             throw new RuntimeException('cannot start ' . implode(' ', $command));
         }
-        $out = (string) stream_get_contents($pipes[1]);
-        $err = (string) stream_get_contents($pipes[2]);
-        fclose($pipes[1]);
-        fclose($pipes[2]);
-        return [proc_close($process), $out, $err];
+        return $result;
     }
 
     /** Removes $path and everything under it. */
@@ -255,6 +251,15 @@ class MarkdownConformanceTest extends TestCase
     {
         new DateTimeImmutable($text, new DateTimeZone('UTC'));
         return $text;
+    }
+
+    private static function firstTaskTitleSubquery(People $person, bool $limited): mixed
+    {
+        $query = (new Tasks())->removeAllColumns()
+            ->addColumnTitle()
+            ->ownerEqId($person)
+            ->orderByIdAsc();
+        return $limited ? $query->limit(0, 1) : $query;
     }
 
     /**
@@ -599,11 +604,7 @@ class MarkdownConformanceTest extends TestCase
                 foreach (
                     (new People())->connect($s->db)->removeAllColumns()
                     ->addColumnFirstTask(
-                        static fn (People $p) => (new Tasks())->removeAllColumns()
-                            ->addColumnTitle()
-                            ->ownerEqId($p)
-                            ->orderByIdAsc()
-                            ->limit(0, 1)
+                        static fn (People $p) => self::firstTaskTitleSubquery($p, true)
                     )
                     ->orderByIdAsc()->gets() as $m
                 ) {
@@ -611,10 +612,7 @@ class MarkdownConformanceTest extends TestCase
                 }
                 $unlimited = self::codeOf(static fn () => (new People())->connect($s->db)->removeAllColumns()
                     ->addColumnFirstTask(
-                        static fn (People $p) => (new Tasks())->removeAllColumns()
-                            ->addColumnTitle()
-                            ->ownerEqId($p)
-                            ->orderByIdAsc()
+                        static fn (People $p) => self::firstTaskTitleSubquery($p, false)
                     )
                     ->orderByIdAsc()->gets());
                 return ['first' => $first, 'unlimited' => $unlimited];

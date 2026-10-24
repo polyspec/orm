@@ -101,6 +101,22 @@ def _mysql_metadata(columns, primary_key, table_name):
     )
 
 
+def _mysql_literal_default_composite_setup(stored_row):
+    metadata = _mysql_metadata(
+        [
+            CatalogColumn("tenant", "bigint", False, False),
+            CatalogColumn(
+                "seq", "varchar(30)", False, False, False, "'generated'", False
+            ),
+            CatalogColumn("n", "bigint", False, False),
+        ],
+        ["tenant", "seq"],
+        "literal_key",
+    )
+    session = _FakeMysqlSession(metadata, stored_row)
+    return metadata, _FakeMysqlCatalog(metadata, session), session
+
+
 def _mysql_expression_default_catalog(preexisting=False):
     metadata = _mysql_metadata(
         [
@@ -226,19 +242,9 @@ class CatalogAutoKeyTest(unittest.TestCase):
                 catalog.close()
 
     def test_mysql_literal_default_composite_key_uses_statement_default(self):
-        metadata = _mysql_metadata(
-            [
-                CatalogColumn("tenant", "bigint", False, False),
-                CatalogColumn(
-                    "seq", "varchar(30)", False, False, False, "'generated'", False
-                ),
-                CatalogColumn("n", "bigint", False, False),
-            ],
-            ["tenant", "seq"],
-            "literal_key",
+        metadata, catalog, session = _mysql_literal_default_composite_setup(
+            [2, "generated", 50]
         )
-        session = _FakeMysqlSession(metadata, [2, "generated", 50])
-        catalog = _FakeMysqlCatalog(metadata, session)
 
         statements = self._insert_literal_default_composite(metadata, catalog, session)
         self.assertTrue(statements[0].startswith("SELECT 1 FROM"))
@@ -256,19 +262,9 @@ class CatalogAutoKeyTest(unittest.TestCase):
         )
 
     def test_mysql_literal_default_composite_rejects_mismatched_stored_value(self):
-        metadata = _mysql_metadata(
-            [
-                CatalogColumn("tenant", "bigint", False, False),
-                CatalogColumn(
-                    "seq", "varchar(30)", False, False, False, "'generated'", False
-                ),
-                CatalogColumn("n", "bigint", False, False),
-            ],
-            ["tenant", "seq"],
-            "literal_key",
+        metadata, catalog, _session = _mysql_literal_default_composite_setup(
+            [2, "generated", 51]
         )
-        session = _FakeMysqlSession(metadata, [2, "generated", 51])
-        catalog = _FakeMysqlCatalog(metadata, session)
 
         with self.assertRaises(OrmError) as raised:
             catalog.insert_row(metadata, [("tenant", 2), ("n", 50)])

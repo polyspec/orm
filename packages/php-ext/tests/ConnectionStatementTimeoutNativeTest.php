@@ -73,16 +73,7 @@ final class ConnectionStatementTimeoutNativeTest extends TestCase
                         $cleanupErrors[] = $error;
                     }
                 }
-                foreach ([$bounded, $holder] as $db) {
-                    if ($db === null) {
-                        continue;
-                    }
-                    try {
-                        $db->close();
-                    } catch (\Throwable $error) {
-                        $cleanupErrors[] = $error;
-                    }
-                }
+                array_push($cleanupErrors, ...self::closeConnections([$bounded, $holder]));
                 if ($setup !== null) {
                     try {
                         $setup->pdo()->exec("DROP TABLE IF EXISTS $quotedTable");
@@ -160,16 +151,7 @@ final class ConnectionStatementTimeoutNativeTest extends TestCase
                     $cleanupErrors[] = $error;
                 }
             }
-            foreach ([$plain, $bounded, $holder] as $db) {
-                if ($db === null) {
-                    continue;
-                }
-                try {
-                    $db->close();
-                } catch (\Throwable $error) {
-                    $cleanupErrors[] = $error;
-                }
-            }
+            array_push($cleanupErrors, ...self::closeConnections([$plain, $bounded, $holder]));
             if ($cleanupErrors !== []) {
                 $messages = array_map(static fn(\Throwable $error): string => $error->getMessage(), $cleanupErrors);
                 $message = 'pooler timeout cleanup failed: ' . implode('; ', $messages);
@@ -179,5 +161,24 @@ final class ConnectionStatementTimeoutNativeTest extends TestCase
         if ($failure !== null) {
             throw $failure;
         }
+    }
+
+    /** @param list<?\Polyspec\Orm\Db> $connections
+     * @return list<\Throwable>
+     */
+    private static function closeConnections(array $connections): array
+    {
+        $errors = [];
+        foreach ($connections as $connection) {
+            if ($connection === null) {
+                continue;
+            }
+            try {
+                $connection->close();
+            } catch (\Throwable $error) {
+                $errors[] = $error;
+            }
+        }
+        return $errors;
     }
 }

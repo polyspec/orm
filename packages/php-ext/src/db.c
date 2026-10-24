@@ -1438,10 +1438,63 @@ static bool apply_hook(zval *self, zval *r)
     if (h == NULL || Z_TYPE_P(h) != IS_OBJECT) {
         return true;
     }
+    zend_class_entry *request_ce = cls(REQUEST_CLASS);
+    zval params_rv;
+    zval *params = request_ce != NULL && Z_TYPE_P(r) == IS_OBJECT
+        ? zend_read_property(request_ce, Z_OBJ_P(r), "params", sizeof("params") - 1, 1, &params_rv)
+        : NULL;
+    if (params == NULL || Z_TYPE_P(params) != IS_ARRAY) {
+        zend_throw_error(NULL, "Request::$params must be an array");
+        return false;
+    }
+
+    zval original;
+    array_init_size(&original, zend_hash_num_elements(Z_ARRVAL_P(params)));
+    zend_ulong index;
+    zend_string *key;
+    zval *value;
+    ZEND_HASH_FOREACH_KEY_VAL(Z_ARRVAL_P(params), index, key, value) {
+        zval copy;
+        ZVAL_COPY_DEREF(&copy, value);
+        if (key != NULL) {
+            zend_hash_update(Z_ARRVAL(original), key, &copy);
+        } else {
+            zend_hash_index_update(Z_ARRVAL(original), index, &copy);
+        }
+    } ZEND_HASH_FOREACH_END();
+
     zval ret;
     ZVAL_UNDEF(&ret);
     bool ok = call_user_function(NULL, NULL, h, &ret, 1, r) == SUCCESS && EG(exception) == NULL;
     zval_ptr_dtor(&ret);
+
+    params = zend_read_property(request_ce, Z_OBJ_P(r), "params", sizeof("params") - 1, 1, &params_rv);
+    zval restored;
+    array_init_size(&restored, zend_hash_num_elements(Z_ARRVAL(original))
+        + (params != NULL && Z_TYPE_P(params) == IS_ARRAY ? zend_hash_num_elements(Z_ARRVAL_P(params)) : 0));
+    ZEND_HASH_FOREACH_KEY_VAL(Z_ARRVAL(original), index, key, value) {
+        zval copy;
+        ZVAL_COPY(&copy, value);
+        if (key != NULL) {
+            zend_hash_update(Z_ARRVAL(restored), key, &copy);
+        } else {
+            zend_hash_index_update(Z_ARRVAL(restored), index, &copy);
+        }
+    } ZEND_HASH_FOREACH_END();
+    if (params != NULL && Z_TYPE_P(params) == IS_ARRAY) {
+        ZEND_HASH_FOREACH_KEY_VAL(Z_ARRVAL_P(params), index, key, value) {
+            if (key == NULL && index >= zend_hash_num_elements(Z_ARRVAL(original))) {
+                zval copy;
+                ZVAL_COPY(&copy, value);
+                if (zend_hash_index_update(Z_ARRVAL(restored), index, &copy) == NULL) {
+                    zval_ptr_dtor(&copy);
+                }
+            }
+        } ZEND_HASH_FOREACH_END();
+    }
+    zend_update_property(request_ce, Z_OBJ_P(r), "params", sizeof("params") - 1, &restored);
+    zval_ptr_dtor(&restored);
+    zval_ptr_dtor(&original);
     return ok;
 }
 
@@ -2855,7 +2908,10 @@ static int prepare_read(zval *self, zval *frame, zval *r, const char *method, zv
     return plan_of(self, r, plan) ? 0 : -1;
 }
 
-static bool select_impl(zval *self, zval *frame, zval *r, zval *out)
+typedef bool (*read_plan_operation)(zval *self, zval *frame, zval *r, zval *out, zval *plan);
+
+/* Owns the native read plan while the selected operation assembles its result. */
+static bool with_read_plan(zval *self, zval *frame, zval *r, zval *out, read_plan_operation operation)
 {
     zval plan;
     int prepared = prepare_read(self, frame, r, "read", out, &plan);
@@ -2865,8 +2921,15 @@ static bool select_impl(zval *self, zval *frame, zval *r, zval *out)
     if (prepared > 0) {
         return true;
     }
+    bool ok = operation(self, frame, r, out, &plan);
+    zval_ptr_dtor(&plan);
+    return ok;
+}
+
+static bool select_plan(zval *self, zval *frame, zval *r, zval *out, zval *plan)
+{
     zval *ir = rd(r, "ir");
-    zval *step0 = aidx(aget(&plan, "steps"), 0);
+    zval *step0 = aidx(aget(plan, "steps"), 0);
     zval lock;
     zval *lk = aget(ir, "lock");
     if (lk != NULL) {
@@ -2880,7 +2943,6 @@ static bool select_impl(zval *self, zval *frame, zval *r, zval *out)
     /* query_rows leaves its out unset on failure, so main is NULL until a rows array replaces it. */
     ZVAL_NULL(&main);
     if (!ok || !root_parts(self, r, step0, &parts)) {
-        zval_ptr_dtor(&plan);
         return false;
     }
     if (acount(&parts) > 0) {
@@ -2934,17 +2996,21 @@ static bool select_impl(zval *self, zval *frame, zval *r, zval *out)
     zval_ptr_dtor(&parts);
     if (ok) {
         zval res;
-        ok = relations_of(self, &plan, rd(r, "params"), &main, &res);
+        ok = relations_of(self, plan, rd(r, "params"), &main, &res);
         if (ok) {
             array_init(out);
-            push(out, &plan);
+            push(out, plan);
             push(out, &res);
             zval_ptr_dtor(&res);
         }
     }
     zval_ptr_dtor(&main);
-    zval_ptr_dtor(&plan);
     return ok;
+}
+
+static bool select_impl(zval *self, zval *frame, zval *r, zval *out)
+{
+    return with_read_plan(self, frame, r, out, select_plan);
 }
 
 static bool scalar_of_impl(zval *self, zval *frame, zval *r, zval *out)
@@ -2997,21 +3063,13 @@ static bool scalar_of_impl(zval *self, zval *frame, zval *r, zval *out)
     return ok;
 }
 
-static bool paginate_impl(zval *self, zval *frame, zval *r, zval *out)
+static bool paginate_plan(zval *self, zval *frame, zval *r, zval *out, zval *plan)
 {
-    zval plan;
-    int prepared = prepare_read(self, frame, r, "read", out, &plan);
-    if (prepared < 0) {
-        return false;
-    }
-    if (prepared > 0) {
-        return true;
-    }
     zval main, res, total;
     ZVAL_UNDEF(&total);
-    bool ok = query_rows(self, aidx(aget(&plan, "steps"), 0), rd(r, "params"), NULL, NULL, &main);
+    bool ok = query_rows(self, aidx(aget(plan, "steps"), 0), rd(r, "params"), NULL, NULL, &main);
     if (ok) {
-        zval *steps = aget(&plan, "steps");
+        zval *steps = aget(plan, "steps");
         zval *st;
         bool found = false;
         ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(steps), st)
@@ -3029,25 +3087,28 @@ static bool paginate_impl(zval *self, zval *frame, zval *r, zval *out)
             ok = false;
         }
         if (ok) {
-            ok = relations_of(self, &plan, rd(r, "params"), &main, &res);
+            ok = relations_of(self, plan, rd(r, "params"), &main, &res);
         }
     }
     zval_ptr_dtor(&main);
     if (!ok) {
         if (!Z_ISUNDEF(total)) zval_ptr_dtor(&total);
-        zval_ptr_dtor(&plan);
         return false;
     }
     array_init(out);
-    push(out, &plan);
+    push(out, plan);
     push(out, &res);
     zval n;
     ZVAL_LONG(&n, zval_get_long(&total));
     zend_hash_next_index_insert(Z_ARRVAL_P(out), &n);
     zval_ptr_dtor(&total);
     zval_ptr_dtor(&res);
-    zval_ptr_dtor(&plan);
     return ok;
+}
+
+static bool paginate_impl(zval *self, zval *frame, zval *r, zval *out)
+{
+    return with_read_plan(self, frame, r, out, paginate_plan);
 }
 
 static bool binds_audit(zval *step)

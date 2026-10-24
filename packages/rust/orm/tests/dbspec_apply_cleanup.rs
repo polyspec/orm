@@ -10,10 +10,11 @@
 #[path = "common/or_panic.rs"]
 mod or_panic;
 use or_panic::OrPanic;
+#[macro_use]
+#[path = "common/dbspec_apply_support.rs"]
+mod dbspec_apply_support;
 
-#[path = "common/fixed_plan_time.rs"]
-mod fixed_plan_time;
-use fixed_plan_time::fixed_now;
+use dbspec_apply_support::{fixed_now, quiet, EventError, Stop};
 use polyspec_orm::dbspec::{
     apply, effect_holds, effect_query, parse_plan, rollback, ApplyConnection, ApplyError, ApplyEvent, ApplyEventKind, CatalogQuerier, CatalogValue, Dialect,
     Effect, Plan,
@@ -24,22 +25,8 @@ use std::collections::HashMap;
 use std::future::Future;
 use std::time::Duration;
 
-type EventError = Box<dyn std::error::Error + Send + Sync>;
-
 /// The deadline of one case.
 const CASE_DEADLINE: Duration = Duration::from_secs(20);
-
-/// The error that halts apply in an event handler.
-#[derive(Debug)]
-struct Stop;
-
-impl std::fmt::Display for Stop {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str("stop")
-    }
-}
-
-impl std::error::Error for Stop {}
 
 /// create-from-empty from tests/dbspec/plans.json.
 fn create_from_empty() -> Vec<Plan> {
@@ -50,9 +37,6 @@ fn create_from_empty() -> Vec<Plan> {
     vec![parse_plan(&text).or_panic(|e| format!("create-from-empty: {e:?}"))]
 }
 
-fn quiet(_: &ApplyEvent) -> Result<(), EventError> {
-    Ok(())
-}
 
 /// Wraps a real SQLite connection so that when the `fail` statement runs, its message
 /// is returned as the error.
@@ -86,13 +70,7 @@ impl ApplyConnection for Failing {
         }
     }
 
-    async fn execute_bound(&mut self, statement: &str, args: &[CatalogValue]) -> Result<(), sqlx::Error> {
-        self.inner.execute_bound(statement, args).await
-    }
-
-    async fn query_bound(&mut self, query: &str, args: &[CatalogValue]) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
-        self.inner.query_bound(query, args).await
-    }
+    delegate_bound_methods!();
 }
 
 async fn failing(fail: &[(&'static str, &'static str)]) -> Result<Failing, String> {
@@ -194,10 +172,12 @@ async fn rollback_step_outside(plans: Vec<Plan>) -> Result<String, String> {
 async fn settled_introspection_error(plans: Vec<Plan>) -> Result<String, String> {
     let mut c = failing(&[]).await?;
     c.catalog_failure = Some("catalog read failed");
-    match apply(&mut c, Dialect::Sqlite, &plans, &fixed_now, &mut quiet).await {
-        Err(ApplyError::Verify { source: Some(polyspec_orm::dbspec::IntrospectError::Query(sqlx::Error::Protocol(message))), .. })
-            if message == "catalog read failed" =>
-        {
+    verify_catalog_query_error(apply(&mut c, Dialect::Sqlite, &plans, &fixed_now, &mut quiet).await, "catalog read failed")
+}
+
+fn verify_catalog_query_error(result: Result<(), ApplyError>, expected: &str) -> Result<String, String> {
+    match result {
+        Err(ApplyError::Verify { source: Some(polyspec_orm::dbspec::IntrospectError::Query(sqlx::Error::Protocol(message))), .. }) if message == expected => {
             Ok("verify preserves the catalog driver error".to_owned())
         }
         result => Err(format!("{result:?}; want verify with the original catalog driver error")),
@@ -218,14 +198,7 @@ async fn rollback_introspection_error(plans: Vec<Plan>) -> Result<String, String
     apply(&mut c, Dialect::Sqlite, &plans, &fixed_now, &mut quiet).await.map_err(|e| format!("apply: {e}"))?;
     c.catalog_failure = Some("catalog read failed");
     c.catalog_failure_call = c.catalog_reads + 1;
-    match rollback(&mut c, Dialect::Sqlite, &plans, &fixed_now, &mut quiet).await {
-        Err(ApplyError::Verify { source: Some(polyspec_orm::dbspec::IntrospectError::Query(sqlx::Error::Protocol(message))), .. })
-            if message == "catalog read failed" =>
-        {
-            Ok("verify preserves the catalog driver error".to_owned())
-        }
-        result => Err(format!("{result:?}; want verify with the original catalog driver error")),
-    }
+    verify_catalog_query_error(rollback(&mut c, Dialect::Sqlite, &plans, &fixed_now, &mut quiet).await, "catalog read failed")
 }
 
 async fn post_forward_introspection_error(plans: Vec<Plan>) -> Result<String, String> {
@@ -254,6 +227,11 @@ async fn post_forward_introspection_error(plans: Vec<Plan>) -> Result<String, St
         return Err(format!("failed post-forward verify reported success: state={state}, events={kinds:?}"));
     }
     Ok(format!("post-forward failure preserves {verify_message:?}, applying history, and no success events"))
+}
+
+fn assert_cases<T>(results: &[Result<T, String>]) {
+    let failures: Vec<&String> = results.iter().filter_map(|result| result.as_ref().err()).collect();
+    assert!(failures.is_empty(), "{} of {} cases failed: {failures:?}", failures.len(), results.len());
 }
 
 async fn effect_row() -> Result<String, String> {
@@ -294,8 +272,7 @@ async fn apply_reports_cleanup_errors() {
         case("apply/rollback-step-outside", rollback_step_outside(plans.clone())).await,
         case("apply/effect-row", effect_row()).await,
     ];
-    let failures: Vec<&String> = results.iter().filter_map(|r| r.as_ref().err()).collect();
-    assert!(failures.is_empty(), "{} of {} cases failed: {failures:?}", failures.len(), results.len());
+    assert_cases(&results);
 }
 
 #[tokio::test]
@@ -308,6 +285,5 @@ async fn apply_reports_verify_errors_separately_from_drift() {
         case("apply/rollback-introspection-error", rollback_introspection_error(plans.clone())).await,
         case("apply/post-forward-introspection-error", post_forward_introspection_error(plans)).await,
     ];
-    let failures: Vec<&String> = results.iter().filter_map(|r| r.as_ref().err()).collect();
-    assert!(failures.is_empty(), "{} of {} cases failed: {failures:?}", failures.len(), results.len());
+    assert_cases(&results);
 }

@@ -8,6 +8,10 @@ use polyspec_orm_testcase::OrPanic;
 
 use std::cell::Cell;
 
+#[path = "../../tests/tests/common/result_code.rs"]
+mod result_code;
+use result_code::code;
+
 polyspec_orm::models!();
 
 #[test]
@@ -112,13 +116,6 @@ struct Target {
 
 fn config() -> polyspec_orm::Config {
     polyspec_orm::Config { aes_key: "test-aes-key".into(), blind_index_key: "test-blind-key".into(), ..Default::default() }
-}
-
-fn code<T>(r: polyspec_orm::Result<T>) -> String {
-    match r {
-        Ok(_) => "ok".into(),
-        Err(e) => e.code().to_owned(),
-    }
 }
 
 #[test]

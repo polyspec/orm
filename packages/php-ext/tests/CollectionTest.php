@@ -11,6 +11,7 @@ use DateTimeZone;
 use Polyspec\Orm\Bytes;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
+use Polyspec\Orm\Tests\CollectionWeakTypedKeyCases;
 
 final class CollectionFakePdo extends \Polyspec\Orm\Tests\TransactionTrackingPdo
 {
@@ -72,6 +73,7 @@ class CollectionFixtureModel extends Model
 #[Small]
 final class CollectionTest extends TestCase
 {
+    use CollectionWeakTypedKeyCases;
     private static function model(string $label): Model
     {
         return new CollectionFixtureModel($label);
@@ -296,49 +298,6 @@ final class CollectionTest extends TestCase
         $collection->all();
     }
 
-    public function testWeakAndStrictTypedKeyCoercionBoundaries(): void
-    {
-        $weak = new Collection();
-        collectionWeakPut($weak, 2.0, self::model('weak-float'));
-        self::assertTrue($weak->has(2));
-
-        $deprecations = [];
-        set_error_handler(static function (int $severity, string $message) use (&$deprecations): bool {
-            if ($severity === E_DEPRECATED) {
-                $deprecations[] = $message;
-                return true;
-            }
-            return false;
-        });
-        try {
-            collectionWeakPut($weak, 3.5, self::model('weak-lossy-float'));
-        } finally {
-            restore_error_handler();
-        }
-        self::assertTrue($weak->has(3));
-        self::assertCount(1, $deprecations);
-        self::assertStringContainsString('Implicit conversion from float 3.5 to int loses precision', $deprecations[0]);
-
-        $stringable = new class implements \Stringable {
-            public function __toString(): string { return 'weak-stringable'; }
-        };
-        collectionWeakPut($weak, $stringable, self::model('weak-stringable'));
-        self::assertSame('weak-stringable', $weak->keys()[2]);
-
-        try {
-            collectionWeakPut($weak, null, self::model('invalid'));
-            self::fail('weak caller must reject null');
-        } catch (\TypeError) {
-            self::assertCount(3, $weak);
-        }
-
-        try {
-            $weak->put($stringable, self::model('strict-stringable'));
-            self::fail('strict caller must reject Stringable key coercion');
-        } catch (\TypeError) {
-            self::assertCount(3, $weak);
-        }
-    }
 
     public function testIteratorTakesSnapshotAtFirstRewindAndKeepsItDuringMutation(): void
     {

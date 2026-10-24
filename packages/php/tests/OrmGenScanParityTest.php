@@ -111,7 +111,7 @@ final class OrmGenScanParityTest extends TestCase
             : implode('', array_map(static fn(string $step): string => "$receiver->$step;\n", $steps));
         file_put_contents(
             "$dir/src/usage.php",
-            "<?php\n\$db = null;\n\$m = new Polyspec\\Orm\\Tests\\Parity\\{$case['model']}();\n$calls"
+            OrmGenTestSupport::phpScanFixture('Polyspec\\Orm\\Tests\\Parity\\' . $case['model'], $calls)
         );
         $stderr = fopen('php://memory', 'w+');
         ob_start();
@@ -142,12 +142,7 @@ final class OrmGenScanParityTest extends TestCase
             return;
         }
         self::assertSame(0, $code, 'php status');
-        preg_match_all(
-            '/^ \* @method \S+ (\w+)\(/m',
-            (string) file_get_contents("$dir/model/{$case['model']}.php"),
-            $tags
-        );
-        $php = $tags[1];
+        $php = OrmGenTestSupport::phpMethodNames("$dir/model/{$case['model']}.php");
         sort($php, SORT_STRING);
         self::assertNotNull($node, 'the node orm-gen fails');
         sort($node, SORT_STRING);

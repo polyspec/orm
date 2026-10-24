@@ -109,7 +109,7 @@ await runCases('coverage_transactions.mjs', {
 
       releaseHolder();
       assert.equal(await holder, rollback, `${driver}: releasing the holder rolls its transaction back`);
-      assert.equal(await new CompositeAccount().connect(db).getByTenantIdAndAccountId(tenant, 6).getName(), 'original', `${driver}: cancellation and rollback preserve the stored row`);
+      assert.equal((await new CompositeAccount().connect(db).getByTenantIdAndAccountId(tenant, 6)).getName(), 'original', `${driver}: cancellation and rollback preserve the stored row`);
       assert.equal(await exists(db, 6), true, `${driver}: the connection handle remains usable`);
     });
   },

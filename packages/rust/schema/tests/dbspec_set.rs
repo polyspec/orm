@@ -17,6 +17,9 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
+#[path = "../../tests/tests/common/temp_directory.rs"]
+mod temp_directory;
+
 const CASE_DEADLINE: Duration = Duration::from_secs(1);
 
 fn vectors_path() -> PathBuf {
@@ -62,11 +65,7 @@ impl Tree {
 
 impl Drop for Tree {
     fn drop(&mut self) {
-        if let Err(error) = std::fs::remove_dir_all(&self.0) {
-            if !std::thread::panicking() {
-                panic!("remove {}: {error}", self.0.display());
-            }
-        }
+        temp_directory::remove_on_drop(&self.0);
     }
 }
 

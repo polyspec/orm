@@ -6,12 +6,9 @@ polyspec_orm::models!();
 
 use model::Author;
 
-fn stats(name: &str, mut s: Vec<u64>) {
-    s.sort_unstable();
-    let n = s.len();
-    let p = |q: f64| s[((n as f64 - 1.0) * q) as usize];
-    println!("{:<30} n={:<6} mean={:>9.0}ns p50={:>9}ns p90={:>9}ns p99={:>9}ns", name, n, s.iter().sum::<u64>() as f64 / n as f64, p(0.5), p(0.9), p(0.99));
-}
+#[path = "../tests/common/bench_stats.rs"]
+mod bench_stats;
+use bench_stats::stats;
 
 /// `ORM_BENCH_MYSQL_DSN` points to the seeded bench database; if it is missing or empty, that is an error.
 fn bench_dsn() -> Result<String, String> {

@@ -1,10 +1,10 @@
 use polyspec_orm_build::{
-    catalog::{CatalogConnection, MutationPhase, TableRef},
+    catalog::{CatalogConnection, MutationPhase, TableMetadata, TableRef},
     tool_db::{self, GridCell, P},
 };
 use std::sync::{
-    Arc,
     atomic::{AtomicBool, Ordering},
+    Arc,
 };
 
 #[path = "row_insert_identity/expression.rs"]
@@ -17,8 +17,7 @@ mod lock_probe;
 async fn sqlite_automatic_primary_key_returns_and_stores_the_inserted_row() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let path = std::env::temp_dir().join(format!("orm-catalog-auto-key-{}.sqlite", std::process::id()));
-    assert!(!path.exists(), "SQLite fixture path must be unowned before this run");
-    let _fixture = SqliteFixture(path.clone());
+    let _fixture = polyspec_orm_testcase::SqliteFile::own(path.clone(), "SQLite fixture path must be unowned before this run");
     let dsn = format!("sqlite://{}", path.display());
     let (database, mut seed, _) = tool_db::open(&dsn).await.expect("SQLite fixture connection");
     seed.exec("CREATE TABLE generated (id INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL)", &[]).await.expect("create automatic-key table");
@@ -36,16 +35,7 @@ async fn sqlite_automatic_primary_key_returns_and_stores_the_inserted_row() {
     assert_eq!(metadata.columns[1].name, "payload");
     assert_eq!(metadata.columns[1].native_type, "TEXT");
     assert!(!metadata.columns[1].nullable);
-    let result = catalog
-        .insert_row(
-            &metadata,
-            &[("payload".into(), P::S("generated".into()))],
-            Arc::new(AtomicBool::new(false)),
-            Arc::new(|_| {}),
-            std::sync::Arc::new(|| Ok(())),
-        )
-        .await
-        .expect("insert with database-owned key");
+    let result = insert_without_hooks(&catalog, &metadata, &[("payload".into(), P::S("generated".into()))]).await.expect("insert with database-owned key");
     assert_eq!(result.rows, vec![vec![GridCell::Integer(1), GridCell::Text("generated".into())]]);
     let stored = catalog.table_page(&table, 2, 0).await.expect("stored row");
     assert_eq!(stored.result.rows, result.rows);
@@ -53,25 +43,6 @@ async fn sqlite_automatic_primary_key_returns_and_stores_the_inserted_row() {
     seed.exec("DROP TABLE generated", &[]).await.expect("remove owned table");
     drop(seed);
     database.close().await;
-}
-
-struct SqliteFixture(std::path::PathBuf);
-
-impl Drop for SqliteFixture {
-    fn drop(&mut self) {
-        match std::fs::remove_file(&self.0) {
-            Ok(()) => {}
-            Err(error) => {
-                if error.kind() != std::io::ErrorKind::NotFound {
-                    if std::thread::panicking() {
-                        eprintln!("remove the database file {}: {error}", self.0.display());
-                    } else {
-                        panic!("remove the database file {}: {error}", self.0.display());
-                    }
-                }
-            }
-        }
-    }
 }
 
 #[tokio::test]
@@ -150,15 +121,7 @@ async fn check() {
         .expect("owned default composite-key fixture");
         let default_table = TableRef { namespace: table.namespace.clone(), name: default_name.clone() };
         let metadata = catalog.describe_table(&default_table).await.unwrap();
-        let result = catalog
-            .insert_row(
-                &metadata,
-                &[("tenant".into(), P::I(2)), ("n".into(), P::I(50))],
-                Arc::new(AtomicBool::new(false)),
-                Arc::new(|_| {}),
-                std::sync::Arc::new(|| Ok(())),
-            )
-            .await;
+        let result = insert_without_hooks(&catalog, &metadata, &[("tenant".into(), P::I(2)), ("n".into(), P::I(50))]).await;
         if !matches!(result, Ok(ref value) if value.rows == vec![vec![GridCell::Integer(2),GridCell::Text("generated".into()),GridCell::Integer(50)]]) {
             failures.push(format!("{dialect}: composite default key mismatch"));
         }
@@ -252,4 +215,8 @@ async fn schema_lock(catalog: &CatalogConnection, dsn: &str, metadata: &polyspec
     assert!(matches!(result, Err(ref error) if error.starts_with("JOB_CANCELLED")), "the probed insert ends cancelled: {result:?}");
     let held = held.lock().unwrap().unwrap_or(false);
     held
+}
+
+async fn insert_without_hooks(catalog: &CatalogConnection, metadata: &TableMetadata, values: &[(String, P)]) -> Result<tool_db::GridQueryResult, String> {
+    catalog.insert_row(metadata, values, Arc::new(AtomicBool::new(false)), Arc::new(|_| {}), Arc::new(|| Ok(()))).await
 }

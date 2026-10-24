@@ -1,4 +1,5 @@
-use crate::catalog::{TableColumnMetadata, TableKind, TableMetadata, TableRef};
+use crate::catalog::{RowSnapshot, TableColumnMetadata, TableKind, TableMetadata, TablePage, TableRef};
+use crate::tool_db::{GridCell, GridQueryResult, QueryColumn};
 
 pub(super) fn metadata(table: &str, value_column: &str) -> TableMetadata {
     TableMetadata {
@@ -27,4 +28,24 @@ pub(super) fn metadata(table: &str, value_column: &str) -> TableMetadata {
         primary_key: vec!["id".into()],
         reliable_row_identity: true,
     }
+}
+
+pub(super) fn row_snapshot(table: &str, value_column: &str, id_native_type: &str) -> RowSnapshot {
+    let mut metadata = metadata(table, value_column);
+    metadata.columns[0].native_type = id_native_type.into();
+    let page = TablePage {
+        metadata,
+        result: GridQueryResult {
+            columns: vec![
+                QueryColumn { name: "id".into(), native_type: id_native_type.into() },
+                QueryColumn { name: value_column.into(), native_type: "TEXT".into() },
+            ],
+            rows: vec![vec![GridCell::Integer(1), GridCell::Text("original".into())]],
+        },
+        limit: 1,
+        offset: 0,
+        order_by: vec!["id".into()],
+        has_more: false,
+    };
+    RowSnapshot::from_page(&page, 0).expect("valid one-row catalog fixture")
 }

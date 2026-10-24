@@ -5,17 +5,9 @@
 #[macro_use]
 #[path = "common/model_row.rs"]
 mod model_row;
-#[path = "common/model_connect.rs"]
-mod model_connect;
-use model_connect::connected;
-
-#[path = "common/or_panic.rs"]
-mod or_panic;
-use or_panic::OrPanic;
-
-#[path = "common/clock_event.rs"]
-mod clock_event;
-use clock_event::{ClockEvent, CLOCK_SCHEMA};
+#[path = "common/clock_test_support.rs"]
+mod clock_test_support;
+use clock_test_support::{CLOCK_SCHEMA, ClockEvent, OrPanic, connected};
 
 use std::time::Duration;
 

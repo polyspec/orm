@@ -25,7 +25,7 @@ const helperIds = async (paths: string[]) => (await selectHelpers(manifest, root
 caseTest('a changed test selects only the commands that run it', 5000, async () => {
   assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/go/orm/mysql_tls_test.go'])), ['dsn_connection/dsn-go', 'dsn_connection/dsn-mysql-tls-go']);
   assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/go/orm/external_documents_test.go'])), ['schema_install/install-register-go']);
-  assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/php/tests/CoverageDsnTest.php'])), ['dsn_connection/coverage/owner/php']);
+  assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/php/tests/CoverageDsnTest.php'])), ['dsn_connection/coverage/owner/php', 'dsn_connection/coverage/owner/php-extension']);
 });
 
 // An owner rule of config/owner-checks.json: its paths, and the make targets it selects when a path matches.
@@ -49,6 +49,7 @@ caseTest('a changed path selects the lint target of its language', 5000, async (
     ['packages/php/src/Errs.php', 'lint-php'],
     ['scripts/features/owners.mts', 'lint-ts'],
     ['packages/dbspec-codemirror/tests/fixtures.test.mjs', 'lint-ts'],
+    ['packages/dbspec-vscode/tests/integration/suite/index.cjs', 'lint-ts'],
     ['packages/php-ext/src/convert.c', 'lint-php-ext'],
   ];
   for (const [path, lint] of cases)
@@ -98,7 +99,7 @@ caseTest('a shared helper selects its own check and no feature', 5000, async () 
 caseTest('a fixture selects the units whose declared data names it', 5000, async () => {
   // The coverage of schema_definition renders audit.dbs from contracts/fixtures/schema_definition.json.
   const owners = await selectOwners(manifest, root, ['contracts/fixtures/audit.dbs']);
-  assert.deepEqual(ids(owners), ['schema_definition', 'audit_triggers']);
+  assert.deepEqual(ids(owners), ['schema_definition', 'constraints_and_relations', 'audit_triggers']);
   const [first] = owners;
   assert.ok(first);
   assert.deepEqual(first.parts[0]?.reasons, ['contracts/fixtures/audit.dbs (named by contracts/fixtures/schema_definition.json)']);
@@ -210,7 +211,7 @@ const t42 = [
 
 caseTest('a change across the four clients selects no full-suite target', 5000, async () => {
   // comment-language-check reads every source file (T131), so a source change selects it.
-  assert.deepEqual(targets(selectTargets(inputs, t42)), ['comment-language-check', 'repo-check', 'go-fmt-check', 'go-vet-check', 'rust-fmt-check']);
+  assert.deepEqual(targets(selectTargets(inputs, t42)), ['comment-language-check', 'repo-check', 'go-fmt-check', 'go-vet-check', 'rust-fmt-check', 'catalog-php-extension-surface-check']);
   for (const target of ['client-db-check', 'client-pooler-check', 'case-database-check', 'conformance-check', 'feature-coverage', 'feature-verify-rust', 'feature-verify-other', 'go-test-check'])
     assert.equal(inputs[target]?.scope, 'suite', `${target} is not a full-suite target`);
   // The sources recorded by contracts/interfaces.json and contracts/symbols/*.json are inputs to the interface check.
@@ -313,7 +314,7 @@ caseTest('a path that only a lint selects is untested unless its scope is declar
 caseTest('a generator source selects the check that regenerates the models', 5000, () => {
   const { targets: declared } = readCheckInputs(root);
   const selected = selectTargets(declared, ['packages/go/generator/gen_go.go']).filter(({ tested }) => tested.length).map(({ target }) => target);
-  assert.deepEqual(selected, ['comment-language-check', 'go-model-check', 'generated-lint-check']);
+  assert.deepEqual(selected, ['comment-language-check', 'go-model-check', 'generator-consumer-check', 'generated-lint-check']);
 });
 
 // The bootstrap tsconfig that the TypeScript build reads before the models exist is tracked, so it must declare its scope (KSTD-5-5-1).

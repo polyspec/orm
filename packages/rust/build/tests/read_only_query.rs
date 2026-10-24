@@ -1,3 +1,6 @@
+#[path = "common/physical_fixture.rs"]
+mod physical_fixture;
+
 use polyspec_orm_build::{
     catalog::CatalogConnection,
     tool_db::{self, QueryLimits, Val},
@@ -16,15 +19,10 @@ async fn check() {
         Err(std::env::VarError::NotPresent) => Vec::new(),
         Err(error) => panic!("ORM_READONLY_CLEANUP_IDS: {error}"),
     };
-    let path = std::env::temp_dir().join(format!("orm-query-readonly-{}.sqlite", std::process::id()));
-    assert!(!path.exists());
+    let path = physical_fixture::sqlite_path("query-readonly");
     for dialect in ["sqlite", "mysql", "postgres"] {
         polyspec_orm_testcase::step(format_args!("running {dialect}"));
-        let dsn = match dialect {
-            "sqlite" => format!("sqlite://{}", path.display()),
-            "mysql" => std::env::var("ORM_TOOLS_MYSQL_DSN").unwrap(),
-            _ => std::env::var("ORM_TOOLS_POSTGRES_DSN").unwrap(),
-        };
+        let dsn = physical_fixture::dsn_for(dialect, &path);
         let (database, mut seed, _) = tool_db::open(&dsn).await.unwrap();
         for id in &cleanup_ids {
             assert!(
@@ -74,9 +72,7 @@ async fn check() {
         assert_eq!(rows.rows, vec![vec![Val::Int(7)]]);
         catalog.close().await;
         seed.exec(&format!("DROP TABLE {table}"), &[]).await.unwrap();
-        drop(seed);
-        database.close().await;
-        polyspec_orm_testcase::step(format_args!("{dialect} passed"));
+        physical_fixture::finish_physical_dialect(database, seed, dialect, "passed").await;
     }
     std::fs::remove_file(path).unwrap();
     for id in cleanup_ids {
