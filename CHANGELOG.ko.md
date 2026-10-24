@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 717b356fb7d0c493cff572cc62fad115d6fedd60d49ce26c36a72be093ac4601 -->
+<!-- source-sha256: 490146500fdbe4c9a6d4ac12cf51defb2738424636a344f9eddddb0695521391 -->
 # 변경 이력
 
 ## Unreleased
 
+- dbspec set-reader 요구사항 DBS-12부터 DBS-15까지를 명시적 requirement bullet로 정리했고, DIA-198은 여섯 runtime의 query-count unit 하나로 묶어 SQLite memory native case를 포함한다. Focused owner check와 scoped declaration이 통과했다. 수정 전 RED replay는 현재 test source에서 `c3bd1a817`의 `config/parity.json` 입력만 사용해 runtime binding 다섯 개가 빠진 사실을 확인했다(KSTD-2-9).
 - PHP 확장의 SQLite row-lock write event에 트랜잭션 ID를 기록한다. focused native transaction 테스트가 연속 트랜잭션을 확인한다(KSTD-7-5-2).
 - 이름이 지정된 client API unit 63개가 두 언어 specification의 정확한 INT 또는 COD requirement bullet을 인용하는지 확인한다. Focused requirement test는 1/1 통과했다. RED replay는 현재 test와 runtime을 유지하고 `694ca3a35^`의 config와 specification 입력만 정확히 사용했다(KSTD-2-11-7-1).
 - logical interface rule 82개 모두에 generated extension symbol snapshot과 signature가 일치하는 exported PHP extension symbol을 기록했다. contract validator는 각 rule을 PHP input/output type과 대조하고 extension을 다섯 client language mutation case와 별도로 검증한다. focused logical drift unit이 통과한다 (KSTD-2-3).
