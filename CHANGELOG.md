@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- `make kit-check` passes on main, confirming CHECK_TARGETS includes every Kit gate and the vendored files match Kit 0.0.54 (KSTD-5-11).
 - Main now passes `make kit-check`: the parity requirements, CHECK_TARGETS registrations, absolute tool paths, and vendored copies match Kit 0.0.54. The focused CI target-distribution case also passes 1/1 (KSTD-12).
 - The selected PHP extension bootstrap test now runs from the root Composer vendor without PHPUnit discovering a trait-only `*Test.php` file. The timed Dbspec trait lives in `DbspecTimedCases.php`, and its imports, bootstrap include, and feature owner input name that helper. The pre-fix gate run at `3cd748f44648` failed on the discovery warning; the focused test passes 1 test / 5 assertions with the extension loaded (KSTD-5-10).
 - The native driver-error cause, lossless row-byte cell, and Markdown connect-refusal behaviors each have one neutral six-client unit, backed by 18 exact native cases. The Rust byte case crosses SQLx row decoding, and Markdown refusal is exercised through native `Orm::connect`. The narrow official RED replay of the historical five-client Markdown declaration reported the missing PHP-extension binding (KSTD-2-11-17).

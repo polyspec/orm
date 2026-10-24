@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a4c143c2bf70ba16d7ae207ebe068208e027dca85ab11789cbf118ed85f5002b -->
+<!-- source-sha256: e42a9085483eb96668d2838bacab69139f67ca708d36fb16198f31bab76106d8 -->
 # 변경 이력
 
 ## Unreleased
 
+- main의 `make kit-check`가 통과해 CHECK_TARGETS가 모든 Kit gate를 포함하고 vendored 파일이 Kit 0.0.54와 일치함을 확인한다(KSTD-5-11).
 - main의 `make kit-check`가 통과한다. parity requirement, CHECK_TARGETS 등록, 절대 경로 도구 실행, vendored copy가 Kit 0.0.54와 일치한다. CI target 분배 집중 사례도 1/1 통과한다(KSTD-12).
 - 선택한 PHP extension bootstrap test가 root Composer vendor에서 실행되며 trait만 정의한 `*Test.php` 파일을 PHPUnit이 발견하지 않는다. Dbspec 시간 측정 trait를 `DbspecTimedCases.php`로 옮기고 import, bootstrap include, feature owner 입력을 함께 갱신했다. 수정 전 `3cd748f44648`의 gate 실행은 discovery warning으로 실패했고, extension을 로드한 focused test는 1개 test와 5개 assertion으로 통과한다(KSTD-5-10).
 - native driver error cause, lossless row-byte cell, Markdown connect refusal 동작이 각각 중립 6-client unit 하나에 묶이고 정확한 native case 18개를 실행했다. Rust byte case는 SQLx row decoder를 통과하며 Markdown 거부는 native `Orm::connect` 경계에서 검사한다. 과거 5-client Markdown 선언만 사용한 좁은 공식 RED replay에서 PHP extension binding 누락이 확인됐다(KSTD-2-11-17).
