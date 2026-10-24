@@ -381,6 +381,18 @@ caseTest('a CI group set that omits, repeats or adds a target of CHECK_TARGETS f
   const make = (groups: string[]) => ['CHECK_TARGETS = a-check b-check c-check', ...groups, ''].join('\n');
   const good = make(['CI_GROUPS = one two', 'CI_TARGETS_one = a-check c-check', 'CI_TARGETS_two = b-check']);
   assert.deepEqual(ciCheckTargetErrors(grouped(), good), []);
+  const multipleMissing = [
+    'CHECK_TARGETS = a-check b-check c-check d-check e-check f-check',
+    'CI_GROUPS = one two',
+    'CI_TARGETS_one = a-check',
+    'CI_TARGETS_two = b-check',
+  ].join('\n');
+  assert.deepEqual(ciCheckTargetErrors(grouped(), multipleMissing), [
+    'no CI group runs c-check of CHECK_TARGETS; add it to one CI_TARGETS_<group>',
+    'no CI group runs d-check of CHECK_TARGETS; add it to one CI_TARGETS_<group>',
+    'no CI group runs e-check of CHECK_TARGETS; add it to one CI_TARGETS_<group>',
+    'no CI group runs f-check of CHECK_TARGETS; add it to one CI_TARGETS_<group>',
+  ]);
   assert.deepEqual(ciCheckTargetErrors(grouped(), make(['CI_GROUPS = one two', 'CI_TARGETS_one = a-check b-check d-check', 'CI_TARGETS_two = b-check'])), [
     'CI groups one, two each run b-check; every target of CHECK_TARGETS runs in exactly one group',
     'no CI group runs c-check of CHECK_TARGETS; add it to one CI_TARGETS_<group>',
