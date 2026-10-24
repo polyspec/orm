@@ -1,5 +1,6 @@
 /* Native result assembly and read terminals for Polyspec\Orm\Model. */
 #include "model_read.h"
+#include "object_method_lookup.h"
 #include "model_state.h"
 #include "model_types.h"
 #include "model_native_methods.h"
@@ -48,13 +49,7 @@ static bool read_throw(const char *code, const char *message)
 
 static bool read_call(zval *object, const char *name, zval *result, uint32_t argc, zval *args)
 {
-    zend_string *key = zend_string_init(name, strlen(name), 0);
-    zend_str_tolower(ZSTR_VAL(key), ZSTR_LEN(key));
-    zend_function *fn = NULL;
-    for (zend_class_entry *scope = Z_OBJCE_P(object); scope != NULL && fn == NULL; scope = scope->parent) {
-        fn = zend_hash_find_ptr(&scope->function_table, key);
-    }
-    zend_string_release(key);
+    zend_function *fn = object_method_lookup(Z_OBJCE_P(object), name);
     if (fn == NULL) {
         zend_throw_error(NULL, "Method %s::%s is not registered", ZSTR_VAL(Z_OBJCE_P(object)->name), name);
         return false;
@@ -265,13 +260,7 @@ ZEND_METHOD(Polyspec_Orm_Model, rowShape)
 
 static bool read_static_call(zend_class_entry *ce, const char *name, zval *result, uint32_t argc, zval *args)
 {
-    zend_string *key = zend_string_init(name, strlen(name), 0);
-    zend_str_tolower(ZSTR_VAL(key), ZSTR_LEN(key));
-    zend_function *fn = NULL;
-    for (zend_class_entry *scope = ce; scope != NULL && fn == NULL; scope = scope->parent) {
-        fn = zend_hash_find_ptr(&scope->function_table, key);
-    }
-    zend_string_release(key);
+    zend_function *fn = object_method_lookup(ce, name);
     if (fn == NULL) {
         zend_throw_error(NULL, "Static method %s::%s is not registered", ZSTR_VAL(ce->name), name);
         return false;

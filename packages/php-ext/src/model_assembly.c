@@ -4,6 +4,7 @@
 #include "Zend/zend_exceptions.h"
 #include "Zend/zend_smart_str.h"
 #include "Zend/zend_objects_API.h"
+#include "object_method_lookup.h"
 #include "object_zval_pair.h"
 #include "ext/json/php_json.h"
 #include "ext/spl/spl_exceptions.h"
@@ -45,13 +46,7 @@ static void write_prop(zend_class_entry *scope, zval *obj, const char *name, zva
 
 static bool call_static(zend_class_entry *ce, const char *method, zval *retval, uint32_t argc, zval *args)
 {
-    zend_string *key = zend_string_init(method, strlen(method), 0);
-    zend_str_tolower(ZSTR_VAL(key), ZSTR_LEN(key));
-    zend_function *fn = NULL;
-    for (zend_class_entry *scope = ce; scope != NULL && fn == NULL; scope = scope->parent) {
-        fn = zend_hash_find_ptr(&scope->function_table, key);
-    }
-    zend_string_release(key);
+    zend_function *fn = object_method_lookup(ce, method);
     if (fn == NULL) {
         zend_throw_error(NULL, "%s::%s is not available", ZSTR_VAL(ce->name), method);
         return false;
@@ -63,13 +58,7 @@ static bool call_static(zend_class_entry *ce, const char *method, zval *retval, 
 
 static bool call_method(zend_object *obj, const char *method, zval *retval, uint32_t argc, zval *args)
 {
-    zend_string *key = zend_string_init(method, strlen(method), 0);
-    zend_str_tolower(ZSTR_VAL(key), ZSTR_LEN(key));
-    zend_function *fn = NULL;
-    for (zend_class_entry *scope = obj->ce; scope != NULL && fn == NULL; scope = scope->parent) {
-        fn = zend_hash_find_ptr(&scope->function_table, key);
-    }
-    zend_string_release(key);
+    zend_function *fn = object_method_lookup(obj->ce, method);
     if (fn == NULL) {
         zend_throw_error(NULL, "%s::%s is not available", ZSTR_VAL(obj->ce->name), method);
         return false;
