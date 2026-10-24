@@ -86,13 +86,21 @@ zval *obj_get(zval *obj, const char *name)
     return p;
 }
 
+static bool zv_array_begin(zval *out, size_t count)
+{
+    if (count == 0) {
+        ZVAL_EMPTY_ARRAY(out);
+        return false;
+    }
+    array_init_size(out, (uint32_t)count);
+    return true;
+}
+
 void zv_strs(zval *out, const strs *l)
 {
-    if (l->n == 0) {
-        ZVAL_EMPTY_ARRAY(out);
+    if (!zv_array_begin(out, l->n)) {
         return;
     }
-    array_init_size(out, (uint32_t)l->n);
     for (size_t i = 0; i < l->n; i++) {
         add_next_index_str(out, str_zend(l->v[i]));
     }
@@ -100,11 +108,9 @@ void zv_strs(zval *out, const strs *l)
 
 void zv_positions(zval *out, const dposv *d)
 {
-    if (d->n == 0) {
-        ZVAL_EMPTY_ARRAY(out);
+    if (!zv_array_begin(out, d->n)) {
         return;
     }
-    array_init_size(out, (uint32_t)d->n);
     for (size_t i = 0; i < d->n; i++) {
         zval o, path;
         obj_new(&o, dbs_ce_Position);
@@ -122,11 +128,9 @@ void zv_positions(zval *out, const dposv *d)
 
 void zv_tokens(zval *out, const dtokv *t)
 {
-    if (t->n == 0) {
-        ZVAL_EMPTY_ARRAY(out);
+    if (!zv_array_begin(out, t->n)) {
         return;
     }
-    array_init_size(out, (uint32_t)t->n);
     for (size_t i = 0; i < t->n; i++) {
         zval o;
         obj_new(&o, dbs_ce_Token);
@@ -140,11 +144,9 @@ void zv_tokens(zval *out, const dtokv *t)
 
 void zv_diags(zval *out, const diags *d)
 {
-    if (d->n == 0) {
-        ZVAL_EMPTY_ARRAY(out);
+    if (!zv_array_begin(out, d->n)) {
         return;
     }
-    array_init_size(out, (uint32_t)d->n);
     for (size_t i = 0; i < d->n; i++) {
         zval o;
         obj_new(&o, dbs_ce_Diagnostic);
