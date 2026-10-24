@@ -1091,13 +1091,15 @@ async fn end(tx: &TxShared, inner: TxInner, kind: &str, sql: &str, clean: bool) 
 }
 
 async fn commit(tx: &TxShared) -> Result<()> {
-    tx.finished.store(true, Ordering::Release);
-    let mut guard = tx.inner.lock().await;
-    let Some(mut inner) = guard.take() else {
-        return Err(Error::Config("transaction already finished".into()));
-    };
+    let mut inner = take_inner(tx).await?;
     finish(tx, &mut inner).await?;
     end(tx, inner, KIND_COMMIT, "COMMIT", true).await
+}
+
+async fn take_inner(tx: &TxShared) -> Result<TxInner> {
+    tx.finished.store(true, Ordering::Release);
+    let mut guard = tx.inner.lock().await;
+    guard.take().ok_or_else(|| Error::Config("transaction already finished".into()))
 }
 
 /// After the transaction is rolled back, consumes the configured test fault: that rollback
@@ -1111,11 +1113,7 @@ fn rollback_fault(db: &Db) -> Result<()> {
 }
 
 async fn rollback(tx: &TxShared) -> Result<()> {
-    tx.finished.store(true, Ordering::Release);
-    let mut guard = tx.inner.lock().await;
-    let Some(mut inner) = guard.take() else {
-        return Err(Error::Config("transaction already finished".into()));
-    };
+    let mut inner = take_inner(tx).await?;
     let cleanup = finish(tx, &mut inner).await;
     let rolled_back = end(tx, inner, KIND_ROLLBACK, "ROLLBACK", cleanup.is_ok()).await;
     match (cleanup, rolled_back) {
