@@ -6,6 +6,7 @@
 #include "Zend/zend_objects_API.h"
 #include "object_method_lookup.h"
 #include "object_zval_pair.h"
+#include "orm_exception_object.h"
 #include "ext/json/php_json.h"
 #include "ext/spl/spl_exceptions.h"
 #include <stdarg.h>
@@ -70,27 +71,11 @@ static bool call_method(zend_object *obj, const char *method, zval *retval, uint
 
 static bool orm_fail(const char *code, zend_string *message)
 {
-    zend_string *class_name = zend_string_init(ZEND_STRL("Polyspec\\Orm\\OrmException"), 0);
-    zend_class_entry *ce = zend_lookup_class(class_name);
-    zend_string_release(class_name);
-    if (ce == NULL) {
-        zend_string_release(message);
-        zend_throw_error(NULL, "class Polyspec\\Orm\\OrmException is not loaded");
-        return false;
-    }
-    zval ex, args[2], rv;
-    object_init_ex(&ex, ce);
-    ZVAL_STRING(&args[0], code);
-    ZVAL_STR(&args[1], message);
-    zend_call_method(Z_OBJ(ex), ce, NULL, ZEND_STRL("__construct"), &rv, 2, &args[0], &args[1]);
-    zval_ptr_dtor(&args[0]);
-    zval_ptr_dtor(&args[1]);
-    zval_ptr_dtor(&rv);
-    if (EG(exception) != NULL) {
-        zval_ptr_dtor(&ex);
-        return false;
-    }
-    zend_throw_exception_object(&ex);
+    zval exception;
+    bool ok = orm_exception_object("class Polyspec\\Orm\\OrmException is not loaded", code, message, &exception);
+    zend_string_release(message);
+    if (!ok) return false;
+    zend_throw_exception_object(&exception);
     return false;
 }
 

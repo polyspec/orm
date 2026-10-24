@@ -10,7 +10,7 @@ static inline bool orm_exception_object(const char *missing_class_message, const
     zend_class_entry *class_entry = zend_lookup_class(class_name);
     zend_string_release(class_name);
     if (class_entry == NULL) {
-        zend_throw_error(NULL, "%s", missing_class_message);
+        if (missing_class_message != NULL) zend_throw_error(NULL, "%s", missing_class_message);
         return false;
     }
     ZVAL_UNDEF(exception);

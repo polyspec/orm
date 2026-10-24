@@ -8,6 +8,7 @@
  * the dialect call runs.
  */
 #include "planner.h"
+#include "orm_exception_object.h"
 #include "temps.h"
 #include "validator.h"
 #include "Zend/zend_exceptions.h"
@@ -86,26 +87,11 @@ static void *fail(const char *code, const char *fmt, ...)
     va_start(ap, fmt);
     zend_string *msg = zend_vstrpprintf(0, fmt, ap);
     va_end(ap);
-    zend_string *cn = zend_string_init(ORM_EXCEPTION, sizeof(ORM_EXCEPTION) - 1, 0);
-    zend_class_entry *ce = zend_lookup_class(cn);
-    zend_string_release(cn);
-    if (ce == NULL) {
-        zend_string_release(msg);
-        return NULL;
-    }
-    zval ex, args[2], rv;
-    object_init_ex(&ex, ce);
-    ZVAL_STRING(&args[0], code);
-    ZVAL_STR(&args[1], msg);
-    zend_call_method(Z_OBJ(ex), ce, NULL, ZEND_STRL("__construct"), &rv, 2, &args[0], &args[1]);
-    zval_ptr_dtor(&args[0]);
-    zval_ptr_dtor(&args[1]);
-    zval_ptr_dtor(&rv);
-    if (EG(exception) != NULL) {
-        zval_ptr_dtor(&ex);
-        return NULL;
-    }
-    zend_throw_exception_object(&ex);
+    zval exception;
+    bool ok = orm_exception_object(NULL, code, msg, &exception);
+    zend_string_release(msg);
+    if (!ok) return NULL;
+    zend_throw_exception_object(&exception);
     return NULL;
 }
 
