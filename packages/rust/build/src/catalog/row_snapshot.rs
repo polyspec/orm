@@ -199,6 +199,22 @@ mod cause_message_tests {
         }
     }
 
+    fn fixture_with_payload(value: GridCell) -> TablePage {
+        let mut page = fixture();
+        page.metadata.columns.push(super::super::TableColumnMetadata {
+            name: "payload".into(),
+            native_type: "TEXT".into(),
+            nullable: false,
+            generated: false,
+            automatic_key: false,
+            default_expression: None,
+            expression_default: false,
+        });
+        page.result.columns.push(crate::tool_db::QueryColumn { name: "payload".into(), native_type: "TEXT".into() });
+        page.result.rows[0].push(value);
+        page
+    }
+
     #[test]
     fn primary_key_parameters_follow_declared_key_order() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -252,18 +268,7 @@ mod cause_message_tests {
         let error = snapshot.validate_update(&[("id".into(), GridCell::Decimal("01".into()))]).expect_err("invalid decimal assignment must fail");
         assert!(error.contains("ROW_UPDATE_INVALID: invalid column assignments: ROW_SNAPSHOT_INVALID: invalid original row or descriptor"), "{error}");
 
-        let mut page = fixture();
-        page.metadata.columns.push(super::super::TableColumnMetadata {
-            name: "payload".into(),
-            native_type: "TEXT".into(),
-            nullable: false,
-            generated: false,
-            automatic_key: false,
-            default_expression: None,
-            expression_default: false,
-        });
-        page.result.columns.push(crate::tool_db::QueryColumn { name: "payload".into(), native_type: "TEXT".into() });
-        page.result.rows[0].push(GridCell::Text("small".into()));
+        let page = fixture_with_payload(GridCell::Text("small".into()));
         let snapshot = RowSnapshot::from_page(&page, 0).expect("valid page with payload");
         let huge = GridCell::Text("x".repeat(8 * 1024 * 1024 - 64));
         let error = snapshot.validate_update(&[("payload".into(), huge)]).expect_err("oversized update must fail");
@@ -278,18 +283,7 @@ mod cause_message_tests {
     #[test]
     fn row_snapshot_revision_preserves_writer_cause_message() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        let mut page = fixture();
-        page.metadata.columns.push(super::super::TableColumnMetadata {
-            name: "payload".into(),
-            native_type: "TEXT".into(),
-            nullable: false,
-            generated: false,
-            automatic_key: false,
-            default_expression: None,
-            expression_default: false,
-        });
-        page.result.columns.push(crate::tool_db::QueryColumn { name: "payload".into(), native_type: "TEXT".into() });
-        page.result.rows[0].push(GridCell::Text("x".repeat(8 * 1024 * 1024 + 1)));
+        let page = fixture_with_payload(GridCell::Text("x".repeat(8 * 1024 * 1024 + 1)));
         let error = RowSnapshot::from_page(&page, 0).expect_err("oversized row must fail");
         assert!(error.contains("ROW_SNAPSHOT_LIMIT: original row encoding exceeds its budget: row snapshot budget exceeded"), "{error}");
     }
