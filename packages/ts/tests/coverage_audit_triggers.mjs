@@ -5,9 +5,10 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { CORE, Db, Model, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
+import { CORE, Db, dbspecManifest, parseDbspec } from '../dist/index.js';
 import { errorCode, nativeQuery, repositoryRoot, runCases, tableExists, withCleanup } from './coverage_case.mjs';
 import { auditCase, auditSchema, auditSource, auditText, restoreCase, restoreSchema, restoreTables } from './restore_case.mjs';
+import { classesFromManifest } from './registered_models.mjs';
 
 const auditColumnsText = await readFile(join(repositoryRoot, 'contracts/fixtures/audit_columns.dbs'), 'utf8');
 
@@ -28,14 +29,7 @@ function auditModels(text = auditText) {
   assert.deepEqual(parsed.diagnostics, [], 'the audit fixture parses');
   const { manifest, diagnostics } = dbspecManifest([parsed.document]);
   assert.deepEqual(diagnostics, [], 'the audit fixture has a manifest');
-  const model = registerModel(manifest.manifestText, manifest.manifestHash);
-  const out = {};
-  for (const entity of model.entities.values()) {
-    const cls = class extends Model {};
-    cls.entity = { model, entity, create: core => new cls(core) };
-    out[entity.name] = cls;
-  }
-  return out;
+  return classesFromManifest(manifest);
 }
 
 /**
