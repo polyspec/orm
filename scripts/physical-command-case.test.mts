@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { inspect } from 'node:util';
 import test from 'node:test';
 import { reportUnchangedState, runPhysicalCommandCase } from './physical-command-case.mts';
 
@@ -18,13 +19,20 @@ test('rejects a failed or unexpected TeamCity event and nonmatching exact output
 });
 
 test('redacts the DSN from command failures', async () => {
-  const cause = new Error('failed for dsn-secret');
+  const cause = new TypeError('failed for dsn-secret');
+  cause.stack = `${cause.stack}\ncommand context dsn-secret`;
+  Object.assign(cause, { stderr: 'driver reported dsn-secret' });
   await assert.rejects(runPhysicalCommandCase(async () => { throw cause; }, 'php', [], {}, 'dsn-secret',
     { kind: 'teamcity', testName: 'test_group_rows' }, 'missing pass event'), error => {
     assert(error instanceof Error);
     assert.equal(error.message, 'failed for [redacted]');
     assert.equal(error.message.includes('dsn-secret'), false);
-    assert.equal(error.cause, cause);
+    assert(error.cause instanceof TypeError);
+    assert.equal(error.cause.message, 'failed for [redacted]');
+    assert.equal(error.cause.stack?.includes('command context [redacted]'), true);
+    assert('stderr' in error.cause);
+    assert.equal(error.cause.stderr, 'driver reported [redacted]');
+    assert.equal(inspect(error).includes('dsn-secret'), false);
     return true;
   });
 });
