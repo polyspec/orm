@@ -7,6 +7,7 @@
 static bool orm_connect_markdown(zend_string *dsn, zval *config, zval *out);
 static bool orm_connect_sql(zend_string *dsn, zval *config, zval *out, bool listener);
 static bool orm_decoded(zval *input, bool raw, zval *out);
+static bool orm_query_decode(const char *value, size_t length, zval *out);
 
 ZEND_NAMED_FUNCTION(orm_listener_open)
 {
@@ -196,10 +197,8 @@ static bool orm_query_allowed(zval *parts, const char *driver, const char *const
     size_t position = 0;
     orm_query_parameter parameter;
     while (orm_query_next(p, Z_STRLEN_P(raw), &position, &parameter)) {
-        zval encoded, decoded;
-        ZVAL_STRINGL(&encoded, parameter.key, parameter.key_length);
-        if (!orm_decoded(&encoded, false, &decoded)) { zval_ptr_dtor(&encoded); return false; }
-        zval_ptr_dtor(&encoded);
+        zval decoded;
+        if (!orm_query_decode(parameter.key, parameter.key_length, &decoded)) return false;
         bool found = false;
         for (size_t k = 0; k < n; k++) {
             if (Z_STRLEN(decoded) == strlen(allowed[k]) && memcmp(Z_STRVAL(decoded), allowed[k], Z_STRLEN(decoded)) == 0) found = true;
@@ -231,6 +230,15 @@ static bool orm_decoded(zval *input, bool raw, zval *out)
     return ok && Z_TYPE_P(out) == IS_STRING;
 }
 
+static bool orm_query_decode(const char *value, size_t length, zval *out)
+{
+    zval encoded;
+    ZVAL_STRINGL(&encoded, value, length);
+    bool ok = orm_decoded(&encoded, false, out);
+    zval_ptr_dtor(&encoded);
+    return ok;
+}
+
 static bool orm_sqlite_pragmas(zval *parts, zval *out)
 {
     zval *raw = orm_part(parts, "query");
@@ -239,15 +247,11 @@ static bool orm_sqlite_pragmas(zval *parts, zval *out)
     size_t position = 0;
     orm_query_parameter parameter;
     while (orm_query_next(p, Z_STRLEN_P(raw), &position, &parameter)) {
-        zval key_raw, key;
-        ZVAL_STRINGL(&key_raw, parameter.key, parameter.key_length);
-        if (!orm_decoded(&key_raw, false, &key)) { zval_ptr_dtor(&key_raw); return false; }
-        zval_ptr_dtor(&key_raw);
+        zval key;
+        if (!orm_query_decode(parameter.key, parameter.key_length, &key)) return false;
         if (zend_string_equals_literal(Z_STR(key), "_pragma")) {
-            zval value_raw, value;
-            ZVAL_STRINGL(&value_raw, parameter.value, parameter.value_length);
-            if (!orm_decoded(&value_raw, false, &value)) { zval_ptr_dtor(&value_raw); zval_ptr_dtor(&key); return false; }
-            zval_ptr_dtor(&value_raw);
+            zval value;
+            if (!orm_query_decode(parameter.value, parameter.value_length, &value)) { zval_ptr_dtor(&key); return false; }
             const char *text = Z_STRVAL(value);
             size_t len = Z_STRLEN(value), open = 0;
             while (open < len && ((text[open] >= 'a' && text[open] <= 'z') || text[open] == '_')) open++;
@@ -551,12 +555,10 @@ ZEND_METHOD(Polyspec_Orm_Orm, parseMarkdownDsn)
         size_t position = 0;
         orm_query_parameter parameter;
         while (orm_query_next(p, Z_STRLEN_P(raw_query), &position, &parameter)) {
-            zval key_raw, key;
-            ZVAL_STRINGL(&key_raw, parameter.key, parameter.key_length);
-            if (!orm_decoded(&key_raw, false, &key)) {
-                zval_ptr_dtor(&key_raw); zval_ptr_dtor(&corpus); zval_ptr_dtor(&parts); RETURN_THROWS();
+            zval key;
+            if (!orm_query_decode(parameter.key, parameter.key_length, &key)) {
+                zval_ptr_dtor(&corpus); zval_ptr_dtor(&parts); RETURN_THROWS();
             }
-            zval_ptr_dtor(&key_raw);
             if (!zend_string_equals_literal(Z_STR(key), "token")) {
                 zend_string *key_copy = zend_string_copy(Z_STR(key));
                 zval_ptr_dtor(&key); zval_ptr_dtor(&corpus); zval_ptr_dtor(&parts);
@@ -564,12 +566,10 @@ ZEND_METHOD(Polyspec_Orm_Orm, parseMarkdownDsn)
                 zend_string_release(key_copy); RETURN_THROWS();
             }
             zval_ptr_dtor(&key);
-            zval value_raw, value;
-            ZVAL_STRINGL(&value_raw, parameter.value, parameter.value_length);
-            if (!orm_decoded(&value_raw, false, &value)) {
-                zval_ptr_dtor(&value_raw); zval_ptr_dtor(&corpus); zval_ptr_dtor(&parts); RETURN_THROWS();
+            zval value;
+            if (!orm_query_decode(parameter.value, parameter.value_length, &value)) {
+                zval_ptr_dtor(&corpus); zval_ptr_dtor(&parts); RETURN_THROWS();
             }
-            zval_ptr_dtor(&value_raw);
             found++;
             if (token != NULL) zend_string_release(token);
             token = zend_string_copy(Z_STR(value));
