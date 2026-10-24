@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 990c605a240450b2dca65900825b9772abe1328665e7eb66ec0cacbdd425830d -->
+<!-- source-sha256: d09f4f8f5a94be29ff3d0bc99277fd0f8ae47b3f5258f75347295cc588f5cd4d -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -71,7 +71,7 @@
 | KSTD-3-1 | make generated-lint-check가 composer.json과 맞는 autoload의 설치된 checkout에서 돈다 (KSTD-3 후속). Cause: php-vendor-check는 파일 존재만 보므로, 1aa88a607 이전에 설치된 vendor-php가 아직 생성되지 않은 packages/php/gen/bootstrap.php를 autoload하고, php-models가 실행되기 전에 main checkout에서 실패한다 | Makefile | `make generated-lint-check` | [o] |
 | KSTD-3-2 | php-vendor-check는 낡은 Composer autoload를 보고하고 고치지 않는다 (KSTD-3-1 후속). Cause: KSTD-3-1이 check에 composer dump-autoload를 넣어, 낡은 vendor-php가 조용히 고쳐지고 다음 낡은 상태는 보고되지 않는다; check는 보고하고 install이 고친다 | Makefile | `make php-vendor-check` | [o] |
 | KSTD-4 | repository의 모든 composer platform은 .php-version의 PHP minor에 patch 1이다 (kit K282). Cause: kit은 모든 composer config.platform.php와 composerPlatforms가 8.4.1이기를 요구하는데 orm은 두 곳에 8.4.0을 선언한다 | the composer.json files, kit.json | `make kit-check` | [o] |
-| KSTD-5 | CHECK_TARGETS가 kit-gates의 모든 gate에 닿는다 (kit K289). Cause: kit-check가 CHECK_TARGETS에 toolchain-check, test-markers-check, rules-check, rebuild-check, layout-check, language-check, duplication-check, lint-ts, lint-go, lint-python, lint-php, lint-php-ext, test-php-ext가 없다고 보고한다; 각각을 추가하고 그 finding을 고쳐 통과시킨다 | Makefile, the files each gate reports | `make kit-check` | [~] |
+| KSTD-5 | CHECK_TARGETS가 kit-gates의 모든 gate에 닿는다 (kit K289). Cause: kit-check가 CHECK_TARGETS에 toolchain-check, test-markers-check, rules-check, rebuild-check, layout-check, language-check, duplication-check, lint-ts, lint-go, lint-python, lint-php, lint-php-ext, test-php-ext가 없다고 보고한다; 각각을 추가하고 그 finding을 고쳐 통과시킨다 | Makefile, the files each gate reports | `make kit-check` | [ ] |
 | KSTD-5-1 | toolchain-check가 통과한다 (KSTD-5 후속). Cause: phpstan이 시작하지 못한다: kit의 link 실행이 vendor-php/composer/installed.json에 polyspec/ordered-json의 release metadata(require php >=8.5)를 남겨 platform_check.php가 PHP 8.5를 요구한다 (kit 결함, scripts/kit/link.mts:390-403) | vendor-php, the kit link | `make toolchain-check` | [o] |
 | KSTD-5-2 | test-markers-check가 통과한다 (KSTD-5 후속). Cause: marker 42개가 test를 건너뛰거나 좁힌다. 예를 들어 feature-check만 database와 함께 돌리는 Rust coverage test의 #[ignore]다; test는 전부 돌거나 그 이유와 함께 지워진다 | the tests of every implementation | `make test-markers-check` | [!] 원인: marker 42개 중 40개를 없앴다: database test는 database를 띄우는 target 아래에서 전부 돌고, bench와 fixture test는 build tag 아래에서 돈다; 남은 둘은 skip이 검사 대상 동작인 fixture(packages/go/testcase의 TestFixtureSkip, packages/python/tests/test_testcase.py의 SAMPLE 문자열)인데 kit 검사가 이를 여전히 센다; 재시도: kit의 test-markers 검사가 skip의 fixture와 건너뛴 test를 구별하고, Python 문자열 안의 marker를 읽지 않는다 |
 | KSTD-5-3 | rules-check가 통과한다 (KSTD-5 후속). Cause: AGENTS.md의 규칙 58개가 `Own:`이나 `Refines <id>:`로 시작하지 않아, 이 repository의 규칙인지 원칙을 다듬는지 밝히지 않는다 (kit K279) | AGENTS.md and its Korean twin | `make rules-check` | [o] |
