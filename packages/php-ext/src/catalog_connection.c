@@ -2855,12 +2855,20 @@ ZEND_METHOD(Polyspec_Orm_Catalog, insertRow)
 }
 
 /* Locks and validates the original snapshot before either mutation path writes its row. */
+static void cat_snapshot_table_names(zval *snapshot, zval *metadata_rv, zval *table_rv, zval **metadata,
+                                    zval **ns, zval **tname)
+{
+    *metadata = catalog_prop(snapshot, "metadata", metadata_rv);
+    zval *table = catalog_prop(*metadata, "table", table_rv);
+    *ns = zend_hash_str_find(Z_ARRVAL_P(table), "namespace", 9);
+    *tname = zend_hash_str_find(Z_ARRVAL_P(table), "name", 4);
+}
+
 static bool cat_locked_original(zval *db, const char *dialect, zval *pdo, zval *original, zval *keys, zval *descriptor)
 {
-    zval rv_m, *metadata = catalog_prop(original, "metadata", &rv_m);
-    zval rv_t, *table = catalog_prop(metadata, "table", &rv_t);
-    zval *ns = zend_hash_str_find(Z_ARRVAL_P(table), "namespace", 9);
-    zval *tname = zend_hash_str_find(Z_ARRVAL_P(table), "name", 4);
+    zval rv_m, rv_t;
+    zval *metadata, *ns, *tname;
+    cat_snapshot_table_names(original, &rv_m, &rv_t, &metadata, &ns, &tname);
     zval current;
     if (!cat_lookup(db, dialect, pdo, metadata, keys, true, &current)) return false;
     if (!cat_describe(db, dialect, pdo, Z_STR_P(ns), Z_STR_P(tname), descriptor)) {
@@ -2902,10 +2910,9 @@ static bool cat_descriptor_unchanged(zval *db, const char *dialect, zval *pdo, z
 static bool cat_update_body(zval *db, const char *dialect, zval *pdo, zval *original, zval *changes, zval *updated, zval *keys,
                             zval *new_keys, zval *out)
 {
-    zval rv_m, *metadata = catalog_prop(original, "metadata", &rv_m);
-    zval rv_t, *table = catalog_prop(metadata, "table", &rv_t);
-    zval *ns = zend_hash_str_find(Z_ARRVAL_P(table), "namespace", 9);
-    zval *tname = zend_hash_str_find(Z_ARRVAL_P(table), "name", 4);
+    zval rv_m, rv_t;
+    zval *metadata, *ns, *tname;
+    cat_snapshot_table_names(original, &rv_m, &rv_t, &metadata, &ns, &tname);
     zval descriptor;
     if (!cat_locked_original(db, dialect, pdo, original, keys, &descriptor)) return false;
     zval rv_cols, *columns = catalog_prop(&descriptor, "columns", &rv_cols);
@@ -3051,10 +3058,9 @@ ZEND_METHOD(Polyspec_Orm_Catalog, updateRow)
 
 static bool cat_delete_body(zval *db, const char *dialect, zval *pdo, zval *original, zval *keys, zend_long *affected_out)
 {
-    zval rv_m, *metadata = catalog_prop(original, "metadata", &rv_m);
-    zval rv_t, *table = catalog_prop(metadata, "table", &rv_t);
-    zval *ns = zend_hash_str_find(Z_ARRVAL_P(table), "namespace", 9);
-    zval *tname = zend_hash_str_find(Z_ARRVAL_P(table), "name", 4);
+    zval rv_m, rv_t;
+    zval *metadata, *ns, *tname;
+    cat_snapshot_table_names(original, &rv_m, &rv_t, &metadata, &ns, &tname);
     zval descriptor;
     if (!cat_locked_original(db, dialect, pdo, original, keys, &descriptor)) return false;
     smart_str sql = {0};
