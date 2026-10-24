@@ -49,6 +49,25 @@ type served struct {
 // becomes the result {"error": code}.
 type caseFunc func(s *served) (any, error)
 
+func conformanceInsertedID[T any](model interface{ GetId() (T, error) }, createErr error) (any, error) {
+	if createErr != nil {
+		return nil, createErr
+	}
+	id, err := model.GetId()
+	if err != nil {
+		return nil, err
+	}
+	return map[string]any{"id": id}, nil
+}
+
+func conformanceCodecPayload(value orm.StyledValue) (any, error) {
+	payload, ok := value.Data()
+	if !ok {
+		return nil, fmt.Errorf("payload is %s, not a stored value", value.Kind())
+	}
+	return payload, nil
+}
+
 // TestMarkdownConformance runs every case of tests/markdown/cases.json, in order, against one server of the flowmark build that FLOWMARK
 // points to, which must be the build pinned by flowmark.version;
 // if it is missing or a different build, the test fails (it is not skipped).
@@ -267,15 +286,7 @@ func conformanceCases() map[string]caseFunc {
 			if err != nil {
 				return nil, err
 			}
-			m, err := score.Create()
-			if err != nil {
-				return nil, err
-			}
-			id, err := m.GetId()
-			if err != nil {
-				return nil, err
-			}
-			return map[string]any{"id": id}, nil
+			return conformanceInsertedID(score.Create())
 		},
 		"insert_rows": func(s *served) (any, error) {
 			bob, err := markdownmodel.People().SetName("Bob").SetEmail(ptr("bob@example.com")).SetAge(ptr(int32(25))).SetScore("2.00")
@@ -297,15 +308,7 @@ func conformanceCases() map[string]caseFunc {
 			return markdownmodel.Tasks().Connect(s.db).Creates(rows, len(rows))
 		},
 		"insert_identity": func(s *served) (any, error) {
-			m, err := markdownmodel.Logs().Connect(s.db).SetTask("T1").SetNote("started").Create()
-			if err != nil {
-				return nil, err
-			}
-			id, err := m.GetId()
-			if err != nil {
-				return nil, err
-			}
-			return map[string]any{"id": id}, nil
+			return conformanceInsertedID(markdownmodel.Logs().Connect(s.db).SetTask("T1").SetNote("started").Create())
 		},
 		"one": func(s *served) (any, error) {
 			m, err := markdownmodel.People().Connect(s.db).RemoveAllColumns().AddColumnName().AddColumnEmail().AddColumnAge().AddColumnActive().AddColumnScore().Id("P1").Get()
@@ -880,11 +883,7 @@ func conformanceCases() map[string]caseFunc {
 			if err != nil {
 				return nil, err
 			}
-			payload, ok := value.Data()
-			if !ok {
-				return nil, fmt.Errorf("payload is %s, not a stored value", value.Kind())
-			}
-			return payload, nil
+			return conformanceCodecPayload(value)
 		},
 		// codec_update changes the encoded value and reads back the decoded text.
 		"codec_update": func(s *served) (any, error) {
@@ -907,11 +906,7 @@ func conformanceCases() map[string]caseFunc {
 			if err != nil {
 				return nil, err
 			}
-			payload, ok := value.Data()
-			if !ok {
-				return nil, fmt.Errorf("payload is %s, not a stored value", value.Kind())
-			}
-			return payload, nil
+			return conformanceCodecPayload(value)
 		},
 		// select_explicit_insert_omitted inserts a row without the explicit column.
 		"select_explicit_insert_omitted": func(s *served) (any, error) {
