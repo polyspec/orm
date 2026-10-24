@@ -5,6 +5,7 @@
  * header, and limit errors stop parsing and come after the diagnostics found before them.
  */
 #include "dbspec.h"
+#include "dbspec_str_list.h"
 #include <setjmp.h>
 
 #define MAX_BYTES (32 * 1024 * 1024)
@@ -34,16 +35,6 @@ static const char *const simple_types[] = {"i16", "i32", "i64", "bool", "f64", "
 static const char *const text_stages[] = {"hex", "base64", "ordered_json", "yaml", "serialize", NULL};
 static const char *const codec_stages[] = {"ordered_json", "aes", "hex", "gz", "base64", "serialize", "yaml", "ip", NULL};
 static const char *const fk_actions[] = {"restrict", "cascade", "set_null", NULL};
-
-static bool listed(str s, const char *const *list)
-{
-    for (int i = 0; list[i] != NULL; i++) {
-        if (str_eqc(s, list[i])) {
-            return true;
-        }
-    }
-    return false;
-}
 
 static int parameterized(str name)
 {
@@ -1070,7 +1061,7 @@ static ctype *read_type(parser *p, size_t i, size_t *next)
     str name = p->t.v[i].text;
     zend_long column = p->t.v[i].column;
     bool paren = tok_is(p, i + 1, "(");
-    bool simple = listed(name, simple_types);
+    bool simple = dbspec_str_in_list(name, simple_types);
     int arity = parameterized(name);
     if (simple && !paren) {
         *next = i + 1;
@@ -1477,11 +1468,11 @@ static void foreign_key_line(parser *p)
                 error(p, "syntax", p->line, action != NULL ? action->column : end_column(p), SL("expected an action"));
                 return;
             }
-            if (listed(action->text, fk_actions)) {
+            if (dbspec_str_in_list(action->text, fk_actions)) {
                 mark_token(p, action, "keyword");
             }
             actions[e] = action->text;
-            if (!listed(action->text, fk_actions)) {
+            if (!dbspec_str_in_list(action->text, fk_actions)) {
                 unknown[e] = *action;
                 is_unknown[e] = true;
             }
@@ -2103,7 +2094,7 @@ static void settings_line(parser *p)
     }
     if (str_eqc(keyword, "codec")) {
         for (size_t i = 1; i < args.n; i++) {
-            if (listed(args.v[i].text, codec_stages)) {
+            if (dbspec_str_in_list(args.v[i].text, codec_stages)) {
                 mark_token(p, &args.v[i], "keyword");
             }
         }
@@ -2947,7 +2938,7 @@ static void check_settings(parser *p, bool changed_by_foreign_keys)
             bool known = true;
             for (size_t k = 1; k < a->n; k++) {
                 token *stage = &a->v[k];
-                if (!listed(stage->text, codec_stages)) {
+                if (!dbspec_str_in_list(stage->text, codec_stages)) {
                     error(p, "setting", line, stage->column, fmt("unknown codec stage `%S`", stage->text));
                     known = false;
                 } else if (str_eqc(stage->text, "ordered_json") && k > 1) {
@@ -2957,7 +2948,7 @@ static void check_settings(parser *p, bool changed_by_foreign_keys)
             column *d = setting_column(p, kind, line, &a->v[0]);
             if (d != NULL && known) {
                 str last = a->v[a->n - 1].text;
-                bool text = listed(last, text_stages);
+                bool text = dbspec_str_in_list(last, text_stages);
                 str type = d->type->name;
                 if (text ? !str_eqc(type, "varchar") && !str_eqc(type, "text") : !str_eqc(type, "bytes")) {
                     error(p, "setting", line, a->v[0].column, fmt("the last codec stage `%S` needs %s column", last, text ? "a varchar or text" : "a bytes"));

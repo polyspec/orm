@@ -5,6 +5,7 @@
  * writes only the parentheses that an `or` inside `and` needs.
  */
 #include "dbspec.h"
+#include "dbspec_str_list.h"
 #include <setjmp.h>
 
 enum { OP_COLUMN, OP_LITERAL };
@@ -54,16 +55,6 @@ typedef VEC(found) foundv;
 
 static const char *const comparisons[] = {"=", "<>", "<", "<=", ">", ">=", NULL};
 static const char *const keywords[] = {"and", "or", "not", "in", "between", "is", "null", "true", "false", NULL};
-
-static bool in_list(str s, const char *const *list)
-{
-    for (int i = 0; list[i] != NULL; i++) {
-        if (str_eqc(s, list[i])) {
-            return true;
-        }
-    }
-    return false;
-}
 
 static bool ordering(str s)
 {
@@ -164,7 +155,7 @@ static operand xoperand(xparser *p)
         if (peek_is(p, 1, "(")) {
             fail(p, SL("a check has no functions"));
         }
-        if (!in_list(*token, keywords)) {
+        if (!dbspec_str_in_list(*token, keywords)) {
             operand o = {OP_COLUMN, *token, position(p), smap_get(p->columns, *token), 0};
             mark_at(p, p->at, "name");
             p->at++;
@@ -185,7 +176,7 @@ static enode *predicate(xparser *p)
 {
     operand left = xoperand(p);
     const str *next = peek(p, 0);
-    if (next != NULL && in_list(*next, comparisons)) {
+    if (next != NULL && dbspec_str_in_list(*next, comparisons)) {
         enode *n = dbs_alloc(sizeof *n);
         n->kind = N_COMPARE;
         n->op = *next;
