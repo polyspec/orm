@@ -9,10 +9,9 @@
 // packages/ts)
 import assert from 'node:assert/strict';
 import { caseTest } from '../../../tests/testcase.mts';
-import { builtinModules } from 'node:module';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { scanModule } from '../../../tests/module-scan.mjs';
+import { isBuiltinModule, scanModule } from '../../../tests/module-scan.mjs';
 import { walkModules } from '../../../tests/module-graph.mjs';
 
 // The deadline of one case; each case runs through caseTest so it reports its RUN, PASS or FAIL line.
@@ -23,8 +22,6 @@ const pkgRoot = fileURLToPath(new URL('../', import.meta.url));
 const start = resolve(pkgRoot, 'dist/index.js');
 const parserEntry = resolve(pkgRoot, '../ts/dist/dbspec/entry.js');
 const ALLOWED_BARE = '@polyspec/orm/dbspec';
-
-const BUILTIN_ROOTS = new Set(builtinModules.map(m => m.replace(/^node:/, '').split('/')[0]));
 
 /** Every file reachable from the start, with the violations found in each, and the files reached. */
 function graph() {
@@ -43,7 +40,7 @@ function graph() {
         entries.add(resolved);
       } else {
         const root = specifier.split('/')[0];
-        local.push(`${at} imports "${specifier}"${BUILTIN_ROOTS.has(root) ? ' (a Node builtin)' : ''}; only "${ALLOWED_BARE}" is allowed`);
+        local.push(`${at} imports "${specifier}"${isBuiltinModule(root) ? ' (a Node builtin)' : ''}; only "${ALLOWED_BARE}" is allowed`);
       }
     }
     return { targets, violations: local };

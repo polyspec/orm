@@ -1,9 +1,18 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { builtinModules } from 'node:module';
 import { relative } from 'node:path';
 import { parseSync, visitorKeys } from 'oxc-parser';
 
 const forbiddenGlobals = new Set(['Buffer', 'process', '__dirname', 'require']);
+const builtinRoots = new Set(
+  builtinModules.map(module => module.replace(/^node:/, '').split('/')[0]),
+);
+
+/** Whether a bare import names a Node builtin, including a subpath such as fs/promises. */
+export function isBuiltinModule(specifier) {
+  return builtinRoots.has(specifier.replace(/^node:/, '').split('/')[0]);
+}
 
 function isReference(node, parent) {
   if (parent.type === 'MemberExpression' && !parent.computed && parent.property === node) return false;

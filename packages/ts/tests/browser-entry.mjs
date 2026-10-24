@@ -8,11 +8,11 @@
 // Usage: node --test packages/ts/tests/browser-entry.mjs (after the build)
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { builtinModules, createRequire } from 'node:module';
+import { createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { caseTest } from '../../../tests/testcase.mts';
-import { scanModule } from '../../../tests/module-scan.mjs';
+import { isBuiltinModule, scanModule } from '../../../tests/module-scan.mjs';
 import { walkModules } from '../../../tests/module-graph.mjs';
 
 // The deadline of one case; each case runs through caseTest so it reports its RUN, PASS or FAIL line.
@@ -28,10 +28,6 @@ const start = resolve(pkgRoot, subpath.import);
 // The packages that the entry may import: each is written for browsers and Node alike, and its modules are followed
 // and checked like the entry's own. @noble/hashes gives the synchronous SHA-256 of the renderer names (names.ts).
 const BROWSER_PACKAGES = new Set(['@noble/hashes']);
-// Every Node builtin root name, with and without the node: prefix, so `fs/promises` is caught through `fs`.
-const BUILTIN_ROOTS = new Set(builtinModules.map(m => m.replace(/^node:/, '').split('/')[0]));
-
-
 /** Every module reachable from the subpath's module, with the violations found in each. */
 function graph() {
   const { modules, violations } = walkModules(start, file => {
@@ -47,7 +43,7 @@ function graph() {
         const parts = specifier.split('/');
         const name = specifier.startsWith('@') ? parts.slice(0, 2).join('/') : parts[0];
         if (!BROWSER_PACKAGES.has(name)) {
-          const kind = BUILTIN_ROOTS.has(parts[0]) ? 'a Node builtin' : 'a bare module (a package such as a driver)';
+          const kind = isBuiltinModule(specifier) ? 'a Node builtin' : 'a bare module (a package such as a driver)';
           local.push(`${at} imports "${specifier}", ${kind}`);
           continue;
         }

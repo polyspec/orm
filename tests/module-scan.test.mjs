@@ -3,7 +3,13 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { scanModule } from './module-scan.mjs';
+import { isBuiltinModule, scanModule } from './module-scan.mjs';
+
+test('recognizes Node builtin roots with and without the node prefix', () => {
+  assert.equal(isBuiltinModule('fs/promises'), true);
+  assert.equal(isBuiltinModule('node:fs/promises'), true);
+  assert.equal(isBuiltinModule('@polyspec/orm/dbspec'), false);
+});
 
 test('finds literal imports and Node globals without flagging property names', () => {
   const root = mkdtempSync(join(tmpdir(), 'orm-module-scan-'));
