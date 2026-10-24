@@ -10,7 +10,12 @@ use Polyspec\Orm\Registry;
 
 final class DslFixture extends Model
 {
-    public const MANIFEST = "dbspec 1 dsl_fixture\n\ntable dsl_fixture {\n  id i64 identity\n  name text nullable\n  age i32 nullable\n  primary key (id)\n}\n";
+    public const MANIFEST = "dbspec 1 dsl_fixture\n\n"
+        . "table dsl_fixture {\n"
+        . "  id i64 identity\n"
+        . "  name text nullable\n"
+        . "  age i32 nullable\n"
+        . "  primary key (id)\n}\n";
 
     public static function meta(): array
     {
