@@ -431,15 +431,17 @@ mod exact_i64_tests {
 
 #[cfg(test)]
 mod native_cell_bytes_tests {
-    use super::Cells;
-    use crate::{row::Src, Val};
+    use super::{read_row, DriverRow};
+    use crate::{db::Zone, Val};
+    use sqlx::Connection as _;
 
     // Requirements: INT-5, PRT-69.
-    #[test]
-    fn positional_driver_bytes_remain_exact() {
+    #[tokio::test]
+    async fn sqlite_driver_row_bytes_remain_exact() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        let source = vec![0x00, 0x7f, 0x80, 0xff, b'A'];
-        let mut row = Cells::Pos(vec![Val::Bytes(source.clone())]);
-        assert_eq!(row.val(0).unwrap(), Val::Bytes(source));
+        let mut connection = sqlx::SqliteConnection::connect("sqlite::memory:").await.unwrap();
+        let row = sqlx::query("SELECT X'007F80FF41' AS payload").fetch_one(&mut connection).await.unwrap();
+        let decoded = read_row(&DriverRow::Sqlite(row), 1, Zone).unwrap();
+        assert_eq!(decoded, [Val::Bytes(vec![0x00, 0x7f, 0x80, 0xff, b'A'])]);
     }
 }
