@@ -209,6 +209,9 @@ mod tests {
     #[path = "build_environment.rs"]
     mod build_environment;
 
+    #[path = "out_dir.rs"]
+    mod out_dir;
+
     // cargo reruns the build script when the set file or any listed document changes.
     #[test]
     fn rerun_inputs_name_the_set_file_and_every_document() {

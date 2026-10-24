@@ -43,7 +43,6 @@ fn bench_set() -> PathBuf {
 fn environment_subprocess() {
     let Some(case) = std::env::var_os(CHILD_CASE) else {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-        require_child_success(run_child("load-no-out-dir", None, None), "load-no-out-dir");
         require_child_success(run_child("explicit-output-no-out-dir", None, None), "explicit-output-no-out-dir");
         require_child_success(run_child("relative-public-paths", Some(package_dir().to_str().expect("package path is UTF-8")), None), "relative-public-paths");
         require_child_success(run_child("absolute-public-paths", None, None), "absolute-public-paths");
@@ -59,14 +58,6 @@ fn environment_subprocess() {
     let set = bench_set().canonicalize().expect("absolute bench set");
 
     match case {
-        "load-no-out-dir" => {
-            let error = match Builder::set(&set).load(&set) {
-                Ok(_) => panic!("load requires OUT_DIR"),
-                Err(error) => error,
-            };
-            assert!(error.contains("OUT_DIR"), "{error}");
-            assert!(error.contains("set out_dir"), "{error}");
-        }
         "explicit-output-no-out-dir" => {
             let output = package_dir().join("target/kstd-5-65-70-explicit-output");
             let builder = Builder::set(&set).out_dir(&output);

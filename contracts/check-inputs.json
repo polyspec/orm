@@ -846,6 +846,15 @@
         "packages/rust/build/src/tests/build_environment.rs"
       ]
     },
+    "rust-build-outdir-check": {
+      "scope": "owner",
+      "needs": ["go", "rust", "node-modules"],
+      "inputs": [
+        "Makefile",
+        "packages/rust/build/src/lib.rs",
+        "packages/rust/build/src/tests/out_dir.rs"
+      ]
+    },
     "rust-driver-check": {
       "scope": "owner",
       "needs": [
