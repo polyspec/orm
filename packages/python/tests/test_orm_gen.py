@@ -2,13 +2,14 @@
 # and checks that the generated module interprets the chain syntax (unittest).
 import hashlib
 import json
-import types
 import subprocess
 import sys
 import tempfile
+import types
 import typing
 import unittest
 from pathlib import Path
+
 from . import testcase
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -69,13 +70,15 @@ class OrmGenTest(unittest.TestCase):
         self.assertEqual(
             models.MANIFEST_HASH,
             "sha256:"
-            + hashlib.sha256((models.SCHEMA.manifest_text + models.SCHEMA.external_text).encode()).hexdigest(),
+            + hashlib.sha256(
+                (models.SCHEMA.manifest_text + models.SCHEMA.external_text).encode()
+            ).hexdigest(),
         )
 
     # Requirements: DBS-112, DBS-114, INT-66.
     def test_generated_typed_getter_is_the_public_column_api(self):
-        from polyspec.orm import OrmError, codes
         import models
+        from polyspec.orm import OrmError, codes
 
         generated = (Path(self.out) / "models.py").read_text()
         self.assertNotIn("# noqa", generated)
