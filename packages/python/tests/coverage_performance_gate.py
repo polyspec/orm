@@ -1,4 +1,4 @@
-"""Measure Python hot-path reads against the same SQL through the feature's native driver.
+"""Measure full-row Python hot-path reads against the same SQL through the native driver.
 
 No fixed reference is recorded for Python yet, so the measurement is diagnostic only.
 """
@@ -8,8 +8,10 @@ import platform
 import statistics
 import sys
 import time
+from datetime import datetime
 from urllib.parse import parse_qs, unquote, urlsplit
 
+from polyspec.orm.codec import host_decode
 from polyspec.orm.models import models
 
 
@@ -72,9 +74,50 @@ def native_for(database, connection, query):
         with connection.cursor() as cursor:
             cursor.execute(sql, binds)
             rows = cursor.fetchall()
-            return [(int(row[0]), row[1]) for row in rows]
+            return [typed_native_row(row) for row in rows]
 
     return run
+
+
+def typed_native_row(row):
+    if len(row) != 27:
+        raise AssertionError(f"native author row has {len(row)} columns, want 27")
+
+    def native_datetime(value):
+        if value is None or isinstance(value, datetime):
+            return value
+        return datetime.fromisoformat(str(value).replace(" ", "T"))
+
+    values = (
+        int(row[0]),
+        str(row[1]),
+        native_datetime(row[2]),
+        native_datetime(row[3]),
+        bool(row[4]),
+        bool(row[5]),
+        native_datetime(row[6]),
+        native_datetime(row[7]),
+        bool(row[8]),
+        int(row[9]),
+        int(row[10]),
+        int(row[11]),
+        int(row[12]),
+        None if row[13] is None else str(row[13]),
+        int(row[14]),
+        int(row[15]),
+        int(row[16]),
+        int(row[17]),
+        native_datetime(row[18]),
+        native_datetime(row[19]),
+        None if row[20] is None else str(row[20]),
+        bool(row[21]),
+        int(row[22]),
+        host_decode(row[23], ["aes", "hex"], "bench-salt"),
+        host_decode(row[24], ["aes", "hex"], "bench-salt"),
+        row[25],
+        int(row[26]),
+    )
+    return values[0], values[1]
 
 
 def client_rows(query):
@@ -145,14 +188,7 @@ def hot_path_gate(item):
             return (
                 models.Author()
                 .connect(db)
-                .remove_all_columns()
-                .remove_column_user_seq()
-                .remove_column_service_seq()
-                .remove_column_service_region_seq()
-                .remove_column_service_member_seq()
                 .seq(42)
-                .add_column_seq()
-                .add_column_name()
                 .limit(0, 1)
             )
 
@@ -160,17 +196,10 @@ def hot_path_gate(item):
             return (
                 models.Author()
                 .connect(db)
-                .remove_all_columns()
-                .remove_column_user_seq()
-                .remove_column_service_seq()
-                .remove_column_service_region_seq()
-                .remove_column_service_member_seq()
                 .service_seq(7)
                 .and_is_close(False)
                 .order_by_seq_desc()
                 .limit(0, 100)
-                .add_column_seq()
-                .add_column_name()
             )
 
         measure(

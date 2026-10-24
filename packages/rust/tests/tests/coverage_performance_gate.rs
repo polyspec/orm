@@ -1,8 +1,8 @@
 //! Runs the Rust client's diagnostic hot-path measurements against the exact feature database.
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
-use polyspec_orm::Param;
-use sqlx::{MySqlPool, PgPool, SqlitePool};
+use polyspec_orm::{Param, Val};
+use sqlx::{MySqlPool, PgPool, Row, SqlitePool};
 
 polyspec_orm::models!();
 use model::Author;
@@ -44,13 +44,6 @@ impl Workload {
                     Author::new()
                         .connect(db)
                         .seq(42)
-                        .remove_all_columns()
-                        .remove_column_user_seq()
-                        .remove_column_service_seq()
-                        .remove_column_service_region_seq()
-                        .remove_column_service_member_seq()
-                        .add_column_seq()
-                        .add_column_name()
                         .limit(0, 1)
                         .get_query()
                         .await
@@ -62,13 +55,6 @@ impl Workload {
                         .and_is_close(false)
                         .order_by_seq_desc()
                         .limit(0, 100)
-                        .remove_all_columns()
-                        .remove_column_user_seq()
-                        .remove_column_service_seq()
-                        .remove_column_service_region_seq()
-                        .remove_column_service_member_seq()
-                        .add_column_seq()
-                        .add_column_name()
                         .get_query()
                         .await
                 }
@@ -81,13 +67,6 @@ impl Workload {
             Self::Pk => Author::new()
                 .connect(db)
                 .seq(42)
-                .remove_all_columns()
-                .remove_column_user_seq()
-                .remove_column_service_seq()
-                .remove_column_service_region_seq()
-                .remove_column_service_member_seq()
-                .add_column_seq()
-                .add_column_name()
                 .limit(0, 1)
                 .gets()
                 .await
@@ -98,19 +77,52 @@ impl Workload {
                 .and_is_close(false)
                 .order_by_seq_desc()
                 .limit(0, 100)
-                .remove_all_columns()
-                .remove_column_user_seq()
-                .remove_column_service_seq()
-                .remove_column_service_region_seq()
-                .remove_column_service_member_seq()
-                .add_column_seq()
-                .add_column_name()
                 .gets()
                 .await
                 .unwrap(),
         };
         rows.models().map(|row| (row.get_seq().unwrap(), row.get_name().unwrap().to_owned())).collect()
     }
+}
+
+fn decode_aes_cell(raw: Option<String>) {
+    let value = raw.map(Val::Str).unwrap_or(Val::Null);
+    let styles = ["aes".to_owned(), "hex".to_owned()];
+    let decoded = polyspec_orm::codec::host_decode(&value, &styles, "bench-salt").expect("native AES2 decode");
+    assert!(matches!(decoded, Val::Null | Val::Str(_)), "native AES2 value type");
+}
+
+macro_rules! typed_native_row {
+    ($row:expr) => {{
+        let seq: i64 = $row.try_get(0).expect("native seq i64");
+        let name: String = $row.try_get(1).expect("native name string");
+        let _: chrono::NaiveDateTime = $row.try_get(2).expect("native created_ts");
+        let _: chrono::NaiveDateTime = $row.try_get(3).expect("native updated_ts");
+        let _: bool = $row.try_get(4).expect("native is_close");
+        let _: bool = $row.try_get(5).expect("native is_display");
+        let _: Option<chrono::NaiveDateTime> = $row.try_get(6).expect("native display_start_dt");
+        let _: Option<chrono::NaiveDateTime> = $row.try_get(7).expect("native display_end_dt");
+        let _: bool = $row.try_get(8).expect("native is_allday");
+        let _: i32 = $row.try_get(9).expect("native target_club_reader_count");
+        let _: i32 = $row.try_get(10).expect("native success_count");
+        let _: i32 = $row.try_get(11).expect("native reader_count");
+        let _: i32 = $row.try_get(12).expect("native read_count");
+        let _: Option<String> = $row.try_get(13).expect("native photo_url");
+        let _: i64 = $row.try_get(14).expect("native user_seq");
+        let _: i64 = $row.try_get(15).expect("native service_seq");
+        let _: i64 = $row.try_get(16).expect("native service_region_seq");
+        let _: i64 = $row.try_get(17).expect("native service_member_seq");
+        let _: chrono::NaiveDateTime = $row.try_get(18).expect("native start_dt");
+        let _: chrono::NaiveDateTime = $row.try_get(19).expect("native end_dt");
+        let _: Option<String> = $row.try_get(20).expect("native uuid");
+        let _: bool = $row.try_get(21).expect("native is_single_work");
+        let _: i32 = $row.try_get(22).expect("native like_count");
+        decode_aes_cell($row.try_get(23).expect("native aes_hex_email"));
+        decode_aes_cell($row.try_get(24).expect("native aes_hex_phone"));
+        let _: Option<sqlx::types::Decimal> = $row.try_get(25).expect("native price");
+        let _: i32 = $row.try_get(26).expect("native aes_key_version");
+        (seq, name)
+    }};
 }
 
 enum Native {
@@ -132,25 +144,28 @@ impl Native {
     async fn rows(&self, statement: &str, workload: Workload) -> Vec<(i64, String)> {
         match self {
             Self::Mysql(pool) => {
-                let query = sqlx::query_as::<_, (i64, String)>(sqlx::AssertSqlSafe(statement));
-                match workload {
+                let query = sqlx::query(sqlx::AssertSqlSafe(statement));
+                let rows = match workload {
                     Workload::Pk => query.bind(42_i64).bind(1_i64).bind(0_i64).fetch_all(pool).await.expect("native MySQL PK query"),
                     Workload::List100 => query.bind(7_i64).bind(false).bind(100_i64).bind(0_i64).fetch_all(pool).await.expect("native MySQL list query"),
-                }
+                };
+                rows.iter().map(|row| typed_native_row!(row)).collect()
             }
             Self::Postgres(pool) => {
-                let query = sqlx::query_as::<_, (i64, String)>(sqlx::AssertSqlSafe(statement));
-                match workload {
+                let query = sqlx::query(sqlx::AssertSqlSafe(statement));
+                let rows = match workload {
                     Workload::Pk => query.bind(42_i64).bind(1_i64).bind(0_i64).fetch_all(pool).await.expect("native PostgreSQL PK query"),
                     Workload::List100 => query.bind(7_i64).bind(false).bind(100_i64).bind(0_i64).fetch_all(pool).await.expect("native PostgreSQL list query"),
-                }
+                };
+                rows.iter().map(|row| typed_native_row!(row)).collect()
             }
             Self::Sqlite(pool) => {
-                let query = sqlx::query_as::<_, (i64, String)>(sqlx::AssertSqlSafe(statement));
-                match workload {
+                let query = sqlx::query(sqlx::AssertSqlSafe(statement));
+                let rows = match workload {
                     Workload::Pk => query.bind(42_i64).bind(1_i64).bind(0_i64).fetch_all(pool).await.expect("native SQLite PK query"),
                     Workload::List100 => query.bind(7_i64).bind(false).bind(100_i64).bind(0_i64).fetch_all(pool).await.expect("native SQLite list query"),
-                }
+                };
+                rows.iter().map(|row| typed_native_row!(row)).collect()
             }
         }
     }

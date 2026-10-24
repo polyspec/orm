@@ -1,10 +1,10 @@
 // Measures TypeScript hot-path reads against the same SQL through the native driver named by the feature DSN.
-// No fixed reference is recorded for this projected workload, so the measurement is diagnostic only.
+// No fixed reference is recorded for this full-row workload, so the measurement is diagnostic only.
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import os from 'node:os';
 import { performance } from 'node:perf_hooks';
-import { Author, connect } from '../dist/index.js';
+import { Author, connect, hostDecode } from '../dist/index.js';
 
 const require = createRequire(new URL('../package.json', import.meta.url));
 const WARMUP = 100;
@@ -103,6 +103,40 @@ async function openNative(database, uri) {
   return { query: async (sql, binds) => (await db.query(sql, binds)).rows, close: () => db.end() };
 }
 
+function typedNativeRow(row) {
+  const values = [
+    Number(row.a__seq),
+    String(row.a__name),
+    row.a__created_ts === null ? null : new Date(row.a__created_ts),
+    row.a__updated_ts === null ? null : new Date(row.a__updated_ts),
+    Boolean(row.a__is_close),
+    Boolean(row.a__is_display),
+    row.a__display_start_dt === null ? null : new Date(row.a__display_start_dt),
+    row.a__display_end_dt === null ? null : new Date(row.a__display_end_dt),
+    Boolean(row.a__is_allday),
+    Number(row.a__target_club_reader_count),
+    Number(row.a__success_count),
+    Number(row.a__reader_count),
+    Number(row.a__read_count),
+    row.a__photo_url === null ? null : String(row.a__photo_url),
+    Number(row.a__user_seq),
+    Number(row.a__service_seq),
+    Number(row.a__service_region_seq),
+    Number(row.a__service_member_seq),
+    new Date(row.a__start_dt),
+    new Date(row.a__end_dt),
+    row.a__uuid === null ? null : String(row.a__uuid),
+    Boolean(row.a__is_single_work),
+    Number(row.a__like_count),
+    hostDecode(row.a__aes_hex_email, ['aes', 'hex'], 'bench-salt'),
+    hostDecode(row.a__aes_hex_phone, ['aes', 'hex'], 'bench-salt'),
+    row.a__price === null ? null : String(row.a__price),
+    Number(row.a__aes_key_version),
+  ];
+  if (values.length !== 27) throw new Error(`native author row has ${values.length} typed values`);
+  return [values[0], values[1]];
+}
+
 export async function hotPathGate(item, expectedDatabase) {
   const { database, dsn, uri } = featureItem(item);
   if (database !== expectedDatabase) throw new Error(`coverage path expects ${expectedDatabase}, received ${database}`);
@@ -110,16 +144,13 @@ export async function hotPathGate(item, expectedDatabase) {
   if (db.driver !== database) throw new Error(`client opened ${db.driver}, want ${database}`);
   const nativeConnection = await openNative(database, uri);
   try {
-    const pk = () => new Author().connect(db).removeAllColumns().removeColumnUserSeq().removeColumnServiceSeq()
-      .removeColumnServiceRegionSeq().removeColumnServiceMemberSeq().seq(42).addColumnSeq().addColumnName().limit(0, 1);
-    const list = () => new Author().connect(db).removeAllColumns().removeColumnUserSeq().removeColumnServiceSeq()
-      .removeColumnServiceRegionSeq().removeColumnServiceMemberSeq().serviceSeq(7).andIsClose(false)
-      .orderBySeqDesc().limit(0, 100).addColumnSeq().addColumnName();
+    const pk = () => new Author().connect(db).seq(42).limit(0, 1);
+    const list = () => new Author().connect(db).serviceSeq(7).andIsClose(false).orderBySeqDesc().limit(0, 100);
     const nativeFor = async (query) => {
       const { sql, binds } = await query.getQuery();
       return async () => {
         const rows = await nativeConnection.query(sql, binds);
-        return rows.map((row) => [Number(row.a__seq), row.a__name]);
+        return rows.map(typedNativeRow);
       };
     };
     const clientRows = async (query) => {

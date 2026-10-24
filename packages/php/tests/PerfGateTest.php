@@ -86,15 +86,6 @@ final class PerfGateTest extends TestCase
 
     private static function query(string $name): Author
     {
-        if (self::$featureCase) {
-            return match ($name) {
-                'pk' => (new Author())(self::$db)->removeAllColumns()->removeColumnUserSeq()->removeColumnServiceSeq()
-                    ->removeColumnServiceRegionSeq()->removeColumnServiceMemberSeq()->seq(42)->addColumnSeq()->addColumnName()->limit(0, 1),
-                'list100' => (new Author())(self::$db)->removeAllColumns()->removeColumnUserSeq()->removeColumnServiceSeq()
-                    ->removeColumnServiceRegionSeq()->removeColumnServiceMemberSeq()->serviceSeq(7)->andIsClose(false)
-                    ->orderBySeqDesc()->limit(0, 100)->addColumnSeq()->addColumnName(),
-            };
-        }
         return match ($name) {
             'pk' => (new Author())(self::$db)->seq(42),
             'list100' => (new Author())(self::$db)->serviceSeq(7)->andIsClose(false)->orderBySeqDesc()->limit(0, 100),

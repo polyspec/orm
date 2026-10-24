@@ -52,10 +52,10 @@ func coverageHotPathGate(t *testing.T, expected string) {
 		rows  int
 	}{
 		{name: "pk", query: func() *model.AuthorModel {
-			return model.Author().Connect(db).Seq(42).Limit(0, 1).RemoveAllColumns().RemoveColumnUserSeq().RemoveColumnServiceSeq().RemoveColumnServiceRegionSeq().RemoveColumnServiceMemberSeq().AddColumnSeq().AddColumnName()
+			return model.Author().Connect(db).Seq(42).Limit(0, 1)
 		}, rows: 1},
 		{name: "list100", query: func() *model.AuthorModel {
-			return model.Author().Connect(db).ServiceSeq(7).AndIsClose(false).OrderBySeqDesc().Limit(0, 100).RemoveAllColumns().RemoveColumnUserSeq().RemoveColumnServiceSeq().RemoveColumnServiceRegionSeq().RemoveColumnServiceMemberSeq().AddColumnSeq().AddColumnName()
+			return model.Author().Connect(db).ServiceSeq(7).AndIsClose(false).OrderBySeqDesc().Limit(0, 100)
 		}, rows: 100},
 	} {
 		clientValues := func() [][2]any {
@@ -89,12 +89,11 @@ func coverageHotPathGate(t *testing.T, expected string) {
 			defer rows.Close()
 			values := make([][2]any, 0, workload.rows)
 			for rows.Next() {
-				var seq int64
-				var name string
-				if err := rows.Scan(&seq, &name); err != nil {
+				var author author
+				if err := scan(rows, &author); err != nil {
 					t.Fatal(err)
 				}
-				values = append(values, [2]any{seq, name})
+				values = append(values, [2]any{author.Seq, author.Name})
 			}
 			if err := rows.Err(); err != nil {
 				t.Fatal(err)
