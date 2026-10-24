@@ -15,6 +15,19 @@ use RuntimeException;
 
 trait TransactionFailureCases
 {
+    private function assertCallbackDriverError(string $message, PDOException $driver, Closure $operation): void
+    {
+        $pdo = new ModelTestFailingPdo('sqlite::memory:');
+        $db = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
+        try {
+            $error = $this->ormFailure($message, static fn() => $operation($db, $driver));
+            self::assertSame(Code::DRIVER, $error->code_);
+            self::assertSame($driver, $error->getPrevious());
+        } finally {
+            $db->close();
+        }
+    }
+
     private function ormFailure(string $message, Closure $operation): OrmException
     {
         try {
@@ -27,44 +40,29 @@ trait TransactionFailureCases
 
     public function testTransactionMapsDriverCallbackError(): void
     {
-        $pdo = new ModelTestFailingPdo('sqlite::memory:');
-        $db = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
-        $driver = new PDOException('transaction callback driver failure');
-
-        try {
-            $error = $this->ormFailure(
-                'a driver exception must be normalized',
-                static fn() => $db->transaction(static function () use ($driver): never {
-                    throw $driver;
-                }, retry: 0)
-            );
-            self::assertSame(Code::DRIVER, $error->code_);
-            self::assertSame($driver, $error->getPrevious());
-        } finally {
-            $db->close();
-        }
+        $this->assertCallbackDriverError(
+            'a driver exception must be normalized',
+            new PDOException('transaction callback driver failure'),
+            static fn(Db $db, PDOException $driver) => $db->transaction(static function () use ($driver): never {
+                throw $driver;
+            }, retry: 0)
+        );
     }
 
     public function testSavepointMapsDriverCallbackError(): void
     {
-        $pdo = new ModelTestFailingPdo('sqlite::memory:');
-        $db = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
-        $driver = new PDOException('savepoint callback driver failure');
-
-        try {
-            $error = $this->ormFailure(
-                'a savepoint driver exception must be normalized',
-                static fn() => $db->transaction(static function () use ($db, $driver): void {
+        $this->assertCallbackDriverError(
+            'a savepoint driver exception must be normalized',
+            new PDOException('savepoint callback driver failure'),
+            static fn(Db $db, PDOException $driver) => $db->transaction(
+                static function () use ($db, $driver): void {
                     $db->transaction(static function () use ($driver): never {
                         throw $driver;
                     });
-                }, retry: 0)
-            );
-            self::assertSame(Code::DRIVER, $error->code_);
-            self::assertSame($driver, $error->getPrevious());
-        } finally {
-            $db->close();
-        }
+                },
+                retry: 0
+            )
+        );
     }
 
     public function testTransactionKeepsCallbackAndFailedRollbackErrors(): void
