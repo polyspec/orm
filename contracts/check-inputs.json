@@ -1651,6 +1651,39 @@
         "packages/php-ext/src/introspect.c"
       ]
     },
+    "dbspec-introspect-query-count-unit-check": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "rust",
+        "php",
+        "composer",
+        "node-modules",
+        "php-extension-tools",
+        "python"
+      ],
+      "inputs": [
+        "config/parity.json",
+        "Makefile",
+        "packages/go/engine/dbspec/introspect.go",
+        "packages/go/engine/dbspec/introspect_query_count_test.go",
+        "packages/php/src/Dbspec/CatalogRows.php",
+        "packages/php/tests/CountingPdo.php",
+        "packages/php/tests/DbspecIntrospectQueryCountTest.php",
+        "packages/php/models.txt",
+        "packages/php-ext/src/introspect.c",
+        "packages/php-ext/src/polyspec_orm.c",
+        "packages/php-ext/tests/DbspecIntrospectNativeTest.php",
+        "packages/python/src/polyspec/orm/dbspec/introspect.py",
+        "packages/python/src/polyspec/orm/dbspec/introspect_sqlite.py",
+        "packages/python/tests/test_dbspec_introspect_query_count.py",
+        "packages/rust/orm/src/dbspec.rs",
+        "packages/rust/orm/tests/dbspec_introspect_query_count.rs",
+        "packages/ts/src/dbspec/introspect.ts",
+        "packages/ts/src/dbspec/introspect_sqlite.ts",
+        "packages/ts/tests/dbspec-introspect-query-count.mjs"
+      ]
+    },
     "dbspec-introspect-rust-check": {
       "scope": "owner",
       "needs": [

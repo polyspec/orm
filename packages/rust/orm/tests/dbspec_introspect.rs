@@ -119,7 +119,7 @@ fn expected_schema_text(id: &str, documents: &[Document]) -> String {
     dbspec::manifest(&[&combined]).or_panic(|e| format!("{id}: {e:?}")).schema_text
 }
 
-// Requirements: DIA-133.
+// Requirements: DIA-133, DIA-198.
 async fn introspect_round_trip() {
     let started = Instant::now();
     let mut servers = Servers::open("rt").await;

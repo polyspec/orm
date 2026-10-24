@@ -255,7 +255,7 @@ final class DbspecIntrospectTest extends TestCase
     }
 
     // The documents of a schema set are read here with Dbspec::readFile: the provider names their paths.
-    // Requirements: DIA-133.
+    // Requirements: DIA-133, DIA-198.
     #[DataProvider('roundTripCases')]
     public function testRoundTrip(string $dialect, string $setId, array $texts): void
     {
