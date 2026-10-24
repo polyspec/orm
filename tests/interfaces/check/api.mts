@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { readParityConfig } from '../../../scripts/json/formats.mts';
 
 type ApiSymbol = { implementation?: string; symbol?: string };
-type ApiUnit = { id?: string; kind?: string; symbols?: ApiSymbol[] };
+type ApiUnit = { id?: string; kind?: string; requirements?: string[]; symbols?: ApiSymbol[] };
 type ParityImplementation = { name?: string; errors?: { file?: string; pattern?: string } };
 export type Parity = {
   implementations?: ParityImplementation[];

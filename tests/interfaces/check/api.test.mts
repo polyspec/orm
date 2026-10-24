@@ -1,6 +1,7 @@
 // The API units of config/parity.json (kind api) that carry the error catalog: each code of docs/spec/errors.yaml is one unit whose
 // symbol each declared implementation names, and the checker refuses a unit, a symbol or a constant that does not match the catalog.
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { checkParity } from '../../../node_modules/@polyspec/kit/dist/parity.mjs';
 import { caseTest, COMPUTE } from '../../testcase.mts';
@@ -8,6 +9,72 @@ import { apiProblems, readParity, type Parity } from './api.mts';
 import { readErrorCatalog } from './manifest.mts';
 
 const root = resolve(import.meta.dirname, '../../..');
+
+const clientSurfaceRequirements: Array<[string, string[]]> = [
+  ['aes-keyring', ['INT-130', 'INT-60']],
+  ['aes-keyring-versions', ['INT-74']],
+  ['aes-rotation-status', ['INT-75']],
+  ['aes-utils', ['INT-131', 'INT-60']],
+  ['aes-utils-status', ['INT-60']],
+  ['aes-utils-rotate', ['INT-60']],
+  ['client-db', ['INT-12', 'INT-13', 'INT-14', 'INT-15']],
+  ['client-db-close', ['INT-67']],
+  ['client-db-connect', ['INT-12', 'INT-13', 'INT-14', 'INT-15']],
+  ['client-db-connectschema', ['INT-132', 'INT-54']],
+  ['client-db-execute', ['INT-76']],
+  ['client-db-stats-method', ['INT-61']],
+  ['client-db-stats', ['INT-79']],
+  ['client-db-subscribe', ['INT-77']],
+  ['client-db-transaction', ['INT-72']],
+  ['client-db-utils', ['INT-73']],
+  ['client-db-with-request-hook', ['INT-78']],
+  ['client-query-connect', ['INT-17']],
+  ['client-query-base', ['INT-88']],
+  ['client-query-relation', ['INT-87']],
+  ['client-orm-error', ['INT-89']],
+  ['client-statement-event', ['INT-91']],
+  ['client-utils', ['INT-134', 'INT-73']],
+  ['client-utils-was-inserted', ['INT-52']],
+  ['client-utils-backend-waiting-for-lock', ['INT-53']],
+  ['client-utils-local', ['INT-51']],
+  ['client-utils-lock', ['INT-50']],
+  ['client-utils-privileges', ['INT-59']],
+  ['client-utils-schema', ['INT-54', 'INT-55', 'INT-56', 'INT-57', 'INT-58']],
+  ['client-utils-set-local', ['INT-51']],
+  ['client-utils-stats', ['INT-61']],
+  ['client-privilege-utils', ['INT-59']],
+  ['client-privilege-utils-grant-table', ['INT-59']],
+  ['client-privilege-utils-inspect-table', ['INT-59']],
+  ['client-privilege-utils-revoke-table', ['INT-59']],
+  ['client-schema', ['INT-133']],
+  ['client-schema-utils', ['INT-54', 'INT-55', 'INT-56', 'INT-57', 'INT-58']],
+  ['client-schema-utils-add-tables-and-columns', ['INT-56']],
+  ['client-schema-utils-empty', ['INT-58']],
+  ['client-schema-utils-exists', ['INT-57']],
+  ['client-schema-utils-install', ['INT-55']],
+  ['client-schema-utils-installed', ['INT-57']],
+  ['client-schema-utils-register', ['INT-54']],
+  ['client-page', ['INT-64']],
+  ['collection', ['INT-62']],
+  ['collection-get', ['INT-80']],
+  ['collection-first', ['INT-62']],
+  ['collection-keys', ['INT-81']],
+  ['collection-to-array', ['INT-84']],
+  ['collection-delete', ['INT-37']],
+  ['collection-connect', ['INT-85']],
+  ['collection-length', ['INT-62']],
+  ['collection-json-text', ['COD-16']],
+  ['collection-fetched-value', ['INT-86']],
+  ['collection-values', ['INT-82']],
+  ['collection-entries', ['INT-83']],
+  ['collection-page', ['INT-64']],
+  ['collection-group-row', ['INT-68', 'INT-69', 'INT-70', 'INT-71', 'INT-90']],
+  ['collection-group-rows', ['INT-31']],
+  ['collection-group-row-to-array', ['INT-69']],
+  ['collection-group-row-value', ['INT-68']],
+  ['collection-group-rows-length', ['INT-70']],
+  ['collection-group-rows-to-array', ['INT-71']],
+];
 
 // tinyParity is a config/parity.json that has only the parts apiProblems reads: two implementations, each one's catalog file, and one code's unit.
 function tinyParity(): Parity {
@@ -38,6 +105,37 @@ caseTest('all API units have native declarations for their symbols', COMPUTE, ()
   assert.equal(ids.length, 147, 'API unit count changed; review the extension API binding set');
   const result = checkParity(root, { execute: false, units: ids, say: () => {} });
   assert.deepEqual(result.findings, [], 'one or more selected API declarations do not match their source symbols');
+});
+
+caseTest('the named client API units cite their bilingual interface requirements', COMPUTE, () => {
+  const parity = readParity(root);
+  const units = new Map((parity.units ?? []).map(unit => [unit.id, unit]));
+  const specifications = new Map([
+    ['INT', ['docs/spec/interfaces.md', 'docs/spec/interfaces.ko.md']],
+    ['COD', ['docs/spec/codec.md', 'docs/spec/codec.ko.md']],
+  ]);
+  const documents = new Map([...specifications].flatMap(([prefix, paths]) =>
+    paths.map(path => [path, readFileSync(resolve(root, path), 'utf8')] as const),
+  ));
+
+  for (const [id, requirements] of clientSurfaceRequirements) {
+    const unit = units.get(id);
+    assert.ok(unit, `${id} API unit is missing`);
+    assert.equal(unit.kind, 'api', `${id} is not an API unit`);
+    assert.deepEqual(unit.requirements, requirements, `${id} must cite its exact interface requirements`);
+    for (const requirement of requirements) {
+      const prefix = requirement.split('-')[0] ?? '';
+      const paths = specifications.get(prefix);
+      assert.ok(paths, `${requirement} has no selected bilingual specification`);
+      for (const path of paths) {
+        const document = documents.get(path) ?? '';
+        assert.ok(
+          document.split('\n').some(line => line.startsWith(`- **${requirement}** `)),
+          `${id} cites ${requirement}, but ${path} has no requirement bullet`,
+        );
+      }
+    }
+  }
 });
 
 caseTest('the native Stats API is bound by the PHP extension', COMPUTE, () => {
