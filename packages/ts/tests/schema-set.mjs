@@ -20,7 +20,7 @@ import { CORE, Db, OrmError, dbspecManifest, parseDbspec, registerModel } from '
 import { caseTest } from '../../../tests/testcase.mts';
 import { withCaseDatabase } from './case-database.mjs';
 import { nativeQuery } from './coverage_case.mjs';
-import { classesFromModel } from './registered_models.mjs';
+import { classesFromModel, manifestOf } from './registered_models.mjs';
 
 const benchText = await readFile(new URL('../../../contracts/fixtures/bench/bench.dbs', import.meta.url), 'utf8');
 const decimalText = await readFile(new URL('../../../contracts/fixtures/decimal_schema.dbs', import.meta.url), 'utf8');
@@ -33,13 +33,6 @@ function check(cond, message) {
 }
 async function code(run) {
   try { await run(); return ''; } catch (error) { return error instanceof OrmError ? error.code : String(error); }
-}
-
-/** The manifest of a document set. */
-function manifestOf(text) {
-  const parsed = parseDbspec(text, {});
-  if (parsed.document === null) throw new Error(JSON.stringify(parsed.diagnostics));
-  return dbspecManifest([parsed.document]).manifest;
 }
 
 // Registers models with the manifest text and manifestHash of each set, as generated code does.

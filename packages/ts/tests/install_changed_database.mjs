@@ -6,10 +6,11 @@
 //
 // Usage: node packages/ts/tests/install_changed_database.mjs (after npm run typescript:build)
 import { readFile } from 'node:fs/promises';
-import { Db, OrmError, dbspecManifest, parseDbspec } from '../dist/index.js';
+import { Db, OrmError } from '../dist/index.js';
 import { caseTest } from '../../../tests/testcase.mts';
 import { withCaseDatabase } from './case-database.mjs';
 import { nativeQuery } from './coverage_case.mjs';
+import { manifestOf } from './registered_models.mjs';
 
 // CASE_DEADLINE_MS is the deadline of one database case: a case builds a database, installs a set and runs statements.
 const CASE_DEADLINE_MS = 60_000;
@@ -20,13 +21,6 @@ function check(cond, message) {
 }
 async function thrown(run) {
   try { await run(); return null; } catch (error) { return error; }
-}
-
-/** The manifest of a document set. */
-function manifestOf(text) {
-  const parsed = parseDbspec(text, {});
-  if (parsed.document === null) throw new Error(JSON.stringify(parsed.diagnostics));
-  return dbspecManifest([parsed.document]).manifest;
 }
 
 for (const env of ['ORM_TEST_MYSQL_DSN', 'ORM_TEST_POSTGRES_DSN']) {

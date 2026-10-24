@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { classesFromModel, models } from './registered_models.mjs';
+import { classesFromModel, manifestOf, models } from './registered_models.mjs';
 
 test('registers a model class for each entity in the document', () => {
   const text = [
@@ -14,8 +14,11 @@ test('registers a model class for each entity in the document', () => {
     '',
   ].join('\n');
   const registered = models(text);
+  const manifest = manifestOf(text);
 
   assert.deepEqual(Object.keys(registered), ['item']);
+  assert.equal(typeof manifest.manifestText, 'string');
+  assert.equal(typeof manifest.manifestHash, 'string');
   assert.equal(registered.item.entity.entity.name, 'item');
   assert.ok(registered.item.entity.model);
   assert.equal(registered.item.entity.model.entities.get('item'), registered.item.entity.entity);

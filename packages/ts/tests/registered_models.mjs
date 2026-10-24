@@ -18,10 +18,14 @@ export function classesFromManifest(manifest) {
   return classesFromModel(registerModel(manifest.manifestText, manifest.manifestHash));
 }
 
-/** Registers the model of a document set as generated code does and returns a model class per entity. */
-export function models(text) {
+/** Parses a document and returns its generated manifest. */
+export function manifestOf(text) {
   const parsed = parseDbspec(text, {});
   if (parsed.document === null) throw new Error(JSON.stringify(parsed.diagnostics));
-  const { manifest } = dbspecManifest([parsed.document]);
-  return classesFromManifest(manifest);
+  return dbspecManifest([parsed.document]).manifest;
+}
+
+/** Registers the model of a document set as generated code does and returns a model class per entity. */
+export function models(text) {
+  return classesFromManifest(manifestOf(text));
 }
