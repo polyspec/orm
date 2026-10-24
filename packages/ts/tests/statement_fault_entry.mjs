@@ -41,6 +41,7 @@ function checkOtherEntryPoints() {
 // The package manifest separates TypeScript declarations from runtime import targets.
 // Resolve each public runtime subpath through Node's package resolver, then compare its
 // namespace with the entry file of this checkout so a different checkout cannot pass.
+// Requirements: INT-138.
 async function checkRuntimePackageEntries() {
   const manifestUrl = new URL('../package.json', import.meta.url);
   const manifest = JSON.parse(readFileSync(manifestUrl, 'utf8'));

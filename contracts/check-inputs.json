@@ -1531,7 +1531,7 @@
         "rust"
       ],
       "inputs": [
-        "packages/rust/orm/tests/rollback.rs"
+        "packages/rust/orm/tests/package_entry.rs"
       ]
     },
     "typescript-package-entry-check": {
@@ -1553,7 +1553,7 @@
       "inputs": [
         "packages/python/pyproject.toml",
         "packages/python/src/polyspec/orm/__init__.py",
-        "packages/python/tests/test_packaging.py",
+        "packages/python/tests/test_package_entry.py",
         "packages/python/tests/test_rollback_fault.py"
       ]
     },

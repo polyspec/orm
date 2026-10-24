@@ -2449,14 +2449,14 @@ php-extension-package-entry-check: php-vendor-check php-models
 	env ORM_PHP_MODE=extension ORM_PHP_DYNAMIC_MODULES='$(ORM_PHP_DYNAMIC_MODULES)' $(RUN_TESTS) phpunit --php-extension "$$run_dir/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist --filter 'test(Package|Client)' packages/php-ext/tests/DeclarationsTest.php
 
 rust-package-entry-check: cargo-downloads-check
-	cd packages/rust && $(CARGO_TEST) rust-package-entry-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test rollback rollback_fault_entry -- --exact --nocapture
+	cd packages/rust && $(CARGO_TEST) rust-package-entry-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --test package_entry public_package_entry -- --exact --nocapture
 
 typescript-package-entry-check: typescript-build
 	node --conditions=orm-test --test --test-name-pattern='package-entry/runtime-exports' packages/ts/tests/statement_fault_entry.mjs
 
 python-package-entry-check: python-venv-check
 	$(PYTHON_VENV)/bin/python -m unittest packages.python.tests.test_rollback_fault.RollbackFaultEntryTest.test_the_package_entry_point_does_not_export_the_fault
-	$(PYTHON_VENV)/bin/python -m unittest packages.python.tests.test_packaging.PackageDataTest.test_public_entry_point_exports_are_unique_and_importable
+	$(PYTHON_VENV)/bin/python -m unittest packages.python.tests.test_package_entry.PackageEntryTest.test_public_entry_point_exports_are_unique_and_importable
 
 # fuzz-check is a long-running task that runs the fuzzing-instrumented build and one second of fuzzing (-fuzztime), so
 # it runs each command with no deadline under RUN_LONG. -fuzztime sets the length of fuzzing.

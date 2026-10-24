@@ -12,7 +12,7 @@ use PHPUnit\Framework\TestCase;
 #[Small]
 final class PackageEntryPointTest extends TestCase
 {
-    // Requirements: PRT-46, PRT-51, PRT-56, PRT-61.
+    // Requirements: INT-138, PRT-46, PRT-51, PRT-56, PRT-61.
     #[RunInSeparateProcess]
     #[PreserveGlobalState(false)]
     public function testTestingFaultsRequireTheirExplicitPackagePath(): void

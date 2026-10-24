@@ -257,6 +257,7 @@ final class DeclarationsTest extends TestCase
         );
     }
 
+    // Requirements: INT-138.
     // The extension has the same public declarations (name, parent, constants, order and types of properties, methods)
     // for each class that is not PHP client's @internal, and the only other classes are those the stub marks @internal.
     // DBS-172: the extension registers the PHP client's own class names, properties, constants and methods.

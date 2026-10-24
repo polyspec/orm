@@ -3506,6 +3506,45 @@
       ]
     },
     {
+      "id": "native-public-package-entry",
+      "kind": "feature",
+      "requirements": [
+        "INT-138"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/package_entry_test.go",
+          "id": "TestExternalModuleCanImportClient"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/PackageEntryPointTest.php",
+          "id": "PackageEntryPointTest::testTestingFaultsRequireTheirExplicitPackagePath"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DeclarationsTest.php",
+          "id": "DeclarationsTest::testClient"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/statement_fault_entry.mjs",
+          "id": "package-entry/runtime-exports"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_package_entry.py",
+          "id": "test_public_entry_point_exports_are_unique_and_importable"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/package_entry.rs",
+          "id": "package_entry::public_package_entry"
+        }
+      ]
+    },
+    {
       "id": "ts-statement-fault-entry-other-entry-points",
       "kind": "feature",
       "requirements": [
