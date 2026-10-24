@@ -1,6 +1,10 @@
 # transactions coverage: an error of the callback rolls the transaction back and reaches the caller as it is, and a
 # nested transaction rolls back only its own write through a savepoint, as the transactions coverage of Go, PHP,
 # TypeScript and Rust does. The rows are written only to composite_account and removed when the case ends.
+import asyncio
+import threading
+
+from polyspec.orm.errors import OrmError
 from polyspec.orm.models import models
 from .coverage_case import (
     expect_equal,
@@ -100,6 +104,112 @@ def transaction_savepoint(item):
     with_tenant(item, body)
 
 
+def handle_abandoned_query(item):
+    """Interrupts an in-flight statement with the selected native database driver."""
+
+    def body(db):
+        models.CompositeAccount().set_tenant_id(TENANT).set_account_id(6).set_name(
+            "original"
+        ).create()
+
+        async def cancel_query():
+            loop = asyncio.get_running_loop()
+            future = loop.create_future()
+            handle = db.with_future(future)
+            entered = threading.Event()
+            resume = threading.Event()
+            callback_ran = asyncio.Event()
+            future.add_done_callback(lambda _: callback_ran.set())
+
+            def transaction():
+                models.CompositeAccount().connect(db).tenant_id(TENANT).and_account_id(
+                    6
+                ).set_name("temporary").update()
+                physical = db.active_frame().connection
+                raw = physical.connection
+                if item[0] == "sqlite":
+
+                    def progress():
+                        entered.set()
+                        resume.wait()
+                        return 0
+
+                    raw.set_progress_handler(progress, 100)
+                    sql = (
+                        "WITH RECURSIVE n(x) AS (VALUES(1) UNION ALL "
+                        "SELECT x + 1 FROM n WHERE x < 1000000) SELECT sum(x) FROM n"
+                    )
+                elif item[0] == "mysql":
+                    original_write = raw._write_bytes
+
+                    def write(packet):
+                        original_write(packet)
+                        if (
+                            len(packet) > 4
+                            and packet[4] == 3
+                            and b"orm-cancel-probe" in packet[5:]
+                        ):
+                            entered.set()
+
+                    raw._write_bytes = write
+                    sql = "SELECT SLEEP(60) /* orm-cancel-probe */"
+                else:
+
+                    def notice(diagnostic):
+                        if diagnostic.message_primary == "orm-cancel-probe":
+                            entered.set()
+
+                    raw.add_notice_handler(notice)
+                    sql = (
+                        "DO $$ BEGIN RAISE NOTICE 'orm-cancel-probe'; "
+                        "PERFORM pg_sleep(60); END $$"
+                    )
+                try:
+                    handle.execute(
+                        {"sql": sql, "bind_slots": [], "tables": [], "assemble": None},
+                        [],
+                    )
+                finally:
+                    if item[0] == "sqlite":
+                        raw.set_progress_handler(None, 0)
+                    elif item[0] == "mysql":
+                        del raw._write_bytes
+                    else:
+                        raw.remove_notice_handler(notice)
+
+            task = asyncio.create_task(
+                asyncio.to_thread(lambda: handle.transaction(transaction, {"retry": 0}))
+            )
+            try:
+                assert await asyncio.to_thread(entered.wait, 20), (
+                    f"{item[0]} statement reached its driver boundary"
+                )
+                future.cancel()
+                await callback_ran.wait()
+            finally:
+                resume.set()
+            try:
+                await task
+            except OrmError as error:
+                assert error.code == "CANCELED", f"{item[0]} cancellation: {error}"
+                assert error.cause is not None, f"{item[0]} driver cancellation cause"
+            else:
+                raise AssertionError(
+                    f"{item[0]} statement completed after Future cancellation"
+                )
+
+        asyncio.run(cancel_query())
+        name = (
+            models.CompositeAccount()
+            .connect(db)
+            .get_by_tenant_id_and_account_id(TENANT, 6)
+            .get_name()
+        )
+        expect_equal(name, "original", f"{item[0]} cancellation rolled back the write")
+
+    with_tenant(item, body)
+
+
 class CoverageTest(CoverageCase):
     # Requirements: DSL-118, INT-45, INT-67, PLN-13, PLN-20.
     def test_transaction_rollback(self):
@@ -108,6 +218,10 @@ class CoverageTest(CoverageCase):
     # Requirements: DSL-119, INT-45, INT-46, PLN-17.
     def test_transaction_savepoint(self):
         self.each_item("transaction_savepoint", transaction_savepoint)
+
+    # Requirements: CFG-9, INT-67.
+    def test_handle_abandoned_query(self):
+        self.each_item("handle_abandoned_query", handle_abandoned_query)
 
 
 if __name__ == "__main__":

@@ -3250,6 +3250,21 @@
           "id": "TestWithContextCancels"
         },
         {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_transactions.py",
+          "id": "handle_abandoned_query [sqlite]"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_transactions.py",
+          "id": "handle_abandoned_query [mysql]"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_transactions.py",
+          "id": "handle_abandoned_query [postgres]"
+        },
+        {
           "implementation": "typescript",
           "test": "packages/ts/tests/coverage_transactions.mjs",
           "id": "transaction_rollback [sqlite]"

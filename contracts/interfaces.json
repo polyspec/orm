@@ -1932,6 +1932,25 @@
       }
     },
     {
+      "id": "Db.withFuture",
+      "for": "once",
+      "inputs": [
+        "asyncio.Future"
+      ],
+      "output": "Db",
+      "errors": [
+        "CONFIG",
+        "CANCELED"
+      ],
+      "state": "Returns a handle on the same connection; cancelling the Future interrupts the active statement and waits for driver cleanup before the connection is reused, while normal Future completion has no effect (CFG-9)",
+      "native": {
+        "python": {
+          "symbol": "packages/python/src/polyspec/orm/database.py::Db.with_future",
+          "signature": "def with_future(self, future: asyncio.Future) -> Db"
+        }
+      }
+    },
+    {
       "id": "Db.close",
       "for": "once",
       "inputs": [],

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import contextlib
+import asyncio
 import copy
 import datetime
 import ipaddress
@@ -758,14 +759,18 @@ class _SqliteConnection:
             _raise_driver_error("sqlite", error)
 
     def execute(self, sql: str, values):
+        cursor = None
+        rows = []
         try:
             cursor = self.connection.execute(sql, tuple(values))
             rows = cursor.fetchall()
         except sqlite3.Error as error:
             _raise_driver_error("sqlite", error)
+        finally:
+            if cursor is not None:
+                cursor.close()
         insert_id = cursor.lastrowid if cursor.lastrowid is not None else None
         affected = cursor.rowcount if cursor.rowcount is not None else 0
-        cursor.close()
         return {
             "rows": [list(row) for row in rows],
             "insert_id": insert_id,
@@ -774,6 +779,9 @@ class _SqliteConnection:
 
     def in_transaction(self) -> bool:
         return self.connection.in_transaction
+
+    def cancel_query(self) -> None:
+        self.connection.interrupt()
 
     def close(self) -> None:
         self.connection.close()
@@ -843,7 +851,7 @@ class _MysqlConnection:
             # inside TLS: the client keeps no server public key, so it makes no RSA password exchange.
             tls = {"ssl": _verify_identity_context(parsed.ssl_ca)}
         try:
-            self.connection = pymysql.connect(
+            self._connect_options = dict(
                 host=url.hostname or "localhost",
                 port=int(url.port) if url.port else 3306,
                 unix_socket=socket,
@@ -857,6 +865,7 @@ class _MysqlConnection:
                 client_flag=CLIENT.FOUND_ROWS,
                 **tls,
             )
+            self.connection = pymysql.connect(**self._connect_options)
         except Exception as error:
             if tls and _tls_failure(error):
                 raise OrmError(
@@ -877,19 +886,30 @@ class _MysqlConnection:
         )
 
     def execute(self, sql: str, values):
-        cursor = self.connection.cursor()
         text, args = for_mysql(sql, values)
+        cursor = self.connection.cursor()
         try:
             cursor.execute(text, args)
             rows = [list(row) for row in cursor.fetchall()]
+            insert_id = cursor.lastrowid
+            affected = cursor.rowcount
         except Exception as error:
             if not _is_driver_error("mysql", error):
                 raise
             _raise_driver_error("mysql", error)
-        insert_id = cursor.lastrowid
-        affected = cursor.rowcount
-        cursor.close()
+        finally:
+            cursor.close()
         return {"rows": rows, "insert_id": insert_id, "affected": affected}
+
+    def cancel_query(self) -> None:
+        import pymysql
+
+        control = pymysql.connect(**self._connect_options)
+        try:
+            with control.cursor() as cursor:
+                cursor.execute(f"KILL QUERY {int(self.connection.thread_id())}")
+        finally:
+            control.close()
 
     def in_transaction(self) -> bool:
         return not self.connection.get_autocommit() and self.connection.open
@@ -934,28 +954,155 @@ class _PostgresConnection:
         self.connection.autocommit = True
 
     def execute(self, sql: str, values):
-        cursor = self.connection.cursor()
         text, args = for_postgres(sql, values)
+        cursor = self.connection.cursor()
         try:
             cursor.execute(text, args)
             rows = (
                 [list(row) for row in cursor.fetchall()] if cursor.description else []
             )
+            insert_id = None
+            affected = cursor.rowcount if cursor.rowcount is not None else 0
         except Exception as error:
             if not _is_driver_error("postgres", error):
                 raise
             # psycopg marks a connection that the server ended or that was dropped as closed.
             _raise_driver_error("postgres", error, bool(self.connection.closed))
-        insert_id = None
-        affected = cursor.rowcount if cursor.rowcount is not None else 0
-        cursor.close()
+        finally:
+            cursor.close()
         return {"rows": rows, "insert_id": insert_id, "affected": affected}
+
+    def cancel_query(self) -> None:
+        # psycopg's cancel request is safe to issue from a worker while the query thread is blocked.
+        self.connection.cancel_safe()
 
     def in_transaction(self) -> bool:
         return not self.connection.autocommit and not self.connection.closed
 
     def close(self) -> None:
         self.connection.close()
+
+
+class _ActiveStatement:
+    """One driver statement whose cancellation request must finish before its connection is reused."""
+
+    def __init__(self, connection):
+        self.connection = connection
+        self._lock = threading.Lock()
+        self._requested = False
+        self._finished = threading.Event()
+        self.error: BaseException | None = None
+
+    def cancel(self) -> None:
+        with self._lock:
+            if self._requested:
+                return
+            self._requested = True
+        if isinstance(self.connection, _SqliteConnection):
+            try:
+                self.connection.cancel_query()
+            except sqlite3.Error as error:
+                self.error = error
+            finally:
+                self._finished.set()
+            return
+
+        def interrupt() -> None:
+            try:
+                self.connection.cancel_query()
+            except _cancel_error_types(self.connection) as error:
+                self.error = error
+            finally:
+                self._finished.set()
+
+        try:
+            threading.Thread(
+                target=interrupt, name="orm-query-cancel", daemon=True
+            ).start()
+        except (OSError, RuntimeError) as error:
+            self.error = error
+            self._finished.set()
+
+    def wait(self) -> None:
+        with self._lock:
+            requested = self._requested
+        if requested:
+            self._finished.wait()
+
+
+def _cancel_error_types(connection):
+    if isinstance(connection, _MysqlConnection):
+        import pymysql
+
+        return pymysql.MySQLError
+    if isinstance(connection, _PostgresConnection):
+        import psycopg
+
+        return psycopg.Error
+    return (OSError, RuntimeError)
+
+
+class _FutureCancellation:
+    """Cancellation state shared by statements of one derived handle."""
+
+    def __init__(self, future: asyncio.Future):
+        self._lock = threading.Lock()
+        self._cancelled = future.cancelled()
+        self._active: set[_ActiveStatement] = set()
+        future.add_done_callback(self._future_done)
+
+    def _future_done(self, future: asyncio.Future) -> None:
+        if not future.cancelled():
+            return
+        with self._lock:
+            self._cancelled = True
+            active = tuple(self._active)
+            # Request interruption before a finishing statement can leave the active set and
+            # return its connection to the pool.
+            for operation in active:
+                operation.cancel()
+
+    def start(self, connection) -> _ActiveStatement:
+        operation = _ActiveStatement(connection)
+        with self._lock:
+            if self._cancelled:
+                raise OrmError(codes.CANCELED, "statement cancelled")
+            self._active.add(operation)
+        return operation
+
+    def finish(self, operation: _ActiveStatement) -> bool:
+        with self._lock:
+            self._active.discard(operation)
+            cancelled = self._cancelled
+        operation.wait()
+        return cancelled
+
+
+def _execute_cancellable(connection, sql: str, values, cancellation):
+    if cancellation is None:
+        return connection.execute(sql, values)
+    operation = cancellation.start(connection)
+    result = None
+    failure = None
+    try:
+        result = connection.execute(sql, values)
+    except OrmError as error:
+        failure = error
+    finally:
+        cancelled = cancellation.finish(operation)
+    if operation.error is not None:
+        raise OrmError(
+            codes.CONNECTION_LOST,
+            "query cancellation could not be confirmed; the connection was discarded",
+            operation.error,
+        ) from operation.error
+    if cancelled:
+        if isinstance(failure, OrmError) and failure.code == codes.CANCELED:
+            raise failure
+        raise OrmError(codes.CANCELED, "statement cancelled", failure) from failure
+    if failure is not None:
+        raise failure
+    return result
 
 
 def _unquote(text: str) -> str:
@@ -1007,7 +1154,11 @@ class TxFrame:
         def send():
             try:
                 if faultable:
-                    return self.db._sent(lambda: self.connection.execute(sql, values))
+                    return self.db._sent(
+                        lambda: _execute_cancellable(
+                            self.connection, sql, values, self.db._cancellation
+                        )
+                    )
                 return self.connection.execute(sql, values)
             except OrmError as error:
                 if error.code == codes.CONNECTION_LOST:
@@ -1243,19 +1394,19 @@ class _Leased:
     def __init__(self, db: "Db"):
         self._db = db
 
-    def execute(self, sql: str, values):
+    def execute(self, sql: str, values, cancellation=None):
         held = getattr(self._db._shared.held, "connection", None)
         if held is not None:
-            return held.execute(sql, values)
+            return _execute_cancellable(held, sql, values, cancellation)
         # Inside a transaction of the thread the statement runs on the connection of the transaction.
         frame = _active_for(self._db)
         if frame is not None and frame.connection is not None:
-            return frame.connection.execute(sql, values)
+            return _execute_cancellable(frame.connection, sql, values, cancellation)
         pool = self._db._shared.pool
         connection = pool.acquire()
         broken = False
         try:
-            return connection.execute(sql, values)
+            return _execute_cancellable(connection, sql, values, cancellation)
         except OrmError as error:
             broken = error.code == codes.CONNECTION_LOST
             raise
@@ -1379,6 +1530,7 @@ class Db:
         # A handle's root is the connection it was derived from; the connection itself has None.
         self._root: Db | None = None
         self.request_hook: RequestHook | None = None
+        self._cancellation: _FutureCancellation | None = None
         if self.driver == "markdown":
             # A markdown connection keeps one server session (docs/spec/protocol.md §5).
             self._connection = self._open()
@@ -1485,6 +1637,16 @@ class Db:
         handle._root = self.root()
         return handle
 
+    def with_future(self, future: asyncio.Future) -> Db:
+        """Returns a handle whose active statements are interrupted when future is cancelled."""
+        if not isinstance(future, asyncio.Future):
+            raise OrmError(codes.CONFIG, "with_future takes an asyncio Future")
+        unsupported_on_markdown(self, "statement cancellation")
+        handle = copy.copy(self)
+        handle._root = self.root()
+        handle._cancellation = _FutureCancellation(future)
+        return handle
+
     def root(self) -> Db:
         """The connection this handle was derived from; a connection returns itself."""
         return self._root if self._root is not None else self
@@ -1494,7 +1656,9 @@ class Db:
         that transaction, and outside one at the commit of its own statement."""
         _listenable(self, "notify")
         _check_channel(channel)
-        _Leased(self).execute("SELECT pg_notify($1, $2)", [channel, payload])
+        self._connection.execute(
+            "SELECT pg_notify($1, $2)", [channel, payload], self._cancellation
+        )
 
     def listen(self, channel: str) -> Subscription:
         """Opens a LISTEN subscription on channel (DIA-194) on a connection of its own."""
@@ -1682,7 +1846,15 @@ class Db:
             transaction,
             resolved["masked"],
             sql,
-            lambda: self._sent(lambda: connection.execute(sql, resolved["values"])),
+            lambda: self._sent(
+                lambda: (
+                    _execute_cancellable(
+                        connection, sql, resolved["values"], self._cancellation
+                    )
+                    if ex.frame is not None
+                    else connection.execute(sql, resolved["values"], self._cancellation)
+                )
+            ),
         )
 
     def _sent(self, run):

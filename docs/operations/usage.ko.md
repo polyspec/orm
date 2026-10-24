@@ -1,5 +1,5 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: 2236c1136ecc597f461c196950ca694867b36bd223479247da2809ee0b5b1ca5 -->
+<!-- source-sha256: 36afaff0b3f2708acbd297bcc96fe13359d88000e606bd5a158d97456cff6de6 -->
 # 사용법
 
 하나의 dbspec document set에서 language client를 생성한다. 공통 contract는 Go, PHP, PHP extension, TypeScript, Python, Rust 여섯 구현에 적용되며 확장의 미완료 native 범위는 별도로 추적한다.
@@ -511,6 +511,8 @@ request를 직접 compile하는 program은, 예를 들어 행을 identity key와
 - PHP extension `polyspec_orm`은 dbspec 표면만 구현하고 query 연결을 갖지 않으므로 `execute`가 없다. 둘 다 PHP client가 실행한다.
 
 ### Request hook {#request-hook}
+
+Python SQL 연결은 `asyncio.Future`인 `future`를 받는 `db.with_future(future)`로 취소 핸들을 만든다. future를 취소하면 파생 핸들에서 실행 중인 문을 중단하고 `CANCELED`를 반환한다. 정상 완료는 연결에 영향을 주지 않는다. Python 데이터베이스 호출은 동기식이므로 취소할 호출은 `asyncio.to_thread`에서 실행한다. 취소된 transaction도 pool connection을 재사용하기 전에 rollback을 수행한다. 파생 핸들은 취소 상태를 유지하므로 이후 작업은 root `db`로 실행한다. Python markdown executor는 `with_future`를 지원하지 않는다.
 
 `withRequestHook`은 같은 연결의 handle을 돌려준다. 그 handle의 hook은 handle의 각 request([protocol](../spec/protocol.ko.md#_1-request))를 client가 plan하기 직전에 받는다. hook은 predicate, assignment, 매개변수를 더할 수 있고, client는 hook에 자기 의미를 붙이지 않는다.
 

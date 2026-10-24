@@ -511,6 +511,8 @@ A program that compiles requests itself, such as a load that writes rows with th
 
 ### Request hook
 
+Python SQL connections can derive a cancellation handle with `db.with_future(future)`, where `future` is an `asyncio.Future`. Cancelling that future interrupts the statement in flight on the derived handle and reports `CANCELED`; completing it normally does not affect the connection. Python database calls are synchronous, so run a cancellable call with `asyncio.to_thread`. A cancelled transaction still runs its rollback before the pooled connection is reused. The derived handle remains cancelled; use the root `db` for later work. The Python markdown executor does not support `with_future`.
+
 `withRequestHook` returns a handle on the same connection whose hook receives each request ([protocol](../spec/protocol.md#_1-request)) of the handle right before the client plans it. The hook may add predicates, assignments and parameters; the client gives the hook no meaning of its own.
 
 | Client | Handle | Hook |

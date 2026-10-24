@@ -2877,7 +2877,8 @@
                   "test": "packages/python/tests/coverage_transactions.py",
                   "cases": [
                     "transaction_rollback",
-                    "transaction_savepoint"
+                    "transaction_savepoint",
+                    "handle_abandoned_query"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -2888,7 +2889,8 @@
                   "test": "packages/python/tests/coverage_transactions.py",
                   "cases": [
                     "transaction_rollback",
-                    "transaction_savepoint"
+                    "transaction_savepoint",
+                    "handle_abandoned_query"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -2899,7 +2901,8 @@
                   "test": "packages/python/tests/coverage_transactions.py",
                   "cases": [
                     "transaction_rollback",
-                    "transaction_savepoint"
+                    "transaction_savepoint",
+                    "handle_abandoned_query"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
