@@ -7,8 +7,6 @@ const ITERATIONS = 500;
 
 const AES_KEY = 'bench-salt';
 
-require_once dirname(__DIR__, 2) . '/php/bench_dsn.php';
-
 function p50(Closure $f): int
 {
     $s = [];

@@ -88,7 +88,10 @@ final class MysqlTlsTest extends TestCase
         $ca = sys_get_temp_dir() . '/orm-missing-ca-' . bin2hex(random_bytes(8)) . '.pem';
         $db = null;
         try {
-            $db = Orm::connect('mysql://root@localhost/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=' . rawurlencode($ca), new Config());
+            $db = Orm::connect(
+                'mysql://root@localhost/orm_example?ssl-mode=VERIFY_IDENTITY&ssl-ca=' . rawurlencode($ca),
+                new Config()
+            );
             self::fail('a missing TLS CA file must be CONFIG');
         } catch (OrmException $error) {
             self::assertSame(Code::CONFIG, $error->code_);

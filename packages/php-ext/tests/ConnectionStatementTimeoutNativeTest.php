@@ -42,7 +42,12 @@ final class ConnectionStatementTimeoutNativeTest extends TestCase
                 $bounded = Orm::connect($dsn, new Config(statementTimeoutMs: 200));
                 try {
                     $bounded->transaction(
-                        static fn() => $bounded->fetch('query', [], null, "SELECT id FROM $quotedTable WHERE id = 1 FOR UPDATE"),
+                        static fn() => $bounded->fetch(
+                            'query',
+                            [],
+                            null,
+                            "SELECT id FROM $quotedTable WHERE id = 1 FOR UPDATE"
+                        ),
                         retry: 0
                     );
                     self::fail("$driver: the locking read passed its statement timeout");
@@ -135,7 +140,11 @@ final class ConnectionStatementTimeoutNativeTest extends TestCase
             } catch (OrmException $error) {
                 self::assertSame(Code::CANCELED, $error->code_, $error->getMessage());
             }
-            self::assertCount(1, $bounded->fetch('query', [], null, 'SELECT 1'), 'the bounded native connection is usable after cancellation');
+            self::assertCount(
+                1,
+                $bounded->fetch('query', [], null, 'SELECT 1'),
+                'the bounded native connection is usable after cancellation'
+            );
 
             $plain = Orm::connect($single);
             $setting = $plain->fetch('query', [], null, "SELECT current_setting('statement_timeout')")[0][0];

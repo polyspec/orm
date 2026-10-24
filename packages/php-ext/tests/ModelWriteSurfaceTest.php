@@ -12,48 +12,49 @@ use Polyspec\Orm\Request;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 
-final class ModelWriteCallbackFixture extends Model
-{
-    public static function meta(): array
-    {
-        return [];
-    }
-}
-
-final class ModelKeyValuesFixture extends Model
-{
-    public static function meta(): array
-    {
-        return ['entity' => 'ModelKeyValuesFixture', 'columns' => [], 'pk' => ['id']];
-    }
-}
-
-final class ModelWriteAesFixture extends Model
-{
-    public static function meta(): array
-    {
-        $column = static fn(string $name): array => [
-            'name' => $name,
-            'codec' => ['aes'],
-            'type' => 'text',
-        ];
-        return [
-            'entity' => 'write_aes_fixture',
-            'aes_version' => 'aes_key_version',
-            'columns' => [
-                'secret_a' => $column('secret_a'),
-                'secret_b' => $column('secret_b'),
-            ],
-        ];
-    }
-}
-
 #[Small]
 final class ModelWriteSurfaceTest extends TestCase
 {
+    private static function callbackFixture(): Model
+    {
+        return new class extends Model {
+            public static function meta(): array
+            {
+                return [];
+            }
+        };
+    }
+
+    private static function aesFixture(): Model
+    {
+        return new class extends Model {
+            public static function meta(): array
+            {
+                $column = static fn(string $name): array => [
+                    'name' => $name,
+                    'codec' => ['aes'],
+                    'type' => 'text',
+                ];
+                return [
+                    'entity' => 'write_aes_fixture',
+                    'aes_version' => 'aes_key_version',
+                    'columns' => [
+                        'secret_a' => $column('secret_a'),
+                        'secret_b' => $column('secret_b'),
+                    ],
+                ];
+            }
+        };
+    }
+
     public function testNativeKeyValuesReadsTheModelMetadata(): void
     {
-        $model = new ModelKeyValuesFixture();
+        $model = new class extends Model {
+            public static function meta(): array
+            {
+                return ['entity' => 'ModelKeyValuesFixture', 'columns' => [], 'pk' => ['id']];
+            }
+        };
         $sets = (new \ReflectionClass(Model::class))->getProperty('sets');
         $sets->setValue($model, ['id' => ['value' => 42]]);
 
@@ -116,7 +117,7 @@ final class ModelWriteSurfaceTest extends TestCase
             self::assertTrue($invoke->isInternal(), $class . '::__invoke');
             self::assertSame('polyspec_orm', $invoke->getExtensionName(), $class . '::__invoke');
         }
-        $capturedModel = new ModelWriteCallbackFixture();
+        $capturedModel = self::callbackFixture();
         $callback = $callbackClass->newInstanceWithoutConstructor();
         foreach (
             [
@@ -180,7 +181,7 @@ final class ModelWriteSurfaceTest extends TestCase
 
     public function testNullableValuesDoNotCoerceIntoNonNullableWriteScalars(): void
     {
-        $model = new ModelWriteCallbackFixture();
+        $model = self::callbackFixture();
         foreach (
             [
             static fn() => $model->update(null),
@@ -200,7 +201,7 @@ final class ModelWriteSurfaceTest extends TestCase
 
     public function testTransactionalWriteCallbacksPreserveMissingConnectionError(): void
     {
-        $model = new ModelWriteCallbackFixture();
+        $model = self::callbackFixture();
         foreach (
             [
                 static fn() => $model->restoreOrCreate(),
@@ -222,7 +223,7 @@ final class ModelWriteSurfaceTest extends TestCase
 
     public function testBuildAndWriteRequestRejectNullableKinds(): void
     {
-        $model = new ModelWriteCallbackFixture();
+        $model = self::callbackFixture();
         $build = new \ReflectionMethod(Model::class, 'build');
         $writeRequest = new \ReflectionMethod(Model::class, 'writeRequest');
         foreach (
@@ -242,7 +243,7 @@ final class ModelWriteSurfaceTest extends TestCase
 
     public function testAesExpansionKeepsTheModelSetsArrayUnchanged(): void
     {
-        $model = new ModelWriteAesFixture();
+        $model = self::aesFixture();
         $base = new \ReflectionClass(Model::class);
         $sets = $base->getProperty('sets');
         $values = $base->getProperty('values');

@@ -154,9 +154,15 @@ DBSPEC;
             }
             self::assertSame($setMessage, $filesMessage);
         } finally {
-            if (is_file($source)) unlink($source);
-            if (is_file($set)) unlink($set);
-            if (is_dir($dir)) rmdir($dir);
+            if (is_file($source)) {
+                unlink($source);
+            }
+            if (is_file($set)) {
+                unlink($set);
+            }
+            if (is_dir($dir)) {
+                rmdir($dir);
+            }
         }
     }
 
