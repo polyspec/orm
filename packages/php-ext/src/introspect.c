@@ -1677,6 +1677,34 @@ static void catalog_drop_missing_renderer_checks(catalog *c, const smap *pending
     }
 }
 
+static void catalog_pending_renderer_check(smap *pending, str table, str name, str type)
+{
+    smap *cols = smap_get(pending, table);
+    if (cols == NULL) {
+        cols = dbs_alloc(sizeof *cols);
+        smap_set(pending, table, cols);
+    }
+    str *required_type = dbs_alloc(sizeof *required_type);
+    *required_type = type;
+    smap_set(cols, name, required_type);
+}
+
+static bool catalog_record_renderer_check(catalog *c, smap *checked, str table, str name, str column,
+    str expression, bool renderer_check)
+{
+    if (!renderer_check) {
+        catalog_report(c, SL("check"), table, name, fmt("the check %S is not the renderer CHECK", expression));
+        return false;
+    }
+    smap *cols = smap_get(checked, table);
+    if (cols == NULL) {
+        cols = dbs_alloc(sizeof *cols);
+        smap_set(checked, table, cols);
+    }
+    smap_set(cols, column, TRUEP);
+    return true;
+}
+
 /* Collects column rows for each foreign key. An unsupported key is reported for each column row. */
 static bool mysql_foreign_keys(zval *pdo, catalog *c)
 {
@@ -1823,14 +1851,7 @@ static catalog *mysql_read(zval *pdo)
             *copy = col;
             smap_set(m, name, copy);
             if (needs.n > 0) {
-                smap *pm = smap_get(&pending, table);
-                if (pm == NULL) {
-                    pm = dbs_alloc(sizeof *pm);
-                    smap_set(&pending, table, pm);
-                }
-                str *need = dbs_alloc(sizeof *need);
-                *need = needs;
-                smap_set(pm, name, need);
+                catalog_pending_renderer_check(&pending, table, name, needs);
             }
         } ZEND_HASH_FOREACH_END();
     }
@@ -1893,16 +1914,11 @@ static catalog *mysql_read(zval *pdo)
                 str column_name = SL("");
                 smap *m = smap_get(&columns, table);
                 icolumn *known = rendered_column(table, name, m, &column_name) ? smap_get(m, column_name) : NULL;
-                if (known == NULL || !str_eq(without_introducers(*clause), without_introducers(mysql_renderer_check(known)))) {
-                    catalog_report(c, SL("check"), table, name, fmt("the check %S is not the renderer CHECK", *clause));
+                bool renderer_check = known != NULL
+                    && str_eq(without_introducers(*clause), without_introducers(mysql_renderer_check(known)));
+                if (!catalog_record_renderer_check(c, &checked, table, name, column_name, *clause, renderer_check)) {
                     continue;
                 }
-                smap *cm = smap_get(&checked, table);
-                if (cm == NULL) {
-                    cm = dbs_alloc(sizeof *cm);
-                    smap_set(&checked, table, cm);
-                }
-                smap_set(cm, column_name, TRUEP);
                 continue;
             }
             smap types = itable_types(t);
@@ -2262,14 +2278,7 @@ static catalog *pg_read(zval *pdo)
             *qn = quoted_name;
             smap_set(qm, name, qn);
             if (str_eqc(type->name, "time")) {
-                smap *pm = smap_get(&pending, table);
-                if (pm == NULL) {
-                    pm = dbs_alloc(sizeof *pm);
-                    smap_set(&pending, table, pm);
-                }
-                str *need = dbs_alloc(sizeof *need);
-                *need = SL("time");
-                smap_set(pm, name, need);
+                catalog_pending_renderer_check(&pending, table, name, SL("time"));
             }
         } ZEND_HASH_FOREACH_END();
     }
@@ -2326,16 +2335,10 @@ static catalog *pg_read(zval *pdo)
                     smap *qm = smap_get(&quoted, table);
                     str *qn = qm == NULL || !found ? NULL : smap_get(qm, column_name);
                     str want = fmt("CHECK ((%S < '24:00:00'::time without time zone))", qn != NULL ? *qn : SL(""));
-                    if (!found || !str_eq(definition, want)) {
-                        catalog_report(c, SL("check"), table, name, fmt("the check %S is not the renderer CHECK", definition));
+                    bool renderer_check = found && str_eq(definition, want);
+                    if (!catalog_record_renderer_check(c, &checked, table, name, column_name, definition, renderer_check)) {
                         continue;
                     }
-                    smap *cm = smap_get(&checked, table);
-                    if (cm == NULL) {
-                        cm = dbs_alloc(sizeof *cm);
-                        smap_set(&checked, table, cm);
-                    }
-                    smap_set(cm, column_name, TRUEP);
                     continue;
                 }
                 smap types = itable_types(t);
