@@ -499,6 +499,16 @@
         "docs/spec/dialects.ko.md"
       ]
     },
+    "makefile-pinned-node-recipes-check": {
+      "scope": "owner",
+      "needs": [
+        "node-modules"
+      ],
+      "inputs": [
+        "Makefile",
+        "tests/repo/pinned-node-recipes.test.mts"
+      ]
+    },
     "docs-verify-idempotent": {
       "scope": "owner",
       "needs": [
