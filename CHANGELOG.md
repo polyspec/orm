@@ -3,8 +3,6 @@
 
 ## Unreleased
 
-- Dbspec verification now distinguishes a real schema mismatch from catalog or driver failures across Go, PHP, the PHP extension, Python, Rust and TypeScript. Verification failures retain their original cause; a failed post-forward verification does not mark apply history successful. The focused database-free fake-driver target covers settled and rollback verification failures, post-forward failure state, and a genuine mismatch across all six implementations. On main source `fc50349c19be`, the exact Go regression failed on original source `67aee14d481e` in both settled and rollback paths (KSTD-5-61).
-
 - Mermaid imports now convert only the catalog's generated-document build failure into a line-1 diagnostic; other catalog exceptions escape with their original identity. On commit `6dabce876bf8`, the focused targets pass TypeScript (2 cases), Python (2), PHP (2) and the native PHP extension (2). The extension cases build a test-only module that calls the production Mermaid boundary. The canonical pre-fix run on `48b4f552b028` failed all four targets on unexpected-error identity (KSTD-5-62).
 
 - Every code in `docs/spec/errors.yaml` now has one API unit in `config/parity.json`, with one matching catalog symbol per implementation. The API checker on pre-fix main HEAD `48b4f552b028` reported 43 units for 77 codes. The committed focused verification passes all 5 cases and checks 77 codes against 77 units (KSTD-7-10).
