@@ -13,6 +13,8 @@ use Polyspec\Orm\OrmException;
 use Polyspec\Orm\Orm;
 use ReflectionMethod;
 
+// Requirements: CFG-1. The inherited DSN case exercises Orm through the native extension.
+
 #[Medium]
 final class CoverageDsnConnectionExtensionTest extends CoverageDsnTest
 {

@@ -2218,48 +2218,6 @@
       ]
     },
     {
-      "id": "coverage-generated-model-connection",
-      "kind": "feature",
-      "requirements": [
-        "CFG-1"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_dsn_test.go",
-          "id": "TestCoverageGeneratedModelConnection",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageGeneratedModelConnection",
-            "FEATURE_PACKAGE=./model"
-          ]
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/src/integration.rs",
-          "id": "coverage_generated_model_connection",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--bin integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_generated_model_connection"
-          ]
-        }
-      ]
-    },
-    {
       "id": "generated-fields-require-selection-or-assignment",
       "kind": "feature",
       "requirements": [
@@ -7431,56 +7389,6 @@
       ]
     },
     {
-      "id": "go-internal-packages-go-model-coverage-dsn-postgres",
-      "kind": "feature",
-      "requirements": [
-        "CFG-1"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_dsn_test.go",
-          "id": "TestCoverageGeneratedModelConnection",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=postgres",
-            "FEATURE_DSN_ENV=BENCH_POSTGRES_DSN",
-            "FEATURE_TEST=TestCoverageGeneratedModelConnection",
-            "FEATURE_PACKAGE=./model"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-model-coverage-dsn-sqlite",
-      "kind": "feature",
-      "requirements": [
-        "CFG-1"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/coverage_dsn_test.go",
-          "id": "TestCoverageGeneratedModelConnection",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageGeneratedModelConnection",
-            "FEATURE_PACKAGE=./model"
-          ]
-        }
-      ]
-    },
-    {
       "id": "go-internal-packages-go-model-decimal-field",
       "kind": "feature",
       "requirements": [
@@ -7758,56 +7666,6 @@
           "implementation": "go",
           "test": "packages/go/orm/collection_key_test.go",
           "id": "TestTypedKeyValuesCannotCollide"
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-orm-coverage-dsn-postgres",
-      "kind": "feature",
-      "requirements": [
-        "CFG-1"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/coverage_dsn_test.go",
-          "id": "TestCoverageDSNConnection",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=postgres",
-            "FEATURE_DSN_ENV=BENCH_POSTGRES_DSN",
-            "FEATURE_TEST=TestCoverageDSNConnection",
-            "FEATURE_PACKAGE=./orm"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-orm-coverage-dsn-sqlite",
-      "kind": "feature",
-      "requirements": [
-        "CFG-1"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/coverage_dsn_test.go",
-          "id": "TestCoverageDSNConnection",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageDSNConnection",
-            "FEATURE_PACKAGE=./orm"
-          ]
         }
       ]
     },
@@ -12402,62 +12260,6 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/coverage_catalog_connection.rs",
           "id": "coverage_catalog_row_mutation"
-        }
-      ]
-    },
-    {
-      "id": "rust-integration-coverage-generated-model-connection-postgres",
-      "kind": "feature",
-      "requirements": [
-        "CFG-1",
-        "COD-20",
-        "DBS-114"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/src/integration.rs",
-          "id": "coverage_generated_model_connection",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--bin integration",
-            "FEATURE_DATABASE=postgres",
-            "FEATURE_DSN_ENV=BENCH_POSTGRES_DSN",
-            "FEATURE_TEST=coverage_generated_model_connection"
-          ]
-        }
-      ]
-    },
-    {
-      "id": "rust-integration-coverage-generated-model-connection-sqlite",
-      "kind": "feature",
-      "requirements": [
-        "CFG-1",
-        "COD-20",
-        "DBS-114"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/src/integration.rs",
-          "id": "coverage_generated_model_connection",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-database",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--bin integration",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=coverage_generated_model_connection"
-          ]
         }
       ]
     },

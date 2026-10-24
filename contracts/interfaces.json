@@ -344,7 +344,8 @@
         "stats",
         "subscribe",
         "execute",
-        "withRequestHook"
+        "withRequestHook",
+        "withFuture"
       ],
       "ownership": "Owns the pool, the planners of the schema sets registered on it, the plan and statement caches, and the statement event subscribers.",
       "ownership_ko": "pool, 자기에게 등록된 schema set의 planner, plan cache, statement cache, statement event subscriber를 가진다."
