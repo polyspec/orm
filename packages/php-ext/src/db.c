@@ -1224,6 +1224,11 @@ static bool row_slot(zval *row, zval *refs, zval *out)
     return ok;
 }
 
+static bool split_row_slot(zval *row, zval *refs, zval *out)
+{
+    return row_slot(row, refs, out);
+}
+
 /* ---- the connection: registration, the request hook, the statement entry checks ---- */
 
 /* Db::registeredModel: the manifest is registered on this connection, or SCHEMA_HASH_MISMATCH. */
@@ -2681,7 +2686,7 @@ static bool select_impl(zval *self, zval *frame, zval *r, zval *out)
             ZEND_HASH_FOREACH_VAL(Z_ARRVAL(rows), row)
             {
                 zval key;
-                if (!row_slot(row, aget(pstep0, "assemble") ? aget(aget(pstep0, "assemble"), "key") : NULL, &key)) {
+                if (!split_row_slot(row, aget(pstep0, "assemble") ? aget(aget(pstep0, "assemble"), "key") : NULL, &key)) {
                     ok = false;
                     break;
                 }
@@ -3912,6 +3917,18 @@ ZEND_METHOD(Polyspec_Orm_Db, rowSlot)
         Z_PARAM_ARRAY(refs)
     ZEND_PARSE_PARAMETERS_END();
     if (!row_slot(row, refs, return_value)) {
+        RETURN_THROWS();
+    }
+}
+
+ZEND_METHOD(Polyspec_Orm_Db, splitRowSlot)
+{
+    zval *row, *refs;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+        Z_PARAM_ARRAY(row)
+        Z_PARAM_ARRAY(refs)
+    ZEND_PARSE_PARAMETERS_END();
+    if (!split_row_slot(row, refs, return_value)) {
         RETURN_THROWS();
     }
 }

@@ -404,7 +404,7 @@ async fn select(ex: &Executor, conn: &Option<Db>, req: &mut Req) -> Result<Query
             let pasm = pst.assemble.clone().ok_or_else(|| Error::internal("no assemble"))?;
             let raw = ex.query(pst, &part.params, Vec::new()).await?;
             for row in positional(&raw, &pasm, aes_keys, db.inner.zone)? {
-                if seen.insert(Key::of_row(&row, &pasm.key)?) {
+                if seen.insert(split_row_key(&row, &pasm.key)?) {
                     main.push(row);
                 }
             }
@@ -438,6 +438,10 @@ async fn select(ex: &Executor, conn: &Option<Db>, req: &mut Req) -> Result<Query
         out.steps.insert(st.id, sr);
     }
     Ok(out)
+}
+
+fn split_row_key(row: &[Val], refs: &[crate::plan::KeyRef]) -> Result<Option<Key>> {
+    Key::of_row(row, refs)
 }
 
 // ---- assembly ----
@@ -1833,5 +1837,23 @@ mod related_tests {
                 assert!(error.to_string().contains(name), "{error} does not name {name}");
             }
         }
+    }
+
+    #[test]
+    fn split_root_merge_rejects_sql_null_identity() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let refs = [crate::plan::KeyRef { column: "id".into(), index: 0 }];
+        let error = match super::split_row_key(&[Val::Null], &refs) {
+            Err(error) => error,
+            Ok(_) => panic!("split root merge accepted SQL NULL identity"),
+        };
+        assert_eq!(error.code(), codes::CODEC_DECODE);
+        assert!(error.to_string().contains("split query row identity contains SQL NULL"));
+        let zero = super::split_row_key(&[Val::I64(0)], &refs).unwrap();
+        let false_value = super::split_row_key(&[Val::Bool(false)], &refs).unwrap();
+        let empty = super::split_row_key(&[Val::Str(String::new())], &refs).unwrap();
+        assert_ne!(zero, false_value);
+        assert_ne!(zero, empty);
+        assert_ne!(false_value, empty);
     }
 }

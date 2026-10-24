@@ -651,6 +651,26 @@
         "packages/rust/orm/src/db/sqlite_version_tests.rs"
       ]
     },
+    "split-null-check": {
+      "scope": "owner",
+      "needs": ["go", "rust", "php", "composer", "python", "node-modules", "php-extension-tools"],
+      "inputs": [
+        "Makefile",
+        "packages/go/orm/exec.go",
+        "packages/go/orm/collection_key_test.go",
+        "packages/php/src/Db.php",
+        "packages/php/tests/RelationKeysTest.php",
+        "packages/python/src/polyspec/orm/database.py",
+        "packages/python/tests/test_split_null.py",
+        "packages/rust/orm/src/model.rs",
+        "packages/ts/src/database.ts",
+        "packages/ts/tests/split-null.test.mjs",
+        "packages/php-ext/src/db.c",
+        "packages/php-ext/src/polyspec_orm.stub.php",
+        "packages/php-ext/src/polyspec_orm_arginfo.h",
+        "packages/php-ext/tests/ModelAssemblyTest.php"
+      ]
+    },
     "interface-typescript-extractor-check": {
       "scope": "owner",
       "needs": [

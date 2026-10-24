@@ -29,6 +29,21 @@ final class ModelAssemblyFixture extends Model
 #[Small]
 final class ModelAssemblyTest extends TestCase
 {
+    public function testSplitRootMergeRejectsSqlNullIdentity(): void
+    {
+        $refs = [['column' => 'id', 'index' => 0]];
+        $splitRowSlot = new \ReflectionMethod(Db::class, 'splitRowSlot');
+        try {
+            $splitRowSlot->invoke(null, [null], $refs);
+            self::fail('split root merge accepted SQL NULL identity');
+        } catch (OrmException $error) {
+            self::assertSame(Code::CODEC_DECODE, $error->code_);
+            self::assertSame('CODEC_DECODE: split query row identity contains SQL NULL', $error->getMessage());
+        }
+        self::assertNotSame($splitRowSlot->invoke(null, [0], $refs), $splitRowSlot->invoke(null, [''], $refs));
+        self::assertNotSame($splitRowSlot->invoke(null, [false], $refs), $splitRowSlot->invoke(null, [0], $refs));
+    }
+
     public function testFrameOwnsTheNativeJoinMapAndOuterPath(): void
     {
         $root = new ModelAssemblyFixture();

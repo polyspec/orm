@@ -1097,7 +1097,7 @@ final class Db
             foreach ($parts as $part) {
                 $partPlan = $this->plan($part);
                 foreach ($this->query($partPlan['steps'][0], $part->params) as $row) {
-                    $key = self::rowSlot($row, $partPlan['steps'][0]['assemble']['key']) ?? '';
+                    $key = self::splitRowSlot($row, $partPlan['steps'][0]['assemble']['key']);
                     if (!isset($seen[$key])) {
                         $seen[$key] = true;
                         $main[] = $row;
@@ -1966,6 +1966,13 @@ final class Db
     {
         $key = self::rowKey($row, $refs);
         return $key === null ? null : Collection::identityOf($key);
+    }
+
+    /** @internal Split-root merge identity. */
+    private static function splitRowSlot(array $row, array $refs): string
+    {
+        $key = self::rowSlot($row, $refs);
+        return $key ?? '';
     }
 
     public static function sameScalar(mixed $a, mixed $b): bool

@@ -543,12 +543,9 @@ func query(ex executor, r *request) (*result, error) {
 				return nil, err
 			}
 			for _, row := range rows {
-				key, present, err := keyFromRow(row, pc.plan.Steps[0].Assemble.Key)
+				key, err := splitQueryRowKey(row, pc.plan.Steps[0].Assemble.Key)
 				if err != nil {
 					return nil, err
-				}
-				if !present {
-					return nil, codecErr(CodeCodecDecode, "split query row identity contains SQL NULL")
 				}
 				if !seen[key] {
 					seen[key] = true
@@ -560,6 +557,17 @@ func query(ex executor, r *request) (*result, error) {
 		return nil, err
 	}
 	return runRelations(ctx, ex, c, r, main)
+}
+
+func splitQueryRowKey(row []any, refs []plan.KeyRef) (Key, error) {
+	key, present, err := keyFromRow(row, refs)
+	if err != nil {
+		return Key{}, err
+	}
+	if !present {
+		return Key{}, codecErr(CodeCodecDecode, "split query row identity contains SQL NULL")
+	}
+	return key, nil
 }
 
 func runRelations(ctx context.Context, ex executor, c *cached, r *request, main [][]any) (*result, error) {

@@ -440,6 +440,12 @@ def row_key(row, refs):
     return key_of_values(values)
 
 
+def _split_row_key(row, refs) -> str:
+    """Identity for split-root merging; SQL NULL is not a valid merge key."""
+    key = row_key(row, refs)
+    return key or ""
+
+
 def key_of_values(values) -> str:
     if len(values) == 1:
         return key_text(values[0])
@@ -2290,7 +2296,7 @@ def query(ex: Executor, request: dict, params):
                 part_plan = db.plan(part)
                 step = part_plan["plan"]["steps"][0]
                 for row in _select(ex, part_plan, step, params):
-                    key = row_key(row, step["assemble"]["key"]) or ""
+                    key = _split_row_key(row, step["assemble"]["key"])
                     if key not in seen:
                         seen.add(key)
                         main.append(row)

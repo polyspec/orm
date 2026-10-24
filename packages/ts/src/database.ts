@@ -379,6 +379,12 @@ export function rowKey(row: readonly unknown[], refs: readonly KeyReference[]): 
   return keyOfValues(values);
 }
 
+/** @internal The identity used only while merging split root queries. */
+export function splitRowKey(row: readonly unknown[], refs: readonly KeyReference[]): string {
+  const key = rowKey(row, refs);
+  return key ?? '';
+}
+
 /** A collection key: an integer, a string, a boolean, bytes or a date; keys of different types never share an identity. */
 export type Key = number | bigint | string | boolean | Uint8Array | Date;
 
@@ -1345,7 +1351,7 @@ export async function query(ex: Executor, given: Request, givenParams: readonly 
         const partPlan = await db.plan(part);
         const step = mainStep(partPlan.plan);
         for (const row of await select(ex, partPlan, step, params)) {
-          const key = rowKey(row, assembleOf(step).key) ?? '';
+          const key = splitRowKey(row, assembleOf(step).key);
           if (!seen.has(key)) { seen.add(key); main.push(row); }
         }
       }

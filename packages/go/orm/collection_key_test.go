@@ -3,6 +3,7 @@ package orm
 import (
 	"fmt"
 	"math"
+	"strings"
 	"testing"
 	"time"
 
@@ -189,6 +190,19 @@ func TestSplitQueryPropagatesInvalidKey(t *testing.T) {
 	step := &plan.Step{BindSlots: make([]plan.BindSlot, count)}
 	if _, err := rootINParts(r, step, "sqlite"); err == nil {
 		t.Fatal("split query accepted unsupported key")
+	}
+}
+
+func TestSplitQueryRowKeyRejectsSQLNull(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	_, err := splitQueryRowKey([]any{nil}, []plan.KeyRef{{Column: "id", Index: 0}})
+	if err == nil || !strings.Contains(err.Error(), "CODEC_DECODE: split query row identity contains SQL NULL") {
+		t.Fatalf("split query row key error = %v", err)
+	}
+	for _, value := range []any{int64(0), false, ""} {
+		if _, err := splitQueryRowKey([]any{value}, []plan.KeyRef{{Column: "id", Index: 0}}); err != nil {
+			t.Errorf("valid falsey key %T(%v): %v", value, value, err)
+		}
 	}
 }
 

@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
+import { splitRowKey } from '../dist/database.js';
+
+const key = [{ column: 'id', index: 0 }];
+
+caseTest('split root merge rejects SQL NULL identity', COMPUTE, () => {
+  assert.throws(
+    () => splitRowKey([null], key),
+    error => error.code === 'CODEC_DECODE' && error.message === 'CODEC_DECODE: split query row identity contains SQL NULL',
+  );
+});
+
+caseTest('split root merge retains falsey non-NULL identities', COMPUTE, () => {
+  assert.notEqual(splitRowKey([0], key), splitRowKey([''], key));
+  assert.notEqual(splitRowKey([false], key), splitRowKey([0], key));
+  assert.notEqual(splitRowKey([''], key), splitRowKey(['0'], key));
+});

@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: 62b64f52b0ebdf01a21faa9fcee4c85e6c2632dd */
+ * Stub hash: 48d8240a07b001996ad07c2625bac52a04cefda4 */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Polyspec_Orm_Dbspec_Diagnostic___construct, 0, 0, 4)
 	ZEND_ARG_TYPE_INFO(0, rule, IS_STRING, 0)
@@ -846,6 +846,8 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Db_rowSlot, 0
 	ZEND_ARG_TYPE_INFO(0, row, IS_ARRAY, 0)
 	ZEND_ARG_TYPE_INFO(0, refs, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
+
+#define arginfo_class_Polyspec_Orm_Db_splitRowSlot arginfo_class_Polyspec_Orm_Db_rowSlot
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Polyspec_Orm_Db_sameScalar, 0, 2, _IS_BOOL, 0)
 	ZEND_ARG_TYPE_INFO(0, a, IS_MIXED, 0)
@@ -1848,6 +1850,7 @@ ZEND_METHOD(Polyspec_Orm_Db, timeValue);
 ZEND_METHOD(Polyspec_Orm_Db, acquireSQLiteRowLock);
 ZEND_METHOD(Polyspec_Orm_Db, rowKey);
 ZEND_METHOD(Polyspec_Orm_Db, rowSlot);
+ZEND_METHOD(Polyspec_Orm_Db, splitRowSlot);
 ZEND_METHOD(Polyspec_Orm_Db, sameScalar);
 ZEND_METHOD(Polyspec_Orm_Db, scalarText);
 ZEND_METHOD(Polyspec_Orm_StatementEvent, __construct);
@@ -2471,6 +2474,7 @@ static const zend_function_entry class_Polyspec_Orm_Db_methods[] = {
 	ZEND_ME(Polyspec_Orm_Db, acquireSQLiteRowLock, arginfo_class_Polyspec_Orm_Db_acquireSQLiteRowLock, ZEND_ACC_PUBLIC)
 	ZEND_ME(Polyspec_Orm_Db, rowKey, arginfo_class_Polyspec_Orm_Db_rowKey, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_ME(Polyspec_Orm_Db, rowSlot, arginfo_class_Polyspec_Orm_Db_rowSlot, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Polyspec_Orm_Db, splitRowSlot, arginfo_class_Polyspec_Orm_Db_splitRowSlot, ZEND_ACC_PRIVATE|ZEND_ACC_STATIC)
 	ZEND_ME(Polyspec_Orm_Db, sameScalar, arginfo_class_Polyspec_Orm_Db_sameScalar, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_ME(Polyspec_Orm_Db, scalarText, arginfo_class_Polyspec_Orm_Db_scalarText, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_FE_END
