@@ -116,10 +116,6 @@
           "reason": "generated: an internal package test of the go module that checks the output of a generator of the owner, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/go/model/coverage_parameter_chunking_test.go",
-          "reason": "external: an internal package test of the go module that runs against a database or driver of an external service, not a helper the contract names (K313)"
-        },
-        {
           "glob": "packages/go/orm/assignment_propagation_test.go",
           "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
@@ -250,10 +246,6 @@
         {
           "glob": "packages/php/tests/CoverageModelGenerationTest.php",
           "reason": "generated: an internal test of the PHP package that checks the output of a generator of the owner, not a behaviour of the contract (K313)"
-        },
-        {
-          "glob": "packages/php/tests/CoverageParameterChunkingTest.php",
-          "reason": "external: an internal test of the PHP package that runs against a database or driver of an external service, not a helper the contract names (K313)"
         },
         {
           "glob": "packages/php/tests/CoveragePerformanceGateTest.php",
