@@ -1,8 +1,20 @@
 // LISTEN and NOTIFY on PostgreSQL (docs/spec/dialects.md DIA-192 to DIA-196). A subscription holds a pg client of its own,
 // outside the pool; notifications that arrive while no receive waits are queued in arrival order.
-import pg from 'pg';
 import * as codes from './codes.js';
 import { OrmError } from './runtime_error.js';
+
+interface ListenerNotification {
+  channel: string;
+  payload?: string | undefined;
+  processId: number;
+}
+
+interface ListenerClient {
+  on(event: 'notification', listener: (message: ListenerNotification) => void): this;
+  on(event: 'error', listener: (error: Error) => void): this;
+  query(sql: string): Promise<unknown>;
+  end(): Promise<void>;
+}
 
 /** One notification: the channel, the payload, and the process id of the sender. */
 export interface Notification {
@@ -23,8 +35,8 @@ export class PostgresListener {
   private waiter: Waiter | undefined;
   private closed = false;
 
-  public constructor(private readonly client: pg.Client, private readonly onFailure: (error: unknown) => OrmError) {
-    client.on('notification', (message: pg.Notification) => {
+  public constructor(private readonly client: ListenerClient, private readonly onFailure: (error: unknown) => OrmError) {
+    client.on('notification', message => {
       const notification = { channel: message.channel, payload: message.payload ?? '', pid: message.processId };
       if (this.waiter === undefined) this.queue.push(notification);
       else this.waiter.resolve(notification);

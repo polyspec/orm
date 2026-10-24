@@ -56,6 +56,11 @@ function declarationFiles(directory) {
 let failed = 0;
 const check = (name, deadline, body) => caseTest(name, deadline, body);
 
+await check('package-declarations/listener-uses-no-driver-types', COMPUTE, () => {
+  const declaration = readFileSync(join(client, 'dist', 'listen.d.ts'), 'utf8');
+  assert.doesNotMatch(declaration, driverModules, 'the PostgreSQL listener declaration imports a driver module');
+});
+
 await check('package-declarations/no-driver-imports', COMPUTE, async () => {
   const offending = declarationFiles(join(client, 'dist')).filter(file => driverModules.test(readFileSync(file, 'utf8')));
   assert.deepEqual(offending.map(file => file.slice(client.length)), [], 'declaration files that import a driver module');

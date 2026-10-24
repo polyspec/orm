@@ -7670,6 +7670,7 @@
         "tests/interfaces/contracts/generate_test.go",
         "packages/ts/tests/package-declarations.mjs",
         "packages/ts/src/index.ts",
+        "packages/ts/src/listen.ts",
         "packages/python/tests/coverage_interface_contract.py",
         "packages/python/testing/interfaces/python.py",
         "packages/python/tests/test_python_extractor.py",
@@ -7719,7 +7720,8 @@
           "shard": "other",
           "inputs": [
             "packages/ts/tests/package-declarations.mjs",
-            "packages/ts/src/index.ts"
+            "packages/ts/src/index.ts",
+            "packages/ts/src/listen.ts"
           ]
         },
         {
