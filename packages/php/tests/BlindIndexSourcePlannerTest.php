@@ -71,6 +71,18 @@ DBSPEC;
         Assert::fail('expected IR_INVALID naming the conflicting target and both assigned sources');
     }
 
+    /** @param list<array{column: string, p?: int, null?: bool}> $sources */
+    private function assertSourcesConflict(array $sources, int $nParams): void
+    {
+        $engine = $this->engine();
+        $request = $this->request($engine, [
+            $this->assignment('id', 0),
+            $this->assignment('name', 1),
+            ...$sources,
+        ], $nParams);
+        $this->assertSourceConflict($engine, $request);
+    }
+
     public function testMultiRowIndexUsesTheAssignedSourceColumnPosition(): void
     {
         $engine = $this->engine();
@@ -102,26 +114,18 @@ DBSPEC;
 
     public function testTwoNullSourcesDerivingOneTargetAreInvalid(): void
     {
-        $engine = $this->engine();
-        $request = $this->request($engine, [
-            $this->assignment('id', 0),
-            $this->assignment('name', 1),
+        $this->assertSourcesConflict([
             ['column' => 'email_a', 'null' => true],
             ['column' => 'email_b', 'null' => true],
         ], 2);
-        $this->assertSourceConflict($engine, $request);
     }
 
     public function testEqualParameterSourcesDerivingOneTargetAreInvalid(): void
     {
-        $engine = $this->engine();
-        $request = $this->request($engine, [
-            $this->assignment('id', 0),
-            $this->assignment('name', 1),
+        $this->assertSourcesConflict([
             $this->assignment('email_a', 2),
             $this->assignment('email_b', 2),
         ], 3);
-        $this->assertSourceConflict($engine, $request);
     }
 
     public function testExplicitTargetAssignmentWinsForSharedSchema(): void
