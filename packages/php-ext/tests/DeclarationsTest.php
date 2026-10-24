@@ -235,10 +235,16 @@ final class DeclarationsTest extends TestCase
     public function testFunctionTypeDeclarationMatchesClient(): void
     {
         $key = 'Polyspec\\Orm\\Validator::functionType()';
+        $signature = 'public static function(string $name, ?array $col): string';
         Assert::assertSame(
+            $signature,
             declared('client')[$key] ?? '(not declared)',
+            'the PHP functionType helper keeps its two-argument declaration'
+        );
+        Assert::assertSame(
+            $signature,
             registered()[$key] ?? '(not declared)',
-            'the native functionType declaration matches the PHP client'
+            'the native functionType declaration keeps its two-argument contract'
         );
     }
 

@@ -353,7 +353,7 @@ final class Planner
                     );
                 }
                 $expr = $this->columnFunction($s, $c['column'], $c['fn']);
-                $type = Validator::functionType($c['fn']['name'], $col, $s->ent['entity'], $c['column']);
+                $type = Validator::functionType($c['fn']['name'], $col);
                 $col = null;
             } elseif (isset($c['sub'])) {
                 $expr = '(' . $this->subSelect($b, $s, $c['sub']) . ')';
@@ -588,7 +588,7 @@ final class Planner
                 );
             }
             $fn = $this->columnFunction($s, $p['column'], $p['fn']);
-            $type = Validator::functionType($p['fn']['name'], $col, $s->ent['entity'], $p['column']);
+            $type = Validator::functionType($p['fn']['name'], $col);
             return match ($op) {
                 'in', 'not_in' => $fn . ($op === 'not_in' ? ' NOT IN ' : ' IN ') . '(' . implode(
                     ', ',

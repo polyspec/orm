@@ -324,7 +324,7 @@ final class Markdown
                 );
             }
             return ['index' => $index, 'name' => $name, 'column' => $cf['column'],
-                'type' => Validator::functionType($cf['fn']['name'], $field, $ent['entity'], $cf['column'])];
+                'type' => Validator::functionType($cf['fn']['name'], $field)];
         }
         $col = RuntimeModel::column($ent, $name) ?? throw self::answerError(
             "{$q['entity']} answers $name, which is no output of the request"
