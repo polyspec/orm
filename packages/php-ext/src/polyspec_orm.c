@@ -1440,23 +1440,10 @@ ZEND_METHOD(Polyspec_Orm_Dbspec_Dbspec, parse)
         Z_PARAM_STR(text)
         Z_PARAM_ARRAY(documents)
     ZEND_PARSE_PARAMETERS_END();
-    zend_string *key;
-    zval *source;
-    ZEND_HASH_FOREACH_STR_KEY_VAL(Z_ARRVAL_P(documents), key, source) {
-        ZVAL_DEREF(source);
-        if (key == NULL || Z_TYPE_P(source) != IS_STRING) {
-            zend_throw_exception(spl_ce_InvalidArgumentException, "The declared document set maps document names to texts", 0);
-            RETURN_THROWS();
-        }
-    } ZEND_HASH_FOREACH_END();
+    if (!declared_set_valid(documents)) RETURN_THROWS();
     ENTER();
     smap set = {0};
-    ZEND_HASH_FOREACH_STR_KEY_VAL(Z_ARRVAL_P(documents), key, source) {
-        ZVAL_DEREF(source);
-        str *t = dbs_alloc(sizeof *t);
-        *t = zs(Z_STR_P(source));
-        smap_set(&set, zs(key), t);
-    } ZEND_HASH_FOREACH_END();
+    declared_set_build(documents, &set);
     diags found = {0};
     dposv decls = {0};
     document *d = dbs_parse(zs(text), &set, &found, &decls);
