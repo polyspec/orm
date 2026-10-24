@@ -328,27 +328,27 @@ The interface check rejects a declared or called `multi_statement` method in Go,
 
 A passing symbol check proves the declared surface only. A passing conformance vector proves the tested input and result. A feature is complete only when all supported clients, required databases, tests, documents, and Pages checks pass.
 
-### Rust native grid query specification (in development)
+### Catalog grid query cells
 
-`CatalogConnection::read_only_grid_query(sql, params, limits)` returns ordered
+Every client's `read_only_grid_query(sql, params, limits)` returns ordered
 column metadata and typed grid cells. Binary cells preserve bytes and remain
 distinct from text, including empty binary and valid UTF-8 binary. SQL NULL
 is a separate cell. Grid decoding does not modify catalog/schema coercion
 rules or add a compatibility fallback. It uses the same database-enforced
 read-only scope, connection disposal and explicit query budgets. Unsupported
-types fail explicitly until their owning type cases are implemented.
+types fail explicitly with `CATALOG_VALUE`.
 
-Grid floating-point cells carry native IEEE-754 bits as `Float32(u32)` or
-`Float64(u64)`, preserving signed zero and nonfinite values without JSON
-number coercion. `Unsigned(u64)` preserves the entire MySQL unsigned range.
-These native Rust values require explicit typed conversion at wire boundaries;
-they do not change schema/catalog scalar conversion rules.
+Floating-point cells preserve the exact IEEE-754 bits, including signed zero
+and nonfinite values, without JSON number coercion. Implementations may use
+their native typed representation at their public boundary. The MySQL unsigned
+integer cell preserves the full unsigned 64-bit range. These grid values do not
+change schema/catalog scalar conversion rules.
 
 Finite grid decimal cells use exact plain decimal strings, preserving the
 database's declared result scale, including trailing zeros. Do not pass through
 binary floats or fixed-precision model codecs. SQLite has no native decimal
 storage class: its actual text/integer/real values keep their existing tags.
-Nonfinite PostgreSQL numeric values remain explicitly unsupported in this stage.
+Nonfinite PostgreSQL numeric values fail explicitly with `CATALOG_VALUE`.
 
 Temporal grid cells hold the dbspec text forms: `Date` is `YYYY-MM-DD`, `Time`
 is `HH:MM:SS` and `DateTime` is `YYYY-MM-DD HH:MM:SS` in UTC, the latter two with
@@ -367,17 +367,17 @@ digits the dbspec CHECK fixes at p, and a value that is not in the dbspec form
 fails with `GRID_TEMPORAL_VALUE`; a read-only grid query has no declaration and
 keeps the stored text.
 
-### Qualified native Rust table metadata
+### Qualified catalog table metadata
 
-`CatalogConnection::current_namespace()` reports the selected namespace.
-`describe_table(&TableRef { namespace, name })` resolves an explicitly qualified
-table through bound catalog names, preserving native column types, declared
-primary-key order, actual nullability and generated-column flags. Do not derive
-identity from logical schema column order or arbitrary query results. SQLite
-supports its connected `main` namespace; nullable legacy primary keys are not
-reliable identity, while a genuine INTEGER rowid alias is non-null. A descriptor
-is not edit authorization: table mutation requires explicit commands, validated
-schema/row revisions, typed binds and optimistic conflict checks.
+`current_namespace()` reports the selected namespace. `describe_table` resolves
+an explicitly qualified table through bound catalog names, preserving native
+column types, declared primary-key order, actual nullability and generated-column
+flags. Do not derive identity from logical schema column order or arbitrary query
+results. SQLite supports its connected `main` namespace; nullable legacy primary
+keys are not reliable identity, while a genuine INTEGER rowid alias is non-null.
+A descriptor is not edit authorization: table mutation requires explicit
+commands, validated schema/row revisions, typed binds and optimistic conflict
+checks.
 
 `TableMetadata` contains the qualified `table`, native relation `kind`, ordered
 `columns` (`name`, `native_type`, `nullable`, `generated`), constraint-ordered
@@ -395,31 +395,31 @@ atomic schema revision; mutation must revalidate metadata in its owning scope.
 MySQL `SYSTEM VIEW` catalog relations are classified as views, never as tables
 or writable row identity. Unknown native relation kinds still fail explicitly.
 
-### Native Rust typed bind values
+### Catalog typed bind values
 
-Tool `P` retains text/signed integers and
-adds Binary, Boolean, Float32/Float64 bit values, Decimal plain strings, Unsigned
-and Null(ParamType). Use SQLx typed driver encoding, never formatted SQL values.
-Unsigned is MySQL-only; SQLite rejects Decimal and Float32, preserving its native
-integer/float64/text/blob classes without implicit widening or numeric affinity
-coercion. PostgreSQL supports decimal and both native float widths. Reject
-nonfinite MySQL floats and SQLite NaN before execution; SQLite infinities remain
-native float64 values. Reject malformed decimals, PostgreSQL text NUL, more than
-65535 parameters or total value bytes exceeding 16 MiB before preparing/executing.
-Typed NULLs use the selected native bind kind, not empty text or zero.
+Catalog parameters preserve their declared logical type and are bound through
+the selected driver's typed parameter API, never formatted into SQL text.
+Unsigned integers are MySQL-only. SQLite rejects Decimal and Float32, and
+preserves its native integer/float64/text/blob storage classes without implicit
+widening or numeric-affinity coercion. PostgreSQL supports decimal and both
+native float widths. Reject nonfinite MySQL floats and SQLite NaN before
+execution; SQLite infinities remain native float64 values. Reject malformed
+decimals, PostgreSQL text NUL, more than 65535 parameters or total value bytes
+exceeding 16 MiB before preparing or executing. Typed NULLs use the selected
+native bind kind, not empty text or zero.
 `Date`, `Time` and `DateTime` binds take the dbspec text of the grid cells and
 reject any other form before execution; MySQL and PostgreSQL bind them as native
 date, time and timestamp values and SQLite binds the text, so a catalog write of
 a temporal column, a temporal row identity included, reads back the written
 cell when the value has the column's declared fraction digits.
-Native Boolean binding uses SQLx bool; PostgreSQL grid reads preserve Boolean,
+Native Boolean binding preserves Boolean; PostgreSQL grid reads preserve Boolean,
 while MySQL TINYINT and SQLite INTEGER storage return integer 0/1 rather than
 inventing a distinct native boolean type. SQLite storage class is owner-tested.
 These are bind semantics, not protection from column/server coercion: mutation
 execution still needs schema validation, strict post-write verification and
-rollback/conflict handling. Native Rust tooling does not prove the writes of every client.
+rollback/conflict handling. Each client has its own owner cases for these values.
 
-### Rust row-edit baselines
+### Catalog row snapshots and writes
 
 Automatic/default-key insertion must receive database-owned identities, never
 derive them from row counts, maxima or a later unrelated connection. PostgreSQL
@@ -448,21 +448,24 @@ the database's integer comparison, without sending i64 bytes as an inferred
 int4 parameter. Native functions still require explicit SQL casts where their
 signature differs from a declared bind type; no codec guessing is permitted.
 
-Before writing, `RowSnapshot::validate_update` checks named assignments and must
+Before writing, the snapshot update validator checks named assignments and must
 reject duplicates, unknown names, generated columns, invalid NULLs and oversized
 values. After writing under the same lock, compare exact requested values and
 untouched ordinary columns; generated columns may be recomputed. A coercion or
 unrequested ordinary-column change requires rollback, never success. Pure
 verification alone is not transactional execution or mutation authorization.
 
-Native insert, update and delete require a fallible synchronous pre-commit permit.
+#### Rust-specific transaction lifecycle controls
+
+The Rust catalog API additionally requires a fallible synchronous pre-commit permit
+for insert, update and delete.
 The permit runs after transactional write verification, before publishing
 `CommitStarted` or spawning the commit owner. A rejected permit rolls back;
 it cannot silently become commit success. Successful permission transfers
 commit ownership without an intervening cancellation await. The phase observer
 remains observational; durable authorization and recovery belong to the caller.
 
-The native update executor accepts an original `RowSnapshot`, explicit
+The Rust update executor accepts an original `RowSnapshot`, explicit
 typed `P` assignments, an atomic cancellation flag and a required phase event
 subscriber. Use a fresh discard-on-drop transaction, original-key row locking
 (`BEGIN IMMEDIATE` on SQLite), descriptor/original comparison and exact post-write
@@ -478,14 +481,14 @@ before reporting `ROW_COMMIT_REJECTED`. Preserve the owning native error cause.
 These events are not a durable operation journal and give no durable
 operation identity or recovery.
 
-`delete_row` uses the same explicit baseline, cancellation checkpoints and phase
+Rust's `delete_row` uses the same explicit baseline, cancellation checkpoints and phase
 subscriber. Lock and compare the original, require exactly one affected row and
 verify absence with an unchanged descriptor before commit. Constraint failure or
 pre-commit cancellation rolls back; never invent a successful deletion for a
 missing or changed original. Database FK effects require review before
 authorization; the native API does not independently authorize cascading effects.
 
-`insert_row` takes a checked `TableMetadata` and explicit typed
+Rust's `insert_row` takes a checked `TableMetadata` and explicit typed
 assignments, cancellation flag and phase subscriber. Columns expose
 `automatic_key` and `default_expression`; these participate in descriptor
 comparison and the bounded baseline revision. Require explicit primary-key
@@ -494,15 +497,16 @@ Lock/probe explicit keys, revalidate the descriptor, reject existing keys,
 write with typed binds, require one affected row and reread by the declared key.
 Compare every supplied value exactly; omitted defaults and generated values are
 returned from the database. Reject unknown/duplicate/generated assignments.
-Automatic-key insertion validation is in progress; this native API is not full
-CRUD, durable authorization or recovery.
+These lifecycle controls are Rust-specific. They do not add a shared cancellation
+or phase-event requirement to other clients; every client still follows the
+shared key-generation, snapshot validation, mutation and rollback results above.
 
-`RowSnapshot::from_page(&TablePage, row_index)` captures
-one checked immutable row, reliable non-null declared primary-key values in
+The row-snapshot operation captures one checked immutable row, reliable non-null
+declared primary-key values in
 constraint order and a value-sensitive SHA-256 revision of descriptor/typed cells.
 Bound the complete captured encoding to 8 MiB. Reject views/unreliable identities,
 bad projection/keys, malformed decimals, NULL in non-null columns and page bounds.
-`check_current(&TableMetadata,&GridQueryResult)` distinguishes changed descriptor,
+The current-row check against table metadata and a grid result distinguishes changed descriptor,
 missing/changed row and ambiguous identity. Exact typed comparison includes float
 bits, decimal scale, binary and generated-column original values.
 This pure API neither reads, locks nor writes a database and does not authorize
@@ -510,12 +514,11 @@ edits. Execution must re-read by original keys inside the owning locked writable
 transaction, compare the original descriptor/row, then perform typed writes.
 The descriptor is not a complete physical schema revision and cannot detect ABA.
 Prepared native types may be data-dependent; compare projection names and the
-native descriptor, not prepared type names as schema revisions. Rust native
-tooling scope does not establish the mutation conformance of every client.
+native descriptor, not prepared type names as schema revisions.
 
-### Qualified Rust table pages
+### Catalog table pages
 
-`CatalogConnection::table_page(&TableRef, limit, offset)` reads one explicit
+`table_page(table, limit, offset)` reads one explicit
 qualified table in a fresh enforced read-only scope, selecting descriptor columns
 in physical order with dialect-quoted identifiers. Order by declared primary-key
 constraint order when present; no key means unspecified ordering, never an

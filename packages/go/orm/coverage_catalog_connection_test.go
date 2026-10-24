@@ -1,5 +1,7 @@
 //go:build featurecoverage
 
+// Catalog parity cases: SCH-5, SCH-6a, INT-109, INT-113, INT-114, INT-123.
+
 package orm_test
 
 import (

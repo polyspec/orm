@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: 6be97ac3b2aa51c71058086cba85ea13c798f28dcfe53402c7df2407d87128ce -->
+<!-- source-sha256: 2a9dd7e513fe87be48d8893583757bb7f5a9da1a27e29949c0e5ae662343db80 -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -329,24 +329,24 @@ flowchart LR
 
 symbol 검사 통과는 선언된 표면만 증명한다. 적합성 벡터 통과는 검사한 입력과 결과만 증명한다. 모든 지원 client, 필요한 database, 테스트, 문서, Pages 검사를 통과해야 기능을 완료로 표시한다.
 
-### Rust 네이티브 그리드 조회 명세 (개발 중)
+### Catalog 그리드 조회 셀
 
-`CatalogConnection::read_only_grid_query(sql, params, limits)`는 순서 있는
+모든 client의 `read_only_grid_query(sql, params, limits)`는 순서 있는
 컬럼 메타데이터와 타입형 그리드 셀을 반환한다. 바이너리는 바이트를 보존하며
 빈 바이너리나 올바른 UTF-8 바이너리도 텍스트와 구분한다. SQL NULL은 별도 셀이다.
 그리드 디코딩은 카탈로그/스키마 변환 규칙을 바꾸거나 호환 폴백을 추가하지 않는다.
 같은 DB 강제 읽기 전용 범위·연결 폐기·명시적 조회 예산을 사용한다.
-미지원 타입은 소유 타입 사례가 구현되기 전까지 명시적으로 실패한다.
+미지원 타입은 `CATALOG_VALUE`로 명시적으로 실패한다.
 
-그리드 실수는 네이티브 IEEE-754 비트를 `Float32(u32)` 또는 `Float64(u64)`로
-전달하여 JSON 숫자 변환 없이 부호 있는 0·비유한 값을 보존한다. `Unsigned(u64)`는
-MySQL unsigned 전체 범위를 보존한다. 이 Rust 값은 wire로 전달할 때 명시적 타입
-변환이 필요하며 스키마/카탈로그 스칼라 변환 규칙을 바꾸지 않는다.
+그리드 실수 셀은 부호 있는 0과 비유한 값을 포함해 IEEE-754 비트를 정확히
+보존하며 JSON 숫자로 변환하지 않는다. 구현은 각 native 공개 경계에 맞는 타입을
+사용할 수 있다. MySQL unsigned 정수 셀은 전체 unsigned 64비트 범위를 보존한다.
+그리드 값은 스키마/카탈로그 스칼라 변환 규칙을 바꾸지 않는다.
 
 유한 그리드 decimal은 정확한 일반 10진 문자열로 DB 결과의 선언 scale과
 끝자리 0을 보존한다. 이진 실수나 고정 정밀도 모델 codec을 통하지 않는다.
 SQLite는 네이티브 decimal 저장 클래스가 없으므로 실제 텍스트/정수/실수 태그를
-그대로 유지한다. 이번 단계에서 PostgreSQL 비유한 numeric은 명시적 미지원이다.
+그대로 유지한다. PostgreSQL 비유한 numeric은 `CATALOG_VALUE`로 명시적으로 실패한다.
 
 시간 그리드 셀은 dbspec 텍스트 형식을 담는다. `Date`는 `YYYY-MM-DD`, `Time`은
 `HH:MM:SS`, `DateTime`은 UTC의 `YYYY-MM-DD HH:MM:SS`이며 뒤의 둘은 소수 자릿수를
@@ -363,10 +363,10 @@ PostgreSQL과 같은 시간 셀로 바꾸며, 소수 자릿수는 dbspec CHECK�
 dbspec 형식이 아닌 값은 `GRID_TEMPORAL_VALUE`로 실패한다. read-only 그리드
 조회에는 선언이 없으므로 저장된 텍스트를 유지한다.
 
-### 한정된 네이티브 Rust 테이블 메타데이터
+### 한정된 Catalog 테이블 메타데이터
 
-`CatalogConnection::current_namespace()`는 선택된 namespace를 보고한다.
-`describe_table(&TableRef { namespace, name })`는 바인딩한 카탈로그 식별자를 사용하여
+`current_namespace()`는 선택된 namespace를 보고한다. `describe_table`은 바인딩한
+카탈로그 식별자를 사용하여
 명시적으로 한정된 테이블을 확인하고 네이티브 컬럼 타입·선언 기본키 순서·실제
 nullable·생성 컬럼 플래그를 보존한다. 논리 스키마 컬럼 순서나 임의 조회 결과에서
 행 식별을 추정하지 않는다. SQLite는 연결된 `main` namespace를 지원하며 nullable
@@ -389,11 +389,10 @@ identity와 SQLite 숨김 컬럼도 포함하며 완전한 컬럼 쓰기 권한 
 MySQL `SYSTEM VIEW` 카탈로그 관계는 테이블이나 쓰기 행 식별이 아닌 뷰로
 분류한다. 알 수 없는 네이티브 관계 종류는 계속 명시적으로 실패한다.
 
-### 네이티브 Rust 타입형 bind 값
+### Catalog 타입형 bind 값
 
-tool `P`는 텍스트/signed 정수 외에 Binary·
-Boolean·Float32/Float64 비트·Decimal 평문 문자열·Unsigned·Null(ParamType)을
-제공한다. SQL 값 서식화 대신 SQLx 드라이버 타입형 인코딩을 사용한다.
+Catalog parameter는 선언된 논리 타입을 보존하고 SQL 값 서식화 대신 선택한
+driver의 타입형 parameter API로 전달한다.
 Unsigned는 MySQL 전용이고 SQLite는 Decimal/Float32를 거부하여 암묵적 확장이나
 numeric affinity 변환 없이 네이티브 정수/float64/text/blob을 유지한다.
 PostgreSQL은 decimal·두 네이티브 실수 폭을 지원한다. 실행 전에 MySQL 비유한
@@ -404,14 +403,14 @@ PostgreSQL 텍스트 NUL·65535개 초과 인수·총 값 16 MiB 초과를 prepa
 실행 전에 거부한다. MySQL과 PostgreSQL은 네이티브 date, time, timestamp 값으로,
 SQLite는 텍스트로 bind하므로, 값이 컬럼의 선언된 소수 자릿수를 가지면 시간 행
 식별자를 포함한 시간 컬럼의 카탈로그 쓰기는 쓴 셀을 다시 읽는다.
-Boolean bind는 SQLx bool을 사용하며 PostgreSQL grid는 Boolean을 유지한다.
+Boolean bind는 Boolean을 보존하며 PostgreSQL grid는 Boolean을 유지한다.
 MySQL TINYINT·SQLite INTEGER 저장은 별도 네이티브 boolean 타입을 만들어내지
 않고 정수 0/1을 반환한다. SQLite 저장 클래스는 소유 테스트로 검증한다.
 이는 bind 의미이며 컬럼/서버 강제 변환 방지가 아니다. 변경 실행은 스키마 검증·
-엄격한 쓰기 후 검증·rollback/충돌 처리가 필요하다. Rust 도구는 모든 클라이언트의 쓰기
-근거가 아니다.
+엄격한 쓰기 후 검증·rollback/충돌 처리가 필요하다. 이 값들은 여섯 client의
+owner case에서 검사한다.
 
-### Rust 행 편집 기준
+### Catalog 행 snapshot과 쓰기
 
 자동/default 키 삽입은 DB가 생성한 식별자를 받아야 하며 행 개수·최댓값·다른
 연결의 후속 조회에서 추정하지 않는다. PostgreSQL과 SQLite는 소유 트랜잭션의
@@ -435,19 +434,21 @@ PostgreSQL 조회 준비는 타입 없는 placeholder 추정이 아니라 명시
 i64 바이트를 추정 int4 인수로 전송하지 않는다. 함수 시그니처가 선언 bind 타입과
 다르면 SQL에 명시적 cast가 필요하며 codec을 추측하지 않는다.
 
-`RowSnapshot::validate_update`는 쓰기 전 이름별 변경의 중복·없는 컬럼·생성 컬럼·
+Snapshot update validator는 쓰기 전 이름별 변경의 중복·없는 컬럼·생성 컬럼·
 잘못된 NULL·과도한 값을 거부한다. 같은 잠금 안에서 쓰기 후 정확한 요청 값과
 변경하지 않은 일반 컬럼을 비교하며 생성 컬럼은 다시 계산될 수 있다. 강제 변환이나
 요청하지 않은 일반 컬럼 변경은 성공이 아니라 rollback해야 한다. 순수 검증만으로
 트랜잭션 실행이나 변경 권한을 의미하지 않는다.
 
-네이티브 삽입·갱신·삭제는 실패를 반환할 수 있는 필수 동기 커밋 전 허가를
-받는다. 허가는 트랜잭션
+#### Rust별 transaction lifecycle 제어
+
+Rust Catalog API는 insert/update/delete에 추가로 실패를 반환할 수 있는 동기
+pre-commit permit을 요구한다. 허가는 트랜잭션
 쓰기 검증 후 `CommitStarted` 발행 및 커밋 소유 작업 시작 전에 실행한다. 허가
 실패는 롤백하며 성공으로 바뀌지 않는다. 승인 후 취소 await 없이 커밋 소유권을
 넘긴다. 단계 관측자는 관측용이며 영속 승인·복구는 호출자의 책임이다.
 
-네이티브 update 실행기는 원본 `RowSnapshot`, 명시적 타입형 `P` 대입,
+Rust update 실행기는 원본 `RowSnapshot`, 명시적 타입형 `P` 대입,
 원자적 취소 플래그와 필수 단계 이벤트 구독자를 받는다. 새 discard-on-drop
 트랜잭션에서 원본 키 행 잠금(SQLite는 `BEGIN IMMEDIATE`), descriptor/원본
 비교와 정확한 쓰기 후 검증을 commit 전에 수행한다. MySQL은 비InnoDB와
@@ -462,38 +463,39 @@ rollback이라고 보고하지 않는다. commit은 소유 태스크에서 실�
 이벤트는 영속 작업 기록이 아니며 영속 작업 식별이나
 복구를 주지 않는다.
 
-`delete_row`는 동일한 명시적 기준·취소 체크포인트·단계 구독자를 사용한다.
+Rust의 `delete_row`는 동일한 명시적 기준·취소 체크포인트·단계 구독자를 사용한다.
 원본을 잠그고 비교한 뒤 정확히 한 행의 영향과 변경 없는 descriptor 및 행이 없음을
 commit 전에 확인한다. 제약 실패나 commit 전 취소는 rollback하며 누락/변경된
 원본을 성공적으로 삭제한 것처럼 보고하지 않는다. DB FK 효과는 권한
 승인 전에 검토해야 하며 네이티브 API 자체는 연쇄 변경을 별도로 승인하지 않는다.
 
-`insert_row`는 검증된 `TableMetadata`와 명시적 타입형 대입,
+Rust의 `insert_row`는 검증된 `TableMetadata`와 명시적 타입형 대입,
 취소 플래그 및 단계 구독자를 받는다. 컬럼은 `automatic_key`와
 `default_expression`을 제공하며 descriptor 비교와 제한된 기준 revision에
 포함한다. 검증된 생성기가 생략한 키를 반환할 수 있는 경우를 제외하면 명시적
 기본키 값을 요구한다. 명시적 키를 잠그고
 조회한 뒤 descriptor 재검증·기존 키 거부·타입형 쓰기·영향 한 행 검사·선언 키
 재조회를 수행한다. 지정한 값은 모두 정확히 비교하고 생략된 기본값과 생성 값은
-DB에서 반환한다. 없는/중복/생성 컬럼 대입을 거부한다. 자동 키 삽입 검증은
-진행 중이며 네이티브 API는 완전한 CRUD UI나 영속 권한·복구가 아니다.
+DB에서 반환한다. 없는/중복/생성 컬럼 대입을 거부한다. 이 lifecycle 제어는 Rust에만
+추가되며 다른 client에 취소나 phase-event 요구를 더하지 않는다. 여섯 client는 위의
+공통 키 생성, snapshot 검증, 변경, rollback 결과를 따른다.
 
-`RowSnapshot::from_page(&TablePage, row_index)`는 검증된 행·
+행 snapshot operation은 검증된 행·
 신뢰할 비NULL 기본키 값을 제약 순서로 불변 캡처하고 descriptor/타입형 셀의
 값별 SHA-256 revision을 만든다. 전체 인코딩은 8 MiB로 제한한다. 뷰/불안정한
 식별·잘못된 projection/키·잘못된 decimal·비NULL 컬럼의 NULL·페이지 범위를
-거부한다. `check_current(&TableMetadata,&GridQueryResult)`는 descriptor 변경·
+거부한다. table metadata와 grid result를 이용한 current-row check는 descriptor 변경·
 누락/변경 행·중복 식별을 구분한다. 정확한 타입 비교에는 실수 비트·decimal
 scale·바이너리·생성 컬럼 원본 값이 포함된다. 이 순수 API는 DB 읽기/잠금/쓰기나
 편집 권한이 아니다. 실행은 소유 쓰기 트랜잭션에서 원래 키로 잠긴 재조회를 하고
 descriptor/원본 행을 비교한 뒤 타입형 쓰기를 수행해야 한다. descriptor는 완전한
 물리 스키마 revision이 아니며 ABA를 감지하지 못한다. prepared 타입은 데이터에
 의존할 수 있으므로 스키마 revision으로 삼지 않고 projection 이름과 네이티브
-descriptor를 비교한다. Rust 네이티브 범위는 모든 클라이언트의 변경 적합성 근거가 아니다.
+descriptor를 비교한다.
 
-### 한정된 Rust 테이블 페이지
+### Catalog 테이블 페이지
 
-`CatalogConnection::table_page(&TableRef, limit, offset)`는 새 강제 읽기 전용
+`table_page(table, limit, offset)`는 새 강제 읽기 전용
 범위에서 명시적 한정 테이블의 descriptor 컬럼을 물리 순서로 조회하며 dialect별
 식별자 인용을 적용한다. 기본키가 있으면 제약 선언 순서로 정렬하고 키가 없으면
 정렬 미지정이며 행 식별을 만들어내지 않는다. limit 1..1000·offset 0..1000000을

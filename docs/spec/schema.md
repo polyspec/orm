@@ -35,21 +35,23 @@ The schema operations are functions of each client library. They take parsed doc
 | Roll back the last plan ([plans](plans.md#apply)) | `Rollback` | `rollback` | `Dbspec::rollback` | `rollbackPlans` | `polyspec_orm::dbspec::rollback` | `polyspec.orm.dbspec.apply.rollback_plans` |
 | Finalize the applied plans ([plans](plans.md#apply)) | `Finalize` | `finalize` | `Dbspec::finalize` | `finalizePlans` | `polyspec_orm::dbspec::finalize` | `polyspec.orm.dbspec.apply.finalize_plans` |
 
-The PHP extension declarations expose the PHP-facing `Dbspec` parse/render/introspection surface; ORM schema management and catalog connection behavior remain incomplete in the extension.
+The PHP extension declarations expose the PHP-facing `Dbspec` parse/render/introspection surface. ORM schema management remains a separate feature; catalog connection behavior is specified by SCH-6a and implemented by the extension's native catalog surface.
 
 [mermaid.md](mermaid.md) specifies the export of a document to a Mermaid `erDiagram` and the import of a diagram into a document.
 
-## 3. Rust catalog connections
+## 3. Rust build-time catalog helpers
 
-- **SCH-3** Tool cell decoding preserves actual SQL NULL and supported integer/text/boolean values (grid cells also decimal, binary, date, time and datetime values; see [interfaces](interfaces.md)), but rejects unsupported types, invalid UTF-8 and unsigned integers beyond signed 64-bit range. It must not substitute SQL NULL, replacement text or wrapped integers. These checks do not make the catalog tool a general query-result decoder.
+- **SCH-3** The Rust build-time `tool_db` decoder preserves actual SQL NULL and supported integer/text/boolean values, but rejects unsupported types, invalid UTF-8 and unsigned integers beyond signed 64-bit range. It must not substitute SQL NULL, replacement text or wrapped integers. These build-time helper values are separate from the typed grid cells of the shared catalog connection in [interfaces](interfaces.md).
 
-- **SCH-4** Tool `Val::int()`, `opt_int()` and `bool()` return checked results. Required integer/boolean conversions reject SQL NULL. Optional integers preserve NULL as `None`. Booleans accept only native booleans, integer 0/1 and text `t`, `f`, `true`, `false`, `1`, `0`; malformed values never become defaults. Errors omit the input value and propagate through catalog operations, including transaction cleanup.
+- **SCH-4** Rust build-time `Val::int()`, `opt_int()` and `bool()` return checked results. Required integer/boolean conversions reject SQL NULL. Optional integers preserve NULL as `None`. Booleans accept only native booleans, integer 0/1 and text `t`, `f`, `true`, `false`, `1`, `0`; malformed values never become defaults. Errors omit the input value and propagate through build-time catalog operations, including transaction cleanup.
 
-- **SCH-5** The `live-db` feature exposes `polyspec_orm_build::catalog::CatalogConnection::connect(dsn)`. The DSN selects the database without a driver argument. Catalog connections preserve SQLite foreign-key settings. A catalog connection reads table metadata and pages and changes rows; `polyspec_orm::dbspec::introspect` reads the schema of a database.
+### Catalog connections
 
-- **SCH-6** SQLite catalog connections require an existing regular database file and disable automatic file creation. `close(self)` releases the reserved connection before closing its pool. Native decoding limitations require owning corrections before arbitrary SQL/data access is enabled.
+- **SCH-5** Each client exposes its native catalog connection from one DSN, with no separate driver argument. The DSN selects the database. A catalog connection reads table metadata and pages and changes rows; runtime model execution uses its own connection surface, and build-time schema introspection reads the schema of a database.
 
-- **SCH-6a** The catalog connection is a shared requirement of all six configured implementations (Go, PHP, PHP extension, TypeScript, Python and Rust), not a Rust-only contract. Its required API is `connect(dsn)` plus `current_namespace`, `describe_table`, `table_page`, `read_only_query`, `read_only_grid_query`, `insert_row`, `update_row` and `delete_row`, with the semantics and error codes in [interfaces](interfaces.md). Currently only Rust exposes the catalog connection on `main`; the other implementations and the common MySQL, PostgreSQL and SQLite execution evidence remain open under KSTD-7-7. Missing operations keep the feature partial and do not weaken the shared requirement. Rust selects the database from its DSN, refuses a markdown DSN and requires an existing SQLite file. Its `close(self)` consumes the connection. The PHP library grid binding rules remain a shared required value contract; they do not assert that the PHP extension has completed native catalog support.
+- **SCH-6** SQLite catalog connections require an existing regular database file and disable automatic file creation. Closing a catalog releases its owned database resources; an operation after close fails with `CATALOG_CLOSED` without sending a statement.
+
+- **SCH-6a** The catalog connection is one shared requirement of Go, PHP, the PHP extension, TypeScript, Python and Rust. Each native package exposes `connect(dsn)`, `current_namespace`, `describe_table`, `table_page`, `read_only_query`, `read_only_grid_query`, `insert_row`, `update_row` and `delete_row`, with the semantics and error codes in [interfaces](interfaces.md). A missing operation or owner case leaves the feature incomplete; implementation-specific wrappers and value representations do not change the shared result, validation, error, snapshot or cleanup behavior. A catalog connection refuses a markdown DSN. The catalog feature's database cases cover MySQL, PostgreSQL and SQLite in every client.
 
 ## 4. Schema installation
 

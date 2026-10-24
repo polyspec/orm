@@ -1,5 +1,5 @@
 <!-- doc-id: schema -->
-<!-- source-sha256: 3945a56a6f647ea963405c95316d227412f058a21488b752a17102c15f2d2f79 -->
+<!-- source-sha256: 6f96346084a6023297797601ae23dcfb17e30a4cf74762dca7bc4270b7b0696d -->
 # 스키마
 
 스키마 source는 dbspec document(`.dbs`)의 집합이다. [dbspec.md](dbspec.md)가 언어, 검증 규칙, manifest text와 두 hash를 정의한다. `contracts/fixtures/bench/bench.dbs`는 테스트와 벤치마크의 스키마다. 다른 스키마 파일은 없으며 모든 generator, runtime, 스키마 작업이 document set을 읽는다.
@@ -36,23 +36,23 @@
 | 마지막 plan rollback([plans](plans.md#apply)) | `Rollback` | `rollback` | `Dbspec::rollback` | `rollbackPlans` | `polyspec_orm::dbspec::rollback` | `polyspec.orm.dbspec.apply.rollback_plans` |
 | 적용한 plan finalize([plans](plans.md#apply)) | `Finalize` | `finalize` | `Dbspec::finalize` | `finalizePlans` | `polyspec_orm::dbspec::finalize` | `polyspec.orm.dbspec.apply.finalize_plans` |
 
-PHP extension 선언은 PHP API의 `Dbspec` parse/render/introspection 표면을 노출한다. ORM schema 관리와 catalog 연결은 extension에서 미완료다.
-
 [mermaid.md](mermaid.md)는 document를 Mermaid `erDiagram`으로 내보내는 방법과 diagram을 document로 가져오는 방법을 정한다.
 
-PHP extension은 extension 선언을 통해 PHP API의 `Dbspec` parse/render/introspection 표면을 노출한다. ORM schema 관리와 catalog 연결은 별도 기능이며 extension에서는 미완료다.
+PHP extension은 extension 선언을 통해 PHP API의 `Dbspec` parse/render/introspection 표면을 노출한다. ORM schema 관리는 별도 기능이며, catalog 연결 동작은 SCH-6a가 정하고 extension의 native catalog 표면이 구현한다.
 
-## 3. Rust 카탈로그 연결 {#_3-rust-catalog-connections}
+## 3. Rust build-time catalog helpers {#_3-rust-build-time-catalog-helpers}
 
-- **SCH-3** 도구 셀 디코딩은 실제 SQL NULL과 지원되는 정수·텍스트·boolean(그리드 셀은 decimal, binary, date, time, datetime도. [인터페이스](interfaces.md) 참고)을 보존하되 미지원 타입·잘못된 UTF-8·signed 64비트 범위를 넘는 unsigned 정수를 거부한다. SQL NULL·대체 문자열·순환한 정수로 대체하지 않는다. 이 검증이 카탈로그 도구를 범용 쿼리 결과 디코더로 만드는 것은 아니다.
+- **SCH-3** Rust build-time `tool_db` decoder는 실제 SQL NULL과 지원되는 정수·텍스트·boolean을 보존하되 미지원 타입·잘못된 UTF-8·signed 64비트 범위를 넘는 unsigned 정수를 거부한다. SQL NULL·대체 문자열·순환한 정수로 대체하지 않는다. 이 build-time helper 값은 [인터페이스](interfaces.md)의 공유 catalog 연결이 반환하는 typed grid cell과 별개다.
 
-- **SCH-4** 도구 `Val::int()`, `opt_int()`, `bool()`은 검증된 결과를 반환한다. 필수 정수·boolean 변환은 SQL NULL을 거부하며 선택적 정수는 NULL을 `None`으로 보존한다. Boolean은 실제 boolean, 정수 0/1, 문자열 `t`, `f`, `true`, `false`, `1`, `0`만 허용하며 잘못된 값을 기본값으로 바꾸지 않는다. 오류는 입력값을 포함하지 않으며 트랜잭션 정리를 포함한 카탈로그 작업에 전달된다.
+- **SCH-4** Rust build-time `Val::int()`, `opt_int()`, `bool()`은 검증된 결과를 반환한다. 필수 정수·boolean 변환은 SQL NULL을 거부하며 선택적 정수는 NULL을 `None`으로 보존한다. Boolean은 실제 boolean, 정수 0/1, 문자열 `t`, `f`, `true`, `false`, `1`, `0`만 허용하며 잘못된 값을 기본값으로 바꾸지 않는다. 오류는 입력값을 포함하지 않으며 트랜잭션 정리를 포함한 build-time catalog 작업에 전달된다.
 
-- **SCH-5** `live-db` 기능은 `polyspec_orm_build::catalog::CatalogConnection::connect(dsn)`을 노출한다. 별도 driver 인자 없이 DSN이 DB를 선택한다. 카탈로그 연결은 SQLite 외래키 설정을 보존한다. 카탈로그 연결은 테이블 메타데이터와 페이지를 읽고 행을 바꾼다. 데이터베이스의 스키마는 `polyspec_orm::dbspec::introspect`가 읽는다.
+### Catalog 연결 {#_catalog-connections}
 
-- **SCH-6** SQLite 카탈로그 연결은 기존 일반 DB 파일을 요구하고 파일 자동 생성을 끈다. `close(self)`는 예약 연결을 해제한 뒤 풀을 닫는다. 임의 SQL/데이터 접근을 활성화하기 전에 네이티브 디코딩 한계를 소유 코드에서 수정해야 한다.
+- **SCH-5** 각 client는 별도 driver 인자 없이 하나의 DSN으로 native catalog 연결을 연다. DSN이 DB를 선택한다. Catalog 연결은 table metadata와 page를 읽고 row를 바꾼다. Runtime model 실행은 자체 연결 표면을 사용하고, build-time schema introspection은 데이터베이스의 schema를 읽는다.
 
-- **SCH-6a** 카탈로그 연결은 설정된 여섯 구현(Go, PHP, PHP extension, TypeScript, Python, Rust)의 공통 요구이며 Rust에만 해당하는 contract가 아니다. 필수 API는 `connect(dsn)`과 `current_namespace`, `describe_table`, `table_page`, `read_only_query`, `read_only_grid_query`, `insert_row`, `update_row`, `delete_row`이며 의미와 오류 코드는 [인터페이스](interfaces.md)에 있다. 현재 main에서는 Rust만 catalog 연결을 노출한다. 나머지 구현과 MySQL, PostgreSQL, SQLite의 공통 실행 증거는 KSTD-7-7에서 미완료 상태다. 빠진 연산이 있으면 feature는 partial이며 공통 요구를 낮추지 않는다. Rust는 DSN에서 DB를 선택하고 markdown DSN을 거부하며 기존 SQLite 파일을 요구한다. `close(self)`는 연결을 소비한다. PHP library의 grid binding 규칙은 계속 공통 값 contract로 요구되며 PHP extension의 native catalog 구현 완료를 뜻하지 않는다.
+- **SCH-6** SQLite Catalog 연결은 기존 regular database file을 요구하고 파일 자동 생성을 끈다. Catalog를 닫으면 소유한 database resource를 해제하고, 닫힌 뒤의 연산은 statement를 보내지 않고 `CATALOG_CLOSED`로 실패한다.
+
+- **SCH-6a** Catalog 연결은 Go, PHP, PHP extension, TypeScript, Python, Rust의 공통 요구다. 각 native package는 [인터페이스](interfaces.md)의 의미와 오류 코드를 따르는 `connect(dsn)`, `current_namespace`, `describe_table`, `table_page`, `read_only_query`, `read_only_grid_query`, `insert_row`, `update_row`, `delete_row`를 제공한다. 연산이나 owner case가 빠지면 feature는 미완료이며, 구현별 wrapper와 값 표현은 공통 결과, 검증, 오류, snapshot, 정리 동작을 바꾸지 않는다. Catalog 연결은 markdown DSN을 거부한다. Catalog feature의 database case는 모든 client에서 MySQL, PostgreSQL, SQLite를 대상으로 한다.
 
 ## 4. 스키마 설치 {#_4-schema-installation}
 

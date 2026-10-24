@@ -1,5 +1,5 @@
 <!-- doc-id: features -->
-<!-- source-sha256: 09f63c6a29a1bde5bd342074ea3f77d6e9b7db44801fac4c8ef80531e6aff741 -->
+<!-- source-sha256: 5ed2fb89286fc4b2177c0a752fe93a95c1cf2c9577233d602176b531c6c44ace -->
 # 기능 정의
 
 실행 기준은 저장소의 기능 manifest이다. 먼저 manifest의 `source.read_order` 경로를 읽고 선택한 기능의 모든 참조 경로를 읽는다. 각 항목은 input, output, 상태 전이, 오류, parity unit, fixture, test, paired document, 실제 검증 명령을 정의한다.
@@ -23,7 +23,7 @@
 | interface_contract | 공통 인터페이스 검증 | implemented | go, php, php-extension, typescript, python, rust |
 | performance_gate | hot-path 성능 기준 | partial |  |
 | conformance_verification | 적합성 검증 | partial | go, php, typescript, python, rust |
-| catalog_connection | Rust catalog 연결 | partial | rust |
+| catalog_connection | Catalog 연결 | implemented | go, php, php-extension, typescript, python, rust |
 | request_hook | Request hook | partial | go, php, php-extension, typescript, python, rust |
 
 ## 현재 동작
@@ -45,7 +45,7 @@
 - `interface_contract`: 모든 클라이언트는 contracts/interfaces.json에 선언한 공개 심볼을 노출한다. 각 언어는 모델 코드를 실행하지 않고 실제 구문 트리에서 선언을 뽑고, 비교 도구는 심볼, 필드, 반환, 오류가 공통 인터페이스와 다르면 실패한다.
 - `performance_gate`: PHP 클라이언트는 seed한 MySQL 벤치 데이터베이스에서 hot-path 지연 시간을 순수 드라이버와의 비율로 재며, make perf-check는 비율을 출력하고 작업량이 기록한 기준값을 넘으면 경고한다. 측정은 그것을 실패시키지 않는다. Rust 벤치 도구는 기준값 없이 측정만 하고 TypeScript 기준은 만들지 않았다.
 - `conformance_verification`: 같은 모델 체인을 Go, PHP, Rust, TypeScript, Python에서 MySQL, PostgreSQL, SQLite로 실행하고 statement와 결과를 기록된 벡터와 비교한다.
-- `catalog_connection`: live-db feature가 켜진 polyspec-orm-build는 하나의 DSN으로 catalog 연결을 열고, table metadata와 제한된 table page를 읽고, dialect로 parse한 read-only query를 실행하며, 검증된 snapshot으로 row를 insert, update, delete한다. Rust client만 제공한다.
+- `catalog_connection`: 여섯 클라이언트는 하나의 DSN으로 catalog 연결을 열고, namespace로 한정한 table metadata와 제한된 page를 읽고, typed grid cell을 사용하는 제한 read-only query를 실행하며, 검증된 snapshot으로 row를 insert, update, delete한다. Catalog read는 runtime model execution과 build-time schema introspection에서 구분된다.
 - `request_hook`: 연결 handle은 hook 하나를 가지며, 그 hook은 handle의 각 request를 plan 직전에 받는다: 읽기, count, page, 행 하나나 여러 행의 insert, update, delete, restore, getQuery다. hook은 client의 매개변수 추가 호출로 predicate, assignment, 매개변수를 더할 수 있다. client는 n_params를 쓰고 request를 다른 request처럼 plan하므로 planner가 검증하고 plan cache는 그 request로 key를 정한다. handle의 행과 transaction은 hook을 지키며, client는 hook에 자기 의미를 붙이지 않는다.
 
 make feature-check는 경로를 검사하고 planned가 아닌 기능의 검증 명령을 실제 실행한다. implemented 항목은 test와 paired document가 필요하다. partial과 planned는 미완료 상태다.

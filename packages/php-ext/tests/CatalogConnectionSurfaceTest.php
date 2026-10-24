@@ -78,6 +78,91 @@ final class CatalogConnectionSurfaceTest extends TestCase
         }
     }
 
+    public function testNativeCatalogReadsAndMutatesAnOwnedSqliteDatabase(): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'orm-catalog-native-');
+        self::assertNotFalse($path);
+        $setup = new PDO('sqlite:' . $path, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+        $setup->exec('CREATE TABLE sample (id INTEGER PRIMARY KEY, payload BLOB NOT NULL, note TEXT NULL)');
+        $setup->exec("INSERT INTO sample (id, payload, note) VALUES (1, X'00ff', NULL), (2, X'6162', 'two')");
+        $setup = null;
+
+        $catalog = null;
+        try {
+            $catalog = Catalog::connect('sqlite://' . $path);
+            self::assertSame('main', $catalog->currentNamespace());
+            $table = ['namespace' => 'main', 'name' => 'sample'];
+            $metadata = $catalog->describeTable($table);
+            self::assertSame(['id'], $metadata->primaryKey);
+            self::assertTrue($metadata->reliableRowIdentity);
+
+            $page = $catalog->tablePage($table, 1, 0);
+            self::assertSame(['id'], $page->orderBy);
+            self::assertTrue($page->hasMore);
+            self::assertSame([1, "\x00\xff", null], $page->result->rows[0]);
+
+            $query = $catalog->readOnlyQuery('SELECT COUNT(*) AS count FROM sample');
+            self::assertSame(2, $query->rows[0][0]);
+            $grid = $catalog->readOnlyGridQuery(
+                "SELECT 7 AS integer_value, X'00ff' AS binary_value, NULL AS null_value"
+            );
+            self::assertEquals(
+                [
+                    new CatalogGridCell('integer', 7),
+                    new CatalogGridCell('binary', "\x00\xff"),
+                    new CatalogGridCell('null'),
+                ],
+                $grid->rows[0]
+            );
+            try {
+                $catalog->readOnlyQuery('UPDATE sample SET note = note WHERE id = 1');
+                self::fail('a write was accepted by the read-only query');
+            } catch (OrmException $error) {
+                self::assertSame(Code::QUERY_READ_ONLY, $error->code_);
+            }
+
+            $inserted = $catalog->insertRow($metadata, ['id' => 3, 'payload' => 'three', 'note' => null]);
+            self::assertSame([3, 'three', null], $inserted->rows[0]);
+            $afterInsert = $catalog->tablePage($table, 10, 0);
+            $idColumn = $afterInsert->columnIndex('id');
+            $rowIndex = null;
+            foreach ($afterInsert->result->rows as $index => $row) {
+                if ($row[$idColumn] === 3) {
+                    $rowIndex = $index;
+                    break;
+                }
+            }
+            self::assertNotNull($rowIndex);
+            $snapshot = $catalog->rowSnapshotFromPage($afterInsert, $rowIndex);
+            $updated = $catalog->updateRow($snapshot, ['note' => 'updated']);
+            self::assertSame([3, 'three', 'updated'], $updated->rows[0]);
+            $afterUpdate = $catalog->tablePage($table, 10, 0);
+            $updatedIndex = null;
+            foreach ($afterUpdate->result->rows as $index => $row) {
+                if ($row[$afterUpdate->columnIndex('id')] === 3) {
+                    $updatedIndex = $index;
+                    break;
+                }
+            }
+            self::assertNotNull($updatedIndex);
+            self::assertSame(
+                1,
+                $catalog->deleteRow($catalog->rowSnapshotFromPage($afterUpdate, $updatedIndex))
+            );
+
+            $catalog->close();
+            try {
+                $catalog->readOnlyQuery('SELECT 1');
+                self::fail('a read after close succeeded');
+            } catch (OrmException $error) {
+                self::assertSame(Code::CATALOG_CLOSED, $error->code_);
+            }
+        } finally {
+            $catalog?->close();
+            unlink($path);
+        }
+    }
+
     public function test_native_close_attempts_both_steps_and_keeps_primary_and_cleanup_causes(): void
     {
         $db = new Db(null, 'sqlite', new Config(), new DateTimeZone('UTC'));

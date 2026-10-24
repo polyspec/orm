@@ -9104,11 +9104,11 @@
     },
     {
       "id": "catalog_connection",
-      "title": "Rust catalog connection",
-      "title_ko": "Rust catalog \uc5f0\uacb0",
-      "status": "partial",
-      "description": "With the live-db feature, polyspec-orm-build opens a catalog connection from one DSN, reads table metadata and bounded table pages, runs dialect-parsed read-only queries, and inserts, updates and deletes rows with verified snapshots. Only the Rust client provides it.",
-      "description_ko": "live-db feature\uac00 \ucf1c\uc9c4 polyspec-orm-build\ub294 \ud558\ub098\uc758 DSN\uc73c\ub85c catalog \uc5f0\uacb0\uc744 \uc5f4\uace0, table metadata\uc640 \uc81c\ud55c\ub41c table page\ub97c \uc77d\uace0, dialect\ub85c parse\ud55c read-only query\ub97c \uc2e4\ud589\ud558\uba70, \uac80\uc99d\ub41c snapshot\uc73c\ub85c row\ub97c insert, update, delete\ud55c\ub2e4. Rust client\ub9cc \uc81c\uacf5\ud55c\ub2e4.",
+      "title": "Catalog connection",
+      "title_ko": "Catalog \uc5f0\uacb0",
+      "status": "implemented",
+      "description": "All six clients open a catalog connection from one DSN, read qualified table metadata and bounded pages, execute bounded read-only queries with typed grid cells, and insert, update and delete rows with verified snapshots. Catalog reads are separate from runtime model execution and build-time schema introspection.",
+      "description_ko": "\uc5ec\uc12f \ud074\ub77c\uc774\uc5b8\ud2b8\ub294 \ud558\ub098\uc758 DSN\uc73c\ub85c catalog \uc5f0\uacb0\uc744 \uc5f4\uace0, namespace\ub85c \ud55c\uc815\ud55c table metadata\uc640 \uc81c\ud55c\ub41c page\ub97c \uc77d\uace0, typed grid cell\uc744 \uc0ac\uc6a9\ud558\ub294 \uc81c\ud55c read-only query\ub97c \uc2e4\ud589\ud558\uba70, \uac80\uc99d\ub41c snapshot\uc73c\ub85c row\ub97c insert, update, delete\ud55c\ub2e4. Catalog read\ub294 runtime model execution\uacfc build-time schema introspection\uc5d0\uc11c \uad6c\ubd84\ub41c\ub2e4.",
       "inputs": {
         "type": "CatalogRequest",
         "fields": [
@@ -9140,8 +9140,8 @@
         }
       ],
       "parity": [
-        "rust-coverage-catalog-read",
-        "rust-coverage-catalog-row-mutation"
+        "catalog-connection-read",
+        "catalog-connection-row-mutation"
       ],
       "fixtures": [
         "packages/rust/tests/tests/common/mod.rs"
@@ -9175,7 +9175,10 @@
         "packages/rust/build/tests/unit/table_page_validation.rs",
         "packages/rust/build/tests/unit/tool_column_budgets.rs",
         "packages/rust/build/tests/unit/typed_bind_validation.rs",
-        "packages/rust/tests/tests/coverage_catalog_connection.rs"
+        "packages/rust/tests/tests/coverage_catalog_connection.rs",
+        "packages/php-ext/tests/CatalogConnectionSurfaceTest.php",
+        "packages/php-ext/tests/CatalogConnectionCoverageSurfaceTest.php",
+        "packages/php-ext/tests/CoverageCatalogConnectionTest.php"
       ],
       "docs": [
         "docs/spec/schema.md",
@@ -9483,9 +9486,9 @@
             }
           },
           "php-extension": {
-            "part": "packages/php/tests",
+            "part": "packages/php-ext/tests",
             "tests": [
-              "packages/php/tests/CoverageCatalogConnectionTest.php"
+              "packages/php-ext/tests/CoverageCatalogConnectionTest.php"
             ],
             "inputs": [
               "contracts/fixtures/bench/bench.dbs"
@@ -9494,7 +9497,7 @@
               "mysql": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
+                  "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
                   "cases": [
                     "catalog_read",
                     "catalog_row_mutation"
@@ -9505,7 +9508,7 @@
               "postgres": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
+                  "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
                   "cases": [
                     "catalog_read",
                     "catalog_row_mutation"
@@ -9516,7 +9519,7 @@
               "sqlite": [
                 {
                   "runner": "php",
-                  "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
+                  "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
                   "cases": [
                     "catalog_read",
                     "catalog_row_mutation"

@@ -573,7 +573,7 @@
     }
   ],
   "requirements": {
-    "pattern": "(?:CFG|COD|CPX|DBS|DIA|DSL|FCV|INT|MER|ORE|ORES|PAR|PLN|PRT|SCH)-[0-9]+"
+    "pattern": "(?:CFG|COD|CPX|DBS|DIA|DSL|FCV|INT|MER|ORE|ORES|PAR|PLN|PRT|SCH)-[0-9]+[a-z]?"
   },
   "units": [
     {
@@ -12003,13 +12003,39 @@
       ]
     },
     {
-      "id": "rust-coverage-catalog-read",
+      "id": "catalog-connection-read",
       "kind": "feature",
       "requirements": [
+        "SCH-6a",
         "INT-113",
         "INT-114"
       ],
       "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_catalog_connection_test.go",
+          "id": "TestCoverageCatalogRead"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::test_catalog_read"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::test_catalog_read"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+          "id": "catalog_read"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_catalog_connection.py",
+          "id": "test_read"
+        },
         {
           "implementation": "rust",
           "test": "packages/rust/tests/tests/coverage_catalog_connection.rs",
@@ -12018,13 +12044,39 @@
       ]
     },
     {
-      "id": "rust-coverage-catalog-row-mutation",
+      "id": "catalog-connection-row-mutation",
       "kind": "feature",
       "requirements": [
+        "SCH-6a",
         "INT-109",
         "INT-123"
       ],
       "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_catalog_connection_test.go",
+          "id": "TestCoverageCatalogRowMutation"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::test_catalog_row_mutation"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::test_catalog_row_mutation"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+          "id": "catalog_row_mutation"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_catalog_connection.py",
+          "id": "test_row_mutation"
+        },
         {
           "implementation": "rust",
           "test": "packages/rust/tests/tests/coverage_catalog_connection.rs",

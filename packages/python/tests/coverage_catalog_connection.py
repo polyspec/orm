@@ -1,7 +1,10 @@
-# catalog_connection coverage (Requirements: SCH-5, SCH-6a): runs the two shared cases against the bench database that the
+# catalog_connection coverage runs the two shared cases against the bench database that the
 # feature check selected (ORM_FEATURE_DATABASE, ORM_FEATURE_DSN) through connect_catalog. The read case only reads; the
 # mutation case inserts, updates and deletes one row of composite_account in tenant 990005 and ends in the state it started in.
+# Requirements: SCH-5, SCH-6a, INT-109, INT-113, INT-114, INT-123.
+import io
 import os
+import sys
 import unittest
 
 from polyspec.orm import connect_catalog
@@ -205,4 +208,22 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    selected_cases = sys.argv[1:]
+    if not selected_cases:
+        unittest.main()
+    else:
+        feature_cases = {
+            "catalog_read": "test_read",
+            "catalog_row_mutation": "test_row_mutation",
+        }
+        for case_id in selected_cases:
+            method_name = feature_cases.get(case_id)
+            if method_name is None:
+                raise SystemExit(f"unknown catalog coverage case {case_id}")
+            suite = unittest.TestSuite([CatalogConnectionCoverageTest(method_name)])
+            output = io.StringIO()
+            result = unittest.TextTestRunner(stream=output).run(suite)
+            if not result.wasSuccessful():
+                sys.stderr.write(output.getvalue())
+                raise SystemExit(1)
+            print(f"CASE {case_id} [{os.environ['ORM_FEATURE_DATABASE']}] PASS")

@@ -22,7 +22,7 @@ The executable source is the repository feature manifest. Read the manifest, the
 | interface_contract | Common interface verification | implemented | go, php, php-extension, typescript, python, rust |
 | performance_gate | Hot-path performance standard | partial |  |
 | conformance_verification | Conformance verification | partial | go, php, typescript, python, rust |
-| catalog_connection | Rust catalog connection | partial | rust |
+| catalog_connection | Catalog connection | implemented | go, php, php-extension, typescript, python, rust |
 | request_hook | Request hook | partial | go, php, php-extension, typescript, python, rust |
 
 ## Current behavior
@@ -44,7 +44,7 @@ The executable source is the repository feature manifest. Read the manifest, the
 - `interface_contract`: Every client exposes the public symbols declared in contracts/interfaces.json. Each language extracts its declarations from real syntax trees without running model code, and the comparator fails when a symbol, field, return, or error differs from the common interface.
 - `performance_gate`: The PHP client measures hot-path latency as a ratio to the raw driver on the seeded MySQL bench database, and make perf-check prints each ratio and warns when a workload exceeds its recorded reference; a measurement never fails it. The Rust bench harness measures without a reference, and the TypeScript standard is not built.
 - `conformance_verification`: Run the same model chains in Go, PHP, Rust, TypeScript, and Python on MySQL, PostgreSQL, and SQLite and compare the statements and results with the recorded vectors.
-- `catalog_connection`: With the live-db feature, polyspec-orm-build opens a catalog connection from one DSN, reads table metadata and bounded table pages, runs dialect-parsed read-only queries, and inserts, updates and deletes rows with verified snapshots. Only the Rust client provides it.
+- `catalog_connection`: All six clients open a catalog connection from one DSN, read qualified table metadata and bounded pages, execute bounded read-only queries with typed grid cells, and insert, update and delete rows with verified snapshots. Catalog reads are separate from runtime model execution and build-time schema introspection.
 - `request_hook`: A connection handle carries one hook that receives each request of the handle right before planning: reads, counts, pages, inserts with one row or rows, updates, deletes, restores and getQuery. The hook may add predicates, assignments and parameters through the client's add-parameter call; the client sets n_params and plans the request as any other, so the planner validates it and the plan cache keys on it. Rows and transactions of the handle keep the hook, and the client gives the hook no meaning of its own.
 
 Run make feature-check to validate paths and execute every verification command declared for non-planned features. An implemented feature requires tests and paired documentation; partial and planned are incomplete.

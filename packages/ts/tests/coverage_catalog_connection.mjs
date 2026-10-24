@@ -1,7 +1,9 @@
-// catalog_connection coverage (Requirements: SCH-5, SCH-6a): runs the two shared cases against the bench database that the
+// catalog_connection coverage runs the two shared cases against the bench database that the
 // feature check selected (ORM_FEATURE_DATABASE, ORM_FEATURE_DSN) through connectCatalog. The read case only reads; the mutation
 // case inserts, updates and deletes one row of composite_account in tenant 990005 and ends in the state it started in.
+// Requirements: SCH-5, SCH-6a, INT-109, INT-113, INT-114, INT-123.
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import { connectCatalog } from '../dist/index.js';
 import { DatabaseSync } from 'node:sqlite';
 
@@ -332,14 +334,31 @@ async function closedCase() {
   }
 }
 
-await readCase();
-await mutationCase();
-await plainCase();
-await streamCase();
-await gridCase();
-await precisionCase();
-await sqliteTemporalCase();
-await byteBudgetCase();
-await floatCase();
-await closedCase();
-console.log('catalog_connection: read, row mutation, columns, stream budgets, byte budgets, grid cells, float and temporal precision, closed connection passed');
+const featureCases = new Map([
+  ['catalog_read', readCase],
+  ['catalog_row_mutation', mutationCase],
+]);
+const selectedCases = process.argv.slice(2);
+if (process.env.NODE_TEST_CONTEXT !== undefined) {
+  test('catalog_read', readCase);
+  test('catalog_row_mutation', mutationCase);
+} else if (selectedCases.length > 0) {
+  for (const id of selectedCases) {
+    const run = featureCases.get(id);
+    assert.ok(run, `unknown catalog coverage case ${id}`);
+    await run();
+    console.log(`CASE ${id} [${process.env.ORM_FEATURE_DATABASE}] PASS`);
+  }
+} else {
+  await readCase();
+  await mutationCase();
+  await plainCase();
+  await streamCase();
+  await gridCase();
+  await precisionCase();
+  await sqliteTemporalCase();
+  await byteBudgetCase();
+  await floatCase();
+  await closedCase();
+  console.log('catalog_connection: read, row mutation, columns, stream budgets, byte budgets, grid cells, float and temporal precision, closed connection passed');
+}

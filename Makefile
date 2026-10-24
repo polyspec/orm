@@ -2482,7 +2482,7 @@ rust-causes-check: cargo-downloads-check lease-tool
 go-catalog-session-error-check:
 	$(GO_TEST) ./packages/go/orm -run '^TestCatalogSessionEnd' -count=1
 
-catalog-php-extension-surface-check: php-vendor-check
+catalog-php-extension-surface-check: php-vendor-check php-models
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
 	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension $(PHP_EXTENSION_LIBRARY) -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CatalogConnectionSurfaceTest.php
 	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension $(PHP_EXTENSION_LIBRARY) -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/CatalogConnectionCoverageSurfaceTest.php
