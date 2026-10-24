@@ -61,6 +61,61 @@ function dbspec_remove_sqlite_files(string $path): void
     }
 }
 
+/**
+ * Creates a fresh MySQL database or PostgreSQL schema and returns a session factory and cleanup operation.
+ *
+ * The session factory selects the new database or schema on every connection. Callers may supply a PDO subclass for
+ * query counting; PostgreSQL cases with additional schemas may remove those through $beforeDrop and verify them through
+ * $afterDrop. A PDO factory makes the SQL lifecycle testable without a server.
+ *
+ * @param Closure(string, ?string, ?string, array<int, mixed>): PDO|null $pdoFactory
+ * @return array{0: Closure(): PDO, 1: Closure(): void}
+ */
+function dbspec_open_server_database(
+    string $dialect,
+    string $name,
+    string $serverDsn,
+    ?Closure $beforeDrop = null,
+    ?Closure $afterDrop = null,
+    ?Closure $pdoFactory = null
+): array {
+    if (!in_array($dialect, ['mysql', 'postgres'], true)) {
+        throw new InvalidArgumentException("server database dialect $dialect");
+    }
+    [, $pdoDsn, $user, $password] = \Polyspec\Orm\Orm::parseDsn($serverDsn);
+    $options = [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION];
+    $open = $pdoFactory ?? static function (
+        string $dsn,
+        ?string $user,
+        ?string $password,
+        array $options
+    ): PDO {
+        return new PDO($dsn, $user, $password, $options);
+    };
+    $admin = $open($pdoDsn, $user, $password, $options);
+    $quoted = $dialect === 'mysql' ? "`$name`" : "\"$name\"";
+    $admin->exec(($dialect === 'mysql' ? 'CREATE DATABASE ' : 'CREATE SCHEMA ') . $quoted);
+    $session = static function () use ($open, $pdoDsn, $user, $password, $options, $dialect, $quoted): PDO {
+        $pdo = $open($pdoDsn, $user, $password, $options);
+        $pdo->exec($dialect === 'mysql' ? "USE $quoted" : "SET search_path TO $quoted");
+        return $pdo;
+    };
+    $drop = static function () use ($admin, $dialect, $quoted, $name, $beforeDrop, $afterDrop): void {
+        $beforeDrop?->__invoke($admin, $name);
+        $admin->exec(
+            ($dialect === 'mysql' ? 'DROP DATABASE ' : 'DROP SCHEMA ') . $quoted
+                . ($dialect === 'mysql' ? '' : ' CASCADE')
+        );
+        $left = $dialect === 'mysql'
+            ? $admin->prepare('SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?')
+            : $admin->prepare('SELECT COUNT(*) FROM pg_namespace WHERE nspname = ?');
+        $left->execute([$name]);
+        \PHPUnit\Framework\Assert::assertSame(0, (int) $left->fetchColumn(), "$dialect $name remains after cleanup");
+        $afterDrop?->__invoke($admin, $name);
+    };
+    return [$session, $drop];
+}
+
 // Checks dbspec cases in the shape of tests/dbspec/cases.json with the PHPUnit
 // assertions; the test classes run each case as one data set named by its id.
 

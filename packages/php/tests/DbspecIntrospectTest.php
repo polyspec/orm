@@ -64,30 +64,39 @@ function open_database(string $dialect): array
             dbspec_remove_sqlite_files($path);
         }, $name];
     }
-    [, $pdoDsn, $user, $password] = Orm::parseDsn($dsns[$dialect]);
-    $admin = new PDO($pdoDsn, $user, $password, $options);
-    $quoted = $dialect === 'mysql' ? "`$name`" : "\"$name\"";
-    $admin->exec(($dialect === 'mysql' ? 'CREATE DATABASE ' : 'CREATE SCHEMA ') . $quoted);
-    $pdo = new CountingPdo($pdoDsn, $user, $password, $options);
-    $pdo->exec($dialect === 'mysql' ? "USE $quoted" : "SET search_path TO $quoted");
-    return [$pdo, static function () use (&$pdo, $admin, $dialect, $quoted, $name): void {
-        $pdo = null;
-        if ($dialect === 'postgres') {
+    $beforeDrop = $dialect === 'postgres'
+        ? static function (PDO $admin, string $name): void {
             // A case that needs a second schema makes it as <schema>_b.
             $admin->exec("DROP SCHEMA IF EXISTS \"{$name}_b\" CASCADE");
         }
-        $admin->exec(
-            (
-                $dialect === 'mysql' ? 'DROP DATABASE ' : 'DROP SCHEMA '
-            ) . $quoted . ($dialect === 'mysql' ? '' : ' CASCADE')
-        );
+        : null;
+    $afterDrop = static function (PDO $admin, string $name) use ($dialect): void {
         $left = $dialect === 'mysql'
-            ? $admin->prepare('SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME IN (?, ?)')
-            : $admin->prepare('SELECT COUNT(*) FROM pg_namespace WHERE nspname IN (?, ?)');
-        $left->execute([$name, $name . '_b']);
+            ? $admin->prepare('SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?')
+            : $admin->prepare('SELECT COUNT(*) FROM pg_namespace WHERE nspname = ?');
+        $left->execute([$name . '_b']);
         if ((int) $left->fetchColumn() !== 0) {
             throw new RuntimeException("$dialect $name remains after cleanup");
         }
+    };
+    $pdoFactory = static fn(string $dsn, ?string $user, ?string $password, array $options): PDO => new CountingPdo(
+        $dsn,
+        $user,
+        $password,
+        $options
+    );
+    [$session, $dropServer] = dbspec_open_server_database(
+        $dialect,
+        $name,
+        $dsns[$dialect],
+        $beforeDrop,
+        $afterDrop,
+        $pdoFactory
+    );
+    $pdo = $session();
+    return [$pdo, static function () use (&$pdo, $dropServer): void {
+        $pdo = null;
+        $dropServer();
     }, $name];
 }
 

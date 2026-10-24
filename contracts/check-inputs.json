@@ -1754,7 +1754,8 @@
         "databases"
       ],
       "inputs": [
-        "packages/php/tests/DbspecIntrospectTest.php"
+        "packages/php/tests/DbspecIntrospectTest.php",
+        "packages/php/tests/dbspec_cases.php"
       ]
     },
     "dbspec-introspect-php-extension-check": {
@@ -1768,6 +1769,7 @@
       ],
       "inputs": [
         "packages/php/tests/DbspecIntrospectTest.php",
+        "packages/php/tests/dbspec_cases.php",
         "packages/php-ext/src/introspect.c"
       ]
     },
@@ -2182,7 +2184,8 @@
       "inputs": [
         "packages/php/tests/DbspecPlanApplyTest.php",
         "packages/php/tests/DbspecPlanReaderTest.php",
-        "packages/php/tests/dbspec_plan_cases.php"
+        "packages/php/tests/dbspec_plan_cases.php",
+        "packages/php/tests/dbspec_cases.php"
       ]
     },
     "dbspec-php-check/set": {
@@ -2206,7 +2209,8 @@
         "databases"
       ],
       "inputs": [
-        "packages/php/tests/DbspecApplyTest.php"
+        "packages/php/tests/DbspecApplyTest.php",
+        "packages/php/tests/dbspec_cases.php"
       ]
     },
     "dbspec-php-extension-check": {
@@ -2587,6 +2591,7 @@
       ],
       "inputs": [
         "packages/php/tests/DbspecApplyTest.php",
+        "packages/php/tests/dbspec_cases.php",
         "packages/php-ext/src/apply.c"
       ]
     },

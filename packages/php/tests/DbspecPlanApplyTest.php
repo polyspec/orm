@@ -56,24 +56,11 @@ function open_plan_database(string $dialect): array
             dbspec_remove_sqlite_files($path);
         }];
     }
-    [, $pdoDsn, $user, $password] = Orm::parseDsn($dsns[$dialect]);
-    $admin = new PDO($pdoDsn, $user, $password, $options);
-    $quoted = $dialect === 'mysql' ? "`$name`" : "\"$name\"";
-    $admin->exec(($dialect === 'mysql' ? 'CREATE DATABASE ' : 'CREATE SCHEMA ') . $quoted);
-    $pdo = new PDO($pdoDsn, $user, $password, $options);
-    $pdo->exec($dialect === 'mysql' ? "USE $quoted" : "SET search_path TO $quoted");
-    return [$pdo, static function () use (&$pdo, $admin, $dialect, $quoted, $name): void {
+    [$session, $dropServer] = dbspec_open_server_database($dialect, $name, $dsns[$dialect]);
+    $pdo = $session();
+    return [$pdo, static function () use (&$pdo, $dropServer): void {
         $pdo = null;
-        $admin->exec(
-            (
-                $dialect === 'mysql' ? 'DROP DATABASE ' : 'DROP SCHEMA '
-            ) . $quoted . ($dialect === 'mysql' ? '' : ' CASCADE')
-        );
-        $left = $dialect === 'mysql'
-            ? $admin->prepare('SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?')
-            : $admin->prepare('SELECT COUNT(*) FROM pg_namespace WHERE nspname = ?');
-        $left->execute([$name]);
-        Assert::assertSame(0, (int) $left->fetchColumn(), "$dialect $name remains after cleanup");
+        $dropServer();
     }];
 }
 
