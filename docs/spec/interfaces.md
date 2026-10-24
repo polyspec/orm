@@ -492,7 +492,10 @@ Rust's `insert_row` takes a checked `TableMetadata` and explicit typed
 assignments, cancellation flag and phase subscriber. Columns expose
 `automatic_key` and `default_expression`; these participate in descriptor
 comparison and the bounded baseline revision. Require explicit primary-key
-values unless an authoritative generator supports returning the omitted keys.
+Each omitted primary-key component must have an `automatic_key` or a
+`default_expression`; otherwise fail with `ROW_INSERT_IDENTITY_REQUIRED`.
+Return omitted keys from the database. A key shape the selected dialect
+cannot generate fails with `ROW_INSERT_UNSUPPORTED`.
 Lock/probe explicit keys, revalidate the descriptor, reject existing keys,
 write with typed binds, require one affected row and reread by the declared key.
 Compare every supplied value exactly; omitted defaults and generated values are
@@ -559,7 +562,7 @@ metadata is not an atomic schema revision or authorization for row mutations.
 - **INT-120** A bind list of more than 65535 parameters, or of total value bytes beyond 16 MiB, is refused before preparing or executing with `TOOL_BIND_LIMIT`.
 - **INT-121** A table page is refused when its prepared column names do not match the descriptor, or when the metadata changes within its read scope.
 - **INT-122** A typed bind rejects a malformed decimal, a nonfinite MySQL float, a SQLite NaN and PostgreSQL text with a NUL before execution with `TOOL_BIND_INVALID`.
-- **INT-123** `insert_row` requires explicit primary-key values unless an authoritative generator returns the omitted keys, rejects existing keys and unknown, duplicate or generated assignments, requires exactly one affected row, rereads the row by its declared key, and compares every supplied value exactly.
+- **INT-123** `insert_row` requires every omitted primary-key component to have `automatic_key` or `default_expression`, otherwise returns `ROW_INSERT_IDENTITY_REQUIRED`; it returns omitted keys from the database and returns `ROW_INSERT_UNSUPPORTED` for a key shape the dialect cannot generate. It rejects existing keys and unknown, duplicate or generated assignments, requires exactly one affected row, rereads the row by its declared key, and compares every supplied value exactly.
 - **INT-124** A query result whose column metadata exceeds 2048 columns, or whose column names and native types together exceed 64 KiB, fails with `TOOL_QUERY_COLUMNS`.
 - **INT-125** A bounded query whose text does not split into exactly one statement fails with `TOOL_QUERY_STATEMENT`.
 - **INT-135** A query result lists each output column of its statement in select order with its native type, duplicate names included, and a result with no row keeps those columns.

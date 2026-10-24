@@ -124,6 +124,10 @@ codes:
     origin: executor
   - code: ROW_INSERT_INVALID
     origin: executor
+  - code: ROW_INSERT_IDENTITY_REQUIRED # primary key has no database-generated value
+    origin: executor
+  - code: ROW_INSERT_UNSUPPORTED # the selected generated-key strategy cannot support this key shape
+    origin: executor
   - code: ROW_UPDATE_INVALID
     origin: executor
   - code: ROW_UPDATE_LIMIT

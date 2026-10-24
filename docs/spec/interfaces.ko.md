@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: 2a9dd7e513fe87be48d8893583757bb7f5a9da1a27e29949c0e5ae662343db80 -->
+<!-- source-sha256: b204c6ea3568e71b4985e8531c36b9380b0c7ae585dcdbd378b33366135dd7d0 -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -473,7 +473,10 @@ Rust의 `insert_row`는 검증된 `TableMetadata`와 명시적 타입형 대입,
 취소 플래그 및 단계 구독자를 받는다. 컬럼은 `automatic_key`와
 `default_expression`을 제공하며 descriptor 비교와 제한된 기준 revision에
 포함한다. 검증된 생성기가 생략한 키를 반환할 수 있는 경우를 제외하면 명시적
-기본키 값을 요구한다. 명시적 키를 잠그고
+기본키 값을 요구한다. 생략한 기본키 구성요소는 모두 `automatic_key` 또는
+`default_expression`이 있어야 하며, 없으면 `ROW_INSERT_IDENTITY_REQUIRED`를 반환한다.
+데이터베이스가 생략된 키를 반환한다. 선택한 dialect가 키 형태를 생성하지 못하면
+`ROW_INSERT_UNSUPPORTED`로 실패한다. 명시적 키를 잠그고
 조회한 뒤 descriptor 재검증·기존 키 거부·타입형 쓰기·영향 한 행 검사·선언 키
 재조회를 수행한다. 지정한 값은 모두 정확히 비교하고 생략된 기본값과 생성 값은
 DB에서 반환한다. 없는/중복/생성 컬럼 대입을 거부한다. 이 lifecycle 제어는 Rust에만
@@ -535,7 +538,7 @@ prepared 컬럼명은 descriptor와 정확히 일치해야 하며 범위 내 메
 - **INT-120** 65535개를 넘는 파라미터, 또는 총 값 바이트가 16 MiB를 넘는 바인드 목록은 준비나 실행 전에 `TOOL_BIND_LIMIT`로 거부된다.
 - **INT-121** 테이블 페이지는 준비된 열 이름이 descriptor와 맞지 않거나, 읽기 범위 안에서 메타데이터가 바뀌면 거부된다.
 - **INT-122** 타입 있는 바인드는 실행 전에 잘못된 decimal, 비유한 MySQL float, SQLite NaN, NUL이 있는 PostgreSQL 텍스트를 `TOOL_BIND_INVALID`로 거부한다.
-- **INT-123** `insert_row`는 권한 있는 생성기가 생략된 키를 돌려주지 않으면 명시적인 기본 키 값을 요구하고, 기존 키와 알 수 없거나 중복되거나 생성 열 대상인 할당을 거부하며, 정확히 한 행이 영향을 받을 것을 요구하고, 선언된 키로 행을 다시 읽으며, 제공된 모든 값을 정확히 비교한다.
+- **INT-123** `insert_row`는 생략된 기본키 구성요소마다 `automatic_key` 또는 `default_expression`을 요구하고, 없으면 `ROW_INSERT_IDENTITY_REQUIRED`를 반환한다. 데이터베이스에서 생략된 키를 돌려주며 dialect가 키 형태를 만들 수 없으면 `ROW_INSERT_UNSUPPORTED`를 반환한다. 기존 키와 알 수 없거나 중복되거나 생성 열 대상인 할당을 거부하며, 정확히 한 행의 영향, 선언된 키로 재조회 및 제공된 값의 정확한 비교를 요구한다.
 - **INT-124** 열 메타데이터가 2048개를 넘거나, 열 이름과 네이티브 타입을 합한 크기가 64 KiB를 넘는 질의 결과는 `TOOL_QUERY_COLUMNS`로 실패한다.
 - **INT-125** 경계가 있는 질의의 텍스트가 정확히 한 개의 statement로 나뉘지 않으면 `TOOL_QUERY_STATEMENT`로 실패한다.
 - **INT-135** 질의 결과는 statement의 출력 열을 select 순서대로, 중복된 이름을 포함해 각 네이티브 타입과 함께 나열하며, 행이 없는 결과도 그 열을 유지한다.

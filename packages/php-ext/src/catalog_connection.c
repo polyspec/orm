@@ -2725,7 +2725,7 @@ ZEND_METHOD(Polyspec_Orm_Catalog, insertRow)
             zval_ptr_dtor(&generated_key_indexes);
             zval_ptr_dtor(&changes);
             zval_ptr_dtor(&key_indexes);
-            db_throw_orm("ROW_INSERT_INVALID", "explicit primary-key value of \"%s\" is required", Z_STRVAL_P(name));
+            db_throw_orm("ROW_INSERT_IDENTITY_REQUIRED", "explicit primary-key value of \"%s\" is required", Z_STRVAL_P(name));
             return;
         }
         Z_TRY_ADDREF_P(found);
@@ -2736,7 +2736,7 @@ ZEND_METHOD(Polyspec_Orm_Catalog, insertRow)
         zval_ptr_dtor(&generated_key_indexes);
         zval_ptr_dtor(&changes);
         zval_ptr_dtor(&key_indexes);
-        db_throw_orm("ROW_MUTATION_UNSUPPORTED", "multiple AUTO_INCREMENT identities");
+        db_throw_orm("ROW_INSERT_UNSUPPORTED", "multiple AUTO_INCREMENT identities");
         return;
     }
     zval pdo;

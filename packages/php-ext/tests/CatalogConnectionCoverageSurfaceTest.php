@@ -12,6 +12,8 @@ final class CatalogConnectionCoverageSurfaceTest extends TestCase
     public function test_native_catalog_is_internal_and_owns_shared_cases(): void
     {
         self::assertTrue((new ReflectionClass(Catalog::class))->isInternal());
+        self::assertSame(Polyspec\Orm\Code::ROW_INSERT_IDENTITY_REQUIRED, 'ROW_INSERT_IDENTITY_REQUIRED');
+        self::assertSame(Polyspec\Orm\Code::ROW_INSERT_UNSUPPORTED, 'ROW_INSERT_UNSUPPORTED');
         $catalogCases = array_map(
             static fn(ReflectionMethod $method): string => $method->getName(),
             (new ReflectionClass(Polyspec\Orm\Tests\CatalogConnectionCoverageCases::class))->getMethods(),

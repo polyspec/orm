@@ -85,6 +85,7 @@ final class CatalogConnectionSurfaceTest extends TestCase
         $setup = new PDO('sqlite:' . $path, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
         $setup->exec('CREATE TABLE sample (id INTEGER PRIMARY KEY, payload BLOB NOT NULL, note TEXT NULL)');
         $setup->exec("INSERT INTO sample (id, payload, note) VALUES (1, X'00ff', NULL), (2, X'6162', 'two')");
+        $setup->exec('CREATE TABLE required_identity (id BIGINT NOT NULL PRIMARY KEY, payload TEXT NOT NULL)');
         $setup->exec('CREATE TABLE generated (id INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL)');
         $setup->exec(
             "CREATE TABLE generated_default (tenant BIGINT NOT NULL, seq VARCHAR(30) NOT NULL DEFAULT 'generated', "
@@ -100,6 +101,13 @@ final class CatalogConnectionSurfaceTest extends TestCase
         try {
             $catalog = Catalog::connect('sqlite://' . $path);
             self::assertSame('main', $catalog->currentNamespace());
+            $requiredMetadata = $catalog->describeTable(['namespace' => 'main', 'name' => 'required_identity']);
+            try {
+                $catalog->insertRow($requiredMetadata, ['payload' => 'missing-key']);
+                self::fail('an omitted primary key without a generator was accepted');
+            } catch (OrmException $error) {
+                self::assertSame(Code::ROW_INSERT_IDENTITY_REQUIRED, $error->code_);
+            }
             $table = ['namespace' => 'main', 'name' => 'sample'];
             $metadata = $catalog->describeTable($table);
             self::assertSame(['id'], $metadata->primaryKey);

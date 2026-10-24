@@ -108,10 +108,37 @@ trait CatalogConnectionCoverageCases
         self::assertCount(1, $updated->rows);
         self::assertSame(1, $this->catalog->deleteRow($find('catalog-updated')));
         self::assertSame(0, $tenantRows());
+        $this->assertIdentityRequiredError();
         $this->assertAutomaticGeneratedKey();
         $this->assertLiteralDefaultKey();
         $this->assertExpressionDefaultKey();
         $this->assertFailedCommitLeavesNoRow();
+    }
+
+    private function assertIdentityRequiredError(): void
+    {
+        $name = 'catalog_identity_required_' . bin2hex(random_bytes(6));
+        $namespace = $this->catalog->currentNamespace();
+        $qualified = $this->quote($namespace) . '.' . $this->quote($name);
+        $engine = $this->driver === 'mysql' ? ' ENGINE=InnoDB' : '';
+        $setup = Orm::connect((string) getenv('ORM_FEATURE_DSN'), new Config());
+        $pdo = $setup->pdo();
+        try {
+            $pdo->exec("CREATE TABLE {$qualified} (id BIGINT NOT NULL PRIMARY KEY, payload TEXT NOT NULL){$engine}");
+            $metadata = $this->catalog->describeTable(['namespace' => $namespace, 'name' => $name]);
+            try {
+                $this->catalog->insertRow($metadata, ['payload' => 'missing-key']);
+                self::fail('an omitted primary key without a generator was accepted');
+            } catch (OrmException $error) {
+                self::assertSame(Code::ROW_INSERT_IDENTITY_REQUIRED, $error->code_);
+            }
+        } finally {
+            try {
+                $pdo->exec("DROP TABLE IF EXISTS {$qualified}");
+            } finally {
+                $setup->close();
+            }
+        }
     }
 
     private function assertAutomaticGeneratedKey(): void

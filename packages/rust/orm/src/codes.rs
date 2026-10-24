@@ -115,6 +115,10 @@ pub const ROW_SNAPSHOT_INVALID: &str = "ROW_SNAPSHOT_INVALID";
 pub const ROW_SNAPSHOT_LIMIT: &str = "ROW_SNAPSHOT_LIMIT";
 /// executor
 pub const ROW_INSERT_INVALID: &str = "ROW_INSERT_INVALID";
+/// executor: primary key has no database-generated value
+pub const ROW_INSERT_IDENTITY_REQUIRED: &str = "ROW_INSERT_IDENTITY_REQUIRED";
+/// executor: the selected generated-key strategy cannot support this key shape
+pub const ROW_INSERT_UNSUPPORTED: &str = "ROW_INSERT_UNSUPPORTED";
 /// executor
 pub const ROW_UPDATE_INVALID: &str = "ROW_UPDATE_INVALID";
 /// executor

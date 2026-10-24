@@ -20955,6 +20955,72 @@
       ]
     },
     {
+      "id": "error-code-row-insert-identity-required",
+      "kind": "api",
+      "requirements": [
+        "INT-65"
+      ],
+      "symbols": [
+        {
+          "implementation": "go",
+          "symbol": "github.com/polyspec/orm/packages/go/orm.CodeRowInsertIdentityRequired"
+        },
+        {
+          "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Code::ROW_INSERT_IDENTITY_REQUIRED"
+        },
+        {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Code::ROW_INSERT_IDENTITY_REQUIRED"
+        },
+        {
+          "implementation": "typescript",
+          "symbol": "@polyspec/orm!codes.ROW_INSERT_IDENTITY_REQUIRED:var"
+        },
+        {
+          "implementation": "python",
+          "symbol": "orm.codes.ROW_INSERT_IDENTITY_REQUIRED"
+        },
+        {
+          "implementation": "rust",
+          "symbol": "polyspec_orm::codes::ROW_INSERT_IDENTITY_REQUIRED"
+        }
+      ]
+    },
+    {
+      "id": "error-code-row-insert-unsupported",
+      "kind": "api",
+      "requirements": [
+        "INT-65"
+      ],
+      "symbols": [
+        {
+          "implementation": "go",
+          "symbol": "github.com/polyspec/orm/packages/go/orm.CodeRowInsertUnsupported"
+        },
+        {
+          "implementation": "php",
+          "symbol": "Polyspec\\Orm\\Code::ROW_INSERT_UNSUPPORTED"
+        },
+        {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Code::ROW_INSERT_UNSUPPORTED"
+        },
+        {
+          "implementation": "typescript",
+          "symbol": "@polyspec/orm!codes.ROW_INSERT_UNSUPPORTED:var"
+        },
+        {
+          "implementation": "python",
+          "symbol": "orm.codes.ROW_INSERT_UNSUPPORTED"
+        },
+        {
+          "implementation": "rust",
+          "symbol": "polyspec_orm::codes::ROW_INSERT_UNSUPPORTED"
+        }
+      ]
+    },
+    {
       "id": "error-code-row-update-invalid",
       "kind": "api",
       "requirements": [

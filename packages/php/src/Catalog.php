@@ -421,7 +421,7 @@ final class Catalog
                     continue;
                 }
                 throw new OrmException(
-                    Code::ROW_INSERT_INVALID,
+                    Code::ROW_INSERT_IDENTITY_REQUIRED,
                     'explicit primary-key value of "' . $column->name . '" is required'
                 );
             }
@@ -432,7 +432,7 @@ final class Catalog
             fn (int $index): bool => $declared->columns[$index]->automaticKey
         ));
         if ($this->dialect === 'mysql' && $mysqlAutoKeyCount > 1) {
-            throw new OrmException(Code::ROW_MUTATION_UNSUPPORTED, 'multiple AUTO_INCREMENT identities');
+            throw new OrmException(Code::ROW_INSERT_UNSUPPORTED, 'multiple AUTO_INCREMENT identities');
         }
         return $this->write(
             function (\PDO $pdo) use (

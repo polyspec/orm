@@ -122,6 +122,10 @@ final class Code
     public const ROW_SNAPSHOT_LIMIT = 'ROW_SNAPSHOT_LIMIT';
     /** executor */
     public const ROW_INSERT_INVALID = 'ROW_INSERT_INVALID';
+    /** executor: primary key has no database-generated value */
+    public const ROW_INSERT_IDENTITY_REQUIRED = 'ROW_INSERT_IDENTITY_REQUIRED';
+    /** executor: the selected generated-key strategy cannot support this key shape */
+    public const ROW_INSERT_UNSUPPORTED = 'ROW_INSERT_UNSUPPORTED';
     /** executor */
     public const ROW_UPDATE_INVALID = 'ROW_UPDATE_INVALID';
     /** executor */
