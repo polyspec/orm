@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The transaction failure units for rollback, rollback faults, and failed savepoint end have executable bindings across all six clients. Focused native cases pass. Go's public nested-transaction test covers failed savepoint rollback and release and names DIA-181 and PLN-17 (KSTD-2-11-11).
 - The dbspec set-reader requirements DBS-12 through DBS-15 are explicit requirement bullets, and DIA-198 has one six-runtime query-count unit with native SQLite-memory cases. The focused owner checks and scoped declarations pass; the pre-fix RED replay used the exact `config/parity.json` input from `c3bd1a817` at current test sources, and exposed five missing runtime bindings (KSTD-2-9).
 - The PHP extension now tags SQLite row-lock write events with their transaction ID. The focused native transaction test verifies repeated transactions (KSTD-7-5-2).
 - The 63 named client API units are checked against their exact INT or COD requirement bullets in both specification languages. The focused requirement test passed 1/1; its RED replay used the exact pre-fix config and specification inputs from `694ca3a35^` while retaining the current test and runtime (KSTD-2-11-7-1).

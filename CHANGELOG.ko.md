@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 490146500fdbe4c9a6d4ac12cf51defb2738424636a344f9eddddb0695521391 -->
+<!-- source-sha256: f76dcaf95bb974e7822af15b26cc79db993d37c1a4eeb53c0880a3524569cfc4 -->
 # 변경 이력
 
 ## Unreleased
 
+- rollback, rollback fault, failed savepoint end 동작을 검증하는 transaction failure unit이 여섯 client 모두에 실행 가능한 binding을 갖는다. Focused native case가 통과한다. Go의 public nested-transaction test는 savepoint rollback과 release 실패를 다루고 DIA-181 및 PLN-17을 명시한다(KSTD-2-11-11).
 - dbspec set-reader 요구사항 DBS-12부터 DBS-15까지를 명시적 requirement bullet로 정리했고, DIA-198은 여섯 runtime의 query-count unit 하나로 묶어 SQLite memory native case를 포함한다. Focused owner check와 scoped declaration이 통과했다. 수정 전 RED replay는 현재 test source에서 `c3bd1a817`의 `config/parity.json` 입력만 사용해 runtime binding 다섯 개가 빠진 사실을 확인했다(KSTD-2-9).
 - PHP 확장의 SQLite row-lock write event에 트랜잭션 ID를 기록한다. focused native transaction 테스트가 연속 트랜잭션을 확인한다(KSTD-7-5-2).
 - 이름이 지정된 client API unit 63개가 두 언어 specification의 정확한 INT 또는 COD requirement bullet을 인용하는지 확인한다. Focused requirement test는 1/1 통과했다. RED replay는 현재 test와 runtime을 유지하고 `694ca3a35^`의 config와 specification 입력만 정확히 사용했다(KSTD-2-11-7-1).
