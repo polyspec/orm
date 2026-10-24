@@ -13,6 +13,8 @@ use ReflectionClass;
 #[Large]
 final class CoverageConformanceVerificationExtensionTest extends TestCase
 {
+    private const CONFORMANCE_VECTORS = ['conditions_values', 'relations', 'audit_lazy'];
+
     private static function extensionPath(): string
     {
         $path = getenv('POLYSPEC_ORM_EXTENSION');
@@ -86,19 +88,20 @@ final class CoverageConformanceVerificationExtensionTest extends TestCase
             $recorded = coverageJson("$root/tests/conformance/$file", false);
             $expected = [];
             foreach ($recorded->vectors as $vector) {
-                if (in_array($vector->name, \Polyspec\Orm\Tests\CONFORMANCE_VECTORS, true)) {
+                if (in_array($vector->name, self::CONFORMANCE_VECTORS, true)) {
                     $expected[$vector->name] = $vector->expect;
                 }
             }
-            Assert::assertCount(count(\Polyspec\Orm\Tests\CONFORMANCE_VECTORS), $expected);
+            Assert::assertCount(count(self::CONFORMANCE_VECTORS), $expected);
+            $arguments = [];
+            foreach (self::CONFORMANCE_VECTORS as $vector) {
+                array_push($arguments, '--vector', $vector);
+            }
             $command = self::childCommand(
                 "$root/packages/php/testing/conformance/runner.php",
                 '--dsn',
                 (string) $dsn,
-                '--vector',
-                'conditions_values',
-                '--vector',
-                'relations',
+                ...$arguments,
             );
             [$status, $stdout, $stderr] = coverageProcess($command, $root, self::childEnvironment());
             if ($status !== 0) {
