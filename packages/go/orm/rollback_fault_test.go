@@ -67,13 +67,13 @@ func TestRollbackFaultSQLite(t *testing.T) {
 	rollbackFault(t, "sqlite")
 }
 
-// Requirements: PRT-43.
+// Requirements: INT-72.
 func TestRollbackFaultMySQL(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	rollbackFault(t, "mysql")
 }
 
-// Requirements: PRT-43.
+// Requirements: INT-72.
 func TestRollbackFaultPostgres(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	rollbackFault(t, "postgres")

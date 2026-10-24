@@ -11292,40 +11292,6 @@
       }
     },
     {
-      "id": "rust-rollback-fault-mysql",
-      "kind": "feature",
-      "requirements": [
-        "CFG-15",
-        "PRT-44",
-        "PRT-54",
-        "PRT-59"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/rollback.rs",
-          "id": "rollback_fault_mysql"
-        }
-      ]
-    },
-    {
-      "id": "rust-rollback-fault-postgres",
-      "kind": "feature",
-      "requirements": [
-        "CFG-15",
-        "PRT-44",
-        "PRT-54",
-        "PRT-59"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/rollback.rs",
-          "id": "rollback_fault_postgres"
-        }
-      ]
-    },
-    {
       "id": "rust-savepoint-rollback-failed-mysql",
       "kind": "feature",
       "requirements": [
@@ -21296,38 +21262,20 @@
       "requirements": ["INT-72"],
       "bindings": [
         {"implementation": "go", "test": "packages/go/orm/rollback_fault_test.go", "id": "TestRollbackFaultSQLite"},
+        {"implementation": "go", "test": "packages/go/orm/rollback_fault_test.go", "id": "TestRollbackFaultMySQL"},
+        {"implementation": "go", "test": "packages/go/orm/rollback_fault_test.go", "id": "TestRollbackFaultPostgres"},
         {"implementation": "php", "test": "packages/php/tests/TransactionFailureTest.php", "id": "TransactionFailureTest::test_rollback_fault_is_consumed_after_transaction_rollback"},
+        {"implementation": "php", "test": "packages/php/tests/RollbackTest.php", "id": "RollbackTest::testRollbackFault"},
         {"implementation": "php-extension", "test": "packages/php-ext/tests/TransactionFailureNativeTest.php", "id": "TransactionFailureNativeTest::test_rollback_fault_is_consumed_after_transaction_rollback"},
         {"implementation": "typescript", "test": "packages/ts/tests/transaction-failure.mjs", "id": "transaction-failure/rollback-fault-consumption"},
+        {"implementation": "typescript", "test": "packages/ts/tests/rollback.mjs", "id": "rollback/rollback_fault/sqlite"},
+        {"implementation": "typescript", "test": "packages/ts/tests/rollback.mjs", "id": "rollback/rollback_fault/mysql"},
+        {"implementation": "typescript", "test": "packages/ts/tests/rollback.mjs", "id": "rollback/rollback_fault/postgres"},
         {"implementation": "python", "test": "packages/python/tests/test_rollback_fault.py", "id": "test_the_fault_reports_the_next_failed_rollback"},
-        {"implementation": "rust", "test": "packages/rust/orm/tests/rollback.rs", "id": "rollback_fault_sqlite"}
+        {"implementation": "rust", "test": "packages/rust/orm/tests/rollback.rs", "id": "rollback_fault_sqlite"},
+        {"implementation": "rust", "test": "packages/rust/orm/tests/rollback.rs", "id": "rollback_fault_mysql"},
+        {"implementation": "rust", "test": "packages/rust/orm/tests/rollback.rs", "id": "rollback_fault_postgres"}
       ]
-    },
-    {
-      "id": "go-rollback-fault-mysql",
-      "kind": "feature",
-      "requirements": ["PRT-43"],
-      "bindings": [
-        {"implementation": "go", "test": "packages/go/orm/rollback_fault_test.go", "id": "TestRollbackFaultMySQL"}
-      ],
-      "owner": {
-        "kind": "release-package",
-        "artifact": "go-module",
-        "package": "github.com/polyspec/orm/packages/go"
-      }
-    },
-    {
-      "id": "go-rollback-fault-postgres",
-      "kind": "feature",
-      "requirements": ["PRT-43"],
-      "bindings": [
-        {"implementation": "go", "test": "packages/go/orm/rollback_fault_test.go", "id": "TestRollbackFaultPostgres"}
-      ],
-      "owner": {
-        "kind": "release-package",
-        "artifact": "go-module",
-        "package": "github.com/polyspec/orm/packages/go"
-      }
     },
     {
       "id": "transaction-failure-savepoint-end",

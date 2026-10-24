@@ -310,12 +310,14 @@ async fn rollback_fault_sqlite() {
 }
 
 #[tokio::test]
+// Requirements: INT-72.
 async fn rollback_fault_mysql() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("mysql", "rollback_fault").await;
 }
 
 #[tokio::test]
+// Requirements: INT-72.
 async fn rollback_fault_postgres() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     bounded("postgres", "rollback_fault").await;

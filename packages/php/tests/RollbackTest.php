@@ -373,6 +373,7 @@ final class RollbackTest extends TestCase
     }
 
     #[DataProvider('drivers')]
+    // Requirements: INT-72.
     public function testRollbackFault(string $driver): void
     {
         // The case installs its documents in a case database of its own, removed when it ends, also when it fails.

@@ -158,6 +158,7 @@ function checkFaultEntry() {
  * is consumed: after that, the transaction throws only the callback error, and the connection
  * handles later requests.
  */
+// Requirements: INT-72.
 async function rollbackFault(driver, dsn) {
   checkFaultEntry();
   const db = await connect(driver, dsn);
