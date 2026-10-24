@@ -46,10 +46,12 @@ final class ModelWriteSurfaceTest extends TestCase
     public function testNativeMarkdownWriteReturnsFirstKeyOrNullWhenNoKeysWereAnswered(): void
     {
         $manifestHash = \Polyspec\Orm\Tests\MarkdownModel\People::meta()['manifest_hash'];
-        foreach ([
+        foreach (
+            [
             ['{"affected":1,"keys":["P1","P2"]}', ['P1', 1]],
             ['{"affected":0,"keys":[]}', [null, 0]],
-        ] as [$answer, $expected]) {
+            ] as [$answer, $expected]
+        ) {
             $server = \Polyspec\Orm\Tests\markdown_fake_server(['{"ok":true}', $answer]);
             $db = \Polyspec\Orm\Tests\MarkdownModel\connect($server[2], new Config());
             try {
@@ -81,12 +83,14 @@ final class ModelWriteSurfaceTest extends TestCase
         $callbackClass = new \ReflectionClass(\Polyspec\Orm\ModelCreatesCallback::class);
         self::assertTrue($callbackClass->isInternal());
         self::assertTrue($callbackClass->isFinal());
-        foreach ([
+        foreach (
+            [
             \Polyspec\Orm\ModelCreatesCallback::class,
             \Polyspec\Orm\ModelRestoreHook::class,
             \Polyspec\Orm\ModelRestoreOrCreateCallback::class,
             \Polyspec\Orm\ModelDeleteCallback::class,
-        ] as $class) {
+            ] as $class
+        ) {
             $reflection = new \ReflectionClass($class);
             self::assertTrue($reflection->isInternal(), $class);
             self::assertTrue($reflection->isFinal(), $class);
@@ -96,7 +100,8 @@ final class ModelWriteSurfaceTest extends TestCase
         }
         $capturedModel = new ModelWriteCallbackFixture();
         $callback = $callbackClass->newInstanceWithoutConstructor();
-        foreach ([
+        foreach (
+            [
             'model' => $capturedModel,
             'rows' => [],
             'columns' => [],
@@ -104,7 +109,8 @@ final class ModelWriteSurfaceTest extends TestCase
             'parts' => [],
             'offset' => 0,
             'total' => 0,
-        ] as $name => $value) {
+            ] as $name => $value
+        ) {
             $property = $callbackClass->getProperty($name);
             self::assertTrue($property->isPrivate(), $name);
             $property->setValue($callback, $value);
@@ -157,12 +163,14 @@ final class ModelWriteSurfaceTest extends TestCase
     public function testNullableValuesDoNotCoerceIntoNonNullableWriteScalars(): void
     {
         $model = new ModelWriteCallbackFixture();
-        foreach ([
+        foreach (
+            [
             static fn() => $model->update(null),
             static fn() => $model->delete(null),
             static fn() => $model->deleteRow(null),
             static fn() => $model->creates([], null),
-        ] as $call) {
+            ] as $call
+        ) {
             try {
                 $call();
                 self::fail('null must not coerce into a non-nullable native write argument');
