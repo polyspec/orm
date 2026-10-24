@@ -47,6 +47,22 @@ caseTest('the native OrmException API is bound by the PHP extension', COMPUTE, (
   );
 });
 
+caseTest('the native AES keyring API is bound by the PHP extension', COMPUTE, () => {
+  const units = new Map((readParity(root).units ?? []).map(unit => [unit.id, unit]));
+  for (const [id, symbol] of [
+    ['aes-keyring', 'Polyspec\\Orm\\AesKeyring'],
+    ['aes-keyring-versions', 'Polyspec\\Orm\\AesKeyring::versions'],
+    ['aes-rotation-status', 'Polyspec\\Orm\\AesRotationStatus'],
+  ]) {
+    const unit = units.get(id);
+    assert.ok(unit, `${id} API unit is missing`);
+    assert.ok(
+      unit.symbols?.some(entry => entry.implementation === 'php-extension' && entry.symbol === symbol),
+      `${id} does not bind the native ${symbol} symbol`,
+    );
+  }
+});
+
 caseTest('the API units of the error catalog cover every code of errors.yaml once', COMPUTE, () => {
   const parity = readParity(root);
   const codes = readErrorCatalog(root);
