@@ -18,6 +18,24 @@ use Polyspec\Orm\Utils;
 #[Medium]
 final class UtilsNativeTest extends TestCase
 {
+    public function testNativeUtilityConstructorsKeepTheirTypeErrors(): void
+    {
+        foreach (
+            [
+                \Polyspec\Orm\AesUtils::class => 'AesUtils',
+                PrivilegeUtils::class => 'PrivilegeUtils',
+                SchemaUtils::class => 'SchemaUtils',
+            ] as $class => $name
+        ) {
+            try {
+                new $class(new \stdClass(), new \stdClass());
+                self::fail("$name accepted objects that are not a Db and Utils");
+            } catch (\TypeError $error) {
+                self::assertSame("$name expects a Db and Utils", $error->getMessage());
+            }
+        }
+    }
+
     public function testWasInsertedChecksTransactionBeforeArguments(): void
     {
         $path = tempnam(sys_get_temp_dir(), 'orm-utils-was-inserted-');

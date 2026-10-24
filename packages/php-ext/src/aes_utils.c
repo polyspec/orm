@@ -173,19 +173,7 @@ ZEND_METHOD(Polyspec_Orm_AesUtils, __construct)
         Z_PARAM_OBJECT(db)
         Z_PARAM_OBJECT(utils)
     ZEND_PARSE_PARAMETERS_END();
-    zend_string *db_name = zend_string_init("Polyspec\\Orm\\Db", sizeof("Polyspec\\Orm\\Db") - 1, 0);
-    zend_class_entry *db_ce = zend_lookup_class(db_name);
-    zend_string_release(db_name);
-    zend_string *utils_name = zend_string_init("Polyspec\\Orm\\Utils", sizeof("Polyspec\\Orm\\Utils") - 1, 0);
-    zend_class_entry *utils_ce = zend_lookup_class(utils_name);
-    zend_string_release(utils_name);
-    if (db_ce == NULL || utils_ce == NULL || !instanceof_function(Z_OBJCE_P(db), db_ce)
-        || !instanceof_function(Z_OBJCE_P(utils), utils_ce)) {
-        zend_type_error("AesUtils expects a Db and Utils");
-        RETURN_THROWS();
-    }
-    zend_update_property(aes_utils_ce, Z_OBJ_P(ZEND_THIS), "db", sizeof("db") - 1, db);
-    zend_update_property(aes_utils_ce, Z_OBJ_P(ZEND_THIS), "u", sizeof("u") - 1, utils);
+    if (!dbs_bind_db_utils(ZEND_THIS, aes_utils_ce, db, utils, "AesUtils")) RETURN_THROWS();
 }
 
 ZEND_METHOD(Polyspec_Orm_AesUtils, status)

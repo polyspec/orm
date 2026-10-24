@@ -24,6 +24,24 @@ bool dbs_model_meta(zval *model, zval *meta)
     return EG(exception) == NULL && Z_TYPE_P(meta) == IS_ARRAY;
 }
 
+bool dbs_bind_db_utils(zval *instance, zend_class_entry *ce, zval *db, zval *utils, const char *name)
+{
+    zend_string *db_name = zend_string_init("Polyspec\\Orm\\Db", sizeof("Polyspec\\Orm\\Db") - 1, 0);
+    zend_class_entry *db_ce = zend_lookup_class(db_name);
+    zend_string_release(db_name);
+    zend_string *utils_name = zend_string_init("Polyspec\\Orm\\Utils", sizeof("Polyspec\\Orm\\Utils") - 1, 0);
+    zend_class_entry *utils_ce = zend_lookup_class(utils_name);
+    zend_string_release(utils_name);
+    if (db_ce == NULL || utils_ce == NULL || !instanceof_function(Z_OBJCE_P(db), db_ce)
+        || !instanceof_function(Z_OBJCE_P(utils), utils_ce)) {
+        zend_type_error("%s expects a Db and Utils", name);
+        return false;
+    }
+    zend_update_property(ce, Z_OBJ_P(instance), "db", sizeof("db") - 1, db);
+    zend_update_property(ce, Z_OBJ_P(instance), "u", sizeof("u") - 1, utils);
+    return true;
+}
+
 static zend_class_entry *utils_ce;
 
 static bool utils_call(zval *object, const char *method, zval *result, uint32_t argc, zval *argv)

@@ -131,6 +131,7 @@ void dbs_sort(void *base, size_t n, size_t size, int (*cmp)(const void *, const 
 int dbs_cmp_table_name(const void *a, const void *b, void *ctx);
 bool dbs_call_method(zval *object, const char *method, zval *result, uint32_t argc, zval *argv);
 bool dbs_model_meta(zval *model, zval *meta);
+bool dbs_bind_db_utils(zval *instance, zend_class_entry *ce, zval *db, zval *utils, const char *name);
 
 /* ------------------------------------------------------------------- maps */
 
