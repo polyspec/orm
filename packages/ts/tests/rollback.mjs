@@ -29,6 +29,7 @@ import { CORE, Db, OrmError } from '../dist/index.js';
 import { failNextRollback } from '@polyspec/orm/testing';
 import { schemaOf } from './schema_of.mjs';
 import { models } from './registered_models.mjs';
+import { createFailureCheck } from './check-state.mjs';
 
 const rollbackText = await readFile(new URL('../../../contracts/fixtures/rollback.dbs', import.meta.url), 'utf8');
 // CASE_DEADLINE_MS is the deadline of one case. A case creates a case database, installs the rollback document, runs a few failing transactions, then drops the database.
@@ -36,9 +37,7 @@ const CASE_DEADLINE_MS = 30_000;
 let failures = 0;
 let current = '';
 
-function check(cond, message) {
-  if (!cond) { failures++; console.error(`FAIL ${current}: ${message}`); }
-}
+const check = createFailureCheck(() => current, () => { failures++; });
 async function raised(run) {
   try { await run(); return undefined; } catch (error) { return error; }
 }

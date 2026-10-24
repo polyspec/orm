@@ -15,6 +15,7 @@ import { CORE, Db, OrmError } from '../dist/index.js';
 import { caseTest } from '../../../tests/testcase.mts';
 import { withCaseDatabase } from './case-database.mjs';
 import { schemaOf } from './schema_of.mjs';
+import { createFailureCheck } from './check-state.mjs';
 
 const refusalText = await readFile(new URL('../../../contracts/fixtures/refusal.dbs', import.meta.url), 'utf8');
 // CASE_DEADLINE_MS is the deadline of one case. A case creates a case database, installs the refusal document, runs a few writes that are rejected, then drops the database.
@@ -22,9 +23,7 @@ const CASE_DEADLINE_MS = 30_000;
 let failures = 0;
 let current = '';
 
-function check(cond, message) {
-  if (!cond) { failures++; console.error(`FAIL ${current}: ${message}`); }
-}
+const check = createFailureCheck(() => current, () => { failures++; });
 async function raised(run) {
   try { await run(); return undefined; } catch (error) { return error; }
 }

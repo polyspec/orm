@@ -12,14 +12,13 @@ import { withCaseDatabase } from './case-database.mjs';
 import { nativeQuery } from './coverage_case.mjs';
 import { manifestOf } from './registered_models.mjs';
 import { captureError } from './capture-error.mjs';
+import { createFailureCheck } from './check-state.mjs';
 
 // CASE_DEADLINE_MS is the deadline of one database case: a case builds a database, installs a set and runs statements.
 const CASE_DEADLINE_MS = 60_000;
 let failures = 0;
 let current = '';
-function check(cond, message) {
-  if (!cond) { failures++; console.error(`FAIL ${current}: ${message}`); }
-}
+const check = createFailureCheck(() => current, () => { failures++; });
 const thrown = run => captureError(run);
 
 for (const env of ['ORM_TEST_MYSQL_DSN', 'ORM_TEST_POSTGRES_DSN']) {

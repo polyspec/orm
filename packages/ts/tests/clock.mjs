@@ -17,6 +17,7 @@ import { wallMicros } from '../dist/clock.js';
 import { caseTest } from '../../../tests/testcase.mts';
 import { mysqlConnection, postgresClient, withCaseDatabase } from './case-database.mjs';
 import { schemaOf } from './schema_of.mjs';
+import { createFailureCheck } from './check-state.mjs';
 
 const clockText = await readFile(new URL('../../../contracts/fixtures/clock.dbs', import.meta.url), 'utf8');
 const markText = await readFile(new URL('../../../contracts/fixtures/clock_mark.dbs', import.meta.url), 'utf8');
@@ -25,9 +26,7 @@ const CASE_DEADLINE_MS = 30_000;
 let failures = 0;
 let current = '';
 
-function check(cond, message) {
-  if (!cond) { failures++; console.error(`FAIL ${current}: ${message}`); }
-}
+const check = createFailureCheck(() => current, () => { failures++; });
 
 const { clock_event: ClockEvent } = models(clockText);
 const { clock_mark: ClockMark } = models(markText);

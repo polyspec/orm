@@ -15,6 +15,7 @@ import { caseTest } from '../../../tests/testcase.mts';
 import { withCaseDatabase } from './case-database.mjs';
 import { nativeQuery } from './coverage_case.mjs';
 import { captureError } from './capture-error.mjs';
+import { createFailureCheck } from './check-state.mjs';
 
 // CASE_DEADLINE_MS is the deadline of one case. A case creates a database, installs two sets, and adds columns
 // a few times, then drops the database.
@@ -31,9 +32,7 @@ const ADDED_INDEX = ['addcol_item.note', 'addcol_item.ix_addcol_item_label', 'ad
 const MISSING_UNIQUE = 'add_unique addcol_item.uq_addcol_item_label: a missing unique key can fail on the existing rows; add it with a plan';
 let failures = 0;
 let current = '';
-function check(cond, message) {
-  if (!cond) { failures++; console.error(`FAIL ${current}: ${message}`); }
-}
+const check = createFailureCheck(() => current, () => { failures++; });
 /** The OrmError that the call rejected. null on success. */
 const thrown = run => captureError(run, error => error instanceof OrmError);
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
