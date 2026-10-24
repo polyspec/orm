@@ -90,17 +90,7 @@ function plan_failure(string $id, array $diagnostics): never
 /** The text of the first column of the first row; SQL NULL is NULL. Only strings and integers are read as text. */
 function plan_value(PDO $pdo, string $query): string
 {
-    $rows = $pdo->query($query)->fetchAll(PDO::FETCH_NUM);
-    Assert::assertNotSame([], $rows, "$query: no row");
-    $value = $rows[0][0];
-    return match (true) {
-        $value === null => 'NULL',
-        is_string($value) => $value,
-        is_int($value) => (string) $value,
-        default => throw new RuntimeException(
-            "$query: value of type " . get_debug_type($value) . ' has no text form here'
-        ),
-    };
+    return dbspec_value($pdo, $query, true);
 }
 
 /** Runs the step for the dialect. */

@@ -35,6 +35,22 @@ function dbspec_dsns(array $names, ?string $missingMessage = null): array
     return $dsns;
 }
 
+/** Reads a query's first value as text; the plan fixture also records SQL NULL as `NULL`. */
+function dbspec_value(PDO $pdo, string $query, bool $nullAsText = false): string
+{
+    $rows = $pdo->query($query)->fetchAll(PDO::FETCH_NUM);
+    Assert::assertNotSame([], $rows, "$query: no row");
+    $value = $rows[0][0];
+    return match (true) {
+        $value === null && $nullAsText => 'NULL',
+        is_string($value) => $value,
+        is_int($value) => (string) $value,
+        default => throw new RuntimeException(
+            "$query: value of type " . get_debug_type($value) . ' has no text form here'
+        ),
+    };
+}
+
 // Checks dbspec cases in the shape of tests/dbspec/cases.json with the PHPUnit
 // assertions; the test classes run each case as one data set named by its id.
 

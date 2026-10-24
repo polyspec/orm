@@ -13,6 +13,7 @@ namespace Polyspec\Orm\Tests;
 // rule.
 
 use InvalidArgumentException;
+use PDO;
 use RuntimeException;
 use Polyspec\Orm\Dbspec\Change;
 use Polyspec\Orm\Dbspec\Dbspec;
@@ -376,6 +377,26 @@ final class DbspecPlanTest extends TestCase
                     putenv("$name=$value");
                 }
             }
+        }
+    }
+
+    public function testDbspecQueryValuesPreserveEachNullPolicy(): void
+    {
+        $pdo = new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+        self::assertSame('7', dbspec_value($pdo, 'SELECT 7'));
+        self::assertSame('text', dbspec_value($pdo, "SELECT 'text'"));
+        self::assertSame('NULL', dbspec_value($pdo, 'SELECT NULL', true));
+        try {
+            dbspec_value($pdo, 'SELECT NULL');
+            self::fail('the apply fixture accepted SQL NULL');
+        } catch (RuntimeException $error) {
+            self::assertSame('SELECT NULL: value of type null has no text form here', $error->getMessage());
+        }
+        try {
+            dbspec_value($pdo, 'SELECT 1.5', true);
+            self::fail('a floating point value was accepted as text');
+        } catch (RuntimeException $error) {
+            self::assertSame('SELECT 1.5: value of type float has no text form here', $error->getMessage());
         }
     }
 }
