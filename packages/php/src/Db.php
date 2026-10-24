@@ -743,7 +743,7 @@ final class Db
             $v = $fn();
         } catch (\Throwable $e) {
             array_pop(self::$frames);
-            $failure = $e instanceof \PDOException ? $this->driverError($e) : $e;
+            $failure = $this->transactionFailure($e);
             try {
                 $this->finish($frame, false);
             } catch (\Throwable $cleanup) {
@@ -978,6 +978,11 @@ final class Db
         );
     }
 
+    private function transactionFailure(\Throwable $failure): \Throwable
+    {
+        return $failure instanceof \PDOException ? $this->driverError($failure) : $failure;
+    }
+
     private function savepoint(TxFrame $frame, \Closure $fn): mixed
     {
         $name = 'orm_sp_' . (++$frame->savepoints);
@@ -992,7 +997,7 @@ final class Db
                 $v = $fn();
             } catch (\Throwable $e) {
                 array_pop(self::$frames);
-                $failure = $e instanceof \PDOException ? $this->driverError($e) : $e;
+                $failure = $this->transactionFailure($e);
                 // Attempts both statements: the one that undoes the work after the savepoint, and the one that
                 // releases the savepoint.
                 $ended = self::joined(array_values(array_filter([

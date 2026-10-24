@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Tests;
 
 use DateTimeZone;
+use PDOException;
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;
@@ -13,6 +14,50 @@ use RuntimeException;
 
 trait TransactionFailureCases
 {
+    public function test_transaction_maps_driver_callback_error(): void
+    {
+        $pdo = new ModelTestFailingPdo('sqlite::memory:');
+        $db = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
+        $driver = new PDOException('transaction callback driver failure');
+
+        try {
+            try {
+                $db->transaction(static function () use ($driver): never {
+                    throw $driver;
+                }, retry: 0);
+                self::fail('a driver exception must be normalized');
+            } catch (OrmException $error) {
+                self::assertSame(Code::DRIVER, $error->code_);
+                self::assertSame($driver, $error->getPrevious());
+            }
+        } finally {
+            $db->close();
+        }
+    }
+
+    public function test_savepoint_maps_driver_callback_error(): void
+    {
+        $pdo = new ModelTestFailingPdo('sqlite::memory:');
+        $db = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
+        $driver = new PDOException('savepoint callback driver failure');
+
+        try {
+            try {
+                $db->transaction(static function () use ($db, $driver): void {
+                    $db->transaction(static function () use ($driver): never {
+                        throw $driver;
+                    });
+                }, retry: 0);
+                self::fail('a savepoint driver exception must be normalized');
+            } catch (OrmException $error) {
+                self::assertSame(Code::DRIVER, $error->code_);
+                self::assertSame($driver, $error->getPrevious());
+            }
+        } finally {
+            $db->close();
+        }
+    }
+
     public function test_transaction_keeps_callback_and_failed_rollback_errors(): void
     {
         $pdo = new ModelTestFailingPdo('sqlite::memory:');

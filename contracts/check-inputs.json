@@ -2003,6 +2003,7 @@
         "composer"
       ],
       "inputs": [
+        "packages/php/src/Db.php",
         "packages/php/tests/TransactionFailureTest.php",
         "packages/php/tests/TransactionFailureCases.php",
         "packages/php/tests/ModelTestFailingPdo.php",
