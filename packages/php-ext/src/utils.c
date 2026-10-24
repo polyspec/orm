@@ -9,6 +9,15 @@ int dbs_cmp_table_name(const void *a, const void *b, void *ctx)
     return str_cmp((*(table *const *)a)->name, (*(table *const *)b)->name);
 }
 
+int dbs_compare_values(zval *left, zval *right)
+{
+    zval result;
+    compare_function(&result, left, right);
+    int order = Z_TYPE(result) == IS_LONG ? (int)Z_LVAL(result) : 0;
+    zval_ptr_dtor(&result);
+    return order;
+}
+
 bool dbs_call_method(zval *object, const char *method, zval *result, uint32_t argc, zval *argv)
 {
     zval function;

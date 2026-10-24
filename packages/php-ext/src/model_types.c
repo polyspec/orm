@@ -1,5 +1,6 @@
 /* Native Request, StyledValue, Page, Func and PendingTime helpers (T182-6). */
 #include "model_types.h"
+#include "dbspec.h"
 #include "orm_exception_object.h"
 #include "Zend/zend_exceptions.h"
 #include "Zend/zend_interfaces.h"
@@ -87,11 +88,7 @@ static bool orm_types_throw(const char *code, const char *message)
 
 static int types_bucket_compare(Bucket *left, Bucket *right)
 {
-    zval result;
-    compare_function(&result, &left->val, &right->val);
-    int order = Z_TYPE(result) == IS_LONG ? (int)Z_LVAL(result) : 0;
-    zval_ptr_dtor(&result);
-    return order;
+    return dbs_compare_values(&left->val, &right->val);
 }
 
 static bool array_is_list_native(HashTable *ht)

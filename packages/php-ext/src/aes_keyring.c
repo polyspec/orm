@@ -1,5 +1,6 @@
 #include "php.h"
 #include "Zend/zend_exceptions.h"
+#include "dbspec.h"
 #include "codec.h"
 #include <string.h>
 
@@ -48,11 +49,7 @@ static int aes_key_bucket_compare(Bucket *left, Bucket *right)
     if (Z_TYPE(left->val) == IS_LONG && Z_TYPE(right->val) == IS_LONG) {
         return (Z_LVAL(left->val) > Z_LVAL(right->val)) - (Z_LVAL(left->val) < Z_LVAL(right->val));
     }
-    zval result;
-    compare_function(&result, &left->val, &right->val);
-    int order = Z_TYPE(result) == IS_LONG ? (int)Z_LVAL(result) : 0;
-    zval_ptr_dtor(&result);
-    return order;
+    return dbs_compare_values(&left->val, &right->val);
 }
 
 static zend_long parse_stored_version(zval *value, bool *valid)
