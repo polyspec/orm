@@ -36,6 +36,20 @@ final class Generator
         );
     }
 
+    /** @param array{columns: list<array{name: string}>} $meta @return array<string, true> */
+    private static function staticMethods(array $meta): array
+    {
+        $methods = array_fill_keys([
+            ...array_map('strtolower', self::modelMethods()),
+            ...array_map('strtolower', array_keys(self::queryMethodMap($meta))),
+        ], true);
+        foreach ($meta['columns'] as $column) {
+            $name = self::pascal($column['name']);
+            $methods[strtolower("get$name")] = $methods[strtolower("set$name")] = true;
+        }
+        return $methods;
+    }
+
     /** Column naming rules of the DSL. */
     private const RESERVED_SEGMENTS = ['and', 'or', 'with', 'gt', 'lt', 'ge', 'le', 'eq', 'ne', 'lk', 'lb',
         'between', 'tuple'];
@@ -319,12 +333,7 @@ final class Generator
                 if (!in_array(self::pascal($meta['entity']), $site['classes'], true)) {
                     continue;
                 }
-                $static = array_fill_keys([...array_map('strtolower', self::modelMethods()),
-                    ...array_map('strtolower', array_keys(self::queryMethodMap($meta)))], true);
-                foreach ($meta['columns'] as $c) {
-                    $p = self::pascal($c['name']);
-                    $static[strtolower("get$p")] = $static[strtolower("set$p")] = true;
-                }
+                $static = self::staticMethods($meta);
                 if (isset($static[strtolower($name)])) {
                     $declaresAny = $accepts = true;
                     continue;
@@ -356,12 +365,7 @@ final class Generator
         }
         foreach ($metas as $meta) {
             $class = self::pascal($meta['entity']);
-            $static = array_fill_keys([...array_map('strtolower', self::modelMethods()),
-                ...array_map('strtolower', array_keys(self::queryMethodMap($meta)))], true);
-            foreach ($meta['columns'] as $c) {
-                $p = self::pascal($c['name']);
-                $static[strtolower("get$p")] = $static[strtolower("set$p")] = true;
-            }
+            $static = self::staticMethods($meta);
             $found = [];
             foreach ($calls[$class] ?? [] as $name => $counts) {
                 if (isset($static[strtolower($name)])) {
