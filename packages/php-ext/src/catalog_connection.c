@@ -2101,6 +2101,30 @@ static void cat_key_predicate(smart_str *sql, zval *metadata, const char *dialec
     } ZEND_HASH_FOREACH_END();
 }
 
+typedef enum {
+    CAT_CHANGE_COLUMNS,
+    CAT_CHANGE_ASSIGNMENTS,
+} cat_change_mode;
+
+/* Serializes validated Catalog changes and binds their values for insert and update statements. */
+static void cat_append_changes(smart_str *sql, zval *columns, zval *changes, const char *dialect, zval *args,
+                               cat_change_mode mode)
+{
+    bool first = true;
+    zval *pair;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(changes), pair) {
+        zend_long index = Z_LVAL_P(zend_hash_index_find(Z_ARRVAL_P(pair), 0));
+        zval *value = zend_hash_index_find(Z_ARRVAL_P(pair), 1);
+        zval nrv, *name = catalog_prop(zend_hash_index_find(Z_ARRVAL_P(columns), (zend_ulong)index), "name", &nrv);
+        if (!first) smart_str_appendc(sql, ',');
+        first = false;
+        cat_quote(sql, Z_STR_P(name), dialect);
+        if (mode == CAT_CHANGE_ASSIGNMENTS) smart_str_appends(sql, "=?");
+        Z_TRY_ADDREF_P(value);
+        add_next_index_zval(args, value);
+    } ZEND_HASH_FOREACH_END();
+}
+
 /* The primary-key lookup of a descriptor: at most two rows, locked where the server locks (Catalog::lookup). */
 static bool cat_lookup(zval *db, const char *dialect, zval *pdo, zval *metadata, zval *keys, bool lock, zval *rows)
 {
@@ -2628,18 +2652,7 @@ static bool cat_insert_body(zval *db, const char *dialect, zval *pdo, zval *decl
         smart_str_appends(&sql, strcmp(dialect, "mysql") == 0 ? "() VALUES()" : " DEFAULT VALUES");
     } else {
         smart_str_appends(&sql, " (");
-        bool first = true;
-        zval *pair;
-        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(changes), pair) {
-            zend_long index = Z_LVAL_P(zend_hash_index_find(Z_ARRVAL_P(pair), 0));
-            zval *value = zend_hash_index_find(Z_ARRVAL_P(pair), 1);
-            zval nrv, *name = catalog_prop(zend_hash_index_find(Z_ARRVAL_P(columns), (zend_ulong)index), "name", &nrv);
-            if (!first) smart_str_appendc(&sql, ',');
-            first = false;
-            cat_quote(&sql, Z_STR_P(name), dialect);
-            Z_TRY_ADDREF_P(value);
-            add_next_index_zval(&args, value);
-        } ZEND_HASH_FOREACH_END();
+        cat_append_changes(&sql, columns, changes, dialect, &args, CAT_CHANGE_COLUMNS);
         smart_str_appends(&sql, ") VALUES (");
         for (uint32_t k = 0; k < zend_hash_num_elements(Z_ARRVAL_P(changes)); k++) {
             if (k) smart_str_appendc(&sql, ',');
@@ -2889,19 +2902,7 @@ static bool cat_update_body(zval *db, const char *dialect, zval *pdo, zval *orig
     smart_str_appends(&sql, " SET ");
     zval args;
     array_init(&args);
-    bool first = true;
-    zval *pair;
-    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(changes), pair) {
-        zend_long index = Z_LVAL_P(zend_hash_index_find(Z_ARRVAL_P(pair), 0));
-        zval *value = zend_hash_index_find(Z_ARRVAL_P(pair), 1);
-        zval nrv, *name = catalog_prop(zend_hash_index_find(Z_ARRVAL_P(columns), (zend_ulong)index), "name", &nrv);
-        if (!first) smart_str_appendc(&sql, ',');
-        first = false;
-        cat_quote(&sql, Z_STR_P(name), dialect);
-        smart_str_appends(&sql, "=?");
-        Z_TRY_ADDREF_P(value);
-        add_next_index_zval(&args, value);
-    } ZEND_HASH_FOREACH_END();
+    cat_append_changes(&sql, columns, changes, dialect, &args, CAT_CHANGE_ASSIGNMENTS);
     cat_key_predicate(&sql, metadata, dialect, keys, &args);
     smart_str_0(&sql);
     zend_long affected = 0;
