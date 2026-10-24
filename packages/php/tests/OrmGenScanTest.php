@@ -56,6 +56,30 @@ final class OrmGenScanTest extends TestCase
         return $scan;
     }
 
+    /** @return array{int, string} */
+    private static function runScanDirectory(string $dir, string $out): array
+    {
+        $stderr = fopen('php://memory', 'w+');
+        ob_start();
+        $code = OrmGen::run(
+            [
+                'gen',
+                '--set',
+                dirname(__DIR__, 3) . '/contracts/fixtures/bench/dbspec-set.json',
+                '--out',
+                $out,
+                '--namespace',
+                self::NS,
+                '--scan',
+                "$dir/src"
+            ],
+            $stderr
+        );
+        ob_end_clean();
+        rewind($stderr);
+        return [$code, (string) stream_get_contents($stderr)];
+    }
+
     /**
      * Generates the models of contracts/fixtures/bench/dbspec-set.json with --scan of $sources in a new folder; returns
      * the code, stderr and the folder.
@@ -1061,32 +1085,11 @@ PHP;
         is_dir("$dir/src/nested") || mkdir("$dir/src/nested", 0o700, true);
         file_put_contents("$dir/src/nested/a.php", "<?php\n\$a = new " . self::NS . "\\Author();\n\$a->ltSeq(1);\n");
         file_put_contents("$dir/src/notes.txt", "ltIgnored(");
-        $run = function (string $out) use ($dir): array {
-            $stderr = fopen('php://memory', 'w+');
-            ob_start();
-            $code = OrmGen::run(
-                [
-                    'gen',
-                    '--set',
-                    dirname(__DIR__, 3) . '/contracts/fixtures/bench/dbspec-set.json',
-                    '--out',
-                    $out,
-                    '--namespace',
-                    self::NS,
-                    '--scan',
-                    "$dir/src"
-                ],
-                $stderr
-            );
-            ob_end_clean();
-            rewind($stderr);
-            return [$code, (string) stream_get_contents($stderr)];
-        };
-        [$code, $err] = $run("$dir/model");
+        [$code, $err] = self::runScanDirectory($dir, "$dir/model");
         self::assertSame(0, $code, $err);
         self::assertSame(['ltSeq'], self::tags($dir, 'Author'));
         file_put_contents("$dir/src/broken.php", "<?php\n\$a = new (;\n");
-        [$code, $err] = $run("$dir/model2");
+        [$code, $err] = self::runScanDirectory($dir, "$dir/model2");
         self::assertSame(1, $code);
         self::assertStringContainsString('broken.php', $err);
     }
@@ -1132,34 +1135,13 @@ PHP;
             "$dir/src/vendor/pkg/b.php",
             "<?php\n\$a = new " . self::NS . "\\Author();\n\$a->gtSeq(1);\n"
         );
-        $run = function (string $out) use ($dir): array {
-            $stderr = fopen('php://memory', 'w+');
-            ob_start();
-            $code = OrmGen::run(
-                [
-                    'gen',
-                    '--set',
-                    dirname(__DIR__, 3) . '/contracts/fixtures/bench/dbspec-set.json',
-                    '--out',
-                    $out,
-                    '--namespace',
-                    self::NS,
-                    '--scan',
-                    "$dir/src"
-                ],
-                $stderr
-            );
-            ob_end_clean();
-            rewind($stderr);
-            return [$code, (string) stream_get_contents($stderr)];
-        };
-        [$code, $err] = $run("$dir/model");
+        [$code, $err] = self::runScanDirectory($dir, "$dir/model");
         self::assertSame(0, $code, $err);
         self::assertSame(['ltSeq'], self::tags($dir, 'Author'));
         mkdir("$dir/elsewhere", 0o700, true);
         file_put_contents("$dir/elsewhere/c.php", "<?php\n\$a = new " . self::NS . "\\Author();\n\$a->geSeq(1);\n");
         symlink("$dir/elsewhere", "$dir/src/linked");
-        [$code, $err] = $run("$dir/model2");
+        [$code, $err] = self::runScanDirectory($dir, "$dir/model2");
         self::assertSame(1, $code);
         self::assertStringContainsString("$dir/src/linked is a symlink", $err);
     }
