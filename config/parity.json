@@ -19758,6 +19758,10 @@
           "symbol": "Polyspec\\Orm\\Stats"
         },
         {
+          "implementation": "php-extension",
+          "symbol": "Polyspec\\Orm\\Stats"
+        },
+        {
           "implementation": "typescript",
           "symbol": "@polyspec/orm!PoolStats:interface"
         },

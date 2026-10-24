@@ -29,6 +29,15 @@ const sources = (): Map<string, string> => new Map([
   ['codes.py', 'IR_INVALID = "IR_INVALID"\n'],
 ]);
 
+caseTest('the native Stats API is bound by the PHP extension', COMPUTE, () => {
+  const unit = (readParity(root).units ?? []).find(entry => entry.id === 'client-db-stats');
+  assert.ok(unit, 'client-db-stats API unit is missing');
+  assert.ok(
+    unit.symbols?.some(entry => entry.implementation === 'php-extension' && entry.symbol === 'Polyspec\\Orm\\Stats'),
+    'client-db-stats does not bind the native Polyspec\\Orm\\Stats class',
+  );
+});
+
 caseTest('the API units of the error catalog cover every code of errors.yaml once', COMPUTE, () => {
   const parity = readParity(root);
   const codes = readErrorCatalog(root);
