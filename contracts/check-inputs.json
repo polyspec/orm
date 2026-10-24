@@ -2797,7 +2797,31 @@
         "packages/python/src/polyspec/orm/core.py",
         "packages/python/src/polyspec/orm/engine/planner.py",
         "packages/python/src/polyspec/orm/database.py",
-        "packages/python/tests/test_complex_query.py"
+        "packages/python/tests/test_complex_query.py",
+        "packages/python/tests/complex_query_product.py",
+        "contracts/fixtures/complex_query/complex_query.dbs",
+        "contracts/fixtures/complex_query/complex_query.json"
+      ]
+    },
+    "complex-query-python-mysql-check": {
+      "scope": "suite",
+      "needs": [
+        "databases",
+        "python"
+      ]
+    },
+    "complex-query-python-postgres-check": {
+      "scope": "suite",
+      "needs": [
+        "databases",
+        "python"
+      ]
+    },
+    "complex-query-python-sqlite-check": {
+      "scope": "suite",
+      "needs": [
+        "databases",
+        "python"
       ]
     },
     "parity-declarations-check": {

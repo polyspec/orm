@@ -1,99 +1,27 @@
+import tempfile
 import unittest
+from pathlib import Path
+from unittest.mock import patch
 
 from . import testcase
+from .complex_query_product import FIXTURE, SCHEMA_PATH, product_search_query
+from .test_sqlite import generate_document
+from polyspec.orm import codes
 from polyspec.orm.engine import Engine, model_of_documents, parse_document_set
-from polyspec.orm.model import Model, register_model
-
-
-SCHEMA = """dbspec 1 complex_query
-
-table product {
-  seq i64
-  name varchar(191)
-  short_description text
-  content text
-  primary key (seq)
-}
-
-table product_brand_lang {
-  seq i64
-  product_brand_seq i64
-  name varchar(191)
-  description text
-  primary key (seq)
-}
-
-table product_lang {
-  seq i64
-  product_seq i64
-  name varchar(191)
-  short_description text
-  content text
-  primary key (seq)
-}
-
-table product_relation_1 {
-  seq i64
-  product_seq i64
-  primary key (seq)
-}
-
-table product_relation_2 {
-  seq i64
-  product_seq i64
-  primary key (seq)
-}
-
-table product_relation_3 {
-  seq i64
-  product_seq i64
-  primary key (seq)
-}
-
-table product_relation_4 {
-  seq i64
-  product_seq i64
-  primary key (seq)
-}
-
-table product_relation_5 {
-  seq i64
-  product_seq i64
-  primary key (seq)
-}
-
-table product_relation_6 {
-  seq i64
-  product_seq i64
-  primary key (seq)
-}
-"""
+from polyspec.orm.errors import OrmError
 
 
 class ComplexQueryTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.runtime = model_of_documents(parse_document_set([SCHEMA]))
-        cls.registry = register_model(
-            cls.runtime.manifest_text,
-            cls.runtime.manifest_hash,
-            cls.runtime.external_text,
+        temporary = tempfile.TemporaryDirectory(prefix="orm-complex-query-models-")
+        cls.addClassCleanup(temporary.cleanup)
+        cls.models = generate_document(
+            str(Path(temporary.name) / "models"), SCHEMA_PATH
         )
-
-        def make_model(entity_name):
-            class GeneratedModel(Model):
-                @property
-                def entity_def(self):
-                    return cls.registry.entity_of(entity_name, GeneratedModel)
-
-            return GeneratedModel
-
-        cls.Product = make_model("product")
-        cls.ProductBrandLang = make_model("product_brand_lang")
-        cls.ProductLang = make_model("product_lang")
-        cls.Relations = [
-            make_model(f"product_relation_{index}") for index in range(1, 7)
-        ]
+        cls.runtime = model_of_documents(
+            parse_document_set([SCHEMA_PATH.read_text(encoding="utf-8")])
+        )
 
     def assert_fulltext_chain(self, model, method, columns):
         query = model()
@@ -116,73 +44,82 @@ class ComplexQueryTest(unittest.TestCase):
 
     def test_public_fulltext_boolean_chain_builds_typed_ir(self):
         self.assert_fulltext_chain(
-            self.ProductBrandLang,
+            self.models.ProductBrandLang,
             "fulltext_boolean_name_with_description",
             ["name", "description"],
         )
         self.assert_fulltext_chain(
-            self.ProductLang,
+            self.models.ProductLang,
             "fulltext_boolean_name_with_short_description_with_content",
             ["name", "short_description", "content"],
         )
         self.assert_fulltext_chain(
-            self.Product,
+            self.models.Product,
             "fulltext_boolean_name_with_short_description_with_content",
             ["name", "short_description", "content"],
         )
 
-    def test_paginate_runs_root_count_then_six_relations(self):
-        from unittest.mock import patch
-
+    def test_public_semijoin_product_search_builds_page_plan(self):
         from polyspec.orm import database
 
-        root = self.Product()
-        for relation in self.Relations:
-            root.relation(relation().match_seq_with_product_seq())
-        query = root.core.clone()
-        query.set_limit(0, 10)
-        built = query.build("paginate")
+        query = product_search_query(self.models, FIXTURE["input"])
+        limited = query.core.clone()
+        page = FIXTURE["input"]["page"]
+        per_page = FIXTURE["input"]["per_page"]
+        limited.set_limit((page - 1) * per_page, per_page)
+        built = limited.build("paginate")
         self.assertIsNone(built.error)
         request = built.finish()
-        plan = Engine(self.runtime, "mysql").compile(request)
-        self.assertEqual(
-            [step["role"] for step in plan["steps"]],
-            ["main", "count"] + ["relation"] * 6,
-        )
-        events = []
 
-        class FakeDb:
-            driver = "mysql"
-            request_hook = None
+        for dialect in ("mysql", "postgres"):
+            with self.subTest(dialect=dialect):
+                plan = Engine(self.runtime, dialect).compile(request)
+                expected_steps = FIXTURE["expected_plan_steps"][dialect]
+                self.assertEqual(
+                    [
+                        {"role": step["role"], "tables": step["tables"]}
+                        for step in plan["steps"]
+                    ],
+                    expected_steps,
+                )
+                events = []
 
-            def plan(self, _request):
-                return {"plan": plan}
+                class FakeDb:
+                    driver = dialect
+                    request_hook = None
 
-            def _send_step(self, _ex, _sql, step, _params):
-                events.append(step["role"])
-                return {"rows": [[7]]}
+                    def plan(self, _request):
+                        return {"plan": plan}
 
-        def read_root(_ex, _cached, _step, _params):
-            events.append("main")
-            return []
+                    def _send_step(self, _ex, _sql, step, _params):
+                        events.append(step["role"])
+                        return {"rows": [[FIXTURE["expected"]["total_count"]]]}
 
-        def read_relations(_ex, cached, _params, main):
-            events.extend(
-                step["role"]
-                for step in cached["plan"]["steps"][1:]
-                if step["role"] == "relation"
-            )
-            return {"main": main}
+                def read_root(_ex, _cached, _step, _params):
+                    events.append("main")
+                    return []
 
-        with (
-            patch.object(database, "_select", read_root),
-            patch.object(database, "_relations", read_relations),
-        ):
-            result = database.paginate(
-                database.Executor(FakeDb()), request, built.params
-            )
-        self.assertEqual(events, ["main", "count"] + ["relation"] * 6)
-        self.assertEqual(result["total"], 7)
+                def read_relations(_ex, cached, _params, main):
+                    events.extend(
+                        step["role"]
+                        for step in cached["plan"]["steps"][1:]
+                        if step["role"] == "relation"
+                    )
+                    return {"main": main}
+
+                with (
+                    patch.object(database, "_select", read_root),
+                    patch.object(database, "_relations", read_relations),
+                ):
+                    result = database.paginate(
+                        database.Executor(FakeDb()), request, built.params
+                    )
+                self.assertEqual(events, ["main", "count"] + ["relation"] * 6)
+                self.assertEqual(result["total"], FIXTURE["expected"]["total_count"])
+
+        with self.assertRaises(OrmError) as raised:
+            Engine(self.runtime, "sqlite").compile(request)
+        self.assertEqual(raised.exception.code, codes.OPERATOR_NOT_ALLOWED)
 
 
 if __name__ == "__main__":
