@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- The PHP extension generates arginfo offline in a temporary build copy and declares its native readonly `Stats` class. The official pre-fix run at `336699563b61` failed the focused declaration checks because the extension did not declare `Stats`; on the committed source, arginfo/build verification passes 42 tests (589 assertions) and declaration verification passes 8 tests (22 assertions) (T182-6-15).
+
 - The Kit Standard checklists render `<gate>`, `min-0-max <max@blue.tools>`, and `Collection<X>` literally instead of letting VitePress parse them as HTML. A focused Markdown renderer case checks both checklists and preserves the `Refines <id>:` example (KSTD-5-87).
 
 - The PHP `Validator::functionType` declaration again matches the native two-argument contract. Planner, Markdown, and parameter-use callers keep the entity.column `INTERNAL` check before typing, while public unknown-column validation remains `COLUMN_UNKNOWN`. The actual-main declaration regression found the four-versus-two mismatch before the PHP fix (KSTD-5-63-1-1).

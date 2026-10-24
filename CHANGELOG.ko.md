@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c038347b4909f01be37bc029ec2e9d989ed02ec607375832ced013f86615c326 -->
+<!-- source-sha256: 2fdfe60896746cbaa3645b08f2615e094008687c3b4af87be7b0d866be65ea1e -->
 # 변경 이력
 
 ## Unreleased
+
+- PHP extension은 임시 build copy에서 arginfo를 offline 생성하고 native readonly `Stats` 클래스를 선언한다. 수정 전 공식 실행인 `336699563b61`에서는 extension의 `Stats` 선언 누락으로 focused declaration 검증이 실패했다. 커밋된 source에서는 arginfo/build 검증 42개 테스트(589 assertions), declaration 검증 8개 테스트(22 assertions)가 통과한다(T182-6-15).
 
 - Kit Standard checklist는 `<gate>`, `min-0-max <max@blue.tools>`, `Collection<X>`를 HTML로 파싱하지 않고 문자 그대로 렌더링한다. Focused Markdown renderer case는 두 checklist와 `Refines <id>:` 예시를 확인한다(KSTD-5-87).
 
