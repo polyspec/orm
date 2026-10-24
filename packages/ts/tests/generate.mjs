@@ -237,7 +237,7 @@ assert.equal('price' in item, false);
     const tsc = join(root, 'node_modules/typescript/bin/tsc');
     const compiled = join(consumerDir, 'compiled');
     const positive = await runLogged('typescript-generated-getter-positive-compile', [
-      tsc, '--ignoreConfig', '--strict', '--target', 'ES2022', '--module', 'NodeNext', '--moduleResolution', 'NodeNext',
+      tsc, '--ignoreConfig', '--strict', '--types', 'node', '--target', 'ES2022', '--module', 'NodeNext', '--moduleResolution', 'NodeNext',
       '--rootDir', consumerDir, '--outDir', compiled, consumer,
     ], root);
     assert.equal(positive.passed, true, positive.output);
