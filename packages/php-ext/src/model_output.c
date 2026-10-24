@@ -67,6 +67,17 @@ static zend_string *output_six_digits(zend_string *input)
     return smart_str_extract(&out);
 }
 
+static bool output_string_result(int status, zval *result, zend_string **text)
+{
+    if (status != SUCCESS || EG(exception) != NULL || Z_TYPE_P(result) != IS_STRING) {
+        if (Z_TYPE_P(result) != IS_UNDEF) zval_ptr_dtor(result);
+        return false;
+    }
+    *text = zend_string_copy(Z_STR_P(result));
+    zval_ptr_dtor(result);
+    return true;
+}
+
 static void output_column_value(zval *column, zval *value, zval *result)
 {
     zval *type = output_assoc(column, "type");
@@ -127,7 +138,147 @@ static void output_merge_child(zval *out, HashTable *seen, zval *child)
     zval_ptr_dtor(&values);
 }
 
-static void model_output_array(zend_object *object, zval *out)
+static void output_pair_append(zval *out, HashTable *seen, zend_string *name, zval *value)
+{
+    if (zend_hash_exists(seen, name)) { zval_ptr_dtor(value); return; }
+    zend_hash_add_empty_element(seen, name);
+    zval pair; array_init_size(&pair, 2);
+    add_next_index_str(&pair, zend_string_copy(name));
+    add_next_index_zval(&pair, value);
+    add_next_index_zval(out, &pair);
+}
+
+static void output_append_keyed_values(zval *out, HashTable *seen, zval *values,
+    bool pairs, bool copy_pair_values)
+{
+    if (values == NULL || Z_TYPE_P(values) != IS_ARRAY) return;
+    zend_string *name; zend_ulong index; zval *value;
+    ZEND_HASH_FOREACH_KEY_VAL(Z_ARRVAL_P(values), index, name, value) {
+        zend_string *key = name != NULL ? zend_string_copy(name) : zend_long_to_str(index);
+        if (!pairs) {
+            output_append_converted(out, seen, key, value);
+        } else {
+            zval converted;
+            if (copy_pair_values) ZVAL_COPY(&converted, value);
+            else output_array_value(value, &converted);
+            if (EG(exception) == NULL) output_pair_append(out, seen, key, &converted);
+            else if (Z_TYPE(converted) != IS_UNDEF) zval_ptr_dtor(&converted);
+        }
+        zend_string_release(key);
+        if (EG(exception) != NULL) break;
+    } ZEND_HASH_FOREACH_END();
+}
+
+static void output_model_column(zend_object *object, zval *out, HashTable *seen,
+    zend_string *key, zval *column, bool pairs)
+{
+    zval argument, value, converted;
+    ZVAL_UNDEF(&value);
+    ZVAL_STR_COPY(&argument, key);
+    const char *method = pairs ? "value" : "readcolumn";
+    zend_call_method(object, object->ce, NULL, method, strlen(method), &value, 1, &argument, NULL);
+    zval_ptr_dtor(&argument);
+    if (EG(exception) == NULL) {
+        output_column_value(column, &value, &converted);
+        if (pairs) output_pair_append(out, seen, key, &converted);
+        else output_append(out, seen, key, &converted);
+    }
+    if (Z_TYPE(value) != IS_UNDEF) zval_ptr_dtor(&value);
+}
+
+static void output_model_fields(zend_object *object, zval *out, HashTable *seen,
+    zval *columns, zval *names, zval *sets, zval *hidden, zval *extra, bool pairs)
+{
+    if (names == NULL && sets != NULL && Z_TYPE_P(sets) == IS_ARRAY) {
+        zend_string *name; zend_ulong index;
+        ZEND_HASH_FOREACH_KEY(Z_ARRVAL_P(sets), index, name) {
+            zend_string *key = name != NULL ? zend_string_copy(name) : zend_long_to_str(index);
+            zval *column = columns != NULL && Z_TYPE_P(columns) == IS_ARRAY
+                ? zend_hash_find(Z_ARRVAL_P(columns), key) : NULL;
+            if (column != NULL) output_model_column(object, out, seen, key, column, pairs);
+            zend_string_release(key);
+            if (EG(exception) != NULL) break;
+        } ZEND_HASH_FOREACH_END();
+        return;
+    }
+    if (names == NULL || Z_TYPE_P(names) != IS_ARRAY) return;
+    zval *name_value;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(names), name_value) {
+        if (Z_TYPE_P(name_value) != IS_STRING) continue;
+        zend_string *key = Z_STR_P(name_value);
+        zval *hidden_value = hidden != NULL && Z_TYPE_P(hidden) == IS_ARRAY
+            ? zend_hash_find(Z_ARRVAL_P(hidden), key) : NULL;
+        if (hidden_value != NULL && zend_is_true(hidden_value)) continue;
+        zval *column = columns != NULL && Z_TYPE_P(columns) == IS_ARRAY
+            ? zend_hash_find(Z_ARRVAL_P(columns), key) : NULL;
+        if (column != NULL) {
+            output_model_column(object, out, seen, key, column, pairs);
+        } else {
+            zval *value = extra != NULL && Z_TYPE_P(extra) == IS_ARRAY
+                ? zend_hash_find(Z_ARRVAL_P(extra), key) : NULL;
+            if (!pairs) {
+                if (value == NULL) {
+                    zval null_value; ZVAL_NULL(&null_value);
+                    output_append_converted(out, seen, key, &null_value);
+                } else output_append_converted(out, seen, key, value);
+            } else {
+                zval converted;
+                if (value == NULL) ZVAL_NULL(&converted); else output_array_value(value, &converted);
+                if (EG(exception) == NULL) output_pair_append(out, seen, key, &converted);
+                else if (Z_TYPE(converted) != IS_UNDEF) zval_ptr_dtor(&converted);
+            }
+        }
+        if (EG(exception) != NULL) break;
+    } ZEND_HASH_FOREACH_END();
+}
+
+static void output_merge_child_pairs(zval *out, HashTable *seen, zval *child)
+{
+    zval child_pairs;
+    output_call(child, "pairs", &child_pairs, 0, NULL);
+    if (EG(exception) == NULL && Z_TYPE(child_pairs) == IS_ARRAY) {
+        zval *pair;
+        ZEND_HASH_FOREACH_VAL(Z_ARRVAL(child_pairs), pair) {
+            if (Z_TYPE_P(pair) != IS_ARRAY) continue;
+            zval *pair_name = zend_hash_index_find(Z_ARRVAL_P(pair), 0);
+            zval *pair_value = zend_hash_index_find(Z_ARRVAL_P(pair), 1);
+            if (pair_name == NULL || Z_TYPE_P(pair_name) != IS_STRING || pair_value == NULL) continue;
+            zval copy; ZVAL_COPY(&copy, pair_value);
+            output_pair_append(out, seen, Z_STR_P(pair_name), &copy);
+        } ZEND_HASH_FOREACH_END();
+    }
+    if (Z_TYPE(child_pairs) != IS_UNDEF) zval_ptr_dtor(&child_pairs);
+}
+
+static void output_merge_flat_children(zval *out, HashTable *seen,
+    zval *flat, zval *related, bool pairs)
+{
+    if (flat == NULL || Z_TYPE_P(flat) != IS_ARRAY || related == NULL || Z_TYPE_P(related) != IS_ARRAY) return;
+    zval *flat_name;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(flat), flat_name) {
+        if (Z_TYPE_P(flat_name) != IS_STRING) continue;
+        zval *child = zend_hash_find(Z_ARRVAL_P(related), Z_STR_P(flat_name));
+        if (child != NULL && output_instance(child, "Polyspec\\Orm\\Model")) {
+            if (pairs) output_merge_child_pairs(out, seen, child);
+            else output_merge_child(out, seen, child);
+        }
+        if (EG(exception) != NULL) break;
+    } ZEND_HASH_FOREACH_END();
+}
+
+static void output_state_extras(zval *out, HashTable *seen, model_state *state, zval *row, bool pairs)
+{
+    if (EG(exception) != NULL) return;
+    output_append_keyed_values(out, seen, model_state_property(state, "news"), pairs, false);
+    if (EG(exception) != NULL) return;
+    zval *related = row != NULL && Z_TYPE_P(row) == IS_ARRAY ? output_assoc(row, "related") : NULL;
+    output_append_keyed_values(out, seen, related, pairs, true);
+    if (EG(exception) != NULL) return;
+    zval *flat = row != NULL && Z_TYPE_P(row) == IS_ARRAY ? output_assoc(row, "flat") : NULL;
+    output_merge_flat_children(out, seen, flat, related, pairs);
+}
+
+static void model_output_values(zend_object *object, zval *out, bool pairs)
 {
     array_init(out);
     HashTable seen;
@@ -143,89 +294,16 @@ static void model_output_array(zend_object *object, zval *out)
     zval *columns = output_assoc(&meta, "columns");
     zval *hidden = row != NULL && Z_TYPE_P(row) == IS_ARRAY ? output_assoc(row, "hidden") : NULL;
     zval *extra = row != NULL && Z_TYPE_P(row) == IS_ARRAY ? output_assoc(row, "extra") : NULL;
-    if (names == NULL && sets != NULL && Z_TYPE_P(sets) == IS_ARRAY) {
-        zend_string *name;
-        zend_ulong index;
-        ZEND_HASH_FOREACH_KEY(Z_ARRVAL_P(sets), index, name) {
-            zend_string *key = name != NULL ? zend_string_copy(name) : zend_long_to_str(index);
-            zval *column = columns != NULL && Z_TYPE_P(columns) == IS_ARRAY ? zend_hash_find(Z_ARRVAL_P(columns), key) : NULL;
-            if (column != NULL) {
-                zval arg, value, converted;
-                ZVAL_UNDEF(&value); ZVAL_STR_COPY(&arg, key);
-                zend_call_method(object, object->ce, NULL, "readcolumn", sizeof("readcolumn") - 1, &value, 1, &arg, NULL);
-                zval_ptr_dtor(&arg);
-                if (EG(exception) == NULL) {
-                    output_column_value(column, &value, &converted);
-                    output_append(out, &seen, key, &converted);
-                }
-                if (Z_TYPE(value) != IS_UNDEF) zval_ptr_dtor(&value);
-            }
-            zend_string_release(key);
-            if (EG(exception) != NULL) break;
-        } ZEND_HASH_FOREACH_END();
-    } else if (names != NULL && Z_TYPE_P(names) == IS_ARRAY) {
-        zval *name_value;
-        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(names), name_value) {
-            if (Z_TYPE_P(name_value) != IS_STRING) continue;
-            zend_string *key = Z_STR_P(name_value);
-            zval *hidden_value = hidden != NULL && Z_TYPE_P(hidden) == IS_ARRAY ? zend_hash_find(Z_ARRVAL_P(hidden), key) : NULL;
-            if (hidden_value != NULL && zend_is_true(hidden_value)) continue;
-            zval *column = columns != NULL && Z_TYPE_P(columns) == IS_ARRAY ? zend_hash_find(Z_ARRVAL_P(columns), key) : NULL;
-            if (column != NULL) {
-                zval arg, value, converted;
-                ZVAL_UNDEF(&value); ZVAL_STR_COPY(&arg, key);
-                zend_call_method(object, object->ce, NULL, "readcolumn", sizeof("readcolumn") - 1, &value, 1, &arg, NULL);
-                zval_ptr_dtor(&arg);
-                if (EG(exception) == NULL) {
-                    output_column_value(column, &value, &converted);
-                    output_append(out, &seen, key, &converted);
-                }
-                if (Z_TYPE(value) != IS_UNDEF) zval_ptr_dtor(&value);
-            } else {
-                zval *value = extra != NULL && Z_TYPE_P(extra) == IS_ARRAY ? zend_hash_find(Z_ARRVAL_P(extra), key) : NULL;
-                if (value == NULL) { zval null_value; ZVAL_NULL(&null_value); output_append_converted(out, &seen, key, &null_value); }
-                else output_append_converted(out, &seen, key, value);
-            }
-            if (EG(exception) != NULL) break;
-        } ZEND_HASH_FOREACH_END();
-    }
-    if (EG(exception) == NULL) {
-        zval *news = model_state_property(state, "news");
-        if (news != NULL && Z_TYPE_P(news) == IS_ARRAY) {
-            zend_string *name; zend_ulong index; zval *value;
-            ZEND_HASH_FOREACH_KEY_VAL(Z_ARRVAL_P(news), index, name, value) {
-                zend_string *key = name != NULL ? zend_string_copy(name) : zend_long_to_str(index);
-                output_append_converted(out, &seen, key, value);
-                zend_string_release(key);
-                if (EG(exception) != NULL) break;
-            } ZEND_HASH_FOREACH_END();
-        }
-    }
-    if (EG(exception) == NULL) {
-        zval *related = row != NULL && Z_TYPE_P(row) == IS_ARRAY ? output_assoc(row, "related") : NULL;
-        if (related != NULL && Z_TYPE_P(related) == IS_ARRAY) {
-            zend_string *name; zend_ulong index; zval *value;
-            ZEND_HASH_FOREACH_KEY_VAL(Z_ARRVAL_P(related), index, name, value) {
-                zend_string *key = name != NULL ? zend_string_copy(name) : zend_long_to_str(index);
-                output_append_converted(out, &seen, key, value);
-                zend_string_release(key);
-                if (EG(exception) != NULL) break;
-            } ZEND_HASH_FOREACH_END();
-        }
-        zval *flat = row != NULL && Z_TYPE_P(row) == IS_ARRAY ? output_assoc(row, "flat") : NULL;
-        if (flat != NULL && Z_TYPE_P(flat) == IS_ARRAY && related != NULL && Z_TYPE_P(related) == IS_ARRAY) {
-            zval *flat_name;
-            ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(flat), flat_name) {
-                if (Z_TYPE_P(flat_name) != IS_STRING) continue;
-                zval *child = zend_hash_find(Z_ARRVAL_P(related), Z_STR_P(flat_name));
-                if (child != NULL && output_instance(child, "Polyspec\\Orm\\Model")) output_merge_child(out, &seen, child);
-                if (EG(exception) != NULL) break;
-            } ZEND_HASH_FOREACH_END();
-        }
-    }
+    output_model_fields(object, out, &seen, columns, names, sets, hidden, extra, pairs);
+    output_state_extras(out, &seen, state, row, pairs);
 done:
     if (Z_TYPE(meta) != IS_UNDEF) zval_ptr_dtor(&meta);
     zend_hash_destroy(&seen);
+}
+
+static void model_output_array(zend_object *object, zval *out)
+{
+    model_output_values(object, out, false);
 }
 
 ZEND_METHOD(Polyspec_Orm_Model, toArray)
@@ -265,13 +343,7 @@ static bool output_ordered_stringify(zval *value, zend_string **text)
     ZVAL_UNDEF(&result);
     int status = call_user_function(EG(function_table), NULL, &function, &result, 1, &argument);
     zval_ptr_dtor(&function); zval_ptr_dtor(&argument);
-    if (status != SUCCESS || EG(exception) != NULL || Z_TYPE(result) != IS_STRING) {
-        if (Z_TYPE(result) != IS_UNDEF) zval_ptr_dtor(&result);
-        return false;
-    }
-    *text = zend_string_copy(Z_STR(result));
-    zval_ptr_dtor(&result);
-    return true;
+    return output_string_result(status, &result, text);
 }
 
 static bool output_json_text(zval *value, zend_string **text)
@@ -297,8 +369,7 @@ static bool output_json_text(zval *value, zend_string **text)
     if (output_instance(value, "Polyspec\\OrderedJson\\Value")) return output_ordered_stringify(value, text);
     if (output_instance(value, "Polyspec\\Orm\\Model") || output_instance(value, "Polyspec\\Orm\\Collection")) {
         zval result; output_call(value, "toJson", &result, 0, NULL);
-        if (EG(exception) != NULL || Z_TYPE(result) != IS_STRING) { if (Z_TYPE(result) != IS_UNDEF) zval_ptr_dtor(&result); return false; }
-        *text = zend_string_copy(Z_STR(result)); zval_ptr_dtor(&result); return true;
+        return output_string_result(EG(exception) == NULL ? SUCCESS : FAILURE, &result, text);
     }
     if (Z_TYPE_P(value) == IS_ARRAY && output_has_ordered(value)) {
         smart_str out = {0}; bool list = zend_array_is_list(Z_ARRVAL_P(value));
@@ -392,108 +463,9 @@ ZEND_METHOD(Polyspec_Orm_Model, jsonSerialize)
     zval_ptr_dtor(&values);
 }
 
-static void output_pair_append(zval *out, HashTable *seen, zend_string *name, zval *value)
-{
-    if (zend_hash_exists(seen, name)) { zval_ptr_dtor(value); return; }
-    zend_hash_add_empty_element(seen, name);
-    zval pair; array_init_size(&pair, 2);
-    add_next_index_str(&pair, zend_string_copy(name));
-    add_next_index_zval(&pair, value);
-    add_next_index_zval(out, &pair);
-}
-
 static void model_output_pairs(zend_object *object, zval *out)
 {
-    array_init(out);
-    HashTable seen; zend_hash_init(&seen, 8, NULL, NULL, 0);
-    model_state *state = model_state_of(object);
-    zval *row = model_state_property(state, "row");
-    zval *sets = model_state_property(state, "sets");
-    zval *names = row != NULL && Z_TYPE_P(row) == IS_ARRAY ? output_assoc(row, "names") : NULL;
-    zval meta; ZVAL_UNDEF(&meta);
-    zend_call_method_with_0_params(NULL, object->ce, NULL, "meta", &meta);
-    if (EG(exception) != NULL || Z_TYPE(meta) != IS_ARRAY) goto done;
-    zval *columns = output_assoc(&meta, "columns");
-    zval *hidden = row != NULL && Z_TYPE_P(row) == IS_ARRAY ? output_assoc(row, "hidden") : NULL;
-    zval *extra = row != NULL && Z_TYPE_P(row) == IS_ARRAY ? output_assoc(row, "extra") : NULL;
-    if (names == NULL && sets != NULL && Z_TYPE_P(sets) == IS_ARRAY) {
-        zend_string *name; zend_ulong index;
-        ZEND_HASH_FOREACH_KEY(Z_ARRVAL_P(sets), index, name) {
-            zend_string *key = name != NULL ? zend_string_copy(name) : zend_long_to_str(index);
-            zval *column = columns != NULL && Z_TYPE_P(columns) == IS_ARRAY ? zend_hash_find(Z_ARRVAL_P(columns), key) : NULL;
-            if (column != NULL) {
-                zval arg, value, converted; ZVAL_STR_COPY(&arg, key); ZVAL_UNDEF(&value);
-                zend_call_method(object, object->ce, NULL, "value", sizeof("value") - 1, &value, 1, &arg, NULL); zval_ptr_dtor(&arg);
-                if (EG(exception) == NULL) { output_column_value(column, &value, &converted); output_pair_append(out, &seen, key, &converted); }
-                if (Z_TYPE(value) != IS_UNDEF) zval_ptr_dtor(&value);
-            }
-            zend_string_release(key); if (EG(exception) != NULL) break;
-        } ZEND_HASH_FOREACH_END();
-    } else if (names != NULL && Z_TYPE_P(names) == IS_ARRAY) {
-        zval *name_value;
-        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(names), name_value) {
-            if (Z_TYPE_P(name_value) != IS_STRING) continue;
-            zend_string *key = Z_STR_P(name_value);
-            zval *hidden_value = hidden != NULL && Z_TYPE_P(hidden) == IS_ARRAY ? zend_hash_find(Z_ARRVAL_P(hidden), key) : NULL;
-            if (hidden_value != NULL && zend_is_true(hidden_value)) continue;
-            zval *column = columns != NULL && Z_TYPE_P(columns) == IS_ARRAY ? zend_hash_find(Z_ARRVAL_P(columns), key) : NULL;
-            if (column != NULL) {
-                zval arg, value, converted; ZVAL_STR_COPY(&arg, key); ZVAL_UNDEF(&value);
-                zend_call_method(object, object->ce, NULL, "value", sizeof("value") - 1, &value, 1, &arg, NULL); zval_ptr_dtor(&arg);
-                if (EG(exception) == NULL) { output_column_value(column, &value, &converted); output_pair_append(out, &seen, key, &converted); }
-                if (Z_TYPE(value) != IS_UNDEF) zval_ptr_dtor(&value);
-            } else {
-                zval *value = extra != NULL && Z_TYPE_P(extra) == IS_ARRAY ? zend_hash_find(Z_ARRVAL_P(extra), key) : NULL;
-                zval converted; if (value == NULL) ZVAL_NULL(&converted); else output_array_value(value, &converted);
-                if (EG(exception) == NULL) output_pair_append(out, &seen, key, &converted); else zval_ptr_dtor(&converted);
-            }
-            if (EG(exception) != NULL) break;
-        } ZEND_HASH_FOREACH_END();
-    }
-    if (EG(exception) == NULL) {
-        zval *news = model_state_property(state, "news");
-        if (news != NULL && Z_TYPE_P(news) == IS_ARRAY) {
-            zend_string *name; zend_ulong index; zval *value;
-            ZEND_HASH_FOREACH_KEY_VAL(Z_ARRVAL_P(news), index, name, value) {
-                zend_string *key = name != NULL ? zend_string_copy(name) : zend_long_to_str(index); zval converted;
-                output_array_value(value, &converted); output_pair_append(out, &seen, key, &converted); zend_string_release(key);
-                if (EG(exception) != NULL) break;
-            } ZEND_HASH_FOREACH_END();
-        }
-    }
-    if (EG(exception) == NULL) {
-        zval *related = row != NULL && Z_TYPE_P(row) == IS_ARRAY ? output_assoc(row, "related") : NULL;
-        if (related != NULL && Z_TYPE_P(related) == IS_ARRAY) {
-            zend_string *name; zend_ulong index; zval *value;
-            ZEND_HASH_FOREACH_KEY_VAL(Z_ARRVAL_P(related), index, name, value) {
-                zend_string *key = name != NULL ? zend_string_copy(name) : zend_long_to_str(index); zval copy; ZVAL_COPY(&copy, value);
-                output_pair_append(out, &seen, key, &copy); zend_string_release(key);
-            } ZEND_HASH_FOREACH_END();
-        }
-        zval *flat = row != NULL && Z_TYPE_P(row) == IS_ARRAY ? output_assoc(row, "flat") : NULL;
-        if (flat != NULL && Z_TYPE_P(flat) == IS_ARRAY && related != NULL && Z_TYPE_P(related) == IS_ARRAY) {
-            zval *flat_name; ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(flat), flat_name) {
-                if (Z_TYPE_P(flat_name) != IS_STRING) continue;
-                zval *child = zend_hash_find(Z_ARRVAL_P(related), Z_STR_P(flat_name));
-                if (child != NULL && output_instance(child, "Polyspec\\Orm\\Model")) {
-                    zval child_pairs; output_call(child, "pairs", &child_pairs, 0, NULL);
-                    if (EG(exception) == NULL && Z_TYPE(child_pairs) == IS_ARRAY) {
-                        zval *pair; ZEND_HASH_FOREACH_VAL(Z_ARRVAL(child_pairs), pair) {
-                            if (Z_TYPE_P(pair) != IS_ARRAY) continue;
-                            zval *pair_name = zend_hash_index_find(Z_ARRVAL_P(pair), 0), *pair_value = zend_hash_index_find(Z_ARRVAL_P(pair), 1);
-                            if (pair_name == NULL || Z_TYPE_P(pair_name) != IS_STRING || pair_value == NULL) continue;
-                            zval copy; ZVAL_COPY(&copy, pair_value); output_pair_append(out, &seen, Z_STR_P(pair_name), &copy);
-                        } ZEND_HASH_FOREACH_END();
-                    }
-                    if (Z_TYPE(child_pairs) != IS_UNDEF) zval_ptr_dtor(&child_pairs);
-                }
-                if (EG(exception) != NULL) break;
-            } ZEND_HASH_FOREACH_END();
-        }
-    }
-done:
-    if (Z_TYPE(meta) != IS_UNDEF) zval_ptr_dtor(&meta);
-    zend_hash_destroy(&seen);
+    model_output_values(object, out, true);
 }
 
 ZEND_METHOD(Polyspec_Orm_Model, pairs)

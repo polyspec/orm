@@ -294,6 +294,10 @@ final class ModelNativeTest extends TestCase
         $model = (new NativeModelFixture())->setLabel('sample')->setAmount('2.50');
 
         self::assertSame(['label' => 'sample', 'amount' => '2.50'], $model->toArray());
+        self::assertSame(
+            [['label', 'sample'], ['amount', '2.50']],
+            (new \ReflectionMethod(Model::class, 'pairs'))->invoke($model),
+        );
         self::assertSame('{"label":"sample","amount":"2.50"}', $model->toJson());
         self::assertEquals((object) ['label' => 'sample', 'amount' => '2.50'], $model->jsonSerialize());
     }
