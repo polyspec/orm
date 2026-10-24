@@ -759,6 +759,52 @@ add_failed:
     RETURN_THROWS();
 }
 
+typedef enum {
+    SCHEMA_UTILS_SCHEMA_EXISTS,
+    SCHEMA_UTILS_TABLE_INSTALLED
+} schema_utils_catalog_lookup;
+
+/* Builds a dialect-specific catalog lookup and its bindings for both existence methods. */
+static zend_string *schema_utils_catalog_lookup_sql(zend_string *driver, zend_string *schema, zend_string *table,
+                                                    schema_utils_catalog_lookup lookup, zval *args)
+{
+    if (zend_string_equals_literal(driver, "postgres")) {
+        if (lookup == SCHEMA_UTILS_SCHEMA_EXISTS) {
+            add_next_index_str(args, zend_string_copy(schema));
+            return zend_string_init("SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = $1)",
+                                    sizeof("SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = $1)") - 1, 0);
+        }
+        add_next_index_str(args, strpprintf(0, "%s.%s", ZSTR_VAL(schema), ZSTR_VAL(table)));
+        return zend_string_init("SELECT to_regclass($1) IS NOT NULL", sizeof("SELECT to_regclass($1) IS NOT NULL") - 1, 0);
+    }
+    if (zend_string_equals_literal(driver, "mysql")) {
+        if (lookup == SCHEMA_UTILS_SCHEMA_EXISTS) {
+            add_next_index_str(args, zend_string_copy(schema));
+            return zend_string_init("SELECT EXISTS(SELECT 1 FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?)",
+                                    sizeof("SELECT EXISTS(SELECT 1 FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?)") - 1, 0);
+        }
+        add_next_index_str(args, zend_string_copy(schema));
+        add_next_index_str(args, zend_string_copy(table));
+        return zend_string_init("SELECT EXISTS(SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?)",
+                                sizeof("SELECT EXISTS(SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?)") - 1, 0);
+    }
+    if (lookup == SCHEMA_UTILS_SCHEMA_EXISTS) {
+        smart_str pattern = {0};
+        for (size_t index = 0; index < ZSTR_LEN(schema); index++) {
+            if (ZSTR_VAL(schema)[index] == '_') smart_str_appends(&pattern, "\\_");
+            else smart_str_appendc(&pattern, ZSTR_VAL(schema)[index]);
+        }
+        smart_str_appends(&pattern, "\\_\\_%");
+        smart_str_0(&pattern);
+        add_next_index_str(args, pattern.s);
+        return zend_string_init("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name LIKE ? ESCAPE '\\')",
+                                sizeof("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name LIKE ? ESCAPE '\\')") - 1, 0);
+    }
+    add_next_index_str(args, strpprintf(0, "%s__%s", ZSTR_VAL(schema), ZSTR_VAL(table)));
+    return zend_string_init("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name = ?)",
+                            sizeof("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name = ?)") - 1, 0);
+}
+
 ZEND_METHOD(Polyspec_Orm_SchemaUtils, exists)
 {
     zend_string *schema;
@@ -771,26 +817,9 @@ ZEND_METHOD(Polyspec_Orm_SchemaUtils, exists)
     }
     zval driver;
     if (!schema_utils_call(schema_utils_db(ZEND_THIS), "driver", &driver, 0, NULL)) RETURN_THROWS();
-    zend_string *sql;
     zval args;
     array_init(&args);
-    if (zend_string_equals_literal(Z_STR(driver), "postgres")) {
-        sql = zend_string_init("SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = $1)", sizeof("SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = $1)") - 1, 0);
-        add_next_index_str(&args, zend_string_copy(schema));
-    } else if (zend_string_equals_literal(Z_STR(driver), "mysql")) {
-        sql = zend_string_init("SELECT EXISTS(SELECT 1 FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?)", sizeof("SELECT EXISTS(SELECT 1 FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ?)") - 1, 0);
-        add_next_index_str(&args, zend_string_copy(schema));
-    } else {
-        sql = zend_string_init("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name LIKE ? ESCAPE '\\')", sizeof("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name LIKE ? ESCAPE '\\')") - 1, 0);
-        smart_str pattern = {0};
-        for (size_t index = 0; index < ZSTR_LEN(schema); index++) {
-            if (ZSTR_VAL(schema)[index] == '_') smart_str_appends(&pattern, "\\_");
-            else smart_str_appendc(&pattern, ZSTR_VAL(schema)[index]);
-        }
-        smart_str_appends(&pattern, "\\_\\_%");
-        smart_str_0(&pattern);
-        add_next_index_str(&args, pattern.s);
-    }
+    zend_string *sql = schema_utils_catalog_lookup_sql(Z_STR(driver), schema, NULL, SCHEMA_UTILS_SCHEMA_EXISTS, &args);
     zval_ptr_dtor(&driver);
     bool ok = schema_utils_bool_query(schema_utils_db(ZEND_THIS), sql, &args, return_value);
     if (!ok) RETURN_THROWS();
@@ -809,20 +838,9 @@ ZEND_METHOD(Polyspec_Orm_SchemaUtils, installed)
     }
     zval driver;
     if (!schema_utils_call(schema_utils_db(ZEND_THIS), "driver", &driver, 0, NULL)) RETURN_THROWS();
-    zend_string *sql;
     zval args;
     array_init(&args);
-    if (zend_string_equals_literal(Z_STR(driver), "postgres")) {
-        sql = zend_string_init("SELECT to_regclass($1) IS NOT NULL", sizeof("SELECT to_regclass($1) IS NOT NULL") - 1, 0);
-        add_next_index_str(&args, strpprintf(0, "%s.%s", ZSTR_VAL(schema), ZSTR_VAL(table)));
-    } else if (zend_string_equals_literal(Z_STR(driver), "mysql")) {
-        sql = zend_string_init("SELECT EXISTS(SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?)", sizeof("SELECT EXISTS(SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?)") - 1, 0);
-        add_next_index_str(&args, zend_string_copy(schema));
-        add_next_index_str(&args, zend_string_copy(table));
-    } else {
-        sql = zend_string_init("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name = ?)", sizeof("SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type IN ('table', 'view') AND name = ?)") - 1, 0);
-        add_next_index_str(&args, strpprintf(0, "%s__%s", ZSTR_VAL(schema), ZSTR_VAL(table)));
-    }
+    zend_string *sql = schema_utils_catalog_lookup_sql(Z_STR(driver), schema, table, SCHEMA_UTILS_TABLE_INSTALLED, &args);
     zval_ptr_dtor(&driver);
     bool ok = schema_utils_bool_query(schema_utils_db(ZEND_THIS), sql, &args, return_value);
     if (!ok) RETURN_THROWS();
