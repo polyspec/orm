@@ -200,7 +200,7 @@ caseTest('generate', PROCESS, async () => {
 
 // The positive consumer compiles and runs without diagnostic suppression. Its separate negative fixture must fail only
 // at the raw typed-field assignment, with TypeScript's exact code and source location.
-// Requirements: DBS-112.
+// Requirements: DBS-112, INT-66.
 test('generated typed getter consumer compiler fixture', async () => {
   const runDir = join(root, '.runtime/run');
   await mkdir(runDir, { recursive: true });
@@ -214,6 +214,10 @@ test('generated typed getter consumer compiler fixture', async () => {
     const generatedRun = await runLogged('typescript-generated-getter-generate', [bin, 'gen', '--set', getterSet, '--out', generated, '--scan', emptyScan], root);
     assert.equal(generatedRun.passed, true, generatedRun.output);
     assert.equal(generatedRun.code, 0, generatedRun.output);
+    const generatedSource = await readFile(join(generated, 'models.ts'), 'utf8');
+    for (const suppression of ['eslint-disable', '@ts-ignore']) {
+      assert.equal(generatedSource.includes(suppression), false, `generated TypeScript carries ${suppression}`);
+    }
 
     const consumer = join(consumerDir, 'consumer.ts');
     await writeFile(consumer, `import assert from 'node:assert/strict';

@@ -119,6 +119,7 @@ fn generates_fulltext_boolean_methods_for_multiple_columns() {
 }
 
 #[test]
+// Requirements: INT-66.
 fn generated_code_carries_no_allow_attribute() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     // A consumer may deny allow attributes in its workspace lints, so the generated code
@@ -126,7 +127,7 @@ fn generated_code_carries_no_allow_attribute() {
     // where a conversion takes the value.
     for schema in [schema(), bench()] {
         let text = generate_with_schema(schema.clone(), "fn main() {}").unwrap();
-        assert!(!text.contains("#[allow("), "{}: the generated code carries an allow attribute", schema.display());
+        assert!(!text.contains("#[allow(") && !text.contains("#![allow("), "{}: the generated code carries an allow attribute", schema.display());
         assert!(text.contains("impl Default for "), "{}: a model has no Default", schema.display());
     }
 }

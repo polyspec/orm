@@ -7626,8 +7626,8 @@
       "bindings": [
         {
           "implementation": "go",
-          "test": "packages/go/model/decimal_field_test.go",
-          "id": "TestGeneratedDecimalFieldUsesExactText"
+          "test": "packages/go/generator/gen_go_scan_test.go",
+          "id": "TestGoGeneratedScalarGetterRejectsUnselectedRead"
         }
       ]
     },
@@ -9260,37 +9260,39 @@
       ]
     },
     {
-      "id": "rust-generated-code-carries-no-allow-attribute",
+      "id": "generated-code-no-lint-suppressions",
       "kind": "feature",
-      "requirements": [
-        "DBS-4",
-        "DBS-19",
-        "DBS-25",
-        "DBS-27",
-        "DBS-100",
-        "DBS-101",
-        "DBS-104",
-        "DBS-110",
-        "DBS-112",
-        "DBS-114",
-        "DBS-116",
-        "DBS-118",
-        "DBS-155",
-        "DBS-173",
-        "DSL-37",
-        "DSL-38",
-        "DSL-41",
-        "DSL-44",
-        "DSL-117",
-        "DSL-151",
-        "DSL-152",
-        "SCH-1"
-      ],
+      "requirements": ["INT-66"],
       "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/generator/gen_go_scan_test.go",
+          "id": "TestGoGeneratedScalarGetterRejectsUnselectedRead"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/OrmGenTest.php",
+          "id": "OrmGenTest::testGeneratedTypedGetterUsesPrivateModelStorageAndRejectsUnselectedRead"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageModelGenerationNativeTest.php",
+          "id": "CoverageModelGenerationNativeTest::testModelGenerationCheck"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_orm_gen.py",
+          "id": "test_generated_typed_getter_is_the_public_column_api"
+        },
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/generate.rs",
           "id": "generated_code_carries_no_allow_attribute"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/generate.mjs",
+          "id": "generated typed getter consumer compiler fixture"
         }
       ]
     },

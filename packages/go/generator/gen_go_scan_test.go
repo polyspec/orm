@@ -86,6 +86,7 @@ func Brands() *model.ProductModel {
 	buildScannedModule(t)
 }
 
+// Requirements: DBS-112, INT-66.
 // TestGoGeneratedScalarGetterRejectsUnselectedRead checks the generated getter at runtime through
 // an external consumer that compiles against either the current or corrected getter signature.
 func TestGoGeneratedScalarGetterRejectsUnselectedRead(t *testing.T) {
@@ -126,6 +127,9 @@ func TestPriceGetterSelection(t *testing.T) {
 }
 `)
 	generateModel(t, namesManifest(t, namesDiagram))
+	if strings.Contains(readModelFile(t, "product.go"), "//nolint") {
+		t.Fatal("generated model carries a Go lint suppression")
+	}
 	testScannedModule(t)
 }
 

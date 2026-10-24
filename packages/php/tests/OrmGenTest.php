@@ -62,7 +62,7 @@ final class OrmGenTest extends TestCase
         return [proc_close($process), $out, $err];
     }
 
-    // Requirements: DBS-112, DBS-114.
+    // Requirements: DBS-112, DBS-114, INT-66.
     public function testGeneratedTypedGetterUsesPrivateModelStorageAndRejectsUnselectedRead(): void
     {
         $dir = self::$work . '/typed-getter';
@@ -76,6 +76,11 @@ final class OrmGenTest extends TestCase
             'gen', '--set', $set, '--out', "$dir/model", '--namespace', $namespace
         ]);
         self::assertSame(0, $code, "$out $err");
+        $source = file_get_contents("$dir/model/Item.php");
+        self::assertIsString($source);
+        foreach (['@phpstan-ignore', 'phpcs:ignore'] as $suppression) {
+            self::assertStringNotContainsString($suppression, $source, "generated PHP carries $suppression");
+        }
         require_once "$dir/model/Item.php";
 
         $class = "$namespace\\Item";

@@ -14,7 +14,7 @@ use PHPUnit\Framework\TestCase;
 
 final class CoverageModelGenerationNativeTest extends TestCase
 {
-    // Requirements: DBS-112.
+    // Requirements: DBS-112, INT-66.
     public function testModelGenerationCheck(): void
     {
         $manifest = RuntimeModel::build(RuntimeModel::parse([
@@ -39,6 +39,9 @@ DBSPEC,
             $source = file_get_contents("$directory/Item.php");
             Assert::assertIsString($source);
             Assert::assertStringContainsString("return \$this->readColumn('label');", $source);
+            foreach (['@phpstan-ignore', 'phpcs:ignore'] as $suppression) {
+                Assert::assertStringNotContainsString($suppression, $source, "generated PHP carries $suppression");
+            }
             require "$directory/Item.php";
 
             $class = "$namespace\\Item";

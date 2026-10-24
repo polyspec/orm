@@ -66,10 +66,13 @@ class OrmGenTest(unittest.TestCase):
         self.assertEqual(len(models.model.entities), 25)
         self.assertTrue(models.SCHEMA.manifest_text.startswith("dbspec 1 bench"))
 
-    # Requirements: DBS-112, DBS-114.
+    # Requirements: DBS-112, DBS-114, INT-66.
     def test_generated_typed_getter_is_the_public_column_api(self):
         from polyspec.orm import OrmError, codes
         import models
+
+        generated = (Path(self.out) / "models.py").read_text()
+        self.assertNotIn("# noqa", generated)
 
         author = models.Author()
         self.assertEqual(typing.get_type_hints(models.Author.get_seq)["return"], int)
