@@ -232,6 +232,7 @@ mod planner {
     }
 
     #[test]
+    // Requirements: PRT-37.
     fn planner_tables() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         run("planner_tables");
@@ -543,6 +544,7 @@ mod planner {
     }
 
     #[test]
+    // Requirements: PRT-78.
     fn planner_scalar_column_subquery() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         run("planner_scalar_column_subquery");

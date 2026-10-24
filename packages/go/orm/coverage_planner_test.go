@@ -185,6 +185,7 @@ func TestCoveragePlannerRestoreFirstUniqueByName(t *testing.T) {
 
 // TestCoveragePlannerTables checks, for each step of a select with a subquery, join, and relation,
 // the table that the statement uses by name.
+// Requirements: PRT-37.
 func TestCoveragePlannerTables(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_tables")
@@ -500,6 +501,7 @@ func TestCoveragePlannerOrderNullableLimitPerParent(t *testing.T) {
 }
 
 // TestCoveragePlannerScalarColumnSubquery checks that the scalar column subquery case compiles as expected.
+// Requirements: PRT-78.
 func TestCoveragePlannerScalarColumnSubquery(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	compilePlannerCase(t, "planner_scalar_column_subquery")

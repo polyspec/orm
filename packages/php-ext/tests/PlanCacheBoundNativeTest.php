@@ -10,6 +10,7 @@ use PHPUnit\Framework\TestCase;
 // Requirements: CPX-4.
 /** The PHP extension owner runs the same page-cache cases against native Request and Planner classes. */
 #[Small]
+// Requirements: PRT-78; T236.
 final class PlanCacheBoundNativeTest extends TestCase
 {
     use PageCacheBoundCases;

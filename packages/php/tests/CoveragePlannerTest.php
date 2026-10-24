@@ -236,6 +236,7 @@ final class CoveragePlannerTest extends TestCase
         plannerCase($root, $fixture, 'planner_restore');
     }
 
+    // Requirements: PRT-37.
     public function testPlannerTables(): void
     {
         $root = dirname(__DIR__, 3);
@@ -635,6 +636,7 @@ final class CoveragePlannerTest extends TestCase
         plannerCase($root, $fixture, 'planner_order_nullable_limit_per_parent');
     }
 
+    // Requirements: PRT-78.
     public function testPlannerScalarColumnSubquery(): void
     {
         $root = dirname(__DIR__, 3);

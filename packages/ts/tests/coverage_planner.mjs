@@ -77,6 +77,7 @@ await runCases('coverage_planner.mjs', {
   async planner_contains_ascii_fold() { compileCase('planner_contains_ascii_fold'); },
   async planner_rejects_unknown_column() { compileCase('planner_rejects_unknown_column'); },
   async planner_restore() { compileCase('planner_restore'); },
+  // Requirements: PRT-37.
   async planner_tables() { compileCase('planner_tables'); },
   async planner_restore_rejects_non_key() { compileCase('planner_restore_rejects_non_key'); },
   async planner_restore_key_from_set() { compileCase('planner_restore_key_from_set'); },
@@ -134,6 +135,7 @@ await runCases('coverage_planner.mjs', {
   async planner_order_nullable_column_function() { compileCase('planner_order_nullable_column_function'); },
   async planner_order_nullable_group_count() { compileCase('planner_order_nullable_group_count'); },
   async planner_order_nullable_limit_per_parent() { compileCase('planner_order_nullable_limit_per_parent'); },
+  // Requirements: PRT-78.
   async planner_scalar_column_subquery() { compileCase('planner_scalar_column_subquery'); },
   async planner_rejects_scalar_column_subquery_without_limit() { compileCase('planner_rejects_scalar_column_subquery_without_limit'); },
   async planner_rejects_scalar_column_subquery_without_key_order() { compileCase('planner_rejects_scalar_column_subquery_without_key_order'); },
