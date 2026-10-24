@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c133ba3abe1f77b84be96e923c6e4d414003779ed6cc8934fadb0ab9cf87c332 -->
+<!-- source-sha256: 717b356fb7d0c493cff572cc62fad115d6fedd60d49ce26c36a72be093ac4601 -->
 # 변경 이력
 
 ## Unreleased
 
+- PHP 확장의 SQLite row-lock write event에 트랜잭션 ID를 기록한다. focused native transaction 테스트가 연속 트랜잭션을 확인한다(KSTD-7-5-2).
 - 이름이 지정된 client API unit 63개가 두 언어 specification의 정확한 INT 또는 COD requirement bullet을 인용하는지 확인한다. Focused requirement test는 1/1 통과했다. RED replay는 현재 test와 runtime을 유지하고 `694ca3a35^`의 config와 specification 입력만 정확히 사용했다(KSTD-2-11-7-1).
 - logical interface rule 82개 모두에 generated extension symbol snapshot과 signature가 일치하는 exported PHP extension symbol을 기록했다. contract validator는 각 rule을 PHP input/output type과 대조하고 extension을 다섯 client language mutation case와 별도로 검증한다. focused logical drift unit이 통과한다 (KSTD-2-3).
 - Native PHP extension API의 인자 오류 우선순위를 client와 맞췄다. schema evolution은 계획 전에 external 문서를 확인하고 SQLite `BEGIN IMMEDIATE`를 row-lock 상태를 만들지 않고 사용한다. schema 이름의 underscore는 문자 그대로 처리하며 Schema, Config, Model, AesKeyring 인자는 선언된 경계에서 거부한다. SQLite 정리 과정에서 두 오류를 보존하고 BEGIN 알림 실패 뒤에는 열린 트랜잭션을 롤백한다. 트랜잭션 상태 확인 실패는 외부로 전달하면서 foreign-key 복구를 수행한다. native focused case 11개(76 assertions), API binding unit과 공식 extension extractor가 통과했다 (KSTD-2-11-7).
