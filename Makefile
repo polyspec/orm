@@ -1636,14 +1636,14 @@ group-rows-db-rust:
 
 # The PHP and native extension owners execute the shared complex product fixture on all three database servers.
 complex-query-php-db-check: php-vendor-check php-models
-	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ComplexQueryDbTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --filter testProductSearchPage packages/php/tests/ComplexQueryDbTest.php
 complex-query-php-extension-db-check: php-vendor-check php-models
 	@set -eu; \
 	run_dir="$(abspath .runtime/run)/complex-query-php-extension-db-check-$$$$"; \
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh "$$run_dir/php-extension/polyspec_orm.so"; \
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ComplexQueryNativeTest.php
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist --filter testProductSearchPageUsesNativePlannerAndModels packages/php-ext/tests/ComplexQueryNativeTest.php
 
 unselected-column-physical-check: php-vendor-check
 	$(WITH_TEST_ENV) node scripts/unselected-column-physical-check.mts

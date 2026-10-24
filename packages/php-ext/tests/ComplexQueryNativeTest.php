@@ -15,6 +15,11 @@ final class ComplexQueryNativeTest extends TestCase
         ComplexQueryDbCase::assertFulltextChains(true);
     }
 
+    public function testFeatureProductSearchPageUsesNativePlannerAndModels(): void
+    {
+        ComplexQueryDbCase::runFeature(true);
+    }
+
     // Requirements: CPX-2.
     public function testProductSearchPageUsesNativePlannerAndModels(): void
     {

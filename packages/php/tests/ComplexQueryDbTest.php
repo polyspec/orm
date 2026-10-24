@@ -15,6 +15,11 @@ final class ComplexQueryDbTest extends TestCase
         ComplexQueryDbCase::assertFulltextChains(false);
     }
 
+    public function testFeatureProductSearchPage(): void
+    {
+        ComplexQueryDbCase::runFeature(false);
+    }
+
     // Requirements: CPX-2.
     public function testProductSearchPage(): void
     {

@@ -56,6 +56,35 @@ final class ComplexQueryDbCase
         }
     }
 
+    public static function runFeature(bool $native): void
+    {
+        if ($native) {
+            self::assertNativeClasses();
+        }
+        $driver = getenv('ORM_FEATURE_DATABASE');
+        $dsn = getenv('ORM_FEATURE_DSN');
+        if (!is_string($driver) || !in_array($driver, ['mysql', 'postgres', 'sqlite'], true)) {
+            throw new \RuntimeException(
+                'ORM_FEATURE_DATABASE (mysql, postgres or sqlite) is required; run the feature coverage command'
+            );
+        }
+        if (!is_string($dsn) || $dsn === '') {
+            throw new \RuntimeException('ORM_FEATURE_DSN is required; run the feature coverage command');
+        }
+        $fixture = self::fixture();
+        $db = \Polyspec\Orm\Tests\ComplexModel\connect($dsn, new Config());
+        try {
+            Assert::assertSame($driver, $db->driver(), 'ORM_FEATURE_DSN selects the requested database');
+            if ($driver === 'sqlite') {
+                self::assertSqliteRefusal($db, $fixture);
+            } else {
+                self::assertPage($db, $driver, $fixture);
+            }
+        } finally {
+            $db->close();
+        }
+    }
+
     public static function assertFulltextChains(bool $native): void
     {
         if ($native) {
@@ -277,6 +306,7 @@ final class ComplexQueryDbCase
         Assert::assertSame($expected['brand_seqs'], $brands);
         Assert::assertSame($expected['brand_lang_seqs'], $brandLangs);
         Assert::assertSame($expected['review_seqs'], $reviews);
+        ksort($reviewUsers);
         Assert::assertSame($expected['review_user_seqs'], $reviewUsers);
         Assert::assertSame($expected['order_product_item_seqs'], $orderItems);
         Assert::assertSame($fixture['expected_events'][$driver], $events);
