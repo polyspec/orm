@@ -14,6 +14,8 @@ mod model_row;
 mod audit_rows;
 #[path = "common/restore_rows.rs"]
 mod restore_rows;
+#[path = "common/result_code.rs"]
+mod result_code;
 
 use audit_rows::drop_tables;
 use polyspec_orm::db::Pool;
@@ -129,9 +131,7 @@ async fn text_rows(db: &Db, query: &str) -> Vec<Vec<String>> {
             let rows = sqlx::raw_sql(sqlx::AssertSqlSafe(query.to_owned())).fetch_all($pool).await.or_panic(|e| format!("{query}: {e}"));
             rows.iter()
                 .map(|r| {
-                    (0..r.len())
-                        .map(|i| r.try_get::<Option<String>, _>(i).or_panic(|e| format!("{query}: {e}")).unwrap_or_else(|| "NULL".to_owned()))
-                        .collect()
+                    (0..r.len()).map(|i| r.try_get::<Option<String>, _>(i).or_panic(|e| format!("{query}: {e}")).unwrap_or_else(|| "NULL".to_owned())).collect()
                 })
                 .collect()
         }};
@@ -232,8 +232,12 @@ async fn audit_selected_columns() {
 /// Reads a table's column names in catalog order.
 async fn columns_of(db: &Db, table: &str) -> Vec<String> {
     let query = match db.pool() {
-        Pool::MySql(_) => format!("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '{table}' ORDER BY ORDINAL_POSITION"),
-        Pool::Postgres(_) => format!("SELECT column_name::text FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = '{table}' ORDER BY ordinal_position"),
+        Pool::MySql(_) => {
+            format!("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '{table}' ORDER BY ORDINAL_POSITION")
+        }
+        Pool::Postgres(_) => format!(
+            "SELECT column_name::text FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = '{table}' ORDER BY ordinal_position"
+        ),
         Pool::Sqlite(_) => format!("SELECT name FROM pragma_table_info('{table}') ORDER BY cid"),
         Pool::Markdown(_) => unreachable!("these cases run on SQL databases"),
     };

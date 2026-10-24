@@ -9,6 +9,8 @@
 mod model_row;
 #[path = "common/audit_rows.rs"]
 mod audit_rows;
+#[path = "common/result_code.rs"]
+mod result_code;
 
 #[path = "common/or_panic.rs"]
 mod or_panic;

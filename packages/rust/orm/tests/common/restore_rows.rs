@@ -3,6 +3,7 @@
 //! coverage_audit_triggers.rs both use it.
 
 use crate::or_panic::OrPanic;
+use crate::result_code::code;
 
 use std::collections::BTreeMap;
 
@@ -36,13 +37,6 @@ fn with<M: Model>(db: &Db, values: &[(&str, Param)]) -> M {
         core.set(column, value.clone());
     }
     M::from_core(core)
-}
-
-fn code<T>(r: polyspec_orm::Result<T>) -> String {
-    match r {
-        Ok(_) => "ok".into(),
-        Err(e) => e.code().to_owned(),
-    }
 }
 
 /// The name-ordered notation of model values. The MySQL driver returns text as bytes, so UTF-8 bytes are written as strings.
@@ -83,11 +77,7 @@ pub async fn text_rows(db: &Db, query: &str) -> Vec<Vec<String>> {
 
 /// A SQL expression that reads a column as text.
 fn cast_text(driver: &str, column: &str) -> String {
-    if driver == "mysql" {
-        format!("CAST({column} AS CHAR)")
-    } else {
-        format!("CAST({column} AS TEXT)")
-    }
+    if driver == "mysql" { format!("CAST({column} AS CHAR)") } else { format!("CAST({column} AS TEXT)") }
 }
 
 /// Installs restore.dbs in the dsn's database and restores soft-deleted rows. membership has a unique key

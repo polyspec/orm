@@ -11,6 +11,8 @@ mod or_panic;
 mod model_row;
 #[path = "common/restore_rows.rs"]
 mod restore_rows;
+#[path = "common/result_code.rs"]
+mod result_code;
 
 use polyspec_orm_case_database::CaseDatabase;
 

@@ -3,6 +3,7 @@
 //! both use them.
 
 use crate::or_panic::OrPanic;
+use crate::result_code::code;
 
 use std::collections::BTreeMap;
 
@@ -133,13 +134,6 @@ pub async fn audit_records(db: &Db) -> Vec<(String, String)> {
         Pool::Postgres(p) => read!(p),
         Pool::Sqlite(p) => read!(p),
         Pool::Markdown(_) => unreachable!("these cases run on SQL databases"),
-    }
-}
-
-pub fn code<T>(r: polyspec_orm::Result<T>) -> String {
-    match r {
-        Ok(_) => "ok".into(),
-        Err(e) => e.code().to_owned(),
     }
 }
 

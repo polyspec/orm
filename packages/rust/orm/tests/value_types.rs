@@ -9,6 +9,10 @@
 mod or_panic;
 use or_panic::OrPanic;
 
+#[path = "common/result_code.rs"]
+mod result_code;
+use result_code::code;
+
 use std::collections::BTreeMap;
 
 use polyspec_orm::{Core, Db, Entity, Model, Param, Schema, Val};
@@ -93,13 +97,6 @@ fn connected(db: &Db) -> Record {
     let mut core = Core::new(entity());
     core.connect(db);
     Record::from_core(core)
-}
-
-fn code<T>(r: polyspec_orm::Result<T>) -> String {
-    match r {
-        Ok(_) => "ok".into(),
-        Err(e) => e.code().to_owned(),
-    }
 }
 
 #[tokio::test]

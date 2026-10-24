@@ -13,6 +13,10 @@
 mod or_panic;
 use or_panic::OrPanic;
 
+#[path = "common/result_code.rs"]
+mod result_code;
+use result_code::code;
+
 use std::collections::BTreeMap;
 
 use polyspec_orm::db::Pool;
@@ -72,13 +76,6 @@ async fn count(db: &Db, query: &str) -> Result<i64, sqlx::Error> {
         Pool::Postgres(p) => sqlx::query_scalar::<_, i64>(sql()).fetch_one(p).await,
         Pool::Sqlite(p) => sqlx::query_scalar::<_, i64>(sql()).fetch_one(p).await,
         Pool::Markdown(_) => unreachable!("these cases run on SQL databases"),
-    }
-}
-
-fn code<T>(r: polyspec_orm::Result<T>) -> String {
-    match r {
-        Ok(_) => "ok".into(),
-        Err(e) => e.code().to_owned(),
     }
 }
 
