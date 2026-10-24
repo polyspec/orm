@@ -226,6 +226,12 @@ fn assigned(set: &[ir::Assign], col: &str) -> bool {
     set.iter().any(|a| a.column == col)
 }
 
+#[derive(Clone, Copy)]
+enum AesVersionWrite {
+    IfMissing,
+    WhenAssigned,
+}
+
 fn assigns_aes(ent: &Entity, set: &[ir::Assign]) -> bool {
     set.iter().any(|a| ent.field(&a.column).map(Field::aes).unwrap_or(false))
 }
@@ -1284,6 +1290,24 @@ impl<'m> Planner<'m> {
         }
     }
 
+    fn write_assignments(&self, b: &mut Builder, ent: &Entity, set: &[ir::Assign], aes_version: AesVersionWrite) -> Result<Vec<String>> {
+        let mut out = Vec::new();
+        for assignment in set {
+            let col = self.column_of(ent, &assignment.column)?;
+            let value = self.render_assign(b, ent, col, assignment)?;
+            out.push(format!("{} = {value}", self.d.quote(&assignment.column)));
+        }
+        let version = aes_version_column(ent);
+        let write_version = match aes_version {
+            AesVersionWrite::IfMissing => !assigned(set, version),
+            AesVersionWrite::WhenAssigned => true,
+        };
+        if !version.is_empty() && assigns_aes(ent, set) && write_version {
+            out.push(format!("{} = {}", self.d.quote(version), b.config("aes_version", self.column_of(ent, version)?.ty.name())));
+        }
+        Ok(out)
+    }
+
     fn update_step(&self, r: &ir::Request) -> Result<Step> {
         let mut b = Builder::new(self.d);
         let ent = self.entity(&r.query.entity)?;
@@ -1291,16 +1315,7 @@ impl<'m> Planner<'m> {
         validate_aes_assignments(ent, &set, true)?;
         validate_audit_assignment(ent, &set)?;
         let root = self.table_scope(ent, &r.query)?;
-        let mut sets = Vec::new();
-        for a in &set {
-            let col = self.column_of(ent, &a.column)?;
-            let v = self.render_assign(&mut b, ent, col, a)?;
-            sets.push(format!("{} = {v}", self.d.quote(&a.column)));
-        }
-        let version = aes_version_column(ent);
-        if !version.is_empty() && assigns_aes(ent, &set) && !assigned(&set, version) {
-            sets.push(format!("{} = {}", self.d.quote(version), b.config("aes_version", self.column_of(ent, version)?.ty.name())));
-        }
+        let mut sets = self.write_assignments(&mut b, ent, &set, AesVersionWrite::IfMissing)?;
         // The updated time is always written explicitly, so every dialect and optimistic locking behave the same.
         if let Some(updated) = ent.updated.as_deref().filter(|u| !assigned(&r.set, u)) {
             let now = self.statement_time(&mut b, self.column_of(ent, updated)?);
@@ -1366,16 +1381,7 @@ impl<'m> Planner<'m> {
         validate_audit_assignment(ent, &set)?;
         let mut b = Builder::new(self.d);
         let root = self.table_scope(ent, &r.query)?;
-        let mut sets = Vec::new();
-        for a in &set {
-            let col = self.column_of(ent, &a.column)?;
-            let v = self.render_assign(&mut b, ent, col, a)?;
-            sets.push(format!("{} = {v}", self.d.quote(&a.column)));
-        }
-        let version = aes_version_column(ent);
-        if !version.is_empty() && assigns_aes(ent, &set) {
-            sets.push(format!("{} = {}", self.d.quote(version), b.config("aes_version", self.column_of(ent, version)?.ty.name())));
-        }
+        let mut sets = self.write_assignments(&mut b, ent, &set, AesVersionWrite::WhenAssigned)?;
         sets.push(format!("{} = NULL", self.d.quote(soft_delete)));
         let audited = audit_column(ent);
         if !audited.is_empty() {
