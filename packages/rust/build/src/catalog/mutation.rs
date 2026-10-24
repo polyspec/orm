@@ -1,6 +1,7 @@
 //! Native optimistic updates. No durable operation identity or wire authority.
 use super::{metadata, page::quote, CatalogConnection, RowSnapshot, TableMetadata};
 use crate::tool_db::{self, Conn, GridCell, GridQueryResult, QueryLimits, P};
+use polyspec_orm::db::Pool;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc,
@@ -35,6 +36,15 @@ pub(super) fn write_transaction_statement(dialect: &str) -> &'static str {
         "postgres" => "BEGIN",
         _ => "BEGIN IMMEDIATE",
     }
+}
+
+pub(super) async fn begin_mutation(pool: &Pool, dialect: &str, cancellation: &AtomicBool) -> Result<Conn, String> {
+    cancelled(cancellation)?;
+    let mut connection = Conn::acquire(pool).await.map_err(|e| e.to_string())?;
+    connection.discard_on_drop();
+    cancelled(cancellation)?;
+    connection.exec(write_transaction_statement(dialect), &[]).await.map_err(|e| e.to_string())?;
+    Ok(connection)
 }
 
 pub(super) async fn lock_original(
@@ -191,11 +201,7 @@ impl CatalogConnection {
         let keys = original.key().map(|(_, value)| bind(value)).collect::<Result<Vec<_>, _>>()?;
         tool_db::validate_params(&keys, &self.dialect).map_err(|e| e.to_string())?;
         publish(MutationPhase::Validated);
-        cancelled(&cancellation)?;
-        let mut connection = Conn::acquire(&self.pool).await.map_err(|e| e.to_string())?;
-        connection.discard_on_drop();
-        cancelled(&cancellation)?;
-        connection.exec(write_transaction_statement(&self.dialect), &[]).await.map_err(|e| e.to_string())?;
+        let mut connection = begin_mutation(&self.pool, &self.dialect, &cancellation).await?;
         let result = async {
             let descriptor = lock_original(&mut connection, original, &self.dialect, &keys, &cancellation, &publish).await?;
             let sets = changes

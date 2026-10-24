@@ -1,10 +1,10 @@
 //! Delete an exact checked original row under an owning transaction.
 use super::{
     metadata,
-    mutation::{bind, cancelled, lock_original, lookup, predicate, qualified, write_transaction_statement, CommitPermit, Publisher},
+    mutation::{begin_mutation, bind, cancelled, lock_original, lookup, predicate, qualified, CommitPermit, Publisher},
     mutation_finish, CatalogConnection, MutationPhase, RowSnapshot,
 };
-use crate::tool_db::{self, Conn};
+use crate::tool_db;
 use std::sync::{atomic::AtomicBool, Arc};
 
 impl CatalogConnection {
@@ -13,11 +13,7 @@ impl CatalogConnection {
         let keys = original.key().map(|(_, value)| bind(value)).collect::<Result<Vec<_>, _>>()?;
         tool_db::validate_params(&keys, &self.dialect).map_err(|e| e.to_string())?;
         publish(MutationPhase::Validated);
-        cancelled(&cancellation)?;
-        let mut connection = Conn::acquire(&self.pool).await.map_err(|e| e.to_string())?;
-        connection.discard_on_drop();
-        cancelled(&cancellation)?;
-        connection.exec(write_transaction_statement(&self.dialect), &[]).await.map_err(|e| e.to_string())?;
+        let mut connection = begin_mutation(&self.pool, &self.dialect, &cancellation).await?;
         let result = async {
             let descriptor = lock_original(&mut connection, original, &self.dialect, &keys, &cancellation, &publish).await?;
             let sql = format!("DELETE FROM {} WHERE {}", qualified(&descriptor, &self.dialect)?, predicate(&descriptor, &self.dialect, 1)?);
