@@ -3283,20 +3283,6 @@
       ]
     },
     {
-      "id": "ts-markdown-connect-refused",
-      "kind": "feature",
-      "requirements": [
-        "PRT-64"
-      ],
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/markdown.mjs",
-          "id": "markdown/connect-refused"
-        }
-      ]
-    },
-    {
       "id": "ts-mysql_tls",
       "kind": "feature",
       "requirements": [
@@ -8099,6 +8085,11 @@
           "id": "MarkdownTest::testConnectRefused"
         },
         {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/OrmExceptionNativeTest.php",
+          "id": "OrmExceptionNativeTest::testNativeMarkdownConnectionRefusesConnectError"
+        },
+        {
           "implementation": "typescript",
           "test": "packages/ts/tests/markdown.mjs",
           "id": "markdown/connect-refused"
@@ -8623,20 +8614,6 @@
           "implementation": "go",
           "test": "packages/go/orm/markdown_test.go",
           "id": "TestMarkdownSessionMessages"
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-orm-markdown-connect-refused",
-      "kind": "feature",
-      "requirements": [
-        "PRT-64"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/markdown_test.go",
-          "id": "TestMarkdownConnectRefused"
         }
       ]
     },
@@ -10977,20 +10954,6 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/external_documents.rs",
           "id": "external_documents"
-        }
-      ]
-    },
-    {
-      "id": "rust-markdown-connect-refused",
-      "kind": "feature",
-      "requirements": [
-        "PRT-64"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/markdown.rs",
-          "id": "markdown_connect_refused"
         }
       ]
     },
@@ -14080,20 +14043,6 @@
       ]
     },
     {
-      "id": "py-test-markdown-connect-refused",
-      "kind": "feature",
-      "requirements": [
-        "PRT-64"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_markdown.py",
-          "id": "test_markdown_connect_refused"
-        }
-      ]
-    },
-    {
       "id": "py-test-markdown-message-cases",
       "kind": "feature",
       "requirements": [
@@ -14385,20 +14334,6 @@
           "implementation": "php",
           "test": "packages/php/tests/MarkdownTest.php",
           "id": "MarkdownTest::testSessionMessages"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-markdown-connect-refused",
-      "kind": "feature",
-      "requirements": [
-        "PRT-64"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/MarkdownTest.php",
-          "id": "MarkdownTest::testConnectRefused"
         }
       ]
     },

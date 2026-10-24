@@ -1353,6 +1353,7 @@
         "packages/php-ext/src/model_read.c",
         "packages/php-ext/tests/DriverErrorTest.php",
         "packages/php-ext/tests/ModelStreamReadTest.php",
+        "packages/php-ext/tests/OrmExceptionNativeTest.php",
         "packages/python/tests/test_driver_cells.py",
         "packages/python/src/polyspec/orm/driver_cells.py",
         "packages/python/tests/test_driver_errors.py",

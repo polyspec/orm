@@ -1449,7 +1449,7 @@ native-error-cause-check/php-extension: php-models
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir"; \
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh "$$run_dir/polyspec_orm.so"; \
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist --filter 'DriverErrorTest|testNativeRowAssemblyPreservesBinaryDriverCellBytes' packages/php-ext/tests/DriverErrorTest.php packages/php-ext/tests/ModelStreamReadTest.php
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist --filter 'DriverErrorTest|testNativeRowAssemblyPreservesBinaryDriverCellBytes|testNativeMarkdownConnectionRefusesConnectError' packages/php-ext/tests/DriverErrorTest.php packages/php-ext/tests/ModelStreamReadTest.php packages/php-ext/tests/OrmExceptionNativeTest.php
 client-unit-check/model-methods: php-vendor-check
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/ModelMethodsTest.php
 client-unit-check/orm-gen-scan: php-vendor-check

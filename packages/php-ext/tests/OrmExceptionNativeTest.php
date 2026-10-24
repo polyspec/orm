@@ -339,6 +339,72 @@ PHP;
         }
     }
 
+    // Requirements: PRT-64.
+    public function testNativeMarkdownConnectionRefusesConnectError(): void
+    {
+        $serverCode = <<<'PHP'
+$server = stream_socket_server('tcp://127.0.0.1:0', $errno, $error);
+if ($server === false) { fwrite(STDERR, $error); exit(2); }
+$address = stream_socket_get_name($server, false);
+echo substr($address, strrpos($address, ':') + 1), "\n";
+flush();
+$client = stream_socket_accept($server, 10);
+if ($client === false) { exit(3); }
+$request = fgets($client);
+if ($request === false) { exit(4); }
+$response = ['error' => ['code' => 'CONFIG', 'message' => "connect: the token is not the corpus's token"]];
+fwrite($client, json_encode($response, JSON_THROW_ON_ERROR) . "\n");
+fclose($client);
+echo base64_encode($request), "\n";
+fclose($server);
+PHP;
+        $pipes = [];
+        $process = proc_open(
+            [PHP_BINARY, '-r', $serverCode],
+            [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+            $pipes
+        );
+        Assert::assertIsResource($process);
+        try {
+            $port = trim((string) fgets($pipes[1]));
+            Assert::assertMatchesRegularExpression('/^[1-9][0-9]*$/', $port);
+            Assert::assertTrue((new \ReflectionMethod(Orm::class, 'connect'))->isInternal());
+            try {
+                Orm::connect("markdown://127.0.0.1:$port/corpus?token=wrong-token", new Config());
+                Assert::fail('a rejected native Markdown handshake must fail connect');
+            } catch (OrmException $error) {
+                Assert::assertSame(Code::CONFIG, $error->code_);
+                Assert::assertSame(
+                    "CONFIG: connect: the token is not the corpus's token",
+                    $error->getMessage()
+                );
+                Assert::assertNull($error->getPrevious());
+            }
+            $encoded = trim((string) fgets($pipes[1]), "\r\n");
+            $request = json_decode(
+                (string) base64_decode($encoded, true),
+                true,
+                512,
+                JSON_THROW_ON_ERROR
+            );
+            Assert::assertSame(
+                ['op' => 'connect', 'corpus' => 'corpus', 'token' => 'wrong-token'],
+                $request
+            );
+        } finally {
+            foreach ($pipes as $pipe) {
+                if (is_resource($pipe)) {
+                    fclose($pipe);
+                }
+            }
+            $status = proc_get_status($process);
+            if ($status['running']) {
+                proc_terminate($process);
+            }
+            proc_close($process);
+        }
+    }
+
     public function testAesKeyringIsProvidedByTheExtension(): void
     {
         $class = new ReflectionClass(AesKeyring::class);
