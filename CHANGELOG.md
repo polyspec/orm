@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The Rust codec, driver, Markdown and build error paths keep the native cause in their messages. `make rust-causes-check` passes (ORM 6/6, build 14/14), and the database caller cases `tool_cells`, `grid_cells`, `grid_numbers`, `grid_decimals` and `grid_temporal` pass on SQLite, MySQL and PostgreSQL test servers; the red was `make rust-causes-check` exit 2 at `e555f7f87e9e` (KSTD-5-71).
 - `make kit-check` passes on main, confirming CHECK_TARGETS includes every Kit gate and the vendored files match Kit 0.0.54 (KSTD-5-11).
 - Main now passes `make kit-check`: the parity requirements, CHECK_TARGETS registrations, absolute tool paths, and vendored copies match Kit 0.0.54. The focused CI target-distribution case also passes 1/1 (KSTD-12).
 - The selected PHP extension bootstrap test now runs from the root Composer vendor without PHPUnit discovering a trait-only `*Test.php` file. The timed Dbspec trait lives in `DbspecTimedCases.php`, and its imports, bootstrap include, and feature owner input name that helper. The pre-fix gate run at `3cd748f44648` failed on the discovery warning; the focused test passes 1 test / 5 assertions with the extension loaded (KSTD-5-10).

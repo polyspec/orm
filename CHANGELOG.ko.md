@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: e42a9085483eb96668d2838bacab69139f67ca708d36fb16198f31bab76106d8 -->
+<!-- source-sha256: e81039346e46f24cc352b0d58e2162d7088d875cc37f79033942a4aee887afe0 -->
 # 변경 이력
 
 ## Unreleased
 
+- Rust codec, driver, Markdown, build의 error 경로가 native cause를 message에 유지한다. `make rust-causes-check`가 통과하고(ORM 6/6, build 14/14), database caller case `tool_cells`, `grid_cells`, `grid_numbers`, `grid_decimals`, `grid_temporal`이 SQLite, MySQL, PostgreSQL test server에서 통과한다. red는 `e555f7f87e9e`의 `make rust-causes-check` exit 2였다(KSTD-5-71).
 - main의 `make kit-check`가 통과해 CHECK_TARGETS가 모든 Kit gate를 포함하고 vendored 파일이 Kit 0.0.54와 일치함을 확인한다(KSTD-5-11).
 - main의 `make kit-check`가 통과한다. parity requirement, CHECK_TARGETS 등록, 절대 경로 도구 실행, vendored copy가 Kit 0.0.54와 일치한다. CI target 분배 집중 사례도 1/1 통과한다(KSTD-12).
 - 선택한 PHP extension bootstrap test가 root Composer vendor에서 실행되며 trait만 정의한 `*Test.php` 파일을 PHPUnit이 발견하지 않는다. Dbspec 시간 측정 trait를 `DbspecTimedCases.php`로 옮기고 import, bootstrap include, feature owner 입력을 함께 갱신했다. 수정 전 `3cd748f44648`의 gate 실행은 discovery warning으로 실패했고, extension을 로드한 focused test는 1개 test와 5개 assertion으로 통과한다(KSTD-5-10).
