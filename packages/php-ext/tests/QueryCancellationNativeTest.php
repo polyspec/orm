@@ -93,6 +93,7 @@ final class QueryCancellationNativeTest extends TestCase
         $secondRoot->close();
     }
 
+    // Requirements: CFG-9.
     public function testNativeCancellationInterruptsSqliteRollsBackAndKeepsRootConnectionUsable(): void
     {
         self::assertTrue((new ReflectionMethod(Cancellation::class, 'cancel'))->isInternal());
@@ -147,6 +148,7 @@ final class QueryCancellationNativeTest extends TestCase
         }
     }
 
+    // Requirements: CFG-9.
     public function testPostgresNoticeCancelsActiveStatementRollsBackAndReconnectsRoot(): void
     {
         \Polyspec\Orm\Tests\with_case_database('postgres', static function (): void {}, static function (string $dsn): void {
@@ -199,6 +201,7 @@ final class QueryCancellationNativeTest extends TestCase
         });
     }
 
+    // Requirements: CFG-9.
     public function testMysqlLockEventCancelsActiveStatementRollsBackAndReconnectsRoot(): void
     {
         if (!function_exists('pcntl_fork')) {

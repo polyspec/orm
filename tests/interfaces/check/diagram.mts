@@ -57,8 +57,9 @@ export function diagram(m: Manifest, korean: boolean): string {
     ? '\nHost-native API는 해당 host의 공개 primitive 형식으로만 선언하며 공통 signature를 요구하지 않는다. 공통 동작은 `behavior_adapters`의 모든 runtime 항목과 정확한 parity case로 검증한다. `unresolved` 항목은 구현 완료 증거가 아니다.\n'
     : '\nA host-native API uses its host language’s public primitive and has no common signature. The shared behavior is checked through every runtime entry and its exact parity cases in `behavior_adapters`. An `unresolved` entry is not implementation evidence.\n';
   const behaviors = m.behavior_adapters ?? [];
-  b += korean ? '\n## 공통 동작 adapter\n\n| 요구사항 | 완료 checklist 항목 | Runtime | 상태 | Host primitive | 실행 case |\n|---|---|---|---|---|---|\n'
-    : '\n## Shared behavior adapters\n\n| Requirement | Completion item | Runtime | Status | Host primitive | Executable case |\n|---|---|---|---|---|---|\n';
+  b += korean
+    ? '\n## 공통 동작 adapter\n\n- **INT-139** 생성 구성요소 문서는 manifest의 모든 component, method, field, ownership edge를 영·한으로 기록한다.\n\n| 요구사항 | 완료 checklist 항목 | Runtime | 상태 | Host primitive | 실행 case |\n|---|---|---|---|---|---|\n'
+    : '\n## Shared behavior adapters\n\n- **INT-139** The generated component document records every component, method, field, and ownership edge in the manifest in both languages.\n\n| Requirement | Completion item | Runtime | Status | Host primitive | Executable case |\n|---|---|---|---|---|---|\n';
   for (const behavior of behaviors) {
     for (const [runtime, adapter] of Object.entries(behavior.adapters ?? {}).sort(([a], [b]) => byteOrder(a, b))) {
       const cases = (adapter.cases ?? []).map(c => `${c.test ?? ''}::${c.id ?? ''}${c.phase ? ` (${c.phase})` : ''}`).join('<br>');

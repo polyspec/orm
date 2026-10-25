@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces-model -->
-<!-- source-sha256: 9aa153649807a2f8adaf7c2dc04f1ca451c53422367bff36e0833edf19ed45d3 -->
+<!-- source-sha256: 6cfe6d1ff0e2032f3708ebb9ce975c7f6c527e1e84077b97403d364dbe156c42 -->
 # 공통 구성요소
 
 <!-- contracts/interfaces.json에서 생성됨. 직접 수정하지 않는다. -->
@@ -279,6 +279,8 @@ classDiagram
 | API | Host | Semantic requirement | Native declaration |
 |---|---|---|---|
 | Db.withContext | go | CFG-9 | `packages/go/orm/db.go::DB.WithContext` |
+| Cancellation.cancel | php | CFG-9 | `packages/php/src/Cancellation.php::Polyspec\Orm\Cancellation::cancel` |
+| Db.withCancellation | php | CFG-9 | `packages/php/src/Db.php::Polyspec\Orm\Db::withCancellation` |
 | Db.withSignal | typescript | CFG-9 | `packages/ts/src/database.ts::Db.withSignal` |
 | Db.withFuture | python | CFG-9 | `packages/python/src/polyspec/orm/database.py::Db.with_future` |
 
@@ -286,11 +288,13 @@ Host-native API는 해당 host의 공개 primitive 형식으로만 선언하며 
 
 ## 공통 동작 adapter
 
+- **INT-139** 생성 구성요소 문서는 manifest의 모든 component, method, field, ownership edge를 영·한으로 기록한다.
+
 | 요구사항 | 완료 checklist 항목 | Runtime | 상태 | Host primitive | 실행 case |
 |---|---|---|---|---|---|
 | CFG-9 | KSTD-2-11-16 | go | implemented | Db.WithContext | packages/go/orm/cancel_test.go::TestWithContextCancels |
-| CFG-9 | KSTD-2-11-16 | php | unresolved (KSTD-2-11-16-1; cancel_active_query_and_reuse_connection) |  |  |
-| CFG-9 | KSTD-2-11-16 | php-extension | unresolved (KSTD-2-11-16-1; cancel_active_query_and_reuse_connection) |  |  |
+| CFG-9 | KSTD-2-11-16 | php | implemented | Cancellation::cancel and Db::withCancellation | packages/php/tests/QueryCancellationTest.php::testCancellationInterruptsSqliteVmRollsBackAndKeepsRootConnectionUsable<br>packages/php/tests/QueryCancellationTest.php::testPostgresNoticeCancelsActiveStatementRollsBackAndReconnectsRoot<br>packages/php/tests/QueryCancellationTest.php::testMysqlLockEventCancelsActiveStatementRollsBackAndReconnectsRoot |
+| CFG-9 | KSTD-2-11-16 | php-extension | implemented | Cancellation::cancel and Db::withCancellation | packages/php-ext/tests/QueryCancellationNativeTest.php::testNativeCancellationInterruptsSqliteRollsBackAndKeepsRootConnectionUsable<br>packages/php-ext/tests/QueryCancellationNativeTest.php::testPostgresNoticeCancelsActiveStatementRollsBackAndReconnectsRoot<br>packages/php-ext/tests/QueryCancellationNativeTest.php::testMysqlLockEventCancelsActiveStatementRollsBackAndReconnectsRoot |
 | CFG-9 | KSTD-2-11-16 | python | implemented | Db.with_future | packages/python/tests/coverage_transactions.py::handle_abandoned_query [sqlite]<br>packages/python/tests/coverage_transactions.py::handle_abandoned_query [mysql]<br>packages/python/tests/coverage_transactions.py::handle_abandoned_query [postgres] |
 | CFG-9 | KSTD-2-11-16 | rust | implemented | dropping the statement future | packages/rust/orm/tests/zone.rs::dropping_a_query_cancels_it |
 | CFG-9 | KSTD-2-11-16 | typescript | implemented | Db.withSignal | packages/ts/tests/coverage_transactions.mjs::handle_abandoned_query [sqlite] (before-start)<br>packages/ts/tests/coverage_transactions.mjs::handle_abandoned_query [mysql]<br>packages/ts/tests/coverage_transactions.mjs::handle_abandoned_query [postgres] |

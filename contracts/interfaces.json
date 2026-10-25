@@ -41,7 +41,7 @@
   },
   "symbol_hashes": {
     "go": "sha256:9ffa390600f78ff26b28bb5754793cf2779140ea7348c43948454e4c8790e93c",
-    "php": "sha256:5c07c66acbdbac139b089f66941550fcf718cf32c2a88e176217c1104e208f5d",
+    "php": "sha256:c8d17426eaad2a1fe8284f1121778b7998a55db6ab39a219af745bcf720bb908",
     "rust": "sha256:3bfb3f02574f76e1897e547639e47e87ad372829706184f31c7112e69e359b83",
     "typescript": "sha256:ba82ca8e5030a328d5e06b1d96221180800145824507c96a3cab1efb079c3d19",
     "python": "sha256:18503d6dced72e8791848318102f77fc117281d247d56a29fdc06f1e616918fc"
@@ -53,6 +53,20 @@
       "semantic": "CFG-9",
       "symbol": "packages/go/orm/db.go::DB.WithContext",
       "signature": "receiver=*DB func(ctx context.Context) *DB"
+    },
+    {
+      "id": "Cancellation.cancel",
+      "owner": "php",
+      "semantic": "CFG-9",
+      "symbol": "packages/php/src/Cancellation.php::Polyspec\\Orm\\Cancellation::cancel",
+      "signature": "public function cancel(): void"
+    },
+    {
+      "id": "Db.withCancellation",
+      "owner": "php",
+      "semantic": "CFG-9",
+      "symbol": "packages/php/src/Db.php::Polyspec\\Orm\\Db::withCancellation",
+      "signature": "public function withCancellation(Polyspec\\Orm\\Cancellation $cancellation): Polyspec\\Orm\\Db"
     },
     {
       "id": "Db.withSignal",
@@ -107,14 +121,23 @@
           "cases": [{ "test": "packages/rust/orm/tests/zone.rs", "id": "dropping_a_query_cancels_it" }]
         },
         "php": {
-          "status": "unresolved",
-          "item": "KSTD-2-11-16-1",
-          "required_case": "cancel_active_query_and_reuse_connection"
+          "status": "implemented",
+          "primitive": "Cancellation::cancel and Db::withCancellation",
+          "surface": "Db.withCancellation",
+          "cases": [
+            { "test": "packages/php/tests/QueryCancellationTest.php", "id": "testCancellationInterruptsSqliteVmRollsBackAndKeepsRootConnectionUsable" },
+            { "test": "packages/php/tests/QueryCancellationTest.php", "id": "testPostgresNoticeCancelsActiveStatementRollsBackAndReconnectsRoot" },
+            { "test": "packages/php/tests/QueryCancellationTest.php", "id": "testMysqlLockEventCancelsActiveStatementRollsBackAndReconnectsRoot" }
+          ]
         },
         "php-extension": {
-          "status": "unresolved",
-          "item": "KSTD-2-11-16-1",
-          "required_case": "cancel_active_query_and_reuse_connection"
+          "status": "implemented",
+          "primitive": "Cancellation::cancel and Db::withCancellation",
+          "cases": [
+            { "test": "packages/php-ext/tests/QueryCancellationNativeTest.php", "id": "testNativeCancellationInterruptsSqliteRollsBackAndKeepsRootConnectionUsable" },
+            { "test": "packages/php-ext/tests/QueryCancellationNativeTest.php", "id": "testPostgresNoticeCancelsActiveStatementRollsBackAndReconnectsRoot" },
+            { "test": "packages/php-ext/tests/QueryCancellationNativeTest.php", "id": "testMysqlLockEventCancelsActiveStatementRollsBackAndReconnectsRoot" }
+          ]
         }
       }
     }
@@ -127,7 +150,7 @@
         "packages/php-ext/src"
       ],
       "symbols": "contracts/symbols/php-extension.json",
-      "symbol_hash": "sha256:b387c213a11f2f4a01a695f2165be966f6a2e875ff04c56dec8df937702da471",
+      "symbol_hash": "sha256:af97c1f687fc0730ee7ef74646527dd9a2f967d5b375c17b5cc904e0cb278850",
       "rules": [
         "Model.connect",
         "Model.and",

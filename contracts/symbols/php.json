@@ -5451,6 +5451,90 @@
     "exported": true,
     "signature": "public function __construct(string $bytes): "
   },
+  "packages/php/src/Cancellation.php::Polyspec\\Orm\\Cancellation": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\Cancellation extends  implements  uses "
+  },
+  "packages/php/src/Cancellation.php::Polyspec\\Orm\\Cancellation::$cancelQueries": {
+    "exported": false,
+    "signature": "private array"
+  },
+  "packages/php/src/Cancellation.php::Polyspec\\Orm\\Cancellation::$connectionSlots": {
+    "exported": false,
+    "signature": "private array"
+  },
+  "packages/php/src/Cancellation.php::Polyspec\\Orm\\Cancellation::$ownerPid": {
+    "exported": false,
+    "signature": "private int"
+  },
+  "packages/php/src/Cancellation.php::Polyspec\\Orm\\Cancellation::$state": {
+    "exported": false,
+    "signature": "private "
+  },
+  "packages/php/src/Cancellation.php::Polyspec\\Orm\\Cancellation::$statePath": {
+    "exported": false,
+    "signature": "private string"
+  },
+  "packages/php/src/Cancellation.php::Polyspec\\Orm\\Cancellation::$streamPid": {
+    "exported": false,
+    "signature": "private int"
+  },
+  "packages/php/src/Cancellation.php::Polyspec\\Orm\\Cancellation::__construct": {
+    "exported": true,
+    "signature": "public function __construct(): "
+  },
+  "packages/php/src/Cancellation.php::Polyspec\\Orm\\Cancellation::__destruct": {
+    "exported": true,
+    "signature": "public function __destruct(): "
+  },
+  "packages/php/src/Cancellation.php::Polyspec\\Orm\\Cancellation::begin": {
+    "exported": true,
+    "signature": "public function begin(int $slot=0): void"
+  },
+  "packages/php/src/Cancellation.php::Polyspec\\Orm\\Cancellation::cancel": {
+    "exported": true,
+    "signature": "public function cancel(): void"
+  },
+  "packages/php/src/Cancellation.php::Polyspec\\Orm\\Cancellation::end": {
+    "exported": true,
+    "signature": "public function end(int $slot=0): void"
+  },
+  "packages/php/src/Cancellation.php::Polyspec\\Orm\\Cancellation::hasActiveSlotsUnlocked": {
+    "exported": false,
+    "signature": "private function hasActiveSlotsUnlocked( $stream): bool"
+  },
+  "packages/php/src/Cancellation.php::Polyspec\\Orm\\Cancellation::isCancelled": {
+    "exported": true,
+    "signature": "public function isCancelled(): bool"
+  },
+  "packages/php/src/Cancellation.php::Polyspec\\Orm\\Cancellation::readByteUnlocked": {
+    "exported": false,
+    "signature": "private function readByteUnlocked( $stream, int $offset): int"
+  },
+  "packages/php/src/Cancellation.php::Polyspec\\Orm\\Cancellation::readStateUnlocked": {
+    "exported": false,
+    "signature": "private function readStateUnlocked( $stream): int"
+  },
+  "packages/php/src/Cancellation.php::Polyspec\\Orm\\Cancellation::registerCancelQuery": {
+    "exported": true,
+    "signature": "public function registerCancelQuery(int $connectionId, ?Closure $cancelQuery): int"
+  },
+  "packages/php/src/Cancellation.php::Polyspec\\Orm\\Cancellation::statePath": {
+    "exported": true,
+    "signature": "public function statePath(): string"
+  },
+  "packages/php/src/Cancellation.php::Polyspec\\Orm\\Cancellation::stateStream": {
+    "exported": false,
+    "signature": "private function stateStream(): "
+  },
+  "packages/php/src/Cancellation.php::Polyspec\\Orm\\Cancellation::withStateLock": {
+    "exported": false,
+    "signature": "private function withStateLock(int $operation, Closure $read): mixed"
+  },
+  "packages/php/src/Cancellation.php::Polyspec\\Orm\\Cancellation::writeByteUnlocked": {
+    "exported": false,
+    "signature": "private function writeByteUnlocked( $stream, int $offset, int $state): void"
+  },
   "packages/php/src/CanonicalRequest.php::Polyspec\\Orm\\CanonicalRequest": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\CanonicalRequest extends  implements  uses "
@@ -6343,6 +6427,14 @@
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Db extends  implements  uses "
   },
+  "packages/php/src/Db.php::Polyspec\\Orm\\Db::$cancellation": {
+    "exported": false,
+    "signature": "private ?Polyspec\\Orm\\Cancellation"
+  },
+  "packages/php/src/Db.php::Polyspec\\Orm\\Db::$cancellationSlot": {
+    "exported": false,
+    "signature": "private int"
+  },
   "packages/php/src/Db.php::Polyspec\\Orm\\Db::$config": {
     "exported": false,
     "signature": "private readonly Polyspec\\Orm\\Config"
@@ -6450,6 +6542,10 @@
   "packages/php/src/Db.php::Polyspec\\Orm\\Db::config": {
     "exported": true,
     "signature": "public function config(): Polyspec\\Orm\\Config"
+  },
+  "packages/php/src/Db.php::Polyspec\\Orm\\Db::configurePdo": {
+    "exported": false,
+    "signature": "private static function configurePdo(PDO $pdo, string $driver): void"
   },
   "packages/php/src/Db.php::Polyspec\\Orm\\Db::control": {
     "exported": false,
@@ -6667,9 +6763,17 @@
     "exported": false,
     "signature": "private function sendWrite(array $step, array $args, Polyspec\\Orm\\Request $r): array"
   },
+  "packages/php/src/Db.php::Polyspec\\Orm\\Db::setCancelConnection": {
+    "exported": true,
+    "signature": "public function setCancelConnection(Closure $cancel): void"
+  },
   "packages/php/src/Db.php::Polyspec\\Orm\\Db::setListener": {
     "exported": true,
     "signature": "public function setListener(Closure $open): void"
+  },
+  "packages/php/src/Db.php::Polyspec\\Orm\\Db::setReconnect": {
+    "exported": true,
+    "signature": "public function setReconnect(Closure $open): void"
   },
   "packages/php/src/Db.php::Polyspec\\Orm\\Db::splitReadPlan": {
     "exported": false,
@@ -6727,6 +6831,10 @@
     "exported": true,
     "signature": "public function utils(): Polyspec\\Orm\\Utils"
   },
+  "packages/php/src/Db.php::Polyspec\\Orm\\Db::withCancellation": {
+    "exported": true,
+    "signature": "public function withCancellation(Polyspec\\Orm\\Cancellation $cancellation): Polyspec\\Orm\\Db"
+  },
   "packages/php/src/Db.php::Polyspec\\Orm\\Db::withRequestHook": {
     "exported": true,
     "signature": "public function withRequestHook(Closure $hook): Polyspec\\Orm\\Db"
@@ -6747,6 +6855,14 @@
     "exported": true,
     "signature": "final class Polyspec\\Orm\\DbState extends  implements  uses "
   },
+  "packages/php/src/DbState.php::Polyspec\\Orm\\DbState::$cancelConnection": {
+    "exported": true,
+    "signature": "public ?Closure"
+  },
+  "packages/php/src/DbState.php::Polyspec\\Orm\\DbState::$cancelQuery": {
+    "exported": true,
+    "signature": "public ?Closure"
+  },
   "packages/php/src/DbState.php::Polyspec\\Orm\\DbState::$closed": {
     "exported": true,
     "signature": "public bool"
@@ -6766,6 +6882,10 @@
   "packages/php/src/DbState.php::Polyspec\\Orm\\DbState::$pdo": {
     "exported": true,
     "signature": "public ?PDO"
+  },
+  "packages/php/src/DbState.php::Polyspec\\Orm\\DbState::$reconnect": {
+    "exported": true,
+    "signature": "public ?Closure"
   },
   "packages/php/src/DbState.php::Polyspec\\Orm\\DbState::$rollbackFault": {
     "exported": true,
@@ -11663,6 +11783,10 @@
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Orm extends  implements  uses "
   },
+  "packages/php/src/Orm.php::Polyspec\\Orm\\Orm::cancelConnection": {
+    "exported": false,
+    "signature": "private static function cancelConnection(string $driver, Closure $open, int $connectionId): Closure"
+  },
   "packages/php/src/Orm.php::Polyspec\\Orm\\Orm::checkConnectionConfig": {
     "exported": false,
     "signature": "private static function checkConnectionConfig(Polyspec\\Orm\\Config $config): void"
@@ -12687,6 +12811,22 @@
     "exported": false,
     "signature": "private function withoutForeignKeys(Closure $fn): array"
   },
+  "packages/php/src/SqliteCancellation.php::Polyspec\\Orm\\SqliteCancellation": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\SqliteCancellation extends  implements  uses "
+  },
+  "packages/php/src/SqliteCancellation.php::Polyspec\\Orm\\SqliteCancellation::$extension": {
+    "exported": false,
+    "signature": "private static ?string"
+  },
+  "packages/php/src/SqliteCancellation.php::Polyspec\\Orm\\SqliteCancellation::attach": {
+    "exported": true,
+    "signature": "public static function attach(PDO $pdo, string $statePath, int $slot): void"
+  },
+  "packages/php/src/SqliteCancellation.php::Polyspec\\Orm\\SqliteCancellation::extension": {
+    "exported": false,
+    "signature": "private static function extension(): string"
+  },
   "packages/php/src/StatementEvent.php::Polyspec\\Orm\\StatementEvent": {
     "exported": true,
     "signature": "final readonly class Polyspec\\Orm\\StatementEvent extends  implements  uses "
@@ -12870,6 +13010,10 @@
   "packages/php/src/TxFrame.php::Polyspec\\Orm\\TxFrame::$audit": {
     "exported": true,
     "signature": "public ?array"
+  },
+  "packages/php/src/TxFrame.php::Polyspec\\Orm\\TxFrame::$cancelled": {
+    "exported": true,
+    "signature": "public bool"
   },
   "packages/php/src/TxFrame.php::Polyspec\\Orm\\TxFrame::$db": {
     "exported": true,

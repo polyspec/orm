@@ -9,11 +9,14 @@ import { readManifest } from './manifest.mts';
 
 const root = resolve(import.meta.dirname, '../../..');
 
-caseTest('the component diagrams use the requested language', COMPUTE, () => {
+// Requirements: INT-139.
+caseTest('the component diagrams use the requested language and list the complete manifest', COMPUTE, () => {
   const m = readManifest(join(root, 'contracts/interfaces.json'));
   const en = diagram(m, false), ko = diagram(m, true);
   assert.ok(en.includes('| Component | Behavior and state |') && !en.includes('| 구성요소 |'), 'English diagram contains an invalid table heading');
   assert.ok(ko.includes('| 구성요소 | 동작 및 상태 |') && !ko.includes('| Component |'), 'Korean diagram contains an invalid table heading');
+  assert.match(en, /^- \*\*INT-139\*\* The generated component document records every component, method, field, and ownership edge in the manifest in both languages\.$/m);
+  assert.match(ko, /^- \*\*INT-139\*\* 생성 구성요소 문서는 manifest의 모든 component, method, field, ownership edge를 영·한으로 기록한다\.$/m);
   const count = (text: string, part: string) => text.split(part).length - 1;
   assert.ok(count(en, '    class ') === count(ko, '    class ') && count(en, '\n| ') === count(ko, '\n| '), 'localized diagrams contain different structures');
 });
