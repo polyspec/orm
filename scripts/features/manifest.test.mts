@@ -18,6 +18,23 @@ assert.ok(first, 'contracts/features.json declares a feature');
 function refused(value: unknown): string[] {
   return refusedPaths(() => parseFeatures(JSON.stringify(value), 'contracts/features.json'));
 }
+function isJsonObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+function isJsonArray(value: unknown): value is unknown[] {
+  return Array.isArray(value);
+}
+function isSafeInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value);
+}
+type CompositeCollisionRow = { tenant_id: number; account_id: number; name: string; role: string };
+function isCompositeCollisionRow(value: unknown): value is CompositeCollisionRow {
+  return isJsonObject(value)
+    && isSafeInteger(value.tenant_id)
+    && isSafeInteger(value.account_id)
+    && typeof value.name === 'string'
+    && typeof value.role === 'string';
+}
 const withFeature = (change: (feature: ManifestFeature) => object): object => ({ ...manifest, features: [change(first)] });
 const adapterChecklist = (state: string): string => [
   '| ID | Task | Deliverables | Verification | State |',
@@ -119,25 +136,38 @@ caseTest('the schema of a shared fixture refuses a fixture without its feature o
 });
 
 caseTest('the composite-key collision fixture has distinct bounded tuples with equal concatenations', COMPUTE, () => {
-  const fixture = JSON.parse(readFileSync(new URL('../../contracts/fixtures/composite_key_collision.json', import.meta.url), 'utf8'));
   const fixtureSchema = new URL('./schema/fixture.schema.json', import.meta.url).pathname;
-  assert.deepEqual(
-    refusedPaths(() => parseJson<object>(JSON.stringify(fixture), fixtureSchema, 'composite_key_collision.json')),
-    [],
-    'the shared fixture schema accepts the composite-key case',
+  const fixtureValue = parseJson<unknown>(
+    readFileSync(new URL('../../contracts/fixtures/composite_key_collision.json', import.meta.url), 'utf8'),
+    fixtureSchema,
+    'composite_key_collision.json',
   );
+  assert.ok(isJsonObject(fixtureValue), 'the shared fixture schema accepts an object');
+  const fixture = fixtureValue;
   assert.equal(fixture.feature, 'composite_keys');
   assert.equal(fixture.tenant_namespace, '990004');
+  assert.ok(isJsonArray(fixture.cases));
   assert.equal(fixture.cases.length, 1);
-  const compositeCase = fixture.cases[0];
+  const compositeCaseValue = fixture.cases[0];
+  assert.ok(isJsonObject(compositeCaseValue));
+  const compositeCase = compositeCaseValue;
   assert.equal(compositeCase.id, 'concatenated_relation_keys');
   assert.equal(compositeCase.operation, 'relation_assembly');
+  assert.ok(isJsonArray(compositeCase.expected));
   assert.equal(compositeCase.expected.length, 2);
-  const [first, second] = compositeCase.expected;
+  const [firstValue, secondValue] = compositeCase.expected;
+  assert.ok(isCompositeCollisionRow(firstValue));
+  assert.ok(isCompositeCollisionRow(secondValue));
+  const first = firstValue;
+  const second = secondValue;
+  const tenantNamespace = fixture.tenant_namespace;
+  assert.ok(typeof tenantNamespace === 'string');
   for (const row of [first, second]) {
-    assert.ok(Number.isSafeInteger(row.tenant_id) && row.tenant_id > 0 && BigInt(row.tenant_id) <= 9223372036854775807n);
-    assert.ok(Number.isSafeInteger(row.account_id) && row.account_id > 0 && BigInt(row.account_id) <= 9223372036854775807n);
-    assert.ok(String(row.tenant_id).startsWith(fixture.tenant_namespace), 'collision tenants stay in the fixture namespace');
+    const tenantId = row.tenant_id;
+    const accountId = row.account_id;
+    assert.ok(isSafeInteger(tenantId) && tenantId > 0 && BigInt(tenantId) <= 9223372036854775807n);
+    assert.ok(isSafeInteger(accountId) && accountId > 0 && BigInt(accountId) <= 9223372036854775807n);
+    assert.ok(tenantId.toString().startsWith(tenantNamespace), 'collision tenants stay in the fixture namespace');
     assert.equal(typeof row.name, 'string');
     assert.equal(typeof row.role, 'string');
   }
