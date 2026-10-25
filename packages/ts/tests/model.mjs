@@ -372,10 +372,42 @@ async function styledStates(db, dsn) {
   check(cells.json_setting === null && cells.jsons_tags === null && cells.serialize_data === null, 'SQL NULL storage');
 }
 
-// Requirements: INT-134.
-async function transactions(db) {
+// Requirements: INT-59, INT-134.
+async function transactions(db, dsn) {
   const utils = db.utils();
   check(utils.schema() !== null && utils.privileges() !== null && utils.aes() !== null && utils.stats() !== null, 'Utils exposes schema, privileges, AES and stats groups');
+  const privileges = utils.privileges();
+  if (db.driver !== 'postgres') {
+    check(await code(privileges.grantTable('public.user', 'ormtest_privilege')) === 'CAPABILITY_UNSUPPORTED', `${db.driver}: grantTable is unsupported`);
+    check(await code(privileges.inspectTable('public.user')) === 'CAPABILITY_UNSUPPORTED', `${db.driver}: inspectTable is unsupported`);
+    check(await code(privileges.revokeTable('public.user', 'SELECT', 'ormtest_privilege')) === 'CAPABILITY_UNSUPPORTED', `${db.driver}: revokeTable is unsupported`);
+  } else {
+    const table = 'public.privilege_probe';
+    await postgres(dsn, ['CREATE TABLE "privilege_probe" ("id" INTEGER)']);
+    const current = await privileges.inspectTable(table);
+    check(current.select && current.insert && current.update && current.delete && current.truncate, 'postgres: inspectTable reports owner privileges');
+    const role = `orm_priv_${process.pid}_${Date.now()}`;
+    await postgres(dsn, [`CREATE ROLE "${role}"`]);
+    try {
+      await privileges.grantTable(table, role);
+      const client = postgresClient(dsn);
+      await client.connect();
+      let granted;
+      try {
+        ({ rows: [granted] } = await client.query(`SELECT has_schema_privilege($1, 'public', 'USAGE') AS has_schema_usage, has_table_privilege($1, 'public.privilege_probe', 'SELECT') AS has_select, has_table_privilege($1, 'public.privilege_probe', 'INSERT') AS has_insert, has_table_privilege($1, 'public.privilege_probe', 'UPDATE') AS has_update, has_table_privilege($1, 'public.privilege_probe', 'DELETE') AS has_delete`, [role]));
+      } finally { await client.end(); }
+      check(granted.has_schema_usage && granted.has_select && granted.has_insert && granted.has_update && granted.has_delete, 'postgres: grantTable grants schema usage and SELECT, INSERT, UPDATE and DELETE');
+      await privileges.revokeTable(table, ' select ', role);
+      const checkClient = postgresClient(dsn);
+      await checkClient.connect();
+      try {
+        const { rows: [row] } = await checkClient.query(`SELECT has_table_privilege($1, 'public.privilege_probe', 'SELECT') AS has_select, has_table_privilege($1, 'public.privilege_probe', 'INSERT') AS has_insert, has_table_privilege($1, 'public.privilege_probe', 'UPDATE') AS has_update, has_table_privilege($1, 'public.privilege_probe', 'DELETE') AS has_delete`, [role]);
+        check(!row.has_select && row.has_insert && row.has_update && row.has_delete, 'postgres: revokeTable removes SELECT only');
+      } finally { await checkClient.end(); }
+    } finally {
+      await postgres(dsn, [`DROP OWNED BY "${role}"`, `DROP ROLE "${role}"`, 'DROP TABLE "privilege_probe"']);
+    }
+  }
   const boom = new Error('boom');
   let err = null;
   try { await db.transaction(async () => { await new User().setName('rolled back').create(); throw boom; }); } catch (error) { err = error; }

@@ -25100,6 +25100,60 @@
       }
     },
     {
+      "id": "privilege-table-operations",
+      "kind": "feature",
+      "requirements": [
+        "INT-59"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/model_test.go",
+          "id": "TestTransactions"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testUtilities"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testUtilities"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/PrivilegeUtilsNativeTest.php",
+          "id": "PrivilegeUtilsNativeTest::testNativeTablePrivilegesArePostgresOnly"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model.mjs",
+          "id": "transactions"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/schema_inspection.py",
+          "id": "SchemaInspectionTest.test_sqlite"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/schema_inspection.py",
+          "id": "SchemaInspectionTest.test_mysql"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/schema_inspection.py",
+          "id": "SchemaInspectionTest.test_postgres"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/src/integration.rs",
+          "id": "transactions"
+        }
+      ]
+    },
+    {
       "id": "utils-expose-utility-groups",
       "kind": "feature",
       "requirements": [

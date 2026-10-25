@@ -45,6 +45,7 @@ final class PrivilegeUtilsNativeTest extends TestCase
         $db->close();
     }
 
+    // Requirements: INT-59.
     public function testNativeTablePrivilegesArePostgresOnly(): void
     {
         $class = new \ReflectionClass(\Polyspec\Orm\PrivilegeUtils::class);

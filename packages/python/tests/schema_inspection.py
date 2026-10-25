@@ -122,6 +122,14 @@ class SchemaInspectionTest(unittest.TestCase):
                 self.code(lambda: privileges.inspect_table(f"public.{TABLE}")),
                 "CAPABILITY_UNSUPPORTED",
             )
+            self.assertEqual(
+                self.code(lambda: privileges.grant_table(f"public.{TABLE}", "ormtest_privilege")),
+                "CAPABILITY_UNSUPPORTED",
+            )
+            self.assertEqual(
+                self.code(lambda: privileges.revoke_table(f"public.{TABLE}", "SELECT", "ormtest_privilege")),
+                "CAPABILITY_UNSUPPORTED",
+            )
         elif dialect == "postgres":
             self.assertTrue(schema.exists("public"), "postgres: public")
             self.assertFalse(
@@ -182,18 +190,29 @@ class SchemaInspectionTest(unittest.TestCase):
                 self.code(lambda: privileges.grant_table(f"public.{TABLE}", "orm")),
                 "CAPABILITY_UNSUPPORTED",
             )
+            self.assertEqual(
+                self.code(lambda: privileges.inspect_table(f"public.{TABLE}")),
+                "CAPABILITY_UNSUPPORTED",
+            )
+            self.assertEqual(
+                self.code(lambda: privileges.revoke_table(f"public.{TABLE}", "SELECT", "orm")),
+                "CAPABILITY_UNSUPPORTED",
+            )
         self.assertEqual(
             db.utils().stats(),
             DbStats(max_open_connections=10, open_connections=1, in_use=0, idle=1),
         )
 
     # Requirements: INT-57, INT-58, INT-59, INT-79.
+    # Requirements: INT-59.
     def test_sqlite(self):
         self.run_case("sqlite")
 
+    # Requirements: INT-59.
     def test_mysql(self):
         self.run_case("mysql")
 
+    # Requirements: INT-59.
     def test_postgres(self):
         self.run_case("postgres")
 

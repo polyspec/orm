@@ -5055,6 +5055,7 @@
       "parity": [
         "coverage-schema-install-existing",
         "coverage-schema-install-partial",
+        "privilege-table-operations",
         "coverage-schema-install-external-documents",
         "schema-exists-literal-underscore-sqlite",
         "dbspec-apply-chain-finalization"

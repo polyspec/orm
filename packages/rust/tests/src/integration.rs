@@ -420,13 +420,45 @@ async fn writes(t: &Target) {
     assert_eq!(json["name"], "service", "serialize");
 }
 
-// Requirements: INT-134.
+// Requirements: INT-59, INT-134.
 async fn transactions(t: &Target) {
     let _aes = t.db.utils().aes();
     let _schema = t.db.utils().schema();
     let _privileges = t.db.utils().privileges();
     let _stats = t.db.utils().stats();
     let db = &t.db;
+    if t.driver == "postgres" {
+        let pool = sqlx::PgPool::connect(&t.dsn).await.unwrap();
+        sqlx::query("CREATE TABLE \"privilege_probe\" (\"id\" INTEGER)").execute(&pool).await.unwrap();
+        let table = "public.privilege_probe";
+        let owner = db.utils().privileges().inspect_table(table).await.unwrap();
+        assert!(owner.select && owner.insert && owner.update && owner.delete && owner.truncate, "postgres owner privileges: {owner:?}");
+        let role = format!("orm_priv_{}", std::process::id());
+        sqlx::query(&format!("CREATE ROLE \"{role}\"")).execute(&pool).await.unwrap();
+        let result = async {
+            db.utils().privileges().grant_table(table, &role).await.unwrap();
+            let granted = sqlx::query("SELECT has_schema_privilege($1, 'public', 'USAGE'), has_table_privilege($1, 'public.privilege_probe', 'SELECT'), has_table_privilege($1, 'public.privilege_probe', 'INSERT'), has_table_privilege($1, 'public.privilege_probe', 'UPDATE'), has_table_privilege($1, 'public.privilege_probe', 'DELETE')")
+                .bind(&role).fetch_one(&pool).await.unwrap();
+            use sqlx::Row;
+            for index in 0..5 {
+                assert!(granted.get::<bool, _>(index), "postgres grantTable privilege index {index}");
+            }
+            db.utils().privileges().revoke_table(table, " select ", &role).await.unwrap();
+            let revoked = sqlx::query("SELECT has_table_privilege($1, 'public.privilege_probe', 'SELECT'), has_table_privilege($1, 'public.privilege_probe', 'INSERT'), has_table_privilege($1, 'public.privilege_probe', 'UPDATE'), has_table_privilege($1, 'public.privilege_probe', 'DELETE')")
+                .bind(&role).fetch_one(&pool).await.unwrap();
+            assert!(!revoked.get::<bool, _>(0) && revoked.get::<bool, _>(1) && revoked.get::<bool, _>(2) && revoked.get::<bool, _>(3), "postgres revokeTable removes SELECT only");
+        }.await;
+        let _ = sqlx::query(&format!("DROP OWNED BY \"{role}\"")).execute(&pool).await;
+        let _ = sqlx::query(&format!("DROP ROLE \"{role}\"")).execute(&pool).await;
+        let _ = sqlx::query("DROP TABLE \"privilege_probe\"").execute(&pool).await;
+        pool.close().await;
+        result;
+    } else {
+        let privileges = db.utils().privileges();
+        assert_eq!(code(privileges.grant_table("public.user", "ormtest_privilege").await), "CAPABILITY_UNSUPPORTED", "{} grantTable", t.driver);
+        assert_eq!(code(privileges.inspect_table("public.user").await), "CAPABILITY_UNSUPPORTED", "{} inspectTable", t.driver);
+        assert_eq!(code(privileges.revoke_table("public.user", "SELECT", "ormtest_privilege").await), "CAPABILITY_UNSUPPORTED", "{} revokeTable", t.driver);
+    }
     let boom = || polyspec_orm::Error::Config("boom".into());
     let is_boom = |r: &polyspec_orm::Result<()>| matches!(r, Err(polyspec_orm::Error::Config(m)) if m == "boom");
     let r: polyspec_orm::Result<()> = db

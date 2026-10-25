@@ -659,8 +659,8 @@ final class ModelTest extends TestCase
                     'mysql schema inspection'
                 );
                 self::check(
-                    self::code(fn() => $privileges->inspectTable('public.user')) === Code::CAPABILITY_UNSUPPORTED,
-                    'mysql privileges'
+                    self::unsupportedPrivileges($privileges),
+                    'mysql grant, inspect and revoke are unsupported'
                 );
                 break;
             case 'postgres':
@@ -671,7 +671,7 @@ final class ModelTest extends TestCase
                     'postgres schema inspection'
                 );
                 $got = $privileges->inspectTable('public.user');
-                self::check($got['select'] && $got['insert'], 'inspectTable');
+                self::check($got['select'] && $got['insert'] && $got['update'] && $got['delete'] && $got['truncate'], 'inspectTable');
                 self::check(
                     self::code(fn() => $privileges->inspectTable('user')) === Code::CONFIG,
                     'unqualified table'
@@ -680,14 +680,60 @@ final class ModelTest extends TestCase
                     self::code(fn() => $privileges->revokeTable('public.user', 'drop', 'nobody')) === Code::CONFIG,
                     'unsupported privilege'
                 );
+                $role = 'orm_priv_' . getmypid();
+                $table = 'public.privilege_probe';
+                $db->pdo()->exec('CREATE TABLE "privilege_probe" ("id" INTEGER)');
+                $db->pdo()->exec('CREATE ROLE "' . $role . '"');
+                try {
+                    $owner = $privileges->inspectTable($table);
+                    self::check($owner['select'] && $owner['insert'] && $owner['update'] && $owner['delete'] && $owner['truncate'], 'inspectTable reports owner privileges');
+                    $privileges->grantTable($table, $role);
+                    $rights = $db->pdo()->prepare(
+                        "SELECT has_schema_privilege(?, 'public', 'USAGE'), "
+                        . "has_table_privilege(?, 'public.privilege_probe', 'SELECT'), "
+                        . "has_table_privilege(?, 'public.privilege_probe', 'INSERT'), "
+                        . "has_table_privilege(?, 'public.privilege_probe', 'UPDATE'), "
+                        . "has_table_privilege(?, 'public.privilege_probe', 'DELETE')"
+                    );
+                    $rights->execute([$role, $role, $role, $role, $role]);
+                    $granted = array_map(
+                        static fn(mixed $value): bool => in_array($value, [true, 1, '1', 't', 'true'], true),
+                        $rights->fetch(PDO::FETCH_NUM)
+                    );
+                    self::check($granted === [true, true, true, true, true], 'grantTable grants schema usage and SELECT, INSERT, UPDATE and DELETE');
+                    $privileges->revokeTable($table, ' select ', $role);
+                    $check = $db->pdo()->prepare(
+                        "SELECT has_table_privilege(?, 'public.privilege_probe', 'SELECT'), "
+                        . "has_table_privilege(?, 'public.privilege_probe', 'INSERT'), "
+                        . "has_table_privilege(?, 'public.privilege_probe', 'UPDATE'), "
+                        . "has_table_privilege(?, 'public.privilege_probe', 'DELETE')"
+                    );
+                    $check->execute([$role, $role, $role, $role]);
+                    $revoked = array_map(
+                        static fn(mixed $value): bool => in_array($value, [true, 1, '1', 't', 'true'], true),
+                        $check->fetch(PDO::FETCH_NUM)
+                    );
+                    self::check($revoked === [false, true, true, true], 'revokeTable removes SELECT only');
+                } finally {
+                    $db->pdo()->exec('DROP OWNED BY "' . $role . '"');
+                    $db->pdo()->exec('DROP ROLE "' . $role . '"');
+                    $db->pdo()->exec('DROP TABLE "privilege_probe"');
+                }
                 break;
             default:
                 self::check(!$schema->installed('ormexample', 'user'), 'sqlite schema inspection');
-                self::check(
-                    self::code(fn() => $privileges->grantTable('public.user', 'orm')) === Code::CAPABILITY_UNSUPPORTED,
-                    'sqlite privileges'
-                );
+                self::check(self::unsupportedPrivileges($privileges), 'sqlite grant, inspect and revoke are unsupported');
         }
+    }
+
+    private static function unsupportedPrivileges(\Polyspec\Orm\PrivilegeUtils $privileges): bool
+    {
+        $codes = [
+            self::code(fn() => $privileges->grantTable('public.user', 'orm')),
+            self::code(fn() => $privileges->inspectTable('public.user')),
+            self::code(fn() => $privileges->revokeTable('public.user', 'SELECT', 'orm')),
+        ];
+        return $codes === [Code::CAPABILITY_UNSUPPORTED, Code::CAPABILITY_UNSUPPORTED, Code::CAPABILITY_UNSUPPORTED];
     }
 
     private static function caseDeadlockRetry(Db $db, string $dsn): void
