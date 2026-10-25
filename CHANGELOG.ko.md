@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 81c684b46610ce0e9b7937325bd54dbe2390147bbff3337c63174e45a757e5df -->
+<!-- source-sha256: 8f4d1625de12cdf8201a231430bad741768d47eb4d91b2c741ef2b48c2e61636 -->
 # 변경 이력
 
 ## Unreleased
 
+- `make client-db-check`가 config/parity.json이 선언한 php-extension lane을 실행한다: 어떤 lane도 실행하기 전에 실패하는 대신, extension을 build하고 그것을 load한 채로 PHP database test file을 실행한다 (KSTD-5-88-6).
 - generator-consumer-check, native-error-cause-check, transaction-failure-rust-check, complex-query-rust-check, page-cache-unit-check가 독립된 test를 각각 자기 part로 실행하므로, 실패한 test가 더 이상 나머지를 멈추지 않는다 (KSTD-5-88-10).
 - TypeScript interface extractor의 type check가 command line에 `--noEmit`을 적으므로, `make repo-check`의 publish case가 그것을 더 이상 dist로의 build로 읽지 않는다 (KSTD-5-88-11).
 - markdown-table-check가 읽는 flowmark source checkout은 var/tools 아래의 tool download이고, TypeScript client를 hold하기 전에 build하던 recipe 셋은 `$(HOLD_TYPESCRIPT)`로 시작하므로 `make repo-check`의 run directory case가 통과한다 (KSTD-5-88-9).

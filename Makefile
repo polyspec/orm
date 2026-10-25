@@ -1583,7 +1583,7 @@ php-min-check:
 php-without-mysql-check:
 	$(RUN_LONG) php-without-mysql -- node scripts/php-without-mysql.mts
 
-client-db-check: lease-tool python-venv-check
+client-db-check: lease-tool python-venv-check php-vendor-check php-models
 	$(HOLD_TYPESCRIPT)
 	$(PYTHON_VENV)/bin/python -m packages.python.tests.test_statement_fault_entry
 	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python ORM_CLIENT_DB_LANES=parallel node scripts/client-db-test.mts

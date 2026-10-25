@@ -30,6 +30,16 @@ const GO: Command[] = [go('./packages/go/...'), go('-tags', 'ormtest', '-run', '
 const PHP_TESTS = ['ModelTest', 'AesJsonTest', 'RuntimeDbTest', 'AuditExternalSetsTest', 'SqliteConcurrencyTest', 'SchemaSetTest', 'AddTablesAndColumnsTest',
   'ClockTest', 'DriverErrorTest', 'RollbackTest', 'StatementFaultTest', 'RequestHookTest', 'MysqlTlsTest'];
 const PHP: Command[] = PHP_TESTS.map(test => ({ program: 'php', args: ['vendor-php/bin/phpunit', '--configuration', 'packages/php/phpunit.xml.dist', `packages/php/tests/${test}.php`], cwd: root }));
+// The php-extension lane builds the extension into the directory of its run, as a long operation through tests/run-long.mts, and runs
+// the PHP database test files of the php lane with that build loaded, through kit's run-tests in extension mode (S10 of
+// PRINCIPLES.md): the library's own autoload is not loaded, so each test exercises the extension.
+const PHP_EXTENSION_RUN = join(root, `.runtime/run/client-db-php-extension-${process.pid}`);
+const PHP_EXTENSION_LIBRARY = join(PHP_EXTENSION_RUN, 'php-extension/polyspec_orm.so');
+const PHP_EXTENSION_BUILD: Command = { program: 'node', args: ['tests/run-long.mts', 'php-extension-build', '--', 'sh', 'packages/php-ext/scripts/build.sh', PHP_EXTENSION_LIBRARY], cwd: root };
+const PHP_EXTENSION: Command[] = PHP_TESTS.map(test => ({
+  program: 'node', args: ['node_modules/@polyspec/kit/dist/run-tests.mjs', 'phpunit', '--php-extension', PHP_EXTENSION_LIBRARY, '--', '--configuration', 'packages/php/phpunit.xml.dist', `packages/php/tests/${test}.php`],
+  cwd: root, env: { ORM_PHP_MODE: 'extension' },
+}));
 // The Python database tests run as modules of packages.python.tests with the Python of the venv (ORM_PYTHON).
 const PYTHON_TESTS = ['mysql_session', 'statement_fault', 'identity_load', 'schema_inspection', 'statement_events', 'install_changed_database', 'mysql_tls', 'connection_config', 'replica', 'connection_utc', 'connection_pool'];
 const PYTHON: Command[] = PYTHON_TESTS.map(test => ({ program: variable('ORM_PYTHON'), args: ['-m', `packages.python.tests.${test}`], cwd: root }));
@@ -46,11 +56,21 @@ const RUST_BUILD: Command = {
 };
 const RUST_INTEGRATION: Command = { program: join(RUN, 'debug/integration'), args: [join(root, 'contracts/fixtures/bench/dbspec-set.json')], cwd: root };
 /** The commands this script runs, for make repo-check. */
-export const COMMANDS = [...[...GO, ...PHP, ...PYTHON, RUST_TESTS, RUST_BUILD, RUST_INTEGRATION].map(step => render(step, root)), ...TYPESCRIPT_COMMANDS];
+export const COMMANDS = [...[...GO, ...PHP, PHP_EXTENSION_BUILD, ...PHP_EXTENSION, ...PYTHON, RUST_TESTS, RUST_BUILD, RUST_INTEGRATION].map(step => render(step, root)), ...TYPESCRIPT_COMMANDS];
 
 const lanes: Record<string, (write: (line: string) => void) => Promise<string[]>> = {
   go: write => keepAll(GO, write),
   php: write => keepAll(PHP, write),
+  'php-extension': async write => {
+    try {
+      // The tests run only when the build passes; a failed build is a failure of the lane.
+      const built = await run(PHP_EXTENSION_BUILD, write);
+      if (built !== 0) return [`the build of the PHP extension (exit ${built}), so its tests did not run`];
+      return await keepAll(PHP_EXTENSION, write);
+    } finally {
+      rmSync(PHP_EXTENSION_RUN, { recursive: true, force: true });
+    }
+  },
   typescript: write => sqliteTest(write),
   python: write => keepAll(PYTHON, write),
   rust: async write => {
