@@ -1799,6 +1799,7 @@
         "packages/php/tests/ClockTest.php",
         "packages/rust/orm/tests/clock.rs",
         "packages/ts/tests/clock.mjs",
+        "packages/python/tests/clock.py",
         "packages/go/orm/decimal_model_test.go",
         "packages/go/orm/write_set_test.go",
         "packages/go/model/decimal_field_test.go",
@@ -2022,6 +2023,16 @@
           "inputs": [
             "packages/ts/tests/clock.mjs",
             "packages/ts/src/clock.ts",
+            "contracts/fixtures/clock.dbs",
+            "contracts/fixtures/clock_mark.dbs"
+          ]
+        },
+        {
+          "id": "clock-python",
+          "command": "make python-clock-check",
+          "shard": "other",
+          "inputs": [
+            "packages/python/tests/clock.py",
             "contracts/fixtures/clock.dbs",
             "contracts/fixtures/clock_mark.dbs"
           ]

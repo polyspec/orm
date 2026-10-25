@@ -8,6 +8,8 @@
 // ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN, or a new SQLite file
 // (case-database.mjs); the test fails when either DSN is unset.
 //
+// Requirements: DIA-18, DIA-56, DSL-137.
+//
 // Usage: node packages/ts/tests/clock.mjs [case ...] (after npm run typescript:build)
 import { readFile } from 'node:fs/promises';
 import { models } from './registered_models.mjs';

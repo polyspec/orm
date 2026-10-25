@@ -351,10 +351,6 @@
           "reason": "ecosystem: an internal test of the TypeScript package that checks the package, loader or install rule of the language ecosystem, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/ts/tests/clock.mjs",
-          "reason": "external: an internal test of the TypeScript package that runs against a database or driver of an external service, not a helper the contract names (K313)"
-        },
-        {
           "glob": "packages/ts/tests/driver-error.mjs",
           "reason": "external: an internal test of the TypeScript package that runs against a database or driver of an external service, not a helper the contract names (K313)"
         }
@@ -8028,20 +8024,6 @@
       ]
     },
     {
-      "id": "go-internal-packages-go-orm-clock",
-      "kind": "feature",
-      "requirements": [
-        "DIA-18"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/clock_test.go",
-          "id": "TestClockMicrosecondsSQLite"
-        }
-      ]
-    },
-    {
       "id": "go-internal-packages-go-orm-collection-key",
       "kind": "feature",
       "requirements": [
@@ -10967,135 +10949,6 @@
       ]
     },
     {
-      "id": "rust-clock-microseconds-mysql",
-      "kind": "feature",
-      "requirements": [
-        "DIA-18"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/clock.rs",
-          "id": "clock_microseconds_mysql"
-        }
-      ]
-    },
-    {
-      "id": "rust-clock-microseconds-postgres",
-      "kind": "feature",
-      "requirements": [
-        "DIA-18"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/clock.rs",
-          "id": "clock_microseconds_postgres"
-        }
-      ]
-    },
-    {
-      "id": "rust-clock-microseconds-sqlite",
-      "kind": "feature",
-      "requirements": [
-        "DIA-18"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/clock.rs",
-          "id": "clock_microseconds_sqlite"
-        }
-      ]
-    },
-    {
-      "id": "rust-clock-now-condition-mysql",
-      "kind": "feature",
-      "requirements": [
-        "DSL-137",
-        "DIA-56"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/clock.rs",
-          "id": "clock_now_condition_mysql"
-        }
-      ]
-    },
-    {
-      "id": "rust-clock-now-condition-postgres",
-      "kind": "feature",
-      "requirements": [
-        "DSL-137",
-        "DIA-56"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/clock.rs",
-          "id": "clock_now_condition_postgres"
-        }
-      ]
-    },
-    {
-      "id": "rust-clock-now-condition-sqlite",
-      "kind": "feature",
-      "requirements": [
-        "DSL-137",
-        "DIA-56"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/clock.rs",
-          "id": "clock_now_condition_sqlite"
-        }
-      ]
-    },
-    {
-      "id": "rust-clock-soft-delete-microseconds-mysql",
-      "kind": "feature",
-      "requirements": [
-        "DIA-18"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/clock.rs",
-          "id": "clock_soft_delete_microseconds_mysql"
-        }
-      ]
-    },
-    {
-      "id": "rust-clock-soft-delete-microseconds-postgres",
-      "kind": "feature",
-      "requirements": [
-        "DIA-18"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/clock.rs",
-          "id": "clock_soft_delete_microseconds_postgres"
-        }
-      ]
-    },
-    {
-      "id": "rust-clock-soft-delete-microseconds-sqlite",
-      "kind": "feature",
-      "requirements": [
-        "DIA-18"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/clock.rs",
-          "id": "clock_soft_delete_microseconds_sqlite"
-        }
-      ]
-    },
-    {
       "id": "dbspec-apply-pooler",
       "kind": "feature",
       "requirements": [
@@ -13863,49 +13716,6 @@
           "implementation": "php",
           "test": "packages/php/tests/AuditExternalSetsTest.php",
           "id": "AuditExternalSetsTest::testMemberByValueFirst"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-clock-clock-microseconds",
-      "kind": "feature",
-      "requirements": [
-        "DIA-18"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ClockTest.php",
-          "id": "ClockTest::testClockMicroseconds"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-clock-clock-soft-delete-microseconds",
-      "kind": "feature",
-      "requirements": [
-        "DIA-18"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ClockTest.php",
-          "id": "ClockTest::testClockSoftDeleteMicroseconds"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-clock-clock-now-condition",
-      "kind": "feature",
-      "requirements": [
-        "DSL-137",
-        "DIA-56"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ClockTest.php",
-          "id": "ClockTest::testClockNowCondition"
         }
       ]
     },
@@ -20909,6 +20719,244 @@
             "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=coverage_constraints_and_relations::coverage_immutable_write"
           ]
+        }
+      ]
+    },
+    {
+      "id": "clock-microseconds",
+      "kind": "feature",
+      "requirements": [
+        "DIA-18"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/clock_test.go",
+          "id": "TestClockMicrosecondsSQLite"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/clock_test.go",
+          "id": "TestClockMicrosecondsMySQL"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/clock_test.go",
+          "id": "TestClockMicrosecondsPostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ClockTest.php",
+          "id": "ClockTest::testClockMicroseconds"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/ClockTest.php",
+          "id": "ClockTest::testClockMicroseconds"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/clock.mjs",
+          "id": "clock/clock_microseconds/sqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/clock.mjs",
+          "id": "clock/clock_microseconds/mysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/clock.mjs",
+          "id": "clock/clock_microseconds/postgres"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/clock.py",
+          "id": "test_clock_microseconds_sqlite"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/clock.py",
+          "id": "test_clock_microseconds_mysql"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/clock.py",
+          "id": "test_clock_microseconds_postgres"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/clock.rs",
+          "id": "clock_microseconds_sqlite"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/clock.rs",
+          "id": "clock_microseconds_mysql"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/clock.rs",
+          "id": "clock_microseconds_postgres"
+        }
+      ]
+    },
+    {
+      "id": "clock-soft-delete-microseconds",
+      "kind": "feature",
+      "requirements": [
+        "DIA-18"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/clock_test.go",
+          "id": "TestClockSoftDeleteMicrosecondsSQLite"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/clock_test.go",
+          "id": "TestClockSoftDeleteMicrosecondsMySQL"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/clock_test.go",
+          "id": "TestClockSoftDeleteMicrosecondsPostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ClockTest.php",
+          "id": "ClockTest::testClockSoftDeleteMicroseconds"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/ClockTest.php",
+          "id": "ClockTest::testClockSoftDeleteMicroseconds"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/clock.mjs",
+          "id": "clock/clock_soft_delete_microseconds/sqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/clock.mjs",
+          "id": "clock/clock_soft_delete_microseconds/mysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/clock.mjs",
+          "id": "clock/clock_soft_delete_microseconds/postgres"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/clock.py",
+          "id": "test_clock_soft_delete_microseconds_sqlite"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/clock.py",
+          "id": "test_clock_soft_delete_microseconds_mysql"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/clock.py",
+          "id": "test_clock_soft_delete_microseconds_postgres"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/clock.rs",
+          "id": "clock_soft_delete_microseconds_sqlite"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/clock.rs",
+          "id": "clock_soft_delete_microseconds_mysql"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/clock.rs",
+          "id": "clock_soft_delete_microseconds_postgres"
+        }
+      ]
+    },
+    {
+      "id": "clock-now-condition",
+      "kind": "feature",
+      "requirements": [
+        "DSL-137",
+        "DIA-56"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/clock_test.go",
+          "id": "TestClockNowConditionSQLite"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/clock_test.go",
+          "id": "TestClockNowConditionMySQL"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/clock_test.go",
+          "id": "TestClockNowConditionPostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ClockTest.php",
+          "id": "ClockTest::testClockNowCondition"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/ClockTest.php",
+          "id": "ClockTest::testClockNowCondition"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/clock.mjs",
+          "id": "clock/clock_now_condition/sqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/clock.mjs",
+          "id": "clock/clock_now_condition/mysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/clock.mjs",
+          "id": "clock/clock_now_condition/postgres"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/clock.py",
+          "id": "test_clock_now_condition_sqlite"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/clock.py",
+          "id": "test_clock_now_condition_mysql"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/clock.py",
+          "id": "test_clock_now_condition_postgres"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/clock.rs",
+          "id": "clock_now_condition_sqlite"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/clock.rs",
+          "id": "clock_now_condition_mysql"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/clock.rs",
+          "id": "clock_now_condition_postgres"
         }
       ]
     }

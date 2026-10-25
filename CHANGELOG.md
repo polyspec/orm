@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The clock of the update time, the soft deletion and the now condition has three six-client units citing DIA-18, DIA-56 and DSL-137 in place of thirteen units that each bound one client. Python runs the clock cases on SQLite, MySQL and PostgreSQL, and the TypeScript clock cases are bound instead of declared internal (KSTD-2-11-12-2).
 - The PHP extension audit tests name the requirements of the audit history, audit transaction entry point, soft delete restore and selected column cases they inherit from the PHP library, which they pass on SQLite with the extension loaded (KSTD-2-11-12-1).
 - The Go context and Rust drop cases of handle abandonment bind only the six-client handle-disposal units; the three units that repeated them for one client are gone (KSTD-2-11-16-2).
 - Eleven connection units that each bound one client are gone: their constraint classification, DSN parameter, MySQL session and pool option cases are bindings of the six-client units that test the same rule, and CFG-20, the parameters beyond the shared list, has a six-client unit of its own (KSTD-2-11-13-2).

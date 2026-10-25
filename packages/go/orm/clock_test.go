@@ -193,6 +193,7 @@ func TestClockSoftDeleteMicrosecondsPostgres(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	clockSoftDeleteMicroseconds(t, "postgres")
 }
+// The test of DSL-137 and DIA-56 (docs/spec): a row read right after its insert matches created_ts <= now().
 func TestClockNowConditionSQLite(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	clockNowCondition(t, "sqlite")
