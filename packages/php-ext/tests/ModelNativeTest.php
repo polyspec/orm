@@ -445,7 +445,7 @@ final class ModelNativeTest extends TestCase
         ]);
     }
 
-    public function testConfigDbStateAndTxFrameAreNative(): void
+    public function testConfigDialectAndFramesAreNative(): void
     {
         $reflection = new ReflectionClass(\Polyspec\Orm\Config::class);
         self::assertTrue($reflection->isInternal());
@@ -491,6 +491,270 @@ final class ModelNativeTest extends TestCase
         self::assertSame([$meta['entity'] => [12 => true]], $frame->inserted);
         \Polyspec\Orm\TxFrame::recordInserted($frame, $request, 13);
         self::assertSame([$meta['entity'] => [12 => true, 13 => true]], $frame->inserted);
+
+        $dialectReflection = new ReflectionClass(\Polyspec\Orm\Dialect::class);
+        self::assertTrue($dialectReflection->isInternal());
+        foreach (
+            [
+            '__construct', 'isValueFunction', 'quoteWith', 'quote', 'placeholder', 'limit', 'limitParams', 'forceIndex',
+            'insertReturningId', 'now', 'handlesStyle', 'decodesStyle', 'hostNow', 'clockOperand', 'contains',
+            'containsBinary', 'fulltext', 'upsert', 'readExpr', 'writeExpr', 'readTime', 'writeTime', 'readUuid',
+            'writeUuid', 'rowLock', 'literal', 'restartIdentity', 'random', 'nullsOrder', 'tupleIn', 'columnFunction',
+                'valueFunction',
+            ] as $method
+        ) {
+            self::assertTrue($dialectReflection->getMethod($method)->isInternal());
+        }
+        self::assertTrue($dialectReflection->getProperty('name')->isReadOnly());
+        $mysql = new \Polyspec\Orm\Dialect('mysql');
+        $postgres = new \Polyspec\Orm\Dialect('postgres');
+        $sqlite = new \Polyspec\Orm\Dialect('sqlite');
+        self::assertSame('`a`.`b``c`', $mysql->quote('a.b`c'));
+        self::assertSame('"a"."b"', $postgres->quote('a.b'));
+        self::assertSame('"a__b"', $sqlite->quote('a.b'));
+        self::assertSame('$3', $postgres->placeholder(3));
+        self::assertSame(' LIMIT 2, 8', $mysql->limit(2, 8));
+        self::assertSame(' FORCE INDEX (`ix`)', $mysql->forceIndex('ix'));
+        self::assertSame('CURRENT_TIMESTAMP(3)', $mysql->now(3));
+        self::assertSame('CURRENT_TIMESTAMP', $sqlite->now(3));
+        self::assertSame(' FOR UPDATE NOWAIT', $postgres->rowLock('update_nowait'));
+        self::assertSame('', $sqlite->rowLock('share'));
+        self::assertSame(
+            'NOW(6)',
+            $mysql->valueFunction('now', static fn (): string => '?', static fn (): string => '?')
+        );
+        self::assertSame(
+            'date(?)',
+            $sqlite->valueFunction('today', static fn (): string => '?', static fn (): string => '?')
+        );
+        self::assertTrue(\Polyspec\Orm\Dialect::isValueFunction('months_later'));
+        self::assertFalse(\Polyspec\Orm\Dialect::isValueFunction('day_of_week'));
+
+        self::assertSame('?', $mysql->placeholder(3));
+        self::assertSame(' LIMIT 2, 8', $mysql->limitParams('2', '8'));
+        self::assertSame(' LIMIT 8 OFFSET 2', $postgres->limit(2, 8));
+        self::assertSame(' LIMIT :count OFFSET :offset', $postgres->limitParams(':offset', ':count'));
+        self::assertSame('`a``b`', $mysql->quote('a`b'));
+        self::assertSame('"a""b"', $postgres->quote('a"b'));
+        self::assertSame('<<a<<.<<b<<', \Polyspec\Orm\Dialect::quoteWith('<<', 'a.b'));
+        self::assertSame('', $postgres->forceIndex('ix'));
+        self::assertSame(' INDEXED BY "ix"', $sqlite->forceIndex('ix'));
+        self::assertSame(' ON DUPLICATE KEY UPDATE x = ?', $mysql->upsert(['id'], 'x = ?'));
+        self::assertSame(
+            ' ON CONFLICT ("id", "scope") DO UPDATE SET x = ?',
+            $postgres->upsert(['id', 'scope'], 'x = ?')
+        );
+        self::assertFalse($mysql->insertReturningId());
+        self::assertTrue($postgres->insertReturningId());
+        self::assertTrue($sqlite->insertReturningId());
+        self::assertTrue($mysql->handlesStyle('ip'));
+        self::assertFalse($postgres->handlesStyle('ip'));
+        self::assertTrue($mysql->decodesStyle('ip'));
+        self::assertFalse($sqlite->decodesStyle('ip'));
+        self::assertTrue($postgres->hostNow());
+        self::assertFalse($mysql->hostNow());
+        self::assertSame('(created || \'.000000\')', $sqlite->clockOperand('created', 0));
+        self::assertSame('(created || \'00\')', $sqlite->clockOperand('created', 4));
+        self::assertSame('CURRENT_TIMESTAMP', $mysql->now(0));
+        self::assertSame('REPLACE(REPLACE(', substr($mysql->contains('name', '?'), 0, 16));
+        self::assertSame("name ILIKE ?", $postgres->contains('name', '?'));
+        self::assertSame("name LIKE ? ESCAPE '\\'", $sqlite->contains('name', '?'));
+        $binaryTags = [];
+        self::assertSame(
+            'name LIKE :pattern',
+            $mysql->containsBinary('name', static function (string $tag) use (&$binaryTags): string {
+                $binaryTags[] = $tag;
+                return ':pattern';
+            })
+        );
+        self::assertSame(['like_contains'], $binaryTags);
+        self::assertSame(
+            'instr(name, :value) > 0',
+            $sqlite->containsBinary('name', static function (string $tag) use (&$binaryTags): string {
+                $binaryTags[] = $tag;
+                return ':value';
+            })
+        );
+        self::assertSame(['like_contains', ''], $binaryTags);
+        $fulltext = static fn(string $tag): string => '[' . $tag . ']';
+        self::assertSame(
+            'MATCH (name, body) AGAINST ([fulltext_boolean] IN BOOLEAN MODE)',
+            $mysql->fulltext(['name', 'body'], $fulltext, true)
+        );
+        self::assertSame(
+            "to_tsvector('simple', coalesce(name, '') || ' ' || coalesce(body, '')) @@ plainto_tsquery('simple', [])",
+            $postgres->fulltext(['name', 'body'], $fulltext, false)
+        );
+        self::assertNull($sqlite->fulltext(['name'], $fulltext, true));
+        self::assertSame('INET6_NTOA(INET6_NTOA(ip))', $mysql->readExpr('ip', ['ip', 'ip']));
+        self::assertSame('INET6_ATON(INET6_ATON(?))', $mysql->writeExpr('?', ['ip', 'ip']));
+        self::assertSame('CAST(t AS CHAR)', $mysql->readTime('t', 3));
+        self::assertSame("substr(to_char(t, 'HH24:MI:SS.US'), 1, 12)", $postgres->readTime('t', 3));
+        self::assertSame('CAST(CAST(? AS text) AS time)', $postgres->writeTime('?'));
+        self::assertSame('CAST(id AS text)', $postgres->readUuid('id'));
+        self::assertSame('CAST(CAST(? AS text) AS uuid)', $postgres->writeUuid('?'));
+        self::assertNull($sqlite->rowLock('invalid'));
+        self::assertSame("'a''b'", \Polyspec\Orm\Dialect::literal("a'b"));
+        self::assertSame('ALTER TABLE `users` AUTO_INCREMENT = 1', $mysql->restartIdentity('users', 'id'));
+        self::assertSame(
+            'SELECT setval(pg_get_serial_sequence(\'"users"\', \'id\'), '
+                . 'COALESCE(MAX("id"), 0) + 1, false) FROM "users"',
+            $postgres->restartIdentity('users', 'id')
+        );
+        self::assertSame(
+            'UPDATE sqlite_sequence SET seq = (SELECT COALESCE(MAX("id"), 0) FROM "users") WHERE name = \'users\'',
+            $sqlite->restartIdentity('users', 'id')
+        );
+        self::assertSame('random()', $sqlite->random());
+        self::assertSame(' NULLS FIRST', $postgres->nullsOrder(false));
+        self::assertSame('', $sqlite->nullsOrder(true));
+        self::assertSame(
+            '(a, b) NOT IN ((?, ?), (?, ?))',
+            $postgres->tupleIn(['a', 'b'], [['?', '?'], ['?', '?']], true)
+        );
+        self::assertSame('(a) IN (VALUES (?))', $sqlite->tupleIn(['a'], [['?']], false));
+        self::assertSame('YEAR(created)', $mysql->columnFunction('year', 'created'));
+        self::assertSame('EXTRACT(MONTH FROM created)::int', $postgres->columnFunction('month', 'created'));
+        self::assertSame("date(created)", $sqlite->columnFunction('date', 'created'));
+        self::assertNull($sqlite->columnFunction('unsupported', 'created'));
+        self::assertNull($mysql->valueFunction('unsupported', static fn(): string => '?', static fn(): string => '?'));
+        $argCalls = $clockCalls = 0;
+        $mysqlInterval = $mysql->valueFunction('days_ago', static function () use (&$argCalls): string {
+            $argCalls++;
+            return '?';
+        }, static function () use (&$clockCalls): string {
+            $clockCalls++;
+            return '?';
+        });
+        self::assertStringContainsString('CASE WHEN ? BETWEEN -3652059 AND 3652059 THEN ?', $mysqlInterval);
+        self::assertSame(4, $argCalls);
+        self::assertSame(0, $clockCalls);
+        $argCalls = $clockCalls = 0;
+        $postgresInterval = $postgres->valueFunction('days_later', static function () use (&$argCalls): string {
+            $argCalls++;
+            return '$2';
+        }, static function () use (&$clockCalls): string {
+            $clockCalls++;
+            return '$1';
+        });
+        self::assertStringContainsString(
+            'make_interval(days => CAST(CASE WHEN CAST($2 AS bigint) BETWEEN -3652059 AND '
+                . '3652059 THEN CAST($2 AS bigint) END AS integer))',
+            $postgresInterval
+        );
+        self::assertSame(4, $argCalls);
+        self::assertSame(2, $clockCalls);
+        $argCalls = $clockCalls = 0;
+        $sqliteInterval = $sqlite->valueFunction('months_ago', static function () use (&$argCalls): string {
+            $argCalls++;
+            return '?';
+        }, static function () use (&$clockCalls): string {
+            $clockCalls++;
+            return '?';
+        });
+        self::assertStringContainsString("datetime(?, '-' || CAST(? AS TEXT) || ' months', 'floor')", $sqliteInterval);
+        self::assertSame(2, $argCalls);
+        self::assertSame(4, $clockCalls);
+        try {
+            new \Polyspec\Orm\Dialect('oracle');
+            self::fail('Expected Dialect to reject an unknown database');
+        } catch (\Polyspec\Orm\OrmException $error) {
+            self::assertSame('DIALECT_UNKNOWN', $error->code_);
+            self::assertSame('DIALECT_UNKNOWN: oracle', $error->getMessage());
+        }
+        $paramCheck = new ReflectionClass(\Polyspec\Orm\ParamCheck::class);
+        self::assertTrue($paramCheck->isInternal());
+        foreach (['bindSlotType', 'useSlotType', 'checkAssign', 'check'] as $method) {
+            self::assertTrue($paramCheck->getMethod($method)->isInternal());
+        }
+        self::assertSame(
+            [
+                'type' => 'varchar',
+                'precision' => 4,
+                'scale' => 0,
+                'length' => 2,
+                'not_null' => true,
+                'column' => 'name',
+            ],
+            \Polyspec\Orm\ParamCheck::bindSlotType([
+                'col_type' => 'varchar', 'precision' => '4', 'scale' => null, 'length' => 2,
+                'not_null' => true, 'column' => 'name',
+            ])
+        );
+        self::assertSame(
+            [
+                'type' => 'varchar',
+                'precision' => 4,
+                'scale' => 2,
+                'length' => 20,
+                'not_null' => true,
+                'column' => 'name',
+            ],
+            \Polyspec\Orm\ParamCheck::useSlotType([
+                'type' => 'varchar', 'assign' => true,
+                'column' => ['type' => 'varchar', 'precision' => 4, 'scale' => 2, 'length' => 20,
+                    'nullable' => false, 'name' => 'name'],
+            ])
+        );
+        self::assertSame(
+            ['type' => 'datetime', 'precision' => 6, 'scale' => 0, 'length' => 0],
+            \Polyspec\Orm\ParamCheck::useSlotType(['type' => 'datetime', 'column' => null])
+        );
+
+        $zone = new \DateTimeZone('UTC');
+        \Polyspec\Orm\ParamCheck::checkAssign(1, null, ['not_null' => false]);
+        try {
+            \Polyspec\Orm\ParamCheck::checkAssign(2, null, ['not_null' => true, 'column' => 'name']);
+            self::fail('Expected ParamCheck to reject NULL for a non-null bind slot');
+        } catch (\Polyspec\Orm\OrmException $error) {
+            self::assertSame('CODEC_ENCODE', $error->code_);
+            self::assertSame('CODEC_ENCODE: parameter 2 assigns NULL to the non-null name', $error->getMessage());
+        }
+
+        \Polyspec\Orm\ParamCheck::check(3, 32767, ['type' => 'i16'], $zone);
+        \Polyspec\Orm\ParamCheck::check(3, 12.5, ['type' => 'f64'], $zone);
+        \Polyspec\Orm\ParamCheck::check(3, false, ['type' => 'bool'], $zone);
+        \Polyspec\Orm\ParamCheck::check(3, '12.30', ['type' => 'decimal', 'precision' => 4, 'scale' => 2], $zone);
+        \Polyspec\Orm\ParamCheck::check(3, "éé", ['type' => 'varchar', 'length' => 2], $zone);
+        \Polyspec\Orm\ParamCheck::check(3, "12:34:56.120", ['type' => 'time', 'precision' => 2], $zone);
+        \Polyspec\Orm\ParamCheck::check(3, new \Polyspec\Orm\Bytes("\0\xFF"), ['type' => 'bytes'], $zone);
+
+        try {
+            \Polyspec\Orm\ParamCheck::check(4, 'value', ['type' => 'i32'], $zone);
+            self::fail('Expected ParamCheck to reject a non-integer bind value');
+        } catch (\Polyspec\Orm\OrmException $error) {
+            self::assertSame('CODEC_ENCODE: parameter 4 (string) is not a i32 value', $error->getMessage());
+        }
+        try {
+            \Polyspec\Orm\ParamCheck::check(5, '1.234', ['type' => 'decimal', 'precision' => 4, 'scale' => 2], $zone);
+            self::fail('Expected ParamCheck to reject decimal precision loss');
+        } catch (\Polyspec\Orm\OrmException $error) {
+            self::assertSame(
+                'CODEC_ENCODE: parameter 5: CODEC_ENCODE: decimal 1.234: fraction exceeds scale',
+                $error->getMessage()
+            );
+            self::assertInstanceOf(\Polyspec\Orm\OrmException::class, $error->getPrevious());
+            self::assertSame(
+                'CODEC_ENCODE: decimal 1.234: fraction exceeds scale',
+                $error->getPrevious()->getMessage()
+            );
+        }
+        try {
+            \Polyspec\Orm\ParamCheck::check(6, '12:34:56.123', ['type' => 'time', 'precision' => 2], $zone);
+            self::fail('Expected ParamCheck to reject non-zero time precision loss');
+        } catch (\Polyspec\Orm\OrmException $error) {
+            self::assertSame(
+                'CODEC_ENCODE: parameter 6: CODEC_ENCODE: time value "12:34:56.123" has a non-zero digit '
+                    . 'past its 2 fraction digits',
+                $error->getMessage()
+            );
+            self::assertInstanceOf(\Polyspec\Orm\OrmException::class, $error->getPrevious());
+            self::assertSame(
+                'CODEC_ENCODE: time value "12:34:56.123" has a non-zero digit '
+                    . 'past its 2 fraction digits',
+                $error->getPrevious()->getMessage()
+            );
+        }
     }
 
     public function testColumnsIrIncludesAddedScalarSubquery(): void

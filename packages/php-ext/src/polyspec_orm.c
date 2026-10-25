@@ -29,6 +29,7 @@
 #include "chain_native.h"
 #include "registry_native.h"
 #include "engine_native.h"
+#include "native_dialect.h"
 #include "aes_keyring.h"
 #include "aes_utils.h"
 #include "privilege_utils.h"
@@ -2705,8 +2706,10 @@ static PHP_MINIT_FUNCTION(polyspec_orm)
     register_class_Polyspec_Orm_OrmException(spl_ce_RuntimeException);
     register_class_Polyspec_Orm_Orm();
     register_class_Polyspec_Orm_Config();
+    register_class_Polyspec_Orm_ParamCheck();
     register_class_Polyspec_Orm_DbState();
     register_class_Polyspec_Orm_TxFrame();
+    native_dialect_register(register_class_Polyspec_Orm_Dialect());
     aes_keyring_set_class(register_class_Polyspec_Orm_AesKeyring());
     aes_rotation_status_set_class(register_class_Polyspec_Orm_AesRotationStatus());
     aes_utils_set_class(register_class_Polyspec_Orm_AesUtils());

@@ -129,6 +129,9 @@ const ARRAY_CONSTANTS = [
     'Polyspec\\Orm\\Chain::ENGINE_OP',
     'Polyspec\\Orm\\RuntimeModel::STYLED_STAGES',
     'Polyspec\\Orm\\RuntimeModel::HOST_STAGES',
+    'Polyspec\\Orm\\Dialect::COLUMN_FUNCTION_TYPES',
+    'Polyspec\\Orm\\Dialect::COLUMN_FUNCTION_ARITY',
+    'Polyspec\\Orm\\Dialect::VALUE_FUNCTION_UNITS',
 ];
 
 const NATIVE_PRIVATE_CONSTANTS = [
@@ -143,6 +146,13 @@ const NATIVE_PRIVATE_CONSTANTS = [
         'Lt' => 'lt',
         'Ge' => 'ge',
         'Le' => 'le',
+    ],
+    'Polyspec\\Orm\\Dialect::INTERVAL_BOUNDS' => [
+        'second' => '315537897600',
+        'minute' => '5258964960',
+        'hour' => '87649416',
+        'day' => '3652059',
+        'month' => '119988',
     ],
     'Polyspec\\Orm\\Model::OPERATORS' => [
         '' => 'eq', 'ne' => 'not_eq', 'gt' => 'gt', 'lt' => 'lt', 'ge' => 'gte', 'le' => 'lte',

@@ -824,6 +824,48 @@ final class TxFrame
     public static function recordInserted(?TxFrame $frame, Request $r, mixed $id): void {}
 }
 
+/** The database-specific SQL fragments used by the executor and planner. */
+final class Dialect
+{
+    public readonly string $name;
+
+    public function __construct(string $name) {}
+    public static function isValueFunction(string $name): bool {}
+    public static function quoteWith(string $q, string $ident): string {}
+    public function quote(string $ident): string {}
+    public function placeholder(int $n): string {}
+    public function limit(int $offset, int $count): string {}
+    public function limitParams(string $offset, string $count): string {}
+    public function forceIndex(string $index): string {}
+    public function insertReturningId(): bool {}
+    public function now(int $precision): string {}
+    public function handlesStyle(string $style): bool {}
+    public function decodesStyle(string $style): bool {}
+    public function hostNow(): bool {}
+    public function clockOperand(string $col, int $precision): string {}
+    public function contains(string $col, string $ph): string {}
+    public function containsBinary(string $col, \Closure $value): string {}
+    public function fulltext(array $cols, \Closure $value, bool $boolean): ?string {}
+    public function upsert(array $conflict, string $assigns): string {}
+    public function readExpr(string $col, array $styles): string {}
+    public function writeExpr(string $ph, array $styles): string {}
+    public function readTime(string $col, int $precision): string {}
+    public function writeTime(string $ph): string {}
+    public function readUuid(string $col): string {}
+    public function writeUuid(string $ph): string {}
+    public function rowLock(string $mode): ?string {}
+    public static function literal(string $text): string {}
+    public function restartIdentity(string $table, string $column): string {}
+    public function random(): string {}
+    public function nullsOrder(bool $desc): string {}
+    public function tupleIn(array $cols, array $rows, bool $negate): string {}
+    public function columnFunction(string $fn, string $col): ?string {}
+    public function valueFunction(string $fn, \Closure $arg, \Closure $now): ?string {}
+    private static function asciiLower(string $x): string {}
+    private static function guardInterval(string $unit, string $operandCast, \Closure $arg): string {}
+    private static function guardResult(\Closure $value): string {}
+}
+
 /** Opens a database selected by a DSN and constructs SQL function values. */
 final class Orm
 {
@@ -1192,6 +1234,15 @@ final class Planner
     public function __construct(RuntimeModel $m, Dialect $d) {}
     /** @return array{manifest_hash: string, kind: string, steps: list<array>} */
     public function compile(array $r): array {}
+}
+
+/** @internal Validates parameter values against the logical bind slot declared by the plan. */
+final class ParamCheck
+{
+    public static function bindSlotType(array $slot): array {}
+    public static function useSlotType(array $use): array {}
+    public static function checkAssign(int $i, mixed $v, array $slot): void {}
+    public static function check(int $i, mixed $v, array $slot, \DateTimeZone $zone): void {}
 }
 
 /**
