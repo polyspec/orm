@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 6084952142af69b4d280c546ce14de9a6c74f3281a9861f588c2adef2bda0d66 -->
+<!-- source-sha256: 8b75174e4852b1e72a721fab7be94b83fd2222fa1b98ef7ec90f5c5158301fe3 -->
 # 변경 이력
 
 ## Unreleased
 
+- PHP plan cache와 statement cache는 전체 보유 placeholder를 65,535개로 제한하고 가장 오래 사용하지 않은 entry를 퇴출하며, 한도를 넘는 단일 plan이나 statement는 보관하지 않는다. Cache hit와 재계획 후에도 plan과 statement 결과는 같다 (KSTD-7-3-4).
 - KSTD-5-91: RECORD=1일 때 conformance-check는 conformance-result-check 전에 새 vector를 기록하므로, 첫 실행 전에 dialect 항목이 필요 없다 (KSTD-5-91)
 - PHP extension의 `Registry::model`은 manifest hash에 등록된 model class가 없을 때 초기화되지 않은 인자를 더 이상 해제하지 않는다. 이 해제는 `Registry::generated`와 `Registry::model`을 반복해 부르면 PHP를 SIGBUS로 끝냈다 (T182-6-18-1).
 - Rust clippy와 TypeScript interface extractor가 target lease 및 `run-long` 아래서 실행되고, Rust dbspec helper build도 같은 보호를 받는다. 집중 lease/lifetime 단위 3개가 통과한다 (KSTD-5-88-18).

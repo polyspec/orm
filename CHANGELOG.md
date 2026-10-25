@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The PHP plan and statement caches now bound their aggregate retained placeholders to 65,535, evict least-recently-used entries, and avoid retaining a single over-bound plan or statement. Cache hits and recompilation preserve the same plan and statement results (KSTD-7-3-4).
 - KSTD-5-91: with RECORD=1, conformance-check records the new vectors before conformance-result-check, so a vector needs no dialect entries before its first run (KSTD-5-91)
 - `Registry::model` of the PHP extension no longer releases an uninitialized argument when no model class is registered for a manifest hash, which crashed PHP (SIGBUS) after repeated `Registry::generated` and `Registry::model` calls (T182-6-18-1).
 - Rust clippy and the TypeScript interface extractor run under their target leases and `run-long`, as does the Rust dbspec helper build; the focused lifetime and lease cases pass 3/3 (KSTD-5-88-18).
