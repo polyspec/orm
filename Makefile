@@ -2843,6 +2843,13 @@ connection-sqlite-read-during-write-python-check: python-models
 	$(PYTHON_VENV)/bin/python -m unittest packages.python.tests.connection_pool.ConnectionPoolTest.test_sqlite_read_during_write_sees_only_committed_rows
 
 connection-sqlite-read-during-write-php-extension-check: RUN_DIR = $(abspath .runtime/run)/connection-sqlite-read-during-write-php-extension-check-$$PPID
+connection-sqlite-read-during-write-php-extension-check: php-vendor-check orm-install-php-extension-tools
+	@set -eu; \
+	run_dir="$(RUN_DIR)"; \
+	trap 'rm -rf "$$run_dir"' EXIT; \
+	mkdir -p "$$run_dir/php-extension"; \
+	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh "$$run_dir/php-extension/polyspec_orm.so"; \
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" --without-library packages/php -- --configuration packages/php-ext/phpunit.xml.dist --filter testNativeSqliteReadDuringWriteSeesOnlyCommittedRows packages/php-ext/tests/ConnectionBusyTimeoutNativeTest.php
 
 connection-statement-timeout-php-extension-check: RUN_DIR = $(abspath .runtime/run)/connection-statement-timeout-php-extension-check-$$PPID
 connection-statement-timeout-php-extension-check: php-vendor-check orm-install-php-extension-tools
@@ -2860,7 +2867,7 @@ connection-busy-timeout-php-extension-check: php-vendor-check orm-install-php-ex
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh "$$run_dir/php-extension/polyspec_orm.so"; \
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" --without-library packages/php -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ConnectionBusyTimeoutNativeTest.php
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" --without-library packages/php -- --configuration packages/php-ext/phpunit.xml.dist --filter 'testNativeConnectionsCommitConcurrentSqliteWriters|testNativeSqliteBusyTimeoutCancelsWrite' packages/php-ext/tests/ConnectionBusyTimeoutNativeTest.php
 
 go-package-entry-check:
 	$(GO_TEST) ./packages/go/orm -run '^TestExternalModuleCanImportClient$$' -count=1
