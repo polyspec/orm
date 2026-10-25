@@ -351,7 +351,8 @@
         "packages/php/tests/three_drivers.php",
         "packages/php/tests/was_inserted_child.php",
         "packages/php/tests/BlindIndexSourcePlannerInput.php",
-        "packages/php/tests/DbspecApplyLockWaitPDO.php"
+        "packages/php/tests/DbspecApplyLockWaitPDO.php",
+        "packages/php/tests/PgsqlPdoAdapterCases.php"
       ],
       "symbols": {
         "extractor": "php",
@@ -425,6 +426,34 @@
         {
           "glob": "packages/php/tests/UnselectedColumnTest.php",
           "reason": "test: an internal test of the PHP package that tests a helper or loader of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/php/tests/DbspecPlanReaderTest.php",
+          "reason": "harness: verifies ownership of the PHP dbspec plan-vector reader; it does not parse or plan a client request"
+        },
+        {
+          "glob": "packages/php/tests/DbspecRunnerTest.php",
+          "reason": "harness: verifies PHP-only vector selection, chaining, and subprocess output of the dbspec comparison runners; the shared suites test the accepted and rejected dbspec behavior"
+        },
+        {
+          "glob": "packages/php/tests/DbspecUnicodeTest.php",
+          "reason": "test: exhaustively compares the generated private PHP UnicodeWord range table with its own membership search; public syntax behavior is covered by dbspec-syntax"
+        },
+        {
+          "glob": "packages/php/tests/PerfExtensionsTest.php",
+          "reason": "harness: checks the PHP benchmark runner extension refusal list and loaded-process state, not ORM client behavior"
+        },
+        {
+          "glob": "packages/php/tests/PerfGateTest.php",
+          "reason": "harness: validates the PHP benchmark/baseline wrapper; the shared hot-path performance units own client results and warning-only measurement behavior"
+        },
+        {
+          "glob": "packages/php/tests/PgsqlPdoAdapterTest.php",
+          "reason": "test: directly tests the @internal PDO compatibility adapter and Db::pdo bridge, not the public ORM connection API"
+        },
+        {
+          "glob": "packages/php/tests/SetReaderDiagnosticsTest.php",
+          "reason": "test: injects synthetic stream-wrapper failures into the @internal SetReader diagnostics and cache; public readSet behavior is covered by dbspec-set-files"
         }
       ]
     },
@@ -552,7 +581,9 @@
         "packages/ts/tests/markdown_test_listener.mjs",
         "packages/ts/tests/registered_models.mjs",
         "packages/ts/tests/generated_model_output.mjs",
-        "packages/ts/tests/schema_of.mjs"
+        "packages/ts/tests/schema_of.mjs",
+        "packages/ts/tests/generator_scan.mjs",
+        "packages/ts/tests/markdown-read-db.mjs"
       ],
       "args": [
         "--conditions=orm-test"
@@ -677,6 +708,14 @@
         {
           "glob": "packages/ts/tests/syntax-vectors.mjs",
           "reason": "harness: regenerates tests/dbspec/syntax.json from its cases and the built TypeScript analyzer to prevent fixture drift; cross-client analyzer results are exercised by dbspec-syntax"
+        },
+        {
+          "glob": "packages/ts/tests/dbspec-unicode.mjs",
+          "reason": "generated: exhaustively checks the private generated Unicode range table against its own membership predicate; shared syntax vectors cover parser behavior"
+        },
+        {
+          "glob": "packages/ts/tests/markdown-read-db.test.mjs",
+          "reason": "harness: checks the shape of an injected fake Markdown database adapter; it does not execute a public Markdown read"
         }
       ]
     },
@@ -739,6 +778,14 @@
         {
           "glob": "packages/python/tests/test_testcase.py",
           "reason": "harness: tests Python testcase discovery, reporting and deadline behavior; it does not exercise ORM client behavior"
+        },
+        {
+          "glob": "packages/python/tests/test_dbspec_syntax_file.py",
+          "reason": "harness: checks that syntax.json and cases.json have corresponding fixture ids; it does not run the Python analyzer"
+        },
+        {
+          "glob": "packages/python/tests/test_python_natives.py",
+          "reason": "harness: compares Python interface declarations with snapshots and shared native tables; it is a declaration extractor check, not runtime client behavior"
         }
       ],
       "roots": [
@@ -914,6 +961,18 @@
         {
           "glob": "packages/rust/testing/interfaces/src/main.rs",
           "reason": "harness: unit tests the Rust interface-extractor test program and its declaration parsing; runtime API shape is checked by the shared interface contract tools"
+        },
+        {
+          "glob": "packages/rust/schema/src/dbspec/check.rs",
+          "reason": "test: checks the private CheckParser cursor lookahead/end-position invariant; public predicate diagnostics are exercised by dbspec-invalid"
+        },
+        {
+          "glob": "packages/rust/schema/src/dbspec/parser.rs",
+          "reason": "test: checks the private Rust parser cursor token-order invariant; public canonical parse/emission behavior is exercised by dbspec-canonical and dbspec-normalize"
+        },
+        {
+          "glob": "packages/rust/schema/src/dbspec/unicode_word.rs",
+          "reason": "generated: exhaustively checks the private generated Unicode range table against its own binary-search implementation; public syntax behavior is exercised by dbspec-syntax"
         }
       ]
     }
@@ -8897,10 +8956,6 @@
           "symbol": "StatementEventsTest::testCase"
         },
         {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_statement_events.mjs"
-        },
-        {
           "implementation": "python",
           "test": "packages/python/tests/statement_events.py"
         },
@@ -8908,6 +8963,10 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/statement_events.rs",
           "symbol": "statement_events"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/statement-events.mjs"
         }
       ]
     },
