@@ -7980,6 +7980,9 @@
                   "cases": [
                     "soft_delete_restore"
                   ],
+                  "symbols": {
+                    "soft_delete_restore": "testSoftDeleteRestore"
+                  },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
               ],
@@ -8016,6 +8019,9 @@
                   "cases": [
                     "soft_delete_restore"
                   ],
+                  "symbols": {
+                    "soft_delete_restore": "testSoftDeleteRestore"
+                  },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
@@ -8052,6 +8058,9 @@
                   "cases": [
                     "soft_delete_restore"
                   ],
+                  "symbols": {
+                    "soft_delete_restore": "testSoftDeleteRestore"
+                  },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
@@ -8449,6 +8458,9 @@
                   "cases": [
                     "soft_delete_restore"
                   ],
+                  "symbols": {
+                    "soft_delete_restore": "testSoftDeleteRestore"
+                  },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
               ],
@@ -8482,6 +8494,9 @@
                   "cases": [
                     "soft_delete_restore"
                   ],
+                  "symbols": {
+                    "soft_delete_restore": "testSoftDeleteRestore"
+                  },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
@@ -8515,6 +8530,9 @@
                   "cases": [
                     "soft_delete_restore"
                   ],
+                  "symbols": {
+                    "soft_delete_restore": "testSoftDeleteRestore"
+                  },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
@@ -8746,6 +8764,11 @@
                     "audit_transaction_entry_points",
                     "soft_delete_restore"
                   ],
+                  "symbols": {
+                    "audit_history": "testAuditHistory",
+                    "audit_transaction_entry_points": "testAuditTransactionEntryPoints",
+                    "soft_delete_restore": "testSoftDeleteRestore"
+                  },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 },
                 {
@@ -8754,6 +8777,9 @@
                   "cases": [
                     "audit_selected_columns"
                   ],
+                  "symbols": {
+                    "audit_selected_columns": "testAuditSelectedColumns"
+                  },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
               ],
@@ -8766,6 +8792,11 @@
                     "audit_transaction_entry_points",
                     "soft_delete_restore"
                   ],
+                  "symbols": {
+                    "audit_history": "testAuditHistory",
+                    "audit_transaction_entry_points": "testAuditTransactionEntryPoints",
+                    "soft_delete_restore": "testSoftDeleteRestore"
+                  },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 },
                 {
@@ -8774,6 +8805,9 @@
                   "cases": [
                     "audit_selected_columns"
                   ],
+                  "symbols": {
+                    "audit_selected_columns": "testAuditSelectedColumns"
+                  },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
@@ -8786,6 +8820,11 @@
                     "audit_transaction_entry_points",
                     "soft_delete_restore"
                   ],
+                  "symbols": {
+                    "audit_history": "testAuditHistory",
+                    "audit_transaction_entry_points": "testAuditTransactionEntryPoints",
+                    "soft_delete_restore": "testSoftDeleteRestore"
+                  },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 },
                 {
@@ -8794,6 +8833,9 @@
                   "cases": [
                     "audit_selected_columns"
                   ],
+                  "symbols": {
+                    "audit_selected_columns": "testAuditSelectedColumns"
+                  },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
@@ -9000,6 +9042,11 @@
                     "audit_transaction_entry_points",
                     "soft_delete_restore"
                   ],
+                  "symbols": {
+                    "audit_history": "testAuditHistory",
+                    "audit_transaction_entry_points": "testAuditTransactionEntryPoints",
+                    "soft_delete_restore": "testSoftDeleteRestore"
+                  },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 },
                 {
@@ -9008,6 +9055,9 @@
                   "cases": [
                     "audit_selected_columns"
                   ],
+                  "symbols": {
+                    "audit_selected_columns": "testAuditSelectedColumns"
+                  },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
               ],
@@ -9020,6 +9070,11 @@
                     "audit_transaction_entry_points",
                     "soft_delete_restore"
                   ],
+                  "symbols": {
+                    "audit_history": "testAuditHistory",
+                    "audit_transaction_entry_points": "testAuditTransactionEntryPoints",
+                    "soft_delete_restore": "testSoftDeleteRestore"
+                  },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 },
                 {
@@ -9028,6 +9083,9 @@
                   "cases": [
                     "audit_selected_columns"
                   ],
+                  "symbols": {
+                    "audit_selected_columns": "testAuditSelectedColumns"
+                  },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
@@ -9040,6 +9098,11 @@
                     "audit_transaction_entry_points",
                     "soft_delete_restore"
                   ],
+                  "symbols": {
+                    "audit_history": "testAuditHistory",
+                    "audit_transaction_entry_points": "testAuditTransactionEntryPoints",
+                    "soft_delete_restore": "testSoftDeleteRestore"
+                  },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 },
                 {
@@ -9048,6 +9111,9 @@
                   "cases": [
                     "audit_selected_columns"
                   ],
+                  "symbols": {
+                    "audit_selected_columns": "testAuditSelectedColumns"
+                  },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]

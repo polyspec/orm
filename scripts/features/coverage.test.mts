@@ -197,6 +197,69 @@ caseTest('PHP extension catalog coverage selects the exact native methods', 1000
   }
 });
 
+// These KSTD-7-4 cases use camelCase PHPUnit methods; without exact symbols, the owner runner filters for a missing
+// snake_case method and records no test execution. Keep this check scoped to the PHP extension feature's four command shapes.
+caseTest('KSTD-7-4 PHP owner commands select their declared methods', 1000, () => {
+  const root = new URL('../..', import.meta.url).pathname;
+  const manifest = readFeatures(root);
+  const shapes = [
+    {
+      feature: 'statement_events', language: 'php', test: 'packages/php/tests/CoverageStatementEventsTest.php',
+      cases: { statement_events: 'testStatementEvents' }, source: 'packages/php/tests/StatementEventsCoverageCases.php',
+    },
+    {
+      feature: 'statement_events', language: 'php-extension', test: 'packages/php-ext/tests/CoverageStatementEventsTest.php',
+      cases: { statement_events: 'testStatementEvents' }, source: 'packages/php/tests/StatementEventsCoverageCases.php',
+    },
+    {
+      feature: 'constraints_and_relations', language: 'php', test: 'packages/php/tests/CoverageAuditTriggersTest.php',
+      cases: { soft_delete_restore: 'testSoftDeleteRestore' }, source: 'packages/php/tests/CoverageAuditTriggersTest.php',
+    },
+    {
+      feature: 'constraints_and_relations', language: 'php-extension', test: 'packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php',
+      cases: { soft_delete_restore: 'testSoftDeleteRestore' }, source: 'packages/php/tests/CoverageAuditTriggersTest.php',
+    },
+    {
+      feature: 'audit_triggers', language: 'php', test: 'packages/php/tests/CoverageAuditTriggersTest.php',
+      cases: {
+        audit_history: 'testAuditHistory',
+        audit_transaction_entry_points: 'testAuditTransactionEntryPoints',
+        soft_delete_restore: 'testSoftDeleteRestore',
+      }, source: 'packages/php/tests/CoverageAuditTriggersTest.php',
+    },
+    {
+      feature: 'audit_triggers', language: 'php', test: 'packages/php/tests/CoverageAuditColumnsTest.php',
+      cases: { audit_selected_columns: 'testAuditSelectedColumns' }, source: 'packages/php/tests/CoverageAuditColumnsTest.php',
+    },
+    {
+      feature: 'audit_triggers', language: 'php-extension', test: 'packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php',
+      cases: {
+        audit_history: 'testAuditHistory',
+        audit_transaction_entry_points: 'testAuditTransactionEntryPoints',
+        soft_delete_restore: 'testSoftDeleteRestore',
+      }, source: 'packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php',
+    },
+    {
+      feature: 'audit_triggers', language: 'php-extension', test: 'packages/php-ext/tests/CoverageAuditColumnsExtensionTest.php',
+      cases: { audit_selected_columns: 'testAuditSelectedColumns' }, source: 'packages/php-ext/tests/CoverageAuditColumnsExtensionTest.php',
+    },
+  ];
+  for (const shape of shapes) {
+    const feature = manifest.features.find(item => item.id === shape.feature);
+    assert.ok(feature, `missing feature ${shape.feature}`);
+    const owner = feature.coverage?.owners?.[shape.language];
+    assert.ok(owner, `missing ${shape.language} owner for ${shape.feature}`);
+    const methods = declaredPhpMethods(join(root, shape.source));
+    for (const [database, commands] of Object.entries(owner.commands)) {
+      const command = commands.find(item => item.test === shape.test && item.cases.join(',') === Object.keys(shape.cases).join(','));
+      assert.ok(command, `${shape.feature}/${shape.language}/${database} omits ${shape.test}`);
+      assert.deepEqual(command.symbols, shape.cases, `${shape.feature}/${shape.language}/${database} symbols`);
+      for (const method of Object.values(shape.cases))
+        assert.match(methods, new RegExp(`function ${method}\\(`), `${shape.test} lacks ${method}`);
+    }
+  }
+});
+
 caseTest('one feature can run without declaring unrelated coverage complete', 1000, () => {
   const manifest = { features: [{ id: 'one' }, { id: 'two' }] };
   assert.deepEqual(selectFeatures(manifest, 'one').features, [{ id: 'one' }]);
