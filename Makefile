@@ -1422,7 +1422,7 @@ fuzz-check/clients-go-orm:
 # and php-min-check gives the lowest supported release of composer.json.
 PHP = php
 # RUN_TESTS is kit's run-tests: it runs a unit tool with its reader and fails when no test ran (kit package, ./run-tests).
-RUN_TESTS = $(NODE) node_modules/@polyspec/kit/dist/run-tests.mjs
+RUN_TESTS = $(NODE) $(KIT)/run-tests.$(KIT_EXT)
 client-unit-check: client-unit-check/dsn client-unit-check/markdown client-unit-check/relation-keys client-unit-check/code-catalog client-unit-check/hostcodec client-unit-check/codec-aes client-unit-check/insert-parts client-unit-check/engine client-unit-check/runtime-model client-unit-check/orm-gen client-unit-check/model-methods client-unit-check/orm-gen-scan client-unit-check/orm-gen-scan-parity client-unit-check/client-generics client-unit-check/perf-extensions client-unit-check/dbspec-runners
 client-unit-check/dbspec-runners: php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecRunnerTest.php
