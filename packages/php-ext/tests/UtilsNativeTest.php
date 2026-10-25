@@ -14,6 +14,7 @@ use Polyspec\Orm\PrivilegeUtils;
 use Polyspec\Orm\SchemaUtils;
 use Polyspec\Orm\Stats;
 use Polyspec\Orm\Utils;
+use Polyspec\Orm\Tests\WasInsertedCases;
 
 #[Medium]
 final class UtilsNativeTest extends TestCase
@@ -34,6 +35,16 @@ final class UtilsNativeTest extends TestCase
                 self::assertSame("$name expects a Db and Utils", $error->getMessage());
             }
         }
+    }
+
+    public function testWasInsertedTracksGeneratedRowsThroughNativeUtils(): void
+    {
+        self::assertTrue((new \ReflectionClass(Utils::class))->isInternal());
+        self::assertTrue((new \ReflectionClass(Utils::class))->getMethod('wasInserted')->isInternal());
+
+        WasInsertedCases::onSqlite(function (\Polyspec\Orm\Db $db): void {
+            WasInsertedCases::assertTracksGeneratedRows($this, $db);
+        });
     }
 
     public function testWasInsertedChecksTransactionBeforeArguments(): void

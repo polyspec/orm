@@ -22,22 +22,6 @@ use PHPUnit\Framework\TestCase;
 #[Medium]
 final class WasInsertedTest extends TestCase
 {
-    private static bool $generated = false;
-
-    /** Generates the clock fixture once per class and autoloads it under Polyspec\Orm\Tests\WasInsertedCase. */
-    private static function fixture(): void
-    {
-        if (self::$generated) {
-            return;
-        }
-        loadGeneratedFixture(
-            'orm-php-was-inserted-',
-            'clock.dbs',
-            'Polyspec\\Orm\\Tests\\WasInsertedCase'
-        );
-        self::$generated = true;
-    }
-
     /** @return iterable<string, array{string}> */
     public static function drivers(): iterable
     {
@@ -48,7 +32,7 @@ final class WasInsertedTest extends TestCase
 
     private static function connect(string $dsn): \Polyspec\Orm\Db
     {
-        self::fixture();
+        WasInsertedCases::loadFixture();
         $db = Orm::connect($dsn . (str_contains($dsn, '?') ? '&' : '?') . 'timezone=%2B00:00', new Config());
         $db->utils()->schema()->install(\Polyspec\Orm\Tests\WasInsertedCase\schema());
         return $db;
@@ -88,42 +72,16 @@ final class WasInsertedTest extends TestCase
     #[DataProvider('drivers')]
     public function testWasInsertedTracksGeneratedRows(string $driver): void
     {
-        self::onCase($driver, static function (\Polyspec\Orm\Db $db): void {
-            $outer = 0;
-            $nested = 0;
-            $db->transaction(function () use ($db, &$outer, &$nested): void {
-                $row = (new \Polyspec\Orm\Tests\WasInsertedCase\ClockEvent())($db)->setLabel('outer')->create();
-                $outer = (int) $row->getSeq();
-                self::assertTrue($db->utils()->wasInserted('clock_event', $outer), 'the outer insert is recorded');
-                self::assertFalse(
-                    $db->utils()->wasInserted('clock_event', $outer + 1000),
-                    'a key that was never inserted is not recorded'
-                );
-                try {
-                    $db->transaction(function () use ($db, &$nested): void {
-                        $row = (
-                            new \Polyspec\Orm\Tests\WasInsertedCase\ClockEvent()
-                        )($db)->setLabel('nested')->create();
-                        $nested = (int) $row->getSeq();
-                        self::assertTrue(
-                            $db->utils()->wasInserted('clock_event', $nested),
-                            'the nested insert is recorded'
-                        );
-                        throw new \RuntimeException('roll back the nested savepoint');
-                    }, retry: 0);
-                    self::fail('the nested transaction unexpectedly committed');
-                } catch (\RuntimeException $rolledBack) {
-                    self::assertInstanceOf(\RuntimeException::class, $rolledBack, 'the nested savepoint rolled back');
-                }
-                self::assertFalse(
-                    $db->utils()->wasInserted('clock_event', $nested),
-                    'a rolled back insert leaves the write set'
-                );
-                self::assertTrue(
-                    $db->utils()->wasInserted('clock_event', $outer),
-                    'the outer insert survives a nested rollback'
-                );
-            }, retry: 0);
+        self::onCase($driver, function (\Polyspec\Orm\Db $db): void {
+            WasInsertedCases::assertTracksGeneratedRows($this, $db);
+        });
+    }
+
+    /** The shared inserted-row scenario has a database-free SQLite library owner case. */
+    public function testWasInsertedTracksGeneratedRowsOnSqlite(): void
+    {
+        WasInsertedCases::onSqlite(function (\Polyspec\Orm\Db $db): void {
+            WasInsertedCases::assertTracksGeneratedRows($this, $db);
         });
     }
 

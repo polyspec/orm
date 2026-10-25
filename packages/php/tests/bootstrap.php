@@ -32,6 +32,7 @@ require_once __DIR__ . '/ModelTypesWeakCallerCases.php';
 require_once __DIR__ . '/collection-weak-caller.php';
 require_once __DIR__ . '/model-types-weak-caller.php';
 require_once __DIR__ . '/generated_fixture.php';
+require_once __DIR__ . '/WasInsertedCases.php';
 require_once __DIR__ . '/SqliteLiteralRowsPdo.php';
 require_once __DIR__ . '/CannedCatalogPdo.php';
 require_once __DIR__ . '/CountingPdo.php';
