@@ -366,6 +366,21 @@ impl Conn {
             Conn::Sqlite(c) => fetch_result!(c, sql, params, budget, grid_sqlite, GridQueryResult, sqlite),
         }
     }
+
+    /// Reads converted grid cells under the client-visible cell-byte budget used by catalogs.
+    pub(crate) async fn grid_query_values_bounded(&mut self, sql: &str, params: &[P], limits: QueryLimits) -> Result<GridQueryResult, sqlx::Error> {
+        self.validate_params(params)?;
+        let mut budget = limits::ValueBudget::new(limits)?;
+        if polyspec_orm_schema::sql::split_sql(sql).len() != 1 {
+            return Err(sqlx::Error::Decode("TOOL_QUERY_STATEMENT: expected one statement".into()));
+        }
+        let sql = AssertSqlSafe(sql.to_owned());
+        match self {
+            Conn::MySql(c) => fetch_result!(c, sql, params, budget, grid_mysql, GridQueryResult, mysql),
+            Conn::Postgres(c) => fetch_result!(c, sql, params, budget, grid_pg, GridQueryResult, postgres),
+            Conn::Sqlite(c) => fetch_result!(c, sql, params, budget, grid_sqlite, GridQueryResult, sqlite),
+        }
+    }
 }
 
 /// The bind placeholder of a driver.

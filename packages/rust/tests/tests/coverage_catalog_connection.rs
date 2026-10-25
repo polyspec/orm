@@ -82,6 +82,11 @@ async fn coverage_catalog_read() {
         assert!(matches!(&row_overflow, Err(error) if error.starts_with("CATALOG_LIMIT:")), "{driver}: row budget result: {row_overflow:?}");
         let byte_overflow = catalog.read_only_grid_query("SELECT 'abc' AS value", &[], QueryLimits { max_rows: 2, max_bytes: 2 }).await;
         assert!(matches!(&byte_overflow, Err(error) if error.starts_with("CATALOG_LIMIT:")), "{driver}: byte budget result: {byte_overflow:?}");
+        let exact_byte_boundary = catalog
+            .read_only_grid_query("SELECT 'abc' AS value", &[], QueryLimits { max_rows: 2, max_bytes: 3 })
+            .await
+            .unwrap_or_else(|error| panic!("{driver}: exact grid text byte boundary failed: {error}"));
+        assert_eq!(exact_byte_boundary.rows, vec![vec![GridCell::Text("abc".into())]], "{driver}: exact grid text byte boundary preserves the value");
         let write = catalog.read_only_query(&format!("UPDATE {} SET name = name WHERE seq = 1", quote("user", &driver)), &[], QueryLimits::default()).await;
         assert!(matches!(&write, Err(e) if e.contains("QUERY_READ_ONLY")), "{driver}: a write through read_only_query: {write:?}");
 

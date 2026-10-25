@@ -104,7 +104,7 @@ impl CatalogConnection {
         limits: crate::tool_db::QueryLimits,
     ) -> Result<crate::tool_db::GridQueryResult, String> {
         let mut connection = self.read_only_connection(sql).await?;
-        let result = connection.grid_query_bounded(sql, params, limits).await.map_err(catalog_query_error);
+        let result = connection.grid_query_values_bounded(sql, params, limits).await.map_err(catalog_query_error);
         finish_read_only(&mut connection, result).await
     }
     async fn read_only_connection(&self, sql: &str) -> Result<Conn, String> {

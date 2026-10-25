@@ -27,6 +27,35 @@ pub(super) struct ValueBudget {
     limits: QueryLimits,
     bytes: usize,
 }
+pub(super) trait CellSize {
+    fn size_bytes(&self) -> usize;
+}
+impl CellSize for super::Val {
+    fn size_bytes(&self) -> usize {
+        match self {
+            super::Val::Text(text) => text.len(),
+            super::Val::Null | super::Val::Int(_) | super::Val::Bool(_) => 8,
+        }
+    }
+}
+impl CellSize for super::GridCell {
+    fn size_bytes(&self) -> usize {
+        match self {
+            super::GridCell::Text(text)
+            | super::GridCell::Decimal(text)
+            | super::GridCell::Date(text)
+            | super::GridCell::Time(text)
+            | super::GridCell::DateTime(text) => text.len(),
+            super::GridCell::Binary(bytes) => bytes.len(),
+            super::GridCell::Null
+            | super::GridCell::Integer(_)
+            | super::GridCell::Unsigned(_)
+            | super::GridCell::Float32(_)
+            | super::GridCell::Float64(_)
+            | super::GridCell::Boolean(_) => 8,
+        }
+    }
+}
 impl ValueBudget {
     pub(super) fn new(limits: QueryLimits) -> Result<Self, sqlx::Error> {
         let ceiling = QueryLimits::default();
@@ -38,14 +67,8 @@ impl ValueBudget {
     pub(super) fn check_row_count(&self, count: usize) -> Result<(), sqlx::Error> {
         if count >= self.limits.max_rows { Err(error()) } else { Ok(()) }
     }
-    pub(super) fn add_row(&mut self, row: &[super::Val], _count: usize) -> Result<(), sqlx::Error> {
-        let size = row.iter().try_fold(0usize, |bytes, value| {
-            let size = match value {
-                super::Val::Text(text) => text.len(),
-                super::Val::Null | super::Val::Int(_) | super::Val::Bool(_) => 8,
-            };
-            bytes.checked_add(size).filter(|total| *total <= self.limits.max_bytes)
-        });
+    pub(super) fn add_row<T: CellSize>(&mut self, row: &[T], _count: usize) -> Result<(), sqlx::Error> {
+        let size = row.iter().try_fold(0usize, |bytes, value| bytes.checked_add(value.size_bytes()).filter(|total| *total <= self.limits.max_bytes));
         let Some(bytes) = size else { return Err(error()) };
         self.bytes = self.bytes.checked_add(bytes).filter(|total| *total <= self.limits.max_bytes).ok_or_else(error)?;
         Ok(())
