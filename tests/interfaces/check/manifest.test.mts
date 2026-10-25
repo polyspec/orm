@@ -16,7 +16,12 @@ function componentManifest(components: Component[], ...rules: string[]): Manifes
     prohibited_symbols: ['multi_statement'],
     sequences: [{ id: 's' }],
     components,
-    rules: rules.map(id => ({ id })),
+    rules: rules.map(id => ({
+      id,
+      native: Object.fromEntries(['go', 'php', 'rust', 'typescript', 'python'].map(language => [
+        language, { symbol: `${language}::${id}`, signature: `${id}()` },
+      ])),
+    })),
     behavior_adapters: [{
       id: 'CFG-9', completion_item: 'KSTD-2-11-16', parity: 'unit', adapters: Object.fromEntries(['go', 'php', 'php-extension', 'python', 'rust', 'typescript'].map(runtime => [runtime, {
         status: 'unresolved', item: 'fixture', required_case: 'cancellation-case',
@@ -44,6 +49,20 @@ caseTest('the manifest refuses a component method without a rule', COMPUTE, () =
 
 caseTest('the component methods of the manifest have rules', COMPUTE, () => {
   validateManifest(readManifest(join(root, 'contracts/interfaces.json')));
+});
+
+// Requirements: PLN-2.
+caseTest('every common syntax rule has a spelling in all five clients', COMPUTE, () => {
+  const valid = componentManifest([{ id: 'Model', methods: ['connect'] }], 'Model.connect');
+  assert.doesNotThrow(() => validateManifest(valid), 'a complete five-client rule was refused');
+  const missing = componentManifest([{ id: 'Model', methods: ['connect'] }], 'Model.connect');
+  delete missing.rules?.[0]?.native?.rust;
+  assert.match(refusal(missing), /Model\.connect: missing rust native syntax mapping/,
+    'a rule with no Rust spelling passed the common syntax inventory');
+  const empty = componentManifest([{ id: 'Model', methods: ['connect'] }], 'Model.connect');
+  if (empty.rules?.[0]?.native?.python) empty.rules[0].native.python.signature = '';
+  assert.match(refusal(empty), /Model\.connect: missing python native syntax mapping/,
+    'a rule with an empty Python syntax spelling passed the common syntax inventory');
 });
 
 caseTest('the manifest refuses a rule without a component method', COMPUTE, () => {

@@ -102,9 +102,23 @@ export function validateManifest(m: Manifest): void {
     throw new Error('invalid interface manifest');
   }
   validateProhibitions(m.prohibited_symbols ?? []);
+  validateRuleLanguageMappings(m);
   checkComponentMethods(m);
   validateNativeSurfaces(m.native_surfaces ?? []);
   validateBehaviorAdapters(m.behavior_adapters ?? [], m.native_surfaces ?? []);
+}
+
+/** validateRuleLanguageMappings requires every shared syntax rule to have a native spelling in all five clients. */
+function validateRuleLanguageMappings(m: Manifest): void {
+  const languages = Object.keys(m.languages ?? {});
+  for (const rule of allRules(m)) {
+    const id = rule.id ?? '';
+    for (const language of languages) {
+      if (rule.native?.[language] === undefined || (rule.native[language]?.symbol ?? '') === '' || (rule.native[language]?.signature ?? '') === '') {
+        throw new Error(`${id}: missing ${language} native syntax mapping`);
+      }
+    }
+  }
 }
 
 /** validateNativeSurfaces accepts only typed, language-owned host APIs tied to a shared semantic requirement. */
