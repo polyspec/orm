@@ -104,6 +104,25 @@ function readFilter(string $part): Closure
     };
 }
 
+/**
+ * A service scope: ANDs part = $part into the where of the root of every read and of each of its relation queries,
+ * nested relations included, as an application scopes every table of a request.
+ */
+function serviceScope(string $part): Closure
+{
+    $scope = static function (array &$query, Request $r) use ($part, &$scope): void {
+        hookAndWhere($query, ['column' => 'part', 'op' => 'eq', 'p' => $r->param($part)]);
+        foreach (array_keys($query['relations'] ?? []) as $i) {
+            $scope($query['relations'][$i]['query'], $r);
+        }
+    };
+    return static function (Request $r) use ($scope): void {
+        if (requestIsRead($r)) {
+            $scope($r->ir, $r);
+        }
+    };
+}
+
 function requestIsRead(Request $request): bool
 {
     return in_array($request->ir['kind'], READ_KINDS, true);
@@ -213,6 +232,56 @@ function sameHandleChildHookOnce(string $dsn): void
     $db->close();
 }
 
+
+/**
+ * relation() and relations() run under a service scope: a hook that scopes the root of every read and each of its
+ * relation queries reads only the rows of its scope, with a relation child connected to the hooked handle (a request of
+ * its own, which the hook scopes as a root) or not (a relation query of the parent's request). The parent a1 of part a
+ * matches the items labeled a1 of parts a and b by label, and under the scope of part a it attaches only the item of
+ * part a.
+ */
+function relationScope(string $dsn): void
+{
+    $db = hookConnect($dsn);
+    hookSeed($db);
+    (new HookItem())($db)->setPart('b')->setLabel('a1')->create();
+    foreach ([['a', 'a1'], ['b', 'b1']] as [$part, $label]) {
+        (new HookEntry())($db)->setPart($part)->setLabel($label)->create();
+    }
+    $parts = static function (iterable $rows): array {
+        $out = [];
+        foreach ($rows as $row) {
+            $out[] = $row->getPart() . '/' . $row->getLabel();
+        }
+        sort($out, SORT_STRING);
+        return $out;
+    };
+    $unscoped = (new HookEntry())($db)->label('a1')->relations((new HookItem())->matchLabelWithLabel())->get();
+    hookCheck(
+        $unscoped instanceof HookEntry && $parts($unscoped->getHookItemModels()) === ['a/a1', 'b/a1'],
+        'without the scope the parent a1 matches the items a1 of both parts'
+    );
+    $scoped = $db->withRequestHook(serviceScope('a'));
+    foreach ([static fn() => (new HookItem())($scoped), static fn() => new HookItem()] as $child) {
+        $many = [];
+        foreach ((new HookEntry())($scoped)->relations($child()->matchLabelWithLabel())->gets() as $row) {
+            $many[] = [$row->getLabel(), $parts($row->getHookItemModels())];
+        }
+        hookCheck(
+            $many === [['a1', ['a/a1']]],
+            'relations() under the scope of part a reads the parent and the items of part a: ' . json_encode($many)
+        );
+        $one = [];
+        foreach ((new HookEntry())($scoped)->relation($child()->matchLabelWithLabel())->gets() as $row) {
+            $one[] = [$row->getLabel(), $row->getHookItemModel()?->getPart()];
+        }
+        hookCheck(
+            $one === [['a1', 'a']],
+            'relation() under the scope of part a attaches the item of part a: ' . json_encode($one)
+        );
+    }
+    $db->close();
+}
 
 /** An assignment the hook adds is written by a single and a bulk insert. */
 function insertAssign(string $dsn): void
@@ -540,6 +609,7 @@ const REQUEST_HOOK_CASES = [
     'without_hook' => 'withoutHook',
     'read_filter' => 'readFilterCase',
     'same_handle_child_hook_once' => 'sameHandleChildHookOnce',
+    'relation_scope' => 'relationScope',
     'insert_assign' => 'insertAssign',
     'upsert_scope' => 'upsertScope',
     'loaded_row_writes' => 'loadedRowWrites',

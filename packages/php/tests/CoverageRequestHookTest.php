@@ -60,6 +60,15 @@ class CoverageRequestHookTest extends TestCase
         }
     }
 
+    // Requirements: INT-78.
+    public function testRelationScope(): void
+    {
+        foreach (coverageItemsOf(static::coverageTestFile()) as $item) {
+            selectCoverageItem($item);
+            self::runCase('relation_scope');
+        }
+    }
+
     // Requirements: PRT-4, PRT-5, PRT-41.
     public function test_insert_assign(): void
     {

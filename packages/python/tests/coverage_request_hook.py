@@ -12,6 +12,7 @@ CASES = (
     "without_hook",
     "read_filter",
     "same_handle_child_hook_once",
+    "relation_scope",
     "insert_assign",
     "upsert_scope",
     "loaded_row_writes",
@@ -62,6 +63,10 @@ class CoverageTest(CoverageCase):
             "same_handle_child_hook_once",
             lambda item: run_case("same_handle_child_hook_once", item),
         )
+
+    # Requirements: INT-78.
+    def test_relation_scope(self):
+        self.each_item("relation_scope", lambda item: run_case("relation_scope", item))
 
     # Requirements: PRT-4, PRT-5, PRT-41.
     def test_insert_assign(self):

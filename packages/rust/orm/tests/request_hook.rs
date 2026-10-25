@@ -1,7 +1,7 @@
 //! The request hook of a connection handle (docs/operations/usage.md "Request hook"): the handle returned by `Db::with_request_hook`
 //! uses the same connection, and its hook receives the request and `RequestParams` for each request of the handle, just before planning.
 //! Runs the shared cases of contracts/fixtures/request_hook.dbs in a SQLite case database (polyspec-orm-case-database,
-//! the file is deleted when it ends or panics): without_hook, read_filter, same_handle_child_hook_once, insert_assign, upsert_scope,
+//! the file is deleted when it ends or panics): without_hook, read_filter, same_handle_child_hook_once, relation_scope, insert_assign, upsert_scope,
 //! loaded_row_writes, invalid_param, restore_key, restore_condition, restore_no_key, restore_rewritten_key,
 //! restore_hook_set_key. `coverage_request_hook_<case>` runs the same case on the database that feature-check chose,
 //! in that database's case database (docs/spec/feature-coverage.md).
@@ -23,7 +23,8 @@ use or_panic::OrPanic;
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 
-use polyspec_orm::ir::{Assign, Group, Item, Pred, Request};
+use polyspec_orm::core::{Arg, ChainKey};
+use polyspec_orm::ir::{Assign, Group, Item, Pred, Query, Request};
 use polyspec_orm::{Core, Db, Entity, Model, Param, RequestParams, Schema};
 use polyspec_orm_case_database::CaseDatabase;
 
@@ -170,6 +171,30 @@ fn part_eq(p: usize) -> Pred {
 
 const READS: [&str; 7] = ["one", "all", "count", "group_count", "sum", "avg", "paginate"];
 
+/// A service scope: adds `part = value` to the where of the root of every read and of each of its relation queries,
+/// nested relations included, as an application scopes every table of a request.
+fn service_scope_hook(value: &'static str) -> impl Fn(&mut Request, &mut RequestParams) -> polyspec_orm::Result<()> + Send + Sync + 'static {
+    fn scope(query: &mut Query, params: &mut RequestParams, value: &'static str) {
+        let mut pred = part_eq(params.add(value));
+        query.where_ = Some(match query.where_.take() {
+            None => Group { items: vec![Item::Pred { pred: Box::new(pred) }], ..Default::default() },
+            Some(existing) => {
+                pred.conn = "and".into();
+                Group { items: vec![Item::Group { group: existing }, Item::Pred { pred: Box::new(pred) }], ..Default::default() }
+            }
+        });
+        for relation in &mut query.relations {
+            scope(&mut relation.query, params, value);
+        }
+    }
+    move |request: &mut Request, params: &mut RequestParams| {
+        if READS.contains(&request.kind.as_str()) {
+            scope(&mut request.query, params, value);
+        }
+        Ok(())
+    }
+}
+
 /// A hook that attaches `part = value` to the root where of a read request.
 fn read_filter_hook(value: &'static str) -> impl Fn(&mut Request, &mut RequestParams) -> polyspec_orm::Result<()> + Send + Sync + 'static {
     move |request: &mut Request, params: &mut RequestParams| {
@@ -257,6 +282,71 @@ async fn same_handle_child_hook_once_case(driver: &str) {
     parent.core_mut().relation(true, child.into_core());
     polyspec_orm::model::get(&parent).await.expect("get with explicit child relation");
     assert_eq!(*calls.lock().expect("hook calls"), BTreeMap::from([("hook_entry".to_owned(), 1), ("hook_item".to_owned(), 1)]));
+    db.close().await;
+    database.drop().await;
+}
+
+/// The `part/label` of each row, sorted.
+fn part_labels<'a>(rows: impl Iterator<Item = &'a HookItem>) -> Vec<String> {
+    let mut out: Vec<String> = rows.map(|row| format!("{}/{}", text_of(row, "part"), text_of(row, "label"))).collect();
+    out.sort();
+    out
+}
+
+/// The hook_entry rows that handle reads, with label when it is given, and their relation (many or one) to child
+/// matched by label.
+async fn entries_with_items(handle: &Db, many: bool, mut child: HookItem, label: Option<&str>) -> polyspec_orm::Collection<HookEntry> {
+    const BY_LABEL: &[ChainKey] = &[ChainKey { conn: "", op: "", column: "label", columns: &[], compare: "" }];
+    let mut parent = entry(handle, &[]);
+    if let Some(label) = label {
+        parent = HookEntry::from_core(parent.core().by(BY_LABEL, vec![Arg::Value(polyspec_orm::args::Value::One(Param::from(label)))]));
+    }
+    child.core_mut().add_match("label", "label");
+    parent.core_mut().relation(many, child.into_core());
+    polyspec_orm::model::gets(&parent).await.or_panic(|e| format!("gets with the relation: {e}"))
+}
+
+/// relation() and relations() run under a service scope: a hook that scopes the root of every read and each of its
+/// relation queries reads only the rows of its scope, with a relation child connected to the hooked handle (a request of
+/// its own, which the hook scopes as a root) or not (a relation query of the parent's request). The parent a1 of part a
+/// matches the items labeled a1 of parts a and b by label, and under the scope of part a it attaches only the item of
+/// part a.
+async fn relation_scope_case(driver: &str) {
+    let database = CaseDatabase::create(driver).await;
+    let db = installed(&database).await;
+    seed(&db).await;
+    let mut extra = with_values(item(&db), &[("part", "b"), ("label", "a1")]);
+    polyspec_orm::model::create(&mut extra).await.expect("create the item a1 of part b");
+    for (part, label) in [("a", "a1"), ("b", "b1")] {
+        let mut parent = entry(&db, &[("part", Param::from(part)), ("label", Param::from(label))]);
+        polyspec_orm::model::create(&mut parent).await.expect("create entry");
+    }
+    let unscoped = entries_with_items(&db, true, unconnected(), Some("a1")).await;
+    let row = unscoped.models().next().expect("the parent a1");
+    let children = row.core().related_many::<HookItem>("hook_item_models").expect("hook_item_models").expect("a relation result");
+    assert_eq!(part_labels(children.models()), ["a/a1", "b/a1"], "{driver}: without the scope the parent a1 matches the items a1 of both parts");
+    let scoped = db.with_request_hook(service_scope_hook("a"));
+    for connected in [true, false] {
+        let child = || if connected { item(&scoped) } else { unconnected() };
+        let many = entries_with_items(&scoped, true, child(), None).await;
+        let got: Vec<(String, Vec<String>)> = many
+            .models()
+            .map(|row| {
+                let children = row.core().related_many::<HookItem>("hook_item_models").expect("hook_item_models").expect("a relation result");
+                (text_of(row, "label"), part_labels(children.models()))
+            })
+            .collect();
+        assert_eq!(got, [("a1".to_owned(), vec!["a/a1".to_owned()])], "{driver}: relations() under the scope of part a (child connected: {connected})");
+        let one = entries_with_items(&scoped, false, child(), None).await;
+        let got: Vec<(String, Option<String>)> = one
+            .models()
+            .map(|row| {
+                let attached = row.core().related_one::<HookItem>("hook_item_model").expect("hook_item_model");
+                (text_of(row, "label"), attached.map(|child| text_of(child, "part")))
+            })
+            .collect();
+        assert_eq!(got, [("a1".to_owned(), Some("a".to_owned()))], "{driver}: relation() under the scope of part a (child connected: {connected})");
+    }
     db.close().await;
     database.drop().await;
 }
@@ -558,6 +648,20 @@ async fn read_filter() {
 async fn same_handle_child_hook_once() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     same_handle_child_hook_once_case("sqlite").await;
+}
+
+// Requirements: INT-78.
+#[tokio::test]
+async fn relation_scope() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    relation_scope_case("sqlite").await;
+}
+
+// Requirements: INT-78.
+#[tokio::test]
+async fn coverage_request_hook_relation_scope() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    relation_scope_case(feature_database::selected()).await;
 }
 
 #[tokio::test]

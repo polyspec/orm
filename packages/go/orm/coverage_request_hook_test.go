@@ -47,6 +47,12 @@ func TestCoverageRequestHookSameHandleChildHookOnce(t *testing.T) {
 }
 
 // Requirements: INT-78.
+func TestCoverageRequestHookRelationScope(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	runRequestHookCoverage(t, "relation_scope")
+}
+
+// Requirements: INT-78.
 func TestCoverageRequestHookReadsParams(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	db, entity, entry := hookFixture(t, "sqlite://"+filepath.Join(t.TempDir(), "request-hook-reads-params.sqlite"))

@@ -39,6 +39,23 @@ def part_filter(value: str, kinds=READS):
     return hook
 
 
+def service_scope(value: str):
+    """A service scope: adds part eq value to the where of the root of every read and of each of its relation queries,
+    nested relations included, as an application scopes every table of a request."""
+
+    def scope(query: dict, add_param) -> None:
+        and_where(query, {"column": "part", "op": "eq", "p": add_param(value)})
+        for relation in query.get("relations") or []:
+            scope(relation["query"], add_param)
+
+    def hook(request, add_param, params):
+        if request["kind"] in READS:
+            scope(request, add_param)
+        return request
+
+    return hook
+
+
 def part_scope(value: str):
     """Adds part eq value to the where of every read and restore."""
     return part_filter(value, READS + ("restore",))
@@ -148,6 +165,62 @@ class RequestHookTest(RequestHookCase):
             sorted(row.get_label() for row in parent.get_hook_item_models()),
             ["a1", "a2"],
         )
+
+    # Requirements: INT-78.
+    def test_relation_scope(self):
+        """relation() and relations() run under a service scope: a hook that scopes the root of every read and each of
+        its relation queries reads only the rows of its scope, with a relation child connected to the hooked handle (a
+        request of its own, which the hook scopes as a root) or not (a relation query of the parent's request). The
+        parent a1 of part a matches the items labeled a1 of parts a and b by label, and under the scope of part a it
+        attaches only the item of part a."""
+        self.item(self.db).set_part("b").set_label("a1").create()
+        for part, label in (("a", "a1"), ("b", "b1")):
+            self.models.HookEntry().connect(self.db).set_part(part).set_label(
+                label
+            ).create()
+
+        def parts(rows):
+            return sorted(f"{row.get_part()}/{row.get_label()}" for row in rows)
+
+        unscoped = (
+            self.models.HookEntry()
+            .connect(self.db)
+            .label("a1")
+            .relations(self.models.HookItem().match_label_with_label())
+            .get()
+        )
+        self.assertEqual(
+            parts(unscoped.get_hook_item_models()),
+            ["a/a1", "b/a1"],
+            "without the scope the parent a1 matches the items a1 of both parts",
+        )
+        scoped = self.db.with_request_hook(service_scope("a"))
+        for child in (lambda: self.item(scoped), lambda: self.models.HookItem()):
+            many = (
+                self.models.HookEntry()
+                .connect(scoped)
+                .relations(child().match_label_with_label())
+                .gets()
+            )
+            self.assertEqual(
+                [(row.get_label(), parts(row.get_hook_item_models())) for row in many],
+                [("a1", ["a/a1"])],
+                "relations() under the scope of part a reads the parent and the items of part a",
+            )
+            one = (
+                self.models.HookEntry()
+                .connect(scoped)
+                .relation(child().match_label_with_label())
+                .gets()
+            )
+            self.assertEqual(
+                [
+                    (row.get_label(), row.get_hook_item_model().get_part())
+                    for row in one
+                ],
+                [("a1", "a")],
+                "relation() under the scope of part a attaches the item of part a",
+            )
 
     def test_insert_assign(self):
         def hook(request, add_param, params):

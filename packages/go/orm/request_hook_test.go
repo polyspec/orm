@@ -106,6 +106,24 @@ func partScope(value string) orm.RequestHook {
 	}
 }
 
+// serviceScope is a service scope: it adds part = value to the where of the root of every read and of each of its
+// relation queries, nested relations included, as an application scopes every table of a request.
+func serviceScope(value string) orm.RequestHook {
+	var scope func(q *ir.Query, addParam func(any) int)
+	scope = func(q *ir.Query, addParam func(any) int) {
+		andWhere(q, partIs(addParam, value))
+		for _, rel := range q.Relations {
+			scope(rel.Query, addParam)
+		}
+	}
+	return func(r *ir.Request, addParam func(any) int, params []any) error {
+		if slices.Contains(hookReadKinds, r.Kind) {
+			scope(&r.Query, addParam)
+		}
+		return nil
+	}
+}
+
 // hookItem is a hook_item model connected to db, with its values set. If db is nil, it does not connect.
 func hookItem(e *orm.Entity, db *orm.DB, values map[string]any) *orm.Core {
 	c := orm.NewCore(e)
@@ -247,6 +265,66 @@ var requestHookCases = []struct {
 		}
 		if calls["hook_entry"] != 1 || calls["hook_item"] != 1 || len(calls) != 2 {
 			t.Fatalf("same-handle relation hooks = %v, want one root and one child request", calls)
+		}
+	}},
+
+	{"relation_scope", func(t *testing.T, db *orm.DB, e, entry *orm.Entity) {
+		seedHookItems(t, e, db)
+		if _, err := hookItem(e, db, map[string]any{"part": "b", "label": "a1"}).Create(); err != nil {
+			t.Fatal(err)
+		}
+		for _, v := range [][2]string{{"a", "a1"}, {"b", "b1"}} {
+			if _, err := hookEntry(entry, db, map[string]any{"part": v[0], "label": v[1]}).Create(); err != nil {
+				t.Fatal(err)
+			}
+		}
+		read := func(handle *orm.DB, many bool, child *orm.Core, label string) []*keywordRow {
+			t.Helper()
+			parent := hookEntry(entry, handle, nil)
+			if label != "" {
+				parent.Where("", []orm.ChainKey{{Column: "label"}}, label)
+			}
+			child.Match("label", "label")
+			parent.Relation(many, child.Self())
+			rows, err := orm.Gets[*keywordRow](parent)
+			if err != nil {
+				t.Fatal(err)
+			}
+			return rows.Slice()
+		}
+		parts := func(rows []*keywordRow) []string {
+			var out []string
+			for _, r := range rows {
+				out = append(out, fmt.Sprintf("%v/%v", r.vals["part"], r.vals["label"]))
+			}
+			slices.Sort(out)
+			return out
+		}
+		children := func(row *keywordRow) []*keywordRow {
+			t.Helper()
+			c, err := orm.RelatedAs[*orm.Collection[*keywordRow]](row.m, "hook_item_models")
+			if err != nil || c == nil {
+				t.Fatalf("hook_item_models: %v, %v", c, err)
+			}
+			return c.Slice()
+		}
+		if got := parts(children(read(db, true, hookItem(e, nil, nil), "a1")[0])); !slices.Equal(got, []string{"a/a1", "b/a1"}) {
+			t.Fatalf("without the scope the parent a1 matches %v, want the items a1 of both parts", got)
+		}
+		scoped := db.WithRequestHook(serviceScope("a"))
+		for _, child := range []func() *orm.Core{func() *orm.Core { return hookItem(e, scoped, nil) }, func() *orm.Core { return hookItem(e, nil, nil) }} {
+			many := read(scoped, true, child(), "")
+			if len(many) != 1 || many[0].vals["label"] != "a1" || !slices.Equal(parts(children(many[0])), []string{"a/a1"}) {
+				t.Fatalf("relations() under the scope of part a reads %d parents, want the parent a1 with the item a/a1", len(many))
+			}
+			one := read(scoped, false, child(), "")
+			if len(one) != 1 || one[0].vals["label"] != "a1" {
+				t.Fatalf("relation() under the scope of part a reads %d parents, want the parent a1", len(one))
+			}
+			attached, err := orm.RelatedAs[*keywordRow](one[0].m, "hook_item_model")
+			if err != nil || attached == nil || attached.vals["part"] != "a" {
+				t.Fatalf("relation() under the scope of part a attaches %v (%v), want the item of part a", attached, err)
+			}
 		}
 	}},
 

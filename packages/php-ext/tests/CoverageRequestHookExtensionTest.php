@@ -55,6 +55,12 @@ final class CoverageRequestHookExtensionTest extends CoverageRequestHookTest
         parent::test_without_hook();
     }
 
+    // Requirements: INT-78.
+    public function testRelationScope(): void
+    {
+        parent::testRelationScope();
+    }
+
     // Requirements: CFG-21, INT-36, INT-37, PLN-16.
     public function testLoadedRowWrites(): void
     {

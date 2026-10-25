@@ -38,6 +38,21 @@ function partFilter(value) {
   };
 }
 
+/**
+ * A service scope: adds part = value to the where of the root of every read and of each of its relation queries, nested
+ * relations included, as an application scopes every table of a request.
+ */
+function serviceScope(value) {
+  const scope = (query, addParam) => {
+    andWhere(query, { column: 'part', op: 'eq', p: addParam(value) });
+    for (const relation of query.relations ?? []) scope(relation.query, addParam);
+  };
+  return (request, addParam) => {
+    if (READS.has(request.kind)) scope(request, addParam);
+    return request;
+  };
+}
+
 /** Adds part = value to the where of every read and restore. */
 function partScope(value) {
   return (request, addParam) => {
@@ -136,6 +151,30 @@ export const cases = {
     assert.equal(parent.toArray().part, 'a', 'the relation parent was created on the fixture');
   },
 
+
+  /**
+   * relation() and relations() run under a service scope: a hook that scopes the root of every read and each of its
+   * relation queries reads only the rows of its scope, with a relation child connected to the hooked handle (a request of
+   * its own, which the hook scopes as a root) or not (a relation query of the parent's request). The parent a1 of part a
+   * matches the items labeled a1 of parts a and b by label, and under the scope of part a it attaches only the item of
+   * part a.
+   */
+  async relation_scope(db) {
+    await item({ part: 'b', label: 'a1' }).connect(db).create();
+    for (const [part, label] of [['a', 'a1'], ['b', 'b1']]) await entry({ part, label }).connect(db).create();
+    const scoped = db.withRequestHook(serviceScope('a'));
+    const parts = rows => rows.map(row => `${row.toArray().part}/${row.toArray().label}`).sort();
+    const unscoped = await new Entry().connect(db).label('a1').relations(new Item().matchLabelWithLabel()).get();
+    assert.deepEqual(parts(unscoped.getHookItemModels().values()), ['a/a1', 'b/a1'], 'without the scope the parent a1 matches the items a1 of both parts');
+    for (const child of [() => new Item().connect(scoped), () => new Item()]) {
+      const many = await new Entry().connect(scoped).relations(child().matchLabelWithLabel()).gets();
+      assert.deepEqual(many.values().map(row => [row.toArray().label, parts(row.getHookItemModels().values())]),
+        [['a1', ['a/a1']]], 'relations() under the scope of part a reads the parent and the items of part a');
+      const one = await new Entry().connect(scoped).relation(child().matchLabelWithLabel()).gets();
+      assert.deepEqual(one.values().map(row => [row.toArray().label, row.getHookItemModel()?.toArray().part]),
+        [['a1', 'a']], 'relation() under the scope of part a attaches the item of part a');
+    }
+  },
 
   /** A single-row insert and a multi-row insert write the assignment that the hook added to insert. */
   async insert_assign(db) {

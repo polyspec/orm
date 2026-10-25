@@ -10,6 +10,7 @@ import { cases, runOn } from './request_hook_run.mjs';
 // without_hook: Requirements: INT-78.
 // read_filter: Requirements: INT-78, PRT-2.
 // same_handle_child_hook_once: Requirements: INT-78, PRT-2.
+// relation_scope: Requirements: INT-78.
 // insert_assign: Requirements: PRT-4, PRT-5, PRT-41.
 // upsert_scope: Requirements: INT-78, PRT-4, PRT-6.
 // loaded_row_writes: Requirements: CFG-21, INT-36, INT-37, PLN-16.
@@ -22,7 +23,7 @@ import { cases, runOn } from './request_hook_run.mjs';
 // restore_rewritten_key_set_scope: Requirements: DIA-161.
 const coverage = {};
 for (const name of [
-  'without_hook', 'read_filter', 'same_handle_child_hook_once', 'insert_assign', 'upsert_scope', 'loaded_row_writes',
+  'without_hook', 'read_filter', 'same_handle_child_hook_once', 'relation_scope', 'insert_assign', 'upsert_scope', 'loaded_row_writes',
   'invalid_param', 'restore_key', 'restore_condition', 'restore_no_key', 'restore_rewritten_key', 'restore_hook_set_key',
   'restore_rewritten_key_set_scope',
 ]) {

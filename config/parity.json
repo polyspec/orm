@@ -3100,6 +3100,56 @@
       ]
     },
     {
+      "id": "coverage-request-hook-relation-scope",
+      "kind": "feature",
+      "requirements": [
+        "INT-78"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_request_hook_test.go",
+          "id": "TestCoverageRequestHookRelationScope",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-go-unit",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=TestCoverageRequestHookRelationScope",
+            "FEATURE_PACKAGE=./orm"
+          ]
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageRequestHookTest.php",
+          "id": "CoverageRequestHookTest::testRelationScope"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
+          "id": "CoverageRequestHookExtensionTest::testRelationScope"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_request_hook.mjs",
+          "id": "relation_scope [sqlite]"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_request_hook.py",
+          "id": "test_relation_scope"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/request_hook.rs",
+          "id": "coverage_request_hook_relation_scope"
+        }
+      ]
+    },
+    {
       "id": "coverage-request-hook-upsert-scope",
       "kind": "feature",
       "requirements": [
