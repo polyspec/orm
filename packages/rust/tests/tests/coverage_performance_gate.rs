@@ -19,6 +19,15 @@ fn required(variable: &str) -> String {
     }
 }
 
+fn native_sqlite_dsn(dsn: &str) -> String {
+    let Some((path, query)) = dsn.split_once('?') else { return dsn.to_owned() };
+    let native_options = query.split('&').filter(|option| {
+        let key = option.split_once('=').map_or(*option, |(key, _)| key);
+        !matches!(key, "_pragma" | "timezone")
+    }).collect::<Vec<_>>();
+    if native_options.is_empty() { path.to_owned() } else { format!("{path}?{}", native_options.join("&")) }
+}
+
 #[derive(Clone, Copy)]
 enum Workload {
     Pk,
@@ -33,10 +42,12 @@ impl Workload {
         }
     }
 
-    fn expected_binds(self) -> Vec<Param> {
-        match self {
-            Self::Pk => vec![Param::I64(42), Param::I64(1), Param::I64(0)],
-            Self::List100 => vec![Param::I64(7), Param::Bool(false), Param::I64(100), Param::I64(0)],
+    fn expected_binds(self, database: &str) -> Vec<Param> {
+        match (self, database) {
+            (Self::Pk, "mysql") => vec![Param::I64(42), Param::I64(0), Param::I64(1)],
+            (Self::List100, "mysql") => vec![Param::I64(7), Param::Bool(false), Param::I64(0), Param::I64(100)],
+            (Self::Pk, _) => vec![Param::I64(42), Param::I64(1), Param::I64(0)],
+            (Self::List100, _) => vec![Param::I64(7), Param::Bool(false), Param::I64(100), Param::I64(0)],
         }
     }
 
@@ -184,7 +195,7 @@ impl Native {
         match database {
             "mysql" => Self::Mysql(MySqlPool::connect(dsn).await.expect("native MySQL connection")),
             "postgres" => Self::Postgres(PgPool::connect(dsn).await.expect("native PostgreSQL connection")),
-            "sqlite" => Self::Sqlite(SqlitePool::connect(dsn).await.expect("native SQLite connection")),
+            "sqlite" => Self::Sqlite(SqlitePool::connect(&native_sqlite_dsn(dsn)).await.expect("native SQLite connection")),
             _ => panic!("unsupported performance database {database}"),
         }
     }
@@ -194,8 +205,8 @@ impl Native {
             Self::Mysql(pool) => {
                 let query = sqlx::query(sqlx::AssertSqlSafe(statement));
                 let rows = match workload {
-                    Workload::Pk => query.bind(42_i64).bind(1_i64).bind(0_i64).fetch_all(pool).await.expect("native MySQL PK query"),
-                    Workload::List100 => query.bind(7_i64).bind(false).bind(100_i64).bind(0_i64).fetch_all(pool).await.expect("native MySQL list query"),
+                    Workload::Pk => query.bind(42_i64).bind(0_i64).bind(1_i64).fetch_all(pool).await.expect("native MySQL PK query"),
+                    Workload::List100 => query.bind(7_i64).bind(false).bind(0_i64).bind(100_i64).fetch_all(pool).await.expect("native MySQL list query"),
                 };
                 rows.iter().map(|row| typed_native_row!(row, mysql_datetime, mysql_price)).collect()
             }
@@ -244,7 +255,7 @@ async fn coverage_hot_path_gate_for(expected: &str) {
     let native = Native::connect(expected, &dsn).await;
     for workload in [Workload::Pk, Workload::List100] {
         let statement = workload.query(&db).await.expect("build client query");
-        assert_eq!(statement.binds, workload.expected_binds(), "{} native bindings must mirror the model query", workload.name());
+        assert_eq!(statement.binds, workload.expected_binds(expected), "{} native bindings must mirror the model query", workload.name());
         let expected_rows = workload.client(&db).await;
         let native_rows = native.rows(&statement.sql, workload).await;
         assert_eq!(expected_rows, native_rows, "{} client rows must equal native rows", workload.name());

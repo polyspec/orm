@@ -5,6 +5,7 @@ No fixed reference is recorded for Python yet, so the measurement is diagnostic 
 
 import os
 import platform
+import re
 import statistics
 import sys
 import time
@@ -80,7 +81,20 @@ def native_connection(database, dsn, url):
     if database == "postgres":
         import psycopg
 
-        return psycopg.connect(dsn, autocommit=True)
+        query = parse_qs(url.query)
+        query.pop("timezone", None)
+        host = query.pop("host", [url.hostname or "localhost"])[-1]
+        options = {name: values[-1] for name, values in query.items()}
+        return psycopg.connect(
+            host=host,
+            port=url.port or 5432,
+            user=unquote(url.username or ""),
+            password=unquote(url.password or ""),
+            dbname=unquote(url.path.lstrip("/")),
+            options="-c TimeZone=UTC",
+            autocommit=True,
+            **options,
+        )
     import pymysql
 
     query = parse_qs(url.query)
@@ -98,9 +112,23 @@ def native_connection(database, dsn, url):
 def native_for(database, connection, query):
     statement = query.get_query()
     sql, binds = statement["sql"], statement["binds"]
+    if database == "mysql":
+        sql = sql.replace("?", "%s")
+    elif database == "postgres":
+        positions = []
+
+        def positional(match):
+            positions.append(int(match.group(1)) - 1)
+            return "%s"
+
+        sql = re.sub(r"\$(\d+)", positional, sql)
+        if any(position < 0 or position >= len(binds) for position in positions):
+            raise AssertionError("native PostgreSQL query references a missing bind")
+        binds = [binds[position] for position in positions]
 
     def run():
-        with connection.cursor() as cursor:
+        cursor = connection.cursor()
+        try:
             cursor.execute(sql, binds)
             columns = tuple(column[0] for column in cursor.description or ())
             if columns != NATIVE_AUTHOR_COLUMNS:
@@ -109,6 +137,8 @@ def native_for(database, connection, query):
                 )
             rows = cursor.fetchall()
             return [typed_native_row(row) for row in rows]
+        finally:
+            cursor.close()
 
     return run
 

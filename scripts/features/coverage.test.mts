@@ -8,7 +8,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { testDirectoryOf } from './packages.mts';
-import { cargoTargetArgs, checkCoverage, coverageItems, databaseDsn, databases, executeCoverage, observedCases, languages, NATIVE_DEADLINE, selectFeatures, type Coverage, type Dependent, type Feature, type Manifest, type Owner, type Report } from './coverage.mts';
+import { cargoTargetArgs, checkCoverage, coverageItems, databaseDsn, databases, executeCoverage, observedCases, languages, NATIVE_DEADLINE, run, goPerformanceMeasurements, selectFeatures, type Coverage, type Dependent, type Feature, type Manifest, type Owner, type Report } from './coverage.mts';
 import { readFeatures } from './manifest.mts';
 import { readParityConfig, type ParityConfig } from '../json/formats.mts';
 
@@ -59,6 +59,31 @@ caseTest('a missing complex-query fixture DSN names the setup that provisions it
     /^Error: COMPLEX_QUERY_GO_MYSQL_DSN is missing; run make databases-create COMPLEX_QUERY=1, which provisions the 18 run-owned complex-query fixture databases/);
   assert.throws(() => databaseDsn({}, { database: 'mysql', dsn_env: 'BENCH_MYSQL_DSN' }), /^Error: mysql database DSN is not set in BENCH_MYSQL_DSN; run it through make feature-check$/);
   assert.equal(databaseDsn({ COMPLEX_QUERY_GO_MYSQL_DSN: 'mysql://x/y' }, { database: 'mysql', dsn_env: 'COMPLEX_QUERY_GO_MYSQL_DSN' }), 'mysql://x/y');
+});
+
+caseTest('coverage diagnostics preserve child output when a process remains', PROCESS, async () => {
+  const source = [
+    "const fs = require('node:fs');",
+    "const { spawn } = require('node:child_process');",
+    "spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' });",
+    "fs.writeSync(1, 'captured child stdout\\n');",
+    "fs.writeSync(2, 'captured child stderr\\n');",
+    'process.exit(0);',
+  ].join(' ');
+  const result = await run(process.execPath, ['-e', source], undefined, 10_000);
+  assert.match(result.error ?? '', /left 1 processes:/);
+  assert.match(result.error ?? '', /stdout:\ncaptured child stdout/);
+  assert.match(result.error ?? '', /stderr:\ncaptured child stderr/);
+});
+
+caseTest('Go performance diagnostics are retained from test2json output events', 1000, () => {
+  const measurement = 'PERF hot_path_gate go sqlite pk: native p50=12.3µs client p50=45.6µs ratio=3.71 samples=1000 cpu=12.3ms wall=45.6ms machine=test reference=not-recorded';
+  const output = [
+    JSON.stringify({ Action: 'output', Test: 'TestHotPath', Output: `${measurement}\n` }),
+    JSON.stringify({ Action: 'output', Test: 'TestHotPath', Output: 'ordinary diagnostic\n' }),
+    JSON.stringify({ Action: 'pass', Test: 'TestHotPath' }),
+  ].join('\n');
+  assert.deepEqual(goPerformanceMeasurements(output), [measurement]);
 });
 
 caseTest('PHP extension coverage tests reside in the owning package', 1000, () => {

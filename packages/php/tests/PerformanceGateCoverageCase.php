@@ -52,7 +52,8 @@ abstract class PerformanceGateCoverageCase extends TestCase
         if (!is_array($env)) {
             throw new RuntimeException('cannot read the environment for the performance coverage case');
         }
-        $env['ORM_PERF_REFUSED_LOADED'] = '';
+        // Keep the declared empty list present in the child environment.
+        $env['ORM_PERF_REFUSED_LOADED'] = ',';
         if (static::NATIVE_EXTENSION) {
             $env['ORM_PHP_MODE'] = 'extension';
         }

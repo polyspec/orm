@@ -305,12 +305,13 @@ function validJSON(value: string): boolean {
 // are sent as steps while it runs. stdout is test events, so it is only collected and read. limit is
 // the maximum length of the output being collected. Test output does not exceed 1000000 characters, but build JSON messages are one line per dependency, so
 // the line is longer. timeoutMs is the deadline of the executed process, and a long-running build runs with null, meaning no deadline.
-function run(program: string, args: string[], cwd: string | undefined, timeoutMs: number | null, env: NodeJS.ProcessEnv = process.env, step?: StepWriter, limit = 1_000_000): Promise<RunResult> {
+export function run(program: string, args: string[], cwd: string | undefined, timeoutMs: number | null, env: NodeJS.ProcessEnv = process.env, step?: StepWriter, limit = 1_000_000): Promise<RunResult> {
   return new Promise<RunResult>((finish) => {
     const child = spawn(program, args, { cwd, env, detached: true });
     const progress = step ? stepLines(step) : null;
     let output = '';
     let stdout = '';
+    let stderr = '';
     let settled = false;
     const stop = () => {
       if (!child.pid) return;
@@ -328,14 +329,20 @@ function run(program: string, args: string[], cwd: string | undefined, timeoutMs
       if (output.length > limit) stop();
     };
     child.stdout.on('data', (chunk: Buffer) => { stdout += String(chunk); append(chunk); });
-    child.stderr.on('data', (chunk: Buffer) => { append(chunk); progress?.write(String(chunk)); });
+    child.stderr.on('data', (chunk: Buffer) => { stderr += String(chunk); append(chunk); progress?.write(String(chunk)); });
     child.on('error', error => done(error.message));
     // The child is the leader of its own group. A process left in that group after it ends is treated as a failure (endGroup).
     const ended = new Promise<string[]>(resolve => child.on('exit', () => endGroup(child.pid).then(resolve, (error: unknown) => resolve([`its group could not be checked: ${error instanceof Error ? error.message : String(error)}`]))));
     child.on('close', async code => {
       progress?.flush();
       const left = await ended;
-      if (left.length) return done(`${program} left ${left.length} processes: ${left.join(', ')}`);
+      if (left.length) {
+        const diagnostics = [
+          stdout.trim() ? `stdout:\n${stdout.trim()}` : '',
+          stderr.trim() ? `stderr:\n${stderr.trim()}` : '',
+        ].filter(Boolean).join('\n');
+        return done(`${program} left ${left.length} processes: ${left.join(', ')}${diagnostics ? `\n${diagnostics}` : ''}`);
+      }
       if (output.length > limit) return done(`test output exceeds ${limit} characters`);
       if (code !== 0) return done(`exit ${code}: ${output.trim()}`);
       done(null, output);
@@ -442,6 +449,21 @@ async function nativeTest(item: Item, command: NativeCommand, root: string): Pro
 // A case line of a database item is `CASE <id> [<database>] PASS` and a line of an item without one is `CASE <id> PASS`.
 // The output of one run may carry the lines of every database of its file (databases lists them); the lines of the other
 // databases belong to their own items and are skipped here.
+/** Go test2json wraps test stderr as output events; preserve performance diagnostics in the successful step log. */
+export function goPerformanceMeasurements(output: string): string[] {
+  const measurements: string[] = [];
+  for (const line of output.split(/\r?\n/)) {
+    if (!line) continue;
+    const event = parseGoTestEvent(line, 'go test -json');
+    if (event.Action !== 'output' || !event.Output) continue;
+    for (const text of event.Output.split(/\r?\n/)) {
+      if (/^PERF hot_path_gate go (?:mysql|postgres|sqlite) (?:pk|list100): native p50=\d+\.\dµs client p50=\d+\.\dµs ratio=\d+\.\d{2} samples=\d+ cpu=\d+\.\dms wall=\d+\.\dms machine=.+ reference=not-recorded$/.test(text))
+        measurements.push(text);
+    }
+  }
+  return measurements;
+}
+
 export function observedCases(format: Spec['format'], output: string, requested: string[], nativeSymbols: string[] = requested, database = 'none', databases: string[] = [database]): CaseResult[] {
   const seen = new Set<string>();
   const keys = new Set<string>();
@@ -874,6 +896,7 @@ export async function executeCoverage(manifest: Manifest, root: string, timeoutM
                   step(child.label ?? `${spec.format === 'case' || spec.format === 'phpunit' ? spec.program : child.program} ${entry.test}${spec.format !== 'case' ? ` ${spec.symbols.join(' ')}` : ''}`);
                   const result = await run(child.program, child.args, child.cwd, timeoutMs, { ...testEnv, ...child.env }, dsn ? (text: string) => step(text.replaceAll(dsn, '[redacted]')) : step);
                   if (result.error) throw new Error(result.error);
+                  if (spec.format === 'go') for (const measurement of goPerformanceMeasurements(result.value ?? '')) step(measurement);
                   // libtest writes `test <symbol> ... ok` result lines, and PHPUnit writes TeamCity events, to stdout. Since a test
                   // lines written to stderr must not be interleaved between them, Rust and PHP read only stdout.
                   output += (spec.format === 'cargo' || spec.format === 'phpunit' ? result.stdout : result.value) + '\n';

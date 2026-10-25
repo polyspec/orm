@@ -17,7 +17,6 @@ use PDO;
 use ReflectionProperty;
 use RuntimeException;
 use PHPUnit\Framework\Attributes\DataProvider;
-use PHPUnit\Framework\Attributes\DoesNotPerformAssertions;
 use PHPUnit\Framework\Attributes\Large;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Tests\Model\Author;
@@ -81,7 +80,8 @@ final class PerfGateTest extends TestCase
         // The legacy PHP library perf-check uses its recorded MySQL references. Feature
         // coverage cases report measurements without a fixed reference; the native wrapper
         // independently proves whether the extension is loaded.
-        $hasReference = !self::$featureCase;
+        $featureDatabase = getenv('ORM_FEATURE_DATABASE');
+        $hasReference = !is_string($featureDatabase) || $featureDatabase === '';
         $pkBound = $hasReference ? 1.35 : null;
         $listBound = $hasReference ? 1.25 : null;
         yield "pk$suffix" => ['pk', $pkBound];
@@ -96,16 +96,13 @@ final class PerfGateTest extends TestCase
         };
     }
 
-    /** The gate measures and reports; it asserts nothing, since a slow ratio is a warning. */
+    /** The gate asserts row correctness; a slow measured ratio is only a warning. */
     #[DataProvider('gates')]
-    #[DoesNotPerformAssertions]
     public function testPerfGate(string $name, ?float $bound): void
     {
         $query = self::query($name);
         $native = self::native(self::$db, $query);
-        if (self::$featureCase) {
-            self::assertSame(self::clientRows($query), $native(), "$name: client and native rows");
-        }
+        self::assertSame(self::clientRows($query), $native(), "$name: client and native rows");
         $wallStarted = hrtime(true);
         $usageStarted = getrusage();
         [$clientNs, $nativeNs, $ratio] = self::pairedRatio(static fn() => self::query($name)->gets(), $native);
@@ -264,9 +261,40 @@ final class PerfGateTest extends TestCase
             }][] = [$col['index'], $col['name'], $kind];
         }
         $zone = $db->zone();
-        $st = $db->pdo()->prepare($q['sql']);
-        return static function () use ($st, $binds, $cells, $db, $groups, $zone): array {
-            $st->execute($binds);
+        $sql = $q['sql'];
+        $statementBinds = $binds;
+        if ($db->driver() === 'postgres') {
+            $positions = [];
+            $sql = preg_replace_callback(
+                '/\$(\d+)/',
+                static function (array $match) use (&$positions): string {
+                    $positions[] = (int) $match[1] - 1;
+                    return '?';
+                },
+                $sql,
+            );
+            if (!is_string($sql)) {
+                throw new RuntimeException('gate: could not adapt PostgreSQL parameters for PDO');
+            }
+            $statementBinds = [];
+            foreach ($positions as $position) {
+                if (!array_key_exists($position, $binds)) {
+                    throw new RuntimeException('gate: PostgreSQL parameter $' . ($position + 1) . ' has no value');
+                }
+                $statementBinds[] = $binds[$position];
+            }
+        }
+        $st = $db->pdo()->prepare($sql);
+        foreach ($statementBinds as $index => $value) {
+            $type = match (true) {
+                is_int($value) => PDO::PARAM_INT,
+                $value === null => PDO::PARAM_NULL,
+                default => PDO::PARAM_STR,
+            };
+            $st->bindValue($index + 1, $value, $type);
+        }
+        return static function () use ($st, $cells, $db, $groups, $zone): array {
+            $st->execute();
             $rows = $st->fetchAll(PDO::FETCH_NUM);
             Codec::decodeRows($rows, $cells, $db->config());
             $out = [];
