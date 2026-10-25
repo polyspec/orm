@@ -175,7 +175,7 @@ class CatalogAutoKeyTest(unittest.TestCase):
             finally:
                 catalog.close()
 
-    # Requirements: INT-65.
+    # Requirements: INT-118, PRT-79.
     def test_sqlite_public_insert_reports_indeterminate_commit_cause(self):
         with tempfile.TemporaryDirectory(
             prefix="orm-catalog-commit-unknown-"

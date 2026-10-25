@@ -73,6 +73,7 @@ func TestCatalogSessionEndReportsRollbackCauseWithoutPrimary(t *testing.T) {
 	}
 }
 
+// Requirements: INT-118, PRT-79.
 func TestCatalogInsertPreservesIndeterminateCommitCause(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	useFailingDriver(t, "sqlite")

@@ -14,7 +14,7 @@ use std::sync::{
 mod lock_probe;
 
 #[tokio::test]
-// Requirements: INT-106.
+// Requirements: INT-106, INT-118, PRT-79.
 async fn native_updates_lock_compare_verify_and_rollback() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     tokio::time::timeout(std::time::Duration::from_secs(30), check()).await.expect("native update deadline");

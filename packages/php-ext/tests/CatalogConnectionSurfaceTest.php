@@ -138,6 +138,7 @@ final class CatalogConnectionSurfaceTest extends TestCase
         }
     }
 
+    // Requirements: INT-118, PRT-79.
     public function testNativeInsertCommitFailurePreservesTheDriverCause(): void
     {
         self::assertTrue((new ReflectionClass(Catalog::class))->isInternal());
@@ -190,6 +191,7 @@ final class CatalogConnectionSurfaceTest extends TestCase
         }
     }
 
+    // Requirements: INT-118, PRT-79.
     public function testNativeInsertCommitAndRollbackFailuresPreserveBothDriverCauses(): void
     {
         self::assertTrue((new ReflectionClass(Catalog::class))->isInternal());

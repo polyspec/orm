@@ -42,6 +42,7 @@ final class CatalogCommitFailureTest extends TestCase
         }
     }
 
+    // Requirements: INT-118, PRT-79.
     public function testUnknownCommitWithRollbackThatSucceedsReportsTheCommitError(): void
     {
         $pdo = new class extends \PDO {
@@ -69,6 +70,7 @@ final class CatalogCommitFailureTest extends TestCase
         }
     }
 
+    // Requirements: INT-118, PRT-79.
     public function testFailedRollbackIsReportedAsTheCauseOfTheUnknownCommit(): void
     {
         $rollbackError = new \PDOException('rollback refused');

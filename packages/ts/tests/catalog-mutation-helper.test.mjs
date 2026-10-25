@@ -376,7 +376,7 @@ caseTest('inserts an omitted volatile expression-default SQLite key without reev
   });
 });
 
-// Requirements: PRT-79. The SQLite connection executes catalog work normally; only its COMMIT response is faulted.
+// Requirements: INT-118, PRT-79. The SQLite connection executes catalog work normally; only its COMMIT response is faulted.
 caseTest('catalog/insert/indeterminate-commit-preserves-driver-cause', DATABASE, async () => {
   const failure = Object.assign(new Error('commit response lost by test driver'), { code: 'ERR_SQLITE_ERROR', errcode: 1 });
   const commits = [];
@@ -411,6 +411,7 @@ caseTest('catalog/insert/indeterminate-commit-preserves-driver-cause', DATABASE,
   );
 });
 
+// Requirements: INT-118, PRT-79.
 caseTest('catalog/insert/indeterminate-commit-preserves-rollback-failure', DATABASE, async () => {
   const failure = Object.assign(new Error('commit response lost by test driver'), { code: 'ERR_SQLITE_ERROR', errcode: 1 });
   const rollbackFailure = Object.assign(new Error('rollback refused by test driver'), { code: 'ERR_SQLITE_ERROR', errcode: 1 });

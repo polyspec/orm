@@ -13586,6 +13586,61 @@
       ]
     },
     {
+      "id": "catalog-mutation-indeterminate-commit-cause",
+      "kind": "feature",
+      "requirements": [
+        "INT-118",
+        "PRT-79"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/catalog_session_error_test.go",
+          "id": "TestCatalogInsertPreservesIndeterminateCommitCause"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CatalogCommitFailureTest.php",
+          "id": "CatalogCommitFailureTest::testUnknownCommitWithRollbackThatSucceedsReportsTheCommitError"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CatalogCommitFailureTest.php",
+          "id": "CatalogCommitFailureTest::testFailedRollbackIsReportedAsTheCauseOfTheUnknownCommit"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CatalogConnectionSurfaceTest.php",
+          "id": "CatalogConnectionSurfaceTest::testNativeInsertCommitFailurePreservesTheDriverCause"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CatalogConnectionSurfaceTest.php",
+          "id": "CatalogConnectionSurfaceTest::testNativeInsertCommitAndRollbackFailuresPreserveBothDriverCauses"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog-mutation-helper.test.mjs",
+          "id": "catalog/insert/indeterminate-commit-preserves-driver-cause"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/catalog-mutation-helper.test.mjs",
+          "id": "catalog/insert/indeterminate-commit-preserves-rollback-failure"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_catalog_auto_key.py",
+          "id": "CatalogAutoKeyTest.test_sqlite_public_insert_reports_indeterminate_commit_cause"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/tests/row_mutation.rs",
+          "id": "native_updates_lock_compare_verify_and_rollback"
+        }
+      ]
+    },
+    {
       "id": "rust-decimal-physical-schema-set-mysql",
       "kind": "feature",
       "requirements": [
