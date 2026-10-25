@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 35ddec2a442528c264978d32fbb5d5fa556f8b0377ef5a225a66bd0a1016c7ff -->
+<!-- source-sha256: 92c129d99af77229f064a52c1fd4fad3108de48d1b867856ec35add5cddf358f -->
 # 변경 이력
 
 ## Unreleased
 
+- PHP library coverage owner의 모든 case가 test class가 선언한 method를 고른다: planner, authenticated_encryption, parameter_chunking, constraints_and_relations의 owner가 symbols map으로 camelCase method를 지정하고, scripts/features/coverage.test.mts가 class, 부모 class, trait에 method가 없는 case에서 실패한다 (KSTD-7-3-1). red: 새 case가 PHPUnit이 test를 실행하지 않은 네 owner의 test_<id> method를 나열했다.
 - 생성기 unit이 각 언어의 생성기 규칙 native form을 묶는다: 중립 unit 19개가 scan, set file, check, column 이름, external table, typed getter, time setter, chain method 규칙을 여섯 client 모두에 묶고, test가 없던 client에는 Go, TypeScript, PHP, Python, Rust test를 새로 썼다. 한 언어의 생성기 규칙(DSL-39부터 DSL-43, DSL-9, DSL-117, DSL-156, SCH-2) unit 29개는 그 언어의 package로 scope를 주며, 그 규칙들은 이제 package를 명시한다. DSL-129와 값 타입 표는 KSTD-2-11-15-1과 KSTD-2-11-15-2로 남는다(KSTD-2-11-15).
 - 모든 feature-coverage case가 여섯 client의 coverage test에 묶인 중립 unit 하나가 된다. 남은 15개 case(model generation check, statement events, conformance vector, schema definition 7개, authenticated encryption 5개)가 unit을 얻고, 각 test는 검사하는 requirement를 명시하며, Go generated-model DSN case는 DSN unit에 합류한다. 측정을 검사하고 규칙을 인용하지 않는 performance gate case는 모든 client에서 harness test다(KSTD-2-11-8).
 - PHP plan cache와 statement cache는 전체 보유 placeholder를 65,535개로 제한하고 가장 오래 사용하지 않은 entry를 퇴출하며, 한도를 넘는 단일 plan이나 statement는 보관하지 않는다. Cache hit와 재계획 후에도 plan과 statement 결과는 같다 (KSTD-7-3-4).

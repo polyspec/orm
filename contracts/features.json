@@ -5866,7 +5866,90 @@
                     "param_uses_contains",
                     "param_uses_if_parent",
                     "param_uses_optimistic"
-                  ]
+                  ],
+                  "symbols": {
+                    "planner_statement": "testPlannerStatement",
+                    "planner_count": "testPlannerCount",
+                    "planner_contains_ascii_fold": "testPlannerContainsAsciiFold",
+                    "planner_contains_binary_collation": "testPlannerContainsBinaryCollation",
+                    "planner_rejects_unknown_column": "testPlannerRejectsUnknownColumn",
+                    "planner_restore": "testPlannerRestore",
+                    "planner_tables": "testPlannerTables",
+                    "planner_restore_rejects_non_key": "testPlannerRestoreRejectsNonKey",
+                    "planner_restore_key_from_set": "testPlannerRestoreKeyFromSet",
+                    "planner_restore_extra_condition": "testPlannerRestoreExtraCondition",
+                    "planner_restore_primary_key_first": "testPlannerRestorePrimaryKeyFirst",
+                    "planner_restore_first_unique_by_name": "testPlannerRestoreFirstUniqueByName",
+                    "planner_bind_types_select": "testPlannerBindTypesSelect",
+                    "planner_bind_types_update": "testPlannerBindTypesUpdate",
+                    "planner_bind_types_insert": "testPlannerBindTypesInsert",
+                    "planner_time_select": "testPlannerTimeSelect",
+                    "planner_time_insert": "testPlannerTimeInsert",
+                    "planner_uuid_select": "testPlannerUuidSelect",
+                    "planner_uuid_insert": "testPlannerUuidInsert",
+                    "planner_clock_compare": "testPlannerClockCompare",
+                    "planner_clock_insert": "testPlannerClockInsert",
+                    "planner_parent_key_types": "testPlannerParentKeyTypes",
+                    "planner_not_group": "testPlannerNotGroup",
+                    "planner_rejects_top_not": "testPlannerRejectsTopNot",
+                    "planner_rejects_top_group_conn": "testPlannerRejectsTopGroupConn",
+                    "planner_rejects_first_item_conn": "testPlannerRejectsFirstItemConn",
+                    "planner_column_refs": "testPlannerColumnRefs",
+                    "planner_rejects_ref_unknown_column": "testPlannerRejectsRefUnknownColumn",
+                    "planner_rejects_outer_ref_outside_subquery": "testPlannerRejectsOuterRefOutsideSubquery",
+                    "planner_rejects_unjoined_ref": "testPlannerRejectsUnjoinedRef",
+                    "planner_ref_path_absent": "testPlannerRefPathAbsent",
+                    "planner_group_by_count": "testPlannerGroupByCount",
+                    "planner_group_count_order_column": "testPlannerGroupCountOrderColumn",
+                    "planner_group_count_order_column_function": "testPlannerGroupCountOrderColumnFunction",
+                    "planner_group_count_order_random": "testPlannerGroupCountOrderRandom",
+                    "planner_rejects_group_by_all": "testPlannerRejectsGroupByAll",
+                    "planner_rejects_group_by_sum": "testPlannerRejectsGroupBySum",
+                    "planner_rejects_group_by_join": "testPlannerRejectsGroupByJoin",
+                    "planner_rejects_group_by_subquery": "testPlannerRejectsGroupBySubquery",
+                    "planner_rejects_group_order_non_group_column": "testPlannerRejectsGroupOrderNonGroupColumn",
+                    "planner_rejects_nullable_key_by": "testPlannerRejectsNullableKeyBy",
+                    "planner_key_by_empty_is_absent": "testPlannerKeyByEmptyIsAbsent",
+                    "planner_insert_by_value": "testPlannerInsertByValue",
+                    "planner_insert_on_duplicate_plus": "testPlannerInsertOnDuplicatePlus",
+                    "planner_rejects_insert_set_plus": "testPlannerRejectsInsertSetPlus",
+                    "planner_rejects_insert_set_minus": "testPlannerRejectsInsertSetMinus",
+                    "planner_ip_eq_col_ip": "testPlannerIpEqColIp",
+                    "planner_rejects_bool_gt_col": "testPlannerRejectsBoolGtCol",
+                    "planner_rejects_ip_gt_col": "testPlannerRejectsIpGtCol",
+                    "planner_rejects_aes_eq_col": "testPlannerRejectsAesEqCol",
+                    "planner_col_pair_integers": "testPlannerColPairIntegers",
+                    "planner_rejects_col_pair_integer_varchar": "testPlannerRejectsColPairIntegerVarchar",
+                    "planner_rejects_in_subquery_integer_varchar": "testPlannerRejectsInSubqueryIntegerVarchar",
+                    "planner_rejects_join_integer_varchar": "testPlannerRejectsJoinIntegerVarchar",
+                    "planner_rejects_relation_integer_varchar": "testPlannerRejectsRelationIntegerVarchar",
+                    "planner_rejects_upsert_primary_and_unique_key": "testPlannerRejectsUpsertPrimaryAndUniqueKey",
+                    "planner_rejects_upsert_unique_key_not_assigned": "testPlannerRejectsUpsertUniqueKeyNotAssigned",
+                    "planner_rejects_upsert_without_a_key": "testPlannerRejectsUpsertWithoutAKey",
+                    "planner_order_nullable_column": "testPlannerOrderNullableColumn",
+                    "planner_order_not_null_column": "testPlannerOrderNotNullColumn",
+                    "planner_order_nullable_column_function": "testPlannerOrderNullableColumnFunction",
+                    "planner_order_nullable_group_count": "testPlannerOrderNullableGroupCount",
+                    "planner_order_nullable_limit_per_parent": "testPlannerOrderNullableLimitPerParent",
+                    "planner_scalar_column_subquery": "testPlannerScalarColumnSubquery",
+                    "planner_rejects_scalar_column_subquery_without_limit": "testPlannerRejectsScalarColumnSubqueryWithoutLimit",
+                    "planner_rejects_scalar_column_subquery_without_key_order": "testPlannerRejectsScalarColumnSubqueryWithoutKeyOrder",
+                    "planner_rejects_in_subquery_limit": "testPlannerRejectsInSubqueryLimit",
+                    "planner_join_inner_soft_delete": "testPlannerJoinInnerSoftDelete",
+                    "planner_join_left_soft_delete": "testPlannerJoinLeftSoftDelete",
+                    "planner_join_on_soft_delete": "testPlannerJoinOnSoftDelete",
+                    "planner_force_index": "testPlannerForceIndex",
+                    "planner_value_function_today": "testPlannerValueFunctionToday",
+                    "planner_column_function_date": "testPlannerColumnFunctionDate",
+                    "planner_rejects_column_function_on_varchar": "testPlannerRejectsColumnFunctionOnVarchar",
+                    "planner_rejects_styled_column_equality": "testPlannerRejectsStyledColumnEquality",
+                    "planner_styled_column_is_null": "testPlannerStyledColumnIsNull",
+                    "param_uses_column_function": "testParamUsesColumnFunction",
+                    "param_uses_interval": "testParamUsesInterval",
+                    "param_uses_contains": "testParamUsesContains",
+                    "param_uses_if_parent": "testParamUsesIfParent",
+                    "param_uses_optimistic": "testParamUsesOptimistic"
+                  }
                 }
               ]
             }
@@ -7024,7 +7107,14 @@
                     "aes_tamper_rejected",
                     "aes_wrong_key_rejected",
                     "blind_index_vector"
-                  ]
+                  ],
+                  "symbols": {
+                    "aes_envelope_decrypt": "testAesEnvelopeDecrypt",
+                    "aes_round_trip": "testAesRoundTrip",
+                    "aes_tamper_rejected": "testAesTamperRejected",
+                    "aes_wrong_key_rejected": "testAesWrongKeyRejected",
+                    "blind_index_vector": "testBlindIndexVector"
+                  }
                 }
               ]
             }
@@ -7337,6 +7427,9 @@
                   "cases": [
                     "root_in_chunking"
                   ],
+                  "symbols": {
+                    "root_in_chunking": "testRootInChunking"
+                  },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
               ],
@@ -7347,6 +7440,9 @@
                   "cases": [
                     "root_in_chunking"
                   ],
+                  "symbols": {
+                    "root_in_chunking": "testRootInChunking"
+                  },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
@@ -7357,6 +7453,9 @@
                   "cases": [
                     "root_in_chunking"
                   ],
+                  "symbols": {
+                    "root_in_chunking": "testRootInChunking"
+                  },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
@@ -7870,6 +7969,9 @@
                   "cases": [
                     "composite_key_rows"
                   ],
+                  "symbols": {
+                    "composite_key_rows": "testCompositeKeyRows"
+                  },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 },
                 {
@@ -7903,6 +8005,9 @@
                   "cases": [
                     "composite_key_rows"
                   ],
+                  "symbols": {
+                    "composite_key_rows": "testCompositeKeyRows"
+                  },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 },
                 {
@@ -7936,6 +8041,9 @@
                   "cases": [
                     "composite_key_rows"
                   ],
+                  "symbols": {
+                    "composite_key_rows": "testCompositeKeyRows"
+                  },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 },
                 {

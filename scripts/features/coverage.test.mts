@@ -4,7 +4,8 @@ import { execFileSync } from 'node:child_process';
 import { performance } from 'node:perf_hooks';
 import { chmod, mkdtemp, mkdir, readdir, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { testDirectoryOf } from './packages.mts';
 import { checkCoverage, coverageItems, databaseDsn, databases, executeCoverage, observedCases, languages, NATIVE_DEADLINE, selectFeatures, type Coverage, type Dependent, type Feature, type Manifest, type Owner, type Report } from './coverage.mts';
@@ -125,6 +126,39 @@ caseTest('PHP extension catalog, schema and statement event coverage use native 
     assert.ok(unit.bindings, `config/parity.json omits bindings for ${id}`);
     assert.deepEqual(unit.bindings.map(binding => binding.implementation).toSorted(), [...languages].toSorted());
   }
+});
+
+// declaredPhpMethods is the source of a PHP test class and of the parent class and traits it takes from its own
+// directory, the methods PHPUnit can select in it.
+function declaredPhpMethods(file: string, seen = new Set<string>()): string {
+  if (seen.has(file)) return '';
+  seen.add(file);
+  const source = readFileSync(file, 'utf8');
+  const parents = [...source.matchAll(/^\s+use ([A-Za-z]+);$/gm), ...source.matchAll(/class \w+ extends ([A-Za-z]+)/g)];
+  let methods = source;
+  for (const [, name] of parents)
+    if (existsSync(join(dirname(file), `${name}.php`))) methods += declaredPhpMethods(join(dirname(file), `${name}.php`), seen);
+  return methods;
+}
+
+// A PHP library owner selects the method of each case by its symbols map or as test_<id>; a method the class lacks makes
+// PHPUnit run no test, so the owner has no execution.
+caseTest('every case of a PHP library owner selects a method of its test class', 1000, () => {
+  const root = new URL('../..', import.meta.url).pathname;
+  const missing: string[] = [];
+  for (const feature of readFeatures(root).features) {
+    const owner = feature.coverage?.owners?.php;
+    if (!owner) continue;
+    for (const [database, commands] of Object.entries(owner.commands))
+      for (const command of commands) {
+        const methods = declaredPhpMethods(join(root, command.test));
+        for (const id of command.cases) {
+          const method = command.symbols?.[id] ?? `test_${id}`;
+          if (!new RegExp(`function ${method}\\(`).test(methods)) missing.push(`${feature.id}/${database}: ${command.test} ${method}`);
+        }
+      }
+  }
+  assert.deepEqual(missing, []);
 });
 
 caseTest('PHP extension catalog coverage selects the exact native methods', 1000, () => {
