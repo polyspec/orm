@@ -583,13 +583,30 @@
         "tests/ir/validate.json",
         "packages/php/tests/RuntimeModelTest.php",
         "packages/php/tests/OrmGenTest.php",
-        "packages/php/tests/OrmGenScanTest.php",
-        "packages/php/tests/OrmGenScanParityTest.php",
         "packages/php/tests/OrmGenTestSupport.php",
+        "packages/php/tests/PerfExtensionsTest.php"
+      ]
+    },
+    "php-gen-unit-check": {
+      "scope": "owner",
+      "needs": ["php", "composer", "node-modules"],
+      "inputs": [
+        "Makefile",
+        "packages/php-gen/composer.json",
+        "packages/php-gen/bin/orm-gen",
+        "packages/php-gen/src/OrmGen.php",
         "packages/php-gen/src/Generator.php",
         "packages/php-gen/src/ScanVisitor.php",
+        "packages/php-gen/tests/OrmGenCliTest.php",
+        "packages/php-gen/tests/OrmGenScanTest.php",
+        "packages/php-gen/tests/OrmGenScanParityTest.php",
+        "packages/php/tests/OrmGenTestSupport.php",
+        "packages/php/tests/OrmGenScanFailureCase.php",
         "tests/generator/php-scan-vectors.json",
-        "packages/php/tests/PerfExtensionsTest.php"
+        "contracts/fixtures/bench/dbspec-set.json",
+        "contracts/fixtures/bench/bench.dbs",
+        "contracts/fixtures/bench/bench_reader.dbs",
+        "contracts/fixtures/bench/bench_shared.dbs"
       ]
     },
     "generator-consumer-check": {
@@ -3501,7 +3518,7 @@
       "inputs": [
         "Makefile",
         "packages/php/tests/OrmGenScanFailureCase.php",
-        "packages/php/tests/OrmGenScanTest.php",
+        "packages/php-gen/tests/OrmGenScanTest.php",
         "packages/php/tests/OrmGenTestSupport.php",
         "packages/php-ext/tests/OrmGenScanNativeTest.php",
         "packages/php-gen/src/Generator.php",

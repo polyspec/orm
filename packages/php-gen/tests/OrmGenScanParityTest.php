@@ -5,7 +5,7 @@
 // packages/ts (npm run typescript:build); it does not check argument counts, so the cases marked parity false are left
 // out.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist
-// packages/php/tests/OrmGenScanParityTest.php
+// packages/php-gen/tests/OrmGenScanParityTest.php
 declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;

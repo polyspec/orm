@@ -3625,9 +3625,9 @@
         "packages/rust/build/tests/generate.rs",
         "packages/php/tests/OrmGenTest.php",
         "packages/php/tests/ModelMethodsTest.php",
-        "packages/php/tests/OrmGenScanTest.php",
+        "packages/php-gen/tests/OrmGenScanTest.php",
         "packages/php-ext/tests/OrmGenScanNativeTest.php",
-        "packages/php/tests/OrmGenScanParityTest.php",
+        "packages/php-gen/tests/OrmGenScanParityTest.php",
         "packages/ts/tests/generate-scan.mjs",
         "packages/ts/tests/models-scan.mjs",
         "packages/go/model/coverage_model_generation_test.go",
@@ -3681,10 +3681,11 @@
         },
         {
           "id": "generation-php",
-          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenTest.php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenTest.php packages/php-gen/tests/OrmGenCliTest.php",
           "shard": "other",
           "inputs": [
             "packages/php/tests/OrmGenTest.php",
+            "packages/php-gen/tests/OrmGenCliTest.php",
             "tests/dbspec/files/dbschema.dbs",
             "tests/dbspec/files/empty.dbs"
           ]
@@ -3699,10 +3700,10 @@
         },
         {
           "id": "generation-scan-php",
-          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenScanTest.php",
+          "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php-gen/tests/OrmGenScanTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/OrmGenScanTest.php",
+            "packages/php-gen/tests/OrmGenScanTest.php",
             "tests/generator/php-scan-vectors.json",
             "contracts/fixtures/bench/dbspec-set.json",
             "contracts/fixtures/bench/bench.dbs",
@@ -3712,10 +3713,10 @@
         },
         {
           "id": "generation-scan-parity-php",
-          "command": "node tests/run-long.mts typescript-build -- npm run typescript:build && php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenScanParityTest.php",
+          "command": "node tests/run-long.mts typescript-build -- npm run typescript:build && php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php-gen/tests/OrmGenScanParityTest.php",
           "shard": "other",
           "inputs": [
-            "packages/php/tests/OrmGenScanParityTest.php",
+            "packages/php-gen/tests/OrmGenScanParityTest.php",
             "tests/generator/php-scan-vectors.json",
             "packages/ts/src/bin/orm-gen.ts"
           ]
@@ -12935,7 +12936,7 @@
       "id": "php-orm-gen-scan-failure-case",
       "paths": ["packages/php/tests/OrmGenScanFailureCase.php"],
       "tests": [
-        "packages/php/tests/OrmGenScanTest.php",
+        "packages/php-gen/tests/OrmGenScanTest.php",
         "packages/php-ext/tests/OrmGenScanNativeTest.php"
       ],
       "command": "make --no-print-directory php-orm-gen-scan-failure-case-check"
