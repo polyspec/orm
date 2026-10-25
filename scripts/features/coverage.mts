@@ -3,7 +3,7 @@ import { endGroup } from '../check/step.mts';
 import { testDirectoryOf } from './packages.mts';
 import { mkdir, mkdtemp, readFile, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { dirname, extname, join, relative, resolve, sep } from 'node:path';
+import { basename, dirname, extname, join, relative, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 import { PROCESS, runCase, runLong, stepLines } from '../../tests/testcase.mts';
@@ -564,51 +564,85 @@ async function buildNative(plans: Plans, directory: string): Promise<Builds> {
   return builds;
 }
 
-// buildCargo is the build of the Rust test binary (buildNative). When it finishes, builds.cargo holds, per crate, that binary or the error.
+// buildCargo builds only the Rust test targets selected by the coverage plans.
 // A failure stays as an error in builds.cargo, so this promise is not rejected.
+type CargoTarget = { name: string; kind: string[]; src_path: string; test: boolean; harness?: boolean };
+type CargoPackage = { name: string; manifest_path: string; targets: CargoTarget[] };
+type CargoMetadata = { packages?: CargoPackage[]; workspace_root?: string };
+
+/** Select Cargo test targets that own the declared source files. */
+export function cargoTargetArgs(targets: CargoTarget[], testPaths: string[]): string[] {
+  const selected = new Map<string, CargoTarget>();
+  for (const file of testPaths) {
+    const path = resolve(file);
+    const candidates = targets.flatMap(target => {
+      if (!target.test || target.harness === false) return [];
+      const source = resolve(target.src_path);
+      if (source === path) return [{ target, specificity: path.length + 1 }];
+      const roots = [dirname(source)];
+      const stem = basename(source, '.rs');
+      if (stem !== 'lib' && stem !== 'main') roots.push(join(dirname(source), stem));
+      const matches = roots.filter(root => path.startsWith(`${root}${sep}`));
+      const specificity = matches.length ? Math.max(...matches.map(root => root.length)) : -1;
+      return specificity < 0 ? [] : [{ target, specificity }];
+    });
+    const longest = Math.max(-1, ...candidates.map(candidate => candidate.specificity));
+    const best = candidates.filter(candidate => candidate.specificity === longest);
+    if (best.length !== 1)
+      throw new Error(`Rust test ${file} maps to ${best.length} Cargo test targets at its most specific module root`);
+    const target = best[0]?.target;
+    if (!target) throw new Error(`Rust test ${file} has no Cargo test target`);
+    selected.set(`${target.kind.join(',')}:${target.name}`, target);
+  }
+  const args: string[] = [];
+  for (const target of selected.values()) {
+    if (target.kind.includes('test')) args.push('--test', target.name);
+    else if (target.kind.includes('lib')) args.push('--lib');
+    else if (target.kind.includes('bin')) args.push('--bin', target.name);
+    else if (target.kind.includes('example')) args.push('--example', target.name);
+    else throw new Error(`unsupported Cargo test target kind for ${target.name}: ${target.kind.join(', ')}`);
+  }
+  return args;
+}
 async function buildCargo(plans: Plans, directory: string, builds: Builds, build: Build): Promise<void> {
   const specs = plans.flatMap(plan => plan.native);
-  // The Rust test binary is built once per workspace that the crate belongs to. `--workspace` and
-  // ORM_RUST_TEST_FEATURES (Makefile) is the same feature set used by the client DB tests and the other Rust checks
-  // decision, so the build is shared. If only one crate is selected (`-p`, manifest), the features differ and the same
-  // crate is compiled again.
-  const workspaces = new Map<string, string[]>();
-  for (const crate of new Set(specs.filter(spec => spec.format === 'cargo').map(spec => spec.cwd))) {
-    const located = await run('cargo', ['locate-project', '--workspace', '--message-format', 'plain',
-      '--manifest-path', resolve(crate, 'Cargo.toml')], crate, null);
-    const workspace = located.error ? null : dirname(located.stdout.trim());
-    if (!workspace) {
-      builds.cargo.set(crate, { error: `cargo locate-project: ${located.error}` });
-      continue;
-    }
-    workspaces.set(workspace, [...(workspaces.get(workspace) ?? []), crate]);
-  }
+  const cargoCrates = new Map<string, Spec[]>();
+  for (const spec of specs.filter((entry): entry is Extract<Spec, { format: 'cargo' }> => entry.format === 'cargo'))
+    cargoCrates.set(spec.cwd, [...(cargoCrates.get(spec.cwd) ?? []), spec]);
   const features = process.env.ORM_RUST_TEST_FEATURES ? ['--features', process.env.ORM_RUST_TEST_FEATURES] : [];
-  const programsOf = new Map<string, Record<string, string>>();
-  for (const [workspace, crates] of workspaces) {
+  for (const [crate, crateSpecs] of cargoCrates) {
     const files = new Map<string, string[]>();
-    const error = await build(`cargo/${relative(plans.root, workspace) || '.'}`, async step => {
+    let programPaths: Record<string, string> = {};
+    const error = await build(`cargo/${relative(plans.root, crate) || '.'}`, async step => {
       // The build and the copy are done under an exclusive lease on the shared Rust target directory (tests/cargo-test.mts --copy). Runs
       // use the binary copied into this checker's directory, so even if a build from another run in this checkout changes the target directory, this
       // run's test binary does not change.
       const { LEASE: lease, CARGO_LEASES: leases } = process.env;
       if (!lease || !leases) throw new Error('LEASE and CARGO_LEASES are unset; run this through make, which exports them');
-      const copies = resolve(directory, `cargo-${workspaces.size}-${files.size}-${relative(plans.root, workspace).replaceAll('/', '_') || 'root'}`);
+      const manifestPath = resolve(crate, 'Cargo.toml');
+      const metadata = await run('cargo', ['metadata', '--no-deps', '--format-version=1', '--manifest-path', manifestPath], crate, null, process.env, step, 10_000_000);
+      if (metadata.error) throw new Error(`cargo metadata: ${metadata.error}`);
+      const project = JSON.parse(metadata.stdout ?? '') as CargoMetadata;
+      const selectedPackage = project.packages?.find(packageInfo => resolve(packageInfo.manifest_path) === manifestPath);
+      if (!selectedPackage) throw new Error(`cargo metadata did not return package for ${manifestPath}`);
+      const dependencyRoot = project.workspace_root ? resolve(project.workspace_root) : crate;
+      const targetArgs = cargoTargetArgs(selectedPackage.targets, crateSpecs.map(spec => spec.testPath));
+      const copies = resolve(directory, `cargo-${builds.cargo.size}-${relative(plans.root, crate).replaceAll('/', '_') || 'root'}`);
       await mkdir(copies, { recursive: true });
       const result = await run(lease, ['run', leases, 'exclusive', '--wait', '--', process.execPath, cargoTestScript, '--copy', copies, '--',
-        'cargo', 'test', '--no-run', '--workspace', ...features, '--manifest-path', resolve(workspace, 'Cargo.toml'),
-        '--message-format=json-render-diagnostics'], workspace, null, process.env, step, 100_000_000);
+        'cargo', 'test', '--no-run', '--manifest-path', manifestPath, '--package', selectedPackage.name, ...features, ...targetArgs,
+        '--message-format=json-render-diagnostics'], crate, null, process.env, step, 100_000_000);
       if (result.error) throw new Error(result.error);
       const copied = readBinaries(copies);
-      programsOf.set(workspace, programEnvironment(copied.programs));
+      programPaths = programEnvironment(copied.programs);
       for (const binary of copied.tests) {
-        for (const file of await dependencyFiles(binary.copy, workspace)) {
+        for (const file of await dependencyFiles(binary.copy, dependencyRoot)) {
           files.set(file, [...(files.get(file) ?? []), binary.copy]);
         }
       }
       step(`${new Set([...files.values()].flat()).size} test binaries`);
     });
-    for (const crate of crates) builds.cargo.set(crate, error ? { error } : { files, programs: programsOf.get(workspace) ?? {} });
+    builds.cargo.set(crate, error ? { error } : { files, programs: programPaths });
   }
 }
 

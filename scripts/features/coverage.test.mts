@@ -2,13 +2,13 @@ import assert from 'node:assert/strict';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
 import { execFileSync } from 'node:child_process';
 import { performance } from 'node:perf_hooks';
-import { chmod, mkdtemp, mkdir, readdir, realpath, rm, stat, writeFile } from 'node:fs/promises';
+import { chmod, mkdtemp, mkdir, readFile, readdir, realpath, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { testDirectoryOf } from './packages.mts';
-import { checkCoverage, coverageItems, databaseDsn, databases, executeCoverage, observedCases, languages, NATIVE_DEADLINE, selectFeatures, type Coverage, type Dependent, type Feature, type Manifest, type Owner, type Report } from './coverage.mts';
+import { cargoTargetArgs, checkCoverage, coverageItems, databaseDsn, databases, executeCoverage, observedCases, languages, NATIVE_DEADLINE, selectFeatures, type Coverage, type Dependent, type Feature, type Manifest, type Owner, type Report } from './coverage.mts';
 import { readFeatures } from './manifest.mts';
 import { readParityConfig, type ParityConfig } from '../json/formats.mts';
 
@@ -175,6 +175,28 @@ caseTest('only the go, cargo and php runners declare a symbols map', 1000, () =>
             declared.push(`${feature.id}/${name}/${database}: ${command.runner} ${command.test}`);
   }
   assert.deepEqual(declared, []);
+});
+
+caseTest('Rust coverage maps nested modules to the most specific Cargo test target', COMPUTE, () => {
+  const root = new URL('../..', import.meta.url).pathname;
+  const nestedIntegration = join(root, 'packages/rust/tests/tests/integration/coverage_model_writes.rs');
+  const targets = [
+    { name: 'integration', kind: ['test'], src_path: join(root, 'packages/rust/tests/tests/integration/main.rs'), test: true },
+    { name: 'other', kind: ['test'], src_path: join(root, 'packages/rust/tests/tests/other.rs'), test: true },
+  ];
+  assert.deepEqual(cargoTargetArgs(targets, [nestedIntegration]), ['--test', 'integration']);
+
+  const moduleTarget = { name: 'features', kind: ['test'],
+    src_path: join(root, 'packages/rust/tests/tests/features/main.rs'), test: true };
+  const libTarget = { name: 'polyspec-orm', kind: ['lib'],
+    src_path: join(root, 'packages/rust/orm/src/lib.rs'), test: true };
+  assert.deepEqual(cargoTargetArgs([libTarget, moduleTarget],
+    [join(root, 'packages/rust/tests/tests/features/coverage_nested.rs')]), ['--test', 'features']);
+
+  assert.throws(() => cargoTargetArgs([
+    { name: 'integration', kind: ['test'], src_path: join(root, 'packages/rust/tests/tests/integration.rs'), test: true },
+    { name: 'nested', kind: ['test'], src_path: join(root, 'packages/rust/tests/tests/integration/main.rs'), test: true },
+  ], [nestedIntegration]), /maps to 2 Cargo test targets at its most specific module root/);
 });
 
 caseTest('PHP extension catalog coverage selects the exact native methods', 1000, () => {
@@ -724,6 +746,7 @@ caseTest('coverage runs without cargo proceed while the Rust test build runs', 1
   const phpFile = 'packages/php/tests/OwnerTest.php';
   const fifo = join(root, 'build-gate');
   const written = join(root, 'written');
+  const cargoArguments = join(root, 'cargo-arguments');
   const manifest: SampleManifest = { features: [{ id: 'sample', status: 'partial', parity: parityOf(['rust', 'php']),
     coverage: { kind: 'independent', cases: ['first'], dependents: [], owners: {
       rust: { part: 'packages/rust/orm', tests: [rustFile], commands: { none: [{ runner: 'cargo', test: rustFile, cases: ['first'], symbols: { first: 'tests::first' } }] } },
@@ -736,9 +759,10 @@ caseTest('coverage runs without cargo proceed while the Rust test build runs', 1
     const realCargo = execFileSync('sh', ['-c', 'command -v cargo']).toString().trim();
     await mkdir(join(root, 'bin'), { recursive: true });
     execFileSync('mkfifo', [fifo]);
-    await writeFile(join(root, 'bin/cargo'), `#!/bin/sh\ncase " $* " in *" test "*"--no-run "*) read gate < ${JSON.stringify(fifo)} ;; esac\nexec ${JSON.stringify(realCargo)} "$@"\n`);
+    await writeFile(join(root, 'bin/cargo'), `#!/bin/sh\nprintf '%s\\n' "$*" >> ${JSON.stringify(cargoArguments)}\ncase " $* " in *" test "*"--no-run "*) read gate < ${JSON.stringify(fifo)} ;; esac\nexec ${JSON.stringify(realCargo)} "$@"\n`);
     await chmod(join(root, 'bin/cargo'), 0o755);
     for (const file of [rustFile, phpFile]) await mkdir(join(root, file, '..'), { recursive: true });
+    await writeFile(join(root, 'packages/rust/Cargo.toml'), '[workspace]\nmembers = ["orm"]\nresolver = "2"\n');
     await writeFile(join(root, 'packages/rust/orm/Cargo.toml'), '[package]\nname = "coverage_overlap"\nversion = "0.0.1"\nedition = "2021"\n');
     await writeFile(join(root, rustFile), '#[cfg(test)] mod tests { #[test] fn first() {} }\n');
     // Only the first run writes to the FIFO. The write waits until cargo opens the FIFO to read it.
@@ -746,6 +770,12 @@ caseTest('coverage runs without cargo proceed while the Rust test build runs', 1
     await phpunitStub(root, phpFile, PASSED, `if (!file_exists(${JSON.stringify(written)})) { file_put_contents(${JSON.stringify(fifo)}, "go\\n"); touch(${JSON.stringify(written)}); }\n`);
     process.env.PATH = `${join(root, 'bin')}:${path}`;
     assert.deepEqual(await runSelected(manifest, root, 30000, ['owner/rust', 'owner/php']), []);
+    const cargoCalls = (await readFile(cargoArguments, 'utf8')).split('\n').filter(Boolean);
+    const testBuild = cargoCalls.find(args => args.startsWith('test '));
+    assert.ok(testBuild, 'Cargo test build was invoked');
+    assert.match(testBuild, /--package coverage_overlap/);
+    assert.match(testBuild, /--lib/);
+    assert.doesNotMatch(testBuild, /--workspace/);
   } finally {
     process.env.PATH = path;
     restoreLease();
