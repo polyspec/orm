@@ -145,6 +145,7 @@ async function generateRefused(source) {
 }
 
 /** A relation alias that starts with a chain prefix (Match, Join, Possible, New) still declares its getter on the parent. */
+// Requirements: DSL-44.
 async function aliasMatchGetter() {
   const { members } = await generate(`
 import { Author, User } from './models/models.js';
@@ -169,6 +170,7 @@ export {};
  * The alias of a relation nested in a relation attaches its getter to the model it aliases on, and a receiver typed through
  * a getter's generic argument resolves to that model (consumer: OrdersheetStore.getMatch).
  */
+// Requirements: DSL-44.
 async function nestedAliasGetter() {
   const { members } = await generate(`
 import { Author, User } from './models/models.js';
@@ -186,6 +188,7 @@ export function read(rows: Iterable<Author>): void {
 }
 
 /** A scanned getter call that no alias, new or addColumn call attaches stops generation, naming the model and the method. */
+// Requirements: DSL-44.
 async function unattachedGetter() {
   const { status, stderr } = await generateRefused(`
 import { Author, User } from './models/models.js';

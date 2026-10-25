@@ -530,6 +530,7 @@ class OrmGenTest(unittest.TestCase):
         )
 
     def test_an_alias_named_match_is_accepted_with_its_getter(self):
+        # Requirements: DSL-44.
         result = self._scan(
             "from models import Author, User\n"
             "a = Author().relation(User().match_user_seq_with_seq().alias_match())"
@@ -540,6 +541,7 @@ class OrmGenTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_a_nested_relation_alias_attaches_its_getter(self):
+        # Requirements: DSL-44.
         # The alias of a relation nested in a relation names the getter of the model it aliases on, and a receiver
         # annotated through a getter's result resolves to that model.
         result = self._scan(
@@ -555,6 +557,7 @@ class OrmGenTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_a_getter_call_that_nothing_attaches_stops_generation(self):
+        # Requirements: DSL-44.
         result = self._scan(
             "from typing import Iterable\n"
             "from models import Author, User\n"

@@ -3389,30 +3389,85 @@
       ]
     },
     {
-      "id": "ts-generate-scan-imported-set",
+      "id": "generator-scan-call-on-another-sets-class",
       "kind": "feature",
       "requirements": [
         "DSL-151"
       ],
       "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/generator/gen_go_scan_test.go",
+          "id": "TestGoScanAttributesCallsToTheImportedSet"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/OrmGenScanTest.php",
+          "id": "OrmGenScanTest::testACallOnAClassOfAnotherSetIsNotThisSetsCall"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/OrmGenScanTest.php",
+          "id": "OrmGenScanTest::testACallOnAClassOfAnotherSetIsNotThisSetsCall"
+        },
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/generate-scan.mjs",
           "id": "generate-scan/imported_set"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_orm_gen.py",
+          "id": "test_a_call_on_a_class_of_another_set_is_not_this_sets_call"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_orm_gen.py",
+          "id": "test_a_call_on_a_class_of_this_set_is_checked"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/tests/generate.rs",
+          "id": "a_call_on_a_class_of_another_set_is_not_this_sets_call"
         }
       ]
     },
     {
-      "id": "ts-generate-scan-reassigned-variable",
+      "id": "generator-scan-reassigned-receiver-resolves-to-its-class",
       "kind": "feature",
       "requirements": [
         "DSL-151"
       ],
       "bindings": [
         {
+          "implementation": "go",
+          "test": "packages/go/generator/gen_go_scan_test.go",
+          "id": "TestGoScanResolvesAReassignedVariable"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/OrmGenScanTest.php",
+          "id": "OrmGenScanTest::testAReceiverHeldInAReassignedVariableResolvesToItsClass"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/OrmGenScanTest.php",
+          "id": "OrmGenScanTest::testAReceiverHeldInAReassignedVariableResolvesToItsClass"
+        },
+        {
           "implementation": "typescript",
           "test": "packages/ts/tests/generate-scan.mjs",
           "id": "generate-scan/reassigned_variable"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_orm_gen.py",
+          "id": "test_a_receiver_held_in_a_reassigned_name_resolves_to_its_class"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/tests/generate.rs",
+          "id": "a_receiver_held_in_a_reassigned_variable_resolves_to_its_class"
         }
       ]
     },
@@ -3456,16 +3511,41 @@
       ]
     },
     {
-      "id": "ts-generate-scan-unused-external-models",
+      "id": "generator-unused-external-tables-keep-their-models",
       "kind": "feature",
       "requirements": [
         "DBS-173"
       ],
       "bindings": [
         {
+          "implementation": "go",
+          "test": "packages/go/generator/gen_go_scan_test.go",
+          "id": "TestGoExternalModelsWithoutCallsAreWritten"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/OrmGenScanTest.php",
+          "id": "OrmGenScanTest::testAUsedExternalTableThatNoSourceCallsKeepsItsModel"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/OrmGenScanTest.php",
+          "id": "OrmGenScanTest::testAUsedExternalTableThatNoSourceCallsKeepsItsModel"
+        },
+        {
           "implementation": "typescript",
           "test": "packages/ts/tests/generate-scan.mjs",
           "id": "generate-scan/unused_external_models"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_orm_gen.py",
+          "id": "test_a_used_external_table_that_no_source_calls_keeps_its_model"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/tests/generate.rs",
+          "id": "unused_external_tables_keep_their_models"
         }
       ]
     },
@@ -7347,11 +7427,9 @@
       ]
     },
     {
-      "id": "go-internal-generator-relation-alias-with-a-chain-prefix",
+      "id": "generator-scan-alias-with-a-chain-prefix-declares-its-getter",
       "kind": "feature",
       "requirements": [
-        "DBS-118",
-        "DSL-9",
         "DSL-44"
       ],
       "bindings": [
@@ -7359,14 +7437,38 @@
           "implementation": "go",
           "test": "packages/go/generator/gen_go_scan_test.go",
           "id": "TestGoRelationAliasWithChainPrefix"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/OrmGenScanTest.php",
+          "id": "OrmGenScanTest::testAnAliasNamedMatchDeclaresItsGetter"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/OrmGenScanTest.php",
+          "id": "OrmGenScanTest::testAnAliasNamedMatchDeclaresItsGetter"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/generate-scan.mjs",
+          "id": "generate-scan/alias_match_getter"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_orm_gen.py",
+          "id": "test_an_alias_named_match_is_accepted_with_its_getter"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/tests/generate.rs",
+          "id": "relation_alias_with_a_chain_prefix_has_its_getter"
         }
       ]
     },
     {
-      "id": "go-internal-generator-nested-relation-alias-attaches-to-its-parent",
+      "id": "generator-scan-nested-relation-alias-attaches-to-its-parent",
       "kind": "feature",
       "requirements": [
-        "DBS-118",
         "DSL-44"
       ],
       "bindings": [
@@ -7374,11 +7476,36 @@
           "implementation": "go",
           "test": "packages/go/generator/gen_go_scan_test.go",
           "id": "TestGoNestedRelationAliasAttachesToItsParent"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/OrmGenScanTest.php",
+          "id": "OrmGenScanTest::testANestedRelationAliasDeclaresItsGetterOnTheModelItAliasesOn"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/OrmGenScanTest.php",
+          "id": "OrmGenScanTest::testANestedRelationAliasDeclaresItsGetterOnTheModelItAliasesOn"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/generate-scan.mjs",
+          "id": "generate-scan/nested_alias_getter"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_orm_gen.py",
+          "id": "test_a_nested_relation_alias_attaches_its_getter"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/tests/generate.rs",
+          "id": "nested_relation_alias_attaches_its_getter_to_its_parent"
         }
       ]
     },
     {
-      "id": "go-internal-generator-unattached-getter-stops-generation",
+      "id": "generator-scan-unattached-getter-stops-generation",
       "kind": "feature",
       "requirements": [
         "DSL-44"
@@ -7388,48 +7515,31 @@
           "implementation": "go",
           "test": "packages/go/generator/gen_go_scan_test.go",
           "id": "TestGoUnattachedGetterStopsGeneration"
-        }
-      ]
-    },
-    {
-      "id": "go-internal-generator-scan-attributes-calls-to-the-imported-set",
-      "kind": "feature",
-      "requirements": [
-        "DSL-151"
-      ],
-      "bindings": [
+        },
         {
-          "implementation": "go",
-          "test": "packages/go/generator/gen_go_scan_test.go",
-          "id": "TestGoScanAttributesCallsToTheImportedSet"
-        }
-      ]
-    },
-    {
-      "id": "go-internal-generator-scan-resolves-a-reassigned-variable",
-      "kind": "feature",
-      "requirements": [
-        "DSL-151"
-      ],
-      "bindings": [
+          "implementation": "php",
+          "test": "packages/php/tests/OrmGenScanTest.php",
+          "id": "OrmGenScanTest::testAGetterCallThatNothingAttachesStopsGeneration"
+        },
         {
-          "implementation": "go",
-          "test": "packages/go/generator/gen_go_scan_test.go",
-          "id": "TestGoScanResolvesAReassignedVariable"
-        }
-      ]
-    },
-    {
-      "id": "go-internal-generator-external-models-without-calls-are-written",
-      "kind": "feature",
-      "requirements": [
-        "DBS-173"
-      ],
-      "bindings": [
+          "implementation": "php-extension",
+          "test": "packages/php/tests/OrmGenScanTest.php",
+          "id": "OrmGenScanTest::testAGetterCallThatNothingAttachesStopsGeneration"
+        },
         {
-          "implementation": "go",
-          "test": "packages/go/generator/gen_go_scan_test.go",
-          "id": "TestGoExternalModelsWithoutCallsAreWritten"
+          "implementation": "typescript",
+          "test": "packages/ts/tests/generate-scan.mjs",
+          "id": "generate-scan/unattached_getter"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_orm_gen.py",
+          "id": "test_a_getter_call_that_nothing_attaches_stops_generation"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/tests/generate.rs",
+          "id": "unattached_getter_stops_generation"
         }
       ]
     },
@@ -9428,92 +9538,6 @@
           "implementation": "rust",
           "test": "packages/rust/build/tests/generate.rs",
           "id": "reports_every_error_of_the_set_and_writes_nothing"
-        }
-      ]
-    },
-    {
-      "id": "rust-relation-alias-with-a-chain-prefix-has-its-getter",
-      "kind": "feature",
-      "requirements": [
-        "DBS-118",
-        "DSL-44"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/generate.rs",
-          "id": "relation_alias_with_a_chain_prefix_has_its_getter"
-        }
-      ]
-    },
-    {
-      "id": "rust-nested-relation-alias-attaches-its-getter-to-its-parent",
-      "kind": "feature",
-      "requirements": [
-        "DBS-118",
-        "DSL-44"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/generate.rs",
-          "id": "nested_relation_alias_attaches_its_getter_to_its_parent"
-        }
-      ]
-    },
-    {
-      "id": "rust-unattached-getter-stops-generation",
-      "kind": "feature",
-      "requirements": [
-        "DSL-44"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/generate.rs",
-          "id": "unattached_getter_stops_generation"
-        }
-      ]
-    },
-    {
-      "id": "rust-call-on-a-class-of-another-set-is-not-this-sets-call",
-      "kind": "feature",
-      "requirements": [
-        "DSL-151"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/generate.rs",
-          "id": "a_call_on_a_class_of_another_set_is_not_this_sets_call"
-        }
-      ]
-    },
-    {
-      "id": "rust-receiver-held-in-a-reassigned-variable-resolves-to-its-class",
-      "kind": "feature",
-      "requirements": [
-        "DSL-151"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/generate.rs",
-          "id": "a_receiver_held_in_a_reassigned_variable_resolves_to_its_class"
-        }
-      ]
-    },
-    {
-      "id": "rust-unused-external-tables-keep-their-models",
-      "kind": "feature",
-      "requirements": [
-        "DBS-173"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/generate.rs",
-          "id": "unused_external_tables_keep_their_models"
         }
       ]
     },
@@ -12817,62 +12841,6 @@
       ]
     },
     {
-      "id": "py-test-orm-gen-call-on-a-class-of-another-set",
-      "kind": "feature",
-      "requirements": [
-        "DSL-151"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_orm_gen.py",
-          "id": "test_a_call_on_a_class_of_another_set_is_not_this_sets_call"
-        }
-      ]
-    },
-    {
-      "id": "py-test-orm-gen-call-on-a-class-of-this-set",
-      "kind": "feature",
-      "requirements": [
-        "DSL-151"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_orm_gen.py",
-          "id": "test_a_call_on_a_class_of_this_set_is_checked"
-        }
-      ]
-    },
-    {
-      "id": "py-test-orm-gen-receiver-held-in-a-reassigned-name",
-      "kind": "feature",
-      "requirements": [
-        "DSL-151"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_orm_gen.py",
-          "id": "test_a_receiver_held_in_a_reassigned_name_resolves_to_its_class"
-        }
-      ]
-    },
-    {
-      "id": "py-test-orm-gen-a-used-external-table-that-no-source-calls-keeps-its-model",
-      "kind": "feature",
-      "requirements": [
-        "DBS-173"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_orm_gen.py",
-          "id": "test_a_used_external_table_that_no_source_calls_keeps_its_model"
-        }
-      ]
-    },
-    {
       "id": "py-test-schema-utils-mismatched-hash",
       "kind": "feature",
       "requirements": [
@@ -13451,77 +13419,6 @@
       ]
     },
     {
-      "id": "php-internal-orm-gen-scan-an-alias-named-match-declares-its-getter",
-      "kind": "feature",
-      "requirements": [
-        "DSL-44"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/OrmGenScanTest.php",
-          "id": "OrmGenScanTest::testAnAliasNamedMatchDeclaresItsGetter"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-orm-gen-scan-a-nested-relation-alias-declares-its-getter-on-the-model-it-aliases-on",
-      "kind": "feature",
-      "requirements": [
-        "DBS-118",
-        "DSL-44"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/OrmGenScanTest.php",
-          "id": "OrmGenScanTest::testANestedRelationAliasDeclaresItsGetterOnTheModelItAliasesOn"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-orm-gen-scan-a-getter-call-that-nothing-attaches-stops-generation",
-      "kind": "feature",
-      "requirements": [
-        "DSL-44"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/OrmGenScanTest.php",
-          "id": "OrmGenScanTest::testAGetterCallThatNothingAttachesStopsGeneration"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-orm-gen-scan-a-call-on-a-class-of-another-set-is-not-this-sets-call",
-      "kind": "feature",
-      "requirements": [
-        "DSL-151"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/OrmGenScanTest.php",
-          "id": "OrmGenScanTest::testACallOnAClassOfAnotherSetIsNotThisSetsCall"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-orm-gen-scan-a-receiver-held-in-a-reassigned-variable-resolves-to-its-class",
-      "kind": "feature",
-      "requirements": [
-        "DSL-151"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/OrmGenScanTest.php",
-          "id": "OrmGenScanTest::testAReceiverHeldInAReassignedVariableResolvesToItsClass"
-        }
-      ]
-    },
-    {
       "id": "php-internal-orm-gen-scan-a-directory-is-scanned-and-a-file-that-does-not-parse-fails-the-scan",
       "kind": "feature",
       "requirements": [
@@ -13689,20 +13586,6 @@
           "implementation": "php",
           "test": "packages/php/tests/OrmGenTest.php",
           "id": "OrmGenTest::testGenGeneratesTheOwnedAndTheUsedExternalTablesOfASet"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-orm-gen-scan-a-used-external-table-that-no-source-calls-keeps-its-model",
-      "kind": "feature",
-      "requirements": [
-        "DBS-173"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/OrmGenScanTest.php",
-          "id": "OrmGenScanTest::testAUsedExternalTableThatNoSourceCallsKeepsItsModel"
         }
       ]
     },
