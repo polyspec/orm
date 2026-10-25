@@ -60,13 +60,17 @@ final class MysqlTlsCases
             512,
             JSON_THROW_ON_ERROR
         );
-        $db = Orm::connect($dsn, new Config());
+        $db = Orm::connect($dsn, new Config(statementTimeoutMs: 237));
         try {
-            $mode = (string) $db->pdo()->query('SELECT @@SESSION.sql_mode')->fetchColumn();
+            $session = $db->pdo()->query(
+                'SELECT @@SESSION.sql_mode, @@SESSION.time_zone, @@SESSION.max_execution_time'
+            )->fetch(\PDO::FETCH_NUM);
         } finally {
             $db->close();
         }
-        Assert::assertSame($vector['sql_mode']['session'], $mode, '@@SESSION.sql_mode');
+        Assert::assertSame($vector['sql_mode']['session'], $session[0] ?? null, '@@SESSION.sql_mode');
+        Assert::assertSame('+00:00', $session[1] ?? null, '@@SESSION.time_zone');
+        Assert::assertSame(237, (int) ($session[2] ?? -1), '@@SESSION.max_execution_time');
     }
 
     public static function sslVersion(string $dsn): string

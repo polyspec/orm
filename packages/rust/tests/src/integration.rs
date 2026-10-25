@@ -420,7 +420,12 @@ async fn writes(t: &Target) {
     assert_eq!(json["name"], "service", "serialize");
 }
 
+// Requirements: INT-134.
 async fn transactions(t: &Target) {
+    let _aes = t.db.utils().aes();
+    let _schema = t.db.utils().schema();
+    let _privileges = t.db.utils().privileges();
+    let _stats = t.db.utils().stats();
     let db = &t.db;
     let boom = || polyspec_orm::Error::Config("boom".into());
     let is_boom = |r: &polyspec_orm::Result<()>| matches!(r, Err(polyspec_orm::Error::Config(m)) if m == "boom");
@@ -611,7 +616,7 @@ async fn bind_limit_splitting(t: &Target) {
     }
 }
 
-// Requirements: COD-8, PLN-44.
+// Requirements: COD-8, PLN-44, INT-75, INT-131.
 async fn aes_rotation(t: &Target) {
     let db = &t.db;
     let f = seed(db).await;
@@ -622,10 +627,10 @@ async fn aes_rotation(t: &Target) {
     assert_eq!(found, 1, "blind index condition");
     let keyring = AesKeyring::new([(1, "test-aes-key".to_owned()), (2, "next-aes-key".to_owned())].into_iter().collect(), 2).unwrap();
     let status = db.utils().aes().status(&Author::new(), &keyring).await.unwrap();
-    assert_eq!((status.total, status.pending), (4, 4), "status");
+    assert_eq!((status.current, status.total, status.pending, status.versions), (2, 4, 4, [(1, 4)].into_iter().collect()), "status");
     assert_eq!(db.utils().aes().rotate(&Author::new(), &keyring).await.unwrap(), 4, "rotated");
     let status = db.utils().aes().status(&Author::new(), &keyring).await.unwrap();
-    assert_eq!(status.pending, 0, "after rotation");
+    assert_eq!((status.current, status.total, status.pending, status.versions), (2, 4, 0, [(2, 4)].into_iter().collect()), "after rotation");
 }
 
 /// A jsontext column reads back the ordered-json value of a write with its

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strings"
 	"sync"
@@ -479,10 +480,13 @@ func TestWrites(t *testing.T) {
 
 // TestTransactions runs a transaction with its savepoint, lock, local and retry calls. A goroutine started inside the
 // callback has no active transaction, so an unconnected model there returns CONFIG.
-// Requirements: PLN-13, PLN-16, PLN-17, PLN-18, PLN-20, PLN-21, DSL-122.
+// Requirements: PLN-13, PLN-16, PLN-17, PLN-18, PLN-20, PLN-21, DSL-122, INT-134.
 func TestTransactions(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	each(t, func(t *testing.T, db *orm.DB) {
+		if db.Utils().Aes() == nil || db.Utils().Privileges() == nil || db.Utils().Schema() == nil {
+			t.Fatal("connection utilities are missing a group")
+		}
 		boom := errors.New("boom")
 		err := db.Transaction(func() error {
 			if _, err := model.User().SetName("rolled back").Create(); err != nil {
@@ -569,7 +573,7 @@ func TestTransactions(t *testing.T) {
 	})
 }
 
-// Requirements: COD-8, PLN-44.
+// Requirements: COD-8, PLN-44, INT-75, INT-131.
 func TestAESRotation(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	each(t, func(t *testing.T, db *orm.DB) {
@@ -582,14 +586,14 @@ func TestAESRotation(t *testing.T) {
 			t.Fatal(err)
 		}
 		status := must(db.Utils().Aes().Status(model.Author(), keyring))
-		if status.Total != 4 || status.Pending != 4 {
+		if status.Current != 2 || status.Total != 4 || status.Pending != 4 || !reflect.DeepEqual(status.Versions, map[int32]int64{1: 4}) {
 			t.Fatalf("status: %+v", status)
 		}
 		if n := must(db.Utils().Aes().Rotate(model.Author(), keyring)); n != 4 {
 			t.Fatalf("rotated %d", n)
 		}
 		status = must(db.Utils().Aes().Status(model.Author(), keyring))
-		if status.Pending != 0 {
+		if status.Current != 2 || status.Total != 4 || status.Pending != 0 || !reflect.DeepEqual(status.Versions, map[int32]int64{2: 4}) {
 			t.Fatalf("after rotation: %+v", status)
 		}
 	})

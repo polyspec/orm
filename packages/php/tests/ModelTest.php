@@ -555,6 +555,14 @@ final class ModelTest extends TestCase
             static fn(ReflectionMethod $m): string => strtolower($m->getName()),
             (new ReflectionClass(Db::class))->getMethods(ReflectionMethod::IS_PUBLIC)
         );
+        $utils = $db->utils();
+        self::check(
+            $utils->schema() instanceof \Polyspec\Orm\SchemaUtils
+                && $utils->privileges() instanceof \Polyspec\Orm\PrivilegeUtils
+                && $utils->aes() instanceof \Polyspec\Orm\AesUtils
+                && $utils->stats() instanceof \Polyspec\Orm\Stats,
+            'Utils exposes the schema, privileges, AES and stats groups'
+        );
         self::check(in_array('transaction', $public, true), 'Db has transaction()');
         self::check(
             array_values(
@@ -722,9 +730,10 @@ final class ModelTest extends TestCase
         self::check((new Author())($db)->aesHexEmail('person@example.com')->getCount() === 1, 'blind index condition');
         $keyring = new AesKeyring([1 => 'test-aes-key', 2 => 'next-aes-key'], 2);
         $status = $db->utils()->aes()->status(new Author(), $keyring);
-        self::check($status->total === 4 && $status->pending === 4, 'status');
+        self::check($status->current === 2 && $status->total === 4 && $status->pending === 4 && $status->versions === [1 => 4], 'status');
         self::check($db->utils()->aes()->rotate(new Author(), $keyring) === 4, 'rotate');
-        self::check($db->utils()->aes()->status(new Author(), $keyring)->pending === 0, 'after rotation');
+        $status = $db->utils()->aes()->status(new Author(), $keyring);
+        self::check($status->current === 2 && $status->total === 4 && $status->pending === 0 && $status->versions === [2 => 4], 'after rotation');
         // A write with only aesKeys and aesVersion encrypts with aesKeys[aesVersion].
         $versioned = \Polyspec\Orm\Tests\Model\connect(
             $dsn,
@@ -1387,6 +1396,64 @@ final class ModelTest extends TestCase
         );
     }
 
+    // A PHP request that exits inside a transaction loses its server connection, which rolls back its writes and
+    // releases the named lock held by that connection.
+    // Requirements: CFG-7.
+    public function testRequestExitInsideTransactionRollsBackAndReleasesLock(): void
+    {
+        $table = 'orm_cfg7_' . bin2hex(random_bytes(8));
+        $lock = $table . '.lock';
+        $db = Orm::connect(self::$targets['mysql'], new Config());
+        try {
+            $db->pdo()->exec("CREATE TABLE `$table` (id BIGINT PRIMARY KEY)");
+            $process = proc_open(
+                [PHP_BINARY, __DIR__ . '/request_termination_child.php', self::$targets['mysql'], $table, $lock],
+                [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+                $pipes
+            );
+            self::assertIsResource($process, 'request child process starts');
+            $stdout = stream_get_contents($pipes[1]);
+            $stderr = stream_get_contents($pipes[2]);
+            fclose($pipes[1]);
+            fclose($pipes[2]);
+            self::assertSame(0, proc_close($process), "request child exits successfully: $stdout $stderr");
+
+            self::assertSame(0, (int) $db->pdo()->query("SELECT COUNT(*) FROM `$table`")->fetchColumn(), 'exit rolls back');
+            self::assertSame(1, (int) $db->pdo()->query('SELECT GET_LOCK(' . $db->pdo()->quote($lock) . ', 0)')->fetchColumn(), 'exit releases lock');
+            $db->pdo()->query('SELECT RELEASE_LOCK(' . $db->pdo()->quote($lock) . ')')->fetchColumn();
+        } finally {
+            $db->pdo()->exec("DROP TABLE IF EXISTS `$table`");
+            $db->close();
+        }
+    }
+
+    // PostgreSQL receives the UTC time zone and statement timeout as client startup parameters.
+    // Requirements: CFG-7.
+    public function testPostgresSessionSettingsAreStartupParameters(): void
+    {
+        $db = Orm::connect(self::$targets['postgres'], new Config(statementTimeoutMs: 237));
+        try {
+            $rows = $db->fetch(
+                'utility',
+                [],
+                null,
+                "SELECT name, setting, source FROM pg_settings WHERE name IN ('TimeZone', 'statement_timeout')"
+            );
+        } finally {
+            $db->close();
+        }
+        $settings = [];
+        foreach ($rows as [$name, $setting, $source]) {
+            $settings[$name] = [$setting, $source];
+        }
+        self::assertSame('UTC', $settings['TimeZone'][0] ?? null, 'TimeZone');
+        self::assertSame('237', $settings['statement_timeout'][0] ?? null, 'statement_timeout');
+        if (getenv('ORM_TEST_POSTGRES_DSN') === getenv('ORM_TEST_POSTGRES_SERVER_DSN')) {
+            self::assertSame('client', $settings['TimeZone'][1] ?? null, 'TimeZone startup source');
+            self::assertSame('client', $settings['statement_timeout'][1] ?? null, 'timeout startup source');
+        }
+    }
+
     // If the native rollback, the SQLite mode restore, or the rollback after begin fails, the transaction
     // reports that error together with its cause.
     public function testFailedRollback(): void
@@ -1522,7 +1589,7 @@ final class ModelTest extends TestCase
     }
 
     // transactions
-    // Requirements: PLN-13, PLN-16, PLN-17, PLN-20, PLN-21.
+    // Requirements: PLN-13, PLN-16, PLN-17, PLN-20, PLN-21, INT-134.
     #[DataProvider('drivers')]
     public function testTransactions(string $driver): void
     {
@@ -1557,7 +1624,7 @@ final class ModelTest extends TestCase
     #[DataProvider('drivers')]
     public function testAesRotation(string $driver): void
     {
-        // Requirements: COD-8, PLN-44.
+        // Requirements: COD-8, PLN-44, INT-75, INT-131.
         $dsn = self::caseDsn($driver);
         $db = self::database($driver, $dsn);
         self::caseAesRotation($db, $dsn);

@@ -1,6 +1,6 @@
 # The AES rotation case of packages/php/tests/ModelTest.php: stale rows are
 # re-encrypted with the current key on SQLite, MySQL and PostgreSQL.
-# Requirements: COD-8, PLN-44.
+# Requirements: COD-8, PLN-44, INT-75, INT-131.
 # Usage: python -m packages.python.tests.aes_rotation
 import tempfile
 import unittest
@@ -82,16 +82,15 @@ class AesRotationPhysicalTest(unittest.TestCase):
                         {1: "test-aes-key", 2: "next-aes-key"}, 2
                     )
                     status = db.utils().aes().status(models.Author(), keyring)
-                    self.assertEqual((status.total, status.pending), (4, 4), "status")
+                    self.assertEqual((status.current, status.total, status.pending, status.versions), (2, 4, 4, {1: 4}), "status")
                     self.assertEqual(db.utils().aes().rotate(models.Author(), keyring), 4)
                     status = db.utils().aes().status(models.Author(), keyring)
-                    self.assertEqual(status.pending, 0, "after rotation")
+                    self.assertEqual((status.current, status.total, status.pending, status.versions), (2, 4, 0, {2: 4}), "after rotation")
                     self.assertEqual(db.utils().aes().rotate(models.Author(), keyring), 0)
 
                     current = models.connect(
                         dsn,
-                        aesVersion=2,
-                        aesKeys={2: "next-aes-key"},
+                        aesKeyring=AesKeyring({2: "next-aes-key"}, 2),
                         blindIndexKey="test-blind-key",
                     )
                     self.assertEqual(
