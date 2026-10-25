@@ -5,6 +5,7 @@
 # ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN, the pooler case ORM_TEST_PGBOUNCER_SINGLE_DSN, and a missing variable
 # fails the case.
 # Usage: python -m packages.python.tests.connection_config
+import asyncio
 import os
 import tempfile
 import threading
@@ -191,6 +192,99 @@ class ConnectionConfigTest(unittest.TestCase):
             setup._connection.execute(f'DROP TABLE IF EXISTS "{table}"', [])
             setup.close()
 
+    # Requirements: CFG-31.
+    def test_cancellation_through_a_pooler(self):
+        single = os.environ.get("ORM_TEST_PGBOUNCER_SINGLE_DSN")
+        if not single:
+            raise AssertionError(
+                "ORM_TEST_PGBOUNCER_SINGLE_DSN is required; database tests never skip; run make orm-test-servers"
+            )
+        direct = os.environ.get("ORM_TEST_POSTGRES_SERVER_DSN")
+        if not direct:
+            raise AssertionError(
+                "ORM_TEST_POSTGRES_SERVER_DSN is required; database tests never skip; run make orm-test-servers"
+            )
+        table = f"pooler_cancel_{uuid.uuid4().hex[:8]}"
+        models, model = probe_models(TEMP["dir"].name, table)
+        setup = models.connect(single)
+        client = None
+        holder = None
+        try:
+            setup.utils().schema().install(models.SCHEMA)
+            for index in range(4):
+                model().connect(setup).set_label(f"probe-{index}").create()
+            client = models.connect(single)
+            holder = hold_rows("postgres", direct, table)
+
+            async def cancel_blocked_read():
+                loop = asyncio.get_running_loop()
+                future = loop.create_future()
+                handle = client.with_future(future)
+                entered = threading.Event()
+                cancel_handle = None
+
+                def read():
+                    def in_transaction():
+                        physical = handle.active_frame().connection
+                        execute = physical.execute
+
+                        def observe_execute(sql, values):
+                            if "FOR UPDATE" in sql.upper():
+                                entered.set()
+                            return execute(sql, values)
+
+                        physical.execute = observe_execute
+                        try:
+                            return model().connect(handle).seq(1).for_update().get()
+                        finally:
+                            physical.execute = execute
+
+                    handle.transaction(in_transaction, {"retry": 0})
+
+                query = asyncio.create_task(asyncio.to_thread(read))
+                try:
+                    self.assertTrue(
+                        await asyncio.to_thread(entered.wait, 20),
+                        "the row-locking statement reached the PostgreSQL driver",
+                    )
+                    cancel_handle = loop.call_later(0.1, future.cancel)
+                    try:
+                        await query
+                    except OrmError as error:
+                        self.assertEqual(error.code, "CANCELED")
+                    else:
+                        self.fail("the row-locking statement completed without cancellation")
+                finally:
+                    if cancel_handle is not None:
+                        cancel_handle.cancel()
+                    if not future.done():
+                        future.cancel()
+                    if not query.done():
+                        try:
+                            await query
+                        except OrmError as error:
+                            self.assertEqual(error.code, "CANCELED")
+
+            asyncio.run(cancel_blocked_read())
+            holder.rollback()
+            holder.close()
+            holder = None
+            self.assertEqual(
+                model().connect(client).get_count(),
+                4,
+                "the root connection remains usable after PgBouncer forwards cancellation",
+            )
+            testcase.step("PgBouncer forwarded cancellation and the root connection remained usable")
+        finally:
+            if holder is not None:
+                holder.rollback()
+                holder.close()
+            if client is not None:
+                client.close()
+            try:
+                setup._connection.execute(f'DROP TABLE IF EXISTS "{table}"', [])
+            finally:
+                setup.close()
 
 class ConnectionConfigComputeTest(unittest.TestCase):
     deadline = testcase.COMPUTE
