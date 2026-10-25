@@ -2,6 +2,7 @@
 # bench database, as the model_queries coverage of Go, PHP, TypeScript and Rust does. It only reads.
 from decimal import Decimal
 
+from polyspec.orm import orm
 from polyspec.orm.models import models
 from .coverage_case import expect_equal, CoverageCase, coverage_main
 
@@ -36,6 +37,12 @@ def model_query_rows(item):
             456000,
             "sum of read_count",
         )
+        alias = author().remove_all_columns().add_column_start_dt_alias_start_year(
+            orm.year()
+        ).get_by_seq(42)
+        alias_values = alias.to_array()
+        expect_equal("StartYear" in alias_values, False, "alias uses its snake_case name")
+        expect_equal(alias_values.get("start_year"), 2026, "alias contains the year result")
         join_sql = []
         unsubscribe = db.subscribe(lambda event: join_sql.append(event.sql) if event.kind == "select" else None)
         joined = author().service_seq(7).join_service_member_seq_with_seq(
@@ -81,7 +88,7 @@ def model_query_rows(item):
 
 
 class CoverageTest(CoverageCase):
-    # Requirements: DSL-57, DSL-58, DSL-60, DSL-62, DSL-80, DSL-82, DSL-99, INT-16, INT-29, INT-30, INT-32, INT-33, PLN-11, PLN-25.
+    # Requirements: DSL-57, DSL-58, DSL-60, DSL-62, DSL-73, DSL-80, DSL-82, DSL-99, INT-16, INT-29, INT-30, INT-32, INT-33, PLN-11, PLN-25.
     def test_model_query_rows(self):
         self.each_item("model_query_rows", model_query_rows)
 

@@ -5,7 +5,7 @@ use super::model::{Author, ServiceMember, User};
 use std::sync::{Arc, Mutex};
 
 #[tokio::test]
-// Requirements: CPX-5.
+// Requirements: CPX-5, DSL-128.
 async fn duplicate_relation_name_reports_config_alias_hint() {
     let fixture = super::temp_sqlite::TempSqlite::create("orm-cpx5");
     let db = polyspec_orm::Db::connect(&fixture.dsn(), 1, polyspec_orm::Config::default()).await.unwrap();
@@ -28,7 +28,7 @@ async fn duplicate_relation_name_reports_config_alias_hint() {
 }
 
 #[tokio::test]
-// Requirements: DSL-57, DSL-58, DSL-60, DSL-62, DSL-80, DSL-82, DSL-99, INT-16, INT-29, INT-30, INT-32, INT-33, PLN-11, PLN-25.
+// Requirements: DSL-57, DSL-58, DSL-60, DSL-62, DSL-73, DSL-80, DSL-82, DSL-99, INT-16, INT-29, INT-30, INT-32, INT-33, PLN-11, PLN-25.
 async fn coverage_model_query_rows() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     run("model_query_rows", async {
@@ -44,6 +44,17 @@ async fn coverage_model_query_rows() {
         assert_eq!(page_names, names, "first page contains the first ordered rows");
         assert_eq!(page.total_count, query.get_count().await.unwrap(), "page total matches get_count");
         assert_eq!(Author::new().connect(&db).service_seq(7).sum_read_count().get_sum().await.unwrap(), 456000.0, "read_count sum of service 7");
+        let alias = Author::new()
+            .connect(&db)
+            .remove_all_columns()
+            .add_column_start_dt_alias_start_year(polyspec_orm::year())
+            .get_by_seq(42)
+            .await
+            .unwrap()
+            .expect("author 42");
+        let alias_values = alias.to_array().unwrap();
+        assert!(alias_values.get("StartYear").is_none(), "alias uses its snake_case name: {alias_values}");
+        assert_eq!(alias_values["start_year"].as_i64(), Some(2026), "alias contains the year result: {alias_values}");
         let author = Author::new().connect(&db).relation(User::new().match_user_seq_with_seq()).get_by_seq(5000).await.unwrap().expect("a row");
         let user = author.get_user_model().unwrap().expect("the user relation of author 5000");
         assert_eq!(user.get_name().unwrap(), "user-1", "user of author 5000");
@@ -84,7 +95,13 @@ async fn coverage_model_query_rows() {
                 assert!(user_seq <= previous, "joined order is descending");
             }
             previous_user_seq = Some(user_seq);
-            let read_total = user.get_read_total().unwrap().unwrap().as_f64().expect("joined aggregate number");
+            let raw_read_total = user.get_read_total().unwrap().unwrap();
+            let read_total = match raw_read_total {
+                serde_json::Value::Number(value) => value.as_f64().expect("joined aggregate number"),
+                serde_json::Value::String(value) => value.parse::<f64>().expect("joined aggregate numeric text"),
+                other => panic!("joined aggregate is not numeric: {other:?}"),
+            };
+            assert!(read_total.is_finite(), "joined aggregate is finite");
             let expected = Author::new().connect(&db).user_seq(user_seq).sum_read_count().get_sum().await.unwrap();
             assert_eq!(read_total, expected, "joined aggregate");
         }

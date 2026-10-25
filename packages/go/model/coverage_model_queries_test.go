@@ -14,7 +14,7 @@ import (
 
 // TestCoverageModelQueryRows counts, with the generated model, the authors in the seed bench database,
 // reads them sorted, aggregates them, and reads users together with the declared match.
-// Requirements: DSL-57, DSL-58, DSL-60, DSL-62, DSL-80, DSL-82, DSL-99, INT-16, INT-29, INT-30, INT-32, INT-33, PLN-11, PLN-25.
+// Requirements: DSL-57, DSL-58, DSL-60, DSL-62, DSL-73, DSL-80, DSL-82, DSL-99, INT-16, INT-29, INT-30, INT-32, INT-33, PLN-11, PLN-25.
 func TestCoverageModelQueryRows(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	db, driver, _ := connectFeature(t)
@@ -43,6 +43,14 @@ func TestCoverageModelQueryRows(t *testing.T) {
 	}
 	if sum := must(model.Author().Connect(db).ServiceSeq(7).SumReadCount().GetSum()); sum != 456000 {
 		t.Fatalf("read_count sum of service_seq 7 = %v, want 456000", sum)
+	}
+	alias := must(model.Author().Connect(db).RemoveAllColumns().AddColumnStartDtAliasStartYear(orm.Year()).GetBySeq(42))
+	aliasValues := alias.ToArray()
+	if _, exists := aliasValues["StartYear"]; exists {
+		t.Fatalf("computed alias retained its method name: %#v", aliasValues)
+	}
+	if got, ok := aliasValues["start_year"].(int64); !ok || got != 2026 {
+		t.Fatalf("computed alias start_year = %#v (%T), want int64(2026)", aliasValues["start_year"], aliasValues["start_year"])
 	}
 	author := must(model.Author().Connect(db).Relation(model.User().MatchUserSeqWithSeq()).GetBySeq(5000))
 	if u := must(author.GetUserModel()); u == nil || readColumn(t, u.GetName) != "user-1" {

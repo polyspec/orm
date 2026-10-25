@@ -41,6 +41,15 @@ final class CoverageModelQueriesCase
         $sum = (new Author())($db)->serviceSeq(7)->sumReadCount()->getSum();
         Assert::assertSame(456000.0, $sum, "read_count sum of service_seq 7 is $sum");
 
+        $alias = (new Author())($db)
+            ->removeAllColumns()
+            ->addColumnStartDtAliasStartYear(\Polyspec\Orm\Orm::year())
+            ->getBySeq(42);
+        Assert::assertInstanceOf(Author::class, $alias);
+        $aliasValues = $alias->toArray();
+        Assert::assertArrayNotHasKey('StartYear', $aliasValues, 'alias uses its snake_case name');
+        Assert::assertSame(2026, $aliasValues['start_year'] ?? null, 'alias contains the year result');
+
         $joinSql = '';
         $unsubscribe = $db->subscribe(static function (StatementEvent $event) use (&$joinSql): void {
             if ($event->kind === StatementEvent::SELECT) {

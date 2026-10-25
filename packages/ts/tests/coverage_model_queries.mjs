@@ -1,11 +1,11 @@
 // model_queries coverage: checks the conditions, ordering, limit, sums, and relation reads of the generated model on the seeded bench
 // database. It only reads.
 import assert from 'node:assert/strict';
-import { Author, ServiceMember, User, connect } from '../dist/index.js';
+import { Author, ServiceMember, User, connect, orm } from '../dist/index.js';
 import { runCases } from './coverage_case.mjs';
 
 await runCases('coverage_model_queries.mjs', {
-  // Requirements: DSL-57, DSL-58, DSL-60, DSL-62, DSL-80, DSL-82, DSL-99, INT-16, INT-29, INT-30, INT-32, INT-33, PLN-11, PLN-25, PLN-35.
+  // Requirements: DSL-57, DSL-58, DSL-60, DSL-62, DSL-73, DSL-80, DSL-82, DSL-99, INT-16, INT-29, INT-30, INT-32, INT-33, PLN-11, PLN-25, PLN-35.
   async model_query_rows({ driver, dsn }) {
     const db = await connect(dsn, { aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index' });
     try {
@@ -19,6 +19,11 @@ await runCases('coverage_model_queries.mjs', {
       assert.deepEqual(page.items.values().map(b => b.getName()), rows.values().map(b => b.getName()), 'first page contains the first ordered rows');
       assert.equal(page.totalCount, await query.getCount(), 'page total matches getCount');
       assert.equal(await new Author().connect(db).serviceSeq(7).sumReadCount().getSum(), 456000, 'sum of read_count');
+      const alias = await new Author().connect(db)
+        .removeAllColumns().addColumnStartDtAliasStartYear(orm.year()).getBySeq(42);
+      const aliasValues = alias.toArray();
+      assert.equal(Object.hasOwn(aliasValues, 'StartYear'), false, 'alias uses its snake_case name');
+      assert.equal(Number(aliasValues.start_year), 2026, 'alias contains the year result');
       let joinSQL = '';
       const unsubscribe = db.subscribe(event => { if (event.kind === 'select') joinSQL = event.sql; });
       const joined = await new Author().connect(db).serviceSeq(7)
@@ -38,7 +43,7 @@ await runCases('coverage_model_queries.mjs', {
         assert.ok(user, 'joined user');
         if (previousUserSeq !== undefined) assert.ok(user.getSeq() <= previousUserSeq, 'joined order is descending');
         previousUserSeq = user.getSeq();
-        assert.equal(user.getReadTotal(), BigInt(await new Author().connect(db).userSeq(user.getSeq()).sumReadCount().getSum()), 'joined aggregate');
+        assert.equal(BigInt(user.getReadTotal()), BigInt(await new Author().connect(db).userSeq(user.getSeq()).sumReadCount().getSum()), 'joined aggregate');
       }
       const author = await new Author().connect(db).relation(new User().matchUserSeqWithSeq()).getBySeq(5000);
       assert.equal(author.getUserModel()?.getName(), 'user-1', 'user loaded through the relation');
