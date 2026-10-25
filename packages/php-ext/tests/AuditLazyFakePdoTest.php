@@ -263,41 +263,6 @@ final class AuditLazyFakePdoTest extends TestCase
     public function testCloseDuringTransactionRollsBackBeforeReleasingNativeConnection(): void
     {
         $pdo = new AuditLazyFakePdo();
-        $db = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
-        $failure = new RuntimeException('the caller abandoned the transaction');
-
-        try {
-            $caught = $this->closeDuringTransaction($db, $failure);
-
-            self::assertSame($failure, $caught, 'the callback failure survives transaction disposal');
-            self::assertSame(
-                [
-                    'CREATE TABLE IF NOT EXISTS "orm__row_lock" ("id" INTEGER PRIMARY KEY CHECK ("id" = 1))',
-                    'BEGIN IMMEDIATE',
-                    'ROLLBACK',
-                ],
-                array_column($pdo->operations, 'sql'),
-                'native close rolls back the active transaction before release',
-            );
-            self::assertFalse($pdo->inTransaction(), 'the native transaction is settled before close returns');
-
-            $closed = null;
-            try {
-                $db->transaction(
-                    static function (): void {
-                    },
-                    retry: 0
-                );
-            } catch (\Polyspec\Orm\OrmException $error) {
-                $closed = $error;
-            }
-            self::assertSame(
-                'CONFIG',
-                $closed?->code_,
-                'the disposed native connection cannot start another transaction'
-            );
-        } finally {
-            $db->close();
-        }
+        $this->assertCloseDuringTransactionRollsBack($pdo, static fn(): array => array_column($pdo->operations, 'sql'));
     }
 }

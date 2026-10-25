@@ -38,6 +38,7 @@ require_once __DIR__ . '/DbspecTimedCases.php';
 require_once __DIR__ . '/DbspecIntrospectQueryCountCases.php';
 require_once __DIR__ . '/DbspecStressTestSupport.php';
 require_once __DIR__ . '/ModelTestFailingPdo.php';
+require_once __DIR__ . '/StatementEventLog.php';
 require_once __DIR__ . '/TransactionFailureCases.php';
 require_once __DIR__ . '/TransactionCloseDuringFailure.php';
 require_once __DIR__ . '/Served.php';

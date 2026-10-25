@@ -12,7 +12,6 @@ use Polyspec\Orm\Db;
 use Polyspec\Orm\OrmException;
 use Polyspec\Orm\StatementEvent;
 use PHPUnit\Framework\TestCase;
-use RuntimeException;
 
 // Requirements: INT-72, DIA-181, PLN-17.
 final class TransactionFailureTest extends TestCase
@@ -24,33 +23,7 @@ final class TransactionFailureTest extends TestCase
     public function testCloseDuringTransactionRollsBackAndPreservesCallbackFailure(): void
     {
         $pdo = new TransactionTrackingPdo();
-        $db = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
-        $failure = new RuntimeException('the caller abandoned the transaction');
-
-        try {
-            $caught = $this->closeDuringTransaction($db, $failure);
-
-            self::assertSame($failure, $caught, 'closing the connection preserves the callback failure');
-            self::assertSame([
-                'CREATE TABLE IF NOT EXISTS "orm__row_lock" ("id" INTEGER PRIMARY KEY CHECK ("id" = 1))',
-                'BEGIN IMMEDIATE',
-                'ROLLBACK',
-            ], $pdo->statements, 'close rolls back before releasing the connection');
-            self::assertFalse($pdo->inTransaction(), 'the active transaction is settled');
-
-            try {
-                $db->transaction(
-                    static function (): void {
-                    },
-                    retry: 0
-                );
-                self::fail('the disposed connection must reject another transaction');
-            } catch (OrmException $error) {
-                self::assertSame(Code::CONFIG, $error->code_);
-            }
-        } finally {
-            $db->close();
-        }
+        $this->assertCloseDuringTransactionRollsBack($pdo, static fn(): array => $pdo->statements);
     }
 
     public function testStatementFailureKeepsItsDriverCause(): void
@@ -81,12 +54,8 @@ final class TransactionFailureTest extends TestCase
 
     public function testObservedStatementMetadataIsPreservedForObservedRunAndFetch(): void
     {
-        $pdo = new ModelTestFailingPdo('sqlite::memory:');
-        $db = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
-        $events = [];
-        $unsubscribe = $db->subscribe(static function (StatementEvent $event) use (&$events): void {
-            $events[] = $event;
-        });
+        $log = new StatementEventLog(new ModelTestFailingPdo('sqlite::memory:'));
+        $db = $log->db;
 
         try {
             self::assertSame(
@@ -103,8 +72,8 @@ final class TransactionFailureTest extends TestCase
             $db->run(StatementEvent::SCHEMA, ['sample'], 7, 'CREATE TABLE sample (value INTEGER)');
             self::assertSame([['17']], $db->fetch(StatementEvent::UTILITY, ['sample'], 7, 'SELECT ? AS value', [17]));
 
-            self::assertCount(3, $events);
-            foreach ($events as $index => $event) {
+            self::assertCount(3, $log->events);
+            foreach ($log->events as $index => $event) {
                 self::assertSame(
                     [
                         'sql' => ['SELECT ?', 'CREATE TABLE sample (value INTEGER)', 'SELECT ? AS value'][$index],
@@ -126,8 +95,7 @@ final class TransactionFailureTest extends TestCase
                 self::assertGreaterThanOrEqual(0.0, $event->elapsed);
             }
         } finally {
-            $unsubscribe();
-            $db->close();
+            $log->close();
         }
     }
 }

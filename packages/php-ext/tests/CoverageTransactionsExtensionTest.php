@@ -8,8 +8,6 @@ use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\Medium;
 use Polyspec\Orm\Db;
 use Polyspec\Orm\StatementEvent;
-use Polyspec\Orm\Config;
-use DateTimeZone;
 use PDO;
 use ReflectionMethod;
 
@@ -115,7 +113,7 @@ final class CoverageTransactionsExtensionTest extends CoverageTransactionsTest
     /**
      * Runs `$body` on a native SQLite Db of a new in-memory database that holds the table lifecycle_rows, with the
      * statement events recorded from its creation on; `$body` reads them with its second argument. The Db is closed
-     * and the subscription ended on every path.
+     * and the recording ended on every path.
      *
      * @param \Closure(Db, \Closure(): list<StatementEvent>): void $body
      */
@@ -123,19 +121,12 @@ final class CoverageTransactionsExtensionTest extends CoverageTransactionsTest
     {
         $pdo = new PDO('sqlite::memory:');
         $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $db = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
-        $events = [];
-        $unsubscribe = $db->subscribe(static function (StatementEvent $event) use (&$events): void {
-            $events[] = $event;
-        });
+        $log = new StatementEventLog($pdo);
         try {
-            $db->run(StatementEvent::SCHEMA, [], null, 'CREATE TABLE lifecycle_rows (value TEXT NOT NULL)');
-            $body($db, static function () use (&$events): array {
-                return $events;
-            });
+            $log->db->run(StatementEvent::SCHEMA, [], null, 'CREATE TABLE lifecycle_rows (value TEXT NOT NULL)');
+            $body($log->db, static fn(): array => $log->events);
         } finally {
-            $unsubscribe();
-            $db->close();
+            $log->close();
         }
     }
 }
