@@ -258,6 +258,10 @@
           "reason": "generated: an internal test of the PHP package that checks the output of a generator of the owner, not a behaviour of the contract (K313)"
         },
         {
+          "glob": "packages/php/tests/OrmGenTestSupportTest.php",
+          "reason": "harness: an internal test of the PHP package that checks the test harness of the owner, not a behaviour of the contract (K313)"
+        },
+        {
           "glob": "packages/php/tests/RelationKeysTest.php",
           "reason": "test: an internal test of the PHP package that tests a helper or loader of the owner, not a behaviour of the contract (K313)"
         },

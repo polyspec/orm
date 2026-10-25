@@ -3611,7 +3611,6 @@
         "packages/ts/tests/generate.mjs",
         "packages/rust/build/tests/generate.rs",
         "packages/php/tests/OrmGenTest.php",
-        "packages/php/tests/OrmGenTestSupport.php",
         "packages/php/tests/ModelMethodsTest.php",
         "packages/php/tests/OrmGenScanTest.php",
         "packages/php-ext/tests/OrmGenScanNativeTest.php",
@@ -11815,14 +11814,23 @@
     {
       "id": "phpstan-test-runner",
       "paths": [
-        "packages/php/tests/phpstan-runner.php",
-        "packages/php/tests/OrmGenTestSupport.php"
+        "packages/php/tests/phpstan-runner.php"
       ],
       "tests": [
         "packages/php/tests/ClientGenericsTest.php",
         "packages/php/tests/ModelMethodsTest.php"
       ],
       "command": "make --no-print-directory phpstan-test-runner-helper-check"
+    },
+    {
+      "id": "php-orm-gen-test-support",
+      "paths": [
+        "packages/php/tests/OrmGenTestSupport.php"
+      ],
+      "tests": [
+        "packages/php/tests/OrmGenTestSupportTest.php"
+      ],
+      "command": "php vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenTestSupportTest.php"
     },
     {
       "id": "rust-dbspec-json-lines",
