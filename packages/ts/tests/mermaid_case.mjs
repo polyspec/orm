@@ -89,7 +89,7 @@ export function invalidCases() {
   let runs = 0;
   for (const c of vectors.invalid) {
     vector(c.id, () => {
-      const result = importMermaid(text(c.mermaid), 'imported');
+      const result = importMermaid(text(c.mermaid), c.name ?? 'imported');
       assert.equal(result.document, null, 'document of an invalid diagram');
       assert.deepEqual(result.diagnostics.map(d => [d.rule, d.line, d.column]), c.errors, 'diagnostics');
       runs++;

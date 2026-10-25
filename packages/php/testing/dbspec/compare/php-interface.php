@@ -622,9 +622,9 @@ function dbspec_export(string $dbspec, object $document): string
 }
 
 /** Writes the emitted document of the import and the missing objects, or the diagnostics. */
-function dbspec_import(string $dbspec, string $text): void
+function dbspec_import(string $dbspec, string $text, string $name = 'imported'): void
 {
-    $result = $dbspec::importMermaid($text, 'imported');
+    $result = $dbspec::importMermaid($text, $name);
     if ($result->document === null) {
         dbspec_plan_diagnostics($result->diagnostics);
         return;
@@ -652,7 +652,7 @@ function dbspec_write_mermaid(string $dbspec, string $mermaidPath): void
     foreach (['import', 'invalid'] as $kind) {
         foreach ($mermaid[$kind] as $case) {
             echo "mermaid/$kind/{$case['id']}\n";
-            dbspec_import($dbspec, dbspec_join($case['mermaid'], false, false));
+            dbspec_import($dbspec, dbspec_join($case['mermaid'], false, false), $case['name'] ?? 'imported');
         }
     }
     foreach ($mermaid['round_trip'] as $case) {

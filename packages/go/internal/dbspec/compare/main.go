@@ -439,6 +439,7 @@ type exportCase struct {
 type importCase struct {
 	ID      string   `json:"id"`
 	Mermaid []string `json:"mermaid"`
+	Name    string   `json:"name"`
 }
 
 type roundTripCase struct {
@@ -465,8 +466,11 @@ func writeExport(out *output, d *dbspec.Document) string {
 }
 
 // writeImport prints the document emitted by import and the missing objects, or the diagnostic.
-func writeImport(out *output, text string) {
-	d, dropped, diagnostics := dbspec.ImportMermaid(text, "imported")
+func writeImport(out *output, text, name string) {
+	if name == "" {
+		name = "imported"
+	}
+	d, dropped, diagnostics := dbspec.ImportMermaid(text, name)
 	if len(diagnostics) > 0 {
 		writeDiagnostics(out, diagnostics)
 		return
@@ -495,11 +499,11 @@ func writeMermaid(out *output, v mermaidVectors) error {
 	}
 	for _, c := range v.Import {
 		out.printf("mermaid/import/%s\n", c.ID)
-		writeImport(out, join(c.Mermaid, false, false))
+		writeImport(out, join(c.Mermaid, false, false), c.Name)
 	}
 	for _, c := range v.Invalid {
 		out.printf("mermaid/invalid/%s\n", c.ID)
-		writeImport(out, join(c.Mermaid, false, false))
+		writeImport(out, join(c.Mermaid, false, false), c.Name)
 	}
 	for _, c := range v.RoundTrip {
 		out.printf("mermaid/round_trip/%s\n", c.ID)
@@ -518,7 +522,7 @@ func writeMermaid(out *output, v mermaidVectors) error {
 		}
 		text := writeExport(out, d)
 		out.printf("mermaid/round_trip/%s/import\n", c.ID)
-		writeImport(out, text)
+		writeImport(out, text, "imported")
 	}
 	return nil
 }

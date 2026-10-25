@@ -143,7 +143,7 @@ final class DbspecMermaidTest extends TestCase
     public function testInvalid(array $case): void
     {
         $clock = cpuCaseBegin(MERMAID_CASE_CPU_SECONDS);
-        $result = Dbspec::importMermaid(mermaid_join($case['mermaid']), 'imported');
+        $result = Dbspec::importMermaid(mermaid_join($case['mermaid']), $case['name'] ?? 'imported');
         Assert::assertNull($result->document, "invalid/{$case['id']}: imported a document");
         $got = array_map(static fn(Diagnostic $d): array => [$d->rule, $d->line, $d->column], $result->diagnostics);
         Assert::assertSame($case['errors'], $got, "invalid/{$case['id']} errors");

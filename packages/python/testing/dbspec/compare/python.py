@@ -407,8 +407,8 @@ def write_export(document):
 
 
 # write_import prints the document emitted by import and the missing objects, or the diagnostic.
-def write_import(text):
-    result = import_mermaid(text, "imported")
+def write_import(text, name="imported"):
+    result = import_mermaid(text, name)
     if result["document"] is None:
         write_plan_diagnostics(result["diagnostics"])
         return
@@ -431,7 +431,7 @@ for c in mermaid["export"]:
 for kind in ["import", "invalid"]:
     for c in mermaid[kind]:
         out.append(f"mermaid/{kind}/{c['id']}")
-        write_import(join(c["mermaid"], False, False))
+        write_import(join(c["mermaid"], False, False), c.get("name", "imported"))
 
 for c in mermaid["round_trip"]:
     out.append(f"mermaid/round_trip/{c['id']}")

@@ -87,7 +87,7 @@ def run_import(c) -> None:
 
 
 def run_invalid(c) -> None:
-    result = import_mermaid(text(c["mermaid"]), "imported")
+    result = import_mermaid(text(c["mermaid"]), c.get("name", "imported"))
     equal(result["document"], None, "document of an invalid diagram")
     equal(diagnostic_triples(result["diagnostics"]), c["errors"], "diagnostics")
 

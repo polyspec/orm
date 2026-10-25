@@ -38,6 +38,7 @@ type mermaidImportCase struct {
 
 type mermaidInvalidCase struct {
 	ID      string
+	Name    string
 	Mermaid []string
 	Errors  [][]any
 }
@@ -101,6 +102,11 @@ func decodeMermaidVectors(r vectorReader, object map[string]any) (mermaidVectors
 	if v.Invalid, err = vectorCases(r, object, "invalid", func(c map[string]any, location, id string) (mermaidInvalidCase, error) {
 		m := mermaidInvalidCase{ID: id}
 		var err error
+		if _, ok := c["name"]; ok {
+			if m.Name, err = r.string(c, location, "name"); err != nil {
+				return m, err
+			}
+		}
 		if m.Mermaid, err = r.linesField(c, location, "mermaid"); err != nil {
 			return m, err
 		}
@@ -218,7 +224,11 @@ func checkMermaidImport(t *testing.T, c mermaidImportCase) {
 
 func checkMermaidInvalid(t *testing.T, c mermaidInvalidCase) {
 	runTimed(t, c.ID, 5*time.Second, func() error {
-		_, _, diagnostics := ImportMermaid(mermaidJoin(c.Mermaid), "imported")
+		name := c.Name
+		if name == "" {
+			name = "imported"
+		}
+		_, _, diagnostics := ImportMermaid(mermaidJoin(c.Mermaid), name)
 		var got [][]any
 		for _, d := range diagnostics {
 			got = append(got, []any{d.Rule, float64(d.Line), float64(d.Column)})

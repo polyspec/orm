@@ -125,7 +125,8 @@ fn import_case(case: &Value) -> Result<(), String> {
 }
 
 fn invalid_case(case: &Value) -> Result<(), String> {
-    let diagnostics = match import_mermaid(&lines(&case["mermaid"]), "imported") {
+    let name = case.get("name").and_then(Value::as_str).unwrap_or("imported");
+    let diagnostics = match import_mermaid(&lines(&case["mermaid"]), name) {
         Ok(_) => Vec::new(),
         Err(diagnostics) => diagnostics,
     };

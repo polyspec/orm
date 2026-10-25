@@ -178,6 +178,10 @@
           "id": {
             "type": "string"
           },
+          "name": {
+            "type": "string",
+            "description": "Optional imported document name; omitted cases use imported."
+          },
           "mermaid": {
             "$ref": "#/$defs/lines"
           },

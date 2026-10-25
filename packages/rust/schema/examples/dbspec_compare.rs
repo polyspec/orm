@@ -107,6 +107,7 @@ struct ExportCase {
 struct ImportCase {
     id: String,
     mermaid: Vec<String>,
+    name: String,
 }
 
 struct RoundTripCase {
@@ -315,7 +316,11 @@ fn read_plans(path: &str) -> Result<PlanVectors, String> {
 /// Reads tests/dbspec/mermaid.json.
 fn read_mermaid(path: &str) -> Result<MermaidVectors, String> {
     let v = open(path, "mermaid")?;
-    let import_case = |case: &Value| ImportCase { id: string(&case["id"]), mermaid: lines(&case["mermaid"]) };
+    let import_case = |case: &Value| ImportCase {
+        id: string(&case["id"]),
+        mermaid: lines(&case["mermaid"]),
+        name: case.get("name").and_then(Value::as_str).unwrap_or("imported").to_owned(),
+    };
     Ok(MermaidVectors {
         export: list(&v["export"])
             .iter()
@@ -616,8 +621,8 @@ fn write_export(out: &mut impl Write, document: &Document) -> std::io::Result<St
 }
 
 /// Prints the document emitted by import and the missing objects, or the diagnostic.
-fn write_import(out: &mut impl Write, text: &str) -> std::io::Result<()> {
-    match polyspec_orm_schema::dbspec::import_mermaid(text, "imported") {
+fn write_import(out: &mut impl Write, text: &str, name: &str) -> std::io::Result<()> {
+    match polyspec_orm_schema::dbspec::import_mermaid(text, name) {
         Err(diagnostics) => write_plan_diagnostics(out, &diagnostics),
         Ok((document, dropped)) => {
             for line in polyspec_orm_schema::dbspec::emit(&document).split('\n') {
@@ -645,7 +650,7 @@ fn write_mermaid(out: &mut impl Write, mermaid: &MermaidVectors) -> Result<(), S
     for (kind, cases) in [("import", &mermaid.import), ("invalid", &mermaid.invalid)] {
         for case in cases {
             writeln!(out, "mermaid/{kind}/{}", case.id).map_err(io)?;
-            write_import(out, &join(&case.mermaid, false, false)).map_err(io)?;
+            write_import(out, &join(&case.mermaid, false, false), &case.name).map_err(io)?;
         }
     }
     for case in &mermaid.round_trip {
@@ -665,7 +670,7 @@ fn write_mermaid(out: &mut impl Write, mermaid: &MermaidVectors) -> Result<(), S
             Ok(document) => {
                 let text = write_export(out, &document).map_err(io)?;
                 writeln!(out, "mermaid/round_trip/{id}/import").map_err(io)?;
-                write_import(out, &text).map_err(io)?;
+        write_import(out, &text, "imported").map_err(io)?;
             }
         }
     }

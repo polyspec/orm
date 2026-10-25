@@ -733,6 +733,23 @@
           1
         ]
       ],
+      "id": "catalog-build-failure-is-diagnostic",
+      "mermaid": [
+        "erDiagram",
+        "    account {",
+        "        i64 id PK",
+        "    }"
+      ],
+      "name": "invalid name"
+    },
+    {
+      "errors": [
+        [
+          "mermaid",
+          1,
+          1
+        ]
+      ],
       "id": "no-header",
       "mermaid": [
         "    a {",
