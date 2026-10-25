@@ -702,10 +702,6 @@
           "reason": "harness: tests a TypeScript test-only schema fixture adapter that assembles the public manifest result into the shape generated test models consume; shared manifest/hash behavior is covered by dbspec vectors"
         },
         {
-          "glob": "packages/ts/tests/split-null.test.mjs",
-          "reason": "test: tests private split-result identity helpers with SQL NULL rows that cannot be produced by a valid primary-key schema; public null collection-key behavior remains in the six-client collection-key-null-is-codec-decode unit"
-        },
-        {
           "glob": "packages/ts/tests/syntax-vectors.mjs",
           "reason": "harness: regenerates tests/dbspec/syntax.json from its cases and the built TypeScript analyzer to prevent fixture drift; cross-client analyzer results are exercised by dbspec-syntax"
         },
@@ -3997,7 +3993,8 @@
         "INT-32",
         "INT-33",
         "PLN-11",
-        "PLN-25"
+        "PLN-25",
+        "DSL-73"
       ],
       "bindings": [
         {
@@ -20013,6 +20010,84 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/collection_identity.rs",
           "id": "every_fixture_key_has_its_own_identity"
+        }
+      ]
+    },
+    {
+      "id": "split-root-merge-rejects-sql-null-identity",
+      "kind": "feature",
+      "requirements": [
+        "PRT-35"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/collection_key_test.go",
+          "id": "TestSplitQueryRowKeyRejectsSQLNull"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CollectionIdentityTest.php",
+          "id": "CollectionIdentityTest::testSplitRootMergeRejectsSqlNullIdentity"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelAssemblyTest.php",
+          "id": "ModelAssemblyTest::testSplitRootMergeRejectsSqlNullIdentity"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/split-null.test.mjs",
+          "id": "split root merge rejects SQL NULL identity"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_split_null.py",
+          "id": "SplitNullTest.test_split_root_merge_rejects_sql_null_identity"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/model.rs",
+          "id": "model::related_tests::split_root_merge_rejects_sql_null_identity"
+        }
+      ]
+    },
+    {
+      "id": "split-root-merge-retains-falsey-non-null-identities",
+      "kind": "feature",
+      "requirements": [
+        "PRT-35"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/collection_key_test.go",
+          "id": "TestSplitQueryRowKeyRejectsSQLNull"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CollectionIdentityTest.php",
+          "id": "CollectionIdentityTest::testSplitRootMergeRejectsSqlNullIdentity"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelAssemblyTest.php",
+          "id": "ModelAssemblyTest::testSplitRootMergeRejectsSqlNullIdentity"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/split-null.test.mjs",
+          "id": "split root merge retains falsey non-NULL identities"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_split_null.py",
+          "id": "SplitNullTest.test_split_root_merge_retains_falsey_non_null_identities"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/model.rs",
+          "id": "model::related_tests::split_root_merge_rejects_sql_null_identity"
         }
       ]
     },

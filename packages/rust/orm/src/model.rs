@@ -1895,6 +1895,7 @@ mod related_tests {
         }
     }
 
+    // Requirements: PRT-35.
     #[test]
     fn split_root_merge_rejects_sql_null_identity() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);

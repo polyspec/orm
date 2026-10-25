@@ -4,6 +4,7 @@ import { splitRowKey } from '../dist/database.js';
 
 const key = [{ column: 'id', index: 0 }];
 
+// Requirements: PRT-35.
 caseTest('split root merge rejects SQL NULL identity', COMPUTE, () => {
   assert.throws(
     () => splitRowKey([null], key),
@@ -15,6 +16,7 @@ caseTest('split root merge rejects SQL NULL identity', COMPUTE, () => {
   );
 });
 
+// Requirements: PRT-35.
 caseTest('split root merge retains falsey non-NULL identities', COMPUTE, () => {
   assert.notEqual(splitRowKey([0], key), splitRowKey([''], key));
   assert.notEqual(splitRowKey([false], key), splitRowKey([0], key));

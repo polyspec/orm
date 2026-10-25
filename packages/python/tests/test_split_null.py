@@ -9,6 +9,7 @@ from packages.python.tests.testcase import COMPUTE
 class SplitNullTest(unittest.TestCase):
     deadline = COMPUTE
 
+    # Requirements: PRT-35.
     def test_split_root_merge_rejects_sql_null_identity(self):
         with self.assertRaises(OrmError) as caught:
             _split_row_key([None], [{"column": "id", "index": 0}])
@@ -30,6 +31,7 @@ class SplitNullTest(unittest.TestCase):
             "CODEC_DECODE: split query row identity contains SQL NULL",
         )
 
+    # Requirements: PRT-35.
     def test_split_root_merge_retains_falsey_non_null_identities(self):
         refs = [{"column": "id", "index": 0}]
         self.assertNotEqual(_split_row_key([0], refs), _split_row_key([""], refs))

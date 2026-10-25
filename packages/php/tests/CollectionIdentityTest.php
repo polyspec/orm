@@ -20,6 +20,7 @@ use Polyspec\Orm\OrmException;
 #[Small]
 final class CollectionIdentityTest extends TestCase
 {
+    // Requirements: PRT-35.
     use CollectionIdentityCases;
     use CollectionWeakTypedKeyCases;
 

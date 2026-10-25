@@ -252,6 +252,7 @@ func TestSplitQueryPropagatesInvalidKey(t *testing.T) {
 	}
 }
 
+// Requirements: PRT-35.
 func TestSplitQueryRowKeyRejectsSQLNull(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	_, err := splitQueryRowKey([]any{nil}, []plan.KeyRef{{Column: "id", Index: 0}})

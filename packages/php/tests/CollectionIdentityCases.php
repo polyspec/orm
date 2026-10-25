@@ -95,6 +95,7 @@ trait CollectionIdentityCases
         self::assertNull(Db::rowKey($row, $refs));
     }
 
+    // Requirements: PRT-35.
     public function testSplitRootMergeRejectsSqlNullIdentity(): void
     {
         $refs = [['column' => 'id', 'index' => 0]];
