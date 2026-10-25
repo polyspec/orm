@@ -93,7 +93,19 @@ final class ModelWriteSurfaceTest extends TestCase
         $model = new \ReflectionClass(Model::class);
         self::assertTrue($model->isInternal());
         self::assertSame('polyspec_orm', $model->getExtensionName());
-        foreach (['encodeValue', 'create', 'creates', 'update', 'save', 'delete', 'deleteRow', 'restore', 'restoreOrCreate'] as $name) {
+        foreach (
+            [
+            'encodeValue',
+            'create',
+            'creates',
+            'update',
+            'save',
+            'delete',
+            'deleteRow',
+            'restore',
+            'restoreOrCreate',
+            ] as $name
+        ) {
             $method = $model->getMethod($name);
             self::assertTrue($method->isInternal(), $name);
             self::assertSame('polyspec_orm', $method->getExtensionName(), $name);

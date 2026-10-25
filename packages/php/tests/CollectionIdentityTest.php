@@ -120,6 +120,4 @@ final class CollectionIdentityTest extends TestCase
             self::assertSame($expected['code'] . ': ' . $expected['message'], $e->getMessage());
         }
     }
-
-
 }

@@ -231,10 +231,16 @@ function sameHandleChildHookOnce(string $dsn): void
     $parent = (new HookEntry())($hooked)
         ->relations((new HookItem())($hooked)->matchPartWithPart())
         ->get();
-    hookCheck($calls === ['hook_entry' => 1, 'hook_item' => 1], 'the root and explicitly connected child each run one hook: ' . json_encode($calls));
+    hookCheck(
+        $calls === ['hook_entry' => 1, 'hook_item' => 1],
+        'the root and explicitly connected child each run one hook: ' . json_encode($calls),
+    );
     hookCheck($parent instanceof HookEntry, 'the relation query returns its parent row');
     $children = hookLabels($parent->getHookItemModels());
-    hookCheck($children === ['a1', 'a2'], 'the relation child returns the two matching rows: ' . json_encode($children));
+    hookCheck(
+        $children === ['a1', 'a2'],
+        'the relation child returns the two matching rows: ' . json_encode($children),
+    );
     $db->close();
 }
 

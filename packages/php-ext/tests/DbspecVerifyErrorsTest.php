@@ -9,6 +9,7 @@ use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Dbspec\Dbspec;
+
 use function Polyspec\Orm\Tests\verify_errors_case;
 use function Polyspec\Orm\Tests\verify_errors_plan;
 

@@ -39,8 +39,10 @@ final class SetReaderDiagnosticsTest extends TestCase
             public function url_stat(string $path, int $flags): array|false
             {
                 $fixture =& $GLOBALS['setReaderDiagnostics'];
-                if (isset($fixture['failStat'][$path]) && (!$fixture['failStat'][$path]['followOnly']
-                    || ($flags & STREAM_URL_STAT_LINK) === 0)) {
+                if (
+                    isset($fixture['failStat'][$path]) && (!$fixture['failStat'][$path]['followOnly']
+                    || ($flags & STREAM_URL_STAT_LINK) === 0)
+                ) {
                     return false;
                 }
                 $mode = isset($fixture['links'][$path]) && ($flags & STREAM_URL_STAT_LINK) !== 0
@@ -122,7 +124,10 @@ final class SetReaderDiagnosticsTest extends TestCase
         $GLOBALS['setReaderDiagnostics']['failStat']['setdiag://root'] = [
             'followOnly' => false,
         ];
-        @trigger_error('stale warning from an earlier operation', E_USER_WARNING);
+        // A warning of an earlier operation, left in error_get_last; it is not reported, as no handler should see it.
+        $reporting = error_reporting(0);
+        trigger_error('stale warning from an earlier operation', E_USER_WARNING);
+        error_reporting($reporting);
 
         $error = SetReader::read(self::SET)->errors[0];
 
@@ -160,7 +165,8 @@ final class SetReaderDiagnosticsTest extends TestCase
 
     public function testAllowedIntermediateLinkStatFailureIsReported(): void
     {
-        $GLOBALS['setReaderDiagnostics']['content'] = '{"schema":1,"documents":["shop.dbs"],"external":["../outside/shop.dbs"]}';
+        $GLOBALS['setReaderDiagnostics']['content'] =
+            '{"schema":1,"documents":["shop.dbs"],"external":["../outside/shop.dbs"]}';
         $link = 'setdiag://root/..';
         $GLOBALS['setReaderDiagnostics']['links'][$link] = true;
         $GLOBALS['setReaderDiagnostics']['failStat'][$link] = [

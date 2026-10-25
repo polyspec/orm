@@ -18,9 +18,45 @@ final class RuntimeModelGeneratedFixture
             'entity' => 'account', 'table' => 'users', 'pk' => ['id'], 'identity' => 'id',
             'updated' => '', 'soft_delete' => '', 'aes_version' => '', 'audit' => '', 'audit_record' => '',
             'columns' => [
-                'id' => ['name' => 'id', 'type' => 'i64', 'nullable' => false, 'default' => false, 'default_now' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => true, 'foreign_key' => false],
-                'title' => ['name' => 'title', 'type' => 'varchar', 'nullable' => false, 'default' => false, 'default_now' => false, 'select' => false, 'codec' => [], 'blind_index' => '', 'pk' => false, 'foreign_key' => false, 'length' => 64],
-                'amount' => ['name' => 'amount', 'type' => 'decimal', 'nullable' => true, 'default' => true, 'default_now' => false, 'select' => true, 'codec' => [], 'blind_index' => '', 'pk' => false, 'foreign_key' => false, 'precision' => 12, 'scale' => 2],
+                'id' => [
+                    'name' => 'id',
+                    'type' => 'i64',
+                    'nullable' => false,
+                    'default' => false,
+                    'default_now' => false,
+                    'select' => true,
+                    'codec' => [],
+                    'blind_index' => '',
+                    'pk' => true,
+                    'foreign_key' => false,
+                ],
+                'title' => [
+                    'name' => 'title',
+                    'type' => 'varchar',
+                    'nullable' => false,
+                    'default' => false,
+                    'default_now' => false,
+                    'select' => false,
+                    'codec' => [],
+                    'blind_index' => '',
+                    'pk' => false,
+                    'foreign_key' => false,
+                    'length' => 64,
+                ],
+                'amount' => [
+                    'name' => 'amount',
+                    'type' => 'decimal',
+                    'nullable' => true,
+                    'default' => true,
+                    'default_now' => false,
+                    'select' => true,
+                    'codec' => [],
+                    'blind_index' => '',
+                    'pk' => false,
+                    'foreign_key' => false,
+                    'precision' => 12,
+                    'scale' => 2,
+                ],
             ],
             'unique' => ['uq_title' => ['title']], 'indexes' => ['ix_title' => ['title']],
             'manifest_hash' => 'sha256:generated-fixture',
@@ -70,7 +106,10 @@ DBSPEC;
         self::assertSame(2, $model->entity('account')['columns']['amount']['scale']);
         self::assertFalse($model->entity('account')['columns']['title']['select']);
         self::assertSame(['document 0' => self::OWNED . "\n"], RuntimeModel::splitManifest($model->manifestText));
-        self::assertSame($model->entities, RuntimeModel::build(RuntimeModel::loadSet($model->manifestText, $model->externalText))->entities);
+        self::assertSame(
+            $model->entities,
+            RuntimeModel::build(RuntimeModel::loadSet($model->manifestText, $model->externalText))->entities,
+        );
     }
 
     public function testOwnedAndExternalManifestEntities(): void
@@ -206,7 +245,11 @@ DBSPEC;
 
     public function testFromModelsAcceptsExactMetadataAndReportsFirstChangedPath(): void
     {
-        $model = RuntimeModel::fromModels('sha256:declared', RuntimeModel::build(RuntimeModel::parse(['source.dbs' => self::OWNED]))->manifestText, [RuntimeModelGeneratedFixture::class]);
+        $model = RuntimeModel::fromModels(
+            'sha256:declared',
+            RuntimeModel::build(RuntimeModel::parse(['source.dbs' => self::OWNED]))->manifestText,
+            [RuntimeModelGeneratedFixture::class],
+        );
         self::assertSame('sha256:declared', $model->manifestHash);
         self::assertSame('account', $model->entities['account']['entity']);
         try {

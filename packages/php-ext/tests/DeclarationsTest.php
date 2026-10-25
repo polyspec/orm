@@ -29,15 +29,18 @@ function requiredModules(): array
 }
 
 /**
- * dynamicModules are the modules that php -n loads from extension_dir: ORM_PHP_DYNAMIC_MODULES, a comma list that the make
- * variable declares. Empty when this PHP has them built in; CI declares pdo for Ubuntu, where pdo is a shared module.
+ * dynamicModules are the modules that php -n loads from extension_dir: ORM_PHP_DYNAMIC_MODULES, a comma list that the
+ * make variable declares. Empty when this PHP has them built in; CI declares pdo for Ubuntu, where pdo is a shared
+ * module.
  * @return list<string>
  */
 function dynamicModules(): array
 {
     $declared = getenv('ORM_PHP_DYNAMIC_MODULES');
     if ($declared === false) {
-        throw new RuntimeException('ORM_PHP_DYNAMIC_MODULES is not declared; the make variable declares it, empty by default');
+        throw new RuntimeException(
+            'ORM_PHP_DYNAMIC_MODULES is not declared; the make variable declares it, empty by default',
+        );
     }
     return array_values(array_filter(explode(',', $declared), static fn(string $module): bool => $module !== ''));
 }
@@ -133,7 +136,14 @@ const NATIVE_PRIVATE_CONSTANTS = [
         'Ne' => 'ne', 'Eq' => '', 'Gt' => 'gt', 'Lt' => 'lt', 'Ge' => 'ge', 'Le' => 'le', 'Lk' => 'lk',
         'Lb' => 'lb', 'Between' => 'between',
     ],
-    'Polyspec\\Orm\\Chain::COMPARE' => ['Eq' => '', 'Ne' => 'ne', 'Gt' => 'gt', 'Lt' => 'lt', 'Ge' => 'ge', 'Le' => 'le'],
+    'Polyspec\\Orm\\Chain::COMPARE' => [
+        'Eq' => '',
+        'Ne' => 'ne',
+        'Gt' => 'gt',
+        'Lt' => 'lt',
+        'Ge' => 'ge',
+        'Le' => 'le',
+    ],
     'Polyspec\\Orm\\Model::OPERATORS' => [
         '' => 'eq', 'ne' => 'not_eq', 'gt' => 'gt', 'lt' => 'lt', 'ge' => 'gte', 'le' => 'lte',
         'lk' => 'contains', 'lb' => 'contains_binary',
@@ -203,7 +213,10 @@ final class DeclarationsTest extends TestCase
         }
         $where = 'Polyspec\\Orm\\Model::$where';
         $whereDefault = 'private array = ' . json_encode(['items' => [], 'pending' => ''], JSON_THROW_ON_ERROR);
-        if (($native[$where] ?? '(not declared)') !== $whereDefault || ($stub[$where] ?? '(not declared)') !== 'private array') {
+        if (
+            ($native[$where] ?? '(not declared)') !== $whereDefault
+            || ($stub[$where] ?? '(not declared)') !== 'private array'
+        ) {
             $differences[] = "$where: expected native-only source default $whereDefault, extension "
                 . ($native[$where] ?? '(not declared)') . ', stub ' . ($stub[$where] ?? '(not declared)');
         }
@@ -294,7 +307,8 @@ final class DeclarationsTest extends TestCase
             ) . '; extension ' . implode(', ', $nativeOrder);
         }
         preg_match_all(
-            '/\/\*\*(?:(?!\*\/)[\s\S])*@internal(?:(?!\*\/)[\s\S])*\*\/\s*(?:final |abstract )?(?:readonly )?(?:class|interface) (\w+)/',
+            '/\/\*\*(?:(?!\*\/)[\s\S])*@internal(?:(?!\*\/)[\s\S])*\*\/\s*'
+                . '(?:final |abstract )?(?:readonly )?(?:class|interface) (\w+)/',
             file_get_contents(dirname(__DIR__) . '/src/polyspec_orm.stub.php'),
             $internal
         );
@@ -316,12 +330,13 @@ final class DeclarationsTest extends TestCase
         );
     }
 
-    // The limit/columns document (121 tables of 1000 columns; the 120001st column trips the limit) must parse within the memory
-    // that PHPUnit allows a process: its peak over the memory held before the parse is below the bound, which is derived from
-    // three numbers. PHP's default memory_limit (128 MiB, 134217728 bytes) is the memory of the process that runs the test. The
-    // baseline is the memory the process holds before the parse (memory_get_usage()). The margin of 16 MiB is what the process
-    // keeps for the rest of the run (PHPUnit's collection, output and the next test). The bound is 128 MiB minus the baseline
-    // minus the margin. The test raises memory_limit to 256M so that a peak above the bound fails the assertion, not the process.
+    // The limit/columns document (121 tables of 1000 columns; the 120001st column trips the limit) must parse within
+    // the memory that PHPUnit allows a process: its peak over the memory held before the parse is below the bound,
+    // which is derived from three numbers. PHP's default memory_limit (128 MiB, 134217728 bytes) is the memory of the
+    // process that runs the test. The baseline is the memory the process holds before the parse (memory_get_usage()).
+    // The margin of 16 MiB is what the process keeps for the rest of the run (PHPUnit's collection, output and the next
+    // test). The bound is 128 MiB minus the baseline minus the margin. The test raises memory_limit to 256M so that a
+    // peak above the bound fails the assertion, not the process.
     public function testLimitColumnsPeak(): void
     {
         ini_set('memory_limit', '256M');
@@ -343,7 +358,8 @@ final class DeclarationsTest extends TestCase
             $bound,
             $peak,
             sprintf(
-                'the limit/columns case peaks at %d bytes above the baseline of %d bytes; the derived bound is %d bytes '
+                'the limit/columns case peaks at %d bytes above the baseline of %d bytes; '
+                . 'the derived bound is %d bytes '
                 . '(128 MiB 134217728 minus the baseline minus the 16 MiB margin 16777216)',
                 $peak,
                 $baseline,

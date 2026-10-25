@@ -39,10 +39,12 @@ final class ChainNativeSurfaceTest extends TestCase
         $class = new ReflectionClass(Chain::class);
         self::assertTrue($class->isInternal());
         self::assertTrue($class->isFinal());
-        foreach ([
+        foreach (
+            [
             'words', 'pascal', 'snake', 'functionColumn', 'parse', 'parseMeta', 'order', 'orderMeta',
             'pair', 'pairMeta', 'columnName', 'schemaColumnName',
-        ] as $method) {
+            ] as $method
+        ) {
             $reflection = $class->getMethod($method);
             self::assertTrue($reflection->isInternal(), $method);
             self::assertTrue($reflection->isStatic(), $method);
@@ -99,21 +101,30 @@ final class ChainNativeSurfaceTest extends TestCase
             self::fail('One-column tuple was accepted');
         } catch (OrmException $exception) {
             self::assertSame('CONFIG', $exception->code_);
-            self::assertSame('CONFIG: TupleActive: CONFIG: a tuple needs two or more columns of User joined by With', $exception->getMessage());
+            self::assertSame(
+                'CONFIG: TupleActive: CONFIG: a tuple needs two or more columns of User joined by With',
+                $exception->getMessage(),
+            );
         }
         try {
             Chain::orderMeta($meta, 'Active');
             self::fail('Incomplete order key was accepted');
         } catch (OrmException $exception) {
             self::assertSame('CONFIG', $exception->code_);
-            self::assertSame('CONFIG: orderByActive: each key needs a column and Asc or Desc', $exception->getMessage());
+            self::assertSame(
+                'CONFIG: orderByActive: each key needs a column and Asc or Desc',
+                $exception->getMessage(),
+            );
         }
         try {
             Chain::parseMeta($meta, [$meta], 'GtActive');
             self::fail('Invalid boolean comparison was accepted');
         } catch (OrmException $exception) {
             self::assertSame('CONFIG', $exception->code_);
-            self::assertSame('CONFIG: GtActive: CONFIG: User.active does not accept the gt operator', $exception->getMessage());
+            self::assertSame(
+                'CONFIG: GtActive: CONFIG: User.active does not accept the gt operator',
+                $exception->getMessage(),
+            );
         }
     }
 
@@ -128,8 +139,14 @@ final class ChainNativeSurfaceTest extends TestCase
         self::assertSame(['user_id', 'owner_id'], Chain::pairMeta($left, $right, [$left, $right], 'UserIdWithOwnerId'));
         self::assertSame('user_id', Chain::columnName($left, 'UserId'));
         self::assertSame('seq', Chain::schemaColumnName(self::$manifestHash, 'Seq'));
-        self::assertSame([['conn' => '', 'op' => '', 'column' => 'seq', 'columns' => [], 'compare' => '']], Chain::parse(ChainNativeRegistryFixture::class, 'Seq'));
-        self::assertSame([['column' => 'seq', 'desc' => true]], Chain::order(ChainNativeRegistryFixture::class, 'SeqDesc'));
+        self::assertSame(
+            [['conn' => '', 'op' => '', 'column' => 'seq', 'columns' => [], 'compare' => '']],
+            Chain::parse(ChainNativeRegistryFixture::class, 'Seq'),
+        );
+        self::assertSame(
+            [['column' => 'seq', 'desc' => true]],
+            Chain::order(ChainNativeRegistryFixture::class, 'SeqDesc'),
+        );
         self::assertSame(['seq', 'seq'], Chain::pair(null, ChainNativeRegistryFixture::meta(), 'SeqWithSeq'));
         self::assertTrue(Chain::functionColumn(['codec' => [], 'type' => 'date']));
         self::assertFalse(Chain::functionColumn(['codec' => ['aes'], 'type' => 'date']));

@@ -25,9 +25,9 @@ final class FailingPdo extends PDO
         private readonly array $fail,
         private readonly array $replace,
         array $failClose,
-    private array $queryFail = [],
-    private array $queryFailCall = [],
-    private array $queryCalls = []
+        private array $queryFail = [],
+        private array $queryFailCall = [],
+        private array $queryCalls = []
     ) {
         parent::__construct("sqlite:$path", null, null, [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,

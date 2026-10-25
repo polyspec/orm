@@ -859,8 +859,10 @@ final class Planner
     private static function blindIndexSource(array $ent, string $target, ?array $assignments = null): ?array
     {
         foreach ($ent['columns'] as $c) {
-            if ($c['blind_index'] === $target
-                && ($assignments === null || self::assigned($assignments, $c['name']))) {
+            if (
+                $c['blind_index'] === $target
+                && ($assignments === null || self::assigned($assignments, $c['name']))
+            ) {
                 return $c;
             }
         }
@@ -987,7 +989,10 @@ final class Planner
                 }
                 $originIndex = array_search($origin['name'], $given, true);
                 if ($originIndex === false) {
-                    throw self::err(Code::IR_INVALID, 'assigned AES source ' . $origin['name'] . ' is missing from insert set');
+                    throw self::err(
+                        Code::IR_INVALID,
+                        'assigned AES source ' . $origin['name'] . ' is missing from insert set',
+                    );
                 }
                 $source[$i] = $originIndex;
             }
@@ -1238,7 +1243,10 @@ final class Planner
         $columnName = $sub['column'] ?? '';
         $column = RuntimeModel::column($entity, $columnName);
         if ($column === null) {
-            throw self::err(Code::INTERNAL, "{$entity['entity']}.$columnName is missing from a validated scalar subquery");
+            throw self::err(
+                Code::INTERNAL,
+                "{$entity['entity']}.$columnName is missing from a validated scalar subquery",
+            );
         }
         return $column['type'];
     }

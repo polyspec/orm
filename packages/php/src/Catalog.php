@@ -659,7 +659,13 @@ final class Catalog
         foreach ($original->keyIndexes as $index) {
             $newKeys[] = $updated[$index];
         }
-        return $this->session(false, function (\PDO $pdo) use ($original, $changes, $updated, $keys, $newKeys): CatalogResult {
+        return $this->session(false, function (\PDO $pdo) use (
+            $original,
+            $changes,
+            $updated,
+            $keys,
+            $newKeys,
+        ): CatalogResult {
             $descriptor = $this->lockOriginalRow($pdo, $original, $keys);
             $sets = [];
             $args = [];

@@ -27,7 +27,11 @@ final class ArginfoBuildTest extends TestCase
             file_put_contents($arginfo . '/gen_stub.php', "<?php\n\$version = \"5.0.0\";\n");
             foreach (['phpize', 'php-config', 'php', 'curl', 'wget'] as $tool) {
                 $file = $bin . '/' . $tool;
-                file_put_contents($file, "#!/bin/sh\nprintf '%s\\n' " . escapeshellarg($tool) . " >> " . escapeshellarg($marker) . "\nexit 0\n");
+                file_put_contents(
+                    $file,
+                    "#!/bin/sh\nprintf '%s\\n' " . escapeshellarg($tool)
+                        . " >> " . escapeshellarg($marker) . "\nexit 0\n",
+                );
                 chmod($file, 0755);
             }
 
@@ -50,7 +54,10 @@ final class ArginfoBuildTest extends TestCase
             self::assertSame(1, $exit, $output);
             self::assertStringContainsString('PHP-Parser-5.0.0/lib/PhpParser is missing', $output);
             self::assertStringContainsString('run make install-tools', $output);
-            self::assertFileDoesNotExist($marker, 'The build invoked PHP tools or attempted a downloader before reporting the missing generator.');
+            self::assertFileDoesNotExist(
+                $marker,
+                'The build invoked PHP tools or attempted a downloader before reporting the missing generator.',
+            );
         } finally {
             $this->removeTree($root);
         }

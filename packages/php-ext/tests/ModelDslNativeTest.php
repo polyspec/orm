@@ -51,7 +51,10 @@ final class ModelDslNativeTest extends TestCase
             self::fail('A missing named row value must fail.');
         } catch (OrmException $error) {
             self::assertSame('CONFIG', $error->code_);
-            self::assertSame('CONFIG: ' . DslFixture::class . '::getMissing: the row has no value missing', $error->getMessage());
+            self::assertSame(
+                'CONFIG: ' . DslFixture::class . '::getMissing: the row has no value missing',
+                $error->getMessage(),
+            );
         }
     }
 

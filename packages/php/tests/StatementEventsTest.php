@@ -60,7 +60,9 @@ final class StatementEventsTest extends TestCase
     public function testUnsubscribeFreesClosure(): void
     {
         $path = sys_get_temp_dir() . '/unsubscribe-leak-' . getmypid() . '.sqlite';
-        @unlink($path);
+        if (file_exists($path)) {
+            unlink($path);
+        }
         try {
             $db = \Polyspec\Orm\Orm::connect('sqlite://' . $path, new \Polyspec\Orm\Config());
             $rss = static fn(): int => (int) trim((string) shell_exec('ps -o rss= -p ' . getmypid()));
@@ -77,9 +79,15 @@ final class StatementEventsTest extends TestCase
                 $cycle($db);
             }
             $grew = $rss() - $before;
-            self::assertLessThan(10240, $grew, "resident set grew by {$grew} KB over 200000 subscribe/unsubscribe cycles");
+            self::assertLessThan(
+                10240,
+                $grew,
+                "resident set grew by {$grew} KB over 200000 subscribe/unsubscribe cycles",
+            );
         } finally {
-            @unlink($path);
+            if (file_exists($path)) {
+                unlink($path);
+            }
         }
     }
 

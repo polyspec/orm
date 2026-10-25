@@ -9,4 +9,6 @@ namespace Polyspec\Orm\Dbspec;
  *
  * @internal
  */
-final class CatalogDocumentBuildException extends \RuntimeException {}
+final class CatalogDocumentBuildException extends \RuntimeException
+{
+}

@@ -9,7 +9,8 @@ namespace Polyspec\Orm\Tests;
 // make orm-check create), and each vector is one data set, named by the vector, whose output must equal the recorded
 // expect as a JSON value (tests/conformance/vectors.json for MySQL, vectors.<dialect>.json for the others).
 // testConformanceVector is the feature coverage (contracts/features.json): it runs the read-only vectors
-// conditions_values, relations and relation_null_key on the database that ORM_FEATURE_DATABASE and ORM_FEATURE_DSN select.
+// conditions_values, relations and relation_null_key on the database that ORM_FEATURE_DATABASE and ORM_FEATURE_DSN
+// select.
 
 
 use RuntimeException;

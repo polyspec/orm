@@ -73,13 +73,18 @@ final class SqliteRowLockPdo extends UninitializedRecordingPdo
         private readonly bool $failPrimary = false,
         private readonly ?\Throwable $failRestore = null,
         private readonly ?\Throwable $failSetup = null
-    ) {}
+    ) {
+    }
 
     public function exec(string $statement): int|false
     {
         $this->recordStatement($statement);
-        if ($statement === 'PRAGMA busy_timeout=0' && $this->failSetup !== null) throw $this->failSetup;
-        if ($statement === 'PRAGMA busy_timeout=375' && $this->failRestore !== null) throw $this->failRestore;
+        if ($statement === 'PRAGMA busy_timeout=0' && $this->failSetup !== null) {
+            throw $this->failSetup;
+        }
+        if ($statement === 'PRAGMA busy_timeout=375' && $this->failRestore !== null) {
+            throw $this->failRestore;
+        }
         if (str_starts_with($statement, 'INSERT') && $this->failPrimary) {
             $error = new PDOException('database is locked');
             $error->errorInfo = ['HY000', 5, 'database is locked'];
@@ -102,9 +107,23 @@ final class SqliteRowLockPdo extends UninitializedRecordingPdo
 
 final class SqliteRowLockStatement extends PDOStatement
 {
-    public function __construct(private readonly string $query) {}
-    public function execute(?array $params = null): bool { return true; }
-    public function columnCount(): int { return $this->query === 'PRAGMA busy_timeout' ? 1 : 0; }
-    public function fetchAll(int $mode = PDO::FETCH_DEFAULT, mixed ...$args): array { return [[375]]; }
-    public function closeCursor(): bool { return true; }
+    public function __construct(private readonly string $query)
+    {
+    }
+    public function execute(?array $params = null): bool
+    {
+        return true;
+    }
+    public function columnCount(): int
+    {
+        return $this->query === 'PRAGMA busy_timeout' ? 1 : 0;
+    }
+    public function fetchAll(int $mode = PDO::FETCH_DEFAULT, mixed ...$args): array
+    {
+        return [[375]];
+    }
+    public function closeCursor(): bool
+    {
+        return true;
+    }
 }

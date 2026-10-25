@@ -83,7 +83,11 @@ final class CoverageNativeFixtureExtensionTest extends TestCase
                 }
             } else {
                 $model->setAmount($case['input']);
-                Assert::assertSame($case['expected']['value'], $model->getAmount(), "{$case['id']}: native model value");
+                Assert::assertSame(
+                    $case['expected']['value'],
+                    $model->getAmount(),
+                    "{$case['id']}: native model value",
+                );
             }
         }
         $owner->testGeneratedDecimalType();

@@ -91,7 +91,9 @@ final class ModelStreamReadTest extends TestCase
 
     private function withThrowingWarningHandler(ErrorException $expected, callable $operation): Throwable
     {
-        set_error_handler(static function () use ($expected): never { throw $expected; });
+        set_error_handler(static function () use ($expected): never {
+            throw $expected;
+        });
         try {
             try {
                 $operation();
@@ -160,8 +162,16 @@ final class ModelStreamReadTest extends TestCase
         $model = new ModelStreamFixture();
         $assembleRow = new \ReflectionMethod(Model::class, 'assembleRow');
         $cases = [
-            ['node' => 2, 'columns' => [['index' => 0, 'name' => 'title', 'column' => 'title', 'hidden' => false]], 'name' => 'title'],
-            ['node' => 3, 'columns' => [['index' => 0, 'name' => 'extra_title', 'column' => '', 'type' => 'text']], 'name' => 'extra_title'],
+            [
+                'node' => 2,
+                'columns' => [['index' => 0, 'name' => 'title', 'column' => 'title', 'hidden' => false]],
+                'name' => 'title',
+            ],
+            [
+                'node' => 3,
+                'columns' => [['index' => 0, 'name' => 'extra_title', 'column' => '', 'type' => 'text']],
+                'name' => 'extra_title',
+            ],
         ];
         foreach ($cases as $case) {
             $stream = fopen('php://temp', 'w+');
@@ -174,7 +184,10 @@ final class ModelStreamReadTest extends TestCase
                 ], [$stream]);
                 $property = new \ReflectionProperty(Model::class, $case['name'] === 'title' ? 'values' : 'row');
                 $stored = $property->getValue($row);
-                self::assertSame('hello', $case['name'] === 'title' ? $stored['title'] : $stored['extra']['extra_title']);
+                self::assertSame(
+                    'hello',
+                    $case['name'] === 'title' ? $stored['title'] : $stored['extra']['extra_title'],
+                );
             } finally {
                 fclose($stream);
             }

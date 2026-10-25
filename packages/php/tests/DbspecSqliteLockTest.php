@@ -11,15 +11,20 @@ use PHPUnit\Framework\TestCase;
 
 final class FakeSqliteLockStatement extends \PDOStatement
 {
-    public function __construct(private array $row) {}
+    public function __construct(private array $row)
+    {
+    }
 
     public function execute(?array $params = null): bool
     {
         return true;
     }
 
-    public function fetch(int $mode = PDO::FETCH_DEFAULT, int $cursorOrientation = PDO::FETCH_ORI_NEXT, int $cursorOffset = 0): mixed
-    {
+    public function fetch(
+        int $mode = PDO::FETCH_DEFAULT,
+        int $cursorOrientation = PDO::FETCH_ORI_NEXT,
+        int $cursorOffset = 0,
+    ): mixed {
         return $this->row;
     }
 
@@ -31,7 +36,9 @@ final class FakeSqliteLockStatement extends \PDOStatement
 
 final class FailingSqliteLockPdo extends PDO
 {
-    public function __construct(private PDOException $failure) {}
+    public function __construct(private PDOException $failure)
+    {
+    }
 
     public function getAttribute(int $attribute): mixed
     {
@@ -103,7 +110,14 @@ final class DbspecSqliteLockTest extends TestCase
             $error = self::driverFailure($code);
             self::assertSame($error, self::applyFailure($error));
         }
-        foreach ([[], ['HY000', null, 'missing'], ['HY000', '5', 'non-integer'], ['HY000', 'HY000', 'state']] as $info) {
+        foreach (
+            [
+            [],
+            ['HY000', null, 'missing'],
+            ['HY000', '5', 'non-integer'],
+            ['HY000', 'HY000', 'state'],
+            ] as $info
+        ) {
             $error = new PDOException('synthetic PDO exception');
             $error->errorInfo = $info;
             self::assertSame($error, self::applyFailure($error));

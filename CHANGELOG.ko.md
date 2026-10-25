@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d08fdee26582ce258ef810149060fb1d5058bb8cbc3401e475071de65c86ac3b -->
+<!-- source-sha256: 8b5059ed489d0c375e7b41c9616f904f19641468740cf85c0dc2662cd150c32d -->
 # 변경 이력
 
 ## Unreleased
 
+- phpcs가 orm의 PHP에서 layout finding을 보고하지 않는다: phpcbf가 중괄호, 공백, inline control structure, call signature를 고쳤고, 긴 call, array, string, comment는 120자에서 줄바꿈되며, 억제된 @unlink와 @trigger_error 호출은 file_exists 확인과 error_reporting(0) 범위가 되었다 (KSTD-5-89-3-1).
 - TypeScript client, script, test의 모든 catch 절이 error를 binding하고 기대하는 실패로 좁히며 나머지는 다시 던지므로 main에서 `make lint-ts`가 통과한다. red는 binding 없는 catch 23개로 `168ae591238d`에서 `make lint-ts` exit 2였다(KSTD-5-92).
 - duplication-check가 통과한다: 생성된 model은 build 산출물이고 구현의 반복 코드는 공유 module로 옮겨졌으므로 `make duplication-check`가 clone을 찾지 않는다 (KSTD-5-5).
 - `make duplication-check`가 전체 tree에서 읽는 일곱 형식 모두에 6줄 이상 clone 0개로 exit 0 한다 (KSTD-5-46).

@@ -38,7 +38,11 @@ final class PerfGateTest extends TestCase
     public static function setUpBeforeClass(): void
     {
         $refused = loadedRefusedExtensions();
-        self::assertSame(declaredRefusedExtensions(), $refused, 'the declared refused extensions differ from the loaded ones');
+        self::assertSame(
+            declaredRefusedExtensions(),
+            $refused,
+            'the declared refused extensions differ from the loaded ones',
+        );
         if ($refused !== []) {
             throw new RuntimeException(
                 'perf_gate: this PHP loads ' . implode(

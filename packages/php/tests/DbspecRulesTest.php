@@ -1025,13 +1025,13 @@ final class DbspecRulesTest extends TestCase
 
     // Limits: generated documents, each with its own CPU reference.
     // Requirements: DBS-144, DBS-151, DBS-170.
-    // The limit/columns document must parse within the memory that PHPUnit allows a process: its peak over the memory held before
-    // the parse is below the bound, which is derived from three numbers. PHP's default memory_limit (128 MiB, 134217728 bytes) is
-    // the memory of the process that runs the test. The baseline is the memory the process holds before the parse
-    // (memory_get_usage()). The margin of 16 MiB is what the process keeps for the rest of the run. The bound is 128 MiB minus the
-    // baseline minus the margin. The test raises memory_limit to 256M so that a peak above the bound fails the assertion, not the
-    // process. The parse runs in a process of its own with PHP's default memory limit, so the memory of the test run does
-    // not change the bound (KSTD-5-58). T182-0-2-1.
+    // The limit/columns document must parse within the memory that PHPUnit allows a process: its peak over the memory
+    // held before the parse is below the bound, which is derived from three numbers. PHP's default memory_limit (128
+    // MiB, 134217728 bytes) is the memory of the process that runs the test. The baseline is the memory the process
+    // holds before the parse (memory_get_usage()). The margin of 16 MiB is what the process keeps for the rest of the
+    // run. The bound is 128 MiB minus the baseline minus the margin. The test raises memory_limit to 256M so that a
+    // peak above the bound fails the assertion, not the process. The parse runs in a process of its own with PHP's
+    // default memory limit, so the memory of the test run does not change the bound (KSTD-5-58). T182-0-2-1.
     public function testLimitColumnsPeak(): void
     {
         [$text] = rules_limit('columns');

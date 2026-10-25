@@ -20,6 +20,7 @@ use PHPUnit\Framework\TestCase;
 final class OrmGenScanTest extends TestCase
 {
     use OrmGenScanFailureCase;
+
     private const NS = 'Polyspec\\Orm\\Tests\\Scanned';
 
     private static string $work;

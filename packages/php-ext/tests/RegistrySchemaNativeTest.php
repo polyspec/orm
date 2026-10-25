@@ -56,7 +56,9 @@ final class RegistrySchemaNativeTest extends TestCase
 
     public function testPerManifestRuntimeCacheAndInvalidationAfterRegister(): void
     {
-        $text = "dbspec 1 registry_runtime_cache\n\ntable item {\n  id i64 identity\n  primary key (id)\n}\n\ntable other {\n  id i64 identity\n  primary key (id)\n}\n";
+        $text = "dbspec 1 registry_runtime_cache\n\n"
+            . "table item {\n  id i64 identity\n  primary key (id)\n}\n\n"
+            . "table other {\n  id i64 identity\n  primary key (id)\n}\n";
         $manifest = RuntimeModel::build(RuntimeModel::loadSet($text, ''));
         $hash = $manifest->manifestHash;
         Registry::generated($hash, $manifest->manifestText, '');
@@ -71,7 +73,10 @@ final class RegistrySchemaNativeTest extends TestCase
         $meta = $manifest->entities['item'] + ['manifest_hash' => $hash];
         $modelClass = new class extends Model {
             public static array $testMeta = [];
-            public static function meta(): array { return self::$testMeta; }
+            public static function meta(): array
+            {
+                return self::$testMeta;
+            }
         };
         $modelClass::$testMeta = $meta;
         Registry::register($modelClass::class);
@@ -79,7 +84,10 @@ final class RegistrySchemaNativeTest extends TestCase
         $otherMeta = $manifest->entities['other'] + ['manifest_hash' => $hash];
         $otherClass = new class extends Model {
             public static array $testMeta = [];
-            public static function meta(): array { return self::$testMeta; }
+            public static function meta(): array
+            {
+                return self::$testMeta;
+            }
         };
         $otherClass::$testMeta = $otherMeta;
         $modelsSnapshot = Registry::models($hash);
@@ -89,7 +97,11 @@ final class RegistrySchemaNativeTest extends TestCase
         self::assertSame([$modelClass::class], array_values($modelsSnapshot));
         $second = Registry::model($hash);
         self::assertNotSame($first, $second);
-        self::assertSame($meta, $modelClass::meta(), 'fromModels does not mutate generated metadata returned by meta()');
+        self::assertSame(
+            $meta,
+            $modelClass::meta(),
+            'fromModels does not mutate generated metadata returned by meta()',
+        );
         self::assertSame($firstEntities, $first->entities);
         self::assertSame($second, Registry::model($hash));
 
@@ -103,7 +115,10 @@ final class RegistrySchemaNativeTest extends TestCase
 
         $conflict = new class extends Model {
             public static array $testMeta = [];
-            public static function meta(): array { return self::$testMeta; }
+            public static function meta(): array
+            {
+                return self::$testMeta;
+            }
         };
         $conflict::$testMeta = $meta;
         self::assertSame($meta, $conflict::meta());

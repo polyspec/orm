@@ -40,7 +40,9 @@ class CollectionFixtureModel extends Model
     public ?Db $connectedTo = null;
     public array $deleted = [];
 
-    public function __construct(public string $label) {}
+    public function __construct(public string $label)
+    {
+    }
 
     public static function meta(): array
     {
@@ -74,6 +76,7 @@ class CollectionFixtureModel extends Model
 final class CollectionTest extends TestCase
 {
     use CollectionWeakTypedKeyCases;
+
     private static function model(string $label): Model
     {
         return new CollectionFixtureModel($label);
@@ -376,7 +379,9 @@ final class CollectionTest extends TestCase
 
         $exception = new \RuntimeException('callback failed');
         try {
-            $collection->fetchValues(static function () use ($exception): never { throw $exception; });
+            $collection->fetchValues(static function () use ($exception): never {
+                throw $exception;
+            });
             self::fail('fetchValues must propagate the callback exception');
         } catch (\RuntimeException $caught) {
             self::assertSame($exception, $caught);
@@ -430,7 +435,7 @@ final class CollectionTest extends TestCase
 
         $pdo->statements = [];
         $failure = new \RuntimeException('delete callback failed');
-        $failing = new class('failing') extends CollectionFixtureModel {
+        $failing = new class ('failing') extends CollectionFixtureModel {
             public ?\Throwable $failure = null;
 
             public function deleteRow(bool $recursive): void

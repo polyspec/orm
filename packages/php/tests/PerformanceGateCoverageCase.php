@@ -22,14 +22,18 @@ abstract class PerformanceGateCoverageCase extends TestCase
         $database = getenv('ORM_FEATURE_DATABASE');
         $dsn = getenv('ORM_FEATURE_DSN');
         if (!is_string($database) || $database === '' || !is_string($dsn) || $dsn === '') {
-            throw new RuntimeException('ORM_FEATURE_DATABASE and ORM_FEATURE_DSN are required; run this case through make feature-check');
+            throw new RuntimeException(
+                'ORM_FEATURE_DATABASE and ORM_FEATURE_DSN are required; run this case through make feature-check',
+            );
         }
         Assert::assertSame(static::DRIVER, $database, 'the supplied feature database');
         if (static::NATIVE_EXTENSION) {
             Assert::assertTrue((new ReflectionMethod(Model::class, 'gets'))->isInternal());
             $extension = getenv('POLYSPEC_ORM_EXTENSION');
             if (!is_string($extension) || $extension === '' || !is_file($extension)) {
-                throw new RuntimeException('POLYSPEC_ORM_EXTENSION is required; run this owner through the PHP extension coverage runner');
+                throw new RuntimeException(
+                    'POLYSPEC_ORM_EXTENSION is required; run this owner through the PHP extension coverage runner',
+                );
             }
         } else {
             $extension = null;

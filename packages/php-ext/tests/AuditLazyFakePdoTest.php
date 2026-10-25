@@ -70,7 +70,12 @@ final class AuditLazyFakePdo extends PDO
         if (!$auditInsert && !$noteInsert && !$noteUpdate) {
             throw new RuntimeException("unexpected audit-lazy statement SQL: $query");
         }
-        if (!parent::setAttribute(PDO::ATTR_STATEMENT_CLASS, [AuditLazyFakeStatement::class, [$this, $query, $auditInsert, $noteInsert, $noteUpdate]])) {
+        if (
+            !parent::setAttribute(
+                PDO::ATTR_STATEMENT_CLASS,
+                [AuditLazyFakeStatement::class, [$this, $query, $auditInsert, $noteInsert, $noteUpdate]],
+            )
+        ) {
             throw new RuntimeException('unable to configure the fake PDO statement class');
         }
         return parent::prepare('SELECT 1');
@@ -91,8 +96,13 @@ final class AuditLazyFakePdo extends PDO
         return (string) ++$this->noteIdentity;
     }
 
-    public function recordExecution(string $sql, ?array $params, bool $auditInsert, bool $noteInsert, bool $noteUpdate): void
-    {
+    public function recordExecution(
+        string $sql,
+        ?array $params,
+        bool $auditInsert,
+        bool $noteInsert,
+        bool $noteUpdate,
+    ): void {
         $this->operations[] = ['kind' => 'execute', 'sql' => $sql, 'params' => $params];
         if ($noteInsert && ++$this->noteInsertExecutions === 2) {
             throw $this->updateFailure ?? new RuntimeException('unexpected second insert without configured failure');
@@ -130,7 +140,8 @@ final class AuditLazyFakeStatement extends PDOStatement
         private readonly bool $auditInsert,
         private readonly bool $noteInsert,
         private readonly bool $noteUpdate,
-    ) {}
+    ) {
+    }
 
     public function bindValue(string|int $param, mixed $value, int $type = PDO::PARAM_STR): bool
     {
@@ -140,7 +151,13 @@ final class AuditLazyFakeStatement extends PDOStatement
 
     public function execute(?array $params = null): bool
     {
-        $this->pdo->recordExecution($this->sql, array_values($this->boundValues), $this->auditInsert, $this->noteInsert, $this->noteUpdate);
+        $this->pdo->recordExecution(
+            $this->sql,
+            array_values($this->boundValues),
+            $this->auditInsert,
+            $this->noteInsert,
+            $this->noteUpdate,
+        );
         return true;
     }
 
@@ -217,18 +234,50 @@ final class AuditLazyFakePdoTest extends TestCase
                 preg_match('/^\s*(?:INSERT\s+INTO|UPDATE)\s+"?([a-z_]+)"?/i', $operation['sql'], $match);
                 return $match[1] ?? '';
             }, $executed));
-            self::assertSame(['audit-lazy-unit'], $executed[0]['params'], 'audit creation is lazy and carries the transaction value');
-            self::assertSame(['audit-lazy-unit'], $executed[2]['params'], 'the unmatched update rolled back its audit before create');
-            self::assertCount(2, array_filter($executed, static fn(array $operation): bool => str_starts_with($operation['sql'], 'INSERT') && str_contains($operation['sql'], 'audit_record')));
+            self::assertSame(
+                ['audit-lazy-unit'],
+                $executed[0]['params'],
+                'audit creation is lazy and carries the transaction value',
+            );
+            self::assertSame(
+                ['audit-lazy-unit'],
+                $executed[2]['params'],
+                'the unmatched update rolled back its audit before create',
+            );
+            self::assertCount(
+                2,
+                array_filter(
+                    $executed,
+                    static fn(array $operation): bool => str_starts_with(
+                        $operation['sql'],
+                        'INSERT',
+                    ) && str_contains($operation['sql'], 'audit_record'),
+                ),
+            );
             self::assertSame(42, $executed[3]['params'][1], 'the first row insert binds the second audit identity');
-            self::assertSame($executed[3]['params'][1], $executed[4]['params'][1], 'the later insert reuses the transaction audit identity');
-            self::assertCount(2, array_filter($executed, static fn(array $operation): bool => str_contains($operation['sql'], 'INSERT') && str_contains($operation['sql'], 'audited_note')));
+            self::assertSame(
+                $executed[3]['params'][1],
+                $executed[4]['params'][1],
+                'the later insert reuses the transaction audit identity',
+            );
+            self::assertCount(
+                2,
+                array_filter(
+                    $executed,
+                    static fn(array $operation): bool => str_contains(
+                        $operation['sql'],
+                        'INSERT',
+                    ) && str_contains($operation['sql'], 'audited_note'),
+                ),
+            );
             self::assertSame([0], $pdo->affectedRows, 'the no-row update rolls back its audit before the later insert');
             self::assertSame(2, $pdo->auditReturningReads(), 'each audit record uses SQLite RETURNING exactly once');
 
             $controls = array_values(array_filter(
-                array_map(static fn(array $operation): string => $operation['sql'],
-                    array_filter($pdo->operations, static fn(array $operation): bool => $operation['kind'] === 'exec')),
+                array_map(
+                    static fn(array $operation): string => $operation['sql'],
+                    array_filter($pdo->operations, static fn(array $operation): bool => $operation['kind'] === 'exec')
+                ),
                 static fn(string $sql): bool => !str_starts_with($sql, 'CREATE TABLE IF NOT EXISTS "orm__row_lock"'),
             ));
             self::assertSame([

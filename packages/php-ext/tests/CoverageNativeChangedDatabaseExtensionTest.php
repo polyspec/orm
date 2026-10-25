@@ -34,7 +34,8 @@ final class CoverageNativeChangedDatabaseExtensionTest extends TestCase
         foreach (\Polyspec\Orm\Tests\SchemaSetTest::changedDatabaseCases() as [$case]) {
             \Polyspec\Orm\Tests\with_case_database(
                 'sqlite',
-                static function (string $step): void {},
+                static function (string $step): void {
+                },
                 static fn(string $dsn) => $method->invoke(null, $dsn, $case)
             );
         }

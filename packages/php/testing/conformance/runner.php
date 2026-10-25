@@ -125,15 +125,17 @@ vector(
     )
 );
 
-// DSL-87 and DSL-111: a user with its authors loaded as has-many rows. Unlocked, delete(true) deletes the authors and the user;
-// locked, the authors stay, so the user's delete fails on the foreign key, and the normalized code is recorded.
+// DSL-87 and DSL-111: a user with its authors loaded as has-many rows. Unlocked, delete(true) deletes the authors and
+// the user; locked, the authors stay, so the user's delete fails on the foreign key, and the normalized code is
+// recorded.
 vector('delete_lock', function () use ($db): array {
     $out = [];
     foreach ([false, true] as $locked) {
         $user = (new User())->connect($db)->setName('delete-lock')->create();
         $uSeq = $user->getSeq();
         $author = (new Author())->connect($db)->setName('delete-lock')->setUserSeq($uSeq)->setServiceSeq(7)
-            ->setServiceRegionSeq(7)->setServiceMemberSeq(7)->setStartDt('2026-01-01 00:00:00')->setEndDt('2026-12-31 00:00:00')->create();
+            ->setServiceRegionSeq(7)->setServiceMemberSeq(7)->setStartDt('2026-01-01 00:00:00')
+            ->setEndDt('2026-12-31 00:00:00')->create();
         $aSeq = $author->getSeq();
         $rel = (new Author())->matchSeqWithUserSeq();
         if ($locked) {

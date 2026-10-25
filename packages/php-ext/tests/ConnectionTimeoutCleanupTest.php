@@ -33,7 +33,12 @@ final class ConnectionTimeoutCleanupPdo extends PDO
     public function prepare(string $query, array $options = []): PDOStatement|false
     {
         $this->prepareCalls++;
-        if (!parent::setAttribute(PDO::ATTR_STATEMENT_CLASS, [ConnectionTimeoutCleanupStatement::class, [$this, $query]])) {
+        if (
+            !parent::setAttribute(
+                PDO::ATTR_STATEMENT_CLASS,
+                [ConnectionTimeoutCleanupStatement::class, [$this, $query]],
+            )
+        ) {
             throw new \RuntimeException('unable to configure the timeout cleanup fake statement');
         }
         return parent::prepare('SELECT 1');
@@ -42,7 +47,9 @@ final class ConnectionTimeoutCleanupPdo extends PDO
 
 final class ConnectionTimeoutCleanupStatement extends PDOStatement
 {
-    protected function __construct(private readonly ConnectionTimeoutCleanupPdo $pdo, private readonly string $query) {}
+    protected function __construct(private readonly ConnectionTimeoutCleanupPdo $pdo, private readonly string $query)
+    {
+    }
 
     public function execute(?array $params = null): bool
     {
@@ -112,7 +119,11 @@ final class ConnectionTimeoutCleanupTest extends TestCase
 
             self::assertSame(1, $pdo->closeCursorCalls, 'the failed native statement cursor is closed');
             self::assertSame([], $db->fetch('query', [], null, 'SELECT 1'));
-            self::assertSame(2, $pdo->prepareCalls, 'the same connection prepares the next statement after cancellation');
+            self::assertSame(
+                2,
+                $pdo->prepareCalls,
+                'the same connection prepares the next statement after cancellation',
+            );
             self::assertSame(2, $pdo->executeCalls, 'the next statement executes after cancellation');
             self::assertSame(2, $pdo->closeCursorCalls, 'the successful statement cursor is closed too');
         } finally {

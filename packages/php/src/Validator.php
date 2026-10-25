@@ -918,7 +918,10 @@ final class Validator
             sort($fields, SORT_STRING);
             if (in_array('offset_p', $fields, true) || in_array('count_p', $fields, true)) {
                 if (!$rootPage || $fields !== ['count_p', 'offset_p']) {
-                    throw self::err(Code::IR_INVALID, 'limit needs exactly offset and count parameters on the root query');
+                    throw self::err(
+                        Code::IR_INVALID,
+                        'limit needs exactly offset and count parameters on the root query',
+                    );
                 }
                 $this->params([$limit['offset_p'], $limit['count_p']]);
             } elseif ($fields !== ['count', 'offset'] || $limit['offset'] < 0 || $limit['count'] <= 0) {

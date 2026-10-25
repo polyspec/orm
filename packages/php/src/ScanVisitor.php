@@ -55,7 +55,8 @@ final class ScanVisitor extends NodeVisitorAbstract
     /**
      * @param array<string, string> $models lowercase fully qualified class name => class name
      * @param array<string, array<string, list<int|null>>> $out
-     * @param array<string, array<string, list<array{call: string, type: ?string, line?: int}>>> $types per model class, the
+     * @param array<string, array<string, list<array{call: string, type: ?string, line?: int}>>> $types
+     *     per model class, the
      *     declared types of the getters that the calls of new, addColumn and alias name, with the call that declares
      *     each
      */
@@ -550,8 +551,7 @@ final class ScanVisitor extends NodeVisitorAbstract
         Node\Expr\MethodCall|Node\Expr\NullsafeMethodCall $node,
         string $name,
         array $owners,
-    ): void
-    {
+    ): void {
         $many = strtolower($name) === 'relations';
         foreach ($node->args as $arg) {
             if (!$arg instanceof Node\Arg) {

@@ -108,8 +108,10 @@ final class SchemaUtilsNativeTest extends TestCase
                 if ($failRollback) {
                     self::assertSame(Code::ROLLBACK, $error->code_);
                     self::assertSame(
-                        'ROLLBACK: transaction failed (SUBSCRIBER: statement event subscriber failed: begin observer failed) '
-                        . 'and rollback failed (SUBSCRIBER: statement event subscriber failed: rollback observer failed)',
+                        'ROLLBACK: transaction failed '
+                        . '(SUBSCRIBER: statement event subscriber failed: begin observer failed) '
+                        . 'and rollback failed '
+                        . '(SUBSCRIBER: statement event subscriber failed: rollback observer failed)',
                         $error->getMessage()
                     );
                     self::assertSame(
@@ -376,9 +378,15 @@ final class SchemaUtilsNativeTest extends TestCase
             }
             self::assertSame([], $events);
         } finally {
-            if ($unsubscribe !== null) $unsubscribe();
-            if ($db !== null) $db->close();
-            if (is_file($path)) unlink($path);
+            if ($unsubscribe !== null) {
+                $unsubscribe();
+            }
+            if ($db !== null) {
+                $db->close();
+            }
+            if (is_file($path)) {
+                unlink($path);
+            }
         }
     }
 
@@ -449,8 +457,12 @@ final class SchemaUtilsNativeTest extends TestCase
      * @param list<array{type: string, name: string, sql: ?string}> $before
      * @param list<string> $events
      */
-    private static function assertSqliteCleanupState(\PDO $pdo, array $before, array $events, bool $assertForeignKeys): void
-    {
+    private static function assertSqliteCleanupState(
+        \PDO $pdo,
+        array $before,
+        array $events,
+        bool $assertForeignKeys,
+    ): void {
         self::assertFalse($pdo->inTransaction());
         if ($assertForeignKeys) {
             self::assertSame(1, (int) $pdo->query('PRAGMA foreign_keys')->fetchColumn());

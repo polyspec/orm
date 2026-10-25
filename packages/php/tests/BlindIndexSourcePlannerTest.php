@@ -173,7 +173,10 @@ DBSPEC;
     public function testExplicitTargetWinsInOnDuplicate(): void
     {
         $engine = $this->engine();
-        $plan = $engine->compile($this->request($engine, [$this->assignment('id', 0), $this->assignment('name', 1)], 5, [
+        $plan = $engine->compile($this->request($engine, [
+            $this->assignment('id', 0),
+            $this->assignment('name', 1),
+        ], 5, [
             'on_duplicate' => [
                 $this->assignment('email_a', 2),
                 $this->assignment('email_b', 3),

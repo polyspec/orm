@@ -204,9 +204,9 @@ final class Parser
     /** @var int The position of the next token that the cursor reading the setting line will read */
     private int $cursor = 0;
     /**
-     * The declaration positions in the order they were read; run sorts them. They are kept as parallel lists of scalars and
-     * shared strings, not as one Position object each: a parse that holds many declarations (up to the limit of columns) keeps
-     * the lists only, and sortedPositions makes the Position objects of a successful parse.
+     * The declaration positions in the order they were read; run sorts them. They are kept as parallel lists of scalars
+     * and shared strings, not as one Position object each: a parse that holds many declarations (up to the limit of
+     * columns) keeps the lists only, and sortedPositions makes the Position objects of a successful parse.
      *
      * @var list<string> the kind of each position
      */

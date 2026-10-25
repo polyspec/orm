@@ -29,6 +29,10 @@ final class PerfExtensionsTest extends TestCase
 
     public function testThisPHP(): void
     {
-        self::assertSame(declaredRefusedExtensions(), loadedRefusedExtensions(), 'the declared refused extensions differ from the loaded ones');
+        self::assertSame(
+            declaredRefusedExtensions(),
+            loadedRefusedExtensions(),
+            'the declared refused extensions differ from the loaded ones',
+        );
     }
 }

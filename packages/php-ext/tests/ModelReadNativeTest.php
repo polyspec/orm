@@ -35,10 +35,23 @@ final class ModelReadWarningStream
 {
     public $context;
 
-    public function stream_open(string $path, string $mode, int $options, ?string &$openedPath): bool { return true; }
-    public function stream_read(int $count): string|false { trigger_error('native stream read warning', E_USER_WARNING); return false; }
-    public function stream_eof(): bool { return false; }
-    public function stream_stat(): array|false { return []; }
+    public function stream_open(string $path, string $mode, int $options, ?string &$openedPath): bool
+    {
+        return true;
+    }
+    public function stream_read(int $count): string|false
+    {
+        trigger_error('native stream read warning', E_USER_WARNING);
+        return false;
+    }
+    public function stream_eof(): bool
+    {
+        return false;
+    }
+    public function stream_stat(): array|false
+    {
+        return [];
+    }
 }
 
 #[Small]
@@ -153,13 +166,25 @@ final class ModelReadNativeTest extends TestCase
     {
         $db = (new \ReflectionClass(Db::class))->newInstanceWithoutConstructor();
         $groupValue = new \ReflectionMethod(Model::class, 'groupValue');
-        self::assertTrue($groupValue->invoke(new ModelReadShapeFixture(), $db,
-            ['name' => 'active', 'column' => 'active', 'type' => 'bool'], 'true'));
-        self::assertSame('5', $groupValue->invoke(new ModelReadShapeFixture(), $db,
-            ['name' => 'row_count', 'column' => 'row_count', 'type' => 'i64'], '5'));
+        self::assertTrue($groupValue->invoke(
+            new ModelReadShapeFixture(),
+            $db,
+            ['name' => 'active', 'column' => 'active', 'type' => 'bool'],
+            'true'
+        ));
+        self::assertSame('5', $groupValue->invoke(
+            new ModelReadShapeFixture(),
+            $db,
+            ['name' => 'row_count', 'column' => 'row_count', 'type' => 'i64'],
+            '5'
+        ));
         try {
-            $groupValue->invoke(new ModelReadShapeFixture(), $db,
-                ['name' => 'active', 'column' => 'active', 'type' => 'bool'], 'yes');
+            $groupValue->invoke(
+                new ModelReadShapeFixture(),
+                $db,
+                ['name' => 'active', 'column' => 'active', 'type' => 'bool'],
+                'yes'
+            );
             self::fail('An invalid grouped boolean must fail.');
         } catch (OrmException $error) {
             self::assertSame(Code::CODEC_DECODE, $error->code_);

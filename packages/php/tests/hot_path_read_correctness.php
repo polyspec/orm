@@ -21,7 +21,10 @@ function hotPathReadCorrectness(): void
     $db = null;
     try {
         $native = new PDO('sqlite:' . $path);
-        $native->exec('CREATE TABLE author (seq INTEGER PRIMARY KEY, name TEXT NOT NULL, service_seq INTEGER NOT NULL, is_close INTEGER NOT NULL)');
+        $native->exec(
+            'CREATE TABLE author (seq INTEGER PRIMARY KEY, name TEXT NOT NULL, service_seq INTEGER NOT NULL, '
+            . 'is_close INTEGER NOT NULL)',
+        );
         $insert = $native->prepare('INSERT INTO author (seq, name, service_seq, is_close) VALUES (?, ?, ?, ?)');
         for ($seq = 1; $seq <= 100; $seq++) {
             $insert->execute([$seq, sprintf('list-%03d', $seq), 7, 0]);
@@ -31,12 +34,17 @@ function hotPathReadCorrectness(): void
         $db = Model\connect('sqlite://' . $path, new Config(aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index'));
 
         $pk = (new Author())($db)->removeAllColumns()->removeColumnUserSeq()->removeColumnServiceSeq()
-            ->removeColumnServiceRegionSeq()->removeColumnServiceMemberSeq()->seq(42)->addColumnSeq()->addColumnName()->limit(0, 1);
+            ->removeColumnServiceRegionSeq()->removeColumnServiceMemberSeq()->seq(42)->addColumnSeq()->addColumnName()
+            ->limit(0, 1);
         $pkStatement = $pk->getQuery();
         Assert::assertSame([42, 1, 0], $pkStatement['binds'], 'PK binds');
         assertHotPathProjection($pkStatement['sql']);
         $pkExpected = [[42, 'list-042']];
-        Assert::assertSame($pkExpected, hotPathNativeRows($native, $pkStatement['sql'], $pkStatement['binds']), 'PK native rows');
+        Assert::assertSame(
+            $pkExpected,
+            hotPathNativeRows($native, $pkStatement['sql'], $pkStatement['binds']),
+            'PK native rows',
+        );
         Assert::assertSame($pkExpected, hotPathClientRows($pk->gets()->all()), 'PK client rows');
 
         $list = (new Author())($db)->removeAllColumns()->removeColumnUserSeq()->removeColumnServiceSeq()
@@ -49,7 +57,11 @@ function hotPathReadCorrectness(): void
         for ($seq = 100; $seq >= 1; $seq--) {
             $expected[] = [$seq, sprintf('list-%03d', $seq)];
         }
-        Assert::assertSame($expected, hotPathNativeRows($native, $listStatement['sql'], $listStatement['binds']), 'list100 native rows');
+        Assert::assertSame(
+            $expected,
+            hotPathNativeRows($native, $listStatement['sql'], $listStatement['binds']),
+            'list100 native rows',
+        );
         Assert::assertSame($expected, hotPathClientRows($list->gets()->all()), 'list100 client rows');
     } finally {
         if ($db instanceof Db) {
@@ -78,7 +90,10 @@ function hotPathNativeRows(PDO $native, string $sql, array $binds): array
         $statement->bindValue($index + 1, $value, $type);
     }
     $statement->execute();
-    return array_map(static fn(array $row): array => [(int) $row[0], (string) $row[1]], $statement->fetchAll(PDO::FETCH_NUM));
+    return array_map(
+        static fn(array $row): array => [(int) $row[0], (string) $row[1]],
+        $statement->fetchAll(PDO::FETCH_NUM),
+    );
 }
 
 /** @param list<Author> $rows @return list<array{int, string}> */

@@ -83,7 +83,12 @@ final class ConnectionBusyTimeoutNativeTest extends TestCase
                         for ($index = 0; $index < 10; $index++) {
                             $db->transaction(static function () use ($db, $writer, $index): void {
                                 $db->run('query', [], null, 'SELECT COUNT(*) FROM orm_writer_probe');
-                                $db->run('insert', [], null, "INSERT INTO orm_writer_probe (label) VALUES ('writer-$writer-$index')");
+                                $db->run(
+                                    'insert',
+                                    [],
+                                    null,
+                                    "INSERT INTO orm_writer_probe (label) VALUES ('writer-$writer-$index')",
+                                );
                             }, retry: 0);
                         }
                         $db->close();
@@ -99,7 +104,10 @@ final class ConnectionBusyTimeoutNativeTest extends TestCase
                 $status = 0;
                 pcntl_waitpid($pid, $status);
                 $children = array_values(array_diff($children, [$pid]));
-                self::assertTrue(pcntl_wifexited($status) && pcntl_wexitstatus($status) === 0, "writer process $pid succeeds");
+                self::assertTrue(
+                    pcntl_wifexited($status) && pcntl_wexitstatus($status) === 0,
+                    "writer process $pid succeeds",
+                );
             }
             $dbs[] = Orm::connect("sqlite://$path", new Config());
             self::assertSame(80, (int) $dbs[0]->pdo()->query('SELECT COUNT(*) FROM orm_writer_probe')->fetchColumn());
@@ -172,8 +180,13 @@ final class ConnectionBusyTimeoutNativeTest extends TestCase
     }
 
     /** @param list<Db|null> $databases @param list<\Throwable> $cleanupErrors */
-    private static function cleanupSqliteFixture(array $databases, string $path, string $fixture, ?\Throwable $failure, array $cleanupErrors = []): void
-    {
+    private static function cleanupSqliteFixture(
+        array $databases,
+        string $path,
+        string $fixture,
+        ?\Throwable $failure,
+        array $cleanupErrors = [],
+    ): void {
         foreach ($databases as $db) {
             if ($db === null) {
                 continue;
@@ -191,7 +204,11 @@ final class ConnectionBusyTimeoutNativeTest extends TestCase
         }
         if ($cleanupErrors !== []) {
             $messages = array_map(static fn(\Throwable $error): string => $error->getMessage(), $cleanupErrors);
-            throw new RuntimeException("SQLite $fixture fixture cleanup failed: " . implode('; ', $messages), 0, $failure ?? $cleanupErrors[0]);
+            throw new RuntimeException(
+                "SQLite $fixture fixture cleanup failed: " . implode('; ', $messages),
+                0,
+                $failure ?? $cleanupErrors[0],
+            );
         }
     }
 }

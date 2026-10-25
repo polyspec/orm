@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- phpcs reports no layout finding in the PHP of orm: phpcbf fixed braces, spacing, inline control structures and call signatures, long calls, arrays, strings and comments are wrapped at 120 characters, and the silenced @unlink and @trigger_error calls are a file_exists check and an error_reporting(0) scope (KSTD-5-89-3-1).
 - Every catch clause of the TypeScript client, the scripts and the tests binds its error and narrows it to the failure it expects, rethrowing the rest, so `make lint-ts` passes on main; the red was `make lint-ts` exit 2 at `168ae591238d` with 23 bindingless catches (KSTD-5-92).
 - duplication-check passes: the generated models are build output and the repeated code of the implementations moved into shared modules, so `make duplication-check` finds no clone (KSTD-5-5).
 - `make duplication-check` exits 0 with zero clones of 6 or more lines across the whole tree, in all seven formats it reads (KSTD-5-46).
