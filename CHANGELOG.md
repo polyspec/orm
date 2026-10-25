@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The lane-name case of `make runner-check` expects the client-db-test lanes that config/parity.json declares, go, php, php-extension, typescript, python and rust, in both refusal messages, in place of the old list of four (KSTD-5-88-2).
 - The continuation case of `make runner-check` for scripts/perf-test.mts expects its five gate commands by name: the Go native, hot-path and coverage gates and PerfGateTest without and under CPU load, in place of the count of four that the coverage gate made stale (KSTD-5-88-1).
 - A transaction or savepoint whose callback and rollback both fail has one six-client unit each, citing CFG-15, in place of ten units that each bound one client. Python runs the cases on SQLite, MySQL and PostgreSQL, and on PostgreSQL it now reports CONNECTION_LOST instead of the OperationalError of psycopg when the server ended the session before the cursor opened (KSTD-2-11-13-1).
 - `make feature-unit-check` passes on main again: scripts/features/coverage.test.mts expects the requirements that config/parity.json binds to the catalog parity units (SCH-6a, INT-113 and INT-114 for catalog-connection-read; SCH-6a, INT-109 and INT-123 for catalog-connection-row-mutation), and the generation-scan-parity-php verification of model_generation no longer declares packages/php/tests/OrmGenTestSupport.php, a path of the helper phpstan-test-runner, as an input (KSTD-7-9-2). Red: the catalog case of coverage.test.mts and the helper-input case of owners.test.mts failed on main.

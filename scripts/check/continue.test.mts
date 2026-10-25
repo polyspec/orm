@@ -295,10 +295,11 @@ caseTest('client-db-test refuses an unknown lane name and an empty selection', P
   try {
     const typo = f.run(['scripts/client-db-test.mts'], { ORM_RUST_TEST_FEATURES: 'none', ORM_CLIENT_DB_LANGS: 'typscript' });
     assert.equal(typo.status, 2, typo.stdout + typo.stderr);
-    assert.match(typo.stderr, /client-db-test: ORM_CLIENT_DB_LANGS names typscript, which is no lane; the lanes are go, php, typescript and rust/);
+    // The lanes are the implementations of config/parity.json in their declared order (e2b543b51, fb80ef7c1).
+    assert.match(typo.stderr, /client-db-test: ORM_CLIENT_DB_LANGS names typscript, which is no lane; the lanes are go, php, php-extension, typescript, python, rust\n/);
     const empty = f.run(['scripts/client-db-test.mts'], { ORM_RUST_TEST_FEATURES: 'none', ORM_CLIENT_DB_LANGS: ',' });
     assert.equal(empty.status, 2, empty.stdout + empty.stderr);
-    assert.match(empty.stderr, /selects no lane/);
+    assert.match(empty.stderr, /client-db-test: ORM_CLIENT_DB_LANGS=, selects no lane; the lanes are go, php, php-extension, typescript, python, rust\n/);
     assert.ok(!existsSync(join(f.base, 'ran.log')), 'a lane ran');
   } finally {
     rmSync(f.base, { recursive: true, force: true });

@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 57eb26c419635a77b605b7b810591c0afb61086627c8f80fe45b4599a8e9dc21 -->
+<!-- source-sha256: 216ebf1d5580d4a4b099cd10b676062d18cccd53678f3b1654c02195e5cfa08d -->
 # 변경 이력
 
 ## Unreleased
 
+- `make runner-check`의 lane 이름 case가 두 거부 message 모두에서 config/parity.json이 선언한 client-db-test lane인 go, php, php-extension, typescript, python, rust를 기대하며, 예전의 넷 목록을 대신한다 (KSTD-5-88-2).
 - scripts/perf-test.mts에 대한 `make runner-check`의 계속 실행 case가 gate command 다섯을 이름으로 기대한다: Go native, hot-path, coverage gate와 CPU 부하 없이와 부하 아래의 PerfGateTest이며, coverage gate가 낡게 만든 넷이라는 수를 대신한다 (KSTD-5-88-1).
 - callback과 rollback이 모두 실패하는 transaction과 savepoint는 각각 CFG-15를 인용하는 여섯 client unit 하나를 가지며, client 하나씩 bind하던 unit 열 개를 대신한다. Python은 이 case를 SQLite, MySQL, PostgreSQL에서 실행하고, cursor를 열기 전에 서버가 session을 끝내면 PostgreSQL에서 psycopg의 OperationalError 대신 CONNECTION_LOST를 보고한다(KSTD-2-11-13-1).
 - `make feature-unit-check`가 main에서 다시 통과한다: scripts/features/coverage.test.mts가 config/parity.json이 catalog parity unit에 묶은 requirement(catalog-connection-read는 SCH-6a, INT-113, INT-114, catalog-connection-row-mutation은 SCH-6a, INT-109, INT-123)를 기대하고, model_generation의 generation-scan-parity-php verification이 helper phpstan-test-runner의 경로 packages/php/tests/OrmGenTestSupport.php를 더 이상 input으로 선언하지 않는다 (KSTD-7-9-2). red: main에서 coverage.test.mts의 catalog case와 owners.test.mts의 helper input case가 실패했다.
