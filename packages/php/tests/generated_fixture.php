@@ -71,9 +71,16 @@ function removeGeneratedFixtureTree(string $path): void
     rmdir($path);
 }
 
-/** Share generated model fixture configuration and class initialization. */
+/**
+ * The lifecycle of a database test case on the three drivers whose models are generated from a contract fixture: it
+ * brings the drivers (ThreeDrivers) and the database assertions (DatabaseTestAssertions) and loads the models of
+ * generatedFixture() before the first case.
+ */
 trait GeneratedFixtureLifecycle
 {
+    use ThreeDrivers;
+    use DatabaseTestAssertions;
+
     /**
      * @return array{
      *     prefix: non-empty-string,

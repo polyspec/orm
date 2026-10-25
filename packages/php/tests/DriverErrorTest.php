@@ -29,8 +29,6 @@ use PHPUnit\Framework\Attributes\DataProvider;
 #[Medium]
 final class DriverErrorTest extends TestCase
 {
-    use ThreeDrivers;
-    use DatabaseTestAssertions;
     use GeneratedFixtureLifecycle;
 
     /** @return array{prefix: non-empty-string, documentName: non-empty-string, namespace: non-empty-string} */

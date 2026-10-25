@@ -35,8 +35,6 @@ use function Polyspec\OrderedJson\stringify;
 #[Medium]
 final class AesJsonTest extends TestCase
 {
-    use ThreeDrivers;
-    use DatabaseTestAssertions;
     use GeneratedFixtureLifecycle;
 
     /** @return array{prefix: non-empty-string, documentName: non-empty-string, namespace: non-empty-string,
