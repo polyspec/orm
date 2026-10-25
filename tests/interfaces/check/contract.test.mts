@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { errorCode } from '../../errors.mts';
 import { caseTest, COMPUTE, PROCESS } from '../../testcase.mts';
-import { checkProhibitedSymbols, checkRecords, differences } from './contract.mts';
+import { checkProhibitedSymbols, checkRecords, checkRules, differences } from './contract.mts';
 import { checkCallsInRoots, extract } from './extract.mts';
 import { mark, readManifest, type ContractRecord, type Manifest, type Symbols } from './manifest.mts';
 
@@ -78,6 +78,40 @@ caseTest('prohibited symbols use the name forms of each language', COMPUTE, () =
     assert.equal(checkProhibitedSymbols(runtime, symbolsOf(symbols), ['multi_statement']).length, 1, `${runtime} prohibited name`);
   }
   assert.deepEqual(checkProhibitedSymbols('test', symbolsOf({ 'Query.stream': 'func(visitor) StreamResult' }), ['multi_statement']), [], 'unrelated symbol rejected');
+});
+
+// Requirements: PLN-2, PLN-3.
+caseTest('common syntax rejects cross-language signature drift and unlisted declarations', COMPUTE, () => {
+  const spellings: Record<string, string> = {
+    go: 'func Connect(value *Db) *Model',
+    php: 'public function connect(Db $value): Model',
+    rust: 'fn connect(self, value: &Db) -> Model',
+    typescript: 'connect(value: Db): Model',
+    python: 'def connect(self, value: Db) -> Model',
+  };
+  const rule = {
+    id: 'Model.connect', for: 'once', native: Object.fromEntries(Object.entries(spellings).map(([language, signature]) => [
+      language, { symbol: `${language}::Model.connect`, signature },
+    ])),
+  };
+  for (const [language, signature] of Object.entries(spellings)) {
+    const key = `${language}::Model.connect`;
+    assert.deepEqual(checkRules(language, symbolsOf({ [key]: signature }), [rule], undefined), [], `${language} syntax`);
+    assert.notDeepEqual(
+      checkRules(language, symbolsOf({ [key]: signature.replace('Model', 'Query') }), [rule], undefined),
+      [],
+      `${language} cross-language syntax mutation`,
+    );
+    const missing = { ...rule, native: { ...rule.native } };
+    delete missing.native[language];
+    assert.match(checkRules(language, symbolsOf({ [key]: signature }), [missing], undefined).join('\n'), /missing/,
+      `${language} syntax without a common rule`);
+  }
+
+  const snapshot = symbolsOf({ 'model::Model.connect': 'connect(Db): Model' });
+  const generated = { ...snapshot, ...symbolsOf({ 'model::Model.connectFallback': 'connectFallback(Db): Model' }) };
+  assert.match(differences(snapshot, generated).join('\n'), /unexpected model::Model\.connectFallback/,
+    'an added generated syntax absent from the reviewed declaration inventory passed');
 });
 
 caseTest('attempted multi_statement calls fail the interface validation', COMPUTE, () => {
@@ -241,7 +275,13 @@ caseTest('the extension declarations are checked against the contract', PROCESS,
     'an adapter that the extension does not list': {
       manifest: original => ({
         ...original,
-        rules: (original.rules ?? []).map(r => (r.id === 'Model.gets' && r.native?.['php'] ? { ...r, native: { ...r.native, 'php-extension': r.native['php'] } } : r)),
+        extensions: {
+          ...original.extensions,
+          'php-extension': {
+            ...original.extensions?.['php-extension'],
+            rules: (original.extensions?.['php-extension']?.rules ?? []).filter(id => id !== 'Model.gets'),
+          },
+        },
       }),
       want: 'Model.gets has a php-extension adapter that the extension does not list',
     },
