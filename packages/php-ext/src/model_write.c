@@ -782,6 +782,7 @@ static bool model_key_values(zval *model, zval *keys)
     ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(pk), name) {
         if (Z_TYPE_P(name) != IS_STRING) {
             zval_ptr_dtor(keys);
+            ZVAL_UNDEF(keys);
             zval_ptr_dtor(&meta);
             zend_throw_error(NULL, "Model primary-key columns must be strings");
             return false;
@@ -799,6 +800,7 @@ static bool model_key_values(zval *model, zval *keys)
             if (!model_static_call(model, "resolved", &resolved, 1, &arg)) {
                 zval_ptr_dtor(&arg);
                 zval_ptr_dtor(keys);
+                ZVAL_UNDEF(keys);
                 zval_ptr_dtor(&meta);
                 call_result_dtor(&resolved);
                 return false;
@@ -820,6 +822,7 @@ static bool model_key_values(zval *model, zval *keys)
                 throw_model_error("CONFIG", ZSTR_VAL(text));
                 zend_string_release(text);
                 zval_ptr_dtor(keys);
+                ZVAL_UNDEF(keys);
                 zval_ptr_dtor(&meta);
                 return false;
             }

@@ -123,6 +123,10 @@ class CoverageTransactionsTest extends TestCase
                 } finally {
                     $fiber->resume();
                 }
+                Assert::assertNull(
+                    $db->transactionNumber(),
+                    'a completed Fiber leaves no active transaction frame'
+                );
                 Assert::assertSame(Code::CONFIG, $flowError?->code_, 'a second Fiber cannot use an active transaction connection');
 
                 foreach (['read_uncommitted', 'read_committed', 'repeatable_read', 'serializable'] as $isolation) {
@@ -159,7 +163,7 @@ class CoverageTransactionsTest extends TestCase
                 }
 
                 if ($item[0] === 'postgres') {
-                    (new CompositeAccount())->setTenantId(TRANSACTION_TENANT)
+                    (new CompositeAccount())($db)->setTenantId(TRANSACTION_TENANT)
                         ->setAccountId(6)->setName('before timeout')->create();
                     $holder = coverageConnect((string) $item[1]);
                     try {
@@ -173,15 +177,20 @@ class CoverageTransactionsTest extends TestCase
                         $timeoutError = null;
                         try {
                             $db->transaction(function () use ($db): void {
-                                (new CompositeAccount())($db)->tenantId(TRANSACTION_TENANT)
-                                    ->setName('timed out')->update();
+                                $row = (new CompositeAccount())($db)
+                                    ->getByTenantIdAndAccountId(TRANSACTION_TENANT, 6);
+                                $row->setName('timed out')->update();
                             }, timeoutMs: 250, retry: 0);
                         } catch (OrmException $error) {
                             $timeoutError = $error;
                         } finally {
                             $fiber->resume();
                         }
-                        Assert::assertSame(Code::CANCELED, $timeoutError?->code_, 'locked statement exceeds transaction timeoutMs');
+                        Assert::assertSame(
+                            Code::CANCELED,
+                            $timeoutError?->code_,
+                            'locked statement exceeds transaction timeoutMs: ' . ($timeoutError?->getMessage() ?? 'no error')
+                        );
                         Assert::assertSame(
                             'before timeout',
                             (new CompositeAccount())($db)->getByTenantIdAndAccountId(TRANSACTION_TENANT, 6)->getName(),

@@ -62,6 +62,33 @@ final class ModelWriteSurfaceTest extends TestCase
         self::assertSame(['id' => 42], $keyValues->invoke($model));
     }
 
+    public function testNativeUpdateClearsAnIncompleteKeyBeforeThrowingConfig(): void
+    {
+        $db = new \Polyspec\Orm\Db(
+            new \PDO('sqlite::memory:'),
+            'sqlite',
+            new Config(),
+            new \DateTimeZone('UTC')
+        );
+        try {
+            $error = null;
+            try {
+                (new \Polyspec\Orm\Tests\Model\CompositeAccount())($db)
+                    ->setName('missing key')
+                    ->update();
+            } catch (OrmException $caught) {
+                $error = $caught;
+            }
+            self::assertSame(Code::CONFIG, $error?->code_);
+            self::assertSame(
+                'CONFIG: composite_account requires a loaded row or set primary key tenant_id',
+                $error?->getMessage()
+            );
+        } finally {
+            $db->close();
+        }
+    }
+
     public function testNativeMarkdownWriteReturnsFirstKeyOrNullWhenNoKeysWereAnswered(): void
     {
         $manifestHash = \Polyspec\Orm\Tests\MarkdownModel\People::meta()['manifest_hash'];
