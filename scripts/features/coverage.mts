@@ -10,7 +10,7 @@ import { PROCESS, runCase, runLong, stepLines } from '../../tests/testcase.mts';
 import { errorCode } from '../../tests/errors.mts';
 import { readFeatures } from './manifest.mts';
 import { implementationLanguages, featureLanguages } from './languages.mts';
-import { parseGoTestEvent } from '../json/formats.mts';
+import { parseGoTestEvent, type ParityConfig } from '../json/formats.mts';
 import { programEnvironment, readBinaries } from '../../tests/cargo-test.mts';
 import { COMPLEX_QUERY_DSN_ENVS, COMPLEX_QUERY_SETUP } from '../check/databases.mts';
 import { performanceDiagnosticArguments, performanceMeasurementsFromOutput, writePerformanceMeasurementRecord, performanceAttemptOf, performanceDatabaseOf, performanceRuntimeOf, type PerformanceMeasurement } from './performance-reference.mts';
@@ -56,7 +56,8 @@ type Prepared = { program: string; args: string[]; cwd?: string | undefined; lab
 
 export const languages = implementationLanguages();
 // claimedLanguages are the client languages of a feature: the ones its parity units bind. Each claimed language needs an owner.
-const claimedLanguages = (feature: Feature): Set<string> => new Set(featureLanguages(feature.parity ?? []));
+const claimedLanguages = (feature: Feature, parityConfig?: ParityConfig): Set<string> =>
+  new Set(featureLanguages(feature.parity ?? [], parityConfig));
 export const databases = ['mysql', 'postgres', 'sqlite'];
 
 const validPart = (part: unknown): part is string => typeof part === 'string' && part !== '' &&
@@ -69,12 +70,12 @@ const validTests = (part: string, tests: unknown): tests is string[] => Array.is
 const checkerRoot = resolve(new URL('../..', import.meta.url).pathname);
 const stateReader = resolve(checkerRoot, 'tests/conformance/check/main.mts');
 
-function requirements(feature: Feature, coverage: Coverage, errors: string[]): Item[] {
+function requirements(feature: Feature, coverage: Coverage, errors: string[], parityConfig?: ParityConfig): Item[] {
   const selectedDatabase = selectedDatabases.get(feature);
   const selectedCases = selectedCasesByFeature.get(feature);
   const required = coverage.kind === 'database' ? (selectedDatabase ? [selectedDatabase] : databases) : ['none'];
   const items: Item[] = [];
-  const claimed = claimedLanguages(feature);
+  const claimed = claimedLanguages(feature, parityConfig);
   if (!coverage.owners || typeof coverage.owners !== 'object' || Array.isArray(coverage.owners))
     errors.push(`${feature.id}: missing owners`);
   for (const language of Object.keys(coverage.owners ?? {})) {
@@ -227,7 +228,11 @@ export function coverageItems(
 
 // Reports in this function are constructed by executeCoverage from native test
 // events and the checker's database reader, never parsed from test JSON.
-export function checkCoverage(manifest: Manifest, reports: Record<string, Report[] | undefined>): string[] {
+export function checkCoverage(
+  manifest: Manifest,
+  reports: Record<string, Report[] | undefined>,
+  parityConfig?: ParityConfig,
+): string[] {
   const errors: string[] = [];
   const ids = new Set<string>();
   const expected = new Set<string>();
@@ -245,7 +250,7 @@ export function checkCoverage(manifest: Manifest, reports: Record<string, Report
       errors.push(`${feature.id}: coverage cases must be distinct nonempty IDs`);
       continue;
     }
-    for (const item of requirements(feature, coverage, errors)) {
+    for (const item of requirements(feature, coverage, errors, parityConfig)) {
         const { key, language, database } = item;
         expected.add(key);
         const executions = reports[key];
@@ -284,7 +289,7 @@ export function checkCoverage(manifest: Manifest, reports: Record<string, Report
         if (coverage.kind === 'database' && executions[0]?.state_before !== executions[1]?.state_before)
           errors.push(`${key}: database state changed between executions`);
     }
-    if (feature.status === 'implemented' && languages.some(language => !claimedLanguages(feature).has(language)))
+    if (feature.status === 'implemented' && languages.some(language => !claimedLanguages(feature, parityConfig).has(language)))
       errors.push(`${feature.id}: implemented feature lacks a parity unit in a client language`);
   }
   for (const key of Object.keys(reports)) {
@@ -766,7 +771,12 @@ const usesCargo = (plan: Plan): boolean => plan.native.some(spec => spec.format 
 // case keeps its own deadline through its own level (testcase.Start, caseTest), so this deadline is the outer
 // boundary that ends a stuck process, and is not shorter than the longest declarable level PROCESS (5 minutes). The build before it is a long-running task, so it has no deadline.
 export const NATIVE_DEADLINE = PROCESS;
-export async function executeCoverage(manifest: Manifest, root: string, timeoutMs = NATIVE_DEADLINE): Promise<string[]> {
+export async function executeCoverage(
+  manifest: Manifest,
+  root: string,
+  timeoutMs = NATIVE_DEADLINE,
+  parityConfig?: ParityConfig,
+): Promise<string[]> {
   const reports: Record<string, Report[]> = {};
   const errors: string[] = [];
   const performanceObservations: PerformanceMeasurement[] = [];
@@ -774,7 +784,7 @@ export async function executeCoverage(manifest: Manifest, root: string, timeoutM
   for (const feature of manifest.features ?? []) {
     const coverage = feature.coverage;
     if (!coverage || !['database', 'independent'].includes(coverage.kind)) continue;
-    for (const item of requirements(feature, coverage, errors)) {
+    for (const item of requirements(feature, coverage, errors, parityConfig)) {
         const { key, command } = item;
         if (!command) {
           errors.push(`${key}: no executable command`);
@@ -847,7 +857,7 @@ export async function executeCoverage(manifest: Manifest, root: string, timeoutM
       errors.push(`performance_gate measurement record: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
-  return [...errors, ...checkCoverage(manifest, reports)];
+  return [...errors, ...checkCoverage(manifest, reports, parityConfig)];
 
   // runUnit runs one file of several databases once per attempt. The file prints the cases of every database, and each plan
   // takes the lines of its own database. The state of each database is read before and after that one run.

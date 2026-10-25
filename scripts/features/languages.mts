@@ -122,9 +122,10 @@ export function unlistedFeatureTestErrors(existing: Record<string, Iterable<stri
 }
 
 /** featureLanguages is the implementations that the parity units bind, in the order of implementationLanguages(). */
-export function featureLanguages(ids: string[]): string[] {
-  const bound = new Set(ids.flatMap(id => (units.get(id)?.bindings ?? []).map(binding => binding.implementation)));
-  return implementationLanguages().filter(language => bound.has(language));
+export function featureLanguages(ids: string[], config: ParityConfig = parity): string[] {
+  const configuredUnits = new Map(config.units.map(unit => [unit.id, unit]));
+  const bound = new Set(ids.flatMap(id => (configuredUnits.get(id)?.bindings ?? []).map(binding => binding.implementation)));
+  return config.implementations.map(entry => entry.name).filter(language => bound.has(language));
 }
 
 /** unitTests is the test files that the parity unit of id binds for one implementation. */

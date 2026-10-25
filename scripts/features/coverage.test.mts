@@ -12,15 +12,21 @@ import { cargoTargetArgs, checkCoverage, coverageItems, databaseDsn, databases, 
 import { readFeatures } from './manifest.mts';
 import { readParityConfig, type ParityConfig } from '../json/formats.mts';
 
+// Synthetic manifests use explicit minimal parity, independent of the repository's live native-unit inventory.
+const fixtureLanguages = ['go', 'php', 'php-extension', 'python', 'rust', 'typescript'];
+const fixtureParity: ParityConfig = {
+  implementations: fixtureLanguages.map(name => ({ name, runner: 'node', roots: [] })),
+  units: fixtureLanguages.map(name => ({ id: `fixture-${name}`, bindings: [{ implementation: name }] })),
+};
 const parityUnits = readParityConfig(new URL('../../config/parity.json', import.meta.url).pathname).units;
-// parityOf names one parity unit that binds only each language, so the feature claims exactly those languages.
 function parityOf(claimed: string[]): string[] {
   return claimed.map(language => {
-    const unit = parityUnits.find(entry => entry.bindings?.length && entry.bindings.every(binding => binding.implementation === language));
-    if (!unit) throw new Error(`config/parity.json binds no unit to ${language}`);
-    return unit.id;
+    if (!fixtureLanguages.includes(language)) throw new Error(`unknown fixture language ${language}`);
+    return `fixture-${language}`;
   });
 }
+const checkSampleCoverage = (manifest: Manifest, reports: Record<string, Report[] | undefined>): string[] =>
+  checkCoverage(manifest, reports, fixtureParity);
 /** The sample contract of these cases: one feature, every client owning it, and one Go dependent. */
 type SampleManifest = { features: [Feature & { parity: string[]; coverage: Coverage & { owners: Record<string, Owner>; dependents: Dependent[] } }] };
 /** The execution reports of the sample contract, by item key. */
@@ -92,9 +98,9 @@ caseTest('PHP extension coverage tests reside in the owning package', 1000, () =
   const owner = manifest.features[0].coverage.owners['php-extension'];
   assert.ok(owner);
   assert.equal(testDirectoryOf('php-extension'), 'packages/php-ext');
-  assert.deepEqual(checkCoverage(manifest, reports), []);
+  assert.deepEqual(checkSampleCoverage(manifest, reports), []);
   owner.tests = ['packages/php/tests/CoverageCatalogConnectionTest.php'];
-  assert.match(checkCoverage(manifest, reports).join('\n'), /sample\/owner\/php-extension: tests must reside in owning part/);
+  assert.match(checkSampleCoverage(manifest, reports).join('\n'), /sample\/owner\/php-extension: tests must reside in owning part/);
   const extensionTest = ownerTests['php-extension'];
   assert.ok(extensionTest);
   owner.tests = [extensionTest];
@@ -104,7 +110,7 @@ caseTest('PHP extension coverage tests reside in the owning package', 1000, () =
   assert.ok(mysqlReports[1]);
   mysqlReports[0].part = 'packages/php/tests';
   mysqlReports[1].part = 'packages/php/tests';
-  assert.match(checkCoverage(manifest, reports).join('\n'), /sample\/owner\/php-extension: missing owning client part/);
+  assert.match(checkSampleCoverage(manifest, reports).join('\n'), /sample\/owner\/php-extension: missing owning client part/);
 });
 
 caseTest('PHP extension catalog, schema and statement event coverage use native tests', 1000, () => {
@@ -463,7 +469,7 @@ function selectedSample(manifest: SampleManifest, parts: string[]): Manifest {
 }
 
 function runSelected(manifest: SampleManifest, root: string, timeoutMs: number, parts: string[]): Promise<string[]> {
-  return executeCoverage(selectedSample(manifest, parts), root, timeoutMs);
+  return executeCoverage(selectedSample(manifest, parts), root, timeoutMs, fixtureParity);
 }
 
 function negativeSelected(manifest: SampleManifest, root: string, timeoutMs: number, parts: string[]) {
@@ -490,7 +496,7 @@ function mutation(change: (manifest: SampleManifest, reports: Reports) => void, 
   const manifest = contract(kind);
   const reports = complete(kind);
   change(manifest, reports);
-  return checkCoverage(manifest, reports).join('\n');
+  return checkSampleCoverage(manifest, reports).join('\n');
 }
 
 // quietly collects the console lines that run writes. executeCoverage writes a TAP `not ok - <case>` line and `# <reason>`
@@ -519,14 +525,14 @@ function tapFailures(lines: string[]): string[] {
 
 // negative returns the execution errors and the TAP failure groups of a negative sample; the calling test checks the exact text.
 async function negative(manifest: Manifest, root: string, timeoutMs: number): Promise<{ errors: string[]; failures: string[] }> {
-  const { value, lines } = await quietly(() => executeCoverage(manifest, root, timeoutMs));
+  const { value, lines } = await quietly(() => executeCoverage(manifest, root, timeoutMs, fixtureParity));
   return { errors: value.toSorted(), failures: tapFailures(lines) };
 }
 
 // Requirements: FCV-1.
 caseTest('owner and dependent cases execute in every client language and three databases', 1000, () => {
-  assert.deepEqual(checkCoverage(contract(), complete()), []);
-  assert.deepEqual(checkCoverage(contract('independent'), complete('independent')), []);
+  assert.deepEqual(checkSampleCoverage(contract(), complete()), []);
+  assert.deepEqual(checkSampleCoverage(contract('independent'), complete('independent')), []);
 });
 
 caseTest('a shared Markdown session case requires an owner for every client', 1000, () => {
@@ -537,7 +543,7 @@ caseTest('a shared Markdown session case requires an owner for every client', 10
   feature.coverage.cases = ['markdown_session'];
   feature.parity = parityOf(languages.filter(language => language !== 'python'));
   delete feature.coverage.owners.python;
-  assert.match(checkCoverage(manifest, {}).join('\n'), /markdown-session\/owner\/python: missing owning client part/);
+  assert.match(checkSampleCoverage(manifest, {}).join('\n'), /markdown-session\/owner\/python: missing owning client part/);
 });
 
 caseTest('an implemented feature must claim every client language in its parity units', 1000, () => {
@@ -839,7 +845,7 @@ caseTest('invented JSON success from an arbitrary command is not execution evide
   // @ts-expect-error: a shell command in place of native test commands is the invalid contract under test.
   defined(defined(manifest.features[0].coverage.dependents[0]).commands).none =
     `node -e 'process.stdout.write(${JSON.stringify(report('dependent', 'packages/go/model', [dependentTest], 'go', ['first'], 'service'))})'`;
-  assert.match((await executeCoverage(manifest, new URL('../..', import.meta.url).pathname, 1000)).join('\n'),
+  assert.match((await executeCoverage(manifest, new URL('../..', import.meta.url).pathname, 1000, fixtureParity)).join('\n'),
     /invalid native test command/);
 });
 
