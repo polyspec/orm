@@ -10,7 +10,7 @@ final class Cpx5DuplicateRelationNativeTest extends TestCase
 {
     use Cpx5DuplicateRelationCases;
 
-    // Requirements: CPX-5.
+    // Requirements: CPX-5, DSL-128.
     public function testNativeGetQueryRejectsDuplicateRelationWithAliasHint(): void
     {
         $this->assertDuplicateRelationAliasHint('orm-cpx5-native-');

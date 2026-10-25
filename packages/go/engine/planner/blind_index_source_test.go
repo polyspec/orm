@@ -88,6 +88,7 @@ func requireBlindIndexConflict(t *testing.T, p *plan.Plan, err error, context st
 	}
 }
 
+// Requirements: COD-4.
 func TestMultiRowBlindIndexUsesAssignedSourceAndOriginalRowOffsets(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	p, err := compileSharedBlindIndex(t, &ir.Request{
@@ -103,6 +104,7 @@ func TestMultiRowBlindIndexUsesAssignedSourceAndOriginalRowOffsets(t *testing.T)
 	}
 }
 
+// Requirements: COD-4.
 func TestBlindIndexDerivationRejectsDistinctSourcesRegardlessOfValues(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	for _, tc := range blindIndexConflictCases(1) {
@@ -116,6 +118,7 @@ func TestBlindIndexDerivationRejectsDistinctSourcesRegardlessOfValues(t *testing
 	}
 }
 
+// Requirements: COD-4.
 func TestExplicitBlindIndexAssignmentWinsOverMultipleSources(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	p, err := compileSharedBlindIndex(t, &ir.Request{
@@ -132,6 +135,7 @@ func TestExplicitBlindIndexAssignmentWinsOverMultipleSources(t *testing.T) {
 	}
 }
 
+// Requirements: COD-4.
 func TestInsertAndOnDuplicateBlindIndexAssignmentsAreIndependent(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	p, err := compileSharedBlindIndex(t, &ir.Request{
@@ -160,6 +164,7 @@ func TestInsertAndOnDuplicateBlindIndexAssignmentsAreIndependent(t *testing.T) {
 	}
 }
 
+// Requirements: COD-4.
 func TestOnDuplicateRejectsDistinctSourcesWithoutExplicitTarget(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	for _, tc := range blindIndexConflictCases(2) {
@@ -174,6 +179,7 @@ func TestOnDuplicateRejectsDistinctSourcesWithoutExplicitTarget(t *testing.T) {
 	}
 }
 
+// Requirements: COD-4.
 func TestOrdinaryInsertHasNoBlindIndexAssignments(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	p, err := compileSharedBlindIndex(t, &ir.Request{

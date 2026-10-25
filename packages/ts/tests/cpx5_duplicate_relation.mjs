@@ -1,4 +1,4 @@
-// Requirements: CPX-5.
+// Requirements: CPX-5, DSL-128.
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';

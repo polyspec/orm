@@ -60,6 +60,7 @@ fn assert_invalid_derived_source(request: &ir::Request, manifest: &crate::schema
 }
 
 #[test]
+// Requirements: COD-4.
 fn multi_row_index_uses_the_assigned_source_column_position() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let manifest = manifest(SCHEMA);
@@ -69,6 +70,7 @@ fn multi_row_index_uses_the_assigned_source_column_position() {
 }
 
 #[test]
+// Requirements: COD-4.
 fn ordinary_insert_has_no_blind_index_assignment() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let manifest = manifest(SCHEMA);
@@ -86,6 +88,7 @@ fn ordinary_insert_has_no_blind_index_assignment() {
 }
 
 #[test]
+// Requirements: COD-4.
 fn two_assigned_sources_of_one_derived_target_are_invalid() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let manifest = manifest(SCHEMA);
@@ -95,6 +98,7 @@ fn two_assigned_sources_of_one_derived_target_are_invalid() {
 }
 
 #[test]
+// Requirements: COD-4.
 fn two_sources_with_equal_parameter_are_invalid() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let manifest = manifest(SCHEMA);
@@ -104,6 +108,7 @@ fn two_sources_with_equal_parameter_are_invalid() {
 }
 
 #[test]
+// Requirements: COD-4.
 fn explicit_index_assignment_wins_over_multiple_sources() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let manifest = manifest(SCHEMA);
@@ -118,6 +123,7 @@ fn explicit_index_assignment_wins_over_multiple_sources() {
 }
 
 #[test]
+// Requirements: COD-4.
 fn on_duplicate_rejects_two_sources_deriving_one_target() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let manifest = manifest(SCHEMA);
@@ -135,6 +141,7 @@ fn on_duplicate_rejects_two_sources_deriving_one_target() {
 }
 
 #[test]
+// Requirements: COD-4.
 fn explicit_index_assignment_wins_in_on_duplicate() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let manifest = manifest(SCHEMA);

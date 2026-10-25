@@ -103,6 +103,7 @@ final class BlindIndexSourcePlannerTest extends TestCase
 {
     use BlindIndexSourcePlannerInput;
 
+    // Requirements: COD-4.
     public function testMultiRowIndexUsesTheAssignedSourceColumnPosition(): void
     {
         $plan = $this->compileInsert([
@@ -119,6 +120,7 @@ final class BlindIndexSourcePlannerTest extends TestCase
         Assert::assertSame([2, 5], $params);
     }
 
+    // Requirements: COD-4.
     public function testOrdinaryInsertControlHasNoBlindIndexSlots(): void
     {
         $plan = $this->compileBaseInsert(2);
@@ -127,6 +129,7 @@ final class BlindIndexSourcePlannerTest extends TestCase
         }
     }
 
+    // Requirements: COD-4.
     public function testTwoNullSourcesDerivingOneTargetAreInvalid(): void
     {
         $this->assertSourcesConflict([
@@ -135,6 +138,7 @@ final class BlindIndexSourcePlannerTest extends TestCase
         ], 2);
     }
 
+    // Requirements: COD-4.
     public function testEqualParameterSourcesDerivingOneTargetAreInvalid(): void
     {
         $this->assertSourcesConflict([
@@ -143,6 +147,7 @@ final class BlindIndexSourcePlannerTest extends TestCase
         ], 3);
     }
 
+    // Requirements: COD-4.
     public function testExplicitTargetAssignmentWinsForSharedSchema(): void
     {
         $plan = $this->compileInsert([
@@ -155,6 +160,7 @@ final class BlindIndexSourcePlannerTest extends TestCase
         Assert::assertSame(1, substr_count($plan['steps'][0]['sql'], '`hash`'));
     }
 
+    // Requirements: COD-4.
     public function testOnDuplicateRejectsTwoSourcesIndependently(): void
     {
         $engine = $this->engine();
@@ -180,6 +186,7 @@ final class BlindIndexSourcePlannerTest extends TestCase
         }
     }
 
+    // Requirements: COD-4.
     public function testExplicitTargetWinsInOnDuplicate(): void
     {
         $plan = $this->compileBaseInsert(5, [

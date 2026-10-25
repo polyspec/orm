@@ -66,6 +66,7 @@ class BlindIndexSourceTest(unittest.TestCase):
         self.assertEqual(plan["steps"][0]["sql"].count("`hash`"), 1)
         self.assertEqual(blind_index_params(plan), expected_params)
 
+    # Requirements: COD-4.
     def test_multi_row_index_binds_the_assigned_source_column_position(self):
         runtime = model()
         plan = Engine(runtime, "mysql").compile(
@@ -93,6 +94,7 @@ class BlindIndexSourceTest(unittest.TestCase):
             [2, 5],
         )
 
+    # Requirements: COD-4.
     def test_ordinary_insert_has_no_blind_index_assignment(self):
         runtime = model()
         plan = Engine(runtime, "mysql").compile(
@@ -112,6 +114,7 @@ class BlindIndexSourceTest(unittest.TestCase):
             )
         )
 
+    # Requirements: COD-4.
     def test_two_sources_of_one_derived_target_are_invalid_even_when_null(self):
         runtime = model()
         with self.assertRaises(OrmError) as raised:
@@ -132,6 +135,7 @@ class BlindIndexSourceTest(unittest.TestCase):
             )
         self.assert_invalid_shared_source(raised.exception)
 
+    # Requirements: COD-4.
     def test_two_sources_with_equal_parameter_are_invalid(self):
         runtime = model()
         with self.assertRaises(OrmError) as raised:
@@ -152,6 +156,7 @@ class BlindIndexSourceTest(unittest.TestCase):
             )
         self.assert_invalid_shared_source(raised.exception)
 
+    # Requirements: COD-4.
     def test_explicit_target_assignment_wins_for_shared_schema(self):
         self.assert_explicit_target_wins(
             {
@@ -167,6 +172,7 @@ class BlindIndexSourceTest(unittest.TestCase):
             [4],
         )
 
+    # Requirements: COD-4.
     def test_on_duplicate_rejects_two_sources_independently(self):
         runtime = model()
         cases = [
@@ -201,6 +207,7 @@ class BlindIndexSourceTest(unittest.TestCase):
                     )
                 self.assert_invalid_shared_source(raised.exception)
 
+    # Requirements: COD-4.
     def test_explicit_target_wins_in_on_duplicate(self):
         self.assert_explicit_target_wins(
             {

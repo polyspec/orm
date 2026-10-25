@@ -31,7 +31,7 @@ def duplicate_relation_name():
 
 
 class Cpx5DuplicateRelationTest(CoverageCase):
-    # Requirements: CPX-5.
+    # Requirements: CPX-5, DSL-128.
     def test_duplicate_relation_name(self):
         self.each_item("duplicate_relation_name", duplicate_relation_name)
 
