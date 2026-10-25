@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- KSTD-2-11-8-1: Rust model generation matches the build: the focused case passes and confirms two fresh generations and the model, manifest and external text from `OUT_DIR` are equal (1 test passed).
+
 - KSTD-7-4: the PHP extension implements the shared DSN, transaction, statement-event, audit, request-hook, and constraint/relation features. Its coverage owners passed twice per database on MySQL, PostgreSQL and SQLite with unchanged state digests; native TLS, SQLite busy-timeout/read-during-write, and transaction-failure checks passed.
 
 - T238: remove the obsolete worktree-prune import and prune-only cases; retain the isolated WORKTREE_STOP declaration test (1/1 passed).

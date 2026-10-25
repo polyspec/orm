@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c60eeb8016489c698b57e366815e5419d0c833eba0aaf1f5d1af6742722ec8c3 -->
+<!-- source-sha256: f6c25a84d74e24680294d0f5a5c018ae8466ffae6f8c9887fd3366f750bd637f -->
 # 변경 이력
 
 ## Unreleased
+
+- KSTD-2-11-8-1: Rust model generation이 build와 일치한다. 지정 case가 통과해 두 번 새로 생성한 model, manifest, external text가 `OUT_DIR` 결과와 같은 것을 확인한다(1 test 통과).
 
 - KSTD-7-4: PHP extension이 DSN, transaction, statement event, audit, request hook, constraint/relation 공통 기능을 구현한다. coverage owner는 MySQL, PostgreSQL, SQLite에서 database별 두 번씩 통과했고 state digest가 변하지 않았다. native TLS, SQLite busy-timeout/read-during-write, transaction-failure 검사도 통과했다.
 
