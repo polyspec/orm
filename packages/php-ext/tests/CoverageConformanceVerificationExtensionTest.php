@@ -13,7 +13,7 @@ use ReflectionClass;
 #[Large]
 final class CoverageConformanceVerificationExtensionTest extends TestCase
 {
-    private const CONFORMANCE_VECTORS = ['conditions_values', 'relations', 'audit_lazy', 'relation_null_key'];
+    private const CONFORMANCE_VECTORS = ['conditions_values', 'relations', 'delete_lock', 'audit_lazy', 'relation_null_key'];
 
     private static function extensionPath(): string
     {
@@ -165,6 +165,7 @@ final class CoverageConformanceVerificationExtensionTest extends TestCase
         }
     }
 
+    // Requirements: CFG-8.
     // Requirements: DSL-1, DSL-2, DSL-3, DSL-4, DSL-5, DSL-6, DSL-7, DSL-10, DSL-11, DSL-12, DSL-13, DSL-14.
     // Requirements: DSL-15, DSL-16, DSL-17, DSL-18, DSL-19, DSL-20, DSL-21, DSL-22, DSL-23, DSL-24, DSL-25, DSL-26.
     // Requirements: DSL-27, DSL-28, DSL-29, DSL-30, DSL-31, DSL-34, DSL-35, DSL-36, DSL-45, DSL-46, DSL-47, DSL-48.

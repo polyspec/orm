@@ -8,9 +8,8 @@ namespace Polyspec\Orm\Tests;
 // database of that dialect (BENCH_MYSQL_DSN, BENCH_POSTGRES_DSN, BENCH_SQLITE_DSN, which make run-databases and
 // make orm-check create), and each vector is one data set, named by the vector, whose output must equal the recorded
 // expect as a JSON value (tests/conformance/vectors.json for MySQL, vectors.<dialect>.json for the others).
-// testConformanceVector is the feature coverage (contracts/features.json): it runs the read-only vectors
-// conditions_values, relations and relation_null_key on the database that ORM_FEATURE_DATABASE and ORM_FEATURE_DSN
-// select.
+// testConformanceVector is the feature coverage (contracts/features.json): it runs the selected conformance vectors
+// on the database that ORM_FEATURE_DATABASE and ORM_FEATURE_DSN select.
 
 
 use RuntimeException;
@@ -56,7 +55,7 @@ function sameJson(mixed $a, mixed $b): bool
     return $a === $b;
 }
 
-const CONFORMANCE_VECTORS = ['conditions_values', 'relations', 'relation_null_key'];
+const CONFORMANCE_VECTORS = ['conditions_values', 'relations', 'delete_lock', 'audit_lazy', 'relation_null_key'];
 
 #[Large]
 final class CoverageConformanceVerificationTest extends TestCase
@@ -148,6 +147,7 @@ final class CoverageConformanceVerificationTest extends TestCase
         self::check('sqlite', $name, $expect);
     }
 
+    // Requirements: CFG-8, DSL-87, DSL-111.
     public function testConformanceVector(): void
     {
         coverageAssertEntryClassesAreInternal();
