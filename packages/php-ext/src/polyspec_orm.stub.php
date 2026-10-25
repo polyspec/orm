@@ -745,7 +745,84 @@ final class PlanApply
     public static function effectOn(\PDO $c, string $dialect, Effect $e): bool {}
 }
 
+/** @internal The shared kind of types whose values compare alike (packages/php/src/Dbspec/Meet.php). */
+final class Meet
+{
+    public static function kind(string $type, int $scale, int $precision): string {}
+}
+
 namespace Polyspec\Orm;
+
+/** Connection options. */
+final class Config
+{
+    public readonly string $aesKey;
+    public readonly string $blindIndexKey;
+    public readonly int $aesVersion;
+    public readonly array $aesKeys;
+    public readonly int $poolSize;
+    public readonly int $statementTimeoutMs;
+    public readonly int $poolIdleSize;
+    public readonly int $poolLifetimeMs;
+    public readonly int $planCacheSize;
+    public readonly int $statementCacheSize;
+    public readonly ?\Closure $auditSource;
+
+    public function __construct(
+        string $aesKey = '',
+        string $blindIndexKey = '',
+        int $aesVersion = 1,
+        array $aesKeys = [],
+        int $poolSize = 0,
+        int $statementTimeoutMs = 0,
+        int $poolIdleSize = 0,
+        int $poolLifetimeMs = 0,
+        int $planCacheSize = 256,
+        int $statementCacheSize = 256,
+        ?\Closure $auditSource = null,
+    ) {}
+
+    public function keyring(): AesKeyring {}
+}
+
+/** @internal The state shared by all handles of one connection. */
+final class DbState
+{
+    public ?\PDO $pdo = null;
+    public array $stmts = [];
+    public array $stmtOrder = [];
+    public bool $closed = false;
+    public ?\Closure $listener = null;
+    public bool $rollbackFault = false;
+    public ?OrmException $statementFault = null;
+    public ?\DateTimeImmutable $fixedClock = null;
+    public ?int $lastAffected = null;
+    public array $sets = [];
+    public array $subscribers = [];
+    public int $subscriberSeq = 0;
+    public int $transactions = 0;
+    public bool $rowLockReady = false;
+}
+
+/** @internal One active transaction. */
+final class TxFrame
+{
+    public bool $finished = false;
+    public int $savepoints = 0;
+    public array $locals = [];
+    public array $locks = [];
+    public ?array $audit = null;
+    public ?array $pendingAudit = null;
+    public array $inserted = [];
+    public readonly Db $db;
+    public readonly bool $readOnly;
+    public readonly string $isolation;
+    public readonly int $number;
+
+    public function __construct(Db $db, bool $readOnly, string $isolation, int $number) {}
+
+    public static function recordInserted(?TxFrame $frame, Request $r, mixed $id): void {}
+}
 
 /** Opens a database selected by a DSN and constructs SQL function values. */
 final class Orm

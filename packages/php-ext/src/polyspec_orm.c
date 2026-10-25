@@ -2704,6 +2704,9 @@ static PHP_MINIT_FUNCTION(polyspec_orm)
     register_class_Polyspec_Orm_Code();
     register_class_Polyspec_Orm_OrmException(spl_ce_RuntimeException);
     register_class_Polyspec_Orm_Orm();
+    register_class_Polyspec_Orm_Config();
+    register_class_Polyspec_Orm_DbState();
+    register_class_Polyspec_Orm_TxFrame();
     aes_keyring_set_class(register_class_Polyspec_Orm_AesKeyring());
     aes_rotation_status_set_class(register_class_Polyspec_Orm_AesRotationStatus());
     aes_utils_set_class(register_class_Polyspec_Orm_AesUtils());
@@ -2825,6 +2828,7 @@ static PHP_MINIT_FUNCTION(polyspec_orm)
     dbs_ce_MermaidImportResult = register_class_Polyspec_Orm_Dbspec_MermaidImportResult();
     dbs_ce_IntrospectResult = register_class_Polyspec_Orm_Dbspec_IntrospectResult();
     dbs_ce_Dbspec = register_class_Polyspec_Orm_Dbspec_Dbspec();
+    register_class_Polyspec_Orm_Dbspec_Meet();
     dbs_ce_PlanApply = register_class_Polyspec_Orm_Dbspec_PlanApply();
     dbs_ce_SetFile = register_class_Polyspec_Orm_Dbspec_SetFile();
     dbs_ce_SetError = register_class_Polyspec_Orm_Dbspec_SetError();

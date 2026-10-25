@@ -8,6 +8,9 @@ declare(strict_types=1);
 const EXTENSION_NAMESPACE = 'Polyspec\\Orm\\Dbspec\\';
 
 const CLIENT_CLASSES = [
+    'Polyspec\\Orm\\Config',
+    'Polyspec\\Orm\\DbState',
+    'Polyspec\\Orm\\TxFrame',
     'Polyspec\\Orm\\Code',
     'Polyspec\\Orm\\Codec',
     'Polyspec\\Orm\\Validator',

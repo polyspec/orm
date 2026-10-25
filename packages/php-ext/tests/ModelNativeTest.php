@@ -417,6 +417,82 @@ final class ModelNativeTest extends TestCase
         self::assertArrayNotHasKey('columns', $subquery);
     }
 
+    public function testDbspecMeetIsNative(): void
+    {
+        $reflection = new ReflectionClass(\Polyspec\Orm\Dbspec\Meet::class);
+        self::assertTrue($reflection->isInternal());
+        $method = $reflection->getMethod('kind');
+        self::assertTrue($method->isInternal());
+        self::assertTrue($method->isStatic());
+        self::assertSame([
+            'integer',
+            'integer',
+            'string',
+            'string',
+            'decimal scale 4',
+            'time precision 3',
+            'datetime precision 0',
+            'uuid',
+        ], [
+            \Polyspec\Orm\Dbspec\Meet::kind('i16', 0, 0),
+            \Polyspec\Orm\Dbspec\Meet::kind('i64', 0, 0),
+            \Polyspec\Orm\Dbspec\Meet::kind('varchar', 0, 0),
+            \Polyspec\Orm\Dbspec\Meet::kind('text', 0, 0),
+            \Polyspec\Orm\Dbspec\Meet::kind('decimal', 4, 0),
+            \Polyspec\Orm\Dbspec\Meet::kind('time', 0, 3),
+            \Polyspec\Orm\Dbspec\Meet::kind('datetime', 0, 0),
+            \Polyspec\Orm\Dbspec\Meet::kind('uuid', 0, 0),
+        ]);
+    }
+
+    public function testConfigDbStateAndTxFrameAreNative(): void
+    {
+        $reflection = new ReflectionClass(\Polyspec\Orm\Config::class);
+        self::assertTrue($reflection->isInternal());
+        foreach (['__construct', 'keyring'] as $method) {
+            self::assertTrue($reflection->getMethod($method)->isInternal());
+        }
+
+        $config = new \Polyspec\Orm\Config(aesKeys: [1 => 'key-one', 2 => 'key-two'], aesVersion: 2);
+        self::assertSame('key-two', $config->aesKey);
+        self::assertSame('key-two', $config->keyring()->key(2));
+        self::assertSame([1, 2], $config->keyring()->versions());
+
+        try {
+            new \Polyspec\Orm\Config(aesKey: 'different', aesKeys: [1 => 'key-one']);
+            self::fail('Expected Config to reject different active AES keys');
+        } catch (\Polyspec\Orm\OrmException $error) {
+            self::assertSame('CONFIG', $error->code_);
+            self::assertSame('CONFIG: aesKey differs from aesKeys[1]', $error->getMessage());
+        }
+
+        $stateReflection = new ReflectionClass(\Polyspec\Orm\DbState::class);
+        self::assertTrue($stateReflection->isInternal());
+        $state = new \Polyspec\Orm\DbState();
+        self::assertFalse($state->closed);
+        self::assertSame([], $state->stmts);
+        self::assertSame(0, $state->transactions);
+
+        $frameReflection = new ReflectionClass(\Polyspec\Orm\TxFrame::class);
+        self::assertTrue($frameReflection->isInternal());
+        self::assertTrue($frameReflection->getMethod('__construct')->isInternal());
+        self::assertTrue($frameReflection->getMethod('recordInserted')->isInternal());
+
+        require_once dirname(__DIR__, 2) . '/php/gen/bootstrap.php';
+        $account = \Polyspec\Orm\Tests\Model\Account::class;
+        $meta = $account::meta();
+        $db = (new ReflectionClass(\Polyspec\Orm\Db::class))->newInstanceWithoutConstructor();
+        $frame = new \Polyspec\Orm\TxFrame($db, false, 'serializable', 9);
+        self::assertSame($db, $frame->db);
+        self::assertSame(9, $frame->number);
+        $request = new Request('insert', $meta['manifest_hash']);
+        $request->ir['entity'] = $meta['entity'];
+        \Polyspec\Orm\TxFrame::recordInserted($frame, $request, '12');
+        self::assertSame([$meta['entity'] => [12 => true]], $frame->inserted);
+        \Polyspec\Orm\TxFrame::recordInserted($frame, $request, 13);
+        self::assertSame([$meta['entity'] => [12 => true, 13 => true]], $frame->inserted);
+    }
+
     public function testColumnsIrIncludesAddedScalarSubquery(): void
     {
         $outer = (new NativeModelFixture())->removeAllColumns()
