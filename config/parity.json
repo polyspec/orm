@@ -13122,7 +13122,7 @@
       "id": "php-internal-model-methods-phpstan-finds-every-query-method-of-a-generated-model",
       "kind": "feature",
       "requirements": [
-        "DBS-121"
+        "DSL-42"
       ],
       "bindings": [
         {
@@ -13130,13 +13130,18 @@
           "test": "packages/php/tests/ModelMethodsTest.php",
           "id": "ModelMethodsTest::testPhpstanFindsEveryQueryMethodOfAGeneratedModel"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec/orm"
+      }
     },
     {
       "id": "php-internal-model-methods-a-declared-method-builds-the-query-of-its-chain",
       "kind": "feature",
       "requirements": [
-        "DBS-121"
+        "DSL-42"
       ],
       "bindings": [
         {
@@ -13144,19 +13149,49 @@
           "test": "packages/php/tests/ModelMethodsTest.php",
           "id": "ModelMethodsTest::testADeclaredMethodBuildsTheQueryOfItsChain"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec/orm"
+      }
     },
     {
-      "id": "php-internal-model-methods-a-time-setter-takes-the-text-form",
+      "id": "generator-time-setter-takes-the-text-form",
       "kind": "feature",
       "requirements": [
         "DBS-121"
       ],
       "bindings": [
         {
+          "implementation": "go",
+          "test": "packages/go/generator/gen_go_test.go",
+          "id": "TestGeneratedFieldTypes"
+        },
+        {
           "implementation": "php",
           "test": "packages/php/tests/ModelMethodsTest.php",
           "id": "ModelMethodsTest::testATimeSetterTakesTheTextForm"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/ModelMethodsTest.php",
+          "id": "ModelMethodsTest::testATimeSetterTakesTheTextForm"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/generate.mjs",
+          "id": "generate"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_orm_gen.py",
+          "id": "test_a_time_setter_takes_the_text_form"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/tests/generate.rs",
+          "id": "a_time_setter_takes_the_text_form"
         }
       ]
     },

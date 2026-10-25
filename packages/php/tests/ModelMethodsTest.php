@@ -87,6 +87,7 @@ final class ModelMethodsTest extends TestCase
         exec('rm -rf ' . escapeshellarg(self::$work));
     }
 
+    // Requirements: DSL-42.
     public function testPhpstanFindsEveryQueryMethodOfAGeneratedModel(): void
     {
         $root = dirname(__DIR__, 3);
@@ -103,6 +104,7 @@ final class ModelMethodsTest extends TestCase
         );
     }
 
+    // Requirements: DSL-42.
     public function testADeclaredMethodBuildsTheQueryOfItsChain(): void
     {
         $work = self::$work;

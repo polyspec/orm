@@ -55,7 +55,7 @@ async function setOf(dir, documents, external = []) {
 }
 
 // The generator check is one case that runs the orm-gen and tsc processes.
-// Requirements: DSL-37, DSL-130, PLN-22, ORES-21, DBS-5, DBS-98, DBS-4, DBS-27, DBS-110, DBS-155, DBS-175, DSL-127.
+// Requirements: DBS-121, DSL-37, DSL-130, PLN-22, ORES-21, DBS-5, DBS-98, DBS-4, DBS-27, DBS-110, DBS-155, DBS-175, DSL-127.
 caseTest('generate', PROCESS, async () => {
   try {
     const usage = join(work, 'usage.ts');
@@ -75,6 +75,8 @@ caseTest('generate', PROCESS, async () => {
     check(text.includes('declare andNeUuid: (v0: string | readonly (string)[] | ValueFunction | Model | null) => this;'), 'nullable condition declaration');
     check(text.includes('declare joinServiceSeqWithSeq: (child: '), 'join declaration');
     check(text.includes("from '@polyspec/orm'"), 'generated output outside the repository imports the package');
+    // A setter of a date, time or datetime column takes the text form.
+    check(text.includes('public setCreatedTs(value: string): this {') && text.includes('public setDisplayStartDt(value: string | null): this {'), 'a time setter takes a native value');
     check(text.includes('export const MANIFEST_TEXT = `dbspec 1 bench\n') && /export const MANIFEST_HASH = 'sha256:[0-9a-f]{64}';/.test(text), 'the manifest text and hash are embedded');
     // The value type of each codec: a styled value for ordered_json and gz, a string for aes hex and ip.
     for (const declaration of [

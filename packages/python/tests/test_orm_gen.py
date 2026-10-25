@@ -1,6 +1,7 @@
 # orm-gen generator check: builds models.py from the document set of contracts/fixtures/bench/dbspec-set.json,
 # and checks that the generated module interprets the chain syntax (unittest).
 import hashlib
+import inspect
 import json
 import subprocess
 import sys
@@ -74,6 +75,22 @@ class OrmGenTest(unittest.TestCase):
                 (models.SCHEMA.manifest_text + models.SCHEMA.external_text).encode()
             ).hexdigest(),
         )
+
+    def test_a_time_setter_takes_the_text_form(self):
+        # Requirements: DBS-121.
+        import models
+
+        for model, setter, annotation in (
+            (models.TimeCell, "set_at", str),
+            (models.Author, "set_created_ts", str),
+            (models.Author, "set_display_start_dt", str | None),
+        ):
+            parameter = inspect.signature(getattr(model, setter)).parameters["value"]
+            self.assertEqual(
+                parameter.annotation,
+                annotation,
+                f"{model.__name__}.{setter} takes a native value",
+            )
 
     # Requirements: DBS-112, DBS-114, INT-66.
     def test_generated_typed_getter_is_the_public_column_api(self):

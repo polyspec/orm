@@ -758,6 +758,15 @@ fn the_builder_takes_the_documents_only_from_the_set_file() {
     assert!(!text.contains("pub struct Author "), "a document that the set does not list has a model");
 }
 
+/// A setter of a datetime column takes the text form, so the type check refuses a native date or time value.
+// Requirements: DBS-121.
+#[test]
+fn a_time_setter_takes_the_text_form() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let text = generate("fn main() {}").unwrap();
+    assert!(text.contains("pub fn set_start_dt(mut self, v: impl Into<String>) -> polyspec_orm::Result<Self>"), "start_dt does not take its text form");
+}
+
 /// Removes a test directory. One that is already gone is the state the test wants; any other failure panics with its path.
 fn remove_test_dir(path: &std::path::Path) {
     if let Err(error) = std::fs::remove_dir_all(path) {
