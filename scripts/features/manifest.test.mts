@@ -19,6 +19,11 @@ function refused(value: unknown): string[] {
   return refusedPaths(() => parseFeatures(JSON.stringify(value), 'contracts/features.json'));
 }
 const withFeature = (change: (feature: ManifestFeature) => object): object => ({ ...manifest, features: [change(first)] });
+const adapterChecklist = (state: string): string => [
+  '| ID | Task | Deliverables | Verification | State |',
+  '|---|---|---|---|---|',
+  `| KSTD-2-11-16 | Handle cancellation | Native adapters | owner tests | ${state} |`,
+].join('\n');
 
 caseTest('the schema of contracts/features.json accepts the repository manifest', COMPUTE, () => {
   assert.deepEqual(refused(manifest), []);
@@ -42,7 +47,7 @@ caseTest('the schema of contracts/features.json refuses a manifest outside its s
   assert.ok(refused(withFeature(feature => ({ ...feature, verification: [{ id: 'a', command: 'x', shard: 'other', environment: 'mac' }] }))).includes('/features/0/verification/0/environment'));
 });
 
-caseTest('a checklist item cannot close while a declared runtime adapter is unresolved', COMPUTE, () => {
+caseTest('canonical non-done checklist states allow unresolved runtime adapters', COMPUTE, () => {
   const source = readInterfaceManifest(new URL('../../contracts/interfaces.json', import.meta.url).pathname).behavior_adapters?.find(value => value.id === 'CFG-9');
   assert.ok(source, 'CFG-9 adapter contract is missing');
   const contract = structuredClone(source);
@@ -51,15 +56,42 @@ caseTest('a checklist item cannot close while a declared runtime adapter is unre
     assert.ok(adapter, `CFG-9 ${runtime} adapter is missing`);
     adapter.status = 'unresolved';
   }
-  const inProgress = '| KSTD-2-11-16 | Handle cancellation | [~] |';
-  assert.deepEqual(completionItemAdapterErrors(inProgress, [contract]), [], 'an in-progress item was refused');
-  const completed = '| KSTD-2-11-16 | Handle cancellation | [o] |';
-  const failures = completionItemAdapterErrors(completed, [contract]);
+  for (const state of [
+    '[ ]',
+    '[~]',
+    '[!] cause: deferred by the user; retry: after PHP adapter implementation',
+    '[-] cause: adapter contract superseded',
+  ]) {
+    assert.deepEqual(completionItemAdapterErrors(adapterChecklist(state), [contract]), [], `${state} was refused`);
+  }
+});
+
+caseTest('a done checklist item still requires every declared runtime adapter', COMPUTE, () => {
+  const source = readInterfaceManifest(new URL('../../contracts/interfaces.json', import.meta.url).pathname).behavior_adapters?.find(value => value.id === 'CFG-9');
+  assert.ok(source, 'CFG-9 adapter contract is missing');
+  const contract = structuredClone(source);
+  for (const runtime of ['php', 'php-extension']) {
+    const adapter = contract.adapters?.[runtime];
+    assert.ok(adapter, `CFG-9 ${runtime} adapter is missing`);
+    adapter.status = 'unresolved';
+  }
+  const failures = completionItemAdapterErrors(adapterChecklist('[o]'), [contract]);
   assert.ok(failures.some(error => error.includes('KSTD-2-11-16: CFG-9/php: unresolved native behavior adapter')),
     'item completion passed with unresolved PHP cancellation');
   assert.ok(failures.some(error => error.includes('KSTD-2-11-16: CFG-9/php-extension: unresolved native behavior adapter')),
     'item completion passed with unresolved PHP extension cancellation');
-  assert.notDeepEqual(completionItemAdapterErrors('', [contract]), [], 'missing owning checklist item passed');
+});
+
+caseTest('missing and non-canonical checklist states fail the adapter guard', COMPUTE, () => {
+  const source = readInterfaceManifest(new URL('../../contracts/interfaces.json', import.meta.url).pathname).behavior_adapters?.find(value => value.id === 'CFG-9');
+  assert.ok(source, 'CFG-9 adapter contract is missing');
+  const contract = structuredClone(source);
+  for (const state of ['', '[x]', '[!] cause: deferred without retry', '[o] cause: invalid suffix']) {
+    const errors = completionItemAdapterErrors(adapterChecklist(state), [contract]);
+    assert.ok(errors.some(error => error.includes('KSTD-2-11-16 has no recognized state')), `${state || '(empty)'} was accepted`);
+  }
+  assert.ok(completionItemAdapterErrors('', [contract]).some(error => error.includes('missing checklist item')),
+    'missing owning checklist item passed');
 });
 
 // This guards the manifest state only; native behavior is exercised by the declared extension owner tests and coverage runs.
