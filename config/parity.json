@@ -991,6 +991,10 @@
         {
           "glob": "packages/rust/schema/src/dbspec/unicode_word.rs",
           "reason": "generated: exhaustively checks the private generated Unicode range table against its own binary-search implementation; public syntax behavior is exercised by dbspec-syntax"
+        },
+        {
+          "glob": "packages/rust/build/src/lib.rs",
+          "reason": "harness: its inline unit tests Cargo rerun-if-changed metadata for the set file and its documents; generated model behavior is exercised by the model_generation feature units"
         }
       ]
     }
