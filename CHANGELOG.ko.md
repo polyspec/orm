@@ -1,66 +1,41 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a2b80065c6d6445078c66188cb9254f387efcfaac224bee657b2c8eefd95ccdc -->
+<!-- source-sha256: f6d54aa20c51cb27d9ef0f37316102a748ef9447fd3b1b57e8e9f933128b7d4c -->
 # 변경 이력
 
 ## Unreleased
 
+- 서버가 실행 전에 session을 끝낸 statement의 PHP case는 PHP만 bind하던 unit 대신 여섯 client CFG-15 unit connection-rollback-failed-reports-both-errors에 PHP library와 PHP extension으로 bind된다(KSTD-2-11-13-6).
+- found-rows 개수, Rust client의 float 자릿수, Rust build tool의 SQLite 경로는 P32가 정한 자리에 놓인다: CFG-10은 모든 client에서 found row를 확인하는 affected_counts vector를 가진 MySQL conformance suite가 인용하고, CFG-32는 rust-postgres-float-round-trip을 소유하는 polyspec-orm crate를 이름으로 적고, Python client flag 검사와 Rust tool 경로 검사는 각 package의 일반 test다(KSTD-2-11-13-4).
+- Rust client가 SQLite의 DSN busy_timeout을 유지하면서 지워진 case를 bind하던 Rust unit rust-statement-timeout-bounds-sqlite-lock-wait가 config/parity.json에서 빠진다(KSTD-2-11-13-5).
+- transaction의 session 상태는 모든 client에서 transaction과 함께 끝난다(CFG-30): connection-transaction-session-state-ends는 취소된 transaction의 Go case와 TypeScript, Python, PHP library, PHP extension, Rust의 새 case를 bind하며, 이 case들은 SQLite, MySQL, PostgreSQL에서 commit된 lock과 local 값 뒤의 서버 session을 읽는다(KSTD-2-11-13-7).
 - KSTD-5-89-9: 완성된 inventory에서 static `var/tools/bin/node scripts/features/check.mts`는 21 feature contracts, error 0을 보고한다. source `9b5a`가 누락 test 파일을 해결했고 DSL-76 shared case는 MySQL, PostgreSQL, SQLite에서 여섯 client가 database마다 두 번 통과했다 (`058143`).
-
 - KSTD-5-89-10: 구현 내부 test는 각 구현의 `internal` 목록에 선언되고 shared feature 소유권에서 제외된다. languages owner unit은 13개 case를 통과했으며, 기존 DIA-20/21 binding과 맞지 않던 Go MySQL-only fixture 기대값도 바로잡았다.
-
 - KSTD-2-11-16-1: PHP library와 native extension이 SQLite, PostgreSQL, MySQL에서 활성 statement를 중단하고 rollback한 뒤 root handle 재사용을 유지한다. Library owner는 7 tests / 61 assertions, extension owner는 4 / 44를 통과했다. Raw log와 hash는 checklist에 기록했다.
-
 - KSTD-2-11-13: 완료된 하위 항목의 scoped evidence로 connection, pool, TLS, DSN, timeout unit의 여섯 client binding을 정리했다. 이는 전역 parity declaration 검사가 통과했다는 뜻이 아니다.
-
 - KSTD-5-89-6: main과 Kit K619 link-state-only setup으로 만든 새 worktree에서 `make link-state-check`가 통과했고, 임시 worktree는 제거했다. 근거는 `var/parallel/consolidation/KSTD-5-89-6-link-state/evidence-manifest.txt`에 기록했다.
-
 - KSTD-2-11-13-1-1: PHP extension의 MySQL rollback-failed 및 savepoint-rollback-failed case가 PHP 8.4.26에서 native module `d01c3`으로 통과했다 (2 tests / 19 assertions). 증거 로그 SHA-256: `bb75b0c3379bb6f2cb5e7b13c8f0911ec7398db622fafcb08b1442ca8e7f1368`.
-
 - KSTD-2-11-13-3: primary/replica 연결과 replica 쓰기 거부 unit을 여섯 client의 native case에 연결했다. 보존된 owner log는 MySQL, PostgreSQL, SQLite를 포함한다: Go 3 tests, TypeScript 3, Python 3, PHP 3 tests / 14 assertions, PHP extension 3 / 14, Rust 3.
-
 - KSTD-2-11-15-2: `generated-field-types-follow-runtime-model`이 INT-2부터 INT-8까지 여섯 client의 native generated-field type test에 연결된다. 기존 Go generator unit은 INT-12 연결을 유지한다. Source: `56f5a226d`.
-
 - KSTD-2-11-15-1: 여섯 native generator owner가 DSL-129의 generated-method 이름 충돌을 거부한다. source `56f5a226d`의 focused owner 근거: Go 2 cases, Python 2, PHP generator 1 test / 3 assertions, PHP library 1 / 13, PHP extension 2 / 19, TypeScript 2, Rust 2. 나머지 global parity finding은 KSTD-2에서 추적한다.
-
 - T182-6-17: 선택한 relations 및 explicit root-page vector 13개가 여섯 client 모두에서 MySQL, PostgreSQL, SQLite별 두 번의 실행 동안 일치했다. 이를 감싼 명령은 별도 PHP-extension interface-symbol snapshot 검사에서 나중에 exit 2였으며, 선택 conformance 결과는 통과했다. 증거 로그 SHA-256: `3faeba3aaa6d32cab85a743eba767240ef3fcb0cd1dc46dce4a12c87aee351ff`.
-
 - KSTD-7-5: PHP-extension의 model query/write owner가 focused case를 통과했고, extension conformance owner가 세 database에서 59개 vector를 모두 통과했다. 세 feature 상태는 implemented다. 전역 parity declaration finding은 KSTD-2에서 별도로 추적한다.
-
 - KSTD-7-5-1: `audit_lazy`가 PHP extension을 제외한 다섯 client에서 세 database별로 일치하는 두 실행을 통과했고, PHP-extension owner도 MySQL, PostgreSQL, SQLite에서 59-vector set을 통과했다 (3 tests / 183 assertions).
-
 - KSTD-2-10-1: 선택한 `delete_lock` conformance vector가 MySQL, PostgreSQL, SQLite에서 여섯 client 모두 두 번 통과했다. 세 vector 기록·재검증을 checklist에 기록했다. 이후 interface snapshot 검사는 여섯 공식 recorder가 f57610f9f에서 수정했다.
-
 - KSTD-5-2: `make test-markers-check`가 통과했고 marker로 skip되거나 범위가 좁혀진 test가 없다고 보고했다. 증거 로그 SHA-256: `31d20ca4fc256f1a710dd1f2e2baa3147fb5d9d162bfb8667bcb6d88fc64ff9b`.
-
 - KSTD-5-88: 초기 runner-check 실행은 60개 중 58개 case가 통과했다. f315de4e5가 runner parts를 수정한 뒤 영향받은 두 case가 2/2 통과했다. 전체 target은 재실행하지 않았다.
-
 - KSTD-5-88-12: 모든 JavaScript test가 caseTest로 case를 선언한다. 정확한 repository guard가 통과했고(1/1), 보존된 통합 guard 기록은 두 JavaScript 항목이 모두 통과했음을 보여준다(2/2).
-
 - KSTD-5-88-14: check가 실행하는 모든 TypeScript test가 `tests/testcase.mts`로 case를 보고한다. 정확한 owner selector `node --test --test-name-pattern='every PHP and TypeScript test that a check runs reports its cases' scripts/repo/check.test.mts`가 통과했고(1/1), 보존된 통합 guard 기록 `var/parallel/resume-landing/kstd-5-88-js-green.log`도 두 JavaScript 항목이 통과했다고 기록한다(2/2) (KSTD-5-88-14).
-
-
-
 - KSTD-5-88-17: 선언된 PHP DB 검사 네 종류가 extension mode에서 통과했다. 잘못 기록된 SQLite statement-timeout 항목을 기존 SQLite busy-timeout owner로 바로잡았고 1 test / 5 assertions가 통과했다.
-
 - KSTD-5-88-16: ModelTest::testConnectionTimeZone의 provider dataset 15개가 PHP 두 mode에서 모두 통과했다. PHP 8.4.26에서 각 lane 15 tests / 90 assertions를 실행했다.
 - KSTD-5-89-7: TypeScript hot-path latency가 nanosecond를 microsecond로 변환한다. formatter unit과 CI owner-target scheduling 검사가 각각 1/1 통과했고 database benchmark는 실행하지 않았다.
-
 - KSTD-5-88-13: 12개 Rust test가 각자 polyspec_orm_testcase case를 시작한다. 저장소 guard가 1/1 통과했다.
-
 - KSTD-2-11-8-1: Rust model generation이 build와 일치한다. 지정 case가 통과해 두 번 새로 생성한 model, manifest, external text가 `OUT_DIR` 결과와 같은 것을 확인한다(1 test 통과).
-
 - KSTD-7-7: 여섯 catalog client 모두 catalog read와 row mutation owner case를 가진다. Go, PHP library, PHP extension, Python, Rust는 MySQL, PostgreSQL, SQLite에서 두 case를 각각 두 번 통과했고 state digest가 같았다. TypeScript grouped owner는 선언된 database item을 각각 사용한다. read case와 MySQL row mutation은 성공 case 기록을 남겼고, PostgreSQL 및 SQLite row-mutation 선택은 각각 두 번 통과해 state가 같았다. TypeScript dialect placeholder와 SQLite lock 수정은 7029645ee, Python database별 binding은 2023d9bb1에 있다.
-
 - KSTD-7-4: PHP extension이 DSN, transaction, statement event, audit, request hook, constraint/relation 공통 기능을 구현한다. coverage owner는 MySQL, PostgreSQL, SQLite에서 database별 두 번씩 통과했고 state digest가 변하지 않았다. native TLS, SQLite busy-timeout/read-during-write, transaction-failure 검사도 통과했다.
-
 - T238: 오래된 worktree-prune import와 prune 전용 검사를 제거했다. 격리된 WORKTREE_STOP 선언 검사는 유지하며 1/1 통과했다.
-
 - KSTD-5-89-4: 남은 repository tool source 10개의 분류를 선언했다. 선택된 tool을 제외하지 않고 `make rebuild-check`가 통과한다.
-
 - KSTD-7-1: PHP extension이 schema install, model generation, interface contract를 구현한다. PHP 8.4.26에서 schema-install owner의 existing, partial, external-document case가 MySQL, PostgreSQL, SQLite 각각 두 번씩 (DB case 18회) 통과했고, database별 before/after state digest가 모두 같았다. Model-generation 및 interface-symbol native owner case도 각각 두 번 통과했다. 수정된 PHP scan 경로 owner case(1/1)를 포함해 feature-unit-check 구성 검사도 통과했다.
-
 - T182-6-19을 main 8c28c87b3에서 완료했다. PHP 8.4.26 `make model-native-php-extension-check`가 native 97 tests / 1,348 assertions, declaration 3 tests / 8 assertions, PHP library 5 tests / 48 assertions로 통과했고 `--without-library packages/php` guard도 통과했다. fake Flowmark protocol 경로를 검증했으며 실제 Flowmark server나 MySQL/PostgreSQL/SQLite 3 DB feature matrix는 실행하지 않았다.
-
 - PHP extension이 Bytes, Transform, Decimal, Go, GoMap, Subscription, Notification을 native class로 구현한다. PHP 8.4.26에서 `testPublicValueClassesAreNative`가 통과한다 (T182-6-19-5).
 - PHP `orm-gen`을 runtime library에 의존하는 별도 Composer package로 분리했고, extension model test는 Generator를 직접 호출하는 대신 CLI가 만든 model을 사용한다. 집중 package 및 native owner 검사가 통과한다 (T182-6-19-4).
 - PHP extension이 Dbspec\Meet을 native class로 구현한다. 집중 native owner test `testDbspecMeetIsNative`가 통과한다 (T182-6-19-3).

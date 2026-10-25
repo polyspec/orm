@@ -564,6 +564,10 @@
         {
           "glob": "packages/python/tests/entry_point_check.py",
           "reason": "ecosystem: an implementation test that checks the installed Python entry point and package import boundary, not shared ORM behaviour (K313)"
+        },
+        {
+          "glob": "packages/python/tests/test_mysql_found_rows.py",
+          "reason": "test: an internal test of the Python client that reads the PyMySQL client flags of the connection, an implementation detail; the found-rows behaviour of CFG-10 is the affected_counts vector of the conformance suite (P32)"
         }
       ],
       "roots": [
@@ -5507,9 +5511,19 @@
           "id": "RollbackTest::testRollbackFailed"
         },
         {
+          "implementation": "php",
+          "test": "packages/php/tests/RollbackTest.php",
+          "id": "RollbackTest::testFirstStatementLost"
+        },
+        {
           "implementation": "php-extension",
           "test": "packages/php/tests/RollbackTest.php",
           "id": "RollbackTest::testRollbackFailed"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/RollbackTest.php",
+          "id": "RollbackTest::testFirstStatementLost"
         },
         {
           "implementation": "typescript",
@@ -6804,7 +6818,8 @@
         "DBS-87",
         "DBS-113",
         "DBS-117",
-        "CPX-3"
+        "CPX-3",
+        "CFG-10"
       ],
       "file": "tests/conformance/vectors.json",
       "cases": "$.vectors[*].name",
@@ -9526,7 +9541,7 @@
       ]
     },
     {
-      "id": "go-internal-packages-go-orm-cancelled-session",
+      "id": "connection-transaction-session-state-ends",
       "kind": "feature",
       "requirements": [
         "CFG-30"
@@ -9536,6 +9551,61 @@
           "implementation": "go",
           "test": "packages/go/orm/cancelled_session_test.go",
           "id": "TestCancelledTransactionClearsSessionState"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/SessionStateTest.php",
+          "id": "SessionStateTest::testSessionStateEndsWithTransaction"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/SessionStateTest.php",
+          "id": "SessionStateTest::testSessionStateEndsWithTransaction"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/session_state.mjs",
+          "id": "session-state/ends-with-transaction/sqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/session_state.mjs",
+          "id": "session-state/ends-with-transaction/mysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/session_state.mjs",
+          "id": "session-state/ends-with-transaction/postgres"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/session_state.py",
+          "id": "test_session_state_ends_with_transaction_sqlite"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/session_state.py",
+          "id": "test_session_state_ends_with_transaction_mysql"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/session_state.py",
+          "id": "test_session_state_ends_with_transaction_postgres"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/session_state.rs",
+          "id": "session_state_ends_with_transaction_sqlite"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/session_state.rs",
+          "id": "session_state_ends_with_transaction_mysql"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/session_state.rs",
+          "id": "session_state_ends_with_transaction_postgres"
         }
       ]
     },
@@ -11565,20 +11635,6 @@
       ]
     },
     {
-      "id": "rust-tool-sqlite-file-name-is-the-path",
-      "kind": "feature",
-      "requirements": [
-        "CFG-11"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/tool_limits.rs",
-          "id": "tool_sqlite_file_name_is_the_path"
-        }
-      ]
-    },
-    {
       "id": "rust-bounded-query-rejects-ambiguous-multiple-result-sets",
       "kind": "feature",
       "requirements": [
@@ -12717,22 +12773,6 @@
       ]
     },
     {
-      "id": "rust-statement-timeout-bounds-sqlite-lock-wait",
-      "kind": "feature",
-      "requirements": [
-        "CFG-12",
-        "CFG-13",
-        "CFG-19"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/sqlite_concurrency.rs",
-          "id": "statement_timeout_bounds_sqlite_lock_wait"
-        }
-      ]
-    },
-    {
       "id": "rust-markdown-bind-message-tests-control-vectors",
       "kind": "feature",
       "requirements": [
@@ -12844,7 +12884,12 @@
           "test": "packages/rust/orm/tests/zone.rs",
           "id": "postgres_float_round_trip"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm"
+      }
     },
     {
       "id": "rust-dbspec-set-nested-json-rules",
@@ -13625,20 +13670,6 @@
           "implementation": "python",
           "test": "packages/python/tests/test_model_json_text.py",
           "id": "test_a_row_writes_the_stored_ordered_json_text_in_row_order"
-        }
-      ]
-    },
-    {
-      "id": "py-test-mysql-found-rows",
-      "kind": "feature",
-      "requirements": [
-        "CFG-10"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_mysql_found_rows.py",
-          "id": "test_connection_asks_for_found_rows"
         }
       ]
     },
@@ -15359,20 +15390,6 @@
           "implementation": "php",
           "test": "packages/php/tests/RollbackTest.php",
           "id": "RollbackTest::testRollbackFault"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-rollback-first-statement-lost",
-      "kind": "feature",
-      "requirements": [
-        "CFG-15"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/RollbackTest.php",
-          "id": "RollbackTest::testFirstStatementLost"
         }
       ]
     },

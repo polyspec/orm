@@ -15,7 +15,6 @@ class _Parsed:
 
 
 class MysqlFoundRowsTest(unittest.TestCase):
-    # Requirements: CFG-10.
     def test_connection_asks_for_found_rows(self):
         import pymysql
         from pymysql.constants import CLIENT
