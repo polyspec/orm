@@ -1461,6 +1461,7 @@ final class ModelTest extends TestCase
     // conditions
     // Requirements: PLN-6, PLN-7, PLN-16, PLN-23, PLN-28, PLN-29, PLN-36, PLN-37, PLN-38, PLN-39.
     #[DataProvider('drivers')]
+    // Requirements: DSL-50, PLN-4.
     public function testConditions(string $driver): void
     {
         $dsn = self::caseDsn($driver);

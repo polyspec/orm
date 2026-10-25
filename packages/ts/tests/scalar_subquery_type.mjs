@@ -25,6 +25,7 @@ for (const dialect of ['mysql', 'postgres', 'sqlite']) {
   assert.throws(() => engine.planner.compile(request), error => isInternalColumnError(error, 'author', 'missing_column'));
 }
 
+// Requirements: PRT-69.
 caseTest('planner_scalar_subquery_aggregate_types', COMPUTE, () => {
   for (const [agg, column, expected] of [['count', '', 'i64'], ['avg', 'read_count', 'f64']]) {
     const control = structuredClone(scalar.input);

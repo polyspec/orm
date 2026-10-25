@@ -178,6 +178,7 @@ final class CoveragePlannerTest extends TestCase
         }
     }
 
+    // Requirements: PRT-69.
     public function testScalarSubqueryAggregateTypesRemainI64AndF64(): void
     {
         [$model, $baseRequest] = $this->scalarColumnSubqueryRequest();

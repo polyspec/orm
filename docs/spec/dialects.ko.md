@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: f9e5279beb50e8bf206e76b869317503de5d92abf25b78ccd129b8b30cb515a5 -->
+<!-- source-sha256: 36c700e536a805923e4b5965dd04f7acfcdd18f7e093625146cb9a5567e4504b -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -24,7 +24,7 @@ SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법
 
 - **DIA-19** Executor 결과는 PostgreSQL parent IN list 확장 후 `$n` 재번호화, client-side AES/inet codec, database별 DSN/driver 선택이다.
 
-- **DIA-20** **Go driver package.** `packages/go/orm`은 MySQL만 연결한다. PostgreSQL 또는 SQLite를 열려면 해당 package를 side effect import한다.
+- **DIA-20** `github.com/polyspec/orm/packages/go`: `packages/go/orm`은 MySQL만 연결한다. PostgreSQL 또는 SQLite를 열려면 해당 package를 side effect import한다.
 
 ```go
 import (
@@ -33,7 +33,7 @@ import (
 )
 ```
 
-- **DIA-21** import하지 않으면 `orm.Connect`는 필요한 import를 포함한 `CONFIG`를 반환한다. Rust는 sqlx feature를 사용하고 PHP는 설치된 PDO extension을 사용한다.
+- **DIA-21** `github.com/polyspec/orm/packages/go`: 필요한 driver package를 import하지 않으면 `orm.Connect`는 필요한 import를 이름으로 적은 `CONFIG`를 반환한다. Rust는 sqlx feature를 사용하고 PHP는 설치된 PDO extension을 사용한다.
 
 ## 세 database의 같은 결과를 유지하는 규칙
 - **DIA-22** `UPDATE`는 updated timestamp를 항상 명시한다(MySQL은 `mysql.go`가 render하는 대로 `updated_ts = CURRENT_TIMESTAMP(p)`, PostgreSQL과 SQLite는 `now` bind slot으로 executor가 bind한, p로 자른 텍스트). soft delete도 같은 방식으로 column에 clock을 대입한다. MySQL의 `ON UPDATE`는 다른 database에 대응하지 않는다.

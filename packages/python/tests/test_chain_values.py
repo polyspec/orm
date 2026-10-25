@@ -52,6 +52,7 @@ class ChainValuesTest(unittest.TestCase):
             run()
         return caught.exception.code
 
+    # Requirements: DSL-50, PLN-4.
     def test_list_and_null_only_without_an_operator_or_with_eq_and_ne(self):
         self.assertEqual(self.author().read_count([5, 20]).get_count(), 2)
         self.assertEqual(self.author().eq_read_count([5, 20]).get_count(), 2)

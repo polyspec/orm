@@ -9,6 +9,8 @@ The ORM provides one model-based query syntax in Go, PHP, Rust, TypeScript, and 
 
 ## 2. Principles
 
+- **PERF-1** The six clients measure the same primary-key and descending 100-row reads on MySQL, PostgreSQL and SQLite. Each compares typed client and native results with 100 warm-up pairs and 1,000 alternating adjacent pairs, and reports native/client p50, ratio, CPU, wall time, sample count and machine. A value above the reference is a warning and does not fail correctness. The existing procedure and pending references are recorded in [performance operations](../operations/perf.md).
+
 1. Every syntax rule is written explicitly in the [DSL](dsl.md) before implementation.
 2. **PLN-1** Every method name is derived mechanically from column, operator, and connector rules. Convenience methods tied to specific columns are not provided.
 3. **PLN-2** Every syntax is written the same way in all five languages; only language spelling and creation forms differ.

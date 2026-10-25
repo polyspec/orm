@@ -1,5 +1,5 @@
 <!-- doc-id: perf -->
-<!-- source-sha256: fb5d31e2c91370c4ebb76917f040779c3a514a027b5d6e30d20e97d72246c3a7 -->
+<!-- source-sha256: 215d940c0787b2c7b841b106f313dd5610d36bf9cc0a18e725add99d29d2e9e3 -->
 # 성능
 
 모든 클라이언트는 호출한 프로세스 안에서 문장을 계획하고 네이티브 드라이버로 실행한다. 현재 클라이언트 오버헤드 기준은 아래 Go·PHP 실행 경로를 `make perf-check`로 측정하며 필수 데이터베이스 환경이 없으면 명령이 실패한다.
@@ -38,7 +38,7 @@
 | Go | 1.35 | 1.25 | build tag `perfgate`로 build하는 `packages/go/bench` `TestHotPathGate` |
 | PHP | 1.35 | 1.25 | `packages/php/tests/PerfGateTest.php` |
 
-feature coverage는 같은 두 workload(PK와 내림차순 100행 목록)를 여섯 native client—Go, PHP library, PHP extension, TypeScript, Python, Rust—에서 MySQL, PostgreSQL, SQLite 각각으로 측정한다. 각 database 전용 entrypoint는 해당 coverage 항목이 전달한 정확한 `ORM_FEATURE_DSN`을 사용하며, 독립 state reader도 같은 database 범위를 읽는다. PHP extension entrypoint는 workload 전에 `Model::gets`가 internal인지 확인한다. 각 case는 native/client p50, 비율, 프로세스 CPU, wall time, 샘플 수, machine을 기록한다. 기준값을 넘는 측정은 진단 정보이며 correctness를 실패시키지 않는다. 이 feature workload의 고정 기준값은 모든 client/database 조합에서 아직 측정되지 않았다. 위의 Go와 PHP MySQL 한도는 별도 `make perf-check` workload에만 적용하며 그대로 유지한다.
+**PERF-1 —** feature coverage는 같은 두 workload(PK와 내림차순 100행 목록)를 여섯 native client—Go, PHP library, PHP extension, TypeScript, Python, Rust—에서 MySQL, PostgreSQL, SQLite 각각으로 측정한다. 각 database 전용 entrypoint는 해당 coverage 항목이 전달한 정확한 `ORM_FEATURE_DSN`을 사용하며, 독립 state reader도 같은 database 범위를 읽는다. PHP extension entrypoint는 workload 전에 `Model::gets`가 internal인지 확인한다. 각 case는 native/client p50, 비율, 프로세스 CPU, wall time, 샘플 수, machine을 기록한다. 기준값을 넘는 측정은 진단 정보이며 correctness를 실패시키지 않는다. 이 feature workload의 고정 기준값은 모든 client/database 조합에서 아직 측정되지 않았다. 위의 Go와 PHP MySQL 한도는 별도 `make perf-check` workload에만 적용하며 그대로 유지한다.
 
 DB-free `hot_path_read_correctness` owner case는 각 client에서 자체 SQLite fixture를 사용해 SQL projection과 bind, PK 결과 및 정렬된 100행 결과를 별도로 확인한다. 이 case는 시간을 재지 않으며 세 database의 측정 case를 대체하지 않는다.
 

@@ -19,28 +19,16 @@ fn run_fixture(id: &str) {
     assert!(status.success(), "Rust compiler fixture {id} failed: {status}");
 }
 
-// Requirements: DSL-124.
+// Requirements: DSL-124, PLN-19.
 #[test]
-fn dsl124_db_begin_is_not_public() {
-    let _case = case!(PROCESS);
+fn dsl124_transaction_control_methods_are_not_public() {
+    let _case = case!(PROCESS * 3);
     run_fixture("dsl124-db-begin-e0599");
-}
-
-// Requirements: DSL-124.
-#[test]
-fn dsl124_db_commit_is_not_public() {
-    let _case = case!(PROCESS);
     run_fixture("dsl124-db-commit-e0599");
-}
-
-// Requirements: DSL-124.
-#[test]
-fn dsl124_db_rollback_is_not_public() {
-    let _case = case!(PROCESS);
     run_fixture("dsl124-db-rollback-e0599");
 }
 
-// Requirements: DSL-50.
+// Requirements: DSL-50, PLN-4.
 #[test]
 fn dsl50_ordering_list_is_rejected() {
     let _case = case!(PROCESS);

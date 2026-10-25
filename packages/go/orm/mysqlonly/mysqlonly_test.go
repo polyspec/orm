@@ -12,6 +12,7 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
+// Requirements: DIA-20.
 // TestOrmLinksMySQLOnly reads the modules that this binary links: packages/go/orm brings the MySQL driver and
 // neither pgx nor modernc.org/sqlite, which only orm/pg and orm/sqlite import (DIA-20).
 func TestOrmLinksMySQLOnly(t *testing.T) {
@@ -34,6 +35,7 @@ func TestOrmLinksMySQLOnly(t *testing.T) {
 	}
 }
 
+// Requirements: DIA-21.
 // TestOpenWithoutDriverPackageNamesTheImport connects to a PostgreSQL and a SQLite DSN in a binary that imports neither
 // driver package: orm.Connect (the orm.Open of the rule) fails with CONFIG, and its message names the import that registers the driver (DIA-21).
 func TestOpenWithoutDriverPackageNamesTheImport(t *testing.T) {

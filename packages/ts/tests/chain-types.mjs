@@ -64,6 +64,7 @@ async function diagnostics() {
 }
 
 // Requirements: PLN-19.
+// Requirements: DSL-50, PLN-4.
 caseTest('chain argument types', PROCESS, async () => {
   const byCall = await diagnostics();
   const wrong = [];

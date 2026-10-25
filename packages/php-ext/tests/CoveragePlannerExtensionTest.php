@@ -408,6 +408,7 @@ final class CoveragePlannerExtensionTest extends TestCase
     // Requirements: PRT-78.
     // Requirements: PRT-78.
     // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- feature IDs require the test method to preserve underscores.
+    // Requirements: PRT-69.
     public function test_planner_scalar_subquery_aggregate_types_remain_i64_and_f64(): void
     {
         require_once dirname(__DIR__, 2) . '/php/tests/CoveragePlannerTest.php';

@@ -306,18 +306,21 @@ async fn coverage_hot_path_gate_for(expected: &str) {
 }
 
 #[tokio::test]
+// Requirements: PERF-1.
 async fn coverage_hot_path_gate_mysql() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
     coverage_hot_path_gate_for("mysql").await;
 }
 
 #[tokio::test]
+// Requirements: PERF-1.
 async fn coverage_hot_path_gate_postgres() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
     coverage_hot_path_gate_for("postgres").await;
 }
 
 #[tokio::test]
+// Requirements: PERF-1.
 async fn coverage_hot_path_gate_sqlite() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
     coverage_hot_path_gate_for("sqlite").await;

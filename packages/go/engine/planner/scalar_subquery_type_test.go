@@ -39,6 +39,7 @@ func TestScalarSubqueryMissingColumnIsInternal(t *testing.T) {
 	}
 }
 
+// Requirements: PRT-69.
 func TestScalarSubqueryAggregateTypes(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	m := testModel(t, runtimeDocument)

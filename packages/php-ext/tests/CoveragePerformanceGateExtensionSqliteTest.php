@@ -7,6 +7,7 @@ namespace Polyspec\Orm\Tests;
 use PHPUnit\Framework\Attributes\Large;
 
 #[Large]
+// Requirements: PERF-1.
 final class CoveragePerformanceGateExtensionSqliteTest extends PerformanceGateCoverageCase
 {
     protected const DRIVER = 'sqlite';

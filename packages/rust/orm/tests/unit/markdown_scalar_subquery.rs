@@ -58,6 +58,7 @@ fn markdown_subquery_missing_post_validation_column_is_internal() {
 }
 
 #[test]
+// Requirements: PRT-69.
 fn markdown_subquery_aggregate_types_remain_i64_and_f64() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let manifest = manifest(SCHEMA);

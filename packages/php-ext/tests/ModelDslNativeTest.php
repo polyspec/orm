@@ -60,7 +60,7 @@ final class ModelDslNativeTest extends TestCase
         }
     }
 
-    // Requirements: DSL-50.
+    // Requirements: DSL-50, PLN-4.
     public function testUnsupportedOperatorValuesAreRejectedInsteadOfConverted(): void
     {
         foreach ([

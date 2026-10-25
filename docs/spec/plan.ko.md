@@ -1,5 +1,5 @@
 <!-- doc-id: plan -->
-<!-- source-sha256: 3d8c726eec1f76b754a1f4aef454cf576184b7ff9147f4e9b317e28d8fb32e10 -->
+<!-- source-sha256: e43100df89f2daef1072b55c3d6c7dadefb95eca06dc2baae1ef6a657d976eb6 -->
 # ORM 설계 계획
 
 이 문서는 ORM의 단일 설계 계획이다. 이전의 초기 설계, 수정 설계, DSL v3 기록을 대체한다. 결과 문법과 구조는 [DSL](dsl.md)과 [공통 인터페이스](interfaces.md)에서 정의하고, 이 문서는 목표·규칙·작업 순서를 기록한다.
@@ -9,6 +9,8 @@
 ORM은 Go·PHP·Rust·TypeScript·Python에서 하나의 모델 기반 쿼리 문법을 제공한다. 모든 클라이언트는 같은 문장을 MySQL·PostgreSQL·SQLite에서 같은 SQL로 실행한다.
 
 ## 2. 원칙
+
+- **PERF-1** 여섯 클라이언트는 MySQL, PostgreSQL, SQLite에서 같은 PK 및 내림차순 100행 조회를 측정한다. 타입이 같은 client와 native 결과를 준비 작업 100쌍 뒤 순서를 교대하는 인접한 1,000쌍으로 비교하고, native/client p50, 비율, CPU, wall time, 샘플 수, machine을 기록한다. 기준값을 넘으면 경고하며 correctness를 실패시키지 않는다. 기존 절차와 미정 기준값은 [성능 운영 문서](../operations/perf.ko.md)에 기록한다.
 
 1. 모든 문법 규칙은 구현 전에 [DSL](dsl.md)에 명시한다.
 2. **PLN-1** 모든 메서드 명칭은 컬럼·연산자·연결자 규칙에서 기계적으로 만든다. 특정 컬럼 전용 편의 메서드는 제공하지 않는다.

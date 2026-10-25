@@ -10,6 +10,7 @@ import (
 
 // TestCoveragePerformanceGate runs the hot path gate against the seeded bench database at ORM_BENCH_MYSQL_DSN.
 // It fails if the DSN is missing.
+// Requirements: PERF-1.
 func TestCoveragePerformanceGate(t *testing.T) {
 	testcase.Start(t, gateDeadline)
 	coverageHotPathGate(t, "mysql")

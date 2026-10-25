@@ -53,6 +53,7 @@ class ScalarSubqueryTypeTest(unittest.TestCase):
                 self.assertEqual(caught.code, "INTERNAL")
                 self.assertIn("author.missing_column", str(caught))
 
+    # Requirements: PRT-69.
     def test_scalar_subquery_aggregate_types_remain_i64_and_f64(self):
         fixture = json.loads(
             (REPOSITORY_ROOT / "contracts/fixtures/planner.json").read_text(

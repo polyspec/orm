@@ -26,7 +26,7 @@ Executors still see the same plan shape: steps, bind slots, assemble.
   PostgreSQL, host-side AES/inet codecs where the table says "client-side", one DSN/driver per database
   (Go: `pgx` stdlib / `modernc.org/sqlite`; Rust: sqlx features; PHP: `pdo_pgsql` / `pdo_sqlite`).
 
-- **DIA-20** **Go driver packages.** `packages/go/orm` links MySQL only. A program that opens PostgreSQL or SQLite
+- **DIA-20** `github.com/polyspec/orm/packages/go`: `packages/go/orm` links MySQL only. A program that opens PostgreSQL or SQLite
   imports the matching package for its side effect, as it would a `database/sql` driver:
 
 ```go
@@ -36,7 +36,7 @@ import (
 )
 ```
 
-- **DIA-21** Without it `orm.Connect` returns `CONFIG` naming the import. The split keeps a MySQL-only binary at
+- **DIA-21** `github.com/polyspec/orm/packages/go`: Without the driver package import, `orm.Connect` returns `CONFIG` naming the import. The split keeps a MySQL-only binary at
   4.6MB instead of 11MB and avoids SQLite's package init (it parses `/etc/services`). Rust does the
   same with sqlx features, PHP with the PDO extension that is installed.
 

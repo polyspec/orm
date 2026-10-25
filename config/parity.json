@@ -17,7 +17,8 @@
         "packages/go/orm",
         "packages/go/procevent",
         "packages/go/testcase",
-        "examples"
+        "examples",
+        "packages/go/bench"
       ],
       "tests": [
         "packages/go/{cmd,decimalmodel,engine,generator,internal,markdownmodel,model,orm,procevent,testcase}/**/coverage_*_test.go",
@@ -30,7 +31,11 @@
         "packages/go/orm/failing_driver_test.go",
         "packages/go/orm/schema_helpers_test.go",
         "packages/go/orm/statement_events_export_test.go",
-        "packages/go/orm/test_helpers_test.go"
+        "packages/go/orm/test_helpers_test.go",
+        "packages/go/bench/coverage_performance_gate_shared_test.go",
+        "packages/go/bench/coverage_process_cpu_unix_test.go",
+        "packages/go/bench/coverage_process_cpu_windows_test.go",
+        "packages/go/bench/gate_helpers_test.go"
       ],
       "args": [
         "-tags",
@@ -170,10 +175,6 @@
           "reason": "test: an internal package test of the go module that measures what a split read allocates, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/go/orm/mysqlonly/mysqlonly_test.go",
-          "reason": "ecosystem: an internal test of the Go module import boundary that checks which driver packages are linked, not a shared client behaviour (K313)"
-        },
-        {
           "glob": "examples/dsn_test.go",
           "reason": "example: tests that the standalone examples refuse to start without their benchmark DSN; the preflight belongs to the example commands, not to the ORM client contract"
         },
@@ -204,6 +205,26 @@
         {
           "glob": "packages/go/testcase/testcase_test.go",
           "reason": "harness: tests testcase output formatting and runner/group/deadline primitives; its subject is the Go test harness rather than an ORM client behavior"
+        },
+        {
+          "glob": "packages/go/bench/client_test.go",
+          "reason": "implementation: contains only client benchmark functions for measuring one Go workload, not a shared ORM behavior case"
+        },
+        {
+          "glob": "packages/go/bench/dsn_test.go",
+          "reason": "implementation: tests the private Go benchmark harness requirement for ORM_BENCH_MYSQL_DSN and its own DSN helper"
+        },
+        {
+          "glob": "packages/go/bench/hot_path_gate_test.go",
+          "reason": "implementation: tests only Go-specific hot-path threshold and load measurement mechanics; the six-client database behavior is covered by performance_gate owner cases"
+        },
+        {
+          "glob": "packages/go/bench/native_test.go",
+          "reason": "implementation: contains native-driver benchmark workloads and raw scans used as a local measurement baseline, not a client contract case"
+        },
+        {
+          "glob": "packages/go/bench/statements_test.go",
+          "reason": "implementation: checks the SQL and rows of the Go performance measurement harness against its raw native baseline, not shared client behavior"
         }
       ]
     },
@@ -279,7 +300,10 @@
         "packages/php/tests/phpstan/GroupRowsIteration.php",
         "packages/php/tests/phpstan/RawCollection.php",
         "packages/php/tests/three_drivers.php",
-        "packages/php/tests/was_inserted_child.php"
+        "packages/php/tests/was_inserted_child.php",
+        "packages/php/tests/CatalogConnectionCoverageCases.php",
+        "packages/php/tests/CollectionWeakTypedKeyCases.php",
+        "packages/php/tests/WasInsertedCases.php"
       ],
       "symbols": {
         "extractor": "php",
@@ -300,10 +324,6 @@
         },
         {
           "glob": "packages/php/tests/ConformanceResultTest.php",
-          "reason": "harness: an internal test of the PHP package that checks the test harness of the owner, not a behaviour of the contract (K313)"
-        },
-        {
-          "glob": "packages/php/tests/CoveragePerformanceGateTest.php",
           "reason": "harness: an internal test of the PHP package that checks the test harness of the owner, not a behaviour of the contract (K313)"
         },
         {
@@ -339,16 +359,12 @@
           "reason": "test: an internal test of the PHP package that tests a helper or loader of the owner, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/php/tests/CoveragePerformanceGatePostgresTest.php",
-          "reason": "harness: an internal test of the PHP package that checks the test harness of the owner, not a behaviour of the contract (K313)"
-        },
-        {
-          "glob": "packages/php/tests/CoveragePerformanceGateSqliteTest.php",
-          "reason": "harness: an internal test of the PHP package that checks the test harness of the owner, not a behaviour of the contract (K313)"
-        },
-        {
           "glob": "packages/php/tests/PerformanceGateCoverageCase.php",
           "reason": "harness: an internal test of the PHP package that checks the test harness of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/php/tests/PlanCacheMemoryTest.php",
+          "reason": "implementation: checks plan and statement cache placeholder bounds and LRU accounting, not query results or a shared client guarantee"
         }
       ]
     },
@@ -403,16 +419,16 @@
       },
       "internal": [
         {
-          "glob": "packages/php-ext/tests/CoveragePerformanceGateExtensionTest.php",
-          "reason": "harness: an internal test of the PHP extension package that checks the test harness of the owner, not a behaviour of the contract (K313)"
+          "glob": "packages/php-ext/tests/ArginfoBuildTest.php",
+          "reason": "harness: checks extension build bootstrap ordering and tool availability before invoking the generator; it does not exercise ORM behavior"
         },
         {
-          "glob": "packages/php-ext/tests/CoveragePerformanceGateExtensionPostgresTest.php",
-          "reason": "harness: an internal test of the PHP extension package that checks the test harness of the owner, not a behaviour of the contract (K313)"
+          "glob": "packages/php-ext/tests/MarkdownNativeTest.php",
+          "reason": "implementation: checks native Markdown executor class and method registration/ABI ownership, not Markdown execution results"
         },
         {
-          "glob": "packages/php-ext/tests/CoveragePerformanceGateExtensionSqliteTest.php",
-          "reason": "harness: an internal test of the PHP extension package that checks the test harness of the owner, not a behaviour of the contract (K313)"
+          "glob": "packages/php-ext/tests/PlanCacheMemoryNativeTest.php",
+          "reason": "implementation: checks native statement-cache retention, LRU eviction and close accounting, not query results or a shared client guarantee"
         }
       ]
     },
@@ -444,7 +460,8 @@
         "packages/ts/tests/statement-events-run.mjs",
         "packages/ts/tests/coverage_performance_report.mjs",
         "packages/ts/tests/complex-query-support.mjs",
-        "packages/ts/tests/was-inserted-child.mjs"
+        "packages/ts/tests/was-inserted-child.mjs",
+        "packages/ts/tests/coverage_performance_gate.mjs"
       ],
       "args": [
         "--conditions=orm-test"
@@ -472,18 +489,6 @@
         },
         {
           "glob": "packages/ts/tests/coverage_performance_gate.mjs",
-          "reason": "harness: an internal test of the TypeScript package that checks the test harness of the owner, not a behaviour of the contract (K313)"
-        },
-        {
-          "glob": "packages/ts/tests/coverage_performance_gate_mysql.mjs",
-          "reason": "harness: an internal test of the TypeScript package that checks the test harness of the owner, not a behaviour of the contract (K313)"
-        },
-        {
-          "glob": "packages/ts/tests/coverage_performance_gate_postgres.mjs",
-          "reason": "harness: an internal test of the TypeScript package that checks the test harness of the owner, not a behaviour of the contract (K313)"
-        },
-        {
-          "glob": "packages/ts/tests/coverage_performance_gate_sqlite.mjs",
           "reason": "harness: an internal test of the TypeScript package that checks the test harness of the owner, not a behaviour of the contract (K313)"
         },
         {
@@ -529,18 +534,6 @@
           "reason": "harness: an internal test of the Python package that checks the test harness of the owner, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/python/tests/coverage_performance_gate_mysql.py",
-          "reason": "harness: an internal test of the Python package that checks the test harness of the owner, not a behaviour of the contract (K313)"
-        },
-        {
-          "glob": "packages/python/tests/coverage_performance_gate_postgres.py",
-          "reason": "harness: an internal test of the Python package that checks the test harness of the owner, not a behaviour of the contract (K313)"
-        },
-        {
-          "glob": "packages/python/tests/coverage_performance_gate_sqlite.py",
-          "reason": "harness: an internal test of the Python package that checks the test harness of the owner, not a behaviour of the contract (K313)"
-        },
-        {
           "glob": "packages/python/tests/test_split_plan.py",
           "reason": "test: an internal test of the Python package that measures what a split read allocates, not a behaviour of the contract (K313)"
         },
@@ -572,7 +565,8 @@
         "packages/python/tests/complex_query_product.py",
         "packages/python/tests/runner_connect.py",
         "packages/python/tests/server_database.py",
-        "packages/python/tests/was_inserted_child.py"
+        "packages/python/tests/was_inserted_child.py",
+        "packages/python/tests/coverage_performance_gate.py"
       ],
       "command": "packages/python/.venv/bin/python",
       "env": [],
@@ -648,8 +642,7 @@
         "packages/rust/tests/tests/common/schema_coverage_case.rs",
         "packages/rust/tests/tests/common/statement_record.rs",
         "packages/rust/tests/tests/common/table_exists.rs",
-        "packages/rust/tests/tests/common/temp_directory.rs",
-        "packages/rust/testing/compiler-fixtures/cases.json"
+        "packages/rust/tests/tests/common/temp_directory.rs"
       ],
       "symbols": {
         "extractor": "rust",
@@ -660,10 +653,6 @@
         "pattern": "^pub const (\\w+): &str = \"\\w+\";$"
       },
       "internal": [
-        {
-          "glob": "packages/rust/tests/tests/coverage_performance_gate.rs",
-          "reason": "harness: an internal test of the Rust package that checks the test harness of the owner, not a behaviour of the contract (K313)"
-        },
         {
           "glob": "packages/rust/tests/src/conformance.rs",
           "reason": "harness: an internal test of the Rust package that checks the test harness of the owner, not a behaviour of the contract (K313)"
@@ -695,6 +684,18 @@
         {
           "glob": "packages/rust/testcase/tests/form.rs",
           "reason": "harness: runs deliberate testcase fixtures in child processes and checks testcase report formatting and deadline results; it tests the Rust test harness"
+        },
+        {
+          "glob": "packages/rust/build/src/tests/build_environment.rs",
+          "reason": "harness: verifies Cargo build-script environment propagation through child processes; this tests Rust build plumbing, not shared ORM behavior"
+        },
+        {
+          "glob": "packages/rust/build/src/tests/out_dir.rs",
+          "reason": "harness: verifies the Rust build script requires Cargo OUT_DIR; this tests Cargo-specific build plumbing"
+        },
+        {
+          "glob": "packages/rust/case-clock/src/lib.rs",
+          "reason": "harness: tests the Rust case-clock helper that reports process and thread CPU time for test reporting; it is test instrumentation, not ORM behavior"
         }
       ]
     }
@@ -756,10 +757,6 @@
     }
   ],
   "tools": [
-    {
-      "root": "packages/go/bench",
-      "reason": "harness: Benchmarks that measure the performance of the Go implementation; they implement no contract and run only under go test -bench, so they belong to no implementation."
-    },
     {
       "root": "tests/analyzers",
       "reason": "harness: Analyzers for the Go test conventions of the repository; the tooling implements no contract, so its tests belong to no implementation."
@@ -1526,7 +1523,7 @@
     }
   ],
   "requirements": {
-    "pattern": "(?:CFG|COD|CPX|DBS|DIA|DSL|FCV|INT|MER|ORE|ORES|PAR|PLN|PRT|SCH)-[0-9]+[a-z]?"
+    "pattern": "(?:CFG|COD|PERF|CPX|DBS|DIA|DSL|FCV|INT|MER|ORE|ORES|PAR|PLN|PRT|SCH)-[0-9]+[a-z]?"
   },
   "units": [
     {
@@ -6207,102 +6204,6 @@
       ]
     },
     {
-      "id": "hot-path-performance-measurement",
-      "kind": "feature",
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/bench/coverage_performance_gate_test.go",
-          "id": "TestCoveragePerformanceGate"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/bench/coverage_performance_gate_postgres_test.go",
-          "id": "TestCoveragePerformanceGatePostgres"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/bench/coverage_performance_gate_sqlite_test.go",
-          "id": "TestCoveragePerformanceGateSQLite"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoveragePerformanceGateTest.php",
-          "id": "testHotPathGate"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoveragePerformanceGatePostgresTest.php",
-          "id": "testHotPathGate"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoveragePerformanceGateSqliteTest.php",
-          "id": "testHotPathGate"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoveragePerformanceGateExtensionTest.php",
-          "id": "testHotPathGate"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoveragePerformanceGateExtensionPostgresTest.php",
-          "id": "testHotPathGate"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/CoveragePerformanceGateExtensionSqliteTest.php",
-          "id": "testHotPathGate"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_performance_gate_mysql.mjs",
-          "id": "hot_path_gate"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_performance_gate_postgres.mjs",
-          "id": "hot_path_gate"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_performance_gate_sqlite.mjs",
-          "id": "hot_path_gate"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_performance_gate_mysql.py",
-          "id": "test_hot_path_gate"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_performance_gate_postgres.py",
-          "id": "test_hot_path_gate"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/coverage_performance_gate_sqlite.py",
-          "id": "test_hot_path_gate"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_performance_gate.rs",
-          "id": "coverage_hot_path_gate_mysql"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_performance_gate.rs",
-          "id": "coverage_hot_path_gate_postgres"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/tests/coverage_performance_gate.rs",
-          "id": "coverage_hot_path_gate_sqlite"
-        }
-      ]
-    },
-    {
       "id": "install-changed-database",
       "kind": "suite",
       "requirements": [
@@ -10205,18 +10106,8 @@
         },
         {
           "implementation": "rust",
-          "test": "packages/rust/testing/compiler-fixtures/cases.json",
-          "id": "dsl124-db-begin-e0599"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/testing/compiler-fixtures/cases.json",
-          "id": "dsl124-db-commit-e0599"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/testing/compiler-fixtures/cases.json",
-          "id": "dsl124-db-rollback-e0599"
+          "test": "packages/rust/orm/tests/compiler_fixtures.rs",
+          "id": "dsl124_transaction_control_methods_are_not_public"
         }
       ]
     },
@@ -10404,7 +10295,12 @@
           "test": "packages/go/orm/mysqlonly/mysqlonly_test.go",
           "id": "TestOrmLinksMySQLOnly"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "go-module",
+        "package": "github.com/polyspec/orm/packages/go"
+      }
     },
     {
       "id": "go-orm-mysqlonly-open-names-the-import",
@@ -10418,7 +10314,12 @@
           "test": "packages/go/orm/mysqlonly/mysqlonly_test.go",
           "id": "TestOpenWithoutDriverPackageNamesTheImport"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "go-module",
+        "package": "github.com/polyspec/orm/packages/go"
+      }
     },
     {
       "id": "go-internal-packages-go-orm-jsontext-order",
@@ -21811,21 +21712,6 @@
           "id": "TestCoverageConformanceVector"
         },
         {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
-          "id": "CoverageConformanceVerificationTest::testMysql"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
-          "id": "CoverageConformanceVerificationTest::testPostgres"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
-          "id": "CoverageConformanceVerificationTest::testSqlite"
-        },
-        {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
           "id": "CoverageConformanceVerificationExtensionTest::testConformanceVector"
@@ -21844,6 +21730,11 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
           "id": "coverage_conformance_vector"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
+          "id": "CoverageConformanceVerificationTest::testConformanceVector"
         }
       ]
     },
@@ -23276,6 +23167,166 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/unit/markdown_scalar_subquery.rs",
           "id": "engine::scalar_subquery_type::markdown_subquery_aggregate_types_remain_i64_and_f64"
+        }
+      ],
+      "requirements": [
+        "PRT-69"
+      ]
+    },
+    {
+      "id": "hot-path-performance-measurement-mysql",
+      "kind": "feature",
+      "requirements": [
+        "PERF-1"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/bench/coverage_performance_gate_test.go",
+          "id": "TestCoveragePerformanceGate"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoveragePerformanceGateTest.php",
+          "id": "CoveragePerformanceGateTest::testHotPathGate"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoveragePerformanceGateExtensionTest.php",
+          "id": "CoveragePerformanceGateExtensionTest::testHotPathGate"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_performance_gate_mysql.mjs",
+          "id": "hot_path_gate"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_performance_gate_mysql.py",
+          "id": "test_hot_path_gate"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/coverage_performance_gate.rs",
+          "id": "coverage_hot_path_gate_mysql"
+        }
+      ]
+    },
+    {
+      "id": "hot-path-performance-measurement-postgres",
+      "kind": "feature",
+      "requirements": [
+        "PERF-1"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/bench/coverage_performance_gate_postgres_test.go",
+          "id": "TestCoveragePerformanceGatePostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoveragePerformanceGatePostgresTest.php",
+          "id": "CoveragePerformanceGatePostgresTest::testHotPathGate"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoveragePerformanceGateExtensionPostgresTest.php",
+          "id": "CoveragePerformanceGateExtensionPostgresTest::testHotPathGate"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_performance_gate_postgres.mjs",
+          "id": "hot_path_gate"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_performance_gate_postgres.py",
+          "id": "test_hot_path_gate"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/coverage_performance_gate.rs",
+          "id": "coverage_hot_path_gate_postgres"
+        }
+      ]
+    },
+    {
+      "id": "hot-path-performance-measurement-sqlite",
+      "kind": "feature",
+      "requirements": [
+        "PERF-1"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/bench/coverage_performance_gate_sqlite_test.go",
+          "id": "TestCoveragePerformanceGateSQLite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoveragePerformanceGateSqliteTest.php",
+          "id": "CoveragePerformanceGateSqliteTest::testHotPathGate"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoveragePerformanceGateExtensionSqliteTest.php",
+          "id": "CoveragePerformanceGateExtensionSqliteTest::testHotPathGate"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_performance_gate_sqlite.mjs",
+          "id": "hot_path_gate"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_performance_gate_sqlite.py",
+          "id": "test_hot_path_gate"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/coverage_performance_gate.rs",
+          "id": "coverage_hot_path_gate_sqlite"
+        }
+      ]
+    },
+    {
+      "id": "dsl-50-operator-value-shapes",
+      "kind": "feature",
+      "requirements": [
+        "DSL-50",
+        "PLN-4"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/chain_types_test.go",
+          "id": "TestChainArgumentTypes"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testConditions"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelDslNativeTest.php",
+          "id": "ModelDslNativeTest::testUnsupportedOperatorValuesAreRejectedInsteadOfConverted"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/chain-types.mjs",
+          "id": "chain argument types"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_chain_values.py",
+          "id": "test_list_and_null_only_without_an_operator_or_with_eq_and_ne"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/compiler_fixtures.rs",
+          "id": "dsl50_ordering_list_is_rejected"
         }
       ]
     }
