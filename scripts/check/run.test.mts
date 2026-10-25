@@ -354,7 +354,8 @@ const PARTS = {
   'testcase-check': ['go', 'node', 'runners', 'rust'], 'ts-check': ['hold', 'types', 'test'],
   'rust-check': ['check', 'clippy', 'clippy-live-db', 'clippy-test-faults'], 'rust-fmt-check': ['clients', 'bench', 'interfaces'],
   'fuzz-check': ['engine-ir', 'clients-go-orm'], 'dialect-facts-check': ['probes', 'facts'], 'feature-unit-check': ['docs', 'coverage', 'owners', 'select'],
-  'client-unit-check': ['dsn', 'markdown', 'relation-keys', 'hostcodec', 'codec-aes', 'engine', 'runtime-model', 'orm-gen', 'model-methods', 'orm-gen-scan', 'orm-gen-scan-parity', 'client-generics', 'perf-extensions'],
+  'client-unit-check': ['dsn', 'markdown', 'relation-keys', 'code-catalog', 'hostcodec', 'codec-aes', 'insert-parts', 'engine', 'runtime-model', 'orm-gen', 'model-methods', 'orm-gen-scan',
+    'orm-gen-scan-parity', 'client-generics', 'perf-extensions', 'dbspec-runners'],
 };
 
 caseTest('a target of independent commands runs each as a part of its own', COMPUTE, () => {
