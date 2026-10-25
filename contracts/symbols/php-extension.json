@@ -3947,6 +3947,10 @@
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Orm extends  implements  uses "
   },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Orm::assertSqliteVersion": {
+    "exported": false,
+    "signature": "private static function assertSqliteVersion(string $version): void"
+  },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Orm::connect": {
     "exported": true,
     "signature": "public static function connect(string $dsn, Polyspec\\Orm\\Config $config): Polyspec\\Orm\\Db"

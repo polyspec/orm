@@ -11047,6 +11047,10 @@
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Internal\\PgsqlLargeObjectStream extends  implements  uses "
   },
+  "packages/php/src/Internal/PgsqlLargeObjectStream.php::Polyspec\\Orm\\Internal\\PgsqlLargeObjectStream::$context": {
+    "exported": true,
+    "signature": "public "
+  },
   "packages/php/src/Internal/PgsqlLargeObjectStream.php::Polyspec\\Orm\\Internal\\PgsqlLargeObjectStream::$eof": {
     "exported": false,
     "signature": "private bool"
@@ -11342,6 +11346,14 @@
   "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::toConninfo": {
     "exported": false,
     "signature": "private static function toConninfo(string $dsn, ?string $username, ?string $password, array $options): string"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::withReason": {
+    "exported": false,
+    "signature": "private static function withReason(string $message, ?string $warning): string"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::withWarning": {
+    "exported": false,
+    "signature": "private static function withWarning(Closure $call): array"
   },
   "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter": {
     "exported": true,
@@ -12282,6 +12294,10 @@
   "packages/php/src/Orm.php::Polyspec\\Orm\\Orm": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Orm extends  implements  uses "
+  },
+  "packages/php/src/Orm.php::Polyspec\\Orm\\Orm::assertSqliteVersion": {
+    "exported": false,
+    "signature": "private static function assertSqliteVersion(string $version): void"
   },
   "packages/php/src/Orm.php::Polyspec\\Orm\\Orm::cancelConnection": {
     "exported": false,

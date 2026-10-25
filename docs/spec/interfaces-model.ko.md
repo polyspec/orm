@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces-model -->
-<!-- source-sha256: 1e1947e8d775984f9a63f10985dbb9834a17f8e6273595d7193aea4263dccce7 -->
+<!-- source-sha256: 35faa7cd5aa020a58e46c3c3d427eb430a0d54c606525a187686de738b703777 -->
 # 공통 구성요소
 
 <!-- contracts/interfaces.json에서 생성됨. 직접 수정하지 않는다. -->
@@ -295,7 +295,7 @@ Host-native API는 해당 host의 공개 primitive 형식으로만 선언하며 
 | CFG-9 | KSTD-2-11-16 | go | implemented | Db.WithContext | packages/go/orm/cancel_test.go::TestWithContextCancels |
 | CFG-9 | KSTD-2-11-16 | php | implemented | Cancellation::cancel and Db::withCancellation | packages/php/tests/QueryCancellationTest.php::testCancellationInterruptsSqliteVmRollsBackAndKeepsRootConnectionUsable<br>packages/php/tests/QueryCancellationTest.php::testPostgresNoticeCancelsActiveStatementRollsBackAndReusesRoot<br>packages/php/tests/QueryCancellationTest.php::testMysqlLockEventCancelsActiveStatementRollsBackAndReconnectsRoot |
 | CFG-9 | KSTD-2-11-16 | php-extension | implemented | Cancellation::cancel and Db::withCancellation | packages/php-ext/tests/QueryCancellationNativeTest.php::testNativeCancellationInterruptsSqliteRollsBackAndKeepsRootConnectionUsable<br>packages/php-ext/tests/QueryCancellationNativeTest.php::testPostgresNoticeCancelsActiveStatementRollsBackAndReusesRoot<br>packages/php-ext/tests/QueryCancellationNativeTest.php::testMysqlLockEventCancelsActiveStatementRollsBackAndReconnectsRoot |
-| CFG-9 | KSTD-2-11-16 | python | implemented | Db.with_future | packages/python/tests/coverage_transactions.py::handle_abandoned_query [sqlite]<br>packages/python/tests/coverage_transactions.py::handle_abandoned_query [mysql]<br>packages/python/tests/coverage_transactions.py::handle_abandoned_query [postgres] |
+| CFG-9 | KSTD-2-11-16 | python | implemented | Db.with_future | packages/python/tests/coverage_transactions.py::handle_abandoned_query [sqlite]<br>packages/python/tests/coverage_transactions.py::handle_abandoned_query [mysql]<br>packages/python/tests/coverage_transactions.py::handle_abandoned_query [postgres]<br>packages/python/tests/test_query_cancel.py::QueryCancelTest.test_cancel_interrupts_active_statement_and_root_is_reusable |
 | CFG-9 | KSTD-2-11-16 | rust | implemented | dropping the statement future | packages/rust/orm/tests/zone.rs::dropping_a_query_cancels_it |
 | CFG-9 | KSTD-2-11-16 | typescript | implemented | Db.withSignal | packages/ts/tests/coverage_transactions.mjs::handle_abandoned_query [sqlite] (before-start)<br>packages/ts/tests/coverage_transactions.mjs::handle_abandoned_query [mysql]<br>packages/ts/tests/coverage_transactions.mjs::handle_abandoned_query [postgres] |
 
