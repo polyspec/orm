@@ -49,4 +49,13 @@ static inline bool orm_throw_formatted_exception(const char *missing_class_messa
     return ok;
 }
 
+/* Throws the OrmException of code_name with message; it throws nothing when the class is missing. A failure path of
+ * a native method returns the false it returns. */
+static inline bool orm_throw_exception(const char *code_name, zend_string *message)
+{
+    zval exception;
+    if (orm_exception_object(NULL, code_name, message, &exception)) zend_throw_exception_object(&exception);
+    return false;
+}
+
 #endif

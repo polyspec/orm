@@ -116,17 +116,7 @@ final class CollectionIdentityTest extends TestCase
                 return [];
             }
         };
-        $collection = new Collection();
-        $collection->put(7, $integer);
-        $collection->put('7', $text);
-        $collection->fetchValues(static fn(Model $model): string => $model->label);
-
-        self::assertSame($integer, $collection->get(7));
-        self::assertSame($text, $collection->get('7'));
-        self::assertNull($collection->get(8));
-        self::assertSame('integer', $collection->fetchedValue(7));
-        self::assertSame('text', $collection->fetchedValue('7'));
-        self::assertNull($collection->fetchedValue(8));
+        self::assertTypedKeyGetAndFetch($integer, $text);
     }
 
     // Requirements: INT-81, INT-82, INT-83, INT-84, INT-85.

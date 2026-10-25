@@ -13,16 +13,24 @@ static bool orm_connect_sql(zend_string *dsn, zval *config, zval *out, bool list
 static bool orm_decoded(zval *input, bool raw, zval *out);
 static bool orm_query_decode(const char *value, size_t length, zval *out);
 
+/* The dsn string and the config object of a native connection closure state self; a missing or other value throws
+ * the error that what names and returns false. */
+static bool orm_closure_connection(zval *self, const char *what, zval *rv_dsn, zval *rv_config, zval **dsn, zval **config)
+{
+    *dsn = zend_read_property(zend_standard_class_def, Z_OBJ_P(self), "dsn", sizeof("dsn") - 1, true, rv_dsn);
+    *config = zend_read_property(zend_standard_class_def, Z_OBJ_P(self), "config", sizeof("config") - 1, true, rv_config);
+    if (*dsn == NULL || Z_TYPE_P(*dsn) != IS_STRING || *config == NULL || Z_TYPE_P(*config) != IS_OBJECT) {
+        zend_throw_error(NULL, "invalid native %s state", what);
+        return false;
+    }
+    return true;
+}
+
 ZEND_NAMED_FUNCTION(orm_listener_open)
 {
     ZEND_PARSE_PARAMETERS_NONE();
-    zval rv_dsn, rv_config;
-    zval *dsn = zend_read_property(zend_standard_class_def, Z_OBJ_P(ZEND_THIS), "dsn", sizeof("dsn") - 1, true, &rv_dsn);
-    zval *config = zend_read_property(zend_standard_class_def, Z_OBJ_P(ZEND_THIS), "config", sizeof("config") - 1, true, &rv_config);
-    if (dsn == NULL || Z_TYPE_P(dsn) != IS_STRING || config == NULL || Z_TYPE_P(config) != IS_OBJECT) {
-        zend_throw_error(NULL, "invalid native listener connection state");
-        RETURN_THROWS();
-    }
+    zval rv_dsn, rv_config, *dsn, *config;
+    if (!orm_closure_connection(ZEND_THIS, "listener connection", &rv_dsn, &rv_config, &dsn, &config)) RETURN_THROWS();
     zval db;
     if (!orm_connect_sql(Z_STR_P(dsn), config, &db, true)) RETURN_THROWS();
     zval pdo;
@@ -856,13 +864,8 @@ ZEND_NAMED_FUNCTION(orm_cancel_backend)
 ZEND_NAMED_FUNCTION(orm_reopen_backend)
 {
     ZEND_PARSE_PARAMETERS_NONE();
-    zval rv_dsn, rv_config;
-    zval *dsn = zend_read_property(zend_standard_class_def, Z_OBJ_P(ZEND_THIS), "dsn", sizeof("dsn") - 1, true, &rv_dsn);
-    zval *config = zend_read_property(zend_standard_class_def, Z_OBJ_P(ZEND_THIS), "config", sizeof("config") - 1, true, &rv_config);
-    if (dsn == NULL || Z_TYPE_P(dsn) != IS_STRING || config == NULL || Z_TYPE_P(config) != IS_OBJECT) {
-        zend_throw_error(NULL, "invalid native cancellation reopen state");
-        RETURN_THROWS();
-    }
+    zval rv_dsn, rv_config, *dsn, *config;
+    if (!orm_closure_connection(ZEND_THIS, "cancellation reopen", &rv_dsn, &rv_config, &dsn, &config)) RETURN_THROWS();
     zval reopened;
     if (!orm_connect_sql(Z_STR_P(dsn), config, &reopened, false)) RETURN_THROWS();
     zval state_rv;
@@ -1367,6 +1370,24 @@ static zend_string *markdown_quote(zend_string *value)
     return Z_STR(result);
 }
 
+/* The flowmark server answered a line that is no JSON object: the session closes and an INTERNAL error that quotes
+ * the answer is thrown; answer is released. Returns false. */
+static bool markdown_answer_not_json(zval *self, zend_string *answer)
+{
+    zend_string *quoted = markdown_quote(answer);
+    smart_str detail = {0};
+    smart_str_appends(&detail, "the flowmark server answered ");
+    smart_str_append(&detail, quoted);
+    smart_str_appends(&detail, ", not a JSON object");
+    zend_string_release(quoted);
+    zend_string_release(answer);
+    markdown_session_close(self);
+    zend_string *msg = smart_str_extract(&detail);
+    db_throw_orm("INTERNAL", "%s", ZSTR_VAL(msg));
+    zend_string_release(msg);
+    return false;
+}
+
 static bool markdown_session_call(zval *self, zval *message, zval *out)
 {
     zend_class_entry *ce = markdown_session_class();
@@ -1403,24 +1424,20 @@ static bool markdown_session_call(zval *self, zval *message, zval *out)
     zval_ptr_dtor(&encoded);
     php_stream *stream;
     php_stream_from_zval_no_verify(stream, conn);
-    if (stream == NULL) {
-        smart_str_free(&line);
+    /* The whole line is written, or the connection broke: no stream, or a write that wrote nothing. */
+    bool sent = stream != NULL;
+    size_t written = 0;
+    while (sent && written < ZSTR_LEN(line.s)) {
+        ssize_t n = php_stream_write(stream, ZSTR_VAL(line.s) + written, ZSTR_LEN(line.s) - written);
+        if (n <= 0) sent = false;
+        else written += (size_t)n;
+    }
+    smart_str_free(&line);
+    if (!sent) {
         markdown_session_close(self);
         db_throw_orm("CONNECTION_LOST", "the flowmark server connection broke while the message was written");
         return false;
     }
-    size_t written = 0;
-    while (written < ZSTR_LEN(line.s)) {
-        ssize_t n = php_stream_write(stream, ZSTR_VAL(line.s) + written, ZSTR_LEN(line.s) - written);
-        if (n <= 0) {
-            smart_str_free(&line);
-            markdown_session_close(self);
-            db_throw_orm("CONNECTION_LOST", "the flowmark server connection broke while the message was written");
-            return false;
-        }
-        written += (size_t)n;
-    }
-    smart_str_free(&line);
     size_t line_len = 0;
     char *raw_line = php_stream_get_line(stream, NULL, 0, &line_len);
     if (raw_line == NULL) {
@@ -1432,18 +1449,7 @@ static bool markdown_session_call(zval *self, zval *message, zval *out)
     zend_string *answer = zend_string_init(raw_line, line_len, 0);
     efree(raw_line);
     if (ZSTR_LEN(answer) == 0 || ZSTR_VAL(answer)[0] != '{') {
-        zend_string *quoted = markdown_quote(answer);
-        smart_str detail = {0};
-        smart_str_appends(&detail, "the flowmark server answered ");
-        smart_str_append(&detail, quoted);
-        smart_str_appends(&detail, ", not a JSON object");
-        zend_string_release(quoted);
-        zend_string_release(answer);
-        markdown_session_close(self);
-        zend_string *msg = smart_str_extract(&detail);
-        db_throw_orm("INTERNAL", "%s", ZSTR_VAL(msg));
-        zend_string_release(msg);
-        return false;
+        return markdown_answer_not_json(self, answer);
     }
     zval decode_args[4], decoded;
     ZVAL_STR_COPY(&decode_args[0], answer);
@@ -1454,18 +1460,7 @@ static bool markdown_session_call(zval *self, zval *message, zval *out)
     for (size_t i = 0; i < 4; i++) zval_ptr_dtor(&decode_args[i]);
     if (!decoded_ok || Z_TYPE(decoded) != IS_ARRAY) {
         if (decoded_ok) zval_ptr_dtor(&decoded);
-        zend_string *quoted = markdown_quote(answer);
-        smart_str detail = {0};
-        smart_str_appends(&detail, "the flowmark server answered ");
-        smart_str_append(&detail, quoted);
-        smart_str_appends(&detail, ", not a JSON object");
-        zend_string_release(quoted);
-        zend_string_release(answer);
-        markdown_session_close(self);
-        zend_string *msg = smart_str_extract(&detail);
-        db_throw_orm("INTERNAL", "%s", ZSTR_VAL(msg));
-        zend_string_release(msg);
-        return false;
+        return markdown_answer_not_json(self, answer);
     }
     zend_string_release(answer);
     zval *remote = zend_hash_str_find(Z_ARRVAL(decoded), "error", sizeof("error") - 1);

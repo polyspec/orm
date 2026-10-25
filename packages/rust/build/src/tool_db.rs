@@ -227,6 +227,28 @@ macro_rules! fetch_result {
     }};
 }
 
+/// The plain result of a checked statement on the connection of each dialect.
+macro_rules! query_result_of {
+    ($conn:expr, $sql:ident, $params:ident, $budget:ident) => {
+        match $conn {
+            Conn::MySql(c) => fetch_result!(c, $sql, $params, $budget, cell, QueryResult, mysql),
+            Conn::Postgres(c) => fetch_result!(c, $sql, $params, $budget, cell_pg, QueryResult, postgres),
+            Conn::Sqlite(c) => fetch_result!(c, $sql, $params, $budget, cell, QueryResult, sqlite),
+        }
+    };
+}
+
+/// The typed grid result of a checked statement on the connection of each dialect.
+macro_rules! grid_result_of {
+    ($conn:expr, $sql:ident, $params:ident, $budget:ident) => {
+        match $conn {
+            Conn::MySql(c) => fetch_result!(c, $sql, $params, $budget, grid_mysql, GridQueryResult, mysql),
+            Conn::Postgres(c) => fetch_result!(c, $sql, $params, $budget, grid_pg, GridQueryResult, postgres),
+            Conn::Sqlite(c) => fetch_result!(c, $sql, $params, $budget, grid_sqlite, GridQueryResult, sqlite),
+        }
+    };
+}
+
 macro_rules! prepare_query {
     ($conn:expr,$sql:expr,$params:expr,postgres) => {{
         let types = binds::postgres_types($params)?;
@@ -324,8 +346,13 @@ impl Conn {
     }
 
     fn bounded_query(&self, sql: &str, params: &[P], limits: QueryLimits) -> Result<(AssertSqlSafe<String>, limits::Budget), sqlx::Error> {
+        self.single_statement(sql, params, || limits::Budget::new(limits))
+    }
+
+    /// The one statement of `sql` with its parameters checked, and the budget that `budget` makes after that check.
+    fn single_statement<B>(&self, sql: &str, params: &[P], budget: impl FnOnce() -> Result<B, sqlx::Error>) -> Result<(AssertSqlSafe<String>, B), sqlx::Error> {
         self.validate_params(params)?;
-        let budget = limits::Budget::new(limits)?;
+        let budget = budget()?;
         if polyspec_orm_schema::sql::split_sql(sql).len() != 1 {
             return Err(sqlx::Error::Decode("TOOL_QUERY_STATEMENT: expected one statement".into()));
         }
@@ -335,51 +362,25 @@ impl Conn {
     /// Ordered prepared columns and bounded checked rows, including empty results.
     pub async fn query_result_bounded(&mut self, sql: &str, params: &[P], limits: QueryLimits) -> Result<QueryResult, sqlx::Error> {
         let (sql, mut budget) = self.bounded_query(sql, params, limits)?;
-        match self {
-            Conn::MySql(c) => fetch_result!(c, sql, params, budget, cell, QueryResult, mysql),
-            Conn::Postgres(c) => fetch_result!(c, sql, params, budget, cell_pg, QueryResult, postgres),
-            Conn::Sqlite(c) => fetch_result!(c, sql, params, budget, cell, QueryResult, sqlite),
-        }
+        query_result_of!(self, sql, params, budget)
     }
 
     /// Reads converted plain values under the client-visible cell-byte budget used by catalogs.
     pub(crate) async fn query_result_values_bounded(&mut self, sql: &str, params: &[P], limits: QueryLimits) -> Result<QueryResult, sqlx::Error> {
-        self.validate_params(params)?;
-        let mut budget = limits::ValueBudget::new(limits)?;
-        if polyspec_orm_schema::sql::split_sql(sql).len() != 1 {
-            return Err(sqlx::Error::Decode("TOOL_QUERY_STATEMENT: expected one statement".into()));
-        }
-        let sql = AssertSqlSafe(sql.to_owned());
-        match self {
-            Conn::MySql(c) => fetch_result!(c, sql, params, budget, cell, QueryResult, mysql),
-            Conn::Postgres(c) => fetch_result!(c, sql, params, budget, cell_pg, QueryResult, postgres),
-            Conn::Sqlite(c) => fetch_result!(c, sql, params, budget, cell, QueryResult, sqlite),
-        }
+        let (sql, mut budget) = self.single_statement(sql, params, || limits::ValueBudget::new(limits))?;
+        query_result_of!(self, sql, params, budget)
     }
 
     /// Typed SQL grid rows using the same streaming and metadata budgets.
     pub async fn grid_query_bounded(&mut self, sql: &str, params: &[P], limits: QueryLimits) -> Result<GridQueryResult, sqlx::Error> {
         let (sql, mut budget) = self.bounded_query(sql, params, limits)?;
-        match self {
-            Conn::MySql(c) => fetch_result!(c, sql, params, budget, grid_mysql, GridQueryResult, mysql),
-            Conn::Postgres(c) => fetch_result!(c, sql, params, budget, grid_pg, GridQueryResult, postgres),
-            Conn::Sqlite(c) => fetch_result!(c, sql, params, budget, grid_sqlite, GridQueryResult, sqlite),
-        }
+        grid_result_of!(self, sql, params, budget)
     }
 
     /// Reads converted grid cells under the client-visible cell-byte budget used by catalogs.
     pub(crate) async fn grid_query_values_bounded(&mut self, sql: &str, params: &[P], limits: QueryLimits) -> Result<GridQueryResult, sqlx::Error> {
-        self.validate_params(params)?;
-        let mut budget = limits::ValueBudget::new(limits)?;
-        if polyspec_orm_schema::sql::split_sql(sql).len() != 1 {
-            return Err(sqlx::Error::Decode("TOOL_QUERY_STATEMENT: expected one statement".into()));
-        }
-        let sql = AssertSqlSafe(sql.to_owned());
-        match self {
-            Conn::MySql(c) => fetch_result!(c, sql, params, budget, grid_mysql, GridQueryResult, mysql),
-            Conn::Postgres(c) => fetch_result!(c, sql, params, budget, grid_pg, GridQueryResult, postgres),
-            Conn::Sqlite(c) => fetch_result!(c, sql, params, budget, grid_sqlite, GridQueryResult, sqlite),
-        }
+        let (sql, mut budget) = self.single_statement(sql, params, || limits::ValueBudget::new(limits))?;
+        grid_result_of!(self, sql, params, budget)
     }
 }
 

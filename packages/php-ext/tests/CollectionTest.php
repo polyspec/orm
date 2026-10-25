@@ -86,19 +86,7 @@ final class CollectionTest extends TestCase
     public function testGetAndFetchedValueUseTheTypedKey(): void
     {
         // Requirements: INT-80, INT-86.
-        $collection = new Collection();
-        $integer = self::model('integer');
-        $text = self::model('text');
-        $collection->put(7, $integer);
-        $collection->put('7', $text);
-        $collection->fetchValues(static fn(Model $model): string => $model->label);
-
-        self::assertSame($integer, $collection->get(7));
-        self::assertSame($text, $collection->get('7'));
-        self::assertNull($collection->get(8));
-        self::assertSame('integer', $collection->fetchedValue(7));
-        self::assertSame('text', $collection->fetchedValue('7'));
-        self::assertNull($collection->fetchedValue(8));
+        self::assertTypedKeyGetAndFetch(self::model('integer'), self::model('text'));
     }
 
     public function testCollectionAndIteratorAreOwnedByTheNativeExtension(): void

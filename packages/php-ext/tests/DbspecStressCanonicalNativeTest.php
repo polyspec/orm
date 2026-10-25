@@ -28,12 +28,7 @@ final class DbspecStressCanonicalNativeTest extends TestCase
 
         $document = $result->document;
         self::assertCount(2000, $document->tables, 'Stress document table count');
-        $columns = 0;
-        $foreignKeys = 0;
-        foreach ($document->tables as $table) {
-            $columns += count($table->columns);
-            $foreignKeys += count($table->foreignKeys);
-        }
+        [$columns, $foreignKeys] = \Polyspec\Orm\Tests\dbspec_stress_counts($document);
         self::assertSame(60000, $columns, 'Stress document column count');
         self::assertSame(10000, $foreignKeys, 'Stress document foreign key count');
 

@@ -5,7 +5,6 @@ package dialects
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -16,6 +15,7 @@ import (
 	"time"
 
 	"github.com/polyspec/orm/packages/go/engine/dbspec"
+	"github.com/polyspec/orm/packages/go/internal/dbspec/plancases"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
@@ -27,19 +27,12 @@ type planCaseText struct {
 
 func planCases(t *testing.T) map[string]planCaseText {
 	t.Helper()
-	raw := readDBSpecFile(t, "plans.json")
-	var vectors struct {
-		Cases []struct {
-			ID     string   `json:"id"`
-			Source []string `json:"source"`
-			Plan   []string `json:"plan"`
-		} `json:"cases"`
-	}
-	if err := json.Unmarshal(raw, &vectors); err != nil {
+	cases, err := plancases.Parse(readDBSpecFile(t, "plans.json"))
+	if err != nil {
 		t.Fatal(err)
 	}
 	out := map[string]planCaseText{}
-	for _, c := range vectors.Cases {
+	for _, c := range cases {
 		out[c.ID] = planCaseText{Source: c.Source, Plan: c.Plan}
 	}
 	return out

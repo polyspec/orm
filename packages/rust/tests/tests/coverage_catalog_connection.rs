@@ -43,6 +43,20 @@ fn column(page: &polyspec_orm_build::catalog::TablePage, column: &str) -> usize 
     page.result.columns.iter().position(|c| c.name == column).unwrap_or_else(|| panic!("page has no column {column}"))
 }
 
+/// The publisher of the phases of a catalog mutation, as the catalog mutation methods take it.
+type Publish = Arc<dyn Fn(MutationPhase) + Send + Sync>;
+/// The permit of a catalog mutation, as the catalog mutation methods take it.
+type Permit = Arc<dyn Fn() -> Result<(), String> + Send + Sync>;
+
+/// A publisher that records the phases of a catalog mutation in the returned list, and a permit that allows it.
+fn recorded_mutation_hooks() -> (Arc<Mutex<Vec<MutationPhase>>>, Publish, Permit) {
+    let phases = Arc::new(Mutex::new(Vec::new()));
+    let captured = phases.clone();
+    let publish: Publish = Arc::new(move |phase| captured.lock().unwrap().push(phase));
+    let permit: Permit = Arc::new(|| Ok(()));
+    (phases, publish, permit)
+}
+
 #[tokio::test]
 // Requirements: SCH-3, INT-103, INT-113, INT-114, INT-115.
 async fn coverage_catalog_read() {
@@ -193,10 +207,7 @@ async fn coverage_catalog_row_mutation() {
         let namespace = catalog.current_namespace().await.expect("current namespace");
         let table = TableRef { namespace, name: "composite_account".into() };
         let metadata = catalog.describe_table(&table).await.expect("composite_account metadata");
-        let phases = Arc::new(Mutex::new(Vec::new()));
-        let captured = phases.clone();
-        let publish: Arc<dyn Fn(MutationPhase) + Send + Sync> = Arc::new(move |phase| captured.lock().unwrap().push(phase));
-        let permit: Arc<dyn Fn() -> Result<(), String> + Send + Sync> = Arc::new(|| Ok(()));
+        let (phases, publish, permit) = recorded_mutation_hooks();
         let running = || Arc::new(AtomicBool::new(false));
 
         let values = [("tenant_id".to_owned(), P::I(TENANT)), ("account_id".to_owned(), P::I(1)), ("name".to_owned(), P::S("catalog".into()))];
@@ -245,10 +256,7 @@ async fn coverage_model_read_null_and_empty_text() {
         let seq = -1_000_000_000_000i64 - (std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_micros() as i64 % 1_000_000_000);
         let table = TableRef { namespace: catalog.current_namespace().await.expect("current namespace"), name: "bind_cell".into() };
         let metadata = catalog.describe_table(&table).await.expect("bind_cell metadata");
-        let phases = Arc::new(Mutex::new(Vec::new()));
-        let captured = phases.clone();
-        let publish: Arc<dyn Fn(MutationPhase) + Send + Sync> = Arc::new(move |phase| captured.lock().unwrap().push(phase));
-        let permit: Arc<dyn Fn() -> Result<(), String> + Send + Sync> = Arc::new(|| Ok(()));
+        let (_, publish, permit) = recorded_mutation_hooks();
         let running = || Arc::new(AtomicBool::new(false));
         let null_values = [("seq".to_owned(), P::I(seq)), ("label".to_owned(), P::S("null-v".into())), ("body".to_owned(), P::Null(ParamType::Text))];
         catalog.insert_row(&metadata, &null_values, running(), publish.clone(), permit.clone()).await.expect("insert SQL NULL body");

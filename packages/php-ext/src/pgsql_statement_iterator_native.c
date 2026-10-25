@@ -116,19 +116,26 @@ PHP_METHOD(Polyspec_Orm_Internal_PgsqlStatementIterator, key)
     RETURN_LONG(object->key);
 }
 
+/* Fetches the next row of the statement into the current row of object; a fetch that ends without an exception
+ * leaves the current row as it is. False when the fetch threw. */
+static bool orm_pgsql_statement_iterator_advance(orm_pgsql_statement_iterator_object *object)
+{
+    zval row;
+    if (!orm_pgsql_statement_iterator_fetch(&object->statement, &row)) {
+        return EG(exception) == NULL;
+    }
+    orm_pgsql_statement_iterator_set_current(object, &row);
+    return true;
+}
+
 PHP_METHOD(Polyspec_Orm_Internal_PgsqlStatementIterator, next)
 {
     ZEND_PARSE_PARAMETERS_NONE();
     orm_pgsql_statement_iterator_object *object = orm_pgsql_statement_iterator_from_obj(Z_OBJ_P(ZEND_THIS));
     object->key++;
-    zval row;
-    if (!orm_pgsql_statement_iterator_fetch(&object->statement, &row)) {
-        if (EG(exception)) {
-            RETURN_THROWS();
-        }
-        RETURN_NULL();
+    if (!orm_pgsql_statement_iterator_advance(object)) {
+        RETURN_THROWS();
     }
-    orm_pgsql_statement_iterator_set_current(object, &row);
     RETURN_NULL();
 }
 
@@ -137,14 +144,9 @@ PHP_METHOD(Polyspec_Orm_Internal_PgsqlStatementIterator, rewind)
     ZEND_PARSE_PARAMETERS_NONE();
     orm_pgsql_statement_iterator_object *object = orm_pgsql_statement_iterator_from_obj(Z_OBJ_P(ZEND_THIS));
     object->key = 0;
-    zval row;
-    if (!orm_pgsql_statement_iterator_fetch(&object->statement, &row)) {
-        if (EG(exception)) {
-            RETURN_THROWS();
-        }
-        RETURN_NULL();
+    if (!orm_pgsql_statement_iterator_advance(object)) {
+        RETURN_THROWS();
     }
-    orm_pgsql_statement_iterator_set_current(object, &row);
     RETURN_NULL();
 }
 

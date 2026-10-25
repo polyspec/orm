@@ -3,6 +3,8 @@
 #include "Zend/zend_closures.h"
 #include "Zend/zend_exceptions.h"
 #include "Zend/zend_interfaces.h"
+#include "orm_exception_object.h"
+#include <string.h>
 
 static zend_class_entry *native_find_class(const char *name, size_t length)
 {
@@ -12,26 +14,17 @@ static zend_class_entry *native_find_class(const char *name, size_t length)
     return ce;
 }
 
+static bool native_orm_error(const char *code, const char *message)
+{
+    zend_string *text = zend_string_init(message, strlen(message), 0);
+    orm_throw_exception(code, text);
+    zend_string_release(text);
+    return false;
+}
+
 static bool native_config_error(const char *message)
 {
-    zend_string *name = zend_string_init(ZEND_STRL("Polyspec\\Orm\\OrmException"), 0);
-    zend_class_entry *ce = zend_lookup_class(name);
-    zend_string_release(name);
-    if (ce == NULL) return false;
-    zval error, args[2], rv;
-    object_init_ex(&error, ce);
-    ZVAL_STRING(&args[0], "CONFIG");
-    ZVAL_STRING(&args[1], message);
-    zend_call_known_function(ce->constructor, Z_OBJ(error), ce, &rv, 2, args, NULL);
-    zval_ptr_dtor(&args[0]);
-    zval_ptr_dtor(&args[1]);
-    zval_ptr_dtor(&rv);
-    if (EG(exception) != NULL) {
-        zval_ptr_dtor(&error);
-        return false;
-    }
-    zend_throw_exception_object(&error);
-    return false;
+    return native_orm_error("CONFIG", message);
 }
 
 static bool native_call(const char *name, zval *result, uint32_t argc, zval *args)
@@ -43,29 +36,9 @@ static bool native_call(const char *name, zval *result, uint32_t argc, zval *arg
     return status == SUCCESS && EG(exception) == NULL;
 }
 
-static bool native_cancellation_error(const char *code, const char *message)
-{
-    zend_string *name = zend_string_init(ZEND_STRL("Polyspec\\Orm\\OrmException"), 0);
-    zend_class_entry *ce = zend_lookup_class(name);
-    zend_string_release(name);
-    if (ce == NULL) return false;
-    zval error, args[2], rv;
-    object_init_ex(&error, ce);
-    ZVAL_STRING(&args[0], code);
-    ZVAL_STRING(&args[1], message);
-    zend_call_known_function(ce->constructor, Z_OBJ(error), ce, &rv, 2, args, NULL);
-    zval_ptr_dtor(&args[0]); zval_ptr_dtor(&args[1]); zval_ptr_dtor(&rv);
-    if (EG(exception) != NULL) { zval_ptr_dtor(&error); return false; }
-    zend_throw_exception_object(&error);
-    return false;
-}
-
 static zend_class_entry *native_cancellation_ce(void)
 {
-    zend_string *name = zend_string_init("Polyspec\\Orm\\Cancellation", sizeof("Polyspec\\Orm\\Cancellation") - 1, 0);
-    zend_class_entry *ce = zend_lookup_class(name);
-    zend_string_release(name);
-    return ce;
+    return native_find_class(ZEND_STRL("Polyspec\\Orm\\Cancellation"));
 }
 
 static zval *native_cancellation_property(zval *self, const char *name, size_t length, zval *rv)
@@ -198,7 +171,7 @@ static bool native_cancellation_update(zval *self, zend_long slot, bool active, 
     }
     if (reject_cancelled && (header & 2) != 0) {
         native_cancellation_unlock(&stream); zval_ptr_dtor(&stream);
-        return native_cancellation_error("CANCELED", "statement was cancelled");
+        return native_orm_error("CANCELED", "statement was cancelled");
     }
     if (slot > 0 && !native_cancellation_write_byte(&stream, slot, active ? 1 : 0)) ok = false;
     zend_long size = 1;
@@ -359,14 +332,14 @@ ZEND_METHOD(Polyspec_Orm_Cancellation, registerCancelQuery)
         Z_PARAM_OBJECT_OF_CLASS_OR_NULL(query, zend_ce_closure)
     ZEND_PARSE_PARAMETERS_END();
     if (connection_id <= 0) {
-        native_cancellation_error("CONFIG", "cancellation connection id must be positive");
+        native_orm_error("CONFIG", "cancellation connection id must be positive");
         RETURN_THROWS();
     }
     zval slots_rv, queries_rv;
     zval *slots = native_cancellation_property(ZEND_THIS, "connectionSlots", sizeof("connectionSlots") - 1, &slots_rv);
     zval *queries = native_cancellation_property(ZEND_THIS, "cancelQueries", sizeof("cancelQueries") - 1, &queries_rv);
     if (slots == NULL || Z_TYPE_P(slots) != IS_ARRAY || queries == NULL || Z_TYPE_P(queries) != IS_ARRAY) {
-        native_cancellation_error("CONFIG", "cancellation callbacks are not initialized");
+        native_orm_error("CONFIG", "cancellation callbacks are not initialized");
         RETURN_THROWS();
     }
     zval *existing = zend_hash_index_find(Z_ARRVAL_P(slots), (zend_ulong) connection_id);
@@ -385,14 +358,14 @@ ZEND_METHOD(Polyspec_Orm_Cancellation, registerCancelQuery)
         if (!sized || Z_TYPE(length) != IS_LONG || Z_LVAL(length) < 1) {
             if (sized) zval_ptr_dtor(&length);
             native_cancellation_unlock(&stream); zval_ptr_dtor(&stream);
-            native_cancellation_error("CONFIG", "cannot allocate a cancellation connection slot");
+            native_orm_error("CONFIG", "cannot allocate a cancellation connection slot");
             RETURN_THROWS();
         }
         slot = Z_LVAL(length);
         zval_ptr_dtor(&length);
         if (!native_cancellation_write_byte(&stream, slot, 0) || !native_cancellation_unlock(&stream)) {
             zval_ptr_dtor(&stream);
-            native_cancellation_error("CONFIG", "cannot allocate a cancellation connection slot");
+            native_orm_error("CONFIG", "cannot allocate a cancellation connection slot");
             RETURN_THROWS();
         }
         zval_ptr_dtor(&stream);
@@ -419,7 +392,7 @@ ZEND_METHOD(Polyspec_Orm_Cancellation, cancel)
     if (!native_cancellation_stream(ZEND_THIS, &stream)) RETURN_THROWS();
     if (!native_cancellation_lock(&stream, 2) || !native_cancellation_read_byte(&stream, 0, &header)) {
         native_cancellation_unlock(&stream); zval_ptr_dtor(&stream);
-        native_cancellation_error("CONFIG", "cannot read the private cancellation state file");
+        native_orm_error("CONFIG", "cannot read the private cancellation state file");
         RETURN_THROWS();
     }
     if ((header & 2) != 0) {
@@ -428,7 +401,7 @@ ZEND_METHOD(Polyspec_Orm_Cancellation, cancel)
     if (!native_cancellation_size(&stream, &size)
         || !native_cancellation_write_byte(&stream, 0, (unsigned char) (header | 2))) {
         native_cancellation_unlock(&stream); zval_ptr_dtor(&stream);
-        native_cancellation_error("CONFIG", "cannot update the private cancellation state file");
+        native_orm_error("CONFIG", "cannot update the private cancellation state file");
         RETURN_THROWS();
     }
     zval *queries = native_cancellation_property(ZEND_THIS, "cancelQueries", sizeof("cancelQueries") - 1, &queries_rv);
@@ -436,7 +409,7 @@ ZEND_METHOD(Polyspec_Orm_Cancellation, cancel)
         unsigned char active = 0;
         if (!native_cancellation_read_byte(&stream, slot, &active)) {
             native_cancellation_unlock(&stream); zval_ptr_dtor(&stream);
-            native_cancellation_error("CONFIG", "cannot read a cancellation connection slot");
+            native_orm_error("CONFIG", "cannot read a cancellation connection slot");
             RETURN_THROWS();
         }
         zval *query = queries != NULL && Z_TYPE_P(queries) == IS_ARRAY
@@ -452,7 +425,7 @@ ZEND_METHOD(Polyspec_Orm_Cancellation, cancel)
     bool unlocked = native_cancellation_unlock(&stream);
     zval_ptr_dtor(&stream);
     if (!unlocked) {
-        native_cancellation_error("CONFIG", "cannot release the cancellation state lock");
+        native_orm_error("CONFIG", "cannot release the cancellation state lock");
         RETURN_THROWS();
     }
     RETURN_NULL();

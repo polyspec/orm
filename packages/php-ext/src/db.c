@@ -751,42 +751,35 @@ static bool send_op(zval *self, bool control, op_fn op, void *ctx, done_fn done,
             return false;
         }
         ZVAL_COPY(&driver, rd(self, "driver"));
+        bool made;
         if (cancelled) {
-            bool made = cancellation_exception(&pe, &err);
-            if (!made) {
-                zval_ptr_dtor(&driver);
-                zval_ptr_dtor(&pdo);
-                zval_ptr_dtor(&pe);
-                cancellation_end_preserving_exception(&signal, self);
-                if (Z_TYPE(signal) != IS_UNDEF) zval_ptr_dtor(&signal);
-                return false;
-            }
-            if (!is_str(&driver, "sqlite")) {
-                cancellation_clear_statements(rd(self, "state"));
-                if (is_str(&driver, "postgres")) {
-                    zval *frame = active_for(self);
-                    if (frame != NULL) {
-                        zval yes;
-                        ZVAL_TRUE(&yes);
-                        wr(frame, "cancelled", &yes);
-                    }
-                } else {
-                    cancellation_reopen(self, &err);
-                }
-            }
+            made = cancellation_exception(&pe, &err);
         } else {
             ZVAL_COPY(&args[0], &pe);
             ZVAL_COPY(&args[1], &driver);
             ZVAL_COPY(&args[2], &pdo);
-            bool made = scall("Polyspec\\Orm\\OrmException::fromDriver", &err, 3, args);
+            made = scall("Polyspec\\Orm\\OrmException::fromDriver", &err, 3, args);
             for (int i = 0; i < 3; i++) zval_ptr_dtor(&args[i]);
-            if (!made) {
-                zval_ptr_dtor(&driver);
-                zval_ptr_dtor(&pdo);
-                zval_ptr_dtor(&pe);
-                cancellation_end_preserving_exception(&signal, self);
-                if (Z_TYPE(signal) != IS_UNDEF) zval_ptr_dtor(&signal);
-                return false;
+        }
+        if (!made) {
+            zval_ptr_dtor(&driver);
+            zval_ptr_dtor(&pdo);
+            zval_ptr_dtor(&pe);
+            cancellation_end_preserving_exception(&signal, self);
+            if (Z_TYPE(signal) != IS_UNDEF) zval_ptr_dtor(&signal);
+            return false;
+        }
+        if (cancelled && !is_str(&driver, "sqlite")) {
+            cancellation_clear_statements(rd(self, "state"));
+            if (is_str(&driver, "postgres")) {
+                zval *frame = active_for(self);
+                if (frame != NULL) {
+                    zval yes;
+                    ZVAL_TRUE(&yes);
+                    wr(frame, "cancelled", &yes);
+                }
+            } else {
+                cancellation_reopen(self, &err);
             }
         }
         zval_ptr_dtor(&driver);
@@ -4284,6 +4277,22 @@ static void map_pending_listen_pdo_exception(zval *self)
     }
 }
 
+/* Whether self is a PostgreSQL connection and channel a valid channel name (Subscription::checkChannel), for the
+ * operation notify or listen; otherwise an exception is thrown. */
+static bool db_postgres_channel(zval *self, zend_string *channel, const char *operation)
+{
+    if (!is_str(rd(self, "driver"), "postgres")) {
+        db_throw_orm("CAPABILITY_UNSUPPORTED", "%s is supported on PostgreSQL only", operation);
+        return false;
+    }
+    zval channel_arg, checked;
+    ZVAL_STR_COPY(&channel_arg, channel);
+    bool valid = scall("Polyspec\\Orm\\Subscription::checkChannel", &checked, 1, &channel_arg);
+    zval_ptr_dtor(&channel_arg);
+    if (valid) zval_ptr_dtor(&checked);
+    return valid;
+}
+
 /* Db::notify and Db::listen use the public PDO surface and the native Subscription methods (DIA-192 to DIA-196). */
 ZEND_METHOD(Polyspec_Orm_Db, notify)
 {
@@ -4292,18 +4301,7 @@ ZEND_METHOD(Polyspec_Orm_Db, notify)
         Z_PARAM_STR(channel)
         Z_PARAM_STR(payload)
     ZEND_PARSE_PARAMETERS_END();
-    if (!is_str(rd(ZEND_THIS, "driver"), "postgres")) {
-        db_throw_orm("CAPABILITY_UNSUPPORTED", "notify is supported on PostgreSQL only");
-        RETURN_THROWS();
-    }
-    zval channel_arg, checked;
-    ZVAL_STR_COPY(&channel_arg, channel);
-    if (!scall("Polyspec\\Orm\\Subscription::checkChannel", &checked, 1, &channel_arg)) {
-        zval_ptr_dtor(&channel_arg);
-        RETURN_THROWS();
-    }
-    zval_ptr_dtor(&channel_arg);
-    zval_ptr_dtor(&checked);
+    if (!db_postgres_channel(ZEND_THIS, channel, "notify")) RETURN_THROWS();
     if (ZSTR_LEN(payload) >= 8000 || memchr(ZSTR_VAL(payload), '\0', ZSTR_LEN(payload)) != NULL) {
         db_throw_orm("DRIVER", "a PostgreSQL notification payload must be shorter than 8000 bytes and contain no U+0000");
         RETURN_THROWS();
@@ -4347,18 +4345,7 @@ ZEND_METHOD(Polyspec_Orm_Db, listen)
     ZEND_PARSE_PARAMETERS_START(1, 1)
         Z_PARAM_STR(channel)
     ZEND_PARSE_PARAMETERS_END();
-    if (!is_str(rd(ZEND_THIS, "driver"), "postgres")) {
-        db_throw_orm("CAPABILITY_UNSUPPORTED", "listen is supported on PostgreSQL only");
-        RETURN_THROWS();
-    }
-    zval channel_arg, checked;
-    ZVAL_STR_COPY(&channel_arg, channel);
-    if (!scall("Polyspec\\Orm\\Subscription::checkChannel", &checked, 1, &channel_arg)) {
-        zval_ptr_dtor(&channel_arg);
-        RETURN_THROWS();
-    }
-    zval_ptr_dtor(&channel_arg);
-    zval_ptr_dtor(&checked);
+    if (!db_postgres_channel(ZEND_THIS, channel, "listen")) RETURN_THROWS();
     zval opener;
     if (!mcall(ZEND_THIS, "listener", &opener, 0, NULL)) {
         RETURN_THROWS();

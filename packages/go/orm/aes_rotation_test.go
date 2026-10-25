@@ -113,34 +113,33 @@ func TestAESVersionCodesAreTheSameInEveryClient(t *testing.T) {
 	}
 }
 
-// Requirements: COD-44, COD-56.
-func TestAESReadWithoutVersionColumnIsInternal(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
+// assertAESRowDecodeIsInternal decodes a row of one AES email cell with the plan step and scan of the case and
+// requires the INTERNAL code: what names the plan defect of the case.
+func assertAESRowDecodeIsInternal(t *testing.T, step *plan.Step, si *scanInfo, what string) {
+	t.Helper()
 	enc, err := HostEncode("email@example.test", []string{"aes", "hex"}, "k")
 	if err != nil {
 		t.Fatal(err)
 	}
-	keys := mustAESKeyring(t, map[int32]string{1: "k"}, 1)
+	err = decodeSelectedRow([]any{enc}, si, step, mustAESKeyring(t, map[int32]string{1: "k"}, 1))
+	if got := ErrorCode(err); got != CodeInternal {
+		t.Fatalf("%s: code = %q, want %s (err %v)", what, got, CodeInternal, err)
+	}
+}
+
+// Requirements: COD-44, COD-56.
+func TestAESReadWithoutVersionColumnIsInternal(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	step := &plan.Step{Assemble: &plan.Assemble{Entity: "user", Columns: []plan.OutCol{{Index: 0, Name: "aes_hex_email", Type: "string"}}}}
 	si := &scanInfo{styled: []styledScanCol{{index: 0, name: "aes_hex_email", host: []string{"aes", "hex"}}}}
-	err = decodeSelectedRow([]any{enc}, si, step, keys)
-	if got := ErrorCode(err); got != CodeInternal {
-		t.Fatalf("plan without a version column: code = %q, want %s (err %v)", got, CodeInternal, err)
-	}
+	assertAESRowDecodeIsInternal(t, step, si, "plan without a version column")
 }
 
 // Requirements: COD-48.
 func TestAESReadRowWithoutVersionCellIsInternal(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	enc, err := HostEncode("email@example.test", []string{"aes", "hex"}, "k")
-	if err != nil {
-		t.Fatal(err)
-	}
 	step, si := aesReadStep()
-	err = decodeSelectedRow([]any{enc}, si, step, mustAESKeyring(t, map[int32]string{1: "k"}, 1))
-	if got := ErrorCode(err); got != CodeInternal {
-		t.Fatalf("selected AES row without its version cell: code = %q, want %s (err %v)", got, CodeInternal, err)
-	}
+	assertAESRowDecodeIsInternal(t, step, si, "selected AES row without its version cell")
 }
 
 // Requirements: COD-49, COD-50, COD-51, COD-52, COD-53.

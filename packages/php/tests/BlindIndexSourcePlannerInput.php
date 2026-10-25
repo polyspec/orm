@@ -93,4 +93,73 @@ DBSPEC;
             $this->assignment('name', 1),
         ], $nParams, $extra);
     }
+
+    /** A multi-row insert binds the blind index of each row from the position of its assigned source column. */
+    private function assertMultiRowIndexUsesTheAssignedSourcePosition(): void
+    {
+        $plan = $this->compileInsert([
+            $this->assignment('id', 0),
+            $this->assignment('name', 1),
+            $this->assignment('email_b', 2),
+        ], 6, ['rows' => [[3, 4, 5]]]);
+        $params = [];
+        foreach ($plan['steps'][0]['bind_slots'] as $slot) {
+            if (in_array('blind_index', $slot['host_styles'] ?? [], true)) {
+                $params[] = $slot['param'];
+            }
+        }
+        Assert::assertSame([2, 5], $params);
+    }
+
+    /** An insert that assigns no blind index source binds no blind index. */
+    private function assertOrdinaryInsertHasNoBlindIndexSlots(): void
+    {
+        $plan = $this->compileBaseInsert(2);
+        foreach ($plan['steps'][0]['bind_slots'] as $slot) {
+            Assert::assertNotContains('blind_index', $slot['host_styles'] ?? []);
+        }
+    }
+
+    /** An explicit assignment of the shared target wins over its sources: the target column is written once. */
+    private function assertExplicitTargetAssignmentWins(): void
+    {
+        $plan = $this->compileInsert([
+            $this->assignment('id', 0),
+            $this->assignment('name', 1),
+            $this->assignment('email_a', 2),
+            $this->assignment('email_b', 3),
+            $this->assignment('hash', 4),
+        ], 5);
+        Assert::assertSame(1, substr_count($plan['steps'][0]['sql'], '`hash`'));
+    }
+
+    /** The on-duplicate assignments refuse two sources of one target by themselves, for each kind of conflict. */
+    private function assertOnDuplicateRejectsTwoSourcesIndependently(): void
+    {
+        $engine = $this->engine();
+        $cases = [
+            [[$this->assignment('email_a', 2), $this->assignment('email_b', 3)], 4],
+            [[$this->assignment('email_a', 2), $this->assignment('email_b', 2)], 3],
+            [[['column' => 'email_a', 'null' => true], ['column' => 'email_b', 'null' => true]], 2],
+        ];
+        foreach ($cases as [$onDuplicate, $nParams]) {
+            $request = $this->request($engine, [$this->assignment('id', 0), $this->assignment('name', 1)], $nParams, [
+                'on_duplicate' => $onDuplicate,
+            ]);
+            $this->assertSourceConflict($engine, $request);
+        }
+    }
+
+    /** An explicit target in the on-duplicate assignments wins over its sources: the target column is written once. */
+    private function assertExplicitTargetWinsInOnDuplicate(): void
+    {
+        $plan = $this->compileBaseInsert(5, [
+            'on_duplicate' => [
+                $this->assignment('email_a', 2),
+                $this->assignment('email_b', 3),
+                $this->assignment('hash', 4),
+            ],
+        ]);
+        Assert::assertSame(1, substr_count($plan['steps'][0]['sql'], '`hash`'));
+    }
 }

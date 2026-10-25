@@ -24,12 +24,7 @@ final class CoveragePlannerExtensionTest extends TestCase
 
         $root = dirname(__DIR__, 3);
         $fixture = coverageJson("$root/contracts/fixtures/planner.json");
-        $found = array_values(array_filter(
-            $fixture['cases'],
-            static fn(array $case): bool => $case['id'] === $id
-        ));
-        Assert::assertCount(1, $found, "planner.json has " . count($found) . " cases $id");
-        if ($found[0]['operation'] === 'compile') {
+        if (plannerFixtureCase($root, $id)['operation'] === 'compile') {
             plannerCase($root, $fixture, $id);
             return;
         }
@@ -415,13 +410,7 @@ final class CoveragePlannerExtensionTest extends TestCase
 
         [$model, $baseRequest] = plannerScalarColumnSubqueryRequest(dirname(__DIR__, 3));
         foreach ([['count', '', 'i64'], ['avg', 'read_count', 'f64']] as [$aggregate, $column, $expected]) {
-            $request = $baseRequest;
-            $request['columns']['sub']['first_author']['agg'] = $aggregate;
-            $request['columns']['sub']['first_author']['column'] = $column;
-            unset(
-                $request['columns']['sub']['first_author']['query']['limit'],
-                $request['columns']['sub']['first_author']['query']['order']
-            );
+            $request = plannerScalarAggregateRequest($baseRequest, $aggregate, $column);
             (new Validator($model))->validate($request);
             $plan = (new Engine($model, 'sqlite', 8))->plan($request);
             $output = array_values(array_filter(
@@ -524,13 +513,7 @@ final class CoveragePlannerExtensionTest extends TestCase
 
         require_once dirname(__DIR__, 2) . '/php/tests/CoveragePlannerTest.php';
         $root = dirname(__DIR__, 3);
-        $fixture = coverageJson("$root/contracts/fixtures/planner.json");
-        $found = array_values(array_filter(
-            $fixture['cases'],
-            static fn(array $case): bool => $case['id'] === 'planner_contains_binary_collation'
-        ));
-        Assert::assertCount(1, $found);
-        $case = $found[0];
+        $case = plannerFixtureCase($root, 'planner_contains_binary_collation');
         $model = RuntimeModel::build(RuntimeModel::files(["$root/{$case['schema']}"]));
         $request = ['manifest_hash' => $model->manifestHash] + $case['input'];
         Assert::assertTrue((new ReflectionClass(Engine::class))->isInternal());

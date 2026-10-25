@@ -4,7 +4,7 @@
 // get is INTERNAL.
 import { AesKeyring, OrmError, hostEncode } from '../dist/index.js';
 import { decodeAssembly } from '../dist/database.js';
-import { check } from './codec_case.mjs';
+import { aesAccountAssemble, aesOldKeyCipher, check } from './codec_case.mjs';
 
 const keyring = new AesKeyring(new Map([[1, 'old-key'], [2, 'new-key']]), 2);
 // Requirements: INT-74, INT-130.
@@ -14,14 +14,8 @@ check('aes keyring: versions are ascending and current version is retained', wro
   if (ring.currentVersion !== 2) wrong.push(`current version ${ring.currentVersion}, want 2`);
 });
 const db = { aesKeyring: keyring, aesKey: 'new-key' };
-const cipher = hostEncode('value', ['aes', 'hex'], 'old-key');
-const assemble = {
-  entity: 'Account', alias: 'a', key: [], children: [], aes_version: 1,
-  columns: [
-    { index: 0, name: 'email', column: 'email', typ: 'string', styles: ['aes', 'hex'] },
-    { index: 1, name: 'aes_key_version', column: 'aes_key_version', typ: 'i32', styles: [] },
-  ],
-};
+const cipher = aesOldKeyCipher();
+const assemble = aesAccountAssemble();
 const codeOf = run => {
   try {
     run();

@@ -17,19 +17,27 @@ static bool orm_pgsql_lob_call(const char *name, zval *result, uint32_t argc, zv
     return status == SUCCESS && EG(exception) == NULL;
 }
 
+/* Calls the large-object function name with the stream's large object and argument, which it releases; result holds
+ * its return value. False when the call fails. */
+static bool orm_pgsql_lob_call_on(orm_pgsql_lob_stream_data *data, const char *name, zval *argument, zval *result)
+{
+    zval args[2];
+    ZVAL_COPY(&args[0], &data->lob);
+    ZVAL_COPY_VALUE(&args[1], argument);
+    bool called = orm_pgsql_lob_call(name, result, 2, args);
+    zval_ptr_dtor(&args[0]);
+    zval_ptr_dtor(&args[1]);
+    return called;
+}
+
 static ssize_t orm_pgsql_lob_write(php_stream *stream, const char *buffer, size_t count)
 {
     orm_pgsql_lob_stream_data *data = stream->abstract;
-    zval args[2], result;
-    ZVAL_COPY(&args[0], &data->lob);
-    ZVAL_STRINGL(&args[1], buffer, count);
-    if (!orm_pgsql_lob_call("pg_lo_write", &result, 2, args)) {
-        zval_ptr_dtor(&args[0]);
-        zval_ptr_dtor(&args[1]);
+    zval argument, result;
+    ZVAL_STRINGL(&argument, buffer, count);
+    if (!orm_pgsql_lob_call_on(data, "pg_lo_write", &argument, &result)) {
         return -1;
     }
-    zval_ptr_dtor(&args[0]);
-    zval_ptr_dtor(&args[1]);
     if (Z_TYPE(result) != IS_LONG || Z_LVAL(result) < 0) {
         zval_ptr_dtor(&result);
         return -1;
@@ -48,16 +56,11 @@ static ssize_t orm_pgsql_lob_read(php_stream *stream, char *buffer, size_t count
         count = ZEND_LONG_MAX;
     }
     orm_pgsql_lob_stream_data *data = stream->abstract;
-    zval args[2], result;
-    ZVAL_COPY(&args[0], &data->lob);
-    ZVAL_LONG(&args[1], (zend_long) count);
-    if (!orm_pgsql_lob_call("pg_lo_read", &result, 2, args)) {
-        zval_ptr_dtor(&args[0]);
-        zval_ptr_dtor(&args[1]);
+    zval argument, result;
+    ZVAL_LONG(&argument, (zend_long) count);
+    if (!orm_pgsql_lob_call_on(data, "pg_lo_read", &argument, &result)) {
         return -1;
     }
-    zval_ptr_dtor(&args[0]);
-    zval_ptr_dtor(&args[1]);
     if (Z_TYPE(result) != IS_STRING) {
         zval_ptr_dtor(&result);
         return -1;

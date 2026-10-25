@@ -1,6 +1,7 @@
 /* Native result assembly and read terminals for Polyspec\Orm\Model. */
 #include "model_read.h"
 #include "model_state.h"
+#include "php_function_call.h"
 #include "model_types.h"
 #include "model_native_methods.h"
 #include "object_method_lookup.h"
@@ -287,12 +288,11 @@ static zval *read_object_prop(zval *object, const char *name)
 
 static bool read_is_numeric(zval *value, bool *numeric)
 {
-    zval function, argument, result;
-    ZVAL_STRING(&function, "is_numeric"); ZVAL_COPY(&argument, value); ZVAL_UNDEF(&result);
-    zend_result status = call_user_function(EG(function_table), NULL, &function, &result, 1, &argument);
-    zval_ptr_dtor(&function); zval_ptr_dtor(&argument);
-    if (status != SUCCESS || EG(exception) != NULL) { if (!Z_ISUNDEF(result)) zval_ptr_dtor(&result); return false; }
-    *numeric = zend_is_true(&result); zval_ptr_dtor(&result); return true;
+    zval result;
+    if (!php_function_call1("is_numeric", value, &result)) return false;
+    *numeric = zend_is_true(&result);
+    zval_ptr_dtor(&result);
+    return true;
 }
 
 static bool read_convert_resource(zval *value)

@@ -1083,7 +1083,8 @@
         "databases"
       ],
       "inputs": [
-        "packages/php/tests/GroupRowsDbTest.php"
+        "packages/php/tests/GroupRowsDbTest.php",
+        "packages/php/tests/GroupRowsDbCases.php"
       ]
     },
     "group-rows-db-php-extension": {
@@ -1097,6 +1098,7 @@
       ],
       "inputs": [
         "packages/php/tests/GroupRowsDbTest.php",
+        "packages/php/tests/GroupRowsDbCases.php",
         "packages/php-ext/**"
       ]
     },

@@ -31,26 +31,6 @@ final class MysqlSessionNativeTest extends TestCase
         if (!is_string($dsn) || $dsn === '') {
             throw new RuntimeException('ORM_TEST_POSTGRES_DSN is not set; run make orm-test-servers');
         }
-        $db = Orm::connect($dsn, new Config(statementTimeoutMs: 237));
-        try {
-            $rows = $db->fetch(
-                'utility',
-                [],
-                null,
-                "SELECT name, setting, source FROM pg_settings WHERE name IN ('TimeZone', 'statement_timeout')"
-            );
-        } finally {
-            $db->close();
-        }
-        $settings = [];
-        foreach ($rows as [$name, $setting, $source]) {
-            $settings[$name] = [$setting, $source];
-        }
-        self::assertSame('UTC', $settings['TimeZone'][0] ?? null, 'TimeZone');
-        self::assertSame('237', $settings['statement_timeout'][0] ?? null, 'statement_timeout');
-        if (getenv('ORM_TEST_POSTGRES_DSN') === getenv('ORM_TEST_POSTGRES_SERVER_DSN')) {
-            self::assertSame('client', $settings['TimeZone'][1] ?? null, 'TimeZone startup source');
-            self::assertSame('client', $settings['statement_timeout'][1] ?? null, 'timeout startup source');
-        }
+        \Polyspec\Orm\Tests\PostgresSessionSettings::assertStartupParameters($dsn);
     }
 }

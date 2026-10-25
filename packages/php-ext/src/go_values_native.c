@@ -1,5 +1,6 @@
 #include "go_values_native.h"
 #include "dbspec.h"
+#include "php_function_call.h"
 #include "Zend/zend_exceptions.h"
 #include "Zend/zend_smart_str.h"
 #include "ext/spl/spl_exceptions.h"
@@ -27,6 +28,14 @@ static bool printable_rune(zend_string *rune, bool *printable)
     *printable = Z_TYPE(result) == IS_LONG && Z_LVAL(result) == 1;
     zval_ptr_dtor(&result);
     return true;
+}
+
+/* The byte count of the valid multi-byte UTF-8 character that starts tail, or 0 when its first byte starts none. */
+static size_t multibyte_rune_width(str tail)
+{
+    size_t width = utf8_char_width(tail, 0);
+    if (width == 1 || width > tail.n || utf8_valid_prefix((str){tail.s, width}) != width) return 0;
+    return width;
 }
 
 static void append_byte_escape(smart_str *out, unsigned char byte)
@@ -66,8 +75,8 @@ static bool go_quote(zend_string *value, zend_string **quoted)
         }
 
         str tail = {(const char *)bytes + i, length - i};
-        size_t width = utf8_char_width(tail, 0);
-        if (width == 1 || width > length - i || utf8_valid_prefix((str){tail.s, width}) != width) {
+        size_t width = multibyte_rune_width(tail);
+        if (width == 0) {
             append_byte_escape(&out, c);
             i++;
             continue;
@@ -143,18 +152,16 @@ static void go_json_string(zend_string *value, smart_str *out)
             i++;
             continue;
         }
-        str tail = {(const char *)bytes + i, length - i};
-        size_t width = utf8_char_width(tail, 0);
-        if (width == 1 || width > length - i || utf8_valid_prefix((str){tail.s, width}) != width) {
-            smart_str_appends(out, "\\ufffd");
-            i++;
-            continue;
-        }
+        /* An invalid UTF-8 byte is the replacement character; a valid character is copied, except the line and
+         * paragraph separators, which JSON in a script escapes. */
+        const char *rune = (const char *)bytes + i;
+        size_t width = multibyte_rune_width((str){rune, length - i});
         size_t decoded_width = 0;
-        uint32_t cp = utf8_decode_at((str){tail.s, width}, 0, &decoded_width);
-        if (cp == 0x2028 || cp == 0x2029) json_hex4(out, (uint16_t)cp);
-        else smart_str_appendl(out, tail.s, width);
-        i += width;
+        uint32_t cp = width == 0 ? 0xfffd : utf8_decode_at((str){rune, width}, 0, &decoded_width);
+        if (width == 0) smart_str_appends(out, "\\ufffd");
+        else if (cp == 0x2028 || cp == 0x2029) json_hex4(out, (uint16_t)cp);
+        else smart_str_appendl(out, rune, width);
+        i += width == 0 ? 1 : width;
     }
     smart_str_appendc(out, '"');
 }
@@ -280,17 +287,8 @@ static bool json_object(zval *container, HashTable *items, bool sorted, zend_str
 
 static bool unsupported_json(zval *value)
 {
-    zval function, argument, result;
-    ZVAL_STRING(&function, "get_debug_type");
-    ZVAL_COPY(&argument, value);
-    ZVAL_UNDEF(&result);
-    int status = call_user_function(NULL, NULL, &function, &result, 1, &argument);
-    zval_ptr_dtor(&function);
-    zval_ptr_dtor(&argument);
-    if (status != SUCCESS || EG(exception) != NULL) {
-        if (!Z_ISUNDEF(result)) zval_ptr_dtor(&result);
-        return false;
-    }
+    zval result;
+    if (!php_function_call1("get_debug_type", value, &result)) return false;
     zend_throw_exception_ex(spl_ce_InvalidArgumentException, 0, "unsupported JSON value %s", Z_STRVAL(result));
     zval_ptr_dtor(&result);
     return false;

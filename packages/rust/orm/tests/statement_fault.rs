@@ -18,6 +18,9 @@
 mod model_row;
 #[path = "common/model_connect.rs"]
 mod model_connect;
+#[path = "common/rollback_probe.rs"]
+mod rollback_probe;
+use rollback_probe::{PROBE_SCHEMA, Probe};
 use model_connect::connected;
 
 #[path = "common/or_panic.rs"]
@@ -31,7 +34,7 @@ use case_database_run::run_case;
 
 use std::time::Duration;
 
-use polyspec_orm::{Db, Entity, Model, Param, Schema};
+use polyspec_orm::{Db, Model, Param};
 use polyspec_orm_case_database::CaseDatabase;
 use serde::Deserialize;
 
@@ -57,19 +60,6 @@ fn named_case(case: &str) -> String {
     case.to_owned()
 }
 
-// The schema is the probe table of contracts/fixtures/rollback.dbs, the same
-// document set that the rollback test installs.
-static PROBE_SCHEMA: Schema =
-    Schema::new(include_str!("../../../../contracts/fixtures/rollback.dbs"), "sha256:c57c6748bed0458f6d9843a0e0861ca8ea89c3bde5c4308f2e049b6a87a1203c");
-static PROBE: Entity = Entity {
-    name: "rollback_probe",
-    schema: &PROBE_SCHEMA,
-    new: polyspec_orm::model::new_boxed::<Probe>,
-    collect: polyspec_orm::model::collect_boxed::<Probe>,
-};
-const COLUMNS: [&str; 2] = ["seq", "label"];
-
-model_row!(Probe, PROBE, COLUMNS);
 
 
 /// Opens the client and installs the probe table.

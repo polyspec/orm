@@ -44,14 +44,9 @@ final class TransactionFailureNativeTest extends TestCase
                 $afterResume = [$db->transactionNumber(), $nestedCalls];
             }, retry: 0);
         });
-        $fiber->start();
-        $error = null;
         try {
-            $db->transaction(static fn() => null, retry: 0);
-        } catch (OrmException $caught) {
-            $error = $caught;
+            $error = \Polyspec\Orm\Tests\FiberTransaction::outsideError($fiber, $db);
         } finally {
-            $fiber->resume();
             $db->close();
         }
         self::assertSame(

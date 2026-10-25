@@ -5,6 +5,7 @@
 #include "Zend/zend_smart_str.h"
 #include "dbspec.h"
 #include "model_native_methods.h"
+#include "object_method_lookup.h"
 #include "orm_exception_object.h"
 #include "ext/pdo/php_pdo.h"
 #include "ext/pdo/php_pdo_driver.h"
@@ -18,24 +19,7 @@ static void value_throw_orm(const char *code, const char *message)
 
 static bool value_call_method(zend_object *object, const char *method, zval *result, uint32_t argc, zval *params)
 {
-    zval callable, target;
-    array_init_size(&callable, 2);
-    ZVAL_OBJ_COPY(&target, object);
-    add_next_index_zval(&callable, &target);
-    add_next_index_string(&callable, method);
-    zend_fcall_info fci;
-    zend_fcall_info_cache fcc;
-    if (zend_fcall_info_init(&callable, 0, &fci, &fcc, NULL, NULL) != SUCCESS) {
-        zval_ptr_dtor(&callable);
-        return false;
-    }
-    fci.retval = result;
-    fci.params = params;
-    fci.param_count = argc;
-    fci.named_params = NULL;
-    zend_result status = zend_call_function(&fci, &fcc);
-    zval_ptr_dtor(&callable);
-    return status == SUCCESS && EG(exception) == NULL;
+    return object_callable_call(object, method, result, argc, params);
 }
 
 static zend_string *decimal_normalize(zend_string *input, zend_long precision, zend_long scale)
@@ -209,6 +193,26 @@ static zend_string *transform_escape(zend_string *input)
     return third;
 }
 
+/* Whether kind is one of the LIKE transforms: like_contains, like_starts and like_ends. */
+static bool transform_is_like(zend_string *kind)
+{
+    return zend_string_equals_literal(kind, "like_contains") || zend_string_equals_literal(kind, "like_starts")
+        || zend_string_equals_literal(kind, "like_ends");
+}
+
+/* The LIKE pattern of the LIKE transform kind for input: input escaped, with % where the kind matches more. */
+static zend_string *transform_like(zend_string *kind, zend_string *input)
+{
+    zend_string *escaped = transform_escape(input);
+    smart_str result = {0};
+    if (zend_string_equals_literal(kind, "like_contains") || zend_string_equals_literal(kind, "like_ends")) smart_str_appendc(&result, '%');
+    smart_str_append(&result, escaped);
+    if (zend_string_equals_literal(kind, "like_contains") || zend_string_equals_literal(kind, "like_starts")) smart_str_appendc(&result, '%');
+    zend_string_release(escaped);
+    smart_str_0(&result);
+    return result.s;
+}
+
 static bool transform_split(zend_string *input, zval *parts)
 {
     zval trim_fn, trimmed, split_fn, args[4], pattern, input_arg;
@@ -300,16 +304,8 @@ ZEND_METHOD(Polyspec_Orm_Transform, apply)
         if (result == NULL) RETURN_THROWS();
         RETURN_STR(result);
     }
-    if (!zend_string_equals_literal(kind, "like_contains") && !zend_string_equals_literal(kind, "like_starts")
-        && !zend_string_equals_literal(kind, "like_ends")) RETURN_STR_COPY(input);
-    zend_string *escaped = transform_escape(input);
-    smart_str result = {0};
-    if (zend_string_equals_literal(kind, "like_contains") || zend_string_equals_literal(kind, "like_ends")) smart_str_appendc(&result, '%');
-    smart_str_append(&result, escaped);
-    if (zend_string_equals_literal(kind, "like_contains") || zend_string_equals_literal(kind, "like_starts")) smart_str_appendc(&result, '%');
-    zend_string_release(escaped);
-    smart_str_0(&result);
-    RETURN_STR(result.s);
+    if (!transform_is_like(kind)) RETURN_STR_COPY(input);
+    RETURN_STR(transform_like(kind, input));
 }
 
 ZEND_METHOD(Polyspec_Orm_Transform, param)
@@ -340,16 +336,8 @@ ZEND_METHOD(Polyspec_Orm_Transform, param)
         if (result == NULL) RETURN_THROWS();
         RETURN_STR(result);
     }
-    if (!zend_string_equals_literal(kind, "like_contains") && !zend_string_equals_literal(kind, "like_starts")
-        && !zend_string_equals_literal(kind, "like_ends")) RETURN_STR_COPY(Z_STR_P(value));
-    zend_string *escaped = transform_escape(Z_STR_P(value));
-    smart_str result = {0};
-    if (zend_string_equals_literal(kind, "like_contains") || zend_string_equals_literal(kind, "like_ends")) smart_str_appendc(&result, '%');
-    smart_str_append(&result, escaped);
-    if (zend_string_equals_literal(kind, "like_contains") || zend_string_equals_literal(kind, "like_starts")) smart_str_appendc(&result, '%');
-    zend_string_release(escaped);
-    smart_str_0(&result);
-    RETURN_STR(result.s);
+    if (!transform_is_like(kind)) RETURN_STR_COPY(Z_STR_P(value));
+    RETURN_STR(transform_like(kind, Z_STR_P(value)));
 }
 
 ZEND_METHOD(Polyspec_Orm_Transform, esc)

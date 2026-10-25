@@ -7,6 +7,7 @@
 #include "ext/pdo/php_pdo_driver.h"
 #include "main/php_memory_streams.h"
 #include "dbspec.h"
+#include "object_method_lookup.h"
 #include "pgsql_adapter_native.h"
 #include "pgsql_lob_native.h"
 #include "pgsql_statement_iterator_native.h"
@@ -27,24 +28,7 @@ static bool pg_call_function(const char *name, zval *result, uint32_t count, zva
 
 static bool pg_call_method(zval *object, const char *name, zval *result, uint32_t count, zval *args)
 {
-    zval callable, target;
-    array_init_size(&callable, 2);
-    ZVAL_COPY(&target, object);
-    add_next_index_zval(&callable, &target);
-    add_next_index_string(&callable, name);
-    zend_fcall_info fci;
-    zend_fcall_info_cache fcc;
-    if (zend_fcall_info_init(&callable, 0, &fci, &fcc, NULL, NULL) != SUCCESS) {
-        zval_ptr_dtor(&callable);
-        return false;
-    }
-    fci.retval = result;
-    fci.params = args;
-    fci.param_count = count;
-    fci.named_params = NULL;
-    zend_result status = zend_call_function(&fci, &fcc);
-    zval_ptr_dtor(&callable);
-    return status == SUCCESS && EG(exception) == NULL;
+    return object_callable_call(Z_OBJ_P(object), name, result, count, args);
 }
 
 static zval *pg_prop(zval *object, const char *name, zval *rv)
@@ -457,25 +441,31 @@ ZEND_METHOD(Polyspec_Orm_Internal_PgsqlPdoAdapter, beginTransaction)
     RETURN_TRUE;
 }
 
+/* Runs the statement that ends the transaction of the adapter self, COMMIT or ROLLBACK, and marks it ended. */
+static bool pg_end_transaction(zval *self, const char *statement)
+{
+    zval sql, result, inactive;
+    ZVAL_STRING(&sql, statement);
+    bool ran = pg_call_method(self, "exec", &result, 1, &sql);
+    zval_ptr_dtor(&sql);
+    if (!ran) return false;
+    zval_ptr_dtor(&result);
+    ZVAL_FALSE(&inactive);
+    pg_set(self, "transaction", &inactive);
+    return true;
+}
+
 ZEND_METHOD(Polyspec_Orm_Internal_PgsqlPdoAdapter, commit)
 {
     ZEND_PARSE_PARAMETERS_NONE();
-    zval sql, result, inactive;
-    ZVAL_STRING(&sql, "COMMIT");
-    if (!pg_call_method(ZEND_THIS, "exec", &result, 1, &sql)) { zval_ptr_dtor(&sql); RETURN_THROWS(); }
-    zval_ptr_dtor(&sql); zval_ptr_dtor(&result);
-    ZVAL_FALSE(&inactive); pg_set(ZEND_THIS, "transaction", &inactive);
+    if (!pg_end_transaction(ZEND_THIS, "COMMIT")) RETURN_THROWS();
     RETURN_TRUE;
 }
 
 ZEND_METHOD(Polyspec_Orm_Internal_PgsqlPdoAdapter, rollBack)
 {
     ZEND_PARSE_PARAMETERS_NONE();
-    zval sql, result, inactive;
-    ZVAL_STRING(&sql, "ROLLBACK");
-    if (!pg_call_method(ZEND_THIS, "exec", &result, 1, &sql)) { zval_ptr_dtor(&sql); RETURN_THROWS(); }
-    zval_ptr_dtor(&sql); zval_ptr_dtor(&result);
-    ZVAL_FALSE(&inactive); pg_set(ZEND_THIS, "transaction", &inactive);
+    if (!pg_end_transaction(ZEND_THIS, "ROLLBACK")) RETURN_THROWS();
     RETURN_TRUE;
 }
 
@@ -566,30 +556,32 @@ ZEND_METHOD(Polyspec_Orm_Internal_PgsqlPdoAdapter, quote)
     zval_ptr_dtor(&args[0]); zval_ptr_dtor(&args[1]);
 }
 
+/* The first column of the one row that the statement query of the adapter self returns with the values executed;
+ * return_value is undefined when a step fails. */
+static void pg_single_value(zval *self, const char *query, zval *executed, zval *return_value)
+{
+    zval sql, statement, value;
+    ZVAL_UNDEF(return_value);
+    ZVAL_STRING(&sql, query);
+    bool prepared = pg_call_method(self, "prepare", &statement, 1, &sql);
+    zval_ptr_dtor(&sql);
+    if (!prepared) return;
+    if (pg_call_method(&statement, "execute", &value, 1, executed)) {
+        zval_ptr_dtor(&value);
+        if (pg_call_method(&statement, "fetchColumn", &value, 0, NULL)) ZVAL_COPY_VALUE(return_value, &value);
+    }
+    zval_ptr_dtor(&statement);
+}
+
 ZEND_METHOD(Polyspec_Orm_Internal_PgsqlPdoAdapter, lastInsertId)
 {
     zend_string *name = NULL;
     ZEND_PARSE_PARAMETERS_START(0, 1) Z_PARAM_OPTIONAL Z_PARAM_STR_OR_NULL(name) ZEND_PARSE_PARAMETERS_END();
-    if (name == NULL) {
-        zval sql, statement, executed, value;
-        ZVAL_STRING(&sql, "SELECT lastval()::text");
-        if (!pg_call_method(ZEND_THIS, "prepare", &statement, 1, &sql)) { zval_ptr_dtor(&sql); RETURN_THROWS(); }
-        zval_ptr_dtor(&sql); array_init(&executed);
-        if (!pg_call_method(&statement, "execute", &value, 1, &executed)) { zval_ptr_dtor(&executed); zval_ptr_dtor(&statement); RETURN_THROWS(); }
-        zval_ptr_dtor(&executed); zval_ptr_dtor(&value);
-        if (!pg_call_method(&statement, "fetchColumn", &value, 0, NULL)) { zval_ptr_dtor(&statement); RETURN_THROWS(); }
-        zval_ptr_dtor(&statement); RETURN_ZVAL(&value, 1, 1);
-    }
-    zval sql, statement, args[1], executed, value;
-    ZVAL_STRING(&sql, "SELECT currval(?)::text");
-    if (!pg_call_method(ZEND_THIS, "prepare", &statement, 1, &sql)) { zval_ptr_dtor(&sql); RETURN_THROWS(); }
-    zval_ptr_dtor(&sql);
-    ZVAL_STR_COPY(&args[0], name); array_init(&executed); add_next_index_zval(&executed, &args[0]);
-    if (!pg_call_method(&statement, "execute", &value, 1, &executed)) { zval_ptr_dtor(&executed); zval_ptr_dtor(&statement); RETURN_THROWS(); }
-    zval_ptr_dtor(&executed); zval_ptr_dtor(&value);
-    if (!pg_call_method(&statement, "fetchColumn", &value, 0, NULL)) { zval_ptr_dtor(&statement); RETURN_THROWS(); }
-    zval_ptr_dtor(&statement);
-    RETURN_ZVAL(&value, 1, 1);
+    zval executed;
+    array_init(&executed);
+    if (name != NULL) add_next_index_str(&executed, zend_string_copy(name));
+    pg_single_value(ZEND_THIS, name == NULL ? "SELECT lastval()::text" : "SELECT currval(?)::text", &executed, return_value);
+    zval_ptr_dtor(&executed);
 }
 
 ZEND_METHOD(Polyspec_Orm_Internal_PgsqlPdoAdapter, setNoticeCallback)
@@ -956,42 +948,83 @@ ZEND_METHOD(Polyspec_Orm_Internal_PgsqlStatementAdapter, __construct)
     zval sql; ZVAL_STR_COPY(&sql, source_sql); pg_set(ZEND_THIS, "sourceSql", &sql); zval_ptr_dtor(&sql);
 }
 
+/* Stores value and its PDO type under the statement key key in the arrays values and types of the statement
+ * adapter self; false with an exception for an invalid key. */
+static bool pg_store_binding(zval *self, zval *key, zval *value, zend_long type, const char *values, const char *types)
+{
+    zval slot;
+    if (!pg_statement_key(key, &slot)) return false;
+    zval rv, *stored = pg_prop(self, values, &rv);
+    zval copy;
+    ZVAL_COPY(&copy, value);
+    pg_array_update_key(Z_ARRVAL_P(stored), &slot, &copy);
+    zval type_rv, *stored_types = pg_prop(self, types, &type_rv);
+    zval type_value;
+    ZVAL_LONG(&type_value, type);
+    pg_array_update_key(Z_ARRVAL_P(stored_types), &slot, &type_value);
+    zval_ptr_dtor(&slot);
+    return true;
+}
+
 ZEND_METHOD(Polyspec_Orm_Internal_PgsqlStatementAdapter, bindValue)
 {
     zval *key, *value; zend_long type = 2;
     ZEND_PARSE_PARAMETERS_START(2, 3) Z_PARAM_ZVAL(key) Z_PARAM_ZVAL(value) Z_PARAM_OPTIONAL Z_PARAM_LONG(type) ZEND_PARSE_PARAMETERS_END();
-    zval slot; if (!pg_statement_key(key, &slot)) RETURN_THROWS();
-    zval rv, *bindings = pg_prop(ZEND_THIS, "bindings", &rv);
-    zval copy; ZVAL_COPY(&copy, value); pg_array_update_key(Z_ARRVAL_P(bindings), &slot, &copy);
-    zval type_rv, *types = pg_prop(ZEND_THIS, "bindingTypes", &type_rv); zval type_value; ZVAL_LONG(&type_value, type); pg_array_update_key(Z_ARRVAL_P(types), &slot, &type_value); zval_ptr_dtor(&slot);
+    if (!pg_store_binding(ZEND_THIS, key, value, type, "bindings", "bindingTypes")) RETURN_THROWS();
     RETURN_TRUE;
+}
+
+/* The arguments key, value and type of bindParam and bindColumn, whose maximum length and driver options the adapter
+ * reads and ignores as PDO does; false with the argument error thrown. */
+static bool pg_bind_args(zend_execute_data *execute_data, zval **key, zval **value, zend_long *type)
+{
+    zend_long max_length = 0;
+    zval *driver_options = NULL;
+    ZEND_PARSE_PARAMETERS_START(2, 5)
+        Z_PARAM_ZVAL(*key) Z_PARAM_ZVAL(*value) Z_PARAM_OPTIONAL Z_PARAM_LONG(*type) Z_PARAM_LONG(max_length)
+        Z_PARAM_ZVAL(driver_options)
+    ZEND_PARSE_PARAMETERS_END_EX(return false);
+    (void) max_length;
+    (void) driver_options;
+    return true;
 }
 
 ZEND_METHOD(Polyspec_Orm_Internal_PgsqlStatementAdapter, bindParam)
 {
-    zval *key, *value; zend_long type = 2, max_length = 0; zval *driver_options = NULL;
-    ZEND_PARSE_PARAMETERS_START(2, 5)
-        Z_PARAM_ZVAL(key) Z_PARAM_ZVAL(value) Z_PARAM_OPTIONAL Z_PARAM_LONG(type) Z_PARAM_LONG(max_length) Z_PARAM_ZVAL(driver_options)
-    ZEND_PARSE_PARAMETERS_END();
-    (void) max_length; (void) driver_options;
-    zval slot; if (!pg_statement_key(key, &slot)) RETURN_THROWS();
-    zval rv, *bound = pg_prop(ZEND_THIS, "boundRefs", &rv);
-    zval copy; ZVAL_COPY(&copy, value); pg_array_update_key(Z_ARRVAL_P(bound), &slot, &copy);
-    zval type_rv, *types = pg_prop(ZEND_THIS, "boundRefTypes", &type_rv); zval type_value; ZVAL_LONG(&type_value, type); pg_array_update_key(Z_ARRVAL_P(types), &slot, &type_value); zval_ptr_dtor(&slot);
+    zval *key, *value; zend_long type = 2;
+    if (!pg_bind_args(execute_data, &key, &value, &type)) RETURN_THROWS();
+    if (!pg_store_binding(ZEND_THIS, key, value, type, "boundRefs", "boundRefTypes")) RETURN_THROWS();
     RETURN_TRUE;
 }
 
 ZEND_METHOD(Polyspec_Orm_Internal_PgsqlStatementAdapter, bindColumn)
 {
-    zval *key, *value; zend_long type = 2, max_length = 0; zval *driver_options = NULL;
-    ZEND_PARSE_PARAMETERS_START(2, 5)
-        Z_PARAM_ZVAL(key) Z_PARAM_ZVAL(value) Z_PARAM_OPTIONAL Z_PARAM_LONG(type) Z_PARAM_LONG(max_length) Z_PARAM_ZVAL(driver_options)
-    ZEND_PARSE_PARAMETERS_END();
-    (void) type; (void) max_length; (void) driver_options;
+    zval *key, *value; zend_long type = 2;
+    if (!pg_bind_args(execute_data, &key, &value, &type)) RETURN_THROWS();
+    (void) type;
     zval rv, *columns = pg_prop(ZEND_THIS, "boundColumns", &rv), copy, slot; ZVAL_COPY(&copy, value);
     if (!pg_statement_key(key, &slot)) { zval_ptr_dtor(&copy); RETURN_THROWS(); }
     pg_array_update_key(Z_ARRVAL_P(columns), &slot, &copy); zval_ptr_dtor(&slot);
     RETURN_TRUE;
+}
+
+/* Copies each value of the statement bindings into params under its key, with its PDO type of types or null into
+ * binding_types; deref reads a bound reference's current value. Bindings that are no array add nothing. */
+static void pg_collect_bindings(zval *bindings, zval *types, bool deref, zval *params, zval *binding_types)
+{
+    if (bindings == NULL || Z_TYPE_P(bindings) != IS_ARRAY) return;
+    zval *value; zend_ulong index; zend_string *name;
+    ZEND_HASH_FOREACH_KEY_VAL(Z_ARRVAL_P(bindings), index, name, value) {
+        zval slot, copy;
+        if (name == NULL) ZVAL_LONG(&slot, index); else ZVAL_STR_COPY(&slot, name);
+        if (deref) ZVAL_COPY_DEREF(&copy, value); else ZVAL_COPY(&copy, value);
+        pg_array_update_key(Z_ARRVAL_P(params), &slot, &copy);
+        zval *type = types != NULL && Z_TYPE_P(types) == IS_ARRAY ? pg_array_find_key(Z_ARRVAL_P(types), &slot) : NULL;
+        zval type_copy;
+        if (type == NULL) ZVAL_NULL(&type_copy); else ZVAL_COPY(&type_copy, type);
+        pg_array_update_key(Z_ARRVAL_P(binding_types), &slot, &type_copy);
+        zval_ptr_dtor(&slot);
+    } ZEND_HASH_FOREACH_END();
 }
 
 ZEND_METHOD(Polyspec_Orm_Internal_PgsqlStatementAdapter, execute)
@@ -1030,26 +1063,8 @@ ZEND_METHOD(Polyspec_Orm_Internal_PgsqlStatementAdapter, execute)
     zval bindings_rv, refs_rv, types_rv, ref_types_rv;
     zval *bindings = pg_prop(ZEND_THIS, "bindings", &bindings_rv), *refs = pg_prop(ZEND_THIS, "boundRefs", &refs_rv);
     zval *types = pg_prop(ZEND_THIS, "bindingTypes", &types_rv), *ref_types = pg_prop(ZEND_THIS, "boundRefTypes", &ref_types_rv);
-    if (bindings != NULL && Z_TYPE_P(bindings) == IS_ARRAY) {
-        zval *value; zend_ulong index; zend_string *name; ZEND_HASH_FOREACH_KEY_VAL(Z_ARRVAL_P(bindings), index, name, value) {
-            zval slot, copy; if (name == NULL) ZVAL_LONG(&slot, index); else ZVAL_STR_COPY(&slot, name);
-            ZVAL_COPY(&copy, value); pg_array_update_key(Z_ARRVAL(params), &slot, &copy);
-            zval *type = types != NULL && Z_TYPE_P(types) == IS_ARRAY ? pg_array_find_key(Z_ARRVAL_P(types), &slot) : NULL;
-            if (type == NULL) { zval null_type; ZVAL_NULL(&null_type); pg_array_update_key(Z_ARRVAL(binding_types), &slot, &null_type); }
-            else { zval type_copy; ZVAL_COPY(&type_copy, type); pg_array_update_key(Z_ARRVAL(binding_types), &slot, &type_copy); }
-            zval_ptr_dtor(&slot);
-        } ZEND_HASH_FOREACH_END();
-    }
-    if (refs != NULL && Z_TYPE_P(refs) == IS_ARRAY) {
-        zval *value; zend_ulong index; zend_string *name; ZEND_HASH_FOREACH_KEY_VAL(Z_ARRVAL_P(refs), index, name, value) {
-            zval slot, copy; if (name == NULL) ZVAL_LONG(&slot, index); else ZVAL_STR_COPY(&slot, name);
-            ZVAL_COPY_DEREF(&copy, value); pg_array_update_key(Z_ARRVAL(params), &slot, &copy);
-            zval *type = ref_types != NULL && Z_TYPE_P(ref_types) == IS_ARRAY ? pg_array_find_key(Z_ARRVAL_P(ref_types), &slot) : NULL;
-            if (type == NULL) { zval null_type; ZVAL_NULL(&null_type); pg_array_update_key(Z_ARRVAL(binding_types), &slot, &null_type); }
-            else { zval type_copy; ZVAL_COPY(&type_copy, type); pg_array_update_key(Z_ARRVAL(binding_types), &slot, &type_copy); }
-            zval_ptr_dtor(&slot);
-        } ZEND_HASH_FOREACH_END();
-    }
+    pg_collect_bindings(bindings, types, false, &params, &binding_types);
+    pg_collect_bindings(refs, ref_types, true, &params, &binding_types);
     zend_string *numbered = NULL; zval order;
     pg_statement_sql(Z_STR_P(source_value), &numbered, &order);
     zval ordered, ordered_types; array_init_size(&ordered, zend_hash_num_elements(Z_ARRVAL(order))); array_init_size(&ordered_types, zend_hash_num_elements(Z_ARRVAL(order)));
@@ -1555,12 +1570,22 @@ ZEND_METHOD(Polyspec_Orm_Internal_PgsqlPdoAdapter, copyFromArray)
     zval_ptr_dtor(&end_arg); zval_ptr_dtor(&connection); RETURN_ZVAL(&ended, 1, 1);
 }
 
+/* The arguments table, filename, separator, null_as and fields of copyFromFile and copyToFile; false with the
+ * argument error thrown. */
+static bool pg_copy_file_args(zend_execute_data *execute_data, zend_string **table, zend_string **filename,
+    zend_string **separator, zend_string **null_as, zend_string **fields)
+{
+    ZEND_PARSE_PARAMETERS_START(2, 5)
+        Z_PARAM_STR(*table) Z_PARAM_STR(*filename) Z_PARAM_OPTIONAL Z_PARAM_STR(*separator) Z_PARAM_STR(*null_as)
+        Z_PARAM_STR_OR_NULL(*fields)
+    ZEND_PARSE_PARAMETERS_END_EX(return false);
+    return true;
+}
+
 ZEND_METHOD(Polyspec_Orm_Internal_PgsqlPdoAdapter, copyFromFile)
 {
     zend_string *table, *filename, *separator = NULL, *null_as = NULL, *fields = NULL;
-    ZEND_PARSE_PARAMETERS_START(2, 5)
-        Z_PARAM_STR(table) Z_PARAM_STR(filename) Z_PARAM_OPTIONAL Z_PARAM_STR(separator) Z_PARAM_STR(null_as) Z_PARAM_STR_OR_NULL(fields)
-    ZEND_PARSE_PARAMETERS_END();
+    if (!pg_copy_file_args(execute_data, &table, &filename, &separator, &null_as, &fields)) RETURN_THROWS();
     zval args[1], contents; ZVAL_STR_COPY(&args[0], filename);
     if (!pg_call_function("file_get_contents", &contents, 1, args)) { zval_ptr_dtor(&args[0]); RETURN_THROWS(); }
     zval_ptr_dtor(&args[0]);
@@ -1643,9 +1668,7 @@ ZEND_METHOD(Polyspec_Orm_Internal_PgsqlPdoAdapter, copyToArray)
 ZEND_METHOD(Polyspec_Orm_Internal_PgsqlPdoAdapter, copyToFile)
 {
     zend_string *table, *filename, *separator = NULL, *null_as = NULL, *fields = NULL;
-    ZEND_PARSE_PARAMETERS_START(2, 5)
-        Z_PARAM_STR(table) Z_PARAM_STR(filename) Z_PARAM_OPTIONAL Z_PARAM_STR(separator) Z_PARAM_STR(null_as) Z_PARAM_STR_OR_NULL(fields)
-    ZEND_PARSE_PARAMETERS_END();
+    if (!pg_copy_file_args(execute_data, &table, &filename, &separator, &null_as, &fields)) RETURN_THROWS();
     if (separator == NULL) separator = zend_string_init("\t", 1, 0); else zend_string_addref(separator);
     if (null_as == NULL) null_as = zend_string_init("\\N", 2, 0); else zend_string_addref(null_as);
     zval args[4], rows; ZVAL_STR_COPY(&args[0], table); ZVAL_STR(&args[1], separator); ZVAL_STR(&args[2], null_as); if (fields == NULL) ZVAL_NULL(&args[3]); else ZVAL_STR_COPY(&args[3], fields);

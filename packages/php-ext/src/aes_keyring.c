@@ -2,6 +2,7 @@
 #include "Zend/zend_exceptions.h"
 #include "dbspec.h"
 #include "codec.h"
+#include "orm_exception_object.h"
 #include <string.h>
 
 static zend_class_entry *aes_keyring_ce;
@@ -15,26 +16,8 @@ static void discard_result(zval *result)
 
 static bool aes_fail(const char *code, zend_string *message)
 {
-    zend_string *class_name = zend_string_init(ZEND_STRL("Polyspec\\Orm\\OrmException"), 0);
-    zend_class_entry *ce = zend_lookup_class(class_name);
-    zend_string_release(class_name);
-    if (ce == NULL) {
-        zend_string_release(message);
-        return false;
-    }
-    zval error, args[2], rv;
-    object_init_ex(&error, ce);
-    ZVAL_STRING(&args[0], code);
-    ZVAL_STR(&args[1], message);
-    zend_call_known_function(ce->constructor, Z_OBJ(error), ce, &rv, 2, args, NULL);
-    zval_ptr_dtor(&args[0]);
-    zval_ptr_dtor(&args[1]);
-    zval_ptr_dtor(&rv);
-    if (EG(exception) != NULL) {
-        zval_ptr_dtor(&error);
-        return false;
-    }
-    zend_throw_exception_object(&error);
+    orm_throw_exception(code, message);
+    zend_string_release(message);
     return false;
 }
 

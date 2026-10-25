@@ -342,25 +342,16 @@ function apply_scenarios(): array
                 foreach (APPLY_CONNECTION_RULES[$db] as $rule) {
                     $blocker->exec($rule);
                 }
-                $blocker->beginTransaction();
-                $blocker->exec("INSERT INTO archive (note) VALUES ('lock wait')");
-                $statement = $blocker->query('SELECT id FROM archive FOR UPDATE');
-                if ($statement === false) {
-                    throw new RuntimeException('could not lock the representative archive row');
-                }
-                $statement->fetchAll(PDO::FETCH_NUM);
-                $statement->closeCursor();
+                require_once dirname(__DIR__) . '/testing/dbspec/apply/ApplyLockWait.php';
+                \Polyspec\Orm\Testing\ApplyLockWait::holdArchiveRows($blocker);
                 $plans = $representative;
                 $wantCode = 'failed';
             }
 
             $started = hrtime(true);
             try {
-                Dbspec::apply($pdo, $db, $plans, $now, static function (ApplyEvent $event) use (&$steps): void {
-                    if ($event->kind === 'statement' || $event->kind === 'applied') {
-                        $steps[] = [$event->kind, $event->step];
-                    }
-                });
+                require_once dirname(__DIR__) . '/testing/dbspec/apply/ApplyLockWait.php';
+                Dbspec::apply($pdo, $db, $plans, $now, \Polyspec\Orm\Testing\ApplyLockWait::recorder($steps));
                 throw new RuntimeException('apply succeeded while the database lock was held');
             } catch (ApplyError $error) {
                 Assert::assertSame($wantCode, $error->code_, "$db lock wait code");

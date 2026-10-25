@@ -81,12 +81,7 @@ final class DbspecStressTest extends TestCase
         }
         $document = $result->document;
         Assert::assertSame(2000, count($document->tables), 'Stress document table count ' . count($document->tables));
-        $columns = 0;
-        $foreignKeys = 0;
-        foreach ($document->tables as $table) {
-            $columns += count($table->columns);
-            $foreignKeys += count($table->foreignKeys);
-        }
+        [$columns, $foreignKeys] = \Polyspec\Orm\Tests\dbspec_stress_counts($document);
         Assert::assertFalse(
             $columns !== 60000 || $foreignKeys !== 10000,
             "Stress document has $columns columns and $foreignKeys foreign keys"

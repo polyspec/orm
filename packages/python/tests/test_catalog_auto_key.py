@@ -1,3 +1,4 @@
+import contextlib
 import os
 import re
 import sqlite3
@@ -137,6 +138,29 @@ def _mysql_expression_default_catalog(preexisting=False):
     return metadata, row, session, _FakeMysqlCatalog(metadata, session)
 
 
+@contextlib.contextmanager
+def _sample_catalog(prefix):
+    """A catalog connection to a new SQLite file whose table sample has an automatic integer key, with the metadata of
+    sample; the connection closes and the file is removed afterwards."""
+    with tempfile.TemporaryDirectory(prefix=prefix) as directory:
+        path = os.path.join(directory, "catalog.sqlite3")
+        raw = sqlite3.connect(path)
+        try:
+            raw.execute(
+                "CREATE TABLE sample (id INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL)"
+            )
+        finally:
+            raw.close()
+        catalog = connect_catalog(f"sqlite://{path}")
+        try:
+            yield (
+                catalog,
+                catalog.describe_table({"namespace": "main", "name": "sample"}),
+            )
+        finally:
+            catalog.close()
+
+
 class CatalogAutoKeyTest(unittest.TestCase):
     def _insert_literal_default_composite(self, metadata, catalog, session):
         result = catalog.insert_row(metadata, [("tenant", 2), ("n", 50)])
@@ -144,138 +168,82 @@ class CatalogAutoKeyTest(unittest.TestCase):
         return [call[1] for call in session.calls if call[0] == "run"]
 
     def test_sqlite_automatic_primary_key_insert_returns_stored_row(self):
-        with tempfile.TemporaryDirectory(prefix="orm-catalog-auto-key-") as directory:
-            path = os.path.join(directory, "catalog.sqlite3")
-            raw = sqlite3.connect(path)
-            try:
-                raw.execute(
-                    "CREATE TABLE sample (id INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL)"
-                )
-            finally:
-                raw.close()
+        with _sample_catalog("orm-catalog-auto-key-") as (catalog, metadata):
+            self.assertEqual(metadata.primary_key, ["id"])
+            identity = metadata.columns[0]
+            self.assertTrue(identity.automatic_key)
+            self.assertIsNone(identity.default_expression)
 
-            catalog = connect_catalog(f"sqlite://{path}")
-            try:
-                metadata = catalog.describe_table(
-                    {"namespace": "main", "name": "sample"}
-                )
-                self.assertEqual(metadata.primary_key, ["id"])
-                identity = metadata.columns[0]
-                self.assertTrue(identity.automatic_key)
-                self.assertIsNone(identity.default_expression)
+            inserted = catalog.insert_row(metadata, [("payload", "generated")])
 
-                inserted = catalog.insert_row(metadata, [("payload", "generated")])
-
-                self.assertEqual(inserted.columns, ["id", "payload"])
-                self.assertEqual(inserted.rows, [[1, "generated"]])
-                stored = catalog.read_only_query(
-                    'SELECT "id", "payload" FROM "sample"', []
-                )
-                self.assertEqual(stored.rows, [[1, "generated"]])
-            finally:
-                catalog.close()
+            self.assertEqual(inserted.columns, ["id", "payload"])
+            self.assertEqual(inserted.rows, [[1, "generated"]])
+            stored = catalog.read_only_query('SELECT "id", "payload" FROM "sample"', [])
+            self.assertEqual(stored.rows, [[1, "generated"]])
 
     # Requirements: INT-118, PRT-79.
     def test_sqlite_public_insert_reports_indeterminate_commit_cause(self):
-        with tempfile.TemporaryDirectory(
-            prefix="orm-catalog-commit-unknown-"
-        ) as directory:
-            path = os.path.join(directory, "catalog.sqlite3")
-            raw = sqlite3.connect(path)
-            try:
-                raw.execute(
-                    "CREATE TABLE sample (id INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL)"
-                )
-            finally:
-                raw.close()
+        with _sample_catalog("orm-catalog-commit-unknown-") as (catalog, metadata):
+            original_run = _Session.run
 
-            catalog = connect_catalog(f"sqlite://{path}")
-            try:
-                metadata = catalog.describe_table(
-                    {"namespace": "main", "name": "sample"}
-                )
-                original_run = _Session.run
+            def fail_commit(
+                session, sql, params=(), max_rows=None, max_bytes=None, grid=False
+            ):
+                if sql == "COMMIT":
+                    raise sqlite3.OperationalError(
+                        "injected commit acknowledgement loss"
+                    )
+                return original_run(session, sql, params, max_rows, max_bytes, grid)
 
-                def fail_commit(
-                    session, sql, params=(), max_rows=None, max_bytes=None, grid=False
-                ):
-                    if sql == "COMMIT":
-                        raise sqlite3.OperationalError(
-                            "injected commit acknowledgement loss"
-                        )
-                    return original_run(session, sql, params, max_rows, max_bytes, grid)
+            with (
+                patch.object(_Session, "run", fail_commit),
+                self.assertRaises(OrmError) as raised,
+            ):
+                catalog.insert_row(metadata, [("payload", "uncertain")])
 
-                with (
-                    patch.object(_Session, "run", fail_commit),
-                    self.assertRaises(OrmError) as raised,
-                ):
-                    catalog.insert_row(metadata, [("payload", "uncertain")])
-
-                error = raised.exception
-                self.assertEqual(error.code, codes.ROW_COMMIT_INDETERMINATE)
-                self.assertIsInstance(error.cause, sqlite3.OperationalError)
-                self.assertEqual(
-                    str(error.cause), "injected commit acknowledgement loss"
-                )
-                self.assertIs(error.__cause__, error.cause)
-                self.assertEqual(
-                    catalog.read_only_query(
-                        'SELECT "id", "payload" FROM "sample"', []
-                    ).rows,
-                    [],
-                )
-            finally:
-                catalog.close()
+            error = raised.exception
+            self.assertEqual(error.code, codes.ROW_COMMIT_INDETERMINATE)
+            self.assertIsInstance(error.cause, sqlite3.OperationalError)
+            self.assertEqual(str(error.cause), "injected commit acknowledgement loss")
+            self.assertIs(error.__cause__, error.cause)
+            self.assertEqual(
+                catalog.read_only_query(
+                    'SELECT "id", "payload" FROM "sample"', []
+                ).rows,
+                [],
+            )
 
     # Requirements: INT-65.
     def test_sqlite_unknown_commit_does_not_attempt_rollback(self):
-        with tempfile.TemporaryDirectory(
-            prefix="orm-catalog-rollback-unknown-"
-        ) as directory:
-            path = os.path.join(directory, "catalog.sqlite3")
-            raw = sqlite3.connect(path)
-            try:
-                raw.execute(
-                    "CREATE TABLE sample (id INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL)"
-                )
-            finally:
-                raw.close()
+        with _sample_catalog("orm-catalog-rollback-unknown-") as (catalog, metadata):
+            commit_error = sqlite3.OperationalError("commit acknowledgement lost")
+            rollback_error = sqlite3.OperationalError("rollback connection lost")
+            statements = []
+            original_run = _Session.run
 
-            catalog = connect_catalog(f"sqlite://{path}")
-            try:
-                metadata = catalog.describe_table(
-                    {"namespace": "main", "name": "sample"}
-                )
-                commit_error = sqlite3.OperationalError("commit acknowledgement lost")
-                rollback_error = sqlite3.OperationalError("rollback connection lost")
-                statements = []
-                original_run = _Session.run
+            def fail_commit_and_rollback(
+                session, sql, params=(), max_rows=None, max_bytes=None, grid=False
+            ):
+                statements.append(sql)
+                if sql == "COMMIT":
+                    raise commit_error
+                if sql == "ROLLBACK":
+                    raise rollback_error
+                return original_run(session, sql, params, max_rows, max_bytes, grid)
 
-                def fail_commit_and_rollback(
-                    session, sql, params=(), max_rows=None, max_bytes=None, grid=False
-                ):
-                    statements.append(sql)
-                    if sql == "COMMIT":
-                        raise commit_error
-                    if sql == "ROLLBACK":
-                        raise rollback_error
-                    return original_run(session, sql, params, max_rows, max_bytes, grid)
+            with (
+                patch.object(_Session, "run", fail_commit_and_rollback),
+                self.assertRaises(OrmError) as raised,
+            ):
+                catalog.insert_row(metadata, [("payload", "uncertain")])
 
-                with (
-                    patch.object(_Session, "run", fail_commit_and_rollback),
-                    self.assertRaises(OrmError) as raised,
-                ):
-                    catalog.insert_row(metadata, [("payload", "uncertain")])
-
-                error = raised.exception
-                self.assertEqual(error.code, codes.ROW_COMMIT_INDETERMINATE)
-                self.assertIs(error.cause, commit_error)
-                self.assertIs(error.__cause__, commit_error)
-                self.assertEqual(statements.count("COMMIT"), 1)
-                self.assertEqual(statements.count("ROLLBACK"), 0)
-                self.assertIsNone(getattr(error, "rollback", None))
-            finally:
-                catalog.close()
+            error = raised.exception
+            self.assertEqual(error.code, codes.ROW_COMMIT_INDETERMINATE)
+            self.assertIs(error.cause, commit_error)
+            self.assertIs(error.__cause__, commit_error)
+            self.assertEqual(statements.count("COMMIT"), 1)
+            self.assertEqual(statements.count("ROLLBACK"), 0)
+            self.assertIsNone(getattr(error, "rollback", None))
 
     def test_sqlite_literal_and_expression_default_primary_keys(self):
         with tempfile.TemporaryDirectory(

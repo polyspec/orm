@@ -648,23 +648,6 @@ ZEND_METHOD(Polyspec_Orm_Dialect, rowLock)
     RETURN_STR(result);
 }
 
-ZEND_METHOD(Polyspec_Orm_Dialect, literal)
-{
-    zend_string *text;
-    ZEND_PARSE_PARAMETERS_START(1, 1)
-        Z_PARAM_STR(text)
-    ZEND_PARSE_PARAMETERS_END();
-    smart_str out = {0};
-    smart_str_appendc(&out, '\'');
-    for (size_t i = 0; i < ZSTR_LEN(text); i++) {
-        smart_str_appendc(&out, ZSTR_VAL(text)[i]);
-        if (ZSTR_VAL(text)[i] == '\'') smart_str_appendc(&out, '\'');
-    }
-    smart_str_appendc(&out, '\'');
-    smart_str_0(&out);
-    RETURN_STR(out.s);
-}
-
 static zend_string *dialect_literal_string(zend_string *text)
 {
     smart_str out = {0};
@@ -676,6 +659,15 @@ static zend_string *dialect_literal_string(zend_string *text)
     smart_str_appendc(&out, '\'');
     smart_str_0(&out);
     return out.s;
+}
+
+ZEND_METHOD(Polyspec_Orm_Dialect, literal)
+{
+    zend_string *text;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_STR(text)
+    ZEND_PARSE_PARAMETERS_END();
+    RETURN_STR(dialect_literal_string(text));
 }
 
 ZEND_METHOD(Polyspec_Orm_Dialect, restartIdentity)

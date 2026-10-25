@@ -27,3 +27,19 @@ function dbspec_stress_document(): string
     );
     return $text;
 }
+
+/**
+ * The numbers of columns and foreign keys of every table of $document, summed.
+ *
+ * @return array{int, int}
+ */
+function dbspec_stress_counts(\Polyspec\Orm\Dbspec\Document $document): array
+{
+    $columns = 0;
+    $foreignKeys = 0;
+    foreach ($document->tables as $table) {
+        $columns += count($table->columns);
+        $foreignKeys += count($table->foreignKeys);
+    }
+    return [$columns, $foreignKeys];
+}

@@ -1332,6 +1332,7 @@
           "inputs": [
             "scripts/group-rows-physical-check.mts",
             "packages/php/tests/GroupRowsDbTest.php",
+            "packages/php/tests/GroupRowsDbCases.php",
             "packages/ts/tests/group_rows_db.mjs"
           ]
         },

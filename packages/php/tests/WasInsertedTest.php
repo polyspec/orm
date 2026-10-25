@@ -22,37 +22,7 @@ use PHPUnit\Framework\TestCase;
 #[Medium]
 final class WasInsertedTest extends TestCase
 {
-    /** @return iterable<string, array{string}> */
-    public static function drivers(): iterable
-    {
-        yield 'sqlite' => ['sqlite'];
-        yield 'mysql' => ['mysql'];
-        yield 'postgres' => ['postgres'];
-    }
-
-    private static function connect(string $dsn): \Polyspec\Orm\Db
-    {
-        WasInsertedCases::loadFixture();
-        $db = Orm::connect($dsn . (str_contains($dsn, '?') ? '&' : '?') . 'timezone=%2B00:00', new Config());
-        $db->utils()->schema()->install(\Polyspec\Orm\Tests\WasInsertedCase\schema());
-        return $db;
-    }
-
-    /**
-     * Runs the case on a new case database of $driver, which is dropped afterwards, with the connection and its DSN.
-     */
-    private static function onCase(string $driver, \Closure $body): void
-    {
-        with_case_database($driver, static function (string $step): void {
-        }, static function (string $dsn) use ($body): void {
-            $db = self::connect($dsn);
-            try {
-                $body($db, $dsn);
-            } finally {
-                $db->close();
-            }
-        });
-    }
+    use ThreeDrivers;
 
     /** The error code that $call raises, or 'none'. */
     private static function codeOf(\Closure $call): string
@@ -73,7 +43,7 @@ final class WasInsertedTest extends TestCase
     #[DataProvider('drivers')]
     public function testWasInsertedTracksGeneratedRows(string $driver): void
     {
-        self::onCase($driver, function (\Polyspec\Orm\Db $db): void {
+        WasInsertedCases::onCase($driver, function (\Polyspec\Orm\Db $db): void {
             WasInsertedCases::assertTracksGeneratedRows($this, $db);
         });
     }
@@ -90,7 +60,7 @@ final class WasInsertedTest extends TestCase
     #[DataProvider('drivers')]
     public function testWasInsertedNeedsATransactionAndValidArguments(string $driver): void
     {
-        self::onCase($driver, static function (\Polyspec\Orm\Db $db): void {
+        WasInsertedCases::onCase($driver, static function (\Polyspec\Orm\Db $db): void {
             self::assertSame(
                 Code::CONFIG,
                 self::codeOf(static fn() => $db->utils()->wasInserted('clock_event', 1)),
@@ -124,7 +94,7 @@ final class WasInsertedTest extends TestCase
     #[DataProvider('drivers')]
     public function testBackendWaitingForLockIsFalseWithoutAWaiter(string $driver): void
     {
-        self::onCase($driver, static function (\Polyspec\Orm\Db $db): void {
+        WasInsertedCases::onCase($driver, static function (\Polyspec\Orm\Db $db): void {
             self::assertFalse($db->utils()->backendWaitingForLock(), 'no backend waits for a lock');
         });
     }
@@ -137,24 +107,12 @@ final class WasInsertedTest extends TestCase
     // Requirements: INT-53.
     public function testPostgresReportsABackendWaitingForLock(): void
     {
-        self::onCase('postgres', static function (\Polyspec\Orm\Db $db, string $dsn): void {
-            $seq = 0;
-            $db->transaction(static function () use ($db, &$seq): void {
-                $seq = (int) (new \Polyspec\Orm\Tests\WasInsertedCase\ClockEvent())($db)->setLabel('held')
-                    ->create()
-                    ->getSeq();
-            }, retry: 0);
+        WasInsertedCases::onCase('postgres', static function (\Polyspec\Orm\Db $db, string $dsn): void {
+            $seq = WasInsertedCases::heldEventSeq($db);
             $child = null;
             $pipes = [];
             $db->transaction(function () use ($db, $dsn, $seq, &$child, &$pipes): void {
-                (new \Polyspec\Orm\Tests\WasInsertedCase\ClockEvent())($db)->getBySeq($seq)
-                    ->setLabel('parent')
-                    ->update();
-                $child = proc_open(
-                    [PHP_BINARY, __DIR__ . '/was_inserted_child.php', $dsn, (string) $seq],
-                    [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
-                    $pipes
-                );
+                $child = WasInsertedCases::startLockWaiter($db, $dsn, $seq, $pipes);
                 self::assertIsResource($child, 'the waiting child did not start');
                 $waiting = false;
                 for ($deadline = microtime(true) + 10; !$waiting && microtime(true) < $deadline; usleep(20000)) {

@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d623799d6e074e483439f3613003c80215414b2f249dae24ce5a2d3a23b53fd2 -->
+<!-- source-sha256: e198a2996ac08d41b941f031575195e0df3a9309aa5105b4caaf44d4ff242305 -->
 # 변경 이력
 
 ## Unreleased
 
+- main에서 `make duplication-check`가 통과한다. jscpd가 packages/php-ext, packages/php, packages/go, packages/rust, packages/ts, packages/python에서 두 번 찾은 코드는 이제 양쪽이 함께 쓰는 helper 하나에 있다(C header, PHP trait와 helper 파일, Go internal package, Rust common module과 macro, JavaScript와 Python helper). 모든 active root의 MySQL cancellation case는 controller가 wait lock 두 개를 잡은 뒤에야 두 번째 process를 시작하므로, 그 process가 wait lock을 먼저 가져가지 못한다(KSTD-5-89-22).
 - stress 입력 생성기를 benchmark helper 소유 범위에서 분리했다. 변경한 registry에서 소유 검사 선택이 통과한다 (KSTD-5-89-23).
 - 548960952 이후 main에서 `node scripts/features/owners.mts --list`가 다시 통과한다: contracts/check-inputs.json의 suite target 41개는 schema가 거부하는 빈 inputs 목록을 더 이상 갖지 않고, PHP client와 extension의 dsn_connection verification pooler-cancellation과 pgsql-pdo-adapter 네 개는 helper php-test-autoload와 error-codes의 파일을 더 이상 입력으로 적지 않는다 (KSTD-5-89-24).
 - sibling Kit bootstrap을 사용하고 오래된 복사본 9개를 제거했다. 모든 ORM tool source가 rebuild 검사에 맞게 분류된다 (KSTD-5-89-13).

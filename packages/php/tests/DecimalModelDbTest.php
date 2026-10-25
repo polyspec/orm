@@ -27,16 +27,10 @@ use Polyspec\Orm\RuntimeModel;
 #[Medium]
 final class DecimalModelDbTest extends TestCase
 {
+    use ThreeDrivers;
+
     /** The directory of the loaded generated model; removed when the class ends. */
     private static ?string $generated = null;
-
-    /** @return iterable<string, array{string}> */
-    public static function dialects(): iterable
-    {
-        foreach (['mysql', 'postgres', 'sqlite'] as $dialect) {
-            yield $dialect => [$dialect];
-        }
-    }
 
     /** Generates the model of the fixture into a new directory. */
     private static function generate(): string
@@ -91,7 +85,7 @@ final class DecimalModelDbTest extends TestCase
     }
 
     /** The generator writes the model of the fixture; the generated files are removed again. */
-    #[DataProvider('dialects')]
+    #[DataProvider('drivers')]
     public function testGenerate(string $dialect): void
     {
         self::dsn($dialect);
@@ -104,7 +98,7 @@ final class DecimalModelDbTest extends TestCase
         }
     }
 
-    #[DataProvider('dialects')]
+    #[DataProvider('drivers')]
     public function testSetters(string $dialect): void
     {
         // The test of COD-2 (docs/spec).
@@ -150,7 +144,7 @@ final class DecimalModelDbTest extends TestCase
 
     /** A row written and read back in a transaction that rolls back. */
     // Requirements: DIA-25, COD-2.
-    #[DataProvider('dialects')]
+    #[DataProvider('drivers')]
     public function testRoundTrip(string $dialect): void
     {
         self::roundTrip($this, $dialect);

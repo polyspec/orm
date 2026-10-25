@@ -122,24 +122,24 @@ fn aes_read_stored_version_codes() {
     }
 }
 
+/// A row of one AES cell without its version decodes with the INTERNAL code under the assemble `asm`.
+fn assert_versionless_row_is_internal(asm: &polyspec_orm::plan::Assemble) {
+    let keys = keys(&[(1, "old-key"), (2, "new-key")]);
+    assert_eq!(decode_error_code(asm, vec![Val::Str("00".into())], &keys), "INTERNAL");
+}
+
 // Requirements: COD-44, COD-56.
 #[test]
 fn aes_read_plan_without_version_column_is_internal() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let asm = aes_read_assemble_without_version();
-    let keys = keys(&[(1, "old-key"), (2, "new-key")]);
-    let got = decode_error_code(&asm, vec![Val::Str("00".into())], &keys);
-    assert_eq!(got, "INTERNAL");
+    assert_versionless_row_is_internal(&aes_read_assemble_without_version());
 }
 
 // Requirements: COD-48.
 #[test]
 fn aes_read_row_without_version_cell_is_internal() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let asm = aes_read_assemble();
-    let keys = keys(&[(1, "old-key"), (2, "new-key")]);
-    let got = decode_error_code(&asm, vec![Val::Str("00".into())], &keys);
-    assert_eq!(got, "INTERNAL");
+    assert_versionless_row_is_internal(&aes_read_assemble());
 }
 
 // Requirements: COD-44, COD-57.

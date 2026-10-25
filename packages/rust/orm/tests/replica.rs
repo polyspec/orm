@@ -12,6 +12,9 @@
 mod model_row;
 #[path = "common/model_connect.rs"]
 mod model_connect;
+#[path = "common/rollback_probe.rs"]
+mod rollback_probe;
+use rollback_probe::{PROBE_SCHEMA, Probe};
 use model_connect::{connected, connected_with, with};
 
 #[path = "common/or_panic.rs"]
@@ -21,22 +24,11 @@ use or_panic::OrPanic;
 use std::time::Duration;
 
 use polyspec_orm::core::{Arg, ChainKey};
-use polyspec_orm::{Db, Entity, Model, Param, Schema};
+use polyspec_orm::{Db, Model, Param};
 use polyspec_orm_case_database::CaseDatabase;
 
-static PROBE_SCHEMA: Schema =
-    Schema::new(include_str!("../../../../contracts/fixtures/rollback.dbs"), "sha256:c57c6748bed0458f6d9843a0e0861ca8ea89c3bde5c4308f2e049b6a87a1203c");
-static PROBE: Entity = Entity {
-    name: "rollback_probe",
-    schema: &PROBE_SCHEMA,
-    new: polyspec_orm::model::new_boxed::<Probe>,
-    collect: polyspec_orm::model::collect_boxed::<Probe>,
-};
-const COLUMNS: [&str; 2] = ["seq", "label"];
 const CASE_DEADLINE: Duration = Duration::from_secs(120);
 const BY_LABEL: &[ChainKey] = &[ChainKey { conn: "", op: "", column: "label", columns: &[], compare: "" }];
-
-model_row!(Probe, PROBE, COLUMNS);
 
 fn required(variable: &str) -> String {
     match std::env::var(variable) {

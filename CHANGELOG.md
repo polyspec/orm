@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- `make duplication-check` passes on main: each piece of code that jscpd found twice in packages/php-ext, packages/php, packages/go, packages/rust, packages/ts and packages/python now lives in one helper that both places use (C headers, PHP traits and helper files, a Go internal package, Rust common modules and macros, JavaScript and Python helpers). The MySQL cancellation case of every active root now starts its second process only after the controller holds both wait locks, so that process can no longer take a wait lock first (KSTD-5-89-22).
 - Separate the stress input producer from benchmark-helper ownership; owner selection validates the repaired registry (KSTD-5-89-23).
 - `node scripts/features/owners.mts --list` passes on main again after 548960952: the 41 suite targets of contracts/check-inputs.json no longer carry the empty inputs list that its schema refuses, and the four dsn_connection verifications pooler-cancellation and pgsql-pdo-adapter of the PHP client and the extension no longer list the files of the helpers php-test-autoload and error-codes as inputs (KSTD-5-89-24).
 - Adopt the sibling Kit bootstrap and remove nine obsolete copies; every ORM tool source is classified for rebuild checks (KSTD-5-89-13).

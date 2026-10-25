@@ -175,6 +175,17 @@ static bool md_is_host_style(zend_string *style)
     return zend_string_equals_literal(style, "aes") || zend_string_equals_literal(style, "hex") || zend_string_equals_literal(style, "ip");
 }
 
+/* Whether the codec styles of a column, an array of names or NULL, name a host style. */
+static bool md_has_host_style(zval *styles)
+{
+    if (styles == NULL || Z_TYPE_P(styles) != IS_ARRAY) return false;
+    zval *style;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(styles), style) {
+        if (Z_TYPE_P(style) == IS_STRING && md_is_host_style(Z_STR_P(style))) return true;
+    } ZEND_HASH_FOREACH_END();
+    return false;
+}
+
 static bool md_param(zval *db, zval *config, zval *zone, zend_long index, zval *value, zval *uses, zval *out)
 {
     zval *use = Z_TYPE_P(uses) == IS_ARRAY ? zend_hash_index_find(Z_ARRVAL_P(uses), 0) : NULL;
@@ -191,13 +202,7 @@ static bool md_param(zval *db, zval *config, zval *zone, zend_long index, zval *
     ZVAL_COPY(&current, value);
     if (column != NULL && Z_TYPE_P(column) == IS_ARRAY && Z_TYPE_P(value) != IS_NULL) {
         zval *styles = md_find(column, "codec");
-        bool host = false;
-        zval *style;
-        if (styles != NULL && Z_TYPE_P(styles) == IS_ARRAY) {
-            ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(styles), style) {
-                if (Z_TYPE_P(style) == IS_STRING && md_is_host_style(Z_STR_P(style))) { host = true; break; }
-            } ZEND_HASH_FOREACH_END();
-        }
+        bool host = md_has_host_style(styles);
         if (host) {
             zval *aes_key = Z_TYPE_P(config) == IS_OBJECT ? zend_read_property(Z_OBJCE_P(config), Z_OBJ_P(config), ZEND_STRL("aesKey"), 1, NULL) : md_find(config, "aesKey");
             zval host_styles; array_init(&host_styles);
@@ -281,13 +286,8 @@ static bool md_check_param_uses(zend_long index, zval *value, zval *uses, zval *
         bool assigned = md_call_static("Polyspec\\Orm\\ParamCheck", "checkAssign", &ignored, 3, assign_args);
         zval_ptr_dtor(&ignored); zval_ptr_dtor(&assign_args[1]); zval_ptr_dtor(&assign_args[2]);
         if (!assigned) { zval_ptr_dtor(&slot); return false; }
-        bool host = false;
-        zval *column = md_find(use, "column"), *styles = column == NULL ? NULL : md_find(column, "codec"), *style;
-        if (styles != NULL && Z_TYPE_P(styles) == IS_ARRAY) {
-            ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(styles), style) {
-                if (Z_TYPE_P(style) == IS_STRING && md_is_host_style(Z_STR_P(style))) { host = true; break; }
-            } ZEND_HASH_FOREACH_END();
-        }
+        zval *column = md_find(use, "column"), *styles = column == NULL ? NULL : md_find(column, "codec");
+        bool host = md_has_host_style(styles);
         if (!host) {
             zval check_args[4], checked;
             ZVAL_LONG(&check_args[0], index); ZVAL_COPY(&check_args[1], value); ZVAL_COPY(&check_args[2], &slot); ZVAL_COPY(&check_args[3], zone);
@@ -684,13 +684,23 @@ static bool md_rows(zval *config, zval *model, zval *query, zval *assembly, zval
     return EG(exception) == NULL;
 }
 
+/* The arguments db and request of a Markdown read, scalar or write method and the answer that the server gives its
+ * request (md_call), with the request's IR and kind; false with the exception thrown. */
+static bool md_answer_of(zend_execute_data *execute_data, zval **db, zval **request, zval *answer, zval *model,
+    zval **ir, zval **kind)
+{
+    ZEND_PARSE_PARAMETERS_START(2, 2) Z_PARAM_OBJECT(*db) Z_PARAM_OBJECT(*request) ZEND_PARSE_PARAMETERS_END_EX(return false);
+    if (!md_call(*db, *request, answer, model)) return false;
+    *ir = md_find(*request, "ir");
+    *kind = *ir == NULL ? NULL : md_find(*ir, "kind");
+    return true;
+}
+
 ZEND_METHOD(Polyspec_Orm_Markdown, read)
 {
-    zval *db, *request;
-    ZEND_PARSE_PARAMETERS_START(2, 2) Z_PARAM_OBJECT(db) Z_PARAM_OBJECT(request) ZEND_PARSE_PARAMETERS_END();
+    zval *db, *request, *ir, *kind;
     zval answer, model;
-    if (!md_call(db, request, &answer, &model)) RETURN_THROWS();
-    zval *ir = md_find(request, "ir"), *kind = ir == NULL ? NULL : md_find(ir, "kind");
+    if (!md_answer_of(execute_data, &db, &request, &answer, &model, &ir, &kind)) RETURN_THROWS();
     zval *rows = md_find(&answer, "rows");
     if (rows == NULL || Z_TYPE_P(rows) != IS_ARRAY || !zend_array_is_list(Z_ARRVAL_P(rows))) {
         const char *kind_name = kind != NULL && Z_TYPE_P(kind) == IS_STRING ? Z_STRVAL_P(kind) : "?";
@@ -724,11 +734,9 @@ ZEND_METHOD(Polyspec_Orm_Markdown, read)
 
 ZEND_METHOD(Polyspec_Orm_Markdown, scalar)
 {
-    zval *db, *request;
-    ZEND_PARSE_PARAMETERS_START(2, 2) Z_PARAM_OBJECT(db) Z_PARAM_OBJECT(request) ZEND_PARSE_PARAMETERS_END();
+    zval *db, *request, *ir, *kind;
     zval answer, model;
-    if (!md_call(db, request, &answer, &model)) RETURN_THROWS();
-    zval *ir = md_find(request, "ir"), *kind = ir == NULL ? NULL : md_find(ir, "kind");
+    if (!md_answer_of(execute_data, &db, &request, &answer, &model, &ir, &kind)) RETURN_THROWS();
     if (kind != NULL && Z_TYPE_P(kind) == IS_STRING && zend_string_equals_literal(Z_STR_P(kind), "count")) {
         zval *count = md_find(&answer, "count");
         if (count == NULL || Z_TYPE_P(count) != IS_LONG) { md_answer_errorf("a count answer has no count"); zval_ptr_dtor(&answer); zval_ptr_dtor(&model); RETURN_THROWS(); }
@@ -745,11 +753,9 @@ ZEND_METHOD(Polyspec_Orm_Markdown, scalar)
 
 ZEND_METHOD(Polyspec_Orm_Markdown, write)
 {
-    zval *db, *request;
-    ZEND_PARSE_PARAMETERS_START(2, 2) Z_PARAM_OBJECT(db) Z_PARAM_OBJECT(request) ZEND_PARSE_PARAMETERS_END();
+    zval *db, *request, *ir, *kind;
     zval answer, model;
-    if (!md_call(db, request, &answer, &model)) RETURN_THROWS();
-    zval *ir = md_find(request, "ir"), *kind = ir == NULL ? NULL : md_find(ir, "kind");
+    if (!md_answer_of(execute_data, &db, &request, &answer, &model, &ir, &kind)) RETURN_THROWS();
     const char *kind_name = kind != NULL && Z_TYPE_P(kind) == IS_STRING ? Z_STRVAL_P(kind) : "?";
     zval *affected = md_find(&answer, "affected");
     if (affected == NULL || Z_TYPE_P(affected) != IS_LONG) { md_answer_errorf("a %s answer has no affected", kind_name); zval_ptr_dtor(&answer); zval_ptr_dtor(&model); RETURN_THROWS(); }

@@ -72,4 +72,23 @@ trait CollectionWeakTypedKeyCases
             self::assertCount(3, $collection);
         }
     }
+
+    /**
+     * INT-80, INT-86: the integer key 7 and the string key '7' keep apart in get and in fetchedValue, whose values the
+     * label of each model gives; a key that no model has reads null.
+     */
+    private static function assertTypedKeyGetAndFetch(Model $integer, Model $text): void
+    {
+        $collection = new Collection();
+        $collection->put(7, $integer);
+        $collection->put('7', $text);
+        $collection->fetchValues(static fn(Model $model): string => $model->label);
+
+        self::assertSame($integer, $collection->get(7));
+        self::assertSame($text, $collection->get('7'));
+        self::assertNull($collection->get(8));
+        self::assertSame('integer', $collection->fetchedValue(7));
+        self::assertSame('text', $collection->fetchedValue('7'));
+        self::assertNull($collection->fetchedValue(8));
+    }
 }

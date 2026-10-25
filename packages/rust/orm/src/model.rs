@@ -1809,6 +1809,39 @@ mod column_decode_tests {
         assert_eq!(error.to_string(), "CODEC_DECODE: author.jsons_tags: non-null JSON column received NULL");
     }
 }
+
+/// A test model over a bare core: it assigns and reads no column, so a test that needs only its entity uses it.
+#[cfg(test)]
+macro_rules! test_model {
+    ($name:ident, $entity:ident) => {
+        #[derive(Clone)]
+        struct $name(Core);
+        impl Model for $name {
+            fn entity() -> &'static Entity {
+                &$entity
+            }
+            fn core(&self) -> &Core {
+                &self.0
+            }
+            fn core_mut(&mut self) -> &mut Core {
+                &mut self.0
+            }
+            fn from_core(core: Core) -> Self {
+                $name(core)
+            }
+            fn into_core(self) -> Core {
+                self.0
+            }
+            fn assign(&mut self, _: &str, _: Val) -> Result<bool> {
+                Ok(false)
+            }
+            fn value(&self, _: &str) -> Option<Val> {
+                None
+            }
+        }
+    };
+}
+
 #[cfg(test)]
 mod related_tests {
     use super::{collect_boxed, new_boxed, Core, Entity, Model, Related, RelatedValue, RowState, Schema, Val};
@@ -1820,35 +1853,6 @@ mod related_tests {
     static LEFT: Entity = Entity { name: "left", schema: &SCHEMA, new: new_boxed::<Left>, collect: collect_boxed::<Left> };
     static RIGHT: Entity = Entity { name: "right", schema: &SCHEMA, new: new_boxed::<Right>, collect: collect_boxed::<Right> };
 
-    macro_rules! test_model {
-        ($name:ident, $entity:ident) => {
-            #[derive(Clone)]
-            struct $name(Core);
-            impl Model for $name {
-                fn entity() -> &'static Entity {
-                    &$entity
-                }
-                fn core(&self) -> &Core {
-                    &self.0
-                }
-                fn core_mut(&mut self) -> &mut Core {
-                    &mut self.0
-                }
-                fn from_core(core: Core) -> Self {
-                    $name(core)
-                }
-                fn into_core(self) -> Core {
-                    self.0
-                }
-                fn assign(&mut self, _: &str, _: Val) -> Result<bool> {
-                    Ok(false)
-                }
-                fn value(&self, _: &str) -> Option<Val> {
-                    None
-                }
-            }
-        };
-    }
     test_model!(Left, LEFT);
     test_model!(Right, RIGHT);
 
@@ -2110,32 +2114,7 @@ mod split_plan_tests {
     static EVENT: Entity = Entity { name: "clock_event", schema: &SCHEMA, new: new_boxed::<Event>, collect: collect_boxed::<Event> };
     const BY_SEQ: &[ChainKey] = &[ChainKey { conn: "", op: "", column: "seq", columns: &[], compare: "" }];
 
-    #[derive(Clone)]
-    struct Event(Core);
-
-    impl Model for Event {
-        fn entity() -> &'static Entity {
-            &EVENT
-        }
-        fn core(&self) -> &Core {
-            &self.0
-        }
-        fn core_mut(&mut self) -> &mut Core {
-            &mut self.0
-        }
-        fn from_core(core: Core) -> Self {
-            Event(core)
-        }
-        fn into_core(self) -> Core {
-            self.0
-        }
-        fn assign(&mut self, _: &str, _: Val) -> Result<bool> {
-            Ok(false)
-        }
-        fn value(&self, _: &str) -> Option<Val> {
-            None
-        }
-    }
+    test_model!(Event, EVENT);
 
     /// The SQLite file of the case, removed when the case ends on every path.
     struct CaseFile(std::path::PathBuf);

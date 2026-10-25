@@ -128,6 +128,33 @@ final class OrmGenTestSupportTest extends TestCase
         self::assertSame(17, $model->getSeq());
     }
 
+    public function testGenerateItemModelLoadsTheModelWhoseFieldTypesFollowTheColumns(): void
+    {
+        $dir = OrmGenTestSupport::createWorkDirectory('orm-gen-test-support-item-');
+        try {
+            $class = OrmGenTestSupport::generateItemModel(
+                $dir,
+                'Polyspec\\Orm\\Tests\\SupportGeneratedItem',
+                OrmGenTestSupport::FIELD_TYPES_DOCUMENT
+            );
+            self::assertSame('Polyspec\\Orm\\Tests\\SupportGeneratedItem\\Item', $class);
+            self::assertTrue(class_exists($class, false), 'the generated Item class is loaded');
+            OrmGenTestSupport::assertGeneratedFieldTypes($this, $class);
+            try {
+                OrmGenTestSupport::generateItemModel(
+                    "$dir/broken",
+                    'Polyspec\\Orm\\Tests\\SupportBrokenItem',
+                    "dbspec 1 broken\n\ntable {\n"
+                );
+                self::fail('a document that does not parse must not generate');
+            } catch (\RuntimeException $error) {
+                self::assertStringStartsWith('orm-gen exited with ', $error->getMessage());
+            }
+        } finally {
+            OrmGenTestSupport::removeWorkDirectory($dir);
+        }
+    }
+
     public function testRunReturnsTheStatusAndTheOutputOfOrmGen(): void
     {
         [$code, $stdout, $stderr] = OrmGenTestSupport::run(['--no-such-option']);

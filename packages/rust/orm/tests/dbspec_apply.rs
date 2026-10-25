@@ -21,7 +21,7 @@ mod dbspec_apply_support;
 #[path = "common/dbspec_probe.rs"]
 mod dbspec_probe;
 
-use dbspec_apply_support::{fixed_now, quiet, EventError, Stop};
+use dbspec_apply_support::{fixed_now, quiet, record_steps, EventError, Stop};
 use dbspec_probe::{connection_rules, lines, repository, require_dsn, run_probe, Conn, Servers, Session, DIALECTS};
 use polyspec_orm::db::{parse_dsn, ConnectOptions};
 use polyspec_orm::dbspec::{
@@ -398,16 +398,13 @@ async fn lock_wait(conn: &mut Conn, db: &str, representative: &[Plan], session: 
         };
         let started = Instant::now();
         let mut events = Vec::new();
-        let mut record = |event: &ApplyEvent| -> Result<(), EventError> {
-            if matches!(event.kind, ApplyEventKind::Statement | ApplyEventKind::Applied) {
-                events.push((event.kind, event.step));
+        let result = {
+            let mut record = record_steps(&mut events);
+            match conn {
+                Conn::MySql(c) => apply(c, Dialect::MySql, plans, &fixed_now, &mut record).await,
+                Conn::Postgres(c) => apply(c, Dialect::Postgres, plans, &fixed_now, &mut record).await,
+                Conn::Sqlite(c) => apply(c, Dialect::Sqlite, plans, &fixed_now, &mut record).await,
             }
-            Ok(())
-        };
-        let result = match conn {
-            Conn::MySql(c) => apply(c, Dialect::MySql, plans, &fixed_now, &mut record).await,
-            Conn::Postgres(c) => apply(c, Dialect::Postgres, plans, &fixed_now, &mut record).await,
-            Conn::Sqlite(c) => apply(c, Dialect::Sqlite, plans, &fixed_now, &mut record).await,
         };
         let elapsed = started.elapsed();
         if code(&result) != Some(want_code) {

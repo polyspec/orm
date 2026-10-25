@@ -101,6 +101,46 @@ async function collectCleanupErrors(errors, actions) {
   }
 }
 
+/**
+ * Runs body on a probe table of four rows that a session through the single-connection PgBouncer pool creates: body
+ * receives the pooler and server DSNs, the table, its model and schema, and `closing`, which registers a cleanup that
+ * runs after body on every path, before the setup session closes and the table is dropped. A failure of body and of
+ * the cleanups is thrown together; what names the case in the message.
+ */
+async function withPoolerProbe(step, what, body) {
+  const single = process.env.ORM_TEST_PGBOUNCER_SINGLE_DSN;
+  const base = process.env.ORM_TEST_POSTGRES_DSN;
+  if (!single) throw new Error('ORM_TEST_PGBOUNCER_SINGLE_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers');
+  if (!base) throw new Error('ORM_TEST_POSTGRES_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers');
+  const table = caseName();
+  const probeText = `dbspec 1 pooler_probe\n\ntable ${table} {\n  seq i64 identity\n  label varchar(32)\n  primary key (seq)\n}\n`;
+  const Probe = documentModel(probeText);
+  const schema = schemaOf(probeText);
+  const cleanups = [];
+  let setup;
+  let primaryFailure;
+  const cleanupErrors = [];
+  try {
+    setup = await Db.connect(single);
+    await setup.utils().schema().install(schema);
+    for (let i = 0; i < 4; i++) {
+      const row = new Probe().connect(setup);
+      row[CORE].setValue('label', `probe-${i}`);
+      await row.create();
+    }
+    step(`table ${table} created`);
+    await body({ single, base, table, Probe, schema, closing: cleanup => cleanups.push(cleanup) });
+  } catch (error) {
+    primaryFailure = error;
+  } finally {
+    await collectCleanupErrors(cleanupErrors, [...cleanups, setup && (() => setup.close())]);
+    try { await dropPoolerTable(single, table); step(`table ${table} dropped`); } catch (error) { cleanupErrors.push(error); }
+  }
+  if (cleanupErrors.length && primaryFailure) throw new AggregateError([primaryFailure, ...cleanupErrors], `${what} test and cleanup failed`, { cause: primaryFailure });
+  if (cleanupErrors.length) throw new AggregateError(cleanupErrors, `${what} test cleanup failed`, { cause: cleanupErrors[0] });
+  if (primaryFailure) throw primaryFailure;
+}
+
 async function verifyDialect(dialect, database, step) {
   const db = await connect(database.dsn);
   let bounded;
@@ -164,29 +204,13 @@ caseTest('connection/statement-timeout-canceled', DATABASE, async ({ step }) => 
 // Requirements: CFG-27, CFG-28, CFG-29. This verifies the pooler applies the tracked timeout
 // to the bounded client, while a client without a timeout keeps the server default.
 caseTest('connection/statement-timeout-through-pooler', DATABASE, async ({ step }) => {
-  const single = process.env.ORM_TEST_PGBOUNCER_SINGLE_DSN;
-  const base = process.env.ORM_TEST_POSTGRES_DSN;
-  if (!single) throw new Error('ORM_TEST_PGBOUNCER_SINGLE_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers');
-  if (!base) throw new Error('ORM_TEST_POSTGRES_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers');
-  const table = caseName();
-  const probeText = `dbspec 1 pooler_probe\n\ntable ${table} {\n  seq i64 identity\n  label varchar(32)\n  primary key (seq)\n}\n`;
-  const Probe = documentModel(probeText);
-  const schema = schemaOf(probeText);
-  let setup;
-  let bounded;
-  let plain;
-  let release;
-  let primaryFailure;
-  const cleanupErrors = [];
-  try {
-    setup = await Db.connect(single);
-    await setup.utils().schema().install(schema);
-    for (let i = 0; i < 4; i++) {
-      const row = new Probe().connect(setup);
-      row[CORE].setValue('label', `probe-${i}`);
-      await row.create();
-    }
-    step(`table ${table} created`);
+  await withPoolerProbe(step, 'pooler timeout', async ({ single, base, table, Probe, schema, closing }) => {
+    let bounded;
+    let plain;
+    let release;
+    closing(() => release?.());
+    closing(() => bounded?.close());
+    closing(() => plain?.close());
     bounded = await Db.connectSchema(single, schema, { statementTimeoutMs: 200 });
     plain = await Db.connectSchema(single, schema);
     // Both client sessions issue the same locking query repeatedly through PgBouncer.
@@ -242,46 +266,17 @@ caseTest('connection/statement-timeout-through-pooler', DATABASE, async ({ step 
     }
     await release();
     release = undefined;
-  } catch (error) {
-    primaryFailure = error;
-  } finally {
-    await collectCleanupErrors(cleanupErrors, [
-      release && (() => release()),
-      bounded && (() => bounded.close()),
-      plain && (() => plain.close()),
-      setup && (() => setup.close()),
-    ]);
-    try { await dropPoolerTable(single, table); step(`table ${table} dropped`); } catch (error) { cleanupErrors.push(error); }
-  }
-  if (cleanupErrors.length && primaryFailure) throw new AggregateError([primaryFailure, ...cleanupErrors], 'pooler timeout test and cleanup failed', { cause: primaryFailure });
-  if (cleanupErrors.length) throw new AggregateError(cleanupErrors, 'pooler timeout test cleanup failed', { cause: cleanupErrors[0] });
-  if (primaryFailure) throw primaryFailure;
+  });
 });
 
 // Requirements: CFG-31. This verifies that PgBouncer forwards a client cancel
 // request to the server connection running the blocked statement.
 caseTest('connection/cancellation-through-pooler', DATABASE, async ({ step }) => {
-  const single = process.env.ORM_TEST_PGBOUNCER_SINGLE_DSN;
-  const base = process.env.ORM_TEST_POSTGRES_DSN;
-  if (!single) throw new Error('ORM_TEST_PGBOUNCER_SINGLE_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers');
-  if (!base) throw new Error('ORM_TEST_POSTGRES_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers');
-  const table = caseName();
-  const probeText = `dbspec 1 pooler_probe\n\ntable ${table} {\n  seq i64 identity\n  label varchar(32)\n  primary key (seq)\n}\n`;
-  const Probe = documentModel(probeText);
-  const schema = schemaOf(probeText);
-  let setup;
-  let client;
-  let release;
-  let primaryFailure;
-  const cleanupErrors = [];
-  try {
-    setup = await Db.connect(single);
-    await setup.utils().schema().install(schema);
-    for (let i = 0; i < 4; i++) {
-      const row = new Probe().connect(setup);
-      row[CORE].setValue('label', `probe-${i}`);
-      await row.create();
-    }
+  await withPoolerProbe(step, 'pooler cancellation', async ({ single, base, table, Probe, schema, closing }) => {
+    let client;
+    let release;
+    closing(() => release?.());
+    closing(() => client?.close());
     client = await Db.connectSchema(single, schema);
     release = await holdPoolerRows(base, table);
     const controller = new AbortController();
@@ -302,17 +297,5 @@ caseTest('connection/cancellation-through-pooler', DATABASE, async ({ step }) =>
     const count = await new Probe().connect(client).getCount();
     if (count !== 4) throw new Error(`the connection returned ${count} rows after cancellation, expected 4`);
     step('PgBouncer forwarded cancellation and the client connection remained usable');
-  } catch (error) {
-    primaryFailure = error;
-  } finally {
-    await collectCleanupErrors(cleanupErrors, [
-      release && (() => release()),
-      client && (() => client.close()),
-      setup && (() => setup.close()),
-    ]);
-    try { await dropPoolerTable(single, table); step(`table ${table} dropped`); } catch (error) { cleanupErrors.push(error); }
-  }
-  if (cleanupErrors.length && primaryFailure) throw new AggregateError([primaryFailure, ...cleanupErrors], 'pooler cancellation test and cleanup failed', { cause: primaryFailure });
-  if (cleanupErrors.length) throw new AggregateError(cleanupErrors, 'pooler cancellation test cleanup failed', { cause: cleanupErrors[0] });
-  if (primaryFailure) throw primaryFailure;
+  });
 });

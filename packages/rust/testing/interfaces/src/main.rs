@@ -5,7 +5,7 @@
 //! trait. A file is treated as a module of its crate; its module declaration is not followed.
 use quote::ToTokens;
 use std::{
-    collections::{BTreeMap, HashSet},
+    collections::{BTreeMap, HashMap, HashSet},
     env, fs,
     path::Path,
 };
@@ -100,23 +100,44 @@ impl syn::parse::Parse for ApplyEntryPoint {
     }
 }
 
-/// The dbspec apply module uses this declarative macro only to emit four public command wrappers.
-fn expand_apply_entrypoint(item: syn::ItemMacro) -> Option<syn::ItemFn> {
+/// The body of the one rule of a `macro_rules!` definition, as the text of its tokens.
+fn macro_rule_body(definition: &syn::ItemMacro) -> String {
+    // The text of the tokens of a group's content, which it consumes.
+    let content_text = |content: syn::parse::ParseStream<'_>| -> syn::Result<String> {
+        let text = content.cursor().token_stream().to_string();
+        content.step(|cursor| {
+            let mut rest = *cursor;
+            while let Some((_, next)) = rest.token_tree() {
+                rest = next;
+            }
+            Ok(((), rest))
+        })?;
+        Ok(text)
+    };
+    let parse = |input: syn::parse::ParseStream<'_>| -> syn::Result<String> {
+        let matcher;
+        syn::parenthesized!(matcher in input);
+        content_text(&matcher)?;
+        input.parse::<syn::Token![=>]>()?;
+        let body;
+        syn::braced!(body in input);
+        let text = content_text(&body)?;
+        input.parse::<Option<syn::Token![;]>>()?;
+        Ok(text)
+    };
+    syn::parse::Parser::parse2(parse, definition.mac.tokens.clone()).expect("the macro_rules! definition has one rule")
+}
+
+/// The dbspec apply module emits its four public command wrappers with its `apply_entrypoint!` macro: the wrapper of
+/// an invocation is the body of that macro's definition with its name and command, the documentation left out.
+fn expand_apply_entrypoint(item: &syn::ItemMacro, definitions: &HashMap<String, syn::ItemMacro>) -> Option<syn::ItemFn> {
     if !item.mac.path.is_ident("apply_entrypoint") {
         return None;
     }
-    let ApplyEntryPoint { name, command } = syn::parse2(item.mac.tokens).expect("invalid apply_entrypoint! invocation");
-    Some(syn::parse_quote! {
-        pub async fn #name<C: ApplyConnection + ?Sized>(
-            connection: &mut C,
-            dialect: Dialect,
-            plans: &[Plan],
-            now: &ApplyClock<'_>,
-            events: &mut ApplyEvents<'_>,
-        ) -> Result<(), ApplyError> {
-            run_command(connection, dialect, plans, now, events, Command::#command).await
-        }
-    })
+    let definition = definitions.get("apply_entrypoint").expect("apply_entrypoint! is used before its macro_rules! definition");
+    let ApplyEntryPoint { name, command } = syn::parse2(item.mac.tokens.clone()).expect("invalid apply_entrypoint! invocation");
+    let body = macro_rule_body(definition).replace("$ (# [$ doc]) *", "").replace("$ name", &name.to_string()).replace("$ command", &command.to_string());
+    Some(syn::parse_str(&body).expect("the apply_entrypoint! body is a function"))
 }
 
 struct TransactionIntoFuture {
@@ -210,6 +231,8 @@ fn public_types(names: &mut HashSet<String>, list: &[Item]) {
 }
 
 fn items(out: &mut BTreeMap<String, Entry>, prefix: &str, list: Vec<Item>, scope: bool, types: &HashSet<String>) {
+    // The macro_rules! definitions of this module, by name, which expand the invocations that follow them.
+    let mut definitions: HashMap<String, syn::ItemMacro> = HashMap::new();
     for item in list {
         match item {
             Item::Struct(s) => {
@@ -279,7 +302,11 @@ fn items(out: &mut BTreeMap<String, Entry>, prefix: &str, list: Vec<Item>, scope
                 }
             }
             Item::Macro(m) => {
-                if let Some(f) = expand_apply_entrypoint(m.clone()) {
+                if m.mac.path.is_ident("macro_rules") {
+                    if let Some(name) = &m.ident {
+                        definitions.insert(name.to_string(), m.clone());
+                    }
+                } else if let Some(f) = expand_apply_entrypoint(&m, &definitions) {
                     add(out, format!("{prefix}::{}", f.sig.ident), format!("{} {}", tokens(&f.vis), tokens(&f.sig)), scope);
                 } else if let Some(i) = expand_transaction_macro(m) {
                     items(out, prefix, vec![Item::Impl(i)], scope, types);

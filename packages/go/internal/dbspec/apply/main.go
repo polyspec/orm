@@ -17,7 +17,6 @@ package main
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -29,6 +28,7 @@ import (
 
 	"github.com/polyspec/orm/packages/go/engine/dbspec"
 	"github.com/polyspec/orm/packages/go/internal/dbspec/database"
+	"github.com/polyspec/orm/packages/go/internal/dbspec/plancases"
 )
 
 // connectionRules is the statements that every client runs on a new connection
@@ -122,6 +122,24 @@ func run(action, dialect, uri, vectors string) (_ string, err error) {
 	return "", err
 }
 
+// openBlocker opens a second connection to the database of uri, the session that holds the lock the apply under test
+// waits for; the returned function closes the connection and its database handle.
+func openBlocker(ctx context.Context, dialect, uri string) (*sql.Conn, func(), error) {
+	db, err := database.Open(dialect, uri)
+	if err != nil {
+		return nil, nil, err
+	}
+	conn, err := db.Conn(ctx)
+	if err != nil {
+		db.Close()
+		return nil, nil, err
+	}
+	return conn, func() {
+		conn.Close()
+		db.Close()
+	}, nil
+}
+
 func lockWait(ctx context.Context, conn *sql.Conn, dialect, uri, vectors string, now func() time.Time) (string, error) {
 	started := time.Now()
 	if dialect == "sqlite" {
@@ -129,16 +147,11 @@ func lockWait(ctx context.Context, conn *sql.Conn, dialect, uri, vectors string,
 		if err != nil {
 			return "", err
 		}
-		blockerDB, err := database.Open(dialect, uri)
+		blocker, closeBlocker, err := openBlocker(ctx, dialect, uri)
 		if err != nil {
 			return "", err
 		}
-		defer blockerDB.Close()
-		blocker, err := blockerDB.Conn(ctx)
-		if err != nil {
-			return "", err
-		}
-		defer blocker.Close()
+		defer closeBlocker()
 		if _, err := blocker.ExecContext(ctx, "BEGIN EXCLUSIVE"); err != nil {
 			return "", err
 		}
@@ -176,16 +189,11 @@ func lockWait(ctx context.Context, conn *sql.Conn, dialect, uri, vectors string,
 	if _, err := dbspec.Apply(ctx, conn, dbspec.Dialect(dialect), plans[:1], now, nil); err != nil {
 		return "", err
 	}
-	blockerDB, err := database.Open(dialect, uri)
+	blocker, closeBlocker, err := openBlocker(ctx, dialect, uri)
 	if err != nil {
 		return "", err
 	}
-	defer blockerDB.Close()
-	blocker, err := blockerDB.Conn(ctx)
-	if err != nil {
-		return "", err
-	}
-	defer blocker.Close()
+	defer closeBlocker()
 	tx, err := blocker.BeginTx(ctx, nil)
 	if err != nil {
 		return "", err
@@ -276,21 +284,12 @@ func unjoined(err error) bool {
 
 // chain is create-from-empty and rename-table-and-column from the plans.json at path.
 func chain(path string) ([]*dbspec.Plan, error) {
-	raw, err := os.ReadFile(path)
+	cases, err := plancases.Read(path)
 	if err != nil {
 		return nil, err
 	}
-	var vectors struct {
-		Cases []struct {
-			ID   string   `json:"id"`
-			Plan []string `json:"plan"`
-		} `json:"cases"`
-	}
-	if err := json.Unmarshal(raw, &vectors); err != nil {
-		return nil, err
-	}
 	var plans []*dbspec.Plan
-	for _, c := range vectors.Cases {
+	for _, c := range cases {
 		if c.ID != "create-from-empty" && c.ID != "rename-table-and-column" {
 			continue
 		}
@@ -307,21 +306,11 @@ func chain(path string) ([]*dbspec.Plan, error) {
 }
 
 func representativeChain(path string) ([]*dbspec.Plan, error) {
-	raw, err := os.ReadFile(path)
+	cases, err := plancases.Read(path)
 	if err != nil {
 		return nil, err
 	}
-	var vectors struct {
-		Cases []struct {
-			ID     string   `json:"id"`
-			Source []string `json:"source"`
-			Plan   []string `json:"plan"`
-		} `json:"cases"`
-	}
-	if err := json.Unmarshal(raw, &vectors); err != nil {
-		return nil, err
-	}
-	for _, c := range vectors.Cases {
+	for _, c := range cases {
 		if c.ID != "representative" {
 			continue
 		}

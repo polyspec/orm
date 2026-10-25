@@ -30,19 +30,9 @@ final class TransactionFailureTest extends TestCase
     public function testAnotherFiberCannotUseAnActiveTransactionConnection(): void
     {
         $db = new Db(new \PDO('sqlite::memory:'), 'sqlite', new Config(), new DateTimeZone('UTC'));
-        $fiber = new \Fiber(static function () use ($db): void {
-            $db->transaction(static function (): void {
-                \Fiber::suspend();
-            }, retry: 0);
-        });
-        $fiber->start();
-        $error = null;
         try {
-            $db->transaction(static fn() => null, retry: 0);
-        } catch (OrmException $caught) {
-            $error = $caught;
+            $error = FiberTransaction::outsideError(FiberTransaction::holding($db), $db);
         } finally {
-            $fiber->resume();
             $db->close();
         }
         self::assertSame(Code::CONFIG, $error?->code_);

@@ -109,20 +109,7 @@ class CoverageTransactionsTest extends TestCase
                 (new CompositeAccount())($db)->getByTenantIdAndAccountId(TRANSACTION_TENANT, 2)->delete();
                 Assert::assertTrue(!accountExists($db, 2), 'the outer row was not deleted');
 
-                $fiber = new \Fiber(function () use ($db): void {
-                    $db->transaction(static function (): void {
-                        \Fiber::suspend();
-                    }, retry: 0);
-                });
-                $fiber->start();
-                $flowError = null;
-                try {
-                    $db->transaction(static fn() => null, retry: 0);
-                } catch (OrmException $error) {
-                    $flowError = $error;
-                } finally {
-                    $fiber->resume();
-                }
+                $flowError = FiberTransaction::outsideError(FiberTransaction::holding($db), $db);
                 Assert::assertNull(
                     $db->transactionNumber(),
                     'a completed Fiber leaves no active transaction frame'

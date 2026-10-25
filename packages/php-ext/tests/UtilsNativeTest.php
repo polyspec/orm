@@ -20,33 +20,7 @@ use Polyspec\Orm\Tests\WasInsertedCases;
 #[Medium]
 final class UtilsNativeTest extends TestCase
 {
-    /** @return iterable<string, array{string}> */
-    public static function drivers(): iterable
-    {
-        yield 'sqlite' => ['sqlite'];
-        yield 'mysql' => ['mysql'];
-        yield 'postgres' => ['postgres'];
-    }
-
-    /** Runs the shared utility case against a fresh database of the named driver.
-     *
-     * @param \Closure(\Polyspec\Orm\Db, string): void $body
-     */
-    private static function onCase(string $driver, \Closure $body): void
-    {
-        WasInsertedCases::loadFixture();
-        with_case_database($driver, static function (string $step): void {
-        }, static function (string $dsn) use ($body): void {
-            $separator = str_contains($dsn, '?') ? '&' : '?';
-            $db = Orm::connect($dsn . $separator . 'timezone=%2B00:00', new Config());
-            try {
-                $db->utils()->schema()->install(\Polyspec\Orm\Tests\WasInsertedCase\schema());
-                $body($db, $dsn);
-            } finally {
-                $db->close();
-            }
-        });
-    }
+    use ThreeDrivers;
 
     public function testNativeUtilityConstructorsKeepTheirTypeErrors(): void
     {
@@ -73,7 +47,7 @@ final class UtilsNativeTest extends TestCase
         self::assertTrue((new \ReflectionClass(Utils::class))->isInternal());
         self::assertTrue((new \ReflectionClass(Utils::class))->getMethod('wasInserted')->isInternal());
 
-        self::onCase($driver, function (\Polyspec\Orm\Db $db): void {
+        WasInsertedCases::onCase($driver, function (\Polyspec\Orm\Db $db): void {
             WasInsertedCases::assertTracksGeneratedRows($this, $db);
         });
     }
@@ -85,7 +59,7 @@ final class UtilsNativeTest extends TestCase
         self::assertTrue((new \ReflectionClass(Utils::class))->isInternal());
         self::assertTrue((new \ReflectionClass(Utils::class))->getMethod('backendWaitingForLock')->isInternal());
 
-        self::onCase($driver, static function (\Polyspec\Orm\Db $db): void {
+        WasInsertedCases::onCase($driver, static function (\Polyspec\Orm\Db $db): void {
             self::assertFalse($db->utils()->backendWaitingForLock(), 'no backend waits for a lock');
         });
     }
@@ -96,26 +70,14 @@ final class UtilsNativeTest extends TestCase
         self::assertTrue((new \ReflectionClass(Utils::class))->isInternal());
         self::assertTrue((new \ReflectionClass(Utils::class))->getMethod('backendWaitingForLock')->isInternal());
 
-        self::onCase('postgres', static function (\Polyspec\Orm\Db $db, string $dsn): void {
-            $seq = 0;
-            $db->transaction(static function () use ($db, &$seq): void {
-                $seq = (int) (new \Polyspec\Orm\Tests\WasInsertedCase\ClockEvent())($db)->setLabel('held')
-                    ->create()
-                    ->getSeq();
-            }, retry: 0);
+        WasInsertedCases::onCase('postgres', static function (\Polyspec\Orm\Db $db, string $dsn): void {
+            $seq = WasInsertedCases::heldEventSeq($db);
 
             $child = null;
             $pipes = [];
             try {
                 $db->transaction(function () use ($db, $dsn, $seq, &$child, &$pipes): void {
-                    (new \Polyspec\Orm\Tests\WasInsertedCase\ClockEvent())($db)->getBySeq($seq)
-                        ->setLabel('parent')
-                        ->update();
-                    $child = proc_open(
-                        [PHP_BINARY, __DIR__ . '/../../php/tests/was_inserted_child.php', $dsn, (string) $seq],
-                        [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
-                        $pipes
-                    );
+                    $child = WasInsertedCases::startLockWaiter($db, $dsn, $seq, $pipes);
                     self::assertIsResource($child, 'the waiting child did not start');
                     $waiting = false;
                     $deadline = microtime(true) + 10;

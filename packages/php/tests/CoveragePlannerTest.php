@@ -87,16 +87,33 @@ function plannerCase(string $root, array $fixture, string $id): void
 /** Returns the validated planner fixture request used by scalar-subquery coverage.
  * @return array{RuntimeModel, array<string, mixed>}
  */
-function plannerScalarColumnSubqueryRequest(string $root): array
+/** The one case of contracts/fixtures/planner.json under $root whose id is $id; another count fails the case. */
+function plannerFixtureCase(string $root, string $id): array
 {
     $fixture = coverageJson("$root/contracts/fixtures/planner.json");
-    $found = array_values(array_filter(
-        $fixture['cases'],
-        static fn(array $case): bool => $case['id'] === 'planner_scalar_column_subquery'
-    ));
-    Assert::assertCount(1, $found, 'planner.json has one planner_scalar_column_subquery case');
-    $model = RuntimeModel::build(RuntimeModel::files(["$root/{$found[0]['schema']}"]));
-    return [$model, ['manifest_hash' => $model->manifestHash] + $found[0]['input']];
+    $found = array_values(array_filter($fixture['cases'], static fn(array $case): bool => $case['id'] === $id));
+    Assert::assertCount(1, $found, "planner.json has " . count($found) . " cases $id");
+    return $found[0];
+}
+
+function plannerScalarColumnSubqueryRequest(string $root): array
+{
+    $case = plannerFixtureCase($root, 'planner_scalar_column_subquery');
+    $model = RuntimeModel::build(RuntimeModel::files(["$root/{$case['schema']}"]));
+    return [$model, ['manifest_hash' => $model->manifestHash] + $case['input']];
+}
+
+/** PRT-69: the scalar column subquery request with the aggregate $aggregate of $column, without its limit and order. */
+function plannerScalarAggregateRequest(array $baseRequest, string $aggregate, string $column): array
+{
+    $request = $baseRequest;
+    $request['columns']['sub']['first_author']['agg'] = $aggregate;
+    $request['columns']['sub']['first_author']['column'] = $column;
+    unset(
+        $request['columns']['sub']['first_author']['query']['limit'],
+        $request['columns']['sub']['first_author']['query']['order']
+    );
+    return $request;
 }
 
 /** Validates the request of a param_uses case and compares the uses of each parameter. */
@@ -183,13 +200,7 @@ final class CoveragePlannerTest extends TestCase
     {
         [$model, $baseRequest] = $this->scalarColumnSubqueryRequest();
         foreach ([['count', '', 'i64'], ['avg', 'read_count', 'f64']] as [$aggregate, $column, $expected]) {
-            $request = $baseRequest;
-            $request['columns']['sub']['first_author']['agg'] = $aggregate;
-            $request['columns']['sub']['first_author']['column'] = $column;
-            unset(
-                $request['columns']['sub']['first_author']['query']['limit'],
-                $request['columns']['sub']['first_author']['query']['order']
-            );
+            $request = plannerScalarAggregateRequest($baseRequest, $aggregate, $column);
             (new \Polyspec\Orm\Validator($model))->validate($request);
             $plan = (new Planner($model, new Dialect('sqlite')))->compile($request);
             $output = array_values(array_filter(

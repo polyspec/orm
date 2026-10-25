@@ -52,19 +52,11 @@ final class ModelNativeTest extends TestCase
         is_dir($dir) || mkdir($dir, 0o700, true);
         $namespace = 'Polyspec\\Orm\\Extension\\Tests\\GeneratedTypedGetter';
         try {
-            $set = "$dir/dbspec-set.json";
-            file_put_contents($set, json_encode(['schema' => 1, 'documents' => ['typed.dbs'], 'external' => []]));
-            file_put_contents(
-                "$dir/typed.dbs",
+            $class = \Polyspec\Orm\Tests\OrmGenTestSupport::generateItemModel(
+                $dir,
+                $namespace,
                 "dbspec 1 typed\n\ntable item {\n  price i32\n  primary key (price)\n}\n"
             );
-            [$code, $output, $message] = \Polyspec\Orm\Tests\OrmGenTestSupport::run([
-                'gen', '--set', $set, '--out', "$dir/model", '--namespace', $namespace
-            ]);
-            self::assertSame(0, $code, "$output $message");
-            require_once "$dir/model/Item.php";
-
-            $class = "$namespace\\Item";
             $model = new $class();
             $getter = new \ReflectionMethod($class, 'getPrice');
             self::assertSame('int', $getter->getReturnType()->getName());
@@ -95,57 +87,17 @@ final class ModelNativeTest extends TestCase
         is_dir($dir) || mkdir($dir, 0o700, true);
         $namespace = 'Polyspec\\Orm\\Extension\\Tests\\GeneratedFieldTypes';
         try {
-            $set = "$dir/dbspec-set.json";
-            file_put_contents($set, json_encode(['schema' => 1, 'documents' => ['typed.dbs'], 'external' => []]));
-            file_put_contents(
-                "$dir/typed.dbs",
-                "dbspec 1 typed\n\ntable item {\n  seq i64 identity\n  ratio f64\n  enabled bool\n  body text\n"
-                . "  payload bytes null\n  moment datetime(3) null\n  json_value text null\n  primary key (seq)\n"
-                . "  settings {\n    codec json_value ordered_json\n  }\n}\n"
+            $class = \Polyspec\Orm\Tests\OrmGenTestSupport::generateItemModel(
+                $dir,
+                $namespace,
+                \Polyspec\Orm\Tests\OrmGenTestSupport::FIELD_TYPES_DOCUMENT
             );
-            [$code, $output, $message] = \Polyspec\Orm\Tests\OrmGenTestSupport::run([
-                'gen', '--set', $set, '--out', "$dir/model", '--namespace', $namespace
-            ]);
-            self::assertSame(0, $code, "$output $message");
-            require_once "$dir/model/Item.php";
-            $class = "$namespace\\Item";
             self::assertTrue((new ReflectionClass(Model::class))->isInternal());
             self::assertTrue(
                 (new ReflectionClass($class))->getParentClass()->isInternal(),
                 'the generated PHP model uses the native extension Model',
             );
-            foreach (
-                [
-                'getRatio' => 'float',
-                'getEnabled' => 'bool',
-                'getBody' => 'string',
-                'getPayload' => '?string',
-                'getMoment' => '?DateTimeImmutable',
-                'getJsonValue' => 'Polyspec\\Orm\\StyledValue',
-                ] as $method => $expected
-            ) {
-                self::assertSame(
-                    $expected,
-                    (string) (new \ReflectionMethod($class, $method))->getReturnType(),
-                    "$class::$method",
-                );
-            }
-            foreach (
-                [
-                'setRatio' => 'float',
-                'setEnabled' => 'bool',
-                'setBody' => 'string',
-                'setPayload' => '?string',
-                'setMoment' => '?string',
-                'setJsonValue' => 'Polyspec\\Orm\\StyledValue',
-                ] as $method => $expected
-            ) {
-                self::assertSame(
-                    $expected,
-                    (string) (new \ReflectionMethod($class, $method))->getParameters()[0]->getType(),
-                    "$class::$method",
-                );
-            }
+            \Polyspec\Orm\Tests\OrmGenTestSupport::assertGeneratedFieldTypes($this, $class);
         } finally {
             exec('rm -rf ' . escapeshellarg($dir));
         }
@@ -756,25 +708,24 @@ final class ModelNativeTest extends TestCase
         self::assertSame("date(created)", $sqlite->columnFunction('date', 'created'));
         self::assertNull($sqlite->columnFunction('unsupported', 'created'));
         self::assertNull($mysql->valueFunction('unsupported', static fn(): string => '?', static fn(): string => '?'));
+        // A placeholder callback of valueFunction that counts its calls in $calls.
+        $counted = static function (string $placeholder, int &$calls): \Closure {
+            return static function () use ($placeholder, &$calls): string {
+                $calls++;
+                return $placeholder;
+            };
+        };
         $argCalls = $clockCalls = 0;
-        $mysqlInterval = $mysql->valueFunction('days_ago', static function () use (&$argCalls): string {
-            $argCalls++;
-            return '?';
-        }, static function () use (&$clockCalls): string {
-            $clockCalls++;
-            return '?';
-        });
+        $mysqlInterval = $mysql->valueFunction('days_ago', $counted('?', $argCalls), $counted('?', $clockCalls));
         self::assertStringContainsString('CASE WHEN ? BETWEEN -3652059 AND 3652059 THEN ?', $mysqlInterval);
         self::assertSame(4, $argCalls);
         self::assertSame(0, $clockCalls);
         $argCalls = $clockCalls = 0;
-        $postgresInterval = $postgres->valueFunction('days_later', static function () use (&$argCalls): string {
-            $argCalls++;
-            return '$2';
-        }, static function () use (&$clockCalls): string {
-            $clockCalls++;
-            return '$1';
-        });
+        $postgresInterval = $postgres->valueFunction(
+            'days_later',
+            $counted('$2', $argCalls),
+            $counted('$1', $clockCalls)
+        );
         self::assertStringContainsString(
             'make_interval(days => CAST(CASE WHEN CAST($2 AS bigint) BETWEEN -3652059 AND '
                 . '3652059 THEN CAST($2 AS bigint) END AS integer))',
@@ -783,13 +734,7 @@ final class ModelNativeTest extends TestCase
         self::assertSame(4, $argCalls);
         self::assertSame(2, $clockCalls);
         $argCalls = $clockCalls = 0;
-        $sqliteInterval = $sqlite->valueFunction('months_ago', static function () use (&$argCalls): string {
-            $argCalls++;
-            return '?';
-        }, static function () use (&$clockCalls): string {
-            $clockCalls++;
-            return '?';
-        });
+        $sqliteInterval = $sqlite->valueFunction('months_ago', $counted('?', $argCalls), $counted('?', $clockCalls));
         self::assertStringContainsString("datetime(?, '-' || CAST(? AS TEXT) || ' months', 'floor')", $sqliteInterval);
         self::assertSame(2, $argCalls);
         self::assertSame(4, $clockCalls);
@@ -805,29 +750,24 @@ final class ModelNativeTest extends TestCase
         foreach (['bindSlotType', 'useSlotType', 'checkAssign', 'check'] as $method) {
             self::assertTrue($paramCheck->getMethod($method)->isInternal());
         }
+        // The checked type of a non-null varchar slot of the column name.
+        $nameSlot = static fn(int $precision, int $scale, int $length): array => [
+            'type' => 'varchar',
+            'precision' => $precision,
+            'scale' => $scale,
+            'length' => $length,
+            'not_null' => true,
+            'column' => 'name',
+        ];
         self::assertSame(
-            [
-                'type' => 'varchar',
-                'precision' => 4,
-                'scale' => 0,
-                'length' => 2,
-                'not_null' => true,
-                'column' => 'name',
-            ],
+            $nameSlot(4, 0, 2),
             \Polyspec\Orm\ParamCheck::bindSlotType([
                 'col_type' => 'varchar', 'precision' => '4', 'scale' => null, 'length' => 2,
                 'not_null' => true, 'column' => 'name',
             ])
         );
         self::assertSame(
-            [
-                'type' => 'varchar',
-                'precision' => 4,
-                'scale' => 2,
-                'length' => 20,
-                'not_null' => true,
-                'column' => 'name',
-            ],
+            $nameSlot(4, 2, 20),
             \Polyspec\Orm\ParamCheck::useSlotType([
                 'type' => 'varchar', 'assign' => true,
                 'column' => ['type' => 'varchar', 'precision' => 4, 'scale' => 2, 'length' => 20,

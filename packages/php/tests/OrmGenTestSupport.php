@@ -144,6 +144,58 @@ final class OrmGenTestSupport
         return $path;
     }
 
+    /** The typed.dbs document whose item columns cover each PHP field type of a generated model. */
+    public const FIELD_TYPES_DOCUMENT = "dbspec 1 typed\n\ntable item {\n  seq i64 identity\n  ratio f64\n"
+        . "  enabled bool\n  body text\n  payload bytes null\n  moment datetime(3) null\n  json_value text null\n"
+        . "  primary key (seq)\n  settings {\n    codec json_value ordered_json\n  }\n}\n";
+
+    /**
+     * Generates the PHP model of the document $document, saved as typed.dbs of a set in $dir, into $dir/model under
+     * $namespace and loads its class Item, whose name it returns; a failed generation throws with its output.
+     */
+    public static function generateItemModel(string $dir, string $namespace, string $document): string
+    {
+        $set = self::setFile($dir, ['typed.dbs']);
+        file_put_contents("$dir/typed.dbs", $document);
+        [$code, $output, $message] = self::run(
+            ['gen', '--set', $set, '--out', "$dir/model", '--namespace', $namespace]
+        );
+        if ($code !== 0) {
+            throw new \RuntimeException("orm-gen exited with $code: $output $message");
+        }
+        require_once "$dir/model/Item.php";
+        return "$namespace\\Item";
+    }
+
+    /** The getters and setters of the Item model of FIELD_TYPES_DOCUMENT declare the PHP type of each column. */
+    public static function assertGeneratedFieldTypes(\PHPUnit\Framework\TestCase $test, string $class): void
+    {
+        $getters = [
+            'getRatio' => 'float',
+            'getEnabled' => 'bool',
+            'getBody' => 'string',
+            'getPayload' => '?string',
+            'getMoment' => '?DateTimeImmutable',
+            'getJsonValue' => 'Polyspec\\Orm\\StyledValue',
+        ];
+        foreach ($getters as $method => $expected) {
+            $type = (string) (new \ReflectionMethod($class, $method))->getReturnType();
+            $test::assertSame($expected, $type, "$class::$method");
+        }
+        $setters = [
+            'setRatio' => 'float',
+            'setEnabled' => 'bool',
+            'setBody' => 'string',
+            'setPayload' => '?string',
+            'setMoment' => '?string',
+            'setJsonValue' => 'Polyspec\\Orm\\StyledValue',
+        ];
+        foreach ($setters as $method => $expected) {
+            $type = (string) (new \ReflectionMethod($class, $method))->getParameters()[0]->getType();
+            $test::assertSame($expected, $type, "$class::$method");
+        }
+    }
+
     /** @param list<string> $command @return array{int, string, string}|null */
     public static function runProcess(array $command, ?string $cwd = null): ?array
     {

@@ -52,6 +52,54 @@ final class WasInsertedCases
         }
     }
 
+    /** Runs the case on a new case database of $driver, dropped afterwards, with the connection and its DSN. */
+    public static function onCase(string $driver, \Closure $body): void
+    {
+        self::loadFixture();
+        with_case_database($driver, static function (string $step): void {
+        }, static function (string $dsn) use ($body): void {
+            $db = Orm::connect($dsn . (str_contains($dsn, '?') ? '&' : '?') . 'timezone=%2B00:00', new Config());
+            try {
+                $db->utils()->schema()->install(\Polyspec\Orm\Tests\WasInsertedCase\schema());
+                $body($db, $dsn);
+            } finally {
+                $db->close();
+            }
+        });
+    }
+
+    /** The seq of a clock event labelled 'held' that a committed transaction of $db created. */
+    public static function heldEventSeq(Db $db): int
+    {
+        $seq = 0;
+        $db->transaction(static function () use ($db, &$seq): void {
+            $seq = (int) (new \Polyspec\Orm\Tests\WasInsertedCase\ClockEvent())($db)->setLabel('held')
+                ->create()
+                ->getSeq();
+        }, retry: 0);
+        return $seq;
+    }
+
+    /**
+     * Updates the clock event $seq through $db, inside the caller's transaction, so that the transaction holds its row
+     * lock, and starts was_inserted_child.php, which updates the clock event $seq of the database of $dsn and so waits
+     * for the row lock that the caller's transaction holds; $pipes receives its standard output and error.
+     *
+     * @param array<int, resource> $pipes
+     * @return resource|false
+     */
+    public static function startLockWaiter(Db $db, string $dsn, int $seq, array &$pipes): mixed
+    {
+        (new \Polyspec\Orm\Tests\WasInsertedCase\ClockEvent())($db)->getBySeq($seq)
+            ->setLabel('parent')
+            ->update();
+        return proc_open(
+            [PHP_BINARY, __DIR__ . '/was_inserted_child.php', $dsn, (string) $seq],
+            [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+            $pipes
+        );
+    }
+
     public static function assertTracksGeneratedRows(TestCase $test, Db $db): void
     {
         $existing = 0;

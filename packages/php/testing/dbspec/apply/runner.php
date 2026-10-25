@@ -6,6 +6,7 @@ use Polyspec\Orm\Dbspec\ApplyError;
 use Polyspec\Orm\Dbspec\ApplyEvent;
 use Polyspec\Orm\Dbspec\Dbspec;
 use Polyspec\Orm\Orm;
+use Polyspec\Orm\Testing\ApplyLockWait;
 use Polyspec\Orm\Testing\DbspecApplyLockWaitSqliteConnection;
 
 /** @return list<Polyspec\Orm\Dbspec\Plan> */
@@ -94,6 +95,7 @@ function dbspec_apply_runner_lock_wait(string $dialect, string $uri, array $vect
 {
     // The connection class has a file of its own (PSR-1); it is loaded where the lock case uses it.
     require_once __DIR__ . '/DbspecApplyLockWaitSqliteConnection.php';
+    require_once __DIR__ . '/ApplyLockWait.php';
     $representative = null;
     foreach ($vectors['cases'] as $case) {
         if ($case['id'] === 'representative') {
@@ -139,15 +141,8 @@ function dbspec_apply_runner_lock_wait(string $dialect, string $uri, array $vect
                 $connection->exec($rule);
             }
             Dbspec::apply($connection, $dialect, [$source], $now, null);
-            $blocker->beginTransaction();
+            ApplyLockWait::holdArchiveRows($blocker);
             $blockerTransaction = true;
-            $blocker->exec("INSERT INTO archive (note) VALUES ('lock wait')");
-            $statement = $blocker->query('SELECT id FROM archive FOR UPDATE');
-            if ($statement === false) {
-                throw new RuntimeException('could not lock the representative archive row');
-            }
-            $statement->fetchAll(PDO::FETCH_NUM);
-            $statement->closeCursor();
             $plans = [$source, $target];
             $wantCode = 'failed';
         }
@@ -155,13 +150,7 @@ function dbspec_apply_runner_lock_wait(string $dialect, string $uri, array $vect
         $events = [];
         $started = hrtime(true);
         try {
-            Dbspec::apply($connection, $dialect, $plans, $now, static function (
-                ApplyEvent $event,
-            ) use (&$events): void {
-                if ($event->kind === 'statement' || $event->kind === 'applied') {
-                    $events[] = [$event->kind, $event->step];
-                }
-            });
+            Dbspec::apply($connection, $dialect, $plans, $now, ApplyLockWait::recorder($events));
         } catch (ApplyError $error) {
             $elapsed = (hrtime(true) - $started) / 1_000_000_000;
             if ($error->code_ !== $wantCode) {

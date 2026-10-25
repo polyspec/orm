@@ -17,7 +17,7 @@ use sqlx::Connection;
 #[path = "../tests/common/apply_stop.rs"]
 mod apply_stop;
 
-use apply_stop::{EventError, Stop};
+use apply_stop::{EventError, Stop, record_steps};
 
 #[tokio::main]
 async fn main() {
@@ -56,46 +56,8 @@ async fn run(action: &str, dialect: &str, uri: &str, vectors: &str) -> Result<St
 
 async fn lock_wait(dialect: &str, uri: &str, vectors: &str) -> Result<String, String> {
     match dialect {
-        "mysql" => {
-            let plans = representative_chain(vectors)?;
-            let mut c = sqlx::MySqlConnection::connect(uri).await.map_err(|e| e.to_string())?;
-            ApplyConnection::execute(&mut c, "SET time_zone = '+00:00'").await.map_err(|e| e.to_string())?;
-            quiet_apply(&mut c, Dialect::MySql, &plans[..1]).await?;
-            let mut blocker = sqlx::MySqlConnection::connect(uri).await.map_err(|e| e.to_string())?;
-            let setup = async {
-                sqlx::query("BEGIN").execute(&mut blocker).await?;
-                sqlx::query("INSERT INTO archive (note) VALUES ('lock wait')").execute(&mut blocker).await?;
-                sqlx::query("SELECT id FROM archive FOR UPDATE").fetch_all(&mut blocker).await?;
-                Ok::<(), sqlx::Error>(())
-            }
-            .await;
-            if let Err(error) = setup {
-                return Err(format!("lock blocker: {error}"));
-            }
-            let result = check_statement_wait(&mut c, Dialect::MySql, &plans).await;
-            let cleanup = ApplyConnection::execute(&mut blocker, "ROLLBACK").await.map_err(|e| e.to_string());
-            combine_cleanup(result, cleanup)
-        }
-        "postgres" => {
-            let plans = representative_chain(vectors)?;
-            let mut c = sqlx::PgConnection::connect(uri).await.map_err(|e| e.to_string())?;
-            ApplyConnection::execute(&mut c, "SET TimeZone = 'UTC'").await.map_err(|e| e.to_string())?;
-            quiet_apply(&mut c, Dialect::Postgres, &plans[..1]).await?;
-            let mut blocker = sqlx::PgConnection::connect(uri).await.map_err(|e| e.to_string())?;
-            let setup = async {
-                sqlx::query("BEGIN").execute(&mut blocker).await?;
-                sqlx::query("INSERT INTO archive (note) VALUES ('lock wait')").execute(&mut blocker).await?;
-                sqlx::query("SELECT id FROM archive FOR UPDATE").fetch_all(&mut blocker).await?;
-                Ok::<(), sqlx::Error>(())
-            }
-            .await;
-            if let Err(error) = setup {
-                return Err(format!("lock blocker: {error}"));
-            }
-            let result = check_statement_wait(&mut c, Dialect::Postgres, &plans).await;
-            let cleanup = ApplyConnection::execute(&mut blocker, "ROLLBACK").await.map_err(|e| e.to_string());
-            combine_cleanup(result, cleanup)
-        }
+        "mysql" => statement_lock_wait::<sqlx::MySqlConnection>(uri, Dialect::MySql, "SET time_zone = '+00:00'", vectors).await,
+        "postgres" => statement_lock_wait::<sqlx::PgConnection>(uri, Dialect::Postgres, "SET TimeZone = 'UTC'", vectors).await,
         "sqlite" => {
             let plans = chain(vectors)?;
             let mut c = sqlx::SqliteConnection::connect(uri).await.map_err(|e| e.to_string())?;
@@ -108,6 +70,22 @@ async fn lock_wait(dialect: &str, uri: &str, vectors: &str) -> Result<String, St
     }
 }
 
+/// The lock wait of a MySQL or PostgreSQL apply: the base plan of the representative chain is applied, a second
+/// session locks the archive rows, and the apply of the target plan must fail at its first statement on that lock.
+async fn statement_lock_wait<C: ApplyConnection + Connection + Send>(uri: &str, dialect: Dialect, zone: &str, vectors: &str) -> Result<String, String> {
+    let plans = representative_chain(vectors)?;
+    let mut c = C::connect(uri).await.map_err(|e| e.to_string())?;
+    ApplyConnection::execute(&mut c, zone).await.map_err(|e| e.to_string())?;
+    quiet_apply(&mut c, dialect, &plans[..1]).await?;
+    let mut blocker = C::connect(uri).await.map_err(|e| e.to_string())?;
+    for statement in ["BEGIN", "INSERT INTO archive (note) VALUES ('lock wait')", "SELECT id FROM archive FOR UPDATE"] {
+        ApplyConnection::execute(&mut blocker, statement).await.map_err(|error| format!("lock blocker: {error}"))?;
+    }
+    let result = check_statement_wait(&mut c, dialect, &plans).await;
+    let cleanup = ApplyConnection::execute(&mut blocker, "ROLLBACK").await.map_err(|e| e.to_string());
+    combine_cleanup(result, cleanup)
+}
+
 async fn quiet_apply<C: ApplyConnection + Send>(c: &mut C, dialect: Dialect, plans: &[Plan]) -> Result<(), String> {
     let mut quiet = |_: &ApplyEvent| -> Result<(), EventError> { Ok(()) };
     apply(c, dialect, plans, &fixed_now, &mut quiet).await.map_err(|e| e.to_string())
@@ -115,14 +93,8 @@ async fn quiet_apply<C: ApplyConnection + Send>(c: &mut C, dialect: Dialect, pla
 
 async fn check_statement_wait<C: ApplyConnection + Send>(c: &mut C, dialect: Dialect, plans: &[Plan]) -> Result<String, String> {
     let mut events = Vec::new();
-    let mut observe = |event: &ApplyEvent| -> Result<(), EventError> {
-        if matches!(event.kind, ApplyEventKind::Statement | ApplyEventKind::Applied) {
-            events.push((event.kind, event.step));
-        }
-        Ok(())
-    };
     let started = std::time::Instant::now();
-    let result = apply(c, dialect, plans, &fixed_now, &mut observe).await;
+    let result = apply(c, dialect, plans, &fixed_now, &mut record_steps(&mut events)).await;
     let elapsed = started.elapsed();
     let (plan, step, source) = match result {
         Err(ApplyError::Failed { plan, step, source, .. }) => (plan, step, source),
