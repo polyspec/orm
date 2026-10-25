@@ -13,6 +13,35 @@ static bool orm_connect_sql(zend_string *dsn, zval *config, zval *out, bool list
 static bool orm_decoded(zval *input, bool raw, zval *out);
 static bool orm_query_decode(const char *value, size_t length, zval *out);
 
+static bool orm_assert_sqlite_version(zend_string *version)
+{
+    zval args[3], older;
+    ZVAL_STR_COPY(&args[0], version);
+    ZVAL_STRING(&args[1], "3.46");
+    ZVAL_STRING(&args[2], "<");
+    bool compared = scall("version_compare", &older, 3, args);
+    for (int i = 0; i < 3; i++) zval_ptr_dtor(&args[i]);
+    if (!compared) return false;
+
+    bool too_old = zend_is_true(&older);
+    zval_ptr_dtor(&older);
+    if (too_old) {
+        db_throw_orm("CAPABILITY_UNSUPPORTED", "SQLite %s is older than 3.46", ZSTR_VAL(version));
+        return false;
+    }
+    return true;
+}
+
+ZEND_METHOD(Polyspec_Orm_Orm, assertSqliteVersion)
+{
+    zend_string *version;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_STR(version)
+    ZEND_PARSE_PARAMETERS_END();
+    if (!orm_assert_sqlite_version(version)) RETURN_THROWS();
+    RETURN_NULL();
+}
+
 /* The dsn string and the config object of a native connection closure state self; a missing or other value throws
  * the error that what names and returns false. */
 static bool orm_closure_connection(zval *self, const char *what, zval *rv_dsn, zval *rv_config, zval **dsn, zval **config)
@@ -1079,25 +1108,16 @@ static bool orm_connect_sql(zend_string *dsn, zval *config, zval *out, bool list
     }
     if (!orm_set_attribute(&pdo, "PDO::ATTR_ERRMODE", "PDO::ERRMODE_EXCEPTION")) goto pdo_fail;
     if (zend_string_equals_literal(Z_STR_P(driver), "sqlite")) {
-        zval server_version, attr, version;
+        zval server_version, attr;
         if (!orm_constant("PDO::ATTR_SERVER_VERSION", &attr)) goto pdo_fail;
         bool got_version = pdo_call(&pdo, "getAttribute", &server_version, 1, &attr, NULL);
         zval_ptr_dtor(&attr);
         if (!got_version) goto pdo_fail;
         zend_string *version_text = zval_get_string(&server_version);
-        ZVAL_STRING(&version, "3.46");
-        zval version_args[3], older;
-        ZVAL_COPY(&version_args[0], &server_version); ZVAL_COPY_VALUE(&version_args[1], &version); ZVAL_STRING(&version_args[2], "<");
-        bool compared = scall("version_compare", &older, 3, version_args);
-        zval_ptr_dtor(&version_args[0]); zval_ptr_dtor(&version_args[1]); zval_ptr_dtor(&version_args[2]); zval_ptr_dtor(&server_version);
-        if (!compared) { zend_string_release(version_text); zval_ptr_dtor(&pdo); goto fail; }
-        bool too_old = zend_is_true(&older); zval_ptr_dtor(&older);
-        if (too_old) {
-            db_throw_orm("CAPABILITY_UNSUPPORTED", "SQLite %s is older than 3.46", ZSTR_VAL(version_text));
-            zend_string_release(version_text);
-            zval_ptr_dtor(&pdo); goto fail;
-        }
+        zval_ptr_dtor(&server_version);
+        bool valid_version = orm_assert_sqlite_version(version_text);
         zend_string_release(version_text);
+        if (!valid_version) { zval_ptr_dtor(&pdo); goto fail; }
         if (!orm_exec(&pdo, "PRAGMA foreign_keys = ON") || !orm_exec(&pdo, "PRAGMA busy_timeout = 5000")) goto pdo_fail;
         if (pragmas != NULL && Z_TYPE_P(pragmas) == IS_ARRAY) {
             zval *entry;

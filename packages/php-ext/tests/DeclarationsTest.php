@@ -316,16 +316,23 @@ final class DeclarationsTest extends TestCase
                 $clientOrder
             ) . '; extension ' . implode(', ', $nativeOrder);
         }
-        preg_match_all(
-            '/\/\*\*(?:(?!\*\/)[\s\S])*@internal(?:(?!\*\/)[\s\S])*\*\/\s*'
-                . '(?:final |abstract )?(?:readonly )?(?:class|interface) (\w+)/',
-            file_get_contents(dirname(__DIR__) . '/src/polyspec_orm.stub.php'),
-            $internal
-        );
-        $internalClasses = array_merge(
-            array_map(static fn(string $name): string => EXTENSION_NAMESPACE . $name, $internal[1]),
-            array_map(static fn(string $name): string => 'Polyspec\\Orm\\' . $name, $internal[1])
-        );
+        $stub = file_get_contents(dirname(__DIR__) . '/src/polyspec_orm.stub.php');
+        preg_match_all('/^namespace\s+([^;]+);/m', $stub, $namespaces, PREG_OFFSET_CAPTURE);
+        $internalClasses = [];
+        foreach ($namespaces[1] as $index => [$namespace]) {
+            $start = $namespaces[0][$index][1] + strlen($namespaces[0][$index][0]);
+            $end = $namespaces[0][$index + 1][1] ?? strlen($stub);
+            $scope = substr($stub, $start, $end - $start);
+            preg_match_all(
+                '/\/\*\*(?:(?!\*\/)[\s\S])*@internal(?:(?!\*\/)[\s\S])*\*\/\s*'
+                    . '(?:final |abstract )?(?:readonly )?(?:class|interface) (\w+)/',
+                $scope,
+                $internal
+            );
+            foreach ($internal[1] as $name) {
+                $internalClasses[] = $namespace . '\\' . $name;
+            }
+        }
         foreach (array_keys($native) as $key) {
             $class = explode('::', $key)[0];
             if (!isset($classes[$class]) && !in_array($class, $internalClasses, true)) {

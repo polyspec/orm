@@ -1077,6 +1077,7 @@ final class Orm
 {
     public static function connectSchema(string $dsn, Schema $schema, Config $config): Db {}
     public static function connect(string $dsn, Config $config): Db {}
+    private static function assertSqliteVersion(string $version): void {}
     public static function parseMarkdownDsn(string $dsn): array {}
     public static function parseDsn(string $dsn): array {}
     public static function mysqlTlsOptions(?string $sslCa): array {}
@@ -1454,7 +1455,7 @@ final class ParamCheck
     public static function check(int $i, mixed $v, array $slot, \DateTimeZone $zone): void {}
 }
 
-/** One Flowmark server session owned by a markdown connection. */
+/** @internal One Flowmark server session owned by a markdown connection. */
 final class MarkdownSession
 {
     /** @var resource|null */
@@ -1473,7 +1474,7 @@ final class MarkdownSession
     public function call(array $message): array {}
 }
 
-/** The join and relation rows of one markdown answer row. */
+/** @internal The join and relation rows of one markdown answer row. */
 final class MarkdownLinks
 {
     /** @var array<string, list<mixed>|null> */
@@ -1483,7 +1484,7 @@ final class MarkdownLinks
     public array $rels = [];
 }
 
-/** The markdown IR executor client. It plans nothing and sends no SQL. */
+/** @internal The markdown IR executor client. It plans nothing and sends no SQL. */
 final class Markdown
 {
     public static function beginMessage(bool $readOnly): array {}

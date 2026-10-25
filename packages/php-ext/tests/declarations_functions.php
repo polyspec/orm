@@ -16,6 +16,7 @@ const CLIENT_CLASSES = [
     'Polyspec\\Orm\\Decimal',
     'Polyspec\\Orm\\Transform',
     'Polyspec\\Orm\\Subscription',
+    'Polyspec\\Orm\\Cancellation',
     'Polyspec\\Orm\\Notification',
     'Polyspec\\Orm\\Bytes',
     'Polyspec\\Orm\\GoMap',
@@ -61,6 +62,9 @@ const CLIENT_CLASSES = [
 ];
 
 const INTERNAL_CLASSES = [
+    'Polyspec\\Orm\\Internal\\PgsqlPdoAdapter',
+    'Polyspec\\Orm\\Internal\\PgsqlStatementAdapter',
+    'Polyspec\\Orm\\Internal\\PgsqlStatementIterator',
     'Polyspec\\Orm\\CollectionIterator',
     'Polyspec\\Orm\\CollectionDeleteCallback',
     'Polyspec\\Orm\\ModelMetadata',
@@ -76,9 +80,9 @@ const INTERNAL_CLASSES = [
 ];
 
 /**
- * The declarations of $classes, keyed by class, constant, property and method; with $public only the public members, as
- * the client is compared with the extension by them. A return type `self` is read as the class's name, which the stub
- * writes.
+ * The declarations of $classes, keyed by class, constant, property and method; with $public only public classes and
+ * members, as the client is compared with the extension by them. A return type `self` is read as the class's name,
+ * which the stub writes.
  */
 function declarations(array $classes, bool $public): array
 {
@@ -97,6 +101,9 @@ function declarations(array $classes, bool $public): array
             );
         }
         $class = new ReflectionClass($name);
+        if ($public && str_contains((string) $class->getDocComment(), '@internal')) {
+            continue;
+        }
         $interfaces = $class->getInterfaceNames();
         sort($interfaces);
         $parent = $class->getParentClass();

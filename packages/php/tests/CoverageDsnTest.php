@@ -13,6 +13,8 @@ use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Orm;
+use Polyspec\Orm\OrmException;
+use ReflectionMethod;
 
 #[Medium]
 class CoverageDsnTest extends TestCase
@@ -43,6 +45,37 @@ class CoverageDsnTest extends TestCase
                 );
             } finally {
                 $db->close();
+            }
+        }
+    }
+
+    // Requirements: DSL-150.
+    public function testSqliteMinimumVersionValidation(): void
+    {
+        $method = new ReflectionMethod(Orm::class, 'assertSqliteVersion');
+        try {
+            $method->invoke(null, '3.9.0');
+            self::fail('SQLite 3.9.0 must be refused');
+        } catch (OrmException $error) {
+            self::assertSame(Code::CAPABILITY_UNSUPPORTED, $error->code_);
+            self::assertSame('CAPABILITY_UNSUPPORTED: SQLite 3.9.0 is older than 3.46', $error->getMessage());
+        }
+
+        $method->invoke(null, '3.46.0');
+        $method->invoke(null, '3.100.0');
+
+        $path = tempnam(sys_get_temp_dir(), 'orm-sqlite-version-');
+        self::assertNotFalse($path);
+        $db = null;
+        try {
+            $db = Orm::connect('sqlite://' . $path, new Config());
+            self::assertSame('sqlite', $db->driver());
+        } finally {
+            $db?->close();
+            foreach ([$path, $path . '-journal', $path . '-wal', $path . '-shm'] as $file) {
+                if (is_file($file)) {
+                    unlink($file);
+                }
             }
         }
     }

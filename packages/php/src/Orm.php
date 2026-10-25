@@ -91,9 +91,7 @@ final class Orm
                 // The version of the SQLite library that pdo_sqlite linked. It does not send a statement that
                 // asks for it.
                 $version = (string) $pdo->getAttribute(\PDO::ATTR_SERVER_VERSION);
-                if (version_compare($version, '3.46', '<')) {
-                    throw new OrmException(Code::CAPABILITY_UNSUPPORTED, "SQLite $version is older than 3.46");
-                }
+                self::assertSqliteVersion($version);
                 $pdo->exec('PRAGMA foreign_keys = ON');
                 $pdo->exec('PRAGMA busy_timeout = ' . self::SQLITE_BUSY_TIMEOUT_MS);
                 foreach ($pragmas as [$name, $value]) {
@@ -170,6 +168,13 @@ final class Orm
         }
         if ($config->statementTimeoutMs < 0) {
             throw new OrmException(Code::CONFIG, 'statement timeout must not be negative');
+        }
+    }
+
+    private static function assertSqliteVersion(string $version): void
+    {
+        if (version_compare($version, '3.46', '<')) {
+            throw new OrmException(Code::CAPABILITY_UNSUPPORTED, "SQLite $version is older than 3.46");
         }
     }
 

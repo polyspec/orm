@@ -23,10 +23,12 @@ final class CoverageDsnConnectionExtensionTest extends CoverageDsnTest
         return __FILE__;
     }
 
+    // Requirements: DSL-150.
     public function testNativeMethodsAreInternal(): void
     {
         Assert::assertTrue((new ReflectionMethod(Orm::class, 'parseDsn'))->isInternal());
         Assert::assertTrue((new ReflectionMethod(Orm::class, 'connect'))->isInternal());
+        Assert::assertTrue((new ReflectionMethod(Orm::class, 'assertSqliteVersion'))->isInternal());
     }
 
     public function testNativeSqliteConnectionQueriesAndCloses(): void
