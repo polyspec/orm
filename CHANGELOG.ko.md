@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: ef9f43bd7e305a8cdaf6d32df60bbfc8ad91afa988b0b80e740a8c802a744b61 -->
+<!-- source-sha256: 3759654df9d47325c16c8fb2b3ba69432b036cc616c524a323815c1613a4a736 -->
 # 변경 이력
 
 ## Unreleased
+
+- KSTD-2-11-16-1: PHP library와 native extension이 SQLite, PostgreSQL, MySQL에서 활성 statement를 중단하고 rollback한 뒤 root handle 재사용을 유지한다. Library owner는 7 tests / 61 assertions, extension owner는 4 / 44를 통과했다. Raw log와 hash는 checklist에 기록했다.
 
 - KSTD-2-11-13: 완료된 하위 항목의 scoped evidence로 connection, pool, TLS, DSN, timeout unit의 여섯 client binding을 정리했다. 이는 전역 parity declaration 검사가 통과했다는 뜻이 아니다.
 

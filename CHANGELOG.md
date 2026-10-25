@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- KSTD-2-11-16-1: PHP library and native extension cancellation now interrupts active statements, rolls back, and preserves root-handle reuse on SQLite, PostgreSQL and MySQL. The library owner passed 7 tests / 61 assertions and the extension owner passed 4 / 44. Raw logs and hashes are recorded in the checklist.
+
 - KSTD-2-11-13: The connection, pool, TLS, DSN and timeout unit bindings are reconciled across six clients in the completed child items; this records their scoped evidence and does not claim that the global parity declaration check passed.
 
 - KSTD-5-89-6: `make link-state-check` passed on main and in a fresh worktree created by Kit K619 link-state-only setup; the temporary worktree was removed. Evidence is recorded in `var/parallel/consolidation/KSTD-5-89-6-link-state/evidence-manifest.txt`.
