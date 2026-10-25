@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: f9cc4646e348d50bf98c5c7598438ab64c749b488f1aaf2e394ca582dc116ffc -->
+<!-- source-sha256: 5201b1e104df70716d59f9fb6ffb2aa9db3a7460b27293bf38edbdd98743d098 -->
 # 변경 이력
 
 ## Unreleased
 
+- PHP extension audit test는 PHP library에서 물려받은 audit history, audit transaction entry point, soft delete restore, selected column case의 requirement를 적으며, extension을 load한 채 SQLite에서 이 case를 통과한다(KSTD-2-11-12-1).
 - handle 포기의 Go context와 Rust drop case는 여섯 client handle-disposal unit에만 bind된다; 이를 client 하나로 반복하던 unit 세 개는 사라졌다(KSTD-2-11-16-2).
 - client 하나씩 bind하던 connection unit 열한 개가 사라졌다: constraint 분류, DSN parameter, MySQL session, pool option case는 같은 규칙을 검사하는 여섯 client unit의 binding이 되고, 공통 목록 밖의 parameter인 CFG-20은 자기 여섯 client unit을 가진다(KSTD-2-11-13-2).
 - `make runner-check`의 parts case가 Makefile이 선언한 client-unit-check의 part 열여섯을 code-catalog, insert-parts, dbspec-runners까지 포함해 기대한다 (KSTD-5-88-4).
