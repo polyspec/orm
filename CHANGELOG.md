@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- T182-6-19 is complete at main 8c28c87b3: `make model-native-php-extension-check` passed on PHP 8.4.26 with 97 native tests / 1,348 assertions, 3 declaration tests / 8 assertions, and 5 PHP library tests / 48 assertions; the `--without-library packages/php` guard passed. The fake Flowmark protocol path is covered; no real Flowmark server or MySQL/PostgreSQL/SQLite feature matrix was run.
+
 - The PHP extension implements Bytes, Transform, Decimal, Go, GoMap, Subscription and Notification as native classes; `testPublicValueClassesAreNative` passes on PHP 8.4.26 (T182-6-19-5).
 - PHP `orm-gen` is a separate Composer package requiring the runtime library, and extension model tests now consume CLI-generated models rather than calling Generator in-process; the focused package and native owner checks pass (T182-6-19-4).
 - The PHP extension implements Dbspec\Meet as a native class; the focused native owner test `testDbspecMeetIsNative` passes (T182-6-19-3).

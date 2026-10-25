@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: ec60454c0afe550c9e4eb32f99958ff39e62a54e6cceed9f47433bb5c1702064 -->
+<!-- source-sha256: bc796a4ed743736aeffd2849c62f6bf13b620233e8b610c96026a98df878d34d -->
 # 변경 이력
 
 ## Unreleased
+
+- T182-6-19을 main 8c28c87b3에서 완료했다. PHP 8.4.26 `make model-native-php-extension-check`가 native 97 tests / 1,348 assertions, declaration 3 tests / 8 assertions, PHP library 5 tests / 48 assertions로 통과했고 `--without-library packages/php` guard도 통과했다. fake Flowmark protocol 경로를 검증했으며 실제 Flowmark server나 MySQL/PostgreSQL/SQLite 3 DB feature matrix는 실행하지 않았다.
 
 - PHP extension이 Bytes, Transform, Decimal, Go, GoMap, Subscription, Notification을 native class로 구현한다. PHP 8.4.26에서 `testPublicValueClassesAreNative`가 통과한다 (T182-6-19-5).
 - PHP `orm-gen`을 runtime library에 의존하는 별도 Composer package로 분리했고, extension model test는 Generator를 직접 호출하는 대신 CLI가 만든 model을 사용한다. 집중 package 및 native owner 검사가 통과한다 (T182-6-19-4).
