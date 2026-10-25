@@ -97,6 +97,52 @@ func TestSchemaSetPostgres(t *testing.T) {
 	schemaSet(t, "postgres")
 }
 
+// TestDecimalDocument mirrors the fixture's independent decimal-schema case: install its generated set, write both
+// values at the declared decimal(13,4) boundaries, and read their exact text on every database.
+// Requirements: SCH-7, DBS-108.
+func TestDecimalDocument(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	for _, driver := range []string{"sqlite", "mysql", "postgres"} {
+		t.Run(driver, func(t *testing.T) {
+			dsn := schemaSetDatabase(t, driver)
+			db, err := decimalmodel.Connect(dsn, orm.Config{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer testcase.Close(t, db)
+			if err := db.Utils().Schema().Install(decimalmodel.Schema); err != nil {
+				t.Fatal(err)
+			}
+			for _, row := range []struct {
+				seq    int64
+				amount string
+			}{{1, "48.0450"}, {2, "123456789.1234"}} {
+				model, err := decimalmodel.DecimalCase().Connect(db).SetSeq(row.seq).SetAmount(row.amount)
+				if err != nil {
+					t.Fatalf("set amount %s: %v", row.amount, err)
+				}
+				created, err := model.Create()
+				if err != nil {
+					t.Fatalf("create amount %s: %v", row.amount, err)
+				}
+				if got := testassert.ReadColumn(t, created.GetAmount); got != row.amount {
+					t.Fatalf("created amount = %q, want %q", got, row.amount)
+				}
+				loaded, err := decimalmodel.DecimalCase().Connect(db).Seq(row.seq).Get()
+				if err != nil {
+					t.Fatalf("read amount %s: %v", row.amount, err)
+				}
+				if got := testassert.ReadColumn(t, loaded.GetAmount); got != row.amount {
+					t.Fatalf("stored amount = %q, want %q", got, row.amount)
+				}
+			}
+			if count, err := decimalmodel.DecimalCase().Connect(db).GetCount(); err != nil || count != 2 {
+				t.Fatalf("decimal rows = %d, %v; want 2", count, err)
+			}
+		})
+	}
+}
+
 // counted counts into n the statements that the db executed.
 func counted(t *testing.T, db *orm.DB, n *int) {
 	t.Helper()

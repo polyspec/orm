@@ -3,6 +3,8 @@ package generator
 import (
 	"os"
 	"path/filepath"
+	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
@@ -70,6 +72,29 @@ func sampleModel(t *testing.T) *runtimemodel.Model {
 	return m
 }
 
+// repositoryRoot discovers the checkout containing this test from its working directory, as go test runs tests in
+// their package directory. It accepts a parent only when both the tracked workspace marker and the declared fixture
+// are present; it never uses the compiled test binary's source path.
+func repositoryRoot(t *testing.T) string {
+	t.Helper()
+	directory, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("read the generator test working directory: %v", err)
+	}
+	for {
+		_, workspaceErr := os.Stat(filepath.Join(directory, "go.work"))
+		_, fixtureErr := os.Stat(filepath.Join(directory, "contracts", "fixtures", "bench", "dbspec-set.json"))
+		if workspaceErr == nil && fixtureErr == nil {
+			return directory
+		}
+		parent := filepath.Dir(directory)
+		if parent == directory {
+			t.Fatal("cannot find repository root containing go.work and contracts/fixtures/bench/dbspec-set.json")
+		}
+		directory = parent
+	}
+}
+
 // TestGenerateExternalTables checks that a set using external documents (external) generates the
 // models of the tables it owns and the read-only models of the tables it uses from external documents,
 // and none of an unused external table, and that the text of the used tables is carried in the schema value.
@@ -112,5 +137,51 @@ func TestGenerateExternalTables(t *testing.T) {
 	}
 	if strings.Contains(string(body), "ext_session") {
 		t.Fatal("orm.go carries ext_session, which the set does not use")
+	}
+}
+
+// TestGenerateBenchDocumentSet checks that the declared bench set loads both owned documents and its external document,
+// and generates a model for every table in that set.
+// Requirements: SCH-1.
+func TestGenerateBenchDocumentSet(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	setPath := filepath.Join(repositoryRoot(t), "contracts", "fixtures", "bench", "dbspec-set.json")
+	manifest, err := runtimemodel.LoadSetFile(setPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sharedNote := manifest.Entities["shared_note"]
+	if sharedNote == nil || !sharedNote.External {
+		t.Fatal("bench_shared.dbs shared_note is not loaded as an external entity")
+	}
+	want := []string{"account", "account_project", "audit_record", "audited_note", "audited_note_history", "author", "bind_cell", "clock_cell", "composite_account", "composite_membership", "day_cell", "hex_cell", "note_reader", "project", "service", "service_member", "service_region", "shared_note", "soft_link", "soft_record", "task", "time_cell", "upsert_cell", "user", "uuid_cell"}
+	got := make([]string, 0, len(manifest.Entities))
+	for name := range manifest.Entities {
+		got = append(got, name)
+	}
+	sort.Strings(got)
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("bench set entities = %v, want %v", got, want)
+	}
+	out := filepath.Join(t.TempDir(), "model")
+	if err := Generate(Options{Model: manifest, OutputDir: out}); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := os.ReadDir(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantFiles := make([]string, 0, len(want)+1)
+	for _, entity := range want {
+		wantFiles = append(wantFiles, entity+".go")
+	}
+	wantFiles = append(wantFiles, "orm.go")
+	sort.Strings(wantFiles)
+	gotFiles := make([]string, len(entries))
+	for i, entry := range entries {
+		gotFiles[i] = entry.Name()
+	}
+	if !reflect.DeepEqual(gotFiles, wantFiles) {
+		t.Fatalf("generated bench set files = %v, want %v", gotFiles, wantFiles)
 	}
 }
