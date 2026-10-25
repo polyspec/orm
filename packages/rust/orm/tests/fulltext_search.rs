@@ -5,6 +5,7 @@ use polyspec_orm::value::{fulltext_boolean, transform};
 use polyspec_orm::Dialect;
 
 #[test]
+// Requirements: DSL-32, DSL-33, DIA-6, DIA-187, PRT-75.
 fn fulltext_search() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let cases = [

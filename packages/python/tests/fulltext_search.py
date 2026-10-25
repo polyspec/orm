@@ -10,6 +10,7 @@ from polyspec.orm.errors import OrmError
 
 
 class FulltextSearchTest(unittest.TestCase):
+    # Requirements: DSL-32, DSL-33, DIA-6, DIA-187, PRT-75.
     def test_fulltext_search(self):
         cases = {
             "alpha beta": "+alpha +beta*",
