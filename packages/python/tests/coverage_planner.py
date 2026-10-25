@@ -70,6 +70,17 @@ def compile_case(case: dict) -> None:
     expect_equal(case["operation"], "compile", f"operation of case {case['id']}")
     model = model_of(case)
     request = dict(case["input"], manifest_hash=model.manifest_hash)
+    # Requirements: DSL-24.
+    if case["id"] in (
+        "planner_rejects_unknown_column",
+        "planner_rejects_column_function_unknown_column",
+    ):
+        try:
+            validate(model, request)
+        except OrmError as error:
+            expect_equal(error.code, "COLUMN_UNKNOWN", "public validate error")
+        else:
+            raise AssertionError("public validate accepted an unknown column")
     for dialect in DIALECTS:
         planner = Planner(model, dialect_of(dialect)())
         if "error" in case["expected"]:

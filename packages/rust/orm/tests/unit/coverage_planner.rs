@@ -195,6 +195,13 @@ mod planner {
         run("planner_rejects_unknown_column");
     }
 
+    // Requirements: DSL-24.
+    #[test]
+    fn planner_rejects_column_function_unknown_column() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        run("planner_rejects_column_function_unknown_column");
+    }
+
     #[test]
     fn planner_restore() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);

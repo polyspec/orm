@@ -49,6 +49,13 @@ final class CoveragePlannerExtensionTest extends TestCase
         $this->runPlannerCoverageCase('planner_rejects_unknown_column');
     }
 
+    // Requirements: DSL-24.
+    // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- feature IDs require the test method to preserve underscores.
+    public function test_planner_rejects_column_function_unknown_column(): void
+    {
+        $this->runPlannerCoverageCase('planner_rejects_column_function_unknown_column');
+    }
+
     // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- feature IDs require the test method to preserve underscores.
     public function test_planner_restore(): void
     {

@@ -254,6 +254,14 @@ final class CoveragePlannerTest extends TestCase
         plannerCase($root, $fixture, 'planner_rejects_unknown_column');
     }
 
+    // Requirements: DSL-24.
+    public function testPlannerRejectsColumnFunctionUnknownColumn(): void
+    {
+        $root = dirname(__DIR__, 3);
+        $fixture = coverageJson("$root/contracts/fixtures/planner.json");
+        plannerCase($root, $fixture, 'planner_rejects_column_function_unknown_column');
+    }
+
     public function testPlannerRestore(): void
     {
         $root = dirname(__DIR__, 3);

@@ -32,12 +32,6 @@ class ColumnFunctionMetadataTest(unittest.TestCase):
         self.assertEqual(param_uses(self.model, request)[0][0].type, "date")
         for dialect in ("mysql", "postgres", "sqlite"):
             Planner(self.model, dialect_of(dialect)()).compile(request)
-        public_invalid = json.loads(json.dumps(request))
-        public_invalid["where"]["items"][0]["pred"]["column"] = "missing_column"
-        with self.assertRaises(OrmError) as public_error:
-            validate(self.model, public_invalid)
-        self.assertEqual(public_error.exception.code, "COLUMN_UNKNOWN")
-
         request["where"]["items"][0]["pred"]["column"] = "missing_column"
         with self.assertRaises(OrmError) as use_error:
             param_uses(self.model, request)

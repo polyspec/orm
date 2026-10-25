@@ -147,6 +147,12 @@ func TestCoveragePlannerRejectsUnknownColumn(t *testing.T) {
 	compilePlannerCase(t, "planner_rejects_unknown_column")
 }
 
+// Requirements: DSL-24.
+func TestCoveragePlannerRejectsColumnFunctionUnknownColumn(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	compilePlannerCase(t, "planner_rejects_column_function_unknown_column")
+}
+
 // TestCoveragePlannerRestore compiles a restore that brings back a soft-deleted row by primary key.
 func TestCoveragePlannerRestore(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
@@ -679,6 +685,7 @@ func TestCoveragePlanner(t *testing.T) {
 		"planner_count":                                            TestCoveragePlannerCount,
 		"planner_contains_ascii_fold":                              TestCoveragePlannerContainsAsciiFold,
 		"planner_contains_binary_collation":                        TestCoveragePlannerContainsBinaryCollation,
+		"planner_rejects_column_function_unknown_column":           TestCoveragePlannerRejectsColumnFunctionUnknownColumn,
 		"planner_rejects_unknown_column":                           TestCoveragePlannerRejectsUnknownColumn,
 		"planner_restore":                                          TestCoveragePlannerRestore,
 		"planner_restore_rejects_non_key":                          TestCoveragePlannerRestoreRejectsNonKey,

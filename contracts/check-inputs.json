@@ -1284,7 +1284,9 @@
         "packages/python/src/polyspec/orm/engine/params.py",
         "packages/python/src/polyspec/orm/engine/planner.py",
         "packages/python/src/polyspec/orm/markdown.py",
-        "packages/python/tests/test_column_function_metadata.py"
+        "packages/python/tests/test_column_function_internal.py",
+        "packages/python/tests/coverage_planner.py",
+        "contracts/fixtures/planner.json"
       ]
     },
     "rust-time-precision-check": {

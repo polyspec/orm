@@ -423,6 +423,34 @@
     },
     {
       "expected": {
+        "error": "COLUMN_UNKNOWN"
+      },
+      "id": "planner_rejects_column_function_unknown_column",
+      "input": {
+        "entity": "author",
+        "ir_version": 1,
+        "kind": "count",
+        "n_params": 1,
+        "where": {
+          "items": [
+            {
+              "pred": {
+                "column": "missing_column",
+                "fn": {
+                  "name": "date"
+                },
+                "op": "eq",
+                "p": 0
+              }
+            }
+          ]
+        }
+      },
+      "operation": "compile",
+      "schema": "contracts/fixtures/bench/bench.dbs"
+    },
+    {
+      "expected": {
         "mysql": [
           {
             "role": "main",

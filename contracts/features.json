@@ -5733,7 +5733,7 @@
         "packages/ts/tests/column_function_metadata.mjs",
         "packages/ts/tests/scalar_subquery_type.mjs",
         "packages/python/tests/test_blind_index_source.py",
-        "packages/python/tests/test_column_function_metadata.py",
+        "packages/python/tests/test_column_function_internal.py",
         "packages/python/tests/test_scalar_subquery_type.py",
         "packages/go/engine/planner/scalar_subquery_type_test.go",
         "packages/rust/orm/tests/unit/markdown_scalar_subquery.rs",

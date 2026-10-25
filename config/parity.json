@@ -819,6 +819,10 @@
         {
           "glob": "packages/python/tests/test_python_natives.py",
           "reason": "harness: compares Python interface declarations with snapshots and shared native tables; it is a declaration extractor check, not runtime client behavior"
+        },
+        {
+          "glob": "packages/python/tests/test_column_function_internal.py",
+          "reason": "test: mutates a validated request to manufacture impossible missing-column states, then checks private parameter-use, planner and Markdown invariant failures; the public COLUMN_UNKNOWN case is covered by the shared planner_rejects_unknown_column vector"
         }
       ],
       "roots": [

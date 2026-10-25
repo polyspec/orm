@@ -76,6 +76,8 @@ await runCases('coverage_planner.mjs', {
   async planner_contains_binary_collation() { compileCase('planner_contains_binary_collation'); },
   async planner_contains_ascii_fold() { compileCase('planner_contains_ascii_fold'); },
   async planner_rejects_unknown_column() { compileCase('planner_rejects_unknown_column'); },
+  // Requirements: DSL-24.
+  async planner_rejects_column_function_unknown_column() { compileCase('planner_rejects_column_function_unknown_column'); },
   async planner_restore() { compileCase('planner_restore'); },
   // Requirements: PRT-37.
   async planner_tables() { compileCase('planner_tables'); },
