@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 34641fc108b39d60da4188c15649d1828590019cc30b0f84c20ff82b539c1c68 -->
+<!-- source-sha256: 0d23a696f64225112502bf8f634604bcce794cdfae17f2558a16e9bc04ff0a66 -->
 # 변경 이력
 
 ## Unreleased
 
+- `make orm-test-servers-check`의 lease case가 scripts/test-servers.mts를 그것이 import하는 tests/errors.mts와 함께 실행하므로, 없는 module로 실패하는 대신 다시 거부된 stop을 확인한다 (KSTD-5-88-7).
 - test server가 작은 log를 유지한다: 두 mysqld는 redo log capacity 16 MiB, undo truncation 크기 16 MiB, binary log file 16 MiB를, 두 PostgreSQL server는 min_wal_size=32MB, max_wal_size=64MB, wal_keep_size=0을 받는다. 새 .runtime/servers는 545 MB 대신 377 MB를, 한 실행의 database를 만들고 지운 뒤에는 1217 MB 대신 473 MB를 차지하며, slot orm_replica와 remote_apply를 통한 replication은 그대로다 (KSTD-5-88-5).
 - `make lint-php`가 통과한다: PHP code가 pinned PHPCS layout, class, method name 규칙을 따르고 library와 extension의 PHPStan 검사도 통과한다 (KSTD-5-89-3).
 - PHPUnit test method 이름이 camelCase를 따르며, PHP parity와 feature binding은 각 이름 변경을 반영하고 공유 case ID는 유지한다 (KSTD-5-89-3-3).

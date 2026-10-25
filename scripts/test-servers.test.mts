@@ -232,8 +232,11 @@ caseTest('stopping the test servers is refused while another run holds a lease, 
   let holder;
   const stop = () => spawnSync(process.execPath, [join(root, 'scripts/test-servers.mts'), 'stop'], { encoding: 'utf8', env: isolatedEnvironment({ LEASE: lease, STOP_PROCESS: stopProcess }) });
   try {
+    // The script runs from the temporary root with the modules it imports (../tests/errors.mts, 0dfe45bc6).
     mkdirSync(join(root, 'scripts'));
+    mkdirSync(join(root, 'tests'));
     copyFileSync(new URL('./test-servers.mts', import.meta.url), join(root, 'scripts/test-servers.mts'));
+    copyFileSync(new URL('../tests/errors.mts', import.meta.url), join(root, 'tests/errors.mts'));
     mkdirSync(join(root, '.runtime/servers'), { recursive: true });
     execFileSync('mkfifo', [release, ready]);
     holder = spawn('sh', ['-c', `${lease} hold ${leases} shared --pid $$ && echo held > ${ready} && read line < ${release}`], { stdio: 'ignore' });
