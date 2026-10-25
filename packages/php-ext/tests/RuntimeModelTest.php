@@ -48,6 +48,34 @@ DBSPEC;
         );
     }
 
+    // Requirements: PRT-9.
+    public function testNativeDefaultSelectSetExcludesOnlySelectExplicit(): void
+    {
+        self::assertTrue((new \ReflectionClass(RuntimeModel::class))->isInternal());
+        $root = dirname(__DIR__, 3);
+        $model = RuntimeModel::build(RuntimeModel::set("$root/contracts/fixtures/bench/dbspec-set.json"));
+        $columns = $model->entity('author')['columns'];
+        $selected = [];
+        foreach ($columns as $name => $column) {
+            if ($column['select']) {
+                $selected[] = $name;
+            }
+        }
+        $explicit = [
+            'description',
+            'email_blind_index',
+            'phone_blind_index',
+            'ip',
+            'gz_extend',
+            'json_setting',
+            'jsons_tags',
+            'base64_extra',
+            'serialize_data',
+            'aes_key_version',
+        ];
+        self::assertSame(array_values(array_diff(array_keys($columns), $explicit)), $selected);
+    }
+
     public function testOwnedAndExternalManifestEntities(): void
     {
         $external = <<<'DBSPEC'
