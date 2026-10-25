@@ -109,3 +109,19 @@ async fn coverage_model_query_rows() {
     })
     .await;
 }
+
+#[tokio::test]
+// Requirements: DSL-76.
+async fn coverage_model_query_remove_columns() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    run("remove_columns_keys_and_added_column", async {
+        let db = connect().await;
+        let row = Author::new().connect(&db).remove_all_columns().add_column_name().get_by_seq(42).await.unwrap().expect("author 42");
+        let values = row.to_array().unwrap();
+        let mut keys = values.as_object().unwrap().keys().map(String::as_str).collect::<Vec<_>>();
+        keys.sort_unstable();
+        assert_eq!(keys, ["name", "seq", "service_member_seq", "service_region_seq", "service_seq", "user_seq"]);
+        db.close().await;
+    })
+    .await;
+}

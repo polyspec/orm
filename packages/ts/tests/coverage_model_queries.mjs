@@ -49,4 +49,15 @@ await runCases('coverage_model_queries.mjs', {
       assert.equal(author.getUserModel()?.getName(), 'user-1', 'user loaded through the relation');
     } finally { await db.close(); }
   },
+  // Requirements: DSL-76.
+  async remove_columns_keys_and_added_column({ driver, dsn }) {
+    const db = await connect(dsn, { aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index' });
+    try {
+      assert.equal(db.driver, driver);
+      const row = await new Author().connect(db).removeAllColumns().addColumnName().getBySeq(42);
+      assert.deepEqual(Object.keys(row.toArray()).sort(),
+        ['name', 'seq', 'service_member_seq', 'service_region_seq', 'service_seq', 'user_seq'],
+        'removeAllColumns keeps keys and the added column');
+    } finally { await db.close(); }
+  },
 }, 300_000);

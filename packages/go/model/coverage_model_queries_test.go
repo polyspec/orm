@@ -105,3 +105,20 @@ func TestCoverageModelQueryRows(t *testing.T) {
 		}
 	}
 }
+
+// Requirements: DSL-76.
+func TestCoverageModelRemoveColumns(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	db, _, _ := connectFeature(t)
+	row := must(model.Author().Connect(db).RemoveAllColumns().AddColumnName().GetBySeq(42))
+	values := row.ToArray()
+	keys := make([]string, 0, len(values))
+	for key := range values {
+		keys = append(keys, key)
+	}
+	slices.Sort(keys)
+	want := []string{"name", "seq", "service_member_seq", "service_region_seq", "service_seq", "user_seq"}
+	if !slices.Equal(keys, want) {
+		t.Fatalf("removeAllColumns plus name keys = %q, want %q", keys, want)
+	}
+}

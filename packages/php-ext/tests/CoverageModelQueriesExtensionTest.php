@@ -27,4 +27,13 @@ final class CoverageModelQueriesExtensionTest extends TestCase
             CoverageModelQueriesCase::run($db);
         });
     }
+
+    // Requirements: DSL-76.
+    public function testRemoveColumnsKeysAndAddedColumn(): void
+    {
+        require_once dirname(__DIR__, 2) . '/php/tests/CoverageModelQueriesCase.php';
+        coverageRunDatabaseItems(__FILE__, static function (\Polyspec\Orm\Db $db): void {
+            CoverageModelQueriesCase::removeColumns($db);
+        });
+    }
 }

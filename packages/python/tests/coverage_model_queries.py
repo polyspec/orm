@@ -87,10 +87,35 @@ def model_query_rows(item):
         db.close()
 
 
+def model_query_remove_columns(item):
+    driver, dsn = item
+    db = models.connect(dsn, aesKey="bench-salt", blindIndexKey="bench-blind-index")
+    try:
+        expect_equal(db.driver, driver, "the driver")
+        row = (
+            models.Author()
+            .connect(db)
+            .remove_all_columns()
+            .add_column_name()
+            .get_by_seq(42)
+        )
+        expect_equal(
+            sorted(row.to_array()),
+            ["name", "seq", "service_member_seq", "service_region_seq", "service_seq", "user_seq"],
+            "removeAllColumns keeps keys and the added column",
+        )
+    finally:
+        db.close()
+
+
 class CoverageTest(CoverageCase):
     # Requirements: DSL-57, DSL-58, DSL-60, DSL-62, DSL-73, DSL-80, DSL-82, DSL-99, INT-16, INT-29, INT-30, INT-32, INT-33, PLN-11, PLN-25.
     def test_model_query_rows(self):
         self.each_item("model_query_rows", model_query_rows)
+
+    # Requirements: DSL-76.
+    def test_remove_columns_keys_and_added_column(self):
+        self.each_item("remove_columns_keys_and_added_column", model_query_remove_columns)
 
 
 if __name__ == "__main__":

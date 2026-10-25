@@ -13,6 +13,18 @@ use PHPUnit\Framework\Assert;
 
 final class CoverageModelQueriesCase
 {
+    public static function removeColumns(Db $db): void
+    {
+        $row = (new Author())($db)->removeAllColumns()->addColumnName()->getBySeq(42)->toArray();
+        $keys = array_keys($row);
+        sort($keys);
+        Assert::assertSame(
+            ['name', 'seq', 'service_member_seq', 'service_region_seq', 'service_seq', 'user_seq'],
+            $keys,
+            'removeAllColumns keeps keys and the added column'
+        );
+    }
+
     public static function run(Db $db): void
     {
         Assert::assertNull((new Author())($db)->seq(-1)->get(), 'get for a missing author');
