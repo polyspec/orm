@@ -2,6 +2,12 @@
 resolver = "2"
 members = ["case-clock", "case-database", "orm", "build", "schema", "testcase", "tests"]
 
+# The dependencies build without debug information: each feature set of a test build writes its own copy of every dependency into
+# target/debug/deps, and their line tables only scale those copies. The crates of this workspace keep the debug level of the dev
+# profile (line-tables-only on main, 0 in a worktree), so their panics and assertions still name file:line (KSTD-5-93).
+[profile.dev.package."*"]
+debug = 0
+
 [workspace.lints.rust]
 unsafe_code = "deny"
 

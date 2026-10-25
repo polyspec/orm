@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 9e01a76eadaef14fe6ba60c224265e2f75fa29c7424eda10ed7676300a78e1eb -->
+<!-- source-sha256: f0fa4204518cf74347d6881859965cceb5d1a3d0cad399130d11ca5ffa0fe072 -->
 # 변경 이력
 
 ## Unreleased
 
+- Rust test build의 dependency가 debug 정보를 갖지 않고(`[profile.dev.package."*"] debug = 0`) orm 자체 crate는 dev profile의 line table을 유지한다. main 설정에서 같은 test build가 target/debug/deps에 27퍼센트 적게, 1.3 GB에서 978 MB로 쓴다 (KSTD-5-93).
 - TypeScript dbspec apply 테스트의 PgBouncer pooler case가 다시 실행된다: packages/ts/tests/dbspec-apply-physical.mjs가 pooler case가 쓰는 pg를 import한다. 522cd8c6f가 database 준비를 dbspec-physical-database.mjs로 옮기며 이 import를 지웠었다 (KSTD-5-89-43).
 - main에서 `make duplication-check`가 다시 통과한다. CoverageDsnTest와 CoverageDsnConnectionExtensionTest가 열고 닫고 지우는 SQLite file connection은 CoverageDsnTest의 helper onSqliteFile 하나다(KSTD-5-89-41).
 - PostgreSQL에서 PHP client와 PHP extension이 실패한 statement를 다시 catalog code로 보고한다. 예를 들어 unique 위반은 DUPLICATE_KEY다. PostgreSQL PDO adapter의 PDOException이 errorInfo에 SQLSTATE를 담는다. adapter가 결과 column의 table 이름을 getColumnMeta가 물을 때만 읽으므로 statement 하나는 다시 server transaction 하나를 쓴다(KSTD-5-89-31).
