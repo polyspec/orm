@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- KSTD-2-10-1: The selected `delete_lock` conformance vector passed twice across all six clients on MySQL, PostgreSQL and SQLite. The selected three-vector record/recheck and the later unrelated interface-snapshot failure are recorded in the checklist.
+
 - KSTD-5-2: `make test-markers-check` passed; it reports that no test is skipped or narrowed by a marker. Evidence log SHA-256: `31d20ca4fc256f1a710dd1f2e2baa3147fb5d9d162bfb8667bcb6d88fc64ff9b`.
 
 - KSTD-5-88: The initial runner-check run passed 58/60 cases; after f315de4e5 corrected the runner parts, the two affected cases passed 2/2. The full target was not rerun.

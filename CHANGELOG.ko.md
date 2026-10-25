@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: eeae7c5149e54638e0265f2e6ceb9c6a192c77c2fcc096e409a395f98ca6a984 -->
+<!-- source-sha256: 2b05e52c383050aa6769fbc1794242d1f898f7c676c0b0c40501c5f0084154f8 -->
 # 변경 이력
 
 ## Unreleased
+
+- KSTD-2-10-1: 선택한 `delete_lock` conformance vector가 MySQL, PostgreSQL, SQLite에서 여섯 client 모두 두 번 통과했다. 세 vector 기록·재검증과 이후의 별도 interface snapshot 실패를 checklist에 기록했다.
 
 - KSTD-5-2: `make test-markers-check`가 통과했고 marker로 skip되거나 범위가 좁혀진 test가 없다고 보고했다. 증거 로그 SHA-256: `31d20ca4fc256f1a710dd1f2e2baa3147fb5d9d162bfb8667bcb6d88fc64ff9b`.
 
