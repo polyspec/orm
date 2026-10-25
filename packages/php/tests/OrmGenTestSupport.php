@@ -90,6 +90,37 @@ final class OrmGenTestSupport
         return $matches[1];
     }
 
+    /** @return array<string, array{array<string, mixed>}> the cases of tests/generator/php-scan-vectors.json by id */
+    public static function phpScanVectorCases(): array
+    {
+        return self::scanVectorCases(false);
+    }
+
+    /** @return array<string, array{array<string, mixed>}> the scan vector cases that the node scan shares */
+    public static function phpScanParityVectorCases(): array
+    {
+        return self::scanVectorCases(true);
+    }
+
+    /**
+     * The cases of tests/generator/php-scan-vectors.json as PHPUnit data sets keyed by case id; with
+     * `$parityOnly`, only the cases that the node scan shares (parity is not false). A data provider takes no
+     * argument, hence the two entries above.
+     *
+     * @return array<string, array{array<string, mixed>}>
+     */
+    private static function scanVectorCases(bool $parityOnly): array
+    {
+        $file = dirname(__DIR__, 3) . '/tests/generator/php-scan-vectors.json';
+        $cases = [];
+        foreach (json_decode((string) file_get_contents($file), true, 512, JSON_THROW_ON_ERROR)['cases'] as $case) {
+            if (!$parityOnly || ($case['parity'] ?? true) === true) {
+                $cases[$case['id']] = [$case];
+            }
+        }
+        return $cases;
+    }
+
     public static function createWorkDirectory(string $prefix): string
     {
         $path = sys_get_temp_dir() . '/' . $prefix . getmypid();

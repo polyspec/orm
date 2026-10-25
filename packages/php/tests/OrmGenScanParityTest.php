@@ -10,7 +10,7 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
-use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\DataProviderExternal;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\OrmGen;
@@ -22,26 +22,12 @@ final class OrmGenScanParityTest extends TestCase
 
     public static function setUpBeforeClass(): void
     {
-        self::$work = sys_get_temp_dir() . '/orm-php-scan-parity-' . getmypid();
-        is_dir(self::$work) || mkdir(self::$work, 0o700, true);
+        self::$work = OrmGenTestSupport::createWorkDirectory('orm-php-scan-parity-');
     }
 
     public static function tearDownAfterClass(): void
     {
-        exec('rm -rf ' . escapeshellarg(self::$work));
-    }
-
-    /** @return array<string, array{array<string, mixed>}> */
-    public static function vectors(): array
-    {
-        $file = dirname(__DIR__, 3) . '/tests/generator/php-scan-vectors.json';
-        $out = [];
-        foreach (json_decode((string) file_get_contents($file), true, 512, JSON_THROW_ON_ERROR)['cases'] as $case) {
-            if (($case['parity'] ?? true) === true) {
-                $out[$case['id']] = [$case];
-            }
-        }
-        return $out;
+        OrmGenTestSupport::removeWorkDirectory(self::$work);
     }
 
     /** The names the node orm-gen declares on the model for these calls; null when it fails. */
@@ -92,7 +78,7 @@ final class OrmGenScanParityTest extends TestCase
         return array_values(array_intersect($names, $declared[1]));
     }
 
-    #[DataProvider('vectors')]
+    #[DataProviderExternal(OrmGenTestSupport::class, 'phpScanParityVectorCases')]
     public function testTheNodeAndThePhpScanAgree(array $case): void
     {
         $dir = self::$work . '/' . $case['id'];

@@ -12,7 +12,7 @@ namespace Polyspec\Orm\Tests;
 require_once __DIR__ . '/phpstan-runner.php';
 require_once __DIR__ . '/OrmGenScanFailureCase.php';
 
-use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\DataProviderExternal;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 
@@ -55,17 +55,6 @@ final class OrmGenScanTest extends TestCase
             )) . "\n",
             $namespace
         );
-    }
-
-    /** @return array<string, array{array<string, mixed>}> */
-    public static function vectors(): array
-    {
-        $file = dirname(__DIR__, 3) . '/tests/generator/php-scan-vectors.json';
-        $out = [];
-        foreach (json_decode((string) file_get_contents($file), true, 512, JSON_THROW_ON_ERROR)['cases'] as $case) {
-            $out[$case['id']] = [$case];
-        }
-        return $out;
     }
 
     /** @param array<string, string> $sources @return list<string> */
@@ -156,7 +145,7 @@ final class OrmGenScanTest extends TestCase
         return OrmGenTestSupport::phpMethodNames("$dir/model/$class.php");
     }
 
-    #[DataProvider('vectors')]
+    #[DataProviderExternal(OrmGenTestSupport::class, 'phpScanVectorCases')]
     public function testVector(array $case): void
     {
         // The test of DSL-42 (docs/spec).
