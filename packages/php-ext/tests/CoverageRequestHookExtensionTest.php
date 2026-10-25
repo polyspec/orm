@@ -61,6 +61,14 @@ final class CoverageRequestHookExtensionTest extends CoverageRequestHookTest
         parent::testRelationScope();
     }
 
+    // The insert assignment case of the PHP library, run with the extension loaded.
+    // Requirements: PRT-4, PRT-5, PRT-41.
+    // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- the parity binding names this exact test symbol.
+    public function test_insert_assign(): void
+    {
+        parent::test_insert_assign();
+    }
+
     // Requirements: CFG-21, INT-36, INT-37, PLN-16.
     public function testLoadedRowWrites(): void
     {
