@@ -104,24 +104,13 @@ final class PlanCacheMemoryTest extends TestCase
      */
     public function testStatementCacheRetainsAtMostAFewMibOfStatements(): void
     {
-        $pdo = new PDO('sqlite::memory:');
-        $pdo->exec('CREATE TABLE "service" ("seq" INTEGER PRIMARY KEY, "name" TEXT NOT NULL)');
-        $db = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
-        $db->registerSet(\Polyspec\Orm\Tests\Model\schema());
+        $db = $this->serviceDb();
         try {
             // The first insert prepares what every run keeps apart from the cache: the model and the connection state.
             (new Service())($db)->creates([(new Service())->setName('first')], 1);
             gc_collect_cycles();
             $before = memory_get_usage();
-            $next = 0;
-            for ($batch = 900; $batch < 1000; $batch++) {
-                $rows = [];
-                for ($i = 0; $i < $batch; $i++) {
-                    $rows[] = (new Service())->setName('service-' . $next++);
-                }
-                (new Service())($db)->creates($rows, $batch);
-            }
-            unset($rows);
+            $this->insertBatches($db);
             gc_collect_cycles();
             $retained = memory_get_usage() - $before;
             $this->assertLessThanOrEqual(
@@ -165,19 +154,9 @@ final class PlanCacheMemoryTest extends TestCase
 
     public function testStatementCacheRetainsAtMostTheBoundOfPlaceholders(): void
     {
-        $pdo = new PDO('sqlite::memory:');
-        $pdo->exec('CREATE TABLE "service" ("seq" INTEGER PRIMARY KEY, "name" TEXT NOT NULL)');
-        $db = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
-        $db->registerSet(\Polyspec\Orm\Tests\Model\schema());
+        $db = $this->serviceDb();
         try {
-            $next = 0;
-            for ($batch = 900; $batch < 1000; $batch++) {
-                $rows = [];
-                for ($i = 0; $i < $batch; $i++) {
-                    $rows[] = (new Service())->setName('service-' . $next++);
-                }
-                (new Service())($db)->creates($rows, $batch);
-            }
+            $this->insertBatches($db);
             $state = (new ReflectionProperty(Db::class, 'state'))->getValue($db);
             $retained = 0;
             foreach (array_keys($state->stmts) as $sql) {
@@ -235,6 +214,29 @@ final class PlanCacheMemoryTest extends TestCase
             $this->assertSame(5, $state->stmtRetained);
         } finally {
             $db->close();
+        }
+    }
+
+    /** A Db on an in-memory SQLite database with the table `service` of the test model. */
+    private function serviceDb(): Db
+    {
+        $pdo = new PDO('sqlite::memory:');
+        $pdo->exec('CREATE TABLE "service" ("seq" INTEGER PRIMARY KEY, "name" TEXT NOT NULL)');
+        $db = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
+        $db->registerSet(\Polyspec\Orm\Tests\Model\schema());
+        return $db;
+    }
+
+    /** Inserts 100 multi-row inserts of 900 to 999 rows, each a statement of its own length. */
+    private function insertBatches(Db $db): void
+    {
+        $next = 0;
+        for ($batch = 900; $batch < 1000; $batch++) {
+            $rows = [];
+            for ($i = 0; $i < $batch; $i++) {
+                $rows[] = (new Service())->setName('service-' . $next++);
+            }
+            (new Service())($db)->creates($rows, $batch);
         }
     }
 
