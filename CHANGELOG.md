@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- The KSTD-5-89 static-gate scope passes on main: the six original verification commands, nine additional static checks (9/9, including 18 pinned tools and 2,421 owned paths), and the source-specific lint gates are recorded with their commits and logs in the checklist. Duplication and parity/divergence checks remain in their existing rows (KSTD-5-89).
+
 - The SQLite case of the lock_wait apply scenario of the TypeScript dbspec apply test sees the locked error again: its proxy of the node:sqlite apply connection wraps exec synchronously, as node:sqlite's exec is and as the applier calls it, so the failing `BEGIN EXCLUSIVE` reaches apply instead of a rejected promise nobody awaited; `make dbspec-apply-ts-check` counts 122 apply runs again (KSTD-5-89-44).
 - `make lint-go` passes on main again: the Go driver of the dbspec apply comparison returns the errors of closing its blocker, its rollbacks and its row sets joined with the failure they follow and wraps the lock failures it reports, and the Go tests that dropped an error or formatted it without wrapping now fail on it or wrap it (KSTD-5-89-42).
 - The MySQL test servers allow a non-SUPER login to create audit triggers, PostgreSQL requires SCRAM for loopback roles except `orm`, and the replica supports localhost identity checks while the mismatch DSN reaches it as `127.0.0.1`. PostgreSQL authentication and MySQL daemon changes apply after stopping and restarting the test servers (T239).
