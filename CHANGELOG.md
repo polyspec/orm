@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The make -k case of `make runner-check` runs version-check with the RUN_TESTS definition of the Makefile and expects its real unit line, `run-tests.mjs node -- scripts/version/check.test.mts`, in place of the `node --test` line that run-tests replaced (KSTD-5-88-3).
 - The lane-name case of `make runner-check` expects the client-db-test lanes that config/parity.json declares, go, php, php-extension, typescript, python and rust, in both refusal messages, in place of the old list of four (KSTD-5-88-2).
 - The continuation case of `make runner-check` for scripts/perf-test.mts expects its five gate commands by name: the Go native, hot-path and coverage gates and PerfGateTest without and under CPU load, in place of the count of four that the coverage gate made stale (KSTD-5-88-1).
 - A transaction or savepoint whose callback and rollback both fail has one six-client unit each, citing CFG-15, in place of ten units that each bound one client. Python runs the cases on SQLite, MySQL and PostgreSQL, and on PostgreSQL it now reports CONNECTION_LOST instead of the OperationalError of psycopg when the server ended the session before the cursor opened (KSTD-2-11-13-1).

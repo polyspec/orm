@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 216ebf1d5580d4a4b099cd10b676062d18cccd53678f3b1654c02195e5cfa08d -->
+<!-- source-sha256: 95bc1c45ecdaa6f0026f60d480321ec1dff409258c2627df53dcebe5ec23d499 -->
 # 변경 이력
 
 ## Unreleased
 
+- `make runner-check`의 make -k case가 Makefile의 RUN_TESTS 정의로 version-check를 실행하고 실제 unit 줄인 `run-tests.mjs node -- scripts/version/check.test.mts`를 기대하며, run-tests가 대신한 `node --test` 줄을 대신한다 (KSTD-5-88-3).
 - `make runner-check`의 lane 이름 case가 두 거부 message 모두에서 config/parity.json이 선언한 client-db-test lane인 go, php, php-extension, typescript, python, rust를 기대하며, 예전의 넷 목록을 대신한다 (KSTD-5-88-2).
 - scripts/perf-test.mts에 대한 `make runner-check`의 계속 실행 case가 gate command 다섯을 이름으로 기대한다: Go native, hot-path, coverage gate와 CPU 부하 없이와 부하 아래의 PerfGateTest이며, coverage gate가 낡게 만든 넷이라는 수를 대신한다 (KSTD-5-88-1).
 - callback과 rollback이 모두 실패하는 transaction과 savepoint는 각각 CFG-15를 인용하는 여섯 client unit 하나를 가지며, client 하나씩 bind하던 unit 열 개를 대신한다. Python은 이 case를 SQLite, MySQL, PostgreSQL에서 실행하고, cursor를 열기 전에 서버가 session을 끝내면 PostgreSQL에서 psycopg의 OperationalError 대신 CONNECTION_LOST를 보고한다(KSTD-2-11-13-1).

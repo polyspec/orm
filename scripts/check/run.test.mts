@@ -362,8 +362,11 @@ caseTest('the parts of a target after a failed part still run under make -k', PR
       if (at < 0) continue;
       definition.push(lines[at], ...recipe(target).map(line => `\t${line}`));
     }
-    // The recipes start node as $(NODE) of kit.mk (K171), which the temporary Makefile points at the failing node.
-    writeFileSync(join(base, 'Makefile'), `NODE := ${join(base, 'bin/node')}\n${definition.join('\n')}\n`);
+    // The recipes start node as $(NODE) of kit.mk (K171), which the temporary Makefile points at the failing node. The unit part
+    // runs its tests through $(RUN_TESTS) (9c891d3ca), whose definition the temporary Makefile carries from the Makefile.
+    const runTests = lines.find(line => line.startsWith('RUN_TESTS = '));
+    assert.ok(runTests, 'the Makefile defines RUN_TESTS');
+    writeFileSync(join(base, 'Makefile'), `NODE := ${join(base, 'bin/node')}\n${runTests}\n${definition.join('\n')}\n`);
     mkdirSync(join(base, 'bin'));
     const log = join(base, 'ran.log');
     writeFileSync(join(base, 'bin/node'), `#!/bin/sh\necho "$*" >> ${log}\ncase "$*" in *check.test.mts*) echo 'FAIL version unit: expected 0, actual 1'; exit 1;; esac\n`, { mode: 0o755 });
@@ -380,7 +383,7 @@ caseTest('the parts of a target after a failed part still run under make -k', PR
       process.env.PATH = previous;
     }
     assert.match(errorMessage(failure), /make --no-print-directory -k version-check exited with 2/);
-    assert.deepEqual(readFileSync(log, 'utf8').trim().split('\n'), ['--test scripts/version/check.test.mts', 'scripts/version/check.mts']);
+    assert.deepEqual(readFileSync(log, 'utf8').trim().split('\n'), ['node_modules/@polyspec/kit/dist/run-tests.mjs node -- scripts/version/check.test.mts', 'scripts/version/check.mts']);
   } finally {
     rmSync(base, { recursive: true, force: true });
   }
