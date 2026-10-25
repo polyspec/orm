@@ -204,10 +204,10 @@ final class QueryCancellationNativeTest extends TestCase
     // Requirements: CFG-9.
     public function testMysqlLockEventCancelsActiveStatementRollsBackAndReconnectsRoot(): void
     {
-        if (!function_exists('pcntl_fork')) {
-            self::fail('the MySQL active-query cancellation case requires pcntl');
-        }
-
+        self::assertTrue(
+            function_exists('pcntl_fork'),
+            'the active-query cancellation cases require the pinned CLI PHP with pcntl enabled'
+        );
         \Polyspec\Orm\Tests\with_case_database('mysql', static function (): void {}, static function (string $dsn): void {
             $root = Orm::connect($dsn, new Config());
             $source = new Cancellation();
@@ -307,10 +307,10 @@ final class QueryCancellationNativeTest extends TestCase
 
     public function testMysqlCancellationStopsEveryActiveRootAndReopensEachProcessRoot(): void
     {
-        if (!function_exists('pcntl_fork')) {
-            self::fail('the MySQL active-query cancellation case requires pcntl');
-        }
-
+        self::assertTrue(
+            function_exists('pcntl_fork'),
+            'the active-query cancellation cases require the pinned CLI PHP with pcntl enabled'
+        );
         \Polyspec\Orm\Tests\with_case_database('mysql', static function (): void {}, static function (string $dsn): void {
             $rootOne = Orm::connect($dsn, new Config());
             $rootTwo = Orm::connect($dsn, new Config());
