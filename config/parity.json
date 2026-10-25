@@ -24006,6 +24006,11 @@
           ]
         },
         {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/AesUtilsNativeTest.php",
+          "id": "AesUtilsNativeTest::testNativeStatusRotationAndTransactionRollback"
+        },
+        {
           "implementation": "typescript",
           "test": "packages/ts/tests/model.mjs",
           "id": "aesRotation"

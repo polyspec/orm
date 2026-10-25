@@ -18,6 +18,7 @@ use Polyspec\Orm\Tests\Model\Author;
 #[Medium]
 final class AesUtilsNativeTest extends TestCase
 {
+    // Requirements: INT-131.
     public function testStatusAndRotateCheckKeyringTypeBeforeModelMetadata(): void
     {
         $path = tempnam(sys_get_temp_dir(), 'orm-aes-rotate-type-');
@@ -55,6 +56,7 @@ final class AesUtilsNativeTest extends TestCase
         }
     }
 
+    // Requirements: COD-8, PLN-44, INT-75, INT-131.
     public function testNativeStatusRotationAndTransactionRollback(): void
     {
         self::assertTrue(
