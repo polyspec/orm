@@ -1,8 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 05e6264670a86a7af0b7651f144a8f7fc0c4f0932635e696230a6d2546f69451 -->
+<!-- source-sha256: b00f8587098df23873115061104b7e946e0fb06f5a5d688da5c6a92adc869e87 -->
 # 변경 이력
 
 ## Unreleased
+
+- KSTD-5-88-14: check가 실행하는 모든 TypeScript test가 `tests/testcase.mts`로 case를 보고한다. 정확한 owner selector `node --test --test-name-pattern='every PHP and TypeScript test that a check runs reports its cases' scripts/repo/check.test.mts`가 통과했고(1/1), 보존된 통합 guard 기록 `var/parallel/resume-landing/kstd-5-88-js-green.log`도 두 JavaScript 항목이 통과했다고 기록한다(2/2) (KSTD-5-88-14).
+
 
 
 - KSTD-5-88-17: 선언된 PHP DB 검사 네 종류가 extension mode에서 통과했다. 잘못 기록된 SQLite statement-timeout 항목을 기존 SQLite busy-timeout owner로 바로잡았고 1 test / 5 assertions가 통과했다.

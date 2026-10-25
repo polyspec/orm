@@ -3,6 +3,9 @@
 
 ## Unreleased
 
+- KSTD-5-88-14: Every TypeScript test that a check runs reports its cases through `tests/testcase.mts`; the exact owner selector `node --test --test-name-pattern='every PHP and TypeScript test that a check runs reports its cases' scripts/repo/check.test.mts` passed (1/1), and the preserved combined guard record `var/parallel/resume-landing/kstd-5-88-js-green.log` reports both JavaScript items passing (2/2) (KSTD-5-88-14).
+
+
 
 - KSTD-5-88-17: The four declared PHP DB checks pass in extension mode. The erroneous SQLite statement-timeout listing was corrected to the existing SQLite busy-timeout owner, which passes 1 test / 5 assertions.
 
