@@ -63,10 +63,12 @@ final class ModelDslNativeTest extends TestCase
     // Requirements: DSL-50, PLN-4.
     public function testUnsupportedOperatorValuesAreRejectedInsteadOfConverted(): void
     {
-        foreach ([
+        foreach (
+            [
             [[18, 30], 'a list is not accepted by the gt operator'],
             [null, 'null is not accepted by the gt operator'],
-        ] as [$value, $message]) {
+            ] as [$value, $message]
+        ) {
             try {
                 (new DslFixture())->gtAge($value);
                 self::fail('The gt operator must not convert a list or null value.');

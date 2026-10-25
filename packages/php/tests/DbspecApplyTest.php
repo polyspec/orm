@@ -44,26 +44,6 @@ const APPLY_CONNECTION_RULES = [
     'sqlite' => ['PRAGMA foreign_keys = ON']
 ];
 
-/** Releases the SQLite blocker as soon as BEGIN EXCLUSIVE reports its bounded wait. */
-final class DbspecApplyLockWaitPDO extends PDO
-{
-    public ?PDO $blocker = null;
-    public bool $blockerReleased = false;
-
-    public function exec(string $statement): int|false
-    {
-        try {
-            return parent::exec($statement);
-        } catch (\PDOException $error) {
-            if ($statement === 'BEGIN EXCLUSIVE' && $this->blocker?->inTransaction()) {
-                $this->blocker->exec('ROLLBACK');
-                $this->blockerReleased = true;
-            }
-            throw $error;
-        }
-    }
-}
-
 /** The server DSNs: the scenarios check locks and session settings on the server, not through the pooler. */
 function apply_dsns(): array
 {

@@ -68,10 +68,12 @@ trait CatalogConnectionCoverageCases
         self::assertCount(3, $page->result->rows);
         $count = $this->catalog->readOnlyQuery('SELECT COUNT(*) FROM ' . $this->quote('user'), []);
         self::assertSame(5000, (int) $count->rows[0][0]);
-        foreach ([
+        foreach (
+            [
             [['maxRows' => 1, 'maxBytes' => 1024], "SELECT 'abc' AS value UNION ALL SELECT 'def'"],
             [['maxRows' => 2, 'maxBytes' => 2], "SELECT 'abc' AS value"],
-        ] as [$limits, $sql]) {
+            ] as [$limits, $sql]
+        ) {
             try {
                 $this->catalog->readOnlyGridQuery($sql, [], $limits['maxRows'], $limits['maxBytes']);
                 self::fail('a grid query over its result budget returned partial success');
@@ -103,7 +105,8 @@ trait CatalogConnectionCoverageCases
     public function testGridColumnAndRowOrder(): void
     {
         $result = $this->catalog->readOnlyGridQuery(
-            "SELECT 1 AS seq, 'a' AS label UNION ALL SELECT 2, 'b' UNION ALL SELECT 3, 'c' UNION ALL SELECT 4, 'd' ORDER BY seq DESC"
+            "SELECT 1 AS seq, 'a' AS label UNION ALL SELECT 2, 'b' UNION ALL SELECT 3, 'c' "
+            . "UNION ALL SELECT 4, 'd' ORDER BY seq DESC"
         );
         self::assertSame(['seq', 'label'], $result->columns);
         $rows = array_map(
@@ -141,10 +144,14 @@ trait CatalogConnectionCoverageCases
             $nullRead = (new Model\BindCell())($db)->seq($seq)->get();
             $emptyRead = (new Model\BindCell())($db)->seq($seq - 1)->get();
             self::assertNull($nullRead->getBody(), 'SQL NULL remains null when read through the model');
-            self::assertSame('', $emptyRead->getBody(), 'empty text remains an empty string when read through the model');
+            self::assertSame(
+                '',
+                $emptyRead->getBody(),
+                'empty text remains an empty string when read through the model',
+            );
         } finally {
             $snapshots = [];
-            for ($offset = 0; ; ) {
+            for ($offset = 0;;) {
                 $page = $catalog->tablePage($table, 1000, $offset);
                 $keyIndex = $page->columnIndex('seq');
                 foreach ($page->result->rows as $index => $row) {

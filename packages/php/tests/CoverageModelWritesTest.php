@@ -101,21 +101,43 @@ final class CoverageModelWritesTest extends TestCase
                         $loaded = $author()->addAllColumns()->getBySeq(1);
                         Assert::assertNotNull($loaded, 'seed author 1 is readable in the transaction');
                         $loaded->setReadCount(1)->update();
-                        $unsubscribe = $db->subscribe(static function (\Polyspec\Orm\StatementEvent $event) use (&$events): void {
-                            if ($event->kind === \Polyspec\Orm\StatementEvent::UPDATE && in_array('author', $event->tables, true)) {
+                        $unsubscribe = $db->subscribe(static function (
+                            \Polyspec\Orm\StatementEvent $event,
+                        ) use (&$events): void {
+                            if (
+                                $event->kind === \Polyspec\Orm\StatementEvent::UPDATE && in_array(
+                                    'author',
+                                    $event->tables,
+                                    true,
+                                )
+                            ) {
                                 $events[] = $event;
                             }
                         });
                         $loaded = $author()->addAllColumns()->getBySeq(1);
                         $loaded->plusReadCount(7)->update();
-                        Assert::assertSame(8, $author()->addAllColumns()->getBySeq(1)->getReadCount(), 'plus updates the non-key column');
-                        Assert::assertTrue(array_any($events, static fn($event): bool => in_array(7, $event->binds, true)), 'plus amount is bound');
+                        Assert::assertSame(
+                            8,
+                            $author()->addAllColumns()->getBySeq(1)->getReadCount(),
+                            'plus updates the non-key column',
+                        );
+                        Assert::assertTrue(
+                            array_any($events, static fn($event): bool => in_array(7, $event->binds, true)),
+                            'plus amount is bound',
+                        );
                         $loaded->update();
                         Assert::assertCount(1, $events, 'a write clears the pending arithmetic change');
                         $current = $author()->addAllColumns()->getBySeq(1);
                         $current->minusReadCount(9)->update();
-                        Assert::assertSame(0, $author()->addAllColumns()->getBySeq(1)->getReadCount(), 'minus clamps at zero');
-                        Assert::assertTrue(array_any($events, static fn($event): bool => in_array(9, $event->binds, true)), 'minus amount is bound');
+                        Assert::assertSame(
+                            0,
+                            $author()->addAllColumns()->getBySeq(1)->getReadCount(),
+                            'minus clamps at zero',
+                        );
+                        Assert::assertTrue(
+                            array_any($events, static fn($event): bool => in_array(9, $event->binds, true)),
+                            'minus amount is bound',
+                        );
                         throw $boom;
                     }, retry: 0);
                 } catch (\Throwable $error) {

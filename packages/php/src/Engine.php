@@ -16,8 +16,8 @@ final class Engine
     /**
      * The placeholders the plan cache may retain in all: one statement at the largest bind limit (MySQL and PostgreSQL,
      * 65535). A plan holds a bind descriptor per placeholder, about 390 bytes each in PHP, so a cache bounded by entry
-     * count only held about 388 KB per multi-row insert entry and about 100 MB at 256 entries (limepie P-97); this bound
-     * keeps it near 25 MB. The same bound holds for the statement cache of Db.
+     * count only held about 388 KB per multi-row insert entry and about 100 MB at 256 entries (limepie P-97); this
+     * bound keeps it near 25 MB. The same bound holds for the statement cache of Db.
      */
     private const RETAINED_PLACEHOLDERS = 65535;
 

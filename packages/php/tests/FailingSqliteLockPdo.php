@@ -56,7 +56,13 @@ final class FailingSqliteLockPdo extends PDO
         if ($statement === 'BEGIN EXCLUSIVE') {
             throw $this->failure;
         }
-        if (preg_match('/^PRAGMA (foreign_keys|legacy_alter_table|busy_timeout|locking_mode) = (.+)$/', $statement, $match) === 1) {
+        if (
+            preg_match(
+                '/^PRAGMA (foreign_keys|legacy_alter_table|busy_timeout|locking_mode) = (.+)$/',
+                $statement,
+                $match,
+            ) === 1
+        ) {
             $value = trim($match[2]);
             if ($match[1] === 'locking_mode') {
                 $this->pragmas[$match[1]] = strtolower($value);

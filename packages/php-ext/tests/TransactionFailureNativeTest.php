@@ -54,7 +54,11 @@ final class TransactionFailureNativeTest extends TestCase
             $fiber->resume();
             $db->close();
         }
-        self::assertSame([1, 1], $beforeSuspend, 'the owning fiber can read and nest its transaction before suspension');
+        self::assertSame(
+            [1, 1],
+            $beforeSuspend,
+            'the owning fiber can read and nest its transaction before suspension',
+        );
         self::assertSame([1, 2], $afterResume, 'the owning fiber can read and nest its transaction after resuming');
         self::assertSame(Code::CONFIG, $error?->code_);
     }

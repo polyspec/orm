@@ -507,19 +507,19 @@ final class Db
                     }
                     $this->state->pdo = null;
                     if ($this->state->reconnect !== null) {
-                            try {
-                                $this->state->pdo = ($this->state->reconnect)();
-                                self::configurePdo($this->state->pdo, $this->driver);
-                            } catch (\Throwable $reconnectFailure) {
-                                $error = OrmException::withCleanup(
-                                    $error,
-                                    new OrmException(
-                                        Code::CONNECTION_LOST,
-                                        'root connection could not be reopened after cancellation',
-                                        $reconnectFailure
-                                    )
-                                );
-                            }
+                        try {
+                            $this->state->pdo = ($this->state->reconnect)();
+                            self::configurePdo($this->state->pdo, $this->driver);
+                        } catch (\Throwable $reconnectFailure) {
+                            $error = OrmException::withCleanup(
+                                $error,
+                                new OrmException(
+                                    Code::CONNECTION_LOST,
+                                    'root connection could not be reopened after cancellation',
+                                    $reconnectFailure
+                                )
+                            );
+                        }
                     }
                 }
             }
@@ -622,10 +622,10 @@ final class Db
     }
 
     /**
-     * The prepared statement of sql, which binds placeholders values. A PDOStatement keeps its last bound values until it
-     * is released, and closeCursor() does not free them, so the cache is bounded by the placeholders it retains as well as
-     * by statementCacheSize, least recently used first, and a statement over that bound alone is not cached (limepie
-     * P-97; the bound is that of Engine's plan cache).
+     * The prepared statement of sql, which binds placeholders values. A PDOStatement keeps its last bound values until
+     * it is released, and closeCursor() does not free them, so the cache is bounded by the placeholders it retains as
+     * well as by statementCacheSize, least recently used first, and a statement over that bound alone is not cached
+     * (limepie P-97; the bound is that of Engine's plan cache).
      */
     private function stmt(string $sql, int $placeholders): \PDOStatement
     {

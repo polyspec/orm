@@ -95,7 +95,9 @@ final class ColumnFunctionMetadataTest extends TestCase
                 foreach (['', '-journal', '-wal', '-shm'] as $suffix) {
                     $file = $path . $suffix;
                     if (file_exists($file) && !unlink($file)) {
-                        throw new \RuntimeException("could not remove the SQLite file for column-function planning: $file");
+                        throw new \RuntimeException(
+                            "could not remove the SQLite file for column-function planning: $file",
+                        );
                     }
                 }
             }

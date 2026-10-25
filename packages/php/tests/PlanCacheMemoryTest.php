@@ -39,7 +39,10 @@ final class PlanCacheMemoryTest extends TestCase
         for ($rows = 400; $rows < 500; $rows++) {
             $r = new Request('insert', $model->manifestHash);
             $r->ir['entity'] = 'load_note';
-            $r->ir['set'] = [['column' => 'code', 'p' => $r->param('c0')], ['column' => 'body', 'p' => $r->param('b0')]];
+            $r->ir['set'] = [
+                ['column' => 'code', 'p' => $r->param('c0')],
+                ['column' => 'body', 'p' => $r->param('b0')],
+            ];
             for ($i = 1; $i < $rows; $i++) {
                 $r->ir['rows'][] = [$r->param("c$i"), $r->param("b$i")];
             }
@@ -77,7 +80,11 @@ final class PlanCacheMemoryTest extends TestCase
         $secondPlan = $engine->plan($secondShape);
         $this->assertSame($firstPlan, $engine->plan($firstShape), 'a cache hit returns the existing plan');
         $engine->plan($thirdShape);
-        $this->assertSame([$firstKey, $thirdKey], array_keys($plans->getValue($engine)), 'the hit promoted the first plan before eviction');
+        $this->assertSame(
+            [$firstKey, $thirdKey],
+            array_keys($plans->getValue($engine)),
+            'the hit promoted the first plan before eviction',
+        );
 
         $replannedSecond = $engine->plan($secondShape);
         $this->assertSame($secondPlan, $replannedSecond, 'evicting and recompiling does not change the plan');
@@ -128,14 +135,26 @@ final class PlanCacheMemoryTest extends TestCase
             $two = $this->statement($stmt, $db, $twoSql, 2);
             $this->assertSame(42, $this->executeValue($zero, []));
             $this->assertSame(5, $this->executeValue($two, [2, 3]));
-            $this->assertSame($zero, $this->statement($stmt, $db, $zeroSql, 0), 'a hit reuses the zero-placeholder entry');
+            $this->assertSame(
+                $zero,
+                $this->statement($stmt, $db, $zeroSql, 0),
+                'a hit reuses the zero-placeholder entry',
+            );
 
             $three = $this->statement($stmt, $db, $threeSql, 3);
             $this->assertSame(6, $this->executeValue($three, [1, 2, 3]));
             $state = $stateProperty->getValue($db);
             $this->assertInstanceOf(DbState::class, $state);
-            $this->assertSame([$zeroSql, $threeSql], $state->stmtOrder, 'the hit promoted zeroSql, so twoSql was evicted');
-            $this->assertSame(3, $state->stmtRetained, 'the zero-placeholder entry does not change the placeholder total');
+            $this->assertSame(
+                [$zeroSql, $threeSql],
+                $state->stmtOrder,
+                'the hit promoted zeroSql, so twoSql was evicted',
+            );
+            $this->assertSame(
+                3,
+                $state->stmtRetained,
+                'the zero-placeholder entry does not change the placeholder total',
+            );
 
             $repreparedTwo = $this->statement($stmt, $db, $twoSql, 2);
             $this->assertNotSame($two, $repreparedTwo, 'an evicted statement is prepared again');
@@ -166,7 +185,10 @@ final class PlanCacheMemoryTest extends TestCase
     /** @param array<string, mixed> $shape */
     private function shapeKey(array $shape): string
     {
-        return (string) json_encode($shape, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION);
+        return (string) json_encode(
+            $shape,
+            JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION,
+        );
     }
 
     /** @param list<mixed> $values */

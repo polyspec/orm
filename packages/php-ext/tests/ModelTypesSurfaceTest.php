@@ -198,7 +198,17 @@ $input = json_decode(stream_get_contents(STDIN), true, 512, JSON_THROW_ON_ERROR)
 [$canonicalIr, $canonicalParams] = Polyspec\Orm\CanonicalRequest::of($input['ir'], $input['params']);
 echo json_encode(['ir' => $canonicalIr, 'params' => $canonicalParams], JSON_THROW_ON_ERROR);
 PHP;
-        $command = [PHP_BINARY, '-n', '-d', 'zend.assertions=1', '-d', 'assert.exception=1', '-r', $script, dirname(__DIR__, 3) . '/vendor-php/autoload.php'];
+        $command = [
+            PHP_BINARY,
+            '-n',
+            '-d',
+            'zend.assertions=1',
+            '-d',
+            'assert.exception=1',
+            '-r',
+            $script,
+            dirname(__DIR__, 3) . '/vendor-php/autoload.php',
+        ];
         $environment = getenv();
         $environment['ORM_PHP_MODE'] = 'library';
         $process = proc_open(

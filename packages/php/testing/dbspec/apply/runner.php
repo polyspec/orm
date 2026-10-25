@@ -6,6 +6,7 @@ use Polyspec\Orm\Dbspec\ApplyError;
 use Polyspec\Orm\Dbspec\ApplyEvent;
 use Polyspec\Orm\Dbspec\Dbspec;
 use Polyspec\Orm\Orm;
+use Polyspec\Orm\Testing\DbspecApplyLockWaitSqliteConnection;
 
 /** @return list<Polyspec\Orm\Dbspec\Plan> */
 function dbspec_apply_runner_plans(array $vectors): array
@@ -86,35 +87,13 @@ function dbspec_apply_runner_run(array $argv): int
     return 0;
 }
 
-/** Releases the SQLite blocker before Apply runs its cleanup after a failed exclusive BEGIN. */
-final class DbspecApplyLockWaitSqliteConnection extends PDO
-{
-    public bool $blockerReleased = false;
-
-    public function __construct(string $dsn, ?string $user, ?string $password, array $options, private PDO $blocker)
-    {
-        parent::__construct($dsn, $user, $password, $options);
-    }
-
-    public function exec(string $statement): int|false
-    {
-        try {
-            return parent::exec($statement);
-        } catch (PDOException $error) {
-            if ($statement === 'BEGIN EXCLUSIVE' && $this->blocker->inTransaction()) {
-                $this->blocker->exec('ROLLBACK');
-                $this->blockerReleased = true;
-            }
-            throw $error;
-        }
-    }
-}
-
 /**
  * Runs PLN-90's bounded lock wait against the same representative plan as the Python physical case.
  */
 function dbspec_apply_runner_lock_wait(string $dialect, string $uri, array $vectors): int
 {
+    // The connection class has a file of its own (PSR-1); it is loaded where the lock case uses it.
+    require_once __DIR__ . '/DbspecApplyLockWaitSqliteConnection.php';
     $representative = null;
     foreach ($vectors['cases'] as $case) {
         if ($case['id'] === 'representative') {
@@ -156,7 +135,9 @@ function dbspec_apply_runner_lock_wait(string $dialect, string $uri, array $vect
             $wantCode = 'locked';
         } else {
             $connection = new PDO($pdoDsn, $user, $password, $options);
-            foreach ($rules[$dialect] as $rule) $connection->exec($rule);
+            foreach ($rules[$dialect] as $rule) {
+                $connection->exec($rule);
+            }
             Dbspec::apply($connection, $dialect, [$source], $now, null);
             $blocker->beginTransaction();
             $blockerTransaction = true;
@@ -174,7 +155,9 @@ function dbspec_apply_runner_lock_wait(string $dialect, string $uri, array $vect
         $events = [];
         $started = hrtime(true);
         try {
-            Dbspec::apply($connection, $dialect, $plans, $now, static function (ApplyEvent $event) use (&$events): void {
+            Dbspec::apply($connection, $dialect, $plans, $now, static function (
+                ApplyEvent $event,
+            ) use (&$events): void {
                 if ($event->kind === 'statement' || $event->kind === 'applied') {
                     $events[] = [$event->kind, $event->step];
                 }
@@ -185,9 +168,15 @@ function dbspec_apply_runner_lock_wait(string $dialect, string $uri, array $vect
                 throw new RuntimeException("lock wait returned {$error->code_}; want $wantCode", 0, $error);
             }
             $cause = $error->getPrevious();
-            if ($cause === null || !str_contains(strtolower($cause->getMessage()), 'lock')
-                && !str_contains(strtolower($cause->getMessage()), 'timeout')) {
-                throw new RuntimeException('lock wait failure does not preserve a lock/timeout database cause', 0, $error);
+            if (
+                $cause === null || !str_contains(strtolower($cause->getMessage()), 'lock')
+                && !str_contains(strtolower($cause->getMessage()), 'timeout')
+            ) {
+                throw new RuntimeException(
+                    'lock wait failure does not preserve a lock/timeout database cause',
+                    0,
+                    $error,
+                );
             }
             if ($dialect !== 'sqlite') {
                 if ($error->plan !== 'representative' || $error->step !== 0) {
@@ -202,7 +191,10 @@ function dbspec_apply_runner_lock_wait(string $dialect, string $uri, array $vect
                 }
             }
             if ($elapsed < 4 || $elapsed >= 10) {
-                throw new RuntimeException(sprintf('lock wait returned after %.3fs; want 4s <= elapsed < 10s', $elapsed));
+                throw new RuntimeException(sprintf(
+                    'lock wait returned after %.3fs; want 4s <= elapsed < 10s',
+                    $elapsed,
+                ));
             }
             $result = "error {$error->code_}";
         }
@@ -210,7 +202,8 @@ function dbspec_apply_runner_lock_wait(string $dialect, string $uri, array $vect
             throw new RuntimeException('apply did not stop at the held database lock');
         }
     } finally {
-        if ($blockerTransaction && !($connection instanceof DbspecApplyLockWaitSqliteConnection && $connection->blockerReleased)) {
+        $released = $connection instanceof DbspecApplyLockWaitSqliteConnection && $connection->blockerReleased;
+        if ($blockerTransaction && !$released) {
             if ($dialect === 'sqlite') {
                 $blocker->exec('ROLLBACK');
             } else {

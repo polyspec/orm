@@ -13,8 +13,6 @@ use Polyspec\Orm\RuntimeModel;
 use Polyspec\Orm\Validator;
 use ReflectionClass;
 
-require_once dirname(__DIR__, 2) . '/php/tests/BlindIndexSourcePlannerTest.php';
-
 #[Small]
 final class BlindIndexSourceNativeTest extends TestCase
 {

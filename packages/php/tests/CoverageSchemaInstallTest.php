@@ -134,7 +134,11 @@ final class CoverageSchemaInstallTest extends TestCase
             $member = $schema(EXTERNAL_USER);
             Assert::assertNotSame('', $member->externalText, 'the schema value has no external document text');
             Orm::connectSchema($dsn, $member, new Config())->close();
-            $badHash = new Schema(str_replace('coverage_external_post', 'coverage_external_post_changed', $member->manifestText), $member->manifestHash, $member->externalText);
+            $badHash = new Schema(
+                str_replace('coverage_external_post', 'coverage_external_post_changed', $member->manifestText),
+                $member->manifestHash,
+                $member->externalText,
+            );
             try {
                 Orm::connectSchema($dsn, $badHash, new Config());
                 Assert::fail('connect accepted manifest text that does not match its hash');

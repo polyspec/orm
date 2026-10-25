@@ -99,7 +99,8 @@ final class AesVersionCodesTest extends TestCase
         $this->assertSame('INTERNAL', $got);
     }
 
-    // Requirements: COD-57. The stored-version keyring entry is required even when a single key could decrypt the value.
+    // Requirements: COD-57. The stored-version keyring entry is required even when a single key could decrypt the
+    // value.
     public function testReadKeyringLacksStoredVersionIsConfig(): void
     {
         // The single key is new-key: a fallback to it would decrypt the value, so the CONFIG shows the keyring is used.

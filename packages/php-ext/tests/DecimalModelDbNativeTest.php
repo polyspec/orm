@@ -14,8 +14,6 @@ use Polyspec\Orm\RuntimeModel;
 use Polyspec\Orm\Tests\DecimalModelDbTest;
 use ReflectionClass;
 
-require_once dirname(__DIR__, 2) . '/php/tests/DecimalModelDbTest.php';
-
 #[Medium]
 final class DecimalModelDbNativeTest extends TestCase
 {
@@ -35,7 +33,8 @@ final class DecimalModelDbNativeTest extends TestCase
             self::assertTrue((new ReflectionClass($class))->isInternal(), "$class is the native extension class");
         }
 
-        // The PHP generator creates the fixture model; its database execution and decimal values use the native ORM classes.
+        // The PHP generator creates the fixture model; its database execution and decimal values use the native ORM
+        // classes.
         DecimalModelDbTest::roundTrip($this, $dialect);
     }
 

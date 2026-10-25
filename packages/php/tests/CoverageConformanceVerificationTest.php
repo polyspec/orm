@@ -116,7 +116,11 @@ final class CoverageConformanceVerificationTest extends TestCase
                 $root
             );
             if ($status !== 0) {
-                throw new RuntimeException(str_replace($dsn, '[dsn]', "conformance runner exited $status: $stderr$stdout"));
+                throw new RuntimeException(str_replace(
+                    $dsn,
+                    '[dsn]',
+                    "conformance runner exited $status: $stderr$stdout",
+                ));
             }
             $output = json_decode($stdout, false, 512, JSON_THROW_ON_ERROR);
         });

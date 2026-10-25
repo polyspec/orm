@@ -730,10 +730,16 @@ final class ModelTest extends TestCase
         self::check((new Author())($db)->aesHexEmail('person@example.com')->getCount() === 1, 'blind index condition');
         $keyring = new AesKeyring([1 => 'test-aes-key', 2 => 'next-aes-key'], 2);
         $status = $db->utils()->aes()->status(new Author(), $keyring);
-        self::check($status->current === 2 && $status->total === 4 && $status->pending === 4 && $status->versions === [1 => 4], 'status');
+        self::check(
+            $status->current === 2 && $status->total === 4 && $status->pending === 4 && $status->versions === [1 => 4],
+            'status',
+        );
         self::check($db->utils()->aes()->rotate(new Author(), $keyring) === 4, 'rotate');
         $status = $db->utils()->aes()->status(new Author(), $keyring);
-        self::check($status->current === 2 && $status->total === 4 && $status->pending === 0 && $status->versions === [2 => 4], 'after rotation');
+        self::check(
+            $status->current === 2 && $status->total === 4 && $status->pending === 0 && $status->versions === [2 => 4],
+            'after rotation',
+        );
         // A write with only aesKeys and aesVersion encrypts with aesKeys[aesVersion].
         $versioned = \Polyspec\Orm\Tests\Model\connect(
             $dsn,
@@ -1418,8 +1424,16 @@ final class ModelTest extends TestCase
             fclose($pipes[2]);
             self::assertSame(0, proc_close($process), "request child exits successfully: $stdout $stderr");
 
-            self::assertSame(0, (int) $db->pdo()->query("SELECT COUNT(*) FROM `$table`")->fetchColumn(), 'exit rolls back');
-            self::assertSame(1, (int) $db->pdo()->query('SELECT GET_LOCK(' . $db->pdo()->quote($lock) . ', 0)')->fetchColumn(), 'exit releases lock');
+            self::assertSame(
+                0,
+                (int) $db->pdo()->query("SELECT COUNT(*) FROM `$table`")->fetchColumn(),
+                'exit rolls back',
+            );
+            self::assertSame(
+                1,
+                (int) $db->pdo()->query('SELECT GET_LOCK(' . $db->pdo()->quote($lock) . ', 0)')->fetchColumn(),
+                'exit releases lock',
+            );
             $db->pdo()->query('SELECT RELEASE_LOCK(' . $db->pdo()->quote($lock) . ')')->fetchColumn();
         } finally {
             $db->pdo()->exec("DROP TABLE IF EXISTS `$table`");

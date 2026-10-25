@@ -23658,7 +23658,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoveragePlannerExtensionTest.php",
-          "id": "CoveragePlannerExtensionTest::test_planner_scalar_subquery_aggregate_types_remain_i64_and_f64"
+          "id": "CoveragePlannerExtensionTest::testPlannerScalarSubqueryAggregateTypesRemainI64AndF64"
         },
         {
           "implementation": "typescript",

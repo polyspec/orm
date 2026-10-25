@@ -7,8 +7,6 @@ namespace Polyspec\Orm\Tests;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Dbspec\Dbspec;
 
-require_once dirname(__DIR__, 2) . '/php/tests/dbspec_limit_cases.php';
-
 final class DbspecRulesNativeTest extends TestCase
 {
     // Requirements: DBS-144, DBS-170.

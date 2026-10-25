@@ -69,8 +69,12 @@ final class DbspecSqliteLockCases
         throw new \RuntimeException('SQLite apply did not fail');
     }
 
-    private static function assertRestored(TestCase $test, FailingSqliteLockPdo $driver, array $initial, mixed $case): void
-    {
+    private static function assertRestored(
+        TestCase $test,
+        FailingSqliteLockPdo $driver,
+        array $initial,
+        mixed $case,
+    ): void {
         $label = json_encode($case, JSON_THROW_ON_ERROR);
         $test->assertSame($initial, $driver->pragmas, "SQLite PRAGMAs were not restored for result $label");
         $test->assertSame([], $driver->unexpected, "SQLite lock failure ran non-session work for result $label");

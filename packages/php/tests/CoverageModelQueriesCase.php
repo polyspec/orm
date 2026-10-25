@@ -79,9 +79,17 @@ final class CoverageModelQueriesCase
             ->gets();
         $unsubscribe();
         if ($db->driver() === 'sqlite') {
-            Assert::assertStringContainsString('INDEXED BY "ix_service_member_service"', $joinSql, 'joined table forceIndex');
+            Assert::assertStringContainsString(
+                'INDEXED BY "ix_service_member_service"',
+                $joinSql,
+                'joined table forceIndex',
+            );
         } elseif ($db->driver() === 'mysql') {
-            Assert::assertStringContainsString('FORCE INDEX (`ix_service_member_service`)', $joinSql, 'joined table forceIndex');
+            Assert::assertStringContainsString(
+                'FORCE INDEX (`ix_service_member_service`)',
+                $joinSql,
+                'joined table forceIndex',
+            );
         }
         $joinedRows = $joined->all();
         Assert::assertNotEmpty($joinedRows, 'joined query returns authors');

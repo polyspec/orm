@@ -956,7 +956,10 @@ abstract class Model implements \JsonSerializable, ModelMetadata
             $child = $rel['child'];
             $name = $child->resultName($rel['many']);
             if (isset($relationNames[$name])) {
-                throw new OrmException(Code::CONFIG, "relation result name $name is used twice; call alias<Name>() on one of them");
+                throw new OrmException(
+                    Code::CONFIG,
+                    "relation result name $name is used twice; call alias<Name>() on one of them",
+                );
             }
             $relationNames[$name] = true;
             if ($child->conn !== null) {

@@ -99,7 +99,9 @@ final class ModelNativeTest extends TestCase
             file_put_contents($set, json_encode(['schema' => 1, 'documents' => ['typed.dbs'], 'external' => []]));
             file_put_contents(
                 "$dir/typed.dbs",
-                "dbspec 1 typed\n\ntable item {\n  seq i64 identity\n  ratio f64\n  enabled bool\n  body text\n  payload bytes null\n  moment datetime(3) null\n  json_value text null\n  primary key (seq)\n  settings {\n    codec json_value ordered_json\n  }\n}\n"
+                "dbspec 1 typed\n\ntable item {\n  seq i64 identity\n  ratio f64\n  enabled bool\n  body text\n"
+                . "  payload bytes null\n  moment datetime(3) null\n  json_value text null\n  primary key (seq)\n"
+                . "  settings {\n    codec json_value ordered_json\n  }\n}\n"
             );
             [$code, $output, $message] = \Polyspec\Orm\Tests\OrmGenTestSupport::run([
                 'gen', '--set', $set, '--out', "$dir/model", '--namespace', $namespace
@@ -108,26 +110,41 @@ final class ModelNativeTest extends TestCase
             require_once "$dir/model/Item.php";
             $class = "$namespace\\Item";
             self::assertTrue((new ReflectionClass(Model::class))->isInternal());
-            self::assertTrue((new ReflectionClass($class))->getParentClass()->isInternal(), 'the generated PHP model uses the native extension Model');
-            foreach ([
+            self::assertTrue(
+                (new ReflectionClass($class))->getParentClass()->isInternal(),
+                'the generated PHP model uses the native extension Model',
+            );
+            foreach (
+                [
                 'getRatio' => 'float',
                 'getEnabled' => 'bool',
                 'getBody' => 'string',
                 'getPayload' => '?string',
                 'getMoment' => '?DateTimeImmutable',
                 'getJsonValue' => 'Polyspec\\Orm\\StyledValue',
-            ] as $method => $expected) {
-                self::assertSame($expected, (string) (new \ReflectionMethod($class, $method))->getReturnType(), "$class::$method");
+                ] as $method => $expected
+            ) {
+                self::assertSame(
+                    $expected,
+                    (string) (new \ReflectionMethod($class, $method))->getReturnType(),
+                    "$class::$method",
+                );
             }
-            foreach ([
+            foreach (
+                [
                 'setRatio' => 'float',
                 'setEnabled' => 'bool',
                 'setBody' => 'string',
                 'setPayload' => '?string',
                 'setMoment' => '?string',
                 'setJsonValue' => 'Polyspec\\Orm\\StyledValue',
-            ] as $method => $expected) {
-                self::assertSame($expected, (string) (new \ReflectionMethod($class, $method))->getParameters()[0]->getType(), "$class::$method");
+                ] as $method => $expected
+            ) {
+                self::assertSame(
+                    $expected,
+                    (string) (new \ReflectionMethod($class, $method))->getParameters()[0]->getType(),
+                    "$class::$method",
+                );
             }
         } finally {
             exec('rm -rf ' . escapeshellarg($dir));
@@ -145,7 +162,8 @@ final class ModelNativeTest extends TestCase
             file_put_contents($set, json_encode(['schema' => 1, 'documents' => ['collision.dbs'], 'external' => []]));
             file_put_contents(
                 "$dir/collision.dbs",
-                "dbspec 1 collision\n\ntable item {\n  seq i64 identity\n  amount i32\n  sum_amount i32\n  primary key (seq)\n}\n"
+                "dbspec 1 collision\n\ntable item {\n  seq i64 identity\n  amount i32\n  sum_amount i32\n"
+                . "  primary key (seq)\n}\n"
             );
             [$code, $output, $message] = \Polyspec\Orm\Tests\OrmGenTestSupport::run([
                 'gen', '--set', $set, '--out', "$dir/model", '--namespace', 'Polyspec\\Orm\\Extension\\Tests\\Collision'

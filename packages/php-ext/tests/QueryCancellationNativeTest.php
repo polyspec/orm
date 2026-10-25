@@ -104,7 +104,10 @@ final class QueryCancellationNativeTest extends TestCase
         $cancellation = new Cancellation();
         $cancelled = $root->withCancellation($cancellation);
         $requested = false;
-        $pdo->createCollation('cancel_native', static function (string $left, string $right) use (
+        $pdo->createCollation('cancel_native', static function (
+            string $left,
+            string $right
+        ) use (
             $cancellation,
             &$requested
         ): int {
@@ -119,8 +122,12 @@ final class QueryCancellationNativeTest extends TestCase
             $pdo->exec('CREATE TABLE cancellation_native_rollback (value INTEGER)');
             try {
                 $root->transaction(function () use ($root, $cancelled): void {
-                    $root->run('insert', ['cancellation_native_rollback'], 1,
-                        'INSERT INTO cancellation_native_rollback (value) VALUES (1)');
+                    $root->run(
+                        'insert',
+                        ['cancellation_native_rollback'],
+                        1,
+                        'INSERT INTO cancellation_native_rollback (value) VALUES (1)'
+                    );
                     $cancelled->fetch(
                         'select',
                         [],
@@ -151,7 +158,8 @@ final class QueryCancellationNativeTest extends TestCase
     // Requirements: CFG-9.
     public function testPostgresNoticeCancelsActiveStatementRollsBackAndReconnectsRoot(): void
     {
-        \Polyspec\Orm\Tests\with_case_database('postgres', static function (): void {}, static function (string $dsn): void {
+        \Polyspec\Orm\Tests\with_case_database('postgres', static function (): void {
+        }, static function (string $dsn): void {
             $root = Orm::connect($dsn, new Config());
             $source = new Cancellation();
             $cancelled = $root->withCancellation($source);
@@ -167,12 +175,20 @@ final class QueryCancellationNativeTest extends TestCase
             });
 
             try {
-                $root->run('schema', ['cancellation_rollback'], null,
-                    'CREATE TABLE cancellation_rollback (value INTEGER)');
+                $root->run(
+                    'schema',
+                    ['cancellation_rollback'],
+                    null,
+                    'CREATE TABLE cancellation_rollback (value INTEGER)'
+                );
                 try {
                     $root->transaction(function () use ($root, $cancelled): void {
-                        $root->run('insert', ['cancellation_rollback'], 1,
-                            'INSERT INTO cancellation_rollback (value) VALUES (1)');
+                        $root->run(
+                            'insert',
+                            ['cancellation_rollback'],
+                            1,
+                            'INSERT INTO cancellation_rollback (value) VALUES (1)'
+                        );
                         $cancelled->run(
                             'utility',
                             [],
@@ -187,7 +203,11 @@ final class QueryCancellationNativeTest extends TestCase
                     self::assertTrue($activeNotice, 'the notice callback ran while the statement was active');
                 }
 
-                self::assertNotSame($originalPid, $root->pdo()->getPid(), 'the logical root handle reopened its backend');
+                self::assertNotSame(
+                    $originalPid,
+                    $root->pdo()->getPid(),
+                    'the logical root handle reopened its backend',
+                );
                 self::assertSame([[0]], $root->fetch(
                     'select',
                     ['cancellation_rollback'],
@@ -208,7 +228,8 @@ final class QueryCancellationNativeTest extends TestCase
             function_exists('pcntl_fork'),
             'the active-query cancellation cases require the pinned CLI PHP with pcntl enabled'
         );
-        \Polyspec\Orm\Tests\with_case_database('mysql', static function (): void {}, static function (string $dsn): void {
+        \Polyspec\Orm\Tests\with_case_database('mysql', static function (): void {
+        }, static function (string $dsn): void {
             $root = Orm::connect($dsn, new Config());
             $source = new Cancellation();
             $cancelled = $root->withCancellation($source);
@@ -222,7 +243,10 @@ final class QueryCancellationNativeTest extends TestCase
             $idleOriginalId = (int) $idlePdo->query('SELECT CONNECTION_ID()')->fetchColumn();
             $readyLock = 'orm_cancel_ready_' . bin2hex(random_bytes(8));
             $waitLock = 'orm_cancel_wait_' . bin2hex(random_bytes(8));
-            self::assertSame(1, (int) $pdo->query('SELECT GET_LOCK(' . $pdo->quote($readyLock) . ', 0)')->fetchColumn());
+            self::assertSame(
+                1,
+                (int) $pdo->query('SELECT GET_LOCK(' . $pdo->quote($readyLock) . ', 0)')->fetchColumn(),
+            );
 
             $eventPair = stream_socket_pair(STREAM_PF_UNIX, STREAM_SOCK_STREAM, 0);
             $releasePair = stream_socket_pair(STREAM_PF_UNIX, STREAM_SOCK_STREAM, 0);
@@ -258,12 +282,20 @@ final class QueryCancellationNativeTest extends TestCase
 
             try {
                 self::assertSame('R', fread($eventRead, 1), 'the controller acquired its blocker lock');
-                $root->run('schema', ['cancellation_rollback'], null,
-                    'CREATE TABLE cancellation_rollback (value INTEGER)');
+                $root->run(
+                    'schema',
+                    ['cancellation_rollback'],
+                    null,
+                    'CREATE TABLE cancellation_rollback (value INTEGER)'
+                );
                 try {
                     $root->transaction(function () use ($root, $cancelled, $waitLock, $readyLock): void {
-                        $root->run('insert', ['cancellation_rollback'], 1,
-                            'INSERT INTO cancellation_rollback (value) VALUES (1)');
+                        $root->run(
+                            'insert',
+                            ['cancellation_rollback'],
+                            1,
+                            'INSERT INTO cancellation_rollback (value) VALUES (1)'
+                        );
                         $cancelled->fetch(
                             'select',
                             [],
@@ -276,11 +308,17 @@ final class QueryCancellationNativeTest extends TestCase
                     self::fail('the cancelled transaction should fail');
                 } catch (OrmException $error) {
                     self::assertSame(Code::CANCELED, $error->code_, $error->getMessage());
-                    self::assertTrue($source->isCancelled(), 'the child cancelled the shared token after the SQL event');
+                    self::assertTrue(
+                        $source->isCancelled(),
+                        'the child cancelled the shared token after the SQL event',
+                    );
                 }
 
                 self::assertNotSame($originalId, (int) $root->pdo()->query('SELECT CONNECTION_ID()')->fetchColumn());
-                self::assertSame($idleOriginalId, (int) $idleRoot->pdo()->query('SELECT CONNECTION_ID()')->fetchColumn());
+                self::assertSame(
+                    $idleOriginalId,
+                    (int) $idleRoot->pdo()->query('SELECT CONNECTION_ID()')->fetchColumn(),
+                );
                 self::assertSame([[0]], $root->fetch(
                     'select',
                     ['cancellation_rollback'],
@@ -311,7 +349,8 @@ final class QueryCancellationNativeTest extends TestCase
             function_exists('pcntl_fork'),
             'the active-query cancellation cases require the pinned CLI PHP with pcntl enabled'
         );
-        \Polyspec\Orm\Tests\with_case_database('mysql', static function (): void {}, static function (string $dsn): void {
+        \Polyspec\Orm\Tests\with_case_database('mysql', static function (): void {
+        }, static function (string $dsn): void {
             $rootOne = Orm::connect($dsn, new Config());
             $rootTwo = Orm::connect($dsn, new Config());
             $source = new Cancellation();
@@ -329,8 +368,12 @@ final class QueryCancellationNativeTest extends TestCase
             self::assertSame(1, (int) $rootTwo->pdo()->query(
                 'SELECT GET_LOCK(' . $rootTwo->pdo()->quote($readyTwo) . ', 0)'
             )->fetchColumn());
-            $rootOne->run('schema', ['cancellation_rollback'], null,
-                'CREATE TABLE cancellation_rollback (value INTEGER)');
+            $rootOne->run(
+                'schema',
+                ['cancellation_rollback'],
+                null,
+                'CREATE TABLE cancellation_rollback (value INTEGER)'
+            );
 
             $eventPair = stream_socket_pair(STREAM_PF_UNIX, STREAM_SOCK_STREAM, 0);
             $resultPair = stream_socket_pair(STREAM_PF_UNIX, STREAM_SOCK_STREAM, 0);
@@ -384,8 +427,12 @@ final class QueryCancellationNativeTest extends TestCase
                         $waitTwo,
                         $readyTwo
                     ): void {
-                        $rootTwo->run('insert', ['cancellation_rollback'], 1,
-                            'INSERT INTO cancellation_rollback (value) VALUES (2)');
+                        $rootTwo->run(
+                            'insert',
+                            ['cancellation_rollback'],
+                            1,
+                            'INSERT INTO cancellation_rollback (value) VALUES (2)'
+                        );
                         $cancelledTwo->fetch(
                             'select',
                             [],
@@ -414,8 +461,14 @@ final class QueryCancellationNativeTest extends TestCase
                         fflush($resultWrite);
                         exit(1);
                     }
-                    if ($rootTwo->fetch('select', ['cancellation_rollback'], null,
-                        'SELECT count(*) FROM cancellation_rollback') !== [[0]]) {
+                    if (
+                        $rootTwo->fetch(
+                            'select',
+                            ['cancellation_rollback'],
+                            null,
+                            'SELECT count(*) FROM cancellation_rollback'
+                        ) !== [[0]]
+                    ) {
                         fwrite($resultWrite, '0');
                         fflush($resultWrite);
                         exit(1);
@@ -443,8 +496,12 @@ final class QueryCancellationNativeTest extends TestCase
                 self::assertSame('R', fread($eventRead, 1), 'both blocker locks are held before the active queries');
                 try {
                     $rootOne->transaction(function () use ($rootOne, $cancelledOne, $waitOne, $readyOne): void {
-                        $rootOne->run('insert', ['cancellation_rollback'], 1,
-                            'INSERT INTO cancellation_rollback (value) VALUES (1)');
+                        $rootOne->run(
+                            'insert',
+                            ['cancellation_rollback'],
+                            1,
+                            'INSERT INTO cancellation_rollback (value) VALUES (1)'
+                        );
                         $cancelledOne->fetch(
                             'select',
                             [],
@@ -460,7 +517,10 @@ final class QueryCancellationNativeTest extends TestCase
                     self::assertTrue($source->isCancelled());
                 }
 
-                self::assertNotSame($originalOne, (int) $rootOne->pdo()->query('SELECT CONNECTION_ID()')->fetchColumn());
+                self::assertNotSame(
+                    $originalOne,
+                    (int) $rootOne->pdo()->query('SELECT CONNECTION_ID()')->fetchColumn(),
+                );
                 self::assertSame([[0]], $rootOne->fetch(
                     'select',
                     ['cancellation_rollback'],
@@ -481,8 +541,11 @@ final class QueryCancellationNativeTest extends TestCase
             self::assertTrue(pcntl_wifexited($workerStatus), 'the second active-query process exited normally');
             self::assertSame(0, pcntl_wexitstatus($workerStatus), 'the second active-query process verified reuse');
             self::assertTrue(pcntl_wifexited($controllerStatus), 'the cancellation controller exited normally');
-            self::assertSame(0, pcntl_wexitstatus($controllerStatus), 'the controller observed and cancelled both SQL events');
+            self::assertSame(
+                0,
+                pcntl_wexitstatus($controllerStatus),
+                'the controller observed and cancelled both SQL events',
+            );
         });
     }
-
 }

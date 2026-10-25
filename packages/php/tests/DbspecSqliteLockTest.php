@@ -6,8 +6,6 @@ namespace Polyspec\Orm\Tests;
 
 use PHPUnit\Framework\TestCase;
 
-require_once __DIR__ . '/DbspecSqliteLockCases.php';
-
 final class DbspecSqliteLockTest extends TestCase
 {
     // Requirements: PLN-89, PLN-90.

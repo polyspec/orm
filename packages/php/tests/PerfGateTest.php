@@ -115,7 +115,8 @@ final class PerfGateTest extends TestCase
             fwrite(
                 STDERR,
                 sprintf(
-                    "PERF hot_path_gate %s %s %s: native p50=%.1fµs client p50=%.1fµs ratio=%.2f samples=1000 cpu=%.1fms wall=%.1fms machine=%s reference=not-recorded\n",
+                    "PERF hot_path_gate %s %s %s: native p50=%.1fµs client p50=%.1fµs ratio=%.2f samples=1000 "
+                    . "cpu=%.1fms wall=%.1fms machine=%s reference=not-recorded\n",
                     $runtime,
                     self::$driver,
                     $name,

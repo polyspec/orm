@@ -13,8 +13,6 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Large;
 use PHPUnit\Framework\TestCase;
 
-require_once __DIR__ . '/dbspec_limit_cases.php';
-
 /** @param list<array{0:string,1:int,2:string|int}> $errors */
 function rules_case(string $id, array $lines, array $errors, array $others = []): array
 {

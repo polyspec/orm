@@ -18,7 +18,10 @@ final class Listen
         self::requirePostgres($db, 'notify');
         Subscription::checkChannel($channel);
         if (strlen($payload) >= 8000 || str_contains($payload, "\0")) {
-            throw new OrmException(Code::DRIVER, 'a PostgreSQL notification payload must be shorter than 8000 bytes and contain no U+0000');
+            throw new OrmException(
+                Code::DRIVER,
+                'a PostgreSQL notification payload must be shorter than 8000 bytes and contain no U+0000',
+            );
         }
         $st = $db->pdo()->prepare('SELECT pg_notify(?, ?)');
         try {

@@ -12,8 +12,6 @@ use Polyspec\Orm\RuntimeModel;
 use Polyspec\Orm\Tests\DecimalModelDbTest;
 use ReflectionClass;
 
-require_once dirname(__DIR__, 2) . '/php/tests/DecimalModelDbTest.php';
-
 final class DecimalModelSqliteNativeTest extends TestCase
 {
     // Requirements: DIA-25, COD-2.

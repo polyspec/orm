@@ -13,7 +13,13 @@ use ReflectionClass;
 #[Large]
 final class CoverageConformanceVerificationExtensionTest extends TestCase
 {
-    private const CONFORMANCE_VECTORS = ['audit_lazy', 'conditions_values', 'relations', 'delete_lock', 'relation_null_key'];
+    private const CONFORMANCE_VECTORS = [
+        'audit_lazy',
+        'conditions_values',
+        'relations',
+        'delete_lock',
+        'relation_null_key',
+    ];
 
     private static function extensionPath(): string
     {
@@ -86,7 +92,13 @@ final class CoverageConformanceVerificationExtensionTest extends TestCase
             $expected[$vector->name] = $vector->expect;
         }
 
-        \coverageWithConformanceCountersRestored($driver, $dsn, function () use ($driver, $root, $dsn, $expected, $file): void {
+        \coverageWithConformanceCountersRestored($driver, $dsn, function () use (
+            $driver,
+            $root,
+            $dsn,
+            $expected,
+            $file,
+        ): void {
             [$status, $stdout, $stderr] = coverageProcess(
                 self::childCommand("$root/packages/php/testing/conformance/runner.php", '--dsn', $dsn),
                 $root,
@@ -213,7 +225,11 @@ final class CoverageConformanceVerificationExtensionTest extends TestCase
                         [$status, $stdout, $stderr] = coverageProcess($command, $root, self::childEnvironment());
                         if ($status !== 0) {
                             throw new \RuntimeException(
-                                str_replace((string) $dsn, '[dsn]', "native conformance child exited $status: $stderr$stdout")
+                                str_replace(
+                                    (string) $dsn,
+                                    '[dsn]',
+                                    "native conformance child exited $status: $stderr$stdout",
+                                )
                             );
                         }
                         $actual = json_decode($stdout, false, 512, JSON_THROW_ON_ERROR);

@@ -9,8 +9,6 @@ use Polyspec\Orm\Dbspec\PlanApply;
 use Polyspec\Orm\Tests\DbspecSqliteLockCases;
 use ReflectionMethod;
 
-require_once dirname(__DIR__, 2) . '/php/tests/DbspecSqliteLockCases.php';
-
 final class DbspecSqliteLockNativeTest extends TestCase
 {
     // Requirements: PLN-89, PLN-90.

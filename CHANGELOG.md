@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- `make lint-php` passes on main again: phpcs reports no finding in the PHP added since KSTD-5-89-3, after its long lines, call signatures and control structures are laid out, each helper class and trait has a file of its own, the test files require nothing at their top, and the one remaining test_* method is camelCase (KSTD-5-89-11).
 - Every exception of config/parity.json gives a reason that begins with a kind that kit defines: the 24 that began with `example:`, `implementation:`, `helper:`, `benchmark:` or no label now begin with `harness:`, `test:`, `fixture:` or `ecosystem:` as their tests are, so `make divergence-check` reports none of them (KSTD-5-12-4).
 - The PHP case of a statement whose session the server ended before it ran binds the six-client CFG-15 unit connection-rollback-failed-reports-both-errors for the PHP library and the PHP extension, in place of a unit that bound PHP alone (KSTD-2-11-13-6).
 - The found-rows count, the float digits of the Rust client and the SQLite path of the Rust build tool take the place that P32 gives them: CFG-10 is cited by the MySQL conformance suite, whose affected_counts vector checks the found row in every client; CFG-32 names the polyspec-orm crate, which owns rust-postgres-float-round-trip; and the Python client-flag check and the Rust tool path check are plain tests of their packages (KSTD-2-11-13-4).

@@ -98,13 +98,23 @@ final class CollectionIdentityTest extends TestCase
     // Requirements: INT-80, INT-86.
     public function testGetAndFetchedValueUseTheTypedKey(): void
     {
-        $integer = new class('integer') extends Model {
-            public function __construct(public string $label) {}
-            public static function meta(): array { return []; }
+        $integer = new class ('integer') extends Model {
+            public function __construct(public string $label)
+            {
+            }
+            public static function meta(): array
+            {
+                return [];
+            }
         };
-        $text = new class('text') extends Model {
-            public function __construct(public string $label) {}
-            public static function meta(): array { return []; }
+        $text = new class ('text') extends Model {
+            public function __construct(public string $label)
+            {
+            }
+            public static function meta(): array
+            {
+                return [];
+            }
         };
         $collection = new Collection();
         $collection->put(7, $integer);

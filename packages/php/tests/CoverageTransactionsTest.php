@@ -127,7 +127,11 @@ class CoverageTransactionsTest extends TestCase
                     $db->transactionNumber(),
                     'a completed Fiber leaves no active transaction frame'
                 );
-                Assert::assertSame(Code::CONFIG, $flowError?->code_, 'a second Fiber cannot use an active transaction connection');
+                Assert::assertSame(
+                    Code::CONFIG,
+                    $flowError?->code_,
+                    'a second Fiber cannot use an active transaction connection',
+                );
 
                 foreach (['read_uncommitted', 'read_committed', 'repeatable_read', 'serializable'] as $isolation) {
                     $db->transaction(static fn() => null, isolation: $isolation, retry: 0);
@@ -158,7 +162,11 @@ class CoverageTransactionsTest extends TestCase
                     Assert::assertNull($timeoutError, 'PostgreSQL supports transaction timeoutMs');
                     Assert::assertSame(1, $timeoutCalls, 'PostgreSQL timeout callback ran');
                 } else {
-                    Assert::assertSame(Code::CAPABILITY_UNSUPPORTED, $timeoutError?->code_, 'timeoutMs unsupported driver');
+                    Assert::assertSame(
+                        Code::CAPABILITY_UNSUPPORTED,
+                        $timeoutError?->code_,
+                        'timeoutMs unsupported driver',
+                    );
                     Assert::assertSame(0, $timeoutCalls, 'unsupported timeout fails before the callback');
                 }
 
@@ -189,7 +197,8 @@ class CoverageTransactionsTest extends TestCase
                         Assert::assertSame(
                             Code::CANCELED,
                             $timeoutError?->code_,
-                            'locked statement exceeds transaction timeoutMs: ' . ($timeoutError?->getMessage() ?? 'no error')
+                            'locked statement exceeds transaction timeoutMs: '
+                                . ($timeoutError?->getMessage() ?? 'no error')
                         );
                         Assert::assertSame(
                             'before timeout',

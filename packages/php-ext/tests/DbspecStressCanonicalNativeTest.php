@@ -18,7 +18,8 @@ final class DbspecStressCanonicalNativeTest extends TestCase
         self::assertTrue((new ReflectionMethod(Dbspec::class, 'parse'))->isInternal());
         self::assertTrue((new ReflectionMethod(Dbspec::class, 'emit'))->isInternal());
 
-        // The canonical 2000-table document needs more than the CLI's default 128M, as the existing introspection stress case does.
+        // The canonical 2000-table document needs more than the CLI's default 128M, as the existing introspection
+        // stress case does.
         ini_set('memory_limit', '512M');
         $text = dbspec_stress_document();
         $result = Dbspec::parse($text, []);
