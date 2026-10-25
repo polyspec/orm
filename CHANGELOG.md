@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- relation() and relations() under a service scope run in every client as the request hook case relation_scope, bound by coverage-request-hook-relation-scope. The CONFIG failure that the consumer reported does not reproduce on current main: its canister conformance passes 101 of 101 cases with the relation calls under its ScopeHook, and the earlier cause is not proven (T203).
 - `tsc .` type-checks the kit sources that orm imports again: kit K574 links the dependencies that a linked package adds, so `make link` installs node_modules/@types/picomatch beside the file links of kit, and `make lint-ts` no longer fails on TS7016 for picomatch (KSTD-5-89-8).
 - `make lint-python` passes on main: `ruff format` reformats the six Python files that `ruff format --check` reported, with no change to their syntax tree (KSTD-5-89-1).
 - KSTD-5-90: conformance-check RECORD=1 passes all six implementation outputs, php-extension included, to record (KSTD-5-90)
