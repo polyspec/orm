@@ -5,16 +5,15 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Extension\Tests;
 
 use DateTimeZone;
-use PDO;
 use PDOStatement;
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;
-use Polyspec\Orm\Model;
+use Polyspec\Orm\Tests\Model\CompositeAccount;
+use Polyspec\Orm\Tests\Model\CompositeMembership;
 use Polyspec\Orm\Tests\Model\Service;
-use ReflectionClass;
 use Polyspec\Orm\OrmException;
 
 #[Small]
@@ -24,11 +23,9 @@ final class ParameterChunkingNativeTest extends TestCase
     // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- feature IDs require the test method to preserve underscores.
     public function test_root_in_chunks_use_native_model_queries_and_reject_unmergeable_pages(): void
     {
-        Assert::assertTrue((new ReflectionClass(Db::class))->isInternal());
-        Assert::assertTrue((new ReflectionClass(Model::class))->isInternal());
-
         require_once __DIR__ . '/NativeQueryProbeStatement.php';
         require_once __DIR__ . '/NativeQueryProbePdo.php';
+        NativeQueryProbePdo::assertNativeOrmClasses();
         $pdo = new NativeQueryProbePdo();
         $pdo->exec('CREATE TABLE "service" ("seq" INTEGER PRIMARY KEY, "name" TEXT NOT NULL)');
         $insert = $pdo->prepare('INSERT INTO "service" ("seq", "name") VALUES (?, ?)');
@@ -61,6 +58,54 @@ final class ParameterChunkingNativeTest extends TestCase
                 Assert::assertSame(\Polyspec\Orm\Code::IR_INVALID, $error->code_);
             }
             Assert::assertCount(2, $pdo->executions, 'the rejected page sent no additional statement');
+        } finally {
+            $db->close();
+        }
+    }
+
+    // PRT-76: relation key tuples split at the bind limit and the tail pads to a power-of-two size class.
+    // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- feature IDs require the test method to preserve underscores.
+    public function test_composite_relation_keys_split_and_pad_to_bind_safe_size_classes(): void
+    {
+        require_once __DIR__ . '/NativeQueryProbeStatement.php';
+        require_once __DIR__ . '/NativeQueryProbePdo.php';
+        NativeQueryProbePdo::assertNativeOrmClasses();
+        $rows = [];
+        for ($key = 1; $key <= 259; $key++) {
+            $tenant = 500 + intdiv($key - 1, 10);
+            $accountId = (($key - 1) % 10) + 1;
+            $rows[] = [
+                'tenantId' => $tenant,
+                'accountId' => $accountId,
+                'name' => "account-$key",
+                'role' => "role-$key",
+            ];
+        }
+        $pdo = NativeQueryProbePdo::withCompositeRows($rows);
+        $db = $pdo->connectOrm();
+        try {
+            $child = (new CompositeMembership())
+                ->matchTenantIdWithTenantId()
+                ->matchAccountIdWithAccountId()
+                ->aliasMemberships();
+            $accounts = (new CompositeAccount())($db)->relations($child)->gets();
+            Assert::assertCount(259, $accounts);
+            foreach ($accounts as $parent) {
+                $children = $parent->getMemberships();
+                Assert::assertCount(1, $children);
+                Assert::assertSame($parent->getTenantId(), $children->first()->getTenantId());
+                Assert::assertSame($parent->getAccountId(), $children->first()->getAccountId());
+            }
+
+            Assert::assertCount(3, $pdo->executions, 'one root query and two native relation chunks');
+            Assert::assertCount(512, $pdo->executions[1]['params'], '256 two-column tuples fit the first chunk');
+            Assert::assertCount(8, $pdo->executions[2]['params'], 'the 3-tuple tail pads to the 4-tuple size class');
+            Assert::assertSame(512, substr_count($pdo->executions[1]['sql'], '?'));
+            Assert::assertSame(8, substr_count($pdo->executions[2]['sql'], '?'));
+            $tailTuples = array_chunk(array_slice($pdo->executions[2]['params'], -8), 2);
+            Assert::assertNotSame($tailTuples[0], $tailTuples[1]);
+            Assert::assertNotSame($tailTuples[1], $tailTuples[2]);
+            Assert::assertSame($tailTuples[2], $tailTuples[3], 'the last parent tuple fills the padded slots');
         } finally {
             $db->close();
         }
