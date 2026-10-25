@@ -1969,14 +1969,10 @@ final class Db
     }
 
     /**
-     * Splits a root IN list that exceeds the driver bind limit into requests
-     * whose results together equal the original result.
-     * @return list<Request>
-     */
-    /**
-     * The plan of a read whose root IN list may be split (PRT-76), and the number of bind slots its first statement needs.
-     * A request with more values than the bind limit is planned with its longest root IN list cut to its first value, so
-     * no plan holds a bind slot per value of the list; rootInParts plans the parts, each within the bind limit.
+     * The plan of a read whose root IN list may be split (PRT-76), and the number of bind slots its first statement
+     * needs. A request with more values than the bind limit is planned with its longest root IN list cut to its first
+     * value, so no plan holds a bind slot per value of the list; rootInParts plans the parts, each within the bind
+     * limit.
      *
      * @return array{0: array, 1: int}
      */
@@ -2011,13 +2007,21 @@ final class Db
         return $target;
     }
 
+    /**
+     * Splits a root IN list that exceeds the driver bind limit into requests whose results together equal the original
+     * result; $slots is the number of bind slots the first statement of $r needs (splitReadPlan).
+     * @return list<Request>
+     */
     private function rootInParts(Request $r, int $slots): array
     {
         $limit = self::bindLimit($this->driver);
         if ($slots <= $limit) {
             return [];
         }
-        $tooLarge = new OrmException(Code::IR_INVALID, "the statement needs $slots bind parameters but {$this->driver} permits $limit");
+        $tooLarge = new OrmException(
+            Code::IR_INVALID,
+            "the statement needs $slots bind parameters but {$this->driver} permits $limit"
+        );
         $ir = $r->ir;
         $items = $ir['where']['items'] ?? [];
         if (isset($ir['limit']) || isset($ir['order']) || isset($ir['group_by']) || $items === []) {

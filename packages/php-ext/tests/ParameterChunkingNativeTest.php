@@ -88,7 +88,8 @@ final class ParameterChunkingNativeTest extends TestCase
             foreach ($pdo->executions as $execution) {
                 Assert::assertLessThanOrEqual(999, count($execution['params']));
             }
-            Assert::assertLessThan(32 * 1024 * 1024, $peak, sprintf('the split count held %.1f MB above its start', $peak / 1048576));
+            $held = sprintf('the split count held %.1f MB above its start', $peak / 1048576);
+            Assert::assertLessThan(32 * 1024 * 1024, $peak, $held);
         } finally {
             $db->close();
         }
