@@ -1,8 +1,12 @@
 import assert from 'node:assert/strict';
+import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { caseTest, COMPUTE } from '../../tests/testcase.mts';
 import {
   PERFORMANCE_DATABASES, PERFORMANCE_RUNTIMES, PERFORMANCE_WORKLOADS,
   performanceDiagnosticArguments, performanceMeasurementRecord, performanceMeasurementsFromOutput, validatePerformanceMeasurements,
+  writePerformanceMeasurementRecord,
   type PerformanceMeasurement,
 } from './performance-reference.mts';
 
@@ -54,4 +58,21 @@ caseTest('reference recording requires the exact 72 observations and never promo
   assert.throws(() => validatePerformanceMeasurements(measurements.map((entry, index) => index === 0 ? { ...entry, cpuMs: Number.NaN } : entry)), /cpuMs is not a positive finite measurement/);
   assert.throws(() => validatePerformanceMeasurements(measurements.map((entry, index) => index === 0 ? { ...entry, wallMs: 0 } : entry)), /wallMs is not a positive finite measurement/);
   assert.throws(() => validatePerformanceMeasurements(measurements.map((entry, index) => index === 0 ? { ...entry, machine: 'another runner' } : entry)), /machine identity differs within go observations/);
+});
+
+caseTest('raw observations publish atomically under ignored evidence without promoting references', COMPUTE, async () => {
+  const root = await mkdtemp(join(tmpdir(), 'performance-reference-'));
+  try {
+    const path = await writePerformanceMeasurementRecord(root, matrix());
+    const text = await readFile(path, 'utf8');
+    const entries = await readdir(join(root, 'var/evidence/performance_gate'));
+    assert.match(path, /var\/evidence\/performance_gate\/observations-.*\.json$/);
+    assert.match(text, /"kind": "raw-runner-observations"/);
+    assert.match(text, /"referencePolicy": "not-promoted"/);
+    assert.equal((text.match(/"samples": 1000/g) ?? []).length, 72);
+    assert.equal(entries.length, 1);
+    assert.match(entries[0] ?? '', /\.json$/);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });
