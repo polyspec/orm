@@ -63,6 +63,6 @@ Go `model.Author()` returns `*model.AuthorModel`. Rust and TypeScript use asynch
 
 ## Implementation status
 
-`config/parity.json` declares six implementations: **Go, PHP, PHP extension, Rust, TypeScript, and Python**. The examples above show the Go, PHP, Rust, TypeScript, and Python library APIs. The PHP extension is part of the common implementation set, while its unfinished native behavior and database evidence remain in the [checklist](plans/execution/checklist.md). The shared protocol runs planning in the calling process; see the [implementation matrix](operations/interface-implementation.md) for the verified scope.
+`config/parity.json` declares six implementations: **Go, PHP, PHP-extension, Rust, TypeScript, and Python**. The examples above show the library API forms. The PHP-extension is part of the common implementation set, while its unfinished native behavior and database evidence remain in the [checklist](plans/execution/checklist.md). The shared protocol runs planning in the calling process; see the [implementation matrix](operations/interface-implementation.md) for the verified scope.
 
 [DSL](spec/dsl.md) · [Schema](spec/schema.md) · [IR / Plan](spec/protocol.md) · [Complex query example](spec/complex-query.md) · [Documentation build and deployment](operations/docs-development.md) · [한국어 문서](index.ko.md)

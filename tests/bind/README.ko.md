@@ -3,7 +3,7 @@
 # Bind vector
 
 `vectors.json`은 클라이언트 bind 경로의 공유 case다. 각 구현이 자기 package의 test에서 실행하며, 모든 case는
-모든 구현에서 같은 답을 내야 한다. `make bind-check`가 다섯 runner를 실행한다.
+모든 구현에서 같은 답을 내야 한다. `make bind-check`는 다섯 bind runner를 실행한다. PHP extension은 PHP runner를 공유한다.
 
 `bind` case는 parameter 하나를 어떤 statement보다 먼저 그 slot의 논리 type으로 검사한다(docs/spec/protocol.md §5
 "Parameters"): `type`과, 그 type에 있으면 `precision`, `scale`, `length`를 가진 `slot`, 클라이언트 `value`,

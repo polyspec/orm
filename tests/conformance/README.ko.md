@@ -1,8 +1,8 @@
 <!-- doc-id: tests-conformance-readme -->
-<!-- source-sha256: 8b623a0ecd7e8a8871def480d58b5a761d4002d758e3238be92425049e7de517 -->
+<!-- source-sha256: 27587354a0cdf1c4e51c74496616fcbd9949871b3493682e79f7b3966567b28b -->
 # 적합성 벡터
 
-한 문서와 여섯 선언 구현을 사용한다. 공통 벡터 contract는 Go, PHP, PHP extension, Rust, TypeScript, Python에 적용된다. conformance 완료에는 각 구현이 데이터베이스에서 체인을 실행하고 JSON을 출력해야 한다.
+한 문서와 여섯 선언 구현을 사용한다. 공통 벡터 contract는 Go, PHP, PHP-extension, Rust, TypeScript, Python에 적용된다. conformance 완료에는 각 구현이 데이터베이스에서 체인을 실행하고 JSON을 출력해야 한다.
 
 ```json
 {"<vector>": {"statements": [{"sql": "...", "binds": [...], "kind": "...", "tables": [...], "transaction": 1, "error": null}], "result": ...}}
@@ -47,7 +47,7 @@ node tests/interfaces/check/main.mts --results "$RUN_DIR/out" --results "$RUN_DI
 비어 있는 SQLite `AUTOINCREMENT` 테이블에는 아직 `sqlite_sequence` 항목이 없을 수 있다. counter 테스트는 테이블 정의를 확인하고 첫 삽입으로 생긴 counter를 관찰한 뒤 원래의 항목 부재 상태로 복원한다.
 
 
-각 실행기는 반복할 수 있는 vector 선택(Go는 `-vector NAME`, PHP, Rust, TypeScript, Python은 `--vector NAME`)을 받아 이름이 지정된 vector만 선언 순서로 실행한다. 알 수 없거나 반복된 이름은 vector를 실행하기 전에 실패한다. `check run`, `check compare`, `check record`는 같은 반복 가능한 `--vector NAME`을 받는다: `run`은 그것을 여섯 선언 구현에 넘기고 `compare`와 `record`는 이름이 지정된 vector만 비교하고 기록하므로, 일부 vector를 바꾸면 그 vector만 실행하고 기록한다.
+각 실행기는 반복할 수 있는 vector 선택을 받아 이름이 지정된 vector만 선언 순서로 실행한다. 알 수 없거나 반복된 이름은 vector를 실행하기 전에 실패한다. `check run`, `check compare`, `check record`는 같은 반복 가능한 `--vector NAME`을 받는다: `run`은 그것을 여섯 선언 구현에 넘기고 `compare`와 `record`는 이름이 지정된 vector만 비교하고 기록하므로, 일부 vector를 바꾸면 그 vector만 실행하고 기록한다.
 
 그 선택의 make 형식은 이름을 공백으로 나눈 변수 `VECTOR`이며, `make orm-test-servers`의 server 환경에는 bench database가 없으므로 `make run-databases`가 자기 실행에 만드는 bench database(scripts/check/databases.mts)에서 실행한다.
 
@@ -75,7 +75,7 @@ make orm-test-servers-stop
 
 쓰기 벡터는 생성한 행을 제거한다. 검사기는 선언된 sequence counter를 복원하고 매번 원래 상태를 확인한다. 출력에서 생성한 행의 키와 갱신 시각은 `$SEQ`, `$TS`로, 무작위 nonce를 갖는 AES 암호문은 `$AES`로 정규화한다. 정규화는 데이터베이스 상태 변경을 허용하지 않는다.
 
-PHP와 TypeScript 실행기는 쓰기 벡터를 트랜잭션에서 실행하고 예상 밖 벡터 오류를 검사기에 반환한다. 잘못된 파생 정수, 누락된 조회 결과 필드, 잘못된 질의 바인딩, 정확히 표현할 수 없는 결과 값을 거부한다. 출력의 ordered JSON 숫자는 정확히 보존한다. TypeScript 결과 사례는 값 스타일 값에 정의되지 않은 멤버가 있을 때 `CODEC_ENCODE` 코드를 검사하며 진단 문구는 계약에 포함하지 않는다. `make conformance-result-check`는 결과 사례를 실행한다. Go 실행기에도 같은 오류, 정수, 바인딩, 필드, 트랜잭션 검사를 적용한다. `make conformance-result-physical-check`는 각 데이터베이스에서 Go, PHP, Rust, TypeScript, Python을 두 번씩 실행하고 출력 동등성과 행·카운터 불변성을 검사한다.
+PHP와 TypeScript 실행기는 쓰기 벡터를 트랜잭션에서 실행하고 예상 밖 벡터 오류를 검사기에 반환한다. 잘못된 파생 정수, 누락된 조회 결과 필드, 잘못된 질의 바인딩, 정확히 표현할 수 없는 결과 값을 거부한다. 출력의 ordered JSON 숫자는 정확히 보존한다. TypeScript 결과 사례는 값 스타일 값에 정의되지 않은 멤버가 있을 때 `CODEC_ENCODE` 코드를 검사하며 진단 문구는 계약에 포함하지 않는다. `make conformance-result-check`는 결과 사례를 실행한다. Go 실행기에도 같은 오류, 정수, 바인딩, 필드, 트랜잭션 검사를 적용한다. `make conformance-result-physical-check`는 각 데이터베이스에서 모든 선언 구현을 두 번씩 실행하고 출력 동등성과 행·카운터 불변성을 검사한다.
 TypeScript 파생 정수 변환은 SQLite `bigint`가 부호 있는 64비트 범위에 있고 숫자 결과로 정확히 표현될 때만 수용한다. 다른 `bigint` 결과는 정확한 ordered JSON 숫자로 직렬화한다.
 
 Rust 실행기는 잘못된 바인딩 값과 파생 정수를 거부하고 집계 평균의 binary64 비트를 비교하며 예상 밖 벡터 오류를 프로세스 실패로 반환한다. 쓰기 벡터는 트랜잭션을 사용하므로 실패한 쓰기가 행을 남기지 않는다. 상태 검사기는 모든 데이터베이스에서 실패 뒤 행과 카운터를 확인한다.

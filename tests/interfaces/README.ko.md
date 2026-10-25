@@ -1,15 +1,15 @@
 <!-- doc-id: tests-interfaces-readme -->
-<!-- source-sha256: b026d153f13a1a0780c6d808e005fea5feb8a7959de4dc4c3f824a9ce454f2bb -->
+<!-- source-sha256: a52f3a57819111bb8da6e0707cce488b6882d6fe0799ce2ccb9deba2673b44eb -->
 # 공통 인터페이스 검사
 
 [contracts/interfaces.json](../../contracts/interfaces.json)이 인터페이스 구조를 정의한다. [인터페이스 구조 문서](../../docs/spec/interfaces.ko.md)와 함께 변경한다.
 
 검사기는 다음 요구사항을 확인한다.
 
-- 논리 입력과 출력이 모델 메서드, 연결, 트랜잭션, 유틸리티의 Go, PHP, Rust, TypeScript, Python 시그니처와 일치한다.
+- 논리 입력과 출력이 각 구현의 모델 메서드, 연결, 트랜잭션, 유틸리티 시그니처와 일치한다.
 - 모델 규칙은 생성된 Go 모델, PHP와 TypeScript 기반 클래스, 고정 모델 메서드를 담은 Rust `polyspec-orm-build` 템플릿을 읽는다.
 - 소유자 규칙은 `Page`와 `AESRotationStatus`의 선언되지 않은 필드를 거부한다.
-- 레코드 규칙은 Go, PHP, Rust, TypeScript, Python의 request 레코드 20개에서 모든 필드와 중첩 타입을 대조한다. PHP 레코드 선언은 `Validator::RECORDS`에서 읽는다.
+- 레코드 규칙은 request 레코드 20개의 모든 필드와 중첩 타입을 각 선언된 표현에서 대조한다. PHP 레코드 선언은 `Validator::RECORDS`에서 읽는다.
 - 네이티브 심볼 스냅샷은 공개 및 내부 선언 변경을 보고한다. 매니페스트의 SHA-256 값은 검토하지 않은 스냅샷 교체를 차단한다.
 - `config/parity.json`은 여섯 구현을 선언한다. PHP extension은 문서화된 Dbspec 일부를 구현하며 전체 ORM client는 아니다. Native 선언 스냅샷에는 `Stats`, `OrmException`, `AesKeyring`, `AesRotationStatus`, `AesUtils`, `PrivilegeUtils`, `Utils`, `Orm`도 포함된다. `php-extension` contract는 `Dbspec` 규칙과 `DbspecDiagnostic`, `DbspecManifest` owner를 구현한다. 선언은 stub에서 읽어 `contracts/symbols/php-extension.json` 및 hash와 비교한다. extension이 목록에 넣지 않은 규칙이나 owner에는 adapter가 없어야 한다. load한 extension이 stub과 같은 선언을 갖는지는 `make dbspec-php-extension-check`가 확인한다.
 - 실행 순서 규칙은 conformance 벡터의 결과와 statement 수를 비교한다.

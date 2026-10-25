@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: 379d2899ee47670010cd8423932ebaf9e40e8aa5e35e585b4527bc281a736e69 -->
+<!-- source-sha256: c3e11ba2977b26eedc2970c338b0595f5b5ed2b80edf69ff04689a274dd8a102 -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -195,9 +195,9 @@ orm 자신의 규칙만 적는다.
   Enforced by: none, 이 규칙은 에이전트의 작업을 다스리며 어떤 도구도 실행한 test를 보지 않는다
 - Own: 완료 결과 없이 미완료 항목 수를 늘리기 전에 진행 중인 작업을 완료한다. 지속 적용할 개발 규칙은 이 파일에 두고 구체 산출물과 증거는 체크리스트에 둔다. 체크리스트 검사는 번호 없는 정책·상태 서술을 거부한다.
   Enforced by: `make docs-check`
-- Own: Go, PHP, Rust, TypeScript, Python은 하나의 동작 계약을 공유한다. 데이터베이스 의존 기능은 모든 클라이언트의 MySQL, PostgreSQL, SQLite 실행 증거가 필요하다. 데이터베이스 비의존 기능은 모든 클라이언트의 동등한 실행 사례가 필요하다. 환경 부재나 실행되지 않은 사례는 실패다.
+- Own: Go, PHP, PHP-extension, Rust, TypeScript, Python은 하나의 동작 계약을 공유한다. 데이터베이스 의존 기능은 모든 클라이언트의 MySQL, PostgreSQL, SQLite 실행 증거가 필요하다. 데이터베이스 비의존 기능은 모든 클라이언트의 동등한 실행 사례가 필요하다. 환경 부재나 실행되지 않은 사례는 실패다.
   Enforced by: `make conformance-check`
-- Own: Go, PHP, Rust, TypeScript, Python 출력에 선언된 벡터만 정확히 들어 있고 각 결과가 같을 때만 적합성 기대값을 기록한다. 거부된 기록은 기대값 파일을 변경하지 않는다.
+- Own: 모든 적합성 출력에 선언된 벡터만 정확히 들어 있고 각 결과가 같을 때만 적합성 기대값을 기록한다. 거부된 기록은 기대값 파일을 변경하지 않는다.
   Enforced by: `make conformance-check`
 - Own: 적합성 비교와 기록은 비어 있지 않고 중복 없는 벡터 이름 및 각 데이터베이스 기대값 파일에서 정확히 같은 벡터 이름을 요구한다. 누락되거나 추가된 이름은 오류다.
   Enforced by: `make conformance-check`
@@ -217,7 +217,7 @@ orm 자신의 규칙만 적는다.
   Enforced by: none, code가 경로를 해석하는 방식을 읽는 검사가 없다
 - Own: 하나의 `0.0.18` 버전을 개발한다. 공개 클라이언트는 드라이버 인자를 따로 받지 않고 URI scheme이 데이터베이스를 선택하는 DSN URI 하나를 받는다. 실행 시 orm은 클라이언트 라이브러리뿐이며 계획과 실행은 그것을 부르는 프로세스 안에서 이뤄진다.
   Enforced by: `make version-check`
-- Own: 각 dbspec parser는 `identity` 컬럼이 유일한 기본 키 컬럼이고 type이 `i64`가 아니면 거부한다. 모든 dbspec 구현(Go, PHP, PHP extension, TypeScript, Python, Rust)은 동일한 허용·거부 스키마 사례를 실행한다.
+- Own: 각 dbspec parser는 `identity` 컬럼이 유일한 기본 키 컬럼이고 type이 `i64`가 아니면 거부한다. 여섯 dbspec 구현은 동일한 허용·거부 스키마 사례를 실행한다.
   Enforced by: `make conformance-check`
 - Own: SQLite 실제 스키마 가져오기는 `INTEGER PRIMARY KEY AUTOINCREMENT`만 부호 있는 `i64` 자동 키로 바꾸고 일반 `INTEGER`는 `i32`로 유지한다.
   Enforced by: `make dbspec-introspect-check`

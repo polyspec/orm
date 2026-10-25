@@ -1,7 +1,7 @@
 <!-- doc-id: readme -->
 # orm
 
-A schema-driven model query grammar for **Go, PHP, Python, Rust, and TypeScript**. The target syntax is specified in [docs/spec/dsl.md](docs/spec/dsl.md) and the work order in [docs/spec/plan.md](docs/spec/plan.md).
+A schema-driven model query grammar shared by **Go, PHP, the PHP-extension, Python, Rust, and TypeScript**. The target syntax is specified in [docs/spec/dsl.md](docs/spec/dsl.md) and the work order in [docs/spec/plan.md](docs/spec/plan.md).
 
 ```php
 $authors = (new Author)->connect($slave1)->serviceSeq(7)->andIsClose(false)
@@ -63,7 +63,7 @@ authors = Author().connect(slave1).gets_by_service_seq_and_is_close(7, False)
 - **Runtime**: the client library validates each statement shape against the runtime model it builds from the embedded manifest, assembles the SQL in the calling process, caches the plan, and executes it through the language-native driver. No service or daemon runs beside the calling process.
 - **Databases**: MySQL 8, PostgreSQL 12+, and SQLite 3.46+ use the same request and result rules (`docs/spec/dialects.md`).
 - **Python**: the Python client supports Python 3.14 (CPython), the release of `mise.toml` that CI tests; `requires-python` states it (`docs/operations/packaging.md`).
-- **Equality**: `config/parity.json` declares Go, PHP, PHP extension, TypeScript, Python and Rust; `tests/conformance` compares the configured implementations against shared vectors, with missing extension execution treated as incomplete evidence.
+- **Equality**: `config/parity.json` declares Go, PHP, PHP-extension, TypeScript, Python and Rust; `tests/conformance` compares the configured implementations against shared vectors, with missing extension execution treated as incomplete evidence.
 
 ## Quick start (MySQL 8.4 and PostgreSQL 17)
 ```sh

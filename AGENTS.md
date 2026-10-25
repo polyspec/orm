@@ -33,7 +33,7 @@ vendors; this file states only the rules of orm.
   their source as kit `docs/plans/local-links.md` describes; links are never committed.
   Enforced by: `make kit-check`
 - Refines S5: The client packages are `packages/<runtime>` with the runtime `go`, `ts` (the TypeScript client),
-  `php`, `php-ext` (the PHP extension), `python` and `rust` (S5 of PRINCIPLES.md): a folder name
+  `php`, `php-ext` (the PHP-extension), `python` and `rust` (S5 of PRINCIPLES.md): a folder name
   carries no repository prefix, and the distribution names (`@polyspec/orm`, `polyspec/orm`,
   `polyspec-orm`) keep it. The Go module is `github.com/polyspec/orm/packages/go`
   (`packages/go/go.mod`): it holds the client (`orm`, `model` and the other generated models), the
@@ -232,9 +232,9 @@ vendors; this file states only the rules of orm.
   Enforced by: none, the rule governs the work of an agent; no tool sees which tests run
 - Own: Complete work in progress before increasing the number of unfinished items without completed results. Keep persistent development rules in this file and concrete deliverables with their evidence in the checklist. The checklist checker rejects unnumbered policy and status prose.
   Enforced by: `make docs-check`
-- Own: Go, PHP, Rust, TypeScript, and Python share one specified behavior. A database-dependent feature requires executable evidence on MySQL, PostgreSQL, and SQLite in every client. A database-independent feature requires equivalent executable cases in every client. Missing environment or a case that did not execute is a failure.
+- Own: Go, PHP, the PHP-extension, Rust, TypeScript, and Python share one specified behavior. A database-dependent feature requires executable evidence on MySQL, PostgreSQL, and SQLite in every client. A database-independent feature requires equivalent executable cases in every client. Missing environment or a case that did not execute is a failure.
   Enforced by: `make conformance-check`
-- Own: Record a conformance expectation only when the Go, PHP, Rust, TypeScript, and Python outputs contain exactly the declared vectors and agree on each result. A rejected recording leaves the expectation file unchanged.
+- Own: Record a conformance expectation only when every required conformance output contains exactly the declared vectors and agrees on each result. A rejected recording leaves the expectation file unchanged.
   Enforced by: `make conformance-check`
 - Own: Conformance comparison and recording require nonempty, unique vector names and exactly the same vector names in each database expectation file; an omitted or extra name is an error.
   Enforced by: `make conformance-check`
@@ -254,7 +254,7 @@ vendors; this file states only the rules of orm.
   Enforced by: none, no check reads how the code resolves its paths
 - Own: Develop one `0.0.18` version. A public client accepts one DSN URI, whose scheme selects the database, without a separate driver argument. At runtime orm is only its client library; planning and execution run in the process that calls it.
   Enforced by: `make version-check`
-- Own: Each dbspec parser rejects an `identity` column unless it is the only primary key column and its type is `i64`. Every dbspec implementation (Go, PHP, the PHP extension, TypeScript, Python, and Rust) executes the same accepted and rejected schema cases.
+- Own: Each dbspec parser rejects an `identity` column unless it is the only primary key column and its type is `i64`. Every dbspec implementation (Go, PHP, the PHP-extension, TypeScript, Python, and Rust) executes the same accepted and rejected schema cases.
   Enforced by: `make conformance-check`
 - Own: SQLite live import maps only `INTEGER PRIMARY KEY AUTOINCREMENT` to the signed `i64` automatic key; an ordinary `INTEGER` remains `i32`.
   Enforced by: `make dbspec-introspect-check`

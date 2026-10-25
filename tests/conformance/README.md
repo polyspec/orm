@@ -72,8 +72,7 @@ An empty SQLite `AUTOINCREMENT` table may have no `sqlite_sequence` entry yet;
 the counter test verifies its table definition, observes the first inserted
 counter, and restores the original absence.
 
-Each runner also takes a repeatable vector selection (`-vector NAME` in Go,
-`--vector NAME` in PHP, Rust, TypeScript, and Python) and then runs only the named
+Each runner also takes a repeatable vector selection and then runs only the named
 vectors in declared order; an unknown or repeated name fails before any vector
 runs. `check run`, `check compare` and `check record` take the same repeatable
 `--vector NAME`: `run` passes it to the six declared implementations, and `compare` and `record`
@@ -157,7 +156,7 @@ The TypeScript result case checks the `CODEC_ENCODE` code when a styled value
 contains an undefined member; diagnostic wording is not part of the contract.
 `make conformance-result-check` runs their result cases. The Go runner applies
 the same error, integer, bind, field, and transaction checks. `make
-conformance-result-physical-check` runs Go, PHP, Rust, TypeScript, and Python twice on each
+conformance-result-physical-check` runs every declared implementation twice on each
 database and checks identical output and unchanged rows and counters.
 
 The Rust runner rejects malformed bind values and derived integers, compares
