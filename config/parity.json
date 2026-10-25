@@ -13418,6 +13418,45 @@
       ]
     },
     {
+      "id": "catalog-plain-query-budgets",
+      "kind": "feature",
+      "requirements": [
+        "INT-115"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_catalog_connection_test.go",
+          "id": "TestCoverageCatalogReadOnlyQueryBudgets"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+          "id": "catalog_plain_query_bounds"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::testCatalogPlainReadOnlyQueryBudgets"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::testCatalogPlainReadOnlyQueryBudgets"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_catalog_connection.py",
+          "id": "test_read"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/coverage_catalog_connection.rs",
+          "id": "coverage_catalog_connection::coverage_catalog_read_budgets"
+        }
+      ]
+    },
+    {
       "id": "catalog-connection-row-mutation",
       "kind": "feature",
       "requirements": [

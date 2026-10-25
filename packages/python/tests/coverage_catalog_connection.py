@@ -110,6 +110,7 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
     def tearDown(self):
         self.catalog.close()
 
+    # Requirements: INT-115.
     def test_read(self):
         driver = self.driver
         namespace = self.catalog.current_namespace()

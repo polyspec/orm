@@ -147,16 +147,13 @@
         "packages/php-ext/src/pgsql_statement_iterator_native.h",
         "packages/php-ext/src/pgsql_lob_native.c",
         "packages/php-ext/src/pgsql_lob_native.h",
-        "packages/php/tests/bootstrap.php",
         "packages/php/tests/case_database.php",
         "packages/php/testing/required_dsn.php",
-        "packages/php-ext/tests/bootstrap.php",
         "packages/php/src/Db.php",
         "packages/php/src/Orm.php",
         "packages/php-ext/src/config.m4",
         "packages/php-ext/scripts/build.sh",
-        "packages/php-ext/src/polyspec_orm.c",
-        "packages/php-ext/src/polyspec_orm.stub.php"
+        "packages/php-ext/src/polyspec_orm.c"
       ],
       "docs": [
         "docs/spec/config.md",
@@ -526,17 +523,14 @@
             "packages/php/src/Db.php",
             "packages/php/src/Orm.php",
             "packages/php/src/Internal/PgsqlPdoAdapter.php",
-            "packages/php/tests/bootstrap.php",
             "packages/php/testing/required_dsn.php",
             "packages/php/tests/case_database.php",
-            "packages/php-ext/tests/bootstrap.php",
             "packages/php/src/Internal/PgsqlStatementAdapter.php",
             "packages/php/src/Internal/PgsqlStatementIterator.php",
             "packages/php/src/Internal/PgsqlLargeObjectStream.php",
             "packages/php-ext/src/config.m4",
             "packages/php-ext/scripts/build.sh",
             "packages/php-ext/src/polyspec_orm.c",
-            "packages/php-ext/src/polyspec_orm.stub.php",
             "packages/php-ext/src/pgsql_adapter_native.c",
             "packages/php-ext/src/pgsql_adapter_native.h",
             "packages/php-ext/src/pgsql_statement_iterator_native.c",
@@ -559,8 +553,6 @@
             "packages/php-ext/src/pgsql_statement_iterator_native.h",
             "packages/php-ext/src/pgsql_lob_native.c",
             "packages/php-ext/src/pgsql_lob_native.h",
-            "packages/php/tests/bootstrap.php",
-            "packages/php-ext/tests/bootstrap.php",
             "packages/php/tests/case_database.php",
             "packages/php/testing/required_dsn.php",
             "packages/php/src/Db.php",
@@ -571,8 +563,7 @@
             "packages/php/src/Internal/PgsqlLargeObjectStream.php",
             "packages/php-ext/src/config.m4",
             "packages/php-ext/scripts/build.sh",
-            "packages/php-ext/src/polyspec_orm.c",
-            "packages/php-ext/src/polyspec_orm.stub.php"
+            "packages/php-ext/src/polyspec_orm.c"
           ]
         },
         {
@@ -584,20 +575,17 @@
             "contracts/features.json",
             "packages/php/tests/PgsqlPdoAdapterCases.php",
             "packages/php/tests/PgsqlPdoAdapterTest.php",
-            "packages/php/tests/bootstrap.php",
             "packages/php/src/Internal/PgsqlPdoAdapter.php",
             "packages/php/src/Internal/PgsqlStatementAdapter.php",
             "packages/php/src/Internal/PgsqlStatementIterator.php",
             "packages/php/src/Internal/PgsqlLargeObjectStream.php",
             "packages/php/tests/case_database.php",
             "packages/php/testing/required_dsn.php",
-            "packages/php-ext/tests/bootstrap.php",
             "packages/php/src/Db.php",
             "packages/php/src/Orm.php",
             "packages/php-ext/src/config.m4",
             "packages/php-ext/scripts/build.sh",
             "packages/php-ext/src/polyspec_orm.c",
-            "packages/php-ext/src/polyspec_orm.stub.php",
             "packages/php-ext/src/pgsql_adapter_native.c",
             "packages/php-ext/src/pgsql_adapter_native.h",
             "packages/php-ext/src/pgsql_statement_iterator_native.c",
@@ -615,8 +603,6 @@
             "contracts/features.json",
             "packages/php-ext/tests/PgsqlPdoAdapterNativeTest.php",
             "packages/php/tests/PgsqlPdoAdapterCases.php",
-            "packages/php/tests/bootstrap.php",
-            "packages/php-ext/tests/bootstrap.php",
             "packages/php-ext/src/pgsql_adapter_native.c",
             "packages/php-ext/src/pgsql_adapter_native.h",
             "packages/php-ext/src/pgsql_statement_iterator_native.c",
@@ -633,8 +619,7 @@
             "packages/php/src/Internal/PgsqlLargeObjectStream.php",
             "packages/php-ext/src/config.m4",
             "packages/php-ext/scripts/build.sh",
-            "packages/php-ext/src/polyspec_orm.c",
-            "packages/php-ext/src/polyspec_orm.stub.php"
+            "packages/php-ext/src/polyspec_orm.c"
           ]
         }
       ],
@@ -4357,7 +4342,8 @@
         "packages/php/tests/coverage_cases.php",
         "packages/ts/tests/coverage_case.mjs",
         "packages/python/tests/coverage_case.py",
-        "packages/php/tests/dbspec_plan_cases.php"
+        "packages/php/tests/dbspec_plan_cases.php",
+        "packages/php/tests/DbspecApplyLockWaitPDO.php"
       ],
       "tests": [
         "packages/go/internal/dialects/apply_clients_physical_test.go",
@@ -4808,7 +4794,6 @@
           "inputs": [
             "tests/dbspec/compare/check.test.mts",
             "tests/dbspec/compare/compare.mts",
-            "tests/dbspec/stress.mts",
             "tests/dbspec/compare/runners.test.mts",
             "tests/dbspec/compare/runners.mts",
             "tests/dbspec/inputs.test.mts",
@@ -7333,7 +7318,8 @@
         "packages/go/orm/coverage_fixture_test.go",
         "packages/php/tests/coverage_cases.php",
         "packages/ts/tests/coverage_case.mjs",
-        "packages/python/tests/coverage_case.py"
+        "packages/python/tests/coverage_case.py",
+        "packages/php/tests/BlindIndexSourcePlannerInput.php"
       ],
       "tests": [
         "packages/go/orm/codec_test.go",
@@ -11057,7 +11043,8 @@
           "catalog_read",
           "catalog_row_mutation",
           "model_read_null_and_empty_text",
-          "catalog_grid_column_and_row_order"
+          "catalog_grid_column_and_row_order",
+          "catalog_plain_query_bounds"
         ],
         "owners": {
           "rust": {
@@ -11074,13 +11061,15 @@
                     "catalog_read",
                     "catalog_row_mutation",
                     "model_read_null_and_empty_text",
-                    "catalog_grid_column_and_row_order"
+                    "catalog_grid_column_and_row_order",
+                    "catalog_plain_query_bounds"
                   ],
                   "symbols": {
                     "catalog_read": "coverage_catalog_read",
                     "catalog_row_mutation": "coverage_catalog_row_mutation",
                     "model_read_null_and_empty_text": "coverage_model_read_null_and_empty_text",
-                    "catalog_grid_column_and_row_order": "coverage_catalog_grid_column_and_row_order"
+                    "catalog_grid_column_and_row_order": "coverage_catalog_grid_column_and_row_order",
+                    "catalog_plain_query_bounds": "coverage_catalog_connection::coverage_catalog_read_budgets"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -11093,13 +11082,15 @@
                     "catalog_read",
                     "catalog_row_mutation",
                     "model_read_null_and_empty_text",
-                    "catalog_grid_column_and_row_order"
+                    "catalog_grid_column_and_row_order",
+                    "catalog_plain_query_bounds"
                   ],
                   "symbols": {
                     "catalog_read": "coverage_catalog_read",
                     "catalog_row_mutation": "coverage_catalog_row_mutation",
                     "model_read_null_and_empty_text": "coverage_model_read_null_and_empty_text",
-                    "catalog_grid_column_and_row_order": "coverage_catalog_grid_column_and_row_order"
+                    "catalog_grid_column_and_row_order": "coverage_catalog_grid_column_and_row_order",
+                    "catalog_plain_query_bounds": "coverage_catalog_connection::coverage_catalog_read_budgets"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -11112,13 +11103,15 @@
                     "catalog_read",
                     "catalog_row_mutation",
                     "model_read_null_and_empty_text",
-                    "catalog_grid_column_and_row_order"
+                    "catalog_grid_column_and_row_order",
+                    "catalog_plain_query_bounds"
                   ],
                   "symbols": {
                     "catalog_read": "coverage_catalog_read",
                     "catalog_row_mutation": "coverage_catalog_row_mutation",
                     "model_read_null_and_empty_text": "coverage_model_read_null_and_empty_text",
-                    "catalog_grid_column_and_row_order": "coverage_catalog_grid_column_and_row_order"
+                    "catalog_grid_column_and_row_order": "coverage_catalog_grid_column_and_row_order",
+                    "catalog_plain_query_bounds": "coverage_catalog_connection::coverage_catalog_read_budgets"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -11142,13 +11135,15 @@
                     "catalog_read",
                     "catalog_row_mutation",
                     "model_read_null_and_empty_text",
-                    "catalog_grid_column_and_row_order"
+                    "catalog_grid_column_and_row_order",
+                    "catalog_plain_query_bounds"
                   ],
                   "symbols": {
                     "catalog_read": "TestCoverageCatalogRead",
                     "catalog_row_mutation": "TestCoverageCatalogRowMutation",
                     "model_read_null_and_empty_text": "TestCoverageModelReadNullAndEmptyText",
-                    "catalog_grid_column_and_row_order": "TestCoverageCatalogGridColumnAndRowOrder"
+                    "catalog_grid_column_and_row_order": "TestCoverageCatalogGridColumnAndRowOrder",
+                    "catalog_plain_query_bounds": "TestCoverageCatalogReadOnlyQueryBudgets"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -11161,13 +11156,15 @@
                     "catalog_read",
                     "catalog_row_mutation",
                     "model_read_null_and_empty_text",
-                    "catalog_grid_column_and_row_order"
+                    "catalog_grid_column_and_row_order",
+                    "catalog_plain_query_bounds"
                   ],
                   "symbols": {
                     "catalog_read": "TestCoverageCatalogRead",
                     "catalog_row_mutation": "TestCoverageCatalogRowMutation",
                     "model_read_null_and_empty_text": "TestCoverageModelReadNullAndEmptyText",
-                    "catalog_grid_column_and_row_order": "TestCoverageCatalogGridColumnAndRowOrder"
+                    "catalog_grid_column_and_row_order": "TestCoverageCatalogGridColumnAndRowOrder",
+                    "catalog_plain_query_bounds": "TestCoverageCatalogReadOnlyQueryBudgets"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -11180,13 +11177,15 @@
                     "catalog_read",
                     "catalog_row_mutation",
                     "model_read_null_and_empty_text",
-                    "catalog_grid_column_and_row_order"
+                    "catalog_grid_column_and_row_order",
+                    "catalog_plain_query_bounds"
                   ],
                   "symbols": {
                     "catalog_read": "TestCoverageCatalogRead",
                     "catalog_row_mutation": "TestCoverageCatalogRowMutation",
                     "model_read_null_and_empty_text": "TestCoverageModelReadNullAndEmptyText",
-                    "catalog_grid_column_and_row_order": "TestCoverageCatalogGridColumnAndRowOrder"
+                    "catalog_grid_column_and_row_order": "TestCoverageCatalogGridColumnAndRowOrder",
+                    "catalog_plain_query_bounds": "TestCoverageCatalogReadOnlyQueryBudgets"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -11210,7 +11209,8 @@
                     "catalog_read",
                     "catalog_row_mutation",
                     "model_read_null_and_empty_text",
-                    "catalog_grid_column_and_row_order"
+                    "catalog_grid_column_and_row_order",
+                    "catalog_plain_query_bounds"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -11223,7 +11223,8 @@
                     "catalog_read",
                     "catalog_row_mutation",
                     "model_read_null_and_empty_text",
-                    "catalog_grid_column_and_row_order"
+                    "catalog_grid_column_and_row_order",
+                    "catalog_plain_query_bounds"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -11236,7 +11237,8 @@
                     "catalog_read",
                     "catalog_row_mutation",
                     "model_read_null_and_empty_text",
-                    "catalog_grid_column_and_row_order"
+                    "catalog_grid_column_and_row_order",
+                    "catalog_plain_query_bounds"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -11260,7 +11262,8 @@
                     "catalog_read",
                     "catalog_row_mutation",
                     "model_read_null_and_empty_text",
-                    "catalog_grid_column_and_row_order"
+                    "catalog_grid_column_and_row_order",
+                    "catalog_plain_query_bounds"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -11273,7 +11276,8 @@
                     "catalog_read",
                     "catalog_row_mutation",
                     "model_read_null_and_empty_text",
-                    "catalog_grid_column_and_row_order"
+                    "catalog_grid_column_and_row_order",
+                    "catalog_plain_query_bounds"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -11286,7 +11290,8 @@
                     "catalog_read",
                     "catalog_row_mutation",
                     "model_read_null_and_empty_text",
-                    "catalog_grid_column_and_row_order"
+                    "catalog_grid_column_and_row_order",
+                    "catalog_plain_query_bounds"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -11310,13 +11315,15 @@
                     "catalog_read",
                     "catalog_row_mutation",
                     "model_read_null_and_empty_text",
-                    "catalog_grid_column_and_row_order"
+                    "catalog_grid_column_and_row_order",
+                    "catalog_plain_query_bounds"
                   ],
                   "symbols": {
                     "catalog_read": "testCatalogRead",
                     "catalog_row_mutation": "testCatalogRowMutation",
                     "model_read_null_and_empty_text": "testModelReadNullAndEmptyText",
-                    "catalog_grid_column_and_row_order": "testGridColumnAndRowOrder"
+                    "catalog_grid_column_and_row_order": "testGridColumnAndRowOrder",
+                    "catalog_plain_query_bounds": "testCatalogPlainReadOnlyQueryBudgets"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -11329,13 +11336,15 @@
                     "catalog_read",
                     "catalog_row_mutation",
                     "model_read_null_and_empty_text",
-                    "catalog_grid_column_and_row_order"
+                    "catalog_grid_column_and_row_order",
+                    "catalog_plain_query_bounds"
                   ],
                   "symbols": {
                     "catalog_read": "testCatalogRead",
                     "catalog_row_mutation": "testCatalogRowMutation",
                     "model_read_null_and_empty_text": "testModelReadNullAndEmptyText",
-                    "catalog_grid_column_and_row_order": "testGridColumnAndRowOrder"
+                    "catalog_grid_column_and_row_order": "testGridColumnAndRowOrder",
+                    "catalog_plain_query_bounds": "testCatalogPlainReadOnlyQueryBudgets"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -11348,13 +11357,15 @@
                     "catalog_read",
                     "catalog_row_mutation",
                     "model_read_null_and_empty_text",
-                    "catalog_grid_column_and_row_order"
+                    "catalog_grid_column_and_row_order",
+                    "catalog_plain_query_bounds"
                   ],
                   "symbols": {
                     "catalog_read": "testCatalogRead",
                     "catalog_row_mutation": "testCatalogRowMutation",
                     "model_read_null_and_empty_text": "testModelReadNullAndEmptyText",
-                    "catalog_grid_column_and_row_order": "testGridColumnAndRowOrder"
+                    "catalog_grid_column_and_row_order": "testGridColumnAndRowOrder",
+                    "catalog_plain_query_bounds": "testCatalogPlainReadOnlyQueryBudgets"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -11378,13 +11389,15 @@
                     "catalog_read",
                     "catalog_row_mutation",
                     "model_read_null_and_empty_text",
-                    "catalog_grid_column_and_row_order"
+                    "catalog_grid_column_and_row_order",
+                    "catalog_plain_query_bounds"
                   ],
                   "symbols": {
                     "catalog_read": "testCatalogRead",
                     "catalog_row_mutation": "testCatalogRowMutation",
                     "model_read_null_and_empty_text": "testModelReadNullAndEmptyText",
-                    "catalog_grid_column_and_row_order": "testGridColumnAndRowOrder"
+                    "catalog_grid_column_and_row_order": "testGridColumnAndRowOrder",
+                    "catalog_plain_query_bounds": "testCatalogPlainReadOnlyQueryBudgets"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -11397,13 +11410,15 @@
                     "catalog_read",
                     "catalog_row_mutation",
                     "model_read_null_and_empty_text",
-                    "catalog_grid_column_and_row_order"
+                    "catalog_grid_column_and_row_order",
+                    "catalog_plain_query_bounds"
                   ],
                   "symbols": {
                     "catalog_read": "testCatalogRead",
                     "catalog_row_mutation": "testCatalogRowMutation",
                     "model_read_null_and_empty_text": "testModelReadNullAndEmptyText",
-                    "catalog_grid_column_and_row_order": "testGridColumnAndRowOrder"
+                    "catalog_grid_column_and_row_order": "testGridColumnAndRowOrder",
+                    "catalog_plain_query_bounds": "testCatalogPlainReadOnlyQueryBudgets"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -11416,13 +11431,15 @@
                     "catalog_read",
                     "catalog_row_mutation",
                     "model_read_null_and_empty_text",
-                    "catalog_grid_column_and_row_order"
+                    "catalog_grid_column_and_row_order",
+                    "catalog_plain_query_bounds"
                   ],
                   "symbols": {
                     "catalog_read": "testCatalogRead",
                     "catalog_row_mutation": "testCatalogRowMutation",
                     "model_read_null_and_empty_text": "testModelReadNullAndEmptyText",
-                    "catalog_grid_column_and_row_order": "testGridColumnAndRowOrder"
+                    "catalog_grid_column_and_row_order": "testGridColumnAndRowOrder",
+                    "catalog_plain_query_bounds": "testCatalogPlainReadOnlyQueryBudgets"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
