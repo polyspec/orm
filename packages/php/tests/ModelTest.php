@@ -838,6 +838,7 @@ final class ModelTest extends TestCase
     {
         $f = self::seed($db);
         $midnight = new DateTimeImmutable('2026-01-02 00:00:00', new DateTimeZone('+09:00'));
+        $utcStart = $midnight->setTimezone(new DateTimeZone('UTC'));
         $before = new DateTimeImmutable('now');
         $created = (new Author())($db)
             ->setName('zone')->setUserSeq($f['users'][0]->getSeq())->setServiceSeq($f['service']->getSeq())
@@ -862,21 +863,27 @@ final class ModelTest extends TestCase
         self::check($ts->getOffset() === 0, 'created_ts zone ' . $ts->format(DATE_ATOM));
         self::check(
             (new Author())($db)->startDt(
-                $midnight->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s')
+                $utcStart->format('Y-m-d H:i:s')
             )->getCount() === 1,
             'equality filter'
         );
-        self::check((new Author())($db)->startDt('2026-01-02 00:00:00')->getCount() === 1, 'equality filter by text');
+        self::check((new Author())($db)->startDt($utcStart->format('Y-m-d H:i:s'))->getCount() === 1, 'equality filter by text');
         self::check(
-            (new Author())($db)->startDt('2026-01-02T00:00:00.0')->getCount() === 1,
+            (new Author())($db)->startDt($utcStart->format('Y-m-d\\TH:i:s') . '.0')->getCount() === 1,
             'equality filter by text with fraction'
         );
         self::check(
-            (new Author())($db)->startDt(['2026-01-02 00:00:00', '2026-01-03 00:00:00'])->getCount() === 1,
+            (new Author())($db)->startDt([
+                $utcStart->format('Y-m-d H:i:s'),
+                $utcStart->modify('+1 day')->format('Y-m-d H:i:s')
+            ])->getCount() === 1,
             'in filter by text'
         );
         self::check(
-            (new Author())($db)->betweenStartDt(['2026-01-02 00:00:00', '2026-01-02 00:00:00.5'])->getCount() === 1,
+            (new Author())($db)->betweenStartDt([
+                $utcStart->format('Y-m-d H:i:s'),
+                $utcStart->format('Y-m-d H:i:s') . '.5'
+            ])->getCount() === 1,
             'between filter by text'
         );
         if ($db->driver() === 'sqlite') {
