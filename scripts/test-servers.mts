@@ -491,7 +491,9 @@ function tls(p: Paths, ports: Pick<Ports, 'mysql' | 'mysqlReplica'>): void {
     const stale = expected.filter(([name, san]) => {
       const certificate = join(dir, `${name}-cert.pem`);
       if (!existsSync(certificate)) return true;
-      try { return new X509Certificate(readFileSync(certificate)).subjectAltName !== san; }
+      const cached = readFileSync(certificate);
+      try { return new X509Certificate(cached).subjectAltName !== san; }
+      // catch-any -- A malformed cached PEM is stale and is replaced using the existing test CA.
       catch { return true; }
     });
     if (stale.length > 0) {
