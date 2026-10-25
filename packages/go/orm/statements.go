@@ -24,7 +24,7 @@ func (r runner) exec(ctx context.Context, kind string, tables []string, sqlText 
 		return nil, r.d.statementDone(kind, tables, r.tx, sqlText, args, start, err)
 	}
 	res, err := r.q.ExecContext(ctx, sqlText, args...)
-	return res, r.d.statementDone(kind, tables, r.tx, sqlText, args, start, mapDriverErr(err))
+	return res, r.d.statementDone(kind, tables, r.tx, sqlText, args, start, mapDriverErrContext(err, ctx))
 }
 
 // scan runs a statement that returns one row and reads that row into dest.
@@ -33,7 +33,7 @@ func (r runner) scan(ctx context.Context, kind string, tables []string, sqlText 
 	if err := r.fault(kind); err != nil {
 		return r.d.statementDone(kind, tables, r.tx, sqlText, args, start, err)
 	}
-	err := mapDriverErr(r.q.QueryRowContext(ctx, sqlText, args...).Scan(dest...))
+	err := mapDriverErrContext(r.q.QueryRowContext(ctx, sqlText, args...).Scan(dest...), ctx)
 	return r.d.statementDone(kind, tables, r.tx, sqlText, args, start, err)
 }
 
@@ -45,23 +45,25 @@ type observed struct {
 	kind   string
 	tables func(sqlText string) []string
 	start  time.Time
+	ctx    context.Context
 }
 
 func (o *observed) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
 	o.start = time.Now()
+	o.ctx = ctx
 	if err := o.r.fault(o.kind); err != nil {
 		return nil, o.r.d.statementDone(o.kind, o.tables(query), o.r.tx, query, args, o.start, err)
 	}
 	rows, err := o.r.q.QueryContext(ctx, query, args...)
 	if err != nil {
-		return nil, o.r.d.statementDone(o.kind, o.tables(query), o.r.tx, query, args, o.start, mapDriverErr(err))
+		return nil, o.r.d.statementDone(o.kind, o.tables(query), o.r.tx, query, args, o.start, mapDriverErrContext(err, ctx))
 	}
 	return rows, nil
 }
 
 // QueryEnded publishes that event when the catalog query has read all of its rows or failed while reading them.
 func (o *observed) QueryEnded(query string, err error) error {
-	return o.r.d.statementDone(o.kind, o.tables(query), o.r.tx, query, nil, o.start, mapDriverErr(err))
+	return o.r.d.statementDone(o.kind, o.tables(query), o.r.tx, query, nil, o.start, mapDriverErrContext(err, o.ctx))
 }
 
 func (o *observed) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
@@ -84,7 +86,7 @@ func (r runner) rows(ctx context.Context, kind string, tables []string, sqlText 
 	}
 	rs, err := r.q.QueryContext(ctx, sqlText, args...)
 	if err != nil {
-		return r.d.statementDone(kind, tables, r.tx, sqlText, args, start, mapDriverErr(err))
+		return r.d.statementDone(kind, tables, r.tx, sqlText, args, start, mapDriverErrContext(err, ctx))
 	}
 	var eachErr error
 	for rs.Next() {
@@ -96,7 +98,7 @@ func (r runner) rows(ctx context.Context, kind string, tables []string, sqlText 
 	if closeErr := rs.Close(); err == nil {
 		err = closeErr
 	}
-	if err := r.d.statementDone(kind, tables, r.tx, sqlText, args, start, mapDriverErr(err)); err != nil {
+	if err := r.d.statementDone(kind, tables, r.tx, sqlText, args, start, mapDriverErrContext(err, ctx)); err != nil {
 		return err
 	}
 	return eachErr

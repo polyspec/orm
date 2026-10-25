@@ -125,16 +125,16 @@ func (c *CatalogConnection) begin(ctx context.Context, readOnly bool) (*catalogS
 	}
 	conn, err := c.db.sql.Conn(ctx)
 	if err != nil {
-		return nil, mapDriverErr(err)
+		return nil, mapDriverErrContext(err, ctx)
 	}
 	s := &catalogSession{ctx: ctx, conn: conn, dialect: c.dialect}
 	if readOnly && c.dialect == "sqlite" {
 		if _, err := conn.ExecContext(ctx, "PRAGMA query_only=ON"); err != nil {
-			return nil, s.discard(mapDriverErr(err))
+			return nil, s.discard(mapDriverErrContext(err, ctx))
 		}
 	}
 	if _, err := conn.ExecContext(ctx, catalogBegin(c.dialect, readOnly)); err != nil {
-		return nil, s.discard(mapDriverErr(err))
+		return nil, s.discard(mapDriverErrContext(err, ctx))
 	}
 	return s, nil
 }
@@ -170,7 +170,7 @@ func (s *catalogSession) discard(err error) error {
 // end rolls the session back, discards its connection and returns err joined with a failed rollback.
 func (s *catalogSession) end(err error) error {
 	if _, rollbackErr := s.conn.ExecContext(s.ctx, "ROLLBACK"); rollbackErr != nil {
-		mapped := mapDriverErr(rollbackErr)
+		mapped := mapDriverErrContext(rollbackErr, s.ctx)
 		err = errors.Join(err, &ir.Error{
 			Code:  CodeRowRollbackFailed,
 			Msg:   fmt.Sprintf("rollback: %v", mapped),
@@ -210,7 +210,7 @@ func catalogWrite[T any](ctx context.Context, c *CatalogConnection, fn func(s *c
 		return zero, s.end(err)
 	}
 	if _, err := s.conn.ExecContext(ctx, "COMMIT"); err != nil {
-		mapped := mapDriverErr(err)
+		mapped := mapDriverErrContext(err, ctx)
 		switch ErrorCode(mapped) {
 		case CodeDuplicateKey, CodeForeignKey, CodeConstraint, CodeDeadlock:
 			return zero, s.end(catalogErr(catalogCodeCommitReject, "native commit rejected: %v", mapped))
@@ -268,11 +268,11 @@ type catalogRaw struct {
 func (s *catalogSession) queryRaw(query string, args []any, maxRows int, maxBytes int) (raw catalogRaw, err error) {
 	rows, err := s.conn.QueryContext(s.ctx, query, args...)
 	if err != nil {
-		return catalogRaw{}, mapDriverErr(err)
+		return catalogRaw{}, mapDriverErrContext(err, s.ctx)
 	}
 	defer func() {
 		if closeErr := rows.Close(); closeErr != nil {
-			raw, err = catalogRaw{}, errors.Join(err, mapDriverErr(closeErr))
+			raw, err = catalogRaw{}, errors.Join(err, mapDriverErrContext(closeErr, s.ctx))
 		}
 	}()
 	names, err := rows.Columns()
@@ -298,7 +298,7 @@ func (s *catalogSession) queryRaw(query string, args []any, maxRows int, maxByte
 			pointers[i] = &values[i]
 		}
 		if err := rows.Scan(pointers...); err != nil {
-			return catalogRaw{}, mapDriverErr(err)
+			return catalogRaw{}, mapDriverErrContext(err, s.ctx)
 		}
 		for _, value := range values {
 			budget += catalogSize(value)
@@ -309,7 +309,7 @@ func (s *catalogSession) queryRaw(query string, args []any, maxRows int, maxByte
 		raw.rows = append(raw.rows, values)
 	}
 	if err := rows.Err(); err != nil {
-		return catalogRaw{}, mapDriverErr(err)
+		return catalogRaw{}, mapDriverErrContext(err, s.ctx)
 	}
 	return raw, nil
 }
@@ -318,7 +318,7 @@ func (s *catalogSession) queryRaw(query string, args []any, maxRows int, maxByte
 func (s *catalogSession) exec(query string, args []any) (int64, error) {
 	result, err := s.conn.ExecContext(s.ctx, query, args...)
 	if err != nil {
-		return 0, mapDriverErr(err)
+		return 0, mapDriverErrContext(err, s.ctx)
 	}
 	affected, err := result.RowsAffected()
 	if err != nil {

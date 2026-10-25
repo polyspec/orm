@@ -97,11 +97,11 @@ func (c *CatalogConnection) ReadOnlyGridQuery(ctx context.Context, query string,
 func (s *catalogSession) columnNames(query string, args []any) (names []string, err error) {
 	rows, err := s.conn.QueryContext(s.ctx, query, args...)
 	if err != nil {
-		return nil, mapDriverErr(err)
+		return nil, mapDriverErrContext(err, s.ctx)
 	}
 	defer func() {
 		if closeErr := rows.Close(); closeErr != nil {
-			names, err = nil, errors.Join(err, mapDriverErr(closeErr))
+			names, err = nil, errors.Join(err, mapDriverErrContext(closeErr, s.ctx))
 		}
 	}()
 	names, err = rows.Columns()

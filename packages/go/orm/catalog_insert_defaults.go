@@ -8,7 +8,7 @@ import (
 func catalogExecSingleInsert(s *catalogSession, query string, args []any) (sql.Result, error) {
 	result, err := s.conn.ExecContext(s.ctx, query, args...)
 	if err != nil {
-		return nil, mapDriverErr(err)
+		return nil, mapDriverErrContext(err, s.ctx)
 	}
 	affected, err := result.RowsAffected()
 	if err != nil {

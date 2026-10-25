@@ -338,7 +338,7 @@ func (s *SchemaUtils) Install(schema *Schema) error {
 				}
 			}
 			if live, unsupported, err = dbspec.Introspect(ctx, q, dialect, "schema"); err != nil {
-				return mapDriverErr(err)
+				return mapDriverErrContext(err, ctx)
 			}
 		}
 		return setDiffers(dbspec.InstalledDifferences(live, unsupported, target))
@@ -404,7 +404,7 @@ func (s *SchemaUtils) AddTablesAndColumns(schema *Schema) ([]string, error) {
 		// After running the steps, it rereads the database and checks that it matches the set.
 		if len(steps) > 0 {
 			if live, unsupported, err = dbspec.Introspect(ctx, q, dialect, "schema"); err != nil {
-				return mapDriverErr(err)
+				return mapDriverErrContext(err, ctx)
 			}
 		}
 		if err := setDiffers(dbspec.InstalledDifferences(live, unsupported, target)); err != nil {
@@ -446,7 +446,7 @@ func introspectObserved(ctx context.Context, r runner, dialect dbspec.Dialect, m
 func introspectSet(ctx context.Context, q dbspec.Querier, dialect dbspec.Dialect, m *runtimemodel.Model) (*dbspec.Document, []dbspec.Unsupported, error) {
 	live, unsupported, err := dbspec.Introspect(ctx, q, dialect, "schema")
 	if err != nil {
-		return nil, nil, mapDriverErr(err)
+		return nil, nil, mapDriverErrContext(err, ctx)
 	}
 	if differences := dbspec.ExternalDifferences(live, m.Documents); len(differences) > 0 {
 		return nil, nil, externalErr(differences)

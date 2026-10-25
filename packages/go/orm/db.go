@@ -539,7 +539,7 @@ func (d *DB) stmt(ctx context.Context, sqlText string) (*sql.Stmt, error) {
 	}
 	st, err := d.sql.PrepareContext(ctx, sqlText)
 	if err != nil {
-		return nil, mapDriverErr(err)
+		return nil, mapDriverErrContext(err, ctx)
 	}
 	d.m.stmMu.Lock()
 	defer d.m.stmMu.Unlock()

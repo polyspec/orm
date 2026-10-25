@@ -1,6 +1,7 @@
 package orm
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"testing"
@@ -72,6 +73,20 @@ func TestMapDriverErrorPreservesNativeCause(t *testing.T) {
 	var nativeCause *mysql.MySQLError
 	if !errors.Is(mapped, driverErr) || !errors.As(ormErr.Cause, &nativeCause) || nativeCause != driverErr {
 		t.Fatalf("mapped error does not preserve the exact driver cause: %#v", ormErr.Cause)
+	}
+}
+
+func TestMapDriverErrorContextPreservesBothCauses(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	serverCause := errors.New("PostgreSQL canceled the active statement")
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	mapped := mapDriverErrContext(&ir.Error{Code: CodeCanceled, Msg: serverCause.Error(), Cause: serverCause}, ctx)
+	if ErrorCode(mapped) != CodeCanceled {
+		t.Fatalf("mapped code = %q, want %s: %v", ErrorCode(mapped), CodeCanceled, mapped)
+	}
+	if !errors.Is(mapped, serverCause) || !errors.Is(mapped, context.Canceled) {
+		t.Fatalf("mapped error does not preserve both causes: %#v", mapped)
 	}
 }
 

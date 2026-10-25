@@ -110,7 +110,7 @@ func (t *txConn) stmt(ctx context.Context, sqlText string) (*sql.Stmt, error) {
 	}
 	st, err := t.conn.PrepareContext(ctx, sqlText)
 	if err != nil {
-		return nil, mapDriverErr(err)
+		return nil, mapDriverErrContext(err, ctx)
 	}
 	if t.stmts == nil {
 		t.stmts = map[string]*sql.Stmt{}

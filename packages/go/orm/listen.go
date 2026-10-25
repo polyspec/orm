@@ -80,12 +80,13 @@ func (d *DB) Notify(channel, payload string) error {
 		return err
 	}
 	defer end()
-	st, err := ex.stmt(ex.context(), "SELECT pg_notify($1, $2)")
+	ctx := ex.context()
+	st, err := ex.stmt(ctx, "SELECT pg_notify($1, $2)")
 	if err != nil {
-		return mapDriverErr(err)
+		return mapDriverErrContext(err, ctx)
 	}
-	if _, err := st.ExecContext(ex.context(), channel, payload); err != nil {
-		return mapDriverErr(err)
+	if _, err := st.ExecContext(ctx, channel, payload); err != nil {
+		return mapDriverErrContext(err, ctx)
 	}
 	return nil
 }
@@ -109,10 +110,10 @@ func (d *DB) Listen(channel string) (*Subscription, error) {
 	ctx := d.context()
 	conn, err := open(ctx, d.m.native)
 	if err != nil {
-		return nil, mapDriverErr(err)
+		return nil, mapDriverErrContext(err, ctx)
 	}
 	if err := conn.Exec(ctx, "LISTEN "+quoteIdent(channel)); err != nil {
-		err = mapDriverErr(err)
+		err = mapDriverErrContext(err, ctx)
 		if cerr := conn.Close(); cerr != nil {
 			return nil, errors.Join(err, cerr)
 		}
@@ -133,7 +134,7 @@ func (s *Subscription) Receive() (Notification, error) {
 	}
 	n, err := s.conn.WaitNotification(s.ctx)
 	if err != nil {
-		mapped := mapDriverErr(err)
+		mapped := mapDriverErrContext(err, s.ctx)
 		if ErrorCode(mapped) == CodeCanceled {
 			if closeErr := s.Close(); closeErr != nil {
 				mapped = errors.Join(mapped, closeErr)

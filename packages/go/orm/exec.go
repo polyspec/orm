@@ -396,7 +396,7 @@ func (d *DB) Execute(st *plan.Step, params []any) error {
 		return d.modelDone(ex, st, st.SQL, args, masks, start, err)
 	}
 	_, err = stmt.ExecContext(ctx, args...)
-	return d.modelDone(ex, st, st.SQL, args, masks, start, mapDriverErr(err))
+	return d.modelDone(ex, st, st.SQL, args, masks, start, mapDriverErrContext(err, ctx))
 }
 
 // modelDone publishes the event of a model statement and returns the error
@@ -1094,7 +1094,7 @@ func scanOne(ctx context.Context, ex executor, c *cached, st *plan.Step, r *requ
 	if err := d.takeStatementFault(); err != nil {
 		return nil, d.modelDone(ex, st, st.SQL, args, masks, start, err)
 	}
-	err = mapDriverErr(stmt.QueryRowContext(ctx, args...).Scan(&v))
+	err = mapDriverErrContext(stmt.QueryRowContext(ctx, args...).Scan(&v), ctx)
 	if err := d.modelDone(ex, st, st.SQL, args, masks, start, err); err != nil {
 		return nil, err
 	}
@@ -1220,14 +1220,14 @@ func writeAfterHook(ex executor, r *request, after func(*request) error) (key an
 		return nil, 0, d.modelDone(ex, st, st.SQL, args, masks, start, err)
 	}
 	if r.ir.Kind == "insert" && strings.Contains(st.SQL, " RETURNING ") {
-		err = mapDriverErr(stmt.QueryRowContext(ctx, args...).Scan(&lastID))
+		err = mapDriverErrContext(stmt.QueryRowContext(ctx, args...).Scan(&lastID), ctx)
 		if err := d.modelDone(ex, st, st.SQL, args, masks, start, err); err != nil {
 			return nil, 0, err
 		}
 		return lastID, 1, nil
 	}
 	res, err := stmt.ExecContext(ctx, args...)
-	err = mapDriverErr(err)
+	err = mapDriverErrContext(err, ctx)
 	if err := d.modelDone(ex, st, st.SQL, args, masks, start, err); err != nil {
 		return nil, 0, err
 	}
