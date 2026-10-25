@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- PHP `orm-gen` is a separate Composer package requiring the runtime library, and extension model tests now consume CLI-generated models rather than calling Generator in-process; the focused package and native owner checks pass (T182-6-19-4).
 - The PHP extension implements Dbspec\Meet as a native class; the focused native owner test `testDbspecMeetIsNative` passes (T182-6-19-3).
 - The PHP extension implements Config, Dialect, ParamCheck, TxFrame and DbState natively; `testConfigDialectAndFramesAreNative` passes on PHP 8.4.26 (T182-6-19-2).
 - The PHP extension implements Engine and Assemble in C; the focused native owner test `testEngineAndAssembleAreNative` passes on PHP 8.4.26 (T182-6-19-1).
