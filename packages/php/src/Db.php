@@ -1157,8 +1157,9 @@ final class Db
         if (count($r->params) <= self::bindLimit($this->driver)) {
             return $engine->plan($shape);
         }
-        // A request with more values than the bind limit runs as the plan of split requests (rootInParts).
-        // A plan with a bind slot per value is tens of MB, so it is not kept in the plan cache.
+        // A read with more values than the bind limit is split before it is planned (splitReadPlan). Another request
+        // with that many values is planned whole; a plan with a bind slot per value is tens of MB, so it is not kept in
+        // the plan cache.
         $plan = $engine->compile($shape);
         Assemble::index($plan, $engine->model);
         return $plan;
@@ -1173,9 +1174,9 @@ final class Db
             [$plan, $result] = Markdown::read($this, $r);
             return [$plan, $result];
         }
-        $plan = $this->plan($r);
+        [$plan, $slots] = $this->splitReadPlan($r);
         $this->acquireSQLiteRowLock((string) ($r->ir['lock'] ?? ''));
-        $parts = $this->rootInParts($r, $plan['steps'][0]);
+        $parts = $this->rootInParts($r, $slots);
         if ($parts !== []) {
             $main = [];
             $seen = [];
@@ -1203,8 +1204,8 @@ final class Db
         if ($this->md !== null) {
             return Markdown::scalar($this, $r);
         }
-        $plan = $this->plan($r);
-        $parts = $this->rootInParts($r, $plan['steps'][0]);
+        [$plan, $slots] = $this->splitReadPlan($r);
+        $parts = $this->rootInParts($r, $slots);
         if ($parts !== []) {
             if ($r->ir['kind'] !== 'count') {
                 throw new OrmException(Code::IR_INVALID, 'a split IN list can be merged only for a count');
@@ -1972,20 +1973,56 @@ final class Db
      * whose results together equal the original result.
      * @return list<Request>
      */
-    private function rootInParts(Request $r, array $step): array
+    /**
+     * The plan of a read whose root IN list may be split (PRT-76), and the number of bind slots its first statement needs.
+     * A request with more values than the bind limit is planned with its longest root IN list cut to its first value, so
+     * no plan holds a bind slot per value of the list; rootInParts plans the parts, each within the bind limit.
+     *
+     * @return array{0: array, 1: int}
+     */
+    private function splitReadPlan(Request $r): array
+    {
+        $r->canonicalize();
+        $target = count($r->params) > self::bindLimit($this->driver) ? self::rootInTarget($r->ir) : -1;
+        if ($target < 0) {
+            $plan = $this->plan($r);
+            return [$plan, count($plan['steps'][0]['bind_slots'] ?? [])];
+        }
+        $ps = $r->ir['where']['items'][$target]['pred']['ps'];
+        $probe = clone $r;
+        $probe->ir['where']['items'][$target]['pred']['ps'] = [$ps[0]];
+        $plan = $this->plan($probe);
+        return [$plan, count($plan['steps'][0]['bind_slots'] ?? []) - 1 + count($ps)];
+    }
+
+    /** The index of the longest root IN list of values in the where items, or -1 when there is none. */
+    private static function rootInTarget(array $ir): int
+    {
+        $items = $ir['where']['items'] ?? [];
+        $target = -1;
+        foreach ($items as $i => $item) {
+            if (
+                isset($item['pred']) && $item['pred']['op'] === 'in' && !isset($item['pred']['sub'])
+                && ($target < 0 || count($item['pred']['ps']) > count($items[$target]['pred']['ps']))
+            ) {
+                $target = $i;
+            }
+        }
+        return $target;
+    }
+
+    private function rootInParts(Request $r, int $slots): array
     {
         $limit = self::bindLimit($this->driver);
-        if (count($step['bind_slots'] ?? []) <= $limit) {
+        if ($slots <= $limit) {
             return [];
         }
-        $tooLarge = new OrmException(Code::IR_INVALID, 'the statement needs ' . count($step['bind_slots'])
-            . " bind parameters but {$this->driver} permits $limit");
+        $tooLarge = new OrmException(Code::IR_INVALID, "the statement needs $slots bind parameters but {$this->driver} permits $limit");
         $ir = $r->ir;
         $items = $ir['where']['items'] ?? [];
         if (isset($ir['limit']) || isset($ir['order']) || isset($ir['group_by']) || $items === []) {
             throw $tooLarge;
         }
-        $target = -1;
         foreach ($items as $i => $item) {
             if (!isset($item['pred'])) {
                 continue;
@@ -1995,18 +2032,13 @@ final class Db
             if (($item['pred']['conn'] ?? '') === 'or' || $nextConn === 'or') {
                 throw $tooLarge;
             }
-            if (
-                $item['pred']['op'] === 'in' && !isset($item['pred']['sub'])
-                && ($target < 0 || count($item['pred']['ps']) > count($items[$target]['pred']['ps']))
-            ) {
-                $target = $i;
-            }
         }
+        $target = self::rootInTarget($ir);
         if ($target < 0) {
             throw $tooLarge;
         }
         $ps = $items[$target]['pred']['ps'];
-        $available = $limit - (count($step['bind_slots']) - count($ps));
+        $available = $limit - ($slots - count($ps));
         if ($available < 1) {
             throw $tooLarge;
         }

@@ -63,6 +63,37 @@ final class ParameterChunkingNativeTest extends TestCase
         }
     }
 
+    // A root IN list over the bind limit is split before it is planned, so no plan holds a bind slot per value: a plan
+    // costs about 1.6 KB per bind slot, and the plan of these 70300 values alone took 113 MB of PHP memory. The split
+    // plans hold at most the bind limit; what the count holds above that is the request's own values.
+    public function testSplitRootInCountPlansNoStatementOverTheBindLimit(): void
+    {
+        require_once __DIR__ . '/NativeQueryProbeStatement.php';
+        require_once __DIR__ . '/NativeQueryProbePdo.php';
+        NativeQueryProbePdo::assertNativeOrmClasses();
+        $pdo = new NativeQueryProbePdo();
+        $pdo->exec('CREATE TABLE "service" ("seq" INTEGER PRIMARY KEY, "name" TEXT NOT NULL)');
+        $pdo->exec('INSERT INTO "service" ("seq", "name") VALUES (1, \'first\'), (70300, \'last\')');
+        $pdo->executions = [];
+        $db = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
+        $db->registerSet(\Polyspec\Orm\Tests\Model\schema());
+        try {
+            $values = range(1, 70300);
+            memory_reset_peak_usage();
+            $start = memory_get_usage();
+            $count = (new Service())($db)->seq($values)->getCount();
+            $peak = memory_get_peak_usage() - $start;
+            Assert::assertSame(2, $count);
+            Assert::assertCount(138, $pdo->executions, 'the SQLite bind limit splits 70300 values into 138 statements');
+            foreach ($pdo->executions as $execution) {
+                Assert::assertLessThanOrEqual(999, count($execution['params']));
+            }
+            Assert::assertLessThan(32 * 1024 * 1024, $peak, sprintf('the split count held %.1f MB above its start', $peak / 1048576));
+        } finally {
+            $db->close();
+        }
+    }
+
     // PRT-76: relation key tuples split at the bind limit and the tail pads to a power-of-two size class.
     // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- feature IDs require the test method to preserve underscores.
     public function test_composite_relation_keys_split_and_pad_to_bind_safe_size_classes(): void

@@ -1000,7 +1000,7 @@ model-chunk-composite-native-php-extension-check: php-vendor-check php-model-che
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh "$$run_dir/php-extension/polyspec_orm.so"; \
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist --filter 'test_native_fixture_populates_all_composite_key_columns|test_root_in_chunks_use_native_model_queries_and_reject_unmergeable_pages|test_composite_relation_keys_split_and_pad_to_bind_safe_size_classes|test_composite_relation_binds_and_assembles_both_key_components|test_tuple_predicates_and_pages_keep_the_full_composite_key' packages/php-ext/tests/ParameterChunkingNativeTest.php packages/php-ext/tests/CompositeKeysNativeTest.php
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist --filter 'test_native_fixture_populates_all_composite_key_columns|test_root_in_chunks_use_native_model_queries_and_reject_unmergeable_pages|testSplitRootInCountPlansNoStatementOverTheBindLimit|test_composite_relation_keys_split_and_pad_to_bind_safe_size_classes|test_composite_relation_binds_and_assembles_both_key_components|test_tuple_predicates_and_pages_keep_the_full_composite_key' packages/php-ext/tests/ParameterChunkingNativeTest.php packages/php-ext/tests/CompositeKeysNativeTest.php
 
 # Runs focused grouped-result decoder and native GroupRow count units through the PHP extension.
 .PHONY: group-count-boolean-php-extension-unit-check

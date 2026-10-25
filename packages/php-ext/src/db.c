@@ -2353,11 +2353,35 @@ static bool emit_part(zval *out, zval *r, zval *ir, zend_long target, zval *grou
     return true;
 }
 
-static bool root_parts(zval *self, zval *r, zval *step, zval *out)
+/* The index of the longest root IN list of values in the where items of ir, or -1 when there is none (Db::rootInTarget). */
+static zend_long root_in_target(zval *ir)
+{
+    zval *items = aget(aget(ir, "where"), "items");
+    zend_long target = -1;
+    if (items == NULL || Z_TYPE_P(items) != IS_ARRAY) {
+        return -1;
+    }
+    zend_ulong i;
+    zval *item;
+    ZEND_HASH_FOREACH_NUM_KEY_VAL(Z_ARRVAL_P(items), i, item)
+    {
+        zval *pred = aget(item, "pred");
+        if (pred != NULL && is_str(aget(pred, "op"), "in") && aget(pred, "sub") == NULL) {
+            zval *tpred = target < 0 ? NULL : aget(aidx(items, target), "pred");
+            if (target < 0 || acount(aget(pred, "ps")) > acount(aget(tpred, "ps"))) {
+                target = (zend_long)i;
+            }
+        }
+    }
+    ZEND_HASH_FOREACH_END();
+    return target;
+}
+
+/* nbind is the number of bind slots that the first statement of r needs (split_read_plan). */
+static bool root_parts(zval *self, zval *r, zend_long nbind, zval *out)
 {
     array_init(out);
     zend_long limit = bind_limit(rd(self, "driver"));
-    zend_long nbind = acount(aget(step, "bind_slots"));
     if (nbind <= limit) {
         return true;
     }
@@ -2367,7 +2391,6 @@ static bool root_parts(zval *self, zval *r, zval *step, zval *out)
     if (aget(ir, "limit") != NULL || aget(ir, "order") != NULL || aget(ir, "group_by") != NULL || acount(items) == 0) {
         goto too_large;
     }
-    zend_long target = -1;
     zend_ulong i;
     zval *item;
     ZEND_HASH_FOREACH_NUM_KEY_VAL(Z_ARRVAL_P(items), i, item)
@@ -2396,15 +2419,9 @@ static bool root_parts(zval *self, zval *r, zval *step, zval *out)
         if (is_str(pc, "or") || strcmp(next_conn, "or") == 0) {
             goto too_large;
         }
-        zval *op = aget(pred, "op");
-        if (is_str(op, "in") && aget(pred, "sub") == NULL) {
-            zval *tpred = target < 0 ? NULL : aget(aidx(items, target), "pred");
-            if (target < 0 || acount(aget(pred, "ps")) > acount(aget(tpred, "ps"))) {
-                target = (zend_long)i;
-            }
-        }
     }
     ZEND_HASH_FOREACH_END();
+    zend_long target = root_in_target(ir);
     if (target < 0) {
         goto too_large;
     }
@@ -2524,6 +2541,42 @@ static bool plan_of(zval *self, zval *r, zval *out)
     }
     zval_ptr_dtor(&shape);
     zval_ptr_dtor(&engine);
+    return ok;
+}
+
+/* Db::splitReadPlan: the plan of a read whose root IN list may be split (PRT-76), and in nbind the number of bind slots its
+ * first statement needs. A request with more values than the bind limit is planned with its longest root IN list cut to its
+ * first value, so no plan holds a bind slot per value of the list; root_parts makes the parts, each planned within the limit. */
+static bool split_read_plan(zval *self, zval *r, zval *plan, zend_long *nbind)
+{
+    zval rr;
+    if (!mcall(r, "canonicalize", &rr, 0, NULL)) {
+        return false;
+    }
+    zval_ptr_dtor(&rr);
+    zval *ir = rd(r, "ir");
+    zend_long target = acount(rd(r, "params")) > bind_limit(rd(self, "driver")) ? root_in_target(ir) : -1;
+    if (target < 0) {
+        if (!plan_of(self, r, plan)) {
+            return false;
+        }
+        *nbind = acount(aget(aidx(aget(plan, "steps"), 0), "bind_slots"));
+        return true;
+    }
+    zval *ps = aget(aget(aidx(aget(aget(ir, "where"), "items"), target), "pred"), "ps");
+    zval first, ir_probe, probe;
+    array_init(&first);
+    push(&first, aidx(ps, 0));
+    with_ps(ir, target, &first, &ir_probe);
+    zval_ptr_dtor(&first);
+    ZVAL_OBJ(&probe, zend_objects_clone_obj(Z_OBJ_P(r)));
+    wr(&probe, "ir", &ir_probe);
+    zval_ptr_dtor(&ir_probe);
+    bool ok = plan_of(self, &probe, plan);
+    zval_ptr_dtor(&probe);
+    if (ok) {
+        *nbind = acount(aget(aidx(aget(plan, "steps"), 0), "bind_slots")) - 1 + acount(ps);
+    }
     return ok;
 }
 
@@ -2875,7 +2928,8 @@ static int md_call(zval *self, zval *r, const char *m, zval *out)
 }
 
 /* Returns 1 when Markdown handled the read, 0 when a native plan is ready, and -1 on failure. */
-static int prepare_read(zval *self, zval *frame, zval *r, const char *method, zval *out, zval *plan)
+/* With nbind, the read may split its root IN list and is planned by split_read_plan; without it, by plan_of. */
+static int prepare_read(zval *self, zval *frame, zval *r, const char *method, zval *out, zval *plan, zend_long *nbind)
 {
     if (!apply_hook(self, r) || !enter(self, frame, rd(r, "ir"))) {
         return -1;
@@ -2884,7 +2938,8 @@ static int prepare_read(zval *self, zval *frame, zval *r, const char *method, zv
     if (handled >= 0) {
         return handled == 1 ? 1 : -1;
     }
-    return plan_of(self, r, plan) ? 0 : -1;
+    bool ok = nbind != NULL ? split_read_plan(self, r, plan, nbind) : plan_of(self, r, plan);
+    return ok ? 0 : -1;
 }
 
 typedef bool (*read_plan_operation)(zval *self, zval *frame, zval *r, zval *out, zval *plan);
@@ -2893,7 +2948,7 @@ typedef bool (*read_plan_operation)(zval *self, zval *frame, zval *r, zval *out,
 static bool with_read_plan(zval *self, zval *frame, zval *r, zval *out, read_plan_operation operation)
 {
     zval plan;
-    int prepared = prepare_read(self, frame, r, "read", out, &plan);
+    int prepared = prepare_read(self, frame, r, "read", out, &plan, NULL);
     if (prepared < 0) {
         return false;
     }
@@ -2905,7 +2960,7 @@ static bool with_read_plan(zval *self, zval *frame, zval *r, zval *out, read_pla
     return ok;
 }
 
-static bool select_plan(zval *self, zval *frame, zval *r, zval *out, zval *plan)
+static bool select_plan(zval *self, zval *frame, zval *r, zval *out, zval *plan, zend_long nbind)
 {
     zval *ir = rd(r, "ir");
     zval *step0 = aidx(aget(plan, "steps"), 0);
@@ -2921,7 +2976,7 @@ static bool select_plan(zval *self, zval *frame, zval *r, zval *out, zval *plan)
     zval parts, main;
     /* query_rows leaves its out unset on failure, so main is NULL until a rows array replaces it. */
     ZVAL_NULL(&main);
-    if (!ok || !root_parts(self, r, step0, &parts)) {
+    if (!ok || !root_parts(self, r, nbind, &parts)) {
         return false;
     }
     if (acount(&parts) > 0) {
@@ -2989,13 +3044,25 @@ static bool select_plan(zval *self, zval *frame, zval *r, zval *out, zval *plan)
 
 static bool select_impl(zval *self, zval *frame, zval *r, zval *out)
 {
-    return with_read_plan(self, frame, r, out, select_plan);
+    zval plan;
+    zend_long nbind = 0;
+    int prepared = prepare_read(self, frame, r, "read", out, &plan, &nbind);
+    if (prepared < 0) {
+        return false;
+    }
+    if (prepared > 0) {
+        return true;
+    }
+    bool ok = select_plan(self, frame, r, out, &plan, nbind);
+    zval_ptr_dtor(&plan);
+    return ok;
 }
 
 static bool scalar_of_impl(zval *self, zval *frame, zval *r, zval *out)
 {
     zval plan;
-    int prepared = prepare_read(self, frame, r, "scalar", out, &plan);
+    zend_long nbind = 0;
+    int prepared = prepare_read(self, frame, r, "scalar", out, &plan, &nbind);
     if (prepared < 0) {
         return false;
     }
@@ -3004,7 +3071,7 @@ static bool scalar_of_impl(zval *self, zval *frame, zval *r, zval *out)
     }
     zval *step0 = aidx(aget(&plan, "steps"), 0);
     zval parts;
-    if (!root_parts(self, r, step0, &parts)) {
+    if (!root_parts(self, r, nbind, &parts)) {
         zval_ptr_dtor(&plan);
         return false;
     }
