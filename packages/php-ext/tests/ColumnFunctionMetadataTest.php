@@ -52,6 +52,30 @@ final class ColumnFunctionMetadataTest extends TestCase
     public function testOrmFactoriesPreserveColumnFunctionMetadataInGeneratedQueries(): void
     {
         self::assertNativePlannerAndValidator();
+        $factoryMethods = [
+            'now',
+            'today',
+            'secondsAgo',
+            'minutesAgo',
+            'hoursAgo',
+            'daysAgo',
+            'monthsAgo',
+            'secondsLater',
+            'minutesLater',
+            'hoursLater',
+            'daysLater',
+            'monthsLater',
+            'dayOfWeek',
+            'year',
+            'month',
+            'date',
+        ];
+        foreach ($factoryMethods as $method) {
+            $reflection = new \ReflectionMethod(Orm::class, $method);
+            self::assertTrue($reflection->isInternal(), "Orm::$method is implemented by the extension");
+            self::assertSame('polyspec_orm', $reflection->getExtensionName(), "Orm::$method comes from polyspec_orm");
+        }
+
         $functions = [
             [Orm::now(), false],
             [Orm::today(), false],
