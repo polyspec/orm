@@ -131,6 +131,14 @@ final class ModelReadNativeTest extends TestCase
             ['name' => 'active', 'column' => 'active', 'type' => 'bool'],
             'true'
         ));
+        foreach ([false, true] as $native) {
+            self::assertSame($native, $groupValue->invoke(
+                new ModelReadShapeFixture(),
+                $db,
+                ['name' => 'active', 'column' => 'active', 'type' => 'bool'],
+                $native
+            ));
+        }
         self::assertSame('5', $groupValue->invoke(
             new ModelReadShapeFixture(),
             $db,
@@ -147,6 +155,7 @@ final class ModelReadNativeTest extends TestCase
             self::fail('An invalid grouped boolean must fail.');
         } catch (OrmException $error) {
             self::assertSame(Code::CODEC_DECODE, $error->code_);
+            self::assertSame('CODEC_DECODE: group column active is not boolean', $error->getMessage());
         }
     }
 
