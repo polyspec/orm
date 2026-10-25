@@ -319,6 +319,8 @@ ZEND_METHOD(Polyspec_Orm_Registry, model)
     zval *set = models == NULL ? NULL : zend_hash_find(Z_ARRVAL_P(models), hash);
     zval args[4], result;
     ZVAL_STR_COPY(&args[0], hash); ZVAL_COPY(&args[1], text);
+    // args[2], the model classes, is written only when classes are registered; every path releases all four.
+    ZVAL_UNDEF(&args[2]);
     if (external != NULL) ZVAL_COPY(&args[3], external); else ZVAL_EMPTY_STRING(&args[3]);
     bool ok;
     if (set != NULL && zend_hash_num_elements(Z_ARRVAL_P(set)) > 0) {

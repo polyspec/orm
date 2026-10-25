@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- `Registry::model` of the PHP extension no longer releases an uninitialized argument when no model class is registered for a manifest hash, which crashed PHP (SIGBUS) after repeated `Registry::generated` and `Registry::model` calls (T182-6-18-1).
 - Rust clippy and the TypeScript interface extractor run under their target leases and `run-long`, as does the Rust dbspec helper build; the focused lifetime and lease cases pass 3/3 (KSTD-5-88-18).
 - RuntimeDbTest and AuditExternalSetsTest use a bootstrap-loaded provider trait, so PHPUnit can discover each file on its own; the focused `--list-tests` command discovers 19 cases (KSTD-5-88-15).
 - `make layout-check` passes: the root test directories are classified as repository-tool tests, Python recipes use the package environment, and cross-language PHP/JavaScript fixtures have explicit S9 reasons (KSTD-5-89-5).

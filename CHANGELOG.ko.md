@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 64f4401eadd39b0076fa420da2c8c91f9092477d869e6a27529a3d38d4b985af -->
+<!-- source-sha256: 7677528b44dfa37b7fd8a7bebca97af8b8071679bc7eaa4c66ee075d73bb6f44 -->
 # 변경 이력
 
 ## Unreleased
 
+- PHP extension의 `Registry::model`은 manifest hash에 등록된 model class가 없을 때 초기화되지 않은 인자를 더 이상 해제하지 않는다. 이 해제는 `Registry::generated`와 `Registry::model`을 반복해 부르면 PHP를 SIGBUS로 끝냈다 (T182-6-18-1).
 - Rust clippy와 TypeScript interface extractor가 target lease 및 `run-long` 아래서 실행되고, Rust dbspec helper build도 같은 보호를 받는다. 집중 lease/lifetime 단위 3개가 통과한다 (KSTD-5-88-18).
 - RuntimeDbTest와 AuditExternalSetsTest가 bootstrap에서 로드되는 provider trait을 사용하여 PHPUnit이 각 파일을 단독으로 발견한다. 집중 `--list-tests` 명령은 case 19개를 찾는다 (KSTD-5-88-15).
 - `make layout-check`가 통과한다. root test 디렉터리는 repository-tool test로 분류하고, Python recipe는 package environment를 사용하며, cross-language PHP/JavaScript fixture에는 명시적인 S9 사유를 둔다 (KSTD-5-89-5).

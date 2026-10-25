@@ -135,4 +135,20 @@ final class RegistrySchemaNativeTest extends TestCase
         self::assertSame($beforeConflictRuntime, Registry::model($hash));
         self::assertSame($otherRuntime, Registry::model($other->manifestHash));
     }
+
+    // Registry::model builds the runtime model of generated text with no registered model class through
+    // loadSet; repeated builds must leave the Zend heap intact.
+    public function testModelOfGeneratedTextKeepsTheHeapIntact(): void
+    {
+        $kept = [];
+        foreach (glob(dirname(__DIR__, 3) . '/contracts/fixtures/*.dbs') ?: [] as $i => $file) {
+            $documents = RuntimeModel::parse([basename($file) => (string) file_get_contents($file)]);
+            $model = RuntimeModel::build($documents);
+            Registry::generated($model->manifestHash, $model->manifestText, $model->externalText);
+            $built = Registry::model($model->manifestHash);
+            self::assertSame($model->manifestHash, $built->manifestHash);
+            $kept[] = [$built, str_repeat('y', $i % 40)];
+        }
+        self::assertGreaterThan(10, count($kept));
+    }
 }
