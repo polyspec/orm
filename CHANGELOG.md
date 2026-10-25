@@ -2,6 +2,7 @@
 # Changelog
 
 ## Unreleased
+- KSTD-5-90: conformance-check RECORD=1 passes all six implementation outputs, php-extension included, to record (KSTD-5-90)
 
 - The two drop cases of `scripts/check/continue.test.mts` expect the drops of the 18 complex-query fixture databases that `databases.mts drop` runs before the bench and decimal databases, so they pass again (KSTD-2-9-13-2).
 - On MySQL the PHP client and the PHP extension bind each int and bool of a statement as `PDO::PARAM_INT`, so the root page `LIMIT` and `OFFSET` of `limit(offset, count)` reach MySQL as numbers. The emulated prepare of MySQL quoted every value that `execute()` received, and since the page values became the parameters `offset_p` and `count_p` (PRT-78) MySQL answered 1064 near `''0', '3''`; the model_queries owners of both clients pass on MySQL again (T182-6-16).

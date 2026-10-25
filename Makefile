@@ -1763,7 +1763,7 @@ conformance-check/%: RUN_DIR = $(abspath .runtime/run)/conformance-check-$$PPID
 # If RECORD=1, the diagnostic output (.run-*) of each database whose comparison failed is recorded with check record as that database's expected value,
 # for the vectors that VECTOR names or, without VECTOR, for every vector. A vector that makes a connection's first use of a statement that an earlier
 # vector makes in a full run (SQLite's orm__row_lock table) records it too when run alone; its expectation drops that statement (tests/conformance/README.md).
-# record writes only when all five outputs match, and fails if it cannot record, or if the runner fails and leaves no diagnostic output.
+# record writes only when all six outputs match, and fails if it cannot record, or if the runner fails and leaves no diagnostic output.
 # After recording, the same vector runs again and is compared with the new expected value. The state contracts of contracts/interfaces.json
 # are checked for the vectors the run made: with VECTOR, the contracts of the named vectors only.
 CONFORMANCE_VECTORS = $(foreach name,$(VECTOR),--vector $(name))
@@ -1787,7 +1787,7 @@ conformance-check/run: lease-tool conformance-python-models
 	    dir=$(RUN_DIR)/out; [ $$db = mysql ] || dir=$$dir/$$db; \
 	    for pending in $$dir/.run-*; do \
 	      [ -d "$$pending" ] || continue; \
-	      $(NODE) tests/conformance/check/main.mts record --driver $$db $(CONFORMANCE_VECTORS) $$pending/go.json $$pending/php.json $$pending/rust.json $$pending/typescript.json $$pending/python.json || exit 1; \
+	      $(NODE) tests/conformance/check/main.mts record --driver $$db $(CONFORMANCE_VECTORS) $$pending/go.json $$pending/php.json $$pending/php-extension.json $$pending/rust.json $$pending/typescript.json $$pending/python.json || exit 1; \
 	      recorded=1; \
 	    done; \
 	  done; \

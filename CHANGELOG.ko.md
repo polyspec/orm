@@ -1,8 +1,9 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 7b47f6693cde66eb20bfa92513444a32b7a869ee5090c49ba42b43bd1416e002 -->
+<!-- source-sha256: 9758c6fe4bb7aa11cafe3169e70ff121a08b3ad25bf52a12d2764e6c61c4beb6 -->
 # 변경 이력
 
 ## Unreleased
+- KSTD-5-90: conformance-check RECORD=1은 record에 여섯 구현 출력(php-extension 포함)을 모두 넘긴다 (KSTD-5-90)
 
 - `scripts/check/continue.test.mts`의 두 drop case는 `databases.mts drop`이 bench와 decimal database보다 먼저 실행하는 18개 complex-query fixture database의 drop을 기대하므로 다시 통과한다 (KSTD-2-9-13-2).
 - MySQL에서 PHP client와 PHP extension은 문장의 int와 bool을 `PDO::PARAM_INT`로 bind하므로 `limit(offset, count)`의 루트 페이지 `LIMIT`와 `OFFSET`이 MySQL에 숫자로 간다. MySQL의 emulated prepare는 `execute()`가 받은 모든 값을 따옴표로 감쌌고, 페이지 값이 매개변수 `offset_p`와 `count_p`가 된 뒤(PRT-78) MySQL이 `''0', '3''` 근처 1064로 답했다. 두 client의 model_queries owner가 MySQL에서 다시 통과한다 (T182-6-16).

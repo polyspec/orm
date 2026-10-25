@@ -243,3 +243,14 @@ caseTest('TestPHPExtensionCommandLine', COMPUTE, () => {
     'php-extension command line without a zone');
   assert.deepEqual(phpArguments('', '', []), ['packages/php/testing/conformance/runner.php'], 'php command line changed');
 });
+
+// TestRecordReceivesEveryLanguage reads the RECORD branch of conformance-check: the record command it runs after a failed run
+// must pass the output of every implementation language, php-extension included, because record requires all of them.
+caseTest('TestRecordReceivesEveryLanguage', COMPUTE, () => {
+  const makefile = readFileSync(join(repository, 'Makefile'), 'utf8');
+  const record = makefile.split('\n').find(line => line.includes('check/main.mts record --driver $$db'));
+  assert.ok(record, 'the RECORD branch of conformance-check has no record command');
+  for (const language of requiredLanguages) {
+    assert.ok(record.includes(`$$pending/${language}.json`), `the RECORD branch omits the ${language} output`);
+  }
+});
