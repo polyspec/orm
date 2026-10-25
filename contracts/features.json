@@ -57,8 +57,6 @@
       "parity": [
         "coverage-dsn-connection",
         "sqlite-minimum-driver-version",
-        "generated-fields-require-selection-or-assignment",
-        "generated-nonnull-styled-setter-rejects-sql-null",
         "mysql-session",
         "php-python-session-initialization"
       ],
@@ -3923,6 +3921,7 @@
       ],
       "parity": [
         "generated-typed-getter-public-column-api",
+        "generated-nonnull-styled-setter-rejects-sql-null",
         "coverage-model-generation-model-generation-check",
         "dynamic-model-chains-resolve-at-call-time",
         "dynamic-vs-scanned-model-chain-dispatch",

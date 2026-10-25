@@ -90,6 +90,7 @@ final class StyledValueTest extends TestCase
         }
     }
 
+    // Requirements: COD-20.
     public function testModelStates(): void
     {
         $cases = array_column(self::fixture()['cases'], null, 'id');

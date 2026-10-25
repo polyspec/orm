@@ -4229,36 +4229,37 @@
       ]
     },
     {
-      "id": "generated-fields-require-selection-or-assignment",
-      "kind": "feature",
-      "requirements": [
-        "DBS-114"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/src/integration.rs",
-          "id": "generated_fields_require_selection_or_assignment",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-rust-unit",
-            "FEATURE_CRATE=packages/rust/tests",
-            "FEATURE_CARGO_TARGET=--bin integration",
-            "FEATURE_TEST=generated_fields_require_selection_or_assignment"
-          ]
-        }
-      ]
-    },
-    {
       "id": "generated-nonnull-styled-setter-rejects-sql-null",
       "kind": "feature",
       "requirements": [
         "COD-20"
       ],
       "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/generator/gen_go_scan_test.go",
+          "id": "TestGoGeneratedNonnullStyledSetterRejectsSqlNull"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/StyledValueTest.php",
+          "id": "StyledValueTest::testModelStates"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelNativeTest.php",
+          "id": "ModelNativeTest::testStyledColumnDistinguishesUnselectedSqlNullAndEncodedNull"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/styled-value.mjs",
+          "id": "styled-value/model-states"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_styled_column_states.py",
+          "id": "nonnull_sql_null"
+        },
         {
           "implementation": "rust",
           "test": "packages/rust/tests/src/integration.rs",
@@ -10103,6 +10104,21 @@
           "implementation": "rust",
           "test": "packages/rust/tests/src/integration.rs",
           "id": "generated_typed_getter_is_a_checked_public_consumer_api"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/src/integration.rs",
+          "id": "generated_fields_require_selection_or_assignment",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-rust-unit",
+            "FEATURE_CRATE=packages/rust/tests",
+            "FEATURE_CARGO_TARGET=--bin integration",
+            "FEATURE_TEST=generated_fields_require_selection_or_assignment"
+          ]
         },
         {
           "implementation": "rust",

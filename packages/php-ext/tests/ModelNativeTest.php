@@ -358,6 +358,7 @@ final class ModelNativeTest extends TestCase
         }
     }
 
+    // Requirements: COD-20.
     public function testStyledColumnDistinguishesUnselectedSqlNullAndEncodedNull(): void
     {
         $model = new NativeModelFixture();
@@ -373,6 +374,38 @@ final class ModelNativeTest extends TestCase
 
         $model->setPayload(\Polyspec\Orm\StyledValue::value(null));
         self::assertSame(['kind' => 'value', 'value' => null], $model->payload()->jsonSerialize());
+
+        $dir = sys_get_temp_dir() . '/orm-php-ext-generated-nonnull-styled-' . getmypid();
+        is_dir($dir) || mkdir($dir, 0o700, true);
+        try {
+            $class = \Polyspec\Orm\Tests\OrmGenTestSupport::generateItemModel(
+                $dir,
+                'Polyspec\\Orm\\Extension\\Tests\\GeneratedNonnullStyled',
+                "dbspec 1 styled\n\ntable item {\n  seq i64 identity\n"
+                    . "  payload text\n  primary key (seq)\n  settings {\n"
+                    . "    codec payload ordered_json\n  }\n}\n"
+            );
+            $generated = new $class();
+            try {
+                $generated->setPayload(\Polyspec\Orm\StyledValue::sqlNull());
+                self::fail('generated non-null setter accepted SQL NULL');
+            } catch (OrmException $error) {
+                self::assertSame('CODEC_ENCODE', $error->code_);
+            }
+            try {
+                $generated->getPayload();
+                self::fail('rejected generated setter changed the model');
+            } catch (OrmException $error) {
+                self::assertSame('COLUMN_UNSELECTED', $error->code_);
+            }
+            $generated->setPayload(\Polyspec\Orm\StyledValue::value(null));
+            self::assertSame(
+                ['kind' => 'value', 'value' => null],
+                $generated->getPayload()->jsonSerialize(),
+            );
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
     }
 
     public function testDecimalNormalizationAndDatetimeUsesTheConnectionZone(): void

@@ -11,6 +11,7 @@ from polyspec.orm.codec import CodecError, decode, encode
 from polyspec.orm.core import Core
 from polyspec.orm.dbspec import dbspec_manifest, parse_dbspec
 from polyspec.orm.model import EntityDef, register_model
+
 from . import testcase
 from .vector_case import VectorCase, vector_load_tests
 
@@ -48,6 +49,7 @@ def state(case_state: dict) -> StyledValue:
     )
 
 
+# Requirements: COD-20.
 def check_case(test: unittest.TestCase, case: dict) -> None:
     # The fixture names the Mermaid styles; json and jsons are both the ordered_json stage.
     styles = ["ordered_json" if case["style"] in ("json", "jsons") else case["style"]]

@@ -134,6 +134,66 @@ func TestPriceGetterSelection(t *testing.T) {
 	testScannedModule(t)
 }
 
+// Requirements: COD-20.
+func TestGoGeneratedNonnullStyledSetterRejectsSqlNull(t *testing.T) {
+	testcase.Start(t, testcase.Process)
+	write := scannedModule(t)
+	m := namesManifest(t, `dbspec 1 styled
+
+table item {
+  seq i64 identity
+  payload text
+  primary key (seq)
+  settings {
+    codec payload ordered_json
+  }
+}
+`)
+	if err := generateGo(m, "model", "", nil); err != nil {
+		t.Fatal(err)
+	}
+	write("example/styled_test.go", `package example
+
+import (
+	"encoding/json"
+	"testing"
+
+	"example.com/ormexample/model"
+	"github.com/polyspec/orm/packages/go/orm"
+)
+
+func TestGeneratedNonnullStyledSetterRejectsSqlNull(t *testing.T) {
+	item := model.Item()
+	if _, err := item.SetPayload(orm.SqlNull()); orm.ErrorCode(err) != orm.CodeCodecEncode {
+		t.Fatalf("generated non-null setter error = %v; want CODEC_ENCODE", err)
+	}
+	if _, err := item.GetPayload(); orm.ErrorCode(err) != orm.CodeColumnUnselected {
+		t.Fatalf("rejected setter changed the generated model: %v", err)
+	}
+	item, err := item.SetPayload(orm.Value(nil))
+	if err != nil {
+		t.Fatalf("encoded JSON null was rejected: %v", err)
+	}
+	value, err := item.GetPayload()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if value.Kind() != "value" {
+		t.Fatalf("generated getter kind = %q; want value", value.Kind())
+	}
+	got, ok := value.Data()
+	if !ok {
+		t.Fatal("generated getter has no encoded value")
+	}
+	encoded, err := json.Marshal(got)
+	if err != nil || string(encoded) != "null" {
+		t.Fatalf("generated getter data = %s, %v; want encoded JSON null", encoded, err)
+	}
+}
+`)
+	testScannedModule(t)
+}
+
 // TestGoGeneratedScalarGetterCompilesAtItsDeclaredType checks a typed getter through an external consumer.
 func TestGoGeneratedScalarGetterCompilesAtItsDeclaredType(t *testing.T) {
 	testcase.Start(t, testcase.Process)
