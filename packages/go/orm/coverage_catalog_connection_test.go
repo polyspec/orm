@@ -125,6 +125,33 @@ func TestCoverageCatalogRead(t *testing.T) {
 	catalogGridCellsCheck(t, ctx, driver, c)
 }
 
+// Requirements: SCH-6a.
+func TestCoverageCatalogGridColumnAndRowOrder(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	ctx := context.Background()
+	driver, c := catalogConnect(t)
+	defer testcase.Close(t, c)
+
+	query := "SELECT 1 AS seq, 'a' AS label UNION ALL SELECT 2, 'b' UNION ALL SELECT 3, 'c' UNION ALL SELECT 4, 'd' ORDER BY seq DESC"
+	result, err := c.ReadOnlyGridQuery(ctx, query, nil, orm.CatalogQueryLimits{})
+	if err != nil {
+		t.Fatalf("%s: grid query: %v", driver, err)
+	}
+	wantColumns := []string{"seq", "label"}
+	if !reflect.DeepEqual(result.Columns, wantColumns) {
+		t.Fatalf("%s: grid columns %v, want %v", driver, result.Columns, wantColumns)
+	}
+	wantRows := [][]orm.CatalogGridCell{
+		{{Kind: orm.CatalogGridInteger, Value: int64(4)}, {Kind: orm.CatalogGridText, Value: "d"}},
+		{{Kind: orm.CatalogGridInteger, Value: int64(3)}, {Kind: orm.CatalogGridText, Value: "c"}},
+		{{Kind: orm.CatalogGridInteger, Value: int64(2)}, {Kind: orm.CatalogGridText, Value: "b"}},
+		{{Kind: orm.CatalogGridInteger, Value: int64(1)}, {Kind: orm.CatalogGridText, Value: "a"}},
+	}
+	if !reflect.DeepEqual(result.Rows, wantRows) {
+		t.Fatalf("%s: grid rows\n got %#v\nwant %#v", driver, result.Rows, wantRows)
+	}
+}
+
 // Requirements: SCH-5, SCH-6a, DBS-113, INT-34.
 func TestCoverageCatalogRowMutation(t *testing.T) {
 	testcase.Start(t, testcase.Database)

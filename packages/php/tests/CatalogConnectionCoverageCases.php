@@ -99,6 +99,28 @@ trait CatalogConnectionCoverageCases
         }
     }
 
+    // Requirements: SCH-6a.
+    public function testGridColumnAndRowOrder(): void
+    {
+        $result = $this->catalog->readOnlyGridQuery(
+            "SELECT 1 AS seq, 'a' AS label UNION ALL SELECT 2, 'b' UNION ALL SELECT 3, 'c' UNION ALL SELECT 4, 'd' ORDER BY seq DESC"
+        );
+        self::assertSame(['seq', 'label'], $result->columns);
+        $rows = array_map(
+            static fn (array $row): array => array_map(
+                static fn (CatalogGridCell $cell): array => [$cell->kind, $cell->value],
+                $row
+            ),
+            $result->rows
+        );
+        self::assertSame([
+            [['integer', 4], ['text', 'd']],
+            [['integer', 3], ['text', 'c']],
+            [['integer', 2], ['text', 'b']],
+            [['integer', 1], ['text', 'a']],
+        ], $rows);
+    }
+
     // Requirements: INT-4, INT-8.
     public function testModelReadNullAndEmptyText(): void
     {

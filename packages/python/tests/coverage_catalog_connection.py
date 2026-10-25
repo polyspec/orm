@@ -338,6 +338,23 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
             with self.assertRaisesRegex(Exception, "CATALOG_VALUE"):
                 self.catalog.read_only_grid_query(refused, [])
 
+    def test_grid_column_and_row_order(self):
+        result = self.catalog.read_only_grid_query(
+            "SELECT 1 AS seq, 'a' AS label UNION ALL SELECT 2, 'b' UNION ALL SELECT 3, 'c' UNION ALL SELECT 4, 'd' ORDER BY seq DESC",
+            [],
+        )
+        self.assertEqual(result.columns, ["seq", "label"])
+        rows = [[(cell.kind, cell.value) for cell in row] for row in result.rows]
+        self.assertEqual(
+            rows,
+            [
+                [("integer", 4), ("text", "d")],
+                [("integer", 3), ("text", "c")],
+                [("integer", 2), ("text", "b")],
+                [("integer", 1), ("text", "a")],
+            ],
+        )
+
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:
@@ -345,6 +362,7 @@ if __name__ == "__main__":
     else:
         feature_cases = {
             "catalog_read": "test_read",
+            "catalog_grid_column_and_row_order": "test_grid_column_and_row_order",
             "model_read_null_and_empty_text": "test_model_read_null_and_empty_text",
             "catalog_row_mutation": "test_row_mutation",
         }

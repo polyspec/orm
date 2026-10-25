@@ -95,10 +95,6 @@
           "reason": "harness: checks flat Go subtest names so the test runner can select exact case IDs; it does not exercise dbspec client behavior"
         },
         {
-          "glob": "packages/go/engine/dbspec/stress_test.go",
-          "reason": "bench-only parser/emitter performance measurement with warning-only ratio; canonical emission and round-trip behavior is covered by shared dbspec feature units"
-        },
-        {
           "glob": "packages/go/engine/dbspec/vector_loaders_test.go",
           "reason": "tests the Go dbspec test-vector decoder and diagnostic paths for malformed harness input, not the client dbspec contract"
         },
@@ -237,10 +233,6 @@
         {
           "glob": "packages/go/orm/values_test.go",
           "reason": "implementation: calls the private Go Func.irFunc encoder directly; public value and column function behavior is exercised through planner cases"
-        },
-        {
-          "glob": "packages/go/orm/write_set_test.go",
-          "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
         {
           "glob": "packages/go/procevent/procevent_test.go",
@@ -518,6 +510,17 @@
       ],
       "support": [
         "packages/ts/tests/case-database.mjs",
+        "packages/ts/tests/assertions.mjs",
+        "packages/ts/tests/capture-error.mjs",
+        "packages/ts/tests/check-state.mjs",
+        "packages/ts/tests/audit-history-rows.mjs",
+        "packages/ts/tests/conditional-entry.mjs",
+        "packages/ts/tests/database-case-fixture.mjs",
+        "packages/ts/tests/database-case-tests.mjs",
+        "packages/ts/tests/dbspec-plan-fixture.mjs",
+        "packages/ts/tests/dbspec-physical-database.mjs",
+        "packages/ts/tests/internal-column-error.mjs",
+        "packages/ts/tests/mysql-test-options.mjs",
         "packages/ts/tests/bench-set.mjs",
         "packages/ts/tests/codec_case.mjs",
         "packages/ts/tests/conformance_case.mjs",
@@ -533,7 +536,13 @@
         "packages/ts/tests/coverage_performance_report.mjs",
         "packages/ts/tests/complex-query-support.mjs",
         "packages/ts/tests/was-inserted-child.mjs",
-        "packages/ts/tests/coverage_performance_gate.mjs"
+        "packages/ts/tests/coverage_performance_gate.mjs",
+        "packages/ts/tests/parse_documents.mjs",
+        "packages/ts/tests/error_code.mjs",
+        "packages/ts/tests/markdown_test_listener.mjs",
+        "packages/ts/tests/registered_models.mjs",
+        "packages/ts/tests/generated_model_output.mjs",
+        "packages/ts/tests/schema_of.mjs"
       ],
       "args": [
         "--conditions=orm-test"
@@ -547,6 +556,50 @@
         "pattern": "^export const (\\w+) = '\\w+';$"
       },
       "internal": [
+        {
+          "glob": "packages/ts/tests/mysql-test-options.test.mjs",
+          "reason": "harness: tests parsing MySQL DSNs for TypeScript physical-test setup, not the public ORM DSN contract"
+        },
+        {
+          "glob": "packages/ts/tests/internal-column-error.test.mjs",
+          "reason": "harness: tests a TypeScript test-only matcher for internal-column error messages, not ORM result or error behavior"
+        },
+        {
+          "glob": "packages/ts/tests/dbspec-physical-database.test.mjs",
+          "reason": "harness: tests TypeScript physical-test database creation and cleanup infrastructure; it does not exercise dbspec client behavior"
+        },
+        {
+          "glob": "packages/ts/tests/database-case-tests.test.mjs",
+          "reason": "harness: tests registration and execution of TypeScript database-case harness callbacks; it does not exercise ORM client behavior"
+        },
+        {
+          "glob": "packages/ts/tests/dbspec-plan-fixture.test.mjs",
+          "reason": "harness: tests the TypeScript apply-test fixture selector for one already-shared dbspec plan vector; it does not add client plan behavior"
+        },
+        {
+          "glob": "packages/ts/tests/database-case-fixture.test.mjs",
+          "reason": "harness: tests fixture loading and per-case state setup for TypeScript database test programs; it does not exercise ORM client behavior"
+        },
+        {
+          "glob": "packages/ts/tests/conditional-entry.test.mjs",
+          "reason": "ecosystem: tests the Node package conditional-export loader in isolated child processes, not runtime ORM behavior"
+        },
+        {
+          "glob": "packages/ts/tests/audit-history-rows.test.mjs",
+          "reason": "harness: tests the TypeScript audit result projection used by parity test reporting; it does not exercise ORM client behavior"
+        },
+        {
+          "glob": "packages/ts/tests/check-state.test.mjs",
+          "reason": "harness: tests the TypeScript test-only case assertion and failure-reporting helper; it does not exercise ORM client behavior"
+        },
+        {
+          "glob": "packages/ts/tests/capture-error.test.mjs",
+          "reason": "harness: tests the TypeScript test-only error capture helper used by checker and fixture tests; it does not exercise ORM client behavior"
+        },
+        {
+          "glob": "packages/ts/tests/assertions.test.mjs",
+          "reason": "harness: tests exactKeys, the TypeScript test-only assertion helper used to validate test fixtures; it does not exercise ORM client behavior"
+        },
         {
           "glob": "packages/ts/tests/coverage_performance_gate.test.mjs",
           "reason": "harness: an internal test of the TypeScript package that checks the performance report formatter, not a behaviour of the contract (K313)"
@@ -574,6 +627,46 @@
         {
           "glob": "packages/ts/tests/conformance_vector_count.test.mts",
           "reason": "harness: an internal test that verifies the TypeScript conformance runner covers every declared vector, not ORM behaviour itself (K313)"
+        },
+        {
+          "glob": "packages/ts/tests/parse_documents.test.mjs",
+          "reason": "harness: tests the TypeScript DDL-vector adapter that parses each document with its sibling documents and preserves fixture order; the cross-client DDL behavior is exercised by the shared dbspec-ddl vector suite"
+        },
+        {
+          "glob": "packages/ts/tests/column_function_metadata.mjs",
+          "reason": "implementation: mutates requests after successful validation to manufacture impossible missing-column states, then checks private planner/parameter/output-assembly invariant failures; public valid and rejected requests are covered by shared planner units"
+        },
+        {
+          "glob": "packages/ts/tests/coverage-case-unit.mjs",
+          "reason": "harness: exercises the TypeScript coverage-case runner, including selected-case order, duplicate rejection, deadlines, database selection, and cleanup; it does not run ORM client behavior"
+        },
+        {
+          "glob": "packages/ts/tests/error_code.test.mjs",
+          "reason": "harness: tests the TypeScript test-only codeOf assertion helper with synthetic promise outcomes; it does not exercise ORM errors or client behavior"
+        },
+        {
+          "glob": "packages/ts/tests/markdown_test_listener.test.mjs",
+          "reason": "harness: tests the TypeScript Markdown test-server fixture lifecycle, ephemeral loopback binding and socket cleanup; it does not exercise Markdown ORM requests"
+        },
+        {
+          "glob": "packages/ts/tests/registered_models.test.mjs",
+          "reason": "harness: tests the TypeScript model fixture factory used by isolated client tests; it checks test-created class maps and fixture manifest assembly, not generated client behavior"
+        },
+        {
+          "glob": "packages/ts/tests/generated_model_output.test.mjs",
+          "reason": "harness: tests a TypeScript test-only reader for generated source text and declared field extraction using a temporary fixture; generated output behavior is verified by generator owner checks"
+        },
+        {
+          "glob": "packages/ts/tests/schema_of.test.mjs",
+          "reason": "harness: tests a TypeScript test-only schema fixture adapter that assembles the public manifest result into the shape generated test models consume; shared manifest/hash behavior is covered by dbspec vectors"
+        },
+        {
+          "glob": "packages/ts/tests/split-null.test.mjs",
+          "reason": "implementation: tests private split-result identity helpers with SQL NULL rows that cannot be produced by a valid primary-key schema; public null collection-key behavior remains in the six-client collection-key-null-is-codec-decode unit"
+        },
+        {
+          "glob": "packages/ts/tests/syntax-vectors.mjs",
+          "reason": "harness: regenerates tests/dbspec/syntax.json from its cases and the built TypeScript analyzer to prevent fixture drift; cross-client analyzer results are exercised by dbspec-syntax"
         }
       ]
     },
@@ -616,6 +709,26 @@
         {
           "glob": "packages/python/tests/test_mysql_found_rows.py",
           "reason": "test: an internal test of the Python client that reads the PyMySQL client flags of the connection, an implementation detail; the found-rows behaviour of CFG-10 is the affected_counts vector of the conformance suite (P32)"
+        },
+        {
+          "glob": "packages/python/tests/coverage_case_test.py",
+          "reason": "harness: tests the Python feature-coverage runner’s case selection, database iteration and result events; client behavior is exercised by the declared feature owner cases"
+        },
+        {
+          "glob": "packages/python/tests/test_dbspec_cases_reader.py",
+          "reason": "harness: validates the shared dbspec test-vector envelope consumed by client test runners; it does not call the Python dbspec client"
+        },
+        {
+          "glob": "packages/python/tests/test_dbspec_introspect_support.py",
+          "reason": "harness: tests the Python introspection fixture statement adapter used by dbspec tests; it does not exercise public introspection behavior"
+        },
+        {
+          "glob": "packages/python/tests/test_python_extractor.py",
+          "reason": "harness: tests the Python interface symbol extractor on temporary source and against its snapshot; public API declarations are checked by the interface contract tools"
+        },
+        {
+          "glob": "packages/python/tests/test_testcase.py",
+          "reason": "harness: tests Python testcase discovery, reporting and deadline behavior; it does not exercise ORM client behavior"
         }
       ],
       "roots": [
@@ -718,7 +831,10 @@
         "packages/rust/tests/tests/common/schema_coverage_case.rs",
         "packages/rust/tests/tests/common/statement_record.rs",
         "packages/rust/tests/tests/common/table_exists.rs",
-        "packages/rust/tests/tests/common/temp_directory.rs"
+        "packages/rust/tests/tests/common/temp_directory.rs",
+        "packages/rust/orm/tests/common/clock_test_support.rs",
+        "packages/rust/schema/tests/common/json_lines.rs",
+        "packages/rust/tests/tests/common/temp_sqlite.rs"
       ],
       "symbols": {
         "extractor": "rust",
@@ -772,6 +888,22 @@
         {
           "glob": "packages/rust/case-clock/src/lib.rs",
           "reason": "harness: tests the Rust case-clock helper that reports process and thread CPU time for test reporting; it is test instrumentation, not ORM behavior"
+        },
+        {
+          "glob": "packages/rust/tests/tests/client_bench_args.rs",
+          "reason": "benchmark: tests missing, malformed and nonpositive iteration arguments of the standalone Rust client_bench executable before it connects; this is benchmark CLI validation, not ORM behavior"
+        },
+        {
+          "glob": "packages/rust/tests/tests/client_bench_dsn.rs",
+          "reason": "benchmark: tests the standalone Rust client_bench executable refuses a missing or empty benchmark DSN before connecting; this is benchmark CLI validation, not the public client DSN contract"
+        },
+        {
+          "glob": "packages/rust/tests/tests/example_dsn.rs",
+          "reason": "example: tests the standalone complex and demo examples refuse to start without their benchmark DSN; this is example preflight behavior, not the ORM client contract"
+        },
+        {
+          "glob": "packages/rust/testing/interfaces/src/main.rs",
+          "reason": "harness: unit tests the Rust interface-extractor test program and its declaration parsing; runtime API shape is checked by the shared interface contract tools"
         }
       ]
     }
@@ -11427,7 +11559,8 @@
       "id": "rust-binary-grid-values-remain-distinct-from-text-and-null",
       "kind": "feature",
       "requirements": [
-        "SCH-3"
+        "SCH-3",
+        "INT-115"
       ],
       "bindings": [
         {
@@ -13170,7 +13303,8 @@
         "INT-113",
         "INT-114",
         "SCH-3",
-        "INT-103"
+        "INT-103",
+        "INT-115"
       ],
       "bindings": [
         {
@@ -14601,6 +14735,11 @@
           "implementation": "rust",
           "test": "packages/rust/build/tests/generate.rs",
           "id": "key_prefix_methods_come_from_the_schema_without_a_scan"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_key_prefix.py",
+          "id": "KeyPrefixTest.test_key_prefix_names_resolve_without_a_scan"
         }
       ]
     },
@@ -24498,6 +24637,243 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/coverage_catalog_connection.rs",
           "id": "coverage_model_read_null_and_empty_text"
+        }
+      ]
+    },
+    {
+      "id": "dbspec-stress-canonical-roundtrip",
+      "kind": "feature",
+      "requirements": [
+        "DBS-123"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/engine/dbspec/stress_test.go",
+          "id": "TestStressDocument",
+          "command": [
+            "go",
+            "test",
+            "-json",
+            "-tags",
+            "bench",
+            "-count=1",
+            "-run",
+            "^TestStressDocument$",
+            "./engine/dbspec"
+          ]
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecStressTest.php",
+          "id": "DbspecStressTest::testStress"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec-stress.mjs",
+          "id": "dbspec stress document parses and emits canonically"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecStressCanonicalNativeTest.php",
+          "id": "DbspecStressCanonicalNativeTest::testStressDocumentRoundTripsCanonically"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_stress.py",
+          "id": "StressCanonicalTest.test_stress_document_round_trips"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/schema/tests/dbspec_stress.rs",
+          "id": "stress_document_round_trips_canonically"
+        }
+      ]
+    },
+    {
+      "id": "catalog_grid_column_and_row_order",
+      "kind": "feature",
+      "requirements": [
+        "SCH-6a"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/catalog_grid_order_test.go",
+          "id": "TestCoverageCatalogGridOrder"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_catalog_connection_test.go",
+          "id": "TestCoverageCatalogGridColumnAndRowOrder"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::testGridColumnAndRowOrder"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::testGridColumnAndRowOrder"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+          "id": "catalog_grid_column_and_row_order"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_catalog_connection.py",
+          "id": "test_grid_column_and_row_order"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/coverage_catalog_connection.rs",
+          "id": "coverage_catalog_grid_column_and_row_order"
+        }
+      ]
+    },
+    {
+      "id": "utils-was-inserted-savepoint-write-set",
+      "kind": "feature",
+      "requirements": [
+        "INT-52"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/write_set_test.go",
+          "id": "TestWasInsertedTracksGeneratedRows"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/WasInsertedTest.php",
+          "id": "WasInsertedTest::testWasInsertedTracksGeneratedRows"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/UtilsNativeTest.php",
+          "id": "UtilsNativeTest::testWasInsertedTracksGeneratedRowsThroughNativeUtils"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/was-inserted.mjs",
+          "id": "was-inserted/tracks-generated-rows/sqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/was-inserted.mjs",
+          "id": "was-inserted/tracks-generated-rows/mysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/was-inserted.mjs",
+          "id": "was-inserted/tracks-generated-rows/postgres"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_was_inserted.py",
+          "id": "WasInsertedTest.test_was_inserted_tracks_generated_rows"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/was_inserted.rs",
+          "id": "was_inserted_sqlite"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/was_inserted.rs",
+          "id": "was_inserted_mysql"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/was_inserted.rs",
+          "id": "was_inserted_postgres"
+        }
+      ]
+    },
+    {
+      "id": "utils-backend-waiting-for-lock",
+      "kind": "feature",
+      "requirements": [
+        "INT-53"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/write_set_test.go",
+          "id": "TestWasInsertedTracksGeneratedRows"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/write_set_test.go",
+          "id": "TestBackendWaitingForLockReportsPostgresWaiter"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/WasInsertedTest.php",
+          "id": "WasInsertedTest::testBackendWaitingForLockIsFalseWithoutAWaiter"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/WasInsertedTest.php",
+          "id": "WasInsertedTest::testPostgresReportsABackendWaitingForLock"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/UtilsNativeTest.php",
+          "id": "UtilsNativeTest::testBackendWaitingForLockIsFalseWithoutAWaiterThroughNativeUtils"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/UtilsNativeTest.php",
+          "id": "UtilsNativeTest::testPostgresReportsABackendWaitingForLockThroughNativeUtils"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/was-inserted.mjs",
+          "id": "backend-waiting-for-lock/no-waiter/sqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/was-inserted.mjs",
+          "id": "backend-waiting-for-lock/no-waiter/mysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/was-inserted.mjs",
+          "id": "backend-waiting-for-lock/no-waiter/postgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/was-inserted.mjs",
+          "id": "backend-waiting-for-lock/postgres-waiter"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_was_inserted.py",
+          "id": "WasInsertedTest.test_backend_waiting_for_lock_is_false_without_a_waiter"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_was_inserted.py",
+          "id": "WasInsertedTest.test_postgres_reports_a_backend_waiting_for_lock"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/was_inserted.rs",
+          "id": "was_inserted_sqlite"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/was_inserted.rs",
+          "id": "was_inserted_mysql"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/was_inserted.rs",
+          "id": "was_inserted_postgres"
         }
       ]
     }

@@ -240,6 +240,25 @@ async function gridCase() {
   }
 }
 
+async function gridColumnAndRowOrderCase(item) {
+  const { driver, catalog } = await connect(item);
+  try {
+    const result = await catalog.readOnlyGridQuery(
+      "SELECT 1 AS seq, 'a' AS label UNION ALL SELECT 2, 'b' UNION ALL SELECT 3, 'c' UNION ALL SELECT 4, 'd' ORDER BY seq DESC",
+      [],
+    );
+    assert.deepEqual(result.columns.map(column => column.name), ['seq', 'label'], `${driver}: grid columns`);
+    assert.deepEqual(result.rows, [
+      [{ kind: 'integer', value: 4n }, { kind: 'text', value: 'd' }],
+      [{ kind: 'integer', value: 3n }, { kind: 'text', value: 'c' }],
+      [{ kind: 'integer', value: 2n }, { kind: 'text', value: 'b' }],
+      [{ kind: 'integer', value: 1n }, { kind: 'text', value: 'a' }],
+    ], `${driver}: grid row order`);
+  } finally {
+    await catalog.close();
+  }
+}
+
 // A described temporal column reads with exactly the fraction digits its declared precision fixes: the native type for MySQL and
 // PostgreSQL, the dbspec CHECK of the table for SQLite. A value with other digits fails with GRID_TEMPORAL_PRECISION.
 async function precisionCase() {
@@ -382,6 +401,7 @@ async function closedCase() {
 
 const featureCases = {
   catalog_read: readCase,
+  catalog_grid_column_and_row_order: gridColumnAndRowOrderCase,
   model_read_null_and_empty_text: nullAndEmptyTextCase,
   catalog_row_mutation: mutationCase,
 };

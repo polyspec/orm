@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Code;
@@ -19,6 +20,34 @@ use Polyspec\Orm\Tests\WasInsertedCases;
 #[Medium]
 final class UtilsNativeTest extends TestCase
 {
+    /** @return iterable<string, array{string}> */
+    public static function drivers(): iterable
+    {
+        yield 'sqlite' => ['sqlite'];
+        yield 'mysql' => ['mysql'];
+        yield 'postgres' => ['postgres'];
+    }
+
+    /** Runs the shared utility case against a fresh database of the named driver.
+     *
+     * @param \Closure(\Polyspec\Orm\Db, string): void $body
+     */
+    private static function onCase(string $driver, \Closure $body): void
+    {
+        WasInsertedCases::loadFixture();
+        with_case_database($driver, static function (string $step): void {
+        }, static function (string $dsn) use ($body): void {
+            $separator = str_contains($dsn, '?') ? '&' : '?';
+            $db = Orm::connect($dsn . $separator . 'timezone=%2B00:00', new Config());
+            try {
+                $db->utils()->schema()->install(\Polyspec\Orm\Tests\WasInsertedCase\schema());
+                $body($db, $dsn);
+            } finally {
+                $db->close();
+            }
+        });
+    }
+
     public function testNativeUtilityConstructorsKeepTheirTypeErrors(): void
     {
         foreach (
@@ -37,13 +66,87 @@ final class UtilsNativeTest extends TestCase
         }
     }
 
-    public function testWasInsertedTracksGeneratedRowsThroughNativeUtils(): void
+    // Requirements: INT-52.
+    #[DataProvider('drivers')]
+    public function testWasInsertedTracksGeneratedRowsThroughNativeUtils(string $driver): void
     {
         self::assertTrue((new \ReflectionClass(Utils::class))->isInternal());
         self::assertTrue((new \ReflectionClass(Utils::class))->getMethod('wasInserted')->isInternal());
 
-        WasInsertedCases::onSqlite(function (\Polyspec\Orm\Db $db): void {
+        self::onCase($driver, function (\Polyspec\Orm\Db $db): void {
             WasInsertedCases::assertTracksGeneratedRows($this, $db);
+        });
+    }
+
+    /** Requirements: INT-53. */
+    #[DataProvider('drivers')]
+    public function testBackendWaitingForLockIsFalseWithoutAWaiterThroughNativeUtils(string $driver): void
+    {
+        self::assertTrue((new \ReflectionClass(Utils::class))->isInternal());
+        self::assertTrue((new \ReflectionClass(Utils::class))->getMethod('backendWaitingForLock')->isInternal());
+
+        self::onCase($driver, static function (\Polyspec\Orm\Db $db): void {
+            self::assertFalse($db->utils()->backendWaitingForLock(), 'no backend waits for a lock');
+        });
+    }
+
+    /** Requirements: INT-53. PostgreSQL reports the child backend while it waits for the row held here. */
+    public function testPostgresReportsABackendWaitingForLockThroughNativeUtils(): void
+    {
+        self::assertTrue((new \ReflectionClass(Utils::class))->isInternal());
+        self::assertTrue((new \ReflectionClass(Utils::class))->getMethod('backendWaitingForLock')->isInternal());
+
+        self::onCase('postgres', static function (\Polyspec\Orm\Db $db, string $dsn): void {
+            $seq = 0;
+            $db->transaction(static function () use ($db, &$seq): void {
+                $seq = (int) (new \Polyspec\Orm\Tests\WasInsertedCase\ClockEvent())($db)->setLabel('held')
+                    ->create()
+                    ->getSeq();
+            }, retry: 0);
+
+            $child = null;
+            $pipes = [];
+            try {
+                $db->transaction(function () use ($db, $dsn, $seq, &$child, &$pipes): void {
+                    (new \Polyspec\Orm\Tests\WasInsertedCase\ClockEvent())($db)->getBySeq($seq)
+                        ->setLabel('parent')
+                        ->update();
+                    $child = proc_open(
+                        [PHP_BINARY, __DIR__ . '/../../php/tests/was_inserted_child.php', $dsn, (string) $seq],
+                        [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+                        $pipes
+                    );
+                    self::assertIsResource($child, 'the waiting child did not start');
+                    $waiting = false;
+                    $deadline = microtime(true) + 10;
+                    while (!$waiting && microtime(true) < $deadline) {
+                        $waiting = $db->utils()->backendWaitingForLock();
+                        if (!$waiting) {
+                            usleep(20_000);
+                        }
+                    }
+                    self::assertTrue($waiting, 'the child backend waits for the row lock the native transaction holds');
+                }, retry: 0);
+
+                self::assertIsResource($child);
+                self::assertSame("done\n", stream_get_contents($pipes[1]));
+                $errors = stream_get_contents($pipes[2]);
+                fclose($pipes[1]);
+                fclose($pipes[2]);
+                $pipes = [];
+                self::assertSame(0, proc_close($child), "the waiting child exited with an error: $errors");
+                $child = null;
+            } finally {
+                foreach ($pipes as $pipe) {
+                    if (is_resource($pipe)) {
+                        fclose($pipe);
+                    }
+                }
+                if (is_resource($child)) {
+                    proc_terminate($child);
+                    proc_close($child);
+                }
+            }
         });
     }
 

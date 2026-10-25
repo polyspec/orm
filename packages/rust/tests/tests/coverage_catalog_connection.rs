@@ -113,6 +113,37 @@ async fn coverage_catalog_read() {
 }
 
 #[tokio::test]
+// Requirements: SCH-6a.
+async fn coverage_catalog_grid_column_and_row_order() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    within("catalog_grid_column_and_row_order", async {
+        let (driver, mut catalog) = connect().await;
+        let result = catalog
+            .read_only_grid_query(
+                "SELECT 1 AS seq, 'a' AS label UNION ALL SELECT 2, 'b' UNION ALL SELECT 3, 'c' UNION ALL SELECT 4, 'd' ORDER BY seq DESC",
+                &[],
+                QueryLimits::default(),
+            )
+            .await
+            .expect("ordered grid query");
+        let columns: Vec<&str> = result.columns.iter().map(|column| column.name.as_str()).collect();
+        assert_eq!(columns, ["seq", "label"], "{driver}: grid columns");
+        assert_eq!(
+            result.rows,
+            vec![
+                vec![GridCell::Integer(4), GridCell::Text("d".into())],
+                vec![GridCell::Integer(3), GridCell::Text("c".into())],
+                vec![GridCell::Integer(2), GridCell::Text("b".into())],
+                vec![GridCell::Integer(1), GridCell::Text("a".into())],
+            ],
+            "{driver}: grid row order"
+        );
+        catalog.close().await;
+    })
+    .await;
+}
+
+#[tokio::test]
 // Requirements: DBS-113, INT-109, INT-123.
 async fn coverage_catalog_row_mutation() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);

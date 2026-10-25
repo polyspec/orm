@@ -39,6 +39,10 @@ path = "tests/dbspec.rs"
 harness = false
 
 [[test]]
+name = "dbspec_stress"
+path = "tests/dbspec_stress.rs"
+
+[[test]]
 name = "dbspec_manifest"
 path = "tests/dbspec_manifest.rs"
 harness = false

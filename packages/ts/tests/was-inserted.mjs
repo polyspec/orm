@@ -52,6 +52,7 @@ async function insertEvent(db, label) {
 
 /** A generated insert inside a transaction is recorded for its key; a key never inserted is not; a nested rollback removes its key only. */
 for (const driver of drivers) {
+  // Requirements: INT-52.
   caseTest(`was-inserted/tracks-generated-rows/${driver}`, CASE_DEADLINE_MS, async () => {
     await onCase(driver, async db => {
       const utils = db.utils();
@@ -86,6 +87,7 @@ for (const driver of drivers) {
   });
 
   /** SQLite and MySQL have no backend lock view: INT-53 answers false without a statement, and PostgreSQL with no waiter answers false. */
+  // Requirements: INT-53.
   caseTest(`backend-waiting-for-lock/no-waiter/${driver}`, CASE_DEADLINE_MS, async () => {
     await onCase(driver, async db => {
       assert.equal(await db.utils().backendWaitingForLock(), false, 'no backend waits for a lock');
@@ -98,6 +100,7 @@ for (const driver of drivers) {
  * updates the same row and blocks. The parent checks the state the database reports, bounded to ten seconds, before it
  * commits and lets the child finish.
  */
+// Requirements: INT-53.
 caseTest('backend-waiting-for-lock/postgres-waiter', CASE_DEADLINE_MS, async () => {
   await onCase('postgres', async (db, dsn) => {
     let seq = 0;

@@ -69,6 +69,7 @@ final class WasInsertedTest extends TestCase
      * A generated insert inside a transaction is recorded for its key; an insert of another transaction is not. Nested
      * rollback removes its key only.
      */
+    // Requirements: INT-52.
     #[DataProvider('drivers')]
     public function testWasInsertedTracksGeneratedRows(string $driver): void
     {
@@ -119,6 +120,7 @@ final class WasInsertedTest extends TestCase
      * SQLite and MySQL have no backend lock view: INT-53 answers false without a statement, and an empty pool of
      * PostgreSQL waits for no one.
      */
+    // Requirements: INT-53.
     #[DataProvider('drivers')]
     public function testBackendWaitingForLockIsFalseWithoutAWaiter(string $driver): void
     {
@@ -132,6 +134,7 @@ final class WasInsertedTest extends TestCase
      * process updates the same row and blocks. The parent checks the state the database reports, bounded to ten
      * seconds, before it commits and lets the child finish.
      */
+    // Requirements: INT-53.
     public function testPostgresReportsABackendWaitingForLock(): void
     {
         self::onCase('postgres', static function (\Polyspec\Orm\Db $db, string $dsn): void {

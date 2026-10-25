@@ -2068,6 +2068,17 @@
         "packages/ts/tests/check-state.test.mjs"
       ]
     },
+    "typescript-test-exact-keys-check": {
+      "scope": "owner",
+      "needs": [
+        "node-modules"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/ts/tests/assertions.mjs",
+        "packages/ts/tests/assertions.test.mjs"
+      ]
+    },
     "typescript-performance-gate-unit-check": {
       "scope": "owner",
       "needs": [
@@ -2407,7 +2418,10 @@
         "packages/php-ext/tests/bootstrap.php",
         "packages/php-ext/src/**",
         "tests/dbspec/cases.json",
-        "contracts/fixtures/schema_definition.json"
+        "contracts/fixtures/schema_definition.json",
+        "packages/php-ext/tests/DbspecStressCanonicalNativeTest.php",
+        "packages/php/tests/DbspecStressTestSupport.php",
+        "tests/dbspec/stress.mts"
       ]
     },
     "model-types-php-extension-check": {
@@ -3160,7 +3174,8 @@
         "tests/dbspec/cases.json",
         "contracts/fixtures/planner.json",
         "tests/ir/validate.json",
-        "tests/codec/decode-vectors.json"
+        "tests/codec/decode-vectors.json",
+        "tests/dbspec/stress.mts"
       ]
     },
     "python-complex-query-check": {
@@ -3671,6 +3686,16 @@
         "packages/php/tests/EngineTest.php",
         "tests/ir/validate.json",
         "contracts/fixtures/bench/bench.dbs"
+      ]
+    },
+    "dbspec-stress-rust-check": {
+      "scope": "owner",
+      "needs": [
+        "rust"
+      ],
+      "inputs": [
+        "packages/rust/schema/tests/dbspec_stress.rs",
+        "tests/dbspec/stress.mts"
       ]
     }
   },

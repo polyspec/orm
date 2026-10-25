@@ -46,6 +46,7 @@ class WasInsertedTest(unittest.TestCase):
             call()
         return caught.exception.code
 
+    # Requirements: INT-52.
     def test_was_inserted_tracks_generated_rows(self):
         def body(db, dsn):
             utils = db.utils()
@@ -128,6 +129,7 @@ class WasInsertedTest(unittest.TestCase):
             with self.subTest(dialect=dialect):
                 self.run_case(dialect, body)
 
+    # Requirements: INT-53.
     def test_backend_waiting_for_lock_is_false_without_a_waiter(self):
         def body(db, dsn):
             self.assertFalse(
@@ -138,6 +140,7 @@ class WasInsertedTest(unittest.TestCase):
             with self.subTest(dialect=dialect):
                 self.run_case(dialect, body)
 
+    # Requirements: INT-53.
     def test_postgres_reports_a_backend_waiting_for_lock(self):
         def body(db, dsn):
             utils = db.utils()

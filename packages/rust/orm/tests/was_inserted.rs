@@ -128,18 +128,21 @@ async fn bounded(driver: &str) {
 }
 
 #[tokio::test]
+// Requirements: INT-52, INT-53.
 async fn was_inserted_sqlite() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     tokio::time::timeout(CASE_DEADLINE, bounded("sqlite")).await.expect("sqlite: the case ends");
 }
 
 #[tokio::test]
+// Requirements: INT-52, INT-53.
 async fn was_inserted_mysql() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     tokio::time::timeout(CASE_DEADLINE, bounded("mysql")).await.expect("mysql: the case ends");
 }
 
 #[tokio::test]
+// Requirements: INT-52, INT-53.
 async fn was_inserted_postgres() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     tokio::time::timeout(CASE_DEADLINE, bounded("postgres")).await.expect("postgres: the case ends");
