@@ -211,12 +211,13 @@ const scenarios = [
           get(target, property) {
             const value = Reflect.get(target, property, target);
             if (property === 'exec') {
-              return async sql => {
+              // node:sqlite's exec is synchronous, and the applier calls it so: the wrapper throws as the API does.
+              return sql => {
                 try {
-                  return await value.call(target, sql);
+                  return value.call(target, sql);
                 } catch (error) {
                   if (sql === 'BEGIN EXCLUSIVE' && blockerInTransaction) {
-                    await blocker.exec('ROLLBACK');
+                    blocker.connection.exec('ROLLBACK');
                     blockerInTransaction = false;
                   }
                   throw error;

@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d52e5df220f55be40f30c9fcfc9c1bdb878809a3301f550a59d5c6c0368332e5 -->
+<!-- source-sha256: b3820e058d1968f625ea5e6c5b204d1b6a8dd78a6d9fb5b4a5eb3debe2ff9faf -->
 # 변경 이력
 
 ## Unreleased
 
+- TypeScript dbspec apply 테스트의 lock_wait apply 시나리오 SQLite case가 다시 locked 오류를 본다: node:sqlite apply connection의 proxy가 node:sqlite의 exec처럼, 그리고 applier가 부르는 대로 exec를 동기로 감싸므로, 실패한 `BEGIN EXCLUSIVE`가 아무도 기다리지 않는 rejected promise가 아니라 apply에 닿는다. `make dbspec-apply-ts-check`가 다시 122 apply run을 센다 (KSTD-5-89-44).
 - `make lint-go`가 main에서 다시 통과한다: dbspec apply 비교의 Go driver가 blocker를 닫을 때, rollback할 때, row set을 닫을 때의 error를 뒤따르는 실패와 함께 join하여 반환하고 보고하는 lock 실패를 감싸며, error를 버리거나 감싸지 않고 formatting하던 Go test는 이제 그 error로 실패하거나 그것을 감싼다 (KSTD-5-89-42).
 - MySQL 테스트 서버는 SUPER가 아닌 로그인 사용자의 audit trigger 생성을 허용하고, PostgreSQL은 `orm` 외 loopback 역할에 SCRAM을 요구하며, replica는 localhost identity 검사를 지원하고 mismatch DSN은 `127.0.0.1`로 접속한다. PostgreSQL 인증과 MySQL daemon 변경은 테스트 서버를 stop하고 다시 start한 뒤 적용된다 (T239).
 - Rust test build의 dependency가 debug 정보를 갖지 않고(`[profile.dev.package."*"] debug = 0`) orm 자체 crate는 dev profile의 line table을 유지한다. main 설정에서 같은 test build가 target/debug/deps에 27퍼센트 적게, 1.3 GB에서 978 MB로 쓴다 (KSTD-5-93).
