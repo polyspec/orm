@@ -999,6 +999,7 @@
       ],
       "parity": [
         "coverage-model-query-rows",
+        "column-function-generated-alias",
         "go-model-chain-argument-types",
         "ts-chain-null-on-a-non-null-column",
         "model-ordered-json-output-text",

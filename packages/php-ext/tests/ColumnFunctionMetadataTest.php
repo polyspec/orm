@@ -49,6 +49,7 @@ final class ColumnFunctionMetadataTest extends TestCase
         ColumnFunctionMetadataAssertions::assertOutputMissingPostValidationFieldIsInternal();
     }
 
+    // Requirements: DSL-73.
     public function testOrmFactoriesPreserveColumnFunctionMetadataInGeneratedQueries(): void
     {
         self::assertNativePlannerAndValidator();
