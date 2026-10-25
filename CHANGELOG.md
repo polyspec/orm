@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- `make native-api-equivalence-check` runs with the environment of the test servers and builds the PHP models first, so the database cases of UtilsNativeTest run on MySQL and PostgreSQL; contracts/check-inputs.json declares that the target needs the databases (KSTD-5-89-32).
 - `make interface-check` passes on main again: the Go, Rust and TypeScript symbol records list the 30 members that the PostgreSQL cancellation, the catalog value budgets and refusal messages, the shared test code and the ordered LISTEN delivery added without recording them (KSTD-5-89-37).
 - The CFG-9 case of the interface checker tests expects the six implemented cancellation adapters that contracts/interfaces.json records since the PHP library and extension implement cancellation, and still refuses an adapter that claims implemented without its cases and surface (KSTD-5-89-36).
 - The interface checker passes its manifest step again: docs/spec/interfaces-model.md and its Korean twin are regenerated from contracts/interfaces.json with `--generate`, which adds the Python cancellation case to the CFG-9 row, and the PHP and PHP extension symbol records list the members added since, including PgsqlLargeObjectStream::$context (KSTD-5-89-35).

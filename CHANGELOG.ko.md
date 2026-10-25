@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 58b65a6e5b458ffa66f000c2602f2406e178ca513999a97e0e33cba9533558e3 -->
+<!-- source-sha256: 8a6b9f1e759a9e439f1fdde954fe9d228a53872d2ae802cd84e3f743b27fd1bd -->
 # 변경 이력
 
 ## Unreleased
 
+- `make native-api-equivalence-check`가 test server environment로 실행되고 PHP model을 먼저 build하므로 UtilsNativeTest의 database case가 MySQL과 PostgreSQL에서 실행된다. contracts/check-inputs.json은 그 target이 database를 필요로 한다고 선언한다(KSTD-5-89-32).
 - `make interface-check`가 main에서 다시 통과한다: Go, Rust, TypeScript symbol record가 PostgreSQL cancellation, catalog value budget과 refusal message, 공유 test code, 순서 있는 LISTEN 전달이 record 없이 더한 member 30개를 나열한다 (KSTD-5-89-37).
 - interface checker test의 CFG-9 case가 PHP library와 extension이 cancellation을 구현한 뒤 contracts/interfaces.json이 기록하는 구현된 cancellation adapter 여섯 개를 기대하고, case와 surface 없이 implemented를 주장하는 adapter는 여전히 거부한다 (KSTD-5-89-36).
 - interface checker가 manifest 단계를 다시 통과한다: docs/spec/interfaces-model.md와 그 Korean twin을 `--generate`로 contracts/interfaces.json에서 다시 생성하여 CFG-9 행에 Python cancellation case가 더해지고, PHP와 PHP extension symbol record가 그 뒤 더해진 member를 PgsqlLargeObjectStream::$context를 포함해 나열한다 (KSTD-5-89-35).

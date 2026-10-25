@@ -3007,13 +3007,13 @@ python-package-entry-check: python-venv-check
 # it runs each command with no deadline under RUN_LONG. -fuzztime sets the length of fuzzing.
 
 NATIVE_API_EQUIVALENCE_FILTER ?= testAddTablesAndColumnsRejectsExternalDriftWithoutChangingDatabase|testExistsEscapesUnderscoreInSqliteSchemaName|testAddTablesAndColumnsRollsBackWithoutCreatingInternalLockTable|testSchemaMutationMethodsRejectObjectsThatAreNotSchema|testWasInsertedChecksTransactionBeforeArguments|testWasInsertedTracksGeneratedRowsThroughNativeUtils|testRotateChecksKeyringTypeBeforeModelMetadata|testOrmConnectionFactoryRejectsAConfigThatIsNotConfigBeforeOpeningSqlite|testConnectSchemaChecksSchemaTypeBeforeConfigTypeAndDsn|testBeginSubscriberFailureRollsBackAnOpenedSqliteTransaction|testSqliteRestoreFailureKeepsThePrimaryFailureAsPrevious|testBeginInspectionFailureReplacesThePrimaryAndRestoresForeignKeys
-native-api-equivalence-check: php-vendor-check
+native-api-equivalence-check: php-vendor-check php-models orm-install-php-extension-tools
 	@set -eu; \
 	run_dir="$(abspath .runtime/run)/schema-utils-equivalence-$$PPID"; \
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh "$$run_dir/php-extension/polyspec_orm.so"; \
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" --without-library packages/php -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/SchemaUtilsNativeTest.php packages/php-ext/tests/UtilsNativeTest.php packages/php-ext/tests/AesUtilsNativeTest.php packages/php-ext/tests/OrmExceptionNativeTest.php --filter '$(NATIVE_API_EQUIVALENCE_FILTER)'
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" --without-library packages/php -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/SchemaUtilsNativeTest.php packages/php-ext/tests/UtilsNativeTest.php packages/php-ext/tests/AesUtilsNativeTest.php packages/php-ext/tests/OrmExceptionNativeTest.php --filter '$(NATIVE_API_EQUIVALENCE_FILTER)'
 
 native-arginfo-php-extension-check: php-vendor-check php-models
 	@set -eu; \

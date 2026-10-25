@@ -3636,7 +3636,8 @@
       "needs": [
         "php",
         "composer",
-        "php-extension-tools"
+        "php-extension-tools",
+        "databases"
       ],
       "inputs": [
         "Makefile",
@@ -3653,7 +3654,8 @@
         "packages/php-ext/tests/bootstrap.php",
         "packages/php/tests/bootstrap.php",
         "packages/php-ext/tests/AesUtilsNativeTest.php",
-        "packages/php-ext/tests/OrmExceptionNativeTest.php"
+        "packages/php-ext/tests/OrmExceptionNativeTest.php",
+        "packages/php/tests/case_database.php"
       ]
     },
     "php-orm-gen-scan-failure-case-check": {
