@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Extension\Tests;
 
 use PHPUnit\Framework\TestCase;
-use Polyspec\Orm\CanonicalRequest;
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Func;
 use Polyspec\Orm\Model;
@@ -170,7 +169,9 @@ final class ModelTypesSurfaceTest extends TestCase
             'rows' => [[4, 1]],
             'optimistic' => ['minus_p' => 3],
         ];
-        [$expectedIr, $expectedParams] = CanonicalRequest::of($request->ir, $request->params);
+        $expected = $this->phpCanonicalRequest($request->ir, $request->params);
+        $expectedIr = $expected['ir'];
+        $expectedParams = $expected['params'];
 
         $request->canonicalize();
         self::assertSame($expectedIr, $request->ir);
@@ -182,6 +183,49 @@ final class ModelTypesSurfaceTest extends TestCase
         self::assertSame($onceIr, $request->ir, 'canonicalization is idempotent');
         self::assertSame($onceParams, $request->params, 'canonicalization keeps parameter values and order');
         self::assertSame($request->ir + ['n_params' => count($request->params)], $request->shape());
+    }
+
+    /** @param list<mixed> $params
+     *  @return array{ir: array, params: list<mixed>}
+     */
+    private function phpCanonicalRequest(array $ir, array $params): array
+    {
+        $script = <<<'PHP'
+$autoload = $argv[1];
+if (extension_loaded('polyspec_orm')) {
+    fwrite(STDERR, 'canonical oracle child unexpectedly loaded polyspec_orm');
+    exit(2);
+}
+require $autoload;
+$input = json_decode(stream_get_contents(STDIN), true, 512, JSON_THROW_ON_ERROR);
+[$canonicalIr, $canonicalParams] = Polyspec\Orm\CanonicalRequest::of($input['ir'], $input['params']);
+echo json_encode(['ir' => $canonicalIr, 'params' => $canonicalParams], JSON_THROW_ON_ERROR);
+PHP;
+        $command = [PHP_BINARY, '-n', '-r', $script, dirname(__DIR__, 3) . '/vendor-php/autoload.php'];
+        $environment = getenv();
+        $environment['ORM_PHP_MODE'] = 'library';
+        $process = proc_open(
+            $command,
+            [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+            $pipes,
+            dirname(__DIR__, 3),
+            $environment,
+        );
+        self::assertIsResource($process, 'start the PHP canonical oracle without loading the extension');
+
+        $input = json_encode(['ir' => $ir, 'params' => $params], JSON_THROW_ON_ERROR);
+        self::assertSame(strlen($input), fwrite($pipes[0], $input));
+        fclose($pipes[0]);
+        $stdout = stream_get_contents($pipes[1]);
+        $stderr = stream_get_contents($pipes[2]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+        $exitCode = proc_close($process);
+        self::assertSame(0, $exitCode, 'PHP canonical oracle failed: ' . trim($stderr));
+
+        $result = json_decode($stdout, true, 512, JSON_THROW_ON_ERROR);
+        self::assertSame(['ir', 'params'], array_keys($result));
+        return $result;
     }
 
     public function testPadInMatchesUserlandForBucketSizesSparseAndStringKeys(): void
