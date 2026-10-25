@@ -694,11 +694,11 @@ python-complex-query-check: python-venv-check
 # The shared CPX-2 fixture's generated Product API runs once on each database in the CI database group.
 .PHONY: complex-query-python-mysql-check complex-query-python-postgres-check complex-query-python-sqlite-check
 complex-query-python-mysql-check: python-venv-check
-	$(WITH_TEST_ENV) { test -n "$$COMPLEX_QUERY_PYTHON_MYSQL_DSN" || { echo "COMPLEX_QUERY_PYTHON_MYSQL_DSN is missing; run make databases-create COMPLEX_QUERY=1, which prepares the CPX-2 owner fixture" >&2; exit 1; }; ORM_FEATURE_DATABASE=mysql ORM_FEATURE_DSN="$$COMPLEX_QUERY_PYTHON_MYSQL_DSN" $(PYTHON_VENV)/bin/python -m packages.python.tests.coverage_complex_query complex_query_product_search; }
+	$(WITH_TEST_ENV) ORM_FEATURE_DATABASE=mysql ORM_FEATURE_DSN="$${COMPLEX_QUERY_PYTHON_MYSQL_DSN:?COMPLEX_QUERY_PYTHON_MYSQL_DSN is missing; run make databases-create COMPLEX_QUERY=1, which prepares the CPX-2 owner fixture}" $(PYTHON_VENV)/bin/python -m packages.python.tests.coverage_complex_query complex_query_product_search
 complex-query-python-postgres-check: python-venv-check
-	$(WITH_TEST_ENV) { test -n "$$COMPLEX_QUERY_PYTHON_POSTGRES_DSN" || { echo "COMPLEX_QUERY_PYTHON_POSTGRES_DSN is missing; run make databases-create COMPLEX_QUERY=1, which prepares the CPX-2 owner fixture" >&2; exit 1; }; ORM_FEATURE_DATABASE=postgres ORM_FEATURE_DSN="$$COMPLEX_QUERY_PYTHON_POSTGRES_DSN" $(PYTHON_VENV)/bin/python -m packages.python.tests.coverage_complex_query complex_query_product_search; }
+	$(WITH_TEST_ENV) ORM_FEATURE_DATABASE=postgres ORM_FEATURE_DSN="$${COMPLEX_QUERY_PYTHON_POSTGRES_DSN:?COMPLEX_QUERY_PYTHON_POSTGRES_DSN is missing; run make databases-create COMPLEX_QUERY=1, which prepares the CPX-2 owner fixture}" $(PYTHON_VENV)/bin/python -m packages.python.tests.coverage_complex_query complex_query_product_search
 complex-query-python-sqlite-check: python-venv-check
-	$(WITH_TEST_ENV) { test -n "$$COMPLEX_QUERY_PYTHON_SQLITE_DSN" || { echo "COMPLEX_QUERY_PYTHON_SQLITE_DSN is missing; run make databases-create COMPLEX_QUERY=1, which prepares the CPX-2 owner fixture" >&2; exit 1; }; ORM_FEATURE_DATABASE=sqlite ORM_FEATURE_DSN="$$COMPLEX_QUERY_PYTHON_SQLITE_DSN" $(PYTHON_VENV)/bin/python -m packages.python.tests.coverage_complex_query complex_query_product_search; }
+	$(WITH_TEST_ENV) ORM_FEATURE_DATABASE=sqlite ORM_FEATURE_DSN="$${COMPLEX_QUERY_PYTHON_SQLITE_DSN:?COMPLEX_QUERY_PYTHON_SQLITE_DSN is missing; run make databases-create COMPLEX_QUERY=1, which prepares the CPX-2 owner fixture}" $(PYTHON_VENV)/bin/python -m packages.python.tests.coverage_complex_query complex_query_product_search
 
 # The shared blind-index target regression runs only the Python client's pure planner tests.
 blind-index-source-python-check: python-venv-check
