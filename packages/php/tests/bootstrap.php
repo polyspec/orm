@@ -21,6 +21,7 @@ require_once __DIR__ . '/CallbackFailed.php';
 require_once __DIR__ . '/three_drivers.php';
 require_once __DIR__ . '/DatabaseTestAssertions.php';
 require_once __DIR__ . '/WarningStreamProtocol.php';
+require_once __DIR__ . '/Cpx5DuplicateRelationCases.php';
 require_once __DIR__ . '/MysqlTlsCases.php';
 require_once __DIR__ . '/SqliteConcurrencyWriter.php';
 require_once __DIR__ . '/CollectionIdentityCases.php';

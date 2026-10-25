@@ -3,40 +3,10 @@
 use super::coverage_env::{connect, run};
 use super::model::{Author, User};
 
-struct Cpx5Sqlite(std::path::PathBuf);
-
-impl Cpx5Sqlite {
-    fn create() -> Self {
-        let nonce = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).expect("system clock").as_nanos();
-        let path = std::env::temp_dir().join(format!("orm-cpx5-{}-{nonce}.sqlite", std::process::id()));
-        std::fs::File::options().write(true).create_new(true).open(&path).expect("create private SQLite fixture");
-        Self(path)
-    }
-
-    fn dsn(&self) -> String {
-        format!("sqlite://{}", self.0.display())
-    }
-}
-
-impl Drop for Cpx5Sqlite {
-    fn drop(&mut self) {
-        if let Err(error) = std::fs::remove_file(&self.0) {
-            if error.kind() == std::io::ErrorKind::NotFound {
-                return;
-            }
-            if std::thread::panicking() {
-                eprintln!("could not remove SQLite fixture {} while unwinding: {error}", self.0.display());
-            } else {
-                panic!("could not remove SQLite fixture {}: {error}", self.0.display());
-            }
-        }
-    }
-}
-
 #[tokio::test]
 // Requirements: CPX-5.
 async fn duplicate_relation_name_reports_config_alias_hint() {
-    let fixture = Cpx5Sqlite::create();
+    let fixture = super::temp_sqlite::TempSqlite::create("orm-cpx5");
     let db = polyspec_orm::Db::connect(&fixture.dsn(), 1, polyspec_orm::Config::default()).await.unwrap();
     let error = Author::new()
         .connect(&db)

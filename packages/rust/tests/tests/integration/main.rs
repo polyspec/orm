@@ -21,3 +21,5 @@ mod result_chains;
 mod result_code;
 #[path = "../common/table_exists.rs"]
 mod table_exists;
+#[path = "../common/temp_sqlite.rs"]
+mod temp_sqlite;

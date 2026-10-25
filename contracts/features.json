@@ -12817,6 +12817,15 @@
       "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts rust-clock-test-support-helper -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --test clock --test was_inserted"
     },
     {
+      "id": "rust-temp-sqlite-fixture",
+      "paths": ["packages/rust/tests/tests/common/temp_sqlite.rs"],
+      "tests": [
+        "packages/rust/tests/tests/coverage_hot_path_read_correctness.rs",
+        "packages/rust/tests/tests/integration/coverage_model_queries.rs"
+      ],
+      "command": "make --no-print-directory temp-sqlite-fixture-rust-helper-check"
+    },
+    {
       "id": "php-coverage-model-writes-case",
       "paths": ["packages/php/tests/CoverageModelWritesCase.php"],
       "tests": [
@@ -12837,6 +12846,15 @@
         "packages/php-ext/tests/ModelStreamReadTest.php"
       ],
       "command": "make --no-print-directory php-test-assertions-helper-check"
+    },
+    {
+      "id": "php-cpx5-duplicate-relation-cases",
+      "paths": ["packages/php/tests/Cpx5DuplicateRelationCases.php"],
+      "tests": [
+        "packages/php/tests/Cpx5DuplicateRelationTest.php",
+        "packages/php-ext/tests/Cpx5DuplicateRelationNativeTest.php"
+      ],
+      "command": "make --no-print-directory cpx5-duplicate-relation-helper-check"
     },
     {
       "id": "php-extension-model-assembly-test-support",

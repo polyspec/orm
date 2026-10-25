@@ -3426,6 +3426,37 @@
         "packages/php/tests/WarningStreamProtocol.php"
       ]
     },
+    "cpx5-duplicate-relation-helper-check": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/php-ext/scripts/build.sh",
+        "packages/php/tests/bootstrap.php",
+        "packages/php/tests/Cpx5DuplicateRelationCases.php",
+        "packages/php/tests/Cpx5DuplicateRelationTest.php",
+        "packages/php-ext/tests/bootstrap.php",
+        "packages/php-ext/tests/Cpx5DuplicateRelationNativeTest.php"
+      ]
+    },
+    "temp-sqlite-fixture-rust-helper-check": {
+      "scope": "owner",
+      "needs": [
+        "rust"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/rust/tests/Cargo.toml",
+        "packages/rust/tests/tests/common/temp_sqlite.rs",
+        "packages/rust/tests/tests/coverage_hot_path_read_correctness.rs",
+        "packages/rust/tests/tests/integration/main.rs",
+        "packages/rust/tests/tests/integration/coverage_model_queries.rs"
+      ]
+    },
     "native-api-equivalence-check": {
       "scope": "owner",
       "needs": [

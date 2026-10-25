@@ -1,49 +1,18 @@
 //! Correctness check for the projected hot-path row contract on a self-owned SQLite fixture.
-use std::fs::{self, File};
-use std::path::PathBuf;
-use std::time::{SystemTime, UNIX_EPOCH};
-
 use polyspec_orm::Param;
 use sqlx::SqlitePool;
 
+#[path = "common/temp_sqlite.rs"]
+mod temp_sqlite;
+
 polyspec_orm::models!();
 use model::Author;
-
-struct TempSqlite(PathBuf);
-
-impl TempSqlite {
-    fn create() -> Self {
-        let nonce = SystemTime::now().duration_since(UNIX_EPOCH).expect("system clock").as_nanos();
-        let path = std::env::temp_dir().join(format!("polyspec-hot-path-{}-{nonce}.sqlite", std::process::id()));
-        File::options().write(true).create_new(true).open(&path).expect("create private SQLite fixture");
-        Self(path)
-    }
-
-    fn dsn(&self) -> String {
-        format!("sqlite://{}", self.0.display())
-    }
-}
-
-impl Drop for TempSqlite {
-    fn drop(&mut self) {
-        if let Err(error) = fs::remove_file(&self.0) {
-            if error.kind() == std::io::ErrorKind::NotFound {
-                return;
-            }
-            if std::thread::panicking() {
-                eprintln!("could not remove SQLite fixture {} while unwinding: {error}", self.0.display());
-            } else {
-                panic!("could not remove SQLite fixture {}: {error}", self.0.display());
-            }
-        }
-    }
-}
 
 #[tokio::test]
 async fn hot_path_read_correctness() {
     // Requirements: PRT-2, PRT-34.
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let fixture = TempSqlite::create();
+    let fixture = temp_sqlite::TempSqlite::create("polyspec-hot-path");
     let dsn = fixture.dsn();
     let native = SqlitePool::connect(&dsn).await.expect("native SQLite connection");
     sqlx::query("CREATE TABLE author (seq INTEGER PRIMARY KEY, name TEXT NOT NULL, service_seq INTEGER NOT NULL, is_close INTEGER NOT NULL)")
