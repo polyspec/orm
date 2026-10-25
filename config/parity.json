@@ -368,6 +368,10 @@
       },
       "internal": [
         {
+          "glob": "packages/php/tests/CodecYamlCauseTest.php",
+          "reason": "test: injects PHP YAML parser and dumper dependency failures through CodecYamlProbe to verify wrapper codes and exact cause identity; shared codec vectors cover invalid caller input"
+        },
+        {
           "glob": "packages/php/tests/DbspecMermaidErrorBoundaryTest.php",
           "reason": "test: injects an unexpected exception into the private Mermaid catalog builder and verifies the same exception object escapes; the public invalid-name diagnostic is covered by dbspec-mermaid-invalid"
         },
@@ -525,6 +529,10 @@
         "pattern": "^    public const (?:string )?(\\w+) = '\\1';$"
       },
       "internal": [
+        {
+          "glob": "packages/php-ext/tests/CodecCauseTest.php",
+          "reason": "test: injects PHP YAML parser and dumper dependency failures through CodecYamlProbe to verify native wrapper codes and exact cause identity; shared codec vectors cover invalid caller input"
+        },
         {
           "glob": "packages/php-ext/tests/MermaidErrorBoundaryTest.php",
           "reason": "test: exercises the private Mermaid test hook for a coded catalog-build exception and an unexpected Throwable; public invalid-name diagnostics are covered by dbspec-mermaid-invalid"
@@ -752,6 +760,10 @@
       "name": "python",
       "runner": "python",
       "internal": [
+        {
+          "glob": "packages/python/tests/test_catalog_mutation_helper.py",
+          "reason": "test: calls private _lock_original_row with FakeSession to verify helper call ordering and schema-change refusal without a real SQL session"
+        },
         {
           "glob": "packages/python/tests/mermaid_error_boundary.py",
           "reason": "test: injects an unexpected exception into the private Mermaid catalog builder and verifies the same exception object escapes; the public invalid-name diagnostic is covered by dbspec-mermaid-invalid"
