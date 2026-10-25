@@ -104,7 +104,7 @@ func TestCoverageTransactionSavepoint(t *testing.T) {
 			otherFlow <- err
 		}()
 		if err := <-otherFlow; orm.ErrorCode(err) != orm.CodeConfig {
-			return fmt.Errorf("goroutine inherited the transaction: %v", err)
+			return fmt.Errorf("goroutine inherited the transaction: %w", err)
 		}
 		return nil
 	}, orm.Retry(0))

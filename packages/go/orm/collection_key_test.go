@@ -167,8 +167,14 @@ func TestCollectionViewsPreserveOrderAndConnectEveryModel(t *testing.T) {
 		return model
 	}
 	first, second := makeModel("first"), makeModel("second")
-	one, _ := KeyOf(int64(7))
-	two, _ := KeyOf("7")
+	one, err := KeyOf(int64(7))
+	if err != nil {
+		t.Fatalf("KeyOf(int64(7)): %v", err)
+	}
+	two, err := KeyOf("7")
+	if err != nil {
+		t.Fatalf("KeyOf(\"7\"): %v", err)
+	}
 	collection := NewCollection[*rejectingModel]()
 	collection.keys = []Key{one, two}
 	collection.items[one], collection.items[two] = first, second
@@ -181,7 +187,11 @@ func TestCollectionViewsPreserveOrderAndConnectEveryModel(t *testing.T) {
 	}
 	var entries []string
 	for key, model := range collection.All() {
-		entries = append(entries, key.String()+":"+model.core.ToArray()["label"].(string))
+		label, ok := model.core.ToArray()["label"].(string)
+		if !ok {
+			t.Fatalf("label of %s = %#v, want a string", key.String(), model.core.ToArray()["label"])
+		}
+		entries = append(entries, key.String()+":"+label)
 	}
 	if !reflect.DeepEqual(entries, []string{"7:first", "7:second"}) {
 		t.Fatalf("entries = %#v, want key/model pairs in order", entries)

@@ -3,11 +3,12 @@ package dialects
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"strconv"
 	"strings"
 
 	"github.com/go-sql-driver/mysql"
+
+	"github.com/polyspec/orm/packages/go/internal/dbspec/database"
 )
 
 func mysqlProbes() []Probe {
@@ -633,10 +634,5 @@ func openMySQLConn(ctx context.Context, cfg *mysql.Config) (*sql.Conn, func() er
 	if err != nil {
 		return nil, nil, err
 	}
-	db := sql.OpenDB(connector)
-	conn, err := db.Conn(ctx)
-	if err != nil {
-		return nil, nil, errors.Join(err, db.Close())
-	}
-	return conn, func() error { return errors.Join(conn.Close(), db.Close()) }, nil
+	return database.Conn(ctx, sql.OpenDB(connector))
 }

@@ -123,109 +123,63 @@ func run(action, dialect, uri, vectors string) (_ string, err error) {
 }
 
 // openBlocker opens a second connection to the database of uri, the session that holds the lock the apply under test
-// waits for; the returned function closes the connection and its database handle.
-func openBlocker(ctx context.Context, dialect, uri string) (*sql.Conn, func(), error) {
+// waits for; the returned function closes the connection and its database handle and returns their errors.
+func openBlocker(ctx context.Context, dialect, uri string) (*sql.Conn, func() error, error) {
 	db, err := database.Open(dialect, uri)
 	if err != nil {
 		return nil, nil, err
 	}
-	conn, err := db.Conn(ctx)
-	if err != nil {
-		db.Close()
-		return nil, nil, err
-	}
-	return conn, func() {
-		conn.Close()
-		db.Close()
-	}, nil
+	return database.Conn(ctx, db)
 }
 
-func lockWait(ctx context.Context, conn *sql.Conn, dialect, uri, vectors string, now func() time.Time) (string, error) {
-	started := time.Now()
+// lockWait reports the error of closing the blocker with its own result, so a failed close is never lost.
+func lockWait(ctx context.Context, conn *sql.Conn, dialect, uri, vectors string, now func() time.Time) (outcome string, err error) {
+	plansOf := representativeChain
 	if dialect == "sqlite" {
-		plans, err := chain(vectors)
-		if err != nil {
-			return "", err
-		}
-		blocker, closeBlocker, err := openBlocker(ctx, dialect, uri)
-		if err != nil {
-			return "", err
-		}
-		defer closeBlocker()
-		if _, err := blocker.ExecContext(ctx, "BEGIN EXCLUSIVE"); err != nil {
-			return "", err
-		}
-		release := &releaseSQLiteBlocker{Execer: conn, blocker: blocker}
-		started = time.Now()
-		result, applyError := dbspec.Apply(ctx, release, dbspec.DialectSQLite, plans, now, nil)
-		if !release.released {
-			_, cleanupErr := blocker.ExecContext(context.Background(), "ROLLBACK")
-			if cleanupErr != nil {
-				applyError = errors.Join(applyError, fmt.Errorf("release SQLite lock blocker: %w", cleanupErr))
-			}
-		}
-		if release.releaseErr != nil {
-			applyError = errors.Join(applyError, fmt.Errorf("release SQLite lock blocker: %w", release.releaseErr))
-		}
-		elapsed := time.Since(started)
-		if applyError != nil {
-			return "", applyError
-		}
-		if result.Failure == nil || result.Failure.Code != "locked" {
-			return "", fmt.Errorf("SQLite lock wait returned %#v; want locked", result.Failure)
-		}
-		if !strings.Contains(strings.ToLower(result.Failure.Error()), "lock") {
-			return "", fmt.Errorf("SQLite failure does not name the held lock: %w", result.Failure)
-		}
-		if elapsed < 4*time.Second || elapsed >= 10*time.Second {
-			return "", fmt.Errorf("SQLite lock wait returned after %s; want 4s <= elapsed < 10s", elapsed)
-		}
-		return "error locked", nil
+		plansOf = chain
 	}
-	plans, err := representativeChain(vectors)
+	plans, err := plansOf(vectors)
 	if err != nil {
 		return "", err
 	}
-	if _, err := dbspec.Apply(ctx, conn, dbspec.Dialect(dialect), plans[:1], now, nil); err != nil {
-		return "", err
+	if dialect != "sqlite" {
+		if _, err := dbspec.Apply(ctx, conn, dbspec.Dialect(dialect), plans[:1], now, nil); err != nil {
+			return "", err
+		}
 	}
 	blocker, closeBlocker, err := openBlocker(ctx, dialect, uri)
 	if err != nil {
 		return "", err
 	}
-	defer closeBlocker()
+	defer func() { err = errors.Join(err, closeBlocker()) }()
+	if dialect == "sqlite" {
+		return sqliteLockWait(ctx, conn, blocker, plans, now)
+	}
 	tx, err := blocker.BeginTx(ctx, nil)
 	if err != nil {
 		return "", err
 	}
 	if _, err := tx.ExecContext(ctx, "INSERT INTO archive (note) VALUES ('lock wait')"); err != nil {
-		_ = tx.Rollback()
-		return "", err
+		return "", errors.Join(err, tx.Rollback())
 	}
 	rows, err := tx.QueryContext(ctx, "SELECT id FROM archive FOR UPDATE")
 	if err != nil {
-		_ = tx.Rollback()
-		return "", err
+		return "", errors.Join(err, tx.Rollback())
 	}
 	for rows.Next() {
 		var id int64
 		if err := rows.Scan(&id); err != nil {
-			rows.Close()
-			_ = tx.Rollback()
-			return "", err
+			return "", errors.Join(err, rows.Close(), tx.Rollback())
 		}
 	}
 	if err := rows.Err(); err != nil {
-		rows.Close()
-		_ = tx.Rollback()
-		return "", err
+		return "", errors.Join(err, rows.Close(), tx.Rollback())
 	}
 	if err := rows.Close(); err != nil {
-		_ = tx.Rollback()
-		return "", err
+		return "", errors.Join(err, tx.Rollback())
 	}
 	var events []string
-	started = time.Now()
+	started := time.Now()
 	res, err := dbspec.Apply(ctx, conn, dbspec.Dialect(dialect), plans, now, func(ev dbspec.ApplyEvent) error {
 		if ev.Kind == "statement" || ev.Kind == "applied" {
 			events = append(events, fmt.Sprintf("%s:%d", ev.Kind, ev.Step))
@@ -240,12 +194,18 @@ func lockWait(ctx context.Context, conn *sql.Conn, dialect, uri, vectors string,
 	if err != nil {
 		return "", err
 	}
-	if res.Failure == nil || res.Failure.Code != "failed" || res.Failure.Plan != "representative" || res.Failure.Step != 0 {
-		return "", fmt.Errorf("statement lock wait result = %#v; want failed representative step 0", res.Failure)
+	if res.Failure == nil {
+		return "", errors.New("statement lock wait returned no failure; want failed representative step 0")
+	}
+	if res.Failure.Code != "failed" || res.Failure.Plan != "representative" || res.Failure.Step != 0 {
+		return "", fmt.Errorf(
+			"statement lock wait returned %s at %s step %d: %w; want failed representative step 0",
+			res.Failure.Code, res.Failure.Plan, res.Failure.Step, res.Failure,
+		)
 	}
 	detail := strings.ToLower(res.Failure.Error())
 	if !strings.Contains(detail, "lock") && !strings.Contains(detail, "timeout") {
-		return "", fmt.Errorf("statement failure does not name the held lock: %s", res.Failure)
+		return "", fmt.Errorf("statement failure does not name the held lock: %w", res.Failure)
 	}
 	if strings.Join(events, ",") != "statement:0" {
 		return "", fmt.Errorf("statement events = %v; want only statement:0", events)
@@ -254,6 +214,43 @@ func lockWait(ctx context.Context, conn *sql.Conn, dialect, uri, vectors string,
 		return "", fmt.Errorf("statement lock wait returned after %s; want 4s <= elapsed < 10s", elapsed)
 	}
 	return "error failed", nil
+}
+
+// sqliteLockWait applies plans while blocker holds an exclusive SQLite lock, and checks that the apply waits about 5s
+// and fails with the code locked.
+func sqliteLockWait(ctx context.Context, conn, blocker *sql.Conn, plans []*dbspec.Plan, now func() time.Time) (string, error) {
+	if _, err := blocker.ExecContext(ctx, "BEGIN EXCLUSIVE"); err != nil {
+		return "", err
+	}
+	release := &releaseSQLiteBlocker{Execer: conn, blocker: blocker}
+	started := time.Now()
+	result, applyError := dbspec.Apply(ctx, release, dbspec.DialectSQLite, plans, now, nil)
+	if !release.released {
+		_, cleanupErr := blocker.ExecContext(context.Background(), "ROLLBACK")
+		if cleanupErr != nil {
+			applyError = errors.Join(applyError, fmt.Errorf("release SQLite lock blocker: %w", cleanupErr))
+		}
+	}
+	if release.releaseErr != nil {
+		applyError = errors.Join(applyError, fmt.Errorf("release SQLite lock blocker: %w", release.releaseErr))
+	}
+	elapsed := time.Since(started)
+	if applyError != nil {
+		return "", applyError
+	}
+	if result.Failure == nil {
+		return "", errors.New("SQLite lock wait returned no failure; want locked")
+	}
+	if result.Failure.Code != "locked" {
+		return "", fmt.Errorf("SQLite lock wait returned %s: %w; want locked", result.Failure.Code, result.Failure)
+	}
+	if !strings.Contains(strings.ToLower(result.Failure.Error()), "lock") {
+		return "", fmt.Errorf("SQLite failure does not name the held lock: %w", result.Failure)
+	}
+	if elapsed < 4*time.Second || elapsed >= 10*time.Second {
+		return "", fmt.Errorf("SQLite lock wait returned after %s; want 4s <= elapsed < 10s", elapsed)
+	}
+	return "error locked", nil
 }
 
 // releaseSQLiteBlocker mirrors the Python runner's test connection: once SQLite reports

@@ -2,7 +2,9 @@
 package database
 
 import (
+	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"net/url"
 	"strings"
@@ -49,4 +51,14 @@ func MySQLDB(u *url.URL) (*sql.DB, error) {
 		return nil, err
 	}
 	return sql.OpenDB(connector), nil
+}
+
+// Conn takes one connection of db and returns it with the function that closes the connection and db and returns both
+// errors; when the connection cannot be taken, db is closed and its error joins the failure.
+func Conn(ctx context.Context, db *sql.DB) (*sql.Conn, func() error, error) {
+	conn, err := db.Conn(ctx)
+	if err != nil {
+		return nil, nil, errors.Join(err, db.Close())
+	}
+	return conn, func() error { return errors.Join(conn.Close(), db.Close()) }, nil
 }

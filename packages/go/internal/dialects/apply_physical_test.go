@@ -291,7 +291,9 @@ func TestApplyChain(t *testing.T) {
 			}
 			defer func() {
 				if db == "sqlite" {
-					_, _ = blocker.Conn.ExecContext(context.Background(), "ROLLBACK")
+					if _, err := blocker.Conn.ExecContext(context.Background(), "ROLLBACK"); err != nil {
+						e.fail("release SQLite blocker: %v", err)
+					}
 				}
 				if err := blocker.Conn.Close(); err != nil {
 					e.fail("close blocker session: %v", err)
@@ -330,7 +332,10 @@ func TestApplyChain(t *testing.T) {
 					e.fail("lock blocker row: %v", err)
 					return
 				}
-				_ = rows.Close()
+				if err := rows.Close(); err != nil {
+					e.fail("close blocker rows: %v", err)
+					return
+				}
 			}
 			var events []dbspec.ApplyEvent
 			started := time.Now()
