@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 9d1fdda38a08df62326ecbf3227f3b4c3b5d6df72637d22caf9e883eca563ec6 -->
+<!-- source-sha256: 57cec125c1a606ee2aaec2ca83217af761b067ea93f996953b6ca9e6ca61ce56 -->
 # 변경 이력
 
 ## Unreleased
+
+- KSTD-5-89-7: TypeScript hot-path latency가 nanosecond를 microsecond로 변환한다. formatter unit과 CI owner-target scheduling 검사가 각각 1/1 통과했고 database benchmark는 실행하지 않았다.
 
 - KSTD-5-88-13: 12개 Rust test가 각자 polyspec_orm_testcase case를 시작한다. 저장소 guard가 1/1 통과했다.
 

@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- KSTD-5-89-7: TypeScript hot-path latency now converts nanoseconds to microseconds. The formatter unit and CI owner-target scheduling checks each passed (1/1); no database benchmark was run.
+
 - KSTD-5-88-13: all 12 Rust tests now start their own polyspec_orm_testcase case; the repository guard passes (1/1).
 
 - KSTD-2-11-8-1: Rust model generation matches the build: the focused case passes and confirms two fresh generations and the model, manifest and external text from `OUT_DIR` are equal (1 test passed).
