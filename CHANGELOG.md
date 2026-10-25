@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- On PostgreSQL, the PHP client and the PHP extension report a failed statement with its catalog code again, such as DUPLICATE_KEY for a unique violation: the PDOException of the PostgreSQL PDO adapter carries the SQLSTATE in errorInfo. A statement also costs one server transaction again, because the adapter reads the table name of a result column only when getColumnMeta asks for it (KSTD-5-89-31).
 - When another connection holds a SQLite database, apply, recover, rollback and finalize report `locked` after the one 5-second lock wait of PLN-90. Before, the read that restores the session waited another 5 seconds. Now, in all six clients, the read runs with `PRAGMA busy_timeout = 0`, and a lock result of it adds no cleanup error, since the connection holds no lock to release (KSTD-5-89-33).
 - `make native-api-equivalence-check` runs with the environment of the test servers and builds the PHP models first, so the database cases of UtilsNativeTest run on MySQL and PostgreSQL; contracts/check-inputs.json declares that the target needs the databases (KSTD-5-89-32).
 - `make interface-check` passes on main again: the Go, Rust and TypeScript symbol records list the 30 members that the PostgreSQL cancellation, the catalog value budgets and refusal messages, the shared test code and the ordered LISTEN delivery added without recording them (KSTD-5-89-37).

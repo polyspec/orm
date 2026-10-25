@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 6669d6b98c26e1fbce5129791f0816f71f73076c03abc10aef292e5a1772b61a -->
+<!-- source-sha256: fcb65c4ef1f6764791be9853b60492c900b0497e6781a06ee503d375de0dc421 -->
 # 변경 이력
 
 ## Unreleased
 
+- PostgreSQL에서 PHP client와 PHP extension이 실패한 statement를 다시 catalog code로 보고한다. 예를 들어 unique 위반은 DUPLICATE_KEY다. PostgreSQL PDO adapter의 PDOException이 errorInfo에 SQLSTATE를 담는다. adapter가 결과 column의 table 이름을 getColumnMeta가 물을 때만 읽으므로 statement 하나는 다시 server transaction 하나를 쓴다(KSTD-5-89-31).
 - 다른 connection이 SQLite database를 잡고 있으면 apply, recover, rollback, finalize가 PLN-90의 5초 lock wait 한 번 뒤에 `locked`를 보고한다. 전에는 session을 되돌리는 read가 5초를 더 기다렸다. 이제 여섯 client 모두에서 그 read는 `PRAGMA busy_timeout = 0`으로 실행되고, connection이 풀 lock을 가지지 않으므로 그 read의 lock 결과는 cleanup error를 더하지 않는다(KSTD-5-89-33).
 - `make native-api-equivalence-check`가 test server environment로 실행되고 PHP model을 먼저 build하므로 UtilsNativeTest의 database case가 MySQL과 PostgreSQL에서 실행된다. contracts/check-inputs.json은 그 target이 database를 필요로 한다고 선언한다(KSTD-5-89-32).
 - `make interface-check`가 main에서 다시 통과한다: Go, Rust, TypeScript symbol record가 PostgreSQL cancellation, catalog value budget과 refusal message, 공유 test code, 순서 있는 LISTEN 전달이 record 없이 더한 member 30개를 나열한다 (KSTD-5-89-37).

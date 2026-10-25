@@ -533,8 +533,7 @@ final class PgsqlPdoAdapter extends \Pdo\Pgsql
             if ($status !== PGSQL_TUPLES_OK && $status !== PGSQL_COMMAND_OK) {
                 $state = pg_result_error_field($next, PGSQL_DIAG_SQLSTATE) ?: 'HY000';
                 $message = trim(pg_result_error($next));
-                $this->errorInfoValue = [$state, null, $message];
-                $queryError ??= new PDOException($message, 0);
+                $queryError ??= $this->failure([$state, null, $message]);
                 pg_free_result($next);
                 continue;
             }
@@ -551,8 +550,7 @@ final class PgsqlPdoAdapter extends \Pdo\Pgsql
         }
         if (!$lastResult instanceof Result) {
             if ($this->cancelRequested) {
-                $this->errorInfoValue = ['57014', null, 'canceling statement due to user request'];
-                throw new PDOException('canceling statement due to user request', 0);
+                throw $this->failure(['57014', null, 'canceling statement due to user request']);
             }
             $this->raiseConnectionError();
         }
@@ -682,7 +680,20 @@ final class PgsqlPdoAdapter extends \Pdo\Pgsql
     private function raiseConnectionError(): never
     {
         $message = pg_last_error($this->connection) ?: 'PostgreSQL query failed';
-        $this->errorInfoValue = ['08006', null, $message];
-        throw new PDOException($message, 0);
+        throw $this->failure(['08006', null, $message]);
+    }
+
+    /**
+     * The PDOException of a failed statement: it carries $info as its errorInfo, as a PDO driver error does, so the
+     * error catalog reads the SQLSTATE from it (OrmException::fromDriver), and the connection reports $info too.
+     *
+     * @param array{string, null, string} $info
+     */
+    private function failure(array $info): PDOException
+    {
+        $this->errorInfoValue = $info;
+        $error = new PDOException($info[2], 0);
+        $error->errorInfo = $info;
+        return $error;
     }
 }

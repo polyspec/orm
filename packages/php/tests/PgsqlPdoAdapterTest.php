@@ -32,6 +32,11 @@ final class PgsqlPdoAdapterTest extends TestCase
         $this->assertPgsqlAdapterLastInsertIdTracksSequence();
     }
 
+    public function testPgsqlAdapterStatementErrorCarriesItsSqlState(): void
+    {
+        $this->assertPgsqlAdapterStatementErrorCarriesItsSqlState();
+    }
+
     public function testPgsqlAdapterBoundParametersPreserveReferencesAndTypes(): void
     {
         $this->assertPgsqlAdapterBoundParametersPreserveReferencesAndTypes(false);

@@ -265,6 +265,28 @@ trait PgsqlPdoAdapterCases
         });
     }
 
+    /**
+     * A failed statement of the adapter throws a PDOException that carries its SQLSTATE in errorInfo, as a PDO driver
+     * error does, so the error catalog reads DUPLICATE_KEY from it.
+     */
+    protected function assertPgsqlAdapterStatementErrorCarriesItsSqlState(): void
+    {
+        self::onPostgresDb(static function (\Polyspec\Orm\Db $db): void {
+            $pdo = $db->pdo();
+            $pdo->exec('CREATE TABLE pdo_adapter_unique (label TEXT PRIMARY KEY)');
+            $pdo->exec("INSERT INTO pdo_adapter_unique (label) VALUES ('a')");
+            try {
+                $pdo->exec("INSERT INTO pdo_adapter_unique (label) VALUES ('a')");
+                self::fail('a duplicate key was inserted');
+            } catch (\PDOException $error) {
+                self::assertSame('23505', $error->errorInfo[0] ?? null, 'the PDOException carries the SQLSTATE');
+                self::assertSame($error->getMessage(), $error->errorInfo[2] ?? null);
+                self::assertSame($error->errorInfo, $pdo->errorInfo());
+                self::assertSame(\Polyspec\Orm\Code::DUPLICATE_KEY, $db->driverError($error)->code_);
+            }
+        });
+    }
+
     protected function assertPgsqlAdapterBoundParametersPreserveReferencesAndTypes(bool $native): void
     {
         self::onPostgresDb(static function (\Polyspec\Orm\Db $db, string $dsn) use ($native): void {

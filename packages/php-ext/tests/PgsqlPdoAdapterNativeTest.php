@@ -38,6 +38,12 @@ final class PgsqlPdoAdapterNativeTest extends TestCase
         $this->assertPgsqlAdapterLastInsertIdTracksSequence();
     }
 
+    public function testNativePgsqlAdapterStatementErrorCarriesItsSqlState(): void
+    {
+        self::assertTrue((new ReflectionMethod(\Polyspec\Orm\Orm::class, 'connect'))->isInternal());
+        $this->assertPgsqlAdapterStatementErrorCarriesItsSqlState();
+    }
+
     public function testNativePgsqlAdapterBoundParametersPreserveReferencesAndTypes(): void
     {
         self::assertTrue((new ReflectionMethod(\Polyspec\Orm\Orm::class, 'connect'))->isInternal());

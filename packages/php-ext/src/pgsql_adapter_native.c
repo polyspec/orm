@@ -183,6 +183,24 @@ static void pg_set_error(zval *object, zend_string *state, zend_string *message)
     pg_set(object, "errorCodeValue", &code);
 }
 
+/*
+ * Throws the PDOException of a failed statement: it carries the errorInfo that pg_set_error gives the connection, as a
+ * PDO driver error does, so the error catalog reads the SQLSTATE from it (OrmException::fromDriver).
+ */
+static void pg_raise_statement(zval *object, zend_string *state, zend_string *message)
+{
+    pg_set_error(object, state, message);
+    pg_raise(ZSTR_VAL(message));
+    if (EG(exception) == NULL) return;
+    zval info;
+    array_init_size(&info, 3);
+    add_next_index_str(&info, zend_string_copy(state));
+    add_next_index_null(&info);
+    add_next_index_str(&info, zend_string_copy(message));
+    zend_update_property(EG(exception)->ce, EG(exception), "errorInfo", sizeof("errorInfo") - 1, &info);
+    zval_ptr_dtor(&info);
+}
+
 static void pg_clear_error(zval *object)
 {
     zval info, code;
@@ -911,7 +929,7 @@ ZEND_METHOD(Polyspec_Orm_Internal_PgsqlPdoAdapter, executeSql)
     if (Z_TYPE(query_message) != IS_NULL) {
         zend_string *state_text = Z_TYPE(query_state) == IS_STRING ? Z_STR(query_state) : zend_string_init("HY000", sizeof("HY000") - 1, 0);
         zend_string *message_text = zval_get_string(&query_message);
-        pg_set_error(ZEND_THIS, state_text, message_text); pg_raise(ZSTR_VAL(message_text));
+        pg_raise_statement(ZEND_THIS, state_text, message_text);
         if (Z_TYPE(query_state) != IS_STRING) zend_string_release(state_text);
         zend_string_release(message_text); zval_ptr_dtor(&query_state); zval_ptr_dtor(&query_message);
         if (!Z_ISUNDEF(last_result)) zval_ptr_dtor(&last_result);
@@ -1098,9 +1116,12 @@ ZEND_METHOD(Polyspec_Orm_Internal_PgsqlStatementAdapter, execute)
     zval_ptr_dtor(&count_arg); count = zval_get_long(&count_value); zval_ptr_dtor(&count_value);
     for (zend_long i = 0; i < count; i++) {
         zval meta; array_init(&meta);
-        const char *functions[] = {"pg_field_name", "pg_field_type", "pg_field_type_oid", "pg_field_table", "pg_field_size"};
-        const char *keys[] = {"name", "type", "oid", "table", "size"};
-        for (int j = 0; j < 5; j++) {
+        /* The name of the table is read only when getColumnMeta asks for it: pg_field_table looks it up with a query
+         * of its own, a server transaction that the statement did not ask for. */
+        zval no_table; ZVAL_NULL(&no_table); zend_hash_str_update(Z_ARRVAL(meta), "table", sizeof("table") - 1, &no_table);
+        const char *functions[] = {"pg_field_name", "pg_field_type", "pg_field_type_oid", "pg_field_size"};
+        const char *keys[] = {"name", "type", "oid", "size"};
+        for (int j = 0; j < 4; j++) {
             zval call_args[2], value; ZVAL_COPY(&call_args[0], stored_result); ZVAL_LONG(&call_args[1], i);
             if (!pg_call_function(functions[j], &value, 2, call_args)) { zval_ptr_dtor(&call_args[0]); zval_ptr_dtor(&call_args[1]); zval_ptr_dtor(&meta); zval_ptr_dtor(&columns); RETURN_THROWS(); }
             zval_ptr_dtor(&call_args[0]); zval_ptr_dtor(&call_args[1]); zend_hash_str_update(Z_ARRVAL(meta), keys[j], strlen(keys[j]), &value);
@@ -1341,6 +1362,21 @@ ZEND_METHOD(Polyspec_Orm_Internal_PgsqlStatementAdapter, getColumnMeta)
     zend_long column; ZEND_PARSE_PARAMETERS_START(1, 1) Z_PARAM_LONG(column) ZEND_PARSE_PARAMETERS_END();
     zval rv; zval *columns = pg_prop(ZEND_THIS, "columns", &rv), *meta = columns != NULL && Z_TYPE_P(columns) == IS_ARRAY && column >= 0 ? zend_hash_index_find(Z_ARRVAL_P(columns), column) : NULL;
     if (meta == NULL) RETURN_FALSE;
+    zval *table = zend_hash_str_find(Z_ARRVAL_P(meta), "table", sizeof("table") - 1);
+    zval result_rv, *result = pg_prop(ZEND_THIS, "result", &result_rv);
+    if (table != NULL && Z_TYPE_P(table) == IS_NULL && result != NULL && Z_TYPE_P(result) == IS_OBJECT) {
+        zval call_args[2], name; ZVAL_COPY(&call_args[0], result); ZVAL_LONG(&call_args[1], column);
+        bool called = pg_call_function("pg_field_table", &name, 2, call_args);
+        zval_ptr_dtor(&call_args[0]); zval_ptr_dtor(&call_args[1]);
+        if (!called) RETURN_THROWS();
+        zval updated, *updated_meta; ZVAL_ARR(&updated, zend_array_dup(Z_ARRVAL_P(columns)));
+        updated_meta = zend_hash_index_find(Z_ARRVAL(updated), column);
+        ZVAL_DEREF(updated_meta); SEPARATE_ARRAY(updated_meta);
+        zend_hash_str_update(Z_ARRVAL_P(updated_meta), "table", sizeof("table") - 1, &name);
+        pg_set(ZEND_THIS, "columns", &updated); zval_ptr_dtor(&updated);
+        columns = pg_prop(ZEND_THIS, "columns", &rv);
+        meta = zend_hash_index_find(Z_ARRVAL_P(columns), column);
+    }
     array_init(return_value);
     const char *keys[] = {"name", "size", "type", "oid", "table"}; const char *out[] = {"name", "len", "native_type", "pgsql:oid", "table"};
     for (int i = 0; i < 5; i++) { zval *value = zend_hash_str_find(Z_ARRVAL_P(meta), keys[i], strlen(keys[i])); if (value != NULL) { zval copy; ZVAL_COPY(&copy, value); zend_hash_str_update(Z_ARRVAL_P(return_value), out[i], strlen(out[i]), &copy); } }

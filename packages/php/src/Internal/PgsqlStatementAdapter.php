@@ -106,7 +106,9 @@ final class PgsqlStatementAdapter extends PDOStatement
                 'name' => pg_field_name($this->result, $i),
                 'type' => pg_field_type($this->result, $i),
                 'oid' => pg_field_type_oid($this->result, $i),
-                'table' => pg_field_table($this->result, $i),
+                // The name of the table is read only when getColumnMeta asks for it: pg_field_table looks it up
+                // with a query of its own, a server transaction that the statement did not ask for.
+                'table' => null,
                 'size' => pg_field_size($this->result, $i),
                 'mod' => pg_field_num($this->result, pg_field_name($this->result, $i)),
             ];
@@ -209,6 +211,9 @@ final class PgsqlStatementAdapter extends PDOStatement
     {
         if (!isset($this->columns[$column])) {
             return false;
+        }
+        if ($this->columns[$column]['table'] === null && $this->result instanceof Result) {
+            $this->columns[$column]['table'] = pg_field_table($this->result, $column);
         }
         $meta = $this->columns[$column];
         return [
