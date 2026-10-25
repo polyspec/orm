@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"reflect"
 	"testing"
 
 	"github.com/polyspec/orm/packages/go/testcase"
@@ -40,10 +41,12 @@ func TestSqliteLockResult(t *testing.T) {
 type sqliteLockConnector struct {
 	code       int
 	statements *[]string
+	state      *sqliteLockPragmas
+	unexpected *[]string
 }
 
 func (c *sqliteLockConnector) Connect(context.Context) (driver.Conn, error) {
-	return &sqliteLockConn{code: c.code, statements: c.statements}, nil
+	return &sqliteLockConn{code: c.code, statements: c.statements, state: c.state, unexpected: c.unexpected}, nil
 }
 func (*sqliteLockConnector) Driver() driver.Driver { return sqliteLockDriver{} }
 
@@ -56,6 +59,15 @@ func (sqliteLockDriver) Open(string) (driver.Conn, error) {
 type sqliteLockConn struct {
 	code       int
 	statements *[]string
+	state      *sqliteLockPragmas
+	unexpected *[]string
+}
+
+type sqliteLockPragmas struct {
+	foreignKeys int64
+	legacy      int64
+	busyTimeout int64
+	lockingMode string
 }
 
 func (*sqliteLockConn) Prepare(string) (driver.Stmt, error) {
@@ -71,6 +83,26 @@ func (c *sqliteLockConn) ExecContext(_ context.Context, query string, _ []driver
 	if query == "BEGIN EXCLUSIVE" {
 		return nil, sqliteResultError(c.code)
 	}
+	switch query {
+	case "PRAGMA foreign_keys = 1":
+		c.state.foreignKeys = 1
+	case "PRAGMA foreign_keys = 0":
+		c.state.foreignKeys = 0
+	case "PRAGMA legacy_alter_table = 1":
+		c.state.legacy = 1
+	case "PRAGMA legacy_alter_table = 0":
+		c.state.legacy = 0
+	case "PRAGMA busy_timeout = 1300":
+		c.state.busyTimeout = 1300
+	case "PRAGMA busy_timeout = 5000":
+		c.state.busyTimeout = 5000
+	case "PRAGMA locking_mode = normal":
+		c.state.lockingMode = "normal"
+	case "PRAGMA locking_mode = EXCLUSIVE":
+		c.state.lockingMode = "exclusive"
+	default:
+		*c.unexpected = append(*c.unexpected, query)
+	}
 	return driver.RowsAffected(1), nil
 }
 
@@ -79,13 +111,13 @@ func (c *sqliteLockConn) QueryContext(_ context.Context, query string, _ []drive
 	var value driver.Value
 	switch query {
 	case "PRAGMA foreign_keys":
-		value = int64(1)
+		value = c.state.foreignKeys
 	case "PRAGMA legacy_alter_table":
-		value = int64(0)
+		value = c.state.legacy
 	case "PRAGMA busy_timeout":
-		value = int64(5000)
+		value = c.state.busyTimeout
 	case "PRAGMA locking_mode":
-		value = "normal"
+		value = c.state.lockingMode
 	case "SELECT COUNT(*) FROM sqlite_master":
 		value = int64(0)
 	default:
@@ -110,18 +142,34 @@ func (r *sqliteLockRows) Next(dest []driver.Value) error {
 	return nil
 }
 
+// Requirements: PLN-89, PLN-90.
 func TestSqliteSessionClassifiesBeginErrorAndRestoresState(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	for _, test := range []struct {
 		code       int
 		wantLocked bool
-	}{{5, true}, {10, false}} {
+	}{{5, true}, {6, true}, {261, true}, {517, true}, {773, true}, {262, true}, {518, true}, {10, false}, {8, false}, {14, false}, {23, false}, {1, false}} {
 		statements := []string{}
-		db := sql.OpenDB(&sqliteLockConnector{code: test.code, statements: &statements})
+		state := sqliteLockPragmas{foreignKeys: 1, legacy: 1, busyTimeout: 1300, lockingMode: "normal"}
+		initial := state
+		unexpected := []string{}
+		db := sql.OpenDB(&sqliteLockConnector{
+			code: test.code, statements: &statements, state: &state, unexpected: &unexpected,
+		})
 		conn := testSQLConn(t, db)
 		cause := sqliteResultError(test.code)
 		applier := &applier{ctx: context.Background(), c: conn, r: renderer{d: DialectSQLite}}
-		got := applier.sqliteSession(func() error { return nil })
+		callbackCalled := false
+		got := applier.sqliteSession(func() error { callbackCalled = true; return nil })
+		if callbackCalled {
+			t.Errorf("BEGIN EXCLUSIVE result %d called the plan callback", test.code)
+		}
+		if state != initial {
+			t.Errorf("BEGIN EXCLUSIVE result %d left PRAGMAs %+v, want %+v", test.code, state, initial)
+		}
+		if len(unexpected) != 0 {
+			t.Errorf("BEGIN EXCLUSIVE result %d ran unexpected statements: %v", test.code, unexpected)
+		}
 		if test.wantLocked {
 			var applyErr *ApplyError
 			if !errors.As(got, &applyErr) || applyErr.Code != "locked" || !errors.Is(got, cause) {
@@ -133,23 +181,22 @@ func TestSqliteSessionClassifiesBeginErrorAndRestoresState(t *testing.T) {
 				t.Errorf("BEGIN EXCLUSIVE result %d = %v, want original driver error", test.code, got)
 			}
 		}
-		for _, want := range []string{
+		wantStatements := []string{
+			"QUERY PRAGMA foreign_keys",
+			"QUERY PRAGMA legacy_alter_table",
+			"QUERY PRAGMA busy_timeout",
+			"QUERY PRAGMA locking_mode",
+			"PRAGMA busy_timeout = 5000",
+			"PRAGMA locking_mode = EXCLUSIVE",
+			"BEGIN EXCLUSIVE",
 			"PRAGMA foreign_keys = 1",
-			"PRAGMA legacy_alter_table = 0",
+			"PRAGMA legacy_alter_table = 1",
 			"PRAGMA locking_mode = normal",
 			"QUERY SELECT COUNT(*) FROM sqlite_master",
-			"PRAGMA busy_timeout = 5000",
-		} {
-			found := false
-			for _, statement := range statements {
-				if statement == want {
-					found = true
-					break
-				}
-			}
-			if !found {
-				t.Errorf("BEGIN EXCLUSIVE result %d did not restore %q; statements: %v", test.code, want, statements)
-			}
+			"PRAGMA busy_timeout = 1300",
+		}
+		if !reflect.DeepEqual(statements, wantStatements) {
+			t.Errorf("BEGIN EXCLUSIVE result %d statements = %v, want %v", test.code, statements, wantStatements)
 		}
 	}
 }

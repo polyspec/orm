@@ -1168,8 +1168,19 @@ mod sqlite_lock_result_tests {
     use chrono::Utc;
     use crate::test_support::DatabaseErrorStub;
 
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    struct SqlitePragmas {
+        foreign_keys: i64,
+        legacy: i64,
+        busy_timeout: i64,
+        locking_mode: String,
+    }
+
     struct FailingBegin {
         code: i32,
+        pragmas: SqlitePragmas,
+        unexpected: Vec<String>,
+        operations: Vec<String>,
     }
     impl CatalogQuerier for FailingBegin {
         async fn rows(&mut self, _query: &str) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
@@ -1178,24 +1189,41 @@ mod sqlite_lock_result_tests {
     }
     impl ApplyConnection for FailingBegin {
         async fn execute(&mut self, statement: &str) -> Result<(), sqlx::Error> {
+            self.operations.push(statement.to_owned());
             if statement == "BEGIN EXCLUSIVE" {
                 Err(sqlx::Error::Database(Box::new(DatabaseErrorStub::new(
                     format!("SQLite result {}", self.code),
                     "synthetic SQLite result",
                     Some(self.code.to_string()),
                 ))))
+            } else if let Some(value) = statement.strip_prefix("PRAGMA foreign_keys = ") {
+                self.pragmas.foreign_keys = value.parse().map_err(|_| sqlx::Error::Protocol(statement.to_owned()))?;
+                Ok(())
+            } else if let Some(value) = statement.strip_prefix("PRAGMA legacy_alter_table = ") {
+                self.pragmas.legacy = value.parse().map_err(|_| sqlx::Error::Protocol(statement.to_owned()))?;
+                Ok(())
+            } else if let Some(value) = statement.strip_prefix("PRAGMA busy_timeout = ") {
+                self.pragmas.busy_timeout = value.parse().map_err(|_| sqlx::Error::Protocol(statement.to_owned()))?;
+                Ok(())
+            } else if let Some(value) = statement.strip_prefix("PRAGMA locking_mode = ") {
+                self.pragmas.locking_mode = value.to_ascii_lowercase();
+                Ok(())
             } else {
+                self.unexpected.push(statement.to_owned());
                 Ok(())
             }
         }
-        async fn execute_bound(&mut self, _statement: &str, _args: &[CatalogValue]) -> Result<(), sqlx::Error> {
+        async fn execute_bound(&mut self, statement: &str, _args: &[CatalogValue]) -> Result<(), sqlx::Error> {
+            self.unexpected.push(statement.to_owned());
             Ok(())
         }
         async fn query_bound(&mut self, query: &str, _args: &[CatalogValue]) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
+            self.operations.push(format!("QUERY {query}"));
             let value = match query {
-                "PRAGMA foreign_keys" | "PRAGMA busy_timeout" => CatalogValue::Int(1),
-                "PRAGMA legacy_alter_table" => CatalogValue::Int(0),
-                "PRAGMA locking_mode" => CatalogValue::Text("normal".to_owned()),
+                "PRAGMA foreign_keys" => CatalogValue::Int(self.pragmas.foreign_keys),
+                "PRAGMA legacy_alter_table" => CatalogValue::Int(self.pragmas.legacy),
+                "PRAGMA busy_timeout" => CatalogValue::Int(self.pragmas.busy_timeout),
+                "PRAGMA locking_mode" => CatalogValue::Text(self.pragmas.locking_mode.clone()),
                 "SELECT COUNT(*) FROM sqlite_master" => CatalogValue::Int(0),
                 _ => return Err(sqlx::Error::Protocol(format!("unexpected query {query}"))),
             };
@@ -1266,14 +1294,19 @@ mod sqlite_lock_result_tests {
     }
 
     #[tokio::test]
+    // Requirements: PLN-89, PLN-90.
     async fn begin_exclusive_maps_only_lock_errors_and_keeps_the_driver_source() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         for code in [5, 6, 261, 517, 773, 262, 518, 10, 8, 14, 23, 1] {
-            let mut connection = FailingBegin { code };
+            let initial = SqlitePragmas { foreign_keys: 1, legacy: 1, busy_timeout: 1300, locking_mode: "normal".to_owned() };
+            let mut connection = FailingBegin { code, pragmas: initial.clone(), unexpected: Vec::new(), operations: Vec::new() };
             let clock: &ApplyClock<'_> = &|| Utc::now();
             let events: &mut ApplyEvents<'_> = &mut |_| Ok(());
-            let mut applier = Applier::new(&mut connection, Dialect::Sqlite, &[], clock, events).expect("empty plan chain");
-            let error = match applier.open().await {
+            let opened = {
+                let mut applier = Applier::new(&mut connection, Dialect::Sqlite, &[], clock, events).expect("empty plan chain");
+                applier.open().await
+            };
+            let error = match opened {
                 Err(error) => error,
                 Ok(_) => panic!("BEGIN EXCLUSIVE unexpectedly succeeded for result {code}"),
             };
@@ -1287,6 +1320,26 @@ mod sqlite_lock_result_tests {
                 }
                 (_, other) => panic!("SQLite result {code} mapped to {other:?}, want Database"),
             }
+            assert_eq!(connection.pragmas, initial, "SQLite PRAGMAs were not restored for result {code}");
+            assert!(connection.unexpected.is_empty(), "unexpected schema work after failed lock: {:?}", connection.unexpected);
+            assert_eq!(
+                connection.operations,
+                [
+                    "QUERY PRAGMA foreign_keys",
+                    "QUERY PRAGMA legacy_alter_table",
+                    "QUERY PRAGMA busy_timeout",
+                    "QUERY PRAGMA locking_mode",
+                    "PRAGMA busy_timeout = 5000",
+                    "PRAGMA locking_mode = EXCLUSIVE",
+                    "BEGIN EXCLUSIVE",
+                    "PRAGMA foreign_keys = 1",
+                    "PRAGMA legacy_alter_table = 1",
+                    "PRAGMA locking_mode = normal",
+                    "QUERY SELECT COUNT(*) FROM sqlite_master",
+                    "PRAGMA busy_timeout = 1300",
+                ],
+                "SQLite session setup or restore order changed for result {code}"
+            );
         }
     }
 }
