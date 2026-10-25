@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { createServer } from 'node:net';
 import { isolatedEnvironment } from '../tests/environment.mts';
 import { caseTest, COMPUTE, DATABASE, PROCESS } from '../tests/testcase.mts';
-import { environment, MYSQLD_BINLOG, mysqldArguments, paths, POSTGRES_LOCALE, postgresBaseBackupArguments, postgresEnvironment, startLogged, stopEarlierStart, stopPid, TestServerError } from './test-servers.mts';
+import { environment, MYSQLD_BINLOG, MYSQL_TLS_MISMATCH_HOST, MYSQL_TLS_SERVER_NAMES, mysqldArguments, paths, POSTGRES_HBA, POSTGRES_LOCALE, postgresBaseBackupArguments, postgresEnvironment, startLogged, stopEarlierStart, stopPid, TestServerError } from './test-servers.mts';
 import { withPidFixture } from './test-servers-fixture.mts';
 import * as servers from './test-servers.mts';
 
@@ -408,6 +408,32 @@ caseTest('the test-server environment has no SQLite replica endpoint', COMPUTE, 
   assert.deepEqual(Object.keys(variables).filter(name => /SQLITE.*REPLICA|REPLICA.*SQLITE/.test(name)), []);
 });
 
+caseTest('PostgreSQL trusts only the orm login and requires SCRAM for other loopback roles', COMPUTE, () => {
+  assert.deepEqual(POSTGRES_HBA, [
+    'host replication orm 127.0.0.1/32 trust',
+    'host all orm 127.0.0.1/32 trust',
+    'host all all 127.0.0.1/32 scram-sha-256',
+  ]);
+  assert.ok(POSTGRES_HBA.indexOf('host all orm 127.0.0.1/32 trust') < POSTGRES_HBA.indexOf('host all all 127.0.0.1/32 scram-sha-256'));
+  assert.ok(POSTGRES_HBA.every(rule => !/^host all all .* trust$/.test(rule)));
+});
+
+caseTest('the MySQL replica has a positive localhost TLS DSN and a TCP hostname-mismatch DSN', COMPUTE, () => {
+  const variables = environment(paths('/checkout'), { mysql: 1, postgres: 2, mysqlReplica: 3, postgresReplica: 4, proxysql: 5, pgbouncer: 6 });
+  const replicaTls = variables['ORM_TEST_MYSQL_TLS_REPLICA_DSN'];
+  const mismatchTls = variables['ORM_TEST_MYSQL_TLS_MISMATCH_DSN'];
+  assert.equal(MYSQL_TLS_SERVER_NAMES.mysql, 'DNS:localhost');
+  assert.equal(MYSQL_TLS_SERVER_NAMES.mysqlReplica, 'DNS:localhost');
+  assert.ok(replicaTls, 'the environment writes a TLS DSN for the MySQL replica');
+  assert.ok(mismatchTls, 'the environment writes the intentional TLS mismatch DSN');
+  assert.equal(new URL(replicaTls).hostname, 'localhost.');
+  assert.equal(new URL(mismatchTls).hostname, MYSQL_TLS_MISMATCH_HOST);
+  assert.equal(new URL(replicaTls).port, '3');
+  assert.equal(new URL(mismatchTls).port, '3');
+  assert.match(replicaTls, /ssl-mode=VERIFY_IDENTITY/);
+  assert.match(mismatchTls, /ssl-mode=VERIFY_IDENTITY/);
+});
+
 // The binary log retention case gives the retention options of MYSQLD_BINLOG that test-servers.mts passes to mysqld, with
 // small values, to a fixture server on a temporary data directory and a free port, leaving the shared servers alone. The
 // server removes expired binary logs only at start and when it rotates a log, so retention needs both an expiry and a
@@ -419,7 +445,7 @@ caseTest('the test-server environment has no SQLite replica endpoint', COMPUTE, 
 caseTest('the test servers keep small redo logs, binary logs and WAL', COMPUTE, () => {
   for (const replica of [false, true]) {
     const args = mysqldArguments(paths('/checkout'), replica, 1);
-    for (const flag of ['--innodb-redo-log-capacity=16777216', '--innodb-max-undo-log-size=16777216', '--max-binlog-size=16777216', '--binlog-expire-logs-seconds=3600'])
+    for (const flag of ['--innodb-redo-log-capacity=16777216', '--innodb-max-undo-log-size=16777216', '--max-binlog-size=16777216', '--binlog-expire-logs-seconds=3600', '--log-bin-trust-function-creators=ON'])
       assert.ok(args.includes(flag), `the mysqld ${replica ? 'replica' : 'primary'} does not take ${flag}: ${args.join(' ')}`);
   }
   assert.deepEqual(MYSQLD_STORAGE, ['--innodb-redo-log-capacity=16777216', '--innodb-max-undo-log-size=16777216']);

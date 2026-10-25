@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: f0fa4204518cf74347d6881859965cceb5d1a3d0cad399130d11ca5ffa0fe072 -->
+<!-- source-sha256: 95f761cf180b4635868b556641119ff83df8266bd67704de5f1a322730eb36f4 -->
 # 변경 이력
 
 ## Unreleased
 
+- MySQL 테스트 서버는 SUPER가 아닌 로그인 사용자의 audit trigger 생성을 허용하고, PostgreSQL은 `orm` 외 loopback 역할에 SCRAM을 요구하며, replica는 localhost identity 검사를 지원하고 mismatch DSN은 `127.0.0.1`로 접속한다. PostgreSQL 인증과 MySQL daemon 변경은 테스트 서버를 stop하고 다시 start한 뒤 적용된다 (T239).
 - Rust test build의 dependency가 debug 정보를 갖지 않고(`[profile.dev.package."*"] debug = 0`) orm 자체 crate는 dev profile의 line table을 유지한다. main 설정에서 같은 test build가 target/debug/deps에 27퍼센트 적게, 1.3 GB에서 978 MB로 쓴다 (KSTD-5-93).
 - TypeScript dbspec apply 테스트의 PgBouncer pooler case가 다시 실행된다: packages/ts/tests/dbspec-apply-physical.mjs가 pooler case가 쓰는 pg를 import한다. 522cd8c6f가 database 준비를 dbspec-physical-database.mjs로 옮기며 이 import를 지웠었다 (KSTD-5-89-43).
 - main에서 `make duplication-check`가 다시 통과한다. CoverageDsnTest와 CoverageDsnConnectionExtensionTest가 열고 닫고 지우는 SQLite file connection은 CoverageDsnTest의 helper onSqliteFile 하나다(KSTD-5-89-41).

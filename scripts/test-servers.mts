@@ -27,7 +27,7 @@
 // cross-process lease and no exit event of a process that is not its child.
 import { spawn, spawnSync, type SpawnSyncOptions } from 'node:child_process';
 import { closeSync, existsSync, mkdirSync, openSync, readFileSync, readSync, renameSync, rmSync, statSync, watch, writeFileSync } from 'node:fs';
-import { createHash } from 'node:crypto';
+import { createHash, X509Certificate } from 'node:crypto';
 import { join, resolve } from 'node:path';
 import { userInfo } from 'node:os';
 import { errorCode, errorMessage } from '../tests/errors.mts';
@@ -105,17 +105,29 @@ const MYSQLD_FILES = '--secure-file-priv=NULL';
 // needs a case-sensitive file system, 2 is not available on Linux). It is fixed when the data directory is initialized,
 // so start moves the data when the directory holds another value (scripts/test-servers-mysql.mts).
 export const MYSQL_LOWER_CASE = 1;
-// MYSQLD_BINLOG is the binary log retention of both mysqld. The server removes expired logs only at start and when it
-// rotates a log, so an expiry time (one hour) alone keeps a log that never reaches the default size (1 GB) to rotate.
-// Rotating every 16 MiB makes the expiry take effect and bounds the file that a quiet server keeps. The options apply when
-// the next `make orm-test-servers` starts the servers.
-export const MYSQLD_BINLOG = ['--binlog-expire-logs-seconds=3600', '--max-binlog-size=16777216'];
+// MYSQLD_BINLOG configures binary log retention and permits non-SUPER users to create the stored functions used by audit
+// triggers. The server removes expired logs only at start and when it rotates a log, so an expiry time (one hour) alone
+// keeps a log that never reaches the default size (1 GB) to rotate. Rotating every 16 MiB makes the expiry take effect
+// and bounds the file that a quiet server keeps. These daemon options apply when `make orm-test-servers` starts servers.
+export const MYSQLD_BINLOG = ['--binlog-expire-logs-seconds=3600', '--max-binlog-size=16777216', '--log-bin-trust-function-creators=ON'];
 // MYSQLD_STORAGE is the InnoDB log space of both mysqld. The redo log takes innodb_redo_log_capacity as files from the
 // start (100 MiB by default); 16 MiB holds the largest transaction of the checks with room to spare, and a smaller
 // capacity only checkpoints more often. An undo tablespace that grows past innodb_max_undo_log_size is truncated when its
 // undo is purged; the default, 1 GiB, is never reached, so 16 MiB keeps each near its initial size. Neither changes what a
 // transaction or the replication applies.
 export const MYSQLD_STORAGE = ['--innodb-redo-log-capacity=16777216', '--innodb-max-undo-log-size=16777216'];
+
+// The MySQL TLS checks need a positive identity for both servers and a host mismatch that reaches a server by TCP.
+export const MYSQL_TLS_SERVER_NAMES = { mysql: 'DNS:localhost', mysqlReplica: 'DNS:localhost' } as const;
+export const MYSQL_TLS_MISMATCH_HOST = '127.0.0.1';
+
+// Only the orm role may connect without a password. Replication uses the same role with the replication database.
+// PostgreSQL reads the first matching host rule, so both trust rules precede the SCRAM rule.
+export const POSTGRES_HBA = [
+  'host replication orm 127.0.0.1/32 trust',
+  'host all orm 127.0.0.1/32 trust',
+  'host all all 127.0.0.1/32 scram-sha-256',
+];
 
 // mysqldArguments are the arguments of the mysqld daemon of the primary (server id 1) or the replica (server id 2).
 export function mysqldArguments(p: Paths, replica: boolean, port: number): string[] {
@@ -135,7 +147,7 @@ export function mysqldArguments(p: Paths, replica: boolean, port: number): strin
 export function environment(p: Paths, ports: Ports): Record<string, string> {
   const mysql = `mysql://root@127.0.0.1:${ports.mysql}`;
   const postgres = `postgres://orm@127.0.0.1:${ports.postgres}`;
-  const tls = (port: number, ca: string) => `mysql://root@localhost.:${port}/orm_test?ssl-mode=VERIFY_IDENTITY&ssl-ca=${p.dir}/tls/${ca}.pem`;
+  const tls = (port: number, ca: string, host = 'localhost.') => `mysql://root@${host}:${port}/orm_test?ssl-mode=VERIFY_IDENTITY&ssl-ca=${p.dir}/tls/${ca}.pem`;
   return {
     ORM_TEST_MYSQL_DSN: `${mysql}/orm_test`,
     ORM_TEST_POSTGRES_DSN: `${postgres}/orm_test?sslmode=disable`,
@@ -154,7 +166,8 @@ export function environment(p: Paths, ports: Ports): Record<string, string> {
     ORM_TEST_SERVERS_LEASES: p.leases,
     ORM_TEST_MYSQL_TLS_DSN: tls(ports.mysql, 'ca'),
     ORM_TEST_MYSQL_TLS_OTHER_CA_DSN: tls(ports.mysql, 'other-ca'),
-    ORM_TEST_MYSQL_TLS_MISMATCH_DSN: tls(ports.mysqlReplica, 'ca'),
+    ORM_TEST_MYSQL_TLS_REPLICA_DSN: tls(ports.mysqlReplica, 'ca'),
+    ORM_TEST_MYSQL_TLS_MISMATCH_DSN: tls(ports.mysqlReplica, 'ca', MYSQL_TLS_MISMATCH_HOST),
   };
 }
 
@@ -440,6 +453,8 @@ export function postgresArguments(data: string, port: number, primary: boolean):
 
 async function startPostgres(p: Paths, ports: Ports): Promise<void> {
   run('initdb', ['-D', p.postgresData, '-U', 'orm', '--auth=trust', '--encoding=UTF8', '--locale=C'], { stdio: ['ignore', openSync(join(p.dir, 'postgres-init.log'), 'w'), 'inherit'], env: postgresEnvironment() });
+  // initdb's temporary trust rules allow the passwordless bootstrap role; replace the complete host policy before start.
+  writeFileSync(join(p.postgresData, 'pg_hba.conf'), `${POSTGRES_HBA.join('\n')}\n`);
   // `pg_ctl start -w` would wait at most 60 s; startLogged waits for the ready line.
   await startLogged(p.dir, 'postgres', 'database system is ready to accept connections', 'postgres', postgresArguments(p.postgresData, ports.postgres, true), postgresEnvironment());
   console.log(`test-servers: PostgreSQL on 127.0.0.1:${ports.postgres}`);
@@ -450,10 +465,9 @@ async function startPostgres(p: Paths, ports: Ports): Promise<void> {
 }
 
 // tls issues the TLS files of the MySQL servers once under <dir>/tls and loads them into both servers with ALTER
-// INSTANCE RELOAD TLS, which keeps the running sessions: a test CA, a certificate of the primary that names localhost, a
-// certificate of the replica, signed by the same CA, that names only orm-mismatch.invalid, so that a client that checks
-// the host name refuses it, and a second CA that signed neither. The MySQL TLS cases of the clients connect with
-// ssl-mode=VERIFY_IDENTITY (docs/spec/config.md); their DSNs are in the environment file.
+// INSTANCE RELOAD TLS, which keeps the running sessions: a test CA, certificates of both servers that name localhost,
+// and a second CA that signed neither. A mismatch DSN reaches the replica at 127.0.0.1, which is not in either
+// certificate's DNS names. The TLS files are refreshed and reloaded without stopping active MySQL sessions.
 function tls(p: Paths, ports: Pick<Ports, 'mysql' | 'mysqlReplica'>): void {
   const dir = join(p.dir, 'tls');
   if (!existsSync(join(dir, 'other-ca.pem'))) {
@@ -464,7 +478,7 @@ function tls(p: Paths, ports: Pick<Ports, 'mysql' | 'mysqlReplica'>): void {
     const openssl = (args: string[]) => run('openssl', args, { stdio: ['ignore', 'inherit', log] });
     for (const ca of ['ca', 'other-ca'])
       openssl(['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '3650', '-subj', `/CN=orm test ${ca}`, '-keyout', join(tmp, `${ca}-key.pem`), '-out', join(tmp, `${ca}.pem`)]);
-    for (const [name, san] of [['mysql', 'DNS:localhost'], ['mysql-replica', 'DNS:orm-mismatch.invalid']] as const) {
+    for (const [name, san] of [['mysql', MYSQL_TLS_SERVER_NAMES.mysql], ['mysql-replica', MYSQL_TLS_SERVER_NAMES.mysqlReplica]] as const) {
       openssl(['req', '-newkey', 'rsa:2048', '-nodes', '-subj', `/CN=orm test ${name}`, '-keyout', join(tmp, `${name}-key.pem`), '-out', join(tmp, `${name}.csr`)]);
       writeFileSync(join(tmp, `${name}.ext`), `subjectAltName=${san}\n`);
       openssl(['x509', '-req', '-in', join(tmp, `${name}.csr`), '-CA', join(tmp, 'ca.pem'), '-CAkey', join(tmp, 'ca-key.pem'), '-CAcreateserial', '-days', '3650',
@@ -472,6 +486,36 @@ function tls(p: Paths, ports: Pick<Ports, 'mysql' | 'mysqlReplica'>): void {
     }
     closeSync(log);
     renameSync(tmp, dir);
+  } else {
+    const expected = [['mysql', MYSQL_TLS_SERVER_NAMES.mysql], ['mysql-replica', MYSQL_TLS_SERVER_NAMES.mysqlReplica]] as const;
+    const stale = expected.filter(([name, san]) => {
+      const certificate = join(dir, `${name}-cert.pem`);
+      if (!existsSync(certificate)) return true;
+      try { return new X509Certificate(readFileSync(certificate)).subjectAltName !== san; }
+      catch { return true; }
+    });
+    if (stale.length > 0) {
+      const tmp = join(p.dir, `tls-refresh-${process.pid}`);
+      rmSync(tmp, { recursive: true, force: true });
+      mkdirSync(tmp, { recursive: true });
+      const log = openSync(join(tmp, 'openssl.log'), 'a');
+      const openssl = (args: string[]) => run('openssl', args, { stdio: ['ignore', 'inherit', log] });
+      try {
+        for (const [name, san] of stale) {
+          openssl(['req', '-newkey', 'rsa:2048', '-nodes', '-subj', `/CN=orm test ${name}`, '-keyout', join(tmp, `${name}-key.pem`), '-out', join(tmp, `${name}.csr`)]);
+          writeFileSync(join(tmp, `${name}.ext`), `subjectAltName=${san}\n`);
+          openssl(['x509', '-req', '-in', join(tmp, `${name}.csr`), '-CA', join(dir, 'ca.pem'), '-CAkey', join(dir, 'ca-key.pem'), '-CAcreateserial', '-days', '3650',
+            '-extfile', join(tmp, `${name}.ext`), '-out', join(tmp, `${name}-cert.pem`)]);
+        }
+        for (const [name] of stale) {
+          renameSync(join(tmp, `${name}-key.pem`), join(dir, `${name}-key.pem`));
+          renameSync(join(tmp, `${name}-cert.pem`), join(dir, `${name}-cert.pem`));
+        }
+      } finally {
+        closeSync(log);
+        rmSync(tmp, { recursive: true, force: true });
+      }
+    }
   }
   for (const [name, port] of [['mysql', ports.mysql], ['mysql-replica', ports.mysqlReplica]] as const)
     mysqlAt(port, `SET GLOBAL ssl_ca = '${dir}/ca.pem'; SET GLOBAL ssl_cert = '${dir}/${name}-cert.pem'; SET GLOBAL ssl_key = '${dir}/${name}-key.pem'; ALTER INSTANCE RELOAD TLS;`);
@@ -558,6 +602,8 @@ async function start(p: Paths): Promise<void> {
       { env: { ...process.env, LEASES: p.leases } });
     writeEnvironment(p, ports);
     console.log(`test-servers: running; environment ${p.env}`);
+    // This reuse path never restarts mysqld or rewrites PostgreSQL's pg_hba.conf. To adopt startup policy changes, use
+    // make orm-test-servers-stop and then make orm-test-servers; the stop target refuses while a shared lease is held.
     process.stdout.write(readFileSync(p.env, 'utf8'));
     return;
   }

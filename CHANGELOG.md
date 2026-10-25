@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The MySQL test servers allow a non-SUPER login to create audit triggers, PostgreSQL requires SCRAM for loopback roles except `orm`, and the replica supports localhost identity checks while the mismatch DSN reaches it as `127.0.0.1`. PostgreSQL authentication and MySQL daemon changes apply after stopping and restarting the test servers (T239).
 - The dependencies of the Rust test builds carry no debug information (`[profile.dev.package."*"] debug = 0`), while orm's own crates keep the line tables of the dev profile; the same test builds on main's setting write 27 percent less into target/debug/deps, 1.3 GB down to 978 MB (KSTD-5-93).
 - The PgBouncer pooler cases of the TypeScript dbspec apply test run again: packages/ts/tests/dbspec-apply-physical.mjs imports pg, which its pooler cases use and which 522cd8c6f had dropped when it moved the database setup into dbspec-physical-database.mjs (KSTD-5-89-43).
 - `make duplication-check` passes on main again: the SQLite file connection that CoverageDsnTest and CoverageDsnConnectionExtensionTest open, close and remove is the one helper onSqliteFile of CoverageDsnTest (KSTD-5-89-41).
