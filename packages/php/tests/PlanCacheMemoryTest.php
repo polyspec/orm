@@ -20,9 +20,9 @@ use ReflectionMethod;
 use ReflectionProperty;
 
 /**
- * The plan cache and the statement cache retain at most 8192 placeholders each (limepie P-97, KSTD-7-3-5): a plan holds a
- * bind descriptor per placeholder and a cached PDOStatement its last bound values, and each remainder length of creates()
- * is an entry of its own, so caches bounded only by entry count held about 145 MB at 256 entries each, and a bound of 65535
+ * The plan and statement caches retain at most 8192 placeholders each (limepie P-97, KSTD-7-3-5): a plan holds a bind
+ * descriptor per placeholder and a cached PDOStatement its last bound values. Each remainder length of creates() is
+ * an entry of its own, so caches bounded only by entry count held about 145 MB at 256 entries each. A bound of 65535
  * placeholders still kept 25.6 MiB of plans and 34.4 MiB of statements.
  */
 #[Small]
@@ -30,8 +30,8 @@ final class PlanCacheMemoryTest extends TestCase
 {
     private const RETAINED_PLACEHOLDERS = 8192;
     /**
-     * The memory that the plan cache may keep (KSTD-7-3-5): 8192 placeholders, measured at 3.2 MiB in the library (about 410
-     * bytes each) and 4.6 MiB in the extension (about 590 bytes each).
+     * The memory that the plan cache may keep (KSTD-7-3-5): 8192 placeholders, measured at 3.2 MiB in the library
+     * (about 410 bytes each) and 4.6 MiB in the extension (about 590 bytes each).
      */
     private const PLAN_BYTES = 5 * 1048576;
     /**
@@ -74,8 +74,9 @@ final class PlanCacheMemoryTest extends TestCase
     }
 
     /**
-     * The memory that the plan cache keeps after 100 multi-row insert plans of 800 to 998 placeholders, each a remainder
-     * length of creates() (KSTD-7-3-5): at most PLAN_BYTES, so an import stops growing once the cache is full.
+     * The memory that the plan cache keeps after 100 multi-row insert plans with 800 to 998 placeholders, each a
+     * remainder length of creates() (KSTD-7-3-5): at most PLAN_BYTES, so an import stops growing once the cache
+     * is full.
      */
     public function testPlanCacheRetainsAtMostAFewMibOfPlans(): void
     {

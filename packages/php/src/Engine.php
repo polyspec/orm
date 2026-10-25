@@ -14,11 +14,11 @@ final class Engine
     private static array $engines = [];
 
     /**
-     * The placeholders the plan cache may retain in all (KSTD-7-3-5): the full batches of about eight tables at the
-     * SQLite bind limit (999 each). A plan holds a bind descriptor per placeholder, about 410 bytes each in PHP, so this
-     * bound keeps the cache near 3.2 MiB; a bound of 65535 still kept 25.6 MiB, and an import grew with its rows until
-     * the cache was full (limepie P-97). A plan of more placeholders is used and not cached. The same bound holds for the
-     * statement cache of Db.
+     * The placeholders the plan cache may retain in all (KSTD-7-3-5): full batches of about eight tables at the SQLite
+     * bind limit (999 each). A plan holds a bind descriptor per placeholder, about 410 bytes each in PHP, so this bound
+     * keeps the cache near 3.2 MiB. A bound of 65535 still kept 25.6 MiB; imports grew with their rows until the cache
+     * was full (limepie P-97). A plan of more placeholders is used and not cached. The same bound holds for Db's
+     * statement cache.
      */
     private const RETAINED_PLACEHOLDERS = 8192;
 
