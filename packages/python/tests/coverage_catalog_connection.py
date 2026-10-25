@@ -126,6 +126,18 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
             f"SELECT COUNT(*) FROM {quote('user', driver)}", []
         )
         self.assertEqual(int(count.rows[0][0]), 5000)
+        plain_rows = "SELECT 'alpha' AS value UNION ALL SELECT 'beta' AS value"
+        exact_rows = self.catalog.read_only_query(plain_rows, [], max_rows=2, max_bytes=128)
+        self.assertEqual(exact_rows.rows, [["alpha"], ["beta"]])
+        with self.assertRaises(OrmError) as plain_row_limit:
+            self.catalog.read_only_query(plain_rows, [], max_rows=1, max_bytes=128)
+        self.assertEqual(plain_row_limit.exception.code, codes.CATALOG_LIMIT)
+        exact_bytes_sql = "SELECT 'abc' AS value"
+        exact_bytes = self.catalog.read_only_query(exact_bytes_sql, [], max_rows=2, max_bytes=3)
+        self.assertEqual(exact_bytes.rows, [["abc"]])
+        with self.assertRaises(OrmError) as plain_byte_limit:
+            self.catalog.read_only_query(exact_bytes_sql, [], max_rows=2, max_bytes=2)
+        self.assertEqual(plain_byte_limit.exception.code, codes.CATALOG_LIMIT)
         with self.assertRaises(OrmError) as row_limit:
             self.catalog.read_only_grid_query(
                 "SELECT 'abc' AS value UNION ALL SELECT 'def'", [], max_rows=1, max_bytes=1024

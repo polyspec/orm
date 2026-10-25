@@ -125,6 +125,43 @@ func TestCoverageCatalogRead(t *testing.T) {
 	catalogGridCellsCheck(t, ctx, driver, c)
 }
 
+// Requirements: INT-115.
+func TestCoverageCatalogReadOnlyQueryBudgets(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	ctx := context.Background()
+	driver, c := catalogConnect(t)
+	defer testcase.Close(t, c)
+
+	rowsSQL := "SELECT 'alpha' AS value UNION ALL SELECT 'beta' AS value"
+	_, err := c.ReadOnlyQuery(ctx, rowsSQL, nil, orm.CatalogQueryLimits{MaxRows: 1, MaxBytes: 128})
+	var coded *ir.Error
+	if !errors.As(err, &coded) || coded.Code != orm.CodeCatalogLimit {
+		t.Fatalf("%s: plain query with a 1-row limit returned %v, want CATALOG_LIMIT", driver, err)
+	}
+	result, err := c.ReadOnlyQuery(ctx, rowsSQL, nil, orm.CatalogQueryLimits{MaxRows: 2, MaxBytes: 128})
+	if err != nil {
+		t.Fatalf("%s: plain query at its exact 2-row limit: %v", driver, err)
+	}
+	wantRows := [][]any{{"alpha"}, {"beta"}}
+	if !reflect.DeepEqual(result.Rows, wantRows) {
+		t.Fatalf("%s: plain rows at exact row limit = %#v, want %#v", driver, result.Rows, wantRows)
+	}
+
+	textSQL := "SELECT 'abc' AS value"
+	_, err = c.ReadOnlyQuery(ctx, textSQL, nil, orm.CatalogQueryLimits{MaxRows: 2, MaxBytes: 2})
+	coded = nil
+	if !errors.As(err, &coded) || coded.Code != orm.CodeCatalogLimit {
+		t.Fatalf("%s: plain query with a 2-byte limit returned %v, want CATALOG_LIMIT", driver, err)
+	}
+	result, err = c.ReadOnlyQuery(ctx, textSQL, nil, orm.CatalogQueryLimits{MaxRows: 2, MaxBytes: 3})
+	if err != nil {
+		t.Fatalf("%s: plain query at its exact 3-byte limit: %v", driver, err)
+	}
+	if !reflect.DeepEqual(result.Rows, [][]any{{"abc"}}) {
+		t.Fatalf("%s: plain row at exact byte limit = %#v, want [[\"abc\"]]", driver, result.Rows)
+	}
+}
+
 // Requirements: SCH-6a.
 func TestCoverageCatalogGridColumnAndRowOrder(t *testing.T) {
 	testcase.Start(t, testcase.Database)
