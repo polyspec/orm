@@ -2,11 +2,11 @@
 
 use std::collections::{HashMap, HashSet};
 
-use crate::core::{Added, CondKind, CondNode, Core, PredSpec, PredValue, RelSpec, config};
+use crate::core::{config, Added, CondKind, CondNode, Core, PredSpec, PredValue, RelSpec};
 use crate::ir;
 use crate::schema::Schema;
 use crate::value::Param;
-use crate::{Error, Result, codes};
+use crate::{codes, Error, Result};
 
 /// The value-free IR of one statement plus its parameter values.
 #[derive(Clone)]
@@ -54,7 +54,13 @@ impl Req {
 
     /// The plan-cache key: FNV-1a 64 over the IR bytes, streamed without allocating them.
     pub fn shape_key(&mut self) -> u64 {
-        self.ir.n_params = self.params.len();
+        self.shape_key_with_n_params(self.params.len())
+    }
+
+    /// The plan-cache key with the count of the parent request's parameters. A split-plan probe and part
+    /// retain their source parameter indices but defer the values to the parent request during execution.
+    pub(crate) fn shape_key_with_n_params(&mut self, n_params: usize) -> u64 {
+        self.ir.n_params = n_params;
         let mut h = Fnv(FNV_OFFSET);
         serde_json::to_writer(&mut h, &self.ir).expect("ir serializes");
         h.0

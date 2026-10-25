@@ -904,6 +904,28 @@
         "packages/rust/orm/src/db/sqlite_version_tests.rs"
       ]
     },
+    "split-read-plan-check": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "rust",
+        "python",
+        "node-modules"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/go/orm/root_in.go",
+        "packages/go/orm/exec.go",
+        "packages/go/orm/split_plan_test.go",
+        "packages/ts/src/database.ts",
+        "packages/ts/tests/split-plan.test.mjs",
+        "packages/python/src/polyspec/orm/database.py",
+        "packages/python/tests/test_split_plan.py",
+        "packages/rust/orm/src/db.rs",
+        "packages/rust/orm/src/model.rs",
+        "packages/rust/orm/src/request.rs"
+      ]
+    },
     "split-null-check": {
       "scope": "owner",
       "needs": [

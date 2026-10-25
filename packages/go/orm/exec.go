@@ -527,19 +527,20 @@ func query(ex executor, r *request) (*result, error) {
 		res, _, err := markdownRead(ex, r)
 		return res, err
 	}
-	c, err := d.plan(r)
+	c, slots, err := d.splitReadPlan(r)
 	if err != nil {
 		return nil, err
 	}
 	if err := acquireSQLiteRowLock(ctx, ex, r.ir.Lock); err != nil {
 		return nil, err
 	}
-	parts, err := rootINParts(r, &c.plan.Steps[0], d.driver)
+	parts, err := rootINParts(r, slots, d.driver)
 	if err != nil {
 		return nil, err
 	}
+	// A split request runs only its parts: c is then the plan of its first value (splitReadPlan).
 	var main [][]any
-	if len(parts) > 1 {
+	if len(parts) > 0 {
 		seen := map[Key]bool{}
 		for _, part := range parts {
 			pc, err := d.plan(part)
@@ -1030,13 +1031,16 @@ func scalar(ex executor, r *request) (any, error) {
 	if d.md != nil {
 		return markdownScalar(ex, r)
 	}
-	c, err := d.plan(r)
+	_, slots, err := d.splitReadPlan(r)
 	if err != nil {
 		return nil, err
 	}
-	parts, err := rootINParts(r, &c.plan.Steps[0], d.driver)
+	parts, err := rootINParts(r, slots, d.driver)
 	if err != nil {
 		return nil, err
+	}
+	if len(parts) == 1 {
+		return scalarStep(ctx, ex, parts[0])
 	}
 	if len(parts) > 1 {
 		if r.ir.Kind != "count" {

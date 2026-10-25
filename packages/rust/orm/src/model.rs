@@ -288,9 +288,77 @@ fn batch_fits(driver: &str, parts: &[usize], columns: usize) -> Result<()> {
     Ok(())
 }
 
+/// The plan of a read whose root IN list may be split (PRT-76), and the
+/// number of bind slots its first statement needs. A request with more values
+/// than the bind limit is planned with its longest root IN list cut to its
+/// first value, so no plan holds a bind slot per value of the list;
+/// root_in_parts plans the parts, each within the bind limit.
+async fn split_read_plan(db: &Db, req: &mut Req) -> Result<(Arc<Plan>, usize)> {
+    let target = if req.params.len() > bind_limit(db.driver()) { root_in_target(req) } else { None };
+    let Some(target) = target else {
+        let plan = db.plan(req).await?;
+        let slots = plan.steps[0].bind_slots.len();
+        return Ok((plan, slots));
+    };
+    let ps = root_in_list(req, target).to_vec();
+    let mut probe = with_root_in_list(req, target, vec![ps[0]]);
+    let plan = db.plan_split_part(&mut probe, req.params.len()).await?;
+    let slots = plan.steps[0].bind_slots.len() - 1 + ps.len();
+    if slots <= bind_limit(db.driver()) {
+        let plan = db.plan(req).await?;
+        let slots = plan.steps[0].bind_slots.len();
+        return Ok((plan, slots));
+    }
+    Ok((plan, slots))
+}
+
+/// The index of the longest root IN list of values in the where items.
+fn root_in_target(req: &Req) -> Option<usize> {
+    let where_ = req.ir.query.where_.as_ref()?;
+    let mut target: Option<usize> = None;
+    for (i, item) in where_.items.iter().enumerate() {
+        if let ir::Item::Pred { pred } = item {
+            if pred.op == "in" && pred.sub.is_none() && !pred.ps.is_empty() && target.is_none_or(|t| pred.ps.len() > root_in_list(req, t).len()) {
+                target = Some(i);
+            }
+        }
+    }
+    target
+}
+
+/// The values of the root IN condition target, by parameter index.
+fn root_in_list(req: &Req, target: usize) -> &[usize] {
+    match req.ir.query.where_.as_ref().map(|w| &w.items[target]) {
+        Some(ir::Item::Pred { pred }) => &pred.ps,
+        _ => &[],
+    }
+}
+
+/// A copy of req whose root IN condition target holds ps, without the
+/// parameters: a part runs with the parameters of req. Neither the list it
+/// replaces nor the parameters are copied.
+fn with_root_in_list(req: &mut Req, target: usize, ps: Vec<usize>) -> Req {
+    let params = std::mem::take(&mut req.params);
+    let list = match req.ir.query.where_.as_mut().map(|w| &mut w.items[target]) {
+        Some(ir::Item::Pred { pred }) => std::mem::take(&mut pred.ps),
+        _ => Vec::new(),
+    };
+    let mut part = req.clone();
+    req.params = params;
+    if let Some(ir::Item::Pred { pred }) = req.ir.query.where_.as_mut().map(|w| &mut w.items[target]) {
+        pred.ps = list;
+    }
+    if let Some(ir::Item::Pred { pred }) = part.ir.query.where_.as_mut().map(|w| &mut w.items[target]) {
+        pred.ps = ps;
+    }
+    part
+}
+
 /// Splits a root IN list that exceeds the bind limit into requests whose
-/// results together equal the original result.
-fn root_in_parts(req: &Req, binds: usize, driver: &str) -> Result<Vec<Req>> {
+/// results together equal the original result; binds is the number of bind
+/// slots of the whole request (split_read_plan). A part holds no parameters:
+/// it runs with those of req.
+fn root_in_parts(req: &mut Req, binds: usize, driver: &str) -> Result<Vec<Req>> {
     let limit = bind_limit(driver);
     if binds <= limit {
         return Ok(Vec::new());
@@ -307,31 +375,13 @@ fn root_in_parts(req: &Req, binds: usize, driver: &str) -> Result<Vec<Req>> {
         ir::Item::Group { group } => group.conn.clone(),
         ir::Item::Joined { joined } => joined.conn.clone(),
     };
-    let mut target: Option<usize> = None;
     for (i, item) in where_.items.iter().enumerate() {
         if conn_of(item) == "or" || where_.items.get(i + 1).map(|n| conn_of(n) == "or").unwrap_or(false) {
             return Err(too_large());
         }
-        if let ir::Item::Pred { pred } = item {
-            if pred.op == "in" && pred.sub.is_none() {
-                let longer = match target {
-                    Some(t) => match &where_.items[t] {
-                        ir::Item::Pred { pred: current } => pred.ps.len() > current.ps.len(),
-                        _ => true,
-                    },
-                    None => true,
-                };
-                if longer {
-                    target = Some(i);
-                }
-            }
-        }
     }
-    let Some(target) = target else { return Err(too_large()) };
-    let ps = match &where_.items[target] {
-        ir::Item::Pred { pred } => pred.ps.clone(),
-        _ => unreachable!(),
-    };
+    let Some(target) = root_in_target(req) else { return Err(too_large()) };
+    let ps = root_in_list(req, target).to_vec();
     let available = limit.saturating_sub(binds - ps.len());
     if available == 0 {
         return Err(too_large());
@@ -344,7 +394,6 @@ fn root_in_parts(req: &Req, binds: usize, driver: &str) -> Result<Vec<Req>> {
     let unique: Vec<usize> = ps.into_iter().filter(|&i| seen.insert(val_param_key(&req.params[i]))).collect();
     let mut parts = Vec::new();
     for group in unique.chunks(chunk) {
-        let mut part = req.clone();
         let mut ps = group.to_vec();
         let last = *ps.last().unwrap();
         let mut n = 1;
@@ -352,10 +401,7 @@ fn root_in_parts(req: &Req, binds: usize, driver: &str) -> Result<Vec<Req>> {
             n <<= 1;
         }
         ps.resize(n, last);
-        if let Some(ir::Item::Pred { pred }) = part.ir.query.where_.as_mut().map(|w| &mut w.items[target]) {
-            pred.ps = ps;
-        }
-        parts.push(part);
+        parts.push(with_root_in_list(req, target, ps));
     }
     Ok(parts)
 }
@@ -387,11 +433,12 @@ async fn select(ex: &Executor, conn: &Option<Db>, req: &mut Req) -> Result<Query
             count: read.count,
         });
     }
-    let plan = db.plan(req).await?;
+    // A split request runs only its parts: plan is then the plan of its first value (split_read_plan).
+    let (plan, slots) = split_read_plan(&db, req).await?;
     let st = &plan.steps[0];
     let asm = st.assemble.clone().ok_or_else(|| Error::internal("no assemble"))?;
     let aes_keys = &db.inner.cfg.aes_keys;
-    let parts = root_in_parts(req, st.bind_slots.len(), db.driver())?;
+    let parts = root_in_parts(req, slots, db.driver())?;
     let mut main = Vec::new();
     if parts.is_empty() {
         let raw = ex.query(st, &req.params, Vec::new()).await?;
@@ -399,10 +446,10 @@ async fn select(ex: &Executor, conn: &Option<Db>, req: &mut Req) -> Result<Query
     } else {
         let mut seen = HashSet::new();
         for mut part in parts {
-            let pp = db.plan(&mut part).await?;
+            let pp = db.plan_split_part(&mut part, req.params.len()).await?;
             let pst = &pp.steps[0];
             let pasm = pst.assemble.clone().ok_or_else(|| Error::internal("no assemble"))?;
-            let raw = ex.query(pst, &part.params, Vec::new()).await?;
+            let raw = ex.query(pst, &req.params, Vec::new()).await?;
             for row in positional(&raw, &pasm, aes_keys, db.inner.zone)? {
                 if seen.insert(split_row_key(&row, &pasm.key)?) {
                     main.push(row);
@@ -852,17 +899,22 @@ async fn scalar(c: &Core, kind: &str) -> Result<Val> {
     if db.is_markdown() {
         return markdown_scalar(&ex, &mut req).await;
     }
-    let plan = db.plan(&mut req).await?;
+    let (plan, slots) = split_read_plan(&db, &mut req).await?;
     let st = &plan.steps[0];
-    let parts = root_in_parts(&req, st.bind_slots.len(), db.driver())?;
+    let mut parts = root_in_parts(&mut req, slots, db.driver())?;
+    if let [part] = parts.as_mut_slice() {
+        let pp = db.plan_split_part(part, req.params.len()).await?;
+        let rows = ex.query(&pp.steps[0], &req.params, Vec::new()).await?;
+        return first_cell(&rows, ex.db().inner.zone);
+    }
     if !parts.is_empty() {
         if kind != "count" {
             return Err(Error::Engine { code: codes::IR_INVALID.into(), msg: "a split IN list can be merged only for a count".into() });
         }
         let mut total: i64 = 0;
         for mut part in parts {
-            let pp = db.plan(&mut part).await?;
-            let rows = ex.query(&pp.steps[0], &part.params, Vec::new()).await?;
+            let pp = db.plan_split_part(&mut part, req.params.len()).await?;
+            let rows = ex.query(&pp.steps[0], &req.params, Vec::new()).await?;
             total = total.checked_add(first_cell(&rows, ex.db().inner.zone)?.as_i64()?).ok_or_else(|| Error::internal("row count exceeds i64 range"))?;
         }
         return Ok(Val::I64(total));
@@ -1887,10 +1939,7 @@ mod page_order_tests {
                 Ok(()) => {}
                 Err(error) if error.kind() == std::io::ErrorKind::NotFound => drop(error),
                 Err(error) => {
-                    let message = format!(
-                        "failed to remove temporary SQLite database {}: {error}",
-                        self.0.display()
-                    );
+                    let message = format!("failed to remove temporary SQLite database {}: {error}", self.0.display());
                     if std::thread::panicking() {
                         eprintln!("{message}");
                     } else {
@@ -2011,5 +2060,80 @@ mod page_order_tests {
         assert!(records[0].contains("FROM \"page_parent\""), "root query: {}", records[0]);
         assert!(records[1].contains("COUNT(*)") && records[1].contains("page_parent"), "count query: {}", records[1]);
         assert!(records[2].contains("FROM \"page_child\""), "relation query: {}", records[2]);
+    }
+}
+
+#[cfg(test)]
+mod split_plan_tests {
+    // A root IN list over the bind limit is split before it is planned (PRT-76): after a count of 70300 values on
+    // SQLite, no plan of the connection holds more bind slots than the SQLite limit, so none holds a slot per value.
+    use super::{bind_limit, collect_boxed, get_count, new_boxed, Core, Entity, Model, Schema, Val};
+    use crate::args::Value;
+    use crate::core::{Arg, ChainKey};
+    use crate::db::Pool;
+    use crate::{Config, Db, Param, Result};
+
+    static SCHEMA: Schema =
+        Schema::new(include_str!("../../../../contracts/fixtures/clock.dbs"), "sha256:fab61fb83cfec00c4d7a4d257b610b87c6fdccd49e02a85848a41ba263bc1ffb");
+    static EVENT: Entity = Entity { name: "clock_event", schema: &SCHEMA, new: new_boxed::<Event>, collect: collect_boxed::<Event> };
+    const BY_SEQ: &[ChainKey] = &[ChainKey { conn: "", op: "", column: "seq", columns: &[], compare: "" }];
+
+    #[derive(Clone)]
+    struct Event(Core);
+
+    impl Model for Event {
+        fn entity() -> &'static Entity {
+            &EVENT
+        }
+        fn core(&self) -> &Core {
+            &self.0
+        }
+        fn core_mut(&mut self) -> &mut Core {
+            &mut self.0
+        }
+        fn from_core(core: Core) -> Self {
+            Event(core)
+        }
+        fn into_core(self) -> Core {
+            self.0
+        }
+        fn assign(&mut self, _: &str, _: Val) -> Result<bool> {
+            Ok(false)
+        }
+        fn value(&self, _: &str) -> Option<Val> {
+            None
+        }
+    }
+
+    /// The SQLite file of the case, removed when the case ends on every path.
+    struct CaseFile(std::path::PathBuf);
+
+    impl Drop for CaseFile {
+        fn drop(&mut self) {
+            if let Err(error) = std::fs::remove_file(&self.0) {
+                if error.kind() != std::io::ErrorKind::NotFound {
+                    panic!("remove {}: {error}", self.0.display());
+                }
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn split_root_in_count_plans_no_statement_over_the_bind_limit() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+        let file = CaseFile(std::env::temp_dir().join(format!("orm-rust-split-plan-{}.sqlite", std::process::id())));
+        let db = Db::connect(&format!("sqlite://{}", file.0.display()), 1, Config::default()).await.expect("connect");
+        db.utils().schema().install(&SCHEMA).await.expect("install");
+        let Pool::Sqlite(pool) = &db.inner.pool else { panic!("the case uses SQLite") };
+        sqlx::query("INSERT INTO clock_event (seq, label) VALUES (1, 'first'), (2, 'second')").execute(pool).await.expect("insert rows");
+        let mut core = Core::new(&EVENT);
+        core.connect(&db);
+        let values: Vec<Param> = (1..=70300).map(Param::I64).collect();
+        let filter = core.by(BY_SEQ, vec![Arg::Value(Value::List(values))]);
+        assert_eq!(get_count(&filter).await.expect("count"), 2, "count of the split IN list");
+        let widest = db.max_cached_bind_slots();
+        polyspec_orm_testcase::step(format_args!("the widest plan of the connection binds {widest} slots"));
+        assert!(widest <= bind_limit("sqlite"), "a plan of the split count binds {widest} slots, over the SQLite limit of {}", bind_limit("sqlite"));
+        db.close().await;
     }
 }

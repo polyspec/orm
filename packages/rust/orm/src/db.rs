@@ -696,6 +696,15 @@ impl Db {
 
     /// Plans (or fetches from cache) the statements of the request's shape.
     pub(crate) async fn plan(&self, req: &mut Req) -> Result<Arc<Plan>> {
+        self.plan_with_parameter_count(req, None).await
+    }
+
+    /// Plans a split probe or part while retaining parameter indices from the parent request.
+    pub(crate) async fn plan_split_part(&self, req: &mut Req, n_params: usize) -> Result<Arc<Plan>> {
+        self.plan_with_parameter_count(req, Some(n_params)).await
+    }
+
+    async fn plan_with_parameter_count(&self, req: &mut Req, n_params: Option<usize>) -> Result<Arc<Plan>> {
         if let Some(e) = req.error() {
             return Err(e);
         }
@@ -711,9 +720,15 @@ impl Db {
             });
         }
         let Some(dialect) = self.inner.dialect else { return Err(Error::internal("a markdown connection plans no request")) };
+        if let Some(n_params) = n_params {
+            req.ir.n_params = n_params;
+        }
         engine::validate(&manifest, &req.ir)?;
         crate::request::validate_page_params(&req.ir, &req.params)?;
-        let key = req.shape_key();
+        let key = match n_params {
+            Some(n_params) => req.shape_key_with_n_params(n_params),
+            None => req.shape_key(),
+        };
         if let Some(p) = self.inner.plans.lock().unwrap().get(&key) {
             return Ok(p.clone());
         }
@@ -735,6 +750,11 @@ impl Db {
             }
         }
         Ok(plan)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn max_cached_bind_slots(&self) -> usize {
+        self.inner.plans.lock().unwrap().values().map(|plan| plan.steps[0].bind_slots.len()).max().unwrap_or(0)
     }
 
     /// The executor clock in the connection time zone (UTC), with six fraction digits.

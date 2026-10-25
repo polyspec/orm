@@ -142,6 +142,10 @@
           "reason": "fixture: an internal package test of the go module that reads the fixtures of the contract data, not a helper the contract names (K313)"
         },
         {
+          "glob": "packages/go/orm/split_plan_test.go",
+          "reason": "test: an internal package test of the go module that measures what a split read allocates, not a behaviour of the contract (K313)"
+        },
+        {
           "glob": "packages/go/orm/sqlite/sqlite_test.go",
           "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
@@ -356,6 +360,7 @@
           "reason": "external: an internal test of the TypeScript package that runs against a database or driver of an external service, not a helper the contract names (K313)"
         },
         {
+<<<<<<< HEAD
           "glob": "packages/ts/tests/coverage_performance_gate.mjs",
           "reason": "harness: an internal test of the TypeScript package that checks the test harness of the owner, not a behaviour of the contract (K313)"
         },
@@ -370,6 +375,10 @@
         {
           "glob": "packages/ts/tests/coverage_performance_gate_sqlite.mjs",
           "reason": "harness: an internal test of the TypeScript package that checks the test harness of the owner, not a behaviour of the contract (K313)"
+=======
+          "glob": "packages/ts/tests/split-plan.test.mjs",
+          "reason": "test: an internal test of the TypeScript package that measures what a split read allocates, not a behaviour of the contract (K313)"
+>>>>>>> 431496ef9 (fix(query): Split oversized root IN plans (#KSTD-7-3-3))
         }
       ]
     },
@@ -392,6 +401,10 @@
         {
           "glob": "packages/python/tests/test_requires_python.py",
           "reason": "ecosystem: an internal test of the Python package that checks the package, loader or install rule of the language ecosystem, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/python/tests/test_split_plan.py",
+          "reason": "test: an internal test of the Python package that measures what a split read allocates, not a behaviour of the contract (K313)"
         },
         {
           "glob": "packages/python/tests/conformance_result.py",

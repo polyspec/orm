@@ -2568,11 +2568,13 @@ def query(ex: Executor, request: dict, params):
         db = ex.db
         if db.driver == "markdown":
             return markdown_read(ex, request, params)[0]
-        cached = db.plan(request)
+        cached, slots = _split_read_plan(db, request, params)
         if request.get("lock"):
             db.row_lock(ex.frame, request["lock"])
-        parts = _root_in_parts(request, cached["plan"], db.driver, params)
-        if len(parts) > 1:
+        parts = _root_in_parts(request, slots, db.driver, params)
+        # A split request runs only its parts: cached is then the plan of its
+        # first value (_split_read_plan).
+        if parts:
             main = []
             seen = set()
             for part in parts:
@@ -2761,18 +2763,73 @@ def _child_keys(plan: dict, step_id: int):
     raise OrmError(codes.INTERNAL, f"relation step {step_id} has no child")
 
 
-def _root_in_parts(request: dict, plan: dict, driver: str, params):
-    """Splits a root IN list joined with AND that exceeds the driver bind limit."""
-    main = plan["steps"][0]
+def _split_read_plan(db, request: dict, params):
+    """The plan of a read whose root IN list may be split (PRT-76), and the number
+    of bind slots its first statement needs. A request with more values than the
+    bind limit is planned with its longest root IN list cut to its first value, so
+    no plan holds a bind slot per value of the list; _root_in_parts plans the
+    parts, each within the bind limit."""
+    target = _root_in_target(request) if len(params) > _driver_limit(db.driver) else -1
+    if target < 0:
+        cached = db.plan(request)
+        return cached, len(cached["plan"]["steps"][0]["bind_slots"])
+    ps = request["where"]["items"][target]["pred"]["ps"]
+    cached = db.plan(_with_root_in_list(request, target, ps[:1]))
+    slots = len(cached["plan"]["steps"][0]["bind_slots"]) - 1 + len(ps)
+    if slots <= _driver_limit(db.driver):
+        cached = db.plan(request)
+        slots = len(cached["plan"]["steps"][0]["bind_slots"])
+    return cached, slots
+
+
+def _root_in_target(request: dict) -> int:
+    """The index of the longest root IN list of values in the where items, or -1
+    when there is none."""
+    items = (request.get("where") or {}).get("items") or []
+    target = -1
+    for i, item in enumerate(items):
+        pred = item.get("pred")
+        if (
+            pred is not None
+            and pred.get("op") == "in"
+            and not pred.get("sub")
+            and bool(pred.get("ps"))
+            and (
+                target < 0
+                or len(pred.get("ps") or [])
+                > len(items[target]["pred"].get("ps") or [])
+            )
+        ):
+            target = i
+    return target
+
+
+def _with_root_in_list(request: dict, target: int, ps: list) -> dict:
+    """A copy of request whose root IN condition target holds ps; the list it
+    replaces is not copied."""
+    pred = request["where"]["items"][target]["pred"]
+    values = pred["ps"]
+    pred["ps"] = []
+    try:
+        part = copy.deepcopy(request)
+    finally:
+        pred["ps"] = values
+    part["where"]["items"][target]["pred"]["ps"] = ps
+    return part
+
+
+def _root_in_parts(request: dict, slots: int, driver: str, params):
+    """Splits a root IN list joined with AND that exceeds the driver bind limit;
+    slots is the number of bind slots of the whole request (_split_read_plan). A
+    request within the limit has no parts."""
     limit = _driver_limit(driver)
-    if len(main["bind_slots"]) <= limit:
-        return [request]
+    if slots <= limit:
+        return []
 
     def too_large():
         raise OrmError(
             codes.IR_INVALID,
-            f"the statement needs {len(main['bind_slots'])} bind "
-            f"parameters but {driver} permits {limit}",
+            f"the statement needs {slots} bind parameters but {driver} permits {limit}",
         )
 
     if (
@@ -2783,7 +2840,6 @@ def _root_in_parts(request: dict, plan: dict, driver: str, params):
     ):
         raise too_large()
     items = request["where"]["items"]
-    target = -1
 
     def item_conn(item):
         for key in ("pred", "group", "joined"):
@@ -2798,20 +2854,11 @@ def _root_in_parts(request: dict, plan: dict, driver: str, params):
             i + 1 < len(items) and item_conn(items[i + 1]) == "or"
         ):
             raise too_large()
-        if (
-            item["pred"].get("op") == "in"
-            and not item["pred"].get("sub")
-            and (
-                target < 0
-                or len(item["pred"].get("ps") or [])
-                > len(items[target]["pred"].get("ps") or [])
-            )
-        ):
-            target = i
+    target = _root_in_target(request)
     if target < 0:
         raise too_large()
     ps = items[target]["pred"]["ps"]
-    available = limit - (len(main["bind_slots"]) - len(ps))
+    available = limit - (slots - len(ps))
     if available < 1:
         raise too_large()
     chunk = 1
@@ -2827,17 +2874,13 @@ def _root_in_parts(request: dict, plan: dict, driver: str, params):
         unique.append(index)
     parts = []
     for start in range(0, len(unique), chunk):
-        import copy
-
-        part = copy.deepcopy(request)
         slice_ps = unique[start : start + chunk]
         n = 1
         while n < len(slice_ps):
             n <<= 1
         while len(slice_ps) < n:
             slice_ps.append(slice_ps[-1])
-        part["where"]["items"][target]["pred"]["ps"] = slice_ps
-        parts.append(part)
+        parts.append(_with_root_in_list(request, target, slice_ps))
     return parts
 
 
@@ -2850,8 +2893,12 @@ def scalar(ex: Executor, request: dict, params):
         db = ex.db
         if db.driver == "markdown":
             return markdown_scalar(ex, request, params)
-        cached = db.plan(request)
-        parts = _root_in_parts(request, cached["plan"], db.driver, params)
+        cached, slots = _split_read_plan(db, request, params)
+        parts = _root_in_parts(request, slots, db.driver, params)
+        if len(parts) == 1:
+            step = db.plan(parts[0])["plan"]["steps"][0]
+            result = db._send_step(ex, step["sql"], step, params)
+            return result["rows"][0][0] if result["rows"] else None
         if len(parts) > 1:
             if request["kind"] != "count":
                 raise OrmError(

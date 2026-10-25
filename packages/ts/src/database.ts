@@ -1385,11 +1385,12 @@ export async function query(ex: Executor, given: Request, givenParams: readonly 
     checkLock(ex, request);
     const db = ex.db;
     if (db.md !== undefined) return (await markdownRead(ex, request, params)).result;
-    const cached = await db.plan(request);
+    const { cached, slots } = await splitReadPlan(db, request, params);
     if (request.lock !== undefined && request.lock !== '') await db.rowLock(present(ex.frame, 'the transaction of a locking read'), request.lock);
-    const parts = rootInParts(request, cached.plan, db.driver, params);
+    const parts = rootInParts(request, slots, db.driver, params);
     let main: unknown[][];
-    if (parts.length > 1) {
+    // A split request runs only its parts: cached is then the plan of its first value (splitReadPlan).
+    if (parts.length > 0) {
       main = [];
       const seen = new Set<string>();
       for (const part of parts) {
@@ -1475,8 +1476,12 @@ export async function scalar(ex: Executor, given: Request, givenParams: readonly
     checkLock(ex, request);
     const db = ex.db;
     if (db.md !== undefined) return markdownScalar(ex, request, params);
-    const cached = await db.plan(request);
-    const parts = rootInParts(request, cached.plan, db.driver, params);
+    const { cached, slots } = await splitReadPlan(db, request, params);
+    const parts = rootInParts(request, slots, db.driver, params);
+    if (parts.length === 1) {
+      const step = mainStep((await db.plan(present(parts[0], 'the one part of a split request'))).plan);
+      return (await db.runStep(ex, step.sql, step, params)).rows[0]?.[0] ?? null;
+    }
     if (parts.length > 1) {
       if (request.kind !== 'count') throw new OrmError(codes.IR_INVALID, 'a split IN list can be merged only for a count');
       let total = 0;
@@ -1680,24 +1685,71 @@ function itemConn(item: Group['items'][number]): string | undefined {
   return item.pred?.conn ?? item.group?.conn ?? item.joined?.conn;
 }
 
-/** Splits a root IN list joined with AND that exceeds the driver bind limit. */
-function rootInParts(request: Request, plan: Plan, driver: string, params: readonly unknown[]): Request[] {
-  const main = mainStep(plan);
+/**
+ * The plan of a read whose root IN list may be split (PRT-76), and the number of bind slots its first statement needs.
+ * A request with more values than the bind limit is planned with its longest root IN list cut to its first value, so
+ * no plan holds a bind slot per value of the list; rootInParts plans the parts, each within the bind limit.
+ */
+async function splitReadPlan(db: Db, request: Request, params: readonly unknown[]): Promise<{ cached: Cached; slots: number }> {
+  const target = params.length > driverLimit(db.driver) ? rootInTarget(request) : -1;
+  if (target < 0) {
+    const cached = await db.plan(request);
+    return { cached, slots: mainStep(cached.plan).bind_slots.length };
+  }
+  const ps = present(request.where?.items[target]?.pred?.ps, 'the IN list that is split');
+  const cached = await db.plan(withRootInList(request, target, ps.slice(0, 1)));
+  let slots = mainStep(cached.plan).bind_slots.length - 1 + ps.length;
+  if (slots <= driverLimit(db.driver)) {
+    const full = await db.plan(request);
+    slots = mainStep(full.plan).bind_slots.length;
+    return { cached: full, slots };
+  }
+  return { cached, slots };
+}
+
+/** The index of the longest root IN list of values in the where items, or -1 when there is none. */
+function rootInTarget(request: Request): number {
+  const items = request.where?.items ?? [];
+  let target = -1;
+  items.forEach((item, i) => {
+    if (item.pred?.op === 'in' && !item.pred.sub && (item.pred.ps?.length ?? 0) > 0 && (target < 0 || (item.pred.ps?.length ?? 0) > (items[target]?.pred?.ps?.length ?? 0))) target = i;
+  });
+  return target;
+}
+
+/** A copy of `request` whose root IN condition `target` holds `ps`; the list it replaces is not copied. */
+function withRootInList(request: Request, target: number, ps: number[]): Request {
+  const pred = present(request.where?.items[target]?.pred, 'the split IN condition');
+  const list = present(pred.ps, 'the split IN list');
+  pred.ps = [];
+  try {
+    const copy = structuredClone(request);
+    present(copy.where?.items[target]?.pred, 'the split IN condition of a copy').ps = ps;
+    return copy;
+  } finally {
+    pred.ps = list;
+  }
+}
+
+/**
+ * Splits a root IN list joined with AND that exceeds the driver bind limit; `slots` is the number of bind slots of the
+ * whole request (splitReadPlan). A request within the limit has no parts.
+ */
+function rootInParts(request: Request, slots: number, driver: string, params: readonly unknown[]): Request[] {
   const limit = driverLimit(driver);
-  if (main.bind_slots.length <= limit) return [request];
-  const tooLarge = new OrmError(codes.IR_INVALID, `the statement needs ${main.bind_slots.length} bind parameters but ${driver} permits ${limit}`);
+  if (slots <= limit) return [];
+  const tooLarge = new OrmError(codes.IR_INVALID, `the statement needs ${slots} bind parameters but ${driver} permits ${limit}`);
   if (request.limit || request.order?.length || request.group_by?.length || !request.where) throw tooLarge;
   const items = request.where.items;
-  let target = -1;
   items.forEach((item, i) => {
     if (!item.pred) return;
     const following = items[i + 1];
     if (item.pred.conn === 'or' || (following !== undefined && itemConn(following) === 'or')) throw tooLarge;
-    if (item.pred.op === 'in' && !item.pred.sub && (target < 0 || (item.pred.ps?.length ?? 0) > (items[target]?.pred?.ps?.length ?? 0))) target = i;
   });
+  const target = rootInTarget(request);
   if (target < 0) throw tooLarge;
   const ps = present(items[target]?.pred?.ps, 'the IN list that is split');
-  const available = limit - (main.bind_slots.length - ps.length);
+  const available = limit - (slots - ps.length);
   if (available < 1) throw tooLarge;
   let chunk = 1;
   while (chunk * 2 <= available) chunk *= 2;
@@ -1705,14 +1757,12 @@ function rootInParts(request: Request, plan: Plan, driver: string, params: reado
   const unique = ps.filter(index => { const key = scalarKey(params[index]); if (seen.has(key)) return false; seen.add(key); return true; });
   const parts: Request[] = [];
   for (let start = 0; start < unique.length; start += chunk) {
-    const part = structuredClone(request);
     const slice = unique.slice(start, start + chunk);
     let n = 1;
     while (n < slice.length) n <<= 1;
     const last = present(slice.at(-1), 'the last parameter of a part');
     while (slice.length < n) slice.push(last);
-    present(part.where?.items[target]?.pred, 'the split IN condition of a part').ps = slice;
-    parts.push(part);
+    parts.push(withRootInList(request, target, slice));
   }
   return parts;
 }
