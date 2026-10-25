@@ -107,6 +107,7 @@ mod operator_tests {
 
     #[test]
     fn operators_follow_field_type_capabilities() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         for (typ, op, allowed) in [
             ("i64", "between", true),
             ("varchar", "contains_binary", true),
@@ -130,6 +131,7 @@ mod operator_tests {
 
     #[test]
     fn codecs_and_column_operators_keep_their_restrictions() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         let field = |ty, codec: &[&str]| super::Field {
             name: "value".to_owned(),
             ty,

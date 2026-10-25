@@ -35,6 +35,7 @@ fn restore_error() -> Error {
 
 #[tokio::test]
 async fn production_nowait_sequence_preserves_both_errors_and_attempts_restore() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     for (primary, restore) in [(false, false), (false, true), (true, false), (true, true)] {
         let mut sequence = FakeSequence {
             set_error: None,
@@ -60,6 +61,7 @@ async fn production_nowait_sequence_preserves_both_errors_and_attempts_restore()
 
 #[tokio::test]
 async fn failed_nowait_setup_still_restores_and_skips_lock_attempt() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let mut sequence = FakeSequence {
         set_error: Some(Error::Engine { code: codes::CANCELED.into(), msg: "set zero failed".into() }),
         primary_error: None,

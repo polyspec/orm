@@ -761,6 +761,7 @@ mod tests {
     /// PHP keeps a canonical decimal key that does not fit i64 as a string key, so the key is not changed to an int.
     #[test]
     fn php_int_key_keeps_out_of_range_decimal_as_string() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         assert_eq!(php_int_key("9223372036854775807"), Some(i64::MAX));
         assert_eq!(php_int_key("-9223372036854775808"), Some(i64::MIN));
         assert_eq!(php_int_key("9223372036854775808"), None);

@@ -189,6 +189,7 @@ mod tests {
 
     #[test]
     fn check_parser_uses_shared_cursor_for_lookahead_and_end_position() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         let tokens = tokenize("field not in (1, 2)", 7);
         let mut parser = CheckParser::new(&tokens, Pos { line: 7, column: 21 });
         assert!(parser.expression().is_ok());

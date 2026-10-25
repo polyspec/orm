@@ -139,6 +139,7 @@ mod default_tests {
 
     #[test]
     fn column_default_keeps_absent_accepted_and_rejected_states_distinct() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         assert_eq!(parse_column_default(None, |_| Some("unused".into())), Ok(None));
         assert_eq!(parse_column_default(Some("7".into()), |text| Some(text.into())), Ok(Some("7".into())));
         assert_eq!(parse_column_default(Some("unsupported()".into()), |_| None), Err("unsupported()".into()));
@@ -146,6 +147,7 @@ mod default_tests {
 
     #[test]
     fn postgres_and_sqlite_catalog_readers_keep_their_default_parsers() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         let mut postgres = vec![Vec::new(); super::postgres::QUERIES.len()];
         postgres[0].push(vec![CatalogValue::Text("sample".into()), CatalogValue::Text("r".into()), CatalogValue::Bool(false)]);
         postgres[2].push(vec![

@@ -392,6 +392,7 @@ mod cursor_tests {
 
     #[test]
     fn parser_cursor_keeps_declaration_tokens_in_order() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         let parsed = parse("dbspec 1 shop\n\ntable cafe {\n  id i64\n}\n").expect("valid document parses");
         assert_eq!(parsed.document.tables[0].name.text, "cafe");
         assert_eq!(parsed.document.tables[0].columns[0].name.text, "id");

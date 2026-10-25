@@ -228,7 +228,6 @@ impl Native {
 }
 
 async fn coverage_hot_path_gate_for(expected: &str) {
-    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
     let database = required("ORM_FEATURE_DATABASE");
     assert_eq!(database, expected, "coverage entrypoint database");
     let dsn = required("ORM_FEATURE_DSN");
@@ -297,15 +296,18 @@ async fn coverage_hot_path_gate_for(expected: &str) {
 
 #[tokio::test]
 async fn coverage_hot_path_gate_mysql() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
     coverage_hot_path_gate_for("mysql").await;
 }
 
 #[tokio::test]
 async fn coverage_hot_path_gate_postgres() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
     coverage_hot_path_gate_for("postgres").await;
 }
 
 #[tokio::test]
 async fn coverage_hot_path_gate_sqlite() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
     coverage_hot_path_gate_for("sqlite").await;
 }
