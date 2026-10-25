@@ -1328,15 +1328,7 @@
         {
           "id": "language-set-file-validation-vectors",
           "requirements": [
-            "ORES-28",
-            "ORES-29",
-            "ORES-30",
-            "ORES-31",
-            "ORES-32",
-            "ORES-33",
-            "ORES-34",
-            "ORES-35",
-            "ORES-36"
+            "ORES-28"
           ],
           "bindings": [
             {
@@ -1514,6 +1506,218 @@
             {
               "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
               "id": "set-files vector IDs match their declared cases"
+            }
+          ]
+        },
+        {
+          "id": "language-set-file-ores-29-vectors",
+          "requirements": [
+            "ORES-29"
+          ],
+          "bindings": [
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files json-invalid through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files json-array through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files json-trailing through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files json-lone-surrogate through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files json-bom through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files json-invalid-utf8 through resolveSet"
+            }
+          ]
+        },
+        {
+          "id": "language-set-file-ores-30-vectors",
+          "requirements": [
+            "ORES-30"
+          ],
+          "bindings": [
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files schema-one-point-zero through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files schema-exponent through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files schema-missing through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files schema-two through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files schema-string through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files schema-beyond-double through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files schema-true through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files key-unknown through resolveSet"
+            }
+          ]
+        },
+        {
+          "id": "language-set-file-ores-31-vectors",
+          "requirements": [
+            "ORES-31"
+          ],
+          "bindings": [
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files documents-empty through resolveSet"
+            }
+          ]
+        },
+        {
+          "id": "language-set-file-ores-32-vectors",
+          "requirements": [
+            "ORES-32"
+          ],
+          "bindings": [
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files minimal through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files device-name-inside-word through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files errors-by-step-then-path through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files cases that resolveSet does not reach"
+            }
+          ]
+        },
+        {
+          "id": "language-set-file-ores-33-vectors",
+          "requirements": [
+            "ORES-33"
+          ],
+          "bindings": [
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files nested-and-external through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files external-without-dotdot through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files external-dotdot-after-segment through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files errors-by-step-then-path through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files cases that resolveSet does not reach"
+            }
+          ]
+        },
+        {
+          "id": "language-set-file-ores-34-vectors",
+          "requirements": [
+            "ORES-34"
+          ],
+          "bindings": [
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files listed-path-is-directory through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files component-not-directory through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files listed-file-symlink through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files component-symlink through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files set-file-symlink through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files root-symlink through resolveSet"
+            }
+          ]
+        },
+        {
+          "id": "language-set-file-ores-35-vectors",
+          "requirements": [
+            "ORES-35"
+          ],
+          "bindings": [
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files duplicate-same-path through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files duplicate-hard-link through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files duplicate-across-lists through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files errors-by-step-then-path through resolveSet"
+            }
+          ]
+        },
+        {
+          "id": "language-set-file-ores-36-vectors",
+          "requirements": [
+            "ORES-36"
+          ],
+          "bindings": [
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files listed-file-missing through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files listed-name-case through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files errors-by-step-then-path through resolveSet"
             }
           ]
         },

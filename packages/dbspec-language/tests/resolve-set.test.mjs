@@ -110,54 +110,98 @@ function assertSetFileCase(id) {
   });
 }
 
+// Requirements: ORES-28.
 vector('set-files vector IDs match their declared cases', () => {
   assert.deepEqual(vectors.cases.filter(c => !('reason' in documentOf(c))).map(c => c.id), DECLARED_SET_FILE_CASES);
 });
 
+// Requirements: ORES-28, ORES-32.
 vector('set-files minimal through resolveSet', () => assertSetFileCase('minimal'));
+// Requirements: ORES-28, ORES-33.
 vector('set-files nested-and-external through resolveSet', () => assertSetFileCase('nested-and-external'));
+// Requirements: ORES-28.
 vector('set-files external-empty-list through resolveSet', () => assertSetFileCase('external-empty-list'));
+// Requirements: ORES-28, ORES-30.
 vector('set-files schema-one-point-zero through resolveSet', () => assertSetFileCase('schema-one-point-zero'));
+// Requirements: ORES-28, ORES-30.
 vector('set-files schema-exponent through resolveSet', () => assertSetFileCase('schema-exponent'));
+// Requirements: ORES-28, ORES-33.
 vector('set-files external-without-dotdot through resolveSet', () => assertSetFileCase('external-without-dotdot'));
+// Requirements: ORES-28.
 vector('set-files bytes-not-checked through resolveSet', () => assertSetFileCase('bytes-not-checked'));
+// Requirements: ORES-28, ORES-36.
 vector('set-files listed-file-missing through resolveSet', () => assertSetFileCase('listed-file-missing'));
+// Requirements: ORES-28, ORES-34.
 vector('set-files listed-path-is-directory through resolveSet', () => assertSetFileCase('listed-path-is-directory'));
+// Requirements: ORES-28, ORES-36.
 vector('set-files listed-name-case through resolveSet', () => assertSetFileCase('listed-name-case'));
+// Requirements: ORES-28, ORES-34.
 vector('set-files component-not-directory through resolveSet', () => assertSetFileCase('component-not-directory'));
+// Requirements: ORES-28, ORES-34.
 vector('set-files listed-file-symlink through resolveSet', () => assertSetFileCase('listed-file-symlink'));
+// Requirements: ORES-28, ORES-34.
 vector('set-files component-symlink through resolveSet', () => assertSetFileCase('component-symlink'));
+// Requirements: ORES-28.
 vector('set-files external-through-linked-directory through resolveSet', () => assertSetFileCase('external-through-linked-directory'));
+// Requirements: ORES-28, ORES-34.
 vector('set-files set-file-symlink through resolveSet', () => assertSetFileCase('set-file-symlink'));
+// Requirements: ORES-28, ORES-34.
 vector('set-files root-symlink through resolveSet', () => assertSetFileCase('root-symlink'));
+// Requirements: ORES-28, ORES-29.
 vector('set-files json-invalid through resolveSet', () => assertSetFileCase('json-invalid'));
+// Requirements: ORES-28, ORES-29.
 vector('set-files json-array through resolveSet', () => assertSetFileCase('json-array'));
+// Requirements: ORES-28, ORES-29.
 vector('set-files json-trailing through resolveSet', () => assertSetFileCase('json-trailing'));
+// Requirements: ORES-28, ORES-29.
 vector('set-files json-lone-surrogate through resolveSet', () => assertSetFileCase('json-lone-surrogate'));
+// Requirements: ORES-28.
 vector('set-files json-depth-65 through resolveSet', () => assertSetFileCase('json-depth-65'));
+// Requirements: ORES-28.
 vector('set-files json-depth-64-reaches-key-check through resolveSet', () => assertSetFileCase('json-depth-64-reaches-key-check'));
+// Requirements: ORES-28, ORES-29.
 vector('set-files json-bom through resolveSet', () => assertSetFileCase('json-bom'));
+// Requirements: ORES-28, ORES-29.
 vector('set-files json-invalid-utf8 through resolveSet', () => assertSetFileCase('json-invalid-utf8'));
+// Requirements: ORES-28, ORES-30.
 vector('set-files schema-missing through resolveSet', () => assertSetFileCase('schema-missing'));
+// Requirements: ORES-28, ORES-30.
 vector('set-files schema-two through resolveSet', () => assertSetFileCase('schema-two'));
+// Requirements: ORES-28, ORES-30.
 vector('set-files schema-string through resolveSet', () => assertSetFileCase('schema-string'));
+// Requirements: ORES-28, ORES-30.
 vector('set-files schema-beyond-double through resolveSet', () => assertSetFileCase('schema-beyond-double'));
+// Requirements: ORES-28, ORES-30.
 vector('set-files schema-true through resolveSet', () => assertSetFileCase('schema-true'));
+// Requirements: ORES-28, ORES-30.
 vector('set-files key-unknown through resolveSet', () => assertSetFileCase('key-unknown'));
+// Requirements: ORES-28.
 vector('set-files key-twice through resolveSet', () => assertSetFileCase('key-twice'));
+// Requirements: ORES-28.
 vector('set-files documents-missing through resolveSet', () => assertSetFileCase('documents-missing'));
+// Requirements: ORES-28.
 vector('set-files documents-not-array through resolveSet', () => assertSetFileCase('documents-not-array'));
+// Requirements: ORES-28.
 vector('set-files documents-number through resolveSet', () => assertSetFileCase('documents-number'));
+// Requirements: ORES-28.
 vector('set-files external-null through resolveSet', () => assertSetFileCase('external-null'));
+// Requirements: ORES-28, ORES-31.
 vector('set-files documents-empty through resolveSet', () => assertSetFileCase('documents-empty'));
+// Requirements: ORES-28, ORES-33.
 vector('set-files external-dotdot-after-segment through resolveSet', () => assertSetFileCase('external-dotdot-after-segment'));
+// Requirements: ORES-28, ORES-32.
 vector('set-files device-name-inside-word through resolveSet', () => assertSetFileCase('device-name-inside-word'));
+// Requirements: ORES-28, ORES-35.
 vector('set-files duplicate-same-path through resolveSet', () => assertSetFileCase('duplicate-same-path'));
+// Requirements: ORES-28, ORES-35.
 vector('set-files duplicate-hard-link through resolveSet', () => assertSetFileCase('duplicate-hard-link'));
+// Requirements: ORES-28, ORES-35.
 vector('set-files duplicate-across-lists through resolveSet', () => assertSetFileCase('duplicate-across-lists'));
+// Requirements: ORES-28, ORES-32, ORES-35, ORES-36.
 vector('set-files errors-by-step-then-path through resolveSet', () => assertSetFileCase('errors-by-step-then-path'));
 
 // The cases that no document can reach through resolveSet are exactly these, each with its reason.
+// Requirements: ORES-28, ORES-32, ORES-33.
 vector('set-files cases that resolveSet does not reach', () => {
   assert.deepEqual(notApplied, [
     'set-file-wrong-name: its set file is not named dbspec-set.json, so no document discovers it',
