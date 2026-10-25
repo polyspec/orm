@@ -1,8 +1,8 @@
 #!/bin/sh
 # The pre-commit hook. Git runs it before each commit. The generated-file check refuses a staged path with a generated segment
-# (AGENTS.md "Generated files") that config/generated.json does not declare an exception, and names the path. On main the gates of
-# land run on the staged tree and refuse a finding that HEAD lacks (K404-1). When they pass, the hook records the pid of the git that
-# commits, which lets the reference-transaction hook pass this commit on main (K495). Written by `make hooks`; do not edit it. It
+# (AGENTS.md "Generated files") that config/generated.json does not declare an exception, and names the path. No gate runs on a
+# commit (K603). The hook records the pid of the git that commits, which lets the reference-transaction hook pass this commit on main
+# (K495). Written by `make hooks`; do not edit it. It
 # calls the make targets of the checks, which stay across the versions of kit.
 cd "$(git rev-parse --show-toplevel)" || exit 1
 make --no-print-directory staged-generated-hook || exit 1
