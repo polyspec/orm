@@ -11,6 +11,7 @@
  * library's Utils over this connection, and stats() the library's Stats of this one connection, in use while a transaction frame
  * is active.
  */
+#include "engine_native.h"
 #include "php.h"
 #include "ext/pdo/php_pdo_driver.h"
 #include "Zend/zend_exceptions.h"
@@ -2530,7 +2531,7 @@ static bool plan_of(zval *self, zval *r, zval *out)
         ok = mcall(&engine, "compile", &plan, 1, &shape);
         if (ok) {
             ZVAL_COPY(&mdl, rd(&engine, "model"));
-            ok = scall_ref("Polyspec\\Orm\\Assemble::index", &plan, 1, &mdl);
+            ok = assemble_index(&plan, &mdl);
             zval_ptr_dtor(&mdl);
             if (ok) {
                 ZVAL_COPY_VALUE(out, &plan);

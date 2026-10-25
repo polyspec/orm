@@ -1068,6 +1068,43 @@ final class Validator
 }
 
 /**
+ * Compiles the requests of one runtime model and one database: validation, planning, and request
+ * shape as the key of a size-limited plan cache.
+ */
+final class Engine
+{
+    private static array $engines = [];
+    private array $plans = [];
+    private readonly Validator $validator;
+    private readonly Planner $planner;
+    public readonly RuntimeModel $model;
+    private readonly int $cacheSize;
+
+    public function __construct(RuntimeModel $model, string $dialect, int $cacheSize) {}
+
+    /**
+     * The engine shared by the generated model of a manifest hash and by the dialect. The hash
+     * of a generated model that has not registered it gives SCHEMA_HASH_MISMATCH.
+     */
+    public static function for(string $manifestHash, string $dialect, int $cacheSize): Engine {}
+
+    /** The plan of a value-free request (docs/spec/protocol.md). */
+    public function plan(array $ir): array {}
+
+    /** Validates and plans a request without caching or indexing. */
+    public function compile(array $ir): array {}
+}
+
+final class Assemble
+{
+    private static int $nodes = 0;
+
+    public static function index(array &$plan, RuntimeModel $model): void {}
+
+    public static function cells(array $a, RuntimeModel $model): array {}
+}
+
+/**
  * The request planner (docs/spec/protocol.md), the Planner of the PHP library. The extension implements it in C (planner.c); its
  * statements, bind slots and errors are those of packages/php/src/Planner.php.
  */

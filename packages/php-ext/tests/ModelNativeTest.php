@@ -433,4 +433,93 @@ final class ModelNativeTest extends TestCase
         self::assertArrayHasKey('sub', $columns);
         self::assertArrayHasKey('task_points', $columns['sub']);
     }
+
+    // Engine (the plan cache) and Assemble are classes of the extension, and Assemble::index stamps
+    // the decode cells and indexes every assemble node in place as the PHP library does.
+    public function testEngineAndAssembleAreNative(): void
+    {
+        foreach ([\Polyspec\Orm\Engine::class, \Polyspec\Orm\Assemble::class] as $class) {
+            self::assertTrue((new \ReflectionClass($class))->isInternal(), "$class is a class of the extension");
+        }
+        $root = dirname(__DIR__, 3);
+        $model = \Polyspec\Orm\RuntimeModel::build(\Polyspec\Orm\RuntimeModel::parse([
+            'zone.dbs' => (string) file_get_contents("$root/contracts/fixtures/zone.dbs"),
+        ]));
+        \Polyspec\Orm\Registry::generated($model->manifestHash, $model->manifestText, $model->externalText);
+        $engine = \Polyspec\Orm\Engine::for($model->manifestHash, 'sqlite', 4);
+        self::assertSame(
+            $engine,
+            \Polyspec\Orm\Engine::for($model->manifestHash, 'sqlite', 4),
+            'the engine is shared by manifest hash and dialect',
+        );
+        $request = [
+            'ir_version' => 1,
+            'manifest_hash' => $model->manifestHash,
+            'kind' => 'one',
+            'entity' => 'zone_event',
+            'n_params' => 0,
+        ];
+        $compiled = $engine->compile($request);
+        self::assertSame(
+            'SELECT "a"."seq" AS "a__seq", "a"."start_dt" AS "a__start_dt", "a"."created_ts" AS '
+                . '"a__created_ts" FROM "zone_event" AS "a" LIMIT 1 OFFSET 0',
+            $compiled['steps'][0]['sql'],
+        );
+        self::assertArrayNotHasKey('idx', $compiled['steps'][0]['assemble']);
+        self::assertArrayNotHasKey('decode', $compiled['steps'][0]);
+        $indexed = $engine->plan($request);
+        self::assertSame(['seq' => 0, 'start_dt' => 1, 'created_ts' => 2], $indexed['steps'][0]['assemble']['idx']);
+        self::assertArrayHasKey('decode', $indexed['steps'][0]);
+        self::assertSame([], $indexed['steps'][0]['decode']);
+        $cached = $engine->plan($request);
+        self::assertSame($indexed, $cached);
+        self::assertCount(
+            1,
+            (new \ReflectionProperty(\Polyspec\Orm\Engine::class, 'plans'))->getValue($engine),
+            'planning caches by request shape',
+        );
+        $uncached = new \Polyspec\Orm\Engine($model, 'sqlite', -1);
+        $uncached->plan($request);
+        self::assertCount(
+            0,
+            (new \ReflectionProperty(\Polyspec\Orm\Engine::class, 'plans'))->getValue($uncached),
+            'a negative cache size evicts the first plan as the PHP engine does',
+        );
+        $plan = ['steps' => [
+            ['kind' => 'select'],
+            ['kind' => 'select', 'assemble' => [
+                'entity' => 'zone_event',
+                'columns' => [
+                    ['name' => 'seq', 'column' => 'seq', 'index' => 0],
+                    [
+                        'name' => 'start_dt', 'column' => 'start_dt', 'index' => 1,
+                        'styles' => ['hex', 'base64'], 'hidden' => true,
+                    ],
+                ],
+                'children' => [['kind' => 'join', 'assemble' => [
+                    'entity' => 'zone_event',
+                    'columns' => [['name' => 'start_dt', 'column' => 'start_dt', 'index' => 2, 'styles' => ['aes']]],
+                ]]],
+            ]],
+        ]];
+        $unindexed = $plan;
+        \Polyspec\Orm\Assemble::index($plan, $model);
+        self::assertArrayNotHasKey('decode', $unindexed['steps'][0]);
+        self::assertArrayNotHasKey('idx', $unindexed['steps'][1]['assemble']);
+        self::assertSame([], $plan['steps'][0]['decode']);
+        $node = $plan['steps'][1]['assemble'];
+        self::assertSame(['seq' => 0, 'start_dt' => 1], $node['idx']);
+        self::assertSame(['start_dt' => true], $node['hidden']);
+        self::assertSame(['hex'], $node['columns'][1]['host']);
+        self::assertSame(['base64'], $node['columns'][1]['codec']);
+        $child = $node['children'][0]['assemble'];
+        self::assertSame(['start_dt' => 2], $child['idx']);
+        self::assertSame([], $child['hidden']);
+        self::assertSame($node['node'] + 1, $child['node']);
+        self::assertSame(
+            [[1, ['hex'], ['base64'], false, null], [2, ['aes'], [], true, null]],
+            $plan['steps'][1]['decode'],
+        );
+        self::assertSame([[2, ['aes'], [], true, null]], \Polyspec\Orm\Assemble::cells($child, $model));
+    }
 }

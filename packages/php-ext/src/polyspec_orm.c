@@ -28,6 +28,7 @@
 #include "runtime_model.h"
 #include "chain_native.h"
 #include "registry_native.h"
+#include "engine_native.h"
 #include "aes_keyring.h"
 #include "aes_utils.h"
 #include "privilege_utils.h"
@@ -2733,6 +2734,7 @@ static PHP_MINIT_FUNCTION(polyspec_orm)
     zend_class_entry *registry_ce = register_class_Polyspec_Orm_Registry();
     zend_class_entry *schema_ce = register_class_Polyspec_Orm_Schema();
     polyspec_registry_schema_register(registry_ce, schema_ce);
+    polyspec_engine_register(register_class_Polyspec_Orm_Engine(), register_class_Polyspec_Orm_Assemble());
     zend_class_entry *model_metadata_ce = register_class_Polyspec_Orm_ModelMetadata();
     zend_class_entry *model_ce = register_class_Polyspec_Orm_Model(php_json_serializable_ce, model_metadata_ce);
     model_where_default(model_ce);
