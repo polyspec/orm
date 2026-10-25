@@ -392,8 +392,33 @@ mod tests {
     use super::*;
 
     #[test]
+    fn parses_an_optional_trailing_comma() {
+        let without_comma = syn::parse_str::<ApplyEntryPoint>("apply, Apply").expect("entrypoint without trailing comma");
+        let with_comma = syn::parse_str::<ApplyEntryPoint>("apply, Apply,").expect("entrypoint with trailing comma");
+        assert_eq!(without_comma.name.to_string(), "apply");
+        assert_eq!(without_comma.command.to_string(), "Apply");
+        assert_eq!(with_comma.name.to_string(), "apply");
+        assert_eq!(with_comma.command.to_string(), "Apply");
+        assert!(syn::parse_str::<ApplyEntryPoint>("apply, Apply,,").is_err(), "duplicate trailing commas are refused");
+    }
+
+    #[test]
     fn extracts_public_dbspec_apply_entrypoint_macro_invocations() {
         let source = r#"
+            macro_rules! apply_entrypoint {
+                ($(#[$doc:meta])* $name:ident, $command:ident) => {
+                    $(#[$doc])*
+                    pub async fn $name<C: ApplyConnection + ?Sized>(
+                        connection: &mut C,
+                        dialect: Dialect,
+                        plans: &[Plan],
+                        now: &ApplyClock<'_>,
+                        events: &mut ApplyEvents<'_>,
+                    ) -> Result<(), ApplyError> {
+                        run_command(connection, dialect, plans, now, events, Command::$command).await
+                    }
+                };
+            }
             apply_entrypoint!(
                 /// Apply plans.
                 apply,
