@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { CatalogConnection, CatalogRowSnapshot, connectCatalog } from '../dist/catalog.js';
+import { openDriver, parseDsn } from '../dist/driver.js';
 import { OrmError } from '../dist/runtime_error.js';
 
 const metadata = {
@@ -138,7 +139,7 @@ function postgresCatalogFixture() {
   return { catalog: new CatalogConnection('postgres', catalogFixturePool(session)), metadata, queries, stored };
 }
 
-async function withSqliteCatalog(prefix, ddl, exercise) {
+async function withSqliteCatalog(prefix, ddl, exercise, connect = connectCatalog) {
   const directory = await mkdtemp(join(tmpdir(), prefix));
   const path = join(directory, 'catalog.sqlite');
   const database = new DatabaseSync(path);
@@ -149,12 +150,45 @@ async function withSqliteCatalog(prefix, ddl, exercise) {
   }
   let catalog;
   try {
-    catalog = await connectCatalog(`sqlite://${path}`);
+    catalog = await connect(`sqlite://${path}`);
     await exercise(catalog);
   } finally {
     if (catalog !== undefined) await catalog.close();
     await rm(directory, { recursive: true, force: true });
   }
+}
+
+function sqliteCatalogWithCommitFailure(dsn, failure, commits, rollbackFailure, rollbacks) {
+  const driver = openDriver(dsn, parseDsn(dsn), { size: 1, idleSize: 1, lifetimeMs: 0 }, 256, 0, true);
+  const pool = {
+    name: 'sqlite',
+    execute: (...args) => driver.execute(...args),
+    stats: () => driver.stats(),
+    close: () => driver.close(),
+    async reserve() {
+      const session = await driver.reserve();
+      return new Proxy(session, {
+        get(target, property) {
+          if (property === 'control') {
+            return (sql, params, done) => {
+              if (sql === 'COMMIT') {
+                commits.push(sql);
+                throw failure;
+              }
+              if (sql === 'ROLLBACK' && commits.length > 0 && rollbackFailure !== undefined) {
+                rollbacks.push(sql);
+                throw rollbackFailure;
+              }
+              return session.control(sql, params, done);
+            };
+          }
+          const value = Reflect.get(target, property, target);
+          return typeof value === 'function' ? value.bind(target) : value;
+        },
+      });
+    },
+  };
+  return new CatalogConnection('sqlite', pool);
 }
 
 async function assertAmbiguousInsert(catalog, metadata, values) {
@@ -340,4 +374,75 @@ caseTest('inserts an omitted volatile expression-default SQLite key without reev
     assert.equal(row[2], null);
     assert.deepEqual((await catalog.readOnlyQuery('SELECT seq, n, label FROM generated_record', [])).rows, [row]);
   });
+});
+
+// Requirements: PRT-79. The SQLite connection executes catalog work normally; only its COMMIT response is faulted.
+caseTest('catalog/insert/indeterminate-commit-preserves-driver-cause', DATABASE, async () => {
+  const failure = Object.assign(new Error('commit response lost by test driver'), { code: 'ERR_SQLITE_ERROR', errcode: 1 });
+  const commits = [];
+  await withSqliteCatalog(
+    'orm-catalog-commit-failure-',
+    'CREATE TABLE generated_record (id INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL)',
+    async catalog => {
+      const table = { namespace: 'main', name: 'generated_record' };
+      const descriptor = await catalog.describeTable(table);
+      let result;
+      await assert.rejects(
+        (async () => { result = await catalog.insertRow(descriptor, [{ name: 'payload', value: 'value' }]); })(),
+        error => {
+          assert.ok(error instanceof OrmError);
+          assert.equal(error.code, 'ROW_COMMIT_INDETERMINATE');
+          assert.match(error.message, /commit outcome unknown; do not retry/);
+          assert.ok(error.cause instanceof OrmError);
+          assert.equal(error.cause.code, 'DRIVER');
+          assert.strictEqual(error.cause.cause, failure);
+          return true;
+        },
+      );
+      assert.equal(result, undefined, 'insertRow did not return a success result');
+      assert.deepEqual(commits, ['COMMIT'], 'only the COMMIT response was faulted');
+      assert.equal(
+        Number((await catalog.readOnlyQuery('SELECT COUNT(*) FROM generated_record', [])).rows[0][0]),
+        0,
+        'the next public read starts after SQLite cleanup ended the transaction',
+      );
+    },
+    dsn => sqliteCatalogWithCommitFailure(dsn, failure, commits),
+  );
+});
+
+caseTest('catalog/insert/indeterminate-commit-preserves-rollback-failure', DATABASE, async () => {
+  const failure = Object.assign(new Error('commit response lost by test driver'), { code: 'ERR_SQLITE_ERROR', errcode: 1 });
+  const rollbackFailure = Object.assign(new Error('rollback refused by test driver'), { code: 'ERR_SQLITE_ERROR', errcode: 1 });
+  const commits = [];
+  const rollbacks = [];
+  await withSqliteCatalog(
+    'orm-catalog-commit-rollback-failure-',
+    'CREATE TABLE generated_record (id INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL)',
+    async catalog => {
+      const table = { namespace: 'main', name: 'generated_record' };
+      const descriptor = await catalog.describeTable(table);
+      let result;
+      await assert.rejects(
+        (async () => { result = await catalog.insertRow(descriptor, [{ name: 'payload', value: 'value' }]); })(),
+        error => {
+          assert.ok(error instanceof OrmError);
+          assert.equal(error.code, 'ROW_COMMIT_INDETERMINATE');
+          assert.match(error.message, /commit outcome unknown; do not retry/);
+          assert.match(error.message, /rollback failed/);
+          assert.ok(error.cause instanceof OrmError);
+          assert.equal(error.cause.code, 'DRIVER');
+          assert.strictEqual(error.cause.cause, failure);
+          assert.ok(error.rollback instanceof OrmError);
+          assert.equal(error.rollback.code, 'DRIVER');
+          assert.strictEqual(error.rollback.cause, rollbackFailure);
+          return true;
+        },
+      );
+      assert.equal(result, undefined, 'insertRow did not return a success result');
+      assert.deepEqual(commits, ['COMMIT'], 'only the COMMIT response was faulted');
+      assert.deepEqual(rollbacks, ['ROLLBACK'], 'only one cleanup rollback was faulted after COMMIT');
+    },
+    dsn => sqliteCatalogWithCommitFailure(dsn, failure, commits, rollbackFailure, rollbacks),
+  );
 });

@@ -1177,8 +1177,19 @@ export class CatalogConnection {
       if (mapped.code === codes.DUPLICATE_KEY || mapped.code === codes.FOREIGN_KEY || mapped.code === codes.CONSTRAINT || mapped.code === codes.DEADLOCK) {
         throw await this.endSession(session, err(CODE_COMMIT_REJECTED, `native commit rejected: ${mapped.message}`, mapped));
       }
+      let message = `commit outcome unknown; do not retry: ${mapped.message}`;
+      let rollback: OrmError | undefined;
+      if (this.dialect === 'sqlite') {
+        // SQLite keeps its one connection when a session is released, so end any transaction left by the unknown COMMIT.
+        try {
+          await session.control('ROLLBACK');
+        } catch (rollbackError) {
+          rollback = driverError(this.dialect, rollbackError);
+          message += `; rollback failed: ${rollback.message}`;
+        }
+      }
       session.release(true);
-      throw err(CODE_COMMIT_UNKNOWN, `commit outcome unknown; do not retry: ${mapped.message}`, mapped);
+      throw new OrmError(CODE_COMMIT_UNKNOWN, message, mapped, rollback);
     }
     session.release(true);
     return value;
