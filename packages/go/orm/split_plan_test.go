@@ -12,10 +12,10 @@ import (
 // splitPlanAllocationLimit bounds what one split count of 70300 values may allocate in all (runtime TotalAlloc). The
 // count allocates about 87 MB: the request and its canonical form, the keys of the values and 138 part plans within
 // the SQLite bind limit. Planning the whole list first, a bind slot per padded value, and cloning that list into every
-// part took 363 MB (PRT-76, KSTD-7-3-3).
+// part took 363 MB (KSTD-7-3-3).
 const splitPlanAllocationLimit = 128 << 20
 
-// TestSplitRootInCountPlansNoStatementOverTheBindLimit checks (PRT-76) that a root IN list over the bind limit is split
+// TestSplitRootInCountPlansNoStatementOverTheBindLimit checks that a root IN list over the bind limit is split
 // before it is planned: the count of 70300 values on SQLite returns the matching rows and allocates less than
 // splitPlanAllocationLimit, so no plan holds a bind slot per value of the list.
 func TestSplitRootInCountPlansNoStatementOverTheBindLimit(t *testing.T) {

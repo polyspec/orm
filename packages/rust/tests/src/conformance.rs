@@ -391,7 +391,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
     let author = move || Author::new().connect(db);
     let cols = ["seq", "name", "is_close", "is_display", "read_count"];
 
-    // DSL-87 and DSL-111: a user with its authors loaded as has-many rows. Unlocked, delete(true) deletes the authors and the user;
+    // A user with its authors loaded as has-many rows. Unlocked, delete(true) deletes the authors and the user;
     // locked, the authors stay, so the user's delete fails on the foreign key, and the normalized code is recorded.
     run!("delete_lock", async {
         let mut out: Vec<Value> = Vec::new();

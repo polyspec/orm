@@ -14,6 +14,7 @@ const sets = roundTripSets();
 assert(sets.length > 0, 'round-trip sets');
 const queries = { mysql: new Map(), postgres: new Map(), sqlite: new Map() };
 
+// Requirements: DIA-133.
 for (const s of sets) {
   for (const dialect of DIALECTS) {
     vector(`${dialect}.introspect.${s.id}`, async () => {

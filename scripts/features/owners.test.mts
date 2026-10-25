@@ -33,6 +33,7 @@ caseTest('owner-check asks for the complex-query fixture databases only for a se
   assert.equal(readsComplexQueryFixtures([], ['complex-query-typescript-check'], targets), false);
 });
 
+// Requirements: FCV-7.
 caseTest('a changed test selects only the commands that run it', 5000, async () => {
   assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/go/orm/mysql_tls_test.go'])), ['dsn_connection/dsn-go', 'dsn_connection/dsn-mysql-tls-go']);
   assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/go/orm/external_documents_test.go'])), ['schema_install/install-register-go']);
@@ -85,6 +86,7 @@ caseTest('a whole-suite command is split by package', 5000, async () => {
   assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/php/tests/DbspecRenderTest.php'])), ['schema_definition/schema-php']);
 });
 
+// Requirements: FCV-7.
 caseTest('a shared helper selects its own check and no feature', 5000, async () => {
   const helped: [string, string][] = [
     ['packages/php/tests/coverage_cases.php', 'coverage-runner-php'],

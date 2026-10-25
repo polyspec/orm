@@ -67,7 +67,7 @@ func catalogQuote(name, driver string) string {
 	return `"` + name + `"`
 }
 
-// Requirements: SCH-3, SCH-5, SCH-6a, INT-103.
+// Requirements: SCH-3, SCH-5, SCH-6a, INT-103, INT-113, INT-114.
 func TestCoverageCatalogRead(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	ctx := context.Background()

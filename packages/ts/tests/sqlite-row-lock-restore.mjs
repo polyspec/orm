@@ -19,6 +19,7 @@ function makeFrame({ primary, setZero, restore }) {
   };
 }
 
+// Requirements: INT-49.
 caseTest('SQLite NOWAIT busy_timeout restore outcomes preserve primary and cleanup errors', COMPUTE, async () => {
   const db = new Db({ name: 'sqlite' }, 'UTC', {});
   const primaryCause = { errcode: 5, message: 'database is locked' };

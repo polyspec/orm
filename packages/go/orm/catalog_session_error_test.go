@@ -35,6 +35,7 @@ func catalogSessionWithOpenTransaction(t *testing.T) *catalogSession {
 	return &catalogSession{ctx: ctx, conn: conn, dialect: "sqlite"}
 }
 
+// Requirements: INT-72.
 func TestCatalogSessionEndPreservesPrimaryAndRollbackCauses(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	session := catalogSessionWithOpenTransaction(t)
@@ -57,6 +58,7 @@ func TestCatalogSessionEndPreservesPrimaryAndRollbackCauses(t *testing.T) {
 	}
 }
 
+// Requirements: INT-72.
 func TestCatalogSessionEndReportsRollbackCauseWithoutPrimary(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	session := catalogSessionWithOpenTransaction(t)

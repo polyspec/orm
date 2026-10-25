@@ -182,6 +182,7 @@ final class OrmExceptionNativeTest extends TestCase
         }
     }
 
+    // Requirements: PRT-63.
     public function testNativeOrmParsesMarkdownDsnAndCreatesFunctionValues(): void
     {
         Assert::assertSame(
@@ -391,6 +392,7 @@ final class OrmExceptionNativeTest extends TestCase
         Assert::assertSame('polyspec_orm', $class->getExtensionName());
     }
 
+    // Requirements: INT-74, INT-130.
     public function testAesKeyringValidatesVersionsAndRotatesEveryNonNullColumn(): void
     {
         $ring = new AesKeyring([2 => 'new secret', 1 => 'old secret'], 2);

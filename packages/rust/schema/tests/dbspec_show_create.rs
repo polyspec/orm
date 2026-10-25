@@ -104,6 +104,7 @@ fn run_case(catalog: &Value, case: &Value) -> Result<(), String> {
     Ok(())
 }
 
+// Requirements: DIA-84.
 fn show_create_vectors() -> Vec<Trial> {
     let path = polyspec_orm_testcase::manifest_dir().join("../../../tests/dbspec/show-create.json");
     let vectors: Value = serde_json::from_str(&std::fs::read_to_string(&path).or_panic(|e| format!("{}: {e}", path.display()))).expect("show-create.json");

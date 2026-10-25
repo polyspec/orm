@@ -188,6 +188,7 @@ caseTest('every case of the PHP catalog owner selects a method of its test class
 
 // The node and python runners select a case by its ID, and the checker refuses a symbols map on them, so a command that
 // declares one never executes.
+// Requirements: FCV-3.
 caseTest('only the go, cargo and php runners declare a symbols map', 1000, () => {
   const root = new URL('../..', import.meta.url).pathname;
   const declared: string[] = [];
@@ -314,6 +315,7 @@ caseTest('one feature can run without declaring unrelated coverage complete', 10
   assert.throws(() => selectFeatures(manifest, 'missing'), /unknown feature missing/);
 });
 
+// Requirements: FCV-6.
 caseTest('selecting one feature requires only the coverage specs of that feature', 1000, async () => {
   // statement_events runs twice in three databases for each owner client. There is no spec for other features.
   const manifest = readFeatures(new URL('../..', import.meta.url).pathname);
@@ -405,6 +407,7 @@ caseTest('the coverage item CLI selects one declared database', PROCESS, () => {
   assert.ok(items.every(item => item.database === 'sqlite' && item.dsn === 'sqlite:///selected.sqlite'));
 });
 
+// Requirements: FCV-6.
 caseTest('an unknown feature name fails with the list of valid names', 1000, () => {
   const manifest = { features: [{ id: 'one' }, { id: 'two' }] };
   assert.throws(() => selectFeatures(manifest, 'missing'),
@@ -514,6 +517,7 @@ async function negative(manifest: Manifest, root: string, timeoutMs: number): Pr
   return { errors: value.toSorted(), failures: tapFailures(lines) };
 }
 
+// Requirements: FCV-1.
 caseTest('owner and dependent cases execute in every client language and three databases', 1000, () => {
   assert.deepEqual(checkCoverage(contract(), complete()), []);
   assert.deepEqual(checkCoverage(contract('independent'), complete('independent')), []);
@@ -538,6 +542,7 @@ caseTest('an implemented feature must claim every client language in its parity 
   }), /sample: implemented feature lacks a parity unit in a client language/);
 });
 
+// Requirements: FCV-5.
 caseTest('missing owner, dependent, database, case, and repeat are RED', 1000, () => {
   // @ts-expect-error: a missing owner is the invalid contract under test.
   assert.match(mutation((m) => { m.features[0].coverage.owners.rust = undefined; }), /sample\/owner\/rust: missing owning client part/);
@@ -558,6 +563,7 @@ caseTest('missing owner, dependent, database, case, and repeat are RED', 1000, (
   assert.match(mutation((_, r) => { defined(r['sample/owner/typescript/postgres']).pop(); }), /exactly two executions required/);
 });
 
+// Requirements: FCV-5.
 caseTest('identity, result, state, and unknown report mutations are RED', 1000, () => {
   assert.match(mutation((m) => { m.features[0].parity = parityOf(languages.filter(language => language !== 'rust')); }), /lacks a parity unit in a client language/);
   assert.match(mutation((_, r) => { defined(defined(r['sample/owner/go/mysql'])[0]).part = 'packages/php'; }), /report identity differs/);
@@ -699,6 +705,7 @@ function phpArray(list: string[]): string {
 
 const PASSED = ["testStarted name='test_first'", "testFinished name='test_first' duration='0'"];
 
+// Requirements: FCV-2.
 caseTest('PHP coverage cases use their explicitly declared method symbols', 30000, async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-php-symbols-')));
   const file = 'packages/php/tests/OwnerTest.php';
@@ -830,6 +837,7 @@ caseTest('invented JSON success from an arbitrary command is not execution evide
     /invalid native test command/);
 });
 
+// Requirements: FCV-4.
 caseTest('checker reads physical database state around each native test run', 120000, async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-db-')));
   const owner = 'packages/ts/tests/owner.mjs';
@@ -882,6 +890,7 @@ caseTest('checker reads physical database state around each native test run', 12
   }
 });
 
+// Requirements: FCV-3.
 caseTest('Go, PHP, and Rust native cases execute through their owning files', 120000, async () => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'orm-feature-native-')));
   const cases: { language: string; part: string; file: string; runner: string; symbol?: string; id?: string }[] = [

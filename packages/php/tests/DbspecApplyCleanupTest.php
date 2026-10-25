@@ -126,6 +126,7 @@ final class DbspecApplyCleanupTest extends TestCase
         Assert::assertSame([], $events, 'recover leaves an already completed chain alone');
     }
 
+    // Requirements: PLN-98.
     // apply/cleanup-errors/begin-restore
     public function testCleanupErrorsBeginRestore(): void
     {

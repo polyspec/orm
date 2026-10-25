@@ -45,6 +45,7 @@ type showCreateCase struct {
 
 // TestMySQLShownCheckVectors checks that mysqlShownCheck reads every case of tests/dbspec/show-create.json
 // as the expected body in CHECK_CLAUSE form (T62-4-8).
+// Requirements: DIA-84.
 func TestMySQLShownCheckVectors(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	v := loadShowCreate(t)

@@ -7,7 +7,7 @@ if (!['mysql', 'postgres', 'sqlite'].includes(driver) || !dsn) {
   throw new Error('ORM_GROUP_DATABASE and ORM_GROUP_DSN are required');
 }
 // The case reports its PASS or FAIL line through caseTest, with its deadline (KSTD-10-4).
-caseTest(`group_rows_${driver}`, DATABASE, async () => {
+caseTest('group_rows_database', DATABASE, async () => {
   const db = await connect(dsn, { aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index' });
   try {
     if (db.driver !== driver) throw new Error('DSN selected the wrong database');

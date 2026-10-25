@@ -15,6 +15,7 @@ use RuntimeException;
 
 final class SqliteRowLockRestoreTest extends TestCase
 {
+    // Requirements: INT-49.
     public function testProductionCallerPreservesPrimaryAndRestorationOutcomes(): void
     {
         $restore = new RuntimeException('restore rejected');

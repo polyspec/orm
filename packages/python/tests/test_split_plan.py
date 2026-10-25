@@ -1,4 +1,4 @@
-# A root IN list over the bind limit is split before it is planned (PRT-76, KSTD-7-3-3): the count of 70300 values on
+# A root IN list over the bind limit is split before it is planned (KSTD-7-3-3): the count of 70300 values on
 # SQLite plans its parts within the bind limit and never the whole list, a bind slot per padded value.
 import os
 import tempfile

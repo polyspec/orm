@@ -83,6 +83,7 @@ class ModelJsonTextTest(unittest.TestCase):
         self.assertEqual(text, ROW_TEXT)
         self.assertEqual(list(json.loads(text)), list(row.to_array()))
 
+    # Requirements: COD-16.
     def test_model_output_preserves_ordered_json_number_text(self):
         stored = '{"z":9007199254740993,"b":1.50,"a":1e2}'
         row = self.models.Author().set_json_setting(

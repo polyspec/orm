@@ -22,6 +22,7 @@ final class ValidatorNativeTest extends TestCase
         return EngineTest::validateCases();
     }
 
+    // Requirements: INT-24, PRT-18.
     /** @param array<string, mixed> $case */
     #[DataProvider('validateCases')]
     public function testValidate(array $case): void

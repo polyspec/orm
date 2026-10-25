@@ -85,6 +85,7 @@ trait CatalogConnectionCoverageCases
         }
     }
 
+    // Requirements: DBS-113.
     public function testCatalogRowMutation(): void
     {
         $account = $this->quote('composite_account');

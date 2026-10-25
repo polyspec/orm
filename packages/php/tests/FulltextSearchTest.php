@@ -147,6 +147,7 @@ final class FulltextSearchTest extends TestCase
         }
     }
 
+    // Requirements: DSL-32, DSL-33. The two modes render the documented full-text predicates for each dialect.
     public function testFulltextSearch(): void
     {
         $cases = [

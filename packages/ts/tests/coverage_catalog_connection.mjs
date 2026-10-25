@@ -52,6 +52,7 @@ async function readCase(item) {
   }
 }
 
+// Requirements: DBS-113.
 async function mutationCase(item) {
   const { driver, catalog } = await connect(item);
   try {

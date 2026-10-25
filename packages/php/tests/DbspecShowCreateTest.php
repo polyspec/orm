@@ -30,6 +30,7 @@ final class DbspecShowCreateTest extends TestCase
         }
     }
 
+    // Requirements: DIA-84.
     #[DataProvider('showCreateCases')]
     public function testShowCreate(array $case): void
     {

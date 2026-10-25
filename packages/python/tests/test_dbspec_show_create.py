@@ -16,6 +16,7 @@ DATA = json.loads(
 )
 
 
+# Requirements: DIA-84.
 def check_case(test: unittest.TestCase, case: dict) -> None:
     checks = _create_checks("\n".join(case["create"]) + "\n")
     got = checks.get(case["name"])

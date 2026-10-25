@@ -32,6 +32,7 @@ class Frame:
 
 
 class SqliteRowLockRestoreTest(unittest.TestCase):
+    # Requirements: INT-49.
     def test_production_row_lock_preserves_primary_and_restore_outcomes(self):
         db = Db.__new__(Db)
         db.driver = "sqlite"
@@ -91,6 +92,7 @@ class SqliteRowLockRestoreTest(unittest.TestCase):
             ["PRAGMA busy_timeout", "PRAGMA busy_timeout=0", "PRAGMA busy_timeout=375"],
         )
 
+    # Requirements: INT-49.
     def test_production_row_lock_restores_after_base_exception(self):
         db = Db.__new__(Db)
         db.driver = "sqlite"

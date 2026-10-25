@@ -13,6 +13,7 @@ const TIMEOUT = 60000;
 const data = JSON.parse(readFileSync(new URL('../../../tests/dbspec/show-create.json', import.meta.url), 'utf8'));
 
 for (const c of data.cases) {
+  // Requirements: DIA-84.
   caseTest(c.id, TIMEOUT, () => {
     const checks = createChecks(c.create.join('\n') + '\n');
     const got = checks.get(c.name);

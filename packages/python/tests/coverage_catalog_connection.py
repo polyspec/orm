@@ -129,6 +129,7 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
             )
         self.test_grid_cells()
 
+    # Requirements: DBS-113.
     def test_row_mutation(self):
         driver = self.driver
         account = quote("composite_account", driver)

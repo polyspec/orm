@@ -35,6 +35,7 @@ assert.equal(postgres.fulltext(cols, value, false), `${doc} @@ plainto_tsquery('
 assert.equal(postgres.fulltext(cols, value, true), `${doc} @@ websearch_to_tsquery('simple', $[])`);
 assert.equal(sqlite.fulltext(cols, value, true), undefined);
 
+// Requirements: DSL-32, DSL-33. Generated chains preserve both full-text IR operations and their dialect modes.
 const author = new Author();
 const method = author.fulltextBooleanNameWithDescription;
 assert.equal(typeof method, 'function', 'the documented full-text boolean method resolves on a generated model');

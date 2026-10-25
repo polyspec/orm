@@ -101,6 +101,7 @@ func sqliteLockRestoreDB(t *testing.T, plan *sqliteLockRestorePlan) (*DB, *txCon
 	return db, &txConn{db: db, conn: conn}
 }
 
+// Requirements: INT-49.
 func TestAcquireSQLiteRowLockRestorationOutcomes(t *testing.T) {
 	primaryCause := errors.New("database is locked")
 	restoreCause := errors.New("restore rejected")
@@ -153,6 +154,7 @@ func TestAcquireSQLiteRowLockRestorationOutcomes(t *testing.T) {
 	}
 }
 
+// Requirements: INT-49.
 func TestAcquireSQLiteRowLockRestoresAfterNowaitSetupFailure(t *testing.T) {
 	busyCause := errors.New("SQLite busy while setting timeout")
 	setFailure := &ir.Error{Code: CodeCanceled, Msg: "setting timeout failed", Cause: busyCause}
