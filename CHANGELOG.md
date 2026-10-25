@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- KSTD-5-89-9: Static `var/tools/bin/node scripts/features/check.mts` reports 21 feature contracts and 0 errors on the completed inventory; source `9b5a` resolves the missing test files. The DSL-76 shared case also passed twice on all six clients across MySQL, PostgreSQL and SQLite (`058143`).
+
 - KSTD-5-89-10: Implementation-internal tests are declared in each implementation's `internal` list and excluded from shared feature ownership. The languages owner unit passed 13 cases; its stale Go MySQL-only fixture expectation was corrected to match the existing DIA-20/21 bindings.
 
 - KSTD-2-11-16-1: PHP library and native extension cancellation now interrupts active statements, rolls back, and preserves root-handle reuse on SQLite, PostgreSQL and MySQL. The library owner passed 7 tests / 61 assertions and the extension owner passed 4 / 44. Raw logs and hashes are recorded in the checklist.

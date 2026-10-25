@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 9c81902c1774613f3804585ef8a552b4e300365ad601f63c3334fccae3134c0d -->
+<!-- source-sha256: a2b80065c6d6445078c66188cb9254f387efcfaac224bee657b2c8eefd95ccdc -->
 # 변경 이력
 
 ## Unreleased
+
+- KSTD-5-89-9: 완성된 inventory에서 static `var/tools/bin/node scripts/features/check.mts`는 21 feature contracts, error 0을 보고한다. source `9b5a`가 누락 test 파일을 해결했고 DSL-76 shared case는 MySQL, PostgreSQL, SQLite에서 여섯 client가 database마다 두 번 통과했다 (`058143`).
 
 - KSTD-5-89-10: 구현 내부 test는 각 구현의 `internal` 목록에 선언되고 shared feature 소유권에서 제외된다. languages owner unit은 13개 case를 통과했으며, 기존 DIA-20/21 binding과 맞지 않던 Go MySQL-only fixture 기대값도 바로잡았다.
 
