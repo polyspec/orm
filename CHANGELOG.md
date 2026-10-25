@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- `make lint-php` passes: the PHP code meets the pinned PHPCS layout, class and method-name rules, and PHPStan checks for both the library and extension (KSTD-5-89-3).
 - PHPUnit test method names conform to camelCase; PHP parity and feature bindings point to each renamed method while shared case IDs remain unchanged (KSTD-5-89-3-3).
 - The 16 streamWrapper fixture methods of the PHP tests keep the names that PHP's streamWrapper protocol requires, each with the reasoned phpcs:ignore of CamelCapsMethodName that suppression-check accepts, so `make lint-php` passes (KSTD-5-89-3-4).
 - Every PHP test file declares one class in a namespace and causes no side effect: each helper class of the PHP and extension tests has a file of its own, and the files a test required at its top are required once by the bootstrap of its package (KSTD-5-89-3-2).
