@@ -58,7 +58,8 @@
         "coverage-dsn-connection",
         "generated-fields-require-selection-or-assignment",
         "generated-nonnull-styled-setter-rejects-sql-null",
-        "mysql-session"
+        "mysql-session",
+        "php-python-session-initialization"
       ],
       "fixtures": [
         "packages/go/orm/test_helpers_test.go",

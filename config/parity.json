@@ -51,6 +51,58 @@
       },
       "internal": [
         {
+          "glob": "examples/dsn_test.go",
+          "reason": "example: tests that the standalone examples refuse to start without their benchmark DSN; the preflight belongs to the example commands, not to the ORM client contract"
+        },
+        {
+          "glob": "examples/outputs_test.go",
+          "reason": "example: compares the output of the runnable example programs against their seeded database; this is the repository example integration contract, not a client-library behavior"
+        },
+        {
+          "glob": "packages/go/bench/client_test.go",
+          "reason": "implementation: contains only client benchmark functions for measuring one Go workload, not a shared ORM behavior case"
+        },
+        {
+          "glob": "packages/go/bench/dsn_test.go",
+          "reason": "implementation: tests the private Go benchmark harness requirement for ORM_BENCH_MYSQL_DSN and its own DSN helper"
+        },
+        {
+          "glob": "packages/go/bench/hot_path_gate_test.go",
+          "reason": "implementation: tests only Go-specific hot-path threshold and load measurement mechanics; the six-client database behavior is covered by performance_gate owner cases"
+        },
+        {
+          "glob": "packages/go/bench/native_test.go",
+          "reason": "implementation: contains native-driver benchmark workloads and raw scans used as a local measurement baseline, not a client contract case"
+        },
+        {
+          "glob": "packages/go/bench/statements_test.go",
+          "reason": "implementation: checks the SQL and rows of the Go performance measurement harness against its raw native baseline, not shared client behavior"
+        },
+        {
+          "glob": "packages/go/complexquery/complex_query_test.go",
+          "reason": "implementation: its standalone seed-and-database wrapper calls the same fixture and assertComplexSearch helper as the six-client complex-query-product-search owner case, so it adds no distinct shared behavior"
+        },
+        {
+          "glob": "packages/go/engine/dbspec/harness_fixture_test.go",
+          "reason": "harness: creates intentionally invalid dbspec vectors for the Go harness's child-process failure test; these vectors are not accepted ORM inputs or client behavior"
+        },
+        {
+          "glob": "packages/go/engine/dbspec/harness_test.go",
+          "reason": "harness: tests the Go dbspec case runner's failure-only output protocol through a deliberately failing child fixture; it does not exercise dbspec client behavior"
+        },
+        {
+          "glob": "packages/go/engine/dbspec/names_test.go",
+          "reason": "harness: checks flat Go subtest names so the test runner can select exact case IDs; it does not exercise dbspec client behavior"
+        },
+        {
+          "glob": "packages/go/engine/dbspec/stress_test.go",
+          "reason": "bench-only parser/emitter performance measurement with warning-only ratio; canonical emission and round-trip behavior is covered by shared dbspec feature units"
+        },
+        {
+          "glob": "packages/go/engine/dbspec/vector_loaders_test.go",
+          "reason": "tests the Go dbspec test-vector decoder and diagnostic paths for malformed harness input, not the client dbspec contract"
+        },
+        {
           "glob": "packages/go/engine/dialect/sqlite_test.go",
           "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
@@ -83,6 +135,10 @@
           "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
         {
+          "glob": "packages/go/internal/conformance/main_test.go",
+          "reason": "tests private helpers of the Go conformance result runner and vector selector; the result harness is not the ORM client behavior"
+        },
+        {
           "glob": "packages/go/internal/dialects/ddl_physical_test.go",
           "reason": "external: an internal package test of the go module that runs against a database or driver of an external service, not a helper the contract names (K313)"
         },
@@ -91,12 +147,20 @@
           "reason": "external: an internal package test of the go module that runs against a database or driver of an external service, not a helper the contract names (K313)"
         },
         {
+          "glob": "packages/go/internal/dialects/probe_test.go",
+          "reason": "harness: tests the Go-only dialect probe registry, documentation citations and repository parity declarations; it does not exercise an ORM client contract"
+        },
+        {
           "glob": "packages/go/internal/dialects/schema_documents_physical_test.go",
           "reason": "fixture: an internal package test of the go module that reads the fixtures of the contract data, not a helper the contract names (K313)"
         },
         {
           "glob": "packages/go/internal/dialects/sqlite_filename_physical_test.go",
           "reason": "external: an internal package test of the go module that runs against a database or driver of an external service, not a helper the contract names (K313)"
+        },
+        {
+          "glob": "packages/go/internal/testassert/read_test.go",
+          "reason": "helper: tests the private typed-value reader used by Go test assertions; no public client behavior is invoked"
         },
         {
           "glob": "packages/go/model/assignment_test.go",
@@ -147,6 +211,10 @@
           "reason": "fixture: an internal package test of the go module that reads the fixtures of the contract data, not a helper the contract names (K313)"
         },
         {
+          "glob": "packages/go/orm/split_plan_test.go",
+          "reason": "test: an internal package test of the go module that measures what a split read allocates, not a behaviour of the contract (K313)"
+        },
+        {
           "glob": "packages/go/orm/sqlite/sqlite_test.go",
           "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
@@ -167,28 +235,12 @@
           "reason": "external: an internal package test of the go module that runs against a database or driver of an external service, not a helper the contract names (K313)"
         },
         {
+          "glob": "packages/go/orm/values_test.go",
+          "reason": "implementation: calls the private Go Func.irFunc encoder directly; public value and column function behavior is exercised through planner cases"
+        },
+        {
           "glob": "packages/go/orm/write_set_test.go",
           "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
-        },
-        {
-          "glob": "packages/go/orm/split_plan_test.go",
-          "reason": "test: an internal package test of the go module that measures what a split read allocates, not a behaviour of the contract (K313)"
-        },
-        {
-          "glob": "examples/dsn_test.go",
-          "reason": "example: tests that the standalone examples refuse to start without their benchmark DSN; the preflight belongs to the example commands, not to the ORM client contract"
-        },
-        {
-          "glob": "examples/outputs_test.go",
-          "reason": "example: compares the output of the runnable example programs against their seeded database; this is the repository example integration contract, not a client-library behavior"
-        },
-        {
-          "glob": "packages/go/engine/dbspec/harness_fixture_test.go",
-          "reason": "harness: creates intentionally invalid dbspec vectors for the Go harness's child-process failure test; these vectors are not accepted ORM inputs or client behavior"
-        },
-        {
-          "glob": "packages/go/internal/testassert/read_test.go",
-          "reason": "helper: tests the private typed-value reader used by Go test assertions; no public client behavior is invoked"
         },
         {
           "glob": "packages/go/procevent/procevent_test.go",
@@ -205,50 +257,6 @@
         {
           "glob": "packages/go/testcase/testcase_test.go",
           "reason": "harness: tests testcase output formatting and runner/group/deadline primitives; its subject is the Go test harness rather than an ORM client behavior"
-        },
-        {
-          "glob": "packages/go/bench/client_test.go",
-          "reason": "implementation: contains only client benchmark functions for measuring one Go workload, not a shared ORM behavior case"
-        },
-        {
-          "glob": "packages/go/bench/dsn_test.go",
-          "reason": "implementation: tests the private Go benchmark harness requirement for ORM_BENCH_MYSQL_DSN and its own DSN helper"
-        },
-        {
-          "glob": "packages/go/bench/hot_path_gate_test.go",
-          "reason": "implementation: tests only Go-specific hot-path threshold and load measurement mechanics; the six-client database behavior is covered by performance_gate owner cases"
-        },
-        {
-          "glob": "packages/go/bench/native_test.go",
-          "reason": "implementation: contains native-driver benchmark workloads and raw scans used as a local measurement baseline, not a client contract case"
-        },
-        {
-          "glob": "packages/go/bench/statements_test.go",
-          "reason": "implementation: checks the SQL and rows of the Go performance measurement harness against its raw native baseline, not shared client behavior"
-        },
-        {
-          "glob": "packages/go/engine/dbspec/harness_test.go",
-          "reason": "harness: tests the Go dbspec case runner's failure-only output protocol through a deliberately failing child fixture; it does not exercise dbspec client behavior"
-        },
-        {
-          "glob": "packages/go/engine/dbspec/names_test.go",
-          "reason": "harness: checks flat Go subtest names so the test runner can select exact case IDs; it does not exercise dbspec client behavior"
-        },
-        {
-          "glob": "packages/go/complexquery/complex_query_test.go",
-          "reason": "implementation: its standalone seed-and-database wrapper calls the same fixture and assertComplexSearch helper as the six-client complex-query-product-search owner case, so it adds no distinct shared behavior"
-        },
-        {
-          "glob": "packages/go/engine/dbspec/stress_test.go",
-          "reason": "bench-only parser/emitter performance measurement with warning-only ratio; canonical emission and round-trip behavior is covered by shared dbspec feature units"
-        },
-        {
-          "glob": "packages/go/engine/dbspec/vector_loaders_test.go",
-          "reason": "tests the Go dbspec test-vector decoder and diagnostic paths for malformed harness input, not the client dbspec contract"
-        },
-        {
-          "glob": "packages/go/internal/conformance/main_test.go",
-          "reason": "tests private helpers of the Go conformance result runner and vector selector; the result harness is not the ORM client behavior"
         }
       ]
     },
@@ -263,71 +271,93 @@
         "packages/php/tests/Coverage*Test.php"
       ],
       "support": [
+        "packages/php/tests/CallbackFailed.php",
+        "packages/php/tests/CannedCatalogPdo.php",
+        "packages/php/tests/CatalogConnectionCoverageCases.php",
+        "packages/php/tests/CodecYamlProbe.php",
+        "packages/php/tests/CollectionIdentityCases.php",
+        "packages/php/tests/CollectionWeakTypedKeyCases.php",
+        "packages/php/tests/ColumnFunctionMetadataAssertions.php",
+        "packages/php/tests/ComplexQueryDbCase.php",
+        "packages/php/tests/CountingPdo.php",
+        "packages/php/tests/CoverageCompositeKeysCase.php",
+        "packages/php/tests/CoverageModelQueriesCase.php",
+        "packages/php/tests/CoverageModelWritesCase.php",
+        "packages/php/tests/Cpx5DuplicateRelationCases.php",
+        "packages/php/tests/DatabaseTestAssertions.php",
+        "packages/php/tests/DbspecIntrospectQueryCountCases.php",
+        "packages/php/tests/DbspecSqliteLockCases.php",
+        "packages/php/tests/DbspecStressTestSupport.php",
+        "packages/php/tests/DbspecTimedCases.php",
+        "packages/php/tests/FailingPdo.php",
+        "packages/php/tests/FailingSqliteLockPdo.php",
+        "packages/php/tests/FailingStatement.php",
+        "packages/php/tests/FakeSqliteLockStatement.php",
+        "packages/php/tests/GroupRowsCases.php",
+        "packages/php/tests/GroupRowsModelFixture.php",
+        "packages/php/tests/ListenNotifyCases.php",
+        "packages/php/tests/ModelTestFailingPdo.php",
+        "packages/php/tests/ModelTypesWeakCallerCases.php",
+        "packages/php/tests/MysqlTlsCases.php",
+        "packages/php/tests/NativeByteCellFixture.php",
+        "packages/php/tests/OrmGenScanFailureCase.php",
+        "packages/php/tests/OrmGenTestSupport.php",
+        "packages/php/tests/Served.php",
+        "packages/php/tests/SqliteConcurrencyWriter.php",
+        "packages/php/tests/SqliteLiteralRowsPdo.php",
+        "packages/php/tests/SqliteRowLockPdo.php",
+        "packages/php/tests/SqliteRowLockStatement.php",
+        "packages/php/tests/StatementCountingPdo.php",
+        "packages/php/tests/StatementEventLog.php",
+        "packages/php/tests/StatementEventsCoverageCases.php",
+        "packages/php/tests/Stop.php",
+        "packages/php/tests/TransactionCloseDuringFailure.php",
+        "packages/php/tests/TransactionFailureCases.php",
+        "packages/php/tests/TransactionTrackingPdo.php",
+        "packages/php/tests/UninitializedRecordingPdo.php",
+        "packages/php/tests/WarningStreamProtocol.php",
+        "packages/php/tests/WasInsertedCases.php",
         "packages/php/tests/audit_case.php",
         "packages/php/tests/autoload.php",
         "packages/php/tests/bench.php",
         "packages/php/tests/bootstrap.php",
         "packages/php/tests/case_clock.php",
         "packages/php/tests/case_database.php",
+        "packages/php/tests/codec-yaml-probe.php",
+        "packages/php/tests/collection-weak-caller.php",
         "packages/php/tests/coverage_cases.php",
+        "packages/php/tests/dbspec-php-interface-program.php",
         "packages/php/tests/dbspec_analysis_cases.php",
+        "packages/php/tests/dbspec_behaviour.php",
         "packages/php/tests/dbspec_cases.php",
+        "packages/php/tests/dbspec_limit_cases.php",
+        "packages/php/tests/dbspec_plan_cases.php",
         "packages/php/tests/dbspec_set_cases.php",
         "packages/php/tests/dbspec_set_parse_cases.php",
         "packages/php/tests/dbspec_sets_cases.php",
         "packages/php/tests/dbspec_syntax_vectors.php",
-        "packages/php/tests/deadlock_child.php",
-        "packages/php/tests/markdown_test_server.php",
-        "packages/php/tests/perf_extensions.php",
-        "packages/php/tests/request_hook_cases.php",
-        "packages/php/tests/restore_case.php",
-        "packages/php/tests/sqlite_concurrency_writer.php",
-        "packages/php/tests/statement_events_run.php",
-        "packages/php/tests/dbspec_plan_cases.php",
-        "packages/php/tests/dbspec_behaviour.php",
-        "packages/php/tests/CallbackFailed.php",
-        "packages/php/tests/CannedCatalogPdo.php",
-        "packages/php/tests/CodecYamlProbe.php",
-        "packages/php/tests/ColumnFunctionMetadataAssertions.php",
-        "packages/php/tests/ComplexQueryDbCase.php",
-        "packages/php/tests/CountingPdo.php",
-        "packages/php/tests/CoverageCompositeKeysCase.php",
-        "packages/php/tests/CoverageModelQueriesCase.php",
-        "packages/php/tests/DbspecIntrospectQueryCountCases.php",
-        "packages/php/tests/DbspecTimedCases.php",
-        "packages/php/tests/FailingPdo.php",
-        "packages/php/tests/FailingSqliteLockPdo.php",
-        "packages/php/tests/FailingStatement.php",
-        "packages/php/tests/FakeSqliteLockStatement.php",
-        "packages/php/tests/MysqlTlsCases.php",
-        "packages/php/tests/NativeByteCellFixture.php",
-        "packages/php/tests/Served.php",
-        "packages/php/tests/SqliteConcurrencyWriter.php",
-        "packages/php/tests/SqliteRowLockPdo.php",
-        "packages/php/tests/SqliteRowLockStatement.php",
-        "packages/php/tests/StatementCountingPdo.php",
-        "packages/php/tests/StatementEventLog.php",
-        "packages/php/tests/Stop.php",
-        "packages/php/tests/TransactionCloseDuringFailure.php",
-        "packages/php/tests/TransactionTrackingPdo.php",
-        "packages/php/tests/UninitializedRecordingPdo.php",
-        "packages/php/tests/codec-yaml-probe.php",
-        "packages/php/tests/collection-weak-caller.php",
         "packages/php/tests/dbspec_verify_errors_case.php",
+        "packages/php/tests/deadlock_child.php",
         "packages/php/tests/fixtures/CodecProbeYaml.php",
         "packages/php/tests/fixtures/CodecProbeYamlStream.php",
         "packages/php/tests/generated_classes.php",
         "packages/php/tests/generated_fixture.php",
+        "packages/php/tests/hot_path_read_correctness.php",
         "packages/php/tests/limit_columns_peak.php",
+        "packages/php/tests/markdown_test_server.php",
         "packages/php/tests/model-types-weak-caller.php",
+        "packages/php/tests/perf_extensions.php",
+        "packages/php/tests/phpstan-runner.php",
         "packages/php/tests/phpstan/CollectionGet.php",
         "packages/php/tests/phpstan/GroupRowsIteration.php",
         "packages/php/tests/phpstan/RawCollection.php",
+        "packages/php/tests/request_hook_cases.php",
+        "packages/php/tests/request_termination_child.php",
+        "packages/php/tests/restore_case.php",
+        "packages/php/tests/sqlite_concurrency_writer.php",
+        "packages/php/tests/statement_events_run.php",
         "packages/php/tests/three_drivers.php",
-        "packages/php/tests/was_inserted_child.php",
-        "packages/php/tests/CatalogConnectionCoverageCases.php",
-        "packages/php/tests/CollectionWeakTypedKeyCases.php",
-        "packages/php/tests/WasInsertedCases.php"
+        "packages/php/tests/was_inserted_child.php"
       ],
       "symbols": {
         "extractor": "php",
@@ -339,8 +369,16 @@
       },
       "internal": [
         {
+          "glob": "packages/php-gen/tests/OrmGenScanParityTest.php",
+          "reason": "generated: an internal test of the PHP generator component that checks parity with the TypeScript generator, not a client behaviour (K313)"
+        },
+        {
           "glob": "packages/php/tests/AutoloadTest.php",
           "reason": "ecosystem: an internal test of the PHP package that checks the package, loader or install rule of the language ecosystem, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/php/tests/CatalogConnectionCoverageSurfaceTest.php",
+          "reason": "implementation: checks the PHP library Catalog class ownership and names of shared coverage helper methods; it does not execute or assert catalog query behavior"
         },
         {
           "glob": "packages/php/tests/ClientGenericsTest.php",
@@ -351,16 +389,28 @@
           "reason": "harness: an internal test of the PHP package that checks the test harness of the owner, not a behaviour of the contract (K313)"
         },
         {
+          "glob": "packages/php/tests/CoverageCasesTest.php",
+          "reason": "harness: tests the PHP coverage-case fixture and environment helpers used by owner tests; it does not exercise ORM client behavior"
+        },
+        {
+          "glob": "packages/php/tests/DatabaseTestAssertionsTest.php",
+          "reason": "harness: tests shared PHPUnit fixture/assertion helpers used by owner tests; it does not exercise ORM client behavior"
+        },
+        {
           "glob": "packages/php/tests/DriverErrorTest.php",
           "reason": "external: an internal test of the PHP package that runs against a database or driver of an external service, not a helper the contract names (K313)"
         },
         {
-          "glob": "packages/php-gen/tests/OrmGenScanParityTest.php",
-          "reason": "generated: an internal test of the PHP generator component that checks parity with the TypeScript generator, not a client behaviour (K313)"
-        },
-        {
           "glob": "packages/php/tests/OrmGenTestSupportTest.php",
           "reason": "harness: an internal test of the PHP package that checks the test harness of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/php/tests/PerformanceGateCoverageCase.php",
+          "reason": "harness: an internal test of the PHP package that checks the test harness of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/php/tests/PlanCacheMemoryTest.php",
+          "reason": "implementation: checks plan and statement cache placeholder bounds and LRU accounting, not query results or a shared client guarantee"
         },
         {
           "glob": "packages/php/tests/RelationKeysTest.php",
@@ -381,14 +431,6 @@
         {
           "glob": "packages/php/tests/UnselectedColumnTest.php",
           "reason": "test: an internal test of the PHP package that tests a helper or loader of the owner, not a behaviour of the contract (K313)"
-        },
-        {
-          "glob": "packages/php/tests/PerformanceGateCoverageCase.php",
-          "reason": "harness: an internal test of the PHP package that checks the test harness of the owner, not a behaviour of the contract (K313)"
-        },
-        {
-          "glob": "packages/php/tests/PlanCacheMemoryTest.php",
-          "reason": "implementation: checks plan and statement cache placeholder bounds and LRU accounting, not query results or a shared client guarantee"
         }
       ]
     },
@@ -399,8 +441,6 @@
         "packages/php-ext"
       ],
       "support": [
-        "packages/php-ext/tests/bootstrap.php",
-        "packages/php-ext/tests/declarations.php",
         "packages/php-ext/tests/AuditLazyFakePdo.php",
         "packages/php-ext/tests/AuditLazyFakeStatement.php",
         "packages/php-ext/tests/CatalogCommitFailureLink.php",
@@ -415,16 +455,23 @@
         "packages/php-ext/tests/ConnectionTimeoutCleanupStatement.php",
         "packages/php-ext/tests/CoverageNativeDecimalModel.php",
         "packages/php-ext/tests/DslFixture.php",
+        "packages/php-ext/tests/ModelAssemblyFixture.php",
+        "packages/php-ext/tests/ModelAssemblyTestSupport.php",
         "packages/php-ext/tests/ModelReadShapeFixture.php",
         "packages/php-ext/tests/ModelReadWarningStream.php",
         "packages/php-ext/tests/ModelStreamFixture.php",
         "packages/php-ext/tests/ModelStreamWarningWrapper.php",
         "packages/php-ext/tests/ModelTypesPendingFixture.php",
+        "packages/php-ext/tests/NativeMethodAssertions.php",
         "packages/php-ext/tests/NativeModelFixture.php",
+        "packages/php-ext/tests/NativeQueryProbePdo.php",
+        "packages/php-ext/tests/NativeQueryProbeStatement.php",
         "packages/php-ext/tests/NativeTestEventLog.php",
         "packages/php-ext/tests/PhpExtensionBootstrapAssertions.php",
         "packages/php-ext/tests/RuntimeModelBadGeneratedFixture.php",
         "packages/php-ext/tests/RuntimeModelGeneratedFixture.php",
+        "packages/php-ext/tests/bootstrap.php",
+        "packages/php-ext/tests/declarations.php",
         "packages/php-ext/tests/declarations_functions.php",
         "packages/php-ext/tests/model-weak-caller.php",
         "packages/php-ext/tests/silent_paths.php"
@@ -454,7 +501,8 @@
           "glob": "packages/php-ext/tests/PlanCacheMemoryNativeTest.php",
           "reason": "implementation: checks native statement-cache retention, LRU eviction and close accounting, not query results or a shared client guarantee"
         }
-      ]
+      ],
+      "shares": "php"
     },
     {
       "name": "typescript",
@@ -9724,11 +9772,6 @@
           "implementation": "python",
           "test": "packages/python/tests/connection_config.py",
           "id": "ConnectionConfigTest.test_cancellation_through_a_pooler"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/zone.rs",
-          "id": "cancellation_through_a_pooler"
         }
       ]
     },
@@ -24316,8 +24359,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testPostgresSessionSettingsAreStartupParameters"
+          "test": "packages/php-ext/tests/MysqlSessionNativeTest.php",
+          "id": "MysqlSessionNativeTest::testNativePostgresSessionSettingsAreStartupParameters"
         },
         {
           "implementation": "python",
@@ -24329,7 +24372,16 @@
           "test": "packages/python/tests/mysql_session.py",
           "id": "MysqlSessionTest.test_postgres_session_settings_are_startup_parameters"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "dsn_connection",
+        "parts": [
+          "owner/php",
+          "owner/python",
+          "owner/php-extension"
+        ]
+      }
     },
     {
       "id": "utils-expose-utility-groups",
