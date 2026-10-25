@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 59ff3c3cdd6bea09d8da2bf4e5a9b30fb88689eb77f24eccf3490c9f44146fca -->
+<!-- source-sha256: faca8b2ccaeb5c460d739487f04ca5294f3646e0f55437a86fffa814d6374bfe -->
 # 변경 이력
 
 ## Unreleased
+
+- KSTD-5-89-4: 남은 repository tool source 10개의 분류를 선언했다. 선택된 tool을 제외하지 않고 `make rebuild-check`가 통과한다.
 
 - KSTD-7-1: PHP extension이 schema install, model generation, interface contract를 구현한다. PHP 8.4.26에서 schema-install owner의 existing, partial, external-document case가 MySQL, PostgreSQL, SQLite 각각 두 번씩 (DB case 18회) 통과했고, database별 before/after state digest가 모두 같았다. Model-generation 및 interface-symbol native owner case도 각각 두 번 통과했다. 수정된 PHP scan 경로 owner case(1/1)를 포함해 feature-unit-check 구성 검사도 통과했다.
 
