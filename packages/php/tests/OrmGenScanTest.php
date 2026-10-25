@@ -34,6 +34,29 @@ final class OrmGenScanTest extends TestCase
         OrmGenTestSupport::removeWorkDirectory(self::$work);
     }
 
+    /**
+     * The usage source of an Author model of the scanned namespace that imports Author, ServiceMember and User and runs
+     * `$lines` in order: a list is a relation call on `$author` of [method, related model, chain, terminal], a string
+     * a statement as it is.
+     *
+     * @param list<string|array{string, string, string, ?string}> $lines
+     */
+    private static function authorUsage(array $lines, ?string $namespace = null): string
+    {
+        return OrmGenTestSupport::phpModelSource(
+            'Author',
+            'author',
+            [self::NS . '\\Author', self::NS . '\\ServiceMember', self::NS . '\\User'],
+            implode("\n", array_map(
+                static fn(string|array $line): string => is_string($line)
+                    ? $line
+                    : OrmGenTestSupport::phpRelationCall('$author', ...$line),
+                $lines
+            )) . "\n",
+            $namespace
+        );
+    }
+
     /** @return array<string, array{array<string, mixed>}> */
     public static function vectors(): array
     {
@@ -276,57 +299,26 @@ PHP;
 
     public function testRelationAliasTypesFollowRelationEdgesAndExplicitAliases(): void
     {
-        $source = OrmGenTestSupport::phpModelSource(
-            'Author',
-            'author',
-            [self::NS . '\\Author', self::NS . '\\ServiceMember', self::NS . '\\User'],
-            implode("\n", [
-                OrmGenTestSupport::phpRelationCall(
-                    '$author',
-                    'relation',
-                    'User',
-                    'matchUserSeqWithSeq()->aliasOldWriter()->aliasWriter()',
-                    'gets'
-                ),
-                '$author->getWriter();',
-                OrmGenTestSupport::phpRelationCall(
-                    '$author',
-                    'relation',
-                    'User',
-                    'matchUserSeqWithSeq()->aliasWriter()',
-                    'get'
-                ),
-                OrmGenTestSupport::phpRelationCall(
-                    '$author',
-                    'relations',
-                    'ServiceMember',
-                    'matchServiceSeqWithServiceSeq()->aliasMembers()',
-                    'get'
-                ),
-                '$author->getMembers();',
-                OrmGenTestSupport::phpRelationCall(
-                    '$author',
-                    'relation',
-                    'User',
-                    'matchUserSeqWithSeq()->aliasNestedWriter()'
-                        . '->relation((new Author())->matchSeqWithUserSeq()->aliasMatch())',
-                    'gets'
-                ),
-                '$author->getNestedWriter();',
-                '$user = new User();',
-                '$user->getMatch();',
-                '$author->getUserModel();',
-                OrmGenTestSupport::phpRelationCall(
-                    '$author',
-                    'relations',
-                    'ServiceMember',
-                    'matchServiceSeqWithServiceSeq()->aliasUserModel()',
-                    'gets'
-                ),
-                '$author->getUserModel();'
-            ]) . "\n",
-            'App'
-        );
+        $source = self::authorUsage([
+            ['relation', 'User', 'matchUserSeqWithSeq()->aliasOldWriter()->aliasWriter()', 'gets'],
+            '$author->getWriter();',
+            ['relation', 'User', 'matchUserSeqWithSeq()->aliasWriter()', 'get'],
+            ['relations', 'ServiceMember', 'matchServiceSeqWithServiceSeq()->aliasMembers()', 'get'],
+            '$author->getMembers();',
+            [
+                'relation',
+                'User',
+                'matchUserSeqWithSeq()->aliasNestedWriter()'
+                    . '->relation((new Author())->matchSeqWithUserSeq()->aliasMatch())',
+                'gets',
+            ],
+            '$author->getNestedWriter();',
+            '$user = new User();',
+            '$user->getMatch();',
+            '$author->getUserModel();',
+            ['relations', 'ServiceMember', 'matchServiceSeqWithServiceSeq()->aliasUserModel()', 'gets'],
+            '$author->getUserModel();'
+        ], 'App');
         [$code, $err, $dir] = self::generate('relation-alias-types', ['usage.php' => $source]);
         self::assertSame(0, $code, $err);
         self::assertSame('?User', self::tagType($dir, 'Author', 'getWriter'));
@@ -361,34 +353,11 @@ PHP;
 
     public function testDifferentRelationAliasTypesAreRejected(): void
     {
-        $source = OrmGenTestSupport::phpModelSource(
-            'Author',
-            'author',
-            [self::NS . '\\Author', self::NS . '\\ServiceMember', self::NS . '\\User'],
-            implode("\n", [
-                OrmGenTestSupport::phpRelationCall(
-                    '$author',
-                    'relation',
-                    'User',
-                    'matchUserSeqWithSeq()->aliasShared()',
-                    null
-                ),
-                OrmGenTestSupport::phpRelationCall(
-                    '$author',
-                    'relations',
-                    'User',
-                    'matchUserSeqWithSeq()->aliasShared()',
-                    null
-                ),
-                OrmGenTestSupport::phpRelationCall(
-                    '$author',
-                    'relation',
-                    'ServiceMember',
-                    'matchServiceSeqWithServiceSeq()->aliasShared()',
-                    'getShared'
-                )
-            ]) . "\n"
-        );
+        $source = self::authorUsage([
+            ['relation', 'User', 'matchUserSeqWithSeq()->aliasShared()', null],
+            ['relations', 'User', 'matchUserSeqWithSeq()->aliasShared()', null],
+            ['relation', 'ServiceMember', 'matchServiceSeqWithServiceSeq()->aliasShared()', 'getShared']
+        ]);
         [$code, $err, $dir] = self::generate('relation-alias-conflict', ['usage.php' => $source]);
         self::assertSame(1, $code, 'status');
         self::assertStringContainsString('Author.getShared: relation declarations conflict', $err);
@@ -403,27 +372,10 @@ PHP;
 
     public function testImplicitRelationAndExplicitAliasCannotAttachDifferentTypesToOneGetter(): void
     {
-        $source = OrmGenTestSupport::phpModelSource(
-            'Author',
-            'author',
-            [self::NS . '\\Author', self::NS . '\\ServiceMember', self::NS . '\\User'],
-            implode("\n", [
-                OrmGenTestSupport::phpRelationCall(
-                    '$author',
-                    'relation',
-                    'User',
-                    'matchUserSeqWithSeq()',
-                    null
-                ),
-                OrmGenTestSupport::phpRelationCall(
-                    '$author',
-                    'relations',
-                    'ServiceMember',
-                    'matchServiceSeqWithServiceSeq()->aliasUserModel()',
-                    null
-                )
-            ]) . "\n"
-        );
+        $source = self::authorUsage([
+            ['relation', 'User', 'matchUserSeqWithSeq()', null],
+            ['relations', 'ServiceMember', 'matchServiceSeqWithServiceSeq()->aliasUserModel()', null]
+        ]);
         [$code, $err] = self::generate('implicit-explicit-relation-alias-conflict', ['usage.php' => $source]);
         self::assertSame(1, $code, 'status');
         self::assertStringContainsString('Author.getUserModel: relation declarations conflict', $err);
@@ -436,27 +388,10 @@ PHP;
 
     public function testRelationKeywordCaseDoesNotChangeRelationTypeConflict(): void
     {
-        $source = OrmGenTestSupport::phpModelSource(
-            'Author',
-            'author',
-            [self::NS . '\\Author', self::NS . '\\ServiceMember', self::NS . '\\User'],
-            implode("\n", [
-                OrmGenTestSupport::phpRelationCall(
-                    '$author',
-                    'RELATIONS',
-                    'ServiceMember',
-                    'matchServiceSeqWithServiceSeq()',
-                    null
-                ),
-                OrmGenTestSupport::phpRelationCall(
-                    '$author',
-                    'relation',
-                    'User',
-                    'matchUserSeqWithSeq()->aliasServiceMemberModels()',
-                    'getServiceMemberModels'
-                )
-            ]) . "\n"
-        );
+        $source = self::authorUsage([
+            ['RELATIONS', 'ServiceMember', 'matchServiceSeqWithServiceSeq()', null],
+            ['relation', 'User', 'matchUserSeqWithSeq()->aliasServiceMemberModels()', 'getServiceMemberModels']
+        ]);
         [$code, $err] = self::generate('relation-keyword-case-conflict', ['usage.php' => $source]);
         self::assertSame(1, $code, 'status');
         self::assertStringContainsString('Author.getServiceMemberModels: relation declarations conflict', $err);
