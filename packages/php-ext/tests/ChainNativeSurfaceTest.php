@@ -34,7 +34,7 @@ final class ChainNativeSurfaceTest extends TestCase
         return ['type' => $type, 'codec' => []];
     }
 
-    public function test_native_class_owns_the_complete_public_chain_surface(): void
+    public function testNativeClassOwnsTheCompletePublicChainSurface(): void
     {
         $class = new ReflectionClass(Chain::class);
         self::assertTrue($class->isInternal());
@@ -56,7 +56,7 @@ final class ChainNativeSurfaceTest extends TestCase
         ], Chain::ENGINE_OP);
     }
 
-    public function test_words_and_name_conversions_keep_the_chain_grammar(): void
+    public function testWordsAndNameConversionsKeepTheChainGrammar(): void
     {
         self::assertSame(['Created', 'At', 'And', 'Owner', 'Id'], Chain::words('CreatedAtAndOwnerId'));
         self::assertSame('CreatedAt', Chain::pascal('created_at'));
@@ -64,7 +64,7 @@ final class ChainNativeSurfaceTest extends TestCase
         self::assertSame('createdat', Chain::snake('createdat'));
     }
 
-    public function test_native_parser_accepts_connectors_comparisons_and_tuples(): void
+    public function testNativeParserAcceptsConnectorsComparisonsAndTuples(): void
     {
         $meta = $this->meta('User', [
             'id' => $this->column('i64'), 'age' => $this->column('i32'), 'active' => $this->column('bool'),
@@ -86,7 +86,7 @@ final class ChainNativeSurfaceTest extends TestCase
         ], Chain::parseMeta($meta, $schema, 'NeTupleIdWithAge'));
     }
 
-    public function test_native_parser_rejects_unknown_and_disallowed_operators_as_config(): void
+    public function testNativeParserRejectsUnknownAndDisallowedOperatorsAsConfig(): void
     {
         $meta = $this->meta('User', ['active' => $this->column('bool')]);
         try {
@@ -128,7 +128,7 @@ final class ChainNativeSurfaceTest extends TestCase
         }
     }
 
-    public function test_native_order_pair_and_column_lookup_return_exact_names(): void
+    public function testNativeOrderPairAndColumnLookupReturnExactNames(): void
     {
         $left = $this->meta('User', ['user_id' => $this->column('i64'), 'age' => $this->column('i32')]);
         $left['manifest_hash'] = self::$manifestHash;

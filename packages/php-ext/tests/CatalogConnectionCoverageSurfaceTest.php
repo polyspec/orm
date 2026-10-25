@@ -27,7 +27,7 @@ final class CatalogConnectionCoverageSurfaceTest extends TestCase
             static fn(ReflectionMethod $method): string => $method->getName(),
             (new \ReflectionClass(StatementEventsCoverageCases::class))->getMethods(),
         );
-        self::assertContains('test_statement_events', $eventCases);
+        self::assertContains('testStatementEvents', $eventCases);
         self::assertFileExists(__DIR__ . '/CoverageCatalogConnectionTest.php');
         self::assertFileExists(__DIR__ . '/CoverageStatementEventsTest.php');
         self::assertFileExists(__DIR__ . '/CoverageSchemaDefinitionExtensionTest.php');

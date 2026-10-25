@@ -34,7 +34,7 @@ class CoverageRequestHookTest extends TestCase
     }
 
     // Requirements: INT-78.
-    public function test_without_hook(): void
+    public function testWithoutHook(): void
     {
         foreach (coverageItemsOf(static::coverageTestFile()) as $item) {
             selectCoverageItem($item);
@@ -43,7 +43,7 @@ class CoverageRequestHookTest extends TestCase
     }
 
     // Requirements: INT-78, PRT-2.
-    public function test_read_filter(): void
+    public function testReadFilter(): void
     {
         foreach (coverageItemsOf(static::coverageTestFile()) as $item) {
             selectCoverageItem($item);
@@ -70,7 +70,7 @@ class CoverageRequestHookTest extends TestCase
     }
 
     // Requirements: PRT-4, PRT-5, PRT-41.
-    public function test_insert_assign(): void
+    public function testInsertAssign(): void
     {
         foreach (coverageItemsOf(static::coverageTestFile()) as $item) {
             selectCoverageItem($item);
@@ -88,7 +88,7 @@ class CoverageRequestHookTest extends TestCase
     }
 
     // Requirements: CFG-21, INT-36, INT-37, PLN-16.
-    public function test_loaded_row_writes(): void
+    public function testLoadedRowWrites(): void
     {
         foreach (coverageItemsOf(static::coverageTestFile()) as $item) {
             selectCoverageItem($item);
@@ -97,7 +97,7 @@ class CoverageRequestHookTest extends TestCase
     }
 
     // Requirements: PRT-65.
-    public function test_invalid_param(): void
+    public function testInvalidParam(): void
     {
         foreach (coverageItemsOf(static::coverageTestFile()) as $item) {
             selectCoverageItem($item);
@@ -106,7 +106,7 @@ class CoverageRequestHookTest extends TestCase
     }
 
     // Requirements: DIA-161.
-    public function test_restore_key(): void
+    public function testRestoreKey(): void
     {
         foreach (coverageItemsOf(static::coverageTestFile()) as $item) {
             selectCoverageItem($item);
@@ -115,7 +115,7 @@ class CoverageRequestHookTest extends TestCase
     }
 
     // Requirements: DIA-161, INT-38.
-    public function test_restore_condition(): void
+    public function testRestoreCondition(): void
     {
         foreach (coverageItemsOf(static::coverageTestFile()) as $item) {
             selectCoverageItem($item);
@@ -124,7 +124,7 @@ class CoverageRequestHookTest extends TestCase
     }
 
     // Requirements: DIA-161.
-    public function test_restore_no_key(): void
+    public function testRestoreNoKey(): void
     {
         foreach (coverageItemsOf(static::coverageTestFile()) as $item) {
             selectCoverageItem($item);
@@ -133,7 +133,7 @@ class CoverageRequestHookTest extends TestCase
     }
 
     // Requirements: DIA-161.
-    public function test_restore_rewritten_key(): void
+    public function testRestoreRewrittenKey(): void
     {
         foreach (coverageItemsOf(static::coverageTestFile()) as $item) {
             selectCoverageItem($item);
@@ -142,7 +142,7 @@ class CoverageRequestHookTest extends TestCase
     }
 
     // Requirements: DIA-161.
-    public function test_restore_hook_set_key(): void
+    public function testRestoreHookSetKey(): void
     {
         foreach (coverageItemsOf(static::coverageTestFile()) as $item) {
             selectCoverageItem($item);
@@ -151,7 +151,7 @@ class CoverageRequestHookTest extends TestCase
     }
 
     // Requirements: DIA-161.
-    public function test_restore_rewritten_key_set_scope(): void
+    public function testRestoreRewrittenKeySetScope(): void
     {
         foreach (coverageItemsOf(static::coverageTestFile()) as $item) {
             selectCoverageItem($item);

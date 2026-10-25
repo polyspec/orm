@@ -24,6 +24,6 @@ final class CatalogConnectionCoverageSurfaceTest extends TestCase
             static fn(\ReflectionMethod $method): string => $method->getName(),
             (new \ReflectionClass(StatementEventsCoverageCases::class))->getMethods(),
         );
-        self::assertContains('test_statement_events', $eventMethods);
+        self::assertContains('testStatementEvents', $eventMethods);
     }
 }

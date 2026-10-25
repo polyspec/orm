@@ -3341,7 +3341,7 @@
                   "cases": [
                     "statement_events"
                   ],
-                  "symbols": {"statement_events": "test_statement_events"},
+                  "symbols": {"statement_events": "testStatementEvents"},
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
               ],
@@ -3352,7 +3352,7 @@
                   "cases": [
                     "statement_events"
                   ],
-                  "symbols": {"statement_events": "test_statement_events"},
+                  "symbols": {"statement_events": "testStatementEvents"},
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
@@ -3363,7 +3363,7 @@
                   "cases": [
                     "statement_events"
                   ],
-                  "symbols": {"statement_events": "test_statement_events"},
+                  "symbols": {"statement_events": "testStatementEvents"},
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
@@ -3389,7 +3389,7 @@
                   "cases": [
                     "statement_events"
                   ],
-                  "symbols": {"statement_events": "test_statement_events"},
+                  "symbols": {"statement_events": "testStatementEvents"},
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
               ],
@@ -3400,7 +3400,7 @@
                   "cases": [
                     "statement_events"
                   ],
-                  "symbols": {"statement_events": "test_statement_events"},
+                  "symbols": {"statement_events": "testStatementEvents"},
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
@@ -3411,7 +3411,7 @@
                   "cases": [
                     "statement_events"
                   ],
-                  "symbols": {"statement_events": "test_statement_events"},
+                  "symbols": {"statement_events": "testStatementEvents"},
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]
@@ -10940,20 +10940,20 @@
                     "restore_rewritten_key_set_scope"
                   ],
                   "symbols": {
-                    "without_hook": "test_without_hook",
-                    "read_filter": "test_read_filter",
+                    "without_hook": "testWithoutHook",
+                    "read_filter": "testReadFilter",
                     "same_handle_child_hook_once": "testSameHandleChildHookOnce",
                     "relation_scope": "testRelationScope",
-                    "insert_assign": "test_insert_assign",
+                    "insert_assign": "testInsertAssign",
                     "upsert_scope": "testUpsertScope",
-                    "loaded_row_writes": "test_loaded_row_writes",
-                    "invalid_param": "test_invalid_param",
-                    "restore_key": "test_restore_key",
-                    "restore_condition": "test_restore_condition",
-                    "restore_no_key": "test_restore_no_key",
-                    "restore_rewritten_key": "test_restore_rewritten_key",
-                    "restore_hook_set_key": "test_restore_hook_set_key",
-                    "restore_rewritten_key_set_scope": "test_restore_rewritten_key_set_scope"
+                    "loaded_row_writes": "testLoadedRowWrites",
+                    "invalid_param": "testInvalidParam",
+                    "restore_key": "testRestoreKey",
+                    "restore_condition": "testRestoreCondition",
+                    "restore_no_key": "testRestoreNoKey",
+                    "restore_rewritten_key": "testRestoreRewrittenKey",
+                    "restore_hook_set_key": "testRestoreHookSetKey",
+                    "restore_rewritten_key_set_scope": "testRestoreRewrittenKeySetScope"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -10979,20 +10979,20 @@
                     "restore_rewritten_key_set_scope"
                   ],
                   "symbols": {
-                    "without_hook": "test_without_hook",
-                    "read_filter": "test_read_filter",
+                    "without_hook": "testWithoutHook",
+                    "read_filter": "testReadFilter",
                     "same_handle_child_hook_once": "testSameHandleChildHookOnce",
                     "relation_scope": "testRelationScope",
-                    "insert_assign": "test_insert_assign",
+                    "insert_assign": "testInsertAssign",
                     "upsert_scope": "testUpsertScope",
-                    "loaded_row_writes": "test_loaded_row_writes",
-                    "invalid_param": "test_invalid_param",
-                    "restore_key": "test_restore_key",
-                    "restore_condition": "test_restore_condition",
-                    "restore_no_key": "test_restore_no_key",
-                    "restore_rewritten_key": "test_restore_rewritten_key",
-                    "restore_hook_set_key": "test_restore_hook_set_key",
-                    "restore_rewritten_key_set_scope": "test_restore_rewritten_key_set_scope"
+                    "loaded_row_writes": "testLoadedRowWrites",
+                    "invalid_param": "testInvalidParam",
+                    "restore_key": "testRestoreKey",
+                    "restore_condition": "testRestoreCondition",
+                    "restore_no_key": "testRestoreNoKey",
+                    "restore_rewritten_key": "testRestoreRewrittenKey",
+                    "restore_hook_set_key": "testRestoreHookSetKey",
+                    "restore_rewritten_key_set_scope": "testRestoreRewrittenKeySetScope"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -11018,20 +11018,20 @@
                     "restore_rewritten_key_set_scope"
                   ],
                   "symbols": {
-                    "without_hook": "test_without_hook",
-                    "read_filter": "test_read_filter",
+                    "without_hook": "testWithoutHook",
+                    "read_filter": "testReadFilter",
                     "same_handle_child_hook_once": "testSameHandleChildHookOnce",
                     "relation_scope": "testRelationScope",
-                    "insert_assign": "test_insert_assign",
+                    "insert_assign": "testInsertAssign",
                     "upsert_scope": "testUpsertScope",
-                    "loaded_row_writes": "test_loaded_row_writes",
-                    "invalid_param": "test_invalid_param",
-                    "restore_key": "test_restore_key",
-                    "restore_condition": "test_restore_condition",
-                    "restore_no_key": "test_restore_no_key",
-                    "restore_rewritten_key": "test_restore_rewritten_key",
-                    "restore_hook_set_key": "test_restore_hook_set_key",
-                    "restore_rewritten_key_set_scope": "test_restore_rewritten_key_set_scope"
+                    "loaded_row_writes": "testLoadedRowWrites",
+                    "invalid_param": "testInvalidParam",
+                    "restore_key": "testRestoreKey",
+                    "restore_condition": "testRestoreCondition",
+                    "restore_no_key": "testRestoreNoKey",
+                    "restore_rewritten_key": "testRestoreRewrittenKey",
+                    "restore_hook_set_key": "testRestoreHookSetKey",
+                    "restore_rewritten_key_set_scope": "testRestoreRewrittenKeySetScope"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -11363,20 +11363,20 @@
                     "restore_rewritten_key_set_scope"
                   ],
                   "symbols": {
-                    "without_hook": "test_without_hook",
-                    "read_filter": "test_read_filter",
+                    "without_hook": "testWithoutHook",
+                    "read_filter": "testReadFilter",
                     "same_handle_child_hook_once": "testSameHandleChildHookOnce",
                     "relation_scope": "testRelationScope",
-                    "insert_assign": "test_insert_assign",
+                    "insert_assign": "testInsertAssign",
                     "upsert_scope": "testUpsertScope",
-                    "loaded_row_writes": "test_loaded_row_writes",
-                    "invalid_param": "test_invalid_param",
-                    "restore_key": "test_restore_key",
-                    "restore_condition": "test_restore_condition",
-                    "restore_no_key": "test_restore_no_key",
-                    "restore_rewritten_key": "test_restore_rewritten_key",
-                    "restore_hook_set_key": "test_restore_hook_set_key",
-                    "restore_rewritten_key_set_scope": "test_restore_rewritten_key_set_scope"
+                    "loaded_row_writes": "testLoadedRowWrites",
+                    "invalid_param": "testInvalidParam",
+                    "restore_key": "testRestoreKey",
+                    "restore_condition": "testRestoreCondition",
+                    "restore_no_key": "testRestoreNoKey",
+                    "restore_rewritten_key": "testRestoreRewrittenKey",
+                    "restore_hook_set_key": "testRestoreHookSetKey",
+                    "restore_rewritten_key_set_scope": "testRestoreRewrittenKeySetScope"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -11402,20 +11402,20 @@
                     "restore_rewritten_key_set_scope"
                   ],
                   "symbols": {
-                    "without_hook": "test_without_hook",
-                    "read_filter": "test_read_filter",
+                    "without_hook": "testWithoutHook",
+                    "read_filter": "testReadFilter",
                     "same_handle_child_hook_once": "testSameHandleChildHookOnce",
                     "relation_scope": "testRelationScope",
-                    "insert_assign": "test_insert_assign",
+                    "insert_assign": "testInsertAssign",
                     "upsert_scope": "testUpsertScope",
-                    "loaded_row_writes": "test_loaded_row_writes",
-                    "invalid_param": "test_invalid_param",
-                    "restore_key": "test_restore_key",
-                    "restore_condition": "test_restore_condition",
-                    "restore_no_key": "test_restore_no_key",
-                    "restore_rewritten_key": "test_restore_rewritten_key",
-                    "restore_hook_set_key": "test_restore_hook_set_key",
-                    "restore_rewritten_key_set_scope": "test_restore_rewritten_key_set_scope"
+                    "loaded_row_writes": "testLoadedRowWrites",
+                    "invalid_param": "testInvalidParam",
+                    "restore_key": "testRestoreKey",
+                    "restore_condition": "testRestoreCondition",
+                    "restore_no_key": "testRestoreNoKey",
+                    "restore_rewritten_key": "testRestoreRewrittenKey",
+                    "restore_hook_set_key": "testRestoreHookSetKey",
+                    "restore_rewritten_key_set_scope": "testRestoreRewrittenKeySetScope"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -11441,20 +11441,20 @@
                     "restore_rewritten_key_set_scope"
                   ],
                   "symbols": {
-                    "without_hook": "test_without_hook",
-                    "read_filter": "test_read_filter",
+                    "without_hook": "testWithoutHook",
+                    "read_filter": "testReadFilter",
                     "same_handle_child_hook_once": "testSameHandleChildHookOnce",
                     "relation_scope": "testRelationScope",
-                    "insert_assign": "test_insert_assign",
+                    "insert_assign": "testInsertAssign",
                     "upsert_scope": "testUpsertScope",
-                    "loaded_row_writes": "test_loaded_row_writes",
-                    "invalid_param": "test_invalid_param",
-                    "restore_key": "test_restore_key",
-                    "restore_condition": "test_restore_condition",
-                    "restore_no_key": "test_restore_no_key",
-                    "restore_rewritten_key": "test_restore_rewritten_key",
-                    "restore_hook_set_key": "test_restore_hook_set_key",
-                    "restore_rewritten_key_set_scope": "test_restore_rewritten_key_set_scope"
+                    "loaded_row_writes": "testLoadedRowWrites",
+                    "invalid_param": "testInvalidParam",
+                    "restore_key": "testRestoreKey",
+                    "restore_condition": "testRestoreCondition",
+                    "restore_no_key": "testRestoreNoKey",
+                    "restore_rewritten_key": "testRestoreRewrittenKey",
+                    "restore_hook_set_key": "testRestoreHookSetKey",
+                    "restore_rewritten_key_set_scope": "testRestoreRewrittenKeySetScope"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }

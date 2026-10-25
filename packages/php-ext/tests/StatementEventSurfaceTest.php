@@ -11,7 +11,7 @@ use PHPUnit\Framework\TestCase;
 
 final class StatementEventSurfaceTest extends TestCase
 {
-    public function test_extension_provides_statement_event(): void
+    public function testExtensionProvidesStatementEvent(): void
     {
         $this->assertTrue(extension_loaded('polyspec_orm'));
         $this->assertTrue((new \ReflectionClass('Polyspec\Orm\StatementEvent'))->isInternal());

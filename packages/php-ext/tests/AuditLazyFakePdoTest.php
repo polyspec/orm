@@ -20,7 +20,7 @@ final class AuditLazyFakePdoTest extends TestCase
     use TransactionCloseDuringFailure;
 
     // Requirements: INT-67.
-    public function test_lazy_audit_precedes_writes_is_reused_and_write_failure_propagates(): void
+    public function testLazyAuditPrecedesWritesIsReusedAndWriteFailurePropagates(): void
     {
         $pdo = new AuditLazyFakePdo();
         $failure = new RuntimeException('audited update execution failed');

@@ -15,7 +15,7 @@ use PHPUnit\Framework\TestCase;
 final class ConnectionTimeoutCleanupTest extends TestCase
 {
     // Requirements: CFG-6.
-    public function test_mysql_lock_wait_timeout_maps_to_canceled_and_closes_cursor(): void
+    public function testMysqlLockWaitTimeoutMapsToCanceledAndClosesCursor(): void
     {
         $pdo = new ConnectionTimeoutCleanupPdo();
         $pdo->failureInfo = ['HY000', 1205, 'Lock wait timeout exceeded'];
@@ -37,7 +37,7 @@ final class ConnectionTimeoutCleanupTest extends TestCase
     }
 
     // Requirements: CFG-6.
-    public function test_native_failed_statement_closes_cursor_and_reuses_connection(): void
+    public function testNativeFailedStatementClosesCursorAndReusesConnection(): void
     {
         $pdo = new ConnectionTimeoutCleanupPdo();
         $db = new Db($pdo, 'postgres', new Config(), new DateTimeZone('UTC'));

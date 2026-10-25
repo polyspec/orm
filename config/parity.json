@@ -1643,12 +1643,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageAuditTriggersTest.php",
-          "id": "CoverageAuditTriggersTest::test_audit_history"
+          "id": "CoverageAuditTriggersTest::testAuditHistory"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
-          "id": "CoverageAuditTriggersExtensionTest::test_audit_history"
+          "id": "CoverageAuditTriggersExtensionTest::testAuditHistory"
         },
         {
           "implementation": "python",
@@ -1697,12 +1697,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageAuditColumnsTest.php",
-          "id": "CoverageAuditColumnsTest::test_audit_selected_columns"
+          "id": "CoverageAuditColumnsTest::testAuditSelectedColumns"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoverageAuditColumnsExtensionTest.php",
-          "id": "CoverageAuditColumnsExtensionTest::test_audit_selected_columns"
+          "id": "CoverageAuditColumnsExtensionTest::testAuditSelectedColumns"
         },
         {
           "implementation": "python",
@@ -1752,12 +1752,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageAuditTriggersTest.php",
-          "id": "CoverageAuditTriggersTest::test_audit_transaction_entry_points"
+          "id": "CoverageAuditTriggersTest::testAuditTransactionEntryPoints"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
-          "id": "CoverageAuditTriggersExtensionTest::test_audit_transaction_entry_points"
+          "id": "CoverageAuditTriggersExtensionTest::testAuditTransactionEntryPoints"
         },
         {
           "implementation": "python",
@@ -1809,12 +1809,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageAuditTriggersTest.php",
-          "id": "CoverageAuditTriggersTest::test_soft_delete_restore"
+          "id": "CoverageAuditTriggersTest::testSoftDeleteRestore"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
-          "id": "CoverageAuditTriggersExtensionTest::test_soft_delete_restore"
+          "id": "CoverageAuditTriggersExtensionTest::testSoftDeleteRestore"
         },
         {
           "implementation": "python",
@@ -2517,7 +2517,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::test_without_hook"
+          "id": "CoverageRequestHookTest::testWithoutHook"
         },
         {
           "implementation": "php-extension",
@@ -2568,12 +2568,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::test_read_filter"
+          "id": "CoverageRequestHookTest::testReadFilter"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
-          "id": "CoverageRequestHookExtensionTest::test_read_filter"
+          "id": "CoverageRequestHookExtensionTest::testReadFilter"
         },
         {
           "implementation": "typescript",
@@ -2620,12 +2620,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::test_insert_assign"
+          "id": "CoverageRequestHookTest::testInsertAssign"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
-          "id": "CoverageRequestHookExtensionTest::test_insert_assign"
+          "id": "CoverageRequestHookExtensionTest::testInsertAssign"
         },
         {
           "implementation": "typescript",
@@ -2673,7 +2673,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::test_loaded_row_writes"
+          "id": "CoverageRequestHookTest::testLoadedRowWrites"
         },
         {
           "implementation": "php-extension",
@@ -2723,7 +2723,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::test_invalid_param"
+          "id": "CoverageRequestHookTest::testInvalidParam"
         },
         {
           "implementation": "php-extension",
@@ -2773,7 +2773,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::test_restore_key"
+          "id": "CoverageRequestHookTest::testRestoreKey"
         },
         {
           "implementation": "php-extension",
@@ -2824,7 +2824,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::test_restore_condition"
+          "id": "CoverageRequestHookTest::testRestoreCondition"
         },
         {
           "implementation": "php-extension",
@@ -2874,7 +2874,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::test_restore_no_key"
+          "id": "CoverageRequestHookTest::testRestoreNoKey"
         },
         {
           "implementation": "php-extension",
@@ -2924,7 +2924,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::test_restore_rewritten_key"
+          "id": "CoverageRequestHookTest::testRestoreRewrittenKey"
         },
         {
           "implementation": "php-extension",
@@ -2974,7 +2974,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::test_restore_hook_set_key"
+          "id": "CoverageRequestHookTest::testRestoreHookSetKey"
         },
         {
           "implementation": "php-extension",
@@ -3024,7 +3024,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageRequestHookTest.php",
-          "id": "CoverageRequestHookTest::test_restore_rewritten_key_set_scope"
+          "id": "CoverageRequestHookTest::testRestoreRewrittenKeySetScope"
         },
         {
           "implementation": "php-extension",
@@ -8392,7 +8392,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/ConnectionTimeoutCleanupTest.php",
-          "id": "ConnectionTimeoutCleanupTest::test_mysql_lock_wait_timeout_maps_to_canceled_and_closes_cursor"
+          "id": "ConnectionTimeoutCleanupTest::testMysqlLockWaitTimeoutMapsToCanceledAndClosesCursor"
         },
         {
           "implementation": "typescript",
@@ -20960,12 +20960,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageAuditTriggersTest.php",
-          "id": "CoverageAuditTriggersTest::test_soft_delete_restore"
+          "id": "CoverageAuditTriggersTest::testSoftDeleteRestore"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
-          "id": "CoverageAuditTriggersExtensionTest::test_soft_delete_restore"
+          "id": "CoverageAuditTriggersExtensionTest::testSoftDeleteRestore"
         },
         {
           "implementation": "python",
@@ -21000,12 +21000,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageAuditTriggersTest.php",
-          "id": "CoverageAuditTriggersTest::test_audit_transaction_entry_points"
+          "id": "CoverageAuditTriggersTest::testAuditTransactionEntryPoints"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
-          "id": "CoverageAuditTriggersExtensionTest::test_audit_transaction_entry_points"
+          "id": "CoverageAuditTriggersExtensionTest::testAuditTransactionEntryPoints"
         },
         {
           "implementation": "python",
@@ -21050,12 +21050,12 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/CoverageAuditTriggersTest.php",
-          "id": "CoverageAuditTriggersTest::test_soft_delete_restore"
+          "id": "CoverageAuditTriggersTest::testSoftDeleteRestore"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
-          "id": "CoverageAuditTriggersExtensionTest::test_soft_delete_restore"
+          "id": "CoverageAuditTriggersExtensionTest::testSoftDeleteRestore"
         },
         {
           "implementation": "python",

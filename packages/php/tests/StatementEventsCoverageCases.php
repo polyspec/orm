@@ -9,7 +9,7 @@ trait StatementEventsCoverageCases
 {
     abstract protected function coverageTestFile(): string;
 
-    public function test_statement_events(): void
+    public function testStatementEvents(): void
     {
         foreach (coverageItemsOf($this->coverageTestFile()) as $item) {
             selectCoverageItem($item);

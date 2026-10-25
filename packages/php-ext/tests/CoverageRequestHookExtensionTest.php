@@ -19,7 +19,7 @@ final class CoverageRequestHookExtensionTest extends CoverageRequestHookTest
         return __FILE__;
     }
 
-    public function test_native_methods_are_internal(): void
+    public function testNativeMethodsAreInternal(): void
     {
         Assert::assertTrue((new ReflectionMethod(Db::class, 'withRequestHook'))->isInternal());
         Assert::assertTrue((new ReflectionMethod(Model::class, 'get'))->isInternal());
@@ -50,7 +50,7 @@ final class CoverageRequestHookExtensionTest extends CoverageRequestHookTest
     // Requirements: INT-78.
     public function testWithoutHook(): void
     {
-        parent::test_without_hook();
+        parent::testWithoutHook();
     }
 
     // Requirements: INT-78.
@@ -62,57 +62,57 @@ final class CoverageRequestHookExtensionTest extends CoverageRequestHookTest
     // The insert assignment case of the PHP library, run with the extension loaded.
     // Requirements: PRT-4, PRT-5, PRT-41.
     // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- the parity binding names this exact test symbol.
-    public function test_insert_assign(): void
+    public function testInsertAssign(): void
     {
-        parent::test_insert_assign();
+        parent::testInsertAssign();
     }
 
     // Requirements: CFG-21, INT-36, INT-37, PLN-16.
     public function testLoadedRowWrites(): void
     {
-        parent::test_loaded_row_writes();
+        parent::testLoadedRowWrites();
     }
 
     // Requirements: PRT-65.
     public function testInvalidParam(): void
     {
-        parent::test_invalid_param();
+        parent::testInvalidParam();
     }
 
     // Requirements: DIA-161.
     public function testRestoreKey(): void
     {
-        parent::test_restore_key();
+        parent::testRestoreKey();
     }
 
     // Requirements: DIA-161, INT-38.
     public function testRestoreCondition(): void
     {
-        parent::test_restore_condition();
+        parent::testRestoreCondition();
     }
 
     // Requirements: DIA-161.
     public function testRestoreNoKey(): void
     {
-        parent::test_restore_no_key();
+        parent::testRestoreNoKey();
     }
 
     // Requirements: DIA-161.
     public function testRestoreRewrittenKey(): void
     {
-        parent::test_restore_rewritten_key();
+        parent::testRestoreRewrittenKey();
     }
 
     // Requirements: DIA-161.
     public function testRestoreHookSetKey(): void
     {
-        parent::test_restore_hook_set_key();
+        parent::testRestoreHookSetKey();
     }
 
     // Requirements: DIA-161.
     public function testRestoreRewrittenKeySetScope(): void
     {
-        parent::test_restore_rewritten_key_set_scope();
+        parent::testRestoreRewrittenKeySetScope();
     }
 
     // Requirements: INT-78, PRT-4, PRT-6.

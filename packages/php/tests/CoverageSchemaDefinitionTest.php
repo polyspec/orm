@@ -72,7 +72,7 @@ class CoverageSchemaDefinitionTest extends TestCase
         return Dbspec::class;
     }
 
-    public function test_dbspec_emit_round_trip(): void
+    public function testDbspecEmitRoundTrip(): void
     {
         $dbspec = static::dbspec();
         $root = dirname(__DIR__, 3);
@@ -88,7 +88,7 @@ class CoverageSchemaDefinitionTest extends TestCase
         }
     }
 
-    public function test_dbspec_manifest_hash(): void
+    public function testDbspecManifestHash(): void
     {
         $dbspec = static::dbspec();
         $root = dirname(__DIR__, 3);
@@ -103,7 +103,7 @@ class CoverageSchemaDefinitionTest extends TestCase
         );
     }
 
-    public function test_dbspec_render_ddl(): void
+    public function testDbspecRenderDdl(): void
     {
         $dbspec = static::dbspec();
         $root = dirname(__DIR__, 3);
@@ -123,7 +123,7 @@ class CoverageSchemaDefinitionTest extends TestCase
         }
     }
 
-    public function test_dbspec_analyze_tokens(): void
+    public function testDbspecAnalyzeTokens(): void
     {
         $dbspec = static::dbspec();
         $root = dirname(__DIR__, 3);
@@ -156,7 +156,7 @@ class CoverageSchemaDefinitionTest extends TestCase
         }
     }
 
-    public function test_dbspec_format(): void
+    public function testDbspecFormat(): void
     {
         $dbspec = static::dbspec();
         $root = dirname(__DIR__, 3);
@@ -174,7 +174,7 @@ class CoverageSchemaDefinitionTest extends TestCase
         );
     }
 
-    public function test_dbspec_format_refusal(): void
+    public function testDbspecFormatRefusal(): void
     {
         $dbspec = static::dbspec();
         $root = dirname(__DIR__, 3);
@@ -192,7 +192,7 @@ class CoverageSchemaDefinitionTest extends TestCase
         );
     }
 
-    public function test_dbspec_parse_positions(): void
+    public function testDbspecParsePositions(): void
     {
         $dbspec = static::dbspec();
         $root = dirname(__DIR__, 3);

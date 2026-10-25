@@ -17,7 +17,7 @@ final class CoverageAuditColumnsExtensionTest extends CoverageAuditColumnsTest
     }
 
     // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- the owner target filters this exact test symbol.
-    public function test_native_methods_are_internal(): void
+    public function testNativeMethodsAreInternal(): void
     {
         $this->assertAuditMethodsAreInternal();
     }
@@ -25,8 +25,8 @@ final class CoverageAuditColumnsExtensionTest extends CoverageAuditColumnsTest
     // The selected audit column case of the PHP library, run with the extension loaded.
     // Requirements: DBS-85, DBS-88, DBS-93, DBS-94, DBS-96.
     // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- the parity binding names this exact test symbol.
-    public function test_audit_selected_columns(): void
+    public function testAuditSelectedColumns(): void
     {
-        parent::test_audit_selected_columns();
+        parent::testAuditSelectedColumns();
     }
 }

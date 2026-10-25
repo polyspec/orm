@@ -137,7 +137,7 @@ class CoverageAuditColumnsTest extends TestCase
     }
 
     // Requirements: DBS-85, DBS-88, DBS-93, DBS-94, DBS-96.
-    public function test_audit_selected_columns(): void
+    public function testAuditSelectedColumns(): void
     {
         foreach (coverageItemsOf(static::coverageTestFile()) as $item) {
             selectCoverageItem($item);
