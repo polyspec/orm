@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 947b609e462b0641eab95063c63cf8130c2db56b517d5b8914eb3acca447e457 -->
+<!-- source-sha256: 9d1fdda38a08df62326ecbf3227f3b4c3b5d6df72637d22caf9e883eca563ec6 -->
 # 변경 이력
 
 ## Unreleased
+
+- KSTD-5-88-13: 12개 Rust test가 각자 polyspec_orm_testcase case를 시작한다. 저장소 guard가 1/1 통과했다.
 
 - KSTD-2-11-8-1: Rust model generation이 build와 일치한다. 지정 case가 통과해 두 번 새로 생성한 model, manifest, external text가 `OUT_DIR` 결과와 같은 것을 확인한다(1 test 통과).
 
