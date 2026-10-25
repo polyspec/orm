@@ -191,7 +191,7 @@ final class CoverageConformanceVerificationExtensionTest extends TestCase
             selectCoverageItem($item);
             [$driver, $dsn] = coverageItem();
             $root = dirname(__DIR__, 3);
-            [, $expected] = coverageRecordedConformanceVectors($driver, self::CONFORMANCE_VECTORS);
+            [$file, $expected] = coverageRecordedConformanceVectors($driver, self::CONFORMANCE_VECTORS);
             $arguments = [];
             foreach (self::CONFORMANCE_VECTORS as $vector) {
                 array_push($arguments, '--vector', $vector);

@@ -73,6 +73,15 @@ trait GroupRowsCases
         $this->assertGroupValueOwnership();
         $db = (new \ReflectionClass(Db::class))->newInstanceWithoutConstructor();
         $groupValue = new \ReflectionMethod(Model::class, 'groupValue');
+        // A driver that returns a native boolean (PostgreSQL) gives false and true, which are valid stored values.
+        foreach ([false, true] as $native) {
+            self::assertSame($native, $groupValue->invoke(
+                new GroupRowsModelFixture(),
+                $db,
+                ['name' => 'active', 'column' => '', 'type' => 'bool'],
+                $native,
+            ));
+        }
         try {
             $groupValue->invoke(
                 new GroupRowsModelFixture(),

@@ -325,6 +325,46 @@
     "scripts/version/check.mts": {
       "kind": "policy",
       "reason": "the rule of this repository that every version declaration matches VERSION; it reads them with semver"
+    },
+    "examples/complex/php/complex_functions.php": {
+      "kind": "policy",
+      "reason": "the functions of the complex statement example of the PHP client of this repository, which its main.php requires; it shows the product and rebuilds no tool"
+    },
+    "examples/php/bench_dsn.php": {
+      "kind": "policy",
+      "reason": "the bench DSN that the PHP examples of this repository connect with, or the message that names how to provide it; it shows the product and rebuilds no tool"
+    },
+    "examples/thin-slice/php/thin_slice_functions.php": {
+      "kind": "policy",
+      "reason": "the functions and constants of the thin-slice demo of the PHP client of this repository, which its main.php requires; it shows the product and rebuilds no tool"
+    },
+    "scripts/docs/flowmark-source.mts": {
+      "kind": "ecosystem",
+      "tool": "git clone, fetch and checkout of the Flowmark revision that tests/markdown/flowmark.version pins"
+    },
+    "scripts/docs/rules-filter.mts": {
+      "kind": "policy",
+      "reason": "the --only selection of the documentation rules check of this repository, which runs the implementation count rule alone"
+    },
+    "scripts/features/behavior-adapters.mts": {
+      "kind": "policy",
+      "reason": "the rule of this repository that a checklist item is not completed while one of its behavior adapters is unresolved; no ecosystem tool reads the checklist and the interface contracts"
+    },
+    "scripts/php/mode-check.php": {
+      "kind": "policy",
+      "reason": "the rule of this repository that ORM_PHP_MODE agrees with whether the extension polyspec_orm is loaded, which the PHP test targets check before their tests"
+    },
+    "scripts/physical-command-case.mts": {
+      "kind": "policy",
+      "reason": "the case of the physical command checks of this repository: it runs one client command against a database, checks its output and the unchanged database state, and redacts the DSN from a failure"
+    },
+    "scripts/rust/compiler-fixtures.mts": {
+      "kind": "policy",
+      "reason": "the rule of this repository that consumers of the generated Rust model compile, and fail to compile where the model forbids a call; it runs cargo on temporary consumer crates"
+    },
+    "scripts/test-servers-fixture.mts": {
+      "kind": "policy",
+      "reason": "the isolated server root and the restored process.kill that the tests of the test server script of this repository share"
     }
   }
 }

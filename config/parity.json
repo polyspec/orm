@@ -4058,17 +4058,17 @@
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/coverage_transactions.mjs",
-          "id": "handle_abandoned_query [mysql]"
+          "id": "transaction_rollback [mysql]"
         },
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/coverage_transactions.mjs",
-          "id": "handle_abandoned_query [postgres]"
+          "id": "transaction_rollback [postgres]"
         },
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/coverage_transactions.mjs",
-          "id": "handle_abandoned_query [sqlite]"
+          "id": "transaction_rollback [sqlite]"
         },
         {
           "implementation": "python",
