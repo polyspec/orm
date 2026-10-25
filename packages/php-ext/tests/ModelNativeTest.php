@@ -27,7 +27,22 @@ final class ModelNativeTest extends TestCase
             \Polyspec\Orm\UsageError::class,
         ];
         foreach ($classes as $class) {
-            self::assertFalse(class_exists($class, false), "$class must not be loaded by the PHP extension");
+            self::assertFalse(class_exists($class, false), "$class must not be loaded by extension startup");
+        }
+
+        $nativeClasses = [
+            \Polyspec\Orm\Engine::class,
+            \Polyspec\Orm\Assemble::class,
+            \Polyspec\Orm\Config::class,
+            \Polyspec\Orm\Dialect::class,
+            \Polyspec\Orm\ParamCheck::class,
+            \Polyspec\Orm\TxFrame::class,
+            \Polyspec\Orm\DbState::class,
+            \Polyspec\Orm\Dbspec\Meet::class,
+        ];
+        foreach ($nativeClasses as $class) {
+            self::assertTrue(class_exists($class), "$class is not registered");
+            self::assertTrue((new ReflectionClass($class))->isInternal(), "$class is provided by a userland fallback");
         }
     }
 
