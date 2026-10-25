@@ -11,19 +11,25 @@ fn stress_document_round_trips_canonically() {
     let case = polyspec_orm_testcase::start("stress document canonical round trip", Duration::from_secs(60));
     // Discover the checkout from tracked markers instead of assuming a package-relative layout.
     let working_directory = std::env::current_dir().expect("read the test working directory");
-    let root = working_directory
+    let root = match working_directory
         .ancestors()
         .find(|directory| {
             directory.join("go.work").is_file()
                 && directory.join("tests/dbspec/stress.mts").is_file()
         })
-        .unwrap_or_else(|| panic!("could not find the repository root from the test working directory"));
+    {
+        Some(root) => root,
+        None => panic!("could not find the repository root from the test working directory"),
+    };
     let generator = root.join("tests/dbspec/stress.mts");
-    let generated = Command::new("node")
+    let generated = match Command::new("node")
         .arg(&generator)
         .current_dir(root)
         .output()
-        .unwrap_or_else(|error| panic!("node {} could not start: {error}", generator.display()));
+    {
+        Ok(generated) => generated,
+        Err(error) => panic!("node {} could not start: {error}", generator.display()),
+    };
     assert!(
         generated.status.success(),
         "node tests/dbspec/stress.mts failed with {}: {}",
@@ -33,7 +39,10 @@ fn stress_document_round_trips_canonically() {
     let text = String::from_utf8(generated.stdout).expect("stress generator writes UTF-8");
     case.step(format_args!("generated {} bytes", text.len()));
 
-    let parsed = dbspec::parse(&text, &BTreeMap::new()).unwrap_or_else(|errors| panic!("stress document parse failed: {errors:#?}"));
+    let parsed = match dbspec::parse(&text, &BTreeMap::new()) {
+        Ok(parsed) => parsed,
+        Err(errors) => panic!("stress document parse failed: {errors:#?}"),
+    };
     let document = parsed.document;
     assert_eq!(2000, document.tables.len(), "stress document table count");
     assert_eq!(60000, document.tables.iter().map(|table| table.columns.len()).sum::<usize>(), "stress document column count");

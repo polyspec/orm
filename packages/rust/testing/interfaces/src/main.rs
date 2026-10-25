@@ -92,7 +92,9 @@ impl syn::parse::Parse for ApplyEntryPoint {
         let name = input.parse()?;
         input.parse::<syn::Token![,]>()?;
         let command = input.parse()?;
-        let _ = input.parse::<syn::Token![,]>();
+        if input.peek(syn::Token![,]) {
+            input.parse::<syn::Token![,]>()?;
+        }
         if !input.is_empty() {
             return Err(input.error("unexpected apply_entrypoint! input"));
         }
@@ -395,7 +397,7 @@ mod tests {
             apply_entrypoint!(
                 /// Apply plans.
                 apply,
-                Apply
+                Apply,
             );
             apply_entrypoint!(
                 /// Recover plans.
