@@ -475,7 +475,12 @@ ZEND_METHOD(Polyspec_Orm_Subscription, receive)
     ZVAL_LONG(&wait, timeout_ms);
     ZVAL_UNDEF(&row);
     if (!subscription_call(pdo, "getNotify", &row, 2, &mode, &wait)) {
-        if (EG(exception) != NULL && subscription_wrap_pdo_error(EG(exception))) RETURN_THROWS();
+        if (EG(exception) != NULL) {
+            zval closed;
+            ZVAL_NULL(&closed);
+            zend_update_property(Z_OBJCE_P(ZEND_THIS), Z_OBJ_P(ZEND_THIS), ZEND_STRL("pdo"), &closed);
+            if (subscription_wrap_pdo_error(EG(exception))) RETURN_THROWS();
+        }
         RETURN_THROWS();
     }
     if (Z_TYPE(row) == IS_FALSE) {

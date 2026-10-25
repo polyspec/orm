@@ -34,6 +34,7 @@ export class PostgresListener {
   private readonly queue: Notification[] = [];
   private waiter: Waiter | undefined;
   private closed = false;
+  private failure: OrmError | undefined;
 
   public constructor(private readonly client: ListenerClient, private readonly onFailure: (error: unknown) => OrmError) {
     client.on('notification', message => {
@@ -46,6 +47,7 @@ export class PostgresListener {
       this.closed = true;
       const failure = this.onFailure(error);
       if (this.waiter !== undefined) this.waiter.reject(failure);
+      else this.failure = failure;
     });
   }
 
@@ -61,7 +63,14 @@ export class PostgresListener {
 
   /** Waits for the next notification. An aborted signal, or a signal that is already aborted, fails the receive with CANCELED and closes the connection. */
   public receive(signal: AbortSignal | undefined): Promise<Notification> {
-    if (this.closed) return Promise.reject(new OrmError(codes.CONFIG, 'the LISTEN subscription is closed'));
+    if (this.closed) {
+      if (this.failure !== undefined) {
+        const failure = this.failure;
+        this.failure = undefined;
+        return Promise.reject(failure);
+      }
+      return Promise.reject(new OrmError(codes.CONFIG, 'the LISTEN subscription is closed'));
+    }
     const queued = this.queue.shift();
     if (queued !== undefined) return Promise.resolve(queued);
     const cancelled = () => new OrmError(codes.CANCELED, 'the receive of the LISTEN subscription was cancelled');

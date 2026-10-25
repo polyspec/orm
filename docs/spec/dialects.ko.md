@@ -1,5 +1,5 @@
 <!-- doc-id: dialects -->
-<!-- source-sha256: 36c700e536a805923e4b5965dd04f7acfcdd18f7e093625146cb9a5567e4504b -->
+<!-- source-sha256: 9f5d4bd991973adabe0fcaf3a61e7d68ee40dd350b54c3effa45112ddcb69059 -->
 # SQL dialect
 
 SQL dialect는 하나의 데이터베이스 시스템이 사용하는 SQL 문법과 실행 규칙이다. 이 프로젝트에서 `mysql`, `postgres`, `sqlite`는 identifier quoting, placeholder, 타입 변환, write 문법, 지원 SQL 함수를 선택한다. Planner는 database별 SQL 요소를 선택한 SQL dialect에 요청한다. IR과 plan 형식은 변경하지 않는다.
@@ -442,7 +442,7 @@ Audit context 선택지. Audit trigger는 클라이언트가 transaction 안에�
 ## Notifications
 
 - **DIA-192** **정의.** `notify(channel, payload)`, `listen(channel)`, `unlisten(channel)`은 PostgreSQL dialect의 클라이언트 작업이다: PostgreSQL의 `pg_notify`와 `LISTEN` / `UNLISTEN`. IR이 아니므로 planner나 executor가 만들지 않는다([protocol](protocol.ko.md#_6-notifications)). channel은 U+0000 없는 UTF-8 1~63바이트의 PostgreSQL 식별자이며, 그 범위 밖의 channel은 문을 실행하기 전에 `CONFIG`로 실패한다.
-- **DIA-193** **notify.** `notify`는 자기 handle의 연결에서 `SELECT pg_notify($1, $2)`를 실행한다. transaction 안에서는 알림이 그 transaction이 commit될 때 전달되고 rollback되면 버려지며, 밖에서는 자기 문의 commit에 전달된다. PostgreSQL이 거부하는 payload(8000바이트 초과 또는 U+0000)는 서버의 오류를 [errors](errors.yaml)의 매핑대로 낸다.
+- **DIA-193** **notify.** `notify`는 자기 handle의 연결에서 `SELECT pg_notify($1, $2)`를 실행한다. transaction 안에서는 알림이 그 transaction이 commit될 때 전달되고 rollback되면 버려지며, 밖에서는 자기 문의 commit에 전달된다. PostgreSQL payload는 8000바이트보다 짧아야 한다. UTF-8 8000바이트 이상이거나 U+0000을 포함한 payload는 문을 실행하기 전에 `DRIVER`로 실패한다.
 - **DIA-194** **listen.** `listen(channel)`은 pool 밖의 자기 연결을 열고, channel을 인용된 식별자로 `LISTEN`을 실행하며, 알림마다 channel, payload, 보낸 프로세스의 pid를 준다. 받기 대기가 없을 때 도착한 알림은 도착 순서대로 보관한다. 연결이 끊기면 구독은 `CONNECTION_LOST`로 끝난다.
 - **DIA-195** **unlisten과 취소.** `unlisten(channel)`은 listen 연결에서 `UNLISTEN`을 실행하고 그 channel의 전달을 멈춘다. `close()`는 구독의 모든 channel에 `UNLISTEN`을 실행하고 연결을 클라이언트에 오류 없이 돌려준다. 대기 중인 받기는 [CFG-9](config.ko.md)가 정하는 대로 그 언어의 취소 수단으로 취소한다: Go는 `db.WithContext(ctx)`의 context를, TypeScript는 `db.withSignal(signal)`의 signal을 취소한다. Python, PHP, Rust에는 받기를 위한 그런 수단이 없으므로 그 받기는 기한을 받으며, 기한이 지나면 받기가 끝난다. 취소되었거나 기한이 지난 받기는 `CANCELED`로 실패하고 구독을 닫으며, 그 뒤의 호출은 `CONFIG`로 실패한다.
 - **DIA-196** **다른 데이터베이스.** MySQL, SQLite, markdown executor에서 `notify`, `listen`, `unlisten`은 문이나 연결을 쓰기 전에 `CAPABILITY_UNSUPPORTED`로 실패한다. 어느 것도 조용한 no-op이 아니다.

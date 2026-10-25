@@ -35,6 +35,12 @@ impl Db {
     pub async fn notify(&self, channel: &str, payload: &str) -> Result<()> {
         self.listenable("notify")?;
         check_channel(channel)?;
+        if payload.len() >= 8000 || payload.contains('\0') {
+            return Err(Error::Engine {
+                code: codes::DRIVER.into(),
+                msg: "a PostgreSQL notification payload must be shorter than 8000 bytes and contain no U+0000".into(),
+            });
+        }
         let ex = match active_for(self) {
             Some(t) => Executor::Tx(t),
             None => Executor::Db(self.clone()),
@@ -63,6 +69,7 @@ impl Db {
                 return Err(error.into());
             }
         };
+        listener.eager_reconnect(false);
         if let Err(error) = listener.listen(channel).await {
             pool.close().await;
             return Err(error.into());
@@ -84,13 +91,24 @@ impl Subscription {
     /// the subscription (DIA-195); the connection is then dropped without UNLISTEN, because a receive that the deadline ended may
     /// have left its connection mid-message.
     pub async fn receive_within(&mut self, deadline: Duration) -> Result<Notification> {
-        let Some((listener, _)) = self.inner.as_mut() else {
-            return Err(closed());
+        let received = {
+            let Some((listener, _)) = self.inner.as_mut() else {
+                return Err(closed());
+            };
+            tokio::time::timeout(deadline, listener.try_recv()).await
         };
-        match tokio::time::timeout(deadline, listener.recv()).await {
-            Ok(n) => {
-                let n = n?;
-                Ok(Notification { channel: n.channel().to_owned(), payload: n.payload().to_owned(), pid: n.process_id() })
+        match received {
+            Ok(Ok(Some(n))) => Ok(Notification { channel: n.channel().to_owned(), payload: n.payload().to_owned(), pid: n.process_id() }),
+            Ok(Ok(None)) => {
+                self.inner = None;
+                Err(Error::Engine { code: codes::CONNECTION_LOST.into(), msg: "the LISTEN connection was lost".into() })
+            }
+            Ok(Err(error)) => {
+                let mapped = Error::from(error);
+                if mapped.code() == codes::CONNECTION_LOST {
+                    self.inner = None;
+                }
+                Err(mapped)
             }
             Err(_) => {
                 self.inner = None;

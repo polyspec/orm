@@ -2660,6 +2660,27 @@
         "packages/php/src/OrmException.php"
       ]
     },
+    "listen-notify-php-extension-check": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools",
+        "databases"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/php-ext/scripts/build.sh",
+        "packages/php-ext/src/value_classes_native.c",
+        "packages/php-ext/tests/ListenNotifyNativeTest.php",
+        "packages/php-ext/tests/bootstrap.php",
+        "packages/php/src/Listen.php",
+        "packages/php/src/Subscription.php",
+        "packages/php/tests/ListenNotifyCases.php",
+        "packages/php/tests/ListenNotifyTest.php",
+        "packages/php/tests/bootstrap.php"
+      ]
+    },
     "connection-statement-timeout-php-extension-check": {
       "scope": "owner",
       "needs": [

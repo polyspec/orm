@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import contextlib
+from collections import deque
 import asyncio
 import copy
 import datetime
@@ -1509,23 +1510,37 @@ class Subscription:
     def __init__(self, connection: "_PostgresConnection"):
         self._connection = connection
         self._closed = False
+        self._pending: deque[Notification] = deque()
 
     def receive(self, timeout: float | None = None) -> Notification:
         """Waits for the next notification. A deadline of timeout seconds that expires fails the receive
         with CANCELED and closes the subscription; PHP and Python take a deadline, not a cancellation signal."""
         if self._closed:
             raise OrmError(codes.CONFIG, "the LISTEN subscription is closed")
+        if self._pending:
+            return self._pending.popleft()
         try:
             for notice in self._connection.connection.notifies(
                 timeout=timeout, stop_after=1
             ):
-                return Notification(notice.channel, notice.payload, notice.pid)
+                self._pending.append(
+                    Notification(notice.channel, notice.payload, notice.pid)
+                )
         except Exception as error:
             if not _is_driver_error("postgres", error):
                 raise
-            _raise_driver_error(
+            mapped = _driver_error(
                 "postgres", error, bool(self._connection.connection.closed)
             )
+            if isinstance(mapped, OrmError) and mapped.code == codes.CONNECTION_LOST:
+                self._closed = True
+                try:
+                    self._connection.close()
+                except Exception as cleanup:
+                    mapped.add_note(f"closing the lost LISTEN connection also failed: {cleanup}")
+            raise mapped from error
+        if self._pending:
+            return self._pending.popleft()
         self.close()
         raise OrmError(codes.CANCELED, "the receive of the LISTEN subscription expired")
 
@@ -1712,6 +1727,11 @@ class Db:
         that transaction, and outside one at the commit of its own statement."""
         _listenable(self, "notify")
         _check_channel(channel)
+        if len(payload.encode("utf-8")) >= 8000 or "\x00" in payload:
+            raise OrmError(
+                codes.DRIVER,
+                "a PostgreSQL notification payload must be shorter than 8000 bytes and contain no U+0000",
+            )
         self._connection.execute(
             "SELECT pg_notify($1, $2)", [channel, payload], self._cancellation
         )

@@ -64,6 +64,9 @@ func (d *DB) Notify(channel, payload string) error {
 	if err := checkChannel(channel); err != nil {
 		return err
 	}
+	if len(payload) >= 8000 || strings.ContainsRune(payload, 0) {
+		return &ir.Error{Code: CodeDriver, Msg: "a PostgreSQL notification payload must be shorter than 8000 bytes and contain no U+0000"}
+	}
 	var ex executor = d
 	tx, err := activeFor(d)
 	if err != nil {
@@ -134,6 +137,18 @@ func (s *Subscription) Receive() (Notification, error) {
 		if ErrorCode(mapped) == CodeCanceled {
 			if closeErr := s.Close(); closeErr != nil {
 				mapped = errors.Join(mapped, closeErr)
+			}
+		} else if ErrorCode(mapped) == CodeConnectionLost {
+			s.mu.Lock()
+			if s.closed {
+				s.mu.Unlock()
+			} else {
+				s.closed = true
+				conn := s.conn
+				s.mu.Unlock()
+				if closeErr := conn.Close(); closeErr != nil {
+					mapped = errors.Join(mapped, closeErr)
+				}
 			}
 		}
 		return Notification{}, mapped

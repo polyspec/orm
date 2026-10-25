@@ -676,6 +676,9 @@ export class Db {
   public async notify(channel: string, payload: string): Promise<void> {
     this.listenable('notify');
     checkChannel(channel);
+    if (Buffer.byteLength(payload, 'utf8') >= 8000 || payload.includes('\0')) {
+      throw new OrmError(codes.DRIVER, 'a PostgreSQL notification payload must be shorter than 8000 bytes and contain no U+0000');
+    }
     const ex = resolve(this);
     await guarded(ex, async () => {
       const connection = ex.frame?.session ?? this.pool;
