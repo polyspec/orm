@@ -61,7 +61,7 @@ fn manifest_text_without_header_is_rejected() {
     polyspec_orm_testcase::step(format_args!("dbspec runtime manifest without header cpu={cpu:?} wall={wall:?}"));
 }
 
-// Requirements: DBS-111.
+// Requirements: DBS-111, PRT-9.
 #[test]
 fn runtime_model_of_bench() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(DEADLINE));
@@ -131,6 +131,39 @@ fn runtime_model_of_bench() {
             "serialize_data"
         ],
         "select explicit fields in column order"
+    );
+    let selected: Vec<&str> = author.fields.iter().filter(|f| !f.select_explicit).map(|f| f.name.as_str()).collect();
+    assert_eq!(
+        selected,
+        [
+            "seq",
+            "name",
+            "created_ts",
+            "updated_ts",
+            "is_close",
+            "is_display",
+            "display_start_dt",
+            "display_end_dt",
+            "is_allday",
+            "target_club_reader_count",
+            "success_count",
+            "reader_count",
+            "read_count",
+            "photo_url",
+            "user_seq",
+            "service_seq",
+            "service_region_seq",
+            "service_member_seq",
+            "start_dt",
+            "end_dt",
+            "uuid",
+            "is_single_work",
+            "like_count",
+            "aes_hex_email",
+            "aes_hex_phone",
+            "price",
+        ],
+        "the default select set excludes only select explicit columns in field order"
     );
     assert_eq!(author.field("aes_hex_email").unwrap().codec, ["aes", "hex"]);
     assert_eq!(author.field("aes_hex_email").unwrap().blind_index.as_deref(), Some("email_blind_index"));

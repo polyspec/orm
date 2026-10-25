@@ -67,6 +67,7 @@ final class DecimalModelTest extends TestCase
         }
     }
 
+    // Requirements: DBS-112, COD-2.
     public function testGeneratedDecimalType(): void
     {
         $getter = (new ReflectionMethod(Author::class, 'getPrice'))->getReturnType();

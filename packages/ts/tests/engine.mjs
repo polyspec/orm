@@ -24,7 +24,7 @@ async function codeOf(promise) {
 
 // The engine check runs model registration, request validation, and the plan in memory as one case.
 const run = cases();
-// Requirements: PRT-1.
+// Requirements: PRT-1, COD-4.
 await run.run('engine', COMPUTE, async () => {
   // The generated models embed the manifest and the external text of the bench set (contracts/fixtures/bench/dbspec-set.json).
   const { manifest } = dbspecManifest(setDocuments);
@@ -42,7 +42,9 @@ await run.run('engine', COMPUTE, async () => {
   check(code(() => new Engine(model, 'oracle')) === 'DIALECT_UNKNOWN', 'unknown dialect');
   const author = model.entities.get('author');
   const field = name => author.fields.find(f => f.name === name);
-  check(!field('description').selected && field('name').selected && field('price').selected, 'the default select set leaves out only select explicit columns');
+  // Requirements: PRT-9.
+  const selected = author.fields.filter(f => f.selected).map(f => f.name);
+  check(selected.join(',') === 'seq,name,created_ts,updated_ts,is_close,is_display,display_start_dt,display_end_dt,is_allday,target_club_reader_count,success_count,reader_count,read_count,photo_url,user_seq,service_seq,service_region_seq,service_member_seq,start_dt,end_dt,uuid,is_single_work,like_count,aes_hex_email,aes_hex_phone,price', 'the default select set excludes only select explicit columns in field order');
   check(field('json_setting').stages.join(',') === 'ordered_json' && field('aes_hex_email').stages.join(',') === 'aes,hex' && field('aes_hex_email').blindIndex === 'email_blind_index', 'codec stages and blind index');
   check(author.updated === 'updated_ts' && author.aesVersion === 'aes_key_version' && author.identity === 'seq' && model.entities.get('soft_record').softDelete === 'deleted_at', 'settings of the runtime model');
 

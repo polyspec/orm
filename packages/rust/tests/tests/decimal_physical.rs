@@ -43,22 +43,22 @@ async fn decimal_physical(env: &str) {
     db.close().await;
 }
 
+// Requirements: DIA-25, COD-2.
 #[tokio::test]
-// The test of DIA-25, COD-2 (docs/spec).
 async fn decimal_mysql() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     decimal_physical("DECIMAL_MYSQL_DSN").await;
 }
 
+// Requirements: DIA-25, COD-2.
 #[tokio::test]
-// The test of DIA-25, COD-2 (docs/spec).
 async fn decimal_postgres() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     decimal_physical("DECIMAL_POSTGRES_DSN").await;
 }
 
+// Requirements: DIA-25, COD-2.
 #[tokio::test]
-// The test of DIA-25, COD-2 (docs/spec).
 async fn decimal_sqlite() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     decimal_physical("DECIMAL_SQLITE_DSN").await;

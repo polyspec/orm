@@ -55,6 +55,7 @@ async function setOf(dir, documents, external = []) {
 
 // The generator check is one case that runs the orm-gen and tsc processes.
 // Requirements: DBS-121, DSL-37, DSL-130, PLN-22, ORES-21, DBS-5, DBS-98, DBS-4, DBS-27, DBS-110, DBS-155, DBS-175, DSL-127.
+// Requirements: DSL-154.
 caseTest('generate', PROCESS, async () => {
   try {
     const usage = join(work, 'usage.ts');
@@ -292,19 +293,20 @@ caseTest('generated method collision', PROCESS, async () => {
   }
 });
 
-// Requirements: DBS-112, DBS-121, INT-2, INT-3, INT-4, INT-5, INT-6, INT-7, INT-8.
+// Requirements: DBS-112, DBS-121, INT-2, INT-3, INT-4, INT-5, INT-6, INT-7, INT-8, COD-2.
 caseTest('generated field types follow the runtime model', PROCESS, async () => {
   const runDir = join(root, '.runtime/run');
   await mkdir(runDir, { recursive: true });
   const dir = await mkdtemp(join(runDir, 'ts-generated-field-types-'));
   try {
-    const document = 'dbspec 1 typed\n\ntable item {\n  seq i64 identity\n  ratio f64\n  enabled bool\n  body text\n  payload bytes null\n  day date\n  clock time(3)\n  moment datetime(3) null\n  json_value text null\n  primary key (seq)\n  settings {\n    codec json_value ordered_json\n  }\n}\n';
+    const document = 'dbspec 1 typed\n\ntable item {\n  seq i64 identity\n  amount decimal(10,2) null\n  ratio f64\n  enabled bool\n  body text\n  payload bytes null\n  day date\n  clock time(3)\n  moment datetime(3) null\n  json_value text null\n  primary key (seq)\n  settings {\n    codec json_value ordered_json\n  }\n}\n';
     const set = await setOf(join(dir, 'set'), [['typed.dbs', document]]);
     const output = join(dir, 'model');
     const result = run('gen', '--set', set, '--out', output);
     assert.equal(result.status, 0, result.stderr);
     const generated = await readFile(join(output, 'models.ts'), 'utf8');
     for (const declaration of [
+      'public getAmount(): string | null', 'public setAmount(value: string | null): this',
       'public getRatio(): number', 'public setRatio(value: number): this',
       'public getEnabled(): boolean', 'public setEnabled(value: boolean): this',
       'public getBody(): string', 'public setBody(value: string): this',

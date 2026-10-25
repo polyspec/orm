@@ -8,7 +8,7 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
-// Requirements: DBS-112.
+// Requirements: DBS-112, COD-2.
 func TestGeneratedDecimalFieldUsesExactText(t *testing.T) {
 	// The test of COD-2 (docs/spec).
 	testcase.Start(t, testcase.Compute)

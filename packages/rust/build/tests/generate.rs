@@ -285,7 +285,7 @@ fn manifest_text_is_embedded_with_its_hash() {
 }
 
 #[test]
-// Requirements: DBS-112, DBS-121, INT-2, INT-3, INT-4, INT-5, INT-6, INT-7, INT-8.
+// Requirements: DBS-112, DBS-121, INT-2, INT-3, INT-4, INT-5, INT-6, INT-7, INT-8, COD-2.
 fn generated_field_types_follow_the_runtime_model() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let text = generate_with_schema(
@@ -309,13 +309,15 @@ fn generated_field_types_follow_the_runtime_model() {
     assert!(text.contains("pub fn get_aes_hex_email(&self) -> polyspec_orm::Result<Option<&str>>"), "aes hex is a string");
     assert!(text.contains("pub fn force_index_uq_author_uuid(mut self) -> Self"), "a unique key takes an index hint");
 
-    let document = "dbspec 1 typed\n\ntable typed {\n  seq i64 identity\n  ratio f64\n  enabled bool\n  body text\n  payload bytes null\n  day date\n  clock time(3)\n  moment datetime(3) null\n  json_value text null\n  primary key (seq)\n  settings {\n    codec json_value ordered_json\n  }\n}\n";
+    let document = "dbspec 1 typed\n\ntable typed {\n  seq i64 identity\n  amount decimal(10,2) null\n  ratio f64\n  enabled bool\n  body text\n  payload bytes null\n  day date\n  clock time(3)\n  moment datetime(3) null\n  json_value text null\n  primary key (seq)\n  settings {\n    codec json_value ordered_json\n  }\n}\n";
     let types = generate_with_document(
         document,
         "fn main() { let row = Typed::new(); let _ = row.get_ratio(); let _ = row.get_enabled(); let _ = row.get_body(); let _ = row.get_payload(); let _ = row.get_day(); let _ = row.get_clock(); let _ = row.get_moment(); let _ = row.get_json_value(); }",
     )
     .expect("the typed field schema generates");
     for declaration in [
+        "get_amount(&self) -> polyspec_orm::Result<Option<&str>>",
+        "set_amount(mut self, v: impl polyspec_orm::IntoNullable<String>) -> polyspec_orm::Result<Self>",
         "get_ratio(&self) -> polyspec_orm::Result<f64>",
         "get_enabled(&self) -> polyspec_orm::Result<bool>",
         "get_body(&self) -> polyspec_orm::Result<&str>",
@@ -518,6 +520,7 @@ fn impl_of<'a>(text: &'a str, name: &str) -> &'a str {
 }
 
 #[test]
+// Requirements: DSL-154.
 fn key_prefix_methods_come_from_the_schema_without_a_scan() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     // The source calls no method of a model, so every method of a key prefix comes from the schema (T156).
