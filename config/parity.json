@@ -7714,11 +7714,7 @@
       "id": "go-internal-packages-go-generator-gen-go-scan",
       "kind": "feature",
       "requirements": [
-        "DBS-118",
-        "DBS-173",
-        "DSL-9",
-        "DSL-44",
-        "DSL-151"
+        "DSL-39"
       ],
       "bindings": [
         {
@@ -7726,7 +7722,12 @@
           "test": "packages/go/generator/gen_go_scan_test.go",
           "id": "TestGoGenerationIgnoresMethodsOfRelationResults"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "go-module",
+        "package": "github.com/polyspec/orm/packages/go"
+      }
     },
     {
       "id": "generator-scan-alias-with-a-chain-prefix-declares-its-getter",
@@ -7766,6 +7767,25 @@
           "id": "relation_alias_with_a_chain_prefix_has_its_getter"
         }
       ]
+    },
+    {
+      "id": "go-generator-model-package-functions",
+      "kind": "feature",
+      "requirements": [
+        "DSL-9"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/generator/gen_go_scan_test.go",
+          "id": "TestGoRelationAliasWithChainPrefix"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "go-module",
+        "package": "github.com/polyspec/orm/packages/go"
+      }
     },
     {
       "id": "generator-scan-nested-relation-alias-attaches-to-its-parent",
@@ -7849,16 +7869,7 @@
       "id": "go-internal-packages-go-generator-gen-go",
       "kind": "feature",
       "requirements": [
-        "DSL-127",
-        "DSL-129",
-        "DSL-130",
-        "INT-2",
-        "INT-3",
-        "INT-5",
-        "INT-6",
-        "INT-8",
-        "INT-12",
-        "PLN-22"
+        "DSL-39"
       ],
       "bindings": [
         {
@@ -7866,7 +7877,12 @@
           "test": "packages/go/generator/gen_go_test.go",
           "id": "TestParseChain"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "go-module",
+        "package": "github.com/polyspec/orm/packages/go"
+      }
     },
     {
       "id": "go-internal-packages-go-generator-generator",
@@ -7880,7 +7896,12 @@
           "test": "packages/go/generator/generator_test.go",
           "id": "TestGenerateUsesCanonicalManifestForGoClient"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "go-module",
+        "package": "github.com/polyspec/orm/packages/go"
+      }
     },
     {
       "id": "go-internal-packages-go-markdownmodel-ir-answers",
@@ -7899,17 +7920,57 @@
       ]
     },
     {
-      "id": "go-internal-packages-go-model-decimal-field",
+      "id": "generated-typed-getter-public-column-api",
       "kind": "feature",
       "requirements": [
         "DBS-112",
-        "COD-2"
+        "DBS-114"
       ],
       "bindings": [
         {
           "implementation": "go",
           "test": "packages/go/generator/gen_go_scan_test.go",
           "id": "TestGoGeneratedScalarGetterRejectsUnselectedRead"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/OrmGenTest.php",
+          "id": "OrmGenTest::testGeneratedTypedGetterUsesPrivateModelStorageAndRejectsUnselectedRead"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelNativeTest.php",
+          "id": "ModelNativeTest::testPhpGeneratedTypedGetterUsesInternalModelStorage"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/generate.mjs",
+          "id": "generated typed getter consumer compiler fixture"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_orm_gen.py",
+          "id": "test_generated_typed_getter_is_the_public_column_api"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/src/integration.rs",
+          "id": "generated_typed_getter_is_a_checked_public_consumer_api"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/tests/generate.rs",
+          "id": "generated_field_types_follow_the_runtime_model"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/tests/generate.rs",
+          "id": "generated_rows_reject_unselected_fields_and_separate_group_results"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/tests/generate.rs",
+          "id": "nullable_json_fields_keep_sql_null_separate_from_json_null"
         }
       ]
     },
@@ -8675,7 +8736,8 @@
       "id": "generator-rejects-a-column-named-after-a-model-method",
       "kind": "feature",
       "requirements": [
-        "DSL-127"
+        "DSL-127",
+        "PLN-22"
       ],
       "bindings": [
         {
@@ -8707,6 +8769,21 @@
           "implementation": "rust",
           "test": "packages/rust/build/src/manifest.rs",
           "id": "manifest::tests::reserved_method_names_are_not_columns"
+        }
+      ]
+    },
+    {
+      "id": "go-internal-packages-go-generator-column-name-rules",
+      "kind": "feature",
+      "requirements": [
+        "DSL-129",
+        "DSL-130"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/generator/gen_go_test.go",
+          "id": "TestColumnNameRules"
         }
       ]
     },
@@ -9412,34 +9489,6 @@
       ]
     },
     {
-      "id": "rust-generated-field-types-follow-the-runtime-model",
-      "kind": "feature",
-      "requirements": [
-        "DBS-112"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/generate.rs",
-          "id": "generated_field_types_follow_the_runtime_model"
-        }
-      ]
-    },
-    {
-      "id": "rust-generated-rows-reject-unselected-fields-and-separate-group-results",
-      "kind": "feature",
-      "requirements": [
-        "DBS-114"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/generate.rs",
-          "id": "generated_rows_reject_unselected_fields_and_separate_group_results"
-        }
-      ]
-    },
-    {
       "id": "rust-generates-called-methods",
       "kind": "feature",
       "requirements": [
@@ -9576,21 +9625,6 @@
       ]
     },
     {
-      "id": "rust-nullable-json-fields-keep-sql-null-separate-from-json-null",
-      "kind": "feature",
-      "requirements": [
-        "DBS-112",
-        "DBS-116"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/generate.rs",
-          "id": "nullable_json_fields_keep_sql_null_separate_from_json_null"
-        }
-      ]
-    },
-    {
       "id": "generator-rejects-a-document-without-the-signature",
       "kind": "feature",
       "requirements": [
@@ -9631,68 +9665,6 @@
       ]
     },
     {
-      "id": "rust-rejects-an-invalid-document",
-      "kind": "feature",
-      "requirements": [
-        "DBS-27",
-        "SCH-1"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/generate.rs",
-          "id": "rejects_an_invalid_document"
-        }
-      ]
-    },
-    {
-      "id": "rust-rejects-argument-count",
-      "kind": "feature",
-      "requirements": [
-        "DSL-37"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/generate.rs",
-          "id": "rejects_argument_count"
-        }
-      ]
-    },
-    {
-      "id": "rust-rejects-unknown-names-of-a-known-model",
-      "kind": "feature",
-      "requirements": [
-        "DSL-37"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/generate.rs",
-          "id": "rejects_unknown_names_of_a_known_model"
-        }
-      ]
-    },
-    {
-      "id": "rust-relation-getters-report-a-mismatched-relation-value",
-      "kind": "feature",
-      "requirements": [
-        "DSL-41"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/generate.rs",
-          "id": "relation_getters_report_a_mismatched_relation_value"
-        }
-      ],
-      "owner": {
-        "kind": "release-package",
-        "artifact": "git-tag",
-        "package": "polyspec-orm-build"
-      }
-    },
-    {
       "id": "generator-set-errors-print-every-error-and-write-nothing",
       "kind": "feature",
       "requirements": [
@@ -9728,8 +9700,76 @@
           "implementation": "rust",
           "test": "packages/rust/build/tests/generate.rs",
           "id": "reports_every_error_of_the_set_and_writes_nothing"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/tests/generate.rs",
+          "id": "rejects_an_invalid_document"
         }
       ]
+    },
+    {
+      "id": "generator-refuses-an-unknown-chain-method",
+      "kind": "feature",
+      "requirements": [
+        "DSL-37"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/generator/gen_go_output_test.go",
+          "id": "TestGoGenerationCommandReportsOutcomes"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/OrmGenScanTest.php",
+          "id": "OrmGenScanTest::testVector"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/OrmGenScanTest.php",
+          "id": "OrmGenScanTest::testVector"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/generate.mjs",
+          "id": "generate"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_orm_gen.py",
+          "id": "test_scan_reports_unknown_model_methods"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/tests/generate.rs",
+          "id": "rejects_unknown_names_of_a_known_model"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/tests/generate.rs",
+          "id": "rejects_argument_count"
+        }
+      ]
+    },
+    {
+      "id": "rust-relation-getters-report-a-mismatched-relation-value",
+      "kind": "feature",
+      "requirements": [
+        "DSL-41"
+      ],
+      "bindings": [
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/tests/generate.rs",
+          "id": "relation_getters_report_a_mismatched_relation_value"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm-build"
+      }
     },
     {
       "id": "rust-styled-setter-result-handling-preserves-model-calls",
@@ -20126,46 +20166,6 @@
           "implementation": "typescript",
           "test": "packages/ts/tests/coverage_schema_install.mjs",
           "id": "schema_install_external_documents [sqlite]"
-        }
-      ]
-    },
-    {
-      "id": "generated-typed-getter-public-column-api",
-      "kind": "feature",
-      "requirements": [
-        "DBS-112",
-        "DBS-114"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/generator/gen_go_scan_test.go",
-          "id": "TestGoGeneratedScalarGetterRejectsUnselectedRead"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/OrmGenTest.php",
-          "id": "OrmGenTest::testGeneratedTypedGetterUsesPrivateModelStorageAndRejectsUnselectedRead"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelNativeTest.php",
-          "id": "ModelNativeTest::testPhpGeneratedTypedGetterUsesInternalModelStorage"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_orm_gen.py",
-          "id": "test_generated_typed_getter_is_the_public_column_api"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/src/integration.rs",
-          "id": "generated_typed_getter_is_a_checked_public_consumer_api"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/generate.mjs",
-          "id": "generated typed getter consumer compiler fixture"
         }
       ]
     },

@@ -1,5 +1,5 @@
 <!-- doc-id: dsl -->
-<!-- source-sha256: 2b87d5d036d9d25cf306b52b2f476acc30a153b2ea28115f0eefcf6338762ec2 -->
+<!-- source-sha256: 38206a2353311185731fca0bf92f21dd3f3eaca83ffdea782c84b586e9bc24a4 -->
 # DSL
 
 이 문서는 [설계 계획](plan.md)이 정한 쿼리 문법을 정의한다. 클라이언트 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록하며, 이 문서와 일치하지 않는 클라이언트는 미완료 상태다.
@@ -16,7 +16,7 @@
 
 - **DSL-7** 연결 메서드는 `connect` 하나다. 조회한 행이나 컬렉션도 쓰기 전에 같은 메서드를 사용하므로, 복제본에서 읽은 행을 기본 연결로 쓸 수 있다.
 - **DSL-8** PHP는 `(new Product)($slave1)`과 `$row($master)`를 `connect`의 짧은 형태로 허용한다.
-- **DSL-9** Go는 생성된 `model` 패키지의 함수를 사용한다. `model.Product()`는 `*model.ProductModel`을 반환한다.
+- **DSL-9** `github.com/polyspec/orm/packages/go` client(Go)는 생성된 `model` 패키지의 함수를 사용한다. `model.Product()`는 `*model.ProductModel`을 반환한다.
 - **DSL-10** 트랜잭션 콜백 안에서 `connect`를 호출하지 않은 모델은 현재 실행 흐름의 활성 트랜잭션을 사용한다. 트랜잭션 밖에서 `connect` 없는 모델의 종단 작업이나 쓰기는 `CONFIG`를 반환한다.
 
 ## 2. 조건

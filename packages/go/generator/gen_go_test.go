@@ -47,6 +47,7 @@ func thingDocument(columns ...string) string {
 	return text + "  primary key (seq)\n}\n"
 }
 
+// Requirements: DSL-39.
 func TestParseChain(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	m := namesManifest(t, namesDiagram)

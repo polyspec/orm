@@ -15,7 +15,7 @@ This page specifies the query syntax defined by the [design plan](plan.md). Clie
 
 - **DSL-7** `connect` is the only connection method. A loaded row or collection uses the same method before a write, so rows read from a replica are written through the primary connection.
 - **DSL-8** PHP accepts `(new Product)($slave1)` and `$row($master)` as the short form of `connect`.
-- **DSL-9** Go uses functions in the generated `model` package. `model.Product()` returns `*model.ProductModel`.
+- **DSL-9** The `github.com/polyspec/orm/packages/go` client uses functions in the generated `model` package. `model.Product()` returns `*model.ProductModel`.
 - **DSL-10** Inside a transaction callback, a model without `connect` uses the active transaction of the current execution flow. Outside a transaction, a terminal or write on a model without `connect` returns `CONFIG`.
 
 ## 2. Conditions

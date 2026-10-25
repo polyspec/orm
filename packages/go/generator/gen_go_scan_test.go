@@ -70,6 +70,7 @@ func testScannedModule(t *testing.T) {
 // TestGoGenerationIgnoresMethodsOfRelationResults checks that a method called
 // on a relation getter result is not requested as a model method while the
 // getter does not exist yet.
+// Requirements: DSL-39.
 func TestGoGenerationIgnoresMethodsOfRelationResults(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	write := scannedModule(t)

@@ -158,6 +158,7 @@ class OrmGenTest(unittest.TestCase):
         self.assertTrue(author.core.where.items[-1]["group"].not_)
 
     def test_scan_reports_unknown_model_methods(self):
+        # Requirements: DSL-37.
         source = Path(self.out) / "scan_probe.py"
         source.write_text(
             "from models import Author\n"
@@ -759,7 +760,7 @@ class OrmGenTest(unittest.TestCase):
             self.assertIn(flag, result.stderr)
 
     def test_a_column_named_after_a_model_method_is_rejected(self):
-        # Requirements: DSL-127.
+        # Requirements: DSL-127, PLN-22.
         with tempfile.TemporaryDirectory(prefix="orm-gen-reserved-") as tree:
             root = Path(tree)
             (root / "reserved.dbs").write_text(

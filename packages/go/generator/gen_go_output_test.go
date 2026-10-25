@@ -304,6 +304,7 @@ func commandBinary(t *testing.T) string {
 
 // TestGoGenerationCommandReportsOutcomes checks the orm-gen gen exit status and
 // messages of a scanned-source compile error and of a generation failure.
+// Requirements: DSL-37.
 func TestGoGenerationCommandReportsOutcomes(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	bin, write := namesCommand(t, false)
