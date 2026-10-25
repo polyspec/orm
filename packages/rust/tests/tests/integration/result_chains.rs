@@ -1,5 +1,6 @@
 use super::model::Author;
 use polyspec_orm::StyledValue;
+use std::sync::{Arc, Mutex};
 
 fn tags() -> polyspec_orm::ordered_json::Value {
     polyspec_orm::ordered_json::Value::array(&[polyspec_orm::ordered_json::Value::string("fixture")]).expect("fixture array")
@@ -24,4 +25,34 @@ fn generated_model_result_chains_preserve_assigned_values() {
         };
         assert_eq!(value.compact(), tags().compact());
     }
+}
+
+// Requirements: INT-88, INT-89.
+#[tokio::test]
+async fn generated_terminal_returns_first_builder_error_without_sending_sql() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let fixture = super::temp_sqlite::TempSqlite::create("orm-first-builder-error");
+    let db = super::model::connect(&fixture.dsn(), 1, polyspec_orm::Config::default()).await.expect("SQLite connection");
+    let statements = Arc::new(Mutex::new(Vec::new()));
+    let recorded = Arc::clone(&statements);
+    let subscription = db
+        .subscribe(move |event: &polyspec_orm::StatementEvent<'_>| {
+            recorded.lock().unwrap().push(event.sql.to_owned());
+            Ok(())
+        })
+        .expect("SQLite statement subscriber");
+
+    let error = Author::new()
+        .connect(&db)
+        .seq(Vec::<i64>::new())
+        .name(Vec::<String>::new())
+        .get_count()
+        .await
+        .expect_err("the terminal returns the first invalid builder condition");
+
+    subscription.unsubscribe();
+    assert_eq!(error.code(), polyspec_orm::codes::EMPTY_IN);
+    assert!(error.to_string().contains("seq received an empty list"), "first builder error: {error}");
+    assert_eq!(*statements.lock().unwrap(), Vec::<String>::new(), "the terminal sent no SQL");
+    db.close().await;
 }

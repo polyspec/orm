@@ -857,10 +857,12 @@ mod keyring_tests {
     use std::collections::BTreeMap;
 
     #[test]
+    // Requirements: INT-74, INT-130.
     fn versions_lists_the_declared_versions_in_ascending_order() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
         let keys = BTreeMap::from([(3, "c".to_owned()), (1, "a".to_owned()), (2, "b".to_owned())]);
         let keyring = AesKeyring::new(keys, 2).unwrap();
         assert_eq!(keyring.versions(), vec![1, 2, 3]);
+        assert_eq!(keyring.current(), 2);
     }
 }

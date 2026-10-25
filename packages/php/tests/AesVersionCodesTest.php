@@ -14,10 +14,36 @@ use Polyspec\Orm\AesKeyring;
 use Polyspec\Orm\Codec;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\OrmException;
+use Polyspec\Orm\Tests\Model\Author;
 
 #[Small]
 final class AesVersionCodesTest extends TestCase
 {
+    // Requirements: INT-88, INT-89.
+    public function testTerminalReturnsTheFirstRecordedBuilderError(): void
+    {
+        $model = new Author();
+        $model->limit(-1, 1)->limit(0, 0);
+        try {
+            $model->getCount();
+            self::fail('the terminal must return the recorded builder error');
+        } catch (OrmException $error) {
+            self::assertSame('CONFIG', $error->code_);
+            self::assertSame(
+                'CONFIG: limit requires a non-negative offset and a positive count',
+                $error->getMessage()
+            );
+        }
+    }
+
+    // Requirements: INT-74, INT-130.
+    public function testKeyringExposesCurrentVersionAndSortedVersions(): void
+    {
+        $keyring = new AesKeyring([3 => 'third', 1 => 'first', 2 => 'second'], 2);
+        self::assertSame(2, $keyring->currentVersion);
+        self::assertSame([1, 2, 3], $keyring->versions());
+    }
+
     private function codeOf(callable $run): string
     {
         try {

@@ -7,6 +7,12 @@ import { decodeAssembly } from '../dist/database.js';
 import { check } from './codec_case.mjs';
 
 const keyring = new AesKeyring(new Map([[1, 'old-key'], [2, 'new-key']]), 2);
+// Requirements: INT-74, INT-130.
+check('aes keyring: versions are ascending and current version is retained', wrong => {
+  const ring = new AesKeyring(new Map([[3, 'third'], [1, 'first'], [2, 'second']]), 2);
+  if (JSON.stringify(ring.versions()) !== JSON.stringify([1, 2, 3])) wrong.push(`versions ${JSON.stringify(ring.versions())} are not ascending`);
+  if (ring.currentVersion !== 2) wrong.push(`current version ${ring.currentVersion}, want 2`);
+});
 const db = { aesKeyring: keyring, aesKey: 'new-key' };
 const cipher = hostEncode('value', ['aes', 'hex'], 'old-key');
 const assemble = {

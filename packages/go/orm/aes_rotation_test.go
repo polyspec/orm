@@ -47,6 +47,18 @@ func TestRotateAESRowUpdatesAllAESColumnsAndVersion(t *testing.T) {
 	}
 }
 
+// Requirements: INT-74, INT-130.
+func TestAESKeyringExposesCurrentVersionAndSortedVersions(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	keyring := mustAESKeyring(t, map[int32]string{3: "third", 1: "first", 2: "second"}, 2)
+	if keyring.CurrentAESVersion() != 2 {
+		t.Fatalf("current AES version = %d, want 2", keyring.CurrentAESVersion())
+	}
+	if got := keyring.AESVersions(); !reflect.DeepEqual(got, []int32{1, 2, 3}) {
+		t.Fatalf("AES versions = %#v, want ascending [1 2 3]", got)
+	}
+}
+
 func TestRotateAESRowDoesNotReturnPartialResult(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	keys := mustAESKeyring(t, map[int32]string{1: "old", 2: "new"}, 2)

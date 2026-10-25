@@ -35,6 +35,12 @@ def code_of(run) -> str:
 
 
 class AesVersionCodesTest(unittest.TestCase):
+    # Requirements: INT-74, INT-130.
+    def test_keyring_exposes_current_version_and_sorted_versions(self):
+        keyring = AesKeyring({3: "third", 1: "first", 2: "second"}, 2)
+        self.assertEqual(keyring.current_version, 2)
+        self.assertEqual(keyring.versions(), [1, 2, 3])
+
     # Requirements: COD-49, COD-50, COD-51, COD-52, COD-53.
     def test_read_path_codes(self):
         cases = [
