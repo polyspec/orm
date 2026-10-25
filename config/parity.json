@@ -4556,6 +4556,36 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/zone.rs",
           "id": "dropping_a_query_cancels_it"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/QueryCancellationTest.php",
+          "id": "testCancellationInterruptsSqliteVmRollsBackAndKeepsRootConnectionUsable"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/QueryCancellationTest.php",
+          "id": "testPostgresNoticeCancelsActiveStatementRollsBackAndReconnectsRoot"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/QueryCancellationTest.php",
+          "id": "testMysqlLockEventCancelsActiveStatementRollsBackAndReconnectsRoot"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/QueryCancellationNativeTest.php",
+          "id": "testNativeCancellationInterruptsSqliteRollsBackAndKeepsRootConnectionUsable"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/QueryCancellationNativeTest.php",
+          "id": "testPostgresNoticeCancelsActiveStatementRollsBackAndReconnectsRoot"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/QueryCancellationNativeTest.php",
+          "id": "testMysqlLockEventCancelsActiveStatementRollsBackAndReconnectsRoot"
         }
       ]
     },
