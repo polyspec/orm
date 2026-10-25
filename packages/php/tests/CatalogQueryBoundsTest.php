@@ -39,6 +39,7 @@ final class CatalogQueryBoundsTest extends TestCase
         }
     }
 
+    // Requirements: INT-115.
     public function testPlainAndGridConsumersShareTheRowLimit(): void
     {
         $sql = 'SELECT value FROM values_table ORDER BY id';
@@ -49,6 +50,7 @@ final class CatalogQueryBoundsTest extends TestCase
         );
     }
 
+    // Requirements: INT-115.
     public function testPlainAndGridConsumersShareTheByteLimit(): void
     {
         $sql = "SELECT 'abc' AS value";

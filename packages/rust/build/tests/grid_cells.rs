@@ -11,7 +11,7 @@ use grid_open::open_catalog;
 use polyspec_orm_build::tool_db::{GridCell, QueryLimits};
 
 #[tokio::test]
-// Requirements: SCH-3.
+// Requirements: SCH-3, INT-115.
 async fn binary_grid_values_remain_distinct_from_text_and_null() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     physical_fixture::within(30, "grid cell deadline", check()).await;

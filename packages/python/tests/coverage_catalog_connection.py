@@ -1,7 +1,7 @@
 # catalog_connection coverage runs the two shared cases against the bench database that the
 # feature check selected (ORM_FEATURE_DATABASE, ORM_FEATURE_DSN) through connect_catalog. The read case only reads; the
 # mutation case inserts, updates and deletes one row of composite_account in tenant 990005 and ends in the state it started in.
-# Requirements: SCH-3, SCH-5, SCH-6a, INT-103, INT-109, INT-113, INT-114, INT-123.
+# Requirements: SCH-3, SCH-5, SCH-6a, INT-103, INT-109, INT-113, INT-114, INT-115, INT-123.
 # Its SQLite path also checks generated primary keys in a temporary file, outside the bench database.
 import io
 import os
@@ -12,7 +12,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from polyspec.orm import connect_catalog
+from polyspec.orm import OrmError, codes, connect_catalog
 from polyspec.orm.catalog import GridCell
 from .coverage_case import run_cases
 from .test_sqlite import generate
@@ -126,6 +126,16 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
             f"SELECT COUNT(*) FROM {quote('user', driver)}", []
         )
         self.assertEqual(int(count.rows[0][0]), 5000)
+        with self.assertRaises(OrmError) as row_limit:
+            self.catalog.read_only_grid_query(
+                "SELECT 'abc' AS value UNION ALL SELECT 'def'", [], max_rows=1, max_bytes=1024
+            )
+        self.assertEqual(row_limit.exception.code, codes.CATALOG_LIMIT)
+        with self.assertRaises(OrmError) as byte_limit:
+            self.catalog.read_only_grid_query(
+                "SELECT 'abc' AS value", [], max_rows=2, max_bytes=2
+            )
+        self.assertEqual(byte_limit.exception.code, codes.CATALOG_LIMIT)
         with self.assertRaisesRegex(Exception, "QUERY_READ_ONLY"):
             self.catalog.read_only_query(
                 f"UPDATE {quote('user', driver)} SET name = name WHERE seq = 1", []

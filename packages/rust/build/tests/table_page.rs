@@ -122,7 +122,7 @@ async fn check() {
         let insert = if dialect == "postgres" { format!("INSERT INTO {large} VALUES($1)") } else { format!("INSERT INTO {large} VALUES(?)") };
         seed.exec(&insert, &[tool_db::s(&"x".repeat(8 * 1024 * 1024))]).await.expect("owned budget row");
         let outcome = catalog.table_page(&TableRef { namespace: table.namespace.clone(), name: large.clone() }, 1, 0).await;
-        if !matches!(&outcome, Err(error) if error.contains("TOOL_QUERY_LIMIT")) {
+        if !matches!(&outcome, Err(error) if error.starts_with("CATALOG_LIMIT:")) {
             failures.push("byte-budget");
         }
         let recovery = catalog.table_page(&table, 2, 0).await.expect("recovered page");

@@ -93,7 +93,7 @@ impl CatalogConnection {
         limits: crate::tool_db::QueryLimits,
     ) -> Result<crate::tool_db::QueryResult, String> {
         let mut connection = self.read_only_connection(sql).await?;
-        let result = connection.query_result_bounded(sql, params, limits).await.map_err(|error| error.to_string());
+        let result = connection.query_result_bounded(sql, params, limits).await.map_err(catalog_query_error);
         finish_read_only(&mut connection, result).await
     }
     /// Read-only typed grid values preserve binary cells without text coercion.
@@ -104,7 +104,7 @@ impl CatalogConnection {
         limits: crate::tool_db::QueryLimits,
     ) -> Result<crate::tool_db::GridQueryResult, String> {
         let mut connection = self.read_only_connection(sql).await?;
-        let result = connection.grid_query_bounded(sql, params, limits).await.map_err(|error| error.to_string());
+        let result = connection.grid_query_bounded(sql, params, limits).await.map_err(catalog_query_error);
         finish_read_only(&mut connection, result).await
     }
     async fn read_only_connection(&self, sql: &str) -> Result<Conn, String> {
@@ -141,4 +141,14 @@ async fn finish_read_only<T>(connection: &mut Conn, result: Result<T, String>) -
         (Ok(_), Err(error)) => Err(format!("QUERY_READ_ONLY_CLEANUP: {error}")),
         (Err(error), Err(cleanup)) => Err(format!("{error}; QUERY_READ_ONLY_CLEANUP: {cleanup}")),
     }
+}
+
+pub(super) fn catalog_query_error(error: sqlx::Error) -> String {
+    if let sqlx::Error::Decode(inner) = &error {
+        let detail = inner.to_string();
+        if let Some(detail) = detail.strip_prefix("TOOL_QUERY_LIMIT:") {
+            return format!("{}:{detail}", polyspec_orm::codes::CATALOG_LIMIT);
+        }
+    }
+    error.to_string()
 }

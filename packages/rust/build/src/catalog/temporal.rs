@@ -2,7 +2,7 @@
 //! digits (docs/spec/dbspec.md). The grid decode uses six digits, so the remaining digits must be 0.
 //! For SQLite, the dbspec text of a declared temporal column is turned into the same temporal cell.
 use super::TableMetadata;
-use crate::tool_db::{Conn, GridCell, GridQueryResult, P, QueryLimits, is_temporal};
+use crate::tool_db::{is_temporal, Conn, GridCell, GridQueryResult, QueryLimits, P};
 
 /// The `(p)` of the native type. If absent, the dialect default: MySQL `time` and `datetime` are 0, PostgreSQL
 /// `time` and `timestamp` are 6.
@@ -77,7 +77,7 @@ pub(super) async fn read(
     params: &[P],
     limits: QueryLimits,
 ) -> Result<GridQueryResult, String> {
-    let mut result = connection.grid_query_bounded(sql, params, limits).await.map_err(|error| error.to_string())?;
+    let mut result = connection.grid_query_bounded(sql, params, limits).await.map_err(super::catalog_query_error)?;
     declared_precision(metadata, dialect, &mut result)?;
     Ok(result)
 }

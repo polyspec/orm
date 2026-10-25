@@ -1,7 +1,7 @@
 // catalog_connection coverage runs the two shared cases against the bench database that the
 // feature check selected (ORM_FEATURE_DATABASE, ORM_FEATURE_DSN) through connectCatalog. The read case only reads; the mutation
 // case inserts, updates and deletes one row of composite_account in tenant 990005 and ends in the state it started in.
-// Requirements: SCH-3, SCH-5, SCH-6a, INT-103, INT-109, INT-113, INT-114, INT-123.
+// Requirements: SCH-3, SCH-5, SCH-6a, INT-103, INT-109, INT-113, INT-114, INT-115, INT-123.
 import assert from 'node:assert/strict';
 import { randomInt } from 'node:crypto';
 import { runCases } from './coverage_case.mjs';

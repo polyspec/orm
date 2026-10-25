@@ -20,5 +20,5 @@ pub async fn finish_catalog(database: polyspec_orm::Db, catalog: CatalogConnecti
 
 /// Checks that a grid query refusal reports the shared size-limit code.
 pub async fn query_limit(catalog: &mut CatalogConnection, sql: &str, limits: QueryLimits) -> bool {
-    catalog.read_only_grid_query(sql, &[], limits).await.err().is_some_and(|error| error.contains("TOOL_QUERY_LIMIT"))
+    catalog.read_only_grid_query(sql, &[], limits).await.err().is_some_and(|error| error.starts_with("CATALOG_LIMIT:"))
 }

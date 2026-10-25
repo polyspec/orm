@@ -765,7 +765,7 @@ class _Session:
         cursor = self.raw.cursor()
         names: list = []
         rows: list = []
-        codes: list = []
+        type_codes: list = []
         unsigned: list = []
         budget = 0
         try:
@@ -780,7 +780,7 @@ class _Session:
             cursor.execute(text, args)
             if cursor.description:
                 names = [column[0] for column in cursor.description]
-                codes = [column[1] for column in cursor.description]
+                type_codes = [column[1] for column in cursor.description]
                 if grid and self.dialect == "mysql":
                     # pymysql exposes the UNSIGNED flag only on the private result of a cursor: Cursor.description has no
                     # flags, and no public pymysql API reports them. The attribute is read here, for grid queries only.
@@ -817,7 +817,7 @@ class _Session:
             _raise_driver_error(self.dialect, error, lost)
         finally:
             cursor.close()
-        return _Raw(names, rows, affected, codes, unsigned, insert_id)
+        return _Raw(names, rows, affected, type_codes, unsigned, insert_id)
 
     def close(self) -> None:
         self.wrapper.close()

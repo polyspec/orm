@@ -1,7 +1,7 @@
 //! SCH-6a catalog_connection: orm-build's live-db catalog reads the table metadata of the seeded bench database,
 //! the author table page, and a read-only query, and inserts, updates, and deletes a row in composite_account, which has no identity column.
 //! The database ends in the state it started in.
-//! Requirements: SCH-5, SCH-6a, INT-109, INT-113, INT-114, INT-123.
+//! Requirements: SCH-5, SCH-6a, INT-109, INT-113, INT-114, INT-115, INT-123.
 use polyspec_orm_testcase::OrPanic;
 
 use polyspec_orm_build::catalog::{CatalogConnection, MutationPhase, RowSnapshot, TableRef};
@@ -44,7 +44,7 @@ fn column(page: &polyspec_orm_build::catalog::TablePage, column: &str) -> usize 
 }
 
 #[tokio::test]
-// Requirements: SCH-3, INT-103, INT-113, INT-114.
+// Requirements: SCH-3, INT-103, INT-113, INT-114, INT-115.
 async fn coverage_catalog_read() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     within("catalog_read", async {
@@ -77,6 +77,11 @@ async fn coverage_catalog_read() {
         let count =
             catalog.read_only_query(&format!("SELECT COUNT(*) FROM {}", quote("user", &driver)), &[], QueryLimits::default()).await.expect("user count");
         assert_eq!(count.rows, vec![vec![Val::Int(5000)]], "{driver}: user count");
+        let row_overflow =
+            catalog.read_only_grid_query("SELECT 'abc' AS value UNION ALL SELECT 'def'", &[], QueryLimits { max_rows: 1, max_bytes: 1024 }).await;
+        assert!(matches!(&row_overflow, Err(error) if error.starts_with("CATALOG_LIMIT:")), "{driver}: row budget result: {row_overflow:?}");
+        let byte_overflow = catalog.read_only_grid_query("SELECT 'abc' AS value", &[], QueryLimits { max_rows: 2, max_bytes: 2 }).await;
+        assert!(matches!(&byte_overflow, Err(error) if error.starts_with("CATALOG_LIMIT:")), "{driver}: byte budget result: {byte_overflow:?}");
         let write = catalog.read_only_query(&format!("UPDATE {} SET name = name WHERE seq = 1", quote("user", &driver)), &[], QueryLimits::default()).await;
         assert!(matches!(&write, Err(e) if e.contains("QUERY_READ_ONLY")), "{driver}: a write through read_only_query: {write:?}");
 

@@ -7,6 +7,7 @@ package orm_test
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"os"
 	"reflect"
 	"slices"
@@ -14,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/polyspec/orm/packages/go/engine/ir"
 	"github.com/polyspec/orm/packages/go/model"
 	"github.com/polyspec/orm/packages/go/orm"
 	"github.com/polyspec/orm/packages/go/testcase"
@@ -69,7 +71,7 @@ func catalogQuote(name, driver string) string {
 	return `"` + name + `"`
 }
 
-// Requirements: SCH-3, SCH-5, SCH-6a, INT-103, INT-113, INT-114.
+// Requirements: SCH-3, SCH-5, SCH-6a, INT-103, INT-113, INT-114, INT-115.
 func TestCoverageCatalogRead(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	ctx := context.Background()
@@ -105,6 +107,16 @@ func TestCoverageCatalogRead(t *testing.T) {
 	}
 	if got := count.Rows[0][0]; got != int64(5000) {
 		t.Fatalf("%s: user count %v, want 5000", driver, got)
+	}
+	for _, limits := range []orm.CatalogQueryLimits{
+		{MaxRows: 1, MaxBytes: 1024},
+		{MaxRows: 2, MaxBytes: 2},
+	} {
+		_, err := c.ReadOnlyGridQuery(ctx, "SELECT 'abc' AS value UNION ALL SELECT 'def'", nil, limits)
+		var coded *ir.Error
+		if !errors.As(err, &coded) || coded.Code != orm.CodeCatalogLimit {
+			t.Fatalf("%s: grid query with limits %+v returned %v, want coded CATALOG_LIMIT", driver, limits, err)
+		}
 	}
 	_, err = c.ReadOnlyQuery(ctx, "UPDATE "+catalogQuote("user", driver)+" SET name = name WHERE seq = 1", nil, orm.CatalogQueryLimits{})
 	if err == nil || !strings.Contains(err.Error(), "QUERY_READ_ONLY") {

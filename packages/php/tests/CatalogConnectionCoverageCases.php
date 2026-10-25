@@ -54,6 +54,7 @@ trait CatalogConnectionCoverageCases
             : $this->quote($namespace) . '.' . $this->quote($name);
     }
 
+    // Requirements: SCH-3, SCH-5, SCH-6a, INT-103, INT-113, INT-114, INT-115.
     public function testCatalogRead(): void
     {
         $namespace = $this->catalog->currentNamespace();
@@ -67,6 +68,17 @@ trait CatalogConnectionCoverageCases
         self::assertCount(3, $page->result->rows);
         $count = $this->catalog->readOnlyQuery('SELECT COUNT(*) FROM ' . $this->quote('user'), []);
         self::assertSame(5000, (int) $count->rows[0][0]);
+        foreach ([
+            [['maxRows' => 1, 'maxBytes' => 1024], "SELECT 'abc' AS value UNION ALL SELECT 'def'"],
+            [['maxRows' => 2, 'maxBytes' => 2], "SELECT 'abc' AS value"],
+        ] as [$limits, $sql]) {
+            try {
+                $this->catalog->readOnlyGridQuery($sql, [], $limits['maxRows'], $limits['maxBytes']);
+                self::fail('a grid query over its result budget returned partial success');
+            } catch (OrmException $e) {
+                self::assertSame(Code::CATALOG_LIMIT, $e->code_);
+            }
+        }
         $snapshot = $this->catalog->rowSnapshotFromPage($page, 0);
         self::assertMatchesRegularExpression('/^[0-9a-f]{64}$/', $snapshot->revision());
         $this->assertGridCells();
