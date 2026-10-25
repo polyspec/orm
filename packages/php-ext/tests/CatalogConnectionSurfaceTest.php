@@ -138,6 +138,58 @@ final class CatalogConnectionSurfaceTest extends TestCase
         }
     }
 
+    public function testNativeInsertCommitFailurePreservesTheDriverCause(): void
+    {
+        self::assertTrue((new ReflectionClass(Catalog::class))->isInternal());
+        self::assertTrue((new ReflectionClass(Catalog::class))->getMethod('insertRow')->isInternal());
+
+        $pdo = new class extends PDO {
+            public bool $failCommit = false;
+
+            public function __construct()
+            {
+                parent::__construct('sqlite::memory:');
+                $this->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            }
+
+            public function exec(string $statement): int|false
+            {
+                if ($this->failCommit && $statement === 'COMMIT') {
+                    $this->failCommit = false;
+                    throw new \PDOException('commit lost after the insert');
+                }
+                return parent::exec($statement);
+            }
+        };
+        $pdo->exec('CREATE TABLE sample (id INTEGER PRIMARY KEY, payload TEXT NOT NULL)');
+        $db = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
+        $catalog = self::catalogWith($db, 'sqlite');
+        (new ReflectionProperty(Catalog::class, 'gridLink'))->setValue($catalog, null);
+
+        try {
+            $metadata = $catalog->describeTable(['namespace' => 'main', 'name' => 'sample']);
+            $pdo->failCommit = true;
+            try {
+                $catalog->insertRow($metadata, ['id' => 1, 'payload' => 'inserted']);
+                self::fail('an unconfirmed native insert commit returned success');
+            } catch (OrmException $error) {
+                self::assertSame(Code::ROW_COMMIT_INDETERMINATE, $error->code_);
+                self::assertStringContainsString('commit outcome unknown; do not retry', $error->getMessage());
+                self::assertInstanceOf(OrmException::class, $error->getPrevious());
+                self::assertSame(Code::DRIVER, $error->getPrevious()->code_);
+                self::assertInstanceOf(PDOException::class, $error->getPrevious()->getPrevious());
+                self::assertSame(
+                    'commit lost after the insert',
+                    $error->getPrevious()->getPrevious()->getMessage()
+                );
+            }
+
+            self::assertSame(0, (int) $pdo->query('SELECT COUNT(*) FROM sample')->fetchColumn());
+        } finally {
+            $catalog->close();
+        }
+    }
+
     private static function catalogWith(Db $db, string $dialect): Catalog
     {
         $catalog = (new ReflectionClass(Catalog::class))->newInstanceWithoutConstructor();
