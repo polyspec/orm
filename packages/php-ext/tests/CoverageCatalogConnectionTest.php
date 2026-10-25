@@ -25,4 +25,12 @@ final class CoverageCatalogConnectionTest extends TestCase
     {
         self::assertTrue((new \ReflectionClass(Model::class))->isInternal());
     }
+
+    // Requirements: INT-115.
+    public function testCatalogPlainReadOnlyQueryBudgets(): void
+    {
+        self::assertTrue((new \ReflectionClass(Catalog::class))->isInternal());
+        self::assertTrue((new \ReflectionMethod(Catalog::class, 'readOnlyQuery'))->isInternal());
+        $this->assertPlainQueryBounds();
+    }
 }

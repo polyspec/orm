@@ -124,6 +124,30 @@ trait CatalogConnectionCoverageCases
         ], $rows);
     }
 
+    protected function assertPlainQueryBounds(): void
+    {
+        $catalog = $this->catalog ?? throw new \LogicException('catalog connection is not set');
+        $rows = "SELECT 'alpha' AS value UNION ALL SELECT 'beta' AS value";
+        try {
+            $catalog->readOnlyQuery($rows, [], 1, 128);
+            self::fail('a plain query over its row limit returned partial success');
+        } catch (OrmException $e) {
+            self::assertSame(Code::CATALOG_LIMIT, $e->code_);
+            self::assertSame('CATALOG_LIMIT: result has more than 1 rows', $e->getMessage());
+        }
+        self::assertSame([['alpha'], ['beta']], $catalog->readOnlyQuery($rows, [], 2, 128)->rows);
+
+        $bytes = "SELECT 'abc' AS value";
+        try {
+            $catalog->readOnlyQuery($bytes, [], 2, 2);
+            self::fail('a plain query over its byte limit returned partial success');
+        } catch (OrmException $e) {
+            self::assertSame(Code::CATALOG_LIMIT, $e->code_);
+            self::assertSame('CATALOG_LIMIT: result has more than 2 bytes of values', $e->getMessage());
+        }
+        self::assertSame([['abc']], $catalog->readOnlyQuery($bytes, [], 2, 3)->rows);
+    }
+
     // Requirements: INT-4, INT-8.
     public function testModelReadNullAndEmptyText(): void
     {

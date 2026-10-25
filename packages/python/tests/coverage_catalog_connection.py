@@ -374,6 +374,7 @@ if __name__ == "__main__":
     else:
         feature_cases = {
             "catalog_read": "test_read",
+            "catalog_plain_query_bounds": "test_read",
             "catalog_grid_column_and_row_order": "test_grid_column_and_row_order",
             "model_read_null_and_empty_text": "test_model_read_null_and_empty_text",
             "catalog_row_mutation": "test_row_mutation",
