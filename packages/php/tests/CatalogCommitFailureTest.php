@@ -74,7 +74,7 @@ final class CatalogCommitFailureTest extends TestCase
     public function testFailedRollbackIsReportedAsTheCauseOfTheUnknownCommit(): void
     {
         $rollbackError = new \PDOException('rollback refused');
-        $pdo = new class($rollbackError) extends \PDO {
+        $pdo = new class ($rollbackError) extends \PDO {
             public function __construct(private readonly \PDOException $rollbackError)
             {
                 parent::__construct('sqlite::memory:');

@@ -19,6 +19,36 @@ final class PgsqlPdoAdapter extends \Pdo\Pgsql
 {
     private array $errorInfoValue = ['00000', null, null];
     private int $errmode = PDO::ERRMODE_EXCEPTION;
+
+    /**
+     * Runs $call with an error handler of its own that keeps the E_WARNING PHP raises for a failing call, so the
+     * failure reports its reason in the PDOException of the caller and no warning leaves the ORM; a notice or
+     * deprecation still reaches PHP's handling. Returns the result and the warning, null when the call raised none.
+     *
+     * @template T
+     * @param \Closure(): T $call
+     * @return array{0: T, 1: ?string}
+     */
+    private static function withWarning(\Closure $call): array
+    {
+        $warning = null;
+        set_error_handler(static function (int $level, string $message) use (&$warning): bool {
+            $warning = $message;
+            return true;
+        }, E_WARNING);
+        try {
+            $result = $call();
+        } finally {
+            restore_error_handler();
+        }
+        return [$result, $warning];
+    }
+
+    /** The message of a failure: its own text, and the warning of PHP that states its reason when there is one. */
+    private static function withReason(string $message, ?string $warning): string
+    {
+        return $warning === null ? $message : "$message: $warning";
+    }
     private bool $stringifyFetches = false;
     private int $caseMode = PDO::CASE_NATURAL;
     private int $nullMode = PDO::NULL_NATURAL;
@@ -33,9 +63,9 @@ final class PgsqlPdoAdapter extends \Pdo\Pgsql
     public function __construct(string $dsn, ?string $username = null, ?string $password = null, ?array $options = null)
     {
         $conninfo = self::toConninfo($dsn, $username, $password, $options ?? []);
-        $connection = @pg_connect($conninfo, PGSQL_CONNECT_FORCE_NEW);
+        [$connection, $warning] = self::withWarning(static fn() => pg_connect($conninfo, PGSQL_CONNECT_FORCE_NEW));
         if (!$connection instanceof Connection) {
-            throw new PDOException('cannot connect to PostgreSQL');
+            throw new PDOException(self::withReason('cannot connect to PostgreSQL', $warning));
         }
         $this->connection = $connection;
     }
@@ -68,18 +98,28 @@ final class PgsqlPdoAdapter extends \Pdo\Pgsql
         }
         $fields = [];
         foreach (explode(';', substr($dsn, 6)) as $part) {
-            if ($part === '') continue;
+            if ($part === '') {
+                continue;
+            }
             [$key, $value] = array_pad(explode('=', $part, 2), 2, '');
             $fields[$key] = trim($value, "'\"");
         }
-        if ($username !== null) $fields['user'] = $username;
-        if ($password !== null) $fields['password'] = $password;
+        if ($username !== null) {
+            $fields['user'] = $username;
+        }
+        if ($password !== null) {
+            $fields['password'] = $password;
+        }
         foreach ($options as $key => $value) {
-            if (is_string($value)) $fields[$key] = $value;
+            if (is_string($value)) {
+                $fields[$key] = $value;
+            }
         }
         $quote = static fn(string $value): string => "'" . str_replace(['\\', "'"], ['\\\\', "\\'"], $value) . "'";
         $parts = [];
-        foreach ($fields as $key => $value) $parts[] = $key . '=' . $quote((string) $value);
+        foreach ($fields as $key => $value) {
+            $parts[] = $key . '=' . $quote((string) $value);
+        }
         return implode(' ', $parts);
     }
 
@@ -181,9 +221,12 @@ final class PgsqlPdoAdapter extends \Pdo\Pgsql
             . implode(', ', array_map(fn($field) => pg_escape_identifier($this->connection, $field), $fieldNames))
             . ') FROM STDIN WITH (FORMAT text, DELIMITER ' . pg_escape_literal($this->connection, $separator)
             . ', NULL ' . pg_escape_literal($this->connection, $nullAs) . ')';
-        $started = @pg_query($this->connection, $command);
+        $connection = $this->connection;
+        [$started, $warning] = self::withWarning(static fn() => pg_query($connection, $command));
         if (!$started instanceof Result || pg_result_status($started) !== PGSQL_COPY_IN) {
-            throw new PDOException(pg_last_error($this->connection) ?: 'PostgreSQL COPY FROM did not start');
+            throw new PDOException(
+                pg_last_error($this->connection) ?: self::withReason('PostgreSQL COPY FROM did not start', $warning),
+            );
         }
         pg_free_result($started);
         foreach ($rows as $row) {
@@ -205,9 +248,9 @@ final class PgsqlPdoAdapter extends \Pdo\Pgsql
         string $nullAs = "\\N",
         ?string $fields = null
     ): bool {
-        $contents = @file_get_contents($filename);
+        [$contents, $warning] = self::withWarning(static fn() => file_get_contents($filename));
         if (!is_string($contents)) {
-            throw new PDOException("cannot read PostgreSQL COPY file $filename");
+            throw new PDOException(self::withReason("cannot read PostgreSQL COPY file $filename", $warning));
         }
         $rows = $contents === '' ? [] : preg_split('/\r\n|\n|\r/', $contents);
         if ($rows !== false && (str_ends_with($contents, "\n") || str_ends_with($contents, "\r"))) {
@@ -261,9 +304,9 @@ final class PgsqlPdoAdapter extends \Pdo\Pgsql
             return false;
         }
         $contents = $rows === [] ? '' : implode("\n", $rows) . "\n";
-        $written = @file_put_contents($filename, $contents);
+        [$written, $warning] = self::withWarning(static fn() => file_put_contents($filename, $contents));
         if ($written === false) {
-            throw new PDOException("cannot write PostgreSQL COPY file $filename");
+            throw new PDOException(self::withReason("cannot write PostgreSQL COPY file $filename", $warning));
         }
         return true;
     }
@@ -308,11 +351,13 @@ final class PgsqlPdoAdapter extends \Pdo\Pgsql
 
     public function setAttribute(int $attribute, mixed $value): bool
     {
-        if ($attribute === PDO::ATTR_ERRMODE && in_array(
-            $value,
-            [PDO::ERRMODE_SILENT, PDO::ERRMODE_WARNING, PDO::ERRMODE_EXCEPTION],
-            true
-        )) {
+        if (
+            $attribute === PDO::ATTR_ERRMODE && in_array(
+                $value,
+                [PDO::ERRMODE_SILENT, PDO::ERRMODE_WARNING, PDO::ERRMODE_EXCEPTION],
+                true
+            )
+        ) {
             $this->errmode = (int) $value;
             return true;
         }
@@ -320,16 +365,20 @@ final class PgsqlPdoAdapter extends \Pdo\Pgsql
             $this->stringifyFetches = (bool) $value;
             return true;
         }
-        if ($attribute === PDO::ATTR_CASE && in_array(
-            $value,
-            [PDO::CASE_NATURAL, PDO::CASE_LOWER, PDO::CASE_UPPER],
-            true
-        )) {
+        if (
+            $attribute === PDO::ATTR_CASE && in_array(
+                $value,
+                [PDO::CASE_NATURAL, PDO::CASE_LOWER, PDO::CASE_UPPER],
+                true
+            )
+        ) {
             $this->caseMode = (int) $value;
             return true;
         }
-        if ($attribute === PDO::ATTR_ORACLE_NULLS
-            && in_array($value, [PDO::NULL_NATURAL, PDO::NULL_EMPTY_STRING, PDO::NULL_TO_STRING], true)) {
+        if (
+            $attribute === PDO::ATTR_ORACLE_NULLS
+            && in_array($value, [PDO::NULL_NATURAL, PDO::NULL_EMPTY_STRING, PDO::NULL_TO_STRING], true)
+        ) {
             $this->nullMode = (int) $value;
             return true;
         }
@@ -403,9 +452,13 @@ final class PgsqlPdoAdapter extends \Pdo\Pgsql
         $except = null;
         $seconds = intdiv($timeoutMilliseconds, 1000);
         $microseconds = ($timeoutMilliseconds % 1000) * 1000;
-        $ready = @stream_select($read, $write, $except, $seconds, $microseconds);
+        [$ready, $warning] = self::withWarning(
+            static function () use (&$read, &$write, &$except, $seconds, $microseconds): int|false {
+                return stream_select($read, $write, $except, $seconds, $microseconds);
+            },
+        );
         if ($ready === false) {
-            throw new PDOException('PostgreSQL notification wait failed');
+            throw new PDOException(self::withReason('PostgreSQL notification wait failed', $warning));
         }
         if ($ready === 0) {
             return false;
@@ -451,7 +504,10 @@ final class PgsqlPdoAdapter extends \Pdo\Pgsql
                 $read = [$socket];
                 $write = null;
                 $except = null;
-                $ready = @stream_select($read, $write, $except, null);
+                // A select interrupted by a signal fails with a warning; the signal is dispatched and the wait repeats.
+                [$ready] = self::withWarning(static function () use (&$read, &$write, &$except): int|false {
+                    return stream_select($read, $write, $except, null);
+                });
                 if ($ready === false) {
                     if (function_exists('pcntl_signal_dispatch')) {
                         pcntl_signal_dispatch();

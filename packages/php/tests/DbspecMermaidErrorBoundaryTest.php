@@ -19,7 +19,10 @@ final class DbspecMermaidErrorBoundaryTest extends TestCase
         $text = implode("\n", $case['mermaid']) . "\n";
         $result = Dbspec::importMermaid($text, $case['name']);
         self::assertNull($result->document);
-        $got = array_map(static fn($diagnostic): array => [$diagnostic->rule, $diagnostic->line, $diagnostic->column], $result->diagnostics);
+        $got = array_map(
+            static fn($diagnostic): array => [$diagnostic->rule, $diagnostic->line, $diagnostic->column],
+            $result->diagnostics,
+        );
         self::assertSame($case['errors'], $got);
         cpuCaseEnd('dbspec/mermaid/catalog-build-failure-is-diagnostic', $clock);
     }

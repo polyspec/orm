@@ -84,7 +84,12 @@ final class Orm
         }
         try {
             $pdo = $driver === 'postgres'
-                ? \Polyspec\Orm\Internal\PgsqlPdoAdapter::connectDsn($pdoDsn, $user, $password, $config->statementTimeoutMs)
+                ? \Polyspec\Orm\Internal\PgsqlPdoAdapter::connectDsn(
+                    $pdoDsn,
+                    $user,
+                    $password,
+                    $config->statementTimeoutMs,
+                )
                 : \PDO::connect($pdoDsn, $user, $password, $options);
             $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
             if ($driver === 'sqlite') {
