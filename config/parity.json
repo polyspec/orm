@@ -5983,8 +5983,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/EngineTest.php",
-          "symbol": "EngineTest::testValidate"
+          "test": "packages/php-ext/tests/ValidatorNativeTest.php",
+          "symbol": "ValidatorNativeTest::testValidate"
         },
         {
           "implementation": "typescript",

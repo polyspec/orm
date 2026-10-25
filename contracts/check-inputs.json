@@ -590,7 +590,11 @@
     },
     "php-gen-unit-check": {
       "scope": "owner",
-      "needs": ["php", "composer", "node-modules"],
+      "needs": [
+        "php",
+        "composer",
+        "node-modules"
+      ],
       "inputs": [
         "Makefile",
         "packages/php-gen/composer.json",
@@ -3556,6 +3560,20 @@
         "packages/php-gen/src/Generator.php",
         "packages/php-gen/src/ScanVisitor.php",
         "contracts/fixtures/bench/dbspec-set.json"
+      ]
+    },
+    "dbspec-php-extension-check/ir": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools"
+      ],
+      "inputs": [
+        "packages/php-ext/tests/ValidatorNativeTest.php",
+        "packages/php/tests/EngineTest.php",
+        "tests/ir/validate.json",
+        "contracts/fixtures/bench/bench.dbs"
       ]
     }
   },
