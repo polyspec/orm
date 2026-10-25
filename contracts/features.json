@@ -6887,7 +6887,8 @@
         "packages/rust/tests/tests/integration/coverage_env.rs",
         "packages/ts/tests/coverage_case.mjs",
         "packages/python/tests/coverage_case.py",
-        "contracts/fixtures/bench/bench.dbs"
+        "contracts/fixtures/bench/bench.dbs",
+        "contracts/fixtures/composite_key_collision.json"
       ],
       "tests": [
         "packages/go/model/model_test.go",
@@ -6938,7 +6939,8 @@
               "packages/go/model/coverage_composite_keys_test.go"
             ],
             "inputs": [
-              "contracts/fixtures/bench/bench.dbs"
+              "contracts/fixtures/bench/bench.dbs",
+              "contracts/fixtures/composite_key_collision.json"
             ],
             "commands": {
               "mysql": [
@@ -6989,6 +6991,7 @@
             ],
             "inputs": [
               "contracts/fixtures/bench/bench.dbs",
+              "contracts/fixtures/composite_key_collision.json",
               "packages/php/tests/CoverageCompositeKeysCase.php"
             ],
             "commands": {
@@ -7039,7 +7042,8 @@
               "packages/rust/tests/tests/integration/coverage_composite_keys.rs"
             ],
             "inputs": [
-              "contracts/fixtures/bench/bench.dbs"
+              "contracts/fixtures/bench/bench.dbs",
+              "contracts/fixtures/composite_key_collision.json"
             ],
             "commands": {
               "mysql": [
@@ -7089,7 +7093,8 @@
               "packages/ts/tests/coverage_composite_keys.mjs"
             ],
             "inputs": [
-              "contracts/fixtures/bench/bench.dbs"
+              "contracts/fixtures/bench/bench.dbs",
+              "contracts/fixtures/composite_key_collision.json"
             ],
             "commands": {
               "mysql": [
@@ -7130,7 +7135,8 @@
               "packages/python/tests/coverage_composite_keys.py"
             ],
             "inputs": [
-              "contracts/fixtures/bench/bench.dbs"
+              "contracts/fixtures/bench/bench.dbs",
+              "contracts/fixtures/composite_key_collision.json"
             ],
             "commands": {
               "mysql": [
@@ -7172,6 +7178,7 @@
             ],
             "inputs": [
               "contracts/fixtures/bench/bench.dbs",
+              "contracts/fixtures/composite_key_collision.json",
               "packages/php/tests/CoverageCompositeKeysCase.php"
             ],
             "commands": {

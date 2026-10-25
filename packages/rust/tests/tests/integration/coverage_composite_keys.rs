@@ -7,18 +7,35 @@ use super::model::{CompositeAccount, CompositeMembership};
 const TENANT: i64 = 990004;
 /// Account 2 must also exist in another tenant so that the relation joined by the account_id component alone is revealed.
 const OTHER_TENANT: i64 = 990006;
-const COLLISION_TENANT: i64 = TENANT * 10 + 1;
-const COLLISION_OTHER_TENANT: i64 = TENANT * 10 + 12;
 
 #[tokio::test]
 async fn coverage_composite_key_rows() {
     // Requirements: PRT-12.
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     run("composite_key_rows", async {
+        let fixture_path = polyspec_orm_testcase::manifest_dir().join("../../../contracts/fixtures/composite_key_collision.json");
+        let fixture_text = std::fs::read_to_string(fixture_path).expect("composite-key collision fixture");
+        let fixture: serde_json::Value = serde_json::from_str(&fixture_text).expect("valid composite-key fixture JSON");
+        assert_eq!(fixture["feature"], "composite_keys");
+        let collision_rows: Vec<(i64, i64, String, String)> = fixture["cases"][0]["expected"]
+            .as_array()
+            .expect("collision fixture rows")
+            .iter()
+            .map(|row| {
+                (
+                    row["tenant_id"].as_i64().expect("collision tenant_id"),
+                    row["account_id"].as_i64().expect("collision account_id"),
+                    row["name"].as_str().expect("collision name").to_owned(),
+                    row["role"].as_str().expect("collision role").to_owned(),
+                )
+            })
+            .collect();
+        assert_eq!(collision_rows.len(), 2);
+        let collision_tenants = [collision_rows[0].0, collision_rows[1].0];
         let db = connect().await;
         let account = || CompositeAccount::new().connect(&db);
         let membership = || CompositeMembership::new().connect(&db);
-        for tenant in [TENANT, OTHER_TENANT, COLLISION_TENANT, COLLISION_OTHER_TENANT] {
+        for tenant in [TENANT, OTHER_TENANT, collision_tenants[0], collision_tenants[1]] {
             assert_eq!(account().tenant_id(tenant).get_count().await.unwrap(), 0, "an account of tenant {tenant} already exists");
             assert_eq!(membership().tenant_id(tenant).get_count().await.unwrap(), 0, "a membership of tenant {tenant} already exists");
         }
@@ -28,10 +45,10 @@ async fn coverage_composite_key_rows() {
         membership().set_tenant_id(TENANT).set_account_id(1).set_role("member").create().await.unwrap();
         membership().set_tenant_id(TENANT).set_account_id(2).set_role("owner").create().await.unwrap();
         membership().set_tenant_id(OTHER_TENANT).set_account_id(2).set_role("guest").create().await.unwrap();
-        account().set_tenant_id(COLLISION_TENANT).set_account_id(23).set_name("collision-a").create().await.unwrap();
-        account().set_tenant_id(COLLISION_OTHER_TENANT).set_account_id(3).set_name("collision-b").create().await.unwrap();
-        membership().set_tenant_id(COLLISION_TENANT).set_account_id(23).set_role("collision-a-role").create().await.unwrap();
-        membership().set_tenant_id(COLLISION_OTHER_TENANT).set_account_id(3).set_role("collision-b-role").create().await.unwrap();
+        for (tenant, account_id, name, role) in &collision_rows {
+            account().set_tenant_id(*tenant).set_account_id(*account_id).set_name(name).create().await.unwrap();
+            membership().set_tenant_id(*tenant).set_account_id(*account_id).set_role(role).create().await.unwrap();
+        }
         let by_key = account().get_by_tenant_id_and_account_id(TENANT, 2).await.unwrap().expect("a row").get_name().unwrap().to_owned();
         // The relation joins the two foreign key components in key order. When a child has its own link, the parent row is read
         // separately after it is read. The results of both paths are collected, the rows are deleted, and then they are compared.
@@ -78,9 +95,13 @@ async fn coverage_composite_key_rows() {
             );
         }
         for (path, child) in [("same statement", CompositeMembership::new()), ("own connection", CompositeMembership::new().connect(&db))] {
-            assert_eq!(format!("{COLLISION_TENANT}23"), format!("{COLLISION_OTHER_TENANT}3"), "the collision fixture has equal concatenated composite keys");
+            assert_eq!(
+                format!("{}{}", collision_rows[0].0, collision_rows[0].1),
+                format!("{}{}", collision_rows[1].0, collision_rows[1].1),
+                "the collision fixture has equal concatenated composite keys"
+            );
             let loaded = account()
-                .tuple_tenant_id_with_account_id(vec![(COLLISION_TENANT, 23), (COLLISION_OTHER_TENANT, 3)])
+                .tuple_tenant_id_with_account_id(vec![(collision_rows[0].0, collision_rows[0].1), (collision_rows[1].0, collision_rows[1].1)])
                 .order_by_tenant_id_asc()
                 .order_by_account_id_asc()
                 .relations(child.match_tenant_id_with_tenant_id().match_account_id_with_account_id().alias_memberships())
@@ -103,14 +124,14 @@ async fn coverage_composite_key_rows() {
             assert_eq!(
                 got,
                 [
-                    format!("{COLLISION_TENANT}/23:{COLLISION_TENANT}/23/collision-a-role"),
-                    format!("{COLLISION_OTHER_TENANT}/3:{COLLISION_OTHER_TENANT}/3/collision-b-role"),
+                    format!("{}/{}:{}/{}/{}", collision_rows[0].0, collision_rows[0].1, collision_rows[0].0, collision_rows[0].1, collision_rows[0].3),
+                    format!("{}/{}:{}/{}/{}", collision_rows[1].0, collision_rows[1].1, collision_rows[1].0, collision_rows[1].1, collision_rows[1].3),
                 ],
                 "{path}: colliding concatenated composite keys keep relations separate"
             );
         }
         assert_eq!(after_cascade, 1, "ON DELETE CASCADE removed the membership of account 2");
-        for tenant in [TENANT, OTHER_TENANT, COLLISION_TENANT, COLLISION_OTHER_TENANT] {
+        for tenant in [TENANT, OTHER_TENANT, collision_tenants[0], collision_tenants[1]] {
             assert_eq!(account().tenant_id(tenant).get_count().await.unwrap(), 0, "accounts of tenant {tenant} left");
             assert_eq!(membership().tenant_id(tenant).get_count().await.unwrap(), 0, "memberships of tenant {tenant} left");
         }

@@ -15,8 +15,10 @@ final class CoverageCompositeKeysCase
     {
         $accounts = static fn(int $keyTenant) => (new CompositeAccount())($db)->tenantId($keyTenant)->getCount();
         $memberships = static fn(int $keyTenant) => (new CompositeMembership())($db)->tenantId($keyTenant)->getCount();
-        $collisionTenant = $tenant * 10 + 1;
-        $collisionOtherTenant = $tenant * 10 + 12;
+        $fixture = coverageJson(dirname(__DIR__, 3) . '/contracts/fixtures/composite_key_collision.json');
+        $collisionRows = $fixture['cases'][0]['expected'];
+        $collisionTenant = $collisionRows[0]['tenant_id'];
+        $collisionOtherTenant = $collisionRows[1]['tenant_id'];
         $tenants = [$tenant, $otherTenant, $collisionTenant, $collisionOtherTenant];
         foreach ($tenants as $keyTenant) {
             Assert::assertSame(
@@ -39,6 +41,7 @@ final class CoverageCompositeKeysCase
             $otherTenant,
             $collisionTenant,
             $collisionOtherTenant,
+            $collisionRows,
             $tenants
         ): void {
             (new CompositeAccount())($db)->setTenantId($tenant)->setAccountId(1)->setName('a')->create();
@@ -47,14 +50,12 @@ final class CoverageCompositeKeysCase
             (new CompositeMembership())($db)->setTenantId($tenant)->setAccountId(1)->setRole('member')->create();
             (new CompositeMembership())($db)->setTenantId($tenant)->setAccountId(2)->setRole('owner')->create();
             (new CompositeMembership())($db)->setTenantId($otherTenant)->setAccountId(2)->setRole('guest')->create();
-            (new CompositeAccount())($db)->setTenantId($collisionTenant)
-                ->setAccountId(23)->setName('collision-a')->create();
-            (new CompositeAccount())($db)->setTenantId($collisionOtherTenant)
-                ->setAccountId(3)->setName('collision-b')->create();
-            (new CompositeMembership())($db)->setTenantId($collisionTenant)
-                ->setAccountId(23)->setRole('collision-a-role')->create();
-            (new CompositeMembership())($db)->setTenantId($collisionOtherTenant)
-                ->setAccountId(3)->setRole('collision-b-role')->create();
+            foreach ($collisionRows as $row) {
+                (new CompositeAccount())($db)->setTenantId($row['tenant_id'])
+                    ->setAccountId($row['account_id'])->setName($row['name'])->create();
+                (new CompositeMembership())($db)->setTenantId($row['tenant_id'])
+                    ->setAccountId($row['account_id'])->setRole($row['role'])->create();
+            }
 
             $name = (new CompositeAccount())($db)->getByTenantIdAndAccountId($tenant, 2)->getName();
             Assert::assertSame('b', $name, 'lookup uses both components of the composite key');
@@ -86,8 +87,8 @@ final class CoverageCompositeKeysCase
             }
 
             Assert::assertSame(
-                (string)$collisionTenant . '23',
-                (string)$collisionOtherTenant . '3',
+                (string)$collisionRows[0]['tenant_id'] . $collisionRows[0]['account_id'],
+                (string)$collisionRows[1]['tenant_id'] . $collisionRows[1]['account_id'],
                 'the collision fixture has equal concatenated composite keys'
             );
             foreach (
@@ -98,8 +99,8 @@ final class CoverageCompositeKeysCase
             ) {
                 $loaded = (new CompositeAccount())($db)
                     ->tupleTenantIdWithAccountId([
-                        [$collisionTenant, 23],
-                        [$collisionOtherTenant, 3],
+                        [$collisionRows[0]['tenant_id'], $collisionRows[0]['account_id']],
+                        [$collisionRows[1]['tenant_id'], $collisionRows[1]['account_id']],
                     ])
                     ->orderByTenantIdAsc()
                     ->orderByAccountIdAsc()
@@ -115,10 +116,11 @@ final class CoverageCompositeKeysCase
                             . $membership->getRole();
                     }
                 }
-                $want = [
-                    "$collisionTenant/23:$collisionTenant/23/collision-a-role",
-                    "$collisionOtherTenant/3:$collisionOtherTenant/3/collision-b-role",
-                ];
+                $want = array_map(
+                    static fn(array $row): string => $row['tenant_id'] . '/' . $row['account_id'] . ':'
+                        . $row['tenant_id'] . '/' . $row['account_id'] . '/' . $row['role'],
+                    $collisionRows
+                );
                 Assert::assertSame(
                     $want,
                     $got,

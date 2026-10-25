@@ -118,6 +118,37 @@ caseTest('the schema of a shared fixture refuses a fixture without its feature o
   assert.notDeepEqual(read({ feature: 'f', cases: [{ id: 'a', operation: 'o' }] }), []);
 });
 
+caseTest('the composite-key collision fixture has distinct bounded tuples with equal concatenations', COMPUTE, () => {
+  const fixture = JSON.parse(readFileSync(new URL('../../contracts/fixtures/composite_key_collision.json', import.meta.url), 'utf8'));
+  const fixtureSchema = new URL('./schema/fixture.schema.json', import.meta.url).pathname;
+  assert.deepEqual(
+    refusedPaths(() => parseJson<object>(JSON.stringify(fixture), fixtureSchema, 'composite_key_collision.json')),
+    [],
+    'the shared fixture schema accepts the composite-key case',
+  );
+  assert.equal(fixture.feature, 'composite_keys');
+  assert.equal(fixture.tenant_namespace, '990004');
+  assert.equal(fixture.cases.length, 1);
+  const compositeCase = fixture.cases[0];
+  assert.equal(compositeCase.id, 'concatenated_relation_keys');
+  assert.equal(compositeCase.operation, 'relation_assembly');
+  assert.equal(compositeCase.expected.length, 2);
+  const [first, second] = compositeCase.expected;
+  for (const row of [first, second]) {
+    assert.ok(Number.isSafeInteger(row.tenant_id) && row.tenant_id > 0 && BigInt(row.tenant_id) <= 9223372036854775807n);
+    assert.ok(Number.isSafeInteger(row.account_id) && row.account_id > 0 && BigInt(row.account_id) <= 9223372036854775807n);
+    assert.ok(String(row.tenant_id).startsWith(fixture.tenant_namespace), 'collision tenants stay in the fixture namespace');
+    assert.equal(typeof row.name, 'string');
+    assert.equal(typeof row.role, 'string');
+  }
+  assert.notDeepEqual([first.tenant_id, first.account_id], [second.tenant_id, second.account_id]);
+  assert.notEqual(first.name, second.name);
+  assert.notEqual(first.role, second.role);
+  assert.equal(`${first.tenant_id}${first.account_id}`, `${second.tenant_id}${second.account_id}`);
+  assert.notEqual(first.tenant_id, 990004);
+  assert.notEqual(second.tenant_id, 990006);
+});
+
 
 const markdownServerContracts = [
   { path: 'packages/php/tests/markdown_test_server.php', required: ['$receivedMessages = [];'], forbidden: ['$received = [];', 'markdown_fake_server.php'] },

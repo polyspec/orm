@@ -1,0 +1,24 @@
+{
+  "feature": "composite_keys",
+  "tenant_namespace": "990004",
+  "cases": [
+    {
+      "id": "concatenated_relation_keys",
+      "operation": "relation_assembly",
+      "expected": [
+        {
+          "tenant_id": 9900041,
+          "account_id": 23,
+          "name": "collision-a",
+          "role": "collision-a-role"
+        },
+        {
+          "tenant_id": 99000412,
+          "account_id": 3,
+          "name": "collision-b",
+          "role": "collision-b-role"
+        }
+      ]
+    }
+  ]
+}

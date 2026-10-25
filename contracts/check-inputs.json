@@ -2519,6 +2519,7 @@
       "inputs": [
         "packages/php-ext/tests/ParameterChunkingNativeTest.php",
         "packages/php-ext/tests/CompositeKeysNativeTest.php",
+        "contracts/fixtures/composite_key_collision.json",
         "packages/php-ext/tests/NativeQueryProbePdo.php",
         "packages/php-ext/tests/NativeQueryProbeStatement.php",
         "Makefile"
@@ -2934,6 +2935,7 @@
       ],
       "inputs": [
         "scripts/features/**",
+        "contracts/fixtures/composite_key_collision.json",
         "tests/conformance/schema/**",
         "scripts/json/**",
         "scripts/check/inputs.mts",

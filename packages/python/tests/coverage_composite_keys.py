@@ -1,14 +1,30 @@
 # composite_keys coverage: a row of a two-column primary key is read by its key, a relation joins membership through
 # both components of its foreign key (tenant_id, account_id), and deleting an account removes its membership through
 # ON DELETE CASCADE, as the composite_keys coverage of Go, PHP, TypeScript and Rust does. Every written row is removed.
+import json
+
 from polyspec.orm.models import models
-from .coverage_case import expect_equal, CoverageCase, coverage_main, with_cleanup
+from .coverage_case import (
+    REPOSITORY_ROOT,
+    expect_equal,
+    CoverageCase,
+    coverage_main,
+    with_cleanup,
+)
 
 # Another tenant also has account 2, so a relation that joins on account_id alone would show.
 TENANT = 990004
 OTHER_TENANT = 990006
-COLLISION_TENANT = TENANT * 10 + 1
-COLLISION_OTHER_TENANT = TENANT * 10 + 12
+COLLISION_FIXTURE = json.loads(
+    (REPOSITORY_ROOT / "contracts/fixtures/composite_key_collision.json").read_text()
+)
+COLLISION_ROWS = next(
+    case["expected"]
+    for case in COLLISION_FIXTURE["cases"]
+    if case["id"] == "concatenated_relation_keys"
+)
+COLLISION_TENANT = COLLISION_ROWS[0]["tenant_id"]
+COLLISION_OTHER_TENANT = COLLISION_ROWS[1]["tenant_id"]
 
 
 def composite_key_rows(item):
@@ -50,18 +66,13 @@ def composite_key_rows(item):
             membership().set_tenant_id(OTHER_TENANT).set_account_id(2).set_role(
                 "guest"
             ).create()
-            account().set_tenant_id(COLLISION_TENANT).set_account_id(23).set_name(
-                "collision-a"
-            ).create()
-            account().set_tenant_id(COLLISION_OTHER_TENANT).set_account_id(3).set_name(
-                "collision-b"
-            ).create()
-            membership().set_tenant_id(COLLISION_TENANT).set_account_id(23).set_role(
-                "collision-a-role"
-            ).create()
-            membership().set_tenant_id(COLLISION_OTHER_TENANT).set_account_id(
-                3
-            ).set_role("collision-b-role").create()
+            for row in COLLISION_ROWS:
+                account().set_tenant_id(row["tenant_id"]).set_account_id(
+                    row["account_id"]
+                ).set_name(row["name"]).create()
+                membership().set_tenant_id(row["tenant_id"]).set_account_id(
+                    row["account_id"]
+                ).set_role(row["role"]).create()
             expect_equal(
                 account().get_by_tenant_id_and_account_id(TENANT, 2).get_name(),
                 "b",
@@ -104,8 +115,8 @@ def composite_key_rows(item):
                     f"{path}: memberships of tenant {TENANT} accounts",
                 )
             expect_equal(
-                f"{COLLISION_TENANT}23",
-                f"{COLLISION_OTHER_TENANT}3",
+                f"{COLLISION_ROWS[0]['tenant_id']}{COLLISION_ROWS[0]['account_id']}",
+                f"{COLLISION_ROWS[1]['tenant_id']}{COLLISION_ROWS[1]['account_id']}",
                 "the collision fixture has equal concatenated composite keys",
             )
             for path, child in (
@@ -115,7 +126,16 @@ def composite_key_rows(item):
                 loaded = (
                     account()
                     .tuple_tenant_id_with_account_id(
-                        [[COLLISION_TENANT, 23], [COLLISION_OTHER_TENANT, 3]]
+                        [
+                            [
+                                COLLISION_ROWS[0]["tenant_id"],
+                                COLLISION_ROWS[0]["account_id"],
+                            ],
+                            [
+                                COLLISION_ROWS[1]["tenant_id"],
+                                COLLISION_ROWS[1]["account_id"],
+                            ],
+                        ]
                     )
                     .order_by_tenant_id_asc()
                     .order_by_account_id_asc()
@@ -134,8 +154,8 @@ def composite_key_rows(item):
                 expect_equal(
                     got,
                     [
-                        f"{COLLISION_TENANT}/23:{COLLISION_TENANT}/23/collision-a-role",
-                        f"{COLLISION_OTHER_TENANT}/3:{COLLISION_OTHER_TENANT}/3/collision-b-role",
+                        f"{row['tenant_id']}/{row['account_id']}:{row['tenant_id']}/{row['account_id']}/{row['role']}"
+                        for row in COLLISION_ROWS
                     ],
                     f"{path}: colliding concatenated composite keys keep relations separate",
                 )

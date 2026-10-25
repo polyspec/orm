@@ -44,10 +44,27 @@ final class CompositeKeysNativeTest extends TestCase
         require_once __DIR__ . '/NativeQueryProbePdo.php';
         NativeQueryProbePdo::assertNativeOrmClasses();
         Assert::assertTrue((new ReflectionClass(Collection::class))->isInternal());
-        $pdo = NativeQueryProbePdo::withCompositeRows([
-            ['tenantId' => 1, 'accountId' => 23, 'name' => 'first', 'role' => 'first-role'],
-            ['tenantId' => 12, 'accountId' => 3, 'name' => 'second', 'role' => 'second-role'],
-        ]);
+        $fixture = json_decode(
+            (string) file_get_contents(dirname(__DIR__, 3) . '/contracts/fixtures/composite_key_collision.json'),
+            true,
+            512,
+            JSON_THROW_ON_ERROR
+        );
+        $collisionRows = $fixture['cases'][0]['expected'];
+        Assert::assertSame(
+            (string)$collisionRows[0]['tenant_id'] . $collisionRows[0]['account_id'],
+            (string)$collisionRows[1]['tenant_id'] . $collisionRows[1]['account_id'],
+            'the shared fixture has equal concatenated composite keys'
+        );
+        $pdo = NativeQueryProbePdo::withCompositeRows(array_map(
+            static fn(array $row): array => [
+                'tenantId' => $row['tenant_id'],
+                'accountId' => $row['account_id'],
+                'name' => $row['name'],
+                'role' => $row['role'],
+            ],
+            $collisionRows
+        ));
         $db = $pdo->connectOrm();
         try {
             $membership = (new CompositeMembership())
@@ -64,9 +81,21 @@ final class CompositeKeysNativeTest extends TestCase
                 $relations[$account->getTenantId() . '/' . $account->getAccountId()] = $roles;
             }
 
-            Assert::assertSame(['1/23' => ['first-role'], '12/3' => ['second-role']], $relations);
+            $expectedRelations = [];
+            foreach ($collisionRows as $row) {
+                $expectedRelations[$row['tenant_id'] . '/' . $row['account_id']] = [$row['role']];
+            }
+            Assert::assertSame($expectedRelations, $relations);
             Assert::assertCount(2, $pdo->executions, 'the root and relation each execute one native statement');
-            Assert::assertSame([1, 23, 12, 3], $pdo->executions[1]['params']);
+            Assert::assertSame(
+                [
+                    $collisionRows[0]['tenant_id'],
+                    $collisionRows[0]['account_id'],
+                    $collisionRows[1]['tenant_id'],
+                    $collisionRows[1]['account_id'],
+                ],
+                $pdo->executions[1]['params']
+            );
             Assert::assertMatchesRegularExpression(
                 '/WHERE \("a"\."tenant_id", "a"\."account_id"\) IN \(\(\?, \?\), \(\?, \?\)\)/',
                 $pdo->executions[1]['sql']

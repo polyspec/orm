@@ -3,7 +3,9 @@
 package model_test
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"slices"
 	"testing"
 
@@ -15,11 +17,41 @@ import (
 // tenant_id. Account 2 must also exist in another tenant, so that a relation linked by
 // the account_id component alone is revealed.
 const (
-	compositeTenant               = 990004
-	compositeOtherTenant          = 990006
-	compositeCollisionTenant      = 9900041
-	compositeCollisionOtherTenant = 99000412
+	compositeTenant      = 990004
+	compositeOtherTenant = 990006
 )
+
+type compositeCollisionRow struct {
+	TenantID  int64  `json:"tenant_id"`
+	AccountID int64  `json:"account_id"`
+	Name      string `json:"name"`
+	Role      string `json:"role"`
+}
+
+func readCompositeCollisionRows(t *testing.T) []compositeCollisionRow {
+	t.Helper()
+	raw, err := os.ReadFile("../../../contracts/fixtures/composite_key_collision.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fixture struct {
+		Feature string `json:"feature"`
+		Cases   []struct {
+			ID        string                  `json:"id"`
+			Operation string                  `json:"operation"`
+			Expected  []compositeCollisionRow `json:"expected"`
+		} `json:"cases"`
+	}
+	if err := json.Unmarshal(raw, &fixture); err != nil {
+		t.Fatal(err)
+	}
+	if fixture.Feature != "composite_keys" || len(fixture.Cases) != 1 ||
+		fixture.Cases[0].ID != "concatenated_relation_keys" || fixture.Cases[0].Operation != "relation_assembly" ||
+		len(fixture.Cases[0].Expected) != 2 {
+		t.Fatalf("unexpected composite collision fixture: %+v", fixture)
+	}
+	return fixture.Cases[0].Expected
+}
 
 // TestCoverageCompositeKeyRows creates the account and
 // membership rows with a two-column primary key, and reads them by the two key components,
@@ -31,7 +63,9 @@ func TestCoverageCompositeKeyRows(t *testing.T) {
 	db, _, _ := connectFeature(t)
 	account := func() *model.CompositeAccountModel { return model.CompositeAccount().Connect(db) }
 	membership := func() *model.CompositeMembershipModel { return model.CompositeMembership().Connect(db) }
-	for _, tenant := range []int64{compositeTenant, compositeOtherTenant, compositeCollisionTenant, compositeCollisionOtherTenant} {
+	collisionRows := readCompositeCollisionRows(t)
+	collisionTenants := []int64{collisionRows[0].TenantID, collisionRows[1].TenantID}
+	for _, tenant := range append([]int64{compositeTenant, compositeOtherTenant}, collisionTenants...) {
 		if n := must(account().TenantId(tenant).GetCount()); n != 0 {
 			t.Fatalf("composite_account already has %d rows of tenant %d", n, tenant)
 		}
@@ -47,10 +81,10 @@ func TestCoverageCompositeKeyRows(t *testing.T) {
 	must(membership().SetTenantId(compositeTenant).SetAccountId(1).SetRole("member").Create())
 	must(membership().SetTenantId(compositeTenant).SetAccountId(2).SetRole("owner").Create())
 	must(membership().SetTenantId(compositeOtherTenant).SetAccountId(2).SetRole("guest").Create())
-	must(account().SetTenantId(compositeCollisionTenant).SetAccountId(23).SetName("collision-a").Create())
-	must(account().SetTenantId(compositeCollisionOtherTenant).SetAccountId(3).SetName("collision-b").Create())
-	must(membership().SetTenantId(compositeCollisionTenant).SetAccountId(23).SetRole("collision-a-role").Create())
-	must(membership().SetTenantId(compositeCollisionOtherTenant).SetAccountId(3).SetRole("collision-b-role").Create())
+	for _, row := range collisionRows {
+		must(account().SetTenantId(row.TenantID).SetAccountId(row.AccountID).SetName(row.Name).Create())
+		must(membership().SetTenantId(row.TenantID).SetAccountId(row.AccountID).SetRole(row.Role).Create())
+	}
 
 	if got := readColumn(t, must(account().GetByTenantIdAndAccountId(compositeTenant, 2)).GetName); got != "b" {
 		t.Fatalf("account (%d, 2) name = %q, want b", compositeTenant, got)
@@ -59,12 +93,9 @@ func TestCoverageCompositeKeyRows(t *testing.T) {
 		"same statement": model.CompositeMembership(),
 		"own connection": model.CompositeMembership().Connect(db),
 	} {
-		if fmt.Sprintf("%d%d", compositeCollisionTenant, 23) != fmt.Sprintf("%d%d", compositeCollisionOtherTenant, 3) {
-			t.Fatal("collision fixture does not have equal concatenated composite keys")
-		}
 		loaded := must(account().TupleTenantIdWithAccountId([]model.CompositeAccountTenantIdWithAccountId{
-			{TenantId: compositeCollisionTenant, AccountId: 23},
-			{TenantId: compositeCollisionOtherTenant, AccountId: 3},
+			{TenantId: collisionRows[0].TenantID, AccountId: collisionRows[0].AccountID},
+			{TenantId: collisionRows[1].TenantID, AccountId: collisionRows[1].AccountID},
 		}).OrderByTenantIdAsc().OrderByAccountIdAsc().Relations(child.MatchTenantIdWithTenantId().MatchAccountIdWithAccountId().AliasMemberships()).Gets())
 		var got []string
 		for _, a := range loaded.Slice() {
@@ -73,8 +104,8 @@ func TestCoverageCompositeKeyRows(t *testing.T) {
 			}
 		}
 		want := []string{
-			"9900041/23:9900041/23/collision-a-role",
-			"99000412/3:99000412/3/collision-b-role",
+			fmt.Sprintf("%d/%d:%d/%d/%s", collisionRows[0].TenantID, collisionRows[0].AccountID, collisionRows[0].TenantID, collisionRows[0].AccountID, collisionRows[0].Role),
+			fmt.Sprintf("%d/%d:%d/%d/%s", collisionRows[1].TenantID, collisionRows[1].AccountID, collisionRows[1].TenantID, collisionRows[1].AccountID, collisionRows[1].Role),
 		}
 		if !slices.Equal(got, want) {
 			t.Fatalf("%s: colliding concatenated composite keys assembled relations = %v, want %v", path, got, want)
@@ -108,7 +139,7 @@ func TestCoverageCompositeKeyRows(t *testing.T) {
 	if n := must(membership().TenantId(compositeTenant).GetCount()); n != 1 {
 		t.Fatalf("tenant %d memberships after deleting account 2 = %d, want 1", compositeTenant, n)
 	}
-	for _, tenant := range []int64{compositeTenant, compositeOtherTenant, compositeCollisionTenant, compositeCollisionOtherTenant} {
+	for _, tenant := range append([]int64{compositeTenant, compositeOtherTenant}, collisionTenants...) {
 		if err := must(account().TenantId(tenant).Gets()).Delete(); err != nil {
 			t.Fatal(err)
 		}
