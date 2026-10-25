@@ -11518,8 +11518,7 @@
         "packages/rust/orm/tests/request_hook.rs",
         "packages/python/tests/test_request_hook.py",
         "packages/python/tests/coverage_request_hook.py",
-        "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
-        "packages/php-ext/tests/RequestHookNativeTest.php"
+        "packages/php-ext/tests/CoverageRequestHookExtensionTest.php"
       ],
       "docs": [
         "docs/operations/usage.md",

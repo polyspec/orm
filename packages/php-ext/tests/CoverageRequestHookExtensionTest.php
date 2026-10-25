@@ -23,6 +23,7 @@ final class CoverageRequestHookExtensionTest extends CoverageRequestHookTest
     {
         Assert::assertTrue((new ReflectionMethod(Db::class, 'withRequestHook'))->isInternal());
         Assert::assertTrue((new ReflectionMethod(Model::class, 'get'))->isInternal());
+        Assert::assertTrue((new ReflectionMethod(Model::class, 'matchValues'))->isInternal());
     }
 
     // Requirements: INT-78.
