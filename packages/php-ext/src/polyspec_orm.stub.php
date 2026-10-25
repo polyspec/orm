@@ -824,6 +824,70 @@ final class TxFrame
     public static function recordInserted(?TxFrame $frame, Request $r, mixed $id): void {}
 }
 
+/** Exact decimal text and SQLite scaled-integer conversion. */
+final class Decimal
+{
+    public static function scaled(string $input, int $precision, int $scale): int {}
+    public static function fromScaled(mixed $value, int $precision, int $scale): string {}
+    public static function decode(mixed $value, int $precision, int $scale): string {}
+    public static function normalize(string $input, int $precision, int $scale): string {}
+}
+
+/** Executor-side parameter value transforms. */
+final class Transform
+{
+    public static function apply(string $kind, string $s): string {}
+    public static function param(string $kind, mixed $v): ?string {}
+    public static function fulltextBoolean(string $s): string {}
+    private static function esc(string $s): string {}
+}
+
+/** A PostgreSQL LISTEN subscription on its own PDO connection. */
+final class Subscription
+{
+    private ?\PDO $pdo;
+    public function __construct(\PDO $pdo) {}
+    public static function checkChannel(string $channel): void {}
+    public static function quoteIdent(string $channel): string {}
+    public function receive(float $timeoutSeconds): Notification {}
+    public function unlisten(string $channel): void {}
+    public function close(): void {}
+    private function open(): \PDO {}
+}
+
+/** One notification received by a LISTEN subscription. */
+final class Notification
+{
+    public readonly string $channel;
+    public readonly string $payload;
+    public readonly int $pid;
+    public function __construct(string $channel, string $payload, int $pid) {}
+}
+
+/** A binary value to bind as a blob (bytea/BLOB). */
+final class Bytes
+{
+    public readonly string $bytes;
+
+    public function __construct(string $bytes) {}
+}
+
+/** A JSON object whose keys are written in sorted order, like a Go map. */
+final class GoMap
+{
+    /** @param array<string, mixed> $items */
+    public array $items;
+
+    public function __construct(array $items = []) {}
+}
+
+/** Text forms shared with Go tooling: quoted strings and JSON documents. */
+final class Go
+{
+    public static function quote(string $s): string {}
+    public static function json(mixed $v, string $indent = ''): string {}
+}
+
 /** The database-specific SQL fragments used by the executor and planner. */
 final class Dialect
 {

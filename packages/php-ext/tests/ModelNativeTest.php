@@ -862,4 +862,200 @@ final class ModelNativeTest extends TestCase
         );
         self::assertSame([[2, ['aes'], [], true, null]], \Polyspec\Orm\Assemble::cells($child, $model));
     }
+
+    public function testPublicValueClassesAreNative(): void
+    {
+        foreach (
+            [
+            \Polyspec\Orm\Bytes::class,
+            \Polyspec\Orm\GoMap::class,
+            \Polyspec\Orm\Go::class,
+            \Polyspec\Orm\Decimal::class,
+            \Polyspec\Orm\Transform::class,
+            \Polyspec\Orm\Subscription::class,
+            \Polyspec\Orm\Notification::class,
+            ] as $class
+        ) {
+            $reflection = new ReflectionClass($class);
+            self::assertTrue($reflection->isInternal(), "$class must be registered by polyspec_orm");
+            self::assertTrue($reflection->isFinal());
+        }
+        foreach (
+            [
+            [\Polyspec\Orm\Bytes::class, '__construct'],
+            [\Polyspec\Orm\GoMap::class, '__construct'],
+            [\Polyspec\Orm\Go::class, 'quote'],
+            [\Polyspec\Orm\Go::class, 'json'],
+            [\Polyspec\Orm\Decimal::class, 'normalize'],
+            [\Polyspec\Orm\Decimal::class, 'scaled'],
+            [\Polyspec\Orm\Decimal::class, 'fromScaled'],
+            [\Polyspec\Orm\Decimal::class, 'decode'],
+            [\Polyspec\Orm\Transform::class, 'apply'],
+            [\Polyspec\Orm\Transform::class, 'param'],
+            [\Polyspec\Orm\Transform::class, 'fulltextBoolean'],
+            [\Polyspec\Orm\Subscription::class, '__construct'],
+            [\Polyspec\Orm\Subscription::class, 'checkChannel'],
+            [\Polyspec\Orm\Subscription::class, 'quoteIdent'],
+            [\Polyspec\Orm\Subscription::class, 'receive'],
+            [\Polyspec\Orm\Subscription::class, 'unlisten'],
+            [\Polyspec\Orm\Subscription::class, 'close'],
+            [\Polyspec\Orm\Notification::class, '__construct'],
+            ] as [$class, $method]
+        ) {
+            self::assertTrue((new \ReflectionMethod($class, $method))->isInternal(), "$class::$method must be native");
+        }
+
+        $bytes = new \Polyspec\Orm\Bytes("\x00\x7f\x80\xff");
+        self::assertSame("\x00\x7f\x80\xff", $bytes->bytes);
+        self::assertTrue((new \ReflectionProperty(\Polyspec\Orm\Bytes::class, 'bytes'))->isReadOnly());
+        try {
+            $bytes->bytes = 'changed';
+            self::fail('Bytes::$bytes must be readonly');
+        } catch (\Error) {
+            self::assertSame("\x00\x7f\x80\xff", $bytes->bytes);
+        }
+
+        $map = new \Polyspec\Orm\GoMap(['z' => 1, 'a' => ['x' => true]]);
+        self::assertSame(['z' => 1, 'a' => ['x' => true]], $map->items);
+        $map->items['b'] = null;
+        self::assertSame('{"a":{"x":true},"b":null,"z":1}', \Polyspec\Orm\Go::json($map));
+        self::assertSame('{"-1":"negative","z":1}', \Polyspec\Orm\Go::json([-1 => 'negative', 'z' => 1]));
+
+        self::assertSame(
+            '"\\a\\b\\f\\n\\r\\t\\v\\x00\\x7f\\\\\\"é\\u200b"',
+            \Polyspec\Orm\Go::quote("\x07\x08\x0c\n\r\t\x0b\x00\x7f\\\"é\u{200b}"),
+        );
+        self::assertSame(
+            "{\n  \"z\": [\n    1,\n    \"\\u003c\\u003e\\u0026\"\n  ],\n  \"a\": true\n}",
+            \Polyspec\Orm\Go::json(['z' => [1, '<>&'], 'a' => true], '  '),
+        );
+        self::assertSame('{"x":"\\ufffd"}', \Polyspec\Orm\Go::json(['x' => "\xff"]));
+        try {
+            \Polyspec\Orm\Go::json(1.5);
+            self::fail('floating-point values are unsupported by Go::json');
+        } catch (\InvalidArgumentException $error) {
+            self::assertSame('unsupported JSON value float', $error->getMessage());
+        }
+
+        self::assertSame('12.30', \Polyspec\Orm\Decimal::normalize('+0012.3', 4, 2));
+        self::assertSame(1230, \Polyspec\Orm\Decimal::scaled('12.30', 4, 2));
+        self::assertSame('-12.30', \Polyspec\Orm\Decimal::fromScaled(-1230, 4, 2));
+        self::assertSame('0.00', \Polyspec\Orm\Decimal::decode('-0', 4, 2));
+        try {
+            \Polyspec\Orm\Decimal::decode(12, 4, 2);
+            self::fail('Expected exact decimal text');
+        } catch (\Polyspec\Orm\OrmException $error) {
+            self::assertSame(\Polyspec\Orm\Code::CODEC_DECODE, $error->code_);
+        }
+
+        self::assertSame('%a\\%b\\_c\\\\d%', \Polyspec\Orm\Transform::apply('like_contains', 'a%b_c\\d'));
+        self::assertSame('a\\%b\\_c\\\\d%', \Polyspec\Orm\Transform::apply('like_starts', 'a%b_c\\d'));
+        self::assertSame('%a\\%b\\_c\\\\d', \Polyspec\Orm\Transform::apply('like_ends', 'a%b_c\\d'));
+        self::assertSame('value', \Polyspec\Orm\Transform::apply('unknown', 'value'));
+        self::assertSame('+hello +world*', \Polyspec\Orm\Transform::fulltextBoolean('hello +world'));
+        self::assertNull(\Polyspec\Orm\Transform::param('like_contains', null));
+        self::assertSame('%needle%', \Polyspec\Orm\Transform::param('like_contains', 'needle'));
+        try {
+            \Polyspec\Orm\Transform::param('like_contains', 12);
+            self::fail('Expected a non-text transform value to fail');
+        } catch (\Polyspec\Orm\OrmException $error) {
+            self::assertSame(\Polyspec\Orm\Code::CODEC_ENCODE, $error->code_);
+        }
+        try {
+            \Polyspec\Orm\Transform::param('fulltext_boolean', ' + - ');
+            self::fail('Expected empty fulltext search to fail');
+        } catch (\Polyspec\Orm\OrmException $error) {
+            self::assertSame(\Polyspec\Orm\Code::IR_INVALID, $error->code_);
+        }
+
+        $pdo = new class extends \PDO {
+            public array $calls = [];
+            public array|false $notification = ['message' => 'events', 'payload' => 'hello', 'pid' => 17];
+            public function __construct()
+            {
+            }
+            public function getNotify(int $fetchMode = \PDO::FETCH_BOTH, int $timeout = 0): array|false
+            {
+                $this->calls[] = ['notify', $fetchMode, $timeout];
+                return $this->notification;
+            }
+            public function exec(string $statement): int|false
+            {
+                $this->calls[] = ['exec', $statement];
+                return 0;
+            }
+        };
+        $subscription = new \Polyspec\Orm\Subscription($pdo);
+        $notification = $subscription->receive(0.001);
+        self::assertSame(['events', 'hello', 17], [$notification->channel, $notification->payload, $notification->pid]);
+        self::assertSame(['notify', \PDO::FETCH_ASSOC, 1], $pdo->calls[0]);
+        $subscription->unlisten('a"b');
+        self::assertSame(['exec', 'UNLISTEN "a""b"'], $pdo->calls[1]);
+        $subscription->close();
+        $subscription->close();
+        self::assertSame(['exec', 'UNLISTEN *'], $pdo->calls[2]);
+        try {
+            $subscription->receive(0);
+            self::fail('Expected a closed subscription to reject receive');
+        } catch (\Polyspec\Orm\OrmException $error) {
+            self::assertSame(\Polyspec\Orm\Code::CONFIG, $error->code_);
+        }
+
+        $expiredPdo = new class extends \PDO {
+            public int $closed = 0;
+            public function __construct()
+            {
+            }
+            public function getNotify(int $fetchMode = \PDO::FETCH_BOTH, int $timeout = 0): array|false
+            {
+                return false;
+            }
+            public function exec(string $statement): int|false
+            {
+                $this->closed++;
+                return 0;
+            }
+        };
+        $expired = new \Polyspec\Orm\Subscription($expiredPdo);
+        try {
+            $expired->receive(0);
+            self::fail('Expected an expired receive to fail');
+        } catch (\Polyspec\Orm\OrmException $error) {
+            self::assertSame(\Polyspec\Orm\Code::CANCELED, $error->code_);
+            self::assertSame(1, $expiredPdo->closed);
+        }
+        $failedPdo = new class extends \PDO {
+            public function __construct()
+            {
+            }
+            public function getNotify(int $fetchMode = \PDO::FETCH_BOTH, int $timeout = 0): array|false
+            {
+                throw new \PDOException('notification connection lost');
+            }
+        };
+        try {
+            (new \Polyspec\Orm\Subscription($failedPdo))->receive(0);
+            self::fail('Expected a PDO receive error to be mapped');
+        } catch (\Polyspec\Orm\OrmException $error) {
+            self::assertSame(\Polyspec\Orm\Code::CONNECTION_LOST, $error->code_);
+            self::assertInstanceOf(\PDOException::class, $error->getPrevious());
+            self::assertSame('notification connection lost', $error->getPrevious()->getMessage());
+        }
+        self::assertSame('"a""b"', \Polyspec\Orm\Subscription::quoteIdent('a"b'));
+        \Polyspec\Orm\Subscription::checkChannel(str_repeat('x', 63));
+        foreach (['', "bad\0channel"] as $invalidChannel) {
+            try {
+                \Polyspec\Orm\Subscription::checkChannel($invalidChannel);
+                self::fail('Expected an invalid channel to fail');
+            } catch (\Polyspec\Orm\OrmException $error) {
+                self::assertSame(\Polyspec\Orm\Code::CONFIG, $error->code_);
+            }
+        }
+        try {
+            \Polyspec\Orm\Subscription::checkChannel(str_repeat('x', 64));
+            self::fail('Expected an oversized channel to fail');
+        } catch (\Polyspec\Orm\OrmException $error) {
+            self::assertSame(\Polyspec\Orm\Code::CONFIG, $error->code_);
+        }
+    }
 }

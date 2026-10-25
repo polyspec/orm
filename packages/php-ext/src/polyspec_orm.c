@@ -13,6 +13,7 @@
 #include "Zend/zend_interfaces.h"
 #include "Zend/zend_closures.h"
 #include "codec.h"
+#include "go_values_native.h"
 #include "validator.h"
 #include "planner.h"
 #include "collection.h"
@@ -2710,6 +2711,10 @@ static PHP_MINIT_FUNCTION(polyspec_orm)
     register_class_Polyspec_Orm_DbState();
     register_class_Polyspec_Orm_TxFrame();
     native_dialect_register(register_class_Polyspec_Orm_Dialect());
+    register_class_Polyspec_Orm_Decimal();
+    register_class_Polyspec_Orm_Transform();
+    register_class_Polyspec_Orm_Subscription();
+    register_class_Polyspec_Orm_Notification();
     aes_keyring_set_class(register_class_Polyspec_Orm_AesKeyring());
     aes_rotation_status_set_class(register_class_Polyspec_Orm_AesRotationStatus());
     aes_utils_set_class(register_class_Polyspec_Orm_AesUtils());
@@ -2717,6 +2722,10 @@ static PHP_MINIT_FUNCTION(polyspec_orm)
     utils_set_class(register_class_Polyspec_Orm_Utils());
     schema_utils_set_class(register_class_Polyspec_Orm_SchemaUtils());
     register_class_Polyspec_Orm_Codec();
+    zend_class_entry *bytes_ce = register_class_Polyspec_Orm_Bytes();
+    zend_class_entry *go_map_ce = register_class_Polyspec_Orm_GoMap();
+    register_class_Polyspec_Orm_Go();
+    go_values_native_register(bytes_ce, go_map_ce);
     register_class_Polyspec_Orm_Validator();
     register_class_Polyspec_Orm_Planner();
     register_class_Polyspec_Orm_Stats();
