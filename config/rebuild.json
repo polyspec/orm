@@ -365,6 +365,14 @@
     "scripts/test-servers-fixture.mts": {
       "kind": "policy",
       "reason": "the isolated server root and the restored process.kill that the tests of the test server script of this repository share"
+    },
+    "packages/php/bin/orm-sqlite-cancel-build.php": {
+      "kind": "policy",
+      "reason": "the command of the PHP client that compiles its packaged SQLite cancellation helper (src/native/sqlite_cancel.c) into a loadable extension with the C compiler and the sqlite3 headers that pkg-config names; no ecosystem installer builds a SQLite loadable extension of a Composer package"
+    },
+    "scripts/features/performance-reference.mts": {
+      "kind": "policy",
+      "reason": "reads the PERF hot_path_gate lines of the performance owner tests of this repository into measurement records for the coverage of performance_gate; the line format is a rule of this repository"
     }
   }
 }
