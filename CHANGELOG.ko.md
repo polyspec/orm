@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 7e43fce4d57e8de65675310b3be1fd78f258a0797fe5ae58028caa352a1b011e -->
+<!-- source-sha256: 57eb26c419635a77b605b7b810591c0afb61086627c8f80fe45b4599a8e9dc21 -->
 # 변경 이력
 
 ## Unreleased
 
+- scripts/perf-test.mts에 대한 `make runner-check`의 계속 실행 case가 gate command 다섯을 이름으로 기대한다: Go native, hot-path, coverage gate와 CPU 부하 없이와 부하 아래의 PerfGateTest이며, coverage gate가 낡게 만든 넷이라는 수를 대신한다 (KSTD-5-88-1).
 - callback과 rollback이 모두 실패하는 transaction과 savepoint는 각각 CFG-15를 인용하는 여섯 client unit 하나를 가지며, client 하나씩 bind하던 unit 열 개를 대신한다. Python은 이 case를 SQLite, MySQL, PostgreSQL에서 실행하고, cursor를 열기 전에 서버가 session을 끝내면 PostgreSQL에서 psycopg의 OperationalError 대신 CONNECTION_LOST를 보고한다(KSTD-2-11-13-1).
 - `make feature-unit-check`가 main에서 다시 통과한다: scripts/features/coverage.test.mts가 config/parity.json이 catalog parity unit에 묶은 requirement(catalog-connection-read는 SCH-6a, INT-113, INT-114, catalog-connection-row-mutation은 SCH-6a, INT-109, INT-123)를 기대하고, model_generation의 generation-scan-parity-php verification이 helper phpstan-test-runner의 경로 packages/php/tests/OrmGenTestSupport.php를 더 이상 input으로 선언하지 않는다 (KSTD-7-9-2). red: main에서 coverage.test.mts의 catalog case와 owners.test.mts의 helper input case가 실패했다.
 - CPX-2가 복합 쿼리 예제를 모든 구현이 실행하는 fixture `contracts/fixtures/complex_query`로 정한다. MySQL과 PostgreSQL에서는 순서 있는 문장 8개를 실행하고, SQLite에서는 어떤 문장보다 먼저 `OPERATOR_NOT_ALLOWED`로 거부한다. Go와 TypeScript case가 CPX-2를 명시하고, TypeScript case는 공유 검사에 넘기는 `assert`를 import한다(KSTD-2-9-13).

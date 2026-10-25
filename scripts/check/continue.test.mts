@@ -133,13 +133,16 @@ caseTest('client-db-test runs the next lane after a failed lane in sequence and 
   }
 });
 
-// The perf case (G5.53) checks whether all four performance gate measurements still run when an earlier measurement fails.
+// The perf case (G5.53) checks whether all five performance gate commands still run when an earlier one fails: the three Go
+// gates and PerfGateTest without and under CPU load.
 caseTest('the performance gates run every gate after a failed one and name the failures', PROCESS, () => {
   const f = fake(['node', 'php'], 'TestNative');
   try {
     const result = f.run(['scripts/perf-test.mts']);
     assert.notEqual(result.status, 0, result.stdout + result.stderr);
-    assert.equal(f.ran().length, 4, f.ran().join('\n'));
+    assert.deepEqual(f.ran().map(line => line.match(/-run (\S+)|tests\/(PerfGateTest)\.php/)?.slice(1).find(Boolean)), [
+      '^TestNative', '^TestHotPathGate(UnderLoad)?$', '^TestCoveragePerformanceGate$', 'PerfGateTest', 'PerfGateTest',
+    ], f.ran().join('\n'));
     assert.match(result.stderr, /perf-test: failed:\n {2}node tests\/go-test\.mts .*TestNative.* \(exit 3\)/);
   } finally {
     rmSync(f.base, { recursive: true, force: true });

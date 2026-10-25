@@ -1,6 +1,6 @@
 // Hot-path gates against the seeded MySQL bench database named by ORM_BENCH_MYSQL_DSN; each gate fails when the variable
-// is unset. The four measurements are independent: a failed one does not stop the rest, and the script lists every failed
-// measurement and ends with 1.
+// is unset. The five measurements (three Go gates, and the PHP gate without and under CPU load) are independent: a failed
+// one does not stop the rest, and the script lists every failed measurement and ends with 1.
 import { resolve } from 'node:path';
 import { keepAll, render, type Command } from './check/commands.mts';
 
