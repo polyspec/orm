@@ -99,7 +99,7 @@ async fn coverage_catalog_read() {
         let exact_byte_boundary = catalog
             .read_only_grid_query("SELECT 'abc' AS value", &[], QueryLimits { max_rows: 2, max_bytes: 3 })
             .await
-            .unwrap_or_else(|error| panic!("{driver}: exact grid text byte boundary failed: {error}"));
+            .or_panic(|error| format!("{driver}: exact grid text byte boundary failed: {error}"));
         assert_eq!(exact_byte_boundary.rows, vec![vec![GridCell::Text("abc".into())]], "{driver}: exact grid text byte boundary preserves the value");
         let write = catalog.read_only_query(&format!("UPDATE {} SET name = name WHERE seq = 1", quote("user", &driver)), &[], QueryLimits::default()).await;
         assert!(matches!(&write, Err(e) if e.contains("QUERY_READ_ONLY")), "{driver}: a write through read_only_query: {write:?}");
@@ -141,7 +141,7 @@ async fn coverage_catalog_read_budgets() {
         let exact = catalog
             .read_only_query(sql, &[], QueryLimits { max_rows: 2, max_bytes: 128 })
             .await
-            .unwrap_or_else(|error| panic!("{driver}: exact row and byte budget failed: {error}"));
+            .or_panic(|error| format!("{driver}: exact row and byte budget failed: {error}"));
         assert_eq!(
             exact.rows,
             vec![vec![Val::Text("alpha".into())], vec![Val::Text("beta".into())]],
@@ -156,7 +156,7 @@ async fn coverage_catalog_read_budgets() {
         let exact_byte_boundary = catalog
             .read_only_query("SELECT 'abc' AS value", &[], QueryLimits { max_rows: 2, max_bytes: 3 })
             .await
-            .unwrap_or_else(|error| panic!("{driver}: exact text byte boundary failed: {error}"));
+            .or_panic(|error| format!("{driver}: exact text byte boundary failed: {error}"));
         assert_eq!(exact_byte_boundary.rows, vec![vec![Val::Text("abc".into())]], "{driver}: exact text byte boundary preserves the value");
         catalog.close().await;
     })

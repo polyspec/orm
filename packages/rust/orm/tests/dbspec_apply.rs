@@ -424,9 +424,24 @@ async fn lock_wait(conn: &mut Conn, db: &str, representative: &[Plan], session: 
         Ok(())
     }
     .await;
-    let _ = blocker.exec("ROLLBACK").await;
+    let rollback = blocker.exec("ROLLBACK").await.map_err(|e| format!("rollback blocker: {e}"));
     let closed = blocker.close().await.map_err(|e| format!("close blocker: {e}"));
-    checked.and(closed)
+    match (checked, rollback, closed) {
+        (Ok(()), Ok(()), Ok(())) => Ok(()),
+        (checked, rollback, closed) => {
+            let mut errors = Vec::new();
+            if let Err(error) = checked {
+                errors.push(format!("lock wait: {error}"));
+            }
+            if let Err(error) = rollback {
+                errors.push(error);
+            }
+            if let Err(error) = closed {
+                errors.push(error);
+            }
+            Err(errors.join("; "))
+        }
+    }
 }
 
 async fn other_database(conn: &mut Conn, db: &str, plans: &[Plan], target: &str, session: &Session) -> Result<(), String> {

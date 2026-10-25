@@ -1215,13 +1215,13 @@ mod sqlite_lock_result_tests {
                     Some(self.code.to_string()),
                 ))))
             } else if let Some(value) = statement.strip_prefix("PRAGMA foreign_keys = ") {
-                self.pragmas.foreign_keys = value.parse().map_err(|_| sqlx::Error::Protocol(statement.to_owned()))?;
+                self.pragmas.foreign_keys = value.parse().map_err(|error| sqlx::Error::Protocol(format!("{statement}: {error}")))?;
                 Ok(())
             } else if let Some(value) = statement.strip_prefix("PRAGMA legacy_alter_table = ") {
-                self.pragmas.legacy = value.parse().map_err(|_| sqlx::Error::Protocol(statement.to_owned()))?;
+                self.pragmas.legacy = value.parse().map_err(|error| sqlx::Error::Protocol(format!("{statement}: {error}")))?;
                 Ok(())
             } else if let Some(value) = statement.strip_prefix("PRAGMA busy_timeout = ") {
-                self.pragmas.busy_timeout = value.parse().map_err(|_| sqlx::Error::Protocol(statement.to_owned()))?;
+                self.pragmas.busy_timeout = value.parse().map_err(|error| sqlx::Error::Protocol(format!("{statement}: {error}")))?;
                 Ok(())
             } else if let Some(value) = statement.strip_prefix("PRAGMA locking_mode = ") {
                 self.pragmas.locking_mode = value.to_ascii_lowercase();
@@ -1371,6 +1371,23 @@ mod sqlite_lock_result_tests {
                 "PRAGMA busy_timeout = 1300",
             ]);
             assert_eq!(connection.operations, want, "SQLite session setup or restore order changed for result {code}");
+        }
+    }
+
+    #[tokio::test]
+    async fn invalid_pragma_values_preserve_parse_errors() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let pragmas = SqlitePragmas { foreign_keys: 1, legacy: 1, busy_timeout: 1300, locking_mode: "normal".to_owned() };
+        let mut connection = FailingBegin { code: 5, pragmas, unexpected: Vec::new(), operations: Vec::new() };
+        for statement in ["PRAGMA foreign_keys = invalid", "PRAGMA legacy_alter_table = invalid", "PRAGMA busy_timeout = invalid"] {
+            match connection.execute(statement).await {
+                Err(sqlx::Error::Protocol(message)) => {
+                    assert!(message.contains(statement), "protocol error lost the statement: {message}");
+                    assert!(message.contains("invalid digit"), "protocol error lost the parse cause: {message}");
+                }
+                Err(error) => panic!("unexpected error for {statement}: {error}"),
+                Ok(()) => panic!("invalid pragma value was accepted: {statement}"),
+            }
         }
     }
 }
