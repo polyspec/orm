@@ -21998,6 +21998,11 @@
           "id": "CoverageCompositeKeysExtensionTest::test_composite_key_rows"
         },
         {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CompositeKeysNativeTest.php",
+          "id": "CompositeKeysNativeTest::test_composite_relation_binds_and_assembles_both_key_components"
+        },
+        {
           "implementation": "typescript",
           "test": "packages/ts/tests/coverage_composite_keys.mjs",
           "id": "composite_key_rows [sqlite]"
