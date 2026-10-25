@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 0c48493635ab82878187b66b2a7e8d686a15c4ca167b4a438b686b043a9ad418 -->
+<!-- source-sha256: f9f314e980b7371372404bc663a859f35a506188b8ecee167b4c9e15abf98592 -->
 # 변경 이력
 
 ## Unreleased
 
+- `make layout-check`가 통과한다: Python 환경이 package를 resolve하므로 dbspec-apply-python-check가 PYTHONPATH를 설정하지 않고, packages/php-gen/composer.json이 autoload-dev를 PSR-4로 매핑하며 그 vendor 폴더가 무시된다 (KSTD-5-89-12).
 - `make lint-php`가 main에서 다시 통과한다: KSTD-5-89-3 이후 더해진 PHP에서 긴 줄, call signature, control structure를 정리하고, helper class와 trait마다 자기 파일을 두고, test 파일이 맨 위에서 아무것도 require하지 않으며, 남은 test_* method 하나를 camelCase로 바꾼 뒤 phpcs가 finding을 보고하지 않는다 (KSTD-5-89-11).
 - config/parity.json의 모든 예외는 kit이 정의한 종류로 시작하는 이유를 준다: `example:`, `implementation:`, `helper:`, `benchmark:` 또는 표시 없이 시작하던 24개는 이제 그 테스트에 맞게 `harness:`, `test:`, `fixture:`, `ecosystem:`로 시작하므로 `make divergence-check`가 어느 것도 보고하지 않는다 (KSTD-5-12-4).
 - 서버가 실행 전에 session을 끝낸 statement의 PHP case는 PHP만 bind하던 unit 대신 여섯 client CFG-15 unit connection-rollback-failed-reports-both-errors에 PHP library와 PHP extension으로 bind된다(KSTD-2-11-13-6).

@@ -523,7 +523,7 @@ dbspec-apply-check:
 # Runs only Python's native PLN-90 lock-wait case on each configured database.
 .PHONY: dbspec-apply-python-check
 dbspec-apply-python-check: python-venv-check
-	$(WITH_TEST_ENV) PYTHONPATH=$(CURDIR)/packages/python/src $(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.dbspec_apply.DbspecApplyTest.test_lock_wait_mysql packages.python.tests.dbspec_apply.DbspecApplyTest.test_lock_wait_postgres packages.python.tests.dbspec_apply.DbspecApplyTest.test_lock_wait_sqlite
+	$(WITH_TEST_ENV) $(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.dbspec_apply.DbspecApplyTest.test_lock_wait_mysql packages.python.tests.dbspec_apply.DbspecApplyTest.test_lock_wait_postgres packages.python.tests.dbspec_apply.DbspecApplyTest.test_lock_wait_sqlite
 
 # The six dbspec SQLite lock/session checks execute focused fake-driver cases; none starts or opens a database.
 dbspec-lock-go-check:
