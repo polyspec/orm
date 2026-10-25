@@ -4794,6 +4794,7 @@
           "inputs": [
             "tests/dbspec/compare/check.test.mts",
             "tests/dbspec/compare/compare.mts",
+            "tests/dbspec/stress.mts",
             "tests/dbspec/compare/runners.test.mts",
             "tests/dbspec/compare/runners.mts",
             "tests/dbspec/inputs.test.mts",
