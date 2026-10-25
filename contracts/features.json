@@ -1127,7 +1127,8 @@
           "inputs": [
             "packages/php/tests/GroupRowsTest.php",
             "packages/php/src/GroupRows.php",
-            "packages/php/src/GroupRow.php"
+            "packages/php/src/GroupRow.php",
+            "packages/php/src/Internal/ArrayValueRows.php"
           ]
         },
         {
@@ -1437,7 +1438,8 @@
             "tests/collection/keys.json",
             "packages/php/src/Collection.php",
             "packages/php/src/Model.php",
-            "packages/php/src/ModelMetadata.php"
+            "packages/php/src/ModelMetadata.php",
+            "packages/php/src/Internal/ArrayValueRows.php"
           ]
         },
         {
@@ -13236,16 +13238,6 @@
         "packages/python/tests/test_install_lock.py"
       ],
       "command": "make --no-print-directory python-unit-check"
-    },
-    {
-      "id": "php-array-value-rows",
-      "paths": [
-        "packages/php/src/Internal/ArrayValueRows.php"
-      ],
-      "tests": [
-        "packages/php/tests/ArrayValueRowsTest.php"
-      ],
-      "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/ArrayValueRowsTest.php"
     },
     {
       "id": "native-query-probe",
