@@ -773,12 +773,18 @@ class OrmGenTest(unittest.TestCase):
             out = root / "out"
             result = run_gen(root / "dbspec-set.json", out)
             self.assertNotEqual(result.returncode, 0, result.stderr)
-            self.assertIn("column name is a reserved method name: restore", result.stderr)
+            self.assertIn(
+                "column name is a reserved method name: restore", result.stderr
+            )
             self.assertFalse(out.exists())
 
     def test_a_column_name_with_an_operator_or_connector_segment_is_rejected(self):
         # Requirements: DSL-130.
-        for column, segment in (("price_gt_limit", "gt"), ("with_tax", "with"), ("min_price", None)):
+        for column, segment in (
+            ("price_gt_limit", "gt"),
+            ("with_tax", "with"),
+            ("min_price", None),
+        ):
             with tempfile.TemporaryDirectory(prefix="orm-gen-segment-") as tree:
                 root = Path(tree)
                 (root / "segment.dbs").write_text(
@@ -810,7 +816,11 @@ class OrmGenTest(unittest.TestCase):
         text = written.get("models.py", "")
         for name in ("ExtAccount", "ExtAudit", "ExtPost", "ExtPostHistory"):
             self.assertIn(f"class {name}(", text, f"no model for {name}")
-        self.assertNotIn("class ExtSession(", text, "a model for ext_session, which the set does not use")
+        self.assertNotIn(
+            "class ExtSession(",
+            text,
+            "a model for ext_session, which the set does not use",
+        )
 
     def test_set_errors_print_every_error_and_write_nothing(self):
         # Requirements: DBS-27.

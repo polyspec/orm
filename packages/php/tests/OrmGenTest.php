@@ -213,10 +213,8 @@ final class OrmGenTest extends TestCase
                 self::assertSame(0, $code, "$column: $out $err");
                 continue;
             }
-            self::assertTrue(
-                $code !== 0 && str_contains($out . $err, "column name may not contain the segment \"$segment\": $column"),
-                "$column: $code $out $err"
-            );
+            $message = "column name may not contain the segment \"$segment\": $column";
+            self::assertTrue($code !== 0 && str_contains($out . $err, $message), "$column: $code $out $err");
         }
     }
 
