@@ -3,8 +3,9 @@
 // case inserts, updates and deletes one row of composite_account in tenant 990005 and ends in the state it started in.
 // Requirements: SCH-3, SCH-5, SCH-6a, INT-103, INT-109, INT-113, INT-114, INT-123.
 import assert from 'node:assert/strict';
+import { randomInt } from 'node:crypto';
 import { runCases } from './coverage_case.mjs';
-import { connectCatalog } from '../dist/index.js';
+import { BindCell, connect as connectModel, connectCatalog } from '../dist/index.js';
 import { DatabaseSync } from 'node:sqlite';
 
 const TENANT = 990005;
@@ -48,6 +49,42 @@ async function readCase(item) {
     );
     await assertGridCells(driver, catalog);
   } finally {
+    await catalog.close();
+  }
+}
+
+// Requirements: INT-4, INT-8.
+async function nullAndEmptyTextCase(item) {
+  const seq = -1_000_000_000_000 - randomInt(0, 1_000_000_000);
+  const { driver, catalog } = await connect(item);
+  const table = { namespace: await catalog.currentNamespace(), name: 'bind_cell' };
+  const metadata = await catalog.describeTable(table);
+  const db = await connectModel(item.dsn, { aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index' });
+  try {
+    await catalog.insertRow(metadata, [
+      { name: 'seq', value: seq }, { name: 'label', value: 'null-v' }, { name: 'body', value: null },
+    ]);
+    await catalog.insertRow(metadata, [
+      { name: 'seq', value: seq - 1 }, { name: 'label', value: 'empty' }, { name: 'body', value: '' },
+    ]);
+
+    const nullRead = await new BindCell().connect(db).seq(seq).get();
+    const emptyRead = await new BindCell().connect(db).seq(seq - 1).get();
+    assert.equal(nullRead.getBody(), null, 'SQL NULL remains null when read through the model');
+    assert.equal(emptyRead.getBody(), '', 'empty text remains an empty string when read through the model');
+  } finally {
+    const snapshots = [];
+    for (let offset = 0; ; ) {
+      const page = await catalog.tablePage(table, 1000, offset);
+      const keyIndex = page.columnIndex('seq');
+      page.result.rows.forEach((row, index) => {
+        if (row[keyIndex] === seq || row[keyIndex] === seq - 1) snapshots.push(catalog.rowSnapshotFromPage(page, index));
+      });
+      if (!page.hasMore) break;
+      offset += page.result.rows.length;
+    }
+    for (const snapshot of snapshots) await catalog.deleteRow(snapshot);
+    await db.close();
     await catalog.close();
   }
 }
@@ -345,6 +382,7 @@ async function closedCase() {
 
 const featureCases = {
   catalog_read: readCase,
+  model_read_null_and_empty_text: nullAndEmptyTextCase,
   catalog_row_mutation: mutationCase,
 };
 if (process.env.NODE_TEST_CONTEXT !== undefined || process.argv.length > 2) {

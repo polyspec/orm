@@ -5,14 +5,17 @@
 # Its SQLite path also checks generated primary keys in a temporary file, outside the bench database.
 import io
 import os
+import secrets
 import sqlite3
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 
 from polyspec.orm import connect_catalog
 from polyspec.orm.catalog import GridCell
 from .coverage_case import run_cases
+from .test_sqlite import generate
 
 TENANT = 990005
 
@@ -128,6 +131,48 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
                 f"UPDATE {quote('user', driver)} SET name = name WHERE seq = 1", []
             )
         self.test_grid_cells()
+
+    # Requirements: INT-4, INT-8.
+    def test_model_read_null_and_empty_text(self):
+        root = Path(__file__).resolve().parents[3]
+        with tempfile.TemporaryDirectory(prefix="orm-null-empty-model-") as directory:
+            models = generate(directory, root / "contracts" / "fixtures" / "bench" / "dbspec-set.json")
+            db = models.connect(
+                self.coverage_item[1],
+                aesKey="bench-salt",
+                blindIndexKey="bench-blind-index",
+            )
+            seq = -1_000_000_000_000 - secrets.randbelow(1_000_000_000)
+            table = {
+                "namespace": self.catalog.current_namespace(),
+                "name": "bind_cell",
+            }
+            metadata = self.catalog.describe_table(table)
+            targets = {seq, seq - 1}
+            try:
+                self.catalog.insert_row(metadata, [("seq", seq), ("label", "null-v"), ("body", None)])
+                self.catalog.insert_row(metadata, [("seq", seq - 1), ("label", "empty"), ("body", "")])
+                null_read = models.BindCell().connect(db).seq(seq).get()
+                empty_read = models.BindCell().connect(db).seq(seq - 1).get()
+                self.assertIsNone(null_read.get_body(), "SQL NULL remains None when read through the model")
+                self.assertEqual(empty_read.get_body(), "", "empty text remains an empty string when read through the model")
+            finally:
+                snapshots = []
+                offset = 0
+                while True:
+                    page = self.catalog.table_page(table, 1000, offset)
+                    key_index = page.column_index("seq")
+                    snapshots.extend(
+                        self.catalog.row_snapshot_from_page(page, index)
+                        for index, row in enumerate(page.result.rows)
+                        if row[key_index] in targets
+                    )
+                    if not page.has_more:
+                        break
+                    offset += len(page.result.rows)
+                for snapshot in snapshots:
+                    self.catalog.delete_row(snapshot)
+                db.close()
 
     # Requirements: DBS-113.
     def test_row_mutation(self):
@@ -290,6 +335,7 @@ if __name__ == "__main__":
     else:
         feature_cases = {
             "catalog_read": "test_read",
+            "model_read_null_and_empty_text": "test_model_read_null_and_empty_text",
             "catalog_row_mutation": "test_row_mutation",
         }
 

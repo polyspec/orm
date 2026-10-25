@@ -12,7 +12,9 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/polyspec/orm/packages/go/model"
 	"github.com/polyspec/orm/packages/go/orm"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
@@ -607,5 +609,93 @@ func TestCoverageCatalogClosed(t *testing.T) {
 	after, err := reopened.TablePage(ctx, author, 1, 0)
 	if err != nil || len(after.Result.Rows) != 1 || !reflect.DeepEqual(after.Result.Rows[0][0], page.Result.Rows[0][0]) {
 		t.Fatalf("%s: the first author row changed or is gone after DeleteRow on a closed connection: %v", driver, err)
+	}
+}
+
+// Requirements: INT-4, INT-8.
+func TestCoverageModelReadNullAndEmptyText(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	ctx := context.Background()
+	driver := os.Getenv("ORM_FEATURE_DATABASE")
+	if !slices.Contains([]string{"mysql", "postgres", "sqlite"}, driver) {
+		t.Fatal("ORM_FEATURE_DATABASE (mysql, postgres or sqlite) is required; run it through make feature-check")
+	}
+	c, err := orm.ConnectCatalog(os.Getenv("ORM_FEATURE_DSN"))
+	if err != nil {
+		t.Fatalf("%s: catalog connection: %v", driver, err)
+	}
+	defer testcase.Close(t, c)
+	if c.Dialect() != driver {
+		t.Fatalf("ORM_FEATURE_DSN selects %s, not %s", c.Dialect(), driver)
+	}
+	ref, metadata := catalogCurrentTable(t, ctx, driver, c, "bind_cell", "bind_cell metadata")
+	seq := -1_000_000_000_000 - time.Now().UnixNano()%1_000_000_000
+	targets := []int64{seq, seq - 1}
+	defer func() {
+		var snapshots []orm.CatalogRowSnapshot
+		for offset := 0; ; {
+			page, err := c.TablePage(ctx, ref, 1000, int64(offset))
+			if err != nil {
+				t.Errorf("%s: locate fixture rows for cleanup: %v", driver, err)
+				return
+			}
+			key := slices.IndexFunc(page.Metadata.Columns, func(column orm.CatalogColumn) bool { return column.Name == "seq" })
+			for index, row := range page.Result.Rows {
+				if key < 0 {
+					continue
+				}
+				seqValue, ok := row[key].(int64)
+				if ok && slices.Contains(targets, seqValue) {
+					snapshot, err := orm.CatalogSnapshotFromPage(page, index)
+					if err != nil {
+						t.Errorf("%s: capture fixture row for cleanup: %v", driver, err)
+						return
+					}
+					snapshots = append(snapshots, snapshot)
+				}
+			}
+			if !page.HasMore {
+				break
+			}
+			offset += len(page.Result.Rows)
+		}
+		for _, snapshot := range snapshots {
+			if _, err := c.DeleteRow(ctx, snapshot); err != nil {
+				t.Errorf("%s: delete fixture row %v: %v", driver, snapshot, err)
+			}
+		}
+	}()
+
+	if _, err := c.InsertRow(ctx, metadata, []orm.CatalogAssignment{{Name: "seq", Value: seq}, {Name: "label", Value: "null-v"}, {Name: "body", Value: nil}}); err != nil {
+		t.Fatalf("%s: insert SQL NULL fixture row: %v", driver, err)
+	}
+	if _, err := c.InsertRow(ctx, metadata, []orm.CatalogAssignment{{Name: "seq", Value: seq - 1}, {Name: "label", Value: "empty"}, {Name: "body", Value: ""}}); err != nil {
+		t.Fatalf("%s: insert empty-text fixture row: %v", driver, err)
+	}
+
+	db, err := model.Connect(os.Getenv("ORM_FEATURE_DSN"), orm.Config{AESKey: "bench-salt", BlindIndexKey: "bench-blind-index"})
+	if err != nil {
+		t.Fatalf("%s: model connection: %v", driver, err)
+	}
+	defer testcase.Close(t, db)
+	if db.Driver() != driver {
+		t.Fatalf("ORM_FEATURE_DSN selects %s, not %s", db.Driver(), driver)
+	}
+
+	for _, want := range []struct {
+		seq  int64
+		body *string
+	}{{seq, nil}, {seq - 1, new(string)}} {
+		got, err := model.BindCell().Connect(db).Seq(want.seq).Get()
+		if err != nil {
+			t.Fatalf("%s: read row %d: %v", driver, want.seq, err)
+		}
+		body, err := got.GetBody()
+		if err != nil {
+			t.Fatalf("%s: read body %d: %v", driver, want.seq, err)
+		}
+		if body == nil != (want.body == nil) || body != nil && *body != *want.body {
+			t.Fatalf("%s: row %d body = %v, want %v", driver, want.seq, body, want.body)
+		}
 	}
 }

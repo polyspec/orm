@@ -5,7 +5,8 @@
 use polyspec_orm_testcase::OrPanic;
 
 use polyspec_orm_build::catalog::{CatalogConnection, MutationPhase, RowSnapshot, TableRef};
-use polyspec_orm_build::tool_db::{GridCell, QueryLimits, Val, P};
+use polyspec_orm_build::tool_db::{GridCell, ParamType, QueryLimits, Val, P};
+polyspec_orm::models!();
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -154,6 +155,58 @@ async fn coverage_catalog_row_mutation() {
         assert_eq!(phases.lock().unwrap().last(), Some(&MutationPhase::Committed), "{driver}: delete phase");
         assert_eq!(count(&mut catalog).await, vec![vec![Val::Int(0)]], "{driver}: rows left");
         catalog.close().await;
+    })
+    .await;
+}
+
+#[tokio::test]
+// Requirements: INT-4, INT-8.
+async fn coverage_model_read_null_and_empty_text() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    within("model_read_null_and_empty_text", async {
+        let (driver, mut catalog) = connect().await;
+        assert_eq!(catalog.dialect(), driver, "catalog and generated model select the same database");
+        let (_, dsn) = coverage_database::feature_database();
+        let config = polyspec_orm::Config { aes_key: "bench-salt".into(), blind_index_key: "bench-blind-index".into(), ..Default::default() };
+        let db = model::connect(&dsn, 2, config).await.expect("model connection");
+        let seq = -1_000_000_000_000i64 - (std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_micros() as i64 % 1_000_000_000);
+        let table = TableRef { namespace: catalog.current_namespace().await.expect("current namespace"), name: "bind_cell".into() };
+        let metadata = catalog.describe_table(&table).await.expect("bind_cell metadata");
+        let phases = Arc::new(Mutex::new(Vec::new()));
+        let captured = phases.clone();
+        let publish: Arc<dyn Fn(MutationPhase) + Send + Sync> = Arc::new(move |phase| captured.lock().unwrap().push(phase));
+        let permit: Arc<dyn Fn() -> Result<(), String> + Send + Sync> = Arc::new(|| Ok(()));
+        let running = || Arc::new(AtomicBool::new(false));
+        let null_values = [("seq".to_owned(), P::I(seq)), ("label".to_owned(), P::S("null-v".into())), ("body".to_owned(), P::Null(ParamType::Text))];
+        catalog.insert_row(&metadata, &null_values, running(), publish.clone(), permit.clone()).await.expect("insert SQL NULL body");
+        let empty_values = [("seq".to_owned(), P::I(seq - 1)), ("label".to_owned(), P::S("empty".into())), ("body".to_owned(), P::S(String::new()))];
+        catalog.insert_row(&metadata, &empty_values, running(), publish.clone(), permit.clone()).await.expect("insert empty body");
+
+        let null_read = model::BindCell::new().connect(&db).seq(seq).get().await.expect("read SQL NULL row").expect("SQL NULL row selected");
+        let empty_read = model::BindCell::new().connect(&db).seq(seq - 1).get().await.expect("read empty-text row").expect("empty-text row selected");
+        assert_eq!(null_read.get_body().expect("SQL NULL body loaded"), None, "SQL NULL stays distinct on model read");
+        assert_eq!(empty_read.get_body().expect("empty body loaded"), Some(""), "empty text stays distinct on model read");
+
+        let mut snapshots = Vec::new();
+        let mut offset = 0;
+        loop {
+            let page = catalog.table_page(&table, 1000, offset).await.expect("bind_cell cleanup page");
+            let key = column(&page, "seq");
+            for (index, row) in page.result.rows.iter().enumerate() {
+                if row[key] == GridCell::Integer(seq) || row[key] == GridCell::Integer(seq - 1) {
+                    snapshots.push(RowSnapshot::from_page(&page, index).expect("fixture row snapshot"));
+                }
+            }
+            if !page.has_more {
+                break;
+            }
+            offset += page.result.rows.len() as u64;
+        }
+        for snapshot in snapshots {
+            catalog.delete_row(&snapshot, running(), publish.clone(), permit.clone()).await.expect("delete fixture row");
+        }
+        catalog.close().await;
+        db.close().await;
     })
     .await;
 }

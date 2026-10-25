@@ -16,6 +16,8 @@ trait CatalogConnectionCoverageCases
 {
     abstract protected function assertCatalogImplementation(): void;
 
+    abstract protected function assertModelImplementation(): void;
+
     private const TENANT = 990005;
 
     private string $driver = '';
@@ -82,6 +84,49 @@ trait CatalogConnectionCoverageCases
             self::fail('a database operation after close succeeded');
         } catch (OrmException $e) {
             self::assertSame(Code::CATALOG_CLOSED, $e->code_);
+        }
+    }
+
+    // Requirements: INT-4, INT-8.
+    public function testModelReadNullAndEmptyText(): void
+    {
+        $this->assertModelImplementation();
+        $seq = -1_000_000_000_000 - random_int(0, 1_000_000_000);
+        $targets = [$seq, $seq - 1];
+        $catalog = $this->catalog ?? throw new \LogicException('catalog connection is not set');
+        $table = ['namespace' => $catalog->currentNamespace(), 'name' => 'bind_cell'];
+        $metadata = $catalog->describeTable($table);
+        $db = Model\connect(
+            (string) getenv('ORM_FEATURE_DSN'),
+            new Config(aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index')
+        );
+        try {
+            $catalog->insertRow($metadata, ['seq' => $seq, 'label' => 'null-v', 'body' => null]);
+            $catalog->insertRow($metadata, ['seq' => $seq - 1, 'label' => 'empty', 'body' => '']);
+
+            $nullRead = (new Model\BindCell())($db)->seq($seq)->get();
+            $emptyRead = (new Model\BindCell())($db)->seq($seq - 1)->get();
+            self::assertNull($nullRead->getBody(), 'SQL NULL remains null when read through the model');
+            self::assertSame('', $emptyRead->getBody(), 'empty text remains an empty string when read through the model');
+        } finally {
+            $snapshots = [];
+            for ($offset = 0; ; ) {
+                $page = $catalog->tablePage($table, 1000, $offset);
+                $keyIndex = $page->columnIndex('seq');
+                foreach ($page->result->rows as $index => $row) {
+                    if (in_array($row[$keyIndex], $targets, true)) {
+                        $snapshots[] = $catalog->rowSnapshotFromPage($page, $index);
+                    }
+                }
+                if (!$page->hasMore) {
+                    break;
+                }
+                $offset += count($page->result->rows);
+            }
+            foreach ($snapshots as $snapshot) {
+                $catalog->deleteRow($snapshot);
+            }
+            $db->close();
         }
     }
 
