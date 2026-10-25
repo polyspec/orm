@@ -99,6 +99,10 @@
     "exported": true,
     "signature": "export function checkParam(i: number, value: unknown, slot: ParamSlot, zone: string): void"
   },
+  "packages/ts/src/bind_check.ts::fulltextBoolean": {
+    "exported": true,
+    "signature": "export function fulltextBoolean(value: string): string"
+  },
   "packages/ts/src/bind_check.ts::shown": {
     "exported": false,
     "signature": "function shown(value: unknown): string"
@@ -111,6 +115,634 @@
     "exported": true,
     "signature": "export function useSlotType(use: ParamUse): ParamSlot"
   },
+  "packages/ts/src/catalog.ts::CatalogAssignment": {
+    "exported": true,
+    "signature": "interface CatalogAssignment"
+  },
+  "packages/ts/src/catalog.ts::CatalogAssignment#field.name": {
+    "exported": true,
+    "signature": "string"
+  },
+  "packages/ts/src/catalog.ts::CatalogAssignment#field.value": {
+    "exported": true,
+    "signature": "CatalogValue"
+  },
+  "packages/ts/src/catalog.ts::CatalogAssignment#wire": {
+    "exported": true,
+    "signature": "{\"name\":\"text\",\"value\":\"CatalogValue\"}"
+  },
+  "packages/ts/src/catalog.ts::CatalogColumn": {
+    "exported": true,
+    "signature": "interface CatalogColumn"
+  },
+  "packages/ts/src/catalog.ts::CatalogColumn#field.automaticKey": {
+    "exported": true,
+    "signature": "boolean"
+  },
+  "packages/ts/src/catalog.ts::CatalogColumn#field.checkPrecision": {
+    "exported": true,
+    "signature": "number | null"
+  },
+  "packages/ts/src/catalog.ts::CatalogColumn#field.defaultExpression": {
+    "exported": true,
+    "signature": "string | null"
+  },
+  "packages/ts/src/catalog.ts::CatalogColumn#field.expressionDefault": {
+    "exported": true,
+    "signature": "boolean"
+  },
+  "packages/ts/src/catalog.ts::CatalogColumn#field.generated": {
+    "exported": true,
+    "signature": "boolean"
+  },
+  "packages/ts/src/catalog.ts::CatalogColumn#field.name": {
+    "exported": true,
+    "signature": "string"
+  },
+  "packages/ts/src/catalog.ts::CatalogColumn#field.nativeType": {
+    "exported": true,
+    "signature": "string"
+  },
+  "packages/ts/src/catalog.ts::CatalogColumn#field.nullable": {
+    "exported": true,
+    "signature": "boolean"
+  },
+  "packages/ts/src/catalog.ts::CatalogColumn#wire": {
+    "exported": true,
+    "signature": "{\"name\":\"text\",\"nativeType\":\"text\",\"nullable\":\"bool\",\"generated\":\"bool\",\"automaticKey\":\"bool\",\"defaultExpression\":\"string|null\",\"expressionDefault\":\"bool\",\"checkPrecision\":\"number|null\"}"
+  },
+  "packages/ts/src/catalog.ts::CatalogConnection": {
+    "exported": true,
+    "signature": "class CatalogConnection { public constructor(public readonly dialect: DriverName, private readonly pool: DriverPool); }"
+  },
+  "packages/ts/src/catalog.ts::CatalogConnection#field.closed": {
+    "exported": false,
+    "signature": "unknown"
+  },
+  "packages/ts/src/catalog.ts::CatalogConnection#field.dialect": {
+    "exported": true,
+    "signature": "DriverName"
+  },
+  "packages/ts/src/catalog.ts::CatalogConnection#field.pool": {
+    "exported": false,
+    "signature": "DriverPool"
+  },
+  "packages/ts/src/catalog.ts::CatalogConnection.begin": {
+    "exported": false,
+    "signature": "private async begin(readOnly: boolean): Promise\u003cSession\u003e"
+  },
+  "packages/ts/src/catalog.ts::CatalogConnection.close": {
+    "exported": true,
+    "signature": "public async close(): Promise\u003cvoid\u003e"
+  },
+  "packages/ts/src/catalog.ts::CatalogConnection.currentNamespace": {
+    "exported": true,
+    "signature": "public async currentNamespace(): Promise\u003cstring\u003e"
+  },
+  "packages/ts/src/catalog.ts::CatalogConnection.deleteRow": {
+    "exported": true,
+    "signature": "public async deleteRow(original: CatalogRowSnapshot): Promise\u003cnumber\u003e"
+  },
+  "packages/ts/src/catalog.ts::CatalogConnection.describeTable": {
+    "exported": true,
+    "signature": "public async describeTable(table: CatalogTableRef): Promise\u003cCatalogTableMetadata\u003e"
+  },
+  "packages/ts/src/catalog.ts::CatalogConnection.endSession": {
+    "exported": false,
+    "signature": "private async endSession(session: Session, error: unknown): Promise\u003cOrmError | undefined\u003e"
+  },
+  "packages/ts/src/catalog.ts::CatalogConnection.ensureOpen": {
+    "exported": false,
+    "signature": "private ensureOpen(): void"
+  },
+  "packages/ts/src/catalog.ts::CatalogConnection.insertRow": {
+    "exported": true,
+    "signature": "public async insertRow(declared: CatalogTableMetadata, values: readonly CatalogAssignment[]): Promise\u003cCatalogMutationResult\u003e"
+  },
+  "packages/ts/src/catalog.ts::CatalogConnection.lockOriginal": {
+    "exported": false,
+    "signature": "private async lockOriginal(session: Session, original: CatalogRowSnapshot, keys: readonly CatalogValue[]): Promise\u003cCatalogTableMetadata\u003e"
+  },
+  "packages/ts/src/catalog.ts::CatalogConnection.queryBudget": {
+    "exported": false,
+    "signature": "private queryBudget(query: string, params: readonly unknown[], limits: CatalogQueryLimits): { maxRows: number; maxBytes: number; }"
+  },
+  "packages/ts/src/catalog.ts::CatalogConnection.read": {
+    "exported": false,
+    "signature": "private async read\u003cT\u003e(work: (session: Session) =\u003e Promise\u003cT\u003e): Promise\u003cT\u003e"
+  },
+  "packages/ts/src/catalog.ts::CatalogConnection.readOnlyGridQuery": {
+    "exported": true,
+    "signature": "public async readOnlyGridQuery(query: string, params: readonly unknown[], limits: CatalogQueryLimits = {}): Promise\u003cCatalogGridResult\u003e"
+  },
+  "packages/ts/src/catalog.ts::CatalogConnection.readOnlyQuery": {
+    "exported": true,
+    "signature": "public async readOnlyQuery(query: string, params: readonly unknown[], limits: CatalogQueryLimits = {}): Promise\u003cCatalogQueryResult\u003e"
+  },
+  "packages/ts/src/catalog.ts::CatalogConnection.rowSnapshotFromPage": {
+    "exported": true,
+    "signature": "public rowSnapshotFromPage(page: CatalogTablePage, index: number): CatalogRowSnapshot"
+  },
+  "packages/ts/src/catalog.ts::CatalogConnection.tablePage": {
+    "exported": true,
+    "signature": "public async tablePage(table: CatalogTableRef, limit: number, offset: number): Promise\u003cCatalogTablePage\u003e"
+  },
+  "packages/ts/src/catalog.ts::CatalogConnection.updateRow": {
+    "exported": true,
+    "signature": "public async updateRow(original: CatalogRowSnapshot, values: readonly CatalogAssignment[]): Promise\u003cCatalogMutationResult\u003e"
+  },
+  "packages/ts/src/catalog.ts::CatalogConnection.write": {
+    "exported": false,
+    "signature": "private async write\u003cT\u003e(work: (session: Session) =\u003e Promise\u003cT\u003e): Promise\u003cT\u003e"
+  },
+  "packages/ts/src/catalog.ts::CatalogGridCell": {
+    "exported": true,
+    "signature": "type CatalogGridCell = {\n    kind: 'null';\n} | {\n    kind: 'integer';\n    value: bigint;\n} | {\n    kind: 'unsigned';\n    value: bigint;\n} | {\n    kind: 'float32';\n    bits: number;\n} | {\n    kind: 'float64';\n    bits: bigint;\n} | {\n    kind: 'decimal';\n    value: string;\n} | {\n    kind: 'text';\n    value: string;\n} | {\n    kind: 'boolean';\n    value: boolean;\n} | {\n    kind: 'binary';\n    value: Uint8Array;\n} | {\n    kind: 'date';\n    value: string;\n} | {\n    kind: 'time';\n    value: string;\n} | {\n    kind: 'datetime';\n    value: string;\n}"
+  },
+  "packages/ts/src/catalog.ts::CatalogGridResult": {
+    "exported": true,
+    "signature": "interface CatalogGridResult"
+  },
+  "packages/ts/src/catalog.ts::CatalogGridResult#field.columns": {
+    "exported": true,
+    "signature": "Array\u003c{ name: string; nativeType: string }\u003e"
+  },
+  "packages/ts/src/catalog.ts::CatalogGridResult#field.rows": {
+    "exported": true,
+    "signature": "CatalogGridCell[][]"
+  },
+  "packages/ts/src/catalog.ts::CatalogGridResult#wire": {
+    "exported": true,
+    "signature": "{\"columns\":\"Array\u003c{name:string;nativeType:string}\u003e\",\"rows\":\"list\u003clist\u003cCatalogGridCell\u003e\u003e\"}"
+  },
+  "packages/ts/src/catalog.ts::CatalogMutationResult": {
+    "exported": true,
+    "signature": "interface CatalogMutationResult"
+  },
+  "packages/ts/src/catalog.ts::CatalogMutationResult#field.columns": {
+    "exported": true,
+    "signature": "string[]"
+  },
+  "packages/ts/src/catalog.ts::CatalogMutationResult#field.rows": {
+    "exported": true,
+    "signature": "CatalogValue[][]"
+  },
+  "packages/ts/src/catalog.ts::CatalogMutationResult#wire": {
+    "exported": true,
+    "signature": "{\"columns\":\"list\u003ctext\u003e\",\"rows\":\"list\u003clist\u003cCatalogValue\u003e\u003e\"}"
+  },
+  "packages/ts/src/catalog.ts::CatalogQueryLimits": {
+    "exported": true,
+    "signature": "interface CatalogQueryLimits"
+  },
+  "packages/ts/src/catalog.ts::CatalogQueryLimits#field.maxBytes": {
+    "exported": true,
+    "signature": "number"
+  },
+  "packages/ts/src/catalog.ts::CatalogQueryLimits#field.maxRows": {
+    "exported": true,
+    "signature": "number"
+  },
+  "packages/ts/src/catalog.ts::CatalogQueryLimits#wire": {
+    "exported": true,
+    "signature": "{\"maxRows\":\"integer\",\"maxBytes\":\"integer\"}"
+  },
+  "packages/ts/src/catalog.ts::CatalogQueryResult": {
+    "exported": true,
+    "signature": "interface CatalogQueryResult"
+  },
+  "packages/ts/src/catalog.ts::CatalogQueryResult#field.columns": {
+    "exported": true,
+    "signature": "string[]"
+  },
+  "packages/ts/src/catalog.ts::CatalogQueryResult#field.rows": {
+    "exported": true,
+    "signature": "CatalogValue[][]"
+  },
+  "packages/ts/src/catalog.ts::CatalogQueryResult#wire": {
+    "exported": true,
+    "signature": "{\"columns\":\"list\u003ctext\u003e\",\"rows\":\"list\u003clist\u003cCatalogValue\u003e\u003e\"}"
+  },
+  "packages/ts/src/catalog.ts::CatalogRowSnapshot": {
+    "exported": true,
+    "signature": "class CatalogRowSnapshot { public constructor(public readonly metadata: CatalogTableMetadata, private readonly cells: CatalogValue[], private readonly keyIndexes: number[], public readonly revision: string); }"
+  },
+  "packages/ts/src/catalog.ts::CatalogRowSnapshot#field.cells": {
+    "exported": false,
+    "signature": "CatalogValue[]"
+  },
+  "packages/ts/src/catalog.ts::CatalogRowSnapshot#field.keyIndexes": {
+    "exported": false,
+    "signature": "number[]"
+  },
+  "packages/ts/src/catalog.ts::CatalogRowSnapshot#field.metadata": {
+    "exported": true,
+    "signature": "CatalogTableMetadata"
+  },
+  "packages/ts/src/catalog.ts::CatalogRowSnapshot#field.revision": {
+    "exported": true,
+    "signature": "string"
+  },
+  "packages/ts/src/catalog.ts::CatalogRowSnapshot.keyIndexList": {
+    "exported": true,
+    "signature": "public keyIndexList(): number[]"
+  },
+  "packages/ts/src/catalog.ts::CatalogRowSnapshot.keys": {
+    "exported": true,
+    "signature": "public keys(): CatalogValue[]"
+  },
+  "packages/ts/src/catalog.ts::CatalogRowSnapshot.originalCells": {
+    "exported": true,
+    "signature": "public originalCells(): CatalogValue[]"
+  },
+  "packages/ts/src/catalog.ts::CatalogRowSnapshot.valid": {
+    "exported": true,
+    "signature": "public valid(): void"
+  },
+  "packages/ts/src/catalog.ts::CatalogTableKind": {
+    "exported": true,
+    "signature": "type CatalogTableKind = 'table' | 'partitioned' | 'view' | 'materialized_view' | 'foreign' | 'virtual' | 'shadow'"
+  },
+  "packages/ts/src/catalog.ts::CatalogTableMetadata": {
+    "exported": true,
+    "signature": "interface CatalogTableMetadata"
+  },
+  "packages/ts/src/catalog.ts::CatalogTableMetadata#field.columns": {
+    "exported": true,
+    "signature": "CatalogColumn[]"
+  },
+  "packages/ts/src/catalog.ts::CatalogTableMetadata#field.kind": {
+    "exported": true,
+    "signature": "CatalogTableKind"
+  },
+  "packages/ts/src/catalog.ts::CatalogTableMetadata#field.primaryKey": {
+    "exported": true,
+    "signature": "string[]"
+  },
+  "packages/ts/src/catalog.ts::CatalogTableMetadata#field.reliableRowIdentity": {
+    "exported": true,
+    "signature": "boolean"
+  },
+  "packages/ts/src/catalog.ts::CatalogTableMetadata#field.table": {
+    "exported": true,
+    "signature": "CatalogTableRef"
+  },
+  "packages/ts/src/catalog.ts::CatalogTableMetadata#wire": {
+    "exported": true,
+    "signature": "{\"table\":\"CatalogTableRef\",\"kind\":\"CatalogTableKind\",\"columns\":\"list\u003cCatalogColumn\u003e\",\"primaryKey\":\"list\u003ctext\u003e\",\"reliableRowIdentity\":\"bool\"}"
+  },
+  "packages/ts/src/catalog.ts::CatalogTablePage": {
+    "exported": true,
+    "signature": "interface CatalogTablePage"
+  },
+  "packages/ts/src/catalog.ts::CatalogTablePage#field.hasMore": {
+    "exported": true,
+    "signature": "boolean"
+  },
+  "packages/ts/src/catalog.ts::CatalogTablePage#field.limit": {
+    "exported": true,
+    "signature": "number"
+  },
+  "packages/ts/src/catalog.ts::CatalogTablePage#field.metadata": {
+    "exported": true,
+    "signature": "CatalogTableMetadata"
+  },
+  "packages/ts/src/catalog.ts::CatalogTablePage#field.offset": {
+    "exported": true,
+    "signature": "number"
+  },
+  "packages/ts/src/catalog.ts::CatalogTablePage#field.orderBy": {
+    "exported": true,
+    "signature": "string[]"
+  },
+  "packages/ts/src/catalog.ts::CatalogTablePage#field.result": {
+    "exported": true,
+    "signature": "{ columns: CatalogColumn[]; rows: CatalogValue[][] }"
+  },
+  "packages/ts/src/catalog.ts::CatalogTablePage#wire": {
+    "exported": true,
+    "signature": "{\"metadata\":\"CatalogTableMetadata\",\"result\":\"object\",\"limit\":\"integer\",\"offset\":\"integer\",\"orderBy\":\"list\u003ctext\u003e\",\"hasMore\":\"bool\"}"
+  },
+  "packages/ts/src/catalog.ts::CatalogTablePage.columnIndex": {
+    "exported": true,
+    "signature": "columnIndex(name: string): number"
+  },
+  "packages/ts/src/catalog.ts::CatalogTableRef": {
+    "exported": true,
+    "signature": "interface CatalogTableRef"
+  },
+  "packages/ts/src/catalog.ts::CatalogTableRef#field.name": {
+    "exported": true,
+    "signature": "string"
+  },
+  "packages/ts/src/catalog.ts::CatalogTableRef#field.namespace": {
+    "exported": true,
+    "signature": "string"
+  },
+  "packages/ts/src/catalog.ts::CatalogTableRef#wire": {
+    "exported": true,
+    "signature": "{\"namespace\":\"text\",\"name\":\"text\"}"
+  },
+  "packages/ts/src/catalog.ts::CatalogValue": {
+    "exported": true,
+    "signature": "type CatalogValue = null | boolean | number | bigint | string | Uint8Array"
+  },
+  "packages/ts/src/catalog.ts::Session": {
+    "exported": false,
+    "signature": "class Session { public constructor(public readonly dialect: DriverName, private readonly session: DriverSession); }"
+  },
+  "packages/ts/src/catalog.ts::Session#field.dialect": {
+    "exported": false,
+    "signature": "DriverName"
+  },
+  "packages/ts/src/catalog.ts::Session#field.session": {
+    "exported": false,
+    "signature": "DriverSession"
+  },
+  "packages/ts/src/catalog.ts::Session#field.stopped": {
+    "exported": false,
+    "signature": "unknown"
+  },
+  "packages/ts/src/catalog.ts::Session.collect": {
+    "exported": false,
+    "signature": "public async collect\u003cT\u003e(sql: string, params: readonly unknown[], maxRows: number, maxBytes: number, convert: (value: unknown, column: DriverColumn, index: number) =\u003e { cell: T; size: number; }): Promise\u003c{ columns: DriverColumn[]; rows: T[][]; }\u003e"
+  },
+  "packages/ts/src/catalog.ts::Session.control": {
+    "exported": false,
+    "signature": "public async control(sql: string): Promise\u003cvoid\u003e"
+  },
+  "packages/ts/src/catalog.ts::Session.describe": {
+    "exported": false,
+    "signature": "public async describe(ref: CatalogTableRef): Promise\u003cCatalogTableMetadata\u003e"
+  },
+  "packages/ts/src/catalog.ts::Session.exec": {
+    "exported": false,
+    "signature": "public async exec(sql: string, params: readonly unknown[]): Promise\u003cnumber\u003e"
+  },
+  "packages/ts/src/catalog.ts::Session.executeResult": {
+    "exported": false,
+    "signature": "public async executeResult(sql: string, params: readonly unknown[]): Promise\u003cDriverResult\u003e"
+  },
+  "packages/ts/src/catalog.ts::Session.lookup": {
+    "exported": false,
+    "signature": "public async lookup(metadata: CatalogTableMetadata, keys: readonly CatalogValue[], lock: boolean): Promise\u003cCatalogValue[][]\u003e"
+  },
+  "packages/ts/src/catalog.ts::Session.mysqlSafety": {
+    "exported": false,
+    "signature": "public async mysqlSafety(metadata: CatalogTableMetadata): Promise\u003cvoid\u003e"
+  },
+  "packages/ts/src/catalog.ts::Session.plainRows": {
+    "exported": false,
+    "signature": "public async plainRows(sql: string, params: readonly unknown[], maxRows: number, maxBytes: number): Promise\u003c{ columns: DriverColumn[]; rows: CatalogValue[][]; }\u003e"
+  },
+  "packages/ts/src/catalog.ts::Session.rawRows": {
+    "exported": false,
+    "signature": "public async rawRows(sql: string, params: readonly unknown[], maxRows: number, maxBytes: number): Promise\u003c{ columns: DriverColumn[]; rows: unknown[][]; }\u003e"
+  },
+  "packages/ts/src/catalog.ts::Session.release": {
+    "exported": false,
+    "signature": "public release(discard: boolean): void"
+  },
+  "packages/ts/src/catalog.ts::atLeastPowerOfTwo": {
+    "exported": false,
+    "signature": "function atLeastPowerOfTwo(num: bigint, den: bigint, e: number): boolean"
+  },
+  "packages/ts/src/catalog.ts::baseType": {
+    "exported": false,
+    "signature": "function baseType(type: string): string"
+  },
+  "packages/ts/src/catalog.ts::bitLength": {
+    "exported": false,
+    "signature": "function bitLength(value: bigint): number"
+  },
+  "packages/ts/src/catalog.ts::boolOf": {
+    "exported": false,
+    "signature": "function boolOf(value: unknown, what: string): boolean"
+  },
+  "packages/ts/src/catalog.ts::bytesValue": {
+    "exported": false,
+    "signature": "function bytesValue(value: Uint8Array, type: string): CatalogValue"
+  },
+  "packages/ts/src/catalog.ts::catalogKind": {
+    "exported": false,
+    "signature": "function catalogKind(dialect: DriverName, native: string): CatalogTableKind"
+  },
+  "packages/ts/src/catalog.ts::cellKey": {
+    "exported": false,
+    "signature": "function cellKey(cell: unknown): string"
+  },
+  "packages/ts/src/catalog.ts::checkCells": {
+    "exported": false,
+    "signature": "function checkCells(metadata: CatalogTableMetadata, cells: readonly unknown[]): void"
+  },
+  "packages/ts/src/catalog.ts::checkChanges": {
+    "exported": false,
+    "signature": "function checkChanges(metadata: CatalogTableMetadata, values: readonly CatalogAssignment[], code: string): Array\u003c{ index: number; value: DriverValue; }\u003e"
+  },
+  "packages/ts/src/catalog.ts::checkClauses": {
+    "exported": false,
+    "signature": "function checkClauses(tableSql: string): string[]"
+  },
+  "packages/ts/src/catalog.ts::checkCurrent": {
+    "exported": false,
+    "signature": "function checkCurrent(current: readonly CatalogValue[][], original: readonly CatalogValue[]): void"
+  },
+  "packages/ts/src/catalog.ts::checkName": {
+    "exported": false,
+    "signature": "function checkName(name: string): void"
+  },
+  "packages/ts/src/catalog.ts::checkParams": {
+    "exported": false,
+    "signature": "function checkParams(params: readonly unknown[], code: string): DriverValue[]"
+  },
+  "packages/ts/src/catalog.ts::checkPrecisionOf": {
+    "exported": false,
+    "signature": "function checkPrecisionOf(tableSql: string, column: string): number | null"
+  },
+  "packages/ts/src/catalog.ts::checkTable": {
+    "exported": false,
+    "signature": "function checkTable(ref: CatalogTableRef): void"
+  },
+  "packages/ts/src/catalog.ts::columnAt": {
+    "exported": false,
+    "signature": "function columnAt(columns: DriverColumn[], index: number): DriverColumn"
+  },
+  "packages/ts/src/catalog.ts::connectCatalog": {
+    "exported": true,
+    "signature": "export async function connectCatalog(dsn: string): Promise\u003cCatalogConnection\u003e"
+  },
+  "packages/ts/src/catalog.ts::dateText": {
+    "exported": false,
+    "signature": "function dateText(text: string): string"
+  },
+  "packages/ts/src/catalog.ts::datetimeText": {
+    "exported": false,
+    "signature": "function datetimeText(text: string): string"
+  },
+  "packages/ts/src/catalog.ts::dbspecTemporal": {
+    "exported": false,
+    "signature": "function dbspecTemporal(kind: 'date' | 'time' | 'datetime', text: string): boolean"
+  },
+  "packages/ts/src/catalog.ts::declaredPrecision": {
+    "exported": false,
+    "signature": "function declaredPrecision(dialect: DriverName, type: string): number"
+  },
+  "packages/ts/src/catalog.ts::describedCell": {
+    "exported": false,
+    "signature": "function describedCell(value: unknown, column: DriverColumn, described: CatalogColumn | undefined, dialect: DriverName): { cell: CatalogValue; size: number; }"
+  },
+  "packages/ts/src/catalog.ts::describedTemporal": {
+    "exported": false,
+    "signature": "function describedTemporal(value: string, kind: 'date' | 'time' | 'datetime', precision: number): string"
+  },
+  "packages/ts/src/catalog.ts::describedValue": {
+    "exported": false,
+    "signature": "function describedValue(value: unknown, column: DriverColumn, described: CatalogColumn | undefined, dialect: DriverName): CatalogValue"
+  },
+  "packages/ts/src/catalog.ts::descriptorKeys": {
+    "exported": false,
+    "signature": "function descriptorKeys(metadata: CatalogTableMetadata): number[]"
+  },
+  "packages/ts/src/catalog.ts::err": {
+    "exported": false,
+    "signature": "function err(code: string, message: string, cause?: unknown): OrmError"
+  },
+  "packages/ts/src/catalog.ts::float32BitsOfText": {
+    "exported": false,
+    "signature": "function float32BitsOfText(text: string): number"
+  },
+  "packages/ts/src/catalog.ts::float32FromBits": {
+    "exported": false,
+    "signature": "function float32FromBits(bits: number): number"
+  },
+  "packages/ts/src/catalog.ts::float64Bits": {
+    "exported": false,
+    "signature": "function float64Bits(value: number): bigint"
+  },
+  "packages/ts/src/catalog.ts::fractionDigits": {
+    "exported": false,
+    "signature": "function fractionDigits(text: string): number"
+  },
+  "packages/ts/src/catalog.ts::gridCell": {
+    "exported": false,
+    "signature": "function gridCell(value: unknown, column: DriverColumn, dialect: DriverName): CatalogGridCell"
+  },
+  "packages/ts/src/catalog.ts::gridSize": {
+    "exported": false,
+    "signature": "function gridSize(cell: CatalogGridCell): number"
+  },
+  "packages/ts/src/catalog.ts::intOf": {
+    "exported": false,
+    "signature": "function intOf(value: unknown, what: string): number"
+  },
+  "packages/ts/src/catalog.ts::integerOf": {
+    "exported": false,
+    "signature": "function integerOf(value: unknown, type: string): bigint"
+  },
+  "packages/ts/src/catalog.ts::integerValue": {
+    "exported": false,
+    "signature": "function integerValue(value: bigint): CatalogValue"
+  },
+  "packages/ts/src/catalog.ts::isDigit": {
+    "exported": false,
+    "signature": "function isDigit(c: string): boolean"
+  },
+  "packages/ts/src/catalog.ts::isLetter": {
+    "exported": false,
+    "signature": "function isLetter(c: string): boolean"
+  },
+  "packages/ts/src/catalog.ts::messageOf": {
+    "exported": false,
+    "signature": "function messageOf(error: unknown): string"
+  },
+  "packages/ts/src/catalog.ts::mysqlInputLocatorParams": {
+    "exported": false,
+    "signature": "function mysqlInputLocatorParams(changes: readonly { index: number; value: DriverValue; }[]): DriverValue[]"
+  },
+  "packages/ts/src/catalog.ts::mysqlInputLocatorSql": {
+    "exported": false,
+    "signature": "function mysqlInputLocatorSql(metadata: CatalogTableMetadata, changes: readonly { index: number; value: DriverValue; }[], dialect: DriverName): string"
+  },
+  "packages/ts/src/catalog.ts::placeholder": {
+    "exported": false,
+    "signature": "function placeholder(index: number, dialect: DriverName): string"
+  },
+  "packages/ts/src/catalog.ts::plainValue": {
+    "exported": false,
+    "signature": "function plainValue(value: unknown, column: DriverColumn): CatalogValue"
+  },
+  "packages/ts/src/catalog.ts::qualified": {
+    "exported": false,
+    "signature": "function qualified(ref: CatalogTableRef, dialect: DriverName): string"
+  },
+  "packages/ts/src/catalog.ts::queryWords": {
+    "exported": false,
+    "signature": "function queryWords(query: string, dialect: DriverName): string[] | undefined"
+  },
+  "packages/ts/src/catalog.ts::quoteIdent": {
+    "exported": false,
+    "signature": "function quoteIdent(name: string, dialect: DriverName): string"
+  },
+  "packages/ts/src/catalog.ts::quoteList": {
+    "exported": false,
+    "signature": "function quoteList(names: readonly string[], dialect: DriverName): string"
+  },
+  "packages/ts/src/catalog.ts::revisionOf": {
+    "exported": false,
+    "signature": "function revisionOf(metadata: CatalogTableMetadata, cells: readonly unknown[]): string"
+  },
+  "packages/ts/src/catalog.ts::roundScaled": {
+    "exported": false,
+    "signature": "function roundScaled(num: bigint, den: bigint, s: number): bigint"
+  },
+  "packages/ts/src/catalog.ts::sameCell": {
+    "exported": false,
+    "signature": "function sameCell(a: unknown, b: unknown): boolean"
+  },
+  "packages/ts/src/catalog.ts::sameDescriptor": {
+    "exported": false,
+    "signature": "function sameDescriptor(a: CatalogTableMetadata, b: CatalogTableMetadata): boolean"
+  },
+  "packages/ts/src/catalog.ts::sameRow": {
+    "exported": false,
+    "signature": "function sameRow(a: readonly unknown[], b: readonly unknown[]): boolean"
+  },
+  "packages/ts/src/catalog.ts::sizeOf": {
+    "exported": false,
+    "signature": "function sizeOf(value: unknown): number"
+  },
+  "packages/ts/src/catalog.ts::skipQuoted": {
+    "exported": false,
+    "signature": "function skipQuoted(query: string, start: number, quote: string, backslash: boolean): number | undefined"
+  },
+  "packages/ts/src/catalog.ts::sqliteGridCell": {
+    "exported": false,
+    "signature": "function sqliteGridCell(value: unknown): CatalogGridCell"
+  },
+  "packages/ts/src/catalog.ts::sqliteTemporal": {
+    "exported": false,
+    "signature": "function sqliteTemporal(plain: CatalogValue, described: CatalogColumn): CatalogValue"
+  },
+  "packages/ts/src/catalog.ts::temporalKind": {
+    "exported": false,
+    "signature": "function temporalKind(dialect: DriverName, type: string): 'date' | 'time' | 'datetime' | undefined"
+  },
+  "packages/ts/src/catalog.ts::textOf": {
+    "exported": false,
+    "signature": "function textOf(value: unknown, what: string): string"
+  },
+  "packages/ts/src/catalog.ts::timeText": {
+    "exported": false,
+    "signature": "function timeText(text: string): string"
+  },
+  "packages/ts/src/catalog.ts::utf8Of": {
+    "exported": false,
+    "signature": "function utf8Of(value: Uint8Array, type: string): string"
+  },
+  "packages/ts/src/catalog.ts::validateReadOnly": {
+    "exported": false,
+    "signature": "function validateReadOnly(query: string, dialect: DriverName): void"
+  },
   "packages/ts/src/clock.ts::wallMicros": {
     "exported": true,
     "signature": "export function wallMicros(): number"
@@ -122,6 +754,14 @@
   "packages/ts/src/codec.ts::CodecError#field.code": {
     "exported": true,
     "signature": "typeof codes.CONFIG | typeof codes.CODEC_DECODE | typeof codes.CODEC_ENCODE | typeof codes.CODEC_UNSUPPORTED"
+  },
+  "packages/ts/src/codec.ts::CodecValue": {
+    "exported": true,
+    "signature": "type CodecValue = null | boolean | number | string | CodecValue[] | {\n    [key: string]: CodecValue;\n}"
+  },
+  "packages/ts/src/codec.ts::EncodedValue": {
+    "exported": true,
+    "signature": "type EncodedValue = string | Uint8Array | null"
   },
   "packages/ts/src/codec.ts::PhpParser": {
     "exported": false,
@@ -679,6 +1319,10 @@
     "exported": true,
     "signature": "create(core: Core): ModelLike"
   },
+  "packages/ts/src/core.ts::Fn": {
+    "exported": false,
+    "signature": "type Fn = ValueFunction | ColumnFunction"
+  },
   "packages/ts/src/core.ts::Frame": {
     "exported": false,
     "signature": "class Frame { public constructor(public readonly root: Core, public readonly outer: Core | undefined); }"
@@ -805,7 +1449,7 @@
   },
   "packages/ts/src/core.ts::PredSpec#field.kind": {
     "exported": false,
-    "signature": "'value' | 'list' | 'null' | 'between' | 'tuple' | 'ref' | 'sub' | 'column_fn' | 'value_fn'"
+    "signature": "'value' | 'list' | 'null' | 'between' | 'tuple' | 'fulltext' | 'ref' | 'sub' | 'column_fn' | 'value_fn'"
   },
   "packages/ts/src/core.ts::PredSpec#field.op": {
     "exported": false,
@@ -1187,6 +1831,14 @@
     "exported": false,
     "signature": "private async insertAudit(record: AuditInsert): Promise\u003cAuditRecord\u003e"
   },
+  "packages/ts/src/database.ts::Db.listen": {
+    "exported": true,
+    "signature": "public async listen(channel: string): Promise\u003cSubscription\u003e"
+  },
+  "packages/ts/src/database.ts::Db.listenable": {
+    "exported": false,
+    "signature": "private listenable(surface: string): void"
+  },
   "packages/ts/src/database.ts::Db.markdownModel": {
     "exported": true,
     "signature": "public markdownModel(manifestHash: string): RuntimeModel"
@@ -1194,6 +1846,10 @@
   "packages/ts/src/database.ts::Db.nextTransaction": {
     "exported": true,
     "signature": "public nextTransaction(): number"
+  },
+  "packages/ts/src/database.ts::Db.notify": {
+    "exported": true,
+    "signature": "public async notify(channel: string, payload: string): Promise\u003cvoid\u003e"
   },
   "packages/ts/src/database.ts::Db.now": {
     "exported": true,
@@ -1303,6 +1959,14 @@
     "exported": false,
     "signature": "{\"request\":\"Request\",\"params\":\"readonlyunknown[]\"}"
   },
+  "packages/ts/src/database.ts::Key": {
+    "exported": true,
+    "signature": "type Key = number | bigint | string | boolean | Uint8Array | Date"
+  },
+  "packages/ts/src/database.ts::RequestHook": {
+    "exported": true,
+    "signature": "type RequestHook = (request: Request, addParam: (value: unknown) =\u003e number, params: readonly unknown[]) =\u003e Request"
+  },
   "packages/ts/src/database.ts::Result": {
     "exported": true,
     "signature": "interface Result"
@@ -1330,6 +1994,10 @@
   "packages/ts/src/database.ts::Result#wire": {
     "exported": true,
     "signature": "{\"plan\":\"Plan\",\"main\":\"list\u003clist\u003cunknown\u003e\u003e\",\"steps\":\"Map\u003cnumber,{step:PlanStep;data:unknown[][];byKey:Map\u003cstring,number[]\u003e}\u003e\",\"params\":\"readonlyunknown[]\",\"markdown\":\"bool\"}"
+  },
+  "packages/ts/src/database.ts::Runner": {
+    "exported": true,
+    "signature": "type Runner = (kind: StatementKind, tables: readonly string[], sql: string, params?: readonly DriverValue[]) =\u003e Promise\u003cDriverResult\u003e"
   },
   "packages/ts/src/database.ts::Schema": {
     "exported": true,
@@ -1499,6 +2167,10 @@
     "exported": false,
     "signature": "function childKeys(plan: Plan, id: number): KeyReference[]"
   },
+  "packages/ts/src/database.ts::compositeKeyPart": {
+    "exported": false,
+    "signature": "function compositeKeyPart(value: unknown): string"
+  },
   "packages/ts/src/database.ts::decodeAssembly": {
     "exported": true,
     "signature": "export function decodeAssembly(row: unknown[], assemble: Assemble, db: Db): void"
@@ -1609,7 +2281,11 @@
   },
   "packages/ts/src/database.ts::rootInParts": {
     "exported": false,
-    "signature": "function rootInParts(request: Request, plan: Plan, driver: string, params: readonly unknown[]): Request[]"
+    "signature": "function rootInParts(request: Request, slots: number, driver: string, params: readonly unknown[]): Request[]"
+  },
+  "packages/ts/src/database.ts::rootInTarget": {
+    "exported": false,
+    "signature": "function rootInTarget(request: Request): number"
   },
   "packages/ts/src/database.ts::rowKey": {
     "exported": true,
@@ -1630,6 +2306,10 @@
   "packages/ts/src/database.ts::select": {
     "exported": false,
     "signature": "async function select(ex: Executor, cached: Cached, step: PlanStep, params: readonly unknown[], parents?: readonly unknown[]): Promise\u003cunknown[][]\u003e"
+  },
+  "packages/ts/src/database.ts::splitReadPlan": {
+    "exported": false,
+    "signature": "async function splitReadPlan(db: Db, request: Request, params: readonly unknown[]): Promise\u003c{ cached: Cached; slots: number; }\u003e"
   },
   "packages/ts/src/database.ts::splitRowKey": {
     "exported": true,
@@ -1658,6 +2338,10 @@
   "packages/ts/src/database.ts::validDate": {
     "exported": false,
     "signature": "function validDate(y: string, m: string, d: string, h = '00', mi = '00', sec = '00'): boolean"
+  },
+  "packages/ts/src/database.ts::withRootInList": {
+    "exported": false,
+    "signature": "function withRootInList(request: Request, target: number, ps: number[]): Request"
   },
   "packages/ts/src/database.ts::write": {
     "exported": true,
@@ -1859,6 +2543,10 @@
     "exported": false,
     "signature": "async verify(want: string): Promise\u003cvoid\u003e"
   },
+  "packages/ts/src/dbspec/apply.ts::Connection": {
+    "exported": false,
+    "signature": "type Connection = DbspecApplyMySqlConnection | DbspecApplyPostgresConnection | DbspecApplySqliteConnection"
+  },
   "packages/ts/src/dbspec/apply.ts::DbspecApplyError": {
     "exported": true,
     "signature": "class DbspecApplyError { constructor(code: DbspecApplyErrorCode, plan: string, step: number, detail: string, cause?: unknown); }"
@@ -1878,6 +2566,10 @@
   "packages/ts/src/dbspec/apply.ts::DbspecApplyError#field.step": {
     "exported": true,
     "signature": "number"
+  },
+  "packages/ts/src/dbspec/apply.ts::DbspecApplyErrorCode": {
+    "exported": true,
+    "signature": "type DbspecApplyErrorCode = 'locked' | 'session' | 'interrupted' | 'drift' | 'chain' | 'failed' | 'verify' | 'irreversible' | 'nulls'"
   },
   "packages/ts/src/dbspec/apply.ts::DbspecApplyEvent": {
     "exported": true,
@@ -1907,6 +2599,26 @@
     "exported": true,
     "signature": "{\"kind\":\"DbspecApplyEventKind\",\"plan\":\"text\",\"step\":\"integer\",\"steps\":\"integer\",\"statement\":\"text\"}"
   },
+  "packages/ts/src/dbspec/apply.ts::DbspecApplyEventKind": {
+    "exported": true,
+    "signature": "type DbspecApplyEventKind = 'plan' | 'rollback' | 'finalize' | 'irreversible' | 'statement' | 'applied' | 'verified' | 'done'"
+  },
+  "packages/ts/src/dbspec/apply.ts::DbspecApplyHandler": {
+    "exported": true,
+    "signature": "type DbspecApplyHandler = (event: DbspecApplyEvent) =\u003e void | Promise\u003cvoid\u003e"
+  },
+  "packages/ts/src/dbspec/apply.ts::DbspecApplyMySqlConnection": {
+    "exported": true,
+    "signature": "type DbspecApplyMySqlConnection = DbspecMySqlConnection"
+  },
+  "packages/ts/src/dbspec/apply.ts::DbspecApplyPostgresConnection": {
+    "exported": true,
+    "signature": "type DbspecApplyPostgresConnection = DbspecPostgresConnection"
+  },
+  "packages/ts/src/dbspec/apply.ts::DbspecApplySqliteConnection": {
+    "exported": true,
+    "signature": "type DbspecApplySqliteConnection = DbspecSqliteConnection"
+  },
   "packages/ts/src/dbspec/apply.ts::HistoryRow": {
     "exported": false,
     "signature": "interface HistoryRow"
@@ -1930,6 +2642,10 @@
   "packages/ts/src/dbspec/apply.ts::HistoryRow#wire": {
     "exported": false,
     "signature": "{\"from\":\"text\",\"to\":\"text\",\"state\":\"text\",\"step\":\"integer\"}"
+  },
+  "packages/ts/src/dbspec/apply.ts::SchemaMismatchError": {
+    "exported": false,
+    "signature": "class SchemaMismatchError"
   },
   "packages/ts/src/dbspec/apply.ts::Session": {
     "exported": false,
@@ -2007,9 +2723,17 @@
     "exported": false,
     "signature": "function session(connection: unknown, dialect: DbspecDialect): Session"
   },
+  "packages/ts/src/dbspec/apply.ts::sqliteLockResult": {
+    "exported": false,
+    "signature": "function sqliteLockResult(error: unknown): boolean"
+  },
   "packages/ts/src/dbspec/apply.ts::text": {
     "exported": false,
     "signature": "function text(value: unknown, what: string): string"
+  },
+  "packages/ts/src/dbspec/audit.ts::DbspecAuditSetting": {
+    "exported": true,
+    "signature": "type DbspecAuditSetting = Extract\u003cDbspecSetting, {\n    readonly kind: 'audit';\n}\u003e"
   },
   "packages/ts/src/dbspec/audit.ts::auditExcluded": {
     "exported": true,
@@ -2022,6 +2746,22 @@
   "packages/ts/src/dbspec/audit.ts::auditRecords": {
     "exported": true,
     "signature": "export function auditRecords(a: DbspecAuditSetting, column: string): boolean"
+  },
+  "packages/ts/src/dbspec/check.ts::CheckExpr": {
+    "exported": true,
+    "signature": "type CheckExpr = {\n    readonly kind: 'logical';\n    readonly op: 'and' | 'or';\n    readonly left: CheckExpr;\n    readonly right: CheckExpr;\n} | {\n    readonly kind: 'compare';\n    readonly op: string;\n    readonly left: CheckOperand;\n    readonly right: CheckOperand;\n} | {\n    readonly kind: 'in';\n    readonly operand: CheckOperand;\n    readonly negated: boolean;\n    readonly list: readonly string[];\n} | {\n    readonly kind: 'is_null';\n    readonly operand: CheckOperand;\n    readonly negated: boolean;\n}"
+  },
+  "packages/ts/src/dbspec/check.ts::CheckLiteral": {
+    "exported": false,
+    "signature": "type CheckLiteral = {\n    readonly kind: 'literal';\n    readonly text: string;\n}"
+  },
+  "packages/ts/src/dbspec/check.ts::CheckLiteral#wire": {
+    "exported": false,
+    "signature": "{\"kind\":\"text\",\"text\":\"text\"}"
+  },
+  "packages/ts/src/dbspec/check.ts::CheckOperand": {
+    "exported": true,
+    "signature": "type CheckOperand = {\n    readonly kind: 'column';\n    readonly name: string;\n} | CheckLiteral"
   },
   "packages/ts/src/dbspec/check.ts::Token": {
     "exported": false,
@@ -2050,6 +2790,14 @@
   "packages/ts/src/dbspec/check.ts::tokens": {
     "exported": false,
     "signature": "function tokens(text: string, name: string): Token[]"
+  },
+  "packages/ts/src/dbspec/compare.ts::Add": {
+    "exported": false,
+    "signature": "type Add = (kind: string, name: string) =\u003e void"
+  },
+  "packages/ts/src/dbspec/compare.ts::DbspecComparisonResult": {
+    "exported": true,
+    "signature": "type DbspecComparisonResult = {\n    readonly differences: readonly DbspecDifference[];\n    readonly diagnostics: readonly [\n    ];\n} | {\n    readonly differences: null;\n    readonly diagnostics: readonly DbspecDiagnostic[];\n}"
   },
   "packages/ts/src/dbspec/compare.ts::DbspecDifference": {
     "exported": true,
@@ -2102,6 +2850,10 @@
   "packages/ts/src/dbspec/connections.ts::DbspecMySqlConnection.query": {
     "exported": true,
     "signature": "query(options: { sql: string; rowsAsArray?: boolean; }, values?: unknown[]): Promise\u003cDbspecMySqlQueryResult\u003e"
+  },
+  "packages/ts/src/dbspec/connections.ts::DbspecMySqlQueryResult": {
+    "exported": true,
+    "signature": "type DbspecMySqlQueryResult = readonly unknown[]"
   },
   "packages/ts/src/dbspec/connections.ts::DbspecPostgresConnection": {
     "exported": true,
@@ -2158,6 +2910,18 @@
   "packages/ts/src/dbspec/connections.ts::rowArrays": {
     "exported": true,
     "signature": "export function rowArrays(value: unknown, source: string): unknown[][]"
+  },
+  "packages/ts/src/dbspec/document.ts::DbspecAnalysis": {
+    "exported": true,
+    "signature": "type DbspecAnalysis = {\n    readonly document: DbspecDocument;\n    readonly positions: readonly DbspecPosition[];\n    readonly diagnostics: readonly [\n    ];\n    readonly tokens: readonly DbspecToken[];\n} | {\n    readonly document: null;\n    readonly positions: null;\n    readonly diagnostics: readonly DbspecDiagnostic[];\n    readonly tokens: readonly DbspecToken[];\n}"
+  },
+  "packages/ts/src/dbspec/document.ts::DbspecFormatResult": {
+    "exported": true,
+    "signature": "type DbspecFormatResult = {\n    readonly text: string;\n    readonly diagnostics: readonly [\n    ];\n} | {\n    readonly text: null;\n    readonly diagnostics: readonly DbspecDiagnostic[];\n}"
+  },
+  "packages/ts/src/dbspec/document.ts::DbspecParseResult": {
+    "exported": true,
+    "signature": "type DbspecParseResult = {\n    readonly document: DbspecDocument;\n    readonly positions: readonly DbspecPosition[];\n    readonly diagnostics: readonly [\n    ];\n} | {\n    readonly document: null;\n    readonly positions: null;\n    readonly diagnostics: readonly DbspecDiagnostic[];\n}"
   },
   "packages/ts/src/dbspec/document.ts::DbspecPosition": {
     "exported": true,
@@ -2230,6 +2994,10 @@
   "packages/ts/src/dbspec/document.ts::parseDbspec": {
     "exported": true,
     "signature": "export function parseDbspec(text: string, documents: Readonly\u003cRecord\u003cstring, string\u003e\u003e): DbspecParseResult"
+  },
+  "packages/ts/src/dbspec/emit.ts::View": {
+    "exported": true,
+    "signature": "type View = 'canonical' | 'manifest' | 'schema'"
   },
   "packages/ts/src/dbspec/emit.ts::comments": {
     "exported": false,
@@ -2314,6 +3082,10 @@
   "packages/ts/src/dbspec/index.ts::DbspecManifest#wire": {
     "exported": true,
     "signature": "{\"manifestText\":\"text\",\"externalText\":\"text\",\"schemaText\":\"text\",\"manifestHash\":\"text\",\"schemaHash\":\"text\"}"
+  },
+  "packages/ts/src/dbspec/index.ts::DbspecManifestResult": {
+    "exported": true,
+    "signature": "type DbspecManifestResult = {\n    readonly manifest: DbspecManifest;\n    readonly diagnostics: readonly [\n    ];\n} | {\n    readonly manifest: null;\n    readonly diagnostics: readonly DbspecDiagnostic[];\n}"
   },
   "packages/ts/src/dbspec/index.ts::compareText": {
     "exported": false,
@@ -2418,6 +3190,14 @@
   "packages/ts/src/dbspec/introspect_catalog.ts::Catalog.text": {
     "exported": false,
     "signature": "private text(name: string): { text: string; objects: Map\u003cnumber, LineObject\u003e; }"
+  },
+  "packages/ts/src/dbspec/introspect_catalog.ts::CatalogDocumentBuildError": {
+    "exported": true,
+    "signature": "class CatalogDocumentBuildError"
+  },
+  "packages/ts/src/dbspec/introspect_catalog.ts::CatalogQuery": {
+    "exported": true,
+    "signature": "type CatalogQuery = (sql: string) =\u003e Promise\u003cCatalogRow[]\u003e"
   },
   "packages/ts/src/dbspec/introspect_catalog.ts::CatalogRow": {
     "exported": true,
@@ -2751,6 +3531,10 @@
     "exported": true,
     "signature": "report(kind: string, table: string, name: string, reason: string): void"
   },
+  "packages/ts/src/dbspec/introspect_check.ts::Node": {
+    "exported": false,
+    "signature": "type Node = Operand | Predicate"
+  },
   "packages/ts/src/dbspec/introspect_check.ts::Operand": {
     "exported": false,
     "signature": "interface Operand"
@@ -2771,6 +3555,10 @@
     "exported": false,
     "signature": "{\"kind\":\"text\",\"type\":\"text\",\"text\":\"text\"}"
   },
+  "packages/ts/src/dbspec/introspect_check.ts::Predicate": {
+    "exported": false,
+    "signature": "type Predicate = {\n    readonly kind: 'and' | 'or';\n    readonly left: Node;\n    readonly right: Node;\n} | {\n    readonly kind: 'compare';\n    readonly left: Operand;\n    readonly right: Operand;\n    readonly operator: string;\n} | {\n    readonly kind: 'in';\n    readonly left: Operand;\n    readonly list: Operand[];\n    readonly negated: boolean;\n} | {\n    readonly kind: 'null';\n    readonly left: Operand;\n    readonly negated: boolean;\n}"
+  },
   "packages/ts/src/dbspec/introspect_check.ts::Token": {
     "exported": false,
     "signature": "interface Token"
@@ -2786,6 +3574,10 @@
   "packages/ts/src/dbspec/introspect_check.ts::Token#wire": {
     "exported": false,
     "signature": "{\"kind\":\"TokenKind\",\"text\":\"text\"}"
+  },
+  "packages/ts/src/dbspec/introspect_check.ts::TokenKind": {
+    "exported": false,
+    "signature": "type TokenKind = 'ident' | 'word' | 'number' | 'string' | 'op' | 'punct' | ''"
   },
   "packages/ts/src/dbspec/introspect_check.ts::addCheck": {
     "exported": true,
@@ -3003,6 +3795,10 @@
     "exported": true,
     "signature": "{\"mermaid\":\"text\",\"dropped\":\"readonlyDbspecUnsupported[]\"}"
   },
+  "packages/ts/src/dbspec/mermaid.ts::DbspecMermaidImport": {
+    "exported": true,
+    "signature": "type DbspecMermaidImport = {\n    readonly document: DbspecDocument;\n    readonly dropped: readonly DbspecUnsupported[];\n    readonly diagnostics: readonly [\n    ];\n} | {\n    readonly document: null;\n    readonly dropped: null;\n    readonly diagnostics: readonly DbspecDiagnostic[];\n}"
+  },
   "packages/ts/src/dbspec/mermaid.ts::MermaidAttribute": {
     "exported": false,
     "signature": "interface MermaidAttribute"
@@ -3107,6 +3903,10 @@
     "exported": false,
     "signature": "function within(digits: string, lo: number, hi: number): number | null"
   },
+  "packages/ts/src/dbspec/model.ts::DbspecAction": {
+    "exported": true,
+    "signature": "type DbspecAction = 'restrict' | 'cascade' | 'set_null'"
+  },
   "packages/ts/src/dbspec/model.ts::DbspecCheck": {
     "exported": true,
     "signature": "interface DbspecCheck"
@@ -3126,6 +3926,10 @@
   "packages/ts/src/dbspec/model.ts::DbspecCheck#wire": {
     "exported": true,
     "signature": "{\"comments\":\"readonlystring[]\",\"name\":\"text\",\"expression\":\"text\"}"
+  },
+  "packages/ts/src/dbspec/model.ts::DbspecCodecStage": {
+    "exported": true,
+    "signature": "type DbspecCodecStage = 'ordered_json' | 'aes' | 'hex' | 'gz' | 'base64' | 'serialize' | 'yaml' | 'ip'"
   },
   "packages/ts/src/dbspec/model.ts::DbspecColumn": {
     "exported": true,
@@ -3158,6 +3962,14 @@
   "packages/ts/src/dbspec/model.ts::DbspecColumn#wire": {
     "exported": true,
     "signature": "{\"comments\":\"readonlystring[]\",\"name\":\"text\",\"type\":\"DbspecType\",\"nullable\":\"bool\",\"identity\":\"bool\",\"default\":\"DbspecDefault|null\"}"
+  },
+  "packages/ts/src/dbspec/model.ts::DbspecDefault": {
+    "exported": true,
+    "signature": "type DbspecDefault = {\n    readonly kind: 'now';\n} | {\n    readonly kind: 'literal';\n    readonly text: string;\n}"
+  },
+  "packages/ts/src/dbspec/model.ts::DbspecDefault#wire": {
+    "exported": true,
+    "signature": "{\"kind\":\"text\",\"text\":\"text\"}"
   },
   "packages/ts/src/dbspec/model.ts::DbspecDiagnostic": {
     "exported": true,
@@ -3351,6 +4163,14 @@
     "exported": true,
     "signature": "{\"comments\":\"readonlystring[]\",\"columns\":\"readonlystring[]\"}"
   },
+  "packages/ts/src/dbspec/model.ts::DbspecRule": {
+    "exported": true,
+    "signature": "type DbspecRule = 'signature' | 'header' | 'syntax' | 'order' | 'name.format' | 'name.length' | 'name.duplicate' | 'type' | 'column' | 'key' | 'foreign_key' | 'check' | 'setting' | 'use' | 'diagram' | 'limit' | 'encoding' | 'plan' | 'chain' | 'compare' | 'mermaid'"
+  },
+  "packages/ts/src/dbspec/model.ts::DbspecSetting": {
+    "exported": true,
+    "signature": "type DbspecSetting = {\n    readonly comments: readonly string[];\n} \u0026 ({\n    readonly kind: 'entity';\n    readonly name: string;\n} | {\n    readonly kind: 'updated' | 'soft_delete' | 'aes_version';\n    readonly column: string;\n} | {\n    readonly kind: 'select_explicit';\n    readonly columns: readonly string[];\n} | {\n    readonly kind: 'codec';\n    readonly column: string;\n    readonly stages: readonly DbspecCodecStage[];\n} | {\n    readonly kind: 'blind_index';\n    readonly column: string;\n    readonly indexColumn: string;\n} | {\n    readonly kind: 'navigation';\n    readonly foreignKey: string;\n    readonly childName: string;\n    readonly parentName: string;\n} | {\n    readonly kind: 'markdown';\n    readonly column: string;\n} | {\n    readonly kind: 'store';\n    readonly storage: 'files' | 'document' | 'block';\n    readonly foreignKey: string | null;\n    readonly shape: 'list' | 'table' | null;\n    readonly shard: DbspecStoreShard | null;\n} | {\n    readonly kind: 'key_prefix';\n    readonly prefix: string;\n} | {\n    readonly kind: 'title' | 'body' | 'order';\n    readonly column: string;\n} | {\n    readonly kind: 'checkbox';\n    readonly column: string;\n    readonly state: string;\n    readonly glyph: string;\n} | {\n    readonly kind: 'state_machine';\n    readonly column: string;\n    readonly line: DbspecStateLine;\n} | {\n    readonly kind: 'immutable';\n} | {\n    readonly kind: 'audit';\n    readonly into: string;\n    readonly column: string;\n    readonly references: string;\n    readonly action: string;\n    readonly previous: string;\n    readonly tables: {\n        readonly table: string;\n        readonly record: string;\n        readonly name: string;\n    } | null;\n    readonly exclude: readonly string[] | null;\n    readonly include: readonly string[] | null;\n})"
+  },
   "packages/ts/src/dbspec/model.ts::DbspecSettings": {
     "exported": true,
     "signature": "interface DbspecSettings"
@@ -3370,6 +4190,14 @@
   "packages/ts/src/dbspec/model.ts::DbspecSettings#wire": {
     "exported": true,
     "signature": "{\"comments\":\"readonlystring[]\",\"settings\":\"readonlyDbspecSetting[]\",\"closingComments\":\"readonlystring[]\"}"
+  },
+  "packages/ts/src/dbspec/model.ts::DbspecStateLine": {
+    "exported": true,
+    "signature": "type DbspecStateLine = {\n    readonly form: 'initial';\n    readonly state: string;\n} | {\n    readonly form: 'terminal';\n    readonly state: string;\n    readonly requires: readonly string[] | null;\n} | {\n    readonly form: 'transition';\n    readonly from: string;\n    readonly to: string;\n    readonly requires: readonly string[] | null;\n} | {\n    readonly form: 'history';\n    readonly table: string;\n    readonly row: string;\n    readonly from: string;\n    readonly to: string;\n    readonly at: string;\n} | {\n    readonly form: 'limit';\n    readonly state: string;\n    readonly count: string;\n}"
+  },
+  "packages/ts/src/dbspec/model.ts::DbspecStateLine#wire": {
+    "exported": true,
+    "signature": "{\"form\":\"text\",\"state\":\"text\",\"requires\":\"readonlystring[]|null\",\"from\":\"text\",\"to\":\"text\",\"table\":\"text\",\"row\":\"text\",\"at\":\"text\",\"count\":\"text\"}"
   },
   "packages/ts/src/dbspec/model.ts::DbspecStoreShard": {
     "exported": true,
@@ -3435,6 +4263,14 @@
     "exported": true,
     "signature": "{\"comments\":\"readonlystring[]\",\"name\":\"text\",\"columns\":\"readonlyDbspecColumn[]\",\"primaryKey\":\"DbspecPrimaryKey\",\"uniques\":\"readonlyDbspecUnique[]\",\"indexes\":\"readonlyDbspecIndex[]\",\"foreignKeys\":\"readonlyDbspecForeignKey[]\",\"checks\":\"readonlyDbspecCheck[]\",\"settings\":\"DbspecSettings|null\",\"closingComments\":\"readonlystring[]\"}"
   },
+  "packages/ts/src/dbspec/model.ts::DbspecType": {
+    "exported": true,
+    "signature": "type DbspecType = {\n    readonly kind: 'i16' | 'i32' | 'i64' | 'bool' | 'f64' | 'text' | 'bytes' | 'uuid' | 'date';\n} | {\n    readonly kind: 'decimal';\n    readonly precision: number;\n    readonly scale: number;\n} | {\n    readonly kind: 'varchar';\n    readonly length: number;\n} | {\n    readonly kind: 'time' | 'datetime';\n    readonly precision: number;\n}"
+  },
+  "packages/ts/src/dbspec/model.ts::DbspecType#wire": {
+    "exported": true,
+    "signature": "{\"kind\":\"text\",\"precision\":\"integer\",\"scale\":\"integer\",\"length\":\"integer\"}"
+  },
   "packages/ts/src/dbspec/model.ts::DbspecUnique": {
     "exported": true,
     "signature": "interface DbspecUnique"
@@ -3482,6 +4318,10 @@
   "packages/ts/src/dbspec/names.ts::rendererName": {
     "exported": true,
     "signature": "export function rendererName(table: string, suffix: string): string"
+  },
+  "packages/ts/src/dbspec/parse.ts::DbspecTokenClass": {
+    "exported": true,
+    "signature": "type DbspecTokenClass = 'keyword' | 'type' | 'name' | 'setting' | 'number' | 'string' | 'operator' | 'punctuation' | 'comment' | 'word'"
   },
   "packages/ts/src/dbspec/parse.ts::DocumentParser": {
     "exported": false,
@@ -3827,6 +4667,10 @@
     "exported": false,
     "signature": "{\"name\":\"Tk\",\"expr\":\"list\u003cTk\u003e\",\"close\":\"Tk\",\"comments\":\"list\u003ctext\u003e\",\"text\":\"text\"}"
   },
+  "packages/ts/src/dbspec/parse.ts::ICheckbox": {
+    "exported": false,
+    "signature": "type ICheckbox = Extract\u003cISetting, {\n    kind: 'checkbox';\n}\u003e"
+  },
   "packages/ts/src/dbspec/parse.ts::IColumn": {
     "exported": false,
     "signature": "interface IColumn"
@@ -4059,6 +4903,10 @@
     "exported": false,
     "signature": "{\"table\":\"Tk\",\"x\":\"integer\",\"y\":\"integer\",\"comments\":\"list\u003ctext\u003e\"}"
   },
+  "packages/ts/src/dbspec/parse.ts::ISetting": {
+    "exported": false,
+    "signature": "type ISetting = {\n    readonly kw: Tk;\n    readonly comments: string[];\n} \u0026 ({\n    readonly kind: 'entity';\n    readonly name: Tk;\n} | {\n    readonly kind: 'updated' | 'soft_delete' | 'aes_version';\n    readonly column: Tk;\n} | {\n    readonly kind: 'select_explicit';\n    readonly columns: Tk[];\n} | {\n    readonly kind: 'codec';\n    readonly column: Tk;\n    readonly stages: Tk[];\n} | {\n    readonly kind: 'blind_index';\n    readonly column: Tk;\n    readonly indexColumn: Tk;\n} | {\n    readonly kind: 'navigation';\n    readonly foreignKey: Tk;\n    readonly childName: Tk;\n    readonly parentName: Tk;\n} | {\n    readonly kind: 'immutable';\n} | {\n    readonly kind: 'audit';\n    readonly into: Tk;\n    readonly column: Tk;\n    readonly references: Tk;\n    readonly action: Tk;\n    readonly previous: Tk;\n    readonly tables: {\n        readonly table: Tk;\n        readonly record: Tk;\n        readonly name: Tk;\n    } | null;\n    readonly lists: readonly {\n        readonly kw: Tk;\n        readonly columns: readonly Tk[];\n    }[];\n} | {\n    readonly kind: 'markdown';\n    readonly column: Tk;\n} | {\n    readonly kind: 'store';\n    readonly storage: Tk;\n    readonly foreignKey: Tk | null;\n    readonly shape: Tk | null;\n    readonly shard: {\n        readonly at: Tk;\n        readonly column: Tk;\n        readonly period: Tk;\n    } | null;\n} | {\n    readonly kind: 'key_prefix';\n    readonly prefix: Tk;\n} | {\n    readonly kind: 'title' | 'body' | 'order';\n    readonly column: Tk;\n} | {\n    readonly kind: 'checkbox';\n    readonly column: Tk;\n    readonly state: Tk;\n    readonly glyph: Tk;\n} | {\n    readonly kind: 'state_machine';\n    readonly column: Tk;\n    readonly line: IStateLine;\n})"
+  },
   "packages/ts/src/dbspec/parse.ts::ISettings": {
     "exported": false,
     "signature": "interface ISettings"
@@ -4082,6 +4930,18 @@
   "packages/ts/src/dbspec/parse.ts::ISettings#wire": {
     "exported": false,
     "signature": "{\"open\":\"Tk\",\"entries\":\"list\u003cISetting\u003e\",\"comments\":\"list\u003ctext\u003e\",\"closing\":\"list\u003ctext\u003e\"}"
+  },
+  "packages/ts/src/dbspec/parse.ts::IStateLine": {
+    "exported": false,
+    "signature": "type IStateLine = {\n    readonly form: 'initial';\n    readonly state: Tk;\n} | {\n    readonly form: 'terminal';\n    readonly state: Tk;\n    readonly requires: Tk[] | null;\n} | {\n    readonly form: 'transition';\n    readonly from: Tk;\n    readonly to: Tk;\n    readonly requires: Tk[] | null;\n} | {\n    readonly form: 'history';\n    readonly table: Tk;\n    readonly row: Tk;\n    readonly from: Tk;\n    readonly to: Tk;\n    readonly at: Tk;\n} | {\n    readonly form: 'limit';\n    readonly state: Tk;\n    readonly count: Tk;\n}"
+  },
+  "packages/ts/src/dbspec/parse.ts::IStateLine#wire": {
+    "exported": false,
+    "signature": "{\"form\":\"text\",\"state\":\"Tk\",\"requires\":\"Tk[]|null\",\"from\":\"Tk\",\"to\":\"Tk\",\"table\":\"Tk\",\"row\":\"Tk\",\"at\":\"Tk\",\"count\":\"Tk\"}"
+  },
+  "packages/ts/src/dbspec/parse.ts::IStateMachine": {
+    "exported": false,
+    "signature": "type IStateMachine = Extract\u003cISetting, {\n    kind: 'state_machine';\n}\u003e"
   },
   "packages/ts/src/dbspec/parse.ts::ITable": {
     "exported": false,
@@ -4270,6 +5130,22 @@
   "packages/ts/src/dbspec/parse.ts::Parsed#wire": {
     "exported": false,
     "signature": "{\"diagnostics\":\"list\u003cRawDiagnostic\u003e\",\"document\":\"IDocument\",\"parser\":\"DocumentParser|null\"}"
+  },
+  "packages/ts/src/dbspec/parse.ts::ParsedDocument": {
+    "exported": true,
+    "signature": "type ParsedDocument = {\n    readonly document: DbspecDocument;\n    readonly positions: RawPosition[];\n    readonly diagnostics: [\n    ];\n} | {\n    readonly document: null;\n    readonly positions: null;\n    readonly diagnostics: RawDiagnostic[];\n}"
+  },
+  "packages/ts/src/dbspec/parse.ts::PlainKind": {
+    "exported": false,
+    "signature": "type PlainKind = 'i16' | 'i32' | 'i64' | 'bool' | 'f64' | 'text' | 'bytes' | 'uuid' | 'date'"
+  },
+  "packages/ts/src/dbspec/parse.ts::Predicate": {
+    "exported": false,
+    "signature": "type Predicate = {\n    readonly kind: 'leaf';\n    readonly parts: readonly string[];\n} | {\n    readonly kind: 'logical';\n    readonly op: 'and' | 'or';\n    readonly left: Predicate;\n    readonly right: Predicate;\n}"
+  },
+  "packages/ts/src/dbspec/parse.ts::Predicate#wire": {
+    "exported": false,
+    "signature": "{\"kind\":\"text\",\"parts\":\"readonlystring[]\",\"op\":\"text\",\"left\":\"Predicate\",\"right\":\"Predicate\"}"
   },
   "packages/ts/src/dbspec/parse.ts::RawDiagnostic": {
     "exported": false,
@@ -4547,6 +5423,10 @@
     "exported": false,
     "signature": "function wellFormed(name: string): boolean"
   },
+  "packages/ts/src/dbspec/plan.ts::DbspecChainResult": {
+    "exported": true,
+    "signature": "type DbspecChainResult = {\n    readonly plans: readonly DbspecPlan[];\n    readonly diagnostics: readonly [\n    ];\n} | {\n    readonly plans: null;\n    readonly diagnostics: readonly DbspecDiagnostic[];\n}"
+  },
   "packages/ts/src/dbspec/plan.ts::DbspecColumnName": {
     "exported": true,
     "signature": "interface DbspecColumnName"
@@ -4623,6 +5503,10 @@
     "exported": true,
     "signature": "{\"name\":\"text\",\"from\":\"string|null\",\"renameTables\":\"readonlyDbspecTableRename[]\",\"renameColumns\":\"readonlyDbspecColumnRename[]\",\"dropTables\":\"readonlystring[]\",\"dropColumns\":\"readonlyDbspecColumnName[]\",\"schema\":\"DbspecDocument\",\"to\":\"text\"}"
   },
+  "packages/ts/src/dbspec/plan.ts::DbspecPlanResult": {
+    "exported": true,
+    "signature": "type DbspecPlanResult = {\n    readonly plan: DbspecPlan;\n    readonly diagnostics: readonly [\n    ];\n} | {\n    readonly plan: null;\n    readonly diagnostics: readonly DbspecDiagnostic[];\n}"
+  },
   "packages/ts/src/dbspec/plan.ts::DbspecTableRename": {
     "exported": true,
     "signature": "interface DbspecTableRename"
@@ -4690,6 +5574,10 @@
   "packages/ts/src/dbspec/plan_diff.ts::DbspecChange#wire": {
     "exported": true,
     "signature": "{\"kind\":\"text\",\"table\":\"text\",\"name\":\"text\"}"
+  },
+  "packages/ts/src/dbspec/plan_diff.ts::DbspecDiffResult": {
+    "exported": true,
+    "signature": "type DbspecDiffResult = {\n    readonly changes: readonly DbspecChange[];\n    readonly diagnostics: readonly [\n    ];\n} | {\n    readonly changes: null;\n    readonly diagnostics: readonly DbspecDiagnostic[];\n}"
   },
   "packages/ts/src/dbspec/plan_diff.ts::PlanDiff": {
     "exported": true,
@@ -4830,6 +5718,10 @@
   "packages/ts/src/dbspec/plan_objects.ts::ObjectRef#wire": {
     "exported": true,
     "signature": "{\"kind\":\"text\",\"name\":\"text\"}"
+  },
+  "packages/ts/src/dbspec/plan_objects.ts::Rename": {
+    "exported": false,
+    "signature": "type Rename = (name: string) =\u003e string"
   },
   "packages/ts/src/dbspec/plan_objects.ts::checkOf": {
     "exported": true,
@@ -4987,6 +5879,10 @@
     "exported": true,
     "signature": "{\"statement\":\"text\",\"rollback\":\"text\",\"irreversible\":\"text\",\"effect\":\"DbspecEffect\",\"restore\":\"text\",\"rollbackRestore\":\"text\",\"restoreIf\":\"DbspecEffect|null\",\"nullChecks\":\"readonlyDbspecNullCheck[]\",\"finalize\":\"bool\"}"
   },
+  "packages/ts/src/dbspec/plan_steps.ts::DbspecPlanStepsResult": {
+    "exported": true,
+    "signature": "type DbspecPlanStepsResult = {\n    readonly steps: readonly DbspecPlanStep[];\n    readonly diagnostics: readonly [\n    ];\n} | {\n    readonly steps: null;\n    readonly diagnostics: readonly DbspecDiagnostic[];\n}"
+  },
   "packages/ts/src/dbspec/plan_steps.ts::PlanWriter": {
     "exported": false,
     "signature": "class PlanWriter { constructor(private readonly d: PlanDiff, private readonly r: Renderer, private readonly holdPrefix: string); }"
@@ -5143,6 +6039,10 @@
     "exported": false,
     "signature": "function step(statement: string, rollback: string, effect: DbspecEffect, more: Partial\u003cDbspecPlanStep\u003e = {}): DbspecPlanStep"
   },
+  "packages/ts/src/dbspec/read_bytes.ts::DbspecReadResult": {
+    "exported": true,
+    "signature": "type DbspecReadResult = {\n    readonly text: string;\n    readonly diagnostics: readonly [\n    ];\n} | {\n    readonly text: null;\n    readonly diagnostics: readonly DbspecDiagnostic[];\n}"
+  },
   "packages/ts/src/dbspec/read_bytes.ts::invalid": {
     "exported": false,
     "signature": "function invalid(diagnostic: DbspecDiagnostic): DbspecReadResult"
@@ -5158,6 +6058,18 @@
   "packages/ts/src/dbspec/read_bytes.ts::utf8Size": {
     "exported": false,
     "signature": "function utf8Size(bytes: Uint8Array, i: number): number"
+  },
+  "packages/ts/src/dbspec/render.ts::DbspecDialect": {
+    "exported": true,
+    "signature": "type DbspecDialect = 'mysql' | 'postgres' | 'sqlite'"
+  },
+  "packages/ts/src/dbspec/render.ts::DbspecRenderResult": {
+    "exported": true,
+    "signature": "type DbspecRenderResult = {\n    readonly statements: readonly string[];\n    readonly diagnostics: readonly [\n    ];\n} | {\n    readonly statements: null;\n    readonly diagnostics: readonly DbspecDiagnostic[];\n}"
+  },
+  "packages/ts/src/dbspec/render.ts::DbspecRenderStatementsResult": {
+    "exported": true,
+    "signature": "type DbspecRenderStatementsResult = {\n    readonly statements: readonly DbspecRenderedStatement[];\n    readonly diagnostics: readonly [\n    ];\n} | {\n    readonly statements: null;\n    readonly diagnostics: readonly DbspecDiagnostic[];\n}"
   },
   "packages/ts/src/dbspec/render.ts::DbspecRenderedStatement": {
     "exported": true,
@@ -5299,6 +6211,10 @@
     "exported": true,
     "signature": "{\"rule\":\"DbspecSetRule\",\"path\":\"text\",\"message\":\"text\"}"
   },
+  "packages/ts/src/dbspec/set_file.ts::DbspecSetParseResult": {
+    "exported": true,
+    "signature": "type DbspecSetParseResult = {\n    readonly documents: readonly DbspecSetPath[];\n    readonly external: readonly DbspecSetPath[];\n    readonly errors: readonly DbspecSetError[];\n} | {\n    readonly documents: null;\n    readonly external: null;\n    readonly errors: readonly [\n        DbspecSetError\n    ];\n}"
+  },
   "packages/ts/src/dbspec/set_file.ts::DbspecSetPath": {
     "exported": true,
     "signature": "interface DbspecSetPath"
@@ -5318,6 +6234,10 @@
   "packages/ts/src/dbspec/set_file.ts::DbspecSetPath#wire": {
     "exported": true,
     "signature": "{\"written\":\"text\",\"path\":\"text\",\"error\":\"DbspecSetError|null\"}"
+  },
+  "packages/ts/src/dbspec/set_file.ts::DbspecSetRule": {
+    "exported": true,
+    "signature": "type DbspecSetRule = 'set.file' | 'set.symlink' | 'set.json' | 'set.schema' | 'set.key' | 'set.empty' | 'set.path' | 'set.duplicate'"
   },
   "packages/ts/src/dbspec/set_file.ts::compareCodePoints": {
     "exported": false,
@@ -5415,6 +6335,10 @@
     "exported": true,
     "signature": "{\"path\":\"text\",\"bytes\":\"Uint8Array\"}"
   },
+  "packages/ts/src/dbspec/set_read.ts::DbspecSetResult": {
+    "exported": true,
+    "signature": "type DbspecSetResult = {\n    readonly documents: readonly DbspecSetFile[];\n    readonly external: readonly DbspecSetFile[];\n    readonly errors: readonly [\n    ];\n} | {\n    readonly documents: null;\n    readonly external: null;\n    readonly errors: readonly DbspecSetError[];\n}"
+  },
   "packages/ts/src/dbspec/set_read.ts::examine": {
     "exported": false,
     "signature": "function examine(path: string): Stats | Error"
@@ -5467,6 +6391,10 @@
     "exported": true,
     "signature": "export function containsWordRune(cp: number): boolean"
   },
+  "packages/ts/src/dbspec/utf8.ts::invalidEncoding": {
+    "exported": true,
+    "signature": "export function invalidEncoding(error: unknown): boolean"
+  },
   "packages/ts/src/decimal.ts::decimalFromScaled": {
     "exported": true,
     "signature": "export function decimalFromScaled(raw: unknown, precision: number, scale: number): string"
@@ -5478,6 +6406,30 @@
   "packages/ts/src/decimal.ts::normalizeDecimal": {
     "exported": true,
     "signature": "export function normalizeDecimal(input: string, precision: number, scale: number): string"
+  },
+  "packages/ts/src/driver.ts::CoreQuery": {
+    "exported": false,
+    "signature": "interface CoreQuery"
+  },
+  "packages/ts/src/driver.ts::CoreQuery.on": {
+    "exported": false,
+    "signature": "on(event: 'end' | 'error', listener: (error?: unknown) =\u003e void): CoreQuery"
+  },
+  "packages/ts/src/driver.ts::DriverColumn": {
+    "exported": true,
+    "signature": "interface DriverColumn"
+  },
+  "packages/ts/src/driver.ts::DriverColumn#field.name": {
+    "exported": true,
+    "signature": "string"
+  },
+  "packages/ts/src/driver.ts::DriverColumn#field.type": {
+    "exported": true,
+    "signature": "string"
+  },
+  "packages/ts/src/driver.ts::DriverColumn#wire": {
+    "exported": true,
+    "signature": "{\"name\":\"text\",\"type\":\"text\"}"
   },
   "packages/ts/src/driver.ts::DriverConnection": {
     "exported": false,
@@ -5495,6 +6447,10 @@
     "exported": false,
     "signature": "execute(sql: string, params: readonly DriverValue[], signal: AbortSignal | undefined, done: StatementDone): Promise\u003cDriverResult\u003e"
   },
+  "packages/ts/src/driver.ts::DriverName": {
+    "exported": true,
+    "signature": "type DriverName = 'mysql' | 'postgres' | 'sqlite'"
+  },
   "packages/ts/src/driver.ts::DriverPool": {
     "exported": true,
     "signature": "interface DriverPool"
@@ -5506,6 +6462,10 @@
   "packages/ts/src/driver.ts::DriverPool.close": {
     "exported": true,
     "signature": "close(): Promise\u003cvoid\u003e"
+  },
+  "packages/ts/src/driver.ts::DriverPool.openListener": {
+    "exported": true,
+    "signature": "openListener?(): Promise\u003cPostgresListener\u003e"
   },
   "packages/ts/src/driver.ts::DriverPool.reserve": {
     "exported": true,
@@ -5523,6 +6483,10 @@
     "exported": true,
     "signature": "number"
   },
+  "packages/ts/src/driver.ts::DriverResult#field.columns": {
+    "exported": true,
+    "signature": "DriverColumn[]"
+  },
   "packages/ts/src/driver.ts::DriverResult#field.insertId": {
     "exported": true,
     "signature": "number | bigint | string | null"
@@ -5533,7 +6497,7 @@
   },
   "packages/ts/src/driver.ts::DriverResult#wire": {
     "exported": true,
-    "signature": "{\"rows\":\"list\u003clist\u003cunknown\u003e\u003e\",\"affected\":\"integer\",\"insertId\":\"number|bigint|string|null\"}"
+    "signature": "{\"rows\":\"list\u003clist\u003cunknown\u003e\u003e\",\"affected\":\"integer\",\"insertId\":\"number|bigint|string|null\",\"columns\":\"list\u003cDriverColumn\u003e\"}"
   },
   "packages/ts/src/driver.ts::DriverSession": {
     "exported": true,
@@ -5554,6 +6518,18 @@
   "packages/ts/src/driver.ts::DriverSession.release": {
     "exported": true,
     "signature": "release(discard: boolean): void"
+  },
+  "packages/ts/src/driver.ts::DriverSession.scan": {
+    "exported": true,
+    "signature": "scan(sql: string, params: readonly DriverValue[], sink: RowSink, done: StatementDone): Promise\u003cvoid\u003e"
+  },
+  "packages/ts/src/driver.ts::DriverValue": {
+    "exported": true,
+    "signature": "type DriverValue = null | boolean | number | string | bigint | Uint8Array"
+  },
+  "packages/ts/src/driver.ts::Isolation": {
+    "exported": true,
+    "signature": "type Isolation = 'read_uncommitted' | 'read_committed' | 'repeatable_read' | 'serializable'"
   },
   "packages/ts/src/driver.ts::MarkdownParsedDsn": {
     "exported": false,
@@ -5675,6 +6651,14 @@
     "exported": false,
     "signature": "public release(discard: boolean): void"
   },
+  "packages/ts/src/driver.ts::MySqlSession.scan": {
+    "exported": false,
+    "signature": "public scan(sql: string, params: readonly DriverValue[], sink: RowSink, done: StatementDone): Promise\u003cvoid\u003e"
+  },
+  "packages/ts/src/driver.ts::ParsedDsn": {
+    "exported": true,
+    "signature": "type ParsedDsn = SqlDsn | MarkdownParsedDsn"
+  },
   "packages/ts/src/driver.ts::PoolBounds": {
     "exported": true,
     "signature": "interface PoolBounds"
@@ -5755,6 +6739,10 @@
     "exported": false,
     "signature": "public async execute(sql: string, params: readonly DriverValue[], signal: AbortSignal | undefined, done: StatementDone): Promise\u003cDriverResult\u003e"
   },
+  "packages/ts/src/driver.ts::PostgresPoolDriver.openListener": {
+    "exported": false,
+    "signature": "public async openListener(): Promise\u003cPostgresListener\u003e"
+  },
   "packages/ts/src/driver.ts::PostgresPoolDriver.release": {
     "exported": false,
     "signature": "private release(client: pg.PoolClient, failed = false): void"
@@ -5811,6 +6799,26 @@
     "exported": false,
     "signature": "public release(discard: boolean): void"
   },
+  "packages/ts/src/driver.ts::PostgresSession.scan": {
+    "exported": false,
+    "signature": "public scan(sql: string, params: readonly DriverValue[], sink: RowSink, done: StatementDone): Promise\u003cvoid\u003e"
+  },
+  "packages/ts/src/driver.ts::RowSink": {
+    "exported": true,
+    "signature": "interface RowSink"
+  },
+  "packages/ts/src/driver.ts::RowSink.columns": {
+    "exported": true,
+    "signature": "columns(columns: DriverColumn[]): void"
+  },
+  "packages/ts/src/driver.ts::RowSink.row": {
+    "exported": true,
+    "signature": "row(values: unknown[]): boolean"
+  },
+  "packages/ts/src/driver.ts::SentOrigin": {
+    "exported": true,
+    "signature": "type SentOrigin = 'statement' | 'deallocate' | 'kill'"
+  },
   "packages/ts/src/driver.ts::SessionSetup": {
     "exported": false,
     "signature": "interface SessionSetup"
@@ -5857,7 +6865,7 @@
   },
   "packages/ts/src/driver.ts::SqlitePoolDriver#field.waiters": {
     "exported": false,
-    "signature": "Array\u003c() =\u003e void\u003e"
+    "signature": "Array\u003c{ wake: () =\u003e void }\u003e"
   },
   "packages/ts/src/driver.ts::SqlitePoolDriver.close": {
     "exported": false,
@@ -5869,7 +6877,7 @@
   },
   "packages/ts/src/driver.ts::SqlitePoolDriver.idle": {
     "exported": false,
-    "signature": "private async idle(): Promise\u003cvoid\u003e"
+    "signature": "private async idle(signal?: AbortSignal): Promise\u003cvoid\u003e"
   },
   "packages/ts/src/driver.ts::SqlitePoolDriver.release": {
     "exported": false,
@@ -5919,6 +6927,10 @@
     "exported": false,
     "signature": "public release(): void"
   },
+  "packages/ts/src/driver.ts::SqliteSession.scan": {
+    "exported": false,
+    "signature": "public scan(sql: string, params: readonly DriverValue[], sink: RowSink, done: StatementDone): Promise\u003cvoid\u003e"
+  },
   "packages/ts/src/driver.ts::SqliteState": {
     "exported": false,
     "signature": "class SqliteState { public constructor(public readonly db: DatabaseSync, private readonly cacheSize: number); }"
@@ -5942,6 +6954,10 @@
   "packages/ts/src/driver.ts::SqliteState.statement": {
     "exported": false,
     "signature": "public statement(sql: string): ReturnType\u003cDatabaseSync['prepare']\u003e"
+  },
+  "packages/ts/src/driver.ts::StatementDone": {
+    "exported": true,
+    "signature": "type StatementDone = (sql: string, elapsed: number, error: OrmError | null, origin: SentOrigin) =\u003e void"
   },
   "packages/ts/src/driver.ts::StatementNames": {
     "exported": false,
@@ -5988,8 +7004,8 @@
     "signature": "function connectionLost(name: DriverName, source: { code: string | undefined; errno: number | undefined; fatal: boolean; }): boolean"
   },
   "packages/ts/src/driver.ts::driverError": {
-    "exported": false,
-    "signature": "function driverError(name: DriverName, error: unknown): OrmError"
+    "exported": true,
+    "signature": "export function driverError(name: DriverName, error: unknown): OrmError"
   },
   "packages/ts/src/driver.ts::driverValue": {
     "exported": true,
@@ -6003,9 +7019,17 @@
     "exported": false,
     "signature": "function insertIdOf(rows: readonly (readonly unknown[])[]): DriverResult['insertId']"
   },
+  "packages/ts/src/driver.ts::isPgFieldList": {
+    "exported": false,
+    "signature": "function isPgFieldList(fields: unknown): fields is Array\u003c{ name: string; dataTypeID: number; }\u003e"
+  },
   "packages/ts/src/driver.ts::isolationSql": {
     "exported": true,
     "signature": "export function isolationSql(isolation: Isolation): string"
+  },
+  "packages/ts/src/driver.ts::mysqlColumn": {
+    "exported": false,
+    "signature": "function mysqlColumn(field: FieldPacket): DriverColumn"
   },
   "packages/ts/src/driver.ts::mysqlControl": {
     "exported": false,
@@ -6022,6 +7046,10 @@
   "packages/ts/src/driver.ts::mysqlKill": {
     "exported": false,
     "signature": "async function mysqlKill(pool: MySqlPool, connection: MySqlConnection, done: StatementDone): Promise\u003cvoid\u003e"
+  },
+  "packages/ts/src/driver.ts::mysqlScan": {
+    "exported": false,
+    "signature": "function mysqlScan(connection: MySqlConnection, sql: string, params: readonly DriverValue[], sink: RowSink): Promise\u003cvoid\u003e"
   },
   "packages/ts/src/driver.ts::mysqlSsl": {
     "exported": false,
@@ -6041,7 +7069,7 @@
   },
   "packages/ts/src/driver.ts::openDriver": {
     "exported": true,
-    "signature": "export function openDriver(dsn: string, parsed: SqlDsn, bounds: PoolBounds, statementCacheSize: number, statementTimeoutMs = 0): DriverPool"
+    "signature": "export function openDriver(dsn: string, parsed: SqlDsn, bounds: PoolBounds, statementCacheSize: number, statementTimeoutMs = 0, exact = false): DriverPool"
   },
   "packages/ts/src/driver.ts::parseDsn": {
     "exported": true,
@@ -6051,9 +7079,25 @@
     "exported": false,
     "signature": "function pgCancel(config: pg.PoolConfig, client: pg.PoolClient): Promise\u003cvoid\u003e"
   },
+  "packages/ts/src/driver.ts::pgColumn": {
+    "exported": false,
+    "signature": "function pgColumn(field: { name: string; dataTypeID: number; }): DriverColumn"
+  },
   "packages/ts/src/driver.ts::pgExecute": {
     "exported": false,
     "signature": "async function pgExecute(client: pg.PoolClient, sql: string, params: readonly DriverValue[], cacheSize: number, done: StatementDone, failure: () =\u003e unknown): Promise\u003cDriverResult\u003e"
+  },
+  "packages/ts/src/driver.ts::pgFields": {
+    "exported": false,
+    "signature": "function pgFields(result: unknown): Array\u003c{ name: string; dataTypeID: number; }\u003e"
+  },
+  "packages/ts/src/driver.ts::pgScan": {
+    "exported": false,
+    "signature": "function pgScan(client: pg.PoolClient, sql: string, params: readonly DriverValue[], sink: RowSink): Promise\u003cvoid\u003e"
+  },
+  "packages/ts/src/driver.ts::privateMember": {
+    "exported": false,
+    "signature": "function privateMember\u003cT\u003e(target: object, key: string): T"
   },
   "packages/ts/src/driver.ts::property": {
     "exported": false,
@@ -6071,13 +7115,25 @@
     "exported": true,
     "signature": "export function sqliteBusy(name: DriverName, error: unknown): boolean"
   },
+  "packages/ts/src/driver.ts::sqliteColumns": {
+    "exported": false,
+    "signature": "function sqliteColumns(statement: ReturnType\u003cDatabaseSync['prepare']\u003e): DriverColumn[]"
+  },
   "packages/ts/src/driver.ts::sqliteExecute": {
     "exported": false,
     "signature": "function sqliteExecute(state: SqliteState, sql: string, params: readonly DriverValue[]): DriverResult"
   },
   "packages/ts/src/driver.ts::sqlitePath": {
+    "exported": true,
+    "signature": "export function sqlitePath(url: URL): string"
+  },
+  "packages/ts/src/driver.ts::sqliteScan": {
     "exported": false,
-    "signature": "function sqlitePath(url: URL): string"
+    "signature": "function sqliteScan(state: SqliteState, sql: string, params: readonly DriverValue[], sink: RowSink): void"
+  },
+  "packages/ts/src/driver.ts::sqliteValues": {
+    "exported": false,
+    "signature": "function sqliteValues(params: readonly DriverValue[]): Array\u003cnull | number | string | bigint | Uint8Array\u003e"
   },
   "packages/ts/src/driver.ts::subscriberFailure": {
     "exported": false,
@@ -6131,13 +7187,21 @@
     "exported": false,
     "signature": "public list(ps: readonly number[]): number[]"
   },
+  "packages/ts/src/engine/canonical.ts::Canonicalizer.pageIndex": {
+    "exported": false,
+    "signature": "private pageIndex(p: number, field: 'offset' | 'count'): number"
+  },
+  "packages/ts/src/engine/canonical.ts::Canonicalizer.pageValue": {
+    "exported": false,
+    "signature": "public pageValue(value: number): number"
+  },
   "packages/ts/src/engine/canonical.ts::Canonicalizer.predicate": {
     "exported": false,
     "signature": "private predicate(p: Predicate): Predicate"
   },
   "packages/ts/src/engine/canonical.ts::Canonicalizer.query": {
     "exported": false,
-    "signature": "public query(q: RequestQuery): RequestQuery"
+    "signature": "public query(q: RequestQuery, root = false): RequestQuery"
   },
   "packages/ts/src/engine/canonical.ts::Canonicalizer.subquery": {
     "exported": false,
@@ -6187,6 +7251,10 @@
     "exported": true,
     "signature": "forceIndex(name: string): string"
   },
+  "packages/ts/src/engine/dialect.ts::Dialect.fulltext": {
+    "exported": true,
+    "signature": "fulltext(cols: readonly string[], value: (transform: string) =\u003e string, boolean: boolean): string | undefined"
+  },
   "packages/ts/src/engine/dialect.ts::Dialect.handlesStage": {
     "exported": true,
     "signature": "handlesStage(stage: string): boolean"
@@ -6197,7 +7265,7 @@
   },
   "packages/ts/src/engine/dialect.ts::Dialect.limit": {
     "exported": true,
-    "signature": "limit(offset: number, count: number): string"
+    "signature": "limit(offset: number | string, count: number | string): string"
   },
   "packages/ts/src/engine/dialect.ts::Dialect.now": {
     "exported": true,
@@ -6447,6 +7515,10 @@
     "exported": true,
     "signature": "{\"name\":\"text\",\"type\":\"FieldType\",\"nullable\":\"bool\",\"identity\":\"bool\",\"hasDefault\":\"bool\",\"defaultNow\":\"bool\",\"precision\":\"integer\",\"scale\":\"integer\",\"length\":\"integer\",\"stages\":\"readonlyDbspecCodecStage[]\",\"selected\":\"bool\",\"primary\":\"bool\",\"foreign\":\"bool\",\"blindIndex\":\"text\"}"
   },
+  "packages/ts/src/engine/model.ts::FieldType": {
+    "exported": true,
+    "signature": "type FieldType = DbspecType['kind']"
+  },
   "packages/ts/src/engine/model.ts::RuntimeModel": {
     "exported": true,
     "signature": "interface RuntimeModel"
@@ -6577,7 +7649,7 @@
   },
   "packages/ts/src/engine/params.ts::functionType": {
     "exported": true,
-    "signature": "export function functionType(name: string, f: Field | undefined): string"
+    "signature": "export function functionType(name: string, f: Field | undefined, entity: string, column: string): string"
   },
   "packages/ts/src/engine/params.ts::intervalType": {
     "exported": true,
@@ -6650,6 +7722,10 @@
   "packages/ts/src/engine/planner.ts::Builder.tables": {
     "exported": false,
     "signature": "public tables(): string[]"
+  },
+  "packages/ts/src/engine/planner.ts::Builder.transformed": {
+    "exported": false,
+    "signature": "public transformed(i: number, transform: string): string"
   },
   "packages/ts/src/engine/planner.ts::Builder.typed": {
     "exported": false,
@@ -6821,7 +7897,7 @@
   },
   "packages/ts/src/engine/planner.ts::Planner.selectStep": {
     "exported": false,
-    "signature": "private selectStep(add: (st: Omit\u003cPlanStep, 'id'\u003e) =\u003e PlanStep, steps: readonly PlanStep[], q: RequestQuery, kind: string, agg: string, rc: RelationContext | undefined): PlanStep"
+    "signature": "private selectStep(add: (st: Omit\u003cPlanStep, 'id'\u003e) =\u003e PlanStep, steps: readonly PlanStep[], q: RequestQuery, kind: string, agg: string, rc: RelationContext | undefined, deferRelations?: (append: () =\u003e void) =\u003e void): PlanStep"
   },
   "packages/ts/src/engine/planner.ts::Planner.sqlStyles": {
     "exported": false,
@@ -6905,7 +7981,7 @@
   },
   "packages/ts/src/engine/planner.ts::addBlindIndexAssignments": {
     "exported": false,
-    "signature": "function addBlindIndexAssignments(ent: Entity, set: Assignment[]): Assignment[]"
+    "signature": "function addBlindIndexAssignments(ent: Entity, input: Assignment[]): { assignments: Assignment[]; sourceIndices: number[]; }"
   },
   "packages/ts/src/engine/planner.ts::aesVersionColumn": {
     "exported": false,
@@ -6918,10 +7994,6 @@
   "packages/ts/src/engine/planner.ts::assignsAES": {
     "exported": false,
     "signature": "function assignsAES(ent: Entity, set: readonly Assignment[]): boolean"
-  },
-  "packages/ts/src/engine/planner.ts::blindIndexSource": {
-    "exported": false,
-    "signature": "function blindIndexSource(ent: Entity, target: string): Column | undefined"
   },
   "packages/ts/src/engine/planner.ts::cmp": {
     "exported": false,
@@ -6946,6 +8018,10 @@
   "packages/ts/src/engine/planner.ts::indexOf": {
     "exported": false,
     "signature": "function indexOf(a: Assemble, name: string): number"
+  },
+  "packages/ts/src/engine/planner.ts::isBlindIndexTarget": {
+    "exported": false,
+    "signature": "function isBlindIndexTarget(ent: Entity, target: string): boolean"
   },
   "packages/ts/src/engine/planner.ts::keyRefs": {
     "exported": false,
@@ -7187,6 +8263,14 @@
     "exported": true,
     "signature": "{\"sql\":\"text\",\"binds\":\"readonlyunknown[]\",\"kind\":\"StatementKind\",\"tables\":\"readonlystring[]\",\"elapsed\":\"integer\",\"transaction\":\"number|null\",\"error\":\"OrmError|null\"}"
   },
+  "packages/ts/src/events.ts::StatementKind": {
+    "exported": true,
+    "signature": "type StatementKind = 'select' | 'insert' | 'update' | 'delete' | 'begin' | 'commit' | 'rollback' | 'savepoint' | 'release' | 'rollback_to' | 'schema' | 'utility'"
+  },
+  "packages/ts/src/events.ts::StatementSubscriber": {
+    "exported": true,
+    "signature": "type StatementSubscriber = (event: StatementEvent) =\u003e void"
+  },
   "packages/ts/src/events.ts::Subscribers": {
     "exported": true,
     "signature": "class Subscribers"
@@ -7314,6 +8398,10 @@
   "packages/ts/src/generate/names.ts::validOrder": {
     "exported": true,
     "signature": "export function validOrder(e: Entity, name: string): boolean"
+  },
+  "packages/ts/src/generate/scan.ts::FunctionLike": {
+    "exported": false,
+    "signature": "type FunctionLike = FunctionNode | ArrowFunctionExpression"
   },
   "packages/ts/src/generate/scan.ts::ScanSite": {
     "exported": true,
@@ -7454,6 +8542,10 @@
   "packages/ts/src/generate/scan.ts::SetModule#wire": {
     "exported": false,
     "signature": "{\"module\":\"text\",\"hash\":\"text\"}"
+  },
+  "packages/ts/src/generate/scan.ts::Shape": {
+    "exported": false,
+    "signature": "type Shape = 'model' | 'promise' | 'collection' | 'promiseCollection' | 'union'"
   },
   "packages/ts/src/generate/scan.ts::Value": {
     "exported": false,
@@ -8025,19 +9117,11 @@
   },
   "packages/ts/src/ir.ts::Limit": {
     "exported": true,
-    "signature": "interface Limit"
-  },
-  "packages/ts/src/ir.ts::Limit#field.count": {
-    "exported": true,
-    "signature": "number"
-  },
-  "packages/ts/src/ir.ts::Limit#field.offset": {
-    "exported": true,
-    "signature": "number"
+    "signature": "type Limit = {\n    offset: number;\n    count: number;\n    offset_p?: never;\n    count_p?: never;\n} | {\n    offset_p: number;\n    count_p: number;\n    offset?: never;\n    count?: never;\n}"
   },
   "packages/ts/src/ir.ts::Limit#wire": {
     "exported": true,
-    "signature": "{\"offset\":\"integer\",\"count\":\"integer\"}"
+    "signature": "{\"offset\":\"integer\",\"count\":\"integer\",\"offset_p\":\"integer\",\"count_p\":\"integer\"}"
   },
   "packages/ts/src/ir.ts::Optimistic": {
     "exported": true,
@@ -8303,6 +9387,10 @@
     "exported": true,
     "signature": "{\"mode\":\"text\",\"add\":\"list\u003ctext\u003e\",\"remove\":\"list\u003ctext\u003e\",\"fn\":\"map\u003cColumnFunction\u003e\",\"sub\":\"map\u003cSubquery\u003e\"}"
   },
+  "packages/ts/src/ir.ts::QueryKind": {
+    "exported": true,
+    "signature": "type QueryKind = 'one' | 'all' | 'count' | 'group_count' | 'sum' | 'avg' | 'paginate' | 'insert' | 'update' | 'delete' | 'restore' | 'restart_identity'"
+  },
   "packages/ts/src/ir.ts::Relation": {
     "exported": true,
     "signature": "interface Relation"
@@ -8470,6 +9558,150 @@
   "packages/ts/src/list.ts::sameList": {
     "exported": true,
     "signature": "export function sameList(a: readonly string[], b: readonly string[]): boolean"
+  },
+  "packages/ts/src/listen.ts::ListenerClient": {
+    "exported": false,
+    "signature": "interface ListenerClient"
+  },
+  "packages/ts/src/listen.ts::ListenerClient.end": {
+    "exported": false,
+    "signature": "end(): Promise\u003cvoid\u003e"
+  },
+  "packages/ts/src/listen.ts::ListenerClient.on": {
+    "exported": false,
+    "signature": "on(event: 'error', listener: (error: Error) =\u003e void): this"
+  },
+  "packages/ts/src/listen.ts::ListenerClient.query": {
+    "exported": false,
+    "signature": "query(sql: string): Promise\u003cunknown\u003e"
+  },
+  "packages/ts/src/listen.ts::ListenerNotification": {
+    "exported": false,
+    "signature": "interface ListenerNotification"
+  },
+  "packages/ts/src/listen.ts::ListenerNotification#field.channel": {
+    "exported": false,
+    "signature": "string"
+  },
+  "packages/ts/src/listen.ts::ListenerNotification#field.payload": {
+    "exported": false,
+    "signature": "string | undefined"
+  },
+  "packages/ts/src/listen.ts::ListenerNotification#field.processId": {
+    "exported": false,
+    "signature": "number"
+  },
+  "packages/ts/src/listen.ts::ListenerNotification#wire": {
+    "exported": false,
+    "signature": "{\"channel\":\"text\",\"payload\":\"string|undefined\",\"processId\":\"integer\"}"
+  },
+  "packages/ts/src/listen.ts::Notification": {
+    "exported": true,
+    "signature": "interface Notification"
+  },
+  "packages/ts/src/listen.ts::Notification#field.channel": {
+    "exported": true,
+    "signature": "string"
+  },
+  "packages/ts/src/listen.ts::Notification#field.payload": {
+    "exported": true,
+    "signature": "string"
+  },
+  "packages/ts/src/listen.ts::Notification#field.pid": {
+    "exported": true,
+    "signature": "number"
+  },
+  "packages/ts/src/listen.ts::Notification#wire": {
+    "exported": true,
+    "signature": "{\"channel\":\"text\",\"payload\":\"text\",\"pid\":\"integer\"}"
+  },
+  "packages/ts/src/listen.ts::PostgresListener": {
+    "exported": true,
+    "signature": "class PostgresListener { public constructor(private readonly client: ListenerClient, private readonly onFailure: (error: unknown) =\u003e OrmError); }"
+  },
+  "packages/ts/src/listen.ts::PostgresListener#field.client": {
+    "exported": false,
+    "signature": "ListenerClient"
+  },
+  "packages/ts/src/listen.ts::PostgresListener#field.closed": {
+    "exported": false,
+    "signature": "unknown"
+  },
+  "packages/ts/src/listen.ts::PostgresListener#field.onFailure": {
+    "exported": false,
+    "signature": "(error: unknown) =\u003e OrmError"
+  },
+  "packages/ts/src/listen.ts::PostgresListener#field.queue": {
+    "exported": false,
+    "signature": "Notification[]"
+  },
+  "packages/ts/src/listen.ts::PostgresListener#field.waiter": {
+    "exported": false,
+    "signature": "Waiter | undefined"
+  },
+  "packages/ts/src/listen.ts::PostgresListener.close": {
+    "exported": true,
+    "signature": "public async close(): Promise\u003cvoid\u003e"
+  },
+  "packages/ts/src/listen.ts::PostgresListener.listen": {
+    "exported": true,
+    "signature": "public async listen(channel: string): Promise\u003cvoid\u003e"
+  },
+  "packages/ts/src/listen.ts::PostgresListener.receive": {
+    "exported": true,
+    "signature": "public receive(signal: AbortSignal | undefined): Promise\u003cNotification\u003e"
+  },
+  "packages/ts/src/listen.ts::PostgresListener.run": {
+    "exported": false,
+    "signature": "private async run(sql: string): Promise\u003cvoid\u003e"
+  },
+  "packages/ts/src/listen.ts::PostgresListener.unlisten": {
+    "exported": true,
+    "signature": "public async unlisten(channel: string): Promise\u003cvoid\u003e"
+  },
+  "packages/ts/src/listen.ts::Subscription": {
+    "exported": true,
+    "signature": "class Subscription { public constructor(private readonly listener: PostgresListener, private readonly signal: AbortSignal | undefined); }"
+  },
+  "packages/ts/src/listen.ts::Subscription#field.listener": {
+    "exported": false,
+    "signature": "PostgresListener"
+  },
+  "packages/ts/src/listen.ts::Subscription#field.signal": {
+    "exported": false,
+    "signature": "AbortSignal | undefined"
+  },
+  "packages/ts/src/listen.ts::Subscription.close": {
+    "exported": true,
+    "signature": "public close(): Promise\u003cvoid\u003e"
+  },
+  "packages/ts/src/listen.ts::Subscription.receive": {
+    "exported": true,
+    "signature": "public receive(): Promise\u003cNotification\u003e"
+  },
+  "packages/ts/src/listen.ts::Subscription.unlisten": {
+    "exported": true,
+    "signature": "public unlisten(channel: string): Promise\u003cvoid\u003e"
+  },
+  "packages/ts/src/listen.ts::Waiter": {
+    "exported": false,
+    "signature": "interface Waiter"
+  },
+  "packages/ts/src/listen.ts::Waiter.reject": {
+    "exported": false,
+    "signature": "reject(error: unknown): void"
+  },
+  "packages/ts/src/listen.ts::Waiter.resolve": {
+    "exported": false,
+    "signature": "resolve(notification: Notification): void"
+  },
+  "packages/ts/src/listen.ts::checkChannel": {
+    "exported": true,
+    "signature": "export function checkChannel(channel: string): void"
+  },
+  "packages/ts/src/listen.ts::quoteIdent": {
+    "exported": false,
+    "signature": "function quoteIdent(name: string): string"
   },
   "packages/ts/src/markdown.ts::LinksOf": {
     "exported": false,
@@ -8867,6 +10099,10 @@
     "exported": true,
     "signature": "public values(): T[]"
   },
+  "packages/ts/src/model.ts::MissingKey": {
+    "exported": false,
+    "signature": "class MissingKey { public constructor(message: string); }"
+  },
   "packages/ts/src/model.ts::Model": {
     "exported": true,
     "signature": "class Model { public constructor(core?: Core); }"
@@ -9083,6 +10319,10 @@
     "exported": true,
     "signature": "{\"items\":\"Collection\u003cT\u003e\",\"totalCount\":\"integer\",\"totalPages\":\"integer\",\"page\":\"integer\",\"perPage\":\"integer\"}"
   },
+  "packages/ts/src/model.ts::Resolved": {
+    "exported": false,
+    "signature": "type Resolved = (this: Model, ...args: unknown[]) =\u003e unknown"
+  },
   "packages/ts/src/model.ts::WriteRequest": {
     "exported": false,
     "signature": "interface WriteRequest"
@@ -9180,8 +10420,8 @@
     "signature": "function finishWrite(r: WriteRequest): Request"
   },
   "packages/ts/src/model.ts::groupValue": {
-    "exported": false,
-    "signature": "function groupValue(db: Db, column: Assemble['columns'][number], raw: unknown, schema: Entity): unknown"
+    "exported": true,
+    "signature": "export function groupValue(db: Db, column: Assemble['columns'][number], raw: unknown, schema: Entity): unknown"
   },
   "packages/ts/src/model.ts::grouped": {
     "exported": false,
@@ -9338,6 +10578,1854 @@
   "packages/ts/src/model.ts::writeRequest": {
     "exported": false,
     "signature": "function writeRequest(c: Core, kind: 'insert' | 'update' | 'delete'): WriteRequest"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem": {
+    "exported": true,
+    "signature": "class OrderProductItem"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem#field.aliasMyOrderItem": {
+    "exported": true,
+    "signature": "() =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem#field.andIsClose": {
+    "exported": true,
+    "signature": "(v0: boolean | readonly (boolean)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem#field.entity": {
+    "exported": true,
+    "signature": "EntityDef"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem#field.matchSeqWithProductSeq": {
+    "exported": true,
+    "signature": "() =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem#field.productSeq": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem#field.seq": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem#field.serviceMemberSeq": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem#field.tupleProductSeqWithServiceMemberSeq": {
+    "exported": true,
+    "signature": "(v0: ReadonlyArray\u003creadonly [number, number]\u003e) =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem.addColumnIsClose": {
+    "exported": true,
+    "signature": "public addColumnIsClose(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem.addColumnProductSeq": {
+    "exported": true,
+    "signature": "public addColumnProductSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem.addColumnSeq": {
+    "exported": true,
+    "signature": "public addColumnSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem.addColumnServiceMemberSeq": {
+    "exported": true,
+    "signature": "public addColumnServiceMemberSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem.avgProductSeq": {
+    "exported": true,
+    "signature": "public avgProductSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem.avgSeq": {
+    "exported": true,
+    "signature": "public avgSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem.avgServiceMemberSeq": {
+    "exported": true,
+    "signature": "public avgServiceMemberSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem.forceIndexIxOrderProductItemProductMemberCloseSeq": {
+    "exported": true,
+    "signature": "public forceIndexIxOrderProductItemProductMemberCloseSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem.getIsClose": {
+    "exported": true,
+    "signature": "public getIsClose(): boolean"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem.getProductSeq": {
+    "exported": true,
+    "signature": "public getProductSeq(): number"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem.getSeq": {
+    "exported": true,
+    "signature": "public getSeq(): number"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem.getServiceMemberSeq": {
+    "exported": true,
+    "signature": "public getServiceMemberSeq(): number"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem.groupByIsClose": {
+    "exported": true,
+    "signature": "public groupByIsClose(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem.groupByProductSeq": {
+    "exported": true,
+    "signature": "public groupByProductSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem.groupBySeq": {
+    "exported": true,
+    "signature": "public groupBySeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem.groupByServiceMemberSeq": {
+    "exported": true,
+    "signature": "public groupByServiceMemberSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem.keyNameIsClose": {
+    "exported": true,
+    "signature": "public keyNameIsClose(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem.keyNameProductSeq": {
+    "exported": true,
+    "signature": "public keyNameProductSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem.keyNameSeq": {
+    "exported": true,
+    "signature": "public keyNameSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem.keyNameServiceMemberSeq": {
+    "exported": true,
+    "signature": "public keyNameServiceMemberSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem.minusProductSeq": {
+    "exported": true,
+    "signature": "public minusProductSeq(n: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem.minusSeq": {
+    "exported": true,
+    "signature": "public minusSeq(n: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem.minusServiceMemberSeq": {
+    "exported": true,
+    "signature": "public minusServiceMemberSeq(n: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem.orderByIsCloseAsc": {
+    "exported": true,
+    "signature": "public orderByIsCloseAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem.orderByIsCloseDesc": {
+    "exported": true,
+    "signature": "public orderByIsCloseDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem.orderByProductSeqAsc": {
+    "exported": true,
+    "signature": "public orderByProductSeqAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem.orderByProductSeqDesc": {
+    "exported": true,
+    "signature": "public orderByProductSeqDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem.orderBySeqAsc": {
+    "exported": true,
+    "signature": "public orderBySeqAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem.orderBySeqDesc": {
+    "exported": true,
+    "signature": "public orderBySeqDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem.orderByServiceMemberSeqAsc": {
+    "exported": true,
+    "signature": "public orderByServiceMemberSeqAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem.orderByServiceMemberSeqDesc": {
+    "exported": true,
+    "signature": "public orderByServiceMemberSeqDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem.plusProductSeq": {
+    "exported": true,
+    "signature": "public plusProductSeq(n: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem.plusSeq": {
+    "exported": true,
+    "signature": "public plusSeq(n: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem.plusServiceMemberSeq": {
+    "exported": true,
+    "signature": "public plusServiceMemberSeq(n: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem.removeColumnIsClose": {
+    "exported": true,
+    "signature": "public removeColumnIsClose(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem.removeColumnProductSeq": {
+    "exported": true,
+    "signature": "public removeColumnProductSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem.removeColumnSeq": {
+    "exported": true,
+    "signature": "public removeColumnSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem.removeColumnServiceMemberSeq": {
+    "exported": true,
+    "signature": "public removeColumnServiceMemberSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem.setIsClose": {
+    "exported": true,
+    "signature": "public setIsClose(value: boolean): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem.setProductSeq": {
+    "exported": true,
+    "signature": "public setProductSeq(value: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem.setSeq": {
+    "exported": true,
+    "signature": "public setSeq(value: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem.setServiceMemberSeq": {
+    "exported": true,
+    "signature": "public setServiceMemberSeq(value: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem.sumProductSeq": {
+    "exported": true,
+    "signature": "public sumProductSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem.sumSeq": {
+    "exported": true,
+    "signature": "public sumSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::OrderProductItem.sumServiceMemberSeq": {
+    "exported": true,
+    "signature": "public sumServiceMemberSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product": {
+    "exported": true,
+    "signature": "class Product"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product#field.andGeDisplayEndDt": {
+    "exported": true,
+    "signature": "(...args: [v0: string | Date | ValueFunction] | [v0: ColumnFunction, compared: unknown]) =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product#field.andIsClose": {
+    "exported": true,
+    "signature": "(v0: boolean | readonly (boolean)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product#field.andIsDisplay": {
+    "exported": true,
+    "signature": "(v0: boolean | readonly (boolean)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product#field.andLeDisplayStartDt": {
+    "exported": true,
+    "signature": "(...args: [v0: string | Date | ValueFunction] | [v0: ColumnFunction, compared: unknown]) =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product#field.entity": {
+    "exported": true,
+    "signature": "EntityDef"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product#field.fulltextBooleanNameWithShortDescriptionWithContent": {
+    "exported": true,
+    "signature": "(v0: string) =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product#field.isAllday": {
+    "exported": true,
+    "signature": "(v0: boolean | readonly (boolean)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product#field.orderByLikeCountDescAndSeqDesc": {
+    "exported": true,
+    "signature": "() =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product#field.productBrandSeq": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model | null) =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product#field.seq": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product#field.serviceSeq": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.addColumnContent": {
+    "exported": true,
+    "signature": "public addColumnContent(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.addColumnDisplayEndDt": {
+    "exported": true,
+    "signature": "public addColumnDisplayEndDt(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.addColumnDisplayStartDt": {
+    "exported": true,
+    "signature": "public addColumnDisplayStartDt(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.addColumnIsAllday": {
+    "exported": true,
+    "signature": "public addColumnIsAllday(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.addColumnIsClose": {
+    "exported": true,
+    "signature": "public addColumnIsClose(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.addColumnIsDisplay": {
+    "exported": true,
+    "signature": "public addColumnIsDisplay(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.addColumnLikeCount": {
+    "exported": true,
+    "signature": "public addColumnLikeCount(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.addColumnName": {
+    "exported": true,
+    "signature": "public addColumnName(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.addColumnProductBrandSeq": {
+    "exported": true,
+    "signature": "public addColumnProductBrandSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.addColumnSeq": {
+    "exported": true,
+    "signature": "public addColumnSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.addColumnServiceSeq": {
+    "exported": true,
+    "signature": "public addColumnServiceSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.addColumnShortDescription": {
+    "exported": true,
+    "signature": "public addColumnShortDescription(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.avgLikeCount": {
+    "exported": true,
+    "signature": "public avgLikeCount(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.avgProductBrandSeq": {
+    "exported": true,
+    "signature": "public avgProductBrandSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.avgSeq": {
+    "exported": true,
+    "signature": "public avgSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.avgServiceSeq": {
+    "exported": true,
+    "signature": "public avgServiceSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.forceIndexIxProductBrand": {
+    "exported": true,
+    "signature": "public forceIndexIxProductBrand(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.forceIndexIxProductServiceState": {
+    "exported": true,
+    "signature": "public forceIndexIxProductServiceState(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.getContent": {
+    "exported": true,
+    "signature": "public getContent(): string"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.getDisplayEndDt": {
+    "exported": true,
+    "signature": "public getDisplayEndDt(): string | null"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.getDisplayStartDt": {
+    "exported": true,
+    "signature": "public getDisplayStartDt(): string | null"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.getIsAllday": {
+    "exported": true,
+    "signature": "public getIsAllday(): boolean"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.getIsClose": {
+    "exported": true,
+    "signature": "public getIsClose(): boolean"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.getIsDisplay": {
+    "exported": true,
+    "signature": "public getIsDisplay(): boolean"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.getLikeCount": {
+    "exported": true,
+    "signature": "public getLikeCount(): number"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.getName": {
+    "exported": true,
+    "signature": "public getName(): string"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.getProductBrandSeq": {
+    "exported": true,
+    "signature": "public getProductBrandSeq(): number | null"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.getSeq": {
+    "exported": true,
+    "signature": "public getSeq(): number"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.getServiceSeq": {
+    "exported": true,
+    "signature": "public getServiceSeq(): number"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.getShortDescription": {
+    "exported": true,
+    "signature": "public getShortDescription(): string"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.groupByContent": {
+    "exported": true,
+    "signature": "public groupByContent(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.groupByDisplayEndDt": {
+    "exported": true,
+    "signature": "public groupByDisplayEndDt(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.groupByDisplayStartDt": {
+    "exported": true,
+    "signature": "public groupByDisplayStartDt(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.groupByIsAllday": {
+    "exported": true,
+    "signature": "public groupByIsAllday(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.groupByIsClose": {
+    "exported": true,
+    "signature": "public groupByIsClose(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.groupByIsDisplay": {
+    "exported": true,
+    "signature": "public groupByIsDisplay(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.groupByLikeCount": {
+    "exported": true,
+    "signature": "public groupByLikeCount(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.groupByName": {
+    "exported": true,
+    "signature": "public groupByName(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.groupByProductBrandSeq": {
+    "exported": true,
+    "signature": "public groupByProductBrandSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.groupBySeq": {
+    "exported": true,
+    "signature": "public groupBySeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.groupByServiceSeq": {
+    "exported": true,
+    "signature": "public groupByServiceSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.groupByShortDescription": {
+    "exported": true,
+    "signature": "public groupByShortDescription(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.keyNameContent": {
+    "exported": true,
+    "signature": "public keyNameContent(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.keyNameDisplayEndDt": {
+    "exported": true,
+    "signature": "public keyNameDisplayEndDt(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.keyNameDisplayStartDt": {
+    "exported": true,
+    "signature": "public keyNameDisplayStartDt(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.keyNameIsAllday": {
+    "exported": true,
+    "signature": "public keyNameIsAllday(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.keyNameIsClose": {
+    "exported": true,
+    "signature": "public keyNameIsClose(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.keyNameIsDisplay": {
+    "exported": true,
+    "signature": "public keyNameIsDisplay(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.keyNameLikeCount": {
+    "exported": true,
+    "signature": "public keyNameLikeCount(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.keyNameName": {
+    "exported": true,
+    "signature": "public keyNameName(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.keyNameProductBrandSeq": {
+    "exported": true,
+    "signature": "public keyNameProductBrandSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.keyNameSeq": {
+    "exported": true,
+    "signature": "public keyNameSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.keyNameServiceSeq": {
+    "exported": true,
+    "signature": "public keyNameServiceSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.keyNameShortDescription": {
+    "exported": true,
+    "signature": "public keyNameShortDescription(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.minusLikeCount": {
+    "exported": true,
+    "signature": "public minusLikeCount(n: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.minusProductBrandSeq": {
+    "exported": true,
+    "signature": "public minusProductBrandSeq(n: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.minusSeq": {
+    "exported": true,
+    "signature": "public minusSeq(n: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.minusServiceSeq": {
+    "exported": true,
+    "signature": "public minusServiceSeq(n: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.orderByContentAsc": {
+    "exported": true,
+    "signature": "public orderByContentAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.orderByContentDesc": {
+    "exported": true,
+    "signature": "public orderByContentDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.orderByDisplayEndDtAsc": {
+    "exported": true,
+    "signature": "public orderByDisplayEndDtAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.orderByDisplayEndDtDesc": {
+    "exported": true,
+    "signature": "public orderByDisplayEndDtDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.orderByDisplayStartDtAsc": {
+    "exported": true,
+    "signature": "public orderByDisplayStartDtAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.orderByDisplayStartDtDesc": {
+    "exported": true,
+    "signature": "public orderByDisplayStartDtDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.orderByIsAlldayAsc": {
+    "exported": true,
+    "signature": "public orderByIsAlldayAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.orderByIsAlldayDesc": {
+    "exported": true,
+    "signature": "public orderByIsAlldayDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.orderByIsCloseAsc": {
+    "exported": true,
+    "signature": "public orderByIsCloseAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.orderByIsCloseDesc": {
+    "exported": true,
+    "signature": "public orderByIsCloseDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.orderByIsDisplayAsc": {
+    "exported": true,
+    "signature": "public orderByIsDisplayAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.orderByIsDisplayDesc": {
+    "exported": true,
+    "signature": "public orderByIsDisplayDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.orderByLikeCountAsc": {
+    "exported": true,
+    "signature": "public orderByLikeCountAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.orderByLikeCountDesc": {
+    "exported": true,
+    "signature": "public orderByLikeCountDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.orderByNameAsc": {
+    "exported": true,
+    "signature": "public orderByNameAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.orderByNameDesc": {
+    "exported": true,
+    "signature": "public orderByNameDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.orderByProductBrandSeqAsc": {
+    "exported": true,
+    "signature": "public orderByProductBrandSeqAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.orderByProductBrandSeqDesc": {
+    "exported": true,
+    "signature": "public orderByProductBrandSeqDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.orderBySeqAsc": {
+    "exported": true,
+    "signature": "public orderBySeqAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.orderBySeqDesc": {
+    "exported": true,
+    "signature": "public orderBySeqDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.orderByServiceSeqAsc": {
+    "exported": true,
+    "signature": "public orderByServiceSeqAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.orderByServiceSeqDesc": {
+    "exported": true,
+    "signature": "public orderByServiceSeqDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.orderByShortDescriptionAsc": {
+    "exported": true,
+    "signature": "public orderByShortDescriptionAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.orderByShortDescriptionDesc": {
+    "exported": true,
+    "signature": "public orderByShortDescriptionDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.plusLikeCount": {
+    "exported": true,
+    "signature": "public plusLikeCount(n: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.plusProductBrandSeq": {
+    "exported": true,
+    "signature": "public plusProductBrandSeq(n: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.plusSeq": {
+    "exported": true,
+    "signature": "public plusSeq(n: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.plusServiceSeq": {
+    "exported": true,
+    "signature": "public plusServiceSeq(n: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.removeColumnContent": {
+    "exported": true,
+    "signature": "public removeColumnContent(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.removeColumnDisplayEndDt": {
+    "exported": true,
+    "signature": "public removeColumnDisplayEndDt(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.removeColumnDisplayStartDt": {
+    "exported": true,
+    "signature": "public removeColumnDisplayStartDt(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.removeColumnIsAllday": {
+    "exported": true,
+    "signature": "public removeColumnIsAllday(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.removeColumnIsClose": {
+    "exported": true,
+    "signature": "public removeColumnIsClose(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.removeColumnIsDisplay": {
+    "exported": true,
+    "signature": "public removeColumnIsDisplay(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.removeColumnLikeCount": {
+    "exported": true,
+    "signature": "public removeColumnLikeCount(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.removeColumnName": {
+    "exported": true,
+    "signature": "public removeColumnName(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.removeColumnProductBrandSeq": {
+    "exported": true,
+    "signature": "public removeColumnProductBrandSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.removeColumnSeq": {
+    "exported": true,
+    "signature": "public removeColumnSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.removeColumnServiceSeq": {
+    "exported": true,
+    "signature": "public removeColumnServiceSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.removeColumnShortDescription": {
+    "exported": true,
+    "signature": "public removeColumnShortDescription(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.setContent": {
+    "exported": true,
+    "signature": "public setContent(value: string): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.setDisplayEndDt": {
+    "exported": true,
+    "signature": "public setDisplayEndDt(value: string | null): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.setDisplayStartDt": {
+    "exported": true,
+    "signature": "public setDisplayStartDt(value: string | null): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.setIsAllday": {
+    "exported": true,
+    "signature": "public setIsAllday(value: boolean): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.setIsClose": {
+    "exported": true,
+    "signature": "public setIsClose(value: boolean): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.setIsDisplay": {
+    "exported": true,
+    "signature": "public setIsDisplay(value: boolean): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.setLikeCount": {
+    "exported": true,
+    "signature": "public setLikeCount(value: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.setName": {
+    "exported": true,
+    "signature": "public setName(value: string): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.setProductBrandSeq": {
+    "exported": true,
+    "signature": "public setProductBrandSeq(value: number | null): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.setSeq": {
+    "exported": true,
+    "signature": "public setSeq(value: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.setServiceSeq": {
+    "exported": true,
+    "signature": "public setServiceSeq(value: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.setShortDescription": {
+    "exported": true,
+    "signature": "public setShortDescription(value: string): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.sumLikeCount": {
+    "exported": true,
+    "signature": "public sumLikeCount(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.sumProductBrandSeq": {
+    "exported": true,
+    "signature": "public sumProductBrandSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.sumSeq": {
+    "exported": true,
+    "signature": "public sumSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::Product.sumServiceSeq": {
+    "exported": true,
+    "signature": "public sumServiceSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrand": {
+    "exported": true,
+    "signature": "class ProductBrand"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrand#field.aliasBrand": {
+    "exported": true,
+    "signature": "() =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrand#field.entity": {
+    "exported": true,
+    "signature": "EntityDef"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrand#field.matchProductBrandSeqWithSeq": {
+    "exported": true,
+    "signature": "() =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrand#field.seq": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrand.addColumnName": {
+    "exported": true,
+    "signature": "public addColumnName(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrand.addColumnSeq": {
+    "exported": true,
+    "signature": "public addColumnSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrand.avgSeq": {
+    "exported": true,
+    "signature": "public avgSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrand.getName": {
+    "exported": true,
+    "signature": "public getName(): string"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrand.getSeq": {
+    "exported": true,
+    "signature": "public getSeq(): number"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrand.groupByName": {
+    "exported": true,
+    "signature": "public groupByName(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrand.groupBySeq": {
+    "exported": true,
+    "signature": "public groupBySeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrand.keyNameName": {
+    "exported": true,
+    "signature": "public keyNameName(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrand.keyNameSeq": {
+    "exported": true,
+    "signature": "public keyNameSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrand.minusSeq": {
+    "exported": true,
+    "signature": "public minusSeq(n: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrand.orderByNameAsc": {
+    "exported": true,
+    "signature": "public orderByNameAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrand.orderByNameDesc": {
+    "exported": true,
+    "signature": "public orderByNameDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrand.orderBySeqAsc": {
+    "exported": true,
+    "signature": "public orderBySeqAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrand.orderBySeqDesc": {
+    "exported": true,
+    "signature": "public orderBySeqDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrand.plusSeq": {
+    "exported": true,
+    "signature": "public plusSeq(n: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrand.removeColumnName": {
+    "exported": true,
+    "signature": "public removeColumnName(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrand.removeColumnSeq": {
+    "exported": true,
+    "signature": "public removeColumnSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrand.setName": {
+    "exported": true,
+    "signature": "public setName(value: string): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrand.setSeq": {
+    "exported": true,
+    "signature": "public setSeq(value: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrand.sumSeq": {
+    "exported": true,
+    "signature": "public sumSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang": {
+    "exported": true,
+    "signature": "class ProductBrandLang"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang#field.entity": {
+    "exported": true,
+    "signature": "EntityDef"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang#field.fulltextBooleanNameWithDescription": {
+    "exported": true,
+    "signature": "(v0: string) =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang#field.langId": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang#field.matchSeqWithProductBrandSeq": {
+    "exported": true,
+    "signature": "() =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang#field.productBrandSeq": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang#field.seq": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang#field.tupleProductBrandSeqWithLangId": {
+    "exported": true,
+    "signature": "(v0: ReadonlyArray\u003creadonly [number, number]\u003e) =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.addColumnDescription": {
+    "exported": true,
+    "signature": "public addColumnDescription(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.addColumnLangId": {
+    "exported": true,
+    "signature": "public addColumnLangId(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.addColumnName": {
+    "exported": true,
+    "signature": "public addColumnName(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.addColumnProductBrandSeq": {
+    "exported": true,
+    "signature": "public addColumnProductBrandSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.addColumnSeq": {
+    "exported": true,
+    "signature": "public addColumnSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.avgLangId": {
+    "exported": true,
+    "signature": "public avgLangId(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.avgProductBrandSeq": {
+    "exported": true,
+    "signature": "public avgProductBrandSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.avgSeq": {
+    "exported": true,
+    "signature": "public avgSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.forceIndexUqProductBrandLangBrandLang": {
+    "exported": true,
+    "signature": "public forceIndexUqProductBrandLangBrandLang(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.getDescription": {
+    "exported": true,
+    "signature": "public getDescription(): string"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.getLangId": {
+    "exported": true,
+    "signature": "public getLangId(): number"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.getName": {
+    "exported": true,
+    "signature": "public getName(): string"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.getProductBrandSeq": {
+    "exported": true,
+    "signature": "public getProductBrandSeq(): number"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.getSeq": {
+    "exported": true,
+    "signature": "public getSeq(): number"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.groupByDescription": {
+    "exported": true,
+    "signature": "public groupByDescription(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.groupByLangId": {
+    "exported": true,
+    "signature": "public groupByLangId(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.groupByName": {
+    "exported": true,
+    "signature": "public groupByName(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.groupByProductBrandSeq": {
+    "exported": true,
+    "signature": "public groupByProductBrandSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.groupBySeq": {
+    "exported": true,
+    "signature": "public groupBySeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.keyNameDescription": {
+    "exported": true,
+    "signature": "public keyNameDescription(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.keyNameLangId": {
+    "exported": true,
+    "signature": "public keyNameLangId(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.keyNameName": {
+    "exported": true,
+    "signature": "public keyNameName(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.keyNameProductBrandSeq": {
+    "exported": true,
+    "signature": "public keyNameProductBrandSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.keyNameSeq": {
+    "exported": true,
+    "signature": "public keyNameSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.minusLangId": {
+    "exported": true,
+    "signature": "public minusLangId(n: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.minusProductBrandSeq": {
+    "exported": true,
+    "signature": "public minusProductBrandSeq(n: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.minusSeq": {
+    "exported": true,
+    "signature": "public minusSeq(n: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.orderByDescriptionAsc": {
+    "exported": true,
+    "signature": "public orderByDescriptionAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.orderByDescriptionDesc": {
+    "exported": true,
+    "signature": "public orderByDescriptionDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.orderByLangIdAsc": {
+    "exported": true,
+    "signature": "public orderByLangIdAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.orderByLangIdDesc": {
+    "exported": true,
+    "signature": "public orderByLangIdDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.orderByNameAsc": {
+    "exported": true,
+    "signature": "public orderByNameAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.orderByNameDesc": {
+    "exported": true,
+    "signature": "public orderByNameDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.orderByProductBrandSeqAsc": {
+    "exported": true,
+    "signature": "public orderByProductBrandSeqAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.orderByProductBrandSeqDesc": {
+    "exported": true,
+    "signature": "public orderByProductBrandSeqDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.orderBySeqAsc": {
+    "exported": true,
+    "signature": "public orderBySeqAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.orderBySeqDesc": {
+    "exported": true,
+    "signature": "public orderBySeqDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.plusLangId": {
+    "exported": true,
+    "signature": "public plusLangId(n: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.plusProductBrandSeq": {
+    "exported": true,
+    "signature": "public plusProductBrandSeq(n: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.plusSeq": {
+    "exported": true,
+    "signature": "public plusSeq(n: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.removeColumnDescription": {
+    "exported": true,
+    "signature": "public removeColumnDescription(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.removeColumnLangId": {
+    "exported": true,
+    "signature": "public removeColumnLangId(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.removeColumnName": {
+    "exported": true,
+    "signature": "public removeColumnName(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.removeColumnProductBrandSeq": {
+    "exported": true,
+    "signature": "public removeColumnProductBrandSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.removeColumnSeq": {
+    "exported": true,
+    "signature": "public removeColumnSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.setDescription": {
+    "exported": true,
+    "signature": "public setDescription(value: string): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.setLangId": {
+    "exported": true,
+    "signature": "public setLangId(value: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.setName": {
+    "exported": true,
+    "signature": "public setName(value: string): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.setProductBrandSeq": {
+    "exported": true,
+    "signature": "public setProductBrandSeq(value: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.setSeq": {
+    "exported": true,
+    "signature": "public setSeq(value: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.sumLangId": {
+    "exported": true,
+    "signature": "public sumLangId(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.sumProductBrandSeq": {
+    "exported": true,
+    "signature": "public sumProductBrandSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductBrandLang.sumSeq": {
+    "exported": true,
+    "signature": "public sumSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang": {
+    "exported": true,
+    "signature": "class ProductLang"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang#field.entity": {
+    "exported": true,
+    "signature": "EntityDef"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang#field.fulltextBooleanNameWithShortDescriptionWithContent": {
+    "exported": true,
+    "signature": "(v0: string) =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang#field.langId": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang#field.matchSeqWithProductSeq": {
+    "exported": true,
+    "signature": "() =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang#field.productSeq": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang#field.seq": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang#field.tupleProductSeqWithLangId": {
+    "exported": true,
+    "signature": "(v0: ReadonlyArray\u003creadonly [number, number]\u003e) =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.addColumnContent": {
+    "exported": true,
+    "signature": "public addColumnContent(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.addColumnLangId": {
+    "exported": true,
+    "signature": "public addColumnLangId(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.addColumnName": {
+    "exported": true,
+    "signature": "public addColumnName(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.addColumnProductSeq": {
+    "exported": true,
+    "signature": "public addColumnProductSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.addColumnSeq": {
+    "exported": true,
+    "signature": "public addColumnSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.addColumnShortDescription": {
+    "exported": true,
+    "signature": "public addColumnShortDescription(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.avgLangId": {
+    "exported": true,
+    "signature": "public avgLangId(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.avgProductSeq": {
+    "exported": true,
+    "signature": "public avgProductSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.avgSeq": {
+    "exported": true,
+    "signature": "public avgSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.forceIndexUqProductLangProductLang": {
+    "exported": true,
+    "signature": "public forceIndexUqProductLangProductLang(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.getContent": {
+    "exported": true,
+    "signature": "public getContent(): string"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.getLangId": {
+    "exported": true,
+    "signature": "public getLangId(): number"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.getName": {
+    "exported": true,
+    "signature": "public getName(): string"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.getProductSeq": {
+    "exported": true,
+    "signature": "public getProductSeq(): number"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.getSeq": {
+    "exported": true,
+    "signature": "public getSeq(): number"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.getShortDescription": {
+    "exported": true,
+    "signature": "public getShortDescription(): string"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.groupByContent": {
+    "exported": true,
+    "signature": "public groupByContent(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.groupByLangId": {
+    "exported": true,
+    "signature": "public groupByLangId(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.groupByName": {
+    "exported": true,
+    "signature": "public groupByName(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.groupByProductSeq": {
+    "exported": true,
+    "signature": "public groupByProductSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.groupBySeq": {
+    "exported": true,
+    "signature": "public groupBySeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.groupByShortDescription": {
+    "exported": true,
+    "signature": "public groupByShortDescription(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.keyNameContent": {
+    "exported": true,
+    "signature": "public keyNameContent(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.keyNameLangId": {
+    "exported": true,
+    "signature": "public keyNameLangId(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.keyNameName": {
+    "exported": true,
+    "signature": "public keyNameName(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.keyNameProductSeq": {
+    "exported": true,
+    "signature": "public keyNameProductSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.keyNameSeq": {
+    "exported": true,
+    "signature": "public keyNameSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.keyNameShortDescription": {
+    "exported": true,
+    "signature": "public keyNameShortDescription(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.minusLangId": {
+    "exported": true,
+    "signature": "public minusLangId(n: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.minusProductSeq": {
+    "exported": true,
+    "signature": "public minusProductSeq(n: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.minusSeq": {
+    "exported": true,
+    "signature": "public minusSeq(n: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.orderByContentAsc": {
+    "exported": true,
+    "signature": "public orderByContentAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.orderByContentDesc": {
+    "exported": true,
+    "signature": "public orderByContentDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.orderByLangIdAsc": {
+    "exported": true,
+    "signature": "public orderByLangIdAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.orderByLangIdDesc": {
+    "exported": true,
+    "signature": "public orderByLangIdDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.orderByNameAsc": {
+    "exported": true,
+    "signature": "public orderByNameAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.orderByNameDesc": {
+    "exported": true,
+    "signature": "public orderByNameDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.orderByProductSeqAsc": {
+    "exported": true,
+    "signature": "public orderByProductSeqAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.orderByProductSeqDesc": {
+    "exported": true,
+    "signature": "public orderByProductSeqDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.orderBySeqAsc": {
+    "exported": true,
+    "signature": "public orderBySeqAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.orderBySeqDesc": {
+    "exported": true,
+    "signature": "public orderBySeqDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.orderByShortDescriptionAsc": {
+    "exported": true,
+    "signature": "public orderByShortDescriptionAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.orderByShortDescriptionDesc": {
+    "exported": true,
+    "signature": "public orderByShortDescriptionDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.plusLangId": {
+    "exported": true,
+    "signature": "public plusLangId(n: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.plusProductSeq": {
+    "exported": true,
+    "signature": "public plusProductSeq(n: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.plusSeq": {
+    "exported": true,
+    "signature": "public plusSeq(n: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.removeColumnContent": {
+    "exported": true,
+    "signature": "public removeColumnContent(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.removeColumnLangId": {
+    "exported": true,
+    "signature": "public removeColumnLangId(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.removeColumnName": {
+    "exported": true,
+    "signature": "public removeColumnName(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.removeColumnProductSeq": {
+    "exported": true,
+    "signature": "public removeColumnProductSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.removeColumnSeq": {
+    "exported": true,
+    "signature": "public removeColumnSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.removeColumnShortDescription": {
+    "exported": true,
+    "signature": "public removeColumnShortDescription(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.setContent": {
+    "exported": true,
+    "signature": "public setContent(value: string): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.setLangId": {
+    "exported": true,
+    "signature": "public setLangId(value: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.setName": {
+    "exported": true,
+    "signature": "public setName(value: string): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.setProductSeq": {
+    "exported": true,
+    "signature": "public setProductSeq(value: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.setSeq": {
+    "exported": true,
+    "signature": "public setSeq(value: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.setShortDescription": {
+    "exported": true,
+    "signature": "public setShortDescription(value: string): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.sumLangId": {
+    "exported": true,
+    "signature": "public sumLangId(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.sumProductSeq": {
+    "exported": true,
+    "signature": "public sumProductSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductLang.sumSeq": {
+    "exported": true,
+    "signature": "public sumSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductMatchCategory": {
+    "exported": true,
+    "signature": "class ProductMatchCategory"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductMatchCategory#field.entity": {
+    "exported": true,
+    "signature": "EntityDef"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductMatchCategory#field.productSeq": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductMatchCategory#field.serviceRegionCategoryItemSeq": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductMatchCategory#field.tupleProductSeqWithServiceRegionCategoryItemSeq": {
+    "exported": true,
+    "signature": "(v0: ReadonlyArray\u003creadonly [number, number]\u003e) =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductMatchCategory.addColumnProductSeq": {
+    "exported": true,
+    "signature": "public addColumnProductSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductMatchCategory.addColumnServiceRegionCategoryItemSeq": {
+    "exported": true,
+    "signature": "public addColumnServiceRegionCategoryItemSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductMatchCategory.avgProductSeq": {
+    "exported": true,
+    "signature": "public avgProductSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductMatchCategory.avgServiceRegionCategoryItemSeq": {
+    "exported": true,
+    "signature": "public avgServiceRegionCategoryItemSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductMatchCategory.forceIndexIxProductMatchCategoryCategory": {
+    "exported": true,
+    "signature": "public forceIndexIxProductMatchCategoryCategory(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductMatchCategory.getProductSeq": {
+    "exported": true,
+    "signature": "public getProductSeq(): number"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductMatchCategory.getServiceRegionCategoryItemSeq": {
+    "exported": true,
+    "signature": "public getServiceRegionCategoryItemSeq(): number"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductMatchCategory.groupByProductSeq": {
+    "exported": true,
+    "signature": "public groupByProductSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductMatchCategory.groupByServiceRegionCategoryItemSeq": {
+    "exported": true,
+    "signature": "public groupByServiceRegionCategoryItemSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductMatchCategory.keyNameProductSeq": {
+    "exported": true,
+    "signature": "public keyNameProductSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductMatchCategory.keyNameServiceRegionCategoryItemSeq": {
+    "exported": true,
+    "signature": "public keyNameServiceRegionCategoryItemSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductMatchCategory.minusProductSeq": {
+    "exported": true,
+    "signature": "public minusProductSeq(n: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductMatchCategory.minusServiceRegionCategoryItemSeq": {
+    "exported": true,
+    "signature": "public minusServiceRegionCategoryItemSeq(n: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductMatchCategory.orderByProductSeqAsc": {
+    "exported": true,
+    "signature": "public orderByProductSeqAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductMatchCategory.orderByProductSeqDesc": {
+    "exported": true,
+    "signature": "public orderByProductSeqDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductMatchCategory.orderByServiceRegionCategoryItemSeqAsc": {
+    "exported": true,
+    "signature": "public orderByServiceRegionCategoryItemSeqAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductMatchCategory.orderByServiceRegionCategoryItemSeqDesc": {
+    "exported": true,
+    "signature": "public orderByServiceRegionCategoryItemSeqDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductMatchCategory.plusProductSeq": {
+    "exported": true,
+    "signature": "public plusProductSeq(n: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductMatchCategory.plusServiceRegionCategoryItemSeq": {
+    "exported": true,
+    "signature": "public plusServiceRegionCategoryItemSeq(n: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductMatchCategory.removeColumnProductSeq": {
+    "exported": true,
+    "signature": "public removeColumnProductSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductMatchCategory.removeColumnServiceRegionCategoryItemSeq": {
+    "exported": true,
+    "signature": "public removeColumnServiceRegionCategoryItemSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductMatchCategory.setProductSeq": {
+    "exported": true,
+    "signature": "public setProductSeq(value: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductMatchCategory.setServiceRegionCategoryItemSeq": {
+    "exported": true,
+    "signature": "public setServiceRegionCategoryItemSeq(value: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductMatchCategory.sumProductSeq": {
+    "exported": true,
+    "signature": "public sumProductSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductMatchCategory.sumServiceRegionCategoryItemSeq": {
+    "exported": true,
+    "signature": "public sumServiceRegionCategoryItemSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview": {
+    "exported": true,
+    "signature": "class ProductReview"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview#field.aliasReviews": {
+    "exported": true,
+    "signature": "() =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview#field.entity": {
+    "exported": true,
+    "signature": "EntityDef"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview#field.isClose": {
+    "exported": true,
+    "signature": "(v0: boolean | readonly (boolean)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview#field.matchSeqWithProductSeq": {
+    "exported": true,
+    "signature": "() =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview#field.productSeq": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview#field.seq": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview#field.userSeq": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.addColumnContent": {
+    "exported": true,
+    "signature": "public addColumnContent(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.addColumnIsClose": {
+    "exported": true,
+    "signature": "public addColumnIsClose(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.addColumnProductSeq": {
+    "exported": true,
+    "signature": "public addColumnProductSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.addColumnSeq": {
+    "exported": true,
+    "signature": "public addColumnSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.addColumnUserSeq": {
+    "exported": true,
+    "signature": "public addColumnUserSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.avgProductSeq": {
+    "exported": true,
+    "signature": "public avgProductSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.avgSeq": {
+    "exported": true,
+    "signature": "public avgSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.avgUserSeq": {
+    "exported": true,
+    "signature": "public avgUserSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.forceIndexIxProductReviewProductCloseSeq": {
+    "exported": true,
+    "signature": "public forceIndexIxProductReviewProductCloseSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.forceIndexIxProductReviewUser": {
+    "exported": true,
+    "signature": "public forceIndexIxProductReviewUser(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.getContent": {
+    "exported": true,
+    "signature": "public getContent(): string"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.getIsClose": {
+    "exported": true,
+    "signature": "public getIsClose(): boolean"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.getProductSeq": {
+    "exported": true,
+    "signature": "public getProductSeq(): number"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.getSeq": {
+    "exported": true,
+    "signature": "public getSeq(): number"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.getUserSeq": {
+    "exported": true,
+    "signature": "public getUserSeq(): number"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.groupByContent": {
+    "exported": true,
+    "signature": "public groupByContent(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.groupByIsClose": {
+    "exported": true,
+    "signature": "public groupByIsClose(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.groupByProductSeq": {
+    "exported": true,
+    "signature": "public groupByProductSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.groupBySeq": {
+    "exported": true,
+    "signature": "public groupBySeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.groupByUserSeq": {
+    "exported": true,
+    "signature": "public groupByUserSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.keyNameContent": {
+    "exported": true,
+    "signature": "public keyNameContent(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.keyNameIsClose": {
+    "exported": true,
+    "signature": "public keyNameIsClose(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.keyNameProductSeq": {
+    "exported": true,
+    "signature": "public keyNameProductSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.keyNameSeq": {
+    "exported": true,
+    "signature": "public keyNameSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.keyNameUserSeq": {
+    "exported": true,
+    "signature": "public keyNameUserSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.minusProductSeq": {
+    "exported": true,
+    "signature": "public minusProductSeq(n: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.minusSeq": {
+    "exported": true,
+    "signature": "public minusSeq(n: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.minusUserSeq": {
+    "exported": true,
+    "signature": "public minusUserSeq(n: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.orderByContentAsc": {
+    "exported": true,
+    "signature": "public orderByContentAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.orderByContentDesc": {
+    "exported": true,
+    "signature": "public orderByContentDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.orderByIsCloseAsc": {
+    "exported": true,
+    "signature": "public orderByIsCloseAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.orderByIsCloseDesc": {
+    "exported": true,
+    "signature": "public orderByIsCloseDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.orderByProductSeqAsc": {
+    "exported": true,
+    "signature": "public orderByProductSeqAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.orderByProductSeqDesc": {
+    "exported": true,
+    "signature": "public orderByProductSeqDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.orderBySeqAsc": {
+    "exported": true,
+    "signature": "public orderBySeqAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.orderBySeqDesc": {
+    "exported": true,
+    "signature": "public orderBySeqDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.orderByUserSeqAsc": {
+    "exported": true,
+    "signature": "public orderByUserSeqAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.orderByUserSeqDesc": {
+    "exported": true,
+    "signature": "public orderByUserSeqDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.plusProductSeq": {
+    "exported": true,
+    "signature": "public plusProductSeq(n: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.plusSeq": {
+    "exported": true,
+    "signature": "public plusSeq(n: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.plusUserSeq": {
+    "exported": true,
+    "signature": "public plusUserSeq(n: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.removeColumnContent": {
+    "exported": true,
+    "signature": "public removeColumnContent(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.removeColumnIsClose": {
+    "exported": true,
+    "signature": "public removeColumnIsClose(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.removeColumnProductSeq": {
+    "exported": true,
+    "signature": "public removeColumnProductSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.removeColumnSeq": {
+    "exported": true,
+    "signature": "public removeColumnSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.removeColumnUserSeq": {
+    "exported": true,
+    "signature": "public removeColumnUserSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.setContent": {
+    "exported": true,
+    "signature": "public setContent(value: string): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.setIsClose": {
+    "exported": true,
+    "signature": "public setIsClose(value: boolean): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.setProductSeq": {
+    "exported": true,
+    "signature": "public setProductSeq(value: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.setSeq": {
+    "exported": true,
+    "signature": "public setSeq(value: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.setUserSeq": {
+    "exported": true,
+    "signature": "public setUserSeq(value: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.sumProductSeq": {
+    "exported": true,
+    "signature": "public sumProductSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.sumSeq": {
+    "exported": true,
+    "signature": "public sumSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::ProductReview.sumUserSeq": {
+    "exported": true,
+    "signature": "public sumUserSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::User": {
+    "exported": true,
+    "signature": "class User"
+  },
+  "packages/ts/src/models/complex_query/models.ts::User#field.aliasUser": {
+    "exported": true,
+    "signature": "() =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::User#field.entity": {
+    "exported": true,
+    "signature": "EntityDef"
+  },
+  "packages/ts/src/models/complex_query/models.ts::User#field.matchUserSeqWithSeq": {
+    "exported": true,
+    "signature": "() =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::User#field.seq": {
+    "exported": true,
+    "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::User.addColumnName": {
+    "exported": true,
+    "signature": "public addColumnName(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::User.addColumnProfileUrl": {
+    "exported": true,
+    "signature": "public addColumnProfileUrl(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::User.addColumnSeq": {
+    "exported": true,
+    "signature": "public addColumnSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::User.avgSeq": {
+    "exported": true,
+    "signature": "public avgSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::User.getName": {
+    "exported": true,
+    "signature": "public getName(): string"
+  },
+  "packages/ts/src/models/complex_query/models.ts::User.getProfileUrl": {
+    "exported": true,
+    "signature": "public getProfileUrl(): string"
+  },
+  "packages/ts/src/models/complex_query/models.ts::User.getSeq": {
+    "exported": true,
+    "signature": "public getSeq(): number"
+  },
+  "packages/ts/src/models/complex_query/models.ts::User.groupByName": {
+    "exported": true,
+    "signature": "public groupByName(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::User.groupByProfileUrl": {
+    "exported": true,
+    "signature": "public groupByProfileUrl(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::User.groupBySeq": {
+    "exported": true,
+    "signature": "public groupBySeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::User.keyNameName": {
+    "exported": true,
+    "signature": "public keyNameName(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::User.keyNameProfileUrl": {
+    "exported": true,
+    "signature": "public keyNameProfileUrl(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::User.keyNameSeq": {
+    "exported": true,
+    "signature": "public keyNameSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::User.minusSeq": {
+    "exported": true,
+    "signature": "public minusSeq(n: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::User.orderByNameAsc": {
+    "exported": true,
+    "signature": "public orderByNameAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::User.orderByNameDesc": {
+    "exported": true,
+    "signature": "public orderByNameDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::User.orderByProfileUrlAsc": {
+    "exported": true,
+    "signature": "public orderByProfileUrlAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::User.orderByProfileUrlDesc": {
+    "exported": true,
+    "signature": "public orderByProfileUrlDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::User.orderBySeqAsc": {
+    "exported": true,
+    "signature": "public orderBySeqAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::User.orderBySeqDesc": {
+    "exported": true,
+    "signature": "public orderBySeqDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::User.plusSeq": {
+    "exported": true,
+    "signature": "public plusSeq(n: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::User.removeColumnName": {
+    "exported": true,
+    "signature": "public removeColumnName(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::User.removeColumnProfileUrl": {
+    "exported": true,
+    "signature": "public removeColumnProfileUrl(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::User.removeColumnSeq": {
+    "exported": true,
+    "signature": "public removeColumnSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::User.setName": {
+    "exported": true,
+    "signature": "public setName(value: string): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::User.setProfileUrl": {
+    "exported": true,
+    "signature": "public setProfileUrl(value: string): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::User.setSeq": {
+    "exported": true,
+    "signature": "public setSeq(value: number): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::User.sumSeq": {
+    "exported": true,
+    "signature": "public sumSeq(): this"
+  },
+  "packages/ts/src/models/complex_query/models.ts::connect": {
+    "exported": true,
+    "signature": "export function connect(dsn: string, options: ConnectOptions = {}): Promise\u003cDb\u003e"
+  },
+  "packages/ts/src/models/complex_query/models.ts::modelEntity": {
+    "exported": false,
+    "signature": "function modelEntity(name: string): EntityDef['entity']"
   },
   "packages/ts/src/models/decimal_fixture/models.ts::DecimalCase": {
     "exported": true,
@@ -9503,6 +12591,94 @@
     "exported": false,
     "signature": "function modelEntity(name: string): EntityDef['entity']"
   },
+  "packages/ts/src/models/markdown_fixture/models.ts::CodecRows": {
+    "exported": true,
+    "signature": "class CodecRows"
+  },
+  "packages/ts/src/models/markdown_fixture/models.ts::CodecRows#field.entity": {
+    "exported": true,
+    "signature": "EntityDef"
+  },
+  "packages/ts/src/models/markdown_fixture/models.ts::CodecRows#field.getFirstTask": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/markdown_fixture/models.ts::CodecRows#field.getName": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/markdown_fixture/models.ts::CodecRows#field.getTaskPoints": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/markdown_fixture/models.ts::CodecRows#field.id": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model) =\u003e this"
+  },
+  "packages/ts/src/models/markdown_fixture/models.ts::CodecRows.addColumnId": {
+    "exported": true,
+    "signature": "public addColumnId(): this"
+  },
+  "packages/ts/src/models/markdown_fixture/models.ts::CodecRows.addColumnPayload": {
+    "exported": true,
+    "signature": "public addColumnPayload(): this"
+  },
+  "packages/ts/src/models/markdown_fixture/models.ts::CodecRows.getId": {
+    "exported": true,
+    "signature": "public getId(): string"
+  },
+  "packages/ts/src/models/markdown_fixture/models.ts::CodecRows.getPayload": {
+    "exported": true,
+    "signature": "public getPayload(): StyledValue\u003cCodecValue\u003e"
+  },
+  "packages/ts/src/models/markdown_fixture/models.ts::CodecRows.groupById": {
+    "exported": true,
+    "signature": "public groupById(): this"
+  },
+  "packages/ts/src/models/markdown_fixture/models.ts::CodecRows.groupByPayload": {
+    "exported": true,
+    "signature": "public groupByPayload(): this"
+  },
+  "packages/ts/src/models/markdown_fixture/models.ts::CodecRows.keyNameId": {
+    "exported": true,
+    "signature": "public keyNameId(): this"
+  },
+  "packages/ts/src/models/markdown_fixture/models.ts::CodecRows.keyNamePayload": {
+    "exported": true,
+    "signature": "public keyNamePayload(): this"
+  },
+  "packages/ts/src/models/markdown_fixture/models.ts::CodecRows.orderByIdAsc": {
+    "exported": true,
+    "signature": "public orderByIdAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/markdown_fixture/models.ts::CodecRows.orderByIdDesc": {
+    "exported": true,
+    "signature": "public orderByIdDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/markdown_fixture/models.ts::CodecRows.orderByPayloadAsc": {
+    "exported": true,
+    "signature": "public orderByPayloadAsc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/markdown_fixture/models.ts::CodecRows.orderByPayloadDesc": {
+    "exported": true,
+    "signature": "public orderByPayloadDesc(...fn: ColumnFunction[]): this"
+  },
+  "packages/ts/src/models/markdown_fixture/models.ts::CodecRows.removeColumnId": {
+    "exported": true,
+    "signature": "public removeColumnId(): this"
+  },
+  "packages/ts/src/models/markdown_fixture/models.ts::CodecRows.removeColumnPayload": {
+    "exported": true,
+    "signature": "public removeColumnPayload(): this"
+  },
+  "packages/ts/src/models/markdown_fixture/models.ts::CodecRows.setId": {
+    "exported": true,
+    "signature": "public setId(value: string): this"
+  },
+  "packages/ts/src/models/markdown_fixture/models.ts::CodecRows.setPayload": {
+    "exported": true,
+    "signature": "public setPayload(value: StyledValue\u003cCodecValue\u003e): this"
+  },
   "packages/ts/src/models/markdown_fixture/models.ts::Logs": {
     "exported": true,
     "signature": "class Logs"
@@ -9516,6 +12692,10 @@
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/markdown_fixture/models.ts::Logs#field.getName": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/markdown_fixture/models.ts::Logs#field.getPayload": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -9676,6 +12856,10 @@
     "signature": "EntityDef"
   },
   "packages/ts/src/models/markdown_fixture/models.ts::People#field.getFirstTask": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/markdown_fixture/models.ts::People#field.getPayload": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -10039,6 +13223,10 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
+  "packages/ts/src/models/markdown_fixture/models.ts::Tasks#field.getPayload": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
   "packages/ts/src/models/markdown_fixture/models.ts::Tasks#field.getTaskPoints": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -10049,7 +13237,7 @@
   },
   "packages/ts/src/models/markdown_fixture/models.ts::Tasks#field.joinOwnerWithId": {
     "exported": true,
-    "signature": "(child: People | Tasks | Logs) =\u003e this"
+    "signature": "(child: People | Tasks | Logs | CodecRows) =\u003e this"
   },
   "packages/ts/src/models/markdown_fixture/models.ts::Tasks#field.matchIdWithOwner": {
     "exported": true,
@@ -10065,7 +13253,7 @@
   },
   "packages/ts/src/models/markdown_fixture/models.ts::Tasks#field.ownerEqId": {
     "exported": true,
-    "signature": "(v0: People | Tasks | Logs) =\u003e this"
+    "signature": "(v0: People | Tasks | Logs | CodecRows) =\u003e this"
   },
   "packages/ts/src/models/markdown_fixture/models.ts::Tasks#field.pointsEqName": {
     "exported": true,
@@ -10290,6 +13478,14 @@
   "packages/ts/src/models/markdown_fixture/models.ts::Tasks.sumPoints": {
     "exported": true,
     "signature": "public sumPoints(): this"
+  },
+  "packages/ts/src/models/markdown_fixture/models.ts::codecStyled": {
+    "exported": false,
+    "signature": "function codecStyled(value: StyledValue): value is StyledValue\u003cCodecValue\u003e"
+  },
+  "packages/ts/src/models/markdown_fixture/models.ts::codecValue": {
+    "exported": false,
+    "signature": "function codecValue(value: unknown): value is CodecValue"
   },
   "packages/ts/src/models/markdown_fixture/models.ts::connect": {
     "exported": true,
@@ -11427,10 +14623,6 @@
     "exported": true,
     "signature": "(v0: readonly [number, number]) =\u003e this"
   },
-  "packages/ts/src/models/models.ts::Author#field.betweenStartDt": {
-    "exported": true,
-    "signature": "(v0: readonly [string | Date, string | Date]) =\u003e this"
-  },
   "packages/ts/src/models/models.ts::Author#field.descriptionNeName": {
     "exported": true,
     "signature": "(v0: Author | User | Service | ServiceRegion | CompositeAccount | SoftRecord | Account | Project) =\u003e this"
@@ -11442,6 +14634,14 @@
   "packages/ts/src/models/models.ts::Author#field.entity": {
     "exported": true,
     "signature": "EntityDef"
+  },
+  "packages/ts/src/models/models.ts::Author#field.fulltextBooleanNameWithDescription": {
+    "exported": true,
+    "signature": "(v0: string) =\u003e this"
+  },
+  "packages/ts/src/models/models.ts::Author#field.fulltextNameWithDescription": {
+    "exported": true,
+    "signature": "(v0: string) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.geReadCount": {
     "exported": true,
@@ -11646,10 +14846,6 @@
   "packages/ts/src/models/models.ts::Author#field.serviceSeq": {
     "exported": true,
     "signature": "(v0: number | readonly (number)[] | ValueFunction | Model) =\u003e this"
-  },
-  "packages/ts/src/models/models.ts::Author#field.startDt": {
-    "exported": true,
-    "signature": "(...args: [v0: string | Date | readonly (string | Date)[] | ValueFunction | Model] | [v0: ColumnFunction, compared: unknown]) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.userSeq": {
     "exported": true,

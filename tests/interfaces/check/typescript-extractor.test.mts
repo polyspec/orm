@@ -80,3 +80,24 @@ caseTest('the TypeScript extractor records public constructor signatures without
     rmSync(temporary, { recursive: true, force: true });
   }
 });
+
+caseTest('the TypeScript extractor records public object union aliases as IR records', 15_000, ({ signal }) => {
+  const temporary = mkdtempSync(join(tmpdir(), 'typescript-record-alias-'));
+  try {
+    writeFileSync(join(temporary, 'limit.ts'), [
+      'export type Limit = { offset: number; count: number; offset_p?: never; count_p?: never }',
+      '  | { offset_p: number; count_p: number; offset?: never; count?: never };',
+    ].join('\n'));
+    const symbols = extract(temporary, signal);
+    const limit = symbols['limit.ts::Limit'];
+    assert.ok(limit, 'extractor omitted the exported type alias');
+    assert.equal(limit.exported, true);
+    assert.ok(limit.signature.startsWith('type Limit ='), 'extractor did not retain the type alias declaration');
+    assert.deepEqual(symbols['limit.ts::Limit#wire'], {
+      signature: '{"offset":"integer","count":"integer","offset_p":"integer","count_p":"integer"}',
+      exported: true,
+    });
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
+});

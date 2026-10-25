@@ -6003,6 +6003,10 @@
     "exported": false,
     "signature": "func(g *ir.Group, out map[string]bool)"
   },
+  "packages/go/engine/planner/planner.go::prepareWriteAssignments": {
+    "exported": false,
+    "signature": "func(ent *runtimemodel.Entity, assignments []ir.Assign) ([]ir.Assign, error)"
+  },
   "packages/go/engine/planner/planner.go::relCtx": {
     "exported": false,
     "signature": "type relCtx struct { parentStep int parentAsm *plan.Assemble parentKeys []string childKeys []string kind string }"
@@ -6026,6 +6030,10 @@
   "packages/go/engine/planner/planner.go::relCtx#field.parentStep": {
     "exported": false,
     "signature": "int"
+  },
+  "packages/go/engine/planner/planner.go::reorderPaginateCount": {
+    "exported": false,
+    "signature": "func(ps *stepSet)"
   },
   "packages/go/engine/planner/planner.go::scope": {
     "exported": false,
@@ -6058,6 +6066,10 @@
   "packages/go/engine/planner/planner.go::scope#field.q": {
     "exported": false,
     "signature": "*ir.Query"
+  },
+  "packages/go/engine/planner/planner.go::shiftChildSteps": {
+    "exported": false,
+    "signature": "func(assemble *plan.Assemble)"
   },
   "packages/go/engine/planner/planner.go::stepSet": {
     "exported": false,
@@ -6453,7 +6465,7 @@
   },
   "packages/go/model/account.go::AccountModel.GetName": {
     "exported": true,
-    "signature": "receiver=*AccountModel func() string"
+    "signature": "receiver=*AccountModel func() (string, error)"
   },
   "packages/go/model/account.go::AccountModel.GetQuery": {
     "exported": true,
@@ -6461,7 +6473,7 @@
   },
   "packages/go/model/account.go::AccountModel.GetSeq": {
     "exported": true,
-    "signature": "receiver=*AccountModel func() int64"
+    "signature": "receiver=*AccountModel func() (int64, error)"
   },
   "packages/go/model/account.go::AccountModel.GetSum": {
     "exported": true,
@@ -6753,7 +6765,7 @@
   },
   "packages/go/model/account_project.go::AccountProjectModel.GetAccountSeq": {
     "exported": true,
-    "signature": "receiver=*AccountProjectModel func() int64"
+    "signature": "receiver=*AccountProjectModel func() (int64, error)"
   },
   "packages/go/model/account_project.go::AccountProjectModel.GetAvg": {
     "exported": true,
@@ -6765,7 +6777,7 @@
   },
   "packages/go/model/account_project.go::AccountProjectModel.GetProjectSeq": {
     "exported": true,
-    "signature": "receiver=*AccountProjectModel func() int64"
+    "signature": "receiver=*AccountProjectModel func() (int64, error)"
   },
   "packages/go/model/account_project.go::AccountProjectModel.GetQuery": {
     "exported": true,
@@ -7073,11 +7085,11 @@
   },
   "packages/go/model/audit_record.go::AuditRecordModel.GetRequestId": {
     "exported": true,
-    "signature": "receiver=*AuditRecordModel func() string"
+    "signature": "receiver=*AuditRecordModel func() (string, error)"
   },
   "packages/go/model/audit_record.go::AuditRecordModel.GetSeq": {
     "exported": true,
-    "signature": "receiver=*AuditRecordModel func() int64"
+    "signature": "receiver=*AuditRecordModel func() (int64, error)"
   },
   "packages/go/model/audit_record.go::AuditRecordModel.GetSum": {
     "exported": true,
@@ -7373,7 +7385,7 @@
   },
   "packages/go/model/audited_note.go::AuditedNoteModel.GetAuditSeq": {
     "exported": true,
-    "signature": "receiver=*AuditedNoteModel func() int64"
+    "signature": "receiver=*AuditedNoteModel func() (int64, error)"
   },
   "packages/go/model/audited_note.go::AuditedNoteModel.GetAvg": {
     "exported": true,
@@ -7385,7 +7397,7 @@
   },
   "packages/go/model/audited_note.go::AuditedNoteModel.GetLabel": {
     "exported": true,
-    "signature": "receiver=*AuditedNoteModel func() string"
+    "signature": "receiver=*AuditedNoteModel func() (string, error)"
   },
   "packages/go/model/audited_note.go::AuditedNoteModel.GetQuery": {
     "exported": true,
@@ -7393,7 +7405,7 @@
   },
   "packages/go/model/audited_note.go::AuditedNoteModel.GetSeq": {
     "exported": true,
-    "signature": "receiver=*AuditedNoteModel func() int64"
+    "signature": "receiver=*AuditedNoteModel func() (int64, error)"
   },
   "packages/go/model/audited_note.go::AuditedNoteModel.GetSum": {
     "exported": true,
@@ -7753,7 +7765,7 @@
   },
   "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.GetAuditSeq": {
     "exported": true,
-    "signature": "receiver=*AuditedNoteHistoryModel func() int64"
+    "signature": "receiver=*AuditedNoteHistoryModel func() (int64, error)"
   },
   "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.GetAvg": {
     "exported": true,
@@ -7761,7 +7773,7 @@
   },
   "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.GetChange": {
     "exported": true,
-    "signature": "receiver=*AuditedNoteHistoryModel func() string"
+    "signature": "receiver=*AuditedNoteHistoryModel func() (string, error)"
   },
   "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.GetCount": {
     "exported": true,
@@ -7769,15 +7781,15 @@
   },
   "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.GetHistoryId": {
     "exported": true,
-    "signature": "receiver=*AuditedNoteHistoryModel func() int64"
+    "signature": "receiver=*AuditedNoteHistoryModel func() (int64, error)"
   },
   "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.GetLabel": {
     "exported": true,
-    "signature": "receiver=*AuditedNoteHistoryModel func() string"
+    "signature": "receiver=*AuditedNoteHistoryModel func() (string, error)"
   },
   "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.GetPreviousAuditSeq": {
     "exported": true,
-    "signature": "receiver=*AuditedNoteHistoryModel func() *int64"
+    "signature": "receiver=*AuditedNoteHistoryModel func() (*int64, error)"
   },
   "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.GetQuery": {
     "exported": true,
@@ -7785,7 +7797,7 @@
   },
   "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.GetSeq": {
     "exported": true,
-    "signature": "receiver=*AuditedNoteHistoryModel func() int64"
+    "signature": "receiver=*AuditedNoteHistoryModel func() (int64, error)"
   },
   "packages/go/model/audited_note_history.go::AuditedNoteHistoryModel.GetSum": {
     "exported": true,
@@ -8653,15 +8665,15 @@
   },
   "packages/go/model/author.go::AuthorModel.GetAesHexEmail": {
     "exported": true,
-    "signature": "receiver=*AuthorModel func() *string"
+    "signature": "receiver=*AuthorModel func() (*string, error)"
   },
   "packages/go/model/author.go::AuthorModel.GetAesHexPhone": {
     "exported": true,
-    "signature": "receiver=*AuthorModel func() *string"
+    "signature": "receiver=*AuthorModel func() (*string, error)"
   },
   "packages/go/model/author.go::AuthorModel.GetAesKeyVersion": {
     "exported": true,
-    "signature": "receiver=*AuthorModel func() int32"
+    "signature": "receiver=*AuthorModel func() (int32, error)"
   },
   "packages/go/model/author.go::AuthorModel.GetAvg": {
     "exported": true,
@@ -8693,27 +8705,27 @@
   },
   "packages/go/model/author.go::AuthorModel.GetCreatedTs": {
     "exported": true,
-    "signature": "receiver=*AuthorModel func() time.Time"
+    "signature": "receiver=*AuthorModel func() (time.Time, error)"
   },
   "packages/go/model/author.go::AuthorModel.GetDescription": {
     "exported": true,
-    "signature": "receiver=*AuthorModel func() *string"
+    "signature": "receiver=*AuthorModel func() (*string, error)"
   },
   "packages/go/model/author.go::AuthorModel.GetDisplayEndDt": {
     "exported": true,
-    "signature": "receiver=*AuthorModel func() *time.Time"
+    "signature": "receiver=*AuthorModel func() (*time.Time, error)"
   },
   "packages/go/model/author.go::AuthorModel.GetDisplayStartDt": {
     "exported": true,
-    "signature": "receiver=*AuthorModel func() *time.Time"
+    "signature": "receiver=*AuthorModel func() (*time.Time, error)"
   },
   "packages/go/model/author.go::AuthorModel.GetEmailBlindIndex": {
     "exported": true,
-    "signature": "receiver=*AuthorModel func() *string"
+    "signature": "receiver=*AuthorModel func() (*string, error)"
   },
   "packages/go/model/author.go::AuthorModel.GetEndDt": {
     "exported": true,
-    "signature": "receiver=*AuthorModel func() time.Time"
+    "signature": "receiver=*AuthorModel func() (time.Time, error)"
   },
   "packages/go/model/author.go::AuthorModel.GetGzExtend": {
     "exported": true,
@@ -8721,23 +8733,23 @@
   },
   "packages/go/model/author.go::AuthorModel.GetIp": {
     "exported": true,
-    "signature": "receiver=*AuthorModel func() *string"
+    "signature": "receiver=*AuthorModel func() (*string, error)"
   },
   "packages/go/model/author.go::AuthorModel.GetIsAllday": {
     "exported": true,
-    "signature": "receiver=*AuthorModel func() bool"
+    "signature": "receiver=*AuthorModel func() (bool, error)"
   },
   "packages/go/model/author.go::AuthorModel.GetIsClose": {
     "exported": true,
-    "signature": "receiver=*AuthorModel func() bool"
+    "signature": "receiver=*AuthorModel func() (bool, error)"
   },
   "packages/go/model/author.go::AuthorModel.GetIsDisplay": {
     "exported": true,
-    "signature": "receiver=*AuthorModel func() bool"
+    "signature": "receiver=*AuthorModel func() (bool, error)"
   },
   "packages/go/model/author.go::AuthorModel.GetIsSingleWork": {
     "exported": true,
-    "signature": "receiver=*AuthorModel func() bool"
+    "signature": "receiver=*AuthorModel func() (bool, error)"
   },
   "packages/go/model/author.go::AuthorModel.GetJsonSetting": {
     "exported": true,
@@ -8753,7 +8765,7 @@
   },
   "packages/go/model/author.go::AuthorModel.GetLikeCount": {
     "exported": true,
-    "signature": "receiver=*AuthorModel func() int32"
+    "signature": "receiver=*AuthorModel func() (int32, error)"
   },
   "packages/go/model/author.go::AuthorModel.GetMembers": {
     "exported": true,
@@ -8765,7 +8777,7 @@
   },
   "packages/go/model/author.go::AuthorModel.GetName": {
     "exported": true,
-    "signature": "receiver=*AuthorModel func() string"
+    "signature": "receiver=*AuthorModel func() (string, error)"
   },
   "packages/go/model/author.go::AuthorModel.GetOwner": {
     "exported": true,
@@ -8777,15 +8789,15 @@
   },
   "packages/go/model/author.go::AuthorModel.GetPhoneBlindIndex": {
     "exported": true,
-    "signature": "receiver=*AuthorModel func() *string"
+    "signature": "receiver=*AuthorModel func() (*string, error)"
   },
   "packages/go/model/author.go::AuthorModel.GetPhotoUrl": {
     "exported": true,
-    "signature": "receiver=*AuthorModel func() *string"
+    "signature": "receiver=*AuthorModel func() (*string, error)"
   },
   "packages/go/model/author.go::AuthorModel.GetPrice": {
     "exported": true,
-    "signature": "receiver=*AuthorModel func() *string"
+    "signature": "receiver=*AuthorModel func() (*string, error)"
   },
   "packages/go/model/author.go::AuthorModel.GetQuery": {
     "exported": true,
@@ -8793,15 +8805,15 @@
   },
   "packages/go/model/author.go::AuthorModel.GetReadCount": {
     "exported": true,
-    "signature": "receiver=*AuthorModel func() int32"
+    "signature": "receiver=*AuthorModel func() (int32, error)"
   },
   "packages/go/model/author.go::AuthorModel.GetReaderCount": {
     "exported": true,
-    "signature": "receiver=*AuthorModel func() int32"
+    "signature": "receiver=*AuthorModel func() (int32, error)"
   },
   "packages/go/model/author.go::AuthorModel.GetSeq": {
     "exported": true,
-    "signature": "receiver=*AuthorModel func() int64"
+    "signature": "receiver=*AuthorModel func() (int64, error)"
   },
   "packages/go/model/author.go::AuthorModel.GetSerializeData": {
     "exported": true,
@@ -8817,7 +8829,7 @@
   },
   "packages/go/model/author.go::AuthorModel.GetServiceMemberSeq": {
     "exported": true,
-    "signature": "receiver=*AuthorModel func() int64"
+    "signature": "receiver=*AuthorModel func() (int64, error)"
   },
   "packages/go/model/author.go::AuthorModel.GetServiceModel": {
     "exported": true,
@@ -8829,15 +8841,15 @@
   },
   "packages/go/model/author.go::AuthorModel.GetServiceRegionSeq": {
     "exported": true,
-    "signature": "receiver=*AuthorModel func() int64"
+    "signature": "receiver=*AuthorModel func() (int64, error)"
   },
   "packages/go/model/author.go::AuthorModel.GetServiceSeq": {
     "exported": true,
-    "signature": "receiver=*AuthorModel func() int64"
+    "signature": "receiver=*AuthorModel func() (int64, error)"
   },
   "packages/go/model/author.go::AuthorModel.GetStartDt": {
     "exported": true,
-    "signature": "receiver=*AuthorModel func() time.Time"
+    "signature": "receiver=*AuthorModel func() (time.Time, error)"
   },
   "packages/go/model/author.go::AuthorModel.GetStartMonth": {
     "exported": true,
@@ -8849,7 +8861,7 @@
   },
   "packages/go/model/author.go::AuthorModel.GetSuccessCount": {
     "exported": true,
-    "signature": "receiver=*AuthorModel func() int32"
+    "signature": "receiver=*AuthorModel func() (int32, error)"
   },
   "packages/go/model/author.go::AuthorModel.GetSum": {
     "exported": true,
@@ -8857,11 +8869,11 @@
   },
   "packages/go/model/author.go::AuthorModel.GetTargetClubReaderCount": {
     "exported": true,
-    "signature": "receiver=*AuthorModel func() int32"
+    "signature": "receiver=*AuthorModel func() (int32, error)"
   },
   "packages/go/model/author.go::AuthorModel.GetUpdatedTs": {
     "exported": true,
-    "signature": "receiver=*AuthorModel func() time.Time"
+    "signature": "receiver=*AuthorModel func() (time.Time, error)"
   },
   "packages/go/model/author.go::AuthorModel.GetUserModel": {
     "exported": true,
@@ -8869,11 +8881,11 @@
   },
   "packages/go/model/author.go::AuthorModel.GetUserSeq": {
     "exported": true,
-    "signature": "receiver=*AuthorModel func() int64"
+    "signature": "receiver=*AuthorModel func() (int64, error)"
   },
   "packages/go/model/author.go::AuthorModel.GetUuid": {
     "exported": true,
-    "signature": "receiver=*AuthorModel func() *string"
+    "signature": "receiver=*AuthorModel func() (*string, error)"
   },
   "packages/go/model/author.go::AuthorModel.GetWriter": {
     "exported": true,
@@ -10261,7 +10273,7 @@
   },
   "packages/go/model/bind_cell.go::BindCellModel.GetBody": {
     "exported": true,
-    "signature": "receiver=*BindCellModel func() *string"
+    "signature": "receiver=*BindCellModel func() (*string, error)"
   },
   "packages/go/model/bind_cell.go::BindCellModel.GetCount": {
     "exported": true,
@@ -10269,7 +10281,7 @@
   },
   "packages/go/model/bind_cell.go::BindCellModel.GetLabel": {
     "exported": true,
-    "signature": "receiver=*BindCellModel func() string"
+    "signature": "receiver=*BindCellModel func() (string, error)"
   },
   "packages/go/model/bind_cell.go::BindCellModel.GetQuery": {
     "exported": true,
@@ -10277,7 +10289,7 @@
   },
   "packages/go/model/bind_cell.go::BindCellModel.GetSeq": {
     "exported": true,
-    "signature": "receiver=*BindCellModel func() int64"
+    "signature": "receiver=*BindCellModel func() (int64, error)"
   },
   "packages/go/model/bind_cell.go::BindCellModel.GetSum": {
     "exported": true,
@@ -10285,7 +10297,7 @@
   },
   "packages/go/model/bind_cell.go::BindCellModel.GetToken": {
     "exported": true,
-    "signature": "receiver=*BindCellModel func() *string"
+    "signature": "receiver=*BindCellModel func() (*string, error)"
   },
   "packages/go/model/bind_cell.go::BindCellModel.Gets": {
     "exported": true,
@@ -10637,15 +10649,15 @@
   },
   "packages/go/model/clock_cell.go::ClockCellModel.GetAt0": {
     "exported": true,
-    "signature": "receiver=*ClockCellModel func() time.Time"
+    "signature": "receiver=*ClockCellModel func() (time.Time, error)"
   },
   "packages/go/model/clock_cell.go::ClockCellModel.GetAt3": {
     "exported": true,
-    "signature": "receiver=*ClockCellModel func() time.Time"
+    "signature": "receiver=*ClockCellModel func() (time.Time, error)"
   },
   "packages/go/model/clock_cell.go::ClockCellModel.GetAt6": {
     "exported": true,
-    "signature": "receiver=*ClockCellModel func() time.Time"
+    "signature": "receiver=*ClockCellModel func() (time.Time, error)"
   },
   "packages/go/model/clock_cell.go::ClockCellModel.GetAvg": {
     "exported": true,
@@ -10661,7 +10673,7 @@
   },
   "packages/go/model/clock_cell.go::ClockCellModel.GetLabel": {
     "exported": true,
-    "signature": "receiver=*ClockCellModel func() string"
+    "signature": "receiver=*ClockCellModel func() (string, error)"
   },
   "packages/go/model/clock_cell.go::ClockCellModel.GetQuery": {
     "exported": true,
@@ -10669,7 +10681,7 @@
   },
   "packages/go/model/clock_cell.go::ClockCellModel.GetSeq": {
     "exported": true,
-    "signature": "receiver=*ClockCellModel func() int64"
+    "signature": "receiver=*ClockCellModel func() (int64, error)"
   },
   "packages/go/model/clock_cell.go::ClockCellModel.GetSum": {
     "exported": true,
@@ -11041,7 +11053,7 @@
   },
   "packages/go/model/composite_account.go::CompositeAccountModel.GetAccountId": {
     "exported": true,
-    "signature": "receiver=*CompositeAccountModel func() int64"
+    "signature": "receiver=*CompositeAccountModel func() (int64, error)"
   },
   "packages/go/model/composite_account.go::CompositeAccountModel.GetAvg": {
     "exported": true,
@@ -11061,7 +11073,7 @@
   },
   "packages/go/model/composite_account.go::CompositeAccountModel.GetName": {
     "exported": true,
-    "signature": "receiver=*CompositeAccountModel func() string"
+    "signature": "receiver=*CompositeAccountModel func() (string, error)"
   },
   "packages/go/model/composite_account.go::CompositeAccountModel.GetQuery": {
     "exported": true,
@@ -11073,7 +11085,7 @@
   },
   "packages/go/model/composite_account.go::CompositeAccountModel.GetTenantId": {
     "exported": true,
-    "signature": "receiver=*CompositeAccountModel func() int64"
+    "signature": "receiver=*CompositeAccountModel func() (int64, error)"
   },
   "packages/go/model/composite_account.go::CompositeAccountModel.Gets": {
     "exported": true,
@@ -11401,7 +11413,7 @@
   },
   "packages/go/model/composite_membership.go::CompositeMembershipModel.GetAccountId": {
     "exported": true,
-    "signature": "receiver=*CompositeMembershipModel func() int64"
+    "signature": "receiver=*CompositeMembershipModel func() (int64, error)"
   },
   "packages/go/model/composite_membership.go::CompositeMembershipModel.GetAvg": {
     "exported": true,
@@ -11417,7 +11429,7 @@
   },
   "packages/go/model/composite_membership.go::CompositeMembershipModel.GetRole": {
     "exported": true,
-    "signature": "receiver=*CompositeMembershipModel func() string"
+    "signature": "receiver=*CompositeMembershipModel func() (string, error)"
   },
   "packages/go/model/composite_membership.go::CompositeMembershipModel.GetSum": {
     "exported": true,
@@ -11425,7 +11437,7 @@
   },
   "packages/go/model/composite_membership.go::CompositeMembershipModel.GetTenantId": {
     "exported": true,
-    "signature": "receiver=*CompositeMembershipModel func() int64"
+    "signature": "receiver=*CompositeMembershipModel func() (int64, error)"
   },
   "packages/go/model/composite_membership.go::CompositeMembershipModel.Gets": {
     "exported": true,
@@ -11761,7 +11773,7 @@
   },
   "packages/go/model/day_cell.go::DayCellModel.GetAtTime": {
     "exported": true,
-    "signature": "receiver=*DayCellModel func() *string"
+    "signature": "receiver=*DayCellModel func() (*string, error)"
   },
   "packages/go/model/day_cell.go::DayCellModel.GetAvg": {
     "exported": true,
@@ -11773,11 +11785,11 @@
   },
   "packages/go/model/day_cell.go::DayCellModel.GetDay": {
     "exported": true,
-    "signature": "receiver=*DayCellModel func() *time.Time"
+    "signature": "receiver=*DayCellModel func() (*time.Time, error)"
   },
   "packages/go/model/day_cell.go::DayCellModel.GetLabel": {
     "exported": true,
-    "signature": "receiver=*DayCellModel func() string"
+    "signature": "receiver=*DayCellModel func() (string, error)"
   },
   "packages/go/model/day_cell.go::DayCellModel.GetQuery": {
     "exported": true,
@@ -11785,7 +11797,7 @@
   },
   "packages/go/model/day_cell.go::DayCellModel.GetSeq": {
     "exported": true,
-    "signature": "receiver=*DayCellModel func() int64"
+    "signature": "receiver=*DayCellModel func() (int64, error)"
   },
   "packages/go/model/day_cell.go::DayCellModel.GetSum": {
     "exported": true,
@@ -12133,7 +12145,7 @@
   },
   "packages/go/model/hex_cell.go::HexCellModel.GetLabel": {
     "exported": true,
-    "signature": "receiver=*HexCellModel func() string"
+    "signature": "receiver=*HexCellModel func() (string, error)"
   },
   "packages/go/model/hex_cell.go::HexCellModel.GetQuery": {
     "exported": true,
@@ -12141,7 +12153,7 @@
   },
   "packages/go/model/hex_cell.go::HexCellModel.GetSeq": {
     "exported": true,
-    "signature": "receiver=*HexCellModel func() int64"
+    "signature": "receiver=*HexCellModel func() (int64, error)"
   },
   "packages/go/model/hex_cell.go::HexCellModel.GetSum": {
     "exported": true,
@@ -12149,7 +12161,7 @@
   },
   "packages/go/model/hex_cell.go::HexCellModel.GetValue": {
     "exported": true,
-    "signature": "receiver=*HexCellModel func() *string"
+    "signature": "receiver=*HexCellModel func() (*string, error)"
   },
   "packages/go/model/hex_cell.go::HexCellModel.Gets": {
     "exported": true,
@@ -12465,7 +12477,7 @@
   },
   "packages/go/model/note_reader.go::NoteReaderModel.GetSeq": {
     "exported": true,
-    "signature": "receiver=*NoteReaderModel func() int64"
+    "signature": "receiver=*NoteReaderModel func() (int64, error)"
   },
   "packages/go/model/note_reader.go::NoteReaderModel.GetSharedNoteModel": {
     "exported": true,
@@ -12473,7 +12485,7 @@
   },
   "packages/go/model/note_reader.go::NoteReaderModel.GetSharedNoteSeq": {
     "exported": true,
-    "signature": "receiver=*NoteReaderModel func() int64"
+    "signature": "receiver=*NoteReaderModel func() (int64, error)"
   },
   "packages/go/model/note_reader.go::NoteReaderModel.GetSum": {
     "exported": true,
@@ -12865,7 +12877,7 @@
   },
   "packages/go/model/project.go::ProjectModel.GetName": {
     "exported": true,
-    "signature": "receiver=*ProjectModel func() string"
+    "signature": "receiver=*ProjectModel func() (string, error)"
   },
   "packages/go/model/project.go::ProjectModel.GetQuery": {
     "exported": true,
@@ -12873,7 +12885,7 @@
   },
   "packages/go/model/project.go::ProjectModel.GetSeq": {
     "exported": true,
-    "signature": "receiver=*ProjectModel func() int64"
+    "signature": "receiver=*ProjectModel func() (int64, error)"
   },
   "packages/go/model/project.go::ProjectModel.GetSum": {
     "exported": true,
@@ -13165,7 +13177,7 @@
   },
   "packages/go/model/service.go::ServiceModel.GetName": {
     "exported": true,
-    "signature": "receiver=*ServiceModel func() string"
+    "signature": "receiver=*ServiceModel func() (string, error)"
   },
   "packages/go/model/service.go::ServiceModel.GetQuery": {
     "exported": true,
@@ -13177,7 +13189,7 @@
   },
   "packages/go/model/service.go::ServiceModel.GetSeq": {
     "exported": true,
-    "signature": "receiver=*ServiceModel func() int64"
+    "signature": "receiver=*ServiceModel func() (int64, error)"
   },
   "packages/go/model/service.go::ServiceModel.GetServiceMemberModels": {
     "exported": true,
@@ -13529,11 +13541,11 @@
   },
   "packages/go/model/service_member.go::ServiceMemberModel.GetSeq": {
     "exported": true,
-    "signature": "receiver=*ServiceMemberModel func() int64"
+    "signature": "receiver=*ServiceMemberModel func() (int64, error)"
   },
   "packages/go/model/service_member.go::ServiceMemberModel.GetServiceSeq": {
     "exported": true,
-    "signature": "receiver=*ServiceMemberModel func() int64"
+    "signature": "receiver=*ServiceMemberModel func() (int64, error)"
   },
   "packages/go/model/service_member.go::ServiceMemberModel.GetSum": {
     "exported": true,
@@ -13541,7 +13553,7 @@
   },
   "packages/go/model/service_member.go::ServiceMemberModel.GetUserSeq": {
     "exported": true,
-    "signature": "receiver=*ServiceMemberModel func() int64"
+    "signature": "receiver=*ServiceMemberModel func() (int64, error)"
   },
   "packages/go/model/service_member.go::ServiceMemberModel.Gets": {
     "exported": true,
@@ -13909,7 +13921,7 @@
   },
   "packages/go/model/service_region.go::ServiceRegionModel.GetName": {
     "exported": true,
-    "signature": "receiver=*ServiceRegionModel func() string"
+    "signature": "receiver=*ServiceRegionModel func() (string, error)"
   },
   "packages/go/model/service_region.go::ServiceRegionModel.GetQuery": {
     "exported": true,
@@ -13917,7 +13929,7 @@
   },
   "packages/go/model/service_region.go::ServiceRegionModel.GetSeq": {
     "exported": true,
-    "signature": "receiver=*ServiceRegionModel func() int64"
+    "signature": "receiver=*ServiceRegionModel func() (int64, error)"
   },
   "packages/go/model/service_region.go::ServiceRegionModel.GetServiceModel": {
     "exported": true,
@@ -13925,7 +13937,7 @@
   },
   "packages/go/model/service_region.go::ServiceRegionModel.GetServiceSeq": {
     "exported": true,
-    "signature": "receiver=*ServiceRegionModel func() int64"
+    "signature": "receiver=*ServiceRegionModel func() (int64, error)"
   },
   "packages/go/model/service_region.go::ServiceRegionModel.GetSum": {
     "exported": true,
@@ -14261,7 +14273,7 @@
   },
   "packages/go/model/shared_note.go::SharedNoteModel.GetSeq": {
     "exported": true,
-    "signature": "receiver=*SharedNoteModel func() int64"
+    "signature": "receiver=*SharedNoteModel func() (int64, error)"
   },
   "packages/go/model/shared_note.go::SharedNoteModel.GetSum": {
     "exported": true,
@@ -14269,7 +14281,7 @@
   },
   "packages/go/model/shared_note.go::SharedNoteModel.GetTitle": {
     "exported": true,
-    "signature": "receiver=*SharedNoteModel func() string"
+    "signature": "receiver=*SharedNoteModel func() (string, error)"
   },
   "packages/go/model/shared_note.go::SharedNoteModel.Gets": {
     "exported": true,
@@ -14569,7 +14581,7 @@
   },
   "packages/go/model/soft_link.go::SoftLinkModel.GetCode": {
     "exported": true,
-    "signature": "receiver=*SoftLinkModel func() string"
+    "signature": "receiver=*SoftLinkModel func() (string, error)"
   },
   "packages/go/model/soft_link.go::SoftLinkModel.GetCount": {
     "exported": true,
@@ -14577,11 +14589,11 @@
   },
   "packages/go/model/soft_link.go::SoftLinkModel.GetDeletedAt": {
     "exported": true,
-    "signature": "receiver=*SoftLinkModel func() *time.Time"
+    "signature": "receiver=*SoftLinkModel func() (*time.Time, error)"
   },
   "packages/go/model/soft_link.go::SoftLinkModel.GetLabel": {
     "exported": true,
-    "signature": "receiver=*SoftLinkModel func() string"
+    "signature": "receiver=*SoftLinkModel func() (string, error)"
   },
   "packages/go/model/soft_link.go::SoftLinkModel.GetQuery": {
     "exported": true,
@@ -14589,7 +14601,7 @@
   },
   "packages/go/model/soft_link.go::SoftLinkModel.GetSeq": {
     "exported": true,
-    "signature": "receiver=*SoftLinkModel func() int64"
+    "signature": "receiver=*SoftLinkModel func() (int64, error)"
   },
   "packages/go/model/soft_link.go::SoftLinkModel.GetSum": {
     "exported": true,
@@ -14937,11 +14949,11 @@
   },
   "packages/go/model/soft_record.go::SoftRecordModel.GetDeletedAt": {
     "exported": true,
-    "signature": "receiver=*SoftRecordModel func() *time.Time"
+    "signature": "receiver=*SoftRecordModel func() (*time.Time, error)"
   },
   "packages/go/model/soft_record.go::SoftRecordModel.GetName": {
     "exported": true,
-    "signature": "receiver=*SoftRecordModel func() string"
+    "signature": "receiver=*SoftRecordModel func() (string, error)"
   },
   "packages/go/model/soft_record.go::SoftRecordModel.GetQuery": {
     "exported": true,
@@ -14949,7 +14961,7 @@
   },
   "packages/go/model/soft_record.go::SoftRecordModel.GetSeq": {
     "exported": true,
-    "signature": "receiver=*SoftRecordModel func() int64"
+    "signature": "receiver=*SoftRecordModel func() (int64, error)"
   },
   "packages/go/model/soft_record.go::SoftRecordModel.GetSum": {
     "exported": true,
@@ -15273,11 +15285,11 @@
   },
   "packages/go/model/task.go::TaskModel.GetSeq": {
     "exported": true,
-    "signature": "receiver=*TaskModel func() int64"
+    "signature": "receiver=*TaskModel func() (int64, error)"
   },
   "packages/go/model/task.go::TaskModel.GetState": {
     "exported": true,
-    "signature": "receiver=*TaskModel func() string"
+    "signature": "receiver=*TaskModel func() (string, error)"
   },
   "packages/go/model/task.go::TaskModel.GetSum": {
     "exported": true,
@@ -15285,7 +15297,7 @@
   },
   "packages/go/model/task.go::TaskModel.GetTitle": {
     "exported": true,
-    "signature": "receiver=*TaskModel func() string"
+    "signature": "receiver=*TaskModel func() (string, error)"
   },
   "packages/go/model/task.go::TaskModel.Gets": {
     "exported": true,
@@ -15597,7 +15609,7 @@
   },
   "packages/go/model/time_cell.go::TimeCellModel.GetAt": {
     "exported": true,
-    "signature": "receiver=*TimeCellModel func() time.Time"
+    "signature": "receiver=*TimeCellModel func() (time.Time, error)"
   },
   "packages/go/model/time_cell.go::TimeCellModel.GetAvg": {
     "exported": true,
@@ -15605,7 +15617,7 @@
   },
   "packages/go/model/time_cell.go::TimeCellModel.GetClock": {
     "exported": true,
-    "signature": "receiver=*TimeCellModel func() string"
+    "signature": "receiver=*TimeCellModel func() (string, error)"
   },
   "packages/go/model/time_cell.go::TimeCellModel.GetCount": {
     "exported": true,
@@ -15617,7 +15629,7 @@
   },
   "packages/go/model/time_cell.go::TimeCellModel.GetSeq": {
     "exported": true,
-    "signature": "receiver=*TimeCellModel func() int64"
+    "signature": "receiver=*TimeCellModel func() (int64, error)"
   },
   "packages/go/model/time_cell.go::TimeCellModel.GetSum": {
     "exported": true,
@@ -15937,7 +15949,7 @@
   },
   "packages/go/model/upsert_cell.go::UpsertCellModel.GetCode": {
     "exported": true,
-    "signature": "receiver=*UpsertCellModel func() string"
+    "signature": "receiver=*UpsertCellModel func() (string, error)"
   },
   "packages/go/model/upsert_cell.go::UpsertCellModel.GetCount": {
     "exported": true,
@@ -15945,7 +15957,7 @@
   },
   "packages/go/model/upsert_cell.go::UpsertCellModel.GetLabel": {
     "exported": true,
-    "signature": "receiver=*UpsertCellModel func() string"
+    "signature": "receiver=*UpsertCellModel func() (string, error)"
   },
   "packages/go/model/upsert_cell.go::UpsertCellModel.GetQuery": {
     "exported": true,
@@ -15953,7 +15965,7 @@
   },
   "packages/go/model/upsert_cell.go::UpsertCellModel.GetSeq": {
     "exported": true,
-    "signature": "receiver=*UpsertCellModel func() int64"
+    "signature": "receiver=*UpsertCellModel func() (int64, error)"
   },
   "packages/go/model/upsert_cell.go::UpsertCellModel.GetSum": {
     "exported": true,
@@ -16277,7 +16289,7 @@
   },
   "packages/go/model/user.go::UserModel.GetName": {
     "exported": true,
-    "signature": "receiver=*UserModel func() string"
+    "signature": "receiver=*UserModel func() (string, error)"
   },
   "packages/go/model/user.go::UserModel.GetQuery": {
     "exported": true,
@@ -16289,7 +16301,7 @@
   },
   "packages/go/model/user.go::UserModel.GetSeq": {
     "exported": true,
-    "signature": "receiver=*UserModel func() int64"
+    "signature": "receiver=*UserModel func() (int64, error)"
   },
   "packages/go/model/user.go::UserModel.GetSum": {
     "exported": true,
@@ -16585,7 +16597,7 @@
   },
   "packages/go/model/uuid_cell.go::UuidCellModel.GetId": {
     "exported": true,
-    "signature": "receiver=*UuidCellModel func() string"
+    "signature": "receiver=*UuidCellModel func() (string, error)"
   },
   "packages/go/model/uuid_cell.go::UuidCellModel.GetQuery": {
     "exported": true,
@@ -16593,7 +16605,7 @@
   },
   "packages/go/model/uuid_cell.go::UuidCellModel.GetSeq": {
     "exported": true,
-    "signature": "receiver=*UuidCellModel func() int64"
+    "signature": "receiver=*UuidCellModel func() (int64, error)"
   },
   "packages/go/model/uuid_cell.go::UuidCellModel.GetSum": {
     "exported": true,
@@ -17287,6 +17299,58 @@
     "exported": false,
     "signature": "receiver=*catalogSession func(query string, args []any) (names []string, err error)"
   },
+  "packages/go/orm/catalog_insert_defaults.go::catalogExecSingleInsert": {
+    "exported": false,
+    "signature": "func(s *catalogSession, query string, args []any) (sql.Result, error)"
+  },
+  "packages/go/orm/catalog_insert_defaults.go::catalogInsertLocator": {
+    "exported": false,
+    "signature": "type catalogInsertLocator struct { query string args []any }"
+  },
+  "packages/go/orm/catalog_insert_defaults.go::catalogInsertLocator#field.args": {
+    "exported": false,
+    "signature": "[]any"
+  },
+  "packages/go/orm/catalog_insert_defaults.go::catalogInsertLocator#field.query": {
+    "exported": false,
+    "signature": "string"
+  },
+  "packages/go/orm/catalog_insert_defaults.go::catalogInsertLocator.insertAndReadKeys": {
+    "exported": false,
+    "signature": "receiver=*catalogInsertLocator func( s *catalogSession, metadata CatalogTableMetadata, query string, args []any, changes []catalogChange, keyIndexes []int, ) ([]any, error)"
+  },
+  "packages/go/orm/catalog_insert_defaults.go::catalogInsertLocator.read": {
+    "exported": false,
+    "signature": "receiver=*catalogInsertLocator func(s *catalogSession, metadata CatalogTableMetadata) ([][]any, error)"
+  },
+  "packages/go/orm/catalog_insert_defaults.go::catalogInsertLocator.requireAbsent": {
+    "exported": false,
+    "signature": "receiver=*catalogInsertLocator func(s *catalogSession, metadata CatalogTableMetadata) error"
+  },
+  "packages/go/orm/catalog_insert_defaults.go::catalogInsertReturningKeys": {
+    "exported": false,
+    "signature": "func( s *catalogSession, metadata CatalogTableMetadata, query string, args []any, changes []catalogChange, keyIndexes []int, dialect string, ) ([]any, error)"
+  },
+  "packages/go/orm/catalog_insert_defaults.go::catalogInsertedKeys": {
+    "exported": false,
+    "signature": "func(row []any, keyIndexes []int) ([]any, error)"
+  },
+  "packages/go/orm/catalog_insert_defaults.go::catalogMySQLInsertKeys": {
+    "exported": false,
+    "signature": "func( s *catalogSession, metadata CatalogTableMetadata, query string, args []any, changes []catalogChange, keyIndexes []int, omittedKeys []int, omittedAutomaticKeys []int, ) ([]any, error)"
+  },
+  "packages/go/orm/catalog_insert_defaults.go::catalogValidateInsertedRow": {
+    "exported": false,
+    "signature": "func( metadata CatalogTableMetadata, row []any, changes []catalogChange, keyIndexes []int, ) ([]any, error)"
+  },
+  "packages/go/orm/catalog_insert_defaults.go::catalogVerifyInsertedValues": {
+    "exported": false,
+    "signature": "func(row []any, changes []catalogChange) error"
+  },
+  "packages/go/orm/catalog_insert_defaults.go::newCatalogInsertLocator": {
+    "exported": false,
+    "signature": "func(metadata CatalogTableMetadata, changes []catalogChange) (*catalogInsertLocator, error)"
+  },
   "packages/go/orm/catalog_metadata.go::CatalogColumn": {
     "exported": true,
     "signature": "type CatalogColumn struct { Name string NativeType string Nullable bool Generated bool AutomaticKey bool DefaultExpression *string ExpressionDefault bool }"
@@ -17453,7 +17517,7 @@
   },
   "packages/go/orm/catalog_mutation.go::catalogChanges": {
     "exported": false,
-    "signature": "func(metadata CatalogTableMetadata, values []CatalogAssignment, code string) ([]catalogChange, error)"
+    "signature": "func(metadata CatalogTableMetadata, values []CatalogAssignment, code string, allowEmpty bool) ([]catalogChange, error)"
   },
   "packages/go/orm/catalog_mutation.go::catalogCheckCurrent": {
     "exported": false,
@@ -17622,6 +17686,10 @@
   "packages/go/orm/catalog_query.go::CatalogQueryResult#field.Rows": {
     "exported": true,
     "signature": "[][]any"
+  },
+  "packages/go/orm/catalog_query.go::catalogReadRows": {
+    "exported": false,
+    "signature": "func(s *catalogSession, metadata CatalogTableMetadata, query string, args []any) ([][]any, error)"
   },
   "packages/go/orm/catalog_query.go::catalogSkipQuoted": {
     "exported": false,
@@ -20515,6 +20583,10 @@
     "exported": false,
     "signature": "func(err error) error"
   },
+  "packages/go/orm/root_in.go::DB.splitReadPlan": {
+    "exported": false,
+    "signature": "receiver=*DB func(r *request) (*cached, int, error)"
+  },
   "packages/go/orm/root_in.go::driverBindLimit": {
     "exported": false,
     "signature": "func(driver string) int"
@@ -20525,7 +20597,11 @@
   },
   "packages/go/orm/root_in.go::rootINParts": {
     "exported": false,
-    "signature": "func(r *request, st *plan.Step, driver string) ([]*request, error)"
+    "signature": "func(r *request, slots int, driver string) ([]*request, error)"
+  },
+  "packages/go/orm/root_in.go::rootINTarget": {
+    "exported": false,
+    "signature": "func(q *ir.Query) int"
   },
   "packages/go/orm/shape.go::PlanID": {
     "exported": true,

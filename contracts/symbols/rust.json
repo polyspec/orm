@@ -1,4 +1,8 @@
 {
+  "packages/rust/build/src/catalog/assignment_budget.rs::add": {
+    "exported": false,
+    "signature": "pub (super) fn add (current : usize , name_bytes : usize , value_bytes : usize) -\u003e Option \u003c usize \u003e"
+  },
   "packages/rust/build/src/catalog/insert_mysql_identity.rs::execute": {
     "exported": false,
     "signature": "pub (super) async fn execute (connection : \u0026 mut Conn , metadata : \u0026 TableMetadata , sql : \u0026 str , values : \u0026 [(String , P)] , params : \u0026 [P]) -\u003e Result \u003c Vec \u003c P \u003e , String \u003e"
@@ -227,6 +231,10 @@
     "exported": false,
     "signature": "pub (super) type Publisher = Arc \u003c dyn Fn (MutationPhase) + Send + Sync \u003e ;"
   },
+  "packages/rust/build/src/catalog/mutation.rs::begin_mutation": {
+    "exported": false,
+    "signature": "pub (super) async fn begin_mutation (pool : \u0026 Pool , dialect : \u0026 str , cancellation : \u0026 AtomicBool) -\u003e Result \u003c Conn , String \u003e"
+  },
   "packages/rust/build/src/catalog/mutation.rs::bind": {
     "exported": false,
     "signature": "pub (super) fn bind (value : \u0026 GridCell) -\u003e Result \u003c P , String \u003e"
@@ -238,6 +246,10 @@
   "packages/rust/build/src/catalog/mutation.rs::cell": {
     "exported": false,
     "signature": "pub (super) fn cell (value : \u0026 P) -\u003e GridCell"
+  },
+  "packages/rust/build/src/catalog/mutation.rs::lock_original": {
+    "exported": false,
+    "signature": "pub (super) async fn lock_original (connection : \u0026 mut Conn , original : \u0026 RowSnapshot , dialect : \u0026 str , keys : \u0026 [P] , cancellation : \u0026 AtomicBool , publish : \u0026 Publisher ,) -\u003e Result \u003c TableMetadata , String \u003e"
   },
   "packages/rust/build/src/catalog/mutation.rs::lookup": {
     "exported": false,
@@ -255,6 +267,10 @@
     "exported": false,
     "signature": "pub (super) fn predicate (metadata : \u0026 TableMetadata , dialect : \u0026 str , start : usize) -\u003e Result \u003c String , String \u003e"
   },
+  "packages/rust/build/src/catalog/mutation.rs::prepare_mutation": {
+    "exported": false,
+    "signature": "pub (super) fn prepare_mutation (original : \u0026 RowSnapshot , dialect : \u0026 str , cancellation : \u0026 AtomicBool , publish : \u0026 Publisher) -\u003e Result \u003c Vec \u003c P \u003e , String \u003e"
+  },
   "packages/rust/build/src/catalog/mutation.rs::qualified": {
     "exported": false,
     "signature": "pub (super) fn qualified (metadata : \u0026 TableMetadata , dialect : \u0026 str) -\u003e Result \u003c String , String \u003e"
@@ -262,6 +278,14 @@
   "packages/rust/build/src/catalog/mutation.rs::require_trigger_privilege": {
     "exported": false,
     "signature": " fn require_trigger_privilege (result : \u0026 GridQueryResult) -\u003e Result \u003c () , String \u003e"
+  },
+  "packages/rust/build/src/catalog/mutation.rs::validated_keys": {
+    "exported": false,
+    "signature": "pub (super) fn validated_keys (original : \u0026 RowSnapshot , dialect : \u0026 str) -\u003e Result \u003c Vec \u003c P \u003e , String \u003e"
+  },
+  "packages/rust/build/src/catalog/mutation.rs::write_transaction_statement": {
+    "exported": false,
+    "signature": "pub (super) fn write_transaction_statement (dialect : \u0026 str) -\u003e \u0026 'static str"
   },
   "packages/rust/build/src/catalog/mutation_finish.rs::explicitly_rejected": {
     "exported": false,
@@ -363,6 +387,10 @@
     "exported": false,
     "signature": " fn error () -\u003e String"
   },
+  "packages/rust/build/src/catalog/read_only.rs::error_with": {
+    "exported": false,
+    "signature": " fn error_with (error : impl std :: fmt :: Display) -\u003e String"
+  },
   "packages/rust/build/src/catalog/read_only.rs::validate": {
     "exported": false,
     "signature": "pub (super) fn validate (sql : \u0026 str , dialect : \u0026 str) -\u003e Result \u003c () , String \u003e"
@@ -463,6 +491,14 @@
     "exported": false,
     "signature": " fn invalid () -\u003e String"
   },
+  "packages/rust/build/src/catalog/row_snapshot.rs::invalid_with": {
+    "exported": false,
+    "signature": " fn invalid_with (error : impl std :: fmt :: Display) -\u003e String"
+  },
+  "packages/rust/build/src/catalog/row_snapshot.rs::key_params": {
+    "exported": false,
+    "signature": "pub (super) fn key_params (metadata : \u0026 TableMetadata , cells : \u0026 [GridCell]) -\u003e Result \u003c Vec \u003c P \u003e , String \u003e"
+  },
   "packages/rust/build/src/catalog/row_snapshot.rs::projection": {
     "exported": false,
     "signature": "pub (super) fn projection (metadata : \u0026 TableMetadata , result : \u0026 GridQueryResult) -\u003e Result \u003c () , String \u003e"
@@ -490,6 +526,10 @@
   "packages/rust/build/src/catalog/row_update.rs::invalid": {
     "exported": false,
     "signature": " fn invalid () -\u003e String"
+  },
+  "packages/rust/build/src/catalog/row_update.rs::invalid_with": {
+    "exported": false,
+    "signature": " fn invalid_with (error : impl std :: fmt :: Display) -\u003e String"
   },
   "packages/rust/build/src/catalog/temporal.rs::declared_precision": {
     "exported": false,
@@ -913,7 +953,7 @@
   },
   "packages/rust/build/src/lib.rs::Builder::absolute": {
     "exported": false,
-    "signature": " fn absolute (path : \u0026 Path) -\u003e PathBuf"
+    "signature": " fn absolute (path : \u0026 Path) -\u003e Result \u003c PathBuf , String \u003e"
   },
   "packages/rust/build/src/lib.rs::Builder::check": {
     "exported": true,
@@ -1071,9 +1111,9 @@
     "exported": false,
     "signature": " fn compare_op (w : \u0026 str) -\u003e Option \u003c \u0026 'static str \u003e"
   },
-  "packages/rust/build/src/names.rs::engine_op": {
+  "packages/rust/build/src/names.rs::fulltext_key": {
     "exported": false,
-    "signature": " fn engine_op (op : \u0026 str) -\u003e \u0026 'static str"
+    "signature": " fn fulltext_key (e : \u0026 Entity , ws : \u0026 [\u0026 str] , op : \u0026 'static str) -\u003e Result \u003c ChainKey , String \u003e"
   },
   "packages/rust/build/src/names.rs::leading_op": {
     "exported": false,
@@ -1205,7 +1245,7 @@
   },
   "packages/rust/build/src/scan.rs::Scanner": {
     "exported": false,
-    "signature": " struct Scanner \u003c 'a \u003e { models : \u0026 'a HashSet \u003c String \u003e , # [doc = \" The modules that include another set's model file (DSL-151): a model reached through one is not this set's.\"] foreign : \u0026 'a HashSet \u003c String \u003e , # [doc = \" The names that a `use` of this file binds to a model of a foreign module.\"] hidden : HashSet \u003c String \u003e , fallible_setters : \u0026 'a HashSet \u003c (String , String) \u003e , file : String , scopes : Vec \u003c HashMap \u003c String , Binding \u003e \u003e , attached : Vec \u003c bool \u003e , out : \u0026 'a mut Scan , }"
+    "signature": " struct Scanner \u003c 'a \u003e { models : \u0026 'a HashSet \u003c String \u003e , # [doc = \" The modules that include another set's model file (DSL-151): a model reached through one is not this set's.\"] foreign : \u0026 'a HashSet \u003c String \u003e , # [doc = \" The names that a `use` of this file binds to a model of a foreign module.\"] hidden : HashSet \u003c String \u003e , fallible_setters : \u0026 'a HashSet \u003c (String , String) \u003e , file : String , scopes : Vec \u003c HashMap \u003c String , Binding \u003e \u003e , attached : Vec \u003c bool \u003e , out : \u0026 'a mut Scan , # [doc = \" The arguments that could not be read, one message each: scan fails with them rather than record a call without them.\"] failures : Vec \u003c String \u003e , }"
   },
   "packages/rust/build/src/scan.rs::Scanner \u003c '_ \u003e as Visit \u003c 'ast \u003e::visit_arm": {
     "exported": false,
@@ -1295,6 +1335,10 @@
     "exported": false,
     "signature": " fn type_name (\u0026 self , t : \u0026 Type) -\u003e Option \u003c String \u003e"
   },
+  "packages/rust/build/src/scan.rs::Scanner \u003c '_ \u003e::visit_function_scope": {
+    "exported": false,
+    "signature": " fn visit_function_scope \u003c 'ast \u003e (\u0026 mut self , inputs : impl Iterator \u003c Item = \u0026 'ast FnArg \u003e , visit : impl FnOnce (\u0026 mut Self))"
+  },
   "packages/rust/build/src/scan.rs::Scanner \u003c '_ \u003e::visit_macro_body": {
     "exported": false,
     "signature": " fn visit_macro_body (\u0026 mut self , tokens : \u0026 proc_macro2 :: TokenStream)"
@@ -1306,6 +1350,10 @@
   "packages/rust/build/src/scan.rs::Scanner#field.attached": {
     "exported": false,
     "signature": "Vec \u003c bool \u003e"
+  },
+  "packages/rust/build/src/scan.rs::Scanner#field.failures": {
+    "exported": false,
+    "signature": "Vec \u003c String \u003e"
   },
   "packages/rust/build/src/scan.rs::Scanner#field.fallible_setters": {
     "exported": false,
@@ -1337,7 +1385,7 @@
   },
   "packages/rust/build/src/scan.rs::Scanner#wire": {
     "exported": false,
-    "signature": "{\"attached\":\"list\u003cbool\u003e\",\"fallible_setters\":\"unsupported:\u0026 'a HashSet \u003c (String , String) \u003e\",\"file\":\"text\",\"foreign\":\"unsupported:\u0026 'a HashSet \u003c String \u003e\",\"hidden\":\"HashSet\",\"models\":\"unsupported:\u0026 'a HashSet \u003c String \u003e\",\"out\":\"unsupported:\u0026 'a mut Scan\",\"scopes\":\"list\u003cmap\u003cBinding\u003e\u003e\"}"
+    "signature": "{\"attached\":\"list\u003cbool\u003e\",\"failures\":\"list\u003ctext\u003e\",\"fallible_setters\":\"unsupported:\u0026 'a HashSet \u003c (String , String) \u003e\",\"file\":\"text\",\"foreign\":\"unsupported:\u0026 'a HashSet \u003c String \u003e\",\"hidden\":\"HashSet\",\"models\":\"unsupported:\u0026 'a HashSet \u003c String \u003e\",\"out\":\"unsupported:\u0026 'a mut Scan\",\"scopes\":\"list\u003cmap\u003cBinding\u003e\u003e\"}"
   },
   "packages/rust/build/src/scan.rs::Uses": {
     "exported": false,
@@ -1411,6 +1459,50 @@
     "exported": true,
     "signature": "pub fn scan (paths : \u0026 [PathBuf] , models : \u0026 HashSet \u003c String \u003e , fallible_setters : \u0026 HashSet \u003c (String , String) \u003e , model_file : \u0026 Path) -\u003e Result \u003c Scan , String \u003e"
   },
+  "packages/rust/build/src/test_support.rs::non_unicode_manifest_dir": {
+    "exported": false,
+    "signature": "pub (crate) fn non_unicode_manifest_dir (base : \u0026 Path) -\u003e OsString"
+  },
+  "packages/rust/build/src/tests/build_environment.rs::bench_set": {
+    "exported": false,
+    "signature": " fn bench_set () -\u003e PathBuf"
+  },
+  "packages/rust/build/src/tests/build_environment.rs::environment_subprocess": {
+    "exported": false,
+    "signature": " fn environment_subprocess ()"
+  },
+  "packages/rust/build/src/tests/build_environment.rs::package_dir": {
+    "exported": false,
+    "signature": " fn package_dir () -\u003e PathBuf"
+  },
+  "packages/rust/build/src/tests/build_environment.rs::require_child_success": {
+    "exported": false,
+    "signature": " fn require_child_success (output : Output , case : \u0026 str)"
+  },
+  "packages/rust/build/src/tests/build_environment.rs::run_child": {
+    "exported": false,
+    "signature": " fn run_child (case : \u0026 str , manifest_dir : Option \u003c \u0026 str \u003e , out_dir : Option \u003c \u0026 str \u003e) -\u003e Output"
+  },
+  "packages/rust/build/src/tests/out_dir.rs::child": {
+    "exported": false,
+    "signature": " fn child (case : \u0026 str , out_dir : Option \u003c \u0026 str \u003e) -\u003e Output"
+  },
+  "packages/rust/build/src/tests/out_dir.rs::load_requires_out_dir": {
+    "exported": false,
+    "signature": " fn load_requires_out_dir ()"
+  },
+  "packages/rust/build/src/tests/out_dir.rs::package_dir": {
+    "exported": false,
+    "signature": " fn package_dir () -\u003e PathBuf"
+  },
+  "packages/rust/build/src/tests/out_dir.rs::set_path": {
+    "exported": false,
+    "signature": " fn set_path () -\u003e PathBuf"
+  },
+  "packages/rust/build/src/tests/out_dir.rs::successful": {
+    "exported": false,
+    "signature": " fn successful (output : Output , case : \u0026 str)"
+  },
   "packages/rust/build/src/tool_db.rs::Conn": {
     "exported": true,
     "signature": "pub enum Conn  { MySql (PoolConnection \u003c MySql \u003e) , Postgres (PoolConnection \u003c Postgres \u003e) , Sqlite (PoolConnection \u003c Sqlite \u003e) , }"
@@ -1418,6 +1510,10 @@
   "packages/rust/build/src/tool_db.rs::Conn::acquire": {
     "exported": true,
     "signature": "pub async fn acquire (pool : \u0026 Pool) -\u003e Result \u003c Conn , sqlx :: Error \u003e"
+  },
+  "packages/rust/build/src/tool_db.rs::Conn::bounded_query": {
+    "exported": false,
+    "signature": " fn bounded_query (\u0026 self , sql : \u0026 str , params : \u0026 [P] , limits : QueryLimits) -\u003e Result \u003c (AssertSqlSafe \u003c String \u003e , limits :: Budget) , sqlx :: Error \u003e"
   },
   "packages/rust/build/src/tool_db.rs::Conn::discard_on_drop": {
     "exported": false,
@@ -1477,7 +1573,7 @@
   },
   "packages/rust/build/src/tool_db.rs::ToolDsn::redacted": {
     "exported": true,
-    "signature": "pub fn redacted (\u0026 self) -\u003e String"
+    "signature": "pub fn redacted (\u0026 self) -\u003e Result \u003c String , String \u003e"
   },
   "packages/rust/build/src/tool_db.rs::Val": {
     "exported": true,
@@ -1691,9 +1787,17 @@
     "exported": false,
     "signature": " fn error () -\u003e sqlx :: Error"
   },
+  "packages/rust/build/src/tool_db/limits.rs::error_with": {
+    "exported": false,
+    "signature": " fn error_with (error : impl std :: fmt :: Display) -\u003e sqlx :: Error"
+  },
   "packages/rust/build/src/tool_db/params.rs::P": {
     "exported": true,
     "signature": "pub enum P  { S (String) , I (i64) , Unsigned (u64) , Float32 (u32) , Float64 (u64) , Decimal (String) , Boolean (bool) , Binary (Vec \u003c u8 \u003e) , # [doc = \" A date, time, or datetime value in dbspec text form (same form as GridCell).\"] Date (String) , Time (String) , DateTime (String) , Null (ParamType) , }"
+  },
+  "packages/rust/build/src/tool_db/params.rs::P::param_type": {
+    "exported": false,
+    "signature": "pub (super) fn param_type (\u0026 self) -\u003e ParamType"
   },
   "packages/rust/build/src/tool_db/params.rs::ParamType": {
     "exported": true,
@@ -1711,9 +1815,17 @@
     "exported": false,
     "signature": "pub (super) fn decimal (value : \u0026 str) -\u003e Result \u003c bigdecimal :: BigDecimal , sqlx :: Error \u003e"
   },
+  "packages/rust/build/src/tool_db/params.rs::decimal_valid": {
+    "exported": false,
+    "signature": "pub (crate) fn decimal_valid (value : \u0026 str) -\u003e bool"
+  },
   "packages/rust/build/src/tool_db/params.rs::invalid": {
     "exported": false,
     "signature": "pub (super) fn invalid () -\u003e sqlx :: Error"
+  },
+  "packages/rust/build/src/tool_db/params.rs::invalid_with": {
+    "exported": false,
+    "signature": "pub (super) fn invalid_with (error : impl std :: fmt :: Display) -\u003e sqlx :: Error"
   },
   "packages/rust/build/src/tool_db/params.rs::limit": {
     "exported": false,
@@ -2035,6 +2147,10 @@
     "exported": false,
     "signature": "pub (crate) fn use_slot_type \u003c 'a \u003e (u : \u0026 'a ParamUse \u003c '_ \u003e) -\u003e ParamSlot \u003c 'a \u003e"
   },
+  "packages/rust/orm/src/codec.rs::BinaryStage": {
+    "exported": false,
+    "signature": " enum BinaryStage  { Continue , Complete (Param) , }"
+  },
   "packages/rust/orm/src/codec.rs::Parser": {
     "exported": false,
     "signature": " struct Parser \u003c 'a \u003e { b : \u0026 'a [u8] , i : usize , }"
@@ -2163,9 +2279,17 @@
     "exported": true,
     "signature": "pub fn encode (styles : \u0026 [\u0026 str] , v : StyledValue \u003c \u0026 Value \u003e) -\u003e Result \u003c Param \u003e"
   },
+  "packages/rust/orm/src/codec.rs::encode_binary_stage": {
+    "exported": false,
+    "signature": " fn encode_binary_stage (style : \u0026 str , cur : \u0026 mut Vec \u003c u8 \u003e) -\u003e Result \u003c BinaryStage \u003e"
+  },
   "packages/rust/orm/src/codec.rs::encode_ordered": {
     "exported": true,
     "signature": "pub fn encode_ordered (styles : \u0026 [\u0026 str] , v : StyledValue \u003c \u0026 strict_json :: Value \u003e) -\u003e Result \u003c Param \u003e"
+  },
+  "packages/rust/orm/src/codec.rs::encoded_text": {
+    "exported": false,
+    "signature": " fn encoded_text (bytes : Vec \u003c u8 \u003e) -\u003e Result \u003c Param \u003e"
   },
   "packages/rust/orm/src/codec.rs::err": {
     "exported": false,
@@ -2401,7 +2525,7 @@
   },
   "packages/rust/orm/src/collection.rs::GroupRow::new": {
     "exported": false,
-    "signature": "pub (crate) fn new (values : Vec \u003c (String , Val) \u003e) -\u003e Result \u003c Self \u003e"
+    "signature": "pub (crate) fn new (mut values : Vec \u003c (String , Val) \u003e) -\u003e Result \u003c Self \u003e"
   },
   "packages/rust/orm/src/collection.rs::GroupRow::to_array": {
     "exported": true,
@@ -2531,6 +2655,10 @@
     "exported": true,
     "signature": "{\"items\":\"Collection\",\"page\":\"integer\",\"per_page\":\"integer\",\"total_count\":\"integer\",\"total_pages\":\"integer\"}"
   },
+  "packages/rust/orm/src/collection.rs::checked_group_row_count": {
+    "exported": false,
+    "signature": " fn checked_group_row_count (value : \u0026 Val) -\u003e Result \u003c i64 \u003e"
+  },
   "packages/rust/orm/src/collection.rs::null_key": {
     "exported": false,
     "signature": " fn null_key () -\u003e Error"
@@ -2545,7 +2673,7 @@
   },
   "packages/rust/orm/src/core.rs::ChainKey": {
     "exported": true,
-    "signature": "pub struct ChainKey  { # [doc = \" Connector before this key; empty for the first key.\"] pub conn : \u0026 'static str , # [doc = \" \\\"\\\", ne, gt, lt, ge, le, lk, lb, between, tuple, ne_tuple.\"] pub op : \u0026 'static str , pub column : \u0026 'static str , pub columns : \u0026 'static [\u0026 'static str] , # [doc = \" Column of the passed model for a column comparison.\"] pub compare : \u0026 'static str , }"
+    "signature": "pub struct ChainKey  { # [doc = \" Connector before this key; empty for the first key.\"] pub conn : \u0026 'static str , # [doc = \" \\\"\\\", ne, gt, lt, ge, le, lk, lb, between, fulltext, fulltext_boolean, tuple, ne_tuple.\"] pub op : \u0026 'static str , pub column : \u0026 'static str , pub columns : \u0026 'static [\u0026 'static str] , # [doc = \" Column of the passed model for a column comparison.\"] pub compare : \u0026 'static str , }"
   },
   "packages/rust/orm/src/core.rs::ChainKey#field.column": {
     "exported": true,
@@ -3089,7 +3217,7 @@
   },
   "packages/rust/orm/src/core.rs::PredValue": {
     "exported": false,
-    "signature": "pub (crate) enum PredValue  { None , One (Param) , List (Vec \u003c Param \u003e) , Pair (Param , Param) , Tuples (Vec \u003c \u0026 'static str \u003e , Vec \u003c Vec \u003c Param \u003e \u003e) , Ref (u64 , \u0026 'static str) , Sub (Box \u003c Core \u003e) , ColumnFn (Func , Param) , ValueFn (Func) , }"
+    "signature": "pub (crate) enum PredValue  { None , One (Param) , List (Vec \u003c Param \u003e) , Pair (Param , Param) , Tuples (Vec \u003c \u0026 'static str \u003e , Vec \u003c Vec \u003c Param \u003e \u003e) , Fulltext (Vec \u003c String \u003e , Param) , Ref (u64 , \u0026 'static str) , Sub (Box \u003c Core \u003e) , ColumnFn (Func , Param) , ValueFn (Func) , }"
   },
   "packages/rust/orm/src/core.rs::RelSpec": {
     "exported": false,
@@ -3247,6 +3375,10 @@
     "exported": true,
     "signature": "pub fn driver (\u0026 self) -\u003e \u0026 'static str"
   },
+  "packages/rust/orm/src/db.rs::Db::ensure_open": {
+    "exported": false,
+    "signature": "pub (crate) fn ensure_open (\u0026 self) -\u003e Result \u003c () \u003e"
+  },
   "packages/rust/orm/src/db.rs::Db::execute": {
     "exported": true,
     "signature": "pub async fn execute (\u0026 self , step : \u0026 Step , params : \u0026 [Param]) -\u003e Result \u003c () \u003e"
@@ -3255,6 +3387,10 @@
     "exported": false,
     "signature": "pub (crate) fn id (\u0026 self) -\u003e u64"
   },
+  "packages/rust/orm/src/db.rs::Db::max_cached_bind_slots": {
+    "exported": false,
+    "signature": "pub (crate) fn max_cached_bind_slots (\u0026 self) -\u003e usize"
+  },
   "packages/rust/orm/src/db.rs::Db::now_text": {
     "exported": false,
     "signature": "pub (crate) fn now_text (\u0026 self) -\u003e String"
@@ -3262,6 +3398,14 @@
   "packages/rust/orm/src/db.rs::Db::plan": {
     "exported": false,
     "signature": "pub (crate) async fn plan (\u0026 self , req : \u0026 mut Req) -\u003e Result \u003c Arc \u003c Plan \u003e \u003e"
+  },
+  "packages/rust/orm/src/db.rs::Db::plan_split_part": {
+    "exported": false,
+    "signature": "pub (crate) async fn plan_split_part (\u0026 self , req : \u0026 mut Req , n_params : usize) -\u003e Result \u003c Arc \u003c Plan \u003e \u003e"
+  },
+  "packages/rust/orm/src/db.rs::Db::plan_with_parameter_count": {
+    "exported": false,
+    "signature": " async fn plan_with_parameter_count (\u0026 self , req : \u0026 mut Req , n_params : Option \u003c usize \u003e) -\u003e Result \u003c Arc \u003c Plan \u003e \u003e"
   },
   "packages/rust/orm/src/db.rs::Db::pool": {
     "exported": true,
@@ -3305,7 +3449,7 @@
   },
   "packages/rust/orm/src/db.rs::DbInner": {
     "exported": false,
-    "signature": "pub (crate) struct DbInner  { pub (crate) id : u64 , pub (crate) pool : Pool , # [doc = \" The dialect a SQL connection plans for. Markdown connections, which do not plan, have none.\"] pub (crate) dialect : Option \u003c Dialect \u003e , pub (crate) cfg : Config , pub (crate) zone : Zone , plans : Mutex \u003c HashMap \u003c u64 , Arc \u003c Plan \u003e \u003e \u003e , plan_order : Mutex \u003c VecDeque \u003c u64 \u003e \u003e , # [doc = \" The manifest hash of the set registered on this connection.\"] pub (crate) sets : std :: sync :: RwLock \u003c std :: collections :: HashSet \u003c String \u003e \u003e , # [doc = \" The schema of the registered set. Audit records are inserted with the set that has that table.\"] pub (crate) schemas : std :: sync :: RwLock \u003c Vec \u003c \u0026 'static Schema \u003e \u003e , pub (crate) closed : AtomicBool , pub (crate) sqlite_lock_ready : AtomicBool , # [doc = \" The connection's statement event subscribers and transaction number. All clones of the connection share them.\"] pub (crate) subscribers : Subscribers , # [doc = \" The test fault set by `polyspec_orm::testing::fail_next_rollback`. The feature\"] # [doc = \" Can be set only in builds with `test-faults`.\"] pub (crate) rollback_fault : AtomicBool , # [doc = \" The test fault set by `polyspec_orm::testing::fail_next_statement`. The feature\"] # [doc = \" Present only in builds with `test-faults`.\"] # [cfg (feature = \"test-faults\")] pub (crate) statement_fault : Mutex \u003c Option \u003c crate :: testing :: StatementFault \u003e \u003e , # [doc = \" The executor clock pinned by `polyspec_orm::testing::fix_clock` (`YYYY-MM-DD HH:MM:SS.ffffff`).\"] # [doc = \" Present only in builds with feature `test-faults`.\"] # [cfg (feature = \"test-faults\")] pub (crate) fixed_clock : Mutex \u003c Option \u003c String \u003e \u003e , # [doc = \" The affected count of the connection's last successful write result. Read by `polyspec_orm::testing::last_affected`.\"] # [doc = \" Present only in builds with feature `test-faults`.\"] # [cfg (feature = \"test-faults\")] pub (crate) last_affected : Mutex \u003c Option \u003c u64 \u003e \u003e , }"
+    "signature": "pub (crate) struct DbInner  { pub (crate) id : u64 , pub (crate) pool : Pool , # [doc = \" The PostgreSQL options of the pool, which a LISTEN subscription connects with; None on other databases.\"] pub (crate) listen : Option \u003c sqlx :: postgres :: PgConnectOptions \u003e , # [doc = \" The dialect a SQL connection plans for. Markdown connections, which do not plan, have none.\"] pub (crate) dialect : Option \u003c Dialect \u003e , pub (crate) cfg : Config , pub (crate) zone : Zone , plans : Mutex \u003c HashMap \u003c u64 , Arc \u003c Plan \u003e \u003e \u003e , plan_order : Mutex \u003c VecDeque \u003c u64 \u003e \u003e , # [doc = \" The manifest hash of the set registered on this connection.\"] pub (crate) sets : std :: sync :: RwLock \u003c std :: collections :: HashSet \u003c String \u003e \u003e , # [doc = \" The schema of the registered set. Audit records are inserted with the set that has that table.\"] pub (crate) schemas : std :: sync :: RwLock \u003c Vec \u003c \u0026 'static Schema \u003e \u003e , pub (crate) closed : AtomicBool , pub (crate) sqlite_lock_ready : AtomicBool , # [doc = \" The connection's statement event subscribers and transaction number. All clones of the connection share them.\"] pub (crate) subscribers : Subscribers , # [doc = \" The test fault set by `polyspec_orm::testing::fail_next_rollback`. The feature\"] # [doc = \" Can be set only in builds with `test-faults`.\"] pub (crate) rollback_fault : AtomicBool , # [doc = \" The test fault set by `polyspec_orm::testing::fail_next_statement`. The feature\"] # [doc = \" Present only in builds with `test-faults`.\"] # [cfg (feature = \"test-faults\")] pub (crate) statement_fault : Mutex \u003c Option \u003c crate :: testing :: StatementFault \u003e \u003e , # [doc = \" The executor clock pinned by `polyspec_orm::testing::fix_clock` (`YYYY-MM-DD HH:MM:SS.ffffff`).\"] # [doc = \" Present only in builds with feature `test-faults`.\"] # [cfg (feature = \"test-faults\")] pub (crate) fixed_clock : Mutex \u003c Option \u003c String \u003e \u003e , # [doc = \" The affected count of the connection's last successful write result. Read by `polyspec_orm::testing::last_affected`.\"] # [doc = \" Present only in builds with feature `test-faults`.\"] # [cfg (feature = \"test-faults\")] pub (crate) last_affected : Mutex \u003c Option \u003c u64 \u003e \u003e , }"
   },
   "packages/rust/orm/src/db.rs::DbInner#field.cfg": {
     "exported": false,
@@ -3330,6 +3474,10 @@
   "packages/rust/orm/src/db.rs::DbInner#field.last_affected": {
     "exported": false,
     "signature": "Mutex \u003c Option \u003c u64 \u003e \u003e"
+  },
+  "packages/rust/orm/src/db.rs::DbInner#field.listen": {
+    "exported": false,
+    "signature": "Option \u003c sqlx :: postgres :: PgConnectOptions \u003e"
   },
   "packages/rust/orm/src/db.rs::DbInner#field.plan_order": {
     "exported": false,
@@ -3373,7 +3521,7 @@
   },
   "packages/rust/orm/src/db.rs::DbInner#wire": {
     "exported": false,
-    "signature": "{\"cfg\":\"Config\",\"closed\":\"AtomicBool\",\"dialect\":\"Dialect\",\"fixed_clock\":\"Mutex\",\"id\":\"integer\",\"last_affected\":\"Mutex\",\"plan_order\":\"Mutex\",\"plans\":\"Mutex\",\"pool\":\"Pool\",\"rollback_fault\":\"AtomicBool\",\"schemas\":\"RwLock\",\"sets\":\"RwLock\",\"sqlite_lock_ready\":\"AtomicBool\",\"statement_fault\":\"Mutex\",\"subscribers\":\"Subscribers\",\"zone\":\"Zone\"}"
+    "signature": "{\"cfg\":\"Config\",\"closed\":\"AtomicBool\",\"dialect\":\"Dialect\",\"fixed_clock\":\"Mutex\",\"id\":\"integer\",\"last_affected\":\"Mutex\",\"listen\":\"PgConnectOptions\",\"plan_order\":\"Mutex\",\"plans\":\"Mutex\",\"pool\":\"Pool\",\"rollback_fault\":\"AtomicBool\",\"schemas\":\"RwLock\",\"sets\":\"RwLock\",\"sqlite_lock_ready\":\"AtomicBool\",\"statement_fault\":\"Mutex\",\"subscribers\":\"Subscribers\",\"zone\":\"Zone\"}"
   },
   "packages/rust/orm/src/db.rs::DbStats": {
     "exported": true,
@@ -3611,9 +3759,13 @@
     "exported": false,
     "signature": "pub (crate) fn bound_time_value (v : Param , col_type : \u0026 str , precision : i64 , zone : \u0026 Zone) -\u003e Result \u003c Param \u003e"
   },
+  "packages/rust/orm/src/db.rs::check_sqlite_version": {
+    "exported": false,
+    "signature": " fn check_sqlite_version (version : \u0026 str) -\u003e Result \u003c () \u003e"
+  },
   "packages/rust/orm/src/db.rs::clock_digits": {
     "exported": false,
-    "signature": " fn clock_digits (text : \u0026 str , precision : i64) -\u003e String"
+    "signature": " fn clock_digits (text : \u0026 str , precision : i64) -\u003e Result \u003c String \u003e"
   },
   "packages/rust/orm/src/db.rs::datetime_digits": {
     "exported": false,
@@ -3627,6 +3779,10 @@
     "exported": false,
     "signature": " fn digits (b : \u0026 [u8]) -\u003e bool"
   },
+  "packages/rust/orm/src/db.rs::fractional_parts": {
+    "exported": false,
+    "signature": " fn fractional_parts (text : \u0026 str , precision : i64) -\u003e Result \u003c Option \u003c (\u0026 str , \u0026 str , usize) \u003e \u003e"
+  },
   "packages/rust/orm/src/db.rs::invalid_time_text": {
     "exported": false,
     "signature": " fn invalid_time_text (text : \u0026 str , col_type : \u0026 str) -\u003e Error"
@@ -3639,9 +3795,17 @@
     "exported": true,
     "signature": "pub fn parse_dsn (dsn : \u0026 str) -\u003e Result \u003c ParsedDsn \u003e"
   },
+  "packages/rust/orm/src/db.rs::parse_sqlite_version": {
+    "exported": false,
+    "signature": " fn parse_sqlite_version (version : \u0026 str) -\u003e Result \u003c (u32 , u32 , u32) \u003e"
+  },
   "packages/rust/orm/src/db.rs::pool_options": {
     "exported": false,
     "signature": " fn pool_options \u003c DB : sqlx :: Database \u003e (size : u32 , idle : u32 , lifetime_ms : u32 , owner : \u0026 PoolOwner) -\u003e sqlx :: pool :: PoolOptions \u003c DB \u003e"
+  },
+  "packages/rust/orm/src/db.rs::precision_count": {
+    "exported": false,
+    "signature": "pub (crate) fn precision_count (precision : i64) -\u003e Result \u003c usize \u003e"
   },
   "packages/rust/orm/src/db.rs::run_sqlite_row_lock_sequence": {
     "exported": false,
@@ -3653,11 +3817,79 @@
   },
   "packages/rust/orm/src/db.rs::sqlite_datetime_text": {
     "exported": false,
-    "signature": " fn sqlite_datetime_text (text : \u0026 str , zone : \u0026 Zone) -\u003e Option \u003c String \u003e"
+    "signature": " fn sqlite_datetime_text (text : \u0026 str , zone : \u0026 Zone) -\u003e Result \u003c Option \u003c String \u003e \u003e"
   },
   "packages/rust/orm/src/db.rs::time_value": {
     "exported": false,
     "signature": "pub (crate) fn time_value (v : Param , precision : i64) -\u003e Result \u003c Param \u003e"
+  },
+  "packages/rust/orm/src/db/executor_route_tests.rs::query_and_execute_share_pool_and_transaction_routing": {
+    "exported": false,
+    "signature": " async fn query_and_execute_share_pool_and_transaction_routing ()"
+  },
+  "packages/rust/orm/src/db/sqlite_row_lock_restore_tests.rs::FakeSequence": {
+    "exported": false,
+    "signature": " struct FakeSequence  { set_error : Option \u003c Error \u003e , primary_error : Option \u003c Error \u003e , restore_error : Option \u003c Error \u003e , calls : Vec \u003c \u0026 'static str \u003e , }"
+  },
+  "packages/rust/orm/src/db/sqlite_row_lock_restore_tests.rs::FakeSequence as SqliteRowLockSequenceOps::restore_timeout": {
+    "exported": false,
+    "signature": " async fn restore_timeout (\u0026 mut self) -\u003e Result \u003c () \u003e"
+  },
+  "packages/rust/orm/src/db/sqlite_row_lock_restore_tests.rs::FakeSequence as SqliteRowLockSequenceOps::set_nowait": {
+    "exported": false,
+    "signature": " async fn set_nowait (\u0026 mut self) -\u003e Result \u003c () \u003e"
+  },
+  "packages/rust/orm/src/db/sqlite_row_lock_restore_tests.rs::FakeSequence as SqliteRowLockSequenceOps::take_row_lock": {
+    "exported": false,
+    "signature": " async fn take_row_lock (\u0026 mut self) -\u003e Result \u003c () \u003e"
+  },
+  "packages/rust/orm/src/db/sqlite_row_lock_restore_tests.rs::FakeSequence#field.calls": {
+    "exported": false,
+    "signature": "Vec \u003c \u0026 'static str \u003e"
+  },
+  "packages/rust/orm/src/db/sqlite_row_lock_restore_tests.rs::FakeSequence#field.primary_error": {
+    "exported": false,
+    "signature": "Option \u003c Error \u003e"
+  },
+  "packages/rust/orm/src/db/sqlite_row_lock_restore_tests.rs::FakeSequence#field.restore_error": {
+    "exported": false,
+    "signature": "Option \u003c Error \u003e"
+  },
+  "packages/rust/orm/src/db/sqlite_row_lock_restore_tests.rs::FakeSequence#field.set_error": {
+    "exported": false,
+    "signature": "Option \u003c Error \u003e"
+  },
+  "packages/rust/orm/src/db/sqlite_row_lock_restore_tests.rs::FakeSequence#wire": {
+    "exported": false,
+    "signature": "{\"calls\":\"list\u003cunsupported:\u0026 'static str\u003e\",\"primary_error\":\"Error\",\"restore_error\":\"Error\",\"set_error\":\"Error\"}"
+  },
+  "packages/rust/orm/src/db/sqlite_row_lock_restore_tests.rs::failed_nowait_setup_still_restores_and_skips_lock_attempt": {
+    "exported": false,
+    "signature": " async fn failed_nowait_setup_still_restores_and_skips_lock_attempt ()"
+  },
+  "packages/rust/orm/src/db/sqlite_row_lock_restore_tests.rs::lock_error": {
+    "exported": false,
+    "signature": " fn lock_error () -\u003e Error"
+  },
+  "packages/rust/orm/src/db/sqlite_row_lock_restore_tests.rs::production_nowait_sequence_preserves_both_errors_and_attempts_restore": {
+    "exported": false,
+    "signature": " async fn production_nowait_sequence_preserves_both_errors_and_attempts_restore ()"
+  },
+  "packages/rust/orm/src/db/sqlite_row_lock_restore_tests.rs::restore_error": {
+    "exported": false,
+    "signature": " fn restore_error () -\u003e Error"
+  },
+  "packages/rust/orm/src/db/sqlite_version_tests.rs::accepts_three_or_four_decimal_u32_components": {
+    "exported": false,
+    "signature": " fn accepts_three_or_four_decimal_u32_components ()"
+  },
+  "packages/rust/orm/src/db/sqlite_version_tests.rs::compares_minimum_version_numerically": {
+    "exported": false,
+    "signature": " fn compares_minimum_version_numerically ()"
+  },
+  "packages/rust/orm/src/db/sqlite_version_tests.rs::rejects_malformed_components_as_internal_with_the_raw_value": {
+    "exported": false,
+    "signature": " fn rejects_malformed_components_as_internal_with_the_raw_value ()"
   },
   "packages/rust/orm/src/dbspec.rs::CatalogFetch": {
     "exported": false,
@@ -3699,10 +3931,6 @@
     "exported": false,
     "signature": " fn values (rows : \u0026 [MySqlRow]) -\u003e Result \u003c Vec \u003c Vec \u003c CatalogValue \u003e \u003e , sqlx :: Error \u003e"
   },
-  "packages/rust/orm/src/dbspec.rs::MySqlConnection as CatalogQuerier::rows": {
-    "exported": false,
-    "signature": " async fn rows (\u0026 mut self , query : \u0026 str) -\u003e Result \u003c Vec \u003c Vec \u003c CatalogValue \u003e \u003e , sqlx :: Error \u003e"
-  },
   "packages/rust/orm/src/dbspec.rs::PgConnection as CatalogFetch::Row": {
     "exported": false,
     "signature": "type Row = PgRow ;"
@@ -3714,10 +3942,6 @@
   "packages/rust/orm/src/dbspec.rs::PgConnection as CatalogFetch::values": {
     "exported": false,
     "signature": " fn values (rows : \u0026 [PgRow]) -\u003e Result \u003c Vec \u003c Vec \u003c CatalogValue \u003e \u003e , sqlx :: Error \u003e"
-  },
-  "packages/rust/orm/src/dbspec.rs::PgConnection as CatalogQuerier::rows": {
-    "exported": false,
-    "signature": " async fn rows (\u0026 mut self , query : \u0026 str) -\u003e Result \u003c Vec \u003c Vec \u003c CatalogValue \u003e \u003e , sqlx :: Error \u003e"
   },
   "packages/rust/orm/src/dbspec.rs::SqliteConnection as CatalogFetch::Row": {
     "exported": false,
@@ -3731,9 +3955,13 @@
     "exported": false,
     "signature": " fn values (rows : \u0026 [SqliteRow]) -\u003e Result \u003c Vec \u003c Vec \u003c CatalogValue \u003e \u003e , sqlx :: Error \u003e"
   },
-  "packages/rust/orm/src/dbspec.rs::SqliteConnection as CatalogQuerier::rows": {
+  "packages/rust/orm/src/dbspec.rs::catalog_rows": {
     "exported": false,
-    "signature": " async fn rows (\u0026 mut self , query : \u0026 str) -\u003e Result \u003c Vec \u003c Vec \u003c CatalogValue \u003e \u003e , sqlx :: Error \u003e"
+    "signature": "pub (super) fn catalog_rows \u003c R : Row \u003e (rows : \u0026 [R] , mut value : impl FnMut (\u0026 R , usize) -\u003e Result \u003c CatalogValue , sqlx :: Error \u003e) -\u003e Result \u003c Vec \u003c Vec \u003c CatalogValue \u003e \u003e , sqlx :: Error \u003e"
+  },
+  "packages/rust/orm/src/dbspec.rs::catalog_type_name": {
+    "exported": false,
+    "signature": " fn catalog_type_name \u003c R : Row \u003e (row : \u0026 R , i : usize) -\u003e Result \u003c Option \u003c String \u003e , sqlx :: Error \u003e where usize : sqlx :: ColumnIndex \u003c R \u003e ,"
   },
   "packages/rust/orm/src/dbspec.rs::decode_error": {
     "exported": false,
@@ -3803,9 +4031,17 @@
     "exported": false,
     "signature": " async fn forward (\u0026 mut self , p : \u0026 Plan , steps : \u0026 [PlanStep] , start : usize) -\u003e Result \u003c () , ApplyError \u003e"
   },
+  "packages/rust/orm/src/dbspec/apply.rs::Applier \u003c 'a , C \u003e::history_columns": {
+    "exported": false,
+    "signature": " fn history_columns (\u0026 self) -\u003e [String ; 7]"
+  },
   "packages/rust/orm/src/dbspec/apply.rs::Applier \u003c 'a , C \u003e::integer": {
     "exported": false,
     "signature": " async fn integer (\u0026 mut self , query : \u0026 str) -\u003e Result \u003c i64 , ApplyError \u003e"
+  },
+  "packages/rust/orm/src/dbspec/apply.rs::Applier \u003c 'a , C \u003e::last_history_plan": {
+    "exported": false,
+    "signature": " async fn last_history_plan (\u0026 mut self) -\u003e Result \u003c Option \u003c (\u0026 'a Plan , String , usize) \u003e , ApplyError \u003e"
   },
   "packages/rust/orm/src/dbspec/apply.rs::Applier \u003c 'a , C \u003e::lock_row": {
     "exported": false,
@@ -3855,6 +4091,10 @@
     "exported": false,
     "signature": " async fn release (\u0026 mut self) -\u003e Result \u003c () , ApplyError \u003e"
   },
+  "packages/rust/orm/src/dbspec/apply.rs::Applier \u003c 'a , C \u003e::release_after_setup_error": {
+    "exported": false,
+    "signature": " async fn release_after_setup_error (\u0026 mut self , error : ApplyError) -\u003e ApplyError"
+  },
   "packages/rust/orm/src/dbspec/apply.rs::Applier \u003c 'a , C \u003e::resolve": {
     "exported": false,
     "signature": " async fn resolve (\u0026 mut self , p : \u0026 Plan , state : \u0026 str , k : usize , steps : \u0026 [PlanStep] , forward : bool) -\u003e Result \u003c usize , ApplyError \u003e"
@@ -3901,7 +4141,7 @@
   },
   "packages/rust/orm/src/dbspec/apply.rs::Applier \u003c 'a , C \u003e::verify": {
     "exported": false,
-    "signature": " async fn verify (\u0026 mut self , want : Option \u003c \u0026 str \u003e) -\u003e Result \u003c () , String \u003e"
+    "signature": " async fn verify (\u0026 mut self , want : Option \u003c \u0026 str \u003e) -\u003e Result \u003c () , VerifyError \u003e"
   },
   "packages/rust/orm/src/dbspec/apply.rs::Applier#field.c": {
     "exported": false,
@@ -3957,7 +4197,7 @@
   },
   "packages/rust/orm/src/dbspec/apply.rs::ApplyError": {
     "exported": true,
-    "signature": "pub enum ApplyError  { # [doc = \" Another session holds the lock; nothing changed.\"] Locked { message : String , source : Option \u003c sqlx :: Error \u003e } , # [doc = \" The connection does not keep one server session of its own for the\"] # [doc = \" whole command: the session that took the lock already held it, or a\"] # [doc = \" later statement ran in another session. `plan` and `step` name the\"] # [doc = \" step before which the session changed; `None` is the lock.\"] Session { plan : Option \u003c (String , usize) \u003e , message : String } , # [doc = \" The last plan of the history is applying, finalizing or rolling back\"] # [doc = \" at `step`.\"] Interrupted { plan : String , step : usize , message : String } , # [doc = \" The database is not at the state that its history records.\"] Drift { message : String } , # [doc = \" The plans do not form a chain, or the history does not match it.\"] Chain { plan : Option \u003c String \u003e , message : String } , # [doc = \" The statement of step `step` of plan `plan` failed, or its effect\"] # [doc = \" could not be read.\"] Failed { plan : String , step : usize , statement : String , source : sqlx :: Error } , # [doc = \" The applied or rolled back database is not the plan's schema.\"] Verify { plan : String , message : String } , # [doc = \" Step `step` has no rollback statement; the rollback stopped before it.\"] Irreversible { plan : String , step : usize , message : String } , # [doc = \" A column that the rollback of step `step` makes non-null has NULL rows\"] # [doc = \" and no default; nothing changed.\"] Nulls { plan : String , step : usize , message : String } , # [doc = \" A history, lock or setting statement failed.\"] Database (sqlx :: Error) , # [doc = \" An event handler stopped the command.\"] Event (ApplyEventError) , # [doc = \" Releasing the PostgreSQL advisory lock released nothing: the session no\"] # [doc = \" longer held it.\"] LockNotHeld { message : String } , # [doc = \" Restoring the session settings or SQLite foreign keys, or releasing\"] # [doc = \" the lock, failed with `cleanup` after `error`. A second cleanup\"] # [doc = \" failure wraps this one again, so the chain of `error` lists the\"] # [doc = \" failures in order.\"] Cleanup { error : Box \u003c ApplyError \u003e , cleanup : Box \u003c ApplyError \u003e } , }"
+    "signature": "pub enum ApplyError  { # [doc = \" Another session holds the lock; nothing changed.\"] Locked { message : String , source : Option \u003c sqlx :: Error \u003e } , # [doc = \" The connection does not keep one server session of its own for the\"] # [doc = \" whole command: the session that took the lock already held it, or a\"] # [doc = \" later statement ran in another session. `plan` and `step` name the\"] # [doc = \" step before which the session changed; `None` is the lock.\"] Session { plan : Option \u003c (String , usize) \u003e , message : String } , # [doc = \" The last plan of the history is applying, finalizing or rolling back\"] # [doc = \" at `step`.\"] Interrupted { plan : String , step : usize , message : String } , # [doc = \" The database is not at the state that its history records.\"] Drift { message : String } , # [doc = \" The plans do not form a chain, or the history does not match it.\"] Chain { plan : Option \u003c String \u003e , message : String } , # [doc = \" The statement of step `step` of plan `plan` failed, or its effect\"] # [doc = \" could not be read.\"] Failed { plan : String , step : usize , statement : String , source : sqlx :: Error } , # [doc = \" The applied or rolled back database is not the plan's schema.\"] Verify { plan : String , message : String , source : Option \u003c IntrospectError \u003e } , # [doc = \" Step `step` has no rollback statement; the rollback stopped before it.\"] Irreversible { plan : String , step : usize , message : String } , # [doc = \" A column that the rollback of step `step` makes non-null has NULL rows\"] # [doc = \" and no default; nothing changed.\"] Nulls { plan : String , step : usize , message : String } , # [doc = \" A history, lock or setting statement failed.\"] Database (sqlx :: Error) , # [doc = \" An event handler stopped the command.\"] Event (ApplyEventError) , # [doc = \" Releasing the PostgreSQL advisory lock released nothing: the session no\"] # [doc = \" longer held it.\"] LockNotHeld { message : String } , # [doc = \" Restoring the session settings or SQLite foreign keys, or releasing\"] # [doc = \" the lock, failed with `cleanup` after `error`. A second cleanup\"] # [doc = \" failure wraps this one again, so the chain of `error` lists the\"] # [doc = \" failures in order.\"] Cleanup { error : Box \u003c ApplyError \u003e , cleanup : Box \u003c ApplyError \u003e } , }"
   },
   "packages/rust/orm/src/dbspec/apply.rs::ApplyError as From \u003c sqlx :: Error \u003e::from": {
     "exported": true,
@@ -3973,7 +4213,7 @@
   },
   "packages/rust/orm/src/dbspec/apply.rs::ApplyError#wire": {
     "exported": true,
-    "signature": "{\"cleanup\":\"ApplyError\",\"error\":\"ApplyError\",\"message\":\"text\",\"plan\":\"text\",\"source\":\"Error\",\"statement\":\"text\",\"step\":\"integer\"}"
+    "signature": "{\"cleanup\":\"ApplyError\",\"error\":\"ApplyError\",\"message\":\"text\",\"plan\":\"text\",\"source\":\"IntrospectError\",\"statement\":\"text\",\"step\":\"integer\"}"
   },
   "packages/rust/orm/src/dbspec/apply.rs::ApplyError::code": {
     "exported": true,
@@ -4023,6 +4263,10 @@
     "exported": true,
     "signature": "# [doc = \" The handler of the command events.\"] pub type ApplyEvents \u003c 'e \u003e = dyn FnMut (\u0026 ApplyEvent) -\u003e Result \u003c () , ApplyEventError \u003e + Send + 'e ;"
   },
+  "packages/rust/orm/src/dbspec/apply.rs::Command": {
+    "exported": false,
+    "signature": " enum Command  { Apply , Recover , Rollback , Finalize , }"
+  },
   "packages/rust/orm/src/dbspec/apply.rs::HistoryRow": {
     "exported": false,
     "signature": " struct HistoryRow  { name : String , from : String , to : String , state : String , step : usize , }"
@@ -4051,30 +4295,6 @@
     "exported": false,
     "signature": "{\"from\":\"text\",\"name\":\"text\",\"state\":\"text\",\"step\":\"integer\",\"to\":\"text\"}"
   },
-  "packages/rust/orm/src/dbspec/apply.rs::MySqlConnection as ApplyConnection::execute": {
-    "exported": false,
-    "signature": " async fn execute (\u0026 mut self , statement : \u0026 str) -\u003e Result \u003c () , sqlx :: Error \u003e"
-  },
-  "packages/rust/orm/src/dbspec/apply.rs::MySqlConnection as ApplyConnection::execute_bound": {
-    "exported": false,
-    "signature": " async fn execute_bound (\u0026 mut self , statement : \u0026 str , args : \u0026 [CatalogValue]) -\u003e Result \u003c () , sqlx :: Error \u003e"
-  },
-  "packages/rust/orm/src/dbspec/apply.rs::MySqlConnection as ApplyConnection::query_bound": {
-    "exported": false,
-    "signature": " async fn query_bound (\u0026 mut self , query : \u0026 str , args : \u0026 [CatalogValue]) -\u003e Result \u003c Vec \u003c Vec \u003c CatalogValue \u003e \u003e , sqlx :: Error \u003e"
-  },
-  "packages/rust/orm/src/dbspec/apply.rs::PgConnection as ApplyConnection::execute": {
-    "exported": false,
-    "signature": " async fn execute (\u0026 mut self , statement : \u0026 str) -\u003e Result \u003c () , sqlx :: Error \u003e"
-  },
-  "packages/rust/orm/src/dbspec/apply.rs::PgConnection as ApplyConnection::execute_bound": {
-    "exported": false,
-    "signature": " async fn execute_bound (\u0026 mut self , statement : \u0026 str , args : \u0026 [CatalogValue]) -\u003e Result \u003c () , sqlx :: Error \u003e"
-  },
-  "packages/rust/orm/src/dbspec/apply.rs::PgConnection as ApplyConnection::query_bound": {
-    "exported": false,
-    "signature": " async fn query_bound (\u0026 mut self , query : \u0026 str , args : \u0026 [CatalogValue]) -\u003e Result \u003c Vec \u003c Vec \u003c CatalogValue \u003e \u003e , sqlx :: Error \u003e"
-  },
   "packages/rust/orm/src/dbspec/apply.rs::Restore": {
     "exported": false,
     "signature": " enum Restore  { MySql { lock_wait : i64 , row_wait : i64 } , Postgres { lock_timeout : String } , Sqlite { foreign_keys : i64 , legacy : i64 , mode : String , busy : i64 } , }"
@@ -4083,17 +4303,9 @@
     "exported": false,
     "signature": "{\"busy\":\"integer\",\"foreign_keys\":\"integer\",\"legacy\":\"integer\",\"lock_timeout\":\"text\",\"lock_wait\":\"integer\",\"mode\":\"text\",\"row_wait\":\"integer\"}"
   },
-  "packages/rust/orm/src/dbspec/apply.rs::SqliteConnection as ApplyConnection::execute": {
+  "packages/rust/orm/src/dbspec/apply.rs::VerifyError": {
     "exported": false,
-    "signature": " async fn execute (\u0026 mut self , statement : \u0026 str) -\u003e Result \u003c () , sqlx :: Error \u003e"
-  },
-  "packages/rust/orm/src/dbspec/apply.rs::SqliteConnection as ApplyConnection::execute_bound": {
-    "exported": false,
-    "signature": " async fn execute_bound (\u0026 mut self , statement : \u0026 str , args : \u0026 [CatalogValue]) -\u003e Result \u003c () , sqlx :: Error \u003e"
-  },
-  "packages/rust/orm/src/dbspec/apply.rs::SqliteConnection as ApplyConnection::query_bound": {
-    "exported": false,
-    "signature": " async fn query_bound (\u0026 mut self , query : \u0026 str , args : \u0026 [CatalogValue]) -\u003e Result \u003c Vec \u003c Vec \u003c CatalogValue \u003e \u003e , sqlx :: Error \u003e"
+    "signature": " enum VerifyError  { Mismatch (String) , Introspection (IntrospectError) , }"
   },
   "packages/rust/orm/src/dbspec/apply.rs::apply": {
     "exported": true,
@@ -4102,6 +4314,10 @@
   "packages/rust/orm/src/dbspec/apply.rs::bound": {
     "exported": false,
     "signature": " fn bound \u003c 'q , DB : sqlx :: Database \u003e (query : \u0026 str , args : \u0026 [CatalogValue]) -\u003e sqlx :: query :: Query \u003c 'q , DB , DB :: Arguments \u003e where for \u003c 't \u003e i64 : sqlx :: Encode \u003c 't , DB \u003e + sqlx :: Type \u003c DB \u003e , for \u003c 't \u003e String : sqlx :: Encode \u003c 't , DB \u003e + sqlx :: Type \u003c DB \u003e , for \u003c 't \u003e bool : sqlx :: Encode \u003c 't , DB \u003e + sqlx :: Type \u003c DB \u003e , for \u003c 't \u003e Option \u003c String \u003e : sqlx :: Encode \u003c 't , DB \u003e + sqlx :: Type \u003c DB \u003e ,"
+  },
+  "packages/rust/orm/src/dbspec/apply.rs::drift_or_verification_error": {
+    "exported": false,
+    "signature": " fn drift_or_verification_error (plan : Option \u003c String \u003e , error : VerifyError) -\u003e ApplyError"
   },
   "packages/rust/orm/src/dbspec/apply.rs::effect_holds": {
     "exported": true,
@@ -4143,6 +4359,10 @@
     "exported": true,
     "signature": "pub async fn rollback \u003c C : ApplyConnection + ? Sized \u003e (connection : \u0026 mut C , dialect : Dialect , plans : \u0026 [Plan] , now : \u0026 ApplyClock \u003c '_ \u003e , events : \u0026 mut ApplyEvents \u003c '_ \u003e ,) -\u003e Result \u003c () , ApplyError \u003e"
   },
+  "packages/rust/orm/src/dbspec/apply.rs::run_command": {
+    "exported": false,
+    "signature": " async fn run_command \u003c C : ApplyConnection + ? Sized \u003e (connection : \u0026 mut C , dialect : Dialect , plans : \u0026 [Plan] , now : \u0026 ApplyClock \u003c '_ \u003e , events : \u0026 mut ApplyEvents \u003c '_ \u003e , command : Command ,) -\u003e Result \u003c () , ApplyError \u003e"
+  },
   "packages/rust/orm/src/dbspec/apply.rs::session_query": {
     "exported": false,
     "signature": " fn session_query (d : Dialect) -\u003e String"
@@ -4150,6 +4370,14 @@
   "packages/rust/orm/src/dbspec/apply.rs::settle": {
     "exported": false,
     "signature": " fn settle (result : Result \u003c () , ApplyError \u003e , cleanup : Result \u003c () , ApplyError \u003e) -\u003e Result \u003c () , ApplyError \u003e"
+  },
+  "packages/rust/orm/src/dbspec/apply.rs::sqlite_lock_result": {
+    "exported": false,
+    "signature": " fn sqlite_lock_result (error : \u0026 sqlx :: Error) -\u003e bool"
+  },
+  "packages/rust/orm/src/dbspec/apply.rs::verification_error": {
+    "exported": false,
+    "signature": " fn verification_error (plan : String , error : VerifyError) -\u003e ApplyError"
   },
   "packages/rust/orm/src/decimal.rs::decode": {
     "exported": true,
@@ -4313,7 +4541,7 @@
   },
   "packages/rust/orm/src/driver.rs::expand_in": {
     "exported": false,
-    "signature": "pub (crate) fn expand_in (st : \u0026 Step , mut vals : Vec \u003c Param \u003e , numbered : bool) -\u003e (String , Vec \u003c Param \u003e)"
+    "signature": "pub (crate) fn expand_in (st : \u0026 Step , mut vals : Vec \u003c Param \u003e , numbered : bool , parent_slot : usize) -\u003e Result \u003c (String , Vec \u003c Param \u003e) \u003e"
   },
   "packages/rust/orm/src/driver.rs::fetch_mysql": {
     "exported": false,
@@ -4351,13 +4579,17 @@
     "exported": false,
     "signature": "pub (crate) fn param_arg (b : \u0026 BindSlot , params : \u0026 [Param]) -\u003e Result \u003c Param \u003e"
   },
+  "packages/rust/orm/src/driver.rs::parent_bind_slot": {
+    "exported": false,
+    "signature": " fn parent_bind_slot (st : \u0026 Step) -\u003e Result \u003c usize \u003e"
+  },
   "packages/rust/orm/src/driver.rs::parent_values": {
     "exported": false,
     "signature": "pub (crate) fn parent_values \u003c 'a \u003e (pr : \u0026 ParentRef , parents : impl Iterator \u003c Item = \u0026 'a [Val] \u003e , params : \u0026 [Param]) -\u003e crate :: Result \u003c Vec \u003c Param \u003e \u003e"
   },
   "packages/rust/orm/src/driver.rs::parse_datetime": {
     "exported": false,
-    "signature": "pub (crate) fn parse_datetime (s : \u0026 str) -\u003e Option \u003c NaiveDateTime \u003e"
+    "signature": "pub (crate) fn parse_datetime (s : \u0026 str) -\u003e std :: result :: Result \u003c NaiveDateTime , String \u003e"
   },
   "packages/rust/orm/src/driver.rs::pg_query": {
     "exported": false,
@@ -4377,7 +4609,39 @@
   },
   "packages/rust/orm/src/driver.rs::statement": {
     "exported": false,
-    "signature": "pub (crate) fn statement (st : \u0026 Step , parent_vals : Vec \u003c Param \u003e , numbered : bool) -\u003e (Cow \u003c '_ , str \u003e , Vec \u003c Param \u003e)"
+    "signature": "pub (crate) fn statement (st : \u0026 Step , parent_vals : Vec \u003c Param \u003e , numbered : bool) -\u003e Result \u003c (Cow \u003c '_ , str \u003e , Vec \u003c Param \u003e) \u003e"
+  },
+  "packages/rust/orm/src/driver/tests.rs::assert_parent_slot_invalid": {
+    "exported": false,
+    "signature": " fn assert_parent_slot_invalid (step : \u0026 Step , numbered : bool)"
+  },
+  "packages/rust/orm/src/driver/tests.rs::parent_expansion_keeps_single_value_and_composite_padding_order": {
+    "exported": false,
+    "signature": " fn parent_expansion_keeps_single_value_and_composite_padding_order ()"
+  },
+  "packages/rust/orm/src/driver/tests.rs::parent_expansion_rejects_duplicate_numbered_slots": {
+    "exported": false,
+    "signature": " fn parent_expansion_rejects_duplicate_numbered_slots ()"
+  },
+  "packages/rust/orm/src/driver/tests.rs::parent_expansion_rejects_duplicate_positional_slots": {
+    "exported": false,
+    "signature": " fn parent_expansion_rejects_duplicate_positional_slots ()"
+  },
+  "packages/rust/orm/src/driver/tests.rs::parent_expansion_rejects_missing_numbered_slot": {
+    "exported": false,
+    "signature": " fn parent_expansion_rejects_missing_numbered_slot ()"
+  },
+  "packages/rust/orm/src/driver/tests.rs::parent_expansion_rejects_missing_positional_slot": {
+    "exported": false,
+    "signature": " fn parent_expansion_rejects_missing_positional_slot ()"
+  },
+  "packages/rust/orm/src/driver/tests.rs::relation_step": {
+    "exported": false,
+    "signature": " fn relation_step (sql : \u0026 str , slots : \u0026 [\u0026 str] , key_width : usize) -\u003e Step"
+  },
+  "packages/rust/orm/src/driver/tests.rs::sqlite_bind_accepts_every_parameter_variant": {
+    "exported": false,
+    "signature": " async fn sqlite_bind_accepts_every_parameter_variant ()"
   },
   "packages/rust/orm/src/engine/dialect.rs::Dialect": {
     "exported": true,
@@ -4403,6 +4667,10 @@
     "exported": true,
     "signature": "pub fn force_index (self , name : \u0026 str) -\u003e String"
   },
+  "packages/rust/orm/src/engine/dialect.rs::Dialect::fulltext": {
+    "exported": true,
+    "signature": "pub fn fulltext (self , cols : \u0026 [String] , value : \u0026 mut dyn FnMut (\u0026 str) -\u003e String , boolean : bool) -\u003e Option \u003c String \u003e"
+  },
   "packages/rust/orm/src/engine/dialect.rs::Dialect::handles_style": {
     "exported": true,
     "signature": "pub fn handles_style (self , style : \u0026 str) -\u003e bool"
@@ -4422,6 +4690,10 @@
   "packages/rust/orm/src/engine/dialect.rs::Dialect::limit": {
     "exported": true,
     "signature": "pub fn limit (self , offset : u32 , count : u32) -\u003e String"
+  },
+  "packages/rust/orm/src/engine/dialect.rs::Dialect::limit_params": {
+    "exported": true,
+    "signature": "pub fn limit_params (self , offset : \u0026 str , count : \u0026 str) -\u003e String"
   },
   "packages/rust/orm/src/engine/dialect.rs::Dialect::name": {
     "exported": true,
@@ -4573,15 +4845,15 @@
   },
   "packages/rust/orm/src/engine/params.rs::ParamUses \u003c 'm \u003e::group": {
     "exported": false,
-    "signature": " fn group (\u0026 mut self , g : \u0026 ir :: Group , ent : \u0026 'm Entity)"
+    "signature": " fn group (\u0026 mut self , g : \u0026 ir :: Group , ent : \u0026 'm Entity) -\u003e Result \u003c () \u003e"
   },
   "packages/rust/orm/src/engine/params.rs::ParamUses \u003c 'm \u003e::pred": {
     "exported": false,
-    "signature": " fn pred (\u0026 mut self , p : \u0026 ir :: Pred , ent : \u0026 'm Entity)"
+    "signature": " fn pred (\u0026 mut self , p : \u0026 ir :: Pred , ent : \u0026 'm Entity) -\u003e Result \u003c () \u003e"
   },
   "packages/rust/orm/src/engine/params.rs::ParamUses \u003c 'm \u003e::query": {
     "exported": false,
-    "signature": " fn query (\u0026 mut self , q : \u0026 ir :: Query , parent : Option \u003c \u0026 'm Entity \u003e)"
+    "signature": " fn query (\u0026 mut self , q : \u0026 ir :: Query , parent : Option \u003c \u0026 'm Entity \u003e) -\u003e Result \u003c () \u003e"
   },
   "packages/rust/orm/src/engine/params.rs::ParamUses#field.m": {
     "exported": false,
@@ -4597,7 +4869,7 @@
   },
   "packages/rust/orm/src/engine/params.rs::function_type": {
     "exported": false,
-    "signature": "pub (crate) fn function_type (name : \u0026 str , f : Option \u003c \u0026 Field \u003e) -\u003e String"
+    "signature": "pub (crate) fn function_type (name : \u0026 str , f : Option \u003c \u0026 Field \u003e , entity : \u0026 str , column : \u0026 str) -\u003e Result \u003c String \u003e"
   },
   "packages/rust/orm/src/engine/params.rs::interval_type": {
     "exported": false,
@@ -4605,7 +4877,11 @@
   },
   "packages/rust/orm/src/engine/params.rs::param_uses": {
     "exported": false,
-    "signature": "pub (crate) fn param_uses \u003c 'm \u003e (m : \u0026 'm Manifest , r : \u0026 ir :: Request) -\u003e Vec \u003c Vec \u003c ParamUse \u003c 'm \u003e \u003e \u003e"
+    "signature": "pub (crate) fn param_uses \u003c 'm \u003e (m : \u0026 'm Manifest , r : \u0026 ir :: Request) -\u003e Result \u003c Vec \u003c Vec \u003c ParamUse \u003c 'm \u003e \u003e \u003e \u003e"
+  },
+  "packages/rust/orm/src/engine/planner.rs::AesVersionWrite": {
+    "exported": false,
+    "signature": " enum AesVersionWrite  { IfMissing , WhenAssigned , }"
   },
   "packages/rust/orm/src/engine/planner.rs::Asm": {
     "exported": false,
@@ -4727,6 +5003,10 @@
     "exported": false,
     "signature": " fn tables (\u0026 self) -\u003e Vec \u003c String \u003e"
   },
+  "packages/rust/orm/src/engine/planner.rs::Builder::transformed": {
+    "exported": false,
+    "signature": " fn transformed (\u0026 mut self , i : usize , transform : \u0026 str) -\u003e String"
+  },
   "packages/rust/orm/src/engine/planner.rs::Ch": {
     "exported": false,
     "signature": " struct Ch  { child : Child , asm : Option \u003c Asm \u003e , }"
@@ -4783,6 +5063,10 @@
     "exported": false,
     "signature": "pub (crate) struct Planner \u003c 'm \u003e { pub m : \u0026 'm Manifest , pub d : Dialect , }"
   },
+  "packages/rust/orm/src/engine/planner.rs::Planner \u003c 'm \u003e::append_order": {
+    "exported": false,
+    "signature": " fn append_order (\u0026 self , s : \u0026 Scope \u003c '_ \u003e , q : \u0026 ir :: Query , parts : \u0026 mut Vec \u003c String \u003e) -\u003e Result \u003c () \u003e"
+  },
   "packages/rust/orm/src/engine/planner.rs::Planner \u003c 'm \u003e::blind_index": {
     "exported": false,
     "signature": " fn blind_index \u003c 'e \u003e (\u0026 self , s : \u0026 Scope \u003c 'e \u003e , col : \u0026 Field) -\u003e Result \u003c \u0026 'e Field \u003e"
@@ -4826,6 +5110,10 @@
   "packages/rust/orm/src/engine/planner.rs::Planner \u003c 'm \u003e::insert_step": {
     "exported": false,
     "signature": " fn insert_step (\u0026 self , r : \u0026 ir :: Request) -\u003e Result \u003c Step \u003e"
+  },
+  "packages/rust/orm/src/engine/planner.rs::Planner \u003c 'm \u003e::limit": {
+    "exported": false,
+    "signature": " fn limit (\u0026 self , b : \u0026 mut Builder , limit : \u0026 ir :: Limit) -\u003e Result \u003c String \u003e"
   },
   "packages/rust/orm/src/engine/planner.rs::Planner \u003c 'm \u003e::managed_insert_columns": {
     "exported": false,
@@ -4905,7 +5193,7 @@
   },
   "packages/rust/orm/src/engine/planner.rs::Planner \u003c 'm \u003e::select_step": {
     "exported": false,
-    "signature": " fn select_step (\u0026 self , steps : \u0026 mut Vec \u003c Step \u003e , q : \u0026 ir :: Query , kind : \u0026 str , agg : \u0026 str , rc : Option \u003c \u0026 RelCtx \u003e) -\u003e Result \u003c usize \u003e"
+    "signature": " fn select_step (\u0026 self , steps : \u0026 mut Vec \u003c Step \u003e , q : \u0026 ir :: Query , kind : \u0026 str , agg : \u0026 str , rc : Option \u003c \u0026 RelCtx \u003e , count_before_relations : bool) -\u003e Result \u003c usize \u003e"
   },
   "packages/rust/orm/src/engine/planner.rs::Planner \u003c 'm \u003e::sql_styles": {
     "exported": false,
@@ -4930,6 +5218,10 @@
   "packages/rust/orm/src/engine/planner.rs::Planner \u003c 'm \u003e::update_step": {
     "exported": false,
     "signature": " fn update_step (\u0026 self , r : \u0026 ir :: Request) -\u003e Result \u003c Step \u003e"
+  },
+  "packages/rust/orm/src/engine/planner.rs::Planner \u003c 'm \u003e::write_assignments": {
+    "exported": false,
+    "signature": " fn write_assignments (\u0026 self , b : \u0026 mut Builder , ent : \u0026 Entity , set : \u0026 [ir :: Assign] , aes_version : AesVersionWrite) -\u003e Result \u003c Vec \u003c String \u003e \u003e"
   },
   "packages/rust/orm/src/engine/planner.rs::Planner#field.d": {
     "exported": false,
@@ -5009,7 +5301,7 @@
   },
   "packages/rust/orm/src/engine/planner.rs::add_blind_index_assignments": {
     "exported": false,
-    "signature": " fn add_blind_index_assignments (ent : \u0026 Entity , mut set : Vec \u003c ir :: Assign \u003e) -\u003e Vec \u003c ir :: Assign \u003e"
+    "signature": " fn add_blind_index_assignments (ent : \u0026 Entity , mut set : Vec \u003c ir :: Assign \u003e) -\u003e Result \u003c Vec \u003c ir :: Assign \u003e \u003e"
   },
   "packages/rust/orm/src/engine/planner.rs::aes_version_column": {
     "exported": false,
@@ -5018,6 +5310,10 @@
   "packages/rust/orm/src/engine/planner.rs::assigned": {
     "exported": false,
     "signature": " fn assigned (set : \u0026 [ir :: Assign] , col : \u0026 str) -\u003e bool"
+  },
+  "packages/rust/orm/src/engine/planner.rs::assigned_blind_index_source": {
+    "exported": false,
+    "signature": " fn assigned_blind_index_source \u003c 'e \u003e (ent : \u0026 'e Entity , target : \u0026 str , assignments : \u0026 [ir :: Assign]) -\u003e Option \u003c \u0026 'e Field \u003e"
   },
   "packages/rust/orm/src/engine/planner.rs::assigns_aes": {
     "exported": false,
@@ -5049,7 +5345,7 @@
   },
   "packages/rust/orm/src/engine/planner.rs::conflict_target": {
     "exported": false,
-    "signature": " fn conflict_target (ent : \u0026 Entity , set : \u0026 [ir :: Assign]) -\u003e Vec \u003c String \u003e"
+    "signature": " fn conflict_target (ent : \u0026 Entity , set : \u0026 [ir :: Assign]) -\u003e Result \u003c Vec \u003c String \u003e \u003e"
   },
   "packages/rust/orm/src/engine/planner.rs::datetime_precision": {
     "exported": false,
@@ -5185,7 +5481,7 @@
   },
   "packages/rust/orm/src/engine/validate.rs::Validator \u003c 'm \u003e::scopes": {
     "exported": false,
-    "signature": " fn scopes (\u0026 self , q : \u0026 ir :: Query) -\u003e Scope \u003c 'm \u003e"
+    "signature": " fn scopes (\u0026 self , q : \u0026 ir :: Query) -\u003e Result \u003c Scope \u003c 'm \u003e \u003e"
   },
   "packages/rust/orm/src/engine/validate.rs::Validator \u003c 'm \u003e::sub": {
     "exported": false,
@@ -5230,10 +5526,6 @@
   "packages/rust/orm/src/engine/validate.rs::op_allowed": {
     "exported": false,
     "signature": " fn op_allowed (c : \u0026 Field , op : \u0026 str) -\u003e bool"
-  },
-  "packages/rust/orm/src/engine/validate.rs::ops_by_type": {
-    "exported": false,
-    "signature": " fn ops_by_type (typ : \u0026 str) -\u003e \u0026 'static [\u0026 'static str]"
   },
   "packages/rust/orm/src/engine/validate.rs::restore_key": {
     "exported": false,
@@ -5629,19 +5921,15 @@
   },
   "packages/rust/orm/src/ir.rs::Limit": {
     "exported": true,
-    "signature": "pub struct Limit  { pub offset : u32 , pub count : u32 , }"
-  },
-  "packages/rust/orm/src/ir.rs::Limit#field.count": {
-    "exported": true,
-    "signature": "u32"
-  },
-  "packages/rust/orm/src/ir.rs::Limit#field.offset": {
-    "exported": true,
-    "signature": "u32"
+    "signature": "pub enum Limit  { Literal { offset : u32 , count : u32 } , Params { offset_p : usize , count_p : usize } , }"
   },
   "packages/rust/orm/src/ir.rs::Limit#wire": {
     "exported": true,
-    "signature": "{\"count\":\"integer\",\"offset\":\"integer\"}"
+    "signature": "{\"count\":\"integer\",\"count_p\":\"integer\",\"offset\":\"integer\",\"offset_p\":\"integer\"}"
+  },
+  "packages/rust/orm/src/ir.rs::Limit::literal_count": {
+    "exported": false,
+    "signature": "pub (crate) fn literal_count (\u0026 self) -\u003e Option \u003c u32 \u003e"
   },
   "packages/rust/orm/src/ir.rs::Optimist": {
     "exported": true,
@@ -5943,13 +6231,81 @@
     "exported": true,
     "signature": "pub type Result \u003c T \u003e = std :: result :: Result \u003c T , Error \u003e ;"
   },
+  "packages/rust/orm/src/lib.rs::mysql_code": {
+    "exported": false,
+    "signature": " fn mysql_code (number : u16) -\u003e Option \u003c \u0026 'static str \u003e"
+  },
   "packages/rust/orm/src/lib.rs::rollback_message": {
     "exported": false,
     "signature": "pub (crate) fn rollback_message (cause : \u0026 dyn std :: fmt :: Display , rollback : \u0026 dyn std :: fmt :: Display) -\u003e String"
   },
   "packages/rust/orm/src/lib.rs::sqlite_busy": {
     "exported": false,
-    "signature": "pub (crate) fn sqlite_busy (e : \u0026 sqlx :: Error) -\u003e bool"
+    "signature": "pub (crate) fn sqlite_busy (e : \u0026 sqlx :: Error) -\u003e Result \u003c bool \u003e"
+  },
+  "packages/rust/orm/src/listen.rs::Db::listen": {
+    "exported": true,
+    "signature": "pub async fn listen (\u0026 self , channel : \u0026 str) -\u003e Result \u003c Subscription \u003e"
+  },
+  "packages/rust/orm/src/listen.rs::Db::listenable": {
+    "exported": false,
+    "signature": " fn listenable (\u0026 self , surface : \u0026 str) -\u003e Result \u003c () \u003e"
+  },
+  "packages/rust/orm/src/listen.rs::Db::notify": {
+    "exported": true,
+    "signature": "pub async fn notify (\u0026 self , channel : \u0026 str , payload : \u0026 str) -\u003e Result \u003c () \u003e"
+  },
+  "packages/rust/orm/src/listen.rs::Notification": {
+    "exported": true,
+    "signature": "pub struct Notification  { pub channel : String , pub payload : String , pub pid : u32 , }"
+  },
+  "packages/rust/orm/src/listen.rs::Notification#field.channel": {
+    "exported": true,
+    "signature": "String"
+  },
+  "packages/rust/orm/src/listen.rs::Notification#field.payload": {
+    "exported": true,
+    "signature": "String"
+  },
+  "packages/rust/orm/src/listen.rs::Notification#field.pid": {
+    "exported": true,
+    "signature": "u32"
+  },
+  "packages/rust/orm/src/listen.rs::Notification#wire": {
+    "exported": true,
+    "signature": "{\"channel\":\"text\",\"payload\":\"text\",\"pid\":\"integer\"}"
+  },
+  "packages/rust/orm/src/listen.rs::Subscription": {
+    "exported": true,
+    "signature": "pub struct Subscription  { inner : Option \u003c (PgListener , PgPool) \u003e , }"
+  },
+  "packages/rust/orm/src/listen.rs::Subscription#field.inner": {
+    "exported": false,
+    "signature": "Option \u003c (PgListener , PgPool) \u003e"
+  },
+  "packages/rust/orm/src/listen.rs::Subscription#wire": {
+    "exported": true,
+    "signature": "{\"inner\":\"unsupported:(PgListener , PgPool)\"}"
+  },
+  "packages/rust/orm/src/listen.rs::Subscription::close": {
+    "exported": true,
+    "signature": "pub async fn close (mut self) -\u003e Result \u003c () \u003e"
+  },
+  "packages/rust/orm/src/listen.rs::Subscription::receive_within": {
+    "exported": true,
+    "signature": "pub async fn receive_within (\u0026 mut self , deadline : Duration) -\u003e Result \u003c Notification \u003e"
+  },
+  "packages/rust/orm/src/listen.rs::Subscription::unlisten": {
+    "exported": true,
+    "signature": "pub async fn unlisten (\u0026 mut self , channel : \u0026 str) -\u003e Result \u003c () \u003e"
+  },
+  "packages/rust/orm/src/listen.rs::check_channel": {
+    "exported": false,
+    "signature": " fn check_channel (channel : \u0026 str) -\u003e Result \u003c () \u003e"
+  },
+  "packages/rust/orm/src/listen.rs::closed": {
+    "exported": false,
+    "signature": " fn closed () -\u003e Error"
   },
   "packages/rust/orm/src/markdown.rs::Db::is_markdown": {
     "exported": false,
@@ -6081,7 +6437,7 @@
   },
   "packages/rust/orm/src/markdown.rs::MdNode \u003c 'm \u003e::sub_type": {
     "exported": false,
-    "signature": " fn sub_type (\u0026 self , sub : \u0026 ir :: Sub) -\u003e String"
+    "signature": " fn sub_type (\u0026 self , sub : \u0026 ir :: Sub) -\u003e Result \u003c String \u003e"
   },
   "packages/rust/orm/src/markdown.rs::MdNode#field.ent": {
     "exported": false,
@@ -6911,9 +7267,21 @@
     "exported": false,
     "signature": " fn revision_guard (c : \u0026 Core , ent : \u0026 dbspec :: Entity , req : \u0026 mut Req , update : bool , optimistic : bool) -\u003e Result \u003c Option \u003c String \u003e \u003e"
   },
+  "packages/rust/orm/src/model.rs::root_in_list": {
+    "exported": false,
+    "signature": " fn root_in_list (req : \u0026 Req , target : usize) -\u003e \u0026 [usize]"
+  },
   "packages/rust/orm/src/model.rs::root_in_parts": {
     "exported": false,
-    "signature": " fn root_in_parts (req : \u0026 Req , binds : usize , driver : \u0026 str) -\u003e Result \u003c Vec \u003c Req \u003e \u003e"
+    "signature": " fn root_in_parts (req : \u0026 mut Req , binds : usize , driver : \u0026 str) -\u003e Result \u003c Vec \u003c Req \u003e \u003e"
+  },
+  "packages/rust/orm/src/model.rs::root_in_target": {
+    "exported": false,
+    "signature": " fn root_in_target (req : \u0026 Req) -\u003e Option \u003c usize \u003e"
+  },
+  "packages/rust/orm/src/model.rs::row_values": {
+    "exported": false,
+    "signature": " fn row_values (m : \u0026 dyn AnyModel) -\u003e Result \u003c Vec \u003c (String , Val) \u003e \u003e"
   },
   "packages/rust/orm/src/model.rs::save": {
     "exported": true,
@@ -6930,6 +7298,14 @@
   "packages/rust/orm/src/model.rs::six_fraction_digits": {
     "exported": false,
     "signature": " fn six_fraction_digits (text : \u0026 str) -\u003e String"
+  },
+  "packages/rust/orm/src/model.rs::split_read_plan": {
+    "exported": false,
+    "signature": " async fn split_read_plan (db : \u0026 Db , req : \u0026 mut Req) -\u003e Result \u003c (Arc \u003c Plan \u003e , usize) \u003e"
+  },
+  "packages/rust/orm/src/model.rs::split_row_key": {
+    "exported": false,
+    "signature": " fn split_row_key (row : \u0026 [Val] , refs : \u0026 [crate :: plan :: KeyRef]) -\u003e Result \u003c Key \u003e"
   },
   "packages/rust/orm/src/model.rs::sql_write": {
     "exported": false,
@@ -6974,6 +7350,10 @@
   "packages/rust/orm/src/model.rs::with_aes_columns": {
     "exported": false,
     "signature": " fn with_aes_columns \u003c M : Model \u003e (m : \u0026 M , ent : \u0026 dbspec :: Entity) -\u003e Result \u003c Vec \u003c SetSpec \u003e \u003e"
+  },
+  "packages/rust/orm/src/model.rs::with_root_in_list": {
+    "exported": false,
+    "signature": " fn with_root_in_list (req : \u0026 mut Req , target : usize , ps : Vec \u003c usize \u003e) -\u003e Req"
   },
   "packages/rust/orm/src/model.rs::write": {
     "exported": false,
@@ -7403,6 +7783,10 @@
     "exported": true,
     "signature": "pub fn shape_key (\u0026 mut self) -\u003e u64"
   },
+  "packages/rust/orm/src/request.rs::Req::shape_key_with_n_params": {
+    "exported": false,
+    "signature": "pub (crate) fn shape_key_with_n_params (\u0026 mut self , n_params : usize) -\u003e u64"
+  },
   "packages/rust/orm/src/request.rs::build": {
     "exported": false,
     "signature": "pub (crate) fn build (c : \u0026 Core , kind : \u0026 str) -\u003e Req"
@@ -7433,7 +7817,7 @@
   },
   "packages/rust/orm/src/request.rs::query": {
     "exported": false,
-    "signature": " fn query (r : \u0026 mut Req , c : \u0026 Core , f : \u0026 mut Frame \u003c '_ \u003e , joins : \u0026 mut HashSet \u003c String \u003e) -\u003e Option \u003c ir :: Query \u003e"
+    "signature": " fn query (r : \u0026 mut Req , c : \u0026 Core , f : \u0026 mut Frame \u003c '_ \u003e , joins : \u0026 mut HashSet \u003c String \u003e , root_page : bool) -\u003e Option \u003c ir :: Query \u003e"
   },
   "packages/rust/orm/src/request.rs::relation": {
     "exported": false,
@@ -7443,13 +7827,13 @@
     "exported": false,
     "signature": "pub (crate) fn result_name (c : \u0026 Core , many : bool) -\u003e String"
   },
-  "packages/rust/orm/src/request.rs::snake": {
-    "exported": false,
-    "signature": "pub (crate) fn snake (s : \u0026 str) -\u003e String"
-  },
   "packages/rust/orm/src/request.rs::subquery": {
     "exported": false,
     "signature": " fn subquery (r : \u0026 mut Req , c : \u0026 Core , outer : u64 , scalar : bool) -\u003e Option \u003c ir :: Sub \u003e"
+  },
+  "packages/rust/orm/src/request.rs::validate_page_params": {
+    "exported": false,
+    "signature": "pub (crate) fn validate_page_params (r : \u0026 ir :: Request , params : \u0026 [Param]) -\u003e crate :: Result \u003c () \u003e"
   },
   "packages/rust/orm/src/row.rs::Cells": {
     "exported": true,
@@ -7731,6 +8115,10 @@
     "exported": false,
     "signature": "{\"code\":\"text\",\"message\":\"text\"}"
   },
+  "packages/rust/orm/src/testing.rs::compile_core_request": {
+    "exported": true,
+    "signature": "pub fn compile_core_request (core : \u0026 crate :: Core , kind : \u0026 str , dialect : crate :: Dialect) -\u003e crate :: Result \u003c crate :: plan :: Plan \u003e"
+  },
   "packages/rust/orm/src/testing.rs::fail_next_rollback": {
     "exported": true,
     "signature": "pub fn fail_next_rollback (db : \u0026 Db)"
@@ -7815,6 +8203,10 @@
     "exported": false,
     "signature": "# [doc = \" The callback future, which runs inside the transaction's task-local frame and catches panics.\"] type OnceCallback \u003c Fut \u003e = futures_util :: future :: CatchUnwind \u003c std :: panic :: AssertUnwindSafe \u003c tokio :: task :: futures :: TaskLocalFuture \u003c Vec \u003c Arc \u003c TxShared \u003e \u003e , Fut \u003e \u003e \u003e ;"
   },
+  "packages/rust/orm/src/tx.rs::OnceCallbackResult": {
+    "exported": false,
+    "signature": "type OnceCallbackResult \u003c T , E \u003e = std :: result :: Result \u003c T , E \u003e ;"
+  },
   "packages/rust/orm/src/tx.rs::OnceOutcome": {
     "exported": false,
     "signature": " enum OnceOutcome \u003c T , E \u003e { Returned (T) , Failed (E) , Panicked (Box \u003c dyn std :: any :: Any + Send \u003e) , }"
@@ -7850,6 +8242,10 @@
   "packages/rust/orm/src/tx.rs::OnceStep": {
     "exported": false,
     "signature": "# [doc = \" The future of the steps the ORM awaits internally (begin, savepoint, commit, rollback). These steps are Send, so\"] # [doc = \" `TransactionOnceFuture` is Send when the callback, its future, and the result and error types are Send.\"] type OnceStep \u003c 'a , R \u003e = Pin \u003c Box \u003c dyn Future \u003c Output = R \u003e + Send + 'a \u003e \u003e ;"
+  },
+  "packages/rust/orm/src/tx.rs::OnceTransactionResult": {
+    "exported": false,
+    "signature": "type OnceTransactionResult \u003c T , E \u003e = std :: result :: Result \u003c T , TransactionOnceError \u003c E \u003e \u003e ;"
   },
   "packages/rust/orm/src/tx.rs::SavepointEnd": {
     "exported": false,
@@ -8025,7 +8421,7 @@
   },
   "packages/rust/orm/src/tx.rs::TransactionOnce \u003c 'a , F \u003e as IntoFuture::Output": {
     "exported": true,
-    "signature": "type Output = std :: result :: Result \u003c T , TransactionOnceError \u003c E \u003e \u003e ;"
+    "signature": "type Output = OnceTransactionResult \u003c T , E \u003e ;"
   },
   "packages/rust/orm/src/tx.rs::TransactionOnce \u003c 'a , F \u003e as IntoFuture::into_future": {
     "exported": true,
@@ -8069,7 +8465,7 @@
   },
   "packages/rust/orm/src/tx.rs::TransactionOnceFuture \u003c 'a , F , Fut , T , E \u003e as Future::Output": {
     "exported": true,
-    "signature": "type Output = std :: result :: Result \u003c T , TransactionOnceError \u003c E \u003e \u003e ;"
+    "signature": "type Output = OnceTransactionResult \u003c T , E \u003e ;"
   },
   "packages/rust/orm/src/tx.rs::TransactionOnceFuture \u003c 'a , F , Fut , T , E \u003e as Future::poll": {
     "exported": true,
@@ -8147,6 +8543,10 @@
     "exported": false,
     "signature": "pub (crate) fn enter (\u0026 self) -\u003e Result \u003c tokio :: sync :: MutexGuard \u003c '_ , Option \u003c TxInner \u003e \u003e \u003e"
   },
+  "packages/rust/orm/src/tx.rs::TxShared::new": {
+    "exported": false,
+    "signature": " fn new (db : \u0026 Db , inner : TxInner , sqlite_mode : Option \u003c (bool , bool) \u003e) -\u003e Self"
+  },
   "packages/rust/orm/src/tx.rs::TxShared::raw": {
     "exported": false,
     "signature": "pub (crate) async fn raw (\u0026 self , kind : \u0026 str , sql : \u0026 str) -\u003e Result \u003c () \u003e"
@@ -8215,6 +8615,10 @@
     "exported": false,
     "signature": " fn joined (mut errors : Vec \u003c Error \u003e) -\u003e Result \u003c () \u003e"
   },
+  "packages/rust/orm/src/tx.rs::nested_transaction": {
+    "exported": false,
+    "signature": " fn nested_transaction (db : \u0026 Db , options_set : bool) -\u003e Result \u003c Option \u003c Arc \u003c TxShared \u003e \u003e \u003e"
+  },
   "packages/rust/orm/src/tx.rs::raw_on": {
     "exported": false,
     "signature": "pub (crate) async fn raw_on (db : \u0026 Db , inner : \u0026 mut TxInner , s : Sent \u003c '_ \u003e) -\u003e Result \u003c () \u003e"
@@ -8251,9 +8655,17 @@
     "exported": false,
     "signature": " async fn savepoint \u003c T , F \u003e (tx : Arc \u003c TxShared \u003e , f : \u0026 F) -\u003e Result \u003c T \u003e where F : AsyncFn () -\u003e Result \u003c T \u003e ,"
   },
+  "packages/rust/orm/src/tx.rs::savepoint_result": {
+    "exported": false,
+    "signature": " fn savepoint_result \u003c T \u003e (result : std :: result :: Result \u003c T , (Error , Option \u003c Error \u003e) \u003e) -\u003e Result \u003c T \u003e"
+  },
   "packages/rust/orm/src/tx.rs::savepoint_send": {
     "exported": false,
     "signature": " async fn savepoint_send \u003c 'a , 'b , T \u003e (tx : Arc \u003c TxShared \u003e , f : \u0026 'b SendOperation \u003c 'a , T \u003e) -\u003e Result \u003c T \u003e where 'a : 'b , T : Send + 'a ,"
+  },
+  "packages/rust/orm/src/tx.rs::take_inner": {
+    "exported": false,
+    "signature": " async fn take_inner (tx : \u0026 TxShared) -\u003e Result \u003c TxInner \u003e"
   },
   "packages/rust/orm/src/tx.rs::transaction_conflict": {
     "exported": true,
@@ -8645,7 +9057,7 @@
   },
   "packages/rust/orm/src/utils.rs::step": {
     "exported": false,
-    "signature": " fn step (sql : String , types : \u0026 [\u0026 str]) -\u003e Step"
+    "signature": "pub (crate) fn step (sql : String , types : \u0026 [\u0026 str]) -\u003e Step"
   },
   "packages/rust/orm/src/utils.rs::truthy": {
     "exported": false,
@@ -8771,6 +9183,10 @@
     "exported": false,
     "signature": " fn esc (s : \u0026 str) -\u003e String"
   },
+  "packages/rust/orm/src/value.rs::fulltext_boolean": {
+    "exported": true,
+    "signature": "pub fn fulltext_boolean (s : \u0026 str) -\u003e String"
+  },
   "packages/rust/orm/src/value.rs::ordered_to_json": {
     "exported": false,
     "signature": "pub (crate) fn ordered_to_json (v : \u0026 ordered_json :: Value) -\u003e crate :: Result \u003c serde_json :: Value \u003e"
@@ -8833,7 +9249,7 @@
   },
   "packages/rust/schema/src/dbspec/check.rs::CheckParser": {
     "exported": false,
-    "signature": "pub (crate) struct CheckParser \u003c 't , 'a \u003e { tokens : \u0026 't [Token \u003c 'a \u003e] , at : usize , end : Pos , }"
+    "signature": "pub (crate) struct CheckParser \u003c 't , 'a \u003e { cursor : Cursor \u003c 't , 'a \u003e , }"
   },
   "packages/rust/schema/src/dbspec/check.rs::CheckParser \u003c 't , 'a \u003e::after_literal": {
     "exported": false,
@@ -8867,14 +9283,6 @@
     "exported": false,
     "signature": " fn operand (\u0026 mut self) -\u003e Result \u003c Operand , CheckError \u003e"
   },
-  "packages/rust/schema/src/dbspec/check.rs::CheckParser \u003c 't , 'a \u003e::peek": {
-    "exported": false,
-    "signature": " fn peek (\u0026 self) -\u003e Option \u003c \u0026 't Token \u003c 'a \u003e \u003e"
-  },
-  "packages/rust/schema/src/dbspec/check.rs::CheckParser \u003c 't , 'a \u003e::peek_is": {
-    "exported": false,
-    "signature": " fn peek_is (\u0026 self , text : \u0026 str) -\u003e bool"
-  },
   "packages/rust/schema/src/dbspec/check.rs::CheckParser \u003c 't , 'a \u003e::position": {
     "exported": false,
     "signature": "pub fn position (\u0026 self) -\u003e usize"
@@ -8887,21 +9295,13 @@
     "exported": false,
     "signature": " fn unexpected \u003c T \u003e (\u0026 self) -\u003e Result \u003c T , CheckError \u003e"
   },
-  "packages/rust/schema/src/dbspec/check.rs::CheckParser#field.at": {
+  "packages/rust/schema/src/dbspec/check.rs::CheckParser#field.cursor": {
     "exported": false,
-    "signature": "usize"
-  },
-  "packages/rust/schema/src/dbspec/check.rs::CheckParser#field.end": {
-    "exported": false,
-    "signature": "Pos"
-  },
-  "packages/rust/schema/src/dbspec/check.rs::CheckParser#field.tokens": {
-    "exported": false,
-    "signature": "\u0026 't [Token \u003c 'a \u003e]"
+    "signature": "Cursor \u003c 't , 'a \u003e"
   },
   "packages/rust/schema/src/dbspec/check.rs::CheckParser#wire": {
     "exported": false,
-    "signature": "{\"at\":\"integer\",\"end\":\"Pos\",\"tokens\":\"unsupported:\u0026 't [Token \u003c 'a \u003e]\"}"
+    "signature": "{\"cursor\":\"Cursor\"}"
   },
   "packages/rust/schema/src/dbspec/check.rs::not_allowed": {
     "exported": false,
@@ -9611,6 +10011,10 @@
     "exported": false,
     "signature": " fn action_name (rule : \u0026 str) -\u003e Option \u003c \u0026 'static str \u003e"
   },
+  "packages/rust/schema/src/dbspec/introspect/mod.rs::apply_column_default": {
+    "exported": false,
+    "signature": " fn apply_column_default (catalog : \u0026 mut Catalog , column : \u0026 mut IColumn , table : \u0026 str , name : \u0026 str , text : Option \u003c String \u003e , parse : impl FnOnce (\u0026 str) -\u003e Option \u003c String \u003e ,) -\u003e bool"
+  },
   "packages/rust/schema/src/dbspec/introspect/mod.rs::catalog_followups": {
     "exported": true,
     "signature": "pub fn catalog_followups (dialect : Dialect , results : \u0026 [Vec \u003c Vec \u003c CatalogValue \u003e \u003e]) -\u003e Result \u003c Vec \u003c String \u003e , String \u003e"
@@ -9619,6 +10023,10 @@
     "exported": true,
     "signature": "pub fn catalog_queries (dialect : Dialect) -\u003e \u0026 'static [\u0026 'static str]"
   },
+  "packages/rust/schema/src/dbspec/introspect/mod.rs::compile_pattern": {
+    "exported": false,
+    "signature": "pub (super) fn compile_pattern (pattern : \u0026 'static str , label : \u0026 'static str) -\u003e Regex"
+  },
   "packages/rust/schema/src/dbspec/introspect/mod.rs::first_word": {
     "exported": false,
     "signature": " fn first_word (s : \u0026 str) -\u003e \u0026 str"
@@ -9626,6 +10034,14 @@
   "packages/rust/schema/src/dbspec/introspect/mod.rs::group": {
     "exported": false,
     "signature": " fn group \u003c 't \u003e (captures : \u0026 regex :: Captures \u003c 't \u003e , i : usize) -\u003e \u0026 't str"
+  },
+  "packages/rust/schema/src/dbspec/introspect/mod.rs::number": {
+    "exported": false,
+    "signature": " fn number \u003c T : std :: str :: FromStr \u003e (text : \u0026 str , what : \u0026 str) -\u003e Result \u003c T , String \u003e where T :: Err : std :: fmt :: Display ,"
+  },
+  "packages/rust/schema/src/dbspec/introspect/mod.rs::parse_column_default": {
+    "exported": false,
+    "signature": " fn parse_column_default (text : Option \u003c String \u003e , parse : impl FnOnce (\u0026 str) -\u003e Option \u003c String \u003e) -\u003e std :: result :: Result \u003c Option \u003c String \u003e , String \u003e"
   },
   "packages/rust/schema/src/dbspec/introspect/mod.rs::read_catalog": {
     "exported": true,
@@ -9693,7 +10109,7 @@
   },
   "packages/rust/schema/src/dbspec/introspect/mysql.rs::mysql_type": {
     "exported": false,
-    "signature": " fn mysql_type (column_type : \u0026 str , charset : \u0026 str , collation : \u0026 str) -\u003e Option \u003c (Type , String) \u003e"
+    "signature": " fn mysql_type (column_type : \u0026 str , charset : \u0026 str , collation : \u0026 str) -\u003e Result \u003c Option \u003c (Type , String) \u003e , String \u003e"
   },
   "packages/rust/schema/src/dbspec/introspect/mysql.rs::read": {
     "exported": false,
@@ -9737,7 +10153,7 @@
   },
   "packages/rust/schema/src/dbspec/introspect/postgres.rs::postgres_type": {
     "exported": false,
-    "signature": " fn postgres_type (formatted : \u0026 str , collation : \u0026 str) -\u003e Option \u003c Type \u003e"
+    "signature": " fn postgres_type (formatted : \u0026 str , collation : \u0026 str) -\u003e Result \u003c Option \u003c Type \u003e , String \u003e"
   },
   "packages/rust/schema/src/dbspec/introspect/postgres.rs::read": {
     "exported": false,
@@ -9801,7 +10217,7 @@
   },
   "packages/rust/schema/src/dbspec/introspect/sqlite.rs::sqlite_type": {
     "exported": false,
-    "signature": " fn sqlite_type (r : \u0026 Renderer , declared : \u0026 str , column : \u0026 str , check : Option \u003c \u0026 str \u003e) -\u003e Option \u003c Type \u003e"
+    "signature": " fn sqlite_type (r : \u0026 Renderer , declared : \u0026 str , column : \u0026 str , check : Option \u003c \u0026 str \u003e) -\u003e Result \u003c Option \u003c Type \u003e , String \u003e"
   },
   "packages/rust/schema/src/dbspec/introspect/sqlite.rs::unquote_list": {
     "exported": false,
@@ -9850,6 +10266,58 @@
   "packages/rust/schema/src/dbspec/introspect/trigger.rs::trigger_setting": {
     "exported": false,
     "signature": " fn trigger_setting (dialect : Dialect , t : \u0026 ITable , list : \u0026 [ITrigger]) -\u003e Option \u003c Vec \u003c String \u003e \u003e"
+  },
+  "packages/rust/schema/src/dbspec/lexer.rs::Cursor": {
+    "exported": false,
+    "signature": "pub (super) struct Cursor \u003c 't , 'a \u003e { pub (super) tokens : \u0026 't [Token \u003c 'a \u003e] , pub (super) at : usize , pub (super) end : Pos , }"
+  },
+  "packages/rust/schema/src/dbspec/lexer.rs::Cursor \u003c 't , 'a \u003e::advance": {
+    "exported": false,
+    "signature": "pub (super) fn advance (\u0026 mut self)"
+  },
+  "packages/rust/schema/src/dbspec/lexer.rs::Cursor \u003c 't , 'a \u003e::here": {
+    "exported": false,
+    "signature": "pub (super) fn here (\u0026 self) -\u003e Pos"
+  },
+  "packages/rust/schema/src/dbspec/lexer.rs::Cursor \u003c 't , 'a \u003e::new": {
+    "exported": false,
+    "signature": "pub (super) fn new (tokens : \u0026 't [Token \u003c 'a \u003e]) -\u003e Self"
+  },
+  "packages/rust/schema/src/dbspec/lexer.rs::Cursor \u003c 't , 'a \u003e::next": {
+    "exported": false,
+    "signature": "pub (super) fn next (\u0026 mut self) -\u003e Option \u003c \u0026 't Token \u003c 'a \u003e \u003e"
+  },
+  "packages/rust/schema/src/dbspec/lexer.rs::Cursor \u003c 't , 'a \u003e::peek": {
+    "exported": false,
+    "signature": "pub (super) fn peek (\u0026 self) -\u003e Option \u003c \u0026 't Token \u003c 'a \u003e \u003e"
+  },
+  "packages/rust/schema/src/dbspec/lexer.rs::Cursor \u003c 't , 'a \u003e::peek_is": {
+    "exported": false,
+    "signature": "pub (super) fn peek_is (\u0026 self , text : \u0026 str) -\u003e bool"
+  },
+  "packages/rust/schema/src/dbspec/lexer.rs::Cursor \u003c 't , 'a \u003e::peek_n": {
+    "exported": false,
+    "signature": "pub (super) fn peek_n (\u0026 self , offset : usize) -\u003e Option \u003c \u0026 't Token \u003c 'a \u003e \u003e"
+  },
+  "packages/rust/schema/src/dbspec/lexer.rs::Cursor \u003c 't , 'a \u003e::with_end": {
+    "exported": false,
+    "signature": "pub (super) fn with_end (tokens : \u0026 't [Token \u003c 'a \u003e] , end : Pos) -\u003e Self"
+  },
+  "packages/rust/schema/src/dbspec/lexer.rs::Cursor#field.at": {
+    "exported": false,
+    "signature": "usize"
+  },
+  "packages/rust/schema/src/dbspec/lexer.rs::Cursor#field.end": {
+    "exported": false,
+    "signature": "Pos"
+  },
+  "packages/rust/schema/src/dbspec/lexer.rs::Cursor#field.tokens": {
+    "exported": false,
+    "signature": "\u0026 't [Token \u003c 'a \u003e]"
+  },
+  "packages/rust/schema/src/dbspec/lexer.rs::Cursor#wire": {
+    "exported": false,
+    "signature": "{\"at\":\"integer\",\"end\":\"Pos\",\"tokens\":\"unsupported:\u0026 't [Token \u003c 'a \u003e]\"}"
   },
   "packages/rust/schema/src/dbspec/lexer.rs::Kind": {
     "exported": false,
@@ -10259,6 +10727,10 @@
     "exported": false,
     "signature": "pub (crate) fn check_set \u003c 'd \u003e (documents : \u0026 [\u0026 'd Document]) -\u003e Result \u003c Vec \u003c \u0026 'd Document \u003e , Vec \u003c Diagnostic \u003e \u003e"
   },
+  "packages/rust/schema/src/dbspec/mod.rs::comparison_operator": {
+    "exported": true,
+    "signature": "pub fn comparison_operator (op : \u0026 str) -\u003e Option \u003c \u0026 'static str \u003e"
+  },
   "packages/rust/schema/src/dbspec/mod.rs::convert": {
     "exported": false,
     "signature": " fn convert (diags : Vec \u003c Diag \u003e) -\u003e Vec \u003c Diagnostic \u003e"
@@ -10270,6 +10742,10 @@
   "packages/rust/schema/src/dbspec/mod.rs::emit": {
     "exported": true,
     "signature": "pub fn emit (document : \u0026 Document) -\u003e String"
+  },
+  "packages/rust/schema/src/dbspec/mod.rs::equality_operator_allowed": {
+    "exported": true,
+    "signature": "pub fn equality_operator_allowed (op : \u0026 str) -\u003e bool"
   },
   "packages/rust/schema/src/dbspec/mod.rs::external_differences": {
     "exported": true,
@@ -10291,6 +10767,14 @@
     "exported": true,
     "signature": "pub fn manifest (documents : \u0026 [\u0026 Document]) -\u003e Result \u003c Manifest , Vec \u003c Diagnostic \u003e \u003e"
   },
+  "packages/rust/schema/src/dbspec/mod.rs::operator_allowed_for_field": {
+    "exported": true,
+    "signature": "pub fn operator_allowed_for_field (field : \u0026 Field , op : \u0026 str , column_operator : bool) -\u003e bool"
+  },
+  "packages/rust/schema/src/dbspec/mod.rs::operator_allowed_for_type": {
+    "exported": true,
+    "signature": "pub fn operator_allowed_for_type (typ : \u0026 str , op : \u0026 str) -\u003e bool"
+  },
   "packages/rust/schema/src/dbspec/mod.rs::parse": {
     "exported": true,
     "signature": "pub fn parse (text : \u0026 str , documents : \u0026 BTreeMap \u003c String , String \u003e) -\u003e Result \u003c Parsed , Vec \u003c Diagnostic \u003e \u003e"
@@ -10305,7 +10789,7 @@
   },
   "packages/rust/schema/src/dbspec/mod.rs::stopped": {
     "exported": false,
-    "signature": " fn stopped (mut diags : Vec \u003c Diag \u003e) -\u003e Vec \u003c Diagnostic \u003e"
+    "signature": "pub (crate) fn stopped (mut diags : Vec \u003c Diag \u003e) -\u003e Vec \u003c Diagnostic \u003e"
   },
   "packages/rust/schema/src/dbspec/mod.rs::text_hash": {
     "exported": false,
@@ -10886,46 +11370,6 @@
   "packages/rust/schema/src/dbspec/parser.rs::Context": {
     "exported": false,
     "signature": " enum Context  { Top , Table , Settings , Diagram , }"
-  },
-  "packages/rust/schema/src/dbspec/parser.rs::Cursor": {
-    "exported": false,
-    "signature": " struct Cursor \u003c 't , 'a \u003e { tokens : \u0026 't [Token \u003c 'a \u003e] , at : usize , end : Pos , }"
-  },
-  "packages/rust/schema/src/dbspec/parser.rs::Cursor \u003c 't , 'a \u003e::here": {
-    "exported": false,
-    "signature": " fn here (\u0026 self) -\u003e Pos"
-  },
-  "packages/rust/schema/src/dbspec/parser.rs::Cursor \u003c 't , 'a \u003e::new": {
-    "exported": false,
-    "signature": " fn new (tokens : \u0026 't [Token \u003c 'a \u003e]) -\u003e Self"
-  },
-  "packages/rust/schema/src/dbspec/parser.rs::Cursor \u003c 't , 'a \u003e::next": {
-    "exported": false,
-    "signature": " fn next (\u0026 mut self) -\u003e Option \u003c \u0026 't Token \u003c 'a \u003e \u003e"
-  },
-  "packages/rust/schema/src/dbspec/parser.rs::Cursor \u003c 't , 'a \u003e::peek": {
-    "exported": false,
-    "signature": " fn peek (\u0026 self) -\u003e Option \u003c \u0026 't Token \u003c 'a \u003e \u003e"
-  },
-  "packages/rust/schema/src/dbspec/parser.rs::Cursor \u003c 't , 'a \u003e::peek_is": {
-    "exported": false,
-    "signature": " fn peek_is (\u0026 self , text : \u0026 str) -\u003e bool"
-  },
-  "packages/rust/schema/src/dbspec/parser.rs::Cursor#field.at": {
-    "exported": false,
-    "signature": "usize"
-  },
-  "packages/rust/schema/src/dbspec/parser.rs::Cursor#field.end": {
-    "exported": false,
-    "signature": "Pos"
-  },
-  "packages/rust/schema/src/dbspec/parser.rs::Cursor#field.tokens": {
-    "exported": false,
-    "signature": "\u0026 't [Token \u003c 'a \u003e]"
-  },
-  "packages/rust/schema/src/dbspec/parser.rs::Cursor#wire": {
-    "exported": false,
-    "signature": "{\"at\":\"integer\",\"end\":\"Pos\",\"tokens\":\"unsupported:\u0026 't [Token \u003c 'a \u003e]\"}"
   },
   "packages/rust/schema/src/dbspec/parser.rs::Declaration": {
     "exported": false,
@@ -11511,6 +11955,10 @@
     "exported": false,
     "signature": " fn codec_stage (stage : \u0026 str) -\u003e Class"
   },
+  "packages/rust/schema/src/dbspec/parser.rs::coordinate_value": {
+    "exported": false,
+    "signature": " fn coordinate_value (text : \u0026 str , negative : bool) -\u003e Result \u003c i32 , String \u003e"
+  },
   "packages/rust/schema/src/dbspec/parser.rs::err": {
     "exported": false,
     "signature": " fn err (pos : Pos , rule : \u0026 'static str , message : impl Into \u003c String \u003e) -\u003e Diag"
@@ -11529,7 +11977,7 @@
   },
   "packages/rust/schema/src/dbspec/parser.rs::header_name": {
     "exported": false,
-    "signature": "pub (crate) fn header_name (text : \u0026 str) -\u003e Option \u003c String \u003e"
+    "signature": "pub (crate) fn header_name (text : \u0026 str) -\u003e Result \u003c String , Stopped \u003e"
   },
   "packages/rust/schema/src/dbspec/parser.rs::line_kind": {
     "exported": false,
@@ -13162,6 +13610,10 @@
   "packages/rust/schema/src/dbspec/validate.rs::validate": {
     "exported": false,
     "signature": "pub (crate) fn validate (parsed : \u0026 Syntax , used : \u0026 [Option \u003c \u0026 Document \u003e] , diags : \u0026 mut Vec \u003c Diag \u003e , literals : \u0026 mut Vec \u003c CheckLiterals \u003e)"
+  },
+  "packages/rust/schema/src/names.rs::snake_case": {
+    "exported": true,
+    "signature": "pub fn snake_case (value : \u0026 str) -\u003e String"
   },
   "packages/rust/schema/src/sql.rs::next_word": {
     "exported": false,

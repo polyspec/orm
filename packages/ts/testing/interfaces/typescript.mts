@@ -69,12 +69,42 @@ function fieldType(type: TypeNode | undefined): string {
   if (text === 'QueryKind') return 'text';
   return text.replace(/\s+/g, '');
 }
+
+function typeAliasWire(type: TypeNode): Record<string, string> | undefined {
+  const variants = ts.isUnionTypeNode(type) ? type.types : [type];
+  if (!variants.every(ts.isTypeLiteralNode)) return undefined;
+  const fields: Record<string, string> = {};
+  for (const candidate of variants) {
+    if (!ts.isTypeLiteralNode(candidate)) return undefined;
+    const variant = candidate;
+    for (const member of variant.members) {
+      if (!ts.isPropertySignature(member) || !member.name) return undefined;
+      const name = member.name.getText();
+      const value = fieldType(member.type);
+      if (value === 'never') continue;
+      const existing = fields[name];
+      if (existing !== undefined && existing !== value) return undefined;
+      fields[name] = value;
+    }
+  }
+  return fields;
+}
+
 for (const file of files) {
   const text = await readFile(file, 'utf8');
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
   const path = relative(root, file);
   for (const node of source.statements) {
     if (ts.isFunctionDeclaration(node) && node.name) put(`${path}::${node.name.text}`, functionSignature(node, source), hasExport(node));
+    if (ts.isTypeAliasDeclaration(node)) {
+      const key = `${path}::${node.name.text}`;
+      const exported = hasExport(node);
+      const declaration = ts.factory.updateTypeAliasDeclaration(node, undefined, node.name, node.typeParameters, node.type);
+      put(key, printer.printNode(ts.EmitHint.Unspecified, declaration, source).replace(/;$/, ''), exported);
+      const wire = typeAliasWire(node.type);
+      if (wire && Object.keys(wire).length > 0) put(`${key}#wire`, JSON.stringify(wire), exported);
+      continue;
+    }
     if (!((ts.isClassDeclaration(node) || ts.isInterfaceDeclaration(node)) && node.name)) continue;
     const name = node.name.text;
     const key = `${path}::${name}`;

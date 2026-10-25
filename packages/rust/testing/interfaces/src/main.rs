@@ -81,6 +81,103 @@ fn tokens(t: &impl ToTokens) -> String {
     t.to_token_stream().to_string()
 }
 
+struct ApplyEntryPoint {
+    name: syn::Ident,
+    command: syn::Ident,
+}
+
+impl syn::parse::Parse for ApplyEntryPoint {
+    fn parse(input: syn::parse::ParseStream<'_>) -> syn::Result<Self> {
+        let _attributes = syn::Attribute::parse_outer(input)?;
+        let name = input.parse()?;
+        input.parse::<syn::Token![,]>()?;
+        let command = input.parse()?;
+        let _ = input.parse::<syn::Token![,]>();
+        if !input.is_empty() {
+            return Err(input.error("unexpected apply_entrypoint! input"));
+        }
+        Ok(Self { name, command })
+    }
+}
+
+/// The dbspec apply module uses this declarative macro only to emit four public command wrappers.
+fn expand_apply_entrypoint(item: syn::ItemMacro) -> Option<syn::ItemFn> {
+    if !item.mac.path.is_ident("apply_entrypoint") {
+        return None;
+    }
+    let ApplyEntryPoint { name, command } = syn::parse2(item.mac.tokens).expect("invalid apply_entrypoint! invocation");
+    Some(syn::parse_quote! {
+        pub async fn #name<C: ApplyConnection + ?Sized>(
+            connection: &mut C,
+            dialect: Dialect,
+            plans: &[Plan],
+            now: &ApplyClock<'_>,
+            events: &mut ApplyEvents<'_>,
+        ) -> Result<(), ApplyError> {
+            run_command(connection, dialect, plans, now, events, Command::#command).await
+        }
+    })
+}
+
+struct TransactionIntoFuture {
+    generics: syn::Generics,
+    target: syn::Type,
+    where_clause: syn::WhereClause,
+    future: syn::Type,
+}
+
+impl syn::parse::Parse for TransactionIntoFuture {
+    fn parse(input: syn::parse::ParseStream<'_>) -> syn::Result<Self> {
+        let generic_content;
+        syn::bracketed!(generic_content in input);
+        let params = syn::punctuated::Punctuated::<syn::GenericParam, syn::Token![,]>::parse_terminated(&generic_content)?;
+        input.parse::<syn::Token![,]>()?;
+        let target: syn::Type = input.parse()?;
+        input.parse::<syn::Token![,]>()?;
+        let bounds_content;
+        syn::bracketed!(bounds_content in input);
+        let predicates = syn::punctuated::Punctuated::<syn::WherePredicate, syn::Token![,]>::parse_terminated(&bounds_content)?;
+        input.parse::<syn::Token![,]>()?;
+        let future: syn::Type = input.parse()?;
+        if !input.is_empty() {
+            return Err(input.error("unexpected transaction_into_future! input"));
+        }
+        let generics = syn::Generics { lt_token: Some(Default::default()), params, gt_token: Some(Default::default()), where_clause: None };
+        let where_clause = syn::WhereClause { where_token: Default::default(), predicates };
+        Ok(Self { generics, target, where_clause, future })
+    }
+}
+
+fn expand_transaction_macro(item: syn::ItemMacro) -> Option<syn::ItemImpl> {
+    if item.mac.path.is_ident("transaction_options") {
+        let target: syn::Type = syn::parse2(item.mac.tokens).expect("invalid transaction_options! invocation");
+        return Some(syn::parse_quote! {
+            impl #target {
+                pub fn isolation(mut self, level: Isolation) -> Self { self }
+                pub fn read_only(mut self) -> Self { self }
+                pub fn timeout_ms(mut self, ms: u64) -> Self { self }
+                pub fn retry(mut self, n: u32) -> Self { self }
+                pub fn audit<K: Into<String>, V: Into<Param>>(mut self, values: impl IntoIterator<Item = (K, V)>) -> Self { self }
+            }
+        });
+    }
+    if item.mac.path.is_ident("transaction_into_future") {
+        let TransactionIntoFuture { mut generics, target, where_clause, future } =
+            syn::parse2(item.mac.tokens).expect("invalid transaction_into_future! invocation");
+        generics.where_clause = Some(where_clause);
+        let mut expanded: syn::ItemImpl = syn::parse_quote! {
+            impl IntoFuture for #target {
+                type Output = Result<T>;
+                type IntoFuture = #future;
+                fn into_future(self) -> Self::IntoFuture { todo!() }
+            }
+        };
+        expanded.generics = generics;
+        return Some(expanded);
+    }
+    None
+}
+
 fn add(out: &mut BTreeMap<String, Entry>, key: String, signature: String, exported: bool) {
     assert!(out.insert(key.clone(), Entry { signature, exported }).is_none(), "duplicate symbol {key}");
 }
@@ -181,6 +278,13 @@ fn items(out: &mut BTreeMap<String, Entry>, prefix: &str, list: Vec<Item>, scope
                     }
                 }
             }
+            Item::Macro(m) => {
+                if let Some(f) = expand_apply_entrypoint(m.clone()) {
+                    add(out, format!("{prefix}::{}", f.sig.ident), format!("{} {}", tokens(&f.vis), tokens(&f.sig)), scope);
+                } else if let Some(i) = expand_transaction_macro(m) {
+                    items(out, prefix, vec![Item::Impl(i)], scope, types);
+                }
+            }
             Item::Mod(m) => {
                 // Unit-test scaffolding is not a runtime declaration.
                 if m.attrs.iter().any(|a| tokens(a).contains("cfg (test)")) {
@@ -252,4 +356,84 @@ fn main() {
     let json: serde_json::Map<String, serde_json::Value> =
         out.into_iter().map(|(key, e)| (key, serde_json::json!({ "signature": e.signature, "exported": e.exported }))).collect();
     println!("{}", serde_json::to_string_pretty(&serde_json::Value::Object(json)).unwrap());
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn extracts_public_dbspec_apply_entrypoint_macro_invocations() {
+        let source = r#"
+            apply_entrypoint!(
+                /// Apply plans.
+                apply,
+                Apply
+            );
+            apply_entrypoint!(
+                /// Recover plans.
+                recover,
+                Recover
+            );
+            apply_entrypoint!(
+                /// Roll back plans.
+                rollback,
+                Rollback
+            );
+            apply_entrypoint!(
+                /// Finalize plans.
+                finalize,
+                Finalize
+            );
+        "#;
+        let file = syn::parse_file(source).unwrap();
+        let mut out = BTreeMap::new();
+        items(&mut out, "apply.rs", file.items, true, &HashSet::new());
+        for name in ["apply", "recover", "rollback", "finalize"] {
+            let entry = out.get(&format!("apply.rs::{name}")).expect("public entrypoint was not extracted");
+            assert!(entry.exported);
+            assert!(entry.signature.contains(&format!("pub async fn {name}")));
+            assert!(entry.signature.contains("ApplyConnection"));
+            assert!(entry.signature.contains("Result < () , ApplyError >"));
+        }
+    }
+
+    #[test]
+    fn extracts_public_transaction_macro_methods_and_future_contracts() {
+        let source = r#"
+            pub struct SendTransaction<'a, T>(&'a T);
+            pub struct Transaction<'a, F>(&'a F);
+            transaction_options!(SendTransaction<'a, T>);
+            transaction_options!(Transaction<'a, F>);
+            transaction_into_future!(['a, T], SendTransaction<'a, T>, [T: Send + 'a], Pin<Box<dyn Future<Output = Result<T>> + Send + 'a>>);
+            transaction_into_future!(['a, F, T], Transaction<'a, F>, [F: AsyncFn() -> Result<T> + 'a, T: 'a], Pin<Box<dyn Future<Output = Result<T>> + 'a>>);
+        "#;
+        let file = syn::parse_file(source).unwrap();
+        let mut types = HashSet::new();
+        public_types(&mut types, &file.items);
+        let mut out = BTreeMap::new();
+        items(&mut out, "tx.rs", file.items, true, &types);
+        let option_methods = [
+            ("audit", "pub fn audit < K : Into < String > , V : Into < Param > > (mut self , values : impl IntoIterator < Item = (K , V) >) -> Self"),
+            ("isolation", "pub fn isolation (mut self , level : Isolation) -> Self"),
+            ("read_only", "pub fn read_only (mut self) -> Self"),
+            ("retry", "pub fn retry (mut self , n : u32) -> Self"),
+            ("timeout_ms", "pub fn timeout_ms (mut self , ms : u64) -> Self"),
+        ];
+        for target in ["SendTransaction < 'a , T >", "Transaction < 'a , F >"] {
+            for (method, signature) in option_methods {
+                let entry = out.get(&format!("tx.rs::{target}::{method}")).expect("transaction option method was not extracted");
+                assert!(entry.exported);
+                assert_eq!(entry.signature, signature, "transaction method signature changed: {target}::{method}");
+            }
+        }
+        let send_future = "tx.rs::SendTransaction < 'a , T > as IntoFuture::IntoFuture";
+        assert_eq!(out.get(send_future).unwrap().signature, "type IntoFuture = Pin < Box < dyn Future < Output = Result < T > > + Send + 'a > > ;");
+        let local_future = "tx.rs::Transaction < 'a , F > as IntoFuture::IntoFuture";
+        assert_eq!(out.get(local_future).unwrap().signature, "type IntoFuture = Pin < Box < dyn Future < Output = Result < T > > + 'a > > ;");
+        assert_eq!(out.get("tx.rs::SendTransaction < 'a , T > as IntoFuture::Output").unwrap().signature, "type Output = Result < T > ;");
+        assert_eq!(out.get("tx.rs::Transaction < 'a , F > as IntoFuture::Output").unwrap().signature, "type Output = Result < T > ;");
+        assert!(out.contains_key("tx.rs::SendTransaction < 'a , T > as IntoFuture::into_future"));
+        assert!(out.contains_key("tx.rs::Transaction < 'a , F > as IntoFuture::into_future"));
+    }
 }

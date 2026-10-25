@@ -59,6 +59,10 @@
     "exported": true,
     "signature": "def check_param(i: int, value, slot: ParamSlot, zone: str) -\u003e None"
   },
+  "packages/python/src/polyspec/orm/bind_check.py::fulltext_boolean": {
+    "exported": true,
+    "signature": "def fulltext_boolean(value: str) -\u003e str"
+  },
   "packages/python/src/polyspec/orm/bind_check.py::transform_param": {
     "exported": true,
     "signature": "def transform_param(kind: str, value)"
@@ -70,6 +74,210 @@
   "packages/python/src/polyspec/orm/canonical.py::canonical_request": {
     "exported": true,
     "signature": "def canonical_request(request: dict, params) -\u003e tuple[dict, list]"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogColumn": {
+    "exported": true,
+    "signature": "class CatalogColumn"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogColumn#field.automatic_key": {
+    "exported": true,
+    "signature": "bool"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogColumn#field.default_expression": {
+    "exported": true,
+    "signature": "str | None"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogColumn#field.expression_default": {
+    "exported": true,
+    "signature": "bool"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogColumn#field.generated": {
+    "exported": true,
+    "signature": "bool"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogColumn#field.name": {
+    "exported": true,
+    "signature": "str"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogColumn#field.native_type": {
+    "exported": true,
+    "signature": "str"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogColumn#field.nullable": {
+    "exported": true,
+    "signature": "bool"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogConnection": {
+    "exported": true,
+    "signature": "class CatalogConnection"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogConnection.close": {
+    "exported": true,
+    "signature": "def close(self) -\u003e None"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogConnection.current_namespace": {
+    "exported": true,
+    "signature": "def current_namespace(self) -\u003e str"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogConnection.delete_row": {
+    "exported": true,
+    "signature": "def delete_row(self, original: CatalogRowSnapshot) -\u003e int"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogConnection.describe_table": {
+    "exported": true,
+    "signature": "def describe_table(self, table) -\u003e CatalogTableMetadata"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogConnection.dialect": {
+    "exported": true,
+    "signature": "@property def dialect(self) -\u003e str"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogConnection.insert_row": {
+    "exported": true,
+    "signature": "def insert_row(self, declared: CatalogTableMetadata, values) -\u003e CatalogMutationResult"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogConnection.read_only_grid_query": {
+    "exported": true,
+    "signature": "def read_only_grid_query(self, query: str, params=(), max_rows: int=0, max_bytes: int=0) -\u003e CatalogQueryResult"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogConnection.read_only_query": {
+    "exported": true,
+    "signature": "def read_only_query(self, query: str, params=(), max_rows: int=0, max_bytes: int=0) -\u003e CatalogQueryResult"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogConnection.row_snapshot_from_page": {
+    "exported": true,
+    "signature": "def row_snapshot_from_page(self, page: CatalogTablePage, index: int) -\u003e CatalogRowSnapshot"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogConnection.table_page": {
+    "exported": true,
+    "signature": "def table_page(self, table, limit: int, offset: int) -\u003e CatalogTablePage"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogConnection.update_row": {
+    "exported": true,
+    "signature": "def update_row(self, original: CatalogRowSnapshot, values) -\u003e CatalogMutationResult"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogMutationResult": {
+    "exported": true,
+    "signature": "class CatalogMutationResult"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogMutationResult#field.columns": {
+    "exported": true,
+    "signature": "list"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogMutationResult#field.rows": {
+    "exported": true,
+    "signature": "list"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogQueryResult": {
+    "exported": true,
+    "signature": "class CatalogQueryResult"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogQueryResult#field.columns": {
+    "exported": true,
+    "signature": "list"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogQueryResult#field.rows": {
+    "exported": true,
+    "signature": "list"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogResult": {
+    "exported": true,
+    "signature": "class CatalogResult"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogResult#field.columns": {
+    "exported": true,
+    "signature": "list"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogResult#field.rows": {
+    "exported": true,
+    "signature": "list"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogRowSnapshot": {
+    "exported": true,
+    "signature": "class CatalogRowSnapshot"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogRowSnapshot.keys": {
+    "exported": true,
+    "signature": "def keys(self) -\u003e list"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogRowSnapshot.revision": {
+    "exported": true,
+    "signature": "@property def revision(self) -\u003e str"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogTableMetadata": {
+    "exported": true,
+    "signature": "class CatalogTableMetadata"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogTableMetadata#field.columns": {
+    "exported": true,
+    "signature": "list"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogTableMetadata#field.kind": {
+    "exported": true,
+    "signature": "str"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogTableMetadata#field.primary_key": {
+    "exported": true,
+    "signature": "list"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogTableMetadata#field.reliable_row_identity": {
+    "exported": true,
+    "signature": "bool"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogTableMetadata#field.table": {
+    "exported": true,
+    "signature": "dict"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogTableMetadata.column_index": {
+    "exported": true,
+    "signature": "def column_index(self, name: str) -\u003e int"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogTablePage": {
+    "exported": true,
+    "signature": "class CatalogTablePage"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogTablePage#field.has_more": {
+    "exported": true,
+    "signature": "bool"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogTablePage#field.limit": {
+    "exported": true,
+    "signature": "int"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogTablePage#field.metadata": {
+    "exported": true,
+    "signature": "CatalogTableMetadata"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogTablePage#field.offset": {
+    "exported": true,
+    "signature": "int"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogTablePage#field.order_by": {
+    "exported": true,
+    "signature": "list"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogTablePage#field.result": {
+    "exported": true,
+    "signature": "CatalogResult"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::CatalogTablePage.column_index": {
+    "exported": true,
+    "signature": "def column_index(self, name: str) -\u003e int"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::GridCell": {
+    "exported": true,
+    "signature": "class GridCell"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::GridCell#field.kind": {
+    "exported": true,
+    "signature": "str"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::GridCell#field.value": {
+    "exported": true,
+    "signature": "object"
+  },
+  "packages/python/src/polyspec/orm/catalog.py::connect_catalog": {
+    "exported": true,
+    "signature": "def connect_catalog(dsn: str) -\u003e CatalogConnection"
   },
   "packages/python/src/polyspec/orm/clock.py::wall_micros": {
     "exported": true,
@@ -323,6 +531,14 @@
     "exported": true,
     "signature": "def execute(self, step: dict, params: list) -\u003e None"
   },
+  "packages/python/src/polyspec/orm/database.py::Db.listen": {
+    "exported": true,
+    "signature": "def listen(self, channel: str) -\u003e Subscription"
+  },
+  "packages/python/src/polyspec/orm/database.py::Db.notify": {
+    "exported": true,
+    "signature": "def notify(self, channel: str, payload: str) -\u003e None"
+  },
   "packages/python/src/polyspec/orm/database.py::Db.now": {
     "exported": true,
     "signature": "def now(self, micros: int, precision: int) -\u003e str"
@@ -359,6 +575,10 @@
     "exported": true,
     "signature": "def utils(self) -\u003e Utils"
   },
+  "packages/python/src/polyspec/orm/database.py::Db.with_future": {
+    "exported": true,
+    "signature": "def with_future(self, future: asyncio.Future) -\u003e Db"
+  },
   "packages/python/src/polyspec/orm/database.py::Db.with_request_hook": {
     "exported": true,
     "signature": "def with_request_hook(self, hook: RequestHook) -\u003e Db"
@@ -387,9 +607,41 @@
     "exported": true,
     "signature": "class Executor"
   },
+  "packages/python/src/polyspec/orm/database.py::Notification": {
+    "exported": true,
+    "signature": "class Notification"
+  },
+  "packages/python/src/polyspec/orm/database.py::Notification#field.channel": {
+    "exported": true,
+    "signature": "str"
+  },
+  "packages/python/src/polyspec/orm/database.py::Notification#field.payload": {
+    "exported": true,
+    "signature": "str"
+  },
+  "packages/python/src/polyspec/orm/database.py::Notification#field.pid": {
+    "exported": true,
+    "signature": "int"
+  },
   "packages/python/src/polyspec/orm/database.py::ParsedDsn": {
     "exported": true,
     "signature": "class ParsedDsn"
+  },
+  "packages/python/src/polyspec/orm/database.py::Subscription": {
+    "exported": true,
+    "signature": "class Subscription"
+  },
+  "packages/python/src/polyspec/orm/database.py::Subscription.close": {
+    "exported": true,
+    "signature": "def close(self) -\u003e None"
+  },
+  "packages/python/src/polyspec/orm/database.py::Subscription.receive": {
+    "exported": true,
+    "signature": "def receive(self, timeout: float | None=None) -\u003e Notification"
+  },
+  "packages/python/src/polyspec/orm/database.py::Subscription.unlisten": {
+    "exported": true,
+    "signature": "def unlisten(self, channel: str) -\u003e None"
   },
   "packages/python/src/polyspec/orm/database.py::TxFrame": {
     "exported": true,
@@ -1959,6 +2211,10 @@
     "exported": true,
     "signature": "@property def manifest_hash(self) -\u003e str"
   },
+  "packages/python/src/polyspec/orm/engine/__init__.py::Engine.validate": {
+    "exported": true,
+    "signature": "def validate(self, request: dict) -\u003e None"
+  },
   "packages/python/src/polyspec/orm/engine/dialect.py::MysqlDialect": {
     "exported": true,
     "signature": "class MysqlDialect(_Dialect)"
@@ -1979,6 +2235,10 @@
     "exported": true,
     "signature": "def force_index(self, name)"
   },
+  "packages/python/src/polyspec/orm/engine/dialect.py::MysqlDialect.fulltext": {
+    "exported": true,
+    "signature": "def fulltext(self, cols, value, boolean)"
+  },
   "packages/python/src/polyspec/orm/engine/dialect.py::MysqlDialect.handles_stage": {
     "exported": true,
     "signature": "def handles_stage(self, stage)"
@@ -1990,6 +2250,10 @@
   "packages/python/src/polyspec/orm/engine/dialect.py::MysqlDialect.limit": {
     "exported": true,
     "signature": "def limit(self, offset, count)"
+  },
+  "packages/python/src/polyspec/orm/engine/dialect.py::MysqlDialect.limit_params": {
+    "exported": true,
+    "signature": "def limit_params(self, offset, count)"
   },
   "packages/python/src/polyspec/orm/engine/dialect.py::MysqlDialect.now": {
     "exported": true,
@@ -2034,6 +2298,10 @@
   "packages/python/src/polyspec/orm/engine/dialect.py::PostgresDialect.column_function": {
     "exported": true,
     "signature": "def column_function(self, name, col, arg)"
+  },
+  "packages/python/src/polyspec/orm/engine/dialect.py::PostgresDialect.fulltext": {
+    "exported": true,
+    "signature": "def fulltext(self, cols, value, boolean)"
   },
   "packages/python/src/polyspec/orm/engine/dialect.py::PostgresDialect.like": {
     "exported": true,
@@ -2098,6 +2366,10 @@
   "packages/python/src/polyspec/orm/engine/dialect.py::SqliteDialect.force_index": {
     "exported": true,
     "signature": "def force_index(self, name)"
+  },
+  "packages/python/src/polyspec/orm/engine/dialect.py::SqliteDialect.fulltext": {
+    "exported": true,
+    "signature": "def fulltext(self, cols, value, boolean)"
   },
   "packages/python/src/polyspec/orm/engine/dialect.py::SqliteDialect.like": {
     "exported": true,
@@ -2333,7 +2605,7 @@
   },
   "packages/python/src/polyspec/orm/engine/params.py::function_type": {
     "exported": true,
-    "signature": "def function_type(name: str, f: Field | None) -\u003e str"
+    "signature": "def function_type(name: str, f: Field | None, entity: str, column: str) -\u003e str"
   },
   "packages/python/src/polyspec/orm/engine/params.py::interval_type": {
     "exported": true,
@@ -2669,15 +2941,23 @@
   },
   "packages/python/src/polyspec/orm/ir.py::IRLimit#field.count": {
     "exported": true,
-    "signature": "int"
+    "signature": "NotRequired[int]"
+  },
+  "packages/python/src/polyspec/orm/ir.py::IRLimit#field.count_p": {
+    "exported": true,
+    "signature": "NotRequired[int]"
   },
   "packages/python/src/polyspec/orm/ir.py::IRLimit#field.offset": {
     "exported": true,
-    "signature": "int"
+    "signature": "NotRequired[int]"
+  },
+  "packages/python/src/polyspec/orm/ir.py::IRLimit#field.offset_p": {
+    "exported": true,
+    "signature": "NotRequired[int]"
   },
   "packages/python/src/polyspec/orm/ir.py::IRLimit#wire": {
     "exported": true,
-    "signature": "{\"offset\":\"integer\",\"count\":\"integer\"}"
+    "signature": "{\"offset\":\"integer\",\"count\":\"integer\",\"offset_p\":\"integer\",\"count_p\":\"integer\"}"
   },
   "packages/python/src/polyspec/orm/ir.py::IROptimist": {
     "exported": true,

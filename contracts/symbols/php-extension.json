@@ -79,6 +79,22 @@
     "exported": true,
     "signature": "public function status(Polyspec\\Orm\\Model $model, Polyspec\\Orm\\AesKeyring $keyring): Polyspec\\Orm\\AesRotationStatus"
   },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Assemble": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\Assemble extends  implements  uses "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Assemble::$nodes": {
+    "exported": false,
+    "signature": "private static int"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Assemble::cells": {
+    "exported": true,
+    "signature": "public static function cells(array $a, Polyspec\\Orm\\RuntimeModel $model): array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Assemble::index": {
+    "exported": true,
+    "signature": "public static function index(array \u0026$plan, Polyspec\\Orm\\RuntimeModel $model): void"
+  },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Assembly": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Assembly extends  implements  uses "
@@ -126,6 +142,18 @@
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Assembly::relationAssemble": {
     "exported": true,
     "signature": "public function relationAssemble(array $ch): array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Bytes": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\Bytes extends  implements  uses "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Bytes::$bytes": {
+    "exported": true,
+    "signature": "public readonly string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Bytes::__construct": {
+    "exported": true,
+    "signature": "public function __construct(string $bytes): "
   },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Catalog": {
     "exported": true,
@@ -571,6 +599,62 @@
     "exported": true,
     "signature": "public function valid(): bool"
   },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Config": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\Config extends  implements  uses "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Config::$aesKey": {
+    "exported": true,
+    "signature": "public readonly string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Config::$aesKeys": {
+    "exported": true,
+    "signature": "public readonly array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Config::$aesVersion": {
+    "exported": true,
+    "signature": "public readonly int"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Config::$auditSource": {
+    "exported": true,
+    "signature": "public readonly ?Closure"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Config::$blindIndexKey": {
+    "exported": true,
+    "signature": "public readonly string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Config::$planCacheSize": {
+    "exported": true,
+    "signature": "public readonly int"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Config::$poolIdleSize": {
+    "exported": true,
+    "signature": "public readonly int"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Config::$poolLifetimeMs": {
+    "exported": true,
+    "signature": "public readonly int"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Config::$poolSize": {
+    "exported": true,
+    "signature": "public readonly int"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Config::$statementCacheSize": {
+    "exported": true,
+    "signature": "public readonly int"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Config::$statementTimeoutMs": {
+    "exported": true,
+    "signature": "public readonly int"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Config::__construct": {
+    "exported": true,
+    "signature": "public function __construct(string $aesKey=\"\", string $blindIndexKey=\"\", int $aesVersion=1, array $aesKeys=[], int $poolSize=0, int $statementTimeoutMs=0, int $poolIdleSize=0, int $poolLifetimeMs=0, int $planCacheSize=256, int $statementCacheSize=256, ?Closure $auditSource=null): "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Config::keyring": {
+    "exported": true,
+    "signature": "public function keyring(): Polyspec\\Orm\\AesKeyring"
+  },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Db": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Db extends  implements  uses "
@@ -786,6 +870,74 @@
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Db::zone": {
     "exported": true,
     "signature": "public function zone(): DateTimeZone"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\DbState": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\DbState extends  implements  uses "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\DbState::$closed": {
+    "exported": true,
+    "signature": "public bool"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\DbState::$fixedClock": {
+    "exported": true,
+    "signature": "public ?DateTimeImmutable"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\DbState::$lastAffected": {
+    "exported": true,
+    "signature": "public ?int"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\DbState::$listener": {
+    "exported": true,
+    "signature": "public ?Closure"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\DbState::$pdo": {
+    "exported": true,
+    "signature": "public ?PDO"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\DbState::$rollbackFault": {
+    "exported": true,
+    "signature": "public bool"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\DbState::$rowLockReady": {
+    "exported": true,
+    "signature": "public bool"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\DbState::$sets": {
+    "exported": true,
+    "signature": "public array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\DbState::$statementFault": {
+    "exported": true,
+    "signature": "public ?Polyspec\\Orm\\OrmException"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\DbState::$stmtOrder": {
+    "exported": true,
+    "signature": "public array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\DbState::$stmtPlaceholders": {
+    "exported": true,
+    "signature": "public array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\DbState::$stmtRetained": {
+    "exported": true,
+    "signature": "public int"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\DbState::$stmts": {
+    "exported": true,
+    "signature": "public array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\DbState::$subscriberSeq": {
+    "exported": true,
+    "signature": "public int"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\DbState::$subscribers": {
+    "exported": true,
+    "signature": "public array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\DbState::$transactions": {
+    "exported": true,
+    "signature": "public int"
   },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Analysis": {
     "exported": true,
@@ -1479,6 +1631,14 @@
     "exported": true,
     "signature": "public static function valid(Polyspec\\Orm\\Dbspec\\Manifest $manifest): Polyspec\\Orm\\Dbspec\\ManifestResult"
   },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Meet": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\Dbspec\\Meet extends  implements  uses "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\Meet::kind": {
+    "exported": true,
+    "signature": "public static function kind(string $type, int $scale, int $precision): string"
+  },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dbspec\\MermaidExportResult": {
     "exported": true,
     "signature": "final readonly class Polyspec\\Orm\\Dbspec\\MermaidExportResult extends  implements  uses "
@@ -2171,6 +2331,226 @@
     "exported": true,
     "signature": "public function __construct(string $document, array $tables, array $comments=[]): "
   },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Decimal": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\Decimal extends  implements  uses "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Decimal::decode": {
+    "exported": true,
+    "signature": "public static function decode(mixed $value, int $precision, int $scale): string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Decimal::fromScaled": {
+    "exported": true,
+    "signature": "public static function fromScaled(mixed $value, int $precision, int $scale): string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Decimal::normalize": {
+    "exported": true,
+    "signature": "public static function normalize(string $input, int $precision, int $scale): string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Decimal::scaled": {
+    "exported": true,
+    "signature": "public static function scaled(string $input, int $precision, int $scale): int"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dialect": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\Dialect extends  implements  uses "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dialect::$name": {
+    "exported": true,
+    "signature": "public readonly string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dialect::__construct": {
+    "exported": true,
+    "signature": "public function __construct(string $name): "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dialect::asciiLower": {
+    "exported": false,
+    "signature": "private static function asciiLower(string $x): string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dialect::clockOperand": {
+    "exported": true,
+    "signature": "public function clockOperand(string $col, int $precision): string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dialect::columnFunction": {
+    "exported": true,
+    "signature": "public function columnFunction(string $fn, string $col): ?string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dialect::contains": {
+    "exported": true,
+    "signature": "public function contains(string $col, string $ph): string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dialect::containsBinary": {
+    "exported": true,
+    "signature": "public function containsBinary(string $col, Closure $value): string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dialect::decodesStyle": {
+    "exported": true,
+    "signature": "public function decodesStyle(string $style): bool"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dialect::forceIndex": {
+    "exported": true,
+    "signature": "public function forceIndex(string $index): string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dialect::fulltext": {
+    "exported": true,
+    "signature": "public function fulltext(array $cols, Closure $value, bool $boolean): ?string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dialect::guardInterval": {
+    "exported": false,
+    "signature": "private static function guardInterval(string $unit, string $operandCast, Closure $arg): string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dialect::guardResult": {
+    "exported": false,
+    "signature": "private static function guardResult(Closure $value): string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dialect::handlesStyle": {
+    "exported": true,
+    "signature": "public function handlesStyle(string $style): bool"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dialect::hostNow": {
+    "exported": true,
+    "signature": "public function hostNow(): bool"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dialect::insertReturningId": {
+    "exported": true,
+    "signature": "public function insertReturningId(): bool"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dialect::isValueFunction": {
+    "exported": true,
+    "signature": "public static function isValueFunction(string $name): bool"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dialect::limit": {
+    "exported": true,
+    "signature": "public function limit(int $offset, int $count): string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dialect::limitParams": {
+    "exported": true,
+    "signature": "public function limitParams(string $offset, string $count): string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dialect::literal": {
+    "exported": true,
+    "signature": "public static function literal(string $text): string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dialect::now": {
+    "exported": true,
+    "signature": "public function now(int $precision): string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dialect::nullsOrder": {
+    "exported": true,
+    "signature": "public function nullsOrder(bool $desc): string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dialect::placeholder": {
+    "exported": true,
+    "signature": "public function placeholder(int $n): string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dialect::quote": {
+    "exported": true,
+    "signature": "public function quote(string $ident): string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dialect::quoteWith": {
+    "exported": true,
+    "signature": "public static function quoteWith(string $q, string $ident): string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dialect::random": {
+    "exported": true,
+    "signature": "public function random(): string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dialect::readExpr": {
+    "exported": true,
+    "signature": "public function readExpr(string $col, array $styles): string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dialect::readTime": {
+    "exported": true,
+    "signature": "public function readTime(string $col, int $precision): string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dialect::readUuid": {
+    "exported": true,
+    "signature": "public function readUuid(string $col): string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dialect::restartIdentity": {
+    "exported": true,
+    "signature": "public function restartIdentity(string $table, string $column): string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dialect::rowLock": {
+    "exported": true,
+    "signature": "public function rowLock(string $mode): ?string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dialect::tupleIn": {
+    "exported": true,
+    "signature": "public function tupleIn(array $cols, array $rows, bool $negate): string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dialect::upsert": {
+    "exported": true,
+    "signature": "public function upsert(array $conflict, string $assigns): string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dialect::valueFunction": {
+    "exported": true,
+    "signature": "public function valueFunction(string $fn, Closure $arg, Closure $now): ?string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dialect::writeExpr": {
+    "exported": true,
+    "signature": "public function writeExpr(string $ph, array $styles): string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dialect::writeTime": {
+    "exported": true,
+    "signature": "public function writeTime(string $ph): string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Dialect::writeUuid": {
+    "exported": true,
+    "signature": "public function writeUuid(string $ph): string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Engine": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\Engine extends  implements  uses "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Engine::$cacheSize": {
+    "exported": false,
+    "signature": "private readonly int"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Engine::$engines": {
+    "exported": false,
+    "signature": "private static array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Engine::$model": {
+    "exported": true,
+    "signature": "public readonly Polyspec\\Orm\\RuntimeModel"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Engine::$placeholders": {
+    "exported": false,
+    "signature": "private array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Engine::$planner": {
+    "exported": false,
+    "signature": "private readonly Polyspec\\Orm\\Planner"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Engine::$plans": {
+    "exported": false,
+    "signature": "private array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Engine::$retained": {
+    "exported": false,
+    "signature": "private int"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Engine::$validator": {
+    "exported": false,
+    "signature": "private readonly Polyspec\\Orm\\Validator"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Engine::__construct": {
+    "exported": true,
+    "signature": "public function __construct(Polyspec\\Orm\\RuntimeModel $model, string $dialect, int $cacheSize): "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Engine::compile": {
+    "exported": true,
+    "signature": "public function compile(array $ir): array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Engine::for": {
+    "exported": true,
+    "signature": "public static function for(string $manifestHash, string $dialect, int $cacheSize): Polyspec\\Orm\\Engine"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Engine::plan": {
+    "exported": true,
+    "signature": "public function plan(array $ir): array"
+  },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Frame": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Frame extends  implements  uses "
@@ -2250,6 +2630,30 @@
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Func::ir": {
     "exported": true,
     "signature": "public function ir(callable $param): array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Go": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\Go extends  implements  uses "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Go::json": {
+    "exported": true,
+    "signature": "public static function json(mixed $v, string $indent=\"\"): string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Go::quote": {
+    "exported": true,
+    "signature": "public static function quote(string $s): string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\GoMap": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\GoMap extends  implements  uses "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\GoMap::$items": {
+    "exported": true,
+    "signature": "public array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\GoMap::__construct": {
+    "exported": true,
+    "signature": "public function __construct(array $items=[]): "
   },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\GroupRow": {
     "exported": true,
@@ -2338,6 +2742,70 @@
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\GroupRowsIterator::valid": {
     "exported": true,
     "signature": "public function valid(): bool"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Markdown": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\Markdown extends  implements  uses "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Markdown::beginMessage": {
+    "exported": true,
+    "signature": "public static function beginMessage(bool $readOnly): array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Markdown::links": {
+    "exported": true,
+    "signature": "public static function links(array $row): Polyspec\\Orm\\MarkdownLinks"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Markdown::read": {
+    "exported": true,
+    "signature": "public static function read(Polyspec\\Orm\\Db $db, Polyspec\\Orm\\Request $r): array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Markdown::scalar": {
+    "exported": true,
+    "signature": "public static function scalar(Polyspec\\Orm\\Db $db, Polyspec\\Orm\\Request $r): mixed"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Markdown::unsupported": {
+    "exported": true,
+    "signature": "public static function unsupported(string $surface): Polyspec\\Orm\\OrmException"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Markdown::write": {
+    "exported": true,
+    "signature": "public static function write(Polyspec\\Orm\\Db $db, Polyspec\\Orm\\Request $r): array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\MarkdownLinks": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\MarkdownLinks extends  implements  uses "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\MarkdownLinks::$joins": {
+    "exported": true,
+    "signature": "public array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\MarkdownLinks::$rels": {
+    "exported": true,
+    "signature": "public array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\MarkdownSession": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\MarkdownSession extends  implements  uses "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\MarkdownSession::$conn": {
+    "exported": false,
+    "signature": "private "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\MarkdownSession::__construct": {
+    "exported": false,
+    "signature": "private function __construct(mixed $conn): "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\MarkdownSession::call": {
+    "exported": true,
+    "signature": "public function call(array $message): array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\MarkdownSession::close": {
+    "exported": true,
+    "signature": "public function close(): void"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\MarkdownSession::dial": {
+    "exported": true,
+    "signature": "public static function dial(string $address, string $corpus, string $token): Polyspec\\Orm\\MarkdownSession"
   },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Model": {
     "exported": true,
@@ -3019,6 +3487,26 @@
     "exported": true,
     "signature": "public function __invoke(): void"
   },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Notification": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\Notification extends  implements  uses "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Notification::$channel": {
+    "exported": true,
+    "signature": "public readonly string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Notification::$payload": {
+    "exported": true,
+    "signature": "public readonly string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Notification::$pid": {
+    "exported": true,
+    "signature": "public readonly int"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Notification::__construct": {
+    "exported": true,
+    "signature": "public function __construct(string $channel, string $payload, int $pid): "
+  },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Orm": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Orm extends  implements  uses "
@@ -3182,6 +3670,26 @@
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Page::__construct": {
     "exported": true,
     "signature": "public function __construct(Polyspec\\Orm\\Collection $items, int $totalCount, int $totalPages, int $page, int $perPage): "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\ParamCheck": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\ParamCheck extends  implements  uses "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\ParamCheck::bindSlotType": {
+    "exported": true,
+    "signature": "public static function bindSlotType(array $slot): array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\ParamCheck::check": {
+    "exported": true,
+    "signature": "public static function check(int $i, mixed $v, array $slot, DateTimeZone $zone): void"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\ParamCheck::checkAssign": {
+    "exported": true,
+    "signature": "public static function checkAssign(int $i, mixed $v, array $slot): void"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\ParamCheck::useSlotType": {
+    "exported": true,
+    "signature": "public static function useSlotType(array $use): array"
   },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\PendingTime": {
     "exported": true,
@@ -3578,6 +4086,122 @@
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\StyledValue::value": {
     "exported": true,
     "signature": "public static function value(mixed $value): Polyspec\\Orm\\StyledValue"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Subscription": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\Subscription extends  implements  uses "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Subscription::$pdo": {
+    "exported": false,
+    "signature": "private ?PDO"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Subscription::__construct": {
+    "exported": true,
+    "signature": "public function __construct(PDO $pdo): "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Subscription::checkChannel": {
+    "exported": true,
+    "signature": "public static function checkChannel(string $channel): void"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Subscription::close": {
+    "exported": true,
+    "signature": "public function close(): void"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Subscription::open": {
+    "exported": false,
+    "signature": "private function open(): PDO"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Subscription::quoteIdent": {
+    "exported": true,
+    "signature": "public static function quoteIdent(string $channel): string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Subscription::receive": {
+    "exported": true,
+    "signature": "public function receive(float $timeoutSeconds): Polyspec\\Orm\\Notification"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Subscription::unlisten": {
+    "exported": true,
+    "signature": "public function unlisten(string $channel): void"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Transform": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\Transform extends  implements  uses "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Transform::apply": {
+    "exported": true,
+    "signature": "public static function apply(string $kind, string $s): string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Transform::esc": {
+    "exported": false,
+    "signature": "private static function esc(string $s): string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Transform::fulltextBoolean": {
+    "exported": true,
+    "signature": "public static function fulltextBoolean(string $s): string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Transform::param": {
+    "exported": true,
+    "signature": "public static function param(string $kind, mixed $v): ?string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\TxFrame": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\TxFrame extends  implements  uses "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\TxFrame::$audit": {
+    "exported": true,
+    "signature": "public ?array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\TxFrame::$db": {
+    "exported": true,
+    "signature": "public readonly Polyspec\\Orm\\Db"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\TxFrame::$finished": {
+    "exported": true,
+    "signature": "public bool"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\TxFrame::$flow": {
+    "exported": true,
+    "signature": "public readonly ?Fiber"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\TxFrame::$inserted": {
+    "exported": true,
+    "signature": "public array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\TxFrame::$isolation": {
+    "exported": true,
+    "signature": "public readonly string"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\TxFrame::$locals": {
+    "exported": true,
+    "signature": "public array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\TxFrame::$locks": {
+    "exported": true,
+    "signature": "public array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\TxFrame::$number": {
+    "exported": true,
+    "signature": "public readonly int"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\TxFrame::$pendingAudit": {
+    "exported": true,
+    "signature": "public ?array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\TxFrame::$readOnly": {
+    "exported": true,
+    "signature": "public readonly bool"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\TxFrame::$savepoints": {
+    "exported": true,
+    "signature": "public int"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\TxFrame::__construct": {
+    "exported": true,
+    "signature": "public function __construct(Polyspec\\Orm\\Db $db, bool $readOnly, string $isolation, int $number): "
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\TxFrame::recordInserted": {
+    "exported": true,
+    "signature": "public static function recordInserted(?Polyspec\\Orm\\TxFrame $frame, Polyspec\\Orm\\Request $r, mixed $id): void"
   },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Utils": {
     "exported": true,
