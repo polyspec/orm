@@ -99,9 +99,15 @@ function readFilter(string $part): Closure
 {
     return static function (Request $r) use ($part): void {
         if (requestIsRead($r)) {
-            hookAndWhere($r->ir, ['column' => 'part', 'op' => 'eq', 'p' => $r->param($part)]);
+            partIs($r, $r->ir, $part);
         }
     };
+}
+
+/** ANDs part = $part, bound as a parameter of $r, into the where of $query. */
+function partIs(Request $r, array &$query, string $part): void
+{
+    hookAndWhere($query, ['column' => 'part', 'op' => 'eq', 'p' => $r->param($part)]);
 }
 
 /**
@@ -111,7 +117,7 @@ function readFilter(string $part): Closure
 function serviceScope(string $part): Closure
 {
     $scope = static function (array &$query, Request $r) use ($part, &$scope): void {
-        hookAndWhere($query, ['column' => 'part', 'op' => 'eq', 'p' => $r->param($part)]);
+        partIs($r, $query, $part);
         foreach (array_keys($query['relations'] ?? []) as $i) {
             $scope($query['relations'][$i]['query'], $r);
         }
@@ -416,7 +422,7 @@ function partScope(string $part): Closure
 {
     return static function (Request $r) use ($part): void {
         if ($r->ir['kind'] === 'restore' || requestIsRead($r)) {
-            hookAndWhere($r->ir, ['column' => 'part', 'op' => 'eq', 'p' => $r->param($part)]);
+            partIs($r, $r->ir, $part);
         }
     };
 }
