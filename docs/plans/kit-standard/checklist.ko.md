@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 94c7f582f5571302d97ff83f65f309b023509ea1d36a24c3a7fa908cbea3699e -->
+<!-- source-sha256: f51758fe19847a4885e93fbaa463ff34ca2f9bbc0bde2a5ecffd18dbd6d72a15 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -262,3 +262,4 @@
 | KSTD-5-86 | TypeScript interface extractor가 CodecError ErrorOptions를 포함한 공개 생성자 signature를 기록하게 한다 | packages/ts/testing/interfaces/tsconfig.json; packages/ts/testing/interfaces/typescript.mts; tests/interfaces/check/typescript-extractor.test.mts; tests/interfaces/check/fixtures/typescript-constructor.ts; contracts/symbols/typescript.json; contracts/interfaces.json; Makefile; contracts/check-inputs.json; config/knip-entries.json | `make interface-typescript-extractor-check` | [o] |
 | KSTD-5-87 | Kit Standard checklist 두 언어에서 꺾쇠 예시를 텍스트로 렌더링한다 (KSTD-5 후속). 원인: CI docs-pages 실행 40080047279가 docs/plans/kit-standard/checklist.ko.md를 변환하다 닫는 태그 누락으로 실패했다. checklist 표 설명의 escape되지 않은 placeholder가 HTML로 해석된다. 인수 조건은 예시가 문자 그대로 렌더링되고 두 언어 쌍이 파싱되는 것이다. | docs/plans/kit-standard/checklist.md and checklist.ko.md; tests/docs/tables.test.mts focused VitePress Markdown-renderer case | `make docs-check` | [o] |
 | KSTD-5-88 | main에서 `make runner-check`가 통과한다 (KSTD-5에 이어). Cause: main ae4b38d3f에서 runner-check 파일의 다섯 case가 실패한다. scripts/check/databases.mts의 drop case 둘은 KSTD-2-9-13-2이고, 의도된 변경이 바꾼 동작을 기대하는 세 case는 KSTD-5-88-1부터 KSTD-5-88-3이다 | scripts/check/continue.test.mts, scripts/check/run.test.mts, scripts/perf-test.mts | `make runner-check` | [ ] |
+| KSTD-5-88-1 | 성능 gate 계속 실행 case가 scripts/perf-test.mts의 다섯 command를 기대한다 (KSTD-5-88에 이어). Cause: f2e8c6feb가 Go TestCoveragePerformanceGate step을 더해 script가 Go gate 셋과 CPU 부하 없이와 부하 아래의 PerfGateTest를 실행한다. case는 아직 넷을 세어 5 !== 4로 실패하고, script와 case의 comment도 넷이라고 적는다 | scripts/check/continue.test.mts, scripts/perf-test.mts | `node --test --test-name-pattern='the performance gates run every gate' scripts/check/continue.test.mts` | [ ] |
