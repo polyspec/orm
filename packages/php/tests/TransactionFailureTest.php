@@ -10,6 +10,7 @@ use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;
 use Polyspec\Orm\OrmException;
+use Polyspec\Orm\StatementEvent;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
@@ -74,6 +75,58 @@ final class TransactionFailureTest extends TestCase
                 self::assertStringContainsString('statement failure', $error->getMessage());
             }
         } finally {
+            $db->close();
+        }
+    }
+
+    public function testObservedStatementMetadataIsPreservedForObservedRunAndFetch(): void
+    {
+        $pdo = new ModelTestFailingPdo('sqlite::memory:');
+        $db = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
+        $events = [];
+        $unsubscribe = $db->subscribe(static function (StatementEvent $event) use (&$events): void {
+            $events[] = $event;
+        });
+
+        try {
+            self::assertSame(
+                'observed result',
+                $db->observed(
+                    StatementEvent::UTILITY,
+                    ['sample'],
+                    7,
+                    'SELECT ?',
+                    [17],
+                    static fn(): string => 'observed result'
+                )
+            );
+            $db->run(StatementEvent::SCHEMA, ['sample'], 7, 'CREATE TABLE sample (value INTEGER)');
+            self::assertSame([['17']], $db->fetch(StatementEvent::UTILITY, ['sample'], 7, 'SELECT ? AS value', [17]));
+
+            self::assertCount(3, $events);
+            foreach ($events as $index => $event) {
+                self::assertSame(
+                    [
+                        'sql' => ['SELECT ?', 'CREATE TABLE sample (value INTEGER)', 'SELECT ? AS value'][$index],
+                        'binds' => [[17], [], [17]][$index],
+                        'kind' => [StatementEvent::UTILITY, StatementEvent::SCHEMA, StatementEvent::UTILITY][$index],
+                        'tables' => [['sample'], ['sample'], ['sample']][$index],
+                        'transaction' => 7,
+                        'error' => null,
+                    ],
+                    [
+                        'sql' => $event->sql,
+                        'binds' => $event->binds,
+                        'kind' => $event->kind,
+                        'tables' => $event->tables,
+                        'transaction' => $event->transaction,
+                        'error' => $event->error,
+                    ]
+                );
+                self::assertGreaterThanOrEqual(0.0, $event->elapsed);
+            }
+        } finally {
+            $unsubscribe();
             $db->close();
         }
     }

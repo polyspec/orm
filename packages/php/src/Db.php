@@ -369,8 +369,6 @@ final class Db
      * and thrown.
      *
      * @template T
-     * @param list<string> $tables
-     * @param list<mixed> $binds
      * @param \Closure(): T $send
      * @return T
      */
@@ -382,12 +380,15 @@ final class Db
         array $binds,
         \Closure $send
     ): mixed {
-        return $this->observedAs(false, $kind, $tables, $transaction, $sql, $binds, $send);
+        return $this->observedAs(
+            new StatementMetadata($kind, $tables, $transaction, $sql, $binds),
+            false,
+            $send
+        );
     }
 
     /**
-     * The body of observed. If $control is true, this is a transaction control statement, so a statement
-     * fault does not block it.
+     * The body of observed. A control statement is sent even when a statement fault is armed.
      *
      * @template T
      * @param list<string> $tables
@@ -395,19 +396,19 @@ final class Db
      * @param \Closure(): T $send
      * @return T
      */
-    private function observedAs(
-        bool $control,
-        string $kind,
-        array $tables,
-        ?int $transaction,
-        string $sql,
-        array $binds,
-        \Closure $send
-    ): mixed {
+    private function observedAs(StatementMetadata $statement, bool $control, \Closure $send): mixed
+    {
         $this->handle();
-        return $this->send($send, function (int $start, ?OrmException $error)
- use ($kind, $tables, $transaction, $sql, $binds): void {
-            $this->publish($kind, $tables, $transaction, $sql, $binds, $start, $error);
+        return $this->send($send, function (int $start, ?OrmException $error) use ($statement): void {
+            $this->publish(
+                $statement->kind,
+                $statement->tables,
+                $statement->transaction,
+                $statement->sql,
+                $statement->binds,
+                $start,
+                $error
+            );
         }, $control);
     }
 
@@ -451,7 +452,11 @@ final class Db
      */
     public function run(string $kind, array $tables, ?int $transaction, string $sql, bool $control = false): void
     {
-        $this->observedAs($control, $kind, $tables, $transaction, $sql, [], fn() => $this->handle()->exec($sql));
+        $this->observedAs(
+            new StatementMetadata($kind, $tables, $transaction, $sql, []),
+            $control,
+            fn() => $this->handle()->exec($sql)
+        );
     }
 
     /**
@@ -460,7 +465,7 @@ final class Db
      */
     private function control(string $kind, ?int $transaction, string $sql): void
     {
-        $this->observedAs(true, $kind, [], $transaction, $sql, [], fn() => $this->handle()->exec($sql));
+        $this->run($kind, [], $transaction, $sql, true);
     }
 
     /**
@@ -481,12 +486,8 @@ final class Db
         bool $control = false
     ): array {
         return $this->observedAs(
+            new StatementMetadata($kind, $tables, $transaction, $sql, $args),
             $control,
-            $kind,
-            $tables,
-            $transaction,
-            $sql,
-            $args,
             function () use ($sql, $args): array {
                 $text = $sql;
                 $bound = $args;
