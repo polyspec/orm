@@ -73,7 +73,7 @@ fn generate_with_set(dir: PathBuf, source: &str, set: PathBuf) -> Result<String,
 }
 
 #[test]
-// The test of DSL-38, DSL-41, DSL-117 (docs/spec).
+// The test of DSL-38, DSL-41, DSL-156 (docs/spec).
 fn generates_called_methods() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let text = generate(
@@ -744,7 +744,7 @@ fn a_restore_or_create_call_is_a_fixed_method() {
 
 /// The builder takes its documents only from the set file: a document beside the set file that the set does not list
 /// generates no model.
-// Requirements: ORES-21.
+// Requirements: ORES-21, DBS-5, DBS-98.
 #[test]
 fn the_builder_takes_the_documents_only_from_the_set_file() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);

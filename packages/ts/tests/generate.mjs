@@ -55,7 +55,7 @@ async function setOf(dir, documents, external = []) {
 }
 
 // The generator check is one case that runs the orm-gen and tsc processes.
-// Requirements: ORES-21, DBS-4, DBS-27, DBS-110, DBS-155, DBS-175, DSL-127.
+// Requirements: ORES-21, DBS-5, DBS-98, DBS-4, DBS-27, DBS-110, DBS-155, DBS-175, DSL-127.
 caseTest('generate', PROCESS, async () => {
   try {
     const usage = join(work, 'usage.ts');
@@ -201,7 +201,7 @@ caseTest('generate', PROCESS, async () => {
 
 // The positive consumer compiles and runs without diagnostic suppression. Its separate negative fixture must fail only
 // at the raw typed-field assignment, with TypeScript's exact code and source location.
-// Requirements: DBS-112, INT-66.
+// Requirements: DBS-112, DBS-114, INT-66.
 test('generated typed getter consumer compiler fixture', async () => {
   const runDir = join(root, '.runtime/run');
   await mkdir(runDir, { recursive: true });

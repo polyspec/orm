@@ -3507,7 +3507,12 @@
           "test": "packages/ts/tests/generate-scan.mjs",
           "id": "generate-scan/non_model_call"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "@polyspec/orm"
+      }
     },
     {
       "id": "generator-scan-call-on-another-sets-class",
@@ -3713,7 +3718,9 @@
       "id": "generator-takes-the-documents-only-from-the-set-file",
       "kind": "feature",
       "requirements": [
-        "ORES-21"
+        "ORES-21",
+        "DBS-5",
+        "DBS-98"
       ],
       "bindings": [
         {
@@ -7696,7 +7703,12 @@
           "test": "packages/go/generator/gen_go_packages_test.go",
           "id": "TestGoGenerationOfTwoModelPackagesSettlesInOneRun"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "go-module",
+        "package": "github.com/polyspec/orm/packages/go"
+      }
     },
     {
       "id": "go-internal-packages-go-generator-gen-go-scan",
@@ -9307,27 +9319,7 @@
       "id": "rust-a-table-named-like-the-runtime-crate-gets-a-model-module-of-its-own",
       "kind": "feature",
       "requirements": [
-        "DBS-4",
-        "DBS-19",
-        "DBS-25",
-        "DBS-27",
-        "DBS-100",
-        "DBS-101",
-        "DBS-104",
-        "DBS-110",
-        "DBS-112",
-        "DBS-114",
-        "DBS-116",
-        "DBS-118",
-        "DBS-155",
-        "DBS-173",
-        "DSL-37",
-        "DSL-38",
-        "DSL-41",
-        "DSL-44",
-        "DSL-117",
-        "DSL-151",
-        "SCH-1"
+        "DSL-41"
       ],
       "bindings": [
         {
@@ -9335,33 +9327,18 @@
           "test": "packages/rust/build/tests/generate.rs",
           "id": "a_table_named_like_the_runtime_crate_gets_a_model_module_of_its_own"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm-build"
+      }
     },
     {
       "id": "rust-bound-setter-results-preserve-model-calls-after-extraction",
       "kind": "feature",
       "requirements": [
-        "DBS-4",
-        "DBS-19",
-        "DBS-25",
-        "DBS-27",
-        "DBS-100",
-        "DBS-101",
-        "DBS-104",
-        "DBS-110",
-        "DBS-112",
-        "DBS-114",
-        "DBS-116",
-        "DBS-118",
-        "DBS-155",
-        "DBS-173",
-        "DSL-37",
-        "DSL-38",
-        "DSL-41",
-        "DSL-44",
-        "DSL-117",
-        "DSL-151",
-        "SCH-1"
+        "DSL-41"
       ],
       "bindings": [
         {
@@ -9369,33 +9346,18 @@
           "test": "packages/rust/build/tests/generate.rs",
           "id": "bound_setter_results_preserve_model_calls_after_extraction"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm-build"
+      }
     },
     {
       "id": "rust-column-function-order-takes-the-function",
       "kind": "feature",
       "requirements": [
-        "DBS-4",
-        "DBS-19",
-        "DBS-25",
-        "DBS-27",
-        "DBS-100",
-        "DBS-101",
-        "DBS-104",
-        "DBS-110",
-        "DBS-112",
-        "DBS-114",
-        "DBS-116",
-        "DBS-118",
-        "DBS-155",
-        "DBS-173",
-        "DSL-37",
-        "DSL-38",
-        "DSL-41",
-        "DSL-44",
-        "DSL-117",
-        "DSL-151",
-        "SCH-1"
+        "DSL-41"
       ],
       "bindings": [
         {
@@ -9403,7 +9365,12 @@
           "test": "packages/rust/build/tests/generate.rs",
           "id": "column_function_order_takes_the_function"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm-build"
+      }
     },
     {
       "id": "generated-code-no-lint-suppressions",
@@ -9476,9 +9443,8 @@
       "id": "rust-generates-called-methods",
       "kind": "feature",
       "requirements": [
-        "DSL-38",
         "DSL-41",
-        "DSL-117"
+        "DSL-156"
       ],
       "bindings": [
         {
@@ -9486,7 +9452,12 @@
           "test": "packages/rust/build/tests/generate.rs",
           "id": "generates_called_methods"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm-build"
+      }
     },
     {
       "id": "generator-writes-the-owned-and-the-used-external-tables",
@@ -9531,27 +9502,7 @@
       "id": "rust-ignores-calls-of-other-types",
       "kind": "feature",
       "requirements": [
-        "DBS-4",
-        "DBS-19",
-        "DBS-25",
-        "DBS-27",
-        "DBS-100",
-        "DBS-101",
-        "DBS-104",
-        "DBS-110",
-        "DBS-112",
-        "DBS-114",
-        "DBS-116",
-        "DBS-118",
-        "DBS-155",
-        "DBS-173",
-        "DSL-37",
-        "DSL-38",
-        "DSL-41",
-        "DSL-44",
-        "DSL-117",
-        "DSL-151",
-        "SCH-1"
+        "DSL-41"
       ],
       "bindings": [
         {
@@ -9559,33 +9510,18 @@
           "test": "packages/rust/build/tests/generate.rs",
           "id": "ignores_calls_of_other_types"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm-build"
+      }
     },
     {
       "id": "rust-infallible-setter-does-not-accept-result-methods",
       "kind": "feature",
       "requirements": [
-        "DBS-4",
-        "DBS-19",
-        "DBS-25",
-        "DBS-27",
-        "DBS-100",
-        "DBS-101",
-        "DBS-104",
-        "DBS-110",
-        "DBS-112",
-        "DBS-114",
-        "DBS-116",
-        "DBS-118",
-        "DBS-155",
-        "DBS-173",
-        "DSL-37",
-        "DSL-38",
-        "DSL-41",
-        "DSL-44",
-        "DSL-117",
-        "DSL-151",
-        "SCH-1"
+        "DSL-41"
       ],
       "bindings": [
         {
@@ -9593,7 +9529,12 @@
           "test": "packages/rust/build/tests/generate.rs",
           "id": "infallible_setter_does_not_accept_result_methods"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm-build"
+      }
     },
     {
       "id": "generated-manifest-text-and-hash-match",
@@ -9736,27 +9677,7 @@
       "id": "rust-relation-getters-report-a-mismatched-relation-value",
       "kind": "feature",
       "requirements": [
-        "DBS-4",
-        "DBS-19",
-        "DBS-25",
-        "DBS-27",
-        "DBS-100",
-        "DBS-101",
-        "DBS-104",
-        "DBS-110",
-        "DBS-112",
-        "DBS-114",
-        "DBS-116",
-        "DBS-118",
-        "DBS-155",
-        "DBS-173",
-        "DSL-37",
-        "DSL-38",
-        "DSL-41",
-        "DSL-44",
-        "DSL-117",
-        "DSL-151",
-        "SCH-1"
+        "DSL-41"
       ],
       "bindings": [
         {
@@ -9764,7 +9685,12 @@
           "test": "packages/rust/build/tests/generate.rs",
           "id": "relation_getters_report_a_mismatched_relation_value"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm-build"
+      }
     },
     {
       "id": "generator-set-errors-print-every-error-and-write-nothing",
@@ -9809,27 +9735,7 @@
       "id": "rust-styled-setter-result-handling-preserves-model-calls",
       "kind": "feature",
       "requirements": [
-        "DBS-4",
-        "DBS-19",
-        "DBS-25",
-        "DBS-27",
-        "DBS-100",
-        "DBS-101",
-        "DBS-104",
-        "DBS-110",
-        "DBS-112",
-        "DBS-114",
-        "DBS-116",
-        "DBS-118",
-        "DBS-155",
-        "DBS-173",
-        "DSL-37",
-        "DSL-38",
-        "DSL-41",
-        "DSL-44",
-        "DSL-117",
-        "DSL-151",
-        "SCH-1"
+        "DSL-41"
       ],
       "bindings": [
         {
@@ -9837,33 +9743,18 @@
           "test": "packages/rust/build/tests/generate.rs",
           "id": "styled_setter_result_handling_preserves_model_calls"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm-build"
+      }
     },
     {
       "id": "rust-styled-setter-result-transformations-are-not-column-calls",
       "kind": "feature",
       "requirements": [
-        "DBS-4",
-        "DBS-19",
-        "DBS-25",
-        "DBS-27",
-        "DBS-100",
-        "DBS-101",
-        "DBS-104",
-        "DBS-110",
-        "DBS-112",
-        "DBS-114",
-        "DBS-116",
-        "DBS-118",
-        "DBS-155",
-        "DBS-173",
-        "DSL-37",
-        "DSL-38",
-        "DSL-41",
-        "DSL-44",
-        "DSL-117",
-        "DSL-151",
-        "SCH-1"
+        "DSL-41"
       ],
       "bindings": [
         {
@@ -9871,33 +9762,18 @@
           "test": "packages/rust/build/tests/generate.rs",
           "id": "styled_setter_result_transformations_are_not_column_calls"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm-build"
+      }
     },
     {
       "id": "rust-unknown-model-after-result-error-mapping-still-fails",
       "kind": "feature",
       "requirements": [
-        "DBS-4",
-        "DBS-19",
-        "DBS-25",
-        "DBS-27",
-        "DBS-100",
-        "DBS-101",
-        "DBS-104",
-        "DBS-110",
-        "DBS-112",
-        "DBS-114",
-        "DBS-116",
-        "DBS-118",
-        "DBS-155",
-        "DBS-173",
-        "DSL-37",
-        "DSL-38",
-        "DSL-41",
-        "DSL-44",
-        "DSL-117",
-        "DSL-151",
-        "SCH-1"
+        "DSL-41"
       ],
       "bindings": [
         {
@@ -9905,33 +9781,18 @@
           "test": "packages/rust/build/tests/generate.rs",
           "id": "unknown_model_after_result_error_mapping_still_fails"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm-build"
+      }
     },
     {
       "id": "rust-unknown-model-call-after-setter-result-handling-still-fails",
       "kind": "feature",
       "requirements": [
-        "DBS-4",
-        "DBS-19",
-        "DBS-25",
-        "DBS-27",
-        "DBS-100",
-        "DBS-101",
-        "DBS-104",
-        "DBS-110",
-        "DBS-112",
-        "DBS-114",
-        "DBS-116",
-        "DBS-118",
-        "DBS-155",
-        "DBS-173",
-        "DSL-37",
-        "DSL-38",
-        "DSL-41",
-        "DSL-44",
-        "DSL-117",
-        "DSL-151",
-        "SCH-1"
+        "DSL-41"
       ],
       "bindings": [
         {
@@ -9939,7 +9800,12 @@
           "test": "packages/rust/build/tests/generate.rs",
           "id": "unknown_model_call_after_setter_result_handling_still_fails"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm-build"
+      }
     },
     {
       "id": "rust-binary-grid-values-remain-distinct-from-text-and-null",
@@ -12362,7 +12228,6 @@
       "id": "py-test-orm-gen",
       "kind": "feature",
       "requirements": [
-        "DBS-120",
         "DSL-43"
       ],
       "bindings": [
@@ -12371,7 +12236,12 @@
           "test": "packages/python/tests/test_orm_gen.py",
           "id": "test_generated_module_imports_and_builds_the_model"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec-orm"
+      }
     },
     {
       "id": "py-test-placeholders",
@@ -13238,7 +13108,12 @@
           "test": "packages/php/tests/OrmGenScanTest.php",
           "id": "OrmGenScanTest::testVector"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec/orm"
+      }
     },
     {
       "id": "php-internal-orm-gen-scan-the-receiver-is-resolved-from-the-source",
@@ -13252,7 +13127,12 @@
           "test": "packages/php/tests/OrmGenScanTest.php",
           "id": "OrmGenScanTest::testTheReceiverIsResolvedFromTheSource"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec/orm"
+      }
     },
     {
       "id": "php-internal-orm-gen-scan-a-directory-is-scanned-and-a-file-that-does-not-parse-fails-the-scan",
@@ -13266,7 +13146,12 @@
           "test": "packages/php/tests/OrmGenScanTest.php",
           "id": "OrmGenScanTest::testADirectoryIsScannedAndAFileThatDoesNotParseFailsTheScan"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec/orm"
+      }
     },
     {
       "id": "php-internal-orm-gen-scan-a-scanned-directory-skips-its-dependencies-and-refuses-a-symlink",
@@ -13280,18 +13165,18 @@
           "test": "packages/php/tests/OrmGenScanTest.php",
           "id": "OrmGenScanTest::testAScannedDirectorySkipsItsDependenciesAndRefusesASymlink"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec/orm"
+      }
     },
     {
       "id": "php-internal-orm-gen-scan-check-compares-the-models-with-the-scan",
       "kind": "feature",
       "requirements": [
-        "DBS-118",
-        "DBS-173",
-        "DSL-42",
-        "DSL-44",
-        "DSL-151",
-        "SCH-1"
+        "DSL-42"
       ],
       "bindings": [
         {
@@ -13299,7 +13184,12 @@
           "test": "packages/php/tests/OrmGenScanTest.php",
           "id": "OrmGenScanTest::testCheckComparesTheModelsWithTheScan"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec/orm"
+      }
     },
     {
       "id": "php-internal-orm-gen-scan-phpstan-finds-every-scanned-chain-method",
@@ -13313,7 +13203,12 @@
           "test": "packages/php/tests/OrmGenScanTest.php",
           "id": "OrmGenScanTest::testPhpstanFindsEveryScannedChainMethod"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec/orm"
+      }
     },
     {
       "id": "generator-check-compares-without-writing",
@@ -13358,21 +13253,7 @@
       "id": "php-internal-orm-gen-gen-writes-the-same-models-however-the-paths-are-written",
       "kind": "feature",
       "requirements": [
-        "DBS-4",
-        "DBS-5",
-        "DBS-19",
-        "DBS-25",
-        "DBS-27",
-        "DBS-98",
-        "DBS-104",
-        "DBS-105",
-        "DBS-110",
-        "DBS-155",
-        "DSL-127",
-        "ORES-21",
-        "ORES-36",
-        "PLN-22",
-        "SCH-1"
+        "DSL-42"
       ],
       "bindings": [
         {
@@ -13380,27 +13261,18 @@
           "test": "packages/php/tests/OrmGenTest.php",
           "id": "OrmGenTest::testGenWritesTheSameModelsHoweverThePathsAreWritten"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec/orm"
+      }
     },
     {
       "id": "php-internal-orm-gen-gen-is-the-only-command",
       "kind": "feature",
       "requirements": [
-        "DBS-4",
-        "DBS-5",
-        "DBS-19",
-        "DBS-25",
-        "DBS-27",
-        "DBS-98",
-        "DBS-104",
-        "DBS-105",
-        "DBS-110",
-        "DBS-155",
-        "DSL-127",
-        "ORES-21",
-        "ORES-36",
-        "PLN-22",
-        "SCH-1"
+        "DSL-42"
       ],
       "bindings": [
         {
@@ -13408,27 +13280,18 @@
           "test": "packages/php/tests/OrmGenTest.php",
           "id": "OrmGenTest::testGenIsTheOnlyCommand"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec/orm"
+      }
     },
     {
       "id": "php-internal-orm-gen-the-bin-composer-installs-loads-the-autoloader",
       "kind": "feature",
       "requirements": [
-        "DBS-4",
-        "DBS-5",
-        "DBS-19",
-        "DBS-25",
-        "DBS-27",
-        "DBS-98",
-        "DBS-104",
-        "DBS-105",
-        "DBS-110",
-        "DBS-155",
-        "DSL-127",
-        "ORES-21",
-        "ORES-36",
-        "PLN-22",
-        "SCH-1"
+        "DSL-42"
       ],
       "bindings": [
         {
@@ -13436,27 +13299,18 @@
           "test": "packages/php/tests/OrmGenTest.php",
           "id": "OrmGenTest::testTheBinComposerInstallsLoadsTheAutoloader"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec/orm"
+      }
     },
     {
       "id": "php-internal-orm-gen-the-bin-outside-composer-names-the-missing-autoloader",
       "kind": "feature",
       "requirements": [
-        "DBS-4",
-        "DBS-5",
-        "DBS-19",
-        "DBS-25",
-        "DBS-27",
-        "DBS-98",
-        "DBS-104",
-        "DBS-105",
-        "DBS-110",
-        "DBS-155",
-        "DSL-127",
-        "ORES-21",
-        "ORES-36",
-        "PLN-22",
-        "SCH-1"
+        "DSL-42"
       ],
       "bindings": [
         {
@@ -13464,7 +13318,12 @@
           "test": "packages/php/tests/OrmGenTest.php",
           "id": "OrmGenTest::testTheBinOutsideComposerNamesTheMissingAutoloader"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec/orm"
+      }
     },
     {
       "id": "php-internal-runtime-model-entities-in-document-order",
@@ -21417,6 +21276,64 @@
           "id": "a_name_is_typed_by_its_binding_in_its_own_scope"
         }
       ]
+    },
+    {
+      "id": "generator-generates-the-scanned-chain-methods",
+      "kind": "feature",
+      "requirements": [
+        "DSL-38"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/generator/gen_go_test.go",
+          "id": "TestScanGeneratesUsedMethods"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/OrmGenScanTest.php",
+          "id": "OrmGenScanTest::testVector"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/OrmGenScanTest.php",
+          "id": "OrmGenScanTest::testVector"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/generate-scan.mjs",
+          "id": "generate-scan/model_calls"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_orm_gen.py",
+          "id": "test_generated_module_imports_and_builds_the_model"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/tests/generate.rs",
+          "id": "generates_called_methods"
+        }
+      ]
+    },
+    {
+      "id": "go-generator-generates-new-and-get-of-the-called-names",
+      "kind": "feature",
+      "requirements": [
+        "DSL-117"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/generator/gen_go_test.go",
+          "id": "TestScanGeneratesUsedMethods"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "go-module",
+        "package": "github.com/polyspec/orm/packages/go"
+      }
     },
     {
       "id": "clock-microseconds",

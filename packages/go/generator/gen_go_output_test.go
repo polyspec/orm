@@ -411,7 +411,7 @@ func namesCommand(t *testing.T, set bool) (string, func(name, body string)) {
 // TestGoGenerationCommandRefusesTheRemovedDocumentFlags checks that orm-gen gen
 // takes its documents only from the set file: the removed --schema and --use
 // flags are usage errors that name the flag, and nothing is written.
-// Requirements: ORES-21.
+// Requirements: ORES-21, DBS-5, DBS-98.
 func TestGoGenerationCommandRefusesTheRemovedDocumentFlags(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	bin := commandBinary(t)

@@ -14,6 +14,7 @@ use WeakReference;
 
 final class ModelNativeTest extends TestCase
 {
+    // Requirements: DBS-112, DBS-114.
     public function testPhpGeneratedTypedGetterUsesInternalModelStorage(): void
     {
         $dir = sys_get_temp_dir() . '/orm-php-ext-generated-getter-' . getmypid();

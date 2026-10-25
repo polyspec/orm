@@ -55,7 +55,7 @@ class OrmGenTest(unittest.TestCase):
         cls.addClassCleanup(sys.modules.pop, "models", None)
         exec(compile(source.read_text(), module.__file__, "exec"), module.__dict__)
 
-    # Requirements: DBS-104, DBS-120, DSL-43.
+    # Requirements: DBS-104, DBS-120, DSL-38, DSL-43.
     def test_generated_module_imports_and_builds_the_model(self):
         import models
 
@@ -739,6 +739,7 @@ class OrmGenTest(unittest.TestCase):
 
     # Requirements: ORES-21.
     def test_the_removed_document_flags_are_usage_errors(self):
+        # Requirements: ORES-21, DBS-5, DBS-98.
         for flag in ("--schema", "--use"):
             result = subprocess.run(
                 args=ORM_GEN

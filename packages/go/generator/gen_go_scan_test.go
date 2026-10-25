@@ -86,7 +86,7 @@ func Brands() *model.ProductModel {
 	buildScannedModule(t)
 }
 
-// Requirements: DBS-112, INT-66.
+// Requirements: DBS-112, DBS-114, INT-66.
 // TestGoGeneratedScalarGetterRejectsUnselectedRead checks the generated getter at runtime through
 // an external consumer that compiles against either the current or corrected getter signature.
 func TestGoGeneratedScalarGetterRejectsUnselectedRead(t *testing.T) {

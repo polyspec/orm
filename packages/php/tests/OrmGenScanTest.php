@@ -143,6 +143,7 @@ final class OrmGenScanTest extends TestCase
         return OrmGenTestSupport::phpMethodNames("$dir/model/$class.php");
     }
 
+    // Requirements: DSL-38, DSL-42.
     #[DataProviderExternal(OrmGenTestSupport::class, 'phpScanVectorCases')]
     public function testVector(array $case): void
     {

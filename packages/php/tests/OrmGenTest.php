@@ -268,6 +268,7 @@ final class OrmGenTest extends TestCase
         self::assertTrue($code === 0 && $out === '', "gen --check with external documents: $code $out");
     }
 
+    // Requirements: DSL-42.
     public function testGenWritesTheSameModelsHoweverThePathsAreWritten(): void
     {
         $work = self::$work;
@@ -310,6 +311,7 @@ final class OrmGenTest extends TestCase
         }
     }
 
+    // Requirements: DSL-42.
     public function testGenIsTheOnlyCommand(): void
     {
         foreach (['build', 'ddl', 'diff', 'validate', 'migrate', 'import'] as $command) {
@@ -324,6 +326,7 @@ final class OrmGenTest extends TestCase
         }
     }
 
+    // Requirements: DSL-42.
     public function testTheBinComposerInstallsLoadsTheAutoloader(): void
     {
         [$code, $out, $err] = self::process([PHP_BINARY, 'vendor-php/bin/orm-gen']);
@@ -333,6 +336,7 @@ final class OrmGenTest extends TestCase
         );
     }
 
+    // Requirements: DSL-42.
     public function testTheBinOutsideComposerNamesTheMissingAutoloader(): void
     {
         // packages/php has its own vendor (its PHPUnit), so the bin runs from a copy of the package's bin folder
