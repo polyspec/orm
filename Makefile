@@ -337,7 +337,7 @@ testcase-check/rust: cargo-downloads-check
 .PHONY: temp-sqlite-fixture-rust-helper-check
 temp-sqlite-fixture-rust-helper-check: cargo-downloads-check lease-tool
 	cd packages/rust && $(CARGO_TEST) temp-sqlite-fixture-hot-path -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-tests --test coverage_hot_path_read_correctness hot_path_read_correctness -- --test-threads=1 --exact
-	cd packages/rust && $(CARGO_TEST) temp-sqlite-fixture-cpx5 -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-tests --bin integration coverage_model_queries::duplicate_relation_name_reports_config_alias_hint -- --test-threads=1 --exact
+	cd packages/rust && $(CARGO_TEST) temp-sqlite-fixture-cpx5 -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-tests --test integration coverage_model_queries::duplicate_relation_name_reports_config_alias_hint -- --test-threads=1 --exact
 
 # client-pooler-check runs the client database tests through the PgBouncer
 # pooler in transaction mode for PostgreSQL and the ProxySQL pooler for MySQL.
