@@ -189,27 +189,27 @@ final class OrmExceptionNativeTest extends TestCase
             Orm::parseMarkdownDsn('markdown://127.0.0.1:49152/corpus?token=a+token')
         );
         $cases = [
-            ['now', [], Orm::now()],
-            ['today', [], Orm::today()],
-            ['seconds_ago', [3], Orm::secondsAgo(3)],
-            ['minutes_ago', [3], Orm::minutesAgo(3)],
-            ['hours_ago', [3], Orm::hoursAgo(3)],
-            ['days_ago', [3], Orm::daysAgo(3)],
-            ['months_ago', [3], Orm::monthsAgo(3)],
-            ['seconds_later', [3], Orm::secondsLater(3)],
-            ['minutes_later', [3], Orm::minutesLater(3)],
-            ['hours_later', [3], Orm::hoursLater(3)],
-            ['days_later', [3], Orm::daysLater(3)],
-            ['months_later', [3], Orm::monthsLater(3)],
-            ['day_of_week', [], Orm::dayOfWeek()],
-            ['year', [], Orm::year()],
-            ['month', [], Orm::month()],
-            ['date', [], Orm::date()],
+            ['now', [], Orm::now(), false],
+            ['today', [], Orm::today(), false],
+            ['seconds_ago', [3], Orm::secondsAgo(3), false],
+            ['minutes_ago', [3], Orm::minutesAgo(3), false],
+            ['hours_ago', [3], Orm::hoursAgo(3), false],
+            ['days_ago', [3], Orm::daysAgo(3), false],
+            ['months_ago', [3], Orm::monthsAgo(3), false],
+            ['seconds_later', [3], Orm::secondsLater(3), false],
+            ['minutes_later', [3], Orm::minutesLater(3), false],
+            ['hours_later', [3], Orm::hoursLater(3), false],
+            ['days_later', [3], Orm::daysLater(3), false],
+            ['months_later', [3], Orm::monthsLater(3), false],
+            ['day_of_week', [], Orm::dayOfWeek(), true],
+            ['year', [], Orm::year(), true],
+            ['month', [], Orm::month(), true],
+            ['date', [], Orm::date(), true],
         ];
-        foreach ($cases as [$name, $args, $function]) {
+        foreach ($cases as [$name, $args, $function, $column]) {
             Assert::assertSame($name, $function->name);
             Assert::assertSame($args, $function->args);
-            Assert::assertFalse($function->column);
+            Assert::assertSame($column, $function->column);
         }
         $conflict = Orm::transactionConflict('retry');
         Assert::assertSame(Code::DEADLOCK, $conflict->code_);

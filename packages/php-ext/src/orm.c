@@ -34,7 +34,7 @@ ZEND_NAMED_FUNCTION(orm_listener_open)
     ZVAL_COPY_VALUE(return_value, &pdo);
 }
 
-static void orm_func(zval *out, const char *name, uint32_t argc, zval *args)
+static void orm_func(zval *out, const char *name, uint32_t argc, zval *args, bool column)
 {
     zval ctor[3];
     ZVAL_STRING(&ctor[0], name);
@@ -44,7 +44,7 @@ static void orm_func(zval *out, const char *name, uint32_t argc, zval *args)
         ZVAL_COPY(&v, &args[i]);
         add_next_index_zval(&ctor[1], &v);
     }
-    ZVAL_FALSE(&ctor[2]);
+    ZVAL_BOOL(&ctor[2], column);
     if (!newobj("Polyspec\\Orm\\Func", out, 3, ctor)) {
         ZVAL_UNDEF(out);
     }
@@ -55,14 +55,19 @@ static void orm_func(zval *out, const char *name, uint32_t argc, zval *args)
 #define ORM_FUNC0(method, value) \
     ZEND_METHOD(Polyspec_Orm_Orm, method) { \
         ZEND_PARSE_PARAMETERS_NONE(); \
-        orm_func(return_value, value, 0, NULL); \
+        orm_func(return_value, value, 0, NULL, false); \
     }
 #define ORM_FUNC1(method, value) \
     ZEND_METHOD(Polyspec_Orm_Orm, method) { \
         zend_long n; \
         ZEND_PARSE_PARAMETERS_START(1, 1) Z_PARAM_LONG(n) ZEND_PARSE_PARAMETERS_END(); \
         zval arg; ZVAL_LONG(&arg, n); \
-        orm_func(return_value, value, 1, &arg); \
+        orm_func(return_value, value, 1, &arg, false); \
+    }
+#define ORM_COLUMN_FUNC0(method, value) \
+    ZEND_METHOD(Polyspec_Orm_Orm, method) { \
+        ZEND_PARSE_PARAMETERS_NONE(); \
+        orm_func(return_value, value, 0, NULL, true); \
     }
 
 ORM_FUNC0(now, "now")
@@ -77,10 +82,10 @@ ORM_FUNC1(minutesLater, "minutes_later")
 ORM_FUNC1(hoursLater, "hours_later")
 ORM_FUNC1(daysLater, "days_later")
 ORM_FUNC1(monthsLater, "months_later")
-ORM_FUNC0(dayOfWeek, "day_of_week")
-ORM_FUNC0(year, "year")
-ORM_FUNC0(month, "month")
-ORM_FUNC0(date, "date")
+ORM_COLUMN_FUNC0(dayOfWeek, "day_of_week")
+ORM_COLUMN_FUNC0(year, "year")
+ORM_COLUMN_FUNC0(month, "month")
+ORM_COLUMN_FUNC0(date, "date")
 
 ZEND_METHOD(Polyspec_Orm_Orm, transactionConflict)
 {
