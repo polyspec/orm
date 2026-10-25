@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- generator-consumer-check, native-error-cause-check, transaction-failure-rust-check, complex-query-rust-check and page-cache-unit-check run each independent test as a part of its own, so a failed test no longer stops the others (KSTD-5-88-10).
 - The type check of the TypeScript interface extractor states `--noEmit` on its command line, so the publish case of `make repo-check` no longer reads it as a build into dist (KSTD-5-88-11).
 - The flowmark source checkout that markdown-table-check reads is a tool download under var/tools, and the three recipes that built the TypeScript client before holding it start with `$(HOLD_TYPESCRIPT)`, so the run-directory case of `make repo-check` passes (KSTD-5-88-9).
 - The CPX-2 Python Makefile recipes use shell-valid environment assignments and required-variable guards, so the repository shell parser accepts them and missing fixture DSNs still name their setup command (KSTD-5-88-8).

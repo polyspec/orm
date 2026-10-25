@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 5bab0b95bda48f927f6ce3339811b9955d39bdcdd8ba5162092f0f58b743d9cb -->
+<!-- source-sha256: 81c684b46610ce0e9b7937325bd54dbe2390147bbff3337c63174e45a757e5df -->
 # 변경 이력
 
 ## Unreleased
 
+- generator-consumer-check, native-error-cause-check, transaction-failure-rust-check, complex-query-rust-check, page-cache-unit-check가 독립된 test를 각각 자기 part로 실행하므로, 실패한 test가 더 이상 나머지를 멈추지 않는다 (KSTD-5-88-10).
 - TypeScript interface extractor의 type check가 command line에 `--noEmit`을 적으므로, `make repo-check`의 publish case가 그것을 더 이상 dist로의 build로 읽지 않는다 (KSTD-5-88-11).
 - markdown-table-check가 읽는 flowmark source checkout은 var/tools 아래의 tool download이고, TypeScript client를 hold하기 전에 build하던 recipe 셋은 `$(HOLD_TYPESCRIPT)`로 시작하므로 `make repo-check`의 run directory case가 통과한다 (KSTD-5-88-9).
 - CPX-2 Python Makefile recipe가 유효한 shell 환경 변수 할당과 필수 변수 guard를 사용하므로 repository shell parser가 이를 읽고, fixture DSN이 없으면 준비 target을 안내한다 (KSTD-5-88-8).

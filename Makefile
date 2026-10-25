@@ -1470,19 +1470,29 @@ client-unit-check/runtime-model: php-vendor-check
 client-unit-check/orm-gen: php-vendor-check
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenTest.php
 
-generator-consumer-check: cargo-downloads-check lease-tool php-vendor-check php-models python-venv-check
+# generator-consumer-check runs the consumer tests of each generator as a part of its own, so a failed part does not stop the others.
+.PHONY: generator-consumer-check/go generator-consumer-check/php generator-consumer-check/php-extension generator-consumer-check/typescript generator-consumer-check/python generator-consumer-check/rust-field-types generator-consumer-check/rust-emission generator-consumer-check/rust-integration
+generator-consumer-check: generator-consumer-check/go generator-consumer-check/php generator-consumer-check/php-extension generator-consumer-check/typescript generator-consumer-check/python generator-consumer-check/rust-field-types generator-consumer-check/rust-emission generator-consumer-check/rust-integration
+generator-consumer-check/go:
 	cd packages/go && $(NODE) $(abspath tests/go-test.mts) -v -timeout 0 ./generator -run '^(TestGoGeneratedScalarGetterRejectsUnselectedRead|TestGoGeneratedScalarGetterCompilesAtItsDeclaredType)$$' -count=1
+generator-consumer-check/php: php-vendor-check php-models
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmGenTest.php --filter testGeneratedTypedGetterUsesPrivateModelStorageAndRejectsUnselectedRead
+generator-consumer-check/php-extension: php-vendor-check php-models
 	@set -eu; \
 	run_dir="$(abspath .runtime/run)/generator-consumer-check-$$$$"; \
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh "$$run_dir/php-extension/polyspec_orm.so"; \
 	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ModelNativeTest.php --filter testPhpGeneratedTypedGetterUsesInternalModelStorage
+generator-consumer-check/typescript:
 	$(NODE) --test packages/ts/tests/generate.mjs
+generator-consumer-check/python: python-venv-check
 	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_orm_gen.OrmGenTest.test_generated_typed_getter_is_the_public_column_api
+generator-consumer-check/rust-field-types: cargo-downloads-check lease-tool
 	cd packages/rust && $(CARGO_TEST) generator-consumer-rust-field-types -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm-build --lib generate::field_type_tests::generated_field_types_follow_the_runtime_model -- --test-threads=1 --exact
+generator-consumer-check/rust-emission: cargo-downloads-check lease-tool
 	cd packages/rust && $(CARGO_TEST) generator-consumer-rust-emission -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm-build --test generate generated_rows_reject_unselected_fields_and_separate_group_results -- --test-threads=1 --exact
+generator-consumer-check/rust-integration: cargo-downloads-check lease-tool
 	cd packages/rust && $(CARGO_TEST) generator-consumer-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm-tests --bin integration generated_typed_getter_is_a_checked_public_consumer_api -- --test-threads=1 --exact
 
 rust-compiler-fixtures-check: cargo-downloads-check lease-tool
@@ -1490,14 +1500,21 @@ rust-compiler-fixtures-check: cargo-downloads-check lease-tool
 
 # Native no-database cases bind driver errors, cells and the Markdown wire handshake to each runtime's native call path.
 .PHONY: native-error-cause-check
-native-error-cause-check: php-models native-error-cause-check/php-extension
+.PHONY: native-error-cause-check/go native-error-cause-check/typescript-driver native-error-cause-check/typescript-markdown native-error-cause-check/python-driver native-error-cause-check/python-markdown native-error-cause-check/php native-error-cause-check/rust-markdown
+native-error-cause-check: php-models native-error-cause-check/php-extension native-error-cause-check/rust native-error-cause-check/go native-error-cause-check/typescript-driver native-error-cause-check/typescript-markdown native-error-cause-check/python-driver native-error-cause-check/python-markdown native-error-cause-check/php native-error-cause-check/rust-markdown
+native-error-cause-check/go:
 	$(GO_TEST) -v -timeout 0 ./packages/go/orm -run '^(TestMapDriverErrorPreservesNativeCause|TestCellScanCopiesLosslessNativeBytes|TestMarkdownConnectRefused)$$' -count=1
+native-error-cause-check/typescript-driver:
 	$(NODE) --test packages/ts/tests/driver-error-lock-wait.mjs packages/ts/tests/driver-cell-bytes.mjs
+native-error-cause-check/typescript-markdown:
 	$(NODE) packages/ts/tests/markdown.mjs
+native-error-cause-check/python-driver:
 	packages/python/.venv/bin/python -m unittest -v packages.python.tests.test_driver_errors.ServerDriverErrorTest packages.python.tests.test_driver_cells
+native-error-cause-check/python-markdown:
 	packages/python/.venv/bin/python -m unittest -v packages.python.tests.test_markdown.MarkdownTest.test_markdown_connect_refused
+native-error-cause-check/php:
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/OrmExceptionLockWaitTest.php packages/php/tests/MarkdownTest.php packages/php/tests/NativeCellReadTest.php
-	$(MAKE) native-error-cause-check/rust
+native-error-cause-check/rust-markdown:
 	cd packages/rust && PATH="$(HOME)/.cargo/bin:$(PATH)" $(CARGO_TEST) native-error-cause-markdown-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --test markdown --features test-faults markdown_connect_refused -- --nocapture
 .PHONY: native-error-cause-check/rust
 native-error-cause-check/rust:
@@ -1572,9 +1589,13 @@ client-db-check: lease-tool python-venv-check
 	$(WITH_TEST_ENV) ORM_PYTHON=$(PYTHON_VENV)/bin/python ORM_CLIENT_DB_LANES=parallel node scripts/client-db-test.mts
 
 # complex-query-rust-check runs the shared CPX-2 fixture against its preseeded MySQL, PostgreSQL, and SQLite owner databases.
-complex-query-rust-check: lease-tool
+.PHONY: complex-query-rust-check/mysql complex-query-rust-check/postgres complex-query-rust-check/sqlite
+complex-query-rust-check: lease-tool complex-query-rust-check/mysql complex-query-rust-check/postgres complex-query-rust-check/sqlite
+complex-query-rust-check/mysql:
 	$(WITH_TEST_ENV) cd packages/rust && ORM_FEATURE_DATABASE=mysql ORM_FEATURE_DSN="$$COMPLEX_QUERY_RUST_MYSQL_DSN" $(CARGO_TEST) complex-query-rust-mysql -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-tests --test integration -- --test-threads=1 --exact coverage_complex_query::coverage_complex_query_product_search
+complex-query-rust-check/postgres:
 	$(WITH_TEST_ENV) cd packages/rust && ORM_FEATURE_DATABASE=postgres ORM_FEATURE_DSN="$$COMPLEX_QUERY_RUST_POSTGRES_DSN" $(CARGO_TEST) complex-query-rust-postgres -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-tests --test integration -- --test-threads=1 --exact coverage_complex_query::coverage_complex_query_product_search
+complex-query-rust-check/sqlite:
 	$(WITH_TEST_ENV) cd packages/rust && ORM_FEATURE_DATABASE=sqlite ORM_FEATURE_DSN="$$COMPLEX_QUERY_RUST_SQLITE_DSN" $(CARGO_TEST) complex-query-rust-sqlite -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-tests --test integration -- --test-threads=1 --exact coverage_complex_query::coverage_complex_query_product_search
 
 # python-install-changed-database-check runs every case of contracts/fixtures/install/changed_database.json with the
@@ -2065,11 +2086,17 @@ paged-read-rust-check: lease-tool
 
 # Runs the database-independent page-cache and exact parameter-walk units in all six implementations.
 .PHONY: page-cache-unit-check
-page-cache-unit-check: lease-tool php-vendor-check php-models python-venv-check typescript-build cargo-downloads-check model-types-php-extension-check
+.PHONY: page-cache-unit-check/go page-cache-unit-check/php page-cache-unit-check/typescript page-cache-unit-check/python page-cache-unit-check/rust
+page-cache-unit-check: lease-tool php-vendor-check php-models python-venv-check typescript-build cargo-downloads-check model-types-php-extension-check page-cache-unit-check/go page-cache-unit-check/php page-cache-unit-check/typescript page-cache-unit-check/python page-cache-unit-check/rust
+page-cache-unit-check/go:
 	$(GO_TEST) ./packages/go/orm -run '^(TestPlanCachePagedReadBindsPageValues|TestCanonicalizeCompositeRequestParameterWalk)$$' -count=1
+page-cache-unit-check/php:
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/PlanCacheBoundTest.php
+page-cache-unit-check/typescript:
 	$(NODE) --test packages/ts/tests/plan-cache-in.mjs
+page-cache-unit-check/python:
 	PYTHONPATH=$(CURDIR)/packages/python/src $(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_plan_cache_bound
+page-cache-unit-check/rust:
 	cd packages/rust && $(CARGO_TEST) page-cache-unit-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --lib paged_ -- --test-threads=1 --nocapture
 
 # Focused split-merge NULL boundary cases in each native client.
@@ -2726,8 +2753,11 @@ transaction-failure-python-check: python-venv-check
 
 # Runs the Rust transaction and savepoint failure cases that use only local SQLite and its authorizer.
 
-transaction-failure-rust-check: cargo-downloads-check
+.PHONY: transaction-failure-rust-check/lib transaction-failure-rust-check/fault
+transaction-failure-rust-check: cargo-downloads-check transaction-failure-rust-check/lib transaction-failure-rust-check/fault
+transaction-failure-rust-check/lib:
 	$(if $(TRANSACTION_FAILURE_RUST_FAULT_FILTER),:,cd packages/rust && $(CARGO_TEST) transaction-failure-rust -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --lib end_failures_are_reported -- --nocapture)
+transaction-failure-rust-check/fault:
 	cd packages/rust && $(CARGO_TEST) transaction-failure-rust-fault -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) --test rollback $(if $(TRANSACTION_FAILURE_RUST_FAULT_FILTER),$(TRANSACTION_FAILURE_RUST_FAULT_FILTER),rollback_fault_sqlite) -- --nocapture
 
 # The shared blind-index target regression runs only the Python client's pure planner tests.
