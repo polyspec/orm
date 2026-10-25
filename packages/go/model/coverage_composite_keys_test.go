@@ -6,7 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/polyspec/orm/packages/go/model"
@@ -30,7 +33,27 @@ type compositeCollisionRow struct {
 
 func readCompositeCollisionRows(t *testing.T) []compositeCollisionRow {
 	t.Helper()
-	raw, err := os.ReadFile("../../../contracts/fixtures/composite_key_collision.json")
+	workspace, err := exec.Command("go", "env", "GOWORK").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	workspacePath := strings.TrimSpace(string(workspace))
+	if workspacePath == "" {
+		t.Fatal("go env GOWORK did not locate the repository workspace")
+	}
+	fixturePath := filepath.Join("contracts", "fixtures", "composite_key_collision.json")
+	root := filepath.Dir(workspacePath)
+	for {
+		if _, err := os.Stat(filepath.Join(root, fixturePath)); err == nil {
+			break
+		}
+		parent := filepath.Dir(root)
+		if parent == root {
+			t.Fatalf("cannot locate %s above Go workspace %s", fixturePath, workspacePath)
+		}
+		root = parent
+	}
+	raw, err := os.ReadFile(filepath.Join(root, fixturePath))
 	if err != nil {
 		t.Fatal(err)
 	}
