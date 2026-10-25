@@ -77,6 +77,29 @@ rule('invalid 1001 columns', () => {
   lines.push('  primary key (id)', '}');
   assert.deepEqual(parseDbspec(text(lines), {}).diagnostics.map(d => [d.rule, d.line, d.column]), [['limit', 1003, 3]]);
 });
+// Requirements: DBS-144, DBS-170.
+rule('invalid 120001 total columns', () => {
+  const lines = ['dbspec 1 shop'];
+  for (let table = 0; table < 121; table++) {
+    lines.push('', `table t${table} {`);
+    for (let column = 0; column < 1000; column++) lines.push(`  c${column} i32`);
+    lines.push('  primary key (c0)', '}');
+  }
+  const result = parseDbspec(text(lines), {});
+  assert.deepEqual(result.diagnostics.map(d => [d.rule, d.line, d.column]), [['limit', 120484, 3]]);
+});
+rule('invalid 20001 foreign keys', () => {
+  const lines = ['dbspec 1 shop'];
+  for (let table = 0; table < 21; table++) {
+    lines.push('', `table t${table} {`, '  id i64 identity', '  primary key (id)');
+    for (let foreignKey = 0; foreignKey < 1000; foreignKey++) {
+      lines.push(`  foreign key fk_${table}_${foreignKey} (id) references t${table} (id)`);
+    }
+    lines.push('}');
+  }
+  const result = parseDbspec(text(lines), {});
+  assert.deepEqual(result.diagnostics.map(d => [d.rule, d.line, d.column]), [['limit', 20106, 3]]);
+});
 
 // syntax and order
 invalid('syntax and order', [

@@ -118,6 +118,35 @@ class AnalyzeTest(unittest.TestCase):
         self.assertEqual(result.tokens, ())
         self.assertEqual([d.rule for d in result.diagnostics], ["limit"])
 
+    # Requirements: DBS-144, DBS-170.
+    def test_global_column_limit(self):
+        tables = ["dbspec 1 shop"]
+        for table in range(121):
+            tables.extend(("", f"table t{table} {{"))
+            tables.extend(f"  c{column} i32" for column in range(1000))
+            tables.extend(("  primary key (c0)", "}"))
+        _document, _positions, diagnostics = parse_dbspec("\n".join(tables) + "\n", {})
+        self.assertEqual(
+            [(d.rule, d.line, d.column) for d in diagnostics],
+            [("limit", 120484, 3)],
+        )
+
+    # Requirements: DBS-144, DBS-170.
+    def test_foreign_key_count_limit(self):
+        tables = ["dbspec 1 shop"]
+        for table in range(21):
+            tables.extend(("", f"table t{table} {{", "  id i64 identity", "  primary key (id)"))
+            tables.extend(
+                f"  foreign key fk_{table}_{foreign_key} (id) references t{table} (id)"
+                for foreign_key in range(1000)
+            )
+            tables.append("}")
+        _document, _positions, diagnostics = parse_dbspec("\n".join(tables) + "\n", {})
+        self.assertEqual(
+            [(d.rule, d.line, d.column) for d in diagnostics],
+            [("limit", 20106, 3)],
+        )
+
     def test_minus_before_number_is_operator(self):
         result = tokens_of(
             "dbspec 1 app\n\ntable t {\n  id i64 default -1\n  primary key (id)\n}\n"

@@ -236,6 +236,40 @@ func TestEncodingAndLimitDiagnostics(t *testing.T) {
 	}
 }
 
+// Requirements: DBS-144, DBS-170.
+func TestGlobalColumnLimit(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	var document strings.Builder
+	document.WriteString("dbspec 1 shop\n")
+	for table := 0; table < 121; table++ {
+		fmt.Fprintf(&document, "\ntable t%d {\n", table)
+		for column := 0; column < 1000; column++ {
+			fmt.Fprintf(&document, "  c%d i32\n", column)
+		}
+		document.WriteString("  primary key (c0)\n}\n")
+	}
+	runTimed(t, "120001 total columns", 10*time.Second, func() error {
+		return expectDiagnostics(document.String(), nil, errs(4+120*1004, 3, RuleLimit))
+	})
+}
+
+// Requirements: DBS-144, DBS-170.
+func TestForeignKeyCountLimit(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	var document strings.Builder
+	document.WriteString("dbspec 1 shop\n")
+	for table := 0; table < 21; table++ {
+		fmt.Fprintf(&document, "\ntable t%d {\n  id i64 identity\n  primary key (id)\n", table)
+		for foreignKey := 0; foreignKey < 1000; foreignKey++ {
+			fmt.Fprintf(&document, "  foreign key fk_%d_%d (id) references t%d (id)\n", table, foreignKey, table)
+		}
+		document.WriteString("}\n")
+	}
+	runTimed(t, "20001 foreign keys", 10*time.Second, func() error {
+		return expectDiagnostics(document.String(), nil, errs(6+20*1005, 3, RuleLimit))
+	})
+}
+
 // TestCanonicalForms checks literal, expression, comment and ordering forms.
 func TestCanonicalForms(t *testing.T) {
 	testcase.Start(t, testcase.Compute)

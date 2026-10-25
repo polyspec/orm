@@ -1228,3 +1228,47 @@ fn dbspec_limits() {
     }
     polyspec_orm_testcase::step(format_args!("dbspec limits cpu={cpu:?} wall={wall:?}"));
 }
+
+// Requirements: DBS-144, DBS-170.
+#[test]
+fn dbspec_global_column_limit() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(SUITE_DEADLINE));
+    let none = BTreeMap::new();
+    let mut document = String::from("dbspec 1 shop\n");
+    for table in 0..121 {
+        document.push_str(&format!("\ntable t{table} {{\n"));
+        for column in 0..1000 {
+            document.push_str(&format!("  c{column} i32\n"));
+        }
+        document.push_str("  primary key (c0)\n}\n");
+    }
+    let errors = match dbspec::parse(&document, &none) {
+        Err(errors) => errors,
+        Ok(_) => panic!("a document over the global column limit parsed"),
+    };
+    let got: Vec<(String, usize, usize)> = errors.into_iter().map(|e| (e.rule, e.line, e.column)).collect();
+    assert_eq!(got, vec![("limit".to_owned(), 120484, 3)]);
+}
+
+// Requirements: DBS-144, DBS-170.
+#[test]
+fn dbspec_foreign_key_count_limit() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::wall_for_cpu(SUITE_DEADLINE));
+    let none = BTreeMap::new();
+    let mut document = String::from("dbspec 1 shop\n");
+    for table in 0..21 {
+        document.push_str(&format!("\ntable t{table} {{\n  id i64 identity\n  primary key (id)\n"));
+        for foreign_key in 0..1000 {
+            document.push_str(&format!(
+                "  foreign key fk_{table}_{foreign_key} (id) references t{table} (id)\n"
+            ));
+        }
+        document.push_str("}\n");
+    }
+    let errors = match dbspec::parse(&document, &none) {
+        Err(errors) => errors,
+        Ok(_) => panic!("a document over the foreign key limit parsed"),
+    };
+    let got: Vec<(String, usize, usize)> = errors.into_iter().map(|e| (e.rule, e.line, e.column)).collect();
+    assert_eq!(got, vec![("limit".to_owned(), 20106, 3)]);
+}
