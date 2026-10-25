@@ -200,6 +200,23 @@ final class OrmGenCliTest extends TestCase
         }
     }
 
+    // Requirements: DSL-129.
+    public function testGenRejectsAColumnWhoseConditionMethodCollidesWithAnAggregate(): void
+    {
+        $dir = self::$work . '/gen-method-collision';
+        $set = OrmGenTestSupport::setFile($dir, ['collision.dbs']);
+        file_put_contents(
+            "$dir/collision.dbs",
+            "dbspec 1 collision\n\ntable item {\n  seq i64 identity\n  amount i32\n  sum_amount i32\n  primary key (seq)\n}\n"
+        );
+        [$code, $out, $err] = self::tool(
+            ['gen', '--set', $set, '--out', "$dir/model", '--namespace', 'Polyspec\\Orm\\Tests\\Collision']
+        );
+        self::assertNotSame(0, $code, "$out $err");
+        self::assertStringContainsString('item.sum_amount: the condition method sumAmount is also the model method sumAmount', $out . $err);
+        self::assertDirectoryDoesNotExist("$dir/model");
+    }
+
     // Requirements: DBS-104, DBS-105, DBS-110.
     public function testGenGeneratesTheOwnedAndTheUsedExternalTablesOfASet(): void
     {

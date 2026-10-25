@@ -299,6 +299,15 @@ function runtimeImport(outDir: string): string {
 /** Returns models.ts for a runtime model; scan lists files or directories whose model calls are typed. */
 export function renderTypeScript(m: Manifest, outDir: string, scan: readonly string[]): string {
   checkColumnNames(m);
+  for (const e of m.entities.values()) {
+    const generated = staticNames(e);
+    for (const c of e.fields) {
+      const condition = pascal(c.name).replace(/^./, first => first.toLowerCase());
+      if (generated.has(condition)) {
+        throw new Error(`${e.name}.${c.name}: the condition method ${condition} collides with a generated method of ${e.name}`);
+      }
+    }
+  }
   const sites: ScanSite[] = [];
   const calls = scanModelCalls(scan, new Set([...m.entities.keys()].map(pascal)), outDir, m.manifestHash, sites);
   const names = [...new Set([...calls.values()].flatMap(set => [...set]))].sort(byteOrder);

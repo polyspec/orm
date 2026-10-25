@@ -797,6 +797,68 @@ class OrmGenTest(unittest.TestCase):
             )
             self.assertFalse(out.exists())
 
+    def test_generated_method_collision_is_rejected(self):
+        # Requirements: DSL-129.
+        with tempfile.TemporaryDirectory(prefix="orm-gen-collision-") as tree:
+            root = Path(tree)
+            (root / "collision.dbs").write_text(
+                "dbspec 1 collision\n\ntable item {\n  seq i64 identity\n  amount i32\n  sum_amount i32\n  primary key (seq)\n}\n",
+                encoding="utf-8",
+            )
+            (root / "dbspec-set.json").write_text(
+                '{"schema": 1, "documents": ["collision.dbs"]}', encoding="utf-8"
+            )
+            out = root / "out"
+            result = run_gen(root / "dbspec-set.json", out)
+            self.assertNotEqual(result.returncode, 0, result.stderr)
+            self.assertIn(
+                "item.sum_amount: the condition method sum_amount collides with a generated method of item",
+                result.stderr,
+            )
+            self.assertFalse(out.exists())
+
+    def test_generated_field_types_follow_runtime_model(self):
+        # Requirements: DBS-112, DBS-121, INT-2, INT-3, INT-4, INT-5, INT-6, INT-7, INT-8.
+        from polyspec.orm import StyledValue
+
+        with tempfile.TemporaryDirectory(prefix="orm-gen-field-types-") as tree:
+            root = Path(tree)
+            (root / "typed.dbs").write_text(
+                "dbspec 1 typed\n\ntable item {\n  seq i64 identity\n  ratio f64\n  enabled bool\n  body text\n  payload bytes null\n  day date\n  clock time(3)\n  moment datetime(3) null\n  json_value text null\n  primary key (seq)\n  settings {\n    codec json_value ordered_json\n  }\n}\n",
+                encoding="utf-8",
+            )
+            (root / "dbspec-set.json").write_text(
+                '{"schema": 1, "documents": ["typed.dbs"]}', encoding="utf-8"
+            )
+            out = root / "out"
+            result = run_gen(root / "dbspec-set.json", out)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            source = out / "models.py"
+            module = types.ModuleType("generated_field_types")
+            module.__file__ = str(source)
+            exec(compile(source.read_text(encoding="utf-8"), str(source), "exec"), module.__dict__)
+            for field, expected in (
+                ("ratio", float),
+                ("enabled", bool),
+                ("body", str),
+                ("payload", bytes | None),
+                ("day", str),
+                ("clock", str),
+                ("moment", str | None),
+                ("json_value", StyledValue),
+            ):
+                model = module.Item
+                self.assertEqual(
+                    typing.get_type_hints(getattr(model, f"get_{field}"))["return"],
+                    expected,
+                    f"{model.__name__}.{field} getter type",
+                )
+                self.assertEqual(
+                    typing.get_type_hints(getattr(model, f"set_{field}"))["value"],
+                    expected,
+                    f"{model.__name__}.{field} setter type",
+                )
+
     def test_a_column_name_with_an_operator_or_connector_segment_is_rejected(self):
         # Requirements: DSL-130.
         for column, segment in (

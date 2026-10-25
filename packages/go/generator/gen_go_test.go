@@ -132,8 +132,22 @@ func TestColumnNameRules(t *testing.T) {
 	if err := checkNames(m); err != nil {
 		t.Fatal(err)
 	}
-	collision := namesManifest(t, thingDocument("amount", "sum_amount"))
-	if err := generateGo(collision, filepath.Join(t.TempDir(), "model"), "", nil); err == nil || !strings.Contains(err.Error(), "fixed method") {
+}
+
+// Requirements: DSL-129.
+func TestGeneratedMethodCollision(t *testing.T) {
+	testcase.Start(t, testcase.Process)
+	m := namesManifest(t, `dbspec 1 collision
+
+table item {
+  seq i64 identity
+  amount i32
+  sum_amount i32
+  primary key (seq)
+}
+`)
+	err := generateGo(m, filepath.Join(t.TempDir(), "model"), "", nil)
+	if err == nil || !strings.Contains(err.Error(), "sum_amount") || !strings.Contains(err.Error(), "fixed method") {
 		t.Fatalf("method collision: %v", err)
 	}
 }
@@ -247,7 +261,7 @@ func Bad() *model.ProductModel { return model.Product().LkPrice("x") }
 
 // TestGeneratedFieldTypes checks that the Go type of a generated field for each dbspec type and codec
 // follows the "Runtime model" table of docs/spec/dbspec.md.
-// Requirements: INT-2, INT-3, INT-5, INT-6, INT-8, INT-12.
+// Requirements: DBS-112, DBS-121, INT-2, INT-3, INT-4, INT-5, INT-6, INT-7, INT-8, INT-12.
 // Requirements: DBS-121.
 func TestGeneratedFieldTypes(t *testing.T) {
 	testcase.Start(t, testcase.Process)
@@ -302,6 +316,9 @@ table typed {
 		"func (x *TypedModel) SetDay(v string) *TypedModel",
 		"func (x *TypedModel) SetStamp(v *string) *TypedModel",
 		"func (x *TypedModel) SetClock(v string) (*TypedModel, error)",
+		"func (x *TypedModel) SetRatio(v float64) *TypedModel",
+		"func (x *TypedModel) SetFlag(v bool) *TypedModel",
+		"func (x *TypedModel) SetBlob(v []byte) *TypedModel",
 	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("typed.go does not contain %q", want)

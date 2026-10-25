@@ -1,5 +1,5 @@
 <!-- doc-id: dbspec -->
-<!-- source-sha256: f75cd86f7c10ad60218302498f4f84f8ca56d304164f7c29398158a56b23ab34 -->
+<!-- source-sha256: 5f0bd37b893292a33cc8c225291dcd379768eaed512b87ce9b249c796d106de5 -->
 # dbspec
 
 [English](dbspec.md)
@@ -337,22 +337,22 @@ client는 문서 집합으로 runtime model 하나를 만들고, 생성 코드�
 - **DBS-117** **Setting.** `updated`는 executor가 계획하는 모든 `UPDATE`에서 UTC statement 시각을 받는다. `soft_delete`는 읽기(root, `ON` 조건의 각 join child, 각 relation, 각 subquery)를 거르고 delete를 update로 바꾸며, soft delete한 row와 맞는 호출은 `restore`뿐이다. `aes_version`은 row의 key version을 저장한다. `blind_index`는 HMAC column을 쓰고 AES column에 대한 같음 조건을 바꾼다. `audit`에서는 audit 값을 가진 transaction이 연결 audit source의 값과 자기 값으로 callback 전에 audit 기록 하나를 삽입하고, executor는 자신이 insert하거나 update하는 모든 감사 row의 audit column에 그 기록의 key를 쓴다. audit 없는 감사 table의 insert나 update는 `CONFIG`로 실패한다. `immutable`은 runtime 동작이 없다: database가 변경을 거부한다. `navigation`도 runtime 동작이 없다.
 - **DBS-118** **Relation.** 생성 코드는 이전처럼 column의 match method로 두 entity를 join한다. join 결과는 호출이 준 alias나 `<entity>_model`, `<entity>_models`로 얻는다.
 - **DBS-119** **Connection.** raw connection은 DSN URI와 설정을 받고 set을 등록하지 않으며, schema 경로는 받지 않는다. 생성 코드는 manifest text와 `manifestHash`를 담고, 그 connect helper가 connection을 열어 그 set을 등록한다. `utils().schema().register(schema)`는 열린 connection에 set을 등록하고, `install`은 자기가 설치한 set을 등록한다. 등록은 database를 읽지 않는다. schema 값으로 등록한 set은 manifest text와 external text에서 runtime model을 얻으므로 읽은 생성 코드가 필요 없다. PHP는 생성 class의 bootstrap이 실행된 뒤에는 그 array를 쓴다. request는 `manifestHash`를 담고 그 set이 등록된 connection에서만 실행된다([protocol](protocol.md)).
-- **DBS-120** **Generated metadata.** manifest는 각 ORM client runtime model의 원천이며 생성 코드는 이를 어기지 않는다. Go, TypeScript, Rust, Python은 생성 코드가 가진 manifest와 external text에서 runtime model을 만들고, generated entity는 이름과 set만 가진다(Rust model은 build script가 다시 생성하기도 한다). PHP client는 생성 class의 `meta()` array를 쓰며 `manifest_hash`를 뺀 array를 manifest와 external text가 정의한 entity와 비교한다. manifest에 없는 entity를 포함한 차이는 어떤 statement보다 먼저 `CONFIG`로 실패하고 class, entity, 처음 다른 field 경로(`columns.name.length`), 재생성 명령 `orm-gen gen`을 알린다. PHP extension은 Dbspec API를 노출하며 생성 ORM model은 제공하지 않는다.
+- **DBS-120** **Generated metadata.** manifest는 각 ORM client runtime model의 원천이며 생성 코드는 이를 어기지 않는다. Go, TypeScript, Rust, Python은 생성 코드가 가진 manifest와 external text에서 runtime model을 만들고, generated entity는 이름과 set만 가진다(Rust model은 build script가 다시 생성하기도 한다). PHP client는 생성 class의 `meta()` array를 쓰며 `manifest_hash`를 뺀 array를 manifest와 external text가 정의한 entity와 비교한다. manifest에 없는 entity를 포함한 차이는 어떤 statement보다 먼저 `CONFIG`로 실패하고 class, entity, 처음 다른 field 경로(`columns.name.length`), 재생성 명령 `orm-gen gen`을 알린다. PHP extension은 PHP model runtime을 C로 구현한다. PHP generator는 PHP library와 extension이 함께 불러오는 typed model class를 생성하고, extension의 native `Model` class가 그 기반 class다.
 - **DBS-175** `orm-gen gen --check`는 아무것도 쓰지 않는다. generator가 `--out` 아래에 쓸 파일을 그 자리의 파일과 비교한다. 모든 파일이 같으면 0으로 끝나고, 다른 파일마다 `differs: <path>`를 출력한 뒤 1로 끝난다.
 
 | dbspec | Go | PHP | PHP extension | TypeScript | Rust | Python |
 | --- | --- | --- | --- | --- | --- |
-| `i16` | `int16` | `int` | — (no generated model API) | `number` | `i16` | `int` |
-| `i32` | `int32` | `int` | — (no generated model API) | `number` | `i32` | `int` |
-| `i64` | `int64` | `int` | — (no generated model API) | `number`(safe integer) | `i64` | `int` |
-| `bool` | `bool` | `bool` | — (no generated model API) | `boolean` | `bool` | `bool` |
-| `decimal(p,s)` | 소수 자릿수가 정확히 s인 `string` | `string` | — (no generated model API) | `string` | `String` | `str` |
-| `f64` | `float64` | `float` | — (no generated model API) | `number` | `f64` | `float` |
-| `varchar(n)`, `text`, `uuid` | `string` | `string` | — (no generated model API) | `string` | `String` | `str` |
-| `bytes` | `[]byte` | `string` | — (no generated model API) | `Uint8Array` | `Vec<u8>` | `bytes` |
-| `date` | `time.Time` | `\DateTimeImmutable` | — (no generated model API) | `string` `YYYY-MM-DD` | `NaiveDate` | `str` `YYYY-MM-DD` |
-| `time(p)` | 소수 자릿수가 p인 `string` `HH:MM:SS` | `string` | — (no generated model API) | `string` | `String` | `str` |
-| `datetime(p)` | UTC의 `time.Time` | UTC의 `\DateTimeImmutable` | — (no generated model API) | 소수 자릿수가 p인 `string` `YYYY-MM-DD HH:MM:SS` | `NaiveDateTime` | 소수 자릿수가 p인 UTC의 `str` `YYYY-MM-DD HH:MM:SS` |
+| `i16` | `int16` | `int` | PHP와 동일 (native Model) | `number` | `i16` | `int` |
+| `i32` | `int32` | `int` | PHP와 동일 (native Model) | `number` | `i32` | `int` |
+| `i64` | `int64` | `int` | PHP와 동일 (native Model) | `number`(safe integer) | `i64` | `int` |
+| `bool` | `bool` | `bool` | PHP와 동일 (native Model) | `boolean` | `bool` | `bool` |
+| `decimal(p,s)` | 소수 자릿수가 정확히 s인 `string` | `string` | PHP와 동일 (native Model) | `string` | `String` | `str` |
+| `f64` | `float64` | `float` | PHP와 동일 (native Model) | `number` | `f64` | `float` |
+| `varchar(n)`, `text`, `uuid` | `string` | `string` | PHP와 동일 (native Model) | `string` | `String` | `str` |
+| `bytes` | `[]byte` | `string` | PHP와 동일 (native Model) | `Uint8Array` | `Vec<u8>` | `bytes` |
+| `date` | `time.Time` | `\DateTimeImmutable` | PHP와 동일 (native Model) | `string` `YYYY-MM-DD` | `NaiveDate` | `str` `YYYY-MM-DD` |
+| `time(p)` | 소수 자릿수가 p인 `string` `HH:MM:SS` | `string` | PHP와 동일 (native Model) | `string` | `String` | `str` |
+| `datetime(p)` | UTC의 `time.Time` | UTC의 `\DateTimeImmutable` | PHP와 동일 (native Model) | 소수 자릿수가 p인 `string` `YYYY-MM-DD HH:MM:SS` | `NaiveDateTime` | 소수 자릿수가 p인 UTC의 `str` `YYYY-MM-DD HH:MM:SS` |
 
 - **DBS-121** 생성된 `date`, `time(p)`, `datetime(p)` 컬럼의 setter는 모든 언어에서 텍스트 형태를 받는다: Go와 TypeScript는 `string`, Python은 `str`, PHP는 `string`, Rust는 `String`이다. 네이티브 날짜·시간 값은 setter가 받지 않아 문장을 실행하기 전에 타입 검사가 거부하며, 텍스트는 setter 실행 시 검사되고 바인드 계층이 다시 검사한다.
 

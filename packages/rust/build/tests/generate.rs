@@ -285,7 +285,7 @@ fn manifest_text_is_embedded_with_its_hash() {
 }
 
 #[test]
-// Requirements: DBS-112.
+// Requirements: DBS-112, DBS-121, INT-2, INT-3, INT-4, INT-5, INT-6, INT-7, INT-8.
 fn generated_field_types_follow_the_runtime_model() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let text = generate_with_schema(
@@ -308,6 +308,38 @@ fn generated_field_types_follow_the_runtime_model() {
     assert!(text.contains("pub fn get_ip(&self) -> polyspec_orm::Result<Option<&str>>"), "ip is the address text");
     assert!(text.contains("pub fn get_aes_hex_email(&self) -> polyspec_orm::Result<Option<&str>>"), "aes hex is a string");
     assert!(text.contains("pub fn force_index_uq_author_uuid(mut self) -> Self"), "a unique key takes an index hint");
+
+    let document = "dbspec 1 typed\n\ntable typed {\n  seq i64 identity\n  ratio f64\n  enabled bool\n  body text\n  payload bytes null\n  day date\n  clock time(3)\n  moment datetime(3) null\n  json_value text null\n  primary key (seq)\n  settings {\n    codec json_value ordered_json\n  }\n}\n";
+    let types = generate_with_document(
+        document,
+        "fn main() { let row = Typed::new(); let _ = row.get_ratio(); let _ = row.get_enabled(); let _ = row.get_body(); let _ = row.get_payload(); let _ = row.get_day(); let _ = row.get_clock(); let _ = row.get_moment(); let _ = row.get_json_value(); }",
+    )
+    .expect("the typed field schema generates");
+    for declaration in [
+        "get_ratio(&self) -> polyspec_orm::Result<f64>",
+        "get_enabled(&self) -> polyspec_orm::Result<bool>",
+        "get_body(&self) -> polyspec_orm::Result<&str>",
+        "get_payload(&self) -> polyspec_orm::Result<Option<&[u8]>>",
+        "get_day(&self) -> polyspec_orm::Result<polyspec_orm::chrono::NaiveDate>",
+        "get_clock(&self) -> polyspec_orm::Result<&str>",
+        "get_moment(&self) -> polyspec_orm::Result<Option<polyspec_orm::chrono::NaiveDateTime>>",
+        "get_json_value(&self) -> polyspec_orm::Result<polyspec_orm::StyledValue<polyspec_orm::ordered_json::Value>>",
+        "pub fn set_day(mut self, v: impl Into<String>) -> polyspec_orm::Result<Self>",
+        "pub fn set_moment(mut self, v: impl polyspec_orm::IntoNullable<String>) -> polyspec_orm::Result<Self>",
+    ] {
+        assert!(types.contains(declaration), "missing generated field type: {declaration}");
+    }
+}
+
+#[test]
+// Requirements: DSL-129.
+fn generated_method_collision_is_rejected() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let document = "dbspec 1 collision\n\ntable item {\n  seq i64 identity\n  amount i32\n  sum_amount i32\n  primary key (seq)\n}\n";
+    let error = generate_with_document(document, "fn main() { let _ = Item::new().sum_amount(); }")
+        .expect_err("the condition method must not shadow the generated aggregate");
+    assert!(error.contains("item.sum_amount"), "{error}");
+    assert!(error.contains("fixed method"), "{error}");
 }
 
 #[test]

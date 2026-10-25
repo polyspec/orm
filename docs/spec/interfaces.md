@@ -43,7 +43,7 @@ The planner does not receive database credentials or parameter values. The execu
 - **INT-3** `Bool` — Go: `bool`; PHP: `bool`; Rust: `bool`; TypeScript: `boolean`; Python: `bool`
 - **INT-4** `Text` — Go: `string`; PHP: `string`; Rust: `String`; TypeScript: `string`; Python: `str`
 - **INT-5** `Bytes` — Go: `[]byte`; PHP: `string`; Rust: `Vec<u8>`; TypeScript: `Uint8Array`; Python: `bytes`
-- **INT-6** `DateTime` — Go: `time.Time`; PHP: `DateTimeImmutable`; Rust: `NaiveDateTime`; TypeScript: `Date`; Python: `str`
+- **INT-6** `DateTime` — Go: `time.Time`; PHP: `DateTimeImmutable`; Rust: `NaiveDateTime`; TypeScript: `Date` for interface values (generated model getters use the canonical dbspec text `string`, and setters take text; see DBS-112 and DBS-121); Python: `str`
 - **INT-7** `StyledValue`, the field of a column with a value codec, holding SQL NULL or the decoded value — Go: `orm.StyledValue`; PHP: `\Polyspec\Orm\StyledValue`; Rust: `polyspec_orm::StyledValue<T>`, `T` the decoded type of the codec; TypeScript: `StyledValue<T>`; Python: `StyledValue`
 - **INT-8** `Optional<T>` — Go: `*T`; PHP: `?T`; Rust: `Option<T>`; TypeScript: `T | null`; Python: `T | None`
 - **INT-9** `List<T>` — Go: slice; PHP: array; Rust: `Vec<T>`; TypeScript: `T[]`; Python: `list`

@@ -278,6 +278,72 @@ void rawPrice;
   }
 });
 
+// Requirements: DSL-129.
+caseTest('generated method collision', PROCESS, async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'orm-ts-gen-collision-'));
+  try {
+    const document = 'dbspec 1 collision\n\ntable item {\n  seq i64 identity\n  amount i32\n  sum_amount i32\n  primary key (seq)\n}\n';
+    const set = await setOf(join(dir, 'set'), [['collision.dbs', document]]);
+    const result = run('gen', '--set', set, '--out', join(dir, 'model'));
+    assert.notEqual(result.status, 0, result.stderr);
+    assert.match(result.stderr, /item\.sum_amount: the condition method sumAmount collides with a generated method of item/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+// Requirements: DBS-112, DBS-121, INT-2, INT-3, INT-4, INT-5, INT-6, INT-7, INT-8.
+caseTest('generated field types follow the runtime model', PROCESS, async () => {
+  const runDir = join(root, '.runtime/run');
+  await mkdir(runDir, { recursive: true });
+  const dir = await mkdtemp(join(runDir, 'ts-generated-field-types-'));
+  try {
+    const document = 'dbspec 1 typed\n\ntable item {\n  seq i64 identity\n  ratio f64\n  enabled bool\n  body text\n  payload bytes null\n  day date\n  clock time(3)\n  moment datetime(3) null\n  json_value text null\n  primary key (seq)\n  settings {\n    codec json_value ordered_json\n  }\n}\n';
+    const set = await setOf(join(dir, 'set'), [['typed.dbs', document]]);
+    const output = join(dir, 'model');
+    const result = run('gen', '--set', set, '--out', output);
+    assert.equal(result.status, 0, result.stderr);
+    const generated = await readFile(join(output, 'models.ts'), 'utf8');
+    for (const declaration of [
+      'public getRatio(): number', 'public setRatio(value: number): this',
+      'public getEnabled(): boolean', 'public setEnabled(value: boolean): this',
+      'public getBody(): string', 'public setBody(value: string): this',
+      'public getPayload(): Uint8Array | null', 'public setPayload(value: Uint8Array | null): this',
+      'public getDay(): string', 'public setDay(value: string): this',
+      'public getClock(): string', 'public setClock(value: string): this',
+      'public getMoment(): string | null', 'public setMoment(value: string | null): this',
+      'public getJsonValue(): StyledValue<JsonValue>',
+      'public setJsonValue(value: StyledValue<JsonValue | CodecValue>): this',
+    ]) assert.ok(generated.includes(declaration), `missing generated type: ${declaration}`);
+    const consumer = join(dir, 'consumer.ts');
+    await writeFile(consumer, `import { Item } from './model/models.js';
+const item = new Item().setMoment('2026-01-02 03:04:05.006');
+const canonical: string | null = item.getMoment();
+function rejectsNativeDateAtCompileTime(): void {
+  // @ts-expect-error a native Date is not the canonical dbspec text accepted by a generated setter
+  item.setMoment(new Date());
+}
+void canonical;
+void rejectsNativeDateAtCompileTime;
+const row = new Item().setMoment('2026-01-02 03:04:05.006').setDay('2026-01-02').setClock('03:04:05.006');
+if (row.getMoment() !== '2026-01-02 03:04:05.006' || row.getDay() !== '2026-01-02' || row.getClock() !== '03:04:05.006') {
+  throw new Error('generated temporal getters did not preserve canonical dbspec text');
+}
+`);
+    const tsc = join(root, 'node_modules/typescript/bin/tsc');
+    const compiled = join(dir, 'compiled');
+    const checked = await runLogged('typescript-generated-field-types-consumer', [
+      tsc, '--ignoreConfig', '--strict', '--target', 'ES2022', '--module', 'NodeNext', '--moduleResolution', 'NodeNext', '--rootDir', dir, '--outDir', compiled, consumer,
+    ], root);
+    assert.equal(checked.passed, true, checked.output);
+    assert.equal(checked.code, 0, checked.output);
+    const executed = spawnSync(process.execPath, [join(compiled, 'consumer.js')], { encoding: 'utf8', cwd: root, env: isolatedEnvironment() });
+    assert.equal(executed.status, 0, `${executed.stdout}${executed.stderr}`);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 // Requirements: DBS-104.
 caseTest('generated manifest text and hash match', PROCESS, async () => {
   const dir = await mkdtemp(join(tmpdir(), 'orm-ts-manifest-'));

@@ -88,6 +88,79 @@ final class ModelNativeTest extends TestCase
         }
     }
 
+    // Requirements: DBS-112, DBS-121, INT-2, INT-3, INT-4, INT-5, INT-6, INT-7, INT-8.
+    public function testPhpGeneratedFieldTypesFollowTheRuntimeModel(): void
+    {
+        $dir = sys_get_temp_dir() . '/orm-php-ext-generated-types-' . getmypid();
+        is_dir($dir) || mkdir($dir, 0o700, true);
+        $namespace = 'Polyspec\\Orm\\Extension\\Tests\\GeneratedFieldTypes';
+        try {
+            $set = "$dir/dbspec-set.json";
+            file_put_contents($set, json_encode(['schema' => 1, 'documents' => ['typed.dbs'], 'external' => []]));
+            file_put_contents(
+                "$dir/typed.dbs",
+                "dbspec 1 typed\n\ntable item {\n  seq i64 identity\n  ratio f64\n  enabled bool\n  body text\n  payload bytes null\n  moment datetime(3) null\n  json_value text null\n  primary key (seq)\n  settings {\n    codec json_value ordered_json\n  }\n}\n"
+            );
+            [$code, $output, $message] = \Polyspec\Orm\Tests\OrmGenTestSupport::run([
+                'gen', '--set', $set, '--out', "$dir/model", '--namespace', $namespace
+            ]);
+            self::assertSame(0, $code, "$output $message");
+            require_once "$dir/model/Item.php";
+            $class = "$namespace\\Item";
+            self::assertTrue((new ReflectionClass(Model::class))->isInternal());
+            self::assertTrue((new ReflectionClass($class))->getParentClass()->isInternal(), 'the generated PHP model uses the native extension Model');
+            foreach ([
+                'getRatio' => 'float',
+                'getEnabled' => 'bool',
+                'getBody' => 'string',
+                'getPayload' => '?string',
+                'getMoment' => '?DateTimeImmutable',
+                'getJsonValue' => 'Polyspec\\Orm\\StyledValue',
+            ] as $method => $expected) {
+                self::assertSame($expected, (string) (new \ReflectionMethod($class, $method))->getReturnType(), "$class::$method");
+            }
+            foreach ([
+                'setRatio' => 'float',
+                'setEnabled' => 'bool',
+                'setBody' => 'string',
+                'setPayload' => '?string',
+                'setMoment' => '?string',
+                'setJsonValue' => 'Polyspec\\Orm\\StyledValue',
+            ] as $method => $expected) {
+                self::assertSame($expected, (string) (new \ReflectionMethod($class, $method))->getParameters()[0]->getType(), "$class::$method");
+            }
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    }
+
+    // Requirements: DSL-129.
+    public function testSharedPhpGeneratorRejectsTheMethodCollisionUsedWithNativeModels(): void
+    {
+        self::assertTrue((new ReflectionClass(Model::class))->isInternal(), 'the PHP extension Model is native');
+        $dir = sys_get_temp_dir() . '/orm-php-ext-generated-collision-' . getmypid();
+        is_dir($dir) || mkdir($dir, 0o700, true);
+        try {
+            $set = "$dir/dbspec-set.json";
+            file_put_contents($set, json_encode(['schema' => 1, 'documents' => ['collision.dbs'], 'external' => []]));
+            file_put_contents(
+                "$dir/collision.dbs",
+                "dbspec 1 collision\n\ntable item {\n  seq i64 identity\n  amount i32\n  sum_amount i32\n  primary key (seq)\n}\n"
+            );
+            [$code, $output, $message] = \Polyspec\Orm\Tests\OrmGenTestSupport::run([
+                'gen', '--set', $set, '--out', "$dir/model", '--namespace', 'Polyspec\\Orm\\Extension\\Tests\\Collision'
+            ]);
+            self::assertNotSame(0, $code, "$output $message");
+            self::assertStringContainsString(
+                'item.sum_amount: the condition method sumAmount is also the model method sumAmount',
+                $output . $message
+            );
+            self::assertDirectoryDoesNotExist("$dir/model");
+        } finally {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
+    }
+
     public function testOrmGeneratorSubclassKeepsItsPhpMetaImplementation(): void
     {
         require_once dirname(__DIR__, 2) . '/php/gen/bootstrap.php';

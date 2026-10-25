@@ -282,6 +282,14 @@ def _named_getter(m: RuntimeModel, key: str, used: set) -> bool:
 def render_models(m: RuntimeModel, out_dir: str, scan) -> str:
     """The models.py text of the runtime model. scan is the file or directory where the model calls were found."""
     check_column_names(m)
+    for e in m.entities.values():
+        generated = _static_names(e)
+        for c in e.fields:
+            if c.name in generated:
+                raise OrmError(
+                    codes.CONFIG,
+                    f"{e.name}.{c.name}: the condition method {c.name} collides with a generated method of {e.name}",
+                )
     sites = []
     calls = scan_model_calls(
         scan, {pascal(name) for name in m.entities}, sites, out_dir

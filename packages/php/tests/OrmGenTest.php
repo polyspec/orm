@@ -69,4 +69,42 @@ final class OrmGenTest extends TestCase
         );
     }
 
+    // Requirements: DBS-112, DBS-121, INT-2, INT-3, INT-4, INT-5, INT-6, INT-7, INT-8.
+    public function testGeneratedFieldTypesFollowTheRuntimeModel(): void
+    {
+        $dir = self::$work . '/field-types';
+        $namespace = 'Polyspec\\Orm\\Tests\\GeneratedFieldTypes';
+        $set = OrmGenTestSupport::setFile($dir, ['typed.dbs']);
+        file_put_contents(
+            "$dir/typed.dbs",
+            "dbspec 1 typed\n\ntable item {\n  seq i64 identity\n  ratio f64\n  enabled bool\n  body text\n  payload bytes null\n  moment datetime(3) null\n  json_value text null\n  primary key (seq)\n  settings {\n    codec json_value ordered_json\n  }\n}\n"
+        );
+        [$code, $out, $err] = self::tool([
+            'gen', '--set', $set, '--out', "$dir/model", '--namespace', $namespace
+        ]);
+        self::assertSame(0, $code, "$out $err");
+        require_once "$dir/model/Item.php";
+        $class = "$namespace\\Item";
+        foreach ([
+            'getRatio' => 'float',
+            'getEnabled' => 'bool',
+            'getBody' => 'string',
+            'getPayload' => '?string',
+            'getMoment' => '?DateTimeImmutable',
+            'getJsonValue' => 'Polyspec\\Orm\\StyledValue',
+        ] as $method => $expected) {
+            self::assertSame($expected, (string) (new \ReflectionMethod($class, $method))->getReturnType(), "$class::$method");
+        }
+        foreach ([
+            'setRatio' => 'float',
+            'setEnabled' => 'bool',
+            'setBody' => 'string',
+            'setPayload' => '?string',
+            'setMoment' => '?string',
+            'setJsonValue' => 'Polyspec\\Orm\\StyledValue',
+        ] as $method => $expected) {
+            self::assertSame($expected, (string) (new \ReflectionMethod($class, $method))->getParameters()[0]->getType(), "$class::$method");
+        }
+    }
+
 }
