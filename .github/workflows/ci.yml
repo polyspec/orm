@@ -156,7 +156,7 @@ jobs:
         if: ${{ !cancelled() && steps.group-needs.outputs.php == 'true' }}
         with:
           php-version-file: .php-version
-          extensions: pdo_mysql, pdo_pgsql, pdo_sqlite, openssl
+          extensions: pdo_mysql, pdo_pgsql, pgsql, pdo_sqlite, openssl
           tools: composer:2.10.3
           # The checks run PHP without a debugger or coverage driver, as the local
           # PHP does; Xdebug changes the ratios of the hot-path gate.

@@ -5033,7 +5033,7 @@
         {
           "implementation": "php",
           "test": "packages/php/tests/QueryCancellationTest.php",
-          "id": "testPostgresNoticeCancelsActiveStatementRollsBackAndReconnectsRoot"
+          "id": "testPostgresNoticeCancelsActiveStatementRollsBackAndReusesRoot"
         },
         {
           "implementation": "php",
@@ -5048,7 +5048,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/QueryCancellationNativeTest.php",
-          "id": "testPostgresNoticeCancelsActiveStatementRollsBackAndReconnectsRoot"
+          "id": "testPostgresNoticeCancelsActiveStatementRollsBackAndReusesRoot"
         },
         {
           "implementation": "php-extension",
@@ -9904,6 +9904,16 @@
           "implementation": "python",
           "test": "packages/python/tests/connection_config.py",
           "id": "ConnectionConfigTest.test_cancellation_through_a_pooler"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/PoolerCancellationTest.php",
+          "id": "PoolerCancellationTest::testPgBouncerForwardsCancellationAndRootRemainsUsable"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/PoolerCancellationNativeTest.php",
+          "id": "PoolerCancellationNativeTest::testNativePgBouncerForwardsCancellationAndRootRemainsUsable"
         }
       ]
     },

@@ -1,5 +1,5 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: 1d0a14f5da7584baa2ee34700460e0810cd570b218b5a74cf0d77c61e993322a -->
+<!-- source-sha256: 1126dfb1e5d65cc5d158c3bf23a37a517ba6c2c5add83ac74569f56f82bcaedc -->
 # 사용법
 
 하나의 dbspec document set에서 language client를 생성한다. 공통 contract는 Go, PHP, PHP extension, TypeScript, Python, Rust 여섯 구현에 적용되며 확장의 미완료 native 범위는 별도로 추적한다.
@@ -18,7 +18,7 @@
 |---|---|
 | Go 1.27+ | 엔진·생성기·Go 클라이언트 |
 | MySQL 8.0.2+ / MariaDB 10.2+ | 1차 대상. PostgreSQL 12+, SQLite 3.46+도 같은 플랜으로 동작 |
-| PHP 8.4+ (`pdo_mysql`) | PHP 클라이언트를 쓸 때만. `pdo_pgsql`/`pdo_sqlite`는 해당 DB를 쓸 때 |
+| PHP 8.4+ (`pdo_mysql`) | PHP 클라이언트에 필요하다. PostgreSQL에는 `pdo_pgsql`과 `ext-pgsql`, SQLite에는 `pdo_sqlite`를 추가한다. PostgreSQL 취소는 `ext-pgsql`을 사용한다. |
 | Rust 1.98+ | Rust 클라이언트를 쓸 때만 |
 | Node.js 22.16+ | TypeScript 클라이언트를 쓸 때만 |
 
@@ -288,7 +288,7 @@ $row->newIsMember(true);                                                        
 - 두 트랜잭션을 동시에 열어야 하면 연결이 두 개여야 한다. 한 연결의 두 번째 트랜잭션은 첫 트랜잭션의 savepoint가 되기 때문이다. 잠금 경합도 이렇게 쓴다: 한 연결이 행을 잡고 다른 연결이 기다린다.
 - 트랜잭션 옵션은 `isolation`, `readOnly`, `timeoutMs`를 선택한다. 지원하는 격리 수준은 `default`, `read_uncommitted`, `read_committed`, `repeatable_read`, `serializable`이다. PostgreSQL은 `BEGIN` 후에, MySQL은 유지한 연결에서 `START TRANSACTION` 전에 설정을 적용한다. SQLite는 `PRAGMA query_only`로 `readOnly`를 적용하고 공통 격리 수준을 트랜잭션 연결에 대응시키며, ORM은 commit이나 rollback 전에 연결 상태를 복원한다. 양수 `timeoutMs`는 PostgreSQL `statement_timeout`을 적용하고 MySQL·SQLite는 `CAPABILITY_UNSUPPORTED`를 반환한다.
 - `forUpdate()`, `forShare()`, `forUpdateNoWait()`, `forShareNoWait()`는 트랜잭션 안에서만 허용한다. MySQL과 PostgreSQL은 선택한 행 잠금을 실행하며 `NoWait`는 행을 사용할 수 없으면 즉시 실패한다. SQLite는 잠금 접미사를 만들지 않고 네 모드 모두 ORM 트랜잭션 범위의 데이터베이스 잠금 행을 사용한다. SQLite 쓰기 트랜잭션은 시작할 때 데이터베이스 쓰기 잠금을 얻으므로 그 안의 잠금 요청은 기다리지 않고 성공하며, 잠금 대기는 트랜잭션 시작에서 일어난다([런타임 연결](../spec/config.md)).
-- 공통 실행 중 취소 메서드는 없다. `timeoutMs`가 PostgreSQL 문장 실행 시간을 제한한다.
+- `Db::withCancellation($source)`는 PHP 취소 핸들을 파생한다. PostgreSQL 연결에는 `pdo_pgsql`과 `ext-pgsql`이 모두 필요하며, 후자가 같은 연결을 통해 취소를 보낸다. `timeoutMs`도 PostgreSQL 문 실행 시간을 제한한다.
 - test는 자기 클라이언트의 test fault로 모든 데이터베이스에서 트랜잭션의 rollback을 실패시킨다. production build는 이 fault를 포함하거나 load하지 않는다([protocol §3.1](../spec/protocol.md#_3-1-test-faults)). Go는 `-tags ormtest`와 `orm.FailNextRollback(db)`, Rust는 feature `test-faults`와 `polyspec_orm::testing::fail_next_rollback(&db)`, TypeScript는 `node --conditions=orm-test`에서 `@polyspec/orm/testing`의 `failNextRollback(db)`, PHP는 `require 'vendor/polyspec/orm/testing/Faults.php'` 뒤의 `Polyspec\Orm\Testing\Faults::failNextRollback($db)`를 사용한다. callback이 실패한 다음 트랜잭션은 rollback되고 callback 오류와 `FAULT` 오류를 가진 `ROLLBACK`을 반환한다.
 - test는 자기 클라이언트의 statement fault로 연결의 다음 statement가 주어진 code와 message로 모든 데이터베이스에서 실패하게 한다([protocol §3.2](../spec/protocol.ko.md#_3-2-test-statement-fault)). Go는 `-tags ormtest`와 `orm.FailNextStatement(db, code, message)`, Rust는 feature `test-faults`와 `polyspec_orm::testing::fail_next_statement(&db, code, message)`, TypeScript는 `node --conditions=orm-test`와 `@polyspec/orm/testing`의 `failNextStatement(db, code, message)`, PHP는 `Polyspec\Orm\Testing\Faults::failNextStatement($db, $code, $message)`, Python은 `polyspec.orm.testing.fail_next_statement(db, code, message)`를 쓴다. statement는 데이터베이스로 가지 않고, 클라이언트는 그 code와 message의 `OrmException`으로 보고하며, fault는 그 statement가 소비한다.
 

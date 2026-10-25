@@ -763,7 +763,16 @@ static bool send_op(zval *self, bool control, op_fn op, void *ctx, done_fn done,
             }
             if (!is_str(&driver, "sqlite")) {
                 cancellation_clear_statements(rd(self, "state"));
-                cancellation_reopen(self, &err);
+                if (is_str(&driver, "postgres")) {
+                    zval *frame = active_for(self);
+                    if (frame != NULL) {
+                        zval yes;
+                        ZVAL_TRUE(&yes);
+                        wr(frame, "cancelled", &yes);
+                    }
+                } else {
+                    cancellation_reopen(self, &err);
+                }
             }
         } else {
             ZVAL_COPY(&args[0], &pe);
@@ -4255,8 +4264,27 @@ ZEND_METHOD(Polyspec_Orm_Db, listener)
     RETURN_COPY(opener);
 }
 
-/* Db::notify(channel, payload) and Db::listen(channel) call Polyspec\Orm\Listen, which holds the rules and the statements of
- * the PHP client and is the one implementation of both clients (docs/spec/dialects.md DIA-192 to DIA-196). */
+static void map_pending_listen_pdo_exception(zval *self)
+{
+    if (!pdo_exception_pending()) {
+        return;
+    }
+    zval original, mapped;
+    take_exception(&original);
+    ZVAL_UNDEF(&mapped);
+    if (map_driver_error(self, &original, &mapped)) {
+        zval_ptr_dtor(&original);
+        put_exception(&mapped);
+        return;
+    }
+    if (EG(exception) == NULL) {
+        put_exception(&original);
+    } else {
+        zval_ptr_dtor(&original);
+    }
+}
+
+/* Db::notify and Db::listen use the public PDO surface and the native Subscription methods (DIA-192 to DIA-196). */
 ZEND_METHOD(Polyspec_Orm_Db, notify)
 {
     zend_string *channel, *payload;
@@ -4264,18 +4292,53 @@ ZEND_METHOD(Polyspec_Orm_Db, notify)
         Z_PARAM_STR(channel)
         Z_PARAM_STR(payload)
     ZEND_PARSE_PARAMETERS_END();
-    zval args[3], ret;
-    ZVAL_COPY(&args[0], ZEND_THIS);
-    ZVAL_STR_COPY(&args[1], channel);
-    ZVAL_STR_COPY(&args[2], payload);
-    bool ok = scall("Polyspec\\Orm\\Listen::notify", &ret, 3, args);
-    zval_ptr_dtor(&args[0]);
-    zval_ptr_dtor(&args[1]);
-    zval_ptr_dtor(&args[2]);
-    if (!ok) {
+    if (!is_str(rd(ZEND_THIS, "driver"), "postgres")) {
+        db_throw_orm("CAPABILITY_UNSUPPORTED", "notify is supported on PostgreSQL only");
         RETURN_THROWS();
     }
-    zval_ptr_dtor(&ret);
+    zval channel_arg, checked;
+    ZVAL_STR_COPY(&channel_arg, channel);
+    if (!scall("Polyspec\\Orm\\Subscription::checkChannel", &checked, 1, &channel_arg)) {
+        zval_ptr_dtor(&channel_arg);
+        RETURN_THROWS();
+    }
+    zval_ptr_dtor(&channel_arg);
+    zval_ptr_dtor(&checked);
+    if (ZSTR_LEN(payload) >= 8000 || memchr(ZSTR_VAL(payload), '\0', ZSTR_LEN(payload)) != NULL) {
+        db_throw_orm("DRIVER", "a PostgreSQL notification payload must be shorter than 8000 bytes and contain no U+0000");
+        RETURN_THROWS();
+    }
+    zval pdo;
+    if (!handle_pdo(ZEND_THIS, &pdo)) {
+        RETURN_THROWS();
+    }
+    zval sql, statement;
+    ZVAL_STRING(&sql, "SELECT pg_notify(?, ?)");
+    if (!mcall(&pdo, "prepare", &statement, 1, &sql)) {
+        zval_ptr_dtor(&sql);
+        zval_ptr_dtor(&pdo);
+        map_pending_listen_pdo_exception(ZEND_THIS);
+        RETURN_THROWS();
+    }
+    zval_ptr_dtor(&sql);
+    zval params, executed;
+    array_init_size(&params, 2);
+    add_next_index_str(&params, zend_string_copy(channel));
+    add_next_index_str(&params, zend_string_copy(payload));
+    bool ok = mcall(&statement, "execute", &executed, 1, &params);
+    zval_ptr_dtor(&params);
+    if (ok) {
+        zval_ptr_dtor(&executed);
+        zval closed;
+        ok = mcall(&statement, "closeCursor", &closed, 0, NULL);
+        if (ok) zval_ptr_dtor(&closed);
+    }
+    zval_ptr_dtor(&statement);
+    zval_ptr_dtor(&pdo);
+    if (!ok) {
+        map_pending_listen_pdo_exception(ZEND_THIS);
+        RETURN_THROWS();
+    }
 }
 
 ZEND_METHOD(Polyspec_Orm_Db, listen)
@@ -4284,16 +4347,73 @@ ZEND_METHOD(Polyspec_Orm_Db, listen)
     ZEND_PARSE_PARAMETERS_START(1, 1)
         Z_PARAM_STR(channel)
     ZEND_PARSE_PARAMETERS_END();
-    zval args[2], ret;
-    ZVAL_COPY(&args[0], ZEND_THIS);
-    ZVAL_STR_COPY(&args[1], channel);
-    bool ok = scall("Polyspec\\Orm\\Listen::listen", &ret, 2, args);
-    zval_ptr_dtor(&args[0]);
-    zval_ptr_dtor(&args[1]);
-    if (!ok) {
+    if (!is_str(rd(ZEND_THIS, "driver"), "postgres")) {
+        db_throw_orm("CAPABILITY_UNSUPPORTED", "listen is supported on PostgreSQL only");
         RETURN_THROWS();
     }
-    RETURN_COPY_VALUE(&ret);
+    zval channel_arg, checked;
+    ZVAL_STR_COPY(&channel_arg, channel);
+    if (!scall("Polyspec\\Orm\\Subscription::checkChannel", &checked, 1, &channel_arg)) {
+        zval_ptr_dtor(&channel_arg);
+        RETURN_THROWS();
+    }
+    zval_ptr_dtor(&channel_arg);
+    zval_ptr_dtor(&checked);
+    zval opener;
+    if (!mcall(ZEND_THIS, "listener", &opener, 0, NULL)) {
+        RETURN_THROWS();
+    }
+    if (Z_TYPE(opener) != IS_OBJECT || !zend_is_callable(&opener, 0, NULL)) {
+        zval_ptr_dtor(&opener);
+        db_throw_orm("CONFIG", "database is closed");
+        RETURN_THROWS();
+    }
+    zval listener_pdo;
+    ZVAL_UNDEF(&listener_pdo);
+    if (call_user_function(NULL, NULL, &opener, &listener_pdo, 0, NULL) != SUCCESS || EG(exception) != NULL) {
+        zval_ptr_dtor(&opener);
+        if (!Z_ISUNDEF(listener_pdo)) zval_ptr_dtor(&listener_pdo);
+        map_pending_listen_pdo_exception(ZEND_THIS);
+        RETURN_THROWS();
+    }
+    zval_ptr_dtor(&opener);
+    zval attr, attr_value, changed;
+    ZVAL_LONG(&attr, 3); /* PDO::ATTR_ERRMODE */
+    ZVAL_LONG(&attr_value, 2); /* PDO::ERRMODE_EXCEPTION */
+    zval attr_args[2]; ZVAL_COPY(&attr_args[0], &attr); ZVAL_COPY(&attr_args[1], &attr_value);
+    bool ok = mcall(&listener_pdo, "setAttribute", &changed, 2, attr_args);
+    zval_ptr_dtor(&attr_args[0]); zval_ptr_dtor(&attr_args[1]);
+    if (ok) zval_ptr_dtor(&changed);
+    if (!ok) {
+        zval_ptr_dtor(&listener_pdo);
+        map_pending_listen_pdo_exception(ZEND_THIS);
+        RETURN_THROWS();
+    }
+    zval quote_arg, quoted;
+    ZVAL_STR_COPY(&quote_arg, channel);
+    ok = scall("Polyspec\\Orm\\Subscription::quoteIdent", &quoted, 1, &quote_arg);
+    zval_ptr_dtor(&quote_arg);
+    if (!ok) {
+        zval_ptr_dtor(&listener_pdo);
+        RETURN_THROWS();
+    }
+    zend_string *sql = strpprintf(0, "LISTEN %s", Z_STRVAL(quoted));
+    zval_ptr_dtor(&quoted);
+    zval sql_arg, executed;
+    ZVAL_STR(&sql_arg, sql);
+    ok = mcall(&listener_pdo, "exec", &executed, 1, &sql_arg);
+    zval_ptr_dtor(&sql_arg);
+    if (ok) zval_ptr_dtor(&executed);
+    if (!ok) {
+        zval_ptr_dtor(&listener_pdo);
+        map_pending_listen_pdo_exception(ZEND_THIS);
+        RETURN_THROWS();
+    }
+    zval ctor_arg; ZVAL_COPY(&ctor_arg, &listener_pdo);
+    ok = newobj("Polyspec\\Orm\\Subscription", return_value, 1, &ctor_arg);
+    zval_ptr_dtor(&ctor_arg);
+    zval_ptr_dtor(&listener_pdo);
+    if (!ok) RETURN_THROWS();
 }
 
 ZEND_METHOD(Polyspec_Orm_Db, publish)

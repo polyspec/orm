@@ -1,8 +1,8 @@
 <!-- doc-id: packages-orm-php-readme -->
-<!-- source-sha256: 8898c81d6be5d20039f2367c2ce140f431a948a2f4efc3c1a419ee3de70fa1d7 -->
+<!-- source-sha256: 3f2aa1686f1e8f70f47ac9130328a6e4638c20b3311297599baa097f4aca390c -->
 # orm — PHP 클라이언트
 
-PHP 클라이언트: PDO(`pdo_mysql`, `pdo_pgsql`, `pdo_sqlite`) 위의 생성 모델(`Polyspec\Orm\Tests\Model\Author`, …). 라이브러리가
+PHP 클라이언트: PDO 호환 드라이버(`pdo_mysql`, `pdo_pgsql`과 `ext-pgsql`, `pdo_sqlite`) 위의 생성 모델(`Polyspec\Orm\Tests\Model\Author`, …). PostgreSQL 연결에는 `pdo_pgsql`과 `ext-pgsql`이 모두 필요하며, 취소에는 `ext-pgsql`의 protocol API를 쓴다. 라이브러리가
 SQL을 직접 조립한다. 문장 모양마다 dbspec 문서 묶음의 runtime model(docs/spec/dbspec.md)로 검증하고, 한 번 계획하며,
 크기가 제한된 process 내부 plan cache에 보관한다. 옆에서 실행되는 service나
 extension은 없다. PHP 8.4 이상. Version 0.0.18. DSN의 scheme이 PDO driver를 고르므로

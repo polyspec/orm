@@ -1,8 +1,9 @@
 <!-- doc-id: packages-orm-php-readme -->
 # orm — PHP client
 
-The PHP client: generated models (`Polyspec\Orm\Tests\Model\Author`, …) over PDO (`pdo_mysql`, `pdo_pgsql`,
-`pdo_sqlite`). The library assembles SQL itself: each statement shape is validated against
+The PHP client: generated models (`Polyspec\Orm\Tests\Model\Author`, …) over PDO-compatible drivers (`pdo_mysql`,
+`pdo_pgsql` with `ext-pgsql`, `pdo_sqlite`). PostgreSQL connections require both `pdo_pgsql` and `ext-pgsql`; the
+client uses `ext-pgsql` for protocol cancellation. The library assembles SQL itself: each statement shape is validated against
 the runtime model of the dbspec document set (docs/spec/dbspec.md), planned once, and kept in a
 bounded process-local plan cache. No service or extension
 runs beside it. PHP 8.4 or later. Version 0.0.18. The scheme of a DSN selects its PDO driver, so

@@ -122,95 +122,114 @@
     },
     "toolchain-check": {
       "scope": "suite",
-      "needs": []
+      "needs": [],
+      "inputs": []
     },
     "layout-check": {
       "scope": "suite",
-      "needs": []
+      "needs": [],
+      "inputs": []
     },
     "rules-check": {
       "scope": "suite",
-      "needs": []
+      "needs": [],
+      "inputs": []
     },
     "rebuild-check": {
       "scope": "suite",
-      "needs": []
+      "needs": [],
+      "inputs": []
     },
     "language-check": {
       "scope": "suite",
-      "needs": []
+      "needs": [],
+      "inputs": []
     },
     "test-markers-check": {
       "scope": "suite",
-      "needs": []
+      "needs": [],
+      "inputs": []
     },
     "duplication-check": {
       "scope": "suite",
-      "needs": []
+      "needs": [],
+      "inputs": []
     },
     "link-state-check": {
       "scope": "suite",
-      "needs": []
+      "needs": [],
+      "inputs": []
     },
     "polyspec-lock-check": {
       "scope": "suite",
-      "needs": []
+      "needs": [],
+      "inputs": []
     },
     "bypass-check": {
       "scope": "suite",
-      "needs": []
+      "needs": [],
+      "inputs": []
     },
     "suppression-check": {
       "scope": "suite",
-      "needs": []
+      "needs": [],
+      "inputs": []
     },
     "divergence-check": {
       "scope": "suite",
-      "needs": []
+      "needs": [],
+      "inputs": []
     },
     "lint-ts": {
       "scope": "suite",
       "needs": [
         "node-modules"
-      ]
+      ],
+      "inputs": []
     },
     "lint-php": {
       "scope": "suite",
       "needs": [
         "php"
-      ]
+      ],
+      "inputs": []
     },
     "lint-python": {
       "scope": "suite",
       "needs": [
         "python"
-      ]
+      ],
+      "inputs": []
     },
     "lint-go": {
       "scope": "suite",
       "needs": [
         "go"
-      ]
+      ],
+      "inputs": []
     },
     "lint-rust": {
       "scope": "suite",
       "needs": [
         "rust"
-      ]
+      ],
+      "inputs": []
     },
     "lint-php-ext": {
       "scope": "suite",
       "needs": [
         "php",
         "rust"
-      ]
+      ],
+      "inputs": []
     },
     "test-php-ext": {
       "scope": "suite",
       "needs": [
         "php",
         "rust"
-      ]
+      ],
+      "inputs": []
     },
     "owner-validate": {
       "scope": "owner",
@@ -783,7 +802,8 @@
         "go",
         "node-modules",
         "databases"
-      ]
+      ],
+      "inputs": []
     },
     "complex-query-typescript-unit-check": {
       "scope": "owner",
@@ -869,7 +889,8 @@
         "php",
         "composer",
         "databases"
-      ]
+      ],
+      "inputs": []
     },
     "complex-query-php-extension-db-check": {
       "scope": "suite",
@@ -878,7 +899,8 @@
         "composer",
         "php-extension-tools",
         "databases"
-      ]
+      ],
+      "inputs": []
     },
     "ts-save-key-check": {
       "scope": "owner",
@@ -1118,7 +1140,8 @@
       "needs": [
         "go",
         "rust"
-      ]
+      ],
+      "inputs": []
     },
     "generated-lint-check": {
       "scope": "owner",
@@ -1148,7 +1171,8 @@
       ],
       "lints": [
         "**/*.go"
-      ]
+      ],
+      "inputs": []
     },
     "go-vet-check": {
       "scope": "owner",
@@ -1175,7 +1199,8 @@
         "packages/rust/**/*.rs",
         "benchmarks/rust/**/*.rs",
         "packages/rust/testing/interfaces/**/*.rs"
-      ]
+      ],
+      "inputs": []
     },
     "rust-150-check": {
       "scope": "owner",
@@ -1491,7 +1516,8 @@
         "python",
         "node-modules",
         "databases"
-      ]
+      ],
+      "inputs": []
     },
     "aes-rotation-php-extension-check": {
       "scope": "suite",
@@ -1500,7 +1526,8 @@
         "composer",
         "php-extension-tools",
         "databases"
-      ]
+      ],
+      "inputs": []
     },
     "complex-query-rust-check": {
       "scope": "suite",
@@ -1508,7 +1535,8 @@
         "rust",
         "databases",
         "complex-query"
-      ]
+      ],
+      "inputs": []
     },
     "codec-check": {
       "scope": "owner",
@@ -1649,7 +1677,8 @@
         "node-modules",
         "python",
         "databases"
-      ]
+      ],
+      "inputs": []
     },
     "case-database-check": {
       "scope": "suite",
@@ -1660,7 +1689,8 @@
         "composer",
         "node-modules",
         "databases"
-      ]
+      ],
+      "inputs": []
     },
     "dialect-facts-check": {
       "scope": "owner",
@@ -1689,7 +1719,8 @@
         "node-modules",
         "databases",
         "python"
-      ]
+      ],
+      "inputs": []
     },
     "markdown-conformance-check": {
       "scope": "owner",
@@ -3025,7 +3056,8 @@
         "databases",
         "complex-query",
         "python"
-      ]
+      ],
+      "inputs": []
     },
     "feature-verify-rust": {
       "scope": "suite",
@@ -3037,7 +3069,8 @@
         "node-modules",
         "php-extension-tools",
         "databases"
-      ]
+      ],
+      "inputs": []
     },
     "feature-verify-other": {
       "scope": "suite",
@@ -3050,7 +3083,8 @@
         "php-extension-tools",
         "databases",
         "python"
-      ]
+      ],
+      "inputs": []
     },
     "feature-helper-check": {
       "scope": "suite",
@@ -3062,14 +3096,16 @@
         "node-modules",
         "databases",
         "python"
-      ]
+      ],
+      "inputs": []
     },
     "feature-stress-mysql-check": {
       "scope": "suite",
       "needs": [
         "go",
         "databases"
-      ]
+      ],
+      "inputs": []
     },
     "feature-stress-pg-sqlite-check": {
       "scope": "suite",
@@ -3080,7 +3116,8 @@
         "composer",
         "node-modules",
         "databases"
-      ]
+      ],
+      "inputs": []
     },
     "complex-query-go-plan-check": {
       "scope": "owner",
@@ -3120,7 +3157,8 @@
       "needs": [
         "go",
         "databases"
-      ]
+      ],
+      "inputs": []
     },
     "connection-sqlite-concurrent-writers-python-check": {
       "scope": "owner",
@@ -3201,7 +3239,8 @@
         "databases",
         "complex-query",
         "python"
-      ]
+      ],
+      "inputs": []
     },
     "complex-query-python-postgres-check": {
       "scope": "suite",
@@ -3209,7 +3248,8 @@
         "databases",
         "complex-query",
         "python"
-      ]
+      ],
+      "inputs": []
     },
     "complex-query-python-sqlite-check": {
       "scope": "suite",
@@ -3217,13 +3257,15 @@
         "databases",
         "complex-query",
         "python"
-      ]
+      ],
+      "inputs": []
     },
     "parity-declarations-check": {
       "scope": "suite",
       "needs": [
         "node-modules"
-      ]
+      ],
+      "inputs": []
     },
     "parity-check": {
       "scope": "suite",
@@ -3236,7 +3278,8 @@
         "python",
         "node-modules",
         "databases"
-      ]
+      ],
+      "inputs": []
     },
     "mermaid-error-ts-check": {
       "scope": "owner",
@@ -3688,7 +3731,7 @@
         "contracts/fixtures/bench/bench.dbs"
       ]
     },
-    "dbspec-stress-rust-check": {
+"dbspec-stress-rust-check": {
       "scope": "owner",
       "needs": [
         "rust"
@@ -3696,6 +3739,121 @@
       "inputs": [
         "packages/rust/schema/tests/dbspec_stress.rs",
         "tests/dbspec/stress.mts"
+      ]
+    },
+    "php-pooler-cancellation-check": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "databases"
+      ],
+      "inputs": [
+        "Makefile",
+        "contracts/features.json",
+        "packages/php/tests/PoolerCancellationTest.php",
+        "packages/php/tests/bootstrap.php",
+        "packages/php/testing/required_dsn.php",
+        "packages/php/src/Db.php",
+        "packages/php/src/Orm.php",
+        "packages/php/src/Internal/PgsqlPdoAdapter.php",
+        "packages/php/tests/case_database.php",
+        "packages/php/src/Cancellation.php",
+        "packages/php/src/DbState.php",
+        "packages/php/src/SqliteCancellation.php",
+        "packages/php/src/TxFrame.php"
+      ]
+    },
+    "php-pooler-cancellation-extension-check": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools",
+        "databases"
+      ],
+      "inputs": [
+        "Makefile",
+        "contracts/features.json",
+        "packages/php-ext/tests/PoolerCancellationNativeTest.php",
+        "packages/php-ext/tests/bootstrap.php",
+        "packages/php/tests/bootstrap.php",
+        "packages/php/src/Db.php",
+        "packages/php/src/Orm.php",
+        "packages/php-ext/src/pgsql_adapter_native.c",
+        "packages/php-ext/src/pgsql_adapter_native.h",
+        "packages/php-ext/src/pgsql_statement_iterator_native.c",
+        "packages/php-ext/src/pgsql_statement_iterator_native.h",
+        "packages/php-ext/src/pgsql_lob_native.c",
+        "packages/php-ext/src/pgsql_lob_native.h",
+        "packages/php/tests/case_database.php",
+        "packages/php/testing/required_dsn.php",
+        "packages/php-ext/src/config.m4",
+        "packages/php-ext/scripts/build.sh",
+        "packages/php-ext/src/polyspec_orm.c",
+        "packages/php-ext/src/polyspec_orm.stub.php",
+        "packages/php/src/Internal/PgsqlPdoAdapter.php",
+        "packages/php/src/Internal/PgsqlStatementAdapter.php",
+        "packages/php/src/Internal/PgsqlStatementIterator.php",
+        "packages/php/src/Internal/PgsqlLargeObjectStream.php"
+      ]
+    },
+    "pgsql-pdo-adapter-php-check": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "databases"
+      ],
+      "inputs": [
+        "Makefile",
+        "contracts/features.json",
+        "packages/php/tests/PgsqlPdoAdapterTest.php",
+        "packages/php/tests/PgsqlPdoAdapterCases.php",
+        "packages/php/tests/bootstrap.php",
+        "packages/php/src/Internal/PgsqlPdoAdapter.php",
+        "packages/php/src/Internal/PgsqlStatementAdapter.php",
+        "packages/php/src/Internal/PgsqlStatementIterator.php",
+        "packages/php/src/Internal/PgsqlLargeObjectStream.php",
+        "packages/php/tests/case_database.php",
+        "packages/php/testing/required_dsn.php",
+        "packages/php/src/Db.php",
+        "packages/php/src/Orm.php"
+      ]
+    },
+    "pgsql-pdo-adapter-php-extension-check": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools",
+        "databases"
+      ],
+      "inputs": [
+        "Makefile",
+        "contracts/features.json",
+        "packages/php-ext/tests/PgsqlPdoAdapterNativeTest.php",
+        "packages/php/tests/PgsqlPdoAdapterCases.php",
+        "packages/php/tests/bootstrap.php",
+        "packages/php-ext/tests/bootstrap.php",
+        "packages/php-ext/src/pgsql_adapter_native.c",
+        "packages/php-ext/src/pgsql_adapter_native.h",
+        "packages/php-ext/src/pgsql_statement_iterator_native.c",
+        "packages/php-ext/src/pgsql_statement_iterator_native.h",
+        "packages/php-ext/src/pgsql_lob_native.c",
+        "packages/php-ext/src/pgsql_lob_native.h",
+        "packages/php/tests/case_database.php",
+        "packages/php/testing/required_dsn.php",
+        "packages/php/src/Db.php",
+        "packages/php/src/Orm.php",
+        "packages/php/src/Internal/PgsqlPdoAdapter.php",
+        "packages/php/src/Internal/PgsqlStatementAdapter.php",
+        "packages/php/src/Internal/PgsqlStatementIterator.php",
+        "packages/php/src/Internal/PgsqlLargeObjectStream.php",
+        "packages/php-ext/src/config.m4",
+        "packages/php-ext/scripts/build.sh",
+        "packages/php-ext/src/polyspec_orm.c",
+        "packages/php-ext/src/polyspec_orm.stub.php"
       ]
     }
   },

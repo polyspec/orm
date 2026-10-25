@@ -502,11 +502,15 @@ final class Db
                 if ($this->driver !== 'sqlite') {
                     $frame = self::activeFor($this);
                     if ($frame !== null) {
-                        $frame->finished = true;
                         $frame->cancelled = true;
+                        if ($this->driver !== 'postgres') {
+                            $frame->finished = true;
+                        }
                     }
-                    $this->state->pdo = null;
-                    if ($this->state->reconnect !== null) {
+                    if ($this->driver !== 'postgres') {
+                        $this->state->pdo = null;
+                    }
+                    if ($this->driver !== 'postgres' && $this->state->reconnect !== null) {
                         try {
                             $this->state->pdo = ($this->state->reconnect)();
                             self::configurePdo($this->state->pdo, $this->driver);

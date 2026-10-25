@@ -157,7 +157,7 @@ final class QueryCancellationTest extends TestCase
         }
     }
 
-    public function testPostgresNoticeCancelsActiveStatementRollsBackAndReconnectsRoot(): void
+    public function testPostgresNoticeCancelsActiveStatementRollsBackAndReusesRoot(): void
     {
         with_case_database('postgres', static function (): void {
         }, static function (string $dsn): void {
@@ -204,11 +204,7 @@ final class QueryCancellationTest extends TestCase
                     self::assertTrue($activeNotice, 'the notice callback ran while the statement was active');
                 }
 
-                self::assertNotSame(
-                    $originalPid,
-                    $root->pdo()->getPid(),
-                    'the logical root handle reopened its backend',
-                );
+                self::assertSame($originalPid, $root->pdo()->getPid(), 'the logical root handle reuses its cancelled backend after rollback');
                 self::assertSame([[0]], $root->fetch(
                     'select',
                     ['cancellation_rollback'],

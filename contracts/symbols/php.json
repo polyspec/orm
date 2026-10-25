@@ -11043,6 +11043,506 @@
     "exported": true,
     "signature": "public static function rows(iterable $values): array"
   },
+  "packages/php/src/Internal/PgsqlLargeObjectStream.php::Polyspec\\Orm\\Internal\\PgsqlLargeObjectStream": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\Internal\\PgsqlLargeObjectStream extends  implements  uses "
+  },
+  "packages/php/src/Internal/PgsqlLargeObjectStream.php::Polyspec\\Orm\\Internal\\PgsqlLargeObjectStream::$eof": {
+    "exported": false,
+    "signature": "private bool"
+  },
+  "packages/php/src/Internal/PgsqlLargeObjectStream.php::Polyspec\\Orm\\Internal\\PgsqlLargeObjectStream::$lob": {
+    "exported": false,
+    "signature": "private ?PgSql\\Lob"
+  },
+  "packages/php/src/Internal/PgsqlLargeObjectStream.php::Polyspec\\Orm\\Internal\\PgsqlLargeObjectStream::$nextId": {
+    "exported": false,
+    "signature": "private static int"
+  },
+  "packages/php/src/Internal/PgsqlLargeObjectStream.php::Polyspec\\Orm\\Internal\\PgsqlLargeObjectStream::$pending": {
+    "exported": false,
+    "signature": "private static array"
+  },
+  "packages/php/src/Internal/PgsqlLargeObjectStream.php::Polyspec\\Orm\\Internal\\PgsqlLargeObjectStream::$registered": {
+    "exported": false,
+    "signature": "private static bool"
+  },
+  "packages/php/src/Internal/PgsqlLargeObjectStream.php::Polyspec\\Orm\\Internal\\PgsqlLargeObjectStream::open": {
+    "exported": true,
+    "signature": "public static function open(PgSql\\Lob $lob, string $mode): mixed"
+  },
+  "packages/php/src/Internal/PgsqlLargeObjectStream.php::Polyspec\\Orm\\Internal\\PgsqlLargeObjectStream::stream_close": {
+    "exported": true,
+    "signature": "public function stream_close(): void"
+  },
+  "packages/php/src/Internal/PgsqlLargeObjectStream.php::Polyspec\\Orm\\Internal\\PgsqlLargeObjectStream::stream_eof": {
+    "exported": true,
+    "signature": "public function stream_eof(): bool"
+  },
+  "packages/php/src/Internal/PgsqlLargeObjectStream.php::Polyspec\\Orm\\Internal\\PgsqlLargeObjectStream::stream_flush": {
+    "exported": true,
+    "signature": "public function stream_flush(): bool"
+  },
+  "packages/php/src/Internal/PgsqlLargeObjectStream.php::Polyspec\\Orm\\Internal\\PgsqlLargeObjectStream::stream_open": {
+    "exported": true,
+    "signature": "public function stream_open(string $path, string $mode, int $options, ?string \u0026$openedPath): bool"
+  },
+  "packages/php/src/Internal/PgsqlLargeObjectStream.php::Polyspec\\Orm\\Internal\\PgsqlLargeObjectStream::stream_read": {
+    "exported": true,
+    "signature": "public function stream_read(int $count): string|false"
+  },
+  "packages/php/src/Internal/PgsqlLargeObjectStream.php::Polyspec\\Orm\\Internal\\PgsqlLargeObjectStream::stream_seek": {
+    "exported": true,
+    "signature": "public function stream_seek(int $offset, int $whence=0): bool"
+  },
+  "packages/php/src/Internal/PgsqlLargeObjectStream.php::Polyspec\\Orm\\Internal\\PgsqlLargeObjectStream::stream_set_option": {
+    "exported": true,
+    "signature": "public function stream_set_option(int $option, int $arg1, int $arg2): bool"
+  },
+  "packages/php/src/Internal/PgsqlLargeObjectStream.php::Polyspec\\Orm\\Internal\\PgsqlLargeObjectStream::stream_stat": {
+    "exported": true,
+    "signature": "public function stream_stat(): array|false"
+  },
+  "packages/php/src/Internal/PgsqlLargeObjectStream.php::Polyspec\\Orm\\Internal\\PgsqlLargeObjectStream::stream_tell": {
+    "exported": true,
+    "signature": "public function stream_tell(): int|false"
+  },
+  "packages/php/src/Internal/PgsqlLargeObjectStream.php::Polyspec\\Orm\\Internal\\PgsqlLargeObjectStream::stream_truncate": {
+    "exported": true,
+    "signature": "public function stream_truncate(int $newSize): bool"
+  },
+  "packages/php/src/Internal/PgsqlLargeObjectStream.php::Polyspec\\Orm\\Internal\\PgsqlLargeObjectStream::stream_write": {
+    "exported": true,
+    "signature": "public function stream_write(string $data): int|false"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\Internal\\PgsqlPdoAdapter extends Pdo\\Pgsql implements  uses "
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::$activeStatement": {
+    "exported": false,
+    "signature": "private ?PDOStatement"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::$affectedRows": {
+    "exported": false,
+    "signature": "private int"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::$cancelRequested": {
+    "exported": false,
+    "signature": "private bool"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::$caseMode": {
+    "exported": false,
+    "signature": "private int"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::$connection": {
+    "exported": false,
+    "signature": "private readonly PgSql\\Connection"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::$defaultFetchMode": {
+    "exported": false,
+    "signature": "private array"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::$errmode": {
+    "exported": false,
+    "signature": "private int"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::$errorInfoValue": {
+    "exported": false,
+    "signature": "private array"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::$noticeCallback": {
+    "exported": false,
+    "signature": "private ?Closure"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::$nullMode": {
+    "exported": false,
+    "signature": "private int"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::$stringifyFetches": {
+    "exported": false,
+    "signature": "private bool"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::__construct": {
+    "exported": true,
+    "signature": "public function __construct(string $dsn, ?string $username=null, ?string $password=null, ?array $options=null): "
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::beginTransaction": {
+    "exported": true,
+    "signature": "public function beginTransaction(): bool"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::cancelActive": {
+    "exported": true,
+    "signature": "public function cancelActive(): bool"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::caseMode": {
+    "exported": true,
+    "signature": "public function caseMode(): int"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::commit": {
+    "exported": true,
+    "signature": "public function commit(): bool"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::connect": {
+    "exported": true,
+    "signature": "public static function connect(string $dsn, ?string $username=null, ?string $password=null, ?array $options=null): static"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::connectDsn": {
+    "exported": true,
+    "signature": "public static function connectDsn(string $pdoDsn, ?string $username, ?string $password, int $statementTimeoutMs): Polyspec\\Orm\\Internal\\PgsqlPdoAdapter"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::copyEscape": {
+    "exported": false,
+    "signature": "private static function copyEscape(string $value, string $separator): string"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::copyFieldList": {
+    "exported": false,
+    "signature": "private static function copyFieldList(string $fields): array"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::copyFromArray": {
+    "exported": true,
+    "signature": "public function copyFromArray(string $tableName, array $rows, string $separator=\"\\t\", string $nullAs=\"\\\\N\", ?string $fields=null): bool"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::copyFromFile": {
+    "exported": true,
+    "signature": "public function copyFromFile(string $tableName, string $filename, string $separator=\"\\t\", string $nullAs=\"\\\\N\", ?string $fields=null): bool"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::copyToArray": {
+    "exported": true,
+    "signature": "public function copyToArray(string $tableName, string $separator=\"\\t\", string $nullAs=\"\\\\N\", ?string $fields=null): array|false"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::copyToFile": {
+    "exported": true,
+    "signature": "public function copyToFile(string $tableName, string $filename, string $separator=\"\\t\", string $nullAs=\"\\\\N\", ?string $fields=null): bool"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::defaultFetchMode": {
+    "exported": true,
+    "signature": "public function defaultFetchMode(): array"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::dispatchNotices": {
+    "exported": false,
+    "signature": "private function dispatchNotices(): void"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::errorCode": {
+    "exported": true,
+    "signature": "public function errorCode(): ?string"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::errorInfo": {
+    "exported": true,
+    "signature": "public function errorInfo(): array"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::errorMode": {
+    "exported": true,
+    "signature": "public function errorMode(): int"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::escapeIdentifier": {
+    "exported": true,
+    "signature": "public function escapeIdentifier(string $input): string"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::exec": {
+    "exported": true,
+    "signature": "public function exec(string $statement): int|false"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::executeSql": {
+    "exported": true,
+    "signature": "public function executeSql(string $sql, array $params, bool $simpleQuery=false, array $paramTypes=[]): PgSql\\Result"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::finish": {
+    "exported": true,
+    "signature": "public function finish(PDOStatement $statement): void"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::getAttribute": {
+    "exported": true,
+    "signature": "public function getAttribute(int $attribute): mixed"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::getNotify": {
+    "exported": true,
+    "signature": "public function getNotify(int $fetchMode=0, int $timeoutMilliseconds=0): array|false"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::getPid": {
+    "exported": true,
+    "signature": "public function getPid(): int"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::inTransaction": {
+    "exported": true,
+    "signature": "public function inTransaction(): bool"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::lastInsertId": {
+    "exported": true,
+    "signature": "public function lastInsertId(?string $name=null): string|false"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::lobCreate": {
+    "exported": true,
+    "signature": "public function lobCreate(): string|false"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::lobOpen": {
+    "exported": true,
+    "signature": "public function lobOpen(string $oid, string $mode=\"rb\"): "
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::lobUnlink": {
+    "exported": true,
+    "signature": "public function lobUnlink(string $oid): bool"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::markActive": {
+    "exported": true,
+    "signature": "public function markActive(PDOStatement $statement): void"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::noticeCallback": {
+    "exported": true,
+    "signature": "public function noticeCallback(): ?Closure"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::nullMode": {
+    "exported": true,
+    "signature": "public function nullMode(): int"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::prepare": {
+    "exported": true,
+    "signature": "public function prepare(string $query, array $options=[]): PDOStatement|false"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::query": {
+    "exported": true,
+    "signature": "public function query(string $query, ?int $fetchMode=null, mixed ...$fetchModeArgs): PDOStatement|false"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::quote": {
+    "exported": true,
+    "signature": "public function quote(string $string, int $type=2): string|false"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::quoteQualified": {
+    "exported": false,
+    "signature": "private static function quoteQualified(PgSql\\Connection $connection, string $name): string"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::raiseConnectionError": {
+    "exported": false,
+    "signature": "private function raiseConnectionError(): never"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::reportError": {
+    "exported": true,
+    "signature": "public function reportError(PDOException $error): void"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::rollBack": {
+    "exported": true,
+    "signature": "public function rollBack(): bool"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::setAttribute": {
+    "exported": true,
+    "signature": "public function setAttribute(int $attribute, mixed $value): bool"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::setNoticeCallback": {
+    "exported": true,
+    "signature": "public function setNoticeCallback(?callable $callback): void"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::stringifyFetches": {
+    "exported": true,
+    "signature": "public function stringifyFetches(): bool"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::textParam": {
+    "exported": false,
+    "signature": "private static function textParam(mixed $value, ?int $type=null): ?string"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::toConninfo": {
+    "exported": false,
+    "signature": "private static function toConninfo(string $dsn, ?string $username, ?string $password, array $options): string"
+  },
+  "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\Internal\\PgsqlStatementAdapter extends PDOStatement implements IteratorAggregate,Traversable uses "
+  },
+  "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::$affected": {
+    "exported": false,
+    "signature": "private int"
+  },
+  "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::$bindingTypes": {
+    "exported": false,
+    "signature": "private array"
+  },
+  "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::$bindings": {
+    "exported": false,
+    "signature": "private array"
+  },
+  "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::$boundColumns": {
+    "exported": false,
+    "signature": "private array"
+  },
+  "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::$boundRefTypes": {
+    "exported": false,
+    "signature": "private array"
+  },
+  "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::$boundRefs": {
+    "exported": false,
+    "signature": "private array"
+  },
+  "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::$columns": {
+    "exported": false,
+    "signature": "private array"
+  },
+  "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::$errorInfoValue": {
+    "exported": false,
+    "signature": "private array"
+  },
+  "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::$fetchMode": {
+    "exported": false,
+    "signature": "private array"
+  },
+  "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::$pdo": {
+    "exported": false,
+    "signature": "private readonly Polyspec\\Orm\\Internal\\PgsqlPdoAdapter"
+  },
+  "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::$result": {
+    "exported": false,
+    "signature": "private ?PgSql\\Result"
+  },
+  "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::$row": {
+    "exported": false,
+    "signature": "private int"
+  },
+  "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::$sourceSql": {
+    "exported": false,
+    "signature": "private readonly string"
+  },
+  "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::__construct": {
+    "exported": true,
+    "signature": "public function __construct(Polyspec\\Orm\\Internal\\PgsqlPdoAdapter $pdo, string $sourceSql): "
+  },
+  "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::bindColumn": {
+    "exported": true,
+    "signature": "public function bindColumn(string|int $column, mixed \u0026$var, int $type=2, int $maxLength=0, mixed $driverOptions=null): bool"
+  },
+  "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::bindParam": {
+    "exported": true,
+    "signature": "public function bindParam(string|int $param, mixed \u0026$var, int $type=2, int $maxLength=0, mixed $driverOptions=null): bool"
+  },
+  "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::bindValue": {
+    "exported": true,
+    "signature": "public function bindValue(string|int $param, mixed $value, int $type=2): bool"
+  },
+  "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::byteaStream": {
+    "exported": false,
+    "signature": "private function byteaStream(string $value): mixed"
+  },
+  "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::closeCursor": {
+    "exported": true,
+    "signature": "public function closeCursor(): bool"
+  },
+  "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::columnCount": {
+    "exported": true,
+    "signature": "public function columnCount(): int"
+  },
+  "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::convert": {
+    "exported": false,
+    "signature": "private function convert(?string $value, int $column): mixed"
+  },
+  "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::debugDumpParams": {
+    "exported": true,
+    "signature": "public function debugDumpParams(): ?bool"
+  },
+  "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::errorCode": {
+    "exported": true,
+    "signature": "public function errorCode(): ?string"
+  },
+  "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::errorInfo": {
+    "exported": true,
+    "signature": "public function errorInfo(): array"
+  },
+  "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::execute": {
+    "exported": true,
+    "signature": "public function execute(?array $params=null): bool"
+  },
+  "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::fetch": {
+    "exported": true,
+    "signature": "public function fetch(int $mode=0, int $cursorOrientation=0, int $cursorOffset=0): mixed"
+  },
+  "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::fetchAll": {
+    "exported": true,
+    "signature": "public function fetchAll(int $mode=0, mixed ...$args): array"
+  },
+  "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::fetchColumn": {
+    "exported": true,
+    "signature": "public function fetchColumn(int $column=0): mixed"
+  },
+  "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::fetchObject": {
+    "exported": true,
+    "signature": "public function fetchObject(?string $class=\"stdClass\", array $constructorArgs=[]): object|false"
+  },
+  "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::getAttribute": {
+    "exported": true,
+    "signature": "public function getAttribute(int $name): mixed"
+  },
+  "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::getColumnMeta": {
+    "exported": true,
+    "signature": "public function getColumnMeta(int $column): array|false"
+  },
+  "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::getIterator": {
+    "exported": true,
+    "signature": "public function getIterator(): Iterator"
+  },
+  "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::index": {
+    "exported": false,
+    "signature": "private function index(string|int $param): string|int"
+  },
+  "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::namedRow": {
+    "exported": false,
+    "signature": "private function namedRow(array $names, array $values): array"
+  },
+  "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::nextRowset": {
+    "exported": true,
+    "signature": "public function nextRowset(): bool"
+  },
+  "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::numberPlaceholders": {
+    "exported": false,
+    "signature": "private static function numberPlaceholders(string $sql): array"
+  },
+  "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::rowCount": {
+    "exported": true,
+    "signature": "public function rowCount(): int"
+  },
+  "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::setAttribute": {
+    "exported": true,
+    "signature": "public function setAttribute(int $attribute, mixed $value): bool"
+  },
+  "packages/php/src/Internal/PgsqlStatementAdapter.php::Polyspec\\Orm\\Internal\\PgsqlStatementAdapter::setFetchMode": {
+    "exported": true,
+    "signature": "public function setFetchMode(int $mode, mixed ...$args): true"
+  },
+  "packages/php/src/Internal/PgsqlStatementIterator.php::Polyspec\\Orm\\Internal\\PgsqlStatementIterator": {
+    "exported": true,
+    "signature": "final class Polyspec\\Orm\\Internal\\PgsqlStatementIterator extends  implements Iterator,Traversable uses "
+  },
+  "packages/php/src/Internal/PgsqlStatementIterator.php::Polyspec\\Orm\\Internal\\PgsqlStatementIterator::$current": {
+    "exported": false,
+    "signature": "private mixed"
+  },
+  "packages/php/src/Internal/PgsqlStatementIterator.php::Polyspec\\Orm\\Internal\\PgsqlStatementIterator::$key": {
+    "exported": false,
+    "signature": "private int"
+  },
+  "packages/php/src/Internal/PgsqlStatementIterator.php::Polyspec\\Orm\\Internal\\PgsqlStatementIterator::$statement": {
+    "exported": false,
+    "signature": "private readonly Polyspec\\Orm\\Internal\\PgsqlStatementAdapter"
+  },
+  "packages/php/src/Internal/PgsqlStatementIterator.php::Polyspec\\Orm\\Internal\\PgsqlStatementIterator::__construct": {
+    "exported": true,
+    "signature": "public function __construct(Polyspec\\Orm\\Internal\\PgsqlStatementAdapter $statement): "
+  },
+  "packages/php/src/Internal/PgsqlStatementIterator.php::Polyspec\\Orm\\Internal\\PgsqlStatementIterator::current": {
+    "exported": true,
+    "signature": "public function current(): mixed"
+  },
+  "packages/php/src/Internal/PgsqlStatementIterator.php::Polyspec\\Orm\\Internal\\PgsqlStatementIterator::key": {
+    "exported": true,
+    "signature": "public function key(): int"
+  },
+  "packages/php/src/Internal/PgsqlStatementIterator.php::Polyspec\\Orm\\Internal\\PgsqlStatementIterator::next": {
+    "exported": true,
+    "signature": "public function next(): void"
+  },
+  "packages/php/src/Internal/PgsqlStatementIterator.php::Polyspec\\Orm\\Internal\\PgsqlStatementIterator::rewind": {
+    "exported": true,
+    "signature": "public function rewind(): void"
+  },
+  "packages/php/src/Internal/PgsqlStatementIterator.php::Polyspec\\Orm\\Internal\\PgsqlStatementIterator::valid": {
+    "exported": true,
+    "signature": "public function valid(): bool"
+  },
   "packages/php/src/Listen.php::Polyspec\\Orm\\Listen": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Listen extends  implements  uses "

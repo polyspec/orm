@@ -156,7 +156,7 @@ final class QueryCancellationNativeTest extends TestCase
     }
 
     // Requirements: CFG-9.
-    public function testPostgresNoticeCancelsActiveStatementRollsBackAndReconnectsRoot(): void
+    public function testPostgresNoticeCancelsActiveStatementRollsBackAndReusesRoot(): void
     {
         \Polyspec\Orm\Tests\with_case_database('postgres', static function (): void {
         }, static function (string $dsn): void {
@@ -203,11 +203,7 @@ final class QueryCancellationNativeTest extends TestCase
                     self::assertTrue($activeNotice, 'the notice callback ran while the statement was active');
                 }
 
-                self::assertNotSame(
-                    $originalPid,
-                    $root->pdo()->getPid(),
-                    'the logical root handle reopened its backend',
-                );
+                self::assertSame($originalPid, $root->pdo()->getPid(), 'the logical root reused its backend after rollback');
                 self::assertSame([[0]], $root->fetch(
                     'select',
                     ['cancellation_rollback'],
