@@ -1031,6 +1031,18 @@
         {
           "glob": "packages/rust/build/src/lib.rs",
           "reason": "harness: its inline unit tests Cargo rerun-if-changed metadata for the set file and its documents; generated model behavior is exercised by the model_generation feature units"
+        },
+        {
+          "glob": "packages/rust/build/src/catalog/row_snapshot_internal_tests.rs",
+          "reason": "test: isolated cause_message_tests assert private row-snapshot validation and serialization error-cause details; public RowSnapshot baseline and update behavior remains owned by the build crate row_snapshot, row_mutation, and row_update tests (K313)"
+        },
+        {
+          "glob": "packages/rust/build/src/tool_db_internal_tests.rs",
+          "reason": "test: isolated cause_message_tests exercise Rust build-time SQLx adapter decoding, bounded-statement preflight, and DSN diagnostic causes; shared runtime behavior remains in the declared catalog and tool owner cases (K313)"
+        },
+        {
+          "glob": "packages/rust/orm/src/db/executor_route_tests.rs",
+          "reason": "test: exercises the crate-private Executor routing between pool and transaction connections and closed-database error propagation; it is not a shared client behavior unit (K313)"
         }
       ]
     }
