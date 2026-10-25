@@ -31,6 +31,7 @@
 #include "registry_native.h"
 #include "engine_native.h"
 #include "native_dialect.h"
+#include "markdown_native.h"
 #include "aes_keyring.h"
 #include "aes_utils.h"
 #include "privilege_utils.h"
@@ -2782,6 +2783,9 @@ static PHP_MINIT_FUNCTION(polyspec_orm)
     polyspec_styled_value_ce->ce_flags |= ZEND_ACC_NO_DYNAMIC_PROPERTIES;
     polyspec_page_ce->ce_flags |= ZEND_ACC_NO_DYNAMIC_PROPERTIES;
     polyspec_func_ce->ce_flags |= ZEND_ACC_NO_DYNAMIC_PROPERTIES;
+    register_class_Polyspec_Orm_MarkdownSession();
+    zend_class_entry *markdown_links_ce = register_class_Polyspec_Orm_MarkdownLinks();
+    polyspec_markdown_register(register_class_Polyspec_Orm_Markdown(), markdown_links_ce);
     /* Db::DRIVERS, the array constant gen_stub cannot write (db.c implements the class). */
     static const char *const drivers[] = {"mysql", "postgres", "sqlite"};
     array_constant(register_class_Polyspec_Orm_Db(), "DRIVERS", drivers, NULL, COUNT(drivers));

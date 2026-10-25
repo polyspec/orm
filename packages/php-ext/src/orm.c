@@ -1,10 +1,14 @@
 /* The native connection factory and the value-function constructors of Polyspec\\Orm\\Orm. */
 #include "dbspec.h"
 #include "Zend/zend_exceptions.h"
+#include "Zend/zend_interfaces.h"
 #include "Zend/zend_closures.h"
 #include "main/php_streams.h"
 
 static bool orm_connect_markdown(zend_string *dsn, zval *config, zval *out);
+static bool markdown_session_dial(zend_string *address, zend_string *corpus, zend_string *token, zval *out);
+static bool markdown_session_call(zval *self, zval *message, zval *out);
+static void markdown_session_close(zval *self);
 static bool orm_connect_sql(zend_string *dsn, zval *config, zval *out, bool listener);
 static bool orm_decoded(zval *input, bool raw, zval *out);
 static bool orm_query_decode(const char *value, size_t length, zval *out);
@@ -990,156 +994,28 @@ static bool orm_connect_markdown(zend_string *dsn, zval *config, zval *out)
     zval *address = zend_hash_index_find(Z_ARRVAL(parsed), 0);
     zval *corpus = zend_hash_index_find(Z_ARRVAL(parsed), 1);
     zval *token = zend_hash_index_find(Z_ARRVAL(parsed), 2);
-    smart_str uri = {0};
-    smart_str_appends(&uri, "tcp://");
-    smart_str_append(&uri, Z_STR_P(address));
-    smart_str_0(&uri);
-    zend_string *error = NULL;
-    int error_code = 0;
-    php_stream *stream = php_stream_xport_create(ZSTR_VAL(uri.s), ZSTR_LEN(uri.s), 0,
-        STREAM_XPORT_CLIENT | STREAM_XPORT_CONNECT, NULL, NULL, NULL, &error, &error_code);
-    if (stream == NULL) {
-        db_throw_orm("DRIVER", "connecting to the flowmark server %s: %s; start flowmark serve for the corpus",
-            Z_STRVAL_P(address), error == NULL ? "connection failed" : ZSTR_VAL(error));
-        if (error != NULL) zend_string_release(error);
-        smart_str_free(&uri);
+    if (address == NULL || corpus == NULL || token == NULL || Z_TYPE_P(address) != IS_STRING
+        || Z_TYPE_P(corpus) != IS_STRING || Z_TYPE_P(token) != IS_STRING) {
+        zval_ptr_dtor(&parsed);
+        db_throw_orm("INTERNAL", "the Markdown DSN parser returned invalid session arguments");
+        return false;
+    }
+    zval session_args[3], session;
+    ZVAL_COPY(&session_args[0], address);
+    ZVAL_COPY(&session_args[1], corpus);
+    ZVAL_COPY(&session_args[2], token);
+    bool connected = scall("Polyspec\\Orm\\MarkdownSession::dial", &session, 3, session_args);
+    for (size_t i = 0; i < 3; i++) zval_ptr_dtor(&session_args[i]);
+    if (!connected) {
         zval_ptr_dtor(&parsed);
         return false;
     }
-    if (error != NULL) zend_string_release(error);
-    zval message, encoded, args[2];
-    array_init(&message);
-    add_assoc_string(&message, "op", "connect");
-    add_assoc_str(&message, "corpus", zend_string_copy(Z_STR_P(corpus)));
-    add_assoc_str(&message, "token", zend_string_copy(Z_STR_P(token)));
-    ZVAL_COPY(&args[0], &message);
-    if (!orm_constant("Polyspec\\Orm\\Model::JSON_FLAGS", &args[1])) {
-        zval_ptr_dtor(&args[0]);
-        zval_ptr_dtor(&message);
-        php_stream_close(stream);
-        smart_str_free(&uri);
-        zval_ptr_dtor(&parsed);
-        return false;
-    }
-    bool encoded_ok = scall("json_encode", &encoded, 2, args);
-    zval_ptr_dtor(&args[0]);
-    zval_ptr_dtor(&args[1]);
-    zval_ptr_dtor(&message);
-    if (!encoded_ok || Z_TYPE(encoded) != IS_STRING) {
-        if (encoded_ok) zval_ptr_dtor(&encoded);
-        php_stream_close(stream);
-        smart_str_free(&uri);
-        zval_ptr_dtor(&parsed);
-        db_throw_orm("INTERNAL", "writing the markdown connect message did not produce JSON");
-        return false;
-    }
-    smart_str wire = {0};
-    smart_str_append(&wire, Z_STR(encoded));
-    smart_str_appendc(&wire, '\n');
-    smart_str_0(&wire);
-    zval_ptr_dtor(&encoded);
-    size_t sent = 0;
-    while (sent < ZSTR_LEN(wire.s)) {
-        ssize_t n = php_stream_write(stream, ZSTR_VAL(wire.s) + sent, ZSTR_LEN(wire.s) - sent);
-        if (n <= 0) {
-            php_stream_close(stream);
-            smart_str_free(&uri);
-            smart_str_free(&wire);
-            zval_ptr_dtor(&parsed);
-            db_throw_orm("CONNECTION_LOST", "the flowmark server connection broke while the connect message was written");
-            return false;
-        }
-        sent += (size_t)n;
-    }
-    smart_str_free(&wire);
-    size_t line_len = 0;
-    char *line = php_stream_get_line(stream, NULL, 0, &line_len);
-    if (line == NULL) {
-        php_stream_close(stream);
-        smart_str_free(&uri);
-        zval_ptr_dtor(&parsed);
-        db_throw_orm("CONNECTION_LOST", "the flowmark server connection broke: the server closed the connection");
-        return false;
-    }
-    if (line_len != 0 && line[line_len - 1] == '\n') line_len--;
-    zval raw, decode_args[4], response;
-    ZVAL_STRINGL(&raw, line, line_len);
-    efree(line);
-    ZVAL_COPY(&decode_args[0], &raw);
-    ZVAL_TRUE(&decode_args[1]);
-    ZVAL_LONG(&decode_args[2], 512);
-    ZVAL_LONG(&decode_args[3], 2);
-    bool decoded = scall("json_decode", &response, 4, decode_args);
-    zval_ptr_dtor(&decode_args[0]);
-    zval_ptr_dtor(&raw);
-    if (!decoded || Z_TYPE(response) != IS_ARRAY) {
-        if (decoded) zval_ptr_dtor(&response);
-        php_stream_close(stream);
-        smart_str_free(&uri);
-        zval_ptr_dtor(&parsed);
-        db_throw_orm("INTERNAL", "the flowmark server answered a line that is not a JSON object");
-        return false;
-    }
-    zval *remote = zend_hash_str_find(Z_ARRVAL(response), "error", 5);
-    if (remote != NULL) {
-        zval *code = Z_TYPE_P(remote) == IS_ARRAY ? zend_hash_str_find(Z_ARRVAL_P(remote), "code", 4) : NULL;
-        zval *text = Z_TYPE_P(remote) == IS_ARRAY ? zend_hash_str_find(Z_ARRVAL_P(remote), "message", 7) : NULL;
-        if (code == NULL || Z_TYPE_P(code) != IS_STRING || Z_STRLEN_P(code) == 0) {
-            zval_ptr_dtor(&response);
-            php_stream_close(stream);
-            smart_str_free(&uri);
-            zval_ptr_dtor(&parsed);
-            db_throw_orm("INTERNAL", "the flowmark server answered an error without a code");
-            return false;
-        }
-        zend_string *code_copy = zend_string_copy(Z_STR_P(code));
-        zend_string *text_copy = text == NULL ? zend_string_init("", 0, 0) : zval_get_string(text);
-        zval_ptr_dtor(&response);
-        php_stream_close(stream);
-        smart_str_free(&uri);
-        zval_ptr_dtor(&parsed);
-        db_throw_orm(ZSTR_VAL(code_copy), "%s", ZSTR_VAL(text_copy));
-        zend_string_release(code_copy);
-        zend_string_release(text_copy);
-        return false;
-    }
-    zval_ptr_dtor(&response);
-    zend_string *class_name = zend_string_init("Polyspec\\Orm\\MarkdownSession", sizeof("Polyspec\\Orm\\MarkdownSession") - 1, 0);
-    zend_class_entry *session_ce = zend_lookup_class(class_name);
-    zend_string_release(class_name);
-    if (session_ce == NULL) {
-        php_stream_close(stream);
-        smart_str_free(&uri);
-        zval_ptr_dtor(&parsed);
-        db_throw_orm("INTERNAL", "the MarkdownSession class is unavailable");
-        return false;
-    }
-    zval session, connection;
-    object_init_ex(&session, session_ce);
-    php_stream_to_zval(stream, &connection);
-    zval timeout_args[2], timeout_result;
-    ZVAL_COPY(&timeout_args[0], &connection);
-    ZVAL_LONG(&timeout_args[1], -1);
-    bool timeout_set = scall("stream_set_timeout", &timeout_result, 2, timeout_args);
-    zval_ptr_dtor(&timeout_args[0]);
-    zval_ptr_dtor(&timeout_args[1]);
-    if (!timeout_set) {
-        zval_ptr_dtor(&connection);
-        zval_ptr_dtor(&session);
-        smart_str_free(&uri);
-        zval_ptr_dtor(&parsed);
-        return false;
-    }
-    zval_ptr_dtor(&timeout_result);
-    zend_update_property(session_ce, Z_OBJ(session), "conn", sizeof("conn") - 1, &connection);
-    zval_ptr_dtor(&connection);
     zval zone, utc;
     ZVAL_STRING(&utc, "UTC");
     bool zone_ok = newobj("DateTimeZone", &zone, 1, &utc);
     zval_ptr_dtor(&utc);
     if (!zone_ok) {
         zval_ptr_dtor(&session);
-        smart_str_free(&uri);
         zval_ptr_dtor(&parsed);
         return false;
     }
@@ -1153,7 +1029,314 @@ static bool orm_connect_markdown(zend_string *dsn, zval *config, zval *out)
     zval_ptr_dtor(&ctor[1]);
     zval_ptr_dtor(&ctor[2]);
     zval_ptr_dtor(&ctor[3]);
-    smart_str_free(&uri);
     zval_ptr_dtor(&parsed);
     return ok;
+}
+
+
+/* MarkdownSession and MarkdownLinks are native classes so loading this extension never loads their PHP files. */
+static zend_class_entry *markdown_session_class(void)
+{
+    zend_string *name = zend_string_init(ZEND_STRL("Polyspec\\Orm\\MarkdownSession"), 0);
+    zend_class_entry *ce = zend_lookup_class(name);
+    zend_string_release(name);
+    return ce;
+}
+
+static void markdown_raise(const char *code, zend_string *message, zend_object *previous)
+{
+    zval args[3], exception;
+    ZVAL_STRING(&args[0], code);
+    ZVAL_STR(&args[1], message);
+    if (previous == NULL) ZVAL_NULL(&args[2]); else ZVAL_OBJ(&args[2], previous);
+    if (newobj("Polyspec\\Orm\\OrmException", &exception, 3, args)) zend_throw_exception_object(&exception);
+    zval_ptr_dtor(&args[0]);
+    zval_ptr_dtor(&args[1]);
+    zval_ptr_dtor(&args[2]);
+}
+
+static void markdown_encode_failure(void)
+{
+    zend_object *cause = take_exception();
+    zval cause_value, cause_message;
+    ZVAL_OBJ(&cause_value, cause);
+    zend_call_method_with_0_params(cause, cause->ce, NULL, "getmessage", &cause_message);
+    if (EG(exception) != NULL) {
+        zval_ptr_dtor(&cause_value);
+        return;
+    }
+    zend_string *detail = zval_get_string(&cause_message);
+    zval_ptr_dtor(&cause_message);
+    smart_str message = {0};
+    smart_str_appends(&message, "writing the message: ");
+    smart_str_append(&message, detail);
+    zend_string_release(detail);
+    markdown_raise("INTERNAL", smart_str_extract(&message), cause);
+}
+
+static void markdown_session_close(zval *self)
+{
+    zend_class_entry *ce = markdown_session_class();
+    if (ce == NULL) return;
+    zval rv, *conn = zend_read_property(ce, Z_OBJ_P(self), "conn", sizeof("conn") - 1, 1, &rv);
+    if (conn != NULL && Z_TYPE_P(conn) == IS_RESOURCE) {
+        zval args[1], result;
+        ZVAL_COPY(&args[0], conn);
+        if (scall("fclose", &result, 1, args)) zval_ptr_dtor(&result);
+        zval_ptr_dtor(&args[0]);
+    }
+    zval null;
+    ZVAL_NULL(&null);
+    zend_update_property(ce, Z_OBJ_P(self), "conn", sizeof("conn") - 1, &null);
+}
+
+static zend_string *markdown_quote(zend_string *value)
+{
+    zval arg, result;
+    ZVAL_STR_COPY(&arg, value);
+    if (!scall("json_encode", &result, 1, &arg)) {
+        zval_ptr_dtor(&arg);
+        return zend_string_init("", 0, 0);
+    }
+    zval_ptr_dtor(&arg);
+    if (Z_TYPE(result) != IS_STRING) {
+        zval_ptr_dtor(&result);
+        return zend_string_init("", 0, 0);
+    }
+    return Z_STR(result);
+}
+
+static bool markdown_session_call(zval *self, zval *message, zval *out)
+{
+    zend_class_entry *ce = markdown_session_class();
+    zval rv, *conn = ce == NULL ? NULL : zend_read_property(ce, Z_OBJ_P(self), "conn", sizeof("conn") - 1, 1, &rv);
+    if (conn == NULL || Z_TYPE_P(conn) == IS_NULL) {
+        db_throw_orm("CONNECTION_LOST", "the flowmark session has ended");
+        return false;
+    }
+    if (Z_TYPE_P(conn) != IS_RESOURCE) {
+        db_throw_orm("CONNECTION_LOST", "the flowmark session has ended");
+        return false;
+    }
+    zval flags_arg, encode_args[2], encoded;
+    if (!orm_constant("Polyspec\\Orm\\Model::JSON_FLAGS", &flags_arg)) return false;
+    ZVAL_COPY(&encode_args[0], message);
+    ZVAL_COPY_VALUE(&encode_args[1], &flags_arg);
+    if (!scall("json_encode", &encoded, 2, encode_args)) {
+        zval_ptr_dtor(&encode_args[0]);
+        zval_ptr_dtor(&encode_args[1]);
+        if (EG(exception) != NULL) markdown_encode_failure();
+        return false;
+    }
+    zval_ptr_dtor(&encode_args[0]);
+    zval_ptr_dtor(&encode_args[1]);
+    if (Z_TYPE(encoded) != IS_STRING) {
+        zval_ptr_dtor(&encoded);
+        db_throw_orm("INTERNAL", "writing the message did not produce JSON");
+        return false;
+    }
+    smart_str line = {0};
+    smart_str_append(&line, Z_STR(encoded));
+    smart_str_appendc(&line, '\n');
+    smart_str_0(&line);
+    zval_ptr_dtor(&encoded);
+    php_stream *stream;
+    php_stream_from_zval_no_verify(stream, conn);
+    if (stream == NULL) {
+        smart_str_free(&line);
+        markdown_session_close(self);
+        db_throw_orm("CONNECTION_LOST", "the flowmark server connection broke while the message was written");
+        return false;
+    }
+    size_t written = 0;
+    while (written < ZSTR_LEN(line.s)) {
+        ssize_t n = php_stream_write(stream, ZSTR_VAL(line.s) + written, ZSTR_LEN(line.s) - written);
+        if (n <= 0) {
+            smart_str_free(&line);
+            markdown_session_close(self);
+            db_throw_orm("CONNECTION_LOST", "the flowmark server connection broke while the message was written");
+            return false;
+        }
+        written += (size_t)n;
+    }
+    smart_str_free(&line);
+    size_t line_len = 0;
+    char *raw_line = php_stream_get_line(stream, NULL, 0, &line_len);
+    if (raw_line == NULL) {
+        markdown_session_close(self);
+        db_throw_orm("CONNECTION_LOST", "the flowmark server connection broke: the server closed the connection");
+        return false;
+    }
+    while (line_len > 0 && raw_line[line_len - 1] == '\n') line_len--;
+    zend_string *answer = zend_string_init(raw_line, line_len, 0);
+    efree(raw_line);
+    if (ZSTR_LEN(answer) == 0 || ZSTR_VAL(answer)[0] != '{') {
+        zend_string *quoted = markdown_quote(answer);
+        smart_str detail = {0};
+        smart_str_appends(&detail, "the flowmark server answered ");
+        smart_str_append(&detail, quoted);
+        smart_str_appends(&detail, ", not a JSON object");
+        zend_string_release(quoted);
+        zend_string_release(answer);
+        markdown_session_close(self);
+        zend_string *msg = smart_str_extract(&detail);
+        db_throw_orm("INTERNAL", "%s", ZSTR_VAL(msg));
+        zend_string_release(msg);
+        return false;
+    }
+    zval decode_args[4], decoded;
+    ZVAL_STR_COPY(&decode_args[0], answer);
+    ZVAL_TRUE(&decode_args[1]);
+    ZVAL_LONG(&decode_args[2], 512);
+    ZVAL_LONG(&decode_args[3], 2);
+    bool decoded_ok = scall("json_decode", &decoded, 4, decode_args);
+    for (size_t i = 0; i < 4; i++) zval_ptr_dtor(&decode_args[i]);
+    if (!decoded_ok || Z_TYPE(decoded) != IS_ARRAY) {
+        if (decoded_ok) zval_ptr_dtor(&decoded);
+        zend_string *quoted = markdown_quote(answer);
+        smart_str detail = {0};
+        smart_str_appends(&detail, "the flowmark server answered ");
+        smart_str_append(&detail, quoted);
+        smart_str_appends(&detail, ", not a JSON object");
+        zend_string_release(quoted);
+        zend_string_release(answer);
+        markdown_session_close(self);
+        zend_string *msg = smart_str_extract(&detail);
+        db_throw_orm("INTERNAL", "%s", ZSTR_VAL(msg));
+        zend_string_release(msg);
+        return false;
+    }
+    zend_string_release(answer);
+    zval *remote = zend_hash_str_find(Z_ARRVAL(decoded), "error", sizeof("error") - 1);
+    if (remote != NULL) {
+        zval *code = Z_TYPE_P(remote) == IS_ARRAY ? zend_hash_str_find(Z_ARRVAL_P(remote), "code", sizeof("code") - 1) : NULL;
+        zval *text = Z_TYPE_P(remote) == IS_ARRAY ? zend_hash_str_find(Z_ARRVAL_P(remote), "message", sizeof("message") - 1) : NULL;
+        if (code == NULL || Z_TYPE_P(code) != IS_STRING || Z_STRLEN_P(code) == 0) {
+            zval error_copy;
+            ZVAL_COPY(&error_copy, remote);
+            zval json_error;
+            if (!scall("json_encode", &json_error, 1, &error_copy)) ZVAL_FALSE(&json_error);
+            zval_ptr_dtor(&error_copy);
+            zend_string *quoted = Z_TYPE(json_error) == IS_STRING ? Z_STR(json_error) : zend_string_init("", 0, 0);
+            smart_str detail = {0};
+            smart_str_appends(&detail, "the flowmark server answered the error ");
+            smart_str_append(&detail, quoted);
+            smart_str_appends(&detail, " without a code");
+            if (Z_TYPE(json_error) == IS_STRING) ZVAL_UNDEF(&json_error); else zend_string_release(quoted);
+            if (Z_TYPE(json_error) != IS_UNDEF) zval_ptr_dtor(&json_error);
+            zval_ptr_dtor(&decoded);
+            markdown_session_close(self);
+            zend_string *msg = smart_str_extract(&detail);
+            db_throw_orm("INTERNAL", "%s", ZSTR_VAL(msg));
+            zend_string_release(msg);
+            return false;
+        }
+        zend_string *code_copy = zend_string_copy(Z_STR_P(code));
+        zend_string *message = text == NULL ? zend_string_init("", 0, 0) : zval_get_string(text);
+        if (zend_string_equals_literal(code_copy, "CONNECTION_LOST")) markdown_session_close(self);
+        zval_ptr_dtor(&decoded);
+        db_throw_orm(ZSTR_VAL(code_copy), "%s", ZSTR_VAL(message));
+        zend_string_release(code_copy);
+        zend_string_release(message);
+        return false;
+    }
+    ZVAL_COPY_VALUE(out, &decoded);
+    return true;
+}
+
+static bool markdown_session_dial(zend_string *address, zend_string *corpus, zend_string *token, zval *out)
+{
+    smart_str uri = {0};
+    smart_str_appends(&uri, "tcp://");
+    smart_str_append(&uri, address);
+    smart_str_0(&uri);
+    zend_string *error = NULL;
+    int error_code = 0;
+    php_stream *stream = php_stream_xport_create(ZSTR_VAL(uri.s), ZSTR_LEN(uri.s), 0,
+        STREAM_XPORT_CLIENT | STREAM_XPORT_CONNECT, NULL, NULL, NULL, &error, &error_code);
+    if (stream == NULL) {
+        db_throw_orm("DRIVER", "connecting to the flowmark server %s: %s; start flowmark serve for the corpus",
+            ZSTR_VAL(address), error == NULL ? "connection failed" : ZSTR_VAL(error));
+        if (error != NULL) zend_string_release(error);
+        smart_str_free(&uri);
+        return false;
+    }
+    if (error != NULL) zend_string_release(error);
+    zval connection;
+    php_stream_to_zval(stream, &connection);
+    zend_class_entry *ce = markdown_session_class();
+    if (ce == NULL) {
+        zval_ptr_dtor(&connection);
+        smart_str_free(&uri);
+        db_throw_orm("INTERNAL", "the MarkdownSession class is unavailable");
+        return false;
+    }
+    object_init_ex(out, ce);
+    zend_update_property(ce, Z_OBJ_P(out), "conn", sizeof("conn") - 1, &connection);
+    zval timeout_args[2], timeout_result;
+    ZVAL_COPY(&timeout_args[0], &connection);
+    ZVAL_LONG(&timeout_args[1], -1);
+    bool timeout_ok = scall("stream_set_timeout", &timeout_result, 2, timeout_args);
+    zval_ptr_dtor(&timeout_args[0]);
+    zval_ptr_dtor(&timeout_args[1]);
+    zval_ptr_dtor(&connection);
+    if (timeout_ok) zval_ptr_dtor(&timeout_result);
+    if (!timeout_ok) {
+        zval_ptr_dtor(out);
+        ZVAL_UNDEF(out);
+        smart_str_free(&uri);
+        return false;
+    }
+    smart_str_free(&uri);
+    zval message, response;
+    array_init(&message);
+    add_assoc_string(&message, "op", "connect");
+    add_assoc_str(&message, "corpus", zend_string_copy(corpus));
+    add_assoc_str(&message, "token", zend_string_copy(token));
+    if (!markdown_session_call(out, &message, &response)) {
+        zval_ptr_dtor(&message);
+        zend_object *failure = EG(exception) == NULL ? NULL : take_exception();
+        markdown_session_close(out);
+        zval_ptr_dtor(out);
+        ZVAL_UNDEF(out);
+        if (failure != NULL) {
+            zval failure_value;
+            ZVAL_OBJ(&failure_value, failure);
+            zend_throw_exception_object(&failure_value);
+        }
+        return false;
+    }
+    zval_ptr_dtor(&message);
+    zval_ptr_dtor(&response);
+    return true;
+}
+
+ZEND_METHOD(Polyspec_Orm_MarkdownSession, __construct)
+{
+    zval *conn;
+    ZEND_PARSE_PARAMETERS_START(1, 1) Z_PARAM_RESOURCE(conn) ZEND_PARSE_PARAMETERS_END();
+    zend_class_entry *ce = markdown_session_class();
+    if (ce != NULL) init_prop(ZEND_THIS, "conn", conn);
+}
+
+ZEND_METHOD(Polyspec_Orm_MarkdownSession, dial)
+{
+    zend_string *address, *corpus, *token;
+    ZEND_PARSE_PARAMETERS_START(3, 3)
+        Z_PARAM_STR(address) Z_PARAM_STR(corpus) Z_PARAM_STR(token)
+    ZEND_PARSE_PARAMETERS_END();
+    if (!markdown_session_dial(address, corpus, token, return_value)) RETURN_THROWS();
+}
+
+ZEND_METHOD(Polyspec_Orm_MarkdownSession, close)
+{
+    ZEND_PARSE_PARAMETERS_NONE();
+    markdown_session_close(ZEND_THIS);
+}
+
+ZEND_METHOD(Polyspec_Orm_MarkdownSession, call)
+{
+    zval *message;
+    ZEND_PARSE_PARAMETERS_START(1, 1) Z_PARAM_ARRAY(message) ZEND_PARSE_PARAMETERS_END();
+    if (!markdown_session_call(ZEND_THIS, message, return_value)) RETURN_THROWS();
 }

@@ -2391,6 +2391,7 @@
         "packages/php/tests/model-types-weak-caller.php",
         "packages/php/tests/OrmGenTestSupport.php",
         "packages/php-ext/tests/ModelNativeTest.php",
+        "packages/php-ext/tests/MarkdownNativeTest.php",
         "packages/php-ext/tests/AuditLazyFakePdoTest.php",
         "packages/php-ext/tests/RequestHookNativeTest.php",
         "packages/php-ext/tests/ModelDslNativeTest.php",

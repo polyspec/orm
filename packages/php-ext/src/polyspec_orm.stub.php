@@ -1314,6 +1314,52 @@ final class ParamCheck
     public static function check(int $i, mixed $v, array $slot, \DateTimeZone $zone): void {}
 }
 
+/** One Flowmark server session owned by a markdown connection. */
+final class MarkdownSession
+{
+    /** @var resource|null */
+    private $conn;
+
+    private function __construct(mixed $conn) {}
+
+    public static function dial(string $address, string $corpus, string $token): MarkdownSession {}
+
+    public function close(): void {}
+
+    /**
+     * @param array $message
+     * @return array
+     */
+    public function call(array $message): array {}
+}
+
+/** The join and relation rows of one markdown answer row. */
+final class MarkdownLinks
+{
+    /** @var array<string, list<mixed>|null> */
+    public array $joins = [];
+
+    /** @var array<string, list<list<mixed>>> */
+    public array $rels = [];
+}
+
+/** The markdown IR executor client. It plans nothing and sends no SQL. */
+final class Markdown
+{
+    public static function beginMessage(bool $readOnly): array {}
+
+    public static function unsupported(string $surface): OrmException {}
+
+    /** @return array{0: array, 1: array, 2: int} */
+    public static function read(Db $db, Request $r): array {}
+
+    public static function scalar(Db $db, Request $r): mixed {}
+
+    public static function write(Db $db, Request $r): array {}
+
+    public static function links(array $row): MarkdownLinks {}
+}
+
 /**
  * A database connection of the PHP library (packages/php/src/Db.php). The extension implements the connection, the statement path,
  * the transaction, savepoint, audit and execute methods, and utils() and stats(), in C (db.c). DRIVERS is registered by
