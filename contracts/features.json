@@ -56,6 +56,7 @@
       ],
       "parity": [
         "coverage-dsn-connection",
+        "sqlite-minimum-driver-version",
         "generated-fields-require-selection-or-assignment",
         "generated-nonnull-styled-setter-rejects-sql-null",
         "mysql-session",
@@ -151,7 +152,8 @@
         "packages/php/src/Orm.php",
         "packages/php-ext/src/config.m4",
         "packages/php-ext/scripts/build.sh",
-        "packages/php-ext/src/polyspec_orm.c"
+        "packages/php-ext/src/polyspec_orm.c",
+        "packages/go/orm/sqlite_version_test.go"
       ],
       "docs": [
         "docs/spec/config.md",
@@ -5040,6 +5042,7 @@
         "coverage-schema-install-existing",
         "coverage-schema-install-partial",
         "coverage-schema-install-external-documents",
+        "schema-exists-literal-underscore-sqlite",
         "dbspec-apply-chain-finalization"
       ],
       "fixtures": [
@@ -5125,7 +5128,10 @@
         "packages/rust/orm/src/dbspec/apply.rs",
         "packages/rust/schema/src/dbspec/introspect/mod.rs",
         "packages/php-ext/tests/DbspecSqliteLockNativeTest.php",
-        "packages/php-ext/tests/DbspecRulesNativeTest.php"
+        "packages/php-ext/tests/DbspecRulesNativeTest.php",
+        "packages/go/orm/schema_exists_underscore_test.go",
+        "packages/php/tests/SchemaExistsSqliteTest.php",
+        "packages/rust/orm/tests/schema_exists_underscore.rs"
       ],
       "docs": [
         "docs/spec/schema.md",
