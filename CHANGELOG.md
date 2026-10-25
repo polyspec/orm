@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The flowmark source checkout that markdown-table-check reads is a tool download under var/tools, and the three recipes that built the TypeScript client before holding it start with `$(HOLD_TYPESCRIPT)`, so the run-directory case of `make repo-check` passes (KSTD-5-88-9).
 - The CPX-2 Python Makefile recipes use shell-valid environment assignments and required-variable guards, so the repository shell parser accepts them and missing fixture DSNs still name their setup command (KSTD-5-88-8).
 - The lease case of `make orm-test-servers-check` runs scripts/test-servers.mts with the tests/errors.mts it imports, so it checks the refused stop again instead of failing on a missing module (KSTD-5-88-7).
 - The test servers keep small logs: both mysqld take a 16 MiB redo log capacity, a 16 MiB undo truncation size and 16 MiB binary log files, and both PostgreSQL servers min_wal_size=32MB, max_wal_size=64MB and wal_keep_size=0. A fresh .runtime/servers takes 377 MB instead of 545 MB, and 473 MB instead of 1217 MB after one run's databases were created and dropped; replication through the slot orm_replica and remote_apply is unchanged (KSTD-5-88-5).

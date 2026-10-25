@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 76edbb5ec818175df8dd66874137fc09aa3feb14498e8f9181d8fcd187878433 -->
+<!-- source-sha256: 3a11d6cd09938a95d8f476908d5b8e1823c47e9250831b810759930eb2391c41 -->
 # 변경 이력
 
 ## Unreleased
 
+- markdown-table-check가 읽는 flowmark source checkout은 var/tools 아래의 tool download이고, TypeScript client를 hold하기 전에 build하던 recipe 셋은 `$(HOLD_TYPESCRIPT)`로 시작하므로 `make repo-check`의 run directory case가 통과한다 (KSTD-5-88-9).
 - CPX-2 Python Makefile recipe가 유효한 shell 환경 변수 할당과 필수 변수 guard를 사용하므로 repository shell parser가 이를 읽고, fixture DSN이 없으면 준비 target을 안내한다 (KSTD-5-88-8).
 - `make orm-test-servers-check`의 lease case가 scripts/test-servers.mts를 그것이 import하는 tests/errors.mts와 함께 실행하므로, 없는 module로 실패하는 대신 다시 거부된 stop을 확인한다 (KSTD-5-88-7).
 - test server가 작은 log를 유지한다: 두 mysqld는 redo log capacity 16 MiB, undo truncation 크기 16 MiB, binary log file 16 MiB를, 두 PostgreSQL server는 min_wal_size=32MB, max_wal_size=64MB, wal_keep_size=0을 받는다. 새 .runtime/servers는 545 MB 대신 377 MB를, 한 실행의 database를 만들고 지운 뒤에는 1217 MB 대신 473 MB를 차지하며, slot orm_replica와 remote_apply를 통한 replication은 그대로다 (KSTD-5-88-5).

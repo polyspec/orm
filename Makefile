@@ -425,8 +425,8 @@ dbspec-introspect-php-extension-query-count-check: php-vendor-check php-models
 	@set -eu; run_dir="$(abspath .runtime/run)/dbspec-introspect-php-extension-query-count-check-$$PPID"; trap 'rm -rf "$$run_dir"' EXIT; mkdir -p "$$run_dir/php-extension"; $(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh "$$run_dir/php-extension/polyspec_orm.so"; env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/DbspecIntrospectNativeTest.php
 
 dbspec-introspect-query-count-unit-check: php-vendor-check python-venv-check dbspec-introspect-query-count-rust-check dbspec-introspect-php-extension-query-count-check
-	$(GO_TEST) ./packages/go/engine/dbspec -run '^TestQueryCountIsIndependentOfSQLiteTableCount$$' -count=1
 	$(HOLD_TYPESCRIPT)
+	$(GO_TEST) ./packages/go/engine/dbspec -run '^TestQueryCountIsIndependentOfSQLiteTableCount$$' -count=1
 	$(TSC_BUILD)
 	$(NODE) --test --test-name-pattern='SQLite memory catalog query count is independent of table count' packages/ts/tests/dbspec-introspect-query-count.mjs
 	PYTHONPATH=$(CURDIR)/packages/python/src $(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_dbspec_introspect_query_count
@@ -793,10 +793,10 @@ dbspec-verify-errors-rust-check: cargo-downloads-check lease-tool
 
 .PHONY: dbspec-verify-errors-check dbspec-verify-errors-php-extension-check
 dbspec-verify-errors-check: dbspec-verify-errors-rust-check dbspec-verify-errors-php-extension-check php-vendor-check python-venv-check lease-tool
+	$(HOLD_TYPESCRIPT)
 	$(GO_TEST) ./packages/go/engine/dbspec -run '^TestSettledVerifyPreservesIntrospectionErrors$$' -count=1
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist --filter testVerifyErrorsAreNotDriftAndPreserveCause packages/php/tests/DbspecApplyCleanupTest.php
 	PYTHONPATH=$(CURDIR)/packages/python/src $(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_dbspec_verify_errors
-	$(HOLD_TYPESCRIPT)
 	$(TSC_BUILD)
 	$(NODE) --test packages/ts/tests/dbspec-apply-verify-errors.mjs
 dbspec-verify-errors-php-extension-check: php-models orm-install-php-extension-tools
@@ -1679,6 +1679,7 @@ group-rows-db-typescript: typescript-build
 # Runs the selected model getter/setter styled states in each native client. Each runtime reports independently.
 .PHONY: styled-column-states-unit-check
 styled-column-states-unit-check: lease-tool php-vendor-check php-model-check python-venv-check cargo-downloads-check
+	$(HOLD_TYPESCRIPT)
 	@set +e; status=0; last_result=0; \
 	run_case() { label=$$1; shift; printf '[styled-column-states] %s\n' "$$label"; "$$@"; last_result=$$?; printf '[styled-column-states] %s exit %s\n' "$$label" "$$last_result"; if [ "$$last_result" -ne 0 ]; then status=1; fi; return 0; }; \
 	run_case go $(GO_TEST) ./packages/go/orm -run '^TestStyledColumnStateFixture$$' -count=1; \
@@ -1803,7 +1804,9 @@ conformance-check/run: lease-tool conformance-python-models
 # built at the pinned revision can be given as FLOWMARK=<that path>.
 FLOWMARK ?= $(abspath .runtime/bin/flowmark)
 FLOWMARK_REVISION = $(shell sed 's/.*-//' tests/markdown/flowmark.version)
-FLOWMARK_SOURCE ?= $(abspath .runtime/flowmark-source/$(FLOWMARK_REVISION))
+# FLOWMARK_SOURCE is the flowmark source checkout at that revision that markdown-table-check reads; orm-install-flowmark downloads
+# it with the other tools into var/tools, since a check reads it and never writes it.
+FLOWMARK_SOURCE ?= $(abspath var/tools/flowmark-source/$(FLOWMARK_REVISION))
 .PHONY: markdown-conformance-check markdown-conformance-check/go markdown-conformance-check/php markdown-conformance-check/php-extension markdown-conformance-check/python markdown-conformance-check/rust markdown-conformance-check/typescript orm-install-flowmark
 # parity-prepare builds what the bindings of config/parity.json load before kit's parity-check runs them, into the
 # directory of this make run: the PHP extension that the php-extension implementation loads
