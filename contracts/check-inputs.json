@@ -112,7 +112,6 @@
         "mise.toml",
         "mise.lock",
         ".mise/locks/**",
-        "scripts/kit/**",
         "config/**",
         "PRINCIPLES.md",
         "PRINCIPLES.ko.md",
@@ -3729,7 +3728,7 @@
         "contracts/fixtures/bench/bench.dbs"
       ]
     },
-"dbspec-stress-rust-check": {
+    "dbspec-stress-rust-check": {
       "scope": "owner",
       "needs": [
         "rust"

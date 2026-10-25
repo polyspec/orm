@@ -1,5 +1,5 @@
 <!-- doc-id: agents -->
-<!-- source-sha256: c3e11ba2977b26eedc2970c338b0595f5b5ed2b80edf69ff04689a274dd8a102 -->
+<!-- source-sha256: e661644718174098e6e1138fe2408088ba63bebfd9a5ca75a6a66d3a12d35129 -->
 # 개발 규칙
 
 [English](AGENTS.md)
@@ -17,11 +17,11 @@ orm 자신의 규칙만 적는다.
   `polyspec_orm-X.Y.Z-py3-none-any.whl`을 유지한다.
   Enforced by: `.githooks/pre-push`
 - Own: 공유 도구는 npm package `@polyspec/kit`이며, `package.json`의 devDependency로 그 release의 asset과 integrity에
-  고정한다. checkout은 그것을 `make install-tools TOOLS=npm`(`packageManager`의 npm)과 `make install-packages`로
-  설치하고, Makefile은 설치된 package의 `kit.mk`를 include하는 `scripts/kit/kit-bootstrap.mk`를 include한다. 그
-  `package.json`의 `kit.copies`가 나열한 file(`scripts/kit/` 아래의 bootstrap, PRINCIPLES.md(+ko),
-  `.github/workflows/release.yml`, `config/layout.kit.yml`, lint 설정)은 `make kit-sync`가 설치된 package에서 쓰고
-  `make kit-check`가 그것과 비교하는 사본이며, kit에서만 바뀐다. 이 저장소는 `config/*.json`과 자체 product
+  고정한다. bootstrap source는 형제 Kit checkout에 있다. Makefile은 `../kit/scripts/kit/kit-bootstrap.mk`를 include하며,
+  이 파일은 package가 생기기 전에 고정한 npm을 설치한 뒤 `package-lock.json`을 설치한다. 새 checkout에는 형제 Kit
+  checkout과 빌드된 `dist`가 필요하고, CI는 `make install` 전에 형제 checkout을 빌드한다(K565, K614). Kit의
+  `kit.copies`는 alint가 이 저장소 안에서 읽어야 하는 설정 파일이며, `make kit-sync`가 사본을 쓰고 `make kit-check`가
+  비교한다. bootstrap source는 이 저장소의 사본이 아니다. 이 저장소는 `config/*.json`과 자체 product
   code(`scripts/check`, `scripts/features`, `scripts/repo`, client, database server 검사)에서만 다른 저장소와 다르다.
   kit에 없거나 잘못된 도구는 kit에 알리고, 여기서 복사하거나 고치지 않는다. 이 저장소의 규칙은 사본을 읽지 않는다.
   polyspec 버전이 0.0.x인 동안 개발 checkout은 kit `docs/plans/local-links.md`가 설명하는 대로 설치된 polyspec

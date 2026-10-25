@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "comment": "The class of each tool of orm that make rebuild-check checks (S1). The copies of kit under scripts/kit are not listed: kit classifies them.",
+  "comment": "The class of each tool source in orm that make rebuild-check checks (S1). Kit's bootstrap sources come from the sibling Kit checkout and are not sources of this repository.",
   "tools": {
     "examples/complex/php/main.php": {
       "kind": "policy",

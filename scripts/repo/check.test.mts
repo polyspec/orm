@@ -83,6 +83,28 @@ caseTest('the TypeScript runtime build generates models before compiling their c
   assert.ok(generation < build, 'build-ts compiles consumers before refreshing generated models');
 });
 
+caseTest('the Kit package path holds its lint configurations', COMPUTE, () => {
+  const root = new URL('../..', import.meta.url).pathname;
+  const directory = mkdtempSync(join(tmpdir(), 'orm-kit-package-path-'));
+  const target = join(directory, 'check-kit-package.mk');
+  try {
+    writeFileSync(target, [
+      'check-kit-package-config:',
+      '\t@test -f "$(KIT_PACKAGE)/ruff.toml" && test -f "$(KIT_PACKAGE)/phpcs.xml.dist" && test -f "$(KIT_PACKAGE)/phpstan.dist.neon" && test -f "$(KIT_PACKAGE)/.oxlintrc.json" && printf \'%s\\n\' "$(KIT_PACKAGE)"',
+      '',
+    ].join('\n'));
+    const result = spawnSync(
+      'make',
+      ['--no-print-directory', '-f', 'Makefile', '-f', target, 'check-kit-package-config'],
+      { cwd: root, encoding: 'utf8', env: isolatedEnvironment() },
+    );
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+    assert.equal(result.stdout.trim(), join(root, '..', 'kit'));
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 caseTest('a script path must be a tracked file or directory', COMPUTE, () => {
   assert.deepEqual(scriptPathErrors({ 'schema:check': 'node scripts/schema/check.mts' }, tracked), [
     'package.json script schema:check names scripts/schema/check.mts, which is not a tracked file or directory',

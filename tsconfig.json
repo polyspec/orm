@@ -16,5 +16,5 @@
     "types": ["node"]
   },
   "include": ["scripts/**/*.mts", "tests/**/*.mts"],
-  "exclude": ["scripts/kit", "tests/kit"]
+  "exclude": ["tests/kit"]
 }

@@ -19,13 +19,13 @@ vendors; this file states only the rules of orm.
   `polyspec_orm-X.Y.Z-py3-none-any.whl`.
   Enforced by: `.githooks/pre-push`
 - Own: The shared tools are the npm package `@polyspec/kit`, a devDependency of `package.json` pinned to
-  the asset of its release with its integrity. A checkout installs it with `make install-tools
-  TOOLS=npm` (the npm of `packageManager`) and `make install-packages`, and the Makefile includes
-  `scripts/kit/kit-bootstrap.mk`, which includes the `kit.mk` of the installed package. The files of
-  `kit.copies` of its `package.json` (the bootstrap under `scripts/kit/`, PRINCIPLES.md (+ko),
-  `.github/workflows/release.yml`, `config/layout.kit.yml` and the lint configurations) are copies
-  that `make kit-sync` writes from the installed package and `make kit-check` compares with it; they
-  change only in kit. This repository differs from the other repositories only in `config/*.json`
+  the asset of its release with its integrity. The bootstrap source is in the sibling Kit checkout:
+  the Makefile includes `../kit/scripts/kit/kit-bootstrap.mk`, which installs the pinned npm before
+  the package exists and then installs `package-lock.json`. A fresh checkout needs the sibling Kit
+  checkout and its built `dist`; CI builds that sibling before `make install` (K565, K614). Kit's
+  `kit.copies` are the configuration files that alint must read inside this repository; `make kit-sync`
+  writes those copies and `make kit-check` compares them. Bootstrap sources are not copies here.
+  This repository differs from the other repositories only in `config/*.json`
   and in its own product code (`scripts/check`, `scripts/features`, `scripts/repo`, the clients and
   the checks of the database servers); a tool that kit lacks or gets wrong is reported to kit, never
   copied or edited here. The rules of this repository do not read the copies.

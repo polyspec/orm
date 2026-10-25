@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "comment": "What make runs or spawns that knip cannot see from the manifests (scripts/kit/lint-ts.mts adds these to knip.json).",
+  "comment": "What make runs or spawns that knip cannot see from the manifests; Kit supplies its lint configuration and runs its own lint setup.",
   "entries": {
     "docs/.vitepress/config.mts": "the VitePress configuration of the site under docs/, which make docs-build runs with vitepress build docs",
     "docs/.vitepress/theme/index.ts": "the VitePress theme of the site under docs/, which VitePress loads by its path",

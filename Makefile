@@ -112,20 +112,18 @@ export GOPROXY := off
 export npm_config_offline := true
 export COMPOSER_DISABLE_NETWORK := 1
 ONLINE := env -u CARGO_NET_OFFLINE -u GOPROXY -u npm_config_offline -u COMPOSER_DISABLE_NETWORK
-# The targets of the shared tools come from the npm package @polyspec/kit: scripts/kit/kit-bootstrap.mk, a copy that make
-# kit-sync writes, includes the kit.mk of the installed package, whose tools run as node $(KIT)/<tool>.$(KIT_EXT). A fresh
-# checkout first runs make install-tools TOOLS=npm and make install-packages, the two targets that run before the package
-# is installed.
-include scripts/kit/kit-bootstrap.mk
+# The bootstrap is source in the sibling kit checkout, not a copy in this repository (K614). It installs npm before the
+# package exists, then installs package-lock.json so the kit's built tools can run.
+include ../kit/scripts/kit/kit-bootstrap.mk
 # The tools of mise.toml that a recipe starts by its absolute path (kit K171): make 3.81, the make of macOS, looks a
 # recipe line without shell syntax up on the PATH that make started with, not on the PATH that kit.mk exports.
 GO := $(KIT_TOOLS)/mise/shims/go
-# The lint configurations that kit reads from its package (kit K514), the folder above the dist of KIT.
-KIT_PACKAGE := $(abspath $(KIT)/..)
+# The lint configurations that kit reads from its package (kit K514), two directories above its scripts/kit source.
+KIT_PACKAGE := $(abspath $(KIT)/../..)
 COMPOSER := $(KIT_TOOLS)/mise/shims/composer
 PYTHON3 := $(KIT_TOOLS)/mise/shims/python3
 RUFF := $(KIT_TOOLS)/mise/shims/ruff
-# The PHP lint wrappers of kit (scripts/kit/install-php-lint.mts) are not tools of mise.toml, so their recipes start them by these paths too.
+# The PHP lint tools of kit are not tools of mise.toml, so their recipes start them by these paths too.
 PHPCS := $(KIT_TOOLS)/bin/phpcs
 PHPSTAN := $(KIT_TOOLS)/bin/phpstan
 
