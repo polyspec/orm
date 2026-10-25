@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- KSTD-2-11-13: The connection, pool, TLS, DSN and timeout unit bindings are reconciled across six clients in the completed child items; this records their scoped evidence and does not claim that the global parity declaration check passed.
+
 - KSTD-5-89-6: `make link-state-check` passed on main and in a fresh worktree created by Kit K619 link-state-only setup; the temporary worktree was removed. Evidence is recorded in `var/parallel/consolidation/KSTD-5-89-6-link-state/evidence-manifest.txt`.
 
 - KSTD-2-11-13-1-1: The PHP extension's MySQL rollback-failed and savepoint-rollback-failed cases pass on PHP 8.4.26 (2 tests / 19 assertions) with native module `d01c3`. Evidence log SHA-256: `bb75b0c3379bb6f2cb5e7b13c8f0911ec7398db622fafcb08b1442ca8e7f1368`.

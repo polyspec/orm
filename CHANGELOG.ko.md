@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 7cb19dc038efb23a4b833d7fc85826eaf1000ea1ecad18248618df2351356658 -->
+<!-- source-sha256: ef9f43bd7e305a8cdaf6d32df60bbfc8ad91afa988b0b80e740a8c802a744b61 -->
 # 변경 이력
 
 ## Unreleased
+
+- KSTD-2-11-13: 완료된 하위 항목의 scoped evidence로 connection, pool, TLS, DSN, timeout unit의 여섯 client binding을 정리했다. 이는 전역 parity declaration 검사가 통과했다는 뜻이 아니다.
 
 - KSTD-5-89-6: main과 Kit K619 link-state-only setup으로 만든 새 worktree에서 `make link-state-check`가 통과했고, 임시 worktree는 제거했다. 근거는 `var/parallel/consolidation/KSTD-5-89-6-link-state/evidence-manifest.txt`에 기록했다.
 
