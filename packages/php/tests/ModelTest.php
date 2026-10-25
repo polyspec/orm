@@ -867,7 +867,10 @@ final class ModelTest extends TestCase
             )->getCount() === 1,
             'equality filter'
         );
-        self::check((new Author())($db)->startDt($utcStart->format('Y-m-d H:i:s'))->getCount() === 1, 'equality filter by text');
+        self::check(
+            (new Author())($db)->startDt($utcStart->format('Y-m-d H:i:s'))->getCount() === 1,
+            'equality filter by text'
+        );
         self::check(
             (new Author())($db)->startDt($utcStart->format('Y-m-d\\TH:i:s') . '.0')->getCount() === 1,
             'equality filter by text with fraction'
