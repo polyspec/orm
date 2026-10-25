@@ -10,6 +10,10 @@ import { isolatedEnvironment } from '../tests/environment.mts';
 import { caseTest, COMPUTE, DATABASE, PROCESS } from '../tests/testcase.mts';
 import { environment, MYSQLD_BINLOG, mysqldArguments, paths, POSTGRES_LOCALE, postgresBaseBackupArguments, postgresEnvironment, startLogged, stopEarlierStart, stopPid, TestServerError } from './test-servers.mts';
 import { withPidFixture } from './test-servers-fixture.mts';
+import * as servers from './test-servers.mts';
+
+// The storage settings of the servers (KSTD-5-88-5), read from the module so that a missing one fails its assertion.
+const { MYSQLD_STORAGE, POSTGRES_WAL, postgresArguments } = servers;
 
 // processState is the state that ps reports for a process, empty when it is gone. exited is whether it has ended: an ended
 // process is gone, or a zombie (state Z) until the process that adopted it reaps it, and kill(pid, 0) still succeeds on a
@@ -396,6 +400,24 @@ caseTest('the server environment names no bench or decimal database that runs sh
 // server removes expired binary logs only at start and when it rotates a log, so retention needs both an expiry and a
 // rotation size. After one batch of writes and a wait longer than the expiry, another write must make the server remove
 // the first file; if it stays, the case fails naming the file and why it stayed.
+// The storage case (KSTD-5-88-5) checks the settings that bound what the servers keep: the redo log, undo and binary log
+// of both mysqld, and the WAL of both PostgreSQL servers. A server that keeps the defaults takes 100 MiB of redo log per
+// mysqld from its start and up to 1 GB of WAL per PostgreSQL server, in every checkout.
+caseTest('the test servers keep small redo logs, binary logs and WAL', COMPUTE, () => {
+  for (const replica of [false, true]) {
+    const args = mysqldArguments(paths('/checkout'), replica, 1);
+    for (const flag of ['--innodb-redo-log-capacity=16777216', '--innodb-max-undo-log-size=16777216', '--max-binlog-size=16777216', '--binlog-expire-logs-seconds=3600'])
+      assert.ok(args.includes(flag), `the mysqld ${replica ? 'replica' : 'primary'} does not take ${flag}: ${args.join(' ')}`);
+  }
+  assert.deepEqual(MYSQLD_STORAGE, ['--innodb-redo-log-capacity=16777216', '--innodb-max-undo-log-size=16777216']);
+  assert.equal(typeof postgresArguments, 'function', 'scripts/test-servers.mts states no arguments of the PostgreSQL servers');
+  assert.deepEqual(POSTGRES_WAL, ['min_wal_size=32MB', 'max_wal_size=64MB', 'wal_keep_size=0']);
+  assert.deepEqual(postgresArguments('/data', 5432, true), ['-D', '/data', '-p', '5432', '-c', 'listen_addresses=127.0.0.1', '-c', 'unix_socket_directories=',
+    '-c', 'synchronous_standby_names=orm_replica', '-c', 'synchronous_commit=local', '-c', 'min_wal_size=32MB', '-c', 'max_wal_size=64MB', '-c', 'wal_keep_size=0']);
+  assert.deepEqual(postgresArguments('/replica', 5433, false), ['-D', '/replica', '-p', '5433', '-c', 'listen_addresses=127.0.0.1', '-c', 'unix_socket_directories=',
+    '-c', 'min_wal_size=32MB', '-c', 'max_wal_size=64MB', '-c', 'wal_keep_size=0']);
+});
+
 caseTest('the test MySQL server removes an expired binary log by itself', DATABASE, async () => {
   const flags = MYSQLD_BINLOG;
   const expireFlag = flags.find(f => f.startsWith('--binlog-expire-logs-seconds='));
@@ -413,7 +435,7 @@ caseTest('the test MySQL server removes an expired binary log by itself', DATABA
     execFileSync('mysqld', ['--no-defaults', '--initialize-insecure', `--datadir=${data}`, `--log-error=${join(root, 'init.log')}`]);
     // --daemonize returns after the server accepts connections or fails.
     execFileSync('mysqld', ['--no-defaults', '--daemonize', `--datadir=${data}`, `--pid-file=${join(root, 'mysqld.pid')}`, `--log-error=${join(root, 'mysqld.log')}`,
-      '--bind-address=127.0.0.1', `--port=${port}`, `--socket=${join(socketDir, 's')}`, '--mysqlx=OFF', '--server-id=1', ...fixtureFlags]);
+      '--bind-address=127.0.0.1', `--port=${port}`, `--socket=${join(socketDir, 's')}`, '--mysqlx=OFF', '--server-id=1', ...MYSQLD_STORAGE, ...fixtureFlags]);
     mysql('CREATE DATABASE b; CREATE TABLE b.t (v VARCHAR(1024))');
     const burst = () => { for (let i = 0; i < 10; i++) mysql("INSERT INTO b.t VALUES (REPEAT('x', 1000))"); };
     burst();
@@ -461,18 +483,19 @@ caseTest('the test PostgreSQL replica streams again after the primary wrote WAL 
     { encoding: 'utf8', timeout }).trim();
   // The PostgreSQL programs run with the environment of the server tool (postgresEnvironment), which sets the locale.
   const env = postgresEnvironment();
-  const start = (data: string, port: number, options: string) => execFileSync('pg_ctl', ['-D', data, '-l', `${data}.log`, '-w', '-t', '60', '-o',
-    `-p ${port} -c listen_addresses=127.0.0.1 -c unix_socket_directories= ${options}`, 'start'], { stdio: 'ignore', env });
+  // Both servers start with the arguments of test-servers.mts (postgresArguments), its WAL settings included.
+  const start = (data: string, port: number, primary: boolean) => execFileSync('pg_ctl', ['-D', data, '-l', `${data}.log`, '-w', '-t', '60', '-o',
+    postgresArguments(data, port, primary).slice(2).join(' '), 'start'], { stdio: 'ignore', env });
   const stop = (data: string) => { if (existsSync(join(data, 'postmaster.pid'))) execFileSync('pg_ctl', ['-D', data, '-m', 'fast', '-w', 'stop'], { stdio: 'ignore', env }); };
   try {
     execFileSync('initdb', ['-D', primary, '-U', 'orm', '--auth=trust', '--encoding=UTF8', '--locale=C'], { stdio: 'ignore', env });
-    start(primary, primaryPort, '-c synchronous_standby_names=orm_replica -c synchronous_commit=local');
+    start(primary, primaryPort, true);
     execFileSync('pg_basebackup', postgresBaseBackupArguments(replica, primaryPort), { stdio: 'ignore', env });
-    start(replica, replicaPort, '');
+    start(replica, replicaPort, false);
     psql(primaryPort, 'CREATE TABLE t (v text)');
     stop(replica);
     for (let i = 0; i < 8; i++) psql(primaryPort, "INSERT INTO t SELECT repeat('x', 1000) FROM generate_series(1, 2000); SELECT pg_switch_wal(); CHECKPOINT");
-    start(replica, replicaPort, '');
+    start(replica, replicaPort, false);
     const state = psql(primaryPort, "SELECT coalesce((SELECT state FROM pg_stat_replication WHERE application_name = 'orm_replica'), 'absent')");
     let commit = 'returned';
     try { psql(primaryPort, "SET synchronous_commit = remote_apply; INSERT INTO t VALUES ('y')", 20_000); } catch (error) { commit = `did not return within 20 s (${(error instanceof Error ? error.message : String(error)).split('\n')[0]})`; }

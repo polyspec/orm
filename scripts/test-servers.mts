@@ -107,16 +107,22 @@ const MYSQLD_FILES = '--secure-file-priv=NULL';
 export const MYSQL_LOWER_CASE = 1;
 // MYSQLD_BINLOG is the binary log retention of both mysqld. The server removes expired logs only at start and when it
 // rotates a log, so an expiry time (one hour) alone keeps a log that never reaches the default size (1 GB) to rotate.
-// Rotating every 64 MiB makes the expiry take effect. The options apply when the next `make orm-test-servers` starts the
-// servers.
-export const MYSQLD_BINLOG = ['--binlog-expire-logs-seconds=3600', '--max-binlog-size=67108864'];
+// Rotating every 16 MiB makes the expiry take effect and bounds the file that a quiet server keeps. The options apply when
+// the next `make orm-test-servers` starts the servers.
+export const MYSQLD_BINLOG = ['--binlog-expire-logs-seconds=3600', '--max-binlog-size=16777216'];
+// MYSQLD_STORAGE is the InnoDB log space of both mysqld. The redo log takes innodb_redo_log_capacity as files from the
+// start (100 MiB by default); 16 MiB holds the largest transaction of the checks with room to spare, and a smaller
+// capacity only checkpoints more often. An undo tablespace that grows past innodb_max_undo_log_size is truncated when its
+// undo is purged; the default, 1 GiB, is never reached, so 16 MiB keeps each near its initial size. Neither changes what a
+// transaction or the replication applies.
+export const MYSQLD_STORAGE = ['--innodb-redo-log-capacity=16777216', '--innodb-max-undo-log-size=16777216'];
 
 // mysqldArguments are the arguments of the mysqld daemon of the primary (server id 1) or the replica (server id 2).
 export function mysqldArguments(p: Paths, replica: boolean, port: number): string[] {
   const name = replica ? 'mysql-replica' : 'mysql';
   return ['--no-defaults', '--daemonize', MYSQLD_FILES, `--lower-case-table-names=${MYSQL_LOWER_CASE}`, `--datadir=${join(p.dir, name)}`,
     `--pid-file=${replica ? p.mysqlReplicaPid : p.mysqlPid}`, `--log-error=${join(p.dir, `${name}.log`)}`, '--bind-address=127.0.0.1',
-    `--port=${port}`, `--socket=${replica ? p.sockets.mysqlReplica : p.sockets.mysql}`, '--mysqlx=OFF', ...MYSQLD_BINLOG,
+    `--port=${port}`, `--socket=${replica ? p.sockets.mysqlReplica : p.sockets.mysql}`, '--mysqlx=OFF', ...MYSQLD_BINLOG, ...MYSQLD_STORAGE,
     `--server-id=${replica ? 2 : 1}`, ...(replica ? ['--skip-replica-start'] : [])];
 }
 
@@ -419,16 +425,27 @@ export function postgresEnvironment(base: NodeJS.ProcessEnv = process.env): Node
   return { ...base, LC_ALL: POSTGRES_LOCALE };
 }
 
+// POSTGRES_WAL is the WAL that both PostgreSQL servers keep in pg_wal: a checkpoint (a restartpoint on the replica)
+// starts when 64 MiB of WAL accumulated, and at most 32 MiB of old segments are recycled instead of removed (the defaults
+// are 1 GB and 80 MB). wal_keep_size=0 keeps no segment for a standby beyond what the slot orm_replica keeps, which
+// still holds every segment the replica has not received (postgresBaseBackupArguments).
+export const POSTGRES_WAL = ['min_wal_size=32MB', 'max_wal_size=64MB', 'wal_keep_size=0'];
+
+// postgresArguments are the arguments of the postgres server on data and port: the primary names the replica as its
+// synchronous standby with synchronous_commit=local, so only a transaction that asks for remote_apply waits for it.
+export function postgresArguments(data: string, port: number, primary: boolean): string[] {
+  return ['-D', data, '-p', String(port), '-c', 'listen_addresses=127.0.0.1', '-c', 'unix_socket_directories=',
+    ...(primary ? ['-c', 'synchronous_standby_names=orm_replica', '-c', 'synchronous_commit=local'] : []), ...POSTGRES_WAL.flatMap(setting => ['-c', setting])];
+}
+
 async function startPostgres(p: Paths, ports: Ports): Promise<void> {
   run('initdb', ['-D', p.postgresData, '-U', 'orm', '--auth=trust', '--encoding=UTF8', '--locale=C'], { stdio: ['ignore', openSync(join(p.dir, 'postgres-init.log'), 'w'), 'inherit'], env: postgresEnvironment() });
   // `pg_ctl start -w` would wait at most 60 s; startLogged waits for the ready line.
-  await startLogged(p.dir, 'postgres', 'database system is ready to accept connections', 'postgres', ['-D', p.postgresData, '-p', String(ports.postgres),
-    '-c', 'listen_addresses=127.0.0.1', '-c', 'unix_socket_directories=', '-c', 'synchronous_standby_names=orm_replica', '-c', 'synchronous_commit=local'], postgresEnvironment());
+  await startLogged(p.dir, 'postgres', 'database system is ready to accept connections', 'postgres', postgresArguments(p.postgresData, ports.postgres, true), postgresEnvironment());
   console.log(`test-servers: PostgreSQL on 127.0.0.1:${ports.postgres}`);
   run('pg_basebackup', postgresBaseBackupArguments(p.postgresReplicaData, ports.postgres), { env: postgresEnvironment() });
   // A standby logs that it accepts read-only connections.
-  await startLogged(p.dir, 'postgres-replica', 'database system is ready to accept read-only connections', 'postgres', ['-D', p.postgresReplicaData,
-    '-p', String(ports.postgresReplica), '-c', 'listen_addresses=127.0.0.1', '-c', 'unix_socket_directories='], postgresEnvironment());
+  await startLogged(p.dir, 'postgres-replica', 'database system is ready to accept read-only connections', 'postgres', postgresArguments(p.postgresReplicaData, ports.postgresReplica, false), postgresEnvironment());
   console.log(`test-servers: PostgreSQL replica on 127.0.0.1:${ports.postgresReplica}`);
 }
 

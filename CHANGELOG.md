@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The test servers keep small logs: both mysqld take a 16 MiB redo log capacity, a 16 MiB undo truncation size and 16 MiB binary log files, and both PostgreSQL servers min_wal_size=32MB, max_wal_size=64MB and wal_keep_size=0. A fresh .runtime/servers takes 377 MB instead of 545 MB, and 473 MB instead of 1217 MB after one run's databases were created and dropped; replication through the slot orm_replica and remote_apply is unchanged (KSTD-5-88-5).
 - `make lint-php` passes: the PHP code meets the pinned PHPCS layout, class and method-name rules, and PHPStan checks for both the library and extension (KSTD-5-89-3).
 - PHPUnit test method names conform to camelCase; PHP parity and feature bindings point to each renamed method while shared case IDs remain unchanged (KSTD-5-89-3-3).
 - The 16 streamWrapper fixture methods of the PHP tests keep the names that PHP's streamWrapper protocol requires, each with the reasoned phpcs:ignore of CamelCapsMethodName that suppression-check accepts, so `make lint-php` passes (KSTD-5-89-3-4).
