@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 7bcefbc577e2d9500d590f795205a18d4d3fb51dd83cc79c283330433500eae5 -->
+<!-- source-sha256: 7cb19dc038efb23a4b833d7fc85826eaf1000ea1ecad18248618df2351356658 -->
 # 변경 이력
 
 ## Unreleased
+
+- KSTD-5-89-6: main과 Kit K619 link-state-only setup으로 만든 새 worktree에서 `make link-state-check`가 통과했고, 임시 worktree는 제거했다. 근거는 `var/parallel/consolidation/KSTD-5-89-6-link-state/evidence-manifest.txt`에 기록했다.
 
 - KSTD-2-11-13-1-1: PHP extension의 MySQL rollback-failed 및 savepoint-rollback-failed case가 PHP 8.4.26에서 native module `d01c3`으로 통과했다 (2 tests / 19 assertions). 증거 로그 SHA-256: `bb75b0c3379bb6f2cb5e7b13c8f0911ec7398db622fafcb08b1442ca8e7f1368`.
 
