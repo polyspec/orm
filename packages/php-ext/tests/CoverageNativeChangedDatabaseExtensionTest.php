@@ -11,8 +11,6 @@ use Polyspec\Orm\SchemaUtils;
 use ReflectionClass;
 use ReflectionMethod;
 
-require_once dirname(__DIR__, 2) . '/php/tests/SchemaSetTest.php';
-
 #[Medium]
 final class CoverageNativeChangedDatabaseExtensionTest extends TestCase
 {

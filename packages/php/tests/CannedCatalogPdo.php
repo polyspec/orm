@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
-require_once __DIR__ . '/SqliteLiteralRowsPdo.php';
-
 use PDO;
 use PDOStatement;
 use RuntimeException;

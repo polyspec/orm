@@ -10,51 +10,8 @@ use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Assembly;
 use Polyspec\Orm\Extension\Tests\ModelAssemblyTestSupport;
-use Polyspec\Orm\Db;
 use Polyspec\Orm\Model;
 use Throwable;
-
-final class ModelStreamFixture extends Model
-{
-    public static function meta(): array
-    {
-        return [
-            'entity' => 'stream_fixture',
-            'updated' => '',
-            'columns' => [
-                'title' => ['type' => 'text', 'codec' => [], 'nullable' => true],
-                'active' => ['type' => 'bool', 'codec' => [], 'nullable' => true],
-                'body' => ['type' => 'bytes', 'codec' => [], 'nullable' => true],
-            ],
-        ];
-    }
-}
-
-final class ModelStreamWarningWrapper
-{
-    public $context;
-
-    public function stream_open(string $path, string $mode, int $options, ?string &$openedPath): bool
-    {
-        return true;
-    }
-
-    public function stream_read(int $count): string|false
-    {
-        trigger_error('original stream read warning', E_USER_WARNING);
-        return false;
-    }
-
-    public function stream_eof(): bool
-    {
-        return false;
-    }
-
-    public function stream_stat(): array|false
-    {
-        return [];
-    }
-}
 
 #[Small]
 final class ModelStreamReadTest extends TestCase

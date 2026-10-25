@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
-require_once __DIR__ . '/dbspec-php-interface-program.php';
-
 // The plan vectors of tests/dbspec/plans.json through Polyspec\Orm\Dbspec\Dbspec
 // (docs/spec/plans.md): every case's canonical emission, changes and steps of
 // three dialects, every invalid case's `plan` diagnostics, every chain

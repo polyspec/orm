@@ -152,15 +152,3 @@ final class ChainNativeSurfaceTest extends TestCase
         self::assertFalse(Chain::functionColumn(['codec' => ['aes'], 'type' => 'date']));
     }
 }
-
-final class ChainNativeRegistryFixture
-{
-    public static function meta(): array
-    {
-        return [
-            'entity' => 'chain_native_fixture',
-            'manifest_hash' => 'sha256:' . hash('sha256', "dbspec 1\n"),
-            'columns' => ['seq' => ['type' => 'i64', 'codec' => []]],
-        ];
-    }
-}

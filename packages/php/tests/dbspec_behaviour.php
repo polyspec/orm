@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
-require_once __DIR__ . '/SqliteLiteralRowsPdo.php';
-
 // The PHP behaviours of the dbspec interface that the shared vectors do not fix: non-UTF-8 text, argument errors,
 // result objects, documents built and edited in PHP, introspection failures, the apply argument errors, and apply,
 // recover, rollback and finalize stopped at each event on a SQLite file. Each case returns the outcome as JSON values;

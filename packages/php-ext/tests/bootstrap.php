@@ -7,17 +7,8 @@ declare(strict_types=1);
 if (getenv('ORM_PHP_MODE') !== 'extension') {
     throw new RuntimeException('ORM_PHP_MODE must be extension for the PHP extension test package');
 }
-final class PhpExtensionBootstrapAssertions extends \PHPUnit\Framework\Assert
-{
-    public static function requireLoaded(): void
-    {
-        self::assertTrue(
-            extension_loaded('polyspec_orm'),
-            'the extension polyspec_orm is not loaded; run make dbspec-php-extension-check, which builds and loads it'
-        );
-    }
-}
-PhpExtensionBootstrapAssertions::requireLoaded();
+require_once __DIR__ . '/PhpExtensionBootstrapAssertions.php';
+\Polyspec\Orm\Extension\Tests\PhpExtensionBootstrapAssertions::requireLoaded();
 require_once dirname(__DIR__, 2) . '/php/tests/bootstrap.php';
 require_once dirname(__DIR__, 2) . '/php/tests/MarkdownConformanceTest.php';
 require_once __DIR__ . '/ModelAssemblyFixture.php';
@@ -38,3 +29,28 @@ require_once dirname(__DIR__, 2) . '/php/tests/CoverageAuditTriggersTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/CoverageAuditColumnsTest.php';
 require_once __DIR__ . '/NativeMethodAssertions.php';
 require_once dirname(__DIR__, 2) . '/php/tests/dbspec_verify_errors_case.php';
+// The library tests that the extension tests extend or call, and the helper classes of the extension tests, one
+// class per file (PSR-1).
+require_once dirname(__DIR__, 2) . '/php/tests/SchemaSetTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/CoverageSchemaDefinitionTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/CoverageRequestHookTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/AggregateNumericTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/DecimalModelTest.php';
+require_once dirname(__DIR__, 2) . '/php/tests/IdentityLoadTest.php';
+require_once __DIR__ . '/model-weak-caller.php';
+require_once __DIR__ . '/AuditLazyFakePdo.php';
+require_once __DIR__ . '/AuditLazyFakeStatement.php';
+require_once __DIR__ . '/ChainNativeRegistryFixture.php';
+require_once __DIR__ . '/CollectionFakePdo.php';
+require_once __DIR__ . '/CollectionFixtureModel.php';
+require_once __DIR__ . '/ConnectionTimeoutCleanupPdo.php';
+require_once __DIR__ . '/ConnectionTimeoutCleanupStatement.php';
+require_once __DIR__ . '/CoverageNativeDecimalModel.php';
+require_once __DIR__ . '/NativeModelFixture.php';
+require_once __DIR__ . '/ModelReadShapeFixture.php';
+require_once __DIR__ . '/ModelReadWarningStream.php';
+require_once __DIR__ . '/ModelStreamFixture.php';
+require_once __DIR__ . '/ModelStreamWarningWrapper.php';
+require_once __DIR__ . '/RuntimeModelGeneratedFixture.php';
+require_once __DIR__ . '/RuntimeModelBadGeneratedFixture.php';
+require_once __DIR__ . '/DslFixture.php';

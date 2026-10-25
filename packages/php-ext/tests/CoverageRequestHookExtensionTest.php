@@ -11,8 +11,6 @@ use PHPUnit\Framework\Attributes\Medium;
 use ReflectionClass;
 use ReflectionMethod;
 
-require_once dirname(__DIR__, 2) . '/php/tests/CoverageRequestHookTest.php';
-
 #[Medium]
 final class CoverageRequestHookExtensionTest extends CoverageRequestHookTest
 {

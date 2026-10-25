@@ -5,77 +5,11 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Extension\Tests;
 
 use DateTimeZone;
-use PDO;
 use PDOException;
-use PDOStatement;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
-
-final class ConnectionTimeoutCleanupPdo extends PDO
-{
-    public int $prepareCalls = 0;
-    public int $closeCursorCalls = 0;
-    public int $executeCalls = 0;
-    public array $failureInfo = ['57014', null, 'statement timeout'];
-
-    public function __construct()
-    {
-        parent::__construct('sqlite::memory:');
-    }
-
-    public function setAttribute(int $attribute, mixed $value): bool
-    {
-        return true;
-    }
-
-    public function prepare(string $query, array $options = []): PDOStatement|false
-    {
-        $this->prepareCalls++;
-        if (
-            !parent::setAttribute(
-                PDO::ATTR_STATEMENT_CLASS,
-                [ConnectionTimeoutCleanupStatement::class, [$this, $query]],
-            )
-        ) {
-            throw new \RuntimeException('unable to configure the timeout cleanup fake statement');
-        }
-        return parent::prepare('SELECT 1');
-    }
-}
-
-final class ConnectionTimeoutCleanupStatement extends PDOStatement
-{
-    protected function __construct(private readonly ConnectionTimeoutCleanupPdo $pdo, private readonly string $query)
-    {
-    }
-
-    public function execute(?array $params = null): bool
-    {
-        if ($this->query !== 'SELECT 1') {
-            throw new \RuntimeException("unexpected timeout cleanup SQL: {$this->query}");
-        }
-        $this->pdo->executeCalls++;
-        if ($this->pdo->executeCalls === 1) {
-            $error = new PDOException((string) $this->pdo->failureInfo[2]);
-            $error->errorInfo = $this->pdo->failureInfo;
-            throw $error;
-        }
-        return true;
-    }
-
-    public function closeCursor(): bool
-    {
-        $this->pdo->closeCursorCalls++;
-        return true;
-    }
-
-    public function fetchAll(int $mode = PDO::FETCH_DEFAULT, mixed ...$args): array
-    {
-        return [];
-    }
-}
 
 #[Small]
 final class ConnectionTimeoutCleanupTest extends TestCase

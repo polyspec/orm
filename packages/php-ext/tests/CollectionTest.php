@@ -4,73 +4,18 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Extension\Tests;
 
-require_once __DIR__ . '/../../php/tests/collection-weak-caller.php';
-
 use DateTimeImmutable;
 use DateTimeZone;
 use Polyspec\Orm\Bytes;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Tests\CollectionWeakTypedKeyCases;
-
-final class CollectionFakePdo extends \Polyspec\Orm\Tests\TransactionTrackingPdo
-{
-    public bool $suspendFirstStart = false;
-
-    protected function afterStatement(string $statement): void
-    {
-        parent::afterStatement($statement);
-        if (str_starts_with($statement, 'START TRANSACTION') && $this->suspendFirstStart) {
-            $this->suspendFirstStart = false;
-            \Fiber::suspend();
-        }
-    }
-}
 use Polyspec\Orm\Collection;
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;
 use Polyspec\Orm\Model;
 use Polyspec\Orm\OrmException;
-use function Polyspec\Orm\Tests\collectionWeakPut;
-
-class CollectionFixtureModel extends Model
-{
-    public ?Collection $collectionCycle = null;
-    public ?Db $connectedTo = null;
-    public array $deleted = [];
-
-    public function __construct(public string $label)
-    {
-    }
-
-    public static function meta(): array
-    {
-        return [];
-    }
-
-    public function toArray(): array
-    {
-        return ['label' => $this->label];
-    }
-
-    public function toJson(): string
-    {
-        return json_encode($this->toArray(), JSON_THROW_ON_ERROR);
-    }
-
-    public function connect(Db $db): static
-    {
-        parent::connect($db);
-        $this->connectedTo = $db;
-        return $this;
-    }
-
-    public function deleteRow(bool $recursive): void
-    {
-        $this->deleted[] = $recursive;
-    }
-}
 
 #[Small]
 final class CollectionTest extends TestCase
@@ -300,7 +245,6 @@ final class CollectionTest extends TestCase
         $this->expectException(\UnexpectedValueException::class);
         $collection->all();
     }
-
 
     public function testIteratorTakesSnapshotAtFirstRewindAndKeepsItDuringMutation(): void
     {

@@ -10,8 +10,6 @@ use Polyspec\Orm\Code;
 use Polyspec\Orm\Model;
 use ReflectionClass;
 
-require_once dirname(__DIR__, 2) . '/php/tests/OrmGenScanFailureCase.php';
-
 #[Small]
 final class OrmGenScanNativeTest extends TestCase
 {

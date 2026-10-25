@@ -14,20 +14,6 @@ use Polyspec\Orm\Model;
 use ReflectionMethod;
 use ReflectionProperty;
 
-final class NativeByteCellFixture extends Model
-{
-    public static function meta(): array
-    {
-        return [
-            'entity' => 'native_byte_cell',
-            'updated' => '',
-            'columns' => [
-                'body' => ['type' => 'bytes', 'codec' => [], 'nullable' => true],
-            ],
-        ];
-    }
-}
-
 #[Small]
 final class NativeCellReadTest extends TestCase
 {

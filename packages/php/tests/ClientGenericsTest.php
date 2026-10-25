@@ -8,8 +8,6 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
-require_once __DIR__ . '/phpstan-runner.php';
-
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 

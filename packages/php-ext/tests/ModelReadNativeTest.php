@@ -6,53 +6,12 @@ namespace Polyspec\Orm\Extension\Tests;
 
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
-use Polyspec\Orm\Assembly;
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Db;
 use Polyspec\Orm\GroupRow;
 use Polyspec\Orm\GroupRows;
 use Polyspec\Orm\Model;
 use Polyspec\Orm\OrmException;
-
-final class ModelReadShapeFixture extends Model
-{
-    public static function meta(): array
-    {
-        return [
-            'entity' => 'read_shape', 'updated' => 'updated_ts',
-            'columns' => [
-                'title' => ['type' => 'text', 'codec' => [], 'nullable' => true],
-                'id' => ['type' => 'i64', 'codec' => []],
-                'active' => ['type' => 'bool', 'codec' => []],
-                'payload' => ['type' => 'text', 'codec' => ['name' => 'json']],
-                'updated_ts' => ['type' => 'datetime', 'codec' => []],
-            ],
-        ];
-    }
-}
-
-final class ModelReadWarningStream
-{
-    public $context;
-
-    public function stream_open(string $path, string $mode, int $options, ?string &$openedPath): bool
-    {
-        return true;
-    }
-    public function stream_read(int $count): string|false
-    {
-        trigger_error('native stream read warning', E_USER_WARNING);
-        return false;
-    }
-    public function stream_eof(): bool
-    {
-        return false;
-    }
-    public function stream_stat(): array|false
-    {
-        return [];
-    }
-}
 
 #[Small]
 final class ModelReadNativeTest extends TestCase

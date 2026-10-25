@@ -14,42 +14,6 @@ use Polyspec\Orm\RuntimeModel;
 use ReflectionClass;
 use ReflectionMethod;
 
-require_once dirname(__DIR__, 2) . '/php/tests/AggregateNumericTest.php';
-require_once dirname(__DIR__, 2) . '/php/tests/DecimalModelTest.php';
-require_once dirname(__DIR__, 2) . '/php/tests/IdentityLoadTest.php';
-
-final class CoverageNativeDecimalModel extends Model
-{
-    public static int $precision = 1;
-    public static int $scale = 0;
-
-    public static function meta(): array
-    {
-        return [
-            'entity' => 'coverage_native_decimal',
-            'columns' => [
-                'amount' => [
-                    'type' => 'decimal',
-                    'precision' => self::$precision,
-                    'scale' => self::$scale,
-                    'codec' => [],
-                    'nullable' => true,
-                ],
-            ],
-        ];
-    }
-
-    public function setAmount(mixed $value): static
-    {
-        return $this->writeColumn('amount', $value);
-    }
-
-    public function getAmount(): mixed
-    {
-        return $this->readColumn('amount');
-    }
-}
-
 #[Medium]
 final class CoverageNativeFixtureExtensionTest extends TestCase
 {

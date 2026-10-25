@@ -4,17 +4,11 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
-require_once __DIR__ . '/dbspec-php-interface-program.php';
-
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Dbspec\Dbspec;
 use Polyspec\Orm\Dbspec\IntrospectResult;
 use Polyspec\Orm\Dbspec\Unsupported;
-
-require_once __DIR__ . '/dbspec_plan_cases.php';
-require_once dirname(__DIR__) . '/testing/dbspec/apply/runner.php';
-require_once dirname(__DIR__) . '/testing/dbspec/introspect/runner.php';
 
 #[Small]
 final class DbspecRunnerTest extends TestCase

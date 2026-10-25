@@ -9,9 +9,6 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
-require_once __DIR__ . '/phpstan-runner.php';
-require_once __DIR__ . '/OrmGenScanFailureCase.php';
-
 use PHPUnit\Framework\Attributes\DataProviderExternal;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
