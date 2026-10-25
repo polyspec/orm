@@ -25,7 +25,7 @@ final class CannedCatalogPdo extends PDO
         private readonly string $create,
         private readonly string $checkName
     ) {
-        parent::__construct('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+        $this->initializeLiteralRowsPdo();
     }
 
     public function query(string $query, ?int $fetchMode = null, mixed ...$fetchModeArgs): PDOStatement|false

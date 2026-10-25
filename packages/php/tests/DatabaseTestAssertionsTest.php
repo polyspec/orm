@@ -38,6 +38,19 @@ final class DatabaseTestAssertionsTest extends TestCase
         self::assertSame(['id' => 'case-b', 'input' => ['value' => '2']], $cases['case-b'][0]);
     }
 
+    public function testBenchDatabaseVariablesKeepCoverageDriverOrder(): void
+    {
+        self::assertSame(
+            [
+                'mysql' => 'BENCH_MYSQL_DSN',
+                'postgres' => 'BENCH_POSTGRES_DSN',
+                'sqlite' => 'BENCH_SQLITE_DSN',
+            ],
+            self::benchDatabaseVariables(),
+            'bench database selection order and DSN names'
+        );
+    }
+
     public function testColumnUnselectedAssertionRequiresTheSharedErrorCode(): void
     {
         self::assertColumnUnselected(

@@ -78,7 +78,7 @@ final class BehaviourScriptedPdo extends PDO
     /** @param Closure(string): mixed $answer */
     public function __construct(private Closure $answer)
     {
-        parent::__construct('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+        $this->initializeLiteralRowsPdo();
     }
 
     public function query(string $query, ?int $fetchMode = null, mixed ...$fetchModeArgs): PDOStatement|false

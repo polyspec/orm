@@ -11,7 +11,7 @@ namespace Polyspec\Orm\Tests;
 
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
-use Polyspec\Orm\Config;
+use Polyspec\Orm\Db;
 use Polyspec\Orm\Tests\Model\Author;
 
 #[Medium]
@@ -21,36 +21,20 @@ final class UnselectedColumnDbTest extends TestCase
 
     public function testUnselectedColumn(): void
     {
-        foreach (
-            [
-            'mysql' => 'BENCH_MYSQL_DSN',
-            'postgres' => 'BENCH_POSTGRES_DSN',
-            'sqlite' => 'BENCH_SQLITE_DSN'
-            ] as $driver => $variable
-        ) {
-            $dsn = requiredDsn($variable);
-            $db = \Polyspec\Orm\Tests\Model\connect(
-                $dsn,
-                new Config(aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index')
+        $this->forEachBenchDatabase(static function (Db $db): void {
+            $row = (new Author())($db)->removeAllColumns()->addColumnSeq()->getBySeq(1);
+            $seq = $row->getSeq();
+            self::assertGreaterThanOrEqual(1, $seq, 'selected seq is invalid');
+            self::assertColumnUnselected(static fn() => $row->getName(), 'text');
+            self::assertColumnUnselected(static fn() => $row->getIsClose(), 'boolean');
+            self::assertColumnUnselected(static fn() => $row->getDescription(), 'nullable text');
+            self::assertColumnUnselected(static fn() => $row->getCreatedTs(), 'date');
+            self::assertColumnUnselected(static fn() => $row->getPrice(), 'nullable decimal');
+            $selected = (new Author())($db)->removeAllColumns()->addColumnSeq()->addColumnPrice()->getBySeq($seq);
+            self::assertTrue(
+                $selected->getSeq() === $seq && $selected->getPrice() === null,
+                'selected SQL NULL changed'
             );
-            try {
-                self::assertSame($driver, $db->driver(), 'DSN selected the wrong database');
-                $row = (new Author())($db)->removeAllColumns()->addColumnSeq()->getBySeq(1);
-                $seq = $row->getSeq();
-                self::assertGreaterThanOrEqual(1, $seq, 'selected seq is invalid');
-                self::assertColumnUnselected(static fn() => $row->getName(), 'text');
-                self::assertColumnUnselected(static fn() => $row->getIsClose(), 'boolean');
-                self::assertColumnUnselected(static fn() => $row->getDescription(), 'nullable text');
-                self::assertColumnUnselected(static fn() => $row->getCreatedTs(), 'date');
-                self::assertColumnUnselected(static fn() => $row->getPrice(), 'nullable decimal');
-                $selected = (new Author())($db)->removeAllColumns()->addColumnSeq()->addColumnPrice()->getBySeq($seq);
-                self::assertTrue(
-                    $selected->getSeq() === $seq && $selected->getPrice() === null,
-                    'selected SQL NULL changed'
-                );
-            } finally {
-                $db->close();
-            }
-        }
+        });
     }
 }

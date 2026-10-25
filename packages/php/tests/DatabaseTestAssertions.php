@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
+use Closure;
 use Throwable;
 use PDO;
+use Polyspec\Orm\Config;
+use Polyspec\Orm\Db;
 use Polyspec\Orm\Orm;
 use Polyspec\Orm\Code;
 use Polyspec\Orm\OrmException;
@@ -53,6 +56,33 @@ trait DatabaseTestAssertions
     {
         foreach ($fixture['cases'] as $case) {
             yield $case['id'] => [$case];
+        }
+    }
+
+    /** @return array{mysql: non-empty-string, postgres: non-empty-string, sqlite: non-empty-string} */
+    protected static function benchDatabaseVariables(): array
+    {
+        return [
+            'mysql' => 'BENCH_MYSQL_DSN',
+            'postgres' => 'BENCH_POSTGRES_DSN',
+            'sqlite' => 'BENCH_SQLITE_DSN',
+        ];
+    }
+
+    /** @param Closure(Db): void $case */
+    protected function forEachBenchDatabase(Closure $case): void
+    {
+        foreach (self::benchDatabaseVariables() as $driver => $variable) {
+            $db = \Polyspec\Orm\Tests\Model\connect(
+                requiredDsn($variable),
+                new Config(aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index')
+            );
+            try {
+                Assert::assertSame($driver, $db->driver(), 'DSN selected the wrong database');
+                $case($db);
+            } finally {
+                $db->close();
+            }
         }
     }
 

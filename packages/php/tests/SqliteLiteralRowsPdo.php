@@ -10,6 +10,12 @@ use PDOStatement;
 /** A fake PDO's rows as typed literals in an in-memory SQLite statement. */
 trait SqliteLiteralRowsPdo
 {
+    /** Initialize the in-memory SQLite transport shared by the catalog PDO doubles. */
+    protected function initializeLiteralRowsPdo(): void
+    {
+        parent::__construct('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+    }
+
     /** @param list<list<mixed>> $rows */
     private function queryRows(array $rows, int $emptyWidth = 1): PDOStatement|false
     {
