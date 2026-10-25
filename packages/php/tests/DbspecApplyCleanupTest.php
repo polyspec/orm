@@ -93,14 +93,15 @@ final class DbspecApplyCleanupTest extends TestCase
     }
 
     // apply/cleanup-errors/release
-    // Requirements: PLN-98.
+    // Requirements: PLN-98, PLN-106. The shared PHP and extension case checks the primary throwable and ordered cleanup list.
     public function testCleanupErrorsRelease(): void
     {
         $plans = self::$plans;
         $now = self::now();
         $stop = new RuntimeException('stop');
+        $restore = new PDOException('restore failed');
         $release = new PDOException('release failed');
-        $pdo = dbspec_failing_pdo('apply_cleanup_php', ['PRAGMA locking_mode = normal' => $release]);
+        $pdo = dbspec_failing_pdo('apply_cleanup_php', ['PRAGMA foreign_keys = 0' => $restore, 'PRAGMA locking_mode = normal' => $release]);
         $events = static function (ApplyEvent $event) use ($stop): void {
             if ($event->kind === 'applied') {
                 throw $stop;
@@ -109,7 +110,7 @@ final class DbspecApplyCleanupTest extends TestCase
         want_cleanup(
             static fn() => Dbspec::apply($pdo, 'sqlite', $plans, $now, $events),
             static fn(?Throwable $e): bool => $e === $stop,
-            [$release]
+            [$restore, $release]
         );
     }
 

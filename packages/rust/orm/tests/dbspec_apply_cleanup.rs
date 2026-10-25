@@ -5,7 +5,7 @@
 //! the plan stops with a chain error, and a scripted MySQL connection returns
 //! no row for an effect query. Apply must return every error: the first
 //! failure alone, or `ApplyError::Cleanup` with the first failure and the
-//! cleanup error.
+//! cleanup errors.
 
 #[path = "common/or_panic.rs"]
 mod or_panic;
@@ -125,7 +125,7 @@ fn cleanup_message(e: &ApplyError) -> Option<&str> {
 }
 
 async fn release(plans: Vec<Plan>) -> Result<String, String> {
-    let mut c = failing(&[("PRAGMA locking_mode = normal", "release failed")]).await?;
+    let mut c = failing(&[("PRAGMA foreign_keys = 1", "restore failed"), ("PRAGMA locking_mode = normal", "release failed")]).await?;
     let mut stop = |e: &ApplyEvent| -> Result<(), EventError> {
         if e.kind == ApplyEventKind::Applied {
             return Err(Box::new(Stop));
@@ -135,7 +135,10 @@ async fn release(plans: Vec<Plan>) -> Result<String, String> {
     let result = apply(&mut c, Dialect::Sqlite, &plans, &fixed_now, &mut stop).await;
     match &result {
         Err(ApplyError::Cleanup { error, cleanup })
-            if matches!(error.as_ref(), ApplyError::Event(e) if e.downcast_ref::<Stop>().is_some()) && cleanup_message(cleanup) == Some("release failed") =>
+            if cleanup_message(cleanup) == Some("release failed")
+                && matches!(error.as_ref(), ApplyError::Cleanup { error: first, cleanup: first_cleanup }
+                    if matches!(first.as_ref(), ApplyError::Event(e) if e.downcast_ref::<Stop>().is_some())
+                        && cleanup_message(first_cleanup) == Some("restore failed")) =>
         {
             Ok(result.err().map(|e| e.to_string()).unwrap_or_default())
         }
@@ -149,12 +152,12 @@ async fn begin_restore(plans: Vec<Plan>) -> Result<String, String> {
     let result = apply(&mut c, Dialect::Sqlite, &plans, &fixed_now, &mut quiet).await;
     match &result {
         Err(ApplyError::Cleanup { error, cleanup })
-            if matches!(error.as_ref(), ApplyError::Locked { source: Some(e), .. } if protocol_message(e) == Some("begin failed"))
+            if matches!(error.as_ref(), ApplyError::Database(e) if protocol_message(e) == Some("begin failed"))
                 && cleanup_message(cleanup) == Some("restore failed") =>
         {
             Ok(result.err().map(|e| e.to_string()).unwrap_or_default())
         }
-        _ => Err(format!("{result:?}; want locked with the restore error")),
+        _ => Err(format!("{result:?}; want the begin failure with the restore error")),
     }
 }
 
@@ -261,7 +264,7 @@ async fn case<F: Future<Output = Result<String, String>>>(id: &str, body: F) -> 
     result.map(drop).map_err(|e| format!("{id}: {e}"))
 }
 
-// Requirements: PLN-100.
+// Requirements: PLN-100, PLN-106. This case checks the nested Cleanup chain preserves the failure and orders both cleanup errors.
 #[tokio::test]
 async fn apply_reports_cleanup_errors() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);

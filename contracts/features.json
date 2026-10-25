@@ -4272,7 +4272,13 @@
         "coverage-schema-definition-dbspec-parse-positions",
         "dbspec-introspect-query-count",
         "dbspec-introspect-round-trip",
-        "dbspec-plan-physical"
+        "dbspec-plan-physical",
+        "dbspec-apply-cleanup-go",
+        "dbspec-apply-cleanup-typescript",
+        "dbspec-apply-cleanup-rust",
+        "dbspec-apply-cleanup-python",
+        "dbspec-apply-cleanup-php",
+        "dbspec-apply-cleanup-errors"
       ],
       "fixtures": [
         "contracts/fixtures/bench/bench.dbs",
@@ -4799,12 +4805,13 @@
         ],
         "owners": {
           "go": {
-            "part": "packages/go/orm",
+            "part": "packages/go",
             "tests": [
               "packages/go/orm/coverage_schema_definition_test.go"
             ],
             "inputs": [
-              "contracts/fixtures/schema_definition.json"
+              "contracts/fixtures/schema_definition.json",
+              "packages/go/engine/dbspec/apply_test.go"
             ],
             "commands": {
               "none": [
@@ -4836,10 +4843,12 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/CoverageSchemaDefinitionTest.php"
+              "packages/php/tests/CoverageSchemaDefinitionTest.php",
+              "packages/php/tests/DbspecApplyCleanupTest.php"
             ],
             "inputs": [
-              "contracts/fixtures/schema_definition.json"
+              "contracts/fixtures/schema_definition.json",
+              "packages/php/tests/DbspecApplyCleanupTest.php"
             ],
             "commands": {
               "none": [
@@ -4875,7 +4884,8 @@
             ],
             "inputs": [
               "contracts/fixtures/schema_definition.json",
-              "packages/php/tests/CoverageSchemaDefinitionTest.php"
+              "packages/php/tests/CoverageSchemaDefinitionTest.php",
+              "packages/php/tests/DbspecApplyCleanupTest.php"
             ],
             "commands": {
               "none": [
@@ -4905,12 +4915,13 @@
             }
           },
           "rust": {
-            "part": "packages/rust/schema",
+            "part": "packages/rust",
             "tests": [
               "packages/rust/schema/tests/coverage_schema_definition.rs"
             ],
             "inputs": [
-              "contracts/fixtures/schema_definition.json"
+              "contracts/fixtures/schema_definition.json",
+              "packages/rust/orm/tests/dbspec_apply_cleanup.rs"
             ],
             "commands": {
               "none": [
@@ -4945,7 +4956,8 @@
               "packages/ts/tests/coverage_schema_definition.mjs"
             ],
             "inputs": [
-              "contracts/fixtures/schema_definition.json"
+              "contracts/fixtures/schema_definition.json",
+              "packages/ts/tests/dbspec-apply-cleanup.mjs"
             ],
             "commands": {
               "none": [
@@ -4971,7 +4983,8 @@
               "packages/python/tests/coverage_schema_definition.py"
             ],
             "inputs": [
-              "contracts/fixtures/schema_definition.json"
+              "contracts/fixtures/schema_definition.json",
+              "packages/python/tests/dbspec_apply.py"
             ],
             "commands": {
               "none": [

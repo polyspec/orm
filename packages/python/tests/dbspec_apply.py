@@ -323,7 +323,7 @@ class DbspecApplyTest(unittest.TestCase):
                     finally:
                         same_connection.close()
 
-    # Requirements: PLN-101.
+    # Requirements: PLN-101, PLN-106. This case checks that Python keeps the original failure and adds each cleanup error as a note in order.
     def test_cleanup_failure_notes(self) -> None:
         """A failure with failing cleanups is raised itself, with one note per cleanup error in order."""
         failure = RuntimeError("stop")

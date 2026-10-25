@@ -160,9 +160,8 @@ func logResult(t *testing.T, name string, start time.Time) {
 	t.Logf("%s %s elapsed=%s", result, name, time.Since(start))
 }
 
-// TestApplyReportsCleanupErrors checks that when apply fails, the errors from cleanup (releasing the lock, restoring foreign key
-// checks) are not discarded but returned together with it.
-// Requirements: PLN-97.
+// TestApplyReportsCleanupErrors checks that apply preserves the primary failure and all cleanup errors in order in Go's native error chain.
+// Requirements: PLN-97, PLN-106.
 func TestApplyReportsCleanupErrors(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	start := time.Now()
@@ -177,14 +176,18 @@ func TestApplyReportsCleanupErrors(t *testing.T) {
 	}
 
 	release := errors.New("release failed")
-	c := &failing{conn: applyTestConn(t), fail: map[string]error{"PRAGMA locking_mode = normal": release}}
+	restore := errors.New("restore failed")
+	c := &failing{conn: applyTestConn(t), fail: map[string]error{"PRAGMA foreign_keys = 0": restore, "PRAGMA locking_mode = normal": release}}
 	_, err := Apply(ctx, c, DialectSQLite, plans, now, stopAt)
-	if !errors.Is(err, stop) || !errors.Is(err, release) {
-		t.Errorf("apply stopped by an event with a failing lock release: %v, want both errors", err)
+	if !errors.Is(err, stop) || !errors.Is(err, restore) || !errors.Is(err, release) {
+		t.Errorf("apply stopped by an event with failing cleanup: %v, want all three errors", err)
+	}
+	if want := stop.Error() + "\n" + restore.Error() + "\n" + release.Error(); err == nil || err.Error() != want {
+		t.Errorf("apply cleanup error order: %v, want %q", err, want)
 	}
 
 	begin := sqliteResultError(5)
-	restore := errors.New("restore failed")
+	restore = errors.New("restore failed")
 	c = &failing{conn: applyTestConn(t), fail: map[string]error{"BEGIN EXCLUSIVE": begin, "PRAGMA foreign_keys = 0": restore}}
 	_, err = Apply(ctx, c, DialectSQLite, plans, now, nil)
 	if applyErr := (*ApplyError)(nil); !errors.As(err, &applyErr) || applyErr.Code != "locked" || !errors.Is(err, restore) {

@@ -51,16 +51,17 @@ async function wantCleanup(promise, failure, cleanup) {
   });
 }
 
-// Requirements: PLN-99.
+// Requirements: PLN-99, PLN-106. This case checks that the native AggregateError keeps the failure first and every cleanup error after it in order.
 vector('apply/cleanup-errors/release', async () => {
   const stop = new Error('stop');
+  const restore = new Error('restore failed');
   const release = new Error('release failed');
-  const db = failingSqlite(new Map([['PRAGMA locking_mode = normal', release]]));
+  const db = failingSqlite(new Map([['PRAGMA foreign_keys = 1', restore], ['PRAGMA locking_mode = normal', release]]));
   try {
     const events = event => {
       if (event.kind === 'applied') throw stop;
     };
-    await wantCleanup(applyPlans(db, 'sqlite', plans, fixedNow, events), e => e === stop, [release]);
+    await wantCleanup(applyPlans(db, 'sqlite', plans, fixedNow, events), e => e === stop, [restore, release]);
   } finally {
     db.close();
   }

@@ -2767,11 +2767,7 @@
       "id": "dbspec-apply-cleanup-errors",
       "kind": "feature",
       "requirements": [
-        "PLN-97",
-        "PLN-98",
-        "PLN-99",
-        "PLN-100",
-        "PLN-101"
+        "PLN-106"
       ],
       "bindings": [
         {
@@ -25457,6 +25453,101 @@
           "id": "was_inserted_postgres"
         }
       ]
+    },
+    {
+      "id": "dbspec-apply-cleanup-go",
+      "kind": "feature",
+      "requirements": [
+        "PLN-97"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/engine/dbspec/apply_test.go",
+          "id": "TestApplyReportsCleanupErrors"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-part",
+        "feature": "schema_definition",
+        "part": "owner/go"
+      }
+    },
+    {
+      "id": "dbspec-apply-cleanup-typescript",
+      "kind": "feature",
+      "requirements": [
+        "PLN-99"
+      ],
+      "bindings": [
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec-apply-cleanup.mjs",
+          "id": "apply/cleanup-errors/release"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-part",
+        "feature": "schema_definition",
+        "part": "owner/typescript"
+      }
+    },
+    {
+      "id": "dbspec-apply-cleanup-rust",
+      "kind": "feature",
+      "requirements": [
+        "PLN-100"
+      ],
+      "bindings": [
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/dbspec_apply_cleanup.rs",
+          "id": "apply_reports_cleanup_errors"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-part",
+        "feature": "schema_definition",
+        "part": "owner/rust"
+      }
+    },
+    {
+      "id": "dbspec-apply-cleanup-python",
+      "kind": "feature",
+      "requirements": [
+        "PLN-101"
+      ],
+      "bindings": [
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/dbspec_apply.py",
+          "id": "test_cleanup_failure_notes"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-part",
+        "feature": "schema_definition",
+        "part": "owner/python"
+      }
+    },
+    {
+      "id": "dbspec-apply-cleanup-php",
+      "kind": "feature",
+      "requirements": [
+        "PLN-98"
+      ],
+      "bindings": [
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecApplyCleanupTest.php",
+          "id": "DbspecApplyCleanupTest::testCleanupErrorsRelease"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-part",
+        "feature": "schema_definition",
+        "part": "owner/php"
+      }
     }
   ],
   "errors": {
