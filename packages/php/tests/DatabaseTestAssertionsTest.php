@@ -67,4 +67,33 @@ final class DatabaseTestAssertionsTest extends TestCase
             'probe',
         );
     }
+
+    public function testWarningStreamProtocolKeepsWrapperOperationsAndWarning(): void
+    {
+        $stream = new class {
+            use WarningStreamProtocol;
+
+            protected function warningMessage(): string
+            {
+                return 'protocol warning';
+            }
+        };
+        $openedPath = null;
+
+        self::assertTrue($stream->stream_open('source', 'r', 0, $openedPath));
+        self::assertFalse($stream->stream_eof());
+        self::assertSame([], $stream->stream_stat());
+
+        $warning = null;
+        set_error_handler(static function (int $severity, string $message) use (&$warning): bool {
+            $warning = [$severity, $message];
+            return true;
+        });
+        try {
+            self::assertFalse($stream->stream_read(1));
+        } finally {
+            restore_error_handler();
+        }
+        self::assertSame([E_USER_WARNING, 'protocol warning'], $warning);
+    }
 }

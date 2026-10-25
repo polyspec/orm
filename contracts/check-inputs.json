@@ -3384,7 +3384,8 @@
       "inputs": [
         "Makefile",
         "packages/php/tests/DatabaseTestAssertions.php",
-        "packages/php/tests/DatabaseTestAssertionsTest.php"
+        "packages/php/tests/DatabaseTestAssertionsTest.php",
+        "packages/php/tests/WarningStreamProtocol.php"
       ]
     },
     "native-api-equivalence-check": {

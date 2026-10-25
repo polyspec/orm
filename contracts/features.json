@@ -12520,8 +12520,15 @@
     },
     {
       "id": "php-database-test-assertions",
-      "paths": ["packages/php/tests/DatabaseTestAssertions.php"],
-      "tests": ["packages/php/tests/DatabaseTestAssertionsTest.php"],
+      "paths": [
+        "packages/php/tests/DatabaseTestAssertions.php",
+        "packages/php/tests/WarningStreamProtocol.php"
+      ],
+      "tests": [
+        "packages/php/tests/DatabaseTestAssertionsTest.php",
+        "packages/php-ext/tests/ModelReadNativeTest.php",
+        "packages/php-ext/tests/ModelStreamReadTest.php"
+      ],
       "command": "make --no-print-directory php-test-assertions-helper-check"
     },
     {

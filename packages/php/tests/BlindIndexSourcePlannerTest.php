@@ -89,6 +89,14 @@ DBSPEC;
         return $engine->compile($this->request($engine, $assignments, $nParams, $extra));
     }
 
+    private function compileBaseInsert(int $nParams, array $extra = []): array
+    {
+        return $this->compileInsert([
+            $this->assignment('id', 0),
+            $this->assignment('name', 1),
+        ], $nParams, $extra);
+    }
+
     public function testMultiRowIndexUsesTheAssignedSourceColumnPosition(): void
     {
         $plan = $this->compileInsert([
@@ -107,11 +115,7 @@ DBSPEC;
 
     public function testOrdinaryInsertControlHasNoBlindIndexSlots(): void
     {
-        $engine = $this->engine();
-        $plan = $engine->compile($this->request($engine, [
-            $this->assignment('id', 0),
-            $this->assignment('name', 1),
-        ], 2));
+        $plan = $this->compileBaseInsert(2);
         foreach ($plan['steps'][0]['bind_slots'] as $slot) {
             Assert::assertNotContains('blind_index', $slot['host_styles'] ?? []);
         }
@@ -172,17 +176,13 @@ DBSPEC;
 
     public function testExplicitTargetWinsInOnDuplicate(): void
     {
-        $engine = $this->engine();
-        $plan = $engine->compile($this->request($engine, [
-            $this->assignment('id', 0),
-            $this->assignment('name', 1),
-        ], 5, [
+        $plan = $this->compileBaseInsert(5, [
             'on_duplicate' => [
                 $this->assignment('email_a', 2),
                 $this->assignment('email_b', 3),
                 $this->assignment('hash', 4),
             ],
-        ]));
+        ]);
         Assert::assertSame(1, substr_count($plan['steps'][0]['sql'], '`hash`'));
     }
 }
