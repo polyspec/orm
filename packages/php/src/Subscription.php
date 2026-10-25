@@ -39,6 +39,7 @@ final class Subscription
         try {
             $row = $pdo->getNotify(\PDO::FETCH_ASSOC, (int) round($timeoutSeconds * 1000));
         } catch (\PDOException $e) {
+            $this->pdo = null;
             throw new OrmException(Code::CONNECTION_LOST, $e->getMessage(), $e);
         }
         if ($row === false) {
