@@ -19043,6 +19043,10 @@
     "exported": false,
     "signature": "func(err error) error"
   },
+  "packages/go/orm/db.go::mapDriverErrContext": {
+    "exported": false,
+    "signature": "func(err error, ctx context.Context) error"
+  },
   "packages/go/orm/db.go::mapMySQLErr": {
     "exported": false,
     "signature": "func(err error) error"
@@ -20575,6 +20579,18 @@
     "exported": false,
     "signature": "func(ctx context.Context, native string) (orm.ListenConn, error)"
   },
+  "packages/go/orm/pg/pg.go::configuredDriver": {
+    "exported": false,
+    "signature": "type configuredDriver struct{}"
+  },
+  "packages/go/orm/pg/pg.go::configuredDriver.Open": {
+    "exported": false,
+    "signature": "receiver=configuredDriver func(name string) (driver.Conn, error)"
+  },
+  "packages/go/orm/pg/pg.go::configuredDriver.OpenConnector": {
+    "exported": false,
+    "signature": "receiver=configuredDriver func(name string) (driver.Connector, error)"
+  },
   "packages/go/orm/pg/pg.go::init": {
     "exported": false,
     "signature": "func()"
@@ -20741,7 +20757,11 @@
   },
   "packages/go/orm/statements.go::observed": {
     "exported": false,
-    "signature": "type observed struct { r runner kind string tables func(sqlText string) []string start time.Time }"
+    "signature": "type observed struct { r runner kind string tables func(sqlText string) []string start time.Time ctx context.Context }"
+  },
+  "packages/go/orm/statements.go::observed#field.ctx": {
+    "exported": false,
+    "signature": "context.Context"
   },
   "packages/go/orm/statements.go::observed#field.kind": {
     "exported": false,

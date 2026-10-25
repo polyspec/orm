@@ -211,6 +211,10 @@
     "exported": true,
     "signature": "pub async fn table_page (\u0026 mut self , table : \u0026 TableRef , limit : usize , offset : u64) -\u003e Result \u003c TablePage , String \u003e"
   },
+  "packages/rust/build/src/catalog/mod.rs::catalog_query_error": {
+    "exported": false,
+    "signature": "pub (super) fn catalog_query_error (error : sqlx :: Error) -\u003e String"
+  },
   "packages/rust/build/src/catalog/mod.rs::finish_read_only": {
     "exported": false,
     "signature": " async fn finish_read_only \u003c T \u003e (connection : \u0026 mut Conn , result : Result \u003c T , String \u003e) -\u003e Result \u003c T , String \u003e"
@@ -379,21 +383,41 @@
     "exported": false,
     "signature": "{\"expression_depth\":\"integer\"}"
   },
+  "packages/rust/build/src/catalog/read_only.rs::ReadOnlyError": {
+    "exported": false,
+    "signature": "pub (super) struct ReadOnlyError  { cause : Option \u003c Box \u003c dyn std :: error :: Error + Send + Sync \u003e \u003e , }"
+  },
+  "packages/rust/build/src/catalog/read_only.rs::ReadOnlyError as std :: error :: Error::source": {
+    "exported": false,
+    "signature": " fn source (\u0026 self) -\u003e Option \u003c \u0026 (dyn std :: error :: Error + 'static) \u003e"
+  },
+  "packages/rust/build/src/catalog/read_only.rs::ReadOnlyError as std :: fmt :: Display::fmt": {
+    "exported": false,
+    "signature": " fn fmt (\u0026 self , formatter : \u0026 mut std :: fmt :: Formatter \u003c '_ \u003e) -\u003e std :: fmt :: Result"
+  },
+  "packages/rust/build/src/catalog/read_only.rs::ReadOnlyError#field.cause": {
+    "exported": false,
+    "signature": "Option \u003c Box \u003c dyn std :: error :: Error + Send + Sync \u003e \u003e"
+  },
+  "packages/rust/build/src/catalog/read_only.rs::ReadOnlyError#wire": {
+    "exported": false,
+    "signature": "{\"cause\":\"unsupported:dyn std :: error :: Error + Send + Sync\"}"
+  },
   "packages/rust/build/src/catalog/read_only.rs::body_allowed": {
     "exported": false,
     "signature": " fn body_allowed (body : \u0026 SetExpr) -\u003e bool"
   },
   "packages/rust/build/src/catalog/read_only.rs::error": {
     "exported": false,
-    "signature": " fn error () -\u003e String"
+    "signature": " fn error () -\u003e ReadOnlyError"
   },
   "packages/rust/build/src/catalog/read_only.rs::error_with": {
     "exported": false,
-    "signature": " fn error_with (error : impl std :: fmt :: Display) -\u003e String"
+    "signature": " fn error_with (error : impl std :: error :: Error + Send + Sync + 'static) -\u003e ReadOnlyError"
   },
   "packages/rust/build/src/catalog/read_only.rs::validate": {
     "exported": false,
-    "signature": "pub (super) fn validate (sql : \u0026 str , dialect : \u0026 str) -\u003e Result \u003c () , String \u003e"
+    "signature": "pub (super) fn validate (sql : \u0026 str , dialect : \u0026 str) -\u003e Result \u003c () , ReadOnlyError \u003e"
   },
   "packages/rust/build/src/catalog/row_delete.rs::CatalogConnection::delete_row": {
     "exported": true,
@@ -1527,6 +1551,10 @@
     "exported": true,
     "signature": "pub async fn grid_query_bounded (\u0026 mut self , sql : \u0026 str , params : \u0026 [P] , limits : QueryLimits) -\u003e Result \u003c GridQueryResult , sqlx :: Error \u003e"
   },
+  "packages/rust/build/src/tool_db.rs::Conn::grid_query_values_bounded": {
+    "exported": false,
+    "signature": "pub (crate) async fn grid_query_values_bounded (\u0026 mut self , sql : \u0026 str , params : \u0026 [P] , limits : QueryLimits) -\u003e Result \u003c GridQueryResult , sqlx :: Error \u003e"
+  },
   "packages/rust/build/src/tool_db.rs::Conn::mysql_insert": {
     "exported": false,
     "signature": "pub (crate) async fn mysql_insert (\u0026 mut self , sql : \u0026 str , params : \u0026 [P]) -\u003e Result \u003c (u64 , u64) , sqlx :: Error \u003e"
@@ -1542,6 +1570,14 @@
   "packages/rust/build/src/tool_db.rs::Conn::query_result_bounded": {
     "exported": true,
     "signature": "pub async fn query_result_bounded (\u0026 mut self , sql : \u0026 str , params : \u0026 [P] , limits : QueryLimits) -\u003e Result \u003c QueryResult , sqlx :: Error \u003e"
+  },
+  "packages/rust/build/src/tool_db.rs::Conn::query_result_values_bounded": {
+    "exported": false,
+    "signature": "pub (crate) async fn query_result_values_bounded (\u0026 mut self , sql : \u0026 str , params : \u0026 [P] , limits : QueryLimits) -\u003e Result \u003c QueryResult , sqlx :: Error \u003e"
+  },
+  "packages/rust/build/src/tool_db.rs::Conn::single_statement": {
+    "exported": false,
+    "signature": " fn single_statement \u003c B \u003e (\u0026 self , sql : \u0026 str , params : \u0026 [P] , budget : impl FnOnce () -\u003e Result \u003c B , sqlx :: Error \u003e) -\u003e Result \u003c (AssertSqlSafe \u003c String \u003e , B) , sqlx :: Error \u003e"
   },
   "packages/rust/build/src/tool_db.rs::Conn::validate_params": {
     "exported": false,
@@ -1739,6 +1775,14 @@
     "exported": false,
     "signature": "pub (super) fn new (limits : QueryLimits) -\u003e Result \u003c Self , sqlx :: Error \u003e"
   },
+  "packages/rust/build/src/tool_db/limits.rs::CellSize": {
+    "exported": false,
+    "signature": "pub (super) trait CellSize  : "
+  },
+  "packages/rust/build/src/tool_db/limits.rs::CellSize::size_bytes": {
+    "exported": false,
+    "signature": "fn size_bytes (\u0026 self) -\u003e usize"
+  },
   "packages/rust/build/src/tool_db/limits.rs::Counter": {
     "exported": false,
     "signature": " struct Counter  { bytes : usize , limit : usize , }"
@@ -1783,6 +1827,34 @@
     "exported": true,
     "signature": "{\"max_bytes\":\"integer\",\"max_rows\":\"integer\"}"
   },
+  "packages/rust/build/src/tool_db/limits.rs::ValueBudget": {
+    "exported": false,
+    "signature": "pub (super) struct ValueBudget  { limits : QueryLimits , bytes : usize , }"
+  },
+  "packages/rust/build/src/tool_db/limits.rs::ValueBudget#field.bytes": {
+    "exported": false,
+    "signature": "usize"
+  },
+  "packages/rust/build/src/tool_db/limits.rs::ValueBudget#field.limits": {
+    "exported": false,
+    "signature": "QueryLimits"
+  },
+  "packages/rust/build/src/tool_db/limits.rs::ValueBudget#wire": {
+    "exported": false,
+    "signature": "{\"bytes\":\"integer\",\"limits\":\"QueryLimits\"}"
+  },
+  "packages/rust/build/src/tool_db/limits.rs::ValueBudget::add_row": {
+    "exported": false,
+    "signature": "pub (super) fn add_row \u003c T : CellSize \u003e (\u0026 mut self , row : \u0026 [T] , _count : usize) -\u003e Result \u003c () , sqlx :: Error \u003e"
+  },
+  "packages/rust/build/src/tool_db/limits.rs::ValueBudget::check_row_count": {
+    "exported": false,
+    "signature": "pub (super) fn check_row_count (\u0026 self , count : usize) -\u003e Result \u003c () , sqlx :: Error \u003e"
+  },
+  "packages/rust/build/src/tool_db/limits.rs::ValueBudget::new": {
+    "exported": false,
+    "signature": "pub (super) fn new (limits : QueryLimits) -\u003e Result \u003c Self , sqlx :: Error \u003e"
+  },
   "packages/rust/build/src/tool_db/limits.rs::error": {
     "exported": false,
     "signature": " fn error () -\u003e sqlx :: Error"
@@ -1790,6 +1862,14 @@
   "packages/rust/build/src/tool_db/limits.rs::error_with": {
     "exported": false,
     "signature": " fn error_with (error : impl std :: fmt :: Display) -\u003e sqlx :: Error"
+  },
+  "packages/rust/build/src/tool_db/limits.rs::super :: GridCell as CellSize::size_bytes": {
+    "exported": true,
+    "signature": " fn size_bytes (\u0026 self) -\u003e usize"
+  },
+  "packages/rust/build/src/tool_db/limits.rs::super :: Val as CellSize::size_bytes": {
+    "exported": true,
+    "signature": " fn size_bytes (\u0026 self) -\u003e usize"
   },
   "packages/rust/build/src/tool_db/params.rs::P": {
     "exported": true,

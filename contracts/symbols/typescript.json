@@ -9627,6 +9627,10 @@
     "exported": false,
     "signature": "unknown"
   },
+  "packages/ts/src/listen.ts::PostgresListener#field.failure": {
+    "exported": false,
+    "signature": "OrmError | undefined"
+  },
   "packages/ts/src/listen.ts::PostgresListener#field.onFailure": {
     "exported": false,
     "signature": "(error: unknown) =\u003e OrmError"
