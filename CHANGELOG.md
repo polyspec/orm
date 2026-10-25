@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The PHP extension implements Dbspec\Meet as a native class; the focused native owner test `testDbspecMeetIsNative` passes (T182-6-19-3).
 - The PHP extension implements Config, Dialect, ParamCheck, TxFrame and DbState natively; `testConfigDialectAndFramesAreNative` passes on PHP 8.4.26 (T182-6-19-2).
 - The PHP extension implements Engine and Assemble in C; the focused native owner test `testEngineAndAssembleAreNative` passes on PHP 8.4.26 (T182-6-19-1).
 - The native `Orm::connectSchema` of the PHP extension opens a `markdown://` DSN through the markdown IR executor, as `Orm::connect` does, so a generated markdown model connects in extension mode; the native write case stops its fake markdown server when connect fails, and `make model-native-php-extension-check` ends again (T182-6-20).

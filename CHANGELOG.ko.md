@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 826de07dbb3e7e084b024970ccea3f3d5b7aac91ec690b6b5d9043ffff2fe7b7 -->
+<!-- source-sha256: 2fdd8b46fd6d20af4c611847bb2c50a8103853fdaef37981989bf9ae600b6f6d -->
 # 변경 이력
 
 ## Unreleased
 
+- PHP extension이 Dbspec\Meet을 native class로 구현한다. 집중 native owner test `testDbspecMeetIsNative`가 통과한다 (T182-6-19-3).
 - PHP extension이 Config, Dialect, ParamCheck, TxFrame, DbState를 native로 구현한다. PHP 8.4.26에서 `testConfigDialectAndFramesAreNative`가 통과한다 (T182-6-19-2).
 - PHP extension이 Engine과 Assemble을 C로 구현한다. PHP 8.4.26에서 집중 native owner test `testEngineAndAssembleAreNative`가 통과한다 (T182-6-19-1).
 - PHP extension의 native `Orm::connectSchema`는 `Orm::connect`처럼 `markdown://` DSN을 markdown IR executor로 연다. 그래서 생성된 markdown model이 extension mode에서 연결되고, native write case는 connect가 실패하면 fake markdown server를 멈추며, `make model-native-php-extension-check`가 다시 끝난다 (T182-6-20).
