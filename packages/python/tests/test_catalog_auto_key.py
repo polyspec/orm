@@ -3,14 +3,16 @@ import re
 import sqlite3
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from . import testcase
-from polyspec.orm import OrmError, connect_catalog
+from polyspec.orm import OrmError, codes, connect_catalog
 from polyspec.orm.catalog import (
     CatalogColumn,
     CatalogConnection,
     CatalogTableMetadata,
     _Raw,
+    _Session,
 )
 from polyspec.orm.database import parse_dsn
 
@@ -169,6 +171,56 @@ class CatalogAutoKeyTest(unittest.TestCase):
                     'SELECT "id", "payload" FROM "sample"', []
                 )
                 self.assertEqual(stored.rows, [[1, "generated"]])
+            finally:
+                catalog.close()
+
+    # Requirements: INT-65.
+    def test_sqlite_public_insert_reports_indeterminate_commit_cause(self):
+        with tempfile.TemporaryDirectory(
+            prefix="orm-catalog-commit-unknown-"
+        ) as directory:
+            path = os.path.join(directory, "catalog.sqlite3")
+            raw = sqlite3.connect(path)
+            try:
+                raw.execute(
+                    "CREATE TABLE sample (id INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL)"
+                )
+            finally:
+                raw.close()
+
+            catalog = connect_catalog(f"sqlite://{path}")
+            try:
+                metadata = catalog.describe_table(
+                    {"namespace": "main", "name": "sample"}
+                )
+                original_run = _Session.run
+
+                def fail_commit(
+                    session, sql, params=(), max_rows=None, max_bytes=None, grid=False
+                ):
+                    if sql == "COMMIT":
+                        raise sqlite3.OperationalError(
+                            "injected commit acknowledgement loss"
+                        )
+                    return original_run(session, sql, params, max_rows, max_bytes, grid)
+
+                with patch.object(_Session, "run", fail_commit):
+                    with self.assertRaises(OrmError) as raised:
+                        catalog.insert_row(metadata, [("payload", "uncertain")])
+
+                error = raised.exception
+                self.assertEqual(error.code, codes.ROW_COMMIT_INDETERMINATE)
+                self.assertIsInstance(error.cause, sqlite3.OperationalError)
+                self.assertEqual(
+                    str(error.cause), "injected commit acknowledgement loss"
+                )
+                self.assertIs(error.__cause__, error.cause)
+                self.assertEqual(
+                    catalog.read_only_query(
+                        'SELECT "id", "payload" FROM "sample"', []
+                    ).rows,
+                    [],
+                )
             finally:
                 catalog.close()
 

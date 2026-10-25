@@ -1247,16 +1247,16 @@ final class Catalog
         }
         // The outcome is unknown. Ending the server transaction is the discard of the connection that the Go client
         // does. Whether that ROLLBACK succeeds does not change the outcome, which is reported as unknown: a failed
-        // ROLLBACK is reported with it, as the cause of the indeterminate error.
+        // ROLLBACK is retained in the rollback property of the indeterminate error.
         $message = 'commit outcome unknown; do not retry: ' . $mapped->getMessage();
-        $cause = $mapped;
+        $rollback = null;
         try {
             $pdo->exec('ROLLBACK');
         } catch (\PDOException $rollbackFailure) {
-            $cause = $this->db->driverError($rollbackFailure);
-            $message .= '; rollback failed: ' . $cause->getMessage();
+            $rollback = $this->db->driverError($rollbackFailure);
+            $message .= '; rollback failed: ' . $rollback->getMessage();
         }
-        throw new OrmException(Code::ROW_COMMIT_INDETERMINATE, $message, $cause);
+        throw new OrmException(Code::ROW_COMMIT_INDETERMINATE, $message, $mapped, $rollback);
     }
 
     private static function beginSql(string $dialect, bool $readOnly): string

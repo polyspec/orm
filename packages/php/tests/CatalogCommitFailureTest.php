@@ -55,21 +55,25 @@ final class CatalogCommitFailureTest extends TestCase
                 return 0;
             }
         };
+        $commitError = new \PDOException('commit lost');
         try {
-            $this->commitFailed($pdo, new \PDOException('commit lost'));
+            $this->commitFailed($pdo, $commitError);
             self::fail('an unknown commit outcome was not reported');
         } catch (OrmException $e) {
             self::assertSame(Code::ROW_COMMIT_INDETERMINATE, $e->code_);
             self::assertStringNotContainsString('rollback failed', $e->getMessage());
             self::assertInstanceOf(OrmException::class, $e->getPrevious());
             self::assertStringContainsString('commit lost', $e->getPrevious()->getMessage());
+            self::assertSame($commitError, $e->getPrevious()->getPrevious());
+            self::assertNull($e->rollback);
         }
     }
 
     public function testFailedRollbackIsReportedAsTheCauseOfTheUnknownCommit(): void
     {
-        $pdo = new class extends \PDO {
-            public function __construct()
+        $rollbackError = new \PDOException('rollback refused');
+        $pdo = new class($rollbackError) extends \PDO {
+            public function __construct(private readonly \PDOException $rollbackError)
             {
                 parent::__construct('sqlite::memory:');
             }
@@ -77,20 +81,25 @@ final class CatalogCommitFailureTest extends TestCase
             public function exec(string $statement): int|false
             {
                 if ($statement === 'ROLLBACK') {
-                    throw new \PDOException('rollback refused');
+                    throw $this->rollbackError;
                 }
                 return 0;
             }
         };
+        $commitError = new \PDOException('commit lost');
         try {
-            $this->commitFailed($pdo, new \PDOException('commit lost'));
+            $this->commitFailed($pdo, $commitError);
             self::fail('a failed rollback after an unknown commit was not reported');
         } catch (OrmException $e) {
             self::assertSame(Code::ROW_COMMIT_INDETERMINATE, $e->code_);
             self::assertStringContainsString('commit outcome unknown; do not retry', $e->getMessage());
             self::assertStringContainsString('rollback failed', $e->getMessage());
             self::assertInstanceOf(OrmException::class, $e->getPrevious());
-            self::assertStringContainsString('rollback refused', $e->getPrevious()->getMessage());
+            self::assertStringContainsString('commit lost', $e->getPrevious()->getMessage());
+            self::assertSame($commitError, $e->getPrevious()->getPrevious());
+            self::assertInstanceOf(OrmException::class, $e->rollback);
+            self::assertStringContainsString('rollback refused', $e->rollback->getMessage());
+            self::assertSame($rollbackError, $e->rollback->getPrevious());
         }
     }
 }
