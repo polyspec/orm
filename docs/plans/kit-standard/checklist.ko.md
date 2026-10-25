@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 8cd1f57705283f154131ed26276ba9e770035773ebb79bc2d6fd65d5d2626a9e -->
+<!-- source-sha256: 2574de2040f28e89f7a885a2e59834fa5cc6ea870159988b50247ace6f6c71e8 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -265,3 +265,4 @@
 | KSTD-5-88 | main에서 `make runner-check`가 통과한다 (KSTD-5에 이어). Cause: main ae4b38d3f에서 runner-check 파일의 다섯 case가 실패한다. scripts/check/databases.mts의 drop case 둘은 KSTD-2-9-13-2이고, 의도된 변경이 바꾼 동작을 기대하는 세 case는 KSTD-5-88-1부터 KSTD-5-88-3이다 | scripts/check/continue.test.mts, scripts/check/run.test.mts, scripts/perf-test.mts | `make runner-check` | [ ] |
 | KSTD-5-88-1 | 성능 gate 계속 실행 case가 scripts/perf-test.mts의 다섯 command를 기대한다 (KSTD-5-88에 이어). Cause: f2e8c6feb가 Go TestCoveragePerformanceGate step을 더해 script가 Go gate 셋과 CPU 부하 없이와 부하 아래의 PerfGateTest를 실행한다. case는 아직 넷을 세어 5 !== 4로 실패하고, script와 case의 comment도 넷이라고 적는다 | scripts/check/continue.test.mts, scripts/perf-test.mts | `node --test --test-name-pattern='the performance gates run every gate' scripts/check/continue.test.mts` | [ ] |
 | KSTD-5-88-2 | client-db-test의 lane 이름 case가 config/parity.json의 lane을 기대한다 (KSTD-5-88에 이어). Cause: e2b543b51과 fb80ef7c1이 lane을 선언된 implementation인 go, php, php-extension, typescript, python, rust에서 읽고 쉼표로 나열한다. case는 아직 `go, php, typescript and rust`를 기대한다 | scripts/check/continue.test.mts | `node --test --test-name-pattern='client-db-test refuses an unknown lane name' scripts/check/continue.test.mts` | [ ] |
+| KSTD-5-88-3 | make -k case가 Makefile의 RUN_TESTS로 version-check를 실행한다 (KSTD-5-88에 이어). Cause: 9c891d3ca가 version-check/unit을 kit의 run-tests인 $(RUN_TESTS)로 실행한다. case는 recipe만 임시 Makefile에 옮겨 RUN_TESTS가 비어 있으므로 recipe가 `node -- scripts/version/check.test.mts`를 실행했고, case는 아직 `--test scripts/version/check.test.mts`를 기대한다 | scripts/check/run.test.mts | `node --test --test-name-pattern='the parts of a target after a failed part still run under make -k' scripts/check/run.test.mts` | [ ] |
