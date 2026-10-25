@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: bc796a4ed743736aeffd2849c62f6bf13b620233e8b610c96026a98df878d34d -->
+<!-- source-sha256: 59ff3c3cdd6bea09d8da2bf4e5a9b30fb88689eb77f24eccf3490c9f44146fca -->
 # 변경 이력
 
 ## Unreleased
+
+- KSTD-7-1: PHP extension이 schema install, model generation, interface contract를 구현한다. PHP 8.4.26에서 schema-install owner의 existing, partial, external-document case가 MySQL, PostgreSQL, SQLite 각각 두 번씩 (DB case 18회) 통과했고, database별 before/after state digest가 모두 같았다. Model-generation 및 interface-symbol native owner case도 각각 두 번 통과했다. 수정된 PHP scan 경로 owner case(1/1)를 포함해 feature-unit-check 구성 검사도 통과했다.
 
 - T182-6-19을 main 8c28c87b3에서 완료했다. PHP 8.4.26 `make model-native-php-extension-check`가 native 97 tests / 1,348 assertions, declaration 3 tests / 8 assertions, PHP library 5 tests / 48 assertions로 통과했고 `--without-library packages/php` guard도 통과했다. fake Flowmark protocol 경로를 검증했으며 실제 Flowmark server나 MySQL/PostgreSQL/SQLite 3 DB feature matrix는 실행하지 않았다.
 
