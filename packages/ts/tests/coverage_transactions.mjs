@@ -22,7 +22,7 @@ async function withTenant({ driver, dsn }, body) {
 const exists = async (db, account) => await new CompositeAccount().connect(db).tenantId(tenant).andAccountId(account).getCount() === 1;
 
 await runCases('coverage_transactions.mjs', {
-  // Requirements: DSL-118, INT-45, INT-67, PLN-13, PLN-20.
+  // Requirements: DSL-118, INT-45, INT-67, PLN-13, PLN-20, PLN-44.
   async transaction_rollback(item) {
     await withTenant(item, async db => {
       const boom = new Error('rollback requested by the callback');
@@ -52,7 +52,7 @@ await runCases('coverage_transactions.mjs', {
     });
   },
 
-  // Requirements: DSL-119, INT-40, INT-41, INT-42, INT-43, INT-45, INT-46, INT-47, INT-48, PLN-17.
+  // Requirements: DSL-119, INT-40, INT-41, INT-42, INT-43, INT-45, INT-46, INT-47, INT-48, PLN-17, PLN-44.
   async transaction_savepoint(item) {
     await withTenant(item, async db => {
       const boom = new Error('inner transaction failed');

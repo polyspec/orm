@@ -1753,6 +1753,7 @@ fn missing_output_column(c: &Core, name: &str) -> Error {
 
 // The shared cases of contracts/fixtures/insert_parts.json, one test for each case named by its id: every client splits
 // the same row count into the same parts.
+// Requirements: PLN-44.
 #[cfg(test)]
 mod insert_parts_cases {
     use super::insert_parts;

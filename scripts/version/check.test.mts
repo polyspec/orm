@@ -19,7 +19,9 @@ async function copyDeclarations() {
   return dir;
 }
 
-caseTest('the repository declares one version', COMPUTE, async () => {
+// Requirements: PLN-5. This is the current design-plan version, not merely agreement among declarations.
+caseTest('PLN-5 pins the product version to 0.0.18', COMPUTE, async () => {
+  assert.equal((await readFile(join(root, 'VERSION'), 'utf8')).trim(), '0.0.18');
   assert.deepEqual(await versionErrors(root), []);
 });
 

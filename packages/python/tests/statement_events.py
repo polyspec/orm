@@ -206,3 +206,4 @@ def load_tests(
 
 if __name__ == "__main__":
     testcase.main()
+"""Requirements: PLN-44. This owner compares the SQL and bind output of each statement event."""

@@ -10,6 +10,8 @@
 // packages/php/tests/StatementEventsTest.php [--filter <method or data set>]
 declare(strict_types=1);
 
+// Requirements: PLN-44.
+
 namespace Polyspec\Orm\Tests;
 
 use PHPUnit\Framework\Attributes\DataProvider;

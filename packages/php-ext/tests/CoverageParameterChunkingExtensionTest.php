@@ -16,6 +16,7 @@ use ReflectionClass;
 #[Medium]
 final class CoverageParameterChunkingExtensionTest extends TestCase
 {
+    // Requirements: PLN-44.
     // PRT-76: split IN lists, duplicate removal, and unmergeable page rejection.
     // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- feature IDs require the test method to preserve underscores.
     public function test_root_in_chunking(): void

@@ -3,6 +3,7 @@
 // The shared cases of contracts/fixtures/insert_parts.json, each a data set named by its id: Db::insertParts splits the
 // rows of the case into the parts of its driver and column count (docs/spec/protocol.md "Multi-row inserts").
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/InsertPartsTest.php
+// Requirements: PLN-44.
 declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;

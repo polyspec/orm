@@ -20,7 +20,7 @@ table coverage_install_missing {
 }
 ";
 
-// Requirements: SCH-7, DBS-108.
+// Requirements: SCH-7, DBS-108, PLN-44.
 #[tokio::test]
 async fn coverage_schema_install_existing() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -32,7 +32,7 @@ async fn coverage_schema_install_existing() {
     .await;
 }
 
-// Requirements: SCH-10, DBS-108.
+// Requirements: SCH-10, DBS-108, PLN-44.
 #[tokio::test]
 async fn coverage_schema_install_partial() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -95,7 +95,7 @@ fn external_schema(external: &str) -> &'static polyspec_orm::Schema {
 
 /// Checks whether installing a set that uses an external document confirms the external table in the database. If an external document's column is not in the database,
 /// the install fails with CONFIG and does not create the tables it owns. Registration does not read the database, so it connects with that set too.
-// Requirements: DBS-107, SCH-7, SCH-11.
+// Requirements: DBS-107, SCH-7, SCH-11, PLN-44.
 #[tokio::test]
 async fn coverage_schema_install_external_documents() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);

@@ -3962,7 +3962,8 @@
         "DSL-118",
         "INT-45",
         "PLN-13",
-        "PLN-20"
+        "PLN-20",
+        "PLN-44"
       ],
       "bindings": [
         {
@@ -4131,7 +4132,8 @@
         "INT-46",
         "INT-47",
         "INT-48",
-        "PLN-17"
+        "PLN-17",
+        "PLN-44"
       ],
       "bindings": [
         {
@@ -7967,7 +7969,8 @@
       "id": "statement-events",
       "kind": "suite",
       "requirements": [
-        "INT-91"
+        "INT-91",
+        "PLN-44"
       ],
       "file": "tests/events/vectors.json",
       "cases": "$.cases[*].id",
@@ -8130,7 +8133,8 @@
       "id": "insert-parts",
       "kind": "suite",
       "requirements": [
-        "PRT-41"
+        "PRT-41",
+        "PLN-44"
       ],
       "file": "contracts/fixtures/insert_parts.json",
       "cases": "$.cases[*].id",
@@ -18960,7 +18964,7 @@
       "bindings": [
         {
           "implementation": "php",
-          "test": "packages/php/tests/OrmGenScanTest.php",
+          "test": "packages/php-gen/tests/OrmGenScanTest.php",
           "id": "OrmGenScanTest::testTheReceiverIsResolvedFromTheSource"
         },
         {
@@ -20523,7 +20527,8 @@
       "kind": "feature",
       "requirements": [
         "DBS-108",
-        "SCH-7"
+        "SCH-7",
+        "PLN-44"
       ],
       "bindings": [
         {
@@ -20586,7 +20591,8 @@
       "kind": "feature",
       "requirements": [
         "DBS-108",
-        "SCH-10"
+        "SCH-10",
+        "PLN-44"
       ],
       "bindings": [
         {
@@ -20649,7 +20655,8 @@
       "kind": "feature",
       "requirements": [
         "DBS-107",
-        "SCH-7"
+        "SCH-7",
+        "PLN-44"
       ],
       "bindings": [
         {
@@ -20817,7 +20824,8 @@
       "id": "coverage-parameter-chunking-root-in-chunking",
       "kind": "feature",
       "requirements": [
-        "PRT-76"
+        "PRT-76",
+        "PLN-44"
       ],
       "bindings": [
         {
@@ -22436,6 +22444,117 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/replica.rs",
           "id": "primary_and_replica_postgres"
+        }
+      ]
+    },
+    {
+      "id": "model-construction-connection-rust",
+      "kind": "feature",
+      "requirements": [
+        "PLN-31"
+      ],
+      "bindings": [
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/src/integration.rs",
+          "id": "primary_and_replica"
+        }
+      ]
+    },
+    {
+      "id": "model-construction-connection-typescript",
+      "kind": "feature",
+      "requirements": [
+        "PLN-32"
+      ],
+      "bindings": [
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/replica.mjs",
+          "id": "replica/primary_and_replica/mysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/replica.mjs",
+          "id": "replica/primary_and_replica/postgres"
+        }
+      ]
+    },
+    {
+      "id": "model-construction-connection-python",
+      "kind": "feature",
+      "requirements": [
+        "PLN-33"
+      ],
+      "bindings": [
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/replica.py",
+          "id": "test_primary_and_replica_mysql"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/replica.py",
+          "id": "test_primary_and_replica_postgres"
+        }
+      ]
+    },
+    {
+      "id": "model-connection-and-join-methods",
+      "kind": "feature",
+      "requirements": [
+        "PLN-35"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/model_test.go",
+          "id": "TestJoinsAndRelations"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testJoinsAndRelations"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testPrimaryAndReplica"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelDslNativeTest.php",
+          "id": "ModelDslNativeTest::testGroupAndJoinCallbacksUseNativeInvocationPaths"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testPrimaryAndReplica"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_model_queries.mjs",
+          "id": "model_query_rows [sqlite]"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/replica.mjs",
+          "id": "replica/primary_and_replica/mysql"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_model_fields.py",
+          "id": "test_on_sets_join_condition_and_connect_attaches_database"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/src/integration.rs",
+          "id": "joins_and_relations"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/src/integration.rs",
+          "id": "primary_and_replica"
         }
       ]
     }

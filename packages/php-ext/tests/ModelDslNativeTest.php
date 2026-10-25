@@ -60,6 +60,7 @@ final class ModelDslNativeTest extends TestCase
         }
     }
 
+    // Requirements: PLN-35.
     public function testGroupAndJoinCallbacksUseNativeInvocationPaths(): void
     {
         $model = new DslFixture();

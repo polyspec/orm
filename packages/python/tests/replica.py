@@ -145,7 +145,7 @@ class ReplicaTest(unittest.TestCase):
                 slave1.close()
                 master.close()
 
-    # Requirements: CFG-21, CFG-22, CFG-23, CFG-25.
+    # Requirements: CFG-21, CFG-22, CFG-23, CFG-25, PLN-33, PLN-35.
     def test_primary_and_replica_mysql(self):
         self.primary_and_replica("mysql")
 

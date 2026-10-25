@@ -5,6 +5,7 @@
 //! holds sql, binds, kind, tables, and transaction (a number recounted from 1 in the order first seen within the case,
 //! null outside a transaction), and error (the code of the statement error, or null if none). compare
 //! "tables" compares only events that have tables. elapsed is a `Duration`, so it cannot be negative.
+//! Requirements: PLN-44.
 
 #[macro_use]
 #[path = "common/model_row.rs"]

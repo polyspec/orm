@@ -237,6 +237,7 @@ async fn conditions(t: &Target) {
     assert_eq!(code(Author::new().name("alpha").gets().await), "CONFIG", "no connection");
 }
 
+// Requirements: PLN-35.
 async fn joins_and_relations(t: &Target) {
     let db = &t.db;
     let f = seed(db).await;
@@ -513,6 +514,7 @@ async fn await_replica(primary: &Db, replica: &Db) {
 /// Opens a connection to the primary and one to its replica side by side. A
 /// model uses the connection it is connected to and no other, and a model
 /// without a connection inside a transaction uses the transaction.
+// Requirements: PLN-31, PLN-35.
 async fn primary_and_replica(t: &Target, replica_base: &str) {
     let master = &t.db;
     // Waits, through the replica's existing database connection, until the replica receives the case database and the installed table.

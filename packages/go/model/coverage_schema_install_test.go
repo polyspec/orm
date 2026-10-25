@@ -15,7 +15,7 @@ import (
 // TestCoverageSchemaInstallExisting checks that the bench manifest contained in the generated model
 // installs successfully and changes nothing when reinstalled into a database
 // where it is already installed.
-// Requirements: SCH-7, DBS-108.
+// Requirements: SCH-7, DBS-108, PLN-44.
 func TestCoverageSchemaInstallExisting(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	db, _, _ := connectFeature(t)
@@ -45,7 +45,7 @@ table coverage_install_missing {
 
 // TestCoverageSchemaInstallPartial checks that installing a document set with only some of its tables
 // is CONFIG and does not create the missing tables.
-// Requirements: SCH-10, DBS-108.
+// Requirements: SCH-10, DBS-108, PLN-44.
 func TestCoverageSchemaInstallPartial(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	db, driver, dsn := connectFeature(t)
@@ -93,7 +93,7 @@ table coverage_external_post {
 // sees the external table in the database. If it is the same table, it links; if an external document's column
 // is not in the database, the install is CONFIG and does not create the table it owns. Registration does not
 // read the database, so it links with that set too.
-// Requirements: DBS-107, SCH-7.
+// Requirements: DBS-107, SCH-7, PLN-44.
 func TestCoverageSchemaInstallExternalDocuments(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	db, driver, dsn := connectFeature(t)

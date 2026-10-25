@@ -39,7 +39,7 @@ func accountExists(t *testing.T, db *orm.DB, tenant, account int64) bool {
 
 // TestCoverageTransactionRollback checks that a transaction whose callback returns an error
 // passes that error to the caller and rolls back the callback's writes.
-// Requirements: DSL-118, INT-45, PLN-13, PLN-20.
+// Requirements: DSL-118, INT-45, PLN-13, PLN-20, PLN-44.
 func TestCoverageTransactionRollback(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	db, _, _ := connectFeature(t)
@@ -61,7 +61,7 @@ func TestCoverageTransactionRollback(t *testing.T) {
 
 // TestCoverageTransactionSavepoint checks that a failed nested transaction rolls back only to its savepoint
 // and the outer transaction is committed.
-// Requirements: DSL-119, INT-40, INT-41, INT-42, INT-43, INT-45, INT-46, INT-47, INT-48, PLN-17.
+// Requirements: DSL-119, INT-40, INT-41, INT-42, INT-43, INT-45, INT-46, INT-47, INT-48, PLN-17, PLN-44.
 func TestCoverageTransactionSavepoint(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	db, driver, _ := connectFeature(t)

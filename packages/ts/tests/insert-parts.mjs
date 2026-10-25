@@ -1,5 +1,6 @@
 // The shared cases of contracts/fixtures/insert_parts.json, each one top-level test named by its id: insertParts splits
 // the rows of the case into the parts of its driver and column count (docs/spec/protocol.md "Multi-row inserts").
+// Requirements: PLN-44.
 import { readFile } from 'node:fs/promises';
 import { insertParts } from '../dist/model.js';
 import { check } from './codec_case.mjs';

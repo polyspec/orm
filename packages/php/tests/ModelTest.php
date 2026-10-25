@@ -1245,7 +1245,7 @@ final class ModelTest extends TestCase
     // model uses the connection it is connected to and no other, and a model
     // without a connection inside a transaction uses the transaction.
     #[DataProvider('serverDrivers')]
-    // Requirements: CFG-21, CFG-22, CFG-23, CFG-25.
+    // Requirements: CFG-21, CFG-22, CFG-23, CFG-25, PLN-35.
     public function testPrimaryAndReplica(string $driver): void
     {
         $env = strtoupper($driver);
@@ -1470,7 +1470,7 @@ final class ModelTest extends TestCase
 
     // joins and relations
     // Requirements: DBS-118, CPX-1.
-    // Requirements: PLN-10, PLN-41, PLN-42, PLN-43.
+    // Requirements: PLN-10, PLN-35, PLN-41, PLN-42, PLN-43.
     #[DataProvider('drivers')]
     public function testJoinsAndRelations(string $driver): void
     {

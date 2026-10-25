@@ -29,7 +29,7 @@ def root_in_chunking(item):
 
 
 class CoverageTest(CoverageCase):
-    # Requirements: PRT-40.
+    # Requirements: PRT-40, PLN-44.
     def test_root_in_chunking(self):
         self.each_item("root_in_chunking", root_in_chunking)
 

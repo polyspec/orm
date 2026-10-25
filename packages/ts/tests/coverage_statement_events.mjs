@@ -1,6 +1,7 @@
 // statement_events coverage: on the database that feature-check chose (ORM_FEATURE_DATABASE),
 // every case of tests/events/vectors.json runs in a new case database (case-database.mjs), and each
 // event is compared with the expected event. The bench database is not read or written. The output is only the lines of the passing cases.
+// Requirements: PLN-44.
 // When run without a case ID (the parity check's node --test), a test with that ID is registered for each case of vectors.json,
 // and each runs that case in a new case database on MySQL, PostgreSQL, and SQLite.
 import { DATABASE } from '../../../tests/testcase.mts';

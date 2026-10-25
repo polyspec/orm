@@ -5,7 +5,7 @@ import { Author, ServiceMember, User, connect } from '../dist/index.js';
 import { runCases } from './coverage_case.mjs';
 
 await runCases('coverage_model_queries.mjs', {
-  // Requirements: DSL-57, DSL-58, DSL-60, DSL-62, DSL-80, DSL-82, DSL-99, INT-16, INT-29, INT-30, INT-32, INT-33, PLN-11, PLN-25.
+  // Requirements: DSL-57, DSL-58, DSL-60, DSL-62, DSL-80, DSL-82, DSL-99, INT-16, INT-29, INT-30, INT-32, INT-33, PLN-11, PLN-25, PLN-35.
   async model_query_rows({ driver, dsn }) {
     const db = await connect(dsn, { aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index' });
     try {
@@ -23,7 +23,7 @@ await runCases('coverage_model_queries.mjs', {
       const unsubscribe = db.subscribe(event => { if (event.kind === 'select') joinSQL = event.sql; });
       const joined = await new Author().connect(db)
         .joinServiceMemberSeqWithSeq(new ServiceMember().forceIndexIxServiceMemberService())
-        .joinUserSeqWithSeq(new User()
+        .joinUserSeqWithSeq(new User().on(user => user.neName('nobody'))
           .addColumnReadTotal(user => new Author().sumReadCount().userSeqEqSeq(user))
           .orderBySeqDesc())
         .gets();

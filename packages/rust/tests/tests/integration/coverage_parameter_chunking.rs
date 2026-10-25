@@ -4,6 +4,7 @@ use super::coverage_env::{code, connect, run};
 use super::model::Author;
 
 #[tokio::test]
+// Requirements: PLN-44.
 // PRT-76: a root IN list longer than the bind limit is split into chunks, and a limit on the split list fails with IR_INVALID.
 async fn coverage_root_in_chunking() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);

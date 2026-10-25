@@ -364,11 +364,11 @@ def handle_abandoned_query(item):
 
 
 class CoverageTest(CoverageCase):
-    # Requirements: DSL-118, INT-45, INT-67, PLN-13, PLN-20.
+    # Requirements: DSL-118, INT-45, INT-67, PLN-13, PLN-20, PLN-44.
     def test_transaction_rollback(self):
         self.each_item("transaction_rollback", transaction_rollback)
 
-    # Requirements: DSL-119, INT-40, INT-41, INT-42, INT-43, INT-45, INT-46, INT-47, INT-48, PLN-17.
+    # Requirements: DSL-119, INT-40, INT-41, INT-42, INT-43, INT-45, INT-46, INT-47, INT-48, PLN-17, PLN-44.
     def test_transaction_savepoint(self):
         self.each_item("transaction_savepoint", transaction_savepoint)
 

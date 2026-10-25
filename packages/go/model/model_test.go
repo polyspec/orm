@@ -217,7 +217,7 @@ func TestGetMissingReturnsNil(t *testing.T) {
 	}
 }
 
-// Requirements: PLN-10, PLN-41, PLN-42, PLN-43.
+// Requirements: PLN-10, PLN-35, PLN-41, PLN-42, PLN-43.
 func TestJoinsAndRelations(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	each(t, func(t *testing.T, db *orm.DB) {

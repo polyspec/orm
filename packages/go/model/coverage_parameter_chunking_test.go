@@ -10,6 +10,7 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
+// Requirements: PLN-44.
 // PRT-76: TestCoverageRootInChunking checks that a root IN list exceeding every driver's bind limit
 // runs in chunks, counts duplicate values only once, and rejects a limit whose split changes the merged result
 // with IR_INVALID.

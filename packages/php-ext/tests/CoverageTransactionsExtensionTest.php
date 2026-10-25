@@ -14,6 +14,7 @@ use ReflectionMethod;
 #[Medium]
 final class CoverageTransactionsExtensionTest extends CoverageTransactionsTest
 {
+    // Requirements: PLN-44. The inherited rollback and savepoint cases run with the native Db.
     // Requirements: INT-40, INT-41, INT-42, INT-43, INT-47, INT-48. The inherited exact savepoint selector runs against the native Db.
     // Requirements: PLN-19.
     public function testNativeMethodsAreInternal(): void

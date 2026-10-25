@@ -4,7 +4,7 @@
 // through the replica or to the read-only file returns READ_ONLY. Each case runs on a case database of its own on the
 // servers of ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN, whose replicas ORM_TEST_MYSQL_REPLICA_DSN and
 // ORM_TEST_POSTGRES_REPLICA_DSN name, or a new SQLite file (case-database.mjs); a missing variable fails the case.
-// Requirements: CFG-21, CFG-22, CFG-23, CFG-24, CFG-25.
+// Requirements: CFG-21, CFG-22, CFG-23, CFG-24, CFG-25, PLN-32, PLN-35.
 //
 // Usage: node packages/ts/tests/replica.mjs (after npm run typescript:build)
 import { chmod } from 'node:fs/promises';

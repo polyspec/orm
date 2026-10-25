@@ -14,7 +14,7 @@ fn is_failure(r: &polyspec_orm::Result<()>, message: &str) -> bool {
 }
 
 #[tokio::test]
-// Requirements: DSL-118, INT-45, PLN-13, PLN-20.
+// Requirements: DSL-118, INT-45, PLN-13, PLN-20, PLN-44.
 async fn coverage_transaction_rollback() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     run("transaction_rollback", async {
@@ -34,7 +34,7 @@ async fn coverage_transaction_rollback() {
 }
 
 #[tokio::test]
-// Requirements: DSL-119, INT-40, INT-41, INT-42, INT-43, INT-45, INT-46, INT-47, INT-48, PLN-17.
+// Requirements: DSL-119, INT-40, INT-41, INT-42, INT-43, INT-45, INT-46, INT-47, INT-48, PLN-17, PLN-44.
 async fn coverage_transaction_savepoint() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     run("transaction_savepoint", async {

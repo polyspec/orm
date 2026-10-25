@@ -115,6 +115,7 @@ func TestShapeIgnoresParamValues(t *testing.T) {
 
 // TestInsertPartsFixture checks that the row count of each shared case in contracts/fixtures/insert_parts.json
 // divides into the same batches as its batch size (docs/spec/protocol.md multi-row insert).
+// Requirements: PLN-44.
 func TestInsertPartsFixture(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	text, err := os.ReadFile(filepath.Join("..", "..", "..", "contracts", "fixtures", "insert_parts.json"))

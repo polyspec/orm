@@ -59,6 +59,14 @@ class ModelFieldsTest(unittest.TestCase):
         ):
             author.get_name()
 
+    # Requirements: PLN-35.
+    def test_on_sets_join_condition_and_connect_attaches_database(self):
+        author = models.Author().on(lambda query: query.ne_name("nobody"))
+        self.assertTrue(author.core.on.items, "on stores the join condition")
+        database = object()
+        self.assertIs(author.connect(database), author, "connect returns the model")
+        self.assertIs(author.core.conn, database, "connect attaches the selected database")
+
 
 if __name__ == "__main__":
     testcase.main()

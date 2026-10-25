@@ -40,7 +40,7 @@ DBSPEC;
 #[Medium]
 final class CoverageSchemaInstallNativeTest extends TestCase
 {
-    // Requirements: DBS-108, SCH-7.
+    // Requirements: DBS-108, SCH-7, PLN-44.
     public function testSchemaInstallExisting(): void
     {
         self::forEachCoverageDatabase(static function ($db): void {
@@ -49,7 +49,7 @@ final class CoverageSchemaInstallNativeTest extends TestCase
         });
     }
 
-    // Requirements: DBS-108, SCH-10.
+    // Requirements: DBS-108, SCH-10, PLN-44.
     public function testSchemaInstallPartial(): void
     {
         self::forEachCoverageDatabase(static function ($db): void {
@@ -82,7 +82,7 @@ DBSPEC,
         });
     }
 
-    // Requirements: DBS-107, SCH-7.
+    // Requirements: DBS-107, SCH-7, PLN-44.
     public function testSchemaInstallExternalDocuments(): void
     {
         self::forEachCoverageDatabase(static function ($db): void {
