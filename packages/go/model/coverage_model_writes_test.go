@@ -3,8 +3,8 @@
 package model_test
 
 import (
+	"errors"
 	"fmt"
-	"os"
 	"slices"
 	"testing"
 
@@ -77,79 +77,124 @@ func TestCoverageModelWriteCycle(t *testing.T) {
 	}
 }
 
-// TestCoverageModelArithmeticAttributes checks bound plus/minus assignments, the zero clamp, and that update clears
-// the pending assignment after it is written. The scratch composite_account row is removed before leaving.
+// TestCoverageModelArithmeticAttributes checks bound arithmetic on seeded Author.read_count, cleared assignments, and transaction rollback of row state.
 // Requirements: PLN-26.
 func TestCoverageModelArithmeticAttributes(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	db, _, _ := connectFeature(t)
-	tenant := int64(1_000_000_000_000 + os.Getpid())
-	account := func() *model.CompositeAccountModel { return model.CompositeAccount().Connect(db) }
-	if n := must(account().TenantId(tenant).GetCount()); n != 0 {
-		t.Fatalf("scratch tenant %d already has %d rows", tenant, n)
+	author := func() *model.AuthorModel { return model.Author().Connect(db) }
+	before := must(author().AddAllColumns().GetBySeq(1))
+	beforeReadCount := readColumn(t, before.GetReadCount)
+	beforeUpdatedTs := readColumn(t, before.GetUpdatedTs)
+	if beforeReadCount != 1 {
+		t.Fatalf("seed author 1 read_count = %d, want 1", beforeReadCount)
 	}
-	t.Cleanup(func() { removeTenantAccounts(t, db, tenant) })
-	if _, err := account().SetTenantId(tenant).SetAccountId(1).SetName("arithmetic").Create(); err != nil {
-		t.Fatal(err)
-	}
-	loaded := must(account().GetByTenantIdAndAccountId(tenant, 1))
+	boom := errors.New("PLN-26 rollback sentinel")
 	recorder := testcase.NewEventRecorder[orm.StatementEvent]()
-	unsubscribe, err := db.Subscribe(recorder.Record)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer unsubscribe()
-	hasBind := func(want int64) bool {
+	err := db.Transaction(func() error {
+		loaded, err := author().AddAllColumns().GetBySeq(1)
+		if err != nil {
+			return err
+		}
+		if loaded == nil {
+			return errors.New("seed author 1 is missing")
+		}
+		if _, err := loaded.SetReadCount(1).Update(); err != nil {
+			return err
+		}
+		unsubscribe, err := db.Subscribe(recorder.Record)
+		if err != nil {
+			return err
+		}
+		defer unsubscribe()
+		loaded, err = author().AddAllColumns().GetBySeq(1)
+		if err != nil {
+			return err
+		}
+		if loaded == nil {
+			return errors.New("seed author 1 disappeared after setting read_count")
+		}
+		if _, err := loaded.PlusReadCount(7).Update(); err != nil {
+			return err
+		}
+		updated, err := author().AddAllColumns().GetBySeq(1)
+		if err != nil {
+			return err
+		}
+		if updated == nil {
+			return errors.New("seed author 1 disappeared after plus")
+		}
+		plusValue, err := updated.GetReadCount()
+		if err != nil {
+			return err
+		}
+		if plusValue != 8 {
+			return fmt.Errorf("read_count after plus = %d, want 8", plusValue)
+		}
+		if _, err := loaded.Update(); err != nil {
+			return err
+		}
+		updates := 0
+		foundPlus := false
 		for _, event := range recorder.Events() {
-			if event.Kind != orm.KindUpdate || !slices.Contains(event.Tables, "composite_account") {
+			if event.Kind != orm.KindUpdate || !slices.Contains(event.Tables, "author") {
 				continue
 			}
+			updates++
 			for _, bind := range event.Binds {
-				if fmt.Sprint(bind) == fmt.Sprint(want) {
-					return true
-				}
+				foundPlus = foundPlus || fmt.Sprint(bind) == "7"
 			}
 		}
-		return false
-	}
-	if _, err := loaded.PlusAccountId(7).Update(); err != nil {
-		t.Fatal(err)
-	}
-	if got := readColumn(t, must(account().GetByTenantIdAndAccountId(tenant, 8)).GetName); got != "arithmetic" {
-		t.Fatalf("row after plus = %q, want arithmetic", got)
-	}
-	if !hasBind(7) {
-		t.Fatalf("plus amount is not present in update binds: %#v", recorder.Events())
-	}
-	if _, err := loaded.Update(); err != nil {
-		t.Fatal(err)
-	}
-	updates := 0
-	for _, event := range recorder.Events() {
-		if event.Kind == orm.KindUpdate && slices.Contains(event.Tables, "composite_account") {
-			updates++
+		if updates != 1 {
+			return fmt.Errorf("author updates after repeating a completed write = %d, want 1", updates)
 		}
+		if !foundPlus {
+			return fmt.Errorf("plus amount 7 is absent from update binds: %#v", recorder.Events())
+		}
+		current, err := author().AddAllColumns().GetBySeq(1)
+		if err != nil {
+			return err
+		}
+		if current == nil {
+			return errors.New("seed author 1 disappeared before minus")
+		}
+		if _, err := current.MinusReadCount(9).Update(); err != nil {
+			return err
+		}
+		updated, err = author().AddAllColumns().GetBySeq(1)
+		if err != nil {
+			return err
+		}
+		if updated == nil {
+			return errors.New("seed author 1 disappeared after minus")
+		}
+		minusValue, err := updated.GetReadCount()
+		if err != nil {
+			return err
+		}
+		if minusValue != 0 {
+			return fmt.Errorf("read_count after minus = %d, want zero clamp", minusValue)
+		}
+		foundMinus := false
+		for _, event := range recorder.Events() {
+			for _, bind := range event.Binds {
+				foundMinus = foundMinus || fmt.Sprint(bind) == "9"
+			}
+		}
+		if !foundMinus {
+			return fmt.Errorf("minus amount 9 is absent from update binds: %#v", recorder.Events())
+		}
+		return boom
+	}, orm.Retry(0))
+	if !errors.Is(err, boom) {
+		t.Fatalf("transaction error = %v, want the sentinel", err)
 	}
-	if updates != 1 {
-		t.Fatalf("updates after repeating a completed write = %d, want 1", updates)
+	after := must(author().AddAllColumns().GetBySeq(1))
+	if got := readColumn(t, after.GetReadCount); got != beforeReadCount {
+		t.Fatalf("read_count after rollback = %d, want %d", got, beforeReadCount)
 	}
-	current := must(account().GetByTenantIdAndAccountId(tenant, 8))
-	amount := readColumn(t, current.GetAccountId) + 1
-	if _, err := current.MinusAccountId(amount).Update(); err != nil {
-		t.Fatalf("minus %d: %v", amount, err)
-	}
-	if got := readColumn(t, must(account().GetByTenantIdAndAccountId(tenant, 0)).GetName); got != "arithmetic" {
-		t.Fatalf("row after minus = %q, want zero-clamped arithmetic row", got)
-	}
-	if !hasBind(int64(amount)) {
-		t.Fatalf("minus amount %d is not present in update binds: %#v", amount, recorder.Events())
-	}
-	rows := must(account().TenantId(tenant).Gets())
-	if err := rows.Delete(); err != nil {
-		t.Fatal(err)
-	}
-	if n := must(account().TenantId(tenant).GetCount()); n != 0 {
-		t.Fatalf("scratch tenant %d leaves %d rows", tenant, n)
+	if got := readColumn(t, after.GetUpdatedTs); fmt.Sprint(got) != fmt.Sprint(beforeUpdatedTs) {
+		t.Fatalf("updated_ts after rollback = %v, want %v", got, beforeUpdatedTs)
 	}
 }
 

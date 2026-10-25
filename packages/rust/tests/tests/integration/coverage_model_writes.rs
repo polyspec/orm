@@ -1,7 +1,7 @@
 //! model_writes: runs create, creates, update, duplication,
-//! create, and delete on the generated CompositeAccount model against composite_account, which has no identity column, and deletes all the rows it wrote.
+//! create, and delete on CompositeAccount; arithmetic coverage rolls back updates to seeded Author.read_count.
 use super::coverage_env::{code, connect, run};
-use super::model::CompositeAccount;
+use super::model::{Author, CompositeAccount};
 use std::sync::{Arc, Mutex};
 
 const TENANT: i64 = 990002;
@@ -100,83 +100,64 @@ async fn coverage_model_write_arithmetic_attributes() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     run("model_write_arithmetic_attributes", async {
         let db = connect().await;
+        let author = || Author::new().connect(&db);
+        let before = author().add_all_columns().get_by_seq(1).await.unwrap().expect("seed author 1");
+        let before_read_count = before.get_read_count().unwrap();
+        let before_updated_ts = before.get_updated_ts().unwrap();
+        assert_eq!(before_read_count, 1, "seed author 1 read_count");
         let events = Arc::new(Mutex::new(Vec::<Vec<polyspec_orm::Param>>::new()));
         let sink = events.clone();
-        let subscription = db
-            .subscribe(move |event: &polyspec_orm::StatementEvent<'_>| {
-                if event.kind == polyspec_orm::events::KIND_UPDATE && event.tables.iter().any(|table| table == "composite_account") {
-                    sink.lock().unwrap().push(event.binds.to_vec());
+        let result: polyspec_orm::Result<()> = db
+            .transaction(async || {
+                let mut loaded = author().add_all_columns().get_by_seq(1).await?.ok_or(polyspec_orm::Error::NoRows)?;
+                loaded = loaded.set_read_count(1);
+                loaded.update(false).await?;
+                let event_sink = sink.clone();
+                let subscription = db
+                    .subscribe(move |event: &polyspec_orm::StatementEvent<'_>| {
+                        if event.kind == polyspec_orm::events::KIND_UPDATE && event.tables.iter().any(|table| table == "author") {
+                            event_sink.lock().unwrap().push(event.binds.to_vec());
+                        }
+                        Ok(())
+                    })?;
+                let checks: polyspec_orm::Result<()> = async {
+                    loaded = author().add_all_columns().get_by_seq(1).await?.ok_or(polyspec_orm::Error::NoRows)?;
+                    loaded = loaded.plus_read_count(7);
+                    loaded.update(false).await?;
+                    let after_plus = author().add_all_columns().get_by_seq(1).await?.ok_or(polyspec_orm::Error::NoRows)?;
+                    if after_plus.get_read_count()? != 8 {
+                        return Err(polyspec_orm::Error::Config("plus did not set read_count to 8".into()));
+                    }
+                    if !sink.lock().unwrap().iter().any(|binds| binds.contains(&polyspec_orm::Param::I64(7))) {
+                        return Err(polyspec_orm::Error::Config("plus amount 7 is absent from update binds".into()));
+                    }
+                    loaded.update(false).await?;
+                    if sink.lock().unwrap().len() != 1 {
+                        return Err(polyspec_orm::Error::Config("repeated update emitted another statement".into()));
+                    }
+                    let mut current = author().add_all_columns().get_by_seq(1).await?.ok_or(polyspec_orm::Error::NoRows)?;
+                    current = current.minus_read_count(9);
+                    current.update(false).await?;
+                    let after_minus = author().add_all_columns().get_by_seq(1).await?.ok_or(polyspec_orm::Error::NoRows)?;
+                    if after_minus.get_read_count()? != 0 {
+                        return Err(polyspec_orm::Error::Config("minus amount 9 did not clamp read_count at zero".into()));
+                    }
+                    if !sink.lock().unwrap().iter().any(|binds| binds.contains(&polyspec_orm::Param::I64(9))) {
+                        return Err(polyspec_orm::Error::Config("minus amount 9 is absent from update binds".into()));
+                    }
+                    Ok(())
                 }
-                Ok(())
+                .await;
+                subscription.unsubscribe();
+                checks?;
+                Err(polyspec_orm::Error::Config("PLN-26 rollback sentinel".into()))
             })
-            .unwrap();
-        let tenant = 1_000_000_000_000 + i64::from(std::process::id());
-        let account = || CompositeAccount::new().connect(&db);
-        let existing = account().tenant_id(tenant).get_count().await.unwrap();
-        assert_eq!(existing, 0, "scratch tenant starts empty");
-        account().set_tenant_id(tenant).set_account_id(1).set_name("arithmetic").create().await.unwrap();
-        let outcome: Result<(), String> = async {
-            let mut loaded = account()
-                .get_by_tenant_id_and_account_id(tenant, 1)
-                .await
-                .map_err(|error| error.to_string())?
-                .ok_or_else(|| "created row is unreadable".to_owned())?;
-            loaded = loaded.plus_account_id(7);
-            loaded.update(false).await.map_err(|error| error.to_string())?;
-            let after_plus = account()
-                .get_by_tenant_id_and_account_id(tenant, 8)
-                .await
-                .map_err(|error| error.to_string())?
-                .ok_or_else(|| "row disappeared after plus".to_owned())?;
-            if after_plus.get_name().map_err(|error| error.to_string())? != "arithmetic" {
-                return Err("plus amount did not update the account key".into());
-            }
-            if !events.lock().unwrap().iter().any(|binds| binds.contains(&polyspec_orm::Param::I64(7))) {
-                return Err("plus amount 7 is absent from update binds".into());
-            }
-            loaded.update(false).await.map_err(|error| error.to_string())?;
-            if events.lock().unwrap().len() != 1 {
-                return Err(format!("updates after repeating a completed write = {}, want 1", events.lock().unwrap().len()));
-            }
-
-            let mut current = account()
-                .get_by_tenant_id_and_account_id(tenant, 8)
-                .await
-                .map_err(|error| error.to_string())?
-                .ok_or_else(|| "row disappeared before minus".to_owned())?;
-            let amount = current.get_account_id().map_err(|error| error.to_string())? + 1;
-            current = current.minus_account_id(amount);
-            current.update(false).await.map_err(|error| error.to_string())?;
-            let after_minus = account()
-                .get_by_tenant_id_and_account_id(tenant, 0)
-                .await
-                .map_err(|error| error.to_string())?
-                .ok_or_else(|| "row disappeared after minus".to_owned())?;
-            if after_minus.get_name().map_err(|error| error.to_string())? != "arithmetic" {
-                return Err(format!("minus amount {amount} did not clamp the account key at zero"));
-            }
-            if !events.lock().unwrap().iter().any(|binds| binds.contains(&polyspec_orm::Param::I64(i64::from(amount)))) {
-                return Err(format!("minus amount {amount} is absent from update binds"));
-            }
-            Ok(())
-        }
-        .await;
-        let cleanup = match account().tenant_id(tenant).gets().await {
-            Ok(rows) => rows.delete(false).await,
-            Err(error) => Err(error),
-        };
-        subscription.unsubscribe();
-        let remaining = account().tenant_id(tenant).get_count().await;
+            .await;
+        assert!(matches!(&result, Err(polyspec_orm::Error::Config(message)) if message == "PLN-26 rollback sentinel"), "transaction must return the rollback sentinel: {result:?}");
+        let after = author().add_all_columns().get_by_seq(1).await.unwrap().expect("seed author 1 after rollback");
+        assert_eq!(after.get_read_count().unwrap(), before_read_count, "rollback restores read_count");
+        assert_eq!(after.get_updated_ts().unwrap(), before_updated_ts, "rollback restores updated_ts");
         db.close().await;
-        if let Err(error) = cleanup {
-            panic!("delete scratch tenant {tenant}: {error}");
-        }
-        if !matches!(remaining, Ok(0)) {
-            panic!("scratch tenant {tenant} remains after delete");
-        }
-        if let Err(error) = outcome {
-            panic!("{error}");
-        }
     })
     .await;
 }

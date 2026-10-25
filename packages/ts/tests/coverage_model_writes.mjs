@@ -1,8 +1,7 @@
-// model_writes coverage: runs create, creates, update, upsert,
-// and delete once each with the generated CompositeAccount model. It writes only to composite_account, which has no identity column, and
-// deletes all rows it wrote, so the database state is unchanged.
+// model_writes coverage uses CompositeAccount for CRUD and seeded Author.read_count for arithmetic.
+// The arithmetic case rolls back its updates to preserve the seeded row and identity sequence.
 import assert from 'node:assert/strict';
-import { CompositeAccount, connect } from '../dist/index.js';
+import { Author, CompositeAccount, connect } from '../dist/index.js';
 import { errorCode, runCases, withCleanup } from './coverage_case.mjs';
 
 const tenant = 990002;
@@ -91,41 +90,50 @@ await runCases('coverage_model_writes.mjs', {
   },
   // Requirements: PLN-26.
   async model_write_arithmetic_attributes({ driver, dsn }) {
-    const db = await connect(dsn);
-    const arithmeticTenant = 1_000_000_000_000 + process.pid;
-    const account = () => new CompositeAccount().connect(db);
+    const db = await connect(dsn, { aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index' });
+    const author = () => new Author().connect(db);
+    let unsubscribe = null;
     try {
       assert.equal(db.driver, driver);
-      assert.equal(await account().tenantId(arithmeticTenant).getCount(), 0, 'scratch tenant starts empty');
-      await account().setTenantId(arithmeticTenant).setAccountId(1).setName('arithmetic').create();
-      const loaded = await account().getByTenantIdAndAccountId(arithmeticTenant, 1);
-      assert.ok(loaded, 'created row is readable');
+      const before = await author().addAllColumns().getBySeq(1);
+      assert.ok(before, 'seed author 1 exists');
+      const beforeReadCount = before.getReadCount();
+      const beforeUpdatedTs = before.getUpdatedTs();
+      assert.equal(beforeReadCount, 1, 'seed author 1 read_count');
+      const boom = new Error('PLN-26 rollback sentinel');
       const events = [];
-      const unsubscribe = db.subscribe(event => {
-        if (event.kind === 'update' && event.tables.includes('composite_account')) events.push(event);
-      });
+      let caught = null;
       try {
-        await loaded.plusAccountId(7).update();
-        assert.equal((await account().getByTenantIdAndAccountId(arithmeticTenant, 8)).getName(), 'arithmetic', 'plus adds its bound amount');
-        assert.ok(events.some(event => event.binds.includes(7)), 'plus amount is bound');
-        await loaded.update();
-        assert.equal(events.length, 1, 'a write clears the pending arithmetic change');
-
-        const afterPlus = await account().getByTenantIdAndAccountId(arithmeticTenant, 8);
-        const amount = afterPlus.getAccountId() + 1;
-        await afterPlus.minusAccountId(amount).update();
-        assert.equal((await account().getByTenantIdAndAccountId(arithmeticTenant, 0)).getName(), 'arithmetic', 'minus clamps at zero');
-        assert.ok(events.some(event => event.binds.includes(amount)), 'minus amount is bound');
-      } finally {
-        unsubscribe();
+        await db.transaction(async () => {
+          let loaded = await author().addAllColumns().getBySeq(1);
+          assert.ok(loaded, 'seed author 1 is readable in the transaction');
+          await loaded.setReadCount(1).update();
+          unsubscribe = db.subscribe(event => {
+            if (event.kind === 'update' && event.tables.includes('author')) events.push(event);
+          });
+          loaded = await author().addAllColumns().getBySeq(1);
+          await loaded.plusReadCount(7).update();
+          assert.equal((await author().addAllColumns().getBySeq(1)).getReadCount(), 8, 'plus updates the non-key column');
+          assert.ok(events.some(event => event.binds.includes(7)), 'plus amount is bound');
+          await loaded.update();
+          assert.equal(events.length, 1, 'a write clears the pending arithmetic change');
+          const current = await author().addAllColumns().getBySeq(1);
+          await current.minusReadCount(9).update();
+          const afterMinus = await author().addAllColumns().getBySeq(1);
+          assert.equal(afterMinus.getReadCount(), 0, 'minus clamps at zero');
+          assert.ok(events.some(event => event.binds.includes(9)), 'minus amount is bound');
+          throw boom;
+        }, { retry: 0 });
+      } catch (error) {
+        caught = error;
       }
+      assert.strictEqual(caught, boom, 'transaction returns the rollback sentinel');
+      const after = await author().addAllColumns().getBySeq(1);
+      assert.equal(after.getReadCount(), beforeReadCount, 'rollback restores read_count');
+      assert.deepEqual(after.getUpdatedTs(), beforeUpdatedTs, 'rollback restores updated_ts');
     } finally {
-      try {
-        await account().tenantId(arithmeticTenant).gets().delete();
-        assert.equal(await account().tenantId(arithmeticTenant).getCount(), 0, 'scratch row is removed');
-      } finally {
-        await db.close();
-      }
+      if (unsubscribe) unsubscribe();
+      await db.close();
     }
   },
 }, 300_000);

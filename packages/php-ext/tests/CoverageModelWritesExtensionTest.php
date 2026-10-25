@@ -5,13 +5,16 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Extension\Tests;
 
 use Polyspec\Orm\Model;
+use Polyspec\Orm\Tests\Model\Author;
 use Polyspec\Orm\Tests\Model\CompositeAccount;
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
+// Arithmetic coverage uses seeded Author.read_count and rolls back the update transaction.
 #[Medium]
+// Arithmetic coverage uses the seeded Author read_count column; CompositeAccount remains the CRUD fixture.
 final class CoverageModelWritesExtensionTest extends TestCase
 {
     // Requirements: DSL-104, INT-35, PRT-41.
@@ -75,52 +78,51 @@ final class CoverageModelWritesExtensionTest extends TestCase
             selectCoverageItem($item);
             [, $dsn] = coverageItem();
             $db = coverageConnect($dsn);
-            $account = static function () use ($db): CompositeAccount {
-                return (new CompositeAccount())($db);
-            };
-            $tenant = 1_000_000_000_000 + getmypid();
+            $author = static fn() => (new Author())($db);
+            $unsubscribe = null;
             try {
-                Assert::assertSame(0, $account()->tenantId($tenant)->getCount(), 'scratch tenant starts empty');
-                $account()->setTenantId($tenant)->setAccountId(1)->setName('arithmetic')->create();
-                $loaded = $account()->getByTenantIdAndAccountId($tenant, 1);
-                Assert::assertNotNull($loaded, 'created row is readable');
+                $before = $author()->addAllColumns()->getBySeq(1);
+                Assert::assertNotNull($before, 'seed author 1 exists');
+                $beforeReadCount = $before->getReadCount();
+                $beforeUpdatedTs = $before->getUpdatedTs();
+                Assert::assertSame(1, $beforeReadCount, 'seed author 1 read_count');
+                $boom = new \RuntimeException('PLN-26 rollback sentinel');
                 $events = [];
-                $unsubscribe = $db->subscribe(static function (\Polyspec\Orm\StatementEvent $event) use (&$events): void {
-                    if ($event->kind === \Polyspec\Orm\StatementEvent::UPDATE && in_array('composite_account', $event->tables, true)) {
-                        $events[] = $event;
-                    }
-                });
+                $caught = null;
                 try {
-                    coverageRestoring(function () use ($account, $loaded, &$events, $tenant): void {
-                        $loaded->plusAccountId(7)->update();
-                        Assert::assertSame('arithmetic', $account()->getByTenantIdAndAccountId($tenant, 8)->getName(), 'plus amount changes the key');
-                        $plusBound = false;
-                        foreach ($events as $event) {
-                            $plusBound = $plusBound || in_array(7, $event->binds, true);
-                        }
-                        Assert::assertTrue($plusBound, 'plus amount is bound');
+                    $db->transaction(function () use ($author, $db, &$events, &$unsubscribe, $boom): void {
+                        $loaded = $author()->addAllColumns()->getBySeq(1);
+                        Assert::assertNotNull($loaded, 'seed author 1 is readable in the transaction');
+                        $loaded->setReadCount(1)->update();
+                        $unsubscribe = $db->subscribe(static function (\Polyspec\Orm\StatementEvent $event) use (&$events): void {
+                            if ($event->kind === \Polyspec\Orm\StatementEvent::UPDATE && in_array('author', $event->tables, true)) {
+                                $events[] = $event;
+                            }
+                        });
+                        $loaded = $author()->addAllColumns()->getBySeq(1);
+                        $loaded->plusReadCount(7)->update();
+                        Assert::assertSame(8, $author()->addAllColumns()->getBySeq(1)->getReadCount(), 'plus updates the non-key column');
+                        Assert::assertTrue(array_any($events, static fn($event): bool => in_array(7, $event->binds, true)), 'plus amount is bound');
                         $loaded->update();
                         Assert::assertCount(1, $events, 'a write clears the pending arithmetic change');
-
-                        $current = $account()->getByTenantIdAndAccountId($tenant, 8);
-                        $amount = $current->getAccountId() + 1;
-                        $current->minusAccountId($amount)->update();
-                        Assert::assertSame('arithmetic', $account()->getByTenantIdAndAccountId($tenant, 0)->getName(), 'minus clamps at zero');
-                        $minusBound = false;
-                        foreach ($events as $event) {
-                            $minusBound = $minusBound || in_array($amount, $event->binds, true);
-                        }
-                        Assert::assertTrue($minusBound, 'minus amount is bound');
-                    }, static function () use ($account, $tenant): void {
-                        $account()->tenantId($tenant)->gets()->delete();
-                    });
-                } finally {
-                    $unsubscribe();
+                        $current = $author()->addAllColumns()->getBySeq(1);
+                        $current->minusReadCount(9)->update();
+                        Assert::assertSame(0, $author()->addAllColumns()->getBySeq(1)->getReadCount(), 'minus clamps at zero');
+                        Assert::assertTrue(array_any($events, static fn($event): bool => in_array(9, $event->binds, true)), 'minus amount is bound');
+                        throw $boom;
+                    }, retry: 0);
+                } catch (\Throwable $error) {
+                    $caught = $error;
                 }
-                Assert::assertSame(0, $account()->tenantId($tenant)->getCount(), 'scratch row is removed');
+                Assert::assertSame($boom, $caught, 'transaction returns the rollback sentinel');
+                $after = $author()->addAllColumns()->getBySeq(1);
+                Assert::assertSame($beforeReadCount, $after->getReadCount(), 'rollback restores read_count');
+                Assert::assertEquals($beforeUpdatedTs, $after->getUpdatedTs(), 'rollback restores updated_ts');
             } finally {
                 try {
-                    $account()->tenantId($tenant)->gets()->delete();
+                    if ($unsubscribe !== null) {
+                        $unsubscribe();
+                    }
                 } finally {
                     $db->close();
                 }

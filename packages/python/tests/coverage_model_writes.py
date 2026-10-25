@@ -1,6 +1,5 @@
-# model_writes coverage: create, creates, update, upsert and delete once each with the generated CompositeAccount
-# model, as the model_writes coverage of Go, PHP, TypeScript and Rust does. It writes only composite_account, which has
-# no identity column, and deletes every row it wrote, so the database state stays as it was.
+# model_writes coverage uses CompositeAccount for CRUD and seeded Author.read_count for arithmetic.
+# The arithmetic case rolls back its updates to preserve the seeded row and identity sequence.
 import os
 
 from polyspec.orm.models import models
@@ -92,52 +91,59 @@ def model_write_cycle(item):
 def model_write_arithmetic_attributes(item):
     driver, dsn = item
     db = models.connect(dsn, aesKey="bench-salt", blindIndexKey="bench-blind-index")
-    tenant = 1_000_000_000_000 + os.getpid()
     unsubscribe = None
     try:
         expect_equal(db.driver, driver, "the driver")
 
-        def account():
-            return models.CompositeAccount().connect(db)
+        def author():
+            return models.Author().connect(db)
 
-        expect_equal(account().tenant_id(tenant).get_count(), 0, "scratch tenant starts empty")
-        account().set_tenant_id(tenant).set_account_id(1).set_name("arithmetic").create()
-        loaded = account().get_by_tenant_id_and_account_id(tenant, 1)
+        before = author().add_all_columns().get_by_seq(1)
+        expect_equal(before is not None, True, "seed author 1 exists")
+        before_read_count = before.get_read_count()
+        before_updated_ts = before.get_updated_ts()
+        expect_equal(before_read_count, 1, "seed author 1 read_count")
+        boom = RuntimeError("PLN-26 rollback sentinel")
         events = []
-        unsubscribe = db.subscribe(
-            lambda event: events.append(event)
-            if event.kind == "update" and "composite_account" in event.tables
-            else None
-        )
-        loaded.plus_account_id(7).update()
-        expect_equal(
-            account().get_by_tenant_id_and_account_id(tenant, 8).get_name(),
-            "arithmetic",
-            "plus amount changes the key",
-        )
-        expect_equal(any(7 in event.binds for event in events), True, "plus amount is bound")
-        loaded.update()
-        expect_equal(len(events), 1, "a write clears the pending arithmetic change")
+        caught = None
 
-        current = account().get_by_tenant_id_and_account_id(tenant, 8)
-        amount = current.get_account_id() + 1
-        current.minus_account_id(amount).update()
-        expect_equal(
-            account().get_by_tenant_id_and_account_id(tenant, 0).get_name(),
-            "arithmetic",
-            "minus clamps at zero",
-        )
-        expect_equal(any(amount in event.binds for event in events), True, "minus amount is bound")
+        def work():
+            nonlocal unsubscribe
+            loaded = author().add_all_columns().get_by_seq(1)
+            expect_equal(loaded is not None, True, "seed author 1 is readable in the transaction")
+            loaded.set_read_count(1).update()
+            unsubscribe = db.subscribe(
+                lambda event: events.append(event)
+                if event.kind == "update" and "author" in event.tables
+                else None
+            )
+            loaded = author().add_all_columns().get_by_seq(1)
+            loaded.plus_read_count(7).update()
+            expect_equal(author().add_all_columns().get_by_seq(1).get_read_count(), 8, "plus updates the non-key column")
+            expect_equal(any(7 in event.binds for event in events), True, "plus amount is bound")
+            loaded.update()
+            expect_equal(len(events), 1, "a write clears the pending arithmetic change")
+            current = author().add_all_columns().get_by_seq(1)
+            current.minus_read_count(9).update()
+            after_minus = author().add_all_columns().get_by_seq(1)
+            expect_equal(after_minus.get_read_count(), 0, "minus clamps at zero")
+            expect_equal(any(9 in event.binds for event in events), True, "minus amount is bound")
+            raise boom
+
+        try:
+            db.transaction(work, {"retry": 0})
+        except RuntimeError as error:
+            caught = error
+        expect_equal(caught is boom, True, "transaction returns the rollback sentinel")
+        after = author().add_all_columns().get_by_seq(1)
+        expect_equal(after.get_read_count(), before_read_count, "rollback restores read_count")
+        expect_equal(after.get_updated_ts(), before_updated_ts, "rollback restores updated_ts")
     finally:
         try:
-            account().tenant_id(tenant).gets().delete()
-            expect_equal(account().tenant_id(tenant).get_count(), 0, "scratch row is removed")
+            if unsubscribe is not None:
+                unsubscribe()
         finally:
-            try:
-                if unsubscribe is not None:
-                    unsubscribe()
-            finally:
-                db.close()
+            db.close()
 
 
 class CoverageTest(CoverageCase):
