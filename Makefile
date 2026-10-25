@@ -1901,7 +1901,7 @@ interface-check/tests: php-vendor-check
 interface-api-binding-unit-check:
 	$(NODE) --test tests/interfaces/check/api.test.mts
 interface-typescript-extractor-check: interface-typescript-check
-	$(NODE) packages/ts/testing/interfaces/typescript/node_modules/typescript/bin/tsc --project packages/ts/testing/interfaces/tsconfig.json
+	$(NODE) packages/ts/testing/interfaces/typescript/node_modules/typescript/bin/tsc --project packages/ts/testing/interfaces/tsconfig.json --noEmit
 	$(NODE) --test tests/interfaces/check/typescript-extractor.test.mts
 # interface-typescript-check names the missing TypeScript checker dependency before the self-test runs it, so a fresh
 # checkout fails with the install step instead of a module resolution error.

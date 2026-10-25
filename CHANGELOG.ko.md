@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 3a11d6cd09938a95d8f476908d5b8e1823c47e9250831b810759930eb2391c41 -->
+<!-- source-sha256: 5bab0b95bda48f927f6ce3339811b9955d39bdcdd8ba5162092f0f58b743d9cb -->
 # 변경 이력
 
 ## Unreleased
 
+- TypeScript interface extractor의 type check가 command line에 `--noEmit`을 적으므로, `make repo-check`의 publish case가 그것을 더 이상 dist로의 build로 읽지 않는다 (KSTD-5-88-11).
 - markdown-table-check가 읽는 flowmark source checkout은 var/tools 아래의 tool download이고, TypeScript client를 hold하기 전에 build하던 recipe 셋은 `$(HOLD_TYPESCRIPT)`로 시작하므로 `make repo-check`의 run directory case가 통과한다 (KSTD-5-88-9).
 - CPX-2 Python Makefile recipe가 유효한 shell 환경 변수 할당과 필수 변수 guard를 사용하므로 repository shell parser가 이를 읽고, fixture DSN이 없으면 준비 target을 안내한다 (KSTD-5-88-8).
 - `make orm-test-servers-check`의 lease case가 scripts/test-servers.mts를 그것이 import하는 tests/errors.mts와 함께 실행하므로, 없는 module로 실패하는 대신 다시 거부된 stop을 확인한다 (KSTD-5-88-7).
