@@ -167,6 +167,44 @@ func TestCollectionKeyIdentityFromFixture(t *testing.T) {
 	}
 }
 
+// Requirements: INT-80, INT-86.
+func TestCollectionGetAndFetchedValueUseTypedKey(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	integerKey, err := KeyOf(int64(7))
+	if err != nil {
+		t.Fatal(err)
+	}
+	textKey, err := KeyOf("7")
+	if err != nil {
+		t.Fatal(err)
+	}
+	integerModel := &rejectingModel{}
+	textModel := &rejectingModel{}
+	collection := &Collection[*rejectingModel]{
+		keys: []Key{integerKey, textKey},
+		items: map[Key]*rejectingModel{integerKey: integerModel, textKey: textModel},
+		fetched: map[Key]any{integerKey: "integer", textKey: "text"},
+	}
+	if got, err := collection.Get(int64(7)); err != nil || got != integerModel {
+		t.Fatalf("Get(integer key): got %p, err %v", got, err)
+	}
+	if got, err := collection.Get("7"); err != nil || got != textModel {
+		t.Fatalf("Get(text key): got %p, err %v", got, err)
+	}
+	if got, err := collection.Get(int64(8)); err != nil || got != nil {
+		t.Fatalf("Get(missing key): got %p, err %v", got, err)
+	}
+	for _, test := range []struct {
+		key  any
+		want any
+	}{{int64(7), "integer"}, {"7", "text"}, {int64(8), nil}} {
+		got, err := collection.FetchedValue(test.key)
+		if err != nil || got != test.want {
+			t.Errorf("FetchedValue(%T(%v)): got %#v, err %v; want %#v", test.key, test.key, got, err, test.want)
+		}
+	}
+}
+
 func sameKeyValue(got, want any) bool {
 	if a, ok := got.(time.Time); ok {
 		b, isTime := want.(time.Time)

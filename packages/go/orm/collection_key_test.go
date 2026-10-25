@@ -3,6 +3,7 @@ package orm
 import (
 	"fmt"
 	"math"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -144,6 +145,65 @@ func TestCollectionLookupRejectsUnsupportedKey(t *testing.T) {
 	}
 	if _, err := collection.FetchedValue(value); err == nil {
 		t.Fatal("FetchedValue accepted unsupported key")
+	}
+}
+
+// Requirements: INT-81, INT-82, INT-83, INT-84, INT-85.
+func TestCollectionViewsPreserveOrderAndConnectEveryModel(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	entity := &Entity{Value: func(model Model, name string) (any, bool) {
+		for _, set := range model.Orm_().sets {
+			if set.column == name {
+				return set.value, true
+			}
+		}
+		return nil, false
+	}}
+	makeModel := func(name string) *rejectingModel {
+		core := NewCore(entity)
+		model := &rejectingModel{core: core}
+		core.Bind(model)
+		core.Set("label", name)
+		return model
+	}
+	first, second := makeModel("first"), makeModel("second")
+	one, _ := KeyOf(int64(7))
+	two, _ := KeyOf("7")
+	collection := NewCollection[*rejectingModel]()
+	collection.keys = []Key{one, two}
+	collection.items[one], collection.items[two] = first, second
+
+	if got := collection.Keys(); !reflect.DeepEqual(got, []Key{one, two}) {
+		t.Fatalf("keys = %#v, want ordered keys %#v", got, []Key{one, two})
+	}
+	if got := collection.Slice(); !reflect.DeepEqual(got, []*rejectingModel{first, second}) {
+		t.Fatalf("slice = %#v, want models in key order", got)
+	}
+	var entries []string
+	for key, model := range collection.All() {
+		entries = append(entries, key.String()+":"+model.core.ToArray()["label"].(string))
+	}
+	if !reflect.DeepEqual(entries, []string{"7:first", "7:second"}) {
+		t.Fatalf("entries = %#v, want key/model pairs in order", entries)
+	}
+	if got := collection.ToArray(); !reflect.DeepEqual(got, []map[string]any{{"label": "first"}, {"label": "second"}}) {
+		t.Fatalf("toArray = %#v, want model maps in order", got)
+	}
+	db := &DB{}
+	if got := collection.Connect(db); got != collection || first.core.conn != db || second.core.conn != db {
+		t.Fatal("connect did not return the collection and set both model connections")
+	}
+}
+
+// Requirements: INT-88, INT-89.
+func TestTerminalReturnsTheFirstRecordedBuilderError(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	core := NewCore(&Entity{})
+	core.Limit(-1, 1)
+	core.Limit(0, 0)
+	_, err := core.GetCount()
+	if ErrorCode(err) != CodeConfig || err.Error() != "CONFIG: limit requires a non-negative offset and a positive count" {
+		t.Fatalf("terminal error = %v, want the first builder error", err)
 	}
 }
 

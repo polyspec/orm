@@ -83,6 +83,24 @@ final class CollectionTest extends TestCase
         }
     }
 
+    public function testGetAndFetchedValueUseTheTypedKey(): void
+    {
+        // Requirements: INT-80, INT-86.
+        $collection = new Collection();
+        $integer = self::model('integer');
+        $text = self::model('text');
+        $collection->put(7, $integer);
+        $collection->put('7', $text);
+        $collection->fetchValues(static fn(Model $model): string => $model->label);
+
+        self::assertSame($integer, $collection->get(7));
+        self::assertSame($text, $collection->get('7'));
+        self::assertNull($collection->get(8));
+        self::assertSame('integer', $collection->fetchedValue(7));
+        self::assertSame('text', $collection->fetchedValue('7'));
+        self::assertNull($collection->fetchedValue(8));
+    }
+
     public function testCollectionAndIteratorAreOwnedByTheNativeExtension(): void
     {
         $collectionClass = new \ReflectionClass(Collection::class);
@@ -128,6 +146,7 @@ final class CollectionTest extends TestCase
         }
     }
 
+    // Requirements: INT-81, INT-82, INT-83, INT-84.
     public function testTypedIdentityOrderedReplacementAndArrayViews(): void
     {
         $collection = new Collection();
@@ -358,6 +377,7 @@ final class CollectionTest extends TestCase
         }
     }
 
+    // Requirements: INT-85.
     public function testConnectAndInvokeReachEachModelAndReturnTheCollection(): void
     {
         [$collection, $first, $second] = self::collectionWithTwoModels();

@@ -12,6 +12,8 @@ use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Bytes;
 use Polyspec\Orm\Collection;
+use Polyspec\Orm\Config;
+use Polyspec\Orm\Db;
 use Polyspec\Orm\Model;
 use Polyspec\Orm\OrmException;
 
@@ -93,6 +95,31 @@ final class CollectionIdentityTest extends TestCase
         }
     }
 
+    // Requirements: INT-80, INT-86.
+    public function testGetAndFetchedValueUseTheTypedKey(): void
+    {
+        $integer = new class('integer') extends Model {
+            public function __construct(public string $label) {}
+            public static function meta(): array { return []; }
+        };
+        $text = new class('text') extends Model {
+            public function __construct(public string $label) {}
+            public static function meta(): array { return []; }
+        };
+        $collection = new Collection();
+        $collection->put(7, $integer);
+        $collection->put('7', $text);
+        $collection->fetchValues(static fn(Model $model): string => $model->label);
+
+        self::assertSame($integer, $collection->get(7));
+        self::assertSame($text, $collection->get('7'));
+        self::assertNull($collection->get(8));
+        self::assertSame('integer', $collection->fetchedValue(7));
+        self::assertSame('text', $collection->fetchedValue('7'));
+        self::assertNull($collection->fetchedValue(8));
+    }
+
+    // Requirements: INT-81, INT-82, INT-83, INT-84, INT-85.
     public function testToArrayPreservesCollectionModelOrder(): void
     {
         $first = new class extends Model {
@@ -121,7 +148,14 @@ final class CollectionIdentityTest extends TestCase
         $collection->put('first', $first);
         $collection->put('second', $second);
 
+        self::assertSame(['first', 'second'], $collection->keys());
+        self::assertSame([$first, $second], $collection->all());
+        self::assertSame([['first', $first], ['second', $second]], $collection->entries());
         self::assertSame([['entity' => 'first'], ['entity' => 'second']], $collection->toArray());
+        $db = new Db(null, 'mysql', new Config(), new \DateTimeZone('UTC'));
+        self::assertSame($collection, $collection->connect($db));
+        self::assertSame($db, $first->connection());
+        self::assertSame($db, $second->connection());
     }
 
     // Requirements: PRT-35.

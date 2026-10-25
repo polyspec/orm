@@ -160,12 +160,34 @@ final class DecimalModelDbTest extends TestCase
     public static function roundTrip(TestCase $test, string $dialect): void
     {
         // The test of COD-2 (docs/spec).
-        $dsn = self::dsn($dialect);
+        self::roundTripAt($test, $dialect, self::dsn($dialect));
+    }
+
+    /** Executes the same decimal round-trip against a private SQLite file, without a server DSN. */
+    public static function roundTripSqlite(TestCase $test): void
+    {
+        $path = tempnam(sys_get_temp_dir(), 'orm-decimal-native-');
+        if ($path === false) {
+            throw new RuntimeException('cannot create the private decimal SQLite database file');
+        }
+        try {
+            self::roundTripAt($test, 'sqlite', 'sqlite://' . $path);
+        } finally {
+            foreach ([$path, $path . '-wal', $path . '-shm'] as $file) {
+                if (file_exists($file) && !unlink($file)) {
+                    throw new RuntimeException("cannot remove the private decimal SQLite file $file");
+                }
+            }
+        }
+    }
+
+    private static function roundTripAt(TestCase $test, string $dialect, string $dsn): void
+    {
         self::load();
         $class = \DecimalFixture\DecimalCase::class;
         $db = \DecimalFixture\connect($dsn, new Config());
-        $db->utils()->schema()->install(\DecimalFixture\schema());
         try {
+            $db->utils()->schema()->install(\DecimalFixture\schema());
             $test->assertSame(
                 0,
                 (new $class())->connect($db)->seq(1)->getCount(),

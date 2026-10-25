@@ -6,7 +6,9 @@ from pathlib import Path
 
 from polyspec.orm.database import key_of_values, row_key
 from polyspec.orm.errors import OrmError
+from polyspec.orm.core import Core
 from polyspec.orm.model import Collection
+from polyspec.orm.model_exec import scalar_of
 
 from . import testcase
 
@@ -41,6 +43,63 @@ def composite_value_of(entry):
 
 
 class CollectionIdentityTest(unittest.TestCase):
+    # Requirements: INT-88, INT-89.
+    def test_terminal_returns_the_first_recorded_builder_error(self):
+        core = Core(None)
+        core.set_limit(-1, 1)
+        core.set_limit(0, 0)
+        with self.assertRaises(OrmError) as caught:
+            scalar_of(core, "count")
+        self.assertEqual(caught.exception.code, "CONFIG")
+        self.assertEqual(
+            str(caught.exception),
+            "CONFIG: limit requires a non-negative offset and a positive count",
+        )
+
+    # Requirements: INT-80, INT-86.
+    def test_get_and_fetched_value_use_the_typed_key(self):
+        integer = object()
+        text = object()
+        collection = Collection()
+        collection.put(7, integer, fetched="integer")
+        collection.put("7", text, fetched="text")
+
+        self.assertIs(collection.get(7), integer)
+        self.assertIs(collection.get("7"), text)
+        self.assertIsNone(collection.get(8))
+        self.assertEqual(collection.fetched(7), "integer")
+        self.assertEqual(collection.fetched("7"), "text")
+        self.assertIsNone(collection.fetched(8))
+
+    # Requirements: INT-81, INT-82, INT-83, INT-84, INT-85.
+    def test_collection_views_preserve_order_and_connect_every_model(self):
+        class Row:
+            def __init__(self, label):
+                self.label = label
+                self.connection = None
+
+            def connect(self, db):
+                self.connection = db
+                return self
+
+            def to_array(self):
+                return {"label": self.label}
+
+        first, second = Row("first"), Row("second")
+        collection = Collection()
+        collection.put(7, first)
+        collection.put("7", second)
+        self.assertEqual(collection.keys(), [7, "7"])
+        self.assertEqual(collection.values(), [first, second])
+        self.assertEqual(collection.entries(), [(7, first), ("7", second)])
+        self.assertEqual(
+            collection.to_array(), [{"label": "first"}, {"label": "second"}]
+        )
+        db = object()
+        self.assertIs(collection.connect(db), collection)
+        self.assertIs(first.connection, db)
+        self.assertIs(second.connection, db)
+
     def test_native_key_values_keep_their_types_and_reject_unsupported_values(self):
         # Requirements: INT-11.
         values = [

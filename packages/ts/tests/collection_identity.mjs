@@ -32,6 +32,55 @@ function compositeValueOf(entry) {
   return valueOf(entry, true);
 }
 
+// Requirements: INT-81, INT-82, INT-83, INT-84, INT-85.
+caseTest('collection-views/preserve-order-and-connect-every-model', COMPUTE, () => {
+  const connections = [];
+  const makeModel = label => ({
+    connect(db) { connections.push([label, db]); return this; },
+    toArray() { return { label }; },
+  });
+  const first = makeModel('first');
+  const second = makeModel('second');
+  const collection = new orm.Collection();
+  collection.put(7, first);
+  collection.put('7', second);
+  if (JSON.stringify(collection.keys()) !== JSON.stringify([7, '7'])) throw new Error('keys lost collection order or key type');
+  if (JSON.stringify(collection.values()) !== JSON.stringify([first, second])) throw new Error('values lost collection order');
+  if (JSON.stringify(collection.entries()) !== JSON.stringify([[7, first], ['7', second]])) throw new Error('entries lost key/model order');
+  if (JSON.stringify(collection.toArray()) !== JSON.stringify([{ label: 'first' }, { label: 'second' }])) throw new Error('toArray lost model order');
+  const db = {};
+  if (collection.connect(db) !== collection) throw new Error('connect did not return the collection');
+  if (JSON.stringify(connections) !== JSON.stringify([['first', db], ['second', db]])) throw new Error('connect did not reach every model in order');
+});
+
+// Requirements: INT-80, INT-86.
+caseTest('collection/get-fetched-value-use-typed-key', COMPUTE, () => {
+  const collection = new orm.Collection();
+  const integer = { label: 'integer' };
+  const text = { label: 'text' };
+  collection.put(7, integer, 'integer');
+  collection.put('7', text, 'text');
+  if (collection.get(7) !== integer || collection.get('7') !== text || collection.get(8) !== undefined) {
+    throw new Error('get did not preserve the key type or missing-key result');
+  }
+  if (collection.fetched(7) !== 'integer' || collection.fetched('7') !== 'text' || collection.fetched(8) !== undefined) {
+    throw new Error('fetched value did not preserve the key type or missing-key result');
+  }
+});
+
+// Requirements: INT-88, INT-89.
+caseTest('model-terminal/returns-first-builder-error', COMPUTE, async () => {
+  const model = new orm.Author();
+  model.limit(-1, 1).limit(0, 0);
+  try {
+    await model.getCount();
+  } catch (error) {
+    if (error instanceof orm.OrmError && error.code === 'CONFIG' && error.message === 'CONFIG: limit requires a non-negative offset and a positive count') return;
+    throw error;
+  }
+  throw new Error('the terminal returned without the recorded builder error');
+});
+
 // Each case is a node:test test, the form that the parity runner reads (tests/testcase.mts, caseTest).
 // Requirements: INT-11, PRT-35.
 caseTest('collection-key/identity-from-fixture', COMPUTE, () => {

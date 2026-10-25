@@ -1016,7 +1016,8 @@
         "packages/python/src/polyspec/orm/__init__.py",
         "packages/python/tests/test_collection_identity.py",
         "packages/rust/orm/src/collection.rs",
-        "packages/rust/orm/tests/collection_identity.rs"
+        "packages/rust/orm/tests/collection_identity.rs",
+        "packages/rust/tests/tests/collection_get_fetched.rs"
       ]
     },
     "interface-typescript-extractor-check": {
@@ -2419,6 +2420,7 @@
         "packages/php-ext/tests/DeclarationsTest.php",
         "packages/php-ext/tests/declarations_functions.php",
         "packages/php/tests/ModelTypesSourceTest.php",
+        "packages/php/tests/DecimalModelDbTest.php",
         "packages/php/tests/model-types-weak-caller.php",
         "packages/php-ext/src/**"
       ]
@@ -2457,6 +2459,7 @@
         "packages/php/src/Model.php",
         "packages/php/tests/ModelMethodsTest.php",
         "packages/php/tests/ModelTypesSourceTest.php",
+        "packages/php/tests/DecimalModelDbTest.php",
         "packages/php/tests/model-types-weak-caller.php",
         "packages/php/tests/OrmGenTestSupport.php",
         "packages/php-ext/tests/ModelNativeTest.php",
@@ -2472,6 +2475,8 @@
         "packages/php-ext/tests/ChainNativeSurfaceTest.php",
         "packages/php-ext/tests/RegistrySchemaNativeTest.php",
         "packages/php-ext/tests/PlanCacheMemoryNativeTest.php",
+        "packages/php-ext/tests/DecimalModelDbNativeTest.php",
+        "packages/php-ext/tests/DecimalModelSqliteNativeTest.php",
         "packages/php/tests/PlanCacheMemoryTest.php",
         "packages/php-ext/tests/model-weak-caller.php",
         "packages/php-ext/tests/DeclarationsTest.php",

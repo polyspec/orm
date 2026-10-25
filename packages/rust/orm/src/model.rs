@@ -2025,6 +2025,37 @@ mod page_order_tests {
     row_model!(ChildRow, child_entity, &["seq", "parent_seq", "label"]);
 
     #[tokio::test]
+    // Requirements: INT-81, INT-82, INT-83, INT-84, INT-85.
+    async fn collection_views_preserve_model_order_and_connect_every_model() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+        let path = std::env::temp_dir().join(format!("orm-collection-views-{}.sqlite", std::process::id()));
+        let _temporary = TempSqlite(path.clone());
+        let db = Db::connect(&format!("sqlite://{}", path.display()), 1, crate::Config::default()).await.unwrap();
+        let make_row = |seq, label: &str| {
+            let mut core = Core::new(parent_entity());
+            let mut row = RowState::default();
+            row.names = vec!["seq".into(), "label".into()];
+            core.row = Some(row);
+            ParentRow { core, values: HashMap::from([("seq".into(), Val::I64(seq)), ("label".into(), Val::Str(label.into()))]) }
+        };
+        let collection = Collection::<ParentRow>::from_boxes(
+            vec![
+                (Key::I(7), Box::new(make_row(7, "first"))),
+                (Key::S("7".into()), Box::new(make_row(8, "second"))),
+            ],
+            HashMap::new(),
+        );
+
+        assert_eq!(collection.keys(), &[Key::I(7), Key::S("7".into())]);
+        assert_eq!(collection.models().map(|model| model.values["label"].clone()).collect::<Vec<_>>(), [Val::Str("first".into()), Val::Str("second".into())]);
+        assert_eq!(collection.iter().map(|(key, model)| (key.clone(), model.values["label"].clone())).collect::<Vec<_>>(), [(Key::I(7), Val::Str("first".into())), (Key::S("7".into()), Val::Str("second".into()))]);
+        assert_eq!(collection.to_array().unwrap(), serde_json::json!([{"seq": 7, "label": "first"}, {"seq": 8, "label": "second"}]));
+        let collection = collection.connect(&db);
+        assert!(collection.models().all(|model| model.core.conn.as_ref().is_some_and(|conn| Arc::ptr_eq(&conn.inner, &db.inner))));
+        db.close().await;
+    }
+
+    #[tokio::test]
     // Requirements: CPX-2.
     async fn gets_page_emits_root_count_then_relation_statement_events() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
