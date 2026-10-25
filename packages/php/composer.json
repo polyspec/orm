@@ -21,6 +21,9 @@
         "ext-openssl": "host-side AES on PostgreSQL and SQLite (aes columns)",
         "ext-polyspec_orm": "the dbspec surface and the error codes of this client implemented in C under the same class names (packages/php-ext)"
     },
+    "bin": [
+        "bin/orm-sqlite-cancel-build.php"
+    ],
     "autoload": {
         "psr-4": {
             "Polyspec\\Orm\\": "src/"

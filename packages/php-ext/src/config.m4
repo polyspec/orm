@@ -16,8 +16,15 @@ if test "$PHP_POLYSPEC_ORM" != "no"; then
     POLYSPEC_ORM_TEST_CFLAGS="-DPOLYSPEC_ORM_MERMAID_TEST"
   fi
   PHP_NEW_EXTENSION([polyspec_orm],
-    [polyspec_orm.c orm.c orm_exception.c aes_keyring.c aes_utils.c privilege_utils.c utils.c schema_utils.c codec.c statement_event.c model_types.c model_helpers.c model_state.c model_chain.c model_native_methods.c model_output.c model_query.c model_dsl.c model_read.c model_write.c model_assembly.c runtime_model.c chain_native.c registry_native.c engine_native.c native_classes.c native_dialect.c markdown_native.c param_check_native.c validator.c planner.c collection.c db.c convert.c util.c model.c literal.c expression.c parse.c emit.c render.c plan.c steps.c catalog.c catalog_connection.c mermaid.c go_values_native.c value_classes_native.c introspect.c apply.c set.c $POLYSPEC_ORM_TEST_SOURCES],
+    [polyspec_orm.c orm.c orm_exception.c aes_keyring.c aes_utils.c privilege_utils.c utils.c schema_utils.c codec.c statement_event.c model_types.c model_helpers.c model_state.c model_chain.c model_native_methods.c model_output.c model_query.c model_dsl.c model_read.c model_write.c model_assembly.c runtime_model.c chain_native.c registry_native.c engine_native.c native_classes.c native_dialect.c markdown_native.c param_check_native.c validator.c planner.c collection.c db.c convert.c util.c model.c literal.c expression.c parse.c emit.c render.c plan.c steps.c catalog.c catalog_connection.c mermaid.c go_values_native.c value_classes_native.c introspect.c apply.c set.c native/sqlite_cancel.c $POLYSPEC_ORM_TEST_SOURCES],
     [$ext_shared],, [-std=gnu11 -Wall -Wextra -Werror -Wno-unused-parameter $POLYSPEC_ORM_TEST_CFLAGS])
+  SQLITE3_INCLUDE=`pkg-config --variable=includedir sqlite3 2>/dev/null`
+  if test -z "$SQLITE3_INCLUDE"; then
+    AC_MSG_ERROR([polyspec_orm cancellation needs pkg-config metadata for the SQLite development headers])
+  fi
+  PHP_ADD_INCLUDE([$SQLITE3_INCLUDE])
+  AC_CHECK_HEADER([sqlite3ext.h], [], [AC_MSG_ERROR([polyspec_orm cancellation needs the SQLite extension headers (sqlite3ext.h)])])
+  AC_CHECK_FUNC([dladdr], [], [AC_CHECK_LIB([dl], [dladdr], [PHP_ADD_LIBRARY([dl], 1, POLYSPEC_ORM_SHARED_LIBADD)], [AC_MSG_ERROR([polyspec_orm cancellation needs dladdr to locate its loaded module])])])
   dnl codec.c inflates and deflates the gz stage with libz (zlib.h, -lz).
   AC_CHECK_HEADER([zlib.h], [], [AC_MSG_ERROR([polyspec_orm needs the zlib headers (zlib.h)])])
   AC_CHECK_LIB([z], [deflateInit2_], [PHP_ADD_LIBRARY([z], 1, POLYSPEC_ORM_SHARED_LIBADD)], [AC_MSG_ERROR([polyspec_orm needs libz])])

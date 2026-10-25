@@ -22,6 +22,20 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <unistd.h>
+#ifndef PHP_WIN32
+#include <dlfcn.h>
+#else
+#include <windows.h>
+#endif
+#include <sqlite3ext.h>
+
+extern zend_module_entry polyspec_orm_module_entry;
+extern int sqlite3_ormcancel_init(sqlite3 *database, char **error, const sqlite3_api_routines *api);
+
+ZEND_DLEXPORT int sqlite3_extension_init(sqlite3 *database, char **error, const sqlite3_api_routines *api)
+{
+    return sqlite3_ormcancel_init(database, error, api);
+}
 
 #define ORM_EXCEPTION "Polyspec\\Orm\\OrmException"
 #define STATEMENT_EVENT "Polyspec\\Orm\\StatementEvent"
@@ -461,6 +475,226 @@ bool db_catalog_event_native(zval *db, zend_string *query, zval *transaction, ze
     return ok;
 }
 
+static bool cancellation_attach_sqlite(zval *db, zval *cancellation)
+{
+    zval pdo, path;
+    if (!handle_pdo(db, &pdo)) return false;
+    if (!mcall(cancellation, "statePath", &path, 0, NULL)) {
+        zval_ptr_dtor(&pdo);
+        return false;
+    }
+    zval *state = rd(db, "state");
+    if (!as_bool(rd(state, "sqliteCancellationLoaded"))) {
+#ifndef PHP_WIN32
+        Dl_info module;
+        if (dladdr((void *) &polyspec_orm_module_entry, &module) == 0 || module.dli_fname == NULL) {
+            zval_ptr_dtor(&pdo); zval_ptr_dtor(&path);
+            db_throw_orm("CAPABILITY_UNSUPPORTED", "cannot locate the loaded polyspec_orm extension module");
+            return false;
+        }
+        zval extension, load_result;
+        ZVAL_STRING(&extension, module.dli_fname);
+#else
+        HMODULE module;
+        char filename[MAX_PATH];
+        DWORD filename_length;
+        if (!GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+            (LPCSTR) &polyspec_orm_module_entry, &module)
+            || (filename_length = GetModuleFileNameA(module, filename, MAX_PATH)) == 0 || filename_length >= MAX_PATH) {
+            zval_ptr_dtor(&pdo); zval_ptr_dtor(&path);
+            db_throw_orm("CAPABILITY_UNSUPPORTED", "cannot locate the loaded polyspec_orm extension module");
+            return false;
+        }
+        zval extension, load_result;
+        ZVAL_STRINGL(&extension, filename, filename_length);
+#endif
+        bool ok = mcall(&pdo, "loadExtension", &load_result, 1, &extension);
+        zval_ptr_dtor(&extension);
+        if (!ok) { zval_ptr_dtor(&pdo); zval_ptr_dtor(&path); return false; }
+        zval_ptr_dtor(&load_result);
+        zval yes; ZVAL_TRUE(&yes); wr(state, "sqliteCancellationLoaded", &yes);
+    }
+    zval sql, statement, parameters, executed, fetched, closed;
+    str_zv(&sql, "SELECT orm_cancel_attach(?, ?)");
+    bool ok = mcall(&pdo, "prepare", &statement, 1, &sql);
+    zval_ptr_dtor(&sql);
+    if (ok) {
+        array_init(&parameters);
+        zval path_copy; ZVAL_COPY(&path_copy, &path);
+        zend_hash_next_index_insert(Z_ARRVAL(parameters), &path_copy);
+        zval slot_copy; ZVAL_COPY(&slot_copy, rd(db, "cancellationSlot"));
+        zend_hash_next_index_insert(Z_ARRVAL(parameters), &slot_copy);
+        ok = mcall(&statement, "execute", &executed, 1, &parameters);
+        zval_ptr_dtor(&parameters);
+        if (ok) {
+            zval_ptr_dtor(&executed);
+            ok = mcall(&statement, "fetchColumn", &fetched, 0, NULL);
+            if (ok) zval_ptr_dtor(&fetched);
+        }
+        if (mcall(&statement, "closeCursor", &closed, 0, NULL)) zval_ptr_dtor(&closed);
+        zval_ptr_dtor(&statement);
+    }
+    zval_ptr_dtor(&pdo);
+    zval_ptr_dtor(&path);
+    return ok;
+}
+
+static bool cancellation_begin_statement(zval *db, bool control, zval *signal, bool *started)
+{
+    *started = false;
+    ZVAL_UNDEF(signal);
+    if (control) return true;
+    zval *found = rd(db, "cancellation");
+    if (found == NULL || Z_TYPE_P(found) != IS_OBJECT) return true;
+    ZVAL_COPY(signal, found);
+    zval result, slot;
+    ZVAL_COPY(&slot, rd(db, "cancellationSlot"));
+    bool ok = mcall(signal, "begin", &result, 1, &slot);
+    zval_ptr_dtor(&slot);
+    if (!ok) return false;
+    zval_ptr_dtor(&result);
+    *started = true;
+    if (is_str(rd(db, "driver"), "sqlite") && !cancellation_attach_sqlite(db, signal)) return false;
+    return true;
+}
+
+static bool cancellation_was_requested(zval *signal, bool *cancelled)
+{
+    zval result;
+    *cancelled = false;
+    if (Z_TYPE_P(signal) != IS_OBJECT) return true;
+    if (!mcall(signal, "isCancelled", &result, 0, NULL)) return false;
+    *cancelled = zend_is_true(&result);
+    zval_ptr_dtor(&result);
+    return true;
+}
+
+static bool cancellation_end_statement(zval *signal, zval *db)
+{
+    if (Z_TYPE_P(signal) != IS_OBJECT) return true;
+    zval result, slot;
+    ZVAL_COPY(&slot, rd(db, "cancellationSlot"));
+    bool ok = mcall(signal, "end", &result, 1, &slot);
+    zval_ptr_dtor(&slot);
+    if (ok) zval_ptr_dtor(&result);
+    return ok;
+}
+
+static bool cancellation_end_preserving_exception(zval *signal, zval *db)
+{
+    if (EG(exception) == NULL) return cancellation_end_statement(signal, db);
+    zval primary;
+    take_exception(&primary);
+    bool ended = cancellation_end_statement(signal, db);
+    if (!ended && EG(exception) != NULL) {
+        zval cleanup;
+        take_exception(&cleanup);
+        zval args[2], combined;
+        ZVAL_COPY(&args[0], &primary);
+        ZVAL_COPY(&args[1], &cleanup);
+        if (scall("Polyspec\\Orm\\OrmException::withCleanup", &combined, 2, args)) {
+            zval_ptr_dtor(&primary);
+            ZVAL_COPY_VALUE(&primary, &combined);
+        } else if (EG(exception) != NULL) {
+            zend_clear_exception();
+        }
+        zval_ptr_dtor(&args[0]);
+        zval_ptr_dtor(&args[1]);
+        zval_ptr_dtor(&cleanup);
+    }
+    put_exception(&primary);
+    return false;
+}
+
+static bool cancellation_exception(zval *native, zval *out)
+{
+    zval args[3];
+    str_zv(&args[0], "CANCELED");
+    str_zv(&args[1], "statement was cancelled");
+    ZVAL_COPY(&args[2], native);
+    bool ok = newobj(ORM_EXCEPTION, out, 3, args);
+    for (int index = 0; index < 3; index++) zval_ptr_dtor(&args[index]);
+    return ok;
+}
+
+static void cancellation_clear_statements(zval *state)
+{
+    zval empty, retained;
+    array_init(&empty);
+    wr(state, "stmts", &empty);
+    wr(state, "stmtOrder", &empty);
+    wr(state, "stmtPlaceholders", &empty);
+    zval_ptr_dtor(&empty);
+    ZVAL_LONG(&retained, 0);
+    wr(state, "stmtRetained", &retained);
+}
+
+static bool cancellation_reopen(zval *db, zval *primary)
+{
+    zval *state = rd(db, "state");
+    zval nul;
+    ZVAL_NULL(&nul);
+    wr(state, "pdo", &nul);
+    zval *frame = active_for(db);
+    if (EG(exception) != NULL) return false;
+    if (frame != NULL) {
+        zval yes;
+        ZVAL_TRUE(&yes);
+        wr(frame, "finished", &yes);
+        wr(frame, "cancelled", &yes);
+    }
+    zval *reconnect = rd(state, "reconnect");
+    if (reconnect == NULL || Z_TYPE_P(reconnect) != IS_OBJECT) {
+        db_throw_orm("CONNECTION_LOST", "root connection has no cancellation reopen operation");
+    } else {
+        zval values;
+        ZVAL_UNDEF(&values);
+        bool opened = mcall(reconnect, "__invoke", &values, 0, NULL);
+        if (opened && Z_TYPE(values) == IS_ARRAY) {
+            zval *pdo = zend_hash_str_find(Z_ARRVAL(values), "pdo", sizeof("pdo") - 1);
+            zval *cancel = zend_hash_str_find(Z_ARRVAL(values), "cancelConnection", sizeof("cancelConnection") - 1);
+            zval *open = zend_hash_str_find(Z_ARRVAL(values), "reconnect", sizeof("reconnect") - 1);
+            if (pdo != NULL && Z_TYPE_P(pdo) == IS_OBJECT && cancel != NULL && open != NULL) {
+                wr(state, "pdo", pdo);
+                wr(state, "cancelConnection", cancel);
+                wr(state, "reconnect", open);
+                zval_ptr_dtor(&values);
+                return true;
+            }
+            zval_ptr_dtor(&values);
+            db_throw_orm("CONNECTION_LOST", "root connection could not be reopened after cancellation");
+        } else if (opened) {
+            zval_ptr_dtor(&values);
+            db_throw_orm("CONNECTION_LOST", "root connection could not be reopened after cancellation");
+        } else if (Z_TYPE(values) != IS_UNDEF) {
+            zval_ptr_dtor(&values);
+        }
+    }
+    if (EG(exception) != NULL) {
+        zval failure, cleanup, cleanup_args[3], args[2], combined;
+        take_exception(&failure);
+        str_zv(&cleanup_args[0], "CONNECTION_LOST");
+        str_zv(&cleanup_args[1], "root connection could not be reopened after cancellation");
+        ZVAL_COPY(&cleanup_args[2], &failure);
+        if (newobj(ORM_EXCEPTION, &cleanup, 3, cleanup_args)) {
+            ZVAL_COPY(&args[0], primary);
+            ZVAL_COPY(&args[1], &cleanup);
+            if (scall("Polyspec\\Orm\\OrmException::withCleanup", &combined, 2, args)) {
+                zval_ptr_dtor(primary);
+                ZVAL_COPY_VALUE(primary, &combined);
+            } else if (EG(exception) != NULL) {
+                zend_clear_exception();
+            }
+            zval_ptr_dtor(&args[0]);
+            zval_ptr_dtor(&args[1]);
+            zval_ptr_dtor(&cleanup);
+        }
+        for (int index = 0; index < 3; index++) zval_ptr_dtor(&cleanup_args[index]);
+        zval_ptr_dtor(&failure);
+    }
+    return true;
+}
+
 /* ---- the send of one statement: the armed fault, the driver error, and the event ---- */
 
 typedef bool (*op_fn)(zval *self, void *ctx, zval *ret);
@@ -487,43 +721,97 @@ static bool send_op(zval *self, bool control, op_fn op, void *ctx, done_fn done,
             return false;
         }
     }
+    zval signal;
+    bool signal_started = false;
+    if (!cancellation_begin_statement(self, control, &signal, &signal_started)) {
+        cancellation_end_preserving_exception(&signal, self);
+        if (Z_TYPE(signal) != IS_UNDEF) zval_ptr_dtor(&signal);
+        return false;
+    }
     if (!op(self, ctx, ret)) {
         if (!pdo_exception_pending()) {
+            cancellation_end_preserving_exception(&signal, self);
+            if (Z_TYPE(signal) != IS_UNDEF) zval_ptr_dtor(&signal);
             return false;
         }
-        zval pe, pdo, args[3], err, made_ok, driver;
+        zval pe, pdo, args[3], err, driver;
         take_exception(&pe);
         if (!handle_pdo(self, &pdo)) {
             zval_ptr_dtor(&pe);
+            cancellation_end_preserving_exception(&signal, self);
+            if (Z_TYPE(signal) != IS_UNDEF) zval_ptr_dtor(&signal);
+            return false;
+        }
+        bool cancelled = false;
+        if (signal_started && !cancellation_was_requested(&signal, &cancelled)) {
+            zval_ptr_dtor(&pdo);
+            zval_ptr_dtor(&pe);
+            cancellation_end_preserving_exception(&signal, self);
+            if (Z_TYPE(signal) != IS_UNDEF) zval_ptr_dtor(&signal);
             return false;
         }
         ZVAL_COPY(&driver, rd(self, "driver"));
-        ZVAL_COPY(&args[0], &pe);
-        ZVAL_COPY(&args[1], &driver);
-        ZVAL_COPY(&args[2], &pdo);
-        bool made = scall("Polyspec\\Orm\\OrmException::fromDriver", &err, 3, args);
-        (void)made_ok;
-        for (int i = 0; i < 3; i++) {
-            zval_ptr_dtor(&args[i]);
+        if (cancelled) {
+            bool made = cancellation_exception(&pe, &err);
+            if (!made) {
+                zval_ptr_dtor(&driver);
+                zval_ptr_dtor(&pdo);
+                zval_ptr_dtor(&pe);
+                cancellation_end_preserving_exception(&signal, self);
+                if (Z_TYPE(signal) != IS_UNDEF) zval_ptr_dtor(&signal);
+                return false;
+            }
+            if (!is_str(&driver, "sqlite")) {
+                cancellation_clear_statements(rd(self, "state"));
+                cancellation_reopen(self, &err);
+            }
+        } else {
+            ZVAL_COPY(&args[0], &pe);
+            ZVAL_COPY(&args[1], &driver);
+            ZVAL_COPY(&args[2], &pdo);
+            bool made = scall("Polyspec\\Orm\\OrmException::fromDriver", &err, 3, args);
+            for (int i = 0; i < 3; i++) zval_ptr_dtor(&args[i]);
+            if (!made) {
+                zval_ptr_dtor(&driver);
+                zval_ptr_dtor(&pdo);
+                zval_ptr_dtor(&pe);
+                cancellation_end_preserving_exception(&signal, self);
+                if (Z_TYPE(signal) != IS_UNDEF) zval_ptr_dtor(&signal);
+                return false;
+            }
         }
         zval_ptr_dtor(&driver);
         zval_ptr_dtor(&pdo);
         zval_ptr_dtor(&pe);
-        if (!made) {
-            return false;
-        }
         if (!done(self, dctx, start, &err)) {
             zval_ptr_dtor(&err);
+            cancellation_end_preserving_exception(&signal, self);
+            if (Z_TYPE(signal) != IS_UNDEF) zval_ptr_dtor(&signal);
             return false;
         }
+        if (!cancellation_end_statement(&signal, self)) {
+            zval_ptr_dtor(&err);
+            if (Z_TYPE(signal) != IS_UNDEF) zval_ptr_dtor(&signal);
+            return false;
+        }
+        if (Z_TYPE(signal) != IS_UNDEF) zval_ptr_dtor(&signal);
         put_exception(&err);
         return false;
     }
     if (!done(self, dctx, start, NULL)) {
         zval_ptr_dtor(ret);
         ZVAL_UNDEF(ret);
+        cancellation_end_preserving_exception(&signal, self);
+        if (Z_TYPE(signal) != IS_UNDEF) zval_ptr_dtor(&signal);
         return false;
     }
+    if (!cancellation_end_statement(&signal, self)) {
+        zval_ptr_dtor(ret);
+        ZVAL_UNDEF(ret);
+        if (Z_TYPE(signal) != IS_UNDEF) zval_ptr_dtor(&signal);
+        return false;
+    }
+    if (Z_TYPE(signal) != IS_UNDEF) zval_ptr_dtor(&signal);
     return true;
 }
 
@@ -3880,6 +4168,56 @@ ZEND_METHOD(Polyspec_Orm_Db, withRequestHook)
     ZVAL_OBJ(&c, clone);
     wr(&c, "requestHook", hook);
     RETURN_COPY_VALUE(&c);
+}
+
+ZEND_METHOD(Polyspec_Orm_Db, withCancellation)
+{
+    zval *cancellation;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_OBJECT_OF_CLASS(cancellation, cls("Polyspec\\Orm\\Cancellation"))
+    ZEND_PARSE_PARAMETERS_END();
+    if (!unsupported_on_markdown(ZEND_THIS, "statement cancellation")) {
+        RETURN_THROWS();
+    }
+    zval *state = rd(ZEND_THIS, "state");
+    zval key_args[1], key, arguments[2], slot;
+    ZVAL_COPY(&key_args[0], state);
+    if (!scall("spl_object_id", &key, 1, key_args)) { zval_ptr_dtor(&key_args[0]); RETURN_THROWS(); }
+    zval_ptr_dtor(&key_args[0]);
+    ZVAL_COPY(&arguments[0], &key);
+    zval *cancel_query = rd(state, "cancelQuery");
+    if (cancel_query != NULL && Z_TYPE_P(cancel_query) == IS_OBJECT) ZVAL_COPY(&arguments[1], cancel_query);
+    else ZVAL_NULL(&arguments[1]);
+    bool registered = mcall(cancellation, "registerCancelQuery", &slot, 2, arguments);
+    zval_ptr_dtor(&arguments[0]); zval_ptr_dtor(&arguments[1]); zval_ptr_dtor(&key);
+    if (!registered) RETURN_THROWS();
+    zend_object *clone = zend_objects_clone_obj(Z_OBJ_P(ZEND_THIS));
+    zval copy;
+    ZVAL_OBJ(&copy, clone);
+    wr(&copy, "cancellation", cancellation);
+    wr(&copy, "cancellationSlot", &slot);
+    zval_ptr_dtor(&slot);
+    RETURN_COPY_VALUE(&copy);
+}
+
+ZEND_METHOD(Polyspec_Orm_Db, setReconnect)
+{
+    zval *callback;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_OBJECT_OF_CLASS(callback, zend_ce_closure)
+    ZEND_PARSE_PARAMETERS_END();
+    wr(rd(ZEND_THIS, "state"), "reconnect", callback);
+    RETURN_NULL();
+}
+
+ZEND_METHOD(Polyspec_Orm_Db, setCancelConnection)
+{
+    zval *callback;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_OBJECT_OF_CLASS(callback, zend_ce_closure)
+    ZEND_PARSE_PARAMETERS_END();
+    wr(rd(ZEND_THIS, "state"), "cancelConnection", callback);
+    RETURN_NULL();
 }
 
 ZEND_METHOD(Polyspec_Orm_Db, subscribe)

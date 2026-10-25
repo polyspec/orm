@@ -2580,6 +2580,28 @@
         "Makefile"
       ]
     },
+    "php-query-cancellation-check": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "databases"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/php/bin/orm-sqlite-cancel-build.php",
+        "packages/php/composer.json",
+        "packages/php/src/Cancellation.php",
+        "packages/php/src/Db.php",
+        "packages/php/src/DbState.php",
+        "packages/php/src/Orm.php",
+        "packages/php/src/SqliteCancellation.php",
+        "packages/php/src/TxFrame.php",
+        "packages/php/src/native/sqlite_cancel.c",
+        "packages/php/tests/QueryCancellationTest.php",
+        "contracts/features.json"
+      ]
+    },
     "transaction-failure-typescript-check": {
       "scope": "owner",
       "needs": [
@@ -3425,6 +3447,7 @@
       ],
       "inputs": [
         "Makefile",
+        "config/release.json",
         "contracts/features.json",
         "packages/php-ext/scripts/build.sh",
         "packages/php-ext/src/**",
@@ -3433,9 +3456,33 @@
         "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
         "packages/php-ext/tests/CoverageConstraintsAndRelationsExtensionTest.php",
         "packages/php-ext/tests/CoverageStatementEventsTest.php",
+        "packages/php-ext/tests/QueryCancellationNativeTest.php",
+        "packages/php/src/native/sqlite_cancel.c",
         "packages/php/tests/CoverageDsnTest.php",
         "packages/php/tests/CoverageTransactionsTest.php",
         "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
+        "packages/php/models.txt"
+      ]
+    },
+    "php-query-cancellation-extension-check": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools",
+        "databases"
+      ],
+      "inputs": [
+        "Makefile",
+        "config/release.json",
+        "contracts/features.json",
+        "packages/php-ext/scripts/build.sh",
+        "packages/php-ext/src/**",
+        "packages/php-ext/tests/bootstrap.php",
+        "packages/php-ext/tests/QueryCancellationNativeTest.php",
+        "packages/php/src/native/sqlite_cancel.c",
+        "packages/php/tests/bootstrap.php",
+        "packages/php/tests/case_database.php",
         "packages/php/models.txt"
       ]
     },

@@ -2595,7 +2595,7 @@
         },
         {
           "code": "CANCELED",
-          "when": "another SQLite connection still holds the lock when busy_timeout ends"
+          "when": "a cancellation handle stops an active statement, or a SQLite busy wait reaches its configured timeout"
         },
         {
           "code": "CAPABILITY_UNSUPPORTED",
@@ -2636,6 +2636,7 @@
       "tests": [
         "packages/go/model/model_test.go",
         "packages/go/orm/cancel_test.go",
+        "packages/php/tests/QueryCancellationTest.php",
         "packages/php/tests/ModelTest.php",
         "packages/php-ext/tests/TransactionFailureNativeTest.php",
         "packages/ts/tests/model.mjs",
@@ -2919,6 +2920,24 @@
           ]
         },
         {
+          "id": "cancel-php",
+          "command": "make php-query-cancellation-check",
+          "shard": "other",
+          "inputs": [
+            "packages/php/src/Cancellation.php",
+            "packages/php/src/Db.php",
+            "packages/php/src/DbState.php",
+            "packages/php/src/Orm.php",
+            "packages/php/src/SqliteCancellation.php",
+            "packages/php/src/TxFrame.php",
+            "packages/php/src/native/sqlite_cancel.c",
+            "packages/php/tests/QueryCancellationTest.php",
+            "packages/php/bin/orm-sqlite-cancel-build.php",
+            "packages/php/composer.json",
+            "Makefile"
+          ]
+        },
+        {
           "id": "sqlite-concurrency-php",
           "command": "vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/SqliteConcurrencyTest.php",
           "shard": "other",
@@ -2959,7 +2978,7 @@
       ],
       "public_constraints": [
         "The chain declares no cancellation operation: a flow cancels through the host language primitive on a connection handle (Go WithContext, TypeScript withSignal, Rust dropping the statement future), and a cancelled statement returns CANCELED.",
-        "PHP cancellation is not implemented yet.",
+        "PHP withCancellation returns a handle on the same logical root, and Cancellation.cancel ends an active statement with CANCELED while preserving later cancellation on that token.",
         "The interface manifest prohibits query_cancel, transaction_cancel, and in_flight_cancellation symbols."
       ],
       "coverage": {

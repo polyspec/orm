@@ -96,11 +96,50 @@ final class Orm
             throw new OrmException(Code::CONFIG, 'cannot connect: ' . $e->getMessage(), $e);
         }
         $db = new Db($pdo, $driver, $config, new \DateTimeZone('UTC'));
+        $open = static fn(): \PDO => \PDO::connect($pdoDsn, $user, $password, $options);
+        $db->setReconnect($open);
+        if ($driver === 'mysql' || $driver === 'postgres') {
+            $controlDsn = $driver === 'postgres'
+                ? preg_replace('/ -c statement_timeout=\d+/', '', $pdoDsn)
+                : $pdoDsn;
+            $openControl = static fn(): \PDO => \PDO::connect($controlDsn, $user, $password, $options);
+            $connectionIdSql = $driver === 'mysql' ? 'SELECT CONNECTION_ID()' : 'SELECT pg_backend_pid()';
+            $connectionId = (int) $pdo->query($connectionIdSql)->fetchColumn();
+            $db->setCancelConnection(self::cancelConnection($driver, $openControl, $connectionId));
+            $db->setReconnect(static function () use ($open, $openControl, $driver, $connectionIdSql, $db): \PDO {
+                $reconnected = $open();
+                $connectionId = (int) $reconnected->query($connectionIdSql)->fetchColumn();
+                $db->setCancelConnection(self::cancelConnection($driver, $openControl, $connectionId));
+                return $reconnected;
+            });
+        }
         if ($driver === 'postgres') {
             // A LISTEN subscription opens a connection of its own with the same DSN, user, password and options.
             $db->setListener(static fn (): \PDO => \PDO::connect($pdoDsn, $user, $password, $options));
         }
         return $db;
+    }
+
+    /** @param \Closure(): \PDO $open */
+    private static function cancelConnection(string $driver, \Closure $open, int $connectionId): \Closure
+    {
+        return static function () use ($driver, $open, $connectionId): void {
+            $control = $open();
+            try {
+                if ($driver === 'mysql') {
+                    $control->exec('KILL CONNECTION ' . $connectionId);
+                } else {
+                    $statement = $control->prepare('SELECT pg_terminate_backend(?)');
+                    $statement->execute([$connectionId]);
+                    $terminated = $statement->fetchColumn();
+                    if (!in_array($terminated, [true, 't', '1', 1], true)) {
+                        throw new OrmException(Code::CONFIG, 'PostgreSQL did not terminate the cancelled connection');
+                    }
+                }
+            } finally {
+                $control = null;
+            }
+        };
     }
 
     /** Pool options and statement timeout are checked by the same rules for SQL and markdown connections. */
