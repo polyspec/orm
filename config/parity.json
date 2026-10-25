@@ -2143,28 +2143,6 @@
       ]
     },
     {
-      "id": "ts-browser-entry",
-      "kind": "feature",
-      "requirements": [
-        "ORE-6",
-        "ORES-53",
-        "ORES-54",
-        "ORES-55"
-      ],
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/browser-entry.mjs",
-          "id": "the subpath module reaches no Node module, undeclared package or Node global"
-        }
-      ],
-      "owner": {
-        "kind": "release-package",
-        "artifact": "archive",
-        "package": "@polyspec/orm"
-      }
-    },
-    {
       "id": "ts-browser-entry-exports",
       "kind": "feature",
       "requirements": [
@@ -16022,77 +16000,6 @@
           "id": "EngineTest::testEngine"
         }
       ]
-    },
-    {
-      "id": "php-extension-internal-declarations-required-modules",
-      "kind": "feature",
-      "requirements": [
-        "INT-94"
-      ],
-      "bindings": [
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DeclarationsTest.php",
-          "id": "DeclarationsTest::testRequiredModules"
-        }
-      ]
-    },
-    {
-      "id": "php-extension-internal-declarations-declarations",
-      "kind": "feature",
-      "requirements": [
-        "DBS-172"
-      ],
-      "bindings": [
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DeclarationsTest.php",
-          "id": "DeclarationsTest::testDeclarations"
-        }
-      ],
-      "owner": {
-        "kind": "release-package",
-        "artifact": "archive",
-        "package": "polyspec/orm-php-ext"
-      }
-    },
-    {
-      "id": "php-extension-internal-declarations-client",
-      "kind": "feature",
-      "requirements": [
-        "DBS-172"
-      ],
-      "bindings": [
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DeclarationsTest.php",
-          "id": "DeclarationsTest::testClient"
-        }
-      ],
-      "owner": {
-        "kind": "release-package",
-        "artifact": "archive",
-        "package": "polyspec/orm-php-ext"
-      }
-    },
-    {
-      "id": "php-extension-internal-declarations-package",
-      "kind": "feature",
-      "requirements": [
-        "INT-95"
-      ],
-      "bindings": [
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/DeclarationsTest.php",
-          "id": "DeclarationsTest::testPackage"
-        }
-      ],
-      "owner": {
-        "kind": "release-package",
-        "artifact": "archive",
-        "package": "polyspec/orm-php-ext"
-      }
     },
     {
       "id": "ir-answers",
