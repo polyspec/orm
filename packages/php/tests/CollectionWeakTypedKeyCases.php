@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Tests;
 
 use Polyspec\Orm\Collection;
+use Polyspec\Orm\Model;
 
 /** Shared weak and strict collection-key coercion behavior for the PHP library and extension. */
 trait CollectionWeakTypedKeyCases
