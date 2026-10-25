@@ -4,7 +4,6 @@
 ## Unreleased
 
 - `tsc .` type-checks the kit sources that orm imports again: kit K574 links the dependencies that a linked package adds, so `make link` installs node_modules/@types/picomatch beside the file links of kit, and `make lint-ts` no longer fails on TS7016 for picomatch (KSTD-5-89-8).
-- Every catch clause of the TypeScript client, the scripts and the tests binds its error and accepts only the failure it expects, rethrowing any other: an invalid UTF-8 decode, an invalid URL or percent escape, a temporal value error, an ordered-json ParseError, a missing file, a finished process, a parseArgs refusal or the rollback reason of the case. A complex-query fixture drop that throws now names its error, and the docs server answers 500 with the message for a failure that is not a missing page. The catch-check step of kit passes (KSTD-5-89-2).
 - `make lint-python` passes on main: `ruff format` reformats the six Python files that `ruff format --check` reported, with no change to their syntax tree (KSTD-5-89-1).
 - KSTD-5-90: conformance-check RECORD=1 passes all six implementation outputs, php-extension included, to record (KSTD-5-90)
 - The two drop cases of `scripts/check/continue.test.mts` expect the drops of the 18 complex-query fixture databases that `databases.mts drop` runs before the bench and decimal databases, so they pass again (KSTD-2-9-13-2).

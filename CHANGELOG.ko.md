@@ -1,11 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 16f46c2ded0da96abfa1e4bad2e7b54bd73183f52eed58e831ddca816b499766 -->
+<!-- source-sha256: bb9d9e9b05d744bdc165deb5f6079b96edb31efe3e38cc5ecf6d0aeef64fa2ef -->
 # 변경 이력
 
 ## Unreleased
 
 - `tsc .`가 orm이 import하는 kit source를 다시 type-check한다: kit K574가 link된 package가 더하는 dependency를 link하므로 `make link`가 kit의 파일 link 옆에 node_modules/@types/picomatch를 설치하고, `make lint-ts`는 더 이상 picomatch의 TS7016으로 실패하지 않는다 (KSTD-5-89-8).
-- TypeScript client, script, test의 모든 catch 절이 error를 bind하고 기대하는 실패만 받아들이며 다른 실패는 다시 throw한다: 잘못된 UTF-8 decode, 잘못된 URL 또는 percent escape, temporal 값 오류, ordered-json ParseError, 없는 파일, 끝난 process, parseArgs 거부, case의 rollback 이유. throw하는 complex-query fixture drop은 이제 그 error를 밝히고, docs server는 없는 page가 아닌 실패에 message와 함께 500으로 답한다. kit의 catch-check 단계가 통과한다 (KSTD-5-89-2).
 - `make lint-python`이 main에서 통과한다: `ruff format --check`가 보고한 Python 파일 6개를 `ruff format`으로 재포맷했으며 syntax tree는 바뀌지 않는다 (KSTD-5-89-1).
 - KSTD-5-90: conformance-check RECORD=1은 record에 여섯 구현 출력(php-extension 포함)을 모두 넘긴다 (KSTD-5-90)
 - `scripts/check/continue.test.mts`의 두 drop case는 `databases.mts drop`이 bench와 decimal database보다 먼저 실행하는 18개 complex-query fixture database의 drop을 기대하므로 다시 통과한다 (KSTD-2-9-13-2).
