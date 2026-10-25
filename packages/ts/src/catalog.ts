@@ -525,8 +525,9 @@ function dbspecTemporal(kind: 'date' | 'time' | 'datetime', text: string): boole
     try {
       check();
       return true;
-    } catch {
-      return false;
+    } catch (error) {
+      if (error instanceof OrmError && error.code === CODE_TEMPORAL_VALUE) return false;
+      throw error;
     }
   };
   if (kind === 'date') return text.length === 10 && valid(() => dateText(text));

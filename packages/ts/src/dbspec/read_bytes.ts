@@ -3,6 +3,7 @@
 // module reads no Node global and loads no driver: the bytes come from the caller, as a Uint8Array.
 import { present } from '../present.js';
 import type { DbspecDiagnostic } from './model.js';
+import { invalidEncoding } from './utf8.js';
 
 /** The first bytes of every dbspec document file; the header `dbspec 1 <document>` starts with it. */
 export const DBSPEC_SIGNATURE = 'dbspec ';
@@ -35,7 +36,8 @@ export function readDbspecBytes(name: string, bytes: Uint8Array): DbspecReadResu
   try {
     // The fatal decoder rejects an invalid byte; it does not replace it with U+FFFD.
     text = utf8.decode(bytes);
-  } catch {
+  } catch (error) {
+    if (!invalidEncoding(error)) throw error;
     const [line, column] = invalidUtf8Position(bytes);
     return invalid({ rule: 'encoding', line, column, message: `${name} is not valid UTF-8` });
   }

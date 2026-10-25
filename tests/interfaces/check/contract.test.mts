@@ -5,6 +5,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
+import { errorCode } from '../../errors.mts';
 import { caseTest, COMPUTE, PROCESS } from '../../testcase.mts';
 import { checkProhibitedSymbols, checkRecords, differences } from './contract.mts';
 import { checkCallsInRoots, extract } from './extract.mts';
@@ -19,7 +20,8 @@ const root = resolve(import.meta.dirname, '../../..');
 function requirePhp(): void {
   try {
     execFileSync('php', ['--version'], { stdio: 'ignore' });
-  } catch {
+  } catch (error) {
+    if (errorCode(error) !== 'ENOENT') throw error;
     assert.fail('php CLI is required; tool tests never skip; install the PHP of .php-version');
   }
 }

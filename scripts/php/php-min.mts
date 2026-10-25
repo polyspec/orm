@@ -5,6 +5,7 @@ import { spawnSync } from 'node:child_process';
 import { accessSync, constants } from 'node:fs';
 import { delimiter, join, resolve } from 'node:path';
 import { readComposer } from '../json/formats.mts';
+import { errorCode } from '../../tests/errors.mts';
 
 const root = resolve(import.meta.dirname, '../..');
 const fail = (message: string): never => {
@@ -18,7 +19,13 @@ if (process.argv[2] === '--version') {
   process.exit(0);
 }
 const executable = (path: string): boolean => {
-  try { accessSync(path, constants.X_OK); return true; } catch { return false; }
+  try {
+    accessSync(path, constants.X_OK);
+    return true;
+  } catch (error) {
+    if (!['ENOENT', 'EACCES', 'ENOTDIR'].includes(errorCode(error) ?? '')) throw error;
+    return false;
+  }
 };
 // The program on PATH is found as the shell finds it: the first directory of PATH that holds it executable.
 const onPath = (process.env['PATH'] ?? '').split(delimiter).map(directory => join(directory, `php${version}`)).find(executable);

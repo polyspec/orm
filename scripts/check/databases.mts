@@ -107,15 +107,17 @@ export function dropComplexQueryFixtures(plan: readonly ComplexQueryDatabase[], 
   mysql: (database: string) => boolean;
   postgres: (database: string) => boolean;
   sqlite: (file: string) => boolean;
-}, failure: (item: ComplexQueryDatabase) => void = () => {}): boolean {
+}, failure: (item: ComplexQueryDatabase, error?: unknown) => void = () => {}): boolean {
   let succeeded = true;
   for (const item of plan) {
+    // A drop that throws fails like a drop that returns false, and its error goes to failure, so the next drop still runs.
     let dropped = false;
+    let thrown: unknown;
     try { dropped = operations[item.dialect](item.dialect === 'sqlite' ? item.file : item.database); }
-    catch { dropped = false; }
+    catch (error) { thrown = error; }
     if (!dropped) {
       succeeded = false;
-      failure(item);
+      failure(item, thrown);
     }
   }
   return succeeded;
@@ -485,7 +487,7 @@ if (import.meta.main) {
           for (const path of [file, `${file}-wal`, `${file}-shm`]) rmSync(path, { force: true });
           return true;
         },
-      }, item => console.error(`databases: cannot drop ${item.runtime}/${item.dialect} fixture ${item.dialect === 'sqlite' ? item.file : item.database}; check server access in ${serversPath} and run make orm-test-servers`)));
+      }, (item, error) => console.error(`databases: cannot drop ${item.runtime}/${item.dialect} fixture ${item.dialect === 'sqlite' ? item.file : item.database}${error === undefined ? '' : `: ${errorMessage(error)}`}; check server access in ${serversPath} and run make orm-test-servers`)));
       keep(`mysql DROP DATABASE ${name}_bench, ${name}_decimal`, () => mysqlAt(runMysql, ['-e', `DROP DATABASE IF EXISTS \`${name}_bench\`; DROP DATABASE IF EXISTS \`${name}_decimal\``], env).status === 0);
       const server = postgresServer(servers['ORM_RUN_POSTGRES_DSN'] ?? '');
       keep(`psql DROP DATABASE ${name}_bench, ${name}_decimal`, () => result('psql', ['-X', '-q', '-v', 'ON_ERROR_STOP=1', server,

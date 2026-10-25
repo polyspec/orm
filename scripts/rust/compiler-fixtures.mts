@@ -71,7 +71,9 @@ function check(id: string, source: string): Promise<{ status: number | null; sig
           messages.push(message);
           if (message.message.level === 'error') process.stdout.write(message.message.message + '\n');
         } else if (!isRecord(parsed) || typeof parsed.reason !== 'string' || parsed.reason === '') process.stdout.write(`${value}\n`);
-      } catch {
+      } catch (error) {
+        // A line that is no JSON is the plain output of cargo or rustc, printed as it is.
+        if (!(error instanceof SyntaxError)) throw error;
         if (value !== '') process.stdout.write(`${value}\n`);
       }
     };

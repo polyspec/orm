@@ -3,9 +3,11 @@
 
 ## Unreleased
 
+- Every catch clause of the TypeScript client, the scripts and the tests binds its error and narrows it to the failure it expects, rethrowing the rest, so `make lint-ts` passes on main; the red was `make lint-ts` exit 2 at `168ae591238d` with 23 bindingless catches (KSTD-5-92).
 - duplication-check passes: the generated models are build output and the repeated code of the implementations moved into shared modules, so `make duplication-check` finds no clone (KSTD-5-5).
 - `make duplication-check` exits 0 with zero clones of 6 or more lines across the whole tree, in all seven formats it reads (KSTD-5-46).
 - `make duplication-check` finds no clone: each `@param` of the apply, recover, rollback and finalize operations of the PHP `Dbspec` and `PlanApply` says what its argument is for that operation, so the four docblocks no longer end in the same six lines; no public name, signature or extension stub changes (KSTD-5-46-3).
+- KSTD-5-90: conformance-check RECORD=1 passes all six implementation outputs, php-extension included, to record (KSTD-5-90)
 - The request hook, audit, soft delete, restore and clock units are six-client units: their 26 units report no declaration finding, and the native request hook and audit cases of the PHP extension pass (KSTD-2-11-12).
 - The PHP extension request hook test names the requirements of the insert assignment case it inherits; the focused parity declaration and native binding checks pass (KSTD-2-11-12-4).
 - relation() and relations() under a service scope run in every client as the request hook case relation_scope, bound by coverage-request-hook-relation-scope. The CONFIG failure that the consumer reported does not reproduce on current main: its canister conformance passes 101 of 101 cases with the relation calls under its ScopeHook, and the earlier cause is not proven (T203).

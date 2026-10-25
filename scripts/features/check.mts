@@ -65,7 +65,10 @@ const version = (await readFile(resolve(root, 'VERSION'), 'utf8')).trim();
 if (manifest.contract_version !== version) errors.push(`contract_version must equal VERSION ${version}`);
 for (const relative of manifest.source.read_order) {
   try { await stat(resolve(root, relative)); }
-  catch { errors.push(`source.read_order: missing path ${relative}`); }
+  catch (error) {
+      if (errorCode(error) !== 'ENOENT') throw error;
+      errors.push(`source.read_order: missing path ${relative}`);
+    }
 }
 for (const feature of manifest.features) {
   if (ids.has(feature.id)) errors.push(`duplicate feature id: ${feature.id}`);
@@ -83,7 +86,10 @@ for (const feature of manifest.features) {
   for (const relative of [...feature.fixtures, ...feature.tests, ...feature.docs]) {
     if (relative.includes('*')) continue;
     try { await stat(resolve(root, relative)); }
-    catch { errors.push(`${feature.id}: missing path ${relative}`); }
+    catch (error) {
+      if (errorCode(error) !== 'ENOENT') throw error;
+      errors.push(`${feature.id}: missing path ${relative}`);
+    }
   }
   for (const relative of feature.fixtures) {
     if (!relative.startsWith('contracts/fixtures/') || !relative.endsWith('.json')) continue;
@@ -99,7 +105,10 @@ for (const feature of manifest.features) {
     if (!doc.endsWith('.md')) continue;
     const korean = doc.replace(/\.md$/, '.ko.md');
     try { await readFile(resolve(root, korean)); }
-    catch { errors.push(`${feature.id}: missing Korean document ${korean}`); }
+    catch (error) {
+      if (errorCode(error) !== 'ENOENT') throw error;
+      errors.push(`${feature.id}: missing Korean document ${korean}`);
+    }
   }
   if (feature.vector_contract) {
     const contract = feature.vector_contract;

@@ -20,12 +20,16 @@ caseTest('listen-notify/postgres', DATABASE, async ({ step }) => {
       if (first.channel !== 't229_events' || first.payload !== 'committed') throw new Error(`received ${JSON.stringify(first)}; want the committed notification`);
 
       let rolledBack = false;
+      const rollBack = new Error('roll back');
       try {
         await db.transaction(async () => {
           await db.notify('t229_events', 'rolled back');
-          throw new Error('roll back');
+          throw rollBack;
         });
-      } catch { rolledBack = true; }
+      } catch (error) {
+        if (error !== rollBack) throw error;
+        rolledBack = true;
+      }
       if (!rolledBack) throw new Error('the transaction that fails did not fail');
       await db.notify('t229_events', 'outside');
       const second = await subscription.receive();

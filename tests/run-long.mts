@@ -9,6 +9,7 @@
 // Usage: node tests/run-long.mts <name> [--cwd <dir>] -- <program> [args...]
 import { spawn } from 'node:child_process';
 import { parseArgs } from 'node:util';
+import { errorCode, errorMessage } from './errors.mts';
 import { runLong, stepLines } from './testcase.mts';
 
 function usage(): never {
@@ -21,7 +22,9 @@ function usage(): never {
 let parsed: ReturnType<typeof parseArgs<{ options: { cwd: { type: 'string' } }; allowPositionals: true }>>;
 try {
   parsed = parseArgs({ options: { cwd: { type: 'string' } }, allowPositionals: true });
-} catch {
+} catch (error) {
+  if (errorCode(error)?.startsWith('ERR_PARSE_ARGS_') !== true) throw error;
+  console.error(errorMessage(error));
   usage();
 }
 const separator = process.argv.indexOf('--', 2);

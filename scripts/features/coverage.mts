@@ -294,7 +294,10 @@ export function checkCoverage(manifest: Manifest, reports: Record<string, Report
 
 function validJSON(value: string): boolean {
   try { JSON.parse(value); return true; }
-  catch { return false; }
+  catch (error) {
+    if (!(error instanceof SyntaxError)) throw error;
+    return false;
+  }
 }
 
 // run executes the program and collects its output. When there is a step, the stderr lines (cargo and go build progress)
@@ -427,7 +430,10 @@ async function nativeTest(item: Item, command: NativeCommand, root: string): Pro
   let crate = dirname(testPath);
   while (crate.startsWith(resolve(root, item.part))) {
     try { await realpath(resolve(crate, 'Cargo.toml')); break; }
-    catch { crate = dirname(crate); }
+    catch (error) {
+      if (errorCode(error) !== 'ENOENT') throw error;
+      crate = dirname(crate);
+    }
   }
   if (!crate.startsWith(resolve(root, item.part))) throw new Error('Rust test has no owning Cargo manifest');
   return { format: 'cargo', cwd: crate, testPath, symbols: nativeSymbols };

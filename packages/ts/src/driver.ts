@@ -824,7 +824,12 @@ function mysqlSsl(parsed: SqlDsn): { ca: string; rejectUnauthorized: true; verif
  */
 export function parseDsn(dsn: string): ParsedDsn {
   let url: URL;
-  try { url = new URL(dsn); } catch { throw new OrmError(codes.CONFIG, 'dsn must be a URI using mysql://, postgres://, sqlite://, or markdown://'); }
+  try {
+    url = new URL(dsn);
+  } catch (error) {
+    if (!(error instanceof TypeError && 'code' in error && error.code === 'ERR_INVALID_URL')) throw error;
+    throw new OrmError(codes.CONFIG, 'dsn must be a URI using mysql://, postgres://, sqlite://, or markdown://', error);
+  }
   const accepted = DSN_PARAMETERS[url.protocol];
   if (accepted !== undefined) {
     for (const name of url.searchParams.keys()) {
@@ -862,7 +867,8 @@ export function sqlitePath(url: URL): string {
   let path: string;
   try {
     path = decodeURIComponent(url.pathname);
-  } catch {
+  } catch (error) {
+    if (!(error instanceof URIError)) throw error;
     throw new OrmError(codes.CONFIG, 'sqlite DSN path has a % without two hexadecimal digits or is not UTF-8 after percent-decoding');
   }
   // An opener that drops what follows a NUL opens a different file.

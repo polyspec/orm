@@ -26,7 +26,7 @@ import { basename, dirname, extname, join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { acquireHolderLock, HolderLockRefused, holderRunning, removeDeadLock } from '@polyspec/kit/holder-lock';
 import { COMPUTE, runCase, runLong, stepLines, type Step } from '../../testcase.mts';
-import { errorMessage } from '../../errors.mts';
+import { errorCode, errorMessage } from '../../errors.mts';
 import { checkJson } from '../../../scripts/json/schema.mts';
 import { implementationLanguages } from '../../../scripts/features/languages.mts';
 import { readCounters, restoreCounters } from './counters.mts';
@@ -668,8 +668,9 @@ async function command(argv: string[]): Promise<number> {
       args: rest, allowPositionals: true, strict: true,
       options: { driver: { type: 'string', multiple: true }, dsn: { type: 'string', multiple: true }, out: { type: 'string' }, vector: { type: 'string', multiple: true } },
     });
-  } catch {
-    throw new UsageError();
+  } catch (error) {
+    if (errorCode(error)?.startsWith('ERR_PARSE_ARGS_') !== true) throw error;
+    throw new UsageError(errorMessage(error), { cause: error });
   }
   const drivers = parsed.values.driver ?? ['mysql'];
   const dsns = parsed.values.dsn ?? [];

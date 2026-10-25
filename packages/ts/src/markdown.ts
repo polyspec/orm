@@ -2,7 +2,7 @@
 // executor"). The client validates the request and sends it as an IR executor message without planning it, and assembles the answer's rows
 // into models.
 import { connect as netConnect, type Socket } from 'node:net';
-import { parse as parseJson, type Value } from '@polyspec/ordered-json';
+import { parse as parseJson, ParseError, type Value } from '@polyspec/ordered-json';
 import { checkAssign, checkParam, useSlotType } from './bind_check.js';
 import { hostEncode } from './codec.js';
 import { decodeAssembly, timeValue, type Db, type Executor, type Result } from './database.js';
@@ -35,7 +35,13 @@ export function parseMarkdownDsn(url: URL): MarkdownDsn {
   const port = Number(url.port);
   if (!/^[0-9]+$/.test(url.port) || port < 1 || port > 65535) throw new OrmError(codes.CONFIG, `${dsnForm}; port ${JSON.stringify(url.port)} is not 1 to 65535: give the port that flowmark serve printed`);
   let corpus: string;
-  try { corpus = decodeURIComponent(url.pathname.replace(/^\//, '')); } catch { corpus = ''; }
+  try {
+    corpus = decodeURIComponent(url.pathname.replace(/^\//, ''));
+  } catch (error) {
+    // A malformed escape is no corpus name, refused below with the path.
+    if (!(error instanceof URIError)) throw error;
+    corpus = '';
+  }
   if (corpus === '' || corpus.includes('/')) throw new OrmError(codes.CONFIG, `${dsnForm}; the path ${JSON.stringify(url.pathname)} is not one corpus name: give the corpus root's directory name`);
   const tokens = url.searchParams.getAll('token');
   const [token] = tokens;
@@ -152,7 +158,12 @@ export class MarkdownSession {
       signal?.removeEventListener('abort', abort);
     }
     let answer: Value | undefined;
-    try { answer = parseJson(text); } catch { answer = undefined; }
+    try {
+      answer = parseJson(text);
+    } catch (error) {
+      if (!(error instanceof ParseError)) throw error;
+      answer = undefined;
+    }
     if (answer === undefined || answer.kind !== 'object') {
       this.close();
       throw new OrmError(codes.INTERNAL, `the flowmark server answered ${JSON.stringify(text)}, not a JSON object`);

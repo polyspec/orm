@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
 import { isolatedEnvironment } from '../../tests/environment.mts';
+import { errorCode } from '../../tests/errors.mts';
 import { main as startServers, paths as serverPaths, SERVER_VARIABLES, TestServerError } from '../test-servers.mts';
 import { AFTER_GROUP_CHECK, CI_PASSED_STEPS, ciPassedErrors, ciGroups, GROUP_NEEDS, chainedCommandErrors, concurrencyErrors, ownWorkflows, workflowTriggerErrors, WORKFLOW_TRIGGERS, ciMakeErrors, checkTargets, ciAfterCheckErrors, ciSetupErrors, independentTestErrors, fullSuiteRuleErrors, ciCheckTargetErrors, ciDuplicateCommandErrors, ciLeaseErrors, ciRerunErrors, ciReportPathErrors, ciServerErrors, expand, helperEnvironmentErrors, helperRunErrors, featureCommands, makeVariables, runnerErrors, runnerIdentity, stepTimeoutErrors } from './ci.mts';
 import { nodeVersionErrors, npmGitSourceErrors } from './node.mts';
@@ -903,7 +904,13 @@ catch (error) { if (!(error instanceof TestServerError)) throw error; console.er
       return { status, stdout: readFileSync(out, 'utf8'), stderr: readFileSync(err, 'utf8') };
     };
     const pid = () => Number(readFileSync(join(dir, 'fake.pid'), 'utf8').trim());
-    const alive = () => { try { process.kill(pid(), 0); return true; } catch { return false; } };
+    const alive = () => {
+      try { process.kill(pid(), 0); return true; }
+      catch (error) {
+        if (errorCode(error) !== 'ESRCH') throw error;
+        return false;
+      }
+    };
     const ready = run('echo starting; echo now accepting connections; echo serving; exec sleep 30');
     assert.equal(ready.status, 0, ready.stderr);
     assert.equal(ready.stdout, 'returned\n');

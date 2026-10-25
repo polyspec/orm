@@ -7,6 +7,7 @@
 // If nothing is chosen, all features' commands and all helpers' checks run.
 
 import { parseArgs } from 'node:util';
+import { errorCode } from '../../tests/errors.mts';
 
 export const USAGE = 'usage: check.mts [--run] [--feature <id> [--command <id>]... | --features [--shard <shard>] | --helpers [--without-helper <id>]...] [--helper <id>]...';
 
@@ -33,8 +34,9 @@ export function parseSelection(argv: string[]): Selection {
         features: { type: 'boolean' }, helpers: { type: 'boolean' }, run: { type: 'boolean' },
       },
     }));
-  } catch {
-    throw new Error(USAGE);
+  } catch (error) {
+    if (errorCode(error)?.startsWith('ERR_PARSE_ARGS_') !== true) throw error;
+    throw new Error(USAGE, { cause: error });
   }
   const [feature, ...extraFeatures] = values.feature ?? [];
   const commands = values.command ?? [];

@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: 89d28f2a17abc8289bc52740ac2d829732c810e0a4f96c050f17b7cc10a8baeb -->
+<!-- source-sha256: 8021650d36ffedf8fc4a3fa100935c1825c1f322f5b48ccd4714798deb865780 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -290,4 +290,4 @@
 | KSTD-5-89-6 | make link-state-check가 main과 새 worktree에서 통과한다 (KSTD-5-89 후속). 원인: kit K558 (7d048b85) 이후 link-state-check는 다른 repository의 npm package가 파일 단위 link의 폴더이기를 요구하지만, node_modules/@polyspec/kit와 node_modules/@polyspec/ordered-json은 아직 provider로의 directory link이다. make worktree-setup도 worktree의 package를 main checkout의 link에 연결하므로 이 실패로 끝난다 | node_modules/@polyspec/kit, node_modules/@polyspec/ordered-json (untracked links) | `make link-state-check` | [ ] |
 | KSTD-5-89-7 | TypeScript hot_path_gate PERF 줄이 p50 값을 microsecond로 출력한다 (KSTD-5-89 후속). 원인: packages/ts/tests/coverage_performance_gate.mjs:79가 sample의 nanosecond를 toMs(1e6으로 나눔)로 변환한 뒤 µs 표시로 출력하여 2.5 ms p50이 2.5µs로 출력된다. Go, Python, Rust는 microsecond를 출력한다 | packages/ts/tests/coverage_performance_gate.mjs, packages/ts/tests/coverage_performance_gate.test.mjs | `node --test packages/ts/tests/coverage_performance_gate.test.mjs` | [ ] |
 | KSTD-5-89-8 | tsc .가 orm이 import하는 kit source를 type-check한다 (KSTD-5-89 후속). 원인: make link가 node_modules/@polyspec/kit를 파일 단위로 link한 뒤 (kit K558) tsc .가 node_modules/@polyspec/kit/scripts/kit/glob.mts(4,23): error TS7016: Could not find a declaration file for module picomatch로 실패한다. kit은 picomatch를 dependencies에, @types/picomatch는 devDependencies에만 선언한다. make commit과 make item-state의 type check도 이로 거부한다 | none in orm; the package.json of kit | `make lint-ts` | [o] |
-| KSTD-5-92 | main에서 make lint-ts가 통과한다: 모든 catch 절이 error를 binding하고 기대하는 실패로 좁힌다(kit K561). 원인: lint-ts의 catch-check 단계가 packages/ts, scripts, tests에서 binding 없는 catch 절 23개를 보고하며, 각각이 모든 실패를 받아들인다 | the 23 catch clauses that catch-check names, packages/ts/src/dbspec/utf8.ts (the shared invalidEncoding) | `make lint-ts` | [~] |
+| KSTD-5-92 | main에서 make lint-ts가 통과한다: 모든 catch 절이 error를 binding하고 기대하는 실패로 좁힌다(kit K561). 원인: lint-ts의 catch-check 단계가 packages/ts, scripts, tests에서 binding 없는 catch 절 23개를 보고하며, 각각이 모든 실패를 받아들인다 | the 23 catch clauses that catch-check names, packages/ts/src/dbspec/utf8.ts (the shared invalidEncoding) | `make lint-ts` | [o] |

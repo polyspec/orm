@@ -38,6 +38,9 @@ const mime: Record<string, string> = {
 /** A request the docs server received, with the times it was received and answered. */
 export type ServedRequest = { url: string | undefined; received: number; answered: number | null; status: number | null };
 
+/** A request for a path outside the served site. */
+class NotFound extends Error {}
+
 export async function serve(directory: string, base = '/'): Promise<{ origin: string; requests: ServedRequest[]; close: () => Promise<void> }> {
   const requests: ServedRequest[] = [];
   const server = createServer(async (req, res) => {
@@ -46,17 +49,21 @@ export async function serve(directory: string, base = '/'): Promise<{ origin: st
     res.on('finish', () => { entry.answered = Date.now(); entry.status = res.statusCode; });
     try {
       const pathname = decodeURIComponent(new URL(req.url ?? '/', 'http://localhost').pathname);
-      if (!pathname.startsWith(base)) throw new Error('outside base');
+      if (!pathname.startsWith(base)) throw new NotFound('outside base');
       const relative = pathname.slice(base.length);
       let file = path.resolve(directory, relative || 'index.html');
-      if (!file.startsWith(path.resolve(directory) + path.sep)) throw new Error('outside root');
+      if (!file.startsWith(path.resolve(directory) + path.sep)) throw new NotFound('outside root');
       if ((await stat(file)).isDirectory()) file = path.join(file, 'index.html');
       const body = await readFile(file);
       res.writeHead(200, { 'Content-Type': mime[path.extname(file)] || 'text/plain; charset=utf-8' });
       res.end(body);
-    } catch {
-      res.writeHead(404, { 'Content-Type': 'text/plain' });
-      res.end('Not found');
+    } catch (error) {
+      // A path outside the site, a malformed escape and a missing file are not found; any other failure is a server error
+      // that names its message.
+      const code = error instanceof Error && 'code' in error ? error.code : undefined;
+      const missing = error instanceof NotFound || error instanceof URIError || code === 'ENOENT' || code === 'ENOTDIR' || code === 'EISDIR';
+      res.writeHead(missing ? 404 : 500, { 'Content-Type': 'text/plain' });
+      res.end(missing ? 'Not found' : error instanceof Error ? error.message : String(error));
     }
   });
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', () => resolve()));

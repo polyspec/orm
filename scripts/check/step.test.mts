@@ -8,6 +8,7 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
 import { isolatedEnvironment } from '../../tests/environment.mts';
+import { errorCode } from '../../tests/errors.mts';
 import { command } from './run.mts';
 import { endGroup, runStep, signalGroup, processGroupOf } from './step.mts';
 import { spawn } from 'node:child_process';
@@ -25,7 +26,8 @@ const alive = (pid: number) => {
   try {
     process.kill(pid, 0);
     return true;
-  } catch {
+  } catch (error) {
+    if (errorCode(error) !== 'ESRCH') throw error;
     return false;
   }
 };

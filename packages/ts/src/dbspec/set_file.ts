@@ -1,4 +1,5 @@
 import { present } from '../present.js';
+import { invalidEncoding } from './utf8.js';
 // The rules of a set file that read no file (docs/spec/dbspec.md "Document sets"): the name dbspec-set.json of the last
 // segment of the set file's path (step 1), the JSON of step 2 and the normal form of each path (step 3). This module
 // reads no Node global and loads no driver: the bytes come from the caller, as a Uint8Array, so it runs in a browser
@@ -99,7 +100,8 @@ export function parseSetOn(bytes: Uint8Array, path: string, windows: boolean): D
   let text: string;
   try {
     text = utf8.decode(bytes);
-  } catch {
+  } catch (error) {
+    if (!invalidEncoding(error)) throw error;
     return json('set.json', 'the set file is not valid UTF-8');
   }
   if (text.startsWith('﻿')) return json('set.json', 'the set file starts with a byte order mark');
