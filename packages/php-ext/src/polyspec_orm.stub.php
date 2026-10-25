@@ -785,10 +785,42 @@ final class Config
     public function keyring(): AesKeyring {}
 }
 
+/** Stops the active statement of each Db handle that uses this cancellation signal. */
+final class Cancellation
+{
+    private string $statePath = '';
+    /** @var resource|null */
+    private $state = null;
+    /** @var array<int, (\Closure(): void)|null> */
+    private array $cancelQueries = [];
+    private int $ownerPid;
+    private int $streamPid;
+    /** @var array<int, int> */
+    private array $connectionSlots = [];
+
+    public function __construct() {}
+    public function __destruct() {}
+    public function cancel(): void {}
+    /** @internal */
+    public function begin(int $slot = 0): void {}
+    /** @internal */
+    public function registerCancelQuery(int $connectionId, ?\Closure $cancelQuery): int {}
+    /** @internal */
+    public function end(int $slot = 0): void {}
+    /** @internal */
+    public function isCancelled(): bool {}
+    /** @internal */
+    public function statePath(): string {}
+}
+
 /** @internal The state shared by all handles of one connection. */
 final class DbState
 {
     public ?\PDO $pdo = null;
+    public ?\Closure $reconnect = null;
+    public ?\Closure $cancelConnection = null;
+    public ?\Closure $cancelQuery = null;
+    public bool $sqliteCancellationLoaded = false;
     public array $stmts = [];
     public array $stmtOrder = [];
     public array $stmtPlaceholders = [];
@@ -810,6 +842,7 @@ final class DbState
 final class TxFrame
 {
     public bool $finished = false;
+    public bool $cancelled = false;
     public int $savepoints = 0;
     public array $locals = [];
     public array $locks = [];
@@ -1374,6 +1407,8 @@ final class Db
     private array $masks;
     private bool $typed;
     private ?\Closure $requestHook;
+    private ?Cancellation $cancellation;
+    private int $cancellationSlot = 0;
     private readonly string $driver;
     private readonly Config $config;
     private readonly \DateTimeZone $zone;
@@ -1404,9 +1439,14 @@ final class Db
     public function stats(): Stats {}
     public function close(): void {}
     public function withRequestHook(\Closure $hook): Db {}
+    public function withCancellation(Cancellation $cancellation): Db {}
     public function subscribe(\Closure $subscriber): \Closure {}
     /** @internal */
     public function setListener(\Closure $open): void {}
+    /** @internal */
+    public function setReconnect(\Closure $open): void {}
+    /** @internal */
+    public function setCancelConnection(\Closure $cancel): void {}
     /** @internal */
     public function listener(): ?\Closure {}
     public function notify(string $channel, string $payload): void {}

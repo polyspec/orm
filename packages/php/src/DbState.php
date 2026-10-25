@@ -15,6 +15,12 @@ final class DbState
      * is released, the connection closes.
      */
     public ?\PDO $pdo = null;
+    /** Reopens a root PDO connection after cancellation terminates its server session. */
+    public ?\Closure $reconnect = null;
+    /** Cancels the currently executing server statement by ending its physical connection. */
+    public ?\Closure $cancelConnection = null;
+    /** Stable cancellation callback that resolves the current protocol callback after a reconnect. */
+    public ?\Closure $cancelQuery = null;
     /** @var array<string, \PDOStatement> */
     public array $stmts = [];
     /** @var list<string> the SQL of the cached statements, least recently used first */

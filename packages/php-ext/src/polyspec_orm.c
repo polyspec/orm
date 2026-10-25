@@ -2708,6 +2708,7 @@ static PHP_MINIT_FUNCTION(polyspec_orm)
     register_class_Polyspec_Orm_OrmException(spl_ce_RuntimeException);
     register_class_Polyspec_Orm_Orm();
     register_class_Polyspec_Orm_Config();
+    register_class_Polyspec_Orm_Cancellation();
     register_class_Polyspec_Orm_ParamCheck();
     register_class_Polyspec_Orm_DbState();
     register_class_Polyspec_Orm_TxFrame();

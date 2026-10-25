@@ -8,6 +8,7 @@ namespace Polyspec\Orm;
 final class TxFrame
 {
     public bool $finished = false;
+    public bool $cancelled = false;
     public int $savepoints = 0;
     /** @var array<string, string> */
     public array $locals = [];

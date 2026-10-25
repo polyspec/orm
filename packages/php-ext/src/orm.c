@@ -749,6 +749,207 @@ static bool orm_exec(zval *pdo, const char *sql)
     return ok;
 }
 
+static bool orm_connection_id(zval *pdo, zend_string *driver, zend_long *id)
+{
+    const char *sql = zend_string_equals_literal(driver, "mysql") ? "SELECT CONNECTION_ID()" : "SELECT pg_backend_pid()";
+    zval query, statement, value, closed;
+    ZVAL_STRING(&query, sql);
+    bool ok = pdo_call(pdo, "query", &statement, 1, &query, NULL);
+    zval_ptr_dtor(&query);
+    if (!ok) return false;
+    ok = pdo_call(&statement, "fetchColumn", &value, 0, NULL, NULL);
+    if (ok) {
+        *id = zval_get_long(&value);
+        zval_ptr_dtor(&value);
+        if (*id <= 0) {
+            db_throw_orm("CONNECTION_LOST", "database returned an invalid cancellation connection id");
+            ok = false;
+        }
+    }
+    if (pdo_call(&statement, "closeCursor", &closed, 0, NULL, NULL)) zval_ptr_dtor(&closed);
+    zval_ptr_dtor(&statement);
+    return ok;
+}
+
+static bool orm_fake_closure(zval *out, zif_handler handler, const char *name, zval *context)
+{
+    zend_internal_function *fn = pemalloc(sizeof(*fn), 1);
+    memset(fn, 0, sizeof(*fn));
+    fn->type = ZEND_INTERNAL_FUNCTION;
+    fn->fn_flags = ZEND_ACC_PUBLIC;
+    fn->scope = zend_standard_class_def;
+    fn->function_name = zend_string_init_interned(name, strlen(name), 1);
+    fn->handler = handler;
+    fn->num_args = 0;
+    fn->required_num_args = 0;
+    zend_create_fake_closure(out, (zend_function *)fn, zend_standard_class_def, zend_standard_class_def, context);
+    pefree(fn, 1);
+    return Z_TYPE_P(out) == IS_OBJECT;
+}
+
+static zval *orm_connection_state(zval *db, zval *rv)
+{
+    return zend_read_property(Z_OBJCE_P(db), Z_OBJ_P(db), "state", sizeof("state") - 1, true, rv);
+}
+
+ZEND_NAMED_FUNCTION(orm_cancel_backend)
+{
+    ZEND_PARSE_PARAMETERS_NONE();
+    zval rv_dsn, rv_config, rv_driver, rv_id;
+    zval *dsn = zend_read_property(zend_standard_class_def, Z_OBJ_P(ZEND_THIS), "dsn", sizeof("dsn") - 1, true, &rv_dsn);
+    zval *config = zend_read_property(zend_standard_class_def, Z_OBJ_P(ZEND_THIS), "config", sizeof("config") - 1, true, &rv_config);
+    zval *driver = zend_read_property(zend_standard_class_def, Z_OBJ_P(ZEND_THIS), "driver", sizeof("driver") - 1, true, &rv_driver);
+    zval *id = zend_read_property(zend_standard_class_def, Z_OBJ_P(ZEND_THIS), "connectionId", sizeof("connectionId") - 1, true, &rv_id);
+    if (dsn == NULL || Z_TYPE_P(dsn) != IS_STRING || config == NULL || Z_TYPE_P(config) != IS_OBJECT
+        || driver == NULL || Z_TYPE_P(driver) != IS_STRING || id == NULL || Z_TYPE_P(id) != IS_LONG) {
+        zend_throw_error(NULL, "invalid native cancellation operation state");
+        RETURN_THROWS();
+    }
+    zval control, pdo;
+    if (!orm_connect_sql(Z_STR_P(dsn), config, &control, true)) RETURN_THROWS();
+    if (!pdo_call(&control, "pdo", &pdo, 0, NULL, NULL)) {
+        zval_ptr_dtor(&control);
+        RETURN_THROWS();
+    }
+    bool ok;
+    if (zend_string_equals_literal(Z_STR_P(driver), "mysql")) {
+        smart_str sql = {0};
+        smart_str_appends(&sql, "KILL CONNECTION ");
+        smart_str_append_long(&sql, Z_LVAL_P(id));
+        smart_str_0(&sql);
+        ok = orm_exec(&pdo, ZSTR_VAL(sql.s));
+        smart_str_free(&sql);
+    } else {
+        zval sql, statement, arguments, executed, result, closed;
+        ZVAL_STRING(&sql, "SELECT pg_terminate_backend(?)");
+        ok = pdo_call(&pdo, "prepare", &statement, 1, &sql, NULL);
+        zval_ptr_dtor(&sql);
+        if (ok) {
+            array_init(&arguments);
+            add_next_index_long(&arguments, Z_LVAL_P(id));
+            ok = pdo_call(&statement, "execute", &executed, 1, &arguments, NULL);
+            zval_ptr_dtor(&arguments);
+            if (ok) {
+                zval_ptr_dtor(&executed);
+                ok = pdo_call(&statement, "fetchColumn", &result, 0, NULL, NULL);
+                if (ok) {
+                    bool terminated = zend_is_true(&result);
+                    zval_ptr_dtor(&result);
+                    if (!terminated) {
+                        db_throw_orm("CONNECTION_LOST", "PostgreSQL did not terminate the cancelled connection");
+                        ok = false;
+                    }
+                }
+            }
+            if (pdo_call(&statement, "closeCursor", &closed, 0, NULL, NULL)) zval_ptr_dtor(&closed);
+            zval_ptr_dtor(&statement);
+        }
+    }
+    zval_ptr_dtor(&pdo);
+    zval closed;
+    if (pdo_call(&control, "close", &closed, 0, NULL, NULL)) zval_ptr_dtor(&closed);
+    zval_ptr_dtor(&control);
+    if (!ok) RETURN_THROWS();
+    RETURN_NULL();
+}
+
+ZEND_NAMED_FUNCTION(orm_reopen_backend)
+{
+    ZEND_PARSE_PARAMETERS_NONE();
+    zval rv_dsn, rv_config;
+    zval *dsn = zend_read_property(zend_standard_class_def, Z_OBJ_P(ZEND_THIS), "dsn", sizeof("dsn") - 1, true, &rv_dsn);
+    zval *config = zend_read_property(zend_standard_class_def, Z_OBJ_P(ZEND_THIS), "config", sizeof("config") - 1, true, &rv_config);
+    if (dsn == NULL || Z_TYPE_P(dsn) != IS_STRING || config == NULL || Z_TYPE_P(config) != IS_OBJECT) {
+        zend_throw_error(NULL, "invalid native cancellation reopen state");
+        RETURN_THROWS();
+    }
+    zval reopened;
+    if (!orm_connect_sql(Z_STR_P(dsn), config, &reopened, false)) RETURN_THROWS();
+    zval state_rv;
+    zval *state = orm_connection_state(&reopened, &state_rv);
+    zval *pdo = zend_read_property(Z_OBJCE_P(state), Z_OBJ_P(state), "pdo", sizeof("pdo") - 1, true, &state_rv);
+    zval *cancel = zend_read_property(Z_OBJCE_P(state), Z_OBJ_P(state), "cancelConnection", sizeof("cancelConnection") - 1, true, &state_rv);
+    zval *reconnect = zend_read_property(Z_OBJCE_P(state), Z_OBJ_P(state), "reconnect", sizeof("reconnect") - 1, true, &state_rv);
+    if (pdo == NULL || Z_TYPE_P(pdo) != IS_OBJECT || cancel == NULL || reconnect == NULL) {
+        zval_ptr_dtor(&reopened);
+        db_throw_orm("CONNECTION_LOST", "reopened database connection has incomplete cancellation state");
+        RETURN_THROWS();
+    }
+    array_init(return_value);
+    zval copy;
+    ZVAL_COPY(&copy, pdo);
+    zend_hash_str_update(Z_ARRVAL_P(return_value), "pdo", sizeof("pdo") - 1, &copy);
+    ZVAL_COPY(&copy, cancel);
+    zend_hash_str_update(Z_ARRVAL_P(return_value), "cancelConnection", sizeof("cancelConnection") - 1, &copy);
+    ZVAL_COPY(&copy, reconnect);
+    zend_hash_str_update(Z_ARRVAL_P(return_value), "reconnect", sizeof("reconnect") - 1, &copy);
+    zval_ptr_dtor(&reopened);
+}
+
+ZEND_NAMED_FUNCTION(orm_cancel_state_query)
+{
+    ZEND_PARSE_PARAMETERS_NONE();
+    zval state_rv, callback_rv;
+    zval *state = zend_read_property(zend_standard_class_def, Z_OBJ_P(ZEND_THIS), "state", sizeof("state") - 1, true, &state_rv);
+    if (state == NULL || Z_TYPE_P(state) != IS_OBJECT) {
+        zend_throw_error(NULL, "invalid cancellation connection state");
+        RETURN_THROWS();
+    }
+    zval *callback = zend_read_property(Z_OBJCE_P(state), Z_OBJ_P(state), "cancelConnection", sizeof("cancelConnection") - 1, true, &callback_rv);
+    if (callback == NULL || Z_TYPE_P(callback) == IS_NULL) RETURN_NULL();
+    if (Z_TYPE_P(callback) != IS_OBJECT || !instanceof_function(Z_OBJCE_P(callback), zend_ce_closure)) {
+        zend_throw_error(NULL, "invalid cancellation connection callback");
+        RETURN_THROWS();
+    }
+    if (call_user_function(NULL, NULL, callback, return_value, 0, NULL) != SUCCESS || EG(exception) != NULL) {
+        RETURN_THROWS();
+    }
+}
+
+static bool orm_store_cancellation_callbacks(zval *db, zval *pdo, zend_string *dsn, zval *config, zend_string *driver)
+{
+    zend_long id;
+    if (!orm_connection_id(pdo, driver, &id)) return false;
+    zval cancel_context, reopen_context, cancel, reopen, state_rv;
+    object_init(&cancel_context);
+    zend_update_property_str(zend_standard_class_def, Z_OBJ(cancel_context), "dsn", sizeof("dsn") - 1, dsn);
+    zend_update_property(zend_standard_class_def, Z_OBJ(cancel_context), "config", sizeof("config") - 1, config);
+    zend_update_property_str(zend_standard_class_def, Z_OBJ(cancel_context), "driver", sizeof("driver") - 1, driver);
+    zend_update_property_long(zend_standard_class_def, Z_OBJ(cancel_context), "connectionId", sizeof("connectionId") - 1, id);
+    bool made_cancel = orm_fake_closure(&cancel, orm_cancel_backend, "cancel", &cancel_context);
+    zval_ptr_dtor(&cancel_context);
+    if (!made_cancel) return false;
+    object_init(&reopen_context);
+    zend_update_property_str(zend_standard_class_def, Z_OBJ(reopen_context), "dsn", sizeof("dsn") - 1, dsn);
+    zend_update_property(zend_standard_class_def, Z_OBJ(reopen_context), "config", sizeof("config") - 1, config);
+    bool made_reopen = orm_fake_closure(&reopen, orm_reopen_backend, "reopen", &reopen_context);
+    zval_ptr_dtor(&reopen_context);
+    if (!made_reopen) {
+        zval_ptr_dtor(&cancel);
+        return false;
+    }
+    zval *state = orm_connection_state(db, &state_rv);
+    zend_update_property(Z_OBJCE_P(state), Z_OBJ_P(state), "cancelConnection", sizeof("cancelConnection") - 1, &cancel);
+    zend_update_property(Z_OBJCE_P(state), Z_OBJ_P(state), "reconnect", sizeof("reconnect") - 1, &reopen);
+    zval state_callback_rv;
+    zval *state_callback = zend_read_property(Z_OBJCE_P(state), Z_OBJ_P(state), "cancelQuery", sizeof("cancelQuery") - 1, true, &state_callback_rv);
+    if (state_callback == NULL || Z_TYPE_P(state_callback) != IS_OBJECT) {
+        zval context, callback;
+        object_init(&context);
+        zend_update_property(Z_OBJCE(context), Z_OBJ(context), "state", sizeof("state") - 1, state);
+        if (!orm_fake_closure(&callback, orm_cancel_state_query, "cancelQuery", &context)) {
+            zval_ptr_dtor(&context); zval_ptr_dtor(&cancel); zval_ptr_dtor(&reopen);
+            return false;
+        }
+        zend_update_property(Z_OBJCE_P(state), Z_OBJ_P(state), "cancelQuery", sizeof("cancelQuery") - 1, &callback);
+        zval_ptr_dtor(&callback);
+        zval_ptr_dtor(&context);
+    }
+    zval_ptr_dtor(&cancel);
+    zval_ptr_dtor(&reopen);
+    return EG(exception) == NULL;
+}
+
 static bool orm_connect_sql(zend_string *dsn, zval *config, zval *out, bool listener)
 {
     zval parsed;
@@ -871,6 +1072,15 @@ static bool orm_connect_sql(zend_string *dsn, zval *config, zval *out, bool list
         zval_ptr_dtor(&pdo); goto fail;
     }
     for (int i = 0; i < 4; i++) zval_ptr_dtor(&ctor[i]);
+    if (!listener && (zend_string_equals_literal(Z_STR_P(driver), "mysql") || zend_string_equals_literal(Z_STR_P(driver), "postgres"))
+        && !orm_store_cancellation_callbacks(out, &pdo, dsn, config, Z_STR_P(driver))) {
+        zval_ptr_dtor(out);
+        zval_ptr_dtor(&pdo);
+        zval_ptr_dtor(&options);
+        zend_string_release(final_dsn);
+        zval_ptr_dtor(&parsed);
+        return false;
+    }
     if (zend_string_equals_literal(Z_STR_P(driver), "postgres") && !listener) {
         zval context, closure, set_result;
         object_init(&context);

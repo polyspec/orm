@@ -67,5 +67,6 @@ go.work.sum
 /packages/php/gen/
 /packages/php/markdownmodel/
 /packages/php/complexmodel/
+/packages/php/src/native/bin/
 # PHP's arginfo generator writes this header only in a temporary native-extension build copy.
 /packages/php-ext/src/polyspec_orm_arginfo.h

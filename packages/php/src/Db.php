@@ -30,6 +30,8 @@ final class Db
     private bool $typed = false;
     /** @var (\Closure(Request): void)|null The request hook of this handle. null if none. */
     private ?\Closure $requestHook = null;
+    private ?Cancellation $cancellation = null;
+    private int $cancellationSlot = 0;
 
     /**
      * @internal Orm::connect creates connections. A SQL connection has its PDO handle; a markdown
@@ -46,16 +48,7 @@ final class Db
         if ($pdo === null) {
             return;
         }
-        $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
-        // MySQL uses emulated prepares: a request runs most statement shapes once.
-        $pdo->setAttribute(\PDO::ATTR_EMULATE_PREPARES, $driver === 'mysql');
-        if ($driver === 'postgres') {
-            // PostgreSQL sends the statement and bind to one unnamed statement in one round trip.
-            // It does not incur a separate round trip to prepare a named statement, nor that implicit transaction.
-            // bind is the same server-side parameter as when prepared, and its type inference is the same too.
-            $pdo->setAttribute(\Pdo\Pgsql::ATTR_DISABLE_PREPARES, true);
-        }
-        $pdo->setAttribute(\PDO::ATTR_STRINGIFY_FETCHES, false);
+        self::configurePdo($pdo, $driver);
         $this->state->pdo = $pdo;
     }
 
@@ -142,7 +135,12 @@ final class Db
         }
         $this->unsupportedOnMarkdown('a SQL statement');
         if ($this->state->pdo === null) {
-            throw new OrmException(Code::CONFIG, 'database is closed');
+            if ($this->state->reconnect !== null) {
+                $this->state->pdo = ($this->state->reconnect)();
+                self::configurePdo($this->state->pdo, $this->driver);
+            } else {
+                throw new OrmException(Code::CONFIG, 'database is closed');
+            }
         }
         return $this->state->pdo;
     }
@@ -151,6 +149,29 @@ final class Db
     public function setListener(\Closure $open): void
     {
         $this->state->listener = $open;
+    }
+
+    /** @internal Installs the private opener used after a cancellation ends the physical server connection. */
+    public function setReconnect(\Closure $open): void
+    {
+        $this->state->reconnect = $open;
+    }
+
+    /** @internal Installs the protocol control operation for terminating this physical server connection. */
+    public function setCancelConnection(\Closure $cancel): void
+    {
+        $this->state->cancelConnection = $cancel;
+    }
+
+    private static function configurePdo(\PDO $pdo, string $driver): void
+    {
+        $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+        // MySQL uses emulated prepares: a request runs most statement shapes once.
+        $pdo->setAttribute(\PDO::ATTR_EMULATE_PREPARES, $driver === 'mysql');
+        if ($driver === 'postgres') {
+            $pdo->setAttribute(\Pdo\Pgsql::ATTR_DISABLE_PREPARES, true);
+        }
+        $pdo->setAttribute(\PDO::ATTR_STRINGIFY_FETCHES, false);
     }
 
     /** @internal The opener of the LISTEN connections, or null on a connection without them. */
@@ -242,6 +263,9 @@ final class Db
             $this->state->stmtPlaceholders = [];
             $this->state->stmtRetained = 0;
             $this->state->pdo = null;
+            $this->state->reconnect = null;
+            $this->state->cancelConnection = null;
+            $this->state->cancelQuery = null;
         }
         if ($transactionFailure !== null && $closeFailure !== null) {
             throw OrmException::withCleanup($transactionFailure, $closeFailure);
@@ -268,6 +292,28 @@ final class Db
     {
         $handle = clone $this;
         $handle->requestHook = $hook;
+        return $handle;
+    }
+
+    /** Returns a handle on this connection whose statements use the shared $cancellation signal. */
+    public function withCancellation(Cancellation $cancellation): Db
+    {
+        $this->unsupportedOnMarkdown('statement cancellation');
+        $handle = clone $this;
+        $handle->cancellation = $cancellation;
+        $cancelQuery = null;
+        if ($this->driver === 'mysql' || $this->driver === 'postgres') {
+            if ($this->state->cancelQuery === null) {
+                $state = $this->state;
+                $this->state->cancelQuery = static function () use ($state): void {
+                    if ($state->cancelConnection !== null) {
+                        ($state->cancelConnection)();
+                    }
+                };
+            }
+            $cancelQuery = $this->state->cancelQuery;
+        }
+        $handle->cancellationSlot = $cancellation->registerCancelQuery(spl_object_id($this->state), $cancelQuery);
         return $handle;
     }
 
@@ -437,12 +483,53 @@ final class Db
             $done($start, $fault);
             throw $fault;
         }
+        $cancellation = !$control ? $this->cancellation : null;
         try {
+            $cancellation?->begin($this->cancellationSlot);
+            if ($cancellation !== null && $this->driver === 'sqlite') {
+                SqliteCancellation::attach($this->handle(), $cancellation->statePath(), $this->cancellationSlot);
+            }
             $result = $send();
         } catch (\PDOException $e) {
-            $error = $this->driverError($e);
+            $error = $cancellation?->isCancelled()
+                ? new OrmException(Code::CANCELED, 'statement was cancelled', $e)
+                : $this->driverError($e);
+            if ($cancellation?->isCancelled()) {
+                $this->state->stmts = [];
+                $this->state->stmtOrder = [];
+                $this->state->stmtPlaceholders = [];
+                $this->state->stmtRetained = 0;
+                if ($this->driver !== 'sqlite') {
+                    $frame = self::activeFor($this);
+                    if ($frame !== null) {
+                        $frame->finished = true;
+                        $frame->cancelled = true;
+                    }
+                    $this->state->pdo = null;
+                    if ($this->state->reconnect !== null) {
+                            try {
+                                $this->state->pdo = ($this->state->reconnect)();
+                                self::configurePdo($this->state->pdo, $this->driver);
+                            } catch (\Throwable $reconnectFailure) {
+                                $error = OrmException::withCleanup(
+                                    $error,
+                                    new OrmException(
+                                        Code::CONNECTION_LOST,
+                                        'root connection could not be reopened after cancellation',
+                                        $reconnectFailure
+                                    )
+                                );
+                            }
+                    }
+                }
+            }
             $done($start, $error);
             throw $error;
+        } catch (OrmException $error) {
+            $done($start, $error);
+            throw $error;
+        } finally {
+            $cancellation?->end($this->cancellationSlot);
         }
         $done($start, null);
         return $result;
@@ -820,6 +907,9 @@ final class Db
             }
             return $failure;
         });
+        if ($frame->cancelled) {
+            throw new OrmException(Code::CANCELED, 'transaction was cancelled');
+        }
         if ($frame->finished) {
             throw new OrmException(Code::CONFIG, 'database was closed during the transaction');
         }
