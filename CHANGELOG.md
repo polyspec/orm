@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- KSTD-5-89-10: Implementation-internal tests are declared in each implementation's `internal` list and excluded from shared feature ownership. The languages owner unit passed 13 cases; its stale Go MySQL-only fixture expectation was corrected to match the existing DIA-20/21 bindings.
+
 - KSTD-2-11-16-1: PHP library and native extension cancellation now interrupts active statements, rolls back, and preserves root-handle reuse on SQLite, PostgreSQL and MySQL. The library owner passed 7 tests / 61 assertions and the extension owner passed 4 / 44. Raw logs and hashes are recorded in the checklist.
 
 - KSTD-2-11-13: The connection, pool, TLS, DSN and timeout unit bindings are reconciled across six clients in the completed child items; this records their scoped evidence and does not claim that the global parity declaration check passed.
