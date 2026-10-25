@@ -376,6 +376,14 @@
           "reason": "test: injects an unexpected exception into the private Mermaid catalog builder and verifies the same exception object escapes; the public invalid-name diagnostic is covered by dbspec-mermaid-invalid"
         },
         {
+          "glob": "packages/php/tests/FuncSourceAdapterTest.php",
+          "reason": "test: checks the PHP-specific callable-to-parameter lowering adapter; public value-function behavior is exercised across clients by planner_value_function_today"
+        },
+        {
+          "glob": "packages/php/tests/ModelTypesSourceTest.php",
+          "reason": "test: checks PHP-internal Request canonicalization, PendingTime lazy wrapping, and PHP weak scalar caller rules"
+        },
+        {
           "glob": "packages/php-gen/tests/OrmGenScanParityTest.php",
           "reason": "generated: an internal test of the PHP generator component that checks parity with the TypeScript generator, not a client behaviour (K313)"
         },

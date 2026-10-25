@@ -7,6 +7,7 @@ namespace Polyspec\Orm\Tests;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
+use Polyspec\Orm\Code;
 use Polyspec\Orm\Codec;
 use Polyspec\Orm\Model;
 use Polyspec\Orm\OrmException;
@@ -44,6 +45,18 @@ final class StyledValueTest extends TestCase
     public function testStyledValue(array $case): void
     {
         $id = $case['id'];
+        if ($id === 'sql_null') {
+            self::assertSame(
+                ['kind' => 'sql-null'],
+                json_decode(json_encode(StyledValue::sqlNull(), JSON_THROW_ON_ERROR), true),
+            );
+            try {
+                StyledValue::sqlNull()->payload();
+                self::fail('SQL NULL has no value payload');
+            } catch (OrmException $exception) {
+                self::assertSame(Code::CODEC_DECODE, $exception->code_);
+            }
+        }
         // The Mermaid style name json and jsons of the fixture are both the dbspec codec stage ordered_json.
         $styles = [in_array($case['style'], ['json', 'jsons'], true) ? 'ordered_json' : $case['style']];
         if (!array_key_exists('stored_text', $case) && !array_key_exists('write_text', $case)) {

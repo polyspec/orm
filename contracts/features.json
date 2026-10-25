@@ -13461,6 +13461,7 @@
       ],
       "tests": [
         "packages/php/tests/ModelTypesSourceTest.php",
+        "packages/php/tests/FuncSourceAdapterTest.php",
         "packages/php-ext/tests/ModelTypesSurfaceTest.php"
       ],
       "command": "make model-types-php-extension-check"

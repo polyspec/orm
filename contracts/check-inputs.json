@@ -2445,6 +2445,7 @@
         "packages/php-ext/tests/DeclarationsTest.php",
         "packages/php-ext/tests/declarations_functions.php",
         "packages/php/tests/ModelTypesSourceTest.php",
+        "packages/php/tests/FuncSourceAdapterTest.php",
         "packages/php/tests/DecimalModelDbTest.php",
         "packages/php/tests/model-types-weak-caller.php",
         "packages/php-ext/src/**"
