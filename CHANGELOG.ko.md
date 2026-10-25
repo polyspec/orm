@@ -1,10 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 9758c6fe4bb7aa11cafe3169e70ff121a08b3ad25bf52a12d2764e6c61c4beb6 -->
+<!-- source-sha256: 3f78ccfd7e46a51fffd6548dd99cb99e2abfe466f1f2bac829c547d070b39245 -->
 # 변경 이력
 
 ## Unreleased
-- KSTD-5-90: conformance-check RECORD=1은 record에 여섯 구현 출력(php-extension 포함)을 모두 넘긴다 (KSTD-5-90)
 
+- `make lint-python`이 main에서 통과한다: `ruff format --check`가 보고한 Python 파일 6개를 `ruff format`으로 재포맷했으며 syntax tree는 바뀌지 않는다 (KSTD-5-89-1).
+- KSTD-5-90: conformance-check RECORD=1은 record에 여섯 구현 출력(php-extension 포함)을 모두 넘긴다 (KSTD-5-90)
 - `scripts/check/continue.test.mts`의 두 drop case는 `databases.mts drop`이 bench와 decimal database보다 먼저 실행하는 18개 complex-query fixture database의 drop을 기대하므로 다시 통과한다 (KSTD-2-9-13-2).
 - MySQL에서 PHP client와 PHP extension은 문장의 int와 bool을 `PDO::PARAM_INT`로 bind하므로 `limit(offset, count)`의 루트 페이지 `LIMIT`와 `OFFSET`이 MySQL에 숫자로 간다. MySQL의 emulated prepare는 `execute()`가 받은 모든 값을 따옴표로 감쌌고, 페이지 값이 매개변수 `offset_p`와 `count_p`가 된 뒤(PRT-78) MySQL이 `''0', '3''` 근처 1064로 답했다. 두 client의 model_queries owner가 MySQL에서 다시 통과한다 (T182-6-16).
 - PHP extension의 `OrmException::fromDriver`가 더 이상 Zend heap을 손상시키지 않는다: `errorInfo`에 대한 `zend_read_property`의 `rv` zval을 해제했는데, 선언된 property이면 read가 이를 쓰지 않으므로 release build가 초기화되지 않은 stack 값을 해제했다. 이제 읽은 값을 복사하고 자신이 소유한 것만 해제한다. model_writes, statement_events, audit_triggers, constraints_and_relations의 native write가 MySQL, PostgreSQL, SQLite에서 다시 실행된다 (T182-6-18).

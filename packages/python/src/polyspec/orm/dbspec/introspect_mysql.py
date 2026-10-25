@@ -198,8 +198,10 @@ def _mysql_type(column_type: str, charset: str, collation: str):
     m = _TYPE_PATTERN.match(column_type)
     if m is None:
         return None
+
     def g(i):
         return m.group(i) or ""
+
     text = charset == "utf8mb4" and collation == "utf8mb4_0900_bin"
 
     def result(type_, needs_check, ok):

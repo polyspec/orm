@@ -130,6 +130,7 @@ def audit_history(item):
     def body(db, driver, dsn):
         def item():
             return m.Item().connect(db)
+
         expect_equal(
             code_of(lambda: item().set_title("outside").create()),
             "CONFIG",

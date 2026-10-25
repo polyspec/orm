@@ -14,10 +14,13 @@ def composite_key_rows(item):
     db = models.connect(dsn)
     try:
         expect_equal(db.driver, driver, "the driver")
+
         def account():
             return models.CompositeAccount().connect(db)
+
         def membership():
             return models.CompositeMembership().connect(db)
+
         for tenant in (TENANT, OTHER_TENANT):
             expect_equal(
                 account().tenant_id(tenant).get_count(),
