@@ -18936,6 +18936,7 @@
       "id": "static-model-chains-declared-from-scan",
       "kind": "feature",
       "requirements": [
+        "PLN-1",
         "INT-27",
         "PLN-40"
       ],
@@ -18961,6 +18962,7 @@
       "id": "dynamic-model-chains-resolve-at-call-time",
       "kind": "feature",
       "requirements": [
+        "PLN-1",
         "INT-28"
       ],
       "bindings": [

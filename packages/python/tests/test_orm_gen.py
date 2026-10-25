@@ -133,7 +133,7 @@ class OrmGenTest(unittest.TestCase):
             [("like_count", 3, True)],
         )
 
-    # Requirements: INT-28.
+    # Requirements: INT-28, PLN-1.
     def test_chain_conditions(self):
         import models
 
@@ -175,7 +175,7 @@ class OrmGenTest(unittest.TestCase):
         author.and_not(lambda m: m.name("excluded"))
         self.assertTrue(author.core.where.items[-1]["group"].not_)
 
-    # Requirements: INT-28.
+    # Requirements: INT-28, PLN-1.
     def test_scan_reports_unknown_model_methods(self):
         # Requirements: DSL-37.
         source = Path(self.out) / "scan_probe.py"

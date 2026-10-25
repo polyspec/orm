@@ -25,7 +25,7 @@ final class ModelDslNativeTest extends TestCase
 
     public function testDynamicConditionsAndBuilderCallsReturnTheNativeModel(): void
     {
-        // Requirements: INT-28 PLN-40.
+        // Requirements: INT-28 PLN-1 PLN-40.
         $model = new DslFixture();
         self::assertSame($model, $model->name('Ada')->orGtAge(20)->name(null));
         self::assertSame($model, $model->addColumnName()->groupByAge()->keyNameId()->newNote('memo'));
