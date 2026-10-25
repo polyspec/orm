@@ -1637,10 +1637,6 @@
             },
             {
               "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
-              "id": "set-files errors-by-step-then-path through resolveSet"
-            },
-            {
-              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
               "id": "set-files cases that resolveSet does not reach"
             }
           ]
