@@ -671,7 +671,10 @@ final class ModelTest extends TestCase
                     'postgres schema inspection'
                 );
                 $got = $privileges->inspectTable('public.user');
-                self::check($got['select'] && $got['insert'] && $got['update'] && $got['delete'] && $got['truncate'], 'inspectTable');
+                self::check(
+                    $got['select'] && $got['insert'] && $got['update'] && $got['delete'] && $got['truncate'],
+                    'inspectTable'
+                );
                 self::check(
                     self::code(fn() => $privileges->inspectTable('user')) === Code::CONFIG,
                     'unqualified table'
@@ -686,7 +689,14 @@ final class ModelTest extends TestCase
                 $db->pdo()->exec('CREATE ROLE "' . $role . '"');
                 try {
                     $owner = $privileges->inspectTable($table);
-                    self::check($owner['select'] && $owner['insert'] && $owner['update'] && $owner['delete'] && $owner['truncate'], 'inspectTable reports owner privileges');
+                    self::check(
+                        $owner['select']
+                            && $owner['insert']
+                            && $owner['update']
+                            && $owner['delete']
+                            && $owner['truncate'],
+                        'inspectTable reports owner privileges'
+                    );
                     $privileges->grantTable($table, $role);
                     $rights = $db->pdo()->prepare(
                         "SELECT has_schema_privilege(?, 'public', 'USAGE'), "
@@ -700,7 +710,10 @@ final class ModelTest extends TestCase
                         static fn(mixed $value): bool => in_array($value, [true, 1, '1', 't', 'true'], true),
                         $rights->fetch(PDO::FETCH_NUM)
                     );
-                    self::check($granted === [true, true, true, true, true], 'grantTable grants schema usage and SELECT, INSERT, UPDATE and DELETE');
+                    self::check(
+                        $granted === [true, true, true, true, true],
+                        'grantTable grants schema usage and SELECT, INSERT, UPDATE and DELETE'
+                    );
                     $privileges->revokeTable($table, ' select ', $role);
                     $check = $db->pdo()->prepare(
                         "SELECT has_table_privilege(?, 'public.privilege_probe', 'SELECT'), "
@@ -722,7 +735,10 @@ final class ModelTest extends TestCase
                 break;
             default:
                 self::check(!$schema->installed('ormexample', 'user'), 'sqlite schema inspection');
-                self::check(self::unsupportedPrivileges($privileges), 'sqlite grant, inspect and revoke are unsupported');
+                self::check(
+                    self::unsupportedPrivileges($privileges),
+                    'sqlite grant, inspect and revoke are unsupported'
+                );
         }
     }
 
