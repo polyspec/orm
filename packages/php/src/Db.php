@@ -15,8 +15,11 @@ final class Db
     public const NOW = '$NOW';
     /** A table that stands in for the SQLite row lock. The row lock statement points at it. */
     private const ROW_LOCK_TABLE = 'orm__row_lock';
-    /** The placeholders the statement cache may retain in all; the bound of Engine's plan cache (limepie P-97). */
-    private const RETAINED_PLACEHOLDERS = 65535;
+    /**
+     * The placeholders the statement cache may retain in all, the bound of Engine's plan cache (KSTD-7-3-5): a cached
+     * statement keeps its last bound values, about 550 bytes per placeholder, so the cache stays near 4.3 MiB.
+     */
+    private const RETAINED_PLACEHOLDERS = 8192;
 
     /** @var list<TxFrame> active transactions of the request, innermost last */
     private static array $frames = [];

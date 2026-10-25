@@ -20,14 +20,25 @@ use ReflectionMethod;
 use ReflectionProperty;
 
 /**
- * The plan cache and the statement cache retain at most 65535 placeholders in all (limepie P-97): a plan holds a bind
- * descriptor per placeholder and a cached PDOStatement its last bound values, and each remainder length of creates() is
- * an entry of its own, so caches bounded only by entry count held about 145 MB at 256 entries each.
+ * The plan cache and the statement cache retain at most 8192 placeholders each (limepie P-97, KSTD-7-3-5): a plan holds a
+ * bind descriptor per placeholder and a cached PDOStatement its last bound values, and each remainder length of creates()
+ * is an entry of its own, so caches bounded only by entry count held about 145 MB at 256 entries each, and a bound of 65535
+ * placeholders still kept 25.6 MiB of plans and 34.4 MiB of statements.
  */
 #[Small]
 final class PlanCacheMemoryTest extends TestCase
 {
-    private const RETAINED_PLACEHOLDERS = 65535;
+    private const RETAINED_PLACEHOLDERS = 8192;
+    /**
+     * The memory that the plan cache may keep (KSTD-7-3-5): 8192 placeholders, measured at 3.2 MiB in the library (about 410
+     * bytes each) and 4.6 MiB in the extension (about 590 bytes each).
+     */
+    private const PLAN_BYTES = 5 * 1048576;
+    /**
+     * The memory that the statement cache may keep (KSTD-7-3-5): 8192 bound values, measured at 4.3 MiB in the library
+     * (about 550 bytes each) and 6.1 MiB in the extension (about 780 bytes each).
+     */
+    private const STATEMENT_BYTES = 7 * 1048576;
 
     public function testPlanCacheRetainsAtMostTheBoundOfPlaceholders(): void
     {
@@ -60,6 +71,67 @@ final class PlanCacheMemoryTest extends TestCase
             $retained,
             "100 multi-row insert plans left $retained placeholders in the plan cache"
         );
+    }
+
+    /**
+     * The memory that the plan cache keeps after 100 multi-row insert plans of 800 to 998 placeholders, each a remainder
+     * length of creates() (KSTD-7-3-5): at most PLAN_BYTES, so an import stops growing once the cache is full.
+     */
+    public function testPlanCacheRetainsAtMostAFewMibOfPlans(): void
+    {
+        $model = RuntimeModel::build(
+            RuntimeModel::files([dirname(__DIR__, 3) . '/contracts/fixtures/identity_load.dbs'])
+        );
+        gc_collect_cycles();
+        $before = memory_get_usage();
+        $engine = new Engine($model, 'sqlite', 256);
+        for ($rows = 400; $rows < 500; $rows++) {
+            $engine->plan($this->insertShape($model, $rows));
+        }
+        gc_collect_cycles();
+        $retained = memory_get_usage() - $before;
+        $this->assertLessThanOrEqual(
+            self::PLAN_BYTES,
+            $retained,
+            sprintf('100 multi-row insert plans kept %.1f MiB in the plan cache', $retained / 1048576)
+        );
+        unset($engine);
+    }
+
+    /**
+     * The memory that the statement cache keeps after 100 multi-row inserts of 900 to 999 rows (KSTD-7-3-5): a cached
+     * PDOStatement keeps its last bound values, so the cache keeps at most STATEMENT_BYTES.
+     */
+    public function testStatementCacheRetainsAtMostAFewMibOfStatements(): void
+    {
+        $pdo = new PDO('sqlite::memory:');
+        $pdo->exec('CREATE TABLE "service" ("seq" INTEGER PRIMARY KEY, "name" TEXT NOT NULL)');
+        $db = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
+        $db->registerSet(\Polyspec\Orm\Tests\Model\schema());
+        try {
+            // The first insert prepares what every run keeps apart from the cache: the model and the connection state.
+            (new Service())($db)->creates([(new Service())->setName('first')], 1);
+            gc_collect_cycles();
+            $before = memory_get_usage();
+            $next = 0;
+            for ($batch = 900; $batch < 1000; $batch++) {
+                $rows = [];
+                for ($i = 0; $i < $batch; $i++) {
+                    $rows[] = (new Service())->setName('service-' . $next++);
+                }
+                (new Service())($db)->creates($rows, $batch);
+            }
+            unset($rows);
+            gc_collect_cycles();
+            $retained = memory_get_usage() - $before;
+            $this->assertLessThanOrEqual(
+                self::STATEMENT_BYTES,
+                $retained,
+                sprintf('100 multi-row inserts kept %.1f MiB in the statement cache', $retained / 1048576)
+            );
+        } finally {
+            $db->close();
+        }
     }
 
     public function testPlanCachePromotesHitsAndEvictsTheLeastRecentlyUsedPlan(): void

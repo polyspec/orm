@@ -14,7 +14,8 @@
 zend_class_entry *polyspec_engine_ce;
 zend_class_entry *polyspec_assemble_ce;
 
-#define ENGINE_RETAINED_PLACEHOLDERS 65535
+/* The placeholders the plan cache may retain in all, as Engine::RETAINED_PLACEHOLDERS of the PHP library (KSTD-7-3-5). */
+#define ENGINE_RETAINED_PLACEHOLDERS 8192
 
 static zend_class_entry *engine_class(const char *name)
 {

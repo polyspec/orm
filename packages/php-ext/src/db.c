@@ -45,7 +45,8 @@ ZEND_DLEXPORT int sqlite3_extension_init(sqlite3 *database, char **error, const 
 #define REQUEST_CLASS "Polyspec\\Orm\\Request"
 #define SECRET_MASK "$SECRET"
 #define NOW_MASK "$NOW"
-#define RETAINED_PLACEHOLDERS 65535
+/* The placeholders the statement cache may retain in all, as Db::RETAINED_PLACEHOLDERS of the PHP library (KSTD-7-3-5). */
+#define RETAINED_PLACEHOLDERS 8192
 
 typedef bool (*dbs_transaction_callback)(zval *connection, void *context, zval *result);
 
