@@ -632,7 +632,7 @@
         "packages/php/src/Model.php",
         "packages/php/tests/OrmGenTest.php",
         "packages/php/tests/OrmGenTestSupport.php",
-        "packages/php/tests/OrmGenScanTest.php",
+        "packages/php-gen/tests/OrmGenScanTest.php",
         "packages/php/tests/ModelMethodsTest.php",
         "packages/php-ext/src/model_native_methods.c",
         "packages/php-ext/src/model_native_methods.h",
