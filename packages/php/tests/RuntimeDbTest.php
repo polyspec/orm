@@ -29,12 +29,13 @@ use Polyspec\Orm\Tests\RuntimeDb\Item;
 use Polyspec\Orm\Tests\RuntimeDb\Sample;
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
-use PHPUnit\Framework\Attributes\DataProviderExternal;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 #[Medium]
 final class RuntimeDbTest extends TestCase
 {
     use DatabaseTestAssertions;
+    use ThreeDrivers;
 
     /** The fixture of the file: what the script did before its cases, once per class. */
     private static function fixture(): void
@@ -179,25 +180,25 @@ final class RuntimeDbTest extends TestCase
     }
 
     // Requirements: DBS-108, SCH-7.
-    #[DataProviderExternal(CoverageCasesTest::class, 'databaseDrivers')]
+    #[DataProvider('drivers')]
     public function testInstallRendersTheDocumentSet(string $driver): void
     {
         self::runCase($driver, 'Polyspec\\Orm\\Tests\\RuntimeDb', self::caseInstallRendersTheDocumentSet(...));
     }
 
-    #[DataProviderExternal(CoverageCasesTest::class, 'databaseDrivers')]
+    #[DataProvider('drivers')]
     public function testI16ValuesAndDefaults(string $driver): void
     {
         self::runCase($driver, 'Polyspec\\Orm\\Tests\\RuntimeDb', self::caseI16ValuesAndDefaults(...));
     }
 
-    #[DataProviderExternal(CoverageCasesTest::class, 'databaseDrivers')]
+    #[DataProvider('drivers')]
     public function testAuditRecordOfATransaction(string $driver): void
     {
         self::runCase($driver, 'Polyspec\\Orm\\Tests\\RuntimeDb', self::caseAuditRecordOfATransaction(...));
     }
 
-    #[DataProviderExternal(CoverageCasesTest::class, 'databaseDrivers')]
+    #[DataProvider('drivers')]
     public function testRestoreOfSoftDeletedRows(string $driver): void
     {
         self::runCase($driver, 'Polyspec\\Orm\\Tests\\RuntimeRestore', self::caseRestoreOfSoftDeletedRows(...));

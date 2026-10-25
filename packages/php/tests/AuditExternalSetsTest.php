@@ -26,13 +26,14 @@ use Polyspec\Orm\Schema;
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use PHPUnit\Framework\TestCase;
-use PHPUnit\Framework\Attributes\DataProviderExternal;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 #[Medium]
 #[RunTestsInSeparateProcesses]
 final class AuditExternalSetsTest extends TestCase
 {
     use DatabaseTestAssertions;
+    use ThreeDrivers;
 
     /** Creates the schema value of the set in contracts/fixtures/external. No generated class is made. */
     private static function valueSchema(array $owned, array $external): Schema
@@ -112,14 +113,14 @@ final class AuditExternalSetsTest extends TestCase
     }
 
     // Requirements: DBS-110, SCH-11, SCH-12.
-    #[DataProviderExternal(CoverageCasesTest::class, 'databaseDrivers')]
+    #[DataProvider('drivers')]
     public function testGeneratedAfterValues(string $driver): void
     {
         self::runOrder('generated_after_values', $driver);
     }
 
     // Requirements: DBS-110, SCH-11, SCH-12.
-    #[DataProviderExternal(CoverageCasesTest::class, 'databaseDrivers')]
+    #[DataProvider('drivers')]
     public function testMemberByValueFirst(string $driver): void
     {
         self::runOrder('member_by_value_first', $driver);

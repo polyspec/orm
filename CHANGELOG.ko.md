@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 575e2a52497aec9d417cf25657af7f062bd3893ec68f1a887537c33675a57087 -->
+<!-- source-sha256: c8cfa5759e7e7747bcdbb2079a133c9b02308b102619e0a5db74b5a8819a8a56 -->
 # 변경 이력
 
 ## Unreleased
 
+- RuntimeDbTest와 AuditExternalSetsTest가 bootstrap에서 로드되는 provider trait을 사용하여 PHPUnit이 각 파일을 단독으로 발견한다. 집중 `--list-tests` 명령은 case 19개를 찾는다 (KSTD-5-88-15).
 - `make layout-check`가 통과한다. root test 디렉터리는 repository-tool test로 분류하고, Python recipe는 package environment를 사용하며, cross-language PHP/JavaScript fixture에는 명시적인 S9 사유를 둔다 (KSTD-5-89-5).
 - orm-gen이 Go generation의 임시 directory를 system 임시 directory에 만들므로, output 옆에 끝나지 않은 `.orm-gen-` folder가 생기지 않고, 다른 land가 build하는 동안 land가 main checkout을 dirty로 보지 않는다 (KSTD-5-88-19).
 - `make client-db-check`가 config/parity.json이 선언한 php-extension lane을 실행한다: 어떤 lane도 실행하기 전에 실패하는 대신, extension을 build하고 그것을 load한 채로 PHP database test file을 실행한다 (KSTD-5-88-6).
