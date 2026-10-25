@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 7f7a45a1e25016687b21ffcd1db1e3c2b3453d21238c8a151e563e9480267cb2 -->
+<!-- source-sha256: 414620e262ee5e6971518f01b783118b4614ef9a9bcbb71c3cb52e684cce13c4 -->
 # 변경 이력
 
 ## Unreleased
 
+- duplication-check가 통과한다: 생성된 model은 build 산출물이고 구현의 반복 코드는 공유 module로 옮겨졌으므로 `make duplication-check`가 clone을 찾지 않는다 (KSTD-5-5).
 - `make duplication-check`가 전체 tree에서 읽는 일곱 형식 모두에 6줄 이상 clone 0개로 exit 0 한다 (KSTD-5-46).
 - `make duplication-check`가 clone을 찾지 않는다: PHP `Dbspec`과 `PlanApply`의 apply, recover, rollback, finalize 연산의 각 `@param`이 그 연산에서 인자가 무엇인지 말하므로 네 docblock이 더 이상 같은 여섯 줄로 끝나지 않는다. public 이름, signature, extension stub은 바뀌지 않는다 (KSTD-5-46-3).
 - request hook, audit, soft delete, restore, clock unit은 여섯 client unit이다: 26개 unit에 declaration finding이 없고, PHP extension의 native request hook과 audit case가 통과한다(KSTD-2-11-12).
