@@ -497,6 +497,7 @@ fn key_prefix_methods_come_from_the_schema_without_a_scan() {
 
 /// The check of the generated files (orm-gen gen --check of the Go module): it reports no line for the current
 /// files, reports a changed and a missing file, and writes nothing.
+// Requirements: DBS-175.
 #[test]
 fn check_reports_differences_without_writing() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);

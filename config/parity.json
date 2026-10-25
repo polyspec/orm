@@ -78,14 +78,6 @@
           "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/go/generator/gen_go_check_test.go",
-          "reason": "generated: an internal package test of the go module that checks the output of a generator of the owner, not a behaviour of the contract (K313)"
-        },
-        {
-          "glob": "packages/go/generator/gen_go_output_test.go",
-          "reason": "generated: an internal package test of the go module that checks the output of a generator of the owner, not a behaviour of the contract (K313)"
-        },
-        {
           "glob": "packages/go/internal/dialects/ddl_physical_test.go",
           "reason": "external: an internal package test of the go module that runs against a database or driver of an external service, not a helper the contract names (K313)"
         },
@@ -9602,15 +9594,38 @@
       ]
     },
     {
-      "id": "rust-rejects-a-file-without-the-signature",
+      "id": "generator-rejects-a-document-without-the-signature",
       "kind": "feature",
       "requirements": [
         "DBS-4",
-        "DBS-27",
-        "DBS-155",
-        "SCH-1"
+        "DBS-155"
       ],
       "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/generator/gen_go_output_test.go",
+          "id": "TestGoGenerationCommandReportsSetErrors/file_diagnostics"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/OrmGenTest.php",
+          "id": "OrmGenTest::testGenRejectsAFileWithoutTheDbspecSignature"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/OrmGenTest.php",
+          "id": "OrmGenTest::testGenRejectsAFileWithoutTheDbspecSignature"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/generate.mjs",
+          "id": "generate"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_orm_gen.py",
+          "id": "test_document_diagnostics_print_every_diagnostic_and_write_nothing"
+        },
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/generate.rs",
@@ -9696,16 +9711,37 @@
       ]
     },
     {
-      "id": "rust-reports-every-error-of-the-set-and-writes-nothing",
+      "id": "generator-set-errors-print-every-error-and-write-nothing",
       "kind": "feature",
       "requirements": [
-        "DBS-19",
-        "DBS-25",
-        "DBS-27",
-        "DBS-155",
-        "SCH-1"
+        "DBS-27"
       ],
       "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/generator/gen_go_output_test.go",
+          "id": "TestGoGenerationCommandReportsSetErrors/set_errors"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/OrmGenTest.php",
+          "id": "OrmGenTest::testGenPrintsEveryErrorOfTheSetFileAndWritesNothing"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/OrmGenTest.php",
+          "id": "OrmGenTest::testGenPrintsEveryErrorOfTheSetFileAndWritesNothing"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/generate.mjs",
+          "id": "generate"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_orm_gen.py",
+          "id": "test_set_errors_print_every_error_and_write_nothing"
+        },
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/generate.rs",
@@ -13238,64 +13274,41 @@
       ]
     },
     {
-      "id": "php-internal-orm-gen-gen-check-compares-the-models-without-writing",
+      "id": "generator-check-compares-without-writing",
       "kind": "feature",
       "requirements": [
-        "DBS-4",
-        "DBS-5",
-        "DBS-19",
-        "DBS-25",
-        "DBS-27",
-        "DBS-98",
-        "DBS-104",
-        "DBS-105",
-        "DBS-110",
-        "DBS-155",
-        "DSL-127",
-        "ORES-21",
-        "ORES-36",
-        "PLN-22",
-        "SCH-1"
+        "DBS-175"
       ],
       "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/generator/gen_go_check_test.go",
+          "id": "TestGoGenerationCheckReportsDifferences"
+        },
         {
           "implementation": "php",
           "test": "packages/php/tests/OrmGenTest.php",
           "id": "OrmGenTest::testGenCheckComparesTheModelsWithoutWriting"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-orm-gen-gen-rejects-a-file-without-the-dbspec-signature",
-      "kind": "feature",
-      "requirements": [
-        "DBS-4",
-        "DBS-27",
-        "DBS-155"
-      ],
-      "bindings": [
+        },
         {
-          "implementation": "php",
+          "implementation": "php-extension",
           "test": "packages/php/tests/OrmGenTest.php",
-          "id": "OrmGenTest::testGenRejectsAFileWithoutTheDbspecSignature"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-orm-gen-gen-prints-every-error-of-the-set-file-and-writes-nothing",
-      "kind": "feature",
-      "requirements": [
-        "DBS-19",
-        "DBS-25",
-        "DBS-27",
-        "SCH-1",
-        "ORES-36"
-      ],
-      "bindings": [
+          "id": "OrmGenTest::testGenCheckComparesTheModelsWithoutWriting"
+        },
         {
-          "implementation": "php",
-          "test": "packages/php/tests/OrmGenTest.php",
-          "id": "OrmGenTest::testGenPrintsEveryErrorOfTheSetFileAndWritesNothing"
+          "implementation": "typescript",
+          "test": "packages/ts/tests/generate.mjs",
+          "id": "generate"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_orm_gen.py",
+          "id": "test_check_reports_a_missing_or_differing_file"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/tests/generate.rs",
+          "id": "check_reports_differences_without_writing"
         }
       ]
     },

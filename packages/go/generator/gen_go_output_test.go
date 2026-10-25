@@ -335,6 +335,7 @@ const namesSet = `{"schema": 1, "documents": ["names.dbs"]}` + "\n"
 // TestGoGenerationCommandReportsSetErrors checks that orm-gen gen prints every
 // error of the set file, and every diagnostic of its listed files, exits 1 and
 // writes nothing (docs/spec/dbspec.md "Document sets").
+// Requirements: DBS-4, DBS-27, DBS-155.
 func TestGoGenerationCommandReportsSetErrors(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	bin := commandBinary(t)

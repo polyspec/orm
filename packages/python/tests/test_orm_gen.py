@@ -705,6 +705,7 @@ class OrmGenTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_check_reports_a_missing_or_differing_file(self):
+        # Requirements: DBS-175.
         with tempfile.TemporaryDirectory(prefix="orm-gen-missing-") as missing:
             result = subprocess.run(
                 args=ORM_GEN
@@ -757,6 +758,7 @@ class OrmGenTest(unittest.TestCase):
             self.assertIn(flag, result.stderr)
 
     def test_set_errors_print_every_error_and_write_nothing(self):
+        # Requirements: DBS-27.
         with tempfile.TemporaryDirectory(prefix="orm-gen-set-") as tree:
             root = Path(tree)
             (root / "dbspec-set.json").write_text(
@@ -771,6 +773,7 @@ class OrmGenTest(unittest.TestCase):
             self.assertFalse(out.exists())
 
     def test_document_diagnostics_print_every_diagnostic_and_write_nothing(self):
+        # Requirements: DBS-4, DBS-155.
         with tempfile.TemporaryDirectory(prefix="orm-gen-set-") as tree:
             root = Path(tree)
             (root / "a.dbs").write_text('<?xml version="1.0"?>\n', encoding="utf-8")

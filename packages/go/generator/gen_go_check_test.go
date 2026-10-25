@@ -33,6 +33,7 @@ func requireCheck(t *testing.T, want ...string) {
 // TestGoGenerationCheckReportsDifferences checks that a check reports no line
 // for current models and reports a changed, a missing, and an extra generated
 // file without writing, while hand-written files are not compared.
+// Requirements: DBS-175.
 func TestGoGenerationCheckReportsDifferences(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	write, _ := generatedScannedModule(t)

@@ -81,6 +81,7 @@ final class OrmGenTest extends TestCase
         );
     }
 
+    // Requirements: DBS-175.
     public function testGenCheckComparesTheModelsWithoutWriting(): void
     {
         $work = self::$work;

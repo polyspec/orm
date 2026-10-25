@@ -55,7 +55,7 @@ async function setOf(dir, documents, external = []) {
 }
 
 // The generator check is one case that runs the orm-gen and tsc processes.
-// Requirements: ORES-21.
+// Requirements: ORES-21, DBS-4, DBS-27, DBS-155, DBS-175.
 caseTest('generate', PROCESS, async () => {
   try {
     const usage = join(work, 'usage.ts');
