@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- `OrmException::fromDriver` of the PHP extension no longer corrupts the Zend heap: it released the `rv` zval of `zend_read_property` for `errorInfo`, which the read never writes for a declared property, so a release build freed an uninitialized stack value; it now copies the value it reads and releases only what it owns. The native writes of model_writes, statement_events, audit_triggers and constraints_and_relations run again on MySQL, PostgreSQL and SQLite (T182-6-18).
 - The Go and Rust restore, audit record and soft delete read cases bind three six-client units citing INT-38, CFG-8 with INT-44, and DBS-67, beside the audit trigger coverage cases of the other clients; the five units that bound one client each are gone (KSTD-2-11-12-3).
 - The clock of the update time, the soft deletion and the now condition has three six-client units citing DIA-18, DIA-56 and DSL-137 in place of thirteen units that each bound one client. Python runs the clock cases on SQLite, MySQL and PostgreSQL, and the TypeScript clock cases are bound instead of declared internal (KSTD-2-11-12-2).
 - The PHP extension audit tests name the requirements of the audit history, audit transaction entry point, soft delete restore and selected column cases they inherit from the PHP library, which they pass on SQLite with the extension loaded (KSTD-2-11-12-1).

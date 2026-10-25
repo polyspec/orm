@@ -502,6 +502,28 @@ final class OrmExceptionNativeTest extends TestCase
         Assert::assertSame([], $error->cleanup);
     }
 
+    // fromDriver reads the declared errorInfo of a PDOException; repeated driver errors must leave
+    // the Zend heap intact.
+    public function testDriverFactoryLeavesTheHeapIntactAcrossRepeatedDriverErrors(): void
+    {
+        $pdo = new \PDO('sqlite::memory:');
+        $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+        $kept = [];
+        for ($i = 0; $i < 500; $i++) {
+            try {
+                $pdo->exec("SELECT * FROM missing_$i");
+                self::fail("the query of missing_$i did not fail");
+            } catch (\PDOException $driverError) {
+                $error = OrmException::fromDriver($driverError, 'sqlite', $pdo);
+                Assert::assertSame(Code::DRIVER, $error->code_);
+                Assert::assertSame($driverError, $error->getPrevious());
+                $kept[] = [$error, str_repeat('x', $i % 64)];
+            }
+        }
+        Assert::assertCount(500, $kept);
+        Assert::assertSame(['HY000', 1, 'no such table: missing_499'], $kept[499][0]->getPrevious()->errorInfo);
+    }
+
     private static function markdownServerCode(string $response): string
     {
         return str_replace('__RESPONSE__', var_export($response, true), <<<'PHP'

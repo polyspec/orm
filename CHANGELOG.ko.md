@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 47d1bcb96557224515f46f02c975a85dfa7c975fb969e19106fdd121936b46c9 -->
+<!-- source-sha256: 982f3bb3f23565873f7b711c6ea5d6dcce2ba9894ac49ceb4532fffd9e7b0bc8 -->
 # 변경 이력
 
 ## Unreleased
 
+- PHP extension의 `OrmException::fromDriver`가 더 이상 Zend heap을 손상시키지 않는다: `errorInfo`에 대한 `zend_read_property`의 `rv` zval을 해제했는데, 선언된 property이면 read가 이를 쓰지 않으므로 release build가 초기화되지 않은 stack 값을 해제했다. 이제 읽은 값을 복사하고 자신이 소유한 것만 해제한다. model_writes, statement_events, audit_triggers, constraints_and_relations의 native write가 MySQL, PostgreSQL, SQLite에서 다시 실행된다 (T182-6-18).
 - Go와 Rust의 restore, audit record, soft delete read case는 다른 client의 audit trigger coverage case와 함께 INT-38, CFG-8과 INT-44, DBS-67을 인용하는 여섯 client unit 세 개에 bind된다; client 하나씩 bind하던 unit 다섯 개는 사라졌다(KSTD-2-11-12-3).
 - update 시각, soft deletion, now 조건의 clock은 client 하나씩 bind하던 unit 열세 개 대신 DIA-18, DIA-56, DSL-137을 인용하는 여섯 client unit 세 개를 가진다. Python은 clock case를 SQLite, MySQL, PostgreSQL에서 실행하고, TypeScript clock case는 internal로 선언되는 대신 bind된다(KSTD-2-11-12-2).
 - PHP extension audit test는 PHP library에서 물려받은 audit history, audit transaction entry point, soft delete restore, selected column case의 requirement를 적으며, extension을 load한 채 SQLite에서 이 case를 통과한다(KSTD-2-11-12-1).

@@ -267,16 +267,21 @@ ZEND_METHOD(Polyspec_Orm_OrmException, fromDriver)
     zend_string *state = NULL;
     zend_long number = 0;
     bool has_number = false;
-    zval error_info_rv;
-    zval *error_info = zend_read_property(Z_OBJCE_P(error_value), Z_OBJ_P(error_value), "errorInfo", sizeof("errorInfo") - 1, true, &error_info_rv);
+    // zend_read_property returns the declared property itself, or the value of __get in error_info_rv, which the reader
+    // then owns; error_info_rv is written only in that case. errorInfo is copied so that every path releases its own copy.
+    zval error_info_rv, error_info_copy;
+    zval *read_info = zend_read_property(Z_OBJCE_P(error_value), Z_OBJ_P(error_value), "errorInfo", sizeof("errorInfo") - 1, true, &error_info_rv);
+    ZVAL_COPY(&error_info_copy, read_info);
+    if (read_info == &error_info_rv) zval_ptr_dtor(&error_info_rv);
+    zval *error_info = &error_info_copy;
     zend_class_entry *pdo_exception_ce = lookup_class_literal("PDOException");
     if (pdo_exception_ce == NULL || !instanceof_function(Z_OBJCE_P(error_value), pdo_exception_ce)) {
-        zval_ptr_dtor(&error_info_rv);
+        zval_ptr_dtor(&error_info_copy);
         zend_throw_exception(spl_ce_InvalidArgumentException, "OrmException::fromDriver expects a PDOException", 0);
         RETURN_THROWS();
     }
     if (!instanceof_function(Z_OBJCE_P(pdo_value), php_pdo_get_dbh_ce())) {
-        zval_ptr_dtor(&error_info_rv);
+        zval_ptr_dtor(&error_info_copy);
         zend_throw_exception(spl_ce_InvalidArgumentException, "OrmException::fromDriver expects a PDO connection", 0);
         RETURN_THROWS();
     }
@@ -293,7 +298,7 @@ ZEND_METHOD(Polyspec_Orm_OrmException, fromDriver)
         zval code_rv;
         zend_call_method_with_0_params(Z_OBJ_P(error_value), Z_OBJCE_P(error_value), NULL, "getcode", &code_rv);
         if (EG(exception) != NULL) {
-            zval_ptr_dtor(&error_info_rv);
+            zval_ptr_dtor(&error_info_copy);
             RETURN_THROWS();
         }
         state = zval_get_string(&code_rv);
@@ -319,7 +324,7 @@ ZEND_METHOD(Polyspec_Orm_OrmException, fromDriver)
                 if (EG(exception) != NULL) {
                     zend_string_release(state);
                     zend_string_release(driver_message);
-                    zval_ptr_dtor(&error_info_rv);
+                    zval_ptr_dtor(&error_info_copy);
                     RETURN_THROWS();
                 }
                 connection_lost = zval_get_long(&pid) == 0;
@@ -351,13 +356,13 @@ ZEND_METHOD(Polyspec_Orm_OrmException, fromDriver)
     if (EG(exception) != NULL) {
         zend_string_release(code);
         zend_string_release(driver_message);
-        zval_ptr_dtor(&error_info_rv);
+        zval_ptr_dtor(&error_info_copy);
         RETURN_THROWS();
     }
     zend_string *message = zval_get_string(&message_rv);
     zval_ptr_dtor(&message_rv);
     zend_string_release(driver_message);
-    zval_ptr_dtor(&error_info_rv);
+    zval_ptr_dtor(&error_info_copy);
     zend_class_entry *ce = zend_get_called_scope(execute_data);
     bool ok = ce != NULL && construct_error(return_value, ce, code, message, Z_OBJ_P(error_value), NULL, NULL);
     zend_string_release(code);
