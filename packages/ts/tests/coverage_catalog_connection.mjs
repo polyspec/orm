@@ -168,6 +168,32 @@ async function streamCase() {
   }
 }
 
+// Requirements: INT-115.
+async function plainReadBoundsCase(item) {
+  const { driver, catalog } = await connect(item);
+  try {
+    const rows = "SELECT 'alpha' AS value UNION ALL SELECT 'beta' AS value";
+    await assert.rejects(
+      catalog.readOnlyQuery(rows, [], { maxRows: 1 }),
+      codeIs('CATALOG_LIMIT'),
+      `${driver}: the row limit rejects a partial result`,
+    );
+    const exactRows = await catalog.readOnlyQuery(rows, [], { maxRows: 2 });
+    assert.deepEqual(exactRows.rows, [['alpha'], ['beta']], `${driver}: the exact row limit returns all rows`);
+
+    const bytes = "SELECT 'abc' AS value";
+    await assert.rejects(
+      catalog.readOnlyQuery(bytes, [], { maxRows: 2, maxBytes: 2 }),
+      codeIs('CATALOG_LIMIT'),
+      `${driver}: the byte limit rejects a partial result`,
+    );
+    const exactBytes = await catalog.readOnlyQuery(bytes, [], { maxRows: 2, maxBytes: 3 });
+    assert.deepEqual(exactBytes.rows, [['abc']], `${driver}: the exact byte limit returns the row`);
+  } finally {
+    await catalog.close();
+  }
+}
+
 // Typed grid cells by the native type of each column (the Rust grid rules). Each row of cells is compared with its exact cells.
 async function assertGridCells(driver, catalog) {
   const first = async (sql) => (await catalog.readOnlyGridQuery(sql, [])).rows[0];
@@ -402,6 +428,7 @@ async function closedCase() {
 const featureCases = {
   catalog_read: readCase,
   catalog_grid_column_and_row_order: gridColumnAndRowOrderCase,
+  catalog_plain_query_bounds: plainReadBoundsCase,
   model_read_null_and_empty_text: nullAndEmptyTextCase,
   catalog_row_mutation: mutationCase,
 };
@@ -412,6 +439,7 @@ if (process.env.NODE_TEST_CONTEXT !== undefined || process.argv.length > 2) {
   await mutationCase();
   await plainCase();
   await streamCase();
+  await plainReadBoundsCase();
   await gridCase();
   await precisionCase();
   await sqliteTemporalCase();
