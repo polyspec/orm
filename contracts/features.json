@@ -10573,6 +10573,10 @@
                     "catalog_read",
                     "catalog_row_mutation"
                   ],
+                  "symbols": {
+                    "catalog_read": "testCatalogRead",
+                    "catalog_row_mutation": "testCatalogRowMutation"
+                  },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
               ],
@@ -10584,6 +10588,10 @@
                     "catalog_read",
                     "catalog_row_mutation"
                   ],
+                  "symbols": {
+                    "catalog_read": "testCatalogRead",
+                    "catalog_row_mutation": "testCatalogRowMutation"
+                  },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
               ],
@@ -10595,6 +10603,10 @@
                     "catalog_read",
                     "catalog_row_mutation"
                   ],
+                  "symbols": {
+                    "catalog_read": "testCatalogRead",
+                    "catalog_row_mutation": "testCatalogRowMutation"
+                  },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
               ]

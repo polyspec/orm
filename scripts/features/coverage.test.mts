@@ -115,6 +115,26 @@ caseTest('PHP extension catalog, schema and statement event coverage use native 
   }
 });
 
+caseTest('PHP extension catalog coverage selects the exact native methods', 1000, () => {
+  const manifest = readFeatures(new URL('../..', import.meta.url).pathname);
+  const catalog = manifest.features.find(item => item.id === 'catalog_connection');
+  assert.ok(catalog);
+  assert.ok(catalog.coverage);
+  assert.ok(catalog.coverage.owners);
+  const owner = catalog.coverage.owners['php-extension'];
+  assert.ok(owner);
+  const commands = owner.commands;
+  assert.deepEqual(Object.keys(commands).toSorted(), [...databases].toSorted());
+  for (const nativeCommands of Object.values(commands)) {
+    assert.ok(nativeCommands);
+    assert.equal(nativeCommands.length, 1);
+    assert.deepEqual(nativeCommands[0]?.symbols, {
+      catalog_read: 'testCatalogRead',
+      catalog_row_mutation: 'testCatalogRowMutation',
+    });
+  }
+});
+
 caseTest('one feature can run without declaring unrelated coverage complete', 1000, () => {
   const manifest = { features: [{ id: 'one' }, { id: 'two' }] };
   assert.deepEqual(selectFeatures(manifest, 'one').features, [{ id: 'one' }]);
