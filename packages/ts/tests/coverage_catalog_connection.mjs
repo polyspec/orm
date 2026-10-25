@@ -3,26 +3,29 @@
 // case inserts, updates and deletes one row of composite_account in tenant 990005 and ends in the state it started in.
 // Requirements: SCH-5, SCH-6a, INT-109, INT-113, INT-114, INT-123.
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
+import { runCases } from './coverage_case.mjs';
 import { connectCatalog } from '../dist/index.js';
 import { DatabaseSync } from 'node:sqlite';
 
 const TENANT = 990005;
 
-async function connect() {
-  const driver = process.env.ORM_FEATURE_DATABASE;
+async function connect(item = {
+  driver: process.env.ORM_FEATURE_DATABASE,
+  dsn: process.env.ORM_FEATURE_DSN,
+}) {
+  const { driver, dsn } = item;
   if (!['mysql', 'postgres', 'sqlite'].includes(driver)) {
-    throw new Error('ORM_FEATURE_DATABASE (mysql, postgres or sqlite) is required; run it through make feature-check');
+    throw new Error('a catalog coverage item must name mysql, postgres or sqlite; run it through make feature-check');
   }
-  const catalog = await connectCatalog(process.env.ORM_FEATURE_DSN);
+  const catalog = await connectCatalog(dsn);
   assert.equal(catalog.dialect, driver, 'ORM_FEATURE_DSN selects another database than ORM_FEATURE_DATABASE');
   return { driver, catalog };
 }
 
 const quote = (name, driver) => (driver === 'mysql' ? `\`${name}\`` : `"${name}"`);
 
-async function readCase() {
-  const { driver, catalog } = await connect();
+async function readCase(item) {
+  const { driver, catalog } = await connect(item);
   try {
     const namespace = await catalog.currentNamespace();
     const author = { namespace, name: 'author' };
@@ -48,8 +51,8 @@ async function readCase() {
   }
 }
 
-async function mutationCase() {
-  const { driver, catalog } = await connect();
+async function mutationCase(item) {
+  const { driver, catalog } = await connect(item);
   try {
     const account = quote('composite_account', driver);
     const countSql = `SELECT COUNT(*) FROM ${account} WHERE tenant_id = ${TENANT}`;
@@ -334,21 +337,12 @@ async function closedCase() {
   }
 }
 
-const featureCases = new Map([
-  ['catalog_read', readCase],
-  ['catalog_row_mutation', mutationCase],
-]);
-const selectedCases = process.argv.slice(2);
-if (process.env.NODE_TEST_CONTEXT !== undefined) {
-  test('catalog_read', readCase);
-  test('catalog_row_mutation', mutationCase);
-} else if (selectedCases.length > 0) {
-  for (const id of selectedCases) {
-    const run = featureCases.get(id);
-    assert.ok(run, `unknown catalog coverage case ${id}`);
-    await run();
-    console.log(`CASE ${id} [${process.env.ORM_FEATURE_DATABASE}] PASS`);
-  }
+const featureCases = {
+  catalog_read: readCase,
+  catalog_row_mutation: mutationCase,
+};
+if (process.env.NODE_TEST_CONTEXT !== undefined || process.argv.length > 2) {
+  await runCases('coverage_catalog_connection.mjs', featureCases, 120_000);
 } else {
   await readCase();
   await mutationCase();

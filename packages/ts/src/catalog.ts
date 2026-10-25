@@ -1406,11 +1406,11 @@ export class CatalogConnection {
           if (column === undefined) throw err(CODE_SCHEMA, 'insertion key descriptor changed');
           const quoted = quoteIdent(column.name, this.dialect);
           if (provided.has(index)) {
-            predicates.push(`${quoted}=?`);
+            predicates.push(`${quoted}=${placeholder(bound.length + 1, this.dialect)}`);
             bound.push(provided.get(index) ?? null);
           } else if (column.automaticKey) {
             if (result.insertId === null) throw err(CODE_WRITE, 'insert acknowledgement has no generated primary key');
-            predicates.push(`${quoted}=?`);
+            predicates.push(`${quoted}=${placeholder(bound.length + 1, this.dialect)}`);
             bound.push(plainValue(result.insertId, { name: column.name, type: column.nativeType }));
           } else if (column.defaultExpression !== null && !column.expressionDefault) {
             predicates.push(`${quoted}=DEFAULT(${quoted})`);
@@ -1418,7 +1418,8 @@ export class CatalogConnection {
             throw err(CODE_AMBIGUOUS, `no safe generated-key locator for "${column.name}"`);
           }
         }
-        const query = `SELECT ${quoteList(descriptor.columns.map(column => column.name), this.dialect)} FROM ${qualified(descriptor.table, this.dialect)} WHERE ${predicates.join(' AND ')} LIMIT 2 FOR UPDATE`;
+        const rowLock = this.dialect === 'sqlite' ? '' : ' FOR UPDATE';
+        const query = `SELECT ${quoteList(descriptor.columns.map(column => column.name), this.dialect)} FROM ${qualified(descriptor.table, this.dialect)} WHERE ${predicates.join(' AND ')} LIMIT 2${rowLock}`;
         const resultRows = await session.collect<CatalogValue>(query, bound, 2, PAGE_BYTES,
           (value, column, index) => describedCell(value, column, descriptor.columns[index], this.dialect));
         if (resultRows.columns.length !== descriptor.columns.length || resultRows.columns.some((column, index) => column.name !== descriptor.columns[index]?.name)) {
