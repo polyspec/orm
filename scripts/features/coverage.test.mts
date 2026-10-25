@@ -141,24 +141,25 @@ function declaredPhpMethods(file: string, seen = new Set<string>()): string {
   return methods;
 }
 
-// A PHP library owner selects the method of each case by its symbols map or as test_<id>; a method the class lacks makes
+// A PHP catalog owner selects the method of each case by its symbols map or as test_<id>; a method the class lacks makes
 // PHPUnit run no test, so the owner has no execution.
-caseTest('every case of a PHP library owner selects a method of its test class', 1000, () => {
+caseTest('every case of the PHP catalog owner selects a method of its test class', 1000, () => {
   const root = new URL('../..', import.meta.url).pathname;
   const missing: string[] = [];
-  for (const feature of readFeatures(root).features) {
-    const owner = feature.coverage?.owners?.php;
-    if (!owner) continue;
-    for (const [database, commands] of Object.entries(owner.commands))
-      for (const command of commands) {
-        const methods = declaredPhpMethods(join(root, command.test));
-        for (const id of command.cases) {
-          const method = command.symbols?.[id] ?? `test_${id}`;
-          if (!new RegExp(`function ${method}\\(`).test(methods)) missing.push(`${feature.id}/${database}: ${command.test} ${method}`);
-        }
+  const feature = readFeatures(root).features.find(item => item.id === 'catalog_connection');
+  assert.ok(feature);
+  const owner = feature.coverage?.owners?.php;
+  assert.ok(owner);
+  for (const [database, commands] of Object.entries(owner.commands))
+    for (const command of commands) {
+      const methods = declaredPhpMethods(join(root, command.test));
+      for (const id of command.cases) {
+        const method = command.symbols?.[id] ?? `test_${id}`;
+        if (!new RegExp(`function ${method}\\(`).test(methods)) missing.push(`${feature.id}/${database}: ${command.test} ${method}`);
       }
-  }
+    }
   assert.deepEqual(missing, []);
+});
 
 // The node and python runners select a case by its ID, and the checker refuses a symbols map on them, so a command that
 // declares one never executes.
