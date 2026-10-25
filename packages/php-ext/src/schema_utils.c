@@ -185,6 +185,9 @@ static bool schema_utils_differences(zval *live, zval *unsupported, zval *docume
         smart_str message = {0};
         if (strcmp(method, "installedDifferences") == 0) {
             smart_str_appends(&message, "the database differs from the document set: ");
+        } else if (strcmp(method, "externalDifferences") == 0) {
+            smart_str_appends(&message,
+                "the tables that the set uses from external documents differ from the database: ");
         }
         schema_utils_append_differences(&message, &differences);
         smart_str_0(&message);

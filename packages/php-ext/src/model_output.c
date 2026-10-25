@@ -179,7 +179,16 @@ static void output_model_column(zend_object *object, zval *out, HashTable *seen,
     zend_call_method(object, object->ce, NULL, method, strlen(method), &value, 1, &argument, NULL);
     zval_ptr_dtor(&argument);
     if (EG(exception) == NULL) {
-        output_column_value(column, &value, &converted);
+        if (!pairs && output_instance(&value, "Polyspec\\Orm\\StyledValue")) {
+            output_call(&value, "jsonSerialize", &converted, 0, NULL);
+        } else {
+            output_column_value(column, &value, &converted);
+        }
+        if (EG(exception) != NULL) {
+            if (Z_TYPE(converted) != IS_UNDEF) zval_ptr_dtor(&converted);
+            zval_ptr_dtor(&value);
+            return;
+        }
         if (pairs) output_pair_append(out, seen, key, &converted);
         else output_append(out, seen, key, &converted);
     }

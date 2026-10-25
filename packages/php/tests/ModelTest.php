@@ -1077,7 +1077,7 @@ final class ModelTest extends TestCase
         }
     }
 
-    #[DataProvider('drivers')]
+    #[DataProvider('serverDrivers')]
     // Requirements: CFG-6.
     public function testStatementTimeout(string $driver): void
     {
