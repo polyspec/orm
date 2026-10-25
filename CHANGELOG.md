@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- KSTD-2-11-15-2: `generated-field-types-follow-runtime-model` now binds native generated-field type tests in all six clients for INT-2 to INT-8; the existing Go generator unit remains bound to INT-12. Source: `56f5a226d`.
+
 - KSTD-2-11-15-1: The six native generator owners reject the DSL-129 generated-method name collision. Focused owner evidence on source `56f5a226d`: Go 2 cases, Python 2, PHP generator 1 test / 3 assertions, PHP library 1 / 13, PHP extension 2 / 19, TypeScript 2 and Rust 2. Remaining global parity findings are tracked in KSTD-2.
 
 - T182-6-17: The selected 13 relations and explicit root-page vectors matched across all six clients on MySQL, PostgreSQL and SQLite in two runs per database. The enclosing command later exited 2 in a separate PHP-extension interface-symbol snapshot check; the selected conformance result passed. Evidence log SHA-256: `3faeba3aaa6d32cab85a743eba767240ef3fcb0cd1dc46dce4a12c87aee351ff`.

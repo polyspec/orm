@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 4ceb720d5c504ab50c92d2ee1f24e34eddf02784810a5e1be21b19e6b14a9bda -->
+<!-- source-sha256: 17951ff477dc44af8b80ecc2fbad044498e6cda9f540ddabe3ee6971c6bd1129 -->
 # 변경 이력
 
 ## Unreleased
+
+- KSTD-2-11-15-2: `generated-field-types-follow-runtime-model`이 INT-2부터 INT-8까지 여섯 client의 native generated-field type test에 연결된다. 기존 Go generator unit은 INT-12 연결을 유지한다. Source: `56f5a226d`.
 
 - KSTD-2-11-15-1: 여섯 native generator owner가 DSL-129의 generated-method 이름 충돌을 거부한다. source `56f5a226d`의 focused owner 근거: Go 2 cases, Python 2, PHP generator 1 test / 3 assertions, PHP library 1 / 13, PHP extension 2 / 19, TypeScript 2, Rust 2. 나머지 global parity finding은 KSTD-2에서 추적한다.
 
