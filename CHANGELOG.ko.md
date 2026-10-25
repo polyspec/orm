@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: e198a2996ac08d41b941f031575195e0df3a9309aa5105b4caaf44d4ff242305 -->
+<!-- source-sha256: a2fb1a91d9a09283e08a0409efea3176907e031411b72d33663192cdbd003b83 -->
 # 변경 이력
 
 ## Unreleased
 
+- orm이 kit K613, K614, K621 layout을 따르고 kit dist를 읽지 않는다: config/layout.kit.yml은 kit의 copy이고, config/php-lint는 없어졌으며, PRINCIPLES.md, PRINCIPLES.ko.md, .editorconfig, .claude/settings.json은 ../kit로 link되고, build.sh와 script와 test는 kit의 scripts/kit source를 실행한다 (KSTD-5-89-26).
 - main에서 `make duplication-check`가 통과한다. jscpd가 packages/php-ext, packages/php, packages/go, packages/rust, packages/ts, packages/python에서 두 번 찾은 코드는 이제 양쪽이 함께 쓰는 helper 하나에 있다(C header, PHP trait와 helper 파일, Go internal package, Rust common module과 macro, JavaScript와 Python helper). 모든 active root의 MySQL cancellation case는 controller가 wait lock 두 개를 잡은 뒤에야 두 번째 process를 시작하므로, 그 process가 wait lock을 먼저 가져가지 못한다(KSTD-5-89-22).
 - stress 입력 생성기를 benchmark helper 소유 범위에서 분리했다. 변경한 registry에서 소유 검사 선택이 통과한다 (KSTD-5-89-23).
 - 548960952 이후 main에서 `node scripts/features/owners.mts --list`가 다시 통과한다: contracts/check-inputs.json의 suite target 41개는 schema가 거부하는 빈 inputs 목록을 더 이상 갖지 않고, PHP client와 extension의 dsn_connection verification pooler-cancellation과 pgsql-pdo-adapter 네 개는 helper php-test-autoload와 error-codes의 파일을 더 이상 입력으로 적지 않는다 (KSTD-5-89-24).
