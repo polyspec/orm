@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- KSTD-5-88: The initial runner-check run passed 58/60 cases; after f315de4e5 corrected the runner parts, the two affected cases passed 2/2. The full target was not rerun.
+
 - KSTD-5-88-12: All JavaScript tests now declare cases through caseTest; the exact repository guard passes (1/1), and the preserved combined guard record shows both JavaScript items passing (2/2).
 
 - KSTD-5-88-14: Every TypeScript test that a check runs reports its cases through `tests/testcase.mts`; the exact owner selector `node --test --test-name-pattern='every PHP and TypeScript test that a check runs reports its cases' scripts/repo/check.test.mts` passed (1/1), and the preserved combined guard record `var/parallel/resume-landing/kstd-5-88-js-green.log` reports both JavaScript items passing (2/2) (KSTD-5-88-14).

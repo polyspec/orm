@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: e8822ee118a3e4a334bf8d169c56b3cdff781447e2996d48fdb4f27963299036 -->
+<!-- source-sha256: ce2cbc9623b00c83474038bcefa707aaecc774a9114d208a27bd19b5393e307a -->
 # 변경 이력
 
 ## Unreleased
+
+- KSTD-5-88: 초기 runner-check 실행은 60개 중 58개 case가 통과했다. f315de4e5가 runner parts를 수정한 뒤 영향받은 두 case가 2/2 통과했다. 전체 target은 재실행하지 않았다.
 
 - KSTD-5-88-12: 모든 JavaScript test가 caseTest로 case를 선언한다. 정확한 repository guard가 통과했고(1/1), 보존된 통합 guard 기록은 두 JavaScript 항목이 모두 통과했음을 보여준다(2/2).
 
