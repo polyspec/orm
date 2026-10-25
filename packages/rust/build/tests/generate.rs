@@ -691,6 +691,7 @@ fn unused_external_tables_keep_their_models() {
 }
 
 /// A relation to an entity of a used external document attaches its getter, as a relation to an entity of the set does.
+// Requirements: DSL-44.
 #[test]
 fn relation_to_an_external_entity_attaches_its_getter() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -704,6 +705,7 @@ fn read(row: &ExtPost) { let _ = row.get_ext_audit_model(); }",
 
 /// A name is typed by its binding in its own scope: a for loop or a match arm that binds the name gives it no model, so a
 /// call on it is not the outer Author's; a call on a ServiceMember is attributed to ServiceMember.
+// Requirements: DSL-151.
 #[test]
 fn a_name_is_typed_by_its_binding_in_its_own_scope() {
     // The outer row is a ServiceMember, which has no is_close column. The for loop and the match arm bind row to values the

@@ -21334,6 +21334,84 @@
       ]
     },
     {
+      "id": "generator-scan-relation-to-an-external-entity-attaches-its-getter",
+      "kind": "feature",
+      "requirements": [
+        "DSL-44"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/generator/gen_go_scan_test.go",
+          "id": "TestGoRelationGetterOfExternalEntity"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/OrmGenScanTest.php",
+          "id": "OrmGenScanTest::testARelationToAnEntityOfAUsedDocumentAttachesItsGetter"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/OrmGenScanTest.php",
+          "id": "OrmGenScanTest::testARelationToAnEntityOfAUsedDocumentAttachesItsGetter"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/generate-scan.mjs",
+          "id": "generate-scan/external_getter"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_orm_gen.py",
+          "id": "test_a_relation_to_an_entity_of_a_used_document_attaches_its_getter"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/tests/generate.rs",
+          "id": "relation_to_an_external_entity_attaches_its_getter"
+        }
+      ]
+    },
+    {
+      "id": "generator-scan-name-is-typed-by-its-binding-in-its-own-scope",
+      "kind": "feature",
+      "requirements": [
+        "DSL-151"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/generator/gen_go_scan_test.go",
+          "id": "TestGoGetterOfNestedRebindingUsesItsOwnModel"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/OrmGenScanTest.php",
+          "id": "OrmGenScanTest::testANameIsTypedByItsBindingInItsOwnScope"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/OrmGenScanTest.php",
+          "id": "OrmGenScanTest::testANameIsTypedByItsBindingInItsOwnScope"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/generate-scan.mjs",
+          "id": "generate-scan/scope_binding"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_orm_gen.py",
+          "id": "test_a_name_is_typed_by_its_binding_in_its_own_scope"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/tests/generate.rs",
+          "id": "a_name_is_typed_by_its_binding_in_its_own_scope"
+        }
+      ]
+    },
+    {
       "id": "clock-microseconds",
       "kind": "feature",
       "requirements": [

@@ -247,6 +247,7 @@ table ext_note {
 }
 
 /** A relation to an entity of a used external document attaches its getter, as a relation to an entity of the set does. */
+// Requirements: DSL-44.
 async function externalGetter() {
   await generateExternal(`
 import { ExtPost } from './models/models.js';
@@ -261,6 +262,7 @@ export {};
  * A name is typed by its latest assignment in its own scope: a nested function that reassigns row to a value the scan
  * cannot type does not leave the outer ServiceMember on the call, and a call on an Author row is attributed to Author.
  */
+// Requirements: DSL-151.
 async function scopeBinding() {
   const { members } = await generate(`
 import { Author, ServiceMember } from './models/models.js';

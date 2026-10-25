@@ -439,6 +439,7 @@ func fixtureDocument(t *testing.T, name string) string {
 // external model of its own package.
 // A relation to an entity of a used external document is a relation to an entity of the set: the member package generates its
 // model (ExtAudit), so the relation argument is that model and its getter is attached as the getter of any entity.
+// Requirements: DSL-44.
 func TestGoRelationGetterOfExternalEntity(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	member := fixtureDocument(t, "member.dbs")
@@ -515,6 +516,7 @@ func Load() {
 // TestGoGetterOfNestedRebindingUsesItsOwnModel checks that a getter called on a
 // variable that a nested scope rebinds to another model is attributed to the
 // model of that inner binding, not to the model of the outer one.
+// Requirements: DSL-151.
 func TestGoGetterOfNestedRebindingUsesItsOwnModel(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	write := scannedModule(t)

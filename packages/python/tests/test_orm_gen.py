@@ -670,6 +670,7 @@ class OrmGenTest(unittest.TestCase):
         self.assertIn("Author.get_ghost is called", result.stderr)
 
     def test_a_relation_to_an_entity_of_a_used_document_attaches_its_getter(self):
+        # Requirements: DSL-44.
         # ext_post of member.dbs uses ext_audit of core.dbs, an external document: the relation to ExtAudit attaches
         # get_ext_audit_model as it does for a local entity.
         result = self._scan_external(
@@ -683,6 +684,7 @@ class OrmGenTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_a_name_is_typed_by_its_binding_in_its_own_scope(self):
+        # Requirements: DSL-151.
         # The outer row is a ServiceMember. The nested function rebinds row to a value the scan cannot type, so its
         # set_is_close call is not the outer ServiceMember's; the call on an Author row in another nested function is
         # attributed to Author.

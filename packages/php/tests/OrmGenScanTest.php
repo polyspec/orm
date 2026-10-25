@@ -515,6 +515,7 @@ PHP;
         }
     }
 
+    // Requirements: DSL-44.
     public function testARelationToAnEntityOfAUsedDocumentAttachesItsGetter(): void
     {
         // ext_post of member.dbs uses ext_audit of core.dbs, an external document: the relation to ExtAudit attaches
@@ -556,6 +557,7 @@ PHP;
         self::assertFileExists("$dir/model/ExtSession.php");
     }
 
+    // Requirements: DSL-151.
     public function testANameIsTypedByItsBindingInItsOwnScope(): void
     {
         // The outer row is a ServiceMember. A destructuring assignment and an if with differing branches leave row with
