@@ -408,14 +408,8 @@ mod tests {
             macro_rules! apply_entrypoint {
                 ($(#[$doc:meta])* $name:ident, $command:ident) => {
                     $(#[$doc])*
-                    pub async fn $name<C: ApplyConnection + ?Sized>(
-                        connection: &mut C,
-                        dialect: Dialect,
-                        plans: &[Plan],
-                        now: &ApplyClock<'_>,
-                        events: &mut ApplyEvents<'_>,
-                    ) -> Result<(), ApplyError> {
-                        run_command(connection, dialect, plans, now, events, Command::$command).await
+                    pub async fn $name<C: ApplyConnection + ?Sized>() -> Result<(), ApplyError> {
+                        $command::run().await
                     }
                 };
             }
