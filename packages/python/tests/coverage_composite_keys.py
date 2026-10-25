@@ -7,6 +7,8 @@ from .coverage_case import expect_equal, CoverageCase, coverage_main, with_clean
 # Another tenant also has account 2, so a relation that joins on account_id alone would show.
 TENANT = 990004
 OTHER_TENANT = 990006
+COLLISION_TENANT = TENANT * 10 + 1
+COLLISION_OTHER_TENANT = TENANT * 10 + 12
 
 
 def composite_key_rows(item):
@@ -21,7 +23,7 @@ def composite_key_rows(item):
         def membership():
             return models.CompositeMembership().connect(db)
 
-        for tenant in (TENANT, OTHER_TENANT):
+        for tenant in (TENANT, OTHER_TENANT, COLLISION_TENANT, COLLISION_OTHER_TENANT):
             expect_equal(
                 account().tenant_id(tenant).get_count(),
                 0,
@@ -48,6 +50,18 @@ def composite_key_rows(item):
             membership().set_tenant_id(OTHER_TENANT).set_account_id(2).set_role(
                 "guest"
             ).create()
+            account().set_tenant_id(COLLISION_TENANT).set_account_id(23).set_name(
+                "collision-a"
+            ).create()
+            account().set_tenant_id(COLLISION_OTHER_TENANT).set_account_id(3).set_name(
+                "collision-b"
+            ).create()
+            membership().set_tenant_id(COLLISION_TENANT).set_account_id(23).set_role(
+                "collision-a-role"
+            ).create()
+            membership().set_tenant_id(COLLISION_OTHER_TENANT).set_account_id(
+                3
+            ).set_role("collision-b-role").create()
             expect_equal(
                 account().get_by_tenant_id_and_account_id(TENANT, 2).get_name(),
                 "b",
@@ -89,13 +103,54 @@ def composite_key_rows(item):
                     [f"{TENANT}/1:{TENANT}/1/member", f"{TENANT}/2:{TENANT}/2/owner"],
                     f"{path}: memberships of tenant {TENANT} accounts",
                 )
+            expect_equal(
+                f"{COLLISION_TENANT}23",
+                f"{COLLISION_OTHER_TENANT}3",
+                "the collision fixture has equal concatenated composite keys",
+            )
+            for path, child in (
+                ("same statement", models.CompositeMembership()),
+                ("own connection", models.CompositeMembership().connect(db)),
+            ):
+                loaded = (
+                    account()
+                    .tuple_tenant_id_with_account_id(
+                        [[COLLISION_TENANT, 23], [COLLISION_OTHER_TENANT, 3]]
+                    )
+                    .order_by_tenant_id_asc()
+                    .order_by_account_id_asc()
+                    .relations(
+                        child.match_tenant_id_with_tenant_id()
+                        .match_account_id_with_account_id()
+                        .alias_memberships()
+                    )
+                    .gets()
+                )
+                got = [
+                    f"{a.get_tenant_id()}/{a.get_account_id()}:{m.get_tenant_id()}/{m.get_account_id()}/{m.get_role()}"
+                    for a in loaded.values()
+                    for m in a.get_memberships().values()
+                ]
+                expect_equal(
+                    got,
+                    [
+                        f"{COLLISION_TENANT}/23:{COLLISION_TENANT}/23/collision-a-role",
+                        f"{COLLISION_OTHER_TENANT}/3:{COLLISION_OTHER_TENANT}/3/collision-b-role",
+                    ],
+                    f"{path}: colliding concatenated composite keys keep relations separate",
+                )
             account().get_by_tenant_id_and_account_id(TENANT, 2).delete()
             expect_equal(
                 membership().tenant_id(TENANT).get_count(),
                 1,
                 "ON DELETE CASCADE removed the membership of account 2",
             )
-            for tenant in (TENANT, OTHER_TENANT):
+            for tenant in (
+                TENANT,
+                OTHER_TENANT,
+                COLLISION_TENANT,
+                COLLISION_OTHER_TENANT,
+            ):
                 account().tenant_id(tenant).gets().delete()
                 expect_equal(
                     account().tenant_id(tenant).get_count(),
@@ -110,7 +165,12 @@ def composite_key_rows(item):
 
         def cleanup():
             # A failed run leaves no row of this case either.
-            for tenant in (TENANT, OTHER_TENANT):
+            for tenant in (
+                TENANT,
+                OTHER_TENANT,
+                COLLISION_TENANT,
+                COLLISION_OTHER_TENANT,
+            ):
                 membership().tenant_id(tenant).gets().delete()
                 account().tenant_id(tenant).gets().delete()
 

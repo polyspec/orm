@@ -8,6 +8,8 @@ import { runCases, withCleanup } from './coverage_case.mjs';
 // Account 2 must also exist in another tenant, so that a relation linked by the account_id component alone is exposed.
 const tenant = 990004;
 const otherTenant = 990006;
+const collisionTenant = tenant * 10 + 1;
+const collisionOtherTenant = tenant * 10 + 12;
 
 await runCases('coverage_composite_keys.mjs', {
   // Requirements: PRT-12.
@@ -17,7 +19,7 @@ await runCases('coverage_composite_keys.mjs', {
       assert.equal(db.driver, driver);
       const account = () => new CompositeAccount().connect(db);
       const membership = () => new CompositeMembership().connect(db);
-      for (const t of [tenant, otherTenant]) {
+      for (const t of [tenant, otherTenant, collisionTenant, collisionOtherTenant]) {
         assert.equal(await account().tenantId(t).getCount(), 0, `no composite_account row of tenant ${t} before the case`);
         assert.equal(await membership().tenantId(t).getCount(), 0, `no composite_membership row of tenant ${t} before the case`);
       }
@@ -28,6 +30,10 @@ await runCases('coverage_composite_keys.mjs', {
         await membership().setTenantId(tenant).setAccountId(1).setRole('member').create();
         await membership().setTenantId(tenant).setAccountId(2).setRole('owner').create();
         await membership().setTenantId(otherTenant).setAccountId(2).setRole('guest').create();
+        await account().setTenantId(collisionTenant).setAccountId(23).setName('collision-a').create();
+        await account().setTenantId(collisionOtherTenant).setAccountId(3).setName('collision-b').create();
+        await membership().setTenantId(collisionTenant).setAccountId(23).setRole('collision-a-role').create();
+        await membership().setTenantId(collisionOtherTenant).setAccountId(3).setRole('collision-b-role').create();
         assert.equal((await account().getByTenantIdAndAccountId(tenant, 2)).getName(), 'b', 'row read by both key components');
         // A relation links the two parts of a foreign key in key order. When a child has its own link, after reading the parent row
         // it is read separately. The two paths give the same result.
@@ -44,9 +50,27 @@ await runCases('coverage_composite_keys.mjs', {
           }
           assert.deepEqual(got, [`${tenant}/1:${tenant}/1/member`, `${tenant}/2:${tenant}/2/owner`], `${path}: memberships of tenant ${tenant} accounts`);
         }
+        assert.equal(`${collisionTenant}23`, `${collisionOtherTenant}3`, 'the collision fixture has equal concatenated composite keys');
+        for (const [path, child] of [
+          ['same statement', new CompositeMembership()],
+          ['own connection', new CompositeMembership().connect(db)],
+        ]) {
+          const loaded = await account().tupleTenantIdWithAccountId([
+            [collisionTenant, 23],
+            [collisionOtherTenant, 3],
+          ]).orderByTenantIdAsc().orderByAccountIdAsc().relations(child.matchTenantIdWithTenantId().matchAccountIdWithAccountId().aliasMemberships()).gets();
+          const got = [];
+          for (const a of loaded.values()) {
+            for (const m of a.getMemberships().values()) got.push(`${a.getTenantId()}/${a.getAccountId()}:${m.getTenantId()}/${m.getAccountId()}/${m.getRole()}`);
+          }
+          assert.deepEqual(got, [
+            `${collisionTenant}/23:${collisionTenant}/23/collision-a-role`,
+            `${collisionOtherTenant}/3:${collisionOtherTenant}/3/collision-b-role`,
+          ], `${path}: colliding concatenated composite keys keep relations separate`);
+        }
         await (await account().getByTenantIdAndAccountId(tenant, 2)).delete();
         assert.equal(await membership().tenantId(tenant).getCount(), 1, 'ON DELETE CASCADE removed the membership of account 2');
-        for (const t of [tenant, otherTenant]) {
+        for (const t of [tenant, otherTenant, collisionTenant, collisionOtherTenant]) {
           await (await account().tenantId(t).gets()).delete();
           assert.equal(await account().tenantId(t).getCount(), 0, `no account of tenant ${t} remains`);
           assert.equal(await membership().tenantId(t).getCount(), 0, `no membership of tenant ${t} remains`);

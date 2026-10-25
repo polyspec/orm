@@ -7,6 +7,8 @@ use super::model::{CompositeAccount, CompositeMembership};
 const TENANT: i64 = 990004;
 /// Account 2 must also exist in another tenant so that the relation joined by the account_id component alone is revealed.
 const OTHER_TENANT: i64 = 990006;
+const COLLISION_TENANT: i64 = TENANT * 10 + 1;
+const COLLISION_OTHER_TENANT: i64 = TENANT * 10 + 12;
 
 #[tokio::test]
 async fn coverage_composite_key_rows() {
@@ -16,7 +18,7 @@ async fn coverage_composite_key_rows() {
         let db = connect().await;
         let account = || CompositeAccount::new().connect(&db);
         let membership = || CompositeMembership::new().connect(&db);
-        for tenant in [TENANT, OTHER_TENANT] {
+        for tenant in [TENANT, OTHER_TENANT, COLLISION_TENANT, COLLISION_OTHER_TENANT] {
             assert_eq!(account().tenant_id(tenant).get_count().await.unwrap(), 0, "an account of tenant {tenant} already exists");
             assert_eq!(membership().tenant_id(tenant).get_count().await.unwrap(), 0, "a membership of tenant {tenant} already exists");
         }
@@ -26,6 +28,10 @@ async fn coverage_composite_key_rows() {
         membership().set_tenant_id(TENANT).set_account_id(1).set_role("member").create().await.unwrap();
         membership().set_tenant_id(TENANT).set_account_id(2).set_role("owner").create().await.unwrap();
         membership().set_tenant_id(OTHER_TENANT).set_account_id(2).set_role("guest").create().await.unwrap();
+        account().set_tenant_id(COLLISION_TENANT).set_account_id(23).set_name("collision-a").create().await.unwrap();
+        account().set_tenant_id(COLLISION_OTHER_TENANT).set_account_id(3).set_name("collision-b").create().await.unwrap();
+        membership().set_tenant_id(COLLISION_TENANT).set_account_id(23).set_role("collision-a-role").create().await.unwrap();
+        membership().set_tenant_id(COLLISION_OTHER_TENANT).set_account_id(3).set_role("collision-b-role").create().await.unwrap();
         let by_key = account().get_by_tenant_id_and_account_id(TENANT, 2).await.unwrap().expect("a row").get_name().unwrap().to_owned();
         // The relation joins the two foreign key components in key order. When a child has its own link, the parent row is read
         // separately after it is read. The results of both paths are collected, the rows are deleted, and then they are compared.
@@ -71,8 +77,40 @@ async fn coverage_composite_key_rows() {
                 "{path}: memberships of tenant {TENANT} accounts"
             );
         }
+        for (path, child) in [("same statement", CompositeMembership::new()), ("own connection", CompositeMembership::new().connect(&db))] {
+            assert_eq!(format!("{COLLISION_TENANT}23"), format!("{COLLISION_OTHER_TENANT}3"), "the collision fixture has equal concatenated composite keys");
+            let loaded = account()
+                .tuple_tenant_id_with_account_id(vec![(COLLISION_TENANT, 23), (COLLISION_OTHER_TENANT, 3)])
+                .order_by_tenant_id_asc()
+                .order_by_account_id_asc()
+                .relations(child.match_tenant_id_with_tenant_id().match_account_id_with_account_id().alias_memberships())
+                .gets()
+                .await
+                .unwrap();
+            let mut got = Vec::new();
+            for a in loaded.models() {
+                for m in a.get_memberships().unwrap().expect("the memberships relation").models() {
+                    got.push(format!(
+                        "{}/{}:{}/{}/{}",
+                        a.get_tenant_id().unwrap(),
+                        a.get_account_id().unwrap(),
+                        m.get_tenant_id().unwrap(),
+                        m.get_account_id().unwrap(),
+                        m.get_role().unwrap()
+                    ));
+                }
+            }
+            assert_eq!(
+                got,
+                [
+                    format!("{COLLISION_TENANT}/23:{COLLISION_TENANT}/23/collision-a-role"),
+                    format!("{COLLISION_OTHER_TENANT}/3:{COLLISION_OTHER_TENANT}/3/collision-b-role"),
+                ],
+                "{path}: colliding concatenated composite keys keep relations separate"
+            );
+        }
         assert_eq!(after_cascade, 1, "ON DELETE CASCADE removed the membership of account 2");
-        for tenant in [TENANT, OTHER_TENANT] {
+        for tenant in [TENANT, OTHER_TENANT, COLLISION_TENANT, COLLISION_OTHER_TENANT] {
             assert_eq!(account().tenant_id(tenant).get_count().await.unwrap(), 0, "accounts of tenant {tenant} left");
             assert_eq!(membership().tenant_id(tenant).get_count().await.unwrap(), 0, "memberships of tenant {tenant} left");
         }
