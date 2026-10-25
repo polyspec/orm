@@ -395,7 +395,10 @@ PHP;
         [$code, $err] = self::generate('relation-keyword-case-conflict', ['usage.php' => $source]);
         self::assertSame(1, $code, 'status');
         self::assertStringContainsString('Author.getServiceMemberModels: relation declarations conflict', $err);
-        self::assertMatchesRegularExpression('/relations at line \d+ => \\\\Polyspec\\\\Orm\\\\Collection<ServiceMember>/', $err);
+        self::assertMatchesRegularExpression(
+            '/relations at line \d+ => \\\\Polyspec\\\\Orm\\\\Collection<ServiceMember>/',
+            $err
+        );
         self::assertMatchesRegularExpression('/aliasServiceMemberModels at line \d+ => \?User/', $err);
     }
 
