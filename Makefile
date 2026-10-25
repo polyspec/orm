@@ -1669,6 +1669,20 @@ replica-check: php-vendor-check php-models python-venv-check lease-tool
 	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) --filter 'testPrimaryAndReplica|testReadOnly' packages/php/tests/ModelTest.php; status=$$?; rm -rf $(RUN_DIR); exit $$status
 	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) replica-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --test replica -- --test-threads=1
 
+# session-state-check runs the case of every client that the session state of a transaction ends with the transaction
+# (docs/spec/config.md CFG-30) on SQLite, MySQL and PostgreSQL; it needs the database variables of make orm-test-servers
+# (WITH_TEST_ENV).
+.PHONY: session-state-check
+session-state-check: RUN_DIR = $(abspath .runtime/run)/session-state-check-$$PPID
+session-state-check: php-vendor-check php-models python-venv-check lease-tool
+	$(WITH_TEST_ENV) $(NODE) tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestCancelledTransactionClearsSessionState$$' -count=1
+	$(WITH_TEST_ENV) $(NODE) packages/ts/tests/session_state.mjs
+	$(WITH_TEST_ENV) $(PYTHON_VENV)/bin/python -m packages.python.tests.session_state
+	$(WITH_TEST_ENV) env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/SessionStateTest.php
+	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
+	$(WITH_TEST_ENV) $(PHP_EXTENSION_TESTS) packages/php/tests/SessionStateTest.php; status=$$?; rm -rf $(RUN_DIR); exit $$status
+	$(WITH_TEST_ENV) cd packages/rust && $(CARGO_TEST) session-state-check -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm --test session_state -- --test-threads=1
+
 # python-rollback-check runs the Python cases of a transaction or savepoint whose callback and rollback both fail on
 # SQLite, MySQL and PostgreSQL (packages/python/tests/rollback.py); it needs the database variables of make
 # orm-test-servers (WITH_TEST_ENV).

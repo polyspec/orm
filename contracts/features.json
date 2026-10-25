@@ -2681,6 +2681,10 @@
         "packages/ts/tests/rollback.mjs",
         "packages/ts/tests/transaction-failure.mjs",
         "packages/go/orm/cancelled_session_test.go",
+        "packages/ts/tests/session_state.mjs",
+        "packages/python/tests/session_state.py",
+        "packages/php/tests/SessionStateTest.php",
+        "packages/rust/orm/tests/session_state.rs",
         "packages/go/orm/transaction_end_test.go",
         "packages/go/model/coverage_transactions_test.go",
         "packages/php/tests/CoverageTransactionsTest.php",
@@ -2890,6 +2894,17 @@
             "packages/go/orm/transaction_end_test.go",
             "packages/go/orm/context_reset_test.go",
             "packages/go/orm/cancelled_session_test.go"
+          ]
+        },
+        {
+          "id": "session-state",
+          "command": "make session-state-check",
+          "shard": "rust",
+          "inputs": [
+            "packages/ts/tests/session_state.mjs",
+            "packages/python/tests/session_state.py",
+            "packages/php/tests/SessionStateTest.php",
+            "packages/rust/orm/tests/session_state.rs"
           ]
         },
         {

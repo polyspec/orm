@@ -9526,7 +9526,7 @@
       ]
     },
     {
-      "id": "go-internal-packages-go-orm-cancelled-session",
+      "id": "connection-transaction-session-state-ends",
       "kind": "feature",
       "requirements": [
         "CFG-30"
@@ -9536,6 +9536,61 @@
           "implementation": "go",
           "test": "packages/go/orm/cancelled_session_test.go",
           "id": "TestCancelledTransactionClearsSessionState"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/SessionStateTest.php",
+          "id": "SessionStateTest::testSessionStateEndsWithTransaction"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/SessionStateTest.php",
+          "id": "SessionStateTest::testSessionStateEndsWithTransaction"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/session_state.mjs",
+          "id": "session-state/ends-with-transaction/sqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/session_state.mjs",
+          "id": "session-state/ends-with-transaction/mysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/session_state.mjs",
+          "id": "session-state/ends-with-transaction/postgres"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/session_state.py",
+          "id": "test_session_state_ends_with_transaction_sqlite"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/session_state.py",
+          "id": "test_session_state_ends_with_transaction_mysql"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/session_state.py",
+          "id": "test_session_state_ends_with_transaction_postgres"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/session_state.rs",
+          "id": "session_state_ends_with_transaction_sqlite"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/session_state.rs",
+          "id": "session_state_ends_with_transaction_mysql"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/session_state.rs",
+          "id": "session_state_ends_with_transaction_postgres"
         }
       ]
     },
