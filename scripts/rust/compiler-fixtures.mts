@@ -39,6 +39,27 @@ if (typeof toolchain !== 'string' || toolchain === '' || typeof features !== 'st
 const selectedToolchain = toolchain;
 const selectedFeatures = features;
 const selectedTarget = target;
+const caseArguments = process.argv.slice(3);
+const requestedCases: string[] = [];
+const excludedCases: string[] = [];
+for (let index = 0; index < caseArguments.length; index++) {
+  const argument = caseArguments[index];
+  if (argument === '--case' || argument === '--exclude-case') {
+    const id = caseArguments[++index];
+    if (id === undefined || id === '' || id.startsWith('--')) throw new Error(`${argument} needs a compiler fixture id`);
+    (argument === '--case' ? requestedCases : excludedCases).push(id);
+  } else if (argument?.startsWith('--case=')) {
+    const id = argument.slice('--case='.length);
+    if (id === '') throw new Error('--case needs a compiler fixture id');
+    requestedCases.push(id);
+  } else if (argument?.startsWith('--exclude-case=')) {
+    const id = argument.slice('--exclude-case='.length);
+    if (id === '') throw new Error('--exclude-case needs a compiler fixture id');
+    excludedCases.push(id);
+  } else {
+    throw new Error(`unknown compiler fixture argument ${argument}`);
+  }
+}
 
 const seen = new Set<string>();
 for (const fixture of fixtures) {
@@ -48,6 +69,17 @@ for (const fixture of fixtures) {
     throw new Error(`${fixture.id} needs an expected diagnostic and its source line`);
   }
 }
+const known = new Set(fixtures.map(fixture => fixture.id));
+if (requestedCases.length > 0 && excludedCases.length > 0) throw new Error('select or exclude compiler fixtures, not both');
+for (const [label, ids] of [['selection', requestedCases], ['exclusion', excludedCases]] as const) {
+  if (new Set(ids).size !== ids.length) throw new Error(`compiler fixture ${label}s must be unique`);
+  for (const id of ids) if (!known.has(id)) throw new Error(`unknown Rust compiler fixture ${id}`);
+}
+const selected = new Set(requestedCases);
+const excluded = new Set(excludedCases);
+const selectedFixtures = requestedCases.length > 0
+  ? fixtures.filter(fixture => selected.has(fixture.id))
+  : fixtures.filter(fixture => !excluded.has(fixture.id));
 
 function check(id: string, source: string): Promise<{ status: number | null; signal: NodeJS.Signals | null; messages: CompilerMessage[] }> {
   return new Promise((resolveRun, rejectRun) => {
@@ -139,7 +171,7 @@ try {
   try { await mkdir(examples); madeExamplesDirectory = true; } catch (error) {
     if (!isNodeError(error) || error.code !== 'EEXIST') throw error;
   }
-  for (const fixture of fixtures) {
+  for (const fixture of selectedFixtures) {
     const source = join(examples, `${fixture.id}.rs`);
     console.log(`compiler-fixture: running ${fixture.id}`);
     try {
