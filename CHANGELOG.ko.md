@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 9844fefe6f493576047ee3fd6130f37dafe23e2b6cd8288f21aa34ab52ba1b0c -->
+<!-- source-sha256: a8eb7edac9f694e60b979059a8af7a743364cbc2f01e3ea59b3ccf977b1ac3ab -->
 # 변경 이력
 
 ## Unreleased
 
+- `make duplication-check`가 clone을 찾지 않는다: PHP `Dbspec`과 `PlanApply`의 apply, recover, rollback, finalize 연산의 각 `@param`이 그 연산에서 인자가 무엇인지 말하므로 네 docblock이 더 이상 같은 여섯 줄로 끝나지 않는다. public 이름, signature, extension stub은 바뀌지 않는다 (KSTD-5-46-3).
 - request hook, audit, soft delete, restore, clock unit은 여섯 client unit이다: 26개 unit에 declaration finding이 없고, PHP extension의 native request hook과 audit case가 통과한다(KSTD-2-11-12).
 - PHP extension request hook test가 물려받은 insert assignment case의 requirement를 적으며, 좁은 parity declaration과 native binding 검사가 통과한다 (KSTD-2-11-12-4).
 - service scope 아래의 relation()과 relations()는 coverage-request-hook-relation-scope가 bind하는 request hook case relation_scope로 모든 client에서 실행된다. consumer가 보고한 CONFIG 실패는 현재 main에서 재현되지 않는다: canister conformance가 ScopeHook 아래 relation 호출로 101개 case를 모두 통과하며, 앞선 원인은 증명되지 않았다(T203).

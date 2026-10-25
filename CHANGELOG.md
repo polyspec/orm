@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- `make duplication-check` finds no clone: each `@param` of the apply, recover, rollback and finalize operations of the PHP `Dbspec` and `PlanApply` says what its argument is for that operation, so the four docblocks no longer end in the same six lines; no public name, signature or extension stub changes (KSTD-5-46-3).
 - The request hook, audit, soft delete, restore and clock units are six-client units: their 26 units report no declaration finding, and the native request hook and audit cases of the PHP extension pass (KSTD-2-11-12).
 - The PHP extension request hook test names the requirements of the insert assignment case it inherits; the focused parity declaration and native binding checks pass (KSTD-2-11-12-4).
 - relation() and relations() under a service scope run in every client as the request hook case relation_scope, bound by coverage-request-hook-relation-scope. The CONFIG failure that the consumer reported does not reproduce on current main: its canister conformance passes 101 of 101 cases with the relation calls under its ScopeHook, and the earlier cause is not proven (T203).

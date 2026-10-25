@@ -780,9 +780,9 @@ final class Dbspec
      * PDO::ERRMODE_EXCEPTION, is an InvalidArgumentException. A database that
      * has applied the whole chain stays unchanged.
      *
-     * @param PlanList $plans
-     * @param PlanClock $now
-     * @param PlanEventHandler|null $events
+     * @param PlanList $plans the whole chain; apply runs its plans that the database has not applied, in chain order
+     * @param PlanClock $now gives the applied_at of each history row that is created
+     * @param PlanEventHandler|null $events receives each ApplyEvent of the plans that apply runs; null reports none
      */
     public static function apply(
         \PDO $connection,
@@ -801,9 +801,9 @@ final class Dbspec
      * "Apply"). Without an interrupted plan nothing changes. Failures and
      * arguments are as for apply.
      *
-     * @param PlanList $plans
-     * @param PlanClock $now
-     * @param PlanEventHandler|null $events
+     * @param PlanList $plans the whole chain; recover continues its plan that the history records as interrupted
+     * @param PlanClock $now gives the applied_at of each history row that is created
+     * @param PlanEventHandler|null $events receives each ApplyEvent of the plan that recover continues
      */
     public static function recover(
         \PDO $connection,
@@ -822,9 +822,9 @@ final class Dbspec
      * rollback stops it with an `irreversible` ApplyError. Without a row
      * nothing changes. Failures and arguments are as for apply.
      *
-     * @param PlanList $plans
-     * @param PlanClock $now
-     * @param PlanEventHandler|null $events
+     * @param PlanList $plans the whole chain; rollback undoes its plan that the history records last
+     * @param PlanClock $now gives the applied_at of each history row that is created
+     * @param PlanEventHandler|null $events receives each ApplyEvent of the plan that rollback undoes; null reports none
      */
     public static function rollback(
         \PDO $connection,
@@ -841,9 +841,9 @@ final class Dbspec
      * the hidden tables and columns, and records the plans `done`
      * (docs/spec/plans.md "Apply"). Failures and arguments are as for apply.
      *
-     * @param PlanList $plans
-     * @param PlanClock $now
-     * @param PlanEventHandler|null $events
+     * @param PlanList $plans the whole chain; finalize runs the finalize steps of its applied plans
+     * @param PlanClock $now gives the applied_at of each history row that is created
+     * @param PlanEventHandler|null $events receives each ApplyEvent of the plans that finalize completes
      */
     public static function finalize(
         \PDO $connection,

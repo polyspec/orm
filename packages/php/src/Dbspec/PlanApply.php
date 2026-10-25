@@ -126,9 +126,9 @@ final class PlanApply
     }
 
     /**
-     * @param PlanList $plans
-     * @param PlanClock $now
-     * @param PlanEventHandler|null $events
+     * @param PlanList $plans as for Dbspec::apply
+     * @param PlanClock $now as for Dbspec::apply
+     * @param PlanEventHandler|null $events as for Dbspec::apply
      */
     public static function apply(\PDO $c, string $dialect, array $plans, \Closure $now, ?\Closure $events): void
     {
@@ -136,9 +136,9 @@ final class PlanApply
     }
 
     /**
-     * @param PlanList $plans
-     * @param PlanClock $now
-     * @param PlanEventHandler|null $events
+     * @param PlanList $plans as for Dbspec::recover
+     * @param PlanClock $now as for Dbspec::recover
+     * @param PlanEventHandler|null $events as for Dbspec::recover
      */
     public static function recover(\PDO $c, string $dialect, array $plans, \Closure $now, ?\Closure $events): void
     {
@@ -146,9 +146,9 @@ final class PlanApply
     }
 
     /**
-     * @param PlanList $plans
-     * @param PlanClock $now
-     * @param PlanEventHandler|null $events
+     * @param PlanList $plans as for Dbspec::rollback
+     * @param PlanClock $now as for Dbspec::rollback
+     * @param PlanEventHandler|null $events as for Dbspec::rollback
      */
     public static function rollback(\PDO $c, string $dialect, array $plans, \Closure $now, ?\Closure $events): void
     {
@@ -156,9 +156,9 @@ final class PlanApply
     }
 
     /**
-     * @param PlanList $plans
-     * @param PlanClock $now
-     * @param PlanEventHandler|null $events
+     * @param PlanList $plans as for Dbspec::finalize
+     * @param PlanClock $now as for Dbspec::finalize
+     * @param PlanEventHandler|null $events as for Dbspec::finalize
      */
     public static function finalize(\PDO $c, string $dialect, array $plans, \Closure $now, ?\Closure $events): void
     {
