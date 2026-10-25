@@ -13,6 +13,7 @@ import { implementationLanguages, featureLanguages } from './languages.mts';
 import { parseGoTestEvent } from '../json/formats.mts';
 import { programEnvironment, readBinaries } from '../../tests/cargo-test.mts';
 import { COMPLEX_QUERY_DSN_ENVS, COMPLEX_QUERY_SETUP } from '../check/databases.mts';
+import { performanceDiagnosticArguments, performanceMeasurementsFromOutput, writePerformanceMeasurementRecord, type PerformanceMeasurement, type PerformanceRuntime, type PerformanceDatabase } from './performance-reference.mts';
 
 // cargoTestScript is the script that builds the test binary under the lease and copies it.
 const cargoTestScript = new URL('../../tests/cargo-test.mts', import.meta.url).pathname;
@@ -692,7 +693,7 @@ function prepared(spec: Spec, builds: Builds): Prepared[] {
   const executables = crate.files.get(spec.testPath) ?? [];
   if (executables.length === 0) throw new Error(`no test binary compiles ${spec.testPath}`);
   return executables.map((executable: string) => ({ program: executable,
-    args: [...spec.symbols, '--exact', '--include-ignored', '--test-threads=1'], cwd: spec.cwd,
+    args: [...spec.symbols, '--exact', '--include-ignored', '--test-threads=1', ...performanceDiagnosticArguments(spec.testPath)], cwd: spec.cwd,
     env: { ...crate.programs, CARGO_MANIFEST_DIR: spec.cwd } }));
 }
 
@@ -717,6 +718,7 @@ export const NATIVE_DEADLINE = PROCESS;
 export async function executeCoverage(manifest: Manifest, root: string, timeoutMs = NATIVE_DEADLINE): Promise<string[]> {
   const reports: Record<string, Report[]> = {};
   const errors: string[] = [];
+  const performanceObservations: PerformanceMeasurement[] = [];
   const plans: Plans = Object.assign([] as Plan[], { root });
   for (const feature of manifest.features ?? []) {
     const coverage = feature.coverage;
@@ -785,6 +787,15 @@ export async function executeCoverage(manifest: Manifest, root: string, timeoutM
     await builds?.cargoReady;
     await rm(directory, { recursive: true, force: true });
   }
+  const performancePlans = plans.filter(plan => plan.feature.id === 'performance_gate');
+  if (performancePlans.length === 18 && errors.length === 0) {
+    try {
+      const path = await writePerformanceMeasurementRecord(root, performanceObservations);
+      process.stdout.write(`performance_gate raw observations: ${path}\n`);
+    } catch (error) {
+      errors.push(`performance_gate measurement record: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
   return [...errors, ...checkCoverage(manifest, reports)];
 
   // runUnit runs one file of several databases once per attempt. The file prints the cases of every database, and each plan
@@ -830,6 +841,12 @@ export async function executeCoverage(manifest: Manifest, root: string, timeoutM
             step(child.label ?? `${child.program} ${first.item.key}`);
             const result = await run(child.program, child.args, child.cwd, timeoutMs, { ...process.env, ...child.env }, step);
             if (result.error) throw new Error(result.error);
+            if (first.feature.id === 'performance_gate') {
+              const runtime = first.item.language as PerformanceRuntime;
+              const measurements = performanceMeasurementsFromOutput(runtime, undefined, attempt as 1 | 2, result.value ?? '');
+              performanceObservations.push(...measurements);
+              for (const measurement of measurements) step(`performance measurement ${JSON.stringify(measurement)}`);
+            }
             output += `${result.value}\n`;
           }
           const after = await readStates();
@@ -897,6 +914,16 @@ export async function executeCoverage(manifest: Manifest, root: string, timeoutM
                   step(child.label ?? `${spec.format === 'case' || spec.format === 'phpunit' ? spec.program : child.program} ${entry.test}${spec.format !== 'case' ? ` ${spec.symbols.join(' ')}` : ''}`);
                   const result = await run(child.program, child.args, child.cwd, timeoutMs, { ...testEnv, ...child.env }, dsn ? (text: string) => step(text.replaceAll(dsn, '[redacted]')) : step);
                   if (result.error) throw new Error(result.error);
+                  if (feature.id === 'performance_gate') {
+                    const measurements = performanceMeasurementsFromOutput(
+                      item.language as PerformanceRuntime,
+                      item.database as PerformanceDatabase,
+                      attempt as 1 | 2,
+                      result.value ?? '',
+                    );
+                    performanceObservations.push(...measurements);
+                    for (const measurement of measurements) step(`performance measurement ${JSON.stringify(measurement)}`);
+                  }
                   if (spec.format === 'go') for (const measurement of goPerformanceMeasurements(result.value ?? '')) step(measurement);
                   // libtest writes `test <symbol> ... ok` result lines, and PHPUnit writes TeamCity events, to stdout. Since a test
                   // lines written to stderr must not be interleaved between them, Rust and PHP read only stdout.

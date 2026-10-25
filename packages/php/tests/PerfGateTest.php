@@ -109,21 +109,41 @@ final class PerfGateTest extends TestCase
         $wallMs = (hrtime(true) - $wallStarted) / 1_000_000;
         $usageEnded = getrusage();
         $cpuMs = (self::usageMicros($usageEnded) - self::usageMicros($usageStarted)) / 1000;
-        fwrite(
-            STDERR,
-            sprintf(
-                "perf_gate %s: native %.1fµs client %.1fµs ratio %.2f cpu %.1fms wall %.1fms "
-                    . "machine %s reference %s\n",
-                $name,
-                $nativeNs / 1000,
-                $clientNs / 1000,
-                $ratio,
-                $cpuMs,
-                $wallMs,
-                php_uname('s') . ' ' . php_uname('m'),
-                $bound === null ? 'not-recorded' : number_format($bound, 2)
-            )
-        );
+        $machine = php_uname('s') . ' ' . php_uname('m');
+        if (self::$featureCase) {
+            $runtime = getenv('ORM_PHP_MODE') === 'extension' ? 'php-extension' : 'php';
+            fwrite(
+                STDERR,
+                sprintf(
+                    "PERF hot_path_gate %s %s %s: native p50=%.1fµs client p50=%.1fµs ratio=%.2f samples=1000 cpu=%.1fms wall=%.1fms machine=%s reference=not-recorded\n",
+                    $runtime,
+                    self::$driver,
+                    $name,
+                    $nativeNs / 1000,
+                    $clientNs / 1000,
+                    $ratio,
+                    $cpuMs,
+                    $wallMs,
+                    $machine
+                )
+            );
+        } else {
+            fwrite(
+                STDERR,
+                sprintf(
+                    "perf_gate %s: native %.1fµs client %.1fµs ratio %.2f cpu %.1fms wall %.1fms "
+                        . "machine %s reference %s\n",
+                    $name,
+                    $nativeNs / 1000,
+                    $clientNs / 1000,
+                    $ratio,
+                    $cpuMs,
+                    $wallMs,
+                    $machine,
+                    $bound === null ? 'not-recorded' : number_format($bound, 2)
+                )
+            );
+        }
         if ($bound !== null && $ratio > $bound) {
             fwrite(
                 STDERR,
