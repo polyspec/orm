@@ -13,7 +13,7 @@
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "noEmit": true,
-    "types": ["node"]
+    "types": ["node", "web-bluetooth"]
   },
   "include": ["scripts/**/*.mts", "tests/**/*.mts"],
   "exclude": ["scripts/kit", "tests/kit"]

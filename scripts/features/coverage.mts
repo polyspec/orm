@@ -41,6 +41,7 @@ type StepWriter = (text: string) => void;
 type RunResult = { error?: string | null | undefined; value?: string | undefined; stdout: string };
 /** A native test planned for one execution. */
 type Spec = { format: 'case'; program: string; args: string[]; cwd?: string } | { format: 'phpunit'; program: string; args: string[]; cwd: string; symbols: string[]; env?: Record<string, string> } | { format: 'go'; cwd: string; symbols: string[] } | { format: 'cargo'; cwd: string; testPath: string; symbols: string[] };
+type CargoSpec = Extract<Spec, { format: 'cargo' }>;
 /** A build of buildNative: its binary or its error. */
 type Built = { binary: string; error?: undefined } | { error: string; binary?: undefined };
 /** The Rust builds of a crate. */
@@ -628,8 +629,8 @@ export function cargoTargetArgs(targets: CargoTarget[], testPaths: string[]): st
 }
 async function buildCargo(plans: Plans, directory: string, builds: Builds, build: Build): Promise<void> {
   const specs = plans.flatMap(plan => plan.native);
-  const cargoCrates = new Map<string, Spec[]>();
-  for (const spec of specs.filter((entry): entry is Extract<Spec, { format: 'cargo' }> => entry.format === 'cargo'))
+  const cargoCrates = new Map<string, CargoSpec[]>();
+  for (const spec of specs.filter((entry): entry is CargoSpec => entry.format === 'cargo'))
     cargoCrates.set(spec.cwd, [...(cargoCrates.get(spec.cwd) ?? []), spec]);
   const features = process.env.ORM_RUST_TEST_FEATURES ? ['--features', process.env.ORM_RUST_TEST_FEATURES] : [];
   for (const [crate, crateSpecs] of cargoCrates) {

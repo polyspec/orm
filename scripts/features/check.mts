@@ -165,7 +165,7 @@ for (const feature of manifest.features) {
   for (const relative of [...feature.fixtures, ...feature.tests]) listedByFeatures.add(relative);
   for (const owner of Object.values(feature.coverage?.owners ?? {})) for (const relative of owner.tests) listedByFeatures.add(relative);
   for (const dependent of feature.coverage?.dependents ?? []) for (const relative of dependent.tests) listedByFeatures.add(relative);
-  for (const verification of feature.verification) for (const relative of verification.inputs) listedByFeatures.add(relative);
+  for (const verification of feature.verification) for (const relative of verification.inputs ?? []) listedByFeatures.add(relative);
 }
 // The helper's file and its unit test are also declared test files.
 for (const helper of manifest.helpers ?? []) for (const relative of [...helper.paths, ...helper.tests]) listedByFeatures.add(relative);

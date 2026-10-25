@@ -132,6 +132,7 @@ caseTest('Markdown test server names and owner registrations stay aligned across
   assert.ok(connection, 'contracts/features.json omits dsn_connection');
   const phpVerification = connection.verification.find(item => item.id === 'markdown-session-php');
   assert.ok(phpVerification, 'dsn_connection omits its PHP Markdown session owner');
+  assert.ok(phpVerification.inputs, 'markdown-session-php has no declared inputs');
   const checks = JSON.parse(readFileSync(`${root}/contracts/check-inputs.json`, 'utf8')) as {
     targets: Record<string, { inputs: string[] }>;
   };
@@ -140,10 +141,12 @@ caseTest('Markdown test server names and owner registrations stay aligned across
   };
   const helper = listener.helpers.find(item => item.id === 'typescript-markdown-listener');
   assert.ok(helper, 'contracts/features.json omits the TypeScript Markdown listener helper');
+  const clientUnit = checks.targets['client-unit-check'];
+  assert.ok(clientUnit, 'client-unit-check has no input declaration');
   const paths = [...new Set([
     ...connection.fixtures,
     ...phpVerification.inputs,
-    ...checks.targets['client-unit-check'].inputs,
+    ...clientUnit.inputs,
     ...helper.paths,
   ])];
   const sources = Object.fromEntries(markdownServerContracts.map(contract => [
@@ -153,12 +156,14 @@ caseTest('Markdown test server names and owner registrations stay aligned across
   const registrations = {
     'dsn_connection fixtures': connection.fixtures,
     'markdown-session-php inputs': phpVerification.inputs,
-    'client-unit-check inputs': checks.targets['client-unit-check'].inputs,
+    'client-unit-check inputs': clientUnit.inputs,
     'typescript-listener': helper.paths,
   };
   assert.deepEqual(markdownNamingErrors(sources, registrations), []);
 
-  const stalePhp = { ...sources, 'packages/php/tests/MarkdownTest.php': sources['packages/php/tests/MarkdownTest.php'].replace('start_markdown_test_server(', 'markdown_fake_server(') };
+  const phpMarkdownTest = sources['packages/php/tests/MarkdownTest.php'];
+  assert.ok(phpMarkdownTest, 'PHP Markdown test source is unavailable');
+  const stalePhp = { ...sources, 'packages/php/tests/MarkdownTest.php': phpMarkdownTest.replace('start_markdown_test_server(', 'markdown_fake_server(') };
   assert.match(markdownNamingErrors(stalePhp, registrations).join('\n'), /MarkdownTest\.php: missing function start_markdown_test_server/);
   assert.match(markdownNamingErrors(sources, { ...registrations, 'markdown-session-php inputs': registrations['markdown-session-php inputs'].filter(path => path !== 'packages/php/tests/markdown_test_server.php') }).join('\n'), /markdown-session-php inputs: PHP Markdown test server is not registered/);
   assert.ok(paths.includes('packages/php/tests/markdown_test_server.php'));

@@ -110,13 +110,16 @@ test('an unlisted test selected by each Kit convention fails feature ownership',
   const roots = implementationSourceRoots(parity);
   const unlisted: Record<string, string[]> = {};
   for (const [language, file] of cases) {
-    assert.ok(roots[language].some(root => file.startsWith(`${root}/`)));
+    assert.ok((roots[language] ?? []).some(root => file.startsWith(`${root}/`)));
     assert.equal(isFeatureTestPath(language, file), true, `${language} convention-selected test cannot disappear from the feature inventory`);
     unlisted[language] = [file];
   }
   assert.deepEqual(unlistedFeatureTestErrors(unlisted, new Set()), cases.map(([language, file]) =>
     `${file}: ${language} test file belongs to no feature`));
-  assert.ok(implementationTestInventory([cases[0][1]], parity).go.includes(cases[0][1]), 'the checker inventory includes a convention-selected test without an explicit parity glob');
+  const goProbe = cases[0]?.[1];
+  assert.ok(goProbe, 'the Go probe case is missing');
+  const goInventory = implementationTestInventory([goProbe], parity).go;
+  assert.ok(goInventory?.includes(goProbe), 'the checker inventory includes a convention-selected test without an explicit parity glob');
   assert.equal(isFeatureTestPath('go', 'packages/go/orm/coverage_fixture_test.go'), false, 'the explicit support glob excludes test helpers');
 });
 

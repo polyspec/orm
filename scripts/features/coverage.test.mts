@@ -290,14 +290,14 @@ caseTest('KSTD-7-4 PHP owner commands select their declared methods', 1000, () =
       feature: 'audit_triggers', language: 'php-extension', test: 'packages/php-ext/tests/CoverageAuditColumnsExtensionTest.php',
       cases: { audit_selected_columns: 'testAuditSelectedColumns' }, source: 'packages/php-ext/tests/CoverageAuditColumnsExtensionTest.php',
     },
-  ];
+  ] as const;
   for (const shape of shapes) {
     const feature = manifest.features.find(item => item.id === shape.feature);
     assert.ok(feature, `missing feature ${shape.feature}`);
     const owner = feature.coverage?.owners?.[shape.language];
     assert.ok(owner, `missing ${shape.language} owner for ${shape.feature}`);
     const methods = declaredPhpMethods(join(root, shape.source));
-    for (const [database, commands] of Object.entries(owner.commands)) {
+    for (const [database, commands] of Object.entries(owner.commands ?? {})) {
       const command = commands.find(item => item.test === shape.test && item.cases.join(',') === Object.keys(shape.cases).join(','));
       assert.ok(command, `${shape.feature}/${shape.language}/${database} omits ${shape.test}`);
       assert.deepEqual(command.symbols, shape.cases, `${shape.feature}/${shape.language}/${database} symbols`);
@@ -590,7 +590,11 @@ caseTest('native owner and dependent files execute twice from their own parts', 
     assert.deepEqual(await runSelected(manifest, root, 1000, ['owner/typescript', 'dependent/use']), []);
 
     const incomplete = structuredClone(manifest);
-    const command = defined(defined(defined(incomplete.features[0]).coverage.owners.typescript.commands).none[0]);
+    const sample = defined(incomplete.features[0]);
+    const sampleCoverage = defined(sample.coverage);
+    const typescriptOwner = defined(sampleCoverage.owners.typescript);
+    const noneCommands = defined(typescriptOwner.commands?.none);
+    const command = defined(noneCommands[0]);
     command.cases = ['first'];
     assert.deepEqual(await runSelected(incomplete, root, 1000, ['owner/typescript']), [
       'sample/owner/typescript/none: invalid native test command',

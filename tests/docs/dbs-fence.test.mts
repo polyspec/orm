@@ -7,7 +7,6 @@ import { readFileSync } from 'node:fs';
 import MarkdownIt from 'markdown-it';
 import { caseTest } from '../testcase.mts';
 import { dbsFences, dbsInfo, renderDbs } from '../../docs/.vitepress/dbs.ts';
-import { resolveConfig } from 'vitepress';
 
 const TIMEOUT = 15000;
 const escape = (text: string) => text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
@@ -70,9 +69,17 @@ caseTest('text is escaped inside and between the spans', TIMEOUT, () => {
 // Requirements: ORE-20, ORES-27, ORES-50.
 caseTest('VitePress markdown-it renders dbs set fences and refuses diagnostics', TIMEOUT, async () => {
   const md = new MarkdownIt();
-  const config = await resolveConfig(new URL('../../docs', import.meta.url).pathname, 'build');
-  const configure = config.markdown.config;
-  assert.equal(typeof configure, 'function');
+  // VitePress 1.6.4's declaration exports an unresolved `anchor.Token` alias and its MarkdownIt type
+  // differs from the root declaration despite sharing the runtime dependency. Keep the narrow API used here typed locally.
+  const vitepressSpecifier: string = 'vitepress';
+  const vitepress = await import(vitepressSpecifier) as {
+    resolveConfig(root: string, command: 'build'): Promise<{ markdown?: { config?: (markdown: MarkdownIt) => void } }>;
+  };
+  const config = await vitepress.resolveConfig(new URL('../../docs', import.meta.url).pathname, 'build');
+  const markdown = config.markdown;
+  assert.ok(markdown, 'VitePress config has no Markdown options');
+  const configure = markdown.config;
+  assert.ok(typeof configure === 'function', 'VitePress config has no Markdown callback');
   configure(md);
   const source = `\`\`\`dbs set=shop document=core\n${CORE}\`\`\`\n\n\`\`\`dbs set=shop document=shop\n${SHOP}\`\`\`\n`;
   const html = md.render(source, { relativePath: 'fixtures/shop.md', path: '/fixtures/shop.md' });

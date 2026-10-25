@@ -208,14 +208,14 @@ caseTest('public text, list and result forms map to each host language', COMPUTE
   };
 
   for (const [implementation, result] of Object.entries(textReturns)) {
-    const signature = text.native?.[implementation]?.signature ?? '';
+    const signature: string = text.native?.[implementation]?.signature ?? '';
     assert.ok(
       signature.endsWith(`: ${result}`) || signature.endsWith(`) ${result}`) || signature.endsWith(`-> ${result}`),
       `${implementation} Dbspec.emit does not return its native text form`,
     );
   }
   for (const [implementation, forms] of Object.entries(listAndResultForms)) {
-    const signature = creates.native?.[implementation]?.signature ?? '';
+    const signature: string = creates.native?.[implementation]?.signature ?? '';
     assert.ok(signature.includes(forms.list), `${implementation} Model.creates does not accept its native list form`);
     assert.ok(signature.includes(forms.result), `${implementation} Model.creates does not expose its native result form`);
   }
