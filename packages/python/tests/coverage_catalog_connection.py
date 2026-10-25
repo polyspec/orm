@@ -1,7 +1,7 @@
 # catalog_connection coverage runs the two shared cases against the bench database that the
 # feature check selected (ORM_FEATURE_DATABASE, ORM_FEATURE_DSN) through connect_catalog. The read case only reads; the
 # mutation case inserts, updates and deletes one row of composite_account in tenant 990005 and ends in the state it started in.
-# Requirements: SCH-5, SCH-6a, INT-109, INT-113, INT-114, INT-123.
+# Requirements: SCH-3, SCH-5, SCH-6a, INT-103, INT-109, INT-113, INT-114, INT-123.
 # Its SQLite path also checks generated primary keys in a temporary file, outside the bench database.
 import io
 import os
@@ -127,6 +127,7 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
             self.catalog.read_only_query(
                 f"UPDATE {quote('user', driver)} SET name = name WHERE seq = 1", []
             )
+        self.test_grid_cells()
 
     def test_row_mutation(self):
         driver = self.driver

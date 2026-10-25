@@ -67,7 +67,7 @@ func catalogQuote(name, driver string) string {
 	return `"` + name + `"`
 }
 
-// Requirements: SCH-5, SCH-6a.
+// Requirements: SCH-3, SCH-5, SCH-6a, INT-103.
 func TestCoverageCatalogRead(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	ctx := context.Background()
@@ -108,6 +108,7 @@ func TestCoverageCatalogRead(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "QUERY_READ_ONLY") {
 		t.Fatalf("%s: a write through ReadOnlyQuery returned %v, want QUERY_READ_ONLY", driver, err)
 	}
+	catalogGridCellsCheck(t, ctx, driver, c)
 }
 
 // Requirements: SCH-5, SCH-6a, DBS-113, INT-34.
@@ -422,13 +423,9 @@ func catalogGridRefused(driver string) []string {
 	}
 }
 
-// Requirements: SCH-6a.
-func TestCoverageCatalogGridCells(t *testing.T) {
-	testcase.Start(t, testcase.Database)
-	ctx := context.Background()
-	driver, c := catalogConnect(t)
-	defer testcase.Close(t, c)
-
+// catalogGridCellsCheck is the shared grid assertion body used by both the selected catalog_read case and its standalone owner test.
+func catalogGridCellsCheck(t *testing.T, ctx context.Context, driver string, c *orm.CatalogConnection) {
+	t.Helper()
 	sql, want := catalogGridCells(driver)
 	result, err := c.ReadOnlyGridQuery(ctx, sql, nil, orm.CatalogQueryLimits{})
 	if err != nil {
@@ -446,6 +443,15 @@ func TestCoverageCatalogGridCells(t *testing.T) {
 			t.Fatalf("%s: %s returned %v, want CATALOG_VALUE", driver, refused, err)
 		}
 	}
+}
+
+// Requirements: SCH-3, SCH-6a, INT-103.
+func TestCoverageCatalogGridCells(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	ctx := context.Background()
+	driver, c := catalogConnect(t)
+	defer testcase.Close(t, c)
+	catalogGridCellsCheck(t, ctx, driver, c)
 }
 
 // catalogProbe creates a table of the feature database for the cases of declared types and drops it at the end of the test.

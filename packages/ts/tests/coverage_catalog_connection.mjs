@@ -1,7 +1,7 @@
 // catalog_connection coverage runs the two shared cases against the bench database that the
 // feature check selected (ORM_FEATURE_DATABASE, ORM_FEATURE_DSN) through connectCatalog. The read case only reads; the mutation
 // case inserts, updates and deletes one row of composite_account in tenant 990005 and ends in the state it started in.
-// Requirements: SCH-5, SCH-6a, INT-109, INT-113, INT-114, INT-123.
+// Requirements: SCH-3, SCH-5, SCH-6a, INT-103, INT-109, INT-113, INT-114, INT-123.
 import assert from 'node:assert/strict';
 import { runCases } from './coverage_case.mjs';
 import { connectCatalog } from '../dist/index.js';
@@ -46,6 +46,7 @@ async function readCase(item) {
       /QUERY_READ_ONLY/,
       `${driver}: a write through readOnlyQuery`,
     );
+    await assertGridCells(driver, catalog);
   } finally {
     await catalog.close();
   }
@@ -130,68 +131,72 @@ async function streamCase() {
 }
 
 // Typed grid cells by the native type of each column (the Rust grid rules). Each row of cells is compared with its exact cells.
+async function assertGridCells(driver, catalog) {
+  const first = async (sql) => (await catalog.readOnlyGridQuery(sql, [])).rows[0];
+  const rejects = (sql, code) => assert.rejects(catalog.readOnlyGridQuery(sql, []), codeIs(code), `${driver}: ${sql}`);
+  const f64 = (bits) => ({ kind: 'float64', bits });
+  const f32 = (bits) => ({ kind: 'float32', bits });
+  const int = (value) => ({ kind: 'integer', value });
+  const nul = { kind: 'null' };
+  const text = (value) => ({ kind: 'text', value });
+  const bytes = (...value) => ({ kind: 'binary', value: new Uint8Array(value) });
+  const shared = [
+    ["SELECT ''", [text('')]],
+    ['SELECT NULL', [nul]],
+    ['SELECT 9223372036854775807', [int(9223372036854775807n)]],
+  ];
+  const dialect = {
+    mysql: [
+      ['SELECT CAST(1.5 AS FLOAT)', [f32(1069547520)]],
+      ['SELECT CAST(1.5 AS DOUBLE)', [f64(4609434218613702656n)]],
+      ['SELECT CAST(18446744073709551615 AS UNSIGNED)', [{ kind: 'unsigned', value: 18446744073709551615n }]],
+      ["SELECT CAST('12:34:56.5' AS TIME(6))", [{ kind: 'time', value: '12:34:56.500000' }]],
+      ["SELECT CAST('2020-01-02 03:04:05.25' AS DATETIME(2))", [{ kind: 'datetime', value: '2020-01-02 03:04:05.250000' }]],
+      ["SELECT CAST('2020-01-02' AS DATE)", [{ kind: 'date', value: '2020-01-02' }]],
+      ['SELECT CAST(1.50 AS DECIMAL(10,2))', [{ kind: 'decimal', value: '1.50' }]],
+      ["SELECT X'00FF'", [bytes(0, 255)]],
+      ["SELECT X''", [bytes()]],
+    ],
+    postgres: [
+      ['SELECT 1.5::real', [f32(1069547520)]],
+      ['SELECT 1.5::double precision', [f64(4609434218613702656n)]],
+      ["SELECT '-0'::double precision, 'NaN'::double precision", [f64(9223372036854775808n), f64(9221120237041090560n)]],
+      ["SELECT '12:34:56.5'::time", [{ kind: 'time', value: '12:34:56.500000' }]],
+      ["SELECT '2020-01-02 03:04:05.25'::timestamp", [{ kind: 'datetime', value: '2020-01-02 03:04:05.250000' }]],
+      ["SELECT '2020-01-02'::date", [{ kind: 'date', value: '2020-01-02' }]],
+      ['SELECT 1.50::numeric(10,2)', [{ kind: 'decimal', value: '1.50' }]],
+      ["SELECT '\\x00ff'::bytea", [bytes(0, 255)]],
+      ["SELECT ''::bytea", [bytes()]],
+      ['SELECT true', [{ kind: 'boolean', value: true }]],
+    ],
+    sqlite: [
+      ['SELECT 1.5', [f64(4609434218613702656n)]],
+      ['SELECT 1e308*10', [f64(9218868437227405312n)]],
+      ["SELECT '12:34:56.5'", [text('12:34:56.5')]],
+      ["SELECT X'00FF'", [bytes(0, 255)]],
+      ["SELECT X''", [bytes()]],
+    ],
+  }[driver];
+  for (const [sql, expected] of [...shared, ...dialect]) {
+    assert.deepEqual(await first(sql), expected, `${driver}: grid cells of ${sql}`);
+  }
+  if (driver === 'mysql') {
+    await rejects("SELECT YEAR('2020-01-02')", 'CATALOG_VALUE');
+    await rejects("SELECT CAST('-01:00:00' AS TIME)", 'GRID_TEMPORAL_VALUE');
+  }
+  if (driver === 'postgres') {
+    await rejects("SELECT '2020-01-02 03:04:05+00'::timestamptz", 'CATALOG_VALUE');
+    await rejects("SELECT '24:00:00'::time", 'GRID_TEMPORAL_VALUE');
+    await rejects("SELECT 'infinity'::timestamp", 'GRID_TEMPORAL_VALUE');
+  }
+  const named = await catalog.readOnlyGridQuery("SELECT 1 AS a, 'x' AS b", []);
+  assert.deepEqual(named.columns.map(column => column.name), ['a', 'b'], `${driver}: grid column names`);
+}
+
 async function gridCase() {
   const { driver, catalog } = await connect();
   try {
-    const first = async (sql) => (await catalog.readOnlyGridQuery(sql, [])).rows[0];
-    const rejects = (sql, code) => assert.rejects(catalog.readOnlyGridQuery(sql, []), codeIs(code), `${driver}: ${sql}`);
-    const f64 = (bits) => ({ kind: 'float64', bits });
-    const f32 = (bits) => ({ kind: 'float32', bits });
-    const int = (value) => ({ kind: 'integer', value });
-    const nul = { kind: 'null' };
-    const text = (value) => ({ kind: 'text', value });
-    const bytes = (...value) => ({ kind: 'binary', value: new Uint8Array(value) });
-    const shared = [
-      ["SELECT ''", [text('')]],
-      ['SELECT NULL', [nul]],
-      ['SELECT 9223372036854775807', [int(9223372036854775807n)]],
-    ];
-    const dialect = {
-      mysql: [
-        ['SELECT CAST(1.5 AS FLOAT)', [f32(1069547520)]],
-        ['SELECT CAST(1.5 AS DOUBLE)', [f64(4609434218613702656n)]],
-        ['SELECT CAST(18446744073709551615 AS UNSIGNED)', [{ kind: 'unsigned', value: 18446744073709551615n }]],
-        ["SELECT CAST('12:34:56.5' AS TIME(6))", [{ kind: 'time', value: '12:34:56.500000' }]],
-        ["SELECT CAST('2020-01-02 03:04:05.25' AS DATETIME(2))", [{ kind: 'datetime', value: '2020-01-02 03:04:05.250000' }]],
-        ["SELECT CAST('2020-01-02' AS DATE)", [{ kind: 'date', value: '2020-01-02' }]],
-        ['SELECT CAST(1.50 AS DECIMAL(10,2))', [{ kind: 'decimal', value: '1.50' }]],
-        ["SELECT X'00FF'", [bytes(0, 255)]],
-        ["SELECT X''", [bytes()]],
-      ],
-      postgres: [
-        ['SELECT 1.5::real', [f32(1069547520)]],
-        ['SELECT 1.5::double precision', [f64(4609434218613702656n)]],
-        ["SELECT '-0'::double precision, 'NaN'::double precision", [f64(9223372036854775808n), f64(9221120237041090560n)]],
-        ["SELECT '12:34:56.5'::time", [{ kind: 'time', value: '12:34:56.500000' }]],
-        ["SELECT '2020-01-02 03:04:05.25'::timestamp", [{ kind: 'datetime', value: '2020-01-02 03:04:05.250000' }]],
-        ["SELECT '2020-01-02'::date", [{ kind: 'date', value: '2020-01-02' }]],
-        ['SELECT 1.50::numeric(10,2)', [{ kind: 'decimal', value: '1.50' }]],
-        ["SELECT '\\x00ff'::bytea", [bytes(0, 255)]],
-        ["SELECT ''::bytea", [bytes()]],
-        ['SELECT true', [{ kind: 'boolean', value: true }]],
-      ],
-      sqlite: [
-        ['SELECT 1.5', [f64(4609434218613702656n)]],
-        ['SELECT 1e308*10', [f64(9218868437227405312n)]],
-        ["SELECT '12:34:56.5'", [text('12:34:56.5')]],
-        ["SELECT X'00FF'", [bytes(0, 255)]],
-        ["SELECT X''", [bytes()]],
-      ],
-    }[driver];
-    for (const [sql, expected] of [...shared, ...dialect]) {
-      assert.deepEqual(await first(sql), expected, `${driver}: grid cells of ${sql}`);
-    }
-    if (driver === 'mysql') {
-      await rejects("SELECT YEAR('2020-01-02')", 'CATALOG_VALUE');
-      await rejects("SELECT CAST('-01:00:00' AS TIME)", 'GRID_TEMPORAL_VALUE');
-    }
-    if (driver === 'postgres') {
-      await rejects("SELECT '2020-01-02 03:04:05+00'::timestamptz", 'CATALOG_VALUE');
-      await rejects("SELECT '24:00:00'::time", 'GRID_TEMPORAL_VALUE');
-      await rejects("SELECT 'infinity'::timestamp", 'GRID_TEMPORAL_VALUE');
-    }
-    const named = await catalog.readOnlyGridQuery("SELECT 1 AS a, 'x' AS b", []);
-    assert.deepEqual(named.columns.map(column => column.name), ['a', 'b'], `${driver}: grid column names`);
+    await assertGridCells(driver, catalog);
   } finally {
     await catalog.close();
   }
