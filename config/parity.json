@@ -4128,15 +4128,7 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/ColumnFunctionMetadataTest.php",
-          "id": "ColumnFunctionMetadataTest::testOrmFactoriesPreserveColumnFunctionMetadataInGeneratedQueries",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "column-function-metadata-check/php-extension",
-            "COLUMN_FUNCTION_METADATA_TEST_FILTER=testOrmFactoriesPreserveColumnFunctionMetadataInGeneratedQueries"
-          ]
+          "id": "ColumnFunctionMetadataTest::testOrmFactoriesPreserveColumnFunctionMetadataInGeneratedQueries"
         },
         {
           "implementation": "typescript",

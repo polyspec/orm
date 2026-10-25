@@ -2124,7 +2124,7 @@ column-function-metadata-check/php-extension: php-vendor-check php-models orm-in
 	@set -eu; run_dir="$(RUN_DIR)"; trap 'rm -rf "$$run_dir"' EXIT; mkdir -p "$$run_dir/php-extension"; \
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh "$$run_dir/php-extension/polyspec_orm.so"; \
 	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" --without-library packages/php -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CoveragePlannerTest.php --filter 'ColumnFunction.*MissingPostValidationFieldIsInternal'; \
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" --without-library packages/php -- --configuration packages/php-ext/phpunit.xml.dist $(if $(COLUMN_FUNCTION_METADATA_TEST_FILTER),--filter '$(COLUMN_FUNCTION_METADATA_TEST_FILTER)',) packages/php-ext/tests/ColumnFunctionMetadataTest.php
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" --without-library packages/php -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/ColumnFunctionMetadataTest.php
 column-function-metadata-check/php-extension: RUN_DIR = $(abspath .runtime/run)/column-function-metadata-check-php-extension-$$PPID
 
 # Scalar subquery result typing fails internally when post-validation metadata lacks the referenced column.
