@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 53b9c6b40ad7f7ef95df82e48437ac64d7e522785dbec108c522b7acd3308ebb -->
+<!-- source-sha256: 4ceb720d5c504ab50c92d2ee1f24e34eddf02784810a5e1be21b19e6b14a9bda -->
 # 변경 이력
 
 ## Unreleased
+
+- KSTD-2-11-15-1: 여섯 native generator owner가 DSL-129의 generated-method 이름 충돌을 거부한다. source `56f5a226d`의 focused owner 근거: Go 2 cases, Python 2, PHP generator 1 test / 3 assertions, PHP library 1 / 13, PHP extension 2 / 19, TypeScript 2, Rust 2. 나머지 global parity finding은 KSTD-2에서 추적한다.
 
 - T182-6-17: 선택한 relations 및 explicit root-page vector 13개가 여섯 client 모두에서 MySQL, PostgreSQL, SQLite별 두 번의 실행 동안 일치했다. 이를 감싼 명령은 별도 PHP-extension interface-symbol snapshot 검사에서 나중에 exit 2였으며, 선택 conformance 결과는 통과했다. 증거 로그 SHA-256: `3faeba3aaa6d32cab85a743eba767240ef3fcb0cd1dc46dce4a12c87aee351ff`.
 
