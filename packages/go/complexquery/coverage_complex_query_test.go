@@ -12,6 +12,7 @@ import (
 
 // TestCoverageComplexQueryProductSearch runs the Product search against the
 // fixture database selected by the feature coverage runner.
+// Requirements: CPX-2.
 func TestCoverageComplexQueryProductSearch(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	driver, dsn := testdb.FeatureDatabase(t)

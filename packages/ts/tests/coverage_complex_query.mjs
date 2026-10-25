@@ -1,3 +1,7 @@
+// The CPX-2 product search case: the eight ordered statements of contracts/fixtures/complex_query on the selected
+// database, and the SQLite refusal before any statement.
+// Requirements: CPX-2.
+import assert from 'node:assert/strict';
 import { connect } from '../dist/models/complex_query/models.js';
 import { runCases } from './coverage_case.mjs';
 import { assertSearchCase } from './complex-query-support.mjs';
