@@ -60,6 +60,7 @@ async fn coverage_model_query_rows() {
             .unwrap();
         let joined = Author::new()
             .connect(&db)
+            .service_seq(7)
             .join_service_member_seq_with_seq(ServiceMember::new().force_index_ix_service_member_service())
             .join_user_seq_with_seq(User::new().add_column_read_total(|user: &User| Author::new().sum_read_count().user_seq_eq_seq(user)).order_by_seq_desc())
             .gets()

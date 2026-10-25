@@ -58,7 +58,7 @@ func TestCoverageModelQueryRows(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	joined := must(model.Author().Connect(db).
+	joined := must(model.Author().Connect(db).ServiceSeq(7).
 		JoinServiceMemberSeqWithSeq(model.ServiceMember().ForceIndexIxServiceMemberService()).
 		JoinUserSeqWithSeq(model.User().
 			AddColumnReadTotal(func(u *model.UserModel) orm.Model {

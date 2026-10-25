@@ -21,7 +21,7 @@ await runCases('coverage_model_queries.mjs', {
       assert.equal(await new Author().connect(db).serviceSeq(7).sumReadCount().getSum(), 456000, 'sum of read_count');
       let joinSQL = '';
       const unsubscribe = db.subscribe(event => { if (event.kind === 'select') joinSQL = event.sql; });
-      const joined = await new Author().connect(db)
+      const joined = await new Author().connect(db).serviceSeq(7)
         .joinServiceMemberSeqWithSeq(new ServiceMember().forceIndexIxServiceMemberService())
         .joinUserSeqWithSeq(new User().on(user => user.neName('nobody'))
           .addColumnReadTotal(user => new Author().sumReadCount().userSeqEqSeq(user))

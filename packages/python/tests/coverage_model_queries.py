@@ -36,7 +36,7 @@ def model_query_rows(item):
         )
         join_sql = []
         unsubscribe = db.subscribe(lambda event: join_sql.append(event.sql) if event.kind == "select" else None)
-        joined = author().join_service_member_seq_with_seq(
+        joined = author().service_seq(7).join_service_member_seq_with_seq(
             models.ServiceMember().force_index_ix_service_member_service()
         ).join_user_seq_with_seq(
             models.User()

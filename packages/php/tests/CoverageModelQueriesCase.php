@@ -48,6 +48,7 @@ final class CoverageModelQueriesCase
             }
         });
         $joined = (new Author())($db)
+            ->serviceSeq(7)
             ->joinServiceMemberSeqWithSeq((new ServiceMember())->forceIndexIxServiceMemberService())
             ->joinUserSeqWithSeq(
                 (new User())
