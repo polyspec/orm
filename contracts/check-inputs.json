@@ -3394,7 +3394,9 @@
         "packages/rust/orm/tests/unit/driver_cause.rs",
         "packages/rust/build/src/catalog/temporal.rs",
         "packages/rust/build/src/catalog/row_snapshot.rs",
+        "packages/rust/build/src/catalog/row_snapshot_internal_tests.rs",
         "packages/rust/build/src/tool_db.rs",
+        "packages/rust/build/src/tool_db_internal_tests.rs",
         "packages/rust/build/tests/unit/read_only_policy.rs",
         "packages/rust/build/tests/unit/typed_bind_validation.rs"
       ]
