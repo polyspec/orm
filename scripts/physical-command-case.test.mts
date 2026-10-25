@@ -2,6 +2,37 @@ import assert from 'node:assert/strict';
 import { inspect } from 'node:util';
 import test from 'node:test';
 import { reportUnchangedState, runPhysicalCommandCase } from './physical-command-case.mts';
+import { command, commandEnvironment } from './decimal-physical-check.mts';
+
+test('dispatches each decimal owner to its native command and rejects unknown runtimes', () => {
+  const extension = '/build/polyspec_orm.so';
+  const cases = [
+    ['go', 'go', ['test', '-json']],
+    ['php', 'php', ['vendor-php/bin/phpunit']],
+    ['php-extension', process.execPath, ['node_modules/@polyspec/kit/scripts/kit/run-tests.mts', 'phpunit']],
+    ['rust', 'cargo', ['test', '--offline']],
+    ['python', '/venv/bin/python', ['-m', 'packages.python.tests.decimal_model_db']],
+    ['typescript', 'node', ['packages/ts/tests/decimal_model_db.mjs']],
+  ] as const;
+  for (const [language, expectedProgram, expectedArgs] of cases) {
+    const [program, args] = command(language, 'postgres', { POLYSPEC_ORM_EXTENSION: extension, ORM_PYTHON: '/venv/bin/python' });
+    assert.equal(program, expectedProgram, `${language} program`);
+    assert.deepEqual(args.slice(0, expectedArgs.length), expectedArgs, `${language} command`);
+  }
+
+  const [extensionProgram, extensionArgs] = command('php-extension', 'postgres', { POLYSPEC_ORM_EXTENSION: extension });
+  assert.equal(extensionProgram, process.execPath);
+  assert.ok(extensionArgs.includes(extension));
+  assert.ok(extensionArgs.includes('--without-library'));
+  assert.ok(extensionArgs.includes('packages/php-ext/phpunit.xml.dist'));
+  assert.ok(extensionArgs.includes('packages/php-ext/tests/DecimalModelDbNativeTest.php'));
+  assert.ok(extensionArgs.includes('--filter'));
+  assert.ok(extensionArgs.includes('with data set "postgres"$'));
+  assert.equal(extensionArgs.includes('packages/ts/tests/decimal_model_db.mjs'), false);
+  assert.equal(commandEnvironment('php-extension', { PATH: '/bin' }).ORM_PHP_MODE, 'extension');
+  assert.equal(commandEnvironment('php', { PATH: '/bin' }).ORM_PHP_MODE, undefined);
+  assert.throws(() => command('unknown-runtime', 'postgres', {}), /unknown decimal physical runtime/);
+});
 
 test('accepts the expected TeamCity pass event', async () => {
   await runPhysicalCommandCase(async () => "##teamcity[testFinished name='test_group_rows']", 'php', [], {}, 'dsn-secret',

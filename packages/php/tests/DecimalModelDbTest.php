@@ -3,7 +3,7 @@
 // The generated decimal model of contracts/fixtures/decimal_schema.dbs on one database of each dialect: the generated
 // getter and setter take exact strings and refuse other values, and a row written and read in a transaction keeps its
 // exact values in the model, its row output and the database, and is gone after the rollback. Each dialect is a data
-// set; each dialect takes its DSN from the test servers' environment or databases-create (BENCH_SQLITE_DSN).
+// set; each dialect takes its DSN from the isolated decimal database of the current run (DECIMAL_<DIALECT>_DSN).
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter '@<dialect>$'
 // packages/php/tests/DecimalModelDbTest.php
 declare(strict_types=1);
@@ -86,9 +86,7 @@ final class DecimalModelDbTest extends TestCase
 
     private static function dsn(string $dialect): string
     {
-        // Each dialect takes its database from the same helper as the other database tests: sqlite the bench file of
-        // databases-create (BENCH_SQLITE_DSN), mysql and postgres their test server.
-        $variable = $dialect === 'sqlite' ? 'BENCH_SQLITE_DSN' : 'ORM_TEST_' . strtoupper($dialect) . '_DSN';
+        $variable = 'DECIMAL_' . strtoupper($dialect) . '_DSN';
         return requiredDsn($variable);
     }
 
@@ -151,8 +149,15 @@ final class DecimalModelDbTest extends TestCase
     }
 
     /** A row written and read back in a transaction that rolls back. */
+    // Requirements: DIA-25, COD-2.
     #[DataProvider('dialects')]
     public function testRoundTrip(string $dialect): void
+    {
+        self::roundTrip($this, $dialect);
+    }
+
+    /** Executes the shared physical decimal case with the caller's assertion recorder. */
+    public static function roundTrip(TestCase $test, string $dialect): void
     {
         // The test of COD-2 (docs/spec).
         $dsn = self::dsn($dialect);
@@ -161,29 +166,29 @@ final class DecimalModelDbTest extends TestCase
         $db = \DecimalFixture\connect($dsn, new Config());
         $db->utils()->schema()->install(\DecimalFixture\schema());
         try {
-            self::assertSame(
+            $test->assertSame(
                 0,
                 (new $class())->connect($db)->seq(1)->getCount(),
                 'decimal fixture row 1 exists before the test'
             );
             $rollback = new RuntimeException('decimal fixture rollback');
             try {
-                $db->transaction(static function () use ($class, $db, $dialect, $rollback): void {
+                $db->transaction(static function () use ($test, $class, $db, $dialect, $rollback): void {
                     (new $class())->setSeq(1)->setAmount('48.0450')->setLargeValue('9007199254740993')->create();
                     $loaded = (new $class())->seq(1)->get();
-                    self::assertTrue(
+                    $test->assertTrue(
                         $loaded->getAmount() === '48.0450' && $loaded->getLargeValue() === '9007199254740993',
                         'generated decimal fields lost exact values'
                     );
                     $array = $loaded->toArray();
-                    self::assertTrue(
+                    $test->assertTrue(
                         $array['amount'] === '48.0450' && $array['large_value'] === '9007199254740993',
                         'decimal row output lost exact values'
                     );
                     $query = $db->pdo()->prepare('SELECT amount, large_value FROM decimal_case WHERE seq = ?');
                     $query->execute([1]);
                     $stored = $query->fetch(PDO::FETCH_NUM);
-                    self::assertTrue(
+                    $test->assertTrue(
                         $stored !== false && (string) $stored[0] === (
                             $dialect === 'sqlite' ? '480450' : '48.0450'
                         ) && (string) $stored[1] === '9007199254740993',
@@ -191,13 +196,13 @@ final class DecimalModelDbTest extends TestCase
                     );
                     throw $rollback;
                 }, retry: 0);
-                self::fail('decimal transaction unexpectedly committed');
+                $test->fail('decimal transaction unexpectedly committed');
             } catch (RuntimeException $error) {
                 if ($error !== $rollback) {
                     throw $error;
                 }
             }
-            self::assertSame(
+            $test->assertSame(
                 0,
                 (new $class())->connect($db)->seq(1)->getCount(),
                 'decimal fixture row remains after rollback'

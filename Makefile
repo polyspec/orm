@@ -1105,10 +1105,11 @@ dbspec-php-extension-check/behaviour: php-vendor-check dbspec-php-extension-chec
 # dbspec-php-extension-check/schema-definition runs CoverageSchemaDefinitionTest with the extension: the cases of contracts/fixtures/schema_definition.json.
 dbspec-php-extension-check/schema-definition: php-vendor-check dbspec-php-extension-check/prepare
 	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/CoverageSchemaDefinitionExtensionTest.php
-# dbspec-php-extension-check/analyze runs DbspecAnalyzeTest with the extension: the syntax analysis and format of the focused cases, of tests/dbspec/syntax.json and of the limit errors.
+# dbspec-php-extension-check/analyze runs DbspecAnalyzeTest with the extension: the syntax analysis and format of the focused cases, of tests/dbspec/syntax.json and of the limit errors; DbspecRulesNativeTest checks the global column and foreign-key limits through the native parser.
 dbspec-php-extension-check/analyze: php-vendor-check dbspec-php-extension-check/prepare
 	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecAnalyzeTest.php
 	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecAnalyzeTest.php
+	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/DbspecRulesNativeTest.php
 # dbspec-php-extension-check/plan runs DbspecPlanTest with the extension: the plan vectors of tests/dbspec/plans.json.
 dbspec-php-extension-check/plan: php-vendor-check dbspec-php-extension-check/prepare
 	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecPlanTest.php
@@ -1949,12 +1950,13 @@ decimal-bench-sqlite: typescript-build
 # uses (the Rust test binary decimal_physical and the Go decimalmodel test) is a long-running
 # task, so it runs first under RUN_LONG with no deadline before the case (the Go build publishes into .runtime/bin and fills the build cache), and the case
 # Run what was built.
-decimal-physical-check: php-vendor-check cargo-downloads-check lease-tool python-venv-check
+decimal-physical-check: php-vendor-check cargo-downloads-check lease-tool python-venv-check orm-install-php-extension-tools
 	$(READ_TYPESCRIPT)
 	test -n "$(DECIMAL_ENV)" -a -f "$(DECIMAL_ENV)" || { echo 'DECIMAL_ENV names no decimal database of this run; run make run-databases TARGETS=$@' >&2; exit 1; }
 	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) rust-build/decimal-physical -- $(CARGO_LEASED) cargo test --no-run --offline --locked --manifest-path packages/rust/Cargo.toml -p polyspec-orm-tests --test decimal_physical
 	$(RUN_LONG) go-build/decimal-physical -- $(PUBLISH) $(abspath .runtime/bin/decimalmodel.test) go test -c -o @OUT@ -tags decimalphysical ./packages/go/decimalmodel
-	. $(DECIMAL_ENV) && ORM_PYTHON=$(PYTHON_VENV)/bin/python $(NODE) scripts/decimal-physical-check.mts
+	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh $(PHP_EXTENSION_LIBRARY)
+	. $(DECIMAL_ENV) && ORM_PYTHON=$(PYTHON_VENV)/bin/python POLYSPEC_ORM_EXTENSION=$(PHP_EXTENSION_LIBRARY) $(NODE) scripts/decimal-physical-check.mts
 
 # interface-check runs the tests of the interface checker (tests/interfaces/check) and the checker itself with --self-test. The checker expands the entity
 # unit rules into the dbspec entity order that the TypeScript client build (packages/ts/dist) reads.

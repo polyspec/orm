@@ -32,6 +32,7 @@ caseTest(`decimal_db/${dialect}/setters`, COMPUTE, () => {
   }
 });
 
+// Requirements: DIA-25, COD-2.
 caseTest(`decimal_db/${dialect}/round_trip`, DATABASE, async () => {
   const db = await connect(dsn);
   try {

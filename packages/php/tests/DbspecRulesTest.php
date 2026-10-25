@@ -8,11 +8,12 @@ namespace Polyspec\Orm\Tests;
 // expected error names its rule, its line and a needle: the column is the
 // first occurrence of the needle in that line (in characters), or an integer.
 
-use LogicException;
 use RuntimeException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Large;
 use PHPUnit\Framework\TestCase;
+
+require_once __DIR__ . '/dbspec_limit_cases.php';
 
 /** @param list<array{0:string,1:int,2:string|int}> $errors */
 function rules_case(string $id, array $lines, array $errors, array $others = []): array
@@ -926,57 +927,6 @@ function limit_columns_peak_run(string $text): array
     ];
 }
 
-function rules_limit(string $id): array
-{
-    switch ($id) {
-        case 'size':
-            return [str_pad("dbspec 1 shop\n", 32 * 1024 * 1024 + 1, "\n"), ['limit', 1, 1]];
-        case 'tables':
-            $tables = "dbspec 1 shop\n";
-            for ($i = 0; $i < 4097; $i++) {
-                $tables .= "\ntable t$i {\n  id i64 identity\n  primary key (id)\n}\n";
-            }
-            return [$tables, ['limit', 3 + 4096 * 5, 1]];
-        case 'table-columns':
-            $columns = "dbspec 1 shop\n\ntable t {\n";
-            for ($i = 0; $i < 1001; $i++) {
-                $columns .= "  c$i i64\n";
-            }
-            $columns .= "  primary key (c0)\n}\n";
-            return [$columns, ['limit', 4 + 1000, 3]];
-        case 'columns':
-            $all = "dbspec 1 shop\n";
-            for ($t = 0; $t < 121; $t++) {
-                $all .= "\ntable t$t {\n";
-                for ($i = 0; $i < 1000; $i++) {
-                    $all .= "  c$i i64\n";
-                }
-                $all .= "  primary key (c0)\n}\n";
-            }
-            // Column 120001 is the first column of table 121 (index 120).
-            return [$all, ['limit', 4 + 120 * 1004, 3]];
-        case 'foreign-keys':
-            $fks = "dbspec 1 shop\n";
-            $line = 1;
-            $fkLine = 0;
-            for ($t = 0; $t < 21; $t++) {
-                $fks .= "\ntable t$t {\n  id i64 identity\n  primary key (id)\n";
-                $line += 4;
-                for ($i = 0; $i < 1000; $i++) {
-                    $fks .= "  foreign key fk_{$t}_$i (id) references t$t (id)\n";
-                    $line++;
-                    if ($t === 20 && $i === 0) {
-                        $fkLine = $line;
-                    }
-                }
-                $fks .= "}\n";
-                $line++;
-            }
-            return [$fks, ['limit', $fkLine, 3]];
-    }
-    throw new LogicException("unknown limit case $id");
-}
-
 // The limit cases parse generated documents of up to 32 MiB: each has a CPU reference of 20 s, and its wall-clock
 // deadline is the large size (phpunit.xml.dist).
 #[Large]
@@ -1071,7 +1021,18 @@ final class DbspecRulesTest extends TestCase
     {
         [$text, $want] = rules_limit($id);
         $clock = cpuCaseBegin(20.0);
-        $result = \Polyspec\Orm\Dbspec\Dbspec::parse($text, []);
+        $previousMemoryLimit = ini_get('memory_limit');
+        // This case checks the foreign-key count bound, not the memory used by 20,000 PHP object values.
+        if ($id === 'foreign-keys' && ini_set('memory_limit', '512M') === false) {
+            throw new RuntimeException('the foreign-key limit case cannot set its declared 512M memory limit');
+        }
+        try {
+            $result = \Polyspec\Orm\Dbspec\Dbspec::parse($text, []);
+        } finally {
+            if ($id === 'foreign-keys' && ini_set('memory_limit', $previousMemoryLimit) === false) {
+                throw new RuntimeException('the foreign-key limit case cannot restore its prior memory limit');
+            }
+        }
         $got = array_map(
             static fn(\Polyspec\Orm\Dbspec\Diagnostic $d): array => [$d->rule, $d->line, $d->column],
             $result->diagnostics

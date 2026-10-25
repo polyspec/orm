@@ -7,7 +7,7 @@ import { implementationLanguages } from './features/languages.mts';
 const databases = ['mysql', 'postgres', 'sqlite'];
 const languages = implementationLanguages();
 
-function command(language: string, database: string): [string, string[]] {
+export function command(language: string, database: string, environment: NodeJS.ProcessEnv = process.env): [string, string[]] {
   const id = `decimal_${database}`;
   if (language === 'go') {
     const suffix = database === 'postgres' ? 'Postgres' : database === 'mysql' ? 'MySQL' : 'SQLite';
@@ -17,16 +17,28 @@ function command(language: string, database: string): [string, string[]] {
     return ['php', ['vendor-php/bin/phpunit', '--configuration', 'packages/php/phpunit.xml.dist', '--teamcity',
       '--filter', `with data set "${database}"$`, 'packages/php/tests/DecimalModelDbTest.php']];
   }
+  if (language === 'php-extension') {
+    const extension = environment['POLYSPEC_ORM_EXTENSION'];
+    if (!extension) throw new Error('POLYSPEC_ORM_EXTENSION is required; run this check through make decimal-physical-check, which builds the PHP extension');
+    return [process.execPath, ['node_modules/@polyspec/kit/scripts/kit/run-tests.mts', 'phpunit', '--php-extension', extension,
+      '--without-library', 'packages/php', '--', '--configuration', 'packages/php-ext/phpunit.xml.dist', '--filter',
+      `with data set "${database}"$`, 'packages/php-ext/tests/DecimalModelDbNativeTest.php']];
+  }
   if (language === 'rust') {
     return ['cargo', ['test', '--offline', '--locked', '--manifest-path', 'packages/rust/Cargo.toml', '-p', 'polyspec-orm-tests', '--test', 'decimal_physical', id, '--', '--exact']];
   }
   if (language === 'python') {
     // ORM_PYTHON is the Python of the venv that make orm-install-python builds.
-    const python = process.env['ORM_PYTHON'];
+    const python = environment['ORM_PYTHON'];
     if (!python) throw new Error('ORM_PYTHON is required; run the check through make decimal-physical-check');
     return [python, ['-m', 'packages.python.tests.decimal_model_db', '--dialect', database]];
   }
-  return ['node', ['packages/ts/tests/decimal_model_db.mjs', '--dialect', database]];
+  if (language === 'typescript') return ['node', ['packages/ts/tests/decimal_model_db.mjs', '--dialect', database]];
+  throw new Error(`unknown decimal physical runtime: ${language}`);
+}
+
+export function commandEnvironment(language: string, environment: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  return language === 'php-extension' ? { ...environment, ORM_PHP_MODE: 'extension' } : environment;
 }
 
 function observed(language: string, database: string, output: string): boolean {
@@ -45,6 +57,11 @@ function observed(language: string, database: string, output: string): boolean {
     const wanted = ['generate', 'setters', 'round_trip'].map(name => `test_${name} with data set "${database}"`);
     return JSON.stringify(finished) === JSON.stringify(wanted) && !/^##teamcity\[test(?:Failed|Ignored) /m.test(output);
   }
+  if (language === 'php-extension') {
+    const name = `DecimalModelDbNativeTest::testNativeRoundTrip with data set "${database}"`;
+    return output.split('\n').filter(line => line.includes(`✔ ${name} `)).length === 1
+      && output.includes(': 1 passed, 0 failed, 0 timed out, 0 skipped');
+  }
   // The Python test writes a RUN and a PASS or FAIL line per case, the tests of a class in name order. Both cases pass
   // and no other result line is written.
   if (language === 'python') {
@@ -58,26 +75,30 @@ function observed(language: string, database: string, output: string): boolean {
   return JSON.stringify(results) === JSON.stringify(cases.map(name => `PASS ${name}`));
 }
 
-await step('decimal/models', TIMEOUT_MS, () => run('node', ['packages/ts/dist/bin/orm-gen.js', 'gen', '--set', 'contracts/fixtures/dbspec-set.json',
-  '--out', 'packages/ts/src/models/decimal_fixture', '--scan', 'packages/ts/tests/decimal_model_db.mjs', '--check']));
-for (const database of databases) {
-  const key = `DECIMAL_${database.toUpperCase()}_DSN`;
-  const dsn = process.env[key];
-  if (!dsn) throw new Error(`${key} is required; run the test through its make target, which reads the environment of make orm-test-servers`);
-  let before: string|undefined;
-  await step(`decimal/${database}/state`, TIMEOUT_MS, async ({ step: progress }) => {
-    before = await state(database, dsn);
-    progress(`state ${before}`);
-  });
-  for (const language of languages) {
-    for (let attempt = 1; attempt <= 2; attempt++) {
-      await step(`decimal/${database}/${language}/${attempt}`, 2 * TIMEOUT_MS, async ({ step: progress }) => {
-        const [program, args] = command(language, database);
-        await runPhysicalCommandCase(run, program, args, process.env, dsn,
-          { kind: 'predicate', accepts: output => observed(language, database, output) },
-          `${database}/${language}/${attempt}: missing exact pass event`);
-        await reportUnchangedState(() => state(database, dsn), before, `${database}/${language}/${attempt}: database state changed`, progress);
-      });
+async function main(): Promise<void> {
+  await step('decimal/models', TIMEOUT_MS, () => run('node', ['packages/ts/dist/bin/orm-gen.js', 'gen', '--set', 'contracts/fixtures/dbspec-set.json',
+    '--out', 'packages/ts/src/models/decimal_fixture', '--scan', 'packages/ts/tests/decimal_model_db.mjs', '--check']));
+  for (const database of databases) {
+    const key = `DECIMAL_${database.toUpperCase()}_DSN`;
+    const dsn = process.env[key];
+    if (!dsn) throw new Error(`${key} is required; run the test through its make target, which reads the environment of make orm-test-servers`);
+    let before: string|undefined;
+    await step(`decimal/${database}/state`, TIMEOUT_MS, async ({ step: progress }) => {
+      before = await state(database, dsn);
+      progress(`state ${before}`);
+    });
+    for (const language of languages) {
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        await step(`decimal/${database}/${language}/${attempt}`, 2 * TIMEOUT_MS, async ({ step: progress }) => {
+          const [program, args] = command(language, database);
+          await runPhysicalCommandCase(run, program, args, commandEnvironment(language, process.env), dsn,
+            { kind: 'predicate', accepts: output => observed(language, database, output) },
+            `${database}/${language}/${attempt}: missing exact pass event`);
+          await reportUnchangedState(() => state(database, dsn), before, `${database}/${language}/${attempt}: database state changed`, progress);
+        });
+      }
     }
   }
 }
+
+if (import.meta.main) await main();

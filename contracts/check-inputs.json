@@ -2030,7 +2030,8 @@
         "Makefile",
         "scripts/physical-command-case.mts",
         "scripts/physical-command-case.test.mts",
-        "tests/errors.mts"
+        "tests/errors.mts",
+        "scripts/decimal-physical-check.mts"
       ]
     },
     "typescript-audit-history-rows-helper-check": {
@@ -2392,6 +2393,7 @@
       ],
       "inputs": [
         "packages/php-ext/tests/DeclarationsTest.php",
+        "packages/php-ext/tests/DbspecRulesNativeTest.php",
         "packages/php/tests/CoverageSchemaDefinitionTest.php",
         "packages/php-ext/tests/CoverageSchemaDefinitionExtensionTest.php",
         "packages/php-ext/tests/bootstrap.php",

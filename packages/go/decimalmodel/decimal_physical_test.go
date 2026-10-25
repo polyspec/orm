@@ -62,15 +62,18 @@ func decimalPhysical(t *testing.T, env string) {
 	}
 }
 
+// Requirements: DIA-25, COD-2.
 func TestDecimalPhysicalMySQL(t *testing.T) {
 	// The test of DIA-25, COD-2 (docs/spec).
 	testcase.Start(t, testcase.Database)
 	decimalPhysical(t, "DECIMAL_MYSQL_DSN")
 }
+// Requirements: DIA-25, COD-2.
 func TestDecimalPhysicalPostgres(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	decimalPhysical(t, "DECIMAL_POSTGRES_DSN")
 }
+// Requirements: DIA-25, COD-2.
 func TestDecimalPhysicalSQLite(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	decimalPhysical(t, "DECIMAL_SQLITE_DSN")

@@ -50,6 +50,7 @@ class DecimalModelDbTest(unittest.TestCase):
             case().set_large_value(9007199254740992)
         self.assertEqual(raised.exception.code, "CODEC_ENCODE")
 
+    # Requirements: DIA-25, COD-2.
     def test_round_trip(self):
         for dialect in self.dialects:
             with self.subTest(dialect=dialect):
