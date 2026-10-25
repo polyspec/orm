@@ -7996,20 +7996,6 @@
       ]
     },
     {
-      "id": "go-internal-packages-go-orm-audit-transaction",
-      "kind": "feature",
-      "requirements": [
-        "CFG-8"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/audit_transaction_test.go",
-          "id": "TestAuditRecordTransaction"
-        }
-      ]
-    },
-    {
       "id": "go-internal-packages-go-orm-cancelled-session",
       "kind": "feature",
       "requirements": [
@@ -8945,20 +8931,6 @@
           "implementation": "go",
           "test": "packages/go/orm/register_test.go",
           "id": "TestRegisterSendsNoStatement"
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-orm-restore",
-      "kind": "feature",
-      "requirements": [
-        "INT-38"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/restore_test.go",
-          "id": "TestRestoreSoftDeletedRow"
         }
       ]
     },
@@ -10935,20 +10907,6 @@
       ]
     },
     {
-      "id": "rust-audit-record-transaction",
-      "kind": "feature",
-      "requirements": [
-        "INT-44"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/audit.rs",
-          "id": "audit_record_transaction"
-        }
-      ]
-    },
-    {
       "id": "dbspec-apply-pooler",
       "kind": "feature",
       "requirements": [
@@ -11167,20 +11125,6 @@
       ]
     },
     {
-      "id": "rust-restore-soft-deleted-row",
-      "kind": "feature",
-      "requirements": [
-        "INT-38"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/restore.rs",
-          "id": "restore_soft_deleted_row"
-        }
-      ]
-    },
-    {
       "id": "rust-rollback-fault-entry",
       "kind": "feature",
       "requirements": [
@@ -11200,20 +11144,6 @@
         "artifact": "git-tag",
         "package": "polyspec-orm"
       }
-    },
-    {
-      "id": "rust-soft-delete-filters-reads-and-rewrites-deletes",
-      "kind": "feature",
-      "requirements": [
-        "DBS-67"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/soft_delete.rs",
-          "id": "soft_delete_filters_reads_and_rewrites_deletes"
-        }
-      ]
     },
     {
       "id": "connection-sqlite-busy-timeout-canceled",
@@ -20957,6 +20887,135 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/clock.rs",
           "id": "clock_now_condition_postgres"
+        }
+      ]
+    },
+    {
+      "id": "restore-soft-deleted-row",
+      "kind": "feature",
+      "requirements": [
+        "INT-38"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/restore_test.go",
+          "id": "TestRestoreSoftDeletedRow"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/restore.rs",
+          "id": "restore_soft_deleted_row"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageAuditTriggersTest.php",
+          "id": "CoverageAuditTriggersTest::test_soft_delete_restore"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
+          "id": "CoverageAuditTriggersExtensionTest::test_soft_delete_restore"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_audit_triggers.py",
+          "id": "test_soft_delete_restore"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_audit_triggers.mjs",
+          "id": "soft_delete_restore [sqlite]"
+        }
+      ]
+    },
+    {
+      "id": "audit-record-of-a-transaction",
+      "kind": "feature",
+      "requirements": [
+        "CFG-8",
+        "INT-44"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/audit_transaction_test.go",
+          "id": "TestAuditRecordTransaction"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/audit.rs",
+          "id": "audit_record_transaction"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageAuditTriggersTest.php",
+          "id": "CoverageAuditTriggersTest::test_audit_transaction_entry_points"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
+          "id": "CoverageAuditTriggersExtensionTest::test_audit_transaction_entry_points"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_audit_triggers.py",
+          "id": "test_audit_transaction_entry_points"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_audit_triggers.mjs",
+          "id": "audit_transaction_entry_points [sqlite]"
+        }
+      ]
+    },
+    {
+      "id": "soft-delete-filters-reads-and-deletes",
+      "kind": "feature",
+      "requirements": [
+        "DBS-67"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_audit_triggers_test.go",
+          "id": "TestCoverageSoftDeleteRestore",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-go-unit",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=TestCoverageSoftDeleteRestore",
+            "FEATURE_PACKAGE=./orm"
+          ]
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/soft_delete.rs",
+          "id": "soft_delete_filters_reads_and_rewrites_deletes"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageAuditTriggersTest.php",
+          "id": "CoverageAuditTriggersTest::test_soft_delete_restore"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
+          "id": "CoverageAuditTriggersExtensionTest::test_soft_delete_restore"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_audit_triggers.py",
+          "id": "test_soft_delete_restore"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_audit_triggers.mjs",
+          "id": "soft_delete_restore [sqlite]"
         }
       ]
     }

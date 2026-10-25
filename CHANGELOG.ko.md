@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d00c2c6a8aaab22414babc91eba5e14685df4f2cc4d842eff05fd39db49752e0 -->
+<!-- source-sha256: 47d1bcb96557224515f46f02c975a85dfa7c975fb969e19106fdd121936b46c9 -->
 # 변경 이력
 
 ## Unreleased
 
+- Go와 Rust의 restore, audit record, soft delete read case는 다른 client의 audit trigger coverage case와 함께 INT-38, CFG-8과 INT-44, DBS-67을 인용하는 여섯 client unit 세 개에 bind된다; client 하나씩 bind하던 unit 다섯 개는 사라졌다(KSTD-2-11-12-3).
 - update 시각, soft deletion, now 조건의 clock은 client 하나씩 bind하던 unit 열세 개 대신 DIA-18, DIA-56, DSL-137을 인용하는 여섯 client unit 세 개를 가진다. Python은 clock case를 SQLite, MySQL, PostgreSQL에서 실행하고, TypeScript clock case는 internal로 선언되는 대신 bind된다(KSTD-2-11-12-2).
 - PHP extension audit test는 PHP library에서 물려받은 audit history, audit transaction entry point, soft delete restore, selected column case의 requirement를 적으며, extension을 load한 채 SQLite에서 이 case를 통과한다(KSTD-2-11-12-1).
 - handle 포기의 Go context와 Rust drop case는 여섯 client handle-disposal unit에만 bind된다; 이를 client 하나로 반복하던 unit 세 개는 사라졌다(KSTD-2-11-16-2).

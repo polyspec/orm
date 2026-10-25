@@ -30,7 +30,7 @@ async fn on_each_database(name: &str, case: impl AsyncFn(&str, &str)) {
 }
 
 #[tokio::test]
-// Requirements: INT-44.
+// Requirements: CFG-8, INT-44.
 async fn audit_record_transaction() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     on_each_database("audit_record_transaction", audit_rows::audit_case).await;
