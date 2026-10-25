@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: f6d54aa20c51cb27d9ef0f37316102a748ef9447fd3b1b57e8e9f933128b7d4c -->
+<!-- source-sha256: f94f83959e995bf08927014ea5e985841481c5dc9bc5c2ecd9b8e331707c0780 -->
 # 변경 이력
 
 ## Unreleased
 
+- config/parity.json의 모든 예외는 kit이 정의한 종류로 시작하는 이유를 준다: `example:`, `implementation:`, `helper:`, `benchmark:` 또는 표시 없이 시작하던 24개는 이제 그 테스트에 맞게 `harness:`, `test:`, `fixture:`, `ecosystem:`로 시작하므로 `make divergence-check`가 어느 것도 보고하지 않는다 (KSTD-5-12-4).
 - 서버가 실행 전에 session을 끝낸 statement의 PHP case는 PHP만 bind하던 unit 대신 여섯 client CFG-15 unit connection-rollback-failed-reports-both-errors에 PHP library와 PHP extension으로 bind된다(KSTD-2-11-13-6).
 - found-rows 개수, Rust client의 float 자릿수, Rust build tool의 SQLite 경로는 P32가 정한 자리에 놓인다: CFG-10은 모든 client에서 found row를 확인하는 affected_counts vector를 가진 MySQL conformance suite가 인용하고, CFG-32는 rust-postgres-float-round-trip을 소유하는 polyspec-orm crate를 이름으로 적고, Python client flag 검사와 Rust tool 경로 검사는 각 package의 일반 test다(KSTD-2-11-13-4).
 - Rust client가 SQLite의 DSN busy_timeout을 유지하면서 지워진 case를 bind하던 Rust unit rust-statement-timeout-bounds-sqlite-lock-wait가 config/parity.json에서 빠진다(KSTD-2-11-13-5).

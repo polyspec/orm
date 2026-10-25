@@ -52,35 +52,35 @@
       "internal": [
         {
           "glob": "examples/dsn_test.go",
-          "reason": "example: tests that the standalone examples refuse to start without their benchmark DSN; the preflight belongs to the example commands, not to the ORM client contract"
+          "reason": "harness: tests that the standalone examples refuse to start without their benchmark DSN; the preflight belongs to the example commands, not to the ORM client contract"
         },
         {
           "glob": "examples/outputs_test.go",
-          "reason": "example: compares the output of the runnable example programs against their seeded database; this is the repository example integration contract, not a client-library behavior"
+          "reason": "harness: compares the output of the runnable example programs against their seeded database; this is the repository example integration contract, not a client-library behavior"
         },
         {
           "glob": "packages/go/bench/client_test.go",
-          "reason": "implementation: contains only client benchmark functions for measuring one Go workload, not a shared ORM behavior case"
+          "reason": "harness: contains only client benchmark functions for measuring one Go workload, not a shared ORM behavior case"
         },
         {
           "glob": "packages/go/bench/dsn_test.go",
-          "reason": "implementation: tests the private Go benchmark harness requirement for ORM_BENCH_MYSQL_DSN and its own DSN helper"
+          "reason": "harness: tests the private Go benchmark harness requirement for ORM_BENCH_MYSQL_DSN and its own DSN helper"
         },
         {
           "glob": "packages/go/bench/hot_path_gate_test.go",
-          "reason": "implementation: tests only Go-specific hot-path threshold and load measurement mechanics; the six-client database behavior is covered by performance_gate owner cases"
+          "reason": "harness: tests only Go-specific hot-path threshold and load measurement mechanics; the six-client database behavior is covered by performance_gate owner cases"
         },
         {
           "glob": "packages/go/bench/native_test.go",
-          "reason": "implementation: contains native-driver benchmark workloads and raw scans used as a local measurement baseline, not a client contract case"
+          "reason": "harness: contains native-driver benchmark workloads and raw scans used as a local measurement baseline, not a client contract case"
         },
         {
           "glob": "packages/go/bench/statements_test.go",
-          "reason": "implementation: checks the SQL and rows of the Go performance measurement harness against its raw native baseline, not shared client behavior"
+          "reason": "harness: checks the SQL and rows of the Go performance measurement harness against its raw native baseline, not shared client behavior"
         },
         {
           "glob": "packages/go/complexquery/complex_query_test.go",
-          "reason": "implementation: its standalone seed-and-database wrapper calls the same fixture and assertComplexSearch helper as the six-client complex-query-product-search owner case, so it adds no distinct shared behavior"
+          "reason": "fixture: its standalone seed-and-database wrapper calls the same fixture and assertComplexSearch helper as the six-client complex-query-product-search owner case, so it adds no distinct shared behavior"
         },
         {
           "glob": "packages/go/engine/dbspec/harness_fixture_test.go",
@@ -96,7 +96,7 @@
         },
         {
           "glob": "packages/go/engine/dbspec/vector_loaders_test.go",
-          "reason": "tests the Go dbspec test-vector decoder and diagnostic paths for malformed harness input, not the client dbspec contract"
+          "reason": "harness: tests the Go dbspec test-vector decoder and diagnostic paths for malformed harness input, not the client dbspec contract"
         },
         {
           "glob": "packages/go/engine/dialect/sqlite_test.go",
@@ -132,7 +132,7 @@
         },
         {
           "glob": "packages/go/internal/conformance/main_test.go",
-          "reason": "tests private helpers of the Go conformance result runner and vector selector; the result harness is not the ORM client behavior"
+          "reason": "harness: tests private helpers of the Go conformance result runner and vector selector; the result harness is not the ORM client behavior"
         },
         {
           "glob": "packages/go/internal/dialects/ddl_physical_test.go",
@@ -156,7 +156,7 @@
         },
         {
           "glob": "packages/go/internal/testassert/read_test.go",
-          "reason": "helper: tests the private typed-value reader used by Go test assertions; no public client behavior is invoked"
+          "reason": "test: tests the private typed-value reader used by Go test assertions; no public client behavior is invoked"
         },
         {
           "glob": "packages/go/model/assignment_test.go",
@@ -232,7 +232,7 @@
         },
         {
           "glob": "packages/go/orm/values_test.go",
-          "reason": "implementation: calls the private Go Func.irFunc encoder directly; public value and column function behavior is exercised through planner cases"
+          "reason": "test: calls the private Go Func.irFunc encoder directly; public value and column function behavior is exercised through planner cases"
         },
         {
           "glob": "packages/go/procevent/procevent_test.go",
@@ -370,7 +370,7 @@
         },
         {
           "glob": "packages/php/tests/CatalogConnectionCoverageSurfaceTest.php",
-          "reason": "implementation: checks the PHP library Catalog class ownership and names of shared coverage helper methods; it does not execute or assert catalog query behavior"
+          "reason": "harness: checks the PHP library Catalog class ownership and names of shared coverage helper methods; it does not execute or assert catalog query behavior"
         },
         {
           "glob": "packages/php/tests/ClientGenericsTest.php",
@@ -402,7 +402,7 @@
         },
         {
           "glob": "packages/php/tests/PlanCacheMemoryTest.php",
-          "reason": "implementation: checks plan and statement cache placeholder bounds and LRU accounting, not query results or a shared client guarantee"
+          "reason": "test: checks plan and statement cache placeholder bounds and LRU accounting, not query results or a shared client guarantee"
         },
         {
           "glob": "packages/php/tests/RelationKeysTest.php",
@@ -487,11 +487,11 @@
         },
         {
           "glob": "packages/php-ext/tests/MarkdownNativeTest.php",
-          "reason": "implementation: checks native Markdown executor class and method registration/ABI ownership, not Markdown execution results"
+          "reason": "ecosystem: checks native Markdown executor class and method registration/ABI ownership, not Markdown execution results"
         },
         {
           "glob": "packages/php-ext/tests/PlanCacheMemoryNativeTest.php",
-          "reason": "implementation: checks native statement-cache retention, LRU eviction and close accounting, not query results or a shared client guarantee"
+          "reason": "test: checks native statement-cache retention, LRU eviction and close accounting, not query results or a shared client guarantee"
         }
       ],
       "shares": "php"
@@ -634,7 +634,7 @@
         },
         {
           "glob": "packages/ts/tests/column_function_metadata.mjs",
-          "reason": "implementation: mutates requests after successful validation to manufacture impossible missing-column states, then checks private planner/parameter/output-assembly invariant failures; public valid and rejected requests are covered by shared planner units"
+          "reason": "test: mutates requests after successful validation to manufacture impossible missing-column states, then checks private planner/parameter/output-assembly invariant failures; public valid and rejected requests are covered by shared planner units"
         },
         {
           "glob": "packages/ts/tests/coverage-case-unit.mjs",
@@ -662,7 +662,7 @@
         },
         {
           "glob": "packages/ts/tests/split-null.test.mjs",
-          "reason": "implementation: tests private split-result identity helpers with SQL NULL rows that cannot be produced by a valid primary-key schema; public null collection-key behavior remains in the six-client collection-key-null-is-codec-decode unit"
+          "reason": "test: tests private split-result identity helpers with SQL NULL rows that cannot be produced by a valid primary-key schema; public null collection-key behavior remains in the six-client collection-key-null-is-codec-decode unit"
         },
         {
           "glob": "packages/ts/tests/syntax-vectors.mjs",
@@ -863,15 +863,15 @@
         },
         {
           "glob": "benchmarks/rust/src/native.rs",
-          "reason": "benchmark: verifies that the standalone sqlx baseline encrypts its benchmark insert value with the documented fixture key; the assertion validates benchmark workload construction, not a Rust ORM behavior"
+          "reason": "harness: verifies that the standalone sqlx baseline encrypts its benchmark insert value with the documented fixture key; the assertion validates benchmark workload construction, not a Rust ORM behavior"
         },
         {
           "glob": "benchmarks/rust/tests/dsn.rs",
-          "reason": "benchmark: tests DSN and iteration argument validation of the standalone Rust benchmark executable, not the ORM client DSN contract"
+          "reason": "harness: tests DSN and iteration argument validation of the standalone Rust benchmark executable, not the ORM client DSN contract"
         },
         {
           "glob": "benchmarks/rust/tests/seeded.rs",
-          "reason": "benchmark: runs and checks the standalone seeded-database benchmark output and statistics; it is a benchmark executable integration test"
+          "reason": "harness: runs and checks the standalone seeded-database benchmark output and statistics; it is a benchmark executable integration test"
         },
         {
           "glob": "packages/rust/testcase/tests/form.rs",
@@ -891,15 +891,15 @@
         },
         {
           "glob": "packages/rust/tests/tests/client_bench_args.rs",
-          "reason": "benchmark: tests missing, malformed and nonpositive iteration arguments of the standalone Rust client_bench executable before it connects; this is benchmark CLI validation, not ORM behavior"
+          "reason": "harness: tests missing, malformed and nonpositive iteration arguments of the standalone Rust client_bench executable before it connects; this is benchmark CLI validation, not ORM behavior"
         },
         {
           "glob": "packages/rust/tests/tests/client_bench_dsn.rs",
-          "reason": "benchmark: tests the standalone Rust client_bench executable refuses a missing or empty benchmark DSN before connecting; this is benchmark CLI validation, not the public client DSN contract"
+          "reason": "harness: tests the standalone Rust client_bench executable refuses a missing or empty benchmark DSN before connecting; this is benchmark CLI validation, not the public client DSN contract"
         },
         {
           "glob": "packages/rust/tests/tests/example_dsn.rs",
-          "reason": "example: tests the standalone complex and demo examples refuse to start without their benchmark DSN; this is example preflight behavior, not the ORM client contract"
+          "reason": "harness: tests the standalone complex and demo examples refuse to start without their benchmark DSN; this is example preflight behavior, not the ORM client contract"
         },
         {
           "glob": "packages/rust/testing/interfaces/src/main.rs",
