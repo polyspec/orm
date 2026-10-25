@@ -15,7 +15,7 @@ const DEADLINE: Duration = Duration::from_secs(300);
 /// Connects with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN. Fails if either is missing, or if the DSN
 /// selects a different database.
 pub async fn connect() -> Db {
-    let (driver, dsn) = super::coverage_database::feature_database();
+    let (driver, dsn) = super::coverage_catalog_connection::coverage_database::feature_database();
     let config = polyspec_orm::Config { aes_key: "bench-salt".into(), blind_index_key: "bench-blind-index".into(), ..Default::default() };
     let db = super::model::connect(&dsn, 2, config).await.or_panic(|e| format!("{driver}: connect: {e}"));
     assert_eq!(db.driver(), driver, "ORM_FEATURE_DSN selects another database than ORM_FEATURE_DATABASE");

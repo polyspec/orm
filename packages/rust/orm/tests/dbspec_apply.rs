@@ -21,7 +21,8 @@ mod dbspec_apply_support;
 #[path = "common/dbspec_probe.rs"]
 mod dbspec_probe;
 
-use dbspec_apply_support::{fixed_now, quiet, record_steps, EventError, Stop};
+use dbspec_apply_support::apply_stop::record_steps;
+use dbspec_apply_support::{fixed_now, quiet, EventError, Stop};
 use dbspec_probe::{connection_rules, lines, repository, require_dsn, run_probe, Conn, Servers, Session, DIALECTS};
 use polyspec_orm::db::{parse_dsn, ConnectOptions};
 use polyspec_orm::dbspec::{
@@ -410,7 +411,7 @@ async fn lock_wait(conn: &mut Conn, db: &str, representative: &[Plan], session: 
         if code(&result) != Some(want_code) {
             return Err(format!("lock wait: {result:?}, want {want_code}"));
         }
-        let detail = result.as_ref().err().expect("expected lock-wait failure").to_string().to_lowercase();
+        let detail = result.as_ref().unwrap_err().to_string().to_lowercase();
         if !detail.contains("lock") && !detail.contains("timeout") {
             return Err(format!("lock-wait failure does not name the held lock: {detail}"));
         }

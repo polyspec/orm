@@ -21,7 +21,7 @@ fn stress_document_round_trips_canonically() {
     let generator = root.join("tests/dbspec/stress.mts");
     let generated = Command::new("node")
         .arg(&generator)
-        .current_dir(&root)
+        .current_dir(root)
         .output()
         .unwrap_or_else(|error| panic!("node {} could not start: {error}", generator.display()));
     assert!(

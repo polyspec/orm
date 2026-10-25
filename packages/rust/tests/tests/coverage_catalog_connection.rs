@@ -12,7 +12,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 #[path = "common/coverage_database.rs"]
-mod coverage_database;
+pub(crate) mod coverage_database;
 
 /// The deadline for one case. It is wall-clock time because it limits what the database does.
 const DEADLINE: Duration = Duration::from_secs(300);

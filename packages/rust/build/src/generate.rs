@@ -851,7 +851,7 @@ fn emit(g: &Gen<'_>, manifest_hash: &str, manifest_file: &str, external_file: Op
         "/// Connects to the database selected by the DSN URI and registers the set of these models on the connection.\npub async fn connect(dsn: &str, pool_size: u32, cfg: polyspec_orm::Config) -> polyspec_orm::Result<polyspec_orm::Db> {\n    polyspec_orm::Db::connect_schema(dsn, &SCHEMA, pool_size, cfg).await\n}\n\n",
     );
     for gm in &g.models {
-        writeln!(b, "pub use {}::{};", gm.module, gm.typ).expect("fmt::Write into a String cannot fail");
+        writeln!(b, "pub type {} = {}::{};", gm.typ, gm.module, gm.typ).expect("fmt::Write into a String cannot fail");
     }
     for c in &g.owners {
         let tr = has_trait(c);

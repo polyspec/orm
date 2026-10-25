@@ -153,29 +153,27 @@ struct ReleaseSqliteBlocker<'a> {
 }
 
 impl CatalogQuerier for ReleaseSqliteBlocker<'_> {
-    fn rows(&mut self, query: &str) -> impl std::future::Future<Output = Result<Vec<Vec<CatalogValue>>, sqlx::Error>> + Send {
-        async move { self.inner.rows(query).await }
+    async fn rows(&mut self, query: &str) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
+        self.inner.rows(query).await
     }
 }
 
 impl ApplyConnection for ReleaseSqliteBlocker<'_> {
-    fn execute(&mut self, statement: &str) -> impl std::future::Future<Output = Result<(), sqlx::Error>> + Send {
-        async move {
-            let result = ApplyConnection::execute(self.inner, statement).await;
-            if statement == "BEGIN EXCLUSIVE" && result.is_err() && !self.released {
-                match ApplyConnection::execute(self.blocker, "ROLLBACK").await {
-                    Ok(()) => self.released = true,
-                    Err(error) => self.release_error = Some(error.to_string()),
-                }
+    async fn execute(&mut self, statement: &str) -> Result<(), sqlx::Error> {
+        let result = ApplyConnection::execute(self.inner, statement).await;
+        if statement == "BEGIN EXCLUSIVE" && result.is_err() && !self.released {
+            match ApplyConnection::execute(self.blocker, "ROLLBACK").await {
+                Ok(()) => self.released = true,
+                Err(error) => self.release_error = Some(error.to_string()),
             }
-            result
         }
+        result
     }
-    fn execute_bound(&mut self, statement: &str, args: &[CatalogValue]) -> impl std::future::Future<Output = Result<(), sqlx::Error>> + Send {
-        async move { self.inner.execute_bound(statement, args).await }
+    async fn execute_bound(&mut self, statement: &str, args: &[CatalogValue]) -> Result<(), sqlx::Error> {
+        self.inner.execute_bound(statement, args).await
     }
-    fn query_bound(&mut self, query: &str, args: &[CatalogValue]) -> impl std::future::Future<Output = Result<Vec<Vec<CatalogValue>>, sqlx::Error>> + Send {
-        async move { self.inner.query_bound(query, args).await }
+    async fn query_bound(&mut self, query: &str, args: &[CatalogValue]) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
+        self.inner.query_bound(query, args).await
     }
 }
 

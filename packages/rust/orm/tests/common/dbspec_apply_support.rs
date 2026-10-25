@@ -4,9 +4,9 @@ use chrono::{DateTime, TimeZone, Utc};
 use polyspec_orm::dbspec::ApplyEvent;
 
 #[path = "apply_stop.rs"]
-mod apply_stop;
+pub(super) mod apply_stop;
 
-pub use apply_stop::{record_steps, EventError, Stop};
+pub use apply_stop::{EventError, Stop};
 
 macro_rules! delegate_bound_methods {
     () => {

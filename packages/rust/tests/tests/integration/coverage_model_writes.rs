@@ -121,7 +121,7 @@ async fn coverage_model_write_arithmetic_attributes() {
                         Ok(())
                     })?;
                 let checks: polyspec_orm::Result<()> = async {
-                    loaded = author().add_all_columns().get_by_seq(1).await?.ok_or(polyspec_orm::Error::NoRows)?;
+                    let mut loaded = author().add_all_columns().get_by_seq(1).await?.ok_or(polyspec_orm::Error::NoRows)?;
                     loaded = loaded.plus_read_count(7);
                     loaded.update(false).await?;
                     let after_plus = author().add_all_columns().get_by_seq(1).await?.ok_or(polyspec_orm::Error::NoRows)?;

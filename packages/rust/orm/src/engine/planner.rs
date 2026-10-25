@@ -659,7 +659,7 @@ impl<'m> Planner<'m> {
         }
         for join in &q.joins {
             let child = s.join(&join.rel).ok_or_else(|| err(codes::INTERNAL, format!("join {} is not in the scope", join.rel)))?;
-            self.append_order(child, &child.q, parts)?;
+            self.append_order(child, child.q, parts)?;
         }
         Ok(())
     }

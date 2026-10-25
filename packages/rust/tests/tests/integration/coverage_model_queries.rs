@@ -78,7 +78,7 @@ async fn coverage_model_query_rows() {
             .await
             .unwrap();
         subscription.unsubscribe();
-        let sql = join_sql.lock().unwrap();
+        let sql = join_sql.lock().unwrap().clone();
         if db.driver() == "sqlite" {
             assert!(sql.contains("INDEXED BY \"ix_service_member_service\""), "joined table forceIndex: {sql}");
         } else if db.driver() == "mysql" {

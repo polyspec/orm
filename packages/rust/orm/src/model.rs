@@ -2038,8 +2038,7 @@ mod page_order_tests {
         let db = Db::connect(&format!("sqlite://{}", path.display()), 1, crate::Config::default()).await.unwrap();
         let make_row = |seq, label: &str| {
             let mut core = Core::new(parent_entity());
-            let mut row = RowState::default();
-            row.names = vec!["seq".into(), "label".into()];
+            let row = RowState { names: vec!["seq".into(), "label".into()], ..RowState::default() };
             core.row = Some(row);
             ParentRow { core, values: HashMap::from([("seq".into(), Val::I64(seq)), ("label".into(), Val::Str(label.into()))]) }
         };

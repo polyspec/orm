@@ -9,8 +9,6 @@ mod coverage_composite_keys;
 mod coverage_constraints_and_relations;
 #[path = "../coverage_catalog_connection.rs"]
 mod coverage_catalog_connection;
-#[path = "../common/coverage_database.rs"]
-mod coverage_database;
 mod coverage_env;
 mod coverage_group_rows_db;
 mod coverage_model_queries;
