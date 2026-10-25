@@ -966,6 +966,112 @@ final class Dialect
     private static function guardResult(\Closure $value): string {}
 }
 
+namespace Polyspec\Orm\Internal;
+
+/** @internal PDO-compatible PostgreSQL adapter backed by one ext-pgsql connection. */
+final class PgsqlPdoAdapter extends \Pdo\Pgsql
+{
+    private readonly \PgSql\Connection $connection;
+    private int $errorCodeValue;
+    private array $errorInfoValue;
+    private int $errmode;
+    private bool $stringifyFetches;
+    private ?\PDOStatement $activeStatement;
+    private ?\Closure $noticeCallback;
+    private bool $transaction;
+    private int $affectedRows;
+    private string|false $lastInsertIdValue;
+    public function __construct(string $dsn, ?string $username = null, ?string $password = null, ?array $options = null) {}
+    public static function connect(string $dsn, ?string $username = null, ?string $password = null, ?array $options = null): static {}
+    public static function connectDsn(string $pdoDsn, ?string $username, ?string $password, int $statementTimeoutMs): PgsqlPdoAdapter {}
+    public function cancelActive(): bool {}
+    public function beginTransaction(): bool {}
+    public function commit(): bool {}
+    public function rollBack(): bool {}
+    public function inTransaction(): bool {}
+    public function exec(string $statement): int|false {}
+    public function prepare(string $query, array $options = []): \PDOStatement|false {}
+    public function query(string $query, ?int $fetchMode = null, mixed ...$fetchModeArgs): \PDOStatement|false {}
+    public function quote(string $string, int $type = \PDO::PARAM_STR): string|false {}
+    public function lastInsertId(?string $name = null): string|false {}
+    public function getAttribute(int $attribute): mixed {}
+    public function setAttribute(int $attribute, mixed $value): bool {}
+    public function errorCode(): ?string {}
+    public function errorInfo(): array {}
+    public function escapeIdentifier(string $input): string {}
+    public function getPid(): int {}
+    public function getNotify(int $fetchMode = \PDO::FETCH_DEFAULT, int $timeoutMilliseconds = 0): array|false {}
+    public function setNoticeCallback(?callable $callback): void {}
+    public function copyFromArray(string $tableName, array $rows, string $separator = "\t", string $nullAs = "\\N", ?string $fields = null): bool {}
+    public function copyFromFile(string $tableName, string $filename, string $separator = "\t", string $nullAs = "\\N", ?string $fields = null): bool {}
+    public function copyToArray(string $tableName, string $separator = "\t", string $nullAs = "\\N", ?string $fields = null): array|false {}
+    public function copyToFile(string $tableName, string $filename, string $separator = "\t", string $nullAs = "\\N", ?string $fields = null): bool {}
+    public function lobCreate(): string|false {}
+    public function lobOpen(string $oid, string $mode = "rb"): mixed {}
+    public function lobUnlink(string $oid): bool {}
+    /** @internal */
+    public function executeSql(string $sql, array $params, bool $simpleQuery = false, array $paramTypes = []): \PgSql\Result {}
+    /** @internal */
+    public function markActive(\PDOStatement $statement): void {}
+    /** @internal */
+    public function finish(\PDOStatement $statement): void {}
+    /** @internal */
+    public function stringifyFetches(): bool {}
+    /** @internal */
+    public function noticeCallback(): ?\Closure {}
+}
+
+/** @internal PDOStatement-compatible result cursor for PgsqlPdoAdapter. */
+final class PgsqlStatementAdapter extends \PDOStatement
+{
+    private array $bindings;
+    private array $bindingTypes;
+    private array $boundRefs;
+    private array $boundRefTypes;
+    private array $boundColumns;
+    private ?\PgSql\Result $result;
+    private array $fetchMode;
+    private int $row;
+    private int $affected;
+    private array $columns;
+    private readonly PgsqlPdoAdapter $pdo;
+    private readonly string $sourceSql;
+    public function __construct(PgsqlPdoAdapter $pdo, string $sourceSql) {}
+    public function bindValue(string|int $param, mixed $value, int $type = \PDO::PARAM_STR): bool {}
+    public function bindParam(string|int $param, mixed &$var, int $type = \PDO::PARAM_STR, int $maxLength = 0, mixed $driverOptions = null): bool {}
+    public function bindColumn(string|int $column, mixed &$var, int $type = \PDO::PARAM_STR, int $maxLength = 0, mixed $driverOptions = null): bool {}
+    public function execute(?array $params = null): bool {}
+    public function fetch(int $mode = \PDO::FETCH_DEFAULT, int $cursorOrientation = \PDO::FETCH_ORI_NEXT, int $cursorOffset = 0): mixed {}
+    public function fetchAll(int $mode = \PDO::FETCH_DEFAULT, mixed ...$args): array {}
+    public function fetchColumn(int $column = 0): mixed {}
+    public function fetchObject(?string $class = 'stdClass', array $constructorArgs = []): object|false {}
+    public function closeCursor(): bool {}
+    public function columnCount(): int {}
+    public function rowCount(): int {}
+    public function getColumnMeta(int $column): array|false {}
+    public function setFetchMode(int $mode, mixed ...$args): true {}
+    public function errorCode(): ?string {}
+    public function errorInfo(): array {}
+    public function getAttribute(int $name): mixed {}
+    public function setAttribute(int $attribute, mixed $value): bool {}
+    public function nextRowset(): bool {}
+    public function getIterator(): \Iterator {}
+    public function debugDumpParams(): ?bool {}
+}
+
+/** @internal Iterates a PostgreSQL statement without consuming its remaining cursor eagerly. */
+final class PgsqlStatementIterator implements \Iterator
+{
+    public function __construct(PgsqlStatementAdapter $statement) {}
+    public function current(): mixed {}
+    public function key(): int {}
+    public function next(): void {}
+    public function rewind(): void {}
+    public function valid(): bool {}
+}
+
+namespace Polyspec\Orm;
+
 /** Opens a database selected by a DSN and constructs SQL function values. */
 final class Orm
 {

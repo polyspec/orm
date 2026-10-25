@@ -16,7 +16,8 @@
     },
     "suggest": {
         "ext-pdo_mysql": "mysql:// DSNs",
-        "ext-pdo_pgsql": "postgres:// DSNs",
+        "ext-pdo_pgsql": "postgres:// PDO handle type and DSNs",
+        "ext-pgsql": "postgres:// query, notification, and in-flight cancellation support",
         "ext-pdo_sqlite": "sqlite:// DSNs",
         "ext-openssl": "host-side AES on PostgreSQL and SQLite (aes columns)",
         "ext-polyspec_orm": "the dbspec surface and the error codes of this client implemented in C under the same class names (packages/php-ext)"

@@ -97,3 +97,4 @@ require_once dirname(__DIR__) . '/markdownmodel/bootstrap.php';
 require_once __DIR__ . '/perf_extensions.php';
 require_once __DIR__ . '/PerformanceGateCoverageCase.php';
 require_once __DIR__ . '/hot_path_read_correctness.php';
+require_once __DIR__ . '/PgsqlPdoAdapterCases.php';

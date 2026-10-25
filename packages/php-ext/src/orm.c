@@ -906,8 +906,48 @@ ZEND_NAMED_FUNCTION(orm_cancel_state_query)
     }
 }
 
+ZEND_NAMED_FUNCTION(orm_cancel_pg_same_connection)
+{
+    ZEND_PARSE_PARAMETERS_NONE();
+    zval rv;
+    zval *pdo = zend_read_property(zend_standard_class_def, Z_OBJ_P(ZEND_THIS), "pdo", sizeof("pdo") - 1, true, &rv);
+    if (pdo == NULL || Z_TYPE_P(pdo) != IS_OBJECT) {
+        zend_throw_error(NULL, "invalid PostgreSQL cancellation handle");
+        RETURN_THROWS();
+    }
+    if (!pdo_call(pdo, "cancelActive", return_value, 0, NULL, NULL)) RETURN_THROWS();
+}
+
 static bool orm_store_cancellation_callbacks(zval *db, zval *pdo, zend_string *dsn, zval *config, zend_string *driver)
 {
+    if (zend_string_equals_literal(driver, "postgres")) {
+        zval context, cancel, state_rv;
+        object_init(&context);
+        zend_update_property(zend_standard_class_def, Z_OBJ(context), "pdo", sizeof("pdo") - 1, pdo);
+        if (!orm_fake_closure(&cancel, orm_cancel_pg_same_connection, "cancel", &context)) {
+            zval_ptr_dtor(&context);
+            return false;
+        }
+        zval_ptr_dtor(&context);
+        zval *state = orm_connection_state(db, &state_rv);
+        zend_update_property(Z_OBJCE_P(state), Z_OBJ_P(state), "cancelConnection", sizeof("cancelConnection") - 1, &cancel);
+        zval null_value; ZVAL_NULL(&null_value);
+        zend_update_property(Z_OBJCE_P(state), Z_OBJ_P(state), "reconnect", sizeof("reconnect") - 1, &null_value);
+        zval state_callback_rv;
+        zval *state_callback = zend_read_property(Z_OBJCE_P(state), Z_OBJ_P(state), "cancelQuery", sizeof("cancelQuery") - 1, true, &state_callback_rv);
+        if (state_callback == NULL || Z_TYPE_P(state_callback) != IS_OBJECT) {
+            zval callback_context, callback;
+            object_init(&callback_context);
+            zend_update_property(Z_OBJCE(callback_context), Z_OBJ(callback_context), "state", sizeof("state") - 1, state);
+            if (!orm_fake_closure(&callback, orm_cancel_state_query, "cancelQuery", &callback_context)) {
+                zval_ptr_dtor(&callback_context); zval_ptr_dtor(&cancel); return false;
+            }
+            zend_update_property(Z_OBJCE_P(state), Z_OBJ_P(state), "cancelQuery", sizeof("cancelQuery") - 1, &callback);
+            zval_ptr_dtor(&callback); zval_ptr_dtor(&callback_context);
+        }
+        zval_ptr_dtor(&cancel);
+        return EG(exception) == NULL;
+    }
     zend_long id;
     if (!orm_connection_id(pdo, driver, &id)) return false;
     zval cancel_context, reopen_context, cancel, reopen, state_rv;
@@ -967,6 +1007,15 @@ static bool orm_connect_sql(zend_string *dsn, zval *config, zval *out, bool list
         db_throw_orm("IR_INVALID", "the DSN parser did not produce a driver and PDO DSN");
         return false;
     }
+    if (zend_string_equals_literal(Z_STR_P(driver), "postgres")) {
+        bool pgsql_driver = zend_hash_str_exists(CG(class_table), "pdo\\pgsql", sizeof("pdo\\pgsql") - 1);
+        bool pgsql_functions = zend_hash_str_exists(CG(function_table), "pg_connect", sizeof("pg_connect") - 1);
+        if (!pgsql_driver || !pgsql_functions) {
+            db_throw_orm("CONFIG", "postgres:// DSNs require PHP extensions ext-pdo_pgsql and ext-pgsql; install both extensions");
+            zval_ptr_dtor(&parsed);
+            return false;
+        }
+    }
     zend_long timeout = zval_get_long(orm_config_value(config, "statementTimeoutMs"));
     zend_string *final_dsn = zend_string_copy(Z_STR_P(pdo_dsn));
     zval options;
@@ -1002,18 +1051,6 @@ static bool orm_connect_sql(zend_string *dsn, zval *config, zval *out, bool list
             }
             zval_ptr_dtor(&tls);
         }
-    } else if (zend_string_equals_literal(Z_STR_P(driver), "postgres")) {
-        smart_str dsn_options = {0};
-        smart_str_append(&dsn_options, final_dsn);
-        smart_str_appends(&dsn_options, ";options='-c TimeZone=UTC");
-        if (timeout > 0) {
-            smart_str_appends(&dsn_options, " -c statement_timeout=");
-            smart_str_append_long(&dsn_options, timeout);
-        }
-        smart_str_appendc(&dsn_options, '\'');
-        smart_str_0(&dsn_options);
-        zend_string_release(final_dsn);
-        final_dsn = dsn_options.s;
     }
     zval connect_args[4], pdo;
     ZVAL_STR_COPY(&connect_args[0], final_dsn);
@@ -1021,7 +1058,16 @@ static bool orm_connect_sql(zend_string *dsn, zval *config, zval *out, bool list
     if (password == NULL || Z_TYPE_P(password) == IS_NULL) ZVAL_NULL(&connect_args[2]); else ZVAL_COPY(&connect_args[2], password);
     ZVAL_COPY(&connect_args[3], &options);
     ZVAL_UNDEF(&pdo);
-    bool connected = scall("PDO::connect", &pdo, 4, connect_args);
+    bool connected;
+    if (zend_string_equals_literal(Z_STR_P(driver), "postgres")) {
+        zval_ptr_dtor(&connect_args[0]);
+        ZVAL_STR_COPY(&connect_args[0], Z_STR_P(pdo_dsn));
+        zval_ptr_dtor(&connect_args[3]);
+        ZVAL_LONG(&connect_args[3], timeout);
+        connected = scall("Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::connectDsn", &pdo, 4, connect_args);
+    } else {
+        connected = scall("PDO::connect", &pdo, 4, connect_args);
+    }
     for (int i = 0; i < 4; i++) zval_ptr_dtor(&connect_args[i]);
     if (!connected) {
         zend_object *cause = EG(exception) != NULL ? take_exception() : NULL;

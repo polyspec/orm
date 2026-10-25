@@ -1,0 +1,119 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Polyspec\Orm\Internal;
+
+use PDOException;
+
+/**
+ * PDO-compatible stream resource around an ext-pgsql large object handle.
+ *
+ * @internal
+ */
+final class PgsqlLargeObjectStream
+{
+    /** @var array<string, array{0: \PgSql\Lob, 1: string}> */
+    private static array $pending = [];
+    private static bool $registered = false;
+    private static int $nextId = 0;
+
+    private ?\PgSql\Lob $lob = null;
+    private bool $eof = false;
+
+    public static function open(\PgSql\Lob $lob, string $mode): mixed
+    {
+        if (!self::$registered) {
+            if (!stream_wrapper_register('polyspec-pgsql-lob', self::class)) {
+                throw new PDOException('cannot register PostgreSQL large-object stream wrapper');
+            }
+            self::$registered = true;
+        }
+        $id = getmypid() . '-' . (++self::$nextId);
+        self::$pending[$id] = [$lob, $mode];
+        $stream = @fopen('polyspec-pgsql-lob://' . $id, $mode);
+        unset(self::$pending[$id]);
+        if (!is_resource($stream)) {
+            pg_lo_close($lob);
+            throw new PDOException('cannot open PostgreSQL large-object stream');
+        }
+        return $stream;
+    }
+
+    public function stream_open(string $path, string $mode, int $options, ?string &$openedPath): bool
+    {
+        $id = parse_url($path, PHP_URL_HOST);
+        if (!is_string($id) || !isset(self::$pending[$id])) {
+            return false;
+        }
+        [$this->lob] = self::$pending[$id];
+        $openedPath = $path;
+        return true;
+    }
+
+    public function stream_read(int $count): string|false
+    {
+        if ($this->lob === null) return false;
+        $value = pg_lo_read($this->lob, $count);
+        if ($value === false) return false;
+        $this->eof = strlen($value) < $count;
+        return $value;
+    }
+
+    public function stream_write(string $data): int|false
+    {
+        if ($this->lob === null) return false;
+        return pg_lo_write($this->lob, $data);
+    }
+
+    public function stream_tell(): int|false
+    {
+        return $this->lob === null ? false : pg_lo_tell($this->lob);
+    }
+
+    public function stream_eof(): bool
+    {
+        return $this->eof;
+    }
+
+    public function stream_seek(int $offset, int $whence = SEEK_SET): bool
+    {
+        if ($this->lob === null || !pg_lo_seek($this->lob, $offset, $whence)) return false;
+        $this->eof = false;
+        return true;
+    }
+
+    public function stream_flush(): bool
+    {
+        return true;
+    }
+
+    public function stream_truncate(int $newSize): bool
+    {
+        return $this->lob !== null && pg_lo_truncate($this->lob, $newSize);
+    }
+
+    public function stream_stat(): array|false
+    {
+        if ($this->lob === null) return false;
+        $position = pg_lo_tell($this->lob);
+        if ($position === false || !pg_lo_seek($this->lob, 0, SEEK_END)) return false;
+        $size = pg_lo_tell($this->lob);
+        pg_lo_seek($this->lob, $position, SEEK_SET);
+        if ($size === false) return false;
+        return ['mode' => 0100600, 2 => 0100600, 'size' => $size, 7 => $size];
+    }
+
+    public function stream_close(): void
+    {
+        if ($this->lob !== null) {
+            pg_lo_close($this->lob);
+            $this->lob = null;
+        }
+    }
+
+    public function stream_set_option(int $option, int $arg1, int $arg2): bool
+    {
+        return false;
+    }
+}

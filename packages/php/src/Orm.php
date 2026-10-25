@@ -51,6 +51,12 @@ final class Orm
             return self::connectMarkdown($dsn, $config);
         }
         [$driver, $pdoDsn, $user, $password, $pragmas, $sslCa] = self::parseDsn($dsn);
+        if ($driver === 'postgres' && (!class_exists(\Pdo\Pgsql::class) || !function_exists('pg_connect'))) {
+            throw new OrmException(
+                Code::CONFIG,
+                'postgres:// DSNs require PHP extensions ext-pdo_pgsql and ext-pgsql; install both extensions'
+            );
+        }
         self::checkConnectionConfig($config);
         $options = [];
         switch ($driver) {
@@ -77,7 +83,9 @@ final class Orm
                 break;
         }
         try {
-            $pdo = \PDO::connect($pdoDsn, $user, $password, $options);
+            $pdo = $driver === 'postgres'
+                ? \Polyspec\Orm\Internal\PgsqlPdoAdapter::connectDsn($pdoDsn, $user, $password, $config->statementTimeoutMs)
+                : \PDO::connect($pdoDsn, $user, $password, $options);
             $pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
             if ($driver === 'sqlite') {
                 // The version of the SQLite library that pdo_sqlite linked. It does not send a statement that
@@ -96,26 +104,33 @@ final class Orm
             throw new OrmException(Code::CONFIG, 'cannot connect: ' . $e->getMessage(), $e);
         }
         $db = new Db($pdo, $driver, $config, new \DateTimeZone('UTC'));
-        $open = static fn(): \PDO => \PDO::connect($pdoDsn, $user, $password, $options);
-        $db->setReconnect($open);
-        if ($driver === 'mysql' || $driver === 'postgres') {
-            $controlDsn = $driver === 'postgres'
-                ? preg_replace('/ -c statement_timeout=\d+/', '', $pdoDsn)
-                : $pdoDsn;
-            $openControl = static fn(): \PDO => \PDO::connect($controlDsn, $user, $password, $options);
-            $connectionIdSql = $driver === 'mysql' ? 'SELECT CONNECTION_ID()' : 'SELECT pg_backend_pid()';
-            $connectionId = (int) $pdo->query($connectionIdSql)->fetchColumn();
+        if ($driver === 'mysql') {
+            $open = static fn(): \PDO => \PDO::connect($pdoDsn, $user, $password, $options);
+            $db->setReconnect($open);
+            $openControl = static fn(): \PDO => \PDO::connect($pdoDsn, $user, $password, $options);
+            $connectionId = (int) $pdo->query('SELECT CONNECTION_ID()')->fetchColumn();
             $db->setCancelConnection(self::cancelConnection($driver, $openControl, $connectionId));
-            $db->setReconnect(static function () use ($open, $openControl, $driver, $connectionIdSql, $db): \PDO {
+            $db->setReconnect(static function () use ($open, $openControl, $db): \PDO {
                 $reconnected = $open();
-                $connectionId = (int) $reconnected->query($connectionIdSql)->fetchColumn();
-                $db->setCancelConnection(self::cancelConnection($driver, $openControl, $connectionId));
+                $connectionId = (int) $reconnected->query('SELECT CONNECTION_ID()')->fetchColumn();
+                $db->setCancelConnection(self::cancelConnection('mysql', $openControl, $connectionId));
                 return $reconnected;
+            });
+        } elseif ($driver === 'postgres') {
+            $db->setCancelConnection(static function () use ($pdo): void {
+                if (!$pdo->cancelActive()) {
+                    throw new OrmException(Code::CONNECTION_LOST, 'PostgreSQL did not accept the cancellation request');
+                }
             });
         }
         if ($driver === 'postgres') {
-            // A LISTEN subscription opens a connection of its own with the same DSN, user, password and options.
-            $db->setListener(static fn (): \PDO => \PDO::connect($pdoDsn, $user, $password, $options));
+            // LISTEN has its own connection, but uses the same PostgreSQL driver adapter.
+            $db->setListener(static fn (): \PDO => \Polyspec\Orm\Internal\PgsqlPdoAdapter::connectDsn(
+                $pdoDsn,
+                $user,
+                $password,
+                $config->statementTimeoutMs
+            ));
         }
         return $db;
     }

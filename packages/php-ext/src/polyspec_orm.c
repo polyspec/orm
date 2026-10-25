@@ -36,6 +36,8 @@
 #include "aes_utils.h"
 #include "privilege_utils.h"
 #include "utils.h"
+#include "pgsql_adapter_native.h"
+#include "pgsql_statement_iterator_native.h"
 
 /* Holds one method's arena. */
 #define ENTER() dbs_arena arena_; dbs_arena *saved_; dbs_enter(&arena_, &saved_)
@@ -2717,6 +2719,14 @@ static PHP_MINIT_FUNCTION(polyspec_orm)
     register_class_Polyspec_Orm_Transform();
     register_class_Polyspec_Orm_Subscription();
     register_class_Polyspec_Orm_Notification();
+    zend_class_entry *pdo_pgsql_ce = zend_hash_str_find_ptr(CG(class_table), "pdo\\pgsql", sizeof("pdo\\pgsql") - 1);
+    if (pdo_pgsql_ce == NULL) pdo_pgsql_ce = zend_hash_str_find_ptr(CG(class_table), "pdo", sizeof("pdo") - 1);
+    zend_class_entry *pdo_statement_ce = zend_hash_str_find_ptr(CG(class_table), "pdostatement", sizeof("pdostatement") - 1);
+    zend_class_entry *pgsql_adapter_ce = register_class_Polyspec_Orm_Internal_PgsqlPdoAdapter(pdo_pgsql_ce);
+    zend_class_entry *pgsql_statement_ce = register_class_Polyspec_Orm_Internal_PgsqlStatementAdapter(pdo_statement_ce);
+    pgsql_adapter_native_register(pgsql_adapter_ce, pgsql_statement_ce);
+    zend_class_entry *pgsql_statement_iterator_ce = register_class_Polyspec_Orm_Internal_PgsqlStatementIterator(zend_ce_iterator);
+    orm_pgsql_statement_iterator_init(pgsql_statement_iterator_ce);
     aes_keyring_set_class(register_class_Polyspec_Orm_AesKeyring());
     aes_rotation_status_set_class(register_class_Polyspec_Orm_AesRotationStatus());
     aes_utils_set_class(register_class_Polyspec_Orm_AesUtils());
@@ -2888,6 +2898,8 @@ static const zend_module_dep polyspec_orm_deps[] = {
     ZEND_MOD_REQUIRED("spl")
     ZEND_MOD_REQUIRED("hash")
     ZEND_MOD_REQUIRED("pdo")
+    ZEND_MOD_OPTIONAL("pgsql")
+    ZEND_MOD_OPTIONAL("pdo_pgsql")
     ZEND_MOD_REQUIRED("json")
     ZEND_MOD_END
 };
