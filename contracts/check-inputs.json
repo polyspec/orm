@@ -3812,6 +3812,17 @@
         "packages/php-ext/src/polyspec_orm.c",
         "packages/php-ext/src/polyspec_orm.stub.php"
       ]
+    },
+    "go-sqlite-version-check": {
+      "scope": "owner",
+      "needs": [
+        "go"
+      ],
+      "inputs": [
+        "packages/go/orm/sqlite_version_test.go",
+        "packages/go/orm/db.go",
+        "packages/go/orm/sqlite/sqlite.go"
+      ]
     }
   },
   "paths": {
