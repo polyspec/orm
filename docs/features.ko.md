@@ -1,5 +1,5 @@
 <!-- doc-id: features -->
-<!-- source-sha256: 52ea0b527236eac2cd6318fcd45832414200ae1e62d952fd8df280a052dc7661 -->
+<!-- source-sha256: 9ef340355b9ec6d31a8ac666150781dc8c43b7b0d94e56307b2425ceb0f74c44 -->
 # 기능 정의
 
 실행 기준은 저장소의 기능 manifest이다. 먼저 manifest의 `source.read_order` 경로를 읽고 선택한 기능의 모든 참조 경로를 읽는다. 각 항목은 input, output, 상태 전이, 오류, parity unit, fixture, test, paired document, 실제 검증 명령을 정의한다.
@@ -22,7 +22,7 @@
 | audit_triggers | 감사 트리거 | implemented | go, php, php-extension, typescript, python, rust |
 | interface_contract | 공통 인터페이스 검증 | implemented | go, php, php-extension, typescript, python, rust |
 | performance_gate | hot-path 성능 기준 | partial | go, php, php-extension, typescript, python, rust |
-| conformance_verification | 적합성 검증 | partial | go, php, php-extension, typescript, python, rust |
+| conformance_verification | 적합성 검증 | implemented | go, php, php-extension, typescript, python, rust |
 | catalog_connection | Catalog 연결 | implemented | go, php, php-extension, typescript, python, rust |
 | request_hook | Request hook | implemented | go, php, php-extension, typescript, python, rust |
 | complex_query | 복합 상품 검색 | implemented | go, php, php-extension, typescript, python, rust |
@@ -46,7 +46,7 @@
 - `audit_triggers`: 테이블의 audit 설정은 audit column과, 그 column의 선언한 restrict foreign key의 대상인 audit 기록 테이블을 정하고, 삽입·갱신된 모든 행을 선언한 history 테이블에 복사하는 행 trigger를 설치한다. 설정은 모든 column을, 또는 exclude나 include 목록이 고른 column만 기록하며, history 테이블은 기록하는 column만 가진다. 연결 설정은 현재 요청의 audit 값을 돌려주는 audit source를 받고, audit 값을 가진 트랜잭션은 이를 한 번 불러 callback 전에 그 값과 트랜잭션의 값으로 감사 대상 테이블이 references로 정한 테이블에 audit 기록 하나를 삽입한다. 트랜잭션 안의 모든 감사 대상 insert, update, soft delete, restore는 그 기록의 key를 쓰며, 이는 모든 트랜잭션 진입점에서 같다: 연결이나 그 context, signal handle을 통한 Go Transaction, PHP transaction, TypeScript transaction, 그리고 Rust transaction, transaction_send, transaction_once다. 중첩 트랜잭션은 바깥 audit을 유지한다.
 - `interface_contract`: 모든 클라이언트는 contracts/interfaces.json에 선언한 공개 심볼을 노출한다. 각 언어는 모델 코드를 실행하지 않고 실제 구문 트리에서 선언을 뽑고, 비교 도구는 심볼, 필드, 반환, 오류가 공통 인터페이스와 다르면 실패한다.
 - `performance_gate`: Coverage는 여섯 클라이언트 모두에 대해 MySQL, PostgreSQL, SQLite에서 같은 PK 및 내림차순 100행 native 비교를 선언한다. 각 사례는 정확한 ORM_FEATURE_DSN에서 두 번 실행되었고, 각 실행의 데이터베이스 전후 상태 digest가 일치했다. 측정은 진단용이다. 구현별 고정 기준값은 기록되지 않아 표준은 KSTD-7-6을 기다리며 partial을 유지한다. 별도 make perf-check의 Go 및 PHP MySQL 기준값은 유지한다.
-- `conformance_verification`: 같은 모델 체인을 Go, PHP, Rust, TypeScript, Python에서 MySQL, PostgreSQL, SQLite로 실행하고 statement와 결과를 기록된 벡터와 비교한다.
+- `conformance_verification`: 여섯 클라이언트(Go, PHP, PHP extension, Rust, TypeScript, Python)가 MySQL, PostgreSQL, SQLite에서 같은 conformance vector를 실행한다. 선택한 각 데이터베이스 owner case를 두 번 실행하고 checker가 결과를 비교하며 실행 전후 데이터베이스 상태가 같은지 확인한다.
 - `catalog_connection`: 여섯 클라이언트는 하나의 DSN으로 catalog 연결을 열고, namespace로 한정한 table metadata와 제한된 page를 읽고, typed grid cell을 사용하는 제한 read-only query를 실행하며, 검증된 snapshot으로 row를 insert, update, delete한다. Catalog read는 runtime model execution과 build-time schema introspection에서 구분된다.
 - `request_hook`: 연결 handle은 hook 하나를 가지며, 그 hook은 handle의 각 request를 plan 직전에 받는다: 읽기, count, page, 행 하나나 여러 행의 insert, update, delete, restore, getQuery다. hook은 client의 매개변수 추가 호출로 predicate, assignment, 매개변수를 더할 수 있다. client는 n_params를 쓰고 request를 다른 request처럼 plan하므로 planner가 검증하고 plan cache는 그 request로 key를 정한다. handle의 행과 transaction은 hook을 지키며, client는 hook에 자기 의미를 붙이지 않는다.
 - `complex_query`: CPX-2는 생성된 공개 product 검색을 컴파일하고 실행한다. 지역화 full-text OR 필터는 IN semijoin으로 표현하고 category membership 필터 하나, 안정적인 like-count 정렬, 관계 6개, 정확한 page/count, 순서가 지정된 데이터베이스 문장 8개를 유지한다. 각 runtime은 MySQL, PostgreSQL, SQLite에서 별도로 seed된 fixture 데이터베이스를 사용하며 SQLite는 문장을 실행하기 전에 full-text operator를 거부한다.
