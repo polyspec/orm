@@ -72,3 +72,18 @@ func TestCatalogSessionEndReportsRollbackCauseWithoutPrimary(t *testing.T) {
 		t.Fatalf("rollback driver cause was lost: %v", err)
 	}
 }
+
+func TestCatalogInsertPreservesIndeterminateCommitCause(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	useFailingDriver(t, "sqlite")
+	catalog, metadata := openCatalogSQLiteDefaultFixture(t, "commit_cause", "CREATE TABLE commit_cause (id INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL)")
+	inject(t, injectedFailure{statement: func(query string) bool { return query == "COMMIT" }})
+
+	_, err := catalog.InsertRow(context.Background(), metadata, []CatalogAssignment{{Name: "payload", Value: "value"}})
+	if ErrorCode(err) != catalogCodeCommitUnknown {
+		t.Fatalf("InsertRow commit error code = %q (%v), want %s", ErrorCode(err), err, catalogCodeCommitUnknown)
+	}
+	if !errors.Is(err, errStatementRejected) {
+		t.Fatalf("InsertRow lost the native commit cause: %v", err)
+	}
+}

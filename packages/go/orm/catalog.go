@@ -215,7 +215,11 @@ func catalogWrite[T any](ctx context.Context, c *CatalogConnection, fn func(s *c
 		case CodeDuplicateKey, CodeForeignKey, CodeConstraint, CodeDeadlock:
 			return zero, s.end(catalogErr(catalogCodeCommitReject, "native commit rejected: %v", mapped))
 		}
-		return zero, s.discard(catalogErr(catalogCodeCommitUnknown, "commit outcome unknown; do not retry: %v", mapped))
+		return zero, s.discard(&ir.Error{
+			Code:  catalogCodeCommitUnknown,
+			Msg:   fmt.Sprintf("commit outcome unknown; do not retry: %v", mapped),
+			Cause: mapped,
+		})
 	}
 	return value, s.discard(nil)
 }
