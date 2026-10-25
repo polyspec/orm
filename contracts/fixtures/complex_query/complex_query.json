@@ -1,4 +1,12 @@
 {
+  "feature": "complex_query",
+  "cases": [
+    {
+      "id": "complex_query_product_search",
+      "operation": "paginate products matching category membership and full-text terms, then fetch the declared relations",
+      "expected": { "row_seqs": [1001, 1002, 1003], "total_count": 3 }
+    }
+  ],
   "schema": "contracts/fixtures/complex_query/complex_query.dbs",
   "case": "product_search_page",
   "mysql_setup": [

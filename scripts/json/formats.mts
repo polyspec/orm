@@ -32,7 +32,16 @@ export const readComposer = (file: string): ComposerManifest => readJsonFile<Com
 export const parseComposer = (text: string, source: string): ComposerManifest => parseJson<ComposerManifest>(text, schema('composer'), source);
 /** The fields of config/parity.json that the scripts read: the implementations and the units. */
 export type ParityConfig = {
-  implementations: { name: string; errors?: { file?: string; pattern?: string } }[];
+  testPatterns?: { runner: string; globs: string[] }[];
+  implementations: {
+    name: string;
+    runner: string;
+    roots: string[];
+    tests?: string[];
+    support?: string[];
+    errors?: { file?: string; pattern?: string };
+    internal?: { glob: string; reason: string }[];
+  }[];
   units: { id: string; kind?: string; requirements?: string[]; bindings?: { implementation: string; test?: string }[]; symbols?: { implementation?: string; symbol?: string }[] }[];
 };
 /** readParityConfig reads config/parity.json, the one source of the parity units. */

@@ -57,7 +57,8 @@
       "parity": [
         "coverage-dsn-connection",
         "generated-fields-require-selection-or-assignment",
-        "generated-nonnull-styled-setter-rejects-sql-null"
+        "generated-nonnull-styled-setter-rejects-sql-null",
+        "mysql-session"
       ],
       "fixtures": [
         "packages/go/orm/test_helpers_test.go",
@@ -124,7 +125,9 @@
         "packages/python/tests/connection_utc.py",
         "packages/python/tests/connection_pool.py",
         "packages/python/tests/mysql_session.py",
-        "packages/php-ext/tests/CoverageDsnConnectionExtensionTest.php"
+        "packages/php-ext/tests/CoverageDsnConnectionExtensionTest.php",
+        "packages/php-ext/tests/MysqlSessionNativeTest.php",
+        "packages/ts/tests/sqlite-version.test.mjs"
       ],
       "docs": [
         "docs/spec/config.md",
@@ -936,7 +939,15 @@
         }
       ],
       "parity": [
-        "coverage-model-query-rows"
+        "coverage-model-query-rows",
+        "go-model-chain-argument-types",
+        "ts-chain-null-on-a-non-null-column",
+        "py-chain-values",
+        "model-ordered-json-output-text",
+        "native-row-cell-bytes",
+        "page-cache-root-limit-values",
+        "rust-val-text-null-and-empty",
+        "plan-cache-in-list-shapes-share-ten-bucketed-keys"
       ],
       "fixtures": [
         "tests/conformance/vectors.json",
@@ -962,6 +973,8 @@
         "packages/php-ext/tests/ModelAssemblyTest.php",
         "packages/php-ext/tests/ModelNativeTest.php",
         "packages/php/tests/GroupRowsDbTest.php",
+        "packages/php-ext/tests/GroupRowsDbNativeTest.php",
+        "packages/php-ext/tests/GroupRowsDbNativeTest.php",
         "packages/php/tests/AggregateNumericTest.php",
         "packages/ts/tests/model.mjs",
         "packages/ts/tests/insert-parts.mjs",
@@ -1035,7 +1048,24 @@
         "packages/python/tests/test_collection_identity.py",
         "packages/python/tests/test_group_rows.py",
         "packages/rust/orm/src/row.rs",
-        "packages/php-ext/tests/CoverageNativeFixtureExtensionTest.php"
+        "packages/php-ext/tests/CoverageNativeFixtureExtensionTest.php",
+        "packages/go/model/chain_types_test.go",
+        "packages/php/tests/ModelJsonTextTest.php",
+        "packages/php/tests/NativeCellReadTest.php",
+        "packages/ts/tests/chain-null.mjs",
+        "packages/ts/tests/driver-cell-bytes.mjs",
+        "packages/ts/tests/styled-value-checks.mjs",
+        "packages/python/tests/test_chain_values.py",
+        "packages/rust/orm/tests/val_text.rs",
+        "packages/rust/tests/tests/integration/coverage_group_rows_db.rs",
+        "packages/ts/tests/model_json_output.test.mts",
+        "packages/php-ext/tests/PlanCacheBoundNativeTest.php",
+        "packages/php/tests/PageCacheBoundCases.php",
+        "packages/ts/tests/split-null.test.mjs",
+        "packages/python/tests/test_group_rows_db.py",
+        "packages/python/tests/test_split_null.py",
+        "packages/php-ext/tests/ChainNativeSurfaceTest.php",
+        "packages/go/model/group_rows_db_test.go"
       ],
       "docs": [
         "docs/spec/dsl.md",
@@ -1783,7 +1813,30 @@
       "parity": [
         "coverage-model-write-cycle",
         "coverage-model-create-parts",
-        "coverage-model-write-arithmetic-attributes"
+        "coverage-model-write-arithmetic-attributes",
+        "go-internal-packages-go-orm-revision-update-match",
+        "go-internal-packages-go-orm-revision-update-mismatch",
+        "go-internal-packages-go-orm-revision-delete-match",
+        "go-internal-packages-go-orm-revision-delete-mismatch",
+        "php-internal-revision-update-match",
+        "php-internal-revision-update-mismatch",
+        "php-internal-revision-delete-match",
+        "php-internal-revision-delete-mismatch",
+        "ts-revision-update-match",
+        "ts-revision-update-mismatch",
+        "ts-revision-delete-match",
+        "ts-revision-delete-mismatch",
+        "python-internal-revision-update-match",
+        "python-internal-revision-update-mismatch",
+        "python-internal-revision-delete-match",
+        "python-internal-revision-delete-mismatch",
+        "rust-revision-update-match",
+        "rust-revision-update-mismatch",
+        "rust-revision-delete-match",
+        "rust-revision-delete-mismatch",
+        "ts-styled-value-checks-setter",
+        "ts-styled-value-checks-output",
+        "ts-styled-value-checks-encoding"
       ],
       "fixtures": [
         "tests/conformance/vectors.json",
@@ -1850,7 +1903,14 @@
         "packages/python/tests/test_new_values.py",
         "packages/python/tests/test_insert_parts.py",
         "packages/python/tests/test_sqlite.py",
-        "packages/python/tests/coverage_model_writes.py"
+        "packages/python/tests/coverage_model_writes.py",
+        "packages/go/orm/revision_test.go",
+        "packages/php/tests/RevisionTest.php",
+        "packages/ts/tests/revision.mjs",
+        "packages/python/tests/test_revision.py",
+        "packages/rust/orm/tests/revision.rs",
+        "packages/ts/tests/save-key-errors.test.mjs",
+        "packages/php-ext/tests/ModelWriteSurfaceTest.php"
       ],
       "docs": [
         "docs/spec/dsl.md",
@@ -2553,7 +2613,12 @@
         "transaction-failure-rollback",
         "transaction-failure-rollback-fault",
         "transaction-failure-savepoint-end",
-        "transaction-control-methods-are-private"
+        "transaction-control-methods-are-private",
+        "mysql-lock-wait-canceled",
+        "ts-transaction-flow-shared-context",
+        "ts-transaction-flow-overlap",
+        "rust-transaction-flow-spawned-task",
+        "rust-transaction-flow-overlap"
       ],
       "fixtures": [
         "packages/php/tests/deadlock_child.php",
@@ -2615,7 +2680,26 @@
         "packages/python/tests/test_utils_statements.py",
         "packages/python/tests/test_row_lock_event.py",
         "packages/python/tests/coverage_transactions.py",
-        "packages/php-ext/tests/CoverageTransactionsExtensionTest.php"
+        "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
+        "packages/go/orm/transaction_api_test.go",
+        "packages/ts/tests/chain-types.mjs",
+        "packages/python/tests/test_transaction_flow.py",
+        "packages/php/tests/OrmExceptionLockWaitTest.php",
+        "packages/ts/tests/driver-error-lock-wait.mjs",
+        "packages/ts/tests/transaction-flow.mjs",
+        "packages/rust/orm/tests/transaction_flow.rs",
+        "packages/php-ext/tests/ConnectionTimeoutCleanupTest.php",
+        "packages/ts/tests/sqlite-row-lock-restore.mjs",
+        "packages/ts/tests/was-inserted.mjs",
+        "packages/python/tests/test_query_cancel.py",
+        "packages/python/tests/test_sqlite_row_lock_restore.py",
+        "packages/python/tests/test_was_inserted.py",
+        "packages/php/tests/CatalogCommitFailureTest.php",
+        "packages/php/tests/SqliteRowLockRestoreTest.php",
+        "packages/php/tests/WasInsertedTest.php",
+        "packages/php-ext/tests/UtilsNativeTest.php",
+        "packages/go/orm/catalog_session_error_test.go",
+        "packages/go/orm/sqlite_lock_restore_test.go"
       ],
       "docs": [
         "docs/spec/config.md",
@@ -3681,7 +3765,10 @@
       ],
       "parity": [
         "generated-typed-getter-public-column-api",
-        "coverage-model-generation-model-generation-check"
+        "coverage-model-generation-model-generation-check",
+        "dynamic-model-chains-resolve-at-call-time",
+        "dynamic-vs-scanned-model-chain-dispatch",
+        "model-connection-and-join-methods"
       ],
       "fixtures": [
         "packages/go/model/coverage_helpers_test.go",
@@ -3718,7 +3805,10 @@
         "packages/python/tests/test_query_methods.py",
         "packages/python/tests/test_packaging.py",
         "packages/python/tests/test_requires_python.py",
-        "packages/python/tests/coverage_model_generation.py"
+        "packages/python/tests/coverage_model_generation.py",
+        "packages/php-ext/tests/ModelDslNativeTest.php",
+        "packages/php-ext/tests/RegistrySchemaNativeTest.php",
+        "packages/php-ext/tests/RuntimeModelTest.php"
       ],
       "docs": [
         "docs/spec/dsl.md",
@@ -4015,7 +4105,10 @@
         "coverage-schema-definition-dbspec-analyze-tokens",
         "coverage-schema-definition-dbspec-format",
         "coverage-schema-definition-dbspec-format-refusal",
-        "coverage-schema-definition-dbspec-parse-positions"
+        "coverage-schema-definition-dbspec-parse-positions",
+        "dbspec-introspect-query-count",
+        "dbspec-introspect-round-trip",
+        "dbspec-plan-physical"
       ],
       "fixtures": [
         "contracts/fixtures/bench/bench.dbs",
@@ -4192,7 +4285,20 @@
         "packages/python/tests/test_dbspec_cases_reader.py",
         "packages/python/tests/test_introspect_messages.py",
         "packages/go/engine/dbspec/names_test.go",
-        "packages/php/tests/DbspecPlanReaderTest.php"
+        "packages/php/tests/DbspecPlanReaderTest.php",
+        "packages/go/engine/dbspec/introspect_query_count_test.go",
+        "packages/php/tests/DbspecIntrospectQueryCountTest.php",
+        "packages/ts/tests/dbspec-introspect-query-count.mjs",
+        "packages/python/tests/dbspec_introspect_queries.py",
+        "packages/python/tests/test_dbspec_introspect_query_count.py",
+        "packages/python/tests/dbspec_plan_physical.py",
+        "packages/rust/orm/tests/dbspec_introspect_query_count.rs",
+        "packages/php-ext/tests/DbspecIntrospectNativeTest.php",
+        "packages/ts/tests/dbspec-mermaid-errors.mjs",
+        "packages/python/tests/mermaid_error_boundary.py",
+        "packages/php/tests/DbspecMermaidErrorBoundaryTest.php",
+        "packages/php/tests/SetReaderDiagnosticsTest.php",
+        "packages/php-ext/tests/MermaidErrorBoundaryTest.php"
       ],
       "docs": [
         "docs/spec/dbspec.md",
@@ -4767,7 +4873,8 @@
       "parity": [
         "coverage-schema-install-existing",
         "coverage-schema-install-partial",
-        "coverage-schema-install-external-documents"
+        "coverage-schema-install-external-documents",
+        "dbspec-apply-chain-finalization"
       ],
       "fixtures": [
         "packages/go/model/coverage_helpers_test.go",
@@ -4835,7 +4942,15 @@
         "packages/python/tests/case_database.py",
         "packages/python/tests/coverage_schema_install.py",
         "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
-        "packages/php-ext/tests/CoverageNativeChangedDatabaseExtensionTest.php"
+        "packages/php-ext/tests/CoverageNativeChangedDatabaseExtensionTest.php",
+        "packages/ts/tests/dbspec-apply-verify-errors.mjs",
+        "packages/ts/tests/dbspec-begin-exclusive-lock.mjs",
+        "packages/python/tests/test_dbspec_sqlite_lock.py",
+        "packages/python/tests/test_dbspec_verify_errors.py",
+        "packages/php/tests/DbspecSqliteLockTest.php",
+        "packages/php-ext/tests/DbspecVerifyErrorsTest.php",
+        "packages/php-ext/tests/SchemaUtilsNativeTest.php",
+        "packages/go/engine/dbspec/sqlite_lock_result_test.go"
       ],
       "docs": [
         "docs/spec/schema.md",
@@ -5394,7 +5509,9 @@
         }
       ],
       "parity": [
-        "planner"
+        "planner",
+        "ir-validate",
+        "planner_scalar_subquery_aggregate_types"
       ],
       "fixtures": [
         "contracts/fixtures/planner.json",
@@ -5436,7 +5553,16 @@
         "packages/php/tests/PlanCacheBoundTest.php",
         "packages/ts/tests/plan-cache-in.mjs",
         "packages/python/tests/test_plan_cache_bound.py",
-        "packages/php-ext/tests/CoveragePlannerExtensionTest.php"
+        "packages/php-ext/tests/CoveragePlannerExtensionTest.php",
+        "packages/php-ext/tests/ValidatorNativeTest.php",
+        "packages/ts/tests/column_function_metadata.mjs",
+        "packages/ts/tests/scalar_subquery_type.mjs",
+        "packages/python/tests/test_blind_index_source.py",
+        "packages/python/tests/test_column_function_metadata.py",
+        "packages/python/tests/test_scalar_subquery_type.py",
+        "packages/go/engine/planner/scalar_subquery_type_test.go",
+        "packages/rust/orm/tests/unit/markdown_scalar_subquery.rs",
+        "packages/go/orm/values_test.go"
       ],
       "docs": [
         "docs/spec/protocol.md",
@@ -6935,7 +7061,23 @@
         "coverage-authenticated-encryption-aes-round-trip",
         "coverage-authenticated-encryption-aes-tamper-rejected",
         "coverage-authenticated-encryption-aes-wrong-key-rejected",
-        "coverage-authenticated-encryption-blind-index-vector"
+        "coverage-authenticated-encryption-blind-index-vector",
+        "aes-read-path-codes",
+        "aes-rotation-path-codes",
+        "aes-read-row-without-version-cell",
+        "aes-plan-without-version-column",
+        "aes-keyring-lacks-stored-version",
+        "aes-null-version-with-aes-value",
+        "aes-null-aes-null-version",
+        "aes-rotation-null-aes-unchanged",
+        "aes-stored-version-text",
+        "aes-stored-version-zero-read",
+        "aes-stored-version-above-i32",
+        "aes-undeclared-key-version",
+        "aes-stored-version-text-decodes",
+        "aes-rotation-stored-version-zero",
+        "aes-rotation-row-without-aes-column",
+        "aes-rotation-status-operation"
       ],
       "fixtures": [
         "tests/codec/aes-vectors.json",
@@ -6981,7 +7123,18 @@
         "packages/python/tests/test_codec_aes_vectors.py",
         "packages/python/tests/test_codec_vectors.py",
         "packages/python/tests/codec_vector.py",
-        "packages/python/tests/coverage_authenticated_encryption.py"
+        "packages/python/tests/coverage_authenticated_encryption.py",
+        "packages/php/tests/AesVersionCodesTest.php",
+        "packages/ts/tests/aes-version-codes.mjs",
+        "packages/python/tests/aes_rotation.py",
+        "packages/python/tests/test_aes_version_codes.py",
+        "packages/ts/tests/codec-aes-errors.test.mjs",
+        "packages/ts/tests/codec-errors.test.mjs",
+        "packages/php/tests/BlindIndexSourcePlannerTest.php",
+        "packages/php/tests/CodecYamlCauseTest.php",
+        "packages/php-ext/tests/AesUtilsNativeTest.php",
+        "packages/php-ext/tests/CodecCauseTest.php",
+        "packages/go/engine/planner/blind_index_source_test.go"
       ],
       "docs": [
         "docs/spec/codec.md",
@@ -8703,7 +8856,8 @@
         "contracts/fixtures/external/member_v2.dbs",
         "packages/python/tests/coverage_audit_triggers.py",
         "packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php",
-        "packages/php-ext/tests/CoverageAuditColumnsExtensionTest.php"
+        "packages/php-ext/tests/CoverageAuditColumnsExtensionTest.php",
+        "packages/php-ext/tests/AuditLazyFakePdoTest.php"
       ],
       "docs": [
         "docs/spec/dbspec.md",
@@ -9235,7 +9389,10 @@
         }
       ],
       "parity": [
-        "coverage-interface-contract-interface-symbols"
+        "coverage-interface-contract-interface-symbols",
+        "postgres-listen-notify",
+        "native-public-package-entry",
+        "native-driver-error-cause"
       ],
       "fixtures": [
         "contracts/interfaces.json",
@@ -9264,7 +9421,17 @@
         "packages/python/testing/interfaces/python.py",
         "packages/python/tests/test_python_extractor.py",
         "packages/python/tests/test_python_natives.py",
-        "packages/php-ext/tests/CoverageInterfaceContractNativeTest.php"
+        "packages/php-ext/tests/CoverageInterfaceContractNativeTest.php",
+        "packages/go/orm/listen_notify_test.go",
+        "packages/go/orm/package_entry_test.go",
+        "packages/php/tests/ListenNotifyTest.php",
+        "packages/php/tests/PackageEntryPointTest.php",
+        "packages/ts/tests/listen-notify.mjs",
+        "packages/rust/orm/tests/listen_notify.rs",
+        "packages/rust/orm/tests/package_entry.rs",
+        "packages/python/tests/listen_notify.py",
+        "packages/python/tests/test_package_entry.py",
+        "packages/php-ext/tests/DriverErrorTest.php"
       ],
       "docs": [
         "docs/spec/interfaces.md",
@@ -9490,8 +9657,8 @@
       "title": "Hot-path performance standard",
       "title_ko": "hot-path \uc131\ub2a5 \uae30\uc900",
       "status": "partial",
-      "description": "Coverage declares the same PK and descending 100-row native comparison for all six clients on MySQL, PostgreSQL, and SQLite. Each database-specific case uses the exact ORM_FEATURE_DSN that the state reader checks. These feature measurements are diagnostic; their database executions and fixed references remain pending. The separate make perf-check retains its recorded Go and PHP MySQL bounds.",
-      "description_ko": "Coverage\ub294 \uc5ec\uc12f \ud074\ub77c\uc774\uc5b8\ud2b8 \ubaa8\ub450\uc5d0 \ub300\ud574 MySQL, PostgreSQL, SQLite\uc5d0\uc11c \uac19\uc740 PK \ubc0f \ub0b4\ub9bc\ucc28\uc21c 100\ud589 native \ube44\uad50\ub97c \uc120\uc5b8\ud55c\ub2e4. \uac01 \ub370\uc774\ud130\ubca0\uc774\uc2a4\ubcc4 \uc0ac\ub840\ub294 state reader\uac00 \ud655\uc778\ud558\ub294 \uac83\uacfc \uc815\ud655\ud788 \uac19\uc740 ORM_FEATURE_DSN\uc744 \uc0ac\uc6a9\ud55c\ub2e4. \uc774 feature \uce21\uc815\uc740 \uc9c4\ub2e8\uc6a9\uc774\uba70 \ub370\uc774\ud130\ubca0\uc774\uc2a4 \uc2e4\ud589 \uadfc\uac70\uc640 \uace0\uc815 \uae30\uc900\uac12\uc740 \uc544\uc9c1 \uc5c6\ub2e4. \ubcc4\ub3c4 make perf-check\uc758 Go \ubc0f PHP MySQL \uae30\uc900\uac12\uc740 \uc720\uc9c0\ud55c\ub2e4.",
+      "description": "Coverage declares the same PK and descending 100-row native comparison for all six clients on MySQL, PostgreSQL, and SQLite. Each case has now run twice on its exact ORM_FEATURE_DSN, with matching before/after database-state digests. Measurements remain diagnostic; fixed per-implementation references are not recorded, so the standard remains partial pending KSTD-7-6. The separate make perf-check retains its recorded Go and PHP MySQL bounds.",
+      "description_ko": "Coverage\ub294 \uc5ec\uc12f \ud074\ub77c\uc774\uc5b8\ud2b8 \ubaa8\ub450\uc5d0 \ub300\ud574 MySQL, PostgreSQL, SQLite\uc5d0\uc11c \uac19\uc740 PK \ubc0f \ub0b4\ub9bc\ucc28\uc21c 100\ud589 native \ube44\uad50\ub97c \uc120\uc5b8\ud55c\ub2e4. \uac01 \uc0ac\ub840\ub294 \uc815\ud655\ud55c ORM_FEATURE_DSN\uc5d0\uc11c \ub450 \ubc88 \uc2e4\ud589\ub418\uc5c8\uace0, \uac01 \uc2e4\ud589\uc758 \ub370\uc774\ud130\ubca0\uc774\uc2a4 \uc804\ud6c4 \uc0c1\ud0dc digest\uac00 \uc77c\uce58\ud588\ub2e4. \uce21\uc815\uc740 \uc9c4\ub2e8\uc6a9\uc774\ub2e4. \uad6c\ud604\ubcc4 \uace0\uc815 \uae30\uc900\uac12\uc740 \uae30\ub85d\ub418\uc9c0 \uc54a\uc544 \ud45c\uc900\uc740 KSTD-7-6\uc744 \uae30\ub2e4\ub9ac\uba70 partial\uc744 \uc720\uc9c0\ud55c\ub2e4. \ubcc4\ub3c4 make perf-check\uc758 Go \ubc0f PHP MySQL \uae30\uc900\uac12\uc740 \uc720\uc9c0\ud55c\ub2e4.",
       "inputs": {
         "type": "BenchmarkDatabase",
         "fields": [
@@ -9518,7 +9685,8 @@
         }
       ],
       "parity": [
-        "hot-path-read-correctness"
+        "hot-path-read-correctness",
+        "hot-path-performance-measurement"
       ],
       "fixtures": [
         "docs/operations/perf-raw-go-native.txt",
@@ -9868,7 +10036,7 @@
             }
           },
           "rust": {
-            "part": "packages/rust/tests/tests",
+            "part": "packages/rust/tests",
             "tests": [
               "packages/rust/tests/tests/coverage_performance_gate.rs"
             ],
@@ -9959,7 +10127,8 @@
         "conformance-mysql",
         "conformance-postgres",
         "conformance-sqlite",
-        "coverage-conformance-verification-conformance-vector"
+        "coverage-conformance-verification-conformance-vector",
+        "markdown-conformance"
       ],
       "fixtures": [
         "tests/conformance/vectors.json",
@@ -10008,7 +10177,8 @@
         "packages/python/tests/conformance_postgres.py",
         "packages/python/tests/conformance_sqlite.py",
         "packages/python/tests/coverage_conformance_verification.py",
-        "packages/python/tests/conformance_result.py"
+        "packages/python/tests/conformance_result.py",
+        "packages/php-ext/tests/MarkdownConformanceNativeTest.php"
       ],
       "docs": [
         "tests/conformance/README.md",
@@ -10494,7 +10664,16 @@
         "packages/rust/tests/tests/coverage_catalog_connection.rs",
         "packages/php-ext/tests/CatalogConnectionSurfaceTest.php",
         "packages/php-ext/tests/CatalogConnectionCoverageSurfaceTest.php",
-        "packages/php-ext/tests/CoverageCatalogConnectionTest.php"
+        "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
+        "packages/go/orm/coverage_catalog_connection_test.go",
+        "packages/php/tests/CoverageCatalogConnectionTest.php",
+        "packages/ts/tests/coverage_catalog_connection.mjs",
+        "packages/python/tests/coverage_catalog_connection.py",
+        "packages/python/tests/test_catalog_auto_key.py",
+        "packages/php/tests/CatalogConnectionCoverageSurfaceTest.php",
+        "packages/php/tests/CatalogQueryBoundsTest.php",
+        "packages/php-ext/tests/PrivilegeUtilsNativeTest.php",
+        "packages/go/orm/catalog_auto_identity_test.go"
       ],
       "docs": [
         "docs/spec/schema.md",
@@ -10978,7 +11157,8 @@
         "packages/rust/orm/tests/request_hook.rs",
         "packages/python/tests/test_request_hook.py",
         "packages/python/tests/coverage_request_hook.py",
-        "packages/php-ext/tests/CoverageRequestHookExtensionTest.php"
+        "packages/php-ext/tests/CoverageRequestHookExtensionTest.php",
+        "packages/php-ext/tests/RequestHookNativeTest.php"
       ],
       "docs": [
         "docs/operations/usage.md",
@@ -11744,7 +11924,7 @@
       "id": "complex_query",
       "title": "Complex product search",
       "title_ko": "복합 상품 검색",
-      "status": "partial",
+      "status": "implemented",
       "description": "CPX-2 compiles and executes a generated public product search with localized full-text OR filters expressed as IN semijoins, one category membership filter, stable like-count ordering, six relations, an exact page and count, and eight ordered database statements. Each runtime uses its own seeded fixture database on MySQL, PostgreSQL, and SQLite; SQLite rejects full-text operators before issuing a statement.",
       "description_ko": "CPX-2는 생성된 공개 product 검색을 컴파일하고 실행한다. 지역화 full-text OR 필터는 IN semijoin으로 표현하고 category membership 필터 하나, 안정적인 like-count 정렬, 관계 6개, 정확한 page/count, 순서가 지정된 데이터베이스 문장 8개를 유지한다. 각 runtime은 MySQL, PostgreSQL, SQLite에서 별도로 seed된 fixture 데이터베이스를 사용하며 SQLite는 문장을 실행하기 전에 full-text operator를 거부한다.",
       "inputs": {
@@ -11782,7 +11962,8 @@
         }
       ],
       "parity": [
-        "complex-query-product-search"
+        "complex-query-product-search",
+        "fulltext-search"
       ],
       "fixtures": [
         "contracts/fixtures/complex_query/complex_query.dbs",
@@ -11794,7 +11975,13 @@
         "packages/php-ext/tests/ComplexQueryNativeTest.php",
         "packages/ts/tests/coverage_complex_query.mjs",
         "packages/python/tests/coverage_complex_query.py",
-        "packages/rust/tests/tests/integration/coverage_complex_query.rs"
+        "packages/rust/tests/tests/integration/coverage_complex_query.rs",
+        "packages/go/engine/fulltext_search_test.go",
+        "packages/php/tests/FulltextSearchTest.php",
+        "packages/ts/tests/fulltext-search.mjs",
+        "packages/python/tests/fulltext_search.py",
+        "packages/rust/orm/tests/fulltext_search.rs",
+        "packages/ts/tests/complex-query.mjs"
       ],
       "docs": [
         "docs/spec/complex-query.md",

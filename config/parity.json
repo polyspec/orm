@@ -168,6 +168,42 @@
         {
           "glob": "packages/go/orm/split_plan_test.go",
           "reason": "test: an internal package test of the go module that measures what a split read allocates, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/go/orm/mysqlonly/mysqlonly_test.go",
+          "reason": "ecosystem: an internal test of the Go module import boundary that checks which driver packages are linked, not a shared client behaviour (K313)"
+        },
+        {
+          "glob": "examples/dsn_test.go",
+          "reason": "example: tests that the standalone examples refuse to start without their benchmark DSN; the preflight belongs to the example commands, not to the ORM client contract"
+        },
+        {
+          "glob": "examples/outputs_test.go",
+          "reason": "example: compares the output of the runnable example programs against their seeded database; this is the repository example integration contract, not a client-library behavior"
+        },
+        {
+          "glob": "packages/go/engine/dbspec/harness_fixture_test.go",
+          "reason": "harness: creates intentionally invalid dbspec vectors for the Go harness's child-process failure test; these vectors are not accepted ORM inputs or client behavior"
+        },
+        {
+          "glob": "packages/go/internal/testassert/read_test.go",
+          "reason": "helper: tests the private typed-value reader used by Go test assertions; no public client behavior is invoked"
+        },
+        {
+          "glob": "packages/go/procevent/procevent_test.go",
+          "reason": "harness: tests Go process-exit and directory-event observation helpers used by test runners; it does not exercise ORM client behavior"
+        },
+        {
+          "glob": "packages/go/testcase/stall_test.go",
+          "reason": "harness: tests testcase step-budget and stalled-case cancellation primitives used to run tests; it does not exercise an ORM contract"
+        },
+        {
+          "glob": "packages/go/testcase/testcase_fixture_test.go",
+          "reason": "harness: supplies tagged child-process fixtures whose deliberate pass, failure, skip, group and deadline outcomes are inspected by the testcase harness tests"
+        },
+        {
+          "glob": "packages/go/testcase/testcase_test.go",
+          "reason": "harness: tests testcase output formatting and runner/group/deadline primitives; its subject is the Go test harness rather than an ORM client behavior"
         }
       ]
     },
@@ -203,7 +239,47 @@
         "packages/php/tests/sqlite_concurrency_writer.php",
         "packages/php/tests/statement_events_run.php",
         "packages/php/tests/dbspec_plan_cases.php",
-        "packages/php/tests/dbspec_behaviour.php"
+        "packages/php/tests/dbspec_behaviour.php",
+        "packages/php/tests/CallbackFailed.php",
+        "packages/php/tests/CannedCatalogPdo.php",
+        "packages/php/tests/CodecYamlProbe.php",
+        "packages/php/tests/ColumnFunctionMetadataAssertions.php",
+        "packages/php/tests/ComplexQueryDbCase.php",
+        "packages/php/tests/CountingPdo.php",
+        "packages/php/tests/CoverageCompositeKeysCase.php",
+        "packages/php/tests/CoverageModelQueriesCase.php",
+        "packages/php/tests/DbspecIntrospectQueryCountCases.php",
+        "packages/php/tests/DbspecTimedCases.php",
+        "packages/php/tests/FailingPdo.php",
+        "packages/php/tests/FailingSqliteLockPdo.php",
+        "packages/php/tests/FailingStatement.php",
+        "packages/php/tests/FakeSqliteLockStatement.php",
+        "packages/php/tests/MysqlTlsCases.php",
+        "packages/php/tests/NativeByteCellFixture.php",
+        "packages/php/tests/Served.php",
+        "packages/php/tests/SqliteConcurrencyWriter.php",
+        "packages/php/tests/SqliteRowLockPdo.php",
+        "packages/php/tests/SqliteRowLockStatement.php",
+        "packages/php/tests/StatementCountingPdo.php",
+        "packages/php/tests/StatementEventLog.php",
+        "packages/php/tests/Stop.php",
+        "packages/php/tests/TransactionCloseDuringFailure.php",
+        "packages/php/tests/TransactionTrackingPdo.php",
+        "packages/php/tests/UninitializedRecordingPdo.php",
+        "packages/php/tests/codec-yaml-probe.php",
+        "packages/php/tests/collection-weak-caller.php",
+        "packages/php/tests/dbspec_verify_errors_case.php",
+        "packages/php/tests/fixtures/CodecProbeYaml.php",
+        "packages/php/tests/fixtures/CodecProbeYamlStream.php",
+        "packages/php/tests/generated_classes.php",
+        "packages/php/tests/generated_fixture.php",
+        "packages/php/tests/limit_columns_peak.php",
+        "packages/php/tests/model-types-weak-caller.php",
+        "packages/php/tests/phpstan/CollectionGet.php",
+        "packages/php/tests/phpstan/GroupRowsIteration.php",
+        "packages/php/tests/phpstan/RawCollection.php",
+        "packages/php/tests/three_drivers.php",
+        "packages/php/tests/was_inserted_child.php"
       ],
       "symbols": {
         "extractor": "php",
@@ -284,7 +360,34 @@
       ],
       "support": [
         "packages/php-ext/tests/bootstrap.php",
-        "packages/php-ext/tests/declarations.php"
+        "packages/php-ext/tests/declarations.php",
+        "packages/php-ext/tests/AuditLazyFakePdo.php",
+        "packages/php-ext/tests/AuditLazyFakeStatement.php",
+        "packages/php-ext/tests/CatalogCommitFailureLink.php",
+        "packages/php-ext/tests/CatalogCommitFailureResult.php",
+        "packages/php-ext/tests/CatalogCommitFailureStatement.php",
+        "packages/php-ext/tests/CatalogMetadataFailurePdo.php",
+        "packages/php-ext/tests/CatalogMetadataFailureStatement.php",
+        "packages/php-ext/tests/ChainNativeRegistryFixture.php",
+        "packages/php-ext/tests/CollectionFakePdo.php",
+        "packages/php-ext/tests/CollectionFixtureModel.php",
+        "packages/php-ext/tests/ConnectionTimeoutCleanupPdo.php",
+        "packages/php-ext/tests/ConnectionTimeoutCleanupStatement.php",
+        "packages/php-ext/tests/CoverageNativeDecimalModel.php",
+        "packages/php-ext/tests/DslFixture.php",
+        "packages/php-ext/tests/ModelReadShapeFixture.php",
+        "packages/php-ext/tests/ModelReadWarningStream.php",
+        "packages/php-ext/tests/ModelStreamFixture.php",
+        "packages/php-ext/tests/ModelStreamWarningWrapper.php",
+        "packages/php-ext/tests/ModelTypesPendingFixture.php",
+        "packages/php-ext/tests/NativeModelFixture.php",
+        "packages/php-ext/tests/NativeTestEventLog.php",
+        "packages/php-ext/tests/PhpExtensionBootstrapAssertions.php",
+        "packages/php-ext/tests/RuntimeModelBadGeneratedFixture.php",
+        "packages/php-ext/tests/RuntimeModelGeneratedFixture.php",
+        "packages/php-ext/tests/declarations_functions.php",
+        "packages/php-ext/tests/model-weak-caller.php",
+        "packages/php-ext/tests/silent_paths.php"
       ],
       "args": [
         "-d",
@@ -338,7 +441,10 @@
         "packages/ts/tests/plan_case.mjs",
         "packages/ts/tests/request_hook_run.mjs",
         "packages/ts/tests/restore_case.mjs",
-        "packages/ts/tests/statement-events-run.mjs"
+        "packages/ts/tests/statement-events-run.mjs",
+        "packages/ts/tests/coverage_performance_report.mjs",
+        "packages/ts/tests/complex-query-support.mjs",
+        "packages/ts/tests/was-inserted-child.mjs"
       ],
       "args": [
         "--conditions=orm-test"
@@ -352,6 +458,10 @@
         "pattern": "^export const (\\w+) = '\\w+';$"
       },
       "internal": [
+        {
+          "glob": "packages/ts/tests/coverage_performance_gate.test.mjs",
+          "reason": "harness: an internal test of the TypeScript package that checks the performance report formatter, not a behaviour of the contract (K313)"
+        },
         {
           "glob": "packages/ts/tests/bin-mode.mjs",
           "reason": "ecosystem: an internal test of the TypeScript package that checks the package, loader or install rule of the language ecosystem, not a behaviour of the contract (K313)"
@@ -379,6 +489,14 @@
         {
           "glob": "packages/ts/tests/split-plan.test.mjs",
           "reason": "test: an internal test of the TypeScript package that measures what a split read allocates, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/ts/testing/interfaces/typescript-api.test.ts",
+          "reason": "harness: an internal test that verifies the TypeScript compiler API declaration against the installed compiler API, not shared ORM behaviour (K313)"
+        },
+        {
+          "glob": "packages/ts/tests/conformance_vector_count.test.mts",
+          "reason": "harness: an internal test that verifies the TypeScript conformance runner covers every declared vector, not ORM behaviour itself (K313)"
         }
       ]
     },
@@ -425,6 +543,10 @@
         {
           "glob": "packages/python/tests/test_split_plan.py",
           "reason": "test: an internal test of the Python package that measures what a split read allocates, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/python/tests/entry_point_check.py",
+          "reason": "ecosystem: an implementation test that checks the installed Python entry point and package import boundary, not shared ORM behaviour (K313)"
         }
       ],
       "roots": [
@@ -446,7 +568,11 @@
         "packages/python/tests/dbspec_plans.py",
         "packages/python/tests/dbspec_vectors_reader.py",
         "packages/python/tests/testcase.py",
-        "packages/python/tests/vector_case.py"
+        "packages/python/tests/vector_case.py",
+        "packages/python/tests/complex_query_product.py",
+        "packages/python/tests/runner_connect.py",
+        "packages/python/tests/server_database.py",
+        "packages/python/tests/was_inserted_child.py"
       ],
       "command": "packages/python/.venv/bin/python",
       "env": [],
@@ -482,7 +608,48 @@
         "packages/rust/tests/build.rs",
         "packages/rust/tests/src/client_bench.rs",
         "packages/rust/tests/tests/integration/coverage_env.rs",
-        "packages/rust/tests/tests/common/mod.rs"
+        "packages/rust/tests/tests/common/mod.rs",
+        "packages/rust/tests/tests/common/coverage_database.rs",
+        "packages/rust/build/src/test_support.rs",
+        "packages/rust/build/tests/common/grid_open.rs",
+        "packages/rust/build/tests/common/physical_dialects.rs",
+        "packages/rust/build/tests/common/physical_fixture.rs",
+        "packages/rust/build/tests/common/table_column.rs",
+        "packages/rust/build/tests/unit/catalog_fixtures.rs",
+        "packages/rust/orm/tests/common/apply_stop.rs",
+        "packages/rust/orm/tests/common/case_database_run.rs",
+        "packages/rust/orm/tests/common/clock_event.rs",
+        "packages/rust/orm/tests/common/dbspec_apply_support.rs",
+        "packages/rust/orm/tests/common/external_schema.rs",
+        "packages/rust/orm/tests/common/feature_database.rs",
+        "packages/rust/orm/tests/common/fixed_plan_time.rs",
+        "packages/rust/orm/tests/common/json_trials.rs",
+        "packages/rust/orm/tests/common/map_rows.rs",
+        "packages/rust/orm/tests/common/model_connect.rs",
+        "packages/rust/orm/tests/common/model_core_methods.rs",
+        "packages/rust/orm/tests/common/model_row.rs",
+        "packages/rust/orm/tests/common/or_panic.rs",
+        "packages/rust/orm/tests/common/pool_exec.rs",
+        "packages/rust/orm/tests/common/pool_scalar.rs",
+        "packages/rust/orm/tests/common/result_code.rs",
+        "packages/rust/orm/tests/common/secret_config.rs",
+        "packages/rust/orm/tests/common/secret_connected.rs",
+        "packages/rust/orm/tests/common/service_model.rs",
+        "packages/rust/orm/tests/common/sql_text_rows.rs",
+        "packages/rust/orm/tests/common/sqlite_case.rs",
+        "packages/rust/orm/tests/common/test_support.rs",
+        "packages/rust/orm/tests/common/typed_model.rs",
+        "packages/rust/schema/tests/common/dbspec_values.rs",
+        "packages/rust/schema/tests/common/or_panic.rs",
+        "packages/rust/schema/tests/common/vector_file.rs",
+        "packages/rust/tests/tests/common/bench_dsn.rs",
+        "packages/rust/tests/tests/common/bench_stats.rs",
+        "packages/rust/tests/tests/common/result_code.rs",
+        "packages/rust/tests/tests/common/schema_coverage_case.rs",
+        "packages/rust/tests/tests/common/statement_record.rs",
+        "packages/rust/tests/tests/common/table_exists.rs",
+        "packages/rust/tests/tests/common/temp_directory.rs",
+        "packages/rust/testing/compiler-fixtures/cases.json"
       ],
       "symbols": {
         "extractor": "rust",
@@ -508,6 +675,26 @@
         {
           "glob": "packages/rust/build/tests/lock_probe_order.rs",
           "reason": "harness: an internal test of the Rust package that checks the test harness of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/rust/orm/tests/unit/markdown_column_function.rs",
+          "reason": "test: asserts that Markdown output assembly detects a deliberately mutated, impossible post-validation column reference as INTERNAL; it is a defensive invariant check, not a valid public request or cross-client behavior (K313)"
+        },
+        {
+          "glob": "benchmarks/rust/src/native.rs",
+          "reason": "benchmark: verifies that the standalone sqlx baseline encrypts its benchmark insert value with the documented fixture key; the assertion validates benchmark workload construction, not a Rust ORM behavior"
+        },
+        {
+          "glob": "benchmarks/rust/tests/dsn.rs",
+          "reason": "benchmark: tests DSN and iteration argument validation of the standalone Rust benchmark executable, not the ORM client DSN contract"
+        },
+        {
+          "glob": "benchmarks/rust/tests/seeded.rs",
+          "reason": "benchmark: runs and checks the standalone seeded-database benchmark output and statistics; it is a benchmark executable integration test"
+        },
+        {
+          "glob": "packages/rust/testcase/tests/form.rs",
+          "reason": "harness: runs deliberate testcase fixtures in child processes and checks testcase report formatting and deadline results; it tests the Rust test harness"
         }
       ]
     }
@@ -6016,6 +6203,102 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/coverage_hot_path_read_correctness.rs",
           "id": "hot_path_read_correctness"
+        }
+      ]
+    },
+    {
+      "id": "hot-path-performance-measurement",
+      "kind": "feature",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/bench/coverage_performance_gate_test.go",
+          "id": "TestCoveragePerformanceGate"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/bench/coverage_performance_gate_postgres_test.go",
+          "id": "TestCoveragePerformanceGatePostgres"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/bench/coverage_performance_gate_sqlite_test.go",
+          "id": "TestCoveragePerformanceGateSQLite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoveragePerformanceGateTest.php",
+          "id": "testHotPathGate"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoveragePerformanceGatePostgresTest.php",
+          "id": "testHotPathGate"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoveragePerformanceGateSqliteTest.php",
+          "id": "testHotPathGate"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoveragePerformanceGateExtensionTest.php",
+          "id": "testHotPathGate"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoveragePerformanceGateExtensionPostgresTest.php",
+          "id": "testHotPathGate"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoveragePerformanceGateExtensionSqliteTest.php",
+          "id": "testHotPathGate"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_performance_gate_mysql.mjs",
+          "id": "hot_path_gate"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_performance_gate_postgres.mjs",
+          "id": "hot_path_gate"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_performance_gate_sqlite.mjs",
+          "id": "hot_path_gate"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_performance_gate_mysql.py",
+          "id": "test_hot_path_gate"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_performance_gate_postgres.py",
+          "id": "test_hot_path_gate"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_performance_gate_sqlite.py",
+          "id": "test_hot_path_gate"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/coverage_performance_gate.rs",
+          "id": "coverage_hot_path_gate_mysql"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/coverage_performance_gate.rs",
+          "id": "coverage_hot_path_gate_postgres"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/coverage_performance_gate.rs",
+          "id": "coverage_hot_path_gate_sqlite"
         }
       ]
     },
@@ -22957,6 +23240,42 @@
           "implementation": "rust",
           "test": "packages/rust/build/tests/generate.rs",
           "id": "generated_field_types_follow_the_runtime_model"
+        }
+      ]
+    },
+    {
+      "id": "planner_scalar_subquery_aggregate_types",
+      "kind": "feature",
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/engine/planner/scalar_subquery_type_test.go",
+          "id": "TestScalarSubqueryAggregateTypes"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoveragePlannerTest.php",
+          "id": "CoveragePlannerTest::testScalarSubqueryAggregateTypesRemainI64AndF64"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoveragePlannerExtensionTest.php",
+          "id": "CoveragePlannerExtensionTest::test_planner_scalar_subquery_aggregate_types_remain_i64_and_f64"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/scalar_subquery_type.mjs",
+          "id": "planner_scalar_subquery_aggregate_types"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_scalar_subquery_type.py",
+          "id": "test_scalar_subquery_aggregate_types_remain_i64_and_f64"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/unit/markdown_scalar_subquery.rs",
+          "id": "engine::scalar_subquery_type::markdown_subquery_aggregate_types_remain_i64_and_f64"
         }
       ]
     }

@@ -59,7 +59,7 @@ caseTest('a checklist item cannot close while a declared runtime adapter is unre
 caseTest('the features whose PHP extension owner runs the shared cases are implemented', COMPUTE, () => {
   for (const id of ['planner', 'parameter_chunking', 'composite_keys',
     'dsn_connection', 'transactions', 'statement_events', 'audit_triggers',
-    'request_hook', 'constraints_and_relations']) {
+    'request_hook', 'constraints_and_relations', 'complex_query']) {
     const feature = manifest.features.find(item => item.id === id);
     assert.ok(feature, `contracts/features.json omits ${id}`);
     assert.equal(feature.coverage?.owners?.['php-extension']?.part, 'packages/php-ext/tests', `${id} has no PHP extension owner`);

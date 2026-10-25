@@ -12,6 +12,19 @@
         "required": ["name"],
         "properties": {
           "name": { "type": "string" },
+          "tests": { "type": "array", "items": { "type": "string" } },
+          "support": { "type": "array", "items": { "type": "string" } },
+          "internal": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["glob", "reason"],
+              "properties": {
+                "glob": { "type": "string", "minLength": 1 },
+                "reason": { "type": "string", "minLength": 1 }
+              }
+            }
+          },
           "errors": {
             "type": "object",
             "properties": { "file": { "type": "string" }, "pattern": { "type": "string" } }
