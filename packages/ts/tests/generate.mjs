@@ -55,7 +55,7 @@ async function setOf(dir, documents, external = []) {
 }
 
 // The generator check is one case that runs the orm-gen and tsc processes.
-// Requirements: DSL-37, PLN-22, ORES-21, DBS-5, DBS-98, DBS-4, DBS-27, DBS-110, DBS-155, DBS-175, DSL-127.
+// Requirements: DSL-37, DSL-130, PLN-22, ORES-21, DBS-5, DBS-98, DBS-4, DBS-27, DBS-110, DBS-155, DBS-175, DSL-127.
 caseTest('generate', PROCESS, async () => {
   try {
     const usage = join(work, 'usage.ts');
@@ -193,6 +193,15 @@ caseTest('generate', PROCESS, async () => {
     const reservedSchema = await setOf(join(work, 'reserved-set'), [['reserved.dbs', 'dbspec 1 reserved\n\ntable thing {\n  id i64 identity\n  restore i32\n  primary key (id)\n}\n']]);
     const reserved = run('gen', '--set', reservedSchema, '--out', join(work, 'reserved'));
     check(reserved.status !== 0 && reserved.stderr.includes('column name is a reserved method name: restore'), `a column named restore: ${reserved.status} ${reserved.stderr}`);
+    // A column name that holds an operator or connector segment is rejected, and a name that only contains one as text is not.
+    for (const [column, segment] of [['price_gt_limit', 'gt'], ['with_tax', 'with']]) {
+      const segmentSchema = await setOf(join(work, `segment-${column}`), [['segment.dbs', `dbspec 1 segment\n\ntable thing {\n  id i64 identity\n  ${column} i32\n  primary key (id)\n}\n`]]);
+      const refused = run('gen', '--set', segmentSchema, '--out', join(work, `segment-${column}-out`));
+      check(refused.status !== 0 && refused.stderr.includes(`column name may not contain the segment "${segment}": ${column}`), `a column named ${column}: ${refused.status} ${refused.stderr}`);
+    }
+    const acceptedSchema = await setOf(join(work, 'segment-min-price'), [['segment.dbs', 'dbspec 1 segment\n\ntable thing {\n  id i64 identity\n  min_price i32\n  primary key (id)\n}\n']]);
+    const accepted = run('gen', '--set', acceptedSchema, '--out', join(work, 'segment-min-price-out'));
+    check(accepted.status === 0, `a column named min_price: ${accepted.status} ${accepted.stderr}`);
   } finally {
     await rm(work, { recursive: true, force: true });
   }

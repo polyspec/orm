@@ -141,4 +141,16 @@ mod tests {
         }
         assert_eq!(check_column_name("restored_at"), Ok(()));
     }
+
+    // A column name that holds an operator or connector segment is rejected; one that only contains it as text is not.
+    #[test]
+    // The test of DSL-130 (docs/spec).
+    fn operator_and_connector_segments_are_not_in_column_names() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        for (name, segment) in [("price_gt_limit", "gt"), ("with_tax", "with")] {
+            let error = check_column_name(name).expect_err(name);
+            assert_eq!(error, format!("column name may not contain the segment {segment:?}: {name}"));
+        }
+        assert_eq!(check_column_name("min_price"), Ok(()));
+    }
 }

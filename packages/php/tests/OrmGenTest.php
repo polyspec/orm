@@ -195,6 +195,31 @@ final class OrmGenTest extends TestCase
         self::assertTrue(!file_exists("$dir/model"), 'gen wrote the models');
     }
 
+    // Requirements: DSL-130.
+    public function testGenRejectsAColumnNameWithAnOperatorOrConnectorSegment(): void
+    {
+        $dir = self::$work . '/gen-segment';
+        is_dir("$dir/model") || mkdir("$dir/model", 0o700, true);
+        $set = OrmGenTestSupport::setFile($dir, ['example.dbs']);
+        foreach (['price_gt_limit' => 'gt', 'with_tax' => 'with', 'min_price' => null] as $column => $segment) {
+            file_put_contents(
+                "$dir/example.dbs",
+                "dbspec 1 example\n\ntable item {\n  seq i64\n  $column i32\n  primary key (seq)\n}\n"
+            );
+            [$code, $out, $err] = self::tool(
+                ['gen', '--set', $set, '--out', "$dir/model", '--namespace', 'Polyspec\\Orm\\Tests\\Example']
+            );
+            if ($segment === null) {
+                self::assertSame(0, $code, "$column: $out $err");
+                continue;
+            }
+            self::assertTrue(
+                $code !== 0 && str_contains($out . $err, "column name may not contain the segment \"$segment\": $column"),
+                "$column: $code $out $err"
+            );
+        }
+    }
+
     // Requirements: DSL-127, PLN-22.
     public function testGenRejectsAColumnNamedAfterAModelMethod(): void
     {

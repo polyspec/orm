@@ -8773,10 +8773,9 @@
       ]
     },
     {
-      "id": "go-internal-packages-go-generator-column-name-rules",
+      "id": "generator-rejects-a-column-name-with-an-operator-or-connector-segment",
       "kind": "feature",
       "requirements": [
-        "DSL-129",
         "DSL-130"
       ],
       "bindings": [
@@ -8784,6 +8783,31 @@
           "implementation": "go",
           "test": "packages/go/generator/gen_go_test.go",
           "id": "TestColumnNameRules"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/OrmGenTest.php",
+          "id": "OrmGenTest::testGenRejectsAColumnNameWithAnOperatorOrConnectorSegment"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/OrmGenTest.php",
+          "id": "OrmGenTest::testGenRejectsAColumnNameWithAnOperatorOrConnectorSegment"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/generate.mjs",
+          "id": "generate"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_orm_gen.py",
+          "id": "test_a_column_name_with_an_operator_or_connector_segment_is_rejected"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/src/manifest.rs",
+          "id": "manifest::tests::operator_and_connector_segments_are_not_in_column_names"
         }
       ]
     },

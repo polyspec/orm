@@ -776,6 +776,28 @@ class OrmGenTest(unittest.TestCase):
             self.assertIn("column name is a reserved method name: restore", result.stderr)
             self.assertFalse(out.exists())
 
+    def test_a_column_name_with_an_operator_or_connector_segment_is_rejected(self):
+        # Requirements: DSL-130.
+        for column, segment in (("price_gt_limit", "gt"), ("with_tax", "with"), ("min_price", None)):
+            with tempfile.TemporaryDirectory(prefix="orm-gen-segment-") as tree:
+                root = Path(tree)
+                (root / "segment.dbs").write_text(
+                    f"dbspec 1 segment\n\ntable thing {{\n  id i64 identity\n  {column} i32\n  primary key (id)\n}}\n",
+                    encoding="utf-8",
+                )
+                (root / "dbspec-set.json").write_text(
+                    '{"schema": 1, "documents": ["segment.dbs"]}', encoding="utf-8"
+                )
+                result = run_gen(root / "dbspec-set.json", root / "out")
+                if segment is None:
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    continue
+                self.assertNotEqual(result.returncode, 0, result.stderr)
+                self.assertIn(
+                    f'column name may not contain the segment "{segment}": {column}',
+                    result.stderr,
+                )
+
     def test_the_owned_and_the_used_external_tables_of_a_set_have_models(self):
         # Requirements: DBS-110.
         # member.dbs owns ext_post and ext_post_history and uses ext_account and ext_audit of core.dbs: each of them has a
