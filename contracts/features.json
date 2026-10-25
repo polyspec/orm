@@ -926,7 +926,8 @@
         "native-row-cell-bytes",
         "page-cache-root-limit-values",
         "rust-val-text-null-and-empty",
-        "plan-cache-in-list-shapes-share-ten-bucketed-keys"
+        "plan-cache-in-list-shapes-share-ten-bucketed-keys",
+        "group-rows-database-query-preserves-values"
       ],
       "fixtures": [
         "tests/conformance/vectors.json",
@@ -3849,7 +3850,10 @@
         "packages/php-ext/tests/RegistrySchemaNativeTest.php",
         "packages/php-ext/tests/RuntimeModelTest.php",
         "packages/rust/build/src/manifest.rs",
-        "packages/rust/build/src/lib.rs"
+        "packages/rust/build/src/lib.rs",
+        "packages/go/model/decimal_field_test.go",
+        "packages/php/tests/DecimalModelTest.php",
+        "packages/python/tests/test_model_fields.py"
       ],
       "docs": [
         "docs/spec/dsl.md",
@@ -5000,7 +5004,8 @@
         "packages/rust/schema/src/dbspec/introspect/mysql.rs",
         "packages/rust/orm/src/dbspec.rs",
         "packages/rust/orm/src/dbspec/apply.rs",
-        "packages/rust/schema/src/dbspec/introspect/mod.rs"
+        "packages/rust/schema/src/dbspec/introspect/mod.rs",
+        "packages/php-ext/tests/DbspecSqliteLockNativeTest.php"
       ],
       "docs": [
         "docs/spec/schema.md",
@@ -7188,7 +7193,8 @@
         "packages/php-ext/tests/CodecCauseTest.php",
         "packages/go/engine/planner/blind_index_source_test.go",
         "packages/php-ext/tests/BlindIndexSourceNativeTest.php",
-        "packages/rust/orm/tests/unit/blind_index_source.rs"
+        "packages/rust/orm/tests/unit/blind_index_source.rs",
+        "packages/python/tests/test_blind_index_source.py"
       ],
       "docs": [
         "docs/spec/codec.md",
@@ -12778,9 +12784,9 @@
         "tests/vector-registrar.mjs"
       ],
       "tests": [
-        "tests/vector-registrar.test.mjs"
+        "scripts/repo/vector-registrar.test.mjs"
       ],
-      "command": "node --test tests/vector-registrar.test.mjs"
+      "command": "node --test scripts/repo/vector-registrar.test.mjs"
     },
     {
       "id": "test-server-pid-fixture",
@@ -12878,9 +12884,9 @@
         "tests/module-scan.mjs"
       ],
       "tests": [
-        "tests/module-scan.test.mjs"
+        "scripts/repo/module-scan.test.mjs"
       ],
-      "command": "node --test tests/module-scan.test.mjs"
+      "command": "node --test scripts/repo/module-scan.test.mjs"
     },
     {
       "id": "javascript-module-graph-walk",
@@ -12888,9 +12894,9 @@
         "tests/module-graph.mjs"
       ],
       "tests": [
-        "tests/module-graph.test.mjs"
+        "scripts/repo/module-graph.test.mjs"
       ],
-      "command": "node --test tests/module-graph.test.mjs"
+      "command": "node --test scripts/repo/module-graph.test.mjs"
     },
     {
       "id": "typescript-catalog-mutation-lock",

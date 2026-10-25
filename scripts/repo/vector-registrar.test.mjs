@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import { caseTest, COMPUTE } from './testcase.mts';
-import { vectorRegistrar } from './vector-registrar.mjs';
+import { caseTest, COMPUTE } from '../../tests/testcase.mts';
+import { vectorRegistrar } from '../../tests/vector-registrar.mjs';
 
 caseTest('binds the case name, deadline, and body and returns the registrar result', COMPUTE, () => {
   const body = () => 'case body';

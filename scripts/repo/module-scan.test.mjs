@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
-import { caseTest, COMPUTE } from './testcase.mts';
+import { caseTest, COMPUTE } from '../../tests/testcase.mts';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { isBuiltinModule, scanModule } from './module-scan.mjs';
+import { isBuiltinModule, scanModule } from '../../tests/module-scan.mjs';
 
 caseTest('recognizes Node builtin roots with and without the node prefix', COMPUTE, () => {
   assert.equal(isBuiltinModule('fs/promises'), true);

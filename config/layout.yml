@@ -153,11 +153,11 @@ rules:
       - "!tests/dbspec/set-tree.mjs"
       - "!tests/dbspec/set-tree.test.mjs"
       - "!tests/module-graph.mjs"
-      - "!tests/module-graph.test.mjs"
+      - "!scripts/repo/module-graph.test.mjs"
       - "!tests/module-scan.mjs"
-      - "!tests/module-scan.test.mjs"
+      - "!scripts/repo/module-scan.test.mjs"
       - "!tests/vector-registrar.mjs"
-      - "!tests/vector-registrar.test.mjs"
+      - "!scripts/repo/vector-registrar.test.mjs"
 
   # The Python symbol extractor runs as a program of its interpreter (its shebang), an exception of the rule above.
   - id: layout-infrastructure-shebang

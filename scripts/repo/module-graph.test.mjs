@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import { caseTest, COMPUTE } from './testcase.mts';
-import { resolveImports, walkModules } from './module-graph.mjs';
+import { caseTest, COMPUTE } from '../../tests/testcase.mts';
+import { resolveImports, walkModules } from '../../tests/module-graph.mjs';
 
 caseTest('collects resolved import targets and violations in source order', COMPUTE, () => {
   const result = resolveImports(

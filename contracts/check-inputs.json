@@ -2228,7 +2228,10 @@
       "inputs": [
         "Makefile",
         "packages/php/src/Dbspec/PlanApply.php",
-        "packages/php/tests/DbspecSqliteLockTest.php"
+        "packages/php/tests/DbspecSqliteLockTest.php",
+        "packages/php/tests/DbspecSqliteLockCases.php",
+        "packages/php/tests/FakeSqliteLockStatement.php",
+        "packages/php/tests/FailingSqliteLockPdo.php"
       ]
     },
     "dbspec-lock-php-extension-check": {
@@ -2241,7 +2244,11 @@
       "inputs": [
         "Makefile",
         "packages/php-ext/src/apply.c",
-        "packages/php/tests/DbspecSqliteLockTest.php"
+        "packages/php/tests/DbspecSqliteLockTest.php",
+        "packages/php/tests/DbspecSqliteLockCases.php",
+        "packages/php/tests/FakeSqliteLockStatement.php",
+        "packages/php/tests/FailingSqliteLockPdo.php",
+        "packages/php-ext/tests/DbspecSqliteLockNativeTest.php"
       ]
     },
     "dbspec-lock-python-check": {
