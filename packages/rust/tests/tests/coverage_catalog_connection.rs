@@ -43,7 +43,7 @@ fn column(page: &polyspec_orm_build::catalog::TablePage, column: &str) -> usize 
 }
 
 #[tokio::test]
-// Requirements: INT-113, INT-114.
+// Requirements: SCH-3, INT-103, INT-113, INT-114.
 async fn coverage_catalog_read() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     within("catalog_read", async {
@@ -78,6 +78,29 @@ async fn coverage_catalog_read() {
         assert_eq!(count.rows, vec![vec![Val::Int(5000)]], "{driver}: user count");
         let write = catalog.read_only_query(&format!("UPDATE {} SET name = name WHERE seq = 1", quote("user", &driver)), &[], QueryLimits::default()).await;
         assert!(matches!(&write, Err(e) if e.contains("QUERY_READ_ONLY")), "{driver}: a write through read_only_query: {write:?}");
+
+        // The shared catalog read case also checks typed binary and temporal grid values.
+        let (binary_sql, temporal_sql, temporal_expected) = match driver.as_str() {
+            "mysql" => (
+                "SELECT CAST('ab' AS BINARY) AS value",
+                "SELECT CAST('2024-02-29' AS DATE), CAST('12:34:56.5' AS TIME(6)), CAST('2024-02-29 01:02:03.5' AS DATETIME(6))",
+                vec![GridCell::Date("2024-02-29".into()), GridCell::Time("12:34:56.500000".into()), GridCell::DateTime("2024-02-29 01:02:03.500000".into())],
+            ),
+            "postgres" => (
+                "SELECT '\\x6162'::bytea AS value",
+                "SELECT '2024-02-29'::date, '12:34:56.5'::time, '2024-02-29 01:02:03.5'::timestamp",
+                vec![GridCell::Date("2024-02-29".into()), GridCell::Time("12:34:56.500000".into()), GridCell::DateTime("2024-02-29 01:02:03.500000".into())],
+            ),
+            _ => (
+                "SELECT X'6162' AS value",
+                "SELECT '2024-02-29', '12:34:56.5', '2024-02-29 01:02:03.5'",
+                vec![GridCell::Text("2024-02-29".into()), GridCell::Text("12:34:56.5".into()), GridCell::Text("2024-02-29 01:02:03.5".into())],
+            ),
+        };
+        let binary = catalog.read_only_grid_query(binary_sql, &[], QueryLimits::default()).await.expect("binary grid query");
+        assert_eq!(binary.rows, vec![vec![GridCell::Binary(b"ab".to_vec())]], "{driver}: binary grid cell");
+        let temporal = catalog.read_only_grid_query(temporal_sql, &[], QueryLimits::default()).await.expect("temporal grid query");
+        assert_eq!(temporal.rows, vec![temporal_expected], "{driver}: temporal grid cells");
         catalog.close().await;
     })
     .await;
