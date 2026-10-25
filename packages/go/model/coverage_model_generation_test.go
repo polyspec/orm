@@ -142,6 +142,7 @@ func copyFile(t *testing.T, src, dst string) {
 // TestCoverageModelGenerationCheck checks that the committed models are the same as the output of each declared
 // entry of models.txt, and that check reports a copy of the model package with one changed byte as different,
 // and verifies this.
+// Requirements: DBS-175.
 func TestCoverageModelGenerationCheck(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	entries := modelEntries(t)

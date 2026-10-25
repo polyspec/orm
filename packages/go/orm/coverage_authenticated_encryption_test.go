@@ -49,6 +49,7 @@ func decryptFixture(t *testing.T, input aesInput) ([]byte, error) {
 }
 
 // TestCoverageAesEnvelopeDecrypt opens the recorded v2 envelope.
+// Requirements: COD-5.
 func TestCoverageAesEnvelopeDecrypt(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	input, expected := aesCase(t, "aes_envelope_decrypt", "aes_decrypt")
@@ -59,6 +60,7 @@ func TestCoverageAesEnvelopeDecrypt(t *testing.T) {
 }
 
 // TestCoverageAesRoundTrip checks the prefix and length of the encrypted envelope and opens it again.
+// Requirements: COD-5.
 func TestCoverageAesRoundTrip(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	input, expected := aesCase(t, "aes_round_trip", "aes_encrypt_decrypt")
@@ -80,18 +82,21 @@ func TestCoverageAesRoundTrip(t *testing.T) {
 }
 
 // TestCoverageAesTamperRejected rejects a modified envelope.
+// Requirements: COD-6.
 func TestCoverageAesTamperRejected(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	aesRejected(t, "aes_tamper_rejected")
 }
 
 // TestCoverageAesWrongKeyRejected rejects an envelope with a different key.
+// Requirements: COD-6.
 func TestCoverageAesWrongKeyRejected(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	aesRejected(t, "aes_wrong_key_rejected")
 }
 
 // TestCoverageBlindIndexVector checks that the blind index matches the recorded value.
+// Requirements: COD-4.
 func TestCoverageBlindIndexVector(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	input, expected := aesCase(t, "blind_index_vector", "blind_index")

@@ -3140,7 +3140,8 @@
         }
       ],
       "parity": [
-        "statement-events"
+        "statement-events",
+        "coverage-statement-events-statement-events"
       ],
       "fixtures": [
         "contracts/fixtures/statement_events.dbs",
@@ -3600,7 +3601,8 @@
         }
       ],
       "parity": [
-        "generated-typed-getter-public-column-api"
+        "generated-typed-getter-public-column-api",
+        "coverage-model-generation-model-generation-check"
       ],
       "fixtures": [
         "packages/go/model/coverage_helpers_test.go",
@@ -3926,7 +3928,14 @@
         }
       ],
       "parity": [
-        "schema-definition"
+        "schema-definition",
+        "coverage-schema-definition-dbspec-emit-round-trip",
+        "coverage-schema-definition-dbspec-manifest-hash",
+        "coverage-schema-definition-dbspec-render-ddl",
+        "coverage-schema-definition-dbspec-analyze-tokens",
+        "coverage-schema-definition-dbspec-format",
+        "coverage-schema-definition-dbspec-format-refusal",
+        "coverage-schema-definition-dbspec-parse-positions"
       ],
       "fixtures": [
         "contracts/fixtures/bench/bench.dbs",
@@ -4490,7 +4499,16 @@
                     "dbspec_format",
                     "dbspec_format_refusal",
                     "dbspec_parse_positions"
-                  ]
+                  ],
+                  "symbols": {
+                    "dbspec_emit_round_trip": "testDbspecEmitRoundTrip",
+                    "dbspec_manifest_hash": "testDbspecManifestHash",
+                    "dbspec_render_ddl": "testDbspecRenderDdl",
+                    "dbspec_analyze_tokens": "testDbspecAnalyzeTokens",
+                    "dbspec_format": "testDbspecFormat",
+                    "dbspec_format_refusal": "testDbspecFormatRefusal",
+                    "dbspec_parse_positions": "testDbspecParsePositions"
+                  }
                 }
               ]
             }
@@ -4517,7 +4535,16 @@
                     "dbspec_format",
                     "dbspec_format_refusal",
                     "dbspec_parse_positions"
-                  ]
+                  ],
+                  "symbols": {
+                    "dbspec_emit_round_trip": "testDbspecEmitRoundTrip",
+                    "dbspec_manifest_hash": "testDbspecManifestHash",
+                    "dbspec_render_ddl": "testDbspecRenderDdl",
+                    "dbspec_analyze_tokens": "testDbspecAnalyzeTokens",
+                    "dbspec_format": "testDbspecFormat",
+                    "dbspec_format_refusal": "testDbspecFormatRefusal",
+                    "dbspec_parse_positions": "testDbspecParsePositions"
+                  }
                 }
               ]
             }
@@ -6740,7 +6767,12 @@
         }
       ],
       "parity": [
-        "authenticated-encryption"
+        "authenticated-encryption",
+        "coverage-authenticated-encryption-aes-envelope-decrypt",
+        "coverage-authenticated-encryption-aes-round-trip",
+        "coverage-authenticated-encryption-aes-tamper-rejected",
+        "coverage-authenticated-encryption-aes-wrong-key-rejected",
+        "coverage-authenticated-encryption-blind-index-vector"
       ],
       "fixtures": [
         "tests/codec/aes-vectors.json",
@@ -9672,7 +9704,8 @@
       "parity": [
         "conformance-mysql",
         "conformance-postgres",
-        "conformance-sqlite"
+        "conformance-sqlite",
+        "coverage-conformance-verification-conformance-vector"
       ],
       "fixtures": [
         "tests/conformance/vectors.json",

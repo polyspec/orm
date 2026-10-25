@@ -129,6 +129,7 @@ final class CoverageConformanceVerificationTest extends TestCase
         );
     }
 
+    // Requirements: DIA-37.
     #[DataProvider('mysqlVectors')]
     public function testMysql(string $name, mixed $expect): void
     {

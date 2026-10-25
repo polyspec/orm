@@ -13,6 +13,7 @@ import (
 // TestCoverageStatementEvents runs on the database that the feature check selected (ORM_FEATURE_DATABASE)
 // all cases of tests/events/vectors.json, each in a new case database, and compares them with the expected events
 // The bench database is neither read nor written.
+// Requirements: INT-91.
 func TestCoverageStatementEvents(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	driver := os.Getenv("ORM_FEATURE_DATABASE")

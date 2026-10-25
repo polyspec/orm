@@ -40,6 +40,7 @@ function withOut(args, out) {
 }
 
 await runCases('coverage_model_generation.mjs', {
+  // Requirements: DBS-175.
   async model_generation_check() {
     const args = [...await generationArgs(), '--check'];
     assert.deepEqual(await ormGen(args), { code: 0, stdout: '', stderr: '' }, 'the committed models equal the generator output');

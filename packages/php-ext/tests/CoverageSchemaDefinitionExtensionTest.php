@@ -8,6 +8,15 @@ use Polyspec\Orm\Dbspec\Dbspec;
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\Small;
 
+require_once dirname(__DIR__, 2) . '/php/tests/CoverageSchemaDefinitionTest.php';
+
+// Requirements: DBS-123.
+// Requirements: DBS-103.
+// Requirements: DBS-99.
+// Requirements: DBS-134.
+// Requirements: DBS-141.
+// Requirements: DBS-141, ORES-14.
+// Requirements: DBS-142.
 #[Small]
 final class CoverageSchemaDefinitionExtensionTest extends CoverageSchemaDefinitionTest
 {

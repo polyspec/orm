@@ -51,6 +51,7 @@ fn run(id: &str, body: impl FnOnce()) {
 mod schema_definition {
     use super::*;
 
+    // Requirements: DBS-123.
     #[test]
     fn dbspec_emit_round_trip() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -63,6 +64,7 @@ mod schema_definition {
         });
     }
 
+    // Requirements: DBS-103.
     #[test]
     fn dbspec_manifest_hash() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -75,6 +77,7 @@ mod schema_definition {
         });
     }
 
+    // Requirements: DBS-99.
     #[test]
     fn dbspec_render_ddl() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -98,6 +101,7 @@ mod schema_definition {
         format!("{}\n", lines.join("\n"))
     }
 
+    // Requirements: DBS-134.
     #[test]
     fn dbspec_analyze_tokens() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -121,6 +125,7 @@ mod schema_definition {
         });
     }
 
+    // Requirements: DBS-141.
     #[test]
     fn dbspec_format() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -132,6 +137,7 @@ mod schema_definition {
         });
     }
 
+    // Requirements: DBS-141, ORES-14.
     #[test]
     fn dbspec_format_refusal() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -145,6 +151,7 @@ mod schema_definition {
         });
     }
 
+    // Requirements: DBS-142.
     #[test]
     fn dbspec_parse_positions() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);

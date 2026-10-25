@@ -18,6 +18,7 @@ import (
 // TestCoverageConformanceVector runs, on the database the Go conformance runner chose,
 // only the read-only vectors conditions_values and relations, and checks that each output equals
 // the recorded expect of the database and the JSON value.
+// Requirements: DIA-37.
 func TestCoverageConformanceVector(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	driver, dsn := featureDatabase(t)

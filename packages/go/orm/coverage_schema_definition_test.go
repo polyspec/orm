@@ -54,6 +54,7 @@ func schemaDocuments(t *testing.T, c fixtureCase) ([]string, []*dbspec.Document)
 
 // TestCoverageDbspecEmitRoundTrip checks that parsing each document and emitting it gives back the original
 // text byte for byte.
+// Requirements: DBS-123.
 func TestCoverageDbspecEmitRoundTrip(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	c := featureFixture(t, "schema_definition", "dbspec_emit_round_trip", "parse_emit")
@@ -71,6 +72,7 @@ func TestCoverageDbspecEmitRoundTrip(t *testing.T) {
 
 // TestCoverageDbspecManifestHash checks that the manifest hash of a document set matches the value
 // in the fixture.
+// Requirements: DBS-103.
 func TestCoverageDbspecManifestHash(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	c := featureFixture(t, "schema_definition", "dbspec_manifest_hash", "manifest")
@@ -90,6 +92,7 @@ func TestCoverageDbspecManifestHash(t *testing.T) {
 
 // TestCoverageDbspecRenderDdl checks that rendering the document set for each dialect produces statements
 // that match the fixture's array.
+// Requirements: DBS-99.
 func TestCoverageDbspecRenderDdl(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	c := featureFixture(t, "schema_definition", "dbspec_render_ddl", "render")
@@ -126,6 +129,7 @@ func fixtureText(t *testing.T, c fixtureCase) string {
 
 // TestCoverageDbspecAnalyzeTokens checks that the analysis of each document holds the
 // result of Parse unchanged and the tokens of the fixture.
+// Requirements: DBS-134.
 func TestCoverageDbspecAnalyzeTokens(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	c := featureFixture(t, "schema_definition", "dbspec_analyze_tokens", "analyze")
@@ -155,6 +159,7 @@ func TestCoverageDbspecAnalyzeTokens(t *testing.T) {
 
 // TestCoverageDbspecFormat checks that the text formats to the fixture text and that
 // the formatted text is its own format.
+// Requirements: DBS-141.
 func TestCoverageDbspecFormat(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	c := featureFixture(t, "schema_definition", "dbspec_format", "format")
@@ -176,6 +181,7 @@ func TestCoverageDbspecFormat(t *testing.T) {
 
 // TestCoverageDbspecFormatRefusal checks that a text with a diagnostic is refused with
 // the fixture diagnostics and no text.
+// Requirements: DBS-141, ORES-14.
 func TestCoverageDbspecFormatRefusal(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	c := featureFixture(t, "schema_definition", "dbspec_format_refusal", "format")
@@ -204,6 +210,7 @@ func TestCoverageDbspecFormatRefusal(t *testing.T) {
 
 // TestCoverageDbspecParsePositions checks that Parse returns the declaration positions
 // of the fixture for each document.
+// Requirements: DBS-142.
 func TestCoverageDbspecParsePositions(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	c := featureFixture(t, "schema_definition", "dbspec_parse_positions", "parse_positions")

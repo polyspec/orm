@@ -27,6 +27,7 @@ final class CoverageAuthenticatedEncryptionExtensionTest extends TestCase
         }
     }
 
+    // Requirements: COD-5.
     public function testAesEnvelopeDecrypt(): void
     {
         [$input, $expected] = $this->fixtureCase('aes_envelope_decrypt', 'aes_decrypt');
@@ -35,6 +36,7 @@ final class CoverageAuthenticatedEncryptionExtensionTest extends TestCase
         Assert::assertSame($expected['plain'], Codec::hostDecode($envelope, ['aes'], $input['key']));
     }
 
+    // Requirements: COD-5.
     public function testAesRoundTrip(): void
     {
         [$input, $expected] = $this->fixtureCase('aes_round_trip', 'aes_encrypt_decrypt');
@@ -52,16 +54,19 @@ final class CoverageAuthenticatedEncryptionExtensionTest extends TestCase
         Assert::assertSame($expected['plain'], Codec::hostDecode($envelope->bytes, ['aes'], $input['key']));
     }
 
+    // Requirements: COD-6.
     public function testAesTamperRejected(): void
     {
         $this->assertDecryptError('aes_tamper_rejected');
     }
 
+    // Requirements: COD-6.
     public function testAesWrongKeyRejected(): void
     {
         $this->assertDecryptError('aes_wrong_key_rejected');
     }
 
+    // Requirements: COD-4.
     public function testBlindIndexVector(): void
     {
         [$input, $expected] = $this->fixtureCase('blind_index_vector', 'blind_index');

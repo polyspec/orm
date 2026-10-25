@@ -35,6 +35,7 @@ fn decrypt(input: &Value) -> polyspec_orm::Result<Vec<u8>> {
 mod authenticated_encryption {
     use super::*;
 
+    // Requirements: COD-5.
     #[test]
     fn aes_envelope_decrypt() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -45,6 +46,7 @@ mod authenticated_encryption {
         });
     }
 
+    // Requirements: COD-5.
     #[test]
     fn aes_round_trip() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -59,6 +61,7 @@ mod authenticated_encryption {
         });
     }
 
+    // Requirements: COD-6.
     #[test]
     fn aes_tamper_rejected() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -69,6 +72,7 @@ mod authenticated_encryption {
         });
     }
 
+    // Requirements: COD-6.
     #[test]
     fn aes_wrong_key_rejected() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -79,6 +83,7 @@ mod authenticated_encryption {
         });
     }
 
+    // Requirements: COD-4.
     #[test]
     fn blind_index_vector() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);

@@ -38,6 +38,7 @@ function generationCheck(string $root, string $out): array
 #[Large]
 final class CoverageModelGenerationTest extends TestCase
 {
+    // Requirements: DBS-175.
     public function testModelGenerationCheck(): void
     {
         $root = dirname(__DIR__, 3);

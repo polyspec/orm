@@ -10,6 +10,7 @@ use Polyspec\Orm\Db;
 use PHPUnit\Framework\Assert;
 use ReflectionMethod;
 
+// Requirements: INT-91.
 #[Medium]
 final class CoverageStatementEventsTest extends TestCase
 {

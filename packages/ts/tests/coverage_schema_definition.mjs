@@ -33,6 +33,7 @@ async function documents(paths) {
 }
 
 await runCases('coverage_schema_definition.mjs', {
+  // Requirements: DBS-123.
   async dbspec_emit_round_trip() {
     const c = fixtureCase('dbspec_emit_round_trip', 'parse_emit');
     assert.equal(c.expected.identical, true, 'the fixture expects identical text');
@@ -41,6 +42,7 @@ await runCases('coverage_schema_definition.mjs', {
     }
   },
 
+  // Requirements: DBS-103.
   async dbspec_manifest_hash() {
     const c = fixtureCase('dbspec_manifest_hash', 'manifest');
     const { manifest, diagnostics } = dbspecManifest((await documents(c.input.documents)).map(d => d.document));
@@ -48,6 +50,7 @@ await runCases('coverage_schema_definition.mjs', {
     assert.equal(manifest.manifestHash, c.expected.manifest_hash, 'manifest hash');
   },
 
+  // Requirements: DBS-99.
   async dbspec_render_ddl() {
     const c = fixtureCase('dbspec_render_ddl', 'render');
     const set = (await documents(c.input.documents)).map(d => d.document);
@@ -59,6 +62,7 @@ await runCases('coverage_schema_definition.mjs', {
     }
   },
 
+  // Requirements: DBS-134.
   async dbspec_analyze_tokens() {
     const c = fixtureCase('dbspec_analyze_tokens', 'analyze');
     for (const { path, text, document } of await documents(c.input.documents)) {
@@ -71,6 +75,7 @@ await runCases('coverage_schema_definition.mjs', {
     }
   },
 
+  // Requirements: DBS-141.
   async dbspec_format() {
     const c = fixtureCase('dbspec_format', 'format');
     const formatted = formatDbspec(`${c.input.text.join('\n')}\n`, {});
@@ -79,6 +84,7 @@ await runCases('coverage_schema_definition.mjs', {
     assert.equal(formatDbspec(formatted.text, {}).text, formatted.text, 'a formatted text is its own format');
   },
 
+  // Requirements: DBS-141, ORES-14.
   async dbspec_format_refusal() {
     const c = fixtureCase('dbspec_format_refusal', 'format');
     const formatted = formatDbspec(`${c.input.text.join('\n')}\n`, {});
@@ -86,6 +92,7 @@ await runCases('coverage_schema_definition.mjs', {
     assert.deepEqual(formatted.diagnostics.map(d => ({ rule: d.rule, line: d.line, column: d.column })), c.expected.diagnostics, 'diagnostics');
   },
 
+  // Requirements: DBS-142.
   async dbspec_parse_positions() {
     const c = fixtureCase('dbspec_parse_positions', 'parse_positions');
     for (const { path, text } of await documents(c.input.documents)) {

@@ -30,6 +30,7 @@ fn runner(dsn: &str, vectors: &[&str]) -> Command {
     command
 }
 
+// Requirements: DIA-37.
 fn coverage_conformance_vector() {
     let driver = common::required("ORM_FEATURE_DATABASE");
     let dsn = common::required("ORM_FEATURE_DSN");

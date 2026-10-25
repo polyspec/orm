@@ -26,11 +26,13 @@ function rejected(id) {
 }
 
 await runCases('coverage_authenticated_encryption.mjs', {
+  // Requirements: COD-5.
   async aes_envelope_decrypt() {
     const c = fixtureCase('aes_envelope_decrypt', 'aes_decrypt');
     assert.equal(decrypt(c.input), c.expected.plain, 'decrypted plaintext');
   },
 
+  // Requirements: COD-5.
   async aes_round_trip() {
     const c = fixtureCase('aes_round_trip', 'aes_encrypt_decrypt');
     const envelope = hostEncode(c.input.plain, ['aes'], c.input.key);
@@ -41,10 +43,13 @@ await runCases('coverage_authenticated_encryption.mjs', {
     assert.equal(hostDecode(envelope, ['aes'], c.input.key), c.expected.plain, 'round trip plaintext');
   },
 
+  // Requirements: COD-6.
   async aes_tamper_rejected() { rejected('aes_tamper_rejected'); },
 
+  // Requirements: COD-6.
   async aes_wrong_key_rejected() { rejected('aes_wrong_key_rejected'); },
 
+  // Requirements: COD-4.
   async blind_index_vector() {
     const c = fixtureCase('blind_index_vector', 'blind_index');
     assert.equal(blindIndex(c.input.plain, c.input.key), c.expected.index, 'blind index');

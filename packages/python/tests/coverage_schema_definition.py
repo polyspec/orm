@@ -52,6 +52,7 @@ def documents(paths):
 
 
 def dbspec_emit_round_trip():
+    # Requirements: DBS-123.
     c = fixture_case("dbspec_emit_round_trip", "parse_emit")
     expect_equal(c["expected"]["identical"], True, "the fixture expects identical text")
     for path, text, document in documents(c["input"]["documents"]):
@@ -59,6 +60,7 @@ def dbspec_emit_round_trip():
 
 
 def dbspec_manifest_hash():
+    # Requirements: DBS-103.
     c = fixture_case("dbspec_manifest_hash", "manifest")
     manifest, diagnostics = dbspec_manifest(
         [d for _, _, d in documents(c["input"]["documents"])]
@@ -70,6 +72,7 @@ def dbspec_manifest_hash():
 
 
 def dbspec_render_ddl():
+    # Requirements: DBS-99.
     c = fixture_case("dbspec_render_ddl", "render")
     documents_set = [d for _, _, d in documents(c["input"]["documents"])]
     expect_equal(
@@ -84,6 +87,7 @@ def dbspec_render_ddl():
 
 
 def dbspec_analyze_tokens():
+    # Requirements: DBS-134.
     c = fixture_case("dbspec_analyze_tokens", "analyze")
     for path, text, document in documents(c["input"]["documents"]):
         analysis = analyze_dbspec(text, {})
@@ -109,6 +113,7 @@ def dbspec_analyze_tokens():
 
 
 def dbspec_format():
+    # Requirements: DBS-141.
     c = fixture_case("dbspec_format", "format")
     text, diagnostics = format_dbspec("\n".join(c["input"]["text"]) + "\n", {})
     expect_equal(list(diagnostics), [], "the text formats")
@@ -117,6 +122,7 @@ def dbspec_format():
 
 
 def dbspec_format_refusal():
+    # Requirements: DBS-141, ORES-14.
     c = fixture_case("dbspec_format_refusal", "format")
     text, diagnostics = format_dbspec("\n".join(c["input"]["text"]) + "\n", {})
     expect_equal(text, None, "a document with a diagnostic is not rewritten")
@@ -128,6 +134,7 @@ def dbspec_format_refusal():
 
 
 def dbspec_parse_positions():
+    # Requirements: DBS-142.
     c = fixture_case("dbspec_parse_positions", "parse_positions")
     for path, text, _document in documents(c["input"]["documents"]):
         _parsed, positions, _diagnostics = parse_dbspec(text, {})

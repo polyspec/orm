@@ -72,6 +72,7 @@ class CoverageSchemaDefinitionTest extends TestCase
         return Dbspec::class;
     }
 
+    // Requirements: DBS-123.
     public function testDbspecEmitRoundTrip(): void
     {
         $dbspec = static::dbspec();
@@ -88,6 +89,7 @@ class CoverageSchemaDefinitionTest extends TestCase
         }
     }
 
+    // Requirements: DBS-103.
     public function testDbspecManifestHash(): void
     {
         $dbspec = static::dbspec();
@@ -103,6 +105,7 @@ class CoverageSchemaDefinitionTest extends TestCase
         );
     }
 
+    // Requirements: DBS-99.
     public function testDbspecRenderDdl(): void
     {
         $dbspec = static::dbspec();
@@ -123,6 +126,7 @@ class CoverageSchemaDefinitionTest extends TestCase
         }
     }
 
+    // Requirements: DBS-134.
     public function testDbspecAnalyzeTokens(): void
     {
         $dbspec = static::dbspec();
@@ -156,6 +160,7 @@ class CoverageSchemaDefinitionTest extends TestCase
         }
     }
 
+    // Requirements: DBS-141.
     public function testDbspecFormat(): void
     {
         $dbspec = static::dbspec();
@@ -174,6 +179,7 @@ class CoverageSchemaDefinitionTest extends TestCase
         );
     }
 
+    // Requirements: DBS-141, ORES-14.
     public function testDbspecFormatRefusal(): void
     {
         $dbspec = static::dbspec();
@@ -192,6 +198,7 @@ class CoverageSchemaDefinitionTest extends TestCase
         );
     }
 
+    // Requirements: DBS-142.
     public function testDbspecParsePositions(): void
     {
         $dbspec = static::dbspec();

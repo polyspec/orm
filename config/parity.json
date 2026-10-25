@@ -110,10 +110,6 @@
           "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/go/model/coverage_model_generation_test.go",
-          "reason": "generated: an internal package test of the go module that checks the output of a generator of the owner, not a behaviour of the contract (K313)"
-        },
-        {
           "glob": "packages/go/orm/assignment_propagation_test.go",
           "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
@@ -123,10 +119,6 @@
         },
         {
           "glob": "packages/go/orm/context_reset_test.go",
-          "reason": "external: an internal package test of the go module that runs against a database or driver of an external service, not a helper the contract names (K313)"
-        },
-        {
-          "glob": "packages/go/orm/coverage_statement_events_test.go",
           "reason": "external: an internal package test of the go module that runs against a database or driver of an external service, not a helper the contract names (K313)"
         },
         {
@@ -238,16 +230,8 @@
           "reason": "harness: an internal test of the PHP package that checks the test harness of the owner, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/php/tests/CoverageModelGenerationTest.php",
-          "reason": "generated: an internal test of the PHP package that checks the output of a generator of the owner, not a behaviour of the contract (K313)"
-        },
-        {
           "glob": "packages/php/tests/CoveragePerformanceGateTest.php",
           "reason": "harness: an internal test of the PHP package that checks the test harness of the owner, not a behaviour of the contract (K313)"
-        },
-        {
-          "glob": "packages/php/tests/CoverageStatementEventsTest.php",
-          "reason": "external: an internal test of the PHP package that runs against a database or driver of an external service, not a helper the contract names (K313)"
         },
         {
           "glob": "packages/php/tests/DriverErrorTest.php",
@@ -280,6 +264,18 @@
         {
           "glob": "packages/php/tests/UnselectedColumnTest.php",
           "reason": "test: an internal test of the PHP package that tests a helper or loader of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/php/tests/CoveragePerformanceGatePostgresTest.php",
+          "reason": "harness: an internal test of the PHP package that checks the test harness of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/php/tests/CoveragePerformanceGateSqliteTest.php",
+          "reason": "harness: an internal test of the PHP package that checks the test harness of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/php/tests/PerformanceGateCoverageCase.php",
+          "reason": "harness: an internal test of the PHP package that checks the test harness of the owner, not a behaviour of the contract (K313)"
         }
       ]
     },
@@ -305,7 +301,20 @@
         "file": "packages/php-ext/src/polyspec_orm.stub.php",
         "pattern": "^    public const (?:string )?(\\w+) = '\\1';$"
       },
-      "internal": []
+      "internal": [
+        {
+          "glob": "packages/php-ext/tests/CoveragePerformanceGateExtensionTest.php",
+          "reason": "harness: an internal test of the PHP extension package that checks the test harness of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/php-ext/tests/CoveragePerformanceGateExtensionPostgresTest.php",
+          "reason": "harness: an internal test of the PHP extension package that checks the test harness of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/php-ext/tests/CoveragePerformanceGateExtensionSqliteTest.php",
+          "reason": "harness: an internal test of the PHP extension package that checks the test harness of the owner, not a behaviour of the contract (K313)"
+        }
+      ]
     },
     {
       "name": "typescript",
@@ -353,6 +362,22 @@
         {
           "glob": "packages/ts/tests/driver-error.mjs",
           "reason": "external: an internal test of the TypeScript package that runs against a database or driver of an external service, not a helper the contract names (K313)"
+        },
+        {
+          "glob": "packages/ts/tests/coverage_performance_gate.mjs",
+          "reason": "harness: an internal test of the TypeScript package that checks the test harness of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/ts/tests/coverage_performance_gate_mysql.mjs",
+          "reason": "harness: an internal test of the TypeScript package that checks the test harness of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/ts/tests/coverage_performance_gate_postgres.mjs",
+          "reason": "harness: an internal test of the TypeScript package that checks the test harness of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/ts/tests/coverage_performance_gate_sqlite.mjs",
+          "reason": "harness: an internal test of the TypeScript package that checks the test harness of the owner, not a behaviour of the contract (K313)"
         }
       ]
     },
@@ -378,6 +403,22 @@
         },
         {
           "glob": "packages/python/tests/conformance_result.py",
+          "reason": "harness: an internal test of the Python package that checks the test harness of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/python/tests/coverage_performance_gate.py",
+          "reason": "harness: an internal test of the Python package that checks the test harness of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/python/tests/coverage_performance_gate_mysql.py",
+          "reason": "harness: an internal test of the Python package that checks the test harness of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/python/tests/coverage_performance_gate_postgres.py",
+          "reason": "harness: an internal test of the Python package that checks the test harness of the owner, not a behaviour of the contract (K313)"
+        },
+        {
+          "glob": "packages/python/tests/coverage_performance_gate_sqlite.py",
           "reason": "harness: an internal test of the Python package that checks the test harness of the owner, not a behaviour of the contract (K313)"
         }
       ],
@@ -20699,6 +20740,602 @@
             "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=coverage_constraints_and_relations::coverage_immutable_write"
           ]
+        }
+      ]
+    },
+    {
+      "id": "coverage-model-generation-model-generation-check",
+      "kind": "feature",
+      "requirements": [
+        "DBS-175"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/coverage_model_generation_test.go",
+          "id": "TestCoverageModelGenerationCheck"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageModelGenerationTest.php",
+          "id": "CoverageModelGenerationTest::testModelGenerationCheck"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageModelGenerationNativeTest.php",
+          "id": "CoverageModelGenerationNativeTest::testModelGenerationCheck"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_model_generation.mjs",
+          "id": "model_generation_check"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_model_generation.py",
+          "id": "test_model_generation_check"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/coverage_model_generation.rs",
+          "id": "coverage_model_generation_check"
+        }
+      ]
+    },
+    {
+      "id": "coverage-statement-events-statement-events",
+      "kind": "feature",
+      "requirements": [
+        "INT-91"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_statement_events_test.go",
+          "id": "TestCoverageStatementEvents"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageStatementEventsTest.php",
+          "id": "CoverageStatementEventsTest::test_statement_events"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageStatementEventsTest.php",
+          "id": "CoverageStatementEventsTest::test_statement_events"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_statement_events.mjs",
+          "id": "statement_events"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_statement_events.py",
+          "id": "test_statement_events"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/statement_events.rs",
+          "id": "coverage_statement_events"
+        }
+      ]
+    },
+    {
+      "id": "coverage-conformance-verification-conformance-vector",
+      "kind": "feature",
+      "requirements": [
+        "DIA-37"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/coverage_conformance_verification_test.go",
+          "id": "TestCoverageConformanceVector"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
+          "id": "CoverageConformanceVerificationTest::testMysql"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
+          "id": "CoverageConformanceVerificationTest::testPostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
+          "id": "CoverageConformanceVerificationTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
+          "id": "CoverageConformanceVerificationExtensionTest::testConformanceVector"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_conformance_verification.mjs",
+          "id": "conformance_vector"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_conformance_verification.py",
+          "id": "test_conformance_vector"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
+          "id": "coverage_conformance_vector"
+        }
+      ]
+    },
+    {
+      "id": "coverage-schema-definition-dbspec-emit-round-trip",
+      "kind": "feature",
+      "requirements": [
+        "DBS-123"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_schema_definition_test.go",
+          "id": "TestCoverageDbspecEmitRoundTrip"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageSchemaDefinitionTest.php",
+          "id": "CoverageSchemaDefinitionTest::testDbspecEmitRoundTrip"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageSchemaDefinitionExtensionTest.php",
+          "id": "CoverageSchemaDefinitionExtensionTest::testDbspecEmitRoundTrip"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_schema_definition.mjs",
+          "id": "dbspec_emit_round_trip"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_schema_definition.py",
+          "id": "dbspec_emit_round_trip"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/schema/tests/coverage_schema_definition.rs",
+          "id": "schema_definition::dbspec_emit_round_trip"
+        }
+      ]
+    },
+    {
+      "id": "coverage-schema-definition-dbspec-manifest-hash",
+      "kind": "feature",
+      "requirements": [
+        "DBS-103"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_schema_definition_test.go",
+          "id": "TestCoverageDbspecManifestHash"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageSchemaDefinitionTest.php",
+          "id": "CoverageSchemaDefinitionTest::testDbspecManifestHash"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageSchemaDefinitionExtensionTest.php",
+          "id": "CoverageSchemaDefinitionExtensionTest::testDbspecManifestHash"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_schema_definition.mjs",
+          "id": "dbspec_manifest_hash"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_schema_definition.py",
+          "id": "dbspec_manifest_hash"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/schema/tests/coverage_schema_definition.rs",
+          "id": "schema_definition::dbspec_manifest_hash"
+        }
+      ]
+    },
+    {
+      "id": "coverage-schema-definition-dbspec-render-ddl",
+      "kind": "feature",
+      "requirements": [
+        "DBS-99"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_schema_definition_test.go",
+          "id": "TestCoverageDbspecRenderDdl"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageSchemaDefinitionTest.php",
+          "id": "CoverageSchemaDefinitionTest::testDbspecRenderDdl"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageSchemaDefinitionExtensionTest.php",
+          "id": "CoverageSchemaDefinitionExtensionTest::testDbspecRenderDdl"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_schema_definition.mjs",
+          "id": "dbspec_render_ddl"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_schema_definition.py",
+          "id": "dbspec_render_ddl"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/schema/tests/coverage_schema_definition.rs",
+          "id": "schema_definition::dbspec_render_ddl"
+        }
+      ]
+    },
+    {
+      "id": "coverage-schema-definition-dbspec-analyze-tokens",
+      "kind": "feature",
+      "requirements": [
+        "DBS-134"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_schema_definition_test.go",
+          "id": "TestCoverageDbspecAnalyzeTokens"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageSchemaDefinitionTest.php",
+          "id": "CoverageSchemaDefinitionTest::testDbspecAnalyzeTokens"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageSchemaDefinitionExtensionTest.php",
+          "id": "CoverageSchemaDefinitionExtensionTest::testDbspecAnalyzeTokens"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_schema_definition.mjs",
+          "id": "dbspec_analyze_tokens"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_schema_definition.py",
+          "id": "dbspec_analyze_tokens"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/schema/tests/coverage_schema_definition.rs",
+          "id": "schema_definition::dbspec_analyze_tokens"
+        }
+      ]
+    },
+    {
+      "id": "coverage-schema-definition-dbspec-format",
+      "kind": "feature",
+      "requirements": [
+        "DBS-141"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_schema_definition_test.go",
+          "id": "TestCoverageDbspecFormat"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageSchemaDefinitionTest.php",
+          "id": "CoverageSchemaDefinitionTest::testDbspecFormat"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageSchemaDefinitionExtensionTest.php",
+          "id": "CoverageSchemaDefinitionExtensionTest::testDbspecFormat"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_schema_definition.mjs",
+          "id": "dbspec_format"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_schema_definition.py",
+          "id": "dbspec_format"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/schema/tests/coverage_schema_definition.rs",
+          "id": "schema_definition::dbspec_format"
+        }
+      ]
+    },
+    {
+      "id": "coverage-schema-definition-dbspec-format-refusal",
+      "kind": "feature",
+      "requirements": [
+        "DBS-141",
+        "ORES-14"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_schema_definition_test.go",
+          "id": "TestCoverageDbspecFormatRefusal"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageSchemaDefinitionTest.php",
+          "id": "CoverageSchemaDefinitionTest::testDbspecFormatRefusal"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageSchemaDefinitionExtensionTest.php",
+          "id": "CoverageSchemaDefinitionExtensionTest::testDbspecFormatRefusal"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_schema_definition.mjs",
+          "id": "dbspec_format_refusal"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_schema_definition.py",
+          "id": "dbspec_format_refusal"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/schema/tests/coverage_schema_definition.rs",
+          "id": "schema_definition::dbspec_format_refusal"
+        }
+      ]
+    },
+    {
+      "id": "coverage-schema-definition-dbspec-parse-positions",
+      "kind": "feature",
+      "requirements": [
+        "DBS-142"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_schema_definition_test.go",
+          "id": "TestCoverageDbspecParsePositions"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageSchemaDefinitionTest.php",
+          "id": "CoverageSchemaDefinitionTest::testDbspecParsePositions"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageSchemaDefinitionExtensionTest.php",
+          "id": "CoverageSchemaDefinitionExtensionTest::testDbspecParsePositions"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_schema_definition.mjs",
+          "id": "dbspec_parse_positions"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_schema_definition.py",
+          "id": "dbspec_parse_positions"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/schema/tests/coverage_schema_definition.rs",
+          "id": "schema_definition::dbspec_parse_positions"
+        }
+      ]
+    },
+    {
+      "id": "coverage-authenticated-encryption-aes-envelope-decrypt",
+      "kind": "feature",
+      "requirements": [
+        "COD-5"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_authenticated_encryption_test.go",
+          "id": "TestCoverageAesEnvelopeDecrypt"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageAuthenticatedEncryptionTest.php",
+          "id": "CoverageAuthenticatedEncryptionTest::testAesEnvelopeDecrypt"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageAuthenticatedEncryptionExtensionTest.php",
+          "id": "CoverageAuthenticatedEncryptionExtensionTest::testAesEnvelopeDecrypt"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_authenticated_encryption.mjs",
+          "id": "aes_envelope_decrypt"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_authenticated_encryption.py",
+          "id": "test_aes_envelope_decrypt"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/coverage_authenticated_encryption.rs",
+          "id": "authenticated_encryption::aes_envelope_decrypt"
+        }
+      ]
+    },
+    {
+      "id": "coverage-authenticated-encryption-aes-round-trip",
+      "kind": "feature",
+      "requirements": [
+        "COD-5"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_authenticated_encryption_test.go",
+          "id": "TestCoverageAesRoundTrip"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageAuthenticatedEncryptionTest.php",
+          "id": "CoverageAuthenticatedEncryptionTest::testAesRoundTrip"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageAuthenticatedEncryptionExtensionTest.php",
+          "id": "CoverageAuthenticatedEncryptionExtensionTest::testAesRoundTrip"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_authenticated_encryption.mjs",
+          "id": "aes_round_trip"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_authenticated_encryption.py",
+          "id": "test_aes_round_trip"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/coverage_authenticated_encryption.rs",
+          "id": "authenticated_encryption::aes_round_trip"
+        }
+      ]
+    },
+    {
+      "id": "coverage-authenticated-encryption-aes-tamper-rejected",
+      "kind": "feature",
+      "requirements": [
+        "COD-6"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_authenticated_encryption_test.go",
+          "id": "TestCoverageAesTamperRejected"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageAuthenticatedEncryptionTest.php",
+          "id": "CoverageAuthenticatedEncryptionTest::testAesTamperRejected"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageAuthenticatedEncryptionExtensionTest.php",
+          "id": "CoverageAuthenticatedEncryptionExtensionTest::testAesTamperRejected"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_authenticated_encryption.mjs",
+          "id": "aes_tamper_rejected"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_authenticated_encryption.py",
+          "id": "test_aes_tamper_rejected"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/coverage_authenticated_encryption.rs",
+          "id": "authenticated_encryption::aes_tamper_rejected"
+        }
+      ]
+    },
+    {
+      "id": "coverage-authenticated-encryption-aes-wrong-key-rejected",
+      "kind": "feature",
+      "requirements": [
+        "COD-6"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_authenticated_encryption_test.go",
+          "id": "TestCoverageAesWrongKeyRejected"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageAuthenticatedEncryptionTest.php",
+          "id": "CoverageAuthenticatedEncryptionTest::testAesWrongKeyRejected"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageAuthenticatedEncryptionExtensionTest.php",
+          "id": "CoverageAuthenticatedEncryptionExtensionTest::testAesWrongKeyRejected"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_authenticated_encryption.mjs",
+          "id": "aes_wrong_key_rejected"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_authenticated_encryption.py",
+          "id": "test_aes_wrong_key_rejected"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/coverage_authenticated_encryption.rs",
+          "id": "authenticated_encryption::aes_wrong_key_rejected"
+        }
+      ]
+    },
+    {
+      "id": "coverage-authenticated-encryption-blind-index-vector",
+      "kind": "feature",
+      "requirements": [
+        "COD-4"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_authenticated_encryption_test.go",
+          "id": "TestCoverageBlindIndexVector"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageAuthenticatedEncryptionTest.php",
+          "id": "CoverageAuthenticatedEncryptionTest::testBlindIndexVector"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageAuthenticatedEncryptionExtensionTest.php",
+          "id": "CoverageAuthenticatedEncryptionExtensionTest::testBlindIndexVector"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_authenticated_encryption.mjs",
+          "id": "blind_index_vector"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_authenticated_encryption.py",
+          "id": "test_blind_index_vector"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/coverage_authenticated_encryption.rs",
+          "id": "authenticated_encryption::blind_index_vector"
         }
       ]
     },

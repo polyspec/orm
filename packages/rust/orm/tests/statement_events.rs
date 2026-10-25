@@ -289,6 +289,7 @@ fn statement_events() -> Vec<polyspec_orm_testcase::Trial> {
 /// statement_events coverage: on the database feature-check chose (ORM_FEATURE_DATABASE),
 /// runs every case of the vector, each in a new case database. The bench database is neither read nor written.
 /// It is an ignored trial, which feature-check runs with --include-ignored.
+// Requirements: INT-91.
 async fn coverage_statement_events() {
     run_cases(feature_database::selected()).await;
 }

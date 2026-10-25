@@ -19,6 +19,7 @@ async function runOn(c, dialects) {
 }
 
 await runCases('coverage_statement_events.mjs', {
+  // Requirements: INT-91.
   async statement_events({ driver }) {
     const failures = [];
     for (const c of vectors.cases) {

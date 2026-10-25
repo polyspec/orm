@@ -59,12 +59,14 @@ final class CoverageAuthenticatedEncryptionTest extends TestCase
         }
     }
 
+    // Requirements: COD-5.
     public function testAesEnvelopeDecrypt(): void
     {
         $fixture = coverageJson(dirname(__DIR__, 3) . '/contracts/fixtures/authenticated_encryption.json');
         decryptCase($fixture, 'aes_envelope_decrypt');
     }
 
+    // Requirements: COD-5.
     public function testAesRoundTrip(): void
     {
         $fixture = coverageJson(dirname(__DIR__, 3) . '/contracts/fixtures/authenticated_encryption.json');
@@ -86,18 +88,21 @@ final class CoverageAuthenticatedEncryptionTest extends TestCase
         Assert::assertTrue($plain === $case['expected']['plain'], 'round trip ' . var_export($plain, true));
     }
 
+    // Requirements: COD-6.
     public function testAesTamperRejected(): void
     {
         $fixture = coverageJson(dirname(__DIR__, 3) . '/contracts/fixtures/authenticated_encryption.json');
         decryptCase($fixture, 'aes_tamper_rejected');
     }
 
+    // Requirements: COD-6.
     public function testAesWrongKeyRejected(): void
     {
         $fixture = coverageJson(dirname(__DIR__, 3) . '/contracts/fixtures/authenticated_encryption.json');
         decryptCase($fixture, 'aes_wrong_key_rejected');
     }
 
+    // Requirements: COD-4.
     public function testBlindIndexVector(): void
     {
         $fixture = coverageJson(dirname(__DIR__, 3) . '/contracts/fixtures/authenticated_encryption.json');
