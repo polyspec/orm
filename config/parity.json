@@ -708,8 +708,20 @@
           "reason": "harness: tests a TypeScript test-only reader for generated source text and declared field extraction using a temporary fixture; generated output behavior is verified by generator owner checks"
         },
         {
+          "glob": "packages/ts/tests/generator_scan.test.mjs",
+          "reason": "harness: tests the TypeScript generator-scan runner's isolated child environment, captured process result and generated-model reader; public scanned-chain semantics are exercised by the shared generator-scan feature units"
+        },
+        {
           "glob": "packages/ts/tests/schema_of.test.mjs",
           "reason": "harness: tests a TypeScript test-only schema fixture adapter that assembles the public manifest result into the shape generated test models consume; shared manifest/hash behavior is covered by dbspec vectors"
+        },
+        {
+          "glob": "packages/ts/tests/complex-query-request-types.mjs",
+          "reason": "ecosystem: runs the host TypeScript compiler against temporary positive and negative request type fixtures; the shared complex-query runtime behavior is covered by complex-query-public-semijoin-plan"
+        },
+        {
+          "glob": "packages/ts/tests/fulltext-chain-types.mjs",
+          "reason": "ecosystem: runs the host TypeScript compiler against temporary positive and negative full-text chain type fixtures; runtime full-text behavior is covered by fulltext-search"
         },
         {
           "glob": "packages/ts/tests/syntax-vectors.mjs",
