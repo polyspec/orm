@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The found-rows count, the float digits of the Rust client and the SQLite path of the Rust build tool take the place that P32 gives them: CFG-10 is cited by the MySQL conformance suite, whose affected_counts vector checks the found row in every client; CFG-32 names the polyspec-orm crate, which owns rust-postgres-float-round-trip; and the Python client-flag check and the Rust tool path check are plain tests of their packages (KSTD-2-11-13-4).
 - The Rust unit rust-statement-timeout-bounds-sqlite-lock-wait, which bound a case removed when the Rust client began to keep the DSN busy_timeout of SQLite, leaves config/parity.json (KSTD-2-11-13-5).
 - The session state of a transaction ends with the transaction in every client (CFG-30): connection-transaction-session-state-ends binds the Go case of a canceled transaction and new cases in TypeScript, Python, the PHP library, the PHP extension and Rust, which read the server session after a committed lock and local value on SQLite, MySQL and PostgreSQL (KSTD-2-11-13-7).
 - The primary and replica connection and the refused replica write have two six-client units citing CFG-21, CFG-22 and CFG-24 in place of four units that each bound one client. The TypeScript cases move from the support file model.mjs to replica.mjs, Rust gains the cases in replica.rs, and make replica-check runs every client on the primary and replica servers (KSTD-2-11-13-3).

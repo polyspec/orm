@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 77424934b8a2012ff8a8a955b224e6e07cf05fbe8ab90e967833955c022ced75 -->
+<!-- source-sha256: 0b8569fdad5ddaea47cb2b4ecf9fc3d168149aa63346ca037f10c047166356ab -->
 # 변경 이력
 
 ## Unreleased
 
+- found-rows 개수, Rust client의 float 자릿수, Rust build tool의 SQLite 경로는 P32가 정한 자리에 놓인다: CFG-10은 모든 client에서 found row를 확인하는 affected_counts vector를 가진 MySQL conformance suite가 인용하고, CFG-32는 rust-postgres-float-round-trip을 소유하는 polyspec-orm crate를 이름으로 적고, Python client flag 검사와 Rust tool 경로 검사는 각 package의 일반 test다(KSTD-2-11-13-4).
 - Rust client가 SQLite의 DSN busy_timeout을 유지하면서 지워진 case를 bind하던 Rust unit rust-statement-timeout-bounds-sqlite-lock-wait가 config/parity.json에서 빠진다(KSTD-2-11-13-5).
 - transaction의 session 상태는 모든 client에서 transaction과 함께 끝난다(CFG-30): connection-transaction-session-state-ends는 취소된 transaction의 Go case와 TypeScript, Python, PHP library, PHP extension, Rust의 새 case를 bind하며, 이 case들은 SQLite, MySQL, PostgreSQL에서 commit된 lock과 local 값 뒤의 서버 session을 읽는다(KSTD-2-11-13-7).
 - primary와 replica 연결, 거부되는 replica 쓰기는 client 하나씩 bind하던 unit 네 개 대신 CFG-21, CFG-22, CFG-24를 인용하는 여섯 client unit 두 개를 가진다. TypeScript case는 support 파일 model.mjs에서 replica.mjs로 옮기고, Rust는 replica.rs에 case를 얻으며, make replica-check가 모든 client를 primary와 replica 서버에서 실행한다(KSTD-2-11-13-3).

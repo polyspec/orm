@@ -564,6 +564,10 @@
         {
           "glob": "packages/python/tests/entry_point_check.py",
           "reason": "ecosystem: an implementation test that checks the installed Python entry point and package import boundary, not shared ORM behaviour (K313)"
+        },
+        {
+          "glob": "packages/python/tests/test_mysql_found_rows.py",
+          "reason": "test: an internal test of the Python client that reads the PyMySQL client flags of the connection, an implementation detail; the found-rows behaviour of CFG-10 is the affected_counts vector of the conformance suite (P32)"
         }
       ],
       "roots": [
@@ -6804,7 +6808,8 @@
         "DBS-87",
         "DBS-113",
         "DBS-117",
-        "CPX-3"
+        "CPX-3",
+        "CFG-10"
       ],
       "file": "tests/conformance/vectors.json",
       "cases": "$.vectors[*].name",
@@ -11620,20 +11625,6 @@
       ]
     },
     {
-      "id": "rust-tool-sqlite-file-name-is-the-path",
-      "kind": "feature",
-      "requirements": [
-        "CFG-11"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/tool_limits.rs",
-          "id": "tool_sqlite_file_name_is_the_path"
-        }
-      ]
-    },
-    {
       "id": "rust-bounded-query-rejects-ambiguous-multiple-result-sets",
       "kind": "feature",
       "requirements": [
@@ -12883,7 +12874,12 @@
           "test": "packages/rust/orm/tests/zone.rs",
           "id": "postgres_float_round_trip"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm"
+      }
     },
     {
       "id": "rust-dbspec-set-nested-json-rules",
@@ -13664,20 +13660,6 @@
           "implementation": "python",
           "test": "packages/python/tests/test_model_json_text.py",
           "id": "test_a_row_writes_the_stored_ordered_json_text_in_row_order"
-        }
-      ]
-    },
-    {
-      "id": "py-test-mysql-found-rows",
-      "kind": "feature",
-      "requirements": [
-        "CFG-10"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_mysql_found_rows.py",
-          "id": "test_connection_asks_for_found_rows"
         }
       ]
     },
