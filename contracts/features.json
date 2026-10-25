@@ -2518,6 +2518,7 @@
         "packages/python/tests/test_statement_fault_entry.py",
         "packages/rust/orm/src/tx.rs",
         "packages/rust/orm/src/tx_send_tests.rs",
+        "packages/python/tests/rollback.py",
         "packages/python/tests/test_rollback_fault.py",
         "packages/python/tests/test_sqlite.py",
         "packages/python/tests/test_utils.py",
@@ -2703,6 +2704,15 @@
           "shard": "other",
           "inputs": [
             "packages/ts/tests/rollback.mjs",
+            "contracts/fixtures/rollback.dbs"
+          ]
+        },
+        {
+          "id": "rollback-python",
+          "command": "make python-rollback-check",
+          "shard": "other",
+          "inputs": [
+            "packages/python/tests/rollback.py",
             "contracts/fixtures/rollback.dbs"
           ]
         },

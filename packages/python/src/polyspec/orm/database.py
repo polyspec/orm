@@ -957,8 +957,11 @@ class _PostgresConnection:
 
     def execute(self, sql: str, values):
         text, args = for_postgres(sql, values)
-        cursor = self.connection.cursor()
+        cursor = None
         try:
+            # psycopg refuses a cursor on a connection it marked closed, so that refusal is a driver error of the
+            # statement too.
+            cursor = self.connection.cursor()
             cursor.execute(text, args)
             rows = (
                 [list(row) for row in cursor.fetchall()] if cursor.description else []
@@ -971,7 +974,8 @@ class _PostgresConnection:
             # psycopg marks a connection that the server ended or that was dropped as closed.
             _raise_driver_error("postgres", error, bool(self.connection.closed))
         finally:
-            cursor.close()
+            if cursor is not None:
+                cursor.close()
         return {"rows": rows, "insert_id": insert_id, "affected": affected}
 
     def cancel_query(self) -> None:

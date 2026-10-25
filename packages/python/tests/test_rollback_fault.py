@@ -87,6 +87,20 @@ def fail_next_rollback(db) -> None:
     testing.fail_next_rollback(db)
 
 
+def check_rollback(case: unittest.TestCase, error, subject: str):
+    """A ROLLBACK error has two errors, and its message records both."""
+    case.assertIsInstance(error, OrmError, f"{subject} raises {error!r}")
+    case.assertEqual(error.code, "ROLLBACK", f"{subject}: {error}")
+    case.assertIsNotNone(error.cause, f"{subject} keeps the callback error")
+    case.assertIsNotNone(
+        getattr(error, "rollback", None), f"{subject} keeps the rollback error"
+    )
+    case.assertEqual(
+        str(error),
+        f"ROLLBACK: transaction failed ({error.cause}) and rollback failed ({error.rollback})",
+    )
+
+
 class RollbackFaultTest(unittest.TestCase):
     deadline = testcase.DATABASE
 
@@ -118,17 +132,7 @@ class RollbackFaultTest(unittest.TestCase):
         return None
 
     def check_rollback(self, error, subject: str):
-        """A ROLLBACK error has two errors, and its message records both."""
-        self.assertIsInstance(error, OrmError, f"{subject} raises {error!r}")
-        self.assertEqual(error.code, "ROLLBACK", f"{subject}: {error}")
-        self.assertIsNotNone(error.cause, f"{subject} keeps the callback error")
-        self.assertIsNotNone(
-            getattr(error, "rollback", None), f"{subject} keeps the rollback error"
-        )
-        self.assertEqual(
-            str(error),
-            f"ROLLBACK: transaction failed ({error.cause}) and rollback failed ({error.rollback})",
-        )
+        check_rollback(self, error, subject)
 
     # Requirements: INT-72.
     def test_the_fault_reports_the_next_failed_rollback(self):

@@ -3992,16 +3992,160 @@
       ]
     },
     {
-      "id": "ts-rollback",
+      "id": "connection-rollback-failed-reports-both-errors",
       "kind": "feature",
       "requirements": [
         "CFG-15"
       ],
       "bindings": [
         {
+          "implementation": "go",
+          "test": "packages/go/orm/rollback_test.go",
+          "id": "TestRollbackFailedSQLite"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/rollback_test.go",
+          "id": "TestRollbackFailedMySQL"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/rollback_test.go",
+          "id": "TestRollbackFailedPostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RollbackTest.php",
+          "id": "RollbackTest::testRollbackFailed"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/RollbackTest.php",
+          "id": "RollbackTest::testRollbackFailed"
+        },
+        {
           "implementation": "typescript",
           "test": "packages/ts/tests/rollback.mjs",
           "id": "rollback/rollback_failed/sqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/rollback.mjs",
+          "id": "rollback/rollback_failed/mysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/rollback.mjs",
+          "id": "rollback/rollback_failed/postgres"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/rollback.py",
+          "id": "test_rollback_failed_sqlite"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/rollback.py",
+          "id": "test_rollback_failed_mysql"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/rollback.py",
+          "id": "test_rollback_failed_postgres"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/rollback.rs",
+          "id": "rollback_failed_sqlite"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/rollback.rs",
+          "id": "rollback_failed_mysql"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/rollback.rs",
+          "id": "rollback_failed_postgres"
+        }
+      ]
+    },
+    {
+      "id": "connection-savepoint-rollback-failed-reports-both-errors",
+      "kind": "feature",
+      "requirements": [
+        "CFG-15"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/rollback_test.go",
+          "id": "TestSavepointRollbackFailedSQLite"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/rollback_test.go",
+          "id": "TestSavepointRollbackFailedMySQL"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/rollback_test.go",
+          "id": "TestSavepointRollbackFailedPostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RollbackTest.php",
+          "id": "RollbackTest::testSavepointRollbackFailed"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/RollbackTest.php",
+          "id": "RollbackTest::testSavepointRollbackFailed"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/rollback.mjs",
+          "id": "rollback/savepoint_rollback_failed/sqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/rollback.mjs",
+          "id": "rollback/savepoint_rollback_failed/mysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/rollback.mjs",
+          "id": "rollback/savepoint_rollback_failed/postgres"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/rollback.py",
+          "id": "test_savepoint_rollback_failed_sqlite"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/rollback.py",
+          "id": "test_savepoint_rollback_failed_mysql"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/rollback.py",
+          "id": "test_savepoint_rollback_failed_postgres"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/rollback.rs",
+          "id": "savepoint_rollback_failed_sqlite"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/rollback.rs",
+          "id": "savepoint_rollback_failed_mysql"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/rollback.rs",
+          "id": "savepoint_rollback_failed_postgres"
         }
       ]
     },
@@ -8855,20 +8999,6 @@
       }
     },
     {
-      "id": "go-internal-packages-go-orm-rollback",
-      "kind": "feature",
-      "requirements": [
-        "CFG-15"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/rollback_test.go",
-          "id": "TestRollbackFailedSQLite"
-        }
-      ]
-    },
-    {
       "id": "go-internal-packages-go-orm-time-precision",
       "kind": "feature",
       "requirements": [
@@ -11251,48 +11381,6 @@
       ]
     },
     {
-      "id": "rust-rollback-failed-mysql",
-      "kind": "feature",
-      "requirements": [
-        "CFG-15"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/rollback.rs",
-          "id": "rollback_failed_mysql"
-        }
-      ]
-    },
-    {
-      "id": "rust-rollback-failed-postgres",
-      "kind": "feature",
-      "requirements": [
-        "CFG-15"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/rollback.rs",
-          "id": "rollback_failed_postgres"
-        }
-      ]
-    },
-    {
-      "id": "rust-rollback-failed-sqlite",
-      "kind": "feature",
-      "requirements": [
-        "CFG-15"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/rollback.rs",
-          "id": "rollback_failed_sqlite"
-        }
-      ]
-    },
-    {
       "id": "rust-rollback-fault-entry",
       "kind": "feature",
       "requirements": [
@@ -11312,57 +11400,6 @@
         "artifact": "git-tag",
         "package": "polyspec-orm"
       }
-    },
-    {
-      "id": "rust-savepoint-rollback-failed-mysql",
-      "kind": "feature",
-      "requirements": [
-        "CFG-15",
-        "PRT-44",
-        "PRT-54",
-        "PRT-59"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/rollback.rs",
-          "id": "savepoint_rollback_failed_mysql"
-        }
-      ]
-    },
-    {
-      "id": "rust-savepoint-rollback-failed-postgres",
-      "kind": "feature",
-      "requirements": [
-        "CFG-15",
-        "PRT-44",
-        "PRT-54",
-        "PRT-59"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/rollback.rs",
-          "id": "savepoint_rollback_failed_postgres"
-        }
-      ]
-    },
-    {
-      "id": "rust-savepoint-rollback-failed-sqlite",
-      "kind": "feature",
-      "requirements": [
-        "CFG-15",
-        "PRT-44",
-        "PRT-54",
-        "PRT-59"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/rollback.rs",
-          "id": "savepoint_rollback_failed_sqlite"
-        }
-      ]
     },
     {
       "id": "rust-soft-delete-filters-reads-and-rewrites-deletes",
@@ -14785,40 +14822,6 @@
           "implementation": "php",
           "test": "packages/php/tests/ModelTest.php",
           "id": "ModelTest::testInsertParts"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-rollback-rollback-failed",
-      "kind": "feature",
-      "requirements": [
-        "CFG-15",
-        "PRT-46",
-        "PRT-56",
-        "PRT-61"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/RollbackTest.php",
-          "id": "RollbackTest::testRollbackFailed"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-rollback-savepoint-rollback-failed",
-      "kind": "feature",
-      "requirements": [
-        "CFG-15",
-        "PRT-46",
-        "PRT-56",
-        "PRT-61"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/RollbackTest.php",
-          "id": "RollbackTest::testSavepointRollbackFailed"
         }
       ]
     },
