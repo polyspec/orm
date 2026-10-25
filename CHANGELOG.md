@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- KSTD-2-11-13-1-1: The PHP extension's MySQL rollback-failed and savepoint-rollback-failed cases pass on PHP 8.4.26 (2 tests / 19 assertions) with native module `d01c3`. Evidence log SHA-256: `bb75b0c3379bb6f2cb5e7b13c8f0911ec7398db622fafcb08b1442ca8e7f1368`.
+
 - KSTD-2-11-13-3: The primary/replica and replica-write-refusal units now bind native cases across all six clients. Preserved owner logs show MySQL, PostgreSQL and SQLite coverage: Go 3 tests, TypeScript 3, Python 3, PHP 3 tests / 14 assertions, PHP extension 3 / 14, and Rust 3.
 
 - KSTD-2-11-15-2: `generated-field-types-follow-runtime-model` now binds native generated-field type tests in all six clients for INT-2 to INT-8; the existing Go generator unit remains bound to INT-12. Source: `56f5a226d`.

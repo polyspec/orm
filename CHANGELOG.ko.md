@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 6ef01d60710943ad610db8a3064e4c44f7b1e52741ff582520cb1e36585fc260 -->
+<!-- source-sha256: 7bcefbc577e2d9500d590f795205a18d4d3fb51dd83cc79c283330433500eae5 -->
 # 변경 이력
 
 ## Unreleased
+
+- KSTD-2-11-13-1-1: PHP extension의 MySQL rollback-failed 및 savepoint-rollback-failed case가 PHP 8.4.26에서 native module `d01c3`으로 통과했다 (2 tests / 19 assertions). 증거 로그 SHA-256: `bb75b0c3379bb6f2cb5e7b13c8f0911ec7398db622fafcb08b1442ca8e7f1368`.
 
 - KSTD-2-11-13-3: primary/replica 연결과 replica 쓰기 거부 unit을 여섯 client의 native case에 연결했다. 보존된 owner log는 MySQL, PostgreSQL, SQLite를 포함한다: Go 3 tests, TypeScript 3, Python 3, PHP 3 tests / 14 assertions, PHP extension 3 / 14, Rust 3.
 
