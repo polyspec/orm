@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The two drop cases of `scripts/check/continue.test.mts` expect the drops of the 18 complex-query fixture databases that `databases.mts drop` runs before the bench and decimal databases, so they pass again (KSTD-2-9-13-2).
 - On MySQL the PHP client and the PHP extension bind each int and bool of a statement as `PDO::PARAM_INT`, so the root page `LIMIT` and `OFFSET` of `limit(offset, count)` reach MySQL as numbers. The emulated prepare of MySQL quoted every value that `execute()` received, and since the page values became the parameters `offset_p` and `count_p` (PRT-78) MySQL answered 1064 near `''0', '3''`; the model_queries owners of both clients pass on MySQL again (T182-6-16).
 - `OrmException::fromDriver` of the PHP extension no longer corrupts the Zend heap: it released the `rv` zval of `zend_read_property` for `errorInfo`, which the read never writes for a declared property, so a release build freed an uninitialized stack value; it now copies the value it reads and releases only what it owns. The native writes of model_writes, statement_events, audit_triggers and constraints_and_relations run again on MySQL, PostgreSQL and SQLite (T182-6-18).
 - The Go and Rust restore, audit record and soft delete read cases bind three six-client units citing INT-38, CFG-8 with INT-44, and DBS-67, beside the audit trigger coverage cases of the other clients; the five units that bound one client each are gone (KSTD-2-11-12-3).

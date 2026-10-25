@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 5090a75a32e8129d8a701e6d6bcad972ebbbedebbef4446f3f963242ee3d6e51 -->
+<!-- source-sha256: 7b47f6693cde66eb20bfa92513444a32b7a869ee5090c49ba42b43bd1416e002 -->
 # 변경 이력
 
 ## Unreleased
 
+- `scripts/check/continue.test.mts`의 두 drop case는 `databases.mts drop`이 bench와 decimal database보다 먼저 실행하는 18개 complex-query fixture database의 drop을 기대하므로 다시 통과한다 (KSTD-2-9-13-2).
 - MySQL에서 PHP client와 PHP extension은 문장의 int와 bool을 `PDO::PARAM_INT`로 bind하므로 `limit(offset, count)`의 루트 페이지 `LIMIT`와 `OFFSET`이 MySQL에 숫자로 간다. MySQL의 emulated prepare는 `execute()`가 받은 모든 값을 따옴표로 감쌌고, 페이지 값이 매개변수 `offset_p`와 `count_p`가 된 뒤(PRT-78) MySQL이 `''0', '3''` 근처 1064로 답했다. 두 client의 model_queries owner가 MySQL에서 다시 통과한다 (T182-6-16).
 - PHP extension의 `OrmException::fromDriver`가 더 이상 Zend heap을 손상시키지 않는다: `errorInfo`에 대한 `zend_read_property`의 `rv` zval을 해제했는데, 선언된 property이면 read가 이를 쓰지 않으므로 release build가 초기화되지 않은 stack 값을 해제했다. 이제 읽은 값을 복사하고 자신이 소유한 것만 해제한다. model_writes, statement_events, audit_triggers, constraints_and_relations의 native write가 MySQL, PostgreSQL, SQLite에서 다시 실행된다 (T182-6-18).
 - Go와 Rust의 restore, audit record, soft delete read case는 다른 client의 audit trigger coverage case와 함께 INT-38, CFG-8과 INT-44, DBS-67을 인용하는 여섯 client unit 세 개에 bind된다; client 하나씩 bind하던 unit 다섯 개는 사라졌다(KSTD-2-11-12-3).

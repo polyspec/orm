@@ -222,7 +222,10 @@ caseTest('dropping the run databases removes every part after a failed one and n
     // The server file supplies the replica needed to purge its binary logs.
     const result = f.run(['scripts/check/databases.mts', 'drop', servers, dir, 'orm_x']);
     assert.notEqual(result.status, 0, result.stdout + result.stderr);
-    assert.deepEqual(f.ran().map(line => line.split(' ')[0]), ['mysql', 'psql', 'mysql', 'mysql']);
+    // The 18 complex-query fixture databases go first: six MySQL and six PostgreSQL drops (the SQLite files are removed),
+    // then the bench and decimal databases of MySQL, which fail, and of PostgreSQL, and the two MySQL purges.
+    const fixtureDrops = Array.from({ length: 6 }, () => ['mysql', 'psql']).flat();
+    assert.deepEqual(f.ran().map(line => line.split(' ')[0]), [...fixtureDrops, 'mysql', 'psql', 'mysql', 'mysql']);
     assert.ok(!existsSync(dir), 'the run directory is left');
     assert.match(result.stderr, /databases: drop failed:\n {2}mysql /);
     assert.match(result.stderr, /\n {2}purge the binary logs \(exit 1\)/);
@@ -257,7 +260,12 @@ esac
       assert.ok(!(result.stdout + result.stderr).includes('127.0.0.1'), 'no DSN or address is printed');
       if (applied === '7') {
         assert.equal(result.status, 0, result.stdout + result.stderr);
-        assert.deepEqual(ran.slice(1), ['primary FLUSH BINARY LOGS', 'primary SHOW BINARY LOG STATUS', "replica SELECT IFNULL(SOURCE_POS_WAIT('binlog.000012', 157, 120), 'NULL')",
+        // The drops come first: the six MySQL complex-query fixture databases, then the bench and decimal databases.
+        assert.deepEqual(ran.slice(0, 7), [
+          ...['g', 'p', 'pe', 'ts', 'py', 'rs'].map(code => `primary DROP DATABASE IF EXISTS \`orm_x_cq_${code}_m\``),
+          'primary DROP DATABASE IF EXISTS `orm_x_bench`; DROP DATABASE IF EXISTS `orm_x_decimal`',
+        ]);
+        assert.deepEqual(ran.slice(7), ['primary FLUSH BINARY LOGS', 'primary SHOW BINARY LOG STATUS', "replica SELECT IFNULL(SOURCE_POS_WAIT('binlog.000012', 157, 120), 'NULL')",
           "primary PURGE BINARY LOGS TO 'binlog.000012'", 'replica FLUSH BINARY LOGS; FLUSH RELAY LOGS', 'replica SHOW BINARY LOG STATUS', "replica PURGE BINARY LOGS TO 'binlog.000031'"]);
         assert.match(result.stdout, /databases: binary logs purged up to binlog.000012 on the primary and binlog.000031 on the replica/);
       } else {
