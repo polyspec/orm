@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: b00f8587098df23873115061104b7e946e0fb06f5a5d688da5c6a92adc869e87 -->
+<!-- source-sha256: e8822ee118a3e4a334bf8d169c56b3cdff781447e2996d48fdb4f27963299036 -->
 # 변경 이력
 
 ## Unreleased
+
+- KSTD-5-88-12: 모든 JavaScript test가 caseTest로 case를 선언한다. 정확한 repository guard가 통과했고(1/1), 보존된 통합 guard 기록은 두 JavaScript 항목이 모두 통과했음을 보여준다(2/2).
 
 - KSTD-5-88-14: check가 실행하는 모든 TypeScript test가 `tests/testcase.mts`로 case를 보고한다. 정확한 owner selector `node --test --test-name-pattern='every PHP and TypeScript test that a check runs reports its cases' scripts/repo/check.test.mts`가 통과했고(1/1), 보존된 통합 guard 기록 `var/parallel/resume-landing/kstd-5-88-js-green.log`도 두 JavaScript 항목이 통과했다고 기록한다(2/2) (KSTD-5-88-14).
 
