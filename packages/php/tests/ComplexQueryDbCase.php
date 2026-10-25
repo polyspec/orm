@@ -288,6 +288,11 @@ final class ComplexQueryDbCase
             $unsubscribe();
         }
         $expected = $fixture['expected'];
+        // parentNode merges the localized columns into the parent row, and a name the parent holds keeps the parent's
+        // value (PRT-15), so the product and the brand keep their seeded names.
+        $seedNames = static fn(string $table): array => array_column($fixture['seed'][$table], 'name', 'seq');
+        $productNames = $seedNames('product');
+        $brandNames = $seedNames('product_brand');
         Assert::assertSame($expected['total_count'], $page->totalCount);
         Assert::assertSame($expected['total_pages'], $page->totalPages);
 
@@ -307,6 +312,7 @@ final class ComplexQueryDbCase
                 Assert::assertNotNull($language, "product $sequence has its localized row");
                 $productLangs[$key] = $language->getSeq();
                 Assert::assertSame('widget-' . $sequence . '-en', $language->getName());
+                Assert::assertSame($productNames[$sequence], $product->getName());
             }
             if (isset($expected['brand_seqs'][$key])) {
                 $brand = $product->getBrand();
@@ -318,6 +324,7 @@ final class ComplexQueryDbCase
                     Assert::assertNotNull($brandLanguage, "brand $brandSequence has its localized row");
                     $brandLangs[(string) $brandSequence] = $brandLanguage->getSeq();
                     Assert::assertSame("brand-$brandSequence-en", $brandLanguage->getName());
+                    Assert::assertSame($brandNames[$brandSequence], $brand->getName());
                 }
             }
             if (isset($expected['review_seqs'][$key])) {

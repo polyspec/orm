@@ -1,5 +1,4 @@
 # The CPX-2 product search case runs through the generated public model API on the selected database.
-import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -7,21 +6,18 @@ from pathlib import Path
 from polyspec.orm.errors import OrmError
 
 from .complex_query_product import FIXTURE, SCHEMA_PATH, product_search_query
-from .coverage_case import coverage_main
+from .coverage_case import CoverageCase, coverage_main
 from .test_sqlite import generate_document
 
 
-class ComplexQueryCoverageTest(unittest.TestCase):
+class ComplexQueryCoverageTest(CoverageCase):
     def test_complex_query_product_search(self):
-        driver = os.environ.get("ORM_FEATURE_DATABASE", "")
-        dsn = os.environ.get("ORM_FEATURE_DSN", "")
+        self.each_item("complex_query_product_search", self.assert_product_search)
+
+    def assert_product_search(self, item):
+        self.assertIsNotNone(item, "the CPX-2 case runs on a database")
+        driver, dsn = item
         self.assertIn(driver, ("mysql", "postgres", "sqlite"))
-        target = {
-            "mysql": "complex-query-python-mysql-check",
-            "postgres": "complex-query-python-postgres-check",
-            "sqlite": "complex-query-python-sqlite-check",
-        }[driver]
-        self.assertTrue(dsn, f"ORM_FEATURE_DSN is required; run make {target}")
 
         with tempfile.TemporaryDirectory(
             prefix="orm-complex-query-models-"
@@ -30,10 +26,9 @@ class ComplexQueryCoverageTest(unittest.TestCase):
             db = models.connect(dsn)
             try:
                 if db.driver != driver:
-                    self.fail("ORM_FEATURE_DSN selects another database")
+                    self.fail(f"the {driver} DSN selects another database")
                 if driver == "sqlite":
                     self.assert_sqlite_refuses_before_statement(models, db)
-                    print(f"CASE complex_query_product_search [{driver}] PASS", flush=True)
                     return
                 events = []
                 unsubscribe = db.subscribe(events.append)
@@ -57,7 +52,6 @@ class ComplexQueryCoverageTest(unittest.TestCase):
                 )
             finally:
                 db.close()
-            print(f"CASE complex_query_product_search [{driver}] PASS", flush=True)
 
     def assert_sqlite_refuses_before_statement(self, models, db):
         events = []
@@ -79,6 +73,10 @@ def assert_product_page(test: unittest.TestCase, page) -> None:
     test.assertEqual(page["totalPages"], expected["total_pages"])
     products = page["items"]
     test.assertEqual([product.get_seq() for product in products], expected["row_seqs"])
+    # parentNode merges the localized columns into the parent row, and a name the parent holds keeps the parent's
+    # value (PRT-15), so the product and the brand keep their seeded names.
+    product_names = {row["seq"]: row["name"] for row in FIXTURE["seed"]["product"]}
+    brand_names = {row["seq"]: row["name"] for row in FIXTURE["seed"]["product_brand"]}
 
     for product in products:
         product_seq = product.get_seq()
@@ -87,17 +85,21 @@ def assert_product_page(test: unittest.TestCase, page) -> None:
             localized = product.get_product_lang_model()
             test.assertIsNotNone(localized)
             test.assertEqual(localized.get_seq(), expected["product_lang_seqs"][key])
+            test.assertEqual(localized.get_name(), f"widget-{product_seq}-en")
+            test.assertEqual(product.get_name(), product_names[product_seq])
         if key in expected["brand_seqs"]:
             brand = product.get_brand()
             test.assertIsNotNone(brand)
             brand_seq = expected["brand_seqs"][key]
             test.assertEqual(brand.get_seq(), brand_seq)
+            test.assertEqual(brand.get_name(), brand_names[brand_seq])
             brand_lang = brand.get_product_brand_lang_model()
             test.assertIsNotNone(brand_lang)
             test.assertEqual(
                 brand_lang.get_seq(),
                 expected["brand_lang_seqs"][str(brand_seq)],
             )
+            test.assertEqual(brand_lang.get_name(), f"brand-{brand_seq}-en")
         if key in expected["review_seqs"]:
             reviews = product.get_reviews().values()
             review_seqs = [review.get_seq() for review in reviews]
