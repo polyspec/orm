@@ -859,6 +859,7 @@ dbspec-php-check: dbspec-php-check/documents dbspec-php-check/graph dbspec-php-c
 dbspec-php-check/documents: php-vendor-check
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecTest.php
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecTest.php
+	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecCatalogRowsTest.php
 # dbspec-php-check/graph checks that a document, document set, plan list or unsupported list whose array holds another type is a TypeError.
 dbspec-php-check/graph: php-vendor-check
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/DbspecGraphTest.php

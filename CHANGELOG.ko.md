@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a2fb1a91d9a09283e08a0409efea3176907e031411b72d33663192cdbd003b83 -->
+<!-- source-sha256: b4f36a810f463075f353dbf5d848b2f3d161672072fa431ea6260b8325fc089f -->
 # 변경 이력
 
 ## Unreleased
 
+- `make dbspec-php-extension-check/vectors`가 다시 extension을 테스트한다: 내부 library 클래스 `Polyspec\Orm\Dbspec\CatalogRows`의 unit test 두 개가 library와 extension에서 실행되는 DbspecTest에서 `make dbspec-php-check/documents`가 library로 실행하는 DbspecCatalogRowsTest로 옮겨졌으므로, extension 실행이 더 이상 packages/php/src/Dbspec/CatalogRows.php를 불러오지 않는다 (KSTD-5-89-34).
 - orm이 kit K613, K614, K621 layout을 따르고 kit dist를 읽지 않는다: config/layout.kit.yml은 kit의 copy이고, config/php-lint는 없어졌으며, PRINCIPLES.md, PRINCIPLES.ko.md, .editorconfig, .claude/settings.json은 ../kit로 link되고, build.sh와 script와 test는 kit의 scripts/kit source를 실행한다 (KSTD-5-89-26).
 - main에서 `make duplication-check`가 통과한다. jscpd가 packages/php-ext, packages/php, packages/go, packages/rust, packages/ts, packages/python에서 두 번 찾은 코드는 이제 양쪽이 함께 쓰는 helper 하나에 있다(C header, PHP trait와 helper 파일, Go internal package, Rust common module과 macro, JavaScript와 Python helper). 모든 active root의 MySQL cancellation case는 controller가 wait lock 두 개를 잡은 뒤에야 두 번째 process를 시작하므로, 그 process가 wait lock을 먼저 가져가지 못한다(KSTD-5-89-22).
 - stress 입력 생성기를 benchmark helper 소유 범위에서 분리했다. 변경한 registry에서 소유 검사 선택이 통과한다 (KSTD-5-89-23).

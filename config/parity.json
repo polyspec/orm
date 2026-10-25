@@ -433,6 +433,10 @@
           "reason": "test: an internal test of the PHP package that tests a helper or loader of the owner, not a behaviour of the contract (K313)"
         },
         {
+          "glob": "packages/php/tests/DbspecCatalogRowsTest.php",
+          "reason": "test: tests the internal catalog row reader of the PHP library (Dbspec\\CatalogRows), which the extension implements in C; the shared dbspec vectors stay in DbspecTest"
+        },
+        {
           "glob": "packages/php/tests/DbspecPlanReaderTest.php",
           "reason": "harness: verifies ownership of the PHP dbspec plan-vector reader; it does not parse or plan a client request"
         },

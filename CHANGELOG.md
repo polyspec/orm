@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- `make dbspec-php-extension-check/vectors` tests the extension again: the two unit tests of the internal library class `Polyspec\Orm\Dbspec\CatalogRows` moved from DbspecTest, which runs on the library and the extension, to DbspecCatalogRowsTest, which `make dbspec-php-check/documents` runs on the library, so the extension run no longer loads packages/php/src/Dbspec/CatalogRows.php (KSTD-5-89-34).
 - orm is on the kit K613, K614 and K621 layout and reads no kit dist: config/layout.kit.yml is kit's copy, config/php-lint is gone, PRINCIPLES.md, PRINCIPLES.ko.md, .editorconfig and .claude/settings.json link into ../kit, and build.sh, the scripts and the tests run kit's scripts/kit sources (KSTD-5-89-26).
 - `make duplication-check` passes on main: each piece of code that jscpd found twice in packages/php-ext, packages/php, packages/go, packages/rust, packages/ts and packages/python now lives in one helper that both places use (C headers, PHP traits and helper files, a Go internal package, Rust common modules and macros, JavaScript and Python helpers). The MySQL cancellation case of every active root now starts its second process only after the controller holds both wait locks, so that process can no longer take a wait lock first (KSTD-5-89-22).
 - Separate the stress input producer from benchmark-helper ownership; owner selection validates the repaired registry (KSTD-5-89-23).
