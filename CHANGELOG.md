@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The native `Orm::connectSchema` of the PHP extension opens a `markdown://` DSN through the markdown IR executor, as `Orm::connect` does, so a generated markdown model connects in extension mode; the native write case stops its fake markdown server when connect fails, and `make model-native-php-extension-check` ends again (T182-6-20).
 - KSTD-7-3-3: Go, TypeScript, Python and Rust split oversized root IN lists before planning. The focused SQLite test for 70300 values passes on commit `431496ef9e72e5520b730ff02ad1511f5d11e4a1`: Go allocated 86.5 MB, TypeScript peak RSS rose 52.0 MB, Python traced peak was 36.8 MB, and Rust returned the two matching rows without a cached plan exceeding 999 bind slots.
 - KSTD-5-90: conformance-check RECORD=1 passes all six implementation outputs, php-extension included, to record (KSTD-5-90)
 - The PHP extension implements native planner, parameter-chunking and composite-key behavior through its declared owners; focused native cases cover root IN splitting, relation chunk padding, composite relations, tuple predicates and composite pages (KSTD-7-3).

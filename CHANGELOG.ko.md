@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 3e322d58704c434fbfa7bcebbfe8e596b88856ed96c5b0767b32e06c95737bd3 -->
+<!-- source-sha256: 3f9b603b1bfc613174f41c17d5e27d410b67f7189dc1df7b350ddd5ad70fe1fd -->
 # 변경 이력
 
 ## Unreleased
 
+- PHP extension의 native `Orm::connectSchema`는 `Orm::connect`처럼 `markdown://` DSN을 markdown IR executor로 연다. 그래서 생성된 markdown model이 extension mode에서 연결되고, native write case는 connect가 실패하면 fake markdown server를 멈추며, `make model-native-php-extension-check`가 다시 끝난다 (T182-6-20).
 - KSTD-7-3-3: Go, TypeScript, Python, Rust가 큰 root IN 목록을 plan 전에 나눈다. 커밋 `431496ef9e72e5520b730ff02ad1511f5d11e4a1`의 70300개 값을 쓰는 집중 SQLite test가 통과했다: Go 할당 86.5 MB, TypeScript peak RSS 증가 52.0 MB, Python traced peak 36.8 MB, Rust는 cached plan이 999 bind slot을 넘지 않으며 일치하는 두 행을 반환했다.
 - KSTD-5-90: conformance-check RECORD=1은 record에 여섯 구현 출력(php-extension 포함)을 모두 넘긴다 (KSTD-5-90)
 - PHP extension이 선언된 owner를 통해 native planner, parameter chunking, composite key 동작을 구현한다. 집중 native case는 root IN 분할, relation chunk padding, composite relation, tuple predicate와 composite page를 검증한다 (KSTD-7-3).

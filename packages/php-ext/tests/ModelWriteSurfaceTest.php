@@ -72,7 +72,17 @@ final class ModelWriteSurfaceTest extends TestCase
             ] as [$answer, $expected]
         ) {
             $server = \Polyspec\Orm\Tests\markdown_fake_server(['{"ok":true}', $answer]);
-            $db = \Polyspec\Orm\Tests\MarkdownModel\connect($server[2], new Config());
+            try {
+                $db = \Polyspec\Orm\Tests\MarkdownModel\connect($server[2], new Config());
+            } catch (\Throwable $error) {
+                // A refused connect leaves the fake server waiting for a request; it is stopped so that it does not
+                // hold the output of the run open.
+                proc_terminate($server[0]);
+                fclose($server[1]);
+                fclose($server[3]);
+                proc_close($server[0]);
+                throw $error;
+            }
             try {
                 $request = new Request('insert', $manifestHash);
                 $request->ir['entity'] = 'people';

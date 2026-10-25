@@ -902,6 +902,17 @@ fail:
     return false;
 }
 
+/* Opens the database that the scheme of the DSN selects, as Orm::connect does: markdown:// the markdown IR executor, the
+ * others a PDO connection. */
+static bool orm_connect_dsn(zend_string *dsn, zval *config, zval *out)
+{
+    zend_string *scheme = NULL;
+    if (!orm_scheme(dsn, &scheme)) return false;
+    bool markdown = zend_string_equals_literal(scheme, "markdown");
+    zend_string_release(scheme);
+    return markdown ? orm_connect_markdown(dsn, config, out) : orm_connect_sql(dsn, config, out, false);
+}
+
 ZEND_METHOD(Polyspec_Orm_Orm, connect)
 {
     zend_string *dsn;
@@ -918,13 +929,7 @@ ZEND_METHOD(Polyspec_Orm_Orm, connect)
             "Polyspec\\Orm\\Config, %s given", zend_zval_type_name(config));
         RETURN_THROWS();
     }
-    zend_string *scheme = NULL;
-    if (!orm_scheme(dsn, &scheme)) RETURN_THROWS();
-    bool markdown = zend_string_equals_literal(scheme, "markdown");
-    zend_string_release(scheme);
-    bool connected = markdown ? orm_connect_markdown(dsn, config, return_value)
-        : orm_connect_sql(dsn, config, return_value, false);
-    if (!connected) ZVAL_UNDEF(return_value);
+    if (!orm_connect_dsn(dsn, config, return_value)) ZVAL_UNDEF(return_value);
 }
 
 ZEND_METHOD(Polyspec_Orm_Orm, connectSchema)
@@ -956,7 +961,7 @@ ZEND_METHOD(Polyspec_Orm_Orm, connectSchema)
     if (!pdo_call(schema, "verify", &verified, 0, NULL, NULL)) RETURN_THROWS();
     zval_ptr_dtor(&verified);
     zval db;
-    if (!orm_connect_sql(dsn, config, &db, false)) RETURN_THROWS();
+    if (!orm_connect_dsn(dsn, config, &db)) RETURN_THROWS();
     zval registered;
     bool ok = pdo_call(&db, "registerSet", &registered, 1, schema, NULL);
     if (!ok) { zval_ptr_dtor(&db); RETURN_THROWS(); }
