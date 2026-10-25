@@ -13401,8 +13401,7 @@
         "packages/go/engine/dbspec/stress_test.go",
         "packages/php-ext/tests/DbspecStressCanonicalNativeTest.php",
         "packages/python/tests/test_dbspec_stress.py",
-        "packages/rust/schema/tests/dbspec_stress.rs",
-        "tests/dbspec/stress.mts"
+        "packages/rust/schema/tests/dbspec_stress.rs"
       ],
       "tests": [],
       "command": "make --no-print-directory TEST_ENV=\"$ORM_TEST_ENV\" DECIMAL_ENV=\"$DECIMAL_ENV\" dbspec-stress-bench"
