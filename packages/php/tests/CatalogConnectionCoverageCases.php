@@ -124,10 +124,9 @@ trait CatalogConnectionCoverageCases
 
     private function assertIdentityRequiredError(): void
     {
-        $engine = $this->driver === 'mysql' ? ' ENGINE=InnoDB' : '';
         $this->withTemporaryCatalogTable(
             'catalog_identity_required_',
-            "id BIGINT NOT NULL PRIMARY KEY, payload TEXT NOT NULL{$engine}",
+            "id BIGINT NOT NULL PRIMARY KEY, payload TEXT NOT NULL",
             function (string $namespace, string $name): void {
                 $metadata = $this->catalog->describeTable(['namespace' => $namespace, 'name' => $name]);
                 try {
@@ -147,15 +146,15 @@ trait CatalogConnectionCoverageCases
             'mysql' => 'BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY',
             'postgres' => 'BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY',
         };
-        $engine = $this->driver === 'mysql' ? ' ENGINE=InnoDB' : '';
         $this->withTemporaryCatalogTable(
             'catalog_generated_auto_',
-            "id {$id}, payload TEXT NOT NULL{$engine}",
+            "id {$id}, payload TEXT NOT NULL",
             function (string $namespace, string $name): void {
                 $metadata = $this->catalog->describeTable(['namespace' => $namespace, 'name' => $name]);
                 self::assertSame(['id'], $metadata->primaryKey);
                 self::assertFalse($metadata->columns[0]->nullable);
-                self::assertFalse($metadata->columns[0]->generated);
+                // A PostgreSQL GENERATED ALWAYS identity cannot be assigned, so its descriptor marks it generated.
+                self::assertSame($this->driver === 'postgres', $metadata->columns[0]->generated);
                 self::assertTrue($metadata->columns[0]->automaticKey);
                 self::assertNull($metadata->columns[0]->defaultExpression);
                 self::assertFalse($metadata->columns[0]->expressionDefault);
@@ -170,11 +169,10 @@ trait CatalogConnectionCoverageCases
 
     private function assertLiteralDefaultKey(): void
     {
-        $engine = $this->driver === 'mysql' ? ' ENGINE=InnoDB' : '';
         $this->withTemporaryCatalogTable(
             'catalog_generated_literal_',
             "tenant BIGINT NOT NULL, seq VARCHAR(30) NOT NULL DEFAULT 'generated', "
-                . "n BIGINT NOT NULL, PRIMARY KEY (tenant, seq){$engine}",
+                . "n BIGINT NOT NULL, PRIMARY KEY (tenant, seq)",
             function (string $namespace, string $name): void {
                 $metadata = $this->catalog->describeTable(['namespace' => $namespace, 'name' => $name]);
                 self::assertSame(['tenant', 'seq'], $metadata->primaryKey);
@@ -196,11 +194,10 @@ trait CatalogConnectionCoverageCases
             'postgres' => 'gen_random_uuid()::text',
         };
         $keyType = $this->driver === 'sqlite' ? 'TEXT' : 'VARCHAR(36)';
-        $engine = $this->driver === 'mysql' ? ' ENGINE=InnoDB' : '';
         $this->withTemporaryCatalogTable(
             'catalog_generated_expression_',
             "seq {$keyType} NOT NULL DEFAULT ({$expression}) PRIMARY KEY, "
-                . "n BIGINT NOT NULL UNIQUE, label VARCHAR(20) NULL{$engine}",
+                . "n BIGINT NOT NULL UNIQUE, label VARCHAR(20) NULL",
             function (string $namespace, string $name): void {
                 $metadata = $this->catalog->describeTable(['namespace' => $namespace, 'name' => $name]);
                 self::assertSame(['seq'], $metadata->primaryKey);
@@ -227,7 +224,9 @@ trait CatalogConnectionCoverageCases
         $setup = Orm::connect((string) getenv('ORM_FEATURE_DSN'), new Config());
         $pdo = $setup->pdo();
         try {
-            $pdo->exec("CREATE TABLE {$qualified} ({$definition})");
+            // A MySQL table is InnoDB, the only engine the catalog writes to.
+            $options = $this->driver === 'mysql' ? ' ENGINE=InnoDB' : '';
+            $pdo->exec("CREATE TABLE {$qualified} ({$definition}){$options}");
             $assert($namespace, $name);
         } finally {
             try {
@@ -259,7 +258,7 @@ trait CatalogConnectionCoverageCases
         $parent = $this->qualifiedReference($namespace, 'user');
         $constraint = $this->quote('fk_' . $name);
         $deferred = $this->driver === 'mysql' ? '' : ' DEFERRABLE INITIALLY DEFERRED';
-        $create = "CREATE TABLE {$qualified} (id BIGINT PRIMARY KEY, parent_id BIGINT NOT NULL, "
+        $create = "CREATE TABLE {$qualified} (id BIGINT NOT NULL PRIMARY KEY, parent_id BIGINT NOT NULL, "
             . "CONSTRAINT {$constraint} FOREIGN KEY(parent_id) REFERENCES {$parent}(seq){$deferred})";
         if ($this->driver === 'mysql') {
             $create .= ' ENGINE=InnoDB';
