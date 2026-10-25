@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
 import { markdownReadDatabase } from './markdown-read-db.mjs';
 
-test('provides the model, fixed clock, and session expected by markdownRead', async () => {
+caseTest('provides the model, fixed clock, and session expected by markdownRead', COMPUTE, async () => {
   const model = {};
   const session = {};
   const db = markdownReadDatabase(model, session);

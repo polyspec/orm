@@ -12,13 +12,13 @@ import { EditorState } from '@codemirror/state';
 import { foldService } from '@codemirror/language';
 import { EditorView } from '@codemirror/view';
 import { build } from 'esbuild';
-import { describe } from 'node:test';
 import { caseTest } from '../../../tests/testcase.mts';
 import { dbspec, dbspecDiagnostics, formatDbspec } from '../dist/index.js';
 
 const TIMEOUT = 15000;
 const dir = new URL('../../../tests/editor/', import.meta.url);
 const names = readdirSync(dir).filter(name => name.endsWith('.dbs')).map(name => name.slice(0, -'.dbs'.length)).sort();
+const DECLARED_EDITOR_FIXTURES = ['canonical-block', 'header-end-of-line', 'non-bmp-comment-and-string', 'normalize-spacing', 'syntax-after-non-bmp'];
 
 const stateOf = (doc, options) => EditorState.create({ doc, extensions: [dbspec(options)] });
 const offset = (state, [line, character]) => state.doc.line(line + 1).from + character;
@@ -53,7 +53,7 @@ function format(state) {
 }
 
 caseTest('the editor fixtures exist', TIMEOUT, () => {
-  assert.ok(names.length > 0);
+  assert.deepEqual(names, DECLARED_EDITOR_FIXTURES);
 });
 
 // Requirements: ORES-47.
@@ -86,22 +86,24 @@ caseTest('the CodeMirror adapter runs from a browser-target bundle', TIMEOUT, as
 });
 
 // Requirements: ORE-3, ORE-18, ORES-48.
-describe('CodeMirror adapter renders tokens, diagnostics, folds and formatting', () => {
-  for (const name of names) {
-    caseTest(`fixture ${name} through the CodeMirror adapter`, TIMEOUT, () => {
-      const doc = readFileSync(new URL(`${name}.dbs`, dir), 'utf8');
-      const expected = JSON.parse(readFileSync(new URL(`${name}.json`, dir), 'utf8'));
-      const state = stateOf(doc);
-      assert.deepEqual(marks(state), expected.tokens.map(t => [offset(state, t.range[0]), offset(state, t.range[1]), `cm-dbspec-${t.class}`]));
-      assert.deepEqual(dbspecDiagnostics(state).map(d => [d.from, d.to, d.message]),
-        expected.diagnostics.map(d => [offset(state, d.range[0]), offset(state, d.range[1]), `${d.rule}: ${d.message}`]));
-      assert.deepEqual(folds(state), expected.folding);
-      const result = format(state);
-      if (expected.formatted === null) assert.deepEqual(result, { handled: false, text: doc });
-      else assert.deepEqual(result, { handled: true, text: expected.formatted });
-    });
-  }
-});
+function assertEditorFixture(name) {
+  const doc = readFileSync(new URL(`${name}.dbs`, dir), 'utf8');
+  const expected = JSON.parse(readFileSync(new URL(`${name}.json`, dir), 'utf8'));
+  const state = stateOf(doc);
+  assert.deepEqual(marks(state), expected.tokens.map(t => [offset(state, t.range[0]), offset(state, t.range[1]), `cm-dbspec-${t.class}`]));
+  assert.deepEqual(dbspecDiagnostics(state).map(d => [d.from, d.to, d.message]),
+    expected.diagnostics.map(d => [offset(state, d.range[0]), offset(state, d.range[1]), `${d.rule}: ${d.message}`]));
+  assert.deepEqual(folds(state), expected.folding);
+  const result = format(state);
+  if (expected.formatted === null) assert.deepEqual(result, { handled: false, text: doc });
+  else assert.deepEqual(result, { handled: true, text: expected.formatted });
+}
+
+caseTest('fixture canonical-block through the CodeMirror adapter', TIMEOUT, () => assertEditorFixture('canonical-block'));
+caseTest('fixture header-end-of-line through the CodeMirror adapter', TIMEOUT, () => assertEditorFixture('header-end-of-line'));
+caseTest('fixture non-bmp-comment-and-string through the CodeMirror adapter', TIMEOUT, () => assertEditorFixture('non-bmp-comment-and-string'));
+caseTest('fixture normalize-spacing through the CodeMirror adapter', TIMEOUT, () => assertEditorFixture('normalize-spacing'));
+caseTest('fixture syntax-after-non-bmp through the CodeMirror adapter', TIMEOUT, () => assertEditorFixture('syntax-after-non-bmp'));
 
 // Requirements: ORES-26.
 caseTest('the set option resolves use lines', TIMEOUT, () => {

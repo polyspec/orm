@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import { caseTest, DATABASE } from '../../../tests/testcase.mts';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -178,7 +178,7 @@ async function assertLiteralDefaultCompositeKeyInsert(fixture, checkQueries) {
   }
 }
 
-test('locks, validates and returns the descriptor of an unchanged original row', async () => {
+caseTest('locks, validates and returns the descriptor of an unchanged original row', DATABASE, async () => {
   const calls = [];
   const session = {
     async lookup(descriptor, keys, lock) {
@@ -206,7 +206,7 @@ test('locks, validates and returns the descriptor of an unchanged original row',
   ]);
 });
 
-test('rejects a changed descriptor before applying MySQL safety', async () => {
+caseTest('rejects a changed descriptor before applying MySQL safety', DATABASE, async () => {
   let safetyCalled = false;
   const session = {
     async lookup() { return [[1, 'original']]; },
@@ -223,20 +223,20 @@ test('rejects a changed descriptor before applying MySQL safety', async () => {
   assert.equal(safetyCalled, false);
 });
 
-test('uses MySQL DEFAULT(column) to locate a literal-default composite key', async () => {
+caseTest('uses MySQL DEFAULT(column) to locate a literal-default composite key', DATABASE, async () => {
   await assertLiteralDefaultCompositeKeyInsert(mysqlCatalogFixture, queries => {
     assert.ok(queries.some(([, sql]) => sql.includes('`seq`=DEFAULT(`seq`)')));
     assert.equal(queries.some(([, sql]) => sql.includes('SELECT MAX(') || sql.includes('LAST_INSERT_ID()')), false);
   });
 });
 
-test('uses PostgreSQL INSERT RETURNING for a literal-default composite key', async () => {
+caseTest('uses PostgreSQL INSERT RETURNING for a literal-default composite key', DATABASE, async () => {
   await assertLiteralDefaultCompositeKeyInsert(postgresCatalogFixture, queries => {
     assert.ok(queries.some(([, sql]) => sql === 'INSERT INTO "app"."generated_record" ("tenant","n") VALUES ($1,$2) RETURNING "tenant","seq","n"'));
   });
 });
 
-test('uses the MySQL statement insertId for an omitted automatic key', async () => {
+caseTest('uses the MySQL statement insertId for an omitted automatic key', DATABASE, async () => {
   const { catalog, metadata, queries, stored } = mysqlCatalogFixture({ autoKey: true });
   try {
     const result = await catalog.insertRow(metadata, [{ name: 'payload', value: 'generated' }]);
@@ -248,7 +248,7 @@ test('uses the MySQL statement insertId for an omitted automatic key', async () 
   }
 });
 
-test('uses a bounded MySQL input locator for an expression-default key', async () => {
+caseTest('uses a bounded MySQL input locator for an expression-default key', DATABASE, async () => {
   const { catalog, metadata, queries, stored } = mysqlCatalogFixture({ expressionDefault: true });
   try {
     const result = await catalog.insertRow(metadata, [
@@ -265,7 +265,7 @@ test('uses a bounded MySQL input locator for an expression-default key', async (
   }
 });
 
-test('rejects an already-matching MySQL expression locator before inserting', async () => {
+caseTest('rejects an already-matching MySQL expression locator before inserting', DATABASE, async () => {
   const existing = ['earlier-key', 1, null];
   const { catalog, metadata, queries } = mysqlCatalogFixture({ expressionDefault: true, priorRows: [existing] });
   try {
@@ -279,7 +279,7 @@ test('rejects an already-matching MySQL expression locator before inserting', as
   }
 });
 
-test('reports an ambiguous MySQL expression locator result without changing strategy', async () => {
+caseTest('reports an ambiguous MySQL expression locator result without changing strategy', DATABASE, async () => {
   const { catalog, metadata, queries } = mysqlCatalogFixture({ expressionDefault: true, postRows: [['first-key', 1, null], ['second-key', 1, null]] });
   try {
     await assertAmbiguousInsert(catalog, metadata, [
@@ -293,7 +293,7 @@ test('reports an ambiguous MySQL expression locator result without changing stra
   }
 });
 
-test('inserts an omitted SQLite AUTOINCREMENT key and returns the stored row', async () => {
+caseTest('inserts an omitted SQLite AUTOINCREMENT key and returns the stored row', DATABASE, async () => {
   await withSqliteCatalog('orm-catalog-auto-key-', 'CREATE TABLE generated_record (id INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL)', async catalog => {
     const metadata = await catalog.describeTable({ namespace: 'main', name: 'generated_record' });
     assert.deepEqual(metadata.primaryKey, ['id']);
@@ -309,7 +309,7 @@ test('inserts an omitted SQLite AUTOINCREMENT key and returns the stored row', a
   });
 });
 
-test('inserts an omitted literal-default component of a composite SQLite key', async () => {
+caseTest('inserts an omitted literal-default component of a composite SQLite key', DATABASE, async () => {
   await withSqliteCatalog('orm-catalog-literal-key-', "CREATE TABLE generated_record (tenant BIGINT NOT NULL, seq VARCHAR(30) NOT NULL DEFAULT 'generated', n BIGINT NOT NULL, PRIMARY KEY (tenant, seq))", async catalog => {
     const metadata = await catalog.describeTable({ namespace: 'main', name: 'generated_record' });
     assert.deepEqual(metadata.primaryKey, ['tenant', 'seq']);
@@ -323,7 +323,7 @@ test('inserts an omitted literal-default component of a composite SQLite key', a
   });
 });
 
-test('inserts an omitted volatile expression-default SQLite key without reevaluating it', async () => {
+caseTest('inserts an omitted volatile expression-default SQLite key without reevaluating it', DATABASE, async () => {
   await withSqliteCatalog('orm-catalog-expression-key-', 'CREATE TABLE generated_record (seq TEXT NOT NULL PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))), n INTEGER NOT NULL UNIQUE, label TEXT)', async catalog => {
     const metadata = await catalog.describeTable({ namespace: 'main', name: 'generated_record' });
     assert.deepEqual(metadata.primaryKey, ['seq']);

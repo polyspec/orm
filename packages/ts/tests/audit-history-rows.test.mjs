@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
 import { auditHistoryRows } from './audit-history-rows.mjs';
 
-test('projects audit history fields and preserves nullable and deleted state', () => {
+caseTest('projects audit history fields and preserves nullable and deleted state', COMPUTE, () => {
   const core = Symbol('core');
   const row = fields => ({ [core]: { column: name => fields[name] } });
   assert.deepEqual(auditHistoryRows([

@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
 import { exactKeys } from './assertions.mjs';
 
-test('exactKeys accepts only objects with the expected key set', () => {
+caseTest('exactKeys accepts only objects with the expected key set', COMPUTE, () => {
   exactKeys({ second: 2, first: 1 }, ['first', 'second'], 'valid');
   assert.throws(() => exactKeys([], [], 'array'), { name: 'AssertionError', message: /array is an object/ });
   assert.throws(() => exactKeys(null, [], 'null'), { name: 'AssertionError', message: /null is an object/ });

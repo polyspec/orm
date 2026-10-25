@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
 import { codeOf } from './error_code.mjs';
 
 class OrmError extends Error {
@@ -9,7 +9,7 @@ class OrmError extends Error {
   }
 }
 
-test('returns null, an ORM code, or the rejected value string', async () => {
+caseTest('returns null, an ORM code, or the rejected value string', COMPUTE, async () => {
   assert.equal(await codeOf(Promise.resolve(), OrmError), null);
   assert.equal(await codeOf(Promise.reject(new OrmError('CONFIG')), OrmError), 'CONFIG');
   const other = new Error('other failure');

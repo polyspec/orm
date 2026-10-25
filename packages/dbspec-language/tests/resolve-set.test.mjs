@@ -7,7 +7,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync, rmSync } from 'node:fs';
 import { posix } from 'node:path';
-import { describe } from 'node:test';
 import { parseSet } from '@polyspec/orm/dbspec';
 import { caseTest } from '../../../tests/testcase.mts';
 import { resolveSet } from '../dist/index.js';
@@ -80,16 +79,15 @@ function documentOf(c) {
   return { path: at(listed.written) };
 }
 
-const notApplied = [];
-// Requirements: ORES-28, ORES-29, ORES-30, ORES-31, ORES-32, ORES-33, ORES-34, ORES-35, ORES-36.
-describe('resolveSet applies the set-file validation vectors', () => {
-  for (const c of vectors.cases) {
-    const target = documentOf(c);
-    if ('reason' in target) {
-      notApplied.push(`${c.id}: ${target.reason}`);
-      continue;
-    }
-    vector(`set-files ${c.id} through resolveSet`, () => withTree(c.tree, root => {
+const notApplied = vectors.cases.filter(c => 'reason' in documentOf(c)).map(c => `${c.id}: ${documentOf(c).reason}`);
+const DECLARED_SET_FILE_CASES = ['minimal', 'nested-and-external', 'external-empty-list', 'schema-one-point-zero', 'schema-exponent', 'external-without-dotdot', 'bytes-not-checked', 'listed-file-missing', 'listed-path-is-directory', 'listed-name-case', 'component-not-directory', 'listed-file-symlink', 'component-symlink', 'external-through-linked-directory', 'set-file-symlink', 'root-symlink', 'json-invalid', 'json-array', 'json-trailing', 'json-lone-surrogate', 'json-depth-65', 'json-depth-64-reaches-key-check', 'json-bom', 'json-invalid-utf8', 'schema-missing', 'schema-two', 'schema-string', 'schema-beyond-double', 'schema-true', 'key-unknown', 'key-twice', 'documents-missing', 'documents-not-array', 'documents-number', 'external-null', 'documents-empty', 'external-dotdot-after-segment', 'device-name-inside-word', 'duplicate-same-path', 'duplicate-hard-link', 'duplicate-across-lists', 'errors-by-step-then-path'];
+
+function assertSetFileCase(id) {
+  const c = vectors.cases.find(item => item.id === id);
+  assert.ok(c, `missing set-files vector ${id}`);
+  const target = documentOf(c);
+  assert.ok(!('reason' in target), `set-files vector ${id} must be executed by resolveSet`);
+  return withTree(c.tree, root => {
     const result = resolveSet(`${root}/${target.path}`, nodeSetHost);
     if ('errors' in c.want) {
       assert.equal(result.set, null);
@@ -99,20 +97,65 @@ describe('resolveSet applies the set-file validation vectors', () => {
     }
     assert.deepEqual(result.errors, []);
     assert.equal(result.setFile, `${root}/${c.set}`);
-    // The other listed files: a dbspec text is in the set under its header name, any other bytes are a diagnostic.
     const expected = {};
     const failed = [];
-    for (const p of [...c.want.documents, ...c.want.external]) {
-      if (p === target.path) continue;
-      const text = treeBytes(c.tree, followDirectories(c.tree, posix.normalize(p))).toString('utf8');
+    for (const listed of [...c.want.documents, ...c.want.external]) {
+      if (listed === target.path) continue;
+      const text = treeBytes(c.tree, followDirectories(c.tree, posix.normalize(listed))).toString('utf8');
       if (text.startsWith('dbspec 1 ')) expected[text.slice('dbspec 1 '.length, text.indexOf('\n'))] = text;
-      else failed.push(`${root}/${p}`);
+      else failed.push(`${root}/${listed}`);
     }
     assert.deepEqual({ ...result.set }, expected);
     assert.deepEqual(result.diagnostics.map(d => d.path), failed);
-    }));
-  }
+  });
+}
+
+vector('set-files vector IDs match their declared cases', () => {
+  assert.deepEqual(vectors.cases.filter(c => !('reason' in documentOf(c))).map(c => c.id), DECLARED_SET_FILE_CASES);
 });
+
+vector('set-files minimal through resolveSet', () => assertSetFileCase('minimal'));
+vector('set-files nested-and-external through resolveSet', () => assertSetFileCase('nested-and-external'));
+vector('set-files external-empty-list through resolveSet', () => assertSetFileCase('external-empty-list'));
+vector('set-files schema-one-point-zero through resolveSet', () => assertSetFileCase('schema-one-point-zero'));
+vector('set-files schema-exponent through resolveSet', () => assertSetFileCase('schema-exponent'));
+vector('set-files external-without-dotdot through resolveSet', () => assertSetFileCase('external-without-dotdot'));
+vector('set-files bytes-not-checked through resolveSet', () => assertSetFileCase('bytes-not-checked'));
+vector('set-files listed-file-missing through resolveSet', () => assertSetFileCase('listed-file-missing'));
+vector('set-files listed-path-is-directory through resolveSet', () => assertSetFileCase('listed-path-is-directory'));
+vector('set-files listed-name-case through resolveSet', () => assertSetFileCase('listed-name-case'));
+vector('set-files component-not-directory through resolveSet', () => assertSetFileCase('component-not-directory'));
+vector('set-files listed-file-symlink through resolveSet', () => assertSetFileCase('listed-file-symlink'));
+vector('set-files component-symlink through resolveSet', () => assertSetFileCase('component-symlink'));
+vector('set-files external-through-linked-directory through resolveSet', () => assertSetFileCase('external-through-linked-directory'));
+vector('set-files set-file-symlink through resolveSet', () => assertSetFileCase('set-file-symlink'));
+vector('set-files root-symlink through resolveSet', () => assertSetFileCase('root-symlink'));
+vector('set-files json-invalid through resolveSet', () => assertSetFileCase('json-invalid'));
+vector('set-files json-array through resolveSet', () => assertSetFileCase('json-array'));
+vector('set-files json-trailing through resolveSet', () => assertSetFileCase('json-trailing'));
+vector('set-files json-lone-surrogate through resolveSet', () => assertSetFileCase('json-lone-surrogate'));
+vector('set-files json-depth-65 through resolveSet', () => assertSetFileCase('json-depth-65'));
+vector('set-files json-depth-64-reaches-key-check through resolveSet', () => assertSetFileCase('json-depth-64-reaches-key-check'));
+vector('set-files json-bom through resolveSet', () => assertSetFileCase('json-bom'));
+vector('set-files json-invalid-utf8 through resolveSet', () => assertSetFileCase('json-invalid-utf8'));
+vector('set-files schema-missing through resolveSet', () => assertSetFileCase('schema-missing'));
+vector('set-files schema-two through resolveSet', () => assertSetFileCase('schema-two'));
+vector('set-files schema-string through resolveSet', () => assertSetFileCase('schema-string'));
+vector('set-files schema-beyond-double through resolveSet', () => assertSetFileCase('schema-beyond-double'));
+vector('set-files schema-true through resolveSet', () => assertSetFileCase('schema-true'));
+vector('set-files key-unknown through resolveSet', () => assertSetFileCase('key-unknown'));
+vector('set-files key-twice through resolveSet', () => assertSetFileCase('key-twice'));
+vector('set-files documents-missing through resolveSet', () => assertSetFileCase('documents-missing'));
+vector('set-files documents-not-array through resolveSet', () => assertSetFileCase('documents-not-array'));
+vector('set-files documents-number through resolveSet', () => assertSetFileCase('documents-number'));
+vector('set-files external-null through resolveSet', () => assertSetFileCase('external-null'));
+vector('set-files documents-empty through resolveSet', () => assertSetFileCase('documents-empty'));
+vector('set-files external-dotdot-after-segment through resolveSet', () => assertSetFileCase('external-dotdot-after-segment'));
+vector('set-files device-name-inside-word through resolveSet', () => assertSetFileCase('device-name-inside-word'));
+vector('set-files duplicate-same-path through resolveSet', () => assertSetFileCase('duplicate-same-path'));
+vector('set-files duplicate-hard-link through resolveSet', () => assertSetFileCase('duplicate-hard-link'));
+vector('set-files duplicate-across-lists through resolveSet', () => assertSetFileCase('duplicate-across-lists'));
+vector('set-files errors-by-step-then-path through resolveSet', () => assertSetFileCase('errors-by-step-then-path'));
 
 // The cases that no document can reach through resolveSet are exactly these, each with its reason.
 vector('set-files cases that resolveSet does not reach', () => {

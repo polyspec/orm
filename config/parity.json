@@ -595,7 +595,31 @@
           "bindings": [
             {
               "test": "packages/dbspec-codemirror/tests/fixtures.test.mjs",
-              "id": "CodeMirror adapter renders tokens, diagnostics, folds and formatting"
+              "id": "the editor fixtures exist"
+            },
+            {
+              "test": "packages/dbspec-codemirror/tests/fixtures.test.mjs",
+              "id": "fixture canonical-block through the CodeMirror adapter"
+            },
+            {
+              "test": "packages/dbspec-codemirror/tests/fixtures.test.mjs",
+              "id": "fixture header-end-of-line through the CodeMirror adapter"
+            },
+            {
+              "test": "packages/dbspec-codemirror/tests/fixtures.test.mjs",
+              "id": "fixture non-bmp-comment-and-string through the CodeMirror adapter"
+            },
+            {
+              "test": "packages/dbspec-codemirror/tests/fixtures.test.mjs",
+              "id": "fixture normalize-spacing through the CodeMirror adapter"
+            },
+            {
+              "test": "packages/dbspec-codemirror/tests/fixtures.test.mjs",
+              "id": "fixture syntax-after-non-bmp through the CodeMirror adapter"
+            },
+            {
+              "test": "packages/dbspec-codemirror/tests/fixtures.test.mjs",
+              "id": "the editor fixtures exist"
             }
           ]
         },
@@ -641,7 +665,31 @@
           "bindings": [
             {
               "test": "packages/dbspec-language/tests/editor.test.mjs",
-              "id": "language service editor fixture outputs"
+              "id": "every editor fixture has its expected output and the reverse"
+            },
+            {
+              "test": "packages/dbspec-language/tests/editor.test.mjs",
+              "id": "editor fixture canonical-block"
+            },
+            {
+              "test": "packages/dbspec-language/tests/editor.test.mjs",
+              "id": "editor fixture header-end-of-line"
+            },
+            {
+              "test": "packages/dbspec-language/tests/editor.test.mjs",
+              "id": "editor fixture non-bmp-comment-and-string"
+            },
+            {
+              "test": "packages/dbspec-language/tests/editor.test.mjs",
+              "id": "editor fixture normalize-spacing"
+            },
+            {
+              "test": "packages/dbspec-language/tests/editor.test.mjs",
+              "id": "editor fixture syntax-after-non-bmp"
+            },
+            {
+              "test": "packages/dbspec-language/tests/editor.test.mjs",
+              "id": "every editor fixture has its expected output and the reverse"
             }
           ]
         },
@@ -750,7 +798,179 @@
           "bindings": [
             {
               "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
-              "id": "resolveSet applies the set-file validation vectors"
+              "id": "set-files minimal through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files nested-and-external through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files external-empty-list through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files schema-one-point-zero through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files schema-exponent through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files external-without-dotdot through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files bytes-not-checked through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files listed-file-missing through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files listed-path-is-directory through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files listed-name-case through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files component-not-directory through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files listed-file-symlink through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files component-symlink through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files external-through-linked-directory through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files set-file-symlink through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files root-symlink through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files json-invalid through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files json-array through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files json-trailing through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files json-lone-surrogate through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files json-depth-65 through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files json-depth-64-reaches-key-check through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files json-bom through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files json-invalid-utf8 through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files schema-missing through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files schema-two through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files schema-string through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files schema-beyond-double through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files schema-true through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files key-unknown through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files key-twice through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files documents-missing through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files documents-not-array through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files documents-number through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files external-null through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files documents-empty through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files external-dotdot-after-segment through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files device-name-inside-word through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files duplicate-same-path through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files duplicate-hard-link through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files duplicate-across-lists through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files errors-by-step-then-path through resolveSet"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files cases that resolveSet does not reach"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "set-files vector IDs match their declared cases"
             }
           ]
         },
@@ -844,7 +1064,31 @@
           "bindings": [
             {
               "test": "packages/dbspec-lsp/tests/session.test.mjs",
-              "id": "language server publishes editor fixture outputs"
+              "id": "the editor fixture list matches declared cases"
+            },
+            {
+              "test": "packages/dbspec-lsp/tests/session.test.mjs",
+              "id": "fixture canonical-block through the language server"
+            },
+            {
+              "test": "packages/dbspec-lsp/tests/session.test.mjs",
+              "id": "fixture header-end-of-line through the language server"
+            },
+            {
+              "test": "packages/dbspec-lsp/tests/session.test.mjs",
+              "id": "fixture non-bmp-comment-and-string through the language server"
+            },
+            {
+              "test": "packages/dbspec-lsp/tests/session.test.mjs",
+              "id": "fixture normalize-spacing through the language server"
+            },
+            {
+              "test": "packages/dbspec-lsp/tests/session.test.mjs",
+              "id": "fixture syntax-after-non-bmp through the language server"
+            },
+            {
+              "test": "packages/dbspec-lsp/tests/session.test.mjs",
+              "id": "the editor fixture list matches declared cases"
             }
           ]
         },

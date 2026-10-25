@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
+import { caseTest, COMPUTE } from '../testcase.mts';
 import { readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
-import test from 'node:test';
 import { buildSetTree } from './set-tree.mjs';
 
-test('writes text, bytes, hard links and symbolic links from one fixture tree', () => {
+caseTest('writes text, bytes, hard links and symbolic links from one fixture tree', COMPUTE, () => {
   const root = buildSetTree({
     'source.txt': { file: 'fixture' },
     'bytes.bin': { hex: '66697874757265' },

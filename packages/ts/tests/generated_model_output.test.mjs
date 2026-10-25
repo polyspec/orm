@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
+import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import test from 'node:test';
 import { readGeneratedModels } from './generated_model_output.mjs';
 
-test('reads generated model text and declared members by class', async () => {
+caseTest('reads generated model text and declared members by class', COMPUTE, async () => {
   const directory = await mkdtemp(join(tmpdir(), 'orm-generated-model-output-'));
   try {
     const text = [

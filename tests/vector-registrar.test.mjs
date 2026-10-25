@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import { caseTest, COMPUTE } from './testcase.mts';
 import { vectorRegistrar } from './vector-registrar.mjs';
 
-test('binds the case name, deadline, and body and returns the registrar result', () => {
+caseTest('binds the case name, deadline, and body and returns the registrar result', COMPUTE, () => {
   const body = () => 'case body';
   const result = Symbol('registered');
   const calls = [];

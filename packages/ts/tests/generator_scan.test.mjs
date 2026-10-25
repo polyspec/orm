@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
+import { caseTest, PROCESS } from '../../../tests/testcase.mts';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import test from 'node:test';
 import { runGeneratorScan } from './generator_scan.mjs';
 
-test('runs orm-gen for one source and reads the generated model output', async () => {
+caseTest('runs orm-gen for one source and reads the generated model output', PROCESS, async () => {
   const root = fileURLToPath(new URL('../../../', import.meta.url));
   const bin = join(root, 'packages/ts/dist/bin/orm-gen.js');
   const setPath = join(root, 'contracts/fixtures/bench/dbspec-set.json');
@@ -25,7 +25,7 @@ test('runs orm-gen for one source and reads the generated model output', async (
   }
 });
 
-test('runs orm-gen with an isolated environment', async () => {
+caseTest('runs orm-gen with an isolated environment', PROCESS, async () => {
   const workDirectory = await mkdtemp(join(tmpdir(), 'orm-generator-scan-environment-'));
   const envFile = join(workDirectory, 'environment.json');
   const bin = join(workDirectory, 'fake-orm-gen.mjs');

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
 import { Value as JsonValue, stringify as stringifyJson } from '@polyspec/ordered-json';
 import { CodecError, decode } from '../dist/index.js';
 
@@ -12,7 +12,7 @@ function thrown(operation) {
   assert.fail('expected decode to throw');
 }
 
-test('CodecError accepts ErrorOptions without changing its formatted message', () => {
+caseTest('CodecError accepts ErrorOptions without changing its formatted message', COMPUTE, () => {
   const cause = new Error('parser failure');
   const error = new CodecError('CODEC_DECODE', 'json: parser failure', { cause });
   assert.equal(error.message, 'CODEC_DECODE: json: parser failure');
@@ -20,7 +20,7 @@ test('CodecError accepts ErrorOptions without changing its formatted message', (
   assert.equal(new CodecError('CODEC_DECODE', 'plain failure').cause, undefined);
 });
 
-test('malformed JSON preserves the parser error as cause', () => {
+caseTest('malformed JSON preserves the parser error as cause', COMPUTE, () => {
   const error = thrown(() => decode(['ordered_json'], '{'));
   assert(error instanceof CodecError);
   assert.equal(error.code, 'CODEC_DECODE');
@@ -28,7 +28,7 @@ test('malformed JSON preserves the parser error as cause', () => {
   assert(error.cause instanceof Error);
 });
 
-test('malformed YAML preserves the parser error as cause', () => {
+caseTest('malformed YAML preserves the parser error as cause', COMPUTE, () => {
   const error = thrown(() => decode(['yaml'], 'value: [\n'));
   assert(error instanceof CodecError);
   assert.equal(error.code, 'CODEC_DECODE');
@@ -36,7 +36,7 @@ test('malformed YAML preserves the parser error as cause', () => {
   assert(error.cause instanceof Error);
 });
 
-test('invalid UTF-8 keeps the native decoding error as cause for JSON and YAML', () => {
+caseTest('invalid UTF-8 keeps the native decoding error as cause for JSON and YAML', COMPUTE, () => {
   for (const style of ['ordered_json', 'yaml']) {
     const error = thrown(() => decode([style], new Uint8Array([0xff])));
     assert(error instanceof CodecError);
@@ -46,7 +46,7 @@ test('invalid UTF-8 keeps the native decoding error as cause for JSON and YAML',
   }
 });
 
-test('JSON and YAML rethrow an existing CodecError by identity', () => {
+caseTest('JSON and YAML rethrow an existing CodecError by identity', COMPUTE, () => {
   const originalDecode = TextDecoder.prototype.decode;
   const sentinel = new CodecError('CODEC_DECODE', 'UTF-8 boundary sentinel');
   try {
@@ -59,7 +59,7 @@ test('JSON and YAML rethrow an existing CodecError by identity', () => {
   }
 });
 
-test('YAML policy errors remain CODEC_DECODE and valid values still decode', () => {
+caseTest('YAML policy errors remain CODEC_DECODE and valid values still decode', COMPUTE, () => {
   for (const source of [
     'a: 1\na: 2\n',
     'a: &anchor [1]\n',

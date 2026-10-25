@@ -8,7 +8,6 @@ import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import assert from 'node:assert/strict';
-import test from 'node:test';
 import { caseTest, PROCESS, runLong, stepLines } from '../../../tests/testcase.mts';
 import { isolatedEnvironment } from '../../../tests/environment.mts';
 
@@ -213,7 +212,7 @@ caseTest('generate', PROCESS, async () => {
 // The positive consumer compiles and runs without diagnostic suppression. Its separate negative fixture must fail only
 // at the raw typed-field assignment, with TypeScript's exact code and source location.
 // Requirements: DBS-112, DBS-114, INT-66.
-test('generated typed getter consumer compiler fixture', async () => {
+caseTest('generated typed getter consumer compiler fixture', PROCESS, async () => {
   const runDir = join(root, '.runtime/run');
   await mkdir(runDir, { recursive: true });
   const consumerDir = await mkdtemp(join(runDir, 'ts-generated-getter-'));
@@ -280,7 +279,7 @@ void rawPrice;
 });
 
 // Requirements: DBS-104.
-test('generated manifest text and hash match', async () => {
+caseTest('generated manifest text and hash match', PROCESS, async () => {
   const dir = await mkdtemp(join(tmpdir(), 'orm-ts-manifest-'));
   try {
     const manifestText = 'dbspec 1 manifest\n\ntable item {\n  id i64 identity\n  primary key (id)\n}\n';

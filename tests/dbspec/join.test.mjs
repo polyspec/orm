@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import { caseTest, COMPUTE } from '../testcase.mts';
 import { join } from './join.mjs';
 
-test('joins vector lines with the declared line endings without changing input', () => {
+caseTest('joins vector lines with the declared line endings without changing input', COMPUTE, () => {
   const lines = ['alpha', 'beta', 'gamma'];
   const original = [...lines];
 

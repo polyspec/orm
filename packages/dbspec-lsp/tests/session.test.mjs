@@ -10,7 +10,6 @@ import { mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { describe } from 'node:test';
 import { createMessageConnection, StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node';
 import { caseTest } from '../../../tests/testcase.mts';
 
@@ -126,29 +125,38 @@ caseTest('the server declares utf-16, full sync and the class legend', TIMEOUT, 
 });
 
 // Requirements: ORE-3, ORES-18, ORES-42, ORES-43.
-describe('language server publishes editor fixture outputs', () => {
-  for (const name of readdirSync(fixtures).filter(n => n.endsWith('.dbs')).map(n => n.slice(0, -4)).sort()) {
-    caseTest(`fixture ${name} through the language server`, TIMEOUT, async () => {
-    const text = readFileSync(new URL(`${name}.dbs`, fixtures), 'utf8');
-    const expected = JSON.parse(readFileSync(new URL(`${name}.json`, fixtures), 'utf8'));
-    const uri = `untitled:${name}.dbs`;
-    const server = await start();
-    try {
-      await server.open(uri, text);
-      const range = r => [[r.start.line, r.start.character], [r.end.line, r.end.character]];
-      assert.deepEqual(server.diagnostics.get(uri).map(d => ({ rule: d.code, message: d.message, range: range(d.range) })), expected.diagnostics);
-      const tokens = await server.request('textDocument/semanticTokens/full', { textDocument: { uri } });
-      assert.deepEqual(decode(tokens.data), expected.tokens);
-      const folding = await server.request('textDocument/foldingRange', { textDocument: { uri } });
-      assert.deepEqual(folding.map(f => ({ startLine: f.startLine, endLine: f.endLine })), expected.folding);
-      const edits = await server.request('textDocument/formatting', { textDocument: { uri }, options: { tabSize: 2, insertSpaces: true } });
-      if (expected.formatted === null) assert.equal(edits, null);
-      else if (expected.formatted === text) assert.deepEqual(edits, []);
-      else assert.deepEqual(edits.map(e => e.newText), [expected.formatted]);
-    } finally { await server.stop(); }
-    });
-  }
+const DECLARED_EDITOR_FIXTURES = ['canonical-block', 'header-end-of-line', 'non-bmp-comment-and-string', 'normalize-spacing', 'syntax-after-non-bmp'];
+const editorFixtureNames = readdirSync(fixtures).filter(n => n.endsWith('.dbs')).map(n => n.slice(0, -4)).sort();
+
+caseTest('the editor fixture list matches declared cases', TIMEOUT, () => {
+  assert.deepEqual(editorFixtureNames, DECLARED_EDITOR_FIXTURES);
 });
+
+async function assertEditorFixture(name) {
+  const text = readFileSync(new URL(`${name}.dbs`, fixtures), 'utf8');
+  const expected = JSON.parse(readFileSync(new URL(`${name}.json`, fixtures), 'utf8'));
+  const uri = `untitled:${name}.dbs`;
+  const server = await start();
+  try {
+    await server.open(uri, text);
+    const range = r => [[r.start.line, r.start.character], [r.end.line, r.end.character]];
+    assert.deepEqual(server.diagnostics.get(uri).map(d => ({ rule: d.code, message: d.message, range: range(d.range) })), expected.diagnostics);
+    const tokens = await server.request('textDocument/semanticTokens/full', { textDocument: { uri } });
+    assert.deepEqual(decode(tokens.data), expected.tokens);
+    const folding = await server.request('textDocument/foldingRange', { textDocument: { uri } });
+    assert.deepEqual(folding.map(f => ({ startLine: f.startLine, endLine: f.endLine })), expected.folding);
+    const edits = await server.request('textDocument/formatting', { textDocument: { uri }, options: { tabSize: 2, insertSpaces: true } });
+    if (expected.formatted === null) assert.equal(edits, null);
+    else if (expected.formatted === text) assert.deepEqual(edits, []);
+    else assert.deepEqual(edits.map(e => e.newText), [expected.formatted]);
+  } finally { await server.stop(); }
+}
+
+caseTest('fixture canonical-block through the language server', TIMEOUT, () => assertEditorFixture('canonical-block'));
+caseTest('fixture header-end-of-line through the language server', TIMEOUT, () => assertEditorFixture('header-end-of-line'));
+caseTest('fixture non-bmp-comment-and-string through the language server', TIMEOUT, () => assertEditorFixture('non-bmp-comment-and-string'));
+caseTest('fixture normalize-spacing through the language server', TIMEOUT, () => assertEditorFixture('normalize-spacing'));
+caseTest('fixture syntax-after-non-bmp through the language server', TIMEOUT, () => assertEditorFixture('syntax-after-non-bmp'));
 
 const SET = '{"schema": 1, "documents": ["shop.dbs", "core.dbs"]}\n';
 

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { Decipheriv } from 'node:crypto';
-import test from 'node:test';
+import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
 import { CodecError, hostDecode, hostEncode } from '../dist/index.js';
 
 const key = 'codec-aes-errors-key';
@@ -22,7 +22,7 @@ function expectAuthenticationFailure(value, decodeKey = key) {
     error instanceof CodecError && error.code === 'CODEC_DECODE' && error.message === 'CODEC_DECODE: aes: authentication failed');
 }
 
-test('AES decode maps authenticated envelope failures and round-trips plaintext', () => {
+caseTest('AES decode maps authenticated envelope failures and round-trips plaintext', COMPUTE, () => {
   const valid = envelope();
   expectAuthenticationFailure(tamper(valid, valid.length - 1));
   expectAuthenticationFailure(tamper(valid, prefixLength + 12));
@@ -38,37 +38,41 @@ test('AES decode maps authenticated envelope failures and round-trips plaintext'
   assert.throws(() => hostDecode(Buffer.from('ORM-AES2\0short'), ['aes'], key), error => error?.code === 'CODEC_DECODE');
 });
 
-test('AES decode catches only final authentication errors', async t => {
-  const source = envelope();
-  const phases = ['setAAD', 'setAuthTag', 'update'];
+function withMethod(method, implementation, body) {
+  const descriptor = Object.getOwnPropertyDescriptor(Decipheriv.prototype, method);
+  Object.defineProperty(Decipheriv.prototype, method, { ...descriptor, value: implementation });
+  try { body(); } finally { Object.defineProperty(Decipheriv.prototype, method, descriptor); }
+}
 
-  for (const phase of phases) {
-    await t.test(`${phase} preserves error identity`, context => {
-      const sentinel = new Error(authMessage);
-      context.mock.method(Decipheriv.prototype, phase, () => { throw sentinel; });
+const source = envelope();
+const phases = ['setAAD', 'setAuthTag', 'update'];
+for (const phase of phases) {
+  caseTest(`${phase} preserves error identity`, COMPUTE, () => {
+    const sentinel = new Error(authMessage);
+    withMethod(phase, () => { throw sentinel; }, () => {
       assert.throws(() => hostDecode(source, ['aes'], key), error => error === sentinel);
     });
-  }
-
-  await t.test('final maps only the exact code-free native authentication error', context => {
-    context.mock.method(Decipheriv.prototype, 'final', () => { throw new Error(authMessage); });
-    expectAuthenticationFailure(source);
   });
+}
 
-  for (const [name, error] of [
-    ['structured authentication message', Object.assign(new Error(authMessage), { code: 'ERR_INTERNAL' })],
-    ['other final error', Object.assign(new Error('Unsupported state'), { code: 'ERR_CRYPTO_INVALID_STATE' })],
-  ]) {
-    await t.test(`${name} preserves error identity`, context => {
-      context.mock.method(Decipheriv.prototype, 'final', () => { throw error; });
+caseTest('final maps only the exact code-free native authentication error', COMPUTE, () => {
+  withMethod('final', () => { throw new Error(authMessage); }, () => expectAuthenticationFailure(source));
+});
+
+for (const [name, error] of [
+  ['structured authentication message', Object.assign(new Error(authMessage), { code: 'ERR_INTERNAL' })],
+  ['other final error', Object.assign(new Error('Unsupported state'), { code: 'ERR_CRYPTO_INVALID_STATE' })],
+]) {
+  caseTest(`${name} preserves error identity`, COMPUTE, () => {
+    withMethod('final', () => { throw error; }, () => {
       assert.throws(() => hostDecode(source, ['aes'], key), caught => caught === error);
     });
-  }
-
-  await t.test('plaintext from update is not returned when final fails', context => {
-    const partial = Buffer.from('must remain private until authentication');
-    context.mock.method(Decipheriv.prototype, 'update', () => partial);
-    context.mock.method(Decipheriv.prototype, 'final', () => { throw new Error(authMessage); });
-    expectAuthenticationFailure(source);
   });
+}
+
+caseTest('plaintext from update is not returned when final fails', COMPUTE, () => {
+  const partial = Buffer.from('must remain private until authentication');
+  withMethod('update', () => partial, () => withMethod('final', () => { throw new Error(authMessage); }, () => {
+    expectAuthenticationFailure(source);
+  }));
 });
