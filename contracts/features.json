@@ -11884,7 +11884,7 @@
         "packages/rust/schema/tests/dbspec_mermaid.rs",
         "packages/rust/schema/tests/dbspec_plan.rs"
       ],
-      "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-long.mts rust-dbspec-lines-helper --cwd packages/rust -- cargo test --no-run -p polyspec-orm-schema --test dbspec_mermaid --test dbspec_plan --locked --offline"
+      "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/run-long.mts rust-dbspec-lines-helper --cwd packages/rust -- \"$LEASE\" run \"$CARGO_LEASES\" exclusive --wait -- cargo test --no-run -p polyspec-orm-schema --test dbspec_mermaid --test dbspec_plan --locked --offline"
     },
     {
       "id": "dbspec-vector-line-join",

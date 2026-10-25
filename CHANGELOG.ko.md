@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c8cfa5759e7e7747bcdbb2079a133c9b02308b102619e0a5db74b5a8819a8a56 -->
+<!-- source-sha256: 64f4401eadd39b0076fa420da2c8c91f9092477d869e6a27529a3d38d4b985af -->
 # 변경 이력
 
 ## Unreleased
 
+- Rust clippy와 TypeScript interface extractor가 target lease 및 `run-long` 아래서 실행되고, Rust dbspec helper build도 같은 보호를 받는다. 집중 lease/lifetime 단위 3개가 통과한다 (KSTD-5-88-18).
 - RuntimeDbTest와 AuditExternalSetsTest가 bootstrap에서 로드되는 provider trait을 사용하여 PHPUnit이 각 파일을 단독으로 발견한다. 집중 `--list-tests` 명령은 case 19개를 찾는다 (KSTD-5-88-15).
 - `make layout-check`가 통과한다. root test 디렉터리는 repository-tool test로 분류하고, Python recipe는 package environment를 사용하며, cross-language PHP/JavaScript fixture에는 명시적인 S9 사유를 둔다 (KSTD-5-89-5).
 - orm-gen이 Go generation의 임시 directory를 system 임시 directory에 만들므로, output 옆에 끝나지 않은 `.orm-gen-` folder가 생기지 않고, 다른 land가 build하는 동안 land가 main checkout을 dirty로 보지 않는다 (KSTD-5-88-19).

@@ -1921,8 +1921,9 @@ interface-check/tests: php-vendor-check
 	$(NODE) --test tests/interfaces/check/*.test.mts
 interface-api-binding-unit-check:
 	$(NODE) --test tests/interfaces/check/api.test.mts
-interface-typescript-extractor-check: interface-typescript-check
-	$(NODE) packages/ts/testing/interfaces/typescript/node_modules/typescript/bin/tsc --project packages/ts/testing/interfaces/tsconfig.json --noEmit
+interface-typescript-extractor-check: interface-typescript-check lease-tool
+	$(READ_TYPESCRIPT)
+	$(RUN_LONG) interface-typescript-extractor -- $(NODE) packages/ts/testing/interfaces/typescript/node_modules/typescript/bin/tsc --project packages/ts/testing/interfaces/tsconfig.json --noEmit
 	$(NODE) --test tests/interfaces/check/typescript-extractor.test.mts
 # interface-typescript-check names the missing TypeScript checker dependency before the self-test runs it, so a fresh
 # checkout fails with the install step instead of a module resolution error.
@@ -2595,9 +2596,9 @@ generated-lint-check: python-models php-models go-models typescript-build
 # holds it, with the clippy.toml of kit (CLIPPY_CONF_DIR), as lint-rust does. packages/rust holds most packages.
 WORKSPACE ?= packages/rust
 .PHONY: clippy-crate
-clippy-crate: ## Clippy of the package CRATE with the lint-rust flags, in the Cargo workspace WORKSPACE; offline once the crates are downloaded
+clippy-crate: lease-tool ## Clippy of the package CRATE with the lint-rust flags, in the Cargo workspace WORKSPACE; offline once the crates are downloaded
 	test -n "$(CRATE)" || { echo "clippy-crate: CRATE is required" >&2; exit 2; }
-	cd $(WORKSPACE) && CLIPPY_CONF_DIR=$(abspath $(KIT)/..) cargo clippy -p $(CRATE) --all-targets --locked -- -D warnings -D unused_must_use -D clippy::let_underscore_must_use -D clippy::let_underscore_untyped -D clippy::map_err_ignore -D clippy::allow_attributes_without_reason
+	PATH="$(HOME)/.cargo/bin:$(PATH)" $(RUN_LONG) clippy-crate --cwd $(WORKSPACE) -- $(CARGO_LEASED) env CLIPPY_CONF_DIR=$(abspath $(KIT)/..) cargo clippy -p $(CRATE) --all-targets --locked -- -D warnings -D unused_must_use -D clippy::let_underscore_must_use -D clippy::let_underscore_untyped -D clippy::map_err_ignore -D clippy::allow_attributes_without_reason
 
 # group-rows-phpstan-check runs PHPStan at level 9 over the fixture of KSTD-5-53: a row of GroupRows is typed as GroupRow for its
 # caller, so calling its method on each row passes; a mixed row fails it.

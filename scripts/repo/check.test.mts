@@ -34,6 +34,13 @@ const yamlSteps = (steps: unknown[]) => stringify(steps).split('\n').map(line =>
 const copies = kitCopies(new URL('../..', import.meta.url).pathname);
 const notVendored = (path: string) => !Object.hasOwn(copies, path);
 const tracked = ['scripts/docs/rules.mts', 'packages/ts/package.json', 'scripts/typescript/sqlite-test.mts'];
+const repository = new URL('../../', import.meta.url);
+const text = (path: string) => readFileSync(new URL(path, repository), 'utf8');
+const trackedFiles = (pattern: string) => execFileSync('git', ['ls-files', '-z', pattern], { cwd: repository }).toString().split('\0').filter(Boolean).filter(notVendored);
+const scriptTexts = await scriptCommands(repository.pathname, trackedFiles('*'));
+const trackedAll = new Set(trackedFiles('*'));
+const readScript = (path: string) => scriptTexts.get(path) ?? (trackedAll.has(path) && !path.endsWith('.mts') ? text(path) : undefined);
+const trackedTexts = (paths: string[]) => Object.fromEntries(paths.map((path: string) => [path, text(path)]));
 
 caseTest('the Go runtime build generates models before compiling their consumers', COMPUTE, () => {
   const root = new URL('../..', import.meta.url).pathname;
@@ -175,7 +182,6 @@ caseTest('a workflow runs only the summary and the report upload after make orm-
 
 // The node case checks the repository's mise.toml, package.json, workflow and the running Node, and the minimal
 // workflow, changing one at a time.
-const repository = new URL('../../', import.meta.url);
 const declared = readFileSync(new URL('mise.toml', repository), 'utf8');
 const minimum = readPackage(join(repository.pathname, 'package.json')).engines?.['node'];
 // orm's own workflows: the copies of @polyspec/kit (gates.yml and release.yml) are kit's, and kit-check holds them byte for byte (KSTD-10).
@@ -264,7 +270,6 @@ caseTest('a mise.toml node that is not one exact version fails', COMPUTE, () => 
 });
 
 // The PHP and Rust cases check the repository's declarations and the running php and rustc, and change the minimal workflow one at a time.
-const text = (path: string) => readFileSync(new URL(path, repository), 'utf8');
 const runningPhp = execFileSync('php', ['-r', 'echo PHP_MAJOR_VERSION, ".", PHP_MINOR_VERSION;']).toString();
 const runningRustc = /^rustc (\S+)/.exec(execFileSync('rustc', ['--version'], { cwd: repository }).toString())?.[1] ?? '';
 
@@ -1065,12 +1070,6 @@ caseTest('Rust tests read the paths of package programs when they run', COMPUTE,
 });
 
 // The test declaration case checks the repository's JavaScript files and a minimal file.
-const trackedFiles = (pattern: string) => execFileSync('git', ['ls-files', '-z', pattern], { cwd: repository }).toString().split('\0').filter(Boolean).filter(notVendored);
-
-// scriptTexts is the command text of each script in scripts/ (scriptCommands): the lines of shell scripts and the COMMANDS of TypeScript command scripts.
-// readScript reads the path that reachedScripts follows with it, and does not read a TypeScript file that is not a command script.
-const scriptTexts = await scriptCommands(repository.pathname, trackedFiles('*'));
-
 // The helper run case (G5.120) checks whether make orm-check runs each helper check once: the repository's Makefile, feature contract and
 // scripts/check/databases.mts, and a minimal Makefile that runs a helper twice or never.
 caseTest('make orm-check runs the check of every helper once', COMPUTE, () => {
@@ -1120,10 +1119,6 @@ caseTest('make orm-check runs the check of every helper once', COMPUTE, () => {
     twice('stress', 'make helper-check; make stress-check'),
   ]);
 });
-
-const trackedAll = new Set(trackedFiles('*'));
-const readScript = (path: string) => scriptTexts.get(path) ?? (trackedAll.has(path) && !path.endsWith('.mts') ? text(path) : undefined);
-const trackedTexts = (paths: string[]) => Object.fromEntries(paths.map((path: string) => [path, text(path)]));
 
 caseTest('every JavaScript test declares its cases with caseTest', COMPUTE, () => {
   assert.deepEqual(nodeTestErrors(trackedTexts(trackedFiles('*.mjs').filter(path => !path.startsWith('docs/')))), []);
@@ -1213,12 +1208,12 @@ caseTest('a PHP test outside PHPUnit or a TypeScript test without the shared cas
 });
 
 // The tool case checks the repository's verification commands and a minimal command.
-const featureUnits = () => {
+function featureUnits() {
   const manifest = readFeatures(repository.pathname);
   return [...manifest.features.flatMap(feature => feature.verification
     .filter(check => (check.cwd ?? '.') === '.').map(check => ({ name: `contracts/features.json ${feature.id}/${check.id}`, commands: [check.command], dialect: 'sh' as const }))),
   ...(manifest.helpers ?? []).map(helper => ({ name: `contracts/features.json helper ${helper.id}`, commands: [helper.command], dialect: 'sh' as const }))];
-};
+}
 
 caseTest('every build tool of a verification command runs under run-long without a deadline', COMPUTE, () => {
   assert.deepEqual(unwrappedToolErrors(featureUnits()), []);
@@ -1257,12 +1252,12 @@ caseTest('a build tool outside run-long or under a deadline fails', COMPUTE, () 
 });
 
 // The cargo test case checks the repository's Makefile, verification commands, scripts and a minimal unit.
-const runUnits = () => {
+function runUnits() {
   const recipes = makeRecipes(text('Makefile'));
   const packageUnits = Object.entries(readPackage(join(repository.pathname, 'package.json')).scripts ?? {}).map(([name, command]) => ({ name: `package.json ${name}`, commands: [command], dialect: 'sh' as const }));
   const commands = [...recipes, ...featureUnits(), ...packageUnits].flatMap(unit => unit.commands.map(command => ({ command, dialect: unit.dialect })));
   return { recipes, packageUnits, scripts: reachedScripts(commands, readScript) };
-};
+}
 
 caseTest('every cargo test run goes through cargo-test.mts', COMPUTE, () => {
   const { recipes, packageUnits, scripts } = runUnits();
