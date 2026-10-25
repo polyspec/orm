@@ -121,114 +121,95 @@
     },
     "toolchain-check": {
       "scope": "suite",
-      "needs": [],
-      "inputs": []
+      "needs": []
     },
     "layout-check": {
       "scope": "suite",
-      "needs": [],
-      "inputs": []
+      "needs": []
     },
     "rules-check": {
       "scope": "suite",
-      "needs": [],
-      "inputs": []
+      "needs": []
     },
     "rebuild-check": {
       "scope": "suite",
-      "needs": [],
-      "inputs": []
+      "needs": []
     },
     "language-check": {
       "scope": "suite",
-      "needs": [],
-      "inputs": []
+      "needs": []
     },
     "test-markers-check": {
       "scope": "suite",
-      "needs": [],
-      "inputs": []
+      "needs": []
     },
     "duplication-check": {
       "scope": "suite",
-      "needs": [],
-      "inputs": []
+      "needs": []
     },
     "link-state-check": {
       "scope": "suite",
-      "needs": [],
-      "inputs": []
+      "needs": []
     },
     "polyspec-lock-check": {
       "scope": "suite",
-      "needs": [],
-      "inputs": []
+      "needs": []
     },
     "bypass-check": {
       "scope": "suite",
-      "needs": [],
-      "inputs": []
+      "needs": []
     },
     "suppression-check": {
       "scope": "suite",
-      "needs": [],
-      "inputs": []
+      "needs": []
     },
     "divergence-check": {
       "scope": "suite",
-      "needs": [],
-      "inputs": []
+      "needs": []
     },
     "lint-ts": {
       "scope": "suite",
       "needs": [
         "node-modules"
-      ],
-      "inputs": []
+      ]
     },
     "lint-php": {
       "scope": "suite",
       "needs": [
         "php"
-      ],
-      "inputs": []
+      ]
     },
     "lint-python": {
       "scope": "suite",
       "needs": [
         "python"
-      ],
-      "inputs": []
+      ]
     },
     "lint-go": {
       "scope": "suite",
       "needs": [
         "go"
-      ],
-      "inputs": []
+      ]
     },
     "lint-rust": {
       "scope": "suite",
       "needs": [
         "rust"
-      ],
-      "inputs": []
+      ]
     },
     "lint-php-ext": {
       "scope": "suite",
       "needs": [
         "php",
         "rust"
-      ],
-      "inputs": []
+      ]
     },
     "test-php-ext": {
       "scope": "suite",
       "needs": [
         "php",
         "rust"
-      ],
-      "inputs": []
+      ]
     },
     "owner-validate": {
       "scope": "owner",
@@ -300,7 +281,6 @@
         "**/*.h",
         "**/*.sh",
         "Makefile",
-        "**/*.mk",
         "**/*.toml",
         "**/*.ini",
         "**/*.yml",
@@ -801,8 +781,7 @@
         "go",
         "node-modules",
         "databases"
-      ],
-      "inputs": []
+      ]
     },
     "complex-query-typescript-unit-check": {
       "scope": "owner",
@@ -888,8 +867,7 @@
         "php",
         "composer",
         "databases"
-      ],
-      "inputs": []
+      ]
     },
     "complex-query-php-extension-db-check": {
       "scope": "suite",
@@ -898,8 +876,7 @@
         "composer",
         "php-extension-tools",
         "databases"
-      ],
-      "inputs": []
+      ]
     },
     "ts-save-key-check": {
       "scope": "owner",
@@ -1139,8 +1116,7 @@
       "needs": [
         "go",
         "rust"
-      ],
-      "inputs": []
+      ]
     },
     "generated-lint-check": {
       "scope": "owner",
@@ -1515,8 +1491,7 @@
         "python",
         "node-modules",
         "databases"
-      ],
-      "inputs": []
+      ]
     },
     "aes-rotation-php-extension-check": {
       "scope": "suite",
@@ -1525,8 +1500,7 @@
         "composer",
         "php-extension-tools",
         "databases"
-      ],
-      "inputs": []
+      ]
     },
     "complex-query-rust-check": {
       "scope": "suite",
@@ -1534,8 +1508,7 @@
         "rust",
         "databases",
         "complex-query"
-      ],
-      "inputs": []
+      ]
     },
     "codec-check": {
       "scope": "owner",
@@ -1676,8 +1649,7 @@
         "node-modules",
         "python",
         "databases"
-      ],
-      "inputs": []
+      ]
     },
     "case-database-check": {
       "scope": "suite",
@@ -1688,8 +1660,7 @@
         "composer",
         "node-modules",
         "databases"
-      ],
-      "inputs": []
+      ]
     },
     "dialect-facts-check": {
       "scope": "owner",
@@ -1718,8 +1689,7 @@
         "node-modules",
         "databases",
         "python"
-      ],
-      "inputs": []
+      ]
     },
     "markdown-conformance-check": {
       "scope": "owner",
@@ -3054,8 +3024,7 @@
         "databases",
         "complex-query",
         "python"
-      ],
-      "inputs": []
+      ]
     },
     "feature-verify-rust": {
       "scope": "suite",
@@ -3067,8 +3036,7 @@
         "node-modules",
         "php-extension-tools",
         "databases"
-      ],
-      "inputs": []
+      ]
     },
     "feature-verify-other": {
       "scope": "suite",
@@ -3081,8 +3049,7 @@
         "php-extension-tools",
         "databases",
         "python"
-      ],
-      "inputs": []
+      ]
     },
     "feature-helper-check": {
       "scope": "suite",
@@ -3094,16 +3061,14 @@
         "node-modules",
         "databases",
         "python"
-      ],
-      "inputs": []
+      ]
     },
     "feature-stress-mysql-check": {
       "scope": "suite",
       "needs": [
         "go",
         "databases"
-      ],
-      "inputs": []
+      ]
     },
     "feature-stress-pg-sqlite-check": {
       "scope": "suite",
@@ -3114,8 +3079,7 @@
         "composer",
         "node-modules",
         "databases"
-      ],
-      "inputs": []
+      ]
     },
     "complex-query-go-plan-check": {
       "scope": "owner",
@@ -3155,8 +3119,7 @@
       "needs": [
         "go",
         "databases"
-      ],
-      "inputs": []
+      ]
     },
     "connection-sqlite-concurrent-writers-python-check": {
       "scope": "owner",
@@ -3237,8 +3200,7 @@
         "databases",
         "complex-query",
         "python"
-      ],
-      "inputs": []
+      ]
     },
     "complex-query-python-postgres-check": {
       "scope": "suite",
@@ -3246,8 +3208,7 @@
         "databases",
         "complex-query",
         "python"
-      ],
-      "inputs": []
+      ]
     },
     "complex-query-python-sqlite-check": {
       "scope": "suite",
@@ -3255,15 +3216,13 @@
         "databases",
         "complex-query",
         "python"
-      ],
-      "inputs": []
+      ]
     },
     "parity-declarations-check": {
       "scope": "suite",
       "needs": [
         "node-modules"
-      ],
-      "inputs": []
+      ]
     },
     "parity-check": {
       "scope": "suite",
@@ -3276,8 +3235,7 @@
         "python",
         "node-modules",
         "databases"
-      ],
-      "inputs": []
+      ]
     },
     "mermaid-error-ts-check": {
       "scope": "owner",

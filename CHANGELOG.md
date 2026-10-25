@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- `node scripts/features/owners.mts --list` passes on main again after 548960952: the 41 suite targets of contracts/check-inputs.json no longer carry the empty inputs list that its schema refuses, and the four dsn_connection verifications pooler-cancellation and pgsql-pdo-adapter of the PHP client and the extension no longer list the files of the helpers php-test-autoload and error-codes as inputs (KSTD-5-89-24).
 - Adopt the sibling Kit bootstrap and remove nine obsolete copies; every ORM tool source is classified for rebuild checks (KSTD-5-89-13).
 - `make lint-ts` passes on main: every unsafe type assertion of scripts/features and the tests reads its value through a checked reader, the unused variable of the TypeScript catalog connection coverage is gone, markdown-it is a declared devDependency, and the root tsconfig.json no longer names web-bluetooth (KSTD-5-89-21).
 - `make lint-python` passes on main: the LISTEN cleanup of the Python client re-raises an error that is not a psycopg error, the row-lock holder of the transaction coverage re-raises its failure, two unused imports are gone, and ruff format rewrites 21 files with no change to their syntax tree (KSTD-5-89-14).

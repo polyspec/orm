@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: b3c29a3ff258028f2073a933d527f47341f49ab92f7f716c84ab93303a343a2b -->
+<!-- source-sha256: 9693ae6bdaea1b5fc3b5a8eb60f90df7da517678330e9713fd6588a2c5aff99e -->
 # 변경 이력
 
 ## Unreleased
 
+- 548960952 이후 main에서 `node scripts/features/owners.mts --list`가 다시 통과한다: contracts/check-inputs.json의 suite target 41개는 schema가 거부하는 빈 inputs 목록을 더 이상 갖지 않고, PHP client와 extension의 dsn_connection verification pooler-cancellation과 pgsql-pdo-adapter 네 개는 helper php-test-autoload와 error-codes의 파일을 더 이상 입력으로 적지 않는다 (KSTD-5-89-24).
 - sibling Kit bootstrap을 사용하고 오래된 복사본 9개를 제거했다. 모든 ORM tool source가 rebuild 검사에 맞게 분류된다 (KSTD-5-89-13).
 - main에서 `make lint-ts`가 통과한다. scripts/features와 test의 unsafe type assertion은 모두 검사하는 reader로 값을 읽고, TypeScript catalog connection coverage의 미사용 변수를 지웠으며, markdown-it을 devDependency로 선언하고 root tsconfig.json이 web-bluetooth를 더 이상 이름하지 않는다(KSTD-5-89-21).
 - `make lint-python`이 main에서 통과한다: Python client의 LISTEN cleanup이 psycopg 오류가 아닌 오류를 다시 raise하고, transaction coverage의 row-lock holder가 실패를 다시 raise하며, 사용하지 않는 import 두 개가 사라지고, ruff format이 파일 21개를 syntax tree 변경 없이 다시 쓴다 (KSTD-5-89-14).
