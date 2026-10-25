@@ -5,6 +5,7 @@ import { createRequire } from 'node:module';
 import os from 'node:os';
 import { performance } from 'node:perf_hooks';
 import { Author, connect, hostDecode } from '../dist/index.js';
+import { formatMicroseconds } from './coverage_performance_report.mjs';
 
 const require = createRequire(new URL('../package.json', import.meta.url));
 const WARMUP = 100;
@@ -76,14 +77,13 @@ async function measure(database, name, client, native, expectedRows) {
   }
   const wallMs = performance.now() - wallStart;
   const cpu = process.cpuUsage(cpuStart);
-  const toMs = (time) => Number(time) / 1e6;
   const nativeP50 = median(nativeNs);
   const clientP50 = median(clientNs);
   const ratio = median(ratios);
   const machine = `${os.platform()} ${os.arch()} ${os.cpus()[0]?.model ?? 'unknown CPU'}`;
   process.stderr.write(
-    `PERF hot_path_gate typescript ${database} ${name}: native p50=${toMs(nativeP50).toFixed(1)}µs ` +
-    `client p50=${toMs(clientP50).toFixed(1)}µs ratio=${ratio.toFixed(2)} ` +
+    `PERF hot_path_gate typescript ${database} ${name}: native p50=${formatMicroseconds(nativeP50)} ` +
+    `client p50=${formatMicroseconds(clientP50)} ratio=${ratio.toFixed(2)} ` +
     `samples=${PAIRS} cpu=${((cpu.user + cpu.system) / 1000).toFixed(1)}ms ` +
     `wall=${wallMs.toFixed(1)}ms machine=${machine} reference=not-recorded\n`,
   );

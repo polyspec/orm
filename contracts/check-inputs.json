@@ -2064,6 +2064,18 @@
         "packages/ts/tests/check-state.test.mjs"
       ]
     },
+    "typescript-performance-gate-unit-check": {
+      "scope": "owner",
+      "needs": [
+        "node-modules"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/ts/tests/coverage_performance_gate.mjs",
+        "packages/ts/tests/coverage_performance_report.mjs",
+        "packages/ts/tests/coverage_performance_gate.test.mjs"
+      ]
+    },
     "mysql-test-options-helper-check": {
       "scope": "owner",
       "needs": [
