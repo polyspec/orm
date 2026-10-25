@@ -1,6 +1,6 @@
 use std::io::Write;
 
-/// Bounds the serialized array of rows, including array separators.
+/// Bounds accumulated query results: tool queries count serialized rows, while catalog plain reads count cell values.
 #[derive(Clone, Copy, Debug)]
 pub struct QueryLimits {
     pub max_rows: usize,
@@ -21,6 +21,35 @@ fn error_with(error: impl std::fmt::Display) -> sqlx::Error {
 pub(super) struct Budget {
     limits: QueryLimits,
     bytes: usize,
+}
+/// Bounds converted plain-result values by their client-visible byte sizes.
+pub(super) struct ValueBudget {
+    limits: QueryLimits,
+    bytes: usize,
+}
+impl ValueBudget {
+    pub(super) fn new(limits: QueryLimits) -> Result<Self, sqlx::Error> {
+        let ceiling = QueryLimits::default();
+        if limits.max_rows == 0 || limits.max_rows > ceiling.max_rows || limits.max_bytes == 0 || limits.max_bytes > ceiling.max_bytes {
+            return Err(error());
+        }
+        Ok(Self { limits, bytes: 0 })
+    }
+    pub(super) fn check_row_count(&self, count: usize) -> Result<(), sqlx::Error> {
+        if count >= self.limits.max_rows { Err(error()) } else { Ok(()) }
+    }
+    pub(super) fn add_row(&mut self, row: &[super::Val], _count: usize) -> Result<(), sqlx::Error> {
+        let size = row.iter().try_fold(0usize, |bytes, value| {
+            let size = match value {
+                super::Val::Text(text) => text.len(),
+                super::Val::Null | super::Val::Int(_) | super::Val::Bool(_) => 8,
+            };
+            bytes.checked_add(size).filter(|total| *total <= self.limits.max_bytes)
+        });
+        let Some(bytes) = size else { return Err(error()) };
+        self.bytes = self.bytes.checked_add(bytes).filter(|total| *total <= self.limits.max_bytes).ok_or_else(error)?;
+        Ok(())
+    }
 }
 impl Budget {
     pub(super) fn new(limits: QueryLimits) -> Result<Self, sqlx::Error> {

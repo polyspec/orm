@@ -93,7 +93,7 @@ impl CatalogConnection {
         limits: crate::tool_db::QueryLimits,
     ) -> Result<crate::tool_db::QueryResult, String> {
         let mut connection = self.read_only_connection(sql).await?;
-        let result = connection.query_result_bounded(sql, params, limits).await.map_err(catalog_query_error);
+        let result = connection.query_result_values_bounded(sql, params, limits).await.map_err(catalog_query_error);
         finish_read_only(&mut connection, result).await
     }
     /// Read-only typed grid values preserve binary cells without text coercion.

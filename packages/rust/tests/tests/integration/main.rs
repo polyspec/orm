@@ -7,6 +7,8 @@ polyspec_orm::models!();
 mod coverage_complex_query;
 mod coverage_composite_keys;
 mod coverage_constraints_and_relations;
+#[path = "../coverage_catalog_connection.rs"]
+mod coverage_catalog_connection;
 #[path = "../common/coverage_database.rs"]
 mod coverage_database;
 mod coverage_env;

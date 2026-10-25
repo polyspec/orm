@@ -113,6 +113,38 @@ async fn coverage_catalog_read() {
 }
 
 #[tokio::test]
+// Requirements: INT-115.
+async fn coverage_catalog_read_budgets() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    within("catalog_plain_query_bounds", async {
+        let (driver, mut catalog) = connect().await;
+        let sql = "SELECT 'alpha' AS value UNION ALL SELECT 'beta' AS value";
+        let exact = catalog
+            .read_only_query(sql, &[], QueryLimits { max_rows: 2, max_bytes: 128 })
+            .await
+            .unwrap_or_else(|error| panic!("{driver}: exact row and byte budget failed: {error}"));
+        assert_eq!(
+            exact.rows,
+            vec![vec![Val::Text("alpha".into())], vec![Val::Text("beta".into())]],
+            "{driver}: exact row and byte budget preserves both values"
+        );
+
+        let row_overflow = catalog.read_only_query(sql, &[], QueryLimits { max_rows: 1, max_bytes: 128 }).await;
+        assert!(matches!(&row_overflow, Err(error) if error.starts_with("CATALOG_LIMIT:")), "{driver}: plain read row overflow: {row_overflow:?}");
+
+        let byte_overflow = catalog.read_only_query("SELECT 'abc' AS value", &[], QueryLimits { max_rows: 2, max_bytes: 2 }).await;
+        assert!(matches!(&byte_overflow, Err(error) if error.starts_with("CATALOG_LIMIT:")), "{driver}: plain read byte overflow: {byte_overflow:?}");
+        let exact_byte_boundary = catalog
+            .read_only_query("SELECT 'abc' AS value", &[], QueryLimits { max_rows: 2, max_bytes: 3 })
+            .await
+            .unwrap_or_else(|error| panic!("{driver}: exact text byte boundary failed: {error}"));
+        assert_eq!(exact_byte_boundary.rows, vec![vec![Val::Text("abc".into())]], "{driver}: exact text byte boundary preserves the value");
+        catalog.close().await;
+    })
+    .await;
+}
+
+#[tokio::test]
 // Requirements: SCH-6a.
 async fn coverage_catalog_grid_column_and_row_order() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
