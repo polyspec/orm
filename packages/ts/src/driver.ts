@@ -604,7 +604,7 @@ class PostgresPoolDriver implements DriverPool {
   public async openListener(): Promise<PostgresListener> {
     const client = new pg.Client(this.config);
     // The listener attaches its own error handler before the connection opens, so an error during connect is reported by it.
-    const listener = new PostgresListener(client, error => driverError(this.name, error));
+    const listener = new PostgresListener(client, error => new OrmError(codes.CONNECTION_LOST, `postgres: ${errorText(error)}`, error));
     try { await client.connect(); } catch (error) { throw driverError(this.name, error); }
     return listener;
   }
