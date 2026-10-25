@@ -187,10 +187,7 @@ final class CoverageConformanceVerificationExtensionTest extends TestCase
             selectCoverageItem($item);
             [$driver, $dsn] = coverageItem();
             $root = dirname(__DIR__, 3);
-            $file = $driver === 'mysql' ? 'vectors.json' : "vectors.$driver.json";
-            $recorded = coverageJson("$root/tests/conformance/$file", false);
-            $expected = coverageExpectedConformanceVectors($recorded, self::CONFORMANCE_VECTORS);
-            Assert::assertCount(count(self::CONFORMANCE_VECTORS), $expected);
+            [, $expected] = coverageRecordedConformanceVectors($driver, self::CONFORMANCE_VECTORS);
             $arguments = [];
             foreach (self::CONFORMANCE_VECTORS as $vector) {
                 array_push($arguments, '--vector', $vector);

@@ -173,6 +173,25 @@ final class CoverageCasesTest extends TestCase
         );
     }
 
+    public function testReadsTheRecordedConformanceVectorsOfTheSelectedDatabase(): void
+    {
+        $files = ['mysql' => 'vectors.json', 'postgres' => 'vectors.postgres.json', 'sqlite' => 'vectors.sqlite.json'];
+        foreach ($files as $driver => $name) {
+            $recorded = coverageJson(dirname(__DIR__, 3) . "/tests/conformance/$name", false);
+            self::assertEquals(
+                [$name, coverageExpectedConformanceVectors($recorded, ['relations', 'conditions_values'])],
+                coverageRecordedConformanceVectors($driver, ['relations', 'conditions_values']),
+                $driver
+            );
+        }
+        try {
+            coverageRecordedConformanceVectors('sqlite', ['conditions_values', 'no_such_vector']);
+            self::fail('a vector that the file does not record must fail');
+        } catch (\PHPUnit\Framework\AssertionFailedError $error) {
+            self::assertStringContainsString('vectors.sqlite.json lacks a selected vector', $error->getMessage());
+        }
+    }
+
     public function testModelQueryRunnerSelectsOwnerAndClosesItsConnection(): void
     {
         $connections = [];

@@ -153,6 +153,26 @@ function coverageExpectedConformanceVectors(\stdClass $recorded, array $names): 
 }
 
 /**
+ * The vector file of tests/conformance that records the results of the database `driver` and the expected results of
+ * `names` in it, keyed by name; a name that the file does not record fails the case.
+ *
+ * @param list<string> $names
+ * @return array{string, array<string, mixed>}
+ */
+function coverageRecordedConformanceVectors(string $driver, array $names): array
+{
+    $file = $driver === 'mysql' ? 'vectors.json' : "vectors.$driver.json";
+    $recorded = coverageJson(dirname(__DIR__, 3) . "/tests/conformance/$file", false);
+    $expected = coverageExpectedConformanceVectors($recorded, $names);
+    Assert::assertSame(
+        $names,
+        array_values(array_filter($names, static fn(string $name): bool => array_key_exists($name, $expected))),
+        "$file lacks a selected vector"
+    );
+    return [$file, $expected];
+}
+
+/**
  * Runs one selected model-query coverage case per database and closes each connection on every path.
  *
  * @param Closure(Db): void $run

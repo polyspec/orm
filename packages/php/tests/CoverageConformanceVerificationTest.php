@@ -153,10 +153,7 @@ final class CoverageConformanceVerificationTest extends TestCase
             selectCoverageItem($item);
             [$driver, $dsn] = coverageItem();
             $root = dirname(__DIR__, 3);
-            $file = $driver === 'mysql' ? 'vectors.json' : "vectors.$driver.json";
-            $recorded = coverageJson("$root/tests/conformance/$file", false);
-            $expect = coverageExpectedConformanceVectors($recorded, CONFORMANCE_VECTORS);
-            Assert::assertTrue(count($expect) === count(CONFORMANCE_VECTORS), "$file lacks a selected vector");
+            [$file, $expect] = coverageRecordedConformanceVectors($driver, CONFORMANCE_VECTORS);
             $command = [PHP_BINARY, "$root/packages/php/testing/conformance/runner.php", '--dsn', $dsn];
             foreach (CONFORMANCE_VECTORS as $name) {
                 array_push($command, '--vector', $name);
