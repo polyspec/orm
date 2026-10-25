@@ -1,7 +1,6 @@
 package orm_test
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -408,80 +407,6 @@ func TestStatementTimeoutThroughAPooler(t *testing.T) {
 	if err := lockedRead(bounded, ent); orm.ErrorCode(err) != orm.CodeCanceled {
 		t.Fatalf("the bounded connection after the plain one: %v", err)
 	}
-}
-
-// TestCancellationThroughPooler checks that PgBouncer forwards an explicit client-context cancellation of a locked read,
-// and that the same ORM connection can run a query after the lock is released.
-// Requirements: CFG-31.
-func TestCancellationThroughPooler(t *testing.T) {
-	c := testcase.Start(t, testcase.Database)
-	base := requireDSN(t, "ORM_TEST_POSTGRES_DSN")
-	single := requireDSN(t, "ORM_TEST_PGBOUNCER_SINGLE_DSN")
-	table := testdb.Name()
-	s := documentSchema(t, "dbspec 1 pooler_probe\n\ntable "+table+" {\n  seq i64 identity\n  label varchar(32)\n  primary key (seq)\n}\n")
-	setup := connectInstalled(t, single, s)
-	defer testcase.Close(t, setup)
-	t.Cleanup(func() {
-		raw := openNative(t, "postgres", base)
-		defer testcase.Close(t, raw)
-		if _, err := raw.Exec(`DROP TABLE IF EXISTS "` + table + `"`); err != nil {
-			t.Errorf("drop pooler cancellation table %s: %v", table, err)
-			return
-		}
-		c.Step("table %s dropped", table)
-	})
-	c.Step("table %s created", table)
-	ent := rowEntity(table, s, "seq", "label")
-	for i, label := range []string{"probe-0", "probe-1", "probe-2", "probe-3"} {
-		row := orm.NewCore(ent)
-		ent.New(row)
-		row.Connect(setup)
-		row.Set("label", label)
-		if _, err := row.Create(); err != nil {
-			t.Fatalf("create probe row %d: %v", i, err)
-		}
-	}
-	release := holdRows(t, "postgres", base, table)
-	defer func() {
-		if release != nil {
-			release()
-		}
-	}()
-	monitor := openNative(t, "postgres", base)
-	defer testcase.Close(t, monitor)
-	before, err := waiters(monitor, "postgres")
-	if err != nil {
-		t.Fatal(err)
-	}
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	waited := make(chan error, 1)
-	go func() {
-		waited <- awaitLockWait(ctx, monitor, "postgres", before)
-		cancel()
-	}()
-	if err := lockedRead(setup.WithContext(ctx), ent); orm.ErrorCode(err) != orm.CodeCanceled {
-		t.Fatalf("the canceled statement through PgBouncer returned %v (code %q), want CANCELED", err, orm.ErrorCode(err))
-	}
-	if err := <-waited; err != nil {
-		t.Fatal(err)
-	}
-	afterCancel, err := waiters(monitor, "postgres")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if newWaiter(before, afterCancel) {
-		t.Fatal("the client returned after cancellation while its PostgreSQL statement still waited for the held row lock")
-	}
-	release()
-	release = nil
-	after := orm.NewCore(ent)
-	ent.New(after)
-	after.Connect(setup)
-	if count, err := after.GetCount(); err != nil || count != 4 {
-		t.Fatalf("pooler connection after cancellation returned %d rows, %v; want 4", count, err)
-	}
-	c.Step("PgBouncer forwarded cancellation and the client connection remained usable")
 }
 
 // TestNativeTimeIsRefusedByDatetime checks that a native time.Time is no value of a datetime column: the

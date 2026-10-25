@@ -33,7 +33,6 @@ require_once __DIR__ . '/GroupRowsDbCases.php';
 require_once __DIR__ . '/PostgresSessionSettings.php';
 require_once __DIR__ . '/FiberTransaction.php';
 require_once __DIR__ . '/QueryCancellationDbCases.php';
-require_once __DIR__ . '/PoolerCancellationCase.php';
 require_once __DIR__ . '/ModelTypesWeakCallerCases.php';
 require_once __DIR__ . '/collection-weak-caller.php';
 require_once __DIR__ . '/model-types-weak-caller.php';

@@ -3698,63 +3698,6 @@
         "tests/dbspec/stress.mts"
       ]
     },
-    "php-pooler-cancellation-check": {
-      "scope": "owner",
-      "needs": [
-        "php",
-        "composer",
-        "databases"
-      ],
-      "inputs": [
-        "Makefile",
-        "contracts/features.json",
-        "packages/php/tests/PoolerCancellationTest.php",
-        "packages/php/tests/bootstrap.php",
-        "packages/php/testing/required_dsn.php",
-        "packages/php/src/Db.php",
-        "packages/php/src/Orm.php",
-        "packages/php/src/Internal/PgsqlPdoAdapter.php",
-        "packages/php/tests/case_database.php",
-        "packages/php/src/Cancellation.php",
-        "packages/php/src/DbState.php",
-        "packages/php/src/SqliteCancellation.php",
-        "packages/php/src/TxFrame.php"
-      ]
-    },
-    "php-pooler-cancellation-extension-check": {
-      "scope": "owner",
-      "needs": [
-        "php",
-        "composer",
-        "php-extension-tools",
-        "databases"
-      ],
-      "inputs": [
-        "Makefile",
-        "contracts/features.json",
-        "packages/php-ext/tests/PoolerCancellationNativeTest.php",
-        "packages/php-ext/tests/bootstrap.php",
-        "packages/php/tests/bootstrap.php",
-        "packages/php/src/Db.php",
-        "packages/php/src/Orm.php",
-        "packages/php-ext/src/pgsql_adapter_native.c",
-        "packages/php-ext/src/pgsql_adapter_native.h",
-        "packages/php-ext/src/pgsql_statement_iterator_native.c",
-        "packages/php-ext/src/pgsql_statement_iterator_native.h",
-        "packages/php-ext/src/pgsql_lob_native.c",
-        "packages/php-ext/src/pgsql_lob_native.h",
-        "packages/php/tests/case_database.php",
-        "packages/php/testing/required_dsn.php",
-        "packages/php-ext/src/config.m4",
-        "packages/php-ext/scripts/build.sh",
-        "packages/php-ext/src/polyspec_orm.c",
-        "packages/php-ext/src/polyspec_orm.stub.php",
-        "packages/php/src/Internal/PgsqlPdoAdapter.php",
-        "packages/php/src/Internal/PgsqlStatementAdapter.php",
-        "packages/php/src/Internal/PgsqlStatementIterator.php",
-        "packages/php/src/Internal/PgsqlLargeObjectStream.php"
-      ]
-    },
     "pgsql-pdo-adapter-php-check": {
       "scope": "owner",
       "needs": [

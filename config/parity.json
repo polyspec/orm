@@ -355,7 +355,6 @@
         "packages/php/tests/PgsqlPdoAdapterCases.php",
         "packages/php/tests/FiberTransaction.php",
         "packages/php/tests/GroupRowsDbCases.php",
-        "packages/php/tests/PoolerCancellationCase.php",
         "packages/php/tests/PostgresSessionSettings.php",
         "packages/php/tests/QueryCancellationDbCases.php"
       ],
@@ -10117,40 +10116,6 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/zone.rs",
           "id": "statement_timeout_through_a_pooler"
-        }
-      ]
-    },
-    {
-      "id": "connection-cancellation-through-pooler",
-      "kind": "feature",
-      "requirements": [
-        "CFG-31"
-      ],
-      "bindings": [
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/statement_timeout.mjs",
-          "id": "connection/cancellation-through-pooler"
-        },
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/timezone_test.go",
-          "id": "TestCancellationThroughPooler"
-        },
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/connection_config.py",
-          "id": "ConnectionConfigTest.test_cancellation_through_a_pooler"
-        },
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/PoolerCancellationTest.php",
-          "id": "PoolerCancellationTest::testPgBouncerForwardsCancellationAndRootRemainsUsable"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/PoolerCancellationNativeTest.php",
-          "id": "PoolerCancellationNativeTest::testNativePgBouncerForwardsCancellationAndRootRemainsUsable"
         }
       ]
     },

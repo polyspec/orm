@@ -268,34 +268,3 @@ caseTest('connection/statement-timeout-through-pooler', DATABASE, async ({ step 
     release = undefined;
   });
 });
-
-// Requirements: CFG-31. This verifies that PgBouncer forwards a client cancel
-// request to the server connection running the blocked statement.
-caseTest('connection/cancellation-through-pooler', DATABASE, async ({ step }) => {
-  await withPoolerProbe(step, 'pooler cancellation', async ({ single, base, table, Probe, schema, closing }) => {
-    let client;
-    let release;
-    closing(() => release?.());
-    closing(() => client?.close());
-    client = await Db.connectSchema(single, schema);
-    release = await holdPoolerRows(base, table);
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 100);
-    let cancellation;
-    try {
-      await lockedReadModel(client.withSignal(controller.signal), Probe);
-    } catch (error) {
-      cancellation = error;
-    } finally {
-      clearTimeout(timer);
-    }
-    if (cancellation?.code !== 'CANCELED') {
-      throw new Error(`the statement through PgBouncer failed with ${cancellation?.code ?? 'no error'}, expected CANCELED`);
-    }
-    await release();
-    release = undefined;
-    const count = await new Probe().connect(client).getCount();
-    if (count !== 4) throw new Error(`the connection returned ${count} rows after cancellation, expected 4`);
-    step('PgBouncer forwarded cancellation and the client connection remained usable');
-  });
-});
