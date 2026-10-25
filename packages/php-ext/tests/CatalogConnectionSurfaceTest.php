@@ -190,6 +190,72 @@ final class CatalogConnectionSurfaceTest extends TestCase
         }
     }
 
+    public function testNativeInsertCommitAndRollbackFailuresPreserveBothDriverCauses(): void
+    {
+        self::assertTrue((new ReflectionClass(Catalog::class))->isInternal());
+        self::assertTrue((new ReflectionClass(Catalog::class))->getMethod('insertRow')->isInternal());
+
+        $pdo = new class extends PDO {
+            public bool $failCommit = false;
+            public bool $failRollback = false;
+            public PDOException $commitFailure;
+            public PDOException $rollbackFailure;
+
+            public function __construct()
+            {
+                parent::__construct('sqlite::memory:');
+                $this->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+                $this->commitFailure = new PDOException('commit lost after the insert');
+                $this->rollbackFailure = new PDOException('rollback lost after the insert');
+            }
+
+            public function exec(string $statement): int|false
+            {
+                if ($this->failCommit && $statement === 'COMMIT') {
+                    $this->failCommit = false;
+                    throw $this->commitFailure;
+                }
+                if ($this->failRollback && $statement === 'ROLLBACK') {
+                    $this->failRollback = false;
+                    throw $this->rollbackFailure;
+                }
+                return parent::exec($statement);
+            }
+        };
+        $pdo->exec('CREATE TABLE sample (id INTEGER PRIMARY KEY, payload TEXT NOT NULL)');
+        $db = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
+        $catalog = self::catalogWith($db, 'sqlite');
+        (new ReflectionProperty(Catalog::class, 'gridLink'))->setValue($catalog, null);
+
+        try {
+            $metadata = $catalog->describeTable(['namespace' => 'main', 'name' => 'sample']);
+            $pdo->failCommit = true;
+            $pdo->failRollback = true;
+            try {
+                $catalog->insertRow($metadata, ['id' => 1, 'payload' => 'inserted']);
+                self::fail('an unconfirmed native insert commit returned success');
+            } catch (OrmException $error) {
+                self::assertSame(Code::ROW_COMMIT_INDETERMINATE, $error->code_);
+                self::assertStringContainsString('commit outcome unknown; do not retry', $error->getMessage());
+                self::assertStringContainsString('rollback failed', $error->getMessage());
+                self::assertInstanceOf(OrmException::class, $error->getPrevious());
+                self::assertSame(Code::DRIVER, $error->getPrevious()->code_);
+                self::assertSame($pdo->commitFailure, $error->getPrevious()->getPrevious());
+                self::assertInstanceOf(OrmException::class, $error->rollback);
+                self::assertSame(Code::DRIVER, $error->rollback->code_);
+                self::assertSame($pdo->rollbackFailure, $error->rollback->getPrevious());
+            }
+
+            self::assertTrue($pdo->inTransaction(), 'the injected rollback failure leaves the SQLite transaction open');
+            self::assertSame(1, (int) $pdo->query('SELECT COUNT(*) FROM sample')->fetchColumn());
+        } finally {
+            if ($pdo->inTransaction()) {
+                $pdo->exec('ROLLBACK');
+            }
+            $catalog->close();
+        }
+    }
+
     private static function catalogWith(Db $db, string $dialect): Catalog
     {
         $catalog = (new ReflectionClass(Catalog::class))->newInstanceWithoutConstructor();

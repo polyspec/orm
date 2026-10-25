@@ -5,7 +5,6 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from . import testcase
 from polyspec.orm import OrmError, codes, connect_catalog
 from polyspec.orm.catalog import (
     CatalogColumn,
@@ -15,6 +14,8 @@ from polyspec.orm.catalog import (
     _Session,
 )
 from polyspec.orm.database import parse_dsn
+
+from . import testcase
 
 
 class _FakeMysqlSession:
@@ -204,9 +205,11 @@ class CatalogAutoKeyTest(unittest.TestCase):
                         )
                     return original_run(session, sql, params, max_rows, max_bytes, grid)
 
-                with patch.object(_Session, "run", fail_commit):
-                    with self.assertRaises(OrmError) as raised:
-                        catalog.insert_row(metadata, [("payload", "uncertain")])
+                with (
+                    patch.object(_Session, "run", fail_commit),
+                    self.assertRaises(OrmError) as raised,
+                ):
+                    catalog.insert_row(metadata, [("payload", "uncertain")])
 
                 error = raised.exception
                 self.assertEqual(error.code, codes.ROW_COMMIT_INDETERMINATE)
@@ -221,6 +224,56 @@ class CatalogAutoKeyTest(unittest.TestCase):
                     ).rows,
                     [],
                 )
+            finally:
+                catalog.close()
+
+    # Requirements: INT-65.
+    def test_sqlite_unknown_commit_does_not_attempt_rollback(self):
+        with tempfile.TemporaryDirectory(
+            prefix="orm-catalog-rollback-unknown-"
+        ) as directory:
+            path = os.path.join(directory, "catalog.sqlite3")
+            raw = sqlite3.connect(path)
+            try:
+                raw.execute(
+                    "CREATE TABLE sample (id INTEGER PRIMARY KEY AUTOINCREMENT, payload TEXT NOT NULL)"
+                )
+            finally:
+                raw.close()
+
+            catalog = connect_catalog(f"sqlite://{path}")
+            try:
+                metadata = catalog.describe_table(
+                    {"namespace": "main", "name": "sample"}
+                )
+                commit_error = sqlite3.OperationalError("commit acknowledgement lost")
+                rollback_error = sqlite3.OperationalError("rollback connection lost")
+                statements = []
+                original_run = _Session.run
+
+                def fail_commit_and_rollback(
+                    session, sql, params=(), max_rows=None, max_bytes=None, grid=False
+                ):
+                    statements.append(sql)
+                    if sql == "COMMIT":
+                        raise commit_error
+                    if sql == "ROLLBACK":
+                        raise rollback_error
+                    return original_run(session, sql, params, max_rows, max_bytes, grid)
+
+                with (
+                    patch.object(_Session, "run", fail_commit_and_rollback),
+                    self.assertRaises(OrmError) as raised,
+                ):
+                    catalog.insert_row(metadata, [("payload", "uncertain")])
+
+                error = raised.exception
+                self.assertEqual(error.code, codes.ROW_COMMIT_INDETERMINATE)
+                self.assertIs(error.cause, commit_error)
+                self.assertIs(error.__cause__, commit_error)
+                self.assertEqual(statements.count("COMMIT"), 1)
+                self.assertEqual(statements.count("ROLLBACK"), 0)
+                self.assertIsNone(getattr(error, "rollback", None))
             finally:
                 catalog.close()
 

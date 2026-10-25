@@ -1928,35 +1928,43 @@ static bool cat_commit(zval *db, zval *pdo)
         zval_ptr_dtor(&message);
         return false;
     }
-    /* The outcome is unknown: the transaction is ended, and a failed ROLLBACK becomes the cause of the error. */
+    /* The outcome is unknown: preserve a failed ROLLBACK separately from the original commit cause. */
     zval cause = mapped;
+    zval rollback;
+    ZVAL_NULL(&rollback);
     zend_string *text = zend_strpprintf(0, "commit outcome unknown; do not retry: %s", Z_STRVAL(message));
     if (!cat_try_exec(pdo, "ROLLBACK")) {
         zval rb_native, rb_mapped, rb_message;
         ZVAL_OBJ(&rb_native, EG(exception));
         EG(exception) = NULL;
-        if (pdo_call(db, "driverError", &rb_mapped, 1, &rb_native, NULL) && pdo_call(&rb_mapped, "getMessage", &rb_message, 0, NULL, NULL)) {
-            zend_string *joined = zend_strpprintf(0, "%s; rollback failed: %s", ZSTR_VAL(text), Z_STRVAL(rb_message));
-            zend_string_release(text);
-            text = joined;
-            zval_ptr_dtor(&cause);
-            ZVAL_COPY_VALUE(&cause, &rb_mapped);
-            zval_ptr_dtor(&rb_message);
-        } else {
+        ZVAL_UNDEF(&rb_mapped);
+        if (pdo_call(db, "driverError", &rb_mapped, 1, &rb_native, NULL)) {
+            if (pdo_call(&rb_mapped, "getMessage", &rb_message, 0, NULL, NULL)) {
+                zend_string *joined = zend_strpprintf(0, "%s; rollback failed: %s", ZSTR_VAL(text), Z_STRVAL(rb_message));
+                zend_string_release(text);
+                text = joined;
+                zval_ptr_dtor(&rb_message);
+            }
+            ZVAL_COPY_VALUE(&rollback, &rb_mapped);
+        } else if (!Z_ISUNDEF(rb_mapped)) {
             zval_ptr_dtor(&rb_mapped);
         }
         zval_ptr_dtor(&rb_native);
     }
-    zval args[3], unknown;
+    zval args[4], unknown;
     ZVAL_STRING(&args[0], "ROW_COMMIT_INDETERMINATE");
     ZVAL_STR(&args[1], text);
-    ZVAL_COPY_VALUE(&args[2], &cause);
-    if (newobj("Polyspec\\Orm\\OrmException", &unknown, 3, args)) {
+    ZVAL_COPY(&args[2], &cause);
+    ZVAL_COPY(&args[3], &rollback);
+    if (newobj("Polyspec\\Orm\\OrmException", &unknown, 4, args)) {
         zend_throw_exception_object(&unknown);
     }
     zval_ptr_dtor(&args[0]);
     zval_ptr_dtor(&args[1]);
+    zval_ptr_dtor(&args[2]);
+    zval_ptr_dtor(&args[3]);
     zval_ptr_dtor(&cause);
+    zval_ptr_dtor(&rollback);
     zval_ptr_dtor(&message);
     return false;
 }

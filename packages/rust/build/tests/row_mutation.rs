@@ -290,7 +290,14 @@ async fn check() {
                 .await
                 .unwrap();
             assert_eq!(killed.rows, vec![vec![GridCell::Boolean(true)]]);
-            assert!(pending.await.unwrap_err().starts_with("ROW_COMMIT_INDETERMINATE"));
+            let error = pending.await.unwrap_err();
+            let cause = error
+                .strip_prefix("ROW_COMMIT_INDETERMINATE: commit outcome unknown; do not retry: ")
+                .expect("a terminated PostgreSQL backend leaves commit outcome indeterminate");
+            assert!(
+                cause.starts_with("error returned from database:") && cause.contains("terminating connection due to administrator command"),
+                "the public error preserves the PostgreSQL driver cause: {cause}"
+            );
             assert_eq!(events.lock().unwrap().last(), Some(&MutationPhase::Indeterminate));
             seed.exec("SELECT pg_advisory_unlock($1)", &[P::I(lock)]).await.unwrap();
             seed.exec(&format!("DROP TRIGGER {trigger} ON {name}"), &[]).await.unwrap();
