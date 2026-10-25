@@ -62,7 +62,7 @@ type getterCall struct {
 }
 
 func generateGo(m *runtimemodel.Model, out, pkg string, scan []string) error {
-	return runGo(m, out, pkg, scan, false, (*goGen).replace)
+	return runGo(m, out, pkg, scan, (*goGen).replace)
 }
 
 // checkGo generates the models like generateGo without changing out or its
@@ -71,7 +71,7 @@ func generateGo(m *runtimemodel.Model, out, pkg string, scan []string) error {
 // scanned packages that do not compile with the generated models.
 func checkGo(m *runtimemodel.Model, out, pkg string, scan []string) ([]string, error) {
 	var lines []string
-	err := runGo(m, out, pkg, scan, true, func(g *goGen) error {
+	err := runGo(m, out, pkg, scan, func(g *goGen) error {
 		var err error
 		lines, err = g.compare()
 		return err
@@ -81,21 +81,16 @@ func checkGo(m *runtimemodel.Model, out, pkg string, scan []string) ([]string, e
 
 // runGo writes the models into a temporary directory, runs the scan, and then
 // calls finish, which moves or compares the written files. The temporary
-// directory is beside out when the files move into out, and in the system
-// temporary directory for a check.
-func runGo(m *runtimemodel.Model, out, pkg string, scan []string, check bool, finish func(*goGen) error) (err error) {
+// directory is in the system temporary directory, never in the source tree: a
+// check that reads the tree while a generation runs (the clean-tree check of a
+// land) sees no unfinished path, and replace renames each finished file into
+// out.
+func runGo(m *runtimemodel.Model, out, pkg string, scan []string, finish func(*goGen) error) (err error) {
 	g, err := newGoGen(m, out, pkg)
 	if err != nil {
 		return unchanged(out, err)
 	}
-	parent := ""
-	if !check {
-		parent = filepath.Dir(g.outDir)
-		if err := os.MkdirAll(parent, 0o755); err != nil {
-			return unchanged(out, err)
-		}
-	}
-	g.tmp, err = os.MkdirTemp(parent, "."+filepath.Base(g.outDir)+".orm-gen-")
+	g.tmp, err = os.MkdirTemp("", "orm-gen-"+filepath.Base(g.outDir)+"-")
 	if err != nil {
 		return unchanged(out, err)
 	}

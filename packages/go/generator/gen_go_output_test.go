@@ -111,6 +111,55 @@ func requireUnchanged(t *testing.T, m *runtimemodel.Model, message string, patte
 	}
 }
 
+// TestGoGenerationLeavesNoTemporaryPathBesideItsOutput checks that a generation
+// writes its temporary files outside the folder of its output: a check that
+// reads that folder while the generation runs, such as the clean-tree check of
+// a land, sees no path that the generation has not finished.
+func TestGoGenerationLeavesNoTemporaryPathBesideItsOutput(t *testing.T) {
+	testcase.Start(t, testcase.Process)
+	write := scannedModule(t)
+	write("example/example.go", `package example
+
+import "example.com/ormexample/model"
+
+func Cheap() *model.ProductModel { return model.Product().LtPrice(1) }
+`)
+	root, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	names := func() []string {
+		t.Helper()
+		entries, err := os.ReadDir(root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var out []string
+		for _, entry := range entries {
+			out = append(out, entry.Name())
+		}
+		return out
+	}
+	before := names()
+	var during [][]string
+	scanLoads = func(scanConfig, []string) { during = append(during, names()) }
+	t.Cleanup(func() { scanLoads = nil })
+	if err := generateGo(namesManifest(t, namesDiagram), "model", "", []string{"./..."}); err != nil {
+		t.Fatal(err)
+	}
+	if len(during) == 0 {
+		t.Fatal("the generation loaded no scanned package, so nothing observed the folder while it ran")
+	}
+	for _, seen := range during {
+		if !slices.Equal(seen, before) {
+			t.Fatalf("while the generation ran, %s held %q instead of %q", root, seen, before)
+		}
+	}
+	if after, want := names(), slices.Sorted(slices.Values(append(slices.Clone(before), "model"))); !slices.Equal(after, want) {
+		t.Fatalf("after the generation %s holds %q, want %q", root, after, want)
+	}
+}
+
 // TestGoGenerationKeepsOutputOnManifestError checks that a manifest rejected
 // before the scan leaves the previous output byte-identical.
 func TestGoGenerationKeepsOutputOnManifestError(t *testing.T) {

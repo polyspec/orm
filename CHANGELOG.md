@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- orm-gen makes the temporary directory of a Go generation in the system temporary directory, so no unfinished `.orm-gen-` folder appears beside its output and a land no longer finds the main checkout dirty while another land builds it (KSTD-5-88-19).
 - `make client-db-check` runs the php-extension lane that config/parity.json declares: it builds the extension and runs the PHP database test files with it loaded, instead of failing before any lane runs (KSTD-5-88-6).
 - generator-consumer-check, native-error-cause-check, transaction-failure-rust-check, complex-query-rust-check and page-cache-unit-check run each independent test as a part of its own, so a failed test no longer stops the others (KSTD-5-88-10).
 - The type check of the TypeScript interface extractor states `--noEmit` on its command line, so the publish case of `make repo-check` no longer reads it as a build into dist (KSTD-5-88-11).
