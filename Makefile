@@ -1525,6 +1525,7 @@ generator-consumer-check/python: python-venv-check
 	$(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.test_orm_gen.OrmGenTest.test_chain_conditions packages.python.tests.test_orm_gen.OrmGenTest.test_scan_reports_unknown_model_methods packages.python.tests.test_query_methods.QueryMethodsTest.test_a_declared_method_builds_the_query_of_its_chain
 generator-consumer-check/rust-field-types: cargo-downloads-check lease-tool
 	cd packages/rust && $(CARGO_TEST) generator-consumer-rust-field-types -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm-build --lib generate::field_type_tests::generated_field_types_follow_the_runtime_model -- --test-threads=1 --exact
+	cd packages/rust && $(CARGO_TEST) generator-consumer-rust-fixed-method-list -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-build --lib generate::fixed_method_tests::fixed_list_names_the_public_methods_of_the_fixed_impl -- --test-threads=1 --exact
 generator-consumer-check/rust-emission: cargo-downloads-check lease-tool
 	cd packages/rust && $(CARGO_TEST) generator-consumer-rust-emission -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline --workspace --features $(ORM_RUST_TEST_FEATURES) -p polyspec-orm-build --test generate generated_rows_reject_unselected_fields_and_separate_group_results -- --test-threads=1 --exact
 generator-consumer-check/rust-chain-scan: cargo-downloads-check lease-tool
@@ -2066,6 +2067,7 @@ sqlite-version-ts-check: lease-tool
 .PHONY: rust-build-environment-check
 rust-build-environment-check: cargo-downloads-check lease-tool
 	ORM_BUILD_TEST_ROOT=$(abspath packages/rust/build) $(RUN_TESTS) cargo --cwd packages/rust -- --locked --offline -p polyspec-orm-build --lib tests::build_environment::environment_subprocess
+	cd packages/rust && $(CARGO_TEST) rust-build-rerun-inputs -- cargo +$(PHYSICAL_RUST_TOOLCHAIN) test --locked --offline -p polyspec-orm-build --lib tests::rerun_inputs_name_the_set_file_and_every_document -- --test-threads=1 --exact
 
 # rust-build-outdir-check runs the missing OUT_DIR propagation unit case.
 .PHONY: rust-build-outdir-check
