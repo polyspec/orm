@@ -3,7 +3,7 @@ mod physical_fixture;
 
 use polyspec_orm_build::{
     catalog::CatalogConnection,
-    tool_db::{self, QueryLimits, Val},
+    tool_db::{self, GridCell, QueryLimits, Val},
 };
 
 #[tokio::test]
@@ -47,13 +47,13 @@ async fn check() {
             )
             .await
             .unwrap();
-            let result = catalog.read_only_query(&format!("SELECT {function}()"), &[], QueryLimits::default()).await;
+            let result = catalog.read_only_grid_query(&format!("SELECT {function}()"), &[], QueryLimits::default()).await;
             seed.exec(&format!("DROP FUNCTION {function}"), &[]).await.unwrap();
-            assert!(result.is_err(), "database must reject function writes");
+            assert!(result.is_err(), "the grid query's database read-only scope must reject function writes");
         } else {
             let state_sql = if dialect == "postgres" { "SELECT current_setting('transaction_read_only')" } else { "SELECT query_only FROM pragma_query_only" };
-            let state = catalog.read_only_query(state_sql, &[], QueryLimits::default()).await.unwrap();
-            assert_eq!(state.rows[0][0], if dialect == "postgres" { Val::Text("on".into()) } else { Val::Int(1) });
+            let state = catalog.read_only_grid_query(state_sql, &[], QueryLimits::default()).await.unwrap();
+            assert_eq!(state.rows[0][0], if dialect == "postgres" { GridCell::Text("on".into()) } else { GridCell::Integer(1) });
         }
         for sql in [
             format!("UPDATE {table} SET n=8"),

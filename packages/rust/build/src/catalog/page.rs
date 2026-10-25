@@ -46,7 +46,7 @@ pub(super) async fn read(connection: &mut Conn, dialect: &str, table: &TableRef,
         quote(&table.name, dialect)?,
         limit + 1
     );
-    read_only::validate(&sql, dialect)?;
+    read_only::validate(&sql, dialect).map_err(|error| error.to_string())?;
     let result = temporal::read(connection, &metadata, dialect, &sql, &[], QueryLimits { max_rows: limit + 1, max_bytes: 8 * 1024 * 1024 }).await?;
     let after = metadata::describe(connection, dialect, table).await?;
     assemble(metadata, result, after, limit, offset)

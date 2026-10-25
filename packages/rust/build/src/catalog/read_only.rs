@@ -6,7 +6,24 @@ use sqlparser::{
 };
 use std::ops::ControlFlow;
 
-pub(super) fn validate(sql: &str, dialect: &str) -> Result<(), String> {
+#[derive(Debug)]
+pub(super) struct ReadOnlyError {
+    cause: Option<Box<dyn std::error::Error + Send + Sync>>,
+}
+
+impl std::fmt::Display for ReadOnlyError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("QUERY_READ_ONLY: expected one supported non-locking read query")
+    }
+}
+
+impl std::error::Error for ReadOnlyError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        self.cause.as_deref().map(|cause| cause as &(dyn std::error::Error + 'static))
+    }
+}
+
+pub(super) fn validate(sql: &str, dialect: &str) -> Result<(), ReadOnlyError> {
     if sql.is_empty() || sql.len() > 256 * 1024 {
         return Err(error());
     }
@@ -29,12 +46,12 @@ pub(super) fn validate(sql: &str, dialect: &str) -> Result<(), String> {
     }
     Ok(())
 }
-fn error() -> String {
-    "QUERY_READ_ONLY: expected one supported non-locking read query".into()
+fn error() -> ReadOnlyError {
+    ReadOnlyError { cause: None }
 }
 
-fn error_with(error: impl std::fmt::Display) -> String {
-    format!("QUERY_READ_ONLY: expected one supported non-locking read query: {error}")
+fn error_with(error: impl std::error::Error + Send + Sync + 'static) -> ReadOnlyError {
+    ReadOnlyError { cause: Some(Box::new(error)) }
 }
 struct ReadOnly {
     expression_depth: usize,

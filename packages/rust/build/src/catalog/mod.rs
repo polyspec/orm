@@ -108,7 +108,7 @@ impl CatalogConnection {
         finish_read_only(&mut connection, result).await
     }
     async fn read_only_connection(&self, sql: &str) -> Result<Conn, String> {
-        read_only::validate(sql, &self.dialect)?;
+        read_only::validate(sql, &self.dialect).map_err(|error| error.to_string())?;
         let mut connection = Conn::acquire(&self.pool).await.map_err(|error| error.to_string())?;
         connection.discard_on_drop();
         if self.dialect == "sqlite" {

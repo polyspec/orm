@@ -1,4 +1,5 @@
 use super::validate;
+use std::error::Error;
 // Requirements: INT-136.
 #[test]
 fn policy_validates_nested_read_shapes_and_rejects_writes() {
@@ -33,9 +34,9 @@ fn policy_validates_nested_read_shapes_and_rejects_writes() {
 }
 
 #[test]
-fn parser_failure_preserves_native_cause_message() {
+fn parser_failure_keeps_its_cause_without_exposing_input_details() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let error = validate("SELECT '", "postgres").expect_err("unterminated string must fail");
-    assert!(error.starts_with("QUERY_READ_ONLY: expected one supported non-locking read query: "), "{error}");
-    assert!(error.contains("Unterminated string literal"), "{error}");
+    assert_eq!(error.to_string(), "QUERY_READ_ONLY: expected one supported non-locking read query");
+    assert!(error.source().is_some_and(|cause| cause.to_string().contains("Unterminated string literal")));
 }
