@@ -623,6 +623,10 @@
       },
       "internal": [
         {
+          "glob": "packages/ts/tests/paginate-order.mjs",
+          "reason": "test: invokes the private paginate helper with a fake database to verify internal plan ordering and dispatch; public pagination behavior is covered by shared client cases"
+        },
+        {
           "glob": "packages/ts/tests/dbspec-mermaid-errors.mjs",
           "reason": "test: injects an unexpected error into the private Mermaid catalog builder and verifies the same error object escapes; the public invalid-name diagnostic is covered by dbspec-mermaid-invalid"
         },
