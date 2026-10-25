@@ -182,16 +182,22 @@ async fn lock_wait_expires() {
     assert!(waited >= Duration::from_millis(200), "write returned after {waited:?}, before the 200ms lock wait");
 }
 
+/// SQLite has no session timeout, so the bound of a SQLite statement is the DSN busy_timeout and statementTimeoutMs
+/// leaves it as it is (docs/spec/config.md CFG-6): a write that waits for a lock with busy_timeout(1000) and a
+/// statement timeout of 200 milliseconds waits the whole second before it is canceled.
 #[tokio::test]
-async fn statement_timeout_bounds_sqlite_lock_wait() {
+async fn statement_timeout_keeps_the_sqlite_busy_timeout() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::PROCESS);
     let file = database("config-expiry").await;
     let dsn = file.dsn.clone();
     let holder = open(&dsn, 1).await.remove(0);
-    let waiter = Db::connect_schema(&dsn, &SCHEMA, 1, polyspec_orm::Config { statement_timeout_ms: 200, ..Default::default() }).await.unwrap();
+    let waiter =
+        Db::connect_schema(&format!("{dsn}?_pragma=busy_timeout(1000)"), &SCHEMA, 1, polyspec_orm::Config { statement_timeout_ms: 200, ..Default::default() })
+            .await
+            .unwrap();
     let (code, waited) = hold_lock_while_writing(&holder, &waiter).await;
-    assert_eq!(code.as_deref(), Some(polyspec_orm::codes::CANCELED), "statement timeout cancels the lock wait");
-    assert!(waited >= Duration::from_millis(200), "write returned after {waited:?}, before the 200ms statement timeout");
+    assert_eq!(code.as_deref(), Some(polyspec_orm::codes::CANCELED), "the busy_timeout of the DSN cancels the lock wait");
+    assert!(waited >= Duration::from_millis(1000), "write returned after {waited:?}, before the 1000ms busy_timeout of the DSN");
     waiter.close().await;
     holder.close().await;
 }

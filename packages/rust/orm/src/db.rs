@@ -598,8 +598,9 @@ impl Db {
                     pool_options::<sqlx::Postgres>(pool_size, idle, cfg.pool_lifetime_ms, &owner).connect_with(o.statement_cache_capacity(cache)).await?,
                 )
             }
+            // SQLite has no session timeout: its bound is the busy_timeout of the DSN (CFG-6), which the
+            // statement timeout leaves as it is.
             ConnectOptions::Sqlite(o) => {
-                let o = if timeout > 0 { o.busy_timeout(std::time::Duration::from_millis(timeout as u64)) } else { o };
                 // The version of the SQLite library bundled by sqlx. No statement asking for it is sent.
                 let raw_version = libsqlite3_sys::SQLITE_VERSION;
                 let version = raw_version
