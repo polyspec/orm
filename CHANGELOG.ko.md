@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d66a490bc47979bf09bf8e184d6c1345d7a637702771133b98178db7b5d07ec7 -->
+<!-- source-sha256: c97cf4988f9729609a3467ea06d2b7c7e1c2decda0d5fd1e44e52c6b0aa9b081 -->
 # 변경 이력
 
 ## Unreleased
 
+- PHP test의 streamWrapper fixture method 16개가 PHP의 streamWrapper protocol이 요구하는 이름을 유지하며, 각각 suppression-check가 받아들이는 이유가 있는 CamelCapsMethodName phpcs:ignore를 가지므로 `make lint-php`가 통과한다 (KSTD-5-89-3-4).
 - 모든 PHP test 파일이 namespace 안의 class 하나만 선언하고 side effect가 없다: PHP와 extension test의 helper class마다 자기 파일이 있고, test가 맨 위에서 require하던 파일은 그 package의 bootstrap이 한 번 require한다 (KSTD-5-89-3-2).
 - phpcs가 orm의 PHP에서 layout finding을 보고하지 않는다: phpcbf가 중괄호, 공백, inline control structure, call signature를 고쳤고, 긴 call, array, string, comment는 120자에서 줄바꿈되며, 억제된 @unlink와 @trigger_error 호출은 file_exists 확인과 error_reporting(0) 범위가 되었다 (KSTD-5-89-3-1).
 - TypeScript client, script, test의 모든 catch 절이 error를 binding하고 기대하는 실패로 좁히며 나머지는 다시 던지므로 main에서 `make lint-ts`가 통과한다. red는 binding 없는 catch 23개로 `168ae591238d`에서 `make lint-ts` exit 2였다(KSTD-5-92).

@@ -36,6 +36,7 @@ final class SetReaderDiagnosticsTest extends TestCase
             private int $offset = 0;
             private int $directoryOffset = 0;
 
+            // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- PHP's streamWrapper protocol requires this method name.
             public function url_stat(string $path, int $flags): array|false
             {
                 $fixture =& $GLOBALS['setReaderDiagnostics'];
@@ -57,6 +58,7 @@ final class SetReaderDiagnosticsTest extends TestCase
                 return $stat;
             }
 
+            // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- PHP's streamWrapper protocol requires this method name.
             public function dir_opendir(string $path, int $options): bool
             {
                 $fixture =& $GLOBALS['setReaderDiagnostics'];
@@ -68,17 +70,20 @@ final class SetReaderDiagnosticsTest extends TestCase
                 return true;
             }
 
+            // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- PHP's streamWrapper protocol requires this method name.
             public function dir_readdir(): string|false
             {
                 $entries = $GLOBALS['setReaderDiagnostics']['entries'];
                 return $entries[$this->directoryOffset++] ?? false;
             }
 
+            // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- PHP's streamWrapper protocol requires this method name.
             public function dir_closedir(): bool
             {
                 return true;
             }
 
+            // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- PHP's streamWrapper protocol requires this method name.
             public function stream_open(string $path, string $mode, int $options, ?string &$openedPath): bool
             {
                 $this->content = $GLOBALS['setReaderDiagnostics']['content'];
@@ -86,6 +91,7 @@ final class SetReaderDiagnosticsTest extends TestCase
                 return true;
             }
 
+            // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- PHP's streamWrapper protocol requires this method name.
             public function stream_read(int $count): string
             {
                 $bytes = substr($this->content, $this->offset, $count);
@@ -93,11 +99,13 @@ final class SetReaderDiagnosticsTest extends TestCase
                 return $bytes;
             }
 
+            // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- PHP's streamWrapper protocol requires this method name.
             public function stream_eof(): bool
             {
                 return $this->offset >= strlen($this->content);
             }
 
+            // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- PHP's streamWrapper protocol requires this method name.
             public function stream_stat(): array|false
             {
                 return stat(__FILE__);
