@@ -648,7 +648,7 @@ class _Validator:
                 "subquery may not use limit, relations, lock or columns",
             )
         if scalar_column:
-            if not query.get("limit") or query["limit"]["count"] != 1:
+            if not query.get("limit") or query["limit"].get("count") != 1:
                 _fail(
                     codes.IR_INVALID,
                     "a scalar column subquery needs limit with count 1",

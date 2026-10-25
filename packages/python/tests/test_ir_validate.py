@@ -46,6 +46,24 @@ class ManifestHashTest(unittest.TestCase):
         self.assertEqual(raised.exception.code, "SCHEMA_HASH_MISMATCH")
 
 
+class LimitParamsSubqueryInvalidTest(unittest.TestCase):
+    deadline = testcase.COMPUTE
+
+    def test_limit_params_subquery_invalid_returns_ir_invalid(self):
+        case = next(
+            case
+            for case in FILE["cases"]
+            if case["name"] == "limit-params-subquery-invalid"
+        )
+        model = model_of_documents(
+            parse_document_set([(ROOT / FILE["schema"]).read_text()])
+        )
+        request = dict(case["request"], manifest_hash=model.manifest_hash)
+        with self.assertRaises(OrmError) as raised:
+            validate(model, request)
+        self.assertEqual(raised.exception.code, "IR_INVALID")
+
+
 class Case(VectorCase):
     """A case of the vector file of this module."""
 
