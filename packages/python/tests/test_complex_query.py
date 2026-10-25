@@ -60,6 +60,7 @@ class ComplexQueryTest(unittest.TestCase):
             ["name", "short_description", "content"],
         )
 
+    # Requirements: CPX-1.
     def test_public_semijoin_product_search_builds_page_plan(self):
         from polyspec.orm import database
 
@@ -83,13 +84,18 @@ class ComplexQueryTest(unittest.TestCase):
                     ],
                     expected_steps,
                 )
+                for step in plan["steps"][:2]:
+                    sql = step["sql"].upper()
+                    self.assertEqual(sql.count(" IN (SELECT "), 3)
+                    self.assertNotIn(" JOIN ", sql)
+                    self.assertNotIn("GROUP BY", sql)
                 events = []
 
                 class FakeDb:
                     driver = dialect
                     request_hook = None
 
-                    def plan(self, _request, plan=plan):
+                    def plan(self, _request):
                         return {"plan": plan}
 
                     def _send_step(self, _ex, _sql, step, _params, events=events):

@@ -220,6 +220,12 @@ final class ComplexQueryDbCase
             'tables' => $step['tables'],
         ], $plan['steps']);
         Assert::assertSame($fixture['expected_plan_steps'][$driver], $steps, $message);
+        foreach (array_slice($plan['steps'], 0, 2) as $step) {
+            $sql = strtoupper($step['sql']);
+            Assert::assertSame(3, substr_count($sql, ' IN (SELECT '), "$message uses three root semijoins");
+            Assert::assertStringNotContainsString(' JOIN ', $sql, "$message does not join filter rows");
+            Assert::assertStringNotContainsString('GROUP BY', $sql, "$message does not group the root query");
+        }
     }
 
     private static function seed(PDO $pdo, string $driver, array $fixture): void

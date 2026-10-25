@@ -15,6 +15,7 @@ final class ComplexQueryNativeTest extends TestCase
         ComplexQueryDbCase::assertFulltextChains(true);
     }
 
+    // Requirements: CPX-1.
     public function testProductSearchPublicRequestCompilesAcrossDialects(): void
     {
         ComplexQueryDbCase::assertPublicRequestCompiles(true);

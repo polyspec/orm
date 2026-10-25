@@ -87,7 +87,7 @@ fn shared_fixture_has_the_fulltext_case_and_eight_ordered_statements() {
 }
 
 #[test]
-// Requirements: CPX-2.
+// Requirements: CPX-1.
 fn full_product_search_request_compiles_for_mysql_and_postgres_and_rejects_sqlite() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let fixture: Fixture = serde_json::from_str(FIXTURE).expect("shared complex-query fixture");
@@ -102,7 +102,12 @@ fn full_product_search_request_compiles_for_mysql_and_postgres_and_rejects_sqlit
         );
         assert_eq!(plan.steps[0].tables, ["product", "product_brand_lang", "product_lang", "product_match_category"]);
         assert_eq!(plan.steps[1].tables, plan.steps[0].tables);
-        assert!(plan.steps.iter().all(|step| !step.sql.to_ascii_uppercase().contains("GROUP BY")));
+        for step in &plan.steps[..2] {
+            let sql = step.sql.to_ascii_uppercase();
+            assert_eq!(sql.matches(" IN (SELECT ").count(), 3, "{dialect:?} root query uses three semijoins");
+            assert!(!sql.contains(" JOIN "), "{dialect:?} root query does not join filter rows");
+            assert!(!sql.contains("GROUP BY"), "{dialect:?} root query does not group");
+        }
     }
 
     let error = polyspec_orm::testing::compile_core_request(core, "paginate", polyspec_orm::Dialect::Sqlite)

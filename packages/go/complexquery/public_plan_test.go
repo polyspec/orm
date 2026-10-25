@@ -19,6 +19,7 @@ import (
 
 const planChildEnv = "ORM_COMPLEX_QUERY_PLAN_CHILD"
 
+// Requirements: CPX-1.
 func TestComplexQueryPublicPlan(t *testing.T) {
 	if os.Getenv(planChildEnv) == "1" {
 		testcase.Start(t, testcase.Compute)
