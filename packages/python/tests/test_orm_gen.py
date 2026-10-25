@@ -57,6 +57,7 @@ class OrmGenTest(unittest.TestCase):
         exec(compile(source.read_text(), module.__file__, "exec"), module.__dict__)
 
     # Requirements: DBS-104, DBS-120, DSL-38, DSL-43.
+    # Requirements: SCH-1.
     def test_generated_module_imports_and_builds_the_model(self):
         import models
 

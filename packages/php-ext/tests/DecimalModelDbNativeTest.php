@@ -17,7 +17,7 @@ final class DecimalModelDbNativeTest extends TestCase
     use NativeMethodAssertions;
     use ThreeDrivers;
 
-    // Requirements: DIA-25, COD-2.
+    // Requirements: DIA-25, COD-2, DBS-108, SCH-7.
     #[DataProvider('drivers')]
     public function testNativeRoundTrip(string $dialect): void
     {

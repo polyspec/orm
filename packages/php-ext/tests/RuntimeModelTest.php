@@ -114,6 +114,7 @@ DBSPEC;
         self::assertSame($model->manifestHash, 'sha256:' . hash('sha256', $model->manifestText . $model->externalText));
     }
 
+    // Requirements: SCH-1.
     public function testSetAndFilesUseTheNativeSetReaderAndReadBytesPath(): void
     {
         $root = dirname(__DIR__, 3);
@@ -127,6 +128,25 @@ DBSPEC;
         self::assertSame($fromSet->manifestText, $fromFiles->manifestText);
         self::assertSame($fromSet->externalText, $fromFiles->externalText);
         self::assertSame($fromSet->entities, $fromFiles->entities);
+    }
+
+    // Requirements: SCH-1.
+    public function testDecimalDocumentSetUsesTheNativeSetReader(): void
+    {
+        self::assertTrue((new \ReflectionClass(RuntimeModel::class))->isInternal());
+        $root = dirname(__DIR__, 3);
+        $fromSet = RuntimeModel::build(RuntimeModel::set("$root/contracts/fixtures/dbspec-set.json"));
+        $fromFiles = RuntimeModel::build(RuntimeModel::files([
+            "$root/contracts/fixtures/decimal_schema.dbs",
+        ]));
+
+        self::assertSame($fromFiles->manifestText, $fromSet->manifestText);
+        self::assertSame($fromFiles->externalText, $fromSet->externalText);
+        self::assertSame($fromFiles->entities, $fromSet->entities);
+        self::assertSame(13, $fromSet->entity('decimal_case')['columns']['amount']['precision']);
+        self::assertSame(4, $fromSet->entity('decimal_case')['columns']['amount']['scale']);
+        self::assertSame(16, $fromSet->entity('decimal_case')['columns']['large_value']['precision']);
+        self::assertSame(0, $fromSet->entity('decimal_case')['columns']['large_value']['scale']);
     }
 
     public function testSetAndFilesFormatParseDiagnosticsTheSameWay(): void

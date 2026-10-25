@@ -16206,51 +16206,100 @@
     },
     {
       "id": "dbspec-set-decimal",
-      "kind": "suite",
+      "kind": "feature",
       "requirements": [
         "DBS-108",
         "SCH-7"
       ],
-      "file": "contracts/fixtures/dbspec-set.json",
-      "cases": "$.documents[*]",
       "bindings": [
         {
           "implementation": "php",
           "test": "packages/php/tests/SchemaSetTest.php",
-          "symbol": "SchemaSetTest::testDecimalDocument"
+          "id": "SchemaSetTest::testDecimalDocument"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/dbspec-set-decimal.mjs"
+          "test": "packages/ts/tests/dbspec-set-decimal.mjs",
+          "id": "decimal_schema.dbs"
         },
         {
           "implementation": "go",
           "test": "packages/go/decimalmodel/schema_set_test.go",
-          "symbol": "TestDecimalDocument"
+          "id": "TestDecimalDocument/sqlite"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/decimalmodel/schema_set_test.go",
+          "id": "TestDecimalDocument/mysql"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/decimalmodel/schema_set_test.go",
+          "id": "TestDecimalDocument/postgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DecimalModelDbNativeTest.php",
+          "id": "DecimalModelDbNativeTest::testNativeRoundTrip"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/decimal_model_db.py",
+          "id": "test_round_trip"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/decimal_physical.rs",
+          "id": "decimal_mysql"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/decimal_physical.rs",
+          "id": "decimal_postgres"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/decimal_physical.rs",
+          "id": "decimal_sqlite"
         }
       ]
     },
     {
       "id": "dbspec-set-bench",
-      "kind": "suite",
+      "kind": "feature",
       "requirements": [
         "SCH-1"
       ],
-      "file": "contracts/fixtures/bench/dbspec-set.json",
-      "cases": "$.documents[*]",
       "bindings": [
         {
           "implementation": "php",
-          "test": "packages/php-gen/tests/OrmGenScanTest.php"
+          "test": "packages/php-gen/tests/OrmGenScanTest.php",
+          "id": "OrmGenScanTest::testCheckComparesTheModelsWithTheScan"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/models-scan.mjs"
+          "test": "packages/ts/tests/models-scan.mjs",
+          "id": "the committed models equal the generator output"
         },
         {
           "implementation": "go",
           "test": "packages/go/generator/generator_test.go",
-          "symbol": "TestGenerateBenchDocumentSet"
+          "id": "TestGenerateBenchDocumentSet"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/RuntimeModelTest.php",
+          "id": "RuntimeModelTest::testSetAndFilesUseTheNativeSetReaderAndReadBytesPath"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_orm_gen.py",
+          "id": "test_generated_module_imports_and_builds_the_model"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/coverage_model_generation.rs",
+          "id": "coverage_model_generation_check"
         }
       ]
     },
