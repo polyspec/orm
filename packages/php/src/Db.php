@@ -1608,23 +1608,15 @@ final class Db
     }
 
     /**
-     * Binds with types where the driver needs them: MySQL bools as 0/1,
+     * Binds with types where the driver needs them: MySQL ints and bools as integers,
      * PostgreSQL bools and binary values, SQLite ints, bools, blobs, and nulls.
      */
     private function exec(\PDOStatement $st, array $args): void
     {
-        if (!$this->typed) {
-            $st->execute($args);
-            return;
-        }
-        if ($this->driver === 'mysql') {
-            foreach ($args as $i => $v) {
-                if (is_bool($v)) {
-                    $args[$i] = (int) $v;
-                } elseif ($v instanceof Bytes) {
-                    $args[$i] = $v->bytes;
-                }
-            }
+        // MySQL binds each argument: the emulated prepare quotes every value that execute() receives, and MySQL
+        // refuses a quoted LIMIT or OFFSET (the root page parameters, PRT-78), so an int binds as PDO::PARAM_INT.
+        $mysql = $this->driver === 'mysql';
+        if (!$mysql && !$this->typed) {
             $st->execute($args);
             return;
         }
@@ -1633,7 +1625,7 @@ final class Db
             if (is_bool($v)) {
                 $pg ? $st->bindValue($i + 1, $v, \PDO::PARAM_BOOL) : $st->bindValue($i + 1, (int) $v, \PDO::PARAM_INT);
             } elseif ($v instanceof Bytes) {
-                $st->bindValue($i + 1, $v->bytes, \PDO::PARAM_LOB);
+                $mysql ? $st->bindValue($i + 1, $v->bytes) : $st->bindValue($i + 1, $v->bytes, \PDO::PARAM_LOB);
             } elseif ($v === null) {
                 $st->bindValue($i + 1, null, \PDO::PARAM_NULL);
             } elseif (is_int($v) && !$pg) {

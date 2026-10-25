@@ -22,6 +22,13 @@ final class CoverageModelQueriesCase
         );
         Assert::assertSame(['author-99906', 'author-99806', 'author-99706'], $names, 'ordered limited author rows');
 
+        // A page past the first row binds its offset and count as integers (PRT-78): MySQL refuses a quoted LIMIT.
+        $page = array_map(
+            static fn(Author $author): string => $author->getName(),
+            (new Author())($db)->serviceSeq(7)->orderBySeqDesc()->limit(1, 2)->gets()->all()
+        );
+        Assert::assertSame(['author-99806', 'author-99706'], $page, 'author rows of the page at offset 1');
+
         $sum = (new Author())($db)->serviceSeq(7)->sumReadCount()->getSum();
         Assert::assertSame(456000.0, $sum, "read_count sum of service_seq 7 is $sum");
 

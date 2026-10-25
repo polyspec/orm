@@ -719,43 +719,20 @@ static bool stmt_of(zval *self, zval *sql, zval *out)
     return true;
 }
 
-/* Db::exec: binds the arguments with their types where the driver needs them, and executes the statement. */
+/* Db::exec: binds the arguments with their types where the driver needs them, and executes the statement. MySQL binds each
+ * argument: the emulated prepare quotes every value that execute() receives, and MySQL refuses a quoted LIMIT or OFFSET (the root
+ * page parameters, PRT-78), so an int or a bool binds as PDO::PARAM_INT, which it writes as a number. */
 static bool exec_stmt(zval *self, zval *st, zval *args)
 {
     zval r;
-    if (!as_bool(rd(self, "typed"))) {
+    zval *drv = rd(self, "driver");
+    bool mysql = is_str(drv, "mysql");
+    if (!mysql && !as_bool(rd(self, "typed"))) {
         if (!mcall(st, "execute", &r, 1, args)) {
             return false;
         }
         zval_ptr_dtor(&r);
         return true;
-    }
-    zval *drv = rd(self, "driver");
-    if (is_str(drv, "mysql")) {
-        zval bound;
-        array_init(&bound);
-        zend_ulong idx;
-        zval *v;
-        ZEND_HASH_FOREACH_NUM_KEY_VAL(Z_ARRVAL_P(args), idx, v)
-        {
-            ZVAL_DEREF(v);
-            if (Z_TYPE_P(v) == IS_TRUE || Z_TYPE_P(v) == IS_FALSE) {
-                zval i;
-                ZVAL_LONG(&i, Z_TYPE_P(v) == IS_TRUE);
-                zend_hash_index_update(Z_ARRVAL(bound), idx, &i);
-            } else if (is_instance(v, BYTES_CLASS)) {
-                push(&bound, rd(v, "bytes"));
-            } else {
-                push(&bound, v);
-            }
-        }
-        ZEND_HASH_FOREACH_END();
-        bool ok = mcall(st, "execute", &r, 1, &bound);
-        zval_ptr_dtor(&bound);
-        if (ok) {
-            zval_ptr_dtor(&r);
-        }
-        return ok;
     }
     bool pg = is_str(drv, "postgres");
     zend_ulong idx;
@@ -779,8 +756,10 @@ static bool exec_stmt(zval *self, zval *st, zval *args)
             argc = 3;
         } else if (is_instance(v, BYTES_CLASS)) {
             ZVAL_COPY(&argv[1], rd(v, "bytes"));
-            ZVAL_LONG(&argv[2], PARAM_LOB);
-            argc = 3;
+            if (!mysql) {
+                ZVAL_LONG(&argv[2], PARAM_LOB);
+                argc = 3;
+            }
         } else if (Z_TYPE_P(v) == IS_NULL) {
             ZVAL_NULL(&argv[1]);
             ZVAL_LONG(&argv[2], PARAM_NULL);
