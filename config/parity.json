@@ -8014,20 +8014,6 @@
       ]
     },
     {
-      "id": "go-internal-packages-go-orm-cancel",
-      "kind": "feature",
-      "requirements": [
-        "CFG-9"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/cancel_test.go",
-          "id": "TestWithContextCancels"
-        }
-      ]
-    },
-    {
       "id": "go-internal-packages-go-orm-cancelled-session",
       "kind": "feature",
       "requirements": [
@@ -11514,44 +11500,6 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/value_types.rs",
           "id": "runtime_value_types"
-        }
-      ]
-    },
-    {
-      "id": "rust-dropping-a-query-cancels-it",
-      "kind": "feature",
-      "requirements": [
-        "CFG-9"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/zone.rs",
-          "id": "dropping_a_query_cancels_it"
-        }
-      ]
-    },
-    {
-      "id": "rust-dropping-a-transaction-frees-a-single-connection",
-      "kind": "feature",
-      "requirements": [
-        "CFG-2",
-        "CFG-4",
-        "CFG-5",
-        "CFG-6",
-        "CFG-9",
-        "CFG-20",
-        "CFG-27",
-        "CFG-29",
-        "CFG-32",
-        "DIA-57",
-        "DSL-141"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/zone.rs",
-          "id": "dropping_a_transaction_frees_a_single_connection"
         }
       ]
     },

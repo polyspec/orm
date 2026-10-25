@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The Go context and Rust drop cases of handle abandonment bind only the six-client handle-disposal units; the three units that repeated them for one client are gone (KSTD-2-11-16-2).
 - Eleven connection units that each bound one client are gone: their constraint classification, DSN parameter, MySQL session and pool option cases are bindings of the six-client units that test the same rule, and CFG-20, the parameters beyond the shared list, has a six-client unit of its own (KSTD-2-11-13-2).
 - The parts case of `make runner-check` expects the sixteen parts of client-unit-check that the Makefile declares, code-catalog, insert-parts and dbspec-runners included (KSTD-5-88-4).
 - `make databases-create` provisions the 18 complex-query fixture databases only for a run that reads them: the runner asks for them when a target declares the need complex-query, and `make owner-check` when a selected owner part reads a COMPLEX_QUERY_*_DSN or a selected target needs it. Each stays run-owned and is dropped with the run, and a reader of a missing fixture DSN names the setup that provisions it (KSTD-2-9-13-3).

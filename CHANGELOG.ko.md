@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a4e8cc174a87dd3fb8d86bd4d67f82774558b9b35514dd5d065dc5a91089c6d2 -->
+<!-- source-sha256: f9cc4646e348d50bf98c5c7598438ab64c749b488f1aaf2e394ca582dc116ffc -->
 # 변경 이력
 
 ## Unreleased
 
+- handle 포기의 Go context와 Rust drop case는 여섯 client handle-disposal unit에만 bind된다; 이를 client 하나로 반복하던 unit 세 개는 사라졌다(KSTD-2-11-16-2).
 - client 하나씩 bind하던 connection unit 열한 개가 사라졌다: constraint 분류, DSN parameter, MySQL session, pool option case는 같은 규칙을 검사하는 여섯 client unit의 binding이 되고, 공통 목록 밖의 parameter인 CFG-20은 자기 여섯 client unit을 가진다(KSTD-2-11-13-2).
 - `make runner-check`의 parts case가 Makefile이 선언한 client-unit-check의 part 열여섯을 code-catalog, insert-parts, dbspec-runners까지 포함해 기대한다 (KSTD-5-88-4).
 - `make databases-create`가 complex-query fixture database 18개를 그것을 읽는 실행에만 준비한다: runner는 target이 need complex-query를 선언할 때, `make owner-check`는 선택된 owner part가 COMPLEX_QUERY_*_DSN을 읽거나 선택된 target이 그것을 필요로 할 때 요청한다. 각각은 실행이 소유하고 실행과 함께 지워지며, 없는 fixture DSN을 읽는 쪽은 그것을 준비하는 setup을 알린다 (KSTD-2-9-13-3).
