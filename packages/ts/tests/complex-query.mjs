@@ -42,6 +42,7 @@ async function seed(database, dialect) {
   }
 }
 
+// Requirements: CPX-2.
 for (const dialect of ['mysql', 'postgres', 'sqlite']) caseTest(`complex_query_product_search/${dialect}`, DATABASE, async ({ step }) => {
   await withCaseDatabase(dialect, step, async database => {
     const db = await connect(database.dsn);

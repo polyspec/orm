@@ -494,6 +494,14 @@
         {
           "glob": "packages/php-ext/tests/PlanCacheMemoryNativeTest.php",
           "reason": "test: checks native statement-cache retention, LRU eviction and close accounting, not query results or a shared client guarantee"
+        },
+        {
+          "glob": "packages/php-ext/tests/CatalogConnectionCoverageSurfaceTest.php",
+          "reason": "harness: verifies native Catalog class ownership and shared-case fixture inventory; it asserts no catalog operation result"
+        },
+        {
+          "glob": "packages/php-ext/tests/StatementEventSurfaceTest.php",
+          "reason": "harness: verifies the native extension registers the internal StatementEvent class; event construction and dispatch behavior are exercised by the shared statement-events cases"
         }
       ],
       "shares": "php"
@@ -5124,6 +5132,11 @@
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/QueryCancellationNativeTest.php",
           "id": "testMysqlLockEventCancelsActiveStatementRollsBackAndReconnectsRoot"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_query_cancel.py",
+          "id": "QueryCancelTest.test_cancel_interrupts_active_statement_and_root_is_reusable"
         }
       ]
     },
@@ -21822,6 +21835,21 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/integration/coverage_complex_query.rs",
           "id": "coverage_complex_query::coverage_complex_query_product_search"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/complex-query.mjs",
+          "id": "complex_query_product_search/mysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/complex-query.mjs",
+          "id": "complex_query_product_search/postgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/complex-query.mjs",
+          "id": "complex_query_product_search/sqlite"
         }
       ]
     },

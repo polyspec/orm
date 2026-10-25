@@ -159,6 +159,7 @@ class QueryCancelTest(unittest.IsolatedAsyncioTestCase):
             operation.wait()
         self.assertIs(operation.error, timeout)
 
+    # Requirements: CFG-9.
     async def test_cancel_interrupts_active_statement_and_root_is_reusable(self):
         with tempfile.TemporaryDirectory(prefix="orm-query-cancel-") as directory:
             db = Db(
