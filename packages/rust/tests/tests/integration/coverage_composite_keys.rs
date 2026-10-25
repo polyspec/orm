@@ -8,6 +8,23 @@ const TENANT: i64 = 990004;
 /// Account 2 must also exist in another tenant so that the relation joined by the account_id component alone is revealed.
 const OTHER_TENANT: i64 = 990006;
 
+fn relation_rows<'a>(accounts: impl Iterator<Item = &'a CompositeAccount>) -> Vec<String> {
+    let mut rows = Vec::new();
+    for account in accounts {
+        for membership in account.get_memberships().unwrap().expect("the memberships relation").models() {
+            rows.push(format!(
+                "{}/{}:{}/{}/{}",
+                account.get_tenant_id().unwrap(),
+                account.get_account_id().unwrap(),
+                membership.get_tenant_id().unwrap(),
+                membership.get_account_id().unwrap(),
+                membership.get_role().unwrap()
+            ));
+        }
+    }
+    rows
+}
+
 #[tokio::test]
 async fn coverage_composite_key_rows() {
     // Requirements: PRT-12.
@@ -66,20 +83,7 @@ async fn coverage_composite_key_rows() {
             .unwrap();
         let mut results = Vec::new();
         for (path, loaded) in [("same statement", same), ("own connection", own)] {
-            let mut got = Vec::new();
-            for a in loaded.models() {
-                for m in a.get_memberships().unwrap().expect("the memberships relation").models() {
-                    got.push(format!(
-                        "{}/{}:{}/{}/{}",
-                        a.get_tenant_id().unwrap(),
-                        a.get_account_id().unwrap(),
-                        m.get_tenant_id().unwrap(),
-                        m.get_account_id().unwrap(),
-                        m.get_role().unwrap()
-                    ));
-                }
-            }
-            results.push((path, got));
+            results.push((path, relation_rows(loaded.models())));
         }
         account().get_by_tenant_id_and_account_id(TENANT, 2).await.unwrap().expect("a row").delete(false).await.unwrap();
         let after_cascade = membership().tenant_id(TENANT).get_count().await.unwrap();
@@ -108,19 +112,7 @@ async fn coverage_composite_key_rows() {
                 .gets()
                 .await
                 .unwrap();
-            let mut got = Vec::new();
-            for a in loaded.models() {
-                for m in a.get_memberships().unwrap().expect("the memberships relation").models() {
-                    got.push(format!(
-                        "{}/{}:{}/{}/{}",
-                        a.get_tenant_id().unwrap(),
-                        a.get_account_id().unwrap(),
-                        m.get_tenant_id().unwrap(),
-                        m.get_account_id().unwrap(),
-                        m.get_role().unwrap()
-                    ));
-                }
-            }
+            let got = relation_rows(loaded.models());
             assert_eq!(
                 got,
                 [

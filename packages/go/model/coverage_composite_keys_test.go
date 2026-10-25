@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/polyspec/orm/packages/go/model"
+	"github.com/polyspec/orm/packages/go/orm"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
@@ -76,6 +77,23 @@ func readCompositeCollisionRows(t *testing.T) []compositeCollisionRow {
 	return fixture.Cases[0].Expected
 }
 
+func compositeRelationRows(t *testing.T, accounts *orm.Collection[*model.CompositeAccountModel]) []string {
+	var rows []string
+	for _, account := range accounts.Slice() {
+		for _, membership := range must(account.GetMemberships()).Slice() {
+			rows = append(rows, fmt.Sprintf(
+				"%d/%d:%d/%d/%s",
+				readColumn(t, account.GetTenantId),
+				readColumn(t, account.GetAccountId),
+				readColumn(t, membership.GetTenantId),
+				readColumn(t, membership.GetAccountId),
+				readColumn(t, membership.GetRole),
+			))
+		}
+	}
+	return rows
+}
+
 // TestCoverageCompositeKeyRows creates the account and
 // membership rows with a two-column primary key, and reads them by the two key components,
 // and reads them together through the memberships relation linked by (tenant_id, account_id),
@@ -120,12 +138,7 @@ func TestCoverageCompositeKeyRows(t *testing.T) {
 			{TenantId: collisionRows[0].TenantID, AccountId: collisionRows[0].AccountID},
 			{TenantId: collisionRows[1].TenantID, AccountId: collisionRows[1].AccountID},
 		}).OrderByTenantIdAsc().OrderByAccountIdAsc().Relations(child.MatchTenantIdWithTenantId().MatchAccountIdWithAccountId().AliasMemberships()).Gets())
-		var got []string
-		for _, a := range loaded.Slice() {
-			for _, m := range must(a.GetMemberships()).Slice() {
-				got = append(got, fmt.Sprintf("%d/%d:%d/%d/%s", readColumn(t, a.GetTenantId), readColumn(t, a.GetAccountId), readColumn(t, m.GetTenantId), readColumn(t, m.GetAccountId), readColumn(t, m.GetRole)))
-			}
-		}
+		got := compositeRelationRows(t, loaded)
 		want := []string{
 			fmt.Sprintf("%d/%d:%d/%d/%s", collisionRows[0].TenantID, collisionRows[0].AccountID, collisionRows[0].TenantID, collisionRows[0].AccountID, collisionRows[0].Role),
 			fmt.Sprintf("%d/%d:%d/%d/%s", collisionRows[1].TenantID, collisionRows[1].AccountID, collisionRows[1].TenantID, collisionRows[1].AccountID, collisionRows[1].Role),
@@ -144,12 +157,7 @@ func TestCoverageCompositeKeyRows(t *testing.T) {
 		loaded := must(account().TenantId(compositeTenant).
 			Relations(child.MatchTenantIdWithTenantId().MatchAccountIdWithAccountId().AliasMemberships()).
 			Gets())
-		var got []string
-		for _, a := range loaded.Slice() {
-			for _, m := range must(a.GetMemberships()).Slice() {
-				got = append(got, fmt.Sprintf("%d/%d:%d/%d/%s", readColumn(t, a.GetTenantId), readColumn(t, a.GetAccountId), readColumn(t, m.GetTenantId), readColumn(t, m.GetAccountId), readColumn(t, m.GetRole)))
-			}
-		}
+		got := compositeRelationRows(t, loaded)
 		want := []string{"990004/1:990004/1/member", "990004/2:990004/2/owner"}
 		if !slices.Equal(got, want) {
 			t.Fatalf("%s: memberships of tenant %d accounts = %v, want %v", path, compositeTenant, got, want)

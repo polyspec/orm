@@ -11,6 +11,27 @@ use PHPUnit\Framework\Assert;
 
 final class CoverageCompositeKeysCase
 {
+    private static function childFactories(Db $db): array
+    {
+        return [
+            'same statement' => static fn(): CompositeMembership => new CompositeMembership(),
+            'own connection' => static fn(): CompositeMembership => (new CompositeMembership())($db),
+        ];
+    }
+
+    private static function relationRows(iterable $accounts): array
+    {
+        $rows = [];
+        foreach ($accounts as $account) {
+            foreach ($account->getMemberships() as $membership) {
+                $rows[] = $account->getTenantId() . '/' . $account->getAccountId() . ':'
+                    . $membership->getTenantId() . '/' . $membership->getAccountId() . '/'
+                    . $membership->getRole();
+            }
+        }
+        return $rows;
+    }
+
     public static function run(Db $db, int $tenant, int $otherTenant): void
     {
         $accounts = static fn(int $keyTenant) => (new CompositeAccount())($db)->tenantId($keyTenant)->getCount();
@@ -60,25 +81,14 @@ final class CoverageCompositeKeysCase
             $name = (new CompositeAccount())($db)->getByTenantIdAndAccountId($tenant, 2)->getName();
             Assert::assertSame('b', $name, 'lookup uses both components of the composite key');
 
-            foreach (
-                [
-                    'same statement' => new CompositeMembership(),
-                    'own connection' => (new CompositeMembership())($db),
-                ] as $path => $child
-            ) {
+            foreach (self::childFactories($db) as $path => $newChild) {
+                $child = $newChild();
                 $loaded = (new CompositeAccount())($db)->tenantId($tenant)
                     ->relations(
                         $child->matchTenantIdWithTenantId()->matchAccountIdWithAccountId()->aliasMemberships()
                     )
                     ->gets();
-                $got = [];
-                foreach ($loaded as $account) {
-                    foreach ($account->getMemberships() as $membership) {
-                        $got[] = $account->getTenantId() . '/' . $account->getAccountId() . ':'
-                            . $membership->getTenantId() . '/' . $membership->getAccountId() . '/'
-                            . $membership->getRole();
-                    }
-                }
+                $got = self::relationRows($loaded);
                 $want = [
                     "$tenant/1:$tenant/1/member",
                     "$tenant/2:$tenant/2/owner",
@@ -91,12 +101,8 @@ final class CoverageCompositeKeysCase
                 (string)$collisionRows[1]['tenant_id'] . $collisionRows[1]['account_id'],
                 'the collision fixture has equal concatenated composite keys'
             );
-            foreach (
-                [
-                    'same statement' => new CompositeMembership(),
-                    'own connection' => (new CompositeMembership())($db),
-                ] as $path => $child
-            ) {
+            foreach (self::childFactories($db) as $path => $newChild) {
+                $child = $newChild();
                 $loaded = (new CompositeAccount())($db)
                     ->tupleTenantIdWithAccountId([
                         [$collisionRows[0]['tenant_id'], $collisionRows[0]['account_id']],
@@ -108,14 +114,7 @@ final class CoverageCompositeKeysCase
                         $child->matchTenantIdWithTenantId()->matchAccountIdWithAccountId()->aliasMemberships()
                     )
                     ->gets();
-                $got = [];
-                foreach ($loaded as $account) {
-                    foreach ($account->getMemberships() as $membership) {
-                        $got[] = $account->getTenantId() . '/' . $account->getAccountId() . ':'
-                            . $membership->getTenantId() . '/' . $membership->getAccountId() . '/'
-                            . $membership->getRole();
-                    }
-                }
+                $got = self::relationRows($loaded);
                 $want = array_map(
                     static fn(array $row): string => $row['tenant_id'] . '/' . $row['account_id'] . ':'
                         . $row['tenant_id'] . '/' . $row['account_id'] . '/' . $row['role'],
