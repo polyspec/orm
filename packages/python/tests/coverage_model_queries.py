@@ -1,5 +1,7 @@
 # model_queries coverage: the conditions, order, limit, sum and relation reads of the generated models on the seeded
 # bench database, as the model_queries coverage of Go, PHP, TypeScript and Rust does. It only reads.
+from decimal import Decimal
+
 from polyspec.orm.models import models
 from .coverage_case import expect_equal, CoverageCase, coverage_main
 
@@ -62,8 +64,8 @@ def model_query_rows(item):
                 expect_equal(user_seq <= previous_user_seq, True, "joined order is descending")
             previous_user_seq = user_seq
             expect_equal(
-                user.get_read_total(),
-                author().user_seq(user_seq).sum_read_count().get_sum(),
+                Decimal(str(user.get_read_total())),
+                Decimal(str(author().user_seq(user_seq).sum_read_count().get_sum())),
                 "joined aggregate",
             )
         loaded = (

@@ -38,7 +38,7 @@ await runCases('coverage_model_queries.mjs', {
         assert.ok(user, 'joined user');
         if (previousUserSeq !== undefined) assert.ok(user.getSeq() <= previousUserSeq, 'joined order is descending');
         previousUserSeq = user.getSeq();
-        assert.equal(user.getReadTotal(), await new Author().connect(db).userSeq(user.getSeq()).sumReadCount().getSum(), 'joined aggregate');
+        assert.equal(user.getReadTotal(), BigInt(await new Author().connect(db).userSeq(user.getSeq()).sumReadCount().getSum()), 'joined aggregate');
       }
       const author = await new Author().connect(db).relation(new User().matchUserSeqWithSeq()).getBySeq(5000);
       assert.equal(author.getUserModel()?.getName(), 'user-1', 'user loaded through the relation');
