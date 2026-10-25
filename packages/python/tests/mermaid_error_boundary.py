@@ -12,12 +12,6 @@ DIAGRAM = "erDiagram\n    account {\n        i64 id PK\n    }\n"
 class MermaidErrorBoundaryTest(unittest.TestCase):
     deadline = COMPUTE
 
-    def test_catalog_build_failure_is_a_diagnostic(self):
-        result = import_mermaid(DIAGRAM, "invalid name")
-        self.assertIsNone(result["document"])
-        self.assertEqual(len(result["diagnostics"]), 1)
-        self.assertEqual(result["diagnostics"][0].line, 1)
-
     def test_unexpected_catalog_error_keeps_identity(self):
         cause = RuntimeError("unexpected catalog failure")
 

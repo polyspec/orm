@@ -368,6 +368,10 @@
       },
       "internal": [
         {
+          "glob": "packages/php/tests/DbspecMermaidErrorBoundaryTest.php",
+          "reason": "test: injects an unexpected exception into the private Mermaid catalog builder and verifies the same exception object escapes; the public invalid-name diagnostic is covered by dbspec-mermaid-invalid"
+        },
+        {
           "glob": "packages/php-gen/tests/OrmGenScanParityTest.php",
           "reason": "generated: an internal test of the PHP generator component that checks parity with the TypeScript generator, not a client behaviour (K313)"
         },
@@ -522,6 +526,10 @@
       },
       "internal": [
         {
+          "glob": "packages/php-ext/tests/MermaidErrorBoundaryTest.php",
+          "reason": "test: exercises the private Mermaid test hook for a coded catalog-build exception and an unexpected Throwable; public invalid-name diagnostics are covered by dbspec-mermaid-invalid"
+        },
+        {
           "glob": "packages/php-ext/tests/ArginfoBuildTest.php",
           "reason": "harness: checks extension build bootstrap ordering and tool availability before invoking the generator; it does not exercise ORM behavior"
         },
@@ -606,6 +614,10 @@
         "pattern": "^export const (\\w+) = '\\w+';$"
       },
       "internal": [
+        {
+          "glob": "packages/ts/tests/dbspec-mermaid-errors.mjs",
+          "reason": "test: injects an unexpected error into the private Mermaid catalog builder and verifies the same error object escapes; the public invalid-name diagnostic is covered by dbspec-mermaid-invalid"
+        },
         {
           "glob": "packages/ts/tests/mysql-test-options.test.mjs",
           "reason": "harness: tests parsing MySQL DSNs for TypeScript physical-test setup, not the public ORM DSN contract"
@@ -740,6 +752,10 @@
       "name": "python",
       "runner": "python",
       "internal": [
+        {
+          "glob": "packages/python/tests/mermaid_error_boundary.py",
+          "reason": "test: injects an unexpected exception into the private Mermaid catalog builder and verifies the same exception object escapes; the public invalid-name diagnostic is covered by dbspec-mermaid-invalid"
+        },
         {
           "glob": "packages/python/tests/test_install_lock.py",
           "reason": "ecosystem: an internal test of the Python package that checks the package, loader or install rule of the language ecosystem, not a behaviour of the contract (K313)"
