@@ -70,6 +70,9 @@ rules:
       - "!tests/docs"
       - "!tests/lease"
       - "!tests/stop-process"
+      # The PHP extension build-log unit tests and repository make-recipe unit tests exercise repository tooling, not a client package.
+      - "!tests/php-ext"
+      - "!tests/repo"
       # The go/analysis analyzers of the repository's rules for Go source, which make go-vet-check/orm runs with go vet.
       - "!tests/analyzers"
 
@@ -137,6 +140,23 @@ rules:
       # The symbol extractors of the comment tokens of Go, PHP and Python: each runs the tokenizer of its own language (go/scanner
       # in ScanComments mode, PHP's token_get_all, Python's tokenize and ast), the S9 rule for a symbol extractor.
       - "!scripts/comments/tokens/**"
+      # PHP mode-check uses PHP's extension_loaded API, and codec generation uses PHP serialize/YAML output as the declared vector ground.
+      - "!scripts/php/mode-check.php"
+      - "!tests/codec/gen_functions.php"
+      # These Node tools exercise the Composer-generated PHP autoloader's installed-file format, which is consumed by orm-install-php.
+      - "!scripts/php/vendor-autoload-check.mjs"
+      - "!scripts/php/vendor-autoload-check.test.mjs"
+      # These are Node-only test fixtures consumed by the TypeScript and dbspec-language test runners, not cross-language tools.
+      - "!tests/dbspec/join.mjs"
+      - "!tests/dbspec/join.test.mjs"
+      - "!tests/dbspec/set-tree.mjs"
+      - "!tests/dbspec/set-tree.test.mjs"
+      - "!tests/module-graph.mjs"
+      - "!tests/module-graph.test.mjs"
+      - "!tests/module-scan.mjs"
+      - "!tests/module-scan.test.mjs"
+      - "!tests/vector-registrar.mjs"
+      - "!tests/vector-registrar.test.mjs"
 
   # The Python symbol extractor runs as a program of its interpreter (its shebang), an exception of the rule above.
   - id: layout-infrastructure-shebang
