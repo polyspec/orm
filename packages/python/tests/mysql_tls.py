@@ -24,7 +24,7 @@ class MysqlTlsParametersTest(unittest.TestCase):
         self.assertEqual(raised.exception.code, "CONFIG", f"{dsn}: {raised.exception}")
         self.assertIn(wanted, str(raised.exception), dsn)
 
-    # Requirements: CFG-17, CFG-19.
+    # Requirements: CFG-17, CFG-19, CFG-20.
     def test_parameters(self):
         self.refused(
             "mysql://root@db.local/orm_example?charset=latin1",

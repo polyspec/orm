@@ -27,7 +27,7 @@ function refuseDsn(failures, dsn, wanted) {
 }
 
 // A parameter case is a parse in memory.
-// Requirements: CFG-17, CFG-19.
+// Requirements: CFG-17, CFG-19, CFG-20.
 caseTest('mysql_tls/parameters', COMPUTE, () => {
   const failures = [];
   refuseDsn(failures, 'mysql://root@127.0.0.1/orm_example?charset=latin1', 'unknown parameter charset');

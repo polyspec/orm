@@ -12,6 +12,7 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
+// Requirements: CFG-33.
 func TestMapMySQLErrClassifiesCheckConstraint(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	for _, number := range []uint16{3819, 4025} {

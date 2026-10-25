@@ -22,7 +22,7 @@ use Polyspec\Orm\OrmException;
 #[Medium]
 final class MysqlTlsTest extends TestCase
 {
-    // Requirements: CFG-17, CFG-19.
+    // Requirements: CFG-17, CFG-19, CFG-20.
     public function testParameters(): void
     {
         MysqlTlsCases::assertRefused(

@@ -83,7 +83,7 @@ final class OrmExceptionNativeTest extends TestCase
         );
     }
 
-    // Requirements: CFG-2, CFG-19.
+    // Requirements: CFG-2, CFG-19, CFG-20.
     public function testNativeOrmRejectsMalformedAndUnsupportedDsnParameters(): void
     {
         foreach (

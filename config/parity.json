@@ -2029,6 +2029,50 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/zone.rs",
           "id": "driver_parameters_reach_sqlx"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/sqlite_concurrency.rs",
+          "id": "dsn_rejects_txlock"
+        }
+      ]
+    },
+    {
+      "id": "connection-dsn-other-parameters",
+      "kind": "feature",
+      "requirements": [
+        "CFG-20"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/dsn_test.go",
+          "id": "TestParseDSN"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/MysqlTlsTest.php",
+          "id": "MysqlTlsTest::testParameters"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/OrmExceptionNativeTest.php",
+          "id": "OrmExceptionNativeTest::testNativeOrmRejectsMalformedAndUnsupportedDsnParameters"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/mysql_tls.mjs",
+          "id": "mysql_tls/parameters"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/mysql_tls.py",
+          "id": "test_parameters"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/zone.rs",
+          "id": "driver_parameters_reach_sqlx"
         }
       ]
     },
@@ -8482,37 +8526,6 @@
       ]
     },
     {
-      "id": "go-internal-packages-go-orm-driver-error",
-      "kind": "feature",
-      "requirements": [
-        "CFG-6"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/driver_error_test.go",
-          "id": "TestMapMySQLErrClassifiesCheckConstraint"
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-orm-dsn",
-      "kind": "feature",
-      "requirements": [
-        "CFG-1",
-        "CFG-10",
-        "CFG-12",
-        "CFG-20"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/dsn_test.go",
-          "id": "TestParseDSN"
-        }
-      ]
-    },
-    {
       "id": "go-internal-packages-go-orm-external-documents",
       "kind": "feature",
       "requirements": [
@@ -11259,62 +11272,6 @@
       ]
     },
     {
-      "id": "rust-session-sql-mode-is-the-declared-one",
-      "kind": "feature",
-      "requirements": [
-        "CFG-3"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/mysql_tls.rs",
-          "id": "session_sql_mode_is_the_declared_one"
-        }
-      ]
-    },
-    {
-      "id": "rust-check-refused-mysql",
-      "kind": "feature",
-      "requirements": [
-        "CFG-33"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/refusal.rs",
-          "id": "check_refused_mysql"
-        }
-      ]
-    },
-    {
-      "id": "rust-check-refused-postgres",
-      "kind": "feature",
-      "requirements": [
-        "CFG-33"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/refusal.rs",
-          "id": "check_refused_postgres"
-        }
-      ]
-    },
-    {
-      "id": "rust-check-refused-sqlite",
-      "kind": "feature",
-      "requirements": [
-        "CFG-33"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/refusal.rs",
-          "id": "check_refused_sqlite"
-        }
-      ]
-    },
-    {
       "id": "rust-trigger-refused-mysql",
       "kind": "feature",
       "requirements": [
@@ -11416,20 +11373,6 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/soft_delete.rs",
           "id": "soft_delete_filters_reads_and_rewrites_deletes"
-        }
-      ]
-    },
-    {
-      "id": "rust-dsn-rejects-txlock",
-      "kind": "feature",
-      "requirements": [
-        "CFG-19"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/sqlite_concurrency.rs",
-          "id": "dsn_rejects_txlock"
         }
       ]
     },
@@ -12205,20 +12148,6 @@
       ]
     },
     {
-      "id": "py-mysql-session",
-      "kind": "feature",
-      "requirements": [
-        "CFG-3"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/mysql_session.py",
-          "id": "test_session_sql_mode"
-        }
-      ]
-    },
-    {
       "id": "py-replica",
       "kind": "feature",
       "requirements": [
@@ -12392,20 +12321,6 @@
           "implementation": "python",
           "test": "packages/python/tests/test_driver_cells.py",
           "id": "test_decimal_and_newdecimal_cells_are_their_exact_text"
-        }
-      ]
-    },
-    {
-      "id": "py-test-driver-errors",
-      "kind": "feature",
-      "requirements": [
-        "CFG-15"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_driver_errors.py",
-          "id": "test_a_duplicate_unique_key_is_duplicate_key"
         }
       ]
     },
@@ -13023,20 +12938,6 @@
           "implementation": "python",
           "test": "packages/python/tests/test_markdown.py",
           "id": "test_message_cases"
-        }
-      ]
-    },
-    {
-      "id": "rust-driver-parameters-reach-sqlx",
-      "kind": "feature",
-      "requirements": [
-        "CFG-20"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/zone.rs",
-          "id": "driver_parameters_reach_sqlx"
         }
       ]
     },
@@ -14198,21 +14099,6 @@
           "implementation": "php",
           "test": "packages/php/tests/ModelTest.php",
           "id": "ModelTest::testSchemaEmpty"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-model-pool-options",
-      "kind": "feature",
-      "requirements": [
-        "CFG-4",
-        "CFG-5"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testPoolOptions"
         }
       ]
     },
@@ -20953,6 +20839,11 @@
           ]
         },
         {
+          "implementation": "go",
+          "test": "packages/go/orm/driver_error_test.go",
+          "id": "TestMapMySQLErrClassifiesCheckConstraint"
+        },
+        {
           "implementation": "php",
           "test": "packages/php/tests/CoverageConstraintsAndRelationsTest.php",
           "id": "CoverageConstraintsAndRelationsTest::testConstraintErrors"
@@ -20973,6 +20864,11 @@
           "id": "test_constraint_errors"
         },
         {
+          "implementation": "python",
+          "test": "packages/python/tests/test_driver_errors.py",
+          "id": "SqliteDriverErrorTest.test_a_duplicate_unique_key_is_duplicate_key"
+        },
+        {
           "implementation": "rust",
           "test": "packages/rust/tests/tests/integration/coverage_constraints_and_relations.rs",
           "id": "coverage_constraints_and_relations::coverage_constraint_errors",
@@ -20988,6 +20884,21 @@
             "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=coverage_constraints_and_relations::coverage_constraint_errors"
           ]
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/refusal.rs",
+          "id": "check_refused_sqlite"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/refusal.rs",
+          "id": "check_refused_mysql"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/refusal.rs",
+          "id": "check_refused_postgres"
         }
       ]
     },
