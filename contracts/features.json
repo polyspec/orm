@@ -5272,7 +5272,7 @@
       "id": "planner",
       "title": "In-process planner",
       "title_ko": "\ud504\ub85c\uc138\uc2a4 \ub0b4 planner",
-      "status": "partial",
+      "status": "implemented",
       "description": "Validate a value-free request against the manifest and render the dialect SQL, bind slots, assembly metadata, and the tables each statement names in the client process. Each implementation produces identical planner statements.",
       "description_ko": "\uac12\uc774 \uc5c6\ub294 request\ub97c manifest\ub85c \uac80\uc99d\ud558\uace0 dialect SQL, bind slot, \uc870\ub9bd \uc815\ubcf4, \uac01 statement\uac00 \uac00\ub9ac\ud0a4\ub294 table\uc744 client process\uc5d0\uc11c \ub9cc\ub4e0\ub2e4. \uac01 \uad6c\ud604\uc740 \uac19\uc740 planner statement\ub97c \ub9cc\ub4e0\ub2e4.",
       "inputs": {
@@ -6449,7 +6449,7 @@
       "id": "composite_keys",
       "title": "Composite keys",
       "title_ko": "\ubcf5\ud569 key",
-      "status": "partial",
+      "status": "implemented",
       "description": "Preserve every declared primary and foreign key component in identity, writes, relations, tuple conditions, and pages.",
       "description_ko": "\uc120\uc5b8\ub41c \ubaa8\ub4e0 primary key\uc640 foreign key \uad6c\uc131 \uc694\uc18c\ub97c \uc2dd\ubcc4, \uc4f0\uae30, \uad00\uacc4, tuple \uc870\uac74, \ud398\uc774\uc9c0\uc5d0\uc11c \uc720\uc9c0\ud55c\ub2e4.",
       "inputs": {
@@ -7237,7 +7237,7 @@
       "id": "parameter_chunking",
       "title": "Parameter chunking",
       "title_ko": "\ud30c\ub77c\ubbf8\ud130 \ubd84\ud560",
-      "status": "partial",
+      "status": "implemented",
       "description": "Pad relation key lists to size classes, split relation keys and oversized root IN lists at the driver bind limit, merge the results, and reject root shapes that a merge would change.",
       "description_ko": "\uad00\uacc4 key \ubaa9\ub85d\uc744 \ud06c\uae30 \ub4f1\uae09\uc73c\ub85c \ucc44\uc6b0\uace0, \uad00\uacc4 key\uc640 \ud070 root IN \ubaa9\ub85d\uc744 driver bind \ud55c\ub3c4\uc5d0\uc11c \ub098\ub204\uc5b4 \uacb0\uacfc\ub97c \ud569\uce58\uba70, \ubcd1\ud569\uc774 \uacb0\uacfc\ub97c \ubc14\uafb8\ub294 root \ubaa8\uc591\uc740 \uac70\ubd80\ud55c\ub2e4.",
       "inputs": {

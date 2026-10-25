@@ -55,6 +55,16 @@ caseTest('a checklist item cannot close while a declared runtime adapter is unre
   assert.notDeepEqual(completionItemAdapterErrors('', [contract]), [], 'missing owning checklist item passed');
 });
 
+// This guards the manifest state only; native behavior is exercised by the declared extension owner tests and coverage runs.
+caseTest('the features whose PHP extension owner runs the shared cases are implemented', COMPUTE, () => {
+  for (const id of ['planner', 'parameter_chunking', 'composite_keys']) {
+    const feature = manifest.features.find(item => item.id === id);
+    assert.ok(feature, `contracts/features.json omits ${id}`);
+    assert.equal(feature.coverage?.owners?.['php-extension']?.part, 'packages/php-ext/tests', `${id} has no PHP extension owner`);
+    assert.equal(feature.status, 'implemented', `${id} is ${feature.status}`);
+  }
+});
+
 caseTest('the schema of a shared fixture refuses a fixture without its feature or its cases', COMPUTE, () => {
   const schema = new URL('./schema/fixture.schema.json', import.meta.url).pathname;
   const read = (value: unknown) => {

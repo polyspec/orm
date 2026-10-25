@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: bcbff3da0fb39b6411f1662c913e44737f4613282f09be5340cf2199f8293020 -->
+<!-- source-sha256: 966d8bd741cfbdbb07c73a6a3bb3a46a7cb748ec613750b250ae0f54757adb4b -->
 # 변경 이력
 
 ## Unreleased
 
+- PHP extension이 선언된 owner를 통해 native planner, parameter chunking, composite key 동작을 구현한다. 집중 native case는 root IN 분할, relation chunk padding, composite relation, tuple predicate와 composite page를 검증한다 (KSTD-7-3).
 - PHP client와 PHP extension이 bind 한도를 넘는 root IN list를 plan하기 전에 나눈다: read나 count는 그 list를 첫 값으로 줄인 request를 plan해 bind 수를 얻고, 각 part를 한도 안에서 plan하므로 값마다 bind slot을 가진 plan이 없다. SQLite에서 70300개 값의 count는 extension에서 113 MB를 잡았으나 이제 32 MB 아래에 머물러 기본 memory_limit 128 MB 안에 든다 (KSTD-7-3-2). red: ParameterChunkingNativeTest의 새 case가 Engine.php에서 Allowed memory size of 134217728 bytes exhausted로 끝났다.
 - PHP library coverage owner의 모든 case가 test class가 선언한 method를 고른다: planner, authenticated_encryption, parameter_chunking, constraints_and_relations의 owner가 symbols map으로 camelCase method를 지정하고, scripts/features/coverage.test.mts가 class, 부모 class, trait에 method가 없는 case에서 실패한다 (KSTD-7-3-1). red: 새 case가 PHPUnit이 test를 실행하지 않은 네 owner의 test_<id> method를 나열했다.
 - 생성기 unit이 각 언어의 생성기 규칙 native form을 묶는다: 중립 unit 19개가 scan, set file, check, column 이름, external table, typed getter, time setter, chain method 규칙을 여섯 client 모두에 묶고, test가 없던 client에는 Go, TypeScript, PHP, Python, Rust test를 새로 썼다. 한 언어의 생성기 규칙(DSL-39부터 DSL-43, DSL-9, DSL-117, DSL-156, SCH-2) unit 29개는 그 언어의 package로 scope를 주며, 그 규칙들은 이제 package를 명시한다. DSL-129와 값 타입 표는 KSTD-2-11-15-1과 KSTD-2-11-15-2로 남는다(KSTD-2-11-15).
