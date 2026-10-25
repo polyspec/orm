@@ -6,7 +6,7 @@
 # plan), finalize (finalize that plan), or lock-wait (hold a database lock while an apply statement waits). stdout holds one result line:
 # "ok", "stopped" or "error <code>". Any other error goes to stderr and the process ends with 1.
 #
-# Usage: python packages/python/tests/dbspec_apply_runner.py <apply-first|apply|stop|recover|rollback>
+# Usage: python -m packages.python.tests.dbspec_apply_runner <apply-first|apply|stop|recover|rollback>
 #        <mysql|postgres|sqlite> <uri> <plans.json>
 import json
 import sqlite3
@@ -25,7 +25,7 @@ from polyspec.orm.dbspec.apply import (
 )
 from polyspec.orm.dbspec.plan import parse_plan
 from polyspec.orm.placeholders import for_mysql, for_postgres
-from runner_connect import mysql_connect
+from .runner_connect import mysql_connect
 
 # The statements every client runs on a new connection (packages/go/internal/dialects connectionRules).
 CONNECTION_RULES = {
@@ -255,7 +255,7 @@ def run_lock_wait(
 def main() -> None:
     if len(sys.argv) != 5:
         sys.stderr.write(
-            "usage: python packages/python/tests/dbspec_apply_runner.py "
+            "usage: python -m packages.python.tests.dbspec_apply_runner "
             "<apply-first|apply|stop|recover|rollback|apply-representative|finalize|lock-wait> "
             "<mysql|postgres|sqlite> <uri> <plans.json>\n"
         )

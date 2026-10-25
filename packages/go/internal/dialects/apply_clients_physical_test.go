@@ -79,7 +79,7 @@ func TestApplyChainAcrossClients(t *testing.T) {
 		"typescript":    {"node", "packages/ts/testing/dbspec/apply/typescript.mts"},
 		"rust":          {rustRunner},
 		"php-extension": {"php", "-d", "extension=" + extension, "packages/php-ext/testing/dbspec/apply/php-extension.php"},
-		"python":        {python, "packages/python/tests/dbspec_apply_runner.py"},
+		"python":        {python, "-m", "packages.python.tests.dbspec_apply_runner"},
 	}
 	// The database name includes the pid and a random value so that it does not overlap with another test run at the same time.
 	token := uniqueToken(t)

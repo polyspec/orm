@@ -117,7 +117,7 @@ final class DbspecApplyCleanupTest extends TestCase
     {
         $plans = self::$plans;
         $now = self::now();
-        $pdo = failing_pdo([]);
+        $pdo = dbspec_failing_pdo('apply_recover_done_php', []);
         Dbspec::apply($pdo, 'sqlite', $plans, $now, null);
         $events = [];
         Dbspec::recover($pdo, 'sqlite', $plans, $now, static function (ApplyEvent $event) use (&$events): void {

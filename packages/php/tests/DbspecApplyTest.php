@@ -628,7 +628,7 @@ function apply_scenarios(): array
     ];
     return $made = [
         'scenarios' => $scenarios,
-        'runs' => 25 + array_sum(array_map(static fn(string $db): int => $repCounts[$db][1][1], $all)),
+        'runs' => 28 + array_sum(array_map(static fn(string $db): int => $repCounts[$db][1][1], $all)),
         'pooler' => $poolerScenarios,
     ];
 }
@@ -766,7 +766,7 @@ final class DbspecApplyTest extends TestCase
         }
     }
 
-    // 25 scenario runs and, in every dialect, one interrupt run per step of the representative plan.
+    // 28 scenario runs and, in every dialect, one interrupt run per step of the representative plan.
     public function testRuns(): void
     {
         $runs = 0;

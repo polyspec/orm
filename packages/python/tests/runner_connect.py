@@ -1,7 +1,6 @@
-# The MySQL connection of a DSN and the Adapter that introspect_dbspec takes, shared by the dbspec runners and the test
-# modules that use them. The runners are started as scripts by their path (dbspec_introspect_runner.py and
-# dbspec_apply_runner.py, by Go and make), so they import this module by its file name, and the test modules import it
-# as .runner_connect.
+# The MySQL connection of a DSN and the Adapter that introspect_dbspec takes, shared by the dbspec runners and tests.
+# The introspection runner is invoked by path and imports this module by file name; the apply runner and test modules
+# are imported as packages from the repository root and use `.runner_connect`.
 from urllib.parse import unquote, urlsplit
 
 import pymysql
