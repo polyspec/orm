@@ -24,6 +24,17 @@ const adapterChecklist = (state: string): string => [
   '|---|---|---|---|---|',
   `| KSTD-2-11-16 | Handle cancellation | Native adapters | owner tests | ${state} |`,
 ].join('\n');
+function unresolvedCfg9Contract() {
+  const source = readInterfaceManifest(new URL('../../contracts/interfaces.json', import.meta.url).pathname).behavior_adapters?.find(value => value.id === 'CFG-9');
+  assert.ok(source, 'CFG-9 adapter contract is missing');
+  const contract = structuredClone(source);
+  for (const runtime of ['php', 'php-extension']) {
+    const adapter = contract.adapters?.[runtime];
+    assert.ok(adapter, `CFG-9 ${runtime} adapter is missing`);
+    adapter.status = 'unresolved';
+  }
+  return contract;
+}
 
 caseTest('the schema of contracts/features.json accepts the repository manifest', COMPUTE, () => {
   assert.deepEqual(refused(manifest), []);
@@ -48,14 +59,7 @@ caseTest('the schema of contracts/features.json refuses a manifest outside its s
 });
 
 caseTest('canonical non-done checklist states allow unresolved runtime adapters', COMPUTE, () => {
-  const source = readInterfaceManifest(new URL('../../contracts/interfaces.json', import.meta.url).pathname).behavior_adapters?.find(value => value.id === 'CFG-9');
-  assert.ok(source, 'CFG-9 adapter contract is missing');
-  const contract = structuredClone(source);
-  for (const runtime of ['php', 'php-extension']) {
-    const adapter = contract.adapters?.[runtime];
-    assert.ok(adapter, `CFG-9 ${runtime} adapter is missing`);
-    adapter.status = 'unresolved';
-  }
+  const contract = unresolvedCfg9Contract();
   for (const state of [
     '[ ]',
     '[~]',
@@ -67,14 +71,7 @@ caseTest('canonical non-done checklist states allow unresolved runtime adapters'
 });
 
 caseTest('a done checklist item still requires every declared runtime adapter', COMPUTE, () => {
-  const source = readInterfaceManifest(new URL('../../contracts/interfaces.json', import.meta.url).pathname).behavior_adapters?.find(value => value.id === 'CFG-9');
-  assert.ok(source, 'CFG-9 adapter contract is missing');
-  const contract = structuredClone(source);
-  for (const runtime of ['php', 'php-extension']) {
-    const adapter = contract.adapters?.[runtime];
-    assert.ok(adapter, `CFG-9 ${runtime} adapter is missing`);
-    adapter.status = 'unresolved';
-  }
+  const contract = unresolvedCfg9Contract();
   const failures = completionItemAdapterErrors(adapterChecklist('[o]'), [contract]);
   assert.ok(failures.some(error => error.includes('KSTD-2-11-16: CFG-9/php: unresolved native behavior adapter')),
     'item completion passed with unresolved PHP cancellation');
@@ -83,9 +80,7 @@ caseTest('a done checklist item still requires every declared runtime adapter', 
 });
 
 caseTest('missing and non-canonical checklist states fail the adapter guard', COMPUTE, () => {
-  const source = readInterfaceManifest(new URL('../../contracts/interfaces.json', import.meta.url).pathname).behavior_adapters?.find(value => value.id === 'CFG-9');
-  assert.ok(source, 'CFG-9 adapter contract is missing');
-  const contract = structuredClone(source);
+  const contract = unresolvedCfg9Contract();
   for (const state of ['', '[x]', '[!] cause: deferred without retry', '[o] cause: invalid suffix']) {
     const errors = completionItemAdapterErrors(adapterChecklist(state), [contract]);
     assert.ok(errors.some(error => error.includes('KSTD-2-11-16 has no recognized state')), `${state || '(empty)'} was accepted`);
