@@ -31,6 +31,7 @@
 #define REQUEST_CLASS "Polyspec\\Orm\\Request"
 #define SECRET_MASK "$SECRET"
 #define NOW_MASK "$NOW"
+#define RETAINED_PLACEHOLDERS 65535
 
 typedef bool (*dbs_transaction_callback)(zval *connection, void *context, zval *result);
 
@@ -633,7 +634,50 @@ static void set_last_affected(zval *self, zend_long n)
 /* ---- the statement cache and the statements ---- */
 
 /* Db::stmt: the prepared statement of sql, from the cache of the connection (the oldest one is closed when the cache is full). */
-static bool stmt_of(zval *self, zval *sql, zval *out)
+static void promote_statement(zval *state, zval *sql)
+{
+    zval *order = array_prop(state, "stmtOrder");
+    zval promoted;
+    array_init(&promoted);
+    zval *entry;
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(order), entry)
+    {
+        if (Z_TYPE_P(entry) == IS_STRING && zend_string_equals(Z_STR_P(entry), Z_STR_P(sql))) {
+            continue;
+        }
+        push(&promoted, entry);
+    }
+    ZEND_HASH_FOREACH_END();
+    push(&promoted, sql);
+    wr(state, "stmtOrder", &promoted);
+    zval_ptr_dtor(&promoted);
+}
+
+static void evict_statement(zval *state, zval *sql)
+{
+    zval *stmts = array_prop(state, "stmts");
+    zval *old = zend_symtable_find(Z_ARRVAL_P(stmts), Z_STR_P(sql));
+    if (old != NULL) {
+        zval result;
+        if (mcall(old, "closeCursor", &result, 0, NULL)) {
+            zval_ptr_dtor(&result);
+        }
+    }
+    zend_symtable_del(Z_ARRVAL_P(stmts), Z_STR_P(sql));
+
+    zval *placeholder_counts = array_prop(state, "stmtPlaceholders");
+    zval *placeholder_count = zend_symtable_find(Z_ARRVAL_P(placeholder_counts), Z_STR_P(sql));
+    zend_long retained = as_long(rd(state, "stmtRetained"));
+    if (placeholder_count != NULL) {
+        retained -= as_long(placeholder_count);
+        zend_symtable_del(Z_ARRVAL_P(placeholder_counts), Z_STR_P(sql));
+    }
+    zval retained_value;
+    ZVAL_LONG(&retained_value, retained);
+    wr(state, "stmtRetained", &retained_value);
+}
+
+static bool stmt_of(zval *self, zval *sql, zval *args, zval *out)
 {
     zval pdo;
     if (!handle_pdo(self, &pdo)) {
@@ -644,6 +688,7 @@ static bool stmt_of(zval *self, zval *sql, zval *out)
     zval *hit = zend_symtable_find(Z_ARRVAL_P(stmts), Z_STR_P(sql));
     if (hit != NULL) {
         ZVAL_COPY(out, hit);
+        promote_statement(state, sql);
         zval_ptr_dtor(&pdo);
         return true;
     }
@@ -678,42 +723,48 @@ static bool stmt_of(zval *self, zval *sql, zval *out)
     if (!ok) {
         return false;
     }
-    zval stored;
-    ZVAL_COPY(&stored, &st);
-    zend_symtable_update(Z_ARRVAL_P(stmts), Z_STR_P(sql), &stored);
-    zval *order = array_prop(state, "stmtOrder");
-    push(order, sql);
-    zend_long limit = as_long(rd(rd(self, "config"), "statementCacheSize"));
-    while ((zend_long)zend_hash_num_elements(Z_ARRVAL_P(order)) > limit) {
-        zval *first = zend_hash_index_find(Z_ARRVAL_P(order), 0);
-        zval oldest;
-        ZVAL_COPY(&oldest, first);
-        zval *old = zend_symtable_find(Z_ARRVAL_P(stmts), Z_STR(oldest));
-        if (old != NULL) {
-            zval r;
-            if (mcall(old, "closeCursor", &r, 0, NULL)) {
-                zval_ptr_dtor(&r);
+    zend_long placeholders = args == NULL ? 0 : (zend_long)zend_hash_num_elements(Z_ARRVAL_P(args));
+    if (placeholders <= RETAINED_PLACEHOLDERS) {
+        zval stored;
+        ZVAL_COPY(&stored, &st);
+        zend_symtable_update(Z_ARRVAL_P(stmts), Z_STR_P(sql), &stored);
+
+        zval placeholder_value;
+        ZVAL_LONG(&placeholder_value, placeholders);
+        zend_symtable_update(Z_ARRVAL_P(array_prop(state, "stmtPlaceholders")), Z_STR_P(sql), &placeholder_value);
+
+        zval retained_value;
+        ZVAL_LONG(&retained_value, as_long(rd(state, "stmtRetained")) + placeholders);
+        wr(state, "stmtRetained", &retained_value);
+        promote_statement(state, sql);
+
+        zend_long limit = as_long(rd(rd(self, "config"), "statementCacheSize"));
+        while ((zend_long)zend_hash_num_elements(Z_ARRVAL_P(array_prop(state, "stmtOrder"))) > limit
+            || as_long(rd(state, "stmtRetained")) > RETAINED_PLACEHOLDERS) {
+            zval *order = array_prop(state, "stmtOrder");
+            zval *first = zend_hash_index_find(Z_ARRVAL_P(order), 0);
+            if (first == NULL) {
+                break;
             }
-        }
-        zend_symtable_del(Z_ARRVAL_P(stmts), Z_STR(oldest));
-        /* array_shift: the list is kept without its first value and renumbered. */
-        zval rest;
-        array_init(&rest);
-        zval *v;
-        bool first_seen = false;
-        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(order), v)
-        {
-            if (!first_seen) {
-                first_seen = true;
-                continue;
+            zval oldest, rest;
+            ZVAL_COPY(&oldest, first);
+            array_init(&rest);
+            zval *entry;
+            bool skipped = false;
+            ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(order), entry)
+            {
+                if (!skipped) {
+                    skipped = true;
+                    continue;
+                }
+                push(&rest, entry);
             }
-            push(&rest, v);
+            ZEND_HASH_FOREACH_END();
+            wr(state, "stmtOrder", &rest);
+            zval_ptr_dtor(&rest);
+            evict_statement(state, &oldest);
+            zval_ptr_dtor(&oldest);
         }
-        ZEND_HASH_FOREACH_END();
-        wr(state, "stmtOrder", &rest);
-        zval_ptr_dtor(&rest);
-        zval_ptr_dtor(&oldest);
-        order = array_prop(state, "stmtOrder");
     }
     ZVAL_COPY(out, &st);
     zval_ptr_dtor(&st);
@@ -1810,7 +1861,7 @@ static bool op_query(zval *self, void *ctx, zval *ret)
 {
     qctx *c = ctx;
     zval st, mode;
-    if (!stmt_of(self, c->sql, &st)) {
+    if (!stmt_of(self, c->sql, c->args, &st)) {
         return false;
     }
     if (!execute_prepared_stmt(self, &st, c->args)) {
@@ -1824,7 +1875,7 @@ static bool op_scalar(zval *self, void *ctx, zval *ret)
 {
     qctx *c = ctx;
     zval st;
-    if (!stmt_of(self, c->sql, &st)) {
+    if (!stmt_of(self, c->sql, c->args, &st)) {
         return false;
     }
     if (!execute_prepared_stmt(self, &st, c->args)) {
@@ -3344,7 +3395,7 @@ static bool op_write(zval *self, void *ctx, zval *ret)
     wctx *c = ctx;
     zval *sql = aget(c->step, "sql");
     zval st;
-    if (!stmt_of(self, sql, &st)) {
+    if (!stmt_of(self, sql, c->args, &st)) {
         return false;
     }
     zval *ir = rd(c->r, "ir");
@@ -3790,7 +3841,11 @@ ZEND_METHOD(Polyspec_Orm_Db, close)
     array_init(&empty);
     wr(state, "stmts", &empty);
     wr(state, "stmtOrder", &empty);
+    wr(state, "stmtPlaceholders", &empty);
     zval_ptr_dtor(&empty);
+    zval retained;
+    ZVAL_LONG(&retained, 0);
+    wr(state, "stmtRetained", &retained);
     ZVAL_NULL(&nul);
     wr(state, "pdo", &nul);
     if (Z_TYPE(err) != IS_UNDEF && Z_TYPE(cleanup) != IS_UNDEF) {
@@ -4017,7 +4072,7 @@ static bool op_execute(zval *self, void *ctx, zval *ret)
 {
     wctx *c = ctx;
     zval st;
-    if (!stmt_of(self, aget(c->step, "sql"), &st)) {
+    if (!stmt_of(self, aget(c->step, "sql"), c->args, &st)) {
         return false;
     }
     if (!execute_prepared_stmt(self, &st, c->args)) {

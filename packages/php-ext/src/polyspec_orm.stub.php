@@ -791,6 +791,8 @@ final class DbState
     public ?\PDO $pdo = null;
     public array $stmts = [];
     public array $stmtOrder = [];
+    public array $stmtPlaceholders = [];
+    public int $stmtRetained = 0;
     public bool $closed = false;
     public ?\Closure $listener = null;
     public bool $rollbackFault = false;
@@ -1258,6 +1260,9 @@ final class Engine
 {
     private static array $engines = [];
     private array $plans = [];
+    /** @var array<string, int> */
+    private array $placeholders = [];
+    private int $retained = 0;
     private readonly Validator $validator;
     private readonly Planner $planner;
     public readonly RuntimeModel $model;

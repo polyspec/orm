@@ -14,6 +14,8 @@
 zend_class_entry *polyspec_engine_ce;
 zend_class_entry *polyspec_assemble_ce;
 
+#define ENGINE_RETAINED_PLACEHOLDERS 65535
+
 static zend_class_entry *engine_class(const char *name)
 {
     zend_string *n = zend_string_init(name, strlen(name), 0);
@@ -486,8 +488,17 @@ ZEND_METHOD(Polyspec_Orm_Engine, plan)
     }
     zval *cached = zend_symtable_find(Z_ARRVAL_P(plans), key);
     if (cached != NULL) {
+        zval result, map, cached_value;
+        ZVAL_COPY(&result, cached);
+        ZVAL_COPY(&map, plans);
+        SEPARATE_ARRAY(&map);
+        zend_symtable_del(Z_ARRVAL(map), key);
+        ZVAL_COPY(&cached_value, &result);
+        zend_symtable_update(Z_ARRVAL(map), key, &cached_value);
+        zend_update_property(polyspec_engine_ce, Z_OBJ_P(ZEND_THIS), "plans", sizeof("plans") - 1, &map);
+        zval_ptr_dtor(&map);
         zend_string_release(key);
-        RETURN_COPY(cached);
+        RETURN_COPY_VALUE(&result);
     }
     zval *planner = engine_prop(ZEND_THIS, "planner");
     zval *model = engine_prop(ZEND_THIS, "model");
@@ -501,27 +512,71 @@ ZEND_METHOD(Polyspec_Orm_Engine, plan)
         zend_string_release(key);
         RETURN_THROWS();
     }
-    zval map;
-    ZVAL_COPY(&map, plans);
-    SEPARATE_ARRAY(&map);
-    Z_TRY_ADDREF(plan);
-    zend_symtable_update(Z_ARRVAL(map), key, &plan);
-    zend_string_release(key);
-    zval *size = engine_prop(ZEND_THIS, "cacheSize");
-    if (size != NULL && Z_TYPE_P(size) == IS_LONG
-        && (zend_long)zend_hash_num_elements(Z_ARRVAL(map)) > Z_LVAL_P(size)) {
-        zend_string *first_key = NULL;
-        zend_ulong first_index = 0;
-        HashPosition pos;
-        zend_hash_internal_pointer_reset_ex(Z_ARRVAL(map), &pos);
-        if (zend_hash_get_current_key_ex(Z_ARRVAL(map), &first_key, &first_index, &pos) == HASH_KEY_IS_STRING) {
-            zend_hash_del(Z_ARRVAL(map), first_key);
-        } else {
-            zend_hash_index_del(Z_ARRVAL(map), first_index);
+    zend_long placeholders = 0;
+    zval *steps = zend_hash_str_find(Z_ARRVAL(plan), "steps", sizeof("steps") - 1);
+    if (steps != NULL && Z_TYPE_P(steps) == IS_ARRAY) {
+        zval *step;
+        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(steps), step)
+        {
+            if (Z_TYPE_P(step) != IS_ARRAY) {
+                continue;
+            }
+            zval *slots = zend_hash_str_find(Z_ARRVAL_P(step), "bind_slots", sizeof("bind_slots") - 1);
+            if (slots != NULL && Z_TYPE_P(slots) == IS_ARRAY) {
+                placeholders += (zend_long)zend_hash_num_elements(Z_ARRVAL_P(slots));
+            }
         }
+        ZEND_HASH_FOREACH_END();
     }
-    zend_update_property(polyspec_engine_ce, Z_OBJ_P(ZEND_THIS), "plans", sizeof("plans") - 1, &map);
-    zval_ptr_dtor(&map);
+    if (placeholders <= ENGINE_RETAINED_PLACEHOLDERS) {
+        zval map, placeholder_map, cached_plan, placeholder_count;
+        ZVAL_COPY(&map, plans);
+        SEPARATE_ARRAY(&map);
+        ZVAL_COPY(&placeholder_map, engine_prop(ZEND_THIS, "placeholders"));
+        SEPARATE_ARRAY(&placeholder_map);
+
+        ZVAL_COPY(&cached_plan, &plan);
+        zend_symtable_update(Z_ARRVAL(map), key, &cached_plan);
+        ZVAL_LONG(&placeholder_count, placeholders);
+        zend_symtable_update(Z_ARRVAL(placeholder_map), key, &placeholder_count);
+
+        zend_long retained = zval_get_long(engine_prop(ZEND_THIS, "retained")) + placeholders;
+        zval *size = engine_prop(ZEND_THIS, "cacheSize");
+        zend_long cache_size = size != NULL && Z_TYPE_P(size) == IS_LONG ? Z_LVAL_P(size) : 0;
+        while ((zend_long)zend_hash_num_elements(Z_ARRVAL(map)) > cache_size
+            || retained > ENGINE_RETAINED_PLACEHOLDERS) {
+            zend_string *oldest_string = NULL;
+            zend_ulong oldest_index = 0;
+            HashPosition pos;
+            zend_hash_internal_pointer_reset_ex(Z_ARRVAL(map), &pos);
+            int key_type = zend_hash_get_current_key_ex(Z_ARRVAL(map), &oldest_string, &oldest_index, &pos);
+            if (key_type == HASH_KEY_IS_STRING) {
+                zval *old_count = zend_symtable_find(Z_ARRVAL(placeholder_map), oldest_string);
+                if (old_count != NULL) {
+                    retained -= zval_get_long(old_count);
+                    zend_symtable_del(Z_ARRVAL(placeholder_map), oldest_string);
+                }
+                zend_hash_del(Z_ARRVAL(map), oldest_string);
+            } else if (key_type == HASH_KEY_IS_LONG) {
+                zval *old_count = zend_hash_index_find(Z_ARRVAL(placeholder_map), oldest_index);
+                if (old_count != NULL) {
+                    retained -= zval_get_long(old_count);
+                    zend_hash_index_del(Z_ARRVAL(placeholder_map), oldest_index);
+                }
+                zend_hash_index_del(Z_ARRVAL(map), oldest_index);
+            } else {
+                break;
+            }
+        }
+        zval retained_value;
+        ZVAL_LONG(&retained_value, retained);
+        zend_update_property(polyspec_engine_ce, Z_OBJ_P(ZEND_THIS), "plans", sizeof("plans") - 1, &map);
+        zend_update_property(polyspec_engine_ce, Z_OBJ_P(ZEND_THIS), "placeholders", sizeof("placeholders") - 1, &placeholder_map);
+        zend_update_property(polyspec_engine_ce, Z_OBJ_P(ZEND_THIS), "retained", sizeof("retained") - 1, &retained_value);
+        zval_ptr_dtor(&map);
+        zval_ptr_dtor(&placeholder_map);
+    }
+    zend_string_release(key);
     RETURN_COPY_VALUE(&plan);
 }
 
