@@ -18,6 +18,12 @@ type sqliteResultError int
 func (e sqliteResultError) Error() string { return fmt.Sprintf("sqlite result %d", int(e)) }
 func (e sqliteResultError) Code() int     { return int(e) }
 
+// releaseBusy is the SQLITE_BUSY of the release read while another connection holds the database.
+type releaseBusy struct{}
+
+func (releaseBusy) Error() string { return "release read: database is locked" }
+func (releaseBusy) Code() int     { return 5 }
+
 func TestSqliteLockResult(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	tests := []struct {
@@ -96,6 +102,8 @@ func (c *sqliteLockConn) ExecContext(_ context.Context, query string, _ []driver
 		c.state.busyTimeout = 1300
 	case "PRAGMA busy_timeout = 5000":
 		c.state.busyTimeout = 5000
+	case "PRAGMA busy_timeout = 0":
+		c.state.busyTimeout = 0
 	case "PRAGMA locking_mode = normal":
 		c.state.lockingMode = "normal"
 	case "PRAGMA locking_mode = EXCLUSIVE":
@@ -119,6 +127,10 @@ func (c *sqliteLockConn) QueryContext(_ context.Context, query string, _ []drive
 	case "PRAGMA locking_mode":
 		value = c.state.lockingMode
 	case "SELECT COUNT(*) FROM sqlite_master":
+		// Another connection holds the database after a lock result of BEGIN EXCLUSIVE, so the release read is busy.
+		if c.code&0xff == 5 || c.code&0xff == 6 {
+			return nil, releaseBusy{}
+		}
 		value = int64(0)
 	default:
 		return nil, fmt.Errorf("unexpected query %q", query)
@@ -175,6 +187,9 @@ func TestSqliteSessionClassifiesBeginErrorAndRestoresState(t *testing.T) {
 			if !errors.As(got, &applyErr) || applyErr.Code != "locked" || !errors.Is(got, cause) {
 				t.Errorf("BEGIN EXCLUSIVE result %d = %v, want locked with original cause", test.code, got)
 			}
+			if errors.Is(got, releaseBusy{}) {
+				t.Errorf("BEGIN EXCLUSIVE result %d = %v, want no error of the release read, which held no lock", test.code, got)
+			}
 		} else {
 			var applyErr *ApplyError
 			if !errors.Is(got, cause) || errors.As(got, &applyErr) {
@@ -189,12 +204,18 @@ func TestSqliteSessionClassifiesBeginErrorAndRestoresState(t *testing.T) {
 			"PRAGMA busy_timeout = 5000",
 			"PRAGMA locking_mode = EXCLUSIVE",
 			"BEGIN EXCLUSIVE",
+		}
+		if test.wantLocked {
+			// The release read does not wait for the lock that another connection holds.
+			wantStatements = append(wantStatements, "PRAGMA busy_timeout = 0")
+		}
+		wantStatements = append(wantStatements,
 			"PRAGMA foreign_keys = 1",
 			"PRAGMA legacy_alter_table = 1",
 			"PRAGMA locking_mode = normal",
 			"QUERY SELECT COUNT(*) FROM sqlite_master",
 			"PRAGMA busy_timeout = 1300",
-		}
+		)
 		if !reflect.DeepEqual(statements, wantStatements) {
 			t.Errorf("BEGIN EXCLUSIVE result %d statements = %v, want %v", test.code, statements, wantStatements)
 		}

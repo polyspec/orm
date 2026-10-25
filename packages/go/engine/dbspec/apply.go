@@ -504,29 +504,38 @@ func (a *applier) sqliteSession(f func() error) error {
 		_, err := a.c.ExecContext(a.ctx, query)
 		return err
 	}
-	restore := func() []error {
+	// restore sets the session back. After the locking mode is restored, one read releases the lock that the
+	// connection holds. When another connection holds the database (locked), the read must not wait for it a second
+	// time: it runs with no busy timeout, and a lock result of it means that the connection holds no lock to release.
+	restore := func(locked bool) []error {
 		var tables int64
-		return []error{
-			exec("PRAGMA foreign_keys = " + strconv.FormatInt(foreignKeys, 10)),
-			exec("PRAGMA legacy_alter_table = " + strconv.FormatInt(legacy, 10)),
-			exec("PRAGMA locking_mode = " + mode),
-			// After the locking mode is restored, one read is needed for the exclusive lock to be released.
-			a.queryRow("SELECT COUNT(*) FROM sqlite_master", &tables),
-			exec("PRAGMA busy_timeout = " + strconv.FormatInt(busy, 10)),
+		var errs []error
+		if locked {
+			errs = append(errs, exec("PRAGMA busy_timeout = 0"))
 		}
+		errs = append(errs,
+			exec("PRAGMA foreign_keys = "+strconv.FormatInt(foreignKeys, 10)),
+			exec("PRAGMA legacy_alter_table = "+strconv.FormatInt(legacy, 10)),
+			exec("PRAGMA locking_mode = "+mode),
+		)
+		read := a.queryRow("SELECT COUNT(*) FROM sqlite_master", &tables)
+		if locked && read != nil && sqliteLockResult(read) {
+			read = nil
+		}
+		return append(errs, read, exec("PRAGMA busy_timeout = "+strconv.FormatInt(busy, 10)))
 	}
 	if err := exec(fmt.Sprintf("PRAGMA busy_timeout = %d", lockWaitMillis)); err != nil {
 		return err
 	}
 	if err := exec("PRAGMA locking_mode = EXCLUSIVE"); err != nil {
-		return joinCleanup(append([]error{err}, restore()...)...)
+		return joinCleanup(append([]error{err}, restore(false)...)...)
 	}
 	if err := exec("BEGIN EXCLUSIVE"); err != nil {
 		if !sqliteLockResult(err) {
-			return joinCleanup(append([]error{err}, restore()...)...)
+			return joinCleanup(append([]error{err}, restore(false)...)...)
 		}
 		locked := &ApplyError{Code: "locked", Message: "another connection holds the SQLite database", Err: err}
-		return joinCleanup(append([]error{locked}, restore()...)...)
+		return joinCleanup(append([]error{locked}, restore(true)...)...)
 	}
 	err := exec("COMMIT")
 	if err == nil {
@@ -538,7 +547,7 @@ func (a *applier) sqliteSession(f func() error) error {
 	if err == nil {
 		err = f()
 	}
-	return joinCleanup(append([]error{err}, restore()...)...)
+	return joinCleanup(append([]error{err}, restore(false)...)...)
 }
 
 // sqliteLockResult keeps BEGIN EXCLUSIVE error classification at the SQLite apply boundary.

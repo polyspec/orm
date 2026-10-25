@@ -376,14 +376,19 @@ class _Applier:
         busy = _integer(self._query_value("PRAGMA busy_timeout"), "PRAGMA busy_timeout")
         mode = _text(self._query_value("PRAGMA locking_mode"), "PRAGMA locking_mode")
         self._exec(f"PRAGMA busy_timeout = {LOCK_WAIT_SECONDS * 1000}")
+        # locked: another connection holds the database, so this connection took no lock for the release read to
+        # release.
+        locked = False
 
         def work():
+            nonlocal locked
             self._exec("PRAGMA locking_mode = EXCLUSIVE")
             try:
                 self._exec("BEGIN EXCLUSIVE")
             except Exception as error:
                 if not _sqlite_lock_result(error):
                     raise
+                locked = True
                 raise DbspecApplyError(
                     "locked",
                     "",
@@ -396,13 +401,23 @@ class _Applier:
             self._exec("PRAGMA legacy_alter_table = OFF")
             f()
 
+        def release_read():
+            # The exclusive lock is released only after a read that follows the locking mode being restored. When
+            # another connection holds the database, a lock result of the read means there is no lock to release.
+            try:
+                self._query_value("SELECT COUNT(*) FROM sqlite_master")
+            except Exception as error:
+                if not (locked and _sqlite_lock_result(error)):
+                    raise
+
         _finish(
             work,
+            # The release read must not wait a second time for the lock that another connection holds.
+            lambda: locked and self._exec("PRAGMA busy_timeout = 0"),
             lambda: self._exec(f"PRAGMA foreign_keys = {foreign_keys}"),
             lambda: self._exec(f"PRAGMA legacy_alter_table = {legacy}"),
             lambda: self._exec(f"PRAGMA locking_mode = {mode}"),
-            # The exclusive lock is released only after a read that follows the locking mode being restored.
-            lambda: self._query_value("SELECT COUNT(*) FROM sqlite_master"),
+            release_read,
             lambda: self._exec(f"PRAGMA busy_timeout = {busy}"),
         )
 

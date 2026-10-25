@@ -407,7 +407,9 @@ final class PlanApply
         $busy = CatalogRows::integer([$this->queryValue('PRAGMA busy_timeout')], 0, 'PRAGMA busy_timeout');
         $mode = CatalogRows::text([$this->queryValue('PRAGMA locking_mode')], 0, 'PRAGMA locking_mode');
         $this->c->exec('PRAGMA busy_timeout = ' . (self::LOCK_WAIT_SECONDS * 1000));
-        $this->finish(function () use ($f): void {
+        // Another connection holds the database, so this connection took no lock for the release read to release.
+        $locked = false;
+        $this->finish(function () use ($f, &$locked): void {
             $this->c->exec('PRAGMA locking_mode = EXCLUSIVE');
             try {
                 $this->c->exec('BEGIN EXCLUSIVE');
@@ -415,17 +417,33 @@ final class PlanApply
                 if (!self::sqliteLockResult($e)) {
                     throw $e;
                 }
+                $locked = true;
                 throw new ApplyError('locked', '', 0, 'another connection holds the SQLite database', $e);
             }
             $this->c->exec('COMMIT');
             $this->c->exec('PRAGMA foreign_keys = OFF');
             $this->c->exec('PRAGMA legacy_alter_table = OFF');
             $f();
-        }, fn() => $this->c->exec("PRAGMA foreign_keys = $foreignKeys"),
+        }, // The release read must not wait a second time for the lock that another connection holds.
+            function () use (&$locked): void {
+                if ($locked) {
+                    $this->c->exec('PRAGMA busy_timeout = 0');
+                }
+            },
+            fn() => $this->c->exec("PRAGMA foreign_keys = $foreignKeys"),
             fn() => $this->c->exec("PRAGMA legacy_alter_table = $legacy"),
             fn() => $this->c->exec("PRAGMA locking_mode = $mode"),
-            // The lock is released only after the locking mode is restored and read once.
-            fn() => $this->queryValue('SELECT COUNT(*) FROM sqlite_master'),
+            // The lock is released only after the locking mode is restored and read once. When another connection
+            // holds the database, a lock result of the read means there is no lock to release.
+            function () use (&$locked): void {
+                try {
+                    $this->queryValue('SELECT COUNT(*) FROM sqlite_master');
+                } catch (\PDOException $e) {
+                    if (!$locked || !self::sqliteLockResult($e)) {
+                        throw $e;
+                    }
+                }
+            },
             fn() => $this->c->exec("PRAGMA busy_timeout = $busy"));
     }
 

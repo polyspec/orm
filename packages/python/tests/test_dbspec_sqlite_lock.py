@@ -5,8 +5,11 @@ from polyspec.orm.dbspec.apply import DbspecApplyError, _Applier
 
 
 class FailingSqlite:
-    def __init__(self, failure):
+    """locked: another connection holds the database, so the release read after BEGIN EXCLUSIVE is busy too."""
+
+    def __init__(self, failure, locked=False):
         self.failure = failure
+        self.locked = locked
         self.pragmas = {
             "foreign_keys": 1,
             "legacy_alter_table": 1,
@@ -29,6 +32,8 @@ class FailingSqlite:
             else:
                 self.unexpected.append(query)
             return {"rows": []}
+        if self.locked and query == "SELECT COUNT(*) FROM sqlite_master":
+            raise coded_error(5)
         values = {
             "PRAGMA foreign_keys": self.pragmas["foreign_keys"],
             "PRAGMA legacy_alter_table": self.pragmas["legacy_alter_table"],
@@ -53,16 +58,16 @@ def coded_error(code):
     return error
 
 
-def failing_session(error):
+def failing_session(error, locked=False):
     """The fake connection that fails BEGIN EXCLUSIVE with error, and the applier over it."""
-    connection = FailingSqlite(error)
+    connection = FailingSqlite(error, locked)
     return connection, _Applier(connection, "sqlite", [], lambda: 0, None)
 
 
 class SqliteLockResultTest(unittest.TestCase):
     deadline = COMPUTE
 
-    def assert_restored(self, connection):
+    def assert_restored(self, connection, locked=False):
         self.assertEqual(
             connection.pragmas,
             {
@@ -83,6 +88,8 @@ class SqliteLockResultTest(unittest.TestCase):
                 "PRAGMA busy_timeout = 5000",
                 "PRAGMA locking_mode = EXCLUSIVE",
                 "BEGIN EXCLUSIVE",
+                # The release read does not wait for the lock that another connection holds.
+                *(["PRAGMA busy_timeout = 0"] if locked else []),
                 "PRAGMA foreign_keys = 1",
                 "PRAGMA legacy_alter_table = 1",
                 "PRAGMA locking_mode = normal",
@@ -96,12 +103,14 @@ class SqliteLockResultTest(unittest.TestCase):
         for code in (5, 6, 261, 517, 773, 262, 518):
             error = coded_error(code)
             with self.subTest(code=code):
-                connection, applier = failing_session(error)
+                connection, applier = failing_session(error, locked=True)
                 with self.assertRaises(DbspecApplyError) as caught:
                     applier._sqlite_session(lambda: None)
                 self.assertEqual(caught.exception.code, "locked")
                 self.assertIs(caught.exception.cause, error)
-                self.assert_restored(connection)
+                # A lock result of the release read, which held no lock, adds no cleanup error.
+                self.assertIsNone(getattr(caught.exception, "__notes__", None))
+                self.assert_restored(connection, locked=True)
 
     # Requirements: PLN-89, PLN-90.
     def test_non_lock_and_missing_codes_are_preserved(self):

@@ -366,6 +366,8 @@ class Applier {
     const busy = integer(await this.queryValue('PRAGMA busy_timeout'), 'PRAGMA busy_timeout');
     const mode = text(await this.queryValue('PRAGMA locking_mode'), 'PRAGMA locking_mode');
     await this.s.exec(`PRAGMA busy_timeout = ${LOCK_WAIT_SECONDS * 1000}`);
+    // locked: another connection holds the database, so this connection took no lock for the release read to release.
+    let locked = false;
     await finish(
       async () => {
         await this.s.exec('PRAGMA locking_mode = EXCLUSIVE');
@@ -373,6 +375,7 @@ class Applier {
           await this.s.exec('BEGIN EXCLUSIVE');
         } catch (error) {
           if (sqliteLockResult(error)) {
+            locked = true;
             throw new DbspecApplyError('locked', '', 0, 'another connection holds the SQLite database', error);
           }
           throw error;
@@ -382,11 +385,20 @@ class Applier {
         await this.s.exec('PRAGMA legacy_alter_table = OFF');
         await f();
       },
+      // The release read must not wait a second time for the lock that another connection holds.
+      async () => { if (locked) await this.s.exec('PRAGMA busy_timeout = 0'); },
       () => this.s.exec(`PRAGMA foreign_keys = ${foreignKeys}`),
       () => this.s.exec(`PRAGMA legacy_alter_table = ${legacy}`),
       () => this.s.exec(`PRAGMA locking_mode = ${mode}`),
-      // After restoring the locking mode, one read is needed to release the exclusive lock.
-      () => this.queryValue('SELECT COUNT(*) FROM sqlite_master'),
+      // After restoring the locking mode, one read is needed to release the exclusive lock. When another connection
+      // holds the database, a lock result of the read means there is no lock to release.
+      async () => {
+        try {
+          await this.queryValue('SELECT COUNT(*) FROM sqlite_master');
+        } catch (error) {
+          if (!locked || !sqliteLockResult(error)) throw error;
+        }
+      },
       () => this.s.exec(`PRAGMA busy_timeout = ${busy}`),
     );
   }

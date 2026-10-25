@@ -401,7 +401,8 @@ struct HistoryRow {
 enum Restore {
     MySql { lock_wait: i64, row_wait: i64 },
     Postgres { lock_timeout: String },
-    Sqlite { foreign_keys: i64, legacy: i64, mode: String, busy: i64 },
+    /// locked: another connection holds the database, so this one took no lock that the release read would release.
+    Sqlite { foreign_keys: i64, legacy: i64, mode: String, busy: i64, locked: bool },
 }
 
 /// The state of one command run.
@@ -602,7 +603,7 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
                 let busy = self.integer("PRAGMA busy_timeout").await?;
                 let mode = self.text("PRAGMA locking_mode").await?;
                 self.exec(&format!("PRAGMA busy_timeout = {}", LOCK_WAIT_SECONDS * 1000)).await?;
-                let restore = Restore::Sqlite { foreign_keys, legacy, mode, busy };
+                let restore = Restore::Sqlite { foreign_keys, legacy, mode, busy, locked: false };
                 let locked = async {
                     self.exec("PRAGMA locking_mode = EXCLUSIVE").await?;
                     if let Err(e) = self.c.execute("BEGIN EXCLUSIVE").await {
@@ -618,7 +619,15 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
                 .await;
                 match locked {
                     Ok(()) => Ok(restore),
-                    Err(e) => Err(self.close(Err(e), restore).await.expect_err("a failure stays a failure")),
+                    Err(e) => {
+                        let restore = match restore {
+                            Restore::Sqlite { foreign_keys, legacy, mode, busy, .. } => {
+                                Restore::Sqlite { foreign_keys, legacy, mode, busy, locked: matches!(e, ApplyError::Locked { .. }) }
+                            }
+                            other => other,
+                        };
+                        Err(self.close(Err(e), restore).await.expect_err("a failure stays a failure"))
+                    }
                 }
             }
         }
@@ -661,16 +670,25 @@ impl<'a, C: ApplyConnection + ?Sized> Applier<'a, C> {
                 let released = self.release().await;
                 settle(result, released)
             }
-            Restore::Sqlite { foreign_keys, legacy, mode, busy } => {
+            Restore::Sqlite { foreign_keys, legacy, mode, busy, locked } => {
                 let mut result = result;
+                // The release read must not wait a second time for the lock that another connection holds.
+                if locked {
+                    let done = self.exec("PRAGMA busy_timeout = 0").await;
+                    result = settle(result, done);
+                }
                 for statement in
                     [format!("PRAGMA foreign_keys = {foreign_keys}"), format!("PRAGMA legacy_alter_table = {legacy}"), format!("PRAGMA locking_mode = {mode}")]
                 {
                     let done = self.exec(&statement).await;
                     result = settle(result, done);
                 }
-                // After reverting the locking mode, one read is needed for the exclusive lock to be released.
-                let read = self.value("SELECT COUNT(*) FROM sqlite_master").await.map(drop);
+                // After reverting the locking mode, one read is needed for the exclusive lock to be released. When
+                // another connection holds the database, a lock result of the read means there is no lock to release.
+                let read = match self.c.query_bound("SELECT COUNT(*) FROM sqlite_master", &[]).await {
+                    Err(e) if locked && sqlite_lock_result(&e) => Ok(()),
+                    other => other.map(drop).map_err(ApplyError::from),
+                };
                 result = settle(result, read);
                 let done = self.exec(&format!("PRAGMA busy_timeout = {busy}")).await;
                 settle(result, done)
@@ -1224,6 +1242,15 @@ mod sqlite_lock_result_tests {
                 "PRAGMA legacy_alter_table" => CatalogValue::Int(self.pragmas.legacy),
                 "PRAGMA busy_timeout" => CatalogValue::Int(self.pragmas.busy_timeout),
                 "PRAGMA locking_mode" => CatalogValue::Text(self.pragmas.locking_mode.clone()),
+                // Another connection holds the database after a lock result of BEGIN EXCLUSIVE, so the release read
+                // is busy.
+                "SELECT COUNT(*) FROM sqlite_master" if matches!(self.code & 0xff, 5 | 6) => {
+                    return Err(sqlx::Error::Database(Box::new(DatabaseErrorStub::new(
+                        "release read: database is locked".to_owned(),
+                        "synthetic SQLite result",
+                        Some("5".to_owned()),
+                    ))));
+                }
                 "SELECT COUNT(*) FROM sqlite_master" => CatalogValue::Int(0),
                 _ => return Err(sqlx::Error::Protocol(format!("unexpected query {query}"))),
             };
@@ -1312,6 +1339,7 @@ mod sqlite_lock_result_tests {
             };
             match (code & 0xff, error) {
                 (5 | 6, ApplyError::Locked { source: Some(source), .. }) => {
+                    // The busy release read held no lock, so it adds no cleanup error.
                     assert_eq!(source.as_database_error().and_then(|error| error.code()).as_deref(), Some(code.to_string().as_str()));
                 }
                 (5 | 6, other) => panic!("SQLite result {code} mapped to {other:?}, want Locked"),
@@ -1322,24 +1350,27 @@ mod sqlite_lock_result_tests {
             }
             assert_eq!(connection.pragmas, initial, "SQLite PRAGMAs were not restored for result {code}");
             assert!(connection.unexpected.is_empty(), "unexpected schema work after failed lock: {:?}", connection.unexpected);
-            assert_eq!(
-                connection.operations,
-                [
-                    "QUERY PRAGMA foreign_keys",
-                    "QUERY PRAGMA legacy_alter_table",
-                    "QUERY PRAGMA busy_timeout",
-                    "QUERY PRAGMA locking_mode",
-                    "PRAGMA busy_timeout = 5000",
-                    "PRAGMA locking_mode = EXCLUSIVE",
-                    "BEGIN EXCLUSIVE",
-                    "PRAGMA foreign_keys = 1",
-                    "PRAGMA legacy_alter_table = 1",
-                    "PRAGMA locking_mode = normal",
-                    "QUERY SELECT COUNT(*) FROM sqlite_master",
-                    "PRAGMA busy_timeout = 1300",
-                ],
-                "SQLite session setup or restore order changed for result {code}"
-            );
+            let mut want = vec![
+                "QUERY PRAGMA foreign_keys",
+                "QUERY PRAGMA legacy_alter_table",
+                "QUERY PRAGMA busy_timeout",
+                "QUERY PRAGMA locking_mode",
+                "PRAGMA busy_timeout = 5000",
+                "PRAGMA locking_mode = EXCLUSIVE",
+                "BEGIN EXCLUSIVE",
+            ];
+            if matches!(code & 0xff, 5 | 6) {
+                // The release read does not wait for the lock that another connection holds.
+                want.push("PRAGMA busy_timeout = 0");
+            }
+            want.extend([
+                "PRAGMA foreign_keys = 1",
+                "PRAGMA legacy_alter_table = 1",
+                "PRAGMA locking_mode = normal",
+                "QUERY SELECT COUNT(*) FROM sqlite_master",
+                "PRAGMA busy_timeout = 1300",
+            ]);
+            assert_eq!(connection.operations, want, "SQLite session setup or restore order changed for result {code}");
         }
     }
 }

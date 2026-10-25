@@ -9,7 +9,8 @@ const plans = JSON.parse(readFileSync(new URL('tests/dbspec/plans.json', root), 
   .map(testCase => parsePlan(testCase.plan.join('\n') + '\n').plan);
 assert.equal(plans.length, 1);
 
-function failingSqlite(beginError) {
+// locked: another connection holds the database, so the release read after BEGIN EXCLUSIVE is busy too.
+function failingSqlite(beginError, locked = false) {
   const pragmas = { foreign_keys: 1, legacy_alter_table: 1, busy_timeout: 1300, locking_mode: 'normal' };
   const unexpected = [];
   const operations = [];
@@ -29,6 +30,9 @@ function failingSqlite(beginError) {
     },
     prepare(sql) {
       operations.push(`QUERY ${sql}`);
+      if (locked && sql === 'SELECT COUNT(*) FROM sqlite_master') {
+        throw Object.assign(new Error('release read: database is locked'), { errcode: 5 });
+      }
       const values = {
         'PRAGMA foreign_keys': [pragmas.foreign_keys],
         'PRAGMA legacy_alter_table': [pragmas.legacy_alter_table],
@@ -42,7 +46,7 @@ function failingSqlite(beginError) {
   };
 }
 
-function assertRestored(sqlite) {
+function assertRestored(sqlite, locked = false) {
   assert.deepEqual(sqlite.pragmas, { foreign_keys: 1, legacy_alter_table: 1, busy_timeout: 1300, locking_mode: 'normal' });
   assert.deepEqual(sqlite.unexpected, []);
   assert.deepEqual(sqlite.operations, [
@@ -53,6 +57,8 @@ function assertRestored(sqlite) {
     'PRAGMA busy_timeout = 5000',
     'PRAGMA locking_mode = EXCLUSIVE',
     'BEGIN EXCLUSIVE',
+    // The release read does not wait for the lock that another connection holds.
+    ...(locked ? ['PRAGMA busy_timeout = 0'] : []),
     'PRAGMA foreign_keys = 1',
     'PRAGMA legacy_alter_table = 1',
     'PRAGMA locking_mode = normal',
@@ -64,12 +70,13 @@ function assertRestored(sqlite) {
 async function checkCode(code, locked) {
   const cause = new Error(`synthetic SQLite result ${code}`);
   cause.errcode = code;
-  const sqlite = failingSqlite(cause);
+  const sqlite = failingSqlite(cause, locked);
+  // A lock result of the release read, which held no lock, adds no cleanup error.
   await assert.rejects(applyPlans(sqlite, 'sqlite', plans, () => 0), error => {
     if (locked) return error instanceof DbspecApplyError && error.code === 'locked' && error.cause === cause;
     return error === cause;
   });
-  assertRestored(sqlite);
+  assertRestored(sqlite, locked);
 }
 
 // Requirements: PLN-89, PLN-90.

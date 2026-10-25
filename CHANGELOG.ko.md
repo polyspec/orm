@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 8a6b9f1e759a9e439f1fdde954fe9d228a53872d2ae802cd84e3f743b27fd1bd -->
+<!-- source-sha256: 6669d6b98c26e1fbce5129791f0816f71f73076c03abc10aef292e5a1772b61a -->
 # 변경 이력
 
 ## Unreleased
 
+- 다른 connection이 SQLite database를 잡고 있으면 apply, recover, rollback, finalize가 PLN-90의 5초 lock wait 한 번 뒤에 `locked`를 보고한다. 전에는 session을 되돌리는 read가 5초를 더 기다렸다. 이제 여섯 client 모두에서 그 read는 `PRAGMA busy_timeout = 0`으로 실행되고, connection이 풀 lock을 가지지 않으므로 그 read의 lock 결과는 cleanup error를 더하지 않는다(KSTD-5-89-33).
 - `make native-api-equivalence-check`가 test server environment로 실행되고 PHP model을 먼저 build하므로 UtilsNativeTest의 database case가 MySQL과 PostgreSQL에서 실행된다. contracts/check-inputs.json은 그 target이 database를 필요로 한다고 선언한다(KSTD-5-89-32).
 - `make interface-check`가 main에서 다시 통과한다: Go, Rust, TypeScript symbol record가 PostgreSQL cancellation, catalog value budget과 refusal message, 공유 test code, 순서 있는 LISTEN 전달이 record 없이 더한 member 30개를 나열한다 (KSTD-5-89-37).
 - interface checker test의 CFG-9 case가 PHP library와 extension이 cancellation을 구현한 뒤 contracts/interfaces.json이 기록하는 구현된 cancellation adapter 여섯 개를 기대하고, case와 surface 없이 implemented를 주장하는 adapter는 여전히 거부한다 (KSTD-5-89-36).

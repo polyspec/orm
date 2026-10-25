@@ -1227,6 +1227,8 @@ typedef struct {
     operation op;
     zend_long foreign_keys, legacy, busy;
     str mode;
+    /* Another connection holds the database, so this connection took no lock for the release read to release. */
+    bool locked;
 } sqlite_state;
 
 static bool sqlite_lock_result(zend_object *exception)
@@ -1264,9 +1266,16 @@ static bool sqlite_body(applier *a, void *ctx)
         if (!sqlite_lock_result(EG(exception))) {
             return false;
         }
+        s->locked = true;
         return apply_error("locked", SL(""), 0, SL("another connection holds the SQLite database"), take_exception());
     }
     return exec_sql(a, SL("COMMIT")) && exec_sql(a, SL("PRAGMA foreign_keys = OFF")) && exec_sql(a, SL("PRAGMA legacy_alter_table = OFF")) && operate(a, s->op);
+}
+
+/* The release read must not wait a second time for the lock that another connection holds. */
+static bool sqlite_no_wait(applier *a, void *ctx)
+{
+    return !((sqlite_state *)ctx)->locked || exec_sql(a, SL("PRAGMA busy_timeout = 0"));
 }
 
 static bool sqlite_foreign_keys(applier *a, void *ctx)
@@ -1284,11 +1293,18 @@ static bool sqlite_mode(applier *a, void *ctx)
     return exec_sql(a, fmt("PRAGMA locking_mode = %S", ((sqlite_state *)ctx)->mode));
 }
 
-/* The exclusive lock is released only after the locking mode is reverted and then read once. */
+/*
+ * The exclusive lock is released only after the locking mode is reverted and then read once. When another connection
+ * holds the database, a lock result of the read means there is no lock to release.
+ */
 static bool sqlite_read_once(applier *a, void *ctx)
 {
     zval v;
     if (!query_value(a, SL("SELECT COUNT(*) FROM sqlite_master"), NULL, &v)) {
+        if (((sqlite_state *)ctx)->locked && pending(php_pdo_get_exception()) && sqlite_lock_result(EG(exception))) {
+            zend_clear_exception();
+            return true;
+        }
         return false;
     }
     zval_ptr_dtor(&v);
@@ -1334,8 +1350,8 @@ static bool sqlite_session(applier *a, operation op)
     if (!ok || !exec_sql(a, fmt("PRAGMA busy_timeout = %d", (zend_long)(LOCK_WAIT_SECONDS * 1000)))) {
         return false;
     }
-    part ends[] = {{sqlite_foreign_keys, &s}, {sqlite_legacy, &s}, {sqlite_mode, &s}, {sqlite_read_once, &s}, {sqlite_busy, &s}};
-    return finish(a, (part){sqlite_body, &s}, ends, 5);
+    part ends[] = {{sqlite_no_wait, &s}, {sqlite_foreign_keys, &s}, {sqlite_legacy, &s}, {sqlite_mode, &s}, {sqlite_read_once, &s}, {sqlite_busy, &s}};
+    return finish(a, (part){sqlite_body, &s}, ends, 6);
 }
 
 /* Takes the dialect's lock, changes the session settings, runs op, then restores the settings and releases the lock at the end. */

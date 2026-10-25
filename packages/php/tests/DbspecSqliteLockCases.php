@@ -16,8 +16,9 @@ final class DbspecSqliteLockCases
             [$caught, $driver, $initial] = self::applyFailure($code);
             $test->assertInstanceOf(\Polyspec\Orm\Dbspec\ApplyError::class, $caught);
             $test->assertSame('locked', $caught->code_);
+            // A lock result of the release read, which held no lock, adds no cleanup error.
             $test->assertSame($driver->failure(), $caught->getPrevious());
-            self::assertRestored($test, $driver, $initial, $code);
+            self::assertRestored($test, $driver, $initial, $code, true);
         }
     }
 
@@ -53,7 +54,7 @@ final class DbspecSqliteLockCases
         } else {
             $cause = $error;
         }
-        $driver = new FailingSqliteLockPdo($cause);
+        $driver = new FailingSqliteLockPdo($cause, is_int($error) && in_array($error & 0xff, [5, 6], true));
         $initial = $driver->pragmas;
         try {
             PlanApply::apply(
@@ -74,6 +75,7 @@ final class DbspecSqliteLockCases
         FailingSqliteLockPdo $driver,
         array $initial,
         mixed $case,
+        bool $locked = false,
     ): void {
         $label = json_encode($case, JSON_THROW_ON_ERROR);
         $test->assertSame($initial, $driver->pragmas, "SQLite PRAGMAs were not restored for result $label");
@@ -87,6 +89,8 @@ final class DbspecSqliteLockCases
                 'PRAGMA busy_timeout = 5000',
                 'PRAGMA locking_mode = EXCLUSIVE',
                 'BEGIN EXCLUSIVE',
+                // The release read does not wait for the lock that another connection holds.
+                ...($locked ? ['PRAGMA busy_timeout = 0'] : []),
                 'PRAGMA foreign_keys = 1',
                 'PRAGMA legacy_alter_table = 1',
                 'PRAGMA locking_mode = normal',

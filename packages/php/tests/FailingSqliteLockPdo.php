@@ -22,7 +22,8 @@ final class FailingSqliteLockPdo extends PDO
     /** @var list<string> */
     public array $operations = [];
 
-    public function __construct(private PDOException $failure)
+    /** $locked: another connection holds the database, so the release read after BEGIN EXCLUSIVE is busy too. */
+    public function __construct(private PDOException $failure, private bool $locked = false)
     {
     }
 
@@ -39,6 +40,11 @@ final class FailingSqliteLockPdo extends PDO
     public function prepare(string $query, array $options = []): \PDOStatement|false
     {
         $this->operations[] = "QUERY $query";
+        if ($this->locked && $query === 'SELECT COUNT(*) FROM sqlite_master') {
+            $busy = new PDOException('release read: database is locked');
+            $busy->errorInfo = ['HY000', 5, 'database is locked'];
+            throw $busy;
+        }
         $name = match ($query) {
             'PRAGMA foreign_keys' => 'foreign_keys',
             'PRAGMA legacy_alter_table' => 'legacy_alter_table',
