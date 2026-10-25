@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- T238: remove the obsolete worktree-prune import and prune-only cases; retain the isolated WORKTREE_STOP declaration test (1/1 passed).
+
 - KSTD-5-89-4: classify the remaining ten repository tool sources; `make rebuild-check` passes without excluding a selected tool.
 
 - KSTD-7-1: the PHP extension implements schema installation, model generation and the interface contract. At PHP 8.4.26, its schema-install owner passed the existing, partial and external-document cases twice each on MySQL, PostgreSQL and SQLite (18 database-case executions); every per-database before/after state digest matched. The model-generation and interface-symbol native owner cases each passed twice. The feature-unit-check component results passed, including the corrected PHP scan-path owner case (1/1).

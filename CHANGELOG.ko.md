@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: faca8b2ccaeb5c460d739487f04ca5294f3646e0f55437a86fffa814d6374bfe -->
+<!-- source-sha256: f80fb52834c4c3f4ceaae0a10f15e803b57ef2eaa0103f23a4e894045de869fd -->
 # 변경 이력
 
 ## Unreleased
+
+- T238: 오래된 worktree-prune import와 prune 전용 검사를 제거했다. 격리된 WORKTREE_STOP 선언 검사는 유지하며 1/1 통과했다.
 
 - KSTD-5-89-4: 남은 repository tool source 10개의 분류를 선언했다. 선택된 tool을 제외하지 않고 `make rebuild-check`가 통과한다.
 
