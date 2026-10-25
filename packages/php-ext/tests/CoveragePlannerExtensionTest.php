@@ -406,6 +406,35 @@ final class CoveragePlannerExtensionTest extends TestCase
 
     // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- feature IDs require the test method to preserve underscores.
     // Requirements: PRT-78.
+    // Requirements: PRT-78.
+    // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- feature IDs require the test method to preserve underscores.
+    public function test_planner_scalar_subquery_aggregate_types_remain_i64_and_f64(): void
+    {
+        require_once dirname(__DIR__, 2) . '/php/tests/CoveragePlannerTest.php';
+        Assert::assertTrue((new ReflectionClass(Engine::class))->isInternal());
+        Assert::assertTrue((new ReflectionClass(Planner::class))->isInternal());
+        Assert::assertTrue((new ReflectionClass(Validator::class))->isInternal());
+
+        [$model, $baseRequest] = plannerScalarColumnSubqueryRequest(dirname(__DIR__, 3));
+        foreach ([['count', '', 'i64'], ['avg', 'read_count', 'f64']] as [$aggregate, $column, $expected]) {
+            $request = $baseRequest;
+            $request['columns']['sub']['first_author']['agg'] = $aggregate;
+            $request['columns']['sub']['first_author']['column'] = $column;
+            unset(
+                $request['columns']['sub']['first_author']['query']['limit'],
+                $request['columns']['sub']['first_author']['query']['order']
+            );
+            (new Validator($model))->validate($request);
+            $plan = (new Engine($model, 'sqlite', 8))->plan($request);
+            $output = array_values(array_filter(
+                $plan['steps'][0]['assemble']['columns'],
+                static fn(array $col): bool => $col['name'] === 'first_author'
+            ));
+            Assert::assertCount(1, $output, "$aggregate output metadata");
+            Assert::assertSame($expected, $output[0]['type'], "$aggregate output type");
+        }
+    }
+
     // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- feature IDs require the test method to preserve underscores.
     public function test_planner_scalar_column_subquery(): void
     {

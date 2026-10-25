@@ -84,6 +84,21 @@ function plannerCase(string $root, array $fixture, string $id): void
     }
 }
 
+/** Returns the validated planner fixture request used by scalar-subquery coverage.
+ * @return array{RuntimeModel, array<string, mixed>}
+ */
+function plannerScalarColumnSubqueryRequest(string $root): array
+{
+    $fixture = coverageJson("$root/contracts/fixtures/planner.json");
+    $found = array_values(array_filter(
+        $fixture['cases'],
+        static fn(array $case): bool => $case['id'] === 'planner_scalar_column_subquery'
+    ));
+    Assert::assertCount(1, $found, 'planner.json has one planner_scalar_column_subquery case');
+    $model = RuntimeModel::build(RuntimeModel::files(["$root/{$found[0]['schema']}"]));
+    return [$model, ['manifest_hash' => $model->manifestHash] + $found[0]['input']];
+}
+
 /** Validates the request of a param_uses case and compares the uses of each parameter. */
 function paramUsesCase(string $root, array $fixture, string $id): void
 {
@@ -121,14 +136,7 @@ final class CoveragePlannerTest extends TestCase
     /** @return array{RuntimeModel, array<string, mixed>} */
     private function scalarColumnSubqueryRequest(): array
     {
-        $root = dirname(__DIR__, 3);
-        $fixture = coverageJson("$root/contracts/fixtures/planner.json");
-        $case = array_values(array_filter(
-            $fixture['cases'],
-            static fn(array $c): bool => $c['id'] === 'planner_scalar_column_subquery'
-        ))[0];
-        $model = RuntimeModel::build(RuntimeModel::files(["$root/{$case['schema']}"]));
-        return [$model, ['manifest_hash' => $model->manifestHash] + $case['input']];
+        return plannerScalarColumnSubqueryRequest(dirname(__DIR__, 3));
     }
 
     public function testPlannerStatement(): void

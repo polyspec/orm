@@ -692,7 +692,8 @@
       "inputs": [
         "Makefile",
         "packages/php-ext/src/planner.c",
-        "packages/php/tests/BlindIndexSourcePlannerTest.php"
+        "packages/php/tests/BlindIndexSourcePlannerTest.php",
+        "packages/php-ext/tests/BlindIndexSourceNativeTest.php"
       ]
     },
     "blind-index-source-ts-check": {
@@ -3550,6 +3551,7 @@
         "packages/php-ext/tests/SchemaUtilsNativeTest.php",
         "packages/php-ext/tests/UtilsNativeTest.php",
         "packages/php-ext/tests/NativeTestEventLog.php",
+        "packages/php/tests/WasInsertedCases.php",
         "packages/php-ext/tests/bootstrap.php",
         "packages/php/tests/bootstrap.php",
         "packages/php-ext/tests/AesUtilsNativeTest.php",

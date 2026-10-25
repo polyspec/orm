@@ -1,3 +1,4 @@
+import copy
 import json
 import unittest
 
@@ -51,6 +52,41 @@ class ScalarSubqueryTypeTest(unittest.TestCase):
                 assert caught is not None
                 self.assertEqual(caught.code, "INTERNAL")
                 self.assertIn("author.missing_column", str(caught))
+
+    def test_scalar_subquery_aggregate_types_remain_i64_and_f64(self):
+        fixture = json.loads(
+            (REPOSITORY_ROOT / "contracts/fixtures/planner.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        case = next(
+            case
+            for case in fixture["cases"]
+            if case["id"] == "planner_scalar_column_subquery"
+        )
+        schema = (REPOSITORY_ROOT / case["schema"]).read_text(encoding="utf-8")
+        model = model_of_documents(parse_document_set([schema]))
+        for aggregate, column, expected in (
+            ("count", "", "i64"),
+            ("avg", "read_count", "f64"),
+        ):
+            with self.subTest(aggregate=aggregate):
+                request = copy.deepcopy(case["input"])
+                request["manifest_hash"] = model.manifest_hash
+                selected = request["columns"]["sub"]["first_author"]
+                selected["agg"] = aggregate
+                selected["column"] = column
+                selected["query"].pop("limit", None)
+                selected["query"].pop("order", None)
+                validate(model, request)
+                plan = Planner(model, dialect_of("sqlite")()).compile(request)
+                output = next(
+                    item
+                    for item in plan["steps"][0]["assemble"]["columns"]
+                    if item["name"] == "first_author"
+                )
+                self.assertEqual(output["type"], expected)
+
 
 
 if __name__ == "__main__":

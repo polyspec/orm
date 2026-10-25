@@ -11,8 +11,7 @@ use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 
-#[Small]
-final class BlindIndexSourcePlannerTest extends TestCase
+trait BlindIndexSourcePlannerInput
 {
     private const SCHEMA = <<<'DBSPEC'
 dbspec 1 shared
@@ -96,6 +95,13 @@ DBSPEC;
             $this->assignment('name', 1),
         ], $nParams, $extra);
     }
+
+}
+
+#[Small]
+final class BlindIndexSourcePlannerTest extends TestCase
+{
+    use BlindIndexSourcePlannerInput;
 
     public function testMultiRowIndexUsesTheAssignedSourceColumnPosition(): void
     {

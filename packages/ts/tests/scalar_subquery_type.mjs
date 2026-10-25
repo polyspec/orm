@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { parse } from '@polyspec/ordered-json';
@@ -24,18 +25,20 @@ for (const dialect of ['mysql', 'postgres', 'sqlite']) {
   assert.throws(() => engine.planner.compile(request), error => isInternalColumnError(error, 'author', 'missing_column'));
 }
 
-for (const [agg, column, expected] of [['count', '', 'i64'], ['avg', 'read_count', 'f64']]) {
-  const control = structuredClone(scalar.input);
-  control.columns.sub.first_author.agg = agg;
-  control.columns.sub.first_author.column = column;
-  delete control.columns.sub.first_author.query.limit;
-  control.columns.sub.first_author.query.order = [];
-  const valid = { ...control, manifest_hash: manifest.manifestHash };
-  validate(model, valid);
-  const engine = new Engine(model, 'sqlite');
-  const plan = engine.planner.compile(valid);
-  assert.equal(plan.steps[0].assemble.columns.find(({ name }) => name === 'first_author')?.type, expected);
-}
+caseTest('planner_scalar_subquery_aggregate_types', COMPUTE, () => {
+  for (const [agg, column, expected] of [['count', '', 'i64'], ['avg', 'read_count', 'f64']]) {
+    const control = structuredClone(scalar.input);
+    control.columns.sub.first_author.agg = agg;
+    control.columns.sub.first_author.column = column;
+    delete control.columns.sub.first_author.query.limit;
+    control.columns.sub.first_author.query.order = [];
+    const valid = { ...control, manifest_hash: manifest.manifestHash };
+    validate(model, valid);
+    const engine = new Engine(model, 'sqlite');
+    const plan = engine.planner.compile(valid);
+    assert.equal(plan.steps[0].assemble.columns.find(({ name }) => name === 'first_author')?.type, expected);
+  }
+});
 
 const markdownRequest = { ...structuredClone(scalar.input), manifest_hash: manifest.manifestHash };
 const db = markdownReadDatabase(model, {

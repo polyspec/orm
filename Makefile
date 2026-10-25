@@ -942,14 +942,14 @@ collection-php-extension-check: php-vendor-check
 	env ORM_PHP_MODE=extension ORM_PHP_DYNAMIC_MODULES='$(ORM_PHP_DYNAMIC_MODULES)' $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" --without-library packages/php -- --configuration packages/php-ext/phpunit.xml.dist --filter 'testDeclarations|testClient|testRequiredModules' packages/php-ext/tests/DeclarationsTest.php; \
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/CollectionIdentityTest.php
 
-# The native PHP extension planner is tested with the same focused case through a temporary build.
+# The native PHP extension planner runs the same blind-index source cases as the PHP client.
 blind-index-source-php-extension-check: php-vendor-check
 	@set -eu; \
 	run_dir="$(abspath .runtime/run)/blind-index-source-php-extension-check-$$PPID"; \
 	trap 'rm -rf "$$run_dir"' EXIT; \
 	mkdir -p "$$run_dir/php-extension"; \
 	$(RUN_LONG) php-extension-build -- sh packages/php-ext/scripts/build.sh "$$run_dir/php-extension/polyspec_orm.so"; \
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" --without-library packages/php -- --configuration packages/php/phpunit.xml.dist packages/php/tests/BlindIndexSourcePlannerTest.php
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension "$$run_dir/php-extension/polyspec_orm.so" --without-library packages/php -- --configuration packages/php-ext/phpunit.xml.dist packages/php-ext/tests/BlindIndexSourceNativeTest.php
 
 # Runs the native Model helper surface cases against a fresh extension build; the source-library comparison is a separate PHPUnit run.
 model-types-php-extension-check: php-vendor-check
@@ -1758,9 +1758,9 @@ group-rows-db-go:
 # group-rows-db-php runs GroupRowsDbTest, which reads BENCH_MYSQL_DSN, BENCH_POSTGRES_DSN and BENCH_SQLITE_DSN.
 group-rows-db-php: php-vendor-check
 	env ORM_PHP_MODE=library $(RUN_TESTS) phpunit -- --configuration packages/php/phpunit.xml.dist packages/php/tests/GroupRowsDbTest.php
-# group-rows-db-php-extension runs GroupRowsDbTest with the PHP extension loaded, on BENCH_MYSQL_DSN, BENCH_POSTGRES_DSN and BENCH_SQLITE_DSN.
+# group-rows-db-php-extension runs the extension-owned native group-row case on BENCH_MYSQL_DSN, BENCH_POSTGRES_DSN and BENCH_SQLITE_DSN.
 group-rows-db-php-extension: php-vendor-check dbspec-php-extension-check/prepare
-	$(PHP_EXTENSION_TESTS) packages/php/tests/GroupRowsDbTest.php
+	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/GroupRowsDbNativeTest.php
 # group-rows-db-rust runs coverage_group_rows_db on BENCH_SQLITE_DSN.
 group-rows-db-rust:
 	$(MAKE) -s feature-rust-database FEATURE_CRATE=packages/rust/tests FEATURE_CARGO_TARGET='--test integration' FEATURE_DATABASE=sqlite FEATURE_DSN_ENV=BENCH_SQLITE_DSN FEATURE_TEST=coverage_group_rows_db::coverage_group_rows_db
@@ -1820,8 +1820,8 @@ conformance-python-models: python-venv-check
 conformance-check/%: RUN_DIR = $(abspath .runtime/run)/conformance-check-$$PPID
 # VECTOR is a space-separated list of vector names to run; each name is given to the check run as --vector (empty means all vectors).
 # If RECORD=1, the diagnostic output (.run-*) of each database whose comparison failed is recorded with check record as that database's expected value,
-# for the vectors that VECTOR names or, without VECTOR, for every vector. A vector that makes a connection's first use of a statement that an earlier
-# vector makes in a full run (SQLite's orm__row_lock table) records it too when run alone; its expectation drops that statement (tests/conformance/README.md).
+# for the vectors that VECTOR names or, without VECTOR, for every vector. Each runner commits an empty transaction before subscribing to statement events,
+# so connection first-use setup (including SQLite's orm__row_lock table creation) happens before vector recording (tests/conformance/README.md).
 # record writes only when all six outputs match, and fails if it cannot record, or if the runner fails and leaves no diagnostic output.
 # After recording, the same vector runs again and is compared with the new expected value. The state contracts of contracts/interfaces.json
 # are checked for the vectors the run made: with VECTOR, the contracts of the named vectors only.
@@ -2915,7 +2915,7 @@ python-package-entry-check: python-venv-check
 # fuzz-check is a long-running task that runs the fuzzing-instrumented build and one second of fuzzing (-fuzztime), so
 # it runs each command with no deadline under RUN_LONG. -fuzztime sets the length of fuzzing.
 
-NATIVE_API_EQUIVALENCE_FILTER ?= testAddTablesAndColumnsRejectsExternalDriftWithoutChangingDatabase|testExistsEscapesUnderscoreInSqliteSchemaName|testAddTablesAndColumnsRollsBackWithoutCreatingInternalLockTable|testSchemaMutationMethodsRejectObjectsThatAreNotSchema|testWasInsertedChecksTransactionBeforeArguments|testRotateChecksKeyringTypeBeforeModelMetadata|testOrmConnectionFactoryRejectsAConfigThatIsNotConfigBeforeOpeningSqlite|testConnectSchemaChecksSchemaTypeBeforeConfigTypeAndDsn|testBeginSubscriberFailureRollsBackAnOpenedSqliteTransaction|testSqliteRestoreFailureKeepsThePrimaryFailureAsPrevious|testBeginInspectionFailureReplacesThePrimaryAndRestoresForeignKeys
+NATIVE_API_EQUIVALENCE_FILTER ?= testAddTablesAndColumnsRejectsExternalDriftWithoutChangingDatabase|testExistsEscapesUnderscoreInSqliteSchemaName|testAddTablesAndColumnsRollsBackWithoutCreatingInternalLockTable|testSchemaMutationMethodsRejectObjectsThatAreNotSchema|testWasInsertedChecksTransactionBeforeArguments|testWasInsertedTracksGeneratedRowsThroughNativeUtils|testRotateChecksKeyringTypeBeforeModelMetadata|testOrmConnectionFactoryRejectsAConfigThatIsNotConfigBeforeOpeningSqlite|testConnectSchemaChecksSchemaTypeBeforeConfigTypeAndDsn|testBeginSubscriberFailureRollsBackAnOpenedSqliteTransaction|testSqliteRestoreFailureKeepsThePrimaryFailureAsPrevious|testBeginInspectionFailureReplacesThePrimaryAndRestoresForeignKeys
 native-api-equivalence-check: php-vendor-check
 	@set -eu; \
 	run_dir="$(abspath .runtime/run)/schema-utils-equivalence-$$PPID"; \
