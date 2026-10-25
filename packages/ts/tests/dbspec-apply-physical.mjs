@@ -16,6 +16,7 @@
 import { caseTest } from '../../../tests/testcase.mts';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import pg from 'pg';
 import { DbspecApplyError, applyPlans, dbspecManifest, finalizePlans, introspectDbspec, parsePlan, planSteps, recoverPlans, rollbackPlans } from '../dist/dbspec/index.js';
 import { createDbspecPhysicalDatabaseRunner } from './dbspec-physical-database.mjs';
 
