@@ -35,45 +35,70 @@ function withTemp<T>(body: (dir: string) => T): T {
   }
 }
 
-caseTest('a common record rejects recaptured native drift', COMPUTE, () => {
-  const records: ContractRecord[] = [
-    { id: 'Query', native: { go: 'ir.go::Query' }, fields: { entity: 'text', group: 'Group' } },
-    { id: 'Group', native: { go: 'ir.go::Group' }, fields: { items: 'list<text>' } },
-  ];
-  const symbols: Symbols = symbolsOf({ 'ir.go::Query#wire': '{"entity":"text","group":"Group"}', 'ir.go::Group#wire': '{"items":"list<text>"}' });
-  assert.deepEqual(checkRecords('go', symbols, records), []);
-  for (const changed of ['{}', '{"items":"text"}', '{"items":"list<integer>"}', '{"items":"list<text>","controller":"text"}']) {
-    symbols['ir.go::Group#wire'] = mark(changed);
-    assert.notDeepEqual(checkRecords('go', symbols, records), [], `nested drift accepted even with recaptured native symbol snapshot ${changed}`);
+caseTest('a common record rejects recaptured native drift for every runtime', COMPUTE, () => {
+  const languages = ['go', 'php', 'rust', 'typescript', 'python'] as const;
+  for (const lang of languages) {
+    const query = `${lang}::Query`, group = `${lang}::Group`;
+    const records: ContractRecord[] = [
+      { id: 'Query', native: { [lang]: query }, fields: { entity: 'text', group: 'Group' } },
+      { id: 'Group', native: { [lang]: group }, fields: { items: 'list<text>' } },
+    ];
+    const fixture = (groupWire = '{"items":"list<text>"}'): Symbols => symbolsOf({
+      [`${query}#wire`]: '{"entity":"text","group":"Group"}',
+      [`${group}#wire`]: groupWire,
+    });
+    assert.deepEqual(checkRecords(lang, fixture(), records), [], `${lang} common record`);
+    for (const changed of ['{}', '{"items":"integer"}', '{"items":"list<integer>"}', '{"items":"list<text>","controller":"text"}']) {
+      assert.notDeepEqual(
+        checkRecords(lang, fixture(changed), records),
+        [],
+        `${lang} accepted recaptured native drift ${changed}`
+      );
+    }
+    const missing = fixture();
+    delete missing[`${group}#wire`];
+    assert.notDeepEqual(checkRecords(lang, missing, records), [], `${lang} missing record`);
+    const unmapped: ContractRecord[] = [
+      { id: 'Query', native: { [lang]: query }, fields: { entity: 'text', group: 'Group' } },
+      { id: 'Group', native: {}, fields: { items: 'list<text>' } },
+    ];
+    assert.notDeepEqual(checkRecords(lang, fixture(), unmapped), [], `${lang} missing record mapping`);
   }
 });
 
 caseTest('prohibited symbols use the name forms of each language', COMPUTE, () => {
-  for (const symbols of [
-    { 'Query.MultiStatement': 'func(bool) Query' },
-    { 'Query::multi_statement': 'public function multi_statement(bool): Query' },
-    { 'Query.multiStatement': 'multiStatement(value: boolean): Query' },
-  ]) {
-    assert.equal(checkProhibitedSymbols('test', symbolsOf(symbols), ['multi_statement']).length, 1);
+  for (const [runtime, symbols] of [
+    ['go', { 'Query.MultiStatement': 'func(bool) Query' }],
+    ['php', { 'Query::multi_statement': 'public function multi_statement(bool): Query' }],
+    ['php-extension', { 'Query::multi_statement': 'public function multi_statement(bool): Query' }],
+    ['rust', { 'Query::multi_statement': 'fn multi_statement(bool) -> Query' }],
+    ['typescript', { 'Query.multiStatement': 'multiStatement(value: boolean): Query' }],
+    ['python', { 'Query.multi_statement': 'def multi_statement(value: bool) -> Query' }],
+  ] as const) {
+    assert.equal(checkProhibitedSymbols(runtime, symbolsOf(symbols), ['multi_statement']).length, 1, `${runtime} prohibited name`);
   }
   assert.deepEqual(checkProhibitedSymbols('test', symbolsOf({ 'Query.stream': 'func(visitor) StreamResult' }), ['multi_statement']), [], 'unrelated symbol rejected');
 });
 
 caseTest('attempted multi_statement calls fail the interface validation', COMPUTE, () => {
-  for (const [language, suffix, call, safe] of [
-    ['go', '.go', 'query.MultiStatement(true)', 'query.Gets()'],
-    ['php', '.php', '$query->multi_statement(true)', '$query->gets()'],
-    ['rust', '.rs', 'query.multi_statement(true)', 'query.gets()'],
-    ['typescript', '.ts', 'query.multiStatement(true)', 'query.gets()'],
+  for (const [runtime, syntax, suffix, call, safe] of [
+    ['go', 'go', '.go', 'query.MultiStatement(true)', 'query.Gets()'],
+    ['php', 'php', '.php', '$query->multi_statement(true)', '$query->gets()'],
+    ['rust', 'rust', '.rs', 'query.multi_statement(true)', 'query.gets()'],
+    ['typescript', 'typescript', '.ts', 'query.multiStatement(true)', 'query.gets()'],
+    ['python', 'python', '.py', 'query.multi_statement(True)', 'query.gets()'],
+    ['php-extension', 'php', '.php', '$query->multi_statement(true)', '$query->gets()'],
   ] as const) {
     withTemp(dir => {
       const path = join(dir, `client${suffix}`);
       writeFileSync(path, safe, { mode: 0o600 });
-      assert.deepEqual(checkCallsInRoots(dir, language, ['.']), [], `${language} safe call`);
+      assert.deepEqual(checkCallsInRoots(dir, syntax, ['.']), [], `${runtime} safe call using ${syntax} syntax`);
       writeFileSync(path, call, { mode: 0o600 });
-      assert.equal(checkCallsInRoots(dir, language, ['.']).length, 1, `${language} prohibited call`);
+      assert.equal(checkCallsInRoots(dir, syntax, ['.']).length, 1, `${runtime} prohibited call using ${syntax} syntax`);
     });
   }
+  const manifest = readManifest(join(root, 'contracts/interfaces.json'));
+  assert.equal(manifest.extensions?.['php-extension']?.syntax, 'php', 'the extension scan reuses the PHP syntax adapter');
 });
 
 caseTest('PHP relative types resolve to their classes', PROCESS, async ({ signal }) => {
