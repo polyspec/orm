@@ -64,12 +64,25 @@ class CoverageDsnTest extends TestCase
         $method->invoke(null, '3.46.0');
         $method->invoke(null, '3.100.0');
 
-        $path = tempnam(sys_get_temp_dir(), 'orm-sqlite-version-');
+        self::onSqliteFile('orm-sqlite-version-', static function (\Polyspec\Orm\Db $db): void {
+            self::assertSame('sqlite', $db->driver());
+        });
+    }
+
+    /**
+     * Runs $body on a connection to a new SQLite file whose name starts with $prefix; the connection closes, and the
+     * file and its journals are removed afterwards.
+     *
+     * @param \Closure(\Polyspec\Orm\Db): void $body
+     */
+    protected static function onSqliteFile(string $prefix, \Closure $body): void
+    {
+        $path = tempnam(sys_get_temp_dir(), $prefix);
         self::assertNotFalse($path);
         $db = null;
         try {
             $db = Orm::connect('sqlite://' . $path, new Config());
-            self::assertSame('sqlite', $db->driver());
+            $body($db);
         } finally {
             $db?->close();
             foreach ([$path, $path . '-journal', $path . '-wal', $path . '-shm'] as $file) {

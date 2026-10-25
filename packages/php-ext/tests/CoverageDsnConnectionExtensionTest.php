@@ -7,7 +7,6 @@ namespace Polyspec\Orm\Tests;
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\Medium;
 use Polyspec\Orm\Code;
-use Polyspec\Orm\Config;
 use Polyspec\Orm\Db;
 use Polyspec\Orm\OrmException;
 use Polyspec\Orm\Orm;
@@ -33,12 +32,7 @@ final class CoverageDsnConnectionExtensionTest extends CoverageDsnTest
 
     public function testNativeSqliteConnectionQueriesAndCloses(): void
     {
-        $path = tempnam(sys_get_temp_dir(), 'orm-lifecycle-dsn-');
-        self::assertNotFalse($path);
-
-        $db = null;
-        try {
-            $db = Orm::connect('sqlite://' . $path, new Config());
+        self::onSqliteFile('orm-lifecycle-dsn-', static function (Db $db): void {
             self::assertTrue((new ReflectionMethod(Db::class, 'pdo'))->isInternal());
             self::assertTrue((new ReflectionMethod(Db::class, 'close'))->isInternal());
             self::assertSame('sqlite', $db->driver());
@@ -51,13 +45,6 @@ final class CoverageDsnConnectionExtensionTest extends CoverageDsnTest
             } catch (OrmException $error) {
                 self::assertSame(Code::CONFIG, $error->code_);
             }
-        } finally {
-            $db?->close();
-            foreach ([$path, $path . '-journal', $path . '-wal', $path . '-shm'] as $file) {
-                if (is_file($file)) {
-                    unlink($file);
-                }
-            }
-        }
+        });
     }
 }
