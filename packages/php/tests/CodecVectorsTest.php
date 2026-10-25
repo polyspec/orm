@@ -192,6 +192,10 @@ final class CodecVectorsTest extends TestCase
     /** @return iterable<string, array{Closure, string}> */
     public static function errors(): iterable
     {
+        yield 'serialized object is unsupported' => [
+            fn() => Codec::decode(['serialize'], 'O:8:"stdClass":0:{}'),
+            Code::CODEC_UNSUPPORTED,
+        ];
         yield 'duplicate YAML key' => [fn() => Codec::decode(['yaml'], "a: 1\na: 2\n"), Code::CODEC_DECODE];
         yield 'multiple YAML documents' => [
             fn() => Codec::decode(['yaml'], "---\na: 1\n---\na: 2\n"),
@@ -216,6 +220,7 @@ final class CodecVectorsTest extends TestCase
         ];
     }
 
+    // Requirements: COD-34.
     #[DataProvider('errors')]
     public function testPhpError(Closure $operation, string $code): void
     {

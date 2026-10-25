@@ -101,7 +101,7 @@ func TestAESVersionCodesAreTheSameInEveryClient(t *testing.T) {
 	}
 }
 
-// Requirements: COD-44.
+// Requirements: COD-44, COD-56.
 func TestAESReadWithoutVersionColumnIsInternal(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	enc, err := HostEncode("email@example.test", []string{"aes", "hex"}, "k")
@@ -117,7 +117,45 @@ func TestAESReadWithoutVersionColumnIsInternal(t *testing.T) {
 	}
 }
 
-// Requirements: COD-44.
+// Requirements: COD-48.
+func TestAESReadRowWithoutVersionCellIsInternal(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	enc, err := HostEncode("email@example.test", []string{"aes", "hex"}, "k")
+	if err != nil {
+		t.Fatal(err)
+	}
+	step, si := aesReadStep()
+	err = decodeSelectedRow([]any{enc}, si, step, mustAESKeyring(t, map[int32]string{1: "k"}, 1))
+	if got := ErrorCode(err); got != CodeInternal {
+		t.Fatalf("selected AES row without its version cell: code = %q, want %s (err %v)", got, CodeInternal, err)
+	}
+}
+
+// Requirements: COD-49, COD-50, COD-51, COD-52, COD-53.
+func TestAESReadStoredVersionCodes(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	cases := []struct {
+		name    string
+		version any
+		want    string
+	}{
+		{"non-integer text", "abc", CodeCodecDecode},
+		{"zero", int32(0), CodeCodecDecode},
+		{"above i32", int64(1) << 31, CodeCodecDecode},
+		{"undeclared integer", int32(9), CodeConfig},
+		{"positive integer text", "1", ""},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			err := readAESWithStoredVersion(t, "old-key", map[int32]string{1: "old-key", 2: "new-key"}, 2, c.version)
+			if got := ErrorCode(err); got != c.want {
+				t.Fatalf("stored version %#v: code = %q, want %s (err %v)", c.version, got, c.want, err)
+			}
+		})
+	}
+}
+
+// Requirements: COD-44, COD-57.
 func TestAESReadKeyringLacksStoredVersionIsConfig(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	err := readAESWithStoredVersion(t, "single-key", map[int32]string{1: "old-key", 2: "new-key"}, 2, int32(9))
@@ -126,7 +164,7 @@ func TestAESReadKeyringLacksStoredVersionIsConfig(t *testing.T) {
 	}
 }
 
-// Requirements: COD-44.
+// Requirements: COD-44, COD-58.
 func TestAESReadNullVersionWithAESValueIsCodecDecode(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	err := readAESWithStoredVersion(t, "new-key", map[int32]string{1: "old-key", 2: "new-key"}, 2, nil)
@@ -135,7 +173,7 @@ func TestAESReadNullVersionWithAESValueIsCodecDecode(t *testing.T) {
 	}
 }
 
-// Requirements: COD-44.
+// Requirements: COD-44, COD-59.
 func TestAESReadNullAESWithNullVersionStaysNull(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	keys := mustAESKeyring(t, map[int32]string{1: "old-key", 2: "new-key"}, 2)
@@ -183,7 +221,7 @@ func readAESWithStoredVersion(t *testing.T, writeKey string, keys map[int32]stri
 	return decodeSelectedRow([]any{enc, version}, scan, step, keyring)
 }
 
-// Requirements: COD-44.
+// Requirements: COD-44, COD-60.
 func TestRotateAESRowLeavesNullAESUnchanged(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	keys := mustAESKeyring(t, map[int32]string{1: "old-key", 2: "new-key"}, 2)

@@ -341,7 +341,16 @@ pub fn decode_styled(asm: &crate::plan::Assemble, data: &mut [Vec<Val>], aes_key
 
 /// The key version a row stores in its version column: a positive 32-bit integer, otherwise CODEC_DECODE (COD-44).
 fn aes_row_version(row: &[Val], index: usize) -> Result<i32> {
-    let stored = row[index].as_i64()?;
+    let value = row.get(index).ok_or_else(|| Error::internal(format!("AES version cell index {index} is absent from the selected row")))?;
+    let stored = match value {
+        Val::Str(text) if !text.is_empty() && text.bytes().all(|byte| byte.is_ascii_digit()) => {
+            text.parse::<i64>().map_err(|error| Error::Engine {
+                code: crate::codes::CODEC_DECODE.into(),
+                msg: format!("aes version {text:?} is not a positive 32-bit integer: {error}"),
+            })?
+        }
+        _ => value.as_i64()?,
+    };
     let version = i32::try_from(stored).map_err(|error| Error::Engine {
         code: crate::codes::CODEC_DECODE.into(),
         msg: format!("aes version {stored} is not a positive 32-bit integer: {error}"),
@@ -416,7 +425,7 @@ mod exact_i64_tests {
     use crate::collection::GroupRow;
     use crate::value::Val;
 
-    // Requirements: PRT-69. The grouped row serializes the selected i64 as an exact JSON number.
+    // Requirements: PRT-69, INT-1. The grouped row serializes the selected i64 as an exact JSON number.
     #[test]
     fn grouped_result_preserves_exact_i64_value() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);

@@ -93,7 +93,36 @@ fn aes_read_version_codes_match_the_other_clients() {
     }
 }
 
-// Requirements: COD-44.
+// Requirements: COD-49, COD-50, COD-51, COD-52, COD-53.
+#[test]
+fn aes_read_stored_version_codes() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let asm = aes_read_assemble();
+    let keys = keys(&[(1, "old-key"), (2, "new-key")]);
+    let valid_cipher = polyspec_orm::codec::host_encode(
+        &polyspec_orm::Param::Str("value".into()),
+        &["aes".into(), "hex".into()],
+        "old-key",
+    )
+    .expect("valid AES fixture");
+    let polyspec_orm::Param::Str(valid_cipher) = valid_cipher else {
+        panic!("AES hex encoding returns text");
+    };
+    let cases = [
+        ("non-integer text", Val::Str("abc".into()), "CODEC_DECODE"),
+        ("zero", Val::I64(0), "CODEC_DECODE"),
+        ("above i32", Val::I64(2_147_483_648), "CODEC_DECODE"),
+        ("undeclared integer", Val::I64(9), "CONFIG"),
+        ("positive integer text", Val::Str("1".into()), ""),
+    ];
+    for (name, version, want) in cases {
+        let value = if want.is_empty() { valid_cipher.clone() } else { "00".into() };
+        let got = decode_error_code(&asm, vec![Val::Str(value), version.clone()], &keys);
+        assert_eq!(got, want, "{name}: stored version {version:?}");
+    }
+}
+
+// Requirements: COD-44, COD-56.
 #[test]
 fn aes_read_plan_without_version_column_is_internal() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -103,7 +132,17 @@ fn aes_read_plan_without_version_column_is_internal() {
     assert_eq!(got, "INTERNAL");
 }
 
-// Requirements: COD-44.
+// Requirements: COD-48.
+#[test]
+fn aes_read_row_without_version_cell_is_internal() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let asm = aes_read_assemble();
+    let keys = keys(&[(1, "old-key"), (2, "new-key")]);
+    let got = decode_error_code(&asm, vec![Val::Str("00".into())], &keys);
+    assert_eq!(got, "INTERNAL");
+}
+
+// Requirements: COD-44, COD-57.
 #[test]
 fn aes_read_keyring_lacks_stored_version_is_config() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -113,7 +152,7 @@ fn aes_read_keyring_lacks_stored_version_is_config() {
     assert_eq!(got, "CONFIG");
 }
 
-// Requirements: COD-44.
+// Requirements: COD-44, COD-58.
 #[test]
 fn aes_read_null_version_with_aes_value_is_codec_decode() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -123,7 +162,7 @@ fn aes_read_null_version_with_aes_value_is_codec_decode() {
     assert_eq!(got, "CODEC_DECODE");
 }
 
-// Requirements: COD-44.
+// Requirements: COD-44, COD-59.
 #[test]
 fn aes_read_null_aes_with_null_version_stays_null() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -197,7 +236,7 @@ static NULL_AES_SECRET: Entity = Entity {
 
 model_row!(NullAesSecret, NULL_AES_SECRET, COLUMNS);
 
-// Requirements: COD-44.
+// Requirements: COD-44, COD-60.
 #[tokio::test]
 async fn aes_rotate_leaves_null_aes_rows_unchanged() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);

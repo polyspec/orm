@@ -28,6 +28,7 @@ final class AesVersionCodesTest extends TestCase
         return '';
     }
 
+    // Requirements: COD-49, COD-50, COD-51, COD-52, COD-53.
     public function testReadPathCodes(): void
     {
         $config = new Config('', '', 2, [1 => 'old-key', 2 => 'new-key']);
@@ -50,6 +51,7 @@ final class AesVersionCodesTest extends TestCase
         }
     }
 
+    // Requirements: COD-48. A selected encrypted row without its version cell is an internal invariant failure.
     public function testReadRowWithoutItsVersionCellIsInternal(): void
     {
         $config = new Config('', '', 2, [1 => 'old-key', 2 => 'new-key']);
@@ -60,6 +62,7 @@ final class AesVersionCodesTest extends TestCase
         $this->assertSame('INTERNAL', $got);
     }
 
+    // Requirements: COD-56. A read plan cannot infer a missing version column.
     public function testReadPlanWithoutVersionColumnIsInternal(): void
     {
         $config = new Config('', '', 2, [1 => 'old-key', 2 => 'new-key']);
@@ -70,6 +73,7 @@ final class AesVersionCodesTest extends TestCase
         $this->assertSame('INTERNAL', $got);
     }
 
+    // Requirements: COD-57. The stored-version keyring entry is required even when a single key could decrypt the value.
     public function testReadKeyringLacksStoredVersionIsConfig(): void
     {
         // The single key is new-key: a fallback to it would decrypt the value, so the CONFIG shows the keyring is used.
@@ -81,6 +85,7 @@ final class AesVersionCodesTest extends TestCase
         $this->assertSame('CONFIG', $got);
     }
 
+    // Requirements: COD-58. A non-NULL encrypted value cannot use a NULL stored version.
     public function testReadNullVersionWithAesValueIsCodecDecode(): void
     {
         $config = new Config('', '', 2, [1 => 'old-key', 2 => 'new-key']);
@@ -91,6 +96,7 @@ final class AesVersionCodesTest extends TestCase
         $this->assertSame('CODEC_DECODE', $got);
     }
 
+    // Requirements: COD-59. A NULL encrypted value with a NULL version stays NULL without version lookup.
     public function testReadNullAesWithNullVersionStaysNull(): void
     {
         $config = new Config('', '', 2, [1 => 'old-key', 2 => 'new-key']);
@@ -102,6 +108,7 @@ final class AesVersionCodesTest extends TestCase
         $this->assertNull($rows[0][0]);
     }
 
+    // Requirements: COD-60. Rotation leaves NULL encrypted cells unchanged for either stored version.
     public function testRotationNullAesIsLeftUnchanged(): void
     {
         $keyring = new AesKeyring([1 => 'old-key', 2 => 'new-key'], 2);
@@ -111,6 +118,7 @@ final class AesVersionCodesTest extends TestCase
         }
     }
 
+    // Requirements: COD-47. Rotation uses the stored-version errors from the read path.
     public function testRotationCodes(): void
     {
         $keyring = new AesKeyring([1 => 'old-key', 2 => 'new-key'], 2);

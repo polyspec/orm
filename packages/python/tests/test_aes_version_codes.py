@@ -35,6 +35,7 @@ def code_of(run) -> str:
 
 
 class AesVersionCodesTest(unittest.TestCase):
+    # Requirements: COD-49, COD-50, COD-51, COD-52, COD-53.
     def test_read_path_codes(self):
         cases = [
             ("abc", "CODEC_DECODE"),
@@ -49,6 +50,7 @@ class AesVersionCodesTest(unittest.TestCase):
                 got = code_of(lambda: _decode_assembly(row, ASSEMBLE, DB))
                 self.assertEqual(got, want)
 
+    # Requirements: COD-51. Stored versions above the positive i32 range fail decoding.
     def test_stored_version_accepts_only_positive_i32(self):
         self.assertEqual(_stored_version("2"), 2)
         self.assertEqual(_stored_version(2147483647), 2147483647)
@@ -56,6 +58,7 @@ class AesVersionCodesTest(unittest.TestCase):
             with self.subTest(value=bad):
                 self.assertEqual(code_of(lambda: _stored_version(bad)), "CODEC_DECODE")
 
+    # Requirements: COD-56. A read plan cannot infer a missing version column.
     def test_read_plan_without_version_column_is_internal(self):
         no_version = {
             key: value for key, value in ASSEMBLE.items() if key != "aes_version"
@@ -65,23 +68,32 @@ class AesVersionCodesTest(unittest.TestCase):
             code_of(lambda: _decode_assembly(row, no_version, DB)), "INTERNAL"
         )
 
+    # Requirements: COD-48. A selected encrypted row missing its version cell is an internal invariant failure.
+    def test_read_row_without_version_cell_is_internal(self):
+        row = [CIPHER]
+        self.assertEqual(code_of(lambda: _decode_assembly(row, ASSEMBLE, DB)), "INTERNAL")
+
+    # Requirements: COD-57. The stored-version keyring entry is required even when a single key could decrypt the value.
     def test_read_keyring_lacks_stored_version_is_config(self):
         single = host_encode("value", ["aes", "hex"], "single-key")
         db = SimpleNamespace(aes_keyring=KEYRING, aes_key="single-key")
         row = [single, 9]
         self.assertEqual(code_of(lambda: _decode_assembly(row, ASSEMBLE, db)), "CONFIG")
 
+    # Requirements: COD-58. A non-NULL encrypted value cannot use a NULL stored version.
     def test_read_null_version_with_aes_value_is_codec_decode(self):
         row = [CIPHER, None]
         self.assertEqual(
             code_of(lambda: _decode_assembly(row, ASSEMBLE, DB)), "CODEC_DECODE"
         )
 
+    # Requirements: COD-59. A NULL encrypted value with a NULL version stays NULL without version lookup.
     def test_read_null_aes_with_null_version_stays_null(self):
         row = [None, None]
         self.assertEqual(code_of(lambda: _decode_assembly(row, ASSEMBLE, DB)), "")
         self.assertIsNone(row[0])
 
+    # Requirements: COD-60. Rotation leaves NULL encrypted cells unchanged for either stored version.
     def test_rotation_null_aes_is_left_unchanged(self):
         for row in (
             {"aes_key_version": None, "email": None},
@@ -91,6 +103,7 @@ class AesVersionCodesTest(unittest.TestCase):
                 got = KEYRING.rotate_row(dict(row), "aes_key_version", [COLUMN], 2)
                 self.assertEqual(got, row)
 
+    # Requirements: COD-47. Rotation uses the stored-version errors from the read path.
     def test_rotation_codes(self):
         cases = [
             ({"aes_key_version": 0, "email": CIPHER}, "CODEC_DECODE"),

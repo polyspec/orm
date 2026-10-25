@@ -6,6 +6,7 @@ namespace Polyspec\Orm\Tests;
 
 use Polyspec\Orm\Bytes;
 use Polyspec\Orm\Codec;
+use Polyspec\Orm\Config;
 use Polyspec\Orm\OrmException;
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\Small;
@@ -34,6 +35,45 @@ final class CoverageAuthenticatedEncryptionExtensionTest extends TestCase
         $envelope = hex2bin($input['envelope_hex']);
         Assert::assertNotFalse($envelope, 'the fixture envelope is valid hex');
         Assert::assertSame($expected['plain'], Codec::hostDecode($envelope, ['aes'], $input['key']));
+    }
+
+    // Requirements: COD-48.
+    public function testReadRowWithoutVersionCellIsInternal(): void
+    {
+        Assert::assertTrue((new ReflectionMethod(Codec::class, 'decodeRows'))->isInternal());
+        $config = new Config('', '', 2, [1 => 'old-key', 2 => 'new-key']);
+        $rows = [[Codec::hostEncode('value', ['aes', 'hex'], 'old-key')]];
+        try {
+            Codec::decodeRows($rows, [[0, ['aes', 'hex'], [], true, 1]], $config);
+            self::fail('an AES row missing its selected version cell was accepted');
+        } catch (OrmException $error) {
+            Assert::assertSame('INTERNAL', $error->code_);
+        }
+    }
+
+    // Requirements: COD-49, COD-50, COD-51, COD-52, COD-53.
+    public function testStoredVersionReadCodes(): void
+    {
+        Assert::assertTrue((new ReflectionMethod(Codec::class, 'decodeRows'))->isInternal());
+        $config = new Config('', '', 2, [1 => 'old-key', 2 => 'new-key']);
+        $cipher = Codec::hostEncode('value', ['aes', 'hex'], 'old-key');
+        $cases = [
+            ['non-integer text', 'abc', 'CODEC_DECODE'],
+            ['zero', 0, 'CODEC_DECODE'],
+            ['above i32', 2147483648, 'CODEC_DECODE'],
+            ['undeclared integer', 9, 'CONFIG'],
+            ['positive integer text', '1', ''],
+        ];
+        foreach ($cases as [$name, $version, $expected]) {
+            $rows = [[$cipher, $version]];
+            $got = '';
+            try {
+                Codec::decodeRows($rows, [[0, ['aes', 'hex'], [], true, 1]], $config);
+            } catch (OrmException $error) {
+                $got = $error->code_;
+            }
+            Assert::assertSame($expected, $got, "stored version $name");
+        }
     }
 
     // Requirements: COD-5.
@@ -71,6 +111,17 @@ final class CoverageAuthenticatedEncryptionExtensionTest extends TestCase
     {
         [$input, $expected] = $this->fixtureCase('blind_index_vector', 'blind_index');
         Assert::assertSame($expected['index'], Codec::blindIndex($input['plain'], $input['key']));
+    }
+
+    // Requirements: COD-34.
+    public function testSerializedPhpObjectsAreRejected(): void
+    {
+        try {
+            Codec::decode(['serialize'], 'O:8:"stdClass":0:{}');
+            self::fail('serialized PHP objects must be rejected');
+        } catch (OrmException $error) {
+            Assert::assertSame('CODEC_UNSUPPORTED', $error->code_);
+        }
     }
 
     /** @return array{array<string, mixed>, array<string, mixed>} */

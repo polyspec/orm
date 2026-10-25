@@ -940,6 +940,9 @@ func decodeSelectedRow(vals []any, si *scanInfo, st *plan.Step, keyring AESKeyri
 // selectedRowVersion reads the key version of a row from the version column of its assembly (COD-44).
 func selectedRowVersion(vals []any, asm *plan.Assemble) (int32, error) {
 	col := asm.Columns[*asm.AESVersion]
+	if col.Index < 0 || col.Index >= len(vals) {
+		return 0, codecErr(CodeInternal, "AES version column %q index %d is out of bounds", col.Name, col.Index)
+	}
 	version, err := rowVersion(vals[col.Index])
 	if err != nil {
 		return 0, fmt.Errorf("%s.%s: %w", asm.Entity, col.Name, err)

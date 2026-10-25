@@ -2606,7 +2606,10 @@ def _select(ex: Executor, cached: dict, step: dict, params, parents=None):
 def _decode_assembly(row, assemble: dict, db: Db) -> None:
     version_cell = None
     if "aes_version" in assemble:
-        version_cell = row[assemble["columns"][assemble["aes_version"]]["index"]]
+        version_index = assemble["columns"][assemble["aes_version"]]["index"]
+        if not isinstance(version_index, int) or version_index < 0 or version_index >= len(row):
+            raise OrmError(codes.INTERNAL, "an AES version cell is absent from a selected row")
+        version_cell = row[version_index]
     elif any("aes" in column["styles"] for column in assemble["columns"]):
         # The planner selects the version column of every AES column, so a plan without one is broken: no version is assumed.
         raise OrmError(
