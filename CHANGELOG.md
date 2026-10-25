@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- KSTD-2-11-13-3: The primary/replica and replica-write-refusal units now bind native cases across all six clients. Preserved owner logs show MySQL, PostgreSQL and SQLite coverage: Go 3 tests, TypeScript 3, Python 3, PHP 3 tests / 14 assertions, PHP extension 3 / 14, and Rust 3.
+
 - KSTD-2-11-15-2: `generated-field-types-follow-runtime-model` now binds native generated-field type tests in all six clients for INT-2 to INT-8; the existing Go generator unit remains bound to INT-12. Source: `56f5a226d`.
 
 - KSTD-2-11-15-1: The six native generator owners reject the DSL-129 generated-method name collision. Focused owner evidence on source `56f5a226d`: Go 2 cases, Python 2, PHP generator 1 test / 3 assertions, PHP library 1 / 13, PHP extension 2 / 19, TypeScript 2 and Rust 2. Remaining global parity findings are tracked in KSTD-2.

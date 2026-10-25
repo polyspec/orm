@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 17951ff477dc44af8b80ecc2fbad044498e6cda9f540ddabe3ee6971c6bd1129 -->
+<!-- source-sha256: 6ef01d60710943ad610db8a3064e4c44f7b1e52741ff582520cb1e36585fc260 -->
 # 변경 이력
 
 ## Unreleased
+
+- KSTD-2-11-13-3: primary/replica 연결과 replica 쓰기 거부 unit을 여섯 client의 native case에 연결했다. 보존된 owner log는 MySQL, PostgreSQL, SQLite를 포함한다: Go 3 tests, TypeScript 3, Python 3, PHP 3 tests / 14 assertions, PHP extension 3 / 14, Rust 3.
 
 - KSTD-2-11-15-2: `generated-field-types-follow-runtime-model`이 INT-2부터 INT-8까지 여섯 client의 native generated-field type test에 연결된다. 기존 Go generator unit은 INT-12 연결을 유지한다. Source: `56f5a226d`.
 
