@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- Every feature-coverage case is one neutral unit bound to the coverage test of all six clients: the last 15 cases (model generation check, statement events, conformance vector, seven schema definition and five authenticated encryption cases) get their units, each test names the requirement it checks, and the Go generated-model DSN case joins the DSN unit. The performance gate cases, which check measurements and cite no rule, are harness tests in every client (KSTD-2-11-8).
 - The PHP plan and statement caches now bound their aggregate retained placeholders to 65,535, evict least-recently-used entries, and avoid retaining a single over-bound plan or statement. Cache hits and recompilation preserve the same plan and statement results (KSTD-7-3-4).
 - KSTD-5-91: with RECORD=1, conformance-check records the new vectors before conformance-result-check, so a vector needs no dialect entries before its first run (KSTD-5-91)
 - `Registry::model` of the PHP extension no longer releases an uninitialized argument when no model class is registered for a manifest hash, which crashed PHP (SIGBUS) after repeated `Registry::generated` and `Registry::model` calls (T182-6-18-1).
