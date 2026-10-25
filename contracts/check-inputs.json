@@ -1314,6 +1314,22 @@
         "packages/rust/orm/tests/unit/markdown_scalar_subquery.rs"
       ]
     },
+    "php-plan-cache-memory-check": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer"
+      ],
+      "inputs": [
+        "Makefile",
+        "contracts/check-inputs.json",
+        "contracts/fixtures/identity_load.dbs",
+        "packages/php/src/Db.php",
+        "packages/php/src/DbState.php",
+        "packages/php/src/Engine.php",
+        "packages/php/tests/PlanCacheMemoryTest.php"
+      ]
+    },
     "page-cache-unit-check": {
       "scope": "owner",
       "needs": [

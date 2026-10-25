@@ -17,8 +17,12 @@ final class DbState
     public ?\PDO $pdo = null;
     /** @var array<string, \PDOStatement> */
     public array $stmts = [];
-    /** @var list<string> */
+    /** @var list<string> the SQL of the cached statements, least recently used first */
     public array $stmtOrder = [];
+    /** @var array<string, int> the placeholders of each cached statement */
+    public array $stmtPlaceholders = [];
+    /** The placeholders of the cached statements in all; a statement keeps its last bound values until it is evicted. */
+    public int $stmtRetained = 0;
     public bool $closed = false;
     /**
      * Opens a LISTEN connection of its own, outside the connection's PDO handle (docs/spec/dialects.md DIA-194).

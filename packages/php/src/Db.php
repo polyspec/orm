@@ -15,6 +15,8 @@ final class Db
     public const NOW = '$NOW';
     /** A table that stands in for the SQLite row lock. The row lock statement points at it. */
     private const ROW_LOCK_TABLE = 'orm__row_lock';
+    /** The placeholders the statement cache may retain in all; the bound of Engine's plan cache (limepie P-97). */
+    private const RETAINED_PLACEHOLDERS = 65535;
 
     /** @var list<TxFrame> active transactions of the request, innermost last */
     private static array $frames = [];
@@ -237,6 +239,8 @@ final class Db
             $this->state->closed = true;
             $this->state->stmts = [];
             $this->state->stmtOrder = [];
+            $this->state->stmtPlaceholders = [];
+            $this->state->stmtRetained = 0;
             $this->state->pdo = null;
         }
         if ($transactionFailure !== null && $closeFailure !== null) {
@@ -530,20 +534,38 @@ final class Db
         return $parts;
     }
 
-    private function stmt(string $sql): \PDOStatement
+    /**
+     * The prepared statement of sql, which binds placeholders values. A PDOStatement keeps its last bound values until it
+     * is released, and closeCursor() does not free them, so the cache is bounded by the placeholders it retains as well as
+     * by statementCacheSize, least recently used first, and a statement over that bound alone is not cached (limepie
+     * P-97; the bound is that of Engine's plan cache).
+     */
+    private function stmt(string $sql, int $placeholders): \PDOStatement
     {
         $pdo = $this->handle();
-        if (isset($this->state->stmts[$sql])) {
-            return $this->state->stmts[$sql];
+        $state = $this->state;
+        if (isset($state->stmts[$sql])) {
+            $state->stmtOrder = array_values(array_diff($state->stmtOrder, [$sql]));
+            $state->stmtOrder[] = $sql;
+            return $state->stmts[$sql];
         }
         // pdo_pgsql numbers placeholders itself; the plan's $n are in slot order.
         $st = $pdo->prepare($this->driver === 'postgres' ? preg_replace('/\$\d+/', '?', $sql) : $sql);
-        $this->state->stmts[$sql] = $st;
-        $this->state->stmtOrder[] = $sql;
-        while (count($this->state->stmtOrder) > $this->config->statementCacheSize) {
-            $oldest = array_shift($this->state->stmtOrder);
-            $this->state->stmts[$oldest]->closeCursor();
-            unset($this->state->stmts[$oldest]);
+        if ($placeholders > self::RETAINED_PLACEHOLDERS) {
+            return $st;
+        }
+        $state->stmts[$sql] = $st;
+        $state->stmtOrder[] = $sql;
+        $state->stmtPlaceholders[$sql] = $placeholders;
+        $state->stmtRetained += $placeholders;
+        while (
+            count($state->stmtOrder) > $this->config->statementCacheSize
+            || $state->stmtRetained > self::RETAINED_PLACEHOLDERS
+        ) {
+            $oldest = array_shift($state->stmtOrder);
+            $state->stmts[$oldest]->closeCursor();
+            $state->stmtRetained -= $state->stmtPlaceholders[$oldest];
+            unset($state->stmts[$oldest], $state->stmtPlaceholders[$oldest]);
         }
         return $st;
     }
@@ -1273,7 +1295,7 @@ final class Db
     {
         $insert = $r->ir['kind'] === 'insert';
         return $this->send(function () use ($step, $args, $insert, $r): array {
-            $st = $this->stmt($step['sql']);
+            $st = $this->stmt($step['sql'], count($args));
             try {
                 $this->exec($st, $args);
                 if ($insert && str_contains($step['sql'], ' RETURNING ')) {
@@ -1374,7 +1396,7 @@ final class Db
         }
         $args = $this->args($step, $params, [], $frame);
         $this->send(function () use ($step, $args): void {
-            $st = $this->stmt($step['sql']);
+            $st = $this->stmt($step['sql'], count($args));
             $this->withStatement($st, function (\PDOStatement $st) use ($args): void {
                 $this->exec($st, $args);
                 // The result of a statement that returns rows, such as RETURNING or PostgreSQL setval, is not read.
@@ -1761,7 +1783,7 @@ final class Db
         $sql ??= $step['sql'];
         $args = $this->args($step, $params, $parentVals);
         $rows = $this->send(function () use ($sql, $args): array {
-            $st = $this->stmt($sql);
+            $st = $this->stmt($sql, count($args));
             return $this->withStatement($st, function (\PDOStatement $st) use ($args): array {
                 $this->exec($st, $args);
                 $rows = $st->fetchAll(\PDO::FETCH_NUM);
@@ -1781,7 +1803,7 @@ final class Db
     {
         $args = $this->args($step, $params);
         $v = $this->send(function () use ($step, $args): mixed {
-            $st = $this->stmt($step['sql']);
+            $st = $this->stmt($step['sql'], count($args));
             return $this->withStatement($st, function (\PDOStatement $st) use ($args): mixed {
                 $this->exec($st, $args);
                 $v = $st->fetchColumn();
