@@ -1,5 +1,5 @@
 <!-- doc-id: checklist-kit-standard -->
-<!-- source-sha256: e17c6ea2922510f7c00eeb4df1163305b7cf15e05f1a95d187c160745891363a -->
+<!-- source-sha256: b9d317d45ab14dbdee92606c0715d2afba14fa58a1a4430e3f50e6972b30ebd0 -->
 # kit 표준 체크리스트
 
 | ID | Task | Deliverables | Verification | State |
@@ -89,7 +89,7 @@
 | KSTD-4 | repository의 모든 composer platform은 .php-version의 PHP minor에 patch 1이다 (kit K282). Cause: kit은 모든 composer config.platform.php와 composerPlatforms가 8.4.1이기를 요구하는데 orm은 두 곳에 8.4.0을 선언한다 | the composer.json files, kit.json | `make kit-check` | [o] |
 | KSTD-5 | CHECK_TARGETS가 kit-gates의 모든 gate에 닿는다 (kit K289). Cause: kit-check가 CHECK_TARGETS에 toolchain-check, test-markers-check, rules-check, rebuild-check, layout-check, language-check, duplication-check, lint-ts, lint-go, lint-python, lint-php, lint-php-ext, test-php-ext가 없다고 보고한다; 각각을 추가하고 그 finding을 고쳐 통과시킨다 | Makefile, the files each gate reports | `make kit-check` | [ ] |
 | KSTD-5-1 | toolchain-check가 통과한다 (KSTD-5 후속). Cause: phpstan이 시작하지 못한다: kit의 link 실행이 vendor-php/composer/installed.json에 polyspec/ordered-json의 release metadata(require php >=8.5)를 남겨 platform_check.php가 PHP 8.5를 요구한다 (kit 결함, scripts/kit/link.mts:390-403) | vendor-php, the kit link | `make toolchain-check` | [o] |
-| KSTD-5-2 | test-markers-check가 통과한다 (KSTD-5 후속). Cause: marker 42개가 test를 건너뛰거나 좁힌다. 예를 들어 feature-check만 database와 함께 돌리는 Rust coverage test의 #[ignore]다; test는 전부 돌거나 그 이유와 함께 지워진다 | the tests of every implementation | `make test-markers-check` | [!] 원인: marker 42개 중 40개를 없앴다: database test는 database를 띄우는 target 아래에서 전부 돌고, bench와 fixture test는 build tag 아래에서 돈다; 남은 둘은 skip이 검사 대상 동작인 fixture(packages/go/testcase의 TestFixtureSkip, packages/python/tests/test_testcase.py의 SAMPLE 문자열)인데 kit 검사가 이를 여전히 센다; 재시도: kit의 test-markers 검사가 skip의 fixture와 건너뛴 test를 구별하고, Python 문자열 안의 marker를 읽지 않는다 |
+| KSTD-5-2 | `test-markers-check`가 통과한다 (KSTD-5 후속). Cause: marker 검사가 fixture 코드와 Python sample 문자열을 skip된 test로 잘못 셌지만, 이제 해당 fixture와 test 선언을 구분한다 | 모든 구현의 test | `make test-markers-check`. Evidence: `var/parallel/resume-landing/kstd-5-2-test-markers-current.log`가 “no test is skipped or narrowed by a marker”를 보고했다 (exit 0; SHA-256 `31d20ca4fc256f1a710dd1f2e2baa3147fb5d9d162bfb8667bcb6d88fc64ff9b`). | [o] |
 | KSTD-5-3 | rules-check가 통과한다 (KSTD-5 후속). Cause: AGENTS.md의 규칙 58개가 `Own:`이나 `Refines <id>:`로 시작하지 않아, 이 repository의 규칙인지 원칙을 다듬는지 밝히지 않는다 (kit K279) | AGENTS.md and its Korean twin | `make rules-check` | [o] |
 | KSTD-5-4 | rebuild-check가 통과한다 (KSTD-5 후속). Cause: config/rebuild.json이 없어 repository의 어떤 도구도 그 class를 선언하지 않는다 | config/rebuild.json | `make rebuild-check` | [o] |
 | KSTD-5-4-1 | docs 검사는 build된 HTML을 parse5로, Markdown table을 mdast-util-from-markdown과 mdast-util-gfm으로 읽는다 (KSTD-5-4 후속). Cause: scripts/docs/check.mts는 HTML을 정규식으로 읽고 scripts/docs/markdown-table.mts와 rules.mts는 table을 pipe로 나눠, ecosystem이 parse하는 문법을 다시 적는다 | scripts/docs, config/rebuild.json | `make docs-check` | [o] |

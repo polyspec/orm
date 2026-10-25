@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: ce2cbc9623b00c83474038bcefa707aaecc774a9114d208a27bd19b5393e307a -->
+<!-- source-sha256: eeae7c5149e54638e0265f2e6ceb9c6a192c77c2fcc096e409a395f98ca6a984 -->
 # 변경 이력
 
 ## Unreleased
+
+- KSTD-5-2: `make test-markers-check`가 통과했고 marker로 skip되거나 범위가 좁혀진 test가 없다고 보고했다. 증거 로그 SHA-256: `31d20ca4fc256f1a710dd1f2e2baa3147fb5d9d162bfb8667bcb6d88fc64ff9b`.
 
 - KSTD-5-88: 초기 runner-check 실행은 60개 중 58개 case가 통과했다. f315de4e5가 runner parts를 수정한 뒤 영향받은 두 case가 2/2 통과했다. 전체 target은 재실행하지 않았다.
 

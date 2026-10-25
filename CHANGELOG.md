@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- KSTD-5-2: `make test-markers-check` passed; it reports that no test is skipped or narrowed by a marker. Evidence log SHA-256: `31d20ca4fc256f1a710dd1f2e2baa3147fb5d9d162bfb8667bcb6d88fc64ff9b`.
+
 - KSTD-5-88: The initial runner-check run passed 58/60 cases; after f315de4e5 corrected the runner parts, the two affected cases passed 2/2. The full target was not rerun.
 
 - KSTD-5-88-12: All JavaScript tests now declare cases through caseTest; the exact repository guard passes (1/1), and the preserved combined guard record shows both JavaScript items passing (2/2).
