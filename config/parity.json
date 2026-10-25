@@ -372,6 +372,10 @@
           "reason": "test: injects PHP YAML parser and dumper dependency failures through CodecYamlProbe to verify wrapper codes and exact cause identity; shared codec vectors cover invalid caller input"
         },
         {
+          "glob": "packages/php/tests/DbspecGraphTest.php",
+          "reason": "test: probes PHP-specific array element type guards in the @internal dbspec Graph validator; public parse/emit is covered by every-line-kind, plan emission by rename-table-and-column, and manifest output by the shared hashes and sets vectors"
+        },
+        {
           "glob": "packages/php/tests/DbspecMermaidErrorBoundaryTest.php",
           "reason": "test: injects an unexpected exception into the private Mermaid catalog builder and verifies the same exception object escapes; the public invalid-name diagnostic is covered by dbspec-mermaid-invalid"
         },

@@ -315,13 +315,4 @@ final class DbspecGraphTest extends TestCase
             graph_type_error(static fn() => Dbspec::emit($document))
         );
     }
-
-    // A document whose arrays hold their types reads as before.
-    public function testValid(): void
-    {
-        $document = graph_document();
-        Assert::assertSame(GRAPH_TEXT, Dbspec::emit($document));
-        Assert::assertNotNull(Dbspec::manifest([$document, graph_core()])->manifest);
-        Assert::assertSame(graph_plan_text(), Dbspec::emitPlan(graph_plan()));
-    }
 }
