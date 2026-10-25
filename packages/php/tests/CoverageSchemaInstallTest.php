@@ -116,7 +116,7 @@ final class CoverageSchemaInstallTest extends TestCase
     // The install of a set that uses external documents checks the external tables in the database. If an external
     // document's column is missing from the database, install is CONFIG and does not create the table it owns.
     // Registration does not read the database, so it connects with that set too.
-    // Requirements: DBS-107, SCH-7, PLN-44.
+    // Requirements: DBS-107, SCH-7, PLN-44, INT-132, INT-133.
     public function testSchemaInstallExternalDocuments(): void
     {
         foreach (coverageItemsOf(__FILE__) as $item) {
@@ -131,7 +131,16 @@ final class CoverageSchemaInstallTest extends TestCase
                 );
                 return new Schema($m->manifestText, $m->manifestHash, $m->externalText);
             };
-            Orm::connectSchema($dsn, $schema(EXTERNAL_USER), new Config())->close();
+            $member = $schema(EXTERNAL_USER);
+            Assert::assertNotSame('', $member->externalText, 'the schema value has no external document text');
+            Orm::connectSchema($dsn, $member, new Config())->close();
+            $badHash = new Schema(str_replace('coverage_external_post', 'coverage_external_post_changed', $member->manifestText), $member->manifestHash, $member->externalText);
+            try {
+                Orm::connectSchema($dsn, $badHash, new Config());
+                Assert::fail('connect accepted manifest text that does not match its hash');
+            } catch (OrmException $error) {
+                Assert::assertSame(Code::CONFIG, $error->code_);
+            }
             $drifted = $schema(
                 str_replace(
                     "  name varchar(191)\n",

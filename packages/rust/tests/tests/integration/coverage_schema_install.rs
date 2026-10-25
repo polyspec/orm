@@ -95,7 +95,7 @@ fn external_schema(external: &str) -> &'static polyspec_orm::Schema {
 
 /// Checks whether installing a set that uses an external document confirms the external table in the database. If an external document's column is not in the database,
 /// the install fails with CONFIG and does not create the tables it owns. Registration does not read the database, so it connects with that set too.
-// Requirements: DBS-107, SCH-7, SCH-11, PLN-44.
+// Requirements: DBS-107, SCH-7, SCH-11, PLN-44, INT-132, INT-133.
 #[tokio::test]
 async fn coverage_schema_install_external_documents() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -103,10 +103,14 @@ async fn coverage_schema_install_external_documents() {
         let dsn =
             std::env::var("ORM_FEATURE_DSN").expect("ORM_FEATURE_DSN is required; run it through make feature-check, which sets it for each coverage case");
         let member = external_schema(EXTERNAL_USER);
+        assert!(!member.external().is_empty(), "schema value external document text");
         let connected = polyspec_orm::Db::connect_schema(&dsn, member, 2, polyspec_orm::Config::default())
             .await
             .or_panic(|e| format!("connect of a set whose external table user matches the database: {e}"));
         connected.close().await;
+        let bad_text = Box::leak(member.text().replace("coverage_external_post", "coverage_external_post_changed").into_boxed_str());
+        let bad_hash = polyspec_orm::Schema::with_external(bad_text, member.external(), member.hash());
+        assert_eq!(code(polyspec_orm::Db::connect_schema(&dsn, &bad_hash, 2, polyspec_orm::Config::default()).await), polyspec_orm::codes::CONFIG, "connect with manifest text that does not match its hash");
         let drifted = external_schema(&EXTERNAL_USER.replace("  name varchar(191)\n", "  name varchar(191)\n  coverage_missing varchar(8) null\n"));
         let want = "the tables that the set uses from external documents differ from the database: column user.coverage_missing does not exist";
         let config = |r: polyspec_orm::Result<()>| match r {

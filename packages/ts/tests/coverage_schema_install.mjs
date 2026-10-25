@@ -82,11 +82,17 @@ await runCases('coverage_schema_install.mjs', {
 
   // Install of a set that uses external documents checks the external tables in the database. If an external document's column is missing from the database,
   // install is CONFIG and creates no table it owns. Registration does not read the database, so the set is also connected with it.
-  // Requirements: SCH-7, SCH-11, DBS-107, PLN-44.
+  // Requirements: SCH-7, SCH-11, DBS-107, PLN-44, INT-132, INT-133.
   async schema_install_external_documents(item) {
     await withDatabase(item, async (db, driver, dsn) => {
-      const connected = await Db.connectSchema(dsn, externalSchema(externalUser));
+      const member = externalSchema(externalUser);
+      assert.ok(member.externalText.length > 0, 'schema value has external document text');
+      const connected = await Db.connectSchema(dsn, member);
       await connected.close();
+      const badHash = { ...member, manifestText: member.manifestText.replaceAll('coverage_external_post', 'coverage_external_post_changed') };
+      let hashError = null;
+      try { await Db.connectSchema(dsn, badHash); } catch (error) { hashError = error; }
+      assert.equal(hashError?.code, 'CONFIG', 'connect with manifest text that does not match its hash');
       const drifted = externalSchema(externalUser.replace('  name varchar(191)\n', '  name varchar(191)\n  coverage_missing varchar(8) null\n'));
       const want = 'the tables that the set uses from external documents differ from the database: column user.coverage_missing does not exist';
       await (await Db.connectSchema(dsn, drifted)).close();

@@ -93,7 +93,7 @@ table coverage_external_post {
 // sees the external table in the database. If it is the same table, it links; if an external document's column
 // is not in the database, the install is CONFIG and does not create the table it owns. Registration does not
 // read the database, so it links with that set too.
-// Requirements: DBS-107, SCH-7, PLN-44.
+// Requirements: DBS-107, SCH-7, PLN-44, INT-132, INT-133.
 func TestCoverageSchemaInstallExternalDocuments(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	db, driver, dsn := connectFeature(t)
@@ -105,12 +105,19 @@ func TestCoverageSchemaInstallExternalDocuments(t *testing.T) {
 		return &orm.Schema{Hash: m.ManifestHash, Text: m.ManifestText, External: m.ExternalText}
 	}
 	member := schema(externalUser)
+	if member.External == "" || member.Hash == "" || member.Text == "" {
+		t.Fatalf("external schema value is incomplete: %+v", member)
+	}
 	connected, err := orm.ConnectSchema(dsn, member, orm.Config{})
 	if err != nil {
 		t.Fatalf("connect of a set whose external table user matches the database: %v", err)
 	}
 	if err := connected.Close(); err != nil {
 		t.Fatal(err)
+	}
+	badHash := &orm.Schema{Hash: member.Hash, Text: strings.ReplaceAll(member.Text, "coverage_external_post", "coverage_external_post_changed"), External: member.External}
+	if _, err := orm.ConnectSchema(dsn, badHash, orm.Config{}); orm.ErrorCode(err) != orm.CodeConfig {
+		t.Fatalf("connect with a manifest text that does not match its hash = %v, want CONFIG", err)
 	}
 	drifted := schema(strings.Replace(externalUser, "  name varchar(191)\n", "  name varchar(191)\n  coverage_missing varchar(8) null\n", 1))
 	want := "the tables that the set uses from external documents differ from the database: column user.coverage_missing does not exist"

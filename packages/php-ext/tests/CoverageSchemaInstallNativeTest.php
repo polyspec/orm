@@ -82,11 +82,19 @@ DBSPEC,
         });
     }
 
-    // Requirements: DBS-107, SCH-7, PLN-44.
+    // Requirements: DBS-107, SCH-7, PLN-44, INT-132, INT-133.
     public function testSchemaInstallExternalDocuments(): void
     {
         self::forEachCoverageDatabase(static function ($db): void {
             $manifest = self::externalSchema(NATIVE_EXTERNAL_USER);
+            Assert::assertNotSame('', $manifest->externalText, 'the schema value has no external document text');
+            $badHash = new Schema(str_replace('coverage_external_post', 'coverage_external_post_changed', $manifest->manifestText), $manifest->manifestHash, $manifest->externalText);
+            try {
+                \Polyspec\Orm\Orm::connectSchema((string) coverageItem()[1], $badHash, new \Polyspec\Orm\Config());
+                Assert::fail('connect accepted manifest text that does not match its hash');
+            } catch (OrmException $error) {
+                Assert::assertSame(Code::CONFIG, $error->code_);
+            }
             $drifted = self::externalSchema(str_replace(
                 "  name varchar(191)\n",
                 "  name varchar(191)\n  coverage_missing varchar(8) null\n",
