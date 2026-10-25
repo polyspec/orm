@@ -9291,22 +9291,6 @@
       }
     },
     {
-      "id": "go-internal-packages-go-markdownmodel-ir-answers",
-      "kind": "feature",
-      "requirements": [
-        "PRT-69",
-        "PRT-71",
-        "PRT-72"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/markdownmodel/ir_answers_test.go",
-          "id": "TestIRAnswers"
-        }
-      ]
-    },
-    {
       "id": "generated-typed-getter-public-column-api",
       "kind": "feature",
       "requirements": [
@@ -10529,20 +10513,6 @@
           "implementation": "go",
           "test": "packages/go/orm/markdown_param_test.go",
           "id": "TestBindMessageVectors"
-        }
-      ]
-    },
-    {
-      "id": "go-internal-packages-go-orm-markdown",
-      "kind": "feature",
-      "requirements": [
-        "PRT-63"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/orm/markdown_test.go",
-          "id": "TestParseMarkdownDSN"
         }
       ]
     },
@@ -24316,6 +24286,84 @@
           "implementation": "python",
           "test": "packages/python/tests/mysql_session.py",
           "id": "MysqlSessionTest.test_postgres_session_settings_are_startup_parameters"
+        }
+      ]
+    },
+    {
+      "id": "utils-expose-utility-groups",
+      "kind": "feature",
+      "requirements": [
+        "INT-134"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/model_test.go",
+          "id": "TestTransactions"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testTransactions"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
+          "id": "CoverageTransactionsExtensionTest::testNativeUtilsExposeGroups"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model.mjs",
+          "id": "transactions"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_utils.py",
+          "id": "test_utils_exposes_utility_groups"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/src/integration.rs",
+          "id": "transactions"
+        }
+      ]
+    },
+    {
+      "id": "remove-columns-keeps-primary-foreign-and-added",
+      "kind": "feature",
+      "requirements": [
+        "DSL-76"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/coverage_model_queries_test.go",
+          "id": "TestCoverageModelRemoveColumns"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageModelQueriesTest.php",
+          "id": "CoverageModelQueriesTest::testRemoveColumnsKeysAndAddedColumn"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageModelQueriesExtensionTest.php",
+          "id": "CoverageModelQueriesExtensionTest::testRemoveColumnsKeysAndAddedColumn"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_model_queries.mjs",
+          "id": "remove_columns_keys_and_added_column"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_model_queries.py",
+          "id": "CoverageTest.test_model_query_remove_columns"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/integration/coverage_model_queries.rs",
+          "id": "coverage_model_queries::coverage_model_query_remove_columns"
         }
       ]
     }

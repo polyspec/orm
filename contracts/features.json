@@ -65,7 +65,8 @@
         "packages/go/orm/coverage_fixture_test.go",
         "packages/php/tests/coverage_cases.php",
         "packages/php/tests/markdown_test_server.php",
-        "packages/python/tests/coverage_case.py"
+        "packages/python/tests/coverage_case.py",
+        "packages/php/tests/request_termination_child.php"
       ],
       "tests": [
         "packages/go/orm/dsn_test.go",
@@ -921,13 +922,14 @@
         "coverage-model-query-rows",
         "go-model-chain-argument-types",
         "ts-chain-null-on-a-non-null-column",
-        "py-chain-values",
         "model-ordered-json-output-text",
         "native-row-cell-bytes",
         "page-cache-root-limit-values",
         "rust-val-text-null-and-empty",
         "plan-cache-in-list-shapes-share-ten-bucketed-keys",
-        "group-rows-database-query-preserves-values"
+        "group-rows-database-query-preserves-values",
+        "dsl-50-operator-value-shapes",
+        "remove-columns-keeps-primary-foreign-and-added"
       ],
       "fixtures": [
         "tests/conformance/vectors.json",
@@ -1050,7 +1052,8 @@
         "packages/rust/orm/src/engine/mod.rs",
         "packages/rust/orm/src/model.rs",
         "packages/rust/orm/src/driver/tests.rs",
-        "packages/rust/orm/tests/compiler_fixtures.rs"
+        "packages/rust/orm/tests/compiler_fixtures.rs",
+        "packages/rust/tests/tests/collection_get_fetched.rs"
       ],
       "docs": [
         "docs/spec/dsl.md",
@@ -1475,7 +1478,8 @@
       "coverage": {
         "kind": "database",
         "cases": [
-          "model_query_rows"
+          "model_query_rows",
+          "remove_columns_keys_and_added_column"
         ],
         "owners": {
           "go": {
@@ -1492,10 +1496,12 @@
                   "runner": "go",
                   "test": "packages/go/model/coverage_model_queries_test.go",
                   "cases": [
-                    "model_query_rows"
+                    "model_query_rows",
+                    "remove_columns_keys_and_added_column"
                   ],
                   "symbols": {
-                    "model_query_rows": "TestCoverageModelQueryRows"
+                    "model_query_rows": "TestCoverageModelQueryRows",
+                    "remove_columns_keys_and_added_column": "TestCoverageModelRemoveColumns"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -1505,10 +1511,12 @@
                   "runner": "go",
                   "test": "packages/go/model/coverage_model_queries_test.go",
                   "cases": [
-                    "model_query_rows"
+                    "model_query_rows",
+                    "remove_columns_keys_and_added_column"
                   ],
                   "symbols": {
-                    "model_query_rows": "TestCoverageModelQueryRows"
+                    "model_query_rows": "TestCoverageModelQueryRows",
+                    "remove_columns_keys_and_added_column": "TestCoverageModelRemoveColumns"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -1518,10 +1526,12 @@
                   "runner": "go",
                   "test": "packages/go/model/coverage_model_queries_test.go",
                   "cases": [
-                    "model_query_rows"
+                    "model_query_rows",
+                    "remove_columns_keys_and_added_column"
                   ],
                   "symbols": {
-                    "model_query_rows": "TestCoverageModelQueryRows"
+                    "model_query_rows": "TestCoverageModelQueryRows",
+                    "remove_columns_keys_and_added_column": "TestCoverageModelRemoveColumns"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -1543,10 +1553,12 @@
                   "runner": "php",
                   "test": "packages/php/tests/CoverageModelQueriesTest.php",
                   "cases": [
-                    "model_query_rows"
+                    "model_query_rows",
+                    "remove_columns_keys_and_added_column"
                   ],
                   "symbols": {
-                    "model_query_rows": "testModelQueryRows"
+                    "model_query_rows": "testModelQueryRows",
+                    "remove_columns_keys_and_added_column": "testRemoveColumnsKeysAndAddedColumn"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -1556,10 +1568,12 @@
                   "runner": "php",
                   "test": "packages/php/tests/CoverageModelQueriesTest.php",
                   "cases": [
-                    "model_query_rows"
+                    "model_query_rows",
+                    "remove_columns_keys_and_added_column"
                   ],
                   "symbols": {
-                    "model_query_rows": "testModelQueryRows"
+                    "model_query_rows": "testModelQueryRows",
+                    "remove_columns_keys_and_added_column": "testRemoveColumnsKeysAndAddedColumn"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -1569,10 +1583,12 @@
                   "runner": "php",
                   "test": "packages/php/tests/CoverageModelQueriesTest.php",
                   "cases": [
-                    "model_query_rows"
+                    "model_query_rows",
+                    "remove_columns_keys_and_added_column"
                   ],
                   "symbols": {
-                    "model_query_rows": "testModelQueryRows"
+                    "model_query_rows": "testModelQueryRows",
+                    "remove_columns_keys_and_added_column": "testRemoveColumnsKeysAndAddedColumn"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -1593,10 +1609,12 @@
                   "runner": "cargo",
                   "test": "packages/rust/tests/tests/integration/coverage_model_queries.rs",
                   "cases": [
-                    "model_query_rows"
+                    "model_query_rows",
+                    "remove_columns_keys_and_added_column"
                   ],
                   "symbols": {
-                    "model_query_rows": "coverage_model_queries::coverage_model_query_rows"
+                    "model_query_rows": "coverage_model_queries::coverage_model_query_rows",
+                    "remove_columns_keys_and_added_column": "coverage_model_queries::coverage_model_query_remove_columns"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -1606,10 +1624,12 @@
                   "runner": "cargo",
                   "test": "packages/rust/tests/tests/integration/coverage_model_queries.rs",
                   "cases": [
-                    "model_query_rows"
+                    "model_query_rows",
+                    "remove_columns_keys_and_added_column"
                   ],
                   "symbols": {
-                    "model_query_rows": "coverage_model_queries::coverage_model_query_rows"
+                    "model_query_rows": "coverage_model_queries::coverage_model_query_rows",
+                    "remove_columns_keys_and_added_column": "coverage_model_queries::coverage_model_query_remove_columns"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -1619,10 +1639,12 @@
                   "runner": "cargo",
                   "test": "packages/rust/tests/tests/integration/coverage_model_queries.rs",
                   "cases": [
-                    "model_query_rows"
+                    "model_query_rows",
+                    "remove_columns_keys_and_added_column"
                   ],
                   "symbols": {
-                    "model_query_rows": "coverage_model_queries::coverage_model_query_rows"
+                    "model_query_rows": "coverage_model_queries::coverage_model_query_rows",
+                    "remove_columns_keys_and_added_column": "coverage_model_queries::coverage_model_query_remove_columns"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -1643,7 +1665,8 @@
                   "runner": "node",
                   "test": "packages/ts/tests/coverage_model_queries.mjs",
                   "cases": [
-                    "model_query_rows"
+                    "model_query_rows",
+                    "remove_columns_keys_and_added_column"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -1653,7 +1676,8 @@
                   "runner": "node",
                   "test": "packages/ts/tests/coverage_model_queries.mjs",
                   "cases": [
-                    "model_query_rows"
+                    "model_query_rows",
+                    "remove_columns_keys_and_added_column"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -1663,7 +1687,8 @@
                   "runner": "node",
                   "test": "packages/ts/tests/coverage_model_queries.mjs",
                   "cases": [
-                    "model_query_rows"
+                    "model_query_rows",
+                    "remove_columns_keys_and_added_column"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -1684,7 +1709,8 @@
                   "runner": "python",
                   "test": "packages/python/tests/coverage_model_queries.py",
                   "cases": [
-                    "model_query_rows"
+                    "model_query_rows",
+                    "remove_columns_keys_and_added_column"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -1694,7 +1720,8 @@
                   "runner": "python",
                   "test": "packages/python/tests/coverage_model_queries.py",
                   "cases": [
-                    "model_query_rows"
+                    "model_query_rows",
+                    "remove_columns_keys_and_added_column"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -1704,7 +1731,8 @@
                   "runner": "python",
                   "test": "packages/python/tests/coverage_model_queries.py",
                   "cases": [
-                    "model_query_rows"
+                    "model_query_rows",
+                    "remove_columns_keys_and_added_column"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -1726,10 +1754,12 @@
                   "runner": "php",
                   "test": "packages/php-ext/tests/CoverageModelQueriesExtensionTest.php",
                   "cases": [
-                    "model_query_rows"
+                    "model_query_rows",
+                    "remove_columns_keys_and_added_column"
                   ],
                   "symbols": {
-                    "model_query_rows": "testModelQueryRows"
+                    "model_query_rows": "testModelQueryRows",
+                    "remove_columns_keys_and_added_column": "testRemoveColumnsKeysAndAddedColumn"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -1739,10 +1769,12 @@
                   "runner": "php",
                   "test": "packages/php-ext/tests/CoverageModelQueriesExtensionTest.php",
                   "cases": [
-                    "model_query_rows"
+                    "model_query_rows",
+                    "remove_columns_keys_and_added_column"
                   ],
                   "symbols": {
-                    "model_query_rows": "testModelQueryRows"
+                    "model_query_rows": "testModelQueryRows",
+                    "remove_columns_keys_and_added_column": "testRemoveColumnsKeysAndAddedColumn"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -1752,10 +1784,12 @@
                   "runner": "php",
                   "test": "packages/php-ext/tests/CoverageModelQueriesExtensionTest.php",
                   "cases": [
-                    "model_query_rows"
+                    "model_query_rows",
+                    "remove_columns_keys_and_added_column"
                   ],
                   "symbols": {
-                    "model_query_rows": "testModelQueryRows"
+                    "model_query_rows": "testModelQueryRows",
+                    "remove_columns_keys_and_added_column": "testRemoveColumnsKeysAndAddedColumn"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -1817,26 +1851,10 @@
         "coverage-model-write-cycle",
         "coverage-model-create-parts",
         "coverage-model-write-arithmetic-attributes",
-        "go-internal-packages-go-orm-revision-update-match",
-        "go-internal-packages-go-orm-revision-update-mismatch",
-        "go-internal-packages-go-orm-revision-delete-match",
-        "go-internal-packages-go-orm-revision-delete-mismatch",
-        "php-internal-revision-update-match",
-        "php-internal-revision-update-mismatch",
-        "php-internal-revision-delete-match",
-        "php-internal-revision-delete-mismatch",
         "ts-revision-update-match",
         "ts-revision-update-mismatch",
         "ts-revision-delete-match",
         "ts-revision-delete-mismatch",
-        "python-internal-revision-update-match",
-        "python-internal-revision-update-mismatch",
-        "python-internal-revision-delete-match",
-        "python-internal-revision-delete-mismatch",
-        "rust-revision-update-match",
-        "rust-revision-update-mismatch",
-        "rust-revision-delete-match",
-        "rust-revision-delete-mismatch",
         "ts-styled-value-checks-setter",
         "ts-styled-value-checks-output",
         "ts-styled-value-checks-encoding"
@@ -1914,7 +1932,9 @@
         "packages/rust/orm/tests/revision.rs",
         "packages/ts/tests/save-key-errors.test.mjs",
         "packages/php-ext/tests/ModelWriteSurfaceTest.php",
-        "packages/rust/orm/tests/unit/time_precision.rs"
+        "packages/rust/orm/tests/unit/time_precision.rs",
+        "packages/php-ext/tests/DecimalModelDbNativeTest.php",
+        "packages/php-ext/tests/DecimalModelSqliteNativeTest.php"
       ],
       "docs": [
         "docs/spec/dsl.md",
@@ -3853,7 +3873,8 @@
         "packages/rust/build/src/lib.rs",
         "packages/go/model/decimal_field_test.go",
         "packages/php/tests/DecimalModelTest.php",
-        "packages/python/tests/test_model_fields.py"
+        "packages/python/tests/test_model_fields.py",
+        "packages/python/tests/test_runtime_model_selected_set.py"
       ],
       "docs": [
         "docs/spec/dsl.md",
@@ -4947,7 +4968,9 @@
         "contracts/fixtures/external/member_v2.dbs",
         "contracts/fixtures/install/note.dbs",
         "contracts/fixtures/install/changed_database.json",
-        "packages/python/tests/coverage_case.py"
+        "packages/python/tests/coverage_case.py",
+        "packages/php/tests/DbspecSqliteLockCases.php",
+        "packages/php/tests/dbspec_limit_cases.php"
       ],
       "tests": [
         "packages/go/orm/keyword_test.go",
@@ -5005,7 +5028,8 @@
         "packages/rust/orm/src/dbspec.rs",
         "packages/rust/orm/src/dbspec/apply.rs",
         "packages/rust/schema/src/dbspec/introspect/mod.rs",
-        "packages/php-ext/tests/DbspecSqliteLockNativeTest.php"
+        "packages/php-ext/tests/DbspecSqliteLockNativeTest.php",
+        "packages/php-ext/tests/DbspecRulesNativeTest.php"
       ],
       "docs": [
         "docs/spec/schema.md",
@@ -7194,7 +7218,8 @@
         "packages/go/engine/planner/blind_index_source_test.go",
         "packages/php-ext/tests/BlindIndexSourceNativeTest.php",
         "packages/rust/orm/tests/unit/blind_index_source.rs",
-        "packages/python/tests/test_blind_index_source.py"
+        "packages/python/tests/test_blind_index_source.py",
+        "packages/ts/tests/aes-read-row-without-version-cell.mjs"
       ],
       "docs": [
         "docs/spec/codec.md",
@@ -9465,7 +9490,8 @@
         "packages/go/orm/coverage_fixture_test.go",
         "packages/php/tests/coverage_cases.php",
         "packages/ts/tests/coverage_case.mjs",
-        "packages/python/tests/coverage_case.py"
+        "packages/python/tests/coverage_case.py",
+        "packages/php/tests/ListenNotifyCases.php"
       ],
       "tests": [
         "packages/go/engine/interface_test.go",
@@ -9497,7 +9523,9 @@
         "packages/rust/orm/tests/package_entry.rs",
         "packages/python/tests/listen_notify.py",
         "packages/python/tests/test_package_entry.py",
-        "packages/php-ext/tests/DriverErrorTest.php"
+        "packages/php-ext/tests/DriverErrorTest.php",
+        "packages/php-ext/tests/ListenNotifyNativeTest.php",
+        "packages/php-ext/tests/QueryCancellationNativeTest.php"
       ],
       "docs": [
         "docs/spec/interfaces.md",
