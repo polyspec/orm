@@ -709,13 +709,16 @@ async function command(argv: string[]): Promise<number> {
           const decoded: unknown = JSON.parse(restoreJson);
           if (decoded === null || typeof decoded !== 'object' || Array.isArray(decoded)) throw new Error('counter snapshot must be a JSON object');
           const snapshot = new Map<string, { value: bigint; called: boolean; owner: string }>();
-          for (const [name, raw] of Object.entries(decoded)) {
+          for (const name of Object.keys(decoded)) {
+            const raw: unknown = Reflect.get(decoded, name);
             if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) throw new Error(`counter snapshot entry ${JSON.stringify(name)} must be an object`);
-            const entry = raw as Record<string, unknown>;
-            if (typeof entry.value !== 'string' || !/^-?[0-9]+$/.test(entry.value) || typeof entry.called !== 'boolean' || typeof entry.owner !== 'string') {
+            const value: unknown = Reflect.get(raw, 'value');
+            const called: unknown = Reflect.get(raw, 'called');
+            const owner: unknown = Reflect.get(raw, 'owner');
+            if (typeof value !== 'string' || !/^-?[0-9]+$/.test(value) || typeof called !== 'boolean' || typeof owner !== 'string') {
               throw new Error(`counter snapshot entry ${JSON.stringify(name)} has invalid fields`);
             }
-            snapshot.set(name, { value: BigInt(entry.value), called: entry.called, owner: entry.owner });
+            snapshot.set(name, { value: BigInt(value), called, owner });
           }
           await restoreCounters(db, driver, snapshot);
         }

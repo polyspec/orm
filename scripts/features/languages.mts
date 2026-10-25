@@ -57,11 +57,18 @@ export function implementationTestInventory(files: Iterable<string>, config: Par
   }));
 }
 
+/** The test file globs that kit fixes for the runner `runner`; a runner kit does not know throws. */
+function conventionsOf(runner: string): readonly string[] {
+  const convention = Object.entries(CONVENTIONS).find(([name]) => name === runner);
+  if (convention === undefined) throw new Error(`config/parity.json names the runner ${runner}, which has no test convention of kit`);
+  return convention[1];
+}
+
 function allFilesOf(config: ParityConfig, language: string, files: Set<string>): string[] {
   const implementation = config.implementations.find(entry => entry.name === language);
   if (!implementation) return [];
   const patterns = [
-    ...CONVENTIONS[implementation.runner as keyof typeof CONVENTIONS],
+    ...conventionsOf(implementation.runner),
     ...(config.testPatterns ?? []).filter(pattern => pattern.runner === implementation.runner).flatMap(pattern => pattern.globs),
     ...(implementation.tests ?? []),
   ];
@@ -79,7 +86,7 @@ export function isFeatureTestPath(language: string, file: string, globs = implem
   if (!implementation || !implementation.roots.some(directory => within(directory, file))) return false;
   if (isImplementationInternalTest(language, file, internal) || matchesAny(support[language] ?? [], file)) return false;
   const patterns = [
-    ...CONVENTIONS[implementation.runner as keyof typeof CONVENTIONS],
+    ...conventionsOf(implementation.runner),
     ...(config.testPatterns ?? []).filter(pattern => pattern.runner === implementation.runner).flatMap(pattern => pattern.globs),
     ...(globs[language] ?? []),
   ];
@@ -99,8 +106,7 @@ export function koreanDocumentPath(document: string): string {
 /** The exact test paths named by parity units for one implementation. */
 export function boundTestPaths(language: string, config: ParityConfig = parity): string[] {
   return [...new Set(config.units.flatMap(unit => (unit.bindings ?? [])
-    .filter(binding => binding.implementation === language && binding.test !== undefined)
-    .map(binding => binding.test as string)))];
+    .flatMap(binding => binding.implementation === language && binding.test !== undefined ? [binding.test] : [])))];
 }
 
 /** unknownParityUnits names the ids that config/parity.json does not declare. */

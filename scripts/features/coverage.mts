@@ -13,7 +13,7 @@ import { implementationLanguages, featureLanguages } from './languages.mts';
 import { parseGoTestEvent } from '../json/formats.mts';
 import { programEnvironment, readBinaries } from '../../tests/cargo-test.mts';
 import { COMPLEX_QUERY_DSN_ENVS, COMPLEX_QUERY_SETUP } from '../check/databases.mts';
-import { performanceDiagnosticArguments, performanceMeasurementsFromOutput, writePerformanceMeasurementRecord, type PerformanceMeasurement, type PerformanceRuntime, type PerformanceDatabase } from './performance-reference.mts';
+import { performanceDiagnosticArguments, performanceMeasurementsFromOutput, writePerformanceMeasurementRecord, performanceAttemptOf, performanceDatabaseOf, performanceRuntimeOf, type PerformanceMeasurement } from './performance-reference.mts';
 
 // cargoTestScript is the script that builds the test binary under the lease and copies it.
 const cargoTestScript = new URL('../../tests/cargo-test.mts', import.meta.url).pathname;
@@ -594,6 +594,57 @@ type CargoTarget = { name: string; kind: string[]; src_path: string; test: boole
 type CargoPackage = { name: string; manifest_path: string; targets: CargoTarget[] };
 type CargoMetadata = { packages?: CargoPackage[]; workspace_root?: string };
 
+/** The field `key` of the JSON object `value`, read as unknown. */
+function jsonField(value: object, key: string): unknown {
+  const field: unknown = Reflect.get(value, key);
+  return field;
+}
+
+/** The JSON object `value`; another JSON value throws, naming `what`. */
+function jsonObject(value: unknown, what: string): object {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) throw new Error(`${what} is no JSON object`);
+  return value;
+}
+
+/** The string `value`; another JSON value throws, naming `what`. */
+function jsonString(value: unknown, what: string): string {
+  if (typeof value !== 'string') throw new Error(`${what} is no string`);
+  return value;
+}
+
+/** The objects of the JSON array `value`; another JSON value throws, naming `what`. */
+function jsonObjects(value: unknown, what: string): object[] {
+  if (!Array.isArray(value)) throw new Error(`${what} is no array`);
+  return value.map((entry: unknown, index) => jsonObject(entry, `${what}[${index}]`));
+}
+
+/** The packages and workspace root of the output of `cargo metadata --format-version=1`, checked field by field. */
+function cargoMetadataOf(text: string): CargoMetadata {
+  const value = jsonObject(JSON.parse(text), 'cargo metadata');
+  const root = jsonField(value, 'workspace_root');
+  const packages = jsonObjects(jsonField(value, 'packages'), 'cargo metadata packages').map((entry, index): CargoPackage => {
+    const where = `cargo metadata packages[${index}]`;
+    const targets = jsonObjects(jsonField(entry, 'targets'), `${where}.targets`).map((target, number): CargoTarget => {
+      const at = `${where}.targets[${number}]`;
+      const kind = jsonField(target, 'kind');
+      if (!Array.isArray(kind)) throw new Error(`${at}.kind is no array`);
+      const test = jsonField(target, 'test');
+      if (typeof test !== 'boolean') throw new Error(`${at}.test is no boolean`);
+      const harness = jsonField(target, 'harness');
+      if (harness !== undefined && typeof harness !== 'boolean') throw new Error(`${at}.harness is no boolean`);
+      return {
+        name: jsonString(jsonField(target, 'name'), `${at}.name`),
+        kind: kind.map((entry: unknown, k) => jsonString(entry, `${at}.kind[${k}]`)),
+        src_path: jsonString(jsonField(target, 'src_path'), `${at}.src_path`),
+        test,
+        ...(harness === undefined ? {} : { harness }),
+      };
+    });
+    return { name: jsonString(jsonField(entry, 'name'), `${where}.name`), manifest_path: jsonString(jsonField(entry, 'manifest_path'), `${where}.manifest_path`), targets };
+  });
+  return { packages, ...(root === undefined ? {} : { workspace_root: jsonString(root, 'cargo metadata workspace_root') }) };
+}
+
 /** Select Cargo test targets that own the declared source files. */
 export function cargoTargetArgs(targets: CargoTarget[], testPaths: string[]): string[] {
   const selected = new Map<string, CargoTarget>();
@@ -646,7 +697,7 @@ async function buildCargo(plans: Plans, directory: string, builds: Builds, build
       const manifestPath = resolve(crate, 'Cargo.toml');
       const metadata = await run('cargo', ['metadata', '--no-deps', '--format-version=1', '--manifest-path', manifestPath], crate, null, process.env, step, 10_000_000);
       if (metadata.error) throw new Error(`cargo metadata: ${metadata.error}`);
-      const project = JSON.parse(metadata.stdout ?? '') as CargoMetadata;
+      const project = cargoMetadataOf(metadata.stdout ?? '');
       const selectedPackage = project.packages?.find(packageInfo => resolve(packageInfo.manifest_path) === manifestPath);
       if (!selectedPackage) throw new Error(`cargo metadata did not return package for ${manifestPath}`);
       const dependencyRoot = project.workspace_root ? resolve(project.workspace_root) : crate;
@@ -842,8 +893,8 @@ export async function executeCoverage(manifest: Manifest, root: string, timeoutM
             const result = await run(child.program, child.args, child.cwd, timeoutMs, { ...process.env, ...child.env }, step);
             if (result.error) throw new Error(result.error);
             if (first.feature.id === 'performance_gate') {
-              const runtime = first.item.language as PerformanceRuntime;
-              const measurements = performanceMeasurementsFromOutput(runtime, undefined, attempt as 1 | 2, result.value ?? '');
+              const runtime = performanceRuntimeOf(first.item.language);
+              const measurements = performanceMeasurementsFromOutput(runtime, undefined, performanceAttemptOf(attempt), result.value ?? '');
               performanceObservations.push(...measurements);
               for (const measurement of measurements) step(`performance measurement ${JSON.stringify(measurement)}`);
             }
@@ -916,9 +967,9 @@ export async function executeCoverage(manifest: Manifest, root: string, timeoutM
                   if (result.error) throw new Error(result.error);
                   if (feature.id === 'performance_gate') {
                     const measurements = performanceMeasurementsFromOutput(
-                      item.language as PerformanceRuntime,
-                      item.database as PerformanceDatabase,
-                      attempt as 1 | 2,
+                      performanceRuntimeOf(item.language),
+                      performanceDatabaseOf(item.database),
+                      performanceAttemptOf(attempt),
                       result.value ?? '',
                     );
                     performanceObservations.push(...measurements);

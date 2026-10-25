@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 011055abe881d2c23330c9159ec35d0153855b2eac87aec656b9d4b04a551616 -->
+<!-- source-sha256: 1f549b7809c6b2aa882b7330ddb5485d167d0f57e59014dc67e2072027143ab9 -->
 # 변경 이력
 
 ## Unreleased
 
+- main에서 `make lint-ts`가 통과한다. scripts/features와 test의 unsafe type assertion은 모두 검사하는 reader로 값을 읽고, TypeScript catalog connection coverage의 미사용 변수를 지웠으며, markdown-it을 devDependency로 선언하고 root tsconfig.json이 web-bluetooth를 더 이상 이름하지 않는다(KSTD-5-89-21).
 - `make lint-python`이 main에서 통과한다: Python client의 LISTEN cleanup이 psycopg 오류가 아닌 오류를 다시 raise하고, transaction coverage의 row-lock holder가 실패를 다시 raise하며, 사용하지 않는 import 두 개가 사라지고, ruff format이 파일 21개를 syntax tree 변경 없이 다시 쓴다 (KSTD-5-89-14).
 - `make layout-check`가 통과한다: Python 환경이 package를 resolve하므로 dbspec-apply-python-check가 PYTHONPATH를 설정하지 않고, packages/php-gen/composer.json이 autoload-dev를 PSR-4로 매핑하며 그 vendor 폴더가 무시된다 (KSTD-5-89-12).
 - `make lint-php`가 main에서 다시 통과한다: KSTD-5-89-3 이후 더해진 PHP에서 긴 줄, call signature, control structure를 정리하고, helper class와 trait마다 자기 파일을 두고, test 파일이 맨 위에서 아무것도 require하지 않으며, 남은 test_* method 하나를 camelCase로 바꾼 뒤 phpcs가 finding을 보고하지 않는다 (KSTD-5-89-11).

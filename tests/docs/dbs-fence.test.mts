@@ -13,6 +13,22 @@ const escape = (text: string) => text.replaceAll('&', '&amp;').replaceAll('<', '
 /** A fence token of markdown-it: its info string, its content and the lines it spans. */
 type FenceToken = { type: string; info: string; content: string; map: [number, number] };
 const fence = (info: string, content: string, line: number): FenceToken => ({ type: 'fence', info, content, map: [line, line + content.split('\n').length] });
+/** The object field `key` of `value`, which `what` names; a missing or other field fails the case. */
+function objectField(value: unknown, key: string, what: string): object {
+  assert.ok(typeof value === 'object' && value !== null, `${what} is no object`);
+  const field: unknown = Reflect.get(value, key);
+  assert.ok(typeof field === 'object' && field !== null, `${what} has no object ${key}`);
+  return field;
+}
+
+/** The function field `key` of `value`, which `what` names; a missing or other field fails the case. */
+function functionField(value: unknown, key: string, what: string): Function {
+  assert.ok(typeof value === 'object' && value !== null, `${what} is no object`);
+  const field: unknown = Reflect.get(value, key);
+  assert.ok(typeof field === 'function', `${what} has no function ${key}`);
+  return field;
+}
+
 // nth is the fence at index of the fences of a page.
 function nth<T>(fences: readonly T[], index: number): T {
   const found = fences[index];
@@ -69,18 +85,14 @@ caseTest('text is escaped inside and between the spans', TIMEOUT, () => {
 // Requirements: ORE-20, ORES-27, ORES-50.
 caseTest('VitePress markdown-it renders dbs set fences and refuses diagnostics', TIMEOUT, async () => {
   const md = new MarkdownIt();
-  // VitePress 1.6.4's declaration exports an unresolved `anchor.Token` alias and its MarkdownIt type
-  // differs from the root declaration despite sharing the runtime dependency. Keep the narrow API used here typed locally.
+  // VitePress 1.6.4's declaration exports an unresolved `anchor.Token` alias, so the module is imported by a computed
+  // specifier and read as unknown: each function that the case calls is checked before Reflect.apply calls it.
   const vitepressSpecifier: string = 'vitepress';
-  const vitepress = await import(vitepressSpecifier) as {
-    resolveConfig(root: string, command: 'build'): Promise<{ markdown?: { config?: (markdown: MarkdownIt) => void } }>;
-  };
-  const config = await vitepress.resolveConfig(new URL('../../docs', import.meta.url).pathname, 'build');
-  const markdown = config.markdown;
-  assert.ok(markdown, 'VitePress config has no Markdown options');
-  const configure = markdown.config;
-  assert.ok(typeof configure === 'function', 'VitePress config has no Markdown callback');
-  configure(md);
+  const vitepress: unknown = await import(vitepressSpecifier);
+  const resolveConfig = functionField(vitepress, 'resolveConfig', 'the vitepress module');
+  const config: unknown = await Reflect.apply(resolveConfig, undefined, [new URL('../../docs', import.meta.url).pathname, 'build']);
+  const markdown = objectField(config, 'markdown', 'the VitePress config');
+  Reflect.apply(functionField(markdown, 'config', 'the Markdown options of the VitePress config'), undefined, [md]);
   const source = `\`\`\`dbs set=shop document=core\n${CORE}\`\`\`\n\n\`\`\`dbs set=shop document=shop\n${SHOP}\`\`\`\n`;
   const html = md.render(source, { relativePath: 'fixtures/shop.md', path: '/fixtures/shop.md' });
   assert.match(html, /<span class="dbs-keyword">dbspec<\/span>/);

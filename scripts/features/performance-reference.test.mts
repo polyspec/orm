@@ -53,7 +53,9 @@ caseTest('reference recording requires the exact 72 observations and never promo
 
   const missing = measurements.slice(1);
   assert.throws(() => validatePerformanceMeasurements(missing), /performance measurements are missing:/);
-  assert.throws(() => validatePerformanceMeasurements([...measurements, measurements[0]!]), /missing or duplicated:/);
+  const first = measurements[0];
+  assert.ok(first, 'the measurements hold a first entry');
+  assert.throws(() => validatePerformanceMeasurements([...measurements, first]), /missing or duplicated:/);
   assert.throws(() => validatePerformanceMeasurements(measurements.map((entry, index) => index === 0 ? { ...entry, samples: 999 } : entry),), /has 999 samples; expected 1000 paired samples/);
   assert.throws(() => validatePerformanceMeasurements(measurements.map((entry, index) => index === 0 ? { ...entry, cpuMs: Number.NaN } : entry)), /cpuMs is not a positive finite measurement/);
   assert.throws(() => validatePerformanceMeasurements(measurements.map((entry, index) => index === 0 ? { ...entry, wallMs: 0 } : entry)), /wallMs is not a positive finite measurement/);

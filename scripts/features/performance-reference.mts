@@ -11,6 +11,29 @@ export type PerformanceRuntime = typeof PERFORMANCE_RUNTIMES[number];
 export type PerformanceDatabase = typeof PERFORMANCE_DATABASES[number];
 export type PerformanceWorkload = typeof PERFORMANCE_WORKLOADS[number];
 
+/** The member of `values` that equals `value`; another value throws, naming what it is. */
+function memberOf<T extends string>(values: readonly T[], value: string | undefined, what: string): T {
+  const member = values.find(entry => entry === value);
+  if (member === undefined) throw new Error(`${what} ${JSON.stringify(value)} is none of ${values.join(', ')}`);
+  return member;
+}
+
+/** The performance runtime named `value`; another name throws. */
+export function performanceRuntimeOf(value: string | undefined): PerformanceRuntime {
+  return memberOf(PERFORMANCE_RUNTIMES, value, 'performance runtime');
+}
+
+/** The performance database named `value`; another name throws. */
+export function performanceDatabaseOf(value: string | undefined): PerformanceDatabase {
+  return memberOf(PERFORMANCE_DATABASES, value, 'performance database');
+}
+
+/** The attempt `value` of a performance measurement, 1 or 2; another number throws. */
+export function performanceAttemptOf(value: number): 1 | 2 {
+  if (value === 1 || value === 2) return value;
+  throw new Error(`performance attempt ${value} is neither 1 nor 2`);
+}
+
 export type PerformanceMeasurement = {
   runtime: PerformanceRuntime;
   database: PerformanceDatabase;
@@ -37,9 +60,9 @@ function parseMeasurement(line: string, attempt: 1 | 2): PerformanceMeasurement 
   if (!match) return null;
   const [, runtime, database, workload, nativeP50Us, clientP50Us, ratio, samples, cpuMs, wallMs, machine] = match;
   return {
-    runtime: runtime as PerformanceRuntime,
-    database: database as PerformanceDatabase,
-    workload: workload as PerformanceWorkload,
+    runtime: performanceRuntimeOf(runtime),
+    database: performanceDatabaseOf(database),
+    workload: memberOf(PERFORMANCE_WORKLOADS, workload, 'performance workload'),
     attempt,
     nativeP50Us: Number(nativeP50Us),
     clientP50Us: Number(clientP50Us),

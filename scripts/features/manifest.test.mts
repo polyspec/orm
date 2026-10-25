@@ -6,6 +6,7 @@ import { caseTest, COMPUTE } from '../../tests/testcase.mts';
 import { parseJson, refusedPaths, SchemaError } from '../json/schema.mts';
 import { parseFeatures, readFeatures, type ManifestFeature } from './manifest.mts';
 import { completionItemAdapterErrors } from './behavior-adapters.mts';
+import { readCheckInputs } from '../check/inputs.mts';
 import { readManifest as readInterfaceManifest } from '../../tests/interfaces/check/manifest.mts';
 
 const root = new URL('../..', import.meta.url).pathname;
@@ -42,8 +43,14 @@ caseTest('the schema of contracts/features.json refuses a manifest outside its s
 });
 
 caseTest('a checklist item cannot close while a declared runtime adapter is unresolved', COMPUTE, () => {
-  const contract = readInterfaceManifest(new URL('../../contracts/interfaces.json', import.meta.url).pathname).behavior_adapters?.find(value => value.id === 'CFG-9');
-  assert.ok(contract, 'CFG-9 adapter contract is missing');
+  const source = readInterfaceManifest(new URL('../../contracts/interfaces.json', import.meta.url).pathname).behavior_adapters?.find(value => value.id === 'CFG-9');
+  assert.ok(source, 'CFG-9 adapter contract is missing');
+  const contract = structuredClone(source);
+  for (const runtime of ['php', 'php-extension']) {
+    const adapter = contract.adapters?.[runtime];
+    assert.ok(adapter, `CFG-9 ${runtime} adapter is missing`);
+    adapter.status = 'unresolved';
+  }
   const inProgress = '| KSTD-2-11-16 | Handle cancellation | [~] |';
   assert.deepEqual(completionItemAdapterErrors(inProgress, [contract]), [], 'an in-progress item was refused');
   const completed = '| KSTD-2-11-16 | Handle cancellation | [o] |';
@@ -133,20 +140,17 @@ caseTest('Markdown test server names and owner registrations stay aligned across
   const phpVerification = connection.verification.find(item => item.id === 'markdown-session-php');
   assert.ok(phpVerification, 'dsn_connection omits its PHP Markdown session owner');
   assert.ok(phpVerification.inputs, 'markdown-session-php has no declared inputs');
-  const checks = JSON.parse(readFileSync(`${root}/contracts/check-inputs.json`, 'utf8')) as {
-    targets: Record<string, { inputs: string[] }>;
-  };
-  const listener = JSON.parse(readFileSync(`${root}/contracts/features.json`, 'utf8')) as {
-    helpers: Array<{ id: string; paths: string[] }>;
-  };
-  const helper = listener.helpers.find(item => item.id === 'typescript-markdown-listener');
+  const checks = readCheckInputs(root);
+  const helper = (manifest.helpers ?? []).find(item => item.id === 'typescript-markdown-listener');
   assert.ok(helper, 'contracts/features.json omits the TypeScript Markdown listener helper');
   const clientUnit = checks.targets['client-unit-check'];
   assert.ok(clientUnit, 'client-unit-check has no input declaration');
+  const clientInputs = clientUnit.inputs;
+  assert.ok(clientInputs, 'client-unit-check declares no inputs');
   const paths = [...new Set([
     ...connection.fixtures,
     ...phpVerification.inputs,
-    ...clientUnit.inputs,
+    ...clientInputs,
     ...helper.paths,
   ])];
   const sources = Object.fromEntries(markdownServerContracts.map(contract => [
@@ -156,7 +160,7 @@ caseTest('Markdown test server names and owner registrations stay aligned across
   const registrations = {
     'dsn_connection fixtures': connection.fixtures,
     'markdown-session-php inputs': phpVerification.inputs,
-    'client-unit-check inputs': clientUnit.inputs,
+    'client-unit-check inputs': clientInputs,
     'typescript-listener': helper.paths,
   };
   assert.deepEqual(markdownNamingErrors(sources, registrations), []);

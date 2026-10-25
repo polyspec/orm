@@ -132,8 +132,7 @@ test('the complex-query feature fixture declares its exact shared case and expec
   const path = resolve(root, 'contracts/fixtures/complex_query/complex_query.json');
   const schema = resolve(root, 'scripts/features/schema/fixture.schema.json');
   const source = readFileSync(path, 'utf8');
-  const fixture = JSON.parse(source) as { feature: string; cases: { id: string; operation: string; expected: { row_seqs: number[]; total_count: number } }[]; expected: { row_seqs: number[]; total_count: number } };
-  parseJson(source, schema, path);
+  const fixture = parseJson<{ feature: string; cases: { id: string; operation: string; expected: { row_seqs: number[]; total_count: number } }[]; expected: { row_seqs: number[]; total_count: number } }>(source, schema, path);
   assert.equal(fixture.feature, 'complex_query');
   assert.deepEqual(fixture.cases, [{
     id: 'complex_query_product_search',

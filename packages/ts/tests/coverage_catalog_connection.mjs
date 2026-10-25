@@ -56,7 +56,7 @@ async function readCase(item) {
 // Requirements: INT-4, INT-8.
 async function nullAndEmptyTextCase(item) {
   const seq = -1_000_000_000_000 - randomInt(0, 1_000_000_000);
-  const { driver, catalog } = await connect(item);
+  const { catalog } = await connect(item);
   const table = { namespace: await catalog.currentNamespace(), name: 'bind_cell' };
   const metadata = await catalog.describeTable(table);
   const db = await connectModel(item.dsn, { aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index' });

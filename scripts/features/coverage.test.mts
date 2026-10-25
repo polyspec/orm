@@ -140,8 +140,8 @@ caseTest('PHP extension catalog, schema and statement event coverage use native 
   const catalog = manifest.features.find(item => item.id === 'catalog_connection');
   assert.ok(catalog);
   const catalogRequirements: Record<string, string[]> = {
-    'catalog-connection-read': ['SCH-6a', 'INT-113', 'INT-114'],
-    'catalog-connection-row-mutation': ['SCH-6a', 'INT-109', 'INT-123'],
+    'catalog-connection-read': ['SCH-6a', 'INT-113', 'INT-114', 'SCH-3', 'INT-103', 'INT-115'],
+    'catalog-connection-row-mutation': ['SCH-6a', 'INT-109', 'INT-123', 'DBS-113'],
   };
   for (const [id, requirements] of Object.entries(catalogRequirements)) {
     assert.ok(catalog.parity.includes(id), `catalog_connection omits ${id}`);
@@ -149,7 +149,10 @@ caseTest('PHP extension catalog, schema and statement event coverage use native 
     assert.ok(unit, `config/parity.json omits ${id}`);
     assert.deepEqual(unit.requirements, requirements);
     assert.ok(unit.bindings, `config/parity.json omits bindings for ${id}`);
-    assert.deepEqual(unit.bindings.map(binding => binding.implementation).toSorted(), [...languages].toSorted());
+    assert.deepEqual(
+      [...new Set(unit.bindings.map(binding => binding.implementation))].toSorted(),
+      [...languages].toSorted(),
+    );
   }
 });
 
@@ -241,6 +244,9 @@ caseTest('PHP extension catalog coverage selects the exact native methods', 1000
     assert.deepEqual(nativeCommands[0]?.symbols, {
       catalog_read: 'testCatalogRead',
       catalog_row_mutation: 'testCatalogRowMutation',
+      model_read_null_and_empty_text: 'testModelReadNullAndEmptyText',
+      catalog_grid_column_and_row_order: 'testGridColumnAndRowOrder',
+      catalog_plain_query_bounds: 'testCatalogPlainReadOnlyQueryBudgets',
     });
   }
 });
@@ -445,7 +451,7 @@ function contract(kind = 'database'): SampleManifest {
 }
 
 // A selected owner fixture still declares all six clients; selectFeatures limits only which part the test runner executes.
-function selectedSample(manifest: SampleManifest, parts: string[]): SampleManifest {
+function selectedSample(manifest: SampleManifest, parts: string[]): Manifest {
   const feature = defined(manifest.features[0]);
   const coverage = feature.coverage;
   const owners = coverage.owners ?? (coverage.owners = {});
@@ -453,7 +459,7 @@ function selectedSample(manifest: SampleManifest, parts: string[]): SampleManife
     owners[language] ??= { part: testDirectoryOf(language), tests: [ownerTests[language] ?? ''], commands: {} };
   }
   feature.parity = parityOf(languages);
-  return selectFeatures(manifest, feature.id, parts) as SampleManifest;
+  return selectFeatures(manifest, feature.id, parts);
 }
 
 function runSelected(manifest: SampleManifest, root: string, timeoutMs: number, parts: string[]): Promise<string[]> {
