@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: d91a7e4945e3230a79389cf403fc81f7e5b6f4226de173b43e9390df91231174 -->
+<!-- source-sha256: 53b9c6b40ad7f7ef95df82e48437ac64d7e522785dbec108c522b7acd3308ebb -->
 # 변경 이력
 
 ## Unreleased
+
+- T182-6-17: 선택한 relations 및 explicit root-page vector 13개가 여섯 client 모두에서 MySQL, PostgreSQL, SQLite별 두 번의 실행 동안 일치했다. 이를 감싼 명령은 별도 PHP-extension interface-symbol snapshot 검사에서 나중에 exit 2였으며, 선택 conformance 결과는 통과했다. 증거 로그 SHA-256: `3faeba3aaa6d32cab85a743eba767240ef3fcb0cd1dc46dce4a12c87aee351ff`.
 
 - KSTD-7-5: PHP-extension의 model query/write owner가 focused case를 통과했고, extension conformance owner가 세 database에서 59개 vector를 모두 통과했다. 세 feature 상태는 implemented다. 전역 parity declaration finding은 KSTD-2에서 별도로 추적한다.
 

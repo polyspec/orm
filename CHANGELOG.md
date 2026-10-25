@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- T182-6-17: The selected 13 relations and explicit root-page vectors matched across all six clients on MySQL, PostgreSQL and SQLite in two runs per database. The enclosing command later exited 2 in a separate PHP-extension interface-symbol snapshot check; the selected conformance result passed. Evidence log SHA-256: `3faeba3aaa6d32cab85a743eba767240ef3fcb0cd1dc46dce4a12c87aee351ff`.
+
 - KSTD-7-5: The model query and write PHP-extension owners pass their focused cases; the extension conformance owner passes all 59 vectors on three databases. All three feature statuses are implemented. The global parity declaration findings remain tracked separately in KSTD-2.
 
 - KSTD-7-5-1: `audit_lazy` passed two matching runs for the five non-extension clients on all three databases; the PHP-extension owner passed the 59-vector set on MySQL, PostgreSQL and SQLite (3 tests / 183 assertions).
