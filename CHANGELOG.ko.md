@@ -1,10 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 2b05e52c383050aa6769fbc1794242d1f898f7c676c0b0c40501c5f0084154f8 -->
+<!-- source-sha256: 302359fd3d94653f4ec6d28be5ed4572795d5d2b15d48aed3aeee6edb012505c -->
 # 변경 이력
 
 ## Unreleased
 
-- KSTD-2-10-1: 선택한 `delete_lock` conformance vector가 MySQL, PostgreSQL, SQLite에서 여섯 client 모두 두 번 통과했다. 세 vector 기록·재검증과 이후의 별도 interface snapshot 실패를 checklist에 기록했다.
+- KSTD-7-5-1: `audit_lazy`가 PHP extension을 제외한 다섯 client에서 세 database별로 일치하는 두 실행을 통과했고, PHP-extension owner도 MySQL, PostgreSQL, SQLite에서 59-vector set을 통과했다 (3 tests / 183 assertions).
+
+- KSTD-2-10-1: 선택한 `delete_lock` conformance vector가 MySQL, PostgreSQL, SQLite에서 여섯 client 모두 두 번 통과했다. 세 vector 기록·재검증을 checklist에 기록했다. 이후 interface snapshot 검사는 여섯 공식 recorder가 f57610f9f에서 수정했다.
 
 - KSTD-5-2: `make test-markers-check`가 통과했고 marker로 skip되거나 범위가 좁혀진 test가 없다고 보고했다. 증거 로그 SHA-256: `31d20ca4fc256f1a710dd1f2e2baa3147fb5d9d162bfb8667bcb6d88fc64ff9b`.
 

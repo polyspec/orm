@@ -3,7 +3,9 @@
 
 ## Unreleased
 
-- KSTD-2-10-1: The selected `delete_lock` conformance vector passed twice across all six clients on MySQL, PostgreSQL and SQLite. The selected three-vector record/recheck and the later unrelated interface-snapshot failure are recorded in the checklist.
+- KSTD-7-5-1: `audit_lazy` passed two matching runs for the five non-extension clients on all three databases; the PHP-extension owner passed the 59-vector set on MySQL, PostgreSQL and SQLite (3 tests / 183 assertions).
+
+- KSTD-2-10-1: The selected `delete_lock` conformance vector passed twice across all six clients on MySQL, PostgreSQL and SQLite. The selected three-vector record/recheck is recorded in the checklist; the later interface-snapshot check was fixed by six official recorders in f57610f9f.
 
 - KSTD-5-2: `make test-markers-check` passed; it reports that no test is skipped or narrowed by a marker. Evidence log SHA-256: `31d20ca4fc256f1a710dd1f2e2baa3147fb5d9d162bfb8667bcb6d88fc64ff9b`.
 
