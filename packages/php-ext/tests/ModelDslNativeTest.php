@@ -60,6 +60,23 @@ final class ModelDslNativeTest extends TestCase
         }
     }
 
+    // Requirements: DSL-50.
+    public function testUnsupportedOperatorValuesAreRejectedInsteadOfConverted(): void
+    {
+        foreach ([
+            [[18, 30], 'a list is not accepted by the gt operator'],
+            [null, 'null is not accepted by the gt operator'],
+        ] as [$value, $message]) {
+            try {
+                (new DslFixture())->gtAge($value);
+                self::fail('The gt operator must not convert a list or null value.');
+            } catch (OrmException $error) {
+                self::assertSame('CONFIG', $error->code_);
+                self::assertSame('CONFIG: ' . $message, $error->getMessage());
+            }
+        }
+    }
+
     // Requirements: PLN-35.
     public function testGroupAndJoinCallbacksUseNativeInvocationPaths(): void
     {
