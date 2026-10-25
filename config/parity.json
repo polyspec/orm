@@ -195,7 +195,7 @@
         "packages/php/tests/dbspec_sets_cases.php",
         "packages/php/tests/dbspec_syntax_vectors.php",
         "packages/php/tests/deadlock_child.php",
-        "packages/php/tests/markdown_fake_server.php",
+        "packages/php/tests/markdown_test_server.php",
         "packages/php/tests/perf_extensions.php",
         "packages/php/tests/request_hook_cases.php",
         "packages/php/tests/restore_case.php",

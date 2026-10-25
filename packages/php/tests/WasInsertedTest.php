@@ -217,7 +217,7 @@ final class WasInsertedTest extends TestCase
      */
     public function testMarkdownHasNoBackendLockView(): void
     {
-        $server = markdown_fake_server(['{"ok":true}']);
+        $server = start_markdown_test_server(['{"ok":true}']);
         $db = Orm::connect($server[2], new Config());
         try {
             $error = markdown_error(static fn() => $db->utils()->backendWaitingForLock());
@@ -229,6 +229,6 @@ final class WasInsertedTest extends TestCase
         } finally {
             $db->close();
         }
-        markdown_received($server);
+        markdown_test_server_received_messages($server);
     }
 }

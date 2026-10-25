@@ -63,7 +63,7 @@
         "packages/go/orm/test_helpers_test.go",
         "packages/go/orm/coverage_fixture_test.go",
         "packages/php/tests/coverage_cases.php",
-        "packages/php/tests/markdown_fake_server.php",
+        "packages/php/tests/markdown_test_server.php",
         "packages/python/tests/coverage_case.py"
       ],
       "tests": [
@@ -146,7 +146,7 @@
           "shard": "other",
           "inputs": [
             "packages/php/tests/MarkdownTest.php",
-            "packages/php/tests/markdown_fake_server.php",
+            "packages/php/tests/markdown_test_server.php",
             "packages/php/src/Markdown.php"
           ]
         },
@@ -12464,12 +12464,12 @@
     {
       "id": "typescript-markdown-listener",
       "paths": [
-        "packages/ts/tests/markdown_server.mjs"
+        "packages/ts/tests/markdown_test_listener.mjs"
       ],
       "tests": [
-        "packages/ts/tests/markdown_server.test.mjs"
+        "packages/ts/tests/markdown_test_listener.test.mjs"
       ],
-      "command": "node --test packages/ts/tests/markdown_server.test.mjs"
+      "command": "node --test packages/ts/tests/markdown_test_listener.test.mjs"
     },
     {
       "id": "typescript-generated-model-output",

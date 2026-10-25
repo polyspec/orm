@@ -28,7 +28,7 @@ def load_cases() -> list:
     )["cases"]
 
 
-def listen_once():
+def listen_markdown_test_server():
     """A listener on a free loopback port that takes one connection."""
     listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     listener.bind(("127.0.0.1", 0))
@@ -36,7 +36,7 @@ def listen_once():
     return listener
 
 
-def accept_once(listener):
+def accept_markdown_test_connection(listener):
     """The one connection of listener, or None when listener closes before one arrives."""
     try:
         conn, _ = listener.accept()
@@ -45,12 +45,12 @@ def accept_once(listener):
     return conn
 
 
-def answering_server(answer: str):
+def start_markdown_test_server_with_answer(answer: str):
     """A listener that answers connect with {"ok": true} and the next message with answer."""
-    listener = listen_once()
+    listener = listen_markdown_test_server()
 
     def serve():
-        conn = accept_once(listener)
+        conn = accept_markdown_test_connection(listener)
         if conn is None:
             return
         with conn, conn.makefile("rb") as lines:
@@ -65,13 +65,13 @@ def answering_server(answer: str):
     return listener, thread
 
 
-def keyed_server(answers: dict):
+def start_markdown_test_server_with_keyed_answers(answers: dict):
     """A listener that answers connect with {"ok": true} and every later message with the answer of answers
     keyed by the op of a control message or the kind of a request; a message without an answer is IR_INVALID."""
-    listener = listen_once()
+    listener = listen_markdown_test_server()
 
     def serve():
-        conn = accept_once(listener)
+        conn = accept_markdown_test_connection(listener)
         if conn is None:
             return
         with conn, conn.makefile("rb") as lines:
@@ -131,9 +131,9 @@ def check_case(test: unittest.TestCase, case: dict) -> None:
     if run is None:
         test.fail(f"chain {case['chain']} is no markdown conformance case")
     if "answers" in case:
-        listener, thread = keyed_server(case["answers"])
+        listener, thread = start_markdown_test_server_with_keyed_answers(case["answers"])
     else:
-        listener, thread = answering_server(json.dumps(case["answer"]))
+        listener, thread = start_markdown_test_server_with_answer(json.dumps(case["answer"]))
     port = listener.getsockname()[1]
     s = Served(STATE["models"], STATE["workdir"], str(port), TOKEN)
     s.db = STATE["models"].connect(s.dsn("conformance", TOKEN))

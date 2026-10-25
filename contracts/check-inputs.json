@@ -573,7 +573,7 @@
         "packages/php/testing/dbspec/compare/php.php",
         "packages/php-ext/testing/dbspec/compare/php-extension.php",
         "packages/php/tests/MarkdownTest.php",
-        "packages/php/tests/markdown_fake_server.php",
+        "packages/php/tests/markdown_test_server.php",
         "packages/php/tests/RelationKeysTest.php",
         "packages/php/tests/HostcodecTest.php",
         "packages/php/tests/CodecAesVectorsTest.php",

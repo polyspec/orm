@@ -71,7 +71,7 @@ final class ModelWriteSurfaceTest extends TestCase
             ['{"affected":0,"keys":[]}', [null, 0]],
             ] as [$answer, $expected]
         ) {
-            $server = \Polyspec\Orm\Tests\markdown_fake_server(['{"ok":true}', $answer]);
+            $server = \Polyspec\Orm\Tests\start_markdown_test_server(['{"ok":true}', $answer]);
             try {
                 $db = \Polyspec\Orm\Tests\MarkdownModel\connect($server[2], new Config());
             } catch (\Throwable $error) {
@@ -91,7 +91,7 @@ final class ModelWriteSurfaceTest extends TestCase
             } finally {
                 $db->close();
             }
-            $messages = \Polyspec\Orm\Tests\markdown_received($server);
+            $messages = \Polyspec\Orm\Tests\markdown_test_server_received_messages($server);
             self::assertCount(2, $messages);
             self::assertSame(\Polyspec\Orm\Tests\MARKDOWN_CONNECT_LINE, $messages[0]);
             self::assertStringContainsString('"request"', $messages[1]);

@@ -11,13 +11,13 @@ import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
 import { OrmError } from '../dist/index.js';
 import { connect } from '../dist/models/markdown_fixture/models.js';
 import { conformanceCases, normalize } from './markdown_cases.mjs';
-import { listenMarkdownServer } from './markdown_server.mjs';
+import { listenMarkdownTestServer } from './markdown_test_listener.mjs';
 
 /**
  * A listener that answers connect with {"ok":true} and every later message with the answer of answers keyed by the op
  * of a control message or the kind of a request; a message without an answer is IR_INVALID.
  */
-async function keyedServer(answers) {
+async function startMarkdownTestServerWithKeyedAnswers(answers) {
   const server = createServer(socket => {
     let first = true;
     createInterface({ input: socket }).on('line', line => {
@@ -39,10 +39,10 @@ async function keyedServer(answers) {
     });
     socket.on('error', () => {});
   });
-  return listenMarkdownServer(server);
+  return listenMarkdownTestServer(server);
 }
 
-async function answeringServer(answer) {
+async function startMarkdownTestServerWithAnswer(answer) {
   const server = createServer(socket => {
     const replies = ['{"ok":true}', answer];
     createInterface({ input: socket }).on('line', () => {
@@ -50,7 +50,7 @@ async function answeringServer(answer) {
     });
     socket.on('error', () => {});
   });
-  return listenMarkdownServer(server);
+  return listenMarkdownTestServer(server);
 }
 
 // Each case of the fixture is one test named by its id, the name that the suite of the fixture holds.
@@ -59,7 +59,7 @@ for (const c of doc.cases) {
   caseTest(c.id, COMPUTE, async () => {
     const chain = conformanceCases[c.chain];
     if (chain === undefined) throw new Error(`chain ${c.chain} is no markdown conformance case`);
-    const server = c.answers !== undefined ? await keyedServer(c.answers) : await answeringServer(JSON.stringify(c.answer));
+    const server = c.answers !== undefined ? await startMarkdownTestServerWithKeyedAnswers(c.answers) : await startMarkdownTestServerWithAnswer(JSON.stringify(c.answer));
     const db = await connect(server.dsn);
     let got;
     try {

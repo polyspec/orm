@@ -53,9 +53,9 @@ func TestIRAnswers(t *testing.T) {
 			}
 			dsn := ""
 			if c.Answers != nil {
-				dsn = keyedServer(t, c.Answers)
+				dsn = startMarkdownTestServerWithKeyedAnswers(t, c.Answers)
 			} else {
-				dsn = answeringServer(t, string(c.Answer))
+				dsn = startMarkdownTestServerWithAnswer(t, string(c.Answer))
 			}
 			db, err := markdownmodel.Connect(dsn, orm.Config{PoolSize: 1})
 			if err != nil {
@@ -68,12 +68,12 @@ func TestIRAnswers(t *testing.T) {
 	}
 }
 
-// answeringServer is the DSN of a listener that writes {"ok": true} for the connect of one connection and, for the next message, the answer.
+// startMarkdownTestServerWithAnswer is the DSN of a listener that writes {"ok": true} for the connect of one connection and, for the next message, the answer.
 // listener's DSN.
-func answeringServer(t *testing.T, answer string) string {
+func startMarkdownTestServerWithAnswer(t *testing.T, answer string) string {
 	t.Helper()
-	ln := listenLocal(t)
-	serveListener(t, ln, func(conn net.Conn) error {
+	ln := listenMarkdownTestServer(t)
+	serveMarkdownTestConnection(t, ln, func(conn net.Conn) error {
 		r := bufio.NewReader(conn)
 		for _, line := range []string{`{"ok":true}`, answer} {
 			if _, err := r.ReadString('\n'); err != nil {
@@ -89,12 +89,12 @@ func answeringServer(t *testing.T, answer string) string {
 	return "markdown://" + ln.Addr().String() + "/conformance?token=0123456789abcdef0123456789abcdef"
 }
 
-// keyedServer is the DSN of a listener that writes {"ok": true} for the connect of one connection and, for each following message, the answer found in answers by the op of that control message or by the
+// startMarkdownTestServerWithKeyedAnswers is the DSN of a listener that writes {"ok": true} for the connect of one connection and, for each following message, the answer found in answers by the op of that control message or by the
 // kind of the request. A message with no answer gets IR_INVALID.
-func keyedServer(t *testing.T, answers map[string]json.RawMessage) string {
+func startMarkdownTestServerWithKeyedAnswers(t *testing.T, answers map[string]json.RawMessage) string {
 	t.Helper()
-	ln := listenLocal(t)
-	serveListener(t, ln, func(conn net.Conn) error {
+	ln := listenMarkdownTestServer(t)
+	serveMarkdownTestConnection(t, ln, func(conn net.Conn) error {
 		r := bufio.NewReader(conn)
 		for first := true; ; first = false {
 			line, err := r.ReadString('\n')
@@ -131,10 +131,10 @@ func keyedServer(t *testing.T, answers map[string]json.RawMessage) string {
 	return "markdown://" + ln.Addr().String() + "/conformance?token=0123456789abcdef0123456789abcdef"
 }
 
-// serveListener serves the one connection that ln accepts, with serve, on a goroutine. The cleanup of t closes ln and
+// serveMarkdownTestConnection serves the one connection that ln accepts, with serve, on a goroutine. The cleanup of t closes ln and
 // reports the error of closing it and the error that serving ended with. Its errors are not reported from the goroutine,
 // since a goroutine cannot end the test, and the cleanup waits for the goroutine, which ends when the client closes.
-func serveListener(t *testing.T, ln net.Listener, serve func(net.Conn) error) {
+func serveMarkdownTestConnection(t *testing.T, ln net.Listener, serve func(net.Conn) error) {
 	t.Helper()
 	done := make(chan error, 1)
 	go func() {
@@ -168,8 +168,8 @@ func clientEnded(err error) error {
 	return err
 }
 
-// listenLocal listens on a free local TCP port; a failure fails the test.
-func listenLocal(t *testing.T) net.Listener {
+// listenMarkdownTestServer listens on a free local TCP port; a failure fails the test.
+func listenMarkdownTestServer(t *testing.T) net.Listener {
 	t.Helper()
 	ln, err := net.Listen("tcp4", "127.0.0.1:0")
 	if err != nil {

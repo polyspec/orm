@@ -8,13 +8,13 @@ declare(strict_types=1);
  * writes the port on one line; when the connection ends or the answers run out, it closes the connection, writes the
  * lines it received as one line of a JSON array, and ends.
  *
- *   php markdown_fake_server.php <answer>...
+ *   php markdown_test_server.php <answer>...
  *
  * With --keyed and a JSON object, it answers connect with {"ok":true} and every later message with the member of the
  * object named by the op of a control message or the kind of a request, until the connection ends; a message without
  * a member is answered IR_INVALID.
  *
- *   php markdown_fake_server.php --keyed <answers object>
+ *   php markdown_test_server.php --keyed <answers object>
  */
 
 $answers = array_slice($argv, 1);
@@ -27,12 +27,12 @@ if ($server === false) {
 $name = (string) stream_socket_get_name($server, false);
 fwrite(STDOUT, substr($name, strrpos($name, ':') + 1) . "\n");
 fflush(STDOUT);
-$received = [];
+$receivedMessages = [];
 $conn = stream_socket_accept($server, -1);
 if ($conn !== false && $keyed !== null) {
     while (($line = fgets($conn)) !== false) {
-        $received[] = rtrim($line, "\n");
-        if (count($received) === 1) {
+        $receivedMessages[] = rtrim($line, "\n");
+        if (count($receivedMessages) === 1) {
             $answer = '{"ok":true}';
         } else {
             $message = json_decode($line, true);
@@ -55,7 +55,7 @@ if ($conn !== false && $keyed !== null) {
         if ($line === false) {
             break;
         }
-        $received[] = rtrim($line, "\n");
+        $receivedMessages[] = rtrim($line, "\n");
         if (fwrite($conn, $answer . "\n") === false) {
             break;
         }
@@ -63,4 +63,4 @@ if ($conn !== false && $keyed !== null) {
     fclose($conn);
 }
 fclose($server);
-fwrite(STDOUT, json_encode($received, JSON_UNESCAPED_SLASHES) . "\n");
+fwrite(STDOUT, json_encode($receivedMessages, JSON_UNESCAPED_SLASHES) . "\n");

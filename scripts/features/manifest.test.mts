@@ -1,7 +1,7 @@
 // The schema of contracts/features.json (scripts/features/schema/features.schema.json) accepts the repository's manifest and
 // refuses each shape outside it, and the schema of a shared fixture refuses a fixture without its feature or its cases.
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { caseTest, COMPUTE } from '../../tests/testcase.mts';
 import { parseJson, refusedPaths, SchemaError } from '../json/schema.mts';
 import { parseFeatures, readFeatures, type ManifestFeature } from './manifest.mts';
@@ -80,4 +80,84 @@ caseTest('the schema of a shared fixture refuses a fixture without its feature o
   assert.notDeepEqual(read({ cases: [{ id: 'a', operation: 'o', expected: 1 }] }), []);
   assert.notDeepEqual(read({ feature: 'f', cases: [] }), []);
   assert.notDeepEqual(read({ feature: 'f', cases: [{ id: 'a', operation: 'o' }] }), []);
+});
+
+
+const markdownServerContracts = [
+  { path: 'packages/php/tests/markdown_test_server.php', required: ['$receivedMessages = [];'], forbidden: ['$received = [];', 'markdown_fake_server.php'] },
+  { path: 'packages/php/tests/MarkdownTest.php', required: ['function start_markdown_test_server(', 'function markdown_test_server_received_messages('], forbidden: ['markdown_fake_server(', 'markdown_received('] },
+  { path: 'packages/php/tests/IrAnswersTest.php', required: ['start_markdown_test_server(', 'markdown_test_server_received_messages('], forbidden: ['markdown_fake_server(', 'markdown_received('] },
+  { path: 'packages/php/tests/WasInsertedTest.php', required: ['start_markdown_test_server(', 'markdown_test_server_received_messages('], forbidden: ['markdown_fake_server(', 'markdown_received('] },
+  { path: 'packages/php-ext/tests/ModelWriteSurfaceTest.php', required: ['start_markdown_test_server(', 'markdown_test_server_received_messages('], forbidden: ['markdown_fake_server(', 'markdown_received('] },
+  { path: 'packages/php-ext/tests/OrmExceptionNativeTest.php', required: ['markdownTestServerCode(', 'startMarkdownTestServer(', 'stopMarkdownTestServer('], forbidden: ['markdownServerCode(', 'startMarkdownServer(', 'stopMarkdownServer('] },
+  { path: 'packages/go/orm/markdown_test.go', required: ['type markdownTestServer struct', 'receivedMessages', 'startMarkdownTestServer('], forbidden: ['type fakeServer struct', 'startFakeServer('] },
+  { path: 'packages/go/markdownmodel/ir_answers_test.go', required: ['startMarkdownTestServerWithKeyedAnswers(', 'startMarkdownTestServerWithAnswer(', 'listenMarkdownTestServer(', 'serveMarkdownTestConnection('], forbidden: ['keyedServer(', 'answeringServer(', 'listenLocal(', 'serveListener('] },
+  { path: 'packages/python/tests/test_markdown.py', required: ['class MarkdownTestServer:', 'def received_messages(self)', 'self._received_messages'], forbidden: ['class FakeServer:', 'def messages(self)', 'self.received_messages:'] },
+  { path: 'packages/python/tests/test_was_inserted.py', required: ['MarkdownTestServer'], forbidden: ['FakeServer'] },
+  { path: 'packages/python/tests/ir_answers.py', required: ['start_markdown_test_server_with_keyed_answers(', 'start_markdown_test_server_with_answer(', 'listen_markdown_test_server(', 'accept_markdown_test_connection('], forbidden: ['keyed_server(', 'answering_server(', 'listen_once(', 'accept_once('] },
+  { path: 'packages/rust/orm/tests/markdown.rs', required: ['struct MarkdownTestServer', 'received_messages', 'start_markdown_test_server('], forbidden: ['struct FakeServer', 'fake_server('] },
+  { path: 'packages/ts/tests/markdown.mjs', required: ['startMarkdownTestServer(', 'receivedMessages'], forbidden: ['fakeServer(', '.received;'] },
+  { path: 'packages/ts/tests/ir_answers.mjs', required: ['startMarkdownTestServerWithKeyedAnswers(', 'startMarkdownTestServerWithAnswer(', 'listenMarkdownTestServer('], forbidden: ['keyedServer(', 'answeringServer(', 'listenMarkdownServer('] },
+  { path: 'packages/ts/tests/markdown_test_listener.mjs', required: ['listenMarkdownTestServer('], forbidden: ['listenMarkdownServer('] },
+  { path: 'packages/ts/tests/markdown_test_listener.test.mjs', required: ['listenMarkdownTestServer('], forbidden: ['listenMarkdownServer('] },
+] as const;
+
+function markdownNamingErrors(sources: Record<string, string>, registrations: Record<string, string[]>): string[] {
+  const errors: string[] = [];
+  for (const contract of markdownServerContracts) {
+    const source = sources[contract.path];
+    if (source === undefined) {
+      errors.push(`${contract.path}: missing source`);
+      continue;
+    }
+    for (const symbol of contract.required)
+      if (!source.includes(symbol)) errors.push(`${contract.path}: missing ${symbol}`);
+    for (const symbol of contract.forbidden)
+      if (source.includes(symbol)) errors.push(`${contract.path}: stale ${symbol}`);
+  }
+  for (const owner of ['dsn_connection fixtures', 'markdown-session-php inputs', 'client-unit-check inputs'])
+    if (!registrations[owner]?.includes('packages/php/tests/markdown_test_server.php')) errors.push(`${owner}: PHP Markdown test server is not registered`);
+  if (!registrations['typescript-listener']?.includes('packages/ts/tests/markdown_test_listener.mjs'))
+    errors.push('typescript-listener: renamed listener path is not registered');
+  return errors;
+}
+
+caseTest('Markdown test server names and owner registrations stay aligned across clients', COMPUTE, () => {
+  const parity = readFileSync(`${root}/config/parity.json`, 'utf8');
+  assert.ok(parity.includes('packages/php/tests/markdown_test_server.php'), 'parity omits the PHP Markdown test server');
+  assert.ok(!parity.includes('markdown_fake_server.php'), 'parity retains the previous PHP Markdown test server path');
+  const connection = manifest.features.find(feature => feature.id === 'dsn_connection');
+  assert.ok(connection, 'contracts/features.json omits dsn_connection');
+  const phpVerification = connection.verification.find(item => item.id === 'markdown-session-php');
+  assert.ok(phpVerification, 'dsn_connection omits its PHP Markdown session owner');
+  const checks = JSON.parse(readFileSync(`${root}/contracts/check-inputs.json`, 'utf8')) as {
+    targets: Record<string, { inputs: string[] }>;
+  };
+  const listener = JSON.parse(readFileSync(`${root}/contracts/features.json`, 'utf8')) as {
+    helpers: Array<{ id: string; paths: string[] }>;
+  };
+  const helper = listener.helpers.find(item => item.id === 'typescript-markdown-listener');
+  assert.ok(helper, 'contracts/features.json omits the TypeScript Markdown listener helper');
+  const paths = [...new Set([
+    ...connection.fixtures,
+    ...phpVerification.inputs,
+    ...checks.targets['client-unit-check'].inputs,
+    ...helper.paths,
+  ])];
+  const sources = Object.fromEntries(markdownServerContracts.map(contract => [
+    contract.path,
+    existsSync(`${root}/${contract.path}`) ? readFileSync(`${root}/${contract.path}`, 'utf8') : '',
+  ]));
+  const registrations = {
+    'dsn_connection fixtures': connection.fixtures,
+    'markdown-session-php inputs': phpVerification.inputs,
+    'client-unit-check inputs': checks.targets['client-unit-check'].inputs,
+    'typescript-listener': helper.paths,
+  };
+  assert.deepEqual(markdownNamingErrors(sources, registrations), []);
+
+  const stalePhp = { ...sources, 'packages/php/tests/MarkdownTest.php': sources['packages/php/tests/MarkdownTest.php'].replace('start_markdown_test_server(', 'markdown_fake_server(') };
+  assert.match(markdownNamingErrors(stalePhp, registrations).join('\n'), /MarkdownTest\.php: missing function start_markdown_test_server/);
+  assert.match(markdownNamingErrors(sources, { ...registrations, 'markdown-session-php inputs': registrations['markdown-session-php inputs'].filter(path => path !== 'packages/php/tests/markdown_test_server.php') }).join('\n'), /markdown-session-php inputs: PHP Markdown test server is not registered/);
+  assert.ok(paths.includes('packages/php/tests/markdown_test_server.php'));
 });

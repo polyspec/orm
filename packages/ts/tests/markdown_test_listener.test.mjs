@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import { createConnection, createServer } from 'node:net';
 import test from 'node:test';
-import { listenMarkdownServer } from './markdown_server.mjs';
+import { listenMarkdownTestServer } from './markdown_test_listener.mjs';
 
 test('listens on an ephemeral loopback port and closes the listener', async () => {
   const server = createServer(socket => socket.end('ready'));
-  const listener = await listenMarkdownServer(server);
+  const listener = await listenMarkdownTestServer(server);
   try {
     const url = new URL(listener.dsn);
     assert.equal(url.protocol, 'markdown:');
@@ -35,7 +35,7 @@ test('rejects the original asynchronous listen error and removes its listeners',
     process.nextTick(() => server.emit('error', expected));
     return server;
   };
-  await assert.rejects(listenMarkdownServer(server), error => error === expected);
+  await assert.rejects(listenMarkdownTestServer(server), error => error === expected);
   assert.equal(server.listenerCount('error'), 0);
   assert.equal(server.listenerCount('connection'), 0);
 });
@@ -47,12 +47,14 @@ test('rejects the original close error and destroys accepted sockets', async () 
   const originalClose = server.close;
   let socket;
   try {
-    const listener = await listenMarkdownServer(server);
+    const listener = await listenMarkdownTestServer(server);
+    const acceptedConnection = new Promise(resolve => server.once('connection', resolve));
     socket = createConnection(Number(new URL(listener.dsn).port), '127.0.0.1');
     await new Promise((resolve, reject) => {
       socket.once('connect', resolve);
       socket.once('error', reject);
     });
+    await acceptedConnection;
     assert.ok(accepted);
     const expected = new Error('synthetic close failure');
     server.close = callback => { callback(expected); return server; };

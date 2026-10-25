@@ -18,14 +18,14 @@ CONNECT_LINE = (
 )
 
 
-class FakeServer:
+class MarkdownTestServer:
     """Receives and records the messages of one connection instead of the flowmark server, and writes the script's replies in order."""
 
     def __init__(self, test: unittest.TestCase, *answers: str):
         self.listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.listener.bind(("127.0.0.1", 0))
         self.listener.listen(1)
-        self.received: queue.Queue = queue.Queue(1)
+        self._received_messages: queue.Queue = queue.Queue(1)
         self.thread = threading.Thread(target=self._serve, args=(answers,), daemon=True)
         self.thread.start()
         test.addCleanup(self.close)
@@ -35,7 +35,7 @@ class FakeServer:
         try:
             conn, _ = self.listener.accept()
         except OSError:
-            self.received.put(None)
+            self._received_messages.put(None)
             return
         with conn, conn.makefile("rwb") as stream:
             for answer in answers:
@@ -45,15 +45,15 @@ class FakeServer:
                 got.append(line.decode("utf-8").rstrip("\n"))
                 stream.write(answer.encode("utf-8") + b"\n")
                 stream.flush()
-        self.received.put(got)
+        self._received_messages.put(got)
 
     def dsn(self) -> str:
         host, port = self.listener.getsockname()
         return f"markdown://{host}:{port}/tracker?token={TOKEN}"
 
-    def messages(self) -> list:
+    def received_messages(self) -> list:
         # Deadline of one case: if the fake server does not finish the script, the case fails.
-        return self.received.get(timeout=10)
+        return self._received_messages.get(timeout=10)
 
     def close(self) -> None:
         self.listener.close()
@@ -97,7 +97,7 @@ class MarkdownTest(unittest.TestCase):
 
     def test_markdown_session_messages(self):
         # Requirements: PRT-64.
-        server = FakeServer(
+        server = MarkdownTestServer(
             self,
             '{"ok":true}',
             '{"ok":true}',
@@ -119,7 +119,7 @@ class MarkdownTest(unittest.TestCase):
         )
         db.close()
         self.assertEqual(
-            server.messages(),
+            server.received_messages(),
             [
                 CONNECT_LINE,
                 '{"op":"begin","read_only":true}',
@@ -133,7 +133,7 @@ class MarkdownTest(unittest.TestCase):
 
     def test_markdown_connect_refused(self):
         # Requirements: PRT-64.
-        server = FakeServer(
+        server = MarkdownTestServer(
             self,
             '{"error":{"code":"CONFIG","message":"connect: the token is not the corpus\'s '
             'token"}}',
@@ -144,10 +144,10 @@ class MarkdownTest(unittest.TestCase):
         self.assertEqual(
             str(error), "CONFIG: connect: the token is not the corpus's token"
         )
-        self.assertEqual(server.messages(), [CONNECT_LINE])
+        self.assertEqual(server.received_messages(), [CONNECT_LINE])
 
     def test_markdown_rejected_surfaces(self):
-        server = FakeServer(self, '{"ok":true}')
+        server = MarkdownTestServer(self, '{"ok":true}')
         db = Db.connect(server.dsn())
         self.addCleanup(db.close)
         for name, run in {

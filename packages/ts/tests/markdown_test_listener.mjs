@@ -1,5 +1,5 @@
-/** Starts a fake Markdown database listener on an ephemeral loopback port. */
-export async function listenMarkdownServer(server) {
+/** Starts a Markdown test listener on an ephemeral loopback port. */
+export async function listenMarkdownTestServer(server) {
   const sockets = new Set();
   let listenError;
   let listening = false;

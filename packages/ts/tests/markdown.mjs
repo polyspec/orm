@@ -20,9 +20,9 @@ const connectLine = `{"op":"connect","corpus":"tracker","token":"${token}"}`;
  * A fake server that records the messages of one connection and writes the answers from answers in order. received holds the lines
  * received when the connection ends.
  */
-async function fakeServer(...answers) {
+async function startMarkdownTestServer(...answers) {
   let done;
-  const received = new Promise(resolve => { done = resolve; });
+  const receivedMessages = new Promise(resolve => { done = resolve; });
   const server = createServer(socket => {
     const got = [];
     const lines = createInterface({ input: socket });
@@ -37,7 +37,7 @@ async function fakeServer(...answers) {
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const { port } = server.address();
-  return { dsn: `markdown://127.0.0.1:${port}/tracker?token=${token}`, received, close: () => new Promise(resolve => server.close(resolve)) };
+  return { dsn: `markdown://127.0.0.1:${port}/tracker?token=${token}`, receivedMessages, close: () => new Promise(resolve => server.close(resolve)) };
 }
 
 async function codeOf(work) {
@@ -76,7 +76,7 @@ caseTest('markdown/parse-dsn', COMPUTE, () => {
 // The connect and control messages the client sends, and the parsing of error lines.
 // Requirements: PRT-64.
 caseTest('markdown/session-messages', COMPUTE, async () => {
-  const s = await fakeServer(
+  const s = await startMarkdownTestServer(
     '{"ok":true}',
     '{"ok":true}', '{"ok":true}', '{"ok":true}', '{"ok":true}',
     '{"ok":true}', '{"error":{"code":"WRITE_CONFLICT","message":"people.flowmark.md:3 changed since it was read"}}',
@@ -102,7 +102,7 @@ caseTest('markdown/session-messages', COMPUTE, async () => {
       '{"op":"begin"}',
       '{"op":"commit"}',
     ];
-    const got = await s.received;
+    const got = await s.receivedMessages;
     if (!isDeepStrictEqual(got, want)) throw new Error(`messages:\n${got.join('\n')}\nwant:\n${want.join('\n')}`);
   } finally {
     await s.close();
@@ -112,14 +112,14 @@ caseTest('markdown/session-messages', COMPUTE, async () => {
 // The CONFIG the server answers to connect is the error of connect.
 // Requirements: PRT-64.
 caseTest('markdown/connect-refused', COMPUTE, async () => {
-  const s = await fakeServer('{"error":{"code":"CONFIG","message":"connect: the token is not the corpus\'s token"}}');
+  const s = await startMarkdownTestServer('{"error":{"code":"CONFIG","message":"connect: the token is not the corpus\'s token"}}');
   try {
     let failure;
     try { await (await Db.connect(s.dsn)).close(); } catch (error) { failure = error; }
     if (!(failure instanceof OrmError) || failure.code !== 'CONFIG' || failure.message !== "CONFIG: connect: the token is not the corpus's token") {
       throw new Error(`connect error = ${failure}; want the server's CONFIG`);
     }
-    const got = await s.received;
+    const got = await s.receivedMessages;
     if (!isDeepStrictEqual(got, [connectLine])) throw new Error(`messages = ${JSON.stringify(got)}`);
   } finally {
     await s.close();
@@ -128,7 +128,7 @@ caseTest('markdown/connect-refused', COMPUTE, async () => {
 
 // A markdown connection rejects the SQL-only surface with CAPABILITY_UNSUPPORTED.
 caseTest('markdown/rejected-surfaces', COMPUTE, async () => {
-  const s = await fakeServer('{"ok":true}');
+  const s = await startMarkdownTestServer('{"ok":true}');
   try {
     const db = await Db.connect(s.dsn);
     try {

@@ -42,23 +42,23 @@ func TestParseMarkdownDSN(t *testing.T) {
 	}
 }
 
-// fakeServer receives one connection's messages in place of the flowmark server, records them, and writes the script's replies in order.
-type fakeServer struct {
-	ln       net.Listener
-	received chan []string
+// markdownTestServer receives one connection's messages in place of the flowmark server, records them, and writes the script's replies in order.
+type markdownTestServer struct {
+	ln               net.Listener
+	receivedMessages chan []string
 }
 
-func startFakeServer(t *testing.T, answers ...string) *fakeServer {
+func startMarkdownTestServer(t *testing.T, answers ...string) *markdownTestServer {
 	t.Helper()
 	ln, err := net.Listen("tcp4", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
-	s := &fakeServer{ln: ln, received: make(chan []string, 1)}
+	s := &markdownTestServer{ln: ln, receivedMessages: make(chan []string, 1)}
 	go func() {
 		conn, err := ln.Accept()
 		if err != nil {
-			s.received <- nil
+			s.receivedMessages <- nil
 			return
 		}
 		defer testcase.Close(t, conn)
@@ -74,13 +74,13 @@ func startFakeServer(t *testing.T, answers ...string) *fakeServer {
 				break
 			}
 		}
-		s.received <- got
+		s.receivedMessages <- got
 	}()
 	t.Cleanup(func() { testcase.Close(t, ln) })
 	return s
 }
 
-func (s *fakeServer) dsn() string {
+func (s *markdownTestServer) dsn() string {
 	return "markdown://" + s.ln.Addr().String() + "/tracker?token=0123456789abcdef0123456789abcdef"
 }
 
@@ -91,7 +91,7 @@ const connectLine = `{"op":"connect","corpus":"tracker","token":"0123456789abcde
 func TestMarkdownSessionMessages(t *testing.T) {
 	// Requirements: PRT-64.
 	testcase.Start(t, testcase.Compute)
-	s := startFakeServer(t,
+	s := startMarkdownTestServer(t,
 		`{"ok":true}`,
 		`{"ok":true}`, `{"ok":true}`, `{"ok":true}`, `{"ok":true}`,
 		`{"ok":true}`, `{"error":{"code":"WRITE_CONFLICT","message":"people.flowmark.md:3 changed since it was read"}}`,
@@ -121,7 +121,7 @@ func TestMarkdownSessionMessages(t *testing.T) {
 		`{"op":"begin"}`,
 		`{"op":"commit"}`,
 	}
-	if got := <-s.received; !reflect.DeepEqual(got, want) {
+	if got := <-s.receivedMessages; !reflect.DeepEqual(got, want) {
 		t.Fatalf("messages:\n%s\nwant:\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
 	}
 }
@@ -130,7 +130,7 @@ func TestMarkdownSessionMessages(t *testing.T) {
 func TestMarkdownConnectRefused(t *testing.T) {
 	// Requirements: PRT-64.
 	testcase.Start(t, testcase.Compute)
-	s := startFakeServer(t, `{"error":{"code":"CONFIG","message":"connect: the token is not the corpus's token"}}`)
+	s := startMarkdownTestServer(t, `{"error":{"code":"CONFIG","message":"connect: the token is not the corpus's token"}}`)
 	db, err := Connect(s.dsn(), Config{})
 	if err == nil {
 		testcase.Close(t, db)
@@ -139,7 +139,7 @@ func TestMarkdownConnectRefused(t *testing.T) {
 	if !errors.As(err, &e) || e.Code != CodeConfig || e.Msg != "connect: the token is not the corpus's token" {
 		t.Fatalf("Connect error = %v; want the server's CONFIG", err)
 	}
-	if got := <-s.received; !reflect.DeepEqual(got, []string{connectLine}) {
+	if got := <-s.receivedMessages; !reflect.DeepEqual(got, []string{connectLine}) {
 		t.Fatalf("messages = %q", got)
 	}
 }
@@ -148,7 +148,7 @@ func TestMarkdownConnectRefused(t *testing.T) {
 // (docs/spec/dialects.md "Markdown IR executor").
 func TestMarkdownRejectedSurfaces(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
-	s := startFakeServer(t, `{"ok":true}`)
+	s := startMarkdownTestServer(t, `{"ok":true}`)
 	db, err := Connect(s.dsn(), Config{})
 	if err != nil {
 		t.Fatal(err)

@@ -6,7 +6,7 @@ namespace Polyspec\Orm\Tests;
 
 /*
  * For each case of contracts/fixtures/ir_answers.json, runs its chain (a case of tests/markdown/cases.json). Instead of
- * the flowmark server, markdown_fake_server.php replies {"ok":true} to connect and writes the case's answer to one
+ * the flowmark server, markdown_test_server.php replies {"ok":true} to connect and writes the case's answer to one
  * chain request, and checks that the chain's result matches expect (docs/spec/protocol.md §5 Read). flowmark is not
  * needed.
  *
@@ -46,8 +46,8 @@ final class IrAnswersTest extends TestCase
         self::assertNotNull($chain, "chain {$case['chain']} is no markdown conformance case");
         $flags = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION | JSON_THROW_ON_ERROR;
         $server = isset($case['answers'])
-            ? markdown_fake_server(['--keyed', json_encode($case['answers'], $flags)])
-            : markdown_fake_server(['{"ok":true}', json_encode($case['answer'], $flags)]);
+            ? start_markdown_test_server(['--keyed', json_encode($case['answers'], $flags)])
+            : start_markdown_test_server(['{"ok":true}', json_encode($case['answer'], $flags)]);
         $served = new Served();
         $served->db = \Polyspec\Orm\Tests\MarkdownModel\connect($server[2], new Config());
         $error = null;
@@ -58,7 +58,7 @@ final class IrAnswersTest extends TestCase
             $got = ['error' => $e->code_];
         } finally {
             $served->db->close();
-            markdown_received($server);
+            markdown_test_server_received_messages($server);
         }
         $actual = MarkdownConformanceTest::normalize($got);
         $expect = MarkdownConformanceTest::normalize($case['expect']);

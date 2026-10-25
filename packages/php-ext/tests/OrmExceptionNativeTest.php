@@ -316,8 +316,8 @@ final class OrmExceptionNativeTest extends TestCase
 
     public function testNativeMarkdownConnectionSendsTheConnectHandshake(): void
     {
-        $serverCode = self::markdownServerCode('{}');
-        [$process, $pipes] = self::startMarkdownServer($serverCode);
+        $serverCode = self::markdownTestServerCode('{}');
+        [$process, $pipes] = self::startMarkdownTestServer($serverCode);
         try {
             $port = trim((string) fgets($pipes[1]));
             Assert::assertMatchesRegularExpression('/^[1-9][0-9]*$/', $port);
@@ -328,7 +328,7 @@ final class OrmExceptionNativeTest extends TestCase
             Assert::assertSame(['op' => 'connect', 'corpus' => 'corpus', 'token' => 'test-token'], $request);
             $db->close();
         } finally {
-            self::stopMarkdownServer($process, $pipes);
+            self::stopMarkdownTestServer($process, $pipes);
         }
     }
 
@@ -339,8 +339,8 @@ final class OrmExceptionNativeTest extends TestCase
             ['error' => ['code' => 'CONFIG', 'message' => "connect: the token is not the corpus's token"]],
             JSON_THROW_ON_ERROR
         );
-        $serverCode = self::markdownServerCode($response);
-        [$process, $pipes] = self::startMarkdownServer($serverCode);
+        $serverCode = self::markdownTestServerCode($response);
+        [$process, $pipes] = self::startMarkdownTestServer($serverCode);
         try {
             $port = trim((string) fgets($pipes[1]));
             Assert::assertMatchesRegularExpression('/^[1-9][0-9]*$/', $port);
@@ -368,7 +368,7 @@ final class OrmExceptionNativeTest extends TestCase
                 $request
             );
         } finally {
-            self::stopMarkdownServer($process, $pipes);
+            self::stopMarkdownTestServer($process, $pipes);
         }
     }
 
@@ -524,7 +524,7 @@ final class OrmExceptionNativeTest extends TestCase
         Assert::assertSame(['HY000', 1, 'no such table: missing_499'], $kept[499][0]->getPrevious()->errorInfo);
     }
 
-    private static function markdownServerCode(string $response): string
+    private static function markdownTestServerCode(string $response): string
     {
         return str_replace('__RESPONSE__', var_export($response, true), <<<'PHP'
 $server = stream_socket_server('tcp://127.0.0.1:0', $errno, $error);
@@ -544,7 +544,7 @@ PHP);
     }
 
     /** @return array{resource, array<int, resource>} */
-    private static function startMarkdownServer(string $serverCode): array
+    private static function startMarkdownTestServer(string $serverCode): array
     {
         $pipes = [];
         $process = proc_open(
@@ -557,7 +557,7 @@ PHP);
     }
 
     /** @param array<int, resource> $pipes */
-    private static function stopMarkdownServer($process, array $pipes): void
+    private static function stopMarkdownTestServer($process, array $pipes): void
     {
         foreach ($pipes as $pipe) {
             if (is_resource($pipe)) {

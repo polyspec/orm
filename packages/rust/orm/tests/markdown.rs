@@ -42,16 +42,16 @@ fn parse_markdown_dsn() {
 
 /// A server that, in place of the flowmark server, records one connection's messages and writes `answers` in turn. The lines it receives
 /// come back as `received` after the connection ends.
-struct FakeServer {
+struct MarkdownTestServer {
     port: u16,
-    received: oneshot::Receiver<Vec<String>>,
+    received_messages: oneshot::Receiver<Vec<String>>,
 }
 
-async fn fake_server(answers: &[&str]) -> FakeServer {
+async fn start_markdown_test_server(answers: &[&str]) -> MarkdownTestServer {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let port = listener.local_addr().unwrap().port();
     let answers: Vec<String> = answers.iter().map(|a| format!("{a}\n")).collect();
-    let (sent, received) = oneshot::channel();
+    let (sent, received_messages) = oneshot::channel();
     tokio::spawn(async move {
         let mut got = Vec::new();
         if let Ok((conn, _)) = listener.accept().await {
@@ -69,10 +69,13 @@ async fn fake_server(answers: &[&str]) -> FakeServer {
             panic!("the fake server's receiver was dropped before the requests were sent");
         }
     });
-    FakeServer { port, received }
+    MarkdownTestServer {
+        port,
+        received_messages,
+    }
 }
 
-impl FakeServer {
+impl MarkdownTestServer {
     fn dsn(&self) -> String {
         format!("markdown://127.0.0.1:{}/tracker?token={TOKEN}", self.port)
     }
@@ -83,7 +86,7 @@ impl FakeServer {
 async fn markdown_session_messages() {
     // Requirements: PRT-64.
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let server = fake_server(&[
+    let server = start_markdown_test_server(&[
         r#"{"ok":true}"#,
         r#"{"ok":true}"#,
         r#"{"ok":true}"#,
@@ -108,7 +111,7 @@ async fn markdown_session_messages() {
         r#"{"op":"begin"}"#,
         r#"{"op":"commit"}"#,
     ];
-    assert_eq!(server.received.await.unwrap(), want);
+    assert_eq!(server.received_messages.await.unwrap(), want);
 }
 
 /// Checks that the CONFIG the server answers to connect is connect's error.
@@ -116,7 +119,7 @@ async fn markdown_session_messages() {
 async fn markdown_connect_refused() {
     // Requirements: PRT-64.
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let server = fake_server(&[r#"{"error":{"code":"CONFIG","message":"connect: the token is not the corpus's token"}}"#]).await;
+    let server = start_markdown_test_server(&[r#"{"error":{"code":"CONFIG","message":"connect: the token is not the corpus's token"}}"#]).await;
     let error = match Db::connect(&server.dsn(), 1, Config::default()).await {
         Ok(db) => {
             db.close().await;
@@ -125,7 +128,7 @@ async fn markdown_connect_refused() {
         Err(error) => error,
     };
     assert_eq!((error.code(), error.to_string().as_str()), ("CONFIG", "CONFIG: connect: the token is not the corpus's token"));
-    assert_eq!(server.received.await.unwrap(), [CONNECT_LINE]);
+    assert_eq!(server.received_messages.await.unwrap(), [CONNECT_LINE]);
 }
 
 /// Checks that the markdown connection rejects the SQL-only surface with CAPABILITY_UNSUPPORTED (docs/spec/dialects.md
@@ -134,7 +137,7 @@ async fn markdown_connect_refused() {
 // The test of DIA-183, DIA-184, DIA-185, DIA-188, DIA-189 (docs/spec).
 async fn markdown_rejected_surfaces() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let server = fake_server(&[r#"{"ok":true}"#]).await;
+    let server = start_markdown_test_server(&[r#"{"ok":true}"#]).await;
     let db = Db::connect(&server.dsn(), 1, Config::default()).await.unwrap();
     let results: Vec<(&str, polyspec_orm::Result<()>)> = vec![
         ("isolation", db.transaction(async || Ok(())).isolation(Isolation::Serializable).await),
@@ -160,7 +163,7 @@ async fn markdown_rejected_surfaces() {
 #[tokio::test]
 async fn markdown_statement_timeout_refused() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
-    let server = fake_server(&[r#"{"ok":true}"#]).await;
+    let server = start_markdown_test_server(&[r#"{"ok":true}"#]).await;
     let config = Config { statement_timeout_ms: 100, ..Config::default() };
     match Db::connect(&server.dsn(), 1, config).await {
         Err(error) => assert_eq!(error.code(), "CAPABILITY_UNSUPPORTED", "{error}"),
@@ -171,5 +174,5 @@ async fn markdown_statement_timeout_refused() {
     }
     // If there is no connection, the server waits in accept, so to end that task, one connection is opened and closed immediately.
     drop(tokio::net::TcpStream::connect(("127.0.0.1", server.port)).await.unwrap());
-    assert_eq!(server.received.await.unwrap(), Vec::<String>::new());
+    assert_eq!(server.received_messages.await.unwrap(), Vec::<String>::new());
 }

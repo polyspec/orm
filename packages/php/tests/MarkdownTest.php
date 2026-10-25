@@ -9,7 +9,7 @@ namespace Polyspec\Orm\Tests;
  * the reading of control messages and error lines, the connect the server refuses, the SQL-only surface that a markdown
  * connection refuses, and Validator::paramUses, which reads the slot form for each parameter in the message encoder.
  * The size of a class is Large, that of the largest case (a child process).
- * Instead of the flowmark server, markdown_fake_server.php records the messages of one connection and writes the chosen
+ * Instead of the flowmark server, markdown_test_server.php records the messages of one connection and writes the chosen
  * answers.
  */
 
@@ -43,21 +43,21 @@ function markdown_error(Closure $fn): ?OrmException
 }
 
 /**
- * Starts markdown_fake_server.php with $answers. The values returned are [process, stdout, dsn, stderr].
+ * Starts markdown_test_server.php with $answers. The values returned are [process, stdout, dsn, stderr].
  * stderr is received through a pipe: passing this process's STDERR loses the front of the output redirected to a file.
  *
  * @param list<string> $answers
  * @return array{0: resource, 1: resource, 2: string, 3: resource}
  */
-function markdown_fake_server(array $answers): array
+function start_markdown_test_server(array $answers): array
 {
     $process = proc_open(
-        [PHP_BINARY, __DIR__ . '/markdown_fake_server.php', ...$answers],
+        [PHP_BINARY, __DIR__ . '/markdown_test_server.php', ...$answers],
         [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
         $pipes
     );
     if ($process === false) {
-        throw new RuntimeException('cannot start markdown_fake_server.php');
+        throw new RuntimeException('cannot start markdown_test_server.php');
     }
     $port = trim((string) fgets($pipes[1]));
     if (preg_match('/^[0-9]+$/', $port) !== 1) {
@@ -65,7 +65,7 @@ function markdown_fake_server(array $answers): array
         fclose($pipes[1]);
         fclose($pipes[2]);
         proc_close($process);
-        throw new RuntimeException("markdown_fake_server.php printed \"$port\", not its port; stderr:\n$stderr");
+        throw new RuntimeException("markdown_test_server.php printed \"$port\", not its port; stderr:\n$stderr");
     }
     return [$process, $pipes[1], "markdown://127.0.0.1:$port/tracker?token=" . MARKDOWN_TOKEN, $pipes[2]];
 }
@@ -76,7 +76,7 @@ function markdown_fake_server(array $answers): array
  * @param array{0: resource, 1: resource, 2: string, 3: resource} $server
  * @return list<string>
  */
-function markdown_received(array $server): array
+function markdown_test_server_received_messages(array $server): array
 {
     $line = (string) stream_get_contents($server[1]);
     $stderr = (string) stream_get_contents($server[3]);
@@ -86,7 +86,7 @@ function markdown_received(array $server): array
     $received = json_decode($line, true);
     if (!is_array($received)) {
         throw new RuntimeException(
-            "markdown_fake_server.php printed \"$line\", not the received lines; stderr:\n$stderr"
+            "markdown_test_server.php printed \"$line\", not the received lines; stderr:\n$stderr"
         );
     }
     return $received;
@@ -135,7 +135,7 @@ final class MarkdownTest extends TestCase
     // Requirements: PRT-64.
     public function testSessionMessages(): void
     {
-        $server = markdown_fake_server([
+        $server = start_markdown_test_server([
             '{"ok":true}',
             '{"ok":true}', '{"ok":true}', '{"ok":true}', '{"ok":true}',
             '{"ok":true}', '{"error":{"code":"WRITE_CONFLICT","message":"people.flowmark.md:3 changed since it was '
@@ -165,7 +165,7 @@ final class MarkdownTest extends TestCase
             '{"op":"commit"}',
         ];
         self::assertFalse(
-            ($got = markdown_received($server)) !== $want,
+            ($got = markdown_test_server_received_messages($server)) !== $want,
             "messages:\n" . implode("\n", $got) . "\nwant:\n" . implode("\n", $want)
         );
     }
@@ -173,7 +173,7 @@ final class MarkdownTest extends TestCase
     // Requirements: PRT-64.
     public function testConnectRefused(): void
     {
-        $server = markdown_fake_server(
+        $server = start_markdown_test_server(
             ['{"error":{"code":"CONFIG","message":"connect: the token is not the corpus\'s token"}}']
         );
         $e = markdown_error(static fn() => Orm::connect($server[2], new Config())->close());
@@ -182,14 +182,14 @@ final class MarkdownTest extends TestCase
             'connect error = ' . ($e?->getMessage() ?? 'none') . "; want the server's CONFIG"
         );
         self::assertFalse(
-            ($got = markdown_received($server)) !== [MARKDOWN_CONNECT_LINE],
+            ($got = markdown_test_server_received_messages($server)) !== [MARKDOWN_CONNECT_LINE],
             'messages = ' . json_encode($got)
         );
     }
 
     public function testRejectedSurfaces(): void
     {
-        $server = markdown_fake_server(['{"ok":true}']);
+        $server = start_markdown_test_server(['{"ok":true}']);
         $db = Orm::connect($server[2], new Config());
         $surfaces = [
             'isolation' => static fn() => $db->transaction(static function (): void {
@@ -217,7 +217,7 @@ final class MarkdownTest extends TestCase
             'statementTimeoutMs: ' . ($e?->getMessage() ?? 'no error') . '; want CAPABILITY_UNSUPPORTED'
         );
         $db->close();
-        markdown_received($server);
+        markdown_test_server_received_messages($server);
     }
 
     // Requirements: PRT-66.
@@ -225,13 +225,13 @@ final class MarkdownTest extends TestCase
     {
         // The request message writes parameters in the slot form: the time compared with a date column is YYYY-MM-DD. A
         // row that is absent group count is an empty result.
-        $server = markdown_fake_server(['{"ok":true}', '{"rows":[]}']);
+        $server = start_markdown_test_server(['{"ok":true}', '{"rows":[]}']);
         $db = \Polyspec\Orm\Tests\MarkdownModel\connect($server[2], new Config());
         $groups = (new \Polyspec\Orm\Tests\MarkdownModel\Tasks())->connect($db)
             ->due('2026-10-01')->groupByOwner()->getsCount()->toArray();
         self::assertFalse($groups !== [], 'group count of no rows = ' . json_encode($groups));
         $db->close();
-        $received = markdown_received($server);
+        $received = markdown_test_server_received_messages($server);
         $message = json_decode($received[1] ?? 'null', true);
         self::assertFalse(!is_array($message) || $message['params'] !== [
             '2026-10-01'
@@ -255,7 +255,7 @@ final class MarkdownTest extends TestCase
             true,
             flags: JSON_THROW_ON_ERROR
         );
-        $server = markdown_fake_server(['{"ok":true}']);
+        $server = start_markdown_test_server(['{"ok":true}']);
         $db = Orm::connect($server[2], new Config());
         self::assertFalse(
             (new DateTimeImmutable("2000-01-01", $db->zone()))->format("P") !== $vectors["zone"],
@@ -285,7 +285,7 @@ final class MarkdownTest extends TestCase
             }
         }
         $db->close();
-        markdown_received($server);
+        markdown_test_server_received_messages($server);
     }
 
     public function testBindVectors(): void
