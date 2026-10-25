@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- `make feature-unit-check` passes on main again: scripts/features/coverage.test.mts expects the requirements that config/parity.json binds to the catalog parity units (SCH-6a, INT-113 and INT-114 for catalog-connection-read; SCH-6a, INT-109 and INT-123 for catalog-connection-row-mutation), and the generation-scan-parity-php verification of model_generation no longer declares packages/php/tests/OrmGenTestSupport.php, a path of the helper phpstan-test-runner, as an input (KSTD-7-9-2). Red: the catalog case of coverage.test.mts and the helper-input case of owners.test.mts failed on main.
 - CPX-2 states the complex query example on the fixture `contracts/fixtures/complex_query`, which every implementation runs: eight ordered statements on MySQL and PostgreSQL and an `OPERATOR_NOT_ALLOWED` refusal before any statement on SQLite. The Go and TypeScript cases name CPX-2, and the TypeScript case imports the `assert` it passes to the shared check (KSTD-2-9-13).
 - The Rust codec, driver, Markdown and build error paths keep the native cause in their messages. `make rust-causes-check` passes (ORM 6/6, build 14/14), and the database caller cases `tool_cells`, `grid_cells`, `grid_numbers`, `grid_decimals` and `grid_temporal` pass on SQLite, MySQL and PostgreSQL test servers; the red was `make rust-causes-check` exit 2 at `e555f7f87e9e` (KSTD-5-71).
 - `make kit-check` passes on main, confirming CHECK_TARGETS includes every Kit gate and the vendored files match Kit 0.0.54 (KSTD-5-11).

@@ -105,11 +105,15 @@ caseTest('PHP extension catalog, schema and statement event coverage use native 
   }
   const catalog = manifest.features.find(item => item.id === 'catalog_connection');
   assert.ok(catalog);
-  for (const id of ['catalog-connection-read', 'catalog-connection-row-mutation']) {
+  const catalogRequirements: Record<string, string[]> = {
+    'catalog-connection-read': ['SCH-6a', 'INT-113', 'INT-114'],
+    'catalog-connection-row-mutation': ['SCH-6a', 'INT-109', 'INT-123'],
+  };
+  for (const [id, requirements] of Object.entries(catalogRequirements)) {
     assert.ok(catalog.parity.includes(id), `catalog_connection omits ${id}`);
     const unit: ParityConfig['units'][number] | undefined = parityUnits.find(item => item.id === id);
     assert.ok(unit, `config/parity.json omits ${id}`);
-    assert.deepEqual(unit.requirements, ['SCH-6a']);
+    assert.deepEqual(unit.requirements, requirements);
     assert.ok(unit.bindings, `config/parity.json omits bindings for ${id}`);
     assert.deepEqual(unit.bindings.map(binding => binding.implementation).toSorted(), [...languages].toSorted());
   }

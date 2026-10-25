@@ -3694,7 +3694,6 @@
           "shard": "other",
           "inputs": [
             "packages/php/tests/OrmGenScanParityTest.php",
-            "packages/php/tests/OrmGenTestSupport.php",
             "tests/generator/php-scan-vectors.json",
             "packages/ts/src/bin/orm-gen.ts"
           ]
