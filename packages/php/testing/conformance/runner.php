@@ -137,6 +137,7 @@ vector('delete_lock', function () use ($db): array {
             ->setServiceRegionSeq(7)->setServiceMemberSeq(7)->setStartDt('2026-01-01 00:00:00')
             ->setEndDt('2026-12-31 00:00:00')->create();
         $aSeq = $author->getSeq();
+        mask([$uSeq, $aSeq]);
         $rel = (new Author())->matchSeqWithUserSeq();
         if ($locked) {
             $rel->deleteLock();

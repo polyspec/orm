@@ -164,6 +164,7 @@ async function main() {
       const aSeqValue = author.toArray().seq;
       if (typeof aSeqValue !== 'number') throw new Error('delete_lock author seq is not a number');
       const aSeq = aSeqValue;
+      mask([uSeq, aSeq]);
       const rel = new Author().matchSeqWithUserSeq();
       if (locked) rel.deleteLock();
       const loaded = await new User().connect(db).seq(uSeq).relations(rel).gets();

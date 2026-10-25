@@ -1823,6 +1823,7 @@ func deleteLockVector(db *orm.DB) (any, error) {
 		if err != nil {
 			return nil, err
 		}
+		mask([]int64{userSeq, authorSeq})
 		rel := model.Author().MatchSeqWithUserSeq()
 		if locked {
 			rel.DeleteLock()

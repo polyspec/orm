@@ -411,6 +411,7 @@ def main():
                 .create()
             )
             a_seq = author_row.get_seq()
+            mask([u_seq, a_seq])
             rel = Author().match_seq_with_user_seq()
             if locked:
                 rel.delete_lock()

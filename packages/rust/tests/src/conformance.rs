@@ -409,6 +409,7 @@ fn vectors<'a>(db: &'a Db, shared: &'a Shared) -> Vec<Vector<'a>> {
                 .create()
                 .await?;
             let a_seq = author.get_seq()?;
+            mask(shared, &[u_seq, a_seq], &[]);
             let rel = if locked { Author::new().match_seq_with_user_seq().delete_lock() } else { Author::new().match_seq_with_user_seq() };
             let loaded = User::new().connect(db).seq(u_seq).relations(rel).gets().await?;
             let error = match loaded.delete(true).await {

@@ -5832,7 +5832,7 @@
           {
             "binds": [
               "delete-lock",
-              5017,
+              "$SEQ",
               7,
               7,
               7,
@@ -5850,7 +5850,7 @@
           },
           {
             "binds": [
-              5017
+              "$SEQ"
             ],
             "error": null,
             "kind": "select",
@@ -5862,7 +5862,7 @@
           },
           {
             "binds": [
-              5017
+              "$SEQ"
             ],
             "error": null,
             "kind": "select",
@@ -5882,7 +5882,7 @@
           },
           {
             "binds": [
-              131075
+              "$SEQ"
             ],
             "error": null,
             "kind": "delete",
@@ -5894,7 +5894,7 @@
           },
           {
             "binds": [
-              5017
+              "$SEQ"
             ],
             "error": null,
             "kind": "delete",
@@ -5914,7 +5914,7 @@
           },
           {
             "binds": [
-              131075
+              "$SEQ"
             ],
             "error": null,
             "kind": "select",
@@ -5926,7 +5926,7 @@
           },
           {
             "binds": [
-              5017
+              "$SEQ"
             ],
             "error": null,
             "kind": "select",
@@ -5951,7 +5951,7 @@
           {
             "binds": [
               "delete-lock",
-              5018,
+              "$SEQ",
               7,
               7,
               7,
@@ -5969,7 +5969,7 @@
           },
           {
             "binds": [
-              5018
+              "$SEQ"
             ],
             "error": null,
             "kind": "select",
@@ -5981,7 +5981,7 @@
           },
           {
             "binds": [
-              5018
+              "$SEQ"
             ],
             "error": null,
             "kind": "select",
@@ -6001,7 +6001,7 @@
           },
           {
             "binds": [
-              5018
+              "$SEQ"
             ],
             "error": "FOREIGN_KEY",
             "kind": "delete",
@@ -6021,7 +6021,7 @@
           },
           {
             "binds": [
-              131076
+              "$SEQ"
             ],
             "error": null,
             "kind": "select",
@@ -6033,7 +6033,7 @@
           },
           {
             "binds": [
-              5018
+              "$SEQ"
             ],
             "error": null,
             "kind": "select",
@@ -6045,7 +6045,7 @@
           },
           {
             "binds": [
-              131076
+              "$SEQ"
             ],
             "error": null,
             "kind": "select",
@@ -6065,7 +6065,7 @@
           },
           {
             "binds": [
-              131076
+              "$SEQ"
             ],
             "error": null,
             "kind": "delete",
@@ -6085,7 +6085,7 @@
           },
           {
             "binds": [
-              5018
+              "$SEQ"
             ],
             "error": null,
             "kind": "select",
@@ -6105,7 +6105,7 @@
           },
           {
             "binds": [
-              5018
+              "$SEQ"
             ],
             "error": null,
             "kind": "delete",
