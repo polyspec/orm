@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
+use Polyspec\Orm\Engine;
 use Polyspec\Orm\Planner;
+use Polyspec\Orm\RuntimeModel;
 use Polyspec\Orm\Validator;
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\Small;
@@ -492,6 +494,23 @@ final class CoveragePlannerExtensionTest extends TestCase
     public function test_planner_contains_binary_collation(): void
     {
         $this->runPlannerCoverageCase('planner_contains_binary_collation');
+
+        require_once dirname(__DIR__, 2) . '/php/tests/CoveragePlannerTest.php';
+        $root = dirname(__DIR__, 3);
+        $fixture = coverageJson("$root/contracts/fixtures/planner.json");
+        $found = array_values(array_filter(
+            $fixture['cases'],
+            static fn(array $case): bool => $case['id'] === 'planner_contains_binary_collation'
+        ));
+        Assert::assertCount(1, $found);
+        $case = $found[0];
+        $model = RuntimeModel::build(RuntimeModel::files(["$root/{$case['schema']}"]));
+        $request = ['manifest_hash' => $model->manifestHash] + $case['input'];
+        Assert::assertTrue((new ReflectionClass(Engine::class))->isInternal());
+        $plan = (new Engine($model, 'sqlite', 8))->plan($request);
+
+        Assert::assertSame($case['expected']['sqlite'][0]['sql'], $plan['steps'][0]['sql']);
+        Assert::assertCount(1, $plan['steps'][0]['bind_slots']);
     }
 
     // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- feature IDs require the test method to preserve underscores.

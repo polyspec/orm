@@ -1780,7 +1780,17 @@ static pthunk *g_value;  /* fn(string $transform) => $b->colParam(p, col, transf
 static zend_internal_function fn_arg_def, fn_now_def, fn_value_def;
 static bool fn_defs_ready = false;
 
-static void fn_def(zend_internal_function *f, const char *name, void (*h)(zend_execute_data *, zval *), uint32_t nargs)
+ZEND_BEGIN_ARG_INFO_EX(fn_value_arg_info, 0, 0, 1)
+	ZEND_ARG_TYPE_INFO(0, transform, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+static void fn_def(
+    zend_internal_function *f,
+    const char *name,
+    void (*h)(zend_execute_data *, zval *),
+    uint32_t nargs,
+    const zend_internal_arg_info *arg_info
+)
 {
     memset(f, 0, sizeof(*f));
     f->type = ZEND_INTERNAL_FUNCTION;
@@ -1789,6 +1799,7 @@ static void fn_def(zend_internal_function *f, const char *name, void (*h)(zend_e
     f->handler = h;
     f->num_args = nargs;
     f->required_num_args = nargs;
+    f->arg_info = (zend_internal_arg_info *)arg_info;
 }
 
 ZEND_NAMED_FUNCTION(planner_thunk_arg)
@@ -1834,9 +1845,9 @@ static void fns_init(void)
         return;
     }
     fn_defs_ready = true;
-    fn_def(&fn_arg_def, "planner-arg", planner_thunk_arg, 0);
-    fn_def(&fn_now_def, "planner-now", planner_thunk_now, 0);
-    fn_def(&fn_value_def, "planner-value", planner_thunk_value, 1);
+    fn_def(&fn_arg_def, "planner-arg", planner_thunk_arg, 0, NULL);
+    fn_def(&fn_now_def, "planner-now", planner_thunk_now, 0, NULL);
+    fn_def(&fn_value_def, "planner-value", planner_thunk_value, 1, fn_value_arg_info + 1);
 }
 
 /* A Closure of an internal function of this file, kept. */
