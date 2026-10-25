@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+
+- KSTD-5-88-16: ModelTest::testConnectionTimeZone passes on all 15 provider datasets in both PHP modes; each lane ran 15 tests / 90 assertions on PHP 8.4.26.
 - KSTD-5-89-7: TypeScript hot-path latency now converts nanoseconds to microseconds. The formatter unit and CI owner-target scheduling checks each passed (1/1); no database benchmark was run.
 
 - KSTD-5-88-13: all 12 Rust tests now start their own polyspec_orm_testcase case; the repository guard passes (1/1).

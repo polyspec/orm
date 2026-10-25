@@ -1,9 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 57cec125c1a606ee2aaec2ca83217af761b067ea93f996953b6ca9e6ca61ce56 -->
+<!-- source-sha256: 673a859534fea1f6bfa45d06291db2ecb5dee6b1cbb29bdb788f2c1b0a234241 -->
 # 변경 이력
 
 ## Unreleased
 
+
+- KSTD-5-88-16: ModelTest::testConnectionTimeZone의 provider dataset 15개가 PHP 두 mode에서 모두 통과했다. PHP 8.4.26에서 각 lane 15 tests / 90 assertions를 실행했다.
 - KSTD-5-89-7: TypeScript hot-path latency가 nanosecond를 microsecond로 변환한다. formatter unit과 CI owner-target scheduling 검사가 각각 1/1 통과했고 database benchmark는 실행하지 않았다.
 
 - KSTD-5-88-13: 12개 Rust test가 각자 polyspec_orm_testcase case를 시작한다. 저장소 guard가 1/1 통과했다.
