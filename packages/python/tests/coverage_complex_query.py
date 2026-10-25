@@ -33,6 +33,7 @@ class ComplexQueryCoverageTest(unittest.TestCase):
                     self.fail("ORM_FEATURE_DSN selects another database")
                 if driver == "sqlite":
                     self.assert_sqlite_refuses_before_statement(models, db)
+                    print(f"CASE complex_query_product_search [{driver}] PASS", flush=True)
                     return
                 events = []
                 unsubscribe = db.subscribe(events.append)
@@ -56,6 +57,7 @@ class ComplexQueryCoverageTest(unittest.TestCase):
                 )
             finally:
                 db.close()
+            print(f"CASE complex_query_product_search [{driver}] PASS", flush=True)
 
     def assert_sqlite_refuses_before_statement(self, models, db):
         events = []

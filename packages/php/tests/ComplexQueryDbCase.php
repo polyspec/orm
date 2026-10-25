@@ -306,7 +306,7 @@ final class ComplexQueryDbCase
                 $language = $product->getProductLangModel();
                 Assert::assertNotNull($language, "product $sequence has its localized row");
                 $productLangs[$key] = $language->getSeq();
-                Assert::assertSame('widget-' . $sequence . '-en', $product->getName());
+                Assert::assertSame('widget-' . $sequence . '-en', $language->getName());
             }
             if (isset($expected['brand_seqs'][$key])) {
                 $brand = $product->getBrand();
@@ -317,7 +317,7 @@ final class ComplexQueryDbCase
                     $brandLanguage = $brand->getProductBrandLangModel();
                     Assert::assertNotNull($brandLanguage, "brand $brandSequence has its localized row");
                     $brandLangs[(string) $brandSequence] = $brandLanguage->getSeq();
-                    Assert::assertSame("brand-$brandSequence-en", $brand->getName());
+                    Assert::assertSame("brand-$brandSequence-en", $brandLanguage->getName());
                 }
             }
             if (isset($expected['review_seqs'][$key])) {
