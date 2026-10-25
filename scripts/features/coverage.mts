@@ -80,7 +80,6 @@ function requirements(feature: Feature, coverage: Coverage, errors: string[]): I
   }
   if (!Array.isArray(coverage.dependents)) errors.push(`${feature.id}: missing dependents declaration`);
   for (const language of languages) {
-    if (!claimed.has(language)) continue;
     const owner = coverage.owners?.[language];
     const directory = testDirectoryOf(language);
     const validOwnerDirectory = owner?.part?.startsWith(`${directory}/`) || owner?.part === directory;
