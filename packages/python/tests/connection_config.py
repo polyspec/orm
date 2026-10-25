@@ -253,7 +253,9 @@ class ConnectionConfigTest(unittest.TestCase):
                     except OrmError as error:
                         self.assertEqual(error.code, "CANCELED")
                     else:
-                        self.fail("the row-locking statement completed without cancellation")
+                        self.fail(
+                            "the row-locking statement completed without cancellation"
+                        )
                 finally:
                     if cancel_handle is not None:
                         cancel_handle.cancel()
@@ -274,7 +276,9 @@ class ConnectionConfigTest(unittest.TestCase):
                 4,
                 "the root connection remains usable after PgBouncer forwards cancellation",
             )
-            testcase.step("PgBouncer forwarded cancellation and the root connection remained usable")
+            testcase.step(
+                "PgBouncer forwarded cancellation and the root connection remained usable"
+            )
         finally:
             if holder is not None:
                 holder.rollback()
@@ -285,6 +289,7 @@ class ConnectionConfigTest(unittest.TestCase):
                 setup._connection.execute(f'DROP TABLE IF EXISTS "{table}"', [])
             finally:
                 setup.close()
+
 
 class ConnectionConfigComputeTest(unittest.TestCase):
     deadline = testcase.COMPUTE

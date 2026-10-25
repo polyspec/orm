@@ -836,7 +836,10 @@ class OrmGenTest(unittest.TestCase):
             source = out / "models.py"
             module = types.ModuleType("generated_field_types")
             module.__file__ = str(source)
-            exec(compile(source.read_text(encoding="utf-8"), str(source), "exec"), module.__dict__)
+            exec(
+                compile(source.read_text(encoding="utf-8"), str(source), "exec"),
+                module.__dict__,
+            )
             for field, expected in (
                 ("ratio", float),
                 ("enabled", bool),

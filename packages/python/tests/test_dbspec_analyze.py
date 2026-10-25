@@ -135,7 +135,9 @@ class AnalyzeTest(unittest.TestCase):
     def test_foreign_key_count_limit(self):
         tables = ["dbspec 1 shop"]
         for table in range(21):
-            tables.extend(("", f"table t{table} {{", "  id i64 identity", "  primary key (id)"))
+            tables.extend(
+                ("", f"table t{table} {{", "  id i64 identity", "  primary key (id)")
+            )
             tables.extend(
                 f"  foreign key fk_{table}_{foreign_key} (id) references t{table} (id)"
                 for foreign_key in range(1000)

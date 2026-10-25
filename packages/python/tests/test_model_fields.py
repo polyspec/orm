@@ -65,7 +65,9 @@ class ModelFieldsTest(unittest.TestCase):
         self.assertTrue(author.core.on.items, "on stores the join condition")
         database = object()
         self.assertIs(author.connect(database), author, "connect returns the model")
-        self.assertIs(author.core.conn, database, "connect attaches the selected database")
+        self.assertIs(
+            author.core.conn, database, "connect attaches the selected database"
+        )
 
 
 if __name__ == "__main__":

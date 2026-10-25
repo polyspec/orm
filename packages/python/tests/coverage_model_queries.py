@@ -31,35 +31,60 @@ def model_query_rows(item):
             [row.get_name() for row in rows.values()],
             "first page contains the first ordered rows",
         )
-        expect_equal(page["totalCount"], query.get_count(), "page total matches get_count")
+        expect_equal(
+            page["totalCount"], query.get_count(), "page total matches get_count"
+        )
         expect_equal(
             author().service_seq(7).sum_read_count().get_sum(),
             456000,
             "sum of read_count",
         )
-        alias = author().remove_all_columns().add_column_start_dt_alias_start_year(
-            orm.year()
-        ).get_by_seq(42)
+        alias = (
+            author()
+            .remove_all_columns()
+            .add_column_start_dt_alias_start_year(orm.year())
+            .get_by_seq(42)
+        )
         alias_values = alias.to_array()
-        expect_equal("StartYear" in alias_values, False, "alias uses its snake_case name")
-        expect_equal(alias_values.get("start_year"), 2026, "alias contains the year result")
+        expect_equal(
+            "StartYear" in alias_values, False, "alias uses its snake_case name"
+        )
+        expect_equal(
+            alias_values.get("start_year"), 2026, "alias contains the year result"
+        )
         join_sql = []
-        unsubscribe = db.subscribe(lambda event: join_sql.append(event.sql) if event.kind == "select" else None)
-        joined = author().service_seq(7).join_service_member_seq_with_seq(
-            models.ServiceMember().force_index_ix_service_member_service()
-        ).join_user_seq_with_seq(
-            models.User()
-            .add_column_read_total(
-                lambda user: models.Author().sum_read_count().user_seq_eq_seq(user)
+        unsubscribe = db.subscribe(
+            lambda event: join_sql.append(event.sql) if event.kind == "select" else None
+        )
+        joined = (
+            author()
+            .service_seq(7)
+            .join_service_member_seq_with_seq(
+                models.ServiceMember().force_index_ix_service_member_service()
             )
-            .order_by_seq_desc()
-        ).gets()
+            .join_user_seq_with_seq(
+                models.User()
+                .add_column_read_total(
+                    lambda user: models.Author().sum_read_count().user_seq_eq_seq(user)
+                )
+                .order_by_seq_desc()
+            )
+            .gets()
+        )
         unsubscribe()
         sql = join_sql[-1] if join_sql else ""
         if driver == "sqlite":
-            expect_equal('INDEXED BY "ix_service_member_service"' in sql, True, "joined table forceIndex")
+            expect_equal(
+                'INDEXED BY "ix_service_member_service"' in sql,
+                True,
+                "joined table forceIndex",
+            )
         elif driver == "mysql":
-            expect_equal("FORCE INDEX (`ix_service_member_service`)" in sql, True, "joined table forceIndex")
+            expect_equal(
+                "FORCE INDEX (`ix_service_member_service`)" in sql,
+                True,
+                "joined table forceIndex",
+            )
         joined_rows = joined.values()
         expect_equal(len(joined_rows) > 0, True, "joined query returns authors")
         previous_user_seq = None
@@ -68,7 +93,9 @@ def model_query_rows(item):
             expect_equal(user is not None, True, "joined user")
             user_seq = user.get_seq()
             if previous_user_seq is not None:
-                expect_equal(user_seq <= previous_user_seq, True, "joined order is descending")
+                expect_equal(
+                    user_seq <= previous_user_seq, True, "joined order is descending"
+                )
             previous_user_seq = user_seq
             expect_equal(
                 Decimal(str(user.get_read_total())),
@@ -101,7 +128,14 @@ def model_query_remove_columns(item):
         )
         expect_equal(
             sorted(row.to_array()),
-            ["name", "seq", "service_member_seq", "service_region_seq", "service_seq", "user_seq"],
+            [
+                "name",
+                "seq",
+                "service_member_seq",
+                "service_region_seq",
+                "service_seq",
+                "user_seq",
+            ],
             "removeAllColumns keeps keys and the added column",
         )
     finally:
@@ -115,7 +149,9 @@ class CoverageTest(CoverageCase):
 
     # Requirements: DSL-76.
     def test_remove_columns_keys_and_added_column(self):
-        self.each_item("remove_columns_keys_and_added_column", model_query_remove_columns)
+        self.each_item(
+            "remove_columns_keys_and_added_column", model_query_remove_columns
+        )
 
 
 if __name__ == "__main__":

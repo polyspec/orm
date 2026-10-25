@@ -11,20 +11,25 @@ from polyspec.orm.markdown import MdNode
 from .coverage_case import REPOSITORY_ROOT
 
 
+def scalar_subquery_case():
+    """The planner_scalar_column_subquery case of contracts/fixtures/planner.json and the model of its schema."""
+    fixture = json.loads(
+        (REPOSITORY_ROOT / "contracts/fixtures/planner.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    case = next(
+        case
+        for case in fixture["cases"]
+        if case["id"] == "planner_scalar_column_subquery"
+    )
+    schema = (REPOSITORY_ROOT / case["schema"]).read_text(encoding="utf-8")
+    return case, model_of_documents(parse_document_set([schema]))
+
+
 class ScalarSubqueryTypeTest(unittest.TestCase):
     def test_missing_post_validation_column_is_internal(self):
-        fixture = json.loads(
-            (REPOSITORY_ROOT / "contracts/fixtures/planner.json").read_text(
-                encoding="utf-8"
-            )
-        )
-        case = next(
-            case
-            for case in fixture["cases"]
-            if case["id"] == "planner_scalar_column_subquery"
-        )
-        schema = (REPOSITORY_ROOT / case["schema"]).read_text(encoding="utf-8")
-        model = model_of_documents(parse_document_set([schema]))
+        case, model = scalar_subquery_case()
         request = dict(case["input"], manifest_hash=model.manifest_hash)
         validate(model, request)
         request["columns"]["sub"]["first_author"]["column"] = "missing_column"
@@ -55,18 +60,7 @@ class ScalarSubqueryTypeTest(unittest.TestCase):
 
     # Requirements: PRT-69.
     def test_scalar_subquery_aggregate_types_remain_i64_and_f64(self):
-        fixture = json.loads(
-            (REPOSITORY_ROOT / "contracts/fixtures/planner.json").read_text(
-                encoding="utf-8"
-            )
-        )
-        case = next(
-            case
-            for case in fixture["cases"]
-            if case["id"] == "planner_scalar_column_subquery"
-        )
-        schema = (REPOSITORY_ROOT / case["schema"]).read_text(encoding="utf-8")
-        model = model_of_documents(parse_document_set([schema]))
+        case, model = scalar_subquery_case()
         for aggregate, column, expected in (
             ("count", "", "i64"),
             ("avg", "read_count", "f64"),
@@ -87,7 +81,6 @@ class ScalarSubqueryTypeTest(unittest.TestCase):
                     if item["name"] == "first_author"
                 )
                 self.assertEqual(output["type"], expected)
-
 
 
 if __name__ == "__main__":

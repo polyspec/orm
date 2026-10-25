@@ -1,6 +1,5 @@
 # model_writes coverage uses CompositeAccount for CRUD and seeded Author.read_count for arithmetic.
 # The arithmetic case rolls back its updates to preserve the seeded row and identity sequence.
-import os
 
 from polyspec.orm.models import models
 
@@ -110,24 +109,36 @@ def model_write_arithmetic_attributes(item):
         def work():
             nonlocal unsubscribe
             loaded = author().add_all_columns().get_by_seq(1)
-            expect_equal(loaded is not None, True, "seed author 1 is readable in the transaction")
+            expect_equal(
+                loaded is not None, True, "seed author 1 is readable in the transaction"
+            )
             loaded.set_read_count(1).update()
             unsubscribe = db.subscribe(
-                lambda event: events.append(event)
-                if event.kind == "update" and "author" in event.tables
-                else None
+                lambda event: (
+                    events.append(event)
+                    if event.kind == "update" and "author" in event.tables
+                    else None
+                )
             )
             loaded = author().add_all_columns().get_by_seq(1)
             loaded.plus_read_count(7).update()
-            expect_equal(author().add_all_columns().get_by_seq(1).get_read_count(), 8, "plus updates the non-key column")
-            expect_equal(any(7 in event.binds for event in events), True, "plus amount is bound")
+            expect_equal(
+                author().add_all_columns().get_by_seq(1).get_read_count(),
+                8,
+                "plus updates the non-key column",
+            )
+            expect_equal(
+                any(7 in event.binds for event in events), True, "plus amount is bound"
+            )
             loaded.update()
             expect_equal(len(events), 1, "a write clears the pending arithmetic change")
             current = author().add_all_columns().get_by_seq(1)
             current.minus_read_count(9).update()
             after_minus = author().add_all_columns().get_by_seq(1)
             expect_equal(after_minus.get_read_count(), 0, "minus clamps at zero")
-            expect_equal(any(9 in event.binds for event in events), True, "minus amount is bound")
+            expect_equal(
+                any(9 in event.binds for event in events), True, "minus amount is bound"
+            )
             raise boom
 
         try:
@@ -136,8 +147,12 @@ def model_write_arithmetic_attributes(item):
             caught = error
         expect_equal(caught is boom, True, "transaction returns the rollback sentinel")
         after = author().add_all_columns().get_by_seq(1)
-        expect_equal(after.get_read_count(), before_read_count, "rollback restores read_count")
-        expect_equal(after.get_updated_ts(), before_updated_ts, "rollback restores updated_ts")
+        expect_equal(
+            after.get_read_count(), before_read_count, "rollback restores read_count"
+        )
+        expect_equal(
+            after.get_updated_ts(), before_updated_ts, "rollback restores updated_ts"
+        )
     finally:
         try:
             if unsubscribe is not None:
@@ -269,7 +284,9 @@ class CoverageTest(CoverageCase):
 
     # Requirements: PLN-26.
     def test_model_write_arithmetic_attributes(self):
-        self.each_item("model_write_arithmetic_attributes", model_write_arithmetic_attributes)
+        self.each_item(
+            "model_write_arithmetic_attributes", model_write_arithmetic_attributes
+        )
 
 
 if __name__ == "__main__":

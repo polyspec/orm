@@ -131,9 +131,13 @@ def check_case(test: unittest.TestCase, case: dict) -> None:
     if run is None:
         test.fail(f"chain {case['chain']} is no markdown conformance case")
     if "answers" in case:
-        listener, thread = start_markdown_test_server_with_keyed_answers(case["answers"])
+        listener, thread = start_markdown_test_server_with_keyed_answers(
+            case["answers"]
+        )
     else:
-        listener, thread = start_markdown_test_server_with_answer(json.dumps(case["answer"]))
+        listener, thread = start_markdown_test_server_with_answer(
+            json.dumps(case["answer"])
+        )
     port = listener.getsockname()[1]
     s = Served(STATE["models"], STATE["workdir"], str(port), TOKEN)
     s.db = STATE["models"].connect(s.dsn("conformance", TOKEN))

@@ -24,7 +24,9 @@ class StressCanonicalTest(unittest.TestCase):
             ),
             None,
         )
-        self.assertIsNotNone(root, "could not find repository root from test working directory")
+        self.assertIsNotNone(
+            root, "could not find repository root from test working directory"
+        )
         assert root is not None
         generator = root / "tests" / "dbspec" / "stress.mts"
         generated = subprocess.run(
@@ -34,22 +36,42 @@ class StressCanonicalTest(unittest.TestCase):
             text=True,
             check=False,
         )
-        self.assertEqual(generated.returncode, 0, f"node tests/dbspec/stress.mts failed: {generated.stderr}")
+        self.assertEqual(
+            generated.returncode,
+            0,
+            f"node tests/dbspec/stress.mts failed: {generated.stderr}",
+        )
         text = generated.stdout
         testcase.step(f"generated {len(text.encode('utf-8'))} bytes")
 
         document, _positions, diagnostics = parse_dbspec(text, {})
-        self.assertFalse(diagnostics, "The generated stress document has no parse diagnostics")
+        self.assertFalse(
+            diagnostics, "The generated stress document has no parse diagnostics"
+        )
         self.assertIsNotNone(document, "The generated stress document parses")
         assert document is not None
         self.assertEqual(2000, len(document.tables), "Stress document table count")
-        self.assertEqual(60000, sum(len(table.columns) for table in document.tables), "Stress document column count")
-        self.assertEqual(10000, sum(len(table.foreign_keys) for table in document.tables), "Stress document foreign key count")
+        self.assertEqual(
+            60000,
+            sum(len(table.columns) for table in document.tables),
+            "Stress document column count",
+        )
+        self.assertEqual(
+            10000,
+            sum(len(table.foreign_keys) for table in document.tables),
+            "Stress document foreign key count",
+        )
 
         first = emit_dbspec(document)
         second = emit_dbspec(document)
-        self.assertEqual(text, first, "emit(parse(stress)) reproduces the generated canonical document")
-        self.assertEqual(first, second, "Two emissions of the parsed stress document are identical")
+        self.assertEqual(
+            text,
+            first,
+            "emit(parse(stress)) reproduces the generated canonical document",
+        )
+        self.assertEqual(
+            first, second, "Two emissions of the parsed stress document are identical"
+        )
 
 
 if __name__ == "__main__":

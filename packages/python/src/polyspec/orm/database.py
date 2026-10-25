@@ -1537,7 +1537,11 @@ class Subscription:
                 try:
                     self._connection.close()
                 except Exception as cleanup:
-                    mapped.add_note(f"closing the lost LISTEN connection also failed: {cleanup}")
+                    if not _is_driver_error("postgres", cleanup):
+                        raise
+                    mapped.add_note(
+                        f"closing the lost LISTEN connection also failed: {cleanup}"
+                    )
             raise mapped from error
         if self._pending:
             return self._pending.popleft()
@@ -2627,8 +2631,14 @@ def _decode_assembly(row, assemble: dict, db: Db) -> None:
     version_cell = None
     if "aes_version" in assemble:
         version_index = assemble["columns"][assemble["aes_version"]]["index"]
-        if not isinstance(version_index, int) or version_index < 0 or version_index >= len(row):
-            raise OrmError(codes.INTERNAL, "an AES version cell is absent from a selected row")
+        if (
+            not isinstance(version_index, int)
+            or version_index < 0
+            or version_index >= len(row)
+        ):
+            raise OrmError(
+                codes.INTERNAL, "an AES version cell is absent from a selected row"
+            )
         version_cell = row[version_index]
     elif any("aes" in column["styles"] for column in assemble["columns"]):
         # The planner selects the version column of every AES column, so a plan without one is broken: no version is assumed.

@@ -120,7 +120,9 @@ def representative_chain(vectors: str) -> list:
     )
     target = parse_plan("\n".join(case["plan"]) + "\n")
     if source["plan"] is None or target["plan"] is None:
-        raise ValueError(f"representative: {source['diagnostics'][:1] or target['diagnostics'][:1]}")
+        raise ValueError(
+            f"representative: {source['diagnostics'][:1] or target['diagnostics'][:1]}"
+        )
     return [source["plan"], target["plan"]]
 
 
@@ -167,7 +169,9 @@ def run(action: str, dialect: str, connection, plans: list) -> str:
     return "ok"
 
 
-def run_lock_wait(dialect: str, uri: str, connection, vectors: str, blocker=None) -> str:
+def run_lock_wait(
+    dialect: str, uri: str, connection, vectors: str, blocker=None
+) -> str:
     """Checks the SQLite lock-acquisition bound or a server statement lock wait."""
     adapter = Adapter(dialect, connection)
     owns_blocker = blocker is None
@@ -214,18 +218,28 @@ def run_lock_wait(dialect: str, uri: str, connection, vectors: str, blocker=None
         except DbspecApplyError as error:
             elapsed = time.monotonic() - started
             if error.code != want_code:
-                raise AssertionError(f"lock wait returned {error.code}; want {want_code}") from error
+                raise AssertionError(
+                    f"lock wait returned {error.code}; want {want_code}"
+                ) from error
             detail = str(error.cause).lower()
             if "lock" not in detail and "timeout" not in detail:
-                raise AssertionError(f"statement failure does not name the held lock: {error.cause}") from error
-            if dialect != "sqlite" and (error.plan != "representative" or error.step != 0):
+                raise AssertionError(
+                    f"statement failure does not name the held lock: {error.cause}"
+                ) from error
+            if dialect != "sqlite" and (
+                error.plan != "representative" or error.step != 0
+            ):
                 raise AssertionError(
                     f"statement lock wait failed at {error.plan} step {error.step}; want representative step 0"
                 ) from error
             if dialect != "sqlite" and step_events != [("statement", 0)]:
-                raise AssertionError(f"step event sequence = {step_events}; want only statement 0") from error
+                raise AssertionError(
+                    f"step event sequence = {step_events}; want only statement 0"
+                ) from error
             if elapsed < 4 or elapsed >= 10:
-                raise AssertionError(f"lock wait returned after {elapsed:.3f}s; want 4s <= elapsed < 10s") from error
+                raise AssertionError(
+                    f"lock wait returned after {elapsed:.3f}s; want 4s <= elapsed < 10s"
+                ) from error
             return f"error {error.code}"
         raise AssertionError("apply did not stop at the held database lock")
     finally:
@@ -247,7 +261,11 @@ def main() -> None:
         )
         raise SystemExit(2)
     action, dialect, uri, vectors = sys.argv[1:]
-    plans = representative_chain(vectors) if action in ("apply-representative", "finalize", "lock-wait") else chain(vectors)
+    plans = (
+        representative_chain(vectors)
+        if action in ("apply-representative", "finalize", "lock-wait")
+        else chain(vectors)
+    )
     connection = connect(dialect, uri)
     try:
         if action == "lock-wait":

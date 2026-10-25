@@ -33,7 +33,13 @@ class ListenNotifyTest(unittest.TestCase):
                             db.listen(channel)
                         self.assertEqual("CONFIG", listen_error.exception.code)
                     db.notify("é" * 31, "valid 62-byte channel")
-                    for payload in ("x" * 8000, "x" * 8001, "é" * 4000, "é" * 4001, "bad\x00payload"):
+                    for payload in (
+                        "x" * 8000,
+                        "x" * 8001,
+                        "é" * 4000,
+                        "é" * 4001,
+                        "bad\x00payload",
+                    ):
                         with self.assertRaises(OrmError) as notify_error:
                             db.notify("t229_events", payload)
                         self.assertEqual("DRIVER", notify_error.exception.code)
@@ -81,19 +87,27 @@ class ListenNotifyTest(unittest.TestCase):
                     lost = lost_db.listen("t229_connection_lost")
                     lost_db.close()
                     server = os.environ.get("ORM_TEST_POSTGRES_SERVER_DSN")
-                    self.assertIsNotNone(server, "ORM_TEST_POSTGRES_SERVER_DSN is required")
+                    self.assertIsNotNone(
+                        server, "ORM_TEST_POSTGRES_SERVER_DSN is required"
+                    )
                     name = urlsplit(dsn).path.lstrip("/")
-                    with psycopg.connect(with_database(server, name), autocommit=True) as admin:
+                    with psycopg.connect(
+                        with_database(server, name), autocommit=True
+                    ) as admin:
                         row = admin.execute(
                             "SELECT pid FROM pg_stat_activity WHERE datname = current_database() "
                             "AND pid <> pg_backend_pid() AND query = %s LIMIT 1",
                             ('LISTEN "t229_connection_lost"',),
                         ).fetchone()
-                        self.assertIsNotNone(row, "the listener backend is visible in pg_stat_activity")
+                        self.assertIsNotNone(
+                            row, "the listener backend is visible in pg_stat_activity"
+                        )
                         terminated = admin.execute(
                             "SELECT pg_terminate_backend(%s, 5000)", (row[0],)
                         ).fetchone()[0]
-                        self.assertTrue(terminated, "the listener backend was terminated")
+                        self.assertTrue(
+                            terminated, "the listener backend was terminated"
+                        )
                     with self.assertRaises(OrmError) as lost_error:
                         lost.receive(5.0)
                     self.assertEqual("CONNECTION_LOST", lost_error.exception.code)

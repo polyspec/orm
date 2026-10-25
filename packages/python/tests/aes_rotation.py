@@ -29,9 +29,10 @@ class AesRotationPhysicalTest(unittest.TestCase):
 
     def test_aes_rotation_on_each_database(self):
         for dialect in DIALECTS:
-            with self.subTest(dialect=dialect), case_database(
-                dialect, TEMP["dir"].name, "orm_aes_rotation"
-            ) as dsn:
+            with (
+                self.subTest(dialect=dialect),
+                case_database(dialect, TEMP["dir"].name, "orm_aes_rotation") as dsn,
+            ):
                 setup = models.connect(dsn)
                 try:
                     install_bench(setup)
@@ -44,7 +45,10 @@ class AesRotationPhysicalTest(unittest.TestCase):
                 current = None
                 try:
                     service = (
-                        models.Service().connect(db).set_name("rotation-service").create()
+                        models.Service()
+                        .connect(db)
+                        .set_name("rotation-service")
+                        .create()
                     )
                     user = models.User().connect(db).set_name("rotation-user").create()
                     region = (
@@ -78,15 +82,25 @@ class AesRotationPhysicalTest(unittest.TestCase):
                             author.set_aes_hex_email("person@example.com")
                         authors.append(author.create())
 
-                    keyring = AesKeyring(
-                        {1: "test-aes-key", 2: "next-aes-key"}, 2
+                    keyring = AesKeyring({1: "test-aes-key", 2: "next-aes-key"}, 2)
+                    status = db.utils().aes().status(models.Author(), keyring)
+                    self.assertEqual(
+                        (status.current, status.total, status.pending, status.versions),
+                        (2, 4, 4, {1: 4}),
+                        "status",
+                    )
+                    self.assertEqual(
+                        db.utils().aes().rotate(models.Author(), keyring), 4
                     )
                     status = db.utils().aes().status(models.Author(), keyring)
-                    self.assertEqual((status.current, status.total, status.pending, status.versions), (2, 4, 4, {1: 4}), "status")
-                    self.assertEqual(db.utils().aes().rotate(models.Author(), keyring), 4)
-                    status = db.utils().aes().status(models.Author(), keyring)
-                    self.assertEqual((status.current, status.total, status.pending, status.versions), (2, 4, 0, {2: 4}), "after rotation")
-                    self.assertEqual(db.utils().aes().rotate(models.Author(), keyring), 0)
+                    self.assertEqual(
+                        (status.current, status.total, status.pending, status.versions),
+                        (2, 4, 0, {2: 4}),
+                        "after rotation",
+                    )
+                    self.assertEqual(
+                        db.utils().aes().rotate(models.Author(), keyring), 0
+                    )
 
                     current = models.connect(
                         dsn,

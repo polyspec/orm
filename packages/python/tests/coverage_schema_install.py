@@ -119,13 +119,25 @@ def schema_install_external_documents(item):
         member = schema_of([EXTERNAL_MEMBER], [EXTERNAL_USER])
         expect_equal(member.external_text != "", True, "schema external document text")
         Db.connect_schema(dsn, member).close()
-        bad_hash = Schema(member.manifest_text.replace("coverage_external_post", "coverage_external_post_changed"), member.manifest_hash, member.external_text)
+        bad_hash = Schema(
+            member.manifest_text.replace(
+                "coverage_external_post", "coverage_external_post_changed"
+            ),
+            member.manifest_hash,
+            member.external_text,
+        )
         try:
             Db.connect_schema(dsn, bad_hash)
         except OrmError as error:
-            expect_equal(error.code, "CONFIG", "connect with manifest text that does not match its hash")
+            expect_equal(
+                error.code,
+                "CONFIG",
+                "connect with manifest text that does not match its hash",
+            )
         else:
-            raise AssertionError("connect accepted manifest text that does not match its hash")
+            raise AssertionError(
+                "connect accepted manifest text that does not match its hash"
+            )
         drifted = schema_of(
             [EXTERNAL_MEMBER],
             [

@@ -12,7 +12,12 @@ from pathlib import Path
 
 import psycopg
 import pymysql
-from polyspec.orm.database import Db, _MysqlConnection, _PostgresConnection
+from polyspec.orm.database import (
+    Db,
+    Subscription,
+    _MysqlConnection,
+    _PostgresConnection,
+)
 from polyspec.orm.errors import OrmError
 
 from . import testcase
@@ -395,6 +400,47 @@ class ServerDriverErrorTest(unittest.TestCase):
             self.run_postgres(driver_error, closed=True).code, "CONNECTION_LOST"
         )
         self.assertEqual(self.run_postgres(driver_error, closed=False).code, "DRIVER")
+
+    # Requirements: DIA-194, PRT-79.
+    def test_subscription_cleanup_preserves_driver_failure_and_propagates_other_errors(
+        self,
+    ):
+        notify_error = psycopg.OperationalError("listener connection was lost")
+
+        class BrokenListener:
+            closed = True
+
+            def notifies(self, **_kwargs):
+                raise notify_error
+
+        class SubscriptionConnection:
+            connection = BrokenListener()
+
+            def __init__(self, cleanup_error):
+                self.cleanup_error = cleanup_error
+
+            def close(self):
+                raise self.cleanup_error
+
+        native_cleanup = psycopg.OperationalError("close also lost the connection")
+        subscription = Subscription(SubscriptionConnection(native_cleanup))
+        with self.assertRaises(OrmError) as mapped:
+            subscription.receive()
+        self.assertEqual(mapped.exception.code, "CONNECTION_LOST")
+        self.assertIs(mapped.exception.cause, notify_error)
+        self.assertIs(mapped.exception.__cause__, notify_error)
+        self.assertEqual(
+            mapped.exception.__notes__,
+            [
+                "closing the lost LISTEN connection also failed: close also lost the connection"
+            ],
+        )
+
+        unexpected_cleanup = RuntimeError("unexpected listener cleanup failure")
+        subscription = Subscription(SubscriptionConnection(unexpected_cleanup))
+        with self.assertRaises(RuntimeError) as propagated:
+            subscription.receive()
+        self.assertIs(propagated.exception, unexpected_cleanup)
 
 
 if __name__ == "__main__":

@@ -129,20 +129,27 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
         )
         self.assertEqual(int(count.rows[0][0]), 5000)
         plain_rows = "SELECT 'alpha' AS value UNION ALL SELECT 'beta' AS value"
-        exact_rows = self.catalog.read_only_query(plain_rows, [], max_rows=2, max_bytes=128)
+        exact_rows = self.catalog.read_only_query(
+            plain_rows, [], max_rows=2, max_bytes=128
+        )
         self.assertEqual(exact_rows.rows, [["alpha"], ["beta"]])
         with self.assertRaises(OrmError) as plain_row_limit:
             self.catalog.read_only_query(plain_rows, [], max_rows=1, max_bytes=128)
         self.assertEqual(plain_row_limit.exception.code, codes.CATALOG_LIMIT)
         exact_bytes_sql = "SELECT 'abc' AS value"
-        exact_bytes = self.catalog.read_only_query(exact_bytes_sql, [], max_rows=2, max_bytes=3)
+        exact_bytes = self.catalog.read_only_query(
+            exact_bytes_sql, [], max_rows=2, max_bytes=3
+        )
         self.assertEqual(exact_bytes.rows, [["abc"]])
         with self.assertRaises(OrmError) as plain_byte_limit:
             self.catalog.read_only_query(exact_bytes_sql, [], max_rows=2, max_bytes=2)
         self.assertEqual(plain_byte_limit.exception.code, codes.CATALOG_LIMIT)
         with self.assertRaises(OrmError) as row_limit:
             self.catalog.read_only_grid_query(
-                "SELECT 'abc' AS value UNION ALL SELECT 'def'", [], max_rows=1, max_bytes=1024
+                "SELECT 'abc' AS value UNION ALL SELECT 'def'",
+                [],
+                max_rows=1,
+                max_bytes=1024,
             )
         self.assertEqual(row_limit.exception.code, codes.CATALOG_LIMIT)
         with self.assertRaises(OrmError) as byte_limit:
@@ -160,7 +167,9 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
     def test_model_read_null_and_empty_text(self):
         root = Path(__file__).resolve().parents[3]
         with tempfile.TemporaryDirectory(prefix="orm-null-empty-model-") as directory:
-            models = generate(directory, root / "contracts" / "fixtures" / "bench" / "dbspec-set.json")
+            models = generate(
+                directory, root / "contracts" / "fixtures" / "bench" / "dbspec-set.json"
+            )
             db = models.connect(
                 self.coverage_item[1],
                 aesKey="bench-salt",
@@ -174,12 +183,23 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
             metadata = self.catalog.describe_table(table)
             targets = {seq, seq - 1}
             try:
-                self.catalog.insert_row(metadata, [("seq", seq), ("label", "null-v"), ("body", None)])
-                self.catalog.insert_row(metadata, [("seq", seq - 1), ("label", "empty"), ("body", "")])
+                self.catalog.insert_row(
+                    metadata, [("seq", seq), ("label", "null-v"), ("body", None)]
+                )
+                self.catalog.insert_row(
+                    metadata, [("seq", seq - 1), ("label", "empty"), ("body", "")]
+                )
                 null_read = models.BindCell().connect(db).seq(seq).get()
                 empty_read = models.BindCell().connect(db).seq(seq - 1).get()
-                self.assertIsNone(null_read.get_body(), "SQL NULL remains None when read through the model")
-                self.assertEqual(empty_read.get_body(), "", "empty text remains an empty string when read through the model")
+                self.assertIsNone(
+                    null_read.get_body(),
+                    "SQL NULL remains None when read through the model",
+                )
+                self.assertEqual(
+                    empty_read.get_body(),
+                    "",
+                    "empty text remains an empty string when read through the model",
+                )
             finally:
                 snapshots = []
                 offset = 0
@@ -394,7 +414,9 @@ if __name__ == "__main__":
 
         run_cases(
             {
-                case_id: lambda item, method_name=method_name: run_case(method_name, item)
+                case_id: lambda item, method_name=method_name: run_case(
+                    method_name, item
+                )
                 for case_id, method_name in feature_cases.items()
             }
         )

@@ -23,7 +23,8 @@ class MysqlSessionTest(unittest.TestCase):
         connection = _MysqlConnection(parse_dsn(dsn), statement_timeout_ms=237)
         try:
             rows = connection.execute(
-                "SELECT @@SESSION.sql_mode, @@SESSION.time_zone, @@SESSION.max_execution_time", []
+                "SELECT @@SESSION.sql_mode, @@SESSION.time_zone, @@SESSION.max_execution_time",
+                [],
             )["rows"]
         finally:
             connection.close()
@@ -48,11 +49,21 @@ class MysqlSessionTest(unittest.TestCase):
             connection.close()
         settings = {name: (setting, source) for name, setting, source in rows}
         self.assertEqual(settings.get("TimeZone", (None,))[0], "UTC", "TimeZone")
-        self.assertEqual(settings.get("statement_timeout", (None,))[0], "237", "statement_timeout")
-        if os.environ.get("ORM_TEST_POSTGRES_DSN") == os.environ.get("ORM_TEST_POSTGRES_SERVER_DSN"):
-            self.assertEqual(settings.get("TimeZone", (None, None))[1], "client", "TimeZone startup source")
+        self.assertEqual(
+            settings.get("statement_timeout", (None,))[0], "237", "statement_timeout"
+        )
+        if os.environ.get("ORM_TEST_POSTGRES_DSN") == os.environ.get(
+            "ORM_TEST_POSTGRES_SERVER_DSN"
+        ):
             self.assertEqual(
-                settings.get("statement_timeout", (None, None))[1], "client", "timeout startup source"
+                settings.get("TimeZone", (None, None))[1],
+                "client",
+                "TimeZone startup source",
+            )
+            self.assertEqual(
+                settings.get("statement_timeout", (None, None))[1],
+                "client",
+                "timeout startup source",
             )
 
 

@@ -89,7 +89,12 @@ def transaction_savepoint(item):
             ).create()
             inner.append(caught(lambda: db.transaction(nested)))
 
-        for isolation in ("read_uncommitted", "read_committed", "repeatable_read", "serializable"):
+        for isolation in (
+            "read_uncommitted",
+            "read_committed",
+            "repeatable_read",
+            "serializable",
+        ):
             db.transaction(lambda: None, {"isolation": isolation, "retry": 0})
         db.transaction(outer, {"retry": 0})
         expect_equal(
@@ -118,21 +123,31 @@ def transaction_savepoint(item):
             thread.join()
 
         db.transaction(check_flow, {"retry": 0})
-        expect_equal(flow_errors, [codes.CONFIG], "a thread started inside the callback has no active transaction")
+        expect_equal(
+            flow_errors,
+            [codes.CONFIG],
+            "a thread started inside the callback has no active transaction",
+        )
 
         read_only_error = None
         try:
             db.transaction(
-                lambda: models.CompositeAccount()
-                .set_tenant_id(TENANT)
-                .set_account_id(4)
-                .set_name("read only")
-                .create(),
+                lambda: (
+                    models.CompositeAccount()
+                    .set_tenant_id(TENANT)
+                    .set_account_id(4)
+                    .set_name("read only")
+                    .create()
+                ),
                 {"readOnly": True, "retry": 0},
             )
         except OrmError as error:
             read_only_error = error
-        expect_equal(getattr(read_only_error, "code", None), codes.READ_ONLY, "read-only write error")
+        expect_equal(
+            getattr(read_only_error, "code", None),
+            codes.READ_ONLY,
+            "read-only write error",
+        )
         expect_equal(exists(db, 4), False, "read-only transaction wrote a row")
 
         timeout_error = None
@@ -147,16 +162,24 @@ def transaction_savepoint(item):
         except OrmError as error:
             timeout_error = error
         if item[0] == "postgres":
-            expect_equal(timeout_error, None, "PostgreSQL supports transaction timeoutMs")
+            expect_equal(
+                timeout_error, None, "PostgreSQL supports transaction timeoutMs"
+            )
             expect_equal(timeout_calls, 1, "PostgreSQL timeout callback ran")
         else:
-            expect_equal(getattr(timeout_error, "code", None), codes.CAPABILITY_UNSUPPORTED, "timeoutMs unsupported driver")
-            expect_equal(timeout_calls, 0, "unsupported timeout fails before the callback")
+            expect_equal(
+                getattr(timeout_error, "code", None),
+                codes.CAPABILITY_UNSUPPORTED,
+                "timeoutMs unsupported driver",
+            )
+            expect_equal(
+                timeout_calls, 0, "unsupported timeout fails before the callback"
+            )
 
         if item[0] == "postgres":
-            models.CompositeAccount().connect(db).set_tenant_id(TENANT).set_account_id(6).set_name(
-                "before timeout"
-            ).create()
+            models.CompositeAccount().connect(db).set_tenant_id(TENANT).set_account_id(
+                6
+            ).set_name("before timeout").create()
             holder = models.connect(
                 item[1], aesKey="bench-salt", blindIndexKey="bench-blind-index"
             )
@@ -167,11 +190,13 @@ def transaction_savepoint(item):
             def hold_row_lock():
                 def body():
                     try:
-                        models.CompositeAccount().connect(holder).tenant_id(TENANT).for_update().get()
+                        models.CompositeAccount().connect(holder).tenant_id(
+                            TENANT
+                        ).for_update().get()
                     except Exception as error:
                         holder_errors.append(error)
                         row_locked.set()
-                        return
+                        raise
                     row_locked.set()
                     release_holder.wait()
 
@@ -190,9 +215,13 @@ def transaction_savepoint(item):
             locked_timeout = None
             try:
                 db.transaction(
-                    lambda: models.CompositeAccount().connect(db).tenant_id(TENANT)
-                    .set_name("timed out")
-                    .update(),
+                    lambda: (
+                        models.CompositeAccount()
+                        .connect(db)
+                        .tenant_id(TENANT)
+                        .set_name("timed out")
+                        .update()
+                    ),
                     {"timeoutMs": 250, "retry": 0},
                 )
             except OrmError as error:
@@ -201,9 +230,19 @@ def transaction_savepoint(item):
                 release_holder.set()
                 thread.join()
                 holder.close()
-            expect_equal(getattr(locked_timeout, "code", None), codes.CANCELED, "locked statement timeout")
-            timed_row = models.CompositeAccount().connect(db).get_by_tenant_id_and_account_id(TENANT, 6)
-            expect_equal(timed_row.get_name(), "before timeout", "timed out update rolled back")
+            expect_equal(
+                getattr(locked_timeout, "code", None),
+                codes.CANCELED,
+                "locked statement timeout",
+            )
+            timed_row = (
+                models.CompositeAccount()
+                .connect(db)
+                .get_by_tenant_id_and_account_id(TENANT, 6)
+            )
+            expect_equal(
+                timed_row.get_name(), "before timeout", "timed out update rolled back"
+            )
             timed_row.delete()
 
         attempts = 0
@@ -222,10 +261,16 @@ def transaction_savepoint(item):
             {"isolation": "read_committed", "retry": 3},
         )
         expect_equal(attempts, 3, "retry reruns the complete callback")
-        final_attempt = models.CompositeAccount().connect(db).get_by_tenant_id_and_account_id(
-            TENANT, 5
+        final_attempt = (
+            models.CompositeAccount()
+            .connect(db)
+            .get_by_tenant_id_and_account_id(TENANT, 5)
         )
-        expect_equal(final_attempt.get_name(), "attempt-3", "the final callback attempt committed")
+        expect_equal(
+            final_attempt.get_name(),
+            "attempt-3",
+            "the final callback attempt committed",
+        )
         final_attempt.delete()
 
         default_attempts = 0
@@ -251,7 +296,11 @@ def transaction_savepoint(item):
             db.transaction(no_retry, {"retry": 0})
         except OrmError as error:
             retry_error = error
-        expect_equal(getattr(retry_error, "code", None), codes.DEADLOCK, "retry=0 returns the deadlock")
+        expect_equal(
+            getattr(retry_error, "code", None),
+            codes.DEADLOCK,
+            "retry=0 returns the deadlock",
+        )
         expect_equal(attempts, 1, "retry=0 invokes the callback once")
 
     with_tenant(item, body)

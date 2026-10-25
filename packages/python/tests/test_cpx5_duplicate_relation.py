@@ -1,5 +1,4 @@
 import tempfile
-import unittest
 from pathlib import Path
 
 from polyspec.orm import codes
@@ -13,7 +12,8 @@ def duplicate_relation_name():
         db = models.connect(f"sqlite://{Path(directory) / 'cpx5.sqlite3'}")
         try:
             query = (
-                models.Author().connect(db)
+                models.Author()
+                .connect(db)
                 .relation(models.User().match_user_seq_with_seq())
                 .relation(models.User().match_user_seq_with_seq())
             )
@@ -21,9 +21,13 @@ def duplicate_relation_name():
                 query.get_query()
             except OrmError as error:
                 if error.code != codes.CONFIG:
-                    raise AssertionError(f"expected CONFIG, got {error.code}") from error
+                    raise AssertionError(
+                        f"expected CONFIG, got {error.code}"
+                    ) from error
                 if "user_model" not in str(error) or "alias<Name>()" not in str(error):
-                    raise AssertionError(f"duplicate relation error lacks result name or alias hint: {error}") from error
+                    raise AssertionError(
+                        f"duplicate relation error lacks result name or alias hint: {error}"
+                    ) from error
             else:
                 raise AssertionError("duplicate relation result name was accepted")
         finally:

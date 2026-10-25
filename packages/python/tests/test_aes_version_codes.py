@@ -77,7 +77,9 @@ class AesVersionCodesTest(unittest.TestCase):
     # Requirements: COD-48. A selected encrypted row missing its version cell is an internal invariant failure.
     def test_read_row_without_version_cell_is_internal(self):
         row = [CIPHER]
-        self.assertEqual(code_of(lambda: _decode_assembly(row, ASSEMBLE, DB)), "INTERNAL")
+        self.assertEqual(
+            code_of(lambda: _decode_assembly(row, ASSEMBLE, DB)), "INTERNAL"
+        )
 
     # Requirements: COD-57. The stored-version keyring entry is required even when a single key could decrypt the value.
     def test_read_keyring_lacks_stored_version_is_config(self):
