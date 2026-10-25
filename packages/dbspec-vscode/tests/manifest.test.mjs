@@ -28,10 +28,12 @@ caseTest('the manifest contributes the language dbspec for .dbs', COMPUTE, () =>
   assert.ok(Array.isArray(configuration.brackets) && configuration.brackets.length > 0);
 });
 
+// Requirements: ORES-2, ORE-19, ORES-49.
 caseTest('the manifest has no TextMate grammar', COMPUTE, () => {
   assert.equal(contributes.grammars, undefined);
 });
 
+// Requirements: ORE-19, ORES-49.
 caseTest('the semantic token types are the token classes in order, each with a scope', COMPUTE, () => {
   assert.deepEqual((contributes.semanticTokenTypes ?? []).map(type => type.id), [...TOKEN_CLASSES]);
   const scopes = contributes.semanticTokenScopes ?? [];
@@ -44,6 +46,7 @@ caseTest('the semantic token types are the token classes in order, each with a s
   }
 });
 
+// Requirements: ORE-19, ORES-49.
 caseTest('semantic highlighting is enabled by default for dbspec', COMPUTE, () => {
   assert.deepEqual(contributes.configurationDefaults?.[`[${LANGUAGE}]`], { 'editor.semanticHighlighting.enabled': true });
 });

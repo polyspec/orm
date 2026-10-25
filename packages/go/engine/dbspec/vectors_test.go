@@ -361,29 +361,70 @@ func expectDocument(document *Document, diagnostics []Diagnostic) error {
 
 // TestCanonicalVectors, TestNormalizeVectors and TestInvalidVectors check the
 // canonical, normalize and invalid cases of tests/dbspec/cases.json, one suite each.
+// Requirements: ORES-19.
 func TestCanonicalVectors(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	runVectorCases(t, loadVectors(t).Canonical, func(c vectorCase, text string, set map[string]string) error {
-		return emitEquals(text, set, joinLines(c.Documents[c.Main], false))
+		want := joinLines(c.Documents[c.Main], false)
+		if err := emitEquals(text, set, want); err != nil {
+			return err
+		}
+		formatted, diagnostics := Format(text, set)
+		if len(diagnostics) != 0 || formatted != want {
+			return fmt.Errorf("Format = %q diagnostics %+v, want %q", formatted, diagnostics, want)
+		}
+		return nil
 	})
 }
 
+// Requirements: ORES-15, ORES-17, ORES-19.
 func TestNormalizeVectors(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	runVectorCases(t, loadVectors(t).Normalize, func(c vectorCase, text string, set map[string]string) error {
-		return emitEquals(text, set, joinLines(c.Canonical, false))
+		want := joinLines(c.Canonical, false)
+		if err := emitEquals(text, set, want); err != nil {
+			return err
+		}
+		formatted, diagnostics := Format(text, set)
+		if len(diagnostics) != 0 {
+			return fmt.Errorf("Format returned diagnostics %+v", diagnostics)
+		}
+		if formatted != want {
+			return fmt.Errorf("Format differs:\ngot:\n%s\nwant:\n%s", formatted, want)
+		}
+		again, diagnostics := Format(formatted, set)
+		if len(diagnostics) != 0 || again != formatted {
+			return fmt.Errorf("Format is not idempotent: got %q diagnostics %+v", again, diagnostics)
+		}
+		return nil
 	})
 }
 
 func TestInvalidVectors(t *testing.T) {
+	// Requirements: ORES-19.
 	testcase.Start(t, testcase.Compute)
 	runVectorCases(t, loadVectors(t).Invalid, func(c vectorCase, text string, set map[string]string) error {
-		return expectDiagnostics(text, set, c.Errors)
+		if err := expectDiagnostics(text, set, c.Errors); err != nil {
+			return err
+		}
+		formatted, diagnostics := Format(text, set)
+		if formatted != "" {
+			return fmt.Errorf("Format returned text for an invalid document")
+		}
+		got := make([]vectorError, len(diagnostics))
+		for i, d := range diagnostics {
+			got[i] = vectorError{Line: d.Line, Column: d.Column, Rule: d.Rule}
+		}
+		if fmt.Sprint(got) != fmt.Sprint(c.Errors) {
+			return fmt.Errorf("Format diagnostics = %+v, want %+v", got, c.Errors)
+		}
+		return nil
 	})
 }
 
 // TestPositionVectors requires Parse to return exactly the declaration positions of every positions case
 // (docs/spec/dbspec.md "Declaration positions").
+// Requirements: ORES-72.
 func TestPositionVectors(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	vectors := loadVectors(t)

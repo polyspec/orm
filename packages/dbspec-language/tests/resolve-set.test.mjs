@@ -7,6 +7,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync, rmSync } from 'node:fs';
 import { posix } from 'node:path';
+import { describe } from 'node:test';
 import { parseSet } from '@polyspec/orm/dbspec';
 import { caseTest } from '../../../tests/testcase.mts';
 import { resolveSet } from '../dist/index.js';
@@ -80,13 +81,15 @@ function documentOf(c) {
 }
 
 const notApplied = [];
-for (const c of vectors.cases) {
-  const target = documentOf(c);
-  if ('reason' in target) {
-    notApplied.push(`${c.id}: ${target.reason}`);
-    continue;
-  }
-  vector(`set-files ${c.id} through resolveSet`, () => withTree(c.tree, root => {
+// Requirements: ORES-28, ORES-29, ORES-30, ORES-31, ORES-32, ORES-33, ORES-34, ORES-35, ORES-36.
+describe('resolveSet applies the set-file validation vectors', () => {
+  for (const c of vectors.cases) {
+    const target = documentOf(c);
+    if ('reason' in target) {
+      notApplied.push(`${c.id}: ${target.reason}`);
+      continue;
+    }
+    vector(`set-files ${c.id} through resolveSet`, () => withTree(c.tree, root => {
     const result = resolveSet(`${root}/${target.path}`, nodeSetHost);
     if ('errors' in c.want) {
       assert.equal(result.set, null);
@@ -107,8 +110,9 @@ for (const c of vectors.cases) {
     }
     assert.deepEqual({ ...result.set }, expected);
     assert.deepEqual(result.diagnostics.map(d => d.path), failed);
-  }));
-}
+    }));
+  }
+});
 
 // The cases that no document can reach through resolveSet are exactly these, each with its reason.
 vector('set-files cases that resolveSet does not reach', () => {
@@ -141,6 +145,7 @@ const billing = 'dbspec 1 billing\n\nuse shop { item }\n\ntable invoice {\n  id 
 const core = 'dbspec 1 core\n\ntable account {\n  id i64 identity\n  primary key (id)\n}\n';
 const set = (documents, external) => ({ file: JSON.stringify(external === undefined ? { schema: 1, documents } : { schema: 1, documents, external }) });
 
+// Requirements: ORE-7, ORES-22, ORES-23.
 vector('resolveSet takes the nearest ancestor set file that lists the document', () => withTree({
   'proj/dbspec-set.json': set(['app/shop.dbs', 'app/billing.dbs']),
   'proj/app/dbspec-set.json': set(['other.dbs']),
@@ -152,6 +157,7 @@ vector('resolveSet takes the nearest ancestor set file that lists the document',
   assert.deepEqual(result, { setFile: `${root}/proj/dbspec-set.json`, set: { shop }, diagnostics: [], errors: [] });
 }));
 
+// Requirements: ORE-7, ORES-22.
 vector('resolveSet stops at the nearest set file that lists the document', () => withTree({
   'proj/dbspec-set.json': set(['shop.dbs']),
   'proj/shop.dbs': { file: shop },
@@ -172,6 +178,7 @@ vector('resolveSet gives the owned and the external documents by their header na
   assert.deepEqual(result, { setFile: `${root}/app/dbspec-set.json`, set: { shop, core }, diagnostics: [], errors: [] });
 }));
 
+// Requirements: ORE-8, ORES-24.
 vector('a document that two set files list is an error naming both', () => withTree({
   'proj/dbspec-set.json': set(['app/shop.dbs']),
   'proj/app/dbspec-set.json': set(['shop.dbs']),
@@ -184,6 +191,7 @@ vector('a document that two set files list is an error naming both', () => withT
   assert.ok(result.errors[0].message.includes(`${root}/proj/app/dbspec-set.json`) && result.errors[0].message.includes(`${root}/proj/dbspec-set.json`), result.errors[0].message);
 }));
 
+// Requirements: ORE-8, ORES-24.
 vector('an external listing does not make a second owner', () => withTree({
   'proj/dbspec-set.json': set(['other/billing.dbs'], ['../app/shop.dbs']),
   'proj/other/billing.dbs': { file: billing },
@@ -194,6 +202,7 @@ vector('an external listing does not make a second owner', () => withTree({
   assert.deepEqual(result, { setFile: `${root}/app/dbspec-set.json`, set: {}, diagnostics: [], errors: [] });
 }));
 
+// Requirements: ORE-10, ORES-25.
 vector('a document that no set file lists is a set of itself alone', () => withTree({
   'app/shop.dbs': { file: shop },
   'app/dbspec-set.json': set(['other.dbs']),
@@ -222,6 +231,7 @@ vector('an ancestor set file that cannot be read is an error, since whether it l
   assert.deepEqual(result.errors.map(e => ({ rule: e.rule, path: e.path })), [{ rule: 'set.json', path: `${root}/proj/dbspec-set.json` }]);
 }));
 
+// Requirements: ORE-11, ORES-37.
 vector('a listed file that fails the byte check is a diagnostic and is not in the set', () => withTree({
   'app/dbspec-set.json': set(['shop.dbs', 'billing.dbs', 'notes.dbs', 'bad.dbs']),
   'app/shop.dbs': { file: shop },

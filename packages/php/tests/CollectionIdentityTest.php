@@ -47,17 +47,27 @@ final class CollectionIdentityTest extends TestCase
         };
     }
 
-    // Requirements: PRT-35.
+    // Requirements: INT-11, PRT-35.
     public function testEveryFixtureKeyHasItsOwnStableIdentity(): void
     {
         $seen = [];
+        $collection = new Collection();
+        $model = new class extends Model {
+            public static function meta(): array
+            {
+                return [];
+            }
+        };
+        $expectedKeys = [];
         foreach (self::fixture()['keys'] as $entry) {
-            $identity = Collection::identityOf(self::valueOf($entry));
+            $value = self::valueOf($entry);
+            $identity = Collection::identityOf($value);
             self::assertSame(
                 $identity,
-                Collection::identityOf(self::valueOf($entry)),
+                Collection::identityOf($value),
                 "key {$entry['name']} has no stable identity"
             );
+            self::assertSame($value, Collection::keyOf($value), "key {$entry['name']} changed its native type");
             if (isset($entry['same_as'])) {
                 self::assertSame(
                     $seen[$entry['same_as']],
@@ -66,6 +76,8 @@ final class CollectionIdentityTest extends TestCase
                 );
                 continue;
             }
+            $collection->put($value, $model);
+            $expectedKeys[] = $value;
             foreach ($seen as $other => $otherIdentity) {
                 self::assertNotSame(
                     $otherIdentity,
@@ -74,6 +86,10 @@ final class CollectionIdentityTest extends TestCase
                 );
             }
             $seen[$entry['name']] = $identity;
+        }
+        self::assertSame($expectedKeys, $collection->keys());
+        foreach ($expectedKeys as $key) {
+            self::assertSame($model, $collection->get($key));
         }
     }
 

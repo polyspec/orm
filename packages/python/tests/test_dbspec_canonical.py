@@ -1,6 +1,7 @@
 # The canonical cases of tests/dbspec/cases.json: one test for each case of the section, named by the case id
 # (dbspec_cases.check_canonical).
 # Run: python -m packages.python.tests.test_dbspec_canonical
+# Requirements: ORES-19.
 import unittest
 
 from .dbspec_cases import check_canonical

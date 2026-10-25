@@ -2,6 +2,7 @@
 // Each case is a top-level test named by its id (dbspec_case.mjs).
 //
 // Usage: node --test packages/ts/tests/dbspec-normalize.mjs (after the build)
+// Requirements: ORES-15, ORES-17, ORES-19.
 import { normalizeCases } from './dbspec_case.mjs';
 
 normalizeCases();

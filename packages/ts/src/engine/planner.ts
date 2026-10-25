@@ -435,17 +435,26 @@ export class Planner {
   }
 
   private renderOrder(b: Builder, root: Scope, q: RequestQuery): string {
-    const order = q.order ?? [];
-    if (order.length === 0) return '';
-    const parts = order.map(o => {
-      if (o.random) return this.d.random();
-      const column = present(o.column, 'the column of an order item');
-      const target = o.fn ? this.columnFunction(b, root, column, o.fn) : this.qcol(root, column);
-      // A NOT NULL column keeps its btree order; one that can be NULL sorts NULL first ascending and last descending.
-      const nulls = columnIn(root.ent, column).nullable ? this.d.nullsOrder(o.desc === true) : '';
-      return target + (o.desc ? ' DESC' : ' ASC') + nulls;
-    });
-    return ` ORDER BY ${parts.join(', ')}`;
+    const parts: string[] = [];
+    const append = (scope: Scope, query: RequestQuery): void => {
+      for (const o of query.order ?? []) {
+        if (o.random) {
+          parts.push(this.d.random());
+          continue;
+        }
+        const column = present(o.column, 'the column of an order item');
+        const target = o.fn ? this.columnFunction(b, scope, column, o.fn) : this.qcol(scope, column);
+        // A NOT NULL column keeps its btree order; one that can be NULL sorts NULL first ascending and last descending.
+        const nulls = columnIn(scope.ent, column).nullable ? this.d.nullsOrder(o.desc === true) : '';
+        parts.push(target + (o.desc ? ' DESC' : ' ASC') + nulls);
+      }
+      for (const join of query.joins ?? []) {
+        const child = this.joinScope(scope, join.rel);
+        append(child, child.q);
+      }
+    };
+    append(root, q);
+    return parts.length === 0 ? '' : ` ORDER BY ${parts.join(', ')}`;
   }
 
   private renderGroupBy(root: Scope, q: RequestQuery): string {
@@ -562,7 +571,9 @@ export class Planner {
       const conditions = [`${this.qcol(s, present(j.left, `the left column of join ${j.rel}`))} = ${this.qcol(js, present(j.right, `the right column of join ${j.rel}`))}`];
       // A joined entity's soft-deleted rows never meet the parent: the condition sits in ON, so a left join gives null.
       if (js.ent.softDelete) conditions.push(`${this.qcol(js, js.ent.softDelete)} IS NULL`);
-      sql += `${j.kind === 'left' ? ' LEFT JOIN ' : ' INNER JOIN '}${b.table(js.ent)} AS ${this.d.quote(js.alias)} ON ${conditions.join(' AND ')}`;
+      sql += `${j.kind === 'left' ? ' LEFT JOIN ' : ' INNER JOIN '}${b.table(js.ent)} AS ${this.d.quote(js.alias)}`;
+      if (js.q.force_index !== undefined && js.q.force_index !== '') sql += this.d.forceIndex(js.q.force_index);
+      sql += ` ON ${conditions.join(' AND ')}`;
       if (j.query.on && j.query.on.items.length > 0) sql += ` AND ${this.renderGroup(b, js, j.query.on, true)}`;
       sql += this.renderJoins(b, js);
     }

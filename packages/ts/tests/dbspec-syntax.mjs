@@ -3,6 +3,7 @@
 // Each case is a top-level test named by its id; dbspec-analyze.mjs checks that the file is the generator output.
 //
 // Usage: node --test packages/ts/tests/dbspec-syntax.mjs (after the build)
+// Requirements: ORES-1.
 import { caseTest } from '../../../tests/testcase.mts';
 import { vectorRegistrar } from '../../../tests/vector-registrar.mjs';
 import assert from 'node:assert/strict';

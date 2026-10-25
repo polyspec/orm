@@ -583,35 +583,503 @@
     },
     {
       "root": "packages/dbspec-codemirror",
-      "reason": "ecosystem: The CodeMirror adapter of the dbspec editor stack: JavaScript over @polyspec/dbspec-language, with no grammar and no contract of its own."
+      "reason": "ecosystem: The CodeMirror adapter of the dbspec editor stack: JavaScript over @polyspec/dbspec-language, with no grammar and no contract of its own.",
+      "units": [
+        {
+          "id": "codemirror-editor-adapter",
+          "requirements": [
+            "ORE-3",
+            "ORE-18",
+            "ORES-48"
+          ],
+          "bindings": [
+            {
+              "test": "packages/dbspec-codemirror/tests/fixtures.test.mjs",
+              "id": "CodeMirror adapter renders tokens, diagnostics, folds and formatting"
+            }
+          ]
+        },
+        {
+          "id": "codemirror-set-option",
+          "requirements": [
+            "ORES-26"
+          ],
+          "bindings": [
+            {
+              "test": "packages/dbspec-codemirror/tests/fixtures.test.mjs",
+              "id": "the set option resolves use lines"
+            }
+          ]
+        },
+        {
+          "id": "codemirror-browser-host",
+          "requirements": [
+            "ORES-47"
+          ],
+          "bindings": [
+            {
+              "test": "packages/dbspec-codemirror/tests/fixtures.test.mjs",
+              "id": "the CodeMirror adapter runs from a browser-target bundle"
+            }
+          ]
+        }
+      ]
     },
     {
       "root": "packages/dbspec-language",
-      "reason": "ecosystem: The dbspec language service of the editor stack: diagnostics, tokens, folding and formatting over the parser of the TypeScript runtime; it implements no contract of its own."
+      "reason": "ecosystem: The dbspec language service of the editor stack: diagnostics, tokens, folding and formatting over the parser of the TypeScript runtime; it implements no contract of its own.",
+      "units": [
+        {
+          "id": "language-service-editor-fixtures",
+          "requirements": [
+            "ORE-2",
+            "ORE-12",
+            "ORE-13",
+            "ORE-14",
+            "ORE-15"
+          ],
+          "bindings": [
+            {
+              "test": "packages/dbspec-language/tests/editor.test.mjs",
+              "id": "language service editor fixture outputs"
+            }
+          ]
+        },
+        {
+          "id": "language-service-browser-module-graph",
+          "requirements": [
+            "ORE-5",
+            "ORES-44",
+            "ORES-46"
+          ],
+          "bindings": [
+            {
+              "test": "packages/dbspec-language/tests/module-graph.test.mjs",
+              "id": "the language service graph reaches no node module, Node global or driver"
+            }
+          ]
+        },
+        {
+          "id": "editor-adapter-import-boundaries",
+          "requirements": [
+            "ORE-4",
+            "ORES-44",
+            "ORES-45"
+          ],
+          "bindings": [
+            {
+              "test": "packages/dbspec-language/tests/module-graph.test.mjs",
+              "id": "the adapters import no parser package outside the language service"
+            }
+          ]
+        },
+        {
+          "id": "language-cli-argument-parser",
+          "requirements": [
+            "ORE-17",
+            "ORES-48",
+            "ORES-73"
+          ],
+          "bindings": [
+            {
+              "test": "packages/dbspec-language/tests/cli.test.mjs",
+              "id": "the command uses node:util parseArgs and readDbspecFile"
+            }
+          ]
+        },
+        {
+          "id": "language-cli-behavior",
+          "requirements": [
+            "ORES-74",
+            "ORES-75",
+            "ORES-76",
+            "ORES-77",
+            "ORES-79",
+            "ORES-80",
+            "ORES-81",
+            "ORES-82"
+          ],
+          "bindings": [
+            {
+              "test": "packages/dbspec-language/tests/cli.test.mjs",
+              "id": "one path without a mode prints the formatted text and changes nothing"
+            },
+            {
+              "test": "packages/dbspec-language/tests/cli.test.mjs",
+              "id": "the arguments that are refused exit 2 with the usage"
+            },
+            {
+              "test": "packages/dbspec-language/tests/cli.test.mjs",
+              "id": "--check exits 1 for an unformatted file and prints its path; it changes nothing"
+            },
+            {
+              "test": "packages/dbspec-language/tests/cli.test.mjs",
+              "id": "every path is processed and the highest exit code wins"
+            },
+            {
+              "test": "packages/dbspec-language/tests/cli.test.mjs",
+              "id": "a directory is not walked: it is a path that cannot be read"
+            }
+          ]
+        },
+        {
+          "id": "language-cli-reports-set-errors",
+          "requirements": [
+            "ORE-9"
+          ],
+          "bindings": [
+            {
+              "test": "packages/dbspec-language/tests/cli.test.mjs",
+              "id": "a set error is reported with the set file and the file is not changed"
+            }
+          ]
+        },
+        {
+          "id": "language-set-file-validation-vectors",
+          "requirements": [
+            "ORES-28",
+            "ORES-29",
+            "ORES-30",
+            "ORES-31",
+            "ORES-32",
+            "ORES-33",
+            "ORES-34",
+            "ORES-35",
+            "ORES-36"
+          ],
+          "bindings": [
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "resolveSet applies the set-file validation vectors"
+            }
+          ]
+        },
+        {
+          "id": "language-set-resolution-ownership",
+          "requirements": [
+            "ORE-7",
+            "ORE-8",
+            "ORE-10",
+            "ORES-22",
+            "ORES-23",
+            "ORES-24",
+            "ORES-25"
+          ],
+          "bindings": [
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "resolveSet takes the nearest ancestor set file that lists the document"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "resolveSet stops at the nearest set file that lists the document"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "a document that two set files list is an error naming both"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "an external listing does not make a second owner"
+            },
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "a document that no set file lists is a set of itself alone"
+            }
+          ]
+        },
+        {
+          "id": "language-listed-file-byte-check",
+          "requirements": [
+            "ORE-11",
+            "ORES-37"
+          ],
+          "bindings": [
+            {
+              "test": "packages/dbspec-language/tests/resolve-set.test.mjs",
+              "id": "a listed file that fails the byte check is a diagnostic and is not in the set"
+            }
+          ]
+        }
+      ]
     },
     {
       "root": "packages/dbspec-lsp",
-      "reason": "ecosystem: The dbspec language server of the editor stack, which serves every editor over @polyspec/dbspec-language; it implements no contract of its own."
+      "reason": "ecosystem: The dbspec language server of the editor stack, which serves every editor over @polyspec/dbspec-language; it implements no contract of its own.",
+      "units": [
+        {
+          "id": "lsp-open-buffer-wins-over-disk",
+          "requirements": [
+            "ORES-41"
+          ],
+          "bindings": [
+            {
+              "test": "packages/dbspec-lsp/tests/session.test.mjs",
+              "id": "an open buffer of a listed file wins over the disk"
+            }
+          ]
+        },
+        {
+          "id": "lsp-protocol-and-document-adapter",
+          "requirements": [
+            "ORE-3",
+            "ORE-16",
+            "ORES-48"
+          ],
+          "bindings": [
+            {
+              "test": "packages/dbspec-lsp/tests/session.test.mjs",
+              "id": "the server uses vscode-languageserver and textdocument"
+            }
+          ]
+        },
+        {
+          "id": "lsp-fixture-ranges-and-encoding",
+          "requirements": [
+            "ORE-3",
+            "ORES-18",
+            "ORES-42",
+            "ORES-43"
+          ],
+          "bindings": [
+            {
+              "test": "packages/dbspec-lsp/tests/session.test.mjs",
+              "id": "language server publishes editor fixture outputs"
+            }
+          ]
+        },
+        {
+          "id": "lsp-watched-file-change",
+          "requirements": [
+            "ORES-40"
+          ],
+          "bindings": [
+            {
+              "test": "packages/dbspec-lsp/tests/session.test.mjs",
+              "id": "a watched file change analyzes the open documents again"
+            }
+          ]
+        },
+        {
+          "id": "lsp-set-error-is-visible",
+          "requirements": [
+            "ORE-9",
+            "ORES-38"
+          ],
+          "bindings": [
+            {
+              "test": "packages/dbspec-lsp/tests/session.test.mjs",
+              "id": "a set error is shown and the document is analyzed alone"
+            }
+          ]
+        },
+        {
+          "id": "lsp-unlisted-document-is-alone",
+          "requirements": [
+            "ORE-10",
+            "ORES-25"
+          ],
+          "bindings": [
+            {
+              "test": "packages/dbspec-lsp/tests/session.test.mjs",
+              "id": "a document no set file lists is alone and its use line reports it"
+            }
+          ]
+        },
+        {
+          "id": "lsp-listed-file-byte-diagnostics",
+          "requirements": [
+            "ORES-37",
+            "ORES-39"
+          ],
+          "bindings": [
+            {
+              "test": "packages/dbspec-lsp/tests/session.test.mjs",
+              "id": "a listed file with invalid UTF-8 is published on its own URI"
+            }
+          ]
+        }
+      ]
     },
     {
       "root": "packages/dbspec-vscode",
-      "reason": "ecosystem: The VS Code extension of the editor stack: its manifest and bundle, which hold no grammar and implement no contract."
+      "reason": "ecosystem: The VS Code extension of the editor stack: its manifest and bundle, which hold no grammar and implement no contract.",
+      "units": [
+        {
+          "id": "vscode-semantic-token-manifest",
+          "requirements": [
+            "ORE-19",
+            "ORES-2",
+            "ORES-49"
+          ],
+          "bindings": [
+            {
+              "test": "packages/dbspec-vscode/tests/manifest.test.mjs",
+              "id": "the manifest has no TextMate grammar"
+            },
+            {
+              "test": "packages/dbspec-vscode/tests/manifest.test.mjs",
+              "id": "the semantic token types are the token classes in order, each with a scope"
+            },
+            {
+              "test": "packages/dbspec-vscode/tests/manifest.test.mjs",
+              "id": "semantic highlighting is enabled by default for dbspec"
+            }
+          ]
+        }
+      ]
     },
     {
       "root": "scripts",
-      "reason": "harness: The repository scripts: the tooling of the checks, builds, installs and releases; it implements no contract, so its tests belong to no implementation."
+      "reason": "harness: The repository scripts: the tooling of the checks, builds, installs and releases; it implements no contract, so its tests belong to no implementation.",
+      "units": [
+        {
+          "id": "connection-no-sqlite-replica-server",
+          "requirements": [
+            "CFG-26"
+          ],
+          "bindings": [
+            {
+              "test": "scripts/test-servers.test.mts",
+              "id": "the test-server environment has no SQLite replica endpoint"
+            }
+          ]
+        }
+      ]
     },
     {
       "root": "tests/cli",
-      "reason": "ecosystem: The test of the command-line install of dbspec-fmt: the editor-stack tooling, which implements no contract."
+      "reason": "ecosystem: The test of the command-line install of dbspec-fmt: the editor-stack tooling, which implements no contract.",
+      "units": [
+        {
+          "id": "dbspec-cli-installs-without-symlinks",
+          "requirements": [
+            "ORES-78"
+          ],
+          "bindings": [
+            {
+              "test": "tests/cli/install-cli.test.mts",
+              "id": "orm-install-cli installs dbspec-fmt without a link, and uninstall removes it"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "root": "tests/conformance/check",
+      "reason": "harness: The conformance result and runner checker, which owns the tool paths that execute each client's conformance runner.",
+      "units": [
+        {
+          "id": "conformance-php-runner-path",
+          "requirements": [
+            "PAR-1"
+          ],
+          "bindings": [
+            {
+              "test": "tests/conformance/check/main.test.mts",
+              "id": "TestPHPExtensionCommandLine"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "root": "tests/dbspec/compare",
+      "reason": "harness: The dbspec comparison runners and their checker, which execute the language-specific drivers against shared vectors.",
+      "units": [
+        {
+          "id": "dbspec-comparison-runner-vectors",
+          "requirements": [
+            "PAR-2"
+          ],
+          "bindings": [
+            {
+              "test": "tests/dbspec/compare/runners.test.mts",
+              "id": "the unchanged vectors run in every runner"
+            }
+          ]
+        }
+      ]
     },
     {
       "root": "tests/docs",
-      "reason": "harness: The test of the dbs fence of the documentation site: the tooling of the site, which implements no contract."
+      "reason": "harness: The test of the dbs fence of the documentation site: the tooling of the site, which implements no contract.",
+      "units": [
+        {
+          "id": "docs-dbs-fence-markdown-hook",
+          "requirements": [
+            "ORE-20",
+            "ORES-27",
+            "ORES-50"
+          ],
+          "bindings": [
+            {
+              "test": "tests/docs/dbs-fence.test.mts",
+              "id": "VitePress markdown-it renders dbs set fences and refuses diagnostics"
+            }
+          ]
+        },
+        {
+          "id": "docs-dbs-token-theme-colors",
+          "requirements": [
+            "ORES-51"
+          ],
+          "bindings": [
+            {
+              "test": "tests/docs/dbs-fence.test.mts",
+              "id": "the docs theme gives every token class a light and dark color"
+            }
+          ]
+        }
+      ]
     },
     {
       "root": "tests/timing",
       "reason": "harness: The test of the timing harness of the clients: the measurement tooling, which implements no contract."
+    },
+    {
+      "root": "tests/interfaces/check",
+      "reason": "harness: The static checker of the six-client interface manifest and native declarations; it verifies common public API shape, not runtime behavior.",
+      "units": [
+        {
+          "id": "interface-php-record-extractor",
+          "requirements": [
+            "PAR-3"
+          ],
+          "bindings": [
+            {
+              "test": "tests/interfaces/check/contract.test.mts",
+              "id": "the PHP records match the common contract"
+            }
+          ]
+        },
+        {
+          "id": "dbspec-operations-have-no-declaration-positions",
+          "requirements": [
+            "ORES-70"
+          ],
+          "bindings": [
+            {
+              "test": "tests/interfaces/check/api.test.mts",
+              "id": "Dbspec operations outside parse do not take or return declaration positions"
+            }
+          ]
+        },
+        {
+          "id": "client-native-text-list-result-types",
+          "requirements": [
+            "INT-4",
+            "INT-9",
+            "INT-10"
+          ],
+          "bindings": [
+            {
+              "test": "tests/interfaces/check/api.test.mts",
+              "id": "public text, list and result forms map to each host language"
+            }
+          ]
+        }
+      ]
     }
   ],
   "requirements": {
@@ -1316,6 +1784,7 @@
       "id": "dbspec-apply-chain",
       "kind": "feature",
       "requirements": [
+        "PLN-90",
         "PLN-93",
         "PLN-95",
         "PLN-96"
@@ -1344,7 +1813,103 @@
         {
           "implementation": "python",
           "test": "packages/python/tests/dbspec_apply.py",
-          "id": "test_sqlite_scenarios"
+          "id": "DbspecApplyTest::test_lock_wait_mysql",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "dbspec-apply-python-check"
+          ]
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/dbspec_apply.py",
+          "id": "DbspecApplyTest::test_lock_wait_postgres"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/dbspec_apply.py",
+          "id": "DbspecApplyTest::test_lock_wait_sqlite"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/dbspec_apply.rs",
+          "id": "apply_chain_on_three_databases"
+        }
+      ]
+    },
+    {
+      "id": "dbspec-apply-history-state",
+      "kind": "feature",
+      "requirements": [
+        "PLN-91",
+        "PLN-92"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/internal/dialects/apply_physical_test.go",
+          "id": "TestApplyChain"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecApplyTest.php",
+          "id": "DbspecApplyTest::testScenario"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/DbspecApplyTest.php",
+          "id": "DbspecApplyTest::testScenario"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec-apply-physical.mjs",
+          "id": "every apply scenario runs on its dialects"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/dbspec_apply.py",
+          "id": "test_history_and_state_on_every_database"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/dbspec_apply.rs",
+          "id": "apply_chain_on_three_databases"
+        }
+      ]
+    },
+    {
+      "id": "dbspec-apply-lock-scope",
+      "kind": "feature",
+      "requirements": [
+        "PLN-89"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/internal/dialects/apply_physical_test.go",
+          "id": "TestApplyChain"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecApplyTest.php",
+          "id": "DbspecApplyTest::testScenario"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/DbspecApplyTest.php",
+          "id": "DbspecApplyTest::testScenario"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec-apply-physical.mjs",
+          "id": "every apply scenario runs on its dialects"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/dbspec_apply.py",
+          "id": "test_lock_scope_on_every_database"
         },
         {
           "implementation": "rust",
@@ -2037,6 +2602,45 @@
       ]
     },
     {
+      "id": "connection-sqlite-absolute-path",
+      "kind": "feature",
+      "requirements": [
+        "CFG-26"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/dsn_test.go",
+          "id": "TestSQLiteDSNRequiresAbsolutePath"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnTest.php",
+          "id": "DsnTest::testSqliteDsnRequiresAbsolutePath"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/OrmExceptionNativeTest.php",
+          "id": "OrmExceptionNativeTest::testNativeOrmRequiresAbsoluteSqlitePath"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dsn.mjs",
+          "id": "dsn/sqlite-requires-absolute-path"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/connection_utc.py",
+          "id": "test_sqlite_dsn_requires_absolute_path"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/zone.rs",
+          "id": "sqlite_dsn_requires_absolute_path"
+        }
+      ]
+    },
+    {
       "id": "connection-dsn-supported-parameters",
       "kind": "feature",
       "requirements": [
@@ -2123,7 +2727,9 @@
       "id": "connection-utc-runtime",
       "kind": "feature",
       "requirements": [
-        "CFG-2"
+        "CFG-2",
+        "DIA-57",
+        "DSL-141"
       ],
       "bindings": [
         {
@@ -2340,7 +2946,13 @@
         "DSL-80",
         "DSL-82",
         "DSL-99",
-        "PLN-11"
+        "INT-16",
+        "INT-29",
+        "INT-30",
+        "INT-32",
+        "INT-33",
+        "PLN-11",
+        "PLN-25"
       ],
       "bindings": [
         {
@@ -2528,6 +3140,68 @@
             "FEATURE_DATABASE=sqlite",
             "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=coverage_model_writes::coverage_model_write_cycle"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "coverage-model-write-arithmetic-attributes",
+      "kind": "feature",
+      "requirements": [
+        "PLN-26"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/coverage_model_writes_test.go",
+          "id": "TestCoverageModelArithmeticAttributes",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-go-unit",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=TestCoverageModelArithmeticAttributes",
+            "FEATURE_PACKAGE=./model"
+          ]
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageModelWritesTest.php",
+          "id": "CoverageModelWritesTest::testModelWriteArithmeticAttributes"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageModelWritesExtensionTest.php",
+          "id": "CoverageModelWritesExtensionTest::testModelWriteArithmeticAttributes"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_model_writes.mjs",
+          "id": "model_write_arithmetic_attributes [sqlite]"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_model_writes.py",
+          "id": "test_model_write_arithmetic_attributes"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/integration/coverage_model_writes.rs",
+          "id": "coverage_model_writes::coverage_model_write_arithmetic_attributes",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-rust-database",
+            "FEATURE_CRATE=packages/rust/tests",
+            "FEATURE_CARGO_TARGET=--test integration",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=coverage_model_writes::coverage_model_write_arithmetic_attributes"
           ]
         }
       ]
@@ -3449,8 +4123,14 @@
       "kind": "feature",
       "requirements": [
         "DSL-119",
+        "INT-40",
+        "INT-41",
+        "INT-42",
+        "INT-43",
         "INT-45",
         "INT-46",
+        "INT-47",
+        "INT-48",
         "PLN-17"
       ],
       "bindings": [
@@ -5140,7 +5820,8 @@
         "COD-33",
         "COD-36",
         "COD-38",
-        "COD-40"
+        "COD-40",
+        "PLN-15"
       ],
       "file": "tests/codec/vectors.json",
       "cases": "$.vectors[*].name",
@@ -5181,7 +5862,8 @@
       "requirements": [
         "COD-3",
         "COD-5",
-        "COD-40"
+        "COD-40",
+        "PLN-15"
       ],
       "file": "tests/codec/aes-vectors.json",
       "cases": "$.vectors[*].name",
@@ -5225,7 +5907,8 @@
         "COD-31",
         "COD-37",
         "COD-39",
-        "COD-40"
+        "COD-40",
+        "PLN-15"
       ],
       "file": "tests/codec/decode-vectors.json",
       "cases": "$.vectors[*].name",
@@ -5264,6 +5947,7 @@
       "id": "ir-validate",
       "kind": "suite",
       "requirements": [
+        "INT-24",
         "PRT-4",
         "PRT-6",
         "PRT-10",
@@ -5317,6 +6001,15 @@
       "id": "conformance-mysql",
       "kind": "suite",
       "requirements": [
+        "PRT-68",
+        "INT-20",
+        "INT-21",
+        "INT-22",
+        "INT-23",
+        "INT-24",
+        "INT-25",
+        "INT-26",
+        "INT-39",
         "DSL-1",
         "DSL-2",
         "DSL-3",
@@ -5520,6 +6213,15 @@
       "id": "conformance-postgres",
       "kind": "suite",
       "requirements": [
+        "PRT-68",
+        "INT-20",
+        "INT-21",
+        "INT-22",
+        "INT-23",
+        "INT-24",
+        "INT-25",
+        "INT-26",
+        "INT-39",
         "DSL-1",
         "DSL-2",
         "DSL-3",
@@ -5723,6 +6425,15 @@
       "id": "conformance-sqlite",
       "kind": "suite",
       "requirements": [
+        "PRT-68",
+        "INT-20",
+        "INT-21",
+        "INT-22",
+        "INT-23",
+        "INT-24",
+        "INT-25",
+        "INT-26",
+        "INT-39",
         "DSL-1",
         "DSL-2",
         "DSL-3",
@@ -5926,6 +6637,7 @@
       "id": "dbspec-canonical",
       "kind": "suite",
       "requirements": [
+        "ORES-19",
         "DBS-3",
         "DBS-32",
         "DBS-35",
@@ -6021,6 +6733,9 @@
       "kind": "suite",
       "requirements": [
         "DBS-2",
+        "ORES-15",
+        "ORES-17",
+        "ORES-19",
         "DBS-36",
         "DBS-45",
         "DBS-47",
@@ -6074,6 +6789,7 @@
       "id": "dbspec-invalid",
       "kind": "suite",
       "requirements": [
+        "ORES-19",
         "DBS-3",
         "DBS-32",
         "DBS-33",
@@ -6185,6 +6901,7 @@
       "kind": "suite",
       "requirements": [
         "DBS-65",
+        "ORES-16",
         "DBS-86",
         "DBS-94",
         "DBS-99",
@@ -6319,6 +7036,7 @@
         "DBS-142",
         "DBS-143",
         "ORES-12",
+        "ORES-72",
         "ORES-57",
         "ORES-58",
         "ORES-59",
@@ -6446,12 +7164,14 @@
         "DBS-137",
         "DBS-138",
         "DBS-139",
+        "ORES-1",
         "ORES-3",
         "ORES-4",
         "ORES-5",
         "ORES-6",
         "ORES-7",
         "ORES-8",
+        "ORES-9",
         "ORES-10",
         "ORES-11",
         "ORES-13"
@@ -6869,6 +7589,17 @@
         "PLN-70",
         "PLN-71",
         "PLN-72",
+        "PLN-73",
+        "PLN-74",
+        "PLN-75",
+        "PLN-76",
+        "PLN-77",
+        "PLN-78",
+        "PLN-79",
+        "PLN-80",
+        "PLN-81",
+        "PLN-82",
+        "PLN-83",
         "PLN-84",
         "PLN-85",
         "PLN-86",
@@ -8078,22 +8809,6 @@
       ]
     },
     {
-      "id": "go-internal-packages-go-model-replica",
-      "kind": "feature",
-      "requirements": [
-        "CFG-21",
-        "CFG-22",
-        "CFG-24"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/model/replica_test.go",
-          "id": "TestPrimaryAndReplica"
-        }
-      ]
-    },
-    {
       "id": "go-internal-packages-go-model-styled-state",
       "kind": "feature",
       "requirements": [
@@ -8256,6 +8971,7 @@
       "kind": "feature",
       "requirements": [
         "CFG-27",
+        "CFG-28",
         "CFG-29"
       ],
       "bindings": [
@@ -8288,6 +9004,20 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/zone.rs",
           "id": "statement_timeout_through_a_pooler"
+        }
+      ]
+    },
+    {
+      "id": "connection-cancellation-through-pooler",
+      "kind": "feature",
+      "requirements": [
+        "CFG-31"
+      ],
+      "bindings": [
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/statement_timeout.mjs",
+          "id": "connection/cancellation-through-pooler"
         }
       ]
     },
@@ -8901,16 +9631,52 @@
       ]
     },
     {
-      "id": "go-orm-transaction-control-not-public",
+      "id": "transaction-control-methods-are-private",
       "kind": "feature",
       "requirements": [
-        "DSL-124"
+        "DSL-124",
+        "PLN-19"
       ],
       "bindings": [
         {
           "implementation": "go",
           "test": "packages/go/orm/transaction_api_test.go",
           "id": "TestTransactionControlIsNotPublic"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testTransactions"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
+          "id": "CoverageTransactionsExtensionTest::testNativeMethodsAreInternal"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/chain-types.mjs",
+          "id": "chain argument types"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_transaction_flow.py",
+          "id": "test_begin_commit_and_rollback_are_not_public"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/testing/compiler-fixtures/cases.json",
+          "id": "dsl124-db-begin-e0599"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/testing/compiler-fixtures/cases.json",
+          "id": "dsl124-db-commit-e0599"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/testing/compiler-fixtures/cases.json",
+          "id": "dsl124-db-rollback-e0599"
         }
       ]
     },
@@ -9224,6 +9990,8 @@
       "id": "dbspec-apply-cross-client",
       "kind": "feature",
       "requirements": [
+        "PLN-90",
+        "PLN-94",
         "PLN-103"
       ],
       "bindings": [
@@ -9239,6 +10007,55 @@
             "dbspec-apply-pairs-check",
             "GO_TEST_FLAGS=-json"
           ]
+        }
+      ]
+    },
+    {
+      "id": "dbspec-apply-chain-finalization",
+      "kind": "feature",
+      "requirements": [
+        "PLN-94"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/internal/dialects/apply_physical_test.go",
+          "id": "TestApplyChain"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecApplyTest.php",
+          "id": "DbspecApplyTest::testScenario"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/DbspecApplyTest.php",
+          "id": "DbspecApplyTest::testScenario"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec-apply-physical.mjs",
+          "id": "mysql.apply.chain_history_and_again"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec-apply-physical.mjs",
+          "id": "postgres.apply.chain_history_and_again"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec-apply-physical.mjs",
+          "id": "sqlite.apply.chain_history_and_again"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/dbspec_plan_physical.py",
+          "id": "DbspecPlanPhysicalTest::test_every_plan_case_runs_on_every_dialect"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/dbspec_apply.rs",
+          "id": "apply_chain_on_three_databases"
         }
       ]
     },
@@ -11411,17 +12228,7 @@
       "id": "rust-mysql-install-inside-transaction",
       "kind": "feature",
       "requirements": [
-        "CFG-2",
-        "CFG-4",
-        "CFG-5",
-        "CFG-6",
-        "CFG-9",
-        "CFG-20",
-        "CFG-27",
-        "CFG-29",
-        "CFG-32",
-        "DIA-57",
-        "DSL-141"
+        "INT-55"
       ],
       "bindings": [
         {
@@ -11996,22 +12803,6 @@
           "implementation": "python",
           "test": "packages/python/tests/decimal_model_db.py",
           "id": "test_setters"
-        }
-      ]
-    },
-    {
-      "id": "py-replica",
-      "kind": "feature",
-      "requirements": [
-        "CFG-21",
-        "CFG-22",
-        "CFG-24"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/replica.py",
-          "id": "test_read_only"
         }
       ]
     },
@@ -13795,56 +14586,7 @@
       "id": "php-internal-model-schema-empty",
       "kind": "feature",
       "requirements": [
-        "CFG-2",
-        "CFG-4",
-        "CFG-5",
-        "CFG-6",
-        "CFG-7",
-        "CFG-21",
-        "CFG-22",
-        "CFG-24",
-        "CFG-27",
-        "CFG-29",
-        "COD-8",
-        "CPX-1",
-        "DBS-118",
-        "DIA-57",
-        "DSL-49",
-        "DSL-50",
-        "DSL-107",
-        "DSL-116",
-        "DSL-118",
-        "DSL-119",
-        "DSL-123",
-        "DSL-124",
-        "DSL-125",
-        "DSL-126",
-        "DSL-141",
-        "PLN-6",
-        "PLN-7",
-        "PLN-8",
-        "PLN-9",
-        "PLN-10",
-        "PLN-12",
-        "PLN-13",
-        "PLN-14",
-        "PLN-16",
-        "PLN-17",
-        "PLN-20",
-        "PLN-21",
-        "PLN-23",
-        "PLN-24",
-        "PLN-27",
-        "PLN-28",
-        "PLN-29",
-        "PLN-36",
-        "PLN-37",
-        "PLN-38",
-        "PLN-39",
-        "PLN-41",
-        "PLN-42",
-        "PLN-43",
-        "SCH-7"
+        "INT-58"
       ],
       "bindings": [
         {
@@ -13869,88 +14611,10 @@
       ]
     },
     {
-      "id": "php-internal-model-primary-and-replica",
-      "kind": "feature",
-      "requirements": [
-        "CFG-21",
-        "CFG-22"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testPrimaryAndReplica"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-model-read-only",
-      "kind": "feature",
-      "requirements": [
-        "CFG-24"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testReadOnly"
-        }
-      ]
-    },
-    {
       "id": "php-internal-model-failed-local-reset",
       "kind": "feature",
       "requirements": [
-        "CFG-2",
-        "CFG-4",
-        "CFG-5",
-        "CFG-6",
-        "CFG-7",
-        "CFG-21",
-        "CFG-22",
-        "CFG-24",
-        "CFG-27",
-        "CFG-29",
-        "COD-8",
-        "CPX-1",
-        "DBS-118",
-        "DIA-57",
-        "DSL-49",
-        "DSL-50",
-        "DSL-107",
-        "DSL-116",
-        "DSL-118",
-        "DSL-119",
-        "DSL-123",
-        "DSL-124",
-        "DSL-125",
-        "DSL-126",
-        "DSL-141",
-        "PLN-6",
-        "PLN-7",
-        "PLN-8",
-        "PLN-9",
-        "PLN-10",
-        "PLN-12",
-        "PLN-13",
-        "PLN-14",
-        "PLN-16",
-        "PLN-17",
-        "PLN-20",
-        "PLN-21",
-        "PLN-23",
-        "PLN-24",
-        "PLN-27",
-        "PLN-28",
-        "PLN-29",
-        "PLN-36",
-        "PLN-37",
-        "PLN-38",
-        "PLN-39",
-        "PLN-41",
-        "PLN-42",
-        "PLN-43",
-        "SCH-7"
+        "INT-51"
       ],
       "bindings": [
         {
@@ -13964,56 +14628,7 @@
       "id": "php-internal-model-failed-lock-release",
       "kind": "feature",
       "requirements": [
-        "CFG-2",
-        "CFG-4",
-        "CFG-5",
-        "CFG-6",
-        "CFG-7",
-        "CFG-21",
-        "CFG-22",
-        "CFG-24",
-        "CFG-27",
-        "CFG-29",
-        "COD-8",
-        "CPX-1",
-        "DBS-118",
-        "DIA-57",
-        "DSL-49",
-        "DSL-50",
-        "DSL-107",
-        "DSL-116",
-        "DSL-118",
-        "DSL-119",
-        "DSL-123",
-        "DSL-124",
-        "DSL-125",
-        "DSL-126",
-        "DSL-141",
-        "PLN-6",
-        "PLN-7",
-        "PLN-8",
-        "PLN-9",
-        "PLN-10",
-        "PLN-12",
-        "PLN-13",
-        "PLN-14",
-        "PLN-16",
-        "PLN-17",
-        "PLN-20",
-        "PLN-21",
-        "PLN-23",
-        "PLN-24",
-        "PLN-27",
-        "PLN-28",
-        "PLN-29",
-        "PLN-36",
-        "PLN-37",
-        "PLN-38",
-        "PLN-39",
-        "PLN-41",
-        "PLN-42",
-        "PLN-43",
-        "SCH-7"
+        "INT-50"
       ],
       "bindings": [
         {
@@ -14104,56 +14719,7 @@
       "id": "php-internal-model-styled-value-states",
       "kind": "feature",
       "requirements": [
-        "CFG-2",
-        "CFG-4",
-        "CFG-5",
-        "CFG-6",
-        "CFG-7",
-        "CFG-21",
-        "CFG-22",
-        "CFG-24",
-        "CFG-27",
-        "CFG-29",
-        "COD-8",
-        "CPX-1",
-        "DBS-118",
-        "DIA-57",
-        "DSL-49",
-        "DSL-50",
-        "DSL-107",
-        "DSL-116",
-        "DSL-118",
-        "DSL-119",
-        "DSL-123",
-        "DSL-124",
-        "DSL-125",
-        "DSL-126",
-        "DSL-141",
-        "PLN-6",
-        "PLN-7",
-        "PLN-8",
-        "PLN-9",
-        "PLN-10",
-        "PLN-12",
-        "PLN-13",
-        "PLN-14",
-        "PLN-16",
-        "PLN-17",
-        "PLN-20",
-        "PLN-21",
-        "PLN-23",
-        "PLN-24",
-        "PLN-27",
-        "PLN-28",
-        "PLN-29",
-        "PLN-36",
-        "PLN-37",
-        "PLN-38",
-        "PLN-39",
-        "PLN-41",
-        "PLN-42",
-        "PLN-43",
-        "SCH-7"
+        "COD-20"
       ],
       "bindings": [
         {
@@ -14167,56 +14733,9 @@
       "id": "php-internal-model-codec-columns",
       "kind": "feature",
       "requirements": [
-        "CFG-2",
-        "CFG-4",
-        "CFG-5",
-        "CFG-6",
-        "CFG-7",
-        "CFG-21",
-        "CFG-22",
-        "CFG-24",
-        "CFG-27",
-        "CFG-29",
-        "COD-8",
-        "CPX-1",
-        "DBS-118",
-        "DIA-57",
-        "DSL-49",
-        "DSL-50",
-        "DSL-107",
-        "DSL-116",
-        "DSL-118",
-        "DSL-119",
-        "DSL-123",
-        "DSL-124",
-        "DSL-125",
-        "DSL-126",
-        "DSL-141",
-        "PLN-6",
-        "PLN-7",
-        "PLN-8",
-        "PLN-9",
-        "PLN-10",
-        "PLN-12",
-        "PLN-13",
-        "PLN-14",
-        "PLN-16",
-        "PLN-17",
-        "PLN-20",
-        "PLN-21",
-        "PLN-23",
-        "PLN-24",
-        "PLN-27",
-        "PLN-28",
-        "PLN-29",
-        "PLN-36",
-        "PLN-37",
-        "PLN-38",
-        "PLN-39",
-        "PLN-41",
-        "PLN-42",
-        "PLN-43",
-        "SCH-7"
+        "COD-11",
+        "COD-12",
+        "COD-38"
       ],
       "bindings": [
         {
@@ -14254,56 +14773,11 @@
       "id": "php-internal-model-utilities",
       "kind": "feature",
       "requirements": [
-        "CFG-2",
-        "CFG-4",
-        "CFG-5",
-        "CFG-6",
-        "CFG-7",
-        "CFG-21",
-        "CFG-22",
-        "CFG-24",
-        "CFG-27",
-        "CFG-29",
-        "COD-8",
-        "CPX-1",
-        "DBS-118",
-        "DIA-57",
-        "DSL-49",
-        "DSL-50",
-        "DSL-107",
-        "DSL-116",
-        "DSL-118",
-        "DSL-119",
-        "DSL-123",
-        "DSL-124",
-        "DSL-125",
-        "DSL-126",
-        "DSL-141",
-        "PLN-6",
-        "PLN-7",
-        "PLN-8",
-        "PLN-9",
-        "PLN-10",
-        "PLN-12",
-        "PLN-13",
-        "PLN-14",
-        "PLN-16",
-        "PLN-17",
-        "PLN-20",
-        "PLN-21",
-        "PLN-23",
-        "PLN-24",
-        "PLN-27",
-        "PLN-28",
-        "PLN-29",
-        "PLN-36",
-        "PLN-37",
-        "PLN-38",
-        "PLN-39",
-        "PLN-41",
-        "PLN-42",
-        "PLN-43",
-        "SCH-7"
+        "INT-55",
+        "INT-57",
+        "INT-58",
+        "INT-59",
+        "INT-61"
       ],
       "bindings": [
         {
@@ -14345,56 +14819,8 @@
       "id": "php-internal-model-bind-limit-splitting",
       "kind": "feature",
       "requirements": [
-        "CFG-2",
-        "CFG-4",
-        "CFG-5",
-        "CFG-6",
-        "CFG-7",
-        "CFG-21",
-        "CFG-22",
-        "CFG-24",
-        "CFG-27",
-        "CFG-29",
-        "COD-8",
-        "CPX-1",
-        "DBS-118",
-        "DIA-57",
-        "DSL-49",
-        "DSL-50",
-        "DSL-107",
-        "DSL-116",
-        "DSL-118",
-        "DSL-119",
-        "DSL-123",
-        "DSL-124",
-        "DSL-125",
-        "DSL-126",
-        "DSL-141",
-        "PLN-6",
-        "PLN-7",
-        "PLN-8",
-        "PLN-9",
-        "PLN-10",
-        "PLN-12",
-        "PLN-13",
-        "PLN-14",
-        "PLN-16",
-        "PLN-17",
-        "PLN-20",
-        "PLN-21",
-        "PLN-23",
-        "PLN-24",
-        "PLN-27",
-        "PLN-28",
-        "PLN-29",
-        "PLN-36",
-        "PLN-37",
-        "PLN-38",
-        "PLN-39",
-        "PLN-41",
-        "PLN-42",
-        "PLN-43",
-        "SCH-7"
+        "PRT-41",
+        "PRT-76"
       ],
       "bindings": [
         {
@@ -14408,56 +14834,9 @@
       "id": "php-internal-model-insert-parts",
       "kind": "feature",
       "requirements": [
-        "CFG-2",
-        "CFG-4",
-        "CFG-5",
-        "CFG-6",
-        "CFG-7",
-        "CFG-21",
-        "CFG-22",
-        "CFG-24",
-        "CFG-27",
-        "CFG-29",
-        "COD-8",
-        "CPX-1",
-        "DBS-118",
-        "DIA-57",
-        "DSL-49",
-        "DSL-50",
-        "DSL-107",
-        "DSL-116",
-        "DSL-118",
-        "DSL-119",
-        "DSL-123",
-        "DSL-124",
-        "DSL-125",
-        "DSL-126",
-        "DSL-141",
-        "PLN-6",
-        "PLN-7",
-        "PLN-8",
-        "PLN-9",
-        "PLN-10",
-        "PLN-12",
-        "PLN-13",
-        "PLN-14",
-        "PLN-16",
-        "PLN-17",
-        "PLN-20",
-        "PLN-21",
-        "PLN-23",
-        "PLN-24",
-        "PLN-27",
-        "PLN-28",
-        "PLN-29",
-        "PLN-36",
-        "PLN-37",
-        "PLN-38",
-        "PLN-39",
-        "PLN-41",
-        "PLN-42",
-        "PLN-43",
-        "SCH-7"
+        "DSL-104",
+        "INT-35",
+        "PRT-41"
       ],
       "bindings": [
         {
@@ -16531,6 +16910,7 @@
       "id": "collection-get",
       "kind": "api",
       "requirements": [
+        "INT-11",
         "INT-80"
       ],
       "symbols": [
@@ -16597,6 +16977,7 @@
       "id": "collection-keys",
       "kind": "api",
       "requirements": [
+        "INT-11",
         "INT-81"
       ],
       "symbols": [
@@ -18546,9 +18927,93 @@
       ]
     },
     {
+      "id": "static-model-chains-declared-from-scan",
+      "kind": "feature",
+      "requirements": [
+        "INT-27",
+        "PLN-40"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/generator/gen_go_test.go",
+          "id": "TestScanGeneratesUsedMethods"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/tests/generate.rs",
+          "id": "generates_called_methods"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/generate-scan.mjs",
+          "id": "generate-scan/model_calls"
+        }
+      ]
+    },
+    {
+      "id": "dynamic-model-chains-resolve-at-call-time",
+      "kind": "feature",
+      "requirements": [
+        "INT-28"
+      ],
+      "bindings": [
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/OrmGenScanTest.php",
+          "id": "OrmGenScanTest::testTheReceiverIsResolvedFromTheSource"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelMethodsTest.php",
+          "id": "ModelMethodsTest::testADeclaredMethodBuildsTheQueryOfItsChain"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelDslNativeTest.php",
+          "id": "ModelDslNativeTest::testDynamicConditionsAndBuilderCallsReturnTheNativeModel"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_orm_gen.py",
+          "id": "test_chain_conditions"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_orm_gen.py",
+          "id": "test_scan_reports_unknown_model_methods"
+        }
+      ]
+    },
+    {
+      "id": "dynamic-vs-scanned-model-chain-dispatch",
+      "kind": "feature",
+      "requirements": [
+        "PLN-40"
+      ],
+      "bindings": [
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelMethodsTest.php",
+          "id": "ModelMethodsTest::testADeclaredMethodBuildsTheQueryOfItsChain"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelDslNativeTest.php",
+          "id": "ModelDslNativeTest::testDynamicConditionsAndBuilderCallsReturnTheNativeModel"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_query_methods.py",
+          "id": "test_a_declared_method_builds_the_query_of_its_chain"
+        }
+      ]
+    },
+    {
       "id": "collection-identity-from-fixture",
       "kind": "feature",
       "requirements": [
+        "INT-11",
         "PRT-35"
       ],
       "bindings": [
@@ -18564,8 +19029,8 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/CollectionIdentityTest.php",
-          "id": "CollectionIdentityTest::testEveryFixtureKeyHasItsOwnStableIdentity"
+          "test": "packages/php-ext/tests/CollectionTest.php",
+          "id": "CollectionTest::testFixtureKeysKeepTheirNativeTypesAndLookupValue"
         },
         {
           "implementation": "typescript",
@@ -20489,6 +20954,25 @@
       ]
     },
     {
+      "id": "ts-sqlite-one-db-per-file",
+      "kind": "feature",
+      "requirements": [
+        "CFG-14"
+      ],
+      "bindings": [
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/sqlite-concurrency.mjs",
+          "id": "sqlite-concurrency/writersInSeveralProcesses"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "@polyspec/orm"
+      }
+    },
+    {
       "id": "connection-sqlite-read-during-write",
       "kind": "feature",
       "requirements": [
@@ -21811,6 +22295,147 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/integration/coverage_model_queries.rs",
           "id": "coverage_model_queries::duplicate_relation_name_reports_config_alias_hint"
+        }
+      ]
+    },
+    {
+      "id": "connection-primary-and-replica",
+      "kind": "feature",
+      "requirements": [
+        "CFG-21",
+        "CFG-22",
+        "CFG-23",
+        "CFG-25"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/replica_test.go",
+          "id": "TestPrimaryAndReplica"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testPrimaryAndReplica"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testPrimaryAndReplica"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/replica.py",
+          "id": "test_primary_and_replica_mysql"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/replica.py",
+          "id": "test_primary_and_replica_postgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/replica.mjs",
+          "id": "replica/primary_and_replica/mysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/replica.mjs",
+          "id": "replica/primary_and_replica/postgres"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/replica.rs",
+          "id": "primary_and_replica_mysql"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/replica.rs",
+          "id": "primary_and_replica_postgres"
+        }
+      ]
+    },
+    {
+      "id": "connection-replica-rejects-write",
+      "kind": "feature",
+      "requirements": [
+        "CFG-24"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/replica_test.go",
+          "id": "TestReadOnlySQLite"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/model/replica_test.go",
+          "id": "TestPrimaryAndReplica"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testReadOnly"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testPrimaryAndReplica"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testReadOnly"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testPrimaryAndReplica"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/replica.py",
+          "id": "test_read_only"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/replica.py",
+          "id": "test_primary_and_replica_mysql"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/replica.py",
+          "id": "test_primary_and_replica_postgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/replica.mjs",
+          "id": "replica/read_only/sqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/replica.mjs",
+          "id": "replica/primary_and_replica/mysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/replica.mjs",
+          "id": "replica/primary_and_replica/postgres"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/replica.rs",
+          "id": "read_only_sqlite"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/replica.rs",
+          "id": "primary_and_replica_mysql"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/replica.rs",
+          "id": "primary_and_replica_postgres"
         }
       ]
     }

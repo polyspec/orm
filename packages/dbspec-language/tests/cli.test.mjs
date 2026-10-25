@@ -45,6 +45,16 @@ const unformatted = 'dbspec 1 shop\n\ntable   item {\n id i64 identity\n primary
 const billing = 'dbspec 1 billing\n\nuse shop { item }\n\ntable invoice {\n  id i64 identity\n  item_id i64\n  primary key (id)\n  index ix_invoice_item (item_id)\n  foreign key fk_invoice_item (item_id) references item (id) on delete restrict on update restrict\n}\n';
 const broken = 'dbspec 1 shop\n\ntable item {\n  id i64 identity\n  primary key (id)\n';
 
+// Requirements: ORE-17, ORES-48, ORES-73.
+vector('the command uses node:util parseArgs and readDbspecFile', () => {
+  const source = readFileSync(new URL('../src/cli/main.ts', import.meta.url), 'utf8');
+  assert.match(source, /import\s*\{\s*parseArgs\s*\}\s*from\s*'node:util'/);
+  assert.match(source, /import\s*\{\s*readDbspecFile\s*\}\s*from\s*'@polyspec\/orm'/);
+  assert.match(source, /parseArgs\s*\(/);
+  assert.match(source, /readDbspecFile\s*\(/);
+});
+
+// Requirements: ORES-74, ORES-80.
 vector('one path without a mode prints the formatted text and changes nothing', () => inDir({ 'a.dbs': unformatted }, dir => {
   assert.deepEqual(run(['a.dbs'], dir), { status: 0, stdout: canonical, stderr: '' });
   assert.equal(readFileSync(join(dir, 'a.dbs'), 'utf8'), unformatted);
@@ -70,6 +80,7 @@ vector('a parse diagnostic of standard input is reported at <stdin>', () => inDi
   assert.match(result.stderr, /^<stdin>:3:12: syntax: .+\n$/);
 }));
 
+// Requirements: ORES-75, ORES-82.
 vector('the arguments that are refused exit 2 with the usage', () => inDir({ 'a.dbs': canonical, 'b.dbs': canonical }, dir => {
   for (const [args, message] of [
     [['a.dbs', 'b.dbs'], 'several paths require --write or --check'],
@@ -93,6 +104,7 @@ vector('--help prints the usage and exits 0', () => inDir({}, dir => {
   assert.ok(result.stdout.startsWith('usage: dbspec-fmt [--write | --check] [PATH ...]'), result.stdout);
 }));
 
+// Requirements: ORES-81.
 vector('--check exits 1 for an unformatted file and prints its path; it changes nothing', () => inDir({ 'a.dbs': unformatted, 'b.dbs': canonical }, dir => {
   assert.deepEqual(run(['--check', 'a.dbs', 'b.dbs'], dir), { status: 1, stdout: 'a.dbs\n', stderr: '' });
   assert.equal(readFileSync(join(dir, 'a.dbs'), 'utf8'), unformatted);
@@ -105,6 +117,7 @@ vector('--write rewrites an unformatted file, prints its path and leaves a forma
   assert.deepEqual(run(['--write', 'a.dbs', 'b.dbs'], dir), { status: 0, stdout: '', stderr: '' });
 }));
 
+// Requirements: ORES-76, ORES-77, ORES-82.
 vector('every path is processed and the highest exit code wins', () => inDir({ 'a.dbs': unformatted, 'bad.dbs': broken, 'c.dbs': unformatted }, dir => {
   const result = run(['--check', 'a.dbs', 'bad.dbs', 'missing.dbs', 'c.dbs'], dir);
   assert.equal(result.status, 2);
@@ -125,6 +138,7 @@ vector('a file that fails the byte check is reported at its position', () => inD
   assert.deepEqual(run(['a.dbs'], dir), { status: 2, stdout: '', stderr: 'a.dbs:1:1: signature: a.dbs is not a dbspec document\n' });
 }));
 
+// Requirements: ORES-79.
 vector('a directory is not walked: it is a path that cannot be read', () => inDir({ 'sub/a.dbs': canonical }, dir => {
   const result = run(['--check', 'sub'], dir);
   assert.equal(result.status, 2);
@@ -144,6 +158,7 @@ vector('each file takes its set from resolveSet', () => inDir({
   assert.equal(alone.stderr, 'alone/billing.dbs:3:5: use: document shop is not in the declared document set\n');
 }));
 
+// Requirements: ORE-9.
 vector('a set error is reported with the set file and the file is not changed', () => inDir({
   'app/dbspec-set.json': JSON.stringify({ schema: 1, documents: ['shop.dbs', 'missing.dbs'] }),
   'app/shop.dbs': unformatted,

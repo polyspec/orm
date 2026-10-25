@@ -177,7 +177,7 @@ func stopAfter(plan string, step int, stop error) func(dbspec.ApplyEvent) error 
 // history, that re-applying leaves it unchanged, drift, the lock, an unlock that releases nothing, verification,
 // recover and rollback after a stop after every step of the representative plan, continuing an interrupted rollback,
 // rollback and re-apply keeping rows written in between, null checks, and finalize.
-// Requirements: PLN-93, PLN-95, PLN-96.
+// Requirements: PLN-89, PLN-90, PLN-91, PLN-92, PLN-93, PLN-94, PLN-95, PLN-96.
 func TestApplyChain(t *testing.T) {
 	testcase.Group(t)
 	// scenario checks the lock and session settings on the server, so it uses the server DSN, not the pooler.
@@ -251,6 +251,7 @@ func TestApplyChain(t *testing.T) {
 			schemaIs(e, db, target.SchemaText)
 			c := planCounts[db]
 			historyIs(e, db, fmt.Sprintf("create_from_empty|applied|%d,rename_table_and_column|applied|%d", c[0][1], c[1][1]))
+			e.Want("SELECT COUNT(*) FROM "+historyOf(db)+" WHERE applied_at = '2026-10-01T00:00:00.123456Z'", "2")
 			counts := map[string]int{}
 			for _, k := range events {
 				counts[k]++
@@ -286,6 +287,81 @@ func TestApplyChain(t *testing.T) {
 				if _, err := other.Conn.ExecContext(e.Ctx, "ROLLBACK"); err != nil {
 					e.fail("roll back the other session: %v", err)
 				}
+			}
+		}},
+		{"lock_wait", all, func(e *Env, db string) {
+			// Requirement: PLN-90. The client waits on a real SQLite lock or a server row lock.
+			blocker, err := e.Session()
+			if err != nil {
+				e.fail("blocker session: %v", err)
+				return
+			}
+			defer func() {
+				if db == "sqlite" {
+					_, _ = blocker.Conn.ExecContext(context.Background(), "ROLLBACK")
+				}
+				if err := blocker.Conn.Close(); err != nil {
+					e.fail("close blocker session: %v", err)
+				}
+			}()
+			chain := representative
+			wantCode := "failed"
+			if db == "sqlite" {
+				if _, err := blocker.Conn.ExecContext(e.Ctx, "BEGIN EXCLUSIVE"); err != nil {
+					e.fail("hold SQLite exclusive lock: %v", err)
+					return
+				}
+				chain = nil
+				wantCode = "locked"
+			} else {
+				if err := applyCommand(e.Ctx, e.Conn, dbspec.Dialect(db), representative[:1], fixedNow, nil); err != nil {
+					e.fail("apply representative base: %v", err)
+					return
+				}
+				for _, rule := range connectionRules[db] {
+					if _, err := blocker.Conn.ExecContext(e.Ctx, rule); err != nil {
+						e.fail("configure blocker: %v", err)
+						return
+					}
+				}
+				if _, err := blocker.Conn.ExecContext(e.Ctx, "BEGIN"); err != nil {
+					e.fail("begin blocker transaction: %v", err)
+					return
+				}
+				if _, err := blocker.Conn.ExecContext(e.Ctx, "INSERT INTO archive (note) VALUES ('lock wait')"); err != nil {
+					e.fail("write blocker row: %v", err)
+					return
+				}
+				rows, err := blocker.Conn.QueryContext(e.Ctx, "SELECT id FROM archive FOR UPDATE")
+				if err != nil {
+					e.fail("lock blocker row: %v", err)
+					return
+				}
+				_ = rows.Close()
+			}
+			var events []dbspec.ApplyEvent
+			started := time.Now()
+			err = applyCommand(e.Ctx, e.Conn, dbspec.Dialect(db), chain, fixedNow, func(event dbspec.ApplyEvent) error {
+				if event.Kind == "statement" || event.Kind == "applied" {
+					events = append(events, event)
+				}
+				return nil
+			})
+			elapsed := time.Since(started)
+			if applyCode(err) != wantCode {
+				e.fail("lock wait: %v, want %s", err, wantCode)
+				return
+			}
+			if err == nil || !strings.Contains(strings.ToLower(err.Error()), "lock") && !strings.Contains(strings.ToLower(err.Error()), "timeout") {
+				e.fail("lock wait error does not name the held lock: %v", err)
+				return
+			}
+			if db != "sqlite" && (len(events) != 1 || events[0].Kind != "statement" || events[0].Step != 0) {
+				e.fail("statement lock wait events: %+v, want only statement step 0", events)
+				return
+			}
+			if elapsed < 4*time.Second || elapsed >= 10*time.Second {
+				e.fail("lock wait elapsed %s, want 4s <= elapsed < 10s", elapsed)
 			}
 		}},
 		{"other_database", all, func(e *Env, db string) {

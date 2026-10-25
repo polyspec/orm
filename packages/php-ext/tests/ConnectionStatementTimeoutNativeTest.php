@@ -100,7 +100,7 @@ final class ConnectionStatementTimeoutNativeTest extends TestCase
         }
     }
 
-    // Requirements: CFG-27, CFG-29.
+    // Requirements: CFG-27, CFG-28, CFG-29.
     public function testNativeStatementTimeoutIsIsolatedByTransactionPooler(): void
     {
         self::assertTrue((new ReflectionMethod(Orm::class, 'connect'))->isInternal());
@@ -138,6 +138,19 @@ final class ConnectionStatementTimeoutNativeTest extends TestCase
             );
 
             $plain = Orm::connect($single);
+            // Both native client sessions reuse the same bound query in repeated transactions through PgBouncer.
+            for ($i = 0; $i < 6; $i++) {
+                $boundedRows = $bounded->transaction(
+                    fn(): array => $bounded->fetch('query', [], null, 'SELECT $1::integer', [1]),
+                    retry: 0
+                );
+                $plainRows = $plain->transaction(
+                    fn(): array => $plain->fetch('query', [], null, 'SELECT $1::integer', [1]),
+                    retry: 0
+                );
+                self::assertSame([[1]], array_map(static fn(array $row): array => [(int) $row[0]], $boundedRows));
+                self::assertSame([[1]], array_map(static fn(array $row): array => [(int) $row[0]], $plainRows));
+            }
             $setting = $plain->fetch('query', [], null, "SELECT current_setting('statement_timeout')")[0][0];
             self::assertSame($default, $setting, 'the bounded client did not change another pooler client timeout');
         } catch (\Throwable $error) {

@@ -73,7 +73,7 @@ fn hex_decode(text: &str) -> Vec<u8> {
 
 #[test]
 fn every_fixture_key_has_its_own_identity() {
-    // Requirements: PRT-35.
+    // Requirements: INT-11, PRT-35.
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let fixture = fixture();
     let entries = fixture["keys"].as_array().expect("keys");
@@ -83,6 +83,15 @@ fn every_fixture_key_has_its_own_identity() {
         let key = Key::of(&value_of(entry)).or_panic(|e| format!("key {name}: {e}"));
         let again = Key::of(&value_of(entry)).expect("key again");
         assert_eq!(key, again, "key {name} has no stable identity");
+        let preserves_native_type = matches!(
+            (entry["type"].as_str(), &key),
+            (Some("text"), Key::S(_))
+                | (Some("bool"), Key::B(_))
+                | (Some("int"), Key::I(_))
+                | (Some("bytes"), Key::X(_))
+                | (Some("datetime"), Key::T(_))
+        );
+        assert!(preserves_native_type, "key {name} lost its native type: {key:?}");
         remember_key(name, key, entry["same_as"].as_str(), &mut seen);
     }
 }

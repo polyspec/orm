@@ -3,8 +3,11 @@
 //
 // Usage: node --test tests/docs/dbs-fence.test.mts (after the build of packages/ts and packages/dbspec-language)
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import MarkdownIt from 'markdown-it';
 import { caseTest } from '../testcase.mts';
 import { dbsFences, dbsInfo, renderDbs } from '../../docs/.vitepress/dbs.ts';
+import { resolveConfig } from 'vitepress';
 
 const TIMEOUT = 15000;
 const escape = (text: string) => text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
@@ -62,4 +65,31 @@ caseTest('text is escaped inside and between the spans', TIMEOUT, () => {
   const html = renderDbs(nth(fences, 0), fences, 'dbspec.md', escape);
   assert.match(html, /<span class="dbs-comment"># a &lt;comment&gt; &amp; more<\/span>/);
   assert.match(html, /<span class="dbs-string">'&lt;&amp;&gt;'<\/span>/);
+});
+
+// Requirements: ORE-20, ORES-27, ORES-50.
+caseTest('VitePress markdown-it renders dbs set fences and refuses diagnostics', TIMEOUT, async () => {
+  const md = new MarkdownIt();
+  const config = await resolveConfig(new URL('../../docs', import.meta.url).pathname, 'build');
+  const configure = config.markdown.config;
+  assert.equal(typeof configure, 'function');
+  configure(md);
+  const source = `\`\`\`dbs set=shop document=core\n${CORE}\`\`\`\n\n\`\`\`dbs set=shop document=shop\n${SHOP}\`\`\`\n`;
+  const html = md.render(source, { relativePath: 'fixtures/shop.md', path: '/fixtures/shop.md' });
+  assert.match(html, /<span class="dbs-keyword">dbspec<\/span>/);
+  assert.match(html, /<span class="dbs-name">shop<\/span>/);
+  assert.throws(() => md.render('```dbs\ndbspec 1 broken\n\nuse missing { table }\n```\n', {
+    relativePath: 'fixtures/broken.md', path: '/fixtures/broken.md',
+  }), /fixtures\/broken\.md:\d+:\d+: use:/);
+});
+
+// Requirements: ORES-51.
+caseTest('the docs theme gives every token class a light and dark color', TIMEOUT, () => {
+  const css = readFileSync(new URL('../../docs/.vitepress/theme/style.css', import.meta.url), 'utf8');
+  const light = css.match(/:root\s*\{([^}]*--dbs-keyword[^}]*)\}/)?.[1] ?? '';
+  const dark = css.match(/\.dark\s*\{([^}]*--dbs-keyword[^}]*)\}/)?.[1] ?? '';
+  for (const cls of ['keyword', 'type', 'name', 'setting', 'number', 'string', 'operator', 'punctuation', 'comment', 'word']) {
+    assert.match(light, new RegExp(`--dbs-${cls}:\\s*#[0-9a-f]{6}`, 'i'), `${cls} light theme`);
+    assert.match(dark, new RegExp(`--dbs-${cls}:\\s*#[0-9a-f]{6}`, 'i'), `${cls} dark theme`);
+  }
 });

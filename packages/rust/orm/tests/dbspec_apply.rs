@@ -21,7 +21,7 @@ mod dbspec_apply_support;
 #[path = "common/dbspec_probe.rs"]
 mod dbspec_probe;
 
-use dbspec_apply_support::{EventError, Stop, fixed_now, quiet};
+use dbspec_apply_support::{fixed_now, quiet, EventError, Stop};
 use dbspec_probe::{connection_rules, lines, repository, require_dsn, run_probe, Conn, Servers, Session, DIALECTS};
 use polyspec_orm::db::{parse_dsn, ConnectOptions};
 use polyspec_orm::dbspec::{
@@ -374,6 +374,63 @@ async fn lock(conn: &mut Conn, db: &str, plans: &[Plan], session: &Session) -> R
     checked.and(closed)
 }
 
+/// Waits for the SQLite apply lock or a real server row lock and checks the mapped error and first-step trace.
+async fn lock_wait(conn: &mut Conn, db: &str, representative: &[Plan], session: &Session) -> Result<(), String> {
+    let mut blocker = session.open().await?;
+    let checked = async {
+        let (plans, want_code) = if db == "sqlite" {
+            blocker.exec("BEGIN EXCLUSIVE").await?;
+            (&[][..], "locked")
+        } else {
+            match conn {
+                Conn::MySql(c) => apply(c, Dialect::MySql, &representative[..1], &fixed_now, &mut quiet).await,
+                Conn::Postgres(c) => apply(c, Dialect::Postgres, &representative[..1], &fixed_now, &mut quiet).await,
+                Conn::Sqlite(c) => apply(c, Dialect::Sqlite, &representative[..1], &fixed_now, &mut quiet).await,
+            }
+            .map_err(|e| format!("apply representative base: {e}"))?;
+            for rule in connection_rules(db) {
+                blocker.exec(rule).await?;
+            }
+            blocker.exec("BEGIN").await?;
+            blocker.exec("INSERT INTO archive (note) VALUES ('lock wait')").await?;
+            blocker.exec("SELECT id FROM archive FOR UPDATE").await?;
+            (representative, "failed")
+        };
+        let started = Instant::now();
+        let mut events = Vec::new();
+        let mut record = |event: &ApplyEvent| -> Result<(), EventError> {
+            if matches!(event.kind, ApplyEventKind::Statement | ApplyEventKind::Applied) {
+                events.push((event.kind, event.step));
+            }
+            Ok(())
+        };
+        let result = match conn {
+            Conn::MySql(c) => apply(c, Dialect::MySql, plans, &fixed_now, &mut record).await,
+            Conn::Postgres(c) => apply(c, Dialect::Postgres, plans, &fixed_now, &mut record).await,
+            Conn::Sqlite(c) => apply(c, Dialect::Sqlite, plans, &fixed_now, &mut record).await,
+        };
+        let elapsed = started.elapsed();
+        if code(&result) != Some(want_code) {
+            return Err(format!("lock wait: {result:?}, want {want_code}"));
+        }
+        let detail = result.as_ref().err().expect("expected lock-wait failure").to_string().to_lowercase();
+        if !detail.contains("lock") && !detail.contains("timeout") {
+            return Err(format!("lock-wait failure does not name the held lock: {detail}"));
+        }
+        if db != "sqlite" && events != [(ApplyEventKind::Statement, 0)] {
+            return Err(format!("statement lock wait events: {events:?}, want only statement step 0"));
+        }
+        if !(Duration::from_secs(4)..Duration::from_secs(10)).contains(&elapsed) {
+            return Err(format!("lock wait elapsed {elapsed:?}, want 4s <= elapsed < 10s"));
+        }
+        Ok(())
+    }
+    .await;
+    let _ = blocker.exec("ROLLBACK").await;
+    let closed = blocker.close().await.map_err(|e| format!("close blocker: {e}"));
+    checked.and(closed)
+}
+
 async fn other_database(conn: &mut Conn, db: &str, plans: &[Plan], target: &str, session: &Session) -> Result<(), String> {
     // While the apply on the first database holds the lock, the same chain is applied
     // to a second database, schema, or file. The lock covers only one database, so it is not locked.
@@ -542,10 +599,11 @@ async fn interrupt(conn: &mut Conn, db: &str, chain: &[Plan], c: &[(usize, usize
 }
 
 /// The scenario name and its database.
-const SCENARIOS: [(&str, &[&str]); 9] = [
+const SCENARIOS: [(&str, &[&str]); 10] = [
     ("chain_history_and_again", &["mysql", "postgres", "sqlite"]),
     ("drift", &["mysql", "postgres", "sqlite"]),
     ("lock", &["mysql", "postgres", "sqlite"]),
+    ("lock_wait", &["mysql", "postgres", "sqlite"]),
     ("other_database", &["mysql", "postgres", "sqlite"]),
     ("empty_chain", &["mysql", "postgres", "sqlite"]),
     ("unlock_not_held", &["postgres"]),
@@ -554,7 +612,7 @@ const SCENARIOS: [(&str, &[&str]); 9] = [
     ("nulls", &["mysql", "postgres", "sqlite"]),
 ];
 
-// Requirements: PLN-93, PLN-95, PLN-96.
+// Requirements: PLN-89, PLN-90, PLN-91, PLN-92, PLN-93, PLN-94, PLN-95, PLN-96.
 #[tokio::test]
 async fn apply_chain_on_three_databases() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -598,6 +656,7 @@ async fn apply_chain_on_three_databases() {
                     "chain_history_and_again" => chain_history_and_again(conn, db, plans, target, &pc).await,
                     "drift" => drift(conn, plans).await,
                     "lock" => lock(conn, db, plans, &session).await,
+                    "lock_wait" => lock_wait(conn, db, &representative, &session).await,
                     "other_database" => other_database(conn, db, plans, target, &session).await,
                     "empty_chain" => empty_chain(conn, db).await,
                     "unlock_not_held" => unlock_not_held(conn, plans).await,
@@ -615,7 +674,7 @@ async fn apply_chain_on_three_databases() {
     }
     servers.close().await;
     assert!(failures.is_empty(), "{} failures:\n{}", failures.len(), failures.join("\n"));
-    let want = 25 + DIALECTS.iter().map(|(db, _)| rep_counts[db][1].1).sum::<usize>();
+    let want = 28 + DIALECTS.iter().map(|(db, _)| rep_counts[db][1].1).sum::<usize>();
     assert_eq!(runs, want, "apply runs");
     polyspec_orm_testcase::step(format_args!("dbspec apply: {runs} runs on three databases in {:?}", started.elapsed()));
     // The apply scenarios for three databases finish within 1 minute on the development machine (41 s measured in T27, including build). Five minutes means it has stalled.

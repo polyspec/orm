@@ -93,3 +93,90 @@ async fn coverage_model_write_cycle() {
     })
     .await;
 }
+
+#[tokio::test]
+// Requirements: PLN-26.
+async fn coverage_model_write_arithmetic_attributes() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    run("model_write_arithmetic_attributes", async {
+        let db = connect().await;
+        let events = Arc::new(Mutex::new(Vec::<Vec<polyspec_orm::Param>>::new()));
+        let sink = events.clone();
+        let subscription = db
+            .subscribe(move |event: &polyspec_orm::StatementEvent<'_>| {
+                if event.kind == polyspec_orm::events::KIND_UPDATE && event.tables.iter().any(|table| table == "composite_account") {
+                    sink.lock().unwrap().push(event.binds.to_vec());
+                }
+                Ok(())
+            })
+            .unwrap();
+        let tenant = 1_000_000_000_000 + i64::from(std::process::id());
+        let account = || CompositeAccount::new().connect(&db);
+        let existing = account().tenant_id(tenant).get_count().await.unwrap();
+        assert_eq!(existing, 0, "scratch tenant starts empty");
+        account().set_tenant_id(tenant).set_account_id(1).set_name("arithmetic").create().await.unwrap();
+        let outcome: Result<(), String> = async {
+            let mut loaded = account()
+                .get_by_tenant_id_and_account_id(tenant, 1)
+                .await
+                .map_err(|error| error.to_string())?
+                .ok_or_else(|| "created row is unreadable".to_owned())?;
+            loaded = loaded.plus_account_id(7);
+            loaded.update(false).await.map_err(|error| error.to_string())?;
+            let after_plus = account()
+                .get_by_tenant_id_and_account_id(tenant, 8)
+                .await
+                .map_err(|error| error.to_string())?
+                .ok_or_else(|| "row disappeared after plus".to_owned())?;
+            if after_plus.get_name().map_err(|error| error.to_string())? != "arithmetic" {
+                return Err("plus amount did not update the account key".into());
+            }
+            if !events.lock().unwrap().iter().any(|binds| binds.contains(&polyspec_orm::Param::I64(7))) {
+                return Err("plus amount 7 is absent from update binds".into());
+            }
+            loaded.update(false).await.map_err(|error| error.to_string())?;
+            if events.lock().unwrap().len() != 1 {
+                return Err(format!("updates after repeating a completed write = {}, want 1", events.lock().unwrap().len()));
+            }
+
+            let mut current = account()
+                .get_by_tenant_id_and_account_id(tenant, 8)
+                .await
+                .map_err(|error| error.to_string())?
+                .ok_or_else(|| "row disappeared before minus".to_owned())?;
+            let amount = current.get_account_id().map_err(|error| error.to_string())? + 1;
+            current = current.minus_account_id(amount);
+            current.update(false).await.map_err(|error| error.to_string())?;
+            let after_minus = account()
+                .get_by_tenant_id_and_account_id(tenant, 0)
+                .await
+                .map_err(|error| error.to_string())?
+                .ok_or_else(|| "row disappeared after minus".to_owned())?;
+            if after_minus.get_name().map_err(|error| error.to_string())? != "arithmetic" {
+                return Err(format!("minus amount {amount} did not clamp the account key at zero"));
+            }
+            if !events.lock().unwrap().iter().any(|binds| binds.contains(&polyspec_orm::Param::I64(i64::from(amount)))) {
+                return Err(format!("minus amount {amount} is absent from update binds"));
+            }
+            Ok(())
+        }
+        .await;
+        let cleanup = match account().tenant_id(tenant).gets().await {
+            Ok(rows) => rows.delete(false).await,
+            Err(error) => Err(error),
+        };
+        subscription.unsubscribe();
+        let remaining = account().tenant_id(tenant).get_count().await;
+        db.close().await;
+        if let Err(error) = cleanup {
+            panic!("delete scratch tenant {tenant}: {error}");
+        }
+        if !matches!(remaining, Ok(0)) {
+            panic!("scratch tenant {tenant} remains after delete");
+        }
+        if let Err(error) = outcome {
+            panic!("{error}");
+        }
+    })
+    .await;
+}

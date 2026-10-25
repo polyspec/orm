@@ -33,11 +33,15 @@ function compositeValueOf(entry) {
 }
 
 // Each case is a node:test test, the form that the parity runner reads (tests/testcase.mts, caseTest).
-// Requirements: PRT-35.
+// Requirements: INT-11, PRT-35.
 caseTest('collection-key/identity-from-fixture', COMPUTE, () => {
   const collection = new orm.Collection();
   const distinct = fixture.keys.filter(entry => entry.same_as === undefined);
-  for (const entry of distinct) collection.put(valueOf(entry), { name: entry.name });
+  const expectedKeys = distinct.map(valueOf);
+  for (let index = 0; index < distinct.length; index++) {
+    const entry = distinct[index];
+    collection.put(expectedKeys[index], { name: entry.name });
+  }
   if (collection.length !== distinct.length) {
     throw new Error(`collection keeps ${collection.length} of ${distinct.length} keys: two keys share an identity`);
   }
@@ -45,6 +49,18 @@ caseTest('collection-key/identity-from-fixture', COMPUTE, () => {
     const got = collection.get(valueOf(entry));
     const want = entry.same_as ?? entry.name;
     if (got?.name !== want) throw new Error(`key ${entry.name} reads ${got?.name}, want ${want}`);
+  }
+  const actualKeys = collection.keys();
+  if (actualKeys.length !== expectedKeys.length) throw new Error('collection keys lost a fixture key');
+  for (let index = 0; index < expectedKeys.length; index++) {
+    const got = actualKeys[index];
+    const want = expectedKeys[index];
+    const equal = want instanceof Date
+      ? got instanceof Date && got.getTime() === want.getTime()
+      : want instanceof Uint8Array
+        ? got instanceof Uint8Array && Buffer.from(got).equals(Buffer.from(want))
+        : typeof got === typeof want && Object.is(got, want);
+    if (!equal) throw new Error(`collection key ${index} changed native type or value`);
   }
 });
 // Requirements: PRT-35.

@@ -2,7 +2,7 @@
 // and a nested transaction rolls back only its inner writes with a savepoint. The written rows
 // are only in composite_account, and the case deletes all of them when it ends.
 import assert from 'node:assert/strict';
-import { CompositeAccount, OrmError, connect } from '../dist/index.js';
+import { CompositeAccount, OrmError, codes, connect } from '../dist/index.js';
 import { runCases, withCleanup } from './coverage_case.mjs';
 
 const tenant = 990003;
@@ -52,11 +52,14 @@ await runCases('coverage_transactions.mjs', {
     });
   },
 
-  // Requirements: DSL-119, INT-45, INT-46, PLN-17.
+  // Requirements: DSL-119, INT-40, INT-41, INT-42, INT-43, INT-45, INT-46, INT-47, INT-48, PLN-17.
   async transaction_savepoint(item) {
     await withTenant(item, async db => {
       const boom = new Error('inner transaction failed');
       let inner = null;
+      for (const isolation of ['read_uncommitted', 'read_committed', 'repeatable_read', 'serializable']) {
+        await db.transaction(async () => {}, { isolation, retry: 0 });
+      }
       await db.transaction(async () => {
         await new CompositeAccount().setTenantId(tenant).setAccountId(2).setName('outer').create();
         try {
@@ -71,6 +74,94 @@ await runCases('coverage_transactions.mjs', {
       assert.equal(await exists(db, 3), false, 'the inner row is rolled back to the savepoint');
       await (await new CompositeAccount().connect(db).getByTenantIdAndAccountId(tenant, 2)).delete();
       assert.equal(await exists(db, 2), false, 'the outer row is deleted');
+
+      await db.transaction(async () => {
+        const concurrent = await Promise.allSettled([
+          new CompositeAccount().getCount(),
+          new CompositeAccount().getCount(),
+        ]);
+        assert.ok(concurrent.some(result => result.status === 'rejected' && result.reason instanceof OrmError && result.reason.code === codes.CONFIG), 'overlapping task use of one transaction returns CONFIG');
+      }, { retry: 0 });
+
+      let readOnlyError = null;
+      try {
+        await db.transaction(async () => {
+          await new CompositeAccount().setTenantId(tenant).setAccountId(4).setName('read only').create();
+        }, { readOnly: true, retry: 0 });
+      } catch (error) { readOnlyError = error; }
+      assert.ok(readOnlyError instanceof OrmError && readOnlyError.code === codes.READ_ONLY, `read-only write error: ${readOnlyError}`);
+      assert.equal(await exists(db, 4), false, 'read-only transaction wrote a row');
+
+      let timeoutError = null;
+      let timeoutCalls = 0;
+      try { await db.transaction(async () => { timeoutCalls++; }, { timeoutMs: 500, retry: 0 }); }
+      catch (error) { timeoutError = error; }
+      if (item.driver === 'postgres') {
+        assert.equal(timeoutError, null, 'PostgreSQL supports transaction timeoutMs');
+        assert.equal(timeoutCalls, 1, 'PostgreSQL timeout callback ran');
+      } else {
+        assert.ok(timeoutError instanceof OrmError && timeoutError.code === codes.CAPABILITY_UNSUPPORTED, `${item.driver} timeoutMs: ${timeoutError}`);
+        assert.equal(timeoutCalls, 0, 'unsupported timeout fails before the callback');
+      }
+
+      if (item.driver === 'postgres') {
+        await new CompositeAccount().connect(db).setTenantId(tenant).setAccountId(6).setName('before timeout').create();
+        const holder = await connect(item.dsn);
+        let announceLocked;
+        const locked = new Promise(resolve => { announceLocked = resolve; });
+        let releaseHolder;
+        const released = new Promise(resolve => { releaseHolder = resolve; });
+        try {
+          const heldTransaction = holder.transaction(async () => {
+            await new CompositeAccount().connect(holder).tenantId(tenant).forUpdate().get();
+            announceLocked();
+            await released;
+          }, { retry: 0 });
+          await locked;
+          let lockedTimeoutError = null;
+          try {
+            await db.transaction(async () => {
+              await new CompositeAccount().connect(db).tenantId(tenant).setName('timed out').update();
+            }, { timeoutMs: 250, retry: 0 });
+          } catch (error) { lockedTimeoutError = error; }
+          assert.ok(lockedTimeoutError instanceof OrmError && lockedTimeoutError.code === codes.CANCELED, `locked statement timeout: ${lockedTimeoutError}`);
+          releaseHolder();
+          await heldTransaction;
+          assert.equal((await new CompositeAccount().connect(db).getByTenantIdAndAccountId(tenant, 6)).getName(), 'before timeout', 'timed out update rolled back');
+          await (await new CompositeAccount().connect(db).getByTenantIdAndAccountId(tenant, 6)).delete();
+        } finally {
+          releaseHolder();
+          await holder.close();
+        }
+      }
+
+      let attempts = 0;
+      await db.transaction(async () => {
+        attempts++;
+        await new CompositeAccount().setTenantId(tenant).setAccountId(5).setName(`attempt-${attempts}`).create();
+        if (attempts < 3) throw new OrmError(codes.DEADLOCK, 'coverage retry');
+      }, { isolation: 'read_committed', retry: 3 });
+      assert.equal(attempts, 3, 'retry reruns the complete callback');
+      assert.equal((await new CompositeAccount().connect(db).getByTenantIdAndAccountId(tenant, 5)).getName(), 'attempt-3', 'the final callback attempt committed');
+      await (await new CompositeAccount().connect(db).getByTenantIdAndAccountId(tenant, 5)).delete();
+
+      let defaultAttempts = 0;
+      await db.transaction(async () => {
+        defaultAttempts++;
+        if (defaultAttempts < 3) throw new OrmError(codes.DEADLOCK, 'default coverage retry');
+      });
+      assert.equal(defaultAttempts, 3, 'default retry count is three');
+
+      attempts = 0;
+      let retryError = null;
+      try {
+        await db.transaction(async () => {
+          attempts++;
+          throw new OrmError(codes.DEADLOCK, 'coverage retry disabled');
+        }, { retry: 0 });
+      } catch (error) { retryError = error; }
+      assert.ok(retryError instanceof OrmError && retryError.code === codes.DEADLOCK, `retry=0 error: ${retryError}`);
+      assert.equal(attempts, 1, 'retry=0 invokes the callback once');
     });
   },
   // Requirements: CFG-9.

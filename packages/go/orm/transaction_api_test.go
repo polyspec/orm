@@ -10,7 +10,7 @@ import (
 )
 
 // TestTransactionControlIsNotPublic reads the exported methods of *orm.DB: a transaction runs only through
-// Transaction, and no method begins, commits or rolls back one. The test of DSL-124 (docs/spec/dsl.md "Transactions").
+// Transaction, and no method begins, commits or rolls back one. The test of DSL-124 and PLN-19 (docs/spec/dsl.md "Transactions").
 func TestTransactionControlIsNotPublic(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	typ := reflect.TypeFor[*orm.DB]()

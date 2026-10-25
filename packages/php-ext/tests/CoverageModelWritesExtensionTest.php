@@ -66,4 +66,65 @@ final class CoverageModelWritesExtensionTest extends TestCase
             }
         }
     }
+
+    // Requirements: PLN-26.
+    public function testModelWriteArithmeticAttributes(): void
+    {
+        Assert::assertTrue((new ReflectionMethod(Model::class, 'update'))->isInternal(), 'Model::update is native');
+        foreach (coverageItemsOf(__FILE__) as $item) {
+            selectCoverageItem($item);
+            [, $dsn] = coverageItem();
+            $db = coverageConnect($dsn);
+            $account = static function () use ($db): CompositeAccount {
+                return (new CompositeAccount())($db);
+            };
+            $tenant = 1_000_000_000_000 + getmypid();
+            try {
+                Assert::assertSame(0, $account()->tenantId($tenant)->getCount(), 'scratch tenant starts empty');
+                $account()->setTenantId($tenant)->setAccountId(1)->setName('arithmetic')->create();
+                $loaded = $account()->getByTenantIdAndAccountId($tenant, 1);
+                Assert::assertNotNull($loaded, 'created row is readable');
+                $events = [];
+                $unsubscribe = $db->subscribe(static function (\Polyspec\Orm\StatementEvent $event) use (&$events): void {
+                    if ($event->kind === \Polyspec\Orm\StatementEvent::UPDATE && in_array('composite_account', $event->tables, true)) {
+                        $events[] = $event;
+                    }
+                });
+                try {
+                    coverageRestoring(function () use ($account, $loaded, &$events, $tenant): void {
+                        $loaded->plusAccountId(7)->update();
+                        Assert::assertSame('arithmetic', $account()->getByTenantIdAndAccountId($tenant, 8)->getName(), 'plus amount changes the key');
+                        $plusBound = false;
+                        foreach ($events as $event) {
+                            $plusBound = $plusBound || in_array(7, $event->binds, true);
+                        }
+                        Assert::assertTrue($plusBound, 'plus amount is bound');
+                        $loaded->update();
+                        Assert::assertCount(1, $events, 'a write clears the pending arithmetic change');
+
+                        $current = $account()->getByTenantIdAndAccountId($tenant, 8);
+                        $amount = $current->getAccountId() + 1;
+                        $current->minusAccountId($amount)->update();
+                        Assert::assertSame('arithmetic', $account()->getByTenantIdAndAccountId($tenant, 0)->getName(), 'minus clamps at zero');
+                        $minusBound = false;
+                        foreach ($events as $event) {
+                            $minusBound = $minusBound || in_array($amount, $event->binds, true);
+                        }
+                        Assert::assertTrue($minusBound, 'minus amount is bound');
+                    }, static function () use ($account, $tenant): void {
+                        $account()->tenantId($tenant)->gets()->delete();
+                    });
+                } finally {
+                    $unsubscribe();
+                }
+                Assert::assertSame(0, $account()->tenantId($tenant)->getCount(), 'scratch row is removed');
+            } finally {
+                try {
+                    $account()->tenantId($tenant)->gets()->delete();
+                } finally {
+                    $db->close();
+                }
+            }
+        }
+    }
 }

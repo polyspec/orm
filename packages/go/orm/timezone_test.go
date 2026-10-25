@@ -328,6 +328,8 @@ func lockedRead(db *orm.DB, ent *orm.Entity) error {
 	return db.Transaction(func() error {
 		c := orm.NewCore(ent)
 		ent.New(c)
+		// Keep the same parameterized SELECT across transactions and client handles.
+		c.Set("seq", int64(1))
 		c.Connect(db)
 		c.Lock("update")
 		_, err := c.Get()
@@ -342,7 +344,7 @@ func lockedRead(db *orm.DB, ent *orm.Entity) error {
 // PgBouncer's orm_test_single is bound to the database of ORM_TEST_POSTGRES_DSN, so the case cannot
 // reach any other database, so the case creates one table named testdb.Name in that database
 // and, when it ends, drops only that table, even after a failure.
-// Requirements: CFG-27, CFG-29.
+// Requirements: CFG-27, CFG-28, CFG-29.
 func TestStatementTimeoutThroughAPooler(t *testing.T) {
 	c := testcase.Start(t, testcase.Database)
 	base := requireDSN(t, "ORM_TEST_POSTGRES_DSN")
@@ -391,6 +393,15 @@ func TestStatementTimeoutThroughAPooler(t *testing.T) {
 	}
 	if waited := time.Since(started); waited < 200*time.Millisecond {
 		t.Fatalf("the plain read waited %s, not past the bound of the other connection", waited)
+	}
+	// Both client sessions issue the same locking query repeatedly through PgBouncer.
+	for i := 0; i < 6; i++ {
+		if err := lockedRead(bounded, ent); err != nil {
+			t.Fatalf("prepared query %d through bounded client: %v", i, err)
+		}
+		if err := lockedRead(plain, ent); err != nil {
+			t.Fatalf("prepared query %d through plain client: %v", i, err)
+		}
 	}
 	holdRows(t, "postgres", base, table)
 	if err := lockedRead(bounded, ent); orm.ErrorCode(err) != orm.CodeCanceled {

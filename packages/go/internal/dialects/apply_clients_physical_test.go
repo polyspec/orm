@@ -41,7 +41,7 @@ func dbspecLanguages() []string {
 // the history rows and the introspected schema text afterward must equal the expected ones. When A stops
 // partway, B must reject the interrupted apply and finish it with recover, and when it stops again
 // an apply, B must roll it back with rollback.
-// Requirements: PLN-103.
+// Requirements: PLN-90, PLN-94, PLN-103.
 func TestApplyChainAcrossClients(t *testing.T) {
 	testcase.Group(t)
 	rustRunner, extension, python := os.Getenv("DBSPEC_APPLY_RUST"), os.Getenv("POLYSPEC_ORM_EXTENSION"), os.Getenv("ORM_PYTHON")
@@ -166,10 +166,91 @@ func TestApplyChainAcrossClients(t *testing.T) {
 			}
 		}
 	}
-	if runs != 270 {
-		t.Errorf("ran %d pairs, want 30 pairs of chain, recover and rollback on three databases", runs)
+	for _, dialect := range []string{"mysql", "postgres", "sqlite"} {
+		pair(dialect+".python-finalize", dialect, func(t *testing.T, c *testcase.Case, uri string) {
+			step(t, c, "python", "apply-representative", dialect, uri, "ok")
+			step(t, c, "python", "finalize", dialect, uri, "ok")
+			checkFinalizedPythonState(t, dialect, uri)
+		})
+		want := "error failed"
+		if dialect == "sqlite" {
+			want = "error locked"
+		}
+		pair(dialect+".python-lock-wait", dialect, func(t *testing.T, c *testcase.Case, uri string) {
+			step(t, c, "python", "lock-wait", dialect, uri, want)
+		})
+		pair(dialect+".go-lock-wait", dialect, func(t *testing.T, c *testcase.Case, uri string) {
+			step(t, c, "go", "lock-wait", dialect, uri, want)
+		})
+		pair(dialect+".rust-lock-wait", dialect, func(t *testing.T, c *testcase.Case, uri string) {
+			step(t, c, "rust", "lock-wait", dialect, uri, want)
+		})
+	}
+	if runs != 282 {
+		t.Errorf("ran %d pairs, want 270 cross-client cases, three Python finalize cases, and nine Python/Go/Rust lock-wait cases", runs)
 	}
 	t.Logf("pairs: %d", runs)
+}
+
+func checkFinalizedPythonState(t *testing.T, dialect, uri string) {
+	t.Helper()
+	db := openURI(t, dialect, uri)
+	defer testcase.Close(t, db)
+	quote := `"`
+	if dialect == "mysql" {
+		quote = "`"
+	}
+	rows, err := db.Query("SELECT name, state FROM " + quote + "dbspec$plans" + quote + " ORDER BY name")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer testcase.Close(t, rows)
+	var got []string
+	for rows.Next() {
+		var name, state string
+		if err := rows.Scan(&name, &state); err != nil {
+			t.Fatal(err)
+		}
+		got = append(got, name+"|"+state)
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	if want := []string{"base|done", "representative|done"}; strings.Join(got, "\n") != strings.Join(want, "\n") {
+		t.Fatalf("finalized history = %v, want %v", got, want)
+	}
+	var hiddenTables int
+	var hiddenColumns int
+	switch dialect {
+	case "mysql":
+		if err := db.QueryRow("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME LIKE 'dbspec$%' AND TABLE_NAME <> 'dbspec$plans'").Scan(&hiddenTables); err != nil {
+			t.Fatal(err)
+		}
+		if err := db.QueryRow("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND COLUMN_NAME LIKE 'dbspec$%'").Scan(&hiddenColumns); err != nil {
+			t.Fatal(err)
+		}
+	case "postgres":
+		if err := db.QueryRow("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = current_schema() AND table_name LIKE 'dbspec$%' AND table_name <> 'dbspec$plans'").Scan(&hiddenTables); err != nil {
+			t.Fatal(err)
+		}
+		if err := db.QueryRow("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = current_schema() AND column_name LIKE 'dbspec$%'").Scan(&hiddenColumns); err != nil {
+			t.Fatal(err)
+		}
+	case "sqlite":
+		if err := db.QueryRow("SELECT COUNT(*) FROM sqlite_master WHERE name LIKE 'dbspec$%' AND name <> 'dbspec$plans'").Scan(&hiddenTables); err != nil {
+			t.Fatal(err)
+		}
+		for _, table := range []string{"clients", "orders", "archive", "events"} {
+			var count int
+			if err := db.QueryRow("SELECT COUNT(*) FROM pragma_table_info(?) WHERE name LIKE 'dbspec$%'", table).Scan(&count); err != nil {
+				t.Fatal(err)
+			}
+			hiddenColumns += count
+		}
+	}
+	if hiddenTables != 0 || hiddenColumns != 0 {
+		t.Fatalf("finalize left %d hidden tables and %d hidden columns", hiddenTables, hiddenColumns)
+	}
 }
 
 // chainHistory is the history rows of the dialect database to which the chain was applied to the end. Each row is

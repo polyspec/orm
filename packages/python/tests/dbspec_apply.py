@@ -5,19 +5,26 @@
 # Run: make dbspec-python-check
 import json
 import os
+import psycopg
 import sqlite3
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
 from polyspec.orm.dbspec.apply import (
+    DbspecApplyError,
     _finish,
     apply_plans,
+    finalize_plans,
     recover_plans,
     rollback_plans,
 )
 from polyspec.orm.dbspec.plan import parse_plan
 from polyspec.orm.dbspec.plan_steps import plan_steps
+from .dbspec_apply_runner import Adapter as ApplyAdapter, run_lock_wait
+from .dbspec_introspect import CONNECTION_RULES, case_database
+from .runner_connect import mysql_connect
 from . import testcase
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -57,6 +64,19 @@ def chain() -> list:
     return plans
 
 
+def representative_chain() -> list:
+    """The shared plan case with dropped tables and columns that finalize removes."""
+    data = json.loads((ROOT / "tests" / "dbspec" / "plans.json").read_text())
+    case = next(c for c in data["cases"] if c["id"] == "representative")
+    source = parse_plan(
+        "\n".join(["dbplan 1 base", "from empty", "", *case["source"]]) + "\n"
+    )
+    plan = parse_plan("\n".join(case["plan"]) + "\n")
+    assert source["plan"] is not None, source["diagnostics"][:1]
+    assert plan["plan"] is not None, plan["diagnostics"][:1]
+    return [source["plan"], plan["plan"]]
+
+
 def history(conn: Conn) -> list:
     rows = conn.execute('SELECT "name", "state", "step" FROM "dbspec$plans"', [])[
         "rows"
@@ -65,10 +85,185 @@ def history(conn: Conn) -> list:
 
 
 class DbspecApplyTest(unittest.TestCase):
+    deadline = testcase.DATABASE
+
     # Requirements: PLN-93, PLN-95, PLN-96.
     def test_sqlite_scenarios(self) -> None:
         with tempfile.TemporaryDirectory(prefix="dbspec-apply-") as tmp:
             scenarios(tmp)
+
+    # Requirement: PLN-90. A real held lock bounds apply on SQLite, MySQL, and PostgreSQL.
+    def _test_lock_wait(self, dialect: str, index: int) -> None:
+        dsns = {
+            "mysql": os.environ.get("ORM_TEST_MYSQL_DSN"),
+            "postgres": os.environ.get("ORM_TEST_POSTGRES_DSN"),
+            "sqlite": None,
+        }
+        if dialect in ("mysql", "postgres") and not dsns[dialect]:
+            raise RuntimeError(f"ORM_TEST_{dialect.upper()}_DSN is required; pass TEST_ENV")
+        vectors = str(ROOT / "tests" / "dbspec" / "plans.json")
+        with tempfile.TemporaryDirectory(prefix="dbspec-apply-lock-wait-") as tmp:
+            name = f"dbspec_apply_lock_wait_{os.getpid()}_{index}"
+            with case_database(dialect, name, dsns[dialect], tmp) as connection:
+                blocker = None
+                try:
+                    if dialect == "mysql":
+                        blocker = mysql_connect(dsns[dialect], name)
+                    elif dialect == "postgres":
+                        blocker = psycopg.connect(dsns[dialect], autocommit=True)
+                        ApplyAdapter(dialect, blocker).execute(f'SET search_path TO "{name}"')
+                    else:
+                        path = connection.execute("PRAGMA database_list").fetchone()[2]
+                        blocker = sqlite3.connect(path, isolation_level=None)
+                    result = run_lock_wait(dialect, "", connection, vectors, blocker)
+                    expected = "error locked" if dialect == "sqlite" else "error failed"
+                    self.assertEqual(result, expected, dialect)
+                finally:
+                    if blocker is not None:
+                        blocker.close()
+
+    def test_lock_wait_mysql(self) -> None:
+        self._test_lock_wait("mysql", 0)
+
+    def test_lock_wait_postgres(self) -> None:
+        self._test_lock_wait("postgres", 1)
+
+    def test_lock_wait_sqlite(self) -> None:
+        self._test_lock_wait("sqlite", 2)
+
+    # Requirements: PLN-91, PLN-92.
+    def test_history_and_state_on_every_database(self) -> None:
+        dsns = {
+            "mysql": os.environ.get("ORM_TEST_MYSQL_DSN"),
+            "postgres": os.environ.get("ORM_TEST_POSTGRES_DSN"),
+            "sqlite": None,
+        }
+        for dialect in ("mysql", "postgres"):
+            if not dsns[dialect]:
+                raise RuntimeError(f"ORM_TEST_{dialect.upper()}_DSN is required; pass TEST_ENV")
+        plans = chain()
+        with tempfile.TemporaryDirectory(prefix="dbspec-apply-state-") as tmp:
+            for index, dialect in enumerate(("mysql", "postgres", "sqlite")):
+                name = f"dbspec_apply_state_{os.getpid()}_{index}"
+                with case_database(dialect, name, dsns[dialect], tmp) as connection:
+                    adapter = ApplyAdapter(dialect, connection)
+                    for rule in CONNECTION_RULES[dialect]:
+                        adapter.execute(rule)
+                    events = []
+                    apply_plans(adapter, dialect, plans, lambda: NOW, events.append)
+                    quote = "`" if dialect == "mysql" else '"'
+                    history_table = f"{quote}dbspec$plans{quote}"
+                    rows = adapter.execute(
+                        f"SELECT name, from_hash, to_hash, state, step, steps, applied_at "
+                        f"FROM {history_table} ORDER BY name"
+                    )["rows"]
+                    self.assertEqual(len(rows), 2, f"{dialect}: one history row per plan")
+                    self.assertEqual(
+                        rows[0],
+                        [
+                            plans[0]["name"],
+                            "",
+                            plans[0]["to"],
+                            "applied",
+                            len(plan_steps(None, plans[0], dialect)["steps"]),
+                            len(plan_steps(None, plans[0], dialect)["steps"]),
+                            "2023-11-14T22:13:20.000000Z",
+                        ],
+                        f"{dialect}: history values and microsecond clock",
+                    )
+                    self.assertEqual(rows[1][0:4], [plans[1]["name"], plans[1]["from"], plans[1]["to"], "applied"])
+                    second_steps = len(plan_steps(plans[0], plans[1], dialect)["steps"])
+                    self.assertEqual(rows[1][4:6], [second_steps, second_steps], f"{dialect}: all steps recorded")
+                    before = [tuple(row) for row in rows]
+                    repeated_events = []
+                    apply_plans(adapter, dialect, plans, lambda: NOW, repeated_events.append)
+                    self.assertEqual(repeated_events, [], f"{dialect}: identical apply is a no-op")
+                    self.assertEqual(
+                        [tuple(row) for row in adapter.execute(
+                            f"SELECT name, from_hash, to_hash, state, step, steps, applied_at "
+                            f"FROM {history_table} ORDER BY name"
+                        )["rows"]],
+                        before,
+                        f"{dialect}: repeated apply preserves history state",
+                    )
+                    adapter.execute("CREATE TABLE external_drift (id integer PRIMARY KEY)")
+                    with self.assertRaises(DbspecApplyError) as raised:
+                        apply_plans(adapter, dialect, plans, lambda: NOW)
+                    self.assertEqual(raised.exception.code, "drift", f"{dialect}: schema differs from recorded state")
+
+                for command_name, command in (
+                    ("apply", apply_plans),
+                    ("recover", recover_plans),
+                    ("rollback", rollback_plans),
+                    ("finalize", finalize_plans),
+                ):
+                    empty_name = f"dbspec_apply_empty_{os.getpid()}_{index}_{command_name}"
+                    with case_database(dialect, empty_name, dsns[dialect], tmp) as connection:
+                        adapter = ApplyAdapter(dialect, connection)
+                        events = []
+                        command(adapter, dialect, [], lambda: NOW, events.append)
+                        self.assertEqual(events, [], f"{dialect} {command_name}: empty chain emits no events")
+                        quote = "`" if dialect == "mysql" else '"'
+                        rows = adapter.execute(f"SELECT COUNT(*) FROM {quote}dbspec$plans{quote}")["rows"]
+                        self.assertEqual(rows, [[0]], f"{dialect} {command_name}: creates the empty history table")
+
+    # Requirement: PLN-89.
+    def test_lock_scope_on_every_database(self) -> None:
+        dsns = {
+            "mysql": os.environ.get("ORM_TEST_MYSQL_DSN"),
+            "postgres": os.environ.get("ORM_TEST_POSTGRES_DSN"),
+            "sqlite": None,
+        }
+        for dialect in ("mysql", "postgres"):
+            if not dsns[dialect]:
+                raise RuntimeError(f"ORM_TEST_{dialect.upper()}_DSN is required; pass TEST_ENV")
+        plans = chain()
+        with tempfile.TemporaryDirectory(prefix="dbspec-apply-lock-") as tmp:
+            for index, dialect in enumerate(("mysql", "postgres", "sqlite")):
+                name = f"dbspec_apply_lock_{os.getpid()}_{index}"
+                with case_database(dialect, name, dsns[dialect], tmp) as connection:
+                    first = ApplyAdapter(dialect, connection)
+                    for rule in CONNECTION_RULES[dialect]:
+                        first.execute(rule)
+                    if dialect == "mysql":
+                        same_connection = mysql_connect(dsns[dialect], name)
+                    elif dialect == "postgres":
+                        same_connection = psycopg.connect(dsns[dialect], autocommit=True)
+                        ApplyAdapter(dialect, same_connection).execute(f'SET search_path TO "{name}"')
+                    else:
+                        same_connection = sqlite3.connect(
+                            os.path.join(tmp, name + ".sqlite"), isolation_level=None
+                        )
+                    same = ApplyAdapter(dialect, same_connection)
+                    try:
+                        for rule in CONNECTION_RULES[dialect]:
+                            same.execute(rule)
+                        lock_checked = False
+
+                        def observe(event):
+                            nonlocal lock_checked
+                            if event["kind"] != "plan" or lock_checked:
+                                return
+                            lock_checked = True
+                            with self.assertRaises(DbspecApplyError) as raised:
+                                apply_plans(same, dialect, plans, lambda: NOW)
+                            self.assertEqual(raised.exception.code, "locked", f"{dialect}: same database is locked")
+                            second_name = f"{name}_other"
+                            with case_database(dialect, second_name, dsns[dialect], tmp) as second_connection:
+                                second = ApplyAdapter(dialect, second_connection)
+                                for rule in CONNECTION_RULES[dialect]:
+                                    second.execute(rule)
+                                apply_plans(second, dialect, plans, lambda: NOW)
+                                quote = "`" if dialect == "mysql" else '"'
+                                rows = second.execute(
+                                    f"SELECT COUNT(*) FROM {quote}dbspec$plans{quote}"
+                                )["rows"]
+                                self.assertEqual(rows, [[2]], f"{dialect}: other database/schema/file proceeds")
+
+                        apply_plans(first, dialect, plans, lambda: NOW, observe)
+                        self.assertTrue(lock_checked, f"{dialect}: lock-scope assertion ran inside the lock")
+                    finally:
+                        same_connection.close()
 
     # Requirements: PLN-101.
     def test_cleanup_failure_notes(self) -> None:
@@ -91,6 +286,104 @@ class DbspecApplyTest(unittest.TestCase):
             getattr(raised.exception, "__notes__", []),
             ["cleanup failed: release failed", "cleanup failed: restore failed"],
         )
+
+    # Requirement: PLN-90. The in-memory SQLite case verifies the configured bound and
+    # failed-step result when the driver reports a statement-level lock failure.
+    def test_sqlite_statement_lock_timeout_is_failed_at_its_step(self) -> None:
+        plans = chain()[:1]
+        conn = Conn(":memory:")
+        try:
+            statements = []
+            conn.connection.set_trace_callback(statements.append)
+            execute = conn.execute
+            busy_during_apply = []
+            failed_statement = plan_steps(None, plans[0], "sqlite")["steps"][0]["statement"]
+
+            def execute_with_lock_timeout(sql, values):
+                if sql == failed_statement:
+                    raise sqlite3.OperationalError("database is locked")
+                return execute(sql, values)
+
+            conn.execute = execute_with_lock_timeout
+
+            def observe(event):
+                if event["kind"] == "plan":
+                    busy_during_apply.append(conn.value("PRAGMA busy_timeout"))
+
+            with self.assertRaises(DbspecApplyError) as raised:
+                apply_plans(conn, "sqlite", plans, lambda: NOW, observe)
+            self.assertEqual(busy_during_apply, [5000])
+            self.assertIn("PRAGMA busy_timeout = 5000", statements)
+            self.assertEqual(raised.exception.code, "failed")
+            self.assertEqual(raised.exception.plan, plans[0]["name"])
+            self.assertEqual(raised.exception.step, 0)
+            self.assertIsInstance(raised.exception.cause, sqlite3.OperationalError)
+            self.assertEqual(str(raised.exception.cause), "database is locked")
+        finally:
+            conn.close()
+
+    # Requirement: PLN-90. SQLite's apply lock waits on BEGIN EXCLUSIVE before any plan step.
+    def test_sqlite_apply_waits_for_an_exclusive_lock_within_its_bound(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="dbspec-lock-wait-") as tmp:
+            path = os.path.join(tmp, "locked.sqlite3")
+            blocker = sqlite3.connect(path, isolation_level=None)
+            connection = Conn(path)
+            blocker.execute("BEGIN EXCLUSIVE")
+            try:
+                statements = []
+                connection.connection.set_trace_callback(statements.append)
+                execute = connection.execute
+
+                def release_blocker_after_wait(sql, values):
+                    try:
+                        return execute(sql, values)
+                    except sqlite3.OperationalError:
+                        if sql == "BEGIN EXCLUSIVE" and blocker.in_transaction:
+                            blocker.execute("ROLLBACK")
+                        raise
+
+                connection.execute = release_blocker_after_wait
+                started = time.monotonic()
+                with self.assertRaises(DbspecApplyError) as raised:
+                    apply_plans(connection, "sqlite", [], lambda: NOW)
+                elapsed = time.monotonic() - started
+                self.assertIn("PRAGMA busy_timeout = 5000", statements)
+                self.assertEqual(raised.exception.code, "locked")
+                self.assertIsInstance(raised.exception.cause, sqlite3.OperationalError)
+                self.assertIn("locked", str(raised.exception.cause).lower())
+                self.assertGreaterEqual(elapsed, 4.8)
+                self.assertLess(elapsed, 7)
+            finally:
+                if blocker.in_transaction:
+                    blocker.execute("ROLLBACK")
+                blocker.close()
+                connection.close()
+
+    # Requirement: PLN-94.
+    def test_finalize_removes_hidden_tables_and_columns(self) -> None:
+        plans = representative_chain()
+        conn = Conn(":memory:")
+        try:
+            apply_plans(conn, "sqlite", plans, lambda: NOW)
+            finalize_plans(conn, "sqlite", plans, lambda: NOW)
+            rows = history(conn)
+            self.assertEqual([row[0] for row in rows], sorted(plan["name"] for plan in plans))
+            self.assertTrue(all(row[1] == "done" for row in rows), rows)
+            tables = conn.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'table'", []
+            )["rows"]
+            self.assertFalse(
+                any(row[0].startswith("dbspec$") and row[0] != "dbspec$plans" for row in tables),
+                tables,
+            )
+            for (table,) in tables:
+                columns = conn.execute(f"PRAGMA table_info({table!r})", [])["rows"]
+                self.assertFalse(
+                    any(column[1].startswith("dbspec$") for column in columns),
+                    (table, columns),
+                )
+        finally:
+            conn.close()
 
 
 def scenarios(tmp: str) -> None:

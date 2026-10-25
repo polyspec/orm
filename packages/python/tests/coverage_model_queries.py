@@ -13,6 +13,7 @@ def model_query_rows(item):
         def author():
             return models.Author().connect(db)
 
+        expect_equal(author().seq(-1).get(), None, "get for a missing author")
         expect_equal(author().user_seq(1).get_count(), 20, "authors of user 1")
         rows = author().service_seq(7).order_by_seq_desc().limit(0, 3).gets()
         expect_equal(
@@ -20,11 +21,51 @@ def model_query_rows(item):
             ["author-99906", "author-99806", "author-99706"],
             "ordered and limited rows",
         )
+        query = author().service_seq(7).order_by_seq_desc()
+        page = query.gets_page(1, 3)
+        expect_equal(
+            [row.get_name() for row in page["items"]],
+            [row.get_name() for row in rows.values()],
+            "first page contains the first ordered rows",
+        )
+        expect_equal(page["totalCount"], query.get_count(), "page total matches get_count")
         expect_equal(
             author().service_seq(7).sum_read_count().get_sum(),
             456000,
             "sum of read_count",
         )
+        join_sql = []
+        unsubscribe = db.subscribe(lambda event: join_sql.append(event.sql) if event.kind == "select" else None)
+        joined = author().join_service_member_seq_with_seq(
+            models.ServiceMember().force_index_ix_service_member_service()
+        ).join_user_seq_with_seq(
+            models.User()
+            .add_column_read_total(
+                lambda user: models.Author().sum_read_count().user_seq_eq_seq(user)
+            )
+            .order_by_seq_desc()
+        ).gets()
+        unsubscribe()
+        sql = join_sql[-1] if join_sql else ""
+        if driver == "sqlite":
+            expect_equal('INDEXED BY "ix_service_member_service"' in sql, True, "joined table forceIndex")
+        elif driver == "mysql":
+            expect_equal("FORCE INDEX (`ix_service_member_service`)" in sql, True, "joined table forceIndex")
+        joined_rows = joined.values()
+        expect_equal(len(joined_rows) > 0, True, "joined query returns authors")
+        previous_user_seq = None
+        for row in joined_rows:
+            user = row.get_user_model()
+            expect_equal(user is not None, True, "joined user")
+            user_seq = user.get_seq()
+            if previous_user_seq is not None:
+                expect_equal(user_seq <= previous_user_seq, True, "joined order is descending")
+            previous_user_seq = user_seq
+            expect_equal(
+                user.get_read_total(),
+                author().user_seq(user_seq).sum_read_count().get_sum(),
+                "joined aggregate",
+            )
         loaded = (
             author().relation(models.User().match_user_seq_with_seq()).get_by_seq(5000)
         )
@@ -38,7 +79,7 @@ def model_query_rows(item):
 
 
 class CoverageTest(CoverageCase):
-    # Requirements: DSL-57, DSL-58, DSL-60, DSL-62, DSL-80, DSL-82, DSL-99, PLN-11.
+    # Requirements: DSL-57, DSL-58, DSL-60, DSL-62, DSL-80, DSL-82, DSL-99, INT-16, INT-29, INT-30, INT-32, INT-33, PLN-11, PLN-25.
     def test_model_query_rows(self):
         self.each_item("model_query_rows", model_query_rows)
 

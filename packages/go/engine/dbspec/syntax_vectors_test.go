@@ -195,6 +195,7 @@ func checkSyntaxVectors(t *testing.T, analyze func(string, map[string]string) An
 }
 
 // TestSharedSyntaxVectors matches the tokens of Analyze with tests/dbspec/syntax.json.
+// Requirements: ORES-1.
 func TestSharedSyntaxVectors(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	checkSyntaxVectors(t, Analyze)

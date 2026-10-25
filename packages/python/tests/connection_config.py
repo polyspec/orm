@@ -75,7 +75,8 @@ def hold_rows(dialect: str, dsn: str, table: str):
 
 
 def locked_read(db, model) -> None:
-    db.transaction(lambda: model().connect(db).for_update().get(), {"retry": 0})
+    # Keep the same parameterized SELECT across transactions and client handles.
+    db.transaction(lambda: model().connect(db).seq(1).for_update().get(), {"retry": 0})
 
 
 def code_of(run) -> str | None:
@@ -128,7 +129,7 @@ class ConnectionConfigTest(unittest.TestCase):
     # ORM_TEST_PGBOUNCER_SINGLE_DSN every client shares one server connection, so the statement timeout of one
     # connection must bound only the statements of that connection. The pool of that DSN is bound to the database of
     # ORM_TEST_POSTGRES_DSN, so the case makes one table of its own name there and drops it at the end.
-    # Requirements: CFG-27, CFG-29.
+    # Requirements: CFG-27, CFG-28, CFG-29.
     def test_statement_timeout_through_a_pooler(self):
         single = os.environ.get("ORM_TEST_PGBOUNCER_SINGLE_DSN")
         if not single:
@@ -155,6 +156,10 @@ class ConnectionConfigTest(unittest.TestCase):
                 holder.rollback()
                 holder.close()
             plain = models.connect(single)
+            # Repeat the same locking query past psycopg's automatic-prepare threshold on both client sessions.
+            for _ in range(6):
+                locked_read(bounded, model)
+                locked_read(plain, model)
             # Another connection holds the rows for 400 ms, past the 200 ms bound of the other connection, so the
             # plain read waits that long.
             holder = hold_rows("postgres", direct, table)

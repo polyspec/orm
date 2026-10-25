@@ -11,6 +11,9 @@ namespace Polyspec\Orm\Tests;
 
 use Closure;
 use RuntimeException;
+use Polyspec\Orm\Code;
+use Polyspec\Orm\Orm;
+use Polyspec\Orm\OrmException;
 use Polyspec\Orm\Tests\Model\CompositeAccount;
 use Polyspec\Orm\Db;
 use PHPUnit\Framework\Assert;
@@ -75,12 +78,12 @@ class CoverageTransactionsTest extends TestCase
         }
     }
 
-    // Requirements: DSL-119, INT-45, INT-46, PLN-17.
+    // Requirements: DSL-119, INT-40, INT-41, INT-42, INT-43, INT-45, INT-46, INT-47, INT-48, PLN-17.
     public function testTransactionSavepoint(): void
     {
         foreach (coverageItemsOf(__FILE__) as $item) {
             selectCoverageItem($item);
-            transactionCase(function (Db $db): void {
+            transactionCase(function (Db $db) use ($item): void {
                 $boom = new RuntimeException('inner failure');
                 $inner = null;
                 $db->transaction(function () use ($db, $boom, &$inner): void {
@@ -99,12 +102,135 @@ class CoverageTransactionsTest extends TestCase
                     } catch (RuntimeException $e) {
                         $inner = $e;
                     }
-                }, retry: 0);
+                }, isolation: 'read_committed', retry: 0);
                 Assert::assertTrue($inner === $boom, 'the nested transaction error did not reach the outer callback');
                 Assert::assertTrue(accountExists($db, 2), 'the outer row was not committed');
                 Assert::assertTrue(!accountExists($db, 3), 'the savepoint row exists');
                 (new CompositeAccount())($db)->getByTenantIdAndAccountId(TRANSACTION_TENANT, 2)->delete();
                 Assert::assertTrue(!accountExists($db, 2), 'the outer row was not deleted');
+
+                $fiber = new \Fiber(function () use ($db): void {
+                    $db->transaction(static function (): void {
+                        \Fiber::suspend();
+                    }, retry: 0);
+                });
+                $fiber->start();
+                $flowError = null;
+                try {
+                    $db->transaction(static fn() => null, retry: 0);
+                } catch (OrmException $error) {
+                    $flowError = $error;
+                } finally {
+                    $fiber->resume();
+                }
+                Assert::assertSame(Code::CONFIG, $flowError?->code_, 'a second Fiber cannot use an active transaction connection');
+
+                foreach (['read_uncommitted', 'read_committed', 'repeatable_read', 'serializable'] as $isolation) {
+                    $db->transaction(static fn() => null, isolation: $isolation, retry: 0);
+                }
+
+                $readOnlyError = null;
+                try {
+                    $db->transaction(function () use ($db): void {
+                        (new CompositeAccount())->setTenantId(TRANSACTION_TENANT)
+                            ->setAccountId(4)->setName('read only')->create();
+                    }, readOnly: true, retry: 0);
+                } catch (OrmException $error) {
+                    $readOnlyError = $error;
+                }
+                Assert::assertSame(Code::READ_ONLY, $readOnlyError?->code_, 'read-only write error');
+                Assert::assertFalse(accountExists($db, 4), 'read-only transaction wrote a row');
+
+                $timeoutError = null;
+                $timeoutCalls = 0;
+                try {
+                    $db->transaction(static function () use (&$timeoutCalls): void {
+                        $timeoutCalls++;
+                    }, timeoutMs: 500, retry: 0);
+                } catch (OrmException $error) {
+                    $timeoutError = $error;
+                }
+                if ($item[0] === 'postgres') {
+                    Assert::assertNull($timeoutError, 'PostgreSQL supports transaction timeoutMs');
+                    Assert::assertSame(1, $timeoutCalls, 'PostgreSQL timeout callback ran');
+                } else {
+                    Assert::assertSame(Code::CAPABILITY_UNSUPPORTED, $timeoutError?->code_, 'timeoutMs unsupported driver');
+                    Assert::assertSame(0, $timeoutCalls, 'unsupported timeout fails before the callback');
+                }
+
+                if ($item[0] === 'postgres') {
+                    (new CompositeAccount())->setTenantId(TRANSACTION_TENANT)
+                        ->setAccountId(6)->setName('before timeout')->create();
+                    $holder = coverageConnect((string) $item[1]);
+                    try {
+                        $fiber = new \Fiber(function () use ($holder): void {
+                            $holder->transaction(function () use ($holder): void {
+                                (new CompositeAccount())($holder)->tenantId(TRANSACTION_TENANT)->forUpdate()->get();
+                                \Fiber::suspend('row lock acquired');
+                            }, retry: 0);
+                        });
+                        Assert::assertSame('row lock acquired', $fiber->start(), 'the holder has the row lock');
+                        $timeoutError = null;
+                        try {
+                            $db->transaction(function () use ($db): void {
+                                (new CompositeAccount())($db)->tenantId(TRANSACTION_TENANT)
+                                    ->setName('timed out')->update();
+                            }, timeoutMs: 250, retry: 0);
+                        } catch (OrmException $error) {
+                            $timeoutError = $error;
+                        } finally {
+                            $fiber->resume();
+                        }
+                        Assert::assertSame(Code::CANCELED, $timeoutError?->code_, 'locked statement exceeds transaction timeoutMs');
+                        Assert::assertSame(
+                            'before timeout',
+                            (new CompositeAccount())($db)->getByTenantIdAndAccountId(TRANSACTION_TENANT, 6)->getName(),
+                            'timed out update rolled back'
+                        );
+                        (new CompositeAccount())($db)->getByTenantIdAndAccountId(TRANSACTION_TENANT, 6)->delete();
+                    } finally {
+                        $holder->close();
+                    }
+                }
+
+                $attempts = 0;
+                $db->transaction(function () use (&$attempts): void {
+                    $attempts++;
+                    (new CompositeAccount())->setTenantId(TRANSACTION_TENANT)
+                        ->setAccountId(5)->setName('attempt-' . $attempts)->create();
+                    if ($attempts < 3) {
+                        throw Orm::transactionConflict('coverage retry');
+                    }
+                }, isolation: 'read_committed', retry: 3);
+                Assert::assertSame(3, $attempts, 'retry reruns the complete callback');
+                Assert::assertSame(
+                    'attempt-3',
+                    (new CompositeAccount())($db)->getByTenantIdAndAccountId(TRANSACTION_TENANT, 5)->getName(),
+                    'the final callback attempt committed'
+                );
+                (new CompositeAccount())($db)->getByTenantIdAndAccountId(TRANSACTION_TENANT, 5)->delete();
+
+                $defaultAttempts = 0;
+                $db->transaction(function () use (&$defaultAttempts): void {
+                    $defaultAttempts++;
+                    if ($defaultAttempts < 3) {
+                        throw Orm::transactionConflict('default coverage retry');
+                    }
+                });
+                Assert::assertSame(3, $defaultAttempts, 'default retry count is three');
+
+                $attempts = 0;
+                $retryError = null;
+                try {
+                    $db->transaction(function () use (&$attempts): void {
+                        $attempts++;
+                        throw Orm::transactionConflict('coverage retry disabled');
+                    }, retry: 0);
+                } catch (OrmException $error) {
+                    $retryError = $error;
+                }
+                Assert::assertSame(Code::DEADLOCK, $retryError?->code_, 'retry=0 returns the deadlock');
+                Assert::assertSame(1, $attempts, 'retry=0 invokes the callback once');
             });
         }
     }

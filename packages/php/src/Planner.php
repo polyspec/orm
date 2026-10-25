@@ -281,19 +281,26 @@ final class Planner
     private function renderOrder(PlanBinds $b, PlanScope $root, array $q): string
     {
         $parts = [];
-        foreach ($q['order'] ?? [] as $o) {
-            if (!empty($o['random'])) {
-                $parts[] = $this->d->random();
-                continue;
+        $append = function (PlanScope $scope, array $query) use (&$append, &$parts): void {
+            foreach ($query['order'] ?? [] as $o) {
+                if (!empty($o['random'])) {
+                    $parts[] = $this->d->random();
+                    continue;
+                }
+                $col = isset($o['fn']) ? $this->columnFunction($scope, $o['column'], $o['fn'])
+                    : $this->qcol($scope, $o['column']);
+                // A NOT NULL column keeps its btree order; one that can be NULL sorts NULL first ascending and last
+                // descending.
+                $nulls = RuntimeModel::column($scope->ent, $o['column'])['nullable']
+                    ? $this->d->nullsOrder(!empty($o['desc'])) : '';
+                $parts[] = $col . (!empty($o['desc']) ? ' DESC' : ' ASC') . $nulls;
             }
-            $col = isset($o['fn']) ? $this->columnFunction($root, $o['column'], $o['fn'])
-                : $this->qcol($root, $o['column']);
-            // A NOT NULL column keeps its btree order; one that can be NULL sorts NULL first ascending and last
-            // descending.
-            $nulls = RuntimeModel::column($root->ent, $o['column'])['nullable']
-                ? $this->d->nullsOrder(!empty($o['desc'])) : '';
-            $parts[] = $col . (!empty($o['desc']) ? ' DESC' : ' ASC') . $nulls;
-        }
+            foreach ($query['joins'] ?? [] as $join) {
+                $child = $scope->joins[$join['rel']];
+                $append($child, $child->q);
+            }
+        };
+        $append($root, $q);
         return $parts === [] ? '' : ' ORDER BY ' . implode(', ', $parts);
     }
 
@@ -472,8 +479,11 @@ final class Planner
             if ($js->ent['soft_delete'] !== '') {
                 $conditions[] = $this->qcol($js, $js->ent['soft_delete']) . ' IS NULL';
             }
-            $sql .= $kw . $b->table($js->ent) . ' AS ' . $this->d->quote($js->alias) . ' ON '
-                . implode(' AND ', $conditions);
+            $sql .= $kw . $b->table($js->ent) . ' AS ' . $this->d->quote($js->alias);
+            if (($js->q['force_index'] ?? '') !== '') {
+                $sql .= $this->d->forceIndex($js->q['force_index']);
+            }
+            $sql .= ' ON ' . implode(' AND ', $conditions);
             if (($j['query']['on']['items'] ?? []) !== []) {
                 $sql .= ' AND ' . $this->renderGroup($b, $js, $j['query']['on'], true);
             }

@@ -5,9 +5,14 @@
 // Usage: node --test packages/dbspec-codemirror/tests/fixtures.test.mjs (after the build of this package)
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
+import { dirname } from 'node:path';
+import { runInNewContext } from 'node:vm';
+import { fileURLToPath } from 'node:url';
 import { EditorState } from '@codemirror/state';
 import { foldService } from '@codemirror/language';
 import { EditorView } from '@codemirror/view';
+import { build } from 'esbuild';
+import { describe } from 'node:test';
 import { caseTest } from '../../../tests/testcase.mts';
 import { dbspec, dbspecDiagnostics, formatDbspec } from '../dist/index.js';
 
@@ -51,21 +56,54 @@ caseTest('the editor fixtures exist', TIMEOUT, () => {
   assert.ok(names.length > 0);
 });
 
-for (const name of names) {
-  caseTest(`fixture ${name} through the CodeMirror adapter`, TIMEOUT, () => {
-    const doc = readFileSync(new URL(`${name}.dbs`, dir), 'utf8');
-    const expected = JSON.parse(readFileSync(new URL(`${name}.json`, dir), 'utf8'));
-    const state = stateOf(doc);
-    assert.deepEqual(marks(state), expected.tokens.map(t => [offset(state, t.range[0]), offset(state, t.range[1]), `cm-dbspec-${t.class}`]));
-    assert.deepEqual(dbspecDiagnostics(state).map(d => [d.from, d.to, d.message]),
-      expected.diagnostics.map(d => [offset(state, d.range[0]), offset(state, d.range[1]), `${d.rule}: ${d.message}`]));
-    assert.deepEqual(folds(state), expected.folding);
-    const result = format(state);
-    if (expected.formatted === null) assert.deepEqual(result, { handled: false, text: doc });
-    else assert.deepEqual(result, { handled: true, text: expected.formatted });
+// Requirements: ORES-47.
+caseTest('the CodeMirror adapter runs from a browser-target bundle', TIMEOUT, async () => {
+  const bundle = await build({
+    stdin: {
+      contents: `import { EditorState } from '@codemirror/state';\nimport { dbspec, dbspecDiagnostics } from '../dist/index.js';\n` +
+        `const state = EditorState.create({ doc: 'dbspec 1 shop\\n', extensions: [dbspec()] });\n` +
+        `globalThis.__dbspecDiagnostics = dbspecDiagnostics(state).map(d => d.message);\n`,
+      resolveDir: dirname(fileURLToPath(import.meta.url)),
+      sourcefile: 'browser-probe.mjs',
+    },
+    bundle: true,
+    format: 'iife',
+    platform: 'browser',
+    write: false,
   });
-}
+  const context = {
+    TextDecoder,
+    TextEncoder,
+    clearTimeout,
+    console,
+    navigator: { platform: '', userAgent: 'browser-test', vendor: '' },
+    queueMicrotask,
+    setTimeout,
+  };
+  context.globalThis = context;
+  runInNewContext(bundle.outputFiles[0].text, context, { timeout: TIMEOUT });
+  assert.equal(context.__dbspecDiagnostics.length, 0);
+});
 
+// Requirements: ORE-3, ORE-18, ORES-48.
+describe('CodeMirror adapter renders tokens, diagnostics, folds and formatting', () => {
+  for (const name of names) {
+    caseTest(`fixture ${name} through the CodeMirror adapter`, TIMEOUT, () => {
+      const doc = readFileSync(new URL(`${name}.dbs`, dir), 'utf8');
+      const expected = JSON.parse(readFileSync(new URL(`${name}.json`, dir), 'utf8'));
+      const state = stateOf(doc);
+      assert.deepEqual(marks(state), expected.tokens.map(t => [offset(state, t.range[0]), offset(state, t.range[1]), `cm-dbspec-${t.class}`]));
+      assert.deepEqual(dbspecDiagnostics(state).map(d => [d.from, d.to, d.message]),
+        expected.diagnostics.map(d => [offset(state, d.range[0]), offset(state, d.range[1]), `${d.rule}: ${d.message}`]));
+      assert.deepEqual(folds(state), expected.folding);
+      const result = format(state);
+      if (expected.formatted === null) assert.deepEqual(result, { handled: false, text: doc });
+      else assert.deepEqual(result, { handled: true, text: expected.formatted });
+    });
+  }
+});
+
+// Requirements: ORES-26.
 caseTest('the set option resolves use lines', TIMEOUT, () => {
   const core = 'dbspec 1 core\n\ntable users {\n  id i64 identity\n  primary key (id)\n}\n';
   const shop = 'dbspec 1 shop\n\nuse core { users }\n\ntable orders {\n  id i64 identity\n  primary key (id)\n}\n';

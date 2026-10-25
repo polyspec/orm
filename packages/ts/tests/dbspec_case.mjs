@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join } from '../../../tests/dbspec/join.mjs';
-import { dbspecManifest, emitDbspec, parseDbspec, parseDbspecSet, readDbspecBytes, readDbspecFile, renderDbspec } from '../dist/dbspec/index.js';
+import { dbspecManifest, emitDbspec, formatDbspec, parseDbspec, parseDbspecSet, readDbspecBytes, readDbspecFile, renderDbspec } from '../dist/dbspec/index.js';
 import { readCases } from '../../../tests/dbspec/cases.mts';
 
 export const root = new URL('../../../', import.meta.url);
@@ -50,6 +50,7 @@ export function canonicalCases() {
       const emitted = emitDbspec(parsed(text, set));
       assert.equal(emitted, text);
       assert.equal(emitDbspec(parsed(emitted, set)), emitted);
+      assert.equal(formatDbspec(text, set).text, text);
     });
   }
 }
@@ -64,6 +65,8 @@ export function normalizeCases() {
       const emitted = emitDbspec(parsed(text, set));
       assert.equal(emitted, canonical);
       assert.equal(emitDbspec(parsed(emitted, set)), emitted);
+      assert.equal(formatDbspec(text, set).text, canonical);
+      assert.equal(formatDbspec(canonical, set).text, canonical);
     });
   }
 }
@@ -88,6 +91,9 @@ export function invalidCases() {
       const result = parseDbspec(text, documentSet(c));
       assert.equal(result.document, null);
       assert.deepEqual(result.diagnostics.map(d => ({ line: d.line, column: d.column, rule: d.rule })), c.errors);
+      const formatted = formatDbspec(text, documentSet(c));
+      assert.equal(formatted.text, null);
+      assert.deepEqual(formatted.diagnostics.map(d => ({ line: d.line, column: d.column, rule: d.rule })), c.errors);
       for (const d of result.diagnostics) {
         assert.deepEqual(Object.keys(d).sort(), ['column', 'line', 'message', 'rule']);
         assert.equal(typeof d.message, 'string');

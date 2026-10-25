@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
-// conformance_verification: the PHP conformance runner runs every vector of a dialect once on the seeded bench
+    // conformance_verification: the PHP conformance runner runs every vector of a dialect once on the seeded bench
 // database of that dialect (BENCH_MYSQL_DSN, BENCH_POSTGRES_DSN, BENCH_SQLITE_DSN, which make run-databases and
 // make orm-check create), and each vector is one data set, named by the vector, whose output must equal the recorded
 // expect as a JSON value (tests/conformance/vectors.json for MySQL, vectors.<dialect>.json for the others).
@@ -60,6 +60,7 @@ const CONFORMANCE_VECTORS = ['conditions_values', 'relations', 'delete_lock', 'a
 #[Large]
 final class CoverageConformanceVerificationTest extends TestCase
 {
+    // Requirements: INT-39. The runner compares the restore_or_create vector with the recorded result.
     /** @var array<string, stdClass> the runner output of each dialect, read once per process */
     private static array $outputs = [];
 
@@ -130,18 +131,21 @@ final class CoverageConformanceVerificationTest extends TestCase
 
     // Requirements: DIA-37.
     #[DataProvider('mysqlVectors')]
+    // Requirements: PRT-68, INT-20, INT-21, INT-22, INT-23, INT-24, INT-25, INT-26.
     public function testMysql(string $name, mixed $expect): void
     {
         self::check('mysql', $name, $expect);
     }
 
     #[DataProvider('postgresVectors')]
+    // Requirements: PRT-68, INT-20, INT-21, INT-22, INT-23, INT-24, INT-25, INT-26.
     public function testPostgres(string $name, mixed $expect): void
     {
         self::check('postgres', $name, $expect);
     }
 
     #[DataProvider('sqliteVectors')]
+    // Requirements: PRT-68, INT-20, INT-21, INT-22, INT-23, INT-24, INT-25, INT-26.
     public function testSqlite(string $name, mixed $expect): void
     {
         self::check('sqlite', $name, $expect);

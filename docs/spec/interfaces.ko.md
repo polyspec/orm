@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: 9b436b6f3d45b3777693a85db91436a9a145253cb0613860306f35a80aaed4a6 -->
+<!-- source-sha256: 6e34a82d168443af3ce0dec383b6190da1b7073698dbef0b555a86a460a748bb -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -49,7 +49,7 @@ flowchart LR
 - **INT-8** `Optional<T>` — Go: `*T`; PHP: `?T`; Rust: `Option<T>`; TypeScript: `T | null`; Python: `T | None`
 - **INT-9** `List<T>` — Go: slice; PHP: array; Rust: `Vec<T>`; TypeScript: `T[]`; Python: `list`
 - **INT-10** `Result<T>` — Go: `(T, error)`; PHP: 반환 또는 예외; Rust: `Result<T>`; TypeScript: `Promise<T>`; Python: 반환 또는 예외
-- **INT-11** `Key` — Go: `orm.Key`; PHP: 타입 있는 키; Rust: `polyspec_orm::Key`; TypeScript: `Key`; Python: `str`
+- **INT-11** `Key` — Go: `orm.Key`; PHP: `int|string|bool|Bytes|DateTimeInterface`; Rust: `polyspec_orm::Key`; TypeScript: `Key`; Python: `Key` (`int | str | bool | bytes | datetime.datetime`). Python `Collection.keys()`는 지원하는 각 키의 타입을 보존하고 이 키 타입에 속하지 않는 값은 거부한다.
 
 null, 빈 목록, 누락 필드, 기본값은 서로 다른 상태다. 직렬화는 코덱 명세가 요구하는 논리 타입과 필드 순서를 유지한다.
 
@@ -254,7 +254,7 @@ secret과 parameter 값은 log에서 제외한다.
 
 ## 11. 생성기·스키마·확장 구분 — IF-32 ~ IF-34
 
-생성기는 스키마 매니페스트를 읽고 모델, 필드, 컬럼 메서드, 오류 타입을 출력한다. Go와 Rust 생성은 읽은 소스도 읽어 소스가 호출하는 체인, 관계 키, 조인, `new<Name>` 메서드를 출력한다. 선언되지 않은 컬럼이나 연산자의 메서드는 출력하지 않는다. 생성 코드는 매니페스트와 인터페이스 심볼 목록으로 검사한다.
+PHP runtime package는 자체 generator에 의존하지 않는다. 별도의 `polyspec/orm-gen` Composer package는 `polyspec/orm`에 의존하고 PHP CLI, generator, source scanner를 제공한다. 생성기는 스키마 매니페스트를 읽고 모델, 필드, 컬럼 메서드, 오류 타입을 출력한다. Go와 Rust 생성은 읽은 소스도 읽어 소스가 호출하는 체인, 관계 키, 조인, `new<Name>` 메서드를 출력한다. 선언되지 않은 컬럼이나 연산자의 메서드는 출력하지 않는다. 생성 코드는 매니페스트와 인터페이스 심볼 목록으로 검사한다.
 
 - **INT-66** 생성기가 내보내는 code는 그 언어의 표준 compiler와, 이 repository의 lint gate가 그 언어에 돌리는 formatter와 linter를 통과하며, 생성된 text는 어떤 finding도 억제하지 않는다: Rust `allow` attribute, Go `//nolint`, Python `# noqa`, PHP `@phpstan-ignore`나 `phpcs:ignore`, TypeScript `eslint-disable`이나 `@ts-ignore`가 없다.
 

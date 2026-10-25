@@ -171,6 +171,7 @@ func planSourceOf(lines []string) (*Document, error) {
 	return d, nil
 }
 
+// Requirements: PLN-73, PLN-74, PLN-75, PLN-76, PLN-77, PLN-78, PLN-79, PLN-80, PLN-81, PLN-82, PLN-83.
 // TestPlanVectors checks whether the diff of every case and the statements of the three dialects equal the vector.
 // TestPlanInvalidVectors checks the diagnostics of the invalid cases.
 func TestPlanVectors(t *testing.T) {

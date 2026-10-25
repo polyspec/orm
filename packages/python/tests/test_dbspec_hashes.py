@@ -1,6 +1,7 @@
 # The manifest hash cases of tests/dbspec/cases.json: one test for each case of the section, named by the case id
 # (dbspec_cases.check_hashes).
 # Run: python -m packages.python.tests.test_dbspec_hashes
+# Requirements: ORES-16.
 import unittest
 
 from .dbspec_cases import check_hashes

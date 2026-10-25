@@ -68,6 +68,7 @@ func expectManifest(c hashCase, documents []*Document) error {
 	return nil
 }
 
+// Requirements: ORES-16.
 func TestManifestVectors(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	vectors := loadVectors(t)

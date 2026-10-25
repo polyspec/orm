@@ -1,5 +1,13 @@
 {
   "requirements": [
+    "PRT-68",
+    "INT-20",
+    "INT-21",
+    "INT-22",
+    "INT-23",
+    "INT-24",
+    "INT-25",
+    "INT-26",
     "DSL-1",
     "DSL-2",
     "DSL-3",

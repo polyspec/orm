@@ -11,6 +11,7 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
+// Requirements: INT-24.
 // TestValidateVectors reads the shared validation cases (tests/ir/validate.json). It adds each request's schema
 // manifest_hash, passes the request to Decode (that is, Validate), and checks that it is accepted or fails with the expected error code.
 // TypeScript, PHP, Rust, and Python read the same file in their own packages.

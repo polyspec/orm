@@ -8,7 +8,9 @@ use PHPUnit\Framework\TestCase;
 use DateTimeZone;
 use PDO;
 use Polyspec\Orm\Config;
+use Polyspec\Orm\Code;
 use Polyspec\Orm\Db;
+use Polyspec\Orm\OrmException;
 use Polyspec\Orm\Tests\TransactionFailureCases;
 use ReflectionClass;
 
@@ -20,6 +22,41 @@ final class TransactionFailureNativeTest extends TestCase
     protected function setUp(): void
     {
         self::assertTrue((new ReflectionClass(Db::class))->isInternal());
+    }
+
+    // Requirements: INT-47.
+    public function testAnotherFiberCannotUseAnActiveNativeTransactionConnection(): void
+    {
+        $db = new Db(new PDO('sqlite::memory:'), 'sqlite', new Config(), new DateTimeZone('UTC'));
+        $beforeSuspend = null;
+        $afterResume = null;
+        $nestedCalls = 0;
+        $fiber = new \Fiber(static function () use ($db, &$beforeSuspend, &$afterResume, &$nestedCalls): void {
+            $db->transaction(static function () use ($db, &$beforeSuspend, &$afterResume, &$nestedCalls): void {
+                $db->transaction(static function () use (&$nestedCalls): void {
+                    $nestedCalls++;
+                }, retry: 0);
+                $beforeSuspend = [$db->transactionNumber(), $nestedCalls];
+                \Fiber::suspend();
+                $db->transaction(static function () use (&$nestedCalls): void {
+                    $nestedCalls++;
+                }, retry: 0);
+                $afterResume = [$db->transactionNumber(), $nestedCalls];
+            }, retry: 0);
+        });
+        $fiber->start();
+        $error = null;
+        try {
+            $db->transaction(static fn() => null, retry: 0);
+        } catch (OrmException $caught) {
+            $error = $caught;
+        } finally {
+            $fiber->resume();
+            $db->close();
+        }
+        self::assertSame([1, 1], $beforeSuspend, 'the owning fiber can read and nest its transaction before suspension');
+        self::assertSame([1, 2], $afterResume, 'the owning fiber can read and nest its transaction after resuming');
+        self::assertSame(Code::CONFIG, $error?->code_);
     }
 
     public function testSqliteRowLockEventBelongsToEachTransaction(): void

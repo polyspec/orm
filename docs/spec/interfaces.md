@@ -48,7 +48,7 @@ The planner does not receive database credentials or parameter values. The execu
 - **INT-8** `Optional<T>` — Go: `*T`; PHP: `?T`; Rust: `Option<T>`; TypeScript: `T | null`; Python: `T | None`
 - **INT-9** `List<T>` — Go: slice; PHP: array; Rust: `Vec<T>`; TypeScript: `T[]`; Python: `list`
 - **INT-10** `Result<T>` — Go: `(T, error)`; PHP: return or exception; Rust: `Result<T>`; TypeScript: `Promise<T>`; Python: return or exception
-- **INT-11** `Key` — Go: `orm.Key`; PHP: typed key; Rust: `polyspec_orm::Key`; TypeScript: `Key`; Python: `str`
+- **INT-11** `Key` — Go: `orm.Key`; PHP: `int|string|bool|Bytes|DateTimeInterface`; Rust: `polyspec_orm::Key`; TypeScript: `Key`; Python: `Key` (`int | str | bool | bytes | datetime.datetime`). Python `Collection.keys()` retains the type of each supported key and rejects values outside this key type.
 
 Null, an empty list, a missing field, and a default value are different states. Serialization preserves the logical type and field order required by the codec specification.
 

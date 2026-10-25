@@ -43,6 +43,7 @@ async function checkUtcConnection(db) {
   if (between !== 1) throw new Error(`UTC between filter returned ${between}`);
 }
 
+// Requirements: CFG-2, DIA-57, DSL-141.
 for (const dialect of ['sqlite', 'mysql', 'postgres']) {
   for (const zone of ['', 'UTC', '+00:00']) {
     const suffix = zone === '' ? 'default' : zone === '+00:00' ? 'offset' : 'utc';

@@ -1,6 +1,8 @@
 # model_writes coverage: create, creates, update, upsert and delete once each with the generated CompositeAccount
 # model, as the model_writes coverage of Go, PHP, TypeScript and Rust does. It writes only composite_account, which has
 # no identity column, and deletes every row it wrote, so the database state stays as it was.
+import os
+
 from polyspec.orm.models import models
 
 from .coverage_case import (
@@ -85,6 +87,57 @@ def model_write_cycle(item):
         with_cleanup(body, lambda: account().tenant_id(TENANT).gets().delete())
 
     run_on_empty_tenant(models, item, TENANT, case)
+
+
+def model_write_arithmetic_attributes(item):
+    driver, dsn = item
+    db = models.connect(dsn, aesKey="bench-salt", blindIndexKey="bench-blind-index")
+    tenant = 1_000_000_000_000 + os.getpid()
+    unsubscribe = None
+    try:
+        expect_equal(db.driver, driver, "the driver")
+
+        def account():
+            return models.CompositeAccount().connect(db)
+
+        expect_equal(account().tenant_id(tenant).get_count(), 0, "scratch tenant starts empty")
+        account().set_tenant_id(tenant).set_account_id(1).set_name("arithmetic").create()
+        loaded = account().get_by_tenant_id_and_account_id(tenant, 1)
+        events = []
+        unsubscribe = db.subscribe(
+            lambda event: events.append(event)
+            if event.kind == "update" and "composite_account" in event.tables
+            else None
+        )
+        loaded.plus_account_id(7).update()
+        expect_equal(
+            account().get_by_tenant_id_and_account_id(tenant, 8).get_name(),
+            "arithmetic",
+            "plus amount changes the key",
+        )
+        expect_equal(any(7 in event.binds for event in events), True, "plus amount is bound")
+        loaded.update()
+        expect_equal(len(events), 1, "a write clears the pending arithmetic change")
+
+        current = account().get_by_tenant_id_and_account_id(tenant, 8)
+        amount = current.get_account_id() + 1
+        current.minus_account_id(amount).update()
+        expect_equal(
+            account().get_by_tenant_id_and_account_id(tenant, 0).get_name(),
+            "arithmetic",
+            "minus clamps at zero",
+        )
+        expect_equal(any(amount in event.binds for event in events), True, "minus amount is bound")
+    finally:
+        try:
+            account().tenant_id(tenant).gets().delete()
+            expect_equal(account().tenant_id(tenant).get_count(), 0, "scratch row is removed")
+        finally:
+            try:
+                if unsubscribe is not None:
+                    unsubscribe()
+            finally:
+                db.close()
 
 
 class CoverageTest(CoverageCase):
@@ -207,6 +260,10 @@ class CoverageTest(CoverageCase):
     # Requirements: DSL-56, DSL-57, DSL-58, DSL-60, DSL-103, DSL-104, DSL-105, DSL-106, DSL-110.
     def test_model_write_cycle(self):
         self.each_item("model_write_cycle", model_write_cycle)
+
+    # Requirements: PLN-26.
+    def test_model_write_arithmetic_attributes(self):
+        self.each_item("model_write_arithmetic_attributes", model_write_arithmetic_attributes)
 
 
 if __name__ == "__main__":

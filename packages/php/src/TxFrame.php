@@ -64,5 +64,9 @@ final class TxFrame
         public readonly string $isolation,
         public readonly int $number
     ) {
+        $this->flow = \Fiber::getCurrent();
     }
+
+    /** The fiber that owns this transaction; the main request has no Fiber object. */
+    public readonly ?\Fiber $flow;
 }

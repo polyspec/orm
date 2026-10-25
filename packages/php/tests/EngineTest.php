@@ -588,6 +588,7 @@ final class EngineTest extends TestCase
         }
     }
 
+    // Requirements: INT-24.
     // Shared validation cases (tests/ir/validate.json): each request gets the schema's manifest_hash added and is given
     // only to the validator, and checks whether it is accepted or fails with the expected error code.
     /** @param array<string, mixed> $case */

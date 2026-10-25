@@ -9,7 +9,7 @@ declare(strict_types=1);
 // to completion), or rollback (revert the last plan in history). It writes one result line to stdout: "ok", "stopped",
 // or "error <code>". Any other error is written to stderr and exits with 1.
 //
-// Usage: php packages/php/testing/dbspec/apply/php.php <apply-first|apply|stop|recover|rollback>
+// Usage: php packages/php/testing/dbspec/apply/php.php <apply-first|apply|stop|recover|rollback|lock-wait>
 // <mysql|postgres|sqlite> <uri> <plans.json>
 
 require __DIR__ . '/../../../../../vendor-php/autoload.php';
@@ -19,7 +19,7 @@ require __DIR__ . '/runner.php';
 if ($argc !== 5) {
     fwrite(
         STDERR,
-        "usage: php packages/php/testing/dbspec/apply/php.php <apply-first|apply|stop|recover|rollback> "
+        "usage: php packages/php/testing/dbspec/apply/php.php <apply-first|apply|stop|recover|rollback|lock-wait> "
         . "<mysql|postgres|sqlite> <uri> <plans.json>\n"
     );
     exit(2);

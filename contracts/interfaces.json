@@ -1551,7 +1551,7 @@
         },
         "python": {
           "symbol": "packages/python/src/polyspec/orm/model.py::Collection.get",
-          "signature": "def get(self, key) -> Model | None"
+          "signature": "def get(self, key: Key) -> Model | None"
         },
         "php-extension": {
           "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Collection::get",
@@ -1619,7 +1619,7 @@
         },
         "python": {
           "symbol": "packages/python/src/polyspec/orm/model.py::Collection.keys",
-          "signature": "def keys(self) -> list"
+          "signature": "def keys(self) -> list[Key]"
         },
         "php-extension": {
           "symbol": "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Collection::keys",

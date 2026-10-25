@@ -59,6 +59,7 @@ fn located(errors: &[Diagnostic]) -> Vec<(String, usize, usize)> {
     errors.iter().map(|e| (e.rule.clone(), e.line, e.column)).collect()
 }
 
+// Requirements: ORES-16.
 fn manifest_vectors() -> Vec<Trial> {
     let cases = cases();
     let hashes = cases["hashes"].as_array().expect("hashes cases");

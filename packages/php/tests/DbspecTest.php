@@ -45,18 +45,21 @@ final class DbspecTest extends TestCase
         return dbspec_case_ids('invalid', dbspec_read_cases()['invalid']);
     }
 
+    // Requirements: ORES-19.
     #[DataProvider('canonicalCases')]
     public function testCanonical(string $kind, array $case): void
     {
         dbspec_check_case($kind, $case, 2.0);
     }
 
+    // Requirements: ORES-15, ORES-17, ORES-19.
     #[DataProvider('normalizeCases')]
     public function testNormalize(string $kind, array $case): void
     {
         dbspec_check_case($kind, $case, 2.0);
     }
 
+    // Requirements: ORES-19.
     #[DataProvider('invalidCases')]
     public function testInvalid(string $kind, array $case): void
     {
@@ -97,6 +100,7 @@ final class DbspecTest extends TestCase
         }
     }
 
+    // Requirements: ORES-72.
     #[DataProvider('positionCases')]
     public function testPositions(array $case): void
     {

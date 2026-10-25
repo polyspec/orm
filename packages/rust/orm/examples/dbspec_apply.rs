@@ -5,10 +5,12 @@
 //! to the end), rollback (reverts the last plan in history). One result line goes to stdout: "ok", "stopped", or
 //! "error <code>". Any other error is written to stderr and the process exits with 1.
 //!
-//! Usage: dbspec_apply <apply-first|apply|stop|recover|rollback> <mysql|postgres|sqlite> <uri> <plans.json>
+//! Usage: dbspec_apply <apply-first|apply|stop|recover|rollback|lock-wait> <mysql|postgres|sqlite> <uri> <plans.json>
 
 use chrono::{DateTime, TimeZone, Utc};
-use polyspec_orm::dbspec::{apply, parse_plan, recover, rollback, ApplyConnection, ApplyError, ApplyEvent, ApplyEventKind, Dialect, Plan};
+use polyspec_orm::dbspec::{
+    ApplyConnection, ApplyError, ApplyEvent, ApplyEventKind, CatalogQuerier, CatalogValue, Dialect, Plan, apply, parse_plan, recover, rollback,
+};
 use serde_json::Value;
 use sqlx::Connection;
 
@@ -34,6 +36,9 @@ async fn main() {
 }
 
 async fn run(action: &str, dialect: &str, uri: &str, vectors: &str) -> Result<String, String> {
+    if action == "lock-wait" {
+        return lock_wait(dialect, uri, vectors).await;
+    }
     let plans = chain(vectors)?;
     match dialect {
         "mysql" => {
@@ -46,6 +51,168 @@ async fn run(action: &str, dialect: &str, uri: &str, vectors: &str) -> Result<St
             on(sqlx::SqliteConnection::connect(uri).await.map_err(|e| e.to_string())?, Dialect::Sqlite, &["PRAGMA foreign_keys = ON"], action, &plans).await
         }
         other => Err(format!("unknown dialect {other}")),
+    }
+}
+
+async fn lock_wait(dialect: &str, uri: &str, vectors: &str) -> Result<String, String> {
+    match dialect {
+        "mysql" => {
+            let plans = representative_chain(vectors)?;
+            let mut c = sqlx::MySqlConnection::connect(uri).await.map_err(|e| e.to_string())?;
+            ApplyConnection::execute(&mut c, "SET time_zone = '+00:00'").await.map_err(|e| e.to_string())?;
+            quiet_apply(&mut c, Dialect::MySql, &plans[..1]).await?;
+            let mut blocker = sqlx::MySqlConnection::connect(uri).await.map_err(|e| e.to_string())?;
+            let setup = async {
+                sqlx::query("BEGIN").execute(&mut blocker).await?;
+                sqlx::query("INSERT INTO archive (note) VALUES ('lock wait')").execute(&mut blocker).await?;
+                sqlx::query("SELECT id FROM archive FOR UPDATE").fetch_all(&mut blocker).await?;
+                Ok::<(), sqlx::Error>(())
+            }
+            .await;
+            if let Err(error) = setup {
+                return Err(format!("lock blocker: {error}"));
+            }
+            let result = check_statement_wait(&mut c, Dialect::MySql, &plans).await;
+            let cleanup = ApplyConnection::execute(&mut blocker, "ROLLBACK").await.map_err(|e| e.to_string());
+            combine_cleanup(result, cleanup)
+        }
+        "postgres" => {
+            let plans = representative_chain(vectors)?;
+            let mut c = sqlx::PgConnection::connect(uri).await.map_err(|e| e.to_string())?;
+            ApplyConnection::execute(&mut c, "SET TimeZone = 'UTC'").await.map_err(|e| e.to_string())?;
+            quiet_apply(&mut c, Dialect::Postgres, &plans[..1]).await?;
+            let mut blocker = sqlx::PgConnection::connect(uri).await.map_err(|e| e.to_string())?;
+            let setup = async {
+                sqlx::query("BEGIN").execute(&mut blocker).await?;
+                sqlx::query("INSERT INTO archive (note) VALUES ('lock wait')").execute(&mut blocker).await?;
+                sqlx::query("SELECT id FROM archive FOR UPDATE").fetch_all(&mut blocker).await?;
+                Ok::<(), sqlx::Error>(())
+            }
+            .await;
+            if let Err(error) = setup {
+                return Err(format!("lock blocker: {error}"));
+            }
+            let result = check_statement_wait(&mut c, Dialect::Postgres, &plans).await;
+            let cleanup = ApplyConnection::execute(&mut blocker, "ROLLBACK").await.map_err(|e| e.to_string());
+            combine_cleanup(result, cleanup)
+        }
+        "sqlite" => {
+            let plans = chain(vectors)?;
+            let mut c = sqlx::SqliteConnection::connect(uri).await.map_err(|e| e.to_string())?;
+            ApplyConnection::execute(&mut c, "PRAGMA foreign_keys = ON").await.map_err(|e| e.to_string())?;
+            let mut blocker = sqlx::SqliteConnection::connect(uri).await.map_err(|e| e.to_string())?;
+            ApplyConnection::execute(&mut blocker, "BEGIN EXCLUSIVE").await.map_err(|e| e.to_string())?;
+            check_sqlite_lock_wait(&mut c, &mut blocker, &plans).await
+        }
+        other => Err(format!("unknown dialect {other}")),
+    }
+}
+
+async fn quiet_apply<C: ApplyConnection + Send>(c: &mut C, dialect: Dialect, plans: &[Plan]) -> Result<(), String> {
+    let mut quiet = |_: &ApplyEvent| -> Result<(), EventError> { Ok(()) };
+    apply(c, dialect, plans, &fixed_now, &mut quiet).await.map_err(|e| e.to_string())
+}
+
+async fn check_statement_wait<C: ApplyConnection + Send>(c: &mut C, dialect: Dialect, plans: &[Plan]) -> Result<String, String> {
+    let mut events = Vec::new();
+    let mut observe = |event: &ApplyEvent| -> Result<(), EventError> {
+        if matches!(event.kind, ApplyEventKind::Statement | ApplyEventKind::Applied) {
+            events.push((event.kind, event.step));
+        }
+        Ok(())
+    };
+    let started = std::time::Instant::now();
+    let result = apply(c, dialect, plans, &fixed_now, &mut observe).await;
+    let elapsed = started.elapsed();
+    let (plan, step, source) = match result {
+        Err(ApplyError::Failed { plan, step, source, .. }) => (plan, step, source),
+        Err(error) => return Err(format!("statement lock wait returned a non-step error: {error}")),
+        Ok(()) => return Err("apply succeeded while the representative statement was locked".to_owned()),
+    };
+    if plan != "representative" || step != 0 {
+        return Err(format!("statement lock wait failed at {plan} step {step}; want representative step 0"));
+    }
+    let detail = source.to_string().to_lowercase();
+    if !detail.contains("lock") && !detail.contains("timeout") {
+        return Err(format!("statement failure does not name the held lock: {source}"));
+    }
+    if events != [(ApplyEventKind::Statement, 0)] {
+        return Err(format!("statement events = {events:?}; want only statement 0"));
+    }
+    if elapsed < std::time::Duration::from_secs(4) || elapsed >= std::time::Duration::from_secs(10) {
+        return Err(format!("statement lock wait returned after {elapsed:?}; want 4s <= elapsed < 10s"));
+    }
+    Ok("error failed".to_owned())
+}
+
+async fn check_sqlite_lock_wait(c: &mut sqlx::SqliteConnection, blocker: &mut sqlx::SqliteConnection, plans: &[Plan]) -> Result<String, String> {
+    let mut quiet = |_: &ApplyEvent| -> Result<(), EventError> { Ok(()) };
+    let mut guarded = ReleaseSqliteBlocker { inner: c, blocker, released: false, release_error: None };
+    let started = std::time::Instant::now();
+    let result = apply(&mut guarded, Dialect::Sqlite, plans, &fixed_now, &mut quiet).await;
+    let elapsed = started.elapsed();
+    let released = guarded.released;
+    let release_error = guarded.release_error.take();
+    drop(guarded);
+    let cleanup = if released { Ok(()) } else { ApplyConnection::execute(blocker, "ROLLBACK").await.map_err(|e| e.to_string()) };
+    let (message, source) = match result {
+        Err(ApplyError::Locked { message, source: Some(source) }) => (message, source),
+        Err(error) => return combine_cleanup(Err(format!("SQLite lock wait returned a non-lock error: {error}")), cleanup),
+        Ok(()) => return combine_cleanup(Err("SQLite apply succeeded while another connection held an exclusive lock".to_owned()), cleanup),
+    };
+    if let Some(error) = release_error {
+        return combine_cleanup(Err(format!("release SQLite blocker after BEGIN EXCLUSIVE: {error}")), cleanup);
+    }
+    cleanup.map_err(|e| format!("SQLite blocker cleanup: {e}"))?;
+    if !format!("{message} {source}").to_lowercase().contains("lock") {
+        return Err(format!("SQLite failure does not name the held lock: {message}: {source}"));
+    }
+    if elapsed < std::time::Duration::from_secs(4) || elapsed >= std::time::Duration::from_secs(10) {
+        return Err(format!("SQLite lock wait returned after {elapsed:?}; want 4s <= elapsed < 10s"));
+    }
+    Ok("error locked".to_owned())
+}
+
+struct ReleaseSqliteBlocker<'a> {
+    inner: &'a mut sqlx::SqliteConnection,
+    blocker: &'a mut sqlx::SqliteConnection,
+    released: bool,
+    release_error: Option<String>,
+}
+
+impl CatalogQuerier for ReleaseSqliteBlocker<'_> {
+    fn rows(&mut self, query: &str) -> impl std::future::Future<Output = Result<Vec<Vec<CatalogValue>>, sqlx::Error>> + Send {
+        async move { self.inner.rows(query).await }
+    }
+}
+
+impl ApplyConnection for ReleaseSqliteBlocker<'_> {
+    fn execute(&mut self, statement: &str) -> impl std::future::Future<Output = Result<(), sqlx::Error>> + Send {
+        async move {
+            let result = ApplyConnection::execute(self.inner, statement).await;
+            if statement == "BEGIN EXCLUSIVE" && result.is_err() && !self.released {
+                match ApplyConnection::execute(self.blocker, "ROLLBACK").await {
+                    Ok(()) => self.released = true,
+                    Err(error) => self.release_error = Some(error.to_string()),
+                }
+            }
+            result
+        }
+    }
+    fn execute_bound(&mut self, statement: &str, args: &[CatalogValue]) -> impl std::future::Future<Output = Result<(), sqlx::Error>> + Send {
+        async move { self.inner.execute_bound(statement, args).await }
+    }
+    fn query_bound(&mut self, query: &str, args: &[CatalogValue]) -> impl std::future::Future<Output = Result<Vec<Vec<CatalogValue>>, sqlx::Error>> + Send {
+        async move { self.inner.query_bound(query, args).await }
+    }
+}
+
+fn combine_cleanup(result: Result<String, String>, cleanup: Result<(), String>) -> Result<String, String> {
+    match (result, cleanup) {
+        (Ok(value), Ok(())) => Ok(value),
+        (Err(error), Ok(())) => Err(error),
+        (Ok(_), Err(error)) => Err(format!("lock blocker cleanup: {error}")),
+        (Err(error), Err(cleanup)) => Err(format!("{error}; lock blocker cleanup: {cleanup}")),
     }
 }
 
@@ -68,6 +235,33 @@ fn chain(path: &str) -> Result<Vec<Plan>, String> {
     }
     if plans.len() != 2 || plans[1].from() != Some(plans[0].to()) {
         return Err("plans.json does not chain create-from-empty and rename-table-and-column".to_owned());
+    }
+    Ok(plans)
+}
+
+fn representative_chain(path: &str) -> Result<Vec<Plan>, String> {
+    let text = std::fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?;
+    let vectors: Value = serde_json::from_str(&text).map_err(|e| format!("{path}: {e}"))?;
+    let case =
+        vectors["cases"].as_array().and_then(|cases| cases.iter().find(|c| c["id"] == "representative")).ok_or("plans.json has no representative case")?;
+    let source_lines = case["source"].as_array().ok_or("representative has no source lines")?;
+    let mut source = String::from("dbplan 1 base\nfrom empty\n\n");
+    for line in source_lines {
+        source.push_str(line.as_str().ok_or("representative source line is not text")?);
+        source.push('\n');
+    }
+    let target_lines = case["plan"].as_array().ok_or("representative has no plan lines")?;
+    let mut target = String::new();
+    for line in target_lines {
+        target.push_str(line.as_str().ok_or("representative plan line is not text")?);
+        target.push('\n');
+    }
+    let plans = vec![
+        parse_plan(&source).map_err(|e| format!("representative source: {e:?}"))?,
+        parse_plan(&target).map_err(|e| format!("representative plan: {e:?}"))?,
+    ];
+    if plans[1].from() != Some(plans[0].to()) {
+        return Err("representative plans do not chain".to_owned());
     }
     Ok(plans)
 }

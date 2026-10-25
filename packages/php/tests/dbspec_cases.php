@@ -195,6 +195,20 @@ function dbspec_check_case(string $kind, array $case, float $cpuSeconds): void
         foreach ($result->diagnostics as $d) {
             Assert::assertNotSame('', $d->message, "$id: empty diagnostic message");
         }
+        $formatted = Polyspec\Orm\Dbspec\Dbspec::format($text, $texts);
+        Assert::assertNull($formatted->text, "$id: format returned text for an invalid document");
+        Assert::assertSame(
+            $want,
+            array_map(
+                static fn(Polyspec\Orm\Dbspec\Diagnostic $d): array => [
+                    'line' => $d->line,
+                    'column' => $d->column,
+                    'rule' => $d->rule
+                ],
+                $formatted->diagnostics
+            ),
+            "$id: format diagnostics differ"
+        );
     } else {
         Assert::assertSame(
             [],
@@ -215,6 +229,10 @@ function dbspec_check_case(string $kind, array $case, float $cpuSeconds): void
             Polyspec\Orm\Dbspec\Dbspec::emit($again->document),
             "$id: emission is not idempotent"
         );
+        $formatted = Polyspec\Orm\Dbspec\Dbspec::format($text, $texts);
+        Assert::assertSame($want, $formatted->text, "$id: format differs");
+        $formattedAgain = Polyspec\Orm\Dbspec\Dbspec::format($formatted->text, $texts);
+        Assert::assertSame($formatted->text, $formattedAgain->text, "$id: format is not idempotent");
     }
     cpuCaseEnd($id, $clock);
 }

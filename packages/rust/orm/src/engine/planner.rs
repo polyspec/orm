@@ -638,10 +638,12 @@ impl<'m> Planner<'m> {
     }
 
     fn render_order(&self, s: &Scope<'_>, q: &ir::Query) -> Result<String> {
-        if q.order.is_empty() {
-            return Ok(String::new());
-        }
-        let mut parts = Vec::with_capacity(q.order.len());
+        let mut parts = Vec::new();
+        self.append_order(s, q, &mut parts)?;
+        Ok(if parts.is_empty() { String::new() } else { format!(" ORDER BY {}", parts.join(", ")) })
+    }
+
+    fn append_order(&self, s: &Scope<'_>, q: &ir::Query, parts: &mut Vec<String>) -> Result<()> {
         for o in &q.order {
             if o.random {
                 parts.push(self.d.random().to_owned());
@@ -655,7 +657,11 @@ impl<'m> Planner<'m> {
             let nulls = if s.ent.field(&o.column).is_some_and(|f| f.nullable) { self.d.nulls_order(o.desc) } else { "" };
             parts.push(format!("{col} {}{nulls}", if o.desc { "DESC" } else { "ASC" }));
         }
-        Ok(format!(" ORDER BY {}", parts.join(", ")))
+        for join in &q.joins {
+            let child = s.join(&join.rel).ok_or_else(|| err(codes::INTERNAL, format!("join {} is not in the scope", join.rel)))?;
+            self.append_order(child, &child.q, parts)?;
+        }
+        Ok(())
     }
 
     fn render_group_by(&self, s: &Scope<'_>, q: &ir::Query) -> Result<String> {
@@ -829,7 +835,11 @@ impl<'m> Planner<'m> {
             if let Some(soft_delete) = &js.ent.soft_delete {
                 condition.push_str(&format!(" AND {} IS NULL", self.qcol(js, soft_delete)));
             }
-            sb.push_str(&format!("{kw}{} AS {} ON {condition}", b.table(&js.ent.table), self.d.quote(&js.alias)));
+            sb.push_str(&format!("{kw}{} AS {}", b.table(&js.ent.table), self.d.quote(&js.alias)));
+            if !js.q.force_index.is_empty() {
+                sb.push_str(&self.d.force_index(&js.q.force_index));
+            }
+            sb.push_str(&format!(" ON {condition}"));
             if let Some(on) = j.query.on.as_ref().filter(|g| !g.items.is_empty()) {
                 let on = self.render_group(b, root, js, on, true)?;
                 sb.push_str(" AND ");

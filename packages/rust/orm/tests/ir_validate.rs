@@ -1,4 +1,5 @@
 //! The shared validation vectors (tests/ir/validate.json) through the public planner API `engine::validate`, one
+//! Requirements: INT-24.
 //! libtest-mimic trial per case (`validate_vectors::<name>`): each request, with the schema's manifest hash, is accepted
 //! or fails with its expected code.
 

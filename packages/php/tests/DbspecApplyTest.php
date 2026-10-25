@@ -44,6 +44,26 @@ const APPLY_CONNECTION_RULES = [
     'sqlite' => ['PRAGMA foreign_keys = ON']
 ];
 
+/** Releases the SQLite blocker as soon as BEGIN EXCLUSIVE reports its bounded wait. */
+final class DbspecApplyLockWaitPDO extends PDO
+{
+    public ?PDO $blocker = null;
+    public bool $blockerReleased = false;
+
+    public function exec(string $statement): int|false
+    {
+        try {
+            return parent::exec($statement);
+        } catch (\PDOException $error) {
+            if ($statement === 'BEGIN EXCLUSIVE' && $this->blocker?->inTransaction()) {
+                $this->blocker->exec('ROLLBACK');
+                $this->blockerReleased = true;
+            }
+            throw $error;
+        }
+    }
+}
+
 /** The server DSNs: the scenarios check locks and session settings on the server, not through the pooler. */
 function apply_dsns(): array
 {
@@ -70,7 +90,7 @@ function open_apply_database(string $dialect): array
     if ($dialect === 'sqlite') {
         $path = sys_get_temp_dir() . "/$name.sqlite";
         Assert::assertFalse(file_exists($path), "SQLite file $path already exists");
-        return [static fn(): PDO => new PDO(
+        return [static fn(): PDO => new DbspecApplyLockWaitPDO(
             "sqlite:$path",
             null,
             null,
@@ -324,6 +344,65 @@ function apply_scenarios(): array
             apply_code('locked', static fn() => Dbspec::apply($pdo, $db, $plans, $now, null));
             if ($db === 'sqlite') {
                 $other->exec('ROLLBACK');
+            }
+        }],
+        ['lock_wait', $all, static function (Closure $session, PDO $pdo, string $db) use ($representative, $now): void {
+            $blocker = $session();
+            $steps = [];
+            if ($db === 'sqlite') {
+                $blocker->exec('BEGIN EXCLUSIVE');
+                if (!$pdo instanceof DbspecApplyLockWaitPDO) {
+                    throw new LogicException('SQLite lock-wait connection is not instrumented');
+                }
+                $pdo->blocker = $blocker;
+                $plans = [];
+                $wantCode = 'locked';
+            } else {
+                Dbspec::apply($pdo, $db, [$representative[0]], $now, null);
+                foreach (APPLY_CONNECTION_RULES[$db] as $rule) {
+                    $blocker->exec($rule);
+                }
+                $blocker->beginTransaction();
+                $blocker->exec("INSERT INTO archive (note) VALUES ('lock wait')");
+                $statement = $blocker->query('SELECT id FROM archive FOR UPDATE');
+                if ($statement === false) {
+                    throw new RuntimeException('could not lock the representative archive row');
+                }
+                $statement->fetchAll(PDO::FETCH_NUM);
+                $statement->closeCursor();
+                $plans = $representative;
+                $wantCode = 'failed';
+            }
+
+            $started = hrtime(true);
+            try {
+                Dbspec::apply($pdo, $db, $plans, $now, static function (ApplyEvent $event) use (&$steps): void {
+                    if ($event->kind === 'statement' || $event->kind === 'applied') {
+                        $steps[] = [$event->kind, $event->step];
+                    }
+                });
+                throw new RuntimeException('apply succeeded while the database lock was held');
+            } catch (ApplyError $error) {
+                Assert::assertSame($wantCode, $error->code_, "$db lock wait code");
+                $cause = $error->getPrevious();
+                Assert::assertInstanceOf(\Throwable::class, $cause, "$db lock wait preserves the driver error");
+                $detail = strtolower($cause->getMessage());
+                Assert::assertTrue(
+                    str_contains($detail, 'lock') || str_contains($detail, 'timeout'),
+                    "$db lock wait driver error: {$cause->getMessage()}"
+                );
+                if ($db !== 'sqlite') {
+                    Assert::assertSame('representative', $error->plan, "$db failed plan");
+                    Assert::assertSame(0, $error->step, "$db failed step");
+                    Assert::assertSame([['statement', 0]], $steps, "$db statement event sequence");
+                }
+                $elapsed = (hrtime(true) - $started) / 1_000_000_000;
+                Assert::assertGreaterThanOrEqual(4, $elapsed, "$db lock wait returned too early");
+                Assert::assertLessThan(10, $elapsed, "$db lock wait exceeded its bound");
+            } finally {
+                if ($blocker->inTransaction()) {
+                    $blocker->exec('ROLLBACK');
+                }
             }
         }],
         ['other_database', $all, static function (
@@ -687,7 +766,7 @@ final class DbspecApplyTest extends TestCase
         }
     }
 
-    // Requirements: PLN-93, PLN-95, PLN-96.
+    // Requirements: PLN-89, PLN-90, PLN-91, PLN-92, PLN-93, PLN-94, PLN-95, PLN-96.
     #[DataProvider('scenarioCases')]
     public function testScenario(string $name, string $db): void
     {

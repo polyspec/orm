@@ -398,6 +398,16 @@ caseTest('the server environment names no bench or decimal database that runs sh
   assert.doesNotMatch(makefile, /^decimal-db-setup:/m, 'the Makefile sets up a shared decimal database');
 });
 
+// SQLite is a local file selected by its absolute-path DSN; the test-server provisioning has replicas only for
+// MySQL and PostgreSQL and exposes no SQLite replica endpoint.
+// Requirements: CFG-26.
+caseTest('the test-server environment has no SQLite replica endpoint', COMPUTE, () => {
+  const variables = environment(paths('/checkout'), { mysql: 1, postgres: 2, mysqlReplica: 3, postgresReplica: 4, proxysql: 5, pgbouncer: 6 });
+  assert.equal(variables['ORM_TEST_MYSQL_REPLICA_DSN'], 'mysql://root@127.0.0.1:3/orm_test');
+  assert.equal(variables['ORM_TEST_POSTGRES_REPLICA_DSN'], 'postgres://orm@127.0.0.1:4/orm_test?sslmode=disable');
+  assert.deepEqual(Object.keys(variables).filter(name => /SQLITE.*REPLICA|REPLICA.*SQLITE/.test(name)), []);
+});
+
 // The binary log retention case gives the retention options of MYSQLD_BINLOG that test-servers.mts passes to mysqld, with
 // small values, to a fixture server on a temporary data directory and a free port, leaving the shared servers alone. The
 // server removes expired binary logs only at start and when it rotates a log, so retention needs both an expiry and a

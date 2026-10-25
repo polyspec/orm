@@ -511,39 +511,52 @@ func (p *Planner) qualified(scope *scope, columns []string) []string {
 }
 
 func (p *Planner) renderOrder(b *builder, root *scope, q *ir.Query) (string, error) {
-	if len(q.Order) == 0 {
+	var parts []string
+	var appendOrder func(*scope, *ir.Query) error
+	appendOrder = func(s *scope, query *ir.Query) error {
+		for _, o := range query.Order {
+			if o.Random {
+				parts = append(parts, p.D.Random())
+				continue
+			}
+			var target string
+			switch {
+			case o.Fn != nil:
+				value, err := p.columnFunction(b, s, o.Column, o.Fn)
+				if err != nil {
+					return err
+				}
+				target = value
+			default:
+				target = p.qcol(s, o.Column)
+			}
+			part := target
+			if o.Desc {
+				part += " DESC"
+			} else {
+				part += " ASC"
+			}
+			// A NOT NULL column keeps its btree order; one that can be NULL sorts NULL first ascending and last descending.
+			if s.ent.Field(o.Column).Null {
+				part += p.D.NullsOrder(o.Desc)
+			}
+			parts = append(parts, part)
+		}
+		for _, join := range query.Joins {
+			child := s.joins[join.Rel]
+			if err := appendOrder(child, child.q); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	if err := appendOrder(root, q); err != nil {
+		return "", err
+	}
+	if len(parts) == 0 {
 		return "", nil
 	}
-	var sb strings.Builder
-	sb.WriteString(" ORDER BY ")
-	for i, o := range q.Order {
-		if i > 0 {
-			sb.WriteString(", ")
-		}
-		switch {
-		case o.Random:
-			sb.WriteString(p.D.Random())
-			continue
-		case o.Fn != nil:
-			s, err := p.columnFunction(b, root, o.Column, o.Fn)
-			if err != nil {
-				return "", err
-			}
-			sb.WriteString(s)
-		default:
-			sb.WriteString(p.qcol(root, o.Column))
-		}
-		if o.Desc {
-			sb.WriteString(" DESC")
-		} else {
-			sb.WriteString(" ASC")
-		}
-		// A NOT NULL column keeps its btree order; one that can be NULL sorts NULL first ascending and last descending.
-		if root.ent.Field(o.Column).Null {
-			sb.WriteString(p.D.NullsOrder(o.Desc))
-		}
-	}
-	return sb.String(), nil
+	return " ORDER BY " + strings.Join(parts, ", "), nil
 }
 
 func (p *Planner) renderGroupBy(root *scope, q *ir.Query) string {
@@ -787,7 +800,11 @@ func (p *Planner) renderJoins(b *builder, sb *strings.Builder, s *scope) error {
 		if j.Kind == "left" {
 			kw = " LEFT JOIN "
 		}
-		sb.WriteString(kw + b.table(js.ent) + " AS " + p.D.Quote(js.alias) + " ON " + p.qcol(s, j.Left) + " = " + p.qcol(js, j.Right))
+		sb.WriteString(kw + b.table(js.ent) + " AS " + p.D.Quote(js.alias))
+		if js.q.ForceIdx != "" {
+			sb.WriteString(p.D.ForceIndex(js.q.ForceIdx))
+		}
+		sb.WriteString(" ON " + p.qcol(s, j.Left) + " = " + p.qcol(js, j.Right))
 		// A joined entity's soft-deleted rows never meet the parent: the condition sits in ON, so a left join gives null.
 		if js.ent.SoftDelete != "" {
 			sb.WriteString(" AND " + p.qcol(js, js.ent.SoftDelete) + " IS NULL")

@@ -134,6 +134,7 @@ final class DbspecPlanTest extends TestCase
     }
 
     #[DataProvider('casesCases')]
+    // Requirements: PLN-73, PLN-74, PLN-75, PLN-76, PLN-77, PLN-78, PLN-79, PLN-80, PLN-81, PLN-82, PLN-83.
     public function testCase(array $case): void
     {
         $caseStarted = cpuCaseBegin(PLAN_CASE_CPU_SECONDS);

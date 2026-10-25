@@ -58,6 +58,18 @@ func TestParseDSNRejectsInvalidInput(t *testing.T) {
 	}
 }
 
+// TestSQLiteDSNRequiresAbsolutePath checks the local-file boundary without opening a database.
+// Requirements: CFG-26.
+func TestSQLiteDSNRequiresAbsolutePath(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
+	if _, err := parseDSN("sqlite://relative.sqlite", 0); err == nil {
+		t.Fatal("SQLite accepted a relative database path")
+	}
+	if _, err := parseDSN("sqlite:///tmp/orm-example.sqlite", 0); err != nil {
+		t.Fatalf("SQLite rejected an absolute database path: %v", err)
+	}
+}
+
 // TestDriverFromDSN checks that DriverFromDSN names the database of each DSN scheme and refuses a DSN that is no URI.
 // Requirements: CFG-1.
 func TestDriverFromDSN(t *testing.T) {

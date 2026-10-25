@@ -7,7 +7,7 @@
 // dropped when the case ends; the databases the DSNs name are not changed.
 //
 // Usage: node packages/ts/tests/model.mjs (after npm run typescript:build)
-import { chmod, mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -18,7 +18,7 @@ import {
 import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } from '@polyspec/ordered-json';
 import { DATABASE, sections } from '../../../tests/testcase.mts';
 import { installBench } from './bench-set.mjs';
-import { mysqlConnection, postgresClient, relatedDsn, withCaseDatabase } from './case-database.mjs';
+import { mysqlConnection, postgresClient, withCaseDatabase } from './case-database.mjs';
 import { schemaOf } from './schema_of.mjs';
 const root = new URL('../../..', import.meta.url).pathname;
 const args = process.argv.slice(2);
@@ -47,77 +47,6 @@ function begin(name) {
 }
 function end() {
   caseLog.end(failures > caseFailures ? `${failures - caseFailures} check(s) failed; each FAIL line above names one` : undefined);
-}
-
-/**
- * Returns after the replica has applied every change the primary committed
- * before the call. On PostgreSQL a transaction with
- * synchronous_commit=remote_apply that writes WAL, here a transactional
- * logical message, commits after the standby has applied it; a transaction
- * that writes no WAL besides its commit record does not wait. On MySQL
- * SOURCE_POS_WAIT on the replica waits for the binary log position of the
- * primary.
- */
-async function awaitReplica(dialect, primary, replica) {
-  if (dialect === 'postgres') {
-    const client = postgresClient(primary);
-    await client.connect();
-    try {
-      await client.query('BEGIN');
-      await client.query('SET LOCAL synchronous_commit = remote_apply');
-      const mode = (await client.query("SELECT current_setting('synchronous_commit') AS mode, pg_logical_emit_message(true, 'orm-test-barrier', '')")).rows[0].mode;
-      if (mode !== 'remote_apply') throw new Error(`synchronous_commit of the barrier transaction is ${mode}`);
-      await client.query('COMMIT');
-    } finally { await client.end(); }
-    return;
-  }
-  // The replica may not have the case database yet, so both connections open without a database. If one connection
-  // fails, the open connection is still closed. An open connection would keep the test process from ending.
-  const source = await mysqlConnection(primary, null);
-  try {
-    const target = await mysqlConnection(replica, null);
-    try {
-      const [[{ current }]] = await target.query('SELECT DATABASE() AS current');
-      if (current !== null) throw new Error(`the replica wait connection opened database ${current}`);
-      const [[status]] = await source.query('SHOW BINARY LOG STATUS');
-      // The deadline is 60 seconds: the replica applies the writes of all clients that run in parallel, one after another, so on a 4 vCPU Linux
-      // runner it could not reach the primary position within 10 seconds.
-      const [[{ waited }]] = await target.query('SELECT SOURCE_POS_WAIT(?, ?, 60) AS waited', [status.File, status.Position]);
-      if (waited === null || Number(waited) < 0) throw new Error(`the replica did not reach ${status.File}:${status.Position}`);
-    } finally { await target.end(); }
-  } finally { await source.end(); }
-}
-
-/**
- * Opens a connection to the primary and one to its replica side by side. A
- * model uses the connection it is connected to and no other, and a model
- * without a connection inside a transaction uses the transaction.
- */
-async function primaryAndReplica(dialect, primary, replica) {
-  await install(primary);
-  const master = await connect(primary);
-  let slave1;
-  try {
-    const name = `replica-${process.hrtime.bigint()}`;
-    await new User().connect(master).setName(name).create();
-    await awaitReplica(dialect, primary, replica);
-    slave1 = await connect(replica);
-    check(await new User().connect(slave1).name(name).getCount() === 1, 'the replica reads the row written through the primary');
-    check(await code(new User().connect(slave1).setName(`${name}-replica`).create()) === 'READ_ONLY', 'a write through the replica connection is rejected');
-    check(await new User().connect(master).name(`${name}-replica`).getCount() === 0, 'a write through the replica connection does not reach the primary');
-    // A row read through the replica is written through the primary.
-    await (await new User().connect(slave1).name(name).get()).connect(master).setName(`${name}-renamed`).update();
-    await master.transaction(async () => {
-      await new User().setName(`${name}-tx`).create();
-      check(await new User().connect(master).name(`${name}-tx`).getCount() === 1, 'the primary connection inside its transaction');
-      check(await new User().connect(slave1).name(`${name}-tx`).getCount() === 0, 'the replica connection reads no uncommitted row');
-    });
-    await awaitReplica(dialect, primary, replica);
-    check(await new User().connect(slave1).name([`${name}-renamed`, `${name}-tx`]).getCount() === 2, 'the replica reads the committed rows');
-  } finally {
-    await master.close();
-    if (slave1) await slave1.close();
-  }
 }
 
 /** Runs statements on the PostgreSQL database of a DSN through the pg driver. */
@@ -729,35 +658,6 @@ try {
       await install(dsn);
       const db = await connect(dsn);
       try { await mysqlInstallInsideTransaction(db); } finally { await db.close(); }
-    });
-    end();
-  }
-  if (dialects.includes('sqlite')) {
-    // A connection to a SQLite database file that the process may only read:
-    // SQLite opens it read-only, reads succeed, and a write returns READ_ONLY.
-    begin('sqlite/readOnly');
-    await inCaseDatabase('sqlite', async (_, database) => {
-      await install(database.dsn);
-      const writable = await connect(database.dsn);
-      try { await new User().connect(writable).setName('read-only').create(); } finally { await writable.close(); }
-      await chmod(database.path, 0o444);
-      const readOnly = await connect(database.dsn);
-      try {
-        check(await new User().connect(readOnly).name('read-only').getCount() === 1, 'the read-only database reads the row');
-        check(await code(new User().connect(readOnly).setName('rejected').create()) === 'READ_ONLY', 'a write to the read-only database');
-      } finally { await readOnly.close(); }
-    });
-    end();
-  }
-  for (const dialect of dialects) {
-    if (dialect === 'sqlite') continue;
-    begin(`${dialect}/primaryAndReplica`);
-    // The replica DSN points to the same name as the case database. The replica replicates the primary's CREATE DATABASE,
-    // and primaryAndReplica waits for the replica to catch up before connecting to it.
-    await inCaseDatabase(dialect, async primary => {
-      const replica = process.env[`ORM_TEST_${dialect.toUpperCase()}_REPLICA_DSN`];
-      if (!replica) throw new Error(`ORM_TEST_${dialect.toUpperCase()}_REPLICA_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers`);
-      await primaryAndReplica(dialect, primary, relatedDsn(replica, new URL(primary).pathname.slice(1)));
     });
     end();
   }

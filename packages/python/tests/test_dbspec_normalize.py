@@ -1,6 +1,7 @@
 # The normalize cases of tests/dbspec/cases.json: one test for each case of the section, named by the case id
 # (dbspec_cases.check_normalize).
 # Run: python -m packages.python.tests.test_dbspec_normalize
+# Requirements: ORES-15, ORES-17, ORES-19.
 import unittest
 
 from .dbspec_cases import check_normalize

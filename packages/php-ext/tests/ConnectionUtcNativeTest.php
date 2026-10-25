@@ -36,7 +36,7 @@ final class ConnectionUtcNativeTest extends TestCase
         }
     }
 
-    // Requirements: CFG-2. This case verifies the C connection factory, not only the PHP library path.
+    // Requirements: CFG-2, DIA-57, DSL-141. This case verifies the C connection factory, not only the PHP library path.
     #[Medium]
     #[DataProvider('connections')]
     public function testNativeConnectionsUseUtc(string $driver, string $zone): void

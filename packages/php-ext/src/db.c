@@ -597,6 +597,12 @@ static bool done_model(zval *self, void *ctx, zend_long start, zval *err)
         array_init(&tables);
     }
     zval *active = active_for(self);
+    if (EG(exception) != NULL) {
+        zval_ptr_dtor(&args);
+        zval_ptr_dtor(&tables);
+        zval_ptr_dtor(&kind);
+        return false;
+    }
     if (active != NULL) {
         ZVAL_COPY(&tx, rd(active, "number"));
     } else {
@@ -2838,6 +2844,7 @@ static bool acquire_row_lock(zval *self, zval *mode, zval *frame)
     }
     zval tx, no_tables;
     zval *active = frame != NULL ? frame : active_for(self);
+    if (EG(exception) != NULL) return false;
     zval *number = active == NULL ? NULL : rd(active, "number");
     if (number == NULL) {
         ZVAL_NULL(&tx);
@@ -3786,6 +3793,9 @@ ZEND_METHOD(Polyspec_Orm_Db, close)
     zval cleanup;
     ZVAL_UNDEF(&cleanup);
     zval *frame = active_for(self);
+    if (EG(exception) != NULL) {
+        RETURN_THROWS();
+    }
     if (frame != NULL && !as_bool(rd(frame, "finished")) && !finish_tx(self, frame, false)) {
         take_exception(&cleanup);
     }
@@ -4090,6 +4100,9 @@ static bool execute_impl(zval *self, zval *step, zval *params)
 {
     zval frame;
     zval *active = active_for(self);
+    if (EG(exception) != NULL) {
+        return false;
+    }
     if (active != NULL) {
         ZVAL_COPY(&frame, active);
     } else {
@@ -4274,7 +4287,12 @@ ZEND_METHOD(Polyspec_Orm_Db, acquireSQLiteRowLock)
     ZEND_PARSE_PARAMETERS_END();
     zval m;
     ZVAL_STR_COPY(&m, mode);
-    bool ok = acquire_row_lock(ZEND_THIS, &m, active_for(ZEND_THIS));
+    zval *frame = active_for(ZEND_THIS);
+    if (EG(exception) != NULL) {
+        zval_ptr_dtor(&m);
+        RETURN_THROWS();
+    }
+    bool ok = acquire_row_lock(ZEND_THIS, &m, frame);
     zval_ptr_dtor(&m);
     if (!ok) {
         RETURN_THROWS();
@@ -4383,17 +4401,40 @@ static void frames_pop(void)
     }
 }
 
-/* Db::activeFor: the innermost active transaction of the connection's state, or NULL. The pointer is into the frame stack. */
+static bool same_flow(zval *frame, zval *flow)
+{
+    zval *owner = rd(frame, "flow");
+    if (owner == NULL || Z_TYPE_P(owner) != Z_TYPE_P(flow)) return false;
+    if (Z_TYPE_P(flow) == IS_NULL) return true;
+    return Z_TYPE_P(flow) == IS_OBJECT && Z_OBJ_P(owner) == Z_OBJ_P(flow);
+}
+
+static bool current_flow(zval *flow)
+{
+    ZVAL_UNDEF(flow);
+    return scall("Fiber::getCurrent", flow, 0, NULL);
+}
+
+/* Db::activeFor: the innermost active transaction of the connection's state and execution flow. */
 static zval *active_for(zval *db)
 {
+    zval flow;
+    if (!current_flow(&flow)) return NULL;
     zval *state = rd(db, "state");
     for (size_t i = g_nframes; i > 0; i--) {
         zval *fdb = rd(&g_frames[i - 1], "db");
         zval *fstate = rd(fdb, "state");
         if (Z_OBJ_P(fstate) == Z_OBJ_P(state)) {
+            if (!same_flow(&g_frames[i - 1], &flow)) {
+                zval_ptr_dtor(&flow);
+                db_throw_orm("CONFIG", "transaction connection is active in another execution flow");
+                return NULL;
+            }
+            zval_ptr_dtor(&flow);
             return &g_frames[i - 1];
         }
     }
+    zval_ptr_dtor(&flow);
     return NULL;
 }
 
@@ -5555,6 +5596,9 @@ static bool transaction_impl(zval *self, zval *fn, dbs_transaction_callback call
         }
     }
     zval *outer = active_for(self);
+    if (EG(exception) != NULL) {
+        return false;
+    }
     bool has_outer = outer != NULL;
     zval outer_copy;
     if (has_outer) {
@@ -5651,7 +5695,9 @@ bool db_transaction_native(zval *connection, dbs_transaction_callback callback, 
         db_throw_orm("INTERNAL", "native transaction callback is missing");
         return false;
     }
-    if (active_for(connection) != NULL) {
+    zval *frame = active_for(connection);
+    if (EG(exception) != NULL) return false;
+    if (frame != NULL) {
         return callback(connection, context, result) && EG(exception) == NULL;
     }
     return transaction_impl(connection, NULL, callback, context, "", false, 0, 0, NULL, result);
@@ -5672,6 +5718,7 @@ ZEND_METHOD(Polyspec_Orm_Db, transactionNumber)
 {
     ZEND_PARSE_PARAMETERS_NONE();
     zval *frame = active_for(ZEND_THIS);
+    if (EG(exception) != NULL) RETURN_THROWS();
     if (frame == NULL) {
         RETURN_NULL();
     }
@@ -5685,6 +5732,7 @@ ZEND_METHOD(Polyspec_Orm_Db, activeFor)
         Z_PARAM_OBJECT_OF_CLASS(db, cls("Polyspec\\Orm\\Db"))
     ZEND_PARSE_PARAMETERS_END();
     zval *frame = active_for(db);
+    if (EG(exception) != NULL) RETURN_THROWS();
     if (frame == NULL) {
         RETURN_NULL();
     }
@@ -5709,6 +5757,10 @@ ZEND_METHOD(Polyspec_Orm_Db, resolve)
         ZVAL_COPY(&c, conn);
         zend_hash_next_index_insert(Z_ARRVAL(pair), &c);
         zval *frame = active_for(conn);
+        if (EG(exception) != NULL) {
+            zval_ptr_dtor(&pair);
+            RETURN_THROWS();
+        }
         zval f;
         if (frame != NULL) {
             ZVAL_COPY(&f, frame);
@@ -5717,12 +5769,24 @@ ZEND_METHOD(Polyspec_Orm_Db, resolve)
         }
         zend_hash_next_index_insert(Z_ARRVAL(pair), &f);
     } else {
-        if (g_nframes == 0) {
+        zval flow;
+        if (!current_flow(&flow)) {
+            zval_ptr_dtor(&pair);
+            RETURN_THROWS();
+        }
+        zval *frame = NULL;
+        for (size_t i = g_nframes; i > 0; i--) {
+            if (same_flow(&g_frames[i - 1], &flow)) {
+                frame = &g_frames[i - 1];
+                break;
+            }
+        }
+        zval_ptr_dtor(&flow);
+        if (frame == NULL) {
             zval_ptr_dtor(&pair);
             db_throw_orm("CONFIG", "the model has no connection; use connect or run it inside a transaction");
             RETURN_THROWS();
         }
-        zval *frame = &g_frames[g_nframes - 1];
         zval db;
         ZVAL_COPY(&db, rd(frame, "db"));
         zend_hash_next_index_insert(Z_ARRVAL(pair), &db);
@@ -5741,7 +5805,17 @@ ZEND_METHOD(Polyspec_Orm_Db, inTransaction)
         Z_PARAM_OBJECT(fn)
     ZEND_PARSE_PARAMETERS_END();
     if (conn == NULL) {
-        if (g_nframes == 0) {
+        zval flow;
+        if (!current_flow(&flow)) RETURN_THROWS();
+        bool active = false;
+        for (size_t i = g_nframes; i > 0; i--) {
+            if (same_flow(&g_frames[i - 1], &flow)) {
+                active = true;
+                break;
+            }
+        }
+        zval_ptr_dtor(&flow);
+        if (!active) {
             db_throw_orm("CONFIG", "the model has no connection; use connect or run it inside a transaction");
             RETURN_THROWS();
         }
@@ -5777,7 +5851,9 @@ ZEND_METHOD(Polyspec_Orm_Db, utils)
 ZEND_METHOD(Polyspec_Orm_Db, stats)
 {
     ZEND_PARSE_PARAMETERS_NONE();
-    zend_long busy = active_for(ZEND_THIS) != NULL ? 1 : 0;
+    zval *frame = active_for(ZEND_THIS);
+    if (EG(exception) != NULL) RETURN_THROWS();
+    zend_long busy = frame != NULL ? 1 : 0;
     zval args[4];
     ZVAL_LONG(&args[0], 1);
     ZVAL_LONG(&args[1], 1);

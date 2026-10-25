@@ -6,6 +6,7 @@
 // Usage: node --test packages/dbspec-language/tests/editor.test.mjs (after the build)
 import assert from 'node:assert/strict';
 import { caseTest } from '../../../tests/testcase.mts';
+import { describe } from 'node:test';
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import * as language from '../dist/index.js';
@@ -34,21 +35,24 @@ vector('every editor fixture has its expected output and the reverse', () => {
   assert.ok(dbsNames.length >= 4, 'at least four fixtures');
 });
 
-for (const name of dbsNames) {
-  vector(`editor fixture ${name}`, () => {
-    const text = readFileSync(`${dir}${name}.dbs`, 'utf8');
-    const expected = JSON.parse(readFileSync(`${dir}${name}.json`, 'utf8'));
-    const doc = openDocument(text, { set: {} });
-    assert.deepEqual(doc.diagnostics, expected.diagnostics.map(d => ({ rule: d.rule, message: d.message, range: range(d.range) })));
-    assert.deepEqual(doc.tokens, expected.tokens.map(t => ({ class: t.class, range: range(t.range) })));
-    assert.deepEqual(doc.folding, expected.folding);
-    const formatted = doc.format();
-    if (expected.formatted === null) {
-      assert.equal(formatted.text, null);
-      assert.deepEqual(formatted.diagnostics, doc.diagnostics);
-    } else {
-      assert.deepEqual(formatted, { text: expected.formatted, diagnostics: [] });
-      assert.equal(openDocument(expected.formatted, { set: {} }).format().text, expected.formatted, 'the formatted text is canonical');
-    }
-  });
-}
+// Requirements: ORE-2, ORE-12, ORE-13, ORE-14, ORE-15.
+describe('language service editor fixture outputs', () => {
+  for (const name of dbsNames) {
+    vector(`editor fixture ${name}`, () => {
+      const text = readFileSync(`${dir}${name}.dbs`, 'utf8');
+      const expected = JSON.parse(readFileSync(`${dir}${name}.json`, 'utf8'));
+      const doc = openDocument(text, { set: {} });
+      assert.deepEqual(doc.diagnostics, expected.diagnostics.map(d => ({ rule: d.rule, message: d.message, range: range(d.range) })));
+      assert.deepEqual(doc.tokens, expected.tokens.map(t => ({ class: t.class, range: range(t.range) })));
+      assert.deepEqual(doc.folding, expected.folding);
+      const formatted = doc.format();
+      if (expected.formatted === null) {
+        assert.equal(formatted.text, null);
+        assert.deepEqual(formatted.diagnostics, doc.diagnostics);
+      } else {
+        assert.deepEqual(formatted, { text: expected.formatted, diagnostics: [] });
+        assert.equal(openDocument(expected.formatted, { set: {} }).format().text, expected.formatted, 'the formatted text is canonical');
+      }
+    });
+  }
+});

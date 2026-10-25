@@ -548,6 +548,7 @@ final class ModelTest extends TestCase
 
     private static function caseTransactions(Db $db, string $dsn): void
     {
+        // Requirements: PLN-19.
         // A transaction runs only through transaction(): Db has no public method that begins, commits or rolls one
         // back. The test of DSL-124 (docs/spec/dsl.md "Transactions").
         $public = array_map(
@@ -943,7 +944,8 @@ final class ModelTest extends TestCase
     private static function lockedRead(\Polyspec\Orm\Db $db, string $model): void
     {
         $db->transaction(static function () use ($db, $model): void {
-            (new $model())($db)->forUpdate()->get();
+            // Keep the same parameterized SELECT across transactions and client handles.
+            (new $model())($db)->seq(1)->forUpdate()->get();
         }, retry: 0);
     }
 
@@ -1050,6 +1052,7 @@ final class ModelTest extends TestCase
         }
     }
 
+    // Requirements: INT-58.
     #[DataProvider('drivers')]
     public function testSchemaEmpty(string $driver): void
     {
@@ -1125,7 +1128,7 @@ final class ModelTest extends TestCase
     // PgBouncer's orm_test_single is bound to the database of ORM_TEST_POSTGRES_DSN, so it cannot reach the case
     // database. So this case creates only one table named after itself (case_name()) in that database, and removes only
     // that table at the end (even on failure). The table's model is generated from the dbspec document made during the
-    // run. Requirements: CFG-27, CFG-29.
+    // run. Requirements: CFG-27, CFG-28, CFG-29.
     public function testStatementTimeoutThroughAPooler(): void
     {
         $probeSetup = null;
@@ -1165,6 +1168,11 @@ final class ModelTest extends TestCase
             );
             $holder->rollBack();
             $plain = \Polyspec\Orm\Tests\PoolerProbe\connect($single, new Config());
+            // Both client sessions issue the same locking query repeatedly through PgBouncer.
+            for ($i = 0; $i < 6; $i++) {
+                self::lockedRead($bounded, $model);
+                self::lockedRead($plain, $model);
+            }
             // Another process holds the rows for a declared 400 ms, past the 200 ms
             // bound of the other connection, so the plain read waits that long.
             $process = self::holdRowsFor(self::$targets['postgres'], $table, 400);
@@ -1237,7 +1245,7 @@ final class ModelTest extends TestCase
     // model uses the connection it is connected to and no other, and a model
     // without a connection inside a transaction uses the transaction.
     #[DataProvider('serverDrivers')]
-    // Requirements: CFG-21, CFG-22.
+    // Requirements: CFG-21, CFG-22, CFG-23, CFG-25.
     public function testPrimaryAndReplica(string $driver): void
     {
         $env = strtoupper($driver);
@@ -1321,6 +1329,7 @@ final class ModelTest extends TestCase
     // If the MySQL local value reset at the end of the transaction fails, commit and rollback report that error.
     // A MySQL user variable remains after COMMIT and ROLLBACK.
     // (mysql.context.user_variable_session_scope).
+    // Requirements: INT-51.
     public function testFailedLocalReset(): void
     {
         [, $pdoDsn, $user, $password] = Orm::parseDsn(self::$targets['mysql']);
@@ -1346,6 +1355,7 @@ final class ModelTest extends TestCase
 
     // If the MySQL RELEASE_LOCK at the end of the transaction fails, or does not release the lock, commit and
     // rollback report that error. A named lock that is not released remains on the connection.
+    // Requirements: INT-50.
     public function testFailedLockRelease(): void
     {
         [, $pdoDsn, $user, $password] = Orm::parseDsn(self::$targets['mysql']);
@@ -1491,6 +1501,7 @@ final class ModelTest extends TestCase
     }
 
     // styled value states
+    // Requirements: COD-20.
     #[DataProvider('drivers')]
     public function testStyledValueStates(string $driver): void
     {
@@ -1500,6 +1511,7 @@ final class ModelTest extends TestCase
     }
 
     // codec columns
+    // Requirements: COD-11, COD-12, COD-38.
     #[DataProvider('drivers')]
     public function testCodecColumns(string $driver): void
     {
@@ -1520,6 +1532,7 @@ final class ModelTest extends TestCase
     }
 
     // utilities
+    // Requirements: INT-55, INT-57, INT-58, INT-59, INT-61.
     #[DataProvider('drivers')]
     public function testUtilities(string $driver): void
     {
@@ -1550,6 +1563,7 @@ final class ModelTest extends TestCase
     }
 
     // bind limit splitting
+    // Requirements: PRT-41, PRT-76.
     #[DataProvider('drivers')]
     public function testBindLimitSplitting(string $driver): void
     {
@@ -1559,6 +1573,7 @@ final class ModelTest extends TestCase
     }
 
     // insert parts
+    // Requirements: DSL-104, INT-35, PRT-41.
     #[DataProvider('drivers')]
     public function testInsertParts(string $driver): void
     {

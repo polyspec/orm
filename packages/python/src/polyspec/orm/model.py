@@ -17,7 +17,7 @@ from polyspec.orm import codes
 from polyspec.orm.core import Core
 from polyspec.orm.engine.model import RuntimeModel, model_of_manifest
 from polyspec.orm.errors import OrmError
-from polyspec.orm.keys import key_text
+from polyspec.orm.keys import Key, key_text
 from polyspec.orm.names import parse_chain, parse_order, snake, split_pair
 from polyspec.orm.styled_value import StyledValue
 
@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from polyspec.orm.database import Db
     from polyspec.orm.group_rows import GroupRows
 
-__all__ = ["Collection", "EntityDef", "Model", "Page", "register_model"]
+__all__ = ["Collection", "EntityDef", "Key", "Model", "Page", "register_model"]
 
 
 class EntityDef:
@@ -84,17 +84,17 @@ class Collection:
         self._items = {}
         for item in items or ():
             if isinstance(item, dict):
-                self._items[item["key"]] = item
+                self._items[key_text(item["key"])] = item
             else:
                 self._items[len(self._items)] = {"key": len(self._items), "value": item}
 
-    def put(self, key, value, fetched=None) -> None:
+    def put(self, key: Key, value, fetched=None) -> None:
         self._items[key_text(key)] = {"key": key, "value": value, "fetched": fetched}
 
-    def get(self, key) -> Model | None:
+    def get(self, key: Key) -> Model | None:
         return self._items.get(key_text(key), {}).get("value")
 
-    def has(self, key) -> bool:
+    def has(self, key: Key) -> bool:
         return key_text(key) in self._items
 
     def first(self) -> Model | None:
@@ -106,16 +106,16 @@ class Collection:
     def length(self) -> int:
         return len(self._items)
 
-    def keys(self) -> list:
+    def keys(self) -> list[Key]:
         return [item["key"] for item in self._items.values()]
 
     def values(self) -> list:
         return [item["value"] for item in self._items.values()]
 
-    def entries(self) -> list:
+    def entries(self) -> list[tuple[Key, Model]]:
         return [(item["key"], item["value"]) for item in self._items.values()]
 
-    def fetched(self, key):
+    def fetched(self, key: Key):
         return self._items.get(key_text(key), {}).get("fetched")
 
     def fetched_values(self) -> list:

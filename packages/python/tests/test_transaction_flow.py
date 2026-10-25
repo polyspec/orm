@@ -51,6 +51,7 @@ class TransactionFlowTest(unittest.TestCase):
         self.db.transaction(body, {"retry": 0})
         self.assertEqual(seen, {"inside": 0, "error": "CONFIG"})
 
+    # Requirements: PLN-19.
     def test_begin_commit_and_rollback_are_not_public(self):
         public = {name.lower() for name in dir(Db) if not name.startswith("_")}
         self.assertIn("transaction", public)

@@ -1,6 +1,7 @@
 # The position cases of tests/dbspec/cases.json: one test for each case of the section, named by the case id
 # (dbspec_cases.check_positions).
 # Run: python -m packages.python.tests.test_dbspec_positions
+# Requirements: ORES-72.
 import unittest
 
 from .dbspec_cases import check_positions

@@ -26,6 +26,28 @@ final class TransactionFailureTest extends TestCase
         $this->assertCloseDuringTransactionRollsBack($pdo, static fn(): array => $pdo->statements);
     }
 
+    // Requirements: INT-47.
+    public function testAnotherFiberCannotUseAnActiveTransactionConnection(): void
+    {
+        $db = new Db(new \PDO('sqlite::memory:'), 'sqlite', new Config(), new DateTimeZone('UTC'));
+        $fiber = new \Fiber(static function () use ($db): void {
+            $db->transaction(static function (): void {
+                \Fiber::suspend();
+            }, retry: 0);
+        });
+        $fiber->start();
+        $error = null;
+        try {
+            $db->transaction(static fn() => null, retry: 0);
+        } catch (OrmException $caught) {
+            $error = $caught;
+        } finally {
+            $fiber->resume();
+            $db->close();
+        }
+        self::assertSame(Code::CONFIG, $error?->code_);
+    }
+
     public function testStatementFailureKeepsItsDriverCause(): void
     {
         $pdo = new ModelTestFailingPdo('sqlite::memory:');

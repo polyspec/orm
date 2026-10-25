@@ -578,26 +578,30 @@ class Planner:
                     )
 
     def _render_order(self, b: _Builder, root: _Scope, q: dict) -> str:
-        order = q.get("order") or []
-        if not order:
-            return ""
         parts = []
-        for o in order:
-            if o.get("random"):
-                parts.append(self.d.random())
-                continue
-            if o.get("fn"):
-                target = self._column_function(b, root, o["column"], o["fn"])
-            else:
-                target = self._qcol(root, o["column"])
-            # A NOT NULL column keeps its btree order; one that can be NULL sorts NULL first ascending and last descending.
-            nulls = (
-                self.d.nulls_order(bool(o.get("desc")))
-                if field_of(root.ent, o["column"]).nullable
-                else ""
-            )
-            parts.append(target + (" DESC" if o.get("desc") else " ASC") + nulls)
-        return f" ORDER BY {', '.join(parts)}"
+
+        def append_order(scope: _Scope, query: dict) -> None:
+            for o in query.get("order") or []:
+                if o.get("random"):
+                    parts.append(self.d.random())
+                    continue
+                if o.get("fn"):
+                    target = self._column_function(b, scope, o["column"], o["fn"])
+                else:
+                    target = self._qcol(scope, o["column"])
+                # A NOT NULL column keeps its btree order; one that can be NULL sorts NULL first ascending and last descending.
+                nulls = (
+                    self.d.nulls_order(bool(o.get("desc")))
+                    if field_of(scope.ent, o["column"]).nullable
+                    else ""
+                )
+                parts.append(target + (" DESC" if o.get("desc") else " ASC") + nulls)
+            for join in query.get("joins") or []:
+                child = scope.joins[join["rel"]]
+                append_order(child, child.q)
+
+        append_order(root, q)
+        return f" ORDER BY {', '.join(parts)}" if parts else ""
 
     def _render_group_by(self, root: _Scope, q: dict) -> str:
         return ", ".join(self._qcol(root, name) for name in q.get("group_by") or [])
@@ -809,7 +813,10 @@ class Planner:
                     f" AND {self._qcol(join_scope, join_scope.ent.soft_delete)} IS NULL"
                 )
             keyword = " LEFT JOIN " if join["kind"] == "left" else " INNER JOIN "
-            sql += f"{keyword}{b.table(join_scope.ent)} AS {self.d.quote(join_scope.alias)} ON {condition}"
+            sql += f"{keyword}{b.table(join_scope.ent)} AS {self.d.quote(join_scope.alias)}"
+            if join_scope.q.get("force_index"):
+                sql += self.d.force_index(join_scope.q["force_index"])
+            sql += f" ON {condition}"
             if (join["query"].get("on") or {}).get("items"):
                 sql += f" AND {self._render_group(b, join_scope, join['query']['on'], True)}"
             sql += self._render_joins(b, join_scope)

@@ -37,6 +37,18 @@ final class DsnTest extends TestCase
         self::assertSame([['busy_timeout', '250'], ['journal_mode', 'WAL']], $pragmas, 'sqlite pragmas');
     }
 
+    // Requirements: CFG-26.
+    public function testSqliteDsnRequiresAbsolutePath(): void
+    {
+        try {
+            Orm::parseDsn('sqlite://relative.sqlite');
+            self::fail('SQLite accepted a relative database path');
+        } catch (OrmException $error) {
+            self::assertSame(Code::CONFIG, $error->code_);
+        }
+        self::assertSame('sqlite', Orm::parseDsn('sqlite:///tmp/orm-example.sqlite')[0]);
+    }
+
     // Requirements: CFG-6.
     public function testNegativeStatementTimeoutIsRejectedBeforeConnecting(): void
     {

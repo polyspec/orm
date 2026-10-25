@@ -6,7 +6,7 @@ import { resolve } from 'node:path';
 import { checkParity } from '../../../node_modules/@polyspec/kit/dist/parity.mjs';
 import { caseTest, COMPUTE } from '../../testcase.mts';
 import { apiProblems, readParity, type Parity } from './api.mts';
-import { readErrorCatalog } from './manifest.mts';
+import { allRules, readErrorCatalog, readManifest } from './manifest.mts';
 
 const root = resolve(import.meta.dirname, '../../..');
 
@@ -68,9 +68,9 @@ const clientSurfaceRequirements: Array<[string, string[]]> = [
   ['client-schema-utils-register', ['INT-54']],
   ['client-page', ['INT-64']],
   ['collection', ['INT-62']],
-  ['collection-get', ['INT-80']],
+  ['collection-get', ['INT-11', 'INT-80']],
   ['collection-first', ['INT-62']],
-  ['collection-keys', ['INT-81']],
+  ['collection-keys', ['INT-11', 'INT-81']],
   ['collection-to-array', ['INT-84']],
   ['collection-delete', ['INT-37']],
   ['collection-connect', ['INT-85']],
@@ -147,6 +147,77 @@ caseTest('the named client API units cite their bilingual interface requirements
         );
       }
     }
+  }
+});
+
+// Requirements: ORES-70.
+caseTest('Dbspec operations outside parse do not take or return declaration positions', COMPUTE, () => {
+  const manifest = readManifest(resolve(root, 'contracts/interfaces.json'));
+  const methods = [
+    'Dbspec.introspect',
+    'Dbspec.importMermaid',
+    'Dbspec.emit',
+    'Dbspec.compareSchemas',
+    'Dbspec.diff',
+    'Dbspec.render',
+    'Dbspec.manifest',
+  ];
+  const rules = new Map(allRules(manifest).map(rule => [rule.id, rule]));
+  for (const id of methods) {
+    const rule = rules.get(id);
+    assert.ok(rule, `${id} has no public interface rule`);
+    assert.deepEqual(
+      Object.keys(rule.native ?? {}).sort(),
+      ['go', 'php', 'php-extension', 'python', 'rust', 'typescript'],
+      `${id} must declare all six client surfaces`,
+    );
+    for (const [runtime, native] of Object.entries(rule.native ?? {})) {
+      assert.doesNotMatch(
+        native.signature ?? '',
+        /positions?/i,
+        `${runtime}/${id} signature exposes a declaration position`,
+      );
+    }
+  }
+});
+
+// Requirements: INT-4, INT-9, INT-10.
+caseTest('public text, list and result forms map to each host language', COMPUTE, () => {
+  const manifest = readManifest(resolve(root, 'contracts/interfaces.json'));
+  const rules = new Map(allRules(manifest).map(rule => [rule.id, rule]));
+  const text = rules.get('Dbspec.emit');
+  const creates = rules.get('Model.creates');
+  assert.ok(text, 'Dbspec.emit has no public interface rule');
+  assert.ok(creates, 'Model.creates has no public interface rule');
+
+  const textReturns: Record<string, string> = {
+    go: 'string',
+    php: 'string',
+    'php-extension': 'string',
+    rust: 'String',
+    typescript: 'string',
+    python: 'str',
+  };
+  const listAndResultForms: Record<string, { list: string; result: string }> = {
+    go: { list: '[]*{Entity}Model', result: '(int64, error)' },
+    php: { list: 'array $rows', result: '): int' },
+    'php-extension': { list: 'array $rows', result: '): int' },
+    rust: { list: 'Vec<Self>', result: 'polyspec_orm::Result<u64>' },
+    typescript: { list: 'readonly this[]', result: 'Promise<number>' },
+    python: { list: 'list[Self]', result: ') -> int' },
+  };
+
+  for (const [implementation, result] of Object.entries(textReturns)) {
+    const signature = text.native?.[implementation]?.signature ?? '';
+    assert.ok(
+      signature.endsWith(`: ${result}`) || signature.endsWith(`) ${result}`) || signature.endsWith(`-> ${result}`),
+      `${implementation} Dbspec.emit does not return its native text form`,
+    );
+  }
+  for (const [implementation, forms] of Object.entries(listAndResultForms)) {
+    const signature = creates.native?.[implementation]?.signature ?? '';
+    assert.ok(signature.includes(forms.list), `${implementation} Model.creates does not accept its native list form`);
+    assert.ok(signature.includes(forms.result), `${implementation} Model.creates does not expose its native result form`);
   }
 });
 

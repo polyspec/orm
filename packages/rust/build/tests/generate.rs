@@ -73,7 +73,7 @@ fn generate_with_set(dir: PathBuf, source: &str, set: PathBuf) -> Result<String,
 }
 
 #[test]
-// The test of DSL-38, DSL-41, DSL-156 (docs/spec).
+// The test of DSL-38, DSL-41, DSL-117, DSL-156, INT-27, PLN-40 (docs/spec).
 fn generates_called_methods() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let text = generate(

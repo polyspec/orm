@@ -41,13 +41,52 @@ def composite_value_of(entry):
 
 
 class CollectionIdentityTest(unittest.TestCase):
+    def test_native_key_values_keep_their_types_and_reject_unsupported_values(self):
+        # Requirements: INT-11.
+        values = [
+            True,
+            7,
+            "text",
+            b"bytes",
+            datetime.fromisoformat("2026-10-18T09:30:00.123456+00:00"),
+        ]
+        collection = Collection()
+        for value in values:
+            collection.put(value, {"key": value})
+
+        actual = collection.keys()
+        self.assertEqual(actual, values)
+        self.assertEqual(
+            [type(value) for value in actual], [type(value) for value in values]
+        )
+        for value in values:
+            self.assertEqual(collection.get(value)["key"], value)
+
+        invalid_values = (
+            None,
+            1.25,
+            object(),
+            [],
+            {},
+            bytearray(b"bytes"),
+            1 << 63,
+            -(1 << 63) - 1,
+        )
+        for value in invalid_values:
+            with self.subTest(value=value), self.assertRaises(OrmError) as raised:
+                collection.put(value, {})
+            self.assertEqual(raised.exception.code, "CODEC_DECODE")
+
     def test_every_fixture_key_has_its_own_identity(self):
-        # Requirements: PRT-35.
+        # Requirements: INT-11, PRT-35.
         fixture = load_fixture()
         collection = Collection()
         distinct = [entry for entry in fixture["keys"] if "same_as" not in entry]
+        expected_keys = []
         for entry in distinct:
-            collection.put(value_of(entry), {"name": entry["name"]})
+            key = value_of(entry)
+            collection.put(key, {"name": entry["name"]})
+            expected_keys.append(key)
         self.assertEqual(
             collection.length,
             len(distinct),
@@ -58,6 +97,11 @@ class CollectionIdentityTest(unittest.TestCase):
                 collection.get(value_of(entry))["name"],
                 entry.get("same_as", entry["name"]),
             )
+        self.assertEqual(collection.keys(), expected_keys)
+        self.assertEqual(
+            [type(value) for value in collection.keys()],
+            [type(value) for value in expected_keys],
+        )
 
     def test_a_null_key_is_codec_decode(self):
         # Requirements: PRT-35.

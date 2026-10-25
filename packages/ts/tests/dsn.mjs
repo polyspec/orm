@@ -6,6 +6,16 @@ import { openDriver, parseDsn } from '../dist/driver.js';
 import { caseTest, cases, COMPUTE } from '../../../tests/testcase.mts';
 
 const run = cases();
+// Requirements: CFG-26.
+await run.run('dsn/sqlite-requires-absolute-path', COMPUTE, async () => {
+  for (const dsn of ['sqlite://relative.sqlite', 'sqlite:///']) {
+    let code = null;
+    try { await Db.connect(dsn); } catch (error) { code = error?.code; }
+    if (code !== 'CONFIG') throw new Error(`SQLite DSN ${dsn} returned ${code ?? 'no error'}, expected CONFIG`);
+  }
+  if (parseDsn('sqlite:///tmp/orm-example.sqlite').driver !== 'sqlite') throw new Error('absolute SQLite path was rejected');
+});
+
 await run.run('dsn/invalid', COMPUTE, async () => {
 
   for (const dsn of ['mysqlx://localhost/db', 'postgresql://localhost/db', 'sqlite://relative.db', 'localhost/db', 'mysql://root@localhost/orm_example?timezone=Nowhere/City', 'sqlite:///tmp/x.sqlite?_txlock=immediate', 'sqlite:///tmp/x.sqlite?_txlock=deferred', 'sqlite:///tmp/x.sqlite?_pragma=busy_timeout(soon)']) {

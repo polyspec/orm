@@ -2933,7 +2933,7 @@
   },
   "packages/python/src/polyspec/orm/keys.py::key_text": {
     "exported": true,
-    "signature": "def key_text(value) -\u003e str"
+    "signature": "def key_text(value: object) -\u003e str"
   },
   "packages/python/src/polyspec/orm/keys.py::scalar_key": {
     "exported": true,
@@ -3085,11 +3085,11 @@
   },
   "packages/python/src/polyspec/orm/model.py::Collection.entries": {
     "exported": true,
-    "signature": "def entries(self) -\u003e list"
+    "signature": "def entries(self) -\u003e list[tuple[Key, Model]]"
   },
   "packages/python/src/polyspec/orm/model.py::Collection.fetched": {
     "exported": true,
-    "signature": "def fetched(self, key)"
+    "signature": "def fetched(self, key: Key)"
   },
   "packages/python/src/polyspec/orm/model.py::Collection.fetched_values": {
     "exported": true,
@@ -3101,15 +3101,15 @@
   },
   "packages/python/src/polyspec/orm/model.py::Collection.get": {
     "exported": true,
-    "signature": "def get(self, key) -\u003e Model | None"
+    "signature": "def get(self, key: Key) -\u003e Model | None"
   },
   "packages/python/src/polyspec/orm/model.py::Collection.has": {
     "exported": true,
-    "signature": "def has(self, key) -\u003e bool"
+    "signature": "def has(self, key: Key) -\u003e bool"
   },
   "packages/python/src/polyspec/orm/model.py::Collection.keys": {
     "exported": true,
-    "signature": "def keys(self) -\u003e list"
+    "signature": "def keys(self) -\u003e list[Key]"
   },
   "packages/python/src/polyspec/orm/model.py::Collection.length": {
     "exported": true,
@@ -3117,7 +3117,7 @@
   },
   "packages/python/src/polyspec/orm/model.py::Collection.put": {
     "exported": true,
-    "signature": "def put(self, key, value, fetched=None) -\u003e None"
+    "signature": "def put(self, key: Key, value, fetched=None) -\u003e None"
   },
   "packages/python/src/polyspec/orm/model.py::Collection.to_array": {
     "exported": true,

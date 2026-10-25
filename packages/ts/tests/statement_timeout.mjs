@@ -59,7 +59,8 @@ async function dropPoolerTable(dsn, table) {
 }
 
 async function lockedReadModel(db, ModelClass) {
-  await db.transaction(async () => { await new ModelClass().forUpdate().get(); }, { retry: 0 });
+  // Keep the same parameterized SELECT across transactions and client handles.
+  await db.transaction(async () => { await new ModelClass().seq(1).forUpdate().get(); }, { retry: 0 });
 }
 
 async function seed(db) {
@@ -160,7 +161,7 @@ caseTest('connection/statement-timeout-canceled', DATABASE, async ({ step }) => 
   }
 });
 
-// Requirements: CFG-27, CFG-29. This verifies the pooler applies the tracked timeout
+// Requirements: CFG-27, CFG-28, CFG-29. This verifies the pooler applies the tracked timeout
 // to the bounded client, while a client without a timeout keeps the server default.
 caseTest('connection/statement-timeout-through-pooler', DATABASE, async ({ step }) => {
   const single = process.env.ORM_TEST_PGBOUNCER_SINGLE_DSN;
@@ -188,6 +189,11 @@ caseTest('connection/statement-timeout-through-pooler', DATABASE, async ({ step 
     step(`table ${table} created`);
     bounded = await Db.connectSchema(single, schema, { statementTimeoutMs: 200 });
     plain = await Db.connectSchema(single, schema);
+    // Both client sessions issue the same locking query repeatedly through PgBouncer.
+    for (let i = 0; i < 6; i++) {
+      await lockedReadModel(bounded, Probe);
+      await lockedReadModel(plain, Probe);
+    }
     release = await holdPoolerRows(base, table);
     try {
       await lockedReadModel(bounded, Probe);
@@ -249,5 +255,64 @@ caseTest('connection/statement-timeout-through-pooler', DATABASE, async ({ step 
   }
   if (cleanupErrors.length && primaryFailure) throw new AggregateError([primaryFailure, ...cleanupErrors], 'pooler timeout test and cleanup failed', { cause: primaryFailure });
   if (cleanupErrors.length) throw new AggregateError(cleanupErrors, 'pooler timeout test cleanup failed', { cause: cleanupErrors[0] });
+  if (primaryFailure) throw primaryFailure;
+});
+
+// Requirements: CFG-31. This verifies that PgBouncer forwards a client cancel
+// request to the server connection running the blocked statement.
+caseTest('connection/cancellation-through-pooler', DATABASE, async ({ step }) => {
+  const single = process.env.ORM_TEST_PGBOUNCER_SINGLE_DSN;
+  const base = process.env.ORM_TEST_POSTGRES_DSN;
+  if (!single) throw new Error('ORM_TEST_PGBOUNCER_SINGLE_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers');
+  if (!base) throw new Error('ORM_TEST_POSTGRES_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers');
+  const table = caseName();
+  const probeText = `dbspec 1 pooler_probe\n\ntable ${table} {\n  seq i64 identity\n  label varchar(32)\n  primary key (seq)\n}\n`;
+  const Probe = documentModel(probeText);
+  const schema = schemaOf(probeText);
+  let setup;
+  let client;
+  let release;
+  let primaryFailure;
+  const cleanupErrors = [];
+  try {
+    setup = await Db.connect(single);
+    await setup.utils().schema().install(schema);
+    for (let i = 0; i < 4; i++) {
+      const row = new Probe().connect(setup);
+      row[CORE].setValue('label', `probe-${i}`);
+      await row.create();
+    }
+    client = await Db.connectSchema(single, schema);
+    release = await holdPoolerRows(base, table);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 100);
+    let cancellation;
+    try {
+      await lockedReadModel(client.withSignal(controller.signal), Probe);
+    } catch (error) {
+      cancellation = error;
+    } finally {
+      clearTimeout(timer);
+    }
+    if (cancellation?.code !== 'CANCELED') {
+      throw new Error(`the statement through PgBouncer failed with ${cancellation?.code ?? 'no error'}, expected CANCELED`);
+    }
+    await release();
+    release = undefined;
+    const count = await new Probe().connect(client).getCount();
+    if (count !== 4) throw new Error(`the connection returned ${count} rows after cancellation, expected 4`);
+    step('PgBouncer forwarded cancellation and the client connection remained usable');
+  } catch (error) {
+    primaryFailure = error;
+  } finally {
+    await collectCleanupErrors(cleanupErrors, [
+      release && (() => release()),
+      client && (() => client.close()),
+      setup && (() => setup.close()),
+    ]);
+    try { await dropPoolerTable(single, table); step(`table ${table} dropped`); } catch (error) { cleanupErrors.push(error); }
+  }
+  if (cleanupErrors.length && primaryFailure) throw new AggregateError([primaryFailure, ...cleanupErrors], 'pooler cancellation test and cleanup failed', { cause: primaryFailure });
+  if (cleanupErrors.length) throw new AggregateError(cleanupErrors, 'pooler cancellation test cleanup failed', { cause: cleanupErrors[0] });
   if (primaryFailure) throw primaryFailure;
 });

@@ -63,6 +63,7 @@ async function diagnostics() {
   }
 }
 
+// Requirements: PLN-19.
 caseTest('chain argument types', PROCESS, async () => {
   const byCall = await diagnostics();
   const wrong = [];

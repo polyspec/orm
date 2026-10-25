@@ -162,7 +162,7 @@ class DbspecPlanPhysicalTest(unittest.TestCase):
     def tearDownClass(cls):
         cls.sqlite_dir.cleanup()
 
-    # Requirements: PLN-102.
+    # Requirements: PLN-94, PLN-102.
     def test_every_plan_case_runs_on_every_dialect(self):
         data = json.loads((ROOT / "tests" / "dbspec" / "plans.json").read_text())
         cases = data["cases"]

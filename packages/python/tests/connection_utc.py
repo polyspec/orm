@@ -43,6 +43,13 @@ def with_zone(dsn: str, zone: str) -> str:
 class DsnTimezoneTest(unittest.TestCase):
     deadline = testcase.COMPUTE
 
+    # Requirements: CFG-26.
+    def test_sqlite_dsn_requires_absolute_path(self):
+        with self.assertRaises(OrmError) as raised:
+            parse_dsn("sqlite://relative.sqlite")
+        self.assertEqual(raised.exception.code, "CONFIG")
+        self.assertEqual(parse_dsn("sqlite:///tmp/orm-example.sqlite").driver, "sqlite")
+
     # Every client rejects a DSN timezone other than UTC before opening a connection (CFG-2).
     def test_dsn_rejects_non_utc_timezones(self):
         for dsn in (

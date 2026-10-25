@@ -62,7 +62,7 @@ export { Settings };
  * Calls through new, bindings, typed parameters, functions, callbacks (and, or, not, andNot, orNot), rows and collections
  * add methods to their own model.
  */
-// Requirements: DSL-38.
+// Requirements: DSL-38, INT-27, PLN-40.
 async function modelCalls() {
   const { members } = await generate(`
 import { Author, User as Person } from './models/models.js';

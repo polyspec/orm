@@ -89,6 +89,7 @@ fn run(id: &str, body: impl FnOnce() -> Result<(), String>) {
     }
 }
 
+// Requirements: PLN-73, PLN-74, PLN-75, PLN-76, PLN-77, PLN-78, PLN-79, PLN-80, PLN-81, PLN-82, PLN-83.
 fn plan_vectors() -> Vec<Trial> {
     let vectors = vectors("plans");
     let cases = vectors["cases"].as_array().expect("cases");

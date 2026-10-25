@@ -155,7 +155,7 @@ func TestSplitPair(t *testing.T) {
 
 // TestScanGeneratesUsedMethods generates models for a small scanned module
 // and builds it.
-// Requirements: DSL-38, DSL-117.
+// Requirements: DSL-38, DSL-117, INT-27, PLN-40.
 func TestScanGeneratesUsedMethods(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	write := scannedModule(t)

@@ -173,6 +173,7 @@ fn assert_keys(value: &Value, keys: &[&str], id: &str) {
 }
 
 /// The canonical, normalize, invalid and positions cases of cases.json, each the trial `shared_dbspec_vectors::<kind>::<id>`.
+// Requirements: ORES-15, ORES-17, ORES-19, ORES-72.
 fn shared_dbspec_vectors(file: &Value, seen: &mut std::collections::BTreeSet<String>) -> Vec<Trial> {
     let mut trials = Vec::new();
     for kind in ["canonical", "normalize", "invalid", "positions"] {
@@ -274,6 +275,7 @@ fn syntax_entries_match_the_analyses() {
 
 /// Each entry of tests/dbspec/syntax.json, the trial `shared_dbspec_syntax::<id>`: its analysis equals its tokens
 /// exactly. A token that is not four values panics.
+// Requirements: ORES-1.
 fn shared_dbspec_syntax(cases: &Value) -> Vec<Trial> {
     let mut inputs: BTreeMap<String, (String, BTreeMap<String, String>)> = BTreeMap::new();
     for (id, text, set) in vector_inputs(cases) {

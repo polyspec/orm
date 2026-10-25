@@ -83,6 +83,18 @@ final class OrmExceptionNativeTest extends TestCase
         );
     }
 
+    // Requirements: CFG-26.
+    public function testNativeOrmRequiresAbsoluteSqlitePath(): void
+    {
+        try {
+            Orm::parseDsn('sqlite://relative.sqlite');
+            Assert::fail('SQLite accepted a relative database path');
+        } catch (OrmException $error) {
+            Assert::assertSame(Code::CONFIG, $error->code_);
+        }
+        Assert::assertSame('sqlite', Orm::parseDsn('sqlite:///tmp/orm-example.sqlite')[0]);
+    }
+
     // Requirements: CFG-2, CFG-19, CFG-20.
     public function testNativeOrmRejectsMalformedAndUnsupportedDsnParameters(): void
     {

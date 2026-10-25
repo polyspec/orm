@@ -89,4 +89,43 @@ await runCases('coverage_model_writes.mjs', {
       });
     } finally { await db.close(); }
   },
+  // Requirements: PLN-26.
+  async model_write_arithmetic_attributes({ driver, dsn }) {
+    const db = await connect(dsn);
+    const arithmeticTenant = 1_000_000_000_000 + process.pid;
+    const account = () => new CompositeAccount().connect(db);
+    try {
+      assert.equal(db.driver, driver);
+      assert.equal(await account().tenantId(arithmeticTenant).getCount(), 0, 'scratch tenant starts empty');
+      await account().setTenantId(arithmeticTenant).setAccountId(1).setName('arithmetic').create();
+      const loaded = await account().getByTenantIdAndAccountId(arithmeticTenant, 1);
+      assert.ok(loaded, 'created row is readable');
+      const events = [];
+      const unsubscribe = db.subscribe(event => {
+        if (event.kind === 'update' && event.tables.includes('composite_account')) events.push(event);
+      });
+      try {
+        await loaded.plusAccountId(7).update();
+        assert.equal((await account().getByTenantIdAndAccountId(arithmeticTenant, 8)).getName(), 'arithmetic', 'plus adds its bound amount');
+        assert.ok(events.some(event => event.binds.includes(7)), 'plus amount is bound');
+        await loaded.update();
+        assert.equal(events.length, 1, 'a write clears the pending arithmetic change');
+
+        const afterPlus = await account().getByTenantIdAndAccountId(arithmeticTenant, 8);
+        const amount = afterPlus.getAccountId() + 1;
+        await afterPlus.minusAccountId(amount).update();
+        assert.equal((await account().getByTenantIdAndAccountId(arithmeticTenant, 0)).getName(), 'arithmetic', 'minus clamps at zero');
+        assert.ok(events.some(event => event.binds.includes(amount)), 'minus amount is bound');
+      } finally {
+        unsubscribe();
+      }
+    } finally {
+      try {
+        await account().tenantId(arithmeticTenant).gets().delete();
+        assert.equal(await account().tenantId(arithmeticTenant).getCount(), 0, 'scratch row is removed');
+      } finally {
+        await db.close();
+      }
+    }
+  },
 }, 300_000);

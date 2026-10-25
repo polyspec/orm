@@ -10,6 +10,7 @@ import { mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { describe } from 'node:test';
 import { createMessageConnection, StreamMessageReader, StreamMessageWriter } from 'vscode-jsonrpc/node';
 import { caseTest } from '../../../tests/testcase.mts';
 
@@ -17,6 +18,16 @@ const TIMEOUT = 20000;
 const bin = fileURLToPath(new URL('../bin/dbspec-lsp.mjs', import.meta.url));
 const fixtures = new URL('../../../tests/editor/', import.meta.url);
 const CLASSES = ['keyword', 'type', 'name', 'setting', 'number', 'string', 'operator', 'punctuation', 'comment', 'word'];
+
+// Requirements: ORE-16, ORES-48.
+caseTest('the server uses vscode-languageserver and textdocument', TIMEOUT, () => {
+  const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+  const source = readFileSync(new URL('../src/server.ts', import.meta.url), 'utf8');
+  assert.ok(manifest.dependencies['vscode-languageserver']);
+  assert.ok(manifest.dependencies['vscode-languageserver-textdocument']);
+  assert.match(source, /from 'vscode-languageserver'/);
+  assert.match(source, /from 'vscode-languageserver-textdocument'/);
+});
 
 /** A started server with the diagnostics and messages it sent. */
 async function start() {
@@ -44,6 +55,7 @@ async function start() {
   const settle = uri => new Promise(resolve => waiters.set(uri, [...(waiters.get(uri) ?? []), resolve]));
   return {
     init, diagnostics, messages,
+    waitFor: uri => settle(uri),
     async open(uri, text, read = uri) {
       const published = settle(read);
       await connection.sendNotification('textDocument/didOpen', { textDocument: { uri, languageId: 'dbspec', version: 1, text } });
@@ -85,6 +97,7 @@ function decode(data) {
 const tree = () => realpathSync(mkdtempSync(join(tmpdir(), 'dbspec-lsp-')));
 const CORE = 'dbspec 1 core\n\ntable users {\n  id i64 identity\n  primary key (id)\n}\n';
 const SHOP = 'dbspec 1 shop\n\nuse core { users }\n\ntable orders {\n  id i64 identity\n  primary key (id)\n}\n';
+const PLAIN_SHOP = 'dbspec 1 shop\n\ntable orders {\n  id i64 identity\n  primary key (id)\n}\n';
 
 /** Runs body with a server and a fresh tree holding the files, removing both after. */
 async function withTree(files, body) {
@@ -101,6 +114,7 @@ async function withTree(files, body) {
   } finally { rmSync(root, { recursive: true }); }
 }
 
+// Requirements: ORE-16.
 caseTest('the server declares utf-16, full sync and the class legend', TIMEOUT, async () => {
   const server = await start();
   try {
@@ -111,8 +125,10 @@ caseTest('the server declares utf-16, full sync and the class legend', TIMEOUT, 
   } finally { await server.stop(); }
 });
 
-for (const name of readdirSync(fixtures).filter(n => n.endsWith('.dbs')).map(n => n.slice(0, -4)).sort()) {
-  caseTest(`fixture ${name} through the language server`, TIMEOUT, async () => {
+// Requirements: ORE-3, ORES-18, ORES-42, ORES-43.
+describe('language server publishes editor fixture outputs', () => {
+  for (const name of readdirSync(fixtures).filter(n => n.endsWith('.dbs')).map(n => n.slice(0, -4)).sort()) {
+    caseTest(`fixture ${name} through the language server`, TIMEOUT, async () => {
     const text = readFileSync(new URL(`${name}.dbs`, fixtures), 'utf8');
     const expected = JSON.parse(readFileSync(new URL(`${name}.json`, fixtures), 'utf8'));
     const uri = `untitled:${name}.dbs`;
@@ -130,8 +146,9 @@ for (const name of readdirSync(fixtures).filter(n => n.endsWith('.dbs')).map(n =
       else if (expected.formatted === text) assert.deepEqual(edits, []);
       else assert.deepEqual(edits.map(e => e.newText), [expected.formatted]);
     } finally { await server.stop(); }
-  });
-}
+    });
+  }
+});
 
 const SET = '{"schema": 1, "documents": ["shop.dbs", "core.dbs"]}\n';
 
@@ -141,12 +158,14 @@ caseTest('a document takes its set from the nearest set file', TIMEOUT, () =>
     assert.deepEqual(server.diagnostics.get(uri('shop.dbs')), []);
   }));
 
+// Requirements: ORE-10, ORES-25.
 caseTest('a document no set file lists is alone and its use line reports it', TIMEOUT, () =>
   withTree({ 'shop.dbs': SHOP }, async (server, uri) => {
     await server.open(uri('shop.dbs'), SHOP);
     assert.deepEqual(server.diagnostics.get(uri('shop.dbs')).map(d => d.code), ['use']);
   }));
 
+// Requirements: ORE-9, ORES-38.
 caseTest('a set error is shown and the document is analyzed alone', TIMEOUT, () =>
   withTree({ 'dbspec-set.json': '{"schema": 1, "documents": ["shop.dbs", "gone.dbs"]}\n', 'shop.dbs': SHOP }, async (server, uri) => {
     await server.open(uri('shop.dbs'), SHOP);
@@ -154,6 +173,21 @@ caseTest('a set error is shown and the document is analyzed alone', TIMEOUT, () 
     assert.deepEqual(server.diagnostics.get(uri('shop.dbs')).map(d => d.code), ['use']);
   }));
 
+// Requirements: ORES-37, ORES-39.
+caseTest('a listed file with invalid UTF-8 is published on its own URI', TIMEOUT, () =>
+  withTree({
+    'dbspec-set.json': '{"schema":1,"documents":["shop.dbs","bad.dbs"]}\n',
+    'shop.dbs': PLAIN_SHOP,
+    'bad.dbs': 'placeholder\n',
+  }, async (server, uri, root) => {
+    writeFileSync(join(root, 'bad.dbs'), Buffer.concat([Buffer.from('dbspec 1 bad\n'), Buffer.from([0xff])]));
+    const badPublished = server.waitFor(uri('bad.dbs'));
+    await server.open(uri('shop.dbs'), PLAIN_SHOP);
+    await badPublished;
+    assert.deepEqual(server.diagnostics.get(uri('bad.dbs')).map(d => d.code), ['encoding']);
+  }));
+
+// Requirements: ORES-41.
 caseTest('an open buffer of a listed file wins over the disk', TIMEOUT, () =>
   withTree({ 'dbspec-set.json': SET, 'core.dbs': CORE, 'shop.dbs': SHOP }, async (server, uri) => {
     await server.open(uri('shop.dbs'), SHOP);
@@ -163,6 +197,7 @@ caseTest('an open buffer of a listed file wins over the disk', TIMEOUT, () =>
     assert.deepEqual(server.diagnostics.get(uri('shop.dbs')).map(d => d.code), ['use']);
   }));
 
+// Requirements: ORES-40.
 caseTest('a watched file change analyzes the open documents again', TIMEOUT, () =>
   withTree({ 'dbspec-set.json': SET, 'core.dbs': CORE, 'shop.dbs': SHOP }, async (server, uri, root) => {
     await server.open(uri('shop.dbs'), SHOP);

@@ -28,6 +28,7 @@ function links(directory: string) {
 
 const run = (args: string[], input?: string) => spawnSync(process.execPath, args, { input, encoding: 'utf8' });
 
+// Requirements: ORES-78.
 caseTest('orm-install-cli installs dbspec-fmt without a link, and uninstall removes it', TIMEOUT, () => {
   const prefix = realpathSync(mkdtempSync(join(tmpdir(), 'dbspec-fmt-prefix-')));
   try {

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"reflect"
 	"testing"
 	"time"
 
@@ -132,7 +133,7 @@ func compositeKeyFromFixture(t *testing.T, name, encoded string, values []any) K
 }
 
 func TestCollectionKeyIdentityFromFixture(t *testing.T) {
-	// Requirements: PRT-35.
+	// Requirements: INT-11, PRT-35.
 	testcase.Start(t, testcase.Compute)
 	fixture := loadCollectionKeys(t)
 	keys := map[string]Key{}
@@ -144,6 +145,12 @@ func TestCollectionKeyIdentityFromFixture(t *testing.T) {
 		again, err := KeyOf(fixture.keyValue(t, entry.Name))
 		if err != nil || again != key {
 			t.Errorf("key %s has no stable identity: %v", entry.Name, err)
+		}
+		got, err := key.Value()
+		if err != nil {
+			t.Errorf("key %s value: %v", entry.Name, err)
+		} else if want := fixture.keyValue(t, entry.Name); !sameKeyValue(got, want) {
+			t.Errorf("key %s lost its native value type: got %T(%v), want %T(%v)", entry.Name, got, got, want, want)
 		}
 		if entry.SameAs != "" {
 			if want := keys[entry.SameAs]; key != want {
@@ -158,6 +165,14 @@ func TestCollectionKeyIdentityFromFixture(t *testing.T) {
 		}
 		keys[entry.Name] = key
 	}
+}
+
+func sameKeyValue(got, want any) bool {
+	if a, ok := got.(time.Time); ok {
+		b, isTime := want.(time.Time)
+		return isTime && a.Equal(b)
+	}
+	return reflect.DeepEqual(got, want)
 }
 
 func TestCollectionKeyNullIsCodecDecodeFromFixture(t *testing.T) {

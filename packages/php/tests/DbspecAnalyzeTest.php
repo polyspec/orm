@@ -137,6 +137,7 @@ final class DbspecAnalyzeTest extends TestCase
     }
 
     // The shared syntax vectors: the tokens of every case of tests/dbspec/syntax.json, exactly.
+    // Requirements: ORES-1.
     #[DataProvider('syntaxCases')]
     public function testSyntax(?array $want, string $text, array $documents): void
     {

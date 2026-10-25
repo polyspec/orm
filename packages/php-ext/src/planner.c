@@ -1305,7 +1305,16 @@ static zend_string *render_joins(pctx *c, pbinds *b, pscope *s)
         zend_string *qa = quote(c, js->alias);
         OKP(qa);
         zend_string *on = implode(c, " AND ", Z_ARRVAL_P(conds));
-        zend_string *part = fmt(c, "%s%s AS %s ON %s", kw, ZSTR_VAL(tbl), ZSTR_VAL(qa), ZSTR_VAL(on));
+        zend_string *fi = gs(c, js->q, "force_index");
+        zend_string *hint;
+        if (ZSTR_LEN(fi) > 0) {
+            zval a[1] = {*Zs(c, fi)};
+            hint = Ds(c, "forceIndex", 1, a);
+            OKP(hint);
+        } else {
+            hint = ZSTR_EMPTY_ALLOC();
+        }
+        zend_string *part = fmt(c, "%s%s AS %s%s ON %s", kw, ZSTR_VAL(tbl), ZSTR_VAL(qa), ZSTR_VAL(hint), ZSTR_VAL(on));
         HashTable *onGroup = ga(ga(jh, "query"), "on");
         if (count_of(lst(onGroup, "items")) > 0) {
             zend_string *g = render_group(c, b, js, onGroup, true);
@@ -1646,17 +1655,17 @@ static zend_string *render_pred(pctx *c, pbinds *b, pscope *s, HashTable *p)
 }
 
 /* Planner::renderOrder: the ORDER BY of a request, or the empty string. */
-static zend_string *render_order(pctx *c, pbinds *b, pscope *s, HashTable *q)
+static bool append_order_items(pctx *c, pbinds *b, pscope *s, HashTable *q, zval *parts)
 {
-    (void)b;
-    zval *parts = newlist(c);
     zval *o;
     ZEND_HASH_FOREACH_VAL(lst(q, "order"), o) {
         ZVAL_DEREF(o);
         HashTable *oh = Z_ARRVAL_P(o);
         if (gt(oh, "random")) {
             zend_string *r = Ds(c, "random", 0, NULL);
-            OKP(r);
+            if (r == NULL) {
+                return false;
+            }
             lpushs(parts, r);
         } else {
             zend_string *col;
@@ -1665,20 +1674,45 @@ static zend_string *render_order(pctx *c, pbinds *b, pscope *s, HashTable *q)
             } else {
                 col = qcol(c, s, gs(c, oh, "column"));
             }
-            OKP(col);
+            if (col == NULL) {
+                return false;
+            }
             HashTable *cc = NULL;
             if (!col_of(c, s->ent, gs(c, oh, "column"), &cc)) {
-                return NULL;
+                return false;
             }
             zend_string *nulls = ZSTR_EMPTY_ALLOC();
             if (gt(cc, "nullable")) {
                 zval a[1] = {*Zb(c, gt(oh, "desc"))};
                 nulls = Ds(c, "nullsOrder", 1, a);
-                OKP(nulls);
+                if (nulls == NULL) {
+                    return false;
+                }
             }
             lpushs(parts, fmt(c, "%s%s%s", ZSTR_VAL(col), gt(oh, "desc") ? " DESC" : " ASC", ZSTR_VAL(nulls)));
         }
     } ZEND_HASH_FOREACH_END();
+    zval *j;
+    ZEND_HASH_FOREACH_VAL(lst(q, "joins"), j) {
+        ZVAL_DEREF(j);
+        pscope *child = join_of(s, gs(c, Z_ARRVAL_P(j), "rel"));
+        if (child == NULL) {
+            fail("INTERNAL", "join %s is not in the scope", ZSTR_VAL(gs(c, Z_ARRVAL_P(j), "rel")));
+            return false;
+        }
+        if (!append_order_items(c, b, child, child->q, parts)) {
+            return false;
+        }
+    } ZEND_HASH_FOREACH_END();
+    return true;
+}
+
+static zend_string *render_order(pctx *c, pbinds *b, pscope *s, HashTable *q)
+{
+    zval *parts = newlist(c);
+    if (!append_order_items(c, b, s, q, parts)) {
+        return NULL;
+    }
     if (count_of(Z_ARRVAL_P(parts)) == 0) {
         return ZSTR_EMPTY_ALLOC();
     }

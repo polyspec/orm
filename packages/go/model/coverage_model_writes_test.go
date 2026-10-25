@@ -4,6 +4,7 @@ package model_test
 
 import (
 	"fmt"
+	"os"
 	"slices"
 	"testing"
 
@@ -73,6 +74,82 @@ func TestCoverageModelWriteCycle(t *testing.T) {
 	}
 	if n := must(account().TenantId(writeTenant).GetCount()); n != 0 {
 		t.Fatalf("tenant %d count after delete = %d, want 0", writeTenant, n)
+	}
+}
+
+// TestCoverageModelArithmeticAttributes checks bound plus/minus assignments, the zero clamp, and that update clears
+// the pending assignment after it is written. The scratch composite_account row is removed before leaving.
+// Requirements: PLN-26.
+func TestCoverageModelArithmeticAttributes(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	db, _, _ := connectFeature(t)
+	tenant := int64(1_000_000_000_000 + os.Getpid())
+	account := func() *model.CompositeAccountModel { return model.CompositeAccount().Connect(db) }
+	if n := must(account().TenantId(tenant).GetCount()); n != 0 {
+		t.Fatalf("scratch tenant %d already has %d rows", tenant, n)
+	}
+	t.Cleanup(func() { removeTenantAccounts(t, db, tenant) })
+	if _, err := account().SetTenantId(tenant).SetAccountId(1).SetName("arithmetic").Create(); err != nil {
+		t.Fatal(err)
+	}
+	loaded := must(account().GetByTenantIdAndAccountId(tenant, 1))
+	recorder := testcase.NewEventRecorder[orm.StatementEvent]()
+	unsubscribe, err := db.Subscribe(recorder.Record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer unsubscribe()
+	hasBind := func(want int64) bool {
+		for _, event := range recorder.Events() {
+			if event.Kind != orm.KindUpdate || !slices.Contains(event.Tables, "composite_account") {
+				continue
+			}
+			for _, bind := range event.Binds {
+				if fmt.Sprint(bind) == fmt.Sprint(want) {
+					return true
+				}
+			}
+		}
+		return false
+	}
+	if _, err := loaded.PlusAccountId(7).Update(); err != nil {
+		t.Fatal(err)
+	}
+	if got := readColumn(t, must(account().GetByTenantIdAndAccountId(tenant, 8)).GetName); got != "arithmetic" {
+		t.Fatalf("row after plus = %q, want arithmetic", got)
+	}
+	if !hasBind(7) {
+		t.Fatalf("plus amount is not present in update binds: %#v", recorder.Events())
+	}
+	if _, err := loaded.Update(); err != nil {
+		t.Fatal(err)
+	}
+	updates := 0
+	for _, event := range recorder.Events() {
+		if event.Kind == orm.KindUpdate && slices.Contains(event.Tables, "composite_account") {
+			updates++
+		}
+	}
+	if updates != 1 {
+		t.Fatalf("updates after repeating a completed write = %d, want 1", updates)
+	}
+	current := must(account().GetByTenantIdAndAccountId(tenant, 8))
+	amount := readColumn(t, current.GetAccountId) + 1
+	if _, err := current.MinusAccountId(amount).Update(); err != nil {
+		t.Fatalf("minus %d: %v", amount, err)
+	}
+	if got := readColumn(t, must(account().GetByTenantIdAndAccountId(tenant, 0)).GetName); got != "arithmetic" {
+		t.Fatalf("row after minus = %q, want zero-clamped arithmetic row", got)
+	}
+	if !hasBind(int64(amount)) {
+		t.Fatalf("minus amount %d is not present in update binds: %#v", amount, recorder.Events())
+	}
+	rows := must(account().TenantId(tenant).Gets())
+	if err := rows.Delete(); err != nil {
+		t.Fatal(err)
+	}
+	if n := must(account().TenantId(tenant).GetCount()); n != 0 {
+		t.Fatalf("scratch tenant %d leaves %d rows", tenant, n)
 	}
 }
 

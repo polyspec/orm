@@ -57,6 +57,32 @@ final class CollectionTest extends TestCase
         };
     }
 
+    public function testFixtureKeysKeepTheirNativeTypesAndLookupValue(): void
+    {
+        // Requirements: INT-11, PRT-35.
+        $collection = new Collection();
+        $model = self::model('fixture');
+        $expected = [];
+        $seen = [];
+        foreach (self::identityCases() as $case) {
+            $key = self::identityValue($case);
+            if (isset($case['same_as'])) {
+                self::assertSame(
+                    Collection::identityOf($seen[$case['same_as']]),
+                    Collection::identityOf($key),
+                );
+                continue;
+            }
+            $seen[$case['name']] = $key;
+            $collection->put($key, $model);
+            $expected[] = $key;
+        }
+        self::assertSame($expected, $collection->keys());
+        foreach ($expected as $key) {
+            self::assertSame($model, $collection->get($key));
+        }
+    }
+
     public function testCollectionAndIteratorAreOwnedByTheNativeExtension(): void
     {
         $collectionClass = new \ReflectionClass(Collection::class);

@@ -8,6 +8,7 @@ use Polyspec\Orm\Bytes;
 use Polyspec\Orm\Collection;
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Db;
+use Polyspec\Orm\Model;
 use Polyspec\Orm\OrmException;
 
 /** Shared collection-key and split-row identity cases for the PHP library and extension. */

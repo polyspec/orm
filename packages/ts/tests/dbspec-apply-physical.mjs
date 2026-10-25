@@ -10,6 +10,7 @@
 // dropped required column and finalize, through the TypeScript client's
 // applyPlans, recoverPlans, rollbackPlans and finalizePlans. Each run uses an empty database, schema or
 // file named after the language, the pid and the run.
+// Requirement: PLN-90. The lock_wait scenario observes bounded waiting on real locks.
 //
 // Usage: ORM_TEST_MYSQL_SERVER_DSN=... ORM_TEST_POSTGRES_SERVER_DSN=... ORM_TEST_PGBOUNCER_DSN=... node --test packages/ts/tests/dbspec-apply-physical.mjs (after the build)
 import { caseTest } from '../../../tests/testcase.mts';
@@ -193,6 +194,82 @@ const scenarios = [
       await schemaIs(second, dialect, target);
     });
   }],
+  // Requirement: PLN-90. A held lock makes a real statement wait to the five-second bound.
+  ['lock_wait', ALL, async (session, dialect, open) => {
+    const blocker = await open();
+    let blockerInTransaction = false;
+    let applyConnection = session.connection;
+    let waitPlans = representative;
+    let wantCode = 'failed';
+    try {
+      if (dialect === 'sqlite') {
+        await blocker.exec('BEGIN EXCLUSIVE');
+        blockerInTransaction = true;
+        const connection = session.connection;
+        applyConnection = new Proxy(connection, {
+          get(target, property) {
+            const value = Reflect.get(target, property, target);
+            if (property === 'exec') {
+              return async sql => {
+                try {
+                  return await value.call(target, sql);
+                } catch (error) {
+                  if (sql === 'BEGIN EXCLUSIVE' && blockerInTransaction) {
+                    await blocker.exec('ROLLBACK');
+                    blockerInTransaction = false;
+                  }
+                  throw error;
+                }
+              };
+            }
+            return typeof value === 'function' ? value.bind(target) : value;
+          },
+        });
+        waitPlans = [];
+        wantCode = 'locked';
+      } else {
+        await applyPlans(session.connection, dialect, representative.slice(0, 1), fixedNow, null);
+        if (dialect === 'mysql') {
+          await blocker.connection.beginTransaction();
+          await blocker.exec("INSERT INTO archive (note) VALUES ('lock wait')");
+          await blocker.rows('SELECT id FROM archive FOR UPDATE');
+        } else {
+          await blocker.exec('BEGIN');
+          await blocker.exec("INSERT INTO archive (note) VALUES ('lock wait')");
+          await blocker.rows('SELECT id FROM archive FOR UPDATE');
+        }
+      }
+
+      const stepEvents = [];
+      const started = performance.now();
+      let failure;
+      try {
+        await applyPlans(applyConnection, dialect, waitPlans, fixedNow, event => {
+          if (event.kind === 'statement' || event.kind === 'applied') stepEvents.push([event.kind, event.step]);
+        });
+      } catch (error) {
+        failure = error;
+      }
+      const elapsed = (performance.now() - started) / 1000;
+      assert(failure instanceof DbspecApplyError, `apply returned ${failure}; want a DbspecApplyError`);
+      assert.equal(failure.code, wantCode, `lock wait returned ${failure.code}; want ${wantCode}`);
+      const cause = String(failure.cause).toLowerCase();
+      assert(cause.includes('lock') || cause.includes('timeout'), `statement failure does not name the held lock: ${failure.cause}`);
+      if (dialect !== 'sqlite') {
+        assert.equal(failure.plan, 'representative', `failed plan: ${failure.plan}`);
+        assert.equal(failure.step, 0, `failed step: ${failure.step}`);
+        assert.deepEqual(stepEvents, [['statement', 0]], `statement events: ${JSON.stringify(stepEvents)}`);
+      }
+      assert(elapsed >= 4 && elapsed < 10, `lock wait returned after ${elapsed.toFixed(3)}s; want 4s <= elapsed < 10s`);
+    } finally {
+      if (dialect === 'sqlite') {
+        if (blockerInTransaction) await blocker.exec('ROLLBACK');
+      } else {
+        await blocker.exec('ROLLBACK');
+      }
+      await blocker.close();
+    }
+  }],
   ['empty_chain', ALL, async (session, dialect) => {
     // A chain with no plan applies nothing to a database with no tables.
     const events = [];
@@ -301,6 +378,7 @@ let expected = 0;
 for (const [name, dialects, body] of scenarios) {
   for (const dialect of dialects) {
     expected++;
+    // Requirements: PLN-94.
     vector(`${dialect}.apply.${name}`, async () => {
       await withDatabase(dialect, async (session, open) => {
         for (const sql of CONNECTION_RULES[dialect]) await session.exec(sql);
@@ -312,9 +390,10 @@ for (const [name, dialects, body] of scenarios) {
 }
 
 // Requirements: PLN-93, PLN-95, PLN-96.
+// Requirements: PLN-89, PLN-91, PLN-92.
 vector('every apply scenario runs on its dialects', () => {
   assert.equal(runs, expected);
-  assert.equal(runs, 25 + ALL.reduce((n, dialect) => n + repCounts[dialect][1][1], 0));
+  assert.equal(runs, 28 + ALL.reduce((n, dialect) => n + repCounts[dialect][1][1], 0));
   console.log(`apply runs: ${runs}`);
 });
 

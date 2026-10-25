@@ -1,5 +1,5 @@
 <!-- doc-id: config -->
-<!-- source-sha256: 2650ba2ecd47be2a9fa9ed9f1e4fc2b4a09b37f5b5f6d52db1b7f638369a63b6 -->
+<!-- source-sha256: 9aaab50478b0ce905fa95e25feffafd80117354dd3786db73231a5acbb131f19 -->
 # 런타임 연결
 
 클라이언트는 연결 값을 인자로 받으며 환경 변수나 비밀 저장소를 스스로 읽지 않는다. 클라이언트는 설정 파일을 읽지 않는다.
@@ -28,7 +28,7 @@ markdown://127.0.0.1:4100/tracker?token=0123456789abcdef0123456789abcdef
 - **CFG-11** SQLite 경로는 절대 경로여야 한다. 클라이언트는 파일을 열기 전에 경로를 UTF-8로 percent-decode한다: `sqlite:///var/lib/my%20data.sqlite`는 `/var/lib/my data.sqlite`를 열고, `%25`, `%23`, `%3F`는 글자 그대로의 `%`, `#`, `?`가 된다. 뒤에 hexadecimal 두 자리가 없는 `%`, decode한 NUL byte, UTF-8이 아닌 decode 결과는 `CONFIG`를 반환한다. `tests/dsn/sqlite-paths.json`이 공유 case를 담으며 모든 클라이언트가 자기 DSN 테스트에서 실행한다. 클라이언트는 외래 키를 켠다. 쓰기 트랜잭션은 `BEGIN IMMEDIATE`로 시작해 시작 시점부터 데이터베이스의 쓰기 잠금을 가진다. 따라서 두 쓰기 트랜잭션은 차례로 실행되고, 읽은 뒤에 쓰는 트랜잭션도 실패하지 않는다. `readOnly` 옵션을 쓴 트랜잭션은 `BEGIN`으로 시작하고 쓰기 잠금을 얻지 않는다. 시작 문은 클라이언트가 정하며, `_txlock`이 있는 DSN은 `CONFIG`를 반환한다.
 - **CFG-12** SQLite 연결은 다른 연결이 가진 잠금을 최대 5000밀리초 기다린다. Go, PHP, PHP extension, TypeScript, Python, Rust 여섯 configured implementation은 DSN 매개변수 `_pragma=busy_timeout(ms)`로 다른 시간을 정한다. 예를 들어 `sqlite:///var/lib/orm_example.sqlite?_pragma=busy_timeout(10000)`이며, `busy_timeout(0)`은 기다리지 않는다. 대기가 끝날 때까지 다른 연결이 잠금을 놓지 않으면 `CANCELED`를 반환한다. `DEADLOCK`만 재시도하므로 이 트랜잭션은 다시 실행하지 않는다. 모든 `_pragma=name(value)` 매개변수는 연결에서 `PRAGMA name = value`를 실행한다.
 - **CFG-13** SQLite 읽기는 다른 연결이 쓰기 트랜잭션을 연 동안에도 실행되며, 그 전에 커밋된 행을 반환한다. 클라이언트는 데이터베이스 파일의 저널 모드를 그대로 두며 WAL을 요구하지 않는다. 기본 롤백 저널에서는 쓰기의 커밋 중에 시작한 읽기가 `busy_timeout` 안에서 커밋을 기다린다. `_pragma=journal_mode(WAL)`은 파일을 WAL로 바꾸며, WAL에서는 읽기가 커밋을 기다리지 않는다. 이 모드는 파일에 남는다.
-- **CFG-14** TypeScript SQLite 드라이버는 잠금을 동기적으로 기다리므로 기다리는 동안 이벤트 루프가 멈춘다. 따라서 TypeScript 프로세스는 SQLite 파일 하나에 `Db` 하나를 연다. 그 `Db`의 트랜잭션은 차례로 실행되고, 여러 프로세스는 잠금 대기로 파일을 함께 쓴다.
+- **CFG-14** `@polyspec/orm`의 SQLite 드라이버(TypeScript)는 잠금을 동기적으로 기다리므로 기다리는 동안 이벤트 루프가 멈춘다. 따라서 TypeScript 프로세스는 SQLite 파일 하나에 `Db` 하나를 연다. 그 `Db`의 트랜잭션은 차례로 실행되고, 여러 프로세스는 잠금 대기로 파일을 함께 쓴다.
 
 데이터베이스 자격 증명과 AES 키는 커밋하거나 런타임 파일에 기록하거나 로그에 남기지 않는다. 배포 비밀 저장소에서 값을 읽은 뒤 클라이언트 연결 옵션으로 전달한다.
 

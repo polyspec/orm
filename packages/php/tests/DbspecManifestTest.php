@@ -103,6 +103,7 @@ final class DbspecManifestTest extends TestCase
     }
 
     // Each case makes the manifest and hash of one document set in memory.
+    // Requirements: ORES-16.
     #[DataProvider('hashesCases')]
     public function testHashes(array $case): void
     {

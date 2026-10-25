@@ -820,6 +820,7 @@ final class TxFrame
     public readonly bool $readOnly;
     public readonly string $isolation;
     public readonly int $number;
+    public readonly ?\Fiber $flow;
 
     public function __construct(Db $db, bool $readOnly, string $isolation, int $number) {}
 

@@ -139,6 +139,19 @@ fn non_utc_time_zones_are_rejected() {
     }
 }
 
+/// SQLite accepts an absolute local-file path and rejects a relative path.
+#[test]
+// Requirements: CFG-26.
+fn sqlite_dsn_requires_absolute_path() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let error = match polyspec_orm::db::parse_dsn("sqlite://relative.sqlite") {
+        Ok(_) => panic!("relative SQLite path was accepted"),
+        Err(error) => error,
+    };
+    assert_eq!(error.code(), polyspec_orm::codes::CONFIG, "{error}");
+    polyspec_orm::db::parse_dsn("sqlite:///tmp/orm-example.sqlite").expect("absolute local path");
+}
+
 /// A parameter other than `timezone` reaches sqlx, which reads it as its own connect option.
 #[test]
 // Requirements: CFG-19, CFG-20.
@@ -154,6 +167,7 @@ fn driver_parameters_reach_sqlx() {
 
 /// A MySQL install inside a transaction returns CONFIG: schema statements
 /// commit implicitly.
+// Requirements: INT-55.
 #[tokio::test]
 async fn mysql_install_inside_transaction() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
@@ -336,6 +350,8 @@ impl HeldRows {
 async fn locked_read(db: &Db, entity: &'static Entity) -> polyspec_orm::Result<()> {
     db.transaction(async || {
         let mut core = Core::new(entity);
+        // Keep the same parameterized SELECT across transactions and client handles.
+        core.set("seq", Param::I64(1));
         core.connect(db);
         core.lock("update");
         polyspec_orm::model::get(&ZoneEvent::from_core(core)).await.map(drop)
@@ -391,7 +407,7 @@ fn statement_timeout_negative_is_unrepresentable() {
 /// the case keeps a zone table named after itself (`orm_case_<pid>_<counter>`) in that database, and only that table
 /// is dropped at the end (even on failure).
 #[tokio::test]
-// Requirements: CFG-27, CFG-29.
+// Requirements: CFG-27, CFG-28, CFG-29.
 async fn statement_timeout_through_a_pooler() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let base = require_dsn("ORM_TEST_POSTGRES_DSN");
@@ -436,6 +452,11 @@ async fn statement_timeout_through_a_pooler() {
     let (read, ()) = tokio::join!(locked_read(&plain, entity), release);
     assert_eq!(read.map_err(|e| e.to_string()), Ok(()), "a connection without a timeout after the bounded one");
     assert!(started.elapsed() >= std::time::Duration::from_millis(200), "the plain read waited {:?}, not past the bound", started.elapsed());
+    // Both client sessions issue the same locking query repeatedly through PgBouncer.
+    for _ in 0..6 {
+        locked_read(&bounded, entity).await.unwrap();
+        locked_read(&plain, entity).await.unwrap();
+    }
     let held = HeldRows::hold(&setup, table.name()).await;
     let err = locked_read(&bounded, entity).await.expect_err("the bounded connection after the plain one");
     assert_eq!(err.code(), polyspec_orm::codes::CANCELED, "the bounded connection after the plain one: {err}");

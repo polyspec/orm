@@ -158,6 +158,22 @@ ZEND_METHOD(Polyspec_Orm_TxFrame, __construct)
     zend_update_property_bool(o->ce, o, ZEND_STRL("readOnly"), read_only);
     zend_update_property_str(o->ce, o, ZEND_STRL("isolation"), isolation);
     zend_update_property_long(o->ce, o, ZEND_STRL("number"), number);
+    zend_class_entry *fiber_ce = native_find_class(ZEND_STRL("Fiber"));
+    zend_function *get_current = fiber_ce == NULL ? NULL
+        : zend_hash_str_find_ptr(&fiber_ce->function_table, ZEND_STRL("getcurrent"));
+    if (get_current == NULL) {
+        zend_throw_error(NULL, "Fiber::getCurrent is unavailable");
+        RETURN_THROWS();
+    }
+    zval flow;
+    ZVAL_UNDEF(&flow);
+    zend_call_known_function(get_current, NULL, fiber_ce, &flow, 0, NULL, NULL);
+    if (EG(exception) != NULL) {
+        if (!Z_ISUNDEF(flow)) zval_ptr_dtor(&flow);
+        RETURN_THROWS();
+    }
+    zend_update_property(o->ce, o, ZEND_STRL("flow"), &flow);
+    zval_ptr_dtor(&flow);
 }
 
 ZEND_METHOD(Polyspec_Orm_TxFrame, recordInserted)

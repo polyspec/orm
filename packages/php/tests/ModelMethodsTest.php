@@ -107,6 +107,7 @@ final class ModelMethodsTest extends TestCase
     // Requirements: DSL-42.
     public function testADeclaredMethodBuildsTheQueryOfItsChain(): void
     {
+        // Requirements: INT-28 PLN-40.
         $work = self::$work;
         require_once "$work/models.php";
         $class = 'Polyspec\\Orm\\Tests\\Methods\\Item';

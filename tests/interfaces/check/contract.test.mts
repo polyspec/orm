@@ -148,6 +148,7 @@ caseTest('a PHP record source mutation changes the extracted wire', PROCESS, asy
   }
 });
 
+// Requirements: PAR-3.
 caseTest('the PHP records match the common contract', PROCESS, async ({ signal }) => {
   requirePhp();
   const manifest = readManifest(join(root, 'contracts/interfaces.json'));

@@ -83,6 +83,7 @@ class QueryMethodsTest(unittest.TestCase):
                 name,
             )
 
+    # Requirements: INT-28 PLN-40.
     def test_a_declared_method_builds_the_query_of_its_chain(self):
         declared = (
             self.models.Item()

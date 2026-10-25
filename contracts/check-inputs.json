@@ -11,6 +11,7 @@
       "inputs": [
         "packages/php/src/Collection.php",
         "packages/php/tests/CollectionIdentityTest.php",
+        "packages/php/tests/CollectionIdentityCases.php",
         "packages/php/tests/collection-weak-caller.php",
         "packages/php-ext/src/collection.c",
         "packages/php-ext/src/collection.h",
@@ -624,25 +625,31 @@
         "Makefile",
         "contracts/fixtures/bench/dbspec-set.json",
         "packages/go/generator/gen_go.go",
+        "packages/go/generator/gen_go_test.go",
         "packages/go/generator/gen_go_scan_test.go",
         "packages/go/orm/model.go",
         "packages/php-gen/src/Generator.php",
         "packages/php/src/Model.php",
         "packages/php/tests/OrmGenTest.php",
         "packages/php/tests/OrmGenTestSupport.php",
+        "packages/php/tests/OrmGenScanTest.php",
+        "packages/php/tests/ModelMethodsTest.php",
         "packages/php-ext/src/model_native_methods.c",
         "packages/php-ext/src/model_native_methods.h",
         "packages/php-ext/src/model_state.c",
         "packages/php-ext/src/model_state.h",
         "packages/php-ext/src/polyspec_orm.stub.php",
         "packages/php-ext/tests/ModelNativeTest.php",
+        "packages/php-ext/tests/ModelDslNativeTest.php",
         "packages/ts/src/generate/typescript.ts",
         "packages/ts/src/model.ts",
         "packages/ts/tests/generate.mjs",
+        "packages/ts/tests/generate-scan.mjs",
         "packages/python/src/polyspec/orm/core.py",
         "packages/python/src/polyspec/orm/generate/python.py",
         "packages/python/src/polyspec/orm/model.py",
         "packages/python/tests/test_orm_gen.py",
+        "packages/python/tests/test_query_methods.py",
         "packages/rust/build/src/generate.rs",
         "packages/rust/build/tests/generate.rs",
         "packages/rust/tests/src/integration.rs"
@@ -991,11 +998,16 @@
         "packages/go/orm/collection_identity_test.go",
         "packages/php/src/Db.php",
         "packages/php/tests/CollectionIdentityTest.php",
+        "packages/php/tests/CollectionIdentityCases.php",
         "packages/php-ext/src/db.c",
+        "packages/php-ext/tests/CollectionTest.php",
         "packages/php-ext/tests/ModelAssemblyTest.php",
         "packages/ts/src/database.ts",
         "packages/ts/tests/collection_identity.mjs",
         "packages/python/src/polyspec/orm/database.py",
+        "packages/python/src/polyspec/orm/keys.py",
+        "packages/python/src/polyspec/orm/model.py",
+        "packages/python/src/polyspec/orm/__init__.py",
         "packages/python/tests/test_collection_identity.py",
         "packages/rust/orm/src/collection.rs",
         "packages/rust/orm/tests/collection_identity.rs"
@@ -2329,6 +2341,17 @@
       "inputs": [
         "packages/php/tests/DbspecApplyTest.php",
         "packages/php/tests/dbspec_cases.php"
+      ]
+    },
+    "dbspec-apply-python-check": {
+      "scope": "owner",
+      "needs": [
+        "python",
+        "databases"
+      ],
+      "inputs": [
+        "packages/python/tests/dbspec_apply.py",
+        "packages/python/tests/dbspec_apply_runner.py"
       ]
     },
     "dbspec-php-extension-check": {

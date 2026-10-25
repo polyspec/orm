@@ -137,6 +137,7 @@ function inputsWith(index: number | string, mutation: Mutation | { file: string;
   return { path, location: mutation.location, inputs: [paths['cases'] ?? '', stress ?? '', paths['ddl'] ?? '', paths['plans'] ?? '', paths['mermaid'] ?? '', paths['syntax'] ?? ''] };
 }
 
+// Requirements: PAR-2.
 caseTest('the unchanged vectors run in every runner', TIMEOUT, async () => {
   const inputs = [join(root, 'tests/dbspec/cases.json'), stress, ...['ddl', 'plans', 'mermaid', 'syntax'].map(name => join(root, `tests/dbspec/${name}.json`))];
   for (const runner of runners) {

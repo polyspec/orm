@@ -1,5 +1,6 @@
 # The shared token vectors of tests/dbspec/syntax.json: every runtime matches them exactly. The inputs are
 # built as scripts/dbspec/syntax-vectors.mts vectorInputs builds them, and every case must be present.
+# Requirements: ORES-1.
 import json
 import unittest
 from pathlib import Path

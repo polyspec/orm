@@ -27,7 +27,7 @@ from polyspec.orm.engine import (
     parse_document_set,
 )
 from polyspec.orm.errors import OrmError, joined_errors, rollback_failed
-from polyspec.orm.model import Collection, EntityDef, Model, register_model
+from polyspec.orm.model import Collection, EntityDef, Key, Model, register_model
 from polyspec.orm.schema import Schema
 from polyspec.orm.styled_value import StyledValue
 from polyspec.orm.values import ColumnFunction, ValueFunction, orm
@@ -43,6 +43,7 @@ __all__ = [
     "Entity",
     "EntityDef",
     "Field",
+    "Key",
     "Model",
     "OrmError",
     "RequestHook",

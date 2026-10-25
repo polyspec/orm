@@ -14,9 +14,23 @@ use ReflectionMethod;
 #[Medium]
 final class CoverageTransactionsExtensionTest extends CoverageTransactionsTest
 {
+    // Requirements: INT-40, INT-41, INT-42, INT-43, INT-47, INT-48. The inherited exact savepoint selector runs against the native Db.
+    // Requirements: PLN-19.
     public function testNativeMethodsAreInternal(): void
     {
         Assert::assertTrue((new ReflectionMethod(Db::class, 'transaction'))->isInternal());
+        $public = array_map(
+            static fn(ReflectionMethod $method): string => strtolower($method->getName()),
+            (new \ReflectionClass(Db::class))->getMethods(ReflectionMethod::IS_PUBLIC)
+        );
+        Assert::assertSame(
+            [],
+            array_values(array_filter(
+                $public,
+                static fn(string $name): bool => preg_match('/^(begin|commit|rollback)/', $name) === 1
+            )),
+            'the extension exposes transaction control only through transaction()'
+        );
     }
 
     public function testNativeSqliteTransactionCommitsAndPublishesOneTransactionId(): void

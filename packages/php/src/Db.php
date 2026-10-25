@@ -575,8 +575,12 @@ final class Db
     /** @internal the innermost active transaction of the connection */
     public static function activeFor(Db $db): ?TxFrame
     {
+        $flow = \Fiber::getCurrent();
         for ($i = count(self::$frames) - 1; $i >= 0; $i--) {
             if (self::$frames[$i]->db->state === $db->state) {
+                if (self::$frames[$i]->flow !== $flow) {
+                    throw new OrmException(Code::CONFIG, 'transaction connection is active in another execution flow');
+                }
                 return self::$frames[$i];
             }
         }
@@ -596,12 +600,14 @@ final class Db
             }
             return [$conn, self::activeFor($conn)];
         }
-        $frame = self::$frames[count(self::$frames) - 1] ?? null;
-        if ($frame === null) {
-            throw new OrmException(Code::CONFIG, 'the model has no connection; use connect or run it inside a '
-                . 'transaction');
+        $flow = \Fiber::getCurrent();
+        for ($i = count(self::$frames) - 1; $i >= 0; $i--) {
+            if (self::$frames[$i]->flow === $flow) {
+                return [self::$frames[$i]->db, self::$frames[$i]];
+            }
         }
-        return [$frame->db, $frame];
+        throw new OrmException(Code::CONFIG, 'the model has no connection; use connect or run it inside a '
+            . 'transaction');
     }
 
     /** @internal runs $fn in a transaction of $conn, or directly inside the active one */

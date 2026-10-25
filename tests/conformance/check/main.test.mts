@@ -234,6 +234,7 @@ caseTest('TestRecordKeepsTheRecordedFiles', COMPUTE, async () => {
 
 // TestPHPExtensionCommandLine pins the command line of the php-extension language: the PHP runner with the extension
 // loaded by -d extension=, and nothing else. The plain php language has no extension argument.
+// Requirements: PAR-1.
 caseTest('TestPHPExtensionCommandLine', COMPUTE, () => {
   const extension = '/run/php-extension/polyspec_orm.so';
   assert.deepEqual(phpArguments('UTC', extension, ['--dsn', 'dsn']), [

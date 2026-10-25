@@ -1,3 +1,4 @@
+# Requirements: PLN-73, PLN-74, PLN-75, PLN-76, PLN-77, PLN-78, PLN-79, PLN-80, PLN-81, PLN-82, PLN-83.
 # The plan cases of tests/dbspec/plans.json: one test for each case of 'cases', named by the case id (dbspec_plans).
 # Run: python -m packages.python.tests.test_dbspec_plan_cases
 import unittest
