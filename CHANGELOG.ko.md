@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c92950c296a10964a78db455e2d112319e22f7334dd1567a127c8525b43df379 -->
+<!-- source-sha256: 35ddec2a442528c264978d32fbb5d5fa556f8b0377ef5a225a66bd0a1016c7ff -->
 # 변경 이력
 
 ## Unreleased
 
+- 생성기 unit이 각 언어의 생성기 규칙 native form을 묶는다: 중립 unit 19개가 scan, set file, check, column 이름, external table, typed getter, time setter, chain method 규칙을 여섯 client 모두에 묶고, test가 없던 client에는 Go, TypeScript, PHP, Python, Rust test를 새로 썼다. 한 언어의 생성기 규칙(DSL-39부터 DSL-43, DSL-9, DSL-117, DSL-156, SCH-2) unit 29개는 그 언어의 package로 scope를 주며, 그 규칙들은 이제 package를 명시한다. DSL-129와 값 타입 표는 KSTD-2-11-15-1과 KSTD-2-11-15-2로 남는다(KSTD-2-11-15).
 - 모든 feature-coverage case가 여섯 client의 coverage test에 묶인 중립 unit 하나가 된다. 남은 15개 case(model generation check, statement events, conformance vector, schema definition 7개, authenticated encryption 5개)가 unit을 얻고, 각 test는 검사하는 requirement를 명시하며, Go generated-model DSN case는 DSN unit에 합류한다. 측정을 검사하고 규칙을 인용하지 않는 performance gate case는 모든 client에서 harness test다(KSTD-2-11-8).
 - PHP plan cache와 statement cache는 전체 보유 placeholder를 65,535개로 제한하고 가장 오래 사용하지 않은 entry를 퇴출하며, 한도를 넘는 단일 plan이나 statement는 보관하지 않는다. Cache hit와 재계획 후에도 plan과 statement 결과는 같다 (KSTD-7-3-4).
 - KSTD-5-91: RECORD=1일 때 conformance-check는 conformance-result-check 전에 새 vector를 기록하므로, 첫 실행 전에 dialect 항목이 필요 없다 (KSTD-5-91)

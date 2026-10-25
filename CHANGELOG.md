@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The generator units bind each language's native form of the generator rules: 19 neutral units bind the scan, set-file, check, column-name, external-table, typed-getter, time-setter and chain-method rules in all six clients, with new Go, TypeScript, PHP, Python and Rust tests where a client had none, and the units of one language's own generator rule (DSL-39 to DSL-43, DSL-9, DSL-117, DSL-156, SCH-2) (29 units) are scoped to that language's package, which those rules now name. DSL-129 and the value type table remain as KSTD-2-11-15-1 and KSTD-2-11-15-2 (KSTD-2-11-15).
 - Every feature-coverage case is one neutral unit bound to the coverage test of all six clients: the last 15 cases (model generation check, statement events, conformance vector, seven schema definition and five authenticated encryption cases) get their units, each test names the requirement it checks, and the Go generated-model DSN case joins the DSN unit. The performance gate cases, which check measurements and cite no rule, are harness tests in every client (KSTD-2-11-8).
 - The PHP plan and statement caches now bound their aggregate retained placeholders to 65,535, evict least-recently-used entries, and avoid retaining a single over-bound plan or statement. Cache hits and recompilation preserve the same plan and statement results (KSTD-7-3-4).
 - KSTD-5-91: with RECORD=1, conformance-check records the new vectors before conformance-result-check, so a vector needs no dialect entries before its first run (KSTD-5-91)
