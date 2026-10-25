@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { testDirectoryOf } from './packages.mts';
-import { checkCoverage, coverageItems, databases, executeCoverage, observedCases, languages, NATIVE_DEADLINE, selectFeatures, type Coverage, type Dependent, type Feature, type Manifest, type Owner, type Report } from './coverage.mts';
+import { checkCoverage, coverageItems, databaseDsn, databases, executeCoverage, observedCases, languages, NATIVE_DEADLINE, selectFeatures, type Coverage, type Dependent, type Feature, type Manifest, type Owner, type Report } from './coverage.mts';
 import { readFeatures } from './manifest.mts';
 import { readParityConfig, type ParityConfig } from '../json/formats.mts';
 
@@ -51,6 +51,14 @@ function sampleManifest(owner: string): SampleManifest {
         commands: { none: [{ runner: 'go', test: owner, cases: ['first'], symbols: { first: 'TestFirst' } }] } } },
       dependents: [] } }] };
 }
+
+// A run that did not ask for the complex-query fixture databases has no COMPLEX_QUERY_*_DSN, and its reader names the setup (KSTD-2-9-13-3).
+caseTest('a missing complex-query fixture DSN names the setup that provisions it', COMPUTE, () => {
+  assert.throws(() => databaseDsn({}, { database: 'mysql', dsn_env: 'COMPLEX_QUERY_GO_MYSQL_DSN' }),
+    /^Error: COMPLEX_QUERY_GO_MYSQL_DSN is missing; run make databases-create COMPLEX_QUERY=1, which provisions the 18 run-owned complex-query fixture databases/);
+  assert.throws(() => databaseDsn({}, { database: 'mysql', dsn_env: 'BENCH_MYSQL_DSN' }), /^Error: mysql database DSN is not set in BENCH_MYSQL_DSN; run it through make feature-check$/);
+  assert.equal(databaseDsn({ COMPLEX_QUERY_GO_MYSQL_DSN: 'mysql://x/y' }, { database: 'mysql', dsn_env: 'COMPLEX_QUERY_GO_MYSQL_DSN' }), 'mysql://x/y');
+});
 
 caseTest('PHP extension coverage tests reside in the owning package', 1000, () => {
   const manifest = contract();

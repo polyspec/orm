@@ -67,7 +67,9 @@ const skipped = { checkout: { outcome: 'success' }, node: { outcome: 'success' }
   'server-programs': { outcome: 'skipped' }, servers: { outcome: 'skipped' } };
 handleCrashes();
 const run = async (program, args, step, spawned = () => {}) => {
-  const name = args[1] === 'databases-create' ? 'databases create' : args[0] === 'scripts/check/databases.mts' ? \`databases \${args[1]}\` : args.at(-1);
+  // The create of a run that asks for the complex-query fixture databases logs \`databases create complex-query\`.
+  const name = args[1] === 'databases-create' ? (args.includes('COMPLEX_QUERY=1') ? 'databases create complex-query' : 'databases create')
+    : args[0] === 'scripts/check/databases.mts' ? \`databases \${args[1]}\` : args.at(-1);
   appendFileSync(log, name + '\\n');
   if (kill && name === kill) process.kill(process.pid, 'SIGKILL');
   if (failing && name === 'databases create') {
@@ -113,8 +115,12 @@ const run = async (program, args, step, spawned = () => {}) => {
   }
   if (!failing && !lost && !throws && !verbose && !space && !diskio && !npm && !cisetup && !serverPrograms && !group && !groupRust && name === 'b' && !existsSync(root + '/pass-b')) throw new Error('make b exited with 2');
 };
+// STUB_SUITE=complex-query is a run whose target c reads the complex-query fixture databases (need complex-query) and a only the
+// bench and decimal databases.
+const complexQuery = process.env.STUB_SUITE === 'complex-query';
 const targets = failing ? ['a', 'b', 'c', 'd'] : ['a', 'b', 'c'];
-const needs = cisetup || groupRust ? { a: ['rust'], b: [], c: ['go'] } : group ? { a: [], b: [], c: ['go'] } : { a: ['databases'], b: [], c: ['databases'], d: [] };
+const needs = cisetup || groupRust ? { a: ['rust'], b: [], c: ['go'] } : group ? { a: [], b: [], c: ['go'] }
+  : complexQuery ? { a: ['databases'], b: [], c: ['complex-query'] } : { a: ['databases'], b: [], c: ['databases'], d: [] };
 // 공간 기록은 공간 case에서만 실제 diskSnapshot이다. 다른 case는 /tmp를 읽지 않는 고정 기록을 쓴다.
 const removed = '## files under /tmp that were removed but are still open (lsof +L1)\\nCOMMAND PID USER FD TYPE DEVICE SIZE/OFF NLINK NODE NAME\\nmysqld 10079 runner 2w REG 0,38 6493765632 0 3807 /tmp/orm-binlog-AHN00Q/mysqld.log (deleted)\\n';
 const snapshot = space ? undefined
@@ -200,6 +206,20 @@ if (process.env.GITHUB_ACTIONS === 'true') {
     assert.match(result.stdout, /node scripts\/check\/run\.mts /, result.stdout);
   });
 }
+
+// The complex-query case (KSTD-2-9-13-3) checks that databases/create provisions the 18 complex-query fixture databases only for a
+// run whose targets need them: a run of targets that read only the bench and decimal databases does not ask for them, and a run
+// with a target that needs complex-query asks for them once, before that target.
+caseTest('a run asks for the complex-query fixture databases only when a target needs them', PROCESS, () => {
+  const plain = checkout(scope);
+  assert.equal(plain.run().status, 1);
+  assert.deepEqual(plain.ran(), ['databases create', 'a', 'b', 'c', 'databases drop']);
+  const fixtures = checkout(scope);
+  const result = fixtures.run('', { STUB_SUITE: 'complex-query' });
+  assert.equal(result.status, 1, result.stdout + result.stderr);
+  assert.deepEqual(fixtures.ran(), ['databases create complex-query', 'a', 'b', 'c', 'databases drop']);
+  assert.deepEqual(fixtures.record().failed, ['b']);
+});
 
 caseTest('a run records its setup steps and its targets', PROCESS, () => {
   const c = checkout(scope);

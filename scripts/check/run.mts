@@ -282,8 +282,11 @@ export async function runChecks({ root, jobSummary = false, servers: given, targ
   if (servers && !serversReady) failedSetup['databases'] = `the setup step servers failed: ${(results.at(-1)?.failures ?? []).join(' / ')}`;
   let created = false;
   if (serversReady) {
+    // The 18 complex-query fixture databases are provisioned only for a run with a target that needs complex-query; a target
+    // that reads them without declaring that need fails with COMPLEX_QUERY_SETUP of scripts/check/databases.mts.
+    const complexQuery = wanted.has('complex-query') ? ['COMPLEX_QUERY=1'] : [];
     created = await record('databases/create', 'setup', ({ step, spawned }) =>
-      run('make', ['-s', 'databases-create', `SERVERS=${serverFile}`, `DIRECTORY=${directory}`, `NAME=${name}`], step, spawned, { guard: false }));
+      run('make', ['-s', 'databases-create', `SERVERS=${serverFile}`, `DIRECTORY=${directory}`, `NAME=${name}`, ...complexQuery], step, spawned, { guard: false }));
     if (!created) failedSetup['databases'] = `the setup step databases/create failed: ${(results.at(-1)?.failures ?? []).join(' / ')}`;
   }
   for (const target of targets) {

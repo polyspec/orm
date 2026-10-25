@@ -1420,7 +1420,8 @@
       "scope": "suite",
       "needs": [
         "rust",
-        "databases"
+        "databases",
+        "complex-query"
       ]
     },
     "codec-check": {
@@ -2836,6 +2837,7 @@
         "node-modules",
         "php-extension-tools",
         "databases",
+        "complex-query",
         "python"
       ]
     },
@@ -3010,6 +3012,7 @@
       "scope": "suite",
       "needs": [
         "databases",
+        "complex-query",
         "python"
       ]
     },
@@ -3017,6 +3020,7 @@
       "scope": "suite",
       "needs": [
         "databases",
+        "complex-query",
         "python"
       ]
     },
@@ -3024,6 +3028,7 @@
       "scope": "suite",
       "needs": [
         "databases",
+        "complex-query",
         "python"
       ]
     },

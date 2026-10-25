@@ -3,14 +3,16 @@
 // on it, so each run creates, seeds and drops its own databases. The environment file of the
 // servers names no such database; it gives the DSNs to rename (ORM_RUN_*).
 //
-//   databases.mts create <servers env> <directory> <name>
+//   databases.mts create <servers env> <directory> <name> [--complex-query]
 //   databases.mts drop <servers env> <directory> <name>
 //   databases.mts drop-dead <servers env> <directory> <name>
 //
 // create makes, on the servers of <servers env> (the file that make orm-test-servers writes), the MySQL and PostgreSQL databases
-// <name>_bench and <name>_decimal, 12 owner-specific MySQL/PostgreSQL complex-query databases, and the SQLite files of <directory>;
-// it installs and seeds them from their canonical fixtures, and writes <directory>/env (<servers env> with the BENCH_*, ORM_BENCH_MYSQL_DSN and the
-// send-savepoint SQLite file ORM_SEND_SQLITE_DSN of this run) and <directory>/decimal-env. create first drops the databases
+// <name>_bench and <name>_decimal and the SQLite files of <directory>; with --complex-query, which a run passes only when one of its
+// targets or owner parts reads them, also the 18 owner-specific complex-query fixture databases (12 MySQL/PostgreSQL databases and
+// 6 SQLite files) with their COMPLEX_QUERY_*_DSN. It installs and seeds them from their canonical fixtures, and writes <directory>/env
+// (<servers env> with the BENCH_*, ORM_BENCH_MYSQL_DSN and the send-savepoint SQLite file ORM_SEND_SQLITE_DSN of this run) and
+// <directory>/decimal-env. create first drops the databases
 // that ended runs left (drop-dead). drop drops them and purges the binary logs of the two MySQL servers up to what the
 // replica applied (purgeBinlogs); drop is the last step of a run and runs even when an earlier step failed, so the binary
 // logs that the run wrote leave with the run. <name> is lowercase letters, digits and underscores.
@@ -21,7 +23,7 @@ import { render, type Command } from './commands.mts';
 import { errorCode, errorMessage } from '../../tests/errors.mts';
 
 const root = resolve(import.meta.dirname, '../..');
-const USAGE = 'usage: databases.mts create|drop|drop-dead <servers env> <directory> <name>';
+const USAGE = 'usage: databases.mts create <servers env> <directory> <name> [--complex-query] | databases.mts drop|drop-dead <servers env> <directory> <name>';
 
 /** environmentFile is the variables of an environment file that orm-test-servers and this script write: export NAME='value' lines. */
 export function environmentFile(text: string): Record<string, string> {
@@ -71,6 +73,12 @@ export type ComplexQueryDatabase = {
   psqlDsn: string | null;
 };
 
+// complexQueryDsnEnv is the variable that carries the DSN of the fixture database of one owner and dialect.
+const complexQueryDsnEnv = (runtime: ComplexQueryRuntime, dialect: ComplexQueryDialect): string => `COMPLEX_QUERY_${runtime.toUpperCase()}_${dialect.toUpperCase()}_DSN`;
+
+/** The 18 COMPLEX_QUERY_*_DSN variables of the fixture databases; a reader of one needs complex-query. */
+export const COMPLEX_QUERY_DSN_ENVS: readonly string[] = COMPLEX_QUERY_RUNTIMES.flatMap(runtime => COMPLEX_QUERY_DIALECTS.map(dialect => complexQueryDsnEnv(runtime, dialect)));
+
 /** The run-owned, seeded database of one owner and dialect; coverage reads this exact DSN before and after its case. */
 export function complexQueryDatabasePlan(name: string, directory: string, servers: Record<string, string>): ComplexQueryDatabase[] {
   const mysql = servers['ORM_RUN_MYSQL_DSN'] ?? '';
@@ -83,7 +91,7 @@ export function complexQueryDatabasePlan(name: string, directory: string, server
     const dsn = dialect === 'mysql' ? withDatabase(mysql, database)
       : dialect === 'postgres' ? withDatabase(postgres, database)
         : `sqlite://${file}?${sqliteQuery}`;
-    const dsnEnv = `COMPLEX_QUERY_${runtime.toUpperCase()}_${dialect.toUpperCase()}_DSN`;
+    const dsnEnv = complexQueryDsnEnv(runtime, dialect);
     return { runtime, dialect, database, file, dsn, dsnEnv, psqlDsn: dialect === 'postgres' ? psqlDsn(dsn) : null };
   }));
 }
@@ -114,7 +122,7 @@ export function dropComplexQueryFixtures(plan: readonly ComplexQueryDatabase[], 
 }
 
 /** A fixture database setup step, used by the runner's databases/create phase. */
-export const COMPLEX_QUERY_SETUP = 'make databases-create, which provisions the 18 run-owned complex-query fixture databases';
+export const COMPLEX_QUERY_SETUP = 'make databases-create COMPLEX_QUERY=1, which provisions the 18 run-owned complex-query fixture databases; a run passes it when a target declares the need complex-query in contracts/check-inputs.json or an owner part reads a COMPLEX_QUERY_*_DSN';
 
 /** The commands of the setup that create runs, for make repo-check. */
 const benchSetup: Command = { program: 'node', args: [join(root, 'scripts/bench-db.mts')], cwd: root };
@@ -401,7 +409,8 @@ async function createComplexQueryFixtures(name: string, directory: string, serve
 
 if (import.meta.main) {
   const [action, serversPath, dir, name, ...rest] = process.argv.slice(2);
-  if (action === undefined || serversPath === undefined || dir === undefined || name === undefined || rest.length > 0) {
+  const complexQuery = action === 'create' && rest.length === 1 && rest[0] === '--complex-query';
+  if (action === undefined || serversPath === undefined || dir === undefined || name === undefined || (rest.length > 0 && !complexQuery)) {
     console.error(USAGE);
     process.exit(2);
   }
@@ -448,8 +457,9 @@ if (import.meta.main) {
       const bench = spawnSync('node', [join(root, 'scripts/bench-db.mts')], { cwd: root, env: benchEnv, stdio: 'inherit' });
       if (bench.status !== 0) process.exit(bench.status ?? 1);
       if (!await createDecimal(mysqlBench, postgresBench, `${name}_decimal`, resolve(dir), env)) process.exit(1);
-      if (!await createComplexQueryFixtures(name, resolve(dir), servers, env)) process.exit(1);
-      const complexQueryEnv = complexQueryDatabaseEnvironment(complexQueryDatabasePlan(name, resolve(dir), servers));
+      if (complexQuery && !await createComplexQueryFixtures(name, resolve(dir), servers, env)) process.exit(1);
+      // Without --complex-query the env names no COMPLEX_QUERY_*_DSN, so a reader of a fixture fails with COMPLEX_QUERY_SETUP.
+      const complexQueryEnv = complexQuery ? complexQueryDatabaseEnvironment(complexQueryDatabasePlan(name, resolve(dir), servers)) : {};
       const lines = [readFileSync(serversPath, 'utf8').replace(/\n?$/, '\n'),
         `export ORM_BENCH_MYSQL_DSN='${ormBench}'\n`, `export BENCH_MYSQL_DSN='${mysqlBench}'\n`, `export BENCH_POSTGRES_DSN='${postgresBench}'\n`,
         `export BENCH_SQLITE_DSN='${sqliteBench}'\n`,
@@ -458,7 +468,7 @@ if (import.meta.main) {
         `export ORM_SEND_SQLITE_DSN='sqlite://${dir}/send-savepoint.sqlite'\n`];
       writeFileSync(join(dir, 'env.tmp'), lines.join(''));
       renameSync(join(dir, 'env.tmp'), join(dir, 'env'));
-      console.log(`databases: ${name}_bench, ${name}_decimal, and 18 complex-query fixture databases created and seeded`);
+      console.log(`databases: ${name}_bench and ${name}_decimal${complexQuery ? ', and 18 complex-query fixture databases' : ''} created and seeded`);
       break;
     }
     case 'drop': {

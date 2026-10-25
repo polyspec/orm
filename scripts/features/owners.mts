@@ -27,7 +27,7 @@ import { makeRecipes } from '../repo/testcases.mts';
 import { NEEDS } from '../check/ci-setup.mts';
 import { runStep } from '../check/step.mts';
 import { missingDownloads } from '../check/downloads.mts';
-import { environmentFile } from '../check/databases.mts';
+import { COMPLEX_QUERY_DSN_ENVS, environmentFile } from '../check/databases.mts';
 export { environmentFile };
 import { minimatch } from 'minimatch';
 import { CHECK_INPUTS_SCHEMA, readCheckInputs, type PathDeclaration, type TargetDeclaration } from '../check/inputs.mts';
@@ -37,8 +37,8 @@ import type { Step } from '../../tests/testcase.mts';
 
 /** A verification command of a feature with the inputs whose change selects it. */
 type Verification = { id: string; command: string; inputs?: string[] };
-/** A coverage part of a feature: its tests and inputs. */
-type PartDeclaration = { tests?: string[]; inputs?: string[] };
+/** A coverage part of a feature: its tests, inputs and the native commands of each database with the DSN variable they read. */
+type PartDeclaration = { tests?: string[]; inputs?: string[]; commands?: Record<string, { dsn_env?: string }[]> };
 /** A feature of contracts/features.json as owner-check reads it. */
 export type OwnersFeature = { id: string; verification?: Verification[]; coverage?: { owners?: Record<string, PartDeclaration>; dependents?: (PartDeclaration & { id: string })[] } };
 /** A helper of contracts/features.json. */
@@ -85,6 +85,24 @@ export function coverageParts(feature: OwnersFeature): { part: string; tests: st
     ...Object.entries(coverage.owners ?? {}).map(([language, owner]) => ({ part: `owner/${language}`, tests: owner.tests ?? [], inputs: owner.inputs ?? [] })),
     ...(coverage.dependents ?? []).map(dependent => ({ part: `dependent/${dependent.id}`, tests: dependent.tests ?? [], inputs: dependent.inputs ?? [] })),
   ];
+}
+
+// readsComplexQueryFixtures tells whether a selection reads the complex-query fixture databases, which make databases-create
+// provisions only with COMPLEX_QUERY=1: a selected coverage part with a native command whose dsn_env is a COMPLEX_QUERY_*_DSN, or a
+// make target, selected or run by a selected verification command (`make <target>`), that declares the need complex-query.
+export function readsComplexQueryFixtures(owners: Owner[], targets: string[], declared: Record<string, TargetDeclaration>): boolean {
+  const needsFixtures = (target: string) => declared[target]?.needs.includes('complex-query') ?? false;
+  return targets.some(needsFixtures) || owners.some(({ feature, commands, parts }) =>
+    commands.some(({ id }) => {
+      const target = /^make ([^\s]+)$/.exec(feature.verification?.find(check => check.id === id)?.command ?? '')?.[1];
+      return target !== undefined && needsFixtures(target);
+    }) ||
+    parts.some(({ part }) => {
+      const coverage = feature.coverage ?? {};
+      const declaration = part.startsWith('owner/') ? coverage.owners?.[part.slice('owner/'.length)]
+        : coverage.dependents?.find(dependent => `dependent/${dependent.id}` === part);
+      return Object.values(declaration?.commands ?? {}).flat().some(command => COMPLEX_QUERY_DSN_ENVS.includes(command.dsn_env ?? ''));
+    }));
 }
 
 // inputMatcher returns a function that matches the declared input pattern, and the file that a declared fixture data file (JSON, dbspec document) writes (e.g.
@@ -397,8 +415,10 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
       const name = `orm_owner_${process.pid}_${randomBytes(4).toString('hex')}`;
       const directory = resolve(root, '.runtime/check', name);
       databases = { servers, name, directory };
+      // The 18 complex-query fixture databases are provisioned only for a selection that reads them.
+      const complexQuery = readsComplexQueryFixtures(owners, targets.map(({ target }) => target), declared) ? ['COMPLEX_QUERY=1'] : [];
       const created = await runGroup('owners/databases/create', context =>
-        child(root, 'make', ['-s', 'databases-create', `SERVERS=${servers}`, `DIRECTORY=${directory}`, `NAME=${name}`], context));
+        child(root, 'make', ['-s', 'databases-create', `SERVERS=${servers}`, `DIRECTORY=${directory}`, `NAME=${name}`, ...complexQuery], context));
       if (!created) {
         failed++;
         await runGroup('owners/databases/drop', context => script(root, ['scripts/check/databases.mts', 'drop', servers, directory, name], context));

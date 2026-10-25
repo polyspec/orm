@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 273ac7e14b1c4009143e0478e7a81aef483e97d4a3e38e709d53782766d514a0 -->
+<!-- source-sha256: 368614a50bf96d5cafea0534bf6b321e3af851042a3ef0ae4c5b5c2aebed36af -->
 # 변경 이력
 
 ## Unreleased
 
+- `make databases-create`가 complex-query fixture database 18개를 그것을 읽는 실행에만 준비한다: runner는 target이 need complex-query를 선언할 때, `make owner-check`는 선택된 owner part가 COMPLEX_QUERY_*_DSN을 읽거나 선택된 target이 그것을 필요로 할 때 요청한다. 각각은 실행이 소유하고 실행과 함께 지워지며, 없는 fixture DSN을 읽는 쪽은 그것을 준비하는 setup을 알린다 (KSTD-2-9-13-3).
 - `make databases-create`가 complex-query PostgreSQL fixture를 다시 채운다: psql은 client 전용 `timezone` parameter를 뺀 run DSN으로 연결하며, 이 parameter를 psql은 `invalid URI query parameter "timezone"`으로 거부했으므로 이제 run이 database를 만들 수 있다. decimal type 확인도 같은 DSN을 쓴다 (KSTD-2-9-13-1).
 - `make runner-check`의 make -k case가 Makefile의 RUN_TESTS 정의로 version-check를 실행하고 실제 unit 줄인 `run-tests.mjs node -- scripts/version/check.test.mts`를 기대하며, run-tests가 대신한 `node --test` 줄을 대신한다 (KSTD-5-88-3).
 - `make runner-check`의 lane 이름 case가 두 거부 message 모두에서 config/parity.json이 선언한 client-db-test lane인 go, php, php-extension, typescript, python, rust를 기대하며, 예전의 넷 목록을 대신한다 (KSTD-5-88-2).

@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- `make databases-create` provisions the 18 complex-query fixture databases only for a run that reads them: the runner asks for them when a target declares the need complex-query, and `make owner-check` when a selected owner part reads a COMPLEX_QUERY_*_DSN or a selected target needs it. Each stays run-owned and is dropped with the run, and a reader of a missing fixture DSN names the setup that provisions it (KSTD-2-9-13-3).
 - `make databases-create` seeds the complex-query PostgreSQL fixtures again: psql connects through the run DSN without the client-only `timezone` parameter, which it refused with `invalid URI query parameter "timezone"`, so a run can create its databases. The decimal type check uses the same DSN (KSTD-2-9-13-1).
 - The make -k case of `make runner-check` runs version-check with the RUN_TESTS definition of the Makefile and expects its real unit line, `run-tests.mjs node -- scripts/version/check.test.mts`, in place of the `node --test` line that run-tests replaced (KSTD-5-88-3).
 - The lane-name case of `make runner-check` expects the client-db-test lanes that config/parity.json declares, go, php, php-extension, typescript, python and rust, in both refusal messages, in place of the old list of four (KSTD-5-88-2).

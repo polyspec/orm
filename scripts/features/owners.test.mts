@@ -11,7 +11,7 @@ import type { CheckInputs, Owner, TargetDeclaration } from './owners.mts';
 import { parseJson, refusedPaths } from '../json/schema.mts';
 import { readFeatures } from './manifest.mts';
 
-const { CHECK_INPUTS_SCHEMA, checkInputErrors, makeArguments, manifestChanges, manifestInputErrors, pathScopeErrors, readCheckInputs, selectHelpers, selectOwners, selectTargets, untestedPaths } = ownerSelection;
+const { CHECK_INPUTS_SCHEMA, checkInputErrors, makeArguments, manifestChanges, manifestInputErrors, pathScopeErrors, readCheckInputs, readsComplexQueryFixtures, selectHelpers, selectOwners, selectTargets, untestedPaths } = ownerSelection;
 
 const root = new URL('../..', import.meta.url).pathname;
 const manifest = readFeatures(root);
@@ -22,6 +22,17 @@ const selected = (owners: Owner[]) => owners.flatMap(({ feature, commands, parts
 const helperIds = async (paths: string[]) => (await selectHelpers(manifest, root, paths)).map(({ helper }) => helper.id);
 
 // Each case reads only repository files, so its deadline is 5 s.
+caseTest('owner-check asks for the complex-query fixture databases only for a selection that reads them', 5000, async () => {
+  const { targets } = readCheckInputs(root);
+  const fixture = await selectOwners(manifest, root, ['packages/go/complexquery/coverage_complex_query_test.go']);
+  assert.deepEqual(selected(fixture), ['complex_query/coverage/owner/go']);
+  assert.equal(readsComplexQueryFixtures(fixture, [], targets), true);
+  const other = await selectOwners(manifest, root, ['packages/php/tests/CoverageDsnTest.php']);
+  assert.equal(readsComplexQueryFixtures(other, [], targets), false);
+  assert.equal(readsComplexQueryFixtures([], ['complex-query-rust-check'], targets), true);
+  assert.equal(readsComplexQueryFixtures([], ['complex-query-typescript-check'], targets), false);
+});
+
 caseTest('a changed test selects only the commands that run it', 5000, async () => {
   assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/go/orm/mysql_tls_test.go'])), ['dsn_connection/dsn-go', 'dsn_connection/dsn-mysql-tls-go']);
   assert.deepEqual(selected(await selectOwners(manifest, root, ['packages/go/orm/external_documents_test.go'])), ['schema_install/install-register-go']);
@@ -259,7 +270,7 @@ caseTest('the schema of contracts/check-inputs.json refuses a target or path out
 // provides (scripts/check/ci-setup.mts).
 caseTest('every target declares the setup steps it needs', 5000, async () => {
   assert.deepEqual(checkInputErrors({ b: { scope: 'suite', needs: ['servers'] }, c: { scope: 'suite', needs: ['databases'] } }, ['b', 'c'], []), [
-    'contracts/check-inputs.json: b needs servers, which no setup step provides; the needs are databases, go, node-modules, rust, php-min, php, composer, php-extension-tools, server-programs, python, flowmark',
+    'contracts/check-inputs.json: b needs servers, which no setup step provides; the needs are databases, complex-query, go, node-modules, rust, php-min, php, composer, php-extension-tools, server-programs, python, flowmark',
   ]);
 });
 

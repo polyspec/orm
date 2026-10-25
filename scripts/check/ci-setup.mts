@@ -40,9 +40,11 @@ export const CI_SETUP: Record<string, string | null> = {
 // that failure is a job failure, and the log of that step is the cause.
 export const RUNNER_STEPS = ['checkout', 'node'];
 
-// NEEDS are the needs a target may declare. databases is prepared by the runner's setup phase (servers, databases/create), and the rest
-// are prepared by the CI setup steps. Local runs have no CI setup steps, so those needs are always treated as prepared.
-export const NEEDS = ['databases', ...new Set(Object.values(CI_SETUP).filter(Boolean).filter(need => need !== 'databases'))];
+// NEEDS are the needs a target may declare. databases and complex-query are prepared by the runner's setup phase (servers,
+// databases/create): databases is the bench and decimal databases of the run, and complex-query also the 18 complex-query fixture
+// databases, which databases/create provisions only for a run with a target that needs them. The rest are prepared by the CI
+// setup steps. Local runs have no CI setup steps, so those needs are always treated as prepared.
+export const NEEDS = ['databases', 'complex-query', ...new Set(Object.values(CI_SETUP).filter(Boolean).filter(need => need !== 'databases'))];
 
 // GROUP_OUTPUTS maps each output that step group-needs writes to the need that makes that output true. php installs two PHP releases (the lowest
 // release and .php-version) together with Composer: Composer and the PHP extension tools run with the PHP on PATH. server-programs is the program make orm-test-servers uses to start the servers, and node-modules is
@@ -94,7 +96,8 @@ export const stepCondition = (id: string): string => STEP_OUTPUT[id]
 // the decimal database through the TypeScript client, which make databases-create builds. So a target that needs databases
 // also needs this need (expandNeeds).
 // php-min reads that release through scripts/php/php-min.mts, and that script reads composer.json as its schema, so it needs node_modules.
-export const SETUP_NEEDS: Record<string, string[]> = { databases: ['go', 'node-modules', 'server-programs'], 'php-min': ['node-modules'] };
+// complex-query is made by the same databases/create, so it needs databases.
+export const SETUP_NEEDS: Record<string, string[]> = { databases: ['go', 'node-modules', 'server-programs'], 'complex-query': ['databases'], 'php-min': ['node-modules'] };
 
 // expandNeeds is the need list with the needs that SETUP_NEEDS names appended transitively (declared order first, then the order added).
 export function expandNeeds(needs: readonly string[]): string[] {
