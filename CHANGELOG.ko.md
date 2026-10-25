@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c97cf4988f9729609a3467ea06d2b7c7e1c2decda0d5fd1e44e52c6b0aa9b081 -->
+<!-- source-sha256: 30901583662156a9d5e1794bf53a0ce0b8fc0663fd464c4513be0b9dc770266c -->
 # 변경 이력
 
 ## Unreleased
 
+- PHPUnit test method 이름이 camelCase를 따르며, PHP parity와 feature binding은 각 이름 변경을 반영하고 공유 case ID는 유지한다 (KSTD-5-89-3-3).
 - PHP test의 streamWrapper fixture method 16개가 PHP의 streamWrapper protocol이 요구하는 이름을 유지하며, 각각 suppression-check가 받아들이는 이유가 있는 CamelCapsMethodName phpcs:ignore를 가지므로 `make lint-php`가 통과한다 (KSTD-5-89-3-4).
 - 모든 PHP test 파일이 namespace 안의 class 하나만 선언하고 side effect가 없다: PHP와 extension test의 helper class마다 자기 파일이 있고, test가 맨 위에서 require하던 파일은 그 package의 bootstrap이 한 번 require한다 (KSTD-5-89-3-2).
 - phpcs가 orm의 PHP에서 layout finding을 보고하지 않는다: phpcbf가 중괄호, 공백, inline control structure, call signature를 고쳤고, 긴 call, array, string, comment는 120자에서 줄바꿈되며, 억제된 @unlink와 @trigger_error 호출은 file_exists 확인과 error_reporting(0) 범위가 되었다 (KSTD-5-89-3-1).
