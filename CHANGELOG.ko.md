@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: b4f36a810f463075f353dbf5d848b2f3d161672072fa431ea6260b8325fc089f -->
+<!-- source-sha256: 9969ad2bf4c4a10453c06bd9ec9f064ae83cf9143f90fbfa4e62043bd789ccdd -->
 # 변경 이력
 
 ## Unreleased
 
+- PHP plan cache와 statement cache는 library와 extension 모두 각각 placeholder를 최대 8,192개만 보유하여, 65,535 한도에서의 25.6 MiB와 34.4 MiB 대신 몇 MiB(library에서 plan 3.2 MiB, statement 4.3 MiB)만 유지하며, 다행 INSERT import는 cache가 찬 뒤 더 늘지 않는다 (KSTD-7-3-5).
 - `make dbspec-php-extension-check/vectors`가 다시 extension을 테스트한다: 내부 library 클래스 `Polyspec\Orm\Dbspec\CatalogRows`의 unit test 두 개가 library와 extension에서 실행되는 DbspecTest에서 `make dbspec-php-check/documents`가 library로 실행하는 DbspecCatalogRowsTest로 옮겨졌으므로, extension 실행이 더 이상 packages/php/src/Dbspec/CatalogRows.php를 불러오지 않는다 (KSTD-5-89-34).
 - orm이 kit K613, K614, K621 layout을 따르고 kit dist를 읽지 않는다: config/layout.kit.yml은 kit의 copy이고, config/php-lint는 없어졌으며, PRINCIPLES.md, PRINCIPLES.ko.md, .editorconfig, .claude/settings.json은 ../kit로 link되고, build.sh와 script와 test는 kit의 scripts/kit source를 실행한다 (KSTD-5-89-26).
 - main에서 `make duplication-check`가 통과한다. jscpd가 packages/php-ext, packages/php, packages/go, packages/rust, packages/ts, packages/python에서 두 번 찾은 코드는 이제 양쪽이 함께 쓰는 helper 하나에 있다(C header, PHP trait와 helper 파일, Go internal package, Rust common module과 macro, JavaScript와 Python helper). 모든 active root의 MySQL cancellation case는 controller가 wait lock 두 개를 잡은 뒤에야 두 번째 process를 시작하므로, 그 process가 wait lock을 먼저 가져가지 못한다(KSTD-5-89-22).
