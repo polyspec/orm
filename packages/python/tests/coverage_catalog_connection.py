@@ -12,6 +12,7 @@ import unittest
 
 from polyspec.orm import connect_catalog
 from polyspec.orm.catalog import GridCell
+from .coverage_case import run_cases
 
 TENANT = 990005
 
@@ -85,13 +86,18 @@ def quote(name, driver):
 
 class CatalogConnectionCoverageTest(unittest.TestCase):
     def setUp(self):
-        self.driver = os.environ.get("ORM_FEATURE_DATABASE", "")
+        item = getattr(self, "coverage_item", None)
+        if item is None:
+            self.driver = os.environ.get("ORM_FEATURE_DATABASE", "")
+            dsn = os.environ.get("ORM_FEATURE_DSN")
+        else:
+            self.driver, dsn = item
         self.assertIn(
             self.driver,
             ("mysql", "postgres", "sqlite"),
             "ORM_FEATURE_DATABASE is required; run it through make feature-check",
         )
-        self.catalog = connect_catalog(os.environ["ORM_FEATURE_DSN"])
+        self.catalog = connect_catalog(dsn)
         self.assertEqual(
             self.catalog.dialect,
             self.driver,
@@ -277,22 +283,27 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    selected_cases = sys.argv[1:]
-    if not selected_cases:
+    if len(sys.argv) == 1:
         unittest.main()
     else:
         feature_cases = {
             "catalog_read": "test_read",
             "catalog_row_mutation": "test_row_mutation",
         }
-        for case_id in selected_cases:
-            method_name = feature_cases.get(case_id)
-            if method_name is None:
-                raise SystemExit(f"unknown catalog coverage case {case_id}")
-            suite = unittest.TestSuite([CatalogConnectionCoverageTest(method_name)])
+
+        def run_case(method_name, item):
+            case = CatalogConnectionCoverageTest(method_name)
+            case.coverage_item = item
+            suite = unittest.TestSuite([case])
             output = io.StringIO()
             result = unittest.TextTestRunner(stream=output).run(suite)
             if not result.wasSuccessful():
                 sys.stderr.write(output.getvalue())
-                raise SystemExit(1)
-            print(f"CASE {case_id} [{os.environ['ORM_FEATURE_DATABASE']}] PASS")
+                raise AssertionError(f"{method_name} failed for {item[0]}")
+
+        run_cases(
+            {
+                case_id: lambda item, method_name=method_name: run_case(method_name, item)
+                for case_id, method_name in feature_cases.items()
+            }
+        )
