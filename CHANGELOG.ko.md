@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: c60e638e2570499a122e5a15fc4a65f690b7f57c732dd98c6b0008437e29931c -->
+<!-- source-sha256: 9844fefe6f493576047ee3fd6130f37dafe23e2b6cd8288f21aa34ab52ba1b0c -->
 # 변경 이력
 
 ## Unreleased
 
+- request hook, audit, soft delete, restore, clock unit은 여섯 client unit이다: 26개 unit에 declaration finding이 없고, PHP extension의 native request hook과 audit case가 통과한다(KSTD-2-11-12).
 - PHP extension request hook test가 물려받은 insert assignment case의 requirement를 적으며, 좁은 parity declaration과 native binding 검사가 통과한다 (KSTD-2-11-12-4).
 - service scope 아래의 relation()과 relations()는 coverage-request-hook-relation-scope가 bind하는 request hook case relation_scope로 모든 client에서 실행된다. consumer가 보고한 CONFIG 실패는 현재 main에서 재현되지 않는다: canister conformance가 ScopeHook 아래 relation 호출로 101개 case를 모두 통과하며, 앞선 원인은 증명되지 않았다(T203).
 - `tsc .`가 orm이 import하는 kit source를 다시 type-check한다: kit K574가 link된 package가 더하는 dependency를 link하므로 `make link`가 kit의 파일 link 옆에 node_modules/@types/picomatch를 설치하고, `make lint-ts`는 더 이상 picomatch의 TS7016으로 실패하지 않는다 (KSTD-5-89-8).

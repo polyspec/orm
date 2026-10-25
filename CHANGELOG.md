@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The request hook, audit, soft delete, restore and clock units are six-client units: their 26 units report no declaration finding, and the native request hook and audit cases of the PHP extension pass (KSTD-2-11-12).
 - The PHP extension request hook test names the requirements of the insert assignment case it inherits; the focused parity declaration and native binding checks pass (KSTD-2-11-12-4).
 - relation() and relations() under a service scope run in every client as the request hook case relation_scope, bound by coverage-request-hook-relation-scope. The CONFIG failure that the consumer reported does not reproduce on current main: its canister conformance passes 101 of 101 cases with the relation calls under its ScopeHook, and the earlier cause is not proven (T203).
 - `tsc .` type-checks the kit sources that orm imports again: kit K574 links the dependencies that a linked package adds, so `make link` installs node_modules/@types/picomatch beside the file links of kit, and `make lint-ts` no longer fails on TS7016 for picomatch (KSTD-5-89-8).
