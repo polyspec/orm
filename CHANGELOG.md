@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- `make databases-create` seeds the complex-query PostgreSQL fixtures again: psql connects through the run DSN without the client-only `timezone` parameter, which it refused with `invalid URI query parameter "timezone"`, so a run can create its databases. The decimal type check uses the same DSN (KSTD-2-9-13-1).
 - The make -k case of `make runner-check` runs version-check with the RUN_TESTS definition of the Makefile and expects its real unit line, `run-tests.mjs node -- scripts/version/check.test.mts`, in place of the `node --test` line that run-tests replaced (KSTD-5-88-3).
 - The lane-name case of `make runner-check` expects the client-db-test lanes that config/parity.json declares, go, php, php-extension, typescript, python and rust, in both refusal messages, in place of the old list of four (KSTD-5-88-2).
 - The continuation case of `make runner-check` for scripts/perf-test.mts expects its five gate commands by name: the Go native, hot-path and coverage gates and PerfGateTest without and under CPU load, in place of the count of four that the coverage gate made stale (KSTD-5-88-1).

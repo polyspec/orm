@@ -41,6 +41,17 @@ export function withDatabase(dsn: string, database: string): string {
   return url.href;
 }
 
+/**
+ * psqlDsn is a PostgreSQL DSN as psql takes it: the client parameter timezone, which the servers file gives every client
+ * connection and psql refuses (invalid URI query parameter), is removed; the account, the host, the database and the other
+ * parameters stay. A psql of this script runs with PGTZ=UTC instead.
+ */
+function psqlDsn(dsn: string): string {
+  const url = new URL(dsn);
+  url.searchParams.delete('timezone');
+  return url.href;
+}
+
 const COMPLEX_QUERY_RUNTIMES = ['go', 'php', 'php_extension', 'typescript', 'python', 'rust'] as const;
 const COMPLEX_QUERY_DIALECTS = ['mysql', 'postgres', 'sqlite'] as const;
 const COMPLEX_QUERY_RUNTIME_CODES: Record<(typeof COMPLEX_QUERY_RUNTIMES)[number], string> = {
@@ -56,6 +67,8 @@ export type ComplexQueryDatabase = {
   file: string;
   dsn: string;
   dsnEnv: string;
+  /** The DSN that psql seeds a PostgreSQL fixture through (psqlDsn), or null for MySQL and SQLite. */
+  psqlDsn: string | null;
 };
 
 /** The run-owned, seeded database of one owner and dialect; coverage reads this exact DSN before and after its case. */
@@ -71,7 +84,7 @@ export function complexQueryDatabasePlan(name: string, directory: string, server
       : dialect === 'postgres' ? withDatabase(postgres, database)
         : `sqlite://${file}?${sqliteQuery}`;
     const dsnEnv = `COMPLEX_QUERY_${runtime.toUpperCase()}_${dialect.toUpperCase()}_DSN`;
-    return { runtime, dialect, database, file, dsn, dsnEnv };
+    return { runtime, dialect, database, file, dsn, dsnEnv, psqlDsn: dialect === 'postgres' ? psqlDsn(dsn) : null };
   }));
 }
 
@@ -225,7 +238,7 @@ async function createDecimal(mysqlBench: string, postgresBench: string, decimal:
   }
   const types: [string, string, string][] = [
     ['mysql', mysqlAt(mysql, ['-N', '-e', "SELECT column_type FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'decimal_case' AND column_name = 'amount'"], env, decimal).stdout.trim(), 'decimal(13,4)'],
-    ['postgres', result('psql', ['-X', '-q', '-At', '-v', 'ON_ERROR_STOP=1', postgres.replace(/[?&]timezone=[^&]*/, ''), '-c',
+    ['postgres', result('psql', ['-X', '-q', '-At', '-v', 'ON_ERROR_STOP=1', psqlDsn(postgres), '-c',
       "SELECT data_type || '(' || numeric_precision || ',' || numeric_scale || ')' FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'decimal_case' AND column_name = 'amount'"], env).stdout.trim(), 'numeric(13,4)'],
     ['sqlite', sqliteAmount(new DatabaseSync(sqlite, { readOnly: true })), 'DECIMALINT(13,4)'],
   ];
@@ -327,7 +340,8 @@ function runComplexQuerySql(item: ComplexQueryDatabase, sql: string, env: NodeJS
     case 'mysql':
       return mysqlAt(item.dsn, ['-D', item.database, '-e', sql], env).status === 0;
     case 'postgres':
-      return result('psql', ['-X', '-q', '-v', 'ON_ERROR_STOP=1', item.dsn, '-c', sql], { ...env, PGTZ: 'UTC' }).status === 0;
+      if (item.psqlDsn === null) throw new Error(`${item.dsnEnv}: a PostgreSQL fixture has no psql DSN; complexQueryDatabasePlan gives it one`);
+      return result('psql', ['-X', '-q', '-v', 'ON_ERROR_STOP=1', item.psqlDsn, '-c', sql], { ...env, PGTZ: 'UTC' }).status === 0;
     case 'sqlite':
       return result('sqlite3', ['-bail', item.file], env, sql).status === 0;
   }

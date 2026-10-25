@@ -79,6 +79,24 @@ caseTest('complex-query fixture setup maps every owner DSN and tears down every 
   assert.equal(attempted, 18, 'teardown attempts independent databases after a drop fails');
 });
 
+// The servers file of make orm-test-servers gives the PostgreSQL run DSN the client parameter timezone, which psql refuses with
+// invalid URI query parameter "timezone"; the seed of a complex-query PostgreSQL database connects psql without it and keeps
+// the rest of the DSN. A MySQL or SQLite fixture is not seeded through psql.
+caseTest('complex-query PostgreSQL fixtures are seeded through a DSN that psql accepts', COMPUTE, () => {
+  const plan = complexQueryDatabasePlan('orm_check_2147483647_ffffffff', '/tmp/complex-query-run', {
+    ORM_RUN_MYSQL_DSN: 'mysql://runner@127.0.0.1:3306/orm_run?timezone=UTC',
+    ORM_RUN_POSTGRES_DSN: 'postgres://runner@127.0.0.1:5432/orm_run?sslmode=disable&timezone=%2B00:00',
+    ORM_RUN_SQLITE_QUERY: '_pragma=busy_timeout(5000)&timezone=%2B00:00',
+  });
+  const postgres = plan.filter(item => item.dialect === 'postgres');
+  assert.equal(postgres.length, 6);
+  for (const item of postgres) {
+    assert.match(item.dsn, /[?&]timezone=/, `${item.dsnEnv}: the client DSN keeps its timezone`);
+    assert.equal(item.psqlDsn, `postgres://runner@127.0.0.1:5432/${item.database}?sslmode=disable`, `${item.dsnEnv}: the DSN of psql`);
+  }
+  assert.ok(plan.filter(item => item.dialect !== 'postgres').every(item => item.psqlDsn === null), 'a MySQL or SQLite fixture has no psql DSN');
+});
+
 // declared reads the commands the script runs from COMMANDS (scripts/check/commands.mts), which the script exports. The expected commands and
 // their count are not hand-written, so the case still matches when test files are added to or removed from a lane. It returns the commands that start with a program, in run order.
 async function declared(script: string, program: string): Promise<string[]> {
