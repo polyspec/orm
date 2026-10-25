@@ -2241,18 +2241,12 @@
         {
           "implementation": "go",
           "test": "packages/go/orm/coverage_dsn_test.go",
-          "id": "TestCoverageDSNConnection",
-          "command": [
-            "make",
-            "-s",
-            "-C",
-            "${ORM_CHECKOUT}",
-            "feature-go-unit",
-            "FEATURE_DATABASE=sqlite",
-            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
-            "FEATURE_TEST=TestCoverageDSNConnection",
-            "FEATURE_PACKAGE=./orm"
-          ]
+          "id": "TestCoverageDSNConnection"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/model/coverage_dsn_test.go",
+          "id": "TestCoverageGeneratedModelConnection"
         },
         {
           "implementation": "php",
