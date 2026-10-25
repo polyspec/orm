@@ -849,7 +849,9 @@ final class ModelTest extends TestCase
         self::check($row !== null, 'row');
         $start = $row->getStartDt();
         self::check(
-            $start == $midnight && $start->format('H:i P') === '00:00 +00:00',
+            $start == $midnight
+                && $start->getOffset() === 0
+                && $start->format(DATE_ATOM) === $midnight->setTimezone(new DateTimeZone('UTC'))->format(DATE_ATOM),
             'start_dt ' . $start->format(DATE_ATOM)
         );
         $ts = $row->getCreatedTs();
