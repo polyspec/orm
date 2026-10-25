@@ -25,7 +25,7 @@ use Polyspec\Orm\Tests\GroupRowsCases;
 final class ModelAssemblyTest extends TestCase
 {
     use CollectionIdentityCases;
-    // Requirements: PRT-69. The imported exact-i64 and row-count cases assert the public group-row output values.
+    // Requirements: INT-68, PRT-69, INT-1, INT-90. The imported cases assert the public group-row output values.
     use GroupRowsCases;
 
     protected function assertGroupRowOwnership(): void
@@ -76,10 +76,21 @@ final class ModelAssemblyTest extends TestCase
         }
     }
 
+    // Requirements: INT-69, INT-70, INT-71.
     public function testGroupRowsUseAKeyPreservingSnapshotIterator(): void
     {
         $first = new GroupRow([['name', 'one'], ['row_count', 1]]);
         $second = new GroupRow([['name', 'two'], ['row_count', 2]]);
+        self::assertSame(1, $first->count());
+        self::assertSame('one', $first->value('name'));
+        $nullable = new GroupRow([['price', null], ['row_count', 0]]);
+        self::assertNull($nullable->value('price'));
+        try {
+            $first->value('missing');
+            self::fail('an unselected group value was accepted');
+        } catch (OrmException $error) {
+            self::assertSame(Code::COLUMN_UNSELECTED, $error->code_);
+        }
         $rows = new GroupRows(['first' => $first, 9 => $second]);
         $iterator = $rows->getIterator();
 

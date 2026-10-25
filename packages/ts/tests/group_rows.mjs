@@ -2,6 +2,7 @@ import { GroupRow, GroupRows, OrmError } from '../dist/index.js';
 import { groupValue } from '../dist/model.js';
 import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
 
+// Requirements: INT-68, INT-69, INT-70, INT-71.
 caseTest('group_rows/owner', COMPUTE, () => {
   const row = new GroupRow([['is_close', false], ['row_count', 3]]);
   if (row.count !== 3 || row.value('is_close') !== false || JSON.stringify(row.toArray()) !== '{"is_close":false,"row_count":3}') {
@@ -13,8 +14,11 @@ caseTest('group_rows/owner', COMPUTE, () => {
   } catch (error) {
     if (!(error instanceof OrmError) || error.code !== 'COLUMN_UNSELECTED') throw error;
   }
-  const rows = new GroupRows([row]);
-  if (rows.length !== 1 || JSON.stringify(rows.toArray()) !== '[{"is_close":false,"row_count":3}]') {
+  const second = new GroupRow([['is_close', true], ['row_count', 2]]);
+  const nullable = new GroupRow([['price', null], ['row_count', 0]]);
+  if (nullable.value('price') !== null) throw new Error('selected SQL NULL changed');
+  const rows = new GroupRows([row, second, nullable]);
+  if (rows.length !== 3 || JSON.stringify(rows.toArray()) !== '[{"is_close":false,"row_count":3},{"is_close":true,"row_count":2},{"price":null,"row_count":0}]') {
     throw new Error('group result collection changed the row');
   }
   for (const invalid of [
@@ -55,7 +59,7 @@ caseTest('group_rows/boolean_invalid_stored_value', COMPUTE, () => {
   }
 });
 
-// Requirements: PRT-69. The selected grouped i64 remains exact in the public row representation.
+// Requirements: PRT-69, INT-1. The selected grouped i64 remains exact in the public row representation.
 caseTest('group_rows/exact_i64_preserved', COMPUTE, () => {
   const want = 9007199254740991;
   const value = groupValue(null, { name: 'exact_value', column: '', type: 'i64' }, want, null);

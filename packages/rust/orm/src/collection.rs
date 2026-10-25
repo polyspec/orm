@@ -428,6 +428,7 @@ mod group_tests {
     use super::{GroupRow, GroupRows, Val};
 
     #[test]
+    // Requirements: INT-68, INT-69, INT-70, INT-71.
     fn grouped_rows_contain_only_group_values_and_checked_counts() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
         let row = GroupRow::new(vec![("is_close".into(), Val::Bool(false)), ("row_count".into(), Val::I64(3))]).unwrap();
@@ -436,9 +437,18 @@ mod group_tests {
         assert_eq!(row.value("name").unwrap_err().code(), crate::codes::COLUMN_UNSELECTED);
         let nullable = GroupRow::new(vec![("name".into(), Val::Null), ("row_count".into(), Val::I64(0))]).unwrap();
         assert_eq!(nullable.value("name").unwrap(), &Val::Null);
-        let groups = GroupRows::new(vec![row]);
-        assert_eq!(groups.to_json().unwrap(), r#"[{"is_close":false,"row_count":3}]"#);
-        assert_eq!(groups.to_array().unwrap(), serde_json::json!([{"is_close": false, "row_count": 3}]));
+        assert_eq!(nullable.to_array().unwrap(), serde_json::json!({"name": null, "row_count": 0}));
+        let second = GroupRow::new(vec![("is_close".into(), Val::Bool(true)), ("row_count".into(), Val::I64(2))]).unwrap();
+        let groups = GroupRows::new(vec![row, second]);
+        assert_eq!(groups.len(), 2);
+        assert_eq!(
+            groups.to_json().unwrap(),
+            r#"[{"is_close":false,"row_count":3},{"is_close":true,"row_count":2}]"#
+        );
+        assert_eq!(groups.to_array().unwrap(), serde_json::json!([
+            {"is_close": false, "row_count": 3},
+            {"is_close": true, "row_count": 2}
+        ]));
         // Requirements: INT-90.
         assert_eq!(GroupRow::new(vec![("row_count".into(), Val::I64(-1))]).err().unwrap().code(), "CODEC_DECODE");
         assert_eq!(GroupRow::new(vec![("row_count".into(), Val::Str("invalid".into()))]).err().unwrap().code(), "CODEC_DECODE");

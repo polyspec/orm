@@ -11,6 +11,7 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
+// Requirements: INT-68, INT-69, INT-70, INT-71.
 func TestGroupRowsRejectInvalidCountsAndPreserveSelectedValues(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	for _, tc := range []struct {
@@ -49,8 +50,18 @@ func TestGroupRowsRejectInvalidCountsAndPreserveSelectedValues(t *testing.T) {
 	if value, err := nullRow.Value("nullable"); err != nil || value != nil {
 		t.Fatalf("selected SQL NULL = %#v, error = %v", value, err)
 	}
-	rows := &GroupRows{rows: []GroupRow{row}}
-	if want := []map[string]any{{"is_close": false, "row_count": int64(3)}}; !reflect.DeepEqual(rows.ToArray(), want) {
+	if want := map[string]any{"nullable": nil, "row_count": int64(1)}; !reflect.DeepEqual(nullRow.ToArray(), want) {
+		t.Fatalf("selected SQL NULL array = %#v, want %#v", nullRow.ToArray(), want)
+	}
+	second, err := newGroupRow([]groupValue{{name: "is_close", value: true}, {name: "row_count", value: int64(2)}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows := &GroupRows{rows: []GroupRow{row, second}}
+	if rows.Len() != 2 {
+		t.Fatalf("group rows length = %d, want 2", rows.Len())
+	}
+	if want := []map[string]any{{"is_close": false, "row_count": int64(3)}, {"is_close": true, "row_count": int64(2)}}; !reflect.DeepEqual(rows.ToArray(), want) {
 		t.Fatalf("group rows = %#v, want %#v", rows.ToArray(), want)
 	}
 }
@@ -92,7 +103,7 @@ func TestGroupCountRejectsInvalidStoredBoolean(t *testing.T) {
 	}
 }
 
-// Requirements: PRT-69. The grouped row exposes the selected i64 as an exact integer value.
+// Requirements: PRT-69, INT-1. The grouped row exposes the selected i64 as an exact integer value.
 func TestGroupCountPreservesExactI64Value(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	const want int64 = 9007199254740991

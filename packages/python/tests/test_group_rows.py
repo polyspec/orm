@@ -4,7 +4,7 @@ import unittest
 
 from polyspec.orm import codes
 from polyspec.orm.errors import OrmError
-from polyspec.orm.group_rows import GroupRow
+from polyspec.orm.group_rows import GroupRow, GroupRows
 from polyspec.orm.model_exec import _group_value
 from . import testcase
 
@@ -53,6 +53,29 @@ class GroupRowCountTest(unittest.TestCase):
                 self.assertEqual(row.to_array()["row_count"], want)
 
 
+class GroupRowsOwnerTest(unittest.TestCase):
+    # Requirements: INT-69, INT-70, INT-71.
+    def test_group_rows_length_and_to_array_follow_result_order(self):
+        first = GroupRow([("is_close", False), ("row_count", 3)])
+        second = GroupRow([("is_close", True), ("row_count", 2)])
+        nullable = GroupRow([("price", None), ("row_count", 0)])
+        self.assertEqual(first.value("is_close"), False)
+        self.assertIsNone(nullable.value("price"))
+        with self.assertRaises(OrmError) as caught:
+            first.value("name")
+        self.assertEqual(caught.exception.code, codes.COLUMN_UNSELECTED)
+        rows = GroupRows([first, second, nullable])
+        self.assertEqual(rows.length, 3)
+        self.assertEqual(
+            rows.to_array(),
+            [
+                {"is_close": False, "row_count": 3},
+                {"is_close": True, "row_count": 2},
+                {"price": None, "row_count": 0},
+            ],
+        )
+
+
 class GroupBooleanValueTest(unittest.TestCase):
     # PRT-36: a non-boolean stored value is not coerced to a truth value.
     def test_group_boolean_rejects_non_boolean_float(self):
@@ -68,7 +91,7 @@ class GroupBooleanValueTest(unittest.TestCase):
 
 
 class GroupExactI64ValueTest(unittest.TestCase):
-    # Requirements: PRT-69. The grouped row preserves an exact i64 in its public output representation.
+    # Requirements: INT-68, PRT-69, INT-1. The grouped row preserves its selected value and public output representation.
     def test_group_result_preserves_exact_i64_value(self):
         want = 9007199254740991
         value = _group_value(
