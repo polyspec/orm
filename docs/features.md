@@ -25,6 +25,7 @@ The executable source is the repository feature manifest. Read the manifest, the
 | catalog_connection | Catalog connection | implemented | go, php, php-extension, typescript, python, rust |
 | request_hook | Request hook | partial | go, php, php-extension, typescript, python, rust |
 | complex_query | Complex product search | partial | go, php, php-extension, typescript, python, rust |
+| model_query_duplicate_relation | Duplicate relation result names | implemented | go, php, php-extension, typescript, python, rust |
 
 ## Current behavior
 
@@ -48,5 +49,6 @@ The executable source is the repository feature manifest. Read the manifest, the
 - `catalog_connection`: All six clients open a catalog connection from one DSN, read qualified table metadata and bounded pages, execute bounded read-only queries with typed grid cells, and insert, update and delete rows with verified snapshots. Catalog reads are separate from runtime model execution and build-time schema introspection.
 - `request_hook`: A connection handle carries one hook that receives each request of the handle right before planning: reads, counts, pages, inserts with one row or rows, updates, deletes, restores and getQuery. The hook may add predicates, assignments and parameters through the client's add-parameter call; the client sets n_params and plans the request as any other, so the planner validates it and the plan cache keys on it. Rows and transactions of the handle keep the hook, and the client gives the hook no meaning of its own.
 - `complex_query`: CPX-2 compiles and executes a generated public product search with localized full-text OR filters expressed as IN semijoins, one category membership filter, stable like-count ordering, six relations, an exact page and count, and eight ordered database statements. Each runtime uses its own seeded fixture database on MySQL, PostgreSQL, and SQLite; SQLite rejects full-text operators before issuing a statement.
+- `model_query_duplicate_relation`: Reject a model query when two unaliased relations produce the same result name, and tell the caller to alias one relation.
 
 Run make feature-check to validate paths and execute every verification command declared for non-planned features. An implemented feature requires tests and paired documentation; partial and planned are incomplete.

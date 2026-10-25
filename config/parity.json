@@ -21772,6 +21772,45 @@
           "id": "soft_delete_restore [sqlite]"
         }
       ]
+    },
+    {
+      "id": "coverage-model-query-duplicate-relation",
+      "kind": "feature",
+      "requirements": [
+        "CPX-5"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/cpx5_duplicate_relation_test.go",
+          "id": "TestCPX5DuplicateRelationNameIsRejectedDuringQueryCompilation"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/Cpx5DuplicateRelationTest.php",
+          "id": "Cpx5DuplicateRelationTest::testGetQueryRejectsDuplicateRelationWithAliasHint"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/Cpx5DuplicateRelationNativeTest.php",
+          "id": "Cpx5DuplicateRelationNativeTest::testNativeGetQueryRejectsDuplicateRelationWithAliasHint"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/cpx5_duplicate_relation.mjs",
+          "id": "duplicate_relation_name"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_cpx5_duplicate_relation.py",
+          "id": "duplicate_relation_name"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/integration/coverage_model_queries.rs",
+          "id": "coverage_model_queries::duplicate_relation_name_reports_config_alias_hint"
+        }
+      ]
     }
   ],
   "errors": {

@@ -11971,6 +11971,184 @@
         },
         "dependents": []
       }
+    },
+    {
+      "id": "model_query_duplicate_relation",
+      "title": "Duplicate relation result names",
+      "title_ko": "\uc911\ubcf5\ub41c relation \uacb0\uacfc \uc774\ub984",
+      "status": "implemented",
+      "description": "Reject a model query when two unaliased relations produce the same result name, and tell the caller to alias one relation.",
+      "description_ko": "alias\ud558\uc9c0 \uc54a\uc740 \ub450 relation\uc774 \uac19\uc740 \uacb0\uacfc \uc774\ub984\uc744 \ub9cc\ub4e4\uba74 model query\ub97c \uac70\ubd80\ud558\uace0 \ud55c relation\uc5d0 alias\ub97c \uc9c0\uc815\ud558\ub77c\uace0 \uc54c\ub9b0\ub2e4.",
+      "inputs": {
+        "type": "Model",
+        "fields": [
+          "relations"
+        ]
+      },
+      "outputs": {
+        "type": "Query",
+        "fields": [
+          "relation result names"
+        ]
+      },
+      "state": [
+        "derive each relation's effective result name",
+        "reject a duplicate before lowering the query"
+      ],
+      "errors": [
+        {
+          "code": "CONFIG",
+          "when": "two relations produce the same effective result name"
+        }
+      ],
+      "parity": [
+        "coverage-model-query-duplicate-relation"
+      ],
+      "fixtures": [],
+      "tests": [
+        "packages/go/model/cpx5_duplicate_relation_test.go",
+        "packages/php/tests/Cpx5DuplicateRelationTest.php",
+        "packages/php-ext/tests/Cpx5DuplicateRelationNativeTest.php",
+        "packages/ts/tests/cpx5_duplicate_relation.mjs",
+        "packages/python/tests/test_cpx5_duplicate_relation.py",
+        "packages/rust/tests/tests/integration/coverage_model_queries.rs"
+      ],
+      "docs": [
+        "docs/spec/complex-query.md"
+      ],
+      "verification": [
+        {
+          "id": "model-query-duplicate-relation-go",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/model -run '^TestCPX5DuplicateRelationNameIsRejectedDuringQueryCompilation$' -count=1",
+          "shard": "other",
+          "inputs": [
+            "packages/go/model/cpx5_duplicate_relation_test.go"
+          ]
+        }
+      ],
+      "coverage": {
+        "kind": "independent",
+        "cases": [
+          "duplicate_relation_name"
+        ],
+        "owners": {
+          "go": {
+            "part": "packages/go/model",
+            "tests": [
+              "packages/go/model/cpx5_duplicate_relation_test.go"
+            ],
+            "commands": {
+              "none": [
+                {
+                  "runner": "go",
+                  "test": "packages/go/model/cpx5_duplicate_relation_test.go",
+                  "cases": [
+                    "duplicate_relation_name"
+                  ],
+                  "symbols": {
+                    "duplicate_relation_name": "TestCPX5DuplicateRelationNameIsRejectedDuringQueryCompilation"
+                  }
+                }
+              ]
+            }
+          },
+          "php": {
+            "part": "packages/php/tests",
+            "tests": [
+              "packages/php/tests/Cpx5DuplicateRelationTest.php"
+            ],
+            "commands": {
+              "none": [
+                {
+                  "runner": "php",
+                  "test": "packages/php/tests/Cpx5DuplicateRelationTest.php",
+                  "cases": [
+                    "duplicate_relation_name"
+                  ],
+                  "symbols": {
+                    "duplicate_relation_name": "Cpx5DuplicateRelationTest::testGetQueryRejectsDuplicateRelationWithAliasHint"
+                  }
+                }
+              ]
+            }
+          },
+          "php-extension": {
+            "part": "packages/php-ext/tests",
+            "tests": [
+              "packages/php-ext/tests/Cpx5DuplicateRelationNativeTest.php"
+            ],
+            "commands": {
+              "none": [
+                {
+                  "runner": "php",
+                  "test": "packages/php-ext/tests/Cpx5DuplicateRelationNativeTest.php",
+                  "cases": [
+                    "duplicate_relation_name"
+                  ],
+                  "symbols": {
+                    "duplicate_relation_name": "Cpx5DuplicateRelationNativeTest::testNativeGetQueryRejectsDuplicateRelationWithAliasHint"
+                  }
+                }
+              ]
+            }
+          },
+          "typescript": {
+            "part": "packages/ts/tests",
+            "tests": [
+              "packages/ts/tests/cpx5_duplicate_relation.mjs"
+            ],
+            "commands": {
+              "none": [
+                {
+                  "runner": "node",
+                  "test": "packages/ts/tests/cpx5_duplicate_relation.mjs",
+                  "cases": [
+                    "duplicate_relation_name"
+                  ]
+                }
+              ]
+            }
+          },
+          "python": {
+            "part": "packages/python/tests",
+            "tests": [
+              "packages/python/tests/test_cpx5_duplicate_relation.py"
+            ],
+            "commands": {
+              "none": [
+                {
+                  "runner": "python",
+                  "test": "packages/python/tests/test_cpx5_duplicate_relation.py",
+                  "cases": [
+                    "duplicate_relation_name"
+                  ]
+                }
+              ]
+            }
+          },
+          "rust": {
+            "part": "packages/rust/tests",
+            "tests": [
+              "packages/rust/tests/tests/integration/coverage_model_queries.rs"
+            ],
+            "commands": {
+              "none": [
+                {
+                  "runner": "cargo",
+                  "test": "packages/rust/tests/tests/integration/coverage_model_queries.rs",
+                  "cases": [
+                    "duplicate_relation_name"
+                  ],
+                  "symbols": {
+                    "duplicate_relation_name": "coverage_model_queries::duplicate_relation_name_reports_config_alias_hint"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "dependents": []
+      }
     }
   ],
   "helpers": [

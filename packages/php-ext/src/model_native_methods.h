@@ -5,6 +5,7 @@
 #include "model_output.h"
 #include "model_query.h"
 void model_native_init(zend_class_entry *ce);
+bool model_result_name(zend_object *object, bool many, zend_string **result);
 bool model_time_value_in_zone(zval *input, zval *zone, zval *ret);
 zend_string *model_decimal_normalize(zend_string *input, zend_long precision, zend_long scale);
 void model_native_fail(model_state *state, const char *message);

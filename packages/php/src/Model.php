@@ -951,8 +951,14 @@ abstract class Model implements \JsonSerializable, ModelMetadata
         if ($this->where['items'] !== []) {
             $q['where'] = $this->groupIr($this->where['items'], $r, $f);
         }
+        $relationNames = [];
         foreach ($this->relations as $rel) {
             $child = $rel['child'];
+            $name = $child->resultName($rel['many']);
+            if (isset($relationNames[$name])) {
+                throw new OrmException(Code::CONFIG, "relation result name $name is used twice; call alias<Name>() on one of them");
+            }
+            $relationNames[$name] = true;
             if ($child->conn !== null) {
                 if ($child->limit !== null) {
                     throw new OrmException(

@@ -642,7 +642,7 @@ static bool model_call_method_args(zval *object, const char *method, zval *retva
     return EG(exception) == NULL;
 }
 
-static bool model_result_name(zend_object *object, bool many, zend_string **result)
+bool model_result_name(zend_object *object, bool many, zend_string **result)
 {
     model_state *state = model_state_of(object);
     zval *alias = model_state_property(state, "alias");

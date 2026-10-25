@@ -1,5 +1,5 @@
 <!-- doc-id: features -->
-<!-- source-sha256: 38b8b12491f5f611aa818c5c1d116bbc9de30bb14fb84bbcab07732141aad61d -->
+<!-- source-sha256: ee0118f7259bfbae3292979520cb91dfb728b8d1174c3fccb4976350915d1f83 -->
 # 기능 정의
 
 실행 기준은 저장소의 기능 manifest이다. 먼저 manifest의 `source.read_order` 경로를 읽고 선택한 기능의 모든 참조 경로를 읽는다. 각 항목은 input, output, 상태 전이, 오류, parity unit, fixture, test, paired document, 실제 검증 명령을 정의한다.
@@ -26,6 +26,7 @@
 | catalog_connection | Catalog 연결 | implemented | go, php, php-extension, typescript, python, rust |
 | request_hook | Request hook | partial | go, php, php-extension, typescript, python, rust |
 | complex_query | 복합 상품 검색 | partial | go, php, php-extension, typescript, python, rust |
+| model_query_duplicate_relation | 중복된 relation 결과 이름 | implemented | go, php, php-extension, typescript, python, rust |
 
 ## 현재 동작
 
@@ -49,5 +50,6 @@
 - `catalog_connection`: 여섯 클라이언트는 하나의 DSN으로 catalog 연결을 열고, namespace로 한정한 table metadata와 제한된 page를 읽고, typed grid cell을 사용하는 제한 read-only query를 실행하며, 검증된 snapshot으로 row를 insert, update, delete한다. Catalog read는 runtime model execution과 build-time schema introspection에서 구분된다.
 - `request_hook`: 연결 handle은 hook 하나를 가지며, 그 hook은 handle의 각 request를 plan 직전에 받는다: 읽기, count, page, 행 하나나 여러 행의 insert, update, delete, restore, getQuery다. hook은 client의 매개변수 추가 호출로 predicate, assignment, 매개변수를 더할 수 있다. client는 n_params를 쓰고 request를 다른 request처럼 plan하므로 planner가 검증하고 plan cache는 그 request로 key를 정한다. handle의 행과 transaction은 hook을 지키며, client는 hook에 자기 의미를 붙이지 않는다.
 - `complex_query`: CPX-2는 생성된 공개 product 검색을 컴파일하고 실행한다. 지역화 full-text OR 필터는 IN semijoin으로 표현하고 category membership 필터 하나, 안정적인 like-count 정렬, 관계 6개, 정확한 page/count, 순서가 지정된 데이터베이스 문장 8개를 유지한다. 각 runtime은 MySQL, PostgreSQL, SQLite에서 별도로 seed된 fixture 데이터베이스를 사용하며 SQLite는 문장을 실행하기 전에 full-text operator를 거부한다.
+- `model_query_duplicate_relation`: alias하지 않은 두 relation이 같은 결과 이름을 만들면 model query를 거부하고 한 relation에 alias를 지정하라고 알린다.
 
 make feature-check는 경로를 검사하고 planned가 아닌 기능의 검증 명령을 실제 실행한다. implemented 항목은 test와 paired document가 필요하다. partial과 planned는 미완료 상태다.

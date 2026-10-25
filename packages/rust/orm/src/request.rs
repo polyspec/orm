@@ -207,7 +207,13 @@ fn query(r: &mut Req, c: &Core, f: &mut Frame<'_>, joins: &mut HashSet<String>, 
         child.on = on;
         q.joins.push(ir::Join { rel: last_segment(&path), kind: j.kind.to_owned(), query: Box::new(child), left: j.left.clone(), right: j.right.clone() });
     }
+    let mut relation_names = HashSet::new();
     for rel in &c.relations {
+        let name = result_name(&rel.child, rel.many);
+        if !relation_names.insert(name.clone()) {
+            r.fail(config(format!("relation result name {name} is used twice; call alias<Name>() on one of them")));
+            return None;
+        }
         if rel.child.conn.is_some() {
             if rel.child.limit.is_some() {
                 r.fail(Error::Engine { code: codes::LIMIT_IN_RELATION.into(), msg: format!("{} relation uses limit; use group_limit", rel.child.ent.name) });

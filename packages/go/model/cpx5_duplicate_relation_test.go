@@ -11,6 +11,8 @@ import (
 )
 
 // TestCPX5DuplicateRelationNameIsRejectedDuringQueryCompilation checks the public model chain without executing SQL.
+//
+// Requirements: CPX-5.
 func TestCPX5DuplicateRelationNameIsRejectedDuringQueryCompilation(t *testing.T) {
 	db, err := model.Connect("sqlite://"+filepath.Join(t.TempDir(), "cpx5.db"), orm.Config{})
 	if err != nil {

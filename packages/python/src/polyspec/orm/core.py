@@ -746,8 +746,20 @@ class BuiltRequest:
             )
         if c.where.items:
             q["where"] = self._group(c.where, c, f)
+        relation_names = set()
         for relation in c.relations:
             child_core = relation["child"]
+            relation_name = child_core.result_name(relation["many"])
+            if relation_name in relation_names:
+                self.fail(
+                    OrmError(
+                        codes.CONFIG,
+                        f"relation result name {relation_name} is used twice; "
+                        "call alias<Name>() on one of them",
+                    )
+                )
+                return None
+            relation_names.add(relation_name)
             if child_core.conn is not None:
                 if child_core.limit is not None:
                     self.fail(

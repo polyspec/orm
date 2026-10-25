@@ -550,7 +550,14 @@ export class BuiltRequest {
       (q.joins ??= []).push(join);
     }
     if (c.where.items.length > 0) q.where = this.group(c.where, c, f);
+    const relationNames = new Set<string>();
     for (const rel of c.relations) {
+      const name = rel.child.resultName(rel.many);
+      if (relationNames.has(name)) {
+        this.fail(configError(`relation result name ${name} is used twice; call alias<Name>() on one of them`));
+        return undefined;
+      }
+      relationNames.add(name);
       if (rel.child.conn !== undefined) {
         if (rel.child.limit) { this.fail(new OrmError(codes.LIMIT_IN_RELATION, `${rel.child.ent.entity.name} relation uses limit; use groupLimit`)); return undefined; }
         const list = this.external.get(c) ?? [];
