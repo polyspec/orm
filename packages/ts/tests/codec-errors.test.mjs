@@ -20,30 +20,33 @@ caseTest('CodecError accepts ErrorOptions without changing its formatted message
   assert.equal(new CodecError('CODEC_DECODE', 'plain failure').cause, undefined);
 });
 
-caseTest('malformed JSON preserves the parser error as cause', COMPUTE, () => {
-  const error = thrown(() => decode(['ordered_json'], '{'));
-  assert(error instanceof CodecError);
-  assert.equal(error.code, 'CODEC_DECODE');
-  assert.match(error.message, /^CODEC_DECODE: json:/);
-  assert(error.cause instanceof Error);
-});
-
-caseTest('malformed YAML preserves the parser error as cause', COMPUTE, () => {
-  const error = thrown(() => decode(['yaml'], 'value: [\n'));
-  assert(error instanceof CodecError);
-  assert.equal(error.code, 'CODEC_DECODE');
-  assert.match(error.message, /^CODEC_DECODE: yaml:/);
-  assert(error.cause instanceof Error);
-});
-
-caseTest('invalid UTF-8 keeps the native decoding error as cause for JSON and YAML', COMPUTE, () => {
-  for (const style of ['ordered_json', 'yaml']) {
-    const error = thrown(() => decode([style], new Uint8Array([0xff])));
+caseTest('codec/malformed-json-and-yaml', COMPUTE, () => {
+  for (const [style, source, prefix] of [
+    ['ordered_json', '{', 'json'],
+    ['yaml', 'value: [\n', 'yaml'],
+  ]) {
+    const error = thrown(() => decode([style], source));
     assert(error instanceof CodecError);
     assert.equal(error.code, 'CODEC_DECODE');
-    assert.match(error.message, /^CODEC_DECODE: invalid UTF-8:/);
-    assert(error.cause instanceof TypeError);
+    assert.match(error.message, new RegExp(`^CODEC_DECODE: ${prefix}:`));
+    assert(error.cause instanceof Error);
   }
+});
+
+caseTest('invalid UTF-8 in ordered JSON returns CODEC_DECODE', COMPUTE, () => {
+  const error = thrown(() => decode(['ordered_json'], new Uint8Array([0xff])));
+  assert(error instanceof CodecError);
+  assert.equal(error.code, 'CODEC_DECODE');
+  assert.match(error.message, /^CODEC_DECODE: invalid UTF-8:/);
+  assert(error.cause instanceof TypeError);
+});
+
+caseTest('invalid UTF-8 in YAML returns CODEC_DECODE', COMPUTE, () => {
+  const error = thrown(() => decode(['yaml'], new Uint8Array([0xff])));
+  assert(error instanceof CodecError);
+  assert.equal(error.code, 'CODEC_DECODE');
+  assert.match(error.message, /^CODEC_DECODE: invalid UTF-8:/);
+  assert(error.cause instanceof TypeError);
 });
 
 caseTest('JSON and YAML rethrow an existing CodecError by identity', COMPUTE, () => {

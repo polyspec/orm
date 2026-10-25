@@ -124,6 +124,21 @@ final class CoverageAuthenticatedEncryptionExtensionTest extends TestCase
         }
     }
 
+    public function testCodecMalformedInputUsesDecodeCode(): void
+    {
+        foreach ([
+            [['ordered_json'], '{'],
+            [['yaml'], "a: 1\na: 2\n"],
+        ] as [$styles, $raw]) {
+            try {
+                Codec::decode($styles, $raw);
+                self::fail('malformed codec input must be rejected');
+            } catch (OrmException $error) {
+                Assert::assertSame('CODEC_DECODE', $error->code_);
+            }
+        }
+    }
+
     /** @return array{array<string, mixed>, array<string, mixed>} */
     private function fixtureCase(string $id, string $operation): array
     {

@@ -2234,6 +2234,46 @@
       ]
     },
     {
+      "id": "codec-json-yaml-malformed-decode",
+      "kind": "feature",
+      "requirements": [
+        "COD-33",
+        "COD-35"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/codec_test.go",
+          "id": "TestCodecErrors"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CodecVectorsTest.php",
+          "id": "CodecVectorsTest::testCodecExpectedExceptionCause"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageAuthenticatedEncryptionExtensionTest.php",
+          "id": "CoverageAuthenticatedEncryptionExtensionTest::testCodecMalformedInputUsesDecodeCode"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/codec-errors.test.mjs",
+          "id": "tests/testcase.mts › codec/malformed-json-and-yaml"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/codec_vector.py",
+          "id": "test_error_cases"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/codec.rs",
+          "id": "codec::tests::errors_and_keys"
+        }
+      ]
+    },
+    {
       "id": "aes-read-path-codes",
       "kind": "feature",
       "requirements": [
@@ -22939,6 +22979,11 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/coverage_authenticated_encryption.rs",
           "id": "authenticated_encryption::aes_round_trip"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/codec-aes-errors.test.mjs",
+          "id": "tests/testcase.mts › aes_round_trip"
         }
       ]
     },
@@ -22978,6 +23023,11 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/coverage_authenticated_encryption.rs",
           "id": "authenticated_encryption::aes_tamper_rejected"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/codec-aes-errors.test.mjs",
+          "id": "tests/testcase.mts › aes_tamper_rejected"
         }
       ]
     },
@@ -23017,6 +23067,11 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/coverage_authenticated_encryption.rs",
           "id": "authenticated_encryption::aes_wrong_key_rejected"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/codec-aes-errors.test.mjs",
+          "id": "tests/testcase.mts › aes_wrong_key_rejected"
         }
       ]
     },

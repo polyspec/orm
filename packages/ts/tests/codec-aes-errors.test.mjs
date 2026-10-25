@@ -22,17 +22,24 @@ function expectAuthenticationFailure(value, decodeKey = key) {
     error instanceof CodecError && error.code === 'CODEC_DECODE' && error.message === 'CODEC_DECODE: aes: authentication failed');
 }
 
-caseTest('AES decode maps authenticated envelope failures and round-trips plaintext', COMPUTE, () => {
+caseTest('aes_tamper_rejected', COMPUTE, () => {
   const valid = envelope();
   expectAuthenticationFailure(tamper(valid, valid.length - 1));
   expectAuthenticationFailure(tamper(valid, prefixLength + 12));
   expectAuthenticationFailure(tamper(valid, prefixLength));
-  expectAuthenticationFailure(valid, 'another-key');
+});
 
+caseTest('aes_wrong_key_rejected', COMPUTE, () => {
+  expectAuthenticationFailure(envelope(), 'another-key');
+});
+
+caseTest('aes_round_trip', COMPUTE, () => {
   for (const plaintext of ['', 'plain text', '인증된 UTF-8 🔐']) {
     assert.equal(hostDecode(envelope(plaintext), ['aes'], key), plaintext);
   }
+});
 
+caseTest('AES empty keys and malformed envelopes retain their error codes', COMPUTE, () => {
   assert.throws(() => hostDecode(envelope(), ['aes'], ''), error => error?.code === 'CONFIG');
   assert.throws(() => hostDecode('not an AES envelope', ['aes'], key), error => error?.code === 'CODEC_DECODE');
   assert.throws(() => hostDecode(Buffer.from('ORM-AES2\0short'), ['aes'], key), error => error?.code === 'CODEC_DECODE');
