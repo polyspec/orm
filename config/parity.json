@@ -9644,6 +9644,21 @@
           "implementation": "typescript",
           "test": "packages/ts/tests/statement_timeout.mjs",
           "id": "connection/cancellation-through-pooler"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/timezone_test.go",
+          "id": "TestCancellationThroughPooler"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/connection_config.py",
+          "id": "ConnectionConfigTest.test_cancellation_through_a_pooler"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/zone.rs",
+          "id": "cancellation_through_a_pooler"
         }
       ]
     },
@@ -15618,6 +15633,11 @@
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/dbspec-set-decimal.mjs"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/decimalmodel/schema_set_test.go",
+          "symbol": "TestDecimalDocument"
         }
       ]
     },
@@ -15637,6 +15657,11 @@
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/models-scan.mjs"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/generator/generator_test.go",
+          "symbol": "TestGenerateBenchDocumentSet"
         }
       ]
     },
@@ -24358,12 +24383,52 @@
         {
           "implementation": "python",
           "test": "packages/python/tests/coverage_model_queries.py",
-          "id": "CoverageTest.test_model_query_remove_columns"
+          "id": "CoverageTest.test_remove_columns_keys_and_added_column"
         },
         {
           "implementation": "rust",
           "test": "packages/rust/tests/tests/integration/coverage_model_queries.rs",
           "id": "coverage_model_queries::coverage_model_query_remove_columns"
+        }
+      ]
+    },
+    {
+      "id": "model-read-null-and-empty-text",
+      "kind": "feature",
+      "requirements": [
+        "INT-4",
+        "INT-8"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_catalog_connection_test.go",
+          "id": "TestCoverageModelReadNullAndEmptyText"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::testModelReadNullAndEmptyText"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::testModelReadNullAndEmptyText"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+          "id": "model_read_null_and_empty_text"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_catalog_connection.py",
+          "id": "test_model_read_null_and_empty_text"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/coverage_catalog_connection.rs",
+          "id": "coverage_model_read_null_and_empty_text"
         }
       ]
     }

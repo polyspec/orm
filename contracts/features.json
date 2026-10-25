@@ -10740,7 +10740,8 @@
       ],
       "parity": [
         "catalog-connection-read",
-        "catalog-connection-row-mutation"
+        "catalog-connection-row-mutation",
+        "model-read-null-and-empty-text"
       ],
       "fixtures": [
         "packages/rust/tests/tests/common/mod.rs"
@@ -10889,7 +10890,8 @@
         "kind": "database",
         "cases": [
           "catalog_read",
-          "catalog_row_mutation"
+          "catalog_row_mutation",
+          "model_read_null_and_empty_text"
         ],
         "owners": {
           "rust": {
@@ -10904,11 +10906,13 @@
                   "test": "packages/rust/tests/tests/coverage_catalog_connection.rs",
                   "cases": [
                     "catalog_read",
-                    "catalog_row_mutation"
+                    "catalog_row_mutation",
+                    "model_read_null_and_empty_text"
                   ],
                   "symbols": {
                     "catalog_read": "coverage_catalog_read",
-                    "catalog_row_mutation": "coverage_catalog_row_mutation"
+                    "catalog_row_mutation": "coverage_catalog_row_mutation",
+                    "model_read_null_and_empty_text": "coverage_model_read_null_and_empty_text"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -10919,11 +10923,13 @@
                   "test": "packages/rust/tests/tests/coverage_catalog_connection.rs",
                   "cases": [
                     "catalog_read",
-                    "catalog_row_mutation"
+                    "catalog_row_mutation",
+                    "model_read_null_and_empty_text"
                   ],
                   "symbols": {
                     "catalog_read": "coverage_catalog_read",
-                    "catalog_row_mutation": "coverage_catalog_row_mutation"
+                    "catalog_row_mutation": "coverage_catalog_row_mutation",
+                    "model_read_null_and_empty_text": "coverage_model_read_null_and_empty_text"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -10934,11 +10940,13 @@
                   "test": "packages/rust/tests/tests/coverage_catalog_connection.rs",
                   "cases": [
                     "catalog_read",
-                    "catalog_row_mutation"
+                    "catalog_row_mutation",
+                    "model_read_null_and_empty_text"
                   ],
                   "symbols": {
                     "catalog_read": "coverage_catalog_read",
-                    "catalog_row_mutation": "coverage_catalog_row_mutation"
+                    "catalog_row_mutation": "coverage_catalog_row_mutation",
+                    "model_read_null_and_empty_text": "coverage_model_read_null_and_empty_text"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -10960,11 +10968,13 @@
                   "test": "packages/go/orm/coverage_catalog_connection_test.go",
                   "cases": [
                     "catalog_read",
-                    "catalog_row_mutation"
+                    "catalog_row_mutation",
+                    "model_read_null_and_empty_text"
                   ],
                   "symbols": {
                     "catalog_read": "TestCoverageCatalogRead",
-                    "catalog_row_mutation": "TestCoverageCatalogRowMutation"
+                    "catalog_row_mutation": "TestCoverageCatalogRowMutation",
+                    "model_read_null_and_empty_text": "TestCoverageModelReadNullAndEmptyText"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -10975,11 +10985,13 @@
                   "test": "packages/go/orm/coverage_catalog_connection_test.go",
                   "cases": [
                     "catalog_read",
-                    "catalog_row_mutation"
+                    "catalog_row_mutation",
+                    "model_read_null_and_empty_text"
                   ],
                   "symbols": {
                     "catalog_read": "TestCoverageCatalogRead",
-                    "catalog_row_mutation": "TestCoverageCatalogRowMutation"
+                    "catalog_row_mutation": "TestCoverageCatalogRowMutation",
+                    "model_read_null_and_empty_text": "TestCoverageModelReadNullAndEmptyText"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -10990,11 +11002,13 @@
                   "test": "packages/go/orm/coverage_catalog_connection_test.go",
                   "cases": [
                     "catalog_read",
-                    "catalog_row_mutation"
+                    "catalog_row_mutation",
+                    "model_read_null_and_empty_text"
                   ],
                   "symbols": {
                     "catalog_read": "TestCoverageCatalogRead",
-                    "catalog_row_mutation": "TestCoverageCatalogRowMutation"
+                    "catalog_row_mutation": "TestCoverageCatalogRowMutation",
+                    "model_read_null_and_empty_text": "TestCoverageModelReadNullAndEmptyText"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -11016,7 +11030,8 @@
                   "test": "packages/ts/tests/coverage_catalog_connection.mjs",
                   "cases": [
                     "catalog_read",
-                    "catalog_row_mutation"
+                    "catalog_row_mutation",
+                    "model_read_null_and_empty_text"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -11027,7 +11042,8 @@
                   "test": "packages/ts/tests/coverage_catalog_connection.mjs",
                   "cases": [
                     "catalog_read",
-                    "catalog_row_mutation"
+                    "catalog_row_mutation",
+                    "model_read_null_and_empty_text"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -11038,7 +11054,8 @@
                   "test": "packages/ts/tests/coverage_catalog_connection.mjs",
                   "cases": [
                     "catalog_read",
-                    "catalog_row_mutation"
+                    "catalog_row_mutation",
+                    "model_read_null_and_empty_text"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -11060,7 +11077,8 @@
                   "test": "packages/python/tests/coverage_catalog_connection.py",
                   "cases": [
                     "catalog_read",
-                    "catalog_row_mutation"
+                    "catalog_row_mutation",
+                    "model_read_null_and_empty_text"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -11071,7 +11089,8 @@
                   "test": "packages/python/tests/coverage_catalog_connection.py",
                   "cases": [
                     "catalog_read",
-                    "catalog_row_mutation"
+                    "catalog_row_mutation",
+                    "model_read_null_and_empty_text"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -11082,7 +11101,8 @@
                   "test": "packages/python/tests/coverage_catalog_connection.py",
                   "cases": [
                     "catalog_read",
-                    "catalog_row_mutation"
+                    "catalog_row_mutation",
+                    "model_read_null_and_empty_text"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -11104,11 +11124,13 @@
                   "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
                   "cases": [
                     "catalog_read",
-                    "catalog_row_mutation"
+                    "catalog_row_mutation",
+                    "model_read_null_and_empty_text"
                   ],
                   "symbols": {
                     "catalog_read": "testCatalogRead",
-                    "catalog_row_mutation": "testCatalogRowMutation"
+                    "catalog_row_mutation": "testCatalogRowMutation",
+                    "model_read_null_and_empty_text": "testModelReadNullAndEmptyText"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -11119,11 +11141,13 @@
                   "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
                   "cases": [
                     "catalog_read",
-                    "catalog_row_mutation"
+                    "catalog_row_mutation",
+                    "model_read_null_and_empty_text"
                   ],
                   "symbols": {
                     "catalog_read": "testCatalogRead",
-                    "catalog_row_mutation": "testCatalogRowMutation"
+                    "catalog_row_mutation": "testCatalogRowMutation",
+                    "model_read_null_and_empty_text": "testModelReadNullAndEmptyText"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -11134,11 +11158,13 @@
                   "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
                   "cases": [
                     "catalog_read",
-                    "catalog_row_mutation"
+                    "catalog_row_mutation",
+                    "model_read_null_and_empty_text"
                   ],
                   "symbols": {
                     "catalog_read": "testCatalogRead",
-                    "catalog_row_mutation": "testCatalogRowMutation"
+                    "catalog_row_mutation": "testCatalogRowMutation",
+                    "model_read_null_and_empty_text": "testModelReadNullAndEmptyText"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -11160,11 +11186,13 @@
                   "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
                   "cases": [
                     "catalog_read",
-                    "catalog_row_mutation"
+                    "catalog_row_mutation",
+                    "model_read_null_and_empty_text"
                   ],
                   "symbols": {
                     "catalog_read": "testCatalogRead",
-                    "catalog_row_mutation": "testCatalogRowMutation"
+                    "catalog_row_mutation": "testCatalogRowMutation",
+                    "model_read_null_and_empty_text": "testModelReadNullAndEmptyText"
                   },
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -11175,11 +11203,13 @@
                   "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
                   "cases": [
                     "catalog_read",
-                    "catalog_row_mutation"
+                    "catalog_row_mutation",
+                    "model_read_null_and_empty_text"
                   ],
                   "symbols": {
                     "catalog_read": "testCatalogRead",
-                    "catalog_row_mutation": "testCatalogRowMutation"
+                    "catalog_row_mutation": "testCatalogRowMutation",
+                    "model_read_null_and_empty_text": "testModelReadNullAndEmptyText"
                   },
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -11190,11 +11220,13 @@
                   "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
                   "cases": [
                     "catalog_read",
-                    "catalog_row_mutation"
+                    "catalog_row_mutation",
+                    "model_read_null_and_empty_text"
                   ],
                   "symbols": {
                     "catalog_read": "testCatalogRead",
-                    "catalog_row_mutation": "testCatalogRowMutation"
+                    "catalog_row_mutation": "testCatalogRowMutation",
+                    "model_read_null_and_empty_text": "testModelReadNullAndEmptyText"
                   },
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
