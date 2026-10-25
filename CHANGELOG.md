@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- KSTD-5-91: with RECORD=1, conformance-check records the new vectors before conformance-result-check, so a vector needs no dialect entries before its first run (KSTD-5-91)
 - `Registry::model` of the PHP extension no longer releases an uninitialized argument when no model class is registered for a manifest hash, which crashed PHP (SIGBUS) after repeated `Registry::generated` and `Registry::model` calls (T182-6-18-1).
 - Rust clippy and the TypeScript interface extractor run under their target leases and `run-long`, as does the Rust dbspec helper build; the focused lifetime and lease cases pass 3/3 (KSTD-5-88-18).
 - RuntimeDbTest and AuditExternalSetsTest use a bootstrap-loaded provider trait, so PHPUnit can discover each file on its own; the focused `--list-tests` command discovers 19 cases (KSTD-5-88-15).
@@ -28,6 +29,7 @@
 - The request hook, audit, soft delete, restore and clock units are six-client units: their 26 units report no declaration finding, and the native request hook and audit cases of the PHP extension pass (KSTD-2-11-12).
 - The PHP extension request hook test names the requirements of the insert assignment case it inherits; the focused parity declaration and native binding checks pass (KSTD-2-11-12-4).
 - relation() and relations() under a service scope run in every client as the request hook case relation_scope, bound by coverage-request-hook-relation-scope. The CONFIG failure that the consumer reported does not reproduce on current main: its canister conformance passes 101 of 101 cases with the relation calls under its ScopeHook, and the earlier cause is not proven (T203).
+- KSTD-5-90: conformance-check RECORD=1 passes all six implementation outputs, php-extension included, to record (KSTD-5-90)
 - `tsc .` type-checks the kit sources that orm imports again: kit K574 links the dependencies that a linked package adds, so `make link` installs node_modules/@types/picomatch beside the file links of kit, and `make lint-ts` no longer fails on TS7016 for picomatch (KSTD-5-89-8).
 - `make lint-python` passes on main: `ruff format` reformats the six Python files that `ruff format --check` reported, with no change to their syntax tree (KSTD-5-89-1).
 - KSTD-5-90: conformance-check RECORD=1 passes all six implementation outputs, php-extension included, to record (KSTD-5-90)

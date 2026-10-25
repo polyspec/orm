@@ -254,3 +254,13 @@ caseTest('TestRecordReceivesEveryLanguage', COMPUTE, () => {
     assert.ok(record.includes(`$$pending/${language}.json`), `the RECORD branch omits the ${language} output`);
   }
 });
+
+// TestRecordStageRunsBeforeResultCheck reads the prerequisites of conformance-check: with RECORD=1 the run that records a new vector
+// must come before conformance-result-check, which checks that every dialect file names the vectors, so the vector needs no entries first.
+caseTest('TestRecordStageRunsBeforeResultCheck', COMPUTE, () => {
+  const makefile = readFileSync(join(repository, 'Makefile'), 'utf8');
+  const orders = makefile.split('\n').filter(line => line.startsWith('conformance-check: '));
+  assert.ok(orders.some(line => line.indexOf('conformance-check/run') >= 0
+    && line.indexOf('conformance-check/run') < line.indexOf('conformance-result-check')),
+  'no conformance-check prerequisites run the record stage before conformance-result-check');
+});

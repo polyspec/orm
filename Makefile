@@ -1791,7 +1791,12 @@ conformance-check/%: RUN_DIR = $(abspath .runtime/run)/conformance-check-$$PPID
 CONFORMANCE_VECTORS = $(foreach name,$(VECTOR),--vector $(name))
 CONFORMANCE_RUN = node tests/conformance/check/main.mts run --out $(RUN_DIR)/out $(CONFORMANCE_VECTORS) --driver mysql --dsn "$$BENCH_MYSQL_DSN" --driver postgres --dsn "$$BENCH_POSTGRES_DSN" --driver sqlite --dsn "$$BENCH_SQLITE_DSN"
 .PHONY: conformance-check/run
+# With RECORD set, the run records the new vectors before the result checks, which then check the recorded dialect files.
+ifneq ($(RECORD),)
+conformance-check: conformance-counter-check conformance-check/run conformance-result-check conformance-result-physical-check conformance-check/python
+else
 conformance-check: conformance-counter-check conformance-result-check conformance-result-physical-check conformance-check/run conformance-check/python
+endif
 # conformance-check/python runs the vectors of each database as the Python unittest cases of the language-parity check
 # (config/parity.json, conformance-mysql, conformance-postgres, conformance-sqlite): one case for each vector, named by the
 # vector name, on the bench database of the run (BENCH_MYSQL_DSN, BENCH_POSTGRES_DSN, BENCH_SQLITE_DSN).

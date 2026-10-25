@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 7677528b44dfa37b7fd8a7bebca97af8b8071679bc7eaa4c66ee075d73bb6f44 -->
+<!-- source-sha256: 6084952142af69b4d280c546ce14de9a6c74f3281a9861f588c2adef2bda0d66 -->
 # 변경 이력
 
 ## Unreleased
 
+- KSTD-5-91: RECORD=1일 때 conformance-check는 conformance-result-check 전에 새 vector를 기록하므로, 첫 실행 전에 dialect 항목이 필요 없다 (KSTD-5-91)
 - PHP extension의 `Registry::model`은 manifest hash에 등록된 model class가 없을 때 초기화되지 않은 인자를 더 이상 해제하지 않는다. 이 해제는 `Registry::generated`와 `Registry::model`을 반복해 부르면 PHP를 SIGBUS로 끝냈다 (T182-6-18-1).
 - Rust clippy와 TypeScript interface extractor가 target lease 및 `run-long` 아래서 실행되고, Rust dbspec helper build도 같은 보호를 받는다. 집중 lease/lifetime 단위 3개가 통과한다 (KSTD-5-88-18).
 - RuntimeDbTest와 AuditExternalSetsTest가 bootstrap에서 로드되는 provider trait을 사용하여 PHPUnit이 각 파일을 단독으로 발견한다. 집중 `--list-tests` 명령은 case 19개를 찾는다 (KSTD-5-88-15).
@@ -29,6 +30,7 @@
 - request hook, audit, soft delete, restore, clock unit은 여섯 client unit이다: 26개 unit에 declaration finding이 없고, PHP extension의 native request hook과 audit case가 통과한다(KSTD-2-11-12).
 - PHP extension request hook test가 물려받은 insert assignment case의 requirement를 적으며, 좁은 parity declaration과 native binding 검사가 통과한다 (KSTD-2-11-12-4).
 - service scope 아래의 relation()과 relations()는 coverage-request-hook-relation-scope가 bind하는 request hook case relation_scope로 모든 client에서 실행된다. consumer가 보고한 CONFIG 실패는 현재 main에서 재현되지 않는다: canister conformance가 ScopeHook 아래 relation 호출로 101개 case를 모두 통과하며, 앞선 원인은 증명되지 않았다(T203).
+- KSTD-5-90: conformance-check RECORD=1은 record에 여섯 구현 출력(php-extension 포함)을 모두 넘긴다 (KSTD-5-90)
 - `tsc .`가 orm이 import하는 kit source를 다시 type-check한다: kit K574가 link된 package가 더하는 dependency를 link하므로 `make link`가 kit의 파일 link 옆에 node_modules/@types/picomatch를 설치하고, `make lint-ts`는 더 이상 picomatch의 TS7016으로 실패하지 않는다 (KSTD-5-89-8).
 - `make lint-python`이 main에서 통과한다: `ruff format --check`가 보고한 Python 파일 6개를 `ruff format`으로 재포맷했으며 syntax tree는 바뀌지 않는다 (KSTD-5-89-1).
 - KSTD-5-90: conformance-check RECORD=1은 record에 여섯 구현 출력(php-extension 포함)을 모두 넘긴다 (KSTD-5-90)
