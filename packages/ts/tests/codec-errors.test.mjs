@@ -20,6 +20,7 @@ caseTest('CodecError accepts ErrorOptions without changing its formatted message
   assert.equal(new CodecError('CODEC_DECODE', 'plain failure').cause, undefined);
 });
 
+// Requirements: COD-33, COD-35 (docs/spec).
 caseTest('codec/malformed-json-and-yaml', COMPUTE, () => {
   for (const [style, source, prefix] of [
     ['ordered_json', '{', 'json'],

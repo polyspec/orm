@@ -35,6 +35,7 @@ final class CodecVectorsTest extends TestCase
         };
     }
 
+    // Requirements: COD-33, COD-35 (docs/spec).
     public function testCodecExpectedExceptionCause(): void
     {
         $cases = [

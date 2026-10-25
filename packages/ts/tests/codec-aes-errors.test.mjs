@@ -22,6 +22,7 @@ function expectAuthenticationFailure(value, decodeKey = key) {
     error instanceof CodecError && error.code === 'CODEC_DECODE' && error.message === 'CODEC_DECODE: aes: authentication failed');
 }
 
+// Requirement: COD-6 (docs/spec).
 caseTest('aes_tamper_rejected', COMPUTE, () => {
   const valid = envelope();
   expectAuthenticationFailure(tamper(valid, valid.length - 1));
@@ -29,10 +30,12 @@ caseTest('aes_tamper_rejected', COMPUTE, () => {
   expectAuthenticationFailure(tamper(valid, prefixLength));
 });
 
+// Requirement: COD-6 (docs/spec).
 caseTest('aes_wrong_key_rejected', COMPUTE, () => {
   expectAuthenticationFailure(envelope(), 'another-key');
 });
 
+// Requirement: COD-5 (docs/spec).
 caseTest('aes_round_trip', COMPUTE, () => {
   for (const plaintext of ['', 'plain text', '인증된 UTF-8 🔐']) {
     assert.equal(hostDecode(envelope(plaintext), ['aes'], key), plaintext);
