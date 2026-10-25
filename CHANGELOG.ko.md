@@ -1,10 +1,12 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: f6c25a84d74e24680294d0f5a5c018ae8466ffae6f8c9887fd3366f750bd637f -->
+<!-- source-sha256: 947b609e462b0641eab95063c63cf8130c2db56b517d5b8914eb3acca447e457 -->
 # 변경 이력
 
 ## Unreleased
 
 - KSTD-2-11-8-1: Rust model generation이 build와 일치한다. 지정 case가 통과해 두 번 새로 생성한 model, manifest, external text가 `OUT_DIR` 결과와 같은 것을 확인한다(1 test 통과).
+
+- KSTD-7-7: 여섯 catalog client 모두 catalog read와 row mutation owner case를 가진다. Go, PHP library, PHP extension, Python, Rust는 MySQL, PostgreSQL, SQLite에서 두 case를 각각 두 번 통과했고 state digest가 같았다. TypeScript grouped owner는 선언된 database item을 각각 사용한다. read case와 MySQL row mutation은 성공 case 기록을 남겼고, PostgreSQL 및 SQLite row-mutation 선택은 각각 두 번 통과해 state가 같았다. TypeScript dialect placeholder와 SQLite lock 수정은 7029645ee, Python database별 binding은 2023d9bb1에 있다.
 
 - KSTD-7-4: PHP extension이 DSN, transaction, statement event, audit, request hook, constraint/relation 공통 기능을 구현한다. coverage owner는 MySQL, PostgreSQL, SQLite에서 database별 두 번씩 통과했고 state digest가 변하지 않았다. native TLS, SQLite busy-timeout/read-during-write, transaction-failure 검사도 통과했다.
 

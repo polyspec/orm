@@ -5,6 +5,8 @@
 
 - KSTD-2-11-8-1: Rust model generation matches the build: the focused case passes and confirms two fresh generations and the model, manifest and external text from `OUT_DIR` are equal (1 test passed).
 
+- KSTD-7-7: All six catalog clients have owner cases for catalog reads and row mutations. Go, PHP library, PHP extension, Python and Rust passed both cases twice on MySQL, PostgreSQL and SQLite with unchanged state digests. TypeScript's grouped owner now consumes each declared database item; its read cases and MySQL row mutation produced passing case events, and the PostgreSQL and SQLite row-mutation selections passed twice each with stable state. The TypeScript dialect-placeholder and SQLite lock fixes are in 7029645ee; Python per-database bindings are in 2023d9bb1.
+
 - KSTD-7-4: the PHP extension implements the shared DSN, transaction, statement-event, audit, request-hook, and constraint/relation features. Its coverage owners passed twice per database on MySQL, PostgreSQL and SQLite with unchanged state digests; native TLS, SQLite busy-timeout/read-during-write, and transaction-failure checks passed.
 
 - T238: remove the obsolete worktree-prune import and prune-only cases; retain the isolated WORKTREE_STOP declaration test (1/1 passed).
