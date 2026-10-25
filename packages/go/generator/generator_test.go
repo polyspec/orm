@@ -73,6 +73,7 @@ func sampleModel(t *testing.T) *runtimemodel.Model {
 // TestGenerateExternalTables checks that a set using external documents (external) generates the
 // models of the tables it owns and the read-only models of the tables it uses from external documents,
 // and none of an unused external table, and that the text of the used tables is carried in the schema value.
+// Requirements: DBS-110.
 func TestGenerateExternalTables(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	fixtures := filepath.Join("..", "..", "..", "contracts", "fixtures", "external")

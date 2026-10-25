@@ -195,7 +195,7 @@ final class OrmGenTest extends TestCase
         self::assertTrue(!file_exists("$dir/model"), 'gen wrote the models');
     }
 
-    // Requirements: PLN-22.
+    // Requirements: DSL-127, PLN-22.
     public function testGenRejectsAColumnNamedAfterAModelMethod(): void
     {
         // The test of DSL-127 (docs/spec).

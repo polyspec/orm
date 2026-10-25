@@ -407,3 +407,28 @@ func namesCommand(t *testing.T, set bool) (string, func(name, body string)) {
 	}
 	return bin, write
 }
+
+// TestGoGenerationCommandRefusesTheRemovedDocumentFlags checks that orm-gen gen
+// takes its documents only from the set file: the removed --schema and --use
+// flags are usage errors that name the flag, and nothing is written.
+// Requirements: ORES-21.
+func TestGoGenerationCommandRefusesTheRemovedDocumentFlags(t *testing.T) {
+	testcase.Start(t, testcase.Process)
+	bin := commandBinary(t)
+	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	set := filepath.Join(root, "contracts", "fixtures", "bench", "dbspec-set.json")
+	document := filepath.Join(root, "contracts", "fixtures", "bench", "bench.dbs")
+	for _, flag := range []string{"--schema", "--use"} {
+		out := filepath.Join(t.TempDir(), "model")
+		code, stdout, stderr := runTool(t, bin, "gen", "--set", set, flag, document, "--lang", "go", "--out", out)
+		if code != 2 || stdout != "" || !strings.Contains(stderr, strings.TrimPrefix(flag, "--")) {
+			t.Fatalf("%s: exit %d\nstdout: %s\nstderr: %s", flag, code, stdout, stderr)
+		}
+		if _, err := os.Stat(out); !os.IsNotExist(err) {
+			t.Fatalf("%s: the refused generation wrote %s (%v)", flag, out, err)
+		}
+	}
+}

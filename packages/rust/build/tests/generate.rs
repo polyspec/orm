@@ -742,6 +742,22 @@ fn a_restore_or_create_call_is_a_fixed_method() {
     assert!(text.contains("pub async fn restore_or_create(&self) -> polyspec_orm::Result<Self>"), "the fixed method is missing");
 }
 
+/// The builder takes its documents only from the set file: a document beside the set file that the set does not list
+/// generates no model.
+// Requirements: ORES-21.
+#[test]
+fn the_builder_takes_the_documents_only_from_the_set_file() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let dir = std::env::temp_dir().join(format!("orm-build-set-only-{}-{n}", std::process::id()));
+    let set = set_file(&dir, &[schema()], &[]);
+    let beside = dir.join("set/bench.dbs");
+    std::fs::copy(bench(), &beside).or_panic(|e| format!("{}: {e}", beside.display()));
+    let text = generate_with_set(dir, "fn main() {}", set).unwrap();
+    assert!(text.contains("pub struct ZoneEvent "), "the listed document has no model");
+    assert!(!text.contains("pub struct Author "), "a document that the set does not list has a model");
+}
+
 /// Removes a test directory. One that is already gone is the state the test wants; any other failure panics with its path.
 fn remove_test_dir(path: &std::path::Path) {
     if let Err(error) = std::fs::remove_dir_all(path) {

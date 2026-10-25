@@ -757,6 +757,37 @@ class OrmGenTest(unittest.TestCase):
             self.assertEqual(result.returncode, 2, result.stderr)
             self.assertIn(flag, result.stderr)
 
+    def test_a_column_named_after_a_model_method_is_rejected(self):
+        # Requirements: DSL-127.
+        with tempfile.TemporaryDirectory(prefix="orm-gen-reserved-") as tree:
+            root = Path(tree)
+            (root / "reserved.dbs").write_text(
+                "dbspec 1 reserved\n\ntable thing {\n  id i64 identity\n  restore i32\n  primary key (id)\n}\n",
+                encoding="utf-8",
+            )
+            (root / "dbspec-set.json").write_text(
+                '{"schema": 1, "documents": ["reserved.dbs"]}', encoding="utf-8"
+            )
+            out = root / "out"
+            result = run_gen(root / "dbspec-set.json", out)
+            self.assertNotEqual(result.returncode, 0, result.stderr)
+            self.assertIn("column name is a reserved method name: restore", result.stderr)
+            self.assertFalse(out.exists())
+
+    def test_the_owned_and_the_used_external_tables_of_a_set_have_models(self):
+        # Requirements: DBS-110.
+        # member.dbs owns ext_post and ext_post_history and uses ext_account and ext_audit of core.dbs: each of them has a
+        # model, and ext_session, a table of core.dbs that member.dbs does not use, has none.
+        written = {}
+        result = self._scan_external(
+            "from models import ExtPost\nExtPost().connect(db).get()\n", written
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        text = written.get("models.py", "")
+        for name in ("ExtAccount", "ExtAudit", "ExtPost", "ExtPostHistory"):
+            self.assertIn(f"class {name}(", text, f"no model for {name}")
+        self.assertNotIn("class ExtSession(", text, "a model for ext_session, which the set does not use")
+
     def test_set_errors_print_every_error_and_write_nothing(self):
         # Requirements: DBS-27.
         with tempfile.TemporaryDirectory(prefix="orm-gen-set-") as tree:

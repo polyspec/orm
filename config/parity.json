@@ -3710,16 +3710,41 @@
       ]
     },
     {
-      "id": "ts-generate",
+      "id": "generator-takes-the-documents-only-from-the-set-file",
       "kind": "feature",
       "requirements": [
         "ORES-21"
       ],
       "bindings": [
         {
+          "implementation": "go",
+          "test": "packages/go/generator/gen_go_output_test.go",
+          "id": "TestGoGenerationCommandRefusesTheRemovedDocumentFlags"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/OrmGenTest.php",
+          "id": "OrmGenTest::testGenTakesTheDocumentsOnlyFromTheSetFile"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/OrmGenTest.php",
+          "id": "OrmGenTest::testGenTakesTheDocumentsOnlyFromTheSetFile"
+        },
+        {
           "implementation": "typescript",
           "test": "packages/ts/tests/generate.mjs",
           "id": "generate"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_orm_gen.py",
+          "id": "test_the_removed_document_flags_are_usage_errors"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/tests/generate.rs",
+          "id": "the_builder_takes_the_documents_only_from_the_set_file"
         }
       ]
     },
@@ -8635,19 +8660,41 @@
       ]
     },
     {
-      "id": "go-internal-packages-go-generator-column-name-rules",
+      "id": "generator-rejects-a-column-named-after-a-model-method",
       "kind": "feature",
       "requirements": [
-        "DSL-127",
-        "DSL-129",
-        "DSL-130",
-        "PLN-22"
+        "DSL-127"
       ],
       "bindings": [
         {
           "implementation": "go",
           "test": "packages/go/generator/gen_go_test.go",
           "id": "TestColumnNameRules"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/OrmGenTest.php",
+          "id": "OrmGenTest::testGenRejectsAColumnNamedAfterAModelMethod"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/OrmGenTest.php",
+          "id": "OrmGenTest::testGenRejectsAColumnNamedAfterAModelMethod"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/generate.mjs",
+          "id": "generate"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_orm_gen.py",
+          "id": "test_a_column_named_after_a_model_method_is_rejected"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/src/manifest.rs",
+          "id": "manifest::tests::reserved_method_names_are_not_columns"
         }
       ]
     },
@@ -9229,20 +9276,6 @@
       ]
     },
     {
-      "id": "rust-manifest-reserved-method-names-are-not-columns",
-      "kind": "feature",
-      "requirements": [
-        "DSL-127"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/src/manifest.rs",
-          "id": "manifest::tests::reserved_method_names_are_not_columns"
-        }
-      ]
-    },
-    {
       "id": "rust-catalog-connection-does-not-create-a-missing-sqlite-database",
       "kind": "feature",
       "requirements": [
@@ -9456,14 +9489,37 @@
       ]
     },
     {
-      "id": "rust-generation-leaves-external-tables-out",
+      "id": "generator-writes-the-owned-and-the-used-external-tables",
       "kind": "feature",
       "requirements": [
-        "DBS-101",
-        "DBS-104",
         "DBS-110"
       ],
       "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/generator/generator_test.go",
+          "id": "TestGenerateExternalTables"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/OrmGenTest.php",
+          "id": "OrmGenTest::testGenGeneratesTheOwnedAndTheUsedExternalTablesOfASet"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/OrmGenTest.php",
+          "id": "OrmGenTest::testGenGeneratesTheOwnedAndTheUsedExternalTablesOfASet"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/generate.mjs",
+          "id": "generate"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_orm_gen.py",
+          "id": "test_the_owned_and_the_used_external_tables_of_a_set_have_models"
+        },
         {
           "implementation": "rust",
           "test": "packages/rust/build/tests/generate.rs",
@@ -12635,20 +12691,6 @@
       ]
     },
     {
-      "id": "py-test-orm-gen-removed-document-flags",
-      "kind": "feature",
-      "requirements": [
-        "ORES-21"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_orm_gen.py",
-          "id": "test_the_removed_document_flags_are_usage_errors"
-        }
-      ]
-    },
-    {
       "id": "py-test-schema-utils-mismatched-hash",
       "kind": "feature",
       "requirements": [
@@ -13309,54 +13351,6 @@
           "implementation": "rust",
           "test": "packages/rust/build/tests/generate.rs",
           "id": "check_reports_differences_without_writing"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-orm-gen-gen-takes-the-documents-only-from-the-set-file",
-      "kind": "feature",
-      "requirements": [
-        "DBS-5",
-        "DBS-98",
-        "SCH-1",
-        "ORES-21"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/OrmGenTest.php",
-          "id": "OrmGenTest::testGenTakesTheDocumentsOnlyFromTheSetFile"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-orm-gen-gen-rejects-a-column-named-after-a-model-method",
-      "kind": "feature",
-      "requirements": [
-        "DSL-127",
-        "PLN-22"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/OrmGenTest.php",
-          "id": "OrmGenTest::testGenRejectsAColumnNamedAfterAModelMethod"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-orm-gen-gen-generates-the-owned-and-the-used-external-tables-of-a-set",
-      "kind": "feature",
-      "requirements": [
-        "DBS-104",
-        "DBS-105",
-        "DBS-110"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/OrmGenTest.php",
-          "id": "OrmGenTest::testGenGeneratesTheOwnedAndTheUsedExternalTablesOfASet"
         }
       ]
     },
