@@ -5,11 +5,11 @@ The executable source is the repository feature manifest. Read the manifest, the
 
 | ID | Feature | Status | Languages |
 |---|---|---|---|
-| dsn_connection | DSN URI connection | partial | go, php, php-extension, typescript, python, rust |
+| dsn_connection | DSN URI connection | implemented | go, php, php-extension, typescript, python, rust |
 | model_queries | Model queries | implemented | go, php, php-extension, typescript, python, rust |
 | model_writes | Model writes | implemented | go, php, php-extension, typescript, python, rust |
-| transactions | Transactions | partial | go, php, php-extension, typescript, python, rust |
-| statement_events | Statement events | partial | go, php, php-extension, typescript, python, rust |
+| transactions | Transactions | implemented | go, php, php-extension, typescript, python, rust |
+| statement_events | Statement events | implemented | go, php, php-extension, typescript, python, rust |
 | model_generation | Model generation | implemented | go, php, php-extension, typescript, python, rust |
 | schema_definition | Schema definition and migration | implemented | go, php, php-extension, typescript, python, rust |
 | schema_install | Schema installation | implemented | go, php, php-extension, typescript, python, rust |
@@ -17,13 +17,13 @@ The executable source is the repository feature manifest. Read the manifest, the
 | composite_keys | Composite keys | implemented | go, php, php-extension, typescript, python, rust |
 | authenticated_encryption | Authenticated encryption | implemented | go, php, php-extension, typescript, python, rust |
 | parameter_chunking | Parameter chunking | implemented | go, php, php-extension, typescript, python, rust |
-| constraints_and_relations | Constraints and relations | partial | go, php, php-extension, typescript, python, rust |
-| audit_triggers | Audit triggers | partial | go, php, php-extension, typescript, python, rust |
+| constraints_and_relations | Constraints and relations | implemented | go, php, php-extension, typescript, python, rust |
+| audit_triggers | Audit triggers | implemented | go, php, php-extension, typescript, python, rust |
 | interface_contract | Common interface verification | implemented | go, php, php-extension, typescript, python, rust |
 | performance_gate | Hot-path performance standard | partial | go, php, php-extension, typescript, python, rust |
 | conformance_verification | Conformance verification | partial | go, php, php-extension, typescript, python, rust |
 | catalog_connection | Catalog connection | implemented | go, php, php-extension, typescript, python, rust |
-| request_hook | Request hook | partial | go, php, php-extension, typescript, python, rust |
+| request_hook | Request hook | implemented | go, php, php-extension, typescript, python, rust |
 | complex_query | Complex product search | partial | go, php, php-extension, typescript, python, rust |
 | model_query_duplicate_relation | Duplicate relation result names | implemented | go, php, php-extension, typescript, python, rust |
 

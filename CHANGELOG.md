@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- KSTD-7-4: the PHP extension implements the shared DSN, transaction, statement-event, audit, request-hook, and constraint/relation features. Its coverage owners passed twice per database on MySQL, PostgreSQL and SQLite with unchanged state digests; native TLS, SQLite busy-timeout/read-during-write, and transaction-failure checks passed.
+
 - T238: remove the obsolete worktree-prune import and prune-only cases; retain the isolated WORKTREE_STOP declaration test (1/1 passed).
 
 - KSTD-5-89-4: classify the remaining ten repository tool sources; `make rebuild-check` passes without excluding a selected tool.

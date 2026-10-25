@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: f80fb52834c4c3f4ceaae0a10f15e803b57ef2eaa0103f23a4e894045de869fd -->
+<!-- source-sha256: c60eeb8016489c698b57e366815e5419d0c833eba0aaf1f5d1af6742722ec8c3 -->
 # 변경 이력
 
 ## Unreleased
+
+- KSTD-7-4: PHP extension이 DSN, transaction, statement event, audit, request hook, constraint/relation 공통 기능을 구현한다. coverage owner는 MySQL, PostgreSQL, SQLite에서 database별 두 번씩 통과했고 state digest가 변하지 않았다. native TLS, SQLite busy-timeout/read-during-write, transaction-failure 검사도 통과했다.
 
 - T238: 오래된 worktree-prune import와 prune 전용 검사를 제거했다. 격리된 WORKTREE_STOP 선언 검사는 유지하며 1/1 통과했다.
 
