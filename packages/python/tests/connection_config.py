@@ -191,6 +191,7 @@ class ConnectionConfigTest(unittest.TestCase):
             setup._connection.execute(f'DROP TABLE IF EXISTS "{table}"', [])
             setup.close()
 
+
 class ConnectionConfigComputeTest(unittest.TestCase):
     deadline = testcase.COMPUTE
 
