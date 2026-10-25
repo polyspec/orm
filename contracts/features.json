@@ -3800,7 +3800,7 @@
               ]
             },
             "inputs": [
-              "packages/php/bin/orm-gen"
+              "packages/php-gen/bin/orm-gen"
             ]
           },
           "php-extension": {

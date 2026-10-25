@@ -32,7 +32,7 @@
     },
     {
       "lock": "composer.lock",
-      "sha256": "cb19a52f1a7e5237e0c9566d729edf4418a6c47a415ebcbe99c4b3d60331ca41",
+      "sha256": "f5d6c89ee9cfc21fc5c8da91550e5cbe127583911d35326eec8241c36c114670",
       "advisories": []
     },
     {
@@ -458,7 +458,7 @@
     },
     {
       "ecosystem": "composer",
-      "manifest": "packages/php/composer.json",
+      "manifest": "packages/php-gen/composer.json",
       "package": "nikic/php-parser",
       "version": "v5.9.0",
       "latest": "v5.9.0"

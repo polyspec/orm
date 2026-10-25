@@ -18,6 +18,11 @@
     },
     {
       "kind": "composer",
+      "directory": "packages/php-gen",
+      "name": "polyspec/orm-gen"
+    },
+    {
+      "kind": "composer",
       "directory": "packages/php-ext",
       "name": "polyspec/orm-php-ext",
       "generated": [
@@ -61,11 +66,12 @@
     "packages/dbspec-language/package.json": "archive",
     "packages/dbspec-lsp/package.json": "archive",
     "packages/dbspec-codemirror/package.json": "archive",
-    "packages/dbspec-vscode/package.json": "version"
+    "packages/dbspec-vscode/package.json": "version",
+    "packages/php-gen/composer.json": "archive"
   },
   "notReleased": {
     "package.json": "the private npm workspace root: it installs packages/ts as a workspace and takes @polyspec/ordered-json from its GitHub release through overrides",
-    "composer.json": "the private Composer root: it installs packages/php as a path repository and takes polyspec/ordered-json from its GitHub release zip",
+    "composer.json": "the private Composer root: it installs packages/php and packages/php-gen as path repositories and takes polyspec/ordered-json from its GitHub release zip",
     "packages/rust/Cargo.toml": "the Cargo workspace of the Rust crates, no package of its own",
     "packages/rust/case-clock/Cargo.toml": "a test support crate of the Rust client (publish = false)",
     "packages/rust/case-database/Cargo.toml": "a test support crate of the Rust client (publish = false)",
@@ -119,6 +125,11 @@
           "php",
           "-r",
           "require 'vendor/autoload.php'; if (!class_exists('Polyspec\\\\Orm\\\\Db')) { exit(1); }"
+        ],
+        "polyspec/orm-gen": [
+          "php",
+          "-r",
+          "require 'vendor/autoload.php'; if (!class_exists('Polyspec\\\\Orm\\\\Generator')) { exit(1); }"
         ]
       }
     },

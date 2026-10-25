@@ -14,7 +14,7 @@ rules:
     id: layout-go-module-path
     vars: { repo: orm }
 
-  # packages/ holds the runtime ports of orm and the four components of the dbspec editor stack, each a TypeScript package
+  # packages/ holds the runtime ports of orm, its PHP CLI generator package and the four components of the dbspec editor stack, each a TypeScript package
   # with no ports in other runtimes (docs/spec/editor.md): the language service, the language server, the CodeMirror extension
   # and the VS Code extension.
   - id: layout-packages
@@ -22,6 +22,7 @@ rules:
       - "packages/*"
       - "!packages/go"
       - "!packages/php"
+      - "!packages/php-gen"
       - "!packages/php-ext"
       - "!packages/python"
       - "!packages/rust"

@@ -10,7 +10,7 @@ namespace Polyspec\Orm\Tests;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 
-// Each case runs orm-gen in this process and writes and reads models in a temporary directory,
+// Each case runs orm-gen as a Composer-installed child process and reads models from a temporary directory,
 // except the bin cases, which run the bin in a new process.
 #[Small]
 final class OrmGenTest extends TestCase
@@ -368,7 +368,7 @@ final class OrmGenTest extends TestCase
         is_dir($bin) || mkdir($bin, 0o700, true);
         // __DIR__ of the bin is the real path of its folder.
         $bin = realpath($bin);
-        copy(dirname(__DIR__) . '/bin/orm-gen', "$bin/orm-gen");
+        copy(dirname(__DIR__, 2) . '/php-gen/bin/orm-gen', "$bin/orm-gen");
         [$code, $out, $err] = self::process([PHP_BINARY, "$bin/orm-gen"]);
         $missing = "$bin/../vendor/autoload.php";
         self::assertTrue(

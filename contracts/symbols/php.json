@@ -5203,55 +5203,55 @@
     "exported": true,
     "signature": "public static function words(string $name): array"
   },
-  "packages/php/src/ChainDeclare.php::Polyspec\\Orm\\ChainDeclare": {
+  "packages/php-gen/src/ChainDeclare.php::Polyspec\\Orm\\ChainDeclare": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\ChainDeclare extends  implements  uses "
   },
-  "packages/php/src/ChainDeclare.php::Polyspec\\Orm\\ChainDeclare::$metas": {
+  "packages/php-gen/src/ChainDeclare.php::Polyspec\\Orm\\ChainDeclare::$metas": {
     "exported": false,
     "signature": "private readonly array"
   },
-  "packages/php/src/ChainDeclare.php::Polyspec\\Orm\\ChainDeclare::__construct": {
+  "packages/php-gen/src/ChainDeclare.php::Polyspec\\Orm\\ChainDeclare::__construct": {
     "exported": true,
     "signature": "public function __construct(array $metas): "
   },
-  "packages/php/src/ChainDeclare.php::Polyspec\\Orm\\ChainDeclare::conditions": {
+  "packages/php-gen/src/ChainDeclare.php::Polyspec\\Orm\\ChainDeclare::conditions": {
     "exported": false,
     "signature": "private function conditions(array $meta, array $keys): array"
   },
-  "packages/php/src/ChainDeclare.php::Polyspec\\Orm\\ChainDeclare::declare": {
+  "packages/php-gen/src/ChainDeclare.php::Polyspec\\Orm\\ChainDeclare::declare": {
     "exported": true,
     "signature": "public function declare(array $meta, string $name): ?array"
   },
-  "packages/php/src/ChainDeclare.php::Polyspec\\Orm\\ChainDeclare::getter": {
+  "packages/php-gen/src/ChainDeclare.php::Polyspec\\Orm\\ChainDeclare::getter": {
     "exported": true,
     "signature": "public static function getter(string $name): string"
   },
-  "packages/php/src/ChainDeclare.php::Polyspec\\Orm\\ChainDeclare::keyType": {
+  "packages/php-gen/src/ChainDeclare.php::Polyspec\\Orm\\ChainDeclare::keyType": {
     "exported": false,
     "signature": "private function keyType(array $meta, array $key): string"
   },
-  "packages/php/src/ChainDeclare.php::Polyspec\\Orm\\ChainDeclare::keys": {
+  "packages/php-gen/src/ChainDeclare.php::Polyspec\\Orm\\ChainDeclare::keys": {
     "exported": false,
     "signature": "private function keys(array $meta, string $chain): ?array"
   },
-  "packages/php/src/ChainDeclare.php::Polyspec\\Orm\\ChainDeclare::owners": {
+  "packages/php-gen/src/ChainDeclare.php::Polyspec\\Orm\\ChainDeclare::owners": {
     "exported": false,
     "signature": "private function owners(string $column): string"
   },
-  "packages/php/src/ChainDeclare.php::Polyspec\\Orm\\ChainDeclare::pair": {
+  "packages/php-gen/src/ChainDeclare.php::Polyspec\\Orm\\ChainDeclare::pair": {
     "exported": false,
     "signature": "private function pair(?array $left, ?array $right, string $name): ?array"
   },
-  "packages/php/src/ChainDeclare.php::Polyspec\\Orm\\ChainDeclare::scalar": {
+  "packages/php-gen/src/ChainDeclare.php::Polyspec\\Orm\\ChainDeclare::scalar": {
     "exported": false,
     "signature": "private static function scalar(array $c): string"
   },
-  "packages/php/src/ChainDeclare.php::Polyspec\\Orm\\ChainDeclare::schemaColumn": {
+  "packages/php-gen/src/ChainDeclare.php::Polyspec\\Orm\\ChainDeclare::schemaColumn": {
     "exported": false,
     "signature": "private function schemaColumn(string $pascal): string"
   },
-  "packages/php/src/ChainDeclare.php::Polyspec\\Orm\\ChainDeclare::tag": {
+  "packages/php-gen/src/ChainDeclare.php::Polyspec\\Orm\\ChainDeclare::tag": {
     "exported": true,
     "signature": "public static function tag(string $name, array $declaration): string"
   },
@@ -9743,87 +9743,87 @@
     "exported": true,
     "signature": "public function ir(callable $param): array"
   },
-  "packages/php/src/Generator.php::Polyspec\\Orm\\Generator": {
+  "packages/php-gen/src/Generator.php::Polyspec\\Orm\\Generator": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Generator extends  implements  uses "
   },
-  "packages/php/src/Generator.php::Polyspec\\Orm\\Generator::camel": {
+  "packages/php-gen/src/Generator.php::Polyspec\\Orm\\Generator::camel": {
     "exported": false,
     "signature": "private static function camel(string $s): string"
   },
-  "packages/php/src/Generator.php::Polyspec\\Orm\\Generator::check": {
+  "packages/php-gen/src/Generator.php::Polyspec\\Orm\\Generator::check": {
     "exported": true,
     "signature": "public static function check(Polyspec\\Orm\\RuntimeModel $m, string $outDir, string $namespace, array $scan=[]): array"
   },
-  "packages/php/src/Generator.php::Polyspec\\Orm\\Generator::checkColumnName": {
+  "packages/php-gen/src/Generator.php::Polyspec\\Orm\\Generator::checkColumnName": {
     "exported": false,
     "signature": "private static function checkColumnName(string $entity, string $n): void"
   },
-  "packages/php/src/Generator.php::Polyspec\\Orm\\Generator::checkNames": {
+  "packages/php-gen/src/Generator.php::Polyspec\\Orm\\Generator::checkNames": {
     "exported": false,
     "signature": "private static function checkNames(array $e): void"
   },
-  "packages/php/src/Generator.php::Polyspec\\Orm\\Generator::classComment": {
+  "packages/php-gen/src/Generator.php::Polyspec\\Orm\\Generator::classComment": {
     "exported": false,
     "signature": "private static function classComment(string $name, array $tags): string"
   },
-  "packages/php/src/Generator.php::Polyspec\\Orm\\Generator::export": {
+  "packages/php-gen/src/Generator.php::Polyspec\\Orm\\Generator::export": {
     "exported": false,
     "signature": "private static function export(mixed $v, int $depth): string"
   },
-  "packages/php/src/Generator.php::Polyspec\\Orm\\Generator::files": {
+  "packages/php-gen/src/Generator.php::Polyspec\\Orm\\Generator::files": {
     "exported": false,
     "signature": "private static function files(Polyspec\\Orm\\RuntimeModel $m, string $namespace, array $scan=[]): array"
   },
-  "packages/php/src/Generator.php::Polyspec\\Orm\\Generator::generate": {
+  "packages/php-gen/src/Generator.php::Polyspec\\Orm\\Generator::generate": {
     "exported": true,
     "signature": "public static function generate(Polyspec\\Orm\\RuntimeModel $m, string $outDir, string $namespace, array $scan=[]): void"
   },
-  "packages/php/src/Generator.php::Polyspec\\Orm\\Generator::generated": {
+  "packages/php-gen/src/Generator.php::Polyspec\\Orm\\Generator::generated": {
     "exported": false,
     "signature": "private static function generated(string $outDir): array"
   },
-  "packages/php/src/Generator.php::Polyspec\\Orm\\Generator::list": {
+  "packages/php-gen/src/Generator.php::Polyspec\\Orm\\Generator::list": {
     "exported": false,
     "signature": "private static function list(array $items): string"
   },
-  "packages/php/src/Generator.php::Polyspec\\Orm\\Generator::model": {
+  "packages/php-gen/src/Generator.php::Polyspec\\Orm\\Generator::model": {
     "exported": false,
     "signature": "private static function model(array $e, string $class, string $namespace, string $hash, array $tags=[]): string"
   },
-  "packages/php/src/Generator.php::Polyspec\\Orm\\Generator::modelMethods": {
+  "packages/php-gen/src/Generator.php::Polyspec\\Orm\\Generator::modelMethods": {
     "exported": false,
     "signature": "private static function modelMethods(): array"
   },
-  "packages/php/src/Generator.php::Polyspec\\Orm\\Generator::namedGetter": {
+  "packages/php-gen/src/Generator.php::Polyspec\\Orm\\Generator::namedGetter": {
     "exported": false,
     "signature": "private static function namedGetter(string $name, string $key, array $entities, array $used): bool"
   },
-  "packages/php/src/Generator.php::Polyspec\\Orm\\Generator::pascal": {
+  "packages/php-gen/src/Generator.php::Polyspec\\Orm\\Generator::pascal": {
     "exported": true,
     "signature": "public static function pascal(string $s): string"
   },
-  "packages/php/src/Generator.php::Polyspec\\Orm\\Generator::queryMethodMap": {
+  "packages/php-gen/src/Generator.php::Polyspec\\Orm\\Generator::queryMethodMap": {
     "exported": false,
     "signature": "private static function queryMethodMap(array $e): array"
   },
-  "packages/php/src/Generator.php::Polyspec\\Orm\\Generator::queryMethods": {
+  "packages/php-gen/src/Generator.php::Polyspec\\Orm\\Generator::queryMethods": {
     "exported": false,
     "signature": "private static function queryMethods(array $e): string"
   },
-  "packages/php/src/Generator.php::Polyspec\\Orm\\Generator::scanTags": {
+  "packages/php-gen/src/Generator.php::Polyspec\\Orm\\Generator::scanTags": {
     "exported": false,
     "signature": "private static function scanTags(Polyspec\\Orm\\RuntimeModel $m, string $namespace, array $scan): array"
   },
-  "packages/php/src/Generator.php::Polyspec\\Orm\\Generator::str": {
+  "packages/php-gen/src/Generator.php::Polyspec\\Orm\\Generator::str": {
     "exported": false,
     "signature": "private static function str(string $s): string"
   },
-  "packages/php/src/Generator.php::Polyspec\\Orm\\Generator::type": {
+  "packages/php-gen/src/Generator.php::Polyspec\\Orm\\Generator::type": {
     "exported": false,
     "signature": "private static function type(array $c): string"
   },
-  "packages/php/src/Generator.php::Polyspec\\Orm\\Generator::write": {
+  "packages/php-gen/src/Generator.php::Polyspec\\Orm\\Generator::write": {
     "exported": false,
     "signature": "private static function write(string $path, string $body): void"
   },
@@ -10767,35 +10767,35 @@
     "exported": true,
     "signature": "public static function withCleanup(Throwable $primary, Throwable $cleanup): Polyspec\\Orm\\OrmException"
   },
-  "packages/php/src/OrmGen.php::Polyspec\\Orm\\OrmGen": {
+  "packages/php-gen/src/OrmGen.php::Polyspec\\Orm\\OrmGen": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\OrmGen extends  implements  uses "
   },
-  "packages/php/src/OrmGen.php::Polyspec\\Orm\\OrmGen::$stderr": {
+  "packages/php-gen/src/OrmGen.php::Polyspec\\Orm\\OrmGen::$stderr": {
     "exported": false,
     "signature": "private static "
   },
-  "packages/php/src/OrmGen.php::Polyspec\\Orm\\OrmGen::flags": {
+  "packages/php-gen/src/OrmGen.php::Polyspec\\Orm\\OrmGen::flags": {
     "exported": false,
     "signature": "private static function flags(array $args, array $spec): array"
   },
-  "packages/php/src/OrmGen.php::Polyspec\\Orm\\OrmGen::gen": {
+  "packages/php-gen/src/OrmGen.php::Polyspec\\Orm\\OrmGen::gen": {
     "exported": false,
     "signature": "private static function gen(array $args): int"
   },
-  "packages/php/src/OrmGen.php::Polyspec\\Orm\\OrmGen::main": {
+  "packages/php-gen/src/OrmGen.php::Polyspec\\Orm\\OrmGen::main": {
     "exported": true,
     "signature": "public static function main(array $args): int"
   },
-  "packages/php/src/OrmGen.php::Polyspec\\Orm\\OrmGen::report": {
+  "packages/php-gen/src/OrmGen.php::Polyspec\\Orm\\OrmGen::report": {
     "exported": false,
     "signature": "private static function report(array $lines): int"
   },
-  "packages/php/src/OrmGen.php::Polyspec\\Orm\\OrmGen::run": {
+  "packages/php-gen/src/OrmGen.php::Polyspec\\Orm\\OrmGen::run": {
     "exported": true,
     "signature": "public static function run(array $args,  $stderr): int"
   },
-  "packages/php/src/OrmGen.php::Polyspec\\Orm\\OrmGen::usage": {
+  "packages/php-gen/src/OrmGen.php::Polyspec\\Orm\\OrmGen::usage": {
     "exported": false,
     "signature": "private static function usage(): int"
   },
@@ -11563,163 +11563,163 @@
     "exported": false,
     "signature": "private static function tableEntity(Polyspec\\Orm\\Dbspec\\Table $table): array"
   },
-  "packages/php/src/Scan.php::Polyspec\\Orm\\Scan": {
+  "packages/php-gen/src/Scan.php::Polyspec\\Orm\\Scan": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\Scan extends  implements  uses "
   },
-  "packages/php/src/Scan.php::Polyspec\\Orm\\Scan::calls": {
+  "packages/php-gen/src/Scan.php::Polyspec\\Orm\\Scan::calls": {
     "exported": true,
     "signature": "public static function calls(array $paths, string $namespace, array $classes, ?array \u0026$sites=null): array"
   },
-  "packages/php/src/Scan.php::Polyspec\\Orm\\Scan::collect": {
+  "packages/php-gen/src/Scan.php::Polyspec\\Orm\\Scan::collect": {
     "exported": false,
     "signature": "private static function collect(string $dir, array \u0026$files): void"
   },
-  "packages/php/src/Scan.php::Polyspec\\Orm\\Scan::modelCallback": {
+  "packages/php-gen/src/Scan.php::Polyspec\\Orm\\Scan::modelCallback": {
     "exported": true,
     "signature": "public static function modelCallback(string $name): bool"
   },
-  "packages/php/src/Scan.php::Polyspec\\Orm\\Scan::terminal": {
+  "packages/php-gen/src/Scan.php::Polyspec\\Orm\\Scan::terminal": {
     "exported": true,
     "signature": "public static function terminal(string $name): bool"
   },
-  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor": {
+  "packages/php-gen/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\ScanVisitor extends PhpParser\\NodeVisitorAbstract implements PhpParser\\NodeVisitor uses "
   },
-  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::$barriers": {
+  "packages/php-gen/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::$barriers": {
     "exported": false,
     "signature": "private array"
   },
-  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::$functions": {
+  "packages/php-gen/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::$functions": {
     "exported": false,
     "signature": "private array"
   },
-  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::$given": {
+  "packages/php-gen/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::$given": {
     "exported": false,
     "signature": "private SplObjectStorage"
   },
-  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::$ifs": {
+  "packages/php-gen/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::$ifs": {
     "exported": false,
     "signature": "private array"
   },
-  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::$loopBefore": {
+  "packages/php-gen/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::$loopBefore": {
     "exported": false,
     "signature": "private array"
   },
-  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::$models": {
+  "packages/php-gen/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::$models": {
     "exported": false,
     "signature": "private readonly array"
   },
-  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::$namespace": {
+  "packages/php-gen/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::$namespace": {
     "exported": false,
     "signature": "private string"
   },
-  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::$out": {
+  "packages/php-gen/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::$out": {
     "exported": false,
     "signature": "private array"
   },
-  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::$properties": {
+  "packages/php-gen/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::$properties": {
     "exported": false,
     "signature": "private array"
   },
-  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::$scopes": {
+  "packages/php-gen/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::$scopes": {
     "exported": false,
     "signature": "private array"
   },
-  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::$sites": {
+  "packages/php-gen/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::$sites": {
     "exported": false,
     "signature": "private array"
   },
-  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::$uses": {
+  "packages/php-gen/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::$uses": {
     "exported": false,
     "signature": "private array"
   },
-  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::__construct": {
+  "packages/php-gen/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::__construct": {
     "exported": true,
     "signature": "public function __construct(array $models, array \u0026$out, array \u0026$sites): "
   },
-  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::beforeTraverse": {
+  "packages/php-gen/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::beforeTraverse": {
     "exported": true,
     "signature": "public function beforeTraverse(array $nodes): ?array"
   },
-  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::bind": {
+  "packages/php-gen/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::bind": {
     "exported": false,
     "signature": "private function bind(string $name, ?array $value): void"
   },
-  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::call": {
+  "packages/php-gen/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::call": {
     "exported": false,
     "signature": "private function call(PhpParser\\Node\\Expr\\MethodCall|PhpParser\\Node\\Expr\\NullsafeMethodCall $node): void"
   },
-  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::callValue": {
+  "packages/php-gen/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::callValue": {
     "exported": false,
     "signature": "private static function callValue(array $receiver, string $name): ?array"
   },
-  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::docValue": {
+  "packages/php-gen/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::docValue": {
     "exported": false,
     "signature": "private function docValue(string $doc, string $var): ?array"
   },
-  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::elementOf": {
+  "packages/php-gen/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::elementOf": {
     "exported": false,
     "signature": "private static function elementOf(?array $collection): ?array"
   },
-  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::enterLoop": {
+  "packages/php-gen/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::enterLoop": {
     "exported": false,
     "signature": "private function enterLoop(PhpParser\\Node $loop): void"
   },
-  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::enterNode": {
+  "packages/php-gen/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::enterNode": {
     "exported": true,
     "signature": "public function enterNode(PhpParser\\Node $node): null"
   },
-  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::exits": {
+  "packages/php-gen/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::exits": {
     "exported": false,
     "signature": "private static function exits(array $stmts): bool"
   },
-  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::forget": {
+  "packages/php-gen/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::forget": {
     "exported": false,
     "signature": "private function forget(?PhpParser\\Node $target): void"
   },
-  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::hoist": {
+  "packages/php-gen/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::hoist": {
     "exported": false,
     "signature": "private function hoist(array $nodes): void"
   },
-  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::leaveNode": {
+  "packages/php-gen/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::leaveNode": {
     "exported": true,
     "signature": "public function leaveNode(PhpParser\\Node $node): null"
   },
-  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::lookup": {
+  "packages/php-gen/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::lookup": {
     "exported": false,
     "signature": "private function lookup(string $name): ?array"
   },
-  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::members": {
+  "packages/php-gen/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::members": {
     "exported": false,
     "signature": "private static function members(?array $value): array"
   },
-  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::mergeScopes": {
+  "packages/php-gen/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::mergeScopes": {
     "exported": false,
     "signature": "private static function mergeScopes(array $states): array"
   },
-  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::nothing": {
+  "packages/php-gen/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::nothing": {
     "exported": false,
     "signature": "private static function nothing(): array"
   },
-  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::setTop": {
+  "packages/php-gen/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::setTop": {
     "exported": false,
     "signature": "private function setTop(array $scope): void"
   },
-  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::top": {
+  "packages/php-gen/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::top": {
     "exported": false,
     "signature": "private function top(): array"
   },
-  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::typeValue": {
+  "packages/php-gen/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::typeValue": {
     "exported": false,
     "signature": "private function typeValue(?PhpParser\\Node $type): ?array"
   },
-  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::unionOf": {
+  "packages/php-gen/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::unionOf": {
     "exported": false,
     "signature": "private static function unionOf(array $values): ?array"
   },
-  "packages/php/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::valueOf": {
+  "packages/php-gen/src/ScanVisitor.php::Polyspec\\Orm\\ScanVisitor::valueOf": {
     "exported": false,
     "signature": "private function valueOf(PhpParser\\Node $e): ?array"
   },
@@ -11991,7 +11991,7 @@
     "exported": true,
     "signature": "public static function recordInserted(?Polyspec\\Orm\\TxFrame $frame, Polyspec\\Orm\\Request $r, mixed $id): void"
   },
-  "packages/php/src/UsageError.php::Polyspec\\Orm\\UsageError": {
+  "packages/php-gen/src/UsageError.php::Polyspec\\Orm\\UsageError": {
     "exported": true,
     "signature": "final class Polyspec\\Orm\\UsageError extends RuntimeException implements Stringable,Throwable uses "
   },

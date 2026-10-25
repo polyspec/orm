@@ -1,5 +1,6 @@
 #!/usr/bin/env php
 <?php
+
 // Makes models from a dbspec document set:
 //
 //   vendor/bin/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --out src/Model --namespace Example\\Model

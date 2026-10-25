@@ -1,5 +1,5 @@
 <!-- doc-id: usage -->
-<!-- source-sha256: 583bcbeb983210488810e52659ce4308926d1bc8901f6e4d7606ff4efca221c2 -->
+<!-- source-sha256: 1d0a14f5da7584baa2ee34700460e0810cd570b218b5a74cf0d77c61e993322a -->
 # 사용법
 
 하나의 dbspec document set에서 language client를 생성한다. 공통 contract는 Go, PHP, PHP extension, TypeScript, Python, Rust 여섯 구현에 적용되며 확장의 미완료 native 범위는 별도로 추적한다.
@@ -73,7 +73,7 @@ table authors {
 
 ## 3. 코드 생성
 
-각 언어는 자기 빌드 도구로 모델을 생성한다. 생성기는 dbspec document set을 읽어 manifest text와 `manifestHash`를 담고, 엔티티마다 타입이 있는 컬럼 getter와 setter를 가진 모델 하나를 만든다.
+PHP runtime package는 `polyspec/orm`이며 `vendor/bin/orm-gen`을 쓰려면 `polyspec/orm-gen`도 설치한다. 생성기 package는 runtime package에 의존한다. 각 언어는 자기 빌드 도구로 모델을 생성한다. 생성기는 dbspec document set을 읽어 manifest text와 `manifestHash`를 담고, 엔티티마다 타입이 있는 컬럼 getter와 setter를 가진 모델 하나를 만든다.
 
 모든 생성기는 document set을 [set 파일](../spec/dbspec.ko.md#document-sets)로만 받는다. 여기서는 나열하는 문서 옆의 `contracts/fixtures/bench/dbspec-set.json`이다:
 
@@ -83,7 +83,7 @@ table authors {
 
 ```sh
 go run github.com/polyspec/orm/packages/go/cmd/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --lang go --out model --scan ./...
-vendor/bin/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --out src/Model --namespace 'Example\Model' --scan src
+vendor/bin/orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --out src/Model --namespace 'Example\Model' --scan src # provided by polyspec/orm-gen
 npx orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --out src/models --scan src
 orm-gen gen --set contracts/fixtures/bench/dbspec-set.json --out model --scan src
 ```

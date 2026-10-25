@@ -1,11 +1,12 @@
 {
     "name": "polyspec/orm-workspace",
-    "description": "Development root of the repository, not published: it installs packages/php from its directory and takes the polyspec packages of other repositories from their GitHub releases",
+    "description": "Development root of the repository, not published: it installs packages/php and packages/php-gen from their directories and takes the polyspec packages of other repositories from their GitHub releases",
     "type": "project",
     "license": "MIT",
     "require": {
         "php": ">=8.4",
-        "polyspec/orm": "0.0.18"
+        "polyspec/orm": "0.0.18",
+        "polyspec/orm-gen": "0.0.18"
     },
     "autoload-dev": {
         "psr-4": {
@@ -18,6 +19,13 @@
         {
             "type": "path",
             "url": "packages/php",
+            "options": {
+                "symlink": true
+            }
+        },
+        {
+            "type": "path",
+            "url": "packages/php-gen",
             "options": {
                 "symlink": true
             }

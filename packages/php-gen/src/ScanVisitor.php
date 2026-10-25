@@ -49,7 +49,9 @@ final class ScanVisitor extends NodeVisitorAbstract
      */
     private array $loopBefore = [];
 
-    /** @var list<array<string, ?string>> the declared type of each parameter of each enclosing function, innermost last */
+    /**
+     * @var list<array<string, ?string>> declared parameter types of each enclosing function, innermost last
+     */
     private array $frames = [];
 
     /**

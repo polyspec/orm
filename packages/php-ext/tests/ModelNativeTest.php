@@ -15,6 +15,22 @@ use WeakReference;
 final class ModelNativeTest extends TestCase
 {
     // Requirements: DBS-112, DBS-114.
+
+    public function testGenerationToolingIsNotLoaded(): void
+    {
+        $classes = [
+            \Polyspec\Orm\OrmGen::class,
+            \Polyspec\Orm\Generator::class,
+            \Polyspec\Orm\Scan::class,
+            \Polyspec\Orm\ScanVisitor::class,
+            \Polyspec\Orm\ChainDeclare::class,
+            \Polyspec\Orm\UsageError::class,
+        ];
+        foreach ($classes as $class) {
+            self::assertFalse(class_exists($class, false), "$class must not be loaded by the PHP extension");
+        }
+    }
+
     public function testPhpGeneratedTypedGetterUsesInternalModelStorage(): void
     {
         $dir = sys_get_temp_dir() . '/orm-php-ext-generated-getter-' . getmypid();
@@ -27,15 +43,9 @@ final class ModelNativeTest extends TestCase
                 "$dir/typed.dbs",
                 "dbspec 1 typed\n\ntable item {\n  price i32\n  primary key (price)\n}\n"
             );
-            $stderr = fopen('php://memory', 'w+');
-            ob_start();
-            $code = \Polyspec\Orm\OrmGen::run([
+            [$code, $output, $message] = \Polyspec\Orm\Tests\OrmGenTestSupport::run([
                 'gen', '--set', $set, '--out', "$dir/model", '--namespace', $namespace
-            ], $stderr);
-            $output = (string) ob_get_clean();
-            rewind($stderr);
-            $message = (string) stream_get_contents($stderr);
-            fclose($stderr);
+            ]);
             self::assertSame(0, $code, "$output $message");
             require_once "$dir/model/Item.php";
 

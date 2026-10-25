@@ -253,7 +253,7 @@ Secrets and parameter values are excluded from logs.
 
 ## 11. Generator, schema, and extension boundaries — IF-32 to IF-34
 
-The generator reads the schema manifest and emits models, fields, column methods, and error types. Go and Rust generation also reads the scanned source and emits the chain, relation key, join, and `new<Name>` methods that the source calls. It must not emit a method for an undeclared column or operator. Generated code is checked against the manifest and the interface symbol list.
+The PHP runtime package does not depend on its generator. The separate `polyspec/orm-gen` Composer package depends on `polyspec/orm` and provides the PHP CLI, generator, and source scanner. The generator reads the schema manifest and emits models, fields, column methods, and error types. Go and Rust generation also reads the scanned source and emits the chain, relation key, join, and `new<Name>` methods that the source calls. It must not emit a method for an undeclared column or operator. Generated code is checked against the manifest and the interface symbol list.
 
 - **INT-66** The code that the generator emits passes the standard compiler of its language and the formatter and linter that the lint gates of this repository run for that language, and the generated text suppresses no finding: it carries no Rust `allow` attribute, Go `//nolint`, Python `# noqa`, PHP `@phpstan-ignore` or `phpcs:ignore`, or TypeScript `eslint-disable` or `@ts-ignore`.
 

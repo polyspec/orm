@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
-use Polyspec\Orm\OrmGen;
-
 /** Shared filesystem and command support for the PHP orm-gen tests. */
 final class OrmGenTestSupport
 {
@@ -163,13 +161,11 @@ final class OrmGenTestSupport
     /** @param list<string> $args @return array{int, string, string} */
     public static function run(array $args): array
     {
-        $stderr = fopen('php://memory', 'w+');
-        ob_start();
-        $code = OrmGen::run($args, $stderr);
-        $stdout = (string) ob_get_clean();
-        rewind($stderr);
-        $error = (string) stream_get_contents($stderr);
-        fclose($stderr);
-        return [$code, $stdout, $error];
+        $root = dirname(__DIR__, 3);
+        $result = self::runProcess([PHP_BINARY, "$root/vendor-php/bin/orm-gen", ...$args]);
+        if ($result === null) {
+            throw new \RuntimeException('cannot start orm-gen');
+        }
+        return $result;
     }
 }

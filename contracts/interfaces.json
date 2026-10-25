@@ -13,6 +13,7 @@
     "php": {
       "roots": [
         "packages/php/src",
+        "packages/php-gen/src",
         "packages/php/gen"
       ],
       "symbols": "contracts/symbols/php.json"
@@ -40,7 +41,7 @@
   },
   "symbol_hashes": {
     "go": "sha256:74a8f6ccf6efbf3420bec90b1b54b939e59dad905081b5a7d18cc19940c33b24",
-    "php": "sha256:4e219c419330d91cc49c9ad5f8ea3fcb8342713372b035bb6c67f18176d0eb8a",
+    "php": "sha256:fa004653184dac135f78802d90fe4b405e03447bbffdc4c74c6d7b9bdb581e37",
     "rust": "sha256:d9e823d98f29bb4f81279c40342d3f70768eef585c8f66177fd7b0249691bb72",
     "typescript": "sha256:3ed6f00671f93cd4552224b4af4ffcbe6306df83e5ce49bd4cb886252788f056",
     "python": "sha256:a1865a8dc066f405ee15fd5fe61f493fd896a4bc7d8088d445120cbe7d737280"

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "6e83a23360d2d3c07ae67f3750fe118d",
+    "content-hash": "a9fe0e5b3d34628cd2e26ee77b2c4a05",
     "packages": [
         {
             "name": "nikic/php-parser",
@@ -76,11 +76,8 @@
                 "ext-pcre": "*",
                 "php": ">=8.4"
             },
-            "require-dev": {
-                "phpunit/phpunit": "13.4.3"
-            },
             "suggest": {
-                "ext-polyspec_ordered_json": "Native backend from the polyspec/ordered-json-php-ext PIE package"
+                "ext-ordered_json": "Native backend from the polyspec/ordered-json-extension PIE package"
             },
             "type": "library",
             "autoload": {
@@ -90,16 +87,7 @@
                 "files": [
                     "src/OrderedJson.php"
                 ]
-            },
-            "autoload-dev": {
-                "psr-4": {
-                    "Polyspec\\OrderedJson\\Tests\\": "tests/"
-                }
-            },
-            "license": [
-                "MIT"
-            ],
-            "description": "JSON document order at every depth, with optional native parser"
+            }
         },
         {
             "name": "polyspec/orm",
@@ -107,14 +95,13 @@
             "dist": {
                 "type": "path",
                 "url": "packages/php",
-                "reference": "f75388963ccfe45873492a8e9ae0982a259d740c"
+                "reference": "292d2abdcf6552bc0def6f703d6283ee21f65c15"
             },
             "require": {
                 "composer-runtime-api": "^2.2",
                 "ext-json": "*",
                 "ext-pdo": "*",
                 "ext-zlib": "*",
-                "nikic/php-parser": "^5.9.0",
                 "php": ">=8.4",
                 "polyspec/ordered-json": "0.0.9",
                 "purrphp/yaml": "1.0.0-p1",
@@ -127,9 +114,6 @@
                 "ext-pdo_sqlite": "sqlite:// DSNs",
                 "ext-polyspec_orm": "the dbspec surface and the error codes of this client implemented in C under the same class names (packages/php-ext)"
             },
-            "bin": [
-                "bin/orm-gen"
-            ],
             "type": "library",
             "autoload": {
                 "psr-4": {
@@ -139,13 +123,46 @@
             "autoload-dev": {
                 "psr-4": {
                     "Polyspec\\Orm\\Tests\\Model\\": "gen/",
-                    "Polyspec\\Orm\\Tests\\MarkdownModel\\": "markdownmodel/"
+                    "Polyspec\\Orm\\Tests\\MarkdownModel\\": "markdownmodel/",
+                    "Polyspec\\Orm\\Tests\\ComplexModel\\": "complexmodel/"
                 }
             },
             "license": [
                 "MIT"
             ],
             "description": "PHP client of the orm model syntax: generated models over PDO with SQL assembled in process",
+            "transport-options": {
+                "symlink": true,
+                "relative": true
+            }
+        },
+        {
+            "name": "polyspec/orm-gen",
+            "version": "0.0.18",
+            "dist": {
+                "type": "path",
+                "url": "packages/php-gen",
+                "reference": "506573a93eeaee33c0e509ff555d5ec84e26f03b"
+            },
+            "require": {
+                "composer-runtime-api": "^2.2",
+                "nikic/php-parser": "^5.9.0",
+                "php": ">=8.4",
+                "polyspec/orm": "0.0.18"
+            },
+            "bin": [
+                "bin/orm-gen"
+            ],
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Polyspec\\Orm\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "description": "PHP dbspec model generator and scanner CLI for polyspec/orm",
             "transport-options": {
                 "symlink": true,
                 "relative": true
@@ -210,6 +227,11 @@
         {
             "name": "purrphp/yaml",
             "version": "v1.0.0-p1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/min-0-max/yaml",
+                "reference": "98daf838506e3199d5a058c90adff5a40940959e"
+            },
             "dist": {
                 "type": "zip",
                 "url": "https://api.github.com/repos/min-0-max/yaml/zipball/98daf838506e3199d5a058c90adff5a40940959e",
@@ -288,7 +310,8 @@
             "support": {
                 "issues": "https://github.com/PurrPHP/yaml/issues",
                 "source": "https://github.com/PurrPHP/yaml"
-            }
+            },
+            "time": "2026-10-15T02:57:00+00:00"
         },
         {
             "name": "symfony/polyfill-ctype",
@@ -514,6 +537,11 @@
         {
             "name": "opis/json-schema",
             "version": "v2.6.0-p1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/min-0-max/json-schema",
+                "reference": "d810833cd43de0ec2c367db6e812e12bf4440e47"
+            },
             "dist": {
                 "type": "zip",
                 "url": "https://api.github.com/repos/min-0-max/json-schema/zipball/d810833cd43de0ec2c367db6e812e12bf4440e47",
@@ -573,7 +601,8 @@
                 "schema",
                 "validation",
                 "validator"
-            ]
+            ],
+            "time": "2026-10-15T02:57:09+00:00"
         },
         {
             "name": "opis/string",

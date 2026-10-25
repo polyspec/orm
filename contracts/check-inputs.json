@@ -296,6 +296,7 @@
         "**/Cargo.toml",
         "**/Cargo.lock",
         "packages/php/composer.json",
+        "packages/php-gen/composer.json",
         "packages/ts/package.json",
         "package-lock.json",
         "packages/php-ext/composer.json",
@@ -545,8 +546,9 @@
       ],
       "inputs": [
         "packages/php/models.txt",
-        "packages/php/bin/orm-gen",
-        "packages/php/src/OrmGen.php"
+        "packages/php-gen/bin/orm-gen",
+        "packages/php-gen/composer.json",
+        "packages/php-gen/src/OrmGen.php"
       ]
     },
     "client-unit-check": {
@@ -584,8 +586,8 @@
         "packages/php/tests/OrmGenScanTest.php",
         "packages/php/tests/OrmGenScanParityTest.php",
         "packages/php/tests/OrmGenTestSupport.php",
-        "packages/php/src/Generator.php",
-        "packages/php/src/ScanVisitor.php",
+        "packages/php-gen/src/Generator.php",
+        "packages/php-gen/src/ScanVisitor.php",
         "tests/generator/php-scan-vectors.json",
         "packages/php/tests/PerfExtensionsTest.php"
       ]
@@ -607,7 +609,7 @@
         "packages/go/generator/gen_go.go",
         "packages/go/generator/gen_go_scan_test.go",
         "packages/go/orm/model.go",
-        "packages/php/src/Generator.php",
+        "packages/php-gen/src/Generator.php",
         "packages/php/src/Model.php",
         "packages/php/tests/OrmGenTest.php",
         "packages/php/tests/OrmGenTestSupport.php",
@@ -1096,8 +1098,9 @@
         "packages/go/generator/*.go",
         "packages/go/cmd/orm-gen/*.go",
         "packages/php/models.txt",
-        "packages/php/bin/orm-gen",
-        "packages/php/src/OrmGen.php",
+        "packages/php-gen/bin/orm-gen",
+        "packages/php-gen/composer.json",
+        "packages/php-gen/src/OrmGen.php",
         "contracts/fixtures/bench/dbspec-set.json",
         "packages/python/examples/thin_slice/main.py"
       ]
@@ -2646,7 +2649,8 @@
         "packages/php/src/Orm.php",
         "packages/php/src/Db.php",
         "packages/php/models.txt",
-        "packages/php/bin/orm-gen",
+        "packages/php-gen/bin/orm-gen",
+        "packages/php-gen/composer.json",
         "packages/php/tests/case_database.php",
         "packages/php/tests/bench.php",
         "contracts/fixtures/bench/**"
@@ -2665,7 +2669,8 @@
         "packages/php/tests/case_database.php",
         "packages/php/tests/bench.php",
         "packages/php/models.txt",
-        "packages/php/bin/orm-gen",
+        "packages/php-gen/bin/orm-gen",
+        "packages/php-gen/composer.json",
         "contracts/fixtures/bench/**"
       ]
     },
@@ -3494,8 +3499,8 @@
         "packages/php/tests/OrmGenScanTest.php",
         "packages/php/tests/OrmGenTestSupport.php",
         "packages/php-ext/tests/OrmGenScanNativeTest.php",
-        "packages/php/src/Generator.php",
-        "packages/php/src/ScanVisitor.php",
+        "packages/php-gen/src/Generator.php",
+        "packages/php-gen/src/ScanVisitor.php",
         "contracts/fixtures/bench/dbspec-set.json"
       ]
     }
