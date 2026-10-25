@@ -21,7 +21,7 @@ class SqliteVersionTest(unittest.TestCase):
             db = Db.connect(f"sqlite://{Path(directory) / 'v.sqlite'}")
             db.close()
 
-    # The test of DSL-150 (docs/spec).
+    # Requirements: DSL-150.
     def test_refuses_older_than_3_46(self):
         for version in ["3.45.3", "3.9.0", "2.8.17"]:
             with self.subTest(version=version):
@@ -33,6 +33,7 @@ class SqliteVersionTest(unittest.TestCase):
                     f"CAPABILITY_UNSUPPORTED: SQLite {version} is older than 3.46",
                 )
 
+    # Requirements: DSL-150.
     def test_accepts_3_46_and_later(self):
         for version in ["3.46.0", "3.50.4", "4.0.0"]:
             with self.subTest(version=version):

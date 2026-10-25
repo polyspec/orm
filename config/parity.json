@@ -14265,16 +14265,56 @@
       ]
     },
     {
-      "id": "py-test-sqlite-version",
+      "id": "sqlite-minimum-driver-version",
       "kind": "feature",
       "requirements": [
         "DSL-150"
       ],
       "bindings": [
         {
+          "implementation": "go",
+          "test": "packages/go/orm/sqlite_version_test.go",
+          "id": "TestSQLiteMinimumVersionThroughConnect"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageDsnTest.php",
+          "id": "CoverageDsnTest::testSqliteMinimumVersionValidation"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageDsnConnectionExtensionTest.php",
+          "id": "CoverageDsnConnectionExtensionTest::testSqliteMinimumVersionValidation"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/sqlite-version.test.mjs",
+          "id": "SQLite version parser accepts three or four decimal u32 components"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/sqlite-version.test.mjs",
+          "id": "SQLite minimum version comparison is numeric"
+        },
+        {
           "implementation": "python",
           "test": "packages/python/tests/test_sqlite_version.py",
-          "id": "test_refuses_older_than_3_46"
+          "id": "SqliteVersionTest.test_refuses_older_than_3_46"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_sqlite_version.py",
+          "id": "SqliteVersionTest.test_accepts_3_46_and_later"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/db/sqlite_version_tests.rs",
+          "id": "sqlite_version_tests::accepts_three_or_four_decimal_u32_components"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/db/sqlite_version_tests.rs",
+          "id": "sqlite_version_tests::compares_minimum_version_numerically"
         }
       ]
     },

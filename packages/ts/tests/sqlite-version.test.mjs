@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
 import { checkSqliteVersion } from '../dist/driver.js';
 
+// Requirements: DSL-150.
 caseTest('SQLite version parser accepts three or four decimal u32 components', COMPUTE, () => {
   for (const version of ['3.46.0', '3.046.000.0', '3.100.0', '4.0.0', '4294967295.0.0']) {
     assert.doesNotThrow(() => checkSqliteVersion(version), version);
@@ -18,6 +19,7 @@ caseTest('SQLite version parser rejects malformed values as INTERNAL with the ra
   }
 });
 
+// Requirements: DSL-150.
 caseTest('SQLite minimum version comparison is numeric', COMPUTE, () => {
   for (const version of ['3.45.999', '2.999.999', '003.045.999.0']) {
     assert.throws(() => checkSqliteVersion(version), error => error.code === 'CAPABILITY_UNSUPPORTED', version);

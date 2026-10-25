@@ -15,6 +15,7 @@ use ReflectionMethod;
 
 // Requirements: CFG-1. The inherited DSN case exercises Orm through the native extension.
 
+// Requirements: DSL-150. The inherited minimum-version case runs the same check through native Orm methods.
 #[Medium]
 final class CoverageDsnConnectionExtensionTest extends CoverageDsnTest
 {
@@ -23,7 +24,6 @@ final class CoverageDsnConnectionExtensionTest extends CoverageDsnTest
         return __FILE__;
     }
 
-    // Requirements: DSL-150.
     public function testNativeMethodsAreInternal(): void
     {
         Assert::assertTrue((new ReflectionMethod(Orm::class, 'parseDsn'))->isInternal());

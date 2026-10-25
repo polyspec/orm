@@ -1,6 +1,7 @@
 use super::check_sqlite_version;
 use crate::codes;
 
+// Requirements: DSL-150.
 #[test]
 fn accepts_three_or_four_decimal_u32_components() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -37,6 +38,7 @@ fn rejects_malformed_components_as_internal_with_the_raw_value() {
     }
 }
 
+// Requirements: DSL-150.
 #[test]
 fn compares_minimum_version_numerically() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
