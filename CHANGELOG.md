@@ -3,6 +3,8 @@
 
 ## Unreleased
 
+- KSTD-7-5: The model query and write PHP-extension owners pass their focused cases; the extension conformance owner passes all 59 vectors on three databases. All three feature statuses are implemented. The global parity declaration findings remain tracked separately in KSTD-2.
+
 - KSTD-7-5-1: `audit_lazy` passed two matching runs for the five non-extension clients on all three databases; the PHP-extension owner passed the 59-vector set on MySQL, PostgreSQL and SQLite (3 tests / 183 assertions).
 
 - KSTD-2-10-1: The selected `delete_lock` conformance vector passed twice across all six clients on MySQL, PostgreSQL and SQLite. The selected three-vector record/recheck is recorded in the checklist; the later interface-snapshot check was fixed by six official recorders in f57610f9f.

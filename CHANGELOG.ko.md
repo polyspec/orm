@@ -1,8 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 302359fd3d94653f4ec6d28be5ed4572795d5d2b15d48aed3aeee6edb012505c -->
+<!-- source-sha256: d91a7e4945e3230a79389cf403fc81f7e5b6f4226de173b43e9390df91231174 -->
 # 변경 이력
 
 ## Unreleased
+
+- KSTD-7-5: PHP-extension의 model query/write owner가 focused case를 통과했고, extension conformance owner가 세 database에서 59개 vector를 모두 통과했다. 세 feature 상태는 implemented다. 전역 parity declaration finding은 KSTD-2에서 별도로 추적한다.
 
 - KSTD-7-5-1: `audit_lazy`가 PHP extension을 제외한 다섯 client에서 세 database별로 일치하는 두 실행을 통과했고, PHP-extension owner도 MySQL, PostgreSQL, SQLite에서 59-vector set을 통과했다 (3 tests / 183 assertions).
 
