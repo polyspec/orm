@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Tests;
 
 require_once __DIR__ . '/phpstan-runner.php';
+require_once __DIR__ . '/OrmGenScanFailureCase.php';
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Small;
@@ -18,6 +19,7 @@ use PHPUnit\Framework\TestCase;
 #[Small]
 final class OrmGenScanTest extends TestCase
 {
+    use OrmGenScanFailureCase;
     private const NS = 'Polyspec\\Orm\\Tests\\Scanned';
 
     private static string $work;
@@ -1131,19 +1133,6 @@ PHP;
         [$code, $err] = self::runScanDirectory($dir, "$dir/model2");
         self::assertSame(1, $code);
         self::assertStringContainsString('broken.php', $err);
-    }
-
-    public function testAFileThatDoesNotParseStopsTheGenerationAndNamesItsPosition(): void
-    {
-        // Requirements: DSL-152.
-        $dir = self::$work . '/unparsable';
-        is_dir("$dir/src") || mkdir("$dir/src", 0o700, true);
-        file_put_contents("$dir/src/usage.php", "<?php\n\$x = 1;\n");
-        file_put_contents("$dir/src/broken.php", "<?php\n\$a = new (;\n");
-        [$code, $err] = self::runScanDirectory($dir, "$dir/model");
-        self::assertSame(1, $code, $err);
-        self::assertMatchesRegularExpression('~broken\.php:2:\d+: does not parse: ~', $err);
-        self::assertDirectoryDoesNotExist("$dir/model");
     }
 
     public function testAScannedDirectorySkipsItsDependenciesAndRefusesASymlink(): void

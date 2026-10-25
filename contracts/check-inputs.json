@@ -781,7 +781,6 @@
         "packages/ts/tests/typecheck.ts"
       ]
     },
-
     "complex-query-typescript-check": {
       "scope": "owner",
       "needs": [
@@ -832,7 +831,7 @@
         "packages/ts/tests/complex-query-support.mjs"
       ]
     },
-"complex-query-php-db-check": {
+    "complex-query-php-db-check": {
       "scope": "suite",
       "needs": [
         "php",
@@ -1792,7 +1791,10 @@
     },
     "dbspec-sqlite-literal-rows-helper-check": {
       "scope": "owner",
-      "needs": ["php", "composer"],
+      "needs": [
+        "php",
+        "composer"
+      ],
       "inputs": [
         "Makefile",
         "packages/php/tests/CannedCatalogPdo.php",
@@ -1863,7 +1865,10 @@
     },
     "dbspec-php-interface-program-helper-check": {
       "scope": "owner",
-      "needs": ["php", "composer"],
+      "needs": [
+        "php",
+        "composer"
+      ],
       "inputs": [
         "Makefile",
         "packages/php/tests/dbspec-php-interface-program.php",
@@ -2891,7 +2896,9 @@
     },
     "complex-query-go-plan-check": {
       "scope": "owner",
-      "needs": ["go"],
+      "needs": [
+        "go"
+      ],
       "inputs": [
         "Makefile",
         "packages/go/complexquery/public_plan_test.go",
@@ -2905,7 +2912,9 @@
     },
     "complex-query-rust-plan-check": {
       "scope": "owner",
-      "needs": ["rust"],
+      "needs": [
+        "rust"
+      ],
       "inputs": [
         "Makefile",
         "packages/rust/tests/tests/integration/coverage_complex_query.rs",
@@ -3363,7 +3372,10 @@
     },
     "php-test-assertions-helper-check": {
       "scope": "owner",
-      "needs": ["php", "composer"],
+      "needs": [
+        "php",
+        "composer"
+      ],
       "inputs": [
         "Makefile",
         "packages/php/tests/DatabaseTestAssertions.php",
@@ -3392,6 +3404,24 @@
         "packages/php/tests/bootstrap.php",
         "packages/php-ext/tests/AesUtilsNativeTest.php",
         "packages/php-ext/tests/OrmExceptionNativeTest.php"
+      ]
+    },
+    "php-orm-gen-scan-failure-case-check": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer",
+        "php-extension-tools"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/php/tests/OrmGenScanFailureCase.php",
+        "packages/php/tests/OrmGenScanTest.php",
+        "packages/php/tests/OrmGenTestSupport.php",
+        "packages/php-ext/tests/OrmGenScanNativeTest.php",
+        "packages/php/src/Generator.php",
+        "packages/php/src/ScanVisitor.php",
+        "contracts/fixtures/bench/dbspec-set.json"
       ]
     }
   },

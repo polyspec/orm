@@ -6929,7 +6929,7 @@
   },
   "packages/php/src/Dbspec/ForeignKey.php::Polyspec\\Orm\\Dbspec\\ForeignKey": {
     "exported": true,
-    "signature": "final class Polyspec\\Orm\\Dbspec\\ForeignKey extends  implements  uses "
+    "signature": "final class Polyspec\\Orm\\Dbspec\\ForeignKey extends  implements  uses Polyspec\\Orm\\Dbspec\\NamedColumns"
   },
   "packages/php/src/Dbspec/ForeignKey.php::Polyspec\\Orm\\Dbspec\\ForeignKey::$columns": {
     "exported": true,
@@ -6966,6 +6966,10 @@
   "packages/php/src/Dbspec/ForeignKey.php::Polyspec\\Orm\\Dbspec\\ForeignKey::changesChildRows": {
     "exported": true,
     "signature": "public function changesChildRows(): bool"
+  },
+  "packages/php/src/Dbspec/ForeignKey.php::Polyspec\\Orm\\Dbspec\\ForeignKey::initializeNamedColumns": {
+    "exported": false,
+    "signature": "private function initializeNamedColumns(string $name, array $columns, array $comments): void"
   },
   "packages/php/src/Dbspec/FormatResult.php::Polyspec\\Orm\\Dbspec\\FormatResult": {
     "exported": true,
@@ -7029,7 +7033,7 @@
   },
   "packages/php/src/Dbspec/Index.php::Polyspec\\Orm\\Dbspec\\Index": {
     "exported": true,
-    "signature": "final class Polyspec\\Orm\\Dbspec\\Index extends  implements  uses "
+    "signature": "final class Polyspec\\Orm\\Dbspec\\Index extends  implements  uses Polyspec\\Orm\\Dbspec\\NamedColumns"
   },
   "packages/php/src/Dbspec/Index.php::Polyspec\\Orm\\Dbspec\\Index::$columns": {
     "exported": true,
@@ -7046,6 +7050,10 @@
   "packages/php/src/Dbspec/Index.php::Polyspec\\Orm\\Dbspec\\Index::__construct": {
     "exported": true,
     "signature": "public function __construct(string $name, array $columns, array $comments=[]): "
+  },
+  "packages/php/src/Dbspec/Index.php::Polyspec\\Orm\\Dbspec\\Index::initializeNamedColumns": {
+    "exported": false,
+    "signature": "private function initializeNamedColumns(string $name, array $columns, array $comments): void"
   },
   "packages/php/src/Dbspec/IndexColumn.php::Polyspec\\Orm\\Dbspec\\IndexColumn": {
     "exported": true,
@@ -7306,6 +7314,30 @@
   "packages/php/src/Dbspec/MysqlCatalog.php::Polyspec\\Orm\\Dbspec\\MysqlCatalog::withoutIntroducers": {
     "exported": false,
     "signature": "private static function withoutIntroducers(string $clause): string"
+  },
+  "packages/php/src/Dbspec/NamedColumns.php::Polyspec\\Orm\\Dbspec\\NamedColumns": {
+    "exported": true,
+    "signature": " trait Polyspec\\Orm\\Dbspec\\NamedColumns extends  implements  uses "
+  },
+  "packages/php/src/Dbspec/NamedColumns.php::Polyspec\\Orm\\Dbspec\\NamedColumns::$columns": {
+    "exported": true,
+    "signature": "public array"
+  },
+  "packages/php/src/Dbspec/NamedColumns.php::Polyspec\\Orm\\Dbspec\\NamedColumns::$comments": {
+    "exported": true,
+    "signature": "public array"
+  },
+  "packages/php/src/Dbspec/NamedColumns.php::Polyspec\\Orm\\Dbspec\\NamedColumns::$name": {
+    "exported": true,
+    "signature": "public string"
+  },
+  "packages/php/src/Dbspec/NamedColumns.php::Polyspec\\Orm\\Dbspec\\NamedColumns::__construct": {
+    "exported": true,
+    "signature": "public function __construct(string $name, array $columns, array $comments=[]): "
+  },
+  "packages/php/src/Dbspec/NamedColumns.php::Polyspec\\Orm\\Dbspec\\NamedColumns::initializeNamedColumns": {
+    "exported": false,
+    "signature": "private function initializeNamedColumns(string $name, array $columns, array $comments): void"
   },
   "packages/php/src/Dbspec/Names.php::Polyspec\\Orm\\Dbspec\\Names": {
     "exported": true,
@@ -9349,7 +9381,7 @@
   },
   "packages/php/src/Dbspec/UniqueKey.php::Polyspec\\Orm\\Dbspec\\UniqueKey": {
     "exported": true,
-    "signature": "final class Polyspec\\Orm\\Dbspec\\UniqueKey extends  implements  uses "
+    "signature": "final class Polyspec\\Orm\\Dbspec\\UniqueKey extends  implements  uses Polyspec\\Orm\\Dbspec\\NamedColumns"
   },
   "packages/php/src/Dbspec/UniqueKey.php::Polyspec\\Orm\\Dbspec\\UniqueKey::$columns": {
     "exported": true,
@@ -9366,6 +9398,10 @@
   "packages/php/src/Dbspec/UniqueKey.php::Polyspec\\Orm\\Dbspec\\UniqueKey::__construct": {
     "exported": true,
     "signature": "public function __construct(string $name, array $columns, array $comments=[]): "
+  },
+  "packages/php/src/Dbspec/UniqueKey.php::Polyspec\\Orm\\Dbspec\\UniqueKey::initializeNamedColumns": {
+    "exported": false,
+    "signature": "private function initializeNamedColumns(string $name, array $columns, array $comments): void"
   },
   "packages/php/src/Dbspec/Unsupported.php::Polyspec\\Orm\\Dbspec\\Unsupported": {
     "exported": true,

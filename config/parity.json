@@ -3417,16 +3417,41 @@
       ]
     },
     {
-      "id": "ts-generate-scan-unparsable-file",
+      "id": "generator-scan-unparsable-source-stops-before-writing",
       "kind": "feature",
       "requirements": [
         "DSL-152"
       ],
       "bindings": [
         {
+          "implementation": "go",
+          "test": "packages/go/generator/gen_go_scan_test.go",
+          "id": "TestGoScanFailsOnAFileThatDoesNotParse"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/OrmGenScanTest.php",
+          "id": "OrmGenScanTest::testAFileThatDoesNotParseStopsTheGenerationAndNamesItsPosition"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/OrmGenScanNativeTest.php",
+          "id": "OrmGenScanNativeTest::testAFileThatDoesNotParseStopsTheGenerationAndNamesItsPosition"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/tests/generate.rs",
+          "id": "a_file_that_does_not_parse_stops_the_generation"
+        },
+        {
           "implementation": "typescript",
           "test": "packages/ts/tests/generate-scan.mjs",
           "id": "generate-scan/unparsable_file"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_orm_gen.py",
+          "id": "test_a_file_that_does_not_parse_fails_the_scan"
         }
       ]
     },
@@ -7311,8 +7336,7 @@
         "DBS-173",
         "DSL-9",
         "DSL-44",
-        "DSL-151",
-        "DSL-152"
+        "DSL-151"
       ],
       "bindings": [
         {
@@ -7392,20 +7416,6 @@
           "implementation": "go",
           "test": "packages/go/generator/gen_go_scan_test.go",
           "id": "TestGoScanResolvesAReassignedVariable"
-        }
-      ]
-    },
-    {
-      "id": "go-internal-generator-scan-fails-on-a-file-that-does-not-parse",
-      "kind": "feature",
-      "requirements": [
-        "DSL-152"
-      ],
-      "bindings": [
-        {
-          "implementation": "go",
-          "test": "packages/go/generator/gen_go_scan_test.go",
-          "id": "TestGoScanFailsOnAFileThatDoesNotParse"
         }
       ]
     },
@@ -9010,7 +9020,6 @@
         "DSL-44",
         "DSL-117",
         "DSL-151",
-        "DSL-152",
         "SCH-1"
       ],
       "bindings": [
@@ -9045,7 +9054,6 @@
         "DSL-44",
         "DSL-117",
         "DSL-151",
-        "DSL-152",
         "SCH-1"
       ],
       "bindings": [
@@ -9080,7 +9088,6 @@
         "DSL-44",
         "DSL-117",
         "DSL-151",
-        "DSL-152",
         "SCH-1"
       ],
       "bindings": [
@@ -9214,7 +9221,6 @@
         "DSL-44",
         "DSL-117",
         "DSL-151",
-        "DSL-152",
         "SCH-1"
       ],
       "bindings": [
@@ -9249,7 +9255,6 @@
         "DSL-44",
         "DSL-117",
         "DSL-151",
-        "DSL-152",
         "SCH-1"
       ],
       "bindings": [
@@ -9398,7 +9403,6 @@
         "DSL-44",
         "DSL-117",
         "DSL-151",
-        "DSL-152",
         "SCH-1"
       ],
       "bindings": [
@@ -9500,20 +9504,6 @@
       ]
     },
     {
-      "id": "rust-a-file-that-does-not-parse-stops-the-generation",
-      "kind": "feature",
-      "requirements": [
-        "DSL-152"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/build/tests/generate.rs",
-          "id": "a_file_that_does_not_parse_stops_the_generation"
-        }
-      ]
-    },
-    {
       "id": "rust-unused-external-tables-keep-their-models",
       "kind": "feature",
       "requirements": [
@@ -9551,7 +9541,6 @@
         "DSL-44",
         "DSL-117",
         "DSL-151",
-        "DSL-152",
         "SCH-1"
       ],
       "bindings": [
@@ -9586,7 +9575,6 @@
         "DSL-44",
         "DSL-117",
         "DSL-151",
-        "DSL-152",
         "SCH-1"
       ],
       "bindings": [
@@ -9621,7 +9609,6 @@
         "DSL-44",
         "DSL-117",
         "DSL-151",
-        "DSL-152",
         "SCH-1"
       ],
       "bindings": [
@@ -9656,7 +9643,6 @@
         "DSL-44",
         "DSL-117",
         "DSL-151",
-        "DSL-152",
         "SCH-1"
       ],
       "bindings": [
@@ -12873,20 +12859,6 @@
       ]
     },
     {
-      "id": "py-test-orm-gen-a-file-that-does-not-parse-fails-the-scan",
-      "kind": "feature",
-      "requirements": [
-        "DSL-152"
-      ],
-      "bindings": [
-        {
-          "implementation": "python",
-          "test": "packages/python/tests/test_orm_gen.py",
-          "id": "test_a_file_that_does_not_parse_fails_the_scan"
-        }
-      ]
-    },
-    {
       "id": "py-test-orm-gen-a-used-external-table-that-no-source-calls-keeps-its-model",
       "kind": "feature",
       "requirements": [
@@ -13550,20 +13522,6 @@
       ]
     },
     {
-      "id": "php-internal-orm-gen-scan-a-file-that-does-not-parse-stops-the-generation",
-      "kind": "feature",
-      "requirements": [
-        "DSL-152"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/OrmGenScanTest.php",
-          "id": "OrmGenScanTest::testAFileThatDoesNotParseStopsTheGenerationAndNamesItsPosition"
-        }
-      ]
-    },
-    {
       "id": "php-internal-orm-gen-scan-a-directory-is-scanned-and-a-file-that-does-not-parse-fails-the-scan",
       "kind": "feature",
       "requirements": [
@@ -13600,7 +13558,6 @@
         "DSL-42",
         "DSL-44",
         "DSL-151",
-        "DSL-152",
         "SCH-1"
       ],
       "bindings": [

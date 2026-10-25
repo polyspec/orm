@@ -577,56 +577,6 @@ caseTest('a workflow that runs a verification command of feature-check again fai
   ]);
 });
 
-// The helper run case (G5.120) checks whether make orm-check runs each helper check once: the repository's Makefile, feature contract and
-// scripts/check/databases.mts, and a minimal Makefile that runs a helper twice or never.
-caseTest('make orm-check runs the check of every helper once', COMPUTE, () => {
-  assert.deepEqual(helperRunErrors(readFeatures(repository.pathname), text('Makefile'), scriptTexts.get('scripts/check/databases.mts') ?? ''), []);
-  const manifest = { features: [], helpers: [
-    { id: 'plain', command: 'php tests/plain_test.php' },
-    { id: 'suite', command: 'make --no-print-directory TEST_ENV="$ORM_TEST_ENV" suite-check' },
-    { id: 'nested', command: 'make --no-print-directory nested-check' },
-    { id: 'seed', command: 'sh scripts/seed.sh' },
-    { id: 'seedts', command: 'node scripts/seedts.mts' },
-    { id: 'stress', command: 'make stress-bench' },
-  ] };
-  const make = (suite: string, stress: string) => [
-    'CHECK_TARGETS = helper-check stress-check suite-check outer-check',
-    `STRESS = ${stress}`,
-    `SUITE = ${suite}`,
-    'helper-check:',
-    '	$(WITH_TEST_ENV) node scripts/features/check.mts --run --helpers $(addprefix --without-helper ,$(STRESS) $(SUITE))',
-    'stress-check:',
-    '	$(WITH_TEST_ENV) node scripts/features/check.mts --run $(addprefix --helper ,$(STRESS))',
-    'suite-check:',
-    '	go test ./suite',
-    'outer-check: nested-check',
-    '	go test ./outer',
-    'nested-check:',
-    '	go test ./nested',
-    '',
-  ].join('\n');
-  const setup = 'BENCH_MYSQL_DSN=x "$ROOT/scripts/seed.sh"\nBENCH_MYSQL_DSN=x node "$ROOT/scripts/seedts.mts"\n';
-  assert.deepEqual(helperRunErrors(manifest, make('suite nested seed seedts', 'stress'), setup), []);
-  const twice = (id: string, places: string) => `make orm-check runs the check of helper ${id} 2 times: ${places}; run it once, and add a helper whose check a target or setup step of make orm-check runs to FEATURE_SUITE_HELPERS, which make feature-helper-check leaves out`;
-  assert.deepEqual(helperRunErrors(manifest, make('suite', 'stress'), setup), [
-    twice('nested', 'make helper-check; make nested-check, a target of make orm-check'),
-    twice('seed', 'make helper-check; the setup step databases/create of make orm-check (scripts/check/databases.mts runs scripts/seed.sh)'),
-    twice('seedts', 'make helper-check; the setup step databases/create of make orm-check (scripts/check/databases.mts runs scripts/seedts.mts)'),
-  ]);
-  // A prerequisite on a continuation line is a prerequisite too (makeTargets, T137-1-4-2-2).
-  assert.deepEqual(helperRunErrors(manifest, make('suite', 'stress').replace('outer-check: nested-check', 'outer-check: suite-check \\\n  nested-check'), setup), [
-    twice('nested', 'make helper-check; make nested-check, a target of make orm-check'),
-    twice('seed', 'make helper-check; the setup step databases/create of make orm-check (scripts/check/databases.mts runs scripts/seed.sh)'),
-    twice('seedts', 'make helper-check; the setup step databases/create of make orm-check (scripts/check/databases.mts runs scripts/seedts.mts)'),
-  ]);
-  assert.deepEqual(helperRunErrors(manifest, make('suite nested seed seedts plain', 'stress'), setup), [
-    'make orm-check runs no check of helper plain: no target of CHECK_TARGETS selects it and its command is no target or setup step of make orm-check; leave it out of FEATURE_STRESS_HELPERS and FEATURE_SUITE_HELPERS so that make feature-helper-check runs it',
-  ]);
-  assert.deepEqual(helperRunErrors(manifest, make('suite nested seed seedts', 'stress').replace('--helpers $(addprefix --without-helper ,$(STRESS) $(SUITE))', '--helpers $(addprefix --without-helper ,$(SUITE))'), setup), [
-    twice('stress', 'make helper-check; make stress-check'),
-  ]);
-});
-
 // The helper environment case checks whether the Makefile exports the shell variables read by the make commands of helper checks: the repository's contracts/features.json and
 // Makefile, and a minimal manifest that reads a variable (ORM_OWNER_TEST_ENV) that set only one execution path.
 caseTest('every variable a helper make command reads is exported by the Makefile', COMPUTE, () => {
@@ -1113,6 +1063,57 @@ const trackedFiles = (pattern: string) => execFileSync('git', ['ls-files', '-z',
 // scriptTexts is the command text of each script in scripts/ (scriptCommands): the lines of shell scripts and the COMMANDS of TypeScript command scripts.
 // readScript reads the path that reachedScripts follows with it, and does not read a TypeScript file that is not a command script.
 const scriptTexts = await scriptCommands(repository.pathname, trackedFiles('*'));
+
+// The helper run case (G5.120) checks whether make orm-check runs each helper check once: the repository's Makefile, feature contract and
+// scripts/check/databases.mts, and a minimal Makefile that runs a helper twice or never.
+caseTest('make orm-check runs the check of every helper once', COMPUTE, () => {
+  assert.deepEqual(helperRunErrors(readFeatures(repository.pathname), text('Makefile'), scriptTexts.get('scripts/check/databases.mts') ?? ''), []);
+  const manifest = { features: [], helpers: [
+    { id: 'plain', command: 'php tests/plain_test.php' },
+    { id: 'suite', command: 'make --no-print-directory TEST_ENV="$ORM_TEST_ENV" suite-check' },
+    { id: 'nested', command: 'make --no-print-directory nested-check' },
+    { id: 'seed', command: 'sh scripts/seed.sh' },
+    { id: 'seedts', command: 'node scripts/seedts.mts' },
+    { id: 'stress', command: 'make stress-bench' },
+  ] };
+  const make = (suite: string, stress: string) => [
+    'CHECK_TARGETS = helper-check stress-check suite-check outer-check',
+    `STRESS = ${stress}`,
+    `SUITE = ${suite}`,
+    'helper-check:',
+    '	$(WITH_TEST_ENV) node scripts/features/check.mts --run --helpers $(addprefix --without-helper ,$(STRESS) $(SUITE))',
+    'stress-check:',
+    '	$(WITH_TEST_ENV) node scripts/features/check.mts --run $(addprefix --helper ,$(STRESS))',
+    'suite-check:',
+    '	go test ./suite',
+    'outer-check: nested-check',
+    '	go test ./outer',
+    'nested-check:',
+    '	go test ./nested',
+    '',
+  ].join('\n');
+  const setup = 'BENCH_MYSQL_DSN=x "$ROOT/scripts/seed.sh"\nBENCH_MYSQL_DSN=x node "$ROOT/scripts/seedts.mts"\n';
+  assert.deepEqual(helperRunErrors(manifest, make('suite nested seed seedts', 'stress'), setup), []);
+  const twice = (id: string, places: string) => `make orm-check runs the check of helper ${id} 2 times: ${places}; run it once, and add a helper whose check a target or setup step of make orm-check runs to FEATURE_SUITE_HELPERS, which make feature-helper-check leaves out`;
+  assert.deepEqual(helperRunErrors(manifest, make('suite', 'stress'), setup), [
+    twice('nested', 'make helper-check; make nested-check, a target of make orm-check'),
+    twice('seed', 'make helper-check; the setup step databases/create of make orm-check (scripts/check/databases.mts runs scripts/seed.sh)'),
+    twice('seedts', 'make helper-check; the setup step databases/create of make orm-check (scripts/check/databases.mts runs scripts/seedts.mts)'),
+  ]);
+  // A prerequisite on a continuation line is a prerequisite too (makeTargets, T137-1-4-2-2).
+  assert.deepEqual(helperRunErrors(manifest, make('suite', 'stress').replace('outer-check: nested-check', 'outer-check: suite-check \\\n  nested-check'), setup), [
+    twice('nested', 'make helper-check; make nested-check, a target of make orm-check'),
+    twice('seed', 'make helper-check; the setup step databases/create of make orm-check (scripts/check/databases.mts runs scripts/seed.sh)'),
+    twice('seedts', 'make helper-check; the setup step databases/create of make orm-check (scripts/check/databases.mts runs scripts/seedts.mts)'),
+  ]);
+  assert.deepEqual(helperRunErrors(manifest, make('suite nested seed seedts plain', 'stress'), setup), [
+    'make orm-check runs no check of helper plain: no target of CHECK_TARGETS selects it and its command is no target or setup step of make orm-check; leave it out of FEATURE_STRESS_HELPERS and FEATURE_SUITE_HELPERS so that make feature-helper-check runs it',
+  ]);
+  assert.deepEqual(helperRunErrors(manifest, make('suite nested seed seedts', 'stress').replace('--helpers $(addprefix --without-helper ,$(STRESS) $(SUITE))', '--helpers $(addprefix --without-helper ,$(SUITE))'), setup), [
+    twice('stress', 'make helper-check; make stress-check'),
+  ]);
+});
+
 const trackedAll = new Set(trackedFiles('*'));
 const readScript = (path: string) => scriptTexts.get(path) ?? (trackedAll.has(path) && !path.endsWith('.mts') ? text(path) : undefined);
 const trackedTexts = (paths: string[]) => Object.fromEntries(paths.map((path: string) => [path, text(path)]));

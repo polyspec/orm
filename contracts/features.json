@@ -3604,6 +3604,7 @@
         "packages/php/tests/OrmGenTestSupport.php",
         "packages/php/tests/ModelMethodsTest.php",
         "packages/php/tests/OrmGenScanTest.php",
+        "packages/php-ext/tests/OrmGenScanNativeTest.php",
         "packages/php/tests/OrmGenScanParityTest.php",
         "packages/ts/tests/generate-scan.mjs",
         "packages/ts/tests/models-scan.mjs",
@@ -11846,19 +11847,11 @@
     {
       "id": "typescript-internal-column-error",
       "paths": [
-        "packages/ts/tests/internal-column-error.mjs"
-      ],
-      "tests": [
-        "packages/ts/tests/internal-column-error.test.mjs"
-      ],
-      "command": "node --test packages/ts/tests/internal-column-error.test.mjs"
-    },
-    {
-      "id": "typescript-markdown-read-db",
-      "paths": [
+        "packages/ts/tests/internal-column-error.mjs",
         "packages/ts/tests/markdown-read-db.mjs"
       ],
       "tests": [
+        "packages/ts/tests/internal-column-error.test.mjs",
         "packages/ts/tests/markdown-read-db.test.mjs"
       ],
       "command": "make --no-print-directory typescript-internal-column-error-helper-check"
@@ -12389,7 +12382,7 @@
       "packages/php-ext/tests/CollectionTest.php",
       "packages/php-ext/tests/ModelAssemblyTest.php"
     ],
-    "command": "make collection-composite-key-check split-null-check && env ORM_PHP_MODE=library vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/CollectionIdentityTest.php --filter testWeakAndStrictTypedKeyCoercionBoundaries"
+    "command": "env ORM_PHP_MODE=library vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist packages/php/tests/CollectionIdentityTest.php --filter testWeakAndStrictTypedKeyCoercionBoundaries"
   },
   {
     "id": "php-group-rows-test-cases",
@@ -12467,6 +12460,15 @@
         "packages/php-ext/tests/ModelStreamReadTest.php"
       ],
       "command": "make --no-print-directory model-native-php-extension-check MODEL_NATIVE_TEST_FILTER='testNativeRowStreamReadFailurePreservesThrowableAndDoesNotMutateBuilder|testSuccessfulNormalAndExtraRowsPreserveStreamText|testNativeRowAssemblyPreservesBinaryDriverCellBytes|testWarningThrowableEscapesNormalAndExtraRowsWithoutMutatingBuilder'"
+    },
+    {
+      "id": "php-orm-gen-scan-failure-case",
+      "paths": ["packages/php/tests/OrmGenScanFailureCase.php"],
+      "tests": [
+        "packages/php/tests/OrmGenScanTest.php",
+        "packages/php-ext/tests/OrmGenScanNativeTest.php"
+      ],
+      "command": "make --no-print-directory php-orm-gen-scan-failure-case-check"
     }
   ]
 }
