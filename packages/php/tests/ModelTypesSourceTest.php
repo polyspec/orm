@@ -38,11 +38,15 @@ final class ModelTypesSourceTest extends TestCase
         } catch (OrmException $exception) {
             self::assertSame(Code::CODEC_DECODE, $exception->code_);
         }
-        $func = new Func('sum', [2, 1], true);
-        self::assertSame(['name' => 'sum', 'ps' => [5, 4]], $func->ir(static fn (int $arg): int => $arg + 3));
         $zone = new DateTimeZone('UTC');
         $pending = new PendingTime('not parsed yet', $zone);
         self::assertSame('not parsed yet', $pending->text);
         self::assertSame($zone, $pending->zone);
+    }
+
+    public function testPublicFuncIrKeepsArgumentOrderAndShape(): void
+    {
+        $func = new Func('sum', [2, 1], true);
+        self::assertSame(['name' => 'sum', 'ps' => [5, 4]], $func->ir(static fn (int $arg): int => $arg + 3));
     }
 }
