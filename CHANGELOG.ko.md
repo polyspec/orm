@@ -1,9 +1,11 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 966d8bd741cfbdbb07c73a6a3bb3a46a7cb748ec613750b250ae0f54757adb4b -->
+<!-- source-sha256: 3e322d58704c434fbfa7bcebbfe8e596b88856ed96c5b0767b32e06c95737bd3 -->
 # 변경 이력
 
 ## Unreleased
 
+- KSTD-7-3-3: Go, TypeScript, Python, Rust가 큰 root IN 목록을 plan 전에 나눈다. 커밋 `431496ef9e72e5520b730ff02ad1511f5d11e4a1`의 70300개 값을 쓰는 집중 SQLite test가 통과했다: Go 할당 86.5 MB, TypeScript peak RSS 증가 52.0 MB, Python traced peak 36.8 MB, Rust는 cached plan이 999 bind slot을 넘지 않으며 일치하는 두 행을 반환했다.
+- KSTD-5-90: conformance-check RECORD=1은 record에 여섯 구현 출력(php-extension 포함)을 모두 넘긴다 (KSTD-5-90)
 - PHP extension이 선언된 owner를 통해 native planner, parameter chunking, composite key 동작을 구현한다. 집중 native case는 root IN 분할, relation chunk padding, composite relation, tuple predicate와 composite page를 검증한다 (KSTD-7-3).
 - PHP client와 PHP extension이 bind 한도를 넘는 root IN list를 plan하기 전에 나눈다: read나 count는 그 list를 첫 값으로 줄인 request를 plan해 bind 수를 얻고, 각 part를 한도 안에서 plan하므로 값마다 bind slot을 가진 plan이 없다. SQLite에서 70300개 값의 count는 extension에서 113 MB를 잡았으나 이제 32 MB 아래에 머물러 기본 memory_limit 128 MB 안에 든다 (KSTD-7-3-2). red: ParameterChunkingNativeTest의 새 case가 Engine.php에서 Allowed memory size of 134217728 bytes exhausted로 끝났다.
 - PHP library coverage owner의 모든 case가 test class가 선언한 method를 고른다: planner, authenticated_encryption, parameter_chunking, constraints_and_relations의 owner가 symbols map으로 camelCase method를 지정하고, scripts/features/coverage.test.mts가 class, 부모 class, trait에 method가 없는 case에서 실패한다 (KSTD-7-3-1). red: 새 case가 PHPUnit이 test를 실행하지 않은 네 owner의 test_<id> method를 나열했다.
