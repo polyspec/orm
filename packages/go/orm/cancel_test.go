@@ -148,8 +148,8 @@ func TestWithContextCancelsTransaction(t *testing.T) {
 // TestWithContextCancelsInsideTransaction waits inside a transaction for a row
 // another connection holds, and cancels the handle's context: the statement
 // returns CANCELED instead of waiting for the lock. On MySQL and PostgreSQL,
-// the driver closes the connection of a canceled statement, so the transaction
-// reports a ROLLBACK that keeps the cancellation.
+// MySQL closes the connection and the transaction reports ROLLBACK with the
+// cancellation cause; PostgreSQL sends a protocol cancel request and reports CANCELED.
 func TestWithContextCancelsInsideTransaction(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	s := fixtureSchema(t, "zone")
@@ -247,10 +247,8 @@ func TestWithContextCancelsInsideTransaction(t *testing.T) {
 					if holderErr := <-done; holderErr != nil {
 						t.Fatal(holderErr)
 					}
-					// The MySQL and PostgreSQL drivers close the connection of a canceled statement,
-					// so the transaction's rollback fails and the client reports both errors together.
 					want := orm.CodeCanceled
-					if driver != "sqlite" {
+					if driver == "mysql" {
 						want = orm.CodeRollback
 					}
 					if orm.ErrorCode(err) != want {

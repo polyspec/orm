@@ -601,6 +601,20 @@ func mapDriverErr(err error) error {
 	return &ir.Error{Code: CodeDriver, Msg: err.Error(), Cause: err}
 }
 
+// mapDriverErrContext keeps the context cause when a database reports a
+// server-side cancellation after honoring the canceled context.
+func mapDriverErrContext(err error, ctx context.Context) error {
+	mapped := mapDriverErr(err)
+	if ctx == nil || ctx.Err() == nil {
+		return mapped
+	}
+	var coded *ir.Error
+	if errors.As(mapped, &coded) && coded.Code == CodeCanceled && !errors.Is(mapped, ctx.Err()) {
+		return &ir.Error{Code: coded.Code, Msg: coded.Msg, Cause: errors.Join(coded.Cause, ctx.Err())}
+	}
+	return mapped
+}
+
 func mapMySQLErr(err error) error {
 	// go-sql-driver reports a statement on a connection the server ended or that dropped as ErrInvalidConn.
 	if errors.Is(err, mysql.ErrInvalidConn) {

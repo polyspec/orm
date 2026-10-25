@@ -7,19 +7,54 @@
 package pg
 
 import (
+	"context"
+	"database/sql"
 	"database/sql/driver"
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/jackc/pgx/v5/pgconn/ctxwatch"
+	"github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/polyspec/orm/packages/go/engine/ir"
 	"github.com/polyspec/orm/packages/go/orm"
 )
 
-func init() { orm.RegisterDriver("postgres", "pgx", mapErr) }
+func init() {
+	sql.Register("polyspec-pgx", configuredDriver{})
+	orm.RegisterDriver("postgres", "polyspec-pgx", mapErr)
+}
+
+type configuredDriver struct{}
+
+func (configuredDriver) Open(name string) (driver.Conn, error) {
+	connector, err := (configuredDriver{}).OpenConnector(name)
+	if err != nil {
+		return nil, err
+	}
+	return connector.Connect(context.Background())
+}
+
+func (configuredDriver) OpenConnector(name string) (driver.Connector, error) {
+	config, err := pgx.ParseConfig(name)
+	if err != nil {
+		return nil, err
+	}
+	config.BuildContextWatcherHandler = func(conn *pgconn.PgConn) ctxwatch.Handler {
+		return &pgconn.CancelRequestContextWatcherHandler{
+			Conn:               conn,
+			CancelRequestDelay: 0,
+			// pgx's own CancelRequest handler tests use 5s, allowing its
+			// protocol cancel to arrive before the connection deadline fallback.
+			DeadlineDelay: 5 * time.Second,
+		}
+	}
+	return stdlib.GetConnector(*config), nil
+}
 
 // mapErr names the conditions that docs/spec/errors.yaml maps, and the executor
 // reports the remaining driver errors as DRIVER.

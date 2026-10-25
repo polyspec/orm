@@ -840,7 +840,7 @@ func runSelect(ctx context.Context, ex executor, c *cached, st *plan.Step, r *re
 		return nil, d.modelDone(ex, st, sqlText, args, masks, start, err)
 	}
 	rows, err := stmt.QueryContext(ctx, args...)
-	err = mapDriverErr(err)
+	err = mapDriverErrContext(err, ctx)
 	if err != nil {
 		return nil, d.modelDone(ex, st, sqlText, args, masks, start, err)
 	}
@@ -861,7 +861,7 @@ func runSelect(ctx context.Context, ex executor, c *cached, st *plan.Step, r *re
 	var decodeErr error
 	for rows.Next() {
 		if err = rows.Scan(ptrs...); err != nil {
-			err = mapDriverErr(err)
+			err = mapDriverErrContext(err, ctx)
 			break
 		}
 		// The first row gets its own slice; later rows share chunks of
@@ -884,10 +884,10 @@ func runSelect(ctx context.Context, ex executor, c *cached, st *plan.Step, r *re
 		out = append(out, vals)
 	}
 	if err == nil {
-		err = mapDriverErr(rows.Err())
+		err = mapDriverErrContext(rows.Err(), ctx)
 	}
 	if closeErr := rows.Close(); err == nil {
-		err = mapDriverErr(closeErr)
+		err = mapDriverErrContext(closeErr, ctx)
 	}
 	if err := d.modelDone(ex, st, sqlText, args, masks, start, err); err != nil {
 		return nil, err
