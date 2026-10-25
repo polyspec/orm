@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- `make duplication-check` exits 0 with zero clones of 6 or more lines across the whole tree, in all seven formats it reads (KSTD-5-46).
 - `make duplication-check` finds no clone: each `@param` of the apply, recover, rollback and finalize operations of the PHP `Dbspec` and `PlanApply` says what its argument is for that operation, so the four docblocks no longer end in the same six lines; no public name, signature or extension stub changes (KSTD-5-46-3).
 - The request hook, audit, soft delete, restore and clock units are six-client units: their 26 units report no declaration finding, and the native request hook and audit cases of the PHP extension pass (KSTD-2-11-12).
 - The PHP extension request hook test names the requirements of the insert assignment case it inherits; the focused parity declaration and native binding checks pass (KSTD-2-11-12-4).

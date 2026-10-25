@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: a8eb7edac9f694e60b979059a8af7a743364cbc2f01e3ea59b3ccf977b1ac3ab -->
+<!-- source-sha256: 7f7a45a1e25016687b21ffcd1db1e3c2b3453d21238c8a151e563e9480267cb2 -->
 # 변경 이력
 
 ## Unreleased
 
+- `make duplication-check`가 전체 tree에서 읽는 일곱 형식 모두에 6줄 이상 clone 0개로 exit 0 한다 (KSTD-5-46).
 - `make duplication-check`가 clone을 찾지 않는다: PHP `Dbspec`과 `PlanApply`의 apply, recover, rollback, finalize 연산의 각 `@param`이 그 연산에서 인자가 무엇인지 말하므로 네 docblock이 더 이상 같은 여섯 줄로 끝나지 않는다. public 이름, signature, extension stub은 바뀌지 않는다 (KSTD-5-46-3).
 - request hook, audit, soft delete, restore, clock unit은 여섯 client unit이다: 26개 unit에 declaration finding이 없고, PHP extension의 native request hook과 audit case가 통과한다(KSTD-2-11-12).
 - PHP extension request hook test가 물려받은 insert assignment case의 requirement를 적으며, 좁은 parity declaration과 native binding 검사가 통과한다 (KSTD-2-11-12-4).
