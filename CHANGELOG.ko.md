@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: 0b8569fdad5ddaea47cb2b4ecf9fc3d168149aa63346ca037f10c047166356ab -->
+<!-- source-sha256: 8d8bd0447b78120e546a140b7a81a088feef0130d72dfa49cb7962310bcea2b2 -->
 # 변경 이력
 
 ## Unreleased
 
+- 서버가 실행 전에 session을 끝낸 statement의 PHP case는 PHP만 bind하던 unit 대신 여섯 client CFG-15 unit connection-rollback-failed-reports-both-errors에 PHP library와 PHP extension으로 bind된다(KSTD-2-11-13-6).
 - found-rows 개수, Rust client의 float 자릿수, Rust build tool의 SQLite 경로는 P32가 정한 자리에 놓인다: CFG-10은 모든 client에서 found row를 확인하는 affected_counts vector를 가진 MySQL conformance suite가 인용하고, CFG-32는 rust-postgres-float-round-trip을 소유하는 polyspec-orm crate를 이름으로 적고, Python client flag 검사와 Rust tool 경로 검사는 각 package의 일반 test다(KSTD-2-11-13-4).
 - Rust client가 SQLite의 DSN busy_timeout을 유지하면서 지워진 case를 bind하던 Rust unit rust-statement-timeout-bounds-sqlite-lock-wait가 config/parity.json에서 빠진다(KSTD-2-11-13-5).
 - transaction의 session 상태는 모든 client에서 transaction과 함께 끝난다(CFG-30): connection-transaction-session-state-ends는 취소된 transaction의 Go case와 TypeScript, Python, PHP library, PHP extension, Rust의 새 case를 bind하며, 이 case들은 SQLite, MySQL, PostgreSQL에서 commit된 lock과 local 값 뒤의 서버 session을 읽는다(KSTD-2-11-13-7).

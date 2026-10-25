@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The PHP case of a statement whose session the server ended before it ran binds the six-client CFG-15 unit connection-rollback-failed-reports-both-errors for the PHP library and the PHP extension, in place of a unit that bound PHP alone (KSTD-2-11-13-6).
 - The found-rows count, the float digits of the Rust client and the SQLite path of the Rust build tool take the place that P32 gives them: CFG-10 is cited by the MySQL conformance suite, whose affected_counts vector checks the found row in every client; CFG-32 names the polyspec-orm crate, which owns rust-postgres-float-round-trip; and the Python client-flag check and the Rust tool path check are plain tests of their packages (KSTD-2-11-13-4).
 - The Rust unit rust-statement-timeout-bounds-sqlite-lock-wait, which bound a case removed when the Rust client began to keep the DSN busy_timeout of SQLite, leaves config/parity.json (KSTD-2-11-13-5).
 - The session state of a transaction ends with the transaction in every client (CFG-30): connection-transaction-session-state-ends binds the Go case of a canceled transaction and new cases in TypeScript, Python, the PHP library, the PHP extension and Rust, which read the server session after a committed lock and local value on SQLite, MySQL and PostgreSQL (KSTD-2-11-13-7).

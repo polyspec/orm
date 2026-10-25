@@ -5511,9 +5511,19 @@
           "id": "RollbackTest::testRollbackFailed"
         },
         {
+          "implementation": "php",
+          "test": "packages/php/tests/RollbackTest.php",
+          "id": "RollbackTest::testFirstStatementLost"
+        },
+        {
           "implementation": "php-extension",
           "test": "packages/php/tests/RollbackTest.php",
           "id": "RollbackTest::testRollbackFailed"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/RollbackTest.php",
+          "id": "RollbackTest::testFirstStatementLost"
         },
         {
           "implementation": "typescript",
@@ -15380,20 +15390,6 @@
           "implementation": "php",
           "test": "packages/php/tests/RollbackTest.php",
           "id": "RollbackTest::testRollbackFault"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-rollback-first-statement-lost",
-      "kind": "feature",
-      "requirements": [
-        "CFG-15"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/RollbackTest.php",
-          "id": "RollbackTest::testFirstStatementLost"
         }
       ]
     },
