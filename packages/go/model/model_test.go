@@ -3,7 +3,6 @@ package model_test
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 	"path/filepath"
 	"reflect"
 	"slices"
@@ -592,23 +591,39 @@ func checkPrivilegeOperations(t *testing.T, db *orm.DB) {
 	}
 	const table = "public.privilege_probe"
 	raw := openNative(t, "postgres", dsnOf(t, db))
-	defer raw.Close()
+	tableCreated := false
+	roleCreated := false
+	role := "orm_priv_" + testdb.Name()
+	defer func() {
+		if roleCreated {
+			if _, err := raw.ExecContext(t.Context(), "DROP OWNED BY \""+role+"\""); err != nil {
+				t.Errorf("drop owned privileges for %s: %v", role, err)
+			}
+			if _, err := raw.ExecContext(t.Context(), "DROP ROLE \""+role+"\""); err != nil {
+				t.Errorf("drop role %s: %v", role, err)
+			}
+		}
+		if tableCreated {
+			if _, err := raw.ExecContext(t.Context(), `DROP TABLE "privilege_probe"`); err != nil {
+				t.Errorf("drop privilege probe table: %v", err)
+			}
+		}
+		if err := raw.Close(); err != nil {
+			t.Errorf("close privilege probe connection: %v", err)
+		}
+	}()
 	if _, err := raw.ExecContext(t.Context(), `CREATE TABLE "privilege_probe" ("id" INTEGER)`); err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _, _ = raw.ExecContext(t.Context(), `DROP TABLE "privilege_probe"`) }()
+	tableCreated = true
 	got, err := privileges.InspectTable(table)
 	if err != nil || !got.Select || !got.Insert || !got.Update || !got.Delete || !got.Truncate {
 		t.Fatalf("postgres owner privileges = %+v, %v", got, err)
 	}
-	role := fmt.Sprintf("orm_priv_%d", time.Now().UnixNano())
 	if _, err := raw.ExecContext(t.Context(), "CREATE ROLE \""+role+"\""); err != nil {
 		t.Fatal(err)
 	}
-	defer func() {
-		_, _ = raw.ExecContext(t.Context(), "DROP OWNED BY \""+role+"\"")
-		_, _ = raw.ExecContext(t.Context(), "DROP ROLE \""+role+"\"")
-	}()
+	roleCreated = true
 	if err := privileges.GrantTable(table, role); err != nil {
 		t.Fatal(err)
 	}

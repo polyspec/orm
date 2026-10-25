@@ -429,32 +429,99 @@ async fn transactions(t: &Target) {
     let db = &t.db;
     if t.driver == "postgres" {
         let pool = sqlx::PgPool::connect(&t.dsn).await.unwrap();
-        sqlx::query("CREATE TABLE \"privilege_probe\" (\"id\" INTEGER)").execute(&pool).await.unwrap();
         let table = "public.privilege_probe";
-        let owner = db.utils().privileges().inspect_table(table).await.unwrap();
-        assert!(owner.select && owner.insert && owner.update && owner.delete && owner.truncate, "postgres owner privileges: {owner:?}");
-        let role = format!("orm_priv_{}", std::process::id());
-        sqlx::query(&format!("CREATE ROLE \"{role}\"")).execute(&pool).await.unwrap();
-        let result = async {
-            db.utils().privileges().grant_table(table, &role).await.unwrap();
-            let granted = sqlx::query("SELECT has_schema_privilege($1, 'public', 'USAGE'), has_table_privilege($1, 'public.privilege_probe', 'SELECT'), has_table_privilege($1, 'public.privilege_probe', 'INSERT'), has_table_privilege($1, 'public.privilege_probe', 'UPDATE'), has_table_privilege($1, 'public.privilege_probe', 'DELETE')")
-                .bind(&role).fetch_one(&pool).await.unwrap();
-            use sqlx::Row;
-            for index in 0..5 {
-                assert!(granted.get::<bool, _>(index), "postgres grantTable privilege index {index}");
+        // CaseDatabase names use only `orm_case_<pid>_<counter>` ASCII identifier characters.
+        let role = format!("orm_priv_{}", t.database.name());
+        let mut role_created = false;
+        let mut table_create_attempted = false;
+        let result: Result<(), String> = async {
+            table_create_attempted = true;
+            sqlx::query("CREATE TABLE \"privilege_probe\" (\"id\" INTEGER)")
+                .execute(&pool)
+                .await
+                .map_err(|error| format!("create privilege probe table: {error}"))?;
+            let owner = db
+                .utils()
+                .privileges()
+                .inspect_table(table)
+                .await
+                .map_err(|error| format!("inspect owner privileges: {error}"))?;
+            if !(owner.select && owner.insert && owner.update && owner.delete && owner.truncate) {
+                return Err(format!("postgres owner privileges are incomplete: {owner:?}"));
             }
-            db.utils().privileges().revoke_table(table, " select ", &role).await.unwrap();
+            sqlx::query(sqlx::AssertSqlSafe(format!("CREATE ROLE \"{role}\"")))
+                .execute(&pool)
+                .await
+                .map_err(|error| format!("create privilege role {role}: {error}"))?;
+            role_created = true;
+            db.utils()
+                .privileges()
+                .grant_table(table, &role)
+                .await
+                .map_err(|error| format!("grant table privileges: {error}"))?;
+            let granted = sqlx::query("SELECT has_schema_privilege($1, 'public', 'USAGE'), has_table_privilege($1, 'public.privilege_probe', 'SELECT'), has_table_privilege($1, 'public.privilege_probe', 'INSERT'), has_table_privilege($1, 'public.privilege_probe', 'UPDATE'), has_table_privilege($1, 'public.privilege_probe', 'DELETE')")
+                .bind(&role)
+                .fetch_one(&pool)
+                .await
+                .map_err(|error| format!("inspect granted privileges: {error}"))?;
+            use sqlx::Row;
+            let mut grant_checks = Vec::new();
+            for index in 0..5 {
+                grant_checks.push(
+                    granted
+                        .try_get::<bool, _>(index)
+                        .map_err(|error| format!("read granted privilege {index}: {error}"))?,
+                );
+            }
+            if grant_checks != [true; 5] {
+                return Err(format!("grantTable returned unexpected schema/table privileges: {grant_checks:?}"));
+            }
+            db.utils()
+                .privileges()
+                .revoke_table(table, " select ", &role)
+                .await
+                .map_err(|error| format!("revoke table privilege: {error}"))?;
             let revoked = sqlx::query("SELECT has_table_privilege($1, 'public.privilege_probe', 'SELECT'), has_table_privilege($1, 'public.privilege_probe', 'INSERT'), has_table_privilege($1, 'public.privilege_probe', 'UPDATE'), has_table_privilege($1, 'public.privilege_probe', 'DELETE')")
-                .bind(&role).fetch_one(&pool).await.unwrap();
-            assert!(!revoked.get::<bool, _>(0) && revoked.get::<bool, _>(1) && revoked.get::<bool, _>(2) && revoked.get::<bool, _>(3), "postgres revokeTable removes SELECT only");
-        }.await;
-        let _ = sqlx::query(&format!("DROP OWNED BY \"{role}\"")).execute(&pool).await;
-        let _ = sqlx::query(&format!("DROP ROLE \"{role}\"")).execute(&pool).await;
-        let _ = sqlx::query("DROP TABLE \"privilege_probe\"").execute(&pool).await;
+                .bind(&role)
+                .fetch_one(&pool)
+                .await
+                .map_err(|error| format!("inspect revoked privileges: {error}"))?;
+            let mut revoke_checks = Vec::new();
+            for index in 0..4 {
+                revoke_checks.push(
+                    revoked
+                        .try_get::<bool, _>(index)
+                        .map_err(|error| format!("read revoked privilege {index}: {error}"))?,
+                );
+            }
+            if revoke_checks != [false, true, true, true] {
+                return Err(format!("revokeTable returned unexpected privileges: {revoke_checks:?}"));
+            }
+            Ok(())
+        }
+        .await;
+        let mut failures = Vec::new();
+        if let Err(error) = result {
+            failures.push(error);
+        }
+        if role_created {
+            if let Err(error) = sqlx::query(sqlx::AssertSqlSafe(format!("DROP OWNED BY \"{role}\""))).execute(&pool).await {
+                failures.push(format!("drop owned privileges for {role}: {error}"));
+            }
+            if let Err(error) = sqlx::query(sqlx::AssertSqlSafe(format!("DROP ROLE \"{role}\""))).execute(&pool).await {
+                failures.push(format!("drop role {role}: {error}"));
+            }
+        }
+        if table_create_attempted {
+            if let Err(error) = sqlx::query("DROP TABLE IF EXISTS \"privilege_probe\"").execute(&pool).await {
+                failures.push(format!("drop privilege probe table: {error}"));
+            }
+        }
         pool.close().await;
-        result;
+        assert!(failures.is_empty(), "privilege operations or cleanup failed: {}", failures.join("; "));
     } else {
-        let privileges = db.utils().privileges();
+        let utils = db.utils();
+        let privileges = utils.privileges();
         assert_eq!(code(privileges.grant_table("public.user", "ormtest_privilege").await), "CAPABILITY_UNSUPPORTED", "{} grantTable", t.driver);
         assert_eq!(code(privileges.inspect_table("public.user").await), "CAPABILITY_UNSUPPORTED", "{} inspectTable", t.driver);
         assert_eq!(code(privileges.revoke_table("public.user", "SELECT", "ormtest_privilege").await), "CAPABILITY_UNSUPPORTED", "{} revokeTable", t.driver);
