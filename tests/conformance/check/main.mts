@@ -66,7 +66,7 @@ type Vector = { name: string; chain: string; calls: string[]; expect: Json | und
 /** The usage of the program: it ends the program with the exit status 2. */
 class UsageError extends Error {}
 
-const USAGE = 'usage: check state --dsn x [--driver d] | check run --out <new dir> [--driver d] --dsn x [--driver d --dsn x]... | check compare|record [--driver d] <go.json> <php.json> <rust.json> <typescript.json> <python.json>';
+const USAGE = 'usage: check state --dsn x [--driver d] | check counters --dsn x [--driver d] [--restore-json <snapshot>] | check run --out <new dir> [--driver d] --dsn x [--driver d --dsn x]... | check compare|record [--driver d] <go.json> <php.json> <rust.json> <typescript.json> <python.json>';
 
 /** vectorsPath is the expectations file of a database, relative to the repository. */
 export function vectorsPath(driver: string): string {
@@ -666,7 +666,7 @@ async function command(argv: string[]): Promise<number> {
   try {
     parsed = parseArgs({
       args: rest, allowPositionals: true, strict: true,
-      options: { driver: { type: 'string', multiple: true }, dsn: { type: 'string', multiple: true }, out: { type: 'string' }, vector: { type: 'string', multiple: true } },
+      options: { driver: { type: 'string', multiple: true }, dsn: { type: 'string', multiple: true }, out: { type: 'string' }, vector: { type: 'string', multiple: true }, 'restore-json': { type: 'string' } },
     });
   } catch (error) {
     if (errorCode(error)?.startsWith('ERR_PARSE_ARGS_') !== true) throw error;
@@ -676,6 +676,8 @@ async function command(argv: string[]): Promise<number> {
   const dsns = parsed.values.dsn ?? [];
   const outRoot = parsed.values.out ?? '';
   const selected = parsed.values.vector ?? [];
+  const restoreJson = parsed.values['restore-json'];
+  if (name !== 'counters' && restoreJson !== undefined) throw new UsageError();
   for (const driver of drivers) {
     if (!['mysql', 'postgres', 'sqlite'].includes(driver)) throw new Error(`unsupported database ${JSON.stringify(driver)}`);
   }
@@ -689,6 +691,34 @@ async function command(argv: string[]): Promise<number> {
       const db = await openStateDatabase(driver, dsn);
       try {
         console.log(`${driver} state ${await snapshotDatabase(db, driver)}`);
+      } finally {
+        await db.close();
+      }
+      return 0;
+    }
+    case 'counters': {
+      if (dsn === '' || drivers.length !== 1 || dsns.length !== 1 || outRoot !== '' || selected.length !== 0 || parsed.positionals.length !== 0) throw new UsageError();
+      const db = await openStateDatabase(driver, dsn);
+      try {
+        if (restoreJson === undefined) {
+          const values = await readCounters(db, driver);
+          console.log(JSON.stringify(Object.fromEntries([...values].map(([name, value]) => [name, {
+            value: String(value.value), called: value.called, owner: value.owner,
+          }]))));
+        } else {
+          const decoded: unknown = JSON.parse(restoreJson);
+          if (decoded === null || typeof decoded !== 'object' || Array.isArray(decoded)) throw new Error('counter snapshot must be a JSON object');
+          const snapshot = new Map<string, { value: bigint; called: boolean; owner: string }>();
+          for (const [name, raw] of Object.entries(decoded)) {
+            if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) throw new Error(`counter snapshot entry ${JSON.stringify(name)} must be an object`);
+            const entry = raw as Record<string, unknown>;
+            if (typeof entry.value !== 'string' || !/^-?[0-9]+$/.test(entry.value) || typeof entry.called !== 'boolean' || typeof entry.owner !== 'string') {
+              throw new Error(`counter snapshot entry ${JSON.stringify(name)} has invalid fields`);
+            }
+            snapshot.set(name, { value: BigInt(entry.value), called: entry.called, owner: entry.owner });
+          }
+          await restoreCounters(db, driver, snapshot);
+        }
       } finally {
         await db.close();
       }

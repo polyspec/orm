@@ -99,12 +99,11 @@ failed before any comparison, and after recording the target runs the same
 vectors again against the new expectations. The state contracts of
 `contracts/interfaces.json` are checked for the vectors the run made: a run with
 `VECTOR` checks the contracts of the named vectors only. `RECORD=1` with `VECTOR` records only the named
-vectors. A vector that makes a connection's first use of a statement, such as
-SQLite's `orm__row_lock` table, which the full run makes in an earlier vector,
-records that statement too when it runs alone, and the full run would fail on
-it. Its recorded expectation drops that one statement, and the Python
-conformance case, which runs every vector in one pass, confirms the result; a
-run of that vector alone then differs by exactly that statement. Review the diff of the expectation files before committing it.
+vectors. Before subscribing to statement events, each runner opens and commits one empty transaction on its connection.
+This performs connection-level first-use setup, including SQLite's lazy `orm__row_lock` table creation, before any vector
+starts recording. A setup failure fails the run. Thus a vector has the same statement output whether run alone or with
+other vectors; expectations must not be edited to hide setup statements. Review the diff of the expectation files before
+committing it.
 
 The `conformance_verification` coverage case of each client runs its
 runner for the read-only vectors `conditions_values` and `relations` and

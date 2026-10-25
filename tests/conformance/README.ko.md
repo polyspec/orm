@@ -1,5 +1,5 @@
 <!-- doc-id: tests-conformance-readme -->
-<!-- source-sha256: bb2cbb00e6d3bd795e26c90a226ddb7320f828d47bf2d7c5d32655d6f9c47985 -->
+<!-- source-sha256: 8b623a0ecd7e8a8871def480d58b5a761d4002d758e3238be92425049e7de517 -->
 # 적합성 벡터
 
 한 문서와 여섯 선언 구현을 사용한다. 공통 벡터 contract는 Go, PHP, PHP extension, Rust, TypeScript, Python에 적용된다. conformance 완료에는 각 구현이 데이터베이스에서 체인을 실행하고 JSON을 출력해야 한다.
@@ -57,7 +57,7 @@ make run-databases TARGETS=conformance-check VECTOR="creates_and_save write_cycl
 make run-databases TARGETS=conformance-check RECORD=1
 make orm-test-servers-stop
 ```
-`conformance-check`는 이름마다 `--vector NAME`을 `check run`에 넘긴다(그래서 여섯 선언 구현와 그 비교에도 넘어간다). `RECORD=1`이면 비교가 실패한 데이터베이스의 다섯 진단 출력을 같은 이름으로 `check record`에 넘긴다. 출력이 서로 다르거나 비교 전에 실행기가 실패했으면 기록은 실패하고, 기록한 뒤 target은 같은 vector를 새 기대값으로 다시 실행한다. `contracts/interfaces.json`의 state contract는 실행이 만든 vector에 대해 검사한다. `VECTOR`가 있는 실행은 이름 붙은 vector의 contract만 검사한다. `VECTOR`와 함께 쓴 `RECORD=1`은 이름 붙은 vector만 기록한다. SQLite의 `orm__row_lock` table처럼 전체 실행이라면 앞의 vector가 만드는 연결의 첫 사용 statement를 만드는 vector는 그것만 실행하면 그 statement도 기록하고, 전체 실행이 그 vector에서 실패한다. 그 기록된 기대값에서 그 statement 하나를 빼고, 모든 vector를 한 번에 실행하는 Python conformance case가 그 결과를 확인한다. 그러면 그 vector만의 실행은 정확히 그 statement만큼 다르다. 기대값 파일의 diff는 커밋 전에 검토한다.
+`conformance-check`는 이름마다 `--vector NAME`을 `check run`에 넘긴다(그래서 여섯 선언 구현와 그 비교에도 넘어간다). `RECORD=1`이면 비교가 실패한 데이터베이스의 다섯 진단 출력을 같은 이름으로 `check record`에 넘긴다. 출력이 서로 다르거나 비교 전에 실행기가 실패했으면 기록은 실패하고, 기록한 뒤 target은 같은 vector를 새 기대값으로 다시 실행한다. `contracts/interfaces.json`의 state contract는 실행이 만든 vector에 대해 검사한다. `VECTOR`가 있는 실행은 이름 붙은 vector의 contract만 검사한다. `VECTOR`와 함께 쓴 `RECORD=1`은 이름 붙은 vector만 기록한다. 각 실행기는 statement event를 구독하기 전에 연결에서 빈 트랜잭션 하나를 열고 커밋한다. 이 준비 단계에서 SQLite의 지연 생성 `orm__row_lock` table처럼 연결의 첫 사용에 필요한 작업을 마친 뒤 벡터 기록을 시작한다. 준비 실패는 실행 실패다. 따라서 벡터를 단독 실행하거나 다른 벡터와 함께 실행해도 statement 출력이 같아야 하며, 준비 statement를 숨기려고 기대값을 수동 수정하지 않는다. 기대값 파일의 diff는 커밋 전에 검토한다.
 
 각 client의 `conformance_verification` coverage case는 자기 실행기로 읽기 전용 vector `conditions_values`와 `relations`를 실행하고 각 결과를 선택된 데이터베이스의 기록된 기대값과 비교한다.
 

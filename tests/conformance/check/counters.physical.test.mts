@@ -2,12 +2,55 @@
 // a row and a counter that a test advances are observed and restored, a failed runner that left a row behind reports both
 // failures, and PostgreSQL sequences are restored by the table that owns them.
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { DatabaseSync } from 'node:sqlite';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { isolatedEnvironment } from '../../environment.mts';
 import { DATABASE, caseTest } from '../../testcase.mts';
 import { benchDatabases, benchDsn, lockBench } from './bench.mts';
 import { conformanceWriteTables, quoteIdentifier, readCounters, restoreCounters } from './counters.mts';
-import { openStateDatabase, text, type StateDatabase } from './database.mts';
+import { openStateDatabase, sqliteDatabase, text, type StateDatabase } from './database.mts';
 import { errorIncludes, runAndCheckState, stateDeadline } from './main.mts';
 import { snapshotDatabase } from './state.mts';
+
+caseTest('TestCounterCliSnapshotsAndRestoresSQLite', DATABASE, async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'orm-counter-cli-test-'));
+  const path = join(directory, 'counter.sqlite');
+  const sqlite = new DatabaseSync(path);
+  const db = sqliteDatabase(sqlite);
+  const root = new URL('../../../', import.meta.url).pathname;
+  const command = [join(root, 'tests/conformance/check/main.mts'), 'counters', '--driver', 'sqlite', '--dsn', `sqlite:///${path}`];
+  try {
+    sqlite.exec('CREATE TABLE author (seq INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)');
+    sqlite.exec("INSERT INTO author(name) VALUES ('baseline')");
+    sqlite.exec('DELETE FROM author');
+    const before = await snapshotDatabase(db, 'sqlite');
+    const environment = isolatedEnvironment({ TMPDIR: directory });
+    const snapshot = spawnSync(process.execPath, command, { cwd: root, env: environment, encoding: 'utf8' });
+    assert.equal(snapshot.status, 0, `counter snapshot failed: ${snapshot.stderr}${snapshot.stdout}`);
+    assert.deepEqual(JSON.parse(snapshot.stdout.trim()), { author: { value: '1', called: true, owner: '' } });
+
+    sqlite.exec("INSERT INTO author(name) VALUES ('temporary')");
+    sqlite.exec("DELETE FROM author WHERE name = 'temporary'");
+    const restore = spawnSync(process.execPath, [...command, '--restore-json', snapshot.stdout.trim()], {
+      cwd: root,
+      env: environment,
+      encoding: 'utf8',
+    });
+    assert.equal(restore.status, 0, `counter restore failed: ${restore.stderr}${restore.stdout}`);
+    assert.equal(await snapshotDatabase(db, 'sqlite'), before, 'counter restore left the SQLite state changed');
+
+    const invalid = spawnSync(process.execPath, [
+      join(root, 'tests/conformance/check/main.mts'), 'state', '--driver', 'sqlite', '--dsn', `sqlite:///${path}`, '--restore-json', '{}',
+    ], { cwd: root, env: environment, encoding: 'utf8' });
+    assert.equal(invalid.status, 2, `state accepted the counter-only option: ${invalid.stderr}${invalid.stdout}`);
+  } finally {
+    await db.close();
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
 
 lockBench();
 

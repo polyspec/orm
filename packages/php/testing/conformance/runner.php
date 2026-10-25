@@ -72,6 +72,7 @@ $db = \Polyspec\Orm\Tests\Model\connect($dsn, new Config(
     blindIndexKey: 'bench-blind-index',
     auditSource: static fn(): array => [],
 ));
+$db->transaction(static function (): void {}, retry: 0);
 $db->subscribe(static function (StatementEvent $e): void {
     global $log, $transactions;
     $transaction = null;

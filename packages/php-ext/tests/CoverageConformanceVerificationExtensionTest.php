@@ -13,7 +13,7 @@ use ReflectionClass;
 #[Large]
 final class CoverageConformanceVerificationExtensionTest extends TestCase
 {
-    private const CONFORMANCE_VECTORS = ['conditions_values', 'relations', 'delete_lock', 'audit_lazy', 'relation_null_key'];
+    private const CONFORMANCE_VECTORS = ['audit_lazy', 'conditions_values', 'relations', 'delete_lock', 'relation_null_key'];
 
     private static function extensionPath(): string
     {
@@ -86,25 +86,31 @@ final class CoverageConformanceVerificationExtensionTest extends TestCase
             $expected[$vector->name] = $vector->expect;
         }
 
-        [$status, $stdout, $stderr] = coverageProcess(
-            self::childCommand("$root/packages/php/testing/conformance/runner.php", '--dsn', $dsn),
-            $root,
-            self::childEnvironment(),
-        );
-        if ($status !== 0) {
-            throw new \RuntimeException(
-                str_replace($dsn, '[dsn]', "native conformance child exited $status: $stderr$stdout")
+        \coverageWithConformanceCountersRestored($driver, $dsn, function () use ($driver, $root, $dsn, $expected, $file): void {
+            [$status, $stdout, $stderr] = coverageProcess(
+                self::childCommand("$root/packages/php/testing/conformance/runner.php", '--dsn', $dsn),
+                $root,
+                self::childEnvironment(),
             );
-        }
+            if ($status !== 0) {
+                throw new \RuntimeException(
+                    str_replace($dsn, '[dsn]', "native conformance child exited $status: $stderr$stdout")
+                );
+            }
 
-        $actual = json_decode($stdout, false, 512, JSON_THROW_ON_ERROR);
-        Assert::assertSame(array_keys($expected), array_keys(get_object_vars($actual)), "native {$driver} vector set");
-        foreach ($expected as $name => $expect) {
-            Assert::assertTrue(
-                \Polyspec\Orm\Tests\sameJson($actual->$name, $expect),
-                "native extension vector $name differs from $file",
-            );
-        }
+            $actual = json_decode($stdout, false, 512, JSON_THROW_ON_ERROR);
+            $expectedNames = array_keys($expected);
+            $actualNames = array_keys(get_object_vars($actual));
+            sort($expectedNames);
+            sort($actualNames);
+            Assert::assertSame($expectedNames, $actualNames, "native {$driver} vector set");
+            foreach ($expected as $name => $expect) {
+                Assert::assertTrue(
+                    \Polyspec\Orm\Tests\sameJson($actual->$name, $expect),
+                    "native extension vector $name differs from $file",
+                );
+            }
+        });
     }
 
     public function testConformanceChildLoadsTheNativeModelEntrypoint(): void
@@ -192,32 +198,31 @@ final class CoverageConformanceVerificationExtensionTest extends TestCase
             [$driver, $dsn] = coverageItem();
             $root = dirname(__DIR__, 3);
             [$file, $expected] = coverageRecordedConformanceVectors($driver, self::CONFORMANCE_VECTORS);
-            $arguments = [];
             foreach (self::CONFORMANCE_VECTORS as $vector) {
-                array_push($arguments, '--vector', $vector);
-            }
-            $command = self::childCommand(
-                "$root/packages/php/testing/conformance/runner.php",
-                '--dsn',
-                (string) $dsn,
-                ...$arguments,
-            );
-            [$status, $stdout, $stderr] = coverageProcess($command, $root, self::childEnvironment());
-            if ($status !== 0) {
-                throw new \RuntimeException(
-                    str_replace((string) $dsn, '[dsn]', "native conformance child exited $status: $stderr$stdout")
+                $command = self::childCommand(
+                    "$root/packages/php/testing/conformance/runner.php",
+                    '--dsn',
+                    (string) $dsn,
+                    '--vector',
+                    $vector,
                 );
-            }
-            $actual = json_decode($stdout, false, 512, JSON_THROW_ON_ERROR);
-            Assert::assertSame(
-                array_keys($expected),
-                array_keys(get_object_vars($actual)),
-                'native conformance child returned a different selected vector set',
-            );
-            foreach ($expected as $name => $expect) {
-                Assert::assertTrue(
-                    \Polyspec\Orm\Tests\sameJson($actual->$name, $expect),
-                    "native extension vector $name differs from $file",
+                \coverageWithConformanceCountersRestored(
+                    $driver,
+                    (string) $dsn,
+                    function () use ($command, $root, $dsn, $expected, $file, $vector): void {
+                        [$status, $stdout, $stderr] = coverageProcess($command, $root, self::childEnvironment());
+                        if ($status !== 0) {
+                            throw new \RuntimeException(
+                                str_replace((string) $dsn, '[dsn]', "native conformance child exited $status: $stderr$stdout")
+                            );
+                        }
+                        $actual = json_decode($stdout, false, 512, JSON_THROW_ON_ERROR);
+                        Assert::assertSame([$vector], array_keys(get_object_vars($actual)));
+                        Assert::assertTrue(
+                            \Polyspec\Orm\Tests\sameJson($actual->$vector, $expected[$vector]),
+                            "native extension vector $vector differs from $file",
+                        );
+                    },
                 );
             }
         }

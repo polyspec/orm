@@ -347,6 +347,7 @@ def main():
         blindIndexKey="bench-blind-index",
         auditSource=lambda: {},
     )
+    db.transaction(lambda: None, {"retry": 0})
     db.subscribe(on_event)
     global log, transactions, mask_seqs, mask_ts
     out = {}

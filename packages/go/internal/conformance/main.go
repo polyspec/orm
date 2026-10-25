@@ -349,6 +349,7 @@ func run() (status int) {
 	})
 	check(err)
 	defer func() { check(db.Close()) }()
+	check(db.Transaction(func() error { return nil }, orm.Retry(0)))
 	_, err = db.Subscribe(func(e orm.StatementEvent) error {
 		binds := make([]any, len(e.Binds))
 		for i, a := range e.Binds {

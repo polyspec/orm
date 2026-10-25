@@ -55,7 +55,7 @@ function sameJson(mixed $a, mixed $b): bool
     return $a === $b;
 }
 
-const CONFORMANCE_VECTORS = ['conditions_values', 'relations', 'delete_lock', 'audit_lazy', 'relation_null_key'];
+const CONFORMANCE_VECTORS = ['audit_lazy', 'conditions_values', 'relations', 'delete_lock', 'relation_null_key'];
 
 #[Large]
 final class CoverageConformanceVerificationTest extends TestCase
@@ -109,14 +109,21 @@ final class CoverageConformanceVerificationTest extends TestCase
             );
         }
         $root = dirname(__DIR__, 3);
-        [$status, $stdout, $stderr] = coverageProcess(
-            [PHP_BINARY, "$root/packages/php/testing/conformance/runner.php", '--dsn', $dsn],
-            $root
-        );
-        if ($status !== 0) {
-            throw new RuntimeException(str_replace($dsn, '[dsn]', "conformance runner exited $status: $stderr$stdout"));
+        $output = null;
+        coverageWithConformanceCountersRestored($driver, $dsn, static function () use ($root, $dsn, &$output): void {
+            [$status, $stdout, $stderr] = coverageProcess(
+                [PHP_BINARY, "$root/packages/php/testing/conformance/runner.php", '--dsn', $dsn],
+                $root
+            );
+            if ($status !== 0) {
+                throw new RuntimeException(str_replace($dsn, '[dsn]', "conformance runner exited $status: $stderr$stdout"));
+            }
+            $output = json_decode($stdout, false, 512, JSON_THROW_ON_ERROR);
+        });
+        if (!$output instanceof stdClass) {
+            throw new RuntimeException('conformance runner returned no object');
         }
-        return self::$outputs[$driver] = json_decode($stdout, false, 512, JSON_THROW_ON_ERROR);
+        return self::$outputs[$driver] = $output;
     }
 
     private static function check(string $driver, string $name, mixed $expect): void
@@ -158,25 +165,37 @@ final class CoverageConformanceVerificationTest extends TestCase
         foreach (coverageItemsOf(__FILE__) as $item) {
             selectCoverageItem($item);
             [$driver, $dsn] = coverageItem();
+            if (!is_string($dsn) || $dsn === '') {
+                throw new RuntimeException("coverage item for $driver has no DSN");
+            }
             $root = dirname(__DIR__, 3);
             [$file, $expect] = coverageRecordedConformanceVectors($driver, CONFORMANCE_VECTORS);
-            $command = [PHP_BINARY, "$root/packages/php/testing/conformance/runner.php", '--dsn', $dsn];
             foreach (CONFORMANCE_VECTORS as $name) {
-                array_push($command, '--vector', $name);
-            }
-            [$status, $stdout, $stderr] = coverageProcess($command, $root);
-            if ($status !== 0) {
-                throw new RuntimeException(
-                    str_replace($dsn, '[dsn]', "conformance runner exited $status: $stderr$stdout")
-                );
-            }
-            $output = json_decode($stdout, false, 512, JSON_THROW_ON_ERROR);
-            $names = array_keys(get_object_vars($output));
-            Assert::assertTrue($names === CONFORMANCE_VECTORS, 'runner output vectors ' . json_encode($names));
-            foreach (CONFORMANCE_VECTORS as $name) {
-                Assert::assertTrue(
-                    sameJson($output->$name, $expect[$name]),
-                    "vector $name differs from $file: " . json_encode($output->$name)
+                $command = [
+                    PHP_BINARY,
+                    "$root/packages/php/testing/conformance/runner.php",
+                    '--dsn',
+                    $dsn,
+                    '--vector',
+                    $name,
+                ];
+                coverageWithConformanceCountersRestored(
+                    $driver,
+                    $dsn,
+                    static function () use ($command, $root, $dsn, $file, $expect, $name): void {
+                        [$status, $stdout, $stderr] = coverageProcess($command, $root);
+                        if ($status !== 0) {
+                            throw new RuntimeException(
+                                str_replace($dsn, '[dsn]', "conformance runner exited $status: $stderr$stdout")
+                            );
+                        }
+                        $output = json_decode($stdout, false, 512, JSON_THROW_ON_ERROR);
+                        Assert::assertSame([$name], array_keys(get_object_vars($output)));
+                        Assert::assertTrue(
+                            sameJson($output->$name, $expect[$name]),
+                            "vector $name differs from $file: " . json_encode($output->$name)
+                        );
+                    },
                 );
             }
         }

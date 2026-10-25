@@ -125,6 +125,7 @@ async function main() {
     blindIndexKey: 'bench-blind-index',
     auditSource: () => ({}),
   });
+  await db.transaction(async () => {}, { retry: 0 });
   db.subscribe(e => {
     let transaction = null;
     if (e.transaction !== null) {

@@ -311,6 +311,7 @@ async fn main() {
         ..Default::default()
     };
     let db = model::connect(&args.dsn, 4, config).await.expect("connect");
+    db.transaction(async || Ok(())).retry(0).await.expect("prepare conformance connection");
     // Records each statement as that event (docs/operations/usage.md "Statement events"). A transaction's
     // number is counted from 1 in order of first appearance within the vector, and is null outside a transaction. error is the statement's error
     // code, or null.

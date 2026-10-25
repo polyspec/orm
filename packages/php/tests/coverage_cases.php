@@ -241,6 +241,27 @@ function coverageRestoring(Closure $body, Closure $restore): void
     $restore();
 }
 
+/** Runs a conformance child and restores only its declared auto-increment counters afterward. */
+function coverageWithConformanceCountersRestored(string $driver, string $dsn, Closure $run): void
+{
+    $root = coverageRepositoryRoot();
+    $command = ['node', "$root/tests/conformance/check/main.mts", 'counters', '--driver', $driver, '--dsn', $dsn];
+    [$status, $stdout, $stderr] = coverageProcess($command, $root);
+    if ($status !== 0) {
+        throw new RuntimeException("cannot read conformance counters: $stderr$stdout");
+    }
+    $snapshot = trim($stdout);
+    if ($snapshot === '' || !is_array(json_decode($snapshot, true, 512, JSON_THROW_ON_ERROR))) {
+        throw new RuntimeException('conformance counter reader returned an invalid snapshot');
+    }
+    coverageRestoring($run, static function () use ($command, $root, $snapshot): void {
+        [$status, $stdout, $stderr] = coverageProcess([...$command, '--restore-json', $snapshot], $root);
+        if ($status !== 0) {
+            throw new RuntimeException("cannot restore conformance counters: $stderr$stdout");
+        }
+    });
+}
+
 /**
  * Runs a child process and returns its exit code, stdout, and stderr. The output does not mix
  * into the test output; the caller puts it in the failure error.
@@ -260,11 +281,22 @@ function coverageProcess(array $command, string $cwd, ?array $env = null): array
     stream_set_blocking($pipes[2], false);
     $out = ['', ''];
     $open = [1 => $pipes[1], 2 => $pipes[2]];
+    $abort = static function () use (&$open, $pipes, $process): void {
+        proc_terminate($process, 9);
+        foreach ($pipes as $pipe) {
+            if (is_resource($pipe)) {
+                fclose($pipe);
+            }
+        }
+        $open = [];
+        proc_close($process);
+    };
     while ($open !== []) {
         $read = array_values($open);
         $write = null;
         $except = null;
         if (stream_select($read, $write, $except, null) === false) {
+            $abort();
             throw new RuntimeException('cannot read the output of ' . $command[0]);
         }
         foreach ($open as $index => $pipe) {
@@ -273,6 +305,7 @@ function coverageProcess(array $command, string $cwd, ?array $env = null): array
             }
             $chunk = fread($pipe, 65536);
             if ($chunk === false) {
+                $abort();
                 throw new RuntimeException('cannot read the output of ' . $command[0]);
             }
             $out[$index - 1] .= $chunk;
