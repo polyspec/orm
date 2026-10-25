@@ -164,7 +164,7 @@ caseTest('client-db-test runs the php-extension lane with the extension it build
     assert.ok(library, `the lane did not build the extension first: ${ran.join('\n')}`);
     const php = readFileSync(join(repo, 'scripts/client-db-test.mts'), 'utf8').match(/const PHP_TESTS = \[([^\]]*)\]/)?.[1]?.match(/'(\w+)'/g)?.map(name => name.slice(1, -1)) ?? [];
     assert.ok(php.length > 0, 'scripts/client-db-test.mts names no PHP_TESTS');
-    assert.deepEqual(ran.slice(1), php.map(test => `node node_modules/@polyspec/kit/dist/run-tests.mjs phpunit --php-extension ${library} -- --configuration packages/php/phpunit.xml.dist packages/php/tests/${test}.php`));
+    assert.deepEqual(ran.slice(1), php.map(test => `node ../kit/scripts/kit/run-tests.mts phpunit --php-extension ${library} -- --configuration packages/php/phpunit.xml.dist packages/php/tests/${test}.php`));
     assert.ok(!existsSync(library), `the lane left its build ${library}`);
     assert.match(result.stdout, /client-db-test: every lane passed: php-extension\n/);
   } finally {

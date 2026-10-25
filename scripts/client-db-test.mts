@@ -37,7 +37,7 @@ const PHP_EXTENSION_RUN = join(root, `.runtime/run/client-db-php-extension-${pro
 const PHP_EXTENSION_LIBRARY = join(PHP_EXTENSION_RUN, 'php-extension/polyspec_orm.so');
 const PHP_EXTENSION_BUILD: Command = { program: 'node', args: ['tests/run-long.mts', 'php-extension-build', '--', 'sh', 'packages/php-ext/scripts/build.sh', PHP_EXTENSION_LIBRARY], cwd: root };
 const PHP_EXTENSION: Command[] = PHP_TESTS.map(test => ({
-  program: 'node', args: ['node_modules/@polyspec/kit/dist/run-tests.mjs', 'phpunit', '--php-extension', PHP_EXTENSION_LIBRARY, '--', '--configuration', 'packages/php/phpunit.xml.dist', `packages/php/tests/${test}.php`],
+  program: 'node', args: ['../kit/scripts/kit/run-tests.mts', 'phpunit', '--php-extension', PHP_EXTENSION_LIBRARY, '--', '--configuration', 'packages/php/phpunit.xml.dist', `packages/php/tests/${test}.php`],
   cwd: root, env: { ORM_PHP_MODE: 'extension' },
 }));
 // The Python database tests run as modules of packages.python.tests with the Python of the venv (ORM_PYTHON).

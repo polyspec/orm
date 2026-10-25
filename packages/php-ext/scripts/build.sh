@@ -11,12 +11,10 @@ if [ -z "$node" ]; then
   echo "build.sh: the pinned Node runtime is not on PATH; run the build through make, which sets up the toolchain" >&2
   exit 1
 fi
-if [ -f "$repository/../kit/dist/php-extension.mjs" ]; then
-  builder="$repository/../kit/dist/php-extension.mjs"
-elif [ -f "$repository/node_modules/@polyspec/kit/dist/php-extension.mjs" ]; then
-  builder="$repository/node_modules/@polyspec/kit/dist/php-extension.mjs"
-else
-  echo "build.sh: the Kit PHP extension builder is missing; run make build in ../kit or make install-packages" >&2
+# The builder is the source of the kit checkout beside the repository, which node runs as it is (kit K613).
+builder="$repository/../kit/scripts/kit/php-extension.mts"
+if [ ! -f "$builder" ]; then
+  echo "build.sh: the Kit PHP extension builder $builder is missing; clone kit beside the repository" >&2
   exit 1
 fi
 mkdir -p "$(dirname "$out")"
