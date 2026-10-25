@@ -159,6 +159,21 @@ caseTest('every case of a PHP library owner selects a method of its test class',
       }
   }
   assert.deepEqual(missing, []);
+
+// The node and python runners select a case by its ID, and the checker refuses a symbols map on them, so a command that
+// declares one never executes.
+caseTest('only the go, cargo and php runners declare a symbols map', 1000, () => {
+  const root = new URL('../..', import.meta.url).pathname;
+  const declared: string[] = [];
+  for (const feature of readFeatures(root).features) {
+    const parts = [...Object.entries(feature.coverage?.owners ?? {}), ...(feature.coverage?.dependents ?? []).map(part => [part.id, part] as const)];
+    for (const [name, part] of parts)
+      for (const [database, commands] of Object.entries(part.commands ?? {}))
+        for (const command of commands ?? [])
+          if (command.symbols !== undefined && !['go', 'cargo', 'php'].includes(command.runner))
+            declared.push(`${feature.id}/${name}/${database}: ${command.runner} ${command.test}`);
+  }
+  assert.deepEqual(declared, []);
 });
 
 caseTest('PHP extension catalog coverage selects the exact native methods', 1000, () => {
