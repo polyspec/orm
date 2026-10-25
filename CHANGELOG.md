@@ -3,6 +3,7 @@
 
 ## Unreleased
 
+- The Rust unit rust-statement-timeout-bounds-sqlite-lock-wait, which bound a case removed when the Rust client began to keep the DSN busy_timeout of SQLite, leaves config/parity.json (KSTD-2-11-13-5).
 - The session state of a transaction ends with the transaction in every client (CFG-30): connection-transaction-session-state-ends binds the Go case of a canceled transaction and new cases in TypeScript, Python, the PHP library, the PHP extension and Rust, which read the server session after a committed lock and local value on SQLite, MySQL and PostgreSQL (KSTD-2-11-13-7).
 - The primary and replica connection and the refused replica write have two six-client units citing CFG-21, CFG-22 and CFG-24 in place of four units that each bound one client. The TypeScript cases move from the support file model.mjs to replica.mjs, Rust gains the cases in replica.rs, and make replica-check runs every client on the primary and replica servers (KSTD-2-11-13-3).
 - KSTD-5-89-9: Static `var/tools/bin/node scripts/features/check.mts` reports 21 feature contracts and 0 errors on the completed inventory; source `9b5a` resolves the missing test files. The DSL-76 shared case also passed twice on all six clients across MySQL, PostgreSQL and SQLite (`058143`).

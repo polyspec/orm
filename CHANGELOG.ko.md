@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: ae7cb07ecad0724a11b1db67abac6d9a1bb13a010cc0ec50f1309a4e04e0636f -->
+<!-- source-sha256: 77424934b8a2012ff8a8a955b224e6e07cf05fbe8ab90e967833955c022ced75 -->
 # 변경 이력
 
 ## Unreleased
 
+- Rust client가 SQLite의 DSN busy_timeout을 유지하면서 지워진 case를 bind하던 Rust unit rust-statement-timeout-bounds-sqlite-lock-wait가 config/parity.json에서 빠진다(KSTD-2-11-13-5).
 - transaction의 session 상태는 모든 client에서 transaction과 함께 끝난다(CFG-30): connection-transaction-session-state-ends는 취소된 transaction의 Go case와 TypeScript, Python, PHP library, PHP extension, Rust의 새 case를 bind하며, 이 case들은 SQLite, MySQL, PostgreSQL에서 commit된 lock과 local 값 뒤의 서버 session을 읽는다(KSTD-2-11-13-7).
 - primary와 replica 연결, 거부되는 replica 쓰기는 client 하나씩 bind하던 unit 네 개 대신 CFG-21, CFG-22, CFG-24를 인용하는 여섯 client unit 두 개를 가진다. TypeScript case는 support 파일 model.mjs에서 replica.mjs로 옮기고, Rust는 replica.rs에 case를 얻으며, make replica-check가 모든 client를 primary와 replica 서버에서 실행한다(KSTD-2-11-13-3).
 - KSTD-5-89-9: 완성된 inventory에서 static `var/tools/bin/node scripts/features/check.mts`는 21 feature contracts, error 0을 보고한다. source `9b5a`가 누락 test 파일을 해결했고 DSL-76 shared case는 MySQL, PostgreSQL, SQLite에서 여섯 client가 database마다 두 번 통과했다 (`058143`).

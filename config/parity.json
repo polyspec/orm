@@ -12772,22 +12772,6 @@
       ]
     },
     {
-      "id": "rust-statement-timeout-bounds-sqlite-lock-wait",
-      "kind": "feature",
-      "requirements": [
-        "CFG-12",
-        "CFG-13",
-        "CFG-19"
-      ],
-      "bindings": [
-        {
-          "implementation": "rust",
-          "test": "packages/rust/orm/tests/sqlite_concurrency.rs",
-          "id": "statement_timeout_bounds_sqlite_lock_wait"
-        }
-      ]
-    },
-    {
       "id": "rust-markdown-bind-message-tests-control-vectors",
       "kind": "feature",
       "requirements": [
