@@ -611,6 +611,7 @@ async fn bind_limit_splitting(t: &Target) {
     }
 }
 
+// Requirements: COD-8, PLN-44.
 async fn aes_rotation(t: &Target) {
     let db = &t.db;
     let f = seed(db).await;

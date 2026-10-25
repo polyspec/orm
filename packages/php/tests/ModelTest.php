@@ -1556,7 +1556,7 @@ final class ModelTest extends TestCase
     #[DataProvider('drivers')]
     public function testAesRotation(string $driver): void
     {
-        // The test of COD-8 (docs/spec).
+        // Requirements: COD-8, PLN-44.
         $dsn = self::caseDsn($driver);
         $db = self::database($driver, $dsn);
         self::caseAesRotation($db, $dsn);

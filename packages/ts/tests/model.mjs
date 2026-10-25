@@ -22,8 +22,8 @@ import { mysqlConnection, postgresClient, withCaseDatabase } from './case-databa
 import { schemaOf } from './schema_of.mjs';
 const root = new URL('../../..', import.meta.url).pathname;
 const args = process.argv.slice(2);
-if (args.length !== 0 && (args.length !== 4 || args[0] !== '--case' || args[1] !== 'styledStates' || args[2] !== '--dialect' || !['sqlite', 'mysql', 'postgres'].includes(args[3]))) {
-  throw new Error('usage: model.mjs [--case styledStates --dialect sqlite|mysql|postgres]');
+if (args.length !== 0 && (args.length !== 4 || args[0] !== '--case' || !['styledStates', 'aesRotation'].includes(args[1]) || args[2] !== '--dialect' || !['sqlite', 'mysql', 'postgres'].includes(args[3]))) {
+  throw new Error('usage: model.mjs [--case styledStates|aesRotation --dialect sqlite|mysql|postgres]');
 }
 const selectedCase = args.length === 0 ? undefined : args[1];
 const work = await mkdtemp(join(tmpdir(), 'orm-ts-model-'));
@@ -395,6 +395,7 @@ async function transactions(db) {
   check(db.utils().stats().openConnections >= 1, `stats: ${JSON.stringify(db.utils().stats())}`);
 }
 
+// Requirements: COD-8, PLN-44.
 async function aesRotation(db, dsn) {
   const f = await seed(db);
   const b = await new Author().connect(db).getBySeq(f.authors[0].getSeq());

@@ -100,7 +100,7 @@ $rows = (new Product)->connect($slave1)
 
 ## 6. Additional capabilities
 
-- **PLN-44** Operations: AES key rotation and status, row locks, savepoints, transaction options (isolation, read-only, timeout), bulk insert, SQL output, raw forms with schema checks, schema installation and migration, large `IN` list splitting
+- **PLN-44** Operations: AES key rotation and status, row locks, savepoints, transaction options (isolation, read-only, timeout), bulk insert, SQL output, schema-checked query forms that reject raw SQL fragments, schema installation and migration, large `IN` list splitting
 
 ## 7. Work order
 

@@ -569,6 +569,7 @@ func TestTransactions(t *testing.T) {
 	})
 }
 
+// Requirements: COD-8, PLN-44.
 func TestAESRotation(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	each(t, func(t *testing.T, db *orm.DB) {

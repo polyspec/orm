@@ -320,7 +320,8 @@
         "packages/ts"
       ],
       "tests": [
-        "packages/ts/tests/coverage_*.mjs"
+        "packages/ts/tests/coverage_*.mjs",
+        "packages/ts/tests/model.mjs"
       ],
       "support": [
         "packages/ts/tests/case-database.mjs",
@@ -334,7 +335,6 @@
         "packages/ts/tests/introspect_case.mjs",
         "packages/ts/tests/markdown_cases.mjs",
         "packages/ts/tests/mermaid_case.mjs",
-        "packages/ts/tests/model.mjs",
         "packages/ts/tests/plan_case.mjs",
         "packages/ts/tests/request_hook_run.mjs",
         "packages/ts/tests/restore_case.mjs",
@@ -5964,7 +5964,9 @@
         "PRT-12",
         "DBS-59",
         "DBS-113",
-        "DSL-113"
+        "DSL-113",
+        "DSL-24",
+        "PLN-44"
       ],
       "file": "tests/ir/validate.json",
       "cases": "$.cases[*].name",
@@ -22555,6 +22557,53 @@
           "implementation": "rust",
           "test": "packages/rust/tests/src/integration.rs",
           "id": "primary_and_replica"
+        }
+      ]
+    },
+    {
+      "id": "aes-rotation-status-operation",
+      "kind": "feature",
+      "requirements": [
+        "COD-8",
+        "PLN-44"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/model_test.go",
+          "id": "TestAESRotation"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testAesRotation"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testAesRotation",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "aes-rotation-php-extension-check"
+          ]
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model.mjs",
+          "id": "aesRotation"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/aes_rotation.py",
+          "id": "test_aes_rotation_on_each_database"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/src/integration.rs",
+          "id": "aes_rotation"
         }
       ]
     }
