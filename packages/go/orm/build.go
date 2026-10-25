@@ -130,7 +130,14 @@ func (r *request) query(c *Core, f *frame, path string) *ir.Query {
 	if len(c.where.items) > 0 {
 		q.Where = r.group(&c.where, c, f)
 	}
+	relationNames := map[string]bool{}
 	for _, rel := range c.relations {
+		name := rel.child.resultName(rel.many)
+		if relationNames[name] {
+			r.fail(configErr("relation result name %s is used twice; call alias<Name>() on one of them", name))
+			return nil
+		}
+		relationNames[name] = true
 		if rel.child.conn != nil {
 			if rel.child.limit != nil {
 				r.fail(&ir.Error{Code: CodeLimitInRelation, Msg: rel.child.ent.Name + " relation uses limit; use groupLimit"})
