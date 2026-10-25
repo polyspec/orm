@@ -53,6 +53,7 @@ class SchemaInspectionTest(unittest.TestCase):
         schema.install(SCHEMA)
         self.assertFalse(schema.empty(), "installed tables are content")
 
+    # Requirements: INT-57.
     def test_exists_and_installed_read_the_prefixed_tables_of_a_schema(self):
         schema = self.db.utils().schema()
         self.assertFalse(schema.exists("app"))

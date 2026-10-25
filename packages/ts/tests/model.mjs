@@ -22,10 +22,13 @@ import { mysqlConnection, postgresClient, withCaseDatabase } from './case-databa
 import { schemaOf } from './schema_of.mjs';
 const root = new URL('../../..', import.meta.url).pathname;
 const args = process.argv.slice(2);
-if (args.length !== 0 && (args.length !== 4 || args[0] !== '--case' || !['styledStates', 'aesRotation', 'transactions'].includes(args[1]) || args[2] !== '--dialect' || !['sqlite', 'mysql', 'postgres'].includes(args[3]))) {
-  throw new Error('usage: model.mjs [--case styledStates|aesRotation|transactions --dialect sqlite|mysql|postgres]');
+if (args.length !== 0 && (args.length !== 4 || args[0] !== '--case' || !['styledStates', 'aesRotation', 'transactions', 'schemaExistsUnderscore'].includes(args[1]) || args[2] !== '--dialect' || !['sqlite', 'mysql', 'postgres'].includes(args[3]))) {
+  throw new Error('usage: model.mjs [--case styledStates|aesRotation|transactions|schemaExistsUnderscore --dialect sqlite|mysql|postgres]');
 }
 const selectedCase = args.length === 0 ? undefined : args[1];
+if (selectedCase === 'schemaExistsUnderscore' && args[3] !== 'sqlite') {
+  throw new Error('schemaExistsUnderscore is a SQLite-only case');
+}
 const work = await mkdtemp(join(tmpdir(), 'orm-ts-model-'));
 
 let failures = 0;
@@ -87,6 +90,13 @@ async function schemaEmpty(dialect, dsn) {
     await installBench(db);
     check(!(await db.utils().schema().empty()), 'installed tables');
   } finally { await db.close(); }
+}
+
+// Requirements: INT-57.
+async function schemaExistsUnderscore(db) {
+  await db.pool.execute('CREATE TABLE "fooXbar__schema_probe" (id INTEGER)', [], undefined, () => undefined);
+  check(!(await db.utils().schema().exists('foo_bar')), 'an underscore in a schema prefix is literal');
+  check(await db.utils().schema().exists('fooXbar'), 'the exact schema prefix exists');
 }
 
 // A datetime parameter is its canonical text, YYYY-MM-DD HH:MM:SS in UTC (docs/spec/interfaces.md).
@@ -580,11 +590,15 @@ async function storedCell(dialect, dsn, sqlitePath) {
 // failedLocalReset and failedLockRelease install no schema and create no table, so
 // they only connect to the database the DSN points to. Each of the other cases gets its own case database.
 const targets = [['sqlite', `sqlite://${join(work, 'model.sqlite')}?_pragma=busy_timeout(5000)`]];
-if (!process.env.ORM_TEST_MYSQL_DSN) throw new Error('ORM_TEST_MYSQL_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers');
-if (!process.env.ORM_TEST_POSTGRES_DSN) throw new Error('ORM_TEST_POSTGRES_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers');
-targets.push(['mysql', process.env.ORM_TEST_MYSQL_DSN]);
-targets.push(['postgres', process.env.ORM_TEST_POSTGRES_DSN]);
-const cases = { conditions, joinsAndRelations, columnsAndSubqueries, writes, styledStates, transactions, aesRotation, bindLimitSplitting, insertParts };
+if (selectedCase === undefined || args[3] === 'mysql') {
+  if (!process.env.ORM_TEST_MYSQL_DSN) throw new Error('ORM_TEST_MYSQL_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers');
+  targets.push(['mysql', process.env.ORM_TEST_MYSQL_DSN]);
+}
+if (selectedCase === undefined || args[3] === 'postgres') {
+  if (!process.env.ORM_TEST_POSTGRES_DSN) throw new Error('ORM_TEST_POSTGRES_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers');
+  targets.push(['postgres', process.env.ORM_TEST_POSTGRES_DSN]);
+}
+const cases = { conditions, joinsAndRelations, columnsAndSubqueries, writes, styledStates, transactions, aesRotation, bindLimitSplitting, insertParts, schemaExistsUnderscore };
 if (selectedCase !== undefined) targets.splice(0, targets.length, ...targets.filter(([dialect]) => dialect === args[3]));
 const dialects = targets.map(([dialect]) => dialect);
 
@@ -608,7 +622,7 @@ try {
   }
   }
   for (const dialect of dialects) {
-    for (const [name, fn] of Object.entries(cases).filter(([name]) => selectedCase === undefined || name === selectedCase)) {
+    for (const [name, fn] of Object.entries(cases).filter(([name]) => selectedCase === undefined ? name !== 'schemaExistsUnderscore' : name === selectedCase)) {
       begin(`${dialect}/${name}`);
       await inCaseDatabase(dialect, async dsn => {
         await install(dsn);

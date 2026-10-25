@@ -3823,6 +3823,54 @@
         "packages/go/orm/db.go",
         "packages/go/orm/sqlite/sqlite.go"
       ]
+    },
+    "schema-exists-sqlite-go-check": {
+      "scope": "owner",
+      "needs": [
+        "go"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/go/orm/utils.go",
+        "packages/go/orm/schema_exists_underscore_test.go"
+      ]
+    },
+    "schema-exists-sqlite-php-check": {
+      "scope": "owner",
+      "needs": [
+        "php",
+        "composer"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/php/src/SchemaUtils.php",
+        "packages/php/tests/SchemaExistsSqliteTest.php"
+      ]
+    },
+    "schema-exists-sqlite-typescript-check": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "node-modules"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/ts/src/utils.ts",
+        "packages/ts/tests/model.mjs"
+      ]
+    },
+    "schema-exists-sqlite-rust-check": {
+      "scope": "owner",
+      "needs": [
+        "go",
+        "rust",
+        "node-modules"
+      ],
+      "inputs": [
+        "Makefile",
+        "packages/rust/orm/src/utils.rs",
+        "packages/rust/orm/tests/schema_exists_underscore.rs"
+      ]
     }
   },
   "paths": {

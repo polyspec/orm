@@ -18667,6 +18667,45 @@
       ]
     },
     {
+      "id": "schema-exists-literal-underscore-sqlite",
+      "kind": "feature",
+      "requirements": [
+        "INT-57"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/schema_exists_underscore_test.go",
+          "id": "TestSchemaExistsEscapesUnderscoreSQLite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/SchemaExistsSqliteTest.php",
+          "id": "SchemaExistsSqliteTest::testEscapesUnderscoreInSchemaPrefix"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/SchemaUtilsNativeTest.php",
+          "id": "SchemaUtilsNativeTest::testExistsEscapesUnderscoreInSqliteSchemaName"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model.mjs",
+          "id": "schemaExistsUnderscore"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_schema_inspection.py",
+          "id": "SchemaInspectionTest.test_exists_and_installed_read_the_prefixed_tables_of_a_schema"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/schema_exists_underscore.rs",
+          "id": "schema_exists_escapes_underscore_sqlite"
+        }
+      ]
+    },
+    {
       "id": "client-schema-utils-exists",
       "kind": "api",
       "requirements": [

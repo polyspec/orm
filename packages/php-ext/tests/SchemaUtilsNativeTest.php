@@ -30,6 +30,7 @@ final class SchemaUtilsNativeTest extends TestCase
         );
     }
 
+    // Requirements: INT-57.
     public function testExistsEscapesUnderscoreInSqliteSchemaName(): void
     {
         $path = tempnam(sys_get_temp_dir(), 'orm-schema-underscore-');
