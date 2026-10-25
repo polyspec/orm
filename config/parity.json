@@ -21224,6 +21224,20 @@
       ]
     },
     {
+      "id": "rust-model-generation-repeat-and-build-equivalence",
+      "kind": "feature",
+      "requirements": [
+        "INT-100"
+      ],
+      "bindings": [
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/coverage_model_generation.rs",
+          "id": "coverage_model_generation_check"
+        }
+      ]
+    },
+    {
       "id": "coverage-statement-events-statement-events",
       "kind": "feature",
       "requirements": [
