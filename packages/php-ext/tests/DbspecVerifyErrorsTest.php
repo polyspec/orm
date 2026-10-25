@@ -16,6 +16,7 @@ use function Polyspec\Orm\Tests\verify_errors_plan;
 #[Small]
 final class DbspecVerifyErrorsTest extends TestCase
 {
+    // Requirements: PLN-92, PLN-93, PLN-96.
     public function testNativeVerificationErrorsPreserveCauseAndDistinguishDrift(): void
     {
         self::assertTrue(extension_loaded('polyspec_orm'));

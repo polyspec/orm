@@ -148,7 +148,8 @@ final class DbspecApplyCleanupTest extends TestCase
         );
     }
 
-    // apply/settled-introspection-error and apply/rollback-introspection-error
+    // Requirements: PLN-92, PLN-93, PLN-96.
+    // apply/settled-introspection-error, apply/rollback-introspection-error, and apply/post-forward-introspection-error
     public function testVerifyErrorsAreNotDriftAndPreserveCause(): void
     {
         verify_errors_case(self::$plans, self::now());

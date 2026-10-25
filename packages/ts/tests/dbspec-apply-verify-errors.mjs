@@ -38,6 +38,7 @@ function hasApplyError(error, code, cause) {
   return true;
 }
 
+// Requirements: PLN-92.
 caseTest('apply/settled-introspection-error', TIMEOUT, async () => {
   const cause = new Error('catalog read failed');
   const connection = failingSqlite();
@@ -57,6 +58,7 @@ caseTest('apply/settled-introspection-error', TIMEOUT, async () => {
   }
 });
 
+// Requirements: PLN-96.
 caseTest('apply/rollback-introspection-error', TIMEOUT, async () => {
   const cause = new Error('catalog read failed');
   const connection = failingSqlite();
@@ -69,6 +71,7 @@ caseTest('apply/rollback-introspection-error', TIMEOUT, async () => {
   }
 });
 
+// Requirements: PLN-93.
 caseTest('apply/post-forward-introspection-error', TIMEOUT, async () => {
   const cause = new Error('post-forward catalog read failed');
   const connection = failingSqlite();

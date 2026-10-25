@@ -275,6 +275,7 @@ async fn apply_reports_cleanup_errors() {
     assert_cases(&results);
 }
 
+// Requirements: PLN-92, PLN-93, PLN-96.
 #[tokio::test]
 async fn apply_reports_verify_errors_separately_from_drift() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);

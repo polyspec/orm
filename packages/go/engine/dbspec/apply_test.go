@@ -48,6 +48,7 @@ func (f *failing) QueryContext(ctx context.Context, query string, args ...any) (
 	return f.conn.QueryContext(ctx, query, args...)
 }
 
+// Requirements: PLN-92, PLN-93, PLN-96.
 // TestSettledVerifyPreservesIntrospectionErrors distinguishes a catalog read failure from real schema drift.
 func TestSettledVerifyPreservesIntrospectionErrors(t *testing.T) {
 	testcase.Start(t, testcase.Database)

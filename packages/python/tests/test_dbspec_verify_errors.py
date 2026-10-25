@@ -49,6 +49,7 @@ class FaultingConnection:
 class DbspecVerifyErrorsTest(unittest.TestCase):
     deadline = COMPUTE
 
+    # Requirements: PLN-92.
     def test_settled_introspection_error_and_real_drift(self):
         plans = create_from_empty()
         connection = FaultingConnection()
@@ -71,6 +72,7 @@ class DbspecVerifyErrorsTest(unittest.TestCase):
         finally:
             connection.close()
 
+    # Requirements: PLN-96.
     def test_rollback_preserves_introspection_error(self):
         plans = create_from_empty()
         connection = FaultingConnection()
@@ -86,6 +88,7 @@ class DbspecVerifyErrorsTest(unittest.TestCase):
         finally:
             connection.close()
 
+    # Requirements: PLN-93.
     def test_post_forward_introspection_error_does_not_report_success(self):
         plans = create_from_empty()
         connection = FaultingConnection()

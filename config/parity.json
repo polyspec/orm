@@ -2689,6 +2689,74 @@
       ]
     },
     {
+      "id": "dbspec-apply-verification-errors",
+      "kind": "feature",
+      "requirements": [
+        "PLN-92",
+        "PLN-93",
+        "PLN-96"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/engine/dbspec/apply_test.go",
+          "id": "TestSettledVerifyPreservesIntrospectionErrors"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec-apply-verify-errors.mjs",
+          "id": "apply/settled-introspection-error"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec-apply-verify-errors.mjs",
+          "id": "apply/rollback-introspection-error"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec-apply-verify-errors.mjs",
+          "id": "apply/post-forward-introspection-error"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecApplyCleanupTest.php",
+          "id": "DbspecApplyCleanupTest::testVerifyErrorsAreNotDriftAndPreserveCause"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DbspecVerifyErrorsTest.php",
+          "id": "DbspecVerifyErrorsTest::testNativeVerificationErrorsPreserveCauseAndDistinguishDrift",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "dbspec-verify-errors-php-extension-check"
+          ]
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_verify_errors.py",
+          "id": "DbspecVerifyErrorsTest::test_settled_introspection_error_and_real_drift"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_verify_errors.py",
+          "id": "DbspecVerifyErrorsTest::test_rollback_preserves_introspection_error"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_dbspec_verify_errors.py",
+          "id": "DbspecVerifyErrorsTest::test_post_forward_introspection_error_does_not_report_success"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/dbspec_apply_cleanup.rs",
+          "id": "apply_reports_verify_errors_separately_from_drift"
+        }
+      ]
+    },
+    {
       "id": "dbspec-apply-chain",
       "kind": "feature",
       "requirements": [
