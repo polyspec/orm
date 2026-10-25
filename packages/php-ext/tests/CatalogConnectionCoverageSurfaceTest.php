@@ -6,6 +6,8 @@ namespace Polyspec\Orm\Tests;
 
 use Polyspec\Orm\Catalog;
 use Polyspec\Orm\Code;
+use ReflectionClass;
+use ReflectionMethod;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 
