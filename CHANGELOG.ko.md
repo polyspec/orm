@@ -1,9 +1,10 @@
 <!-- doc-id: changelog -->
-<!-- source-sha256: e19d24c108f7d2f806047a4050f13556ee594643149e4bba00e13538f82ac13d -->
+<!-- source-sha256: a50fc35a39c2d4a69b9eacc4ad1c7f8d70de3d21e50c9cb8a6656c251539b6a9 -->
 # 변경 이력
 
 ## Unreleased
 
+- interface checker test의 CFG-9 case가 PHP library와 extension이 cancellation을 구현한 뒤 contracts/interfaces.json이 기록하는 구현된 cancellation adapter 여섯 개를 기대하고, case와 surface 없이 implemented를 주장하는 adapter는 여전히 거부한다 (KSTD-5-89-36).
 - interface checker가 manifest 단계를 다시 통과한다: docs/spec/interfaces-model.md와 그 Korean twin을 `--generate`로 contracts/interfaces.json에서 다시 생성하여 CFG-9 행에 Python cancellation case가 더해지고, PHP와 PHP extension symbol record가 그 뒤 더해진 member를 PgsqlLargeObjectStream::$context를 포함해 나열한다 (KSTD-5-89-35).
 - `make lint-php`가 PostgreSQL cancellation 이후 main에서 다시 통과한다: PHP PostgreSQL adapter가 더 이상 pg_connect, pg_query, COPY 파일 읽기와 쓰기, stream_select, large-object fopen을 @로 억제하지 않는다: 범위가 정해진 handler가 실패한 호출의 E_WARNING을 그 PDOException의 이유로 유지하므로 연결 실패는 PostgreSQL error를 밝히는 OrmException을 일으키고 warning은 ORM 밖으로 나가지 않으며, large-object stream wrapper는 streamWrapper protocol이 설정하는 $context property를 선언하고, 새 파일은 phpcs가 요구하는 layout을 따른다 (KSTD-5-89-25).
 - PHP plan cache와 statement cache는 library와 extension 모두 각각 placeholder를 최대 8,192개만 보유하여, 65,535 한도에서의 25.6 MiB와 34.4 MiB 대신 몇 MiB(library에서 plan 3.2 MiB, statement 4.3 MiB)만 유지하며, 다행 INSERT import는 cache가 찬 뒤 더 늘지 않는다 (KSTD-7-3-5).

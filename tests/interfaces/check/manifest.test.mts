@@ -135,9 +135,11 @@ caseTest('CFG-9 records six explicit adapters and refuses fake, missing, or unre
   const contract = manifest.behavior_adapters?.find(adapter => adapter.id === 'CFG-9');
   assert.ok(contract, 'CFG-9 adapter contract is missing');
   assert.deepEqual(Object.keys(contract.adapters ?? {}).sort(), ['go', 'php', 'php-extension', 'python', 'rust', 'typescript']);
-  assert.equal((contract.adapters?.php?.status), 'unresolved', 'PHP cancellation was counted as implemented');
-  assert.equal((contract.adapters?.['php-extension']?.status), 'unresolved', 'PHP extension cancellation was counted as implemented');
-  assert.equal(behaviorCompletionErrors(contract).length, 2, 'unresolved PHP adapters did not block six-client completion');
+  // Since c7cb6f627 every client implements CFG-9: the PHP library and extension record their cancellation cases.
+  for (const client of ['go', 'php', 'php-extension', 'python', 'rust', 'typescript']) {
+    assert.equal(contract.adapters?.[client]?.status, 'implemented', `${client} cancellation is not recorded as implemented`);
+  }
+  assert.deepEqual(behaviorCompletionErrors(contract), [], 'the six implemented adapters did not complete CFG-9');
 
   const surfaces = manifest.native_surfaces ?? [];
   const goSurface = surfaces.find(surface => surface.owner === 'go');
@@ -161,8 +163,9 @@ caseTest('CFG-9 records six explicit adapters and refuses fake, missing, or unre
   const missingSurface = copy();
   if (missingSurface.adapters?.go) delete missingSurface.adapters.go.surface;
   assert.throws(() => validateBehaviorAdapters([missingSurface], surfaces), /go: implemented adapter requires/);
+  // An unresolved adapter that claims implemented without its cases and surface is refused.
   const unresolvedAsPass = copy();
-  if (unresolvedAsPass.adapters?.php) unresolvedAsPass.adapters.php.status = 'implemented';
+  if (unresolvedAsPass.adapters) unresolvedAsPass.adapters.php = { status: 'implemented', item: 'KSTD-2-11-16-1', required_case: 'cancel_active_query' };
   assert.throws(() => validateBehaviorAdapters([unresolvedAsPass], surfaces), /php: implemented adapter requires/);
 });
 
