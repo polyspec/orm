@@ -55,6 +55,7 @@ caseTest('group_rows/boolean_invalid_stored_value', COMPUTE, () => {
   }
 });
 
+// Requirements: PRT-69. The selected grouped i64 remains exact in the public row representation.
 caseTest('group_rows/exact_i64_preserved', COMPUTE, () => {
   const want = 9007199254740991;
   const value = groupValue(null, { name: 'exact_value', column: '', type: 'i64' }, want, null);
@@ -64,6 +65,7 @@ caseTest('group_rows/exact_i64_preserved', COMPUTE, () => {
   }
 });
 
+// Requirements: PRT-69, INT-90. The grouped row exposes only an exact nonnegative row count.
 caseTest('group_rows/count_exactness', COMPUTE, () => {
   for (const invalid of [true, 1.5, -1, 9007199254740992, 9007199254740992n, '9007199254740992']) {
     try {

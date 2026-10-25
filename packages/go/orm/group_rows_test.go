@@ -92,6 +92,7 @@ func TestGroupCountRejectsInvalidStoredBoolean(t *testing.T) {
 	}
 }
 
+// Requirements: PRT-69. The grouped row exposes the selected i64 as an exact integer value.
 func TestGroupCountPreservesExactI64Value(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	const want int64 = 9007199254740991
@@ -136,7 +137,7 @@ func TestGroupRowNegativeCountIsCodecDecode(t *testing.T) {
 	}
 }
 
-// Requirements: INT-90.
+// Requirements: PRT-69, INT-90. The row count remains an exact nonnegative integer in the grouped result.
 func TestGroupRowCountEnforcesExactness(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	for _, count := range []any{true, float64(1.5), int64(-1), int64(9007199254740992), float64(9007199254740992), "9007199254740992"} {

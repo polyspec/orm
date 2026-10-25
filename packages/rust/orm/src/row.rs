@@ -416,6 +416,7 @@ mod exact_i64_tests {
     use crate::collection::GroupRow;
     use crate::value::Val;
 
+    // Requirements: PRT-69. The grouped row serializes the selected i64 as an exact JSON number.
     #[test]
     fn grouped_result_preserves_exact_i64_value() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);

@@ -450,6 +450,7 @@ mod group_tests {
 mod group_count_exactness_tests {
     use super::{GroupRow, Val};
 
+    // Requirements: PRT-69, INT-90. The grouped row exposes its count as an exact nonnegative value.
     #[test]
     fn count_exactness_matches_the_safe_integer_contract() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);

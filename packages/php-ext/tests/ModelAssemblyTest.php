@@ -25,6 +25,7 @@ use Polyspec\Orm\Tests\GroupRowsCases;
 final class ModelAssemblyTest extends TestCase
 {
     use CollectionIdentityCases;
+    // Requirements: PRT-69. The imported exact-i64 and row-count cases assert the public group-row output values.
     use GroupRowsCases;
 
     protected function assertGroupRowOwnership(): void

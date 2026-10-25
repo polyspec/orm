@@ -13,6 +13,7 @@ use Polyspec\Orm\GroupRows;
 #[Small]
 final class GroupRowsTest extends TestCase
 {
+    // Requirements: PRT-69. The imported exact-i64 and row-count cases assert the public group-row output values.
     use GroupRowsCases;
 
     public function testOwner(): void

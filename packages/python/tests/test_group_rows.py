@@ -24,6 +24,7 @@ class GroupRowCountTest(unittest.TestCase):
             GroupRow([("status", "open")])
         self.assertEqual(caught.exception.code, codes.INTERNAL)
 
+    # Requirements: PRT-69, INT-90. The grouped row exposes its count as an exact nonnegative value.
     def test_count_exactness(self):
         for count in (
             True,
@@ -67,6 +68,7 @@ class GroupBooleanValueTest(unittest.TestCase):
 
 
 class GroupExactI64ValueTest(unittest.TestCase):
+    # Requirements: PRT-69. The grouped row preserves an exact i64 in its public output representation.
     def test_group_result_preserves_exact_i64_value(self):
         want = 9007199254740991
         value = _group_value(
