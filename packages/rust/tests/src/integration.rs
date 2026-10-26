@@ -835,8 +835,7 @@ async fn main() {
     };
     let set = polyspec_orm::dbspec::read_set(std::path::Path::new(&args[1])).or_panic(|errors| format!("{}: {errors:?}", args[1]));
     let text = |file: &polyspec_orm::dbspec::SetFile| {
-        polyspec_orm::dbspec::read_bytes(&file.path.display().to_string(), file.bytes.clone())
-            .or_panic(|errors| format!("{}: {errors:?}", file.path.display()))
+        polyspec_orm::dbspec::read_bytes(&file.path.display().to_string(), file.bytes.clone()).or_panic(|errors| format!("{}: {errors:?}", file.path.display()))
     };
     let owned: Vec<String> = set.documents.iter().map(text).collect();
     let external: Vec<String> = set.external.iter().map(text).collect();

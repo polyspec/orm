@@ -123,11 +123,19 @@ class SchemaInspectionTest(unittest.TestCase):
                 "CAPABILITY_UNSUPPORTED",
             )
             self.assertEqual(
-                self.code(lambda: privileges.grant_table(f"public.{TABLE}", "ormtest_privilege")),
+                self.code(
+                    lambda: privileges.grant_table(
+                        f"public.{TABLE}", "ormtest_privilege"
+                    )
+                ),
                 "CAPABILITY_UNSUPPORTED",
             )
             self.assertEqual(
-                self.code(lambda: privileges.revoke_table(f"public.{TABLE}", "SELECT", "ormtest_privilege")),
+                self.code(
+                    lambda: privileges.revoke_table(
+                        f"public.{TABLE}", "SELECT", "ormtest_privilege"
+                    )
+                ),
                 "CAPABILITY_UNSUPPORTED",
             )
         elif dialect == "postgres":
@@ -195,7 +203,9 @@ class SchemaInspectionTest(unittest.TestCase):
                 "CAPABILITY_UNSUPPORTED",
             )
             self.assertEqual(
-                self.code(lambda: privileges.revoke_table(f"public.{TABLE}", "SELECT", "orm")),
+                self.code(
+                    lambda: privileges.revoke_table(f"public.{TABLE}", "SELECT", "orm")
+                ),
                 "CAPABILITY_UNSUPPORTED",
             )
         self.assertEqual(
