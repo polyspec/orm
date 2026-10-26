@@ -291,6 +291,7 @@
         "packages/php/tests/NativeByteCellFixture.php",
         "packages/php/tests/OrmGenScanFailureCase.php",
         "packages/php/tests/OrmGenTestSupport.php",
+        "packages/php/tests/PageCacheBoundCases.php",
         "packages/php/tests/Served.php",
         "packages/php/tests/SqliteConcurrencyWriter.php",
         "packages/php/tests/SqliteLiteralRowsPdo.php",

@@ -781,7 +781,7 @@ final class DbspecApplyTest extends TestCase
     {
         $document = preg_replace(
             '/^dbspec 1 stress\\n/',
-            "dbspec 1 schema\\n",
+            "dbspec 1 schema\n",
             dbspec_stress_document(100),
             1,
             $replaced
