@@ -345,13 +345,16 @@ export function crash(error: unknown): void {
   if (record) writer.run(join(report, 'summary.md'), () => publish(summary(record, { run: current, report: relative(root, report), crashed: reason }), report));
 }
 
+/** Whether a check target name is accepted by the runner CLI. */
+export const isCheckTargetName = (target: string): boolean => /^[a-z0-9]+(?:-[a-z0-9]+)*(?:\/[a-z0-9]+(?:-[a-z0-9]+)*)*$/.test(target);
+
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
   const jobSummary = args[0] === '--job-summary';
   if (jobSummary) args.shift();
   const [serversArgument, ...targets] = args;
-  const valid = serversArgument && targets.length > 0 && targets.every(target => /^[a-z0-9-]+$/.test(target));
+  const valid = serversArgument && targets.length > 0 && targets.every(isCheckTargetName);
   if (!valid) {
     console.error('usage: node scripts/check/run.mts [--job-summary] <servers env | -> <target>...');
     process.exit(2);

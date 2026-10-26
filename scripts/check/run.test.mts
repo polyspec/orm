@@ -11,6 +11,7 @@ import { isolatedEnvironment } from '../../tests/environment.mts';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
 import { readRecord, summarize, type CheckRecord } from './record.mts';
 import type { StepRecord } from './report.mts';
+import { isCheckTargetName } from './run.mts';
 import { errorMessage } from '../../tests/errors.mts';
 
 const repo = resolve(fileURLToPath(new URL('../..', import.meta.url)));
@@ -27,6 +28,21 @@ function named(record: CheckRecord, name: string): StepRecord {
   return found;
 }
 const scope = { after: (f: () => void) => { after.push(f); } };
+
+caseTest('the check runner accepts component target names and rejects malformed names', COMPUTE, () => {
+  const declaration = /^CHECK_TARGETS\s*=\s*(.+)$/m.exec(readFileSync(join(repo, 'Makefile'), 'utf8'));
+  assert.ok(declaration?.[1], 'Makefile declares CHECK_TARGETS');
+  const checkTargets = declaration[1].trim().split(/\s+/);
+  assert.ok(checkTargets.length > 0, 'CHECK_TARGETS is nonempty');
+  for (const target of checkTargets) assert.equal(isCheckTargetName(target), true, target);
+
+  for (const target of ['check-run', 'dbspec-go-check/engine', 'dbspec-php-check/set', 'dbspec-php-extension-check/ir']) {
+    assert.equal(isCheckTargetName(target), true, target);
+  }
+  for (const target of ['', '-check', 'check-', '/engine', 'dbspec//engine', 'dbspec/./engine', 'dbspec/../engine', '../engine', 'dbspec/-engine', 'dbspec/engine ', 'dbspec engine']) {
+    assert.equal(isCheckTargetName(target), false, target);
+  }
+});
 
 // stub runs runChecks with stub commands. The database command (node scripts/check/databases.mts) logs `databases <action>`, and a make target logs its own
 // name. `b` passes only when an untracked file `pass-b` is present, so the case changes results
