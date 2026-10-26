@@ -102,6 +102,11 @@ fn full_run(run: &FullRun, dsn_variable: &str) -> Result<serde_json::Map<String,
     .clone()
 }
 
+/// Requirements: DIA-24. Cases: conformance_mysql::datetime_p0_roundtrip, conformance_mysql::time_p3_roundtrip,
+/// conformance_mysql::datetime_precision_rejected, conformance_postgres::datetime_p0_roundtrip,
+/// conformance_postgres::time_p3_roundtrip, conformance_postgres::datetime_precision_rejected,
+/// conformance_sqlite::datetime_p0_roundtrip, conformance_sqlite::time_p3_roundtrip,
+/// conformance_sqlite::datetime_precision_rejected.
 /// One trial `conformance_<dialect>::<name>` per vector of `file`: the output of the vector in the full run on the
 /// database of `dsn_variable` equals its expectation.
 fn dialect_trials(dialect: &'static str, file: &'static str, dsn_variable: &'static str) -> Vec<polyspec_orm_testcase::Trial> {

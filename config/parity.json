@@ -12309,6 +12309,223 @@
       ]
     },
     {
+      "id": "temporal-column-precision-mysql",
+      "kind": "feature",
+      "requirements": [
+        "DIA-24"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/coverage_conformance_verification_test.go",
+          "id": "TestCoverageConformanceMySQL"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
+          "id": "CoverageConformanceVerificationTest::testMysql"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
+          "id": "CoverageConformanceVerificationExtensionTest::testMysql"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_conformance_mysql.mjs",
+          "id": "datetime_p0_roundtrip"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/conformance_mysql.py",
+          "id": "datetime_p0_roundtrip"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
+          "id": "conformance_mysql::datetime_p0_roundtrip"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_conformance_mysql.mjs",
+          "id": "time_p3_roundtrip"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/conformance_mysql.py",
+          "id": "time_p3_roundtrip"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
+          "id": "conformance_mysql::time_p3_roundtrip"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_conformance_mysql.mjs",
+          "id": "datetime_precision_rejected"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/conformance_mysql.py",
+          "id": "datetime_precision_rejected"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
+          "id": "conformance_mysql::datetime_precision_rejected"
+        }
+      ]
+    },
+    {
+      "id": "temporal-column-precision-postgres",
+      "kind": "feature",
+      "requirements": [
+        "DIA-24"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/coverage_conformance_verification_test.go",
+          "id": "TestCoverageConformancePostgres"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
+          "id": "CoverageConformanceVerificationTest::testPostgres"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
+          "id": "CoverageConformanceVerificationExtensionTest::testPostgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_conformance_postgres.mjs",
+          "id": "datetime_p0_roundtrip"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/conformance_postgres.py",
+          "id": "datetime_p0_roundtrip"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
+          "id": "conformance_postgres::datetime_p0_roundtrip"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_conformance_postgres.mjs",
+          "id": "time_p3_roundtrip"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/conformance_postgres.py",
+          "id": "time_p3_roundtrip"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
+          "id": "conformance_postgres::time_p3_roundtrip"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_conformance_postgres.mjs",
+          "id": "datetime_precision_rejected"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/conformance_postgres.py",
+          "id": "datetime_precision_rejected"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
+          "id": "conformance_postgres::datetime_precision_rejected"
+        }
+      ]
+    },
+    {
+      "id": "temporal-column-precision-sqlite",
+      "kind": "feature",
+      "requirements": [
+        "DIA-24"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/coverage_conformance_verification_test.go",
+          "id": "TestCoverageConformanceSQLite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
+          "id": "CoverageConformanceVerificationTest::testSqlite"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
+          "id": "CoverageConformanceVerificationExtensionTest::testSqlite"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_conformance_sqlite.mjs",
+          "id": "datetime_p0_roundtrip"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/conformance_sqlite.py",
+          "id": "datetime_p0_roundtrip"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
+          "id": "conformance_sqlite::datetime_p0_roundtrip"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_conformance_sqlite.mjs",
+          "id": "time_p3_roundtrip"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/conformance_sqlite.py",
+          "id": "time_p3_roundtrip"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
+          "id": "conformance_sqlite::time_p3_roundtrip"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_conformance_sqlite.mjs",
+          "id": "datetime_precision_rejected"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/conformance_sqlite.py",
+          "id": "datetime_precision_rejected"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
+          "id": "conformance_sqlite::datetime_precision_rejected"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/time_precision_test.go",
+          "id": "TestSQLiteTimePrecision"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/model/time_text_test.go",
+          "id": "TestTimeSetterRecordsBadText"
+        }
+      ]
+    },
+    {
       "id": "rust-catalog-temporal-precision-follows-the-native-type-and-dialect-default",
       "kind": "feature",
       "requirements": [

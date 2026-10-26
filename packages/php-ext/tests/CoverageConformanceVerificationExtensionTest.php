@@ -50,21 +50,21 @@ final class CoverageConformanceVerificationExtensionTest extends TestCase
     }
 
     // Requirements: DSL-87.
-    // Requirements: PRT-68, INT-20, INT-21, INT-22, INT-23, INT-24, INT-25, INT-26, INT-39.
+    // Requirements: PRT-68, INT-20, INT-21, INT-22, INT-23, INT-24, INT-25, INT-26, INT-39, DIA-24.
     public function testMysql(): void
     {
         $this->assertNativeConformanceVectors('mysql');
     }
 
     // Requirements: DSL-87.
-    // Requirements: PRT-68, INT-20, INT-21, INT-22, INT-23, INT-24, INT-25, INT-26, INT-39.
+    // Requirements: PRT-68, INT-20, INT-21, INT-22, INT-23, INT-24, INT-25, INT-26, INT-39, DIA-24.
     public function testPostgres(): void
     {
         $this->assertNativeConformanceVectors('postgres');
     }
 
     // Requirements: DSL-87.
-    // Requirements: PRT-68, INT-20, INT-21, INT-22, INT-23, INT-24, INT-25, INT-26, INT-39, DBS-115.
+    // Requirements: PRT-68, INT-20, INT-21, INT-22, INT-23, INT-24, INT-25, INT-26, INT-39, DIA-24, DBS-115.
     public function testSqlite(): void
     {
         $this->assertNativeConformanceVectors('sqlite');

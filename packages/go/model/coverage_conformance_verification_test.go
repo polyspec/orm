@@ -61,7 +61,7 @@ func TestCoverageConformanceVector(t *testing.T) {
 
 // TestCoverageConformanceMySQL runs every vector of tests/conformance/vectors.json on the MySQL
 // bench database (BENCH_MYSQL_DSN) and checks each as a subtest named by the vector.
-// Requirements: PRT-68, INT-20, INT-21, INT-22, INT-23, INT-24, INT-25, INT-26, INT-39.
+// Requirements: PRT-68, INT-20, INT-21, INT-22, INT-23, INT-24, INT-25, INT-26, INT-39, DIA-24.
 func TestCoverageConformanceMySQL(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	runConformanceVectors(t, "BENCH_MYSQL_DSN", "vectors.json")
@@ -69,7 +69,7 @@ func TestCoverageConformanceMySQL(t *testing.T) {
 
 // TestCoverageConformancePostgres runs every vector of tests/conformance/vectors.postgres.json on
 // the PostgreSQL bench database (BENCH_POSTGRES_DSN), a subtest per vector.
-// Requirements: PRT-68, INT-20, INT-21, INT-22, INT-23, INT-24, INT-25, INT-26, INT-39.
+// Requirements: PRT-68, INT-20, INT-21, INT-22, INT-23, INT-24, INT-25, INT-26, INT-39, DIA-24.
 func TestCoverageConformancePostgres(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	runConformanceVectors(t, "BENCH_POSTGRES_DSN", "vectors.postgres.json")
@@ -77,7 +77,7 @@ func TestCoverageConformancePostgres(t *testing.T) {
 
 // TestCoverageConformanceSQLite runs every vector of tests/conformance/vectors.sqlite.json on the
 // SQLite bench database (BENCH_SQLITE_DSN), a subtest per vector.
-// Requirements: PRT-68, INT-20, INT-21, INT-22, INT-23, INT-24, INT-25, INT-26, INT-39, DBS-115.
+// Requirements: PRT-68, INT-20, INT-21, INT-22, INT-23, INT-24, INT-25, INT-26, INT-39, DIA-24, DBS-115.
 func TestCoverageConformanceSQLite(t *testing.T) {
 	testcase.Start(t, testcase.Process)
 	runConformanceVectors(t, "BENCH_SQLITE_DSN", "vectors.sqlite.json")

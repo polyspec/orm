@@ -43,8 +43,8 @@ func timePrecisionInsert(t *testing.T, m *runtimemodel.Model) *plan.Step {
 	return &compiled.Steps[0]
 }
 
+// Requirements: DIA-24. The SQLite checks cover p = 0, 1, 2, 3 and 6 storage forms.
 func TestSQLiteTimePrecision(t *testing.T) {
-	// The test of DIA-24 (docs/spec).
 	testcase.Start(t, testcase.Database)
 	m, err := runtimemodel.LoadFiles(filepath.Join("..", "..", "..", "contracts", "fixtures", "time_precision.dbs"))
 	if err != nil {

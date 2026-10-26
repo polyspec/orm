@@ -142,21 +142,21 @@ final class CoverageConformanceVerificationTest extends TestCase
 
     // Requirements: DIA-37.
     #[DataProvider('mysqlVectors')]
-    // Requirements: PRT-68, INT-20, INT-21, INT-22, INT-23, INT-24, INT-25, INT-26.
+    // Requirements: PRT-68, INT-20, INT-21, INT-22, INT-23, INT-24, INT-25, INT-26, DIA-24.
     public function testMysql(string $name, mixed $expect): void
     {
         self::check('mysql', $name, $expect);
     }
 
     #[DataProvider('postgresVectors')]
-    // Requirements: PRT-68, INT-20, INT-21, INT-22, INT-23, INT-24, INT-25, INT-26.
+    // Requirements: PRT-68, INT-20, INT-21, INT-22, INT-23, INT-24, INT-25, INT-26, DIA-24.
     public function testPostgres(string $name, mixed $expect): void
     {
         self::check('postgres', $name, $expect);
     }
 
     #[DataProvider('sqliteVectors')]
-    // Requirements: PRT-68, INT-20, INT-21, INT-22, INT-23, INT-24, INT-25, INT-26, DBS-115.
+    // Requirements: PRT-68, INT-20, INT-21, INT-22, INT-23, INT-24, INT-25, INT-26, DIA-24, DBS-115.
     public function testSqlite(string $name, mixed $expect): void
     {
         self::check('sqlite', $name, $expect);

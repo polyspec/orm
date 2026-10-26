@@ -1,6 +1,7 @@
 # The conformance vectors on mysql: one test for each vector of the mysql expectations, named by the vector name
 # (conformance_case). The bench database comes from BENCH_MYSQL_DSN.
-# Requirements: PRT-68, INT-20, INT-21, INT-22, INT-23, INT-24, INT-25, INT-26, INT-39.
+# Requirements: PRT-68, INT-20, INT-21, INT-22, INT-23, INT-24, INT-25, INT-26, INT-39, DIA-24.
+# Temporal cases: datetime_p0_roundtrip, time_p3_roundtrip, datetime_precision_rejected.
 # Run: python -m packages.python.tests.conformance_mysql
 from .conformance_case import conformance_module
 from .vector_case import VectorCase
