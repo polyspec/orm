@@ -23888,7 +23888,12 @@
           "test": "packages/rust/tests/tests/coverage_model_generation.rs",
           "id": "coverage_model_generation_check"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "coverage-part",
+        "feature": "model_generation",
+        "part": "owner/rust"
+      }
     },
     {
       "id": "coverage-statement-events-statement-events",
