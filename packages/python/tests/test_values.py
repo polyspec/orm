@@ -126,6 +126,127 @@ class NativeTimeReadTest(unittest.TestCase):
                 self.assertEqual(caught.exception.code, "CODEC_DECODE")
 
 
+class RuntimeValueTypesDatabaseTest(unittest.TestCase):
+    """INT-99 database reads preserve declared types, defaults and selected styled SQL NULL."""
+
+    @classmethod
+    def setUpClass(cls):
+        import tempfile
+        from pathlib import Path
+        from .test_sqlite import generate_document
+
+        cls.tmp = tempfile.TemporaryDirectory(prefix="orm-python-runtime-value-types-")
+        cls.addClassCleanup(cls.tmp.cleanup)
+        document = Path(cls.tmp.name) / "value_types.dbs"
+        document.write_text(
+            "dbspec 1 value_types\n\n"
+            "table value_record {\n"
+            "  seq i64 identity\n"
+            "  small i16\n"
+            "  rank i16 default 3\n"
+            "  wide i64\n"
+            "  ratio f64\n"
+            "  active bool\n"
+            "  code uuid\n"
+            "  opens time(3)\n"
+            "  day date\n"
+            "  note varchar(20) null\n"
+            "  payload text null\n"
+            "  primary key (seq)\n"
+            "  settings {\n"
+            "    select explicit note\n"
+            "    codec payload ordered_json\n"
+            "  }\n"
+            "}\n",
+            encoding="utf-8",
+        )
+        cls.models = generate_document(str(Path(cls.tmp.name) / "generated"), document)
+
+    def run_case(self, driver, body):
+        from .case_database import case_database
+
+        with case_database(driver, self.tmp.name, "runtime_values") as dsn:
+            db = self.models.connect(dsn)
+            try:
+                db.utils().schema().install(self.models.SCHEMA)
+                row = (
+                    self.models.ValueRecord()
+                    .connect(db)
+                    .set_small(-32768)
+                    .set_wide(42)
+                    .set_ratio(1.25)
+                    .set_active(False)
+                    .set_code("0f0e0d0c-0b0a-4908-8706-050403020100")
+                    .set_opens("08:30:00.250")
+                    .set_day("2026-01-02")
+                    .create()
+                )
+                body(db, row.get_seq())
+            finally:
+                db.close()
+
+    # Requirements: INT-99, DBS-68, COD-20.
+    def test_runtime_value_types_and_styled_sql_null_read(self):
+        uuid = "0f0e0d0c-0b0a-4908-8706-050403020100"
+        for driver in ("sqlite", "mysql", "postgres"):
+            with self.subTest(driver=driver):
+                def check(db, seq):
+                    row = self.models.ValueRecord().connect(db).get_by_seq(seq)
+                    self.assertEqual(row.get_small(), -32768)
+                    self.assertEqual(row.get_rank(), 3)
+                    self.assertEqual(row.get_code(), uuid)
+                    self.assertEqual(row.get_opens(), "08:30:00.250")
+                    self.assertEqual(row.get_day(), "2026-01-02")
+                    self.assertEqual(row.get_payload().kind, "sql-null")
+                    self.assertNotIn("note", row.to_array())
+                    selected = (
+                        self.models.ValueRecord()
+                        .connect(db)
+                        .add_column_note()
+                        .get_by_seq(seq)
+                    )
+                    self.assertIsNone(selected.get_note())
+
+                self.run_case(driver, check)
+
+    # Requirements: INT-98.
+    def test_invalid_database_cells_fail_typed_reads(self):
+        from polyspec.orm.errors import OrmError
+
+        def read_column(db, seq, column):
+            query = self.models.ValueRecord().connect(db).remove_all_columns()
+            getattr(query, f"add_column_{column}")()
+            return query.get_by_seq(seq)
+
+        for driver in ("sqlite", "mysql", "postgres"):
+            with self.subTest(driver=driver):
+                def check(db, seq):
+                    if driver == "mysql":
+                        db._connection.execute("ALTER TABLE value_record MODIFY wide BIGINT UNSIGNED", [])
+                        db._connection.execute(
+                            "UPDATE value_record SET wide = 18446744073709551615 WHERE seq = ?", [seq]
+                        )
+                        with self.assertRaises(OrmError) as caught:
+                            read_column(db, seq, "wide").get_wide()
+                        self.assertEqual(caught.exception.code, "CODEC_DECODE")
+                        db._connection.execute("UPDATE value_record SET wide = 42, active = 2 WHERE seq = ?", [seq])
+                        with self.assertRaises(OrmError) as caught:
+                            read_column(db, seq, "active").get_active()
+                        self.assertEqual(caught.exception.code, "CODEC_DECODE")
+                    elif driver == "postgres":
+                        db._connection.execute("UPDATE value_record SET ratio = 'NaN' WHERE seq = ?", [seq])
+                        with self.assertRaises(OrmError) as caught:
+                            read_column(db, seq, "ratio").get_ratio()
+                        self.assertEqual(caught.exception.code, "CODEC_DECODE")
+                    else:
+                        db._connection.execute("UPDATE value_record SET wide = 'not-an-integer' WHERE seq = ?", [seq])
+                        with self.assertRaises(OrmError) as caught:
+                            read_column(db, seq, "wide").get_wide()
+                        self.assertEqual(caught.exception.code, "CODEC_DECODE")
+
+                self.run_case(driver, check)
+
+
 class HostCodecTest(unittest.TestCase):
     def test_ip_round_trip(self):
         for address in ["127.0.0.1", "255.255.255.255", "2001:db8::1", "::1", "fe80::"]:

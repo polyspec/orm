@@ -9,9 +9,12 @@ use DateTimeZone;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
+use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
+use Polyspec\Orm\Db;
 use Polyspec\Orm\Orm;
 use Polyspec\Orm\OrmException;
+use Polyspec\Orm\StyledValue;
 use Polyspec\Orm\Tests\Model\Author;
 use Polyspec\Orm\Tests\Model\Service;
 use Polyspec\Orm\Tests\Model\ServiceMember;
@@ -36,7 +39,8 @@ final class ConnectionUtcNativeTest extends TestCase
         }
     }
 
-    // Requirements: CFG-2, DIA-57, DSL-141. This case verifies the C connection factory, not only the PHP library path.
+    // Requirements: CFG-2, DIA-57, DSL-141, INT-98, INT-99, DBS-68, COD-20.
+    // This case verifies the C connection factory, not only the PHP library path.
     #[Medium]
     #[DataProvider('connections')]
     public function testNativeConnectionsUseUtc(string $driver, string $zone): void
@@ -57,7 +61,10 @@ final class ConnectionUtcNativeTest extends TestCase
                 try {
                     self::assertNativeServerTimezone($driver, $db->pdo());
                     installBench($db);
-                    self::assertUtcRoundTrip($db);
+                    $created = self::assertUtcRoundTrip($db);
+                    if ($zone === '') {
+                        self::assertNativeTypedCellFailure($driver, $db, $created->getSeq());
+                    }
                 } finally {
                     $db->close();
                 }
@@ -103,7 +110,7 @@ final class ConnectionUtcNativeTest extends TestCase
         }
     }
 
-    private static function assertUtcRoundTrip(\Polyspec\Orm\Db $db): void
+    private static function assertUtcRoundTrip(Db $db): Author
     {
         $service = (new Service())($db)->setName('utc-service')->create();
         $user = (new User())($db)->setName('utc-user')->create();
@@ -115,7 +122,8 @@ final class ConnectionUtcNativeTest extends TestCase
         $created = (new Author())($db)
             ->setName('utc-row')->setUserSeq($user->getSeq())->setServiceSeq($service->getSeq())
             ->setServiceRegionSeq($region->getSeq())->setServiceMemberSeq($member->getSeq())
-            ->setStartDt($startUtc->format('Y-m-d H:i:s'))->setEndDt('2026-01-03 00:00:00')->create();
+            ->setStartDt($startUtc->format('Y-m-d H:i:s'))->setEndDt('2026-01-03 00:00:00')
+            ->setJsonSetting(StyledValue::sqlNull())->create();
         $row = (new Author())($db)->getBySeq($created->getSeq());
         self::assertNotNull($row);
         $start = $row->getStartDt();
@@ -144,6 +152,9 @@ final class ConnectionUtcNativeTest extends TestCase
             $author()->betweenStartDt(['2026-01-01 15:00:00', '2026-01-01 15:00:00.5'])->getCount(),
             'between filter'
         );
+        $styled = $author()->removeAllColumns()->addColumnJsonSetting()->getBySeq($created->getSeq());
+        self::assertInstanceOf(StyledValue::class, $styled->getJsonSetting());
+        self::assertSame('sql-null', $styled->getJsonSetting()->kind, 'native model reads selected styled SQL NULL');
         if ($db->driver() === 'sqlite') {
             try {
                 $author()->startDt('2026-01-02')->getCount();
@@ -151,6 +162,28 @@ final class ConnectionUtcNativeTest extends TestCase
             } catch (OrmException $error) {
                 self::assertSame('CODEC_ENCODE', $error->code_, 'date-only datetime text');
             }
+        }
+        return $created;
+    }
+
+    private static function assertNativeTypedCellFailure(string $driver, Db $db, int $seq): void
+    {
+        $pdo = $db->pdo();
+        if ($driver === 'mysql') {
+            $pdo->exec('ALTER TABLE author MODIFY target_club_reader_count BIGINT UNSIGNED');
+            $sql = 'UPDATE author SET target_club_reader_count = 18446744073709551615 WHERE seq = ?';
+        } elseif ($driver === 'postgres') {
+            $pdo->exec('ALTER TABLE author ALTER COLUMN target_club_reader_count TYPE BIGINT');
+            $sql = 'UPDATE author SET target_club_reader_count = 2147483648 WHERE seq = ?';
+        } else {
+            $sql = 'UPDATE author SET target_club_reader_count = 2147483648 WHERE seq = ?';
+        }
+        $pdo->prepare($sql)->execute([$seq]);
+        try {
+            (new Author())($db)->removeAllColumns()->addColumnTargetClubReaderCount()->getBySeq($seq);
+            self::fail("$driver accepted an out-of-range i32 cell");
+        } catch (OrmException $error) {
+            self::assertSame(Code::CODEC_DECODE, $error->code_, "$driver i32 cell read error");
         }
     }
 }

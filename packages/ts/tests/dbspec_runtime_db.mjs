@@ -25,6 +25,9 @@ const probeText = `dbspec 1 runtime_probe
 table probe {
   seq i64 identity
   small i16
+  wide i64
+  ratio f64
+  active bool
   label varchar(32) default 'none'
   note text null
   secret varchar(255) null
@@ -93,6 +96,9 @@ for (const dialect of ['sqlite', 'mysql', 'postgres']) {
     for (const small of [-32768, 32767]) {
       const row = new Probe().connect(db);
       row[CORE].setValue('small', small);
+      row[CORE].setValue('wide', 7);
+      row[CORE].setValue('ratio', 1.25);
+      row[CORE].setValue('active', true);
       const seq = (await row.create())[CORE].column('seq');
       const read = await new Probe().connect(db).seq(seq).get();
       assert.equal(read[CORE].column('small'), small);
@@ -105,17 +111,26 @@ for (const dialect of ['sqlite', 'mysql', 'postgres']) {
   caseTest(`${dialect}: an omitted column takes the database default and a required column is checked`, 30_000, async () => {
     const row = new Probe().connect(db);
     row[CORE].setValue('small', 1);
+    row[CORE].setValue('wide', 7);
+    row[CORE].setValue('ratio', 1.25);
+    row[CORE].setValue('active', true);
     const seq = (await row.create())[CORE].column('seq');
     const read = await new Probe().connect(db).seq(seq).get();
     assert.equal(read[CORE].column('label'), 'none');
     const missing = new Probe().connect(db);
     missing[CORE].setValue('label', 'x');
+    missing[CORE].setValue('wide', 7);
+    missing[CORE].setValue('ratio', 1.25);
+    missing[CORE].setValue('active', true);
     assert.equal(await code(missing.create()), 'IR_INVALID');
   });
 
   caseTest(`${dialect}: the default select set leaves out only select explicit columns`, 30_000, async () => {
     const row = new Probe().connect(db);
     row[CORE].setValue('small', 2);
+    row[CORE].setValue('wide', 8);
+    row[CORE].setValue('ratio', 2.0);
+    row[CORE].setValue('active', true);
     row[CORE].setValue('note', 'long text');
     row[CORE].setValue('hidden', 'h');
     const seq = (await row.create())[CORE].column('seq');
@@ -129,6 +144,9 @@ for (const dialect of ['sqlite', 'mysql', 'postgres']) {
   caseTest(`${dialect}: every codec stage and dbspec type reads its value type`, 30_000, async () => {
     const row = new Probe().connect(db);
     row[CORE].setValue('small', 3);
+    row[CORE].setValue('wide', 9);
+    row[CORE].setValue('ratio', 2.5);
+    row[CORE].setValue('active', true);
     row[CORE].setValue('secret', 'person@example.com');
     row[CORE].setValue('payload', StyledValue.value(parseJson('{"b":1,"a":1.50}')));
     row[CORE].setValue('packed', StyledValue.value('compressed text'));
@@ -147,6 +165,51 @@ for (const dialect of ['sqlite', 'mysql', 'postgres']) {
     assert.equal(read[CORE].column('day'), '2026-01-02');
     assert.equal(read[CORE].column('clock'), '12:34:56.789');
     assert.equal(read[CORE].column('stamp'), '2026-01-02 03:04:05.678');
+  });
+
+  // Requirements: INT-99, DBS-68, COD-20.
+  caseTest(`${dialect}: selected styled SQL NULL survives a database read`, 30_000, async () => {
+    const row = new Probe().connect(db);
+    row[CORE].setValue('small', 4);
+    row[CORE].setValue('wide', 10);
+    row[CORE].setValue('ratio', 3.5);
+    row[CORE].setValue('active', true);
+    row[CORE].setValue('payload', StyledValue.sqlNull());
+    const seq = (await row.create())[CORE].column('seq');
+    const loaded = await new Probe().connect(db).seq(seq).get();
+    const payload = loaded[CORE].column('payload');
+    assert.ok(payload instanceof StyledValue && payload.kind === 'sql-null');
+  });
+
+  // Requirements: INT-98.
+  caseTest(`${dialect}: invalid stored numeric and boolean cells fail typed reads`, 30_000, async () => {
+    const row = new Probe().connect(db);
+    row[CORE].setValue('small', 5);
+    row[CORE].setValue('wide', 11);
+    row[CORE].setValue('ratio', 4.5);
+    row[CORE].setValue('active', true);
+    const seq = (await row.create())[CORE].column('seq');
+    if (dialect === 'mysql') {
+      await db.pool.execute('ALTER TABLE probe MODIFY wide BIGINT UNSIGNED', [], undefined, () => undefined);
+      await db.pool.execute('UPDATE probe SET wide = 18446744073709551615 WHERE seq = ?', [seq], undefined, () => undefined);
+    } else if (dialect === 'postgres') {
+      await db.pool.execute("UPDATE probe SET ratio = 'NaN'::double precision WHERE seq = $1", [seq], undefined, () => undefined);
+    } else {
+      await db.pool.execute('UPDATE probe SET wide = ? WHERE seq = ?', ['not-an-integer', seq], undefined, () => undefined);
+    }
+    const invalidColumn = dialect === 'postgres' ? 'ratio' : 'wide';
+    await assert.rejects(
+      new Probe().connect(db).seq(seq).addColumn(invalidColumn).get(),
+      error => error instanceof OrmError && error.code === 'CODEC_DECODE',
+    );
+    if (dialect === 'mysql') {
+      await db.pool.execute('UPDATE probe SET wide = 12 WHERE seq = ?', [seq], undefined, () => undefined);
+      await db.pool.execute('UPDATE probe SET active = 2 WHERE seq = ?', [seq], undefined, () => undefined);
+      await assert.rejects(
+        new Probe().connect(db).seq(seq).addColumn('active').get(),
+        error => error instanceof OrmError && error.code === 'CODEC_DECODE',
+      );
+    }
   });
 
   // Checks the writes of a transaction that received the audit record (tests/restore_case.mjs). audit.dbs was installed by the earlier case.

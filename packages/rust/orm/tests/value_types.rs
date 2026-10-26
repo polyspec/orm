@@ -35,9 +35,11 @@ table value_record {
   opens time(3)
   day date
   note varchar(20) null
+  payload text null
   primary key (seq)
   settings {
     select explicit note
+    codec payload ordered_json
   }
 }
 ";
@@ -60,7 +62,7 @@ static RECORD: std::sync::LazyLock<Entity> = std::sync::LazyLock::new(|| Entity 
     collect: polyspec_orm::model::collect_boxed::<Record>,
 });
 
-const COLUMNS: [&str; 7] = ["seq", "small", "rank", "code", "opens", "day", "note"];
+const COLUMNS: [&str; 8] = ["seq", "small", "rank", "code", "opens", "day", "note", "payload"];
 
 model_row!(Record, RECORD, COLUMNS);
 
@@ -69,7 +71,7 @@ fn connected(db: &Db) -> Record {
 }
 
 #[tokio::test]
-// Requirements: INT-99, DBS-68.
+// Requirements: INT-99, DBS-68, COD-20.
 async fn runtime_value_types() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let uuid = "0f0e0d0c-0b0a-4908-8706-050403020100";
@@ -93,6 +95,7 @@ async fn runtime_value_types() {
         assert_eq!(got.values["code"].as_string().unwrap(), uuid, "{driver}: uuid text");
         assert_eq!(got.values["opens"].as_string().unwrap(), "08:30:00.250", "{driver}: time(3) text");
         assert_eq!(got.values["day"].as_date().unwrap(), day, "{driver}: date");
+        assert!(got.values["payload"].is_null(), "{driver}: a selected styled SQL NULL remains SQL NULL on read");
         assert!(!got.values.contains_key("note"), "{driver}: select explicit leaves the column out of the default select set");
         let mut all = connected(&db);
         all.core_mut().add_column("note");

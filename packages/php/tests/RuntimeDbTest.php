@@ -41,10 +41,11 @@ final class RuntimeDbTest extends TestCase
     private static function fixture(): void
     {
         $root = dirname(__DIR__, 3);
-        $values = "dbspec 1 runtime_values\n\ntable sample {\n  seq i64 identity\n  level i16\n  amount i32 default "
-            . "7\n  label varchar(16) default 'x'\n"
-            . "  note text null\n  day date null\n  clock time(3) null\n  created datetime(6) default now\n  token "
-            . "uuid null\n  primary key (seq)\n}\n";
+        $values = "dbspec 1 runtime_values\n\ntable sample {\n"
+            . "  seq i64 identity\n  level i16\n  amount i32 default 7\n  label varchar(16) default 'x'\n"
+            . "  wide i64\n  ratio f64\n  active bool\n  note text null\n  payload text null\n"
+            . "  day date null\n  clock time(3) null\n  created datetime(6) default now\n  token uuid null\n"
+            . "  primary key (seq)\n  settings {\n    codec payload ordered_json\n  }\n}\n";
         // audit.dbs and restore.dbs both declare an audit table, so each is generated separately and only one is
         // installed per case.
         $sets = [
@@ -97,9 +98,10 @@ final class RuntimeDbTest extends TestCase
 
     private static function caseI16ValuesAndDefaults(Db $db): void
     {
-        $low = (new Sample())($db)->setLevel(-32768)->create();
-        $high = (new Sample())($db)->setLevel(32767)->setNote('n')->setToken('0f8fad5b-d9cb-469f-a165-70867728950e')
-            ->setDay('2026-02-03')->setClock('12:34:56.789')->create();
+        $low = (new Sample())($db)->setLevel(-32768)->setWide(1)->setRatio(1.25)->setActive(true)->create();
+        $high = (new Sample())($db)->setLevel(32767)->setWide(2)->setRatio(1.5)->setActive(false)->setNote('n')
+            ->setToken('0f8fad5b-d9cb-469f-a165-70867728950e')->setDay('2026-02-03')
+            ->setClock('12:34:56.789')->create();
         $row = (new Sample())($db)->getBySeq($low->getSeq());
         self::check($row->getLevel() === -32768, 'i16 low ' . var_export($row->getLevel(), true));
         self::check($row->getAmount() === 7 && $row->getLabel() === 'x', 'database defaults');
@@ -117,6 +119,7 @@ final class RuntimeDbTest extends TestCase
             $row->getDay()->format('Y-m-d') === '2026-02-03' && $row->getClock() === '12:34:56.789',
             'date and time'
         );
+        self::check($row->getPayload()->kind === 'sql-null', 'selected styled SQL NULL');
         self::check(
             (new Sample())($db)->level(32767)->getCount() === 1 && (new Sample())($db)->ltLevel(0)->getCount() === 1,
             'i16 conditions'
@@ -130,6 +133,34 @@ final class RuntimeDbTest extends TestCase
             'an omitted non-null column without a default'
         );
         self::check((new Sample())($db)->getCount() === 2, 'the rejected insert stays out of the database');
+    }
+
+    private static function caseInvalidStoredCellsFailTypedReads(Db $db, string $driver): void
+    {
+        $row = (new Sample())($db)->setLevel(1)->setWide(1)->setRatio(1.25)->setActive(true)->create();
+        $seq = $row->getSeq();
+        if ($driver === 'mysql') {
+            $db->pdo()->exec('ALTER TABLE sample MODIFY wide BIGINT UNSIGNED');
+            $db->pdo()->prepare('UPDATE sample SET wide = 18446744073709551615 WHERE seq = ?')->execute([$seq]);
+            $column = 'wide';
+        } elseif ($driver === 'postgres') {
+            $db->pdo()->prepare("UPDATE sample SET ratio = 'NaN'::double precision WHERE seq = ?")->execute([$seq]);
+            $column = 'ratio';
+        } else {
+            $db->pdo()->prepare('UPDATE sample SET wide = ? WHERE seq = ?')->execute(['not-an-integer', $seq]);
+            $column = 'wide';
+        }
+        $error = self::errorCode(
+            fn() => (new Sample())($db)->getBySeq($seq)->{'get' . ucfirst($column)}()
+        );
+        self::check($error === Code::CODEC_DECODE, "invalid $column database cell is CODEC_DECODE");
+        if ($driver === 'mysql') {
+            $db->pdo()->prepare('UPDATE sample SET active = 2 WHERE seq = ?')->execute([$seq]);
+            self::check(
+                self::errorCode(fn() => (new Sample())($db)->getBySeq($seq)->getActive()) === Code::CODEC_DECODE,
+                'invalid bool database cell is CODEC_DECODE'
+            );
+        }
     }
 
     // An audit transaction inserts one audit record, and the write to the audit table writes its key (audit_case.php).
@@ -179,7 +210,7 @@ final class RuntimeDbTest extends TestCase
         });
     }
 
-    // Requirements: DBS-108, SCH-7.
+    // Requirements: DBS-108, SCH-7, INT-99, DBS-68, COD-20.
     #[DataProvider('drivers')]
     public function testInstallRendersTheDocumentSet(string $driver): void
     {
@@ -190,6 +221,17 @@ final class RuntimeDbTest extends TestCase
     public function testI16ValuesAndDefaults(string $driver): void
     {
         self::runCase($driver, 'Polyspec\\Orm\\Tests\\RuntimeDb', self::caseI16ValuesAndDefaults(...));
+    }
+
+    // Requirements: INT-98.
+    #[DataProvider('drivers')]
+    public function testInvalidStoredCellsFailTypedReads(string $driver): void
+    {
+        self::runCase(
+            $driver,
+            'Polyspec\\Orm\\Tests\\RuntimeDb',
+            static fn(Db $db, string $_dsn) => self::caseInvalidStoredCellsFailTypedReads($db, $driver)
+        );
     }
 
     // Requirements: CFG-8, DBS-87, DBS-88, DBS-93, DSL-126, INT-44.
