@@ -19,8 +19,9 @@ const INDEXES: usize = 2;
 pub(super) const QUERIES: [&str; 3] = [
     "SELECT type, name, tbl_name, IFNULL(sql, '') FROM sqlite_master
 WHERE name NOT LIKE 'sqlite_%' AND tbl_name NOT LIKE 'dbspec$%' ORDER BY type, name",
-    "SELECT m.name, p.name, p.type, p.\"notnull\", p.dflt_value, p.pk, p.hidden FROM sqlite_master m
-JOIN pragma_table_xinfo(m.name) p WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%' AND p.name NOT LIKE 'dbspec$%' ORDER BY m.name, p.cid",
+    "SELECT m.name, p.name, p.type, p.\"notnull\", p.dflt_value, p.pk, p.hidden, l.type FROM sqlite_master m
+JOIN pragma_table_xinfo(m.name) p JOIN pragma_table_list l ON l.schema = 'main' AND l.name = m.name
+WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%' AND p.name NOT LIKE 'dbspec$%' ORDER BY m.name, p.cid",
     "SELECT m.name, l.name, l.\"unique\", l.origin, l.partial,
 IFNULL((SELECT group_concat(IFNULL(x.name, ''), ',') FROM (SELECT name FROM pragma_index_xinfo(l.name) WHERE key = 1 ORDER BY seqno) x), ''),
 IFNULL((SELECT group_concat(x.\"desc\", ',') FROM (SELECT \"desc\" FROM pragma_index_xinfo(l.name) WHERE key = 1 ORDER BY seqno) x), '')
@@ -96,6 +97,9 @@ pub(super) fn read(results: &Results) -> Result<Catalog, String> {
         let (table, name, declared, not_null) = (row.text(0)?, row.text(1)?, row.text(2)?, row.int(3)?);
         let dflt = row.opt_text(4)?;
         let (_pk, hidden) = (row.int(5)?, row.int(6)?);
+        if row.text(7)? == "shadow" {
+            continue;
+        }
         if !c.has_table(&table) {
             continue;
         }

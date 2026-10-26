@@ -198,6 +198,7 @@ mod default_tests {
             CatalogValue::Text("7".into()),
             CatalogValue::Int(1),
             CatalogValue::Int(0),
+            CatalogValue::Text("table".into()),
         ]);
         let sqlite = read_catalog(Dialect::Sqlite, &sqlite, "sample").expect("read SQLite default");
         assert!(!sqlite.document.tables.is_empty(), "SQLite catalog reported: {:?}", sqlite.unsupported);
@@ -225,6 +226,7 @@ mod default_tests {
             CatalogValue::Null,
             CatalogValue::Int(1),
             CatalogValue::Int(0),
+            CatalogValue::Text("table".into()),
         ]);
         sqlite[1].push(vec![
             CatalogValue::Text("install_note".into()),
@@ -234,6 +236,7 @@ mod default_tests {
             CatalogValue::Null,
             CatalogValue::Int(0),
             CatalogValue::Int(0),
+            CatalogValue::Text("table".into()),
         ]);
 
         let result = read_catalog(Dialect::Sqlite, &sqlite, "sample").expect("read SQLite catalog");
@@ -246,6 +249,47 @@ mod default_tests {
                 name: "junk".into(),
                 reason: "declared type INTEGER with CHECK \"\" has no dbspec type".into(),
             }]
+        );
+    }
+
+    // Requirements: DIA-191, SCH-7.
+    #[test]
+    fn sqlite_omits_shadow_columns_while_retaining_shadow_tables() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let mut sqlite = vec![Vec::new(); super::sqlite::QUERIES.len()];
+        sqlite[0].push(vec![
+            CatalogValue::Text("table".into()),
+            CatalogValue::Text("ft_orders".into()),
+            CatalogValue::Text("ft_orders".into()),
+            CatalogValue::Text("CREATE VIRTUAL TABLE ft_orders USING fts5(content)".into()),
+        ]);
+        for name in ["config", "content", "data", "docsize", "idx"].map(|suffix| format!("ft_orders_{suffix}")) {
+            sqlite[0].push(vec![
+                CatalogValue::Text("table".into()),
+                CatalogValue::Text(name.clone()),
+                CatalogValue::Text(name.clone()),
+                CatalogValue::Text(format!("CREATE TABLE \"{name}\" (\"odd\" TEXT NOT NULL)")),
+            ]);
+            sqlite[1].push(vec![
+                CatalogValue::Text(name),
+                CatalogValue::Text("odd".into()),
+                CatalogValue::Text("INTEGER".into()),
+                CatalogValue::Int(1),
+                CatalogValue::Null,
+                CatalogValue::Int(0),
+                CatalogValue::Int(0),
+                CatalogValue::Text("shadow".into()),
+            ]);
+        }
+
+        let result = read_catalog(Dialect::Sqlite, &sqlite, "sample").expect("read SQLite FTS catalog");
+        assert!(result.document.tables.is_empty());
+        assert_eq!(result.unsupported.len(), 6);
+        assert!(result.unsupported.iter().all(|object| object.kind == "table"));
+        assert_eq!(result.unsupported[0].table, "ft_orders");
+        assert_eq!(
+            result.unsupported.iter().map(|object| object.table.as_str()).collect::<Vec<_>>(),
+            ["ft_orders", "ft_orders_config", "ft_orders_content", "ft_orders_data", "ft_orders_docsize", "ft_orders_idx"]
         );
     }
 }
