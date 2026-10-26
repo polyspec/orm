@@ -8,9 +8,6 @@ namespace Polyspec\Orm\Tests;
 // The arithmetic case rolls back its updates to preserve the seeded row and identity sequence.
 
 
-use Polyspec\Orm\Request;
-use Polyspec\Orm\Tests\Model\Account;
-use Polyspec\Orm\Tests\Model\Author;
 use Polyspec\Orm\Tests\Model\CompositeAccount;
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\Medium;
@@ -24,50 +21,8 @@ final class CoverageModelWritesTest extends TestCase
     // Requirements: DSL-109.
     public function testSaveKeyDispatch(): void
     {
-        foreach (coverageItemsOf(__FILE__) as $item) {
-            selectCoverageItem($item);
-            [, $dsn] = coverageItem();
-            $db = coverageConnect($dsn);
-            $writes = [];
-            $sentinel = new RuntimeException('DSL-109 request hook stopped the write');
-            $hooked = $db->withRequestHook(static function (Request $request) use (&$writes, $sentinel): void {
-                $kind = $request->ir['kind'];
-                if (in_array($kind, ['insert', 'update'], true)) {
-                    $writes[] = $kind;
-                    throw $sentinel;
-                }
-            });
-            try {
-                $rejectWrite = static function (Closure $save) use ($sentinel): void {
-                    try {
-                        $save();
-                    } catch (Throwable $failure) {
-                        Assert::assertSame($sentinel, $failure, 'Save propagates the request-hook sentinel');
-                        return;
-                    }
-                    Assert::fail('Save reached execution instead of the request hook');
-                };
-                $account = static fn() => (new Account())($hooked);
-                $rejectWrite(static fn() => $account()->setName('missing')->save());
-                Assert::assertSame(['insert'], $writes, 'missing key Save selects INSERT');
-
-                $writes = [];
-                $rejectWrite(static fn() => $account()->setSeq(0)->setName('zero')->save());
-                Assert::assertSame(['update'], $writes, 'explicit zero Save selects UPDATE');
-
-                $writes = [];
-                $loaded = (new Author())($hooked)
-                    ->removeAllColumns()
-                    ->addColumnSeq()
-                    ->addColumnReadCount()
-                    ->getBySeq(1);
-                Assert::assertNotNull($loaded, 'seeded author row loads through the hooked handle');
-                $rejectWrite(static fn() => $loaded->setReadCount($loaded->getReadCount())->save());
-                Assert::assertSame(['update'], $writes, 'loaded original key Save selects UPDATE');
-            } finally {
-                $db->close();
-            }
-        }
+        require_once __DIR__ . '/CoverageModelWritesCase.php';
+        CoverageModelWritesCase::saveKeyDispatch(__FILE__);
     }
 
     // Requirements: DSL-104, INT-35, PRT-41.
