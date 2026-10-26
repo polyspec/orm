@@ -10552,6 +10552,7 @@
         "hot-path-performance-measurement-sqlite"
       ],
       "fixtures": [
+        "contracts/performance-references.json",
         "docs/operations/perf-raw-go-native.txt",
         "docs/operations/perf-raw-rust-native.txt",
         "docs/operations/perf-raw-rust-native-2.txt",

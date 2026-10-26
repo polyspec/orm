@@ -13,7 +13,7 @@ import { implementationLanguages, featureLanguages } from './languages.mts';
 import { parseGoTestEvent, type ParityConfig } from '../json/formats.mts';
 import { programEnvironment, readBinaries } from '../../tests/cargo-test.mts';
 import { COMPLEX_QUERY_DSN_ENVS, COMPLEX_QUERY_SETUP } from '../check/databases.mts';
-import { performanceDiagnosticArguments, performanceMeasurementsFromOutput, writePerformanceMeasurementRecord, performanceAttemptOf, performanceDatabaseOf, performanceRuntimeOf, type PerformanceMeasurement } from './performance-reference.mts';
+import { performanceDiagnosticArguments, performanceMeasurementsFromOutput, performanceReferenceReport, readPerformanceReferenceDeclaration, writePerformanceMeasurementRecord, performanceAttemptOf, performanceDatabaseOf, performanceRuntimeOf, type PerformanceMeasurement } from './performance-reference.mts';
 
 // cargoTestScript is the script that builds the test binary under the lease and copies it.
 const cargoTestScript = new URL('../../tests/cargo-test.mts', import.meta.url).pathname;
@@ -916,8 +916,16 @@ export async function executeCoverage(
     try {
       const path = await writePerformanceMeasurementRecord(root, performanceObservations);
       process.stdout.write(`performance_gate raw observations: ${path}\n`);
+      const declaration = await readPerformanceReferenceDeclaration(root);
+      const report = performanceReferenceReport(performanceObservations, declaration);
+      if (report.status === 'pending')
+        process.stdout.write(`performance_gate fixed references pending: ${report.missing.length} runtime/database/workload references\n`);
+      else {
+        for (const measurement of report.measurements) process.stdout.write(`${measurement}\n`);
+        for (const warning of report.warnings) process.stdout.write(`${warning}\n`);
+      }
     } catch (error) {
-      errors.push(`performance_gate measurement record: ${error instanceof Error ? error.message : String(error)}`);
+      errors.push(`performance_gate reference report: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
   return [...errors, ...checkCoverage(manifest, reports, parityConfig)];
