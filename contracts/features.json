@@ -10648,6 +10648,7 @@
       ],
       "coverage": {
         "kind": "database",
+        "execution": "exclusive",
         "cases": [
           "hot_path_gate"
         ],

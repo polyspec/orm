@@ -131,6 +131,7 @@
       "required": ["kind", "cases", "owners", "dependents"],
       "properties": {
         "kind": { "enum": ["database", "independent"] },
+        "execution": { "enum": ["parallel", "exclusive"] },
         "cases": { "$ref": "#/$defs/cases" },
         "owners": {
           "type": "object",

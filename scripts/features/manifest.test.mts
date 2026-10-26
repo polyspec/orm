@@ -58,6 +58,23 @@ caseTest('the schema of contracts/features.json accepts the repository manifest'
   assert.deepEqual(refused(withFeature(feature => ({ ...feature, status: 'planned', verification: [] }))), []);
 });
 
+caseTest('coverage execution modes are explicit and reject unknown values', COMPUTE, () => {
+  const performanceIndex = manifest.features.findIndex(feature => feature.id === 'performance_gate');
+  const performance = manifest.features[performanceIndex];
+  assert.equal(performance?.coverage?.execution, 'exclusive');
+  assert.ok(performance?.coverage);
+  const parallel = structuredClone(manifest);
+  const parallelCoverage = parallel.features[performanceIndex]?.coverage;
+  assert.ok(parallelCoverage);
+  parallelCoverage.execution = 'parallel';
+  assert.deepEqual(refused(parallel), []);
+  const invalid = structuredClone(manifest);
+  const coverage = invalid.features[performanceIndex]?.coverage;
+  assert.ok(coverage);
+  (coverage as { execution?: unknown }).execution = 'overlapping';
+  assert.ok(refused(invalid).includes(`/features/${performanceIndex}/coverage/execution`));
+});
+
 caseTest('the schema of contracts/features.json refuses a manifest outside its shape', COMPUTE, () => {
   assert.ok(refused({ ...manifest, manifest_version: 2 }).includes('/manifest_version'));
   assert.ok(refused({ ...manifest, features: [] }).includes('/features'));

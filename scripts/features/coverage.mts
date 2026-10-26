@@ -25,7 +25,7 @@ export type Owner = { part: string; tests: string[]; commands?: Record<string, N
 /** A dependent part of a feature. */
 export type Dependent = { id: string; language: string; part: string; tests: string[]; cases: string[]; commands?: Record<string, NativeCommand[]> };
 /** The coverage declaration of a feature. */
-export type Coverage = { kind: string; cases: string[]; owners?: Record<string, Owner>; dependents?: Dependent[] };
+export type Coverage = { kind: string; execution?: 'parallel' | 'exclusive'; cases: string[]; owners?: Record<string, Owner>; dependents?: Dependent[] };
 /** A feature contract of contracts/features.json. */
 export type Feature = { id: string; status?: string; parity?: string[]; coverage?: Coverage; tests?: string[] };
 /** The feature manifest, contracts/features.json. */
@@ -902,17 +902,10 @@ export async function executeCoverage(
   let builds: Builds | undefined;
   try {
     builds = await buildNative(plans, directory);
-    // Runs are done in turn, one line (lane) per database, and the lines proceed together. The state of one database
-    // can only be changed by the runs of that database, so the before and after state comparison stays as it is, and the three databases and
-    // the runs without a database do not wait for each other. Within a line, the runs that do not use cargo come first, during the Rust build
-    // they proceed, and the runs that use the cargo test binary come after that build finishes, in manifest order.
-    // Each run compares its own before and after state, so the order of runs does not change the result.
-    // A file that lists several databases runs once for them (runUnit), before the lanes; the other plans run in lanes.
-    const units = groupUnits(plans);
-    for (const unit of units) if (unit.length > 1) await runUnit(unit);
-    const singles = units.filter(unit => unit.length === 1).map(unit => unit[0] ?? null).filter((plan): plan is Plan => plan !== null);
-    const lanes = Map.groupBy(singles, plan => plan.item.database);
-    await Promise.all([...lanes.values()].map(lane => runLane([...lane.filter(plan => !usesCargo(plan)), ...lane.filter(usesCargo)])));
+    await runCoverageSchedule(
+      plans, plan => plan.feature.coverage?.execution, groupUnits,
+      plan => plan.item.database, usesCargo, runUnit, runLane, builds.cargoReady,
+    );
   } finally {
     // Before deleting the temporary directory, wait for the Rust build (which copies the binary into that directory) to finish.
     await builds?.cargoReady;
@@ -1107,6 +1100,27 @@ function groupUnits(plans: Plan[]): Plan[][] {
     }
   }
   return units;
+}
+
+/** Runs ordinary coverage with its database lanes, then runs each performance plan alone after all builds settle. */
+export async function runCoverageSchedule<T>(
+  plans: readonly T[],
+  execution: (plan: T) => 'parallel' | 'exclusive' | undefined,
+  groupUnits: (plans: T[]) => T[][],
+  database: (plan: T) => string,
+  usesCargo: (plan: T) => boolean,
+  runUnit: (unit: T[]) => Promise<void>,
+  runLane: (lane: T[]) => Promise<void>,
+  cargoReady: Promise<void>,
+): Promise<void> {
+  const ordinaryUnits = groupUnits(plans.filter(plan => execution(plan) !== 'exclusive'));
+  const performancePlans = plans.filter(plan => execution(plan) === 'exclusive');
+  for (const unit of ordinaryUnits) if (unit.length > 1) await runUnit([...unit]);
+  const singles = ordinaryUnits.filter(unit => unit.length === 1).map(unit => unit[0]).filter((plan): plan is T => plan !== undefined);
+  const lanes = Map.groupBy(singles, database);
+  await Promise.all([...lanes.values()].map(lane => runLane([...lane.filter(plan => !usesCargo(plan)), ...lane.filter(usesCargo)])));
+  await cargoReady;
+  for (const plan of performancePlans) await runLane([plan]);
 }
 
 // selectFeatures keeps only the one feature whose featureId (the id in contracts/features.json, as with check.mts --feature)

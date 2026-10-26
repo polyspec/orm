@@ -8,7 +8,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { testDirectoryOf } from './packages.mts';
-import { cargoBuildArgs, cargoFeaturesForPackage, cargoPathModuleFiles, cargoTargetArgs, cargoWorkspaceManifestPath, checkCoverage, coverageItems, databaseDsn, databases, executeCoverage, observedCases, languages, NATIVE_DEADLINE, run, goPerformanceMeasurements, selectFeatures, type Coverage, type Dependent, type Feature, type Manifest, type Owner, type Report } from './coverage.mts';
+import { cargoBuildArgs, cargoFeaturesForPackage, cargoPathModuleFiles, cargoTargetArgs, cargoWorkspaceManifestPath, checkCoverage, coverageItems, databaseDsn, databases, executeCoverage, observedCases, languages, NATIVE_DEADLINE, run, goPerformanceMeasurements, runCoverageSchedule, selectFeatures, type Coverage, type Dependent, type Feature, type Manifest, type Owner, type Report } from './coverage.mts';
 import { readFeatures } from './manifest.mts';
 import { readParityConfig, type ParityConfig } from '../json/formats.mts';
 import { isolatedEnvironment } from '../../tests/environment.mts';
@@ -42,6 +42,88 @@ const ownerTests: Record<string, string> = {
   rust: 'packages/rust/orm/tests/zone.rs', typescript: 'packages/ts/tests/typecheck.ts',
 };
 const dependentTest = 'packages/go/model/model_test.go';
+
+caseTest('performance coverage runs alone after ordinary lanes and native builds settle', COMPUTE, async () => {
+  type Scheduled = { id: string; database: string; execution?: 'parallel' | 'exclusive'; cargo: boolean };
+  const ordinaryUnits: Scheduled[][] = [
+    [
+      { id: 'paired-sqlite', database: 'sqlite', cargo: false },
+      { id: 'paired-mysql', database: 'mysql', cargo: false },
+    ],
+    [{ id: 'ordinary-mysql', database: 'mysql', cargo: false }],
+    [{ id: 'ordinary-postgres', database: 'postgres', cargo: false }],
+  ];
+  const performancePlans: Scheduled[] = [
+    { id: 'measurement-1', database: 'sqlite', execution: 'exclusive', cargo: false },
+    { id: 'measurement-2', database: 'mysql', execution: 'exclusive', cargo: true },
+  ];
+  const plans = [...ordinaryUnits.flat(), ...performancePlans];
+  let ordinaryActive = 0;
+  let ordinaryPeak = 0;
+  let ordinaryCompletions = 0;
+  let ordinaryDone = false;
+  let releaseOrdinary!: () => void;
+  const ordinaryComplete = new Promise<void>(resolve => { releaseOrdinary = resolve; });
+  let releaseBuild!: () => void;
+  let buildSettled = false;
+  const cargoReady = new Promise<void>(resolve => { releaseBuild = () => { buildSettled = true; resolve(); }; });
+  let performanceActive = 0;
+  let performancePeak = 0;
+  const order: string[] = [];
+  const finishOrdinary = (): void => {
+    ordinaryCompletions++;
+    if (ordinaryCompletions === 3) {
+      ordinaryDone = true;
+      releaseOrdinary();
+    }
+  };
+  const enterOrdinary = async (): Promise<void> => {
+    ordinaryActive++;
+    ordinaryPeak = Math.max(ordinaryPeak, ordinaryActive);
+    assert.equal(buildSettled, false, 'ordinary lanes should proceed alongside native builds');
+    await Promise.resolve();
+    ordinaryActive--;
+    finishOrdinary();
+  };
+  const runLane = async (lane: Scheduled[]): Promise<void> => {
+    const plan = lane[0];
+    assert.ok(plan);
+    if (plan.execution !== 'exclusive') {
+      await enterOrdinary();
+      return;
+    }
+    assert.equal(ordinaryDone, true, 'a measurement started before ordinary work settled');
+    assert.equal(buildSettled, true, 'a measurement started before native builds settled');
+    assert.equal(ordinaryActive, 0, 'a measurement overlapped ordinary work');
+    performanceActive++;
+    performancePeak = Math.max(performancePeak, performanceActive);
+    order.push(`${plan.id}:start`);
+    await Promise.resolve();
+    order.push(`${plan.id}:end`);
+    performanceActive--;
+  };
+  const scheduled = runCoverageSchedule(
+    plans,
+    plan => plan.execution,
+    items => {
+      const paired = items.filter(plan => plan.id.startsWith('paired-'));
+      const singles = items.filter(plan => !plan.id.startsWith('paired-'));
+      return [...(paired.length ? [paired] : []), ...singles.map(plan => [plan])];
+    },
+    plan => plan.database,
+    plan => plan.cargo,
+    async () => enterOrdinary(),
+    runLane,
+    cargoReady,
+  );
+  await ordinaryComplete;
+  assert.equal(ordinaryPeak, 2, 'ordinary database lanes stopped running in parallel');
+  assert.deepEqual(order, [], 'a measurement started before native builds settled');
+  releaseBuild();
+  await scheduled;
+  assert.equal(performancePeak, 1, 'performance plans overlapped each other');
+  assert.deepEqual(order, ['measurement-1:start', 'measurement-1:end', 'measurement-2:start', 'measurement-2:end']);
+});
 
 // defined is a value the sample holds; a mutation of a value the sample lacks fails the case.
 function defined<T>(value: T | undefined): T {

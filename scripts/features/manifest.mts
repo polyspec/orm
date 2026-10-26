@@ -16,7 +16,7 @@ export type CoverageOwner = { part: string; tests: string[]; inputs?: string[]; 
 /** A dependent part of a language. */
 export type CoverageDependent = { id: string; language: Language; part: string; tests: string[]; cases: string[]; commands: Commands };
 /** The coverage of a feature. */
-export type Coverage = { kind: 'database' | 'independent'; cases: string[]; owners: Partial<Record<Language, CoverageOwner>>; dependents: CoverageDependent[] };
+export type Coverage = { kind: 'database' | 'independent'; execution?: 'parallel' | 'exclusive'; cases: string[]; owners: Partial<Record<Language, CoverageOwner>>; dependents: CoverageDependent[] };
 /** The vector contract of a feature. */
 export type VectorContract = { source: string; required_databases: string[]; database_expectations: string[]; minimum_vectors: number };
 /** A feature of the manifest. */
