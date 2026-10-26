@@ -1,9 +1,9 @@
 //! Reads dbspec text line by line into the model and reports the errors that a
 //! single line shows. Cross references are checked by `validate`.
 
-use super::check::{CheckParser, KEYWORDS, not_allowed};
-use super::lexer::{Cursor, Kind, Token, tokenize};
-use super::literal::{Value, default_literal};
+use super::check::{not_allowed, CheckParser, KEYWORDS};
+use super::lexer::{tokenize, Cursor, Kind, Token};
+use super::literal::{default_literal, Value};
 use super::model::*;
 use std::collections::HashSet;
 
@@ -507,8 +507,11 @@ impl Parser {
     }
 
     fn check_name(&mut self, text: &str, pos: Pos) {
-        if let Some((rule, message)) = name_problem(text) {
-            self.report(err(pos, rule, message));
+        if !name_format(text) {
+            self.report(err(pos, "name.format", format!("name '{text}' does not match [a-z][a-z0-9_]* or is a reserved word")));
+        }
+        if text.len() > MAX_NAME_BYTES {
+            self.report(err(pos, "name.length", format!("name '{text}' has {} bytes; the limit is {MAX_NAME_BYTES}", text.len())));
         }
     }
 
@@ -1312,18 +1315,20 @@ impl Parser {
             self.report(err(cursor.end, "syntax", "expected ')' at the end of the check"));
             return;
         }
-        let mut parser = CheckParser::new(rest, cursor.end);
+        // Keep the final `)` for the check line itself. A nested group that is missing its close must report at this
+        // token instead of consuming it as the group's close and reporting one column past the line.
+        let closing = rest.last().expect("the check line ends with `)`");
+        let expression_tokens = &rest[..rest.len() - 1];
+        let mut parser = CheckParser::new(expression_tokens, closing.pos);
         let result = parser.expression().and_then(|expr| {
             let at = parser.position();
-            match rest.get(at) {
-                Some(t) if t.is(")") && at + 1 == rest.len() => Ok(expr),
-                Some(t) if t.is(")") => Err((rest[at + 1].pos, format!("'{}' is not allowed after the check expression", rest[at + 1].text))),
+            match expression_tokens.get(at) {
                 Some(t) => Err(not_allowed(t)),
-                None => Err((cursor.end, "check expression has no closing ')'".into())),
+                None => Ok(expr),
             }
         });
-        let consumed = parser.position().min(rest.len());
-        for token in &rest[..consumed] {
+        let consumed = parser.position().min(expression_tokens.len());
+        for token in &expression_tokens[..consumed] {
             if token.kind == Kind::Word {
                 let class = if KEYWORDS.contains(&token.text) { Class::Keyword } else { Class::Name };
                 self.mark(token, class);
@@ -1646,25 +1651,22 @@ impl Parser {
             }
             let value = match cursor.next() {
                 Some(t) if t.kind == Kind::Number && !t.text.contains('.') => match coordinate_value(t.text, negative) {
-                    Ok(value) => Some(value),
+                    Ok(value) => value,
                     Err(message) => {
                         self.report(err(pos, "diagram", format!("a coordinate is not an integer: {message}")));
-                        return;
+                        continue;
                     }
                 },
                 None => {
                     self.report(err(cursor.end, "syntax", "the line ends early"));
                     return;
                 }
-                Some(_) => None,
-            };
-            match value {
-                Some(value) => *coordinate = value,
-                None => {
+                Some(_) => {
                     self.report(err(pos, "diagram", "a coordinate is not an integer"));
-                    return;
+                    continue;
                 }
-            }
+            };
+            *coordinate = value;
         }
         if self.end(&cursor).is_none() {
             return;
