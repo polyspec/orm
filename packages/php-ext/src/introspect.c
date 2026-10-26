@@ -2431,8 +2431,9 @@ static catalog *pg_read(zval *pdo)
 
 static const char SQLITE_MASTER[] = "SELECT type, name, tbl_name, IFNULL(sql, '') FROM sqlite_master\n"
     "WHERE name NOT LIKE 'sqlite_%' AND tbl_name NOT LIKE 'dbspec$%' ORDER BY type, name";
-static const char SQLITE_COLUMNS[] = "SELECT m.name, p.name, p.type, p.\"notnull\", p.dflt_value, p.pk, p.hidden FROM sqlite_master m\n"
-    "JOIN pragma_table_xinfo(m.name) p WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%' AND p.name NOT LIKE 'dbspec$%' ORDER BY m.name, p.cid";
+static const char SQLITE_COLUMNS[] = "SELECT m.name, p.name, p.type, p.\"notnull\", p.dflt_value, p.pk, p.hidden, l.type FROM sqlite_master m\n"
+    "JOIN pragma_table_xinfo(m.name) p JOIN pragma_table_list l ON l.schema = 'main' AND l.name = m.name "
+    "WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%' AND p.name NOT LIKE 'dbspec$%' ORDER BY m.name, p.cid";
 static const char SQLITE_INDEXES[] = "SELECT m.name, l.name, l.\"unique\", l.origin, l.partial,\n"
     "IFNULL((SELECT group_concat(IFNULL(x.name, ''), ',') FROM (SELECT name FROM pragma_index_xinfo(l.name) WHERE key = 1 ORDER BY seqno) x), ''),\n"
     "IFNULL((SELECT group_concat(x.\"desc\", ',') FROM (SELECT \"desc\" FROM pragma_index_xinfo(l.name) WHERE key = 1 ORDER BY seqno) x), '')\n"
@@ -2833,13 +2834,18 @@ static catalog *sqlite_read(zval *pdo)
     ok = catalog_read(pdo, q, &rows);
     if (ok) {
         EACH_ROW(rows, row) {
-            str table, name, declared, def;
+            str table, name, declared, def, table_kind;
             zend_long not_null, pk, hidden;
             bool def_null;
             if (!(row_text(row, 0, q, &table) && row_text(row, 1, q, &name) && row_text(row, 2, q, &declared) && row_integer(row, 3, q, &not_null)
-                && row_nullable_text(row, 4, q, &def_null, &def) && row_integer(row, 5, q, &pk) && row_integer(row, 6, q, &hidden))) {
+                && row_nullable_text(row, 4, q, &def_null, &def) && row_integer(row, 5, q, &pk) && row_integer(row, 6, q, &hidden)
+                && row_text(row, 7, q, &table_kind))) {
                 ok = false;
                 break;
+            }
+            /* SQLite virtual-table shadow columns belong to the module, not a user table's dbspec definition. */
+            if (str_eqc(table_kind, "shadow")) {
+                continue;
             }
             itable *t = catalog_table(c, table);
             if (t == NULL) {
