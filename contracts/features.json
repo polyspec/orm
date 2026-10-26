@@ -69,7 +69,8 @@
         "markdown-session-messages",
         "markdown-message-vectors",
         "markdown-rejected-surfaces",
-        "py-test-placeholders"
+        "py-test-placeholders",
+        "pool-idle-server-end"
       ],
       "fixtures": [
         "packages/go/orm/test_helpers_test.go",
@@ -482,6 +483,35 @@
           "shard": "other",
           "inputs": [
             "packages/ts/tests/idle-connection-end.mjs"
+          ]
+        },
+        {
+          "id": "idle-connection-end-go",
+          "command": "node tests/go-test.mts -v -timeout 0 ./packages/go/orm -run '^TestPoolDiscardsEndedIdleConnection$' -count=1",
+          "shard": "other",
+          "inputs": [
+            "packages/go/orm/timezone_test.go",
+            "packages/go/orm/rollback_test.go"
+          ]
+        },
+        {
+          "id": "idle-connection-end-python",
+          "command": "packages/python/.venv/bin/python -m unittest packages.python.tests.connection_pool.ConnectionPoolTest.test_idle_server_end_discards_connection",
+          "shard": "other",
+          "inputs": [
+            "packages/python/tests/connection_pool.py",
+            "packages/python/tests/server_database.py",
+            "packages/python/tests/runner_connect.py",
+            "packages/python/src/polyspec/orm/database.py"
+          ]
+        },
+        {
+          "id": "idle-connection-end-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts idle-connection-end-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --offline -p polyspec-orm --features \"$ORM_RUST_TEST_FEATURES\" --test zone pool_discards_ended_idle_connection -- --exact --test-threads=1",
+          "shard": "rust",
+          "inputs": [
+            "packages/rust/orm/tests/zone.rs",
+            "packages/rust/case-database/src/lib.rs"
           ]
         },
         {

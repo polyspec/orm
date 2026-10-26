@@ -274,6 +274,114 @@ func TestPoolIdleSizeAndLifetime(t *testing.T) {
 	}
 }
 
+// TestPoolDiscardsEndedIdleConnection keeps the process alive after a server
+// ends the sole idle connection, then verifies the next statement succeeds.
+// Requirements: INT-92.
+func TestPoolDiscardsEndedIdleConnection(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	for _, driver := range []string{"mysql", "postgres"} {
+		t.Run(driver, func(t *testing.T) {
+			dsn := newDatabase(t, driver)
+			db, err := orm.Connect(dsn, orm.Config{PoolSize: 1, PoolIdleSize: 1})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer testcase.Close(t, db)
+			if _, err := db.Utils().Schema().Exists("orm"); err != nil {
+				t.Fatalf("warm pool connection: %v", err)
+			}
+			if stats := db.Stats(); stats.Idle != 1 {
+				t.Fatalf("pool before server end: %+v, want one idle connection", stats)
+			}
+
+			admin := openNative(t, driver, serverSession(t, driver, dsn))
+			defer testcase.Close(t, admin)
+			var killed int
+			switch driver {
+			case "postgres":
+				rows, err := admin.Query(`SELECT pid FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid()`)
+				if err != nil {
+					t.Fatal(err)
+				}
+				var pids []int64
+				for rows.Next() {
+					var pid int64
+					if err := rows.Scan(&pid); err != nil {
+						t.Fatal(err)
+					}
+					pids = append(pids, pid)
+				}
+				if err := rows.Err(); err != nil {
+					t.Fatal(err)
+				}
+				if err := rows.Close(); err != nil {
+					t.Fatal(err)
+				}
+				if len(pids) != 1 {
+					t.Fatalf("case database has %d other server sessions, want the one idle pool connection", len(pids))
+				}
+				var ended bool
+				if err := admin.QueryRow(`SELECT pg_terminate_backend($1, 5000)`, pids[0]).Scan(&ended); err != nil {
+					t.Fatalf("end idle PostgreSQL session: %v", err)
+				}
+				if !ended {
+					t.Fatal("PostgreSQL did not end the idle pool connection")
+				}
+				killed = 1
+			case "mysql":
+				rows, err := admin.Query(`SELECT ID FROM information_schema.PROCESSLIST WHERE DB = DATABASE() AND ID <> CONNECTION_ID()`)
+				if err != nil {
+					t.Fatal(err)
+				}
+				var ids []int64
+				for rows.Next() {
+					var id int64
+					if err := rows.Scan(&id); err != nil {
+						t.Fatal(err)
+					}
+					ids = append(ids, id)
+				}
+				if err := rows.Err(); err != nil {
+					t.Fatal(err)
+				}
+				if err := rows.Close(); err != nil {
+					t.Fatal(err)
+				}
+				if len(ids) != 1 {
+					t.Fatalf("case database has %d other server sessions, want the one idle pool connection", len(ids))
+				}
+				if _, err := admin.Exec("KILL ?", ids[0]); err != nil {
+					t.Fatalf("end idle MySQL session: %v", err)
+				}
+				deadline := time.Now().Add(10 * time.Second)
+				for {
+					var remaining int
+					if err := admin.QueryRow(`SELECT COUNT(*) FROM information_schema.PROCESSLIST WHERE ID = ?`, ids[0]).Scan(&remaining); err != nil {
+						t.Fatal(err)
+					}
+					if remaining == 0 {
+						break
+					}
+					if time.Now().After(deadline) {
+						t.Fatalf("server still lists idle session %d after KILL", ids[0])
+					}
+					time.Sleep(20 * time.Millisecond)
+				}
+				killed = 1
+			}
+			if killed != 1 {
+				t.Fatalf("ended %d idle pool sessions, want one", killed)
+			}
+			if _, err := db.Utils().Schema().Exists("orm"); err != nil {
+				t.Fatalf("statement after server ended idle connection: %v", err)
+			}
+			if stats := db.Stats(); stats.Idle != 1 {
+				t.Fatalf("pool after replacement connection: %+v, want one idle connection", stats)
+			}
+		})
+	}
+}
+
 // TestStatementTimeout bounds every statement of the connection. MySQL bounds
 // SELECT statements, PostgreSQL bounds every statement, and SQLite has no
 // session timeout. The bounded statement is a locking read of a row that

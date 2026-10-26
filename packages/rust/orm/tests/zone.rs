@@ -260,6 +260,69 @@ async fn pool_idle_size_and_lifetime() {
     remove_dir(&tmp);
 }
 
+/// An idle server connection is discarded; the next statement uses a new one.
+#[tokio::test]
+// Requirements: INT-92.
+async fn pool_discards_ended_idle_connection() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
+    for driver in ["mysql", "postgres"] {
+        let database = CaseDatabase::create(driver).await;
+        let db = Db::connect(database.dsn(), 1, polyspec_orm::Config { pool_idle_size: 1, ..polyspec_orm::Config::default() })
+            .await
+            .or_panic(|e| format!("{driver}: connect pool: {e}"));
+        assert!(!db.utils().schema().exists("orm").await.or_panic(|e| format!("{driver}: warm pool: {e}")));
+        assert_eq!(db.stats().idle, 1, "{driver}: the pool holds one idle connection");
+
+        let server_dsn = database.related_dsn(&require_dsn(&format!("ORM_TEST_{}_SERVER_DSN", driver.to_uppercase())));
+        let admin = Db::connect(&server_dsn, 1, polyspec_orm::Config::default()).await.or_panic(|e| format!("{driver}: connect direct server session: {e}"));
+        match admin.pool() {
+            Pool::Postgres(pool) => {
+                let pids: Vec<i32> = sqlx::query_scalar("SELECT pid FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid()")
+                    .fetch_all(pool)
+                    .await
+                    .or_panic(|e| format!("{driver}: list case database sessions: {e}"));
+                assert_eq!(pids.len(), 1, "{driver}: one idle client session is present");
+                let ended: bool = sqlx::query_scalar("SELECT pg_terminate_backend($1, 5000)")
+                    .bind(pids[0])
+                    .fetch_one(pool)
+                    .await
+                    .or_panic(|e| format!("{driver}: end idle pool session: {e}"));
+                assert!(ended, "{driver}: server ended the idle session");
+            }
+            Pool::MySql(pool) => {
+                let ids: Vec<u64> = sqlx::query_scalar("SELECT ID FROM information_schema.PROCESSLIST WHERE DB = DATABASE() AND ID <> CONNECTION_ID()")
+                    .fetch_all(pool)
+                    .await
+                    .or_panic(|e| format!("{driver}: list case database sessions: {e}"));
+                assert_eq!(ids.len(), 1, "{driver}: one idle client session is present");
+                sqlx::raw_sql(sqlx::AssertSqlSafe(format!("KILL CONNECTION {}", ids[0])))
+                    .execute(pool)
+                    .await
+                    .or_panic(|e| format!("{driver}: end idle pool session: {e}"));
+                let deadline = tokio::time::Instant::now() + Duration::from_secs(10);
+                loop {
+                    let remaining: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM information_schema.PROCESSLIST WHERE ID = ?")
+                        .bind(ids[0])
+                        .fetch_one(pool)
+                        .await
+                        .or_panic(|e| format!("{driver}: check ended session: {e}"));
+                    if remaining == 0 {
+                        break;
+                    }
+                    assert!(tokio::time::Instant::now() < deadline, "{driver}: server still lists idle session {} after KILL", ids[0]);
+                    tokio::time::sleep(Duration::from_millis(20)).await;
+                }
+            }
+            Pool::Sqlite(_) | Pool::Markdown(_) => unreachable!("server session DSNs select MySQL or PostgreSQL"),
+        }
+        admin.close().await;
+        assert!(!db.utils().schema().exists("orm").await.or_panic(|e| format!("{driver}: statement after server ended idle connection: {e}")));
+        assert_eq!(db.stats().idle, 1, "{driver}: the pool retained a replacement connection");
+        db.close().await;
+        database.drop().await;
+    }
+}
+
 /// A pool size of zero opens a pool of 10 connections, and a pool never runs
 /// more concurrent transactions or opens more connections than its maximum.
 #[tokio::test]

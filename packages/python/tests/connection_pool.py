@@ -5,18 +5,23 @@
 # negative value or an idle size above the pool size is CONFIG. Each case runs on SQLite, MySQL and PostgreSQL; MySQL
 # and PostgreSQL need ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN, and a missing variable fails the case.
 # Usage: python -m packages.python.tests.connection_pool
+import os
 import tempfile
 import threading
 import time
 import unittest
 from concurrent.futures import ThreadPoolExecutor
+from urllib.parse import urlsplit
 
+import psycopg
 from polyspec.orm.errors import OrmError
 from polyspec.orm.models import models
 
 from . import testcase
 from .bench_set import install_bench
 from .case_database import case_database
+from .runner_connect import mysql_connect
+from .server_database import with_database
 
 DIALECTS = ("sqlite", "mysql", "postgres")
 TEMP = {}
@@ -269,6 +274,75 @@ class ConnectionPoolTest(unittest.TestCase):
                 db.close()
 
         self.each(body)
+
+    # Requirements: INT-92.
+    def test_idle_server_end_discards_connection(self):
+        for dialect in ("mysql", "postgres"):
+            with (
+                self.subTest(dialect=dialect),
+                case_database(dialect, TEMP["dir"].name, "orm_idle_end") as dsn,
+            ):
+                db = models.connect(dsn, poolSize=1, poolIdleSize=1)
+                try:
+                    self.assertFalse(db.utils().schema().exists("orm"))
+                    self.assertEqual(
+                        db.stats().idle, 1, "the pool holds one idle connection"
+                    )
+                    server = os.environ.get(f"ORM_TEST_{dialect.upper()}_SERVER_DSN")
+                    self.assertTrue(server, f"the {dialect} server DSN is required")
+                    admin_dsn = with_database(server, urlsplit(dsn).path.lstrip("/"))
+
+                    if dialect == "postgres":
+                        with psycopg.connect(admin_dsn, autocommit=True) as admin:
+                            rows = admin.execute(
+                                "SELECT pid FROM pg_stat_activity WHERE datname = current_database() "
+                                "AND pid <> pg_backend_pid()"
+                            ).fetchall()
+                            self.assertEqual(
+                                len(rows), 1, "one idle client session is present"
+                            )
+                            ended = admin.execute(
+                                "SELECT pg_terminate_backend(%s, 5000)", (rows[0][0],)
+                            ).fetchone()[0]
+                            self.assertTrue(ended, "the server ended the idle session")
+                    else:
+                        database = urlsplit(admin_dsn).path.lstrip("/")
+                        with mysql_connect(admin_dsn, database) as admin:
+                            with admin.cursor() as cursor:
+                                cursor.execute(
+                                    "SELECT ID FROM information_schema.PROCESSLIST "
+                                    "WHERE DB = DATABASE() AND ID <> CONNECTION_ID()"
+                                )
+                                rows = cursor.fetchall()
+                                self.assertEqual(
+                                    len(rows), 1, "one idle client session is present"
+                                )
+                                session_id = int(rows[0][0])
+                                cursor.execute(f"KILL {session_id}")
+                                deadline = time.monotonic() + 10
+                                while True:
+                                    cursor.execute(
+                                        "SELECT COUNT(*) FROM information_schema.PROCESSLIST "
+                                        "WHERE ID = %s",
+                                        (session_id,),
+                                    )
+                                    if cursor.fetchone()[0] == 0:
+                                        break
+                                    if time.monotonic() >= deadline:
+                                        self.fail(
+                                            f"server still lists idle session {session_id} after KILL"
+                                        )
+                                    time.sleep(0.02)
+
+                    self.assertFalse(
+                        db.utils().schema().exists("orm"),
+                        "the next statement succeeds after the server ends the idle connection",
+                    )
+                    self.assertEqual(
+                        db.stats().idle, 1, "the pool retained a replacement connection"
+                    )
+                finally:
+                    db.close()
 
 
 if __name__ == "__main__":

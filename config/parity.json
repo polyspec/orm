@@ -6699,7 +6699,7 @@
       ]
     },
     {
-      "id": "ts-idle-connection-end",
+      "id": "pool-idle-server-end",
       "kind": "feature",
       "requirements": [
         "INT-92"
@@ -6709,6 +6709,36 @@
           "implementation": "typescript",
           "test": "packages/ts/tests/idle-connection-end.mjs",
           "id": "idle-connection-end/postgres"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/idle-connection-end.mjs",
+          "id": "idle-connection-end/mysql"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/timezone_test.go",
+          "id": "TestPoolDiscardsEndedIdleConnection"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/connection_pool.py",
+          "id": "test_idle_server_end_discards_connection"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/zone.rs",
+          "id": "pool_discards_ended_idle_connection"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testPoolOptions"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/OrmExceptionNativeTest.php",
+          "id": "OrmExceptionNativeTest::testNativeConnectionRejectsUnsupportedPoolAndNegativeTimeoutOptions"
         }
       ]
     },

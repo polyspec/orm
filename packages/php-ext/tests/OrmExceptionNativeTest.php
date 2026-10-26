@@ -259,7 +259,8 @@ final class OrmExceptionNativeTest extends TestCase
         }
     }
 
-    // Requirements: CFG-4, CFG-5, CFG-6.
+    // This refusal establishes that PHP's native client owns no idle pool
+    // connection for the server to end. Requirements: CFG-4, CFG-5, CFG-6, INT-92.
     public function testNativeConnectionRejectsUnsupportedPoolAndNegativeTimeoutOptions(): void
     {
         foreach (

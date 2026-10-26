@@ -1138,6 +1138,8 @@ final class ModelTest extends TestCase
 
     #[DataProvider('drivers')]
     // Requirements: CFG-4, CFG-5.
+    // This no-pool assertion covers INT-92's applicability: the PHP client has
+    // no idle pool connection for the server to end. Requirements: CFG-4, INT-92.
     public function testPoolOptions(string $driver): void
     {
         $dsn = self::$targets[$driver];
