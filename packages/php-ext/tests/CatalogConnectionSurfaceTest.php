@@ -418,6 +418,56 @@ final class CatalogConnectionSurfaceTest extends TestCase
         }
     }
 
+    // Requirements: INT-111.
+    public function testNativeRowUpdateChecksDeclaredCharacterAndBinaryCapacityBeforeWriting(): void
+    {
+        $pdo = new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+        $pdo->exec(
+            'CREATE TABLE capacity_values (id INTEGER PRIMARY KEY, label VARCHAR(3) NOT NULL, '
+            . 'payload VARBINARY(3) NOT NULL)'
+        );
+        $db = new Db($pdo, 'sqlite', new Config(), new DateTimeZone('UTC'));
+        $catalog = self::catalogWith($db, 'sqlite');
+        (new ReflectionProperty(Catalog::class, 'gridLink'))->setValue($catalog, null);
+
+        try {
+            self::assertTrue((new ReflectionClass(Catalog::class))->isInternal());
+            $table = ['namespace' => 'main', 'name' => 'capacity_values'];
+            $metadata = $catalog->describeTable($table);
+            $catalog->insertRow($metadata, ['id' => 1, 'label' => 'old', 'payload' => 'old']);
+            $snapshot = $catalog->rowSnapshotFromPage($catalog->tablePage($table, 1, 0), 0);
+
+            foreach (
+                [
+                    ['label' => '界界界界'],
+                    ['payload' => 'éxy'],
+                ] as $invalid
+            ) {
+                try {
+                    $catalog->updateRow($snapshot, $invalid);
+                    self::fail('an update over its declared capacity was accepted');
+                } catch (OrmException $error) {
+                    self::assertSame(Code::ROW_UPDATE_INVALID, $error->code_);
+                    self::assertSame(
+                        'ROW_UPDATE_INVALID: value exceeds the declared capacity of column '
+                        . '"' . array_key_first($invalid) . '"',
+                        $error->getMessage(),
+                    );
+                }
+                $unchanged = $catalog->tablePage($table, 1, 0)->result->rows[0];
+                self::assertSame([1, 'old', 'old'], $unchanged);
+            }
+
+            $updated = $catalog->updateRow(
+                $snapshot,
+                ['label' => '界界界', 'payload' => 'éx'],
+            );
+            self::assertSame([1, '界界界', 'éx'], $updated->rows[0]);
+        } finally {
+            $catalog->close();
+        }
+    }
+
     public function testNativeCloseAttemptsBothStepsAndKeepsPrimaryAndCleanupCauses(): void
     {
         $db = new Db(null, 'sqlite', new Config(), new DateTimeZone('UTC'));

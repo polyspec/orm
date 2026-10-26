@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { isolatedEnvironment } from '../../tests/environment.mts';
 import { execFailure } from '../../tests/errors.mts';
-import { caseTest, COMPUTE, duration, PROCESS } from '../../tests/testcase.mts';
+import { caseTest, cases, COMPUTE, duration, PROCESS } from '../../tests/testcase.mts';
 
 const harness = new URL('../../tests/testcase.mts', import.meta.url).href;
 
@@ -177,4 +177,32 @@ caseTest('fixture/node-fail', 60000, () => { throw new Error('node failure reaso
   assert.notEqual(code, 0, stdout);
   inOrder(stdout, ['.*ok 1 - fixture/node-pass', '# node step', '.*not ok 2 - fixture/node-fail', `.*error: 'node failure reason'`]);
   assert.doesNotMatch(stdout, /RUN |PASS |FAIL |elapsed=/);
+});
+
+caseTest('testcase/cases registers each run as a native test and ignores filtered skips', PROCESS, async () => {
+  const failing = await runChild(`
+import { cases } from ${JSON.stringify(harness)};
+const runner = cases();
+const first = await runner.run('fixture/first', 60000, ({ step }) => { console.log('body:first'); step('first step'); });
+const second = await runner.run('fixture/second', 60000, () => { console.log('body:second'); throw new Error('second failure'); });
+console.log('results', first, second, 'finish', runner.finish());
+`, ['--test', '--test-reporter=tap']);
+  assert.equal(failing.code, 1, failing.stdout);
+  assert.match(failing.stdout, /not ok 2 - fixture\/second/);
+  assert.match(failing.stdout, /error: 'second failure'/);
+  assert.match(failing.stdout, /results true false finish 1/);
+  assert.doesNotMatch(failing.stdout, /(?:^|\n)ok - fixture\/|(?:^|\n)not ok - fixture\//);
+  assert.ok(failing.stdout.indexOf('body:first') < failing.stdout.indexOf('body:second'), failing.stdout);
+
+  const skipped = await runChild(`
+import { cases } from ${JSON.stringify(harness)};
+const runner = cases();
+const chosen = await runner.run('fixture/chosen', 60000, () => {});
+const omitted = await runner.run('fixture/omitted', 60000, () => { throw new Error('filtered body ran'); });
+console.log('results', chosen, omitted, 'finish', runner.finish());
+`, ['--test', '--test-reporter=tap', '--test-name-pattern=chosen']);
+  assert.equal(skipped.code, 0, skipped.stdout);
+  assert.match(skipped.stdout, /ok 1 - fixture\/chosen/);
+  assert.match(skipped.stdout, /results true true finish 0/);
+  assert.doesNotMatch(skipped.stdout, /fixture\/omitted|filtered body ran|case\(s\) failed|(?:^|\n)not ok - fixture\//);
 });

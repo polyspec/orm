@@ -200,6 +200,25 @@ def _params(values) -> list:
     return out
 
 
+def _exceeds_declared_capacity(column: CatalogColumn, value) -> bool:
+    """Whether text or binary value exceeds the bound of a fixed or varying column type."""
+    if isinstance(value, str):
+        match = re.match(
+            r"^(?:varchar|character varying)\s*\((\d+)\)",
+            column.native_type,
+            re.IGNORECASE,
+        )
+        return match is not None and len(value) > int(match.group(1))
+    if isinstance(value, bytes):
+        match = re.match(
+            r"^(?:varbinary|binary)\s*\((\d+)\)",
+            column.native_type,
+            re.IGNORECASE,
+        )
+        return match is not None and len(value) > int(match.group(1))
+    return False
+
+
 def _cell_key(cell) -> str:
     """The canonical text of one cell: its type and its exact value. Two cells are equal exactly when their keys are."""
     if cell is None:
@@ -552,6 +571,10 @@ def _changes(metadata: CatalogTableMetadata, values, code: str) -> list:
             raise _error(code, f"generated column {name!r} is not writable")
         if value is None and not column.nullable:
             raise _error(code, f"NULL in non-null column {name!r}")
+        if _exceeds_declared_capacity(column, value):
+            raise _error(
+                code, f"value exceeds the declared capacity of column {name!r}"
+            )
         seen.add(name)
         changes.append((index, value))
     return changes

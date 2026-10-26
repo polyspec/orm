@@ -736,9 +736,23 @@ function checkChanges(metadata: CatalogTableMetadata, values: readonly CatalogAs
     if (column.generated) throw err(code, `generated column "${column.name}" is not writable`);
     const value = params[position] ?? null;
     if (value === null && !column.nullable) throw err(code, `NULL in non-null column "${column.name}"`);
+    if (exceedsDeclaredCapacity(column, value)) throw err(code, `value exceeds the declared capacity of column "${column.name}"`);
     seen.add(column.name);
     return { index, value };
   });
+}
+
+/** Whether an assigned text or byte value exceeds the length declared by its native column type. */
+function exceedsDeclaredCapacity(column: CatalogColumn, value: DriverValue): boolean {
+  if (typeof value === 'string') {
+    const match = /^(?:varchar|character varying)\s*\((\d+)\)/i.exec(column.nativeType);
+    return match !== null && Array.from(value).length > Number(match[1]);
+  }
+  if (value instanceof Uint8Array) {
+    const match = /^(?:varbinary|binary)\s*\((\d+)\)/i.exec(column.nativeType);
+    return match !== null && value.byteLength > Number(match[1]);
+  }
+  return false;
 }
 
 /** Read-only statement validation. The words of a query are read with string literals, quoted identifiers and comments skipped. */

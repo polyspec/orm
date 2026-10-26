@@ -1,8 +1,13 @@
 import unittest
 
-from . import testcase
 from polyspec.orm import OrmError, codes
-from polyspec.orm.catalog import CatalogColumn, CatalogConnection, CatalogTableMetadata
+from polyspec.orm.catalog import (
+    CatalogColumn,
+    CatalogConnection,
+    CatalogRowSnapshot,
+    CatalogTableMetadata,
+)
+from . import testcase
 
 
 class CatalogPageValidationTest(unittest.TestCase):
@@ -40,6 +45,63 @@ class CatalogPageValidationTest(unittest.TestCase):
             with self.assertRaises(OrmError) as raised:
                 catalog.table_page(before.table, 1, 0)
             self.assertEqual(raised.exception.code, codes.TABLE_PAGE_METADATA_CHANGED)
+
+    # Requirements: INT-111.
+    def test_row_update_checks_declared_text_and_binary_capacity_before_writing(self):
+        metadata = CatalogTableMetadata(
+            table={"namespace": "main", "name": "capacity_probe"},
+            kind="table",
+            columns=[
+                CatalogColumn("id", "INTEGER", False, False),
+                CatalogColumn("varchar_value", "varchar(2)", False, False),
+                CatalogColumn("varying_value", "character varying(2)", False, False),
+                CatalogColumn("varbinary_value", "varbinary(2)", False, False),
+                CatalogColumn("binary_value", "binary(2)", False, False),
+            ],
+            primary_key=["id"],
+            reliable_row_identity=True,
+        )
+        original = CatalogRowSnapshot(
+            metadata,
+            [1, "ok", "ok", b"ok", b"ok"],
+            [0],
+            "original revision",
+        )
+        catalog = object.__new__(CatalogConnection)
+        catalog._dialect = "sqlite"
+        writes = []
+        marker = object()
+
+        def write(work):
+            writes.append(work)
+            return marker
+
+        catalog._write = write
+        result = catalog.update_row(
+            original,
+            [
+                ("varchar_value", "é😀"),
+                ("varying_value", "é😀"),
+                ("varbinary_value", b"\x00\xff"),
+                ("binary_value", b"\x00\xff"),
+            ],
+        )
+        self.assertIs(result, marker)
+        self.assertEqual(len(writes), 1)
+
+        for name, value in (
+            ("varchar_value", "é😀x"),
+            ("varying_value", "é😀x"),
+            ("varbinary_value", b"\x00\xffx"),
+            ("binary_value", b"\x00\xffx"),
+        ):
+            with self.subTest(column=name):
+                with self.assertRaises(OrmError) as raised:
+                    catalog.update_row(original, [(name, value)])
+                self.assertEqual(raised.exception.code, codes.ROW_UPDATE_INVALID)
+                self.assertEqual(
+                    len(writes), 1, "invalid values are refused before a write session"
+                )
 
 
 if __name__ == "__main__":

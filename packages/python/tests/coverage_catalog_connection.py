@@ -452,7 +452,7 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
                 directory, root / "contracts" / "fixtures" / "bench" / "dbspec-set.json"
             )
             db = models.connect(
-                self.coverage_item[1],
+                self.dsn,
                 aesKey="bench-salt",
                 blindIndexKey="bench-blind-index",
             )

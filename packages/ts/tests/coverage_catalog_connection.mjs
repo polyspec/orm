@@ -72,7 +72,7 @@ async function readCase(item) {
     assert.deepEqual(page.orderBy, ['seq'], `${driver}: page order`);
     assert.equal(page.hasMore, true, `${driver}: more author rows follow`);
     assert.equal(page.result.rows.length, 3, `${driver}: author page rows`);
-    assert.deepEqual(page.result.columns, meta.columns.map(column => column.name), `${driver}: page columns follow descriptor order`);
+    assert.deepEqual(page.result.columns.map(column => column.name), meta.columns.map(column => column.name), `${driver}: page columns follow descriptor order`);
     for (const [limit, offset] of [[0, 0], [1001, 0], [1, 1_000_001]]) {
       await assert.rejects(catalog.tablePage(author, limit, offset), `${driver}: table page bounds ${limit}/${offset}`);
     }

@@ -2373,11 +2373,7 @@ static bool cat_exceeds_char_limit(zval *column, zval *value)
     }
     zend_ulong actual = Z_STRLEN_P(value);
     if (!binary) {
-        actual = 0;
-        const unsigned char *bytes = (const unsigned char *)Z_STRVAL_P(value);
-        for (size_t i = 0; i < Z_STRLEN_P(value); i++) {
-            if ((bytes[i] & 0xc0) != 0x80) actual++;
-        }
+        actual = utf8_count((str){Z_STRVAL_P(value), Z_STRLEN_P(value)});
     }
     return actual > limit;
 }
@@ -2424,7 +2420,7 @@ static bool cat_changes(zval *metadata, zval *values, const char *code, zval *ou
                     return false;
                 }
                 if (cat_exceeds_char_limit(column, value)) {
-                    db_throw_orm(code, "value exceeds the declared character length of column \"%s\"", ZSTR_VAL(key));
+                    db_throw_orm(code, "value exceeds the declared capacity of column \"%s\"", ZSTR_VAL(key));
                     zval_ptr_dtor(out);
                     return false;
                 }

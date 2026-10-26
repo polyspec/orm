@@ -2,8 +2,11 @@ package orm
 
 import (
 	"context"
+	"regexp"
 	"slices"
+	"strconv"
 	"strings"
+	"unicode/utf8"
 )
 
 // CatalogAssignment is one named column value of a row change.
@@ -22,6 +25,35 @@ type CatalogMutationResult struct {
 type catalogChange struct {
 	index int
 	value any
+}
+
+var catalogCharacterCapacity = regexp.MustCompile(`(?i)^(?:varchar|character varying)\s*\(([0-9]+)\)`)
+var catalogBinaryCapacity = regexp.MustCompile(`(?i)^(?:varbinary|binary)\s*\(([0-9]+)\)`)
+
+func catalogExceedsDeclaredCapacity(nativeType string, value any) bool {
+	switch typed := value.(type) {
+	case string:
+		if capacity, ok := catalogDeclaredCapacity(catalogCharacterCapacity, nativeType); ok && uint64(utf8.RuneCountInString(typed)) > capacity {
+			return true
+		}
+		if capacity, ok := catalogDeclaredCapacity(catalogBinaryCapacity, nativeType); ok && uint64(len(typed)) > capacity {
+			return true
+		}
+	case []byte:
+		if capacity, ok := catalogDeclaredCapacity(catalogBinaryCapacity, nativeType); ok && uint64(len(typed)) > capacity {
+			return true
+		}
+	}
+	return false
+}
+
+func catalogDeclaredCapacity(pattern *regexp.Regexp, nativeType string) (uint64, bool) {
+	match := pattern.FindStringSubmatch(nativeType)
+	if len(match) != 2 {
+		return 0, false
+	}
+	capacity, err := strconv.ParseUint(match[1], 10, 64)
+	return capacity, err == nil
 }
 
 // catalogChanges checks named assignments against a descriptor and returns them in the order given. Unknown, duplicate
@@ -54,6 +86,9 @@ func catalogChanges(metadata CatalogTableMetadata, values []CatalogAssignment, c
 		}
 		if normalized[i] == nil && !column.Nullable {
 			return nil, catalogErr(code, "NULL in non-null column %q", column.Name)
+		}
+		if catalogExceedsDeclaredCapacity(column.NativeType, normalized[i]) {
+			return nil, catalogErr(code, "value exceeds the declared capacity of column %q", column.Name)
 		}
 		seen[column.Name] = true
 		changes = append(changes, catalogChange{index: index, value: normalized[i]})

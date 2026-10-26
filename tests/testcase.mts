@@ -1,7 +1,7 @@
 // Case reporting used by JavaScript tests and the check runner is node:test's output (TAP).
 //
-//   caseTest: a node:test test. Steps are written with t.diagnostic, so they become `# <step>` lines in TAP; the result and failure
-//   reason are written by node:test as `ok` or `not ok`.
+//   caseTest and cases.run: node:test cases. Steps are written with t.diagnostic, so they become `# <step>` lines in TAP; the result
+//   and failure reason are written by node:test as `ok` or `not ok`. cases.run waits for each registered test before the next run.
 //   runCase, runGroup, runLong, sections: written by runners that are not tests. The result is the TAP lines `ok - <case>` or
 //   `not ok - <case>` with the reason `# <reason>`, and steps are the subprocess output lines as-is.
 //
@@ -111,14 +111,24 @@ export async function runCase(name: string, deadline: number, body: CaseBody): P
   return report(name, await execute(name, deadline, body, text => console.log(text)));
 }
 
-// cases is a runner that executes the cases of one test script in order. run(name, deadline, body)
-// runs one case with runCase and returns its result, and finish() reports the number of failed cases, if any,
-// and sets the exit code to 1.
+function registerCase(name: string, deadline: number, body: CaseBody): Promise<boolean> {
+  let passed = true;
+  return test(name, { timeout: deadline + 2 * GRACE }, async t => {
+    const failure = await execute(name, deadline, body, text => t.diagnostic(text));
+    if (failure !== undefined) {
+      passed = false;
+      throw new Error(failure);
+    }
+  }).then(() => passed);
+}
+
+// cases registers each run with node:test in call order and waits for that native test before returning its result. A filtered test
+// is a successful skip, not a failure; finish reports body failures after the script has awaited its runs.
 export function cases() {
   let failed = 0;
   return {
     async run(name: string, deadline: number, body: CaseBody): Promise<boolean> {
-      const passed = await runCase(name, deadline, body);
+      const passed = await registerCase(name, deadline, body);
       if (!passed) failed++;
       return passed;
     },
@@ -243,10 +253,7 @@ export function runChild(command: string, args: readonly string[], step: Step, o
 // caseTest runs a case as one node:test test. Steps are t.diagnostic (the `#` lines of TAP), and a failed case reports its reason
 // Fails the test with the error it carries. node:test's timeout adds twice GRACE to the deadline so the deadline ends first.
 export function caseTest(name: string, deadline: number, body: CaseBody): void {
-  test(name, { timeout: deadline + 2 * GRACE }, async t => {
-    const failure = await execute(name, deadline, body, text => t.diagnostic(text));
-    if (failure !== undefined) throw new Error(failure);
-  });
+  void registerCase(name, deadline, body);
 }
 
 /**

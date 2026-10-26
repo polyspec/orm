@@ -270,6 +270,36 @@ async function assertLiteralDefaultCompositeKeyInsert(fixture, checkQueries) {
   }
 }
 
+// Requirements: SCH-6a.
+caseTest('catalog page columns retain descriptor names and order', COMPUTE, async () => {
+  await withSqliteCatalog('orm-catalog-page-column-descriptors-', `
+    CREATE TABLE account (seq INTEGER NOT NULL, name TEXT NOT NULL, PRIMARY KEY (seq));
+  `, async catalog => {
+    const page = await catalog.tablePage({ namespace: 'main', name: 'account' }, 10, 0);
+    assert.deepEqual(page.result.columns.map(column => column.name), page.metadata.columns.map(column => column.name));
+  });
+});
+
+// Requirements: INT-111.
+caseTest('rejects over-capacity text updates before changing the row', COMPUTE, async () => {
+  await withSqliteCatalog('orm-catalog-update-capacity-', `
+    CREATE TABLE account (id INTEGER NOT NULL PRIMARY KEY, name VARCHAR(3) NOT NULL CHECK(length(name) <= 3));
+    INSERT INTO account (id, name) VALUES (1, 'old');
+  `, async catalog => {
+    const page = await catalog.tablePage({ namespace: 'main', name: 'account' }, 1, 0);
+    const original = catalog.rowSnapshotFromPage(page, 0);
+    await catalog.updateRow(original, [{ name: 'name', value: '😀😀😀' }]);
+    const currentPage = await catalog.tablePage({ namespace: 'main', name: 'account' }, 1, 0);
+    const current = catalog.rowSnapshotFromPage(currentPage, 0);
+    await assert.rejects(
+      catalog.updateRow(current, [{ name: 'name', value: '😀😀😀😀' }]),
+      error => error instanceof OrmError && error.code === 'ROW_UPDATE_INVALID',
+    );
+    const stored = await catalog.readOnlyQuery('SELECT name FROM account WHERE id = ?', [1]);
+    assert.deepEqual(stored.rows, [['😀😀😀']], 'rejected oversized update leaves the row unchanged');
+  });
+});
+
 caseTest('locks, validates and returns the descriptor of an unchanged original row', DATABASE, async () => {
   const calls = [];
   const session = {

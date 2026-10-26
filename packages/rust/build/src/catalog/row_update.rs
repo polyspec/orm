@@ -14,6 +14,41 @@ fn invalid() -> String {
 fn invalid_with(error: impl std::fmt::Display) -> String {
     format!("ROW_UPDATE_INVALID: invalid column assignments: {error}")
 }
+
+fn declared_capacity(native_type: &str, names: &[&str]) -> Option<usize> {
+    let native_type = native_type.to_ascii_lowercase();
+    let mut rest = names.iter().find_map(|name| native_type.strip_prefix(*name))?;
+    rest = rest.trim_start_matches(|character: char| character.is_ascii_whitespace());
+    rest = rest.strip_prefix('(')?;
+    let closing = rest.find(')')?;
+    let digits = &rest[..closing];
+    if digits.is_empty() || !digits.bytes().all(|byte| byte.is_ascii_digit()) {
+        return None;
+    }
+    digits.parse().ok()
+}
+
+fn exceeds_declared_capacity(native_type: &str, cell: &GridCell) -> bool {
+    if let Some(capacity) = declared_capacity(native_type, &["varchar", "character varying"]) {
+        return match cell {
+            GridCell::Text(value) | GridCell::Decimal(value) | GridCell::Date(value) | GridCell::Time(value) | GridCell::DateTime(value) => {
+                value.chars().count() > capacity
+            }
+            _ => false,
+        };
+    }
+    if let Some(capacity) = declared_capacity(native_type, &["varbinary", "binary"]) {
+        return match cell {
+            GridCell::Text(value) | GridCell::Decimal(value) | GridCell::Date(value) | GridCell::Time(value) | GridCell::DateTime(value) => {
+                value.len() > capacity
+            }
+            GridCell::Binary(value) => value.len() > capacity,
+            _ => false,
+        };
+    }
+    false
+}
+
 impl RowSnapshot {
     fn updated_cells(&self, changes: &[(String, GridCell)]) -> Result<Vec<GridCell>, String> {
         if changes.is_empty() || changes.len() > self.metadata().columns.len() {
@@ -25,6 +60,9 @@ impl RowSnapshot {
             let column = self.metadata().columns.iter().find(|column| column.name == *name).ok_or_else(invalid)?;
             if column.generated || !names.insert(name) || (!column.nullable && matches!(cell, GridCell::Null)) {
                 return Err(invalid());
+            }
+            if exceeds_declared_capacity(&column.native_type, cell) {
+                return Err(invalid_with(format!("value exceeds the declared capacity of column \"{name}\"")));
             }
             let size = match cell {
                 GridCell::Text(value) | GridCell::Decimal(value) | GridCell::Date(value) | GridCell::Time(value) | GridCell::DateTime(value) => value.len(),
