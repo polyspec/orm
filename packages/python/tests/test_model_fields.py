@@ -5,7 +5,7 @@
 import typing
 import unittest
 
-from polyspec.orm import StyledValue
+from polyspec.orm import OrmError, StyledValue
 from polyspec.orm.models import models
 from . import testcase
 
@@ -38,6 +38,14 @@ class ModelFieldsTest(unittest.TestCase):
                 self.assertEqual(got.get("return"), getter, "the getter type")
                 hints = typing.get_type_hints(getattr(model, f"set_{column}"))
                 self.assertEqual(hints.get("value"), setter, "the setter type")
+
+    # Requirements: COD-38.
+    def test_ip_setter_rejects_whitespace_without_changing_value(self):
+        author = models.Author().set_ip("10.0.0.1")
+        with self.assertRaises(OrmError) as caught:
+            author.set_ip("10. 0.0.1")
+        self.assertEqual(caught.exception.code, "CODEC_ENCODE")
+        self.assertEqual(author.get_ip(), "10.0.0.1")
 
     def test_getter_checks_its_value(self):
         author = models.Author()
