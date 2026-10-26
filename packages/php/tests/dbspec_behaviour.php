@@ -73,6 +73,12 @@ final class BehaviourScriptedPdo extends PDO
 {
     use SqliteLiteralRowsPdo;
 
+    /** @return iterable<string, array{string}> */
+    public static function pureCaseProvider(): iterable
+    {
+        return dbspec_behaviour_pure_cases();
+    }
+
     /** @param Closure(string): mixed $answer */
     public function __construct(private Closure $answer)
     {
@@ -654,6 +660,14 @@ function dbspec_behaviour_pure_case_names(): array
         );
     }
     return $names;
+}
+
+/** @return iterable<string, array{string}> */
+function dbspec_behaviour_pure_cases(): iterable
+{
+    foreach (dbspec_behaviour_pure_case_names() as $name) {
+        yield $name => [$name];
+    }
 }
 
 /** Compare one PHP or extension outcome with the reference recorded from the PHP library. */

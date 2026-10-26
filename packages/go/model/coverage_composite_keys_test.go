@@ -95,6 +95,25 @@ func compositeRelationRows(t *testing.T, accounts *orm.Collection[*model.Composi
 	return rows
 }
 
+func assertCompositeRelationPaths(
+	t *testing.T,
+	db *orm.DB,
+	description string,
+	want []string,
+	query func(*model.CompositeMembershipModel) *orm.Collection[*model.CompositeAccountModel],
+) {
+	t.Helper()
+	for path, child := range map[string]*model.CompositeMembershipModel{
+		"same statement": model.CompositeMembership(),
+		"own connection": model.CompositeMembership().Connect(db),
+	} {
+		got := compositeRelationRows(t, query(child))
+		if !slices.Equal(got, want) {
+			t.Fatalf("%s (%s): relation rows = %v, want %v", description, path, got, want)
+		}
+	}
+}
+
 func parentPlaceholderCount(sql string) int {
 	if strings.Contains(sql, "?") {
 		return strings.Count(sql, "?")
@@ -140,23 +159,16 @@ func TestCoverageCompositeKeyRows(t *testing.T) {
 	if got := readColumn(t, must(account().GetByTenantIdAndAccountId(compositeTenant, 2)).GetName); got != "b" {
 		t.Fatalf("account (%d, 2) name = %q, want b", compositeTenant, got)
 	}
-	for path, child := range map[string]*model.CompositeMembershipModel{
-		"same statement": model.CompositeMembership(),
-		"own connection": model.CompositeMembership().Connect(db),
-	} {
-		loaded := must(account().TupleTenantIdWithAccountId([]model.CompositeAccountTenantIdWithAccountId{
+	wantCollisionRelations := []string{
+		fmt.Sprintf("%d/%d:%d/%d/%s", collisionRows[0].TenantID, collisionRows[0].AccountID, collisionRows[0].TenantID, collisionRows[0].AccountID, collisionRows[0].Role),
+		fmt.Sprintf("%d/%d:%d/%d/%s", collisionRows[1].TenantID, collisionRows[1].AccountID, collisionRows[1].TenantID, collisionRows[1].AccountID, collisionRows[1].Role),
+	}
+	assertCompositeRelationPaths(t, db, "colliding concatenated composite keys assembled relations", wantCollisionRelations, func(child *model.CompositeMembershipModel) *orm.Collection[*model.CompositeAccountModel] {
+		return must(account().TupleTenantIdWithAccountId([]model.CompositeAccountTenantIdWithAccountId{
 			{TenantId: collisionRows[0].TenantID, AccountId: collisionRows[0].AccountID},
 			{TenantId: collisionRows[1].TenantID, AccountId: collisionRows[1].AccountID},
 		}).OrderByTenantIdAsc().OrderByAccountIdAsc().Relations(child.MatchTenantIdWithTenantId().MatchAccountIdWithAccountId().AliasMemberships()).Gets())
-		got := compositeRelationRows(t, loaded)
-		want := []string{
-			fmt.Sprintf("%d/%d:%d/%d/%s", collisionRows[0].TenantID, collisionRows[0].AccountID, collisionRows[0].TenantID, collisionRows[0].AccountID, collisionRows[0].Role),
-			fmt.Sprintf("%d/%d:%d/%d/%s", collisionRows[1].TenantID, collisionRows[1].AccountID, collisionRows[1].TenantID, collisionRows[1].AccountID, collisionRows[1].Role),
-		}
-		if !slices.Equal(got, want) {
-			t.Fatalf("%s: colliding concatenated composite keys assembled relations = %v, want %v", path, got, want)
-		}
-	}
+	})
 	// The relation links both components of the foreign key in key order. Linking only one component
 	// attaches the memberships of another account in the tenant, or of account 2 in another tenant.
 	// A child whose relation has its own link reads the parent row first and then reads separately. The two paths give the same result.
@@ -170,19 +182,12 @@ func TestCoverageCompositeKeyRows(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for path, child := range map[string]*model.CompositeMembershipModel{
-		"same statement": model.CompositeMembership(),
-		"own connection": model.CompositeMembership().Connect(db),
-	} {
-		loaded := must(account().TenantId(compositeTenant).
+	wantTenantRelations := []string{"990004/1:990004/1/member", "990004/2:990004/2/owner", "990004/3:990004/3/editor"}
+	assertCompositeRelationPaths(t, db, fmt.Sprintf("memberships of tenant %d", compositeTenant), wantTenantRelations, func(child *model.CompositeMembershipModel) *orm.Collection[*model.CompositeAccountModel] {
+		return must(account().TenantId(compositeTenant).
 			Relations(child.MatchTenantIdWithTenantId().MatchAccountIdWithAccountId().AliasMemberships()).
 			Gets())
-		got := compositeRelationRows(t, loaded)
-		want := []string{"990004/1:990004/1/member", "990004/2:990004/2/owner", "990004/3:990004/3/editor"}
-		if !slices.Equal(got, want) {
-			t.Fatalf("%s: memberships of tenant %d accounts = %v, want %v", path, compositeTenant, got, want)
-		}
-	}
+	})
 	unsubscribe()
 	wantParentBinds := []any{int64(compositeTenant), int64(1), int64(compositeTenant), int64(2), int64(compositeTenant), int64(3), int64(compositeTenant), int64(3)}
 	if len(relationEvents) != 2 {

@@ -12,6 +12,7 @@ namespace Polyspec\Orm\Tests;
 
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\DataProviderExternal;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 
@@ -32,16 +33,8 @@ final class DbspecBehaviourTest extends TestCase
         dbspec_behaviour_assert_case($name);
     }
 
-    /** @return iterable<string, array{string}> */
-    public static function pureCases(): iterable
-    {
-        foreach (dbspec_behaviour_pure_case_names() as $name) {
-            yield $name => [$name];
-        }
-    }
-
     // Requirements: DBS-172.
-    #[DataProvider('pureCases')]
+    #[DataProviderExternal(BehaviourScriptedPdo::class, 'pureCaseProvider')]
     public function testPureCase(string $name): void
     {
         dbspec_behaviour_assert_case($name);
