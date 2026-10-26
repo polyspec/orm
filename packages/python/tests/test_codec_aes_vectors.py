@@ -1,3 +1,4 @@
+# Requirements: COD-5.
 # The AES vectors of tests/codec/aes-vectors.json: one test for each vector, named by its name
 # (codec_vector.check_aes_vector).
 # Run: python -m packages.python.tests.test_codec_aes_vectors

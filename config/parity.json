@@ -12768,6 +12768,31 @@
           "implementation": "rust",
           "test": "packages/rust/orm/src/codec.rs",
           "id": "codec::tests::aes_vectors"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/codec_test.go",
+          "id": "TestCodecAESVectors"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CodecAesVectorsTest.php",
+          "id": "CodecAesVectorsTest::testVector"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/CodecAesVectorsTest.php",
+          "id": "CodecAesVectorsTest::testVector"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/codec-aes-vector.mjs",
+          "id": "aes.invalid_tag"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_codec_aes_vectors.py",
+          "id": "aes.invalid_tag"
         }
       ]
     },
@@ -12785,6 +12810,31 @@
           "implementation": "rust",
           "test": "packages/rust/orm/src/codec.rs",
           "id": "codec::tests::errors_and_keys"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/codec_test.go",
+          "id": "TestCodecErrors"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CodecVectorsTest.php",
+          "id": "CodecVectorsTest::testPhpError"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/CodecVectorsTest.php",
+          "id": "CodecVectorsTest::testPhpError"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/codec-values.mjs",
+          "id": "codec values"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/codec_vector.py",
+          "id": "test_error_cases"
         }
       ]
     },
@@ -12799,6 +12849,31 @@
           "implementation": "rust",
           "test": "packages/rust/orm/src/codec.rs",
           "id": "codec::tests::json_literal_null_is_distinct_from_sql_null"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/styled_state_test.go",
+          "id": "TestStyledColumnStateFixture"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/StyledValueTest.php",
+          "id": "StyledValueTest::testModelStates"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelNativeTest.php",
+          "id": "ModelNativeTest::testStyledColumnDistinguishesUnselectedSqlNullAndEncodedNull"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/styled-value.mjs",
+          "id": "nonnull_value_null"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_styled_column_states.py",
+          "id": "nonnull_value_null"
         }
       ]
     },
@@ -12813,6 +12888,31 @@
           "implementation": "rust",
           "test": "packages/rust/orm/src/codec.rs",
           "id": "codec::tests::json_stage_keeps_ordered_json"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/codec_test.go",
+          "id": "TestOrderedJSONCodecPreservesKindsAndObjectOrder"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CodecVectorsTest.php",
+          "id": "CodecVectorsTest::testOrderedJsonPreservesOrderAndNumberText"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/CodecVectorsTest.php",
+          "id": "CodecVectorsTest::testOrderedJsonPreservesOrderAndNumberText"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/codec-values.mjs",
+          "id": "codec values"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_values.py",
+          "id": "test_ordered_json_decode_keeps_member_order"
         }
       ]
     },
@@ -12827,6 +12927,31 @@
           "implementation": "rust",
           "test": "packages/rust/orm/src/codec.rs",
           "id": "codec::tests::leading_gz_and_base64_store_the_text"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/codec_test.go",
+          "id": "TestCodecVectors"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CodecVectorsTest.php",
+          "id": "CodecVectorsTest::testPhpVector"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/CodecVectorsTest.php",
+          "id": "CodecVectorsTest::testPhpVector"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/codec-vector.mjs",
+          "id": "base64_text.string"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_codec_vectors.py",
+          "id": "base64_text.string"
         }
       ]
     },
@@ -12841,6 +12966,31 @@
           "implementation": "rust",
           "test": "packages/rust/orm/src/codec.rs",
           "id": "codec::tests::yaml_reads_the_core_schema"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/codec_test.go",
+          "id": "TestCodecErrors"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CodecVectorsTest.php",
+          "id": "CodecVectorsTest::testYamlCoreSchema"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/CodecVectorsTest.php",
+          "id": "CodecVectorsTest::testYamlCoreSchema"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/codec-values.mjs",
+          "id": "codec values"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/codec_vector.py",
+          "id": "test_error_cases"
         }
       ]
     },
@@ -12855,6 +13005,31 @@
           "implementation": "rust",
           "test": "packages/rust/orm/src/codec.rs",
           "id": "codec::tests::yaml_writes_what_it_reads"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/codec_test.go",
+          "id": "TestCodecVectors"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CodecVectorsTest.php",
+          "id": "CodecVectorsTest::testPhpVector"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/CodecVectorsTest.php",
+          "id": "CodecVectorsTest::testPhpVector"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/codec-vector.mjs",
+          "id": "yaml.nested_map"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_codec_vectors.py",
+          "id": "yaml.nested_map"
         }
       ]
     },

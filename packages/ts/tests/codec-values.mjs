@@ -4,12 +4,13 @@ import { Value as JsonValue, parse as parseJson, stringify as stringifyJson } fr
 import { check, same } from './codec_case.mjs';
 
 // The value checks that no vector file holds run as one case.
-// The test of COD-4, COD-34 (docs/spec).
+// The test of COD-4, COD-14, COD-16, COD-29, COD-33, COD-34, COD-35 (docs/spec).
 check('codec values', wrong => {
   if (blindIndex('member@example.test', 'blind-key') !== '1992d5622b305dec915751bc7382d3c0ed9e130f2cc62ab3560e244953160fa8') wrong.push('blind index');
   for (const [name, operation, code] of [
     ['bad JSON', () => decode(['ordered_json'], '{bad'), 'CODEC_DECODE'],
     ['bad base64', () => decode(['serialize', 'base64'], '@@@'), 'CODEC_DECODE'],
+    ['malformed serialized value', () => decode(['serialize'], 'a:1:{i:0;'), 'CODEC_DECODE'],
     ['serialized object', () => decode(['serialize'], 'O:8:"stdClass":0:{}'), 'CODEC_UNSUPPORTED'],
     ['bad zlib', () => decode(['serialize', 'gz'], 'not zlib'), 'CODEC_DECODE'],
     ['unknown style', () => encode(['unknown'], StyledValue.value('value')), 'CODEC_UNSUPPORTED'],
@@ -65,6 +66,18 @@ check('codec values', wrong => {
   catch (error) { if (!(error instanceof CodecError) || error.code !== 'CODEC_ENCODE') { wrong.push(`serialize of an ordered-json value: ${String(error)}`); } }
   if (!same(decode(['yaml'], '1: value\n').payload(), { 1: 'value' })) {
     wrong.push('YAML integer map key: expected string key');
+  }
+  for (const [text, want] of [
+    ['---\n', null],
+    ['Null\n', null],
+    ['0o17\n', 15],
+    ['0x1F\n', 31],
+    ['+12\n', 12],
+    ['1e3\n', 1000],
+    ["'true'\n", 'true'],
+    ['a:\n', { a: null }],
+  ]) {
+    if (!same(decode(['yaml'], text).payload(), want)) wrong.push(`YAML core value ${JSON.stringify(text)} differs`);
   }
   for (const [name, stage] of [['gz', 'gz'], ['base64', 'base64']]) {
     const written = encode([stage], StyledValue.value('stored text'));

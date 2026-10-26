@@ -4,6 +4,7 @@
 // round-trip the plain text with the key, and the fixed envelope decodes to the plain text.
 // Usage: vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist
 // packages/php/tests/CodecAesVectorsTest.php
+// Requirements: COD-5.
 declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;

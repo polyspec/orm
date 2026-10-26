@@ -148,13 +148,18 @@ def check_aes_vector(test: unittest.TestCase, vector: dict) -> None:
 
 
 class CodecVectorTest(unittest.TestCase):
-    # Requirements: COD-33, COD-34, COD-35.
+    # The test of COD-29, COD-33, COD-34, COD-35 (docs/spec).
     def test_error_cases(self):
         cases = [
             ("bad JSON", lambda: decode(["ordered_json"], b"{bad"), "CODEC_DECODE"),
             (
                 "bad base64",
                 lambda: decode(["serialize", "base64"], b"@@@"),
+                "CODEC_DECODE",
+            ),
+            (
+                "malformed serialized value",
+                lambda: decode(["serialize"], b"a:1:{i:0;"),
                 "CODEC_DECODE",
             ),
             (
@@ -230,6 +235,20 @@ class CodecVectorTest(unittest.TestCase):
                 failures.append(f"{name}: {error!r} want CodecError {code}")
         if failures:
             self.fail("\n".join(failures))
+        for text, want in [
+            (b"---\n", None),
+            (b"Null\n", None),
+            (b"0o17\n", 15),
+            (b"0x1F\n", 31),
+            (b"+12\n", 12),
+            (b"1e3\n", 1000.0),
+            (b"'true'\n", "true"),
+            (b"a:\n", {"a": None}),
+        ]:
+            self.assertTrue(
+                same(decode(["yaml"], text).payload(), want),
+                f"YAML core value {text!r}",
+            )
 
     def test_blind_index(self):
         self.assertEqual(

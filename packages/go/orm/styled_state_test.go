@@ -9,6 +9,7 @@ import (
 	"github.com/polyspec/orm/packages/go/testcase"
 )
 
+// Requirements: COD-20.
 func TestStyledColumnStateFixture(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	data, err := os.ReadFile("../../../contracts/fixtures/styled_column_states.json")

@@ -148,7 +148,7 @@ final class CodecVectorsTest extends TestCase
         }
     }
 
-    // Decodes and encodes the vector in memory.
+    // Requirements: COD-13, COD-14, COD-29. Decodes and encodes the shared codec vector in memory.
     /** @param array<string, mixed> $v */
     #[DataProvider('vectors')]
     public function testPhpVector(array $v): void
@@ -193,6 +193,15 @@ final class CodecVectorsTest extends TestCase
     /** @return iterable<string, array{Closure, string}> */
     public static function errors(): iterable
     {
+        yield 'malformed serialized value' => [fn() => Codec::decode(['serialize'], 'a:1:{i:0;'), Code::CODEC_DECODE];
+        yield 'malformed compressed serialized value' => [
+            fn() => Codec::decode(['serialize', 'gz'], 'not zlib'),
+            Code::CODEC_DECODE,
+        ];
+        yield 'malformed base64 serialized value' => [
+            fn() => Codec::decode(['serialize', 'base64'], '@@@'),
+            Code::CODEC_DECODE,
+        ];
         yield 'serialized object is unsupported' => [
             fn() => Codec::decode(['serialize'], 'O:8:"stdClass":0:{}'),
             Code::CODEC_UNSUPPORTED,
@@ -215,13 +224,17 @@ final class CodecVectorsTest extends TestCase
         yield 'YAML collection map key' => [fn() => Codec::decode(['yaml'], "[a]: value\n"), Code::CODEC_DECODE];
         yield 'YAML non-finite number' => [fn() => Codec::decode(['yaml'], "value: .inf\n"), Code::CODEC_DECODE];
         yield 'YAML boolean map key' => [fn() => Codec::decode(['yaml'], "true: value\n"), Code::CODEC_DECODE];
+        yield 'YAML document without a value' => [
+            fn() => Codec::decode(['yaml'], "# only a comment\n"),
+            Code::CODEC_DECODE,
+        ];
         yield 'invalid YAML order' => [
             fn() => Codec::encode(['serialize', 'yaml'], StyledValue::value([])),
             Code::CODEC_UNSUPPORTED
         ];
     }
 
-    // Requirements: COD-34.
+    // Requirements: COD-29, COD-33, COD-34, COD-35.
     #[DataProvider('errors')]
     public function testPhpError(Closure $operation, string $code): void
     {
@@ -255,6 +268,63 @@ final class CodecVectorsTest extends TestCase
             self::fail('serialized PHP objects must be rejected');
         } catch (OrmException $error) {
             self::assertSame(Code::CODEC_UNSUPPORTED, $error->code_);
+        }
+    }
+
+    // Requirements: COD-16. The ordered-json stage preserves object order, empty kinds, and number text.
+    public function testOrderedJsonPreservesOrderAndNumberText(): void
+    {
+        $text = '{"b":1,"a":[],"c":{},"n":1.50}';
+        $decoded = Codec::decode(['ordered_json'], $text);
+        self::assertSame($text, \Polyspec\OrderedJson\stringify($decoded->payload()));
+        self::assertSame($text, Codec::encode(['ordered_json'], $decoded));
+    }
+
+    // Requirements: COD-29. YAML reads one core-schema document and rejects forbidden constructs with CODEC_DECODE.
+    public function testYamlCoreSchema(): void
+    {
+        foreach (
+            [
+                ["---\n", null],
+                ["Null\n", null],
+                ["0o17\n", 15],
+                ["0x1F\n", 31],
+                ["+12\n", 12],
+                ["1e3\n", 1000.0],
+                ["'true'\n", 'true'],
+                ["a:\n", ['a' => null]],
+                ["1: value\n", ['1' => 'value']],
+            ] as [$text, $want]
+        ) {
+            self::assertSame(
+                self::canonText($want),
+                self::canonText(Codec::decode(['yaml'], $text)->payload()),
+                "YAML core value " . json_encode($text, JSON_THROW_ON_ERROR)
+            );
+        }
+
+        foreach (
+            [
+                "",
+                "# only a comment\n",
+                "a: 1\na: 2\n",
+                "---\na: 1\n---\na: 2\n",
+                "a: &x [1]\nb: *x\n",
+                "a: &x 1\n",
+                "a: !!str x\n",
+                "value: .inf\n",
+                "[a]: value\n",
+                "~: value\n",
+                "true: value\n",
+                "1.5: value\n",
+            ] as $text
+        ) {
+            try {
+                Codec::decode(['yaml'], $text);
+                self::fail("YAML accepted forbidden input " . json_encode($text, JSON_THROW_ON_ERROR));
+            } catch (OrmException $error) {
+                self::assertSame(Code::CODEC_DECODE, $error->code_);
+            }
         }
     }
 

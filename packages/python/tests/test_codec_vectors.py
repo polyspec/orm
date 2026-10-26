@@ -1,3 +1,4 @@
+# Requirements: COD-13, COD-14, COD-29.
 # The codec vectors of tests/codec/vectors.json: one test for each vector, named by the vector (codec_vector.check_vector).
 # When ORM_CODEC_OUT (make codec-check) is set, tearDownModule writes the encoded output of every vector to python.json in
 # that directory, which the PHP CodecVectorsTest decodes for the comparison.

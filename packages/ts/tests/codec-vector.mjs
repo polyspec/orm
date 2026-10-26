@@ -1,3 +1,4 @@
+// Requirements: COD-13, COD-14, COD-29.
 // The shared codec vectors (tests/codec/vectors.json): each vector is one case named by the vector.
 import { after } from 'node:test';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';

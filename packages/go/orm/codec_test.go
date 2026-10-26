@@ -118,6 +118,7 @@ func TestCodecDecodeVectors(t *testing.T) {
 // directory (make codec-check), Go's encodings are written to go.json there for
 // the PHP cross-check, through a temporary file and a rename.
 func TestCodecVectors(t *testing.T) {
+	// Requirements: COD-13, COD-14, COD-29.
 	testcase.Start(t, testcase.Compute)
 	src, err := os.ReadFile("../../../tests/codec/vectors.json")
 	if err != nil {
@@ -243,6 +244,7 @@ func aesErrorCode(v aesVector) string {
 // subtest named by its name, the aes hex host stages round-trip the plain text
 // with the key, and the fixed envelope decodes to the plain text.
 func TestCodecAESVectors(t *testing.T) {
+	// Requirements: COD-5.
 	testcase.Start(t, testcase.Compute)
 	src, err := os.ReadFile("../../../tests/codec/aes-vectors.json")
 	if err != nil {
@@ -328,7 +330,7 @@ func jsonNumbers(v any) any {
 }
 
 func TestCodecErrors(t *testing.T) {
-	// The test of COD-23, COD-33, COD-34, COD-35 (docs/spec).
+	// The test of COD-23, COD-29, COD-33, COD-34, COD-35 (docs/spec).
 	testcase.Start(t, testcase.Compute)
 	if encoded, err := Encode([]string{"ordered_json"}, Value(jsontext.Value(`{"object":{},"array":[]}`))); err != nil || encoded != `{"object":{},"array":[]}` {
 		t.Fatalf("jsontext.Value must be parsed as ordered JSON: %v (%v)", encoded, err)
@@ -357,20 +359,40 @@ func TestCodecErrors(t *testing.T) {
 			t.Errorf("%v %q: %v", c.styles, c.raw, err)
 		}
 	}
+	for _, c := range []struct {
+		text string
+		want any
+	}{
+		{"---\n", nil},
+		{"Null\n", nil},
+		{"0o17\n", int64(15)},
+		{"0x1F\n", int64(31)},
+		{"+12\n", int64(12)},
+		{"1e3\n", float64(1000)},
+		{"'true'\n", "true"},
+		{"a:\n", map[string]any{"a": nil}},
+	} {
+		got, err := Decode([]string{"yaml"}, c.text)
+		if err != nil || canonStyled(t, got) != canon(t, c.want) {
+			t.Errorf("yaml core %q: got %v (%v), want %s", c.text, got, err, canon(t, c.want))
+		}
+	}
 	if s, err := Encode([]string{"serialize"}, Value(map[string]any{"07": 1, "-3": 2, "10": 3, "x": 4.0, "y": 1e25})); err != nil || s != `a:5:{i:-3;i:2;s:2:"07";i:1;i:10;i:3;s:1:"x";d:4;s:1:"y";d:1.0E+25;}` {
 		t.Errorf("php keys/floats: %s (%v)", s, err)
 	}
 	if got, err := Decode([]string{"yaml"}, "1: value\n"); err != nil || canonStyled(t, got) != `{"1":"value"}` {
 		t.Errorf("yaml integer key: %v (%v)", got, err)
 	}
-	for name, operation := range map[string]func() error{
-		"invalid yaml order": func() error {
-			_, err := Encode([]string{"serialize", "yaml"}, Value(map[string]any{}))
-			return err
-		},
+	for _, c := range []struct {
+		name   string
+		styles []string
+		want   string
+	}{
+		{"invalid yaml order", []string{"serialize", "yaml"}, CodeCodecUnsupported},
+		{"unknown style", []string{"filepart"}, CodeCodecUnsupported},
 	} {
-		if err := operation(); err == nil {
-			t.Errorf("%s: expected codec error", name)
+		if _, err := Encode(c.styles, Value(map[string]any{})); err == nil || !strings.HasPrefix(err.Error(), c.want) {
+			t.Errorf("%s: got %v, want %s", c.name, err, c.want)
 		}
 	}
 }
@@ -388,8 +410,9 @@ func TestCodecValueEdges(t *testing.T) {
 }
 
 func TestOrderedJSONCodecPreservesKindsAndObjectOrder(t *testing.T) {
+	// Requirements: COD-16.
 	testcase.Start(t, testcase.Compute)
-	const source = `{"z":{},"a":[],"nested":{"second":2,"first":1}}`
+	const source = `{"z":{},"a":[],"nested":{"second":2,"first":1.50}}`
 	decoded, err := Decode([]string{"ordered_json"}, source)
 	if err != nil {
 		t.Fatal(err)

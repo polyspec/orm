@@ -243,13 +243,17 @@ class CodecStageTest(unittest.TestCase):
         self.assertIsInstance(encoded, bytes)
         self.assertEqual(base64.b64decode(zlib.decompress(encoded, 47)), b"payload")
 
+    # Requirements: COD-16.
     def test_ordered_json_decode_keeps_member_order(self):
-        from polyspec.ordered_json import Value
+        from polyspec.ordered_json import Value, stringify
 
-        decoded = decode(["ordered_json"], b'{"z":1,"a":2}')
+        text = '{"b":1,"a":[],"c":{},"n":1.50}'
+        decoded = decode(["ordered_json"], text.encode())
         payload = decoded.payload()
         self.assertIsInstance(payload, Value)
-        self.assertEqual(list(payload.members()), ["z", "a"])
+        self.assertEqual(list(payload.members()), ["b", "a", "c", "n"])
+        self.assertEqual(stringify(payload), text)
+        self.assertEqual(encode(["ordered_json"], StyledValue.value(payload)), text)
 
     def test_base64_decode_rejects_bad_input(self):
         with self.assertRaises(CodecError):

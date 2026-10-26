@@ -1,5 +1,6 @@
 // The shared AES vectors (tests/codec/aes-vectors.json): each vector is one case named by its name. A vector with an
 // error names the code of its op (encode, decode or blind_index) with an empty or wrong key; the others round-trip.
+// Requirements: COD-5.
 import { readFile } from 'node:fs/promises';
 import { CodecError, blindIndex, hostDecode, hostEncode } from '../dist/index.js';
 import { check } from './codec_case.mjs';
