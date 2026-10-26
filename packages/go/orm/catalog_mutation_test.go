@@ -18,6 +18,7 @@ func TestCatalogSameWrittenCellMatchesDateTimeTextToDriverTime(t *testing.T) {
 		want       bool
 	}{
 		{name: "default precision", stored: defaultStored, requested: "2026-01-02 03:04:05", columnType: "DATETIME", dialect: "sqlite", want: true},
+		{name: "SQLite flexible datetime preserves declared fractional text", stored: stored, requested: "2026-01-02 03:04:05.123", columnType: "DATETIME", dialect: "sqlite", want: true},
 		{name: "matching declared fraction", stored: stored, requested: "2026-01-02 03:04:05.123", columnType: "DATETIME(3)", dialect: "sqlite", want: true},
 		{name: "PostgreSQL default precision", stored: stored, requested: "2026-01-02 03:04:05.123", columnType: "timestamp without time zone", dialect: "postgres", want: true},
 		{name: "MySQL native datetime", stored: defaultStored, requested: "2026-01-02 03:04:05", columnType: "datetime", dialect: "mysql", want: true},

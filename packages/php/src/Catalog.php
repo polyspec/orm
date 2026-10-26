@@ -780,6 +780,13 @@ final class Catalog
             } catch (\mysqli_sql_exception $rollbackError) {
                 throw OrmException::rollback($cause, OrmException::fromMysqli($rollbackError));
             }
+            if ($cause instanceof OrmException && $cause->code_ === Code::READ_ONLY) {
+                throw new OrmException(
+                    Code::QUERY_READ_ONLY,
+                    'the database rejected a read-only grid query',
+                    $cause
+                );
+            }
             throw $cause;
         }
     }

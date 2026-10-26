@@ -10,6 +10,7 @@ import sqlite3
 import sys
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlsplit
 
@@ -139,7 +140,10 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
         self.assertEqual(page.order_by, ["seq"])
         self.assertTrue(page.has_more)
         self.assertEqual(len(page.result.rows), 3)
-        self.assertEqual(page.result.columns, [column.name for column in meta.columns])
+        self.assertEqual(
+            [column.name for column in page.result.columns],
+            [column.name for column in meta.columns],
+        )
         for limit, offset in ((0, 0), (1001, 0), (1, 1_000_001)):
             with self.assertRaises(Exception):
                 self.catalog.table_page(author, limit, offset)
@@ -362,7 +366,7 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
         qualified = f"{quote(self.catalog.current_namespace(), self.driver)}.{quote(name, self.driver)}"
         invalid = quote(f"{name}_invalid", self.driver)
         try:
-            with native.cursor() as cursor:
+            with closing(native.cursor()) as cursor:
                 cursor.execute(f"DROP TABLE IF EXISTS {qualified}")
                 cursor.execute(f"CREATE TABLE {qualified} ({columns})")
                 metadata = self.catalog.describe_table(
@@ -438,7 +442,7 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
                     self.assertIn("precision", str(rejected.exception).lower())
         finally:
             try:
-                with native.cursor() as cursor:
+                with closing(native.cursor()) as cursor:
                     cursor.execute(f"DROP TABLE IF EXISTS {qualified}")
                     cursor.execute(f"DROP TABLE IF EXISTS {invalid}")
             finally:

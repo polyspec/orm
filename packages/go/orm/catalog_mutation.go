@@ -483,7 +483,9 @@ func catalogSameWrittenCell(db *DB, stored, requested any, column CatalogColumn,
 }
 
 // catalogDateTimePrecision reads the precision of the supported timezone-free native timestamp types. A PostgreSQL
-// timestamp without an explicit precision defaults to six fraction digits; MySQL and SQLite default to zero.
+// timestamp without an explicit precision defaults to six fraction digits; MySQL defaults to zero. SQLite has no native
+// temporal precision, so its declared-type metadata cannot supply one: the actual DDL CHECK enforces it, and comparison
+// normalizes through the maximum six-digit text form.
 func catalogDateTimePrecision(nativeType, dialect string) (int, bool) {
 	nativeType = strings.ToUpper(strings.TrimSpace(nativeType))
 	nativeType = strings.TrimSuffix(nativeType, " WITHOUT TIME ZONE")
@@ -499,6 +501,9 @@ func catalogDateTimePrecision(nativeType, dialect string) (int, bool) {
 	remainder := strings.TrimSpace(strings.TrimPrefix(nativeType, base))
 	if remainder == "" {
 		if dialect == "postgres" && base == "TIMESTAMP" {
+			return 6, true
+		}
+		if dialect == "sqlite" {
 			return 6, true
 		}
 		return 0, true
