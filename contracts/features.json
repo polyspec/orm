@@ -4175,7 +4175,6 @@
         "generated-typed-getter-public-column-api",
         "generated-nonnull-styled-setter-rejects-sql-null",
         "coverage-model-generation-model-generation-check",
-        "dynamic-model-chains-resolve-at-call-time",
         "dynamic-vs-scanned-model-chain-dispatch",
         "model-connection-and-join-methods"
       ],
@@ -11268,7 +11267,8 @@
       "parity": [
         "catalog-connection-read",
         "catalog-connection-row-mutation",
-        "model-read-null-and-empty-text"
+        "model-read-null-and-empty-text",
+        "catalog-table-pages-preserve-descriptors-and-reject-changes"
       ],
       "fixtures": [
         "packages/rust/tests/tests/common/mod.rs"
@@ -11497,7 +11497,8 @@
           "go": {
             "part": "packages/go/orm",
             "tests": [
-              "packages/go/orm/coverage_catalog_connection_test.go"
+              "packages/go/orm/coverage_catalog_connection_test.go",
+              "packages/go/orm/catalog_page_validation_test.go"
             ],
             "inputs": [
               "contracts/fixtures/bench/bench.dbs"
@@ -11571,7 +11572,8 @@
           "typescript": {
             "part": "packages/ts/tests",
             "tests": [
-              "packages/ts/tests/coverage_catalog_connection.mjs"
+              "packages/ts/tests/coverage_catalog_connection.mjs",
+              "packages/ts/tests/catalog-page-validation.test.mjs"
             ],
             "inputs": [
               "contracts/fixtures/bench/bench.dbs"
@@ -11624,7 +11626,8 @@
           "python": {
             "part": "packages/python/tests",
             "tests": [
-              "packages/python/tests/coverage_catalog_connection.py"
+              "packages/python/tests/coverage_catalog_connection.py",
+              "packages/python/tests/test_catalog_page_validation.py"
             ],
             "inputs": [
               "contracts/fixtures/bench/bench.dbs"
@@ -11677,7 +11680,8 @@
           "php": {
             "part": "packages/php/tests",
             "tests": [
-              "packages/php/tests/CoverageCatalogConnectionTest.php"
+              "packages/php/tests/CoverageCatalogConnectionTest.php",
+              "packages/php/tests/CatalogPageValidationTest.php"
             ],
             "inputs": [
               "contracts/fixtures/bench/bench.dbs"
