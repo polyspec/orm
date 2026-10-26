@@ -94,22 +94,24 @@ final class ModelReadNativeTest extends TestCase
         $assembly = ModelAssemblyTestSupport::uninitializedAssembly();
         $model = new ModelReadShapeFixture();
         $assembleRow = new \ReflectionMethod(Model::class, 'assembleRow');
-        $declaration = [
-            'node' => 10,
-            'key' => [],
-            'children' => [],
-            // The result declaration supplies the name omitted from static column metadata.
-            'columns' => [['index' => 0, 'name' => 'ratio', 'column' => 'ratio', 'hidden' => false]],
-        ];
-        $valid = $assembleRow->invoke($model, $assembly, $declaration, [1.25]);
-        self::assertSame(1.25, (new \ReflectionProperty(Model::class, 'values'))->getValue($valid)['ratio']);
+        // The output name is supplied by the result declaration; static metadata omits it.
+        foreach (['ratio', 'row_count'] as $offset => $name) {
+            $declaration = [
+                'node' => 10 + $offset,
+                'key' => [],
+                'children' => [],
+                'columns' => [['index' => 0, 'name' => $name, 'column' => $name, 'hidden' => false]],
+            ];
+            $valid = $assembleRow->invoke($model, $assembly, $declaration, [1.25]);
+            self::assertSame(1.25, (new \ReflectionProperty(Model::class, 'values'))->getValue($valid)[$name]);
 
-        foreach ([NAN, 'NaN'] as $raw) {
-            try {
-                $assembleRow->invoke($model, $assembly, $declaration, [$raw]);
-                self::fail('A non-finite float cell must fail decoding.');
-            } catch (OrmException $error) {
-                self::assertSame(Code::CODEC_DECODE, $error->code_);
+            foreach ([NAN, 'NaN'] as $raw) {
+                try {
+                    $assembleRow->invoke($model, $assembly, $declaration, [$raw]);
+                    self::fail("A non-finite $name float cell must fail decoding.");
+                } catch (OrmException $error) {
+                    self::assertSame(Code::CODEC_DECODE, $error->code_);
+                }
             }
         }
     }
@@ -168,7 +170,7 @@ final class ModelReadNativeTest extends TestCase
         self::assertSame('5', $groupValue->invoke(
             new ModelReadShapeFixture(),
             $db,
-            ['name' => 'row_count', 'column' => 'row_count', 'type' => 'i64'],
+            ['name' => 'row_count', 'type' => 'i64'],
             '5'
         ));
         try {

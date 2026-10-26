@@ -742,9 +742,14 @@ ZEND_METHOD(Polyspec_Orm_Model, groupValue)
     zval *db, *column, *raw;
     ZEND_PARSE_PARAMETERS_START(3,3) Z_PARAM_OBJECT(db) Z_PARAM_ARRAY(column) Z_PARAM_ZVAL(raw) ZEND_PARSE_PARAMETERS_END();
     zval *name=read_array(column,"name");if(name==NULL||Z_TYPE_P(name)!=IS_STRING){read_throw("INTERNAL","group column has no name");RETURN_THROWS();}
-    if(zend_string_equals_literal(Z_STR_P(name),"row_count")){ZVAL_COPY(return_value,raw);return;}
+    zval *source_col=read_array(column,"column");
+    if (zend_string_equals_literal(Z_STR_P(name), "row_count") &&
+        (source_col == NULL || Z_TYPE_P(source_col) != IS_STRING || Z_STRLEN_P(source_col) == 0)) {
+        ZVAL_COPY(return_value, raw);
+        return;
+    }
     zval meta; if(!read_static_meta(ZEND_THIS,&meta))RETURN_THROWS();
-    zval *declared=NULL,*declared_cols=read_array(&meta,"columns"),*source_col=read_array(column,"column");
+    zval *declared=NULL,*declared_cols=read_array(&meta,"columns");
     if(read_string_is(source_col,Z_STRVAL_P(name))&&declared_cols!=NULL&&Z_TYPE_P(declared_cols)==IS_ARRAY)declared=zend_hash_find(Z_ARRVAL_P(declared_cols),Z_STR_P(name));
     if(Z_TYPE_P(raw)==IS_NULL){if(declared!=NULL&&!read_is_true(declared,"nullable")){zval_ptr_dtor(&meta);zend_string *message=strpprintf(0,"group column %s is SQL NULL",Z_STRVAL_P(name));read_throw("CODEC_DECODE",ZSTR_VAL(message));zend_string_release(message);RETURN_THROWS();}zval_ptr_dtor(&meta);RETURN_NULL();}
     zval value;ZVAL_COPY(&value,raw);if(!read_convert_resource(&value)){zval_ptr_dtor(&value);zval_ptr_dtor(&meta);RETURN_THROWS();}
