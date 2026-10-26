@@ -130,6 +130,7 @@ func identityLoadParam(t *testing.T, v any) any {
 // TestIdentityLoad runs every case of the case file as a subtest named by its case ID. Compile cases
 // run in all three dialects, and execute cases run in turn inside that subtest,
 // in the case database of MySQL, PostgreSQL, and SQLite.
+// Requirements: INT-76.
 func TestIdentityLoad(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	doc := readIdentityLoad(t)

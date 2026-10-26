@@ -38,7 +38,7 @@ if ((selected.length === 0 || selected.includes('server_transactions')) && (dial
   const name = `statement_events/server_transactions/${spec.database}`;
   let failed = 0;
   const check = (cond, message) => { if (!cond) { failed++; console.error(`FAIL ${name}: ${message}`); } };
-  // Requirements: PLN-44.
+  // Requirements: INT-77, PLN-44.
   caseTest(name, DATABASE, async ({ step }) => {
     await withCaseDatabase(spec.database, step, database => runServerTransactions(spec, database.dsn, check));
     if (failed > 0) throw new Error(`${failed} check(s) failed; each FAIL line above names one`);

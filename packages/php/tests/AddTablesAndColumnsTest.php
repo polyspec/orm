@@ -285,7 +285,7 @@ final class AddTablesAndColumnsTest extends TestCase
         }
     }
 
-    // Requirements: SCH-8, SCH-10.
+    // Requirements: INT-56, SCH-8, SCH-10.
     #[DataProvider('drivers')]
     public function testAddTablesAndColumns(string $driver): void
     {

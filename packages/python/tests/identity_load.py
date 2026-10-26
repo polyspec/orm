@@ -172,6 +172,7 @@ def read_rows(dialect: str, dsn: str) -> list:
     return [[row[0], row[1]] for row in rows]
 
 
+# Requirements: INT-76.
 def run_execute_case(dialect: str, case: dict) -> None:
     with case_database(dialect) as dsn:
         db = Db.connect_schema(dsn, SCHEMA)

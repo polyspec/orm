@@ -21,7 +21,7 @@ const COMPOSITE_OTHER_TENANT = 990006;
 #[Medium]
 final class CoverageCompositeKeysTest extends TestCase
 {
-    // Requirements: PRT-12.
+    // Requirements: INT-87, PRT-12.
     public function testCompositeKeyRows(): void
     {
         require_once __DIR__ . '/CoverageCompositeKeysCase.php';

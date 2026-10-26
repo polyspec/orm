@@ -27,7 +27,7 @@ fn relation_rows<'a>(accounts: impl Iterator<Item = &'a CompositeAccount>) -> Ve
 
 #[tokio::test]
 async fn coverage_composite_key_rows() {
-    // Requirements: PRT-12.
+    // Requirements: INT-87, PRT-12.
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     run("composite_key_rows", async {
         let fixture_path = polyspec_orm_testcase::manifest_dir().join("../../../contracts/fixtures/composite_key_collision.json");

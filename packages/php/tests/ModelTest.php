@@ -1645,7 +1645,7 @@ final class ModelTest extends TestCase
     }
 
     // transactions
-    // Requirements: PLN-13, PLN-16, PLN-17, PLN-20, PLN-21, INT-134.
+    // Requirements: PLN-13, PLN-16, PLN-17, PLN-20, PLN-21, INT-73, INT-134.
     #[DataProvider('drivers')]
     public function testTransactions(string $driver): void
     {
@@ -1680,7 +1680,7 @@ final class ModelTest extends TestCase
     #[DataProvider('drivers')]
     public function testAesRotation(string $driver): void
     {
-        // Requirements: COD-8, PLN-44, INT-75, INT-131.
+        // Requirements: COD-8, PLN-44, INT-60, INT-75, INT-131.
         $dsn = self::caseDsn($driver);
         $db = self::database($driver, $dsn);
         self::caseAesRotation($db, $dsn);

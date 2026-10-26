@@ -14,7 +14,7 @@ use ReflectionMethod;
 #[Medium]
 final class CoverageTransactionsExtensionTest extends CoverageTransactionsTest
 {
-    // Requirements: INT-134.
+    // Requirements: INT-73, INT-134.
     public function testNativeUtilsExposeGroups(): void
     {
         self::withLifecycleRows(static function (Db $db, \Closure $recorded): void {

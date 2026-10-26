@@ -420,7 +420,7 @@ async fn writes(t: &Target) {
     assert_eq!(json["name"], "service", "serialize");
 }
 
-// Requirements: INT-59, INT-134.
+// Requirements: INT-59, INT-73, INT-134.
 async fn transactions(t: &Target) {
     let _aes = t.db.utils().aes();
     let _schema = t.db.utils().schema();
@@ -715,7 +715,7 @@ async fn bind_limit_splitting(t: &Target) {
     }
 }
 
-// Requirements: COD-8, PLN-44, INT-75, INT-131.
+// Requirements: COD-8, PLN-44, INT-60, INT-75, INT-131.
 async fn aes_rotation(t: &Target) {
     let db = &t.db;
     let f = seed(db).await;

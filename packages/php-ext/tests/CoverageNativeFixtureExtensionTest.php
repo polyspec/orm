@@ -57,6 +57,7 @@ final class CoverageNativeFixtureExtensionTest extends TestCase
         $owner->testGeneratedDecimalType();
     }
 
+    // Requirements: INT-76.
     public function testIdentityLoad(): void
     {
         $this->assertNativeIdentityLoadEntryPoints();

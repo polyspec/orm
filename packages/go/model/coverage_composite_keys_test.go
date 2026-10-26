@@ -99,7 +99,7 @@ func compositeRelationRows(t *testing.T, accounts *orm.Collection[*model.Composi
 // and reads them together through the memberships relation linked by (tenant_id, account_id),
 // and checks that deleting an account cascades to delete its membership (ON DELETE CASCADE).
 func TestCoverageCompositeKeyRows(t *testing.T) {
-	// Requirements: PRT-12.
+	// Requirements: INT-87, PRT-12.
 	testcase.Start(t, testcase.Database)
 	db, _, _ := connectFeature(t)
 	account := func() *model.CompositeAccountModel { return model.CompositeAccount().Connect(db) }

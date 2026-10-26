@@ -132,6 +132,7 @@ async function executeCase(c, dialect, step) {
         events.length = 0;
         let error = null;
         try {
+          // Requirements: INT-76.
           await db.execute(plan.steps[0], s.params.map(caseParam));
         } catch (thrown) { error = thrown; }
         // An executed statement publishes one event with the SQL verb as its kind, and a rejected step sends no statement.

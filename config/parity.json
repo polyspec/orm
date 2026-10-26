@@ -2217,6 +2217,34 @@
               "id": "the component diagrams use the requested language and list the complete manifest"
             }
           ]
+        },
+        {
+          "id": "interface-common-syntax-spellings",
+          "requirements": [
+            "PLN-2"
+          ],
+          "bindings": [
+            {
+              "test": "tests/interfaces/check/contract.test.mts",
+              "id": "common syntax rejects cross-language signature drift and unlisted declarations"
+            },
+            {
+              "test": "tests/interfaces/check/manifest.test.mts",
+              "id": "every common syntax rule has a spelling in all five clients"
+            }
+          ]
+        },
+        {
+          "id": "interface-unspecified-syntax-is-rejected",
+          "requirements": [
+            "PLN-3"
+          ],
+          "bindings": [
+            {
+              "test": "tests/interfaces/check/contract.test.mts",
+              "id": "common syntax rejects cross-language signature drift and unlisted declarations"
+            }
+          ]
         }
       ]
     },
@@ -6637,6 +6665,101 @@
       }
     },
     {
+      "id": "php-extension-required-modules",
+      "kind": "feature",
+      "requirements": [
+        "INT-94"
+      ],
+      "bindings": [
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DeclarationsTest.php",
+          "id": "DeclarationsTest::testRequiredModules"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec/orm-php-ext"
+      }
+    },
+    {
+      "id": "php-extension-package-build-path",
+      "kind": "feature",
+      "requirements": [
+        "INT-95"
+      ],
+      "bindings": [
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/DeclarationsTest.php",
+          "id": "DeclarationsTest::testPackage"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec/orm-php-ext"
+      }
+    },
+    {
+      "id": "php-public-connection-call",
+      "kind": "feature",
+      "requirements": [
+        "INT-13"
+      ],
+      "bindings": [
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageDsnTest.php",
+          "id": "CoverageDsnTest::testDsnConnection"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec/orm"
+      }
+    },
+    {
+      "id": "rust-public-connection-call",
+      "kind": "feature",
+      "requirements": [
+        "INT-14"
+      ],
+      "bindings": [
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/coverage_dsn.rs",
+          "id": "coverage_dsn_connection"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "git-tag",
+        "package": "polyspec-orm"
+      }
+    },
+    {
+      "id": "typescript-public-connection-call",
+      "kind": "feature",
+      "requirements": [
+        "INT-15"
+      ],
+      "bindings": [
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_dsn.mjs",
+          "id": "dsn_connection"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "@polyspec/orm"
+      }
+    },
+    {
       "id": "native-public-package-entry",
       "kind": "feature",
       "requirements": [
@@ -7099,7 +7222,8 @@
         "PRT-29",
         "PRT-30",
         "PRT-2",
-        "DSL-113"
+        "DSL-113",
+        "INT-76"
       ],
       "file": "contracts/fixtures/identity_load.json",
       "cases": "$.cases[*].id",
@@ -9556,7 +9680,8 @@
       "kind": "suite",
       "requirements": [
         "INT-91",
-        "PLN-44"
+        "PLN-44",
+        "INT-77"
       ],
       "file": "tests/events/vectors.json",
       "cases": "$.cases[*].id",
@@ -22671,7 +22796,8 @@
       "id": "coverage-composite-keys-composite-key-rows",
       "kind": "feature",
       "requirements": [
-        "PRT-12"
+        "PRT-12",
+        "INT-87"
       ],
       "bindings": [
         {
@@ -24709,7 +24835,8 @@
         "COD-8",
         "PLN-44",
         "INT-75",
-        "INT-131"
+        "INT-131",
+        "INT-60"
       ],
       "bindings": [
         {
@@ -25821,7 +25948,8 @@
       "id": "utils-expose-utility-groups",
       "kind": "feature",
       "requirements": [
-        "INT-134"
+        "INT-134",
+        "INT-73"
       ],
       "bindings": [
         {
@@ -25853,6 +25981,45 @@
           "implementation": "rust",
           "test": "packages/rust/tests/src/integration.rs",
           "id": "transactions"
+        }
+      ]
+    },
+    {
+      "id": "schema-add-tables-and-columns",
+      "kind": "feature",
+      "requirements": [
+        "INT-56"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/add_tables_and_columns_test.go",
+          "id": "TestAddTablesAndColumnsSQLite"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/AddTablesAndColumnsTest.php",
+          "id": "AddTablesAndColumnsTest::testAddTablesAndColumns"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/SchemaUtilsNativeTest.php",
+          "id": "SchemaUtilsNativeTest::testNativeSchemaInspectionAndRegistration"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/add-tables-and-columns.mjs",
+          "id": "add-tables-and-columns/add_tables_and_columns/sqlite"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_add_tables_and_columns.py",
+          "id": "test_adds_the_new_table_and_the_nullable_column"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/add_tables_and_columns.rs",
+          "id": "add_tables_and_columns"
         }
       ]
     },

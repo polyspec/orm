@@ -96,7 +96,7 @@ fn added(r: polyspec_orm::Result<Vec<String>>) -> Vec<String> {
     r.or_panic(|e| format!("add_tables_and_columns: {e}"))
 }
 
-// Requirements: SCH-8, SCH-10.
+// Requirements: INT-56, SCH-8, SCH-10.
 #[tokio::test]
 async fn add_tables_and_columns() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);

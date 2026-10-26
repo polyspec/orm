@@ -282,6 +282,7 @@ final class SchemaUtilsNativeTest extends TestCase
         }
     }
 
+    // Requirements: INT-56.
     public function testNativeSchemaInspectionAndRegistration(): void
     {
         $class = new \ReflectionClass(SchemaUtils::class);

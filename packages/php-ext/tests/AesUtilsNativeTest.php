@@ -56,7 +56,7 @@ final class AesUtilsNativeTest extends TestCase
         }
     }
 
-    // Requirements: COD-8, PLN-44, INT-75, INT-131.
+    // Requirements: COD-8, PLN-44, INT-60, INT-75, INT-131.
     public function testNativeStatusRotationAndTransactionRollback(): void
     {
         self::assertTrue(

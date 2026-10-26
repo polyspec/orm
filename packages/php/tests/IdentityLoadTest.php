@@ -171,6 +171,7 @@ final class IdentityLoadTest extends TestCase
 
     /** @param array<string, mixed> $case */
     #[DataProvider('cases')]
+    // Requirements: INT-76.
     public function testIdentityLoad(array $case): void
     {
         $root = dirname(__DIR__, 3);

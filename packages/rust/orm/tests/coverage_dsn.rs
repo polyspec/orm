@@ -5,7 +5,7 @@ mod feature_database;
 
 // feature-check runs it by its exact name with ORM_FEATURE_DATABASE and ORM_FEATURE_DSN, the database it started.
 #[tokio::test]
-// Requirements: CFG-1.
+// Requirements: CFG-1, INT-14.
 async fn coverage_dsn_connection() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let (driver, dsn) = feature_database::selected_dsn();

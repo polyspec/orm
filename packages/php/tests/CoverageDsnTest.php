@@ -24,7 +24,7 @@ class CoverageDsnTest extends TestCase
         return __FILE__;
     }
 
-    // Requirements: CFG-1.
+    // Requirements: CFG-1, INT-13.
     public function testDsnConnection(): void
     {
         foreach (coverageItemsOf(static::coverageTestFile()) as $item) {

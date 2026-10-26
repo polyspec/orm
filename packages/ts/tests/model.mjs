@@ -372,7 +372,7 @@ async function styledStates(db, dsn) {
   check(cells.json_setting === null && cells.jsons_tags === null && cells.serialize_data === null, 'SQL NULL storage');
 }
 
-// Requirements: INT-59, INT-134.
+// Requirements: INT-59, INT-73, INT-134.
 async function transactions(db, dsn) {
   const utils = db.utils();
   check(utils.schema() !== null && utils.privileges() !== null && utils.aes() !== null && utils.stats() !== null, 'Utils exposes schema, privileges, AES and stats groups');
@@ -440,7 +440,7 @@ async function transactions(db, dsn) {
   check(db.utils().stats().openConnections >= 1, `stats: ${JSON.stringify(db.utils().stats())}`);
 }
 
-// Requirements: COD-8, PLN-44, INT-75, INT-131.
+// Requirements: COD-8, PLN-44, INT-60, INT-75, INT-131.
 async function aesRotation(db, dsn) {
   const f = await seed(db);
   const b = await new Author().connect(db).getBySeq(f.authors[0].getSeq());

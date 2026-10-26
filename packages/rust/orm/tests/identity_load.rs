@@ -216,6 +216,7 @@ async fn execute_on(driver: &'static str, doc: &Value, m: &Manifest, c: &Value) 
 
 // Each case of identity_load.json is one trial, `identity_load::<id>`. A compile case's deadline is COMPUTE, and an execute case's
 // deadline is DATABASE. An execute case runs the remaining databases even after one database fails, and records every database's result.
+/// Requirements: INT-76.
 fn identity_load() -> Vec<Trial> {
     let doc: Value = serde_json::from_str(CASES).expect("contracts/fixtures/identity_load.json");
     doc["cases"]

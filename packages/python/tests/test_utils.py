@@ -44,7 +44,7 @@ class UtilsTest(unittest.TestCase):
     def tearDownClass(cls):
         cls.db.close()
 
-    # Requirements: INT-134.
+    # Requirements: INT-73, INT-134.
     def test_utils_exposes_utility_groups(self):
         utils = self.db.utils()
         self.assertIsNotNone(utils.schema())

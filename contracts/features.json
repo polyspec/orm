@@ -56,6 +56,9 @@
       ],
       "parity": [
         "coverage-dsn-connection",
+        "php-public-connection-call",
+        "rust-public-connection-call",
+        "typescript-public-connection-call",
         "sqlite-minimum-driver-version",
         "mysql-session",
         "php-python-session-initialization"

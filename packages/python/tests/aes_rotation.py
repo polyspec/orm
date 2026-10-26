@@ -1,6 +1,6 @@
 # The AES rotation case of packages/php/tests/ModelTest.php: stale rows are
 # re-encrypted with the current key on SQLite, MySQL and PostgreSQL.
-# Requirements: COD-8, PLN-44, INT-75, INT-131.
+# Requirements: COD-8, PLN-44, INT-60, INT-75, INT-131.
 # Usage: python -m packages.python.tests.aes_rotation
 import tempfile
 import unittest

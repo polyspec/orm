@@ -15,7 +15,7 @@ const collisionTenant = collisionRows[0].tenant_id;
 const collisionOtherTenant = collisionRows[1].tenant_id;
 
 await runCases('coverage_composite_keys.mjs', {
-  // Requirements: PRT-12.
+  // Requirements: INT-87, PRT-12.
   async composite_key_rows({ driver, dsn }) {
     const db = await connect(dsn);
     try {

@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: 9f77f292c73a6c771e1648216cb17aab6f7648d066fe2a322292a654f24c95ba -->
+<!-- source-sha256: d2bf53fcaacbfb1101ec1c3d4b16c24990f8e8dd0e53566752d9756672866cec -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -102,9 +102,9 @@ classDiagram
 모든 공개 클라이언트는 DSN URI 하나를 받는다. `mysql://`, `postgres://`, `sqlite://`가 데이터베이스 드라이버를 선택한다. 모든 연결은 datetime 값을 UTC로 읽고 쓰며, 선택 매개변수 `timezone`은 `UTC`나 `+00:00`만 받는다. 호출자는 별도 드라이버 값을 전달하지 않는다.
 
 - **INT-12** Go — 공개 연결 호출: `model.Connect(dsn, config)`; 결과: `(*orm.DB, error)`
-- **INT-13** PHP — 공개 연결 호출: `\Polyspec\Orm\Tests\Model\connect(dsn, new Config(…))`; 결과: `Db`
-- **INT-14** Rust — 공개 연결 호출: `model::connect(dsn, pool_size, config).await?`; 결과: `polyspec_orm::Db`
-- **INT-15** TypeScript — 공개 연결 호출: generated module의 `connect(dsn, options)`; 결과: `Promise<Db>`
+- **INT-13** `polyspec/orm` PHP client — 공개 연결 호출: `\Polyspec\Orm\Tests\Model\connect(dsn, new Config(…))`; 결과: `Db`
+- **INT-14** `polyspec-orm` Rust crate — 공개 연결 호출: `model::connect(dsn, pool_size, config).await?`; 결과: `polyspec_orm::Db`
+- **INT-15** `@polyspec/orm` TypeScript package — 공개 연결 호출: generated module의 `connect(dsn, options)`; 결과: `Promise<Db>`
 
 ### 5.1 생성과 언어별 표기
 
@@ -241,7 +241,7 @@ Go key 변환은 부호 있는 정수, 불리언, 문자열, 바이트, 유한 �
 - **INT-91** 모든 client의 statement event는 연결이 보낸 statement 하나를, 정확히 다음 일곱 필드로 기록한다: `sql`은 보낸 그대로의 statement이다; `binds`는 순서대로의 바인드 값이며 secret은 `$SECRET`, executor clock 값은 `$NOW`이다; `kind`는 `select`, `insert`, `update`, `delete`, `begin`, `commit`, `rollback`, `savepoint`, `release`, `rollback_to`, `schema`, `utility` 중 하나인 statement 종류이다; `tables`는 statement가 가리키는 table을 정렬한 목록이다; `elapsed`는 statement를 보낸 때부터 client가 결과를 읽을 때까지의 시간이다; `transaction`은 statement가 실행된 연결 transaction의 번호이며 가장 바깥 begin마다 1부터 센고, transaction 밖이면 없음이다; `error`는 statement가 끝난 오류이며 없으면 없음이다. 각 client는 필드를 자기 표기로 노출하고 "없음"은 native 형태로 나타낸다: Go는 `SQL`, `Binds`, `Kind`, `Tables`, `Elapsed`, `Transaction`(transaction 밖이면 0), `Err`(nil)이며 `Elapsed`는 `time.Duration`이다; PHP는 `Polyspec\Orm\StatementEvent`의 속성 `sql`, `binds`, `kind`, `tables`, `elapsed`(초), `transaction`(null), `error`(null)이다; TypeScript는 같은 이름의 `StatementEvent`로 `elapsed`는 초, `transaction`과 `error`는 `null`이다; Python은 같은 이름의 `StatementEvent`로 `elapsed`는 초, `transaction`과 `error`는 `None`이며, `error`는 statement가 일으킨 예외로 그 타입이 무엇이든 그대로이다; Rust는 같은 이름의 `StatementEvent`로 `elapsed`는 `Duration`, `transaction`과 `error`는 `None`이다.
 - **INT-92** pool이 idle로 들고 있는 connection을 server가 끝내면, pool은 그 connection을 버리고 process는 계속 실행된다: 그 connection의 error는 pool이 처리하며, 다음 statement는 새 connection에서 실행된다.
 - **INT-93** `@polyspec/orm` package의 공개 TypeScript 선언은 driver 타입(`pg`, `@types/pg`, `mysql2`)이 설치되지 않은 project에서 type-check된다. 선언은 driver module을 import하지 않으므로, 애플리케이션은 쓰는 driver의 타입만 필요하다.
-- **INT-94** PHP 확장 `polyspec_orm`은 `pdo` module을 필수 module로 선언하므로, PHP는 pdo가 있을 때에만 확장을 로드한다.
+- **INT-94** `polyspec/orm-php-ext` package의 PHP 확장 `polyspec_orm`은 `pdo` module을 필수 module로 선언하므로, PHP는 pdo가 있을 때에만 확장을 로드한다.
 - **INT-95** `polyspec/orm-php-ext` package의 `packages/php-ext/composer.json`은 type `php-ext`이고 확장 이름 `polyspec_orm`을 가지며, 그 build-path에는 그 확장을 빌드하는 `config.m4`가 있다.
 - **INT-96** statement event subscriber가 오류를 던지면 그 statement는 `SUBSCRIBER`로 실패한다. 실패 메시지는 `SUBSCRIBER: statement event subscriber failed: ` 뒤에 subscriber 오류의 텍스트(ORM 오류이면 `코드: 메시지`)가 붙고, subscriber의 오류가 그 실패의 원인(cause)이다.
 - **INT-130** `AESKeyring`(Go `AESKeyring`, PHP `AesKeyring`, TypeScript `AESKeyring`, Python `AesKeyring`, Rust `AesKeyring`)은 선언된 AES key version과 현재 version(Go `CurrentAESVersion`)을 가지며, INT-60의 keyring 인자이다.
