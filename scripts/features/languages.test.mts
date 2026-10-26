@@ -83,7 +83,7 @@ caseTest('shared feature tests come from parity test globs or exact bindings, wh
   assert.equal(isFeatureTestPath('go', 'packages/go/orm/coverage_fixture_test.go', globs, [], internal, support), false);
   assert.equal(isFeatureTestPath('go', 'packages/go/orm/transaction_api_test.go', globs, ['packages/go/orm/transaction_api_test.go'], internal, support), true);
   assert.equal(isFeatureTestPath('go', 'packages/go/orm/mysqlonly/mysqlonly_test.go', globs, [], internal, support), true);
-  assert.equal(isFeatureTestPath('php', 'packages/php/tests/PageCacheBoundCases.php', globs, boundTestPaths('php', parity), internal, support), true);
+  assert.equal(isFeatureTestPath('php', 'packages/php/tests/PageCacheBoundCases.php', globs, boundTestPaths('php', parity), internal, support), false, 'declared PHP test traits remain support files');
   assert.equal(isFeatureTestPath('php-extension', 'packages/php-ext/tests/ValidatorNativeTest.php', globs, boundTestPaths('php-extension', parity), internal, support), true);
   assert.equal(isFeatureTestPath('php-extension', 'packages/php-ext/tests/bootstrap.php', globs, boundTestPaths('php-extension', parity), internal, support), false);
   assert.equal(isFeatureTestPath('php', 'packages/php/tests/CannedCatalogPdo.php', globs, boundTestPaths('php', parity), internal, support), false, 'declared PHP doubles remain support files');
