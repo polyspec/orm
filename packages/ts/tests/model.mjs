@@ -76,9 +76,9 @@ async function install(dsn) {
 /**
  * Checks schema().empty() on a new case database, with an empty PostgreSQL
  * schema other than public, and with the installed tables.
- * Requirements: INT-58.
+ * Requirements: DBS-108, INT-58, SCH-7.
  */
-// Requirements: INT-58.
+// Requirements: DBS-108, INT-58, SCH-7.
 async function schemaEmpty(dialect, dsn) {
   const db = await connect(dsn);
   try {

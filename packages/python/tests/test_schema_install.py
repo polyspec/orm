@@ -3,16 +3,16 @@
 # (packages/ts/src/utils.ts, docs/spec/schema.md "Schema installation").
 import os
 import sqlite3
-from contextlib import closing
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
-from polyspec.orm.errors import OrmError
-from . import testcase
 
 from polyspec.orm import Schema
 from polyspec.orm.dbspec import dbspec_manifest, parse_dbspec, read_dbspec_file
+from polyspec.orm.errors import OrmError
 
+from . import testcase
 from .test_sqlite import generate
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -63,6 +63,7 @@ class SchemaInstallTest(unittest.TestCase):
             f"sqlite://{path}", aesKey="bench-salt", blindIndexKey="bench-blind-index"
         )
 
+    # Requirements: DBS-108, SCH-7.
     def test_installs_into_an_empty_database_and_then_creates_nothing(self):
         path, db = self.connect("empty.sqlite3")
         try:
@@ -75,6 +76,7 @@ class SchemaInstallTest(unittest.TestCase):
         finally:
             db.close()
 
+    # Requirements: DBS-108.
     def test_a_partial_set_is_config(self):
         path, db = self.connect("partial.sqlite3")
         try:
@@ -83,12 +85,16 @@ class SchemaInstallTest(unittest.TestCase):
                 conn.execute(
                     'CREATE TABLE "user" ("seq" INTEGER PRIMARY KEY AUTOINCREMENT)'
                 )
+            before = tables_of(path)
             with self.assertRaises(OrmError) as caught:
                 db.utils().schema().install(self.models.SCHEMA)
             self.assertEqual(caught.exception.code, "CONFIG")
             self.assertIn(
                 "install found only some tables of the document set",
                 str(caught.exception),
+            )
+            self.assertEqual(
+                tables_of(path), before, "a partial install changes no table"
             )
         finally:
             db.close()

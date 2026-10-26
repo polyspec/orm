@@ -282,7 +282,7 @@ final class SchemaUtilsNativeTest extends TestCase
         }
     }
 
-    // Requirements: INT-56, INT-58, SCH-8.
+    // Requirements: DBS-108, INT-56, INT-58, SCH-7, SCH-8.
     public function testNativeSchemaInspectionAndRegistration(): void
     {
         $class = new \ReflectionClass(SchemaUtils::class);

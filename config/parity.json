@@ -17342,21 +17342,6 @@
       }
     },
     {
-      "id": "php-internal-runtime-db-install-renders-the-document-set",
-      "kind": "feature",
-      "requirements": [
-        "DBS-108",
-        "SCH-7"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/RuntimeDbTest.php",
-          "id": "RuntimeDbTest::testInstallRendersTheDocumentSet"
-        }
-      ]
-    },
-    {
       "id": "ir-answers",
       "kind": "suite",
       "requirements": [
@@ -23129,11 +23114,6 @@
           "id": "test_schema_install_existing"
         },
         {
-          "implementation": "python",
-          "test": "packages/python/tests/test_schema_install.py",
-          "id": "test_installs_into_an_empty_database_and_then_creates_nothing"
-        },
-        {
           "implementation": "rust",
           "test": "packages/rust/tests/tests/integration/coverage_schema_install.rs",
           "id": "coverage_schema_install::coverage_schema_install_existing",
@@ -23154,6 +23134,46 @@
           "implementation": "typescript",
           "test": "packages/ts/tests/coverage_schema_install.mjs",
           "id": "schema_install_existing [sqlite]"
+        }
+      ]
+    },
+    {
+      "id": "schema-install-renders-document-set",
+      "kind": "feature",
+      "requirements": [
+        "DBS-108",
+        "SCH-7"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/install_test.go",
+          "id": "TestSchemaEmpty"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RuntimeDbTest.php",
+          "id": "RuntimeDbTest::testInstallRendersTheDocumentSet"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/SchemaUtilsNativeTest.php",
+          "id": "SchemaUtilsNativeTest::testNativeSchemaInspectionAndRegistration"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model.mjs",
+          "id": "schemaEmpty"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_schema_install.py",
+          "id": "test_installs_into_an_empty_database_and_then_creates_nothing"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/src/integration.rs",
+          "id": "schema_empty"
         }
       ]
     },
@@ -23199,9 +23219,61 @@
           "id": "test_schema_install_partial"
         },
         {
-          "implementation": "python",
-          "test": "packages/python/tests/test_schema_install.py",
-          "id": "test_a_partial_set_is_config"
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/integration/coverage_schema_install.rs",
+          "id": "coverage_schema_install::coverage_schema_install_partial",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-rust-database",
+            "FEATURE_CRATE=packages/rust/tests",
+            "FEATURE_CARGO_TARGET=--test integration",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=coverage_schema_install::coverage_schema_install_partial"
+          ]
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_schema_install.mjs",
+          "id": "schema_install_partial [sqlite]"
+        }
+      ]
+    },
+    {
+      "id": "schema-install-rejects-partial-set",
+      "kind": "feature",
+      "requirements": [
+        "DBS-108"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/coverage_schema_install_test.go",
+          "id": "TestCoverageSchemaInstallPartial",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-go-unit",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=TestCoverageSchemaInstallPartial",
+            "FEATURE_PACKAGE=./model"
+          ]
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageSchemaInstallTest.php",
+          "id": "CoverageSchemaInstallTest::testSchemaInstallPartial"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
+          "id": "CoverageSchemaInstallNativeTest::testSchemaInstallPartial"
         },
         {
           "implementation": "rust",
@@ -23224,6 +23296,11 @@
           "implementation": "typescript",
           "test": "packages/ts/tests/coverage_schema_install.mjs",
           "id": "schema_install_partial [sqlite]"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_schema_install.py",
+          "id": "test_a_partial_set_is_config"
         }
       ]
     },
@@ -23270,9 +23347,63 @@
           "id": "test_schema_install_external_documents"
         },
         {
-          "implementation": "python",
-          "test": "packages/python/tests/test_schema_install_uses.py",
-          "id": "test_installs_a_set_that_uses_an_external_document"
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/integration/coverage_schema_install.rs",
+          "id": "coverage_schema_install::coverage_schema_install_external_documents",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-rust-database",
+            "FEATURE_CRATE=packages/rust/tests",
+            "FEATURE_CARGO_TARGET=--test integration",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=coverage_schema_install::coverage_schema_install_external_documents"
+          ]
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_schema_install.mjs",
+          "id": "schema_install_external_documents [sqlite]"
+        }
+      ]
+    },
+    {
+      "id": "schema-install-uses-external-documents",
+      "kind": "feature",
+      "requirements": [
+        "DBS-107",
+        "DBS-108",
+        "SCH-7"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/coverage_schema_install_test.go",
+          "id": "TestCoverageSchemaInstallExternalDocuments",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-go-unit",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=TestCoverageSchemaInstallExternalDocuments",
+            "FEATURE_PACKAGE=./model"
+          ]
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageSchemaInstallTest.php",
+          "id": "CoverageSchemaInstallTest::testSchemaInstallExternalDocuments"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageSchemaInstallNativeTest.php",
+          "id": "CoverageSchemaInstallNativeTest::testSchemaInstallExternalDocuments"
         },
         {
           "implementation": "rust",
@@ -23295,6 +23426,11 @@
           "implementation": "typescript",
           "test": "packages/ts/tests/coverage_schema_install.mjs",
           "id": "schema_install_external_documents [sqlite]"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_schema_install_uses.py",
+          "id": "test_installs_a_set_that_uses_an_external_document"
         }
       ]
     },

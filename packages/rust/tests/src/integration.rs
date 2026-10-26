@@ -702,7 +702,7 @@ async fn read_only_sqlite(t: &Target) {
 
 /// Checks schema().empty() on a new case database, with an empty PostgreSQL
 /// schema other than public, and with the installed tables.
-// Requirements: INT-58.
+// Requirements: DBS-108, INT-58, SCH-7.
 async fn schema_empty(t: &Target) {
     let db = &t.db;
     assert!(db.utils().schema().empty().await.unwrap(), "{}: schema().empty() on a database without tables", t.driver);

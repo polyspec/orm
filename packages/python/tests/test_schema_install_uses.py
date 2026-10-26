@@ -7,12 +7,12 @@ import tempfile
 import unittest
 from pathlib import Path
 
-
 from polyspec.orm.database import Db
 from polyspec.orm.dbspec import parse_dbspec
 from polyspec.orm.dbspec.compare import is_schema_text
 from polyspec.orm.engine.model import model_of_documents, parse_document_set
 from polyspec.orm.schema import Schema
+
 from . import testcase
 from .test_sqlite import generate, generate_document
 
@@ -54,6 +54,7 @@ class SchemaInstallUsesTest(unittest.TestCase):
         self.assertEqual(list(diagnostics), [])
         self.assertTrue(is_schema_text(document))
 
+    # Requirements: DBS-107, DBS-108, SCH-7.
     def test_installs_a_set_that_uses_an_external_document(self):
         path = os.path.join(self.tmp.name, "uses.sqlite3")
         audit = schema_of([AUDIT])
@@ -82,6 +83,7 @@ class SchemaInstallUsesTest(unittest.TestCase):
     # Requirements: DBS-108, DBS-119, SCH-7.
     def test_generated_schema_sets_share_only_their_registered_connections(self):
         from polyspec.orm.errors import OrmError
+
         from .test_schema_install import bench_shared
 
         bench = generate(
