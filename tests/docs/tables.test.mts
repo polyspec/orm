@@ -55,7 +55,7 @@ caseTest('angle-bracket examples in plan checklists render as text', TIMEOUT, as
     for (const [relativePath, placeholder] of [
       ['plans/kit-standard/checklist.md', 'check'],
       ['plans/kit-standard/checklist.ko.md', 'gate'],
-    ]) {
+    ] as const) {
       const source = await readFile(path.join(docs, relativePath), 'utf8');
       const rendered: unknown = Reflect.apply(render, markdown, [source, { relativePath, path: path.join(docs, relativePath) }]);
       if (typeof rendered !== 'string') throw new Error(`${relativePath} did not render to HTML text`);
