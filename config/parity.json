@@ -28713,7 +28713,13 @@
         {
           "implementation": "python",
           "test": "packages/python/tests/test_dbspec_stress.py",
-          "id": "test_stress_document_round_trips"
+          "id": "test_stress_document_round_trips",
+          "command": [
+            "packages/python/.venv/bin/python",
+            "-m",
+            "tests.test_dbspec_stress",
+            "StressCanonicalTest.test_stress_document_round_trips"
+          ]
         },
         {
           "implementation": "rust",
