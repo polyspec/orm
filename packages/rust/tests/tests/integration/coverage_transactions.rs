@@ -228,7 +228,7 @@ async fn coverage_transaction_savepoint() {
             eprintln!("rust-savepoint: timed transaction start");
             let timed: polyspec_orm::Result<()> = db
                 .transaction(async || {
-                    account().tenant_id(TENANT).set_name("timed out").update(false).await?;
+                    account().tenant_id(TENANT).and_account_id(6).set_name("timed out").update(false).await?;
                     Ok(())
                 })
                 .timeout_ms(250)
@@ -240,7 +240,8 @@ async fn coverage_transaction_savepoint() {
             eprintln!("rust-savepoint: holder join start");
             holder_task.join().unwrap().unwrap();
             eprintln!("rust-savepoint: holder join end");
-            assert_eq!(code(timed), "CANCELED", "locked statement timeout");
+            let timed_debug = format!("{timed:?}");
+            assert_eq!(code(timed), "CANCELED", "locked statement timeout: {timed_debug}");
             let timed_row = account().get_by_tenant_id_and_account_id(TENANT, 6).await.unwrap().expect("timeout probe row");
             assert_eq!(timed_row.get_name().unwrap(), "before timeout", "timed out update rolled back");
             timed_row.delete(false).await.unwrap();
