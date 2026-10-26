@@ -527,10 +527,10 @@ dbspec-plan-python-check: python-venv-check
 dbspec-apply-check:
 	$(WITH_TEST_ENV) $(GO_TEST) -tags physical ./packages/go/internal/dialects -run '^(TestApplyChain|TestApplyThroughTransactionPooler)$$' -count=1
 
-# Runs only Python's native PLN-90 lock-wait case on each configured database.
+# Runs Python's native PLN-90 lock-wait cases and PLN-104 stress apply case.
 .PHONY: dbspec-apply-python-check
 dbspec-apply-python-check: python-venv-check
-	$(WITH_TEST_ENV) $(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.dbspec_apply.DbspecApplyTest.test_lock_wait_mysql packages.python.tests.dbspec_apply.DbspecApplyTest.test_lock_wait_postgres packages.python.tests.dbspec_apply.DbspecApplyTest.test_lock_wait_sqlite
+	$(WITH_TEST_ENV) $(RUN_TESTS) python --venv $(PYTHON_VENV) --module packages.python.tests.testcase -- packages.python.tests.dbspec_apply.DbspecApplyTest.test_lock_wait_mysql packages.python.tests.dbspec_apply.DbspecApplyTest.test_lock_wait_postgres packages.python.tests.dbspec_apply.DbspecApplyTest.test_lock_wait_sqlite packages.python.tests.dbspec_apply.DbspecApplyTest.test_stress_plan_commits_each_step_and_leaves_no_postgres_relation_locks
 
 # The six dbspec SQLite lock/session checks execute focused fake-driver cases; none starts or opens a database.
 dbspec-lock-go-check:

@@ -13503,6 +13503,48 @@
           "implementation": "go",
           "test": "packages/go/internal/dialects/apply_stress_physical_test.go",
           "id": "TestApplyStressPlan"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DbspecApplyTest.php",
+          "id": "DbspecApplyTest::testStressPlanCommitsEachStepAndLeavesNoPostgresRelationLocks"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/DbspecApplyTest.php",
+          "id": "DbspecApplyTest::testStressPlanCommitsEachStepAndLeavesNoPostgresRelationLocks"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec-apply-physical.mjs",
+          "id": "mysql.apply.stress_plan"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec-apply-physical.mjs",
+          "id": "postgres.apply.stress_plan"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec-apply-physical.mjs",
+          "id": "sqlite.apply.stress_plan"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/dbspec_apply.py",
+          "id": "test_stress_plan_commits_each_step_and_leaves_no_postgres_relation_locks",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "dbspec-apply-python-check"
+          ]
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/dbspec_apply.rs",
+          "id": "apply_stress_plan_on_three_databases"
         }
       ]
     },

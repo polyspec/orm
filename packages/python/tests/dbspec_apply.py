@@ -7,6 +7,7 @@ import json
 import os
 import psycopg
 import sqlite3
+import subprocess
 import tempfile
 import time
 import unittest
@@ -78,6 +79,25 @@ def representative_chain() -> list:
     return [source["plan"], plan["plan"]]
 
 
+def stress_plan():
+    """The 100-table stress input applied by every client for PLN-104."""
+    result = subprocess.run(
+        ["node", str(ROOT / "tests" / "dbspec" / "stress.mts"), "100"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    if not result.stdout.startswith("dbspec 1 stress\n"):
+        raise AssertionError("stress document header is missing")
+    document = result.stdout.replace("dbspec 1 stress\n", "dbspec 1 schema\n", 1)
+    parsed = parse_plan("dbplan 1 stress\nfrom empty\n\n" + document)
+    if parsed["plan"] is None:
+        raise AssertionError(f"stress plan diagnostics: {parsed['diagnostics'][:1]}")
+    if len(parsed["plan"]["schema"].tables) != 100:
+        raise AssertionError("stress plan does not contain exactly 100 tables")
+    return parsed["plan"]
+
+
 def history(conn: Conn) -> list:
     rows = conn.execute('SELECT "name", "state", "step" FROM "dbspec$plans"', [])[
         "rows"
@@ -102,6 +122,80 @@ def database_dsns() -> dict:
 
 class DbspecApplyTest(unittest.TestCase):
     deadline = testcase.DATABASE
+
+    # Requirement: PLN-104.
+    def test_stress_plan_commits_each_step_and_leaves_no_postgres_relation_locks(
+        self,
+    ) -> None:
+        plan = stress_plan()
+        dsns = {
+            "mysql": os.environ.get("ORM_TEST_MYSQL_SERVER_DSN"),
+            "postgres": os.environ.get("ORM_TEST_POSTGRES_SERVER_DSN"),
+            "sqlite": None,
+        }
+        for dialect in ("mysql", "postgres"):
+            if not dsns[dialect]:
+                raise RuntimeError(
+                    f"ORM_TEST_{dialect.upper()}_SERVER_DSN is required; pass TEST_ENV"
+                )
+        with tempfile.TemporaryDirectory(prefix="dbspec-apply-stress-") as tmp:
+            for index, dialect in enumerate(("mysql", "postgres", "sqlite")):
+                name = f"dbspec_apply_stress_{os.getpid()}_{index}"
+                with case_database(dialect, name, dsns[dialect], tmp) as connection:
+                    adapter = ApplyAdapter(dialect, connection)
+                    for rule in CONNECTION_RULES[dialect]:
+                        adapter.execute(rule)
+                    watch = None
+                    pid = None
+                    if dialect == "postgres":
+                        locks = adapter.execute("SHOW max_locks_per_transaction")[
+                            "rows"
+                        ]
+                        self.assertEqual(
+                            locks, [["64"]], "PostgreSQL default relation-lock limit"
+                        )
+                        pid = adapter.execute("SELECT pg_backend_pid()")["rows"][0][0]
+                        watch = psycopg.connect(dsns[dialect], autocommit=True)
+                        ApplyAdapter(dialect, watch).execute(
+                            f'SET search_path TO "{name}"'
+                        )
+
+                    applied = 0
+                    try:
+
+                        def observe(event):
+                            nonlocal applied
+                            if event["kind"] != "applied":
+                                return
+                            applied += 1
+                            if watch is not None:
+                                locks = watch.execute(
+                                    "SELECT COUNT(*) FROM pg_locks "
+                                    "WHERE pid = %s AND locktype = 'relation'",
+                                    (pid,),
+                                ).fetchone()[0]
+                                self.assertEqual(
+                                    locks,
+                                    0,
+                                    f"PostgreSQL relation locks remain after step {applied}",
+                                )
+
+                        apply_plans(adapter, dialect, [plan], lambda: NOW, observe)
+                    finally:
+                        if watch is not None:
+                            watch.close()
+
+                    steps = plan_steps(None, plan, dialect)["steps"]
+                    self.assertEqual(applied, len(steps), f"{dialect} applied events")
+                    quote = "`" if dialect == "mysql" else '"'
+                    rows = adapter.execute(
+                        f"SELECT name, state, step FROM {quote}dbspec$plans{quote} ORDER BY name"
+                    )["rows"]
+                    self.assertEqual(
+                        rows,
+                        [["stress", "applied", len(steps)]],
+                        f"{dialect} complete step history",
+                    )
 
     # Requirements: PLN-93, PLN-95, PLN-96.
     def test_sqlite_scenarios(self) -> None:

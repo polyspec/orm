@@ -2396,7 +2396,8 @@
       ],
       "inputs": [
         "packages/php/tests/DbspecApplyTest.php",
-        "packages/php/tests/dbspec_cases.php"
+        "packages/php/tests/dbspec_cases.php",
+        "tests/dbspec/stress.mts"
       ]
     },
     "dbspec-apply-python-check": {
@@ -2407,7 +2408,8 @@
       ],
       "inputs": [
         "packages/python/tests/dbspec_apply.py",
-        "packages/python/tests/dbspec_apply_runner.py"
+        "packages/python/tests/dbspec_apply_runner.py",
+        "tests/dbspec/stress.mts"
       ]
     },
     "dbspec-php-extension-check": {
@@ -2854,7 +2856,8 @@
       "inputs": [
         "packages/php/tests/DbspecApplyTest.php",
         "packages/php/tests/dbspec_cases.php",
-        "packages/php-ext/src/apply.c"
+        "packages/php-ext/src/apply.c",
+        "tests/dbspec/stress.mts"
       ]
     },
     "dbspec-apply-rust-check": {
@@ -2865,7 +2868,8 @@
         "databases"
       ],
       "inputs": [
-        "packages/rust/orm/tests/dbspec_apply.rs"
+        "packages/rust/orm/tests/dbspec_apply.rs",
+        "tests/dbspec/stress.mts"
       ]
     },
     "dbspec-verify-errors-check": {
@@ -2910,7 +2914,8 @@
         "databases"
       ],
       "inputs": [
-        "packages/ts/tests/dbspec-apply-physical.mjs"
+        "packages/ts/tests/dbspec-apply-physical.mjs",
+        "tests/dbspec/stress.mts"
       ]
     },
     "dbspec-apply-pairs-check": {

@@ -7,11 +7,11 @@ namespace Polyspec\Orm\Tests;
 use PHPUnit\Framework\Assert;
 
 /** Runs the shared stress document generator and returns its source text. */
-function dbspec_stress_document(): string
+function dbspec_stress_document(int $tables = 2000): string
 {
     $root = dirname(__DIR__, 3);
     $process = proc_open(
-        ['node', "$root/tests/dbspec/stress.mts"],
+        ['node', "$root/tests/dbspec/stress.mts", (string) $tables],
         [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
         $pipes
     );

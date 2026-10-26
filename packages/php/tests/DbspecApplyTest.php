@@ -776,6 +776,88 @@ final class DbspecApplyTest extends TestCase
         $this->assertSame(apply_scenarios()['runs'], $runs);
     }
 
+    // Requirement: PLN-104.
+    public function testStressPlanCommitsEachStepAndLeavesNoPostgresRelationLocks(): void
+    {
+        $document = preg_replace(
+            '/^dbspec 1 stress\\n/',
+            "dbspec 1 schema\\n",
+            dbspec_stress_document(100),
+            1,
+            $replaced
+        );
+        Assert::assertSame(1, $replaced, 'stress document header');
+        Assert::assertIsString($document);
+        $parsed = Dbspec::parsePlan("dbplan 1 stress\\nfrom empty\\n\\n" . $document);
+        $plan = $parsed->plan ?? apply_failure('stress', $parsed->diagnostics);
+        Assert::assertCount(100, $plan->schema->tables, 'stress table count');
+        $now = static fn(): DateTimeImmutable => new DateTimeImmutable('2026-10-01T00:00:00.123456789Z');
+
+        foreach (['mysql', 'postgres', 'sqlite'] as $db) {
+            [$session, $drop] = open_apply_database($db);
+            $pdo = null;
+            $watch = null;
+            try {
+                $pdo = $session();
+                foreach (APPLY_CONNECTION_RULES[$db] as $rule) {
+                    $pdo->exec($rule);
+                }
+                $steps = Dbspec::planSteps(null, $plan, $db)->steps
+                    ?? throw new RuntimeException("stress: no $db steps");
+                $watch = $db === 'postgres' ? $session() : null;
+                $pid = null;
+                if ($watch !== null) {
+                    foreach (APPLY_CONNECTION_RULES[$db] as $rule) {
+                        $watch->exec($rule);
+                    }
+                    Assert::assertSame('64', (string) dbspec_value($pdo, 'SHOW max_locks_per_transaction'));
+                    $pid = (int) dbspec_value($pdo, 'SELECT pg_backend_pid()');
+                }
+                $applied = 0;
+                Dbspec::apply($pdo, $db, [$plan], $now, static function (ApplyEvent $event) use (
+                    &$applied,
+                    $watch,
+                    $pid,
+                    $db
+                ): void {
+                    if ($event->kind !== 'applied') {
+                        return;
+                    }
+                    $applied++;
+                    if ($db === 'postgres') {
+                        Assert::assertInstanceOf(PDO::class, $watch);
+                        $query = $watch->prepare(
+                            "SELECT COUNT(*) FROM pg_locks WHERE pid = ? AND locktype = 'relation'"
+                        );
+                        $query->execute([$pid]);
+                        Assert::assertSame(
+                            '0',
+                            (string) $query->fetchColumn(),
+                            "applying session holds relation locks after step $applied"
+                        );
+                    }
+                });
+                Assert::assertSame(count($steps), $applied, "$db applied events");
+                $history = $db === 'mysql' ? '`dbspec$plans`' : '"dbspec$plans"';
+                $rows = $pdo->query("SELECT name, state, step FROM $history ORDER BY name")->fetchAll(PDO::FETCH_NUM);
+                $historyRows = array_map(
+                    static fn(array $row): array => array_map('strval', $row),
+                    $rows
+                );
+                Assert::assertSame(
+                    [['stress', 'applied', (string) count($steps)]],
+                    $historyRows,
+                    "$db step history"
+                );
+            } finally {
+                $watch = null;
+                $pdo = null;
+                gc_collect_cycles();
+                $drop();
+            }
+        }
+    }
+
     public static function poolerCases(): iterable
     {
         foreach (array_keys(apply_scenarios()['pooler']) as $name) {
