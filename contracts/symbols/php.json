@@ -5883,6 +5883,10 @@
     "exported": false,
     "signature": "private static function sameNames(array $names, Polyspec\\Orm\\CatalogTableMetadata $metadata, string $code): void"
   },
+  "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::samePageDescriptor": {
+    "exported": false,
+    "signature": "private static function samePageDescriptor(Polyspec\\Orm\\CatalogTableMetadata $a, Polyspec\\Orm\\CatalogTableMetadata $b): bool"
+  },
   "packages/php/src/Catalog.php::Polyspec\\Orm\\Catalog::sameRow": {
     "exported": false,
     "signature": "private static function sameRow(array $a, array $b): bool"
@@ -11250,6 +11254,10 @@
   "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::executeSql": {
     "exported": true,
     "signature": "public function executeSql(string $sql, array $params, bool $simpleQuery=false, array $paramTypes=[]): PgSql\\Result"
+  },
+  "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::failure": {
+    "exported": false,
+    "signature": "private function failure(array $info): PDOException"
   },
   "packages/php/src/Internal/PgsqlPdoAdapter.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::finish": {
     "exported": true,

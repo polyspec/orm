@@ -1042,6 +1042,11 @@ final class DbspecRulesTest extends TestCase
     #[DataProvider('limitCases')]
     public function testLimit(string $id): void
     {
+        $this->assertLimitDiagnostics($id);
+    }
+
+    private function assertLimitDiagnostics(string $id): void
+    {
         [$text, $want] = rules_limit($id);
         $clock = cpuCaseBegin(20.0);
         $previousMemoryLimit = ini_get('memory_limit');
@@ -1069,16 +1074,7 @@ final class DbspecRulesTest extends TestCase
     public function testDocumentAndTableLimits(): void
     {
         foreach (['size', 'tables', 'table-columns'] as $id) {
-            $clock = cpuCaseBegin(20.0);
-            [$text, $want] = rules_limit($id);
-            $result = \Polyspec\Orm\Dbspec\Dbspec::parse($text, []);
-            $got = array_map(
-                static fn(\Polyspec\Orm\Dbspec\Diagnostic $d): array => [$d->rule, $d->line, $d->column],
-                $result->diagnostics
-            );
-            $this->assertNull($result->document, "limit/$id: a document was returned");
-            $this->assertSame([$want], $got, "limit/$id");
-            cpuCaseEnd("limit/$id", $clock);
+            $this->assertLimitDiagnostics($id);
         }
     }
 }

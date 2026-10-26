@@ -29,7 +29,7 @@ async fn coverage_schema_install_existing() {
         db.utils().schema().install(&super::model::SCHEMA).await.unwrap();
         if std::env::var("ORM_FEATURE_DATABASE").as_deref() == Ok("mysql") {
             assert_eq!(
-                code(db.transaction(async || db.utils().schema().install(&super::model::SCHEMA)).await),
+                code(db.transaction(async || { db.utils().schema().install(&super::model::SCHEMA).await }).await),
                 polyspec_orm::codes::CONFIG,
                 "MySQL install inside a transaction returns CONFIG"
             );

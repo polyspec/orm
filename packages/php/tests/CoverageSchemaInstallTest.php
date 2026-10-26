@@ -69,6 +69,20 @@ DBSPEC;
 #[Medium]
 final class CoverageSchemaInstallTest extends TestCase
 {
+    public static function assertExistingSchemaInstall(Db $db, string $driver): void
+    {
+        Assert::assertTrue(coverageTableExists($db, 'author'), 'the bench database has no author table');
+        Assert::assertFalse($db->utils()->schema()->empty(), 'the installed tables make the schema non-empty');
+        // Installs the schema value of the generated code.
+        $db->utils()->schema()->install(\Polyspec\Orm\Tests\Model\schema());
+        if ($driver === 'mysql') {
+            $inside = coverageCode(fn() => $db->transaction(
+                fn() => $db->utils()->schema()->install(\Polyspec\Orm\Tests\Model\schema())
+            ));
+            Assert::assertSame(Code::CONFIG, $inside, 'MySQL install inside a transaction returns CONFIG');
+        }
+    }
+
     // Requirements: DBS-108, SCH-7, PLN-44, INT-55.
     public function testSchemaInstallExisting(): void
     {
@@ -77,15 +91,7 @@ final class CoverageSchemaInstallTest extends TestCase
             [$driver, $dsn] = coverageItem();
             $db = coverageConnect($dsn);
             try {
-                Assert::assertTrue(coverageTableExists($db, 'author'), 'the bench database has no author table');
-                // Installs the schema value of the generated code.
-                $db->utils()->schema()->install(\Polyspec\Orm\Tests\Model\schema());
-                if ($driver === 'mysql') {
-                    $inside = coverageCode(fn() => $db->transaction(
-                        fn() => $db->utils()->schema()->install(\Polyspec\Orm\Tests\Model\schema())
-                    ));
-                    Assert::assertSame(Code::CONFIG, $inside, 'MySQL install inside a transaction returns CONFIG');
-                }
+                self::assertExistingSchemaInstall($db, $driver);
             } finally {
                 $db->close();
             }

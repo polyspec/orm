@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { caseTest, COMPUTE } from '../../tests/testcase.mts';
 import { filterRuleFailures, implementationCountRule, onlyRuleFromArgs } from './rules-filter.mts';
 import { countMismatches, declaredClientAliases, incompleteClientSets } from './implementation-count.mts';
+import { authoredStyleText } from './writing-style.mts';
 
 caseTest('the default docs rules run preserves every finding', COMPUTE, () => {
   const failures = ['docs.translation-shape: a', 'docs.implementation-count: b'];
@@ -52,4 +53,22 @@ caseTest('client set parsing recognizes PHP library and extension aliases', COMP
     incompleteClientSets('The clients are Go, PHP, TypeScript and Rust.', aliases),
     [{ line: 1, phrase: 'Go, PHP, TypeScript and Rust', missing: ['PHP extension', 'Python'] }],
   );
+});
+
+caseTest('style checks exclude only declared Flowmark-owned tables', COMPUTE, () => {
+  const document = [
+    '## Markdown IR executor',
+    '',
+    '| surface | result |',
+    '|---|---|',
+    '| paginate | count는 여전히 모든 일치 행을 센다 |',
+    '',
+    '일반 설명에서 센다.',
+  ].join('\n');
+  const checked = authoredStyleText('docs/spec/dialects.ko.md', document);
+  assert.equal(checked.includes('count는 여전히 모든 일치 행을 센다'), false);
+  assert.equal(checked.includes('일반 설명에서 센다.'), true);
+  assert.equal(authoredStyleText('docs/spec/other.ko.md', document), document);
+  const wrongSection = document.replace('## Markdown IR executor', '## Another section');
+  assert.equal(authoredStyleText('docs/spec/dialects.ko.md', wrongSection), wrongSection);
 });

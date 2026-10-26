@@ -4,7 +4,7 @@ import tempfile
 import unittest
 
 from polyspec.orm.database import Db
-from polyspec.orm.engine.model import register_model
+from polyspec.orm.model import register_model
 from polyspec.orm.errors import OrmError
 from polyspec.orm.schema import Schema
 from . import testcase

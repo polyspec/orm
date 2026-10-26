@@ -77,13 +77,14 @@ func TestIntrospectCompare(t *testing.T) {
 	runners := []struct {
 		client string
 		args   []string
+		env    map[string]string
 	}{
-		{"go", []string{"go", "run", "./packages/go/internal/dbspec/introspect"}},
-		{"php", []string{"php", "packages/php/testing/dbspec/introspect/php.php"}},
-		{"typescript", []string{"node", "packages/ts/testing/dbspec/introspect/typescript.mts"}},
-		{"rust", []string{rustRunner}},
-		{"php-extension", []string{"php", "-d", "extension=" + extension, "packages/php-ext/testing/dbspec/introspect/php-extension.php"}},
-		{"python", []string{pythonRunner, "packages/python/tests/dbspec_introspect_runner.py"}},
+		{"go", []string{"go", "run", "./packages/go/internal/dbspec/introspect"}, nil},
+		{"php", []string{"php", "packages/php/testing/dbspec/introspect/php.php"}, nil},
+		{"typescript", []string{"node", "packages/ts/testing/dbspec/introspect/typescript.mts"}, nil},
+		{"rust", []string{rustRunner}, nil},
+		{"php-extension", []string{"php", "-d", "extension=" + extension, "packages/php-ext/testing/dbspec/introspect/php-extension.php"}, map[string]string{"ORM_PHP_MODE": "extension"}},
+		{"python", []string{pythonRunner, "packages/python/tests/dbspec_introspect_runner.py"}, nil},
 	}
 	for _, dialect := range []string{"mysql", "postgres", "sqlite"} {
 		t.Run(dialect, func(t *testing.T) {
@@ -103,6 +104,9 @@ func TestIntrospectCompare(t *testing.T) {
 				ctx, cancel := context.WithTimeout(c.Context(), compareRunnerDeadline)
 				cmd := exec.CommandContext(ctx, r.args[0], append(r.args[1:], dialect, uri)...)
 				cmd.Dir = root
+				if len(r.env) > 0 {
+					cmd.Env = runnerEnvironment(os.Environ(), r.env)
+				}
 				var stdout, stderr bytes.Buffer
 				cmd.Stdout, cmd.Stderr = &stdout, &stderr
 				err := cmd.Run()
@@ -129,6 +133,46 @@ func TestIntrospectCompare(t *testing.T) {
 			}
 		})
 	}
+}
+
+func runnerEnvironment(base []string, overrides map[string]string) []string {
+	result := make([]string, 0, len(base)+len(overrides))
+	for _, value := range base {
+		name, _, _ := strings.Cut(value, "=")
+		if _, replaced := overrides[name]; !replaced {
+			result = append(result, value)
+		}
+	}
+	for name, value := range overrides {
+		result = append(result, name+"="+value)
+	}
+	return result
+}
+
+func TestIntrospectCompareRunnerEnvironment(t *testing.T) {
+	got := runnerEnvironment([]string{"PATH=/bin", "ORM_PHP_MODE=library", "KEEP=value"}, map[string]string{"ORM_PHP_MODE": "extension"})
+	if want := []string{"PATH=/bin", "KEEP=value", "ORM_PHP_MODE=extension"}; !sameEnvironment(got, want) {
+		t.Fatalf("runner environment = %q, want %q", got, want)
+	}
+}
+
+func sameEnvironment(got, want []string) bool {
+	if len(got) != len(want) {
+		return false
+	}
+	for _, value := range want {
+		found := false
+		for _, actual := range got {
+			if actual == value {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
 }
 
 // compareDatabase creates an empty database for the dialect and returns its URI and a function to delete it.

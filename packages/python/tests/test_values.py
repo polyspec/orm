@@ -190,6 +190,7 @@ class RuntimeValueTypesDatabaseTest(unittest.TestCase):
         uuid = "0f0e0d0c-0b0a-4908-8706-050403020100"
         for driver in ("sqlite", "mysql", "postgres"):
             with self.subTest(driver=driver):
+
                 def check(db, seq):
                     row = self.models.ValueRecord().connect(db).get_by_seq(seq)
                     self.assertEqual(row.get_small(), -32768)
@@ -220,26 +221,51 @@ class RuntimeValueTypesDatabaseTest(unittest.TestCase):
 
         for driver in ("sqlite", "mysql", "postgres"):
             with self.subTest(driver=driver):
+
                 def check(db, seq):
                     if driver == "mysql":
-                        db._connection.execute("ALTER TABLE value_record MODIFY wide BIGINT UNSIGNED", [])
                         db._connection.execute(
-                            "UPDATE value_record SET wide = 18446744073709551615 WHERE seq = ?", [seq]
+                            "ALTER TABLE value_record MODIFY wide BIGINT UNSIGNED", []
+                        )
+                        db._connection.execute(
+                            "UPDATE value_record SET wide = 18446744073709551615 WHERE seq = ?",
+                            [seq],
                         )
                         with self.assertRaises(OrmError) as caught:
                             read_column(db, seq, "wide").get_wide()
                         self.assertEqual(caught.exception.code, "CODEC_DECODE")
-                        db._connection.execute("UPDATE value_record SET wide = 42, active = 2 WHERE seq = ?", [seq])
+                        db._connection.execute(
+                            "ALTER TABLE value_record DROP CHECK `value_record$active`",
+                            [],
+                        )
+                        db._connection.execute(
+                            "UPDATE value_record SET wide = 42, active = 2 WHERE seq = ?",
+                            [seq],
+                        )
                         with self.assertRaises(OrmError) as caught:
                             read_column(db, seq, "active").get_active()
                         self.assertEqual(caught.exception.code, "CODEC_DECODE")
                     elif driver == "postgres":
-                        db._connection.execute("UPDATE value_record SET ratio = 'NaN' WHERE seq = ?", [seq])
+                        db._connection.execute(
+                            "UPDATE value_record SET ratio = 'NaN' WHERE seq = $1",
+                            [seq],
+                        )
                         with self.assertRaises(OrmError) as caught:
                             read_column(db, seq, "ratio").get_ratio()
                         self.assertEqual(caught.exception.code, "CODEC_DECODE")
                     else:
-                        db._connection.execute("UPDATE value_record SET wide = 'not-an-integer' WHERE seq = ?", [seq])
+                        db._connection.execute(
+                            "PRAGMA ignore_check_constraints = ON", []
+                        )
+                        try:
+                            db._connection.execute(
+                                "UPDATE value_record SET wide = 'not-an-integer' WHERE seq = ?",
+                                [seq],
+                            )
+                        finally:
+                            db._connection.execute(
+                                "PRAGMA ignore_check_constraints = OFF", []
+                            )
                         with self.assertRaises(OrmError) as caught:
                             read_column(db, seq, "wide").get_wide()
                         self.assertEqual(caught.exception.code, "CODEC_DECODE")

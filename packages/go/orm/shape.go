@@ -198,6 +198,8 @@ func (s *shape) query(q *ir.Query) {
 		s.byte(1)
 		s.int(q.Limit.Offset)
 		s.int(q.Limit.Count)
+		s.optInt(q.Limit.OffsetP)
+		s.optInt(q.Limit.CountP)
 	}
 	s.str(q.ForceIdx)
 	s.str(q.Lock)

@@ -68,11 +68,13 @@ func TestDecimalPhysicalMySQL(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	decimalPhysical(t, "DECIMAL_MYSQL_DSN")
 }
+
 // Requirements: DIA-25, COD-2.
 func TestDecimalPhysicalPostgres(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	decimalPhysical(t, "DECIMAL_POSTGRES_DSN")
 }
+
 // Requirements: DIA-25, COD-2.
 func TestDecimalPhysicalSQLite(t *testing.T) {
 	testcase.Start(t, testcase.Database)

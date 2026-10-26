@@ -16,6 +16,7 @@ import type { Link, Nodes } from 'mdast';
 import { root } from './lib.mts';
 import { flowmarkSpecRoot } from './flowmark-source.mts';
 import { parse, tableUnder, textOf } from './tables.mts';
+import { canonicalMarkdownTables } from './markdown-tables.mts';
 
 const version = (await readFile(path.join(root, 'tests/markdown/flowmark.version'), 'utf8')).trim();
 const revision = version.split('-').pop();
@@ -76,14 +77,9 @@ function rows(text: string) {
   });
 }
 
-const targets = [
-  { file: 'docs/spec/dialects.md', spec: 'docs/spec/60-dialect.md', heading: '## Markdown IR executor', header: '| Surface | Result | Rule |' },
-  { file: 'docs/spec/dialects.ko.md', spec: 'docs/spec/60-dialect.ko.md', heading: '## Markdown IR executor', header: '| 표면 | 결과 | 규칙 |' },
-];
-
 const write = process.argv.includes('--write');
 const failures = [];
-for (const t of targets) {
+for (const t of canonicalMarkdownTables) {
   const expected = rows(await readFile(path.join(specRoot, t.spec), 'utf8'));
   const text = await readFile(path.join(root, t.file), 'utf8');
   const table = tableUnder(text, heading => heading.depth === 2 && `## ${textOf(heading)}` === t.heading);
@@ -107,4 +103,4 @@ if (failures.length > 0) {
   console.error(failures.join('\n'));
   process.exit(1);
 }
-console.log(write ? 'markdown-table: rewritten' : `markdown-table: ${targets.length} tables mirror flowmark spec 60 at ${version}`);
+console.log(write ? 'markdown-table: rewritten' : `markdown-table: ${canonicalMarkdownTables.length} tables mirror flowmark spec 60 at ${version}`);

@@ -17,6 +17,9 @@ final class ParentSlotExpansionNativeTest extends TestCase
             function_exists('expand_numbered_parent_slots_test'),
             'the parent-slot native-test extension must provide its test function',
         );
-        self::assertSame('SELECT \'$\' AS sign WHERE id = $1, $2 AND status = $3', \expand_numbered_parent_slots_test());
+        self::assertSame(
+            'SELECT \'$\' AS sign WHERE id = $1, $2 AND status = $3',
+            \expand_numbered_parent_slots_test(),
+        );
     }
 }

@@ -911,7 +911,7 @@ class BuiltRequest:
         if kind == "tuple":
             del out["column"]
             out["cols"] = list(p["cols"])
-            out["ps"] = [self.param(value) for row in p["value"] for value in row]
+            out["ps"] = [self.param(value) for row in _pad(p["value"]) for value in row]
         elif kind == "fulltext":
             del out["column"]
             out["cols"] = list(p["cols"])

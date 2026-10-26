@@ -11,6 +11,7 @@ use polyspec_orm::db::Pool;
 use polyspec_orm::{Core, Db, Entity, Model, Param, Schema};
 use polyspec_orm_case_database::{CaseDatabase, CaseTable};
 use sqlx::Connection as _;
+use std::time::Duration;
 
 #[macro_use]
 #[path = "common/typed_model.rs"]

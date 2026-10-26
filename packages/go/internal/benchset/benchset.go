@@ -8,8 +8,8 @@ package benchset
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
-	"runtime"
 
 	"github.com/polyspec/orm/packages/go/engine/dbspec"
 	"github.com/polyspec/orm/packages/go/engine/runtimemodel"
@@ -19,8 +19,10 @@ import (
 
 // Shared is the schema value of contracts/fixtures/bench/bench_shared.dbs, as the set that owns it would generate it.
 func Shared() (*orm.Schema, error) {
-	_, file, _, _ := runtime.Caller(0)
-	path := filepath.Join(filepath.Dir(file), "..", "..", "..", "..", "contracts", "fixtures", "bench", "bench_shared.dbs")
+	path, err := benchSharedPath()
+	if err != nil {
+		return nil, err
+	}
 	text, diagnostics, err := dbspec.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -33,6 +35,27 @@ func Shared() (*orm.Schema, error) {
 		return nil, errors.New(runtimemodel.DiagnosticsError(modelDiagnostics))
 	}
 	return &orm.Schema{Hash: m.ManifestHash, Text: m.ManifestText}, nil
+}
+
+// benchSharedPath finds the repository fixture from the working directory, which go test sets to the package directory.
+func benchSharedPath() (string, error) {
+	directory, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("get working directory: %w", err)
+	}
+	for {
+		path := filepath.Join(directory, "contracts", "fixtures", "bench", "bench_shared.dbs")
+		if _, err := os.Stat(path); err == nil {
+			return path, nil
+		} else if !errors.Is(err, os.ErrNotExist) {
+			return "", fmt.Errorf("check bench shared fixture %s: %w", path, err)
+		}
+		parent := filepath.Dir(directory)
+		if parent == directory {
+			return "", fmt.Errorf("could not find contracts/fixtures/bench/bench_shared.dbs above working directory %s", directory)
+		}
+		directory = parent
+	}
 }
 
 // Install installs the external document of the bench set, then the bench set, on the database of db.

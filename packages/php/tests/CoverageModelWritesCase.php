@@ -66,7 +66,19 @@ final class CoverageModelWritesCase
             }, retry: 0);
             Assert::fail('codec columns probe transaction unexpectedly committed');
         } catch (\Throwable $failure) {
-            Assert::assertSame($rollback, $failure, 'codec columns probe rolls back its row update');
+            $details = [];
+            for ($cause = $failure; $cause !== null; $cause = $cause->getPrevious()) {
+                $details[] = get_debug_type($cause) . ': ' . $cause->getMessage();
+                if ($cause instanceof \Polyspec\Orm\OrmException && $cause->rollback !== null) {
+                    $details[] = 'rollback ' . get_debug_type($cause->rollback) . ': '
+                        . $cause->rollback->getMessage();
+                }
+            }
+            Assert::assertSame(
+                $rollback,
+                $failure,
+                'codec columns probe rolls back its row update; received ' . implode(' <- ', $details),
+            );
         }
     }
 

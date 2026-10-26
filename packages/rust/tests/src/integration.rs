@@ -93,6 +93,8 @@ use polyspec_orm::db::Pool;
 use polyspec_orm::{AesKeyring, Collection, Db, Isolation, Null};
 use polyspec_orm_case_database::CaseDatabase;
 
+const TARGET_POOL_SIZE: u32 = 4;
+
 #[tokio::test]
 // Requirements: CFG-1.
 async fn coverage_generated_model_connection() {
@@ -142,7 +144,7 @@ impl Target {
     async fn empty(driver: &str) -> Target {
         let database = CaseDatabase::create(driver).await;
         let dsn = if driver == "sqlite" { format!("{}?_pragma=busy_timeout(5000)", database.dsn()) } else { database.dsn().to_owned() };
-        let db = model::connect(&dsn, 4, config()).await.or_panic(|e| format!("{driver}: {e}"));
+        let db = model::connect(&dsn, TARGET_POOL_SIZE, config()).await.or_panic(|e| format!("{driver}: {e}"));
         Target { driver: database.driver(), dsn, db, database }
     }
 
@@ -592,14 +594,14 @@ async fn transactions(t: &Target) {
     assert_eq!(schema.installed(&schema_name, "user").await.unwrap(), expected, "{}: schema table is installed", t.driver);
     assert_eq!(code(db.utils().privileges().inspect_table("public.user").await).as_str() == "CAPABILITY_UNSUPPORTED", t.driver != "postgres", "privileges");
     let stats = db.utils().stats();
-    assert_eq!(stats.max_open_connections, 10, "{}: pool limit", t.driver);
+    assert_eq!(stats.max_open_connections, TARGET_POOL_SIZE, "{}: pool limit", t.driver);
     assert_eq!(stats.open_connections, 1, "{}: open connections", t.driver);
     assert_eq!(stats.in_use, 0, "{}: connections in use", t.driver);
     assert_eq!(stats.idle, 1, "{}: idle connections", t.driver);
     let stats_in_transaction: polyspec_orm::Result<()> = db
         .transaction(async || {
             let stats = db.utils().stats();
-            assert_eq!(stats.max_open_connections, 10, "{}: transaction pool limit", t.driver);
+            assert_eq!(stats.max_open_connections, TARGET_POOL_SIZE, "{}: transaction pool limit", t.driver);
             assert_eq!(stats.open_connections, 1, "{}: transaction open connections", t.driver);
             assert_eq!(stats.in_use, 1, "{}: transaction connections in use", t.driver);
             assert_eq!(stats.idle, 0, "{}: transaction idle connections", t.driver);

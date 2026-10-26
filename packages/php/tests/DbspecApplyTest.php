@@ -788,7 +788,7 @@ final class DbspecApplyTest extends TestCase
         );
         Assert::assertSame(1, $replaced, 'stress document header');
         Assert::assertIsString($document);
-        $parsed = Dbspec::parsePlan("dbplan 1 stress\\nfrom empty\\n\\n" . $document);
+        $parsed = Dbspec::parsePlan("dbplan 1 stress\nfrom empty\n\n" . $document);
         $plan = $parsed->plan ?? apply_failure('stress', $parsed->diagnostics);
         Assert::assertCount(100, $plan->schema->tables, 'stress table count');
         $now = static fn(): DateTimeImmutable => new DateTimeImmutable('2026-10-01T00:00:00.123456789Z');

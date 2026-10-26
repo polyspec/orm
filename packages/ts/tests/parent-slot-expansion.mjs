@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { caseTest, COMPUTE } from '../../../tests/testcase.mts';
 import { query } from '../dist/database.js';
-import { CompositeAccount, Engine } from '../dist/index.js';
+import { CompositeAccount, CompositeMembership, Db, Engine } from '../dist/index.js';
 
 // Requirements: DSL-153.
 caseTest('parent-slot-expansion/preserves-bare-dollar', COMPUTE, async () => {
@@ -47,4 +47,50 @@ caseTest('parent-slot-expansion/preserves-bare-dollar', COMPUTE, async () => {
     sql: "SELECT '$' AS sign, id FROM items WHERE key IN ($1, $2)",
     values: [10, 11],
   });
+});
+
+// Requirements: PRT-40.
+caseTest('parent-slot-expansion/pads-composite-keys', COMPUTE, async () => {
+  for (const driver of ['postgres', 'sqlite']) {
+    const engine = new Engine(CompositeAccount.entity.model, driver);
+    const relationCalls = [];
+    const db = Object.create(Db.prototype);
+    Object.assign(db, {
+      connection: { name: driver },
+      shared: { closed: false },
+      requestHook: undefined,
+      plan: async planned => ({ plan: engine.compile(planned), id: 'parent-slot-expansion' }),
+      runStep: async (_ex, sql, step, params, parents) => {
+        if (step.tables.includes('composite_account')) {
+          const columns = step.assemble.columns;
+          return {
+            rows: [1, 2, 3].map(accountId => columns.map(column => {
+              if (column.column === 'tenant_id') return 10;
+              if (column.column === 'account_id') return accountId;
+              return null;
+            })),
+          };
+        }
+        relationCalls.push({ sql, step, params, parents });
+        return { rows: [] };
+      },
+    });
+
+    const account = () => new CompositeAccount().connect(db).tenantId(10);
+    await account().relations(
+      new CompositeMembership().matchTenantIdWithTenantId().matchAccountIdWithAccountId().aliasMemberships(),
+    ).gets();
+    await account().relations(
+      new CompositeMembership().connect(db).matchTenantIdWithTenantId().matchAccountIdWithAccountId().aliasMemberships(),
+    ).gets();
+    assert.equal(relationCalls.length, 2);
+    for (const call of relationCalls) {
+      assert.ok(call.step.tables.includes('composite_membership'));
+      const placeholders = driver === 'postgres'
+        ? /\(\$1, \$2\), \(\$3, \$4\), \(\$5, \$6\), \(\$7, \$8\)/
+        : /\(\?, \?\), \(\?, \?\), \(\?, \?\), \(\?, \?\)/;
+      assert.match(call.sql, placeholders);
+      assert.deepEqual(call.parents.length > 0 ? call.parents : call.params, [10, 1, 10, 2, 10, 3, 10, 3]);
+    }
+  }
 });

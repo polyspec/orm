@@ -68,26 +68,17 @@ func TestCoverageModelWriteCycle(t *testing.T) {
 	const jsonText = `{"b":1,"a":[],"c":{},"n":1.50}`
 	rollback := errors.New("rollback ordered JSON text probe")
 	err := db.Transaction(func() error {
-		row, err := model.Author().Connect(db).AddAllColumns().GetBySeq(1)
+		row, err := loadSeedAuthor(db, "seed author row 1 is missing")
 		if err != nil {
 			return err
-		}
-		if row == nil {
-			return errors.New("seed author row 1 is missing")
 		}
 		row, err = row.SetJsonSetting(orm.Value(jsontext.Value(jsonText)))
 		if err != nil {
 			return err
 		}
-		if _, err := row.Update(); err != nil {
-			return err
-		}
-		stored, err := model.Author().Connect(db).AddAllColumns().GetBySeq(1)
+		stored, err := updateAndReloadAuthor(row, db, "seed author row 1 disappeared after ordered JSON update")
 		if err != nil {
 			return err
-		}
-		if stored == nil {
-			return errors.New("seed author row 1 disappeared after ordered JSON update")
 		}
 		styled, err := stored.GetJsonSetting()
 		if err != nil {
@@ -116,12 +107,9 @@ func TestCoverageModelWriteCycle(t *testing.T) {
 
 	codecRollback := errors.New("rollback codec columns probe")
 	err = db.Transaction(func() error {
-		row, err := model.Author().Connect(db).AddAllColumns().GetBySeq(1)
+		row, err := loadSeedAuthor(db, "seed author row 1 is missing")
 		if err != nil {
 			return err
-		}
-		if row == nil {
-			return errors.New("seed author row 1 is missing")
 		}
 		ip := "10.0.0.1"
 		row = row.SetIp(&ip)
@@ -133,16 +121,9 @@ func TestCoverageModelWriteCycle(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		row, err = row.Update()
+		stored, err := updateAndReloadAuthor(row, db, "author row disappeared after codec update")
 		if err != nil {
 			return err
-		}
-		stored, err := model.Author().Connect(db).AddAllColumns().GetBySeq(1)
-		if err != nil {
-			return err
-		}
-		if stored == nil {
-			return errors.New("author row disappeared after codec update")
 		}
 		gotIP, err := stored.GetIp()
 		if err != nil {
@@ -196,6 +177,31 @@ func TestCoverageModelWriteCycle(t *testing.T) {
 	if n := must(account().TenantId(writeTenant).GetCount()); n != 0 {
 		t.Fatalf("tenant %d count after delete = %d, want 0", writeTenant, n)
 	}
+}
+
+func loadSeedAuthor(db *orm.DB, missingMessage string) (*model.AuthorModel, error) {
+	row, err := model.Author().Connect(db).AddAllColumns().GetBySeq(1)
+	if err != nil {
+		return nil, err
+	}
+	if row == nil {
+		return nil, errors.New(missingMessage)
+	}
+	return row, nil
+}
+
+func updateAndReloadAuthor(row *model.AuthorModel, db *orm.DB, missingMessage string) (*model.AuthorModel, error) {
+	if _, err := row.Update(); err != nil {
+		return nil, err
+	}
+	stored, err := model.Author().Connect(db).AddAllColumns().GetBySeq(1)
+	if err != nil {
+		return nil, err
+	}
+	if stored == nil {
+		return nil, errors.New(missingMessage)
+	}
+	return stored, nil
 }
 
 // TestCoverageModelSaveKeyDispatch checks Save's insert/update choice for missing, zero, and loaded keys.

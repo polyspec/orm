@@ -58,7 +58,7 @@ class CoverageTransactionsTest extends TestCase
             transactionCase(function (Db $db): void {
                 Assert::assertSame(
                     Code::CONFIG,
-                    self::code(fn() => (new CompositeAccount())->getCount()),
+                    coverageCode(fn() => (new CompositeAccount())->getCount()),
                     'an unconnected model outside a transaction returns CONFIG'
                 );
                 $boom = new RuntimeException('rollback requested');
@@ -83,7 +83,8 @@ class CoverageTransactionsTest extends TestCase
         }
     }
 
-    // Requirements: DSL-119, DSL-123, DSL-125, DSL-126, INT-40, INT-41, INT-42, INT-43, INT-45, INT-46, INT-47, INT-48, PLN-17, PLN-21, PLN-24, PLN-44.
+    // Requirements: DSL-119, DSL-123, DSL-125, DSL-126, INT-40, INT-41, INT-42, INT-43.
+    // Requirements: INT-45, INT-46, INT-47, INT-48, PLN-17, PLN-21, PLN-24, PLN-44.
     public function testTransactionSavepoint(): void
     {
         foreach (coverageItemsOf(__FILE__) as $item) {
@@ -105,7 +106,9 @@ class CoverageTransactionsTest extends TestCase
                         $called = false;
                         Assert::assertSame(
                             Code::CONFIG,
-                            self::code(fn() => $db->transaction(function () use (&$called): void { $called = true; }, ...$options)),
+                            coverageCode(fn() => $db->transaction(function () use (&$called): void {
+                                $called = true;
+                            }, ...$options)),
                             'a nested transaction rejects every option except retry',
                         );
                         Assert::assertFalse($called, 'an invalid nested option does not run its callback');
@@ -131,7 +134,7 @@ class CoverageTransactionsTest extends TestCase
                 foreach (['forUpdate', 'forShare', 'forUpdateNoWait', 'forShareNoWait'] as $lock) {
                     Assert::assertSame(
                         Code::CONFIG,
-                        self::code(fn() => (new CompositeAccount())($db)->tenantId(TRANSACTION_TENANT)
+                        coverageCode(fn() => (new CompositeAccount())($db)->tenantId(TRANSACTION_TENANT)
                             ->andAccountId(2)->{$lock}()->get()),
                         "$lock outside a transaction returns CONFIG"
                     );

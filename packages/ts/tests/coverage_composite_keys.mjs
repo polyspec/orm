@@ -100,7 +100,7 @@ await runCases('coverage_composite_keys.mjs', {
         }
       }, async () => {
         // Even a failed run leaves no rows written by this case.
-        for (const t of [tenant, otherTenant]) {
+        for (const t of [tenant, otherTenant, collisionTenant, collisionOtherTenant]) {
           await (await membership().tenantId(t).gets()).delete();
           await (await account().tenantId(t).gets()).delete();
         }

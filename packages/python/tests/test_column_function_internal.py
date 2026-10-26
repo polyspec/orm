@@ -1,5 +1,6 @@
 import json
 import unittest
+from packages.python.tests import testcase
 
 from polyspec.orm.engine import model_of_documents, parse_document_set
 from polyspec.orm.engine.dialect import dialect_of
@@ -66,4 +67,4 @@ class ColumnFunctionMetadataTest(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    testcase.main()

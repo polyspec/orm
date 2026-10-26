@@ -23,7 +23,7 @@ for (const database of databases) {
       await step(`group-rows/${database}/${language}/${attempt}`, 2 * TIMEOUT_MS, async ({ step: progress }) => {
         const env = { ...process.env, ORM_GROUP_DATABASE: database, ORM_GROUP_DSN: dsn };
         const expected = language === 'php'
-          ? { kind: 'teamcity' as const, testName: 'test_group_rows' }
+          ? { kind: 'teamcity' as const, testName: 'testGroupRows' }
           : { kind: 'exact' as const, output: `CASE group_rows_${database} PASS` };
         await runPhysicalCommandCase(run, program, args, env, dsn, expected, `${database}/${language}/${attempt}: missing exact pass event`);
         await reportUnchangedState(() => state(database, dsn), before, `${database}/${language}/${attempt}: database state changed`, progress);

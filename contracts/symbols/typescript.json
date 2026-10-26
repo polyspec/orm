@@ -13511,6 +13511,10 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
+  "packages/ts/src/models/models.ts::Account#field.getAesHexPhone": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
   "packages/ts/src/models/models.ts::Account#field.getAuthorModels": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -13523,11 +13527,19 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
+  "packages/ts/src/models/models.ts::Account#field.getMemberships": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
   "packages/ts/src/models/models.ts::Account#field.getModule": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::Account#field.getOwner": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::Account#field.getReadCount": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -13667,11 +13679,19 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
+  "packages/ts/src/models/models.ts::AccountProject#field.getAesHexPhone": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
   "packages/ts/src/models/models.ts::AccountProject#field.getAuthorModels": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::AccountProject#field.getMembers": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AccountProject#field.getMemberships": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -13684,6 +13704,10 @@
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::AccountProject#field.getOwner": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AccountProject#field.getReadCount": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -13843,11 +13867,19 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
+  "packages/ts/src/models/models.ts::AuditRecord#field.getAesHexPhone": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
   "packages/ts/src/models/models.ts::AuditRecord#field.getAuthorModels": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::AuditRecord#field.getMembers": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditRecord#field.getMemberships": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -13860,6 +13892,10 @@
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::AuditRecord#field.getOwner": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditRecord#field.getReadCount": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -13995,11 +14031,19 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
+  "packages/ts/src/models/models.ts::AuditedNote#field.getAesHexPhone": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
   "packages/ts/src/models/models.ts::AuditedNote#field.getAuthorModels": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::AuditedNote#field.getMembers": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote#field.getMemberships": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -14012,6 +14056,10 @@
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::AuditedNote#field.getOwner": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditedNote#field.getReadCount": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -14199,11 +14247,19 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory#field.getAesHexPhone": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
   "packages/ts/src/models/models.ts::AuditedNoteHistory#field.getAuthorModels": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::AuditedNoteHistory#field.getMembers": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory#field.getMemberships": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -14216,6 +14272,10 @@
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::AuditedNoteHistory#field.getOwner": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::AuditedNoteHistory#field.getReadCount": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -14675,6 +14735,10 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
+  "packages/ts/src/models/models.ts::Author#field.getMemberships": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
   "packages/ts/src/models/models.ts::Author#field.getModule": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -14730,6 +14794,10 @@
   "packages/ts/src/models/models.ts::Author#field.gtStartDt": {
     "exported": true,
     "signature": "(...args: [v0: string | Date | ValueFunction] | [v0: ColumnFunction, compared: unknown]) =\u003e this"
+  },
+  "packages/ts/src/models/models.ts::Author#field.ip": {
+    "exported": true,
+    "signature": "(v0: string | readonly (string)[] | ValueFunction | Model | null) =\u003e this"
   },
   "packages/ts/src/models/models.ts::Author#field.isClose": {
     "exported": true,
@@ -16247,11 +16315,19 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
+  "packages/ts/src/models/models.ts::BindCell#field.getAesHexPhone": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
   "packages/ts/src/models/models.ts::BindCell#field.getAuthorModels": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::BindCell#field.getMembers": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::BindCell#field.getMemberships": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -16264,6 +16340,10 @@
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::BindCell#field.getOwner": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::BindCell#field.getReadCount": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -16467,6 +16547,10 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
+  "packages/ts/src/models/models.ts::ClockCell#field.getAesHexPhone": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
   "packages/ts/src/models/models.ts::ClockCell#field.getAuthorModels": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -16479,6 +16563,10 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
+  "packages/ts/src/models/models.ts::ClockCell#field.getMemberships": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
   "packages/ts/src/models/models.ts::ClockCell#field.getModule": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -16488,6 +16576,10 @@
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::ClockCell#field.getOwner": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::ClockCell#field.getReadCount": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -16731,6 +16823,10 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
+  "packages/ts/src/models/models.ts::CompositeAccount#field.getAesHexPhone": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
   "packages/ts/src/models/models.ts::CompositeAccount#field.getAuthorModels": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -16743,11 +16839,19 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
+  "packages/ts/src/models/models.ts::CompositeAccount#field.getMemberships": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
   "packages/ts/src/models/models.ts::CompositeAccount#field.getModule": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::CompositeAccount#field.getOwner": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::CompositeAccount#field.getReadCount": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -16939,11 +17043,19 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
+  "packages/ts/src/models/models.ts::CompositeMembership#field.getAesHexPhone": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
   "packages/ts/src/models/models.ts::CompositeMembership#field.getAuthorModels": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::CompositeMembership#field.getMembers": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::CompositeMembership#field.getMemberships": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -16956,6 +17068,10 @@
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::CompositeMembership#field.getOwner": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::CompositeMembership#field.getReadCount": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -17151,11 +17267,19 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
+  "packages/ts/src/models/models.ts::DayCell#field.getAesHexPhone": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
   "packages/ts/src/models/models.ts::DayCell#field.getAuthorModels": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::DayCell#field.getMembers": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::DayCell#field.getMemberships": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -17168,6 +17292,10 @@
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::DayCell#field.getOwner": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::DayCell#field.getReadCount": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -17367,6 +17495,10 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
+  "packages/ts/src/models/models.ts::HexCell#field.getAesHexPhone": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
   "packages/ts/src/models/models.ts::HexCell#field.getAuthorModels": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -17379,6 +17511,10 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
+  "packages/ts/src/models/models.ts::HexCell#field.getMemberships": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
   "packages/ts/src/models/models.ts::HexCell#field.getModule": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -17388,6 +17524,10 @@
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::HexCell#field.getOwner": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::HexCell#field.getReadCount": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -17551,11 +17691,19 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
+  "packages/ts/src/models/models.ts::NoteReader#field.getAesHexPhone": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
   "packages/ts/src/models/models.ts::NoteReader#field.getAuthorModels": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::NoteReader#field.getMembers": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::NoteReader#field.getMemberships": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -17568,6 +17716,10 @@
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::NoteReader#field.getOwner": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::NoteReader#field.getReadCount": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -17723,6 +17875,10 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
+  "packages/ts/src/models/models.ts::Project#field.getAesHexPhone": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
   "packages/ts/src/models/models.ts::Project#field.getAuthorModels": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -17731,11 +17887,19 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
+  "packages/ts/src/models/models.ts::Project#field.getMemberships": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
   "packages/ts/src/models/models.ts::Project#field.getModule": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::Project#field.getOwner": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::Project#field.getReadCount": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -17867,6 +18031,10 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
+  "packages/ts/src/models/models.ts::Service#field.getAesHexPhone": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
   "packages/ts/src/models/models.ts::Service#field.getAuthorModels": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -17879,11 +18047,19 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
+  "packages/ts/src/models/models.ts::Service#field.getMemberships": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
   "packages/ts/src/models/models.ts::Service#field.getModule": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::Service#field.getOwner": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::Service#field.getReadCount": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -18047,6 +18223,10 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
+  "packages/ts/src/models/models.ts::ServiceMember#field.getAesHexPhone": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
   "packages/ts/src/models/models.ts::ServiceMember#field.getAuthorModels": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -18059,6 +18239,10 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
+  "packages/ts/src/models/models.ts::ServiceMember#field.getMemberships": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
   "packages/ts/src/models/models.ts::ServiceMember#field.getModule": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -18068,6 +18252,10 @@
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::ServiceMember#field.getOwner": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::ServiceMember#field.getReadCount": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -18295,6 +18483,10 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
+  "packages/ts/src/models/models.ts::ServiceRegion#field.getAesHexPhone": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
   "packages/ts/src/models/models.ts::ServiceRegion#field.getAuthorModels": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -18303,11 +18495,19 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
+  "packages/ts/src/models/models.ts::ServiceRegion#field.getMemberships": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
   "packages/ts/src/models/models.ts::ServiceRegion#field.getModule": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::ServiceRegion#field.getOwner": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::ServiceRegion#field.getReadCount": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -18503,11 +18703,19 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
+  "packages/ts/src/models/models.ts::SharedNote#field.getAesHexPhone": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
   "packages/ts/src/models/models.ts::SharedNote#field.getAuthorModels": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::SharedNote#field.getMembers": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::SharedNote#field.getMemberships": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -18520,6 +18728,10 @@
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::SharedNote#field.getOwner": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::SharedNote#field.getReadCount": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -18659,11 +18871,19 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
+  "packages/ts/src/models/models.ts::SoftLink#field.getAesHexPhone": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
   "packages/ts/src/models/models.ts::SoftLink#field.getAuthorModels": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::SoftLink#field.getMembers": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::SoftLink#field.getMemberships": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -18676,6 +18896,10 @@
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::SoftLink#field.getOwner": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::SoftLink#field.getReadCount": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -18879,6 +19103,10 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
+  "packages/ts/src/models/models.ts::SoftRecord#field.getAesHexPhone": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
   "packages/ts/src/models/models.ts::SoftRecord#field.getAuthorModels": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -18891,11 +19119,19 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
+  "packages/ts/src/models/models.ts::SoftRecord#field.getMemberships": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
   "packages/ts/src/models/models.ts::SoftRecord#field.getModule": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::SoftRecord#field.getOwner": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::SoftRecord#field.getReadCount": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -19063,11 +19299,19 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
+  "packages/ts/src/models/models.ts::Task#field.getAesHexPhone": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
   "packages/ts/src/models/models.ts::Task#field.getAuthorModels": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::Task#field.getMembers": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::Task#field.getMemberships": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -19080,6 +19324,10 @@
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::Task#field.getOwner": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::Task#field.getReadCount": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -19251,11 +19499,19 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
+  "packages/ts/src/models/models.ts::TimeCell#field.getAesHexPhone": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
   "packages/ts/src/models/models.ts::TimeCell#field.getAuthorModels": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::TimeCell#field.getMembers": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::TimeCell#field.getMemberships": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -19268,6 +19524,10 @@
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::TimeCell#field.getOwner": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::TimeCell#field.getReadCount": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -19435,6 +19695,10 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
+  "packages/ts/src/models/models.ts::UpsertCell#field.getAesHexPhone": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
   "packages/ts/src/models/models.ts::UpsertCell#field.getAuthorModels": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -19447,6 +19711,10 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
+  "packages/ts/src/models/models.ts::UpsertCell#field.getMemberships": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
   "packages/ts/src/models/models.ts::UpsertCell#field.getModule": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -19456,6 +19724,10 @@
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::UpsertCell#field.getOwner": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::UpsertCell#field.getReadCount": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -19635,6 +19907,10 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
+  "packages/ts/src/models/models.ts::User#field.getAesHexPhone": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
   "packages/ts/src/models/models.ts::User#field.getAuthorModels": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
@@ -19647,11 +19923,19 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
+  "packages/ts/src/models/models.ts::User#field.getMemberships": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
   "packages/ts/src/models/models.ts::User#field.getModule": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::User#field.getOwner": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::User#field.getReadCount": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -19795,11 +20079,19 @@
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
+  "packages/ts/src/models/models.ts::UuidCell#field.getAesHexPhone": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
   "packages/ts/src/models/models.ts::UuidCell#field.getAuthorModels": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::UuidCell#field.getMembers": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::UuidCell#field.getMemberships": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
@@ -19812,6 +20104,10 @@
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },
   "packages/ts/src/models/models.ts::UuidCell#field.getOwner": {
+    "exported": true,
+    "signature": "\u003cT = unknown\u003e() =\u003e T"
+  },
+  "packages/ts/src/models/models.ts::UuidCell#field.getReadCount": {
     "exported": true,
     "signature": "\u003cT = unknown\u003e() =\u003e T"
   },

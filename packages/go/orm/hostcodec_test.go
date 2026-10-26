@@ -74,6 +74,9 @@ func TestBlindIndexIsStableAndKeyed(t *testing.T) {
 
 func TestHostEncodingRejectsUnsupportedInput(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
+	if got, err := HostEncode(nil, []string{"ip"}, ""); got != nil || err != nil {
+		t.Errorf("HostEncode(SQL NULL, ip) = %#v, %v; want nil, nil", got, err)
+	}
 	for _, input := range []any{int64(7), true, struct{ Text string }{Text: "seven"}} {
 		if _, err := HostEncode(input, []string{"aes"}, "key"); ErrorCode(err) != CodeCodecEncode {
 			t.Errorf("HostEncode(%T) error = %v", input, err)

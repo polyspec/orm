@@ -303,6 +303,18 @@ export function makeTargets(makefile: string): MakeTarget[] {
   return makeEntries(makefile).flatMap(({ targets, prerequisites, commands }) => targets.map(target => ({ target, prerequisites, commands })));
 }
 
+// checkTargets returns the Makefile's CHECK_TARGETS after its initial assignment and every append.
+export function checkTargets(makefile: string): string[] {
+  const assignments = [...makefile.matchAll(/^CHECK_TARGETS\s*(\+?=)\s*(.*)$/gm)];
+  let targets: string[] = [];
+  for (const [, operator, value = ''] of assignments) {
+    const entries = value.trim().split(/\s+/).filter(Boolean);
+    if (operator === '=') targets = entries;
+    else targets.push(...entries);
+  }
+  return targets;
+}
+
 // makeRecipes returns the recipe commands (makeTargets) of each Makefile target as one unit. A recipe line after a line that is not a rule
 // is a unit named `Makefile`. A target with no recipe is not a unit.
 export function makeRecipes(makefile: string): Unit[] {

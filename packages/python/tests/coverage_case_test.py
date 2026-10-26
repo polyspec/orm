@@ -76,6 +76,56 @@ class CoverageCaseTest(unittest.TestCase):
     def test_repository_root_holds_the_feature_manifest(self):
         self.assertTrue((REPOSITORY_ROOT / "contracts" / "features.json").is_file())
 
+    def test_empty_tenant_helper_forwards_bench_codec_keys(self):
+        class Account:
+            def connect(self, _db):
+                return self
+
+            def tenant_id(self, _tenant):
+                return self
+
+            def get_count(self):
+                return 0
+
+        class Database:
+            driver = "sqlite"
+
+            def close(self):
+                pass
+
+        class Models:
+            def __init__(self):
+                self.calls = []
+                self.db = Database()
+
+            def connect(self, dsn, **options):
+                self.calls.append((dsn, options))
+                return self.db
+
+            def CompositeAccount(self):
+                return Account()
+
+        models = Models()
+        seen = []
+        coverage_case.run_on_empty_tenant(
+            models,
+            ("sqlite", "sqlite:///bench.sqlite"),
+            9,
+            lambda db, _account: seen.append(db),
+            aes_key="bench-salt",
+            blind_index_key="bench-blind-index",
+        )
+        self.assertEqual(
+            models.calls,
+            [
+                (
+                    "sqlite:///bench.sqlite",
+                    {"aesKey": "bench-salt", "blindIndexKey": "bench-blind-index"},
+                )
+            ],
+        )
+        self.assertEqual(seen, [models.db])
+
     def test_feature_items_selects_the_runner_database_only_when_set(self):
         listed = '[{"database":"sqlite","dsn":"sqlite:///selected.sqlite"}]'
         with patch("subprocess.run") as run:

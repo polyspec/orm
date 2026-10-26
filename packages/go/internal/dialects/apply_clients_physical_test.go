@@ -29,6 +29,36 @@ const pairDeadline = 3*runnerDeadline + time.Minute
 // applyClients is the client with the apply runner of tests/dbspec/apply, as set by the declared implementations of config/parity.json.
 var applyClients = dbspecLanguages()
 
+type applyClientRunner struct {
+	args []string
+	env  map[string]string
+}
+
+func applyRunnerEnvironment(base []string, overrides map[string]string) []string {
+	result := make([]string, 0, len(base)+len(overrides))
+	for _, value := range base {
+		name, _, _ := strings.Cut(value, "=")
+		if _, replaced := overrides[name]; !replaced {
+			result = append(result, value)
+		}
+	}
+	for name, value := range overrides {
+		result = append(result, name+"="+value)
+	}
+	return result
+}
+
+func applyClientRunners(goRunner, rustRunner, extension, python string) map[string]applyClientRunner {
+	return map[string]applyClientRunner{
+		"go":            {args: []string{goRunner}},
+		"php":           {args: []string{"php", "packages/php/testing/dbspec/apply/php.php"}},
+		"typescript":    {args: []string{"node", "packages/ts/testing/dbspec/apply/typescript.mts"}},
+		"rust":          {args: []string{rustRunner}},
+		"php-extension": {args: []string{"php", "-d", "extension=" + extension, "packages/php-ext/testing/dbspec/apply/php-extension.php"}, env: map[string]string{"ORM_PHP_MODE": "extension"}},
+		"python":        {args: []string{python, "-m", "packages.python.tests.dbspec_apply_runner"}},
+	}
+}
+
 // dbspecLanguages reads the declared implementations of config/parity.json. This test runs from the package directory,
 // so the paths are relative to packages/go/internal/dialects.
 func dbspecLanguages() []string {
@@ -73,14 +103,7 @@ func TestApplyChainAcrossClients(t *testing.T) {
 	if err != nil {
 		t.Fatalf("build the Go apply runner: %v\n%s", err, out)
 	}
-	runners := map[string][]string{
-		"go":            {goRunner},
-		"php":           {"php", "packages/php/testing/dbspec/apply/php.php"},
-		"typescript":    {"node", "packages/ts/testing/dbspec/apply/typescript.mts"},
-		"rust":          {rustRunner},
-		"php-extension": {"php", "-d", "extension=" + extension, "packages/php-ext/testing/dbspec/apply/php-extension.php"},
-		"python":        {python, "-m", "packages.python.tests.dbspec_apply_runner"},
-	}
+	runners := applyClientRunners(goRunner, rustRunner, extension, python)
 	// The database name includes the pid and a random value so that it does not overlap with another test run at the same time.
 	token := uniqueToken(t)
 
@@ -90,9 +113,12 @@ func TestApplyChainAcrossClients(t *testing.T) {
 		begin := time.Now()
 		ctx, cancel := context.WithTimeout(context.Background(), runnerDeadline)
 		defer cancel()
-		args := runners[client]
-		cmd := exec.CommandContext(ctx, args[0], append(args[1:], action, dialect, uri, vectors)...)
+		runner := runners[client]
+		cmd := exec.CommandContext(ctx, runner.args[0], append(runner.args[1:], action, dialect, uri, vectors)...)
 		cmd.Dir = root
+		if len(runner.env) > 0 {
+			cmd.Env = applyRunnerEnvironment(os.Environ(), runner.env)
+		}
 		var stdout, stderr bytes.Buffer
 		cmd.Stdout, cmd.Stderr = &stdout, &stderr
 		err := cmd.Run()
@@ -190,6 +216,29 @@ func TestApplyChainAcrossClients(t *testing.T) {
 		t.Errorf("ran %d pairs, want 270 cross-client cases, three Python finalize cases, and nine Python/Go/Rust lock-wait cases", runs)
 	}
 	t.Logf("pairs: %d", runs)
+}
+
+func TestApplyExtensionRunnerMode(t *testing.T) {
+	runners := applyClientRunners("go-runner", "rust-runner", "extension.so", "python")
+	if got := runners["php-extension"].env["ORM_PHP_MODE"]; got != "extension" {
+		t.Fatalf("PHP extension runner mode = %q, want extension", got)
+	}
+	if len(runners["php"].env) != 0 {
+		t.Fatalf("PHP library runner received extension environment: %v", runners["php"].env)
+	}
+	got := applyRunnerEnvironment([]string{"PATH=/bin", "ORM_PHP_MODE=library", "KEEP=value"}, runners["php-extension"].env)
+	if !containsEnvironment(got, "ORM_PHP_MODE=extension") || containsEnvironment(got, "ORM_PHP_MODE=library") || !containsEnvironment(got, "KEEP=value") {
+		t.Fatalf("PHP extension child environment = %q", got)
+	}
+}
+
+func containsEnvironment(environment []string, value string) bool {
+	for _, entry := range environment {
+		if entry == value {
+			return true
+		}
+	}
+	return false
 }
 
 func checkFinalizedPythonState(t *testing.T, dialect, uri string) {

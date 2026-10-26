@@ -259,6 +259,8 @@
         "packages/php/tests/CannedCatalogPdo.php",
         "packages/php/tests/CatalogConnectionCoverageCases.php",
         "packages/php/tests/CatalogMysqlVisibilityPdo.php",
+        "packages/php/tests/CatalogMysqlVisibilityStatement.php",
+        "packages/php/tests/CatalogMysqlVisibilityCases.php",
         "packages/php/tests/CodecYamlProbe.php",
         "packages/php/tests/CollectionIdentityCases.php",
         "packages/php/tests/CollectionWeakTypedKeyCases.php",
@@ -524,7 +526,9 @@
         "packages/php-ext/tests/declarations_functions.php",
         "packages/php-ext/tests/model-weak-caller.php",
         "packages/php-ext/tests/silent_paths.php",
-        "packages/php-ext/tests/CatalogCommitFaultPdo.php"
+        "packages/php-ext/tests/CatalogCommitFaultPdo.php",
+        "packages/php-ext/tests/CatalogPageMutationPdo.php",
+        "packages/php-ext/tests/CatalogPageMutationStatement.php"
       ],
       "args": [
         "-d",
@@ -7052,27 +7056,27 @@
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoveragePlannerExtensionTest.php",
-          "id": "CoveragePlannerExtensionTest::test_param_uses_column_function"
+          "id": "CoveragePlannerExtensionTest::testParamUsesColumnFunction"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoveragePlannerExtensionTest.php",
-          "id": "CoveragePlannerExtensionTest::test_param_uses_interval"
+          "id": "CoveragePlannerExtensionTest::testParamUsesInterval"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoveragePlannerExtensionTest.php",
-          "id": "CoveragePlannerExtensionTest::test_param_uses_contains"
+          "id": "CoveragePlannerExtensionTest::testParamUsesContains"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoveragePlannerExtensionTest.php",
-          "id": "CoveragePlannerExtensionTest::test_param_uses_if_parent"
+          "id": "CoveragePlannerExtensionTest::testParamUsesIfParent"
         },
         {
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoveragePlannerExtensionTest.php",
-          "id": "CoveragePlannerExtensionTest::test_param_uses_optimistic"
+          "id": "CoveragePlannerExtensionTest::testParamUsesOptimistic"
         },
         {
           "implementation": "typescript",

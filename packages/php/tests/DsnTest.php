@@ -20,8 +20,7 @@ use Polyspec\Orm\OrmException;
 #[Small]
 final class DsnTest extends TestCase
 {
-    // Requirements: PRT-77.
-    public function testValueFunctionIrCarriesNameAndParameterIndexes(): void
+    public static function assertValueFunctionIr(): void
     {
         $params = ['preceding'];
         $ir = Orm::secondsAgo(30)->ir(static function (mixed $value) use (&$params): int {
@@ -34,6 +33,12 @@ final class DsnTest extends TestCase
             json_encode(Orm::secondsAgo(30)->ir(static fn(): int => 0), JSON_THROW_ON_ERROR)
         );
         self::assertSame('{"name":"now"}', json_encode(Orm::now()->ir(static fn(): int => 0), JSON_THROW_ON_ERROR));
+    }
+
+    // Requirements: PRT-77.
+    public function testValueFunctionIrCarriesNameAndParameterIndexes(): void
+    {
+        self::assertValueFunctionIr();
     }
 
     public function testParse(): void

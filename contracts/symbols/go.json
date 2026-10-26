@@ -9067,6 +9067,10 @@
     "exported": true,
     "signature": "receiver=*AuthorModel func[T0 argTimeCmp](v0 T0, compared ...any) *AuthorModel"
   },
+  "packages/go/model/author.go::AuthorModel.Ip": {
+    "exported": true,
+    "signature": "receiver=*AuthorModel func[T0 argStringEqNull](v0 T0) *AuthorModel"
+  },
   "packages/go/model/author.go::AuthorModel.IsClose": {
     "exported": true,
     "signature": "receiver=*AuthorModel func[T0 argBoolEq](v0 T0) *AuthorModel"
@@ -10954,6 +10958,10 @@
   "packages/go/model/composite_account.go::CompositeAccountModel#field.m": {
     "exported": false,
     "signature": "*orm.Core"
+  },
+  "packages/go/model/composite_account.go::CompositeAccountModel.AccountId": {
+    "exported": true,
+    "signature": "receiver=*CompositeAccountModel func[T0 argIntEq](v0 T0) *CompositeAccountModel"
   },
   "packages/go/model/composite_account.go::CompositeAccountModel.AddAllColumns": {
     "exported": true,
@@ -16282,6 +16290,10 @@
   "packages/go/model/user.go::UserModel.GetAvg": {
     "exported": true,
     "signature": "receiver=*UserModel func() (*float64, error)"
+  },
+  "packages/go/model/user.go::UserModel.GetBySeq": {
+    "exported": true,
+    "signature": "receiver=*UserModel func[T0 argIntEq](v0 T0) (*UserModel, error)"
   },
   "packages/go/model/user.go::UserModel.GetCount": {
     "exported": true,

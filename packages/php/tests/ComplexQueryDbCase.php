@@ -234,10 +234,8 @@ final class ComplexQueryDbCase
         foreach ($fixture['seed_order'] as $table) {
             $columns = $fixture['seed_columns'][$table];
             $names = array_map(static fn(string $column): string => $quote . $column . $quote, $columns);
-            $slots = array_map(
-                static fn(int $index): string => $driver === 'postgres' ? '$' . ($index + 1) : '?',
-                array_keys($columns)
-            );
+            // PDO positional placeholders are question marks; the PostgreSQL adapter numbers them on execute.
+            $slots = array_fill(0, count($columns), '?');
             $sql = 'INSERT INTO ' . $quote . $table . $quote . ' (' . implode(', ', $names) . ') VALUES ('
                 . implode(', ', $slots) . ')';
             $statement = $pdo->prepare($sql);

@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/polyspec/orm/packages/go/engine/ir"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 var sqliteLockRestoreDriverID atomic.Uint64
@@ -103,6 +104,7 @@ func sqliteLockRestoreDB(t *testing.T, plan *sqliteLockRestorePlan) (*DB, *txCon
 
 // Requirements: INT-49.
 func TestAcquireSQLiteRowLockRestorationOutcomes(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	primaryCause := errors.New("database is locked")
 	restoreCause := errors.New("restore rejected")
 	for _, tc := range []struct {
@@ -156,6 +158,7 @@ func TestAcquireSQLiteRowLockRestorationOutcomes(t *testing.T) {
 
 // Requirements: INT-49.
 func TestAcquireSQLiteRowLockRestoresAfterNowaitSetupFailure(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	busyCause := errors.New("SQLite busy while setting timeout")
 	setFailure := &ir.Error{Code: CodeCanceled, Msg: "setting timeout failed", Cause: busyCause}
 	restoreCause := errors.New("restore rejected")

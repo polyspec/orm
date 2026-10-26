@@ -14,8 +14,9 @@ from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlsplit
 
 from polyspec.orm import OrmError, codes, connect_catalog
-from polyspec.orm.catalog import CatalogConnection, GridCell
+from polyspec.orm.catalog import GridCell
 from polyspec.orm.codec import decode as decode_styled
+from . import testcase
 from .coverage_case import run_cases
 from .test_sqlite import generate
 
@@ -122,7 +123,10 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
             missing = Path(directory) / "missing.sqlite"
             with self.assertRaises(Exception):
                 connect_catalog(f"sqlite://{missing}")
-            self.assertFalse(missing.exists(), "catalog connection must not create a missing SQLite database")
+            self.assertFalse(
+                missing.exists(),
+                "catalog connection must not create a missing SQLite database",
+            )
         driver = self.driver
         namespace = self.catalog.current_namespace()
         author = {"namespace": namespace, "name": "author"}
@@ -144,35 +148,34 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
         )
         self.assertEqual(int(count.rows[0][0]), 5000)
         if driver == "mysql":
-            import pymysql
-
             url = urlsplit(self.dsn)
             query = parse_qs(url.query)
             name = f"catalog_readonly_{os.getpid()}_{secrets.token_hex(4)}"
             function = f"{name}_fn"
-            native = pymysql.connect(
-                host=url.hostname or "localhost",
-                port=url.port or 3306,
-                user=unquote(url.username or ""),
-                password=unquote(url.password or ""),
-                database=unquote(url.path.lstrip("/")),
-                unix_socket=query.get("socket", [None])[0],
-                autocommit=True,
-            )
+            native = self._native_connection(url, query)
             try:
                 with native.cursor() as cursor:
-                    cursor.execute(f"CREATE TABLE {quote(name, driver)} (n INTEGER NOT NULL)")
+                    cursor.execute(
+                        f"CREATE TABLE {quote(name, driver)} (n INTEGER NOT NULL)"
+                    )
                     cursor.execute(f"INSERT INTO {quote(name, driver)} VALUES (7)")
                     cursor.execute(
                         f"CREATE FUNCTION {quote(function, driver)}() RETURNS INTEGER DETERMINISTIC "
                         f"MODIFIES SQL DATA BEGIN UPDATE {quote(name, driver)} SET n=n+1; RETURN 1; END"
                     )
-                with self.assertRaises(Exception, msg="a database-enforced read-only scope allowed a function to write"):
-                    self.catalog.read_only_grid_query(f"SELECT {quote(function, driver)}()", [])
+                with self.assertRaises(
+                    Exception,
+                    msg="a database-enforced read-only scope allowed a function to write",
+                ):
+                    self.catalog.read_only_grid_query(
+                        f"SELECT {quote(function, driver)}()", []
+                    )
             finally:
                 try:
                     with native.cursor() as cursor:
-                        cursor.execute(f"DROP FUNCTION IF EXISTS {quote(function, driver)}")
+                        cursor.execute(
+                            f"DROP FUNCTION IF EXISTS {quote(function, driver)}"
+                        )
                         cursor.execute(f"DROP TABLE IF EXISTS {quote(name, driver)}")
                 finally:
                     native.close()
@@ -183,7 +186,9 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
                 else "SELECT query_only FROM pragma_query_only"
             )
             read_only_state = self.catalog.read_only_query(read_only_sql, [])
-            self.assertEqual(read_only_state.rows, [["on" if driver == "postgres" else 1]])
+            self.assertEqual(
+                read_only_state.rows, [["on" if driver == "postgres" else 1]]
+            )
         if driver == "mysql":
             classification = self.catalog.read_only_query(
                 "SELECT TABLE_TYPE FROM information_schema.TABLES WHERE TABLE_SCHEMA = 'information_schema' AND TABLE_NAME = 'TABLES'",
@@ -252,21 +257,21 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
                 )
             )
         for sql in read_only_refusals:
-            with self.assertRaises(OrmError, msg=f"read-only grid query accepted {sql}") as refusal:
+            with self.assertRaises(
+                OrmError, msg=f"read-only grid query accepted {sql}"
+            ) as refusal:
                 self.catalog.read_only_grid_query(sql, [])
             self.assertEqual(refusal.exception.code, codes.QUERY_READ_ONLY, sql)
         self.test_grid_cells()
 
-    def _assert_qualified_table_metadata(self, namespace):
-        url = urlsplit(self.dsn)
-        query = parse_qs(url.query)
-        name = f"catalog_metadata_{os.getpid()}_{secrets.token_hex(4)}"
+    def _native_connection(self, url, query, *, sqlite_autocommit=False):
         if self.driver == "sqlite":
-            native = sqlite3.connect(unquote(url.path))
-        elif self.driver == "mysql":
+            options = {"isolation_level": None} if sqlite_autocommit else {}
+            return sqlite3.connect(unquote(url.path), **options)
+        if self.driver == "mysql":
             import pymysql
 
-            native = pymysql.connect(
+            return pymysql.connect(
                 host=url.hostname or "localhost",
                 port=url.port or 3306,
                 user=unquote(url.username or ""),
@@ -275,18 +280,27 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
                 unix_socket=query.get("socket", [None])[0],
                 autocommit=True,
             )
-        else:
-            import psycopg
+        import psycopg
 
-            native = psycopg.connect(
-                host=query.get("host", [url.hostname or "localhost"])[-1],
-                port=url.port or 5432,
-                user=unquote(url.username or ""),
-                password=unquote(url.password or ""),
-                dbname=unquote(url.path.lstrip("/")),
-                autocommit=True,
-            )
-        qualified = f"{quote(namespace, self.driver)}.{quote(name, self.driver)}" if self.driver != "sqlite" else quote(name, self.driver)
+        return psycopg.connect(
+            host=query.get("host", [url.hostname or "localhost"])[-1],
+            port=url.port or 5432,
+            user=unquote(url.username or ""),
+            password=unquote(url.password or ""),
+            dbname=unquote(url.path.lstrip("/")),
+            autocommit=True,
+        )
+
+    def _assert_qualified_table_metadata(self, namespace):
+        url = urlsplit(self.dsn)
+        query = parse_qs(url.query)
+        name = f"catalog_metadata_{os.getpid()}_{secrets.token_hex(4)}"
+        native = self._native_connection(url, query)
+        qualified = (
+            f"{quote(namespace, self.driver)}.{quote(name, self.driver)}"
+            if self.driver != "sqlite"
+            else quote(name, self.driver)
+        )
 
         def execute(sql):
             if self.driver == "mysql":
@@ -300,14 +314,20 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
                 f"CREATE TABLE {qualified} (a BIGINT NOT NULL, b BIGINT NOT NULL, note VARCHAR(50), "
                 "g BIGINT GENERATED ALWAYS AS (a+1) STORED, PRIMARY KEY (b,a))"
             )
-            metadata = self.catalog.describe_table({"namespace": namespace, "name": name})
+            metadata = self.catalog.describe_table(
+                {"namespace": namespace, "name": name}
+            )
             want_native_types = {
                 "mysql": ["bigint", "bigint", "varchar(50)", "bigint"],
                 "postgres": ["bigint", "bigint", "character varying(50)", "bigint"],
                 "sqlite": ["BIGINT", "BIGINT", "VARCHAR(50)", "BIGINT"],
             }[self.driver]
-            self.assertEqual([column.name for column in metadata.columns], ["a", "b", "note", "g"])
-            self.assertEqual([column.native_type for column in metadata.columns], want_native_types)
+            self.assertEqual(
+                [column.name for column in metadata.columns], ["a", "b", "note", "g"]
+            )
+            self.assertEqual(
+                [column.native_type for column in metadata.columns], want_native_types
+            )
             self.assertEqual(metadata.primary_key, ["b", "a"])
             self.assertTrue(metadata.columns[2].nullable)
             self.assertTrue(metadata.columns[3].generated)
@@ -320,36 +340,17 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
         url = urlsplit(self.dsn)
         query = parse_qs(url.query)
         if self.driver == "mysql":
-            import pymysql
-
-            native = pymysql.connect(
-                host=url.hostname or "localhost",
-                port=url.port or 3306,
-                user=unquote(url.username or ""),
-                password=unquote(url.password or ""),
-                database=unquote(url.path.lstrip("/")),
-                unix_socket=query.get("socket", [None])[0],
-                autocommit=True,
-            )
+            native = self._native_connection(url, query)
             columns = "id BIGINT NOT NULL PRIMARY KEY, t0 TIME NULL, dt0 DATETIME NULL, t3 TIME(3) NULL, dt3 DATETIME(3) NULL"
         elif self.driver == "postgres":
-            import psycopg
-
-            native = psycopg.connect(
-                host=query.get("host", [url.hostname or "localhost"])[-1],
-                port=url.port or 5432,
-                user=unquote(url.username or ""),
-                password=unquote(url.password or ""),
-                dbname=unquote(url.path.lstrip("/")),
-                autocommit=True,
-            )
+            native = self._native_connection(url, query)
             columns = (
                 "id BIGINT NOT NULL PRIMARY KEY, t0 TIME WITHOUT TIME ZONE NULL, "
                 "dt0 TIMESTAMP WITHOUT TIME ZONE NULL, t3 TIME(3) WITHOUT TIME ZONE NULL, "
                 "dt3 TIMESTAMP(3) WITHOUT TIME ZONE NULL"
             )
         else:
-            native = sqlite3.connect(unquote(url.path), isolation_level=None)
+            native = self._native_connection(url, query, sqlite_autocommit=True)
             columns = (
                 "id INTEGER NOT NULL PRIMARY KEY, "
                 't0 TIME NOT NULL CHECK (length("t0") = 8 AND "t0" IS time("t0") AND "t0" < \'24:00:00\'), '
@@ -705,7 +706,7 @@ class CatalogConnectionCoverageTest(unittest.TestCase):
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:
-        unittest.main()
+        testcase.main()
     else:
         feature_cases = {
             "catalog_read": "test_read",

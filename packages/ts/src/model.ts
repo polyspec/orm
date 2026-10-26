@@ -258,8 +258,11 @@ function convert(type: string, value: unknown, zone: string, declared?: Field): 
       }
       return converted;
     }
-    case 'f64':
-      return typeof value === 'number' ? value : Number(value);
+    case 'f64': {
+      const converted = typeof value === 'number' ? value : Number(value);
+      if (!Number.isFinite(converted)) throw new OrmError(codes.CODEC_DECODE, 'f64 cell is not finite');
+      return converted;
+    }
     case 'decimal': {
       if (declared === undefined) throw new OrmError(codes.CODEC_DECODE, 'decimal column metadata is missing');
       if (typeof value === 'bigint') return decimalFromScaled(value, declared.precision, declared.scale);
@@ -268,7 +271,9 @@ function convert(type: string, value: unknown, zone: string, declared?: Field): 
       catch (cause) { throw new OrmError(codes.CODEC_DECODE, `invalid decimal cell: ${String(cause)}`); }
     }
     case 'bool':
-      return value === true || value === 1 || value === 1n || value === '1' || value === 't' || value === 'true';
+      if (truthyCells.includes(value)) return true;
+      if (falsyCells.includes(value)) return false;
+      throw new OrmError(codes.CODEC_DECODE, 'bool cell is not boolean');
     case 'date': case 'time': case 'datetime':
       return readTime(value, type, zone, declared?.precision ?? (type === 'datetime' ? 6 : 0));
     case 'bytes':

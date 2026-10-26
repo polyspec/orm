@@ -426,6 +426,34 @@ ZEND_METHOD(Polyspec_Orm_Internal_PgsqlPdoAdapter, errorInfo)
     RETURN_COPY(info);
 }
 
+ZEND_METHOD(Polyspec_Orm_Internal_PgsqlPdoAdapter, reportError)
+{
+    zval *error;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_OBJECT(error)
+    ZEND_PARSE_PARAMETERS_END();
+    zval mode_rv;
+    zval *mode = pg_prop(ZEND_THIS, "errmode", &mode_rv);
+    zend_long current = mode == NULL ? 0 : zval_get_long(mode);
+    zend_long warning = pg_value_long("PDO::ERRMODE_WARNING", 1);
+    zend_long exception = pg_value_long("PDO::ERRMODE_EXCEPTION", 2);
+    if (current == warning) {
+        zval message;
+        if (!pg_call_method(error, "getMessage", &message, 0, NULL)) RETURN_THROWS();
+        zend_string *text = zval_get_string(&message);
+        zval_ptr_dtor(&message);
+        php_error_docref(NULL, E_USER_WARNING, "%s", ZSTR_VAL(text));
+        zend_string_release(text);
+        if (EG(exception) != NULL) RETURN_THROWS();
+    } else if (current == exception) {
+        zval copy;
+        ZVAL_COPY(&copy, error);
+        zend_throw_exception_object(&copy);
+        RETURN_THROWS();
+    }
+    RETURN_NULL();
+}
+
 ZEND_METHOD(Polyspec_Orm_Internal_PgsqlPdoAdapter, getPid)
 {
     ZEND_PARSE_PARAMETERS_NONE();

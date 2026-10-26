@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { test } from 'node:test';
+import { caseTest, COMPUTE } from '../../tests/testcase.mts';
 import { readParityConfig } from '../json/formats.mts';
 import { parseJson } from '../json/schema.mts';
 import { boundTestPaths, featureLanguages, implementationInternalTestPaths, implementationLanguages, implementationSourceRoots, implementationSupportGlobs, implementationTestGlobs, implementationTestInventory, isDeclaredSharedTest, isFeatureTestPath, isImplementationInternalTest, koreanDocumentPath, unknownParityUnits, unitTests, unlistedFeatureTestErrors } from './languages.mts';
@@ -10,7 +10,7 @@ import { boundTestPaths, featureLanguages, implementationInternalTestPaths, impl
 const root = resolve(new URL('../..', import.meta.url).pathname);
 const parity = readParityConfig(resolve(root, 'config/parity.json'));
 
-test('the declared implementations of config/parity.json are the feature language set', () => {
+caseTest('the declared implementations of config/parity.json are the feature language set', COMPUTE, () => {
   assert.deepEqual(parity.implementations.map(entry => entry.name).sort(), ['go', 'php', 'php-extension', 'python', 'rust', 'typescript']);
   assert.deepEqual(implementationLanguages(), parity.implementations.map(entry => entry.name));
 });
@@ -38,7 +38,7 @@ function handWrittenSet(source: string): boolean {
 }
 
 for (const file of readers) {
-  test(`${file} reads the language set from config/parity.json`, async () => {
+  caseTest(`${file} reads the language set from config/parity.json`, COMPUTE, async () => {
     const source = await readFile(resolve(root, file), 'utf8');
     assert.equal(handWrittenSet(source), false, `${file} writes its own language list`);
     assert.match(source, /implementationLanguages\(\)|featureLanguages\(/, `${file} does not read the language set of config/parity.json`);
@@ -47,7 +47,7 @@ for (const file of readers) {
 
 // A feature's languages are the declared implementations its parity units bind, php-extension among them, and an
 // undeclared unit id is reported.
-test('featureLanguages derives the implementations that the parity units bind', () => {
+caseTest('featureLanguages derives the implementations that the parity units bind', COMPUTE, () => {
   assert.deepEqual(featureLanguages(['coverage-audit-triggers-audit-history']), implementationLanguages());
   assert.deepEqual(unknownParityUnits(['coverage-audit-triggers-audit-history', 'no-such-unit']), ['no-such-unit']);
   assert.deepEqual(unitTests('coverage-audit-triggers-audit-history', 'python'), ['packages/python/tests/coverage_audit_triggers.py']);
@@ -55,7 +55,7 @@ test('featureLanguages derives the implementations that the parity units bind', 
   assert.deepEqual(unitTests('coverage-audit-triggers-audit-history', 'php-extension'), ['packages/php-ext/tests/CoverageAuditTriggersExtensionTest.php']);
 });
 
-test('feature ownership distinguishes declared implementation-internal tests from shared behavior tests', () => {
+caseTest('feature ownership distinguishes declared implementation-internal tests from shared behavior tests', COMPUTE, () => {
   const internal = implementationInternalTestPaths(parity);
   assert.equal(isImplementationInternalTest('go', 'packages/go/orm/split_plan_test.go', internal), true);
   assert.equal(isImplementationInternalTest('typescript', 'packages/ts/tests/split-plan.test.mjs', internal), true);
@@ -64,7 +64,7 @@ test('feature ownership distinguishes declared implementation-internal tests fro
   assert.equal(isImplementationInternalTest('python', 'packages/python/tests/coverage_complex_query.py', internal), false);
 });
 
-test('shared feature tests come from parity test globs or exact bindings, while support and internal files stay separate', () => {
+caseTest('shared feature tests come from parity test globs or exact bindings, while support and internal files stay separate', COMPUTE, () => {
   const globs = implementationTestGlobs(parity);
   assert.equal(isDeclaredSharedTest('go', 'packages/go/orm/coverage_transactions_test.go', globs), true);
   assert.equal(isDeclaredSharedTest('go', 'packages/go/orm/coverage_fixture_test.go', globs), true);
@@ -98,7 +98,7 @@ test('shared feature tests come from parity test globs or exact bindings, while 
   assert.equal(isFeatureTestPath('rust', 'packages/rust/testing/interfaces/src/main.rs', globs, boundTestPaths('rust', parity), internal, support), false);
 });
 
-test('an unlisted test selected by each Kit convention fails feature ownership', () => {
+caseTest('an unlisted test selected by each Kit convention fails feature ownership', COMPUTE, () => {
   const cases = [
     ['go', 'packages/go/orm/new_contract_probe_test.go'],
     ['php', 'packages/php/tests/NewContractProbeTest.php'],
@@ -123,12 +123,12 @@ test('an unlisted test selected by each Kit convention fails feature ownership',
   assert.equal(isFeatureTestPath('go', 'packages/go/orm/coverage_fixture_test.go'), false, 'the explicit support glob excludes test helpers');
 });
 
-test('the feature checker pairs English documents with their Korean twin exactly once', () => {
+caseTest('the feature checker pairs English documents with their Korean twin exactly once', COMPUTE, () => {
   assert.equal(koreanDocumentPath('docs/spec/interfaces.md'), 'docs/spec/interfaces.ko.md');
   assert.equal(koreanDocumentPath('docs/spec/interfaces.ko.md'), 'docs/spec/interfaces.ko.md');
 });
 
-test('the complex-query feature fixture declares its exact shared case and expected rows', () => {
+caseTest('the complex-query feature fixture declares its exact shared case and expected rows', COMPUTE, () => {
   const path = resolve(root, 'contracts/fixtures/complex_query/complex_query.json');
   const schema = resolve(root, 'scripts/features/schema/fixture.schema.json');
   const source = readFileSync(path, 'utf8');

@@ -40,6 +40,17 @@ function norm(mixed $v): mixed
     return $v;
 }
 
+/** Adds the exact identity returned by the database to the sequence mask. */
+function maskGeneratedSequence(int|string|false $value): void
+{
+    global $maskSeqs;
+    $sequence = filter_var($value, FILTER_VALIDATE_INT);
+    if (!is_int($sequence) || $sequence < 1) {
+        throw new RuntimeException('database did not return a positive generated identity');
+    }
+    $maskSeqs[$sequence] = true;
+}
+
 /** Masks the keys and update times of rows a vector created, including statements logged earlier. */
 function mask(array $seqs, array $times = []): void
 {
@@ -122,7 +133,8 @@ function vector(string $name, callable $fn): void
 
 function run(string $name, callable $fn): void
 {
-    global $out, $log, $transactions, $maskSeqs, $maskTs, $db, $writeVectors;
+    global $activeVector, $out, $log, $transactions, $maskSeqs, $maskTs, $db, $writeVectors;
+    $activeVector = $name;
     $log = [];
     $transactions = [];
     $maskSeqs = [];

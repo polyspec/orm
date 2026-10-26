@@ -85,7 +85,7 @@
   },
   "packages/rust/build/src/catalog/metadata.rs::TableKind": {
     "exported": true,
-    "signature": "pub enum TableKind  { Table , Partitioned , View , MaterializedView , Foreign , Virtual , Shadow , }"
+    "signature": "pub enum TableKind  { Table , Partitioned , View , MaterializedView , Foreign , Virtual , Shadow }"
   },
   "packages/rust/build/src/catalog/metadata.rs::TableMetadata": {
     "exported": true,
@@ -201,11 +201,11 @@
   },
   "packages/rust/build/src/catalog/mod.rs::CatalogConnection::read_only_grid_query": {
     "exported": true,
-    "signature": "pub async fn read_only_grid_query (\u0026 mut self , sql : \u0026 str , params : \u0026 [crate :: tool_db :: P] , limits : crate :: tool_db :: QueryLimits ,) -\u003e Result \u003c crate :: tool_db :: GridQueryResult , String \u003e"
+    "signature": "pub async fn read_only_grid_query (\u0026 mut self , sql : \u0026 str , params : \u0026 [crate :: tool_db :: P] , limits : crate :: tool_db :: QueryLimits) -\u003e Result \u003c crate :: tool_db :: GridQueryResult , String \u003e"
   },
   "packages/rust/build/src/catalog/mod.rs::CatalogConnection::read_only_query": {
     "exported": true,
-    "signature": "pub async fn read_only_query (\u0026 mut self , sql : \u0026 str , params : \u0026 [crate :: tool_db :: P] , limits : crate :: tool_db :: QueryLimits ,) -\u003e Result \u003c crate :: tool_db :: QueryResult , String \u003e"
+    "signature": "pub async fn read_only_query (\u0026 mut self , sql : \u0026 str , params : \u0026 [crate :: tool_db :: P] , limits : crate :: tool_db :: QueryLimits) -\u003e Result \u003c crate :: tool_db :: QueryResult , String \u003e"
   },
   "packages/rust/build/src/catalog/mod.rs::CatalogConnection::table_page": {
     "exported": true,
@@ -221,7 +221,7 @@
   },
   "packages/rust/build/src/catalog/mutation.rs::CatalogConnection::update_row": {
     "exported": true,
-    "signature": "pub async fn update_row (\u0026 self , original : \u0026 RowSnapshot , changes : \u0026 [(String , P)] , cancellation : Arc \u003c AtomicBool \u003e , publish : Publisher , permit : CommitPermit ,) -\u003e Result \u003c GridQueryResult , String \u003e"
+    "signature": "pub async fn update_row (\u0026 self , original : \u0026 RowSnapshot , changes : \u0026 [(String , P)] , cancellation : Arc \u003c AtomicBool \u003e , publish : Publisher , permit : CommitPermit) -\u003e Result \u003c GridQueryResult , String \u003e"
   },
   "packages/rust/build/src/catalog/mutation.rs::CommitPermit": {
     "exported": false,
@@ -229,7 +229,7 @@
   },
   "packages/rust/build/src/catalog/mutation.rs::MutationPhase": {
     "exported": true,
-    "signature": "pub enum MutationPhase  { Validated , Locked , Applied , CommitStarted , Committed , RolledBack , Indeterminate , }"
+    "signature": "pub enum MutationPhase  { Validated , Locked , Applied , CommitStarted , Committed , RolledBack , Indeterminate }"
   },
   "packages/rust/build/src/catalog/mutation.rs::Publisher": {
     "exported": false,
@@ -253,7 +253,7 @@
   },
   "packages/rust/build/src/catalog/mutation.rs::lock_original": {
     "exported": false,
-    "signature": "pub (super) async fn lock_original (connection : \u0026 mut Conn , original : \u0026 RowSnapshot , dialect : \u0026 str , keys : \u0026 [P] , cancellation : \u0026 AtomicBool , publish : \u0026 Publisher ,) -\u003e Result \u003c TableMetadata , String \u003e"
+    "signature": "pub (super) async fn lock_original (connection : \u0026 mut Conn , original : \u0026 RowSnapshot , dialect : \u0026 str , keys : \u0026 [P] , cancellation : \u0026 AtomicBool , publish : \u0026 Publisher) -\u003e Result \u003c TableMetadata , String \u003e"
   },
   "packages/rust/build/src/catalog/mutation.rs::lookup": {
     "exported": false,
@@ -278,6 +278,10 @@
   "packages/rust/build/src/catalog/mutation.rs::qualified": {
     "exported": false,
     "signature": "pub (super) fn qualified (metadata : \u0026 TableMetadata , dialect : \u0026 str) -\u003e Result \u003c String , String \u003e"
+  },
+  "packages/rust/build/src/catalog/mutation.rs::require_partial_revokes_disabled": {
+    "exported": false,
+    "signature": " fn require_partial_revokes_disabled (result : \u0026 GridQueryResult) -\u003e Result \u003c () , String \u003e"
   },
   "packages/rust/build/src/catalog/mutation.rs::require_trigger_privilege": {
     "exported": false,
@@ -425,7 +429,7 @@
   },
   "packages/rust/build/src/catalog/row_insert.rs::CatalogConnection::insert_row": {
     "exported": true,
-    "signature": "pub async fn insert_row (\u0026 self , declared : \u0026 TableMetadata , values : \u0026 [(String , P)] , cancellation : Arc \u003c AtomicBool \u003e , publish : Publisher , permit : CommitPermit ,) -\u003e Result \u003c GridQueryResult , String \u003e"
+    "signature": "pub async fn insert_row (\u0026 self , declared : \u0026 TableMetadata , values : \u0026 [(String , P)] , cancellation : Arc \u003c AtomicBool \u003e , publish : Publisher , permit : CommitPermit) -\u003e Result \u003c GridQueryResult , String \u003e"
   },
   "packages/rust/build/src/catalog/row_insert.rs::postgres_insert_lock": {
     "exported": false,
@@ -569,7 +573,7 @@
   },
   "packages/rust/build/src/catalog/temporal.rs::read": {
     "exported": false,
-    "signature": "pub (super) async fn read (connection : \u0026 mut Conn , metadata : \u0026 TableMetadata , dialect : \u0026 str , sql : \u0026 str , params : \u0026 [P] , limits : QueryLimits ,) -\u003e Result \u003c GridQueryResult , String \u003e"
+    "signature": "pub (super) async fn read (connection : \u0026 mut Conn , metadata : \u0026 TableMetadata , dialect : \u0026 str , sql : \u0026 str , params : \u0026 [P] , limits : QueryLimits) -\u003e Result \u003c GridQueryResult , String \u003e"
   },
   "packages/rust/build/src/catalog/temporal.rs::sqlite_kind": {
     "exported": false,
@@ -1483,53 +1487,9 @@
     "exported": true,
     "signature": "pub fn scan (paths : \u0026 [PathBuf] , models : \u0026 HashSet \u003c String \u003e , fallible_setters : \u0026 HashSet \u003c (String , String) \u003e , model_file : \u0026 Path) -\u003e Result \u003c Scan , String \u003e"
   },
-  "packages/rust/build/src/test_support.rs::non_unicode_manifest_dir": {
-    "exported": false,
-    "signature": "pub (crate) fn non_unicode_manifest_dir (base : \u0026 Path) -\u003e OsString"
-  },
-  "packages/rust/build/src/tests/build_environment.rs::bench_set": {
-    "exported": false,
-    "signature": " fn bench_set () -\u003e PathBuf"
-  },
-  "packages/rust/build/src/tests/build_environment.rs::environment_subprocess": {
-    "exported": false,
-    "signature": " fn environment_subprocess ()"
-  },
-  "packages/rust/build/src/tests/build_environment.rs::package_dir": {
-    "exported": false,
-    "signature": " fn package_dir () -\u003e PathBuf"
-  },
-  "packages/rust/build/src/tests/build_environment.rs::require_child_success": {
-    "exported": false,
-    "signature": " fn require_child_success (output : Output , case : \u0026 str)"
-  },
-  "packages/rust/build/src/tests/build_environment.rs::run_child": {
-    "exported": false,
-    "signature": " fn run_child (case : \u0026 str , manifest_dir : Option \u003c \u0026 str \u003e , out_dir : Option \u003c \u0026 str \u003e) -\u003e Output"
-  },
-  "packages/rust/build/src/tests/out_dir.rs::child": {
-    "exported": false,
-    "signature": " fn child (case : \u0026 str , out_dir : Option \u003c \u0026 str \u003e) -\u003e Output"
-  },
-  "packages/rust/build/src/tests/out_dir.rs::load_requires_out_dir": {
-    "exported": false,
-    "signature": " fn load_requires_out_dir ()"
-  },
-  "packages/rust/build/src/tests/out_dir.rs::package_dir": {
-    "exported": false,
-    "signature": " fn package_dir () -\u003e PathBuf"
-  },
-  "packages/rust/build/src/tests/out_dir.rs::set_path": {
-    "exported": false,
-    "signature": " fn set_path () -\u003e PathBuf"
-  },
-  "packages/rust/build/src/tests/out_dir.rs::successful": {
-    "exported": false,
-    "signature": " fn successful (output : Output , case : \u0026 str)"
-  },
   "packages/rust/build/src/tool_db.rs::Conn": {
     "exported": true,
-    "signature": "pub enum Conn  { MySql (PoolConnection \u003c MySql \u003e) , Postgres (PoolConnection \u003c Postgres \u003e) , Sqlite (PoolConnection \u003c Sqlite \u003e) , }"
+    "signature": "pub enum Conn  { MySql (PoolConnection \u003c MySql \u003e) , Postgres (PoolConnection \u003c Postgres \u003e) , Sqlite (PoolConnection \u003c Sqlite \u003e) }"
   },
   "packages/rust/build/src/tool_db.rs::Conn::acquire": {
     "exported": true,
@@ -1613,7 +1573,7 @@
   },
   "packages/rust/build/src/tool_db.rs::Val": {
     "exported": true,
-    "signature": "pub enum Val  { Null , Int (i64) , Text (String) , Bool (bool) , }"
+    "signature": "pub enum Val  { Null , Int (i64) , Text (String) , Bool (bool) }"
   },
   "packages/rust/build/src/tool_db.rs::Val::bool": {
     "exported": true,
@@ -1685,7 +1645,7 @@
   },
   "packages/rust/build/src/tool_db/grid.rs::GridCell": {
     "exported": true,
-    "signature": "pub enum GridCell  { Null , Integer (i64) , Unsigned (u64) , Float32 (u32) , Float64 (u64) , Decimal (String) , Text (String) , Boolean (bool) , Binary (Vec \u003c u8 \u003e) , # [doc = \" MySQL `DATE` and PostgreSQL `date`: `YYYY-MM-DD`.\"] Date (String) , # [doc = \" MySQL `TIME` and PostgreSQL `time`: `HH:MM:SS` within a day, and fractional digits.\"] Time (String) , # [doc = \" MySQL `DATETIME` and PostgreSQL `timestamp` without time zone: `YYYY-MM-DD HH:MM:SS` in UTC, and fractional digits.\"] DateTime (String) , }"
+    "signature": "pub enum GridCell  { Null , Integer (i64) , Unsigned (u64) , Float32 (u32) , Float64 (u64) , Decimal (String) , Text (String) , Boolean (bool) , Binary (Vec \u003c u8 \u003e) , # [doc = \" MySQL `DATE` and PostgreSQL `date`: `YYYY-MM-DD`.\"] Date (String) , # [doc = \" MySQL `TIME` and PostgreSQL `time`: `HH:MM:SS` within a day, and fractional digits.\"] Time (String) , # [doc = \" MySQL `DATETIME` and PostgreSQL `timestamp` without time zone: `YYYY-MM-DD HH:MM:SS` in UTC, and fractional digits.\"] DateTime (String) }"
   },
   "packages/rust/build/src/tool_db/grid.rs::GridCell as From \u003c Val \u003e::from": {
     "exported": true,
@@ -1873,7 +1833,7 @@
   },
   "packages/rust/build/src/tool_db/params.rs::P": {
     "exported": true,
-    "signature": "pub enum P  { S (String) , I (i64) , Unsigned (u64) , Float32 (u32) , Float64 (u64) , Decimal (String) , Boolean (bool) , Binary (Vec \u003c u8 \u003e) , # [doc = \" A date, time, or datetime value in dbspec text form (same form as GridCell).\"] Date (String) , Time (String) , DateTime (String) , Null (ParamType) , }"
+    "signature": "pub enum P  { S (String) , I (i64) , Unsigned (u64) , Float32 (u32) , Float64 (u64) , Decimal (String) , Boolean (bool) , Binary (Vec \u003c u8 \u003e) , # [doc = \" A date, time, or datetime value in dbspec text form (same form as GridCell).\"] Date (String) , Time (String) , DateTime (String) , Null (ParamType) }"
   },
   "packages/rust/build/src/tool_db/params.rs::P::param_type": {
     "exported": false,
@@ -1881,7 +1841,7 @@
   },
   "packages/rust/build/src/tool_db/params.rs::ParamType": {
     "exported": true,
-    "signature": "pub enum ParamType  { Text , Integer , Unsigned , Float32 , Float64 , Decimal , Boolean , Binary , Date , Time , DateTime , }"
+    "signature": "pub enum ParamType  { Text , Integer , Unsigned , Float32 , Float64 , Decimal , Boolean , Binary , Date , Time , DateTime }"
   },
   "packages/rust/build/src/tool_db/params.rs::date": {
     "exported": false,
@@ -2089,7 +2049,7 @@
   },
   "packages/rust/orm/src/args.rs::Value": {
     "exported": true,
-    "signature": "pub enum Value  { One (Param) , List (Vec \u003c Param \u003e) , Pair (Param , Param) , Null , Func (Func) , Sub (Box \u003c Core \u003e) , }"
+    "signature": "pub enum Value  { One (Param) , List (Vec \u003c Param \u003e) , Pair (Param , Param) , Null , Func (Func) , Sub (Box \u003c Core \u003e) }"
   },
   "packages/rust/orm/src/args.rs::column_func": {
     "exported": false,
@@ -2229,7 +2189,7 @@
   },
   "packages/rust/orm/src/codec.rs::BinaryStage": {
     "exported": false,
-    "signature": " enum BinaryStage  { Continue , Complete (Param) , }"
+    "signature": " enum BinaryStage  { Continue , Complete (Param) }"
   },
   "packages/rust/orm/src/codec.rs::Parser": {
     "exported": false,
@@ -2285,7 +2245,7 @@
   },
   "packages/rust/orm/src/codec.rs::YamlFrame": {
     "exported": false,
-    "signature": " enum YamlFrame  { Sequence (Vec \u003c Value \u003e) , Mapping { map : Map \u003c String , Value \u003e , key : Option \u003c String \u003e } , }"
+    "signature": " enum YamlFrame  { Sequence (Vec \u003c Value \u003e) , Mapping { map : Map \u003c String , Value \u003e , key : Option \u003c String \u003e } }"
   },
   "packages/rust/orm/src/codec.rs::YamlFrame#wire": {
     "exported": false,
@@ -2661,7 +2621,7 @@
   },
   "packages/rust/orm/src/collection.rs::Key": {
     "exported": true,
-    "signature": "pub enum Key  { I (i64) , S (String) , B (bool) , X (Vec \u003c u8 \u003e) , T (NaiveDateTime) , }"
+    "signature": "pub enum Key  { I (i64) , S (String) , B (bool) , X (Vec \u003c u8 \u003e) , T (NaiveDateTime) }"
   },
   "packages/rust/orm/src/collection.rs::Key as From \u003c \u0026 str \u003e::from": {
     "exported": true,
@@ -2745,11 +2705,11 @@
   },
   "packages/rust/orm/src/core.rs::Added": {
     "exported": false,
-    "signature": "pub (crate) enum Added  { Func (String , Func) , Sub (SubFn) , }"
+    "signature": "pub (crate) enum Added  { Func (String , Func) , Sub (SubFn) }"
   },
   "packages/rust/orm/src/core.rs::Arg": {
     "exported": true,
-    "signature": "pub enum Arg  { Value (Value) , # [doc = \" A column function and its compared value.\"] Function (Func , Param) , # [doc = \" The identity of a model compared column by column.\"] Model (u64) , Tuples (Vec \u003c Vec \u003c Param \u003e \u003e) , }"
+    "signature": "pub enum Arg  { Value (Value) , # [doc = \" A column function and its compared value.\"] Function (Func , Param) , # [doc = \" The identity of a model compared column by column.\"] Model (u64) , Tuples (Vec \u003c Vec \u003c Param \u003e \u003e) }"
   },
   "packages/rust/orm/src/core.rs::ChainKey": {
     "exported": true,
@@ -2821,7 +2781,7 @@
   },
   "packages/rust/orm/src/core.rs::CondKind": {
     "exported": false,
-    "signature": "pub (crate) enum CondKind  { Pred (PredSpec) , # [doc = \" A group of conditions; the flag negates the group as a whole: NOT (…).\"] Group (Vec \u003c CondNode \u003e , bool) , Joined (u64) , }"
+    "signature": "pub (crate) enum CondKind  { Pred (PredSpec) , # [doc = \" A group of conditions; the flag negates the group as a whole: NOT (…).\"] Group (Vec \u003c CondNode \u003e , bool) , Joined (u64) }"
   },
   "packages/rust/orm/src/core.rs::CondNode": {
     "exported": false,
@@ -3297,7 +3257,7 @@
   },
   "packages/rust/orm/src/core.rs::PredValue": {
     "exported": false,
-    "signature": "pub (crate) enum PredValue  { None , One (Param) , List (Vec \u003c Param \u003e) , Pair (Param , Param) , Tuples (Vec \u003c \u0026 'static str \u003e , Vec \u003c Vec \u003c Param \u003e \u003e) , Fulltext (Vec \u003c String \u003e , Param) , Ref (u64 , \u0026 'static str) , Sub (Box \u003c Core \u003e) , ColumnFn (Func , Param) , ValueFn (Func) , }"
+    "signature": "pub (crate) enum PredValue  { None , One (Param) , List (Vec \u003c Param \u003e) , Pair (Param , Param) , Tuples (Vec \u003c \u0026 'static str \u003e , Vec \u003c Vec \u003c Param \u003e \u003e) , Fulltext (Vec \u003c String \u003e , Param) , Ref (u64 , \u0026 'static str) , Sub (Box \u003c Core \u003e) , ColumnFn (Func , Param) , ValueFn (Func) }"
   },
   "packages/rust/orm/src/core.rs::RelSpec": {
     "exported": false,
@@ -3333,7 +3293,7 @@
   },
   "packages/rust/orm/src/core.rs::SetValue": {
     "exported": false,
-    "signature": "pub (crate) enum SetValue  { Value (Param) , Json (serde_json :: Value) , Ordered (ordered_json :: Value) , Null , Plus (Param) , Minus (Param) , }"
+    "signature": "pub (crate) enum SetValue  { Value (Param) , Json (serde_json :: Value) , Ordered (ordered_json :: Value) , Null , Plus (Param) , Minus (Param) }"
   },
   "packages/rust/orm/src/core.rs::SubFn": {
     "exported": true,
@@ -3413,7 +3373,7 @@
   },
   "packages/rust/orm/src/db.rs::ConnectOptions": {
     "exported": true,
-    "signature": "pub enum ConnectOptions  { MySql (MySqlConnectOptions) , Postgres (PgConnectOptions) , Sqlite (SqliteConnectOptions) , # [doc = \" A corpus that a flowmark server serves (docs/spec/protocol.md §5 \\\"IR executors\\\").\"] Markdown (MarkdownDsn) , }"
+    "signature": "pub enum ConnectOptions  { MySql (MySqlConnectOptions) , Postgres (PgConnectOptions) , Sqlite (SqliteConnectOptions) , # [doc = \" A corpus that a flowmark server serves (docs/spec/protocol.md §5 \\\"IR executors\\\").\"] Markdown (MarkdownDsn) }"
   },
   "packages/rust/orm/src/db.rs::Db": {
     "exported": true,
@@ -3497,11 +3457,11 @@
   },
   "packages/rust/orm/src/db.rs::Db::run_execute": {
     "exported": false,
-    "signature": "pub (crate) async fn run_execute (\u0026 self , target : Target \u003c '_ \u003e , origin : Origin \u003c '_ \u003e , st : \u0026 Step , params : \u0026 [Param] , audit : Option \u003c \u0026 AuditKey \u003e ,) -\u003e Result \u003c (u64 , u64) \u003e"
+    "signature": "pub (crate) async fn run_execute (\u0026 self , target : Target \u003c '_ \u003e , origin : Origin \u003c '_ \u003e , st : \u0026 Step , params : \u0026 [Param] , audit : Option \u003c \u0026 AuditKey \u003e) -\u003e Result \u003c (u64 , u64) \u003e"
   },
   "packages/rust/orm/src/db.rs::Db::run_query": {
     "exported": false,
-    "signature": "pub (crate) async fn run_query (\u0026 self , mut target : Target \u003c '_ \u003e , origin : Origin \u003c '_ \u003e , st : \u0026 Step , params : \u0026 [Param] , parent_vals : Vec \u003c Param \u003e , audit : Option \u003c \u0026 AuditKey \u003e ,) -\u003e Result \u003c Vec \u003c DriverRow \u003e \u003e"
+    "signature": "pub (crate) async fn run_query (\u0026 self , mut target : Target \u003c '_ \u003e , origin : Origin \u003c '_ \u003e , st : \u0026 Step , params : \u0026 [Param] , parent_vals : Vec \u003c Param \u003e , audit : Option \u003c \u0026 AuditKey \u003e) -\u003e Result \u003c Vec \u003c DriverRow \u003e \u003e"
   },
   "packages/rust/orm/src/db.rs::Db::shown": {
     "exported": false,
@@ -3521,7 +3481,7 @@
   },
   "packages/rust/orm/src/db.rs::Db::step_done": {
     "exported": false,
-    "signature": " fn step_done \u003c 'a , T \u003e (\u0026 self , st : \u0026 Step , origin : Origin \u003c '_ \u003e , sql : \u0026 str , shown : impl FnOnce () -\u003e std :: borrow :: Cow \u003c 'a , [Param] \u003e , start : std :: time :: Instant , r : Result \u003c T \u003e ,) -\u003e Result \u003c T \u003e"
+    "signature": " fn step_done \u003c 'a , T \u003e (\u0026 self , st : \u0026 Step , origin : Origin \u003c '_ \u003e , sql : \u0026 str , shown : impl FnOnce () -\u003e std :: borrow :: Cow \u003c 'a , [Param] \u003e , start : std :: time :: Instant , r : Result \u003c T \u003e) -\u003e Result \u003c T \u003e"
   },
   "packages/rust/orm/src/db.rs::Db::with_request_hook": {
     "exported": true,
@@ -3607,11 +3567,11 @@
     "exported": true,
     "signature": "pub struct DbStats  { # [doc = \" The pool size the connection was opened with.\"] pub max_open_connections : u32 , pub open_connections : u32 , # [doc = \" The connections currently checked out of the pool.\"] pub in_use : u32 , pub idle : u32 , }"
   },
-  "packages/rust/orm/src/db.rs::DbStats#field.in_use": {
+  "packages/rust/orm/src/db.rs::DbStats#field.idle": {
     "exported": true,
     "signature": "u32"
   },
-  "packages/rust/orm/src/db.rs::DbStats#field.idle": {
+  "packages/rust/orm/src/db.rs::DbStats#field.in_use": {
     "exported": true,
     "signature": "u32"
   },
@@ -3629,7 +3589,7 @@
   },
   "packages/rust/orm/src/db.rs::Executor": {
     "exported": false,
-    "signature": "pub (crate) enum Executor  { Db (Db) , Tx (Arc \u003c TxShared \u003e) , }"
+    "signature": "pub (crate) enum Executor  { Db (Db) , Tx (Arc \u003c TxShared \u003e) }"
   },
   "packages/rust/orm/src/db.rs::Executor::db": {
     "exported": false,
@@ -3649,7 +3609,7 @@
   },
   "packages/rust/orm/src/db.rs::Executor::query_as": {
     "exported": false,
-    "signature": "pub (crate) async fn query_as (\u0026 self , kind : Option \u003c \u0026 str \u003e , tables : Option \u003c \u0026 [String] \u003e , st : \u0026 Step , params : \u0026 [Param] , parent_vals : Vec \u003c Param \u003e ,) -\u003e Result \u003c Vec \u003c DriverRow \u003e \u003e"
+    "signature": "pub (crate) async fn query_as (\u0026 self , kind : Option \u003c \u0026 str \u003e , tables : Option \u003c \u0026 [String] \u003e , st : \u0026 Step , params : \u0026 [Param] , parent_vals : Vec \u003c Param \u003e) -\u003e Result \u003c Vec \u003c DriverRow \u003e \u003e"
   },
   "packages/rust/orm/src/db.rs::Executor::sqlite_row_lock": {
     "exported": false,
@@ -3701,7 +3661,7 @@
   },
   "packages/rust/orm/src/db.rs::Pool": {
     "exported": true,
-    "signature": "pub enum Pool  { MySql (MySqlPool) , Postgres (PgPool) , Sqlite (SqlitePool) , Markdown (Arc \u003c MdPool \u003e) , }"
+    "signature": "pub enum Pool  { MySql (MySqlPool) , Postgres (PgPool) , Sqlite (SqlitePool) , Markdown (Arc \u003c MdPool \u003e) }"
   },
   "packages/rust/orm/src/db.rs::Pool::num_idle": {
     "exported": false,
@@ -3883,13 +3843,13 @@
     "exported": false,
     "signature": " fn parse_sqlite_version (version : \u0026 str) -\u003e Result \u003c (u32 , u32 , u32) \u003e"
   },
-  "packages/rust/orm/src/db.rs::pool_options": {
-    "exported": false,
-    "signature": " fn pool_options \u003c DB : sqlx :: Database \u003e (size : u32 , idle : u32 , lifetime_ms : u32 , owner : \u0026 PoolOwner) -\u003e sqlx :: pool :: PoolOptions \u003c DB \u003e"
-  },
   "packages/rust/orm/src/db.rs::pool_in_use": {
     "exported": false,
     "signature": "pub (crate) fn pool_in_use (open : u32 , idle : u32) -\u003e u32"
+  },
+  "packages/rust/orm/src/db.rs::pool_options": {
+    "exported": false,
+    "signature": " fn pool_options \u003c DB : sqlx :: Database \u003e (size : u32 , idle : u32 , lifetime_ms : u32 , owner : \u0026 PoolOwner) -\u003e sqlx :: pool :: PoolOptions \u003c DB \u003e"
   },
   "packages/rust/orm/src/db.rs::precision_count": {
     "exported": false,
@@ -3910,74 +3870,6 @@
   "packages/rust/orm/src/db.rs::time_value": {
     "exported": false,
     "signature": "pub (crate) fn time_value (v : Param , precision : i64) -\u003e Result \u003c Param \u003e"
-  },
-  "packages/rust/orm/src/db/executor_route_tests.rs::query_and_execute_share_pool_and_transaction_routing": {
-    "exported": false,
-    "signature": " async fn query_and_execute_share_pool_and_transaction_routing ()"
-  },
-  "packages/rust/orm/src/db/sqlite_row_lock_restore_tests.rs::FakeSequence": {
-    "exported": false,
-    "signature": " struct FakeSequence  { set_error : Option \u003c Error \u003e , primary_error : Option \u003c Error \u003e , restore_error : Option \u003c Error \u003e , calls : Vec \u003c \u0026 'static str \u003e , }"
-  },
-  "packages/rust/orm/src/db/sqlite_row_lock_restore_tests.rs::FakeSequence as SqliteRowLockSequenceOps::restore_timeout": {
-    "exported": false,
-    "signature": " async fn restore_timeout (\u0026 mut self) -\u003e Result \u003c () \u003e"
-  },
-  "packages/rust/orm/src/db/sqlite_row_lock_restore_tests.rs::FakeSequence as SqliteRowLockSequenceOps::set_nowait": {
-    "exported": false,
-    "signature": " async fn set_nowait (\u0026 mut self) -\u003e Result \u003c () \u003e"
-  },
-  "packages/rust/orm/src/db/sqlite_row_lock_restore_tests.rs::FakeSequence as SqliteRowLockSequenceOps::take_row_lock": {
-    "exported": false,
-    "signature": " async fn take_row_lock (\u0026 mut self) -\u003e Result \u003c () \u003e"
-  },
-  "packages/rust/orm/src/db/sqlite_row_lock_restore_tests.rs::FakeSequence#field.calls": {
-    "exported": false,
-    "signature": "Vec \u003c \u0026 'static str \u003e"
-  },
-  "packages/rust/orm/src/db/sqlite_row_lock_restore_tests.rs::FakeSequence#field.primary_error": {
-    "exported": false,
-    "signature": "Option \u003c Error \u003e"
-  },
-  "packages/rust/orm/src/db/sqlite_row_lock_restore_tests.rs::FakeSequence#field.restore_error": {
-    "exported": false,
-    "signature": "Option \u003c Error \u003e"
-  },
-  "packages/rust/orm/src/db/sqlite_row_lock_restore_tests.rs::FakeSequence#field.set_error": {
-    "exported": false,
-    "signature": "Option \u003c Error \u003e"
-  },
-  "packages/rust/orm/src/db/sqlite_row_lock_restore_tests.rs::FakeSequence#wire": {
-    "exported": false,
-    "signature": "{\"calls\":\"list\u003cunsupported:\u0026 'static str\u003e\",\"primary_error\":\"Error\",\"restore_error\":\"Error\",\"set_error\":\"Error\"}"
-  },
-  "packages/rust/orm/src/db/sqlite_row_lock_restore_tests.rs::failed_nowait_setup_still_restores_and_skips_lock_attempt": {
-    "exported": false,
-    "signature": " async fn failed_nowait_setup_still_restores_and_skips_lock_attempt ()"
-  },
-  "packages/rust/orm/src/db/sqlite_row_lock_restore_tests.rs::lock_error": {
-    "exported": false,
-    "signature": " fn lock_error () -\u003e Error"
-  },
-  "packages/rust/orm/src/db/sqlite_row_lock_restore_tests.rs::production_nowait_sequence_preserves_both_errors_and_attempts_restore": {
-    "exported": false,
-    "signature": " async fn production_nowait_sequence_preserves_both_errors_and_attempts_restore ()"
-  },
-  "packages/rust/orm/src/db/sqlite_row_lock_restore_tests.rs::restore_error": {
-    "exported": false,
-    "signature": " fn restore_error () -\u003e Error"
-  },
-  "packages/rust/orm/src/db/sqlite_version_tests.rs::accepts_three_or_four_decimal_u32_components": {
-    "exported": false,
-    "signature": " fn accepts_three_or_four_decimal_u32_components ()"
-  },
-  "packages/rust/orm/src/db/sqlite_version_tests.rs::compares_minimum_version_numerically": {
-    "exported": false,
-    "signature": " fn compares_minimum_version_numerically ()"
-  },
-  "packages/rust/orm/src/db/sqlite_version_tests.rs::rejects_malformed_components_as_internal_with_the_raw_value": {
-    "exported": false,
-    "signature": " fn rejects_malformed_components_as_internal_with_the_raw_value ()"
   },
   "packages/rust/orm/src/dbspec.rs::CatalogFetch": {
     "exported": false,
@@ -4001,7 +3893,7 @@
   },
   "packages/rust/orm/src/dbspec.rs::IntrospectError": {
     "exported": true,
-    "signature": "pub enum IntrospectError  { Query (sqlx :: Error) , Catalog (String) , }"
+    "signature": "pub enum IntrospectError  { Query (sqlx :: Error) , Catalog (String) }"
   },
   "packages/rust/orm/src/dbspec.rs::IntrospectError as std :: fmt :: Display::fmt": {
     "exported": true,
@@ -4285,7 +4177,7 @@
   },
   "packages/rust/orm/src/dbspec/apply.rs::ApplyError": {
     "exported": true,
-    "signature": "pub enum ApplyError  { # [doc = \" Another session holds the lock; nothing changed.\"] Locked { message : String , source : Option \u003c sqlx :: Error \u003e } , # [doc = \" The connection does not keep one server session of its own for the\"] # [doc = \" whole command: the session that took the lock already held it, or a\"] # [doc = \" later statement ran in another session. `plan` and `step` name the\"] # [doc = \" step before which the session changed; `None` is the lock.\"] Session { plan : Option \u003c (String , usize) \u003e , message : String } , # [doc = \" The last plan of the history is applying, finalizing or rolling back\"] # [doc = \" at `step`.\"] Interrupted { plan : String , step : usize , message : String } , # [doc = \" The database is not at the state that its history records.\"] Drift { message : String } , # [doc = \" The plans do not form a chain, or the history does not match it.\"] Chain { plan : Option \u003c String \u003e , message : String } , # [doc = \" The statement of step `step` of plan `plan` failed, or its effect\"] # [doc = \" could not be read.\"] Failed { plan : String , step : usize , statement : String , source : sqlx :: Error } , # [doc = \" The applied or rolled back database is not the plan's schema.\"] Verify { plan : String , message : String , source : Option \u003c IntrospectError \u003e } , # [doc = \" Step `step` has no rollback statement; the rollback stopped before it.\"] Irreversible { plan : String , step : usize , message : String } , # [doc = \" A column that the rollback of step `step` makes non-null has NULL rows\"] # [doc = \" and no default; nothing changed.\"] Nulls { plan : String , step : usize , message : String } , # [doc = \" A history, lock or setting statement failed.\"] Database (sqlx :: Error) , # [doc = \" An event handler stopped the command.\"] Event (ApplyEventError) , # [doc = \" Releasing the PostgreSQL advisory lock released nothing: the session no\"] # [doc = \" longer held it.\"] LockNotHeld { message : String } , # [doc = \" Restoring the session settings or SQLite foreign keys, or releasing\"] # [doc = \" the lock, failed with `cleanup` after `error`. A second cleanup\"] # [doc = \" failure wraps this one again, so the chain of `error` lists the\"] # [doc = \" failures in order.\"] Cleanup { error : Box \u003c ApplyError \u003e , cleanup : Box \u003c ApplyError \u003e } , }"
+    "signature": "pub enum ApplyError  { # [doc = \" Another session holds the lock; nothing changed.\"] Locked { message : String , source : Option \u003c sqlx :: Error \u003e } , # [doc = \" The connection does not keep one server session of its own for the\"] # [doc = \" whole command: the session that took the lock already held it, or a\"] # [doc = \" later statement ran in another session. `plan` and `step` name the\"] # [doc = \" step before which the session changed; `None` is the lock.\"] Session { plan : Option \u003c (String , usize) \u003e , message : String } , # [doc = \" The last plan of the history is applying, finalizing or rolling back\"] # [doc = \" at `step`.\"] Interrupted { plan : String , step : usize , message : String } , # [doc = \" The database is not at the state that its history records.\"] Drift { message : String } , # [doc = \" The plans do not form a chain, or the history does not match it.\"] Chain { plan : Option \u003c String \u003e , message : String } , # [doc = \" The statement of step `step` of plan `plan` failed, or its effect\"] # [doc = \" could not be read.\"] Failed { plan : String , step : usize , statement : String , source : sqlx :: Error } , # [doc = \" The applied or rolled back database is not the plan's schema.\"] Verify { plan : String , message : String , source : Option \u003c IntrospectError \u003e } , # [doc = \" Step `step` has no rollback statement; the rollback stopped before it.\"] Irreversible { plan : String , step : usize , message : String } , # [doc = \" A column that the rollback of step `step` makes non-null has NULL rows\"] # [doc = \" and no default; nothing changed.\"] Nulls { plan : String , step : usize , message : String } , # [doc = \" A history, lock or setting statement failed.\"] Database (sqlx :: Error) , # [doc = \" An event handler stopped the command.\"] Event (ApplyEventError) , # [doc = \" Releasing the PostgreSQL advisory lock released nothing: the session no\"] # [doc = \" longer held it.\"] LockNotHeld { message : String } , # [doc = \" Restoring the session settings or SQLite foreign keys, or releasing\"] # [doc = \" the lock, failed with `cleanup` after `error`. A second cleanup\"] # [doc = \" failure wraps this one again, so the chain of `error` lists the\"] # [doc = \" failures in order.\"] Cleanup { error : Box \u003c ApplyError \u003e , cleanup : Box \u003c ApplyError \u003e } }"
   },
   "packages/rust/orm/src/dbspec/apply.rs::ApplyError as From \u003c sqlx :: Error \u003e::from": {
     "exported": true,
@@ -4341,7 +4233,7 @@
   },
   "packages/rust/orm/src/dbspec/apply.rs::ApplyEventKind": {
     "exported": true,
-    "signature": "pub enum ApplyEventKind  { # [doc = \" Apply or recover runs a plan forward; `steps` is its number of steps.\"] Plan , # [doc = \" A rollback starts on a plan.\"] Rollback , # [doc = \" A finalize starts on a plan.\"] Finalize , # [doc = \" Step `step` has no rollback statement.\"] Irreversible , # [doc = \" The statement or rollback statement of step `step` is about to run.\"] Statement , # [doc = \" The statement or rollback statement of step `step` ran.\"] Applied , # [doc = \" The plan's schema is verified.\"] Verified , # [doc = \" The plan reached its state.\"] Done , }"
+    "signature": "pub enum ApplyEventKind  { # [doc = \" Apply or recover runs a plan forward; `steps` is its number of steps.\"] Plan , # [doc = \" A rollback starts on a plan.\"] Rollback , # [doc = \" A finalize starts on a plan.\"] Finalize , # [doc = \" Step `step` has no rollback statement.\"] Irreversible , # [doc = \" The statement or rollback statement of step `step` is about to run.\"] Statement , # [doc = \" The statement or rollback statement of step `step` ran.\"] Applied , # [doc = \" The plan's schema is verified.\"] Verified , # [doc = \" The plan reached its state.\"] Done }"
   },
   "packages/rust/orm/src/dbspec/apply.rs::ApplyEventKind::as_str": {
     "exported": true,
@@ -4353,7 +4245,7 @@
   },
   "packages/rust/orm/src/dbspec/apply.rs::Command": {
     "exported": false,
-    "signature": " enum Command  { Apply , Recover , Rollback , Finalize , }"
+    "signature": " enum Command  { Apply , Recover , Rollback , Finalize }"
   },
   "packages/rust/orm/src/dbspec/apply.rs::HistoryRow": {
     "exported": false,
@@ -4385,19 +4277,19 @@
   },
   "packages/rust/orm/src/dbspec/apply.rs::Restore": {
     "exported": false,
-    "signature": " enum Restore  { MySql { lock_wait : i64 , row_wait : i64 } , Postgres { lock_timeout : String } , Sqlite { foreign_keys : i64 , legacy : i64 , mode : String , busy : i64 } , }"
+    "signature": " enum Restore  { MySql { lock_wait : i64 , row_wait : i64 } , Postgres { lock_timeout : String } , # [doc = \" locked: another connection holds the database, so this one took no lock that the release read would release.\"] Sqlite { foreign_keys : i64 , legacy : i64 , mode : String , busy : i64 , locked : bool } }"
   },
   "packages/rust/orm/src/dbspec/apply.rs::Restore#wire": {
     "exported": false,
-    "signature": "{\"busy\":\"integer\",\"foreign_keys\":\"integer\",\"legacy\":\"integer\",\"lock_timeout\":\"text\",\"lock_wait\":\"integer\",\"mode\":\"text\",\"row_wait\":\"integer\"}"
+    "signature": "{\"busy\":\"integer\",\"foreign_keys\":\"integer\",\"legacy\":\"integer\",\"lock_timeout\":\"text\",\"lock_wait\":\"integer\",\"locked\":\"bool\",\"mode\":\"text\",\"row_wait\":\"integer\"}"
   },
   "packages/rust/orm/src/dbspec/apply.rs::VerifyError": {
     "exported": false,
-    "signature": " enum VerifyError  { Mismatch (String) , Introspection (IntrospectError) , }"
+    "signature": " enum VerifyError  { Mismatch (String) , Introspection (IntrospectError) }"
   },
   "packages/rust/orm/src/dbspec/apply.rs::apply": {
     "exported": true,
-    "signature": "pub async fn apply \u003c C : ApplyConnection + ? Sized \u003e (connection : \u0026 mut C , dialect : Dialect , plans : \u0026 [Plan] , now : \u0026 ApplyClock \u003c '_ \u003e , events : \u0026 mut ApplyEvents \u003c '_ \u003e ,) -\u003e Result \u003c () , ApplyError \u003e"
+    "signature": "pub async fn apply \u003c C : ApplyConnection + ? Sized \u003e (connection : \u0026 mut C , dialect : Dialect , plans : \u0026 [Plan] , now : \u0026 ApplyClock \u003c '_ \u003e , events : \u0026 mut ApplyEvents \u003c '_ \u003e) -\u003e Result \u003c () , ApplyError \u003e"
   },
   "packages/rust/orm/src/dbspec/apply.rs::bound": {
     "exported": false,
@@ -4417,7 +4309,7 @@
   },
   "packages/rust/orm/src/dbspec/apply.rs::finalize": {
     "exported": true,
-    "signature": "pub async fn finalize \u003c C : ApplyConnection + ? Sized \u003e (connection : \u0026 mut C , dialect : Dialect , plans : \u0026 [Plan] , now : \u0026 ApplyClock \u003c '_ \u003e , events : \u0026 mut ApplyEvents \u003c '_ \u003e ,) -\u003e Result \u003c () , ApplyError \u003e"
+    "signature": "pub async fn finalize \u003c C : ApplyConnection + ? Sized \u003e (connection : \u0026 mut C , dialect : Dialect , plans : \u0026 [Plan] , now : \u0026 ApplyClock \u003c '_ \u003e , events : \u0026 mut ApplyEvents \u003c '_ \u003e) -\u003e Result \u003c () , ApplyError \u003e"
   },
   "packages/rust/orm/src/dbspec/apply.rs::finalize_start": {
     "exported": false,
@@ -4441,15 +4333,15 @@
   },
   "packages/rust/orm/src/dbspec/apply.rs::recover": {
     "exported": true,
-    "signature": "pub async fn recover \u003c C : ApplyConnection + ? Sized \u003e (connection : \u0026 mut C , dialect : Dialect , plans : \u0026 [Plan] , now : \u0026 ApplyClock \u003c '_ \u003e , events : \u0026 mut ApplyEvents \u003c '_ \u003e ,) -\u003e Result \u003c () , ApplyError \u003e"
+    "signature": "pub async fn recover \u003c C : ApplyConnection + ? Sized \u003e (connection : \u0026 mut C , dialect : Dialect , plans : \u0026 [Plan] , now : \u0026 ApplyClock \u003c '_ \u003e , events : \u0026 mut ApplyEvents \u003c '_ \u003e) -\u003e Result \u003c () , ApplyError \u003e"
   },
   "packages/rust/orm/src/dbspec/apply.rs::rollback": {
     "exported": true,
-    "signature": "pub async fn rollback \u003c C : ApplyConnection + ? Sized \u003e (connection : \u0026 mut C , dialect : Dialect , plans : \u0026 [Plan] , now : \u0026 ApplyClock \u003c '_ \u003e , events : \u0026 mut ApplyEvents \u003c '_ \u003e ,) -\u003e Result \u003c () , ApplyError \u003e"
+    "signature": "pub async fn rollback \u003c C : ApplyConnection + ? Sized \u003e (connection : \u0026 mut C , dialect : Dialect , plans : \u0026 [Plan] , now : \u0026 ApplyClock \u003c '_ \u003e , events : \u0026 mut ApplyEvents \u003c '_ \u003e) -\u003e Result \u003c () , ApplyError \u003e"
   },
   "packages/rust/orm/src/dbspec/apply.rs::run_command": {
     "exported": false,
-    "signature": " async fn run_command \u003c C : ApplyConnection + ? Sized \u003e (connection : \u0026 mut C , dialect : Dialect , plans : \u0026 [Plan] , now : \u0026 ApplyClock \u003c '_ \u003e , events : \u0026 mut ApplyEvents \u003c '_ \u003e , command : Command ,) -\u003e Result \u003c () , ApplyError \u003e"
+    "signature": " async fn run_command \u003c C : ApplyConnection + ? Sized \u003e (connection : \u0026 mut C , dialect : Dialect , plans : \u0026 [Plan] , now : \u0026 ApplyClock \u003c '_ \u003e , events : \u0026 mut ApplyEvents \u003c '_ \u003e , command : Command) -\u003e Result \u003c () , ApplyError \u003e"
   },
   "packages/rust/orm/src/dbspec/apply.rs::session_query": {
     "exported": false,
@@ -4577,11 +4469,11 @@
   },
   "packages/rust/orm/src/driver.rs::Target": {
     "exported": false,
-    "signature": "pub (crate) enum Target \u003c 'a \u003e { Pool (\u0026 'a Pool) , Tx (\u0026 'a mut TxInner) , }"
+    "signature": "pub (crate) enum Target \u003c 'a \u003e { Pool (\u0026 'a Pool) , Tx (\u0026 'a mut TxInner) }"
   },
   "packages/rust/orm/src/driver.rs::TxInner": {
     "exported": false,
-    "signature": "pub (crate) enum TxInner  { MySql (MySqlOwnedTx) , Postgres (CancellableConnection \u003c Postgres \u003e) , Sqlite (CancellableConnection \u003c Sqlite \u003e) , # [doc = \" The flowmark session held until the transaction ends.\"] Markdown (crate :: markdown :: MdLease) , }"
+    "signature": "pub (crate) enum TxInner  { MySql (MySqlOwnedTx) , Postgres (CancellableConnection \u003c Postgres \u003e) , Sqlite (CancellableConnection \u003c Sqlite \u003e) , # [doc = \" The flowmark session held until the transaction ends.\"] Markdown (crate :: markdown :: MdLease) }"
   },
   "packages/rust/orm/src/driver.rs::arg_types": {
     "exported": false,
@@ -4699,41 +4591,9 @@
     "exported": false,
     "signature": "pub (crate) fn statement (st : \u0026 Step , parent_vals : Vec \u003c Param \u003e , numbered : bool) -\u003e Result \u003c (Cow \u003c '_ , str \u003e , Vec \u003c Param \u003e) \u003e"
   },
-  "packages/rust/orm/src/driver/tests.rs::assert_parent_slot_invalid": {
-    "exported": false,
-    "signature": " fn assert_parent_slot_invalid (step : \u0026 Step , numbered : bool)"
-  },
-  "packages/rust/orm/src/driver/tests.rs::parent_expansion_keeps_single_value_and_composite_padding_order": {
-    "exported": false,
-    "signature": " fn parent_expansion_keeps_single_value_and_composite_padding_order ()"
-  },
-  "packages/rust/orm/src/driver/tests.rs::parent_expansion_rejects_duplicate_numbered_slots": {
-    "exported": false,
-    "signature": " fn parent_expansion_rejects_duplicate_numbered_slots ()"
-  },
-  "packages/rust/orm/src/driver/tests.rs::parent_expansion_rejects_duplicate_positional_slots": {
-    "exported": false,
-    "signature": " fn parent_expansion_rejects_duplicate_positional_slots ()"
-  },
-  "packages/rust/orm/src/driver/tests.rs::parent_expansion_rejects_missing_numbered_slot": {
-    "exported": false,
-    "signature": " fn parent_expansion_rejects_missing_numbered_slot ()"
-  },
-  "packages/rust/orm/src/driver/tests.rs::parent_expansion_rejects_missing_positional_slot": {
-    "exported": false,
-    "signature": " fn parent_expansion_rejects_missing_positional_slot ()"
-  },
-  "packages/rust/orm/src/driver/tests.rs::relation_step": {
-    "exported": false,
-    "signature": " fn relation_step (sql : \u0026 str , slots : \u0026 [\u0026 str] , key_width : usize) -\u003e Step"
-  },
-  "packages/rust/orm/src/driver/tests.rs::sqlite_bind_accepts_every_parameter_variant": {
-    "exported": false,
-    "signature": " async fn sqlite_bind_accepts_every_parameter_variant ()"
-  },
   "packages/rust/orm/src/engine/dialect.rs::Dialect": {
     "exported": true,
-    "signature": "pub enum Dialect  { MySql , Postgres , Sqlite , }"
+    "signature": "pub enum Dialect  { MySql , Postgres , Sqlite }"
   },
   "packages/rust/orm/src/engine/dialect.rs::Dialect::clock_operand": {
     "exported": true,
@@ -4969,7 +4829,7 @@
   },
   "packages/rust/orm/src/engine/planner.rs::AesVersionWrite": {
     "exported": false,
-    "signature": " enum AesVersionWrite  { IfMissing , WhenAssigned , }"
+    "signature": " enum AesVersionWrite  { IfMissing , WhenAssigned }"
   },
   "packages/rust/orm/src/engine/planner.rs::Asm": {
     "exported": false,
@@ -5113,7 +4973,7 @@
   },
   "packages/rust/orm/src/engine/planner.rs::Managed": {
     "exported": false,
-    "signature": " enum Managed \u003c 'e \u003e { AesVersion (\u0026 'e Field) , # [doc = \" The audit column and its audit record entity.\"] Audit (\u0026 'e Field , \u0026 'e str) , Now (\u0026 'e Field) , }"
+    "signature": " enum Managed \u003c 'e \u003e { AesVersion (\u0026 'e Field) , # [doc = \" The audit column and its audit record entity.\"] Audit (\u0026 'e Field , \u0026 'e str) , Now (\u0026 'e Field) }"
   },
   "packages/rust/orm/src/engine/planner.rs::Managed \u003c '_ \u003e::column": {
     "exported": false,
@@ -5145,7 +5005,7 @@
   },
   "packages/rust/orm/src/engine/planner.rs::OutKind": {
     "exported": false,
-    "signature": " enum OutKind \u003c 'q \u003e { Column , Fn (\u0026 'q ir :: Func) , Sub (\u0026 'q ir :: Sub) , }"
+    "signature": " enum OutKind \u003c 'q \u003e { Column , Fn (\u0026 'q ir :: Func) , Sub (\u0026 'q ir :: Sub) }"
   },
   "packages/rust/orm/src/engine/planner.rs::Planner": {
     "exported": false,
@@ -5941,7 +5801,7 @@
   },
   "packages/rust/orm/src/ir.rs::Item": {
     "exported": true,
-    "signature": "pub enum Item  { Pred { pred : Box \u003c Pred \u003e } , Group { group : Group } , Joined { joined : JoinedRef } , }"
+    "signature": "pub enum Item  { Pred { pred : Box \u003c Pred \u003e } , Group { group : Group } , Joined { joined : JoinedRef } }"
   },
   "packages/rust/orm/src/ir.rs::Item#wire": {
     "exported": true,
@@ -6009,7 +5869,7 @@
   },
   "packages/rust/orm/src/ir.rs::Limit": {
     "exported": true,
-    "signature": "pub enum Limit  { Literal { offset : u32 , count : u32 } , Params { offset_p : usize , count_p : usize } , }"
+    "signature": "pub enum Limit  { Literal { offset : u32 , count : u32 } , Params { offset_p : usize , count_p : usize } }"
   },
   "packages/rust/orm/src/ir.rs::Limit#wire": {
     "exported": true,
@@ -6281,7 +6141,7 @@
   },
   "packages/rust/orm/src/lib.rs::Error": {
     "exported": true,
-    "signature": "pub enum Error  { # [doc = \" An error with a code from docs/spec/errors.yaml.\"] Engine { code : String , msg : String } , # [doc = \" A driver error: the code the error catalog names for it, or DRIVER,\"] # [doc = \" with the driver message and the driver error.\"] Driver { code : String , msg : String , source : sqlx :: Error } , # [doc = \" A strict one-row query matched no row.\"] NoRows , # [doc = \" Update with optimistic locking matched no row.\"] OptimisticLock , # [doc = \" Executor configuration problem (missing AES key, bad transform input, …).\"] Config (String) , # [doc = \" A transaction or savepoint callback failed and its rollback failed too.\"] Rollback { callback : Box \u003c Error \u003e , rollback : Box \u003c Error \u003e } , # [doc = \" A primary operation failed and one or more cleanup actions failed; the primary code remains observable.\"] Cleanup { primary : Box \u003c Error \u003e , cleanup : Vec \u003c Error \u003e } , # [doc = \" A statement event subscriber failed (SUBSCRIBER); `source` is its error.\"] Subscriber { msg : String , source : events :: SubscriberError } , }"
+    "signature": "pub enum Error  { # [doc = \" An error with a code from docs/spec/errors.yaml.\"] Engine { code : String , msg : String } , # [doc = \" A driver error: the code the error catalog names for it, or DRIVER,\"] # [doc = \" with the driver message and the driver error.\"] Driver { code : String , msg : String , source : sqlx :: Error } , # [doc = \" A strict one-row query matched no row.\"] NoRows , # [doc = \" Update with optimistic locking matched no row.\"] OptimisticLock , # [doc = \" Executor configuration problem (missing AES key, bad transform input, …).\"] Config (String) , # [doc = \" A transaction or savepoint callback failed and its rollback failed too.\"] Rollback { callback : Box \u003c Error \u003e , rollback : Box \u003c Error \u003e } , # [doc = \" A primary operation failed and one or more cleanup actions failed; the primary code remains observable.\"] Cleanup { primary : Box \u003c Error \u003e , cleanup : Vec \u003c Error \u003e } , # [doc = \" A statement event subscriber failed (SUBSCRIBER); `source` is its error.\"] Subscriber { msg : String , source : events :: SubscriberError } }"
   },
   "packages/rust/orm/src/lib.rs::Error as From \u003c sqlx :: Error \u003e::from": {
     "exported": true,
@@ -7089,11 +6949,11 @@
   },
   "packages/rust/orm/src/model.rs::RelatedValue": {
     "exported": false,
-    "signature": "pub (crate) enum RelatedValue  { One (Option \u003c Arc \u003c dyn AnyModel \u003e \u003e) , Many (Arc \u003c dyn AnyCollection \u003e) , }"
+    "signature": "pub (crate) enum RelatedValue  { One (Option \u003c Arc \u003c dyn AnyModel \u003e \u003e) , Many (Arc \u003c dyn AnyCollection \u003e) }"
   },
   "packages/rust/orm/src/model.rs::RowRef": {
     "exported": false,
-    "signature": " enum RowRef \u003c 'r \u003e { Sql (\u0026 'r [Val]) , Markdown (\u0026 'r MdRow) , }"
+    "signature": " enum RowRef \u003c 'r \u003e { Sql (\u0026 'r [Val]) , Markdown (\u0026 'r MdRow) }"
   },
   "packages/rust/orm/src/model.rs::RowRef \u003c 'r \u003e::vals": {
     "exported": false,
@@ -7925,7 +7785,7 @@
   },
   "packages/rust/orm/src/row.rs::Cells": {
     "exported": true,
-    "signature": "pub enum Cells  { # [doc = \" The MySQL driver row itself: decoded straight into the struct when no host AES stage is\"] # [doc = \" present. AES rows use the positional path so the stored key version can be selected.\"] Raw (MySqlRow) , # [doc = \" A positional row (styled cells already decoded).\"] Pos (Vec \u003c Val \u003e) , }"
+    "signature": "pub enum Cells  { # [doc = \" The MySQL driver row itself: decoded straight into the struct when no host AES stage is\"] # [doc = \" present. AES rows use the positional path so the stored key version can be selected.\"] Raw (MySqlRow) , # [doc = \" A positional row (styled cells already decoded).\"] Pos (Vec \u003c Val \u003e) }"
   },
   "packages/rust/orm/src/row.rs::Cells as Src::bool": {
     "exported": true,
@@ -7961,7 +7821,7 @@
   },
   "packages/rust/orm/src/row.rs::DriverRow": {
     "exported": true,
-    "signature": "pub enum DriverRow  { MySql (MySqlRow) , Postgres (PgRow) , Sqlite (SqliteRow) , }"
+    "signature": "pub enum DriverRow  { MySql (MySqlRow) , Postgres (PgRow) , Sqlite (SqliteRow) }"
   },
   "packages/rust/orm/src/row.rs::DriverRow::column_name": {
     "exported": true,
@@ -8281,7 +8141,7 @@
   },
   "packages/rust/orm/src/tx.rs::Isolation": {
     "exported": true,
-    "signature": "pub enum Isolation  { ReadUncommitted , ReadCommitted , RepeatableRead , Serializable , }"
+    "signature": "pub enum Isolation  { ReadUncommitted , ReadCommitted , RepeatableRead , Serializable }"
   },
   "packages/rust/orm/src/tx.rs::Isolation::sql": {
     "exported": false,
@@ -8297,11 +8157,11 @@
   },
   "packages/rust/orm/src/tx.rs::OnceOutcome": {
     "exported": false,
-    "signature": " enum OnceOutcome \u003c T , E \u003e { Returned (T) , Failed (E) , Panicked (Box \u003c dyn std :: any :: Any + Send \u003e) , }"
+    "signature": " enum OnceOutcome \u003c T , E \u003e { Returned (T) , Failed (E) , Panicked (Box \u003c dyn std :: any :: Any + Send \u003e) }"
   },
   "packages/rust/orm/src/tx.rs::OnceScope": {
     "exported": false,
-    "signature": " enum OnceScope \u003c 'a \u003e { Transaction { db : \u0026 'a Db , tx : Arc \u003c TxShared \u003e , } , # [doc = \" `audit` is the transaction's audit before the savepoint, restored when the savepoint does not release.\"] Savepoint { tx : Arc \u003c TxShared \u003e , name : String , audit : Option \u003c AuditKey \u003e , } , }"
+    "signature": " enum OnceScope \u003c 'a \u003e { Transaction { db : \u0026 'a Db , tx : Arc \u003c TxShared \u003e } , # [doc = \" `audit` is the transaction's audit before the savepoint, restored when the savepoint does not release.\"] Savepoint { tx : Arc \u003c TxShared \u003e , name : String , audit : Option \u003c AuditKey \u003e } }"
   },
   "packages/rust/orm/src/tx.rs::OnceScope \u003c 'a \u003e::close": {
     "exported": false,
@@ -8321,7 +8181,7 @@
   },
   "packages/rust/orm/src/tx.rs::OnceState": {
     "exported": false,
-    "signature": " enum OnceState \u003c 'a , F , Fut , T , E \u003e { Start { db : \u0026 'a Db , f : F , audit : Option \u003c AuditValues \u003e } , Opening { f : F , open : OnceStep \u003c 'a , Result \u003c OnceScope \u003c 'a \u003e \u003e \u003e } , Running { scope : OnceScope \u003c 'a \u003e , callback : Pin \u003c Box \u003c OnceCallback \u003c Fut \u003e \u003e \u003e } , Ending { outcome : OnceOutcome \u003c T , E \u003e , end : OnceStep \u003c 'a , Result \u003c () \u003e \u003e } , Done , }"
+    "signature": " enum OnceState \u003c 'a , F , Fut , T , E \u003e { Start { db : \u0026 'a Db , f : F , audit : Option \u003c AuditValues \u003e } , Opening { f : F , open : OnceStep \u003c 'a , Result \u003c OnceScope \u003c 'a \u003e \u003e \u003e } , Running { scope : OnceScope \u003c 'a \u003e , callback : Pin \u003c Box \u003c OnceCallback \u003c Fut \u003e \u003e \u003e } , Ending { outcome : OnceOutcome \u003c T , E \u003e , end : OnceStep \u003c 'a , Result \u003c () \u003e \u003e } , Done }"
   },
   "packages/rust/orm/src/tx.rs::OnceState#wire": {
     "exported": false,
@@ -8337,7 +8197,7 @@
   },
   "packages/rust/orm/src/tx.rs::SavepointEnd": {
     "exported": false,
-    "signature": " enum SavepointEnd \u003c T , E \u003e { Returned (std :: result :: Result \u003c T , (E , Option \u003c Error \u003e) \u003e) , Panicked (Box \u003c dyn std :: any :: Any + Send \u003e , Option \u003c Error \u003e) , }"
+    "signature": " enum SavepointEnd \u003c T , E \u003e { Returned (std :: result :: Result \u003c T , (E , Option \u003c Error \u003e) \u003e) , Panicked (Box \u003c dyn std :: any :: Any + Send \u003e , Option \u003c Error \u003e) }"
   },
   "packages/rust/orm/src/tx.rs::SendOperation": {
     "exported": false,
@@ -8533,7 +8393,7 @@
   },
   "packages/rust/orm/src/tx.rs::TransactionOnceError": {
     "exported": true,
-    "signature": "pub enum TransactionOnceError \u003c E \u003e { # [doc = \" The database could not start, commit, or complete the transaction.\"] Orm (Error) , # [doc = \" The callback failed and its transaction rolled back.\"] Callback (E) , # [doc = \" Both the callback and rollback failed.\"] Rollback { callback : E , rollback : Error } , }"
+    "signature": "pub enum TransactionOnceError \u003c E \u003e { # [doc = \" The database could not start, commit, or complete the transaction.\"] Orm (Error) , # [doc = \" The callback failed and its transaction rolled back.\"] Callback (E) , # [doc = \" Both the callback and rollback failed.\"] Rollback { callback : E , rollback : Error } }"
   },
   "packages/rust/orm/src/tx.rs::TransactionOnceError \u003c E \u003e as std :: error :: Error::source": {
     "exported": true,
@@ -8758,42 +8618,6 @@
   "packages/rust/orm/src/tx.rs::transaction_conflict": {
     "exported": true,
     "signature": "pub fn transaction_conflict (message : impl Into \u003c String \u003e) -\u003e Error"
-  },
-  "packages/rust/orm/src/tx_send_tests.rs::behavior": {
-    "exported": false,
-    "signature": " async fn behavior (driver : \u0026 str , dsn : \u0026 str)"
-  },
-  "packages/rust/orm/src/tx_send_tests.rs::check": {
-    "exported": false,
-    "signature": " async fn check (driver : \u0026 str , key : \u0026 str)"
-  },
-  "packages/rust/orm/src/tx_send_tests.rs::dsn": {
-    "exported": false,
-    "signature": " fn dsn (name : \u0026 str) -\u003e String"
-  },
-  "packages/rust/orm/src/tx_send_tests.rs::execute": {
-    "exported": false,
-    "signature": " async fn execute (db : \u0026 Db , sql : \u0026 str)"
-  },
-  "packages/rust/orm/src/tx_send_tests.rs::mysql_send_savepoint": {
-    "exported": false,
-    "signature": " async fn mysql_send_savepoint ()"
-  },
-  "packages/rust/orm/src/tx_send_tests.rs::postgres_send_savepoint": {
-    "exported": false,
-    "signature": " async fn postgres_send_savepoint ()"
-  },
-  "packages/rust/orm/src/tx_send_tests.rs::require_send": {
-    "exported": false,
-    "signature": " fn require_send \u003c T : Send \u003e (value : T) -\u003e T"
-  },
-  "packages/rust/orm/src/tx_send_tests.rs::sqlite_send_savepoint": {
-    "exported": false,
-    "signature": " async fn sqlite_send_savepoint ()"
-  },
-  "packages/rust/orm/src/tx_send_tests.rs::state": {
-    "exported": false,
-    "signature": " async fn state (db : \u0026 Db , table : \u0026 str) -\u003e Vec \u003c i32 \u003e"
   },
   "packages/rust/orm/src/utils.rs::AesKeyring": {
     "exported": true,
@@ -9105,7 +8929,7 @@
   },
   "packages/rust/orm/src/utils.rs::add_tables_and_columns_on": {
     "exported": false,
-    "signature": " async fn add_tables_and_columns_on \u003c C \u003e (on : Observed \u003c '_ \u003e , conn : \u0026 mut C , dialect : dbspec :: Dialect , target : \u0026 Document , documents : \u0026 [\u0026 Document] ,) -\u003e Result \u003c Vec \u003c String \u003e \u003e where C : CatalogFetch , for \u003c 'c \u003e \u0026 'c mut C : sqlx :: Executor \u003c 'c \u003e ,"
+    "signature": " async fn add_tables_and_columns_on \u003c C \u003e (on : Observed \u003c '_ \u003e , conn : \u0026 mut C , dialect : dbspec :: Dialect , target : \u0026 Document , documents : \u0026 [\u0026 Document]) -\u003e Result \u003c Vec \u003c String \u003e \u003e where C : CatalogFetch , for \u003c 'c \u003e \u0026 'c mut C : sqlx :: Executor \u003c 'c \u003e ,"
   },
   "packages/rust/orm/src/utils.rs::external_error": {
     "exported": false,
@@ -9117,7 +8941,7 @@
   },
   "packages/rust/orm/src/utils.rs::install_on": {
     "exported": false,
-    "signature": " async fn install_on \u003c C \u003e (on : Observed \u003c '_ \u003e , conn : \u0026 mut C , dialect : dbspec :: Dialect , statements : \u0026 [dbspec :: RenderedStatement] , target : \u0026 Document , documents : \u0026 [\u0026 Document] ,) -\u003e Result \u003c () \u003e where C : CatalogFetch , for \u003c 'c \u003e \u0026 'c mut C : sqlx :: Executor \u003c 'c \u003e ,"
+    "signature": " async fn install_on \u003c C \u003e (on : Observed \u003c '_ \u003e , conn : \u0026 mut C , dialect : dbspec :: Dialect , statements : \u0026 [dbspec :: RenderedStatement] , target : \u0026 Document , documents : \u0026 [\u0026 Document]) -\u003e Result \u003c () \u003e where C : CatalogFetch , for \u003c 'c \u003e \u0026 'c mut C : sqlx :: Executor \u003c 'c \u003e ,"
   },
   "packages/rust/orm/src/utils.rs::introspect_on": {
     "exported": false,
@@ -9125,7 +8949,7 @@
   },
   "packages/rust/orm/src/utils.rs::introspect_set": {
     "exported": false,
-    "signature": " async fn introspect_set \u003c C : CatalogFetch \u003e (on : Observed \u003c '_ \u003e , conn : \u0026 mut C , dialect : dbspec :: Dialect , documents : \u0026 [\u0026 Document] ,) -\u003e Result \u003c crate :: dbspec :: Introspection \u003e"
+    "signature": " async fn introspect_set \u003c C : CatalogFetch \u003e (on : Observed \u003c '_ \u003e , conn : \u0026 mut C , dialect : dbspec :: Dialect , documents : \u0026 [\u0026 Document]) -\u003e Result \u003c crate :: dbspec :: Introspection \u003e"
   },
   "packages/rust/orm/src/utils.rs::invalid": {
     "exported": false,
@@ -9134,6 +8958,14 @@
   "packages/rust/orm/src/utils.rs::quote": {
     "exported": false,
     "signature": " fn quote (driver : \u0026 str , name : \u0026 str) -\u003e String"
+  },
+  "packages/rust/orm/src/utils.rs::rotation_columns": {
+    "exported": false,
+    "signature": " fn rotation_columns (row : \u0026 [Val] , key_count : usize , column_count : usize) -\u003e Result \u003c \u0026 [Val] \u003e"
+  },
+  "packages/rust/orm/src/utils.rs::rotation_key": {
+    "exported": false,
+    "signature": " fn rotation_key \u003c 'a \u003e (version : Option \u003c \u0026 Val \u003e , keyring : \u0026 'a AesKeyring) -\u003e Result \u003c \u0026 'a str \u003e"
   },
   "packages/rust/orm/src/utils.rs::row_version": {
     "exported": false,
@@ -9165,7 +8997,7 @@
   },
   "packages/rust/orm/src/value.rs::Param": {
     "exported": true,
-    "signature": "pub enum Param  { Null , Bool (bool) , I64 (i64) , F64 (f64) , Str (String) , Bytes (Vec \u003c u8 \u003e) , DateTime (NaiveDateTime) , Date (NaiveDate) , }"
+    "signature": "pub enum Param  { Null , Bool (bool) , I64 (i64) , F64 (f64) , Str (String) , Bytes (Vec \u003c u8 \u003e) , DateTime (NaiveDateTime) , Date (NaiveDate) }"
   },
   "packages/rust/orm/src/value.rs::Param as From \u003c \u0026 str \u003e::from": {
     "exported": true,
@@ -9185,11 +9017,11 @@
   },
   "packages/rust/orm/src/value.rs::StyledValue": {
     "exported": true,
-    "signature": "pub enum StyledValue \u003c T \u003e { SqlNull , Value (T) , }"
+    "signature": "pub enum StyledValue \u003c T \u003e { SqlNull , Value (T) }"
   },
   "packages/rust/orm/src/value.rs::Val": {
     "exported": true,
-    "signature": "pub enum Val  { # [default] Null , I64 (i64) , F64 (f64) , Str (String) , Bytes (Vec \u003c u8 \u003e) , DateTime (NaiveDateTime) , Date (NaiveDate) , Bool (bool) , Json (serde_json :: Value) , Ordered (ordered_json :: Value) , }"
+    "signature": "pub enum Val  { # [default] Null , I64 (i64) , F64 (f64) , Str (String) , Bytes (Vec \u003c u8 \u003e) , DateTime (NaiveDateTime) , Date (NaiveDate) , Bool (bool) , Json (serde_json :: Value) , Ordered (ordered_json :: Value) }"
   },
   "packages/rust/orm/src/value.rs::Val as PartialEq::eq": {
     "exported": true,
@@ -9493,7 +9325,7 @@
   },
   "packages/rust/schema/src/dbspec/compare.rs::compare_objects": {
     "exported": false,
-    "signature": " fn compare_objects (add : \u0026 mut impl FnMut (\u0026 'static str , \u0026 str) , (drop , add_kind) : (\u0026 'static str , \u0026 'static str) , source : Vec \u003c (\u0026 str , String) \u003e , target : Vec \u003c (\u0026 str , String) \u003e ,)"
+    "signature": " fn compare_objects (add : \u0026 mut impl FnMut (\u0026 'static str , \u0026 str) , (drop , add_kind) : (\u0026 'static str , \u0026 'static str) , source : Vec \u003c (\u0026 str , String) \u003e , target : Vec \u003c (\u0026 str , String) \u003e)"
   },
   "packages/rust/schema/src/dbspec/compare.rs::compare_schemas": {
     "exported": true,
@@ -9553,7 +9385,7 @@
   },
   "packages/rust/schema/src/dbspec/emit.rs::View": {
     "exported": false,
-    "signature": "pub (crate) enum View  { Canonical , Manifest , Schema , }"
+    "signature": "pub (crate) enum View  { Canonical , Manifest , Schema }"
   },
   "packages/rust/schema/src/dbspec/emit.rs::emit": {
     "exported": false,
@@ -9593,7 +9425,7 @@
   },
   "packages/rust/schema/src/dbspec/file.rs::ReadError": {
     "exported": true,
-    "signature": "pub enum ReadError  { Io (io :: Error) , Diagnostics (Vec \u003c Diagnostic \u003e) , }"
+    "signature": "pub enum ReadError  { Io (io :: Error) , Diagnostics (Vec \u003c Diagnostic \u003e) }"
   },
   "packages/rust/schema/src/dbspec/file.rs::ReadError as fmt :: Display::fmt": {
     "exported": true,
@@ -9705,7 +9537,7 @@
   },
   "packages/rust/schema/src/dbspec/introspect/check.rs::Node": {
     "exported": false,
-    "signature": " enum Node  { Operand (Operand) , Predicate (Predicate) , }"
+    "signature": " enum Node  { Operand (Operand) , Predicate (Predicate) }"
   },
   "packages/rust/schema/src/dbspec/introspect/check.rs::Operand": {
     "exported": false,
@@ -9725,7 +9557,7 @@
   },
   "packages/rust/schema/src/dbspec/introspect/check.rs::Predicate": {
     "exported": false,
-    "signature": " enum Predicate  { Logic (\u0026 'static str , Box \u003c Node \u003e , Box \u003c Node \u003e) , Compare (Operand , String , Operand) , In (Operand , Vec \u003c Operand \u003e , bool) , Null (Operand , bool) , }"
+    "signature": " enum Predicate  { Logic (\u0026 'static str , Box \u003c Node \u003e , Box \u003c Node \u003e) , Compare (Operand , String , Operand) , In (Operand , Vec \u003c Operand \u003e , bool) , Null (Operand , bool) }"
   },
   "packages/rust/schema/src/dbspec/introspect/check.rs::Token": {
     "exported": false,
@@ -9745,7 +9577,7 @@
   },
   "packages/rust/schema/src/dbspec/introspect/check.rs::TokenKind": {
     "exported": false,
-    "signature": " enum TokenKind  { Ident , Word , Number , Str , Op , Punct , }"
+    "signature": " enum TokenKind  { Ident , Word , Number , Str , Op , Punct }"
   },
   "packages/rust/schema/src/dbspec/introspect/check.rs::decode_check": {
     "exported": false,
@@ -9829,7 +9661,7 @@
   },
   "packages/rust/schema/src/dbspec/introspect/mod.rs::CatalogValue": {
     "exported": true,
-    "signature": "pub enum CatalogValue  { Null , Text (String) , Int (i64) , Bool (bool) , }"
+    "signature": "pub enum CatalogValue  { Null , Text (String) , Int (i64) , Bool (bool) }"
   },
   "packages/rust/schema/src/dbspec/introspect/mod.rs::ICheck": {
     "exported": false,
@@ -10101,7 +9933,7 @@
   },
   "packages/rust/schema/src/dbspec/introspect/mod.rs::apply_column_default": {
     "exported": false,
-    "signature": " fn apply_column_default (catalog : \u0026 mut Catalog , column : \u0026 mut IColumn , table : \u0026 str , name : \u0026 str , text : Option \u003c String \u003e , parse : impl FnOnce (\u0026 str) -\u003e Option \u003c String \u003e ,) -\u003e bool"
+    "signature": " fn apply_column_default (catalog : \u0026 mut Catalog , column : \u0026 mut IColumn , table : \u0026 str , name : \u0026 str , text : Option \u003c String \u003e , parse : impl FnOnce (\u0026 str) -\u003e Option \u003c String \u003e) -\u003e bool"
   },
   "packages/rust/schema/src/dbspec/introspect/mod.rs::catalog_followups": {
     "exported": true,
@@ -10409,7 +10241,7 @@
   },
   "packages/rust/schema/src/dbspec/lexer.rs::Kind": {
     "exported": false,
-    "signature": "pub (crate) enum Kind  { # [doc = \" A run of ASCII letters and digits, `_`, `.` and Unicode letters and digits (Go's isWordRune) that is not a number.\"] Word , # [doc = \" Digits with an optional `.digits` fraction.\"] Number , # [doc = \" A single-quoted string; `text` keeps the quotes and doubled quotes.\"] Str , # [doc = \" One of `{ } ( ) , = \u003c\u003e \u003c \u003c= \u003e \u003e= + - * /`.\"] Punct , # [doc = \" A character, or an unterminated string, that no token allows.\"] Invalid , }"
+    "signature": "pub (crate) enum Kind  { # [doc = \" A run of ASCII letters and digits, `_`, `.` and Unicode letters and digits (Go's isWordRune) that is not a number.\"] Word , # [doc = \" Digits with an optional `.digits` fraction.\"] Number , # [doc = \" A single-quoted string; `text` keeps the quotes and doubled quotes.\"] Str , # [doc = \" One of `{ } ( ) , = \u003c\u003e \u003c \u003c= \u003e \u003e= + - * /`.\"] Punct , # [doc = \" A character, or an unterminated string, that no token allows.\"] Invalid }"
   },
   "packages/rust/schema/src/dbspec/lexer.rs::Token": {
     "exported": false,
@@ -10457,7 +10289,7 @@
   },
   "packages/rust/schema/src/dbspec/literal.rs::Value": {
     "exported": true,
-    "signature": "pub enum Value  { Number { negative : bool , text : String } , Word (String) , Str (String) , }"
+    "signature": "pub enum Value  { Number { negative : bool , text : String } , Word (String) , Str (String) }"
   },
   "packages/rust/schema/src/dbspec/literal.rs::Value#wire": {
     "exported": true,
@@ -10885,7 +10717,7 @@
   },
   "packages/rust/schema/src/dbspec/model.rs::Action": {
     "exported": true,
-    "signature": "pub enum Action  { Restrict , Cascade , SetNull , }"
+    "signature": "pub enum Action  { Restrict , Cascade , SetNull }"
   },
   "packages/rust/schema/src/dbspec/model.rs::Action::as_str": {
     "exported": true,
@@ -10981,7 +10813,7 @@
   },
   "packages/rust/schema/src/dbspec/model.rs::DefaultValue": {
     "exported": true,
-    "signature": "pub enum DefaultValue  { # [doc = \" `default now` of a `datetime(p)` column.\"] Now , # [doc = \" A literal in its canonical text.\"] Literal (String) , }"
+    "signature": "pub enum DefaultValue  { # [doc = \" `default now` of a `datetime(p)` column.\"] Now , # [doc = \" A literal in its canonical text.\"] Literal (String) }"
   },
   "packages/rust/schema/src/dbspec/model.rs::Diagram": {
     "exported": true,
@@ -11041,7 +10873,7 @@
   },
   "packages/rust/schema/src/dbspec/model.rs::Expr": {
     "exported": true,
-    "signature": "pub enum Expr  { # [doc = \" `and` or `or`.\"] Logic (Box \u003c Expr \u003e , \u0026 'static str , Box \u003c Expr \u003e) , # [doc = \" A comparison with its operator and the operator position.\"] Compare (Operand , \u0026 'static str , Pos , Operand) , # [doc = \" `\u003ccolumn\u003e [not] in (\u003cliteral\u003e, ...)`.\"] In (Name , bool , Vec \u003c Literal \u003e) , # [doc = \" `\u003ccolumn\u003e is [not] null`.\"] IsNull (Name , bool) , }"
+    "signature": "pub enum Expr  { # [doc = \" `and` or `or`.\"] Logic (Box \u003c Expr \u003e , \u0026 'static str , Box \u003c Expr \u003e) , # [doc = \" A comparison with its operator and the operator position.\"] Compare (Operand , \u0026 'static str , Pos , Operand) , # [doc = \" `\u003ccolumn\u003e [not] in (\u003cliteral\u003e, ...)`.\"] In (Name , bool , Vec \u003c Literal \u003e) , # [doc = \" `\u003ccolumn\u003e is [not] null`.\"] IsNull (Name , bool) }"
   },
   "packages/rust/schema/src/dbspec/model.rs::Expr::columns": {
     "exported": true,
@@ -11181,7 +11013,7 @@
   },
   "packages/rust/schema/src/dbspec/model.rs::Operand": {
     "exported": true,
-    "signature": "pub enum Operand  { Column (Name) , Literal (Literal) , }"
+    "signature": "pub enum Operand  { Column (Name) , Literal (Literal) }"
   },
   "packages/rust/schema/src/dbspec/model.rs::Placement": {
     "exported": true,
@@ -11245,7 +11077,7 @@
   },
   "packages/rust/schema/src/dbspec/model.rs::Setting": {
     "exported": true,
-    "signature": "pub enum Setting  { Entity (Name) , Updated (Name) , SoftDelete (Name) , SelectExplicit (Vec \u003c Name \u003e) , Codec (Name , Vec \u003c Name \u003e) , AesVersion (Name) , BlindIndex (Name , Name) , Navigation (Name , Name , Name) , # [doc = \" `markdown \u003ccolumn\u003e`: the prose column of the manifest.\"] Markdown (Name) , # [doc = \" `store files`, `store document \u003cshape\u003e` or `store block \u003cforeign key\u003e \u003cshape\u003e`. `kind` is\"] # [doc = \" `files`, `document` or `block`; `foreign` is set for `block` and `shape` for `document` and `block`;\"] # [doc = \" `shard` is the optional `shard \u003ccolumn\u003e \u003cperiod\u003e` clause.\"] Store { kind : Name , foreign : Option \u003c Name \u003e , shape : Option \u003c Name \u003e , shard : Option \u003c StoreShard \u003e , } , # [doc = \" `key_prefix '\u003cprefix\u003e'`. The name holds the prefix without its quotes.\"] KeyPrefix (Name) , Title (Name) , Body (Name) , Order (Name) , # [doc = \" `checkbox \u003ccolumn\u003e \u003cstate\u003e '\u003cglyph\u003e'`. The glyph name holds the glyph without its quotes.\"] Checkbox { column : Name , state : Name , glyph : Name , } , # [doc = \" One line of `state_machine \u003ccolumn\u003e ...`.\"] StateMachine { column : Name , line : StateLine , } , Immutable , # [doc = \" `lists` are the exclude and include lists. A valid document has at most one (docs/spec/dbspec.md \\\"Audit\\\").\"] # [doc = \" `column` is the column holding the primary key of the audit record table `references`.\"] Audit { into : Name , column : Name , references : Name , action : Name , previous : Name , # [doc = \" `tables \u003ctable\u003e (\u003crecord\u003e, \u003cname\u003e)`, or None without the clause.\"] tables : Option \u003c AuditTables \u003e , lists : Vec \u003c AuditList \u003e , } , }"
+    "signature": "pub enum Setting  { Entity (Name) , Updated (Name) , SoftDelete (Name) , SelectExplicit (Vec \u003c Name \u003e) , Codec (Name , Vec \u003c Name \u003e) , AesVersion (Name) , BlindIndex (Name , Name) , Navigation (Name , Name , Name) , # [doc = \" `markdown \u003ccolumn\u003e`: the prose column of the manifest.\"] Markdown (Name) , # [doc = \" `store files`, `store document \u003cshape\u003e` or `store block \u003cforeign key\u003e \u003cshape\u003e`. `kind` is\"] # [doc = \" `files`, `document` or `block`; `foreign` is set for `block` and `shape` for `document` and `block`;\"] # [doc = \" `shard` is the optional `shard \u003ccolumn\u003e \u003cperiod\u003e` clause.\"] Store { kind : Name , foreign : Option \u003c Name \u003e , shape : Option \u003c Name \u003e , shard : Option \u003c StoreShard \u003e } , # [doc = \" `key_prefix '\u003cprefix\u003e'`. The name holds the prefix without its quotes.\"] KeyPrefix (Name) , Title (Name) , Body (Name) , Order (Name) , # [doc = \" `checkbox \u003ccolumn\u003e \u003cstate\u003e '\u003cglyph\u003e'`. The glyph name holds the glyph without its quotes.\"] Checkbox { column : Name , state : Name , glyph : Name } , # [doc = \" One line of `state_machine \u003ccolumn\u003e ...`.\"] StateMachine { column : Name , line : StateLine } , Immutable , # [doc = \" `lists` are the exclude and include lists. A valid document has at most one (docs/spec/dbspec.md \\\"Audit\\\").\"] # [doc = \" `column` is the column holding the primary key of the audit record table `references`.\"] Audit { into : Name , column : Name , references : Name , action : Name , previous : Name , # [doc = \" `tables \u003ctable\u003e (\u003crecord\u003e, \u003cname\u003e)`, or None without the clause.\"] tables : Option \u003c AuditTables \u003e , lists : Vec \u003c AuditList \u003e } }"
   },
   "packages/rust/schema/src/dbspec/model.rs::Setting#wire": {
     "exported": true,
@@ -11305,7 +11137,7 @@
   },
   "packages/rust/schema/src/dbspec/model.rs::StateLine": {
     "exported": true,
-    "signature": "pub enum StateLine  { # [doc = \" `initial \u003cstate\u003e`.\"] Initial (Name) , # [doc = \" `terminal \u003cstate\u003e [require (\u003ccolumn\u003e, ...)]`.\"] Terminal (Name , Vec \u003c Name \u003e) , # [doc = \" `\u003cfrom\u003e -\u003e \u003cto\u003e [require (\u003ccolumn\u003e, ...)]`.\"] Transition { from : Name , to : Name , requires : Vec \u003c Name \u003e } , # [doc = \" `history \u003ctable\u003e row \u003ccolumn\u003e from \u003ccolumn\u003e to \u003ccolumn\u003e at \u003ccolumn\u003e`.\"] History (History) , # [doc = \" `limit \u003cstate\u003e \u003ccount\u003e`. The count keeps its token text, which is a positive integer when valid.\"] Limit { state : Name , count : Name } , }"
+    "signature": "pub enum StateLine  { # [doc = \" `initial \u003cstate\u003e`.\"] Initial (Name) , # [doc = \" `terminal \u003cstate\u003e [require (\u003ccolumn\u003e, ...)]`.\"] Terminal (Name , Vec \u003c Name \u003e) , # [doc = \" `\u003cfrom\u003e -\u003e \u003cto\u003e [require (\u003ccolumn\u003e, ...)]`.\"] Transition { from : Name , to : Name , requires : Vec \u003c Name \u003e } , # [doc = \" `history \u003ctable\u003e row \u003ccolumn\u003e from \u003ccolumn\u003e to \u003ccolumn\u003e at \u003ccolumn\u003e`.\"] History (History) , # [doc = \" `limit \u003cstate\u003e \u003ccount\u003e`. The count keeps its token text, which is a positive integer when valid.\"] Limit { state : Name , count : Name } }"
   },
   "packages/rust/schema/src/dbspec/model.rs::StateLine#wire": {
     "exported": true,
@@ -11385,7 +11217,7 @@
   },
   "packages/rust/schema/src/dbspec/model.rs::Type": {
     "exported": true,
-    "signature": "pub enum Type  { I16 , I32 , I64 , Bool , Decimal (u8 , u8) , F64 , Varchar (u16) , Text , Bytes , Uuid , Date , Time (u8) , DateTime (u8) , }"
+    "signature": "pub enum Type  { I16 , I32 , I64 , Bool , Decimal (u8 , u8) , F64 , Varchar (u16) , Text , Bytes , Uuid , Date , Time (u8) , DateTime (u8) }"
   },
   "packages/rust/schema/src/dbspec/model.rs::Type::meet_kind": {
     "exported": true,
@@ -11441,7 +11273,7 @@
   },
   "packages/rust/schema/src/dbspec/model.rs::audit_line": {
     "exported": true,
-    "signature": "pub fn audit_line (into : \u0026 str , column : \u0026 str , references : \u0026 str , action : \u0026 str , previous : \u0026 str , tables : Option \u003c \u0026 AuditTables \u003e , list : \u0026 str , columns : \u0026 [\u0026 str] ,) -\u003e String"
+    "signature": "pub fn audit_line (into : \u0026 str , column : \u0026 str , references : \u0026 str , action : \u0026 str , previous : \u0026 str , tables : Option \u003c \u0026 AuditTables \u003e , list : \u0026 str , columns : \u0026 [\u0026 str]) -\u003e String"
   },
   "packages/rust/schema/src/dbspec/names.rs::rendered_column": {
     "exported": false,
@@ -11453,11 +11285,11 @@
   },
   "packages/rust/schema/src/dbspec/parser.rs::Class": {
     "exported": false,
-    "signature": "pub (crate) enum Class  { Keyword , Type , Name , Setting , # [doc = \" A word that the parser read without a class (R3, R5): it stays a `word`.\"] Word , }"
+    "signature": "pub (crate) enum Class  { Keyword , Type , Name , Setting , # [doc = \" A word that the parser read without a class (R3, R5): it stays a `word`.\"] Word }"
   },
   "packages/rust/schema/src/dbspec/parser.rs::Context": {
     "exported": false,
-    "signature": " enum Context  { Top , Table , Settings , Diagram , }"
+    "signature": " enum Context  { Top , Table , Settings , Diagram }"
   },
   "packages/rust/schema/src/dbspec/parser.rs::Declaration": {
     "exported": false,
@@ -11565,7 +11397,7 @@
   },
   "packages/rust/schema/src/dbspec/parser.rs::LineKind": {
     "exported": false,
-    "signature": " enum LineKind  { Primary , Unique , Index , ForeignKey , Check , Settings , }"
+    "signature": " enum LineKind  { Primary , Unique , Index , ForeignKey , Check , Settings }"
   },
   "packages/rust/schema/src/dbspec/parser.rs::Marks": {
     "exported": false,
@@ -12817,7 +12649,7 @@
   },
   "packages/rust/schema/src/dbspec/render.rs::Dialect": {
     "exported": true,
-    "signature": "pub enum Dialect  { MySql , Postgres , Sqlite , }"
+    "signature": "pub enum Dialect  { MySql , Postgres , Sqlite }"
   },
   "packages/rust/schema/src/dbspec/render.rs::RenderedStatement": {
     "exported": true,
@@ -13105,7 +12937,7 @@
   },
   "packages/rust/schema/src/dbspec/runtime.rs::FieldDefault": {
     "exported": true,
-    "signature": "pub enum FieldDefault  { # [doc = \" `default now`.\"] Now , # [doc = \" The literal of the canonical text.\"] Literal (String) , }"
+    "signature": "pub enum FieldDefault  { # [doc = \" `default now`.\"] Now , # [doc = \" The literal of the canonical text.\"] Literal (String) }"
   },
   "packages/rust/schema/src/dbspec/runtime.rs::ForeignKey": {
     "exported": true,
@@ -13185,7 +13017,7 @@
   },
   "packages/rust/schema/src/dbspec/set.rs::Kind": {
     "exported": false,
-    "signature": " enum Kind  { Symlink , Dir , File , Other , }"
+    "signature": " enum Kind  { Symlink , Dir , File , Other }"
   },
   "packages/rust/schema/src/dbspec/set.rs::Lists": {
     "exported": false,
@@ -13441,7 +13273,7 @@
   },
   "packages/rust/schema/src/dbspec/validate.rs::Lookup": {
     "exported": false,
-    "signature": " enum Lookup \u003c 'd \u003e { Found (\u0026 'd Column) , # [doc = \" The column's line failed; its errors are already reported.\"] Unresolved , Missing , }"
+    "signature": " enum Lookup \u003c 'd \u003e { Found (\u0026 'd Column) , # [doc = \" The column's line failed; its errors are already reported.\"] Unresolved , Missing }"
   },
   "packages/rust/schema/src/dbspec/validate.rs::Scope": {
     "exported": false,
@@ -13501,7 +13333,7 @@
   },
   "packages/rust/schema/src/dbspec/validate.rs::TableRules \u003c 's , 'd \u003e::audit": {
     "exported": false,
-    "signature": " fn audit (\u0026 mut self , setting : \u0026 Setting , into : \u0026 Name , column : \u0026 Name , references : \u0026 Name , action : \u0026 Name , previous : \u0026 Name , tables : Option \u003c \u0026 AuditTables \u003e , lists : \u0026 [AuditList] ,)"
+    "signature": " fn audit (\u0026 mut self , setting : \u0026 Setting , into : \u0026 Name , column : \u0026 Name , references : \u0026 Name , action : \u0026 Name , previous : \u0026 Name , tables : Option \u003c \u0026 AuditTables \u003e , lists : \u0026 [AuditList])"
   },
   "packages/rust/schema/src/dbspec/validate.rs::TableRules \u003c 's , 'd \u003e::audit_lists": {
     "exported": false,

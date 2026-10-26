@@ -27,25 +27,7 @@ use Polyspec\Orm\RuntimeModel;
 #[Small]
 final class RuntimeModelTest extends TestCase
 {
-    private static function bench(): RuntimeModel
-    {
-        return RuntimeModel::build(
-            RuntimeModel::set(dirname(__DIR__, 3) . '/contracts/fixtures/bench/dbspec-set.json')
-        );
-    }
-
-    private static function errorCode(Closure $fn): string
-    {
-        try {
-            $fn();
-        } catch (OrmException $e) {
-            return $e->code_;
-        }
-        return 'no error';
-    }
-
-    // Requirements: DBS-156, SCH-12.
-    public function testLoadSetReturnsExternalDocumentsMarked(): void
+    public static function assertLoadSetReturnsExternalDocumentsMarked(): void
     {
         $owned = <<<'DBSPEC'
 dbspec 1 shop
@@ -80,9 +62,41 @@ DBSPEC;
                 RuntimeModel::loadSet($external, ''),
             ),
         );
-        self::assertSame('SCHEMA_INVALID', self::errorCode(static fn() => RuntimeModel::loadSet("table item {}\n", $external)));
-        self::assertSame('SCHEMA_INVALID', self::errorCode(static fn() => RuntimeModel::loadSet("table item {}\n", '')));
-        self::assertSame('SCHEMA_INVALID', self::errorCode(static fn() => RuntimeModel::loadSet($owned, "table account {}\n")));
+        self::assertSame(
+            'SCHEMA_INVALID',
+            self::errorCode(static fn() => RuntimeModel::loadSet("table item {}\n", $external)),
+        );
+        self::assertSame(
+            'SCHEMA_INVALID',
+            self::errorCode(static fn() => RuntimeModel::loadSet("table item {}\n", '')),
+        );
+        self::assertSame(
+            'SCHEMA_INVALID',
+            self::errorCode(static fn() => RuntimeModel::loadSet($owned, "table account {}\n")),
+        );
+    }
+
+    private static function bench(): RuntimeModel
+    {
+        return RuntimeModel::build(
+            RuntimeModel::set(dirname(__DIR__, 3) . '/contracts/fixtures/bench/dbspec-set.json')
+        );
+    }
+
+    private static function errorCode(Closure $fn): string
+    {
+        try {
+            $fn();
+        } catch (OrmException $e) {
+            return $e->code_;
+        }
+        return 'no error';
+    }
+
+    // Requirements: DBS-156, SCH-12.
+    public function testLoadSetReturnsExternalDocumentsMarked(): void
+    {
+        self::assertLoadSetReturnsExternalDocumentsMarked();
     }
 
     // Requirements: DBS-111.

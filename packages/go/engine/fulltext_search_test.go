@@ -5,12 +5,14 @@ import (
 
 	"github.com/polyspec/orm/packages/go/engine/dialect"
 	"github.com/polyspec/orm/packages/go/engine/plan"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // TestFulltextSearch checks the full-text predicates (PRT-75): the boolean normalization of DIA-6 and the match each dialect
 // renders over the columns, with SQLite refusing the predicate (DIA-187).
 // Requirements: DSL-32, DSL-33, DIA-6, DIA-187, PRT-75.
 func TestFulltextSearch(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	cases := map[string]string{
 		"alpha beta":           "+alpha +beta*",
 		"  +a  (b) \"c\"  ":    "+a +b +c*",

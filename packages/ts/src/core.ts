@@ -650,7 +650,8 @@ export class BuiltRequest {
       case 'tuple':
         delete out.column;
         if (p.cols !== undefined) out.cols = p.cols;
-        out.ps = listOf(p.value, 'tuple values').flatMap(row => listOf(row, 'a tuple value group').map(v => this.param(v)));
+        out.ps = pad(listOf(p.value, 'tuple values'))
+          .flatMap(row => listOf(row, 'a tuple value group').map(v => this.param(v)));
         break;
       case 'fulltext':
         delete out.column;

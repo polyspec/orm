@@ -80,7 +80,18 @@ function documentOf(c) {
 }
 
 const notApplied = vectors.cases.filter(c => 'reason' in documentOf(c)).map(c => `${c.id}: ${documentOf(c).reason}`);
-const DECLARED_SET_FILE_CASES = ['minimal', 'nested-and-external', 'external-empty-list', 'schema-one-point-zero', 'schema-exponent', 'external-without-dotdot', 'bytes-not-checked', 'listed-file-missing', 'listed-path-is-directory', 'listed-name-case', 'component-not-directory', 'listed-file-symlink', 'component-symlink', 'external-through-linked-directory', 'set-file-symlink', 'root-symlink', 'json-invalid', 'json-array', 'json-trailing', 'json-lone-surrogate', 'json-depth-65', 'json-depth-64-reaches-key-check', 'json-bom', 'json-invalid-utf8', 'schema-missing', 'schema-two', 'schema-string', 'schema-beyond-double', 'schema-true', 'key-unknown', 'key-twice', 'documents-missing', 'documents-not-array', 'documents-number', 'external-null', 'documents-empty', 'external-dotdot-after-segment', 'device-name-inside-word', 'duplicate-same-path', 'duplicate-hard-link', 'duplicate-across-lists', 'errors-by-step-then-path'];
+const DECLARED_SET_FILE_CASES = [
+  'minimal', 'path-normal-form-accepted-filename-edges', 'nested-and-external', 'external-empty-list', 'schema-one-point-zero', 'schema-exponent',
+  'schema-equivalent-exponent', 'schema-rounds-to-one-as-double', 'json-nested-number-beyond-double-is-json', 'json-nested-duplicate-object-key',
+  'json-nested-unicode-unknown-key', 'external-without-dotdot', 'bytes-not-checked', 'listed-file-missing', 'listed-path-is-directory', 'listed-name-case',
+  'component-not-directory', 'listed-file-symlink', 'component-symlink', 'external-through-linked-directory', 'set-file-symlink', 'root-symlink',
+  'json-invalid', 'json-array', 'json-trailing', 'json-valid-trailing-whitespace', 'json-lone-surrogate', 'json-nested-lone-surrogate-value',
+  'json-nested-lone-surrogate-key', 'json-nested-nonfinite-number', 'json-nested-infinity-number', 'json-depth-65', 'json-depth-64-reaches-key-check',
+  'json-bom', 'json-invalid-utf8', 'schema-missing', 'schema-two', 'schema-string', 'schema-beyond-double', 'schema-true', 'key-unknown', 'key-twice',
+  'key-nested-duplicate-before-schema-check', 'json-duplicate-key-before-malformed-tail', 'documents-missing', 'documents-not-array', 'documents-number',
+  'external-null', 'documents-empty', 'path-external-parent-only', 'external-dotdot-after-segment', 'device-name-inside-word', 'duplicate-same-path',
+  'duplicate-hard-link', 'duplicate-across-lists', 'errors-by-step-then-path',
+];
 
 function assertSetFileCase(id) {
   const c = vectors.cases.find(item => item.id === id);
@@ -117,6 +128,8 @@ vector('set-files vector IDs match their declared cases', () => {
 
 // Requirements: ORES-28, ORES-32.
 vector('set-files minimal through resolveSet', () => assertSetFileCase('minimal'));
+// Requirements: ORES-28, ORES-32.
+vector('set-files path-normal-form-accepted-filename-edges through resolveSet', () => assertSetFileCase('path-normal-form-accepted-filename-edges'));
 // Requirements: ORES-28, ORES-33.
 vector('set-files nested-and-external through resolveSet', () => assertSetFileCase('nested-and-external'));
 // Requirements: ORES-28.
@@ -125,6 +138,16 @@ vector('set-files external-empty-list through resolveSet', () => assertSetFileCa
 vector('set-files schema-one-point-zero through resolveSet', () => assertSetFileCase('schema-one-point-zero'));
 // Requirements: ORES-28, ORES-30.
 vector('set-files schema-exponent through resolveSet', () => assertSetFileCase('schema-exponent'));
+// Requirements: ORES-28, ORES-30.
+vector('set-files schema-equivalent-exponent through resolveSet', () => assertSetFileCase('schema-equivalent-exponent'));
+// Requirements: ORES-28, ORES-30.
+vector('set-files schema-rounds-to-one-as-double through resolveSet', () => assertSetFileCase('schema-rounds-to-one-as-double'));
+// Requirements: ORES-28, ORES-29.
+vector('set-files json-nested-number-beyond-double-is-json through resolveSet', () => assertSetFileCase('json-nested-number-beyond-double-is-json'));
+// Requirements: ORES-28, ORES-29.
+vector('set-files json-nested-duplicate-object-key through resolveSet', () => assertSetFileCase('json-nested-duplicate-object-key'));
+// Requirements: ORES-28, ORES-29.
+vector('set-files json-nested-unicode-unknown-key through resolveSet', () => assertSetFileCase('json-nested-unicode-unknown-key'));
 // Requirements: ORES-28, ORES-33.
 vector('set-files external-without-dotdot through resolveSet', () => assertSetFileCase('external-without-dotdot'));
 // Requirements: ORES-28.
@@ -154,7 +177,17 @@ vector('set-files json-array through resolveSet', () => assertSetFileCase('json-
 // Requirements: ORES-28, ORES-29.
 vector('set-files json-trailing through resolveSet', () => assertSetFileCase('json-trailing'));
 // Requirements: ORES-28, ORES-29.
+vector('set-files json-valid-trailing-whitespace through resolveSet', () => assertSetFileCase('json-valid-trailing-whitespace'));
+// Requirements: ORES-28, ORES-29.
 vector('set-files json-lone-surrogate through resolveSet', () => assertSetFileCase('json-lone-surrogate'));
+// Requirements: ORES-28, ORES-29.
+vector('set-files json-nested-lone-surrogate-value through resolveSet', () => assertSetFileCase('json-nested-lone-surrogate-value'));
+// Requirements: ORES-28, ORES-29.
+vector('set-files json-nested-lone-surrogate-key through resolveSet', () => assertSetFileCase('json-nested-lone-surrogate-key'));
+// Requirements: ORES-28, ORES-29.
+vector('set-files json-nested-nonfinite-number through resolveSet', () => assertSetFileCase('json-nested-nonfinite-number'));
+// Requirements: ORES-28, ORES-29.
+vector('set-files json-nested-infinity-number through resolveSet', () => assertSetFileCase('json-nested-infinity-number'));
 // Requirements: ORES-28.
 vector('set-files json-depth-65 through resolveSet', () => assertSetFileCase('json-depth-65'));
 // Requirements: ORES-28.
@@ -178,6 +211,10 @@ vector('set-files key-unknown through resolveSet', () => assertSetFileCase('key-
 // Requirements: ORES-28.
 vector('set-files key-twice through resolveSet', () => assertSetFileCase('key-twice'));
 // Requirements: ORES-28.
+vector('set-files key-nested-duplicate-before-schema-check through resolveSet', () => assertSetFileCase('key-nested-duplicate-before-schema-check'));
+// Requirements: ORES-28, ORES-29.
+vector('set-files json-duplicate-key-before-malformed-tail through resolveSet', () => assertSetFileCase('json-duplicate-key-before-malformed-tail'));
+// Requirements: ORES-28.
 vector('set-files documents-missing through resolveSet', () => assertSetFileCase('documents-missing'));
 // Requirements: ORES-28.
 vector('set-files documents-not-array through resolveSet', () => assertSetFileCase('documents-not-array'));
@@ -187,6 +224,8 @@ vector('set-files documents-number through resolveSet', () => assertSetFileCase(
 vector('set-files external-null through resolveSet', () => assertSetFileCase('external-null'));
 // Requirements: ORES-28, ORES-31.
 vector('set-files documents-empty through resolveSet', () => assertSetFileCase('documents-empty'));
+// Requirements: ORES-28, ORES-33.
+vector('set-files path-external-parent-only through resolveSet', () => assertSetFileCase('path-external-parent-only'));
 // Requirements: ORES-28, ORES-33.
 vector('set-files external-dotdot-after-segment through resolveSet', () => assertSetFileCase('external-dotdot-after-segment'));
 // Requirements: ORES-28, ORES-32.
@@ -209,6 +248,9 @@ vector('set-files cases that resolveSet does not reach', () => {
     'set-file-name-case: its set file does not exist, so no document discovers it',
     'path-absolute: no documents path has the normal form, so it lists no document',
     'path-drive: no documents path has the normal form, so it lists no document',
+    'path-drive-relative: no documents path has the normal form, so it lists no document',
+    'path-empty: no documents path has the normal form, so it lists no document',
+    'path-device-superscript-three: no documents path has the normal form, so it lists no document',
     'path-backslash: no documents path has the normal form, so it lists no document',
     'path-dot: no documents path has the normal form, so it lists no document',
     'path-empty-segment: no documents path has the normal form, so it lists no document',

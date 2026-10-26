@@ -472,7 +472,7 @@ func TestRelations(t *testing.T) {
 	}
 	// paginate: main, its relation, then count
 	p = compile(t, e, `"kind":"paginate","entity":"service","limit":{"offset":0,"count":10},"relations":[{"rel":"modules","kind":"many","keys":[{"left":"seq","right":"service_seq"}],"query":{"entity":"service_region"}}]`)
-	if len(p.Steps) != 3 || p.Steps[1].Role != "relation" || p.Steps[2].Role != "count" {
+	if len(p.Steps) != 3 || p.Steps[1].Role != "count" || p.Steps[2].Role != "relation" {
 		t.Errorf("paginate roles: %s %s %s", p.Steps[0].Role, p.Steps[1].Role, p.Steps[2].Role)
 	}
 	// zero-order one relation: plain IN, executor takes the first row

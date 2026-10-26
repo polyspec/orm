@@ -12,8 +12,8 @@ use polyspec_orm::{Error, Key, Val};
 use serde_json::Value as Json;
 
 fn fixture() -> Json {
-    let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../tests/collection/keys.json");
-    let src = std::fs::read_to_string(path).or_panic(|e| format!("read {path}: {e}; run make orm-check from the checkout root"));
+    let path = polyspec_orm_testcase::manifest_dir().join("../../../tests/collection/keys.json");
+    let src = std::fs::read_to_string(&path).or_panic(|e| format!("read {}: {e}; run make orm-check from the checkout root", path.display()));
     serde_json::from_str(&src).expect("tests/collection/keys.json is not JSON")
 }
 

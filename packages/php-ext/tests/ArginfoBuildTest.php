@@ -12,20 +12,48 @@ final class ArginfoBuildTest extends TestCase
 {
     public function testBuildRequiresTheInstalledGeneratorBeforeItCanRunToolsOrDownloadAnything(): void
     {
-        $root = sys_get_temp_dir() . '/orm-arginfo-' . bin2hex(random_bytes(8));
+        $root = dirname(__DIR__, 4) . '/orm-arginfo-' . bin2hex(random_bytes(8));
+        $testRoot = getenv('KIT_TEST_ROOT');
+        if (!is_string($testRoot) || $testRoot === '') {
+            throw new \RuntimeException('KIT_TEST_ROOT is required to find the pinned Node runtime');
+        }
         $package = $root . '/packages/php-ext';
         $bin = $root . '/bin';
-        $arginfo = $root . '/php-arginfo';
+        $arginfo = $root . '/var/tools/php-arginfo';
+        $phpConfigBin = $root . '/var/tools/bin';
+        $prefix = $root . '/php-prefix';
         mkdir($package . '/scripts', 0777, true);
         mkdir($package . '/src', 0777, true);
         mkdir($bin, 0777, true);
         mkdir($arginfo, 0777, true);
+        mkdir($phpConfigBin, 0777, true);
+        mkdir($prefix . '/lib/php/build', 0777, true);
         $marker = $root . '/invoked';
 
         try {
+            $git = proc_open(
+                ['git', 'init', '--quiet', $root],
+                [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+                $gitPipes
+            );
+            self::assertIsResource($git);
+            stream_get_contents($gitPipes[1]);
+            $gitError = stream_get_contents($gitPipes[2]);
+            fclose($gitPipes[1]);
+            fclose($gitPipes[2]);
+            self::assertSame(0, proc_close($git), $gitError);
+
             copy(__DIR__ . '/../scripts/build.sh', $package . '/scripts/build.sh');
-            file_put_contents($arginfo . '/gen_stub.php', "<?php\n\$version = \"5.0.0\";\n");
-            foreach (['phpize', 'php-config', 'php', 'curl', 'wget'] as $tool) {
+            copy(__DIR__ . '/../composer.json', $package . '/composer.json');
+            copy(__DIR__ . '/../src/polyspec_orm.stub.php', $package . '/src/polyspec_orm.stub.php');
+            copy(__DIR__ . '/../src/config.m4', $package . '/src/config.m4');
+            $generator = "<?php\n\$version = \"5.0.0\";\n";
+            file_put_contents($arginfo . '/gen_stub.php', $generator);
+            file_put_contents($prefix . '/lib/php/build/gen_stub.php', $generator);
+            $phpConfig = $phpConfigBin . '/php-config';
+            file_put_contents($phpConfig, "#!/bin/sh\nprintf '%s\\n' " . escapeshellarg($prefix) . "\n");
+            chmod($phpConfig, 0755);
+            foreach (['phpize', 'php', 'curl', 'wget'] as $tool) {
                 $file = $bin . '/' . $tool;
                 file_put_contents(
                     $file,
@@ -41,7 +69,11 @@ final class ArginfoBuildTest extends TestCase
                 [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
                 $pipes,
                 $root,
-                ['PATH' => $bin . ':/usr/bin:/bin', 'HOME' => $root, 'TMPDIR' => $root]
+                [
+                    'PATH' => $bin . ':' . $testRoot . '/var/tools/bin:/usr/bin:/bin',
+                    'HOME' => $root,
+                    'TMPDIR' => $root,
+                ]
             );
             self::assertIsResource($process);
             $stdout = stream_get_contents($pipes[1]);
@@ -56,7 +88,7 @@ final class ArginfoBuildTest extends TestCase
             self::assertStringContainsString('run make install-tools', $output);
             self::assertFileDoesNotExist(
                 $marker,
-                'The build invoked PHP tools or attempted a downloader before reporting the missing generator.',
+                'The build invoked phpize, PHP, or a downloader before reporting the missing generator.',
             );
         } finally {
             $this->removeTree($root);

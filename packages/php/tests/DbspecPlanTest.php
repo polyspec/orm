@@ -99,9 +99,9 @@ final class DbspecPlanTest extends TestCase
     public function testComparisonHarnessParsesPlanVectorsAndWritesDiagnostics(): void
     {
         $root = dirname(__DIR__, 3);
+        $plans = ['cases' => [plan_vectors()['cases'][0]]];
         $program = dbspec_php_interface_program($root, [
-            '$plans = json_decode(file_get_contents(' . var_export("$root/tests/dbspec/plans.json", true)
-                . '), true, 512, JSON_THROW_ON_ERROR);',
+            '$plans = ' . var_export($plans, true) . ';',
             'ob_start();',
             '$plan = dbspec_parse_plan(Polyspec\\Orm\\Dbspec\\Dbspec::class, $plans[\'cases\'][0][\'plan\']);',
             '$validOutput = ob_get_clean();',

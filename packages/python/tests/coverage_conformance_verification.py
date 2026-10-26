@@ -6,14 +6,14 @@ import json
 import subprocess
 import sys
 
-from .coverage_case import REPOSITORY_ROOT, expect_equal, CoverageCase, coverage_main
+from .coverage_case import REPOSITORY_ROOT, CoverageCase, coverage_main, expect_equal
 
 VECTOR_FILES = {
     "mysql": "vectors.json",
     "postgres": "vectors.postgres.json",
     "sqlite": "vectors.sqlite.json",
 }
-SELECTED = ["conditions_values", "relations", "functions", "creates_and_save"]
+SELECTED = ["conditions_values", "creates_and_save", "functions", "relations"]
 MODELS = REPOSITORY_ROOT / "packages" / "python" / "src" / "polyspec" / "orm" / "models"
 
 
@@ -38,7 +38,9 @@ def conformance_vector(item):
     arguments += ["--models", str(MODELS), "--dsn", dsn]
     for name in SELECTED:
         arguments += ["--vector", name]
-    result = subprocess.run(arguments, capture_output=True, text=True, timeout=240)
+    result = subprocess.run(
+        arguments, check=False, capture_output=True, text=True, timeout=240
+    )
     if result.returncode != 0:
         raise AssertionError(f"runner_python failed: {result.stderr}")
     output = json.loads(result.stdout)

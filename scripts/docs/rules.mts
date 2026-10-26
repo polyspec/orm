@@ -9,6 +9,7 @@ import { readJsonFile } from '../json/schema.mts';
 import { errorCode } from '../../tests/errors.mts';
 import { filterRuleFailures, onlyRuleFromArgs } from './rules-filter.mts';
 import { countMismatches, declaredClientAliases, incompleteClientSets } from './implementation-count.mts';
+import { authoredStyleText } from './writing-style.mts';
 
 // rules check is one case that reads the documentation files and checks pairs and style.
 const log = sections();
@@ -110,7 +111,7 @@ const style = rules.rules.find(rule => rule.id === 'docs.writing-style');
 const forbidden = { ko: style?.forbidden_ko, en: style?.forbidden_en };
 if (!forbidden.ko || !forbidden.en) fail('docs.writing-style', 'style lists are missing from contracts/rules.json');
 for (const file of allDocs) {
-  const text = prose(await readFile(file, 'utf8'));
+  const text = prose(authoredStyleText(relative(file), await readFile(file, 'utf8')));
   const terms = (file.endsWith('.ko.md') ? forbidden.ko : forbidden.en) ?? [];
   for (const term of terms) {
     const pattern = file.endsWith('.ko.md') ? term : `\\b${term}\\b`;

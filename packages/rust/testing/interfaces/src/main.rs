@@ -7,7 +7,7 @@ use quote::ToTokens;
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
     env, fs,
-    path::Path,
+    path::{Path, PathBuf},
 };
 use syn::{ImplItem, Item, TraitItem};
 
@@ -79,6 +79,25 @@ fn wire_fields(fields: &syn::Fields) -> BTreeMap<String, String> {
 
 fn tokens(t: &impl ToTokens) -> String {
     t.to_token_stream().to_string()
+}
+
+fn signature_tokens(signature: &syn::Signature) -> String {
+    let mut canonical = signature.clone();
+    canonical.inputs.pop_punct();
+    tokens(&canonical)
+}
+
+fn enum_variants_tokens(variants: &syn::punctuated::Punctuated<syn::Variant, syn::Token![,]>) -> String {
+    let mut canonical = variants.clone();
+    canonical.pop_punct();
+    for variant in &mut canonical {
+        match &mut variant.fields {
+            syn::Fields::Named(fields) => fields.named.pop_punct(),
+            syn::Fields::Unnamed(fields) => fields.unnamed.pop_punct(),
+            syn::Fields::Unit => None,
+        };
+    }
+    tokens(&canonical)
 }
 
 struct ApplyEntryPoint {
@@ -256,7 +275,7 @@ fn items(out: &mut BTreeMap<String, Entry>, prefix: &str, list: Vec<Item>, scope
                 add(
                     out,
                     format!("{prefix}::{}", e.ident),
-                    format!("{} enum {} {} {{ {} }}", tokens(&e.vis), e.ident, tokens(&e.generics), tokens(&e.variants)),
+                    format!("{} enum {} {} {{ {} }}", tokens(&e.vis), e.ident, tokens(&e.generics), enum_variants_tokens(&e.variants)),
                     exported,
                 );
                 let mut fields = BTreeMap::new();
@@ -268,14 +287,14 @@ fn items(out: &mut BTreeMap<String, Entry>, prefix: &str, list: Vec<Item>, scope
                 }
             }
             Item::Type(t) => add(out, format!("{prefix}::{}", t.ident), tokens(&t), scope && is_pub(&t.vis)),
-            Item::Fn(f) => add(out, format!("{prefix}::{}", f.sig.ident), format!("{} {}", tokens(&f.vis), tokens(&f.sig)), scope && is_pub(&f.vis)),
+            Item::Fn(f) => add(out, format!("{prefix}::{}", f.sig.ident), format!("{} {}", tokens(&f.vis), signature_tokens(&f.sig)), scope && is_pub(&f.vis)),
             Item::Trait(t) => {
                 let exported = scope && is_pub(&t.vis);
                 let owner = format!("{prefix}::{}", t.ident);
                 add(out, owner.clone(), format!("{} trait {} {} : {}", tokens(&t.vis), t.ident, tokens(&t.generics), tokens(&t.supertraits)), exported);
                 for i in t.items {
                     if let TraitItem::Fn(f) = i {
-                        add(out, format!("{owner}::{}", f.sig.ident), tokens(&f.sig), exported);
+                        add(out, format!("{owner}::{}", f.sig.ident), signature_tokens(&f.sig), exported);
                     }
                 }
             }
@@ -295,7 +314,7 @@ fn items(out: &mut BTreeMap<String, Entry>, prefix: &str, list: Vec<Item>, scope
                         ImplItem::Fn(f) => add(
                             out,
                             format!("{owner}::{}", f.sig.ident),
-                            format!("{} {}", tokens(&f.vis), tokens(&f.sig)),
+                            format!("{} {}", tokens(&f.vis), signature_tokens(&f.sig)),
                             target_exported && (via_trait || is_pub(&f.vis)),
                         ),
                         ImplItem::Type(t) => add(out, format!("{owner}::{}", t.ident), tokens(&t), target_exported && (via_trait || is_pub(&t.vis))),
@@ -309,7 +328,7 @@ fn items(out: &mut BTreeMap<String, Entry>, prefix: &str, list: Vec<Item>, scope
                         definitions.insert(name.to_string(), m.clone());
                     }
                 } else if let Some(f) = expand_apply_entrypoint(&m, &definitions) {
-                    add(out, format!("{prefix}::{}", f.sig.ident), format!("{} {}", tokens(&f.vis), tokens(&f.sig)), scope);
+                    add(out, format!("{prefix}::{}", f.sig.ident), format!("{} {}", tokens(&f.vis), signature_tokens(&f.sig)), scope);
                 } else if let Some(i) = expand_transaction_macro(m) {
                     items(out, prefix, vec![Item::Impl(i)], scope, types);
                 }
@@ -357,9 +376,64 @@ fn parse(p: &Path) -> syn::File {
     }
 }
 
-fn visit(root: &Path, dir: &Path, out: &mut BTreeMap<String, Entry>, types: &HashSet<String>) {
+fn has_test_cfg(attributes: &[syn::Attribute]) -> bool {
+    attributes.iter().any(|attribute| attribute.path().is_ident("cfg") && attribute.parse_args::<syn::Meta>().is_ok_and(|meta| meta.path().is_ident("test")))
+}
+
+fn module_source(module: &syn::ItemMod, path_base: &Path, module_base: &Path) -> Option<PathBuf> {
+    for attribute in &module.attrs {
+        if !attribute.path().is_ident("path") {
+            continue;
+        }
+        if let syn::Meta::NameValue(value) = &attribute.meta {
+            if let syn::Expr::Lit(expression) = &value.value {
+                if let syn::Lit::Str(path) = &expression.lit {
+                    return Some(path_base.join(path.value()));
+                }
+            }
+        }
+    }
+    let named = module_base.join(format!("{}.rs", module.ident));
+    if named.is_file() {
+        return Some(named);
+    }
+    let nested = module_base.join(module.ident.to_string()).join("mod.rs");
+    nested.is_file().then_some(nested)
+}
+
+fn collect_test_modules(items: &[Item], path_base: &Path, module_base: &Path, test_scope: bool, out: &mut HashSet<PathBuf>) {
+    for item in items {
+        let Item::Mod(module) = item else { continue };
+        let module_is_test = test_scope || has_test_cfg(&module.attrs);
+        if let Some((_, contents)) = &module.content {
+            let nested_base = module_base.join(module.ident.to_string());
+            collect_test_modules(contents, &nested_base, &nested_base, module_is_test, out);
+        } else if module_is_test {
+            if let Some(path) = module_source(module, path_base, module_base) {
+                out.insert(path);
+            }
+        }
+    }
+}
+
+fn source_files(dir: &Path) -> Vec<PathBuf> {
     let mut files = Vec::new();
     collect(dir, &mut files);
+    let mut test_modules = HashSet::new();
+    for path in &files {
+        let ast = parse(path);
+        let path_base = path.parent().unwrap_or(dir);
+        let file_name = path.file_name().and_then(|name| name.to_str()).unwrap_or_default();
+        let module_base =
+            if matches!(file_name, "lib.rs" | "main.rs" | "mod.rs") { path_base.to_path_buf() } else { path_base.join(path.file_stem().unwrap_or_default()) };
+        collect_test_modules(&ast.items, path_base, &module_base, false, &mut test_modules);
+    }
+    files.retain(|path| !test_modules.contains(path));
+    files
+}
+
+fn visit(root: &Path, dir: &Path, out: &mut BTreeMap<String, Entry>, types: &HashSet<String>) {
+    let files = source_files(dir);
     for p in files {
         let ast = parse(&p);
         let rel = p.strip_prefix(root).unwrap().to_str().unwrap();
@@ -372,7 +446,7 @@ fn main() {
     let root = Path::new(&args[0]);
     let mut files = Vec::new();
     for dir in &args[1..] {
-        collect(&root.join(dir), &mut files);
+        files.extend(source_files(&root.join(dir)));
     }
     let mut types = HashSet::new();
     for path in &files {
@@ -391,6 +465,61 @@ fn main() {
 mod tests {
     use super::*;
     use std::time::Duration;
+
+    #[test]
+    fn canonicalizes_only_function_parameter_trailing_commas() {
+        let _case = polyspec_orm_testcase::start("interface extractor canonicalizes function parameter commas", Duration::from_secs(1));
+        let extract = |source: &str| {
+            let file = syn::parse_file(source).expect("function source");
+            let mut out = BTreeMap::new();
+            items(&mut out, "fixture.rs", file.items, true, &HashSet::new());
+            out.remove("fixture.rs::catalog_rows").expect("function signature extracted").signature
+        };
+        let with_comma = extract("pub fn catalog_rows(rows: &[Row], value: impl FnMut(&Row, usize) -> Result<CatalogValue, Error>,) -> (i32,) {}");
+        let without_comma = extract("pub fn catalog_rows(rows: &[Row], value: impl FnMut(&Row, usize) -> Result<CatalogValue, Error>) -> (i32,) {}");
+
+        assert_eq!(with_comma, without_comma);
+        assert!(with_comma.ends_with("-> (i32 ,)"), "tuple return syntax must remain significant");
+    }
+
+    #[test]
+    fn canonicalizes_enum_field_and_variant_trailing_commas() {
+        let _case = polyspec_orm_testcase::start("interface extractor canonicalizes enum field commas", Duration::from_secs(1));
+        let extract = |source: &str| {
+            let file = syn::parse_file(source).expect("enum source");
+            let mut out = BTreeMap::new();
+            items(&mut out, "fixture.rs", file.items, true, &HashSet::new());
+            out.remove("fixture.rs::Restore").expect("enum signature extracted").signature
+        };
+        let with_commas = extract("enum Restore { MySql { lock_wait: i64, row_wait: i64, }, Tuple((i32,),), }");
+        let without_commas = extract("enum Restore { MySql { lock_wait: i64, row_wait: i64 }, Tuple((i32,)) }");
+
+        assert_eq!(with_commas, without_commas);
+        assert!(with_commas.contains("Tuple ((i32 ,))"), "tuple field syntax must remain significant");
+    }
+
+    #[test]
+    fn excludes_external_modules_declared_only_for_tests() {
+        let _case = polyspec_orm_testcase::start("interface extractor excludes cfg test modules", Duration::from_secs(1));
+        let directory = std::env::temp_dir().join(format!(
+            "orm-interface-tests-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).expect("system clock").as_nanos()
+        ));
+        fs::create_dir_all(&directory).expect("temporary source directory");
+        fs::write(directory.join("lib.rs"), "pub fn runtime_api() {}\n#[cfg(test)]\n#[path = \"runtime_api_tests.rs\"]\nmod runtime_api_tests;\n")
+            .expect("production source");
+        fs::write(directory.join("runtime_api_tests.rs"), "pub fn test_only_api() {}\n").expect("test-only source");
+
+        let mut symbols = BTreeMap::new();
+        visit(&directory, &directory, &mut symbols, &HashSet::new());
+        let has_runtime_api = symbols.contains_key("lib.rs::runtime_api");
+        let has_test_only_api = symbols.contains_key("runtime_api_tests.rs::test_only_api");
+        fs::remove_dir_all(&directory).expect("remove temporary source directory");
+
+        assert!(has_runtime_api, "production declarations remain in the inventory");
+        assert!(!has_test_only_api, "an external cfg(test) module is not a runtime declaration");
+    }
 
     #[test]
     fn parses_an_optional_trailing_comma() {

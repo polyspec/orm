@@ -1,6 +1,6 @@
 import { isDeepStrictEqual } from 'node:util';
 import { andLists, commands, type Dialect, segments, shellSegments, type SimpleCommand, writtenFiles } from './shell.mts';
-import { makeRecipes, makeTargets } from './testcases.mts';
+import { checkTargets, makeRecipes, makeTargets } from './testcases.mts';
 import { environment, events, readWorkflow, workflowSteps, type WorkflowJob, type WorkflowStep } from './workflow.mts';
 import { CI_SETUP, stepCondition } from '../check/ci-setup.mts';
 import { parseSelection, selectChecks } from '../features/select.mts';
@@ -69,10 +69,7 @@ export function ciServerErrors(workflow: string, variables: readonly string[]): 
   return errors;
 }
 
-// checkTargets returns the Makefile's CHECK_TARGETS, that is, the targets that make orm-check runs.
-export function checkTargets(makefile: string): string[] {
-  return /^CHECK_TARGETS = (.*)$/m.exec(makefile)?.[1]?.trim().split(/\s+/) ?? [];
-}
+export { checkTargets };
 
 // GROUP_CHECK is the line that a CI group's job runs for the runner (make check-run): it runs the target (CI_TARGETS_<group>) of one group in the matrix.
 export const GROUP_CHECK = 'make check-run GROUP=${{ matrix.group }}';
@@ -85,7 +82,12 @@ const groupStep = (step: WorkflowStep): boolean => runSegments(step).some((segme
 // ciGroups is the Makefile's CI groups: groups is CI_GROUPS, and targets is, for each group, that group's CI_TARGETS_<group>.
 export function ciGroups(makefile: string): { groups: string[]; targets: Record<string, string[]> } {
   const groups = /^CI_GROUPS = (.*)$/m.exec(makefile)?.[1]?.trim().split(/\s+/).filter(Boolean) ?? [];
-  const targets: Record<string, string[]> = Object.fromEntries([...makefile.matchAll(/^CI_TARGETS_([a-z0-9_-]+) = (.*)$/gm)].map(match => [match[1] ?? '', (match[2] ?? '').trim().split(/\s+/).filter(Boolean)]));
+  const targets: Record<string, string[]> = {};
+  for (const [, group = '', operator, value = ''] of makefile.matchAll(/^CI_TARGETS_([a-z0-9_-]+)\s*(\+?=)\s*(.*)$/gm)) {
+    const entries = value.trim().split(/\s+/).filter(Boolean);
+    if (operator === '=') targets[group] = entries;
+    else (targets[group] ??= []).push(...entries);
+  }
   return { groups, targets };
 }
 

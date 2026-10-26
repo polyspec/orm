@@ -12,6 +12,20 @@ type GoModuleDownload = {
   Origin?: { VCS?: string; URL?: string; Subdir?: string; Hash?: string };
 };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isGoModuleDownload(value: unknown): value is GoModuleDownload {
+  if (!isRecord(value)) return false;
+  const fields = ['Path', 'Version'] as const;
+  if (fields.some(field => value[field] !== undefined && typeof value[field] !== 'string')) return false;
+  const origin = value.Origin;
+  if (origin === undefined) return true;
+  if (!isRecord(origin)) return false;
+  return ['VCS', 'URL', 'Subdir', 'Hash'].every(field => origin[field] === undefined || typeof origin[field] === 'string');
+}
+
 function git(directory: string, args: string[]): string {
   try {
     return execFileSync('git', ['-C', directory, ...args], { encoding: 'utf8' }).trim();
@@ -51,12 +65,14 @@ export function flowmarkSpecRoot(version: string): string {
 function pinnedOriginHash(version: string, shortRevision: string, moduleJson: string): string {
   const pin = /^v0\.0\.0-(\d{14})-([0-9a-f]{12})$/.exec(version);
   if (pin === null || pin[2] !== shortRevision) throw new Error(`tests/markdown/flowmark.version does not pin revision ${shortRevision}`);
-  let module: GoModuleDownload;
+  let parsed: unknown;
   try {
-    module = JSON.parse(moduleJson) as GoModuleDownload;
+    parsed = JSON.parse(moduleJson);
   } catch (error) {
     throw new Error(`go mod download -json ${FLOWMARK_MODULE}@${version} returned invalid JSON`, { cause: error });
   }
+  if (!isGoModuleDownload(parsed)) throw new Error(`go mod download -json ${FLOWMARK_MODULE}@${version} returned invalid module metadata`);
+  const module = parsed;
   if (module.Path !== FLOWMARK_MODULE || module.Version !== version) throw new Error(`Go module metadata is not for ${FLOWMARK_MODULE}@${version}`);
   const origin = module.Origin;
   if (origin?.VCS !== 'git' || origin.URL !== FLOWMARK_REPOSITORY.slice(0, -4) || origin.Subdir !== 'packages/go') {

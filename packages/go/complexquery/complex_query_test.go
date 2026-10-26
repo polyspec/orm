@@ -12,6 +12,7 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/polyspec/orm/packages/go/complexmodel"
+	"github.com/polyspec/orm/packages/go/engine/dialect"
 	"github.com/polyspec/orm/packages/go/internal/testdb"
 	"github.com/polyspec/orm/packages/go/orm"
 	_ "github.com/polyspec/orm/packages/go/orm/pg"
@@ -233,7 +234,12 @@ func seedComplexFixture(t *testing.T, driver, dsn string, fixture complexFixture
 					placeholders[i] = "?"
 				}
 			}
-			query := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", table, joinColumns(columns), joinStrings(placeholders))
+			d := complexDialect(driver)
+			quotedColumns := make([]string, len(columns))
+			for i, column := range columns {
+				quotedColumns[i] = d.Quote(column)
+			}
+			query := fmt.Sprintf("INSERT INTO %s (%s) VALUES (%s)", d.Quote(table), joinStrings(quotedColumns), joinStrings(placeholders))
 			if _, err := db.Exec(query, values...); err != nil {
 				t.Fatalf("seed %s: %v", table, err)
 			}
@@ -241,7 +247,16 @@ func seedComplexFixture(t *testing.T, driver, dsn string, fixture complexFixture
 	}
 }
 
-func joinColumns(values []string) string { return joinStrings(values) }
+func complexDialect(driver string) dialect.Dialect {
+	switch driver {
+	case "mysql":
+		return dialect.MySQL{}
+	case "postgres":
+		return dialect.Postgres{}
+	default:
+		return dialect.SQLite{}
+	}
+}
 
 func joinStrings(values []string) string {
 	var out string

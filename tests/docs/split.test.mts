@@ -5,12 +5,13 @@
 // Usage: node --test tests/docs/split.test.mts
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
+import { isolatedEnvironment } from '../environment.mts';
 import { caseTest } from '../testcase.mts';
 
 const TIMEOUT = 120_000;
 
 // dryRun returns the commands that make would run for a target, without running them.
-const dryRun = (target: string): string => execFileSync('make', ['-n', target], { encoding: 'utf8' });
+const dryRun = (target: string): string => execFileSync('make', ['-n', target], { encoding: 'utf8', env: isolatedEnvironment() });
 
 caseTest('docs-check expands to no site build, so a land runs no docs:build', TIMEOUT, () => {
   const commands = dryRun('docs-check');

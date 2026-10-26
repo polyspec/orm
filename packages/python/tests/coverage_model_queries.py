@@ -123,7 +123,14 @@ def model_query_rows(item):
         )
         expect_equal(
             selected.to_array(),
-            {"seq": 42, "start_year": 2026},
+            {
+                "seq": 42,
+                "user_seq": 43,
+                "service_seq": 43,
+                "service_region_seq": 3,
+                "service_member_seq": 43,
+                "start_year": 2026,
+            },
             "removing an added column keeps the selected generated column",
         )
         join_sql = []

@@ -3,10 +3,13 @@ package orm
 import (
 	"math"
 	"testing"
+
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // Requirements: INT-107.
 func TestCatalogRowBaselineComparesExactTypedValues(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	for _, test := range []struct {
 		name  string
 		left  any

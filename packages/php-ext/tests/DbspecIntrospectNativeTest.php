@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Polyspec\Orm\Tests;
 
 use PDO;
+use PDOStatement;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Dbspec\Dbspec;
@@ -28,21 +29,9 @@ final class DbspecIntrospectNativeTest extends TestCase
     public function testNativeSQLiteUnsupportedColumnReasonQuotesMissingCheck(): void
     {
         self::assertTrue((new ReflectionMethod(Dbspec::class, 'introspect'))->isInternal());
-        $pdo = new PDO('sqlite::memory:', null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-        $pdo->exec('CREATE TABLE "probe" ("id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, "junk" INTEGER NULL)');
-        $result = Dbspec::introspect($pdo, 'sqlite', 'introspected');
-
-        self::assertSame(
-            ['declared type INTEGER with CHECK "" has no dbspec type'],
-            array_map(
-                static fn($unsupported): string => $unsupported->reason,
-                array_values(
-                    array_filter(
-                        $result->unsupported,
-                        static fn($unsupported): bool => $unsupported->name === 'junk'
-                    )
-                )
-            )
+        require_once dirname(__DIR__, 2) . '/php/tests/DbspecIntrospectTest.php';
+        \Polyspec\Orm\Tests\DbspecIntrospectTest::assertUnsupportedColumnReasonQuotesMissingCheck(
+            static fn(PDO $pdo) => Dbspec::introspect($pdo, 'sqlite', 'introspected')
         );
     }
 

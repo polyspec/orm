@@ -4,7 +4,7 @@
 //! probe body, which runs within its deadline.
 
 use polyspec_orm::db::{parse_dsn, ConnectOptions};
-use polyspec_orm::dbspec::{introspect, CatalogQuerier, IntrospectError};
+use polyspec_orm::dbspec::{introspect, ApplyConnection, CatalogQuerier, IntrospectError};
 use polyspec_orm_schema::dbspec::{CatalogValue, Dialect, Introspection};
 use serde_json::Value;
 use sqlx::{AssertSqlSafe, Connection, MySqlConnection, PgConnection, SqlSafeStr, SqliteConnection};
@@ -55,6 +55,42 @@ pub enum Conn {
     MySql(MySqlConnection),
     Postgres(PgConnection),
     Sqlite(SqliteConnection),
+}
+
+impl CatalogQuerier for Conn {
+    async fn rows(&mut self, query: &str) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
+        match self {
+            Conn::MySql(connection) => CatalogQuerier::rows(connection, query).await,
+            Conn::Postgres(connection) => CatalogQuerier::rows(connection, query).await,
+            Conn::Sqlite(connection) => CatalogQuerier::rows(connection, query).await,
+        }
+    }
+}
+
+impl ApplyConnection for Conn {
+    async fn execute(&mut self, statement: &str) -> Result<(), sqlx::Error> {
+        match self {
+            Conn::MySql(connection) => ApplyConnection::execute(connection, statement).await,
+            Conn::Postgres(connection) => ApplyConnection::execute(connection, statement).await,
+            Conn::Sqlite(connection) => ApplyConnection::execute(connection, statement).await,
+        }
+    }
+
+    async fn execute_bound(&mut self, statement: &str, args: &[CatalogValue]) -> Result<(), sqlx::Error> {
+        match self {
+            Conn::MySql(connection) => ApplyConnection::execute_bound(connection, statement, args).await,
+            Conn::Postgres(connection) => ApplyConnection::execute_bound(connection, statement, args).await,
+            Conn::Sqlite(connection) => ApplyConnection::execute_bound(connection, statement, args).await,
+        }
+    }
+
+    async fn query_bound(&mut self, query: &str, args: &[CatalogValue]) -> Result<Vec<Vec<CatalogValue>>, sqlx::Error> {
+        match self {
+            Conn::MySql(connection) => ApplyConnection::query_bound(connection, query, args).await,
+            Conn::Postgres(connection) => ApplyConnection::query_bound(connection, query, args).await,
+            Conn::Sqlite(connection) => ApplyConnection::query_bound(connection, query, args).await,
+        }
+    }
 }
 
 impl Conn {

@@ -452,7 +452,7 @@ func TestWrites(t *testing.T) {
 		f := seed(t, db)
 		b := must(model.Author().Connect(db).GetBySeq(readColumn(t, f.authors[0].GetSeq)))
 		must(b.SetName("renamed").PlusReadCount(5).Update(true))
-		again := must(model.Author().Connect(db).GetBySeq(readColumn(t, b.GetSeq)))
+		again := must(model.Author().Connect(db).AddColumnName().AddColumnReadCount().GetBySeq(readColumn(t, b.GetSeq)))
 		if readColumn(t, again.GetName) != "renamed" || readColumn(t, again.GetReadCount) != 5 {
 			t.Fatalf("update: %s %d", readColumn(t, again.GetName), readColumn(t, again.GetReadCount))
 		}
@@ -491,7 +491,7 @@ func TestWrites(t *testing.T) {
 		must(up.Create())
 		must(model.CompositeAccount().Connect(db).SetTenantId(9).SetAccountId(9).SetName("first").
 			Duplication(model.CompositeAccount().SetName("second")).Create())
-		if got := must(model.CompositeAccount().Connect(db).GetByTenantIdAndAccountId(9, 9)); readColumn(t, got.GetName) != "second" {
+		if got := must(model.CompositeAccount().Connect(db).AddColumnName().GetByTenantIdAndAccountId(9, 9)); readColumn(t, got.GetName) != "second" {
 			t.Fatalf("duplication: %s", readColumn(t, got.GetName))
 		}
 	})

@@ -533,37 +533,32 @@ final class CoveragePlannerExtensionTest extends TestCase
         Assert::assertCount(1, $plan['steps'][0]['bind_slots']);
     }
 
-    // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- feature IDs require the test method to preserve underscores.
     // Requirements: DIA-31, PRT-67.
-    public function test_param_uses_column_function(): void
+    public function testParamUsesColumnFunction(): void
     {
         $this->runPlannerCoverageCase('param_uses_column_function');
     }
 
-    // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- feature IDs require the test method to preserve underscores.
     // Requirements: DIA-31, PRT-67.
-    public function test_param_uses_interval(): void
+    public function testParamUsesInterval(): void
     {
         $this->runPlannerCoverageCase('param_uses_interval');
     }
 
-    // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- feature IDs require the test method to preserve underscores.
     // Requirements: DIA-31, PRT-67.
-    public function test_param_uses_contains(): void
+    public function testParamUsesContains(): void
     {
         $this->runPlannerCoverageCase('param_uses_contains');
     }
 
-    // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- feature IDs require the test method to preserve underscores.
     // Requirements: DIA-31, PRT-67.
-    public function test_param_uses_if_parent(): void
+    public function testParamUsesIfParent(): void
     {
         $this->runPlannerCoverageCase('param_uses_if_parent');
     }
 
-    // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- feature IDs require the test method to preserve underscores.
     // Requirements: DIA-31, PRT-67.
-    public function test_param_uses_optimistic(): void
+    public function testParamUsesOptimistic(): void
     {
         $this->runPlannerCoverageCase('param_uses_optimistic');
     }

@@ -46,7 +46,7 @@ _IDENTITY_COLUMN = re.compile(
     r'^"([^"]+)" INTEGER NOT NULL PRIMARY KEY '
     r"AUTOINCREMENT$"
 )
-_COLUMN_ITEM = re.compile(r'^"([^"]+)" ')
+_COLUMN_ITEM = re.compile(r'^(?:"([^"]+)"|([A-Za-z_][A-Za-z0-9_]*)) ')
 _CONSTRAINT_ITEM = re.compile(
     r'^(?:CONSTRAINT "([^"]+)" )?'
     r"(CHECK|UNIQUE|FOREIGN KEY|PRIMARY KEY)\b"
@@ -362,7 +362,7 @@ def _parse_sqlite_table(text: str):
         m = _COLUMN_ITEM.match(item)
         if m is not None:
             # The definition is read by pragma_table_xinfo, and its text is checked to be in renderer form.
-            st.columns[m.group(1)] = item
+            st.columns[m.group(1) or m.group(2)] = item
             continue
         st.unsupported = f"the table item {item!r} has no dbspec definition"
         return st, []
@@ -402,7 +402,8 @@ def _sqlite_column_text(
     """Tells whether the column definition text is the renderer's column form: name, declared type, NULL or
     NOT NULL, and, if present, only DEFAULT. SQLite reports a keyword type
     name in uppercase, so types are compared without regard to case."""
-    prefix = f'"{name}" '
+    quoted = f'"{name}" '
+    prefix = quoted if item.startswith(quoted) else f"{name} "
     if not item.startswith(prefix):
         return False
     rest = item[len(prefix) :]

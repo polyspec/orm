@@ -245,11 +245,19 @@ def expect_equal(got, want, what: str) -> None:
         raise AssertionError(f"{what}: got {got!r}, want {want!r}")
 
 
-def run_on_empty_tenant(models, item, tenant, run) -> None:
+def run_on_empty_tenant(
+    models, item, tenant, run, *, aes_key=None, blind_index_key=None
+) -> None:
     """Opens the database of item with models, checks its driver and that composite_account has no row of tenant, then
-    calls run(db, account), where account() starts a composite_account query on db; db is closed when run ends."""
+    calls run(db, account), where account() starts a composite_account query on db; db is closed when run ends. When
+    supplied, aes_key and blind_index_key configure decoding of encrypted bench columns on the same handle."""
     driver, dsn = item
-    db = models.connect(dsn)
+    options = {}
+    if aes_key is not None or blind_index_key is not None:
+        if aes_key is None or blind_index_key is None:
+            raise ValueError("aes_key and blind_index_key must be provided together")
+        options = {"aesKey": aes_key, "blindIndexKey": blind_index_key}
+    db = models.connect(dsn, **options)
     try:
         expect_equal(db.driver, driver, "the driver")
 

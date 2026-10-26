@@ -2315,27 +2315,6 @@ static bool parent_values(zval *pr, zval *parents, zval *params, zval *out)
     return true;
 }
 
-static void append_repeated_placeholders(smart_str *sql, const char *separator, zend_long count, zend_long width,
-    bool numbered, zend_long first)
-{
-    for (zend_long tuple = 0; tuple < count; tuple++) {
-        if (tuple > 0) {
-            smart_str_appends(sql, separator);
-        }
-        for (zend_long part = 0; part < width; part++) {
-            if (part > 0) {
-                smart_str_appends(sql, ", ");
-            }
-            if (numbered) {
-                smart_str_appendc(sql, '$');
-                smart_str_append_long(sql, first + tuple * width + part);
-            } else {
-                smart_str_appendc(sql, '?');
-            }
-        }
-    }
-}
-
 /* Db::expandIn: rewrites the parent placeholder of a relation step into a list padded to a power of two. The values are padded
  * the same way; on PostgreSQL every later placeholder number shifts. */
 static bool expand_in(zval *step, zval *vals, zval *sql_out, zval *vals_out)
@@ -2399,7 +2378,7 @@ static bool expand_in(zval *step, zval *vals, zval *sql_out, zval *vals_out)
             zval *from = aidx(bs, slot);
             zval *fv = from != NULL ? aget(from, "from") : NULL;
             if (is_str(fv, "parent")) {
-                append_repeated_placeholders(&b, sep, n, width, false, 0);
+                orm_append_repeated_placeholders(&b, sep, n, width, false, 0);
             } else {
                 smart_str_appendc(&b, '?');
             }

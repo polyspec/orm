@@ -280,6 +280,23 @@ export async function runChecks({ root, jobSummary = false, servers: given, targ
     }
   });
   if (servers && !serversReady) failedSetup['databases'] = `the setup step servers failed: ${(results.at(-1)?.failures ?? []).join(' / ')}`;
+  if (serversReady && wanted.has('mysql-privilege-server')) {
+    const privilegeEnv = resolve(root, '.runtime/servers/mysql-privilege.env');
+    const ready = await record('mysql-privilege-server', 'setup', async ({ step, spawned }) => {
+      await run('make', ['--no-print-directory', 'orm-test-mysql-privilege-start'], step, spawned, { guard: false });
+      const env = serverEnvironment(privilegeEnv);
+      Object.assign(process.env, env);
+      const lease = process.env.LEASE;
+      const leases = env['ORM_TEST_MYSQL_PRIVILEGE_LEASES'];
+      if (!lease || !leases) throw new Error(`${privilegeEnv} names no ORM_TEST_MYSQL_PRIVILEGE_LEASES; run make orm-test-mysql-privilege-start, which writes the fixture environment`);
+      const held = spawnSync(lease, ['hold', leases, 'shared', '--pid', String(process.pid)], { encoding: 'utf8' });
+      if (held.status !== 0) throw new Error(`${lease} hold ${leases} shared exited with ${held.status}: ${(held.stderr || held.stdout).trim()}`);
+      step(`holding the shared lease of ${leases}`);
+    });
+    if (!ready) failedSetup['mysql-privilege-server'] = `the setup step mysql-privilege-server failed: ${(results.at(-1)?.failures ?? []).join(' / ')}`;
+  } else if (wanted.has('mysql-privilege-server')) {
+    failedSetup['mysql-privilege-server'] = `the setup step servers failed: ${(results.at(-1)?.failures ?? []).join(' / ')}`;
+  }
   let created = false;
   if (serversReady) {
     // The 18 complex-query fixture databases are provisioned only for a run with a target that needs complex-query; a target

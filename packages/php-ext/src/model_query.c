@@ -836,12 +836,19 @@ ZEND_METHOD(Polyspec_Orm_Model, predIr)
         zval *cols = zend_hash_str_find(Z_ARRVAL_P(predicate), "cols", sizeof("cols") - 1);
         if (cols == NULL || value == NULL || Z_TYPE_P(value) != IS_ARRAY) goto invalid_pred;
         zval copy; ZVAL_COPY(&copy, cols); add_assoc_zval(return_value, "cols", &copy);
+        zend_class_entry *request_ce = Z_OBJCE_P(request);
+        zval callable, method, values; array_init(&callable); ZVAL_STRING(&method, "padIn"); add_next_index_str(&callable, zend_string_copy(request_ce->name)); add_next_index_zval(&callable, &method); ZVAL_COPY(&values, value);
+        zval padded; ZVAL_UNDEF(&padded); zval args[1]; ZVAL_COPY(&args[0], &values);
+        zend_fcall_info fci; zend_fcall_info_cache fcc;
+        if (zend_fcall_info_init(&callable, 0, &fci, &fcc, NULL, NULL) != SUCCESS) { zval_ptr_dtor(&args[0]); zval_ptr_dtor(&values); zval_ptr_dtor(&callable); goto exception_pred; }
+        fci.retval = &padded; fci.params = args; fci.param_count = 1; zend_call_function(&fci, &fcc); zval_ptr_dtor(&args[0]); zval_ptr_dtor(&values); zval_ptr_dtor(&callable);
+        if (EG(exception) != NULL || Z_TYPE(padded) != IS_ARRAY) { if (Z_TYPE(padded) != IS_UNDEF) zval_ptr_dtor(&padded); goto exception_pred; }
         zval ps; array_init(&ps); zval *row, *cell;
-        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(value), row) {
-            if (Z_TYPE_P(row) != IS_ARRAY) { zval_ptr_dtor(&ps); goto invalid_pred; }
-            ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(row), cell) { zval p; if (!query_param(request, cell, &p)) { zval_ptr_dtor(&ps); goto exception_pred; } add_next_index_zval(&ps, &p); } ZEND_HASH_FOREACH_END();
+        ZEND_HASH_FOREACH_VAL(Z_ARRVAL(padded), row) {
+            if (Z_TYPE_P(row) != IS_ARRAY) { zval_ptr_dtor(&padded); zval_ptr_dtor(&ps); goto invalid_pred; }
+            ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(row), cell) { zval p; if (!query_param(request, cell, &p)) { zval_ptr_dtor(&padded); zval_ptr_dtor(&ps); goto exception_pred; } add_next_index_zval(&ps, &p); } ZEND_HASH_FOREACH_END();
         } ZEND_HASH_FOREACH_END();
-        add_assoc_zval(return_value, "ps", &ps);
+        zval_ptr_dtor(&padded); add_assoc_zval(return_value, "ps", &ps);
     } else if (zend_string_equals_literal(Z_STR_P(kind), "between")) {
         if (value == NULL || Z_TYPE_P(value) != IS_ARRAY) goto invalid_pred;
         zval ps; array_init(&ps); zval *cell;

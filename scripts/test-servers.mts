@@ -1,9 +1,10 @@
 // Starts and stops the servers of the database checks under .runtime/servers: a MySQL 8.4 primary and its replica, a
 // PostgreSQL 17 primary and its replica, a ProxySQL pooler in front of the MySQL primary, and a PgBouncer pooler in
-// transaction mode in front of the PostgreSQL primary. The servers listen on 127.0.0.1 over TCP; the other endpoints are
+// transaction mode in front of the PostgreSQL primary. The dialect-facts check can also start a separate writable
+// MySQL privilege fixture. The servers listen on 127.0.0.1 over TCP; the other endpoints are
 // Unix sockets in the socket folder (socketPaths), which stop and the ProxySQL admin interface use.
 //
-//   test-servers.mts start | tls | stop | mysql-stop | mysql-start <mysql port> <mysql replica port>
+//   test-servers.mts start | tls | stop | mysql-privilege-start | mysql-stop | mysql-start <mysql port> <mysql replica port>
 //
 // start chooses six free ports on 127.0.0.1 (scripts/free-ports.mts) for the servers of this checkout, so two checkouts
 // never contend for one fixed port; a server owns its port from the moment it listens. The environment file records
@@ -63,6 +64,10 @@ export function paths(root: string, socketDir = `/tmp/orm-servers-${createHash('
     leases: join(root, '.runtime/servers.leases'),
     mysqlPid: join(dir, 'mysql.pid'),
     mysqlReplicaPid: join(dir, 'mysql-replica.pid'),
+    mysqlPrivilegePid: join(dir, 'mysql-privilege.pid'),
+    mysqlPrivilegeData: join(dir, 'mysql-privilege'),
+    mysqlPrivilegeEnv: join(dir, 'mysql-privilege.env'),
+    mysqlPrivilegeLeases: join(root, '.runtime/mysql-privilege.leases'),
     postgresData: join(dir, 'postgres'),
     postgresReplicaData: join(dir, 'postgres-replica'),
     proxysqlData: join(dir, 'proxysql'),
@@ -71,6 +76,7 @@ export function paths(root: string, socketDir = `/tmp/orm-servers-${createHash('
     sockets: {
       mysql: join(socketDir, 'mysql.sock'),
       mysqlReplica: join(socketDir, 'mysql-replica.sock'),
+      mysqlPrivilege: join(socketDir, 'mysql-privilege.sock'),
       proxysqlAdmin: join(socketDir, 'proxysql-admin.sock'),
       proxysqlAdminPgsql: join(socketDir, 'proxysql-admin-pgsql.sock'),
       proxysqlPgsql: join(socketDir, 'proxysql-pgsql.sock'),
@@ -110,6 +116,9 @@ export const MYSQL_LOWER_CASE = 1;
 // keeps a log that never reaches the default size (1 GB) to rotate. Rotating every 16 MiB makes the expiry take effect
 // and bounds the file that a quiet server keeps. These daemon options apply when `make orm-test-servers` starts servers.
 export const MYSQLD_BINLOG = ['--binlog-expire-logs-seconds=3600', '--max-binlog-size=16777216', '--log-bin-trust-function-creators=ON'];
+// The dialect privilege probe needs binary logging with trust-function-creators disabled. It runs on a separate writable
+// server so this setting never changes the shared primary or the read-only replica.
+export const MYSQLD_PRIVILEGE_BINLOG = ['--log-bin=binlog', '--binlog-expire-logs-seconds=3600', '--max-binlog-size=16777216', '--log-bin-trust-function-creators=OFF'];
 // MYSQLD_STORAGE is the InnoDB log space of both mysqld. The redo log takes innodb_redo_log_capacity as files from the
 // start (100 MiB by default); 16 MiB holds the largest transaction of the checks with room to spare, and a smaller
 // capacity only checkpoints more often. An undo tablespace that grows past innodb_max_undo_log_size is truncated when its
@@ -117,9 +126,10 @@ export const MYSQLD_BINLOG = ['--binlog-expire-logs-seconds=3600', '--max-binlog
 // transaction or the replication applies.
 export const MYSQLD_STORAGE = ['--innodb-redo-log-capacity=16777216', '--innodb-max-undo-log-size=16777216'];
 
-// The MySQL TLS checks need a positive identity for both servers and a host mismatch that reaches a server by TCP.
-export const MYSQL_TLS_SERVER_NAMES = { mysql: 'DNS:localhost', mysqlReplica: 'DNS:localhost' } as const;
-export const MYSQL_TLS_MISMATCH_HOST = '127.0.0.1';
+// The primary certificate matches localhost. The replica certificate deliberately names another host, while its
+// mismatch DSN uses localhost so TLS identity verification reaches the replica over TCP before rejecting the name.
+export const MYSQL_TLS_SERVER_NAMES = { mysql: 'DNS:localhost', mysqlReplica: 'DNS:orm-mismatch.invalid' } as const;
+export const MYSQL_TLS_MISMATCH_HOST = 'localhost.';
 
 // Only the orm role may connect without a password. Replication uses the same role with the replication database.
 // PostgreSQL reads the first matching host rule, so both trust rules precede the SCRAM rule.
@@ -136,6 +146,12 @@ export function mysqldArguments(p: Paths, replica: boolean, port: number): strin
     `--pid-file=${replica ? p.mysqlReplicaPid : p.mysqlPid}`, `--log-error=${join(p.dir, `${name}.log`)}`, '--bind-address=127.0.0.1',
     `--port=${port}`, `--socket=${replica ? p.sockets.mysqlReplica : p.sockets.mysql}`, '--mysqlx=OFF', ...MYSQLD_BINLOG, ...MYSQLD_STORAGE,
     `--server-id=${replica ? 2 : 1}`, ...(replica ? ['--skip-replica-start'] : [])];
+}
+
+export function mysqlPrivilegeArguments(p: Paths, port: number): string[] {
+  return ['--no-defaults', '--daemonize', MYSQLD_FILES, `--lower-case-table-names=${MYSQL_LOWER_CASE}`, `--datadir=${p.mysqlPrivilegeData}`,
+    `--pid-file=${p.mysqlPrivilegePid}`, `--log-error=${join(p.dir, 'mysql-privilege.log')}`, '--bind-address=127.0.0.1', `--port=${port}`,
+    `--socket=${p.sockets.mysqlPrivilege}`, '--mysqlx=OFF', ...MYSQLD_PRIVILEGE_BINLOG, ...MYSQLD_STORAGE, '--server-id=3'];
 }
 
 // environment is the environment file of the servers on <ports>. It is the one definition of every variable the checks
@@ -166,7 +182,6 @@ export function environment(p: Paths, ports: Ports): Record<string, string> {
     ORM_TEST_SERVERS_LEASES: p.leases,
     ORM_TEST_MYSQL_TLS_DSN: tls(ports.mysql, 'ca'),
     ORM_TEST_MYSQL_TLS_OTHER_CA_DSN: tls(ports.mysql, 'other-ca'),
-    ORM_TEST_MYSQL_TLS_REPLICA_DSN: tls(ports.mysqlReplica, 'ca'),
     ORM_TEST_MYSQL_TLS_MISMATCH_DSN: tls(ports.mysqlReplica, 'ca', MYSQL_TLS_MISMATCH_HOST),
   };
 }
@@ -219,7 +234,11 @@ function program(name: 'LEASE' | 'STOP_PROCESS'): string {
 // holdExclusive holds the exclusive lease of the servers until this process exits, or fails naming the holders of the
 // leases that block it (the lease program prints them and exits with 3).
 function holdExclusive(p: Paths): void {
-  const held = spawnSync(program('LEASE'), ['hold', p.leases, 'exclusive', '--pid', String(process.pid)], { stdio: ['ignore', 'inherit', 'inherit'] });
+  holdExclusiveLease(p.leases);
+}
+
+function holdExclusiveLease(leases: string): void {
+  const held = spawnSync(program('LEASE'), ['hold', leases, 'exclusive', '--pid', String(process.pid)], { stdio: ['ignore', 'inherit', 'inherit'] });
   if (held.status !== 0) throw new TestServerError('', held.status ?? 1);
 }
 
@@ -264,6 +283,22 @@ function stopMysql(p: Paths): void {
   if (errors.length) throw shutdownError('test-servers: MySQL shutdown failed', errors);
 }
 
+function stopMysqlPrivilegeProcess(p: Paths): void {
+  if (!pidRunning(p.mysqlPrivilegePid)) return;
+  try { run('mysqladmin', ['--no-defaults', `--socket=${p.sockets.mysqlPrivilege}`, '-u', 'root', 'shutdown']); }
+  catch (error) {
+    if (!pidRunning(p.mysqlPrivilegePid)) throw error;
+    stopPid(p.mysqlPrivilegePid);
+  }
+}
+
+function stopMysqlPrivilege(p: Paths): void {
+  holdExclusiveLease(p.mysqlPrivilegeLeases);
+  if (!pidRunning(p.mysqlPrivilegePid)) return;
+  stopMysqlPrivilegeProcess(p);
+  console.log('test-servers: stopped the MySQL privilege probe server');
+}
+
 function stopServers(p: Paths): void {
   const errors: unknown[] = [];
   for (const [pid, name] of [[p.pgbouncerPid, 'PgBouncer'], [p.proxysqlPid, 'ProxySQL']] as const) {
@@ -273,6 +308,7 @@ function stopServers(p: Paths): void {
       console.log(`test-servers: stopped ${name}`);
     } catch (error) { errors.push(error); }
   }
+  try { stopMysqlPrivilege(p); } catch (error) { errors.push(error); }
   try { stopMysql(p); } catch (error) { errors.push(error); }
   // INT is the fast shutdown of PostgreSQL. `pg_ctl stop -w` would wait at most 60 s (PGCTLTIMEOUT) and has no setting
   // without a limit.
@@ -332,6 +368,59 @@ function startMysql(p: Paths, ports: Pick<Ports, 'mysql' | 'mysqlReplica'>): voi
 
 const mysqlAt = (port: number, sql: string, database: string[] = []): void =>
   run('mysql', ['--no-defaults', '--protocol=TCP', '-h', '127.0.0.1', '-P', String(port), '-u', 'root', ...database, '-e', sql]);
+
+function mysqlPrivilegePort(p: Paths): number | undefined {
+  if (!existsSync(p.mysqlPrivilegeEnv)) return;
+  const match = /^export ORM_TEST_MYSQL_PRIVILEGE_DSN='mysql:\/\/root@127\.0\.0\.1:(\d+)\/orm_test'$/m.exec(readFileSync(p.mysqlPrivilegeEnv, 'utf8'));
+  if (!match) return;
+  return checkedPort(match[1] ?? '');
+}
+
+function mysqlPrivilegeReady(p: Paths): boolean {
+  const port = mysqlPrivilegePort(p);
+  if (port === undefined || !pidRunning(p.mysqlPrivilegePid)) return false;
+  const checked = spawnSync('mysql', ['--no-defaults', '--protocol=TCP', '-h', '127.0.0.1', '-P', String(port), '-u', 'root', '-N', '-B', 'orm_test',
+    '-e', 'SELECT @@log_bin, @@log_bin_trust_function_creators, @@read_only, @@super_read_only'], { encoding: 'utf8' });
+  return checked.status === 0 && checked.stdout.trim() === '1\t0\t0\t0';
+}
+
+function startMysqlPrivilege(p: Paths): void {
+  if (!existsSync(p.env)) throw new TestServerError(`test-servers: ${p.env} is missing; run make orm-test-servers, which starts the shared database servers`);
+  if (mysqlPrivilegeReady(p)) {
+    console.log('test-servers: MySQL privilege probe server is already ready');
+    return;
+  }
+  holdExclusiveLease(p.mysqlPrivilegeLeases);
+  if (mysqlPrivilegeReady(p)) {
+    console.log('test-servers: MySQL privilege probe server is already ready');
+    return;
+  }
+  stopMysqlPrivilegeProcess(p);
+  rmSync(p.mysqlPrivilegeData, { recursive: true, force: true });
+  rmSync(p.mysqlPrivilegeEnv, { force: true });
+  const chosen = spawnSync(process.execPath, [join(ROOT, 'scripts/free-ports.mts'), '1'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] });
+  const ports = chosen.status === 0 ? chosen.stdout.trim().split(/\s+/).filter(Boolean) : [];
+  if (ports.length !== 1) throw new TestServerError(`test-servers: scripts/free-ports.mts chose ${ports.length} ports, not 1; run node scripts/free-ports.mts 1 to see why`);
+  const port = checkedPort(ports[0] ?? '');
+  const tmp = `${p.mysqlPrivilegeEnv}.tmp`;
+  try {
+    run('mysqld', ['--no-defaults', '--initialize-insecure', MYSQLD_FILES, `--lower-case-table-names=${MYSQL_LOWER_CASE}`,
+      `--datadir=${p.mysqlPrivilegeData}`, `--log-error=${join(p.dir, 'mysql-privilege-init.log')}`]);
+    run('mysqld', mysqlPrivilegeArguments(p, port));
+    mysqlAt(port, 'CREATE DATABASE orm_test');
+    const checked = spawnSync('mysql', ['--no-defaults', '--protocol=TCP', '-h', '127.0.0.1', '-P', String(port), '-u', 'root', '-N', '-B', 'orm_test',
+      '-e', 'SELECT @@log_bin, @@log_bin_trust_function_creators, @@read_only, @@super_read_only'], { encoding: 'utf8' });
+    if (checked.status !== 0 || checked.stdout.trim() !== '1\t0\t0\t0')
+      throw new TestServerError(`test-servers: MySQL privilege probe server reports ${checked.stdout.trim() || checked.stderr.trim() || `exit ${checked.status}`}; want binary logging on, log_bin_trust_function_creators=0 and a writable server`);
+    writeFileSync(tmp, `export ORM_TEST_MYSQL_PRIVILEGE_DSN='mysql://root@127.0.0.1:${port}/orm_test'\nexport ORM_TEST_MYSQL_PRIVILEGE_LEASES='${p.mysqlPrivilegeLeases}'\n`);
+    renameSync(tmp, p.mysqlPrivilegeEnv);
+  } catch (error) {
+    try { if (pidRunning(p.mysqlPrivilegePid)) stopPid(p.mysqlPrivilegePid); }
+    catch (cleanup) { throw shutdownError(`test-servers: MySQL privilege probe start failed: ${errorMessage(error)}`, [cleanup]); }
+    throw error;
+  } finally { rmSync(tmp, { force: true }); }
+  console.log(`test-servers: MySQL privilege probe server on 127.0.0.1:${port} with binary logging and log_bin_trust_function_creators=0`);
+}
 
 // mysqlTimezones loads the time zone tables of the primary, which the replica applies from its binary log.
 function mysqlTimezones(p: Paths, port: number): void {
@@ -465,9 +554,10 @@ async function startPostgres(p: Paths, ports: Ports): Promise<void> {
 }
 
 // tls issues the TLS files of the MySQL servers once under <dir>/tls and loads them into both servers with ALTER
-// INSTANCE RELOAD TLS, which keeps the running sessions: a test CA, certificates of both servers that name localhost,
-// and a second CA that signed neither. A mismatch DSN reaches the replica at 127.0.0.1, which is not in either
-// certificate's DNS names. The TLS files are refreshed and reloaded without stopping active MySQL sessions.
+// INSTANCE RELOAD TLS, which keeps the running sessions: a test CA, a primary certificate that names localhost, a
+// replica certificate that deliberately names orm-mismatch.invalid, and a second CA that signed neither. The mismatch
+// DSN reaches the replica as localhost. over TCP, so TLS identity verification rejects the certificate name. The TLS
+// files are refreshed and reloaded without stopping active MySQL sessions.
 function tls(p: Paths, ports: Pick<Ports, 'mysql' | 'mysqlReplica'>): void {
   const dir = join(p.dir, 'tls');
   if (!existsSync(join(dir, 'other-ca.pem'))) {
@@ -648,7 +738,7 @@ async function start(p: Paths): Promise<void> {
   console.log(`test-servers: started; environment ${p.env}`);
 }
 
-const USAGE = 'usage: test-servers.mts start | tls | stop; run it through make orm-test-servers, make orm-test-servers-tls or make orm-test-servers-stop';
+const USAGE = 'usage: test-servers.mts start | tls | stop | mysql-privilege-start; run it through the matching make target';
 
 export async function main(args: string[], p: Paths = paths(ROOT)): Promise<void> {
   const [action, ...rest] = args;
@@ -665,6 +755,9 @@ export async function main(args: string[], p: Paths = paths(ROOT)): Promise<void
       tls(p, ports);
       return writeEnvironment(p, ports);
     }
+    case 'mysql-privilege-start':
+      arity(0);
+      return startMysqlPrivilege(p);
     case 'mysql-stop':
       // mysql-stop and mysql-start <mysql port> <mysql replica port> are the steps of the MySQL migration
       // (scripts/test-servers-mysql.mts): they stop the MySQL servers, and initialize and start them with the declared

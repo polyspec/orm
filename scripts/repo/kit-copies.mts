@@ -17,9 +17,18 @@ export function kitCopies(root: string): Record<string, string> {
 /** Paths owned by Kit in the checkout, including files that are no longer generated copies. */
 export function kitOwnedPaths(root: string): string[] {
   const { manifest } = kitPackage(root);
-  const owners = (manifest.kit as { owners?: unknown } | undefined)?.owners;
+  const kit: unknown = manifest.kit;
+  const owners = isRecord(kit) ? kit.owners : undefined;
   if (!Array.isArray(owners)) throw new Error('@polyspec/kit package.json declares no kit.owners');
-  return owners.flatMap((owner: { paths?: unknown }) => Array.isArray(owner.paths) ? owner.paths.filter((path): path is string => typeof path === 'string') : []);
+  const ownerValues: unknown[] = owners;
+  return ownerValues.flatMap(owner => {
+    if (!isRecord(owner) || !Array.isArray(owner.paths)) return [];
+    return owner.paths.filter((path): path is string => typeof path === 'string');
+  });
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function kitPackage(root: string): { path: string; manifest: ReturnType<typeof readPackage> } {

@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import { inspect } from 'node:util';
-import test from 'node:test';
+import { caseTest, COMPUTE } from '../tests/testcase.mts';
 import { reportUnchangedState, runPhysicalCommandCase } from './physical-command-case.mts';
 import { command, commandEnvironment } from './decimal-physical-check.mts';
 
-test('dispatches each decimal owner to its native command and rejects unknown runtimes', () => {
+caseTest('dispatches each decimal owner to its native command and rejects unknown runtimes', COMPUTE, () => {
   const extension = '/build/polyspec_orm.so';
   const cases = [
     ['go', 'go', ['test', '-json']],
@@ -34,12 +34,12 @@ test('dispatches each decimal owner to its native command and rejects unknown ru
   assert.throws(() => command('unknown-runtime', 'postgres', {}), /unknown decimal physical runtime/);
 });
 
-test('accepts the expected TeamCity pass event', async () => {
+caseTest('accepts the expected TeamCity pass event', COMPUTE, async () => {
   await runPhysicalCommandCase(async () => "##teamcity[testFinished name='test_group_rows']", 'php', [], {}, 'dsn-secret',
     { kind: 'teamcity', testName: 'test_group_rows' }, 'missing pass event');
 });
 
-test('rejects a failed or unexpected TeamCity event and nonmatching exact output', async () => {
+caseTest('rejects a failed or unexpected TeamCity event and nonmatching exact output', COMPUTE, async () => {
   const run = async () => "##teamcity[testFinished name='test_group_rows']\n##teamcity[testFailed name='test_group_rows']";
   await assert.rejects(runPhysicalCommandCase(run, 'php', [], {}, 'dsn-secret',
     { kind: 'teamcity', testName: 'test_group_rows' }, 'missing pass event'), /missing pass event/);
@@ -49,7 +49,7 @@ test('rejects a failed or unexpected TeamCity event and nonmatching exact output
     { kind: 'predicate', accepts: output => output === 'accepted' }, 'missing predicate output'), /missing predicate output/);
 });
 
-test('redacts the DSN from command failures', async () => {
+caseTest('redacts the DSN from command failures', COMPUTE, async () => {
   const cause = new TypeError('failed for dsn-secret');
   cause.stack = `${cause.stack}\ncommand context dsn-secret`;
   Object.assign(cause, { stderr: 'driver reported dsn-secret' });
@@ -68,7 +68,7 @@ test('redacts the DSN from command failures', async () => {
   });
 });
 
-test('reports the matching database state and rejects a changed state', async () => {
+caseTest('reports the matching database state and rejects a changed state', COMPUTE, async () => {
   const messages: string[] = [];
   await reportUnchangedState(async () => 'state-hash', 'state-hash', 'state changed', message => messages.push(message));
   assert.deepEqual(messages, ['state state-hash']);

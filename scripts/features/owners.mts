@@ -23,7 +23,7 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 import { runGroup, stepLines } from '../../tests/testcase.mts';
-import { makeRecipes } from '../repo/testcases.mts';
+import { checkTargets, makeRecipes } from '../repo/testcases.mts';
 import { NEEDS } from '../check/ci-setup.mts';
 import { runStep } from '../check/step.mts';
 import { missingDownloads } from '../check/downloads.mts';
@@ -367,9 +367,10 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
   const helpers = await selectHelpers(manifest, root, changed, change);
   const declarations = readCheckInputs(root);
   const declared = declarations.targets;
-  const checkTargets = /^CHECK_TARGETS = (.*)$/m.exec(await readFile(resolve(root, 'Makefile'), 'utf8'))?.[1]?.trim().split(/\s+/) ?? [];
+  const makefile = await readFile(resolve(root, 'Makefile'), 'utf8');
+  const makeTargetsList = checkTargets(makefile);
   const tracked = trackedPaths(root);
-  const declarationErrors = [...checkInputErrors(declared, checkTargets, tracked), ...manifestInputErrors(manifest, tracked), ...pathScopeErrors(declarations.paths, tracked)];
+  const declarationErrors = [...checkInputErrors(declared, makeTargetsList, tracked), ...manifestInputErrors(manifest, tracked), ...pathScopeErrors(declarations.paths, tracked)];
   if (declarationErrors.length) {
     for (const error of declarationErrors) console.error(`owners: ${error}`);
     process.exit(1);

@@ -1,5 +1,5 @@
 import { DatabaseSync } from 'node:sqlite';
-import { connect } from '../dist/models/complex_query/models.js';
+import { SCHEMA, connect } from '../dist/models/complex_query/models.js';
 import { caseTest, DATABASE } from '../../../tests/testcase.mts';
 import { mysqlConnection, postgresClient, withCaseDatabase } from './case-database.mjs';
 import { fixture, assertSearchCase } from './complex-query-support.mjs';
@@ -47,7 +47,7 @@ for (const dialect of ['mysql', 'postgres', 'sqlite']) caseTest(`complex_query_p
   await withCaseDatabase(dialect, step, async database => {
     const db = await connect(database.dsn);
     try {
-      await db.utils().schema().install();
+      await db.utils().schema().install(SCHEMA);
       if (dialect !== 'sqlite') await seed(database, dialect);
       await assertSearchCase(assert, db, dialect);
     } finally {

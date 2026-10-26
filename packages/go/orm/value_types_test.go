@@ -111,7 +111,7 @@ func TestRuntimeInvalidCellsFailTypedReads(t *testing.T) {
 		insert.Set("ref", "0f1e2d3c-4b5a-4968-8778-695a4b3c2d1e")
 		insert.Set("clock", "10:20:30.500")
 		insert.Set("day", "2026-02-03")
-		insert.Set("address", orm.SqlNull())
+		insert.Set("address", nil)
 		insert.Set("packed", orm.SqlNull())
 		insert.Set("payload", orm.SqlNull())
 		insert.Set("note", "row")

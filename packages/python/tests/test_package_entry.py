@@ -1,4 +1,5 @@
 import unittest
+from packages.python.tests import testcase
 
 import polyspec.orm as orm
 
@@ -28,4 +29,4 @@ class PackageEntryTest(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    testcase.main()

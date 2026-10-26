@@ -57,6 +57,14 @@ async function code(promise) {
   try { await promise; return null; } catch (error) { return error instanceof OrmError ? error.code : String(error); }
 }
 
+async function assertProbeColumn(db, values, column, expected) {
+  const row = new Probe().connect(db);
+  for (const [name, value] of Object.entries(values)) row[CORE].setValue(name, value);
+  const seq = (await row.create())[CORE].column('seq');
+  const read = await new Probe().connect(db).seq(seq).get();
+  assert.equal(read[CORE].column(column), expected);
+}
+
 if (!process.env.ORM_TEST_MYSQL_DSN) throw new Error('ORM_TEST_MYSQL_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers');
 if (!process.env.ORM_TEST_POSTGRES_DSN) throw new Error('ORM_TEST_POSTGRES_DSN is required; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers');
 
@@ -95,14 +103,7 @@ for (const dialect of ['sqlite', 'mysql', 'postgres']) {
   // Requirements: INT-99.
   caseTest(`${dialect}: an i16 column reads and writes its whole range`, 30_000, async () => {
     for (const small of [-32768, 32767]) {
-      const row = new Probe().connect(db);
-      row[CORE].setValue('small', small);
-      row[CORE].setValue('wide', 7);
-      row[CORE].setValue('ratio', 1.25);
-      row[CORE].setValue('active', true);
-      const seq = (await row.create())[CORE].column('seq');
-      const read = await new Probe().connect(db).seq(seq).get();
-      assert.equal(read[CORE].column('small'), small);
+      await assertProbeColumn(db, { small, wide: 7, ratio: 1.25, active: true }, 'small', small);
     }
     for (const invalid of [32768, -32769, 1.5]) {
       assert.equal(await code(Promise.resolve().then(() => new Probe()[CORE].setValue('small', invalid))), 'CODEC_ENCODE', `i16 ${invalid}`);
@@ -111,14 +112,7 @@ for (const dialect of ['sqlite', 'mysql', 'postgres']) {
 
   // Requirements: INT-99.
   caseTest(`${dialect}: an omitted column takes the database default and a required column is checked`, 30_000, async () => {
-    const row = new Probe().connect(db);
-    row[CORE].setValue('small', 1);
-    row[CORE].setValue('wide', 7);
-    row[CORE].setValue('ratio', 1.25);
-    row[CORE].setValue('active', true);
-    const seq = (await row.create())[CORE].column('seq');
-    const read = await new Probe().connect(db).seq(seq).get();
-    assert.equal(read[CORE].column('label'), 'none');
+    await assertProbeColumn(db, { small: 1, wide: 7, ratio: 1.25, active: true }, 'label', 'none');
     const missing = new Probe().connect(db);
     missing[CORE].setValue('label', 'x');
     missing[CORE].setValue('wide', 7);
@@ -213,9 +207,13 @@ for (const dialect of ['sqlite', 'mysql', 'postgres']) {
     );
     if (dialect === 'mysql') {
       await db.pool.execute('UPDATE probe SET wide = 12 WHERE seq = ?', [seq], undefined, () => undefined);
+      // This disposable case database needs an out-of-domain stored bool to exercise the decoder, not the CHECK constraint.
+      await db.pool.execute('ALTER TABLE probe DROP CHECK `probe$active`', [], undefined, () => undefined);
       await db.pool.execute('UPDATE probe SET active = 2 WHERE seq = ?', [seq], undefined, () => undefined);
+      const invalidBooleanRead = new Probe().connect(db).seq(seq);
+      invalidBooleanRead[CORE].addColumn('active');
       await assert.rejects(
-        new Probe().connect(db).seq(seq).addColumn('active').get(),
+        invalidBooleanRead.get(),
         error => error instanceof OrmError && error.code === 'CODEC_DECODE',
       );
     }

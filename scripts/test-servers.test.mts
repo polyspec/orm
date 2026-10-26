@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { createServer } from 'node:net';
 import { isolatedEnvironment } from '../tests/environment.mts';
 import { caseTest, COMPUTE, DATABASE, PROCESS } from '../tests/testcase.mts';
-import { environment, MYSQLD_BINLOG, MYSQL_TLS_MISMATCH_HOST, MYSQL_TLS_SERVER_NAMES, mysqldArguments, paths, POSTGRES_HBA, POSTGRES_LOCALE, postgresBaseBackupArguments, postgresEnvironment, startLogged, stopEarlierStart, stopPid, TestServerError } from './test-servers.mts';
+import { environment, MYSQLD_BINLOG, MYSQLD_PRIVILEGE_BINLOG, MYSQL_TLS_MISMATCH_HOST, MYSQL_TLS_SERVER_NAMES, mysqlPrivilegeArguments, mysqldArguments, paths, POSTGRES_HBA, POSTGRES_LOCALE, postgresBaseBackupArguments, postgresEnvironment, startLogged, stopEarlierStart, stopPid, TestServerError } from './test-servers.mts';
 import { withPidFixture } from './test-servers-fixture.mts';
 import * as servers from './test-servers.mts';
 
@@ -418,19 +418,20 @@ caseTest('PostgreSQL trusts only the orm login and requires SCRAM for other loop
   assert.ok(POSTGRES_HBA.every(rule => !/^host all all .* trust$/.test(rule)));
 });
 
-caseTest('the MySQL replica has a positive localhost TLS DSN and a TCP hostname-mismatch DSN', COMPUTE, () => {
+caseTest('the MySQL primary has a positive localhost TLS DSN and the replica has a TCP hostname-mismatch DSN', COMPUTE, () => {
   const variables = environment(paths('/checkout'), { mysql: 1, postgres: 2, mysqlReplica: 3, postgresReplica: 4, proxysql: 5, pgbouncer: 6 });
-  const replicaTls = variables['ORM_TEST_MYSQL_TLS_REPLICA_DSN'];
+  const positiveTls = variables['ORM_TEST_MYSQL_TLS_DSN'];
   const mismatchTls = variables['ORM_TEST_MYSQL_TLS_MISMATCH_DSN'];
   assert.equal(MYSQL_TLS_SERVER_NAMES.mysql, 'DNS:localhost');
-  assert.equal(MYSQL_TLS_SERVER_NAMES.mysqlReplica, 'DNS:localhost');
-  assert.ok(replicaTls, 'the environment writes a TLS DSN for the MySQL replica');
+  assert.equal(MYSQL_TLS_SERVER_NAMES.mysqlReplica, 'DNS:orm-mismatch.invalid');
+  assert.equal(MYSQL_TLS_MISMATCH_HOST, 'localhost.');
+  assert.ok(positiveTls, 'the environment writes the positive MySQL TLS DSN');
   assert.ok(mismatchTls, 'the environment writes the intentional TLS mismatch DSN');
-  assert.equal(new URL(replicaTls).hostname, 'localhost.');
+  assert.equal(new URL(positiveTls).hostname, 'localhost.');
   assert.equal(new URL(mismatchTls).hostname, MYSQL_TLS_MISMATCH_HOST);
-  assert.equal(new URL(replicaTls).port, '3');
+  assert.equal(new URL(positiveTls).port, '1');
   assert.equal(new URL(mismatchTls).port, '3');
-  assert.match(replicaTls, /ssl-mode=VERIFY_IDENTITY/);
+  assert.match(positiveTls, /ssl-mode=VERIFY_IDENTITY/);
   assert.match(mismatchTls, /ssl-mode=VERIFY_IDENTITY/);
 });
 
@@ -455,6 +456,19 @@ caseTest('the test servers keep small redo logs, binary logs and WAL', COMPUTE, 
     '-c', 'synchronous_standby_names=orm_replica', '-c', 'synchronous_commit=local', '-c', 'min_wal_size=32MB', '-c', 'max_wal_size=64MB', '-c', 'wal_keep_size=0']);
   assert.deepEqual(postgresArguments('/replica', 5433, false), ['-D', '/replica', '-p', '5433', '-c', 'listen_addresses=127.0.0.1', '-c', 'unix_socket_directories=',
     '-c', 'min_wal_size=32MB', '-c', 'max_wal_size=64MB', '-c', 'wal_keep_size=0']);
+});
+
+caseTest('the MySQL privilege probe has a separate writable binlog server with trust creators off', COMPUTE, () => {
+  const p = paths('/checkout');
+  const args = mysqlPrivilegeArguments(p, 3310);
+  assert.ok(args.includes(`--datadir=${p.mysqlPrivilegeData}`));
+  assert.ok(args.includes(`--pid-file=${p.mysqlPrivilegePid}`));
+  assert.ok(args.includes(`--socket=${p.sockets.mysqlPrivilege}`));
+  assert.ok(args.includes('--log-bin=binlog'));
+  assert.ok(args.includes('--log-bin-trust-function-creators=OFF'));
+  assert.ok(!args.includes('--log-bin-trust-function-creators=ON'));
+  assert.ok(!args.includes('--read-only') && !args.includes('--super-read-only'));
+  assert.deepEqual(MYSQLD_PRIVILEGE_BINLOG, ['--log-bin=binlog', '--binlog-expire-logs-seconds=3600', '--max-binlog-size=16777216', '--log-bin-trust-function-creators=OFF']);
 });
 
 caseTest('the test MySQL server removes an expired binary log by itself', DATABASE, async () => {

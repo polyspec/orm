@@ -54,6 +54,41 @@ class AddTablesAndColumnsTest(unittest.TestCase):
             finally:
                 db.close()
 
+    def assert_adds_missing_index(self, db):
+        db.utils().schema().install(schema_of(USERS_EMAIL_NULL))
+        target = schema_of(USERS_EMAIL_INDEX)
+        self.assertEqual(
+            db.utils().schema().add_tables_and_columns(target),
+            ["users.ix_users_email"],
+        )
+        self.assertEqual(db.utils().schema().add_tables_and_columns(target), [])
+
+    def assert_transaction_rejects_add_tables(self, db, target):
+        with self.assertRaises(OrmError) as caught:
+            db.transaction(
+                lambda: db.utils().schema().add_tables_and_columns(target),
+                {"retry": 0},
+            )
+        self.assertEqual(caught.exception.code, "CONFIG")
+        self.assertEqual(
+            db.utils().schema().add_tables_and_columns(target),
+            ["note", "users.email"],
+        )
+
+    def assert_edited_manifest_rejected(self, db, target):
+        edited = Schema(
+            manifest_text=target.manifest_text.replace(" email ", " memo "),
+            manifest_hash=target.manifest_hash,
+            external_text=target.external_text,
+        )
+        with self.assertRaises(OrmError) as caught:
+            db.utils().schema().add_tables_and_columns(edited)
+        self.assertEqual(caught.exception.code, "CONFIG")
+        self.assertEqual(
+            db.utils().schema().add_tables_and_columns(target),
+            ["note", "users.email"],
+        )
+
     # Requirements: INT-56, SCH-8.
     def test_adds_the_new_table_and_the_nullable_column(self):
         path, db = self.connect("add.sqlite3")
@@ -89,39 +124,21 @@ class AddTablesAndColumnsTest(unittest.TestCase):
     def test_adds_a_missing_index_and_repeats_nothing(self):
         _path, db = self.connect("index.sqlite3")
         try:
-            db.utils().schema().install(schema_of(USERS_EMAIL_NULL))
-            target = schema_of(USERS_EMAIL_INDEX)
-            self.assertEqual(
-                db.utils().schema().add_tables_and_columns(target),
-                ["users.ix_users_email"],
-            )
-            self.assertEqual(db.utils().schema().add_tables_and_columns(target), [])
+            self.assert_adds_missing_index(db)
         finally:
             db.close()
 
     # Requirements: SCH-8, SCH-9.
     def test_adds_a_missing_index_mysql(self):
         def check(db):
-            db.utils().schema().install(schema_of(USERS_EMAIL_NULL))
-            target = schema_of(USERS_EMAIL_INDEX)
-            self.assertEqual(
-                db.utils().schema().add_tables_and_columns(target),
-                ["users.ix_users_email"],
-            )
-            self.assertEqual(db.utils().schema().add_tables_and_columns(target), [])
+            self.assert_adds_missing_index(db)
 
         self.server_case("mysql", check)
 
     # Requirements: SCH-8, SCH-9.
     def test_adds_a_missing_index_postgres(self):
         def check(db):
-            db.utils().schema().install(schema_of(USERS_EMAIL_NULL))
-            target = schema_of(USERS_EMAIL_INDEX)
-            self.assertEqual(
-                db.utils().schema().add_tables_and_columns(target),
-                ["users.ix_users_email"],
-            )
-            self.assertEqual(db.utils().schema().add_tables_and_columns(target), [])
+            self.assert_adds_missing_index(db)
 
         self.server_case("postgres", check)
 
@@ -129,34 +146,18 @@ class AddTablesAndColumnsTest(unittest.TestCase):
     def test_add_tables_and_columns_is_rejected_inside_a_transaction(self):
         _path, db = self.connect("transaction.sqlite3")
         try:
+            db.utils().schema().install(schema_of(USERS_ID))
             target = schema_of(NOTE + USERS_EMAIL_NULL)
-            with self.assertRaises(OrmError) as caught:
-                db.transaction(
-                    lambda: db.utils().schema().add_tables_and_columns(target),
-                    {"retry": 0},
-                )
-            self.assertEqual(caught.exception.code, "CONFIG")
-            self.assertEqual(
-                db.utils().schema().add_tables_and_columns(target),
-                ["note", "users.email"],
-            )
+            self.assert_transaction_rejects_add_tables(db, target)
         finally:
             db.close()
 
     # Requirements: SCH-8.
     def test_add_tables_and_columns_transaction_mysql(self):
         def check(db):
+            db.utils().schema().install(schema_of(USERS_ID))
             target = schema_of(NOTE + USERS_EMAIL_NULL)
-            with self.assertRaises(OrmError) as caught:
-                db.transaction(
-                    lambda: db.utils().schema().add_tables_and_columns(target),
-                    {"retry": 0},
-                )
-            self.assertEqual(caught.exception.code, "CONFIG")
-            self.assertEqual(
-                db.utils().schema().add_tables_and_columns(target),
-                ["note", "users.email"],
-            )
+            self.assert_transaction_rejects_add_tables(db, target)
 
         self.server_case("mysql", check)
 
@@ -166,6 +167,7 @@ class AddTablesAndColumnsTest(unittest.TestCase):
             pass
 
         def check(db):
+            db.utils().schema().install(schema_of(USERS_ID))
             target = schema_of(NOTE + USERS_EMAIL_NULL)
 
             def apply_then_rollback():
@@ -190,18 +192,7 @@ class AddTablesAndColumnsTest(unittest.TestCase):
         try:
             db.utils().schema().install(schema_of(USERS_ID))
             target = schema_of(NOTE + USERS_EMAIL_NULL)
-            edited = Schema(
-                manifest_text=target.manifest_text.replace(" email ", " memo "),
-                manifest_hash=target.manifest_hash,
-                external_text=target.external_text,
-            )
-            with self.assertRaises(OrmError) as caught:
-                db.utils().schema().add_tables_and_columns(edited)
-            self.assertEqual(caught.exception.code, "CONFIG")
-            self.assertEqual(
-                db.utils().schema().add_tables_and_columns(target),
-                ["note", "users.email"],
-            )
+            self.assert_edited_manifest_rejected(db, target)
         finally:
             db.close()
 
@@ -210,18 +201,7 @@ class AddTablesAndColumnsTest(unittest.TestCase):
         def check(db):
             db.utils().schema().install(schema_of(USERS_ID))
             target = schema_of(NOTE + USERS_EMAIL_NULL)
-            edited = Schema(
-                manifest_text=target.manifest_text.replace(" email ", " memo "),
-                manifest_hash=target.manifest_hash,
-                external_text=target.external_text,
-            )
-            with self.assertRaises(OrmError) as caught:
-                db.utils().schema().add_tables_and_columns(edited)
-            self.assertEqual(caught.exception.code, "CONFIG")
-            self.assertEqual(
-                db.utils().schema().add_tables_and_columns(target),
-                ["note", "users.email"],
-            )
+            self.assert_edited_manifest_rejected(db, target)
 
         self.server_case("mysql", check)
 
@@ -230,18 +210,7 @@ class AddTablesAndColumnsTest(unittest.TestCase):
         def check(db):
             db.utils().schema().install(schema_of(USERS_ID))
             target = schema_of(NOTE + USERS_EMAIL_NULL)
-            edited = Schema(
-                manifest_text=target.manifest_text.replace(" email ", " memo "),
-                manifest_hash=target.manifest_hash,
-                external_text=target.external_text,
-            )
-            with self.assertRaises(OrmError) as caught:
-                db.utils().schema().add_tables_and_columns(edited)
-            self.assertEqual(caught.exception.code, "CONFIG")
-            self.assertEqual(
-                db.utils().schema().add_tables_and_columns(target),
-                ["note", "users.email"],
-            )
+            self.assert_edited_manifest_rejected(db, target)
 
         self.server_case("postgres", check)
 

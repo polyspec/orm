@@ -145,7 +145,9 @@ await runCases('coverage_transactions.mjs', {
           let lockedTimeoutError = null;
           try {
             await db.transaction(async () => {
-              await new CompositeAccount().connect(db).tenantId(tenant).setName('timed out').update();
+              const row = await new CompositeAccount().connect(db).getByTenantIdAndAccountId(tenant, 6);
+              assert.ok(row, 'timeout probe row exists before the locked update');
+              await row.setName('timed out').update();
             }, { timeoutMs: 250, retry: 0 });
           } catch (error) { lockedTimeoutError = error; }
           assert.ok(lockedTimeoutError instanceof OrmError && lockedTimeoutError.code === codes.CANCELED, `locked statement timeout: ${lockedTimeoutError}`);

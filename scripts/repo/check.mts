@@ -11,7 +11,7 @@ import { binExeErrors, manifestDirErrors, runFile, targetPathErrors } from './ta
 import { connectProbeErrors, runtimeSource } from './probes.mts';
 import { composerVersionErrors, goModulePathErrors, goVersionErrors, phpVersionErrors, rustToolchainErrors } from './toolchains.mts';
 import { scriptPathErrors, toolingLanguageErrors } from './scripts.mts';
-import { kitCopies } from './kit-copies.mts';
+import { kitCopies, kitOwnedPaths } from './kit-copies.mts';
 import { segments } from './shell.mts';
 import { detachedGroupErrors, timeFailureErrors } from './sources.mts';
 import { callerEnvironmentErrors, goRunErrors, longDeadlineErrors, makeRecipes, fixedPortErrors, scriptCommands, runtimePathErrors, sharedTargetErrors, unpublishedOutputErrors, typescriptHolderErrors, typescriptReaderErrors, unleasedCargoErrors, nodeTestErrors, rawGoTestErrors, reachedScripts, repeatedGenerateErrors, reportingScriptErrors, recipeLines, rustTestCaseErrors, unbuiltCargoTestErrors, unwrappedToolErrors } from './testcases.mts';
@@ -30,6 +30,7 @@ const root = new URL('../../', import.meta.url).pathname;
 // The copies of @polyspec/kit are checked by make kit-check and never edited here, so the rules of this repository do not
 // read them.
 const copies = kitCopies(root);
+const kitOwned = kitOwnedPaths(root);
 const trackedAll = execFileSync('git', ['ls-files', '-z'], { cwd: root }).toString().split('\0').filter(Boolean);
 const tracked = trackedAll.filter(file => !Object.hasOwn(copies, file));
 const failures = [];
@@ -64,12 +65,11 @@ failures.push(...toolingLanguageErrors(tracked));
 
 // The Node that runs the checks is the one version mise.toml declares, and every workflow reads that file.
 const workflowDirectory = join(root, '.github/workflows');
-// allWorkflows holds every workflow of .github/workflows. A workflow among the copies of @polyspec/kit is kit's and make
-// kit-check holds it byte for byte, so the rules of how a workflow is written (workflows) skip it; which triggers need a
-// workflow is judged over every workflow (T115).
+// allWorkflows holds every workflow of .github/workflows. A Kit-owned workflow is outside this repository's workflow rules;
+// which triggers need a workflow is judged over every workflow (T115).
 const allWorkflows = Object.fromEntries(readdirSync(workflowDirectory).filter(name => /\.ya?ml$/.test(name)).sort()
   .map(name => [`.github/workflows/${name}`, readFileSync(join(workflowDirectory, name), 'utf8')]));
-const workflows = ownWorkflows(allWorkflows, copies);
+const workflows = ownWorkflows(allWorkflows, kitOwned);
 // Every CI step runs a make target (except the summary).
 failures.push(...ciMakeErrors(workflows));
 // Workflows that run on push declare concurrency so that a new push ends the earlier run.

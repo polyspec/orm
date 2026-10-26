@@ -9,6 +9,9 @@ namespace Polyspec\Orm\Tests;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Db;
+use Polyspec\Orm\Frame;
+use Polyspec\Orm\Model;
+use Polyspec\Orm\Request;
 use Polyspec\Orm\Tests\Model\Author;
 
 #[Small]
@@ -74,4 +77,22 @@ final class RelationKeysTest extends TestCase
             self::assertFalse(method_exists(Author::class, $method), "removed method $method remains public");
         }
     }
+
+    // Requirements: PRT-40.
+    public function testTuplePredicatePadsByRepeatingTheLastRow(): void
+    {
+        $model = new Author();
+        $request = new Request('all', 'sha256:tuple-padding');
+        $predicate = (new \ReflectionMethod(Model::class, 'predIr'))->invoke($model, [
+            'kind' => 'tuple',
+            'column' => '',
+            'op' => 'tuple_in',
+            'cols' => ['tenant_id', 'account_id'],
+            'value' => [[10, 1], [10, 2], [10, 3]],
+        ], $request, new Frame($model, null));
+
+        self::assertSame(range(0, 7), $predicate['ps']);
+        self::assertSame([10, 1, 10, 2, 10, 3, 10, 3], $request->params);
+    }
+
 }

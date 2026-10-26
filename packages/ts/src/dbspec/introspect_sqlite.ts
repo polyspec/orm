@@ -11,8 +11,9 @@ import { Renderer } from './render.js';
 
 const MASTER_QUERY = `SELECT type, name, tbl_name, IFNULL(sql, '') FROM sqlite_master
 WHERE name NOT LIKE 'sqlite_%' AND tbl_name NOT LIKE 'dbspec$%' ORDER BY type, name`;
-const COLUMNS_QUERY = `SELECT m.name, p.name, p.type, p."notnull", p.dflt_value, p.pk, p.hidden FROM sqlite_master m
-JOIN pragma_table_xinfo(m.name) p WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%' AND p.name NOT LIKE 'dbspec$%' ORDER BY m.name, p.cid`;
+const COLUMNS_QUERY = `SELECT m.name, p.name, p.type, p."notnull", p.dflt_value, p.pk, p.hidden, l.type FROM sqlite_master m
+JOIN pragma_table_xinfo(m.name) p JOIN pragma_table_list l ON l.schema = 'main' AND l.name = m.name
+WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%' AND p.name NOT LIKE 'dbspec$%' ORDER BY m.name, p.cid`;
 const INDEXES_QUERY = `SELECT m.name, l.name, l."unique", l.origin, l.partial,
 IFNULL((SELECT group_concat(IFNULL(x.name, ''), ',') FROM (SELECT name FROM pragma_index_xinfo(l.name) WHERE key = 1 ORDER BY seqno) x), ''),
 IFNULL((SELECT group_concat(x."desc", ',') FROM (SELECT "desc" FROM pragma_index_xinfo(l.name) WHERE key = 1 ORDER BY seqno) x), '')
@@ -71,9 +72,13 @@ export async function readSQLite(query: CatalogQuery): Promise<Catalog> {
   }
   const renderer = new Renderer('sqlite');
   for (const r of await query(COLUMNS_QUERY)) {
-    const [table, name, declared, notNull, dflt, hidden] = [r.text(0), r.text(1), r.text(2), r.integer(3), r.nullableText(4), r.integer(6)];
+    const [table, name, declared, notNull, dflt, hidden, tableKind] = [
+      r.text(0), r.text(1), r.text(2), r.integer(3), r.nullableText(4), r.integer(6), r.text(7),
+    ];
     // pk is not written. The primary key and identity are decided by the CREATE TABLE text.
     r.integer(5);
+    // SQLite virtual-table shadow columns belong to the module, not a user table's dbspec definition.
+    if (tableKind === 'shadow') continue;
     const t = c.table(table);
     if (t === undefined) continue;
     const st = present(parsed.get(table), 'parsed.get(table)');

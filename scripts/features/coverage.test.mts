@@ -11,6 +11,7 @@ import { testDirectoryOf } from './packages.mts';
 import { cargoTargetArgs, checkCoverage, coverageItems, databaseDsn, databases, executeCoverage, observedCases, languages, NATIVE_DEADLINE, run, goPerformanceMeasurements, selectFeatures, type Coverage, type Dependent, type Feature, type Manifest, type Owner, type Report } from './coverage.mts';
 import { readFeatures } from './manifest.mts';
 import { readParityConfig, type ParityConfig } from '../json/formats.mts';
+import { isolatedEnvironment } from '../../tests/environment.mts';
 
 // Synthetic manifests use explicit minimal parity, independent of the repository's live native-unit inventory.
 const fixtureLanguages = ['go', 'php', 'php-extension', 'python', 'rust', 'typescript'];
@@ -403,8 +404,7 @@ caseTest('coverage item selection runs one declared database and defaults to all
 caseTest('the coverage item CLI selects one declared database', PROCESS, () => {
   const root = new URL('../..', import.meta.url).pathname;
   const script = new URL('./coverage.mts', import.meta.url).pathname;
-  const env: NodeJS.ProcessEnv = { ...process.env, BENCH_SQLITE_DSN: 'sqlite:///selected.sqlite' };
-  for (const name of ['ORM_FEATURE_DATABASE', 'ORM_FEATURE_DSN', 'BENCH_MYSQL_DSN', 'BENCH_POSTGRES_DSN']) delete env[name];
+  const env = isolatedEnvironment({ BENCH_SQLITE_DSN: 'sqlite:///selected.sqlite' });
   const output = execFileSync(process.execPath, [
     script, '--items', 'packages/ts/tests/coverage_constraints_and_relations.mjs', '--database', 'sqlite',
   ], { cwd: root, env, encoding: 'utf8' });

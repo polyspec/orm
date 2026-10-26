@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // TestSubtestNamesAreFlat checks that no case name of this package's tests
@@ -17,6 +19,7 @@ import (
 // files, so a name built from a case field is checked by its literal parts
 // only.
 func TestSubtestNamesAreFlat(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	files, err := os.ReadDir(".")
 	if err != nil {
 		t.Fatal(err)

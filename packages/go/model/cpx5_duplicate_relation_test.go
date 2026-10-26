@@ -8,12 +8,14 @@ import (
 	"github.com/polyspec/orm/packages/go/model"
 	"github.com/polyspec/orm/packages/go/orm"
 	_ "github.com/polyspec/orm/packages/go/orm/sqlite"
+	"github.com/polyspec/orm/packages/go/testcase"
 )
 
 // TestCPX5DuplicateRelationNameIsRejectedDuringQueryCompilation checks the public model chain without executing SQL.
 //
 // Requirements: CPX-5, DSL-128.
 func TestCPX5DuplicateRelationNameIsRejectedDuringQueryCompilation(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	db, err := model.Connect("sqlite://"+filepath.Join(t.TempDir(), "cpx5.db"), orm.Config{})
 	if err != nil {
 		t.Fatal(err)

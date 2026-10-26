@@ -80,15 +80,8 @@ final class CoverageSchemaInstallNativeTest extends TestCase
     public function testSchemaInstallExisting(): void
     {
         self::forEachCoverageDatabase(static function ($db, string $driver): void {
-            Assert::assertTrue(coverageTableExists($db, 'author'), 'the bench database has no author table');
-            Assert::assertFalse($db->utils()->schema()->empty(), 'the installed tables make the schema non-empty');
-            $db->utils()->schema()->install(\Polyspec\Orm\Tests\Model\schema());
-            if ($driver === 'mysql') {
-                $inside = coverageCode(fn() => $db->transaction(
-                    fn() => $db->utils()->schema()->install(\Polyspec\Orm\Tests\Model\schema())
-                ));
-                Assert::assertSame(Code::CONFIG, $inside, 'MySQL install inside a transaction returns CONFIG');
-            }
+            require_once dirname(__DIR__, 2) . '/php/tests/CoverageSchemaInstallTest.php';
+            \Polyspec\Orm\Tests\CoverageSchemaInstallTest::assertExistingSchemaInstall($db, $driver);
         });
     }
 

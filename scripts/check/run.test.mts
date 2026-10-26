@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { isolatedEnvironment } from '../../tests/environment.mts';
 import { caseTest, COMPUTE, PROCESS } from '../../tests/testcase.mts';
 import { readRecord, summarize, type CheckRecord } from './record.mts';
+import { expandNeeds, NEEDS, SETUP_NEEDS } from './ci-setup.mts';
 import type { StepRecord } from './report.mts';
 import { isCheckTargetName } from './run.mts';
 import { errorMessage } from '../../tests/errors.mts';
@@ -42,6 +43,17 @@ caseTest('the check runner accepts component target names and rejects malformed 
   for (const target of ['', '-check', 'check-', '/engine', 'dbspec//engine', 'dbspec/./engine', 'dbspec/../engine', '../engine', 'dbspec/-engine', 'dbspec/engine ', 'dbspec engine']) {
     assert.equal(isCheckTargetName(target), false, target);
   }
+});
+
+caseTest('dialect facts declares the isolated MySQL privilege fixture as a setup need', COMPUTE, () => {
+  const inputs = JSON.parse(readFileSync(join(repo, 'contracts/check-inputs.json'), 'utf8')) as { targets: Record<string, { needs: string[] }> };
+  const needs = inputs.targets['dialect-facts-check']?.needs;
+  assert.ok(needs?.includes('mysql-privilege-server'));
+  assert.ok(NEEDS.includes('mysql-privilege-server'));
+  assert.deepEqual(SETUP_NEEDS['mysql-privilege-server'], ['databases']);
+  const expanded = expandNeeds(needs);
+  assert.ok(expanded.includes('databases'));
+  assert.ok(expanded.includes('server-programs'));
 });
 
 // stub runs runChecks with stub commands. The database command (node scripts/check/databases.mts) logs `databases <action>`, and a make target logs its own
@@ -202,7 +214,7 @@ caseTest('make orm-check delegates to ci-targets and make check-run starts the r
   assert.ok(run.slice(0, 2).every(line => line.startsWith('$(if $(GROUP),') && line.endsWith(')')), run.join('\n'));
   assert.deepEqual(run.slice(2), ['$(BUILD_LEASE) && $(NODE) scripts/check/run.mts $(abspath $(TEST_ENV)) $(CHECK_RUN_TARGETS)']);
   // dry runs make -n check-run with only the variables given (isolatedEnvironment: GITHUB_ACTIONS is never inherited), so the case is a local run.
-  const dry = (variables: Record<string, string>, environment: Record<string, string> = isolatedEnvironment(variables)) => spawnSync('make', ['-n', '--no-print-directory', 'check-run'], { cwd: repo, encoding: 'utf8', env: environment });
+  const dry = (variables: Record<string, string>) => spawnSync('make', ['-n', '--no-print-directory', 'check-run'], { cwd: repo, encoding: 'utf8', env: isolatedEnvironment(variables) });
   const plain = dry({});
   assert.equal(plain.status, 0, `${plain.stdout}${plain.stderr}`);
   assert.match(plain.stdout, /node scripts\/check\/run\.mts /, plain.stdout);
@@ -219,7 +231,7 @@ caseTest('make orm-check delegates to ci-targets and make check-run starts the r
 // to make. runner-check runs this file in the static CI group (CI_TARGETS_static), so the case runs in CI.
 if (process.env.GITHUB_ACTIONS === 'true') {
   caseTest('make check-run accepts a CI group on GitHub Actions', COMPUTE, () => {
-    const result = spawnSync('make', ['-n', '--no-print-directory', 'check-run', 'GROUP=static'], { cwd: repo, encoding: 'utf8', env: { ...isolatedEnvironment(), GITHUB_ACTIONS: process.env.GITHUB_ACTIONS } });
+    const result = spawnSync('make', ['-n', '--no-print-directory', 'check-run', 'GROUP=static'], { cwd: repo, encoding: 'utf8', env: isolatedEnvironment({ GITHUB_ACTIONS: 'true' }) });
     assert.equal(result.status, 0, `${result.stdout}${result.stderr}`);
     assert.match(result.stdout, /node scripts\/check\/run\.mts /, result.stdout);
   });

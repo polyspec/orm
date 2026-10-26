@@ -2,6 +2,7 @@ use polyspec_orm_build::{
     catalog::{CatalogConnection, MutationPhase, TableMetadata, TableRef},
     tool_db::{self, GridCell, P},
 };
+use std::path::Path;
 use std::sync::{
     atomic::{AtomicBool, Ordering},
     Arc,
@@ -11,6 +12,32 @@ use std::sync::{
 mod expression;
 #[path = "lock_probe/mod.rs"]
 mod lock_probe;
+
+async fn open_dialect_fixture(dialect: &str, sqlite_path: &Path) -> (String, polyspec_orm::Db, tool_db::Conn) {
+    let dsn = match dialect {
+        "sqlite" => format!("sqlite://{}", sqlite_path.display()),
+        "mysql" => std::env::var("ORM_TOOLS_MYSQL_DSN").expect("MySQL owner fixture DSN"),
+        "postgres" => std::env::var("ORM_TOOLS_POSTGRES_DSN").expect("PostgreSQL owner fixture DSN"),
+        _ => panic!("unsupported row-insert fixture dialect {dialect}"),
+    };
+    let (database, seed, _) = tool_db::open(&dsn).await.expect("fixture connection");
+    (dsn, database, seed)
+}
+
+async fn close_dialect_fixture(
+    catalog: CatalogConnection,
+    mut seed: tool_db::Conn,
+    database: polyspec_orm::Db,
+    table: &str,
+    dialect: &str,
+    drop_message: &str,
+) {
+    catalog.close().await;
+    seed.exec(&format!("DROP TABLE {table}"), &[]).await.expect(drop_message);
+    drop(seed);
+    database.close().await;
+    polyspec_orm_testcase::step(format_args!("{dialect} finished"));
+}
 
 #[tokio::test]
 // Requirements: INT-123.
@@ -50,16 +77,11 @@ async fn sqlite_automatic_primary_key_returns_and_stores_the_inserted_row() {
 async fn typed_catalog_writes_return_declared_temporal_fraction_digits() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);
     let path = std::env::temp_dir().join(format!("orm-catalog-typed-temporal-{}.sqlite", std::process::id()));
-    assert!(!path.exists(), "SQLite fixture path must be unowned before this run");
+    let _fixture = polyspec_orm_testcase::SqliteFile::own(path.clone(), "SQLite fixture path must be unowned before this run");
     let mut failures = Vec::new();
     for dialect in ["sqlite", "mysql", "postgres"] {
         polyspec_orm_testcase::step(format_args!("running {dialect}"));
-        let dsn = match dialect {
-            "sqlite" => format!("sqlite://{}", path.display()),
-            "mysql" => std::env::var("ORM_TOOLS_MYSQL_DSN").expect("MySQL owner fixture DSN"),
-            _ => std::env::var("ORM_TOOLS_POSTGRES_DSN").expect("PostgreSQL owner fixture DSN"),
-        };
-        let (database, mut seed, _) = tool_db::open(&dsn).await.expect("fixture connection");
+        let (dsn, database, mut seed) = open_dialect_fixture(dialect, &path).await;
         let name = format!("orm_typed_temporal_{}", std::process::id());
         let columns = if dialect == "sqlite" {
             "id INTEGER NOT NULL PRIMARY KEY, \
@@ -112,13 +134,8 @@ async fn typed_catalog_writes_return_declared_temporal_fraction_digits() {
         if stored.result.rows != expected {
             failures.push(format!("{dialect}: rejected typed write did not roll back: {:?}", stored.result.rows));
         }
-        catalog.close().await;
-        seed.exec(&format!("DROP TABLE {name}"), &[]).await.expect("remove typed temporal table");
-        drop(seed);
-        database.close().await;
-        polyspec_orm_testcase::step(format_args!("{dialect} finished"));
+        close_dialect_fixture(catalog, seed, database, &name, dialect, "remove typed temporal table").await;
     }
-    std::fs::remove_file(path).expect("remove owned SQLite fixture");
     assert!(failures.is_empty(), "typed catalog temporal write failures: {failures:?}");
 }
 
@@ -131,16 +148,11 @@ async fn generated_keys_return_the_inserted_row_on_each_database() {
 
 async fn check() {
     let path = std::env::temp_dir().join(format!("orm-insert-identity-{}.sqlite", std::process::id()));
-    assert!(!path.exists(), "fixture path must be unowned before this run");
+    let _fixture = polyspec_orm_testcase::SqliteFile::own(path.clone(), "fixture path must be unowned before this run");
     let mut failures = Vec::new();
     for dialect in ["sqlite", "mysql", "postgres"] {
         polyspec_orm_testcase::step(format_args!("running {dialect}"));
-        let dsn = match dialect {
-            "sqlite" => format!("sqlite://{}", path.display()),
-            "mysql" => std::env::var("ORM_TOOLS_MYSQL_DSN").expect("MySQL owner fixture DSN"),
-            _ => std::env::var("ORM_TOOLS_POSTGRES_DSN").expect("PostgreSQL owner fixture DSN"),
-        };
-        let (database, mut seed, _) = tool_db::open(&dsn).await.expect("fixture connection");
+        let (dsn, database, mut seed) = open_dialect_fixture(dialect, &path).await;
         let name = format!("orm_insert_identity_{}", std::process::id());
         let key = match dialect {
             "sqlite" => "INTEGER PRIMARY KEY AUTOINCREMENT",
@@ -204,13 +216,8 @@ async fn check() {
         }
         seed.exec(&format!("DROP TABLE {default_name}"), &[]).await.expect("remove default composite-key fixture");
         failures.extend(expression::check(&mut catalog, &mut seed, &table, &name, dialect).await);
-        catalog.close().await;
-        seed.exec(&format!("DROP TABLE {name}"), &[]).await.expect("remove owned table, even after a behavioral Red");
-        drop(seed);
-        database.close().await;
-        polyspec_orm_testcase::step(format_args!("{dialect} finished"));
+        close_dialect_fixture(catalog, seed, database, &name, dialect, "remove owned table, even after a behavioral Red").await;
     }
-    std::fs::remove_file(path).expect("remove owned SQLite fixture");
     assert!(failures.is_empty(), "generated identity failures: {failures:?}");
 }
 

@@ -2,6 +2,7 @@
 the columns, with SQLite refusing the predicate (DIA-187)."""
 
 import unittest
+from packages.python.tests import testcase
 
 from polyspec.orm import codes
 from polyspec.orm.bind_check import fulltext_boolean, transform_param
@@ -56,4 +57,4 @@ class FulltextSearchTest(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    testcase.main()

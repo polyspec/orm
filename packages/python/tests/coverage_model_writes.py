@@ -1,7 +1,8 @@
 # model_writes coverage uses CompositeAccount for CRUD and seeded Author.read_count for arithmetic.
 # The arithmetic case rolls back its updates to preserve the seeded row and identity sequence.
 
-from polyspec.ordered_json import parse as parse_json, stringify as stringify_json
+from polyspec.ordered_json import parse as parse_json
+from polyspec.ordered_json import stringify as stringify_json
 from polyspec.orm import OrmError, StyledValue, codes
 from polyspec.orm.models import models
 
@@ -93,7 +94,9 @@ def model_write_cycle(item):
                 expect_equal(row is not None, True, "seed author row 1 exists")
                 row.set_json_setting(StyledValue.value(parse_json(text))).update()
                 stored = models.Author().connect(_db).add_all_columns().get_by_seq(1)
-                expect_equal(stored is not None, True, "seed author row 1 remains after update")
+                expect_equal(
+                    stored is not None, True, "seed author row 1 remains after update"
+                )
                 expect_equal(
                     stringify_json(stored.get_json_setting().payload()),
                     text,
@@ -104,23 +107,47 @@ def model_write_cycle(item):
             try:
                 _db.transaction(ordered_json_probe, {"retry": 0})
             except RuntimeError as error:
-                expect_equal(error is rollback, True, "ordered JSON probe rolls back its row update")
+                expect_equal(
+                    error is rollback,
+                    True,
+                    "ordered JSON probe rolls back its row update",
+                )
             else:
-                raise AssertionError("ordered JSON text probe transaction unexpectedly committed")
+                raise AssertionError(
+                    "ordered JSON text probe transaction unexpectedly committed"
+                )
 
             codec_rollback = RuntimeError("rollback codec columns probe")
 
             def codec_column_probe():
                 row = models.Author().connect(_db).add_all_columns().get_by_seq(1)
-                expect_equal(row is not None, True, "seed author row 1 exists for codec columns")
-                row.set_ip("10.0.0.1").set_gz_extend(StyledValue.value("compressed text"))
+                expect_equal(
+                    row is not None, True, "seed author row 1 exists for codec columns"
+                )
+                row.set_ip("10.0.0.1").set_gz_extend(
+                    StyledValue.value("compressed text")
+                )
                 row.set_base64_extra(StyledValue.value("plain")).update()
                 stored = models.Author().connect(_db).add_all_columns().get_by_seq(1)
-                expect_equal(stored is not None, True, "author row remains after codec update")
+                expect_equal(
+                    stored is not None, True, "author row remains after codec update"
+                )
                 expect_equal(stored.get_ip(), "10.0.0.1", "ip codec column round trip")
-                expect_equal(stored.get_gz_extend().payload(), "compressed text", "gz codec column round trip")
-                expect_equal(stored.get_base64_extra().payload(), "plain", "base64 codec column round trip")
-                expect_equal(models.Author().connect(_db).ip("10.0.0.1").get_count(), 1, "ip codec equality")
+                expect_equal(
+                    stored.get_gz_extend().payload(),
+                    "compressed text",
+                    "gz codec column round trip",
+                )
+                expect_equal(
+                    stored.get_base64_extra().payload(),
+                    "plain",
+                    "base64 codec column round trip",
+                )
+                expect_equal(
+                    models.Author().connect(_db).ip("10.0.0.1").get_count(),
+                    1,
+                    "ip codec equality",
+                )
                 expect_equal(
                     error_code(lambda: stored.set_ip("10. 0.0.1").update()),
                     "CODEC_ENCODE",
@@ -131,14 +158,27 @@ def model_write_cycle(item):
             try:
                 _db.transaction(codec_column_probe, {"retry": 0})
             except RuntimeError as error:
-                expect_equal(error is codec_rollback, True, "codec columns probe rolls back its row update")
+                expect_equal(
+                    error is codec_rollback,
+                    True,
+                    "codec columns probe rolls back its row update",
+                )
             else:
-                raise AssertionError("codec columns probe transaction unexpectedly committed")
+                raise AssertionError(
+                    "codec columns probe transaction unexpectedly committed"
+                )
 
         # A failed run leaves no row of this case either.
         with_cleanup(body, lambda: account().tenant_id(TENANT).gets().delete())
 
-    run_on_empty_tenant(models, item, TENANT, case)
+    run_on_empty_tenant(
+        models,
+        item,
+        TENANT,
+        case,
+        aes_key="bench-salt",
+        blind_index_key="bench-blind-index",
+    )
     optimistic_update(item)
 
 
@@ -183,8 +223,8 @@ def save_key_dispatch(item):
     sentinel = OrmError(codes.CONFIG, "DSL-109 request hook stopped the write")
 
     def hook(request, _add_param, _params):
-        if request.kind in ("insert", "update"):
-            writes.append(request.kind)
+        if request["kind"] in ("insert", "update"):
+            writes.append(request["kind"])
             raise sentinel
         return request
 

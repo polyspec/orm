@@ -113,7 +113,7 @@ final class ConnectionStatementTimeoutNativeTest extends TestCase
             throw new RuntimeException('ORM_TEST_PGBOUNCER_SINGLE_DSN is not set; run make orm-test-servers');
         }
 
-        $holder = Orm::connect($base);
+        $holder = Orm::connect($base, new Config());
         $bounded = null;
         $plain = null;
         $lock = random_int(1, 2147483647);
@@ -137,7 +137,7 @@ final class ConnectionStatementTimeoutNativeTest extends TestCase
                 'the bounded native connection is usable after cancellation'
             );
 
-            $plain = Orm::connect($single);
+            $plain = Orm::connect($single, new Config());
             // Both native client sessions reuse the same bound query in repeated transactions through PgBouncer.
             for ($i = 0; $i < 6; $i++) {
                 $boundedRows = $bounded->transaction(

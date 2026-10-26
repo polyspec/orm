@@ -18,6 +18,15 @@ fn error() -> sqlx::Error {
 fn error_with(error: impl std::fmt::Display) -> sqlx::Error {
     sqlx::Error::Decode(format!("TOOL_QUERY_LIMIT: invalid or exceeded result budget: {error}").into())
 }
+
+fn check_row_count(limits: QueryLimits, count: usize) -> Result<(), sqlx::Error> {
+    if count >= limits.max_rows {
+        Err(error())
+    } else {
+        Ok(())
+    }
+}
+
 pub(super) struct Budget {
     limits: QueryLimits,
     bytes: usize,
@@ -65,11 +74,7 @@ impl ValueBudget {
         Ok(Self { limits, bytes: 0 })
     }
     pub(super) fn check_row_count(&self, count: usize) -> Result<(), sqlx::Error> {
-        if count >= self.limits.max_rows {
-            Err(error())
-        } else {
-            Ok(())
-        }
+        check_row_count(self.limits, count)
     }
     pub(super) fn add_row<T: CellSize>(&mut self, row: &[T], _count: usize) -> Result<(), sqlx::Error> {
         let size = row.iter().try_fold(0usize, |bytes, value| bytes.checked_add(value.size_bytes()).filter(|total| *total <= self.limits.max_bytes));
@@ -87,11 +92,7 @@ impl Budget {
         Ok(Self { limits, bytes: 2 })
     }
     pub(super) fn check_row_count(&self, count: usize) -> Result<(), sqlx::Error> {
-        if count >= self.limits.max_rows {
-            Err(error())
-        } else {
-            Ok(())
-        }
+        check_row_count(self.limits, count)
     }
     pub(super) fn add_row<T: serde::Serialize>(&mut self, row: &[T], count: usize) -> Result<(), sqlx::Error> {
         let mut writer = Counter { bytes: self.bytes + usize::from(count > 0), limit: self.limits.max_bytes };

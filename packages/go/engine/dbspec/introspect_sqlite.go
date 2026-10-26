@@ -28,7 +28,7 @@ var (
 	sqliteCheckItem       = regexp.MustCompile(`^CONSTRAINT "([^"]+)" CHECK \((.*)\)$`)
 	sqlitePrimaryKeyItem  = regexp.MustCompile(`^PRIMARY KEY \(([^)]*)\)$`)
 	sqliteIdentityColumn  = regexp.MustCompile(`^"([^"]+)" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT$`)
-	sqliteColumnItem      = regexp.MustCompile(`^"([^"]+)" `)
+	sqliteColumnItem      = regexp.MustCompile(`^(?:"([^"]+)"|([A-Za-z_][A-Za-z0-9_]*)) `)
 	sqliteConstraintItem  = regexp.MustCompile(`^(?:CONSTRAINT "([^"]+)" )?(CHECK|UNIQUE|FOREIGN KEY|PRIMARY KEY)\b`)
 	sqliteNumberDefault   = regexp.MustCompile(`^-?\d+(\.\d+)?$`)
 )
@@ -310,7 +310,12 @@ func parseSQLiteTable(text string) (*sqliteTable, []Unsupported) {
 			unsupported = append(unsupported, Unsupported{Kind: kind, Name: m[1], Reason: fmt.Sprintf("the table item %q has no dbspec definition", item)})
 		case sqliteColumnItem.MatchString(item):
 			// Its definition is read by pragma_table_xinfo, and the text is checked to be in renderer form.
-			st.columns[sqliteColumnItem.FindStringSubmatch(item)[1]] = item
+			m := sqliteColumnItem.FindStringSubmatch(item)
+			name := m[1]
+			if name == "" {
+				name = m[2]
+			}
+			st.columns[name] = item
 		default:
 			st.unsupported = fmt.Sprintf("the table item %q has no dbspec definition", item)
 			return st, nil
@@ -358,7 +363,11 @@ func unquoteList(text string) []string {
 // It is false if there is any other clause (CHECK, REFERENCES, UNIQUE, COLLATE, and so on). SQLite
 // reports a type name that is a keyword in uppercase, so types are compared without regard to case.
 func sqliteColumnText(item, name, declared string, notNull bool, dflt sql.NullString) bool {
-	rest, ok := strings.CutPrefix(item, `"`+name+`" `)
+	prefix := `"` + name + `" `
+	if !strings.HasPrefix(item, prefix) {
+		prefix = name + " "
+	}
+	rest, ok := strings.CutPrefix(item, prefix)
 	if !ok || len(rest) < len(declared) || !strings.EqualFold(rest[:len(declared)], declared) {
 		return false
 	}

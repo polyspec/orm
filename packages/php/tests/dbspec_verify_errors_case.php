@@ -16,13 +16,7 @@ use Throwable;
 /** The create-from-empty plan of tests/dbspec/plans.json. */
 function verify_errors_plan(): array
 {
-    $vectors = json_decode(
-        file_get_contents(dirname(__DIR__, 3) . '/tests/dbspec/plans.json'),
-        true,
-        512,
-        JSON_THROW_ON_ERROR
-    );
-    foreach ($vectors['cases'] as $case) {
+    foreach (plan_vectors()['cases'] as $case) {
         if ($case['id'] === 'create-from-empty') {
             $parsed = Dbspec::parsePlan(implode("\n", $case['plan']) . "\n");
             return [$parsed->plan ?? throw new RuntimeException(

@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
-require_once __DIR__ . '/CatalogMysqlVisibilityPdo.php';
-
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\Catalog;

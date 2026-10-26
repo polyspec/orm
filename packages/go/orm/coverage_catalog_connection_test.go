@@ -104,7 +104,7 @@ func TestCoverageCatalogRead(t *testing.T) {
 	}
 	_, dsn := featureDatabase(t)
 	metadataName := fmt.Sprintf("catalog_metadata_%d", os.Getpid())
-	metadataRaw := catalogProbe(t, driver, dsn, metadataName,
+	catalogProbe(t, driver, dsn, metadataName,
 		"CREATE TABLE "+metadataName+" (a BIGINT NOT NULL, b BIGINT NOT NULL, note VARCHAR(50), g BIGINT GENERATED ALWAYS AS (a+1) STORED, PRIMARY KEY (b,a))")
 	metadata, err := c.DescribeTable(ctx, orm.CatalogTableRef{Namespace: meta.Table.Namespace, Name: metadataName})
 	if err != nil {
@@ -147,8 +147,12 @@ func TestCoverageCatalogRead(t *testing.T) {
 	if len(page.Result.Rows) != 3 {
 		t.Fatalf("%s: author page rows %d, want 3", driver, len(page.Result.Rows))
 	}
-	if !slices.Equal(page.Result.Columns, names) {
-		t.Fatalf("%s: page columns %v do not match descriptor order %v", driver, page.Result.Columns, names)
+	pageNames := make([]string, len(page.Result.Columns))
+	for i, column := range page.Result.Columns {
+		pageNames[i] = column.Name
+	}
+	if !slices.Equal(pageNames, names) {
+		t.Fatalf("%s: page columns %v do not match descriptor order %v", driver, pageNames, names)
 	}
 	for _, bounds := range []struct {
 		limit  int
@@ -276,7 +280,7 @@ func catalogTemporalDefaultPrecisionCheck(t *testing.T, driver string, c *orm.Ca
 	}
 	t0Value, dt0Value, t3Value, dt3Value := catalogTemporalWriteValues(driver)
 	invalidT3, invalidDT3 := any(time.Date(2026, time.January, 2, 12, 34, 56, 123400000, time.UTC)),
-		time.Date(2026, time.January, 2, 3, 4, 5, 123400000, time.UTC)
+		any(time.Date(2026, time.January, 2, 3, 4, 5, 123400000, time.UTC))
 	if driver == "sqlite" {
 		invalidT3, invalidDT3 = "12:34:56.1234", "2026-01-02 03:04:05.1234"
 	}

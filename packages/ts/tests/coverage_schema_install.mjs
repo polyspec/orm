@@ -2,7 +2,7 @@
 // installing a document set where only some tables exist is rejected as CONFIG, without creating the missing tables.
 import assert from 'node:assert/strict';
 import { Author, Db, SCHEMA, connect, dbspecManifest, parseDbspec } from '../dist/index.js';
-import { runCases, tableExists } from './coverage_case.mjs';
+import { errorCode, runCases, tableExists } from './coverage_case.mjs';
 import { schemaOf } from './schema_of.mjs';
 
 const partial = `dbspec 1 partial
@@ -68,7 +68,7 @@ await runCases('coverage_schema_install.mjs', {
       assert.equal(await new Author().connect(db).getCount(), 100000, 'the installed tables keep their rows');
       if (driver === 'mysql') {
         let inside;
-        await db.transaction(async () => { inside = await code(db.utils().schema().install(SCHEMA)); });
+        await db.transaction(async () => { inside = await errorCode(db.utils().schema().install(SCHEMA)); });
         assert.equal(inside, 'CONFIG', 'MySQL install inside a transaction returns CONFIG');
       }
     });

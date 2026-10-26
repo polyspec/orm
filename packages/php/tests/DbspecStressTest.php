@@ -6,7 +6,7 @@ namespace Polyspec\Orm\Tests;
 
 // The shared 2000-table, 60000-column, 10000-foreign-key document from
 // tests/dbspec/stress.mts: parse and emit times, emit(parse(doc)) === doc and
-// two identical emissions, under the configured memory_limit.
+// two identical emissions, under a 512 MiB memory_limit.
 
 use RuntimeException;
 use PHPUnit\Framework\Assert;
@@ -33,6 +33,9 @@ final class DbspecStressTest extends TestCase
     // Requirements: DBS-123.
     public function testStress(): void
     {
+        if (ini_set('memory_limit', '512M') === false) {
+            throw new RuntimeException('the dbspec stress benchmark requires its declared 512M memory_limit');
+        }
         // The CPU baseline for the stress case is 60 s. It covers document creation (one node process), five parses,
         // and two emits. Warns if exceeded.
         $clock = cpuCaseBegin(60.0);

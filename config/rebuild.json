@@ -346,6 +346,10 @@
       "kind": "policy",
       "reason": "the --only selection of the documentation rules check of this repository, which runs the implementation count rule alone"
     },
+    "scripts/docs/implementation-count.mts": {
+      "kind": "policy",
+      "reason": "the documentation rule of this repository that checks client-count statements against the declared implementations; it rebuilds no tool"
+    },
     "scripts/features/behavior-adapters.mts": {
       "kind": "policy",
       "reason": "the rule of this repository that a checklist item is not completed while one of its behavior adapters is unresolved; no ecosystem tool reads the checklist and the interface contracts"

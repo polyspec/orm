@@ -87,6 +87,14 @@ caseTest('Flowmark source installation fetches the full Go module origin hash', 
     assert.throws(
       () => installFlowmarkSource(destination, hash.slice(0, 12), {
         repository: source.root,
+        moduleJson: JSON.stringify({ Path: 42 }),
+        version: source.version,
+      }),
+      /returned invalid module metadata/,
+    );
+    assert.throws(
+      () => installFlowmarkSource(destination, hash.slice(0, 12), {
+        repository: source.root,
         moduleJson: JSON.stringify({ ...module, Origin: { ...module.Origin, Hash: '0'.repeat(40) } }),
         version: source.version,
       }),

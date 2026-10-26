@@ -173,7 +173,7 @@ func open(tb testing.TB) *sql.DB {
 
 const (
 	pkSQL      = "SELECT " + listCols + " FROM `author` AS `a` WHERE `a`.`seq` = ? LIMIT 0, 1"
-	list100SQL = "SELECT " + listCols + " FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ? ORDER BY `a`.`seq` DESC LIMIT 0, 100"
+	list100SQL = "SELECT " + listCols + " FROM `author` AS `a` WHERE `a`.`service_seq` = ? AND `a`.`is_close` = ? ORDER BY `a`.`seq` DESC LIMIT ?, ?"
 )
 
 func pkGet(ctx context.Context, db *sql.DB, seq int64) (_ *author, err error) {
@@ -193,7 +193,7 @@ func pkGet(ctx context.Context, db *sql.DB, seq int64) (_ *author, err error) {
 }
 
 func list100(ctx context.Context, db *sql.DB, serviceSeq int64) (_ []author, err error) {
-	rows, err := prep(db, list100SQL).QueryContext(ctx, serviceSeq, 0)
+	rows, err := prep(db, list100SQL).QueryContext(ctx, serviceSeq, 0, 0, 100)
 	if err != nil {
 		return nil, err
 	}

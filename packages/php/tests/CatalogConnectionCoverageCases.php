@@ -6,6 +6,8 @@ namespace Polyspec\Orm\Tests;
 
 use Polyspec\Orm\Catalog;
 use Polyspec\Orm\CatalogGridCell;
+use Polyspec\Orm\CatalogTablePage;
+use Polyspec\Orm\Codec;
 use Polyspec\Orm\Code;
 use Polyspec\Orm\Config;
 use Polyspec\Orm\Orm;
@@ -54,7 +56,8 @@ trait CatalogConnectionCoverageCases
             : $this->quote($namespace) . '.' . $this->quote($name);
     }
 
-    // Requirements: SCH-3, SCH-5, SCH-6, SCH-6a, INT-101, INT-103, INT-104, INT-112, INT-113, INT-114, INT-115, INT-121, INT-136, INT-117.
+    // Requirements: SCH-3, SCH-5, SCH-6, SCH-6a, INT-101, INT-103, INT-104.
+    // Requirements: INT-112, INT-113, INT-114, INT-115, INT-121, INT-136, INT-117.
     public function testCatalogRead(): void
     {
         $this->assertCatalogConnectionInputs();
@@ -65,32 +68,43 @@ trait CatalogConnectionCoverageCases
         self::assertTrue($meta->reliableRowIdentity);
         $metadataColumns = 'a BIGINT NOT NULL, b BIGINT NOT NULL, note VARCHAR(50), '
             . 'g BIGINT GENERATED ALWAYS AS (a+1) STORED, PRIMARY KEY (b,a)';
-        $this->withTemporaryCatalogTable('catalog_metadata_', $metadataColumns, function (string $namespace, string $name): void {
-            $metadata = $this->catalog->describeTable(['namespace' => $namespace, 'name' => $name]);
-            $columns = $metadata->columns;
-            $nativeTypes = array_map(static fn ($column): string => $column->nativeType, $columns);
-            $wantNativeTypes = match ($this->driver) {
-                'mysql' => ['bigint', 'bigint', 'varchar(50)', 'bigint'],
-                'postgres' => ['bigint', 'bigint', 'character varying(50)', 'bigint'],
-                'sqlite' => ['BIGINT', 'BIGINT', 'VARCHAR(50)', 'BIGINT'],
-            };
-            self::assertSame(['a', 'b', 'note', 'g'], array_map(static fn ($column): string => $column->name, $columns));
-            self::assertSame($wantNativeTypes, $nativeTypes);
-            self::assertSame(['b', 'a'], $metadata->primaryKey);
-            self::assertTrue($columns[2]->nullable);
-            self::assertTrue($columns[3]->generated);
-            self::assertTrue($metadata->reliableRowIdentity);
-        });
+        $this->withTemporaryCatalogTable(
+            'catalog_metadata_',
+            $metadataColumns,
+            function (string $namespace, string $name): void {
+                $metadata = $this->catalog->describeTable(['namespace' => $namespace, 'name' => $name]);
+                $columns = $metadata->columns;
+                $nativeTypes = array_map(static fn ($column): string => $column->nativeType, $columns);
+                $wantNativeTypes = match ($this->driver) {
+                    'mysql' => ['bigint', 'bigint', 'varchar(50)', 'bigint'],
+                    'postgres' => ['bigint', 'bigint', 'character varying(50)', 'bigint'],
+                    'sqlite' => ['BIGINT', 'BIGINT', 'VARCHAR(50)', 'BIGINT'],
+                };
+                self::assertSame(
+                    ['a', 'b', 'note', 'g'],
+                    array_map(static fn ($column): string => $column->name, $columns),
+                );
+                self::assertSame($wantNativeTypes, $nativeTypes);
+                self::assertSame(['b', 'a'], $metadata->primaryKey);
+                self::assertTrue($columns[2]->nullable);
+                self::assertTrue($columns[3]->generated);
+                self::assertTrue($metadata->reliableRowIdentity);
+            },
+        );
         $page = $this->catalog->tablePage($author, 3, 0);
         self::assertSame(['seq'], $page->orderBy);
         self::assertTrue($page->hasMore);
         self::assertCount(3, $page->result->rows);
-        self::assertSame(array_map(static fn ($column): string => $column->name, $meta->columns), $page->result->columns);
+        self::assertSame(
+            array_map(static fn ($column): string => $column->name, $meta->columns),
+            $page->result->columns,
+        );
         foreach ([[0, 0], [1001, 0], [1, 1000001]] as [$limit, $offset]) {
             try {
                 $this->catalog->tablePage($author, $limit, $offset);
                 self::fail("table page accepted limit {$limit} offset {$offset}");
-            } catch (OrmException) {
+            } catch (OrmException $error) {
+                self::assertSame(Code::TABLE_PAGE_INVALID, $error->code_);
             }
         }
         $count = $this->catalog->readOnlyQuery('SELECT COUNT(*) FROM ' . $this->quote('user'), []);
@@ -102,11 +116,16 @@ trait CatalogConnectionCoverageCases
             try {
                 $setup->pdo()->exec('CREATE TABLE ' . $this->quote($name) . ' (n INTEGER NOT NULL)');
                 $setup->pdo()->exec('INSERT INTO ' . $this->quote($name) . ' VALUES (7)');
-                $setup->pdo()->exec('CREATE FUNCTION ' . $this->quote($function) . '() RETURNS INTEGER DETERMINISTIC MODIFIES SQL DATA BEGIN UPDATE ' . $this->quote($name) . ' SET n=n+1; RETURN 1; END');
+                $setup->pdo()->exec(
+                    'CREATE FUNCTION ' . $this->quote($function)
+                    . '() RETURNS INTEGER DETERMINISTIC MODIFIES SQL DATA BEGIN UPDATE '
+                    . $this->quote($name) . ' SET n=n+1; RETURN 1; END',
+                );
                 try {
                     $this->catalog->readOnlyGridQuery('SELECT ' . $this->quote($function) . '()', []);
                     self::fail('a database-enforced read-only scope allowed a function to write');
-                } catch (OrmException) {
+                } catch (OrmException $error) {
+                    self::assertSame(Code::QUERY_READ_ONLY, $error->code_);
                 }
             } finally {
                 $setup->pdo()->exec('DROP FUNCTION IF EXISTS ' . $this->quote($function));
@@ -118,11 +137,15 @@ trait CatalogConnectionCoverageCases
                 ? "SELECT current_setting('transaction_read_only')"
                 : 'SELECT query_only FROM pragma_query_only';
             $readOnlyState = $this->catalog->readOnlyQuery($readOnlySQL, []);
-            self::assertSame($this->driver === 'postgres' ? 'on' : 1, $readOnlyState->rows[0][0]);
+            self::assertSame(
+                $this->driver === 'postgres' ? 'on' : 1,
+                $readOnlyState->rows[0][0],
+            );
         }
         if ($this->driver === 'mysql') {
             $classification = $this->catalog->readOnlyQuery(
-                "SELECT TABLE_TYPE FROM information_schema.TABLES WHERE TABLE_SCHEMA = 'information_schema' AND TABLE_NAME = 'TABLES'",
+                "SELECT TABLE_TYPE FROM information_schema.TABLES WHERE TABLE_SCHEMA = 'information_schema' "
+                . "AND TABLE_NAME = 'TABLES'",
                 []
             );
             self::assertSame('SYSTEM VIEW', $classification->rows[0][0]);
@@ -134,8 +157,8 @@ trait CatalogConnectionCoverageCases
         }
         foreach (
             [
-            [['maxRows' => 1, 'maxBytes' => 1024], "SELECT 'abc' AS value UNION ALL SELECT 'def'"],
-            [['maxRows' => 2, 'maxBytes' => 2], "SELECT 'abc' AS value"],
+                [['maxRows' => 1, 'maxBytes' => 1024], "SELECT 'abc' AS value UNION ALL SELECT 'def'"],
+                [['maxRows' => 2, 'maxBytes' => 2], "SELECT 'abc' AS value"],
             ] as [$limits, $sql]
         ) {
             try {
@@ -155,7 +178,12 @@ trait CatalogConnectionCoverageCases
         } catch (OrmException $e) {
             self::assertSame(Code::QUERY_READ_ONLY, $e->code_);
         }
-        foreach (["SELECT ';' AS value /* ; */", 'WITH values_cte AS (SELECT 1 AS value) SELECT value FROM values_cte'] as $sql) {
+        foreach (
+            [
+                "SELECT ';' AS value /* ; */",
+                'WITH values_cte AS (SELECT 1 AS value) SELECT value FROM values_cte',
+            ] as $sql
+        ) {
             $this->catalog->readOnlyGridQuery($sql);
         }
         $readOnlyRefusals = [
@@ -207,7 +235,8 @@ trait CatalogConnectionCoverageCases
                 $unexpected = Catalog::connect('sqlite://' . $path);
                 $unexpected->close();
                 self::fail('catalog connection accepted a missing SQLite database');
-            } catch (OrmException) {
+            } catch (OrmException $error) {
+                self::assertSame(Code::CONFIG, $error->code_);
             }
             self::assertFileDoesNotExist($path, 'catalog connection must not create a missing SQLite database');
         } finally {

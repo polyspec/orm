@@ -15,6 +15,7 @@ import (
 // types, the counts sum to the row count, and a SQL NULL group is kept.
 // Requirements: INT-31.
 func TestGroupRowsDatabase(t *testing.T) {
+	testcase.Start(t, testcase.Database)
 	dsn := os.Getenv("BENCH_SQLITE_DSN")
 	if dsn == "" {
 		t.Fatal("BENCH_SQLITE_DSN is required; run it through make run-databases")

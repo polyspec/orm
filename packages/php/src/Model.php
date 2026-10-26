@@ -1136,7 +1136,7 @@ abstract class Model implements \JsonSerializable, ModelMetadata
         switch ($p['kind']) {
             case 'tuple':
                 $out['cols'] = $p['cols'];
-                foreach ($p['value'] as $row) {
+                foreach (Request::padIn($p['value']) as $row) {
                     foreach ($row as $v) {
                         $out['ps'][] = $r->param($v);
                     }

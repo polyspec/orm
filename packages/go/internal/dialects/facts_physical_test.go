@@ -107,11 +107,16 @@ func TestDialectFacts(t *testing.T) {
 	// and DSL-142 (docs/spec).
 	testcase.Group(t)
 	mysqlDSN, postgresDSN := testDSNs(t)
+	privilegeDSN := os.Getenv("ORM_TEST_MYSQL_PRIVILEGE_DSN")
+	if privilegeDSN == "" {
+		t.Fatal("ORM_TEST_MYSQL_PRIVILEGE_DSN is required; run make check-run with dialect-facts-check, which starts the writable MySQL privilege fixture")
+	}
 	probes := All()
 	if err := Validate(probes); err != nil {
 		t.Fatal(err)
 	}
 	servers := openTestServers(t, mysqlDSN, postgresDSN, strconv.Itoa(os.Getpid()))
+	privilegeServers := openTestServers(t, privilegeDSN, postgresDSN, strconv.Itoa(os.Getpid())+"_privilege")
 	for _, db := range []string{"mysql", "postgres"} {
 		if err := servers.Unreachable(db); err != nil {
 			t.Errorf("%s is unreachable; each of its probes fails: %v", db, err)
@@ -122,7 +127,11 @@ func TestDialectFacts(t *testing.T) {
 	started := time.Now()
 	for index, probe := range probes {
 		t.Run(probe.ID, func(t *testing.T) {
-			if runProbeCase(t, servers, probe, index, probe.Fact) {
+			probeServers := servers
+			if probe.ID == "trigger.binlog_privilege_1419" {
+				probeServers = privilegeServers
+			}
+			if runProbeCase(t, probeServers, probe, index, probe.Fact) {
 				counts[probe.DB].passed++
 			} else {
 				counts[probe.DB].failed++

@@ -23,7 +23,7 @@
     "id": "generated-private-field-e0616",
     "expect": "error",
     "code": "E0616",
-    "diagnostic": "field `seq` of struct `Author` is private",
+    "diagnostic": "field `seq` of struct `author::Author` is private",
     "sourceLine": "let _ = row.seq;",
     "source": "polyspec_orm::models!();\nfn main() { let row = model::Author::new().set_seq(17); let _ = row.get_seq(); let _ = row.seq; }\n"
   },

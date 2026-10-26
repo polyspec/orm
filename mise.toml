@@ -3,7 +3,7 @@
 [tools]
 # node is at the pin of kit (K171): make install-tools TOOLS=npm installs it into var/tools, and every check runs it.
 node = "26.12.0"
-go = "1.27.2"
+go = "1.27.3"
 python = "3.14.8"
 uv = "0.13.0"
 ruff = "0.17.1"

@@ -61,7 +61,7 @@ await runCases('coverage_model_writes.mjs', {
   },
   // Requirements: DSL-56, DSL-57, DSL-58, DSL-60, DSL-103, DSL-104, DSL-105, DSL-106, DSL-110, DIA-26, COD-11, COD-12, COD-15, COD-38.
   async model_write_cycle({ driver, dsn }) {
-    const db = await connect(dsn);
+    const db = await connect(dsn, { aesKey: 'bench-salt', blindIndexKey: 'bench-blind-index' });
     try {
       assert.equal(db.driver, driver);
       const account = () => new CompositeAccount().connect(db);

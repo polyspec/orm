@@ -21,17 +21,8 @@ final class OrmExceptionNativeTest extends TestCase
     // Requirements: PRT-77.
     public function testNativeValueFunctionIrCarriesNameAndParameterIndexes(): void
     {
-        $params = ['preceding'];
-        $ir = Orm::secondsAgo(30)->ir(static function (mixed $value) use (&$params): int {
-            $params[] = $value;
-            return count($params) - 1;
-        });
-        Assert::assertSame('{"name":"seconds_ago","ps":[1]}', json_encode($ir, JSON_THROW_ON_ERROR));
-        Assert::assertSame(
-            '{"name":"seconds_ago","ps":[0]}',
-            json_encode(Orm::secondsAgo(30)->ir(static fn(): int => 0), JSON_THROW_ON_ERROR)
-        );
-        Assert::assertSame('{"name":"now"}', json_encode(Orm::now()->ir(static fn(): int => 0), JSON_THROW_ON_ERROR));
+        require_once dirname(__DIR__, 2) . '/php/tests/DsnTest.php';
+        \Polyspec\Orm\Tests\DsnTest::assertValueFunctionIr();
     }
 
     public function testOrmConnectionFactoryIsProvidedByTheExtension(): void

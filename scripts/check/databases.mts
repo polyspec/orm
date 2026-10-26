@@ -465,6 +465,7 @@ if (import.meta.main) {
       const lines = [readFileSync(serversPath, 'utf8').replace(/\n?$/, '\n'),
         `export ORM_BENCH_MYSQL_DSN='${ormBench}'\n`, `export BENCH_MYSQL_DSN='${mysqlBench}'\n`, `export BENCH_POSTGRES_DSN='${postgresBench}'\n`,
         `export BENCH_SQLITE_DSN='${sqliteBench}'\n`,
+        ...(env['ORM_TEST_MYSQL_PRIVILEGE_DSN'] ? [`export ORM_TEST_MYSQL_PRIVILEGE_DSN='${env['ORM_TEST_MYSQL_PRIVILEGE_DSN']}'\n`] : []),
         ...Object.entries(complexQueryEnv).map(([key, value]) => `export ${key}='${value}'\n`),
         // The SQLite file of rust-send-savepoint and of the Rust test of client-db-check (tx::send_tests) is of this run too.
         `export ORM_SEND_SQLITE_DSN='sqlite://${dir}/send-savepoint.sqlite'\n`];

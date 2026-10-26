@@ -30,6 +30,25 @@ class SqliteUnsupportedMessageTest(unittest.TestCase):
             reasons, ['declared type INTEGER with CHECK "" has no dbspec type']
         )
 
+    # Requirements: DIA-191.
+    def test_an_unquoted_column_without_check_is_reported_as_unsupported_column(self):
+        conn = sqlite3.connect(":memory:")
+        conn.execute(
+            'CREATE TABLE "author" ("seq" INTEGER PRIMARY KEY, junk INTEGER NULL)'
+        )
+        result = introspect_dbspec(_Connection(conn), "sqlite", "schema")
+        unsupported = [u for u in result["unsupported"] if u["name"] == "junk"]
+        self.assertEqual(
+            [(u["kind"], u["table"], u["reason"]) for u in unsupported],
+            [
+                (
+                    "column",
+                    "author",
+                    'declared type INTEGER with CHECK "" has no dbspec type',
+                )
+            ],
+        )
+
 
 if __name__ == "__main__":
     testcase.main()

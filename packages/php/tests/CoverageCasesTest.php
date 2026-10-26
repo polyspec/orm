@@ -8,6 +8,8 @@ declare(strict_types=1);
 
 namespace Polyspec\Orm\Tests;
 
+require_once dirname(__DIR__) . '/testing/conformance/runner_functions.php';
+
 use DateTimeZone;
 use PDO;
 use PDOStatement;
@@ -36,6 +38,20 @@ final class CoverageCasesTest extends TestCase
             iterator_to_array(coverageDatabaseDrivers()),
             'coverage database cases'
         );
+    }
+
+    public function testGeneratedIdentityMaskUsesOnlyTheObservedIdentity(): void
+    {
+        $GLOBALS['maskSeqs'] = [];
+        try {
+            \maskGeneratedSequence('900005');
+            self::assertSame('$SEQ', \norm(900005));
+            self::assertSame(900004, \norm(900004));
+            $this->expectException(RuntimeException::class);
+            \maskGeneratedSequence(false);
+        } finally {
+            $GLOBALS['maskSeqs'] = [];
+        }
     }
 
     public function testEntryClassAssertionAllowsLibraryMode(): void

@@ -649,7 +649,7 @@ fn a_call_on_a_class_of_another_set_is_not_this_sets_call() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let text = generate_with_schema(
         bench(),
-        r#"mod main_set { include!(concat!(env!("CARGO_MANIFEST_DIR"), "/main/orm_model.rs")); }
+        r#"mod main_set { include!("main/orm_model.rs"); }
 mod requests { include!("../out/orm_model.rs"); }
 use main_set::Author;
 use crate::main_set::{User as MainUser};

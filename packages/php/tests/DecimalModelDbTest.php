@@ -73,7 +73,12 @@ final class DecimalModelDbTest extends TestCase
 
     public static function tearDownAfterClass(): void
     {
-        if (self::$generated !== null) {
+        self::cleanupGenerated();
+    }
+
+    private static function cleanupGenerated(): void
+    {
+        if (self::$generated !== null && is_dir(self::$generated)) {
             self::remove(self::$generated);
         }
     }
@@ -169,12 +174,19 @@ final class DecimalModelDbTest extends TestCase
         if ($path === false) {
             throw new RuntimeException('cannot create the private decimal SQLite database file');
         }
+        $generatedBefore = self::$generated;
         try {
             self::roundTripAt($test, 'sqlite', 'sqlite://' . $path);
         } finally {
-            foreach ([$path, $path . '-wal', $path . '-shm'] as $file) {
-                if (file_exists($file) && !unlink($file)) {
-                    throw new RuntimeException("cannot remove the private decimal SQLite file $file");
+            try {
+                if ($generatedBefore === null) {
+                    self::cleanupGenerated();
+                }
+            } finally {
+                foreach ([$path, $path . '-wal', $path . '-shm'] as $file) {
+                    if (file_exists($file) && !unlink($file)) {
+                        throw new RuntimeException("cannot remove the private decimal SQLite file $file");
+                    }
                 }
             }
         }

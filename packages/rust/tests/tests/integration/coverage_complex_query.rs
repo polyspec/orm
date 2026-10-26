@@ -123,7 +123,8 @@ async fn coverage_complex_query_product_search() {
         let driver =
             std::env::var("ORM_FEATURE_DATABASE").expect("ORM_FEATURE_DATABASE is required; run through make feature-check, which selects each database");
         assert!(matches!(driver.as_str(), "mysql" | "postgres" | "sqlite"), "unknown fixture driver {driver:?}");
-        let dsn = std::env::var("ORM_FEATURE_DSN").expect("ORM_FEATURE_DSN is required; connect to the seeded CPX owner database");
+        let dsn =
+            std::env::var("ORM_FEATURE_DSN").expect("ORM_FEATURE_DSN is required; run make feature-check, which supplies the selected CPX owner database DSN");
         assert!(!dsn.is_empty(), "ORM_FEATURE_DSN is empty");
         let fixture: Fixture = serde_json::from_str(FIXTURE).expect("shared complex-query fixture");
         let db = model::connect(&dsn, 4, polyspec_orm::Config::default()).await.unwrap();

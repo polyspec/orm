@@ -9,6 +9,7 @@
         "php-extension-tools"
       ],
       "inputs": [
+        "Makefile",
         "packages/php/src/Collection.php",
         "packages/php/tests/CollectionIdentityTest.php",
         "packages/php/tests/CollectionIdentityCases.php",
@@ -36,6 +37,8 @@
         "composer"
       ],
       "inputs": [
+        "Makefile",
+        "tests/repo/pinned-node-recipes.test.mts",
         "packages/php/src/Collection.php",
         "packages/php/tests/phpstan/CollectionGet.php"
       ]
@@ -148,10 +151,6 @@
       "needs": []
     },
     "link-state-check": {
-      "scope": "suite",
-      "needs": []
-    },
-    "polyspec-lock-check": {
       "scope": "suite",
       "needs": []
     },
@@ -497,6 +496,7 @@
       ],
       "inputs": [
         "scripts/docs/markdown-table.mts",
+        "scripts/docs/markdown-tables.mts",
         "scripts/docs/flowmark-source.mts",
         "Makefile",
         "tests/markdown/flowmark.version",
@@ -1672,7 +1672,8 @@
       "scope": "owner",
       "needs": [
         "go",
-        "databases"
+        "databases",
+        "mysql-privilege-server"
       ],
       "inputs": [
         "packages/go/internal/dialects/probe.go",
@@ -1863,7 +1864,9 @@
         "databases"
       ],
       "inputs": [
+        "Makefile",
         "packages/php/tests/DbspecIntrospectTest.php",
+        "packages/php/tests/DbspecCatalogChecksTest.php",
         "packages/php/tests/dbspec_cases.php"
       ]
     },
@@ -1911,6 +1914,7 @@
         "config/parity.json",
         "Makefile",
         "packages/go/engine/dbspec/introspect.go",
+        "packages/go/engine/dbspec/introspect_sqlite.go",
         "packages/go/engine/dbspec/introspect_query_count_test.go",
         "packages/php/src/Dbspec/CatalogRows.php",
         "packages/php/tests/CountingPdo.php",
@@ -2180,6 +2184,7 @@
         "databases"
       ],
       "inputs": [
+        "Makefile",
         "packages/go/internal/dialects/introspect_compare_physical_test.go",
         "packages/rust/orm/examples/dbspec_introspect.rs",
         "tests/dbspec/stress.mts",
@@ -2933,6 +2938,7 @@
         "databases"
       ],
       "inputs": [
+        "Makefile",
         "packages/go/internal/dialects/apply_clients_physical_test.go",
         "packages/rust/orm/examples/dbspec_apply.rs",
         "packages/go/internal/dbspec/apply/**",
@@ -3484,13 +3490,17 @@
         "packages/php/tests/bootstrap.php",
         "packages/php/tests/CatalogPageValidationTest.php",
         "packages/php/tests/CatalogMysqlVisibilityPdo.php",
+        "packages/php/tests/CatalogMysqlVisibilityStatement.php",
+        "packages/php/tests/CatalogMysqlVisibilityCases.php",
         "packages/php/tests/UninitializedRecordingPdo.php",
         "packages/php/tests/CatalogConnectionCoverageCases.php",
         "packages/php/tests/StatementEventsCoverageCases.php",
         "packages/php/tests/CoverageSchemaDefinitionTest.php",
         "packages/php/tests/coverage_cases.php",
         "packages/php/tests/statement_events_run.php",
-        "packages/php-ext/tests/CatalogConnectionSurfaceTest.php"
+        "packages/php-ext/tests/CatalogConnectionSurfaceTest.php",
+        "packages/php-ext/tests/CatalogPageMutationPdo.php",
+        "packages/php-ext/tests/CatalogPageMutationStatement.php"
       ]
     },
     "native-arginfo-php-extension-check": {

@@ -78,8 +78,10 @@ caseTest('commentsByFile splits block comments and removes fixtures after tokeni
   assert.deepEqual(comments.map(comment => comment.line), [2, 3, 4]);
 
   const before = (await readdir(tmpdir())).filter(name => name.startsWith('orm-comments-')).sort();
+  const firstCase = cases.at(0);
+  if (firstCase === undefined) throw new Error('comment failure fixture is missing');
   await assert.rejects(
-    commentFixtures([cases[0]!], async () => { throw new Error('tokenizer failure'); }),
+    commentFixtures([firstCase], async () => { throw new Error('tokenizer failure'); }),
     /tokenizer failure/,
   );
   const after = (await readdir(tmpdir())).filter(name => name.startsWith('orm-comments-')).sort();

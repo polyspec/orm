@@ -7,7 +7,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { test } from 'node:test';
+import { caseTest, PROCESS } from '../../tests/testcase.mts';
 
 const root = resolve(import.meta.dirname, '../..');
 const script = join(root, 'scripts/typescript/node-min.mts');
@@ -31,7 +31,7 @@ const floor = (): string => {
   return floorVersion;
 };
 
-test('node-min prints the bin of the engines floor that mise installs, and downloads nothing', () => {
+caseTest('node-min prints the bin of the engines floor that mise installs, and downloads nothing', PROCESS, () => {
   const version = floor();
   const expected = join(execFileSync(mise, ['where', `node@${version}`], { cwd: root, encoding: 'utf8' }).trim(), 'bin');
   const work = mkdtempSync(join(tmpdir(), 'node-min-test-'));

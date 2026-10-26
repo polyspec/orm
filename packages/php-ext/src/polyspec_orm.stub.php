@@ -998,6 +998,8 @@ final class PgsqlPdoAdapter extends \Pdo\Pgsql
     public function setAttribute(int $attribute, mixed $value): bool {}
     public function errorCode(): ?string {}
     public function errorInfo(): array {}
+    /** @internal */
+    public function reportError(\PDOException $error): void {}
     public function escapeIdentifier(string $input): string {}
     public function getPid(): int {}
     public function getNotify(int $fetchMode = \PDO::FETCH_DEFAULT, int $timeoutMilliseconds = 0): array|false {}

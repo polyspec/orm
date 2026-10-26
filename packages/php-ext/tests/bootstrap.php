@@ -33,6 +33,8 @@ require_once dirname(__DIR__, 2) . '/php/tests/dbspec_verify_errors_case.php';
 // class per file (PSR-1).
 require_once dirname(__DIR__, 2) . '/php/tests/SchemaSetTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/CoverageSchemaDefinitionTest.php';
+require_once __DIR__ . '/CatalogPageMutationPdo.php';
+require_once __DIR__ . '/CatalogPageMutationStatement.php';
 require_once dirname(__DIR__, 2) . '/php/tests/DecimalModelDbTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/CoverageRequestHookTest.php';
 require_once dirname(__DIR__, 2) . '/php/tests/AggregateNumericTest.php';

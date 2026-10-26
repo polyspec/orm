@@ -457,7 +457,9 @@ caseTest('the SQLite Rust test recipe gives Kit one libtest thread option', PROC
     });
     assert.equal(output.code, 0, output.text);
     assert.match(output.text, /1 passed, 0 failed/);
-    const actual = JSON.parse(readFileSync(argumentsFile, 'utf8')) as string[];
+    const parsed: unknown = JSON.parse(readFileSync(argumentsFile, 'utf8'));
+    if (!isStringArray(parsed)) throw new Error('cargo test arguments fixture is not a string array');
+    const actual = parsed;
     const harness = actual.slice(actual.indexOf('--') + 1);
     assert.deepEqual(harness, ['--test-threads=1', '--exact']);
     assert.equal(actual.filter(argument => argument === '--test-threads=1').length, 1);
@@ -466,12 +468,17 @@ caseTest('the SQLite Rust test recipe gives Kit one libtest thread option', PROC
   }
 });
 
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item: unknown) => typeof item === 'string');
+}
+
 // The CHECK_TARGETS case checks the repository's workflow and Makefile, and the minimal workflow.
 caseTest('the CI workflow runs every target of CHECK_TARGETS once', COMPUTE, () => {
   const targets = checkTargets(text('Makefile'));
-  for (const target of ['ts-min-check', 'php-min-check', 'feature-coverage', 'feature-verify-rust', 'feature-verify-other', 'go-test-check'])
+  for (const target of ['ts-min-check', 'php-min-check', 'feature-coverage', 'feature-verify-rust', 'feature-verify-other', 'go-test-check', 'catalog-row-baseline-go-check'])
     assert.ok(targets.includes(target), `${target} is not in CHECK_TARGETS`);
   assert.deepEqual(ciCheckTargetErrors(workflow, text('Makefile')), []);
+  assert.deepEqual(checkTargets('CHECK_TARGETS = first\nCHECK_TARGETS += second third\n'), ['first', 'second', 'third']);
 });
 
 caseTest('a workflow that omits or repeats a target of CHECK_TARGETS fails', COMPUTE, () => {
@@ -498,6 +505,7 @@ caseTest('the CI groups run every target of CHECK_TARGETS in exactly one job', C
   const byCodeUnit = (a: string, b: string) => (a < b ? -1 : Number(a > b));
   assert.deepEqual(groups.flatMap(group => targets[group] ?? []).sort(byCodeUnit), [...checkTargets(makefile)].sort(byCodeUnit));
   assert.ok((targets.static ?? []).includes('dbspec-vscode-check'), 'the database-free VS Code extension check runs in the static CI group');
+  assert.ok((targets.static ?? []).includes('catalog-row-baseline-go-check'), 'the appended owner check runs in the static CI group');
   // The group-rows-db targets each run in exactly one CI group (KSTD-10-1).
   for (const target of ['group-rows-db-go', 'group-rows-db-typescript', 'group-rows-db-python', 'group-rows-db-php', 'group-rows-db-php-extension', 'group-rows-db-rust']) {
     assert.equal(groups.flatMap(group => targets[group] ?? []).filter(name => name === target).length, 1, `${target} runs in one CI group`);
@@ -524,6 +532,7 @@ caseTest('a CI group set that omits, repeats or adds a target of CHECK_TARGETS f
   const make = (groups: string[]) => ['CHECK_TARGETS = a-check b-check c-check', ...groups, ''].join('\n');
   const good = make(['CI_GROUPS = one two', 'CI_TARGETS_one = a-check c-check', 'CI_TARGETS_two = b-check']);
   assert.deepEqual(ciCheckTargetErrors(grouped(), good), []);
+  assert.deepEqual(ciCheckTargetErrors(grouped(), 'CHECK_TARGETS = a-check\nCHECK_TARGETS += b-check\nCI_GROUPS = one\nCI_TARGETS_one = a-check\nCI_TARGETS_one += b-check\n'), []);
   const multipleMissing = [
     'CHECK_TARGETS = a-check b-check c-check d-check e-check f-check',
     'CI_GROUPS = one two',
@@ -973,6 +982,13 @@ caseTest('a go run, whose build has no step log, fails', COMPUTE, () => {
   ]);
 });
 
+caseTest('generated Go model helpers build through the logged go-run wrapper', COMPUTE, () => {
+  const helpers = (readFeatures(repository.pathname).helpers ?? []).filter(helper => ['go-decimal-model-generated', 'go-markdown-model-generated'].includes(helper.id));
+  assert.deepEqual(helpers.map(helper => helper.id), ['go-decimal-model-generated', 'go-markdown-model-generated']);
+  for (const helper of helpers) assert.match(helper.command, /node \.\.\/\.\.\/tests\/go-run\.mts/);
+  assert.deepEqual(goRunErrors(helpers.map(helper => ({ name: helper.id, commands: [helper.command], dialect: 'sh' }))), []);
+});
+
 // The language case checks the repository's tracked files and a minimal list.
 caseTest('every tool of the repository is written in Go, PHP, Rust or TypeScript', COMPUTE, () => {
   assert.deepEqual(toolingLanguageErrors(trackedFiles('*')), []);
@@ -1222,7 +1238,8 @@ caseTest('make orm-check runs the check of every helper once', COMPUTE, () => {
 });
 
 caseTest('every JavaScript test declares its cases with caseTest', COMPUTE, () => {
-  assert.deepEqual(nodeTestErrors(trackedTexts(trackedFiles('*.mjs').filter(path => !path.startsWith('docs/')))), []);
+  const javascript = ['*.mjs', '*.mts', '*.js'].flatMap(pattern => trackedFiles(pattern)).filter(path => !path.startsWith('docs/'));
+  assert.deepEqual(nodeTestErrors(trackedTexts(javascript)), []);
 });
 
 caseTest('a JavaScript test that declares tests with node:test directly fails', COMPUTE, () => {

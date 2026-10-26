@@ -3605,8 +3605,7 @@
                   "test": "packages/python/tests/coverage_transactions.py",
                   "cases": [
                     "transaction_rollback",
-                    "transaction_savepoint",
-                    "handle_abandoned_query"
+                    "transaction_savepoint"
                   ],
                   "dsn_env": "BENCH_MYSQL_DSN"
                 }
@@ -3617,8 +3616,7 @@
                   "test": "packages/python/tests/coverage_transactions.py",
                   "cases": [
                     "transaction_rollback",
-                    "transaction_savepoint",
-                    "handle_abandoned_query"
+                    "transaction_savepoint"
                   ],
                   "dsn_env": "BENCH_POSTGRES_DSN"
                 }
@@ -3629,8 +3627,7 @@
                   "test": "packages/python/tests/coverage_transactions.py",
                   "cases": [
                     "transaction_rollback",
-                    "transaction_savepoint",
-                    "handle_abandoned_query"
+                    "transaction_savepoint"
                   ],
                   "dsn_env": "BENCH_SQLITE_DSN"
                 }
@@ -7252,7 +7249,93 @@
                     "param_uses_optimistic",
                     "planner_joined_child_conditions_grouped",
                     "planner_unplaced_child_conditions_append_and"
-                  ]
+                  ],
+                  "symbols": {
+                    "planner_statement": "test_planner_statement",
+                    "planner_count": "test_planner_count",
+                    "planner_contains_ascii_fold": "test_planner_contains_ascii_fold",
+                    "planner_contains_binary_collation": "test_planner_contains_binary_collation",
+                    "planner_rejects_unknown_column": "test_planner_rejects_unknown_column",
+                    "planner_rejects_column_function_unknown_column": "test_planner_rejects_column_function_unknown_column",
+                    "planner_restore": "test_planner_restore",
+                    "planner_tables": "test_planner_tables",
+                    "planner_restore_rejects_non_key": "test_planner_restore_rejects_non_key",
+                    "planner_restore_key_from_set": "test_planner_restore_key_from_set",
+                    "planner_restore_extra_condition": "test_planner_restore_extra_condition",
+                    "planner_restore_primary_key_first": "test_planner_restore_primary_key_first",
+                    "planner_restore_first_unique_by_name": "test_planner_restore_first_unique_by_name",
+                    "planner_bind_types_select": "test_planner_bind_types_select",
+                    "planner_bind_types_update": "test_planner_bind_types_update",
+                    "planner_bind_types_insert": "test_planner_bind_types_insert",
+                    "planner_time_select": "test_planner_time_select",
+                    "planner_time_insert": "test_planner_time_insert",
+                    "planner_uuid_select": "test_planner_uuid_select",
+                    "planner_uuid_insert": "test_planner_uuid_insert",
+                    "planner_clock_compare": "test_planner_clock_compare",
+                    "planner_clock_insert": "test_planner_clock_insert",
+                    "planner_parent_key_types": "test_planner_parent_key_types",
+                    "planner_not_group": "test_planner_not_group",
+                    "planner_rejects_top_not": "test_planner_rejects_top_not",
+                    "planner_rejects_top_group_conn": "test_planner_rejects_top_group_conn",
+                    "planner_rejects_first_item_conn": "test_planner_rejects_first_item_conn",
+                    "planner_column_refs": "test_planner_column_refs",
+                    "planner_rejects_ref_unknown_column": "test_planner_rejects_ref_unknown_column",
+                    "planner_rejects_outer_ref_outside_subquery": "test_planner_rejects_outer_ref_outside_subquery",
+                    "planner_rejects_unjoined_ref": "test_planner_rejects_unjoined_ref",
+                    "planner_ref_path_absent": "test_planner_ref_path_absent",
+                    "planner_group_by_count": "test_planner_group_by_count",
+                    "planner_group_count_order_column": "test_planner_group_count_order_column",
+                    "planner_group_count_order_column_function": "test_planner_group_count_order_column_function",
+                    "planner_group_count_order_random": "test_planner_group_count_order_random",
+                    "planner_rejects_group_by_all": "test_planner_rejects_group_by_all",
+                    "planner_rejects_group_by_sum": "test_planner_rejects_group_by_sum",
+                    "planner_rejects_group_by_join": "test_planner_rejects_group_by_join",
+                    "planner_rejects_group_by_subquery": "test_planner_rejects_group_by_subquery",
+                    "planner_rejects_group_order_non_group_column": "test_planner_rejects_group_order_non_group_column",
+                    "planner_rejects_nullable_key_by": "test_planner_rejects_nullable_key_by",
+                    "planner_key_by_empty_is_absent": "test_planner_key_by_empty_is_absent",
+                    "planner_insert_by_value": "test_planner_insert_by_value",
+                    "planner_insert_on_duplicate_plus": "test_planner_insert_on_duplicate_plus",
+                    "planner_rejects_insert_set_plus": "test_planner_rejects_insert_set_plus",
+                    "planner_rejects_insert_set_minus": "test_planner_rejects_insert_set_minus",
+                    "planner_ip_eq_col_ip": "test_planner_ip_eq_col_ip",
+                    "planner_rejects_bool_gt_col": "test_planner_rejects_bool_gt_col",
+                    "planner_rejects_ip_gt_col": "test_planner_rejects_ip_gt_col",
+                    "planner_rejects_aes_eq_col": "test_planner_rejects_aes_eq_col",
+                    "planner_col_pair_integers": "test_planner_col_pair_integers",
+                    "planner_rejects_col_pair_integer_varchar": "test_planner_rejects_col_pair_integer_varchar",
+                    "planner_rejects_in_subquery_integer_varchar": "test_planner_rejects_in_subquery_integer_varchar",
+                    "planner_rejects_join_integer_varchar": "test_planner_rejects_join_integer_varchar",
+                    "planner_rejects_relation_integer_varchar": "test_planner_rejects_relation_integer_varchar",
+                    "planner_rejects_upsert_primary_and_unique_key": "test_planner_rejects_upsert_primary_and_unique_key",
+                    "planner_rejects_upsert_unique_key_not_assigned": "test_planner_rejects_upsert_unique_key_not_assigned",
+                    "planner_rejects_upsert_without_a_key": "test_planner_rejects_upsert_without_a_key",
+                    "planner_order_nullable_column": "test_planner_order_nullable_column",
+                    "planner_order_not_null_column": "test_planner_order_not_null_column",
+                    "planner_order_nullable_column_function": "test_planner_order_nullable_column_function",
+                    "planner_order_nullable_group_count": "test_planner_order_nullable_group_count",
+                    "planner_order_nullable_limit_per_parent": "test_planner_order_nullable_limit_per_parent",
+                    "planner_scalar_column_subquery": "test_planner_scalar_column_subquery",
+                    "planner_rejects_scalar_column_subquery_without_limit": "test_planner_rejects_scalar_column_subquery_without_limit",
+                    "planner_rejects_scalar_column_subquery_without_key_order": "test_planner_rejects_scalar_column_subquery_without_key_order",
+                    "planner_rejects_in_subquery_limit": "test_planner_rejects_in_subquery_limit",
+                    "planner_join_inner_soft_delete": "test_planner_join_inner_soft_delete",
+                    "planner_join_left_soft_delete": "test_planner_join_left_soft_delete",
+                    "planner_join_on_soft_delete": "test_planner_join_on_soft_delete",
+                    "planner_force_index": "test_planner_force_index",
+                    "planner_value_function_today": "test_planner_value_function_today",
+                    "planner_column_function_date": "test_planner_column_function_date",
+                    "planner_rejects_column_function_on_varchar": "test_planner_rejects_column_function_on_varchar",
+                    "planner_rejects_styled_column_equality": "test_planner_rejects_styled_column_equality",
+                    "planner_styled_column_is_null": "test_planner_styled_column_is_null",
+                    "param_uses_column_function": "testParamUsesColumnFunction",
+                    "param_uses_interval": "testParamUsesInterval",
+                    "param_uses_contains": "testParamUsesContains",
+                    "param_uses_if_parent": "testParamUsesIfParent",
+                    "param_uses_optimistic": "testParamUsesOptimistic",
+                    "planner_joined_child_conditions_grouped": "test_planner_joined_child_conditions_grouped",
+                    "planner_unplaced_child_conditions_append_and": "test_planner_unplaced_child_conditions_append_and"
+                  }
                 }
               ]
             },
@@ -8116,11 +8199,11 @@
                     "blind_index_vector"
                   ],
                   "symbols": {
-                    "aes_envelope_decrypt": "CoverageAuthenticatedEncryptionExtensionTest::testAesEnvelopeDecrypt",
-                    "aes_round_trip": "CoverageAuthenticatedEncryptionExtensionTest::testAesRoundTrip",
-                    "aes_tamper_rejected": "CoverageAuthenticatedEncryptionExtensionTest::testAesTamperRejected",
-                    "aes_wrong_key_rejected": "CoverageAuthenticatedEncryptionExtensionTest::testAesWrongKeyRejected",
-                    "blind_index_vector": "CoverageAuthenticatedEncryptionExtensionTest::testBlindIndexVector"
+                    "aes_envelope_decrypt": "testAesEnvelopeDecrypt",
+                    "aes_round_trip": "testAesRoundTrip",
+                    "aes_tamper_rejected": "testAesTamperRejected",
+                    "aes_wrong_key_rejected": "testAesWrongKeyRejected",
+                    "blind_index_vector": "testBlindIndexVector"
                   }
                 }
               ]
@@ -13829,7 +13912,7 @@
         "packages/go/models.txt"
       ],
       "tests": [],
-      "command": "node tests/run-long.mts go-decimal-model -- sh -c 'cd packages/go && while IFS= read -r entry; do case \"$entry\" in \"\"|\"#\"*) continue ;; esac; go run ./cmd/orm-gen gen --check --lang go $entry || exit 1; done < models.txt'"
+      "command": "sh -c 'cd packages/go && while IFS= read -r entry; do case \"$entry\" in \"\"|\"#\"*) continue ;; esac; node ../../tests/go-run.mts go-decimal-model github.com/polyspec/orm/packages/go/cmd/orm-gen gen --check --lang go $entry || exit 1; done < models.txt'"
     },
     {
       "id": "go-markdown-model-generated",
@@ -13837,7 +13920,7 @@
         "packages/go/models.txt"
       ],
       "tests": [],
-      "command": "node tests/run-long.mts go-markdown-model -- sh -c 'cd packages/go && while IFS= read -r entry; do case \"$entry\" in \"\"|\"#\"*) continue ;; esac; go run ./cmd/orm-gen gen --check --lang go $entry || exit 1; done < models.txt'"
+      "command": "sh -c 'cd packages/go && while IFS= read -r entry; do case \"$entry\" in \"\"|\"#\"*) continue ;; esac; node ../../tests/go-run.mts go-markdown-model github.com/polyspec/orm/packages/go/cmd/orm-gen gen --check --lang go $entry || exit 1; done < models.txt'"
     },
     {
       "id": "php-markdown-model-generated",

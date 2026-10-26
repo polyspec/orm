@@ -1,8 +1,8 @@
 const numberWords: Record<string, number> = {
   two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
 };
-const koreanNumbers: Record<string, number> = {
-  두: 2, 세: 3, 네: 4, 다섯: 5, 여섯: 6, 일곱: 7, 여덟: 8, 아홉: 9, 열: 10,
+const koreanNumberWords: Record<string, number> = {
+  '두': 2, '세': 3, '네': 4, '다섯': 5, '여섯': 6, '일곱': 7, '여덟': 8, '아홉': 9, '열': 10,
 };
 const englishNumber = '(?:two|three|four|five|six|seven|eight|nine|ten|\\d+)';
 const countedEnglish = new RegExp(
@@ -39,7 +39,7 @@ export function countMismatches(text: string, isKorean: boolean, clientCount: nu
   }
   for (const match of text.matchAll(countedKorean)) {
     const word = match[1] ?? '';
-    const value = /^\d+$/.test(word) ? Number(word) : koreanNumbers[word];
+    const value = /^\d+$/.test(word) ? Number(word) : koreanNumberWords[word];
     if (value !== undefined && value !== clientCount) failures.push(match[0].trim());
   }
   return failures;

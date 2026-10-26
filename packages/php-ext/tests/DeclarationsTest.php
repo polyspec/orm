@@ -347,16 +347,14 @@ final class DeclarationsTest extends TestCase
         );
     }
 
-    // The limit/columns document (121 tables of 1000 columns; the 120001st column trips the limit) must parse within
-    // the memory that PHPUnit allows a process: its peak over the memory held before the parse is below the bound,
-    // which is derived from three numbers. PHP's default memory_limit (128 MiB, 134217728 bytes) is the memory of the
-    // process that runs the test. The baseline is the memory the process holds before the parse (memory_get_usage()).
-    // The margin of 16 MiB is what the process keeps for the rest of the run (PHPUnit's collection, output and the next
-    // test). The bound is 128 MiB minus the baseline minus the margin. The test raises memory_limit to 256M so that a
-    // peak above the bound fails the assertion, not the process.
+    // The limit/columns document is parsed in a child process so PHPUnit's already-held memory does not change the
+    // measurement. The child loads this run's extension and uses its default 128 MiB memory limit.
     public function testLimitColumnsPeak(): void
     {
-        ini_set('memory_limit', '256M');
+        $extension = getenv('POLYSPEC_ORM_EXTENSION');
+        if (!is_string($extension) || $extension === '') {
+            throw new RuntimeException('POLYSPEC_ORM_EXTENSION must name the extension loaded by this test run');
+        }
         $text = "dbspec 1 shop\n";
         for ($t = 0; $t < 121; $t++) {
             $text .= "\ntable t$t {\n";
@@ -365,12 +363,35 @@ final class DeclarationsTest extends TestCase
             }
             $text .= "  primary key (c0)\n}\n";
         }
-        $baseline = memory_get_usage();
+        $code = <<<'PHP'
+$text = (string) stream_get_contents(STDIN);
+$baseline = memory_get_usage();
+memory_reset_peak_usage();
+$result = \Polyspec\Orm\Dbspec\Dbspec::parse($text, []);
+echo json_encode([
+    'document' => $result->document !== null,
+    'baseline' => $baseline,
+    'peak' => memory_get_peak_usage(),
+], JSON_THROW_ON_ERROR), PHP_EOL;
+PHP;
+        $process = proc_open(
+            [PHP_BINARY, '-d', 'extension=' . $extension, '-d', 'memory_limit=128M', '-r', $code],
+            [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+            $pipes,
+        );
+        Assert::assertIsResource($process, 'the native limit/columns process did not start');
+        fwrite($pipes[0], $text);
+        fclose($pipes[0]);
+        $output = (string) stream_get_contents($pipes[1]);
+        fclose($pipes[1]);
+        $error = (string) stream_get_contents($pipes[2]);
+        fclose($pipes[2]);
+        Assert::assertSame(0, proc_close($process), $error);
+        $measurement = json_decode(trim($output), true, 512, JSON_THROW_ON_ERROR);
+        $baseline = (int) $measurement['baseline'];
         $bound = 134217728 - $baseline - 16777216;
-        memory_reset_peak_usage();
-        $result = \Polyspec\Orm\Dbspec\Dbspec::parse($text, []);
-        $peak = memory_get_peak_usage() - $baseline;
-        Assert::assertNull($result->document, 'the limit document returned a document');
+        $peak = (int) $measurement['peak'] - $baseline;
+        Assert::assertFalse((bool) $measurement['document'], 'the limit document returned a document');
         Assert::assertLessThan(
             $bound,
             $peak,

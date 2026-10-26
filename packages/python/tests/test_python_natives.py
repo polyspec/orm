@@ -95,6 +95,34 @@ class ConnectionAndToolRuleNativesTest(InterfaceSnapshotTest):
     tools (AesUtils) name a Python method each, with the same snapshot and table checks as the entity rules."""
 
     PREFIXES = ("Db.", "Utils.", "SchemaUtils.", "AesUtils.")
+    RULE_IDS = (
+        "AesUtils.rotate",
+        "AesUtils.status",
+        "Db.close",
+        "Db.connect",
+        "Db.connectSchema",
+        "Db.execute",
+        "Db.stats",
+        "Db.subscribe",
+        "Db.transaction",
+        "Db.utils",
+        "Db.withRequestHook",
+        "SchemaUtils.addTablesAndColumns",
+        "SchemaUtils.empty",
+        "SchemaUtils.exists",
+        "SchemaUtils.install",
+        "SchemaUtils.installed",
+        "SchemaUtils.register",
+        "Utils.aes",
+        "Utils.backendWaitingForLock",
+        "Utils.local",
+        "Utils.lock",
+        "Utils.privileges",
+        "Utils.schema",
+        "Utils.setLocal",
+        "Utils.stats",
+        "Utils.wasInserted",
+    )
 
     def test_every_connection_and_tool_rule_names_a_python_method_of_the_snapshot(self):
         rules = [
@@ -102,7 +130,7 @@ class ConnectionAndToolRuleNativesTest(InterfaceSnapshotTest):
             for r in self.manifest["rules"]
             if r["for"] == "once" and r["id"].startswith(self.PREFIXES)
         ]
-        self.assertEqual(len(rules), 24)
+        self.assertEqual(sorted(rule["id"] for rule in rules), list(self.RULE_IDS))
         for rule in rules:
             self.check_native(rule)
 

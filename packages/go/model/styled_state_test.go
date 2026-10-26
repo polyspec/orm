@@ -73,6 +73,7 @@ func TestGeneratedStyledGetterAndSetterStates(t *testing.T) {
 // TestModelOrderedJSONOutputPreservesExactText exercises the production Model MarshalJSON path.
 // Requirements: COD-16, COD-26.
 func TestModelOrderedJSONOutputPreservesExactText(t *testing.T) {
+	testcase.Start(t, testcase.Compute)
 	const stored = `{"z":9007199254740993,"b":1.50,"a":1e2}`
 	value, err := orderedjson.Parse(stored)
 	if err != nil {

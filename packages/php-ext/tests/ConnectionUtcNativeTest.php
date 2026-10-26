@@ -30,6 +30,7 @@ use function Polyspec\Orm\Tests\case_admin;
 use function Polyspec\Orm\Tests\with_case_database;
 use function Polyspec\Orm\Tests\installBench;
 
+#[Medium]
 final class ConnectionUtcNativeTest extends TestCase
 {
     use ThreeDrivers;
@@ -47,7 +48,6 @@ final class ConnectionUtcNativeTest extends TestCase
 
     // Requirements: CFG-2, DIA-57, DSL-141.
     // This case verifies the C connection factory, not only the PHP library path.
-    #[Medium]
     #[DataProvider('connections')]
     public function testNativeConnectionsUseUtc(string $driver, string $zone): void
     {
@@ -158,7 +158,6 @@ final class ConnectionUtcNativeTest extends TestCase
     }
 
     // Requirements: INT-99, DBS-68, COD-20. The case performs a native Model read after an INSERT of SQL NULL.
-    #[Medium]
     #[DataProvider('drivers')]
     public function testNativeStyledSqlNullIsPreservedOnDatabaseRead(string $driver): void
     {
@@ -171,7 +170,6 @@ final class ConnectionUtcNativeTest extends TestCase
     }
 
     // Requirements: INT-99.
-    #[Medium]
     #[DataProvider('drivers')]
     public function testNativeI16ValuesAndDefaults(string $driver): void
     {
@@ -205,7 +203,6 @@ final class ConnectionUtcNativeTest extends TestCase
     }
 
     // Requirements: INT-98. Each native model read must reject a database cell outside its declared i32 range.
-    #[Medium]
     #[DataProvider('drivers')]
     public function testNativeOutOfRangeDatabaseCellFailsTypedRead(string $driver): void
     {

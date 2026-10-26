@@ -9,6 +9,7 @@ import typing
 import unittest
 from pathlib import Path
 from . import testcase
+from polyspec.orm.core import BuiltRequest
 
 ROOT = Path(__file__).resolve().parents[3]
 ORM_GEN = [sys.executable, "-m", "polyspec.orm.bin_orm_gen"]
@@ -101,6 +102,24 @@ class QueryMethodsTest(unittest.TestCase):
             repr(declared.core.where.items), repr(resolved.core.where.items)
         )
         self.assertTrue(declared.core.where.items)
+
+    # Requirements: PRT-40.
+    def test_tuple_predicate_pads_by_repeating_the_last_row(self):
+        request = BuiltRequest("all", "sha256:tuple-padding")
+        predicate = request._pred(
+            {
+                "kind": "tuple",
+                "column": "",
+                "op": "tuple_in",
+                "cols": ["tenant_id", "account_id"],
+                "value": [[10, 1], [10, 2], [10, 3]],
+            },
+            None,
+            None,
+        )
+
+        self.assertEqual(predicate["ps"], list(range(8)))
+        self.assertEqual(request.params, [10, 1, 10, 2, 10, 3, 10, 3])
 
 
 if __name__ == "__main__":
