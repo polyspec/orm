@@ -272,25 +272,27 @@ function coverageWithConformanceCountersRestored(
     string $dsn,
     Closure $run,
     bool $auditLazyBaseline = false
-): void
-{
+): void {
     $root = coverageRepositoryRoot();
     $command = ['node', "$root/tests/conformance/check/main.mts", 'counters', '--driver', $driver, '--dsn', $dsn];
     $snapshot = coverageReadConformanceCounters($command, $root);
-    coverageRestoring(static function () use ($run, $auditLazyBaseline, $driver, $dsn, $command, $root, $snapshot): void {
-        if ($auditLazyBaseline) {
-            coverageAssertAuditLazyTablesEmpty($driver, $dsn);
-            $baseline = coverageAuditLazyCounterBaseline($driver, $snapshot);
-            coverageRestoreConformanceCounters($command, $root, json_encode($baseline, JSON_THROW_ON_ERROR));
-        }
-        $run();
-    }, static function () use ($command, $root, $snapshot): void {
-        coverageRestoreConformanceCounters($command, $root, json_encode($snapshot, JSON_THROW_ON_ERROR));
-        $current = coverageReadConformanceCounters($command, $root);
-        if (!coverageConformanceCountersEqual($snapshot, $current)) {
-            throw new RuntimeException('conformance counters differ from the original snapshot after restore');
-        }
-    });
+    coverageRestoring(
+        static function () use ($run, $auditLazyBaseline, $driver, $dsn, $command, $root, $snapshot): void {
+            if ($auditLazyBaseline) {
+                coverageAssertAuditLazyTablesEmpty($driver, $dsn);
+                $baseline = coverageAuditLazyCounterBaseline($driver, $snapshot);
+                coverageRestoreConformanceCounters($command, $root, json_encode($baseline, JSON_THROW_ON_ERROR));
+            }
+            $run();
+        },
+        static function () use ($command, $root, $snapshot): void {
+            coverageRestoreConformanceCounters($command, $root, json_encode($snapshot, JSON_THROW_ON_ERROR));
+            $current = coverageReadConformanceCounters($command, $root);
+            if (!coverageConformanceCountersEqual($snapshot, $current)) {
+                throw new RuntimeException('conformance counters differ from the original snapshot after restore');
+            }
+        },
+    );
 }
 
 /** @param list<string> $command @return array<string, array<string, mixed>> */
@@ -448,4 +450,43 @@ function coverageProcess(array $command, string $cwd, ?array $env = null): array
         }
     }
     return [proc_close($process), $out[0], $out[1]];
+}
+
+/** Use the conformance checker's canonical JSON normalization for a vector output. */
+function coverageCanonicalConformanceOutput(string $driver, string $vector, string $json): string
+{
+    if ($vector !== 'audit_lazy') {
+        return $json;
+    }
+    $path = tempnam(sys_get_temp_dir(), 'orm-conformance-output-');
+    if ($path === false) {
+        throw new RuntimeException('cannot create a temporary conformance output');
+    }
+    try {
+        if (file_put_contents($path, $json) !== strlen($json)) {
+            throw new RuntimeException('cannot write a temporary conformance output');
+        }
+        $root = dirname(__DIR__, 3);
+        [$status, $stdout, $stderr] = coverageProcess(
+            [
+                'node',
+                'tests/conformance/check/main.mts',
+                'normalize',
+                '--driver',
+                $driver,
+                '--vector',
+                $vector,
+                $path,
+            ],
+            $root,
+        );
+        if ($status !== 0) {
+            throw new RuntimeException("conformance output normalization exited $status: $stderr$stdout");
+        }
+        return $stdout;
+    } finally {
+        if (is_file($path) && !unlink($path)) {
+            throw new RuntimeException("cannot remove temporary conformance output: $path");
+        }
+    }
 }

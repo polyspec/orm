@@ -1,12 +1,14 @@
 // The unit cases of the conformance checker (main.mts): recording, comparing and loading the vectors, the evidence of the
 // languages, exact JSON, the output directory, the runner deadline, the command log and the difference report.
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { COMPUTE, PROCESS, caseTest, withTemporaryDirectory } from '../../testcase.mts';
+import { isolatedEnvironment } from '../../environment.mts';
 import { canon, decodeExact, encode, equalJSON } from './json.mts';
 import {
-  compare, compareRepeatedEvidence, describeDifference, displayCommand, load, newOutputDirectory, phpArguments, recordVerified,
+  compare, compareRepeatedEvidence, describeDifference, displayCommand, load, newOutputDirectory, normalizeAuditLazySequenceBinds, phpArguments, recordVerified,
   requiredLanguages, runCommand, runLanguages, validateOutputFiles,
 } from './main.mts';
 
@@ -44,6 +46,84 @@ function quietly<T>(work: () => T): T {
 const assertFileEquals = (path: string, want: string): void => {
   assert.equal(readFileSync(path, 'utf8'), want, 'record changed expectations after rejecting evidence');
 };
+
+caseTest('TestAuditLazySequenceNormalizationKeepsTheVectorLocalRelationship', COMPUTE, () => {
+  const output = decodeExact(JSON.stringify({
+    statements: [
+      { kind: 'insert', tables: ['audit_record'], binds: ['audit-lazy'] },
+      { kind: 'update', tables: ['audited_note'], binds: ['audit-none', 41, -1] },
+      { kind: 'insert', tables: ['audit_record'], binds: ['audit-lazy'] },
+      { kind: 'insert', tables: ['audited_note'], binds: ['audit-lazy', 42] },
+      { kind: 'select', tables: ['audited_note'], binds: [41] },
+    ],
+    result: { before: 0 },
+  }));
+  const normalized = normalizeAuditLazySequenceBinds(output, 'mysql');
+  assert.equal(encode(normalized, { sorted: true }), '{"result":{"before":0},"statements":[{"binds":["audit-lazy"],"kind":"insert","tables":["audit_record"]},{"binds":["audit-none","$SEQ",-1],"kind":"update","tables":["audited_note"]},{"binds":["audit-lazy"],"kind":"insert","tables":["audit_record"]},{"binds":["audit-lazy",2],"kind":"insert","tables":["audited_note"]},{"binds":[41],"kind":"select","tables":["audited_note"]}]}');
+});
+
+caseTest('TestAuditLazySequenceNormalizationAcceptsCanonicalSQLiteIds', COMPUTE, () => {
+  const output = decodeExact(JSON.stringify({
+    statements: [
+      { kind: 'insert', tables: ['audit_record'], binds: ['audit-lazy'] },
+      { kind: 'update', tables: ['audited_note'], binds: ['audit-none', 1, -1] },
+      { kind: 'insert', tables: ['audit_record'], binds: ['audit-lazy'] },
+      { kind: 'insert', tables: ['audited_note'], binds: ['audit-lazy', 1] },
+    ],
+    result: {},
+  }));
+  assert.doesNotThrow(() => normalizeAuditLazySequenceBinds(output, 'sqlite'));
+});
+
+caseTest('TestAuditLazySequenceNormalizationRejectsBrokenIdentityRelationship', COMPUTE, () => {
+  const output = decodeExact(JSON.stringify({
+    statements: [
+      { kind: 'insert', tables: ['audit_record'], binds: ['audit-lazy'] },
+      { kind: 'update', tables: ['audited_note'], binds: ['audit-none', 41, -1] },
+      { kind: 'insert', tables: ['audit_record'], binds: ['audit-lazy'] },
+      { kind: 'insert', tables: ['audited_note'], binds: ['audit-lazy', 43] },
+    ],
+    result: {},
+  }));
+  assert.throws(() => normalizeAuditLazySequenceBinds(output, 'mysql'), /sequence binds differ for mysql: 41 then 43/);
+});
+
+caseTest('TestAuditLazySequenceNormalizationRejectsMismatchedSQLiteIdentity', COMPUTE, () => {
+  const output = decodeExact(JSON.stringify({
+    statements: [
+      { kind: 'insert', tables: ['audit_record'], binds: ['audit-lazy'] },
+      { kind: 'update', tables: ['audited_note'], binds: ['audit-none', 1, -1] },
+      { kind: 'insert', tables: ['audit_record'], binds: ['audit-lazy'] },
+      { kind: 'insert', tables: ['audited_note'], binds: ['audit-lazy', 2] },
+    ],
+    result: {},
+  }));
+  assert.throws(() => normalizeAuditLazySequenceBinds(output, 'sqlite'), /sequence binds differ for sqlite: 1 then 2/);
+});
+
+caseTest('TestNormalizeCommandUsesTheCentralOutputNormalizer', PROCESS, () => withTemporaryDirectory('orm-conformance-normalize-', temporary => {
+  const file = join(temporary, 'php.json');
+  const output = {
+    audit_lazy: {
+      result: { before: 0 },
+      statements: [
+        { kind: 'insert', tables: ['audit_record'], binds: ['audit-lazy'] },
+        { kind: 'update', tables: ['audited_note'], binds: ['audit-none', 41, -1] },
+        { kind: 'insert', tables: ['audit_record'], binds: ['audit-lazy'] },
+        { kind: 'insert', tables: ['audited_note'], binds: ['audit-lazy', 42] },
+      ],
+    },
+  };
+  writeFileSync(file, JSON.stringify(output));
+  const normalized = execFileSync(process.execPath, [
+    join(repository, 'tests/conformance/check/main.mts'),
+    'normalize', '--driver', 'mysql', '--vector', 'audit_lazy', file,
+  ], { cwd: repository, encoding: 'utf8', env: isolatedEnvironment() });
+  const expected = { audit_lazy: { ...output.audit_lazy, statements: output.audit_lazy.statements.map((statement, index) =>
+    index === 1 ? { ...statement, binds: ['audit-none', '$SEQ', -1] }
+      : index === 3 ? { ...statement, binds: ['audit-lazy', 2] } : statement) } };
+  assert.equal(equalJSON(decodeExact(normalized), decodeExact(JSON.stringify(expected))), true);
+}));
 
 caseTest('TestRecordRequiresFourEqualOutputs', COMPUTE, () => withTemporaryDirectory('orm-conformance-check-test-', temp => {
   const { root, directory } = conformanceRoot(temp);

@@ -1,10 +1,11 @@
 // Conformance checker: runs the client runners (or reads their outputs) and compares each vector's statements and result
 // against tests/conformance/vectors.json with exact JSON number comparison and sorted object keys in diagnostics.
 //
-//   node tests/conformance/check/main.mts run --out <new dir> --dsn … [--driver postgres|sqlite]   # run all five runners twice, then compare
+//   node tests/conformance/check/main.mts run --out <new dir> --dsn … [--driver postgres|sqlite]   # run all six runners twice, then compare
 //   node tests/conformance/check/main.mts run --out <new dir> --driver mysql --dsn … --driver postgres --dsn … --driver sqlite --dsn …   # build once, check each database
 //   node tests/conformance/check/main.mts compare [--driver …] out/…                                   # compare produced outputs (<lang>.json)
-//   node tests/conformance/check/main.mts record [--driver …] out/{go,php,rust,typescript,python}.json   # record agreed expectations
+//   node tests/conformance/check/main.mts record [--driver …] out/{go,php,php-extension,rust,typescript,python}.json   # record agreed expectations
+//   node tests/conformance/check/main.mts normalize --driver … --vector audit_lazy out.json          # canonicalize owner output
 //   node tests/conformance/check/main.mts state --driver … --dsn …                                      # print the state digest of a database
 //
 // `run` writes the verified outputs of a database into --out (MySQL) or --out/<driver>, a directory that must not exist
@@ -66,7 +67,7 @@ type Vector = { name: string; chain: string; calls: string[]; expect: Json | und
 /** The usage of the program: it ends the program with the exit status 2. */
 class UsageError extends Error {}
 
-const USAGE = 'usage: check state --dsn x [--driver d] | check counters --dsn x [--driver d] [--restore-json <snapshot>] | check run --out <new dir> [--driver d] --dsn x [--driver d --dsn x]... | check compare|record [--driver d] <go.json> <php.json> <rust.json> <typescript.json> <python.json>';
+const USAGE = 'usage: check state --dsn x [--driver d] | check counters --dsn x [--driver d] [--restore-json <snapshot>] | check run --out <new dir> [--driver d] --dsn x [--driver d --dsn x]... | check compare|record [--driver d] <go.json> <php.json> <php-extension.json> <rust.json> <typescript.json> <python.json> | check normalize --driver d --vector audit_lazy out.json';
 
 /** vectorsPath is the expectations file of a database, relative to the repository. */
 export function vectorsPath(driver: string): string {
@@ -526,8 +527,93 @@ function statementChanges(want: Json, got: Json): Change[] {
 }
 
 // readOutput reads the output of one runner: each vector's name with its output.
-function readOutput(path: string): JsonObject {
-  return fieldsOf(readExact(path, outputSchema)) ?? new Map();
+function readOutput(path: string, driver: string): JsonObject {
+  const output = fieldsOf(readExact(path, outputSchema)) ?? new Map();
+  return fieldsOf(normalizeSelectedOutput(output, driver, ['audit_lazy'])) ?? new Map();
+}
+
+/** Normalize only explicitly selected vectors using the same path used by compare and record. */
+export function normalizeSelectedOutput(value: Json, driver: string, selected: string[]): Json {
+  const output = fieldsOf(value);
+  if (output === undefined) throw new Error('conformance output is not an object');
+  const auditLazy = output.get('audit_lazy');
+  if (auditLazy !== undefined && chosen(selected, 'audit_lazy')) output.set('audit_lazy', normalizeAuditLazySequenceBinds(auditLazy, driver));
+  return output;
+}
+
+/**
+ * Normalize the two audit_sequence binds of audit_lazy relative to that vector's own two audit-record inserts.
+ * The database sequence is advanced by inserts rolled back to a savepoint, so its absolute value depends on earlier
+ * vectors. Require the audited-note update to use the first identity and its later create to use the next identity;
+ * then render those vector-local values as the canonical first identity and second identity.
+ */
+export function normalizeAuditLazySequenceBinds(value: Json, driver: string): Json {
+  const output = fieldsOf(value);
+  if (output === undefined) throw new Error('audit_lazy output is not an object');
+  const statements = output.get('statements');
+  if (!Array.isArray(statements)) throw new Error('audit_lazy statements are not a list');
+
+  const matches = (statement: Json, kind: string, table: string): boolean => {
+    const fields = fieldsOf(statement);
+    const tables = fields?.get('tables');
+    return fields?.get('kind') === kind && Array.isArray(tables) && tables.length === 1 && tables[0] === table;
+  };
+  const auditInserts = statements.flatMap((statement, index) => matches(statement, 'insert', 'audit_record') ? [index] : []);
+  const updates = statements.flatMap((statement, index) => matches(statement, 'update', 'audited_note') ? [index] : []);
+  const creates = statements.flatMap((statement, index) => matches(statement, 'insert', 'audited_note') ? [index] : []);
+  if (auditInserts.length !== 2 || updates.length !== 1 || creates.length !== 1) {
+    throw new Error('audit_lazy must contain two audit-record inserts, one audited-note update and one audited-note insert');
+  }
+  const firstAuditInsert = auditInserts[0];
+  const updateIndex = updates[0];
+  const secondAuditInsert = auditInserts[1];
+  const createIndex = creates[0];
+  if (firstAuditInsert === undefined || updateIndex === undefined || secondAuditInsert === undefined || createIndex === undefined
+      || firstAuditInsert >= updateIndex || updateIndex >= secondAuditInsert || secondAuditInsert >= createIndex) {
+    throw new Error('audit_lazy audit-record inserts and audited-note writes are out of order');
+  }
+
+  const updateFields = fieldsOf(statements[updateIndex]);
+  const createFields = fieldsOf(statements[createIndex]);
+  const updateBinds = updateFields?.get('binds');
+  const createBinds = createFields?.get('binds');
+  if (!Array.isArray(updateBinds) || updateBinds.length !== 3 || updateBinds[0] !== 'audit-none' || integerValue(updateBinds[2]) !== -1n
+      || !Array.isArray(createBinds) || createBinds.length !== 2 || createBinds[0] !== 'audit-lazy') {
+    throw new Error('audit_lazy audited-note SQL binds have an unexpected shape');
+  }
+  if (updateBinds[1] === '$SEQ') {
+    const canonicalCreate = driver === 'sqlite' ? createBinds[1] === '$SEQ' : integerValue(createBinds[1]) === 2n;
+    if (canonicalCreate) return value;
+    throw new Error(`audit_lazy already-normalized sequence binds are invalid for ${driver}`);
+  }
+  const updateSequence = positiveInteger(updateBinds[1]);
+  const createSequence = positiveInteger(createBinds[1]);
+  const expectedCreate = driver === 'sqlite' ? updateSequence : driver === 'mysql' || driver === 'postgres' ? updateSequence + 1n : undefined;
+  if (expectedCreate === undefined) throw new Error(`unsupported audit_lazy sequence normalization driver ${JSON.stringify(driver)}`);
+  if (createSequence !== expectedCreate) {
+    throw new Error(`audit_lazy audited-note sequence binds differ for ${driver}: ${updateSequence} then ${createSequence}`);
+  }
+  const createBind: Json = driver === 'sqlite' ? '$SEQ' : decodeExact('2');
+
+  const normalizedStatements = [...statements];
+  normalizedStatements[updateIndex] = new Map(updateFields).set('binds', [updateBinds[0] ?? null, '$SEQ', updateBinds[2] ?? null]);
+  normalizedStatements[createIndex] = new Map(createFields).set('binds', [createBinds[0] ?? null, createBind]);
+  return new Map(output).set('statements', normalizedStatements);
+}
+
+function positiveInteger(value: Json | undefined): bigint {
+  const integer = integerValue(value);
+  if (integer === undefined || integer < 1n) {
+    throw new Error('audit_lazy audited-note sequence bind is not a positive integer');
+  }
+  return integer;
+}
+
+function integerValue(value: Json | undefined): bigint | undefined {
+  if (value === null || value === undefined || typeof value !== 'object' || Array.isArray(value) || !('text' in value)) return undefined;
+  const text = value.text;
+  if (typeof text !== 'string' || !/^-?(?:0|[1-9][0-9]*)$/.test(text)) return undefined;
+  return BigInt(text);
 }
 
 /** compare compares each runner's output with the vector expectations, prints a line per vector and returns the exit status. */
@@ -541,7 +627,7 @@ export function compare(root: string, outputs: string[], driver: string, selecte
     return 1;
   }
   const languages = outputs.map(languageOf);
-  const results = new Map(outputs.map(output => [languageOf(output), readOutput(output)]));
+  const results = new Map(outputs.map(output => [languageOf(output), readOutput(output, driver)]));
   let failed = 0;
   let compared = 0;
   const declared = new Set<string>();
@@ -598,7 +684,7 @@ export function compare(root: string, outputs: string[], driver: string, selecte
 export function recordVerified(root: string, outputs: string[], driver: string, selected: string[] = []): void {
   validateOutputFiles(outputs);
   const vectors = load(root, driver);
-  const results = new Map(outputs.map(output => [languageOf(output), readOutput(output)]));
+  const results = new Map(outputs.map(output => [languageOf(output), readOutput(output, driver)]));
   const declared = new Set<string>();
   for (const vector of vectors) {
     declared.add(vector.name);
@@ -753,6 +839,12 @@ async function command(argv: string[]): Promise<number> {
     }
     case 'compare':
       return compare(root, parsed.positionals, driver, selected);
+    case 'normalize': {
+      if (drivers.length !== 1 || dsns.length !== 0 || outRoot !== '' || selected.length !== 1 || selected[0] !== 'audit_lazy' || parsed.positionals.length !== 1) throw new UsageError();
+      const normalized = normalizeSelectedOutput(readExact(parsed.positionals[0] ?? '', outputSchema), driver, selected);
+      console.log(encode(normalized, { indent: '  ', sorted: true }));
+      return 0;
+    }
     case 'record':
       recordVerified(root, parsed.positionals, driver, selected);
       return 0;

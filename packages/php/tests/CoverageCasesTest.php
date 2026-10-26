@@ -23,12 +23,6 @@ use Polyspec\Orm\OrmException;
 #[Small]
 final class CoverageCasesTest extends TestCase
 {
-    public static function setUpBeforeClass(): void
-    {
-        parent::setUpBeforeClass();
-        require_once dirname(__DIR__) . '/testing/conformance/runner_functions.php';
-    }
-
     /** @return iterable<string, array{string}> */
     public static function databaseDrivers(): iterable
     {
@@ -44,47 +38,54 @@ final class CoverageCasesTest extends TestCase
         );
     }
 
-    public function testGeneratedIdentityMaskUsesOnlyTheObservedIdentity(): void
-    {
-        $GLOBALS['maskSeqs'] = [];
-        try {
-            \maskGeneratedSequence('900005');
-            self::assertSame('$SEQ', \norm(900005));
-            self::assertSame(900004, \norm(900004));
-            $this->expectException(RuntimeException::class);
-            \maskGeneratedSequence(false);
-        } finally {
-            $GLOBALS['maskSeqs'] = [];
-        }
+    private static function auditLazyOutput(
+        int|bool $updateSequence,
+        int|bool $createSequence,
+        string $updateTable = 'audited_note',
+    ): string {
+        return json_encode([
+            'audit_lazy' => [
+                'result' => ['before' => 0],
+                'statements' => [
+                    ['kind' => 'insert', 'tables' => ['audit_record'], 'binds' => ['audit-lazy']],
+                    ['kind' => 'update', 'tables' => [$updateTable], 'binds' => ['audit-none', $updateSequence, -1]],
+                    ['kind' => 'insert', 'tables' => ['audit_record'], 'binds' => ['audit-lazy']],
+                    ['kind' => 'insert', 'tables' => ['audited_note'], 'binds' => ['audit-lazy', $createSequence]],
+                    ['kind' => 'select', 'tables' => ['audited_note'], 'binds' => [900004]],
+                ],
+            ],
+        ], JSON_THROW_ON_ERROR);
     }
 
-    public function testPendingAuditIdentityIsMaskedOnlyForTheGuardedUpdate(): void
+    public function testAuditLazyNormalizationUsesOnlyTheObservedUpdateIdentity(): void
     {
-        $GLOBALS['maskSeqs'] = [];
-        try {
-            $pending = '900005';
-            \maskPendingAuditSequence($pending, 'update', ['audited_note']);
-            self::assertNull($pending);
-            self::assertSame('$SEQ', \norm(900005));
-
-            $pending = '900006';
-            \maskPendingAuditSequence($pending, 'insert', ['audited_note']);
-            self::assertNull($pending);
-            self::assertSame(900006, \norm(900006));
-        } finally {
-            $GLOBALS['maskSeqs'] = [];
-        }
+        $output = json_decode(
+            \coverageCanonicalConformanceOutput('mysql', 'audit_lazy', self::auditLazyOutput(900005, 900006)),
+            true,
+            512,
+            JSON_THROW_ON_ERROR,
+        );
+        self::assertSame('$SEQ', $output['audit_lazy']['statements'][1]['binds'][1]);
+        self::assertSame(2, $output['audit_lazy']['statements'][3]['binds'][1]);
+        self::assertSame(900004, $output['audit_lazy']['statements'][4]['binds'][0]);
     }
 
-    public function testAuditIdentityIsNotMaskedWhenItBecomesAnInsertForeignKey(): void
+    public function testAuditLazyNormalizationRejectsAnInvalidObservedIdentity(): void
     {
-        $GLOBALS['maskSeqs'] = [];
-        try {
-            \maskGeneratedSequence('900006', 'insert', ['audited_note']);
-            self::assertSame(900006, \norm(900006));
-        } finally {
-            $GLOBALS['maskSeqs'] = [];
-        }
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('sequence bind is not a positive integer');
+        \coverageCanonicalConformanceOutput('mysql', 'audit_lazy', self::auditLazyOutput(false, 900006));
+    }
+
+    public function testAuditLazyNormalizationRequiresTheGuardedUpdateStatement(): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('one audited-note update');
+        \coverageCanonicalConformanceOutput(
+            'mysql',
+            'audit_lazy',
+            self::auditLazyOutput(900005, 900006, 'audit_record'),
+        );
     }
 
     public function testEntryClassAssertionAllowsLibraryMode(): void
@@ -273,9 +274,15 @@ SH;
             );
         } finally {
             $previousPath === false ? putenv('PATH') : putenv("PATH=$previousPath");
-            $previousInitial === false ? putenv('COUNTER_FIXTURE_INITIAL') : putenv("COUNTER_FIXTURE_INITIAL=$previousInitial");
-            $previousState === false ? putenv('COUNTER_FIXTURE_STATE') : putenv("COUNTER_FIXTURE_STATE=$previousState");
-            $previousRestores === false ? putenv('COUNTER_FIXTURE_RESTORES') : putenv("COUNTER_FIXTURE_RESTORES=$previousRestores");
+            $previousInitial === false
+                ? putenv('COUNTER_FIXTURE_INITIAL')
+                : putenv("COUNTER_FIXTURE_INITIAL=$previousInitial");
+            $previousState === false
+                ? putenv('COUNTER_FIXTURE_STATE')
+                : putenv("COUNTER_FIXTURE_STATE=$previousState");
+            $previousRestores === false
+                ? putenv('COUNTER_FIXTURE_RESTORES')
+                : putenv("COUNTER_FIXTURE_RESTORES=$previousRestores");
             $previousLog === false ? putenv('COUNTER_FIXTURE_LOG') : putenv("COUNTER_FIXTURE_LOG=$previousLog");
             foreach ([$initialPath, $statePath, $restorePath, $logPath, $nodePath] as $path) {
                 if (file_exists($path)) {

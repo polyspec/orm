@@ -119,6 +119,7 @@ final class CoverageConformanceVerificationExtensionTest extends TestCase
         \coverageWithConformanceCountersRestored($driver, $dsn, static function () use (
             $root,
             $dsn,
+            $driver,
             &$output,
         ): void {
             [$status, $stdout, $stderr] = \coverageProcess(
@@ -131,7 +132,12 @@ final class CoverageConformanceVerificationExtensionTest extends TestCase
                     str_replace($dsn, '[dsn]', "native conformance child exited $status: $stderr$stdout")
                 );
             }
-            $output = json_decode($stdout, false, 512, JSON_THROW_ON_ERROR);
+            $output = json_decode(
+                \coverageCanonicalConformanceOutput($driver, 'audit_lazy', $stdout),
+                false,
+                512,
+                JSON_THROW_ON_ERROR,
+            );
         }, true);
         if (!$output instanceof \stdClass) {
             throw new \RuntimeException('native conformance runner returned no object');
@@ -275,7 +281,7 @@ final class CoverageConformanceVerificationExtensionTest extends TestCase
                 \coverageWithConformanceCountersRestored(
                     $driver,
                     (string) $dsn,
-                    function () use ($command, $root, $dsn, $expected, $file, $vector): void {
+                    function () use ($command, $root, $dsn, $expected, $file, $vector, $driver): void {
                         [$status, $stdout, $stderr] = coverageProcess($command, $root, self::childEnvironment());
                         if ($status !== 0) {
                             throw new \RuntimeException(
@@ -286,7 +292,12 @@ final class CoverageConformanceVerificationExtensionTest extends TestCase
                                 )
                             );
                         }
-                        $actual = json_decode($stdout, false, 512, JSON_THROW_ON_ERROR);
+                        $actual = json_decode(
+                            \coverageCanonicalConformanceOutput($driver, $vector, $stdout),
+                            false,
+                            512,
+                            JSON_THROW_ON_ERROR,
+                        );
                         Assert::assertSame([$vector], array_keys(get_object_vars($actual)));
                         Assert::assertTrue(
                             \Polyspec\Orm\Tests\sameJson($actual->$vector, $expected[$vector]),

@@ -118,20 +118,30 @@ final class CoverageConformanceVerificationTest extends TestCase
         }
         $root = dirname(__DIR__, 3);
         $output = null;
-        coverageWithConformanceCountersRestored($driver, $dsn, static function () use ($root, $dsn, &$output): void {
-            [$status, $stdout, $stderr] = coverageProcess(
-                [PHP_BINARY, "$root/packages/php/testing/conformance/runner.php", '--dsn', $dsn],
-                $root
-            );
-            if ($status !== 0) {
-                throw new RuntimeException(str_replace(
-                    $dsn,
-                    '[dsn]',
-                    "conformance runner exited $status: $stderr$stdout",
-                ));
-            }
-            $output = json_decode($stdout, false, 512, JSON_THROW_ON_ERROR);
-        }, true);
+        coverageWithConformanceCountersRestored(
+            $driver,
+            $dsn,
+            static function () use ($root, $dsn, $driver, &$output): void {
+                [$status, $stdout, $stderr] = coverageProcess(
+                    [PHP_BINARY, "$root/packages/php/testing/conformance/runner.php", '--dsn', $dsn],
+                    $root
+                );
+                if ($status !== 0) {
+                    throw new RuntimeException(str_replace(
+                        $dsn,
+                        '[dsn]',
+                        "conformance runner exited $status: $stderr$stdout",
+                    ));
+                }
+                $output = json_decode(
+                    \coverageCanonicalConformanceOutput($driver, 'audit_lazy', $stdout),
+                    false,
+                    512,
+                    JSON_THROW_ON_ERROR,
+                );
+            },
+            true,
+        );
         if (!$output instanceof stdClass) {
             throw new RuntimeException('conformance runner returned no object');
         }
@@ -194,14 +204,19 @@ final class CoverageConformanceVerificationTest extends TestCase
                 coverageWithConformanceCountersRestored(
                     $driver,
                     $dsn,
-                    static function () use ($command, $root, $dsn, $file, $expect, $name): void {
+                    static function () use ($command, $root, $dsn, $file, $expect, $name, $driver): void {
                         [$status, $stdout, $stderr] = coverageProcess($command, $root);
                         if ($status !== 0) {
                             throw new RuntimeException(
                                 str_replace($dsn, '[dsn]', "conformance runner exited $status: $stderr$stdout")
                             );
                         }
-                        $output = json_decode($stdout, false, 512, JSON_THROW_ON_ERROR);
+                        $output = json_decode(
+                            \coverageCanonicalConformanceOutput($driver, $name, $stdout),
+                            false,
+                            512,
+                            JSON_THROW_ON_ERROR,
+                        );
                         Assert::assertSame([$name], array_keys(get_object_vars($output)));
                         Assert::assertTrue(
                             sameJson($output->$name, $expect[$name]),

@@ -67,7 +67,6 @@ $transactions = [];
 $maskSeqs = [];
 $maskTs = [];
 $activeVector = '';
-$pendingAuditSequence = null;
 
 $db = \Polyspec\Orm\Tests\Model\connect($dsn, new Config(
     aesKey: 'bench-salt',
@@ -77,13 +76,7 @@ $db = \Polyspec\Orm\Tests\Model\connect($dsn, new Config(
 $db->transaction(static function (): void {
 }, retry: 0);
 $db->subscribe(static function (StatementEvent $e): void {
-    global $activeVector, $db, $log, $maskSeqs, $pendingAuditSequence, $transactions;
-    if ($activeVector === 'audit_lazy') {
-        maskPendingAuditSequence($pendingAuditSequence, $e->kind, $e->tables);
-        if ($e->kind === StatementEvent::INSERT && $e->error === null && $e->tables === ['audit_record']) {
-            $pendingAuditSequence = $db->pdo()->lastInsertId();
-        }
-    }
+    global $activeVector, $log, $transactions;
     $transaction = null;
     if ($e->transaction !== null) {
         $transactions[$e->transaction] ??= count($transactions) + 1;

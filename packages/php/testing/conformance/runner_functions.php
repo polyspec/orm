@@ -40,32 +40,6 @@ function norm(mixed $v): mixed
     return $v;
 }
 
-/** Adds an observed identity to the sequence mask; supplied context must be the guarded audited-row update. */
-function maskGeneratedSequence(int|string|false $value, ?string $kind = null, array $tables = []): void
-{
-    if ($kind !== null && ($kind !== 'update' || $tables !== ['audited_note'])) {
-        return;
-    }
-    global $maskSeqs;
-    $sequence = filter_var($value, FILTER_VALIDATE_INT);
-    if (!is_int($sequence) || $sequence < 1) {
-        throw new RuntimeException('database did not return a positive generated identity');
-    }
-    $maskSeqs[$sequence] = true;
-}
-
-/** Masks a pending audit identity only when the next statement is the guarded audited-row update. */
-function maskPendingAuditSequence(int|string|false|null &$value, string $kind, array $tables): void
-{
-    if ($value === null) {
-        return;
-    }
-    if ($kind === 'update' && $tables === ['audited_note']) {
-        maskGeneratedSequence($value, $kind, $tables);
-    }
-    $value = null;
-}
-
 /** Masks the keys and update times of rows a vector created, including statements logged earlier. */
 function mask(array $seqs, array $times = []): void
 {
@@ -148,13 +122,12 @@ function vector(string $name, callable $fn): void
 
 function run(string $name, callable $fn): void
 {
-    global $activeVector, $out, $log, $transactions, $maskSeqs, $maskTs, $db, $pendingAuditSequence, $writeVectors;
+    global $activeVector, $out, $log, $transactions, $maskSeqs, $maskTs, $db, $writeVectors;
     $activeVector = $name;
     $log = [];
     $transactions = [];
     $maskSeqs = [];
     $maskTs = [];
-    $pendingAuditSequence = null;
     $res = executeVector(
         $name,
         $fn,
