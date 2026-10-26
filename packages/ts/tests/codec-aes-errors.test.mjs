@@ -23,7 +23,7 @@ function expectAuthenticationFailure(value, decodeKey = key) {
 }
 
 // Requirement: COD-6 (docs/spec).
-caseTest('aes_tamper_rejected', COMPUTE, () => {
+caseTest('codec/aes_tamper_rejected', COMPUTE, () => {
   const valid = envelope();
   expectAuthenticationFailure(tamper(valid, valid.length - 1));
   expectAuthenticationFailure(tamper(valid, prefixLength + 12));
@@ -31,12 +31,12 @@ caseTest('aes_tamper_rejected', COMPUTE, () => {
 });
 
 // Requirement: COD-6 (docs/spec).
-caseTest('aes_wrong_key_rejected', COMPUTE, () => {
+caseTest('codec/aes_wrong_key_rejected', COMPUTE, () => {
   expectAuthenticationFailure(envelope(), 'another-key');
 });
 
 // Requirement: COD-5 (docs/spec).
-caseTest('aes_round_trip', COMPUTE, () => {
+caseTest('codec/aes_round_trip', COMPUTE, () => {
   for (const plaintext of ['', 'plain text', '인증된 UTF-8 🔐']) {
     assert.equal(hostDecode(envelope(plaintext), ['aes'], key), plaintext);
   }

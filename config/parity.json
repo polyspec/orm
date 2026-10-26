@@ -2683,7 +2683,7 @@
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/codec-errors.test.mjs",
-          "id": "tests/testcase.mts › codec/malformed-json-and-yaml"
+          "id": "codec/malformed-json-and-yaml"
         },
         {
           "implementation": "python",
@@ -25778,7 +25778,7 @@
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/codec-aes-errors.test.mjs",
-          "id": "tests/testcase.mts › aes_round_trip"
+          "id": "codec/aes_round_trip"
         }
       ]
     },
@@ -25822,7 +25822,7 @@
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/codec-aes-errors.test.mjs",
-          "id": "tests/testcase.mts › aes_tamper_rejected"
+          "id": "codec/aes_tamper_rejected"
         }
       ]
     },
@@ -25866,7 +25866,7 @@
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/codec-aes-errors.test.mjs",
-          "id": "tests/testcase.mts › aes_wrong_key_rejected"
+          "id": "codec/aes_wrong_key_rejected"
         }
       ]
     },
