@@ -1,4 +1,4 @@
-# Requirements: INT-24.
+# Requirements: INT-24, PRT-22.
 # Shared validation cases (tests/ir/validate.json): adds the schema's manifest_hash to each request, gives it only to the validator,
 # and checks that it accepts or fails with the expected error code. Go, PHP, Rust and TypeScript read the same file from their own
 # package.

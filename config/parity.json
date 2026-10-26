@@ -3468,6 +3468,16 @@
             "${ORM_CHECKOUT}",
             "dbspec-introspect-python-check"
           ]
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/schema/src/dbspec/introspect/mod.rs",
+          "id": "dbspec::introspect::default_tests::column_default_keeps_absent_accepted_and_rejected_states_distinct"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/schema/src/dbspec/introspect/mod.rs",
+          "id": "dbspec::introspect::default_tests::postgres_and_sqlite_catalog_readers_keep_their_default_parsers"
         }
       ]
     },
@@ -7846,6 +7856,55 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/codec_vectors.rs",
           "symbol": "decode_vectors"
+        }
+      ]
+    },
+    {
+      "id": "dbspec-operator-validation-limits",
+      "kind": "feature",
+      "requirements": [
+        "PRT-22"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/engine/ir/validate_test.go",
+          "id": "TestValidateVectors/col-op-bool-order"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/EngineTest.php",
+          "id": "EngineTest::testValidate"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ValidatorNativeTest.php",
+          "id": "ValidatorNativeTest::testValidate"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/engine.mjs",
+          "id": "engine"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_ir_validate.py",
+          "id": "col-op-bool-order"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/ir_validate.rs",
+          "id": "validate_vectors::col-op-bool-order"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/schema/src/dbspec/mod.rs",
+          "id": "dbspec::operator_tests::operators_follow_field_type_capabilities"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/schema/src/dbspec/mod.rs",
+          "id": "dbspec::operator_tests::codecs_and_column_operators_keep_their_restrictions"
         }
       ]
     },

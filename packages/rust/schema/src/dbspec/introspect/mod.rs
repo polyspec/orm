@@ -137,6 +137,7 @@ mod default_tests {
     use super::{parse_column_default, read_catalog, CatalogValue, Dialect};
     use crate::dbspec::model::{DefaultValue, Type};
 
+    // Requirements: DIA-133.
     #[test]
     fn column_default_keeps_absent_accepted_and_rejected_states_distinct() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -145,6 +146,7 @@ mod default_tests {
         assert_eq!(parse_column_default(Some("unsupported()".into()), |_| None), Err("unsupported()".into()));
     }
 
+    // Requirements: DIA-133.
     #[test]
     fn postgres_and_sqlite_catalog_readers_keep_their_default_parsers() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);

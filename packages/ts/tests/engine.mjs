@@ -1,4 +1,4 @@
-// Requirements: INT-24.
+// Requirements: INT-24, PRT-22.
 // Engine test: the runtime model of the embedded manifest, request validation and plans.
 // Usage: node packages/ts/tests/engine.mjs (after npm run typescript:build)
 import { readFile } from 'node:fs/promises';

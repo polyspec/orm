@@ -105,6 +105,7 @@ pub fn comparison_operator(op: &str) -> Option<&'static str> {
 mod operator_tests {
     use super::operator_allowed_for_type;
 
+    // Requirements: PRT-22.
     #[test]
     fn operators_follow_field_type_capabilities() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
@@ -129,6 +130,7 @@ mod operator_tests {
         assert_eq!(super::comparison_operator("unknown"), None);
     }
 
+    // Requirements: PRT-22.
     #[test]
     fn codecs_and_column_operators_keep_their_restrictions() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);

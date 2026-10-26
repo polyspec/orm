@@ -4,6 +4,7 @@
 # is nothing. MySQL and PostgreSQL use ORM_TEST_MYSQL_DSN and ORM_TEST_POSTGRES_DSN (TEST_ENV)
 # servers. The fourth element of an unsupported object is the rule its reason must include.
 # make dbspec-introspect-python-check runs this file with the python in the venv.
+# Requirements: DIA-133.
 import contextlib
 import json
 import os

@@ -4522,7 +4522,8 @@
         "packages/rust/schema/src/dbspec/check.rs",
         "packages/rust/schema/src/dbspec/mod.rs",
         "packages/rust/schema/src/dbspec/parser.rs",
-        "packages/rust/schema/src/names.rs"
+        "packages/rust/schema/src/names.rs",
+        "packages/rust/schema/src/dbspec/introspect/mod.rs"
       ],
       "docs": [
         "docs/spec/dbspec.md",
@@ -5756,6 +5757,7 @@
       "parity": [
         "planner",
         "ir-validate",
+        "dbspec-operator-validation-limits",
         "planner_scalar_subquery_aggregate_types"
       ],
       "fixtures": [
@@ -5809,7 +5811,8 @@
         "packages/rust/orm/tests/unit/markdown_scalar_subquery.rs",
         "packages/go/orm/values_test.go",
         "packages/php-ext/tests/ColumnFunctionMetadataTest.php",
-        "packages/rust/orm/tests/unit/upsert_conflict.rs"
+        "packages/rust/orm/tests/unit/upsert_conflict.rs",
+        "packages/rust/schema/src/dbspec/mod.rs"
       ],
       "docs": [
         "docs/spec/protocol.md",
