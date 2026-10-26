@@ -1,5 +1,6 @@
 # Checks that value functions and column functions build IR, and codec unit cases (unittest).
 import unittest
+import json
 
 
 from polyspec.orm.codec import (
@@ -19,12 +20,19 @@ from . import testcase
 class ValueFunctionTest(unittest.TestCase):
     # Requirements: PRT-77.
     def test_ir_carry_name_and_parameters(self):
-        params = []
+        params = ["preceding"]
         self.assertEqual(
             orm.seconds_ago(30).ir(lambda v: params.append(v) or len(params) - 1),
-            {"name": "seconds_ago", "ps": [0]},
+            {"name": "seconds_ago", "ps": [1]},
         )
-        self.assertEqual(orm.now().ir(lambda v: 0), {"name": "now"})
+        self.assertEqual(
+            json.dumps(orm.seconds_ago(30).ir(lambda v: 0), separators=(",", ":")),
+            '{"name":"seconds_ago","ps":[0]}',
+        )
+        self.assertEqual(
+            json.dumps(orm.now().ir(lambda v: 0), separators=(",", ":")),
+            '{"name":"now"}',
+        )
         self.assertIsInstance(orm.day_of_week(), ColumnFunction)
         self.assertIsInstance(orm.months_later(3), ValueFunction)
         self.assertEqual(orm.year().name, "year")

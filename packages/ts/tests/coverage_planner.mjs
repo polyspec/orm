@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { Engine, dbspecManifest, parseDbspec, registerModel } from '../dist/index.js';
+import { Engine, dbspecManifest, orm, parseDbspec, registerModel } from '../dist/index.js';
 import { paramUses } from '../dist/engine/params.js';
 import { validate } from '../dist/engine/validate.js';
 import { repositoryRoot, runCases } from './coverage_case.mjs';
@@ -159,6 +159,13 @@ await runCases('coverage_planner.mjs', {
   async planner_join_left_soft_delete() { compileCase('planner_join_left_soft_delete'); },
   async planner_join_on_soft_delete() { compileCase('planner_join_on_soft_delete'); },
   async planner_force_index() { compileCase('planner_force_index'); },
+  // Requirements: PRT-77.
+  async value_function_ir_parameter_indexes() {
+    const preceding = ['preceding'];
+    assert.deepEqual(orm.secondsAgo(30).ir(value => preceding.push(value) - 1), { name: 'seconds_ago', ps: [1] });
+    assert.equal(JSON.stringify(orm.secondsAgo(30).ir(() => 0)), '{"name":"seconds_ago","ps":[0]}');
+    assert.equal(JSON.stringify(orm.now().ir(() => 0)), '{"name":"now"}');
+  },
   async planner_value_function_today() { compileCase('planner_value_function_today'); },
   async planner_column_function_date() { compileCase('planner_column_function_date'); },
   async planner_rejects_column_function_on_varchar() { compileCase('planner_rejects_column_function_on_varchar'); },

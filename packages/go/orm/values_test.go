@@ -1,6 +1,7 @@
 package orm
 
 import (
+	"encoding/json"
 	"slices"
 	"testing"
 
@@ -12,6 +13,27 @@ import (
 // applies to the compared column and binds none.
 func TestFuncIR(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
+	// Requirements: PRT-77.
+	params := []any{"preceding"}
+	got := SecondsAgo(30).irFunc(func(v any) int {
+		params = append(params, v)
+		return len(params) - 1
+	})
+	encoded, err := json.Marshal(got)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(encoded) != `{"name":"seconds_ago","ps":[1]}` {
+		t.Fatalf("value-function IR = %s, want name and parameter index", encoded)
+	}
+	encoded, err = json.Marshal(Now().irFunc(func(any) int { return 0 }))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(encoded) != `{"name":"now"}` {
+		t.Fatalf("no-argument value-function IR = %s, want omitted ps", encoded)
+	}
+
 	for _, c := range []struct {
 		fn     Func
 		name   string

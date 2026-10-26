@@ -227,10 +227,6 @@
           "reason": "external: an internal package test of the go module that runs against a database or driver of an external service, not a helper the contract names (K313)"
         },
         {
-          "glob": "packages/go/orm/values_test.go",
-          "reason": "test: calls the private Go Func.irFunc encoder directly; public value and column function behavior is exercised through planner cases"
-        },
-        {
           "glob": "packages/go/procevent/procevent_test.go",
           "reason": "harness: tests Go process-exit and directory-event observation helpers used by test runners; it does not exercise ORM client behavior"
         },
@@ -16384,16 +16380,51 @@
       ]
     },
     {
-      "id": "py-test-values",
+      "id": "value-function-ir-parameter-indexes",
       "kind": "feature",
       "requirements": [
         "PRT-77"
       ],
       "bindings": [
         {
+          "implementation": "go",
+          "test": "packages/go/orm/values_test.go",
+          "id": "TestFuncIR"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/DsnTest.php",
+          "id": "DsnTest::testValueFunctionIrCarriesNameAndParameterIndexes"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/OrmExceptionNativeTest.php",
+          "id": "OrmExceptionNativeTest::testNativeValueFunctionIrCarriesNameAndParameterIndexes"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_planner.mjs",
+          "id": "value_function_ir_parameter_indexes"
+        },
+        {
           "implementation": "python",
           "test": "packages/python/tests/test_values.py",
           "id": "test_ir_carry_name_and_parameters"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/request.rs",
+          "id": "value_function_protocol_tests::value_function_ir_serializes_name_and_parameter_indexes",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-rust-unit",
+            "FEATURE_CRATE=packages/rust/orm",
+            "FEATURE_CARGO_TARGET=--lib",
+            "FEATURE_TEST=value_function_protocol_tests::value_function_ir_serializes_name_and_parameter_indexes"
+          ]
         }
       ]
     },

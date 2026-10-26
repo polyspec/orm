@@ -276,6 +276,25 @@ fn func_ir(r: &mut Req, f: &crate::args::Func) -> ir::Func {
     ir::Func { name: f.name.to_owned(), ps }
 }
 
+#[cfg(test)]
+mod value_function_protocol_tests {
+    use super::*;
+
+    static SCHEMA: Schema = Schema::new("", "test-manifest");
+
+    #[test]
+    // Requirements: PRT-77.
+    fn value_function_ir_serializes_name_and_parameter_indexes() {
+        let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+        let mut request = Req::new(&SCHEMA, "all", "probe");
+        request.p(Param::I64(7));
+        let got = func_ir(&mut request, &crate::args::seconds_ago(30));
+        assert_eq!(serde_json::to_value(got).unwrap(), serde_json::json!({"name":"seconds_ago","ps":[1]}));
+        let got = func_ir(&mut request, &crate::args::now());
+        assert_eq!(serde_json::to_value(got).unwrap(), serde_json::json!({"name":"now"}));
+    }
+}
+
 fn columns(r: &mut Req, c: &Core) -> Option<Option<ir::Columns>> {
     let spec = &c.columns;
     let mut out = ir::Columns { mode: spec.mode.to_owned(), add: spec.add.clone(), remove: spec.remove.clone(), ..Default::default() };
