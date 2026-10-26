@@ -61,7 +61,8 @@
         "typescript-public-connection-call",
         "sqlite-minimum-driver-version",
         "mysql-session",
-        "php-python-session-initialization"
+        "php-python-session-initialization",
+        "parameter-slot-validation-vectors"
       ],
       "fixtures": [
         "packages/go/orm/test_helpers_test.go",
@@ -567,6 +568,42 @@
             "packages/php-ext/src/config.m4",
             "packages/php-ext/scripts/build.sh",
             "packages/php-ext/src/polyspec_orm.c"
+          ]
+        },
+        {
+          "id": "bind-vectors-php",
+          "command": "make php-models && vendor-php/bin/phpunit --configuration packages/php/phpunit.xml.dist --filter testBindVectors packages/php/tests/MarkdownTest.php",
+          "shard": "other",
+          "inputs": [
+            "Makefile",
+            "packages/php/models.txt",
+            "packages/php/tests/MarkdownTest.php",
+            "packages/php/src/ParamCheck.php",
+            "packages/php/src/Transform.php",
+            "tests/bind/vectors.json"
+          ]
+        },
+        {
+          "id": "bind-vectors-php-extension",
+          "command": "make dbspec-php-extension-check/markdown DBSPEC_MARKDOWN_TEST_FILTER='testBindVectors'",
+          "shard": "other",
+          "inputs": [
+            "Makefile",
+            "packages/php/models.txt",
+            "packages/php/tests/MarkdownTest.php",
+            "packages/php-ext/src/param_check_native.c",
+            "packages/php-ext/src/value_classes_native.c",
+            "tests/bind/vectors.json"
+          ]
+        },
+        {
+          "id": "bind-vectors-typescript",
+          "command": "node --test --test-name-pattern='^bind/vectors$' packages/ts/tests/markdown.mjs",
+          "shard": "other",
+          "inputs": [
+            "packages/ts/tests/markdown.mjs",
+            "packages/ts/src/bind_check.ts",
+            "tests/bind/vectors.json"
           ]
         }
       ],
@@ -2304,6 +2341,16 @@
             "packages/python/tests/test_sqlite.py",
             "packages/python/src/polyspec/orm/model_exec.py",
             "contracts/fixtures/insert_parts.json"
+          ]
+        },
+        {
+          "id": "time-precision-rust-unit",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts time-precision-rust-unit -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib db::time_precision_tests::temporal_precision_boundaries_and_fraction_semantics_are_preserved -- --exact --test-threads=1",
+          "shard": "rust",
+          "inputs": [
+            "packages/rust/orm/tests/unit/time_precision.rs",
+            "packages/rust/orm/src/db.rs",
+            "packages/rust/orm/src/bind_check.rs"
           ]
         }
       ],
@@ -4321,6 +4368,7 @@
         "coverage-schema-definition-dbspec-parse-positions",
         "dbspec-introspect-query-count",
         "dbspec-introspect-round-trip",
+        "php-dbspec-interface-compatibility",
         "dbspec-plan-physical",
         "dbspec-apply-cleanup-go",
         "dbspec-apply-cleanup-typescript",
@@ -4438,7 +4486,9 @@
         "packages/ts/tests/dbspec-show-create.mjs",
         "packages/go/orm/coverage_schema_definition_test.go",
         "packages/php/tests/CoverageSchemaDefinitionTest.php",
+        "packages/php/tests/DbspecBehaviourTest.php",
         "packages/php-ext/tests/CoverageSchemaDefinitionExtensionTest.php",
+        "packages/php-ext/tests/DbspecBehaviourNativeTest.php",
         "packages/rust/schema/tests/coverage_schema_definition.rs",
         "packages/ts/tests/coverage_schema_definition.mjs",
         "packages/ts/tests/package-declarations.mjs",
@@ -4594,6 +4644,7 @@
             "packages/php/tests/DbspecShowCreateIntrospectTest.php",
             "packages/php/tests/DbspecGraphTest.php",
             "packages/php/tests/DbspecBehaviourTest.php",
+            "packages/php-ext/tests/DbspecBehaviourNativeTest.php",
             "packages/php/tests/dbspec_behaviour.php",
             "packages/php/tests/fixtures/dbspec-behaviour.json",
             "packages/php/testing/dbspec/behaviour.php",
@@ -4766,6 +4817,7 @@
             "packages/php-ext/composer.json",
             "packages/php-ext/tests/declarations.php",
             "packages/php-ext/tests/DeclarationsTest.php",
+            "packages/php-ext/tests/DbspecBehaviourNativeTest.php",
             "packages/php/tests/DbspecPlanTest.php",
             "tests/dbspec/plans.json",
             "packages/php/tests/DbspecMermaidTest.php",
@@ -4840,6 +4892,14 @@
             "packages/go/internal/dialects/paths.go",
             "packages/go/internal/dialects/probe_test.go"
           ]
+        },
+        {
+          "id": "schema-name-conversion-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts schema-name-conversion-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --package polyspec-orm-schema --lib names::tests::snake_case_separates_ascii_uppercase_characters -- --exact --test-threads=1",
+          "shard": "rust",
+          "inputs": [
+            "packages/rust/schema/src/names.rs"
+          ]
         }
       ],
       "coverage": {
@@ -4894,7 +4954,8 @@
             "part": "packages/php/tests",
             "tests": [
               "packages/php/tests/CoverageSchemaDefinitionTest.php",
-              "packages/php/tests/DbspecApplyCleanupTest.php"
+              "packages/php/tests/DbspecApplyCleanupTest.php",
+              "packages/php/tests/DbspecBehaviourTest.php"
             ],
             "inputs": [
               "contracts/fixtures/schema_definition.json",
@@ -4930,7 +4991,8 @@
           "php-extension": {
             "part": "packages/php-ext/tests",
             "tests": [
-              "packages/php-ext/tests/CoverageSchemaDefinitionExtensionTest.php"
+              "packages/php-ext/tests/CoverageSchemaDefinitionExtensionTest.php",
+              "packages/php-ext/tests/DbspecBehaviourNativeTest.php"
             ],
             "inputs": [
               "contracts/fixtures/schema_definition.json",
@@ -5370,6 +5432,14 @@
             "packages/php-ext/src/schema_utils.c",
             "contracts/fixtures/install/changed_database.json",
             "contracts/fixtures/install/note.dbs"
+          ]
+        },
+        {
+          "id": "catalog-row-order-unit-rust",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts catalog-row-order-unit-rust -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib dbspec::catalog_row_tests::catalog_rows_preserves_row_and_column_order -- --exact --test-threads=1",
+          "shard": "rust",
+          "inputs": [
+            "packages/rust/orm/src/dbspec.rs"
           ]
         }
       ],
@@ -8305,6 +8375,15 @@
           "inputs": [
             "packages/python/tests/test_driver_errors.py",
             "packages/python/src/polyspec/orm/database.py"
+          ]
+        },
+        {
+          "id": "driver-error-cause-rust-sqlx-bind",
+          "command": "PATH=\"$HOME/.cargo/bin:$PATH\" node tests/cargo-test.mts driver-error-cause-rust-sqlx-bind -- cargo test --manifest-path packages/rust/Cargo.toml --locked --workspace --features \"$ORM_RUST_TEST_FEATURES\" --lib driver::cause_message_tests -- --test-threads=1",
+          "shard": "rust",
+          "inputs": [
+            "packages/rust/orm/tests/unit/driver_cause.rs",
+            "packages/rust/orm/src/driver.rs"
           ]
         }
       ],

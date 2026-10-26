@@ -2416,6 +2416,7 @@
       ],
       "inputs": [
         "packages/php-ext/tests/DeclarationsTest.php",
+        "packages/php-ext/tests/DbspecBehaviourNativeTest.php",
         "packages/php-ext/tests/DbspecRulesNativeTest.php",
         "packages/php/tests/CoverageSchemaDefinitionTest.php",
         "packages/php-ext/tests/CoverageSchemaDefinitionExtensionTest.php",

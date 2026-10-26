@@ -180,6 +180,7 @@ for (const c of bind.message) {
 }
 // Bind case of tests/bind/vectors.json: checks a parameter value against the logical type of its slot (docs/spec/protocol.md §5
 // "Parameters"). These are the same cases as TestBindVectors in Go.
+// Requirements: PRT-67, DIA-31.
 function vectorValue(value) {
   if (value === null || typeof value !== 'object') return value;
   // A native value of the tagged kind: the host object a TypeScript program passes for it.
@@ -189,8 +190,8 @@ function vectorValue(value) {
   if (value.bytes !== undefined) return new Uint8Array(Buffer.from(value.bytes, 'base64'));
   throw new Error(`value ${JSON.stringify(value)} has no host form`);
 }
-for (const c of bind.bind) {
-  caseTest(`bind/${c.name}`, COMPUTE, () => {
+caseTest('bind/vectors', COMPUTE, () => {
+  for (const c of bind.bind) {
     let value = vectorValue(c.value);
     const slot = { type: c.slot.type, precision: c.slot.precision ?? 0, scale: c.slot.scale ?? 0, length: c.slot.length ?? 0 };
     let code = '';
@@ -205,9 +206,9 @@ for (const c of bind.bind) {
       code = error.code;
     }
     if (c.code !== undefined) {
-      if (code !== c.code) throw new Error(`checkParam(${JSON.stringify(c.value)}) = ${code}; want ${c.code}`);
+      if (code !== c.code) throw new Error(`${c.name}: checkParam(${JSON.stringify(c.value)}) = ${code}; want ${c.code}`);
     } else if (code !== '' || !isDeepStrictEqual(value, vectorValue(c.bound))) {
-      throw new Error(`checkParam(${JSON.stringify(c.value)}) = ${code}; want ${JSON.stringify(c.bound)} bound`);
+      throw new Error(`${c.name}: checkParam(${JSON.stringify(c.value)}) = ${code}; want ${JSON.stringify(c.bound)} bound`);
     }
-  });
-}
+  }
+});

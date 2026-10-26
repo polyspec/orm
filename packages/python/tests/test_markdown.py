@@ -231,6 +231,7 @@ class BindVectors(unittest.TestCase):
     "Parameters"). It is the same case as Go's TestBindVectors."""
 
     def test_bind_cases(self):
+        # Requirements: PRT-67, DIA-31.
         import json
         import pathlib
 

@@ -288,6 +288,7 @@ final class MarkdownTest extends TestCase
         markdown_test_server_received_messages($server);
     }
 
+    // Requirements: PRT-67, DIA-31.
     public function testBindVectors(): void
     {
         // Bind case of tests/bind/vectors.json: checks the parameter value against the logical type of its slot

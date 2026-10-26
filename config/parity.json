@@ -171,10 +171,6 @@
           "reason": "test: an internal package test of the go module that tests a helper of the owner, not a behaviour of the contract (K313)"
         },
         {
-          "glob": "packages/go/orm/bind_check_test.go",
-          "reason": "fixture: an internal package test of the go module that reads the fixtures of the contract data, not a helper the contract names (K313)"
-        },
-        {
           "glob": "packages/go/orm/context_reset_test.go",
           "reason": "external: an internal package test of the go module that runs against a database or driver of an external service, not a helper the contract names (K313)"
         },
@@ -11484,6 +11480,21 @@
           "implementation": "rust",
           "test": "packages/rust/orm/src/lib.rs",
           "id": "driver_error_tests::unknown_database_error_keeps_the_native_source_chain"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/unit/driver_cause.rs",
+          "id": "driver::cause_message_tests::postgres_bind_preserves_native_parse_cause_message"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/unit/driver_cause.rs",
+          "id": "driver::cause_message_tests::postgres_bind_preserves_utf8_cause_message"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/unit/driver_cause.rs",
+          "id": "driver::cause_message_tests::postgres_datetime_bind_preserves_parse_cause_message"
         }
       ]
     },
@@ -14305,7 +14316,7 @@
       ]
     },
     {
-      "id": "rust-bind-check-bind-vectors-bind-vectors",
+      "id": "parameter-slot-validation-vectors",
       "kind": "feature",
       "requirements": [
         "PRT-67",
@@ -14316,6 +14327,36 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/unit/bind_vectors.rs",
           "id": "bind_check::bind_vectors::bind_vectors"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/unit/time_precision.rs",
+          "id": "db::time_precision_tests::temporal_precision_boundaries_and_fraction_semantics_are_preserved"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/bind_check_test.go",
+          "id": "TestBindVectors"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/MarkdownTest.php",
+          "id": "MarkdownTest::testBindVectors"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/MarkdownTest.php",
+          "id": "MarkdownTest::testBindVectors"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/markdown.mjs",
+          "id": "bind/vectors"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_markdown.py",
+          "id": "BindVectors::test_bind_cases"
         }
       ]
     },
@@ -14606,6 +14647,11 @@
           "implementation": "rust",
           "test": "packages/rust/schema/tests/dbspec_runtime.rs",
           "id": "runtime_model_names_entities_and_reads_settings"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/schema/src/names.rs",
+          "id": "names::tests::snake_case_separates_ascii_uppercase_characters"
         }
       ]
     },
@@ -16044,12 +16090,9 @@
       ]
     },
     {
-      "id": "php-internal-dbspec-behaviour-case",
+      "id": "php-dbspec-interface-compatibility",
       "kind": "feature",
       "requirements": [
-        "DBS-2",
-        "DBS-99",
-        "DBS-171",
         "DBS-172"
       ],
       "bindings": [
@@ -16060,10 +16103,18 @@
         },
         {
           "implementation": "php-extension",
-          "test": "packages/php/tests/DbspecBehaviourTest.php",
-          "id": "DbspecBehaviourTest::testCase"
+          "test": "packages/php-ext/tests/DbspecBehaviourNativeTest.php",
+          "id": "DbspecBehaviourNativeTest::testPureCase"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "schema_definition",
+        "parts": [
+          "owner/php",
+          "owner/php-extension"
+        ]
+      }
     },
     {
       "id": "php-internal-markdown-session-messages",
@@ -16121,23 +16172,6 @@
           "implementation": "php",
           "test": "packages/php/tests/MarkdownTest.php",
           "id": "MarkdownTest::testBindMessageVectors"
-        }
-      ]
-    },
-    {
-      "id": "php-internal-markdown-bind-vectors",
-      "kind": "feature",
-      "requirements": [
-        "PRT-63",
-        "PRT-64",
-        "PRT-66",
-        "PRT-67"
-      ],
-      "bindings": [
-        {
-          "implementation": "php",
-          "test": "packages/php/tests/MarkdownTest.php",
-          "id": "MarkdownTest::testBindVectors"
         }
       ]
     },
@@ -26416,6 +26450,11 @@
           "implementation": "rust",
           "test": "packages/rust/tests/tests/coverage_catalog_connection.rs",
           "id": "coverage_catalog_grid_column_and_row_order"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/orm/src/dbspec.rs",
+          "id": "dbspec::catalog_row_tests::catalog_rows_preserves_row_and_column_order"
         }
       ]
     },

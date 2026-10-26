@@ -6,9 +6,9 @@ namespace Polyspec\Orm\Tests;
 
 // Requirements: DBS-172.
 
-// The PHP behaviours of the dbspec interface that the shared vectors do not fix (dbspec_behaviour.php), each case
-// against the outcome recorded from the PHP library in fixtures/dbspec-behaviour.json. The same file checks the PHP
-// library and, run with the extension loaded, the extension.
+// The PHP dbspec behavior cases compare with outcomes recorded from the PHP library in fixtures/dbspec-behaviour.json.
+// The extension test package also runs its database-free cases through DbspecBehaviourNativeTest; the extension
+// behavior target retains all cases.
 
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -29,20 +29,22 @@ final class DbspecBehaviourTest extends TestCase
     #[DataProvider('cases')]
     public function testCase(string $name): void
     {
-        $recorded = dbspec_behaviour_recorded();
-        Assert::assertArrayHasKey(
-            $name,
-            $recorded,
-            "$name is not recorded; run php packages/php/testing/dbspec/behaviour.php"
-        );
-        $got = json_decode(
-            json_encode(
-                dbspec_behaviour_cases()[$name](),
-                JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR
-            ),
-            true
-        );
-        Assert::assertSame($recorded[$name], $got, $name);
+        dbspec_behaviour_assert_case($name);
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function pureCases(): iterable
+    {
+        foreach (dbspec_behaviour_pure_case_names() as $name) {
+            yield $name => [$name];
+        }
+    }
+
+    // Requirements: DBS-172.
+    #[DataProvider('pureCases')]
+    public function testPureCase(string $name): void
+    {
+        dbspec_behaviour_assert_case($name);
     }
 
     // Every recorded case is still a case, so a removed case does not leave its record behind.

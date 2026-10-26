@@ -85,6 +85,7 @@ func vectorValue(t *testing.T, raw json.RawMessage) any {
 
 // TestBindVectors checks each bind case of tests/bind/vectors.json against the logical
 // type of its slot (docs/spec/protocol.md §5 "Parameters").
+// Requirements: PRT-67, DIA-31.
 func TestBindVectors(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	v := readBindVectors(t)

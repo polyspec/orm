@@ -38,6 +38,7 @@ fn invalid_precision_is_schema_invalid_for_null_and_dotless_values() {
     assert!(failures.is_empty(), "invalid precision did not survive bind checking as SCHEMA_INVALID:\n{}", failures.join("\n"));
 }
 
+// Requirements: PRT-67, DIA-31.
 #[test]
 fn temporal_precision_boundaries_and_fraction_semantics_are_preserved() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);

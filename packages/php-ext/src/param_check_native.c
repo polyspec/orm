@@ -419,7 +419,7 @@ ZEND_METHOD(Polyspec_Orm_ParamCheck, check)
             if (EG(exception) != NULL) param_wrap_pending(index);
             RETURN_THROWS();
         }
-        if (zend_string_equals_literal(type, "date")) {
+        if (!zend_string_equals_literal(type, "time")) {
             bool valid = Z_TYPE(converted) == IS_STRING && Z_STRLEN(converted) >= 5
                 && Z_STRVAL(converted)[4] == '-' && memcmp(Z_STRVAL(converted), "0000", 4) != 0
                 && Z_STRVAL(converted)[0] >= '0' && Z_STRVAL(converted)[0] <= '9'

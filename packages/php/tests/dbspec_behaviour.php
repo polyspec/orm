@@ -589,3 +589,88 @@ function dbspec_behaviour_recorded(): array
         JSON_THROW_ON_ERROR
     )['cases'];
 }
+
+/** @return list<string> recorded cases that do not open PDO or run database commands */
+function dbspec_behaviour_pure_case_names(): array
+{
+    $names = [
+        'bytes/invalid-byte',
+        'bytes/invalid-byte-after-a-lone-carriage-return',
+        'bytes/byte-order-mark-and-an-invalid-byte',
+        'bytes/invalid-byte-in-the-header',
+        'bytes/truncated-sequence-at-the-end',
+        'bytes/nul-in-a-comment',
+        'bytes/used-document-not-utf8',
+        'arguments/integer-document-name',
+        'arguments/document-text-not-a-string',
+        'arguments/render-unknown-dialect',
+        'arguments/missing-file',
+        'arguments/directory',
+        'arguments/manifest-of-a-text',
+        'arguments/analyze-document-text-not-a-string',
+        'arguments/format-document-text-not-a-string',
+        'manifest/repeated-document',
+        'objects/same-document-object',
+        'objects/signature',
+        'objects/diagnostic-write',
+        'objects/diagnostic-dynamic-property',
+        'objects/diagnostic-properties',
+        'objects/position-write',
+        'objects/position-properties',
+        'objects/parse-result-properties',
+        'objects/document-properties',
+        'objects/invalid-result-without-a-diagnostic',
+        'objects/repeated-readonly-construction',
+        'documents/edited',
+        'sets/result-invalid-without-an-error',
+        'sets/result-invalid',
+        'sets/result-valid',
+        'names/render/0',
+        'names/render/1',
+        'names/render/2',
+        'names/render/3',
+        'names/render/4',
+        'names/render/5',
+        'names/render/6',
+        'names/column/array-hit',
+        'names/column/array-miss',
+        'names/column/empty-array',
+        'names/column/generator-stops-at-the-match',
+        'names/column/array-iterator',
+        'names/column/non-string-element',
+        'names/of-table',
+    ];
+    if (count($names) !== 45) {
+        throw new \LogicException('DB-free dbspec behavior case list must contain 45 case IDs');
+    }
+    $missing = array_diff($names, array_keys(dbspec_behaviour_cases()));
+    if ($missing !== []) {
+        throw new \LogicException('DB-free dbspec behavior cases are missing: ' . implode(', ', $missing));
+    }
+    $unrecorded = array_diff($names, array_keys(dbspec_behaviour_recorded()));
+    if ($unrecorded !== []) {
+        throw new \LogicException(
+            'DB-free dbspec behavior cases have no recorded outcome: ' . implode(', ', $unrecorded)
+        );
+    }
+    return $names;
+}
+
+/** Compare one PHP or extension outcome with the reference recorded from the PHP library. */
+function dbspec_behaviour_assert_case(string $name): void
+{
+    $recorded = dbspec_behaviour_recorded();
+    \PHPUnit\Framework\Assert::assertArrayHasKey(
+        $name,
+        $recorded,
+        "$name is not recorded; run php packages/php/testing/dbspec/behaviour.php"
+    );
+    $got = json_decode(
+        json_encode(
+            dbspec_behaviour_cases()[$name](),
+            JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR
+        ),
+        true
+    );
+    \PHPUnit\Framework\Assert::assertSame($recorded[$name], $got, $name);
+}

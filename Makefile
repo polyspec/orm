@@ -1116,6 +1116,7 @@ dbspec-php-extension-check/graph: php-vendor-check dbspec-php-extension-check/pr
 # dbspec-php-extension-check/behaviour runs DbspecBehaviourTest with the extension: the PHP behaviours of fixtures/dbspec-behaviour.json, Names among them.
 dbspec-php-extension-check/behaviour: php-vendor-check dbspec-php-extension-check/prepare
 	$(PHP_EXTENSION_TESTS) packages/php/tests/DbspecBehaviourTest.php
+	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/DbspecBehaviourNativeTest.php
 # dbspec-php-extension-check/schema-definition runs CoverageSchemaDefinitionTest with the extension: the cases of contracts/fixtures/schema_definition.json.
 dbspec-php-extension-check/schema-definition: php-vendor-check dbspec-php-extension-check/prepare
 	$(PHP_EXTENSION_NATIVE_TESTS) packages/php-ext/tests/CoverageSchemaDefinitionExtensionTest.php
@@ -2722,8 +2723,12 @@ collection-raw-phpstan-check:
 	cd packages/php && $(PHPSTAN) analyse --no-progress --error-format=raw --memory-limit=-1 --level=5 --configuration=$(KIT_PACKAGE)/phpstan.dist.neon --autoload-file=../../vendor-php/autoload.php tests/phpstan/RawCollection.php
 
 # dbspec-php-extension-check/markdown runs MarkdownTest with the extension loaded: the markdown IR uses of KSTD-5-80.
-dbspec-php-extension-check/markdown: php-vendor-check dbspec-php-extension-check/prepare
-	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension $(PHP_EXTENSION_LIBRARY) --without-library packages/php -- --configuration packages/php/phpunit.xml.dist packages/php/tests/MarkdownTest.php
+DBSPEC_MARKDOWN_TEST_FILTER ?=
+dbspec-php-extension-check/markdown: php-models dbspec-php-extension-check/prepare
+	@set -eu; \
+	run_dir="$(RUN_DIR)"; \
+	trap 'rm -rf "$$run_dir"' EXIT; \
+	env ORM_PHP_MODE=extension $(RUN_TESTS) phpunit --php-extension $(PHP_EXTENSION_LIBRARY) --without-library packages/php -- --configuration packages/php/phpunit.xml.dist $(if $(DBSPEC_MARKDOWN_TEST_FILTER),--filter '$(DBSPEC_MARKDOWN_TEST_FILTER)',) packages/php/tests/MarkdownTest.php
 
 # print-CARGO_PROFILE_DEV_DEBUG prints the debug setting of the Rust test build of this checkout (KSTD-5-85). It sits at the end so that
 # it never becomes the default goal of the Makefile.
