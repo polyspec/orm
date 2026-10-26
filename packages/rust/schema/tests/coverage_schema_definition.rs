@@ -101,7 +101,7 @@ mod schema_definition {
         format!("{}\n", lines.join("\n"))
     }
 
-    // Requirements: DBS-134.
+    // Requirements: DBS-134, DBS-135.
     #[test]
     fn dbspec_analyze_tokens() {
         let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);

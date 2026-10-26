@@ -126,7 +126,7 @@ class CoverageSchemaDefinitionTest extends TestCase
         }
     }
 
-    // Requirements: DBS-134.
+    // Requirements: DBS-134, DBS-135.
     public function testDbspecAnalyzeTokens(): void
     {
         $dbspec = static::dbspec();

@@ -87,7 +87,7 @@ def dbspec_render_ddl():
 
 
 def dbspec_analyze_tokens():
-    # Requirements: DBS-134.
+    # Requirements: DBS-134, DBS-135.
     c = fixture_case("dbspec_analyze_tokens", "analyze")
     for path, text, document in documents(c["input"]["documents"]):
         analysis = analyze_dbspec(text, {})

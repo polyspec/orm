@@ -11,7 +11,7 @@ use PHPUnit\Framework\Attributes\Small;
 // Requirements: DBS-123.
 // Requirements: DBS-103.
 // Requirements: DBS-99.
-// Requirements: DBS-134.
+// Requirements: DBS-134, DBS-135.
 // Requirements: DBS-141.
 // Requirements: DBS-141, ORES-14.
 // Requirements: DBS-142.

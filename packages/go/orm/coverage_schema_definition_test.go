@@ -129,7 +129,7 @@ func fixtureText(t *testing.T, c fixtureCase) string {
 
 // TestCoverageDbspecAnalyzeTokens checks that the analysis of each document holds the
 // result of Parse unchanged and the tokens of the fixture.
-// Requirements: DBS-134.
+// Requirements: DBS-134, DBS-135.
 func TestCoverageDbspecAnalyzeTokens(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	c := featureFixture(t, "schema_definition", "dbspec_analyze_tokens", "analyze")

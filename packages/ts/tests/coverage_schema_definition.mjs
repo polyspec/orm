@@ -62,7 +62,7 @@ await runCases('coverage_schema_definition.mjs', {
     }
   },
 
-  // Requirements: DBS-134.
+  // Requirements: DBS-134, DBS-135.
   async dbspec_analyze_tokens() {
     const c = fixtureCase('dbspec_analyze_tokens', 'analyze');
     for (const { path, text, document } of await documents(c.input.documents)) {
