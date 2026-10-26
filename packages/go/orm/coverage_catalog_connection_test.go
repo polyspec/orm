@@ -81,7 +81,9 @@ func TestCoverageCatalogRead(t *testing.T) {
 	}
 	missing := filepath.Join(t.TempDir(), "missing.sqlite")
 	if catalog, err := orm.ConnectCatalog("sqlite://" + missing); err == nil {
-		catalog.Close()
+		if err := catalog.Close(); err != nil {
+			t.Fatalf("close unexpected catalog connection: %v", err)
+		}
 		t.Fatal("catalog connection created a missing SQLite database")
 	}
 	if _, err := os.Stat(missing); !os.IsNotExist(err) {

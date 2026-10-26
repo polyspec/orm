@@ -139,27 +139,60 @@ final class RuntimeDbTest extends TestCase
     {
         $row = (new Sample())($db)->setLevel(1)->setWide(1)->setRatio(1.25)->setActive(true)->create();
         $seq = $row->getSeq();
+        $pdo = $db->pdo();
         if ($driver === 'mysql') {
-            $db->pdo()->exec('ALTER TABLE sample MODIFY wide BIGINT UNSIGNED');
-            $db->pdo()->prepare('UPDATE sample SET wide = 18446744073709551615 WHERE seq = ?')->execute([$seq]);
-            $column = 'wide';
-        } elseif ($driver === 'postgres') {
-            $db->pdo()->prepare("UPDATE sample SET ratio = 'NaN'::double precision WHERE seq = ?")->execute([$seq]);
-            $column = 'ratio';
-        } else {
-            $db->pdo()->prepare('UPDATE sample SET wide = ? WHERE seq = ?')->execute(['not-an-integer', $seq]);
-            $column = 'wide';
+            $pdo->exec('ALTER TABLE sample MODIFY wide BIGINT UNSIGNED');
+            $pdo->exec('ALTER TABLE sample ALTER CHECK `sample$wide` NOT ENFORCED');
+            try {
+                $pdo->prepare('UPDATE sample SET wide = 18446744073709551615 WHERE seq = ?')->execute([$seq]);
+                $error = self::errorCode(fn() => (new Sample())($db)->getBySeq($seq)->getWide());
+                self::check($error === Code::CODEC_DECODE, 'invalid wide database cell is CODEC_DECODE');
+            } finally {
+                try {
+                    $pdo->prepare('UPDATE sample SET wide = 1 WHERE seq = ?')->execute([$seq]);
+                } finally {
+                    $pdo->exec('ALTER TABLE sample ALTER CHECK `sample$wide` ENFORCED');
+                }
+            }
+
+            $pdo->exec('ALTER TABLE sample ALTER CHECK `sample$active` NOT ENFORCED');
+            try {
+                $pdo->prepare('UPDATE sample SET active = 2 WHERE seq = ?')->execute([$seq]);
+                self::check(
+                    self::errorCode(fn() => (new Sample())($db)->getBySeq($seq)->getActive()) === Code::CODEC_DECODE,
+                    'invalid bool database cell is CODEC_DECODE'
+                );
+            } finally {
+                try {
+                    $pdo->prepare('UPDATE sample SET active = 1 WHERE seq = ?')->execute([$seq]);
+                } finally {
+                    $pdo->exec('ALTER TABLE sample ALTER CHECK `sample$active` ENFORCED');
+                }
+            }
+            return;
         }
-        $error = self::errorCode(
-            fn() => (new Sample())($db)->getBySeq($seq)->{'get' . ucfirst($column)}()
-        );
-        self::check($error === Code::CODEC_DECODE, "invalid $column database cell is CODEC_DECODE");
-        if ($driver === 'mysql') {
-            $db->pdo()->prepare('UPDATE sample SET active = 2 WHERE seq = ?')->execute([$seq]);
-            self::check(
-                self::errorCode(fn() => (new Sample())($db)->getBySeq($seq)->getActive()) === Code::CODEC_DECODE,
-                'invalid bool database cell is CODEC_DECODE'
-            );
+        if ($driver === 'postgres') {
+            try {
+                $pdo->prepare("UPDATE sample SET ratio = 'NaN'::double precision WHERE seq = ?")->execute([$seq]);
+                $error = self::errorCode(fn() => (new Sample())($db)->getBySeq($seq)->getRatio());
+                self::check($error === Code::CODEC_DECODE, 'invalid ratio database cell is CODEC_DECODE');
+            } finally {
+                $pdo->prepare('UPDATE sample SET ratio = 1.25 WHERE seq = ?')->execute([$seq]);
+            }
+            return;
+        }
+
+        $pdo->exec('PRAGMA ignore_check_constraints = ON');
+        try {
+            $pdo->prepare('UPDATE sample SET wide = ? WHERE seq = ?')->execute(['not-an-integer', $seq]);
+            $error = self::errorCode(fn() => (new Sample())($db)->getBySeq($seq)->getWide());
+            self::check($error === Code::CODEC_DECODE, 'invalid wide database cell is CODEC_DECODE');
+        } finally {
+            try {
+                $pdo->prepare('UPDATE sample SET wide = 1 WHERE seq = ?')->execute([$seq]);
+            } finally {
+                $pdo->exec('PRAGMA ignore_check_constraints = OFF');
+            }
         }
     }
 

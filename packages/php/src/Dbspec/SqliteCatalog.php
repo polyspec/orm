@@ -32,7 +32,7 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
     private const CHECK_ITEM = '/^CONSTRAINT "([^"]+)" CHECK \((.*)\)$/D';
     private const PRIMARY_KEY_ITEM = '/^PRIMARY KEY \(([^)]*)\)$/D';
     private const IDENTITY_COLUMN = '/^"([^"]+)" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT$/D';
-    private const COLUMN_ITEM = '/^"([^"]+)" /';
+    private const COLUMN_ITEM = '/^(?:"([^"]+)"|([A-Za-z_][A-Za-z0-9_]*)) /';
     private const CONSTRAINT_ITEM = '/^(?:CONSTRAINT "([^"]+)" )?(CHECK|UNIQUE|FOREIGN KEY|PRIMARY KEY)\b/';
     private const NUMBER_DEFAULT = '/^-?\d+(\.\d+)?$/D';
 
@@ -280,7 +280,7 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
                 $unsupported[] = [$kind, $m[1], "the table item \"$item\" has no dbspec definition"];
             } elseif (preg_match(self::COLUMN_ITEM, $item, $m)) {
                 // The definition is read by pragma_table_xinfo, and its text is checked to be in renderer form.
-                $st['columns'][$m[1]] = $item;
+                $st['columns'][$m[1] !== '' ? $m[1] : $m[2]] = $item;
             } else {
                 $st['unsupported'] = "the table item \"$item\" has no dbspec definition";
                 return [$st, []];
@@ -303,7 +303,10 @@ FROM sqlite_master m JOIN pragma_index_list(m.name) l WHERE m.type = 'table' AND
     ): bool {
         $prefix = "\"$name\" ";
         if (!str_starts_with($item, $prefix)) {
-            return false;
+            $prefix = "$name ";
+            if (!str_starts_with($item, $prefix)) {
+                return false;
+            }
         }
         $rest = substr($item, strlen($prefix));
         if (strlen($rest) < strlen($declared) || strcasecmp(substr($rest, 0, strlen($declared)), $declared) !== 0) {

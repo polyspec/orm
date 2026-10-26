@@ -129,6 +129,9 @@ func TestRuntimeInvalidCellsFailTypedReads(t *testing.T) {
 		var mutation string
 		switch driver {
 		case "mysql":
+			if _, err := raw.Exec("ALTER TABLE typed_value DROP CHECK `typed_value$active`"); err != nil {
+				t.Fatal(err)
+			}
 			if _, err := raw.Exec("ALTER TABLE typed_value MODIFY wide BIGINT UNSIGNED"); err != nil {
 				t.Fatal(err)
 			}

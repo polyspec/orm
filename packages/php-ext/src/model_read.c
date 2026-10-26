@@ -317,25 +317,21 @@ static bool read_column_convert(zval *model, zval *db, zval *zone, zval *column,
     if (codec != NULL && Z_TYPE_P(codec) == IS_ARRAY && zend_hash_num_elements(Z_ARRVAL_P(codec)) != 0) {
         ZVAL_COPY_VALUE(out, &value); return true;
     }
-    if (read_string_is(type, "i16") || read_string_is(type, "i32") || read_string_is(type, "i64")) {
-        zend_long integer;
-        if (!exact_integer(&value, &integer)) {
-            zval_ptr_dtor(&value);
-            read_throw("CODEC_DECODE", "integer column value is not an exact integer");
+    if (read_string_is(type, "i16") || read_string_is(type, "i32") || read_string_is(type, "i64") ||
+        read_string_is(type, "f64") || read_string_is(type, "bool")) {
+        zval args[3], converted;
+        ZVAL_COPY(&args[0], db);
+        ZVAL_COPY(&args[1], column);
+        ZVAL_COPY(&args[2], &value);
+        bool ok = read_model_call(model, "groupValue", &converted, 3, args);
+        for (int i = 0; i < 3; i++) zval_ptr_dtor(&args[i]);
+        zval_ptr_dtor(&value);
+        if (!ok) {
+            if (!Z_ISUNDEF(converted)) zval_ptr_dtor(&converted);
             return false;
         }
-        if ((read_string_is(type, "i16") && (integer < INT16_MIN || integer > INT16_MAX)) ||
-            (read_string_is(type, "i32") && (integer < INT32_MIN || integer > INT32_MAX))) {
-            zend_string *message = strpprintf(0, "integer column value exceeds %s range", Z_STRVAL_P(type));
-            zval_ptr_dtor(&value);
-            read_throw("CODEC_DECODE", ZSTR_VAL(message));
-            zend_string_release(message);
-            return false;
-        }
-        ZVAL_LONG(out, integer); zval_ptr_dtor(&value); return true;
-    }
-    if (read_string_is(type, "f64")) {
-        ZVAL_DOUBLE(out, zval_get_double(&value)); zval_ptr_dtor(&value); return true;
+        ZVAL_COPY_VALUE(out, &converted);
+        return true;
     }
     if (read_string_is(type, "decimal")) {
         zval *precision = read_array(column, "precision"), *scale = read_array(column, "scale");

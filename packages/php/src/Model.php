@@ -1266,13 +1266,15 @@ abstract class Model implements \JsonSerializable, ModelMetadata
         $m = $this->newRow($a->conn);
         $st = $shape['row'];
         $values = [];
+        $meta = static::meta();
         foreach ($shape['int'] as [$index, $name]) {
             $v = $vals[$index];
-            $values[$name] = $v === null ? null : (int) $v;
+            $values[$name] = $v === null ? null
+                : self::groupInteger($v, $meta['columns'][$name]['type'], $name);
         }
         foreach ($shape['float'] as [$index, $name]) {
             $v = $vals[$index];
-            $values[$name] = $v === null ? null : (float) $v;
+            $values[$name] = $v === null ? null : self::groupFloat($v, $name);
         }
         foreach ($shape['decimal'] as [$index, $name]) {
             $v = $vals[$index];
@@ -1283,7 +1285,11 @@ abstract class Model implements \JsonSerializable, ModelMetadata
         }
         foreach ($shape['bool'] as [$index, $name]) {
             $v = $vals[$index];
-            $values[$name] = $v === null ? null : (bool) $v;
+            $values[$name] = $v === null ? null : match ($v) {
+                true, 1, '1', 't', 'true' => true,
+                false, 0, '0', 'f', 'false' => false,
+                default => throw new OrmException(Code::CODEC_DECODE, "column $name is not boolean"),
+            };
         }
         foreach ($shape['date'] as [$index, $name]) {
             $v = $vals[$index];
