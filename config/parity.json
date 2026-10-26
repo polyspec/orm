@@ -223,10 +223,6 @@
           "reason": "external: an internal package test of the go module that runs against a database or driver of an external service, not a helper the contract names (K313)"
         },
         {
-          "glob": "packages/go/orm/value_types_test.go",
-          "reason": "external: an internal package test of the go module that runs against a database or driver of an external service, not a helper the contract names (K313)"
-        },
-        {
           "glob": "packages/go/procevent/procevent_test.go",
           "reason": "harness: tests Go process-exit and directory-event observation helpers used by test runners; it does not exercise ORM client behavior"
         },
@@ -15825,7 +15821,7 @@
       ]
     },
     {
-      "id": "rust-invalid-database-cells-return-decode-errors",
+      "id": "runtime-invalid-database-cells-return-decode-errors",
       "kind": "feature",
       "requirements": [
         "INT-98"
@@ -15835,21 +15831,92 @@
           "implementation": "rust",
           "test": "packages/rust/orm/tests/value_decode.rs",
           "id": "invalid_database_cells_return_decode_errors"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/value_types_test.go",
+          "id": "TestRuntimeInvalidCellsFailTypedReads"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RuntimeDbTest.php",
+          "id": "RuntimeDbTest::testInvalidStoredCellsFailTypedReads"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConnectionUtcNativeTest.php",
+          "id": "ConnectionUtcNativeTest::testNativeOutOfRangeDatabaseCellFailsTypedRead"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
+          "id": "sqlite: invalid stored numeric and boolean cells fail typed reads"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
+          "id": "mysql: invalid stored numeric and boolean cells fail typed reads"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
+          "id": "postgres: invalid stored numeric and boolean cells fail typed reads"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_values.py",
+          "id": "RuntimeValueTypesDatabaseTest::test_invalid_database_cells_fail_typed_reads"
         }
       ]
     },
     {
-      "id": "rust-runtime-value-types",
+      "id": "runtime-value-types-and-styled-sql-null",
       "kind": "feature",
       "requirements": [
         "INT-99",
-        "DBS-68"
+        "DBS-68",
+        "COD-20"
       ],
       "bindings": [
         {
           "implementation": "rust",
           "test": "packages/rust/orm/tests/value_types.rs",
           "id": "runtime_value_types"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/value_types_test.go",
+          "id": "TestRuntimeValueTypes"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/RuntimeDbTest.php",
+          "id": "RuntimeDbTest::testI16ValuesAndDefaults"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ConnectionUtcNativeTest.php",
+          "id": "ConnectionUtcNativeTest::testNativeStyledSqlNullIsPreservedOnDatabaseRead"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
+          "id": "sqlite: selected styled SQL NULL survives a database read"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
+          "id": "mysql: selected styled SQL NULL survives a database read"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/dbspec_runtime_db.mjs",
+          "id": "postgres: selected styled SQL NULL survives a database read"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_values.py",
+          "id": "RuntimeValueTypesDatabaseTest::test_runtime_value_types_and_styled_sql_null_read"
         }
       ]
     },

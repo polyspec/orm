@@ -6,6 +6,7 @@ namespace Polyspec\Orm\Extension\Tests;
 
 use DateTimeImmutable;
 use DateTimeZone;
+use Closure;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Medium;
 use PHPUnit\Framework\TestCase;
@@ -20,6 +21,7 @@ use Polyspec\Orm\Tests\Model\Service;
 use Polyspec\Orm\Tests\Model\ServiceMember;
 use Polyspec\Orm\Tests\Model\ServiceRegion;
 use Polyspec\Orm\Tests\Model\User;
+use Polyspec\Orm\Tests\ThreeDrivers;
 use ReflectionMethod;
 
 use function Polyspec\Orm\Tests\case_admin;
@@ -28,6 +30,8 @@ use function Polyspec\Orm\Tests\installBench;
 
 final class ConnectionUtcNativeTest extends TestCase
 {
+    use ThreeDrivers;
+
     /** @return iterable<string, array{string, string}> */
     public static function connections(): iterable
     {
@@ -39,7 +43,7 @@ final class ConnectionUtcNativeTest extends TestCase
         }
     }
 
-    // Requirements: CFG-2, DIA-57, DSL-141, INT-98, INT-99, DBS-68, COD-20.
+    // Requirements: CFG-2, DIA-57, DSL-141.
     // This case verifies the C connection factory, not only the PHP library path.
     #[Medium]
     #[DataProvider('connections')]
@@ -61,10 +65,7 @@ final class ConnectionUtcNativeTest extends TestCase
                 try {
                     self::assertNativeServerTimezone($driver, $db->pdo());
                     installBench($db);
-                    $created = self::assertUtcRoundTrip($db);
-                    if ($zone === '') {
-                        self::assertNativeTypedCellFailure($driver, $db, $created->getSeq());
-                    }
+                    self::assertUtcRoundTrip($db);
                 } finally {
                     $db->close();
                 }
@@ -110,20 +111,12 @@ final class ConnectionUtcNativeTest extends TestCase
         }
     }
 
-    private static function assertUtcRoundTrip(Db $db): Author
+    private static function assertUtcRoundTrip(Db $db): void
     {
-        $service = (new Service())($db)->setName('utc-service')->create();
-        $user = (new User())($db)->setName('utc-user')->create();
-        $region = (new ServiceRegion())($db)->setServiceSeq($service->getSeq())->setName('utc-region')->create();
-        $member = (new ServiceMember())($db)->setServiceSeq($service->getSeq())->setUserSeq($user->getSeq())->create();
         $instant = new DateTimeImmutable('2026-01-02T00:00:00+09:00');
         $startUtc = $instant->setTimezone(new DateTimeZone('UTC'));
         $before = new DateTimeImmutable('now', new DateTimeZone('UTC'));
-        $created = (new Author())($db)
-            ->setName('utc-row')->setUserSeq($user->getSeq())->setServiceSeq($service->getSeq())
-            ->setServiceRegionSeq($region->getSeq())->setServiceMemberSeq($member->getSeq())
-            ->setStartDt($startUtc->format('Y-m-d H:i:s'))->setEndDt('2026-01-03 00:00:00')
-            ->setJsonSetting(StyledValue::sqlNull())->create();
+        $created = self::createNativeAuthor($db, $startUtc->format('Y-m-d H:i:s'));
         $row = (new Author())($db)->getBySeq($created->getSeq());
         self::assertNotNull($row);
         $start = $row->getStartDt();
@@ -152,9 +145,6 @@ final class ConnectionUtcNativeTest extends TestCase
             $author()->betweenStartDt(['2026-01-01 15:00:00', '2026-01-01 15:00:00.5'])->getCount(),
             'between filter'
         );
-        $styled = $author()->removeAllColumns()->addColumnJsonSetting()->getBySeq($created->getSeq());
-        self::assertInstanceOf(StyledValue::class, $styled->getJsonSetting());
-        self::assertSame('sql-null', $styled->getJsonSetting()->kind, 'native model reads selected styled SQL NULL');
         if ($db->driver() === 'sqlite') {
             try {
                 $author()->startDt('2026-01-02')->getCount();
@@ -163,7 +153,64 @@ final class ConnectionUtcNativeTest extends TestCase
                 self::assertSame('CODEC_ENCODE', $error->code_, 'date-only datetime text');
             }
         }
-        return $created;
+    }
+
+    // Requirements: INT-99, DBS-68, COD-20. The case performs a native Model read after an INSERT of SQL NULL.
+    #[Medium]
+    #[DataProvider('drivers')]
+    public function testNativeStyledSqlNullIsPreservedOnDatabaseRead(string $driver): void
+    {
+        self::withNativeDatabase($driver, static function (Db $db): void {
+            $created = self::createNativeAuthor($db, '2026-01-01 15:00:00', true);
+            $styled = (new Author())($db)->removeAllColumns()->addColumnJsonSetting()->getBySeq($created->getSeq());
+            self::assertInstanceOf(StyledValue::class, $styled->getJsonSetting());
+            self::assertSame('sql-null', $styled->getJsonSetting()->kind);
+        });
+    }
+
+    // Requirements: INT-98. Each native model read must reject a database cell outside its declared i32 range.
+    #[Medium]
+    #[DataProvider('drivers')]
+    public function testNativeOutOfRangeDatabaseCellFailsTypedRead(string $driver): void
+    {
+        self::withNativeDatabase($driver, static function (Db $db) use ($driver): void {
+            $created = self::createNativeAuthor($db, '2026-01-01 15:00:00');
+            self::assertNativeTypedCellFailure($driver, $db, $created->getSeq());
+        });
+    }
+
+    private static function withNativeDatabase(string $driver, Closure $case): void
+    {
+        with_case_database(
+            $driver,
+            static function (string $step): void {
+            },
+            static function (string $dsn) use ($case): void {
+                $db = Orm::connect($dsn, new Config());
+                try {
+                    installBench($db);
+                    $case($db);
+                } finally {
+                    $db->close();
+                }
+            }
+        );
+    }
+
+    private static function createNativeAuthor(Db $db, string $start, bool $styledSqlNull = false): Author
+    {
+        $service = (new Service())($db)->setName('typed-read-service')->create();
+        $user = (new User())($db)->setName('typed-read-user')->create();
+        $region = (new ServiceRegion())($db)->setServiceSeq($service->getSeq())->setName('typed-read-region')->create();
+        $member = (new ServiceMember())($db)->setServiceSeq($service->getSeq())->setUserSeq($user->getSeq())->create();
+        $author = (new Author())($db)
+            ->setName('typed-read-author')->setUserSeq($user->getSeq())->setServiceSeq($service->getSeq())
+            ->setServiceRegionSeq($region->getSeq())->setServiceMemberSeq($member->getSeq())
+            ->setStartDt($start)->setEndDt('2026-01-03 00:00:00');
+        if ($styledSqlNull) {
+            $author->setJsonSetting(StyledValue::sqlNull());
+        }
+        return $author->create();
     }
 
     private static function assertNativeTypedCellFailure(string $driver, Db $db, int $seq): void
