@@ -11395,8 +11395,6 @@
       "id": "go-model-chain-argument-types",
       "kind": "feature",
       "requirements": [
-        "DSL-49",
-        "DSL-50",
         "DSL-52"
       ],
       "bindings": [
@@ -11405,49 +11403,49 @@
           "test": "packages/go/model/chain_types_test.go",
           "id": "TestChainArgumentTypes"
         }
-      ]
+      ],
+      "owner": {
+        "kind": "coverage-part",
+        "feature": "model_queries",
+        "part": "owner/go"
+      }
     },
     {
-      "id": "ts-chain-argument-types",
+      "id": "chain-null-on-a-non-null-column",
       "kind": "feature",
       "requirements": [
-        "DSL-49",
-        "DSL-50",
-        "DSL-124"
+        "DSL-49"
       ],
       "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/chain_types_test.go",
+          "id": "TestChainArgumentTypes"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testConditions"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelDslNativeTest.php",
+          "id": "ModelDslNativeTest::testConditionArityAndNullabilityUseSourceErrors"
+        },
         {
           "implementation": "typescript",
           "test": "packages/ts/tests/chain-types.mjs",
           "id": "chain argument types"
-        }
-      ]
-    },
-    {
-      "id": "py-chain-null-on-a-non-null-column",
-      "kind": "feature",
-      "requirements": [
-        "DSL-49"
-      ],
-      "bindings": [
+        },
         {
           "implementation": "python",
           "test": "packages/python/tests/test_chain_values.py",
           "id": "test_null_is_refused_for_a_non_null_column_without_or_with_eq_and_ne"
-        }
-      ]
-    },
-    {
-      "id": "ts-chain-null-on-a-non-null-column",
-      "kind": "feature",
-      "requirements": [
-        "DSL-49"
-      ],
-      "bindings": [
+        },
         {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/chain-null.mjs",
-          "id": "chain null on a non-null column"
+          "implementation": "rust",
+          "test": "packages/rust/orm/tests/compiler_fixtures.rs",
+          "id": "dsl49_nonnull_null_is_rejected"
         }
       ]
     },
@@ -16250,9 +16248,7 @@
         "PLN-36",
         "PLN-37",
         "PLN-38",
-        "PLN-39",
-        "DSL-49",
-        "DSL-50"
+        "PLN-39"
       ],
       "bindings": [
         {

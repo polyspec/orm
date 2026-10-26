@@ -42,6 +42,7 @@ final class ModelDslNativeTest extends TestCase
         }
     }
 
+    // Requirements: DSL-49.
     public function testConditionArityAndNullabilityUseSourceErrors(): void
     {
         try {
@@ -63,6 +64,9 @@ final class ModelDslNativeTest extends TestCase
     // Requirements: DSL-50, PLN-4.
     public function testUnsupportedOperatorValuesAreRejectedInsteadOfConverted(): void
     {
+        $model = new DslFixture();
+        self::assertSame($model, $model->age([18, 30])->eqAge([18, 30])->neAge([18, 30]));
+
         foreach (
             [
             [[18, 30], 'a list is not accepted by the gt operator'],

@@ -17,7 +17,7 @@ import (
 // does: the value types that a chain accepts are the type parameters of its method. The test of DSL-49 (Go rejects
 // null for a non-null column at compile time), DSL-50 (lists and null only without an operator, with Eq and with Ne)
 // and DSL-52 (an integer column accepts int, int32, int64 and slices of those types) (docs/spec/dsl.md).
-// Requirements: DSL-50, PLN-4.
+// Requirements: DSL-49, DSL-50, DSL-52, PLN-4.
 func TestChainArgumentTypes(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	const modelPath = "github.com/polyspec/orm/packages/go/model"

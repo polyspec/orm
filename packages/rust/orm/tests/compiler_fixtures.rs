@@ -34,3 +34,10 @@ fn dsl50_ordering_list_is_rejected() {
     let _case = case!(PROCESS);
     run_fixture("dsl50-ordering-list-e0277");
 }
+
+// Requirements: DSL-49.
+#[test]
+fn dsl49_nonnull_null_is_rejected() {
+    let _case = case!(PROCESS);
+    run_fixture("dsl49-nonnull-null-e0277");
+}
