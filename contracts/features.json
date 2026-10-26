@@ -1046,7 +1046,8 @@
         "plan-cache-in-list-shapes-share-ten-bucketed-keys",
         "group-rows-database-query-preserves-values",
         "dsl-50-operator-value-shapes",
-        "remove-columns-keeps-primary-foreign-and-added"
+        "remove-columns-keeps-primary-foreign-and-added",
+        "go-model-constructor-api"
       ],
       "fixtures": [
         "tests/conformance/vectors.json",

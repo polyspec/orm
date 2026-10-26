@@ -200,6 +200,7 @@ fn names(c: &Collection<Author>) -> String {
     c.models().map(|b| b.get_name().unwrap().to_owned()).collect::<Vec<_>>().join(",")
 }
 
+// Requirements: PLN-7, PLN-23, PLN-28, PLN-34, PLN-37, PLN-38, PLN-39.
 async fn conditions(t: &Target) {
     let db = &t.db;
     let f = seed(db).await;
@@ -237,7 +238,7 @@ async fn conditions(t: &Target) {
     assert_eq!(code(Author::new().name("alpha").gets().await), "CONFIG", "no connection");
 }
 
-// Requirements: PLN-35.
+// Requirements: DBS-118, PLN-10, PLN-35, PLN-41, PLN-42, PLN-43.
 async fn joins_and_relations(t: &Target) {
     let db = &t.db;
     let f = seed(db).await;
@@ -293,6 +294,7 @@ async fn joins_and_relations(t: &Target) {
     let (_member, _users) = (&f.member, &f.users);
 }
 
+// Requirements: PLN-8, PLN-9, PLN-14.
 async fn columns_and_subqueries(t: &Target) {
     let db = &t.db;
     let f = seed(db).await;
@@ -366,6 +368,7 @@ async fn columns_and_subqueries(t: &Target) {
     assert_eq!(pairs, 2, "tuple");
 }
 
+// Requirements: PLN-12, PLN-27.
 async fn writes(t: &Target) {
     let db = &t.db;
     let f = seed(db).await;
@@ -889,8 +892,12 @@ async fn main() {
                 let var = format!("ORM_TEST_{}_REPLICA_DSN", driver.to_uppercase());
                 let replica = match std::env::var(&var) {
                     Ok(v) if !v.is_empty() => v,
-                    Ok(_) => panic!("{var} is set but empty; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers"),
-                    Err(error) => panic!("{var} is required ({error}); database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers"),
+                    Ok(_) => panic!(
+                        "{var} is set but empty; database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers"
+                    ),
+                    Err(error) => panic!(
+                        "{var} is required ({error}); database tests never skip; run the test through its make target, which reads the environment of make orm-test-servers"
+                    ),
                 };
                 primary_and_replica(&t, &replica).await;
             }

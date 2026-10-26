@@ -198,6 +198,23 @@ func TestConditions(t *testing.T) {
 	})
 }
 
+// Requirements: PLN-30.
+func TestGoConstructorForms(t *testing.T) {
+	testcase.Start(t, testcase.Database)
+	each(t, func(t *testing.T, db *orm.DB) {
+		created := must(model.User().Connect(db).SetName("constructor-form").Create())
+		rebound := created.Connect(db)
+		if rebound != created {
+			t.Fatal("connected loaded row did not return itself")
+		}
+		must(rebound.SetName("constructor-form-rebound").Update())
+		loaded := must(model.User().Connect(db).GetBySeq(readColumn(t, created.GetSeq)))
+		if loaded == nil || readColumn(t, loaded.GetName) != "constructor-form-rebound" {
+			t.Fatalf("connected loaded row update: %+v", loaded)
+		}
+	})
+}
+
 func TestGetMissingReturnsNil(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	path := filepath.Join(t.TempDir(), "model.sqlite")
@@ -218,7 +235,7 @@ func TestGetMissingReturnsNil(t *testing.T) {
 	}
 }
 
-// Requirements: PLN-10, PLN-35, PLN-41, PLN-42, PLN-43.
+// Requirements: DBS-118, PLN-10, PLN-35, PLN-41, PLN-42, PLN-43.
 func TestJoinsAndRelations(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	each(t, func(t *testing.T, db *orm.DB) {

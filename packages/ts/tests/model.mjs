@@ -22,8 +22,9 @@ import { mysqlConnection, postgresClient, withCaseDatabase } from './case-databa
 import { schemaOf } from './schema_of.mjs';
 const root = new URL('../../..', import.meta.url).pathname;
 const args = process.argv.slice(2);
-if (args.length !== 0 && (args.length !== 4 || args[0] !== '--case' || !['styledStates', 'aesRotation', 'transactions', 'schemaExistsUnderscore'].includes(args[1]) || args[2] !== '--dialect' || !['sqlite', 'mysql', 'postgres'].includes(args[3]))) {
-  throw new Error('usage: model.mjs [--case styledStates|aesRotation|transactions|schemaExistsUnderscore --dialect sqlite|mysql|postgres]');
+const selectedCases = ['conditions', 'joinsAndRelations', 'columnsAndSubqueries', 'writes', 'styledStates', 'aesRotation', 'transactions', 'schemaExistsUnderscore'];
+if (args.length !== 0 && (args.length !== 4 || args[0] !== '--case' || !selectedCases.includes(args[1]) || args[2] !== '--dialect' || !['sqlite', 'mysql', 'postgres'].includes(args[3]))) {
+  throw new Error(`usage: model.mjs [--case ${selectedCases.join('|')} --dialect sqlite|mysql|postgres]`);
 }
 const selectedCase = args.length === 0 ? undefined : args[1];
 if (selectedCase === 'schemaExistsUnderscore' && args[3] !== 'sqlite') {
@@ -150,6 +151,7 @@ async function holdRows(dialect, dsn, table) {
   return async () => { if (released) return; released = true; await client.query('ROLLBACK'); await client.end(); };
 }
 
+// Requirements: PLN-7, PLN-23, PLN-28, PLN-34, PLN-37, PLN-38, PLN-39.
 async function conditions(db) {
   const f = await seed(db);
   const svc = f.service.getSeq();
@@ -181,6 +183,7 @@ async function conditions(db) {
   check(await code(new Author().name('alpha').gets()) === 'CONFIG', 'no connection');
 }
 
+// Requirements: DBS-118, PLN-10, PLN-35, PLN-41, PLN-42, PLN-43.
 async function joinsAndRelations(db, dsn) {
   const f = await seed(db);
   const author = new User().on(u => u.neName('nobody')).name('kim');
@@ -221,6 +224,7 @@ async function joinsAndRelations(db, dsn) {
   check(array.writer !== null && array.writer !== undefined && array.name === 'alpha', `toArray: ${JSON.stringify(array)}`);
 }
 
+// Requirements: PLN-8, PLN-9, PLN-14.
 async function columnsAndSubqueries(db) {
   const f = await seed(db);
   const users = await new User().connect(db)
@@ -251,6 +255,7 @@ async function columnsAndSubqueries(db) {
   check(pairs === 2, `tuple: ${pairs}`);
 }
 
+// Requirements: PLN-12, PLN-27.
 async function writes(db) {
   const f = await seed(db);
   const b = await new Author().connect(db).getBySeq(f.authors[0].getSeq());

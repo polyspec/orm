@@ -11172,15 +11172,31 @@
       ]
     },
     {
-      "id": "go-internal-packages-go-model-model",
+      "id": "go-model-constructor-api",
+      "kind": "feature",
+      "requirements": [
+        "PLN-30"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/model_test.go",
+          "id": "TestGoConstructorForms"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-part",
+        "feature": "model_queries",
+        "part": "owner/go"
+      }
+    },
+    {
+      "id": "model-conditions-core",
       "kind": "feature",
       "requirements": [
         "PLN-7",
-        "PLN-16",
         "PLN-23",
         "PLN-28",
-        "PLN-30",
-        "PLN-34",
         "PLN-37",
         "PLN-38",
         "PLN-39"
@@ -11190,28 +11206,75 @@
           "implementation": "go",
           "test": "packages/go/model/model_test.go",
           "id": "TestConditions"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testConditions"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testConditions"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model.mjs",
+          "id": "conditions"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_model_queries.py",
+          "id": "test_model_query_rows"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/src/integration.rs",
+          "id": "conditions"
         }
       ]
     },
     {
-      "id": "go-internal-packages-go-model-joins-and-relations",
+      "id": "model-constructor-forms-core",
       "kind": "feature",
       "requirements": [
-        "PLN-10",
-        "PLN-41",
-        "PLN-42",
-        "PLN-43"
+        "PLN-34"
       ],
       "bindings": [
         {
           "implementation": "go",
           "test": "packages/go/model/model_test.go",
-          "id": "TestJoinsAndRelations"
+          "id": "TestConditions"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testConditions"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testConditions"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model.mjs",
+          "id": "conditions"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_model_queries.py",
+          "id": "test_model_query_rows"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/src/integration.rs",
+          "id": "conditions"
         }
       ]
     },
     {
-      "id": "go-internal-packages-go-model-columns-and-subqueries",
+      "id": "model-columns-and-pages-core",
       "kind": "feature",
       "requirements": [
         "PLN-8",
@@ -11223,11 +11286,36 @@
           "implementation": "go",
           "test": "packages/go/model/model_test.go",
           "id": "TestColumnsAndSubqueries"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testColumnsAndSubqueries"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testColumnsAndSubqueries"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model.mjs",
+          "id": "columnsAndSubqueries"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_model_queries.py",
+          "id": "test_model_query_rows"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/src/integration.rs",
+          "id": "columns_and_subqueries"
         }
       ]
     },
     {
-      "id": "go-internal-packages-go-model-writes",
+      "id": "model-writes-core",
       "kind": "feature",
       "requirements": [
         "PLN-12",
@@ -11238,6 +11326,31 @@
           "implementation": "go",
           "test": "packages/go/model/model_test.go",
           "id": "TestWrites"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testWrites"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php/tests/ModelTest.php",
+          "id": "ModelTest::testWrites"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/model.mjs",
+          "id": "writes"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_model_writes.py",
+          "id": "test_model_write_cycle"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/src/integration.rs",
+          "id": "writes"
         }
       ]
     },
@@ -25464,7 +25577,12 @@
       "id": "model-connection-and-join-methods",
       "kind": "feature",
       "requirements": [
-        "PLN-35"
+        "PLN-10",
+        "DBS-118",
+        "PLN-35",
+        "PLN-41",
+        "PLN-42",
+        "PLN-43"
       ],
       "bindings": [
         {
@@ -25478,44 +25596,24 @@
           "id": "ModelTest::testJoinsAndRelations"
         },
         {
-          "implementation": "php",
-          "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testPrimaryAndReplica"
-        },
-        {
-          "implementation": "php-extension",
-          "test": "packages/php-ext/tests/ModelDslNativeTest.php",
-          "id": "ModelDslNativeTest::testGroupAndJoinCallbacksUseNativeInvocationPaths"
-        },
-        {
           "implementation": "php-extension",
           "test": "packages/php/tests/ModelTest.php",
-          "id": "ModelTest::testPrimaryAndReplica"
+          "id": "ModelTest::testJoinsAndRelations"
         },
         {
           "implementation": "typescript",
-          "test": "packages/ts/tests/coverage_model_queries.mjs",
-          "id": "model_query_rows [sqlite]"
-        },
-        {
-          "implementation": "typescript",
-          "test": "packages/ts/tests/replica.mjs",
-          "id": "replica/primary_and_replica/mysql"
+          "test": "packages/ts/tests/model.mjs",
+          "id": "joinsAndRelations"
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_model_fields.py",
-          "id": "test_on_sets_join_condition_and_connect_attaches_database"
+          "test": "packages/python/tests/coverage_model_queries.py",
+          "id": "test_model_query_rows"
         },
         {
           "implementation": "rust",
           "test": "packages/rust/tests/src/integration.rs",
           "id": "joins_and_relations"
-        },
-        {
-          "implementation": "rust",
-          "test": "packages/rust/tests/src/integration.rs",
-          "id": "primary_and_replica"
         }
       ]
     },

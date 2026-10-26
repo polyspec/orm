@@ -87,6 +87,33 @@ func Brands() *model.ProductModel {
 	buildScannedModule(t)
 }
 
+// Requirements: DSL-116.
+func TestStoredColumnNameIsNotGeneratedAsNewMethod(t *testing.T) {
+	testcase.Start(t, testcase.Process)
+	write := scannedModule(t)
+	write("example/example.go", `package example
+
+import "example.com/ormexample/model"
+
+func Invalid() *model.ProductModel { return model.Product().NewName("x") }
+`)
+	m := namesManifest(t, namesDiagram)
+	if err := generateGo(m, "model", "", nil); err != nil {
+		t.Fatal(err)
+	}
+	err := generateGo(m, "model", "", []string{"./..."})
+	if err == nil || !strings.Contains(err.Error(), "Name is a column; use SetName") {
+		t.Fatalf("stored-column NewName call error = %v, want column rejection", err)
+	}
+	product := readModelFile(t, "product.go")
+	if !strings.Contains(product, "SetName(") {
+		t.Fatal("generated product model does not expose SetName")
+	}
+	if strings.Contains(product, "NewName(") {
+		t.Fatal("generated product model exposes NewName for its stored name column")
+	}
+}
+
 // Requirements: DBS-112, DBS-114, INT-66.
 // TestGoGeneratedScalarGetterRejectsUnselectedRead checks the generated getter at runtime through
 // an external consumer that compiles against either the current or corrected getter signature.

@@ -86,6 +86,47 @@ def model_write_cycle(item):
         with_cleanup(body, lambda: account().tenant_id(TENANT).gets().delete())
 
     run_on_empty_tenant(models, item, TENANT, case)
+    optimistic_update(item)
+
+
+def optimistic_update(item):
+    driver, dsn = item
+    db = models.connect(dsn, aesKey="bench-salt", blindIndexKey="bench-blind-index")
+    try:
+        expect_equal(db.driver, driver, "the driver")
+
+        def author():
+            return models.Author().connect(db).add_all_columns()
+
+        before = author().get_by_seq(1)
+        stale = author().get_by_seq(1)
+        sentinel = RuntimeError("rollback the optimistic update probe")
+        caught = None
+
+        def work():
+            fresh = author().get_by_seq(1)
+            fresh.set_name("optimistic-update-probe").update(True)
+            expect_equal(
+                error_code(lambda: stale.set_name("stale-probe").update(True)),
+                "CONFIG",
+                "update(true) compares the timestamp read by the stale model",
+            )
+            raise sentinel
+
+        try:
+            db.transaction(work, {"retry": 0})
+        except RuntimeError as error:
+            caught = error
+        expect_equal(caught is sentinel, True, "the probe transaction rolled back")
+        after = author().get_by_seq(1)
+        expect_equal(after.get_name(), before.get_name(), "rollback restores the row")
+        expect_equal(
+            after.get_updated_ts(),
+            before.get_updated_ts(),
+            "rollback restores updated_ts",
+        )
+    finally:
+        db.close()
 
 
 def save_key_dispatch(item):
@@ -333,7 +374,7 @@ class CoverageTest(CoverageCase):
             "create_parts", lambda item: run_on_empty_tenant(models, item, tenant, case)
         )
 
-    # Requirements: DSL-56, DSL-57, DSL-58, DSL-60, DSL-103, DSL-104, DSL-105, DSL-106, DSL-110.
+    # Requirements: DSL-56, DSL-57, DSL-58, DSL-60, DSL-103, DSL-104, DSL-105, DSL-106, DSL-110, PLN-12, PLN-27.
     def test_model_write_cycle(self):
         self.each_item("model_write_cycle", model_write_cycle)
 

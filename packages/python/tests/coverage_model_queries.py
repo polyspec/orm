@@ -4,7 +4,8 @@ from decimal import Decimal
 
 from polyspec.orm import orm
 from polyspec.orm.models import models
-from .coverage_case import expect_equal, CoverageCase, coverage_main
+
+from .coverage_case import CoverageCase, coverage_main, error_code, expect_equal
 
 
 def model_query_rows(item):
@@ -15,6 +16,66 @@ def model_query_rows(item):
 
         def author():
             return models.Author().connect(db)
+
+        rows = (
+            author()
+            .service_seq(7)
+            .and_is_close(False)
+            .or_()
+            .read_count(6)
+            .order_by_seq_asc()
+            .limit(0, 3)
+            .gets()
+        )
+        expect_equal(
+            [row.get_name() for row in rows.values()],
+            ["author-6", "author-106", "author-206"],
+            "condition connectors",
+        )
+        grouped = (
+            author()
+            .service_seq(7)
+            .and_(
+                lambda query: query.is_display(False).or_(
+                    lambda nested: nested.is_close(True).and_gt_read_count(500)
+                )
+            )
+            .order_by_seq_desc()
+            .limit(0, 3)
+            .gets()
+        )
+        expect_equal(
+            [row.get_name() for row in grouped.values()],
+            ["author-99906", "author-99806", "author-99606"],
+            "nested condition groups",
+        )
+        query = author().service_seq(7)
+        query.get_count_by_is_close(True)
+        expect_equal(
+            query.get_count(),
+            author().service_seq(7).get_count(),
+            "a terminal operation leaves its builder unchanged",
+        )
+        expect_equal(
+            error_code(lambda: author().name("a").is_close(True).gets()),
+            "CONFIG",
+            "a missing condition connector",
+        )
+        expect_equal(
+            error_code(lambda: author().and_().gets()),
+            "CONFIG",
+            "a dangling condition connector",
+        )
+        expect_equal(
+            error_code(lambda: author().seq([]).gets()),
+            "EMPTY_IN",
+            "an empty IN list",
+        )
+        expect_equal(
+            error_code(lambda: author().and_(lambda query: query.get_count()).gets()),
+            "CONFIG",
+            "a terminal inside a condition group",
+        )
 
         expect_equal(author().seq(-1).get(), None, "get for a missing author")
         expect_equal(author().user_seq(1).get_count(), 20, "authors of user 1")
@@ -51,6 +112,19 @@ def model_query_rows(item):
         )
         expect_equal(
             alias_values.get("start_year"), 2026, "alias contains the year result"
+        )
+        selected = (
+            author()
+            .remove_all_columns()
+            .add_column_name()
+            .add_column_start_dt_alias_start_year(orm.year())
+            .remove_column_name()
+            .get_by_seq(42)
+        )
+        expect_equal(
+            selected.to_array(),
+            {"seq": 42, "start_year": 2026},
+            "removing an added column keeps the selected generated column",
         )
         join_sql = []
         unsubscribe = db.subscribe(
@@ -110,6 +184,38 @@ def model_query_rows(item):
             "user-1",
             "user loaded through the relation",
         )
+        other = models.connect(
+            dsn, aesKey="bench-salt", blindIndexKey="bench-blind-index"
+        )
+        try:
+            connected = (
+                author()
+                .relation(
+                    models.User()
+                    .connect(other)
+                    .match_user_seq_with_seq()
+                    .alias_writer()
+                )
+                .get_by_seq(5000)
+            )
+            expect_equal(
+                connected.get_writer().get_name(),
+                "user-1",
+                "a connected relation child uses its own connection",
+            )
+            expect_equal(
+                error_code(
+                    lambda: (
+                        author()
+                        .join_user_seq_with_seq(models.User().connect(other))
+                        .gets()
+                    )
+                ),
+                "CONFIG",
+                "a joined child cannot have its own connection",
+            )
+        finally:
+            other.close()
     finally:
         db.close()
 
@@ -143,7 +249,7 @@ def model_query_remove_columns(item):
 
 
 class CoverageTest(CoverageCase):
-    # Requirements: DSL-57, DSL-58, DSL-60, DSL-62, DSL-73, DSL-80, DSL-82, DSL-99, INT-16, INT-29, INT-30, INT-32, INT-33, PLN-11, PLN-25.
+    # Requirements: DBS-118, DSL-57, DSL-58, DSL-60, DSL-62, DSL-73, DSL-80, DSL-82, DSL-99, INT-16, INT-29, INT-30, INT-32, INT-33, PLN-7, PLN-8, PLN-9, PLN-10, PLN-11, PLN-14, PLN-23, PLN-25, PLN-28, PLN-34, PLN-35, PLN-37, PLN-38, PLN-39, PLN-41, PLN-42, PLN-43.
     def test_model_query_rows(self):
         self.each_item("model_query_rows", model_query_rows)
 

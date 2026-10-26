@@ -87,6 +87,7 @@ func awaitReplica(t *testing.T, driver, primary, replicaServer string) {
 // no other, and a model without a connection inside a transaction uses the
 // transaction.
 // Requirements: CFG-21, CFG-22, CFG-23, CFG-25.
+// Requirements: PLN-30, PLN-34.
 func TestPrimaryAndReplica(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	for driver, dsns := range replicaTargets(t) {
