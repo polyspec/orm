@@ -270,6 +270,10 @@ func (r *request) group(g *condGroup, owner *Core, f *frame) *ir.Group {
 }
 
 func (r *request) pred(p *predSpec, owner *Core, f *frame) *ir.Pred {
+	if err := validatePredicateHostInput(owner, p); err != nil {
+		r.fail(err)
+		return nil
+	}
 	out := &ir.Pred{Column: p.column, Op: p.op}
 	switch {
 	case p.op == "fulltext" || p.op == "fulltext_boolean":
@@ -334,6 +338,54 @@ func (r *request) pred(p *predSpec, owner *Core, f *frame) *ir.Pred {
 		out.P = &i
 	}
 	return out
+}
+
+func validatePredicateHostInput(owner *Core, p *predSpec) error {
+	if p.isNull || p.ref != nil || p.sub != nil || p.op == "fulltext" || p.op == "fulltext_boolean" || (p.column == "" && !p.tuple) {
+		return nil
+	}
+	m, err := owner.ent.Schema.Model()
+	if err != nil {
+		return err
+	}
+	ent := m.Entities[owner.ent.Name]
+	validate := func(column string, value any) error {
+		field := ent.Field(column)
+		if field == nil {
+			return &ir.Error{Code: CodeColumnUnknown, Msg: ent.Name + "." + column}
+		}
+		return validateIPHostInput(field, value)
+	}
+	if p.tuple {
+		rows, ok := p.value.([][]any)
+		if !ok {
+			return nil
+		}
+		for _, row := range rows {
+			for i, value := range row {
+				if i < len(p.cols) {
+					if err := validate(p.cols[i], value); err != nil {
+						return err
+					}
+				}
+			}
+		}
+		return nil
+	}
+	values := []any{p.value}
+	if p.list || p.between {
+		var ok bool
+		values, ok = p.value.([]any)
+		if !ok {
+			return nil
+		}
+	}
+	for _, value := range values {
+		if err := validate(p.column, value); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (f *frame) pathOf(c *Core) (string, error) {

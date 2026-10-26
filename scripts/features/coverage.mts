@@ -371,7 +371,8 @@ async function nativeTest(item: Item, command: NativeCommand, root: string): Pro
     Object.keys(symbols).length === command.cases?.length &&
     command.cases?.every((id: string) => Object.hasOwn(symbols, id)) &&
     Object.values(symbols).every(symbol => typeof symbol === 'string' &&
-      /^(?:[A-Za-z_][A-Za-z0-9_]*::)*[A-Za-z_][A-Za-z0-9_]*$/.test(symbol)) &&
+      (phpSymbols ? /^[A-Za-z_][A-Za-z0-9_]*$/.test(symbol) :
+        /^(?:[A-Za-z_][A-Za-z0-9_]*::)*[A-Za-z_][A-Za-z0-9_]*$/.test(symbol))) &&
     new Set(Object.values(symbols)).size === Object.values(symbols).length : symbols === undefined;
   if (!command || typeof command !== 'object' || Array.isArray(command) ||
       !item.tests.includes(command.test) || !Array.isArray(command.cases) ||

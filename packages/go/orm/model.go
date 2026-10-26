@@ -881,6 +881,9 @@ func encodeValue(ent *runtimemodel.Entity, column string, v any) (any, error) {
 	if _, ok := v.(NullType); ok {
 		return nil, nil
 	}
+	if err := validateIPHostInput(col, v); err != nil {
+		return nil, err
+	}
 	var codec []string
 	for _, s := range col.Codec {
 		if s != "aes" && s != "hex" && s != "ip" {
@@ -898,6 +901,17 @@ func encodeValue(ent *runtimemodel.Entity, column string, v any) (any, error) {
 		return nil, err
 	}
 	return Encode(codec, styled)
+}
+
+func validateIPHostInput(col *runtimemodel.Field, value any) error {
+	if col == nil || !slices.Contains(col.Codec, "ip") {
+		return nil
+	}
+	if _, ok := value.(NullType); ok {
+		return nil
+	}
+	_, err := HostEncode(value, []string{"ip"}, "")
+	return err
 }
 
 func (c *Core) writeRequest(kind string, d *DB) (*request, *runtimemodel.Entity, error) {

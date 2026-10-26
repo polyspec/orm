@@ -750,6 +750,7 @@ caseTest('PHP coverage cases use their explicitly declared method symbols', 3000
     for (const symbols of [
       { wrong_case: method },
       { schema_install_existing: method, unused_case: 'testUnused' },
+      { schema_install_existing: 'OwnerTest::testSchemaInstallExisting' },
     ]) {
       command.symbols = symbols;
       assert.match((await runSelected(manifest, root, 30000, ['owner/php'])).join('\n'), /invalid native test command/);

@@ -188,6 +188,7 @@ source = { editable = "../../../ordered-json/packages/python" }
 name = "polyspec-orm"
 version = "0.0.18"
 source = { editable = "." }
+default-groups = ["test"]
 dependencies = [
     { name = "cryptography" },
     { name = "polyspec-ordered-json" },

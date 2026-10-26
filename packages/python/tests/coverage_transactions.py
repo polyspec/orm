@@ -286,7 +286,7 @@ def transaction_savepoint(item):
                     lambda: (
                         models.CompositeAccount()
                         .connect(db)
-                        .tenant_id(TENANT)
+                        .get_by_tenant_id_and_account_id(TENANT, 6)
                         .set_name("timed out")
                         .update()
                     ),

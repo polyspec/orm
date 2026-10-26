@@ -6,6 +6,7 @@
 #include "model_dsl.h"
 #include "model_kind_db_args.h"
 #include "runtime_model.h"
+#include "codec.h"
 #include "Zend/zend_exceptions.h"
 #include "Zend/zend_closures.h"
 #include "Zend/zend_interfaces.h"
@@ -320,6 +321,27 @@ static bool encode_value(zval *column, zval *value, zval *result)
     if (codec == NULL || Z_TYPE_P(codec) != IS_ARRAY) {
         zend_throw_error(NULL, "Model column codec must be an array");
         return false;
+    }
+    if (Z_TYPE_P(value) != IS_NULL) {
+        bool has_ip = false;
+        zval *stage;
+        ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(codec), stage) {
+            if (Z_TYPE_P(stage) == IS_STRING && zend_string_equals_literal(Z_STR_P(stage), "ip")) {
+                has_ip = true;
+                break;
+            }
+        } ZEND_HASH_FOREACH_END();
+        if (has_ip) {
+            zval styles, checked;
+            array_init(&styles);
+            add_next_index_string(&styles, "ip");
+            zend_string *empty_key = zend_string_init("", 0, 0);
+            bool valid = codec_host_encode(value, Z_ARRVAL(styles), empty_key, &checked);
+            zend_string_release(empty_key);
+            zval_ptr_dtor(&styles);
+            if (!valid) return false;
+            zval_ptr_dtor(&checked);
+        }
     }
     zval filtered;
     array_init_size(&filtered, zend_hash_num_elements(Z_ARRVAL_P(codec)));

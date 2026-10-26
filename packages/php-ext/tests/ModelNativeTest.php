@@ -1231,4 +1231,17 @@ final class ModelNativeTest extends TestCase
             self::assertSame(\Polyspec\Orm\Code::CONFIG, $error->code_);
         }
     }
+
+    // Requirements: COD-38.
+    public function testIpHostStyleValidatesBeforeRequestBindingAndPreservesValidText(): void
+    {
+        $column = ['codec' => ['ip']];
+        self::assertSame('10.0.0.1', Model::encodeValue($column, '10.0.0.1'));
+        try {
+            Model::encodeValue($column, '10. 0.0.1');
+            self::fail('an IP address with embedded whitespace was accepted before request binding');
+        } catch (OrmException $error) {
+            self::assertSame(\Polyspec\Orm\Code::CODEC_ENCODE, $error->code_);
+        }
+    }
 }

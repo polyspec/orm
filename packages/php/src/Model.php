@@ -1813,6 +1813,9 @@ abstract class Model implements \JsonSerializable, ModelMetadata
     /** @internal the stored value of a column value: the styled codec stages encode it */
     public static function encodeValue(array $col, mixed $v): mixed
     {
+        if ($v !== null && in_array('ip', $col['codec'], true)) {
+            Codec::hostEncode($v, ['ip'], '');
+        }
         $codec = array_values(array_filter($col['codec'], static fn(string $s): bool => !Codec::isHostStyle($s)));
         if ($codec === []) {
             return $v;

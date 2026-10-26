@@ -40,7 +40,11 @@ func TestCoverageConformanceVector(t *testing.T) {
 		}
 	}
 
-	output := runConformanceGo(t, root, dsn, "./packages/go/internal/conformance", "-dsn", dsn, "-vector", names[0], "-vector", names[1])
+	args := []string{"./packages/go/internal/conformance", "-dsn", dsn}
+	for _, name := range names {
+		args = append(args, "-vector", name)
+	}
+	output := runConformanceGo(t, root, dsn, args...)
 	if len(output) != len(names) {
 		t.Fatalf("runner_go printed %d vectors, want %v", len(output), names)
 	}

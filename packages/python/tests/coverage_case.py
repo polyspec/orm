@@ -209,12 +209,13 @@ def table_exists(driver: str, dsn: str, table: str) -> bool:
 
 
 def error_code(run) -> str | None:
-    """The code of the ORM error that run raises, or None when it returns."""
+    """The code of an ORM or host-codec error that run raises, or None when it returns."""
+    from polyspec.orm.codec import CodecError
     from polyspec.orm.errors import OrmError
 
     try:
         run()
-    except OrmError as error:
+    except (OrmError, CodecError) as error:
         return error.code
     return None
 

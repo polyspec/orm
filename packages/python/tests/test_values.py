@@ -14,6 +14,7 @@ from polyspec.orm.codec import (
 from polyspec.orm.errors import OrmError
 from polyspec.orm.styled_value import StyledValue
 from polyspec.orm.values import ColumnFunction, ValueFunction, orm
+from .coverage_case import error_code
 from . import testcase
 
 
@@ -287,9 +288,16 @@ class HostCodecTest(unittest.TestCase):
         self.assertEqual(host_decode(packed, ["ip"], ""), "192.168.0.1")
 
     def test_ip_rejects_a_non_address(self):
-        with self.assertRaises(CodecError) as caught:
-            host_encode("not-an-address", ["ip"], "")
-        self.assertEqual(caught.exception.code, "CODEC_ENCODE")
+        for address in ("not-an-address", "10. 0.0.1"):
+            with self.subTest(address=address):
+                with self.assertRaises(CodecError) as caught:
+                    host_encode(address, ["ip"], "")
+                self.assertEqual(caught.exception.code, "CODEC_ENCODE")
+                self.assertEqual(
+                    error_code(lambda: host_encode(address, ["ip"], "")), "CODEC_ENCODE"
+                )
+        self.assertEqual(host_encode("10.0.0.1", ["ip"], ""), bytes([10, 0, 0, 1]))
+        self.assertIsNone(host_encode(None, ["ip"], ""))
 
     def test_hex_stage(self):
         encoded = host_encode("value", ["hex"], "")

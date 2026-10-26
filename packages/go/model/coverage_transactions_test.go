@@ -43,19 +43,19 @@ func checkTransactionRowLockModes(db *orm.DB, outside bool) error {
 		read func() error
 	}{
 		{"forUpdate", func() error {
-			_, err := model.CompositeAccount().Connect(db).TenantId(transactionTenant).AccountId(2).ForUpdate().Get()
+			_, err := model.CompositeAccount().Connect(db).TenantId(transactionTenant).And().AccountId(2).ForUpdate().Get()
 			return err
 		}},
 		{"forShare", func() error {
-			_, err := model.CompositeAccount().Connect(db).TenantId(transactionTenant).AccountId(2).ForShare().Get()
+			_, err := model.CompositeAccount().Connect(db).TenantId(transactionTenant).And().AccountId(2).ForShare().Get()
 			return err
 		}},
 		{"forUpdateNoWait", func() error {
-			_, err := model.CompositeAccount().Connect(db).TenantId(transactionTenant).AccountId(2).ForUpdateNoWait().Get()
+			_, err := model.CompositeAccount().Connect(db).TenantId(transactionTenant).And().AccountId(2).ForUpdateNoWait().Get()
 			return err
 		}},
 		{"forShareNoWait", func() error {
-			_, err := model.CompositeAccount().Connect(db).TenantId(transactionTenant).AccountId(2).ForShareNoWait().Get()
+			_, err := model.CompositeAccount().Connect(db).TenantId(transactionTenant).And().AccountId(2).ForShareNoWait().Get()
 			return err
 		}},
 	}

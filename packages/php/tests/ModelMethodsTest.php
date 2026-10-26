@@ -12,6 +12,8 @@ use ReflectionClass;
 use PHPUnit\Framework\Attributes\Small;
 use PHPUnit\Framework\TestCase;
 use Polyspec\Orm\OrmGen;
+use Polyspec\Orm\Model;
+use Polyspec\Orm\Code;
 
 const SCHEMA = "dbspec 1 methods\n\ntable item {\n  seq i64\n  account_seq i64\n  project_seq i64\n  name varchar(32)\n"
     . "  amount decimal(10,2)\n  primary key (seq)\n  unique uq_item_name (name)\n  index ix_item_account "
@@ -169,6 +171,19 @@ final class ModelMethodsTest extends TestCase
         foreach ($cases as [$class, $method, $type]) {
             $param = (new \ReflectionMethod($class, $method))->getParameters()[0];
             self::assertSame($type, (string) $param->getType(), "$class::$method takes a native value");
+        }
+    }
+
+    // Requirements: COD-38.
+    public function testIpHostStyleValidatesBeforeRequestBindingAndPreservesValidText(): void
+    {
+        $column = ['codec' => ['ip']];
+        self::assertSame('10.0.0.1', Model::encodeValue($column, '10.0.0.1'));
+        try {
+            Model::encodeValue($column, '10. 0.0.1');
+            self::fail('an IP address with embedded whitespace was accepted');
+        } catch (\Polyspec\Orm\OrmException $error) {
+            self::assertSame(Code::CODEC_ENCODE, $error->code_);
         }
     }
 }

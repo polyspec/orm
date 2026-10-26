@@ -7,6 +7,7 @@ import { OrmError } from './runtime_error.js';
 import { normalizeDecimal } from './decimal.js';
 import { ColumnFunction, ValueFunction } from './values.js';
 import { StyledValue } from './styled_value.js';
+import { hostEncode } from './codec.js';
 import { Value as JsonValue } from '@polyspec/ordered-json';
 import * as codes from './codes.js';
 
@@ -23,6 +24,24 @@ export interface EntityDef {
 
 /** Codec stages that keep the plain value; any other stage makes the column a styled value. */
 const plainStages = new Set(['aes', 'hex', 'ip']);
+
+/** Validates host-style input from model metadata before a SQL dialect can receive it. */
+function validateHostInput(field: Field | undefined, value: unknown): void {
+  if (field === undefined || value === null || value === undefined || !field.stages.includes('ip')) return;
+  if (Array.isArray(value)) {
+    for (const item of value) validateHostInput(field, item);
+    return;
+  }
+  try {
+    hostEncode(value, ['ip'], '');
+  } catch (error) {
+    if (typeof error === 'object' && error !== null && 'code' in error && error.code === codes.CODEC_ENCODE) {
+      const message = error instanceof Error ? error.message.replace(/^CODEC_ENCODE: /, '') : String(error);
+      throw new OrmError(codes.CODEC_ENCODE, message, error);
+    }
+    throw error;
+  }
+}
 
 /** Whether a column holds a styled value (docs/spec/dbspec.md "Runtime model", codecs). */
 export function styledField(f: Field): boolean {
@@ -265,10 +284,12 @@ export class Core {
           if (!Array.isArray(row) || row.length !== key.columns.length) throw configError('tuple values must be value groups of the tuple columns');
           return row;
         });
+        for (const row of rows) key.columns.forEach((column, index) => validateHostInput(fieldOf(this.ent.entity, column), row[index]));
         return [p({ kind: 'tuple', op: key.op === 'tuple' ? 'tuple_in' : 'tuple_not_in', cols: key.columns, value: rows }), 0];
       }
       case 'between':
         if (!Array.isArray(value) || value.length !== 2) throw configError(`between value for ${key.column} must be a two-value array`);
+        validateHostInput(fieldOf(this.ent.entity, key.column), value);
         return [p({ kind: 'between', op: 'between', value }), 0];
       case 'fulltext': case 'fulltext_boolean':
         if (typeof value !== 'string') throw configError(`${key.op} requires a string`);
@@ -293,6 +314,7 @@ export class Core {
     if (value instanceof ColumnFunction) {
       if (!single) throw configError('a column function is accepted only by a single-key condition');
       if (rest.length !== 1) throw configError(`column function on ${key.column} requires one compared value`);
+      validateHostInput(fieldOf(this.ent.entity, key.column), rest[0]);
       return [p({ kind: 'column_fn', op, fn: value, value: rest[0] }), 1];
     }
     if (value instanceof ValueFunction) return [p({ kind: 'value_fn', op, fn: value }), 0];
@@ -303,8 +325,10 @@ export class Core {
     if (Array.isArray(value)) {
       if (!nullable) throw configError(`a list is not accepted by the ${key.op} operator`);
       if (value.length === 0) throw new OrmError(codes.EMPTY_IN, `${key.column} received an empty list`);
+      validateHostInput(fieldOf(this.ent.entity, key.column), value);
       return [p({ kind: 'list', op: key.op === 'ne' ? 'not_in' : 'in', value }), 0];
     }
+    validateHostInput(fieldOf(this.ent.entity, key.column), value);
     return [p({ kind: 'value', op, value }), 0];
   }
 
@@ -380,6 +404,7 @@ export class Core {
   public setValue(column: string, value: unknown): void {
     const field = fieldOf(this.ent.entity, column);
     if (field === undefined) throw new OrmError(codes.COLUMN_UNKNOWN, column);
+    validateHostInput(field, value);
     if (styledField(field)) {
       if (!(value instanceof StyledValue)) throw new OrmError(codes.CODEC_ENCODE, `${column} requires StyledValue`);
       if (!field.nullable && value.kind === 'sql-null') throw new OrmError(codes.CODEC_ENCODE, `${column} does not accept SQL NULL`);

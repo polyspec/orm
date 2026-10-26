@@ -13382,7 +13382,7 @@
                     "duplicate_relation_name"
                   ],
                   "symbols": {
-                    "duplicate_relation_name": "Cpx5DuplicateRelationTest::testGetQueryRejectsDuplicateRelationWithAliasHint"
+                    "duplicate_relation_name": "testGetQueryRejectsDuplicateRelationWithAliasHint"
                   }
                 }
               ]
@@ -13402,7 +13402,7 @@
                     "duplicate_relation_name"
                   ],
                   "symbols": {
-                    "duplicate_relation_name": "Cpx5DuplicateRelationNativeTest::testNativeGetQueryRejectsDuplicateRelationWithAliasHint"
+                    "duplicate_relation_name": "testNativeGetQueryRejectsDuplicateRelationWithAliasHint"
                   }
                 }
               ]
