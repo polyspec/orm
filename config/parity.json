@@ -11706,6 +11706,31 @@
           "implementation": "go",
           "test": "packages/go/engine/functions_physical_test.go",
           "id": "TestPhysicalQueryForms"
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageConformanceVerificationTest.php",
+          "id": "CoverageConformanceVerificationTest::testConformanceVector"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageConformanceVerificationExtensionTest.php",
+          "id": "CoverageConformanceVerificationExtensionTest::testConformanceVector"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_conformance_verification.mjs",
+          "id": "conformance_vector"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_conformance_verification.py",
+          "id": "test_conformance_vector"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/coverage_conformance_verification.rs",
+          "id": "coverage_conformance_vector"
         }
       ]
     },
