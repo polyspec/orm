@@ -26770,6 +26770,7 @@
       "id": "utils-expose-utility-groups",
       "kind": "feature",
       "requirements": [
+        "INT-61",
         "INT-134",
         "INT-73"
       ],

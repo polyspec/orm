@@ -498,7 +498,7 @@ func TestWrites(t *testing.T) {
 
 // TestTransactions runs a transaction with its savepoint, lock, local and retry calls. A goroutine started inside the
 // callback has no active transaction, so an unconnected model there returns CONFIG.
-// Requirements: PLN-13, PLN-16, PLN-17, PLN-18, PLN-20, PLN-21, DSL-122, INT-51, INT-59, INT-73, INT-134.
+// Requirements: PLN-13, PLN-16, PLN-17, PLN-18, PLN-20, PLN-21, DSL-122, INT-51, INT-59, INT-61, INT-73, INT-134.
 func TestTransactions(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	each(t, func(t *testing.T, db *orm.DB) {

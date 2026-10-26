@@ -378,7 +378,7 @@ async function styledStates(db, dsn) {
   check(cells.json_setting === null && cells.jsons_tags === null && cells.serialize_data === null, 'SQL NULL storage');
 }
 
-// Requirements: INT-51, INT-59, INT-73, INT-134.
+// Requirements: INT-51, INT-59, INT-61, INT-73, INT-134.
 async function transactions(db, dsn) {
   const utils = db.utils();
   check(utils.schema() !== null && utils.privileges() !== null && utils.aes() !== null && utils.stats() !== null, 'Utils exposes schema, privileges, AES and stats groups');

@@ -44,13 +44,13 @@ class UtilsTest(unittest.TestCase):
     def tearDownClass(cls):
         cls.db.close()
 
-    # Requirements: INT-73, INT-134.
+    # Requirements: INT-61, INT-73, INT-134.
     def test_utils_exposes_utility_groups(self):
         utils = self.db.utils()
         self.assertIsNotNone(utils.schema())
         self.assertIsNotNone(utils.privileges())
         self.assertIsNotNone(utils.aes())
-        self.assertIsNotNone(utils.stats())
+        self.assertEqual(utils.stats().open_connections, 1)
 
     # Requirements: INT-51.
     def test_local_value_is_readable_inside_the_transaction(self):

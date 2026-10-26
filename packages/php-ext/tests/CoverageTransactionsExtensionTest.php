@@ -17,7 +17,7 @@ use ReflectionMethod;
 // The inherited savepoint case runs against the native Db.
 final class CoverageTransactionsExtensionTest extends CoverageTransactionsTest
 {
-    // Requirements: INT-73, INT-134.
+    // Requirements: INT-61, INT-73, INT-134.
     public function testNativeUtilsExposeGroups(): void
     {
         self::withLifecycleRows(static function (Db $db, \Closure $recorded): void {
@@ -25,7 +25,14 @@ final class CoverageTransactionsExtensionTest extends CoverageTransactionsTest
             Assert::assertInstanceOf(\Polyspec\Orm\SchemaUtils::class, $utils->schema());
             Assert::assertInstanceOf(\Polyspec\Orm\PrivilegeUtils::class, $utils->privileges());
             Assert::assertInstanceOf(\Polyspec\Orm\AesUtils::class, $utils->aes());
-            Assert::assertInstanceOf(\Polyspec\Orm\Stats::class, $utils->stats());
+            $stats = $utils->stats();
+            Assert::assertInstanceOf(\Polyspec\Orm\Stats::class, $stats);
+            Assert::assertSame([1, 1, 0, 1], [
+                $stats->maxOpenConnections,
+                $stats->openConnections,
+                $stats->inUse,
+                $stats->idle,
+            ]);
             Assert::assertNotEmpty($recorded());
         });
     }

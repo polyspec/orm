@@ -1650,7 +1650,7 @@ final class ModelTest extends TestCase
     }
 
     // transactions
-    // Requirements: PLN-13, PLN-16, PLN-17, PLN-20, PLN-21, INT-51, INT-73, INT-134.
+    // Requirements: PLN-13, PLN-16, PLN-17, PLN-20, PLN-21, INT-51, INT-61, INT-73, INT-134.
     #[DataProvider('drivers')]
     public function testTransactions(string $driver): void
     {

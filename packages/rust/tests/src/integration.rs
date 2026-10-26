@@ -423,7 +423,7 @@ async fn writes(t: &Target) {
     assert_eq!(json["name"], "service", "serialize");
 }
 
-// Requirements: INT-51, INT-59, INT-73, INT-134.
+// Requirements: INT-51, INT-59, INT-61, INT-73, INT-134.
 async fn transactions(t: &Target) {
     let _aes = t.db.utils().aes();
     let _schema = t.db.utils().schema();
