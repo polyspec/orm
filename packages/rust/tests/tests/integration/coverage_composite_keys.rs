@@ -158,7 +158,11 @@ async fn coverage_composite_key_rows() {
             );
         }
         assert_eq!(after_cascade, 2, "ON DELETE CASCADE removed the membership of account 2");
-        for tenant in [TENANT, OTHER_TENANT, collision_tenants[0], collision_tenants[1]] {
+        let tenants = [TENANT, OTHER_TENANT, collision_tenants[0], collision_tenants[1]];
+        for tenant in tenants {
+            account().tenant_id(tenant).gets().await.unwrap().delete(false).await.unwrap();
+        }
+        for tenant in tenants {
             assert_eq!(account().tenant_id(tenant).get_count().await.unwrap(), 0, "accounts of tenant {tenant} left");
             assert_eq!(membership().tenant_id(tenant).get_count().await.unwrap(), 0, "memberships of tenant {tenant} left");
         }

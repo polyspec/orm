@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { endGroup } from '../check/step.mts';
 import { testDirectoryOf } from './packages.mts';
-import { mkdir, mkdtemp, readFile, realpath, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, realpath, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, dirname, extname, join, relative, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -663,13 +663,40 @@ function cargoMetadataOf(text: string): CargoMetadata {
   return { packages, ...(root === undefined ? {} : { workspace_root: jsonString(root, 'cargo metadata workspace_root') }) };
 }
 
+/** The files included by an explicit Rust #[path] declaration in a library target. */
+export async function cargoPathModuleFiles(targets: CargoTarget[]): Promise<{ target: string; file: string }[]> {
+  const modules: { target: string; file: string }[] = [];
+  for (const target of targets.filter(candidate => candidate.test && candidate.kind.includes('lib'))) {
+    const root = dirname(resolve(target.src_path));
+    const pending = [root];
+    const sources: string[] = [];
+    while (pending.length) {
+      const directory = pending.pop();
+      if (!directory) continue;
+      for (const entry of await readdir(directory, { withFileTypes: true })) {
+        const path = join(directory, entry.name);
+        if (entry.isDirectory()) pending.push(path);
+        else if (entry.isFile() && extname(path) === '.rs') sources.push(path);
+      }
+    }
+    for (const source of sources) {
+      const text = await readFile(source, 'utf8');
+      for (const match of text.matchAll(/#\s*\[\s*path\s*=\s*"([^"]+)"\s*\]\s*mod\b/g)) {
+        if (match[1]) modules.push({ target: target.name, file: resolve(dirname(source), match[1]) });
+      }
+    }
+  }
+  return modules;
+}
+
 /** Select Cargo test targets that own the declared source files. */
-export function cargoTargetArgs(targets: CargoTarget[], testPaths: string[]): string[] {
+export function cargoTargetArgs(targets: CargoTarget[], testPaths: string[], pathModules: { target: string; file: string }[] = []): string[] {
   const selected = new Map<string, CargoTarget>();
   for (const file of testPaths) {
     const path = resolve(file);
     const candidates = targets.flatMap(target => {
       if (!target.test || target.harness === false) return [];
+      if (pathModules.some(module => module.target === target.name && resolve(module.file) === path)) return [{ target, specificity: path.length + 2 }];
       const source = resolve(target.src_path);
       if (source === path) return [{ target, specificity: path.length + 1 }];
       const roots = [dirname(source)];
@@ -749,7 +776,8 @@ async function buildCargo(plans: Plans, directory: string, builds: Builds, build
       const workspaceManifestPath = cargoWorkspaceManifestPath(project.workspace_root);
       const features = cargoFeaturesForPackage(project, selectedPackage, requestedFeatures);
       const dependencyRoot = resolve(project.workspace_root);
-      const targetArgs = cargoTargetArgs(selectedPackage.targets, crateSpecs.map(spec => spec.testPath));
+      const pathModules = await cargoPathModuleFiles(selectedPackage.targets);
+      const targetArgs = cargoTargetArgs(selectedPackage.targets, crateSpecs.map(spec => spec.testPath), pathModules);
       const copies = resolve(directory, `cargo-${builds.cargo.size}-${relative(plans.root, crate).replaceAll('/', '_') || 'root'}`);
       await mkdir(copies, { recursive: true });
       const result = await run(lease, ['run', leases, 'exclusive', '--wait', '--', process.execPath, cargoTestScript, '--copy', copies, '--',

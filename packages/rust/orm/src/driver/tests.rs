@@ -1,6 +1,6 @@
-use super::{bind_sqlite, statement, BindSlot, ParentRef, Step};
-use crate::plan::KeyRef;
-use crate::{codes, Error, Param};
+use super::{bind_sqlite, decode_declared_text_columns, statement, BindSlot, ParentRef, Step};
+use crate::plan::{Assemble, KeyRef, OutCol};
+use crate::{codes, Error, Param, Val};
 use chrono::{NaiveDate, NaiveDateTime};
 use sqlx::{Connection, Row};
 
@@ -25,6 +25,25 @@ fn assert_parent_slot_invalid(step: &Step, numbered: bool) {
         }
         other => panic!("expected IR_INVALID, got {other}"),
     }
+}
+
+#[test]
+fn declared_mysql_text_decodes_utf8_bytes_without_coercing_byte_columns() {
+    let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
+    let assemble = Assemble {
+        columns: vec![
+            OutCol { index: 0, name: "label".into(), typ: "varchar".into(), ..OutCol::default() },
+            OutCol { index: 1, name: "payload".into(), typ: "bytes".into(), ..OutCol::default() },
+        ],
+        ..Assemble::default()
+    };
+    let mut rows = vec![vec![Val::Bytes(b"a1".to_vec()), Val::Bytes(vec![0, 0xff])]];
+    decode_declared_text_columns(&assemble, &mut rows).expect("valid UTF-8 text bytes decode");
+    assert_eq!(rows, [vec![Val::Str("a1".into()), Val::Bytes(vec![0, 0xff])]]);
+
+    let mut invalid = vec![vec![Val::Bytes(vec![0xff]), Val::Bytes(vec![0xff])]];
+    assert_eq!(decode_declared_text_columns(&assemble, &mut invalid).unwrap_err().code(), codes::CODEC_DECODE);
+    assert_eq!(invalid[0][1], Val::Bytes(vec![0xff]), "a declared bytes value remains bytes");
 }
 
 #[test]

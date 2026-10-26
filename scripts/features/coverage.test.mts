@@ -8,7 +8,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { testDirectoryOf } from './packages.mts';
-import { cargoBuildArgs, cargoFeaturesForPackage, cargoTargetArgs, cargoWorkspaceManifestPath, checkCoverage, coverageItems, databaseDsn, databases, executeCoverage, observedCases, languages, NATIVE_DEADLINE, run, goPerformanceMeasurements, selectFeatures, type Coverage, type Dependent, type Feature, type Manifest, type Owner, type Report } from './coverage.mts';
+import { cargoBuildArgs, cargoFeaturesForPackage, cargoPathModuleFiles, cargoTargetArgs, cargoWorkspaceManifestPath, checkCoverage, coverageItems, databaseDsn, databases, executeCoverage, observedCases, languages, NATIVE_DEADLINE, run, goPerformanceMeasurements, selectFeatures, type Coverage, type Dependent, type Feature, type Manifest, type Owner, type Report } from './coverage.mts';
 import { readFeatures } from './manifest.mts';
 import { readParityConfig, type ParityConfig } from '../json/formats.mts';
 import { isolatedEnvironment } from '../../tests/environment.mts';
@@ -233,6 +233,19 @@ caseTest('Rust coverage maps nested modules to the most specific Cargo test targ
     { name: 'integration', kind: ['test'], src_path: join(root, 'packages/rust/tests/tests/integration.rs'), test: true },
     { name: 'nested', kind: ['test'], src_path: join(root, 'packages/rust/tests/tests/integration/main.rs'), test: true },
   ], [nestedIntegration]), /maps to 2 Cargo test targets at its most specific module root/);
+});
+
+caseTest('Rust coverage maps explicit library path modules to the library test target', COMPUTE, async () => {
+  const root = new URL('../..', import.meta.url).pathname;
+  const metadata = await run('cargo', ['metadata', '--no-deps', '--format-version=1', '--manifest-path', join(root, 'packages/rust/orm/Cargo.toml')], root, null, process.env, () => {});
+  assert.equal(metadata.error, undefined);
+  const project = JSON.parse(metadata.stdout ?? '{}') as { packages: { name: string; manifest_path: string; targets: { name: string; kind: string[]; src_path: string; test: boolean; harness?: boolean }[] }[] };
+  const pkg = project.packages.find(item => item.name === 'polyspec-orm');
+  assert.ok(pkg, 'Cargo metadata has no ORM package');
+  const path = join(root, 'packages/rust/orm/tests/unit/coverage_planner.rs');
+  const modules = await cargoPathModuleFiles(pkg.targets);
+  assert.ok(modules.some(module => module.target === 'polyspec-orm' && module.file === path), 'the ORM library no longer declares the planner unit module');
+  assert.deepEqual(cargoTargetArgs(pkg.targets, [path], modules), ['--lib']);
 });
 
 caseTest('Rust coverage uses the workspace manifest and applies only supported features to the selected crate', COMPUTE, () => {

@@ -164,16 +164,26 @@ async fn coverage_transaction_savepoint() {
         if db.driver() == "postgres" {
             account().set_tenant_id(TENANT).set_account_id(6).set_name("before timeout").create().await.unwrap();
             let holder = connect().await;
-            let locked = std::sync::Arc::new(tokio::sync::Notify::new());
             let release = std::sync::Arc::new(tokio::sync::Notify::new());
-            let holder_locked = locked.clone();
+            let (holder_locked, lock_ready) = tokio::sync::oneshot::channel();
             let holder_release = release.clone();
             let holder_task = std::thread::spawn(move || {
                 tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap().block_on(async move {
                     holder
                         .transaction(async || {
-                            CompositeAccount::new().connect(&holder).tenant_id(TENANT).for_update().get().await?;
-                            holder_locked.notify_one();
+                            match CompositeAccount::new().connect(&holder).tenant_id(TENANT).for_update().get().await {
+                                Ok(Some(_)) => {
+                                    let _ = holder_locked.send(Ok(()));
+                                }
+                                Ok(None) => {
+                                    let _ = holder_locked.send(Err("lock probe row was not found".to_owned()));
+                                    return Err(failure("lock probe row was not found"));
+                                }
+                                Err(error) => {
+                                    let _ = holder_locked.send(Err(format!("FOR UPDATE query failed: {error}")));
+                                    return Err(error);
+                                }
+                            }
                             holder_release.notified().await;
                             Ok(())
                         })
@@ -181,7 +191,19 @@ async fn coverage_transaction_savepoint() {
                         .await
                 })
             });
-            locked.notified().await;
+            match lock_ready.await {
+                Ok(Ok(())) => {}
+                Ok(Err(message)) => {
+                    release.notify_one();
+                    let holder_result = holder_task.join().expect("the PostgreSQL lock-holder thread did not panic");
+                    panic!("PostgreSQL lock-holder setup failed: {message}; transaction: {holder_result:?}");
+                }
+                Err(_) => {
+                    release.notify_one();
+                    let holder_result = holder_task.join().expect("the PostgreSQL lock-holder thread did not panic");
+                    panic!("PostgreSQL lock-holder dropped its readiness signal; transaction: {holder_result:?}");
+                }
+            }
             let timed: polyspec_orm::Result<()> = db
                 .transaction(async || {
                     account().tenant_id(TENANT).set_name("timed out").update(false).await?;

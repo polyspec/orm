@@ -332,6 +332,24 @@ async fn coverage_model_read_null_and_empty_text() {
         let seq = -1_000_000_000_000i64 - (std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_micros() as i64 % 1_000_000_000);
         let table = TableRef { namespace: catalog.current_namespace().await.expect("current namespace"), name: "bind_cell".into() };
         let metadata = catalog.describe_table(&table).await.expect("bind_cell metadata");
+        // SQLite creates a sqlite_sequence row even when an explicit negative identity does not advance its value.
+        // Keep that metadata at its original state because this case removes both fixture rows before it returns.
+        let sqlite_sequence_before = if driver == "sqlite" {
+            let result = catalog
+                .query("SELECT seq FROM sqlite_sequence WHERE name = 'bind_cell'", &[], QueryLimits::default())
+                .await
+                .expect("read bind_cell SQLite sequence");
+            match result.rows.as_slice() {
+                [] => None,
+                [row] => match row.as_slice() {
+                    [Val::Int(sequence)] => Some(*sequence),
+                    _ => panic!("unexpected bind_cell SQLite sequence row: {row:?}"),
+                },
+                rows => panic!("unexpected bind_cell SQLite sequence rows: {rows:?}"),
+            }
+        } else {
+            None
+        };
         let (_, publish, permit) = recorded_mutation_hooks();
         let running = || Arc::new(AtomicBool::new(false));
         let null_values = [("seq".to_owned(), P::I(seq)), ("label".to_owned(), P::S("null-v".into())), ("body".to_owned(), P::Null(ParamType::Text))];
@@ -363,6 +381,35 @@ async fn coverage_model_read_null_and_empty_text() {
         }
         for snapshot in snapshots {
             catalog.delete_row(&snapshot, running(), publish.clone(), permit.clone()).await.expect("delete fixture row");
+        }
+        if driver == "sqlite" {
+            match sqlite_sequence_before {
+                Some(sequence) => {
+                    catalog
+                        .query("UPDATE sqlite_sequence SET seq = ? WHERE name = 'bind_cell'", &[P::I(sequence)], QueryLimits::default())
+                        .await
+                        .expect("restore bind_cell SQLite sequence");
+                }
+                None => {
+                    catalog
+                        .query("DELETE FROM sqlite_sequence WHERE name = 'bind_cell'", &[], QueryLimits::default())
+                        .await
+                        .expect("remove temporary bind_cell SQLite sequence");
+                }
+            }
+            let result = catalog
+                .query("SELECT seq FROM sqlite_sequence WHERE name = 'bind_cell'", &[], QueryLimits::default())
+                .await
+                .expect("verify bind_cell SQLite sequence");
+            let sequence_after = match result.rows.as_slice() {
+                [] => None,
+                [row] => match row.as_slice() {
+                    [Val::Int(sequence)] => Some(*sequence),
+                    _ => panic!("unexpected bind_cell SQLite sequence row after cleanup: {row:?}"),
+                },
+                rows => panic!("unexpected bind_cell SQLite sequence rows after cleanup: {rows:?}"),
+            };
+            assert_eq!(sequence_after, sqlite_sequence_before, "SQLite identity metadata is restored after the test rows are removed");
         }
         catalog.close().await;
         db.close().await;

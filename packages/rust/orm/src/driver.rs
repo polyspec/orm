@@ -594,8 +594,26 @@ pub(crate) fn positional(raw: &[DriverRow], asm: &Assemble, aes_keys: &BTreeMap<
     let n = asm.total_columns();
     let mut data: Vec<Vec<Val>> = raw.iter().map(|r| read_row(r, n, zone)).collect::<Result<_>>()?;
     decode_styled(asm, &mut data, aes_keys)?;
+    if matches!(raw.first(), Some(DriverRow::MySql(_))) {
+        decode_declared_text_columns(asm, &mut data)?;
+    }
     decode_boolean_columns(asm, &mut data)?;
     Ok(data)
+}
+
+/// MySQL reports text columns with a binary collation as binary values. The plan's declared
+/// type distinguishes those UTF-8 text values from actual byte columns without loosening bind
+/// validation or changing the driver's decoding of unplanned rows.
+fn decode_declared_text_columns(asm: &Assemble, data: &mut [Vec<Val>]) -> Result<()> {
+    for column in asm.columns.iter().filter(|column| matches!(column.typ.as_str(), "varchar" | "text") && column.styles.is_empty()) {
+        for row in data.iter_mut() {
+            let value = row.get_mut(column.index).ok_or_else(|| Error::internal(format!("text column {} has no value", column.name)))?;
+            if matches!(value, Val::Bytes(_)) {
+                *value = Val::Str(value.take_string()?);
+            }
+        }
+    }
+    Ok(())
 }
 
 /// The transaction of one pool.
