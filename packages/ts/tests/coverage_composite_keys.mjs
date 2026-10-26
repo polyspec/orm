@@ -55,7 +55,7 @@ await runCases('coverage_composite_keys.mjs', {
         unsubscribe();
         assert.equal(relationEvents.length, 2, 'each relation path sends one padded query');
         for (const event of relationEvents) {
-          assert.deepEqual(event.binds, [BigInt(tenant), 1n, BigInt(tenant), 2n, BigInt(tenant), 3n, BigInt(tenant), 3n]);
+          assert.deepEqual(event.binds, [tenant, 1, tenant, 2, tenant, 3, tenant, 3]);
           const placeholders = event.sql.match(/\?/g) ?? event.sql.match(/\$\d+/g) ?? [];
           assert.equal(placeholders.length, 8, 'three composite parent keys pad to four tuples');
         }

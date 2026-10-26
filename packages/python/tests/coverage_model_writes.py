@@ -195,8 +195,8 @@ def optimistic_update(item):
             fresh.set_name("optimistic-update-probe").update(True)
             expect_equal(
                 error_code(lambda: stale.set_name("stale-probe").update(True)),
-                "CONFIG",
-                "update(true) compares the timestamp read by the stale model",
+                "OPTIMISTIC_LOCK",
+                "a stale model revision rejects the update",
             )
             raise sentinel
 

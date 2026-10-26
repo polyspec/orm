@@ -121,7 +121,11 @@ await runCases('coverage_model_writes.mjs', {
           assert.equal(stored.getGzExtend().payload(), 'compressed text', 'gz codec column round trip');
           assert.equal(stored.getBase64Extra().payload(), 'plain', 'base64 codec column round trip');
           assert.equal(await new Author().connect(db).ip('10.0.0.1').getCount(), 1, 'ip codec equality');
-          assert.equal(await errorCode(stored.setIp('10. 0.0.1').update()), 'CODEC_ENCODE', 'ip rejects embedded whitespace');
+          assert.equal(
+            await errorCode(Promise.resolve().then(() => stored.setIp('10. 0.0.1').update())),
+            'CODEC_ENCODE',
+            'ip rejects embedded whitespace',
+          );
           throw codecRollback;
         }, { retry: 0 });
       } catch (error) {
