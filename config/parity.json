@@ -354,7 +354,8 @@
         "packages/php/tests/FiberTransaction.php",
         "packages/php/tests/GroupRowsDbCases.php",
         "packages/php/tests/PostgresSessionSettings.php",
-        "packages/php/tests/QueryCancellationDbCases.php"
+        "packages/php/tests/QueryCancellationDbCases.php",
+        "packages/php/tests/AuthenticatedEncryptionFixtureCases.php"
       ],
       "symbols": {
         "extractor": "php",
@@ -9441,6 +9442,11 @@
           "implementation": "rust",
           "test": "packages/rust/schema/src/dbspec/mod.rs",
           "id": "dbspec::operator_tests::codecs_and_column_operators_keep_their_restrictions"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_ir_validate_additional.py",
+          "id": "test_limit_params_subquery_invalid_returns_ir_invalid"
         }
       ]
     },
@@ -15435,7 +15441,94 @@
       "id": "rust-row-update-verification-rejects-coercion-and-unrequested-changes",
       "kind": "feature",
       "requirements": [
-        "INT-110",
+        "INT-110"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/coverage_catalog_connection_test.go",
+          "id": "TestCoverageCatalogRowMutation",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-go-unit",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=TestCoverageCatalogRowMutation",
+            "FEATURE_PACKAGE=./orm"
+          ]
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::testCatalogRowMutation",
+          "command": [
+            "env",
+            "ORM_FEATURE_DATABASE=sqlite",
+            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
+            "${ORM_CHECKOUT}/vendor-php/bin/phpunit",
+            "--teamcity",
+            "--configuration",
+            "phpunit.xml.dist",
+            "--filter",
+            "testCatalogRowMutation",
+            "tests/CoverageCatalogConnectionTest.php"
+          ]
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageCatalogConnectionTest.php",
+          "id": "CoverageCatalogConnectionTest::testCatalogRowMutation",
+          "command": [
+            "env",
+            "ORM_PHP_MODE=extension",
+            "ORM_FEATURE_DATABASE=sqlite",
+            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
+            "php",
+            "-d",
+            "extension=${ORM_PARITY_PHP_EXTENSION}",
+            "${ORM_CHECKOUT}/vendor-php/bin/phpunit",
+            "--teamcity",
+            "--configuration",
+            "phpunit.xml.dist",
+            "--filter",
+            "testCatalogRowMutation",
+            "tests/CoverageCatalogConnectionTest.php"
+          ]
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_catalog_connection.mjs",
+          "id": "catalog_row_mutation"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_catalog_connection.py",
+          "id": "test_row_mutation",
+          "command": [
+            "env",
+            "ORM_FEATURE_DATABASE=sqlite",
+            "ORM_FEATURE_DSN=${BENCH_SQLITE_DSN}",
+            "packages/python/.venv/bin/python",
+            "-m",
+            "unittest",
+            "-v",
+            "tests.coverage_catalog_connection.CatalogConnectionCoverageTest.test_row_mutation"
+          ]
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/tests/row_snapshot.rs",
+          "id": "row_update_verification_rejects_coercion_and_unrequested_changes"
+        }
+      ]
+    },
+    {
+      "id": "catalog-row-update-validation",
+      "kind": "feature",
+      "requirements": [
         "INT-111"
       ],
       "bindings": [
@@ -15517,6 +15610,11 @@
           "implementation": "rust",
           "test": "packages/rust/build/tests/row_snapshot.rs",
           "id": "row_update_verification_rejects_coercion_and_unrequested_changes"
+        },
+        {
+          "implementation": "go",
+          "test": "packages/go/orm/catalog_mutation_test.go",
+          "id": "TestCatalogChangesRejectsValuesBeyondDeclaredCapacity"
         }
       ]
     },
@@ -17995,7 +18093,7 @@
         },
         {
           "implementation": "python",
-          "test": "packages/python/tests/test_ir_validate.py",
+          "test": "packages/python/tests/test_ir_validate_additional.py",
           "id": "test_a_request_of_another_manifest_is_schema_hash_mismatch"
         },
         {
