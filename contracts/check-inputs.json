@@ -3803,6 +3803,7 @@
         "packages/php/tests/bootstrap.php",
         "packages/php-ext/tests/bootstrap.php",
         "packages/php-ext/src/pgsql_adapter_native.c",
+        "packages/php-ext/src/db.c",
         "packages/php-ext/src/pgsql_adapter_native.h",
         "packages/php-ext/src/pgsql_statement_iterator_native.c",
         "packages/php-ext/src/pgsql_statement_iterator_native.h",

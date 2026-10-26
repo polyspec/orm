@@ -149,7 +149,7 @@
         "packages/php-ext/src"
       ],
       "symbols": "contracts/symbols/php-extension.json",
-      "symbol_hash": "sha256:740b17d8010ef493b0fd4672a9708272617111dc48032281fd62bbb7aaa7b2e0",
+      "symbol_hash": "sha256:a4d9aa64c38f6138d5d88e3f1b72b59c1d13ebd03f6dc846bfe9a910eba8a7a2",
       "rules": [
         "Model.connect",
         "Model.and",

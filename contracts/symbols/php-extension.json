@@ -1000,8 +1000,8 @@
     "signature": "public array"
   },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\DbState::$sqliteCancellationLoaded": {
-    "exported": true,
-    "signature": "public bool"
+    "exported": false,
+    "signature": "private bool"
   },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\DbState::$statementFault": {
     "exported": true,
@@ -2851,9 +2851,17 @@
     "exported": false,
     "signature": "private int"
   },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::$caseMode": {
+    "exported": false,
+    "signature": "private int"
+  },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::$connection": {
     "exported": false,
     "signature": "private readonly PgSql\\Connection"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::$defaultFetchMode": {
+    "exported": false,
+    "signature": "private array"
   },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::$errmode": {
     "exported": false,
@@ -2875,6 +2883,10 @@
     "exported": false,
     "signature": "private ?Closure"
   },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::$nullMode": {
+    "exported": false,
+    "signature": "private int"
+  },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::$stringifyFetches": {
     "exported": false,
     "signature": "private bool"
@@ -2894,6 +2906,10 @@
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::cancelActive": {
     "exported": true,
     "signature": "public function cancelActive(): bool"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::caseMode": {
+    "exported": true,
+    "signature": "public function caseMode(): int"
   },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::commit": {
     "exported": true,
@@ -2923,6 +2939,10 @@
     "exported": true,
     "signature": "public function copyToFile(string $tableName, string $filename, string $separator=\"\\t\", string $nullAs=\"\\\\N\", ?string $fields=null): bool"
   },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::defaultFetchMode": {
+    "exported": true,
+    "signature": "public function defaultFetchMode(): array"
+  },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::errorCode": {
     "exported": true,
     "signature": "public function errorCode(): ?string"
@@ -2930,6 +2950,10 @@
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::errorInfo": {
     "exported": true,
     "signature": "public function errorInfo(): array"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::errorMode": {
+    "exported": true,
+    "signature": "public function errorMode(): int"
   },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::escapeIdentifier": {
     "exported": true,
@@ -2973,7 +2997,7 @@
   },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::lobOpen": {
     "exported": true,
-    "signature": "public function lobOpen(string $oid, string $mode=\"rb\"): mixed"
+    "signature": "public function lobOpen(string $oid, string $mode=\"rb\"): "
   },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::lobUnlink": {
     "exported": true,
@@ -2986,6 +3010,10 @@
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::noticeCallback": {
     "exported": true,
     "signature": "public function noticeCallback(): ?Closure"
+  },
+  "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::nullMode": {
+    "exported": true,
+    "signature": "public function nullMode(): int"
   },
   "packages/php-ext/src/polyspec_orm.stub.php::Polyspec\\Orm\\Internal\\PgsqlPdoAdapter::prepare": {
     "exported": true,

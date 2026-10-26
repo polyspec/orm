@@ -820,7 +820,7 @@ final class DbState
     public ?\Closure $reconnect = null;
     public ?\Closure $cancelConnection = null;
     public ?\Closure $cancelQuery = null;
-    public bool $sqliteCancellationLoaded = false;
+    private bool $sqliteCancellationLoaded = false;
     public array $stmts = [];
     public array $stmtOrder = [];
     public array $stmtPlaceholders = [];
@@ -976,6 +976,9 @@ final class PgsqlPdoAdapter extends \Pdo\Pgsql
     private array $errorInfoValue;
     private int $errmode;
     private bool $stringifyFetches;
+    private int $caseMode;
+    private int $nullMode;
+    private array $defaultFetchMode;
     private ?\PDOStatement $activeStatement;
     private ?\Closure $noticeCallback;
     private bool $transaction;
@@ -1009,7 +1012,8 @@ final class PgsqlPdoAdapter extends \Pdo\Pgsql
     public function copyToArray(string $tableName, string $separator = "\t", string $nullAs = "\\N", ?string $fields = null): array|false {}
     public function copyToFile(string $tableName, string $filename, string $separator = "\t", string $nullAs = "\\N", ?string $fields = null): bool {}
     public function lobCreate(): string|false {}
-    public function lobOpen(string $oid, string $mode = "rb"): mixed {}
+    /** @return mixed */
+    public function lobOpen(string $oid, string $mode = "rb") {}
     public function lobUnlink(string $oid): bool {}
     /** @internal */
     public function executeSql(string $sql, array $params, bool $simpleQuery = false, array $paramTypes = []): \PgSql\Result {}
@@ -1019,6 +1023,14 @@ final class PgsqlPdoAdapter extends \Pdo\Pgsql
     public function finish(\PDOStatement $statement): void {}
     /** @internal */
     public function stringifyFetches(): bool {}
+    /** @internal */
+    public function caseMode(): int {}
+    /** @internal */
+    public function defaultFetchMode(): array {}
+    /** @internal */
+    public function errorMode(): int {}
+    /** @internal */
+    public function nullMode(): int {}
     /** @internal */
     public function noticeCallback(): ?\Closure {}
 }

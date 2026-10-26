@@ -356,10 +356,16 @@ ZEND_METHOD(Polyspec_Orm_Internal_PgsqlPdoAdapter, __construct)
     }
     pg_set(ZEND_THIS, "connection", &connection);
     zval_ptr_dtor(&connection);
-    zval code, mode, stringify, transaction, affected, last_id, active, notice, info;
+    zval code, mode, stringify, case_mode, null_mode, fetch_mode, transaction, affected, last_id, active, notice, info;
     ZVAL_LONG(&code, 0);
     ZVAL_LONG(&mode, 2);
     ZVAL_FALSE(&stringify);
+    ZVAL_LONG(&case_mode, pg_value_long("PDO::CASE_NATURAL", 0));
+    ZVAL_LONG(&null_mode, pg_value_long("PDO::NULL_NATURAL", 0));
+    array_init(&fetch_mode);
+    zend_long fetch_both = 4;
+    pg_constant_long("PDO::FETCH_BOTH", &fetch_both);
+    add_next_index_long(&fetch_mode, fetch_both);
     ZVAL_FALSE(&transaction);
     ZVAL_LONG(&affected, 0);
     ZVAL_FALSE(&last_id);
@@ -371,12 +377,16 @@ ZEND_METHOD(Polyspec_Orm_Internal_PgsqlPdoAdapter, __construct)
     pg_set(ZEND_THIS, "errorInfoValue", &info);
     pg_set(ZEND_THIS, "errmode", &mode);
     pg_set(ZEND_THIS, "stringifyFetches", &stringify);
+    pg_set(ZEND_THIS, "caseMode", &case_mode);
+    pg_set(ZEND_THIS, "nullMode", &null_mode);
+    pg_set(ZEND_THIS, "defaultFetchMode", &fetch_mode);
     pg_set(ZEND_THIS, "transaction", &transaction);
     pg_set(ZEND_THIS, "affectedRows", &affected);
     pg_set(ZEND_THIS, "lastInsertIdValue", &last_id);
     pg_set(ZEND_THIS, "activeStatement", &active);
     pg_set(ZEND_THIS, "noticeCallback", &notice);
     zval_ptr_dtor(&info);
+    zval_ptr_dtor(&fetch_mode);
 }
 
 ZEND_METHOD(Polyspec_Orm_Internal_PgsqlPdoAdapter, connect)
@@ -568,13 +578,54 @@ ZEND_METHOD(Polyspec_Orm_Internal_PgsqlPdoAdapter, setAttribute)
     zend_long attribute;
     zval *value;
     ZEND_PARSE_PARAMETERS_START(2, 2) Z_PARAM_LONG(attribute) Z_PARAM_ZVAL(value) ZEND_PARSE_PARAMETERS_END();
+    ZVAL_DEREF(value);
     zend_long attr = 0;
-    if (pg_constant_long("PDO::ATTR_ERRMODE", &attr) && attribute == attr) { zval copy; ZVAL_COPY(&copy, value); pg_set(ZEND_THIS, "errmode", &copy); zval_ptr_dtor(&copy); RETURN_TRUE; }
+    if (pg_constant_long("PDO::ATTR_ERRMODE", &attr) && attribute == attr) {
+        if (Z_TYPE_P(value) != IS_LONG) RETURN_FALSE;
+        zend_long selected = Z_LVAL_P(value), allowed[3];
+        const char *names[] = {"PDO::ERRMODE_SILENT", "PDO::ERRMODE_WARNING", "PDO::ERRMODE_EXCEPTION"};
+        bool valid = false;
+        for (size_t i = 0; i < 3; i++) if (pg_constant_long(names[i], &allowed[i]) && Z_TYPE_P(value) == IS_LONG && selected == allowed[i]) valid = true;
+        if (!valid) RETURN_FALSE;
+        zval copy; ZVAL_LONG(&copy, selected); pg_set(ZEND_THIS, "errmode", &copy); RETURN_TRUE;
+    }
     if (pg_constant_long("PDO::ATTR_STRINGIFY_FETCHES", &attr) && attribute == attr) { zval copy; ZVAL_BOOL(&copy, zend_is_true(value)); pg_set(ZEND_THIS, "stringifyFetches", &copy); RETURN_TRUE; }
+    if (pg_constant_long("PDO::ATTR_CASE", &attr) && attribute == attr) {
+        if (Z_TYPE_P(value) != IS_LONG) RETURN_FALSE;
+        zend_long selected = Z_LVAL_P(value), allowed[3];
+        const char *names[] = {"PDO::CASE_NATURAL", "PDO::CASE_LOWER", "PDO::CASE_UPPER"};
+        bool valid = false;
+        for (size_t i = 0; i < 3; i++) if (pg_constant_long(names[i], &allowed[i]) && Z_TYPE_P(value) == IS_LONG && selected == allowed[i]) valid = true;
+        if (!valid) RETURN_FALSE;
+        zval copy; ZVAL_LONG(&copy, selected); pg_set(ZEND_THIS, "caseMode", &copy); RETURN_TRUE;
+    }
+    if (pg_constant_long("PDO::ATTR_ORACLE_NULLS", &attr) && attribute == attr) {
+        if (Z_TYPE_P(value) != IS_LONG) RETURN_FALSE;
+        zend_long selected = Z_LVAL_P(value), allowed[3];
+        const char *names[] = {"PDO::NULL_NATURAL", "PDO::NULL_EMPTY_STRING", "PDO::NULL_TO_STRING"};
+        bool valid = false;
+        for (size_t i = 0; i < 3; i++) if (pg_constant_long(names[i], &allowed[i]) && Z_TYPE_P(value) == IS_LONG && selected == allowed[i]) valid = true;
+        if (!valid) RETURN_FALSE;
+        zval copy; ZVAL_LONG(&copy, selected); pg_set(ZEND_THIS, "nullMode", &copy); RETURN_TRUE;
+    }
+    if (pg_constant_long("PDO::ATTR_DEFAULT_FETCH_MODE", &attr) && attribute == attr) {
+        zval modes;
+        array_init(&modes);
+        if (Z_TYPE_P(value) == IS_ARRAY) {
+            zval *entry;
+            ZEND_HASH_FOREACH_VAL(Z_ARRVAL_P(value), entry) {
+                zval copy; ZVAL_COPY(&copy, entry); add_next_index_zval(&modes, &copy);
+            } ZEND_HASH_FOREACH_END();
+        } else {
+            add_next_index_long(&modes, zval_get_long(value));
+        }
+        pg_set(ZEND_THIS, "defaultFetchMode", &modes);
+        zval_ptr_dtor(&modes);
+        RETURN_TRUE;
+    }
     if (pg_constant_long("Pdo\\Pgsql::ATTR_DISABLE_PREPARES", &attr) && attribute == attr) RETURN_TRUE;
     if (pg_constant_long("PDO::ATTR_EMULATE_PREPARES", &attr) && attribute == attr) RETURN_BOOL(!zend_is_true(value));
-    pg_raise("unsupported PDO attribute");
-    RETURN_THROWS();
+    RETURN_FALSE;
 }
 
 ZEND_METHOD(Polyspec_Orm_Internal_PgsqlPdoAdapter, getAttribute)
@@ -586,6 +637,18 @@ ZEND_METHOD(Polyspec_Orm_Internal_PgsqlPdoAdapter, getAttribute)
     }
     if (pg_constant_long("PDO::ATTR_STRINGIFY_FETCHES", &attr) && attribute == attr) {
         zval rv; RETURN_COPY(pg_prop(ZEND_THIS, "stringifyFetches", &rv));
+    }
+    if (pg_constant_long("PDO::ATTR_CASE", &attr) && attribute == attr) {
+        zval rv; RETURN_COPY(pg_prop(ZEND_THIS, "caseMode", &rv));
+    }
+    if (pg_constant_long("PDO::ATTR_ORACLE_NULLS", &attr) && attribute == attr) {
+        zval rv; RETURN_COPY(pg_prop(ZEND_THIS, "nullMode", &rv));
+    }
+    if (pg_constant_long("PDO::ATTR_DEFAULT_FETCH_MODE", &attr) && attribute == attr) {
+        zval rv; zval *modes = pg_prop(ZEND_THIS, "defaultFetchMode", &rv);
+        zval *mode = modes != NULL && Z_TYPE_P(modes) == IS_ARRAY ? zend_hash_index_find(Z_ARRVAL_P(modes), 0) : NULL;
+        if (mode != NULL) RETURN_COPY(mode);
+        zend_long fallback = 4; pg_constant_long("PDO::FETCH_BOTH", &fallback); RETURN_LONG(fallback);
     }
     if (pg_constant_long("PDO::ATTR_EMULATE_PREPARES", &attr) && attribute == attr) RETURN_FALSE;
     if (pg_constant_long("PDO::ATTR_DRIVER_NAME", &attr) && attribute == attr) RETURN_STRING("pgsql");
@@ -608,8 +671,27 @@ ZEND_METHOD(Polyspec_Orm_Internal_PgsqlPdoAdapter, getAttribute)
         bool connected = Z_TYPE(status) == IS_LONG && Z_LVAL(status) == ok; zval_ptr_dtor(&status);
         RETURN_STRING(connected ? "PostgreSQL connection OK" : "PostgreSQL connection bad");
     }
-    pg_raise("unsupported PDO attribute");
-    RETURN_THROWS();
+    RETURN_FALSE;
+}
+
+ZEND_METHOD(Polyspec_Orm_Internal_PgsqlPdoAdapter, caseMode)
+{
+    ZEND_PARSE_PARAMETERS_NONE(); zval rv; RETURN_COPY(pg_prop(ZEND_THIS, "caseMode", &rv));
+}
+
+ZEND_METHOD(Polyspec_Orm_Internal_PgsqlPdoAdapter, defaultFetchMode)
+{
+    ZEND_PARSE_PARAMETERS_NONE(); zval rv; RETURN_COPY(pg_prop(ZEND_THIS, "defaultFetchMode", &rv));
+}
+
+ZEND_METHOD(Polyspec_Orm_Internal_PgsqlPdoAdapter, errorMode)
+{
+    ZEND_PARSE_PARAMETERS_NONE(); zval rv; RETURN_COPY(pg_prop(ZEND_THIS, "errmode", &rv));
+}
+
+ZEND_METHOD(Polyspec_Orm_Internal_PgsqlPdoAdapter, nullMode)
+{
+    ZEND_PARSE_PARAMETERS_NONE(); zval rv; RETURN_COPY(pg_prop(ZEND_THIS, "nullMode", &rv));
 }
 
 ZEND_METHOD(Polyspec_Orm_Internal_PgsqlPdoAdapter, quote)
@@ -1050,7 +1132,7 @@ ZEND_METHOD(Polyspec_Orm_Internal_PgsqlStatementAdapter, __construct)
     array_init(&empty); pg_set(ZEND_THIS, "boundRefs", &empty); zval_ptr_dtor(&empty);
     array_init(&empty); pg_set(ZEND_THIS, "boundRefTypes", &empty); zval_ptr_dtor(&empty);
     array_init(&empty); pg_set(ZEND_THIS, "boundColumns", &empty); zval_ptr_dtor(&empty);
-    array_init(&empty); add_next_index_long(&empty, pg_value_long("PDO::FETCH_BOTH", 4)); pg_set(ZEND_THIS, "fetchMode", &empty); zval_ptr_dtor(&empty);
+    array_init(&empty); pg_set(ZEND_THIS, "fetchMode", &empty); zval_ptr_dtor(&empty);
     ZVAL_NULL(&null_value); pg_set(ZEND_THIS, "result", &null_value);
     ZVAL_LONG(&row, 0); pg_set(ZEND_THIS, "row", &row);
     ZVAL_LONG(&affected, 0); pg_set(ZEND_THIS, "affected", &affected);
@@ -1248,12 +1330,26 @@ static bool pg_statement_row(zval *self, zend_long mode, zval *row_value)
     zval pdo_rv; zval *pdo = pg_prop(self, "pdo", &pdo_rv); zval stringify = {0};
     if (pdo != NULL) pg_call_method(pdo, "stringifyFetches", &stringify, 0, NULL);
     bool stringify_values = zend_is_true(&stringify); if (!Z_ISUNDEF(stringify)) zval_ptr_dtor(&stringify);
+    zval case_rv, null_rv;
+    zval *case_mode_value = pdo == NULL ? NULL : pg_prop(pdo, "caseMode", &case_rv);
+    zval *null_mode_value = pdo == NULL ? NULL : pg_prop(pdo, "nullMode", &null_rv);
+    zend_long case_mode = case_mode_value == NULL ? pg_value_long("PDO::CASE_NATURAL", 0) : zval_get_long(case_mode_value);
+    zend_long null_mode = null_mode_value == NULL ? pg_value_long("PDO::NULL_NATURAL", 0) : zval_get_long(null_mode_value);
+    zend_long null_to_string = pg_value_long("PDO::NULL_TO_STRING", 2);
+    zend_long null_empty_string = pg_value_long("PDO::NULL_EMPTY_STRING", 1);
     zend_long fetch_num = pg_value_long("PDO::FETCH_NUM", 3), fetch_both = pg_value_long("PDO::FETCH_BOTH", 4), fetch_obj = pg_value_long("PDO::FETCH_OBJ", 5), fetch_col = pg_value_long("PDO::FETCH_COLUMN", 7);
     zval converted; array_init(&converted);
     zval *raw; zend_ulong index;
     ZEND_HASH_FOREACH_NUM_KEY_VAL(Z_ARRVAL(values), index, raw) {
         zval value; ZVAL_COPY(&value, raw);
-        if (Z_TYPE(value) == IS_STRING && columns != NULL && Z_TYPE_P(columns) == IS_ARRAY) {
+        bool special_null = Z_TYPE(value) == IS_NULL;
+        if (special_null && null_mode == null_to_string) {
+            zval_ptr_dtor(&value); ZVAL_EMPTY_STRING(&value);
+        } else if (!special_null && Z_TYPE(value) == IS_STRING && Z_STRLEN(value) == 0
+            && null_mode == null_empty_string) {
+            zval_ptr_dtor(&value); ZVAL_NULL(&value); special_null = true;
+        }
+        if (!special_null && Z_TYPE(value) == IS_STRING && columns != NULL && Z_TYPE_P(columns) == IS_ARRAY) {
             zval *meta = zend_hash_index_find(Z_ARRVAL_P(columns), index);
             zval *type = meta != NULL ? zend_hash_str_find(Z_ARRVAL_P(meta), "type", sizeof("type") - 1) : NULL;
             if (type != NULL && Z_TYPE_P(type) == IS_STRING) {
@@ -1353,7 +1449,13 @@ static bool pg_statement_row(zval *self, zend_long mode, zval *row_value)
     if (columns != NULL && Z_TYPE_P(columns) == IS_ARRAY) {
         zval *meta; zend_ulong i; ZEND_HASH_FOREACH_NUM_KEY_VAL(Z_ARRVAL_P(columns), i, meta) {
             zval *name = zend_hash_str_find(Z_ARRVAL_P(meta), "name", sizeof("name") - 1), *value = zend_hash_index_find(Z_ARRVAL(converted), i);
-            if (name != NULL && Z_TYPE_P(name) == IS_STRING && value != NULL) { zval copy; ZVAL_COPY(&copy, value); zend_hash_update(Z_ARRVAL(associative), Z_STR_P(name), &copy); }
+            if (name != NULL && Z_TYPE_P(name) == IS_STRING && value != NULL) {
+                zend_string *key = NULL;
+                if (case_mode == pg_value_long("PDO::CASE_LOWER", 2)) key = zend_string_tolower(Z_STR_P(name));
+                else if (case_mode == pg_value_long("PDO::CASE_UPPER", 1)) key = zend_string_toupper(Z_STR_P(name));
+                else key = zend_string_copy(Z_STR_P(name));
+                zval copy; ZVAL_COPY(&copy, value); zend_hash_update(Z_ARRVAL(associative), key, &copy); zend_string_release(key);
+            }
         } ZEND_HASH_FOREACH_END();
     }
     if (mode == pg_value_long("PDO::FETCH_BOUND", 6)) { zval_ptr_dtor(&associative); zval_ptr_dtor(&converted); ZVAL_TRUE(row_value); return true; }
@@ -1379,7 +1481,17 @@ ZEND_METHOD(Polyspec_Orm_Internal_PgsqlStatementAdapter, fetch)
     zend_long mode = 0, orientation = 0, offset = 0;
     ZEND_PARSE_PARAMETERS_START(0, 3) Z_PARAM_OPTIONAL Z_PARAM_LONG(mode) Z_PARAM_LONG(orientation) Z_PARAM_LONG(offset) ZEND_PARSE_PARAMETERS_END();
     (void) orientation; (void) offset;
-    if (mode == pg_value_long("PDO::FETCH_DEFAULT", 0)) { zval rv; zval *modes = pg_prop(ZEND_THIS, "fetchMode", &rv); zval *stored = modes != NULL && Z_TYPE_P(modes) == IS_ARRAY ? zend_hash_index_find(Z_ARRVAL_P(modes), 0) : NULL; mode = stored == NULL ? pg_value_long("PDO::FETCH_BOTH", 4) : zval_get_long(stored); }
+    if (mode == pg_value_long("PDO::FETCH_DEFAULT", 0)) {
+        zval modes_rv, pdo_rv, *modes = pg_prop(ZEND_THIS, "fetchMode", &modes_rv);
+        zval *stored = modes != NULL && Z_TYPE_P(modes) == IS_ARRAY ? zend_hash_index_find(Z_ARRVAL_P(modes), 0) : NULL;
+        if (stored == NULL) {
+            zval *pdo = pg_prop(ZEND_THIS, "pdo", &pdo_rv), defaults_rv;
+            zval *defaults = pdo == NULL ? NULL : pg_prop(pdo, "defaultFetchMode", &defaults_rv);
+            stored = defaults != NULL && Z_TYPE_P(defaults) == IS_ARRAY
+                ? zend_hash_index_find(Z_ARRVAL_P(defaults), 0) : NULL;
+        }
+        mode = stored == NULL ? pg_value_long("PDO::FETCH_BOTH", 4) : zval_get_long(stored);
+    }
     if (!pg_statement_row(ZEND_THIS, mode, return_value)) RETURN_THROWS();
 }
 
@@ -1389,8 +1501,14 @@ ZEND_METHOD(Polyspec_Orm_Internal_PgsqlStatementAdapter, fetchAll)
     ZEND_PARSE_PARAMETERS_START(0, -1) Z_PARAM_OPTIONAL Z_PARAM_LONG(mode) Z_PARAM_VARIADIC('*', args, argc) ZEND_PARSE_PARAMETERS_END();
     (void) args; (void) argc;
     if (mode == pg_value_long("PDO::FETCH_DEFAULT", 0)) {
-        zval rv; zval *modes = pg_prop(ZEND_THIS, "fetchMode", &rv);
+        zval rv, pdo_rv; zval *modes = pg_prop(ZEND_THIS, "fetchMode", &rv);
         zval *stored = modes != NULL && Z_TYPE_P(modes) == IS_ARRAY ? zend_hash_index_find(Z_ARRVAL_P(modes), 0) : NULL;
+        if (stored == NULL) {
+            zval *pdo = pg_prop(ZEND_THIS, "pdo", &pdo_rv), defaults_rv;
+            zval *defaults = pdo == NULL ? NULL : pg_prop(pdo, "defaultFetchMode", &defaults_rv);
+            stored = defaults != NULL && Z_TYPE_P(defaults) == IS_ARRAY
+                ? zend_hash_index_find(Z_ARRVAL_P(defaults), 0) : NULL;
+        }
         mode = stored == NULL ? pg_value_long("PDO::FETCH_BOTH", 4) : zval_get_long(stored);
     }
     array_init(return_value);
