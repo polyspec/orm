@@ -54,8 +54,15 @@ await runCases('coverage_composite_keys.mjs', {
           .gets();
         unsubscribe();
         assert.equal(relationEvents.length, 2, 'each relation path sends one padded query');
+        // SQLite may expose a safe i64 bind as a number or a bigint; compare its exact integer value without lossy coercion.
+        const expectedBinds = [BigInt(tenant), 1n, BigInt(tenant), 2n, BigInt(tenant), 3n, BigInt(tenant), 3n];
         for (const event of relationEvents) {
-          assert.deepEqual(event.binds, [tenant, 1, tenant, 2, tenant, 3, tenant, 3]);
+          assert.equal(event.binds.length, expectedBinds.length, 'relation bind count');
+          for (const [index, value] of event.binds.entries()) {
+            const exactInteger = typeof value === 'bigint' || (typeof value === 'number' && Number.isSafeInteger(value));
+            assert.ok(exactInteger, `bind ${index} is an exact integer`);
+            assert.equal(BigInt(value), expectedBinds[index], `bind ${index} preserves its exact integer value`);
+          }
           const placeholders = event.sql.match(/\?/g) ?? event.sql.match(/\$\d+/g) ?? [];
           assert.equal(placeholders.length, 8, 'three composite parent keys pad to four tuples');
         }
