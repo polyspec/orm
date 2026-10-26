@@ -236,7 +236,7 @@ class CoverageTest(CoverageCase):
     def test_schema_install_existing(self):
         self.each_item("schema_install_existing", schema_install_existing)
 
-    # Requirements: SCH-7, SCH-10, DBS-108, PLN-44.
+    # Requirements: SCH-7, SCH-10, DBS-108, PLN-44, INT-55.
     def test_schema_install_partial(self):
         self.each_item("schema_install_partial", schema_install_partial)
 

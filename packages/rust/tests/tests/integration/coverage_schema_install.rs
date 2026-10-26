@@ -39,7 +39,7 @@ async fn coverage_schema_install_existing() {
     .await;
 }
 
-// Requirements: SCH-10, DBS-108, PLN-44.
+// Requirements: SCH-10, DBS-108, PLN-44, INT-55.
 #[tokio::test]
 async fn coverage_schema_install_partial() {
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::DATABASE);

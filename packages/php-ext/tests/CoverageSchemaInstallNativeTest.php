@@ -92,7 +92,7 @@ final class CoverageSchemaInstallNativeTest extends TestCase
         });
     }
 
-    // Requirements: DBS-108, SCH-10, PLN-44.
+    // Requirements: DBS-108, SCH-10, PLN-44, INT-55.
     public function testSchemaInstallPartial(): void
     {
         self::forEachCoverageDatabase(static function ($db): void {

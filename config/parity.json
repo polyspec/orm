@@ -16728,6 +16728,11 @@
           "implementation": "rust",
           "test": "packages/rust/tests/src/integration.rs",
           "id": "schema_empty"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_schema_inspection.py",
+          "id": "SchemaInspectionTest.test_empty_counts_tables_and_views_but_not_the_orm_tables"
         }
       ]
     },
@@ -23141,7 +23146,8 @@
       "requirements": [
         "DBS-108",
         "SCH-10",
-        "PLN-44"
+        "PLN-44",
+        "INT-55"
       ],
       "bindings": [
         {

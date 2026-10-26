@@ -17,7 +17,7 @@ use ReflectionMethod;
 // The inherited savepoint case runs against the native Db.
 final class CoverageTransactionsExtensionTest extends CoverageTransactionsTest
 {
-    // Requirements: INT-61, INT-73, INT-134.
+    // Requirements: INT-61, INT-73, INT-79, INT-134.
     public function testNativeUtilsExposeGroups(): void
     {
         self::withLifecycleRows(static function (Db $db, \Closure $recorded): void {
@@ -33,6 +33,15 @@ final class CoverageTransactionsExtensionTest extends CoverageTransactionsTest
                 $stats->inUse,
                 $stats->idle,
             ]);
+            $db->transaction(static function () use ($utils): void {
+                $busy = $utils->stats();
+                Assert::assertSame([1, 1, 1, 0], [
+                    $busy->maxOpenConnections,
+                    $busy->openConnections,
+                    $busy->inUse,
+                    $busy->idle,
+                ]);
+            });
             Assert::assertNotEmpty($recorded());
         });
     }

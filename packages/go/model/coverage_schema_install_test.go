@@ -57,7 +57,7 @@ table coverage_install_missing {
 
 // TestCoverageSchemaInstallPartial checks that installing a document set with only some of its tables
 // is CONFIG and does not create the missing tables.
-// Requirements: SCH-10, DBS-108, PLN-44.
+// Requirements: SCH-10, DBS-108, PLN-44, INT-55.
 func TestCoverageSchemaInstallPartial(t *testing.T) {
 	testcase.Start(t, testcase.Database)
 	db, driver, dsn := connectFeature(t)

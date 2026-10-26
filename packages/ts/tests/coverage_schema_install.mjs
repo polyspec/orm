@@ -74,7 +74,7 @@ await runCases('coverage_schema_install.mjs', {
     });
   },
 
-  // Requirements: SCH-7, SCH-10, DBS-108, PLN-44.
+  // Requirements: SCH-7, SCH-10, DBS-108, PLN-44, INT-55.
   async schema_install_partial(item) {
     await withDatabase(item, async (db, driver, dsn) => {
       assert.equal(await tableExists(driver, dsn, 'coverage_install_missing'), false, 'coverage_install_missing does not exist before the case');
