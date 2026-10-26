@@ -142,7 +142,7 @@ func TestInListPaddingKeepsTheCompiledShape(t *testing.T) {
 			if err := canonicalize(r); err != nil {
 				t.Fatalf("%s input %d: canonicalize: %v", dialect, i, err)
 			}
-			predicates := r.ir.Query.Where.Items
+			predicates := r.ir.Where.Items
 			if got, want := predicates[0].Pred.Ps, []int{0, 1, 2, 3}; !slices.Equal(got, want) {
 				t.Fatalf("%s input %d IN indexes = %v, want %v", dialect, i, got, want)
 			}
