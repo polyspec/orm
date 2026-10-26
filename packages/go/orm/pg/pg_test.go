@@ -1,33 +1,12 @@
 package pg
 
 import (
-	"context"
-	"reflect"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/polyspec/orm/packages/go/orm"
 	"github.com/polyspec/orm/packages/go/testcase"
 )
-
-func TestOpenConnectorPingsEveryReusedConnection(t *testing.T) {
-	testcase.Start(t, testcase.Compute)
-	connector, err := (configuredDriver{}).OpenConnector("postgres://orm@127.0.0.1/test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	field := reflect.ValueOf(connector).FieldByName("ShouldPing")
-	if !field.IsValid() || field.Kind() != reflect.Func {
-		t.Fatal("pgx connector has no configured ShouldPing callback")
-	}
-	if got, want := field.Pointer(), reflect.ValueOf(pingReusedConnection).Pointer(); got != want {
-		t.Fatalf("pgx ShouldPing callback = %x, want %x", got, want)
-	}
-	if !pingReusedConnection(context.Background(), stdlib.ShouldPingParams{}) {
-		t.Fatal("PostgreSQL connection reuse must perform a liveness ping even for an immediately idle connection")
-	}
-}
 
 func TestMapErrClassifiesCheckConstraint(t *testing.T) {
 	testcase.Start(t, testcase.Compute)

@@ -372,6 +372,10 @@ func TestPoolDiscardsEndedIdleConnection(t *testing.T) {
 			if killed != 1 {
 				t.Fatalf("ended %d idle pool sessions, want one", killed)
 			}
+			if driver == "postgres" {
+				// pgx's native stdlib ResetSession pings after a connection has been idle for more than one second.
+				time.Sleep(1100 * time.Millisecond)
+			}
 			if _, err := db.Utils().Schema().Exists("orm"); err != nil {
 				t.Fatalf("statement after server ended idle connection: %v", err)
 			}

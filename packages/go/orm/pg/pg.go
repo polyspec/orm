@@ -53,12 +53,8 @@ func (configuredDriver) OpenConnector(name string) (driver.Connector, error) {
 			DeadlineDelay: 5 * time.Second,
 		}
 	}
-	return stdlib.GetConnector(*config, stdlib.OptionShouldPing(pingReusedConnection)), nil
+	return stdlib.GetConnector(*config), nil
 }
-
-// pingReusedConnection checks a pooled PostgreSQL session before handing it to a statement. The ping costs one network
-// round trip per reused connection; a failed ping makes database/sql discard the session and retry before execution.
-func pingReusedConnection(context.Context, stdlib.ShouldPingParams) bool { return true }
 
 // mapErr names the conditions that docs/spec/errors.yaml maps, and the executor
 // reports the remaining driver errors as DRIVER.

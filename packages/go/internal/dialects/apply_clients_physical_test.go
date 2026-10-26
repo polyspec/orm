@@ -34,20 +34,6 @@ type applyClientRunner struct {
 	env  map[string]string
 }
 
-func applyRunnerEnvironment(base []string, overrides map[string]string) []string {
-	result := make([]string, 0, len(base)+len(overrides))
-	for _, value := range base {
-		name, _, _ := strings.Cut(value, "=")
-		if _, replaced := overrides[name]; !replaced {
-			result = append(result, value)
-		}
-	}
-	for name, value := range overrides {
-		result = append(result, name+"="+value)
-	}
-	return result
-}
-
 func applyClientRunners(goRunner, rustRunner, extension, python string) map[string]applyClientRunner {
 	return map[string]applyClientRunner{
 		"go":            {args: []string{goRunner}},
@@ -117,7 +103,7 @@ func TestApplyChainAcrossClients(t *testing.T) {
 		cmd := exec.CommandContext(ctx, runner.args[0], append(runner.args[1:], action, dialect, uri, vectors)...)
 		cmd.Dir = root
 		if len(runner.env) > 0 {
-			cmd.Env = applyRunnerEnvironment(os.Environ(), runner.env)
+			cmd.Env = clientRunnerEnvironment(os.Environ(), runner.env)
 		}
 		var stdout, stderr bytes.Buffer
 		cmd.Stdout, cmd.Stderr = &stdout, &stderr
@@ -226,7 +212,7 @@ func TestApplyExtensionRunnerMode(t *testing.T) {
 	if len(runners["php"].env) != 0 {
 		t.Fatalf("PHP library runner received extension environment: %v", runners["php"].env)
 	}
-	got := applyRunnerEnvironment([]string{"PATH=/bin", "ORM_PHP_MODE=library", "KEEP=value"}, runners["php-extension"].env)
+	got := clientRunnerEnvironment([]string{"PATH=/bin", "ORM_PHP_MODE=library", "KEEP=value"}, runners["php-extension"].env)
 	if !containsEnvironment(got, "ORM_PHP_MODE=extension") || containsEnvironment(got, "ORM_PHP_MODE=library") || !containsEnvironment(got, "KEEP=value") {
 		t.Fatalf("PHP extension child environment = %q", got)
 	}

@@ -26,10 +26,6 @@ dependencies = [
 [project.scripts]
 orm-gen = "polyspec.orm.bin_orm_gen:main"
 
-[tool.uv.sources]
-# Development checkouts install the sibling source as a native editable; wheel metadata retains the release URL above.
-polyspec-ordered-json = { path = "../../../ordered-json/packages/python", editable = true }
-
 [tool.uv]
 default-groups = ["test"]
 

@@ -105,7 +105,7 @@ func TestIntrospectCompare(t *testing.T) {
 				cmd := exec.CommandContext(ctx, r.args[0], append(r.args[1:], dialect, uri)...)
 				cmd.Dir = root
 				if len(r.env) > 0 {
-					cmd.Env = runnerEnvironment(os.Environ(), r.env)
+					cmd.Env = clientRunnerEnvironment(os.Environ(), r.env)
 				}
 				var stdout, stderr bytes.Buffer
 				cmd.Stdout, cmd.Stderr = &stdout, &stderr
@@ -135,22 +135,8 @@ func TestIntrospectCompare(t *testing.T) {
 	}
 }
 
-func runnerEnvironment(base []string, overrides map[string]string) []string {
-	result := make([]string, 0, len(base)+len(overrides))
-	for _, value := range base {
-		name, _, _ := strings.Cut(value, "=")
-		if _, replaced := overrides[name]; !replaced {
-			result = append(result, value)
-		}
-	}
-	for name, value := range overrides {
-		result = append(result, name+"="+value)
-	}
-	return result
-}
-
 func TestIntrospectCompareRunnerEnvironment(t *testing.T) {
-	got := runnerEnvironment([]string{"PATH=/bin", "ORM_PHP_MODE=library", "KEEP=value"}, map[string]string{"ORM_PHP_MODE": "extension"})
+	got := clientRunnerEnvironment([]string{"PATH=/bin", "ORM_PHP_MODE=library", "KEEP=value"}, map[string]string{"ORM_PHP_MODE": "extension"})
 	if want := []string{"PATH=/bin", "KEEP=value", "ORM_PHP_MODE=extension"}; !sameEnvironment(got, want) {
 		t.Fatalf("runner environment = %q, want %q", got, want)
 	}
