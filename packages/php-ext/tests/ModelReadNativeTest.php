@@ -121,6 +121,7 @@ final class ModelReadNativeTest extends TestCase
         self::assertSame('parent-read_shape', $method->invoke($model, $model, ['key' => []], []));
     }
 
+    // Requirements: PRT-69, INT-90.
     public function testGroupBooleanIsStrictAndRowCountStaysRawForGroupRowValidation(): void
     {
         $db = (new \ReflectionClass(Db::class))->newInstanceWithoutConstructor();

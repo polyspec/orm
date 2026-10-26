@@ -568,6 +568,10 @@
         {
           "glob": "packages/php-ext/tests/StatementEventSurfaceTest.php",
           "reason": "harness: verifies the native extension registers the internal StatementEvent class; event construction and dispatch behavior are exercised by the shared statement-events cases"
+        },
+        {
+          "glob": "packages/php-ext/tests/ChainNativeSurfaceTest.php",
+          "reason": "test: `model-native-php-extension-check` verifies internal Polyspec\\Orm\\Internal\\Chain registration and direct words/parseMeta/orderMeta/pairMeta/columnName helper behavior in testNativeClassOwnsTheCompletePublicChainSurface, testWordsAndNameConversionsKeepTheChainGrammar, testNativeParserAcceptsConnectorsComparisonsAndTuples, testNativeParserRejectsUnknownAndDisallowedOperatorsAsConfig, and testNativeOrderPairAndColumnLookupReturnExactNames; public fluent query output and IR validation remain exercised by coverage-model-query-rows and ir-validate"
         }
       ],
       "shares": "php"
@@ -3505,7 +3509,13 @@
           "implementation": "typescript",
           "test": "packages/ts/tests/dbspec-introspect-round-trip.mjs",
           "id": "introspection query count per dialect",
-          "command": ["make", "-s", "-C", "${ORM_CHECKOUT}", "dbspec-introspect-ts-check"]
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "dbspec-introspect-ts-check"
+          ]
         },
         {
           "implementation": "python",
@@ -3516,19 +3526,37 @@
           "implementation": "python",
           "test": "packages/python/tests/dbspec_introspect_queries.py",
           "id": "test_sqlite",
-          "command": ["make", "-s", "-C", "${ORM_CHECKOUT}", "dbspec-introspect-python-check"]
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "dbspec-introspect-python-check"
+          ]
         },
         {
           "implementation": "python",
           "test": "packages/python/tests/dbspec_introspect_queries.py",
           "id": "test_mysql",
-          "command": ["make", "-s", "-C", "${ORM_CHECKOUT}", "dbspec-introspect-python-check"]
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "dbspec-introspect-python-check"
+          ]
         },
         {
           "implementation": "python",
           "test": "packages/python/tests/dbspec_introspect_queries.py",
           "id": "test_postgres",
-          "command": ["make", "-s", "-C", "${ORM_CHECKOUT}", "dbspec-introspect-python-check"]
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "dbspec-introspect-python-check"
+          ]
         },
         {
           "implementation": "rust",
@@ -4733,6 +4761,76 @@
       ]
     },
     {
+      "id": "model-get-by-count-upsert-collection-delete",
+      "kind": "feature",
+      "requirements": [
+        "DSL-58",
+        "DSL-60",
+        "DSL-105",
+        "DSL-110"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/model/coverage_model_writes_test.go",
+          "id": "TestCoverageModelWriteCycle",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-go-unit",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=TestCoverageModelWriteCycle",
+            "FEATURE_PACKAGE=./model"
+          ]
+        },
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/CoverageModelWritesTest.php",
+          "id": "CoverageModelWritesTest::testModelWriteCycle"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/CoverageModelWritesExtensionTest.php",
+          "id": "CoverageModelWritesExtensionTest::test_model_write_cycle"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelQueriesWritesNativeTest.php",
+          "id": "ModelQueriesWritesNativeTest::testNativeModelWritesRoundTripThroughSqliteMemory"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/coverage_model_writes.mjs",
+          "id": "model_write_cycle [sqlite]"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/coverage_model_writes.py",
+          "id": "test_model_write_cycle"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/tests/tests/integration/coverage_model_writes.rs",
+          "id": "coverage_model_writes::coverage_model_write_cycle",
+          "command": [
+            "make",
+            "-s",
+            "-C",
+            "${ORM_CHECKOUT}",
+            "feature-rust-database",
+            "FEATURE_CRATE=packages/rust/tests",
+            "FEATURE_CARGO_TARGET=--test integration",
+            "FEATURE_DATABASE=sqlite",
+            "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
+            "FEATURE_TEST=coverage_model_writes::coverage_model_write_cycle"
+          ]
+        }
+      ]
+    },
+    {
       "id": "model-update-applies-changed-fields-and-targets-primary-key",
       "kind": "feature",
       "requirements": [
@@ -5798,6 +5896,11 @@
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/CoverageTransactionsExtensionTest.php",
           "id": "CoverageTransactionsExtensionTest::testTransactionRollback"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/AuditLazyFakePdoTest.php",
+          "id": "AuditLazyFakePdoTest::testLazyAuditPrecedesWritesIsReusedAndWriteFailurePropagates"
         },
         {
           "implementation": "python",
@@ -13471,6 +13574,11 @@
           "implementation": "php-extension",
           "test": "packages/php-ext/tests/ModelAssemblyTest.php",
           "id": "ModelAssemblyTest::testGroupRowCountEnforcesExactness"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelReadNativeTest.php",
+          "id": "ModelReadNativeTest::testGroupBooleanIsStrictAndRowCountStaysRawForGroupRowValidation"
         },
         {
           "implementation": "typescript",
@@ -22915,6 +23023,11 @@
             "FEATURE_DSN_ENV=BENCH_SQLITE_DSN",
             "FEATURE_TEST=coverage_parameter_chunking::coverage_root_in_chunking"
           ]
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ParameterChunkingNativeTest.php",
+          "id": "ParameterChunkingNativeTest::test_root_in_chunks_use_native_model_queries_and_reject_unmergeable_pages"
         }
       ]
     },

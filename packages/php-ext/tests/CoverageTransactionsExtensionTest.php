@@ -30,7 +30,9 @@ final class CoverageTransactionsExtensionTest extends CoverageTransactionsTest
         });
     }
 
-    // Requirements: PLN-44. The inherited rollback and savepoint cases exercise transaction operations on native Db.
+    // Requirements: DSL-118, INT-45, PLN-13, PLN-20, PLN-44. The inherited rollback case runs with the native Db.
+    // Requirements: INT-40, INT-41, INT-42, INT-43, INT-47, INT-48. The inherited exact savepoint selector runs against
+    // the native Db.
     // Requirements: DSL-124, PLN-19.
     public function testNativeMethodsAreInternal(): void
     {

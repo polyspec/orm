@@ -19,7 +19,7 @@ final class AuditLazyFakePdoTest extends TestCase
 {
     use TransactionCloseDuringFailure;
 
-    // Requirements: INT-67.
+    // Requirements: DSL-118, INT-45, PLN-13, PLN-20, PLN-44.
     public function testLazyAuditPrecedesWritesIsReusedAndWriteFailurePropagates(): void
     {
         $pdo = new AuditLazyFakePdo();

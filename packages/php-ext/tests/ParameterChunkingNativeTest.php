@@ -19,7 +19,7 @@ use Polyspec\Orm\OrmException;
 #[Small]
 final class ParameterChunkingNativeTest extends TestCase
 {
-    // Requirements: PRT-76.
+    // Requirements: PLN-44, PRT-76.
     // phpcs:ignore PSR1.Methods.CamelCapsMethodName.NotCamelCaps -- feature IDs require the test method to preserve underscores.
     public function test_root_in_chunks_use_native_model_queries_and_reject_unmergeable_pages(): void
     {

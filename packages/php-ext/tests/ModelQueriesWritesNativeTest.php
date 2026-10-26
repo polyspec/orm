@@ -63,6 +63,7 @@ final class ModelQueriesWritesNativeTest extends TestCase
         }
     }
 
+    // Requirements: DSL-58, DSL-60, DSL-105, DSL-110.
     public function testNativeModelWritesRoundTripThroughSqliteMemory(): void
     {
         self::assertTrue((new ReflectionMethod(Model::class, 'create'))->isInternal());
