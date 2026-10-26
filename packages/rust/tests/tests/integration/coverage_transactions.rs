@@ -228,7 +228,7 @@ async fn coverage_transaction_savepoint() {
             eprintln!("rust-savepoint: timed transaction start");
             let timed: polyspec_orm::Result<()> = db
                 .transaction(async || {
-                    account().tenant_id(TENANT).and_account_id(6).set_name("timed out").update(false).await?;
+                    account().set_tenant_id(TENANT).set_account_id(6).set_name("timed out").update(false).await?;
                     Ok(())
                 })
                 .timeout_ms(250)

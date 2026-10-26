@@ -25,6 +25,9 @@
          displayDetailsOnTestsThatTriggerDeprecations="true"
          displayDetailsOnTestsThatTriggerNotices="true"
          displayDetailsOnTestsThatTriggerErrors="true">
+    <php>
+        <env name="ORM_PHP_MODE" value="extension" force="true"/>
+    </php>
     <testsuites>
         <testsuite name="polyspec/orm-php-ext">
             <directory suffix="Test.php">tests</directory>
