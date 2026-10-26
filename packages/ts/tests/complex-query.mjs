@@ -1,3 +1,4 @@
+import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
 import { SCHEMA, connect } from '../dist/models/complex_query/models.js';
 import { caseTest, DATABASE } from '../../../tests/testcase.mts';

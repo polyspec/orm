@@ -30,6 +30,14 @@ function named(record: CheckRecord, name: string): StepRecord {
 }
 const scope = { after: (f: () => void) => { after.push(f); } };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every(item => typeof item === 'string');
+}
+
 caseTest('the check runner accepts component target names and rejects malformed names', COMPUTE, () => {
   const declaration = /^CHECK_TARGETS\s*=\s*(.+)$/m.exec(readFileSync(join(repo, 'Makefile'), 'utf8'));
   assert.ok(declaration?.[1], 'Makefile declares CHECK_TARGETS');
@@ -46,9 +54,12 @@ caseTest('the check runner accepts component target names and rejects malformed 
 });
 
 caseTest('dialect facts declares the isolated MySQL privilege fixture as a setup need', COMPUTE, () => {
-  const inputs = JSON.parse(readFileSync(join(repo, 'contracts/check-inputs.json'), 'utf8')) as { targets: Record<string, { needs: string[] }> };
-  const needs = inputs.targets['dialect-facts-check']?.needs;
-  assert.ok(needs?.includes('mysql-privilege-server'));
+  const inputs: unknown = JSON.parse(readFileSync(join(repo, 'contracts/check-inputs.json'), 'utf8'));
+  if (!isRecord(inputs) || !isRecord(inputs.targets)) throw new Error('contracts/check-inputs.json has no targets object');
+  const target = inputs.targets['dialect-facts-check'];
+  if (!isRecord(target) || !isStringArray(target.needs)) throw new Error('dialect-facts-check has no needs list');
+  const needs = target.needs;
+  assert.ok(needs.includes('mysql-privilege-server'));
   assert.ok(NEEDS.includes('mysql-privilege-server'));
   assert.deepEqual(SETUP_NEEDS['mysql-privilege-server'], ['databases']);
   const expanded = expandNeeds(needs);
