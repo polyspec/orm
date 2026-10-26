@@ -64,7 +64,6 @@ final class ModelWriteSurfaceTest extends TestCase
 
     public function testNativeUpdateClearsAnIncompleteKeyBeforeThrowingConfig(): void
     {
-        // Requirements: DSL-106
         $db = new \Polyspec\Orm\Db(
             new \PDO('sqlite::memory:'),
             'sqlite',
@@ -85,6 +84,51 @@ final class ModelWriteSurfaceTest extends TestCase
                 'CONFIG: composite_account requires a loaded row or set primary key tenant_id',
                 $error?->getMessage()
             );
+        } finally {
+            $db->close();
+        }
+    }
+
+    // Requirements: DSL-106.
+    public function testNativeUpdateSendsChangedFieldsAndPrimaryKeyToRequestHook(): void
+    {
+        $sentinel = new \RuntimeException('DSL-106 request hook stopped the update');
+        $seen = null;
+        $db = (new \Polyspec\Orm\Db(
+            new \PDO('sqlite::memory:'),
+            'sqlite',
+            new Config(),
+            new \DateTimeZone('UTC')
+        ))->withRequestHook(static function (Request $request) use (&$seen, $sentinel): void {
+            $seen = $request;
+            throw $sentinel;
+        });
+        try {
+            $failure = null;
+            try {
+                (new \Polyspec\Orm\Tests\Model\CompositeAccount())($db)
+                    ->setTenantId(12)
+                    ->setAccountId(34)
+                    ->setName('changed')
+                    ->update();
+            } catch (\Throwable $caught) {
+                $failure = $caught;
+            }
+
+            self::assertSame($sentinel, $failure, 'the hook stops before SQL execution');
+            self::assertInstanceOf(Request::class, $seen);
+            self::assertSame('update', $seen->ir['kind']);
+            self::assertSame('composite_account', $seen->ir['entity']);
+            self::assertSame([['column' => 'name', 'p' => 0]], $seen->ir['set']);
+            self::assertSame(
+                [
+                    ['pred' => ['column' => 'tenant_id', 'op' => 'eq', 'p' => 1]],
+                    ['pred' => ['column' => 'account_id', 'op' => 'eq', 'p' => 2, 'conn' => 'and']],
+                ],
+                $seen->ir['where']['items']
+            );
+            self::assertSame(['changed', 12, 34], $seen->params);
+            self::assertSame(3, $seen->shape()['n_params']);
         } finally {
             $db->close();
         }
