@@ -1067,6 +1067,10 @@
           "reason": "test: checks private set path, schema number, and nested JSON scanner mechanics; public set-reader diagnostics remain exercised by the six-client dbspec-set-files cases"
         },
         {
+          "glob": "packages/rust/schema/src/names.rs",
+          "reason": "test: checks the internal ASCII identifier conversion helper directly; generated entity type names remain exercised by the generated-manifest feature cases"
+        },
+        {
           "glob": "packages/rust/build/src/lib.rs",
           "reason": "harness: its inline unit tests Cargo rerun-if-changed metadata for the set file and its documents; generated model behavior is exercised by the model_generation feature units"
         },
