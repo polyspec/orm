@@ -4214,7 +4214,9 @@
         "rust-model-generation-repeat-and-build-equivalence",
         "dynamic-vs-scanned-model-chain-dispatch",
         "model-connection-and-join-methods",
-        "mechanically-derived-chain-method-names"
+        "mechanically-derived-chain-method-names",
+        "static-model-chain-generation",
+        "dynamic-model-chain-resolution"
       ],
       "fixtures": [
         "packages/go/model/coverage_helpers_test.go",
@@ -4383,7 +4385,7 @@
         ],
         "owners": {
           "go": {
-            "part": "packages/go/model",
+            "part": "packages/go",
             "tests": [
               "packages/go/model/coverage_model_generation_test.go"
             ],
@@ -4446,7 +4448,7 @@
             }
           },
           "rust": {
-            "part": "packages/rust/tests",
+            "part": "packages/rust",
             "tests": [
               "packages/rust/tests/tests/coverage_model_generation.rs"
             ],

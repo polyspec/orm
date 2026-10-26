@@ -295,6 +295,7 @@ table typed {
     aes_version aes_key_version
   }
 }
+
 `)
 	dir := filepath.Join(t.TempDir(), "model")
 	if err := generateGo(m, dir, "", nil); err != nil {
@@ -332,5 +333,23 @@ table typed {
 		if !strings.Contains(string(orm), want) {
 			t.Errorf("orm.go does not contain %q", want)
 		}
+	}
+}
+
+// Requirements: INT-12.
+func TestGeneratedPublicConnectCall(t *testing.T) {
+	testcase.Start(t, testcase.Process)
+	m := namesManifest(t, thingDocument("name"))
+	dir := filepath.Join(t.TempDir(), "model")
+	if err := generateGo(m, dir, "", nil); err != nil {
+		t.Fatal(err)
+	}
+	body, err := os.ReadFile(filepath.Join(dir, "orm.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "func Connect(dsn string, cfg orm.Config) (*orm.DB, error)"
+	if !strings.Contains(string(body), want) {
+		t.Fatalf("generated public Connect call does not have signature %q", want)
 	}
 }

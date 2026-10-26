@@ -100,7 +100,7 @@ A terminal does not change the stored request, so repeated terminals produce the
 
 Every public client accepts one DSN URI. `mysql://`, `postgres://`, and `sqlite://` select the database driver. Every connection reads and writes datetime values in UTC; the optional `timezone` parameter accepts only `UTC` or `+00:00`. The caller does not pass a second driver value.
 
-- **INT-12** Go — Public connection call: `model.Connect(dsn, config)`; Result: `(*orm.DB, error)`
+- **INT-12** The `github.com/polyspec/orm/packages/go` Go module — Public connection call: `model.Connect(dsn, config)`; Result: `(*orm.DB, error)`
 - **INT-13** The `polyspec/orm` PHP client — Public connection call: `\Polyspec\Orm\Tests\Model\connect(dsn, new Config(…))`; Result: `Db`
 - **INT-14** The `polyspec-orm` Rust crate — Public connection call: `model::connect(dsn, pool_size, config).await?`; Result: `polyspec_orm::Db`
 - **INT-15** The `@polyspec/orm` TypeScript package — Public connection call: `connect(dsn, options)` of the generated module; Result: `Promise<Db>`
@@ -128,8 +128,8 @@ The creation spelling follows the host language. The method role, stored request
 
 `getBy<Chain>`, `getsBy<Chain>`, and `getCountBy<Chain>` apply a column chain as the condition and call the terminal. A chain is a combination of column keys, operators and connectors, so the set of chains has no bound, and no client lists them all. Each client reaches a chain in one of two ways, and the same chain gives the same rows in every client:
 
-- **INT-27** A client with static model types declares each chain that the model generation finds in the scanned source code. Go, Rust and TypeScript work this way, while PHP and Python resolve the name as the next item says. A chain that no scanned call names has no method until the code calls it and the models are generated again.
-- **INT-28** A client with dynamic model types resolves the name of the call when the call runs. PHP (`__call`) and Python (`__getattr__`) work this way. The generation scan checks the names it finds and declares no method.
+- **INT-27** Go static model types declare each chain found by scanning source calls; and Rust static model types do the same; and TypeScript static model types do the same. PHP and Python resolve names as the next item says. A chain no scanned call names has no method until code calls it and the models are generated again.
+- **INT-28** The `polyspec/orm-gen` PHP generator scan checks found names but declares no method; and PHP client `polyspec/orm` resolves call names dynamically through `__call`; and PHP-extension client `polyspec/orm-php-ext` does the same; and Python package `polyspec-orm` resolves call names at runtime through `__getattr`.
 
 The shared vector `terminal_by` in `tests/conformance/vectors.json` runs `getsBy<Chain>` on the non-unique columns `service_seq` and `is_close` in every runtime client, and the rows of each client must equal the recorded result.
 

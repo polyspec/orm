@@ -21389,6 +21389,25 @@
       ]
     },
     {
+      "id": "go-generated-public-connect-call",
+      "kind": "feature",
+      "requirements": [
+        "INT-12"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/generator/gen_go_test.go",
+          "id": "TestGeneratedPublicConnectCall"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "go-module",
+        "package": "github.com/polyspec/orm/packages/go"
+      }
+    },
+    {
       "id": "dynamic-vs-scanned-model-chain-dispatch",
       "kind": "feature",
       "requirements": [
@@ -28552,6 +28571,96 @@
           "id": "transactions"
         }
       ]
+    },
+    {
+      "id": "static-model-chain-generation",
+      "kind": "feature",
+      "requirements": [
+        "INT-27"
+      ],
+      "bindings": [
+        {
+          "implementation": "go",
+          "test": "packages/go/generator/gen_go_test.go",
+          "id": "TestScanGeneratesUsedMethods"
+        },
+        {
+          "implementation": "rust",
+          "test": "packages/rust/build/tests/generate.rs",
+          "id": "generates_called_methods"
+        },
+        {
+          "implementation": "typescript",
+          "test": "packages/ts/tests/generate-scan.mjs",
+          "id": "generate-scan/model_calls"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "model_generation",
+        "parts": [
+          "owner/go",
+          "owner/rust",
+          "owner/typescript"
+        ]
+      }
+    },
+    {
+      "id": "dynamic-model-chain-resolution",
+      "kind": "feature",
+      "requirements": [
+        "INT-28"
+      ],
+      "bindings": [
+        {
+          "implementation": "php",
+          "test": "packages/php/tests/ModelMethodsTest.php",
+          "id": "ModelMethodsTest::testADeclaredMethodBuildsTheQueryOfItsChain"
+        },
+        {
+          "implementation": "php-extension",
+          "test": "packages/php-ext/tests/ModelDslNativeTest.php",
+          "id": "ModelDslNativeTest::testDynamicConditionsAndBuilderCallsReturnTheNativeModel"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_query_methods.py",
+          "id": "test_a_declared_method_builds_the_query_of_its_chain"
+        },
+        {
+          "implementation": "python",
+          "test": "packages/python/tests/test_orm_gen.py",
+          "id": "test_chain_conditions"
+        }
+      ],
+      "owner": {
+        "kind": "coverage-parts",
+        "feature": "model_generation",
+        "parts": [
+          "owner/php",
+          "owner/php-extension",
+          "owner/python"
+        ]
+      }
+    },
+    {
+      "id": "php-generator-scan-validates-dynamic-chain-names",
+      "kind": "feature",
+      "requirements": [
+        "INT-28"
+      ],
+      "bindings": [
+        {
+          "implementation": "php",
+          "test": "packages/php-gen/tests/OrmGenScanTest.php",
+          "id": "OrmGenScanTest::testTheReceiverIsResolvedFromTheSource"
+        }
+      ],
+      "owner": {
+        "kind": "release-package",
+        "artifact": "archive",
+        "package": "polyspec/orm-gen"
+      }
     }
   ],
   "errors": {

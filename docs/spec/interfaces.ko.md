@@ -1,5 +1,5 @@
 <!-- doc-id: interfaces -->
-<!-- source-sha256: 917563149a978f4837d403a2262d9ad3600ccfdb4fd144407ef3a073f5aa3e63 -->
+<!-- source-sha256: ef38896815443ff71ec254dd7e41976daf4ce9d8b02841b17c8d8d8a0a6c702f -->
 # 공통 인터페이스 v1
 
 이 문서는 [DSL](dsl.md) 문법의 공통 공개 자료구조, 소유 규칙, 상태 전이, 클라이언트 호출 순서를 정의한다. 구현 상태는 [구현 대조표](../operations/interface-implementation.md)에 기록한다. 인터페이스를 정의했다는 사실이 모든 클라이언트의 구현을 입증하지는 않는다.
@@ -101,7 +101,7 @@ classDiagram
 
 모든 공개 클라이언트는 DSN URI 하나를 받는다. `mysql://`, `postgres://`, `sqlite://`가 데이터베이스 드라이버를 선택한다. 모든 연결은 datetime 값을 UTC로 읽고 쓰며, 선택 매개변수 `timezone`은 `UTC`나 `+00:00`만 받는다. 호출자는 별도 드라이버 값을 전달하지 않는다.
 
-- **INT-12** Go — 공개 연결 호출: `model.Connect(dsn, config)`; 결과: `(*orm.DB, error)`
+- **INT-12** `github.com/polyspec/orm/packages/go` Go 모듈 — 공개 연결 호출: `model.Connect(dsn, config)`; 결과: `(*orm.DB, error)`
 - **INT-13** `polyspec/orm` PHP client — 공개 연결 호출: `\Polyspec\Orm\Tests\Model\connect(dsn, new Config(…))`; 결과: `Db`
 - **INT-14** `polyspec-orm` Rust crate — 공개 연결 호출: `model::connect(dsn, pool_size, config).await?`; 결과: `polyspec_orm::Db`
 - **INT-15** `@polyspec/orm` TypeScript package — 공개 연결 호출: generated module의 `connect(dsn, options)`; 결과: `Promise<Db>`
@@ -129,8 +129,8 @@ classDiagram
 
 `getBy<Chain>`, `getsBy<Chain>`, `getCountBy<Chain>`은 컬럼 체인을 조건으로 적용하고 종단 작업을 호출한다. 체인은 컬럼 key, 연산자, 연결자의 조합이라 가능한 체인의 수에 한계가 없으며, 어떤 client도 그 목록을 다 가지지 않는다. 각 client는 체인을 두 방식 중 하나로 찾으며, 같은 체인은 모든 client에서 같은 row를 준다.
 
-- **INT-27** 정적인 모델 타입을 가진 client는 모델 생성이 scan된 소스 코드에서 찾은 체인마다 선언한다. Go, Rust, TypeScript가 이 방식이며, PHP와 Python은 다음 항목처럼 이름을 해석한다. scan된 호출이 이름을 붙이지 않은 체인은 코드가 그것을 호출하고 모델을 다시 생성하기 전까지 메서드가 없다.
-- **INT-28** 동적인 모델 타입을 가진 client는 호출이 실행될 때 호출 이름을 해석한다. PHP(`__call`)와 Python(`__getattr__`)이 이 방식이다. 생성 scan은 찾은 이름을 검사하지만 메서드를 선언하지 않는다.
+- **INT-27** Go 정적 모델 타입은 scan된 소스 코드에서 모델 생성이 찾은 각 체인을 선언한다. 그리고 Rust 정적 모델 타입도 같은 동작을 하며, TypeScript 정적 모델 타입도 같다. PHP와 Python은 다음 항목처럼 이름을 해석한다. scan된 호출이 이름을 붙이지 않은 체인은 코드가 그것을 호출하고 모델을 다시 생성하기 전까지 메서드가 없다.
+- **INT-28** `polyspec/orm-gen` PHP 생성기 scan은 찾은 이름을 검사하지만 메서드를 선언하지 않는다. 그리고 PHP client `polyspec/orm`의 `__call`은 동적으로 호출 이름을 해석하며, PHP-extension client `polyspec/orm-php-ext`도 같은 동작을 한다. 그리고 Python package `polyspec-orm`의 `__getattr`도 실행 시 호출 이름을 해석한다.
 
 공유 vector `terminal_by`(`tests/conformance/vectors.json`)는 모든 runtime client에서 unique가 아닌 column `service_seq`와 `is_close`에 `getsBy<Chain>`을 실행하며, 각 client의 row는 기록된 결과와 같아야 한다.
 
