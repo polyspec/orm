@@ -32,7 +32,7 @@ function compositeValueOf(entry) {
   return valueOf(entry, true);
 }
 
-// Requirements: PLN-6, INT-81, INT-82, INT-83, INT-84, INT-85.
+// Requirements: INT-62, PLN-6, INT-81, INT-82, INT-83, INT-84, INT-85.
 caseTest('collection-views/preserve-order-and-connect-every-model', COMPUTE, () => {
   const connections = [];
   const makeModel = label => ({
@@ -44,6 +44,9 @@ caseTest('collection-views/preserve-order-and-connect-every-model', COMPUTE, () 
   const collection = new orm.Collection();
   collection.put(7, first);
   collection.put('7', second);
+  if (collection.length !== 2) throw new Error(`length is ${collection.length}, want 2`);
+  if (collection.first() !== first) throw new Error('first did not return the first inserted model');
+  if (collection.get(7) !== first || collection.get('7') !== second) throw new Error('lookup did not preserve key type and value');
   if (JSON.stringify(collection.keys()) !== JSON.stringify([7, '7'])) throw new Error('keys lost collection order or key type');
   if (JSON.stringify(collection.values()) !== JSON.stringify([first, second])) throw new Error('values lost collection order');
   if (JSON.stringify(collection.entries()) !== JSON.stringify([[7, first], ['7', second]])) throw new Error('entries lost key/model order');
@@ -82,7 +85,7 @@ caseTest('model-terminal/returns-first-builder-error', COMPUTE, async () => {
 });
 
 // Each case is a node:test test, the form that the parity runner reads (tests/testcase.mts, caseTest).
-// Requirements: INT-11, PRT-35.
+// Requirements: INT-11, INT-63, PRT-35.
 caseTest('collection-key/identity-from-fixture', COMPUTE, () => {
   const collection = new orm.Collection();
   const distinct = fixture.keys.filter(entry => entry.same_as === undefined);

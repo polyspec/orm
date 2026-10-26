@@ -129,7 +129,7 @@ func TestCollectionLookupRejectsUnsupportedKey(t *testing.T) {
 	}
 }
 
-// Requirements: PLN-6, INT-81, INT-82, INT-83, INT-84, INT-85.
+// Requirements: INT-62, PLN-6, INT-81, INT-82, INT-83, INT-84, INT-85.
 func TestCollectionViewsPreserveOrderAndConnectEveryModel(t *testing.T) {
 	testcase.Start(t, testcase.Compute)
 	entity := &Entity{Value: func(model Model, name string) (any, bool) {
@@ -159,6 +159,18 @@ func TestCollectionViewsPreserveOrderAndConnectEveryModel(t *testing.T) {
 	collection := NewCollection[*rejectingModel]()
 	collection.keys = []Key{one, two}
 	collection.items[one], collection.items[two] = first, second
+	if got := collection.Len(); got != 2 {
+		t.Fatalf("length = %d, want 2", got)
+	}
+	if got := collection.First(); got != first {
+		t.Fatalf("first = %v, want first model", got)
+	}
+	if got, err := collection.Get(int64(7)); err != nil || got != first {
+		t.Fatalf("lookup integer key = %v, %v; want first model", got, err)
+	}
+	if got, err := collection.Get("7"); err != nil || got != second {
+		t.Fatalf("lookup text key = %v, %v; want second model", got, err)
+	}
 
 	if got := collection.Keys(); !reflect.DeepEqual(got, []Key{one, two}) {
 		t.Fatalf("keys = %#v, want ordered keys %#v", got, []Key{one, two})

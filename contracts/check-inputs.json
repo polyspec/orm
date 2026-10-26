@@ -1000,6 +1000,7 @@
         "tests/collection/keys.json",
         "packages/go/orm/collection.go",
         "packages/go/orm/collection_identity_test.go",
+        "packages/go/orm/collection_key_test.go",
         "packages/php/src/Db.php",
         "packages/php/tests/CollectionIdentityTest.php",
         "packages/php/tests/CollectionIdentityCases.php",
@@ -1015,6 +1016,7 @@
         "packages/python/tests/test_collection_identity.py",
         "packages/rust/orm/src/collection.rs",
         "packages/rust/orm/tests/collection_identity.rs",
+        "packages/rust/orm/src/model.rs",
         "packages/rust/tests/tests/collection_get_fetched.rs"
       ]
     },

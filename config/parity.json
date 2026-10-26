@@ -21428,6 +21428,7 @@
       "kind": "feature",
       "requirements": [
         "INT-11",
+        "INT-63",
         "PRT-35"
       ],
       "bindings": [
@@ -26442,6 +26443,7 @@
       "id": "collection-output-views",
       "kind": "feature",
       "requirements": [
+        "INT-62",
         "PLN-6",
         "INT-81",
         "INT-82",

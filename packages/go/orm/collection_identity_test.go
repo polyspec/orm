@@ -133,7 +133,7 @@ func compositeKeyFromFixture(t *testing.T, name, encoded string, values []any) K
 }
 
 func TestCollectionKeyIdentityFromFixture(t *testing.T) {
-	// Requirements: INT-11, PRT-35.
+	// Requirements: INT-11, INT-63, PRT-35.
 	testcase.Start(t, testcase.Compute)
 	fixture := loadCollectionKeys(t)
 	keys := map[string]Key{}

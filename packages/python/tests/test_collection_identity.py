@@ -107,7 +107,7 @@ class CollectionIdentityTest(unittest.TestCase):
         self.assertEqual(collection.fetched("7"), "text")
         self.assertIsNone(collection.fetched(8))
 
-    # Requirements: INT-81, INT-82, INT-83, INT-84, INT-85.
+    # Requirements: INT-62, INT-81, INT-82, INT-83, INT-84, INT-85.
     # Requirements: PLN-6.
     def test_collection_views_preserve_order_and_connect_every_model(self):
         class Row:
@@ -126,6 +126,10 @@ class CollectionIdentityTest(unittest.TestCase):
         collection = Collection()
         collection.put(7, first)
         collection.put("7", second)
+        self.assertEqual(collection.length, 2)
+        self.assertIs(collection.first(), first)
+        self.assertIs(collection.get(7), first)
+        self.assertIs(collection.get("7"), second)
         self.assertEqual(collection.keys(), [7, "7"])
         self.assertEqual(collection.values(), [first, second])
         self.assertEqual(collection.entries(), [(7, first), ("7", second)])
@@ -174,7 +178,7 @@ class CollectionIdentityTest(unittest.TestCase):
             self.assertEqual(raised.exception.code, "CODEC_DECODE")
 
     def test_every_fixture_key_has_its_own_identity(self):
-        # Requirements: INT-11, PRT-35.
+        # Requirements: INT-11, INT-63, PRT-35.
         fixture = load_fixture()
         collection = Collection()
         distinct = [entry for entry in fixture["keys"] if "same_as" not in entry]

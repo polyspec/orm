@@ -59,7 +59,7 @@ final class CollectionTest extends TestCase
 
     public function testFixtureKeysKeepTheirNativeTypesAndLookupValue(): void
     {
-        // Requirements: INT-11, PRT-35.
+        // Requirements: INT-11, INT-63, PRT-35.
         $collection = new Collection();
         $model = self::model('fixture');
         $expected = [];
@@ -134,7 +134,7 @@ final class CollectionTest extends TestCase
         }
     }
 
-    // Requirements: INT-81, INT-82, INT-83, INT-84.
+    // Requirements: INT-62, INT-81, INT-82, INT-83, INT-84.
     public function testTypedIdentityOrderedReplacementAndArrayViews(): void
     {
         $collection = new Collection();
@@ -148,6 +148,7 @@ final class CollectionTest extends TestCase
         self::assertSame(2, count($collection));
         self::assertSame($replacement, $collection->get(7));
         self::assertSame($text, $collection->get('7'));
+        self::assertSame($replacement, $collection->first());
         self::assertSame([7, '7'], $collection->keys());
         self::assertSame([$replacement, $text], $collection->all());
         self::assertSame([[7, $replacement], ['7', $text]], $collection->entries());

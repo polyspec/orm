@@ -73,7 +73,7 @@ fn hex_decode(text: &str) -> Vec<u8> {
 
 #[test]
 fn every_fixture_key_has_its_own_identity() {
-    // Requirements: INT-11, PRT-35.
+    // Requirements: INT-11, INT-63, PRT-35.
     let _case = polyspec_orm_testcase::case!(polyspec_orm_testcase::COMPUTE);
     let fixture = fixture();
     let entries = fixture["keys"].as_array().expect("keys");

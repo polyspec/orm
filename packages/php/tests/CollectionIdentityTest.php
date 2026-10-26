@@ -50,7 +50,7 @@ final class CollectionIdentityTest extends TestCase
         };
     }
 
-    // Requirements: INT-11, PRT-35.
+    // Requirements: INT-11, INT-63, PRT-35.
     public function testEveryFixtureKeyHasItsOwnStableIdentity(): void
     {
         $seen = [];
@@ -120,7 +120,7 @@ final class CollectionIdentityTest extends TestCase
         self::assertTypedKeyGetAndFetch($integer, $text);
     }
 
-    // Requirements: PLN-6, INT-81, INT-82, INT-83, INT-84, INT-85.
+    // Requirements: INT-62, PLN-6, INT-81, INT-82, INT-83, INT-84, INT-85.
     public function testToArrayPreservesCollectionModelOrder(): void
     {
         $first = new class extends Model {
@@ -149,6 +149,10 @@ final class CollectionIdentityTest extends TestCase
         $collection->put('first', $first);
         $collection->put('second', $second);
 
+        self::assertCount(2, $collection);
+        self::assertSame($first, $collection->first());
+        self::assertSame($first, $collection->get('first'));
+        self::assertSame($second, $collection->get('second'));
         self::assertSame(['first', 'second'], $collection->keys());
         self::assertSame([$first, $second], $collection->all());
         self::assertSame([['first', $first], ['second', $second]], $collection->entries());
